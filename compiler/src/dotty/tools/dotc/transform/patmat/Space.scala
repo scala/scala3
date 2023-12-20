@@ -270,15 +270,15 @@ object SpaceEngine {
    *  @param  unapp   The unapply function reference
    */
   def isIrrefutable(unapp: TermRef, argLen: Int)(using Context): Boolean = {
-    val unappResult = unapp.widen.finalResultType
-    unappResult.isRef(defn.SomeClass)
-    || unappResult <:< ConstantType(Constant(true)) // only for unapply
-    || (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case))  // scala2 compatibility
-    || unapplySeqTypeElemTp(unappResult).exists // only for unapplySeq
-    || isProductMatch(unappResult, argLen)
-    || extractorMemberType(unappResult, nme.isEmpty) <:< ConstantType(Constant(false))
-    || unappResult.derivesFrom(defn.NonEmptyTupleClass)
-    || unapp.symbol == defn.TupleXXL_unapplySeq // Fixes TupleXXL.unapplySeq which returns Some but declares Option
+    val ext = Extractor(unapp.widen.finalResultType, unapp.symbol.name, argLen)
+    ext match
+    case ext: BooleanMatch                                                     => ext.resType <:< ConstantType(Constant(true))
+    case ext if !ext.isGetMatch                                                => true // returns Product/Seq/ProdSeq
+    case ext if ext.getMatchInfo.isEmptyType <:< ConstantType(Constant(false)) => true
+    case ext if ext.unapplyResult.isRef(defn.SomeClass)                        => true
+    case ext if isSyntheticScala2Case(unapp.symbol)                            => true
+    case ext if unapp.symbol == defn.TupleXXL_unapplySeq                       => true // Fixes TupleXXL.unapplySeq which returns Some but declares Option
+    case _                                                                     => false
   }
 
   /** Is the unapply or unapplySeq irrefutable?
@@ -346,29 +346,26 @@ object SpaceEngine {
       projectSeq(pats)
 
     case UnApply(fun, _, pats) =>
-      val fun1 = funPart(fun)
-      val funRef = fun1.tpe.asInstanceOf[TermRef]
-      val resTp = fun.tpe.widen.finalResultType
-
-      def unapplySeqIsh(getTp: Type, elemTp: Type) =
-        if fun.symbol.owner == defn.SeqFactoryClass && defn.ListType.appliedTo(elemTp) <:< pat.tpe then
-          // The exhaustivity and reachability logic already handles decomposing sum types (into its subclasses)
-          // and product types (into its components).  To get better counter-examples for patterns that are of type
-          // List (or a super-type of list, like LinearSeq) we project them into spaces that use `::` and Nil.
-          // Doing so with a pattern of `case Seq() =>` with a scrutinee of type `Vector()` doesn't work because the
-          // space is then discarded leading to a false positive reachability warning, see #13931.
-          projectSeq(pats)
-        else if elemTp.exists then
-          Prod(erase(pat.tpe.stripAnnots), funRef, projectSeq(pats) :: Nil)
-        else
-          val arity = productSelectorTypes(getTp.orElse(resTp)).size
-          Prod(erase(pat.tpe.stripAnnots), funRef, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)))
-
-      extractorKind(resTp, fun.symbol.name, pats.size) match
-        case _: FixedArityExtractor  => Prod(erase(pat.tpe.stripAnnots), funRef, pats.map(project))
-        case SeqMatch(getTp, elemTp) => unapplySeqIsh(getTp, elemTp)
-        case ProdSeqMatch(getTp)     => unapplySeqIsh(getTp, NoType)
-        case x @ NoExtractor         => unreachable(x)
+      val funResult = fun.tpe.widen.finalResultType        // Foo[(1, 2)], not Foo[A]
+      val funParam = pat.tpe.stripAnnots                   // Bar[A$1], not Bar[A]
+      val funRef = funPart(fun).tpe.asInstanceOf[TermRef]  // Baz.unapply : [A](In[A]): Out[A]
+      val ext = Extractor(funResult, funRef.name, pats.size)
+      ext match
+        case _: FixedArityExtractor => Prod(erase(funParam), funRef, pats.map(project))
+        case ext: SeqMatch          =>
+          if fun.symbol.owner == defn.SeqFactoryClass && defn.ListType.appliedTo(ext.elemTp) <:< pat.tpe then
+            // The exhaustivity and reachability logic already handles decomposing sum types (into its subclasses)
+            // and product types (into its components).  To get better counter-examples for patterns that are of type
+            // List (or a super-type of list, like LinearSeq) we project them into spaces that use `::` and Nil.
+            // Doing so with a pattern of `case Seq() =>` with a scrutinee of type `Vector()` doesn't work because the
+            // space is then discarded leading to a false positive reachability warning, see #13931.
+            projectSeq(pats)
+          else
+            Prod(erase(funParam), funRef, projectSeq(pats) :: Nil)
+        case ext: ProdSeqMatch      =>
+          val (prodPats, seqPats) = pats.splitAt(ext.productSelectors.size - 1)
+          Prod(erase(funParam), funRef, prodPats.map(project) ::: projectSeq(seqPats) :: Nil)
+        case x @ NoExtractor        => unreachable(x)
 
     case Typed(pat @ UnApply(_, _, _), _) =>
       project(pat)
@@ -525,30 +522,18 @@ object SpaceEngine {
           mt
     }
 
-    // Case unapply:
-    // 1. return types of constructor fields if the extractor is synthesized for Scala2 case classes & length match
-    // 2. return Nil if unapply returns Boolean  (boolean pattern)
-    // 3. return product selector types if unapply returns a product type (product pattern)
-    // 4. return product selectors of `T` where `def get: T` is a member of the return type of unapply & length match (named-based pattern)
-    // 5. otherwise, return `T` where `def get: T` is a member of the return type of unapply
-    //
-    // Case unapplySeq:
-    // 1. return the type `List[T]` where `T` is the element type of the unapplySeq return type `Seq[T]`
-
     val resTp = ctx.typeAssigner.safeSubstMethodParams(mt, scrutineeTp :: Nil).finalResultType
 
-    val sig = extractorKind(resTp, unappSym.name, argLen) match
-      case BooleanMatch()          => Nil
-      case SingleMatch(getTp)      => getTp :: Nil
-      case ProductMatch(getTp)     => productSelectorTypes(getTp.orElse(resTp))
-      case TupleMatch(getTp)       => tupleComponentTypes2(getTp.orElse(resTp))
-
-      case SeqMatch(getTp, elemTp) => defn.ListType.appliedTo(elemTp) :: Nil
-      case ProdSeqMatch(getTp)     =>
-        val sels = productSeqSelectors(getTp.orElse(resTp), argLen)
-        sels.init :+ defn.ListType.appliedTo(sels.last)
-
-      case x @ NoExtractor => unreachable(x)
+    val ext = Extractor(resTp, unappSym.name, argLen)
+    val sig = ext match
+      case ext: BooleanMatch   => Nil
+      case ext: ProductMatch   => ext.productSelectorTypes
+      case ext: TupleMatch     => ext.tupleComponentTypes
+      case ext: SingleMatch    => ext.resType :: Nil
+      case ext: NameBasedMatch => ext.productSelectorTypes
+      case ext: SeqMatch       => defn.ListType.appliedTo(ext.elemTp) :: Nil
+      case ext: ProdSeqMatch   => ext.productSelectorTypes.init ::: defn.ListType.appliedTo(ext.elemTp) :: Nil
+      case x @ NoExtractor     => unreachable(x)
 
     sig.map(_.annotatedToRepeated)
   }

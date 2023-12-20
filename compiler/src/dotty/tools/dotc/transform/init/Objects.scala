@@ -7,7 +7,7 @@ import core.*
 import Contexts.*
 import Symbols.*
 import Types.*
-import Denotations.Denotation
+import Denotations.*, SymDenotations.*
 import StdNames.*
 import Names.TermName
 import NameKinds.OuterSelectName
@@ -1281,16 +1281,6 @@ object Objects:
    *  @param klass       The enclosing class where the type `tp` is located.
    */
   def patternMatch(scrutinee: Value, cases: List[CaseDef], thisV: ThisValue, klass: ClassSymbol): Contextual[Value] =
-    // expected member types for `unapplySeq`
-    def lengthType = ExprType(defn.IntType)
-    def lengthCompareType = MethodType(List(defn.IntType), defn.IntType)
-    def applyType(elemTp: Type) = MethodType(List(defn.IntType), elemTp)
-    def dropType(elemTp: Type) = MethodType(List(defn.IntType), defn.CollectionSeqType.appliedTo(elemTp))
-    def toSeqType(elemTp: Type) = ExprType(defn.CollectionSeqType.appliedTo(elemTp))
-
-    def getMemberMethod(receiver: Type, name: TermName, tp: Type): Denotation =
-      receiver.member(name).suchThat(receiver.memberInfo(_) <:< tp)
-
     def evalCase(caseDef: CaseDef): Value =
       evalPattern(scrutinee, caseDef.pat)
       eval(caseDef.guard, thisV, klass)
@@ -1337,59 +1327,58 @@ object Objects:
         val args = implicitArgsBeforeScrutinee(fun) ++ (ArgInfo(scrutinee, summon[Trace], EmptyTree) :: implicitArgsAfterScrutinee)
         val unapplyRes = call(receiver, funRef.symbol, args, funRef.prefix, superType = NoType, needResolve = true)
 
-        def maybeGet(getTp: Type)(onValue: Value => Unit) =
-          var resToMatch = unapplyRes
-
-          if getTp.exists then
-            // Get match
-            val isEmptyDenot = unapplyResTp.member(nme.isEmpty).suchThat(_.info.isParameterless)
-            call(unapplyRes, isEmptyDenot.symbol, Nil, unapplyResTp, superType = NoType, needResolve = true)
-
-            val getDenot = unapplyResTp.member(nme.get).suchThat(_.info.isParameterless)
-            resToMatch = call(unapplyRes, getDenot.symbol, Nil, unapplyResTp, superType = NoType, needResolve = true)
-
-          onValue(resToMatch)
-
         def callSelectors(selectors: List[Symbol], resToMatch: Value, resultTp: Type) =
           selectors.zip(pats).map { (sel, pat) =>
             val selectRes = call(resToMatch, sel, Nil, resultTp, superType = NoType, needResolve = true)
             evalPattern(selectRes, pat)
           }
 
-        extractorKind(unapplyResTp, fun.symbol.name, pats.length) match
-          case SeqMatch(getTp, elemTp) =>
-            maybeGet(getTp): resToMatch =>
-              val resultTp = getTp.orElse(unapplyResTp)
-              // sequence match
-              evalSeqPatterns(resToMatch, resultTp, elemTp, pats)
-          case ProdSeqMatch(getTp) =>
-            maybeGet(getTp): resToMatch =>
-              val resultTp = getTp.orElse(unapplyResTp)
-              val elemTp = unapplySeqTypeElemTp(unapplyResTp)
-              // product sequence match
-              val selectors = productSelectors(resultTp)
-              assert(selectors.length <= pats.length)
-              callSelectors(selectors.init, resToMatch, resultTp)
-              val seqPats = pats.drop(selectors.length - 1)
-              val toSeqRes = call(resToMatch, selectors.last, Nil, resultTp, superType = NoType, needResolve = true)
-              val toSeqResTp = resultTp.memberInfo(selectors.last).finalResultType
-              evalSeqPatterns(toSeqRes, toSeqResTp, elemTp, seqPats)
+        def maybeGet(getMatch: GetMatchInfo)(onValue: Value => Unit) =
+          var resToMatch = unapplyRes
+
+          if getMatch.isValid then
+            // Get match
+            call(unapplyRes, getMatch.isEmptyDenot.symbol, Nil, unapplyResTp, superType = NoType, needResolve = true)
+
+            resToMatch = call(unapplyRes, getMatch.getDenot.symbol, Nil, unapplyResTp, superType = NoType, needResolve = true)
+          end if
+
+          onValue(resToMatch)
+
+        val ext = Extractor(unapplyResTp, fun.symbol.name, pats.length)
+        maybeGet(ext.getMatchInfo): resToMatch =>
+          ext match
+          case ext: SeqMatch =>
+            // sequence match
+            evalSeqPatterns(resToMatch, ext.unapplySeqInfo, ext.resType, pats)
+          case ext: ProdSeqMatch =>
+            // product sequence match
+            val init :+ last = ext.productSelectors: @unchecked
+            callSelectors(init, resToMatch, ext.resType)
+            val seqPats = pats.drop(init.size)
+            val toSeqRes = call(resToMatch, last, Nil, ext.resType, superType = NoType, needResolve = true)
+            val toSeqResTp = ext.productSelectorTypes.last
+            evalSeqPatterns(toSeqRes, ext.unapplySeqInfo, toSeqResTp, seqPats)
 
           // distribute unapply to patterns
-          case BooleanMatch() =>
+          case ext: ProductMatch =>
+            // product match
+            callSelectors(ext.productSelectors, resToMatch, ext.resType)
+          case ext: BooleanMatch =>
             // Boolean extractor, do nothing
-          case SingleMatch(getTp) =>
-            maybeGet(getTp): getRes =>
-              // single match
-              evalPattern(getRes, pats.head)
-          case ProductMatch(getTp) =>
-            // product match or get into name-based match
-            maybeGet(getTp): getRes =>
-              val getResTp = getTp.orElse(unapplyResTp)
-              val selectors = productSelectors(getResTp).take(pats.length)
-              callSelectors(selectors, getRes, getResTp)
-          case TupleMatch(getTp) =>
-            ???
+          case ext: SingleMatch =>
+            // single match
+            evalPattern(resToMatch, pats.head)
+          case ext: NameBasedMatch =>
+            // name-based match
+            callSelectors(ext.productSelectors, resToMatch, ext.resType)
+          case ext: TupleMatch =>
+            val sel = defn.RuntimeTuples_apply
+            val args = ArgInfo(Bottom, summon[Trace], EmptyTree) :: Nil
+            val recv = defn.RuntimeTuplesModule.termRef
+            ext.tupleComponentTypes.indices.lazyZip(pats).foreach: (_, pat) =>
+              val selectRes = call(resToMatch, sel, args, recv, superType = NoType, needResolve = true)
+              evalPattern(selectRes, pat)
 
           case x @ NoExtractor => unreachable(x)
 
@@ -1410,30 +1399,25 @@ object Objects:
     /**
      * Evaluate a sequence value against sequence patterns.
      */
-    def evalSeqPatterns(scrutinee: Value, scrutineeType: Type, elemType: Type, pats: List[Tree])(using Trace): Unit =
+    def evalSeqPatterns(scrutinee: Value, unapp: UnapplySeqInfo, scrutineeType: Type, pats: List[Tree])(using Trace): Unit =
       // call .lengthCompare or .length
-      val lengthCompareDenot = getMemberMethod(scrutineeType, nme.lengthCompare, lengthCompareType)
-      if lengthCompareDenot.exists then
-        call(scrutinee, lengthCompareDenot.symbol, ArgInfo(Bottom, summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
+      if unapp.lengthCmpDenot.exists then
+        call(scrutinee, unapp.lengthCmpDenot.symbol, ArgInfo(Bottom, summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
       else
-        val lengthDenot = getMemberMethod(scrutineeType, nme.length, lengthType)
-        call(scrutinee, lengthDenot.symbol, Nil, scrutineeType, superType = NoType, needResolve = true)
+        call(scrutinee, unapp.lengthDenot.symbol, Nil, scrutineeType, superType = NoType, needResolve = true)
       end if
 
       // call .apply
-      val applyDenot = getMemberMethod(scrutineeType, nme.apply, applyType(elemType))
-      val applyRes = call(scrutinee, applyDenot.symbol, ArgInfo(Bottom, summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
+      val applyRes = call(scrutinee, unapp.applyDenot.symbol, ArgInfo(Bottom, summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
 
       if isWildcardStarArgList(pats) then
         if pats.size == 1 then
           // call .toSeq
-          val toSeqDenot = scrutineeType.member(nme.toSeq).suchThat(_.info.isParameterless)
-          val toSeqRes = call(scrutinee, toSeqDenot.symbol, Nil, scrutineeType, superType = NoType, needResolve = true)
+          val toSeqRes = call(scrutinee, unapp.toSeqDenot.symbol, Nil, scrutineeType, superType = NoType, needResolve = true)
           evalPattern(toSeqRes, pats.head)
         else
           // call .drop
-          val dropDenot = getMemberMethod(scrutineeType, nme.drop, applyType(elemType))
-          val dropRes = call(scrutinee, dropDenot.symbol, ArgInfo(Bottom, summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
+          val dropRes = call(scrutinee, unapp.dropDenot.symbol, ArgInfo(Bottom, summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
           for pat <- pats.init do evalPattern(applyRes, pat)
           evalPattern(dropRes, pats.last)
         end if
