@@ -1106,8 +1106,8 @@ object Build {
       },
       run := {
         val log = streams.value.log
+        val projectName = projectInfo.value.nameFormal
         val args: Seq[String] = spaceDelimited("<arg>").parsed
-        args.foreach(println)
         val rootDir = (ThisBuild / baseDirectory).value
         val srcDir = (Compile / scalaSource).value.relativeTo(rootDir).get
         val reference = (Compile/sourceManaged).value.relativeTo(rootDir).get / "scala-library-src"
@@ -1135,19 +1135,42 @@ object Build {
                 IO.copyFile(referenceStdlibPaths, destination)
               }
             }
+          case "diff" +: rest =>
+            log.info(s"Diffing ${name.value}/src with scala-library sources")
+            if (rest.size > 1) {
+              log.error(s"Too many arguments for $projectName/run diff")
+            } else {
+              val path = rest.headOption.getOrElse("")
+              val fullPath = srcDir / path
+              if (!fullPath.exists) {
+                log.error(s"$fullPath does not exist")
+              } else {
+                // `--diff-filter=ACMR` is missing `D` on purpose not to show all the files that have not been overwritten.
+                val command = s"git diff --diff-filter=ACMR --no-index --color=always -- $reference/$path $fullPath"
+                log.info(command)
+                import _root_.scala.sys.process._
+                command.!
+              }
+            }
           case _ =>
             val projectName = projectInfo.value.nameFormal
             println(
               s"""Usage:
                 |> $projectName/run list
-                |  -- lists all files that are not overriden in scala2-library-bootstrapped/src
+                |  -- lists all files that are not overriden in ${name.value}/src
                 |
                 |> $projectName/run clone <sources>*
-                |  -- clones the specified sources from the scala2-library-bootstrapped/src
+                |  -- clones the specified sources from the ${name.value}/src
                 |  -- example: $projectName/run clone scala/Option.scala
                 |
                 |> $projectName/run overwrite <sources>*
-                |  -- (danger) overwrites the specified sources from the scala2-library-bootstrapped/src
+                |  -- (danger) overwrites the specified sources from the ${name.value}/src
+                |
+                |> $projectName/run diff [path]
+                |  -- shows the git diff between the reference library sources the sources used to compile $projectName
+                |  -- [path] optional path in the library, eg:
+                |    -- $projectName/run diff scala/Predef.scala
+                |    -- $projectName/run diff scala/collection/immutable
                 |""".stripMargin)
         }
       }
