@@ -9,6 +9,7 @@ import scala.meta.pc.*
 import scala.util.control.NonFatal
 
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Symbols.*
 
@@ -19,8 +20,14 @@ class CompilerSearchVisitor(
 
   val logger: Logger = Logger.getLogger(classOf[CompilerSearchVisitor].getName().nn).nn
 
+  private def isAccessibleImplicitClass(sym: Symbol) =
+    val owner = sym.maybeOwner
+    owner != NoSymbol && owner.isClass &&
+    owner.is(Flags.Implicit) &&
+    owner.isStatic && owner.isPublic
+
   private def isAccessible(sym: Symbol): Boolean = try
-    sym != NoSymbol && sym.isPublic && sym.isStatic
+    sym != NoSymbol && sym.isPublic && sym.isStatic || isAccessibleImplicitClass(sym)
   catch
     case err: AssertionError =>
       logger.log(Level.WARNING, err.getMessage())

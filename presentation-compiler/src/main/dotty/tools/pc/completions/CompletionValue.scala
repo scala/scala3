@@ -144,6 +144,20 @@ object CompletionValue:
     override def completionItemDataKind: Integer = CompletionSource.WorkspaceKind.ordinal
 
   /**
+   * CompletionValue for old implicit classes methods via SymbolSearch
+   */
+  case class ImplicitClass(
+      label: String,
+      symbol: Symbol,
+      override val snippetSuffix: CompletionSuffix,
+      override val importSymbol: Symbol,
+  ) extends Symbolic:
+    override def completionItemKind(using Context): CompletionItemKind =
+      CompletionItemKind.Method
+    override def description(printer: ShortenedTypePrinter)(using Context): String =
+      s"${printer.completionSymbol(symbol)} (implicit)"
+
+  /**
    * CompletionValue for extension methods via SymbolSearch
    */
   case class Extension(
