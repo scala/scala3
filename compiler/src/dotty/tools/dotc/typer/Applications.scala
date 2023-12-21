@@ -1886,7 +1886,7 @@ trait Applications extends Compatibility {
         then
           // Intermediate rules: better means specialize, but map all type arguments downwards
           // These are enabled for 3.0-3.5, and for all comparisons between old-style implicits,
-          // and in 3.5 amd 3.6-migration when we compare with previous rules.
+          // and in 3.5 and 3.6-migration when we compare with previous rules.
           val flip = new TypeMap:
             def apply(t: Type) = t match
               case t @ AppliedType(tycon, args) =>
