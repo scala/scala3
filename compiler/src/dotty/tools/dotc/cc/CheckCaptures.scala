@@ -847,9 +847,13 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  where local capture roots are instantiated to root variables.
      */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda)(using Context): Type =
-      val expected1 = alignDependentFunction(addOuterRefs(expected, actual), actual.stripCapturing)
+      var expected1 = alignDependentFunction(expected, actual.stripCapturing)
       val actualBoxed = adaptBoxed(actual, expected1, tree.srcPos)
       //println(i"check conforms $actualBoxed <<< $expected1")
+
+      if actualBoxed eq actual then
+        // Only `addOuterRefs` when there is no box adaptation
+        expected1 = addOuterRefs(expected1, actual)
       if isCompatible(actualBoxed, expected1) then
         if debugSuccesses then tree match
             case Ident(_) =>
