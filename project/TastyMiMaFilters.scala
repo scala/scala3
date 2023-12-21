@@ -20,11 +20,10 @@ object TastyMiMaFilters {
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.math.Big*.underlying"),
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.math.ScalaNumericConversions.underlying"),
 
-    // Problem: super accessors
+    // Probably OK: super accessors
     // In Scala 3 these accessors are added in the `postyper` phase.
     // In Scala 2 these accessors are added in the `superaccessors` phase after typer.
-    // Are these accessors in the Scala 2 pickles? If so, it implies that TASTy Query/MiMa is ignoring them in Scala 2 but not Scala 3.
-    // Otherwise, if these are not in the Scala 2 pickles, we might need to remove them when compiling with -Ycompile-scala2-library
+    // Handle as a special case in `ExtensionMethods`.
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.collection.immutable.IndexedSeqOps.superscala$collection$immutable$IndexedSeqOps$$slice"),
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.collection.immutable.StrictOptimizedSeqOps.superscala$collection$immutable$StrictOptimizedSeqOps$$sorted"),
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.collection.immutable.IndexedSeq.superscala$collection$immutable$IndexedSeq$$*"/* sameElements, canEqual */),
@@ -38,7 +37,7 @@ object TastyMiMaFilters {
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.util.control.NoStackTrace.superscala$util$control$NoStackTrace$$fillInStackTrace"),
 
     // TASTy-MiMa bug (probably OK): `private[scala] var` in case class
-    // This is probably because we can only access the next field from the scala library.
+    // This member should not have been loaded by TASTy-MiMa.
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.immutable.::.next$access$1"),
 
     // Probably OK: Problem Missing setter for `protected var`
@@ -60,15 +59,16 @@ object TastyMiMaFilters {
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.Predef.ne"), // The member scala.Predef.ne with signature (java.lang.Object,java.lang.Object):scala.Boolean does not have a correspondant in current version
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.Predef.eq"), // The member scala.Predef.eq with signature (java.lang.Object,java.lang.Object):scala.Boolean does not have a correspondant in current version
 
-    // Problem: protected lazy val (processThread, (futureThread, futureValue), destroyer) = { ... }
+    // Probably OK: protected lazy val (processThread, (futureThread, futureValue), destroyer) = { ... }
+    // None of these can be accessed from user code.
     // https://github.com/scala/scala/blob/cff8a9af4da67658d8e1e32f929e1aff03ffa384/src/library/scala/sys/process/ProcessImpl.scala#L99C5-L99C83
     ProblemMatcher.make(ProblemKind.IncompatibleKindChange, "scala.sys.process.ProcessImpl.CompoundProcess.destroyer"), // before: lazy val; after: def
     ProblemMatcher.make(ProblemKind.IncompatibleKindChange, "scala.sys.process.ProcessImpl.CompoundProcess.futureThread"), // before: lazy val; after: def
     ProblemMatcher.make(ProblemKind.IncompatibleKindChange, "scala.sys.process.ProcessImpl.CompoundProcess.processThread"), // before: lazy val; after: def
     ProblemMatcher.make(ProblemKind.IncompatibleKindChange, "scala.sys.process.ProcessImpl.CompoundProcess.futureValue"), // before: lazy val; after: def
 
-    // Problem?
-    //   https://github.com/scala/scala/blob/2.13.x/src/library/scala/collection/convert/JavaCollectionWrappers.scala#L66-L71
+    // Probably Ok: defined within a `private[collection]` object
+    // https://github.com/scala/scala/blob/2.13.x/src/library/scala/collection/convert/JavaCollectionWrappers.scala#L66-L71
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.convert.JavaCollectionWrappers.IterableWrapperTrait.iterator"), // The member scala.collection.convert.JavaCollectionWrappers.IterableWrapperTrait.iterator with signature ():scala.collection.convert.JavaCollectionWrappers.IteratorWrapper does not have a correspondant in current version
 
     // Problem?
