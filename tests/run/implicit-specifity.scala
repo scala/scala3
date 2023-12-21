@@ -1,3 +1,5 @@
+import language.`3.5`
+
 case class Show[T](val i: Int)
 object Show {
   def apply[T](implicit st: Show[T]): Int = st.i

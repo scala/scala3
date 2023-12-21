@@ -531,7 +531,7 @@ object Implicits:
          |must be more specific than $target""" :: Nil
 
     override def msg(using Context) =
-      super.msg.append(i"\nThe expected type $target is not specific enough, so no search was attempted")
+      super.msg.append("\nThe expected type $target is not specific enough, so no search was attempted")
 
     override def toString = s"TooUnspecific"
   end TooUnspecific
@@ -1110,8 +1110,8 @@ trait Implicits:
           case result: SearchFailure if result.isAmbiguous =>
             val deepPt = pt.deepenProto
             if (deepPt ne pt) inferImplicit(deepPt, argument, span)
-            else if (migrateTo3 && !ctx.mode.is(Mode.OldOverloadingResolution))
-              withMode(Mode.OldOverloadingResolution)(inferImplicit(pt, argument, span)) match {
+            else if (migrateTo3 && !ctx.mode.is(Mode.OldImplicitResolution))
+              withMode(Mode.OldImplicitResolution)(inferImplicit(pt, argument, span)) match {
                 case altResult: SearchSuccess =>
                   report.migrationWarning(
                     result.reason.msg
@@ -1295,14 +1295,24 @@ trait Implicits:
        *           0              if neither alternative is preferred over the other
        */
       def compareAlternatives(alt1: RefAndLevel, alt2: RefAndLevel): Int =
+        def comp(using Context) = explore(compare(alt1.ref, alt2.ref, preferGeneral = true))
         if alt1.ref eq alt2.ref then 0
         else if alt1.level != alt2.level then alt1.level - alt2.level
         else
-          val was = explore(compare(alt1.ref, alt2.ref, preferGeneral = true))(using searchContext())
-          val now = explore(compare(alt1.ref, alt2.ref, preferGeneral = true))(using searchContext().addMode(Mode.NewGivenRules))
-          if was != now then
-            println(i"change in preference for $pt between ${alt1.ref} and ${alt2.ref}, was: $was, now: $now at $srcPos")
-          now
+          val cmp = comp(using searchContext())
+          if Feature.sourceVersion == SourceVersion.`3.5-migration` then
+            val prev = comp(using searchContext().addMode(Mode.OldImplicitResolution))
+            if cmp != prev then
+              def choice(c: Int) = c match
+                case -1 => "the second alternative"
+                case  1 => "the first alternative"
+                case _  => "none - it's ambiguous"
+              report.warning(
+                em"""Change in given search preference for $pt between alternatives ${alt1.ref} and ${alt2.ref}
+                    |Previous choice: ${choice(prev)}
+                    |New choice     : ${choice(cmp)}""", srcPos)
+          cmp
+      end compareAlternatives
 
       /** If `alt1` is also a search success, try to disambiguate as follows:
        *    - If alt2 is preferred over alt1, pick alt2, otherwise return an
