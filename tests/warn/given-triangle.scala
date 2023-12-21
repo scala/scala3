@@ -1,4 +1,4 @@
-import language.future
+//> using options -source 3.5-migration
 
 class A
 class B extends A
@@ -13,4 +13,4 @@ def f(using a: A, b: B, c: C) =
   println(b.getClass)
   println(c.getClass)
 
-@main def Test = f
+@main def Test = f  // warn

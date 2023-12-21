@@ -1,5 +1,6 @@
 /* These tests show various mechanisms available for implicit prioritization.
  */
+import language.`3.5`
 
 class E[T](val str: String)  // The type for which we infer terms below
 
