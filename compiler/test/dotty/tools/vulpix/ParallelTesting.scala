@@ -776,7 +776,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     end maybeFailureMessage
 
     def getWarnMapAndExpectedCount(files: Seq[JFile]): (HashMap[String, Integer], Int) =
-      val comment = raw"//( *)warn".r
+      val comment = raw"//( *)(nopos-)?warn".r
       val map = new HashMap[String, Integer]()
       var count = 0
       def bump(key: String): Unit =
@@ -787,8 +787,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       files.filter(isSourceFile).foreach { file =>
         Using(Source.fromFile(file, StandardCharsets.UTF_8.name)) { source =>
           source.getLines.zipWithIndex.foreach { case (line, lineNbr) =>
-            comment.findAllMatchIn(line).foreach { _ =>
-              bump(s"${file.getPath}:${lineNbr+1}")
+            comment.findAllMatchIn(line).foreach { m =>
+              m.group(2) match
+                case "nopos-" =>
+                  bump("nopos")
+                case _ => bump(s"${file.getPath}:${lineNbr+1}")
             }
           }
         }.get
@@ -809,7 +812,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           val key = s"${relativize(srcpos.source.file.toString())}:${srcpos.line + 1}"
           if !seenAt(key) then unexpected += key
         else
-          unpositioned += relativize(srcpos.source.file.toString())
+          if(!seenAt("nopos")) unpositioned += relativize(srcpos.source.file.toString())
 
       reporterWarnings.foreach(sawDiagnostic)
 
