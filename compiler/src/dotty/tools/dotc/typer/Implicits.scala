@@ -531,7 +531,7 @@ object Implicits:
          |must be more specific than $target""" :: Nil
 
     override def msg(using Context) =
-      super.msg.append("\nThe expected type $target is not specific enough, so no search was attempted")
+      super.msg.append(i"\nThe expected type $target is not specific enough, so no search was attempted")
 
     override def toString = s"TooUnspecific"
   end TooUnspecific
