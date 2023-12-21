@@ -520,13 +520,37 @@ class Completions(
         Some(search.search(query, buildTargetIdentifier, visitor).nn)
       case CompletionKind.Members =>
         val visitor = new CompilerSearchVisitor(sym =>
-          if sym.is(ExtensionMethod) &&
+          def isExtensionMethod = sym.is(ExtensionMethod) &&
             qualType.widenDealias <:< sym.extensionParam.info.widenDealias
-          then
+          def isImplicitClass(owner: Symbol) =
+            val constructorParam =
+              owner.info
+                .membersBasedOnFlags(
+                  Flags.ParamAccessor,
+                  Flags.EmptyFlags,
+                )
+                .headOption
+                .map(_.info)
+            owner.isClass && owner.is(Flags.Implicit) &&
+            constructorParam.exists(p =>
+              qualType.widenDealias <:< p.widenDealias
+            )
+          end isImplicitClass
+
+          def isImplicitClassMethod = sym.is(Flags.Method) && !sym.isConstructor &&
+            isImplicitClass(sym.maybeOwner)
+
+          if isExtensionMethod then
             completionsWithSuffix(
               sym,
               sym.decodedName,
               CompletionValue.Extension(_, _, _)
+            ).map(visit).forall(_ == true)
+          else if isImplicitClassMethod then
+            completionsWithSuffix(
+              sym,
+              sym.decodedName,
+              CompletionValue.ImplicitClass(_, _, _, sym.maybeOwner),
             ).map(visit).forall(_ == true)
           else false,
         )
