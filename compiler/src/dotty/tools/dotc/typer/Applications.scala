@@ -184,7 +184,7 @@ object Applications {
 
         val getTp = getMatchInfo.getType
 
-        if numArgs == 1 || getTp.derivesFrom(defn.SeqClass) then
+        if numArgs == 1 then
           return SingleMatch(unapplyResult, getMatchInfo)
 
         val selectors = productSelectors(getTp)
