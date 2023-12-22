@@ -36,7 +36,8 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
   extension (driver: InteractiveDriver)
 
     def sourcePosition(
-        params: OffsetParams
+        params: OffsetParams,
+        isZeroExtent: Boolean = true
     ): SourcePosition =
       val uri = params.uri()
       val source = driver.openedFiles(uri.nn)
@@ -50,6 +51,7 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
             case offset =>
               Spans.Span(p.offset(), p.offset())
           }
+        case _ if !isZeroExtent => Spans.Span(params.offset(), params.offset() + 1)
         case _ => Spans.Span(params.offset())
 
       new SourcePosition(source, span)

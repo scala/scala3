@@ -202,24 +202,6 @@ class SignatureHelpPatternSuite extends BaseSignatureHelpSuite:
          |""".stripMargin
     )
 
-// This test is not important, it won't automatically trigger, and finding whether we're in infix expression is hard
-//   @Test def `pat4` =
-//     check(
-//       """
-//         |object & {
-//         |  def unapply[A](a: A): Some[(A, A)] = Some((a, a))
-//         |}
-//         |object a {
-//         |  "" match {
-//         |    case "" & s@@
-//         |  }
-//         |}
-//       """.stripMargin,
-//       """|(String, String)
-//          |         ^^^^^^
-//          |""".stripMargin
-//     )
-
   @Test def `pat5` =
     check(
       """

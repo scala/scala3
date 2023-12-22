@@ -33,7 +33,7 @@ class SignatureHelpNamedArgsSuite extends BaseSignatureHelpSuite:
     check(
       """|object O:
          |  def method(paramA: Int, paramB: Int, paramC: Int, paramD: Int): Unit = ???
-         |  method(paramA = 1, paramB @@
+         |  method(paramA = 1, paramB @@)
          |""".stripMargin,
       """|method(paramA: Int, paramB: Int, paramC: Int, paramD: Int): Unit
          |                    ^^^^^^^^^^^
@@ -44,7 +44,7 @@ class SignatureHelpNamedArgsSuite extends BaseSignatureHelpSuite:
     check(
       """|object O:
          |  def method(paramA: Int, paramB: Int, paramC: Int, paramD: Int): Unit = ???
-         |  method(paramA = 1, paramB @@
+         |  method(paramA = 1, paramB @@)
          |  def test: Unit = ()
          |""".stripMargin,
       """|method(paramA: Int, paramB: Int, paramC: Int, paramD: Int): Unit
@@ -56,7 +56,7 @@ class SignatureHelpNamedArgsSuite extends BaseSignatureHelpSuite:
     check(
       """|object O:
          |  def method(paramA: Int, paramB: Int, paramC: Int, paramD: Int): Unit = ???
-         |  method(paramA = 1, paramB =@@
+         |  method(paramA = 1, paramB =@@)
          |""".stripMargin,
       """|method(paramA: Int, paramB: Int, paramC: Int, paramD: Int): Unit
          |                    ^^^^^^^^^^^
@@ -67,7 +67,7 @@ class SignatureHelpNamedArgsSuite extends BaseSignatureHelpSuite:
     check(
       """|object O:
          |  def method(paramA: Int, paramB: Int, paramC: Int, paramD: Int): Unit = ???
-         |  method(paramA = 1, paramB = 1@@
+         |  method(paramA = 1, paramB = 1@@)
          |""".stripMargin,
       """|method(paramA: Int, paramB: Int, paramC: Int, paramD: Int): Unit
          |                    ^^^^^^^^^^^
@@ -247,6 +247,54 @@ class SignatureHelpNamedArgsSuite extends BaseSignatureHelpSuite:
          |""".stripMargin,
       """|method([paramB: Int], [paramA: Int], [paramD: Int], [paramC: Int]): Unit
          |                      ^^^^^^^^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `named-with-type-args` =
+    check(
+      """|object Main:
+         |  def test[T, F](aaa: Int, bbb: T, ccc: F): T = ???
+         |  val x = test(1, ccc = 2, b@@)
+         |""".stripMargin,
+      """|test[T, F](aaa: Int, [ccc: F], [bbb: T]): T
+         |                               ^^^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `named-newline` =
+    check(
+      """|object Main:
+         |  def test2(aaa: Int, bbb: Int, ccc: Int): Int = ???
+         |  val x = test2(
+         |      1,
+         |      @@
+         |    )
+         |""".stripMargin,
+      """|test2(aaa: Int, bbb: Int, ccc: Int): Int
+         |                ^^^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `named-before-comma` =
+    check(
+      """|object Main:
+         |  def test2(aaa: Int, bbb: Int, ccc: Int): Int = ???
+         |  val x = test2(aaa = 2@@, ccc = 1)
+         |""".stripMargin,
+      """|test2(aaa: Int, bbb: Int, ccc: Int): Int
+         |      ^^^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `named-on-whitespaces-between-args` =
+    check(
+      """|object Main:
+         |  def test2(aaa: Int, bbb: Int, ccc: Int): Int = ???
+         |  val x = test2(aaa = 2, @@  ccc = 1, bbb = 3)
+         |
+         |""".stripMargin,
+      """|test2(aaa: Int, [ccc: Int], [bbb: Int]): Int
+         |                ^^^^^^^^^^
          |""".stripMargin
     )
 

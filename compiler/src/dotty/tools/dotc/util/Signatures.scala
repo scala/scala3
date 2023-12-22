@@ -4,6 +4,7 @@ package util
 import dotty.tools.dotc.ast.NavigateAST
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.NameOps.*
+import dotty.tools.dotc.core.Symbols.defn
 
 import ast.Trees.*
 import ast.tpd
@@ -122,7 +123,6 @@ object Signatures {
         val enclosingTree = enclosingFunction.getOrElse(expr)
         findEnclosingApply(Interactive.pathTo(enclosingTree, span), span)
 
-      case direct :: enclosing :: _ if isClosingSymbol(direct.source(span.end -1)) => enclosing
       case direct :: _ => direct
 
 
@@ -169,9 +169,10 @@ object Signatures {
         case Select(qual, _) => qual
         case _ => tree
 
+    val paramssListIndex = findParamssIndex(fun)
     val (alternativeIndex, alternatives) = fun.tpe match
       case err: ErrorType =>
-        val (alternativeIndex, alternatives) = alternativesFromError(err, params) match
+        val (alternativeIndex, alternatives) = alternativesFromError(err, params, paramssListIndex) match
           // if we have no alternatives from error, we have to fallback to function denotation
           // Check `partialyFailedCurriedFunctions` test for example
           case (_, Nil) =>
@@ -191,45 +192,42 @@ object Signatures {
 
     if alternativeIndex < alternatives.length then
       val alternativeSymbol = alternatives(alternativeIndex).symbol
-      val paramssListIndex = findParamssIndex(fun, alternatives(alternativeIndex))
-
       val previousArgs = alternativeSymbol.paramSymss.take(paramssListIndex).foldLeft(0)(_ + _.length)
-      val previousTypeParams = if !isTypeApply then alternativeSymbol.paramSymss.flatten.filter(_.isType).length else 0
 
       val untpdPath: List[untpd.Tree] = NavigateAST
         .untypedPath(fun, false).collect { case untpdTree: untpd.Tree => untpdTree }
 
       val untpdArgs = untpdPath match
-        case Ident(_) :: New(_) :: Select(_, name) :: untpd.Apply(_, args) :: _ if name.isConstructorName => args
+        case (Ident(_) | Select(_, _)) :: New(_) :: Select(_, name) :: untpd.Apply(_, args) :: _ if name.isConstructorName => args
         case _ :: untpd.Apply(_, args) :: _ => args
         case _ :: untpd.TypeApply(_, args) :: _ => args
         case _ => Nil
 
-      val currentParamsIndex = untpdArgs.indexWhere(_.span.contains(span)) match
+      val currentParamsIndex = (untpdArgs.indexWhere(_.span.contains(span)) match
         case -1 if untpdArgs.isEmpty => 0
         case -1 =>
           commaIndex(untpdArgs, span) match
-            // comma is after CURSOR, so we are in parameter a
-            case Some(index) if index <= span.start => untpdArgs.takeWhile(_.span.start < span.start).length
-            // comma is before CURSOR, so we are in parameter b
-            case Some(index) => untpdArgs.takeWhile(_.span.start < span.start).length - 1
+            // comma is before CURSOR, so we are in parameter b example: test("a", CURSOR)
+            case Some(index) if index <= span.end => untpdArgs.takeWhile(_.span.end < span.start).length
+            // comma is after CURSOR, so we are in parameter a example: test("a"   CURSOR,)
+            case Some(index) => untpdArgs.takeWhile(_.span.start < span.end).length - 1
             // we are either in first or last parameter
             case None =>
-              if untpdArgs.head.span.start >= span.start then 0
+              if untpdArgs.head.span.start >= span.end then 0
               else untpdArgs.length - 1 max 0
 
-        // special case if we pass more arguments than function has parameters
-        case n => n min (alternativeSymbol.paramSymss(paramssListIndex).length - 1)
+        case n => n
+      ) min (alternativeSymbol.paramSymss(paramssListIndex).length - 1)
 
       val firstOrderedParams =
         val originalParams = params.map(_.span)
         val untpdParams = untpdArgs.map(_.span)
         originalParams.zip(untpdParams).takeWhile((original, untpd) => original == untpd).length
 
-      val reorderedNamedArgs = untpdArgs.drop(firstOrderedParams).takeWhile(_.span.start <= span.start).collect:
+      val reorderedNamedArgs = untpdArgs.drop(firstOrderedParams).takeWhile(_.span.start <= span.end).collect:
         case namedArg: untpd.NamedArg => namedArg.name.show
 
-      val namedArgsAfterCursor = untpdArgs.drop(currentParamsIndex + 1).dropWhile(_.span.start <= span.start).collect:
+      val namedArgsAfterCursor = untpdArgs.drop(currentParamsIndex).dropWhile(_.span.start <= span.end).collect:
         case namedArg: untpd.NamedArg => namedArg.name.show
 
       val pre = treeQualifier(fun)
@@ -237,7 +235,7 @@ object Signatures {
       val alternativeSignatures = alternativesWithTypes
         .flatMap(toApplySignature(_, reorderedNamedArgs, namedArgsAfterCursor, firstOrderedParams))
 
-      val finalParamIndex = currentParamsIndex + previousArgs + previousTypeParams
+      val finalParamIndex = currentParamsIndex + previousArgs
       (finalParamIndex, alternativeIndex, alternativeSignatures)
     else
       (0, 0, Nil)
@@ -249,13 +247,15 @@ object Signatures {
    *  @return None if we are in first or last parameter, comma index otherwise
    */
   private def commaIndex(untpdArgs: List[untpd.Tree], span: Span)(using Context): Option[Int] =
-    val previousArgIndex = untpdArgs.lastIndexWhere(_.span.end < span.start)
+    val previousArgIndex = untpdArgs.lastIndexWhere(_.span.end < span.end)
     for
       previousArg <- untpdArgs.lift(previousArgIndex)
-      nextArg <- untpdArgs.lift(previousArgIndex + 1)
+      nextArg = untpdArgs.lift(previousArgIndex + 1)
+      text = ctx.source.content.slice(previousArg.span.end - 1, nextArg.map(_.span.start).getOrElse(span.end))
+      commaIndex = text.indexOf(',')
+      if commaIndex != -1
     yield
-      val text = ctx.source.content.slice(previousArg.span.end, nextArg.span.start)
-      text.indexOf(',') + previousArg.span.end
+      commaIndex + previousArg.span.end
 
   /**
    * Extracts call informatioin for function in unapply context.
@@ -278,7 +278,7 @@ object Signatures {
     val paramTypes = extractParamTypess(resultType, denot, patterns.size).flatten.map(stripAllAnnots)
     val paramNames = extractParamNamess(resultType, denot).flatten
 
-    val activeParameter = unapplyParameterIndex(patterns, span, paramTypes.length)
+    val activeParameter = patterns.takeWhile(_.span.end < span.start).length min (paramTypes.length - 1)
     val unapplySignature = toUnapplySignature(denot.asSingleDenotation, paramNames, paramTypes).toList
 
     (activeParameter, 0, unapplySignature)
@@ -338,21 +338,6 @@ object Signatures {
   private def stripAllAnnots(tpe: Type)(using Context): Type = tpe match
     case AppliedType(t, args) => AppliedType(stripAllAnnots(t), args.map(stripAllAnnots))
     case other => other.stripAnnots
-
-  /**
-   * Get index of currently edited parameter in unapply context.
-   *
-   * @param patterns Currently applied patterns for unapply method
-   * @param span The position of the cursor
-   * @param maximumParams Number of parameters taken by unapply method
-   * @return Index of currently edited parameter
-   */
-  private def unapplyParameterIndex(patterns: List[tpd.Tree], span: Span, maximumParams: Int)(using Context): Int =
-    val patternPosition = patterns.indexWhere(_.span.contains(span))
-    (patternPosition, patterns.length) match
-      case (-1, 0) => 0 // there are no patterns yet so it must be first one
-      case (-1, pos) => -1 // there are patterns, we must be outside range so we set no active parameter
-      case _ => (maximumParams - 1) min patternPosition max 0 // handle unapplySeq to always highlight Seq[A] on elements
 
   /**
    * Checks if tree is valid for signatureHelp. Skipped trees are either tuple type or function type
@@ -476,7 +461,7 @@ object Signatures {
 
       val remainingNamed = remainingNamedUnordered.sortBy(p => namedParamsAfterCursor.indexOf(p.name))
       val reorderedArgs = (reorderedParamsBeforeCursor ++ remaining ++ remainingNamed)
-        .map(_.copy(isReordered = reorderedParamsBeforeCursor.nonEmpty))
+        .map(_.copy(isReordered = reorderedParamsBeforeCursor.nonEmpty || remainingNamed != remainingNamedUnordered))
 
       (ordered ++ reorderedArgs) :: rest
 
@@ -543,18 +528,17 @@ object Signatures {
    * parameter number for erroneous applications before current one.
    *
    * This handles currying, so for an application such as `foo(1, 2)(3)`, the result of
-   * `countParams` should be 3. It also takes into considerations unapplied arguments so for `foo(1)(3)`
-   * we will still get 3, as first application `foo(1)` takes 2 parameters with currently only 1 applied.
+   * `countParams` should be 1.
    *
    * @param tree           The tree to inspect.
    * @param denot          Denotation of function we are trying to apply
    * @param alreadyCurried Number of subsequent Apply trees before current tree
    *
-   * @return The number of parameters that are passed.
+   * @return The index of paramss we are currently in.
    */
-  private def findParamssIndex(tree: tpd.Tree, denot: SingleDenotation, alreadyCurried: Int = 0)(using Context): Int =
+  private def findParamssIndex(tree: tpd.Tree, alreadyCurried: Int = 0)(using Context): Int =
     tree match
-      case Apply(fun, params) => findParamssIndex(fun, denot, alreadyCurried + 1)
+      case GenericApply(fun, params) => findParamssIndex(fun, alreadyCurried + 1)
       case _ => alreadyCurried
 
   /**
@@ -565,13 +549,14 @@ object Signatures {
    * given the parameters `params`: The alternative that has the most formal parameters
    * matching the given arguments is chosen.
    *
-   * @param err    The error message to inspect.
-   * @param params The parameters that were given at the call site.
+   * @param err            The error message to inspect.
+   * @param params         The parameters that were given at the call site.
+   * @param alreadyCurried Index of paramss we are currently in.
    *
    * @return A pair composed of the index of the best alternative (0 if no alternatives
    *         were found), and the list of alternatives.
    */
-  private def alternativesFromError(err: ErrorType, params: List[tpd.Tree])(using Context): (Int, List[SingleDenotation]) = {
+  private def alternativesFromError(err: ErrorType, params: List[tpd.Tree], paramssIndex: Int)(using Context): (Int, List[SingleDenotation]) = {
     val alternatives =
       err.msg match
         case msg: AmbiguousOverload  => msg.alternatives
@@ -583,11 +568,13 @@ object Signatures {
     // Assign a score to each alternative (how many parameters are correct so far), and
     // use that to determine what is the current active signature.
     val alternativesScores = alternatives.map { alt =>
+      val alreadyCurriedBonus = if (alt.symbol.paramSymss.length > paramssIndex) 1 else 0
       alt.info.stripPoly match
-        case tpe: MethodType =>
+        case tpe: MethodType => alreadyCurriedBonus +
           userParamsTypes.zip(tpe.paramInfos).takeWhile{ case (t0, t1) => t0 <:< t1 }.size
         case _ => 0
     }
+
     val bestAlternative =
       if (alternativesScores.isEmpty) 0
       else alternativesScores.zipWithIndex.maxBy(_._1)._2

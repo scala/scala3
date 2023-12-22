@@ -17,23 +17,6 @@ class SignatureHelpTest {
       .signatureHelp(m1, List(signature), Some(0), 0)
   }
 
-  @Test def properFunctionReturnWithoutParenthesis: Unit = {
-    val listSignature = S("apply", List("A"), List(List(P("elems", "A*"))), Some("List[A]"))
-    val optionSignature = S("apply", List("A"), List(List(P("x", "A"))), Some("Option[A]"))
-    code"""object O {
-          |  List(1, 2$m1
-          |}
-          |object T {
-          |  List(Option(1$m2
-          |}
-          |object Z {
-          |  List(Option(1)$m3
-          |}"""
-      .signatureHelp(m1, List(listSignature), Some(0), 1)
-      .signatureHelp(m2, List(optionSignature), Some(0), 1)
-      .signatureHelp(m3, List(listSignature), Some(0), 1)
-  }
-
   @Test def errorTypeParameter: Unit = {
     val emptySignature = S("empty", List("K", "V"), Nil, Some("Map[K, V]"))
     code"""object O:
@@ -102,7 +85,7 @@ class SignatureHelpTest {
           |  curry(1$m1)$m2(3$m3)
           |}"""
       .signatureHelp(m1, List(listSignature), Some(0), 0)
-      .signatureHelp(m2, List(listSignature), Some(0), 0)
+      .signatureHelp(m2, List(listSignature), Some(0), 2)
       .signatureHelp(m3, List(listSignature), Some(0), 2)
   }
 
@@ -141,7 +124,7 @@ class SignatureHelpTest {
           |object O {
           |  Foo(5).method($m1)
           |}"""
-      .signatureHelp(m1, List(testSig), Some(0), 0)
+      .signatureHelp(m1, List(testSig), Some(0), -1)
   }
 
   @Test def unapplyBooleanReturn: Unit = {
@@ -153,7 +136,7 @@ class SignatureHelpTest {
           |    case s @ Even(${m1}) => println(s"s has an even number of characters")
           |    case s               => println(s"s has an odd number of characters")
           """
-      .signatureHelp(m1, Nil, Some(0), 0)
+      .signatureHelp(m1, Nil, Some(0), -1)
   }
 
   @Test def unapplyCustomClass: Unit = {
@@ -226,9 +209,9 @@ class SignatureHelpTest {
           |  }
           |}"""
       .signatureHelp(m1, List(signature), Some(0), 0)
-      .signatureHelp(m2, List(signature), Some(0), -1)
-      .signatureHelp(m3, List(signature), Some(0), -1)
-      .signatureHelp(m4, List(signature), Some(0), -1)
+      .signatureHelp(m2, List(signature), Some(0), 1)
+      .signatureHelp(m3, List(signature), Some(0), 1)
+      .signatureHelp(m4, List(), Some(0), 0)
   }
 
   @Test def unapplyClass: Unit = {
@@ -325,13 +308,11 @@ class SignatureHelpTest {
           |object Main {
           |  Seq(1,2,3) match {
           |    case Seq($m1) =>
-          |    case h$m2 :: t$m3 =>
+          |    case h :: t =>
           |  }
           |}
           """
       .signatureHelp(m1, List(signatureSeq), Some(0), 0)
-      .signatureHelp(m2, List(signatureVariadicExtractor), Some(0), 0)
-      .signatureHelp(m3, List(signatureVariadicExtractor), Some(0), 1)
   }
 
   @Test def productTypeClassMatch: Unit = {
@@ -392,7 +373,7 @@ class SignatureHelpTest {
           |    case _ => ()
           """
       .signatureHelp(m1, List(nameBasedMatch), Some(0), 0)
-      .signatureHelp(m2, List(nameBasedMatch), Some(0), -1)
+      .signatureHelp(m2, List(nameBasedMatch), Some(0), 0)
       .signatureHelp(m3, List(singleMatch), Some(0), 0)
   }
 
@@ -713,7 +694,7 @@ class SignatureHelpTest {
            }"""
       .signatureHelp(m1, List(sig0, sig1), None, 0)
       .signatureHelp(m2, List(sig0, sig1), None, 0)
-      .signatureHelp(m3, List(sig0, sig1), Some(1), 1)
+      .signatureHelp(m3, List(sig0, sig1), Some(0), 1)
   }
 
   @Test def multipleParameterLists: Unit = {
@@ -979,7 +960,7 @@ class SignatureHelpTest {
     code"""|object O:
            |  implicit class TypeVarTest[T](xs: List[T]):
            |    def test(x: T): List[T] = ???
-           |  List(1,2,3).test(${m1}"""
+           |  List(1,2,3).test(${m1})"""
      .signatureHelp(m1, List(signature), None, 0)
   }
 

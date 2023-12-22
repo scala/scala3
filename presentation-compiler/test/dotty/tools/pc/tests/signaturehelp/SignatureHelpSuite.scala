@@ -196,7 +196,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
     check(
       """
         |object a {
-        |  List(1, 2@@
+        |  List(1, 2@@)
         |}
     """.stripMargin,
       """|apply[A](elems: A*): List[A]
@@ -650,9 +650,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  identity(42)@@
         |}
         |""".stripMargin,
-      """|identity[A](x: A): A
-         |            ^^^^
-         |""".stripMargin
+      ""
     )
 
   @Test def `off-by-one2` =
@@ -675,7 +673,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |}
         |""".stripMargin,
       """|fold[B](ifEmpty: => B)(f: Int => B): B
-         |        ^^^^^^^^^^^^^
+         |                       ^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -763,7 +761,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       """|object O:
          |  implicit class Test[T](xs: List[T]):
          |    def test(x: T): List[T] = ???
-         |  List(1,2,3).test(@@""".stripMargin,
+         |  List(1,2,3).test(s@@)""".stripMargin,
       """|test(x: Int): List[Int]
          |     ^^^^^^
          |""".stripMargin
@@ -774,24 +772,13 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       """|object O:
          |  implicit class Test[T](xs: List[T]):
          |    def test(x: T): List[T] = ???
-         |  List(1,2,3).test(s@@""".stripMargin,
-      """|test(x: Int): List[Int]
-         |     ^^^^^^
-         |""".stripMargin
-    )
-
-  @Test def `instantiated-type-var-old-ext-3` =
-    check(
-      """|object O:
-         |  implicit class Test[T](xs: List[T]):
-         |    def test(x: T): List[T] = ???
          |  List(1,2,3).test(@@)""".stripMargin,
       """|test(x: Int): List[Int]
          |     ^^^^^^
          |""".stripMargin
     )
 
-  @Test def `instantiated-type-var-old-ext-4` =
+  @Test def `instantiated-type-var-old-ext-3` =
     check(
       """|object O:
          |  implicit class Test[T](xs: List[T]):
@@ -804,7 +791,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |""".stripMargin
     )
 
-  @Test def `instantiated-type-var-old-ext-5` =
+  @Test def `instantiated-type-var-old-ext-4` =
     check(
       """|object O:
          |  implicit class Test[T](xs: List[T]):
@@ -818,7 +805,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |""".stripMargin
     )
 
-  @Test def `instantiated-type-var-old-ext-6` =
+  @Test def `instantiated-type-var-old-ext-5` =
     check(
       """|object O:
          |  implicit class Test[T](xs: List[T]):
@@ -1033,24 +1020,24 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |""".stripMargin
      )
 
-  // @Test def `dont-show-directly-after-parenthesis` =
-  //   check(
-  //     """|object Main {
-  //        |  def test(a: Int, b: Int): Int = ???
-  //        |  test(1, 2)@@
-  //        |}
-  //        |""".stripMargin,
-  //     ""
-  //    )
+  @Test def `dont-show-directly-after-parenthesis` =
+    check(
+      """|object Main {
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, 2)@@
+         |}
+         |""".stripMargin,
+      ""
+     )
 
-  // @Test def `dont-show-directly-after-parenthesis-2` =
-  //   check(
-  //     """|object Main {
-  //        |  def test(a: Int, b: Int): Int = ???
-  //        |  test(1, 2)@@
-  //        |""".stripMargin,
-  //     ""
-  //    )
+  @Test def `dont-show-directly-after-parenthesis-2` =
+    check(
+      """|object Main {
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, 2)@@
+         |""".stripMargin,
+      ""
+     )
 
   @Test def `show-directly-when-unclosed` =
     check(
@@ -1059,9 +1046,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |  test(1, (2 + 1)@@
          |}
          |""".stripMargin,
-      """|test(a: Int, b: Int): Int
-         |             ^^^^^^
-         |""".stripMargin
+      ""
      )
 
   @Test def `dont-show-after-parenthesis-1` =
@@ -1107,7 +1092,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       ""
      )
 
-  @Test def `show-after-parenthesis-newline-last-statement-unclosed-1` =
+  @Test def `dont-show-after-parenthesis-newline-last-statement-unclosed-1` =
     check(
       """|object Main:
          |  def test(a: Int, b: Int): Int = ???
@@ -1116,12 +1101,10 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |@@
          |
          |""".stripMargin,
-      """|test(a: Int, b: Int): Int
-         |             ^^^^^^
-         |""".stripMargin
+      ""
      )
 
-  @Test def `show-after-parenthesis-newline-last-statement-unclosed-2` =
+  @Test def `dont-show-after-parenthesis-newline-last-statement-unclosed-2` =
     check(
       """|object Main:
          |  def test(a: Int, b: Int): Int = ???
@@ -1130,42 +1113,10 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |@@
          |
          |""".stripMargin,
-      """|test(a: Int, b: Int): Int
-         |             ^^^^^^
-         |""".stripMargin
+      ""
      )
 
-  @Test def `show-after-parenthesis-unclosed-1` =
-    check(
-      """|object Main {
-         |  def test(a: Int, b: Int): Int = ???
-         |  test(1, 2
-         |
-         |  @@
-         |  println("")
-         |}
-         |""".stripMargin,
-      """|test(a: Int, b: Int): Int
-         |             ^^^^^^
-         |""".stripMargin
-     )
-
-  @Test def `show-after-parenthesis-unclosed-2` =
-    check(
-      """|object Main {
-         |  def test(a: Int, b: Int): Int = ???
-         |  test(1, 2
-         |
-         |  @@
-         |  println("")
-         |}
-         |""".stripMargin,
-      """|test(a: Int, b: Int): Int
-         |             ^^^^^^
-         |""".stripMargin
-     )
-
-  @Test def `show-after-parenthesis-unclosed-3` =
+  @Test def `dont-show-after-parenthesis-unclosed-2` =
     check(
       """|object Main {
          |  def test(a: Int, b: Int): Int = ???
@@ -1174,22 +1125,30 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |  @@
          |}
          |""".stripMargin,
-      """|test(a: Int, b: Int): Int
-         |             ^^^^^^
-         |""".stripMargin
+       ""
      )
 
-  @Test def `show-after-parenthesis-unclosed-4` =
+  @Test def `select-arg-detection` =
     check(
-      """|object Main {
-         |  def test(a: Int, b: Int): Int = ???
-         |  test(1, 2
-         |
-         |  @@
-         |}
+      """|object Main:
+         |  object Foo:
+         |    case class Test(x: Int)
+         |  def test(a: Foo.Test, b: Foo.Test): Int = ???
+         |  test(Foo.Test(1), @@)
          |""".stripMargin,
-      """|test(a: Int, b: Int): Int
+      """|test(a: Main.Foo.Test, b: Main.Foo.Test): Int
+         |                       ^^^^^^^^^^^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `singature-help-works-in-select` =
+    check(
+      """|object Main:
+         |  object Foo:
+         |    class Test(x: Int, y: Int)
+         |  new Foo.Test(1, @@)
+         |""".stripMargin,
+      """|Test(x: Int, y: Int)
          |             ^^^^^^
          |""".stripMargin
-     )
-
+    )

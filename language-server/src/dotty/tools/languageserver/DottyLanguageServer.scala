@@ -556,10 +556,10 @@ class DottyLanguageServer extends LanguageServer
     driver.compilationUnits.get(uri) match
       case Some(unit) =>
         given newCtx: Context = driver.currentCtx.fresh.setCompilationUnit(unit)
-
         val pos = sourcePosition(driver, uri, params.getPosition)
-        val path = Interactive.pathTo(ctx.compilationUnit.tpdTree, pos.span)
-        val (paramN, callableN, signatures) = Signatures.signatureHelp(path, pos.span)
+        val adjustedSpan = pos.span.withEnd(pos.span.end + 1)
+        val path = Interactive.pathTo(ctx.compilationUnit.tpdTree, adjustedSpan)
+        val (paramN, callableN, signatures) = Signatures.signatureHelp(path, adjustedSpan)
 
         new SignatureHelp(signatures.map(signatureToSignatureInformation).asJava, callableN, paramN)
 
