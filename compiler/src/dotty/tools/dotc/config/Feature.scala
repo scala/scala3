@@ -33,6 +33,7 @@ object Feature:
   val pureFunctions = experimental("pureFunctions")
   val captureChecking = experimental("captureChecking")
   val into = experimental("into")
+  val givenLoopPrevention = experimental("givenLoopPrevention")
 
   val globalOnlyImports: Set[TermName] = Set(pureFunctions, captureChecking)
 

@@ -163,8 +163,4 @@ The new rules are as follows: An implicit `a` defined in `A` is more specific th
 
 Condition (*) is new. It is necessary to ensure that the defined relation is transitive.
 
-
-
-
-
 [//]: # todo: expand with precise rules

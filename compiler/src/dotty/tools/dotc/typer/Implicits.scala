@@ -26,8 +26,8 @@ import Scopes.newScope
 import Typer.BindingPrec, BindingPrec.*
 import Hashable.*
 import util.{EqHashMap, Stats}
-import config.{Config, Feature}
-import Feature.migrateTo3
+import config.{Config, Feature, SourceVersion}
+import Feature.{migrateTo3, sourceVersion}
 import config.Printers.{implicits, implicitsDetailed}
 import collection.mutable
 import reporting.*
@@ -324,7 +324,7 @@ object Implicits:
     /** Is this the outermost implicits? This is the case if it either the implicits
      *  of NoContext, or the last one before it.
      */
-    private def isOuterMost = {
+    private def isOutermost = {
       val finalImplicits = NoContext.implicits
       (this eq finalImplicits) || (outerImplicits eqn finalImplicits)
     }
@@ -356,7 +356,7 @@ object Implicits:
       Stats.record("uncached eligible")
       if monitored then record(s"check uncached eligible refs in irefCtx", refs.length)
       val ownEligible = filterMatching(tp)
-      if isOuterMost then ownEligible
+      if isOutermost then ownEligible
       else combineEligibles(ownEligible, outerImplicits.nn.uncachedEligible(tp))
 
     /** The implicit references that are eligible for type `tp`. */
@@ -383,7 +383,7 @@ object Implicits:
     private def computeEligible(tp: Type): List[Candidate] = /*>|>*/ trace(i"computeEligible $tp in $refs%, %", implicitsDetailed) /*<|<*/ {
       if (monitored) record(s"check eligible refs in irefCtx", refs.length)
       val ownEligible = filterMatching(tp)
-      if isOuterMost then ownEligible
+      if isOutermost then ownEligible
       else combineEligibles(ownEligible, outerImplicits.nn.eligible(tp))
     }
 
@@ -392,7 +392,7 @@ object Implicits:
 
     override def toString: String = {
       val own = i"(implicits: $refs%, %)"
-      if (isOuterMost) own else own + "\n " + outerImplicits
+      if (isOutermost) own else own + "\n " + outerImplicits
     }
 
     /** This context, or a copy, ensuring root import from symbol `root`
@@ -1550,11 +1550,15 @@ trait Implicits:
       case _ =>
         tp.isAny || tp.isAnyRef
 
-    private def searchImplicit(contextual: Boolean): SearchResult =
+    /** Search implicit in context `ctxImplicits` or else in implicit scope
+     *  of expected type if `ctxImplicits == null`.
+     */
+    private def searchImplicit(ctxImplicits: ContextualImplicits | Null): SearchResult =
       if isUnderspecified(wildProto) then
         SearchFailure(TooUnspecific(pt), span)
       else
-        val eligible =
+        val contextual = ctxImplicits != null
+        val preEligible = // the eligible candidates, ignoring positions
           if contextual then
             if ctx.gadt.isNarrowing then
               withoutMode(Mode.ImplicitsEnabled) {
@@ -1562,22 +1566,101 @@ trait Implicits:
               }
             else ctx.implicits.eligible(wildProto)
           else implicitScope(wildProto).eligible
-        searchImplicit(eligible, contextual) match
+
+        /** Does candidate `cand` come too late for it to be considered as an
+         *  eligible candidate? This is the case if `cand` appears in the same
+         *  scope as a given definition of the form `given ... = ...` that
+         *  encloses the search point and `cand` comes later in the source or
+         *  coincides with that given definition.
+         */
+        def comesTooLate(cand: Candidate): Boolean =
+          val candSym = cand.ref.symbol
+          def candSucceedsGiven(sym: Symbol): Boolean =
+            val owner = sym.owner
+            if owner == candSym.owner then
+              sym.is(GivenVal) && sym.span.exists && sym.span.start <= candSym.span.start
+            else if owner.isClass then false
+            else candSucceedsGiven(owner)
+
+          ctx.isTyper
+          && !candSym.isOneOf(TermParamOrAccessor | Synthetic)
+          && candSym.span.exists
+          && candSucceedsGiven(ctx.owner)
+        end comesTooLate
+
+        val eligible = // the eligible candidates that come before the search point
+          if contextual && sourceVersion.isAtLeast(SourceVersion.`3.4`)
+          then preEligible.filterNot(comesTooLate)
+          else preEligible
+
+        def checkResolutionChange(result: SearchResult) =
+          if (eligible ne preEligible)
+              && !Feature.enabled(Feature.givenLoopPrevention)
+          then
+            val prevResult = searchImplicit(preEligible, contextual)
+            prevResult match
+              case prevResult: SearchSuccess =>
+                def remedy = pt match
+                  case _: SelectionProto =>
+                    "conversion,\n  - use an import to get extension method into scope"
+                  case _: ViewProto =>
+                    "conversion"
+                  case _ =>
+                    "argument"
+
+                def showResult(r: SearchResult) = r match
+                  case r: SearchSuccess => ctx.printer.toTextRef(r.ref).show
+                  case r => r.show
+
+                result match
+                  case result: SearchSuccess if prevResult.ref frozen_=:= result.ref =>
+                    // OK
+                  case _ =>
+                    val msg =
+                      em"""Result of implicit search for $pt will change.
+                          |Current result ${showResult(prevResult)} will be no longer eligible
+                          |  because it is not defined before the search position.
+                          |Result with new rules: ${showResult(result)}.
+                          |To opt into the new rules, use the `experimental.givenLoopPrevention` language import.
+                          |
+                          |To fix the problem without the language import, you could try one of the following:
+                          |  - use a `given ... with` clause as the enclosing given,
+                          |  - rearrange definitions so that ${showResult(prevResult)} comes earlier,
+                          |  - use an explicit $remedy."""
+                    if sourceVersion.isAtLeast(SourceVersion.`3.5`)
+                    then report.error(msg, srcPos)
+                    else report.warning(msg.append("\nThis will be an error in Scala 3.5 and later."), srcPos)
+              case _ =>
+            prevResult
+          else result
+        end checkResolutionChange
+
+        val result = searchImplicit(eligible, contextual)
+        result match
           case result: SearchSuccess =>
-            result
+            checkResolutionChange(result)
           case failure: SearchFailure =>
             failure.reason match
               case _: AmbiguousImplicits => failure
               case reason =>
                 if contextual then
-                  searchImplicit(contextual = false).recoverWith {
-                    failure2 => failure2.reason match
-                      case _: AmbiguousImplicits => failure2
-                      case _ =>
-                        reason match
-                          case (_: DivergingImplicit) => failure
-                          case _ => List(failure, failure2).maxBy(_.tree.treeSize)
-                  }
+                  // If we filtered out some candidates for being too late, we should
+                  // do another contextual search further out, since the dropped candidates
+                  // might have shadowed an eligible candidate in an outer level.
+                  // Otherwise, proceed with a search of the implicit scope.
+                  val newCtxImplicits =
+                    if eligible eq preEligible then null
+                    else ctxImplicits.nn.outerImplicits: ContextualImplicits | Null
+                      // !!! Dotty problem: without the ContextualImplicits | Null type ascription
+                      // we get a Ycheck failure after arrayConstructors due to "Types differ"
+                  checkResolutionChange:
+                    searchImplicit(newCtxImplicits).recoverWith:
+                      failure2 => failure2.reason match
+                        case _: AmbiguousImplicits => failure2
+                        case _ =>
+                          reason match
+                            case (_: DivergingImplicit) => failure
+                            case _ => List(failure, failure2).maxBy(_.tree.treeSize)
                 else failure
     end searchImplicit
 
@@ -1595,7 +1678,7 @@ trait Implicits:
         case ref: TermRef =>
           SearchSuccess(tpd.ref(ref).withSpan(span.startPos), ref, 0)(ctx.typerState, ctx.gadt)
         case _ =>
-          searchImplicit(contextual = true)
+          searchImplicit(ctx.implicits)
     end bestImplicit
 
     def implicitScope(tp: Type): OfTypeImplicits = ctx.run.nn.implicitScope(tp)

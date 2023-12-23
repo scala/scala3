@@ -1,0 +1,29 @@
+-- Error: tests/neg/i15474.scala:6:39 ----------------------------------------------------------------------------------
+6 |  given c: Conversion[ String, Int ] = _.toInt   // error
+  |                                       ^
+  |                            Result of implicit search for ?{ toInt: ? } will change.
+  |                            Current result Test2.c will be no longer eligible
+  |                              because it is not defined before the search position.
+  |                            Result with new rules: augmentString.
+  |                            To opt into the new rules, use the `experimental.givenLoopPrevention` language import.
+  |
+  |                            To fix the problem without the language import, you could try one of the following:
+  |                              - use a `given ... with` clause as the enclosing given,
+  |                              - rearrange definitions so that Test2.c comes earlier,
+  |                              - use an explicit conversion,
+  |                              - use an import to get extension method into scope.
+  |                            This will be an error in Scala 3.5 and later.
+-- Error: tests/neg/i15474.scala:12:56 ---------------------------------------------------------------------------------
+12 |    given Ordering[Price] = summon[Ordering[BigDecimal]] // error
+   |                                                        ^
+   |                          Result of implicit search for Ordering[BigDecimal] will change.
+   |                          Current result Prices.Price.given_Ordering_Price will be no longer eligible
+   |                            because it is not defined before the search position.
+   |                          Result with new rules: scala.math.Ordering.BigDecimal.
+   |                          To opt into the new rules, use the `experimental.givenLoopPrevention` language import.
+   |
+   |                          To fix the problem without the language import, you could try one of the following:
+   |                            - use a `given ... with` clause as the enclosing given,
+   |                            - rearrange definitions so that Prices.Price.given_Ordering_Price comes earlier,
+   |                            - use an explicit argument.
+   |                          This will be an error in Scala 3.5 and later.
