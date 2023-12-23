@@ -1,16 +1,3 @@
--- Warning: tests/neg/hidden-type-errors/Test.scala:8:24 ---------------------------------------------------------------
- 8 |   val x = X.doSomething("XXX") // error
-   |           ^^^^^^^^^^^^^^^^^^^^
-   |           Context bounds will map to context parameters.
-   |           A `using` clause is needed to pass explicit arguments to them.
-   |           This code can be rewritten automatically under -rewrite -source 3.5-migration.
-   |--------------------------------------------------------------------------------------------------------------------
-   |Inline stack trace
-   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-   |This location contains code that was inlined from Macro.scala:15
-15 |      doSomethingImpl('x)
-   |      ^^^^^^^^^^^^^^^^^^^
-    --------------------------------------------------------------------------------------------------------------------
 -- [E007] Type Mismatch Error: tests/neg/hidden-type-errors/Test.scala:8:24 --------------------------------------------
 8 |   val x = X.doSomething("XXX") // error
   |           ^^^^^^^^^^^^^^^^^^^^
@@ -31,16 +18,3 @@
   |
   | The tests were made under the empty constraint
    ---------------------------------------------------------------------------------------------------------------------
--- Warning: tests/neg/hidden-type-errors/Test.scala:8:24 ---------------------------------------------------------------
- 8 |   val x = X.doSomething("XXX") // error
-   |           ^^^^^^^^^^^^^^^^^^^^
-   |           Context bounds will map to context parameters.
-   |           A `using` clause is needed to pass explicit arguments to them.
-   |           This code can be rewritten automatically under -rewrite -source 3.5-migration.
-   |--------------------------------------------------------------------------------------------------------------------
-   |Inline stack trace
-   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-   |This location contains code that was inlined from Macro.scala:15
-15 |      doSomethingImpl('x)
-   |      ^^^^^^^^^^^^^^^^^^^
-    --------------------------------------------------------------------------------------------------------------------
