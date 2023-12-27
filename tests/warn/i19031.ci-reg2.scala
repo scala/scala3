@@ -1,5 +1,3 @@
-//> using options -Werror
-
 trait Outer:
   sealed trait Foo
   case class  Bar1() extends Foo
