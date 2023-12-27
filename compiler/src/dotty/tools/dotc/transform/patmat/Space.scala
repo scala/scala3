@@ -613,7 +613,7 @@ object SpaceEngine {
       case OrType(tp1, tp2)                            => List(tp1, tp2)
       case tp if tp.isRef(defn.BooleanClass)           => List(ConstantType(Constant(true)), ConstantType(Constant(false)))
       case tp if tp.isRef(defn.UnitClass)              => ConstantType(Constant(())) :: Nil
-      case tp @ NamedType(Parts(parts), _)             => parts.map(tp.derivedSelect)
+      case tp @ NamedType(Parts(parts), _)             => if parts.exists(_ eq tp) then ListOfNoType else parts.map(tp.derivedSelect)
       case _: SingletonType                            => ListOfNoType
       case tp if tp.classSymbol.isAllOf(JavaEnumTrait) => tp.classSymbol.children.map(_.termRef)
         // the class of a java enum value is the enum class, so this must follow SingletonType to not loop infinitely
