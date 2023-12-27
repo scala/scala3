@@ -69,8 +69,7 @@ object Message:
      *  and following recordings get consecutive superscripts starting with 2.
      *  @return  The possibly superscripted version of `str`.
      */
-    def record(str: String, isType: Boolean, entry: Recorded)(using Context): String =
-      if !recordOK then return str
+    def record(str: String, isType: Boolean, entry: Recorded)(using Context): String = if !recordOK then str else
       //println(s"recording $str, $isType, $entry")
 
       /** If `e1` is an alias of another class of the same name, return the other
@@ -125,7 +124,7 @@ object Message:
       }
 
       def addendum(cat: String, info: Type): String = info match {
-        case bounds @ TypeBounds(lo, hi) if !(bounds =:= TypeBounds.empty) =>
+        case bounds @ TypeBounds(lo, hi) if !(bounds =:= TypeBounds.empty) && !bounds.isErroneous =>
           if (lo eq hi) i" which is an alias of $lo"
           else i" with $cat ${boundsStr(bounds)}"
         case _ =>
@@ -155,9 +154,8 @@ object Message:
       def needsExplanation(entry: Recorded) = entry match {
         case param: TypeParamRef => ctx.typerState.constraint.contains(param)
         case param: ParamRef     => false
-        case skolem: SkolemType => true
-        case sym: Symbol =>
-          ctx.gadt.contains(sym) && ctx.gadt.fullBounds(sym) != TypeBounds.empty
+        case skolem: SkolemType  => true
+        case sym: Symbol         => ctx.gadt.contains(sym) && ctx.gadt.fullBounds(sym) != TypeBounds.empty
       }
 
       val toExplain: List[(String, Recorded)] = seen.toList.flatMap { kvs =>
@@ -170,7 +168,7 @@ object Message:
               (tickedString, alt)
             }
         }
-        res // help the inferrencer out
+        res // help the inferencer out
       }.sortBy(_._1)
 
       def columnar(parts: List[(String, String)]): List[String] = {
@@ -239,11 +237,11 @@ end Message
   *
   * Messages modify the rendendering of interpolated strings in several ways:
   *
-  *  1. The size of the printed code is limited with a MessafeLimiter. If the message
+  *  1. The size of the printed code is limited with a MessageLimiter. If the message
   *    would get too large or too deeply nested, a `...` is printed instead.
-  *  2. References to module classes are prefixed with `object ` for better recogniability.
+  *  2. References to module classes are prefixed with `object` for better recognizability.
   *  3. A where clause is sometimes added which contains the following additional explanations:
-  *     - Rerences are disambiguated: If a message contains occurrences of the same identifier
+  *     - References are disambiguated: If a message contains occurrences of the same identifier
   *       representing different symbols, the duplicates are printed with superscripts
   *       and the where-clause explains where each symbol is located.
   *     - Uninstantiated variables are explained in the where-clause with additional
