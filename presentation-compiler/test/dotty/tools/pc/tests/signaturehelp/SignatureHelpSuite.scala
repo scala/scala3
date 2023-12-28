@@ -388,8 +388,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |
         |
       """.stripMargin,
-      """|apply(viewId: String, nodeUri: String, label: String, command: String, icon: String, tooltip: String, collapseState: String): TreeViewNode
-         |      ^^^^^^^^^^^^^^
+      """|apply([viewId: String], [nodeUri: String], [label: String], [collapseState: String], [command: String], [icon: String], [tooltip: String]): TreeViewNode
+         |      ^^^^^^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -424,8 +424,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |
         |
       """.stripMargin,
-      """|apply(viewId: String, nodeUri: String, label: String, command: String, collapseState: String): TreeViewNode
-         |      ^^^^^^^^^^^^^^
+      """|apply([viewId: String], [nodeUri: String], [label: String], [collapseState: String], [command: String]): TreeViewNode
+         |      ^^^^^^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -1152,3 +1152,105 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |             ^^^^^^
          |""".stripMargin
     )
+
+  @Test def `curried-help-works-in-select` =
+    check(
+      """|object Main:
+         |  def test(xxx: Int, yyy: Int)(zzz: Int): Int = ???
+         |  test(yyy = 5, xxx = 7)(@@)
+         |""".stripMargin,
+      """|test([yyy: Int], [xxx: Int])(zzz: Int): Int
+         |                             ^^^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `no-signature-help-for-parameterless-method` =
+    check(
+      """|object Main:
+         |  def test: Int = ???
+         |  test(@@)
+         |""".stripMargin,
+      ""
+    )
+
+  @Test def `show-methods-returning-tuples` =
+    check(
+      """|object Main:
+         |  def test(): (Int, Int) = ???
+         |  test(@@)
+         |""".stripMargin,
+      "test(): (Int, Int)"
+    )
+
+  @Test def `show-methods-returning-tuples-2` =
+    check(
+      """|object Main:
+         |  def test(x: Int): (Int, Int) = ???
+         |  test(@@)
+         |""".stripMargin,
+      """|test(x: Int): (Int, Int)
+         |     ^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `dont-show-tuples-application` =
+    check(
+      """|object Main:
+         |  (1, @@)
+         |""".stripMargin,
+      ""
+    )
+
+  // Improvement would be to create synthetic signature help showing
+  // add(x: Int)(y: Int): Int
+  @Test def `dont-show-functionN` =
+    check(
+      """|object Main:
+         |  val add = (x: Int) => (y: Int) => x + y
+         |  add(@@)
+         |""".stripMargin,
+         ""
+    )
+
+  @Test def `dont-show-functionN-2` =
+    check(
+      """|object Main:
+         |  val add = (x: Int) => (y: Int) => x + y
+         |  add(1, @@)
+         |""".stripMargin,
+         ""
+    )
+
+  @Test def `type-param-start` =
+    check(
+      """|object Main:
+         |  def test[A](x: A): A = ???
+         |  test[@@]
+         |""".stripMargin,
+      """|test[A](x: A): A
+         |     ^
+         |""".stripMargin
+    )
+
+  @Test def `error-recovery-1` =
+    check(
+      """|object Main:
+         |  def test[A](x: A): Foo[A] = ???
+         |  test[@@]
+         |""".stripMargin,
+      """|test[A](x: A): Foo[A]
+         |     ^
+         |""".stripMargin
+    )
+
+  @Test def `error-recovery-2` =
+    check(
+      """|object Main:
+         |  def test[A](x: A): Foo[A] = ???
+         |  test[Int](@@)
+         |""".stripMargin,
+      """|test[A](x: A): Foo[A]
+         |        ^^^^
+         |""".stripMargin
+    )
+

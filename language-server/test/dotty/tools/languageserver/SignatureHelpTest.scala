@@ -4,13 +4,13 @@ import org.junit.Test
 
 import dotty.tools.languageserver.util.Code._
 
-import dotty.tools.dotc.util.Signatures.{Param => P, Signature => S}
+import dotty.tools.dotc.util.Signatures.{TypeParam => TP, MethodParam => P, Signature => S}
 
 class SignatureHelpTest {
 
   @Test def fromJava: Unit = {
     val signature =
-      S("codePointAt", Nil, List(List(P("x$0", "Int"))), Some("Int"))
+      S("codePointAt", List(List(P("x$0", "Int"))), Some("Int"))
     code"""object O {
              "hello".codePointAt($m1)
            }"""
@@ -18,7 +18,7 @@ class SignatureHelpTest {
   }
 
   @Test def errorTypeParameter: Unit = {
-    val emptySignature = S("empty", List("K", "V"), Nil, Some("Map[K, V]"))
+    val emptySignature = S("empty", List(List(TP("K"), TP("V"))), Some("Map[K, V]"))
     code"""object O:
           |  Map.empty[WrongType, $m1]
           """
@@ -26,8 +26,8 @@ class SignatureHelpTest {
   }
 
   @Test def methodTypeParameter: Unit = {
-    val applySignature = S("apply", List("K", "V"), List(List(P("elems", "(K, V)*"))), Some("Map[K, V]"))
-    val emptySignature = S("empty", List("K", "V"), Nil, Some("Map[K, V]"))
+    val applySignature = S("apply", List(List(TP("K"), TP("V")), List(P("elems", "(K, V)*"))), Some("Map[K, V]"))
+    val emptySignature = S("empty", List(List(TP("K"), TP("V"))), Some("Map[K, V]"))
     code"""object O:
           |  Map[$m1]
           |  Map.empty[$m2]
@@ -39,7 +39,7 @@ class SignatureHelpTest {
   }
 
   @Test def classTypeParameter: Unit = {
-    val signature = S("Test", List("K", "V"), Nil, Some("Test"))
+    val signature = S("Test", List(List(TP("K"), TP("V"))), Some("Test"))
     code"""object O:
           |  class Test[K, V] {}
           |  new Test[$m1]
@@ -50,7 +50,7 @@ class SignatureHelpTest {
   }
 
   @Test def traitTypeParameter: Unit = {
-    val signature = S("Test", List("K", "V"), Nil, Some("Test"))
+    val signature = S("Test", List(List(TP("K"), TP("V"))), Some("Test"))
     code"""object O:
           |  trait Test[K, V] {}
           |  new Test[$m1] {}
@@ -61,7 +61,7 @@ class SignatureHelpTest {
   }
 
   @Test def typeAliasTypeParameter: Unit = {
-    val signature = S("Test", List("K"), Nil, Some("Test"))
+    val signature = S("Test", List(List(TP("K"))), Some("Test"))
     code"""object O:
           |  type Test[K] = List[K]
           |  def test(x: Test[$m1])
@@ -70,7 +70,7 @@ class SignatureHelpTest {
   }
 
   @Test def typeParameterIndex: Unit = {
-    val mapSignature = S("map", List("B"), List(List(P("f", "Int => B"))), Some("List[B]"))
+    val mapSignature = S("map", List(List(TP("B")), List(P("f", "Int => B"))), Some("List[B]"))
     code"""object O {
              List(1, 2, 3).map[$m1]($m2)
            }"""
@@ -79,7 +79,7 @@ class SignatureHelpTest {
   }
 
   @Test def partialyFailedCurriedFunctions: Unit = {
-    val listSignature = S("curry", Nil, List(List(P("a", "Int"), P("b", "Int")), List(P("c", "Int"))), Some("Int"))
+    val listSignature = S("curry", List(List(P("a", "Int"), P("b", "Int")), List(P("c", "Int"))), Some("Int"))
     code"""object O {
           |def curry(a: Int, b: Int)(c: Int) = a
           |  curry(1$m1)$m2(3$m3)
@@ -90,7 +90,7 @@ class SignatureHelpTest {
   }
 
   @Test def optionProperSignature: Unit = {
-    val signature = S("apply", List("A"), List(List(P("x", "A"))), Some("Option[A]"))
+    val signature = S("apply", List(List(TP("A")), List(P("x", "A"))), Some("Option[A]"))
     code"""object O {
           |  Option(1, 2, 3, $m1)
           |}"""
@@ -106,8 +106,8 @@ class SignatureHelpTest {
   }
 
   @Test def fromScala2: Unit = {
-    val applySig = S("apply", List("A"), List(List(P("elems", "A*"))), Some("List[A]"))
-    val mapSig = S("map", List("B"), List(List(P("f", "Int => B"))), Some("List[B]"))
+    val applySig = S("apply", List(List(TP("A")), List(P("elems", "A*"))), Some("List[A]"))
+    val mapSig = S("map", List(List(TP("B")), List(P("f", "Int => B"))), Some("List[B]"))
     code"""object O {
              List($m1)
              List(1, 2, 3).map($m2)
@@ -117,7 +117,7 @@ class SignatureHelpTest {
   }
 
   @Test def typeParameterMethodApply: Unit = {
-    val testSig = S("method", Nil, List(List()), Some("Int"))
+    val testSig = S("method", List(List()), Some("Int"))
     code"""case class Foo[A](test: A) {
           |  def method(): A = ???
           |}
@@ -140,7 +140,7 @@ class SignatureHelpTest {
   }
 
   @Test def unapplyCustomClass: Unit = {
-    val signature = S("", Nil, List(List(P("", "Int"))), None)
+    val signature = S("", List(List(P("", "Int"))), None)
 
     code"""class Nat(val x: Int):
           |  def get: Int = x
@@ -157,7 +157,7 @@ class SignatureHelpTest {
   }
 
   @Test def unapplyTypeClass: Unit = {
-    val signature = S("", Nil, List(List(P("", "Int"), P("", "String"))), None)
+    val signature = S("", List(List(P("", "Int"), P("", "String"))), None)
 
     code"""class Two[A, B](a: A, b: B)
           |object Two {
@@ -175,9 +175,9 @@ class SignatureHelpTest {
   }
 
   @Test def nestedUnapplySignature: Unit = {
-    val signatureOneTwo = S("", Nil, List(List(P("a", "One"), P("b", "Two"))), None)
-    val signatureOne = S("", Nil, List(List(P("c", "Int"))), None)
-    val signatureTwo = S("", Nil, List(List(P("d", "Int"))), None)
+    val signatureOneTwo = S("", List(List(P("a", "One"), P("b", "Two"))), None)
+    val signatureOne = S("", List(List(P("c", "Int"))), None)
+    val signatureTwo = S("", List(List(P("d", "Int"))), None)
 
     code"""case class One(c: Int)
           |case class Two(d: Int)
@@ -199,7 +199,7 @@ class SignatureHelpTest {
   }
 
   @Test def properParameterIndexTest: Unit = {
-    val signature = S("", Nil, List(List(P("a", "Int"), P("b", "String"))), None)
+    val signature = S("", List(List(P("a", "Int"), P("b", "String"))), None)
     code"""case class Two(a: Int, b: String)
           |
           |object Main {
@@ -215,7 +215,7 @@ class SignatureHelpTest {
   }
 
   @Test def unapplyClass: Unit = {
-    val signature = S("", Nil, List(List(P("", "Int"), P("", "String"))), None)
+    val signature = S("", List(List(P("", "Int"), P("", "String"))), None)
 
     code"""class Two(a: Int, b: String)
           |object Two {
@@ -233,7 +233,7 @@ class SignatureHelpTest {
   }
 
   @Test def productMatch: Unit = {
-    val signature = S("", Nil, List(List(P("", "Char"), P("", "Char"))), None)
+    val signature = S("", List(List(P("", "Char"), P("", "Char"))), None)
 
     code"""class FirstChars(s: String) extends Product:
           |  def _1 = s.charAt(0)
@@ -251,7 +251,7 @@ class SignatureHelpTest {
   }
 
   @Test def noUnapplySignatureWhenApplyingUnapply: Unit = {
-    val signature = S("unapply", List("A"), List(List(P("a", "A"))), Some("Some[(A, A)]"))
+    val signature = S("unapply", List(List(TP("A")), List(P("a", "A"))), Some("Some[(A, A)]"))
 
     code"""
           |object And {
@@ -265,7 +265,7 @@ class SignatureHelpTest {
   }
 
   @Test def nestedOptionReturnedInUnapply: Unit = {
-    val signature = S("", Nil, List(List(P("", "Option[Int]"))), None)
+    val signature = S("", List(List(P("", "Option[Int]"))), None)
 
     code"""object OpenBrowserCommand {
           |  def unapply(command: String): Option[Option[Int]] = {
@@ -281,8 +281,8 @@ class SignatureHelpTest {
   }
 
   @Test def unknownTypeUnapply: Unit = {
-    val signature = S("", Nil, List(List(P("a", "A"), P("b", "B"))), None)
-    val signature2 = S("", Nil, List(List(P("a", "Int"), P("b", "Any"))), None)
+    val signature = S("", List(List(P("a", "A"), P("b", "B"))), None)
+    val signature2 = S("", List(List(P("a", "Int"), P("b", "Any"))), None)
 
     code"""case class Two[A, B](a: A, b: B)
           |object Main {
@@ -301,8 +301,8 @@ class SignatureHelpTest {
   }
 
   @Test def sequenceMatchUnapply: Unit = {
-    val signatureSeq = S("", Nil, List(List(P("", "Seq[Int]"))), None)
-    val signatureVariadicExtractor = S("", Nil, List(List(P("", "Int"), P("","List[Int]"))), None)
+    val signatureSeq = S("", List(List(P("", "Seq[Int]"))), None)
+    val signatureVariadicExtractor = S("", List(List(P("", "Int"), P("","List[Int]"))), None)
 
     code"""case class Two[A, B](a: A, b: B)
           |object Main {
@@ -316,7 +316,7 @@ class SignatureHelpTest {
   }
 
   @Test def productTypeClassMatch: Unit = {
-    val signature = S("", Nil, List(List(P("", "String"), P("", "String"))), None)
+    val signature = S("", List(List(P("", "String"), P("", "String"))), None)
 
     code"""class FirstChars[A](s: A) extends Product:
           |  def _1 = s
@@ -334,8 +334,8 @@ class SignatureHelpTest {
   }
 
   @Test def nameBasedMatch: Unit = {
-    val nameBasedMatch = S("", Nil, List(List(P("", "Int"), P("", "String"))), None)
-    val singleMatch = S("", Nil, List(List(P("", "ProdEmpty.type"))), None)
+    val nameBasedMatch = S("", List(List(P("", "Int"), P("", "String"))), None)
+    val singleMatch = S("", List(List(P("", "ProdEmpty.type"))), None)
 
     code"""object ProdEmpty:
           |  def _1: Int = ???
@@ -356,8 +356,8 @@ class SignatureHelpTest {
   }
 
   @Test def nameBasedMatchWithWrongGet: Unit = {
-    val nameBasedMatch = S("", Nil, List(List(P("", "Int"))), None)
-    val singleMatch = S("", Nil, List(List(P("", "Int"))), None)
+    val nameBasedMatch = S("", List(List(P("", "Int"))), None)
+    val singleMatch = S("", List(List(P("", "Int"))), None)
 
     code"""object ProdEmpty:
           |  def _1: Int = ???
@@ -378,7 +378,7 @@ class SignatureHelpTest {
   }
 
   @Test def nameBasedSingleMatchOrder: Unit = {
-    val signature = S("", Nil, List(List(P("", "String"))), None)
+    val signature = S("", List(List(P("", "String"))), None)
 
     code"""object ProdEmpty:
           |  def _1: Int = 1
@@ -395,7 +395,7 @@ class SignatureHelpTest {
   }
 
   @Test def getObjectMatch: Unit = {
-    val signature = S("", Nil, List(List(P("", "String"))), None)
+    val signature = S("", List(List(P("", "String"))), None)
 
     code"""object ProdEmpty:
           |  def isEmpty = true
@@ -411,7 +411,7 @@ class SignatureHelpTest {
   }
 
   @Test def customSequenceMatch: Unit = {
-    val signature = S("", Nil, List(List(P("", "Seq[Char]"))), None)
+    val signature = S("", List(List(P("", "Seq[Char]"))), None)
 
     code"""object CharList:
           |  def unapplySeq(s: String): Option[Seq[Char]] = Some(s.toList)
@@ -429,7 +429,7 @@ class SignatureHelpTest {
   }
 
   @Test def productSequenceMatch: Unit = {
-    val signature = S("", Nil, List(List(P("", "String"), P("", "Seq[Int]"))), None)
+    val signature = S("", List(List(P("", "String"), P("", "Seq[Int]"))), None)
 
     code"""class Foo(val name: String, val children: Int*)
           |object Foo:
@@ -449,7 +449,7 @@ class SignatureHelpTest {
   }
 
   @Test def productSequenceMatchForCaseClass: Unit = {
-    val signature = S("", Nil, List(List(P("name", "String"), P("children", "Seq[Int]"))), None)
+    val signature = S("", List(List(P("name", "String"), P("children", "Seq[Int]"))), None)
 
     code"""case class Foo(val name: String, val children: Int*)
           |
@@ -466,7 +466,7 @@ class SignatureHelpTest {
   }
 
   @Test def unapplyManyType: Unit = {
-    val signature = S("", Nil, List(List(P("", "Int"), P("", "String"))), None)
+    val signature = S("", List(List(P("", "Int"), P("", "String"))), None)
 
     code"""
           |object Opt {
@@ -483,7 +483,7 @@ class SignatureHelpTest {
   }
 
   @Test def unapplyTypeCaseClass: Unit = {
-    val signature = S("", Nil, List(List(P("a", "Int"), P("b", "String"))), None)
+    val signature = S("", List(List(P("a", "Int"), P("b", "String"))), None)
 
     code"""case class Two[A, B](a: A, b: B)
           |
@@ -498,7 +498,7 @@ class SignatureHelpTest {
   }
 
   @Test def unapplyForTuple: Unit = {
-    val signature = S("", Nil, List(List(P("", "Int"), P("", "Int"))), None)
+    val signature = S("", List(List(P("", "Int"), P("", "Int"))), None)
     code"""object Main {
           |  (1, 2) match
           |    case (x${m1}, ${m2}) =>
@@ -508,7 +508,7 @@ class SignatureHelpTest {
   }
 
   @Test def unapplyCaseClass: Unit = {
-    val signature = S("", Nil, List(List(P("a", "Int"), P("b", "String"))), None)
+    val signature = S("", List(List(P("a", "Int"), P("b", "String"))), None)
 
     code"""case class Two(a: Int, b: String)
           |
@@ -523,7 +523,7 @@ class SignatureHelpTest {
   }
 
   @Test def unapplyOption: Unit = {
-    val signature = S("", Nil, List(List(P("", "Int"))), None)
+    val signature = S("", List(List(P("", "Int"))), None)
 
     code"""|object Main {
            |  Option(1) match {
@@ -534,7 +534,7 @@ class SignatureHelpTest {
   }
 
   @Test def unapplyWithImplicits: Unit = {
-    val signature = S("", Nil, List(List(P("", "Int"))), None)
+    val signature = S("", List(List(P("", "Int"))), None)
     code"""|
            |object Opt:
            |  def unapply[A](using String)(a: Option[A])(using Int) = a
@@ -551,7 +551,7 @@ class SignatureHelpTest {
   }
 
   @Test def unapplyWithMultipleImplicits: Unit = {
-    val signature = S("", Nil, List(List(P("", "Int"))), None)
+    val signature = S("", List(List(P("", "Int"))), None)
     code"""|
            |object Opt:
            |  def unapply[A](using String)(using Int)(a: Option[A]) = a
@@ -568,15 +568,10 @@ class SignatureHelpTest {
 
   /** Implicit parameter lists consisting solely of DummyImplicits are hidden. */
   @Test def hiddenDummyParams: Unit = {
-    val foo1Sig =
-      S("foo1", Nil, List(List(P("param0", "Int"))), Some("Int"))
-    val foo2Sig =
-      S("foo2", Nil, List(List(P("param0", "Int"))), Some("Int"))
-    val foo3Sig =
-      S("foo3", Nil, List(List(P("param0", "Int")),
-        List(P("dummy", "DummyImplicit"))), Some("Int"))
-    val foo4Sig =
-      S("foo4", Nil, List(List(P("param0", "Int")),
+    val foo1Sig = S("foo1", List(List(P("param0", "Int"))), Some("Int"))
+    val foo2Sig = S("foo2", List(List(P("param0", "Int"))), Some("Int"))
+    val foo3Sig = S("foo3", List(List(P("param0", "Int")), List(P("dummy", "DummyImplicit"))), Some("Int"))
+    val foo4Sig = S("foo4", List(List(P("param0", "Int")),
         List(P("x", "Int", isImplicit = true), P("dummy", "DummyImplicit", isImplicit = true))), Some("Int"))
     code"""object O {
              def foo1(param0: Int)(implicit dummy: DummyImplicit): Int = ???
@@ -596,7 +591,7 @@ class SignatureHelpTest {
 
   @Test def singleParam: Unit = {
     val signature =
-      S("foo", Nil, List(List(P("param0", "Int"))), Some("Int"))
+      S("foo", List(List(P("param0", "Int"))), Some("Int"))
     code"""object O {
              def foo(param0: Int): Int = ???
              foo($m1)
@@ -607,7 +602,7 @@ class SignatureHelpTest {
   }
 
   @Test def twoParams: Unit = {
-    val signature = S("foo", Nil, List(List(P("param0", "Int"), P("param1", "String"))), Some("Int"))
+    val signature = S("foo", List(List(P("param0", "Int"), P("param1", "String"))), Some("Int"))
     code"""object O {
              def foo(param0: Int, param1: String): Int = ???
              foo($m1)
@@ -620,8 +615,8 @@ class SignatureHelpTest {
   }
 
   @Test def noMatchingOverload: Unit = {
-    val sig0 = S("foo", Nil, List(List(P("param0", "Int"))), Some("Nothing"))
-    val sig1 = S("foo", Nil, List(List(P("param1", "String"))), Some("Nothing"))
+    val sig0 = S("foo", List(List(P("param0", "Int"))), Some("Nothing"))
+    val sig1 = S("foo", List(List(P("param1", "String"))), Some("Nothing"))
 
     code"""object O {
              def foo(param0: Int): Nothing = ???
@@ -636,8 +631,8 @@ class SignatureHelpTest {
   }
 
   @Test def singleMatchingOverload: Unit = {
-    val sig0 = S("foo", Nil, List(List(P("param0", "Int"), P("param1", "String"))), Some("Nothing"))
-    val sig1 = S("foo", Nil, List(List(P("param0", "String"), P("param1", "Int"))), Some("Nothing"))
+    val sig0 = S("foo", List(List(P("param0", "Int"), P("param1", "String"))), Some("Nothing"))
+    val sig1 = S("foo", List(List(P("param0", "String"), P("param1", "Int"))), Some("Nothing"))
     code"""object O {
              def foo(param0: Int, param1: String): Nothing = ???
              def foo(param0: String, param1: Int): Nothing = ???
@@ -655,9 +650,9 @@ class SignatureHelpTest {
   }
 
   @Test def multipleMatchingOverloads: Unit = {
-    val sig0 = S("foo", Nil, List(List(P("param0", "Int"), P("param1", "Int"))), Some("Nothing"))
-    val sig1 = S("foo", Nil, List(List(P("param0", "Int"), P("param1", "Boolean"))), Some("Nothing"))
-    val sig2 = S("foo", Nil, List(List(P("param0", "String"), P("param1", "Int"))), Some("Nothing"))
+    val sig0 = S("foo", List(List(P("param0", "Int"), P("param1", "Int"))), Some("Nothing"))
+    val sig1 = S("foo", List(List(P("param0", "Int"), P("param1", "Boolean"))), Some("Nothing"))
+    val sig2 = S("foo", List(List(P("param0", "String"), P("param1", "Int"))), Some("Nothing"))
     val sigs = List(sig0, sig1, sig2)
     code"""object O {
              def foo(param0: Int, param1: Int): Nothing = ???
@@ -683,8 +678,8 @@ class SignatureHelpTest {
   }
 
   @Test def ambiguousOverload: Unit = {
-    val sig0 = S("foo", Nil, List(List(P("param0", "String")), List(P("param1", "String"))), Some("Nothing"))
-    val sig1 = S("foo", Nil, List(List(P("param0", "String"))), Some("Nothing"))
+    val sig0 = S("foo", List(List(P("param0", "String")), List(P("param1", "String"))), Some("Nothing"))
+    val sig1 = S("foo", List(List(P("param0", "String"))), Some("Nothing"))
     code"""object O {
              def foo(param0: String)(param1: String): Nothing = ???
              def foo(param0: String): Nothing = ???
@@ -700,7 +695,6 @@ class SignatureHelpTest {
   @Test def multipleParameterLists: Unit = {
     val signature =
       S("foo",
-        Nil,
         List(
           List(P("param0", "Int"), P("param1", "Int")),
           List(P("param2", "Int")),
@@ -725,7 +719,6 @@ class SignatureHelpTest {
   @Test def implicitParams: Unit = {
     val signature =
       S("foo",
-        Nil,
         List(
           List(P("param0", "Int"), P("param1", "Int")),
           List(P("param2", "Int", isImplicit = true))
@@ -745,8 +738,8 @@ class SignatureHelpTest {
   @Test def typeParameters: Unit = {
     val signature =
       S("foo",
-        List("M[X]", "T[Z] <: M[Z]", "U >: T"),
         List(
+          List(TP("M[X]"), TP("T[Z] <: M[Z]"), TP("U >: T")),
           List(P("p0", "M[Int]"), P("p1", "T[Int]"), P("p2", "U"))
         ),
         Some("Int"))
@@ -760,7 +753,6 @@ class SignatureHelpTest {
   @Test def constructorCall: Unit = {
     val signature =
       S("Foo",
-        Nil,
         List(
           List(P("x", "Int"), P("y", "String")),
           List(P("z", "String"))
@@ -780,7 +772,6 @@ class SignatureHelpTest {
   @Test def overloadedConstructorCall: Unit = {
     val sig0 =
       S("Foo",
-        Nil,
         List(
           List(P("x", "Int"), P("y", "String")),
           List(P("z", "Int"))
@@ -788,7 +779,6 @@ class SignatureHelpTest {
         None)
     val sig1 =
       S("Foo",
-        Nil,
         List(
           List(P("x", "Int"), P("y", "Int"))
         ),
@@ -810,8 +800,8 @@ class SignatureHelpTest {
 
   @Test def constructorCallDoc: Unit = {
     val signatures = List(
-      S("Foo", Nil, List(List(P("x", "Int", Some("An int")), P("y", "String", Some("A string")))), None, Some("A Foo")),
-      S("Foo", Nil, List(List(P("z", "Boolean", Some("A boolean")), P("foo", "Foo", Some("A Foo")))), None, Some("An alternative constructor for Foo"))
+      S("Foo", List(List(P("x", "Int", Some("An int")), P("y", "String", Some("A string")))), None, Some("A Foo")),
+      S("Foo", List(List(P("z", "Boolean", Some("A boolean")), P("foo", "Foo", Some("A Foo")))), None, Some("An alternative constructor for Foo"))
     )
 
     code"""/**
@@ -850,8 +840,8 @@ class SignatureHelpTest {
   @Test def classTypeParameters: Unit = {
     val signature =
       S("Foo",
-        List("M[X]", "T[Z] <: M[Z]", "U"),
         List(
+          List(TP("M[X]"), TP("T[Z] <: M[Z]"), TP("U")),
           List(P("p0", "M[Int]"), P("p1", "T[Int]"), P("p2", "U")),
           List(P("p3", "Int"))
         ),
@@ -874,7 +864,7 @@ class SignatureHelpTest {
              /** Hello, world! */ def foo(param0: Int): Int = 0
              foo($m1)
            }"""
-      .signatureHelp(m1, List(S("foo", Nil, List(List(P("param0", "Int"))), Some("Int"), Some("Hello, world!"))), None, 0)
+      .signatureHelp(m1, List(S("foo", List(List(P("param0", "Int"))), Some("Int"), Some("Hello, world!"))), None, 0)
   }
 
   @Test def showParamDoc: Unit = {
@@ -890,7 +880,7 @@ class SignatureHelpTest {
           |  buzz($m1)
           |}"""
       .signatureHelp(m1, List(
-        S("buzz", Nil, List(List(
+        S("buzz", List(List(
           P("fizz", "Int", Some("The fizz to buzz")),
           P("bar", "Int", Some("Buzzing limit"))
           )), Some("Int"), Some("Buzzes a fizz up to bar"))
@@ -899,9 +889,9 @@ class SignatureHelpTest {
 
   @Test def nestedApplySignatures: Unit = {
     val signatures = (1 to 5).map { i =>
-      S(s"foo$i", Nil, List(List(P("x", "Int"))), Some("Int"))
+      S(s"foo$i", List(List(P("x", "Int"))), Some("Int"))
     }
-    val booSignature = S(s"boo", Nil, List(List(P("x", "Int"), P("y", "Int"))), Some("Int"))
+    val booSignature = S(s"boo", List(List(P("x", "Int"), P("y", "Int"))), Some("Int"))
     code"""|object O:
            |  def foo1(x: Int): Int = ???
            |  def foo2(x: Int): Int = ???
@@ -920,8 +910,8 @@ class SignatureHelpTest {
   }
 
   @Test def multipleNestedApplySignatures: Unit = {
-    val simpleSignature = S(s"simpleFoo", Nil, List(List(P("x", "Int"))), Some("Int"))
-    val complicatedSignature = S(s"complicatedFoo", Nil, List(List(P("x", "Int"), P("y", "Int"), P("z", "Int"))), Some("Int"))
+    val simpleSignature = S(s"simpleFoo", List(List(P("x", "Int"))), Some("Int"))
+    val complicatedSignature = S(s"complicatedFoo", List(List(P("x", "Int"), P("y", "Int"), P("z", "Int"))), Some("Int"))
     code"""|object O:
            |  def simpleFoo(x: Int): Int = ???
            |  def complicatedFoo(x: Int, y: Int, z: Int): Int = ???
@@ -947,7 +937,7 @@ class SignatureHelpTest {
   }
 
   @Test def noHelpSignatureWithPositionedOnName: Unit = {
-    val signature = S(s"foo", Nil, List(List(P("x", "Int"))), Some("Int"))
+    val signature = S(s"foo", List(List(P("x", "Int"))), Some("Int"))
     code"""|object O:
            |  def foo(x: Int): Int = ???
            |  f${m1}oo(${m2})"""
@@ -956,7 +946,7 @@ class SignatureHelpTest {
   }
 
   @Test def instantiatedTypeVarInOldExtensionMethods: Unit = {
-    val signature = S(s"test", Nil, List(List(P("x", "Int"))), Some("List[Int]"))
+    val signature = S(s"test", List(List(P("x", "Int"))), Some("List[Int]"))
     code"""|object O:
            |  implicit class TypeVarTest[T](xs: List[T]):
            |    def test(x: T): List[T] = ???

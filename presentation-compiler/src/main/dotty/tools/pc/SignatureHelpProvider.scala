@@ -70,61 +70,70 @@ object SignatureHelpProvider:
       signature: Signatures.Signature,
       isJavaSymbol: Boolean
   ): Option[Signatures.Signature] =
-    val allParams = info.parameters().nn.asScala
-    def updateParams(
-        params: List[Signatures.Param],
-        index: Int
-    ): List[Signatures.Param] =
+    val methodParams = info.parameters().nn.asScala
+    val typeParams = info.typeParameters().nn.asScala
+
+    def updateParams(params: List[Signatures.Param], typeParamIndex: Int, methodParamIndex: Int): List[Signatures.Param] =
       params match
-        case Nil => Nil
-        case head :: tail =>
-          val rest = updateParams(tail, index + 1)
-          allParams.lift(index) match
+        case (head: Signatures.MethodParam) :: tail =>
+          val rest = updateParams(tail, typeParamIndex, methodParamIndex + 1)
+          methodParams.lift(methodParamIndex) match
             case Some(paramDoc) =>
               val newName =
                 if isJavaSymbol && head.name.startsWith("x$") then
                   paramDoc.nn.displayName()
                 else head.name
-              head.copy(
-                doc = Some(paramDoc.docstring.nn),
-                name = newName.nn
-              ) :: rest
+              head.copy(name = newName.nn, doc = Some(paramDoc.docstring.nn)) :: rest
             case _ => head :: rest
+        case (head: Signatures.TypeParam) :: tail =>
+          val rest = updateParams(tail, typeParamIndex + 1, methodParamIndex)
+          typeParams.lift(typeParamIndex) match
+            case Some(paramDoc) =>
+              head.copy(doc = Some(paramDoc.docstring.nn)) :: rest
+            case _ => head :: rest
+        case _ => Nil
 
     def updateParamss(
         params: List[List[Signatures.Param]],
-        index: Int
+        typeParamIndex: Int,
+        methodParamIndex: Int
     ): List[List[Signatures.Param]] =
       params match
         case Nil => Nil
         case head :: tail =>
-          val updated = updateParams(head, index)
-          updated :: updateParamss(tail, index + head.size)
-    val updatedParams = updateParamss(signature.paramss, 0)
+          val updated = updateParams(head, typeParamIndex, methodParamIndex)
+          val (nextTypeParamIndex, nextMethodParamIndex) = head match
+            case (_: Signatures.MethodParam) :: _ => (typeParamIndex, methodParamIndex + head.size)
+            case (_: Signatures.TypeParam) :: _ => (typeParamIndex + head.size, methodParamIndex)
+            case _ => (typeParamIndex, methodParamIndex)
+          updated :: updateParamss(tail, nextTypeParamIndex, nextMethodParamIndex)
+    val updatedParams = updateParamss(signature.paramss, 0, 0)
     Some(signature.copy(doc = Some(info.docstring().nn), paramss = updatedParams))
   end withDocumentation
 
   private def signatureToSignatureInformation(
       signature: Signatures.Signature
   ): l.SignatureInformation =
-    val tparams = signature.tparams.map(Signatures.Param("", _))
-    val paramInfoss =
-      (tparams ::: signature.paramss.flatten).map(paramToParameterInformation)
+    val paramInfoss = (signature.paramss.flatten).map(paramToParameterInformation)
     val paramLists =
-      if signature.paramss.forall(_.isEmpty) && tparams.nonEmpty then ""
-      else
-        signature.paramss
-          .map { paramList =>
-            val labels = paramList.map(_.show)
-            val prefix = if paramList.exists(_.isImplicit) then "using " else ""
-            labels.mkString(prefix, ", ", "")
-          }
-          .mkString("(", ")(", ")")
-    val tparamsLabel =
-      if signature.tparams.isEmpty then ""
-      else signature.tparams.mkString("[", ", ", "]")
+      signature.paramss
+        .map { paramList =>
+          val labels = paramList.map(_.show)
+          val isImplicit = paramList.exists:
+            case p: Signatures.MethodParam => p.isImplicit
+            case _ => false
+          val prefix = if isImplicit then "using " else ""
+          val isTypeParams = paramList.forall(_.isInstanceOf[Signatures.TypeParam]) && paramList.nonEmpty
+          val wrap: String => String = label => if isTypeParams then
+            s"[$label]"
+          else
+            s"($label)"
+          wrap(labels.mkString(prefix, ", ", ""))
+        }.mkString
+
+
     val returnTypeLabel = signature.returnType.map(t => s": $t").getOrElse("")
-    val label = s"${signature.name}$tparamsLabel$paramLists$returnTypeLabel"
+    val label = s"${signature.name}$paramLists$returnTypeLabel"
     val documentation = signature.doc.map(markupContent)
     val sig = new l.SignatureInformation(label)
     sig.setParameters(paramInfoss.asJava)
