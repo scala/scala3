@@ -33,7 +33,7 @@ import language.experimental.captureChecking
   *  @define willNotTerminateInf
   */
 @deprecatedInheritance("HashMap will be made final; use .withDefault for the common use case of computing a default value", "2.13.0")
-class HashMap[K,  V](initialCapacity: Int, loadFactor: Double)
+class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
   extends AbstractMap[K, V]
     with MapOps[K, V, HashMap, HashMap[K, V]]
     with StrictOptimizedIterableOps[(K, V), Iterable, HashMap[K, V]]
@@ -597,17 +597,17 @@ class HashMap[K,  V](initialCapacity: Int, loadFactor: Double)
 @SerialVersionUID(3L)
 object HashMap extends MapFactory[HashMap] {
 
-  def empty[K,  V]: HashMap[K, V] = new HashMap[K, V]
+  def empty[K, V]: HashMap[K, V] = new HashMap[K, V]
 
-  def from[K,  V](it: collection.IterableOnce[(K, V)]^): HashMap[K, V] = {
+  def from[K, V](it: collection.IterableOnce[(K, V)]^): HashMap[K, V] = {
     val k = it.knownSize
     val cap = if(k > 0) ((k + 1).toDouble / defaultLoadFactor).toInt else defaultInitialCapacity
     new HashMap[K, V](cap, defaultLoadFactor).addAll(it)
   }
 
-  def newBuilder[K,  V]: Builder[(K, V), HashMap[K, V]] = newBuilder(defaultInitialCapacity, defaultLoadFactor)
+  def newBuilder[K, V]: Builder[(K, V), HashMap[K, V]] = newBuilder(defaultInitialCapacity, defaultLoadFactor)
 
-  def newBuilder[K,  V](initialCapacity: Int, loadFactor: Double): Builder[(K, V), HashMap[K, V]] =
+  def newBuilder[K, V](initialCapacity: Int, loadFactor: Double): Builder[(K, V), HashMap[K, V]] =
     new GrowableBuilder[(K, V), HashMap[K, V]](new HashMap[K, V](initialCapacity, loadFactor)) {
       override def sizeHint(size: Int) = elems.sizeHint(size)
     }
@@ -619,7 +619,7 @@ object HashMap extends MapFactory[HashMap] {
   final def defaultInitialCapacity: Int = 16
 
   @SerialVersionUID(3L)
-  private final class DeserializationFactory[K,  V](val tableLength: Int, val loadFactor: Double) extends Factory[(K, V), HashMap[K, V]] with Serializable {
+  private final class DeserializationFactory[K, V](val tableLength: Int, val loadFactor: Double) extends Factory[(K, V), HashMap[K, V]] with Serializable {
     def fromSpecific(it: IterableOnce[(K, V)]^): HashMap[K, V] = new HashMap[K, V](tableLength, loadFactor).addAll(it)
     def newBuilder: Builder[(K, V), HashMap[K, V]] = HashMap.newBuilder(tableLength, loadFactor)
   }

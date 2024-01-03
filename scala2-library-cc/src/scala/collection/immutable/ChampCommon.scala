@@ -113,7 +113,6 @@ private[immutable] abstract class ChampBaseIterator[T <: Node[T]] {
   // ChampBaseReverseIterator and in convert.impl.ChampStepperBase.
   // If you change this code, check those also in case they also
   // need to be modified.
-
   protected var currentValueCursor: Int = 0
   protected var currentValueLength: Int = 0
   protected var currentValueNode: T = _

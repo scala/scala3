@@ -87,6 +87,9 @@ object Properties {
 
   /** If we are using the scala-library TASTy jar */
   def usingScalaLibraryTasty: Boolean = scalaLibraryTasty.isDefined
+  /** If we are using the scala-library TASTy jar */
+
+  def usingScalaLibraryCCTasty: Boolean = scalaLibraryTasty.exists(_.contains("scala2-library-cc-tasty"))
 
   /** scala-asm jar */
   def scalaAsm: String = sys.props("dotty.tests.classes.scalaAsm")
