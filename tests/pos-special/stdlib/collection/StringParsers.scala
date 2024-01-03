@@ -167,6 +167,7 @@ private[scala] object StringParsers {
       else None
     }
   }
+
   //floating point
   final def checkFloatFormat(format: String): Boolean = {
     //indices are tracked with a start index which points *at* the first index
@@ -192,6 +193,7 @@ private[scala] object StringParsers {
                              else i
       rec(from)
     }
+
 
     def isHexFloatLiteral(startIndex: Int, endIndex: Int): Boolean = {
       def isHexDigit(ch: Char) = ((ch >= '0' && ch <= '9') ||
@@ -230,6 +232,7 @@ private[scala] object StringParsers {
       val pIndex = format.indexWhere(ch => ch == 'p' || ch == 'P', startIndex)
       (pIndex <= endIndex) && prefixOK(startIndex, pIndex) && postfixOK(pIndex + 1, endIndex)
     }
+
     def isDecFloatLiteral(startIndex: Int, endIndex: Int): Boolean = {
       //invariant: endIndex > startIndex
 
@@ -276,6 +279,7 @@ private[scala] object StringParsers {
     //count 0x00 to 0x20 as "whitespace", and nothing else
     val unspacedStart = format.indexWhere(ch => ch.toInt > 0x20)
     val unspacedEnd = format.lastIndexWhere(ch => ch.toInt > 0x20) + 1
+
     if (unspacedStart == -1 || unspacedStart >= unspacedEnd || unspacedEnd <= 0) false
     else {
       //all formats can have a sign
@@ -302,6 +306,7 @@ private[scala] object StringParsers {
       }
     }
   }
+
   @inline
   def parseFloat(from: String): Option[Float] =
     if (checkFloatFormat(from)) Some(java.lang.Float.parseFloat(from))
