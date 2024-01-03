@@ -148,7 +148,7 @@ jobs:
         run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryTasty ;scala3-bootstrapped/testCompilation i5; scala3-bootstrapped/testCompilation tests/run/typelevel-peano.scala; scala3-bootstrapped/testOnly dotty.tools.backend.jvm.DottyBytecodeTests" # only test a subset of test to avoid doubling the CI execution time
 
       - name: Test with Scala 2 library with CC TASTy (fast)
-        run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryCCTasty ;scala2-library-tasty/compile" # TODO test all the test configurations in non-CC library (currently disabled due to bug while loading the library)
+        run: ./project/scripts/sbt "scala2-library-cc/compile; scala2-library-cc-tasty/compile" # TODO test all the test configurations in non-CC library (currently disabled due to bug while loading the library)
 
   test_scala2_library_tasty:
     runs-on: [self-hosted, Linux]
