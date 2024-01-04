@@ -668,17 +668,15 @@ object SpaceEngine {
   }
 
   extension (tp: Type)
-    /** A type is decomposable to children if it has a simple kind, it's sealed,
-      * abstract (or a trait) - so its not a sealed concrete class that can be instantiated on its own,
-      * has no anonymous children, which we wouldn't be able to name as counter-examples,
-      * but does have children.
-      *
-      * A sealed trait with no subclasses is considered not decomposable and thus is treated as an opaque type.
-      * A sealed trait with subclasses that then get removed after `refineUsingParent`, decomposes to the empty list.
-      * So that's why we consider whether a type has children. */
     def isDecomposableToChildren(using Context): Boolean =
-      val cls = tp.classSymbol
-      tp.hasSimpleKind && cls.is(Sealed) && cls.isOneOf(AbstractOrTrait) && !cls.hasAnonymousChild && cls.children.nonEmpty
+      val sym = tp.typeSymbol  // e.g. Foo[List[Int]] = type Foo (i19275)
+      val cls = tp.classSymbol // e.g. Foo[List[Int]] = class List
+      tp.hasSimpleKind                  // can't decompose higher-kinded types
+        && cls.is(Sealed)
+        && cls.isOneOf(AbstractOrTrait) // ignore sealed non-abstract classes
+        && !cls.hasAnonymousChild       // can't name anonymous classes as counter-examples
+        && cls.children.nonEmpty        // can't decompose without children
+        && !sym.isOpaqueAlias           // can't instantiate subclasses to conform to an opaque type (i19275)
 
   val ListOfNoType    = List(NoType)
   val ListOfTypNoType = ListOfNoType.map(Typ(_, decomposed = true))

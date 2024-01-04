@@ -197,7 +197,7 @@ object Types extends TypeUtils {
      */
     def isRef(sym: Symbol, skipRefined: Boolean = true)(using Context): Boolean = this match {
       case this1: TypeRef =>
-        this1.info match { // see comment in Namer#typeDefSig
+        this1.info match { // see comment in Namer#TypeDefCompleter#typeSig
           case TypeAlias(tp) => tp.isRef(sym, skipRefined)
           case _ => this1.symbol eq sym
         }
