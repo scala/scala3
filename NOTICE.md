@@ -1,6 +1,6 @@
 Dotty (https://dotty.epfl.ch)
-Copyright 2012-2023 EPFL
-Copyright 2012-2023 Lightbend, Inc.
+Copyright 2012-2024 EPFL
+Copyright 2012-2024 Lightbend, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License"):
 http://www.apache.org/licenses/LICENSE-2.0
