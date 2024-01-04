@@ -177,11 +177,25 @@ We can enable this library in the build using the SBT setting `useScala2LibraryT
 
 ```
 $ sbt
-> set ThisBuild/Build.useScala2LibraryTasty := true
+> set ThisBuild/Build.scala2Library := Build.Scala2LibraryTasty
 > scala3-compiler-bootstrapped/scalac MyFile.scala
 > scala3-compiler-bootstrapped/test
 > scala3-compiler-bootstrapped/testCompilation
 ```
+
+By default `scala2Library` is set to `Scala2LibraryJar`. This setting can be set to stop using the Scala 2 library TASTy.
+```
+> set ThisBuild/Build.scala2Library := Build.Scala2LibraryJar
+```
+
+#### Scala 2 library with CC TASTy tests
+These follow the same structure as the _Scala 2 library TASTy tests_ but add captured checked signatures to the library. The library is compiled in `scala2-library-cc` (instead of `scala2-library-bootstrapped`) and `scala2-library-cc-tasty` (instead of `scala2-library-cc-tasty`).
+
+We can also enable this library in the build using the SBT setting `useScala2LibraryTasty`.
+```
+> set ThisBuild/Build.scala2Library := Build.Scala2LibraryCCTasty
+```
+
 
 ### From TASTy tests
 
