@@ -535,7 +535,7 @@ object SpaceEngine {
       case ext: ProdSeqMatch   => ext.productSelectorTypes.init ::: defn.ListType.appliedTo(ext.elemTp) :: Nil
       case x @ NoExtractor     => unreachable(x)
 
-    sig.map(_.annotatedToRepeated)
+    sig
   }
 
   /** Whether the extractor covers the given type */
