@@ -355,11 +355,11 @@ object PatternMatcher {
         val ext = Extractor(unapplyResult, unapp.symbol.name, args.length)
 
         if isSyntheticScala2Case(unapp.symbol)
-          && caseAccessors.length == args.length // eg. case Some(a, b)
+          && caseAccessors.length == args.length // eg. guard against `case Some(a, b)`
         then
-          val isGenericTuple = defn.isTupleClass(caseClass) &&
-            !defn.isTupleNType(tree.tpe match { case tp: OrType => tp.join case tp => tp }) // widen even hard unions, to see if it's a union of tuples
-          val components = if isGenericTuple
+          // If extracting with TupleN, while operating on a scrutinee which is not a TupleN, use Tuples.apply
+          val needsTupleApply = defn.isTupleClass(caseClass) && !defn.isTupleClass(scrutinee.info.classSymbol)
+          val components = if needsTupleApply
             then caseAccessors.indices.toList.map(ref(scrutinee).tupleApply)
             else caseAccessors.map(ref(scrutinee).select)
           matchArgsPlan(components, args, onSuccess)
