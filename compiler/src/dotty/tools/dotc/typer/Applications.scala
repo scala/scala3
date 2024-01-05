@@ -1446,7 +1446,7 @@ trait Applications extends Compatibility {
             unapplyArgType
 
         val dummyArg = dummyTreeOfType(ownType)
-        val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
+        val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))(using ctx.addMode(Mode.NoInline))
         def unapplyImplicits(unapp: Tree): List[Tree] = {
           val res = List.newBuilder[Tree]
           def loop(unapp: Tree): Unit = unapp match {
