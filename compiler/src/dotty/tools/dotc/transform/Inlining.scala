@@ -90,10 +90,6 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
           else super.transform(tree)
         case _: Typed | _: Block =>
           super.transform(tree)
-        case _ if Inlines.needsInlining(tree) =>
-          val tree1 = super.transform(tree)
-          if tree1.tpe.isError then tree1
-          else Inlines.inlineCall(tree1)
         case _: PackageDef =>
           super.transform(tree) match
             case tree1: PackageDef  =>
@@ -106,6 +102,15 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
             case tree1 => tree1
         case _ =>
           if tree.isType then tree
+          else if Inlines.needsInlining(tree) then
+            tree match
+              case tree: UnApply =>
+                val fun1 = Inlines.inlinedUnapplyFun(tree.fun)
+                super.transform(cpy.UnApply(tree)(fun = fun1))
+              case _ =>
+                val tree1 = super.transform(tree)
+                if tree1.tpe.isError then tree1
+                else Inlines.inlineCall(tree1)
           else super.transform(tree)
     }
   }
