@@ -164,14 +164,7 @@ to load the TASTy and the runtime to load the original classfiles.
 
 The library is compiled in `scala2-library-bootstrapped` with TASTy and classfiles.
 These classfiles should not be used. The `scala2-library-tasty` project repackages the
-JAR `scala2-library-bootstrapped` to only keep TASTy files. The `scala2-library-tasty-tests` provides some basic tests using the library TASTy JAR.
-
-```
-$ sbt
-> scala2-library-tasty/compile
-> scala2-library-tasty-tests/run
-> scala2-library-tasty-tests/test
-```
+JAR `scala2-library-bootstrapped` to only keep TASTy files.
 
 We can enable this library in the build using the SBT setting `useScala2LibraryTasty`. This setting can only be used by bootstrapped compiler tests and is currently only supported for `test` (or `testCompilation`) and `scalac` (or `run`).
 
