@@ -34,6 +34,7 @@ import Denotations.SingleDenotation
 import annotation.threadUnsafe
 
 import scala.util.control.NonFatal
+import dotty.tools.dotc.inlines.Inlines
 
 object Applications {
   import tpd.*
@@ -1408,6 +1409,36 @@ trait Applications extends Compatibility {
           }
       }
 
+    /** Inlines the unapply function before the dummy argument
+     *
+     *  A call `P.unapply[...](using l1, ..)(`dummy`)(using t1, ..)` becomes
+     *  ```
+     *  {
+     *    class $anon {
+     *      def unapply(s: S)(using t1: T1, ..): R =
+     *        ... // inlined code for: P.unapply[...](using l1, ..)(s)(using t1, ..)
+     *    }
+     *    new $anon
+     *  }.unapply(`dummy`)(using t1, ..)
+     *  ```
+     */
+    def inlinedUnapplyFnAndApp(dummyArg: Tree, unapplyAppCall: Tree): (Tree, Tree) =
+      def rec(unapp: Tree): (Tree, Tree) =
+        unapp match
+          case DynamicUnapply(_) =>
+            report.error(em"Structural unapply is not supported", unapplyFn.srcPos)
+            (unapplyFn, unapplyAppCall)
+          case Apply(fn, `dummyArg` :: Nil) =>
+            val inlinedUnapplyFn = Inlines.inlinedUnapplyFun(fn)
+            (inlinedUnapplyFn, inlinedUnapplyFn.appliedToArgs(`dummyArg` :: Nil))
+          case Apply(fn, args) =>
+            val (fn1, app) = rec(fn)
+            (fn1, tpd.cpy.Apply(unapp)(app, args))
+
+      if unapplyAppCall.symbol.isAllOf(Transparent | Inline) then rec(unapplyAppCall)
+      else (unapplyFn, unapplyAppCall)
+    end inlinedUnapplyFnAndApp
+
     /** Add a `Bind` node for each `bound` symbol in a type application `unapp` */
     def addBinders(unapp: Tree, bound: List[Symbol]) = unapp match {
       case TypeApply(fn, args) =>
@@ -1446,7 +1477,11 @@ trait Applications extends Compatibility {
             unapplyArgType
 
         val dummyArg = dummyTreeOfType(ownType)
-        val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
+        val (newUnapplyFn, unapplyApp) =
+          val unapplyAppCall = withMode(Mode.NoInline):
+            typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
+          inlinedUnapplyFnAndApp(dummyArg, unapplyAppCall)
+
         def unapplyImplicits(unapp: Tree): List[Tree] = {
           val res = List.newBuilder[Tree]
           def loop(unapp: Tree): Unit = unapp match {
@@ -1475,7 +1510,7 @@ trait Applications extends Compatibility {
             List.fill(argTypes.length - args.length)(WildcardType)
         }
         val unapplyPatterns = bunchedArgs.lazyZip(argTypes) map (typed(_, _))
-        val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns), ownType)
+        val result = assignType(cpy.UnApply(tree)(newUnapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns), ownType)
         unapp.println(s"unapply patterns = $unapplyPatterns")
         if (ownType.stripped eq selType.stripped) || ownType.isError then result
         else tryWithTypeTest(Typed(result, TypeTree(ownType)), selType)
