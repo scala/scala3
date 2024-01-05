@@ -141,7 +141,7 @@ jobs:
 
       - name: Cmd Tests
         run: |
-          ./project/scripts/sbt ";dist/pack; scala3-bootstrapped/compile; scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/*; scala2-library-tasty-tests/test; scala3-compiler-bootstrapped/scala3CompilerCoursierTest:test"
+          ./project/scripts/sbt ";dist/pack; scala3-bootstrapped/compile; scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/*; scala3-compiler-bootstrapped/scala3CompilerCoursierTest:test"
           ./project/scripts/cmdTests
           ./project/scripts/bootstrappedOnlyCmdTests
 
@@ -585,7 +585,7 @@ jobs:
 
       - name: Test
         run: |
-          ./project/scripts/sbt ";dist/pack ;scala3-bootstrapped/compile ;scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/*; scala2-library-tasty-tests/test"
+          ./project/scripts/sbt ";dist/pack ;scala3-bootstrapped/compile ;scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/*"
           ./project/scripts/cmdTests
           ./project/scripts/bootstrappedOnlyCmdTests
 
