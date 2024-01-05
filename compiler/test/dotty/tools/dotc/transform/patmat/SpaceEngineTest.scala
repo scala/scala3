@@ -27,12 +27,12 @@ class SpaceEngineTest:
     val a = Prod(tp, unappTp, params)
     val b = Empty
 
-    val res1 = isSubspace(a, b)
+    val res1 = a.isSubspace(b)
 
-    val a2   = simplify(a)
-    val b2   = simplify(b)
+    val a2   = a.simplify
+    val b2   = b.simplify
     val rem1 = minus(a2, b2)
-    val rem2 = simplify(rem1)
+    val rem2 = rem1.simplify
     val res2 = rem2 == Empty
 
     assertEquals(
@@ -46,19 +46,12 @@ class SpaceEngineTest:
           |simplify(rem1)                      == Empty
           |rem2                                == Empty
           |
-          |a    = ${show(a)}
-          |b    = ${show(b)}
-          |a2   = ${show(a2)}
-          |b2   = ${show(b2)}
-          |rem1 = ${show(rem1)}
-          |rem2 = ${show(rem2)}
-          |
-          |a    = ${a.toString}
-          |b    = ${b.toString}
-          |a2   = ${a2.toString}
-          |b2   = ${b2.toString}
-          |rem1 = ${rem1.toString}
-          |rem2 = ${rem2.toString}
+          |a    = $a
+          |b    = $b
+          |a2   = $a2
+          |b2   = $b2
+          |rem1 = $rem1
+          |rem2 = $rem2
           |
           |""".stripMargin, res1, res2)
   }
