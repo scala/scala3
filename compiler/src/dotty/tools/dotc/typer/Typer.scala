@@ -3115,7 +3115,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *  @param locked      the set of type variables of the current typer state that cannot be interpolated
    *                     at the present time
    */
-  def typedUnadapted(initTree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree = {
+  def typedUnadapted(initTree: untpd.Tree, pt: Type, locked: TypeVars, fromConv: Boolean)(using Context): Tree = {
     record("typedUnadapted")
     val xtree = expanded(initTree)
     xtree.removeAttachment(TypedAhead) match {
@@ -3244,7 +3244,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               case xtree => typedUnnamed(xtree)
 
           val unsimplifiedType = result.tpe
-          simplify(result, pt, locked)
+          simplify(result, pt, locked, fromConv)
           result.tpe.stripTypeVar match
             case e: ErrorType if !unsimplifiedType.isErroneous => errorTree(xtree, e.msg, xtree.srcPos)
             case _ => result
@@ -3252,18 +3252,22 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           handleTypeError(ex)
      }
   }
-
+  def typedUnadapted(initTree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
+    typedUnadapted(initTree, pt, locked, fromConv = false)
   /** Interpolate and simplify the type of the given tree. */
-  protected def simplify(tree: Tree, pt: Type, locked: TypeVars)(using Context): tree.type =
+  protected def simplify(tree: Tree, pt: Type, locked: TypeVars, fromConv: Boolean)(using Context): tree.type =
     if !tree.denot.isOverloaded then // for overloaded trees: resolve overloading before simplifying
       if !tree.tpe.widen.isInstanceOf[MethodOrPoly] // wait with simplifying until method is fully applied
          || tree.isDef                              // ... unless tree is a definition
       then
-        interpolateTypeVars(tree, pt, locked)
+        interpolateTypeVars(tree, pt, locked, fromConv)
         val simplified = tree.tpe.simplified
         if !MatchType.thatReducesUsingGadt(tree.tpe) then // needs a GADT cast. i15743
           tree.overwriteType(simplified)
     tree
+
+  protected def simplify(tree: Tree, pt: Type, locked: TypeVars)(using Context): tree.type =
+    simplify(tree, pt, locked, fromConv = false)
 
   protected def makeContextualFunction(tree: untpd.Tree, pt: Type)(using Context): Tree = {
     val defn.FunctionOf(formals, _, true) = pt.dropDependentRefinement: @unchecked
@@ -3319,6 +3323,20 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       else if ctx.run.nn.isCancelled then
         tree.withType(WildcardType)
       else adapt(typedUnadapted(tree, pt, locked), pt, locked)
+    }
+
+  //TODO: unclear to me why if I add `fromConv` to `typed` everything is falling apart
+  def typed_fromConv(tree: untpd.Tree, pt: Type, locked: TypeVars, fromConv: Boolean)(using Context): Tree =
+    trace(i"typing $tree, pt = $pt", typr, show = true) {
+      record(s"typed $getClass")
+      record("typed total")
+      if ctx.phase.isTyper then
+        assertPositioned(tree)
+      if tree.source != ctx.source && tree.source.exists then
+        typed(tree, pt, locked)(using ctx.withSource(tree.source))
+      else if ctx.run.nn.isCancelled then
+        tree.withType(WildcardType)
+      else adapt(typedUnadapted(tree, pt, locked, fromConv), pt, locked)
     }
 
   def typed(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree =

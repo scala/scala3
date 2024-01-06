@@ -1157,9 +1157,10 @@ trait Implicits:
                       locked)),
                   nme.apply)
               else untpdGenerated
-            typed(
+            val fromConv = ref.symbol.is(Inline) && ref.symbol.isOldStyleImplicitConversion()
+            typed_fromConv(
               untpd.Apply(untpdConv, untpd.TypedSplice(argument) :: Nil),
-              pt, locked)
+              pt, locked, fromConv)
           }
           pt match
             case selProto @ SelectionProto(selName: TermName, mbrType, _, _, nameSpan) =>

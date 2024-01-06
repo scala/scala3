@@ -628,7 +628,7 @@ trait Inferencing { this: Typer =>
    *  Then `Y` also occurs co-variantly in `T` because it needs to be minimized in order to constrain
    *  `T` the least. See `variances` for more detail.
    */
-  def interpolateTypeVars(tree: Tree, pt: Type, locked: TypeVars)(using Context): tree.type =
+  def interpolateTypeVars(tree: Tree, pt: Type, locked: TypeVars, fromConv: Boolean = false)(using Context): tree.type =
     val state = ctx.typerState
 
     // Note that some variables in `locked` might not be in `state.ownedVars`
@@ -767,7 +767,15 @@ trait Inferencing { this: Typer =>
           /** Try to instantiate `tvs`, return any suspended type variables */
           def tryInstantiate(tvs: ToInstantiate): ToInstantiate = tvs match
             case (hd @ (tvar, v)) :: tvs1 =>
-              val fromBelow = v == 1 || (v == 0 && tvar.hasLowerBound)
+              val param = tvar.origin
+              val paramName = param.binder.typeParams(param.paramNum).paramName
+
+              val fromBelow = pt match
+                case AppliedType(tycon, _) if fromConv &&
+                  tycon.typeParams.exists{tp => tp.paramName == paramName && tp.paramVarianceSign > 0} =>
+                  false
+                case _ =>
+                  v == 1 || (v == 0 && tvar.hasLowerBound)
               typr.println(
                 i"interpolate${if v == 0 then " non-occurring" else ""} $tvar in $state in $tree: $tp, fromBelow = $fromBelow, $constraint")
               if tvar.isInstantiated then
