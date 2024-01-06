@@ -1645,6 +1645,8 @@ object Types extends TypeUtils {
           pre.refinedInfo match {
             case tp: AliasingBounds =>
               if (pre.refinedName ne name) loop(pre.parent) else tp.alias
+            case tp: SingletonType =>
+              if pre.refinedName ne name then loop(pre.parent) else tp
             case _ =>
               loop(pre.parent)
           }
@@ -2676,7 +2678,7 @@ object Types extends TypeUtils {
      *  refinement type `T { X = U; ... }`
      */
     def reduceProjection(using Context): Type =
-      if (isType) {
+      if (isType || true) {
         val reduced = prefix.lookupRefined(name)
         if (reduced.exists) reduced else this
       }
@@ -2765,14 +2767,14 @@ object Types extends TypeUtils {
      *     (S | T)#A --> S#A | T#A
      */
     def derivedSelect(prefix: Type)(using Context): Type =
-      if (prefix eq this.prefix) this
-      else if (prefix.isExactlyNothing) prefix
+      if prefix eq this.prefix then this
+      else if prefix.isExactlyNothing then prefix
       else {
+        val res =
+          if (isType && currentValidSymbol.isAllOf(ClassTypeParam)) argForParam(prefix)
+          else prefix.lookupRefined(name)
+        if (res.exists) return res
         if (isType) {
-          val res =
-            if (currentValidSymbol.isAllOf(ClassTypeParam)) argForParam(prefix)
-            else prefix.lookupRefined(name)
-          if (res.exists) return res
           if (Config.splitProjections)
             prefix match {
               case prefix: AndType =>
@@ -6563,7 +6565,7 @@ object Types extends TypeUtils {
       record(s"foldOver $getClass")
       record(s"foldOver total")
       tp match {
-      case tp: TypeRef =>
+      case tp: NamedType =>
         if stopBecauseStaticOrLocal(tp) then x
         else
           val tp1 = tp.prefix.lookupRefined(tp.name)
@@ -6592,8 +6594,8 @@ object Types extends TypeUtils {
         variance = saved
         this(y, restpe)
 
-      case tp: TermRef =>
-        if stopBecauseStaticOrLocal(tp) then x else applyToPrefix(x, tp)
+      //case tp: TermRef =>
+      //  if stopBecauseStaticOrLocal(tp) then x else applyToPrefix(x, tp)
 
       case tp: TypeVar =>
         this(x, tp.underlying)
