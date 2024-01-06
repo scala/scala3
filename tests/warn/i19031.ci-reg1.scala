@@ -1,5 +1,3 @@
-//> using options -Werror
-
 sealed trait Mark[T]
 
 trait Foo[T]
