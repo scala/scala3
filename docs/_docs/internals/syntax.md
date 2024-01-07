@@ -211,7 +211,9 @@ ExactParamType    ::=  ParamValueType [‘*’]                                 
 TypeArgs          ::=  ‘[’ Types ‘]’                                            ts
 Refinement        ::=  :<<< [RefineDef] {semi [RefineDef]} >>>                  ds
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]                                  TypeBoundsTree(lo, hi)
-TypeParamBounds   ::=  TypeBounds {‘:’ Type}                                    ContextBounds(typeBounds, tps)
+TypeParamBounds   ::=  TypeBounds [‘:’ ContextBounds]                           ContextBounds(typeBounds, tps)
+ContextBounds     ::=  ContextBound | '{' ContextBound {',' ContextBound} '}'
+ContextBound      ::=  Type ['as' id]
 Types             ::=  Type {‘,’ Type}
 ```
 
