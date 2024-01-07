@@ -120,3 +120,4 @@ i15525.scala
 
 # alias types at different levels of dereferencing
 parsercombinators-givens.scala
+parsercombinators-ctx-bounds.scala
