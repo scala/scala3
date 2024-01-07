@@ -1595,7 +1595,7 @@ trait Implicits:
 
         def checkResolutionChange(result: SearchResult) =
           if (eligible ne preEligible)
-              && !Feature.enabled(Feature.givenLoopPrevention)
+              && !sourceVersion.isAtLeast(SourceVersion.future)
           then
             val prevResult = searchImplicit(preEligible, contextual)
             prevResult match
@@ -1621,7 +1621,8 @@ trait Implicits:
                           |Current result ${showResult(prevResult)} will be no longer eligible
                           |  because it is not defined before the search position.
                           |Result with new rules: ${showResult(result)}.
-                          |To opt into the new rules, use the `experimental.givenLoopPrevention` language import.
+                          |To opt into the new rules, compile with `-source future` or use
+                          |the `scala.language.future` language import.
                           |
                           |To fix the problem without the language import, you could try one of the following:
                           |  - use a `given ... with` clause as the enclosing given,

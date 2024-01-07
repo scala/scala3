@@ -1,6 +1,4 @@
-//> using options -Xfatal-warnings
-
-import scala.language.experimental.givenLoopPrevention
+//> using options -Xfatal-warnings -source future
 
 trait Monad[T]:
   def id: String
@@ -11,7 +9,7 @@ object Foo {
 
 opaque type Bar = Foo
 object Bar {
-  given Monad[Bar] = summon[Monad[Foo]] // was error, fixed by givenLoopPrevention
+  given Monad[Bar] = summon[Monad[Foo]] // was error, fixed by given loop prevention
 }
 
 object Test extends App {
