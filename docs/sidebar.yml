@@ -153,7 +153,6 @@ subsection:
           - page: reference/experimental/cc.md
           - page: reference/experimental/purefuns.md
           - page: reference/experimental/tupled-function.md
-          - page: reference/experimental/given-loop-prevention.md
       - page: reference/syntax.md
       - title: Language Versions
         index: reference/language-versions/language-versions.md
