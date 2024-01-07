@@ -1,4 +1,4 @@
-import language.experimental.givenLoopPrevention
+import language.future
 
 class A
 class B
