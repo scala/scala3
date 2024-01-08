@@ -1167,7 +1167,8 @@ trait Checking {
         def javaFieldMethodPair =
           decl.is(JavaDefined) && other.is(JavaDefined) &&
           decl.is(Method) != other.is(Method)
-        if (decl.matches(other) && !javaFieldMethodPair) {
+        def staticNonStaticPair = decl.isScalaStatic != other.isScalaStatic
+        if (decl.matches(other) && !javaFieldMethodPair && !staticNonStaticPair) {
           def doubleDefError(decl: Symbol, other: Symbol): Unit =
             if (!decl.info.isErroneous && !other.info.isErroneous)
               report.error(DoubleDefinition(decl, other, cls), decl.srcPos)
