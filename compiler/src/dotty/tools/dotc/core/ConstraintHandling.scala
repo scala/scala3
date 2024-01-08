@@ -857,7 +857,8 @@ trait ConstraintHandling {
           addParamBound(bound)
         case _ =>
           val pbound = avoidLambdaParams(bound)
-          kindCompatible(param, pbound) && addBoundTransitively(param, pbound, !fromBelow)
+          (pbound.isNothingType || kindCompatible(param, pbound))
+          && addBoundTransitively(param, pbound, !fromBelow)
       finally
         canWidenAbstract = saved
         addConstraintInvocations -= 1
