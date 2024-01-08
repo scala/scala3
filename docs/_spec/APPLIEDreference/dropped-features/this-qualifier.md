@@ -4,7 +4,7 @@ title: "Dropped: private[this] and protected[this]"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
 ---
 
-The `private[this]` and `protected[this]` access modifiers will be deprecated and phased out.
+The `private[this]` and `protected[this]` access modifiers will be deprecated and phased out. Migration warning will be shown in Scala 3.4+.
 
 Previously, these modifiers were needed for
 
