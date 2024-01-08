@@ -135,3 +135,11 @@ sbt_test_command="++${scala_version}!;clean;prepareSources;compile;copyChanges;c
 rm -rf "$sbt_test_dir/target"
 rm -rf "$sbt_test_dir/project/target"
 rm -f "$sbt_test_dir/src/main/scala/a/zz.scala"
+
+# check that `scalac -use-scala2-library-tasty` compiles and `scala -use-scala2-library-tasty` runs it
+echo "testing './bin/scalac -Yuse-scala2-library-tasty' and './bin/scala -Yuse-scala2-library-tasty'"
+clear_out "$OUT"
+./bin/scalac "$SOURCE" -Yuse-scala2-library-tasty -d "$OUT"
+./bin/scala -Yuse-scala2-library-tasty -classpath "$OUT" "$MAIN" > "$tmp"
+grep -qe "Warning: Scala 2 library TASTy is still unstable" "$tmp"
+grep -qe "hello world" "$tmp"

@@ -28,6 +28,7 @@ fi
 
 source "$PROG_HOME/bin/common"
 
+USE_SCALA2_LIBRARY_TASTY=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -D*)
@@ -55,6 +56,10 @@ while [[ $# -gt 0 ]]; do
         shift
       fi
       ;;
+    -Yuse-scala2-library-tasty)
+      USE_SCALA2_LIBRARY_TASTY=true
+      shift
+      ;;
     *)
       addScala "$1"
       shift
@@ -63,7 +68,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # exec here would prevent onExit from being called, leaving terminal in unusable state
-compilerJavaClasspathArgs
+compilerJavaClasspathArgs "$USE_SCALA2_LIBRARY_TASTY"
 [ -z "${ConEmuPID-}" -o -n "${cygwin-}" ] && export MSYSTEM= PWD= # workaround for #12405
 eval "\"$JAVACMD\"" "${java_args[@]}" "-Dscala.home=\"$PROG_HOME\"" "-classpath \"$jvm_cp_args\"" "dotty.tools.MainGenericRunner" "-classpath \"$jvm_cp_args\"" "${scala_args[@]}"
 scala_exit_status=$?

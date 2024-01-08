@@ -2204,7 +2204,7 @@ object Build {
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(PackPlugin).
       withCommonSettings.
-      dependsOn(`scala3-interfaces`, dottyCompiler, dottyLibrary, tastyCore, `scala3-staging`, `scala3-tasty-inspector`, scaladoc).
+      dependsOn(`scala3-interfaces`, dottyCompiler, dottyLibrary, `scala2-library-tasty`, tastyCore, `scala3-staging`, `scala3-tasty-inspector`, scaladoc).
       settings(commonDistSettings).
       bootstrappedSettings(
         target := baseDirectory.value / "target" // override setting in commonBootstrappedSettings

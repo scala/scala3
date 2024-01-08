@@ -30,6 +30,8 @@ source "$PROG_HOME/bin/common"
 
 [ -z "$PROG_NAME" ] && PROG_NAME=$CompilerMain
 
+USE_SCALA2_LIBRARY_TASTY=false
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --)
@@ -69,6 +71,10 @@ while [[ $# -gt 0 ]]; do
         shift
       fi
       ;;
+    -Yuse-scala2-library-tasty)
+      USE_SCALA2_LIBRARY_TASTY=true
+      shift
+      ;;
     *)
       addScala "$1"
       shift
@@ -76,7 +82,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-compilerJavaClasspathArgs
+compilerJavaClasspathArgs "$USE_SCALA2_LIBRARY_TASTY"
 
 [ -n "$script_trace" ] && set -x
 [ -z "${ConEmuPID-}" -o -n "${cygwin-}" ] && export MSYSTEM= PWD= # workaround for #12405

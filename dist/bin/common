@@ -150,6 +150,7 @@ find_lib () {
 DOTTY_COMP=$(find_lib "*scala3-compiler*")
 DOTTY_INTF=$(find_lib "*scala3-interfaces*")
 DOTTY_LIB=$(find_lib "*scala3-library*")
+SCALA2_LIB_TASTY=$(find_lib "*scala2-library-tasty*")
 DOTTY_STAGING=$(find_lib "*scala3-staging*")
 DOTTY_TASTY_INSPECTOR=$(find_lib "*scala3-tasty-inspector*")
 TASTY_CORE=$(find_lib "*tasty-core*")
@@ -167,12 +168,17 @@ compilerJavaClasspathArgs () {
   # echo "dotty-compiler: $DOTTY_COMP"
   # echo "dotty-interface: $DOTTY_INTF"
   # echo "dotty-library: $DOTTY_LIB"
+  # echo "scala2-library-tasty: $SCALA2_LIB_TASTY"
   # echo "tasty-core: $TASTY_CORE"
   # echo "scala-asm: $SCALA_ASM"
   # echo "scala-lib: $SCALA_LIB"
   # echo "sbt-intface: $SBT_INTF"
 
   toolchain=""
+  if [ "$1" = true ] ; then
+    toolchain+="$SCALA2_LIB_TASTY$PSEP" # needs to be added before the SCALA_LIB
+    echo "Warning: Scala 2 library TASTy is still unstable."
+  fi
   toolchain+="$SCALA_LIB$PSEP"
   toolchain+="$DOTTY_LIB$PSEP"
   toolchain+="$SCALA_ASM$PSEP"
