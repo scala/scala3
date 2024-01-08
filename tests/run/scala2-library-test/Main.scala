@@ -1,4 +1,5 @@
-package hello
+// This tests language features that have a special handling in the Scala 2 library TASTy.
+// These should behave the same way from if compiled against the Scala 2 library class files ot TASTy.
 
 import scala.util.*
 import scala.compiletime.testing.typeChecks
@@ -6,7 +7,7 @@ import scala.compiletime.testing.typeChecks
 enum Color:
   case Red, Green, Blue
 
-object HelloWorld:
+object Test:
   def main(args: Array[String]): Unit = {
     println("hello 2.13 library bootstrapped")
     println(Color.Red)
@@ -74,4 +75,4 @@ object HelloWorld:
     new collection.ArrayOps[String](Array[String]("foo")).exists(x => true)
   }
 
-end HelloWorld
+end Test
