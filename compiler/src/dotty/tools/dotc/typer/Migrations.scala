@@ -13,7 +13,7 @@ import Symbols.*
 import Trees.*
 import ProtoTypes.*
 import Decorators.*
-import config.MigrationVersion
+import config.MigrationVersion as mv
 import config.Feature.{sourceVersion, migrateTo3}
 import config.SourceVersion.*
 import reporting.*
@@ -30,6 +30,15 @@ trait Migrations:
 
   import tpd.*
 
+  /** Run `migration`, asserting we are in the proper Typer (not a ReTyper) */
+  inline def migrate[T](inline migration: T): T =
+    assert(!this.isInstanceOf[ReTyper])
+    migration
+
+  /** Run `migration`, provided we are in the proper Typer (not a ReTyper) */
+  inline def migrate(inline migration: Unit): Unit =
+    if !this.isInstanceOf[ReTyper] then migration
+
   /** Flag & migrate `?` used as a higher-kinded type parameter
    *  Warning in 3.0-migration, error from 3.0
    */
@@ -40,7 +49,7 @@ trait Migrations:
         else ""
       val namePos = tree.sourcePos.withSpan(tree.nameSpan)
       report.errorOrMigrationWarning(
-        em"`?` is not a valid type name$addendum", namePos, MigrationVersion.Scala2to3)
+        em"`?` is not a valid type name$addendum", namePos, mv.Scala2to3)
 
   def typedAsFunction(tree: untpd.PostfixOp, pt: Type)(using Context): Tree = {
     val untpd.PostfixOp(qual, Ident(nme.WILDCARD)) = tree: @unchecked
@@ -52,8 +61,8 @@ trait Migrations:
       case _ =>
         val recovered = typed(qual)(using ctx.fresh.setExploreTyperState())
         val msg = OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen, tree)
-        report.errorOrMigrationWarning(msg, tree.srcPos, MigrationVersion.Scala2to3)
-        if MigrationVersion.Scala2to3.needsPatch then
+        report.errorOrMigrationWarning(msg, tree.srcPos, mv.Scala2to3)
+        if mv.Scala2to3.needsPatch then
           // Under -rewrite, patch `x _` to `(() => x)`
           msg.actions
             .headOption
@@ -69,16 +78,16 @@ trait Migrations:
       case _ =>
         ("(() => ", ")")
     }
+    val mversion = mv.FunctionUnderscore
     def remedy =
       if ((prefix ++ suffix).isEmpty) "simply leave out the trailing ` _`"
       else s"use `$prefix<function>$suffix` instead"
-    def rewrite = Message.rewriteNotice("This construct", `3.4-migration`)
+    def rewrite = Message.rewriteNotice("This construct", mversion.patchFrom)
     report.errorOrMigrationWarning(
       em"""The syntax `<function> _` is no longer supported;
           |you can $remedy$rewrite""",
-      tree.srcPos,
-      MigrationVersion.FunctionUnderscore)
-    if MigrationVersion.FunctionUnderscore.needsPatch then
+      tree.srcPos, mversion)
+    if mversion.needsPatch then
       patch(Span(tree.span.start), prefix)
       patch(Span(qual.span.end, tree.span.end), suffix)
 
@@ -89,6 +98,7 @@ trait Migrations:
    *  Warning in 3.4, error in 3.5, rewrite in 3.5-migration.
    */
   def contextBoundParams(tree: Tree, tp: Type, pt: FunProto)(using Context): Unit =
+    val mversion = mv.ExplicitContextBoundArgument
     def isContextBoundParams = tp.stripPoly match
       case MethodType(ContextBoundParamName(_) :: _) => true
       case _ => false
@@ -96,12 +106,12 @@ trait Migrations:
       && isContextBoundParams
       && pt.applyKind != ApplyKind.Using
     then
-      def rewriteMsg = Message.rewriteNotice("This code", `3.5-migration`)
+      def rewriteMsg = Message.rewriteNotice("This code", mversion.patchFrom)
       report.errorOrMigrationWarning(
         em"""Context bounds will map to context parameters.
             |A `using` clause is needed to pass explicit arguments to them.$rewriteMsg""",
-        tree.srcPos, MigrationVersion(`3.4`, `3.5`))
-      if sourceVersion.isAtLeast(`3.5-migration`) then
+        tree.srcPos, mversion)
+      if mversion.needsPatch then
         patch(Span(pt.args.head.span.start), "using ")
   end contextBoundParams
 
