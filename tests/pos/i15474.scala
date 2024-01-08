@@ -1,6 +1,6 @@
 //> using options -Xfatal-warnings
 import scala.language.implicitConversions
-import scala.language.experimental.givenLoopPrevention
+import scala.language.future
 
 object Test2:
   given c: Conversion[ String, Int ] = _.toInt   // now avoided, was loop not detected, could be used as a fallback to avoid the warning.

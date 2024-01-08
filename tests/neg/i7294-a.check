@@ -14,7 +14,8 @@
    |            Current result foo.Test.f will be no longer eligible
    |              because it is not defined before the search position.
    |            Result with new rules: No Matching Implicit.
-   |            To opt into the new rules, use the `experimental.givenLoopPrevention` language import.
+   |            To opt into the new rules, compile with `-source future` or use
+   |            the `scala.language.future` language import.
    |
    |            To fix the problem without the language import, you could try one of the following:
    |              - use a `given ... with` clause as the enclosing given,
