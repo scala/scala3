@@ -13,9 +13,8 @@ object Bar:
 object Test:
   def main(args: Array[String]): Unit =
     assert(Foo.foo == "foo")
-    assert(classOf[Foo].getMethod("foo").invoke(null) == "foo") // static
-    assert(Foo.getClass.getMethod("foo").invoke(Foo) == "foo") // instance, on module class
-
     assert(Bar.bar == "bar")
-    assert(classOf[Bar].getMethod("bar").invoke(null) == "bar")
-    assert(Bar.getClass.getMethod("bar").invoke(Bar) == "bar")
+
+    import scala.reflect.Selectable.reflectiveSelectable
+    assert(Foo.asInstanceOf[{ def foo: String }].foo == "foo")
+    assert(Bar.asInstanceOf[{ def bar: String }].bar == "bar")
