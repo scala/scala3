@@ -151,8 +151,8 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |}
       """.stripMargin,
       """|Found documentation for scala/util/control/Exception.Catch#
-         |Catch[T](pf: scala.util.control.Exception.Catcher[T], fin: Option[scala.util.control.Exception.Finally], rethrow: Throwable => Boolean)
-         |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+         |Catch[T](pf: Catcher[T], fin: Option[Finally], rethrow: Throwable => Boolean)
+         |         ^^^^^^^^^^^^^^
          |  @param pf Found documentation for param pf
          |  @param fin Found documentation for param fin
          |  @param rethrow Found documentation for param rethrow
@@ -166,9 +166,9 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |  new java.io.File(@@)
         |}
       """.stripMargin,
-      """|File(uri: java.net.URI)
-         |     ^^^^^^^^^^^^^^^^^
-         |File(parent: java.io.File, child: String)
+      """|File(uri: URI)
+         |     ^^^^^^^^
+         |File(parent: File, child: String)
          |File(parent: String, child: String)
          |File(pathname: String)
          |""".stripMargin

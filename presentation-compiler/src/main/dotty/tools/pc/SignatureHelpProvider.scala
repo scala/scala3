@@ -13,11 +13,14 @@ import dotty.tools.dotc.util.Signatures
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.Spans
 import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.pc.printer.ShortenedTypePrinter
+import dotty.tools.pc.printer.ShortenedTypePrinter.IncludeDefaultParam
 import dotty.tools.pc.utils.MtagsEnrichments.*
 import org.eclipse.lsp4j as l
 
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
+import scala.meta.internal.metals.ReportContext
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
@@ -28,7 +31,7 @@ object SignatureHelpProvider:
       driver: InteractiveDriver,
       params: OffsetParams,
       search: SymbolSearch
-  ) =
+  )(using ReportContext): l.SignatureHelp =
     val uri = params.uri().nn
     val text = params.text().nn
     val sourceFile = SourceFile.virtual(uri, text)
@@ -36,10 +39,17 @@ object SignatureHelpProvider:
 
     driver.compilationUnits.get(uri) match
       case Some(unit) =>
-        given newCtx: Context = driver.currentCtx.fresh.setCompilationUnit(unit)
 
         val pos = driver.sourcePosition(params, isZeroExtent = false)
-        val path = Interactive.pathTo(unit.tpdTree, pos.span)
+        val path = Interactive.pathTo(unit.tpdTree, pos.span)(using driver.currentCtx)
+
+        val localizedContext = Interactive.contextOfPath(path)(using driver.currentCtx)
+        val indexedContext = IndexedContext(driver.currentCtx)
+
+        given Context = localizedContext.fresh
+          .setCompilationUnit(unit)
+          .setPrinterFn(_ => ShortenedTypePrinter(search, IncludeDefaultParam.Include)(using indexedContext))
+
         val (paramN, callableN, alternatives) = Signatures.signatureHelp(path, pos.span)
 
         val infos = alternatives.flatMap: signature =>

@@ -238,6 +238,24 @@ class SignatureHelpPatternSuite extends BaseSignatureHelpSuite:
          |""".stripMargin
     )
 
+  @Test def `shortened` =
+    check(
+      """
+        |object Test {
+        |  def unapply(command: java.io.File): Option[java.io.File] = {
+        |    Some(Some(1))
+        |  }
+        |
+        |  "" match {
+        |    case Test(@@) =>
+        |  }
+        |}
+      """.stripMargin,
+      """|(File)
+         | ^^^^
+         |""".stripMargin
+    )
+
   @Test def `pat-negative` =
     check(
       """

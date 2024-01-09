@@ -66,7 +66,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       """|Random()
          |Random(seed: Int)
          |Random(seed: Long)
-         |Random(self: java.util.Random)
+         |Random(self: Random)
          |""".stripMargin
     )
 
@@ -103,9 +103,9 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  new File(@@)
         |}
       """.stripMargin,
-      """|File(x$0: java.net.URI)
-         |     ^^^^^^^^^^^^^^^^^
-         |File(x$0: java.io.File, x$1: String)
+      """|File(x$0: URI)
+         |     ^^^^^^^^
+         |File(x$0: File, x$1: String)
          |File(x$0: String, x$1: String)
          |File(x$0: String)
          |""".stripMargin
@@ -118,9 +118,9 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  new java.io.File(@@)
         |}
                  """.stripMargin,
-      """|File(x$0: java.net.URI)
-         |     ^^^^^^^^^^^^^^^^^
-         |File(x$0: java.io.File, x$1: String)
+      """|File(x$0: URI)
+         |     ^^^^^^^^
+         |File(x$0: File, x$1: String)
          |File(x$0: String, x$1: String)
          |File(x$0: String)
          |""".stripMargin
@@ -323,9 +323,9 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  } yield k
         |}
       """.stripMargin,
-      """|to(end: Int): scala.collection.immutable.Range.Inclusive
+      """|to(end: Int): Inclusive
          |   ^^^^^^^^
-         |to(end: Int, step: Int): scala.collection.immutable.Range.Inclusive
+         |to(end: Int, step: Int): Inclusive
          |""".stripMargin,
       stableOrder = false
     )
@@ -502,9 +502,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  new scala.util.control.Exception.Catch(@@)
         |}
       """.stripMargin,
-      // TODO short names are not supported yet
-      """|Catch[T](pf: scala.util.control.Exception.Catcher[T], fin: Option[scala.util.control.Exception.Finally], rethrow: Throwable => Boolean)
-         |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      """|Catch[T](pf: Catcher[T], fin: Option[Finally], rethrow: Throwable => Boolean)
+         |         ^^^^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -515,7 +514,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  new java.util.HashMap[String, Int]().computeIfAbsent(@@)
         |}
       """.stripMargin,
-      // TODO short names are not supported yet
+      // This is the correct result, as there is a conflict at Function: scala.Function and java.util.function.Function
       """|computeIfAbsent(x$0: String, x$1: java.util.function.Function[? >: String, ? <: Int]): Int
          |                ^^^^^^^^^^^
          |""".stripMargin
@@ -1136,8 +1135,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |  def test(a: Foo.Test, b: Foo.Test): Int = ???
          |  test(Foo.Test(1), @@)
          |""".stripMargin,
-      """|test(a: Main.Foo.Test, b: Main.Foo.Test): Int
-         |                       ^^^^^^^^^^^^^^^^
+      """|test(a: Test, b: Test): Int
+         |              ^^^^^^^
          |""".stripMargin
     )
 
@@ -1254,3 +1253,13 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |""".stripMargin
     )
 
+  @Test def `type-param-shortening` =
+    check(
+      """|object M:
+         |  def test[T <: java.io.File](x: Int): Int = ???
+         |  test(@@)
+         |""".stripMargin,
+      """|test[T <: File](x: Int): Int
+         |                ^^^^^^
+         |""".stripMargin
+    )
