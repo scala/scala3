@@ -793,6 +793,9 @@ class JSCodeGen()(using genCtx: Context) {
         name.name
     }.toSet
 
+    val staticNames = moduleClass.companionClass.info.allMembers
+      .collect { case d if d.name.isTermName && d.symbol.isScalaStatic => d.name }.toSet
+
     val members = {
       moduleClass.info.membersBasedOnFlags(required = Flags.Method,
           excluded = Flags.ExcludedForwarder).map(_.symbol)
@@ -815,6 +818,7 @@ class JSCodeGen()(using genCtx: Context) {
         || hasAccessBoundary
         || isOfJLObject
         || m.hasAnnotation(jsdefn.JSNativeAnnot) || isDefaultParamOfJSNativeDef // #4557
+        || staticNames(m.name)
     }
 
     val forwarders = for {
@@ -4769,7 +4773,7 @@ class JSCodeGen()(using genCtx: Context) {
   }
 
   private def isMethodStaticInIR(sym: Symbol): Boolean =
-    sym.is(JavaStatic)
+    sym.is(JavaStatic) || sym.isScalaStatic
 
   /** Generate a Class[_] value (e.g. coming from classOf[T]) */
   private def genClassConstant(tpe: Type)(implicit pos: Position): js.Tree =
