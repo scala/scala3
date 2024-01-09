@@ -1263,3 +1263,38 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |                ^^^^^^
          |""".stripMargin
     )
+
+  @Test def `implicit-param-without-ident` =
+    check(
+      """|object M:
+         |  trait Context
+         |  def test(x: Int)(using Context): Int = ???
+         |  test(@@)
+         |""".stripMargin,
+      """|test(x: Int)(using Context): Int
+         |     ^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `implicit-param` =
+    check(
+      """|object M:
+         |  trait Context
+         |  def test(x: Int)(using ctx: Context): Int = ???
+         |  test(@@)
+         |""".stripMargin,
+      """|test(x: Int)(using ctx: Context): Int
+         |     ^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `context-param` =
+    check(
+      """|object M:
+         |  def test(x: Int, y: Int = 7)(z: Int ?=> Int): Int = ???
+         |  test(@@)
+         |""".stripMargin,
+      """|test(x: Int, y: Int)(z: (Int) ?=> Int): Int
+         |     ^^^^^^
+         |""".stripMargin
+    )

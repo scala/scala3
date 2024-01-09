@@ -500,25 +500,29 @@ object Signatures {
           case None => TypeParam(name.show + info.show)
 
     def toParamss(tp: Type, fun: Option[untpd.GenericApply])(using Context): List[List[Param]] =
-      def reduceToParamss(applies: List[untpd.Tree], types: List[Type]): List[List[Param]] =
+      val paramSymss = symbol.paramSymss
+
+      def reduceToParamss(applies: List[untpd.Tree], types: List[Type], paramList: Int = 0): List[List[Param]] =
         applies -> types match
-          case (Nil, Nil) => Nil
           case ((_: untpd.TypeApply) :: restTrees, (poly: PolyType) :: restTypes) =>
-            toTypeParam(poly) :: reduceToParamss(restTrees, restTypes)
+            toTypeParam(poly) :: reduceToParamss(restTrees, restTypes, paramList + 1)
           case (restTrees, (poly: PolyType) :: restTypes) =>
-            toTypeParam(poly) :: reduceToParamss(restTrees, restTypes)
+            toTypeParam(poly) :: reduceToParamss(restTrees, restTypes, paramList + 1)
           case ((apply: untpd.GenericApply) :: other, tpe :: otherType) =>
-            toParams(tpe, Some(apply)) :: reduceToParamss(other, otherType)
+            toParams(tpe, Some(apply), paramList) :: reduceToParamss(other, otherType, paramList + 1)
           case (other, (tpe @ MethodTpe(names, _, _)) :: otherType) if !isDummyImplicit(tpe) =>
-            toParams(tpe, None) :: reduceToParamss(other, otherType)
+            toParams(tpe, None, paramList) :: reduceToParamss(other, otherType, paramList + 1)
           case _ => Nil
 
-      def toParams(tp: Type, apply: Option[untpd.GenericApply])(using Context): List[Param] =
-        val currentParams = (tp.paramNamess, tp.paramInfoss) match
-          case (params :: _, infos :: _) => params zip infos
+      def toParams(tp: Type, apply: Option[untpd.GenericApply], paramList: Int)(using Context): List[Param] =
+        val currentParams = (paramSymss.lift(paramList), tp.paramInfoss.headOption) match
+          case (Some(params), Some(infos)) => params zip infos
           case _ => Nil
 
-        val params = currentParams.map: (name, info) =>
+        val params = currentParams.map: (symbol, info) =>
+          // TODO after we migrate ShortenedTypePrinter into the compiler, it should rely on its api
+          val name = if symbol.isAllOf(Flags.SyntheticParam | Flags.Given) then nme.EMPTY else symbol.name.asTermName
+
           Signatures.MethodParam(
             name.show,
             info.widenTermRefExpr.show,
@@ -562,8 +566,6 @@ object Signatures {
 
         finalParams.getOrElse(params)
       end toParams
-
-
 
       val applies = untpdFun.map(toApplyList).getOrElse(Nil)
       val types = toMethodTypeList(tp).reverse
