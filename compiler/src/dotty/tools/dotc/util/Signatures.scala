@@ -554,9 +554,11 @@ object Signatures {
                 case n => params(n)
 
               val isReordered = params != result
+              val (ordered, reordered) = params.zip(result).span: (definitionMember, reorderedMember) =>
+                definitionMember == reorderedMember
 
-              if isReordered then result.map(_.copy(isReordered = true))
-              else params
+              ordered.map(_._2) ++ reordered.map(_._2.copy(isReordered = isReordered))
+
 
         finalParams.getOrElse(params)
       end toParams

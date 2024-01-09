@@ -256,8 +256,8 @@ class SignatureHelpNamedArgsSuite extends BaseSignatureHelpSuite:
          |  def test[T, F](aaa: Int, bbb: T, ccc: F): T = ???
          |  val x = test(1, ccc = 2, b@@)
          |""".stripMargin,
-      """|test[T, F]([aaa: Int], [ccc: F], [bbb: T]): T
-         |                                 ^^^^^^^^
+      """|test[T, F](aaa: Int, [ccc: F], [bbb: T]): T
+         |                               ^^^^^^^^
          |""".stripMargin
     )
 
@@ -281,8 +281,8 @@ class SignatureHelpNamedArgsSuite extends BaseSignatureHelpSuite:
          |  def test2(aaa: Int, bbb: Int, ccc: Int): Int = ???
          |  val x = test2(aaa = 2@@, ccc = 1)
          |""".stripMargin,
-      """|test2([aaa: Int], [ccc: Int], [bbb: Int]): Int
-         |      ^^^^^^^^^^
+      """|test2(aaa: Int, [ccc: Int], [bbb: Int]): Int
+         |      ^^^^^^^^
          |""".stripMargin
     )
 
@@ -293,8 +293,8 @@ class SignatureHelpNamedArgsSuite extends BaseSignatureHelpSuite:
          |  val x = test2(aaa = 2, @@  ccc = 1, bbb = 3)
          |
          |""".stripMargin,
-      """|test2([aaa: Int], [ccc: Int], [bbb: Int]): Int
-         |                  ^^^^^^^^^^
+      """|test2(aaa: Int, [ccc: Int], [bbb: Int]): Int
+         |                ^^^^^^^^^^
          |""".stripMargin
     )
 

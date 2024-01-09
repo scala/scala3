@@ -388,8 +388,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |
         |
       """.stripMargin,
-      """|apply([viewId: String], [nodeUri: String], [label: String], [collapseState: String], [command: String], [icon: String], [tooltip: String]): TreeViewNode
-         |      ^^^^^^^^^^^^^^^^
+      """|apply(viewId: String, nodeUri: String, label: String, [collapseState: String], [command: String], [icon: String], [tooltip: String]): TreeViewNode
+         |      ^^^^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -424,8 +424,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |
         |
       """.stripMargin,
-      """|apply([viewId: String], [nodeUri: String], [label: String], [collapseState: String], [command: String]): TreeViewNode
-         |      ^^^^^^^^^^^^^^^^
+      """|apply(viewId: String, nodeUri: String, label: String, [collapseState: String], [command: String]): TreeViewNode
+         |      ^^^^^^^^^^^^^^
          |""".stripMargin
     )
 
