@@ -169,9 +169,13 @@ class Releases(val releases: Vector[Release])
 
 object Releases:
   lazy val allReleases: Vector[Release] =
-    val re = raw"""(?<=title=")(.+-bin-\d{8}-\w{7}-NIGHTLY)(?=/")""".r
-    val html = Source.fromURL("https://repo1.maven.org/maven2/org/scala-lang/scala3-compiler_3/")
-    re.findAllIn(html.mkString).map(Release.apply).toVector
+    val re = raw"<version>(.+-bin-\d{8}-\w{7}-NIGHTLY)</version>".r
+    val xml = io.Source.fromURL(
+      "https://repo1.maven.org/maven2/org/scala-lang/scala3-compiler_3/maven-metadata.xml"
+    )
+    re.findAllMatchIn(xml.mkString)
+      .flatMap{ m => Option(m.group(1)).map(Release.apply) }
+      .toVector
 
   def fromRange(range: ReleasesRange): Vector[Release] = range.filter(allReleases)
 
