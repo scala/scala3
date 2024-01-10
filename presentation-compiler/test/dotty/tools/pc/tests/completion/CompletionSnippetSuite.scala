@@ -323,7 +323,8 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
          |Widget($0) - (age: Int): Widget
          |Widget($0) - (name: String, age: Int): Widget
          |""".stripMargin,
-      includeDetail = true
+      includeDetail = true,
+      topLines = Some(4)
     )
 
   @Test def `no-apply` =
@@ -335,8 +336,13 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |  Wi@@
           |}
           |""".stripMargin,
-      "Widget -  example",
-      includeDetail = true
+      """|Widget -  example
+         |Window -  java.awt
+         |WindowPeer -  java.awt.peer
+         |WithFilter -  scala.collection
+         |""".stripMargin,
+      includeDetail = true,
+      topLines = Some(4)
     )
 
   // https://github.com/scalameta/metals/issues/4004
