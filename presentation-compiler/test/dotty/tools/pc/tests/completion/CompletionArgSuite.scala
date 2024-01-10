@@ -1047,7 +1047,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |    bbb = 123,
          |    aa@@
          |  )
-         |} 
+         |}
          |""".stripMargin,
       """|aaa = : Int
          |""".stripMargin,
@@ -1063,7 +1063,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |    ccc = 123,
          |    aa@@
          |  )
-         |} 
+         |}
          |""".stripMargin,
       """|aaa = : Int
          |""".stripMargin,
@@ -1079,7 +1079,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |    ccc = 123,
          |    aa@@
          |  )
-         |} 
+         |}
          |""".stripMargin,
       """|aaa = : Int
          |""".stripMargin,
@@ -1105,4 +1105,18 @@ class CompletionArgSuite extends BaseCompletionSuite:
       """|str = : String
          | """.stripMargin,
       topLines = Some(1),
+    )
+
+  @Test def `comparison` =
+    check(
+      """package a
+        |object w {
+        |  abstract class T(x: Int) {
+        |    def met(x: Int): Unit = {
+        |      println(x@@)
+        |    }
+        |  }}
+        |""".stripMargin,
+      """x: Int
+        |x = : Any""".stripMargin,
     )

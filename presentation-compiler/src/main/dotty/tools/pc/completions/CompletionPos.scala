@@ -15,6 +15,7 @@ import dotty.tools.dotc.util.Spans
 import dotty.tools.pc.utils.MtagsEnrichments.*
 
 import org.eclipse.lsp4j as l
+import scala.annotation.tailrec
 
 enum CompletionKind:
   case Empty, Scope, Members
@@ -55,8 +56,10 @@ object CompletionPos:
     val prevIsDot =
       if start - 1 >= 0 then text.charAt(start - 1) == '.' else false
     val kind =
-      if query.nn.isEmpty() && !prevIsDot then CompletionKind.Empty
-      else if prevIsDot then CompletionKind.Members
+      if prevIsDot then CompletionKind.Members
+      else if isImportOrExportSelect(cursorPos, treePath) then
+        CompletionKind.Members
+      else if query.nn.isEmpty then CompletionKind.Empty
       else CompletionKind.Scope
 
     CompletionPos(kind, start, end, query.nn, cursorPos, uri)
@@ -83,6 +86,21 @@ object CompletionPos:
     do i += 1
     (i, tabIndented)
   end inferIndent
+
+  private def isImportOrExportSelect(
+      pos: SourcePosition,
+      path: List[Tree],
+  )(using Context): Boolean =
+    @tailrec
+    def loop(enclosing: List[Tree]): Boolean =
+      enclosing match
+        case head :: tl if !head.sourcePos.contains(pos) => loop(tl)
+        case (tree: (Import | Export)) :: _ =>
+          tree.selectors.exists(_.imported.sourcePos.contains(pos))
+        case _ => false
+
+    loop(path)
+
 
   /**
    * Returns the start offset of the identifier starting as the given offset position.

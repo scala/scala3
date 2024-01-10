@@ -412,3 +412,23 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
         |  val <<x>>/*variable,definition,readonly*/ = <<Abc>>/*class*/(123, 456)
         |}""".stripMargin
     )
+
+  @Test def `i5977` =
+    check(
+      """
+        |sealed trait <<ExtensionProvider>>/*interface,abstract*/ {
+        |  extension [<<A>>/*typeParameter,definition,abstract*/] (<<self>>/*parameter,declaration,readonly*/: <<A>>/*typeParameter,abstract*/) {
+        |    def <<typeArg>>/*method,declaration*/[<<B>>/*typeParameter,definition,abstract*/]: <<B>>/*typeParameter,abstract*/
+        |    def <<inferredTypeArg>>/*method,declaration*/[<<C>>/*typeParameter,definition,abstract*/](<<value>>/*parameter,declaration,readonly*/: <<C>>/*typeParameter,abstract*/): <<C>>/*typeParameter,abstract*/
+        |}
+        |
+        |object <<Repro>>/*class*/ {
+        |  def <<usage>>/*method,definition*/[<<A>>/*typeParameter,definition,abstract*/](<<f>>/*parameter,declaration,readonly*/: <<ExtensionProvider>>/*interface,abstract*/ ?=> <<A>>/*typeParameter,abstract*/ => <<Any>>/*class,abstract*/): <<Any>>/*class,abstract*/ = <<???>>/*method*/
+        |
+        |  <<usage>>/*method*/[<<Int>>/*class,abstract*/](<<_>>/*parameter,readonly*/.<<inferredTypeArg>>/*method*/("str"))
+        |  <<usage>>/*method*/[<<Int>>/*class,abstract*/](<<_>>/*parameter,readonly*/.<<inferredTypeArg>>/*method*/[<<String>>/*type*/]("str"))
+        |  <<usage>>/*method*/[<<Option>>/*class,abstract*/[<<Int>>/*class,abstract*/]](<<_>>/*parameter,readonly*/.<<typeArg>>/*method*/[<<Some>>/*class*/[<<Int>>/*class,abstract*/]].<<value>>/*variable,readonly*/.<<inferredTypeArg>>/*method*/("str"))
+        |  <<usage>>/*method*/[<<Option>>/*class,abstract*/[<<Int>>/*class,abstract*/]](<<_>>/*parameter,readonly*/.<<typeArg>>/*method*/[<<Some>>/*class*/[<<Int>>/*class,abstract*/]].<<value>>/*variable,readonly*/.<<inferredTypeArg>>/*method*/[<<String>>/*type*/]("str"))
+        |}
+        |""".stripMargin
+    )
