@@ -343,6 +343,8 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     runCtx.setProfiler(Profiler())
     unfusedPhases.foreach(_.initContext(runCtx))
     val fusedPhases = runCtx.base.allPhases
+    if ctx.settings.explainCyclic.value then
+      runCtx.setProperty(CyclicReference.Trace, new CyclicReference.Trace())
     runCtx.withProgressCallback: cb =>
       _progress = Progress(cb, this, fusedPhases.map(_.traversals).sum)
     runPhases(allPhases = fusedPhases)(using runCtx)

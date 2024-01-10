@@ -12,7 +12,9 @@ import Denotations.*
 import Decorators.*
 import reporting.*
 import ast.untpd
+import util.Property
 import config.Printers.{cyclicErrors, noPrinter}
+import collection.mutable
 
 import scala.annotation.constructorOnly
 
@@ -27,6 +29,7 @@ abstract class TypeError(using creationContext: Context) extends Exception(""):
     || ctx.settings.YdebugTypeError.value
     || ctx.settings.YdebugError.value
     || ctx.settings.YdebugUnpickling.value
+    || ctx.settings.YdebugCyclic.value
 
   override def fillInStackTrace(): Throwable =
     if computeStackTrace then super.fillInStackTrace().nn
@@ -72,8 +75,7 @@ extends TypeError:
   def explanation: String = s"$op $details"
 
   private def recursions: List[RecursionOverflow] = {
-    import scala.collection.mutable.ListBuffer
-    val result = ListBuffer.empty[RecursionOverflow]
+    val result = mutable.ListBuffer.empty[RecursionOverflow]
     @annotation.tailrec def loop(throwable: Throwable): List[RecursionOverflow] = throwable match {
       case ro: RecursionOverflow =>
         result += ro
@@ -135,7 +137,10 @@ end handleRecursive
  * so it requires knowing denot already.
  * @param denot
  */
-class CyclicReference(val denot: SymDenotation)(using Context) extends TypeError:
+class CyclicReference(
+    val denot: SymDenotation,
+    val optTrace: Option[Array[CyclicReference.TraceElement]])(using Context)
+extends TypeError:
   var inImplicitSearch: Boolean = false
 
   val cycleSym = denot.symbol
@@ -161,11 +166,11 @@ class CyclicReference(val denot: SymDenotation)(using Context) extends TypeError
         cx.tree match {
           case tree: untpd.ValOrDefDef if !tree.tpt.typeOpt.exists =>
             if (inImplicitSearch)
-              TermMemberNeedsResultTypeForImplicitSearch(cycleSym)
+              TermMemberNeedsResultTypeForImplicitSearch(this)
             else if (isMethod)
-              OverloadedOrRecursiveMethodNeedsResultType(cycleSym)
+              OverloadedOrRecursiveMethodNeedsResultType(this)
             else if (isVal)
-              RecursiveValueNeedsResultType(cycleSym)
+              RecursiveValueNeedsResultType(this)
             else
               errorMsg(cx.outer)
           case _ =>
@@ -174,22 +179,38 @@ class CyclicReference(val denot: SymDenotation)(using Context) extends TypeError
 
       // Give up and give generic errors.
       else if (cycleSym.isOneOf(GivenOrImplicitVal, butNot = Method) && cycleSym.owner.isTerm)
-        CyclicReferenceInvolvingImplicit(cycleSym)
+        CyclicReferenceInvolvingImplicit(this)
       else
-        CyclicReferenceInvolving(denot)
+        CyclicReferenceInvolving(this)
 
     errorMsg(ctx)
   end toMessage
 
 object CyclicReference:
+
   def apply(denot: SymDenotation)(using Context): CyclicReference =
-    val ex = new CyclicReference(denot)
+    val ex = new CyclicReference(denot, ctx.property(Trace).map(_.toArray))
     if ex.computeStackTrace then
       cyclicErrors.println(s"Cyclic reference involving $denot")
       val sts = ex.getStackTrace.asInstanceOf[Array[StackTraceElement]]
       for (elem <- sts take 200)
         cyclicErrors.println(elem.toString)
     ex
+
+  type TraceElement = (/*prefix:*/ String, Symbol, /*suffix:*/ String)
+  type Trace = mutable.ArrayBuffer[TraceElement]
+  val Trace = Property.Key[Trace]
+
+  def isTraced(using Context) =
+    ctx.property(CyclicReference.Trace).isDefined
+
+  def pushTrace(info: TraceElement)(using Context): Unit =
+    for buf <- ctx.property(CyclicReference.Trace) do
+      buf += info
+
+  def popTrace()(using Context): Unit =
+    for buf <- ctx.property(CyclicReference.Trace) do
+      buf.dropRightInPlace(1)
 end CyclicReference
 
 class UnpicklingError(denot: Denotation, where: String, cause: Throwable)(using Context) extends TypeError:
