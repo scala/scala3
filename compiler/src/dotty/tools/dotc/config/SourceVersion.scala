@@ -19,6 +19,9 @@ enum SourceVersion:
   def stable: SourceVersion =
     if isMigrating then SourceVersion.values(ordinal + 1) else this
 
+  def prevMigrating: SourceVersion =
+    if isMigrating then this else SourceVersion.values(ordinal - 1).prevMigrating
+
   def isAtLeast(v: SourceVersion) = stable.ordinal >= v.ordinal
 
   def isAtMost(v: SourceVersion) = stable.ordinal <= v.ordinal

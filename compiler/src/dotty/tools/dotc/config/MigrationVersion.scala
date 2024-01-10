@@ -6,10 +6,16 @@ import SourceVersion.*
 import Feature.*
 import core.Contexts.Context
 
-class MigrationVersion(val warnFrom: SourceVersion, val errorFrom: SourceVersion):
-  assert(warnFrom.ordinal <= errorFrom.ordinal)
+class MigrationVersion(
+    val warnFrom: SourceVersion,
+    val errorFrom: SourceVersion):
+  require(warnFrom.ordinal <= errorFrom.ordinal)
+
   def needsPatch(using Context): Boolean =
-    sourceVersion.isMigrating && sourceVersion.isAtLeast(errorFrom)
+    sourceVersion.isMigrating && sourceVersion.isAtLeast(warnFrom)
+
+  def patchFrom: SourceVersion =
+    warnFrom.prevMigrating
 
 object MigrationVersion:
 
@@ -26,6 +32,8 @@ object MigrationVersion:
   val NonLocalReturns = MigrationVersion(`3.2`, future)
 
   val AscriptionAfterPattern = MigrationVersion(`3.3`, future)
+
+  val ExplicitContextBoundArgument = MigrationVersion(`3.4`, `3.5`)
 
   val AlphanumericInfix = MigrationVersion(`3.4`, future)
   val RemoveThisQualifier = MigrationVersion(`3.4`, future)
