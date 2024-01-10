@@ -3151,7 +3151,8 @@ object Parsers {
         }
         if mods1.is(Local) then
           report.errorOrMigrationWarning(
-              em"""The [this] qualifier will be deprecated in the future; it should be dropped.
+              em"""Ignoring [this] qualifier.
+                  |This syntax will be deprecated in the future; it should be dropped.
                   |See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html${rewriteNotice(`3.4-migration`)}""",
               in.sourcePos(),
               MigrationVersion.RemoveThisQualifier)
