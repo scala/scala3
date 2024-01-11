@@ -10,7 +10,6 @@ class P extends AbstractProcessor {
       .flatMap(annotation => roundEnv.getElementsAnnotatedWith(annotation).stream())
       .filter(element => element.getKind == ElementKind.PACKAGE)
       .map(element => element.asInstanceOf[PackageElement])
-      .toList()
     true
   }
 }
