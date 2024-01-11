@@ -5,9 +5,9 @@
   |           Exception occurred while executing macro expansion.
   |           dotty.tools.dotc.core.CyclicReference: Recursive value o2 needs type
   |
-  |           The error occurred while trying to complete the info of method test
-  |             which required to complete the info of value o2
-  |             which required to complete the info of value o2
+  |           The error occurred while trying to compute the signature of method test
+  |             which required to compute the signature of value o2
+  |             which required to compute the signature of value o2
   |
   |            Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace.
   |

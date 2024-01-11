@@ -3,8 +3,8 @@
   |       ^
   |       Overloaded or recursive method impl needs return type
   |
-  |       The error occurred while trying to complete the info of method $anonfun
-  |         which required to complete the info of method impl
+  |       The error occurred while trying to compute the signature of method $anonfun
+  |         which required to compute the signature of method impl
   |
   |        Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace.
   |
