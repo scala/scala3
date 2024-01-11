@@ -171,7 +171,7 @@ object SymDenotations {
           val traceCycles = CyclicReference.isTraced
           try
             if traceCycles then
-              CyclicReference.pushTrace("complete the info of ", symbol, "")
+              CyclicReference.pushTrace("compute the signature of ", symbol, "")
             if myFlags.is(Touched) then
               throw CyclicReference(this)(using ctx.withOwner(symbol))
             myFlags |= Touched
