@@ -104,7 +104,6 @@ trait Map[K, +V]
 trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
   extends IterableOps[(K, V), Iterable, C]
     with PartialFunction[K, V] {
-  this: MapOps[K, V, CC, C]^ =>
 
   override def view: MapView[K, V]^{this} = new MapView.Id(this)
 

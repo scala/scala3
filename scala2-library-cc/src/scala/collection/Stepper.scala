@@ -39,7 +39,6 @@ import scala.collection.Stepper.EfficientSplit
   * @tparam A the element type of the Stepper
   */
 trait Stepper[@specialized(Double, Int, Long) +A] {
-  this: Stepper[A]^ =>
 
   /** Check if there's an element available. */
   def hasStep: Boolean
@@ -186,7 +185,6 @@ object Stepper {
 
 /** A Stepper for arbitrary element types. See [[Stepper]]. */
 trait AnyStepper[+A] extends Stepper[A] {
-  this: AnyStepper[A]^ =>
 
   def trySplit(): AnyStepper[A]
 
@@ -258,7 +256,6 @@ object AnyStepper {
 
 /** A Stepper for Ints. See [[Stepper]]. */
 trait IntStepper extends Stepper[Int] {
-  this: IntStepper^ =>
 
   def trySplit(): IntStepper
 
@@ -298,7 +295,6 @@ object IntStepper {
 
 /** A Stepper for Doubles. See [[Stepper]]. */
 trait DoubleStepper extends Stepper[Double] {
-  this: DoubleStepper^ =>
   def trySplit(): DoubleStepper
 
   def spliterator[B >: Double]: Spliterator.OfDouble^{this} = new DoubleStepper.DoubleStepperSpliterator(this)
@@ -338,7 +334,6 @@ object DoubleStepper {
 
 /** A Stepper for Longs. See [[Stepper]]. */
 trait LongStepper extends Stepper[Long] {
-  this: LongStepper^ =>
 
   def trySplit(): LongStepper^{this}
 

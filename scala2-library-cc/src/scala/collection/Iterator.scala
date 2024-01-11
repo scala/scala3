@@ -1302,5 +1302,4 @@ object Iterator extends IterableFactory[Iterator] {
 }
 
 /** Explicit instantiation of the `Iterator` trait to reduce class file size in subclasses. */
-abstract class AbstractIterator[+A] extends Iterator[A]:
-  this: Iterator[A]^ =>
+abstract class AbstractIterator[+A] extends Iterator[A]

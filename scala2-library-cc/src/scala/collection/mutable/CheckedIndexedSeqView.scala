@@ -16,7 +16,6 @@ package mutable
 import language.experimental.captureChecking
 
 private[mutable] trait CheckedIndexedSeqView[+A] extends IndexedSeqView[A] {
-  this: CheckedIndexedSeqView[A]^ =>
 
   protected val mutationCount: () => Int
 

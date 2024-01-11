@@ -25,8 +25,6 @@ import language.experimental.captureChecking
 trait Iterable[+A] extends collection.Iterable[A]
                       with collection.IterableOps[A, Iterable, Iterable[A]]
                       with IterableFactoryDefaults[A, Iterable] {
-  this: Iterable[A]^ =>
-
   override def iterableFactory: IterableFactory[Iterable] = Iterable
 }
 

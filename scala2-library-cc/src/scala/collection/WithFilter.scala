@@ -23,7 +23,6 @@ import language.experimental.captureChecking
   */
 @SerialVersionUID(3L)
 abstract class WithFilter[+A, +CC[_]] extends Serializable {
-  this: WithFilter[A, CC]^ =>
 
   /** Builds a new collection by applying a function to all elements of the
     * `filtered` outer $coll.
