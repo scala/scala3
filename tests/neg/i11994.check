@@ -6,9 +6,9 @@
   |
   |                          Cyclic reference involving method foo
   |                          
-  |                          The error occurred while trying to complete the info of method foo
-  |                            which required to complete the info of type T
-  |                            which required to complete the info of method foo
+  |                          The error occurred while trying to compute the signature of method foo
+  |                            which required to compute the signature of type T
+  |                            which required to compute the signature of method foo
   |                          
   |                           Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace.
 -- [E008] Not Found Error: tests/neg/i11994.scala:3:18 -----------------------------------------------------------------
@@ -19,8 +19,8 @@
   |
   |                Cyclic reference involving method given_Unit
   |                
-  |                The error occurred while trying to complete the info of given instance given_Unit
-  |                  which required to complete the info of type T
-  |                  which required to complete the info of given instance given_Unit
+  |                The error occurred while trying to compute the signature of given instance given_Unit
+  |                  which required to compute the signature of type T
+  |                  which required to compute the signature of given instance given_Unit
   |                
   |                 Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace.
