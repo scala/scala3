@@ -58,6 +58,7 @@ class CompilerSearchVisitor(
               .filter(denot => denot.exists)
               .map(_.symbol)
               .filter(isAccessible)
+              .filter(!_.is(Flags.Given))
           }
           loop(next, tl)
         case Nil => owners
