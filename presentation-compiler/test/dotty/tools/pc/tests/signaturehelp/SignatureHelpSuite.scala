@@ -1298,3 +1298,83 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |     ^^^^^^
          |""".stripMargin
     )
+
+  @Test def `empty-implicit-params` =
+    check(
+      """|object M:
+         |  def test(x: Int)(using String): Int = ???
+         |  test(1)(@@)
+         |""".stripMargin,
+      """|test(x: Int)(using String): Int
+         |                   ^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `multiple-implicits-1` =
+    check(
+      """|object M:
+         |  def a(using Int)(using String): Int = ???
+         |  a(@@)
+         |""".stripMargin,
+      """|a(using Int)(using String): Int
+         |        ^^^
+         |""".stripMargin
+    )
+
+
+  @Test def `multiple-implicits-2` =
+    check(
+      """|object M:
+         |  def a(using Int)(using String): Int = ???
+         |  a(using 5)(@@)
+         |""".stripMargin,
+      """|a(using Int)(using String): Int
+         |                   ^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `multiple-implicits-3` =
+    check(
+      """|object M:
+         |  def a(using Int)(using String)(x: Int): Int = ???
+         |  a(@@)
+         |""".stripMargin,
+      """|a(using Int)(using String)(x: Int): Int
+         |        ^^^
+         |""".stripMargin
+    )
+
+  @Test def `multiple-implicits-4` =
+    check(
+      """|object M:
+         |  def a(using Int)(using String)(x: Int): Int = ???
+         |  a(using 5)(@@)
+         |""".stripMargin,
+      """|a(using Int)(using String)(x: Int): Int
+         |                   ^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `multiple-implicits-error-1` =
+    check(
+      """|object M:
+         |  def a(using Int)(using String)(x: Int): Int = ???
+         |  a(5)(@@)
+         |""".stripMargin,
+      """|
+         |a(using Int)(using String)(x: Int): Int
+         |                   ^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `multiple-implicits-error-2` =
+    check(
+      """|object M:
+         |  def a(using Int)(using String)(x: Int): Int = ???
+         |  a(5)(@@)
+         |""".stripMargin,
+      """|
+         |a(using Int)(using String)(x: Int): Int
+         |                   ^^^^^^
+         |""".stripMargin
+    )

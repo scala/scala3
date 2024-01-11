@@ -3,6 +3,7 @@ package dotty.tools.pc.tests.signaturehelp
 import dotty.tools.pc.base.BaseSignatureHelpSuite
 
 import org.junit.Test
+import org.junit.Ignore
 import java.nio.file.Path
 
 class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
@@ -399,3 +400,133 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
         |                                                           ^
         |""".stripMargin
     )
+
+  @Ignore("""Clause interleaving is still experimental. It lifts this tree into series of anonymous functions, which all have the same span.
+             It requires further investigation to determine whether this is a bug in the compiler.""")
+  @Test def `clause-interleaving-empty` =
+    check(
+      """|object M:
+         |  def test[X](x: X)[Y](y: Y): (X, Y)= ???
+         |  test[@@]
+         |""".stripMargin,
+      """|test[X](x: X)[Y](y: Y): (X, Y)
+         |     ^
+         |""".stripMargin
+    )
+
+  @Ignore("""Clause interleaving is still experimental. It lifts this tree into series of anonymous functions, which all have the same span.
+             It requires further investigation to determine whether this is a bug in the compiler.""")
+  @Test def `more-interleaved-params-1` =
+    check(
+      """|object M:
+         |  def test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int = ???
+         |  test[@@]
+         |""".stripMargin,
+      """|test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int
+         |     ^
+         |""".stripMargin
+    )
+
+  @Test def `more-interleaved-params-2` =
+    check(
+      """|object M:
+         |  def test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int = ???
+         |  test[Int](@@)
+         |""".stripMargin,
+      """|test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int
+         |        ^^^^
+         |""".stripMargin
+    )
+
+  @Ignore("""Clause interleaving is still experimental. It lifts this tree into series of anonymous functions, which all have the same span.
+             It requires further investigation to determine whether this is a bug in the compiler.""")
+  @Test def `more-interleaved-params-3` =
+    check(
+      """|object M:
+         |  def test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int = ???
+         |  test[Int](1)[@@]
+         |""".stripMargin,
+      """|test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int
+         |              ^
+         |""".stripMargin
+    )
+
+  @Test def `more-interleaved-params-4` =
+    check(
+      """|object M:
+         |  def test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int = ???
+         |  test[Int](1)[String](@@)
+         |""".stripMargin,
+      """|test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int
+         |                 ^^^^
+         |""".stripMargin
+    )
+
+  @Ignore("""Clause interleaving is still experimental. It lifts this tree into series of anonymous functions, which all have the same span.
+             It requires further investigation to determine whether this is a bug in the compiler.""")
+  @Test def `more-interleaved-params-5` =
+    check(
+      """|object M:
+         |  def test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int = ???
+         |  test[Int](1)[String]("1")[@@]
+         |""".stripMargin,
+      """|test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int
+         |                       ^
+         |""".stripMargin
+    )
+
+  @Test def `more-interleaved-params-6` =
+    check(
+      """|object M:
+         |  def test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int = ???
+         |  test[Int](1)[String]("1")[Int](@@)
+         |""".stripMargin,
+      """|test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int
+         |                          ^^^^
+         |""".stripMargin
+    )
+
+  @Test def `more-interleaved-params-7` =
+    check(
+      """|object M:
+         |  def test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int = ???
+         |  test[Int](1)[String]("1")[Int](2)[@@]
+         |""".stripMargin,
+      """|test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int
+         |                                ^
+         |""".stripMargin
+    )
+
+  @Test def `more-interleaved-params-8` =
+    check(
+      """|object M:
+         |  def test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int = ???
+         |  test[Int](1)[String]("1")[Int](2)[String](@@)
+         |""".stripMargin,
+      """|test[A](a: A)[B](b: B)[C](c: C)[D](d: D): Int
+         |                                   ^^^^
+         |""".stripMargin
+    )
+
+  @Test def `interleaving-with-implicit` =
+    check(
+      """|object M:
+         |  def test[A](a: A)(using Int)[B](b: B)[C](c: C)[D](d: D): Int = ???
+         |  test[Int](1)(using 5)[String]("1")[Int](@@)
+         |""".stripMargin,
+      """|test[A](a: A)(using Int)[B](b: B)[C](c: C)[D](d: D): Int
+         |                                     ^^^^
+         |""".stripMargin
+    )
+
+  @Test def `interleaving-with-implicit-recovery` =
+    check(
+      """|object M:
+         |  def test[A](a: A)(using Int)[B](b: B)[C](c: C)[D](d: D): Int = ???
+         |  test[Int](1)(5)[String]("1")[Int](@@)
+         |""".stripMargin,
+      """|test[A](a: A)(using Int)[B](b: B)[C](c: C)[D](d: D): Int
+         |                                     ^^^^
+         |""".stripMargin
+    )
+

@@ -521,7 +521,7 @@ object Signatures {
 
         val params = currentParams.map: (symbol, info) =>
           // TODO after we migrate ShortenedTypePrinter into the compiler, it should rely on its api
-          val name = if symbol.isAllOf(Flags.SyntheticParam | Flags.Given) then nme.EMPTY else symbol.name.asTermName
+          val name = if symbol.isAllOf(Flags.Given | Flags.Param) && symbol.name.startsWith("x$") then nme.EMPTY else symbol.name.asTermName
 
           Signatures.MethodParam(
             name.show,
@@ -622,6 +622,9 @@ object Signatures {
    */
   private def findParamssIndex(tree: tpd.Tree, alreadyCurried: Int = 0)(using Context): Int =
     tree match
+      case GenericApply(fun, params)
+        if params.nonEmpty && params.forall(_.isInstanceOf[untpd.SearchFailureIdent]) =>
+          findParamssIndex(fun, alreadyCurried)
       case GenericApply(fun, params) => findParamssIndex(fun, alreadyCurried + 1)
       case _ => alreadyCurried
 
