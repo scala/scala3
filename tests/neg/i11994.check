@@ -1,14 +1,26 @@
--- [E008] Not Found Error: tests/neg/i11994.scala:1:28 -----------------------------------------------------------------
-1 |implicit def foo[T <: Tuple.meow]: Unit = ??? // error
+-- [E008] Not Found Error: tests/neg/i11994.scala:2:28 -----------------------------------------------------------------
+2 |implicit def foo[T <: Tuple.meow]: Unit = ??? // error
   |                      ^^^^^^^^^^
   |                      type meow is not a member of object Tuple.
   |                      Extension methods were tried, but the search failed with:
   |
   |                          Cyclic reference involving method foo
--- [E008] Not Found Error: tests/neg/i11994.scala:2:18 -----------------------------------------------------------------
-2 |given [T <: Tuple.meow]: Unit = ??? // error
+  |                          
+  |                          The error occurred while trying to compute the signature of method foo
+  |                            which required to compute the signature of type T
+  |                            which required to compute the signature of method foo
+  |                          
+  |                           Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace.
+-- [E008] Not Found Error: tests/neg/i11994.scala:3:18 -----------------------------------------------------------------
+3 |given [T <: Tuple.meow]: Unit = ??? // error
   |            ^^^^^^^^^^
   |            type meow is not a member of object Tuple.
   |            Extension methods were tried, but the search failed with:
   |
   |                Cyclic reference involving method given_Unit
+  |                
+  |                The error occurred while trying to compute the signature of given instance given_Unit
+  |                  which required to compute the signature of type T
+  |                  which required to compute the signature of given instance given_Unit
+  |                
+  |                 Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace.

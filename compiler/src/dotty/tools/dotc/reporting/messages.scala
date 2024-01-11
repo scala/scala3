@@ -84,6 +84,23 @@ abstract class PatternMatchMsg(errorId: ErrorMessageID)(using Context) extends M
 abstract class CyclicMsg(errorId: ErrorMessageID)(using Context) extends Message(errorId):
   def kind = MessageKind.Cyclic
 
+  val ex: CyclicReference
+  protected def cycleSym = ex.denot.symbol
+
+  protected def debugInfo =
+    if ctx.settings.YdebugCyclic.value then
+      "\n\nStacktrace:" ++ ex.getStackTrace().nn.mkString("\n    ", "\n    ", "")
+    else "\n\n Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace."
+
+  protected def context: String = ex.optTrace match
+    case Some(trace) =>
+      s"\n\nThe error occurred while trying to ${
+        trace.map((prefix, sym, suffix) => i"$prefix$sym$suffix").mkString("\n  which required to ")
+      }$debugInfo"
+    case None =>
+      "\n\n Run with -explain-cyclic for more details."
+end CyclicMsg
+
 abstract class ReferenceMsg(errorId: ErrorMessageID)(using Context) extends Message(errorId):
   def kind = MessageKind.Reference
 
@@ -1249,9 +1266,9 @@ class UnreducibleApplication(tycon: Type)(using Context) extends TypeMsg(Unreduc
         |Such applications are equivalent to existential types, which are not
         |supported in Scala 3."""
 
-class OverloadedOrRecursiveMethodNeedsResultType(cycleSym: Symbol)(using Context)
+class OverloadedOrRecursiveMethodNeedsResultType(val ex: CyclicReference)(using Context)
 extends CyclicMsg(OverloadedOrRecursiveMethodNeedsResultTypeID) {
-  def msg(using Context) = i"""Overloaded or recursive $cycleSym needs return type"""
+  def msg(using Context) = i"""Overloaded or recursive $cycleSym needs return type$context"""
   def explain(using Context) =
     i"""Case 1: $cycleSym is overloaded
         |If there are multiple methods named $cycleSym and at least one definition of
@@ -1263,29 +1280,29 @@ extends CyclicMsg(OverloadedOrRecursiveMethodNeedsResultTypeID) {
         |"""
 }
 
-class RecursiveValueNeedsResultType(cycleSym: Symbol)(using Context)
+class RecursiveValueNeedsResultType(val ex: CyclicReference)(using Context)
 extends CyclicMsg(RecursiveValueNeedsResultTypeID) {
-  def msg(using Context) = i"""Recursive $cycleSym needs type"""
+  def msg(using Context) = i"""Recursive $cycleSym needs type$context"""
   def explain(using Context) =
     i"""The definition of $cycleSym is recursive and you need to specify its type.
         |"""
 }
 
-class CyclicReferenceInvolving(denot: SymDenotation)(using Context)
+class CyclicReferenceInvolving(val ex: CyclicReference)(using Context)
 extends CyclicMsg(CyclicReferenceInvolvingID) {
   def msg(using Context) =
-    val where = if denot.exists then s" involving $denot" else ""
-    i"Cyclic reference$where"
+    val where = if ex.denot.exists then s" involving ${ex.denot}" else ""
+    i"Cyclic reference$where$context"
   def explain(using Context) =
-    i"""|$denot is declared as part of a cycle which makes it impossible for the
-        |compiler to decide upon ${denot.name}'s type.
-        |To avoid this error, try giving ${denot.name} an explicit type.
+    i"""|${ex.denot} is declared as part of a cycle which makes it impossible for the
+        |compiler to decide upon ${ex.denot.name}'s type.
+        |To avoid this error, try giving ${ex.denot.name} an explicit type.
         |"""
 }
 
-class CyclicReferenceInvolvingImplicit(cycleSym: Symbol)(using Context)
+class CyclicReferenceInvolvingImplicit(val ex: CyclicReference)(using Context)
 extends CyclicMsg(CyclicReferenceInvolvingImplicitID) {
-  def msg(using Context) = i"""Cyclic reference involving implicit $cycleSym"""
+  def msg(using Context) = i"""Cyclic reference involving implicit $cycleSym$context"""
   def explain(using Context) =
     i"""|$cycleSym is declared as part of a cycle which makes it impossible for the
         |compiler to decide upon ${cycleSym.name}'s type.
@@ -2340,9 +2357,9 @@ class TypeTestAlwaysDiverges(scrutTp: Type, testTp: Type)(using Context) extends
 }
 
 // Relative of CyclicReferenceInvolvingImplicit and RecursiveValueNeedsResultType
-class TermMemberNeedsResultTypeForImplicitSearch(cycleSym: Symbol)(using Context)
+class TermMemberNeedsResultTypeForImplicitSearch(val ex: CyclicReference)(using Context)
   extends CyclicMsg(TermMemberNeedsNeedsResultTypeForImplicitSearchID) {
-  def msg(using Context) = i"""$cycleSym needs result type because its right-hand side attempts implicit search"""
+  def msg(using Context) = i"""$cycleSym needs result type because its right-hand side attempts implicit search$context"""
   def explain(using Context) =
     i"""|The right hand-side of $cycleSym's definition requires an implicit search at the highlighted position.
         |To avoid this error, give `$cycleSym` an explicit type.
@@ -2553,8 +2570,9 @@ class UnknownNamedEnclosingClassOrObject(name: TypeName)(using Context)
     """
   }
 
-class IllegalCyclicTypeReference(sym: Symbol, where: String, lastChecked: Type)(using Context)
+class IllegalCyclicTypeReference(val ex: CyclicReference, sym: Symbol, where: String, lastChecked: Type)(using Context)
   extends CyclicMsg(IllegalCyclicTypeReferenceID) {
+  override def context = ""
   def msg(using Context) =
     val lastCheckedStr =
       try lastChecked.show
