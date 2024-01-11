@@ -1,4 +1,4 @@
-//> using options -source future -deprecation -Xfatal-warnings
+//> using options -source future -deprecation
 
 import compiletime.uninitialized
 
@@ -10,3 +10,4 @@ class Memo[A](x: => A):
       known = true
       cached = x
     cached
+
