@@ -1,7 +1,6 @@
 package cctest
 
 trait IterableOnce[A]:
-  this: IterableOnce[A]^ =>
   def iterator: Iterator[A]^{this}
 
 abstract class Iterator[T]:

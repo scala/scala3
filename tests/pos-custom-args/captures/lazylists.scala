@@ -2,8 +2,6 @@ class CC
 type Cap = CC^
 
 trait LazyList[+A]:
-  this: LazyList[A]^ =>
-
   def isEmpty: Boolean
   def head: A
   def tail: LazyList[A]^{this}

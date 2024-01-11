@@ -517,21 +517,34 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         tree.symbol match
           case cls: ClassSymbol =>
             val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
-            if ((selfInfo eq NoType) || cls.is(ModuleClass) && !cls.isStatic)
-              && !cls.isPureClass
-            then
-              // add capture set to self type of nested classes if no self type is given explicitly.
-              val newSelfType = CapturingType(cinfo.selfType, CaptureSet.Var(cls))
-              val ps1 = inContext(ctx.withOwner(cls)):
-                ps.mapConserve(transformExplicitType(_))
-              val newInfo = ClassInfo(prefix, cls, ps1, decls, newSelfType)
+            def innerModule = cls.is(ModuleClass) && !cls.isStatic
+            val selfInfo1 =
+              if (selfInfo ne NoType) && !innerModule then
+                // if selfInfo is explicitly given then use that one, except if
+                // self info applies to non-static modules, these still need to be inferred
+                selfInfo
+              else if cls.isPureClass then
+                // is cls is known to be pure, nothing needs to be added to self type
+                selfInfo
+              else if !cls.isEffectivelySealed && !cls.baseClassHasExplicitSelfType then
+                // assume {cap} for completely unconstrained self types of publicly extensible classes
+                CapturingType(cinfo.selfType, CaptureSet.universal)
+              else
+                // Infer the self type for the rest, which is all classes without explicit
+                // self types (to which we also add nested module classes), provided they are
+                // neither pure, nor are publicily extensible with an unconstrained self type.
+                CapturingType(cinfo.selfType, CaptureSet.Var(cls))
+            val ps1 = inContext(ctx.withOwner(cls)):
+              ps.mapConserve(transformExplicitType(_))
+            if (selfInfo1 ne selfInfo) || (ps1 ne ps) then
+              val newInfo = ClassInfo(prefix, cls, ps1, decls, selfInfo1)
               updateInfo(cls, newInfo)
               capt.println(i"update class info of $cls with parents $ps selfinfo $selfInfo to $newInfo")
               cls.thisType.asInstanceOf[ThisType].invalidateCaches()
               if cls.is(ModuleClass) then
                 // if it's a module, the capture set of the module reference is the capture set of the self type
                 val modul = cls.sourceModule
-                updateInfo(modul, CapturingType(modul.info, newSelfType.captureSet))
+                updateInfo(modul, CapturingType(modul.info, selfInfo1.asInstanceOf[Type].captureSet))
                 modul.termRef.invalidateCaches()
           case _ =>
       case _ =>

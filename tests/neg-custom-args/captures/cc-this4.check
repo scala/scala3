@@ -1,6 +1,7 @@
--- Error: tests/neg-custom-args/captures/cc-this4.scala:1:11 -----------------------------------------------------------
-1 |open class C: // error
-  |           ^
-  |           class C needs an explicitly declared self type since its
-  |           inferred self type C^{}
-  |           is not visible in other compilation units that define subclasses.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-this4.scala:2:13 --------------------------------------
+2 |  val x: C = this  // error
+  |             ^^^^
+  |             Found:    (C.this : C^)
+  |             Required: C
+  |
+  | longer explanation available when compiling with `-explain`
