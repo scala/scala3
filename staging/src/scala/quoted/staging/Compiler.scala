@@ -13,15 +13,27 @@ object Compiler:
 
   /** Create a new instance of the compiler using the the classloader of the application.
    *
-   * Usage:
-   * ```
-   * import scala.quoted.staging._
-   * given Compiler = Compiler.make(getClass.getClassLoader)
-   * ```
+   *  Usage:
+   *  ```
+   *  import scala.quoted.staging._
+   *  given Compiler =
+   *    object Dummy
+   *    Compiler.make(Dummy.getClass.getClassLoader)
+   *  ```
    *
-   * @param appClassloader classloader of the application that generated the quotes
-   * @param settings compiler settings
-   * @return A new instance of the compiler
+   *  Note that we use an instance of `Dummy` to get the classloader that loaded the application.
+   *  Any other instance of a class defined in the application would also work.
+   *  Using a class defined in the standard library should be avoided as it might be loaded by a different classloader.
+   *
+   *  If the given compiler is defined in one of your classes (e.i. not as a top-level definition), then
+   *  the compiler can be instantiated with:
+   *  ```
+   *  given Compiler = Compiler.make(this.getClass.getClassLoader)
+   *  ```
+   *
+   *  @param appClassloader classloader of the application that generated the quotes
+   *  @param settings compiler settings
+   *  @return A new instance of the compiler
    */
   def make(appClassloader: ClassLoader)(implicit settings: Settings): Compiler =
     new Compiler:
