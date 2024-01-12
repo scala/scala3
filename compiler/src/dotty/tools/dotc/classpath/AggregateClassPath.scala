@@ -39,14 +39,14 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
     def findEntry(isSource: Boolean): Option[ClassRepresentation] =
       aggregatesForPackage(PackageName(pkg)).iterator.map(_.findClass(className)).collectFirst {
         case Some(s: SourceFileEntry) if isSource => s
-        case Some(s: ClassFileEntry) if !isSource => s
+        case Some(s: BinaryFileEntry) if !isSource => s
       }
 
     val classEntry = findEntry(isSource = false)
     val sourceEntry = findEntry(isSource = true)
 
     (classEntry, sourceEntry) match {
-      case (Some(c: ClassFileEntry), Some(s: SourceFileEntry)) => Some(ClassAndSourceFilesEntry(c.file, s.file))
+      case (Some(c: BinaryFileEntry), Some(s: SourceFileEntry)) => Some(BinaryAndSourceFilesEntry(c, s))
       case (c @ Some(_), _) => c
       case (_, s) => s
     }
@@ -63,7 +63,7 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
     aggregatedPackages
   }
 
-  override private[dotty] def classes(inPackage: PackageName): Seq[ClassFileEntry] =
+  override private[dotty] def classes(inPackage: PackageName): Seq[BinaryFileEntry] =
     getDistinctEntries(_.classes(inPackage))
 
   override private[dotty] def sources(inPackage: PackageName): Seq[SourceFileEntry] =
@@ -119,11 +119,12 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
       if (indices.contains(name)) {
         val index = indices(name)
         val existing = mergedEntries(index)
-
-        if (existing.binary.isEmpty && entry.binary.isDefined)
-          mergedEntries(index) = ClassAndSourceFilesEntry(entry.binary.get, existing.source.get)
-        if (existing.source.isEmpty && entry.source.isDefined)
-          mergedEntries(index) = ClassAndSourceFilesEntry(existing.binary.get, entry.source.get)
+        (entry, existing) match
+          case (entry: SourceFileEntry, existing: BinaryFileEntry) =>
+            mergedEntries(index) = BinaryAndSourceFilesEntry(existing, entry)
+          case (entry: BinaryFileEntry, existing: SourceFileEntry) =>
+            mergedEntries(index) = BinaryAndSourceFilesEntry(entry, existing)
+          case _ =>
       }
       else {
         indices(name) = count
