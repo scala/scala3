@@ -701,24 +701,17 @@ object CaptureSet:
             if mapped.isConst then CompareResult.OK
             else if mapped.asVar.recordDepsState() then { addAsDependentTo(mapped); CompareResult.OK }
             else CompareResult.Fail(this :: Nil)
-      else if !isFixpoint then
-        // We did not yet observe the !isFixpoint condition in our tests, but it's a
-        // theoretical possibility. In that case, it would be inconsistent to both
-        // add `elem` to the set and back-propagate it. But if `{elem} <:< tm(elem)`
-        // and the variance of the set is positive, we can soundly add `tm(ref)` to
-        // the set while back-propagating `ref` as before. Otherwise there's nothing
-        // obvious left to do except fail (which is always sound).
-        if variance > 0
-            && elem.singletonCaptureSet.subCaptures(mapped, frozen = true).isOK then
-          // widen to fixpoint. mapped is known to be a fixpoint since tm is idempotent.
-          // The widening is sound, but loses completeness.
-          addMapped
-        else
-          failNoFixpoint
       else if accountsFor(elem) then
         CompareResult.OK
-      else
+      else if variance > 0 then
+        // we can soundly add nothing to source and `x` to this set
+        addNewElem(elem)
+      else if isFixpoint then
+        // We can soundly add `x` to both this set and source since `f(x) = x`
         addNewElem(elem).andAlso(propagate)
+      else
+        // we are out of options; fail (which is always sound).
+        failNoFixpoint
     end tryInclude
 
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
