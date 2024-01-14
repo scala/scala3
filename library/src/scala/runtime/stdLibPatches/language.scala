@@ -103,6 +103,13 @@ object language:
     @compileTimeOnly("`modularity` can only be used at compile time in import statements")
     object modularity
 
+    /** Experimental support for named tuples.
+     *
+     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/into-modifier]]
+     */
+    @compileTimeOnly("`namedTuples` can only be used at compile time in import statements")
+    object namedTuples
+
     /** Was needed to add support for relaxed imports of extension methods.
       * The language import is no longer needed as this is now a standard feature since SIP was accepted.
       * @see [[http://dotty.epfl.ch/docs/reference/contextual/extension-methods]]
