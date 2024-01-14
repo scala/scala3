@@ -12,6 +12,5 @@ trait Itable[+A] extends ItableOnce[A] with ILike[A, Itable^]
 
 /** Iterator can be used only once */
 trait ItableOnce[+A] {
-  this: ItableOnce[A]^ =>
   def iterator: Iterator[A]^{this}
 }

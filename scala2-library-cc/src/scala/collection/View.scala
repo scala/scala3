@@ -24,7 +24,6 @@ import language.experimental.captureChecking
   * @define Coll `View`
   */
 trait View[+A] extends Iterable[A] with IterableOps[A, View, View[A]] with IterableFactoryDefaults[A, View] with Serializable {
-  this: View[A]^ =>
 
   override def view: View[A]^{this} = this
 

@@ -251,7 +251,6 @@ final class LazyListIterable[+A] private(private[this] var lazyState: () => Lazy
     with IterableOps[A, LazyListIterable, LazyListIterable[A]]
     with IterableFactoryDefaults[A, LazyListIterable]
     with Serializable {
-  this: LazyListIterable[A]^ =>
   import LazyListIterable._
 
   @volatile private[this] var stateEvaluated: Boolean = false
@@ -964,7 +963,6 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
   private[this] val _empty = newLL(State.Empty).force
 
   private sealed trait State[+A] extends Serializable {
-    this: State[A]^ =>
     def head: A
     def tail: LazyListIterable[A]^
   }
@@ -1252,7 +1250,6 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
 
   private class SlidingIterator[A](private[this] var lazyList: LazyListIterable[A]^, size: Int, step: Int)
     extends AbstractIterator[LazyListIterable[A]] {
-    this: SlidingIterator[A]^ =>
     private val minLen = size - step max 0
     private var first = true
 
@@ -1273,7 +1270,6 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
 
   private final class WithFilter[A] private[LazyListIterable](lazyList: LazyListIterable[A]^, p: A => Boolean)
     extends collection.WithFilter[A, LazyListIterable] {
-    this: WithFilter[A]^ =>
     private[this] val filtered = lazyList.filter(p)
     def map[B](f: A => B): LazyListIterable[B]^{this, f} = filtered.map(f)
     def flatMap[B](f: A => IterableOnce[B]^): LazyListIterable[B]^{this, f} = filtered.flatMap(f)
@@ -1320,7 +1316,6 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
 
   private object LazyBuilder {
     final class DeferredState[A] {
-      this: DeferredState[A]^ =>
       private[this] var _state: (() => State[A]^) @uncheckedCaptures = _
 
       def eval(): State[A]^ = {

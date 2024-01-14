@@ -236,19 +236,19 @@ extension (tp: Type)
    *  (2) all covariant occurrences of cap replaced by `x*`, provided there
    *  are no occurrences in `T` at other variances. (1) is standard, whereas
    *  (2) is new.
-   * 
+   *
    *  For (2), multiple-flipped covariant occurrences of cap won't be replaced.
    *  In other words,
    *
    *    - For xs: List[File^]  ==>  List[File^{xs*}], the cap is replaced;
    *    - while f: [R] -> (op: File^ => R) -> R remains unchanged.
-   * 
+   *
    *  Without this restriction, the signature of functions like withFile:
-   * 
+   *
    *    (path: String) -> [R] -> (op: File^ => R) -> R
    *
    *  could be refined to
-   * 
+   *
    *    (path: String) -> [R] -> (op: File^{withFile*} => R) -> R
    *
    *  which is clearly unsound.
@@ -314,6 +314,15 @@ extension (cls: ClassSymbol)
                                  // unless a self type is explicitly given, we can't tell
                                  // and err on the side of impure.
               && selfType.exists && selfType.captureSet.isAlwaysEmpty
+
+  def baseClassHasExplicitSelfType(using Context): Boolean =
+    cls.baseClasses.exists: bc =>
+      bc.is(CaptureChecked) && bc.givenSelfType.exists
+
+  def matchesExplicitRefsInBaseClass(refs: CaptureSet)(using Context): Boolean =
+    cls.baseClasses.tail.exists: bc =>
+      val selfType = bc.givenSelfType
+      bc.is(CaptureChecked) && selfType.exists && selfType.captureSet.elems == refs.elems
 
 extension (sym: Symbol)
 

@@ -55,7 +55,6 @@ object IndexedSeqView {
 
   @SerialVersionUID(3L)
   private[collection] class IndexedSeqViewIterator[A](self: IndexedSeqView[A]^) extends AbstractIterator[A] with Serializable {
-    this: IndexedSeqViewIterator[A]^ =>
     private[this] var current = 0
     private[this] var remainder = self.length
     override def knownSize: Int = remainder
@@ -90,7 +89,6 @@ object IndexedSeqView {
   }
   @SerialVersionUID(3L)
   private[collection] class IndexedSeqViewReverseIterator[A](self: IndexedSeqView[A]^) extends AbstractIterator[A] with Serializable {
-    this: IndexedSeqViewReverseIterator[A]^ =>
     private[this] var remainder = self.length
     private[this] var pos = remainder - 1
     @inline private[this] def _hasNext: Boolean = remainder > 0

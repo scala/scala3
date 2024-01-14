@@ -21,7 +21,6 @@ import caps.unsafe.unsafeAssumePure
 trait MapView[K, +V]
   extends MapOps[K, V, ({ type l[X, Y] = View[(X, Y)] })#l, View[(K, V)]]
     with View[(K, V)] {
-  this: MapView[K, V]^ =>
 
   override def view: MapView[K, V]^{this} = this
 
@@ -191,6 +190,5 @@ trait MapViewFactory extends collection.MapFactory[({ type l[X, Y] = View[(X, Y)
 
 /** Explicit instantiation of the `MapView` trait to reduce class file size in subclasses. */
 @SerialVersionUID(3L)
-abstract class AbstractMapView[K, +V] extends AbstractView[(K, V)] with MapView[K, V]:
-  this: AbstractMapView[K, V]^ =>
+abstract class AbstractMapView[K, +V] extends AbstractView[(K, V)] with MapView[K, V]
 

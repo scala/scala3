@@ -43,7 +43,6 @@ import language.experimental.captureChecking
   * @define coll collection
   */
 trait IterableOnce[+A] extends Any {
-  this: IterableOnce[A]^ =>
 
   /** Iterator can be used only once */
   def iterator: Iterator[A]^{this}

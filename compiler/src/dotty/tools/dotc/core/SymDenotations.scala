@@ -1202,7 +1202,14 @@ object SymDenotations {
      *  is defined in Scala 3 and is neither abstract nor open.
      */
     final def isEffectivelySealed(using Context): Boolean =
-      isOneOf(FinalOrSealed) || isClass && !isOneOf(EffectivelyOpenFlags)
+      isOneOf(FinalOrSealed)
+      || isClass && (!isOneOf(EffectivelyOpenFlags)
+      || isLocalToCompilationUnit)
+
+    final def isLocalToCompilationUnit(using Context): Boolean =
+      is(Private)
+      || owner.ownersIterator.exists(_.isTerm)
+      || accessBoundary(defn.RootClass).isContainedIn(symbol.topLevelClass)
 
     final def isTransparentClass(using Context): Boolean =
       is(TransparentType)

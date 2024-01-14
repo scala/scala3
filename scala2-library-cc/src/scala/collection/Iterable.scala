@@ -9,7 +9,6 @@
  * See the NOTICE file distributed with this work for
  * additional information regarding copyright ownership.
  */
-
 package scala
 package collection
 
@@ -29,7 +28,6 @@ import language.experimental.captureChecking
 trait Iterable[+A] extends IterableOnce[A]
   with IterableOps[A, Iterable, Iterable[A]]
   with IterableFactoryDefaults[A, Iterable] {
-  this: Iterable[A]^ =>
 
   // The collection itself
   @deprecated("toIterable is internal and will be made protected; its name is similar to `toList` or `toSeq`, but it doesn't copy non-immutable collections", "2.13.7")
@@ -134,7 +132,6 @@ trait Iterable[+A] extends IterableOnce[A]
   *  and may be nondeterministic.
   */
 trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] with IterableOnceOps[A, CC, C] {
-  this: IterableOps[A, CC, C]^ =>
 
   /**
     * @return This collection as an `Iterable[A]`. No new collection will be built if `this` is already an `Iterable[A]`.
