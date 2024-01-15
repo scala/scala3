@@ -1902,6 +1902,9 @@ object Build {
       dependsOn(tastyCore).
       dependsOn(dottyCompiler).
       dependsOn(dottyLibrary).
+      bootstrappedSettings(
+        addCommandAlias("clean", ";scala3-bootstrapped/clean;stdlib-bootstrapped/clean"),
+      ).
       nonBootstrappedSettings(
         addCommandAlias("run", "scala3-compiler/run"),
         // Clean everything by default
