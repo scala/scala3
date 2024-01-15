@@ -2572,12 +2572,11 @@ class UnknownNamedEnclosingClassOrObject(name: TypeName)(using Context)
 
 class IllegalCyclicTypeReference(val ex: CyclicReference, sym: Symbol, where: String, lastChecked: Type)(using Context)
   extends CyclicMsg(IllegalCyclicTypeReferenceID) {
-  override def context = ""
   def msg(using Context) =
     val lastCheckedStr =
       try lastChecked.show
       catch case ex: CyclicReference => "..."
-    i"illegal cyclic type reference: ${where} ${hl(lastCheckedStr)} of $sym refers back to the type itself"
+    i"illegal cyclic type reference: ${where} ${hl(lastCheckedStr)} of $sym refers back to the type itself$context"
   def explain(using Context) = ""
 }
 
