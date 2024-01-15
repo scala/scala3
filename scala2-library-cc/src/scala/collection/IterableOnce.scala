@@ -321,8 +321,6 @@ object IterableOnce {
 trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
   /////////////////////////////////////////////////////////////// Abstract methods that must be implemented
 
-  import IterableOnceOps.Maximized
-
   /** Produces a $coll containing cumulative results of applying the
    *  operator going left to right, including the initial value.
    *
@@ -1052,6 +1050,29 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
       case  _ => foldLeft(new Maximized[A, B]("maxBy")(f)(ord.gt))((m, a) => m(m, a)).result
     }
 
+  private class Maximized[X, B](descriptor: String)(f: X -> B)(cmp: (B, B) -> Boolean) extends AbstractFunction2[Maximized[X, B], X, Maximized[X, B]] {
+    var maxElem: X  = null.asInstanceOf[X]
+    var maxF: B  = null.asInstanceOf[B]
+    var nonEmpty = false
+    def toOption: Option[X] = if (nonEmpty) Some(maxElem) else None
+    def result: X = if (nonEmpty) maxElem else throw new UnsupportedOperationException(s"empty.$descriptor")
+    def apply(m: Maximized[X, B], a: X): Maximized[X, B] =
+      if (m.nonEmpty) {
+        val fa = f(a)
+        if (cmp(fa, maxF)) {
+          maxF = fa
+          maxElem = a
+        }
+        m
+      }
+      else {
+        m.nonEmpty = true
+        m.maxElem = a
+        m.maxF = f(a)
+        m
+      }
+  }
+
   /** Finds the first element which yields the largest value measured by function f.
    *
    *  $willNotTerminateInf
@@ -1335,31 +1356,3 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
     xs
   }
 }
-
-object IterableOnceOps:
-
-  // Moved out of trait IterableOnceOps to here, since universal traits cannot
-  // have nested classes in Scala 3
-  private class Maximized[X, B](descriptor: String)(f: X -> B)(cmp: (B, B) -> Boolean) extends AbstractFunction2[Maximized[X, B], X, Maximized[X, B]] {
-    var maxElem: X  = null.asInstanceOf[X]
-    var maxF: B  = null.asInstanceOf[B]
-    var nonEmpty = false
-    def toOption: Option[X] = if (nonEmpty) Some(maxElem) else None
-    def result: X = if (nonEmpty) maxElem else throw new UnsupportedOperationException(s"empty.$descriptor")
-    def apply(m: Maximized[X, B], a: X): Maximized[X, B] =
-      if (m.nonEmpty) {
-        val fa = f(a)
-        if (cmp(fa, maxF)) {
-          maxF = fa
-          maxElem = a
-        }
-        m
-      }
-      else {
-        m.nonEmpty = true
-        m.maxElem = a
-        m.maxF = f(a)
-        m
-      }
-  }
-end IterableOnceOps
