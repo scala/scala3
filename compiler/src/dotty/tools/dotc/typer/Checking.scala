@@ -335,8 +335,10 @@ object Checking {
               !sym.is(Private) && prefix.derivesFrom(sym.owner)
               || {
                 val pcls = prefix.symbol.moduleClass
-                if pcls.isStaticOwner then pcls.isDefinedInCurrentRun
-                else isInteresting(prefix.prefix)
+                if pcls.isStaticOwner then
+                  pcls.span.exists && pcls.defRunId == ctx.runId // cheaper approximation to isDefinedInCurrentRun
+                else
+                  isInteresting(prefix.prefix)
               }
             case SuperType(thistp, _) => isInteresting(thistp)
             case AndType(tp1, tp2) => isInteresting(tp1) || isInteresting(tp2)
