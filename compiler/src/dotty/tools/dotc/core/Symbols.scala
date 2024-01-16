@@ -134,7 +134,7 @@ object Symbols extends SymUtils {
     final def lastKnownDenotation: SymDenotation =
       lastDenot
 
-    private[core] def defRunId: RunId =
+    private[dotc] def defRunId: RunId =
       lastDenot.validFor.runId
 
     private inline def associatedFileMatches(inline filter: AbstractFile => Boolean)(using Context): Boolean =
