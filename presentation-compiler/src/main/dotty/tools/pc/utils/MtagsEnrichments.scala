@@ -230,6 +230,34 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
 
     def stripBackticks: String = s.stripPrefix("`").stripSuffix("`")
 
+  extension (text: Array[Char])
+    def indexAfterSpacesAndComments: Int = {
+      var isInComment = false
+      var startedStateChange = false
+      val index = text.indexWhere {
+        case '/' if !isInComment && !startedStateChange =>
+          startedStateChange = true
+          false
+        case '*' if !isInComment && startedStateChange =>
+          startedStateChange = false
+          isInComment = true
+          false
+        case '/' if isInComment && startedStateChange =>
+          startedStateChange = false
+          isInComment = false
+          false
+        case '*' if isInComment && !startedStateChange =>
+          startedStateChange = true
+          false
+        case c if isInComment || c.isSpaceChar || c == '\t' =>
+          startedStateChange = false
+          false
+        case _ => true
+      }
+      if (startedStateChange) index - 1
+      else index
+    }
+
   extension (search: SymbolSearch)
     def symbolDocumentation(symbol: Symbol)(using
         Context

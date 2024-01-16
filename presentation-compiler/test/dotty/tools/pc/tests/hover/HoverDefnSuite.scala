@@ -163,8 +163,7 @@ class HoverDefnSuite extends BaseHoverSuite:
       """package b.p@@kg
         |object Main
         |""".stripMargin,
-      // TODO, doesn's show information on packages
-      ""
+      "package b.pkg".hover,
     )
 
   @Test def `pat-bind` =
