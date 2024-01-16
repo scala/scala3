@@ -3365,8 +3365,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             // The RHS of a val def should know about not null facts established
             // in preceding statements (unless the DefTree is completed ahead of time,
             // then it is impossible).
-            sym.info = Completer(completer.original)(
-              completer.creationContext.withNotNullInfos(ctx.notNullInfos))
+            completer.myNotNullInfos = ctx.notNullInfos
           true
         case _ =>
           // If it has been completed, then it must be because there is a forward reference
