@@ -3314,7 +3314,7 @@ object Parsers {
     /** ContextTypes   ::=  FunArgType {‘,’ FunArgType}
      */
     def contextTypes(paramOwner: ParamOwner, numLeadParams: Int, impliedMods: Modifiers): List[ValDef] =
-      val tps = commaSeparated(funArgType)
+      val tps = commaSeparated(() => paramTypeOf(toplevelTyp))
       var counter = numLeadParams
       def nextIdx = { counter += 1; counter }
       val paramFlags = if paramOwner.isClass then LocalParamAccessor else Param
