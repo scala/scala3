@@ -4238,7 +4238,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }
 
     /** Convert constructor proxy reference to a new expression */
-    def newExpr =
+    def newExpr(ctorResultType: Type) =
       val qual = qualifier(tree)
       val tpt = qual match
         case Ident(name) =>
@@ -4249,7 +4249,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           cpy.Ident(qual)(qual.symbol.name.sourceModuleName.toTypeName)
         case _ =>
           errorTree(tree, em"cannot convert from $tree to an instance creation expression")
-      val tycon = tree.tpe.widen.finalResultType.underlyingClassRef(refinementOK = false)
+      val tycon = ctorResultType.underlyingClassRef(refinementOK = false)
       typed(
         untpd.Select(
           untpd.New(untpd.TypedSplice(tpt.withType(tycon))),
@@ -4257,9 +4257,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         pt)
         .showing(i"convert creator $tree -> $result", typr)
 
-    def isApplyProxy(tree: Tree) = tree match
-      case Select(_, nme.apply) => tree.symbol.isAllOf(ApplyProxyFlags)
-      case _ => false
+    def applyProxy(tree: Tree) = tree match
+      case Select(_, nme.apply) =>
+        tree.denot.altsWith(_.isAllOf(ApplyProxyFlags)) match
+          case denot :: _ =>
+            // any of the constructors will do, in order to get the result type, so using the first one
+            denot.info.widen.finalResultType
+          case _ => NoType
+      case _ => NoType
 
     tree match {
       case _: MemberDef | _: PackageDef | _: Import | _: WithoutTypeOrPos[?] | _: Closure => tree
@@ -4273,7 +4278,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             if needsTupledDual(ref, pt) && Feature.autoTuplingEnabled =>
               adapt(tree, pt.tupledDual, locked)
             case _ =>
-              adaptOverloaded(ref)
+              val ctorResultType = applyProxy(tree)
+              if ctorResultType.exists then newExpr(ctorResultType)
+              else adaptOverloaded(ref)
           }
         case poly: PolyType
         if !(ctx.mode is Mode.Type) && dummyTreeOfType.unapply(tree).isEmpty =>
@@ -4282,7 +4289,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             // Test case was but i18695.scala, but it got fixed by a different tweak in #18719.
             // We leave test for this condition in as a defensive measure in case
             // it arises somewhere else.
-          if isApplyProxy(tree) then newExpr
+          val ctorResultType = applyProxy(tree)
+          if ctorResultType.exists then newExpr(ctorResultType)
           else if pt.isInstanceOf[PolyProto] then tree
           else
             var typeArgs = tree match
@@ -4296,7 +4304,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             readaptSimplified(handleStructural(tree))
           else pt match {
             case pt: FunProto =>
-              if isApplyProxy(tree) then newExpr
+              val ctorResultType = applyProxy(tree)
+              if ctorResultType.exists then newExpr(ctorResultType)
               else adaptToArgs(wtp, pt)
             case pt: PolyProto if !wtp.isImplicitMethod =>
               tryInsertApplyOrImplicit(tree, pt, locked)(tree) // error will be reported in typedTypeApply
