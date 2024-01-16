@@ -22,6 +22,7 @@ import parsing.JavaParsers.JavaParser
 import parsing.Parsers.Parser
 import Annotations.*
 import Inferencing.*
+import Nullables.*
 import transform.ValueClasses.*
 import TypeErasure.erasure
 import reporting.*
@@ -781,8 +782,11 @@ class Namer { typer: Typer =>
 
     protected def localContext(owner: Symbol): FreshContext = ctx.fresh.setOwner(owner).setTree(original)
 
+    var myNotNullInfos: List[NotNullInfo] | Null = null
+
     /** The context with which this completer was created */
-    given creationContext: Context = ictx
+    given creationContext[T]: Context =
+      if myNotNullInfos == null then ictx else ictx.withNotNullInfos(myNotNullInfos.nn)
 
     // make sure testing contexts are not captured by completers
     assert(!ictx.reporter.isInstanceOf[ExploringReporter])
