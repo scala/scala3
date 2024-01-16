@@ -318,7 +318,9 @@ object TastyFormat {
    *  compatibility, but remains backwards compatible, with all
    *  preceeding `MinorVersion`.
    */
-  final val MinorVersion: Int = 4
+  // Since 3.3.1, this version in one larger than the Scala minor version
+  // see https://github.com/lampepfl/dotty/pull/19321#issuecomment-1893343986
+  final val MinorVersion: Int = 5
 
   /** Natural Number. The `ExperimentalVersion` allows for
    *  experimentation with changes to TASTy without committing
