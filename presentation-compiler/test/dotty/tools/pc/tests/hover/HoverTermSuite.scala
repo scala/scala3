@@ -419,7 +419,8 @@ class HoverTermSuite extends BaseHoverSuite:
         |object MyIntOut:
         |  extension (i: MyIntOut) def uneven = i.value % 2 == 1
         |
-        |val a = MyIntOut(1).un@@even
+        |object Test:
+        |  val a = MyIntOut(1).un@@even
         |""".stripMargin,
       """extension (i: MyIntOut) def uneven: Boolean
         |""".stripMargin.hover
@@ -594,3 +595,45 @@ class HoverTermSuite extends BaseHoverSuite:
         |```
         |""".stripMargin
     )
+
+  @Test def `import-rename` =
+    check(
+      """
+        |import scala.collection.{AbstractMap => AB}
+        |import scala.collection.{Set => S}
+        |
+        |object Main {
+        |  def test(): AB[Int, String] = ???
+        |  <<val t@@t = test()>>
+        |}
+        |""".stripMargin,
+      """
+        |```scala
+        |type AB = AbstractMap
+        |```
+        |
+        |```scala
+        |val tt: AB[Int, String]
+        |```""".stripMargin,
+    )
+
+  @Test def `import-rename2` =
+    check(
+      """
+        |import scala.collection.{AbstractMap => AB}
+        |import scala.collection.{Set => S}
+        |
+        |object Main {
+        |  <<def te@@st(d: S[Int], f: S[Char]): AB[Int, String] = ???>>
+        |}
+        |""".stripMargin,
+      """
+        |```scala
+        |type S = Set
+        |type AB = AbstractMap
+        |```
+        |
+        |```scala
+        |def test(d: S[Int], f: S[Char]): AB[Int, String]
+        |```""".stripMargin,
+  )
