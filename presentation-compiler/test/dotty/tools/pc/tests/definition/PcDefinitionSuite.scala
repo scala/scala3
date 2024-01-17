@@ -199,6 +199,24 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
          |""".stripMargin
     )
 
+  @Test def `export` =
+    check(
+      """object enumerations:
+        |  trait <<SymbolKind>>
+        |  trait CymbalKind
+        |
+        |object all:
+        |  export enumerations.*
+        |
+        |@main def hello =
+        |  import all.SymbolKind
+        |  import enumerations.CymbalKind
+        |
+        |  val x = new Symbo@@lKind {}
+        |  val y = new CymbalKind {}
+        |""".stripMargin
+    )
+
   @Test def `named-arg-local` =
     check(
       """|
