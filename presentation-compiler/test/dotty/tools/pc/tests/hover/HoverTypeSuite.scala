@@ -362,7 +362,8 @@ class HoverTypeSuite extends BaseHoverSuite:
          |object MyIntOut:
          |  extension (i: MyIntOut) def uneven = i.value % 2 == 1
          |
-         |val a = MyIntOut(1).un@@even
+         |object Test:
+         |  val a = MyIntOut(1).un@@even
          |""".stripMargin,
       """|extension (i: MyIntOut) def uneven: Boolean
          |""".stripMargin.hover,

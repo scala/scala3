@@ -62,6 +62,13 @@ class ShortenedTypePrinter(
       AbsOverride,
       Lazy
     )
+  
+  private val foundRenames = collection.mutable.Map.empty[Symbol, String]
+  
+  def getUsedRenamesInfo(using Context): List[String] =
+    foundRenames.map { (from, to) =>
+      s"type $to = ${from.showName}"
+    }.toList
 
   def expressionType(tpw: Type)(using Context): Option[String] =
     tpw match
@@ -117,8 +124,10 @@ class ShortenedTypePrinter(
 
     prefixIterator.flatMap { owner =>
       val prefixAfterRename = ownersAfterRename(owner)
+      val ownerRename = indexedCtx.rename(owner)
+        ownerRename.foreach(rename => foundRenames += owner -> rename)
       val currentRenamesSearchResult =
-        indexedCtx.rename(owner).map(Found(owner, _, prefixAfterRename))
+        ownerRename.map(Found(owner, _, prefixAfterRename))
       lazy val configRenamesSearchResult =
         renameConfigMap.get(owner).map(Missing(owner, _, prefixAfterRename))
       currentRenamesSearchResult orElse configRenamesSearchResult
@@ -181,7 +190,9 @@ class ShortenedTypePrinter(
 
   override protected def selectionString(tp: NamedType): String =
     indexedCtx.rename(tp.symbol) match
-      case Some(value) => value
+      case Some(value) => 
+        foundRenames += tp.symbol -> value
+        value
       case None => super.selectionString(tp)
 
   override def toText(tp: Type): Text =
