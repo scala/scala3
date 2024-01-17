@@ -109,7 +109,6 @@ object MetalsInteractive:
    * Returns the list of tuple enclosing symbol and
    * the symbol's expression type if possible.
    */
-  @tailrec
   def enclosingSymbolsWithExpressionType(
       path: List[Tree],
       pos: SourcePosition,
@@ -117,7 +116,7 @@ object MetalsInteractive:
       skipCheckOnName: Boolean = false
   ): List[(Symbol, Type)] =
     import indexed.ctx
-    path match
+    @tailrec def go(path: List[Tree]): List[(Symbol, Type)] = path match
       // For a named arg, find the target `DefDef` and jump to the param
       case NamedArg(name, _) :: Apply(fn, _) :: _ =>
         val funSym = fn.symbol
@@ -206,12 +205,7 @@ object MetalsInteractive:
 
       case path @ head :: tail =>
         if head.symbol.is(Synthetic) then
-          enclosingSymbolsWithExpressionType(
-            tail,
-            pos,
-            indexed,
-            skipCheckOnName
-          )
+          go(tail)
         else if head.symbol != NoSymbol then
           if skipCheckOnName ||
             MetalsInteractive.isOnName(
@@ -225,21 +219,17 @@ object MetalsInteractive:
            * https://github.com/lampepfl/dotty/issues/15937
            */
           else if head.isInstanceOf[TypeTree] then
-            enclosingSymbolsWithExpressionType(tail, pos, indexed)
+            go(tail)
           else Nil
         else
           val recovered = recoverError(head, indexed)
           if recovered.isEmpty then
-            enclosingSymbolsWithExpressionType(
-              tail,
-              pos,
-              indexed,
-              skipCheckOnName
-            )
+            go(tail)
           else recovered.map(sym => (sym, sym.info))
         end if
       case Nil => Nil
-    end match
+    end go
+    go(path).map((sym, tp) => (sym.sourceSymbol, tp))
   end enclosingSymbolsWithExpressionType
 
   import dotty.tools.pc.utils.MtagsEnrichments.*
