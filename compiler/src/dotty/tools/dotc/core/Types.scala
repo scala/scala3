@@ -657,6 +657,8 @@ object Types extends TypeUtils {
             tp.superType.baseClasses
           case tp: ClassInfo =>
             tp.cls.classDenot.baseClasses
+          case tp: WildcardType =>
+            tp.effectiveBounds.hi.baseClasses
           case _ => Nil
       catch case ex: Throwable =>
         handleRecursive("base classes of", this.show, ex)
