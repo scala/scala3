@@ -785,7 +785,7 @@ class Namer { typer: Typer =>
 
     protected def localContext(owner: Symbol): FreshContext = ctx.fresh.setOwner(owner).setTree(original)
 
-    var myNotNullInfos: List[NotNullInfo] | Null = null
+    private var myNotNullInfos: List[NotNullInfo] | Null = null
 
     /** The context with which this completer was created */
     given creationContext[T]: Context =
@@ -793,6 +793,9 @@ class Namer { typer: Typer =>
 
     // make sure testing contexts are not captured by completers
     assert(!ictx.reporter.isInstanceOf[ExploringReporter])
+
+    def setNotNullInfos(infos: List[NotNullInfo]): Unit =
+      myNotNullInfos = infos
 
     protected def typeSig(sym: Symbol): Type = original match
       case original: ValDef =>

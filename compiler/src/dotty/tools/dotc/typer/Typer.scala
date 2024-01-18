@@ -3361,11 +3361,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     mdef.getAttachment(SymOfTree) match {
       case Some(sym) => sym.infoOrCompleter match {
         case completer: Namer#Completer =>
-          if (completer.creationContext.notNullInfos ne ctx.notNullInfos)
+          if completer.creationContext.notNullInfos ne ctx.notNullInfos then
             // The RHS of a val def should know about not null facts established
             // in preceding statements (unless the DefTree is completed ahead of time,
             // then it is impossible).
-            completer.myNotNullInfos = ctx.notNullInfos
+            completer.setNotNullInfos(ctx.notNullInfos)
           true
         case _ =>
           // If it has been completed, then it must be because there is a forward reference
