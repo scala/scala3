@@ -2163,7 +2163,8 @@ object Build {
             (Compile/doc/target).value
           },
           commonMiMaSettings,
-          mimaBinaryIssueFilters ++= MiMaFilters.Library
+          mimaBackwardIssueFilters := MiMaFilters.LibraryBackwards,
+          mimaForwardIssueFilters := MiMaFilters.LibraryForward,
         )
       } else base
     }
