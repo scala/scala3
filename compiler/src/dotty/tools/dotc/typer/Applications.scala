@@ -1439,6 +1439,20 @@ trait Applications extends Compatibility {
       else (unapplyFn, unapplyAppCall)
     end inlinedUnapplyFnAndApp
 
+    def unapplyImplicits(dummyArg: Tree, unapp: Tree): List[Tree] =
+      val res = List.newBuilder[Tree]
+      def loop(unapp: Tree): Unit = unapp match
+        case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); res ++= args2
+        case Apply(unapply, `dummyArg` :: Nil) =>
+        case Inlined(u, _, _) => loop(u)
+        case DynamicUnapply(_) => report.error(em"Structural unapply is not supported", unapplyFn.srcPos)
+        case Apply(fn, args) => assert(args.nonEmpty); loop(fn); res ++= args
+        case _ => ().assertingErrorsReported
+
+      loop(unapp)
+      res.result()
+    end unapplyImplicits
+
     /** Add a `Bind` node for each `bound` symbol in a type application `unapp` */
     def addBinders(unapp: Tree, bound: List[Symbol]) = unapp match {
       case TypeApply(fn, args) =>
@@ -1482,20 +1496,6 @@ trait Applications extends Compatibility {
             typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
           inlinedUnapplyFnAndApp(dummyArg, unapplyAppCall)
 
-        def unapplyImplicits(unapp: Tree): List[Tree] = {
-          val res = List.newBuilder[Tree]
-          def loop(unapp: Tree): Unit = unapp match {
-            case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); res ++= args2
-            case Apply(unapply, `dummyArg` :: Nil) =>
-            case Inlined(u, _, _) => loop(u)
-            case DynamicUnapply(_) => report.error(em"Structural unapply is not supported", unapplyFn.srcPos)
-            case Apply(fn, args) => assert(args.nonEmpty); loop(fn); res ++= args
-            case _ => ().assertingErrorsReported
-          }
-          loop(unapp)
-          res.result()
-        }
-
         var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.srcPos)
         for (argType <- argTypes) assert(!isBounds(argType), unapplyApp.tpe.show)
         val bunchedArgs = argTypes match {
@@ -1510,7 +1510,7 @@ trait Applications extends Compatibility {
             List.fill(argTypes.length - args.length)(WildcardType)
         }
         val unapplyPatterns = bunchedArgs.lazyZip(argTypes) map (typed(_, _))
-        val result = assignType(cpy.UnApply(tree)(newUnapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns), ownType)
+        val result = assignType(cpy.UnApply(tree)(newUnapplyFn, unapplyImplicits(dummyArg, unapplyApp), unapplyPatterns), ownType)
         unapp.println(s"unapply patterns = $unapplyPatterns")
         if (ownType.stripped eq selType.stripped) || ownType.isError then result
         else tryWithTypeTest(Typed(result, TypeTree(ownType)), selType)
