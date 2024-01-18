@@ -53,7 +53,19 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
         val method = clazz.getMethod("apply")
         val inst = clazz.getConstructor().newInstance()
 
-        method.invoke(inst).asInstanceOf[T]
+        try method.invoke(inst).asInstanceOf[T]
+        catch case ex: java.lang.reflect.InvocationTargetException =>
+          ex.getCause match
+            case ex: java.lang.NoClassDefFoundError =>
+              throw new Exception(
+                s"""`scala.quoted.staging.run` failed to load a class.
+                   |The classloader used for the `staging.Compiler` instance might not be the correct one.
+                   |Make sure that this classloader is the one that loaded the missing class.
+                   |Note that the classloader that loads the standard library might not be the same as
+                   |the one that loaded the application classes.""".stripMargin,
+                ex)
+
+            case _ => throw ex
     end match
 
   end run

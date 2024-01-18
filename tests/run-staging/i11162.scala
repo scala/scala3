@@ -2,7 +2,7 @@ import scala.quoted.*
 
 object Test {
 
-  given staging.Compiler = staging.Compiler.make(getClass.getClassLoader)
+  given staging.Compiler = staging.Compiler.make(this.getClass.getClassLoader)
 
   def main(args: Array[String]): Unit =
     staging.run {
