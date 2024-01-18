@@ -56,7 +56,7 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
         try method.invoke(inst).asInstanceOf[T]
         catch case ex: java.lang.reflect.InvocationTargetException =>
           ex.getCause match
-            case ex: java.lang.NoClassDefFoundError =>
+            case _: java.lang.NoClassDefFoundError =>
               throw new Exception(
                 s"""`scala.quoted.staging.run` failed to load a class.
                    |The classloader used for the `staging.Compiler` instance might not be the correct one.
