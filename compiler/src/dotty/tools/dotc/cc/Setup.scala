@@ -416,7 +416,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
         case tree @ SeqLiteral(elems, tpt: TypeTree) =>
           traverse(elems)
-          transformTT(tpt, boxed = true, exact = false)
+          tpt.rememberType(box(transformInferredType(tpt.tpe)))
 
         case _ =>
           traverseChildren(tree)
