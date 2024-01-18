@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/i19470.scala:9:12 -------------------------------------------------------------
+9 |    List(foo(f())) // error
+  |         ^^^^^^^^
+  |         Found:    Inv[? >: IO <: box IO^{f}]
+  |         Required: box Inv[box IO^?]^?
+  |
+  | longer explanation available when compiling with `-explain`
