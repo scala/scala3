@@ -33,7 +33,7 @@ object MigrationVersion:
 
   val AscriptionAfterPattern = MigrationVersion(`3.3`, future)
 
-  val ExplicitContextBoundArgument = MigrationVersion(`3.4`, `3.5`)
+  val ExplicitContextBoundArgument = MigrationVersion(`3.4`, future)
 
   val AlphanumericInfix = MigrationVersion(`3.4`, future)
   val RemoveThisQualifier = MigrationVersion(`3.4`, future)
