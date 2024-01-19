@@ -785,7 +785,7 @@ class Namer { typer: Typer =>
     private var myNotNullInfos: List[NotNullInfo] | Null = null
 
     /** The context with which this completer was created */
-    given creationContext[T]: Context =
+    given creationContext[Dummy_so_its_a_def]: Context =
       if myNotNullInfos == null then ictx else ictx.withNotNullInfos(myNotNullInfos.nn)
 
     // make sure testing contexts are not captured by completers
