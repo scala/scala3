@@ -36,7 +36,7 @@ import org.eclipse.lsp4j.TextEdit
  * A type printer that shortens types by replacing fully qualified names with shortened versions.
  *
  * The printer supports symbol renames found in scope and will use the rename if it is available.
- * It also handlse custom renames as specified in the `renameConfigMap` parameter.
+ * It also handle custom renames as specified in the `renameConfigMap` parameter.
  */
 class ShortenedTypePrinter(
     symbolSearch: SymbolSearch,
@@ -45,7 +45,7 @@ class ShortenedTypePrinter(
     isTextEdit: Boolean = false,
     renameConfigMap: Map[Symbol, String] = Map.empty
 )(using indexedCtx: IndexedContext, reportCtx: ReportContext) extends RefinedPrinter(indexedCtx.ctx):
-  private val missingImports: mutable.Set[ImportSel] = mutable.Set.empty
+  private val missingImports: mutable.Set[ImportSel] = mutable.LinkedHashSet.empty
   private val defaultWidth = 1000
 
   private val methodFlags =
@@ -62,9 +62,9 @@ class ShortenedTypePrinter(
       AbsOverride,
       Lazy
     )
-  
-  private val foundRenames = collection.mutable.Map.empty[Symbol, String]
-  
+
+  private val foundRenames = collection.mutable.LinkedHashMap.empty[Symbol, String]
+
   def getUsedRenamesInfo(using Context): List[String] =
     foundRenames.map { (from, to) =>
       s"type $to = ${from.showName}"
@@ -190,7 +190,7 @@ class ShortenedTypePrinter(
 
   override protected def selectionString(tp: NamedType): String =
     indexedCtx.rename(tp.symbol) match
-      case Some(value) => 
+      case Some(value) =>
         foundRenames += tp.symbol -> value
         value
       case None => super.selectionString(tp)
