@@ -74,8 +74,8 @@ object CaseKeywordCompletion:
     val parents: Parents = selector match
       case EmptyTree =>
         val seenFromType = parent match
-          case TreeApply(fun, _) if !fun.tpe.isErroneous => fun.tpe
-          case _ => parent.tpe
+          case TreeApply(fun, _) if !fun.typeOpt.isErroneous => fun.typeOpt
+          case _ => parent.typeOpt
         seenFromType.paramInfoss match
           case (head :: Nil) :: _
               if definitions.isFunctionType(head) || head.isRef(
@@ -84,7 +84,7 @@ object CaseKeywordCompletion:
             val argTypes = head.argTypes.init
             new Parents(argTypes, definitions)
           case _ => new Parents(NoType, definitions)
-      case sel => new Parents(sel.tpe, definitions)
+      case sel => new Parents(sel.typeOpt, definitions)
 
     val selectorSym = parents.selector.widen.metalsDealias.typeSymbol
 
@@ -240,7 +240,7 @@ object CaseKeywordCompletion:
       completionPos,
       clientSupportsSnippets
     )
-    val tpe = selector.tpe.widen.metalsDealias.bounds.hi match
+    val tpe = selector.typeOpt.widen.metalsDealias.bounds.hi match
       case tr @ TypeRef(_, _) => tr.underlying
       case t => t
 

@@ -108,7 +108,7 @@ class PcDefinitionProvider(
       case Nil =>
         path.headOption match
           case Some(value: Literal) =>
-            definitionsForSymbol(List(value.tpe.widen.typeSymbol), pos)
+            definitionsForSymbol(List(value.typeOpt.widen.typeSymbol), pos)
           case _ => DefinitionResultImpl.empty
       case _ =>
         definitionsForSymbol(typeSymbols, pos)

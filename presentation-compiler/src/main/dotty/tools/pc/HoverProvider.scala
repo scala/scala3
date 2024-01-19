@@ -48,7 +48,7 @@ object HoverProvider:
     val indexedContext = IndexedContext(ctx)
 
     def typeFromPath(path: List[Tree]) =
-      if path.isEmpty then NoType else path.head.tpe
+      if path.isEmpty then NoType else path.head.typeOpt
 
     val tp = typeFromPath(path)
     val tpw = tp.widenTermRefExpr
@@ -185,7 +185,7 @@ object HoverProvider:
             findRefinement(parent)
           case _ => None
 
-      val refTpe = sel.tpe.widen.metalsDealias match
+      val refTpe = sel.typeOpt.widen.metalsDealias match
         case r: RefinedType => Some(r)
         case t: (TermRef | TypeProxy) => Some(t.termSymbol.info.metalsDealias)
         case _ => None
