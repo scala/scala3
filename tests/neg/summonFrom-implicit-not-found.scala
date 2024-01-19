@@ -1,8 +1,9 @@
-@annotation.implicitNotFound("there is no Inst!")
-trait Inst
+@annotation.implicitNotFound("there is no Missing!")
+trait Missing
 
-transparent inline def lookup[T] = compiletime.summonFrom[T] {
-  case m: T => m
+inline def summonMissing = compiletime.summonFrom {
+  case m: Missing => m
 }
-// given Inst = {}
-val x = lookup[Inst] // error
+inline def summonMissing2 = compiletime.summonInline[Missing]
+val x = summonMissing // error
+val y = summonMissing2 // error
