@@ -1,0 +1,13 @@
+-- Error: tests/neg/summonFrom-implicit-not-found.scala:8:8 ------------------------------------------------------------
+8 |val x = lookup // error
+  |        ^^^^^^
+  |        there is no Inst!
+  |---------------------------------------------------------------------------------------------------------------------
+  |Inline stack trace
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  |This location contains code that was inlined from summonFrom-implicit-not-found.scala:4
+4 |inline def lookup = compiletime.summonFrom {
+  |                    ^
+5 |  case m: Inst => m
+6 |}
+   ---------------------------------------------------------------------------------------------------------------------

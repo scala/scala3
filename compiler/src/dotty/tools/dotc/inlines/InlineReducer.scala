@@ -147,7 +147,7 @@ class InlineReducer(inliner: Inliner)(using Context):
     }
     binding1.withSpan(call.span)
   }
-
+  // (I guess) these `Option`s should be Either[ErrorMessage, T] to show msg from `@implicitNotFound`.
   /** The result type of reducing a match. It consists optionally of a list of bindings
    *  for the pattern-bound variables and the RHS of the selected case.
    *  Returns `None` if no case was selected.
@@ -205,6 +205,10 @@ class InlineReducer(inliner: Inliner)(using Context):
               report.error(evTyper.missingArgMsg(evidence, tpt.tpe, ""), tpt.srcPos)
               true // hard error: return true to stop implicit search here
             case fail: Implicits.SearchFailureType =>
+              // Here, we get a message from `@implicitNotFound(...)` like "there is no Inst!"
+              // let's give this value back to caller
+              val msgFromAnnotation = evTyper.missingArgMsg(evidence, tpt.tpe, "")
+              println(msgFromAnnotation)
               false
             case _ =>
               //inlining.println(i"inferred implicit $sym: ${sym.info} with $evidence: ${evidence.tpe.widen}, ${evCtx.gadt.constraint}, ${evCtx.typerState.constraint}")
@@ -369,6 +373,7 @@ class InlineReducer(inliner: Inliner)(using Context):
 
       if (!isImplicit) caseBindingMap += ((NoSymbol, scrutineeBinding))
       val gadtCtx = ctx.fresh.setFreshGADTBounds.addMode(Mode.GadtConstraintInference)
+      // `true` from reducePattern implies there be some instance(s) for `reduceFrom`(?)
       if (reducePattern(caseBindingMap, scrutineeSym.termRef, cdef.pat)(using gadtCtx)) {
         val (caseBindings, from, to) = substBindings(caseBindingMap.toList, mutable.ListBuffer(), Nil, Nil)
         val (guardOK, canReduceGuard) =
@@ -388,6 +393,10 @@ class InlineReducer(inliner: Inliner)(using Context):
       case Nil => None
       case cdef :: cases1 =>
         reduceCase(cdef) match
+          // may fail with 1. ambiguous implicits, 2. missing implicits
+          // Either[Either[MissingErrorMessage,AmbiguousErrorMessage],T]?
+          // a preceding case may fail, but one of the remainders cases may succeed.
+          // So return Left[ErrorMessage] when the last reduce fails?
           case None => recur(cases1)
           case r @ Some((caseBindings, rhs, canReduceGuard)) if canReduceGuard => Some((caseBindings, rhs))
           case _ => None

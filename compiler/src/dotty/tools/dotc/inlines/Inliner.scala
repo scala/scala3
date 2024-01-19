@@ -889,8 +889,11 @@ class Inliner(val call: tpd.Tree)(using Context):
                                 |$rhs""")
             typedExpr(rhs, pt)
           case None =>
+            // what if reduceInlineMatch returns Either[ErrorMessage,(caseBindings, rhs0)]? 
+
             def guardStr(guard: untpd.Tree) = if (guard.isEmpty) "" else i" if $guard"
             def patStr(cdef: untpd.CaseDef) = i"case ${cdef.pat}${guardStr(cdef.guard)}"
+            println(s"\n\n\nDEBUG!! ${tree.cases}\n\n\n")
             val msg =
               if (tree.selector.isEmpty)
                 em"""cannot reduce summonFrom with
