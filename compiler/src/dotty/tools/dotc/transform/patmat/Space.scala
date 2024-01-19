@@ -3,25 +3,13 @@ package dotc
 package transform
 package patmat
 
-import core._
-import Types._
-import TypeUtils._
-import Contexts._
-import Flags._
-import ast._
-import Decorators.{ show => _, * }
-import Symbols._
-import StdNames._
-import NameOps._
-import Constants._
-import typer._
-import Applications._
-import Inferencing._
-import ProtoTypes._
-import transform.SymUtils._
-import reporting._
-import config.Printers.{exhaustivity => debug}
-import util.{SrcPos, NoSourcePosition}
+import core.*, Constants.*, Contexts.*, Decorators.*, Flags.*, Names.*, NameOps.*, StdNames.*, Symbols.*, Types.*
+import ast.*, tpd.*
+import config.Printers.*
+import printing.{ Printer, * }, Texts.*
+import reporting.*
+import typer.*, Applications.*, Inferencing.*, ProtoTypes.*
+import util.*
 
 import scala.annotation.internal.sharable
 import scala.collection.mutable
@@ -58,7 +46,7 @@ import SpaceEngine.*
  */
 
 /** space definition */
-sealed trait Space:
+sealed trait Space extends Showable:
 
   @sharable private val isSubspaceCache = mutable.HashMap.empty[Space, Boolean]
 
@@ -69,9 +57,7 @@ sealed trait Space:
     if (a ne a2) || (b ne b2) then a2.isSubspace(b2)
     else if a == Empty then true
     else if b == Empty then false
-    else trace(s"isSubspace(${show(this)}, ${show(b)})", debug) {
-      isSubspaceCache.getOrElseUpdate(b, computeIsSubspace(a, b))
-    }
+    else isSubspaceCache.getOrElseUpdate(b, computeIsSubspace(a, b))
 
   @sharable private var mySimplified: Space | Null = null
 
@@ -82,6 +68,13 @@ sealed trait Space:
       mySimplified = simplified
       simplified
     else simplified
+
+  def toText(p: Printer): Text = inContext(p.printerContext)(this match {
+    case Empty    => s"Empty"
+    case sp: Typ  => s"Typ(${display(sp)})"
+    case sp: Prod => s"Prod(${display(sp)})"
+    case sp: Or   => s"Or(${display(sp)})"
+  })
 end Space
 
 /** Empty space */
@@ -116,15 +109,13 @@ case class Prod(tp: Type, unappTp: TermRef, params: List[Space]) extends Space
 case class Or(spaces: Seq[Space]) extends Space
 
 object SpaceEngine {
-  import tpd._
-
   def simplify(space: Space)(using Context): Space           = space.simplify
   def isSubspace(a: Space, b: Space)(using Context): Boolean = a.isSubspace(b)
   def canDecompose(typ: Typ)(using Context): Boolean         = typ.canDecompose
   def decompose(typ: Typ)(using Context): List[Typ]          = typ.decompose
 
   /** Simplify space such that a space equal to `Empty` becomes `Empty` */
-  def computeSimplify(space: Space)(using Context): Space = trace(s"simplify ${show(space)} --> ", debug, show)(space match {
+  def computeSimplify(space: Space)(using Context): Space = trace(s"simplify($space)")(space match {
     case Prod(tp, fun, spaces) =>
       val sps = spaces.mapconserve(simplify)
       if sps.contains(Empty) then Empty
@@ -149,7 +140,7 @@ object SpaceEngine {
     if (spaces.lengthCompare(1) <= 0 || spaces.lengthCompare(10) >= 0) spaces
     else {
       val res = spaces.map(sp => (sp, spaces.filter(_ ne sp))).find {
-        case (sp, sps) => isSubspace(sp, Or(LazyList(sps: _*)))
+        case (sp, sps) => isSubspace(sp, Or(LazyList(sps*)))
       }
       if (res.isEmpty) spaces
       else res.get._2
@@ -158,7 +149,7 @@ object SpaceEngine {
   /** Flatten space to get rid of `Or` for pretty print */
   def flatten(space: Space)(using Context): Seq[Space] = space match {
     case Prod(tp, fun, spaces) =>
-      val ss = LazyList(spaces: _*).map(flatten)
+      val ss = LazyList(spaces*).map(flatten)
 
       ss.foldLeft(LazyList(Nil : List[Space])) { (acc, flat) =>
         for { sps <- acc; s <- flat }
@@ -168,14 +159,14 @@ object SpaceEngine {
       }
 
     case Or(spaces) =>
-      LazyList(spaces: _*).flatMap(flatten)
+      LazyList(spaces*).flatMap(flatten)
 
     case _ =>
       List(space)
   }
 
   /** Is `a` a subspace of `b`? Equivalent to `simplify(simplify(a) - simplify(b)) == Empty`, but faster */
-  def computeIsSubspace(a: Space, b: Space)(using Context): Boolean = {
+  def computeIsSubspace(a: Space, b: Space)(using Context): Boolean = trace(s"isSubspace($a, $b)") {
     val a2 = simplify(a)
     val b2 = simplify(b)
     if (a ne a2) || (b ne b2) then isSubspace(a2, b2)
@@ -204,7 +195,7 @@ object SpaceEngine {
   }
 
   /** Intersection of two spaces  */
-  def intersect(a: Space, b: Space)(using Context): Space = trace(s"${show(a)} & ${show(b)}", debug, show) {
+  def intersect(a: Space, b: Space)(using Context): Space = trace(s"$a & $b") {
     (a, b) match {
       case (Empty, _) | (_, Empty) => Empty
       case (_, Or(ss)) => Or(ss.map(intersect(a, _)).filter(_ ne Empty))
@@ -212,17 +203,13 @@ object SpaceEngine {
       case (a @ Typ(tp1, _), b @ Typ(tp2, _)) =>
         if isSubType(tp1, tp2) then a
         else if isSubType(tp2, tp1) then b
-        else if canDecompose(a) then intersect(Or(decompose(a)), b)
-        else if canDecompose(b) then intersect(a, Or(decompose(b)))
         else intersectUnrelatedAtomicTypes(tp1, tp2)(a)
-      case (a @ Typ(tp1, _), Prod(tp2, fun, ss)) =>
+      case (a @ Typ(tp1, _), b @ Prod(tp2, fun, ss)) =>
         if isSubType(tp2, tp1) then b
-        else if canDecompose(a) then intersect(Or(decompose(a)), b)
         else if isSubType(tp1, tp2) then a // problematic corner case: inheriting a case class
         else intersectUnrelatedAtomicTypes(tp1, tp2)(b)
-      case (Prod(tp1, fun, ss), b @ Typ(tp2, _)) =>
+      case (a @ Prod(tp1, fun, ss), b @ Typ(tp2, _)) =>
         if isSubType(tp1, tp2) then a
-        else if canDecompose(b) then intersect(a, Or(decompose(b)))
         else if isSubType(tp2, tp1) then a  // problematic corner case: inheriting a case class
         else intersectUnrelatedAtomicTypes(tp1, tp2)(a)
       case (a @ Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2)) =>
@@ -233,7 +220,7 @@ object SpaceEngine {
   }
 
   /** The space of a not covered by b */
-  def minus(a: Space, b: Space)(using Context): Space = trace(s"${show(a)} - ${show(b)}", debug, show) {
+  def minus(a: Space, b: Space)(using Context): Space = trace(s"$a - $b") {
     (a, b) match {
       case (Empty, _) => Empty
       case (_, Empty) => a
@@ -272,7 +259,7 @@ object SpaceEngine {
         else if cache.forall(sub => isSubspace(sub.nn, Empty)) then Empty
         else
           // `(_, _, _) - (Some, None, _)` becomes `(None, _, _) | (_, Some, _) | (_, _, Empty)`
-          val spaces = LazyList(range: _*).flatMap { i =>
+          val spaces = LazyList(range*).flatMap { i =>
             flatten(sub(i)).map(s => Prod(tp1, fun1, ss1.updated(i, s)))
           }
           Or(spaces)
@@ -289,18 +276,16 @@ object SpaceEngine {
     || (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case))  // scala2 compatibility
     || unapplySeqTypeElemTp(unappResult).exists // only for unapplySeq
     || isProductMatch(unappResult, argLen)
-    || {
-      val isEmptyTp = extractorMemberType(unappResult, nme.isEmpty, NoSourcePosition)
-      isEmptyTp <:< ConstantType(Constant(false))
-    }
+    || extractorMemberType(unappResult, nme.isEmpty, NoSourcePosition) <:< ConstantType(Constant(false))
     || unappResult.derivesFrom(defn.NonEmptyTupleClass)
+    || unapp.symbol == defn.TupleXXL_unapplySeq // Fixes TupleXXL.unapplySeq which returns Some but declares Option
   }
 
   /** Is the unapply or unapplySeq irrefutable?
    *  @param  unapp   The unapply function tree
    */
-  def isIrrefutable(unapp: tpd.Tree, argLen: Int)(using Context): Boolean = {
-    tpd.funPart(unapp).tpe match
+  def isIrrefutable(unapp: Tree, argLen: Int)(using Context): Boolean = {
+    funPart(unapp).tpe match
       case funRef: TermRef => isIrrefutable(funRef, argLen)
       case _: ErrorType => false
   }
@@ -309,7 +294,7 @@ object SpaceEngine {
    *  @param  body The body of the quoted pattern
    *  @param  bodyPt The scrutinee body type
    */
-  def isIrrefutableQuotePattern(pat: tpd.QuotePattern, pt: Type)(using Context): Boolean = {
+  def isIrrefutableQuotePattern(pat: QuotePattern, pt: Type)(using Context): Boolean = {
     if pat.body.isType then pat.bindings.isEmpty && pt =:= pat.tpe
     else pat.body match
       case _: SplicePattern | Typed(_: SplicePattern, _) => pat.bindings.isEmpty && pt <:< pat.tpe
@@ -321,24 +306,24 @@ object SpaceEngine {
    * The types should be atomic (non-decomposable) and unrelated (neither
    * should be a subtype of the other).
    */
-  def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type)(sp: Space)(using Context): Space = trace(i"atomic intersection: ${AndType(tp1, tp2)}", debug, show) {
+  def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type)(sp: Typ | Prod)(using Context): Space = trace(i"intersectUnrelatedAtomicTypes($tp1, $tp2)(${sp.className})") {
     // Precondition: !isSubType(tp1, tp2) && !isSubType(tp2, tp1).
+    def intersection = sp match
+      case sp: Prod => sp.copy(AndType(tp1, tp2))
+      case sp: Typ  => sp.copy(AndType(tp1, tp2))
     if !ctx.mode.is(Mode.SafeNulls) && (tp1.isNullType || tp2.isNullType) then
       // Since projections of types don't include null, intersection with null is empty.
       Empty
-    else
-      val intersection = sp match
-        case sp: Prod => sp.copy(AndType(tp1, tp2))
-        case _        => Typ(AndType(tp1, tp2), decomposed = false)
+    else if tp1.classSymbol.isNumericValueClass && tp2.classSymbol.isNumericValueClass then
       // unrelated numeric value classes can equal each other, so let's not consider type space intersection empty
-      if tp1.classSymbol.isNumericValueClass && tp2.classSymbol.isNumericValueClass then intersection
-      else if isPrimToBox(tp1, tp2) || isPrimToBox(tp2, tp1) then intersection
-      else if TypeComparer.provablyDisjoint(tp1, tp2) then Empty
-      else intersection
+      intersection
+    else if isPrimToBox(tp1, tp2) || isPrimToBox(tp2, tp1) then intersection
+    else if TypeComparer.provablyDisjoint(tp1, tp2) then Empty
+    else intersection
   }
 
   /** Return the space that represents the pattern `pat` */
-  def project(pat: Tree)(using Context): Space = trace(i"project($pat ${pat.className} ${pat.tpe})", debug, show)(pat match {
+  def project(pat: Tree)(using Context): Space = trace(i"project($pat ${pat.className} ${pat.tpe})")(pat match {
     case Literal(c) =>
       if (c.value.isInstanceOf[Symbol])
         Typ(c.value.asInstanceOf[Symbol].termRef, decomposed = false)
@@ -455,7 +440,10 @@ object SpaceEngine {
    *  This is needed to avoid spurious unreachable warnings. See tests/patmat/i6197.scala.
    */
   private def erase(tp: Type, inArray: Boolean = false, isValue: Boolean = false, isTyped: Boolean = false)(using Context): Type =
-    trace(i"erase($tp${if inArray then " inArray" else ""}${if isValue then " isValue" else ""}${if isTyped then " isTyped" else ""})", debug)(tp match {
+    val inArr = if inArray then " inArray" else ""
+    val isVal = if isValue then " isValue" else ""
+    val isTyp = if isTyped then " isTyped" else ""
+    trace(i"erase($tp ${tp.className}$inArr$isVal$isTyp)")(tp match {
       case tp @ AppliedType(tycon, args) if tycon.typeSymbol.isPatternBound =>
         WildcardType
 
@@ -483,7 +471,7 @@ object SpaceEngine {
       case _ => tp
     })
 
-  /** Space of the pattern: unapplySeq(a, b, c: _*)
+  /** Space of the pattern: unapplySeq(a, b, c*)
    */
   def projectSeq(pats: List[Tree])(using Context): Space = {
     if (pats.isEmpty) return Typ(defn.NilType, false)
@@ -504,9 +492,10 @@ object SpaceEngine {
     tp.isPrimitiveValueType && (defn.boxedType(tp).classSymbol eq pt.classSymbol)
 
   /** Is `tp1` a subtype of `tp2`?  */
-  def isSubType(tp1: Type, tp2: Type)(using Context): Boolean = trace(i"$tp1 <:< $tp2", debug, show = true) {
+  def isSubType(tp1: Type, tp2: Type)(using Context): Boolean = trace(i"$tp1 <:< $tp2") {
     if tp1 == ConstantType(Constant(null)) && !ctx.mode.is(Mode.SafeNulls)
     then tp2 == ConstantType(Constant(null))
+    else if tp1.isTupleXXLExtract(tp2) then true // See isTupleXXLExtract, fixes TupleXXL parameter type
     else tp1 <:< tp2
   }
 
@@ -527,10 +516,8 @@ object SpaceEngine {
 
   /** Return term parameter types of the extractor `unapp`.
    *  Parameter types of the case class type `tp`. Adapted from `unapplyPlan` in patternMatcher  */
-  def signature(unapp: TermRef, scrutineeTp: Type, argLen: Int)(using Context): List[Type] = {
+  def signature(unapp: TermRef, scrutineeTp: Type, argLen: Int)(using Context): List[Type] = trace(i"signature($unapp, $scrutineeTp, $argLen)") {
     val unappSym = unapp.symbol
-
-    // println("scrutineeTp = " + scrutineeTp.show)
 
     val mt: MethodType = unapp.widen match {
       case mt: MethodType => mt
@@ -590,8 +577,6 @@ object SpaceEngine {
         }
       }
 
-    debug.println(s"signature of ${unappSym.showFullName} ----> ${sig.map(_.show).mkString(", ")}")
-
     sig.map(_.annotatedToRepeated)
   }
 
@@ -609,7 +594,7 @@ object SpaceEngine {
   }
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */
-  def decompose(tp: Type)(using Context): List[Type] = trace(i"decompose($tp)", debug) {
+  def decompose(tp: Type)(using Context): List[Type] = trace(i"decompose($tp)") {
     def rec(tp: Type, mixins: List[Type]): List[Type] = tp.dealias match
       case AndType(tp1, tp2) =>
         var tpB   = tp2
@@ -626,9 +611,9 @@ object SpaceEngine {
       case OrType(tp1, tp2)                            => List(tp1, tp2)
       case tp if tp.isRef(defn.BooleanClass)           => List(ConstantType(Constant(true)), ConstantType(Constant(false)))
       case tp if tp.isRef(defn.UnitClass)              => ConstantType(Constant(())) :: Nil
-      case tp @ NamedType(Parts(parts), _)             => parts.map(tp.derivedSelect)
+      case tp @ NamedType(Parts(parts), _)             => if parts.exists(_ eq tp) then ListOfNoType else parts.map(tp.derivedSelect)
       case _: SingletonType                            => ListOfNoType
-      case tp if tp.classSymbol.isAllOf(JavaEnumTrait) => tp.classSymbol.children.map(_.termRef)
+      case tp if tp.classSymbol.isAllOf(JavaEnum)      => tp.classSymbol.children.map(_.termRef)
         // the class of a java enum value is the enum class, so this must follow SingletonType to not loop infinitely
 
       case tp @ AppliedType(Parts(parts), targs) if tp.classSymbol.children.isEmpty =>
@@ -647,13 +632,11 @@ object SpaceEngine {
             else if (child.is(Private) || child.is(Sealed)) && child.isOneOf(AbstractOrTrait) then getChildren(child)
             else List(child)
           }
-        val children = getChildren(tp.classSymbol)
-        debug.println(i"candidates for $tp : $children")
+        val children = trace(i"getChildren($tp)")(getChildren(tp.classSymbol))
 
         val parts = children.map { sym =>
           val sym1 = if (sym.is(ModuleClass)) sym.sourceModule else sym
-          val refined = TypeOps.refineUsingParent(tp, sym1, mixins)
-          debug.println(i"$sym1 refined to $refined")
+          val refined = trace(i"refineUsingParent($tp, $sym1, $mixins)")(TypeOps.refineUsingParent(tp, sym1, mixins))
 
           def inhabited(tp: Type): Boolean = tp.dealias match
             case AndType(tp1, tp2) => !TypeComparer.provablyDisjoint(tp1, tp2)
@@ -665,7 +648,6 @@ object SpaceEngine {
           if inhabited(refined) then refined
           else NoType
         }.filter(_.exists)
-        debug.println(i"$tp decomposes to $parts")
         parts
 
       case _ => ListOfNoType
@@ -700,49 +682,13 @@ object SpaceEngine {
    *
    *  E.g.    C.this.B     -->  B     if current owner is C
    *          C.this.x.T   -->  x.T   if current owner is C
-   *          X[T]         -->  X
    *          C            -->  C     if current owner is C !!!
-   *
    */
-  def showType(tp: Type, showTypeArgs: Boolean = false)(using Context): String = {
+  private class LocalPrinter(_ctx: Context) extends RefinedPrinter(_ctx):
     val enclosingCls = ctx.owner.enclosingClass
-
-    def isOmittable(sym: Symbol) =
-      sym.isEffectiveRoot || sym.isAnonymousClass || sym.name.isReplWrapperName ||
-        ctx.definitions.unqualifiedOwnerTypes.exists(_.symbol == sym) ||
-        sym.showFullName.startsWith("scala.") ||
-        sym == enclosingCls || sym == enclosingCls.sourceModule
-
-    def refinePrefix(tp: Type): String = tp match {
-      case NoPrefix => ""
-      case tp: NamedType if isOmittable(tp.symbol) => ""
-      case tp: ThisType => refinePrefix(tp.tref)
-      case tp: RefinedType => refinePrefix(tp.parent)
-      case tp: NamedType => tp.name.show.stripSuffix("$")
-      case tp: TypeVar => refinePrefix(tp.instanceOpt)
-      case _ => tp.show
-    }
-
-    def refine(tp: Type): String = tp.stripped match {
-      case tp: RefinedType => refine(tp.parent)
-      case tp: AppliedType =>
-        refine(tp.typeConstructor) + (
-          if (showTypeArgs) tp.argInfos.map(refine).mkString("[", ",", "]")
-          else ""
-        )
-      case tp: ThisType => refine(tp.tref)
-      case tp: NamedType =>
-        val pre = refinePrefix(tp.prefix)
-        if (tp.name == tpnme.higherKinds) pre
-        else if (pre.isEmpty) tp.name.show.stripSuffix("$")
-        else pre + "." + tp.name.show.stripSuffix("$")
-      case tp: OrType => refine(tp.tp1) + " | " + refine(tp.tp2)
-      case _: TypeBounds => "_"
-      case _ => tp.show.stripSuffix("$")
-    }
-
-    refine(tp)
-  }
+    override def isOmittablePrefix(sym: Symbol) =
+      super.isOmittablePrefix(sym)
+      || sym == enclosingCls || sym == enclosingCls.sourceModule
 
   /** Whether the counterexample is satisfiable. The space is flattened and non-empty. */
   def satisfiable(sp: Space)(using Context): Boolean = {
@@ -776,10 +722,8 @@ object SpaceEngine {
     checkConstraint(genConstraint(sp))(using ctx.fresh.setNewTyperState())
   }
 
-  def showSpaces(ss: Seq[Space])(using Context): Seq[String] = ss.map(show)
-
-  /** Display spaces */
-  def show(s: Space)(using Context): String = {
+  /** Display spaces.  Used for printing uncovered spaces in the in-exhaustive error message. */
+  def display(s: Space)(using Context): String = inContext(ctx.fresh.setPrinterFn(LocalPrinter(_))) {
     def params(tp: Type): List[Type] = tp.classSymbol.primaryConstructor.info.firstParamTypes
 
     /** does the companion object of the given symbol have custom unapply */
@@ -796,39 +740,38 @@ object SpaceEngine {
         if (flattenList && tp <:< defn.NilType) ""
         else tp.symbol.showName
       case Typ(tp, decomposed) =>
-
-        val sym = tp.classSymbol
-
-        if (ctx.definitions.isTupleNType(tp))
+        val cls = tp.classSymbol
+        if ctx.definitions.isTupleNType(tp) then
           params(tp).map(_ => "_").mkString("(", ", ", ")")
-        else if (defn.ListType.isRef(sym))
-          if (flattenList) "_*" else "_: List"
-        else if (defn.ConsType.isRef(sym))
-          if (flattenList) "_, _*"  else "List(_, _*)"
-        else if (tp.classSymbol.is(Sealed) && tp.classSymbol.hasAnonymousChild)
-          "_: " + showType(tp) + " (anonymous)"
-        else if (tp.classSymbol.is(CaseClass) && !hasCustomUnapply(tp.classSymbol))
-        // use constructor syntax for case class
-          showType(tp) + params(tp).map(_ => "_").mkString("(", ", ", ")")
-        else if (decomposed) "_: " + showType(tp, showTypeArgs = true)
-        else "_"
+        else if defn.ListType.isRef(cls) then
+          if flattenList then "_*" else "_: List"
+        else if (defn.ConsType.isRef(cls))
+          if flattenList then "_, _*"  else "List(_, _*)"
+        else if cls.hasAnonymousChild then
+          s"_: ${tp.typeConstructor.show} (anonymous)"
+        else if cls.is(CaseClass) && !hasCustomUnapply(cls) then
+          // use constructor syntax for case class
+          tp.typeConstructor.show + params(tp).map(_ => "_").mkString("(", ", ", ")")
+        else if !decomposed then "_"
+        else "_: " + tp.show
       case Prod(tp, fun, params) =>
-        if (ctx.definitions.isTupleNType(tp))
+        if ctx.definitions.isTupleNType(tp) then
           "(" + params.map(doShow(_)).mkString(", ") + ")"
-        else if (tp.isRef(defn.ConsType.symbol))
-          if (flattenList) params.map(doShow(_, flattenList)).filter(_.nonEmpty).mkString(", ")
-          else params.map(doShow(_, flattenList = true)).filter(!_.isEmpty).mkString("List(", ", ", ")")
-        else {
-          val sym = fun.symbol
-          val isUnapplySeq = sym.name.eq(nme.unapplySeq)
+        else if tp.isRef(defn.ConsType.symbol) then
+          val body = params.map(doShow(_, flattenList = true)).filter(_.nonEmpty).mkString(", ")
+          if flattenList then body else s"List($body)"
+        else
+          val isUnapplySeq = fun.symbol.name eq nme.unapplySeq
           val paramsStr = params.map(doShow(_, flattenList = isUnapplySeq)).mkString("(", ", ", ")")
-          showType(fun.prefix) + paramsStr
-        }
+          val prefix = fun.prefix match
+            case pre: TermRef => pre.symbol.typeRef
+            case pre          => pre
+          prefix.typeConstructor.show + paramsStr
       case Or(ss) =>
         ss.map(doShow(_, flattenList)).mkString(" | ")
     }
 
-    doShow(s, flattenList = false)
+    doShow(s)
   }
 
   private def exhaustivityCheckable(sel: Tree)(using Context): Boolean = {
@@ -838,26 +781,25 @@ object SpaceEngine {
     def isCheckable(tp: Type): Boolean =
       val tpw = tp.widen.dealias
       val classSym = tpw.classSymbol
-      classSym.is(Sealed) ||
+      classSym.is(Sealed) && !tpw.isLargeGenericTuple || // exclude large generic tuples from exhaustivity
+                                                         // requires an unknown number of changes to make work
       tpw.isInstanceOf[OrType] ||
       (tpw.isInstanceOf[AndType] && {
         val and = tpw.asInstanceOf[AndType]
         isCheckable(and.tp1) || isCheckable(and.tp2)
       }) ||
       tpw.isRef(defn.BooleanClass) ||
-      classSym.isAllOf(JavaEnumTrait) ||
+      classSym.isAllOf(JavaEnum) ||
       classSym.is(Case) && {
         if seen.add(tpw) then productSelectorTypes(tpw, sel.srcPos).exists(isCheckable(_))
         else true // recursive case class: return true and other members can still fail the check
       }
 
-    val res = !sel.tpe.hasAnnotation(defn.UncheckedAnnot) && {
+    !sel.tpe.hasAnnotation(defn.UncheckedAnnot)
+    && {
       ctx.settings.YcheckAllPatmat.value
       || isCheckable(sel.tpe)
     }
-
-    debug.println(s"exhaustivity checkable: ${sel.show} = $res")
-    res
   }
 
   /** Whether counter-examples should be further checked? True for GADTs. */
@@ -872,7 +814,7 @@ object SpaceEngine {
   /** Return the underlying type of non-module, non-constant, non-enum case singleton types.
    *  Also widen ExprType to its result type, and rewrap any annotation wrappers.
    *  For example, with `val opt = None`, widen `opt.type` to `None.type`. */
-  def toUnderlying(tp: Type)(using Context): Type = trace(i"toUnderlying($tp)", show = true)(tp match {
+  def toUnderlying(tp: Type)(using Context): Type = trace(i"toUnderlying($tp)")(tp match {
     case _: ConstantType                            => tp
     case tp: TermRef if tp.symbol.is(Module)        => tp
     case tp: TermRef if tp.symbol.isAllOf(EnumCase) => tp
@@ -882,30 +824,28 @@ object SpaceEngine {
     case _                                          => tp
   })
 
-  def checkExhaustivity(m: Match)(using Context): Unit = if exhaustivityCheckable(m.selector) then trace(i"checkExhaustivity($m)", debug) {
+  def checkExhaustivity(m: Match)(using Context): Unit = trace(i"checkExhaustivity($m)") {
     val selTyp = toUnderlying(m.selector.tpe).dealias
-    debug.println(i"selTyp = $selTyp")
+    val targetSpace = trace(i"targetSpace($selTyp)")(project(selTyp))
 
     val patternSpace = Or(m.cases.foldLeft(List.empty[Space]) { (acc, x) =>
-      val space = if (x.guard.isEmpty) project(x.pat) else Empty
-      debug.println(s"${x.pat.show} ====> ${show(space)}")
+      val space = if x.guard.isEmpty then trace(i"project(${x.pat})")(project(x.pat)) else Empty
       space :: acc
     })
 
     val checkGADTSAT = shouldCheckExamples(selTyp)
 
     val uncovered =
-      flatten(simplify(minus(project(selTyp), patternSpace))).filter({ s =>
+      flatten(simplify(minus(targetSpace, patternSpace))).filter({ s =>
         s != Empty && (!checkGADTSAT || satisfiable(s))
       })
 
-
     if uncovered.nonEmpty then
       val deduped = dedup(uncovered)
-      report.warning(PatternMatchExhaustivity(showSpaces(deduped), m), m.selector)
+      report.warning(PatternMatchExhaustivity(deduped.map(display), m), m.selector)
   }
 
-  private def redundancyCheckable(sel: Tree)(using Context): Boolean =
+  private def reachabilityCheckable(sel: Tree)(using Context): Boolean =
     // Ignore Expr[T] and Type[T] for unreachability as a special case.
     // Quote patterns produce repeated calls to the same unapply method, but with different implicit parameters.
     // Since we assume that repeated calls to the same unapply method overlap
@@ -915,17 +855,16 @@ object SpaceEngine {
     && !sel.tpe.widen.isRef(defn.QuotedExprClass)
     && !sel.tpe.widen.isRef(defn.QuotedTypeClass)
 
-  def checkRedundancy(m: Match)(using Context): Unit = if redundancyCheckable(m.selector) then trace(i"checkRedundancy($m)", debug) {
+  def checkReachability(m: Match)(using Context): Unit = trace(i"checkReachability($m)") {
     val cases = m.cases.toIndexedSeq
 
     val selTyp = toUnderlying(m.selector.tpe).dealias
-    debug.println(i"selTyp = $selTyp")
 
     val isNullable = selTyp.classSymbol.isNullableClass
-    val targetSpace = if isNullable
+    val targetSpace = trace(i"targetSpace($selTyp)")(if isNullable
       then project(OrType(selTyp, ConstantType(Constant(null)), soft = false))
       else project(selTyp)
-    debug.println(s"targetSpace: ${show(targetSpace)}")
+    )
 
     var i        = 0
     val len      = cases.length
@@ -935,16 +874,11 @@ object SpaceEngine {
     while (i < len) {
       val CaseDef(pat, guard, _) = cases(i)
 
-      debug.println(i"case pattern: $pat")
+      val curr = trace(i"project($pat)")(project(pat))
 
-      val curr = project(pat)
-      debug.println(i"reachable? ${show(curr)}")
+      val covered = trace("covered")(simplify(intersect(curr, targetSpace)))
 
-      val prev = simplify(Or(prevs))
-      debug.println(s"prev: ${show(prev)}")
-
-      val covered = simplify(intersect(curr, targetSpace))
-      debug.println(s"covered: ${show(covered)}")
+      val prev = trace("prev")(simplify(Or(prevs)))
 
       if prev == Empty && covered == Empty then // defer until a case is reachable
         deferred ::= pat
@@ -967,4 +901,8 @@ object SpaceEngine {
       i += 1
     }
   }
+
+  def checkMatch(m: Match)(using Context): Unit =
+    if exhaustivityCheckable(m.selector) then checkExhaustivity(m)
+    if reachabilityCheckable(m.selector) then checkReachability(m)
 }

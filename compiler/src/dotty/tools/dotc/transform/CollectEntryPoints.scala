@@ -1,12 +1,12 @@
 package dotty.tools.dotc
 package transform
 
-import core._
+import core.*
 import ast.tpd
-import MegaPhase._
-import Contexts._
-import Symbols._
-import Phases._
+import MegaPhase.*
+import Contexts.*
+import Symbols.*
+import Phases.*
 import dotty.tools.io.JarArchive
 import dotty.tools.backend.jvm.GenBCode
 

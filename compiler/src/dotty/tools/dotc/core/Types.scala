@@ -2,50 +2,51 @@ package dotty.tools
 package dotc
 package core
 
-import Symbols._
-import Flags._
-import Names._
-import StdNames._, NameOps._
-import NullOpsDecorator._
-import NameKinds.SkolemName
-import Scopes._
-import Constants._
-import Contexts._
-import Phases._
-import Annotations._
-import SymDenotations._
-import Decorators._
-import Denotations._
-import Periods._
-import CheckRealizable._
+import Symbols.*
+import Flags.*
+import Names.*
+import StdNames.*, NameOps.*
+import NullOpsDecorator.*
+import NameKinds.{SkolemName, WildcardParamName}
+import Scopes.*
+import Constants.*
+import Contexts.*
+import Phases.*
+import Annotations.*
+import SymDenotations.*
+import Decorators.*
+import Denotations.*
+import Periods.*
+import CheckRealizable.*
 import Variances.{Variance, setStructuralVariances, Invariant}
 import typer.Nullables
-import util.Stats._
+import util.Stats.*
 import util.{SimpleIdentityMap, SimpleIdentitySet}
-import ast.tpd._
+import ast.tpd.*
 import ast.TreeTypeMap
-import printing.Texts._
+import printing.Texts.*
 import printing.Printer
-import Hashable._
-import Uniques._
+import Hashable.*
+import Uniques.*
 import collection.mutable
 import config.Config
+import config.Feature.sourceVersion
+import config.SourceVersion
 import annotation.{tailrec, constructorOnly}
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
-import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, EventuallyCapturingType, boxedUnlessFun, ccNestingLevel}
+import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, RetainingType, isCaptureChecking}
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
-import dotty.tools.dotc.transform.SymUtils._
-import dotty.tools.dotc.transform.TypeUtils.isErasedClass
 
-object Types {
+
+object Types extends TypeUtils {
 
   @sharable private var nextId = 0
 
@@ -656,6 +657,8 @@ object Types {
             tp.superType.baseClasses
           case tp: ClassInfo =>
             tp.cls.classDenot.baseClasses
+          case tp: WildcardType =>
+            tp.effectiveBounds.hi.baseClasses
           case _ => Nil
       catch case ex: Throwable =>
         handleRecursive("base classes of", this.show, ex)
@@ -834,26 +837,19 @@ object Types {
               pinfo recoverable_& rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         }
-        else rinfo match
-          case CapturingType(_, cs: CaptureSet.RefiningVar) =>
-            // If `rinfo` is a capturing type added by `addCaptureRefinements` it
-            // already contains everything there is to know about the member type.
-            // On the other hand, the member in parent might belong to an outer nesting level,
-            // which should be ignored at the point where instances of the class are constructed.
-            pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, rinfo)
-          case _ =>
-            val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
-            val joint = pdenot.meet(
-              new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
-              pre,
-              safeIntersection = ctx.base.pendingMemberSearches.contains(name))
-            joint match
-              case joint: SingleDenotation
-              if isRefinedMethod && rinfo <:< joint.info =>
-                // use `rinfo` to keep the right parameter names for named args. See i8516.scala.
-                joint.derivedSingleDenotation(joint.symbol, rinfo, pre, isRefinedMethod)
-              case _ =>
-                joint
+        else
+          val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
+          val joint = pdenot.meet(
+            new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
+            pre,
+            safeIntersection = ctx.base.pendingMemberSearches.contains(name))
+          joint match
+            case joint: SingleDenotation
+            if isRefinedMethod && rinfo <:< joint.info =>
+              // use `rinfo` to keep the right parameter names for named args. See i8516.scala.
+              joint.derivedSingleDenotation(joint.symbol, rinfo, pre, isRefinedMethod)
+            case _ =>
+              joint
       }
 
       def goApplied(tp: AppliedType, tycon: HKTypeLambda) =
@@ -1456,24 +1452,24 @@ object Types {
         if (tp1.exists) tp1.dealias1(keep, keepOpaques) else tp
       case tp: AnnotatedType =>
         val parent1 = tp.parent.dealias1(keep, keepOpaques)
-        tp match
+        if keep(tp) then tp.derivedAnnotatedType(parent1, tp.annot)
+        else tp match
           case tp @ CapturingType(parent, refs) =>
             tp.derivedCapturingType(parent1, refs)
           case _ =>
-            if keep(tp) then tp.derivedAnnotatedType(parent1, tp.annot)
-            else parent1
+            parent1
       case tp: LazyRef =>
         tp.ref.dealias1(keep, keepOpaques)
       case _ => this
     }
 
-    /** Follow aliases and dereferences LazyRefs, annotated types and instantiated
+    /** Follow aliases and dereference LazyRefs, annotated types and instantiated
      *  TypeVars until type is no longer alias type, annotated type, LazyRef,
      *  or instantiated type variable.
      */
     final def dealias(using Context): Type = dealias1(keepNever, keepOpaques = false)
 
-    /** Follow aliases and dereferences LazyRefs and instantiated TypeVars until type
+    /** Follow aliases and dereference LazyRefs and instantiated TypeVars until type
      *  is no longer alias type, LazyRef, or instantiated type variable.
      *  Goes through annotated types and rewraps annotations on the result.
      */
@@ -1482,11 +1478,29 @@ object Types {
     /** Like `dealiasKeepAnnots`, but keeps only refining annotations */
     final def dealiasKeepRefiningAnnots(using Context): Type = dealias1(keepIfRefining, keepOpaques = false)
 
-    /** Follow non-opaque aliases and dereferences LazyRefs, annotated types and instantiated
-     *  TypeVars until type is no longer alias type, annotated type, LazyRef,
-     *  or instantiated type variable.
+    /** Like dealias, but does not follow aliases if symbol is Opaque. This is
+     *  necessary if we want to look at the info of a symbol containing opaque
+     *  type aliases but pretend "it's from the outside". For instance, consider:
+     *
+     *    opaque type IArray[T] = Array[? <: T]
+     *    object IArray:
+     *      def head[T](xs: IArray[T]): T = ???
+     *
+     *  If we dealias types in the info of `head`, those types appear with prefix
+     *  IArray.this, where IArray's self type is `IArray { type IArray[T] = Array[? <: T] }`.
+     *  Hence, if we see IArray it will appear as an alias of [T] =>> Array[? <: T].
+     *  But if we want to see the type from the outside of object IArray we need to
+     *  suppress this dealiasing. A test case where this matters is i18909.scala.
+     *  Here, we dealias symbol infos at the start of capture checking in operation `fluidify`.
+     *  We have to be careful not to accidentally reveal opaque aliases when doing so.
      */
     final def dealiasKeepOpaques(using Context): Type = dealias1(keepNever, keepOpaques = true)
+
+    /** Like dealiasKeepAnnots, but does not follow opaque aliases. See `dealiasKeepOpaques`
+     *  for why this is sometimes necessary.
+     */
+    final def dealiasKeepAnnotsAndOpaques(using Context): Type =
+      dealias1(keepAlways, keepOpaques = true)
 
     /** Approximate this type with a type that does not contain skolem types. */
     final def deskolemized(using Context): Type =
@@ -1908,7 +1922,7 @@ object Types {
             case res: MethodType => res.toFunctionType(isJava)
             case res => res
           }
-          defn.FunctionOf(
+          defn.FunctionNOf(
             mt.paramInfos.mapConserve(_.translateFromRepeated(toArray = isJava)),
             result1, isContextual)
         if mt.hasErasedParams then
@@ -2170,32 +2184,24 @@ object Types {
   }
 
   /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs */
-  trait CaptureRef extends SingletonType:
-    private var myCaptureSet: CaptureSet | Null = _
+  trait CaptureRef extends TypeProxy, ValueType:
+    private var myCaptureSet: CaptureSet | Null = uninitialized
     private var myCaptureSetRunId: Int = NoRunId
     private var mySingletonCaptureSet: CaptureSet.Const | Null = null
 
     /** Is the reference tracked? This is true if it can be tracked and the capture
      *  set of the underlying type is not always empty.
      */
-    final def isTracked(using Context): Boolean = isTrackableRef && !captureSetOfInfo.isAlwaysEmpty
+    final def isTracked(using Context): Boolean =
+      isTrackableRef && (isRootCapability || !captureSetOfInfo.isAlwaysEmpty)
+
+    /** Is this a reach reference of the form `x*`? */
+    def isReach(using Context): Boolean = false // overridden in AnnotatedType
+
+    def stripReach(using Context): CaptureRef = this // overridden in AnnotatedType
 
     /** Is this reference the generic root capability `cap` ? */
-    def isGenericRootCapability(using Context): Boolean = false
-
-    /** Is this reference a local root capability `{<cap in owner>}`
-     *  for some level owner?
-     */
-    def isLocalRootCapability(using Context): Boolean =
-      localRootOwner.exists
-
-    /** If this is a local root capability, its owner, otherwise NoSymbol.
-     */
-    def localRootOwner(using Context): Symbol = NoSymbol
-
-    /** Is this reference the a (local or generic) root capability? */
-    def isRootCapability(using Context): Boolean =
-      isGenericRootCapability || isLocalRootCapability
+    def isRootCapability(using Context): Boolean = false
 
     /** Normalize reference so that it can be compared with `eq` for equality */
     def normalizedRef(using Context): CaptureRef = this
@@ -2213,7 +2219,7 @@ object Types {
       else
         myCaptureSet = CaptureSet.Pending
         val computed = CaptureSet.ofInfo(this)
-        if ctx.phase != Phases.checkCapturesPhase || underlying.isProvisional then
+        if !isCaptureChecking || underlying.isProvisional then
           myCaptureSet = null
         else
           myCaptureSet = computed
@@ -2228,6 +2234,8 @@ object Types {
       if isTrackableRef && !cs.isAlwaysEmpty then singletonCaptureSet else cs
 
   end CaptureRef
+
+  trait SingletonCaptureRef extends SingletonType, CaptureRef
 
   /** A trait for types that bind other types that refer to them.
    *  Instances are: LambdaType, RecType.
@@ -2294,7 +2302,7 @@ object Types {
     private var lastSymbol: Symbol | Null = null
     private var checkedPeriod: Period = Nowhere
     private var myStableHash: Byte = 0
-    private var mySignature: Signature = _
+    private var mySignature: Signature = uninitialized
     private var mySignatureRunId: Int = NoRunId
 
     // Invariants:
@@ -2714,7 +2722,7 @@ object Types {
             if (tparams.head.eq(tparam))
               return args.head match {
                 case _: TypeBounds if !widenAbstract => TypeRef(pre, tparam)
-                case arg => arg.boxedUnlessFun(tycon)
+                case arg => arg
               }
             tparams = tparams.tail
             args = args.tail
@@ -2892,7 +2900,7 @@ object Types {
    */
   abstract case class TermRef(override val prefix: Type,
                               private var myDesignator: Designator)
-    extends NamedType, ImplicitRef, CaptureRef {
+    extends NamedType, ImplicitRef, SingletonCaptureRef {
 
     type ThisType = TermRef
     type ThisName = TermName
@@ -2929,17 +2937,8 @@ object Types {
       || isRootCapability
       ) && !symbol.isOneOf(UnstableValueFlags)
 
-    override def isGenericRootCapability(using Context): Boolean =
+    override def isRootCapability(using Context): Boolean =
       name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
-
-    override def localRootOwner(using Context): Symbol =
-      if name == nme.LOCAL_CAPTURE_ROOT then
-        if symbol.owner.isLocalDummy then symbol.owner.owner
-        else symbol.owner
-      else if info.isRef(defn.Caps_Cap) then
-        val owner = symbol.maybeOwner
-        if owner.isTerm then owner else NoSymbol
-      else NoSymbol
 
     override def normalizedRef(using Context): CaptureRef =
       if isTrackableRef then symbol.termRef else this
@@ -2953,7 +2952,7 @@ object Types {
     type ThisName = TypeName
 
     private var myCanDropAliasPeriod: Period = Nowhere
-    private var myCanDropAlias: Boolean = _
+    private var myCanDropAlias: Boolean = uninitialized
 
     /** Given an alias type `type A = B` where a recursive comparison with `B` yields
      *  `false`, can we conclude that the comparison is definitely false?
@@ -3081,7 +3080,8 @@ object Types {
    *  Note: we do not pass a class symbol directly, because symbols
    *  do not survive runs whereas typerefs do.
    */
-  abstract case class ThisType(tref: TypeRef) extends CachedProxyType, CaptureRef {
+  abstract case class ThisType(tref: TypeRef)
+  extends CachedProxyType, SingletonCaptureRef {
     def cls(using Context): ClassSymbol = tref.stableInRunSymbol match {
       case cls: ClassSymbol => cls
       case _ if ctx.mode.is(Mode.Interactive) => defn.AnyClass // was observed to happen in IDE mode
@@ -3417,7 +3417,7 @@ object Types {
   abstract case class AndType(tp1: Type, tp2: Type) extends AndOrType {
     def isAnd: Boolean = true
     private var myBaseClassesPeriod: Period = Nowhere
-    private var myBaseClasses: List[ClassSymbol] = _
+    private var myBaseClasses: List[ClassSymbol] = uninitialized
     /** Base classes are the merge of the operand base classes. */
     override final def baseClasses(using Context): List[ClassSymbol] = {
       if (myBaseClassesPeriod != ctx.period) {
@@ -3510,7 +3510,7 @@ object Types {
     def isAnd: Boolean = false
     def isSoft: Boolean
     private var myBaseClassesPeriod: Period = Nowhere
-    private var myBaseClasses: List[ClassSymbol] = _
+    private var myBaseClasses: List[ClassSymbol] = uninitialized
     /** Base classes are the intersection of the operand base classes. */
     override final def baseClasses(using Context): List[ClassSymbol] = {
       if (myBaseClassesPeriod != ctx.period) {
@@ -3539,7 +3539,7 @@ object Types {
         myFactorCount
       else 1
 
-    private var myJoin: Type = _
+    private var myJoin: Type = uninitialized
     private var myJoinPeriod: Period = Nowhere
 
     /** Replace or type by the closest non-or type above it */
@@ -3553,7 +3553,7 @@ object Types {
       myJoin
     }
 
-    private var myUnion: Type = _
+    private var myUnion: Type = uninitialized
     private var myUnionPeriod: Period = Nowhere
 
     override def widenUnionWithoutNull(using Context): Type =
@@ -3568,8 +3568,8 @@ object Types {
       myUnion
 
     private var atomsRunId: RunId = NoRunId
-    private var myAtoms: Atoms = _
-    private var myWidened: Type = _
+    private var myAtoms: Atoms = uninitialized
+    private var myWidened: Type = uninitialized
 
     private def computeAtoms()(using Context): Atoms =
       val tp1n = tp1.normalized
@@ -3809,11 +3809,11 @@ object Types {
     // (1) mySignatureRunId != NoRunId      =>  mySignature != null
     // (2) myJavaSignatureRunId != NoRunId  =>  myJavaSignature != null
 
-    private var mySignature: Signature = _
+    private var mySignature: Signature = uninitialized
     private var mySignatureRunId: Int = NoRunId
-    private var myJavaSignature: Signature = _
+    private var myJavaSignature: Signature = uninitialized
     private var myJavaSignatureRunId: Int = NoRunId
-    private var myScala2Signature: Signature = _
+    private var myScala2Signature: Signature = uninitialized
     private var myScala2SignatureRunId: Int = NoRunId
 
     /** If `isJava` is false, the Scala signature of this method. Otherwise, its Java signature.
@@ -3894,7 +3894,7 @@ object Types {
   }
 
   trait TermLambda extends LambdaType { thisLambdaType =>
-    import DepStatus._
+    import DepStatus.*
     type ThisName = TermName
     type PInfo = Type
     type This >: this.type <: TermLambda
@@ -4694,7 +4694,8 @@ object Types {
   /** Only created in `binder.paramRefs`. Use `binder.paramRefs(paramNum)` to
    *  refer to `TermParamRef(binder, paramNum)`.
    */
-  abstract case class TermParamRef(binder: TermLambda, paramNum: Int) extends ParamRef, CaptureRef {
+  abstract case class TermParamRef(binder: TermLambda, paramNum: Int)
+  extends ParamRef, SingletonCaptureRef {
     type BT = TermLambda
     def kindString: String = "Term"
     def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
@@ -4905,6 +4906,9 @@ object Types {
       tp
     }
 
+    def typeToInstantiateWith(fromBelow: Boolean)(using Context): Type =
+      TypeComparer.instanceType(origin, fromBelow, widenUnions, nestingLevel)
+
     /** Instantiate variable from the constraints over its `origin`.
      *  If `fromBelow` is true, the variable is instantiated to the lub
      *  of its lower bounds in the current constraint; otherwise it is
@@ -4913,7 +4917,7 @@ object Types {
      *  is also a singleton type.
      */
     def instantiate(fromBelow: Boolean)(using Context): Type =
-      val tp = TypeComparer.instanceType(origin, fromBelow, widenUnions, nestingLevel)
+      val tp = typeToInstantiateWith(fromBelow)
       if myInst.exists then // The line above might have triggered instantiation of the current type variable
         myInst
       else
@@ -4990,7 +4994,7 @@ object Types {
     def underlying(using Context): Type = bound
 
     private var myReduced: Type | Null = null
-    private var reductionContext: util.MutableMap[Type, Type] = _
+    private var reductionContext: util.MutableMap[Type, Type] = uninitialized
 
     override def tryNormalize(using Context): Type =
       try
@@ -5036,7 +5040,7 @@ object Types {
           trace(i"reduce match type $this $hashCode", matchTypes, show = true)(inMode(Mode.Type) {
             def matchCases(cmp: TrackingTypeComparer): Type =
               val saved = ctx.typerState.snapshot()
-              try cmp.matchCases(scrutinee.normalized, cases)
+              try cmp.matchCases(scrutinee.normalized, cases.map(MatchTypeCaseSpec.analyze(_)))
               catch case ex: Throwable =>
                 handleRecursive("reduce type ", i"$scrutinee match ...", ex)
               finally
@@ -5088,6 +5092,190 @@ object Types {
         case _ => None
   }
 
+  enum MatchTypeCasePattern:
+    case Capture(num: Int, isWildcard: Boolean)
+    case TypeTest(tpe: Type)
+    case BaseTypeTest(classType: TypeRef, argPatterns: List[MatchTypeCasePattern], needsConcreteScrut: Boolean)
+    case CompileTimeS(argPattern: MatchTypeCasePattern)
+    case AbstractTypeConstructor(tycon: Type, argPatterns: List[MatchTypeCasePattern])
+    case TypeMemberExtractor(typeMemberName: TypeName, capture: Capture)
+
+    def isTypeTest: Boolean =
+      this.isInstanceOf[TypeTest]
+
+    def needsConcreteScrutInVariantPos: Boolean = this match
+      case Capture(_, isWildcard) => !isWildcard
+      case TypeTest(_)            => false
+      case _                      => true
+  end MatchTypeCasePattern
+
+  enum MatchTypeCaseSpec:
+    case SubTypeTest(origMatchCase: Type, pattern: Type, body: Type)
+    case SpeccedPatMat(origMatchCase: HKTypeLambda, captureCount: Int, pattern: MatchTypeCasePattern, body: Type)
+    case LegacyPatMat(origMatchCase: HKTypeLambda)
+    case MissingCaptures(origMatchCase: HKTypeLambda, missing: collection.BitSet)
+
+    def origMatchCase: Type
+  end MatchTypeCaseSpec
+
+  object MatchTypeCaseSpec:
+    def analyze(cas: Type)(using Context): MatchTypeCaseSpec =
+      cas match
+        case cas: HKTypeLambda if !sourceVersion.isAtLeast(SourceVersion.`3.4`) =>
+          // Always apply the legacy algorithm under -source:3.3 and below
+          LegacyPatMat(cas)
+        case cas: HKTypeLambda =>
+          val defn.MatchCase(pat, body) = cas.resultType: @unchecked
+          val missing = checkCapturesPresent(cas, pat)
+          if !missing.isEmpty then
+            MissingCaptures(cas, missing)
+          else
+            val specPattern = tryConvertToSpecPattern(cas, pat)
+            if specPattern != null then
+              SpeccedPatMat(cas, cas.paramNames.size, specPattern, body)
+            else
+              LegacyPatMat(cas)
+        case _ =>
+          val defn.MatchCase(pat, body) = cas: @unchecked
+          SubTypeTest(cas, pat, body)
+    end analyze
+
+    /** Checks that all the captures of the case are present in the case.
+     *
+     *  Sometimes, because of earlier substitutions of an abstract type constructor,
+     *  we can end up with patterns that do not mention all their captures anymore.
+     *  This can happen even when the body still refers to these missing captures.
+     *  In that case, we must always consider the case to be unmatchable, i.e., to
+     *  become `Stuck`.
+     *
+     *  See pos/i12127.scala for an example.
+     */
+    def checkCapturesPresent(cas: HKTypeLambda, pat: Type)(using Context): collection.BitSet =
+      val captureCount = cas.paramNames.size
+      val missing = new mutable.BitSet(captureCount)
+      missing ++= (0 until captureCount)
+      new CheckCapturesPresent(cas).apply(missing, pat)
+
+    private class CheckCapturesPresent(cas: HKTypeLambda)(using Context) extends TypeAccumulator[mutable.BitSet]:
+      def apply(missing: mutable.BitSet, tp: Type): mutable.BitSet = tp match
+        case TypeParamRef(binder, num) if binder eq cas =>
+          missing -= num
+        case _ =>
+          foldOver(missing, tp)
+    end CheckCapturesPresent
+
+    /** Tries to convert a match type case pattern in HKTypeLambda form into a spec'ed `MatchTypeCasePattern`.
+     *
+     *  This method recovers the structure of *legal patterns* as defined in SIP-56
+     *  from the unstructured `HKTypeLambda` coming from the typer.
+     *
+     *  It must adhere to the specification of legal patterns defined at
+     *  https://docs.scala-lang.org/sips/match-types-spec.html#legal-patterns
+     *
+     *  Returns `null` if the pattern in `caseLambda` is a not a legal pattern.
+     */
+    private def tryConvertToSpecPattern(caseLambda: HKTypeLambda, pat: Type)(using Context): MatchTypeCasePattern | Null =
+      var typeParamRefsAccountedFor: Int = 0
+
+      def rec(pat: Type, variance: Int): MatchTypeCasePattern | Null =
+        pat match
+          case pat @ TypeParamRef(binder, num) if binder eq caseLambda =>
+            typeParamRefsAccountedFor += 1
+            MatchTypeCasePattern.Capture(num, isWildcard = pat.paramName.is(WildcardParamName))
+
+          case pat @ AppliedType(tycon: TypeRef, args) if variance == 1 =>
+            val tyconSym = tycon.symbol
+            if tyconSym.isClass then
+              if tyconSym.name.startsWith("Tuple") && defn.isTupleNType(pat) then
+                rec(pat.toNestedPairs, variance)
+              else
+                recArgPatterns(pat) { argPatterns =>
+                  val needsConcreteScrut = argPatterns.zip(tycon.typeParams).exists {
+                    (argPattern, tparam) => tparam.paramVarianceSign != 0 && argPattern.needsConcreteScrutInVariantPos
+                  }
+                  MatchTypeCasePattern.BaseTypeTest(tycon, argPatterns, needsConcreteScrut)
+                }
+            else if defn.isCompiletime_S(tyconSym) && args.sizeIs == 1 then
+              val argPattern = rec(args.head, variance)
+              if argPattern == null then
+                null
+              else if argPattern.isTypeTest then
+                MatchTypeCasePattern.TypeTest(pat)
+              else
+                MatchTypeCasePattern.CompileTimeS(argPattern)
+            else
+              tycon.info match
+                case _: RealTypeBounds =>
+                  recAbstractTypeConstructor(pat)
+                case TypeAlias(tl @ HKTypeLambda(onlyParam :: Nil, resType: RefinedType)) =>
+                  /* Unlike for eta-expanded classes, the typer does not automatically
+                   * dealias poly type aliases to refined types. So we have to give them
+                   * a chance here.
+                   * We are quite specific about the shape of type aliases that we are willing
+                   * to dealias this way, because we must not dealias arbitrary type constructors
+                   * that could refine the bounds of the captures; those would amount of
+                   * type-test + capture combos, which are out of the specced match types.
+                   */
+                  rec(pat.superType, variance)
+                case _ =>
+                  null
+
+          case pat @ AppliedType(tycon: TypeParamRef, _) if variance == 1 =>
+            recAbstractTypeConstructor(pat)
+
+          case pat @ RefinedType(parent, refinedName: TypeName, TypeAlias(alias @ TypeParamRef(binder, num)))
+              if variance == 1 && (binder eq caseLambda) =>
+            parent.member(refinedName) match
+              case refinedMember: SingleDenotation if refinedMember.exists =>
+                // Check that the bounds of the capture contain the bounds of the inherited member
+                val refinedMemberBounds = refinedMember.info
+                val captureBounds = caseLambda.paramInfos(num)
+                if captureBounds.contains(refinedMemberBounds) then
+                  /* In this case, we know that any member we eventually find during reduction
+                   * will have bounds that fit in the bounds of the capture. Therefore, no
+                   * type-test + capture combo is necessary, and we can apply the specced match types.
+                   */
+                  val capture = rec(alias, variance = 0).asInstanceOf[MatchTypeCasePattern.Capture]
+                  MatchTypeCasePattern.TypeMemberExtractor(refinedName, capture)
+                else
+                  // Otherwise, a type-test + capture combo might be necessary, and we are out of spec
+                  null
+              case _ =>
+                // If the member does not refine a member of the `parent`, we are out of spec
+                null
+
+          case _ =>
+            MatchTypeCasePattern.TypeTest(pat)
+      end rec
+
+      def recAbstractTypeConstructor(pat: AppliedType): MatchTypeCasePattern | Null =
+        recArgPatterns(pat) { argPatterns =>
+          MatchTypeCasePattern.AbstractTypeConstructor(pat.tycon, argPatterns)
+        }
+      end recAbstractTypeConstructor
+
+      def recArgPatterns(pat: AppliedType)(whenNotTypeTest: List[MatchTypeCasePattern] => MatchTypeCasePattern | Null): MatchTypeCasePattern | Null =
+        val AppliedType(tycon, args) = pat
+        val tparams = tycon.typeParams
+        val argPatterns = args.zip(tparams).map { (arg, tparam) =>
+          rec(arg, tparam.paramVarianceSign)
+        }
+        if argPatterns.exists(_ == null) then
+          null
+        else
+          val argPatterns1 = argPatterns.asInstanceOf[List[MatchTypeCasePattern]] // they are not null
+          if argPatterns1.forall(_.isTypeTest) then
+            MatchTypeCasePattern.TypeTest(pat)
+          else
+            whenNotTypeTest(argPatterns1)
+      end recArgPatterns
+
+      val result = rec(pat, variance = 1)
+      if typeParamRefsAccountedFor == caseLambda.paramNames.size then result
+      else null
+    end tryConvertToSpecPattern
+  end MatchTypeCaseSpec
+
   // ------ ClassInfo, Type Bounds --------------------------------------------------
 
   type TypeOrSymbol = Type | Symbol
@@ -5127,8 +5315,8 @@ object Types {
           else if (clsd.is(Module)) givenSelf
           else if (ctx.erasedTypes) appliedRef
           else givenSelf.dealiasKeepAnnots match
-            case givenSelf1 @ EventuallyCapturingType(tp, _) =>
-              givenSelf1.derivedAnnotatedType(tp & appliedRef, givenSelf1.annot)
+            case givenSelf1 @ AnnotatedType(tp, ann) if ann.symbol == defn.RetainsAnnot =>
+              givenSelf1.derivedAnnotatedType(tp & appliedRef, ann)
             case _ =>
               AndType(givenSelf, appliedRef)
         }
@@ -5345,6 +5533,8 @@ object Types {
       case that: AliasingBounds => this.isTypeAlias == that.isTypeAlias && alias.eq(that.alias)
       case _ => false
     }
+
+    override def toString = s"${getClass.getSimpleName}($alias)"
   }
 
   /**    = T
@@ -5398,7 +5588,7 @@ object Types {
   // ----- Annotated and Import types -----------------------------------------------
 
   /** An annotated type tpe @ annot */
-  abstract case class AnnotatedType(parent: Type, annot: Annotation) extends CachedProxyType, ValueType {
+  abstract case class AnnotatedType(parent: Type, annot: Annotation) extends CachedProxyType, CaptureRef {
 
     override def underlying(using Context): Type = parent
 
@@ -5417,7 +5607,7 @@ object Types {
     override def stripped(using Context): Type = parent.stripped
 
     private var isRefiningKnown = false
-    private var isRefiningCache: Boolean = _
+    private var isRefiningCache: Boolean = uninitialized
 
     def isRefining(using Context): Boolean = {
       if (!isRefiningKnown) {
@@ -5426,6 +5616,23 @@ object Types {
       }
       isRefiningCache
     }
+
+    override def isTrackableRef(using Context) =
+      isReach && parent.isTrackableRef
+
+    /** Is this a reach reference of the form `x*`? */
+    override def isReach(using Context): Boolean =
+      annot.symbol == defn.ReachCapabilityAnnot
+
+    override def stripReach(using Context): SingletonCaptureRef =
+      (if isReach then parent else this).asInstanceOf[SingletonCaptureRef]
+
+    override def normalizedRef(using Context): CaptureRef =
+      if isReach then AnnotatedType(stripReach.normalizedRef, annot) else this
+
+    override def captureSet(using Context): CaptureSet =
+      if isReach then super.captureSet
+      else CaptureSet.ofType(this, followResult = false)
 
     // equals comes from case class; no matching override is needed
 
@@ -5809,11 +6016,13 @@ object Types {
     protected def derivedLambdaType(tp: LambdaType)(formals: List[tp.PInfo], restpe: Type): Type =
       tp.derivedLambdaType(tp.paramNames, formals, restpe)
 
+    protected def mapArg(arg: Type, tparam: ParamInfo): Type = arg match
+      case arg: TypeBounds => this(arg)
+      case arg => atVariance(variance * tparam.paramVarianceSign)(this(arg))
+
     protected def mapArgs(args: List[Type], tparams: List[ParamInfo]): List[Type] = args match
       case arg :: otherArgs if tparams.nonEmpty =>
-        val arg1 = arg match
-          case arg: TypeBounds => this(arg)
-          case arg => atVariance(variance * tparams.head.paramVarianceSign)(this(arg))
+        val arg1 = mapArg(arg, tparams.head)
         val otherArgs1 = mapArgs(otherArgs, tparams.tail)
         if ((arg1 eq arg) && (otherArgs1 eq otherArgs)) args
         else arg1 :: otherArgs1
@@ -5953,7 +6162,7 @@ object Types {
       val elems = scope.toList
       val elems1 = mapOver(elems)
       if (elems1 eq elems) scope
-      else newScopeWith(elems1: _*)
+      else newScopeWith(elems1*)
     }
 
     def mapOver(tree: Tree): Tree = treeTypeMap(tree)
@@ -5969,17 +6178,16 @@ object Types {
   }
 
   /** A type map that maps also parents and self type of a ClassInfo */
-  abstract class DeepTypeMap(using Context) extends TypeMap {
-    override def mapClassInfo(tp: ClassInfo): ClassInfo = {
+  abstract class DeepTypeMap(using Context) extends TypeMap:
+    override def mapClassInfo(tp: ClassInfo): ClassInfo =
       val prefix1 = this(tp.prefix)
-      val parents1 = tp.declaredParents mapConserve this
-      val selfInfo1: TypeOrSymbol = tp.selfInfo match {
-        case selfInfo: Type => this(selfInfo)
-        case selfInfo => selfInfo
-      }
-      tp.derivedClassInfo(prefix1, parents1, tp.decls, selfInfo1)
-    }
-  }
+      inContext(ctx.withOwner(tp.cls)):
+        val parents1 = tp.declaredParents.mapConserve(this)
+        val selfInfo1: TypeOrSymbol = tp.selfInfo match
+          case selfInfo: Type => inContext(ctx.withOwner(tp.cls))(this(selfInfo))
+          case selfInfo => selfInfo
+        tp.derivedClassInfo(prefix1, parents1, tp.decls, selfInfo1)
+  end DeepTypeMap
 
   @sharable object IdentityTypeMap extends TypeMap()(NoContext) {
     def apply(tp: Type): Type = tp
@@ -6070,7 +6278,7 @@ object Types {
      */
     def expandParam(tp: NamedType, pre: Type): Type =
       tp.argForParam(pre) match {
-        case arg @ TypeRef(pre, _) if pre.isArgPrefixOf(arg.symbol) =>
+        case arg @ TypeRef(`pre`, _) if pre.isArgPrefixOf(arg.symbol) =>
           arg.info match {
             case argInfo: TypeBounds => expandBounds(argInfo)
             case argInfo => useAlternate(arg)

@@ -32,7 +32,7 @@ final class PcSemanticTokensProvider(
    * 3. type parameters,
    * In all those cases we don't have a specific value for sure.
    */
-  private def isDeclaration(tree: Tree) = tree match
+  private def isDeclaration(tree: Tree | EndMarker) = tree match
     case df: ValOrDefDef => df.rhs.isEmpty
     case df: TypeDef =>
       df.rhs match
@@ -49,7 +49,8 @@ final class PcSemanticTokensProvider(
    * that the compiler sees them as vals, as it's not clear
    * if they should be declaration/definition at all.
    */
-  private def isDefinition(tree: Tree) = tree match
+  private def isDefinition(tree: Tree | EndMarker) = tree match
+    case _: EndMarker => true
     case df: Bind => true
     case df: ValOrDefDef =>
       !df.rhs.isEmpty && !df.symbol.isAllOf(Flags.EnumCase)
@@ -62,14 +63,18 @@ final class PcSemanticTokensProvider(
   object Collector extends PcCollector[Option[Node]](driver, params):
     override def collect(
         parent: Option[Tree]
-    )(tree: Tree, pos: SourcePosition, symbol: Option[Symbol]): Option[Node] =
-      val sym = symbol.fold(tree.symbol)(identity)
-      if !pos.exists || sym == null || sym == NoSymbol then None
+    )(tree: Tree | EndMarker, pos: SourcePosition, symbol: Option[Symbol]): Option[Node] =
+      val sym =
+         tree match
+           case tree: Tree =>
+             symbol.fold(tree.symbol)(identity)
+           case EndMarker(sym) => sym
+      if !pos.exists || sym == NoSymbol then None
       else
         Some(
           makeNode(
             sym = sym,
-            pos = adjust(pos)._1,
+            pos = pos.adjust(text)._1,
             isDefinition = isDefinition(tree),
             isDeclaration = isDeclaration(tree)
           )
@@ -124,7 +129,7 @@ final class PcSemanticTokensProvider(
         if sym.isGetter | sym.isSetter then
           getTypeId(SemanticTokenTypes.Variable)
         else getTypeId(SemanticTokenTypes.Method) // "def"
-      else if isPredefClass(sym) then
+      else if sym.isTerm && sym.info.typeSymbol.is(Flags.Module)  then
         getTypeId(SemanticTokenTypes.Class) // "class"
       else if sym.isTerm &&
         (!sym.is(Flags.Param) || sym.is(Flags.ParamAccessor))
@@ -145,8 +150,5 @@ final class PcSemanticTokensProvider(
 
     TokenNode(pos.start, pos.`end`, typ, mod)
   end makeNode
-
-  def isPredefClass(sym: Symbol)(using Context) =
-    sym.is(Flags.Method) && sym.info.resultType.typeSymbol.is(Flags.Module)
 
 end PcSemanticTokensProvider

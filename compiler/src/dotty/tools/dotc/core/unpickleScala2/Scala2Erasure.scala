@@ -3,8 +3,8 @@ package dotc
 package core
 package unpickleScala2
 
-import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Phases._
-import Decorators._
+import Symbols.*, Types.*, Contexts.*, Flags.*, Names.*, StdNames.*, Phases.*
+import Decorators.*
 import scala.collection.mutable.ListBuffer
 
 /** Erasure logic specific to Scala 2 symbols. */

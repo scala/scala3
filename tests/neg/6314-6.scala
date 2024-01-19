@@ -21,11 +21,9 @@ object Test3 {
   trait YY extends XX {
     type Foo = X & Y
 
-    def apply(fa: Bar[X & Foo]): Bar[Y & Foo] = fa // error
-        // overriding method apply in trait XX of type (fa: String): Int;
-        //   method apply of type (fa: String): String has incompatible type
+    def apply(fa: Bar[X & Foo]): Bar[Y & Foo] = fa
   }
-  (new YY {}).boom
+  (new YY {}).boom // error: object creation impossible
 }
 
 object Test4 {
@@ -49,9 +47,7 @@ object Test4 {
   trait YY extends XX {
     type Foo = X & Y
 
-    def apply(fa: Bar[X & FooAlias]): Bar[Y & FooAlias] = fa // error
-        // overriding method apply in trait XX of type (fa: String): Int;
-        //   method apply of type (fa: String): String has incompatible type
+    def apply(fa: Bar[X & FooAlias]): Bar[Y & FooAlias] = fa
   }
-  (new YY {}).boom
+  (new YY {}).boom // error: object creation impossible
 }

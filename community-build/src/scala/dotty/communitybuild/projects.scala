@@ -25,7 +25,7 @@ def exec(projectDir: Path, binary: String, arguments: Seq[String], environment: 
   import scala.jdk.CollectionConverters._
   val command = binary +: arguments
   log(command.mkString(" "))
-  val builder = new ProcessBuilder(command: _*).directory(projectDir.toFile).inheritIO()
+  val builder = new ProcessBuilder(command*).directory(projectDir.toFile).inheritIO()
   builder.environment.putAll(environment.asJava)
   val process = builder.start()
   val exitCode = process.waitFor()
@@ -358,19 +358,11 @@ object projects:
     // sbtDocCommand = "dotty-community-build/doc"
   )
 
-  lazy val stdLib213 = SbtCommunityProject(
-    project       = "stdLib213",
-    extraSbtArgs  = List("-Dscala.build.compileWithDotty=true"),
-    sbtTestCommand   = """set Global / fatalWarnings := false; library/compile""",
-    sbtPublishCommand = """set Global / fatalWarnings := false; set library/Compile/packageDoc/publishArtifact := false; library/publishLocal""",
-    // sbtDocCommand = "library/doc" // Does no compile? No idea :/
-  )
-
   lazy val shapeless3 = SbtCommunityProject(
     project = "shapeless-3",
     sbtTestCommand = "testJVM; testJS",
     sbtDocCommand = forceDoc("typeable", "deriving"),
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"), // due to -Xfatal-warnings
+    scalacOptions = "-source" :: "3.3" :: SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"), // due to -Xfatal-warnings
   )
 
   lazy val xmlInterpolator = SbtCommunityProject(
@@ -412,7 +404,7 @@ object projects:
     project = "zio",
     sbtTestCommand = "testJVMDotty",
     sbtDocCommand = forceDoc("coreJVM"),
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros"),
+    scalacOptions = "-source" :: "3.3" :: SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros"),
     dependencies =List(izumiReflect)
   )
 
@@ -793,7 +785,6 @@ def allProjects = List(
   projects.scalaPB,
   projects.minitest,
   projects.fastparse,
-  projects.stdLib213,
   projects.shapeless3,
   projects.xmlInterpolator,
   projects.effpi,

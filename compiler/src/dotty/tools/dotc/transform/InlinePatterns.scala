@@ -2,11 +2,11 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
-import MegaPhase._
-import Symbols._, Contexts._, Types._, Decorators._
-import NameOps._
-import Names._
+import core.*
+import MegaPhase.*
+import Symbols.*, Contexts.*, Types.*, Decorators.*
+import NameOps.*
+import Names.*
 
 import scala.collection.mutable.ListBuffer
 
@@ -26,7 +26,7 @@ import scala.collection.mutable.ListBuffer
  *  This removes placeholders added by inline `unapply`/`unapplySeq` patterns.
  */
 class InlinePatterns extends MiniPhase:
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = InlinePatterns.name
 

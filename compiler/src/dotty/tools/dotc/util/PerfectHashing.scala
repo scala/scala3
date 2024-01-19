@@ -1,5 +1,7 @@
 package dotty.tools.dotc.util
 
+import scala.compiletime.uninitialized
+
 object PerfectHashing:
 
   /** The number of elements up to which dense packing is used.
@@ -22,9 +24,9 @@ object PerfectHashing:
 class PerfectHashing[Key](initialCapacity: Int = 8, capacityMultiple: Int = 2):
   import PerfectHashing.DenseLimit
 
-  private var used: Int = _
-  private var table: Array[Int] = _
-  private var keys: Array[AnyRef] = _
+  private var used: Int = uninitialized
+  private var table: Array[Int] = uninitialized
+  private var keys: Array[AnyRef] = uninitialized
 
   clear()
 

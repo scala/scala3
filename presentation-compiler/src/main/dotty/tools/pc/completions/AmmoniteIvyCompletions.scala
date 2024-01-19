@@ -23,7 +23,7 @@ object AmmoniteIvyCompletions:
       case None => Nil
       case Some(dependency) =>
         val isInitialCompletion =
-          pos.lineContent.trim == "import $ivy."
+          pos.lineContent.trim() == "import $ivy."
         val ivyEditRange =
           if isInitialCompletion then completionPos.toEditRange
           else
@@ -31,7 +31,7 @@ object AmmoniteIvyCompletions:
             val (rangeStart, rangeEnd) =
               CoursierComplete.inferEditRange(pos.point, text)
             pos.withStart(rangeStart).withEnd(rangeEnd).toLsp
-        val completions = coursierComplete.complete(dependency)
+        val completions = coursierComplete.complete(dependency.nn)
         completions
           .map(insertText =>
             CompletionValue.IvyImport(

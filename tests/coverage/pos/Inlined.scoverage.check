@@ -27,7 +27,7 @@ covtest.Inlined$package$
 testInlined
 288
 330
-10
+11
 assertFailed
 Apply
 false
@@ -44,7 +44,7 @@ covtest.Inlined$package$
 testInlined
 288
 330
-10
+11
 assertFailed
 Apply
 true
@@ -61,7 +61,7 @@ covtest.Inlined$package$
 testInlined
 330
 330
-10
+11
 <none>
 Literal
 true
@@ -78,7 +78,7 @@ covtest.Inlined$package$
 testInlined
 155
 162
-6
+7
 apply
 Apply
 false
@@ -94,14 +94,14 @@ Object
 covtest.Inlined$package$
 testInlined
 155
-159
-6
-List
-Ident
+169
+7
+length
+Select
 false
 0
 false
-List
+List(l).length
 
 5
 Inlined.scala
@@ -110,15 +110,15 @@ Inlined$package$
 Object
 covtest.Inlined$package$
 testInlined
-155
-169
-6
-length
-Select
+288
+330
+11
+assertFailed
+Apply
 false
 0
 false
-List(l).length
+scala.runtime.Scala3RunTime.assertFailed()
 
 6
 Inlined.scala
@@ -129,10 +129,10 @@ covtest.Inlined$package$
 testInlined
 288
 330
-10
+11
 assertFailed
 Apply
-false
+true
 0
 false
 scala.runtime.Scala3RunTime.assertFailed()
@@ -144,15 +144,15 @@ Inlined$package$
 Object
 covtest.Inlined$package$
 testInlined
-288
 330
-10
-assertFailed
-Apply
+330
+11
+<none>
+Literal
 true
 0
 false
-scala.runtime.Scala3RunTime.assertFailed()
+
 
 8
 Inlined.scala
@@ -161,15 +161,15 @@ Inlined$package$
 Object
 covtest.Inlined$package$
 testInlined
-330
-330
-10
-<none>
-Literal
-true
+180
+187
+8
+apply
+Apply
+false
 0
 false
-
+List(l)
 
 9
 Inlined.scala
@@ -179,14 +179,14 @@ Object
 covtest.Inlined$package$
 testInlined
 180
-187
-7
-apply
-Apply
+194
+8
+length
+Select
 false
 0
 false
-List(l)
+List(l).length
 
 10
 Inlined.scala
@@ -195,15 +195,15 @@ Inlined$package$
 Object
 covtest.Inlined$package$
 testInlined
-180
-184
-7
-List
-Ident
+288
+330
+11
+assertFailed
+Apply
 false
 0
 false
-List
+scala.runtime.Scala3RunTime.assertFailed()
 
 11
 Inlined.scala
@@ -212,15 +212,15 @@ Inlined$package$
 Object
 covtest.Inlined$package$
 testInlined
-180
-194
-7
-length
-Select
-false
+288
+330
+11
+assertFailed
+Apply
+true
 0
 false
-List(l).length
+scala.runtime.Scala3RunTime.assertFailed()
 
 12
 Inlined.scala
@@ -229,15 +229,15 @@ Inlined$package$
 Object
 covtest.Inlined$package$
 testInlined
-288
 330
-10
-assertFailed
-Apply
-false
+330
+11
+<none>
+Literal
+true
 0
 false
-scala.runtime.Scala3RunTime.assertFailed()
+
 
 13
 Inlined.scala
@@ -246,43 +246,9 @@ Inlined$package$
 Object
 covtest.Inlined$package$
 testInlined
-288
-330
-10
-assertFailed
-Apply
-true
-0
-false
-scala.runtime.Scala3RunTime.assertFailed()
-
-14
-Inlined.scala
-covtest
-Inlined$package$
-Object
-covtest.Inlined$package$
-testInlined
-330
-330
-10
-<none>
-Literal
-true
-0
-false
-
-
-15
-Inlined.scala
-covtest
-Inlined$package$
-Object
-covtest.Inlined$package$
-testInlined
 86
 101
-3
+4
 testInlined
 DefDef
 false

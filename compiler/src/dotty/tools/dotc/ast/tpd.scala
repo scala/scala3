@@ -4,13 +4,11 @@ package ast
 
 import dotty.tools.dotc.transform.{ExplicitOuter, Erasure}
 import typer.ProtoTypes
-import transform.SymUtils._
-import transform.TypeUtils._
-import core._
+import core.*
 import Scopes.newScope
-import util.Spans._, Types._, Contexts._, Constants._, Names._, Flags._, NameOps._
-import Symbols._, StdNames._, Annotations._, Trees._, Symbols._
-import Decorators._, DenotTransformers._
+import util.Spans.*, Types.*, Contexts.*, Constants.*, Names.*, Flags.*, NameOps.*
+import Symbols.*, StdNames.*, Annotations.*, Trees.*, Symbols.*
+import Decorators.*, DenotTransformers.*
 import collection.{immutable, mutable}
 import util.{Property, SourceFile}
 import NameKinds.{TempResultName, OuterSelectName}
@@ -18,6 +16,7 @@ import typer.ConstFold
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
+import scala.compiletime.uninitialized
 
 /** Some creators for typed trees */
 object tpd extends Trees.Instance[Type] with TypedTreeInfo {
@@ -45,21 +44,19 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Apply(fn: Tree, args: List[Tree])(using Context): Apply = fn match
     case Block(Nil, expr) =>
       Apply(expr, args)
+    case _: RefTree | _: GenericApply | _: Inlined | _: Hole =>
+      ta.assignType(untpd.Apply(fn, args), fn, args)
     case _ =>
-      assert(
-        fn.isInstanceOf[RefTree | GenericApply | Inlined | Hole] || ctx.reporter.errorsReported,
-        s"Illegal Apply function prefix: $fn"
-      )
+      assert(ctx.reporter.errorsReported)
       ta.assignType(untpd.Apply(fn, args), fn, args)
 
   def TypeApply(fn: Tree, args: List[Tree])(using Context): TypeApply = fn match
     case Block(Nil, expr) =>
       TypeApply(expr, args)
+    case _: RefTree | _: GenericApply =>
+      ta.assignType(untpd.TypeApply(fn, args), fn, args)
     case _ =>
-      assert(
-        fn.isInstanceOf[RefTree | GenericApply] || ctx.reporter.errorsReported,
-        s"Illegal TypeApply function prefix: $fn"
-      )
+      assert(ctx.reporter.errorsReported, s"unexpected tree for type application: $fn")
       ta.assignType(untpd.TypeApply(fn, args), fn, args)
 
   def Literal(const: Constant)(using Context): Literal =
@@ -415,7 +412,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case pre: ThisType =>
         tp.isType ||
         pre.cls.isStaticOwner ||
-        tp.symbol.isParamOrAccessor && !pre.cls.is(Trait) && ctx.owner.enclosingClass == pre.cls
+        tp.symbol.isParamOrAccessor && !pre.cls.is(Trait) && !tp.symbol.owner.is(Trait) && ctx.owner.enclosingClass == pre.cls
           // was ctx.owner.enclosingClass.derivesFrom(pre.cls) which was not tight enough
           // and was spuriously triggered in case inner class would inherit from outer one
           // eg anonymous TypeMap inside TypeMap.andThen
@@ -1263,7 +1260,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    */
   private class MapToUnderlying extends TreeMap {
     override def transform(tree: Tree)(using Context): Tree = tree match {
-      case tree: Ident if isBinding(tree.symbol) && skipLocal(tree.symbol) =>
+      case tree: Ident if isBinding(tree.symbol) && skipLocal(tree.symbol) && !tree.symbol.is(Module) =>
         tree.symbol.defTree match {
           case defTree: ValOrDefDef =>
             val rhs = defTree.rhs
@@ -1286,6 +1283,21 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       !(sym.is(Method) && sym.info.isInstanceOf[MethodOrPoly]) // if is a method it is parameterless
   }
 
+  /** A tree traverser that generates the the same import contexts as original typer for statements.
+   *  TODO: Should we align TreeMapWithPreciseStatContexts and also keep track of exprOwners?
+   */
+  abstract class TreeTraverserWithPreciseImportContexts extends TreeTraverser:
+    override def apply(x: Unit, trees: List[Tree])(using Context): Unit =
+      def recur(trees: List[Tree]): Unit = trees match
+        case (imp: Import) :: rest =>
+          traverse(rest)(using ctx.importContext(imp, imp.symbol))
+        case tree :: rest =>
+          traverse(tree)
+          traverse(rest)
+        case Nil =>
+      recur(trees)
+  end TreeTraverserWithPreciseImportContexts
+
   extension (xs: List[tpd.Tree])
     def tpes: List[Type] = xs match {
       case x :: xs1 => x.tpe :: xs1.tpes
@@ -1296,7 +1308,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   trait TreeProvider {
     protected def computeRootTrees(using Context): List[Tree]
 
-    private var myTrees: List[Tree] | Null = _
+    private var myTrees: List[Tree] | Null = uninitialized
 
     /** Get trees defined by this provider. Cache them if -Yretain-trees is set. */
     def rootTrees(using Context): List[Tree] =

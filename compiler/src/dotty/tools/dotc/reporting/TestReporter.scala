@@ -5,7 +5,7 @@ package reporting
 import scala.language.unsafeNulls
 
 import collection.mutable
-import Diagnostic._
+import Diagnostic.*
 
 /** A re-usable Reporter used in Contexts#test */
 class TestingReporter extends StoreReporter(null, fromTyperState = false):

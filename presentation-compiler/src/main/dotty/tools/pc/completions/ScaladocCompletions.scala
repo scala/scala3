@@ -31,7 +31,7 @@ object ScaladocCompletions:
       val builder = new StringBuilder()
       builder.append("\n")
       builder.append(s"${indent}*")
-      if config.isCompletionSnippetsEnabled then builder.append(" $0\n")
+      if config.isCompletionSnippetsEnabled() then builder.append(" $0\n")
       else builder.append("\n")
 
       if params.nonEmpty || hasReturnValue then builder.append(s"$indent*\n")

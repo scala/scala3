@@ -7,7 +7,7 @@ import dotty.tools.dotc.util.SourcePosition
 object MultilineCommentCompletion:
 
   def contribute(config: PresentationCompilerConfig): List[CompletionValue] =
-    val newText = if config.isCompletionSnippetsEnabled then " $0 */" else " */"
+    val newText = if config.isCompletionSnippetsEnabled() then " $0 */" else " */"
     List(CompletionValue.document("/* */", newText, "Multiline Comment"))
 
   def isMultilineCommentCompletion(pos: SourcePosition, text: String): Boolean =

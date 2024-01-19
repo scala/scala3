@@ -1,4 +1,0 @@
--- Error: tests/neg/i6190b.scala:5:29 ----------------------------------------------------------------------------------
-5 |def foo = List("1", "2").map(Rule)  // error
-  |                             ^^^^
-  |      The method `apply` is inserted. The auto insertion will be deprecated, please write `Rule.apply` explicitly.

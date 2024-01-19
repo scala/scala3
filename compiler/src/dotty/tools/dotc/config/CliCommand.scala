@@ -3,8 +3,8 @@ package config
 
 import scala.language.unsafeNulls
 
-import Settings._
-import core.Contexts._
+import Settings.*
+import core.Contexts.*
 import printing.Highlighting
 
 import scala.util.chaining.given
@@ -12,7 +12,7 @@ import scala.PartialFunction.cond
 
 trait CliCommand:
 
-  type ConcreteSettings <: CommonScalaSettings with Settings.SettingGroup
+  type ConcreteSettings <: CommonScalaSettings & Settings.SettingGroup
 
   def versionMsg: String
 

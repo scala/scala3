@@ -56,7 +56,7 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
 
   override def asClassPathStrings: Seq[String] = aggregates.map(_.asClassPathString).distinct
 
-  override def asSourcePathString: String = ClassPath.join(aggregates map (_.asSourcePathString): _*)
+  override def asSourcePathString: String = ClassPath.join(aggregates map (_.asSourcePathString)*)
 
   override private[dotty] def packages(inPackage: PackageName): Seq[PackageEntry] = {
     val aggregatedPackages = aggregates.flatMap(_.packages(inPackage)).distinct

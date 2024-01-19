@@ -1,0 +1,5 @@
+=== mapping xs with A.f1 ===
+=== mapping ys with A.f2 ===
+filtering Foo(1) in ys
+filtering Foo(2) in ys
+filtering Foo(3) in ys

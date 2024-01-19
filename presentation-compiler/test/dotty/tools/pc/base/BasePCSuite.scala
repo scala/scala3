@@ -11,8 +11,10 @@ import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.{ClasspathSearch, ExcludedPackagesHandler}
 import scala.meta.internal.pc.PresentationCompilerConfigImpl
 import scala.meta.pc.{PresentationCompiler, PresentationCompilerConfig}
+import scala.language.unsafeNulls
 
 import dotty.tools.pc.*
+import dotty.tools.pc.completions.CompletionSource
 import dotty.tools.pc.ScalaPresentationCompiler
 import dotty.tools.pc.tests.buildinfo.BuildInfo
 import dotty.tools.pc.utils._
@@ -54,7 +56,7 @@ abstract class BasePCSuite extends PcAssertions:
       .newInstance("", myclasspath.asJava, scalacOpts.asJava)
 
   protected def config: PresentationCompilerConfig =
-    PresentationCompilerConfigImpl().copy(snippetAutoIndent = false, timeoutDelay = if isDebug then 3600 else 5)
+    PresentationCompilerConfigImpl().copy(snippetAutoIndent = false, timeoutDelay = if isDebug then 3600 else 10)
 
   private def inspectDialect(filename: String, code: String) =
     val file = tmp.resolve(filename)
@@ -112,10 +114,13 @@ abstract class BasePCSuite extends PcAssertions:
       " " + e.getRight.getValue
   }.trim
 
-  def sortLines(stableOrder: Boolean, string: String): String =
+  def sortLines(stableOrder: Boolean, string: String, completionSources: List[CompletionSource] = Nil): (String, List[CompletionSource]) =
     val strippedString = string.linesIterator.toList.filter(_.nonEmpty)
-    if (stableOrder) strippedString.mkString("\n")
-    else strippedString.sorted.mkString("\n")
+    if (stableOrder) strippedString.mkString("\n") -> completionSources
+    else
+      val paddedSources = completionSources.padTo(strippedString.size, CompletionSource.Empty)
+      val (sortedCompletions, sortedSources) = (strippedString zip paddedSources).sortBy(_._1).unzip
+      sortedCompletions.mkString("\n") -> sortedSources
 
   extension (s: String)
     def triplequoted: String = s.replace("'''", "\"\"\"")

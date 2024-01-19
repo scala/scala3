@@ -9,7 +9,7 @@
 -- [E040] Syntax Error: tests/neg/syntax-error-recovery.scala:19:4 -----------------------------------------------------
 19 |    if x == 0 then println(bar) // error
    |    ^^
-   |    ')' expected, but 'if' found
+   |    ',' or ')' expected, but 'if' found
 -- [E040] Syntax Error: tests/neg/syntax-error-recovery.scala:23:12 ----------------------------------------------------
 23 |    if x < 0) then // error
    |            ^
@@ -25,7 +25,7 @@
 -- [E040] Syntax Error: tests/neg/syntax-error-recovery.scala:48:4 -----------------------------------------------------
 48 |    if x == 0 then println(bar) // error
    |    ^^
-   |    ')' expected, but 'if' found
+   |    ',' or ')' expected, but 'if' found
 -- [E040] Syntax Error: tests/neg/syntax-error-recovery.scala:52:12 ----------------------------------------------------
 52 |    if x < 0) then // error
    |            ^
@@ -94,45 +94,9 @@
    |          Not found: bam
    |
    | longer explanation available when compiling with `-explain`
--- [E190] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:7:2 -------------------------------------------
-6 |        2
-7 |  }
-  |         ^
-  |         Discarded non-Unit value of type Null. You may want to use `()`.
-  |
-  | longer explanation available when compiling with `-explain`
--- [E190] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:15:2 ------------------------------------------
-14 |        2
-15 |  println(baz) // error
-   |         ^
-   |         Discarded non-Unit value of type Null. You may want to use `()`.
-   |
-   | longer explanation available when compiling with `-explain`
--- [E190] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:27:2 ------------------------------------------
-26 |      2
-27 |  println(bam) // error
-   |       ^
-   |       Discarded non-Unit value of type Null. You may want to use `()`.
-   |
-   | longer explanation available when compiling with `-explain`
--- [E190] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:36:2 ------------------------------------------
-35 |        2
-36 |  }
-   |         ^
-   |         Discarded non-Unit value of type Null. You may want to use `()`.
-   |
-   | longer explanation available when compiling with `-explain`
--- [E190] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:44:2 ------------------------------------------
-43 |        2
-44 |  println(baz) // error
-   |         ^
-   |         Discarded non-Unit value of type Null. You may want to use `()`.
-   |
-   | longer explanation available when compiling with `-explain`
--- [E190] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:56:2 ------------------------------------------
-55 |      2
-56 |  println(bam) // error
-   |       ^
-   |       Discarded non-Unit value of type Null. You may want to use `()`.
-   |
-   | longer explanation available when compiling with `-explain`
+-- Warning: tests/neg/syntax-error-recovery.scala:61:2 -----------------------------------------------------------------
+61 |  println(bam)
+   |  ^^^^^^^
+   |  Alphanumeric method println is not declared infix; it should not be used as infix operator.
+   |  Instead, use method syntax .println(...) or backticked identifier `println`.
+   |  The latter can be rewritten automatically under -rewrite -source 3.4-migration.

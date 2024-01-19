@@ -1,12 +1,12 @@
 package scala
 
 import annotation.{experimental, showAsInfix}
-import compiletime._
-import compiletime.ops.int._
+import compiletime.*
+import compiletime.ops.int.*
 
 /** Tuple of arbitrary arity */
 sealed trait Tuple extends Product {
-  import Tuple._
+  import Tuple.*
 
   /** Create a copy of this tuple as an Array */
   inline def toArray: Array[Object] =
@@ -96,7 +96,7 @@ object Tuple {
   }
 
   /** Type of the head of a tuple */
-  type Head[X <: NonEmptyTuple] = X match {
+  type Head[X <: Tuple] = X match {
     case x *: _ => x
   }
 
@@ -108,7 +108,7 @@ object Tuple {
   }
 
   /** Type of the tail of a tuple */
-  type Tail[X <: NonEmptyTuple] <: Tuple = X match {
+  type Tail[X <: Tuple] <: Tuple = X match {
     case _ *: xs => xs
   }
 
@@ -202,16 +202,13 @@ object Tuple {
 
   /** Type of the reversed tuple */
   @experimental
-  type Reverse[X <: Tuple] = Helpers.ReverseImpl[EmptyTuple, X]
+  type Reverse[X <: Tuple] = ReverseOnto[X, EmptyTuple]
 
+  /** Prepends all elements of a tuple in reverse order onto the other tuple */
   @experimental
-  object Helpers:
-
-    /** Type of the reversed tuple */
-    @experimental
-    type ReverseImpl[Acc <: Tuple, X <: Tuple] <: Tuple = X match
-      case x *: xs => ReverseImpl[x *: Acc, xs]
-      case EmptyTuple => Acc
+  type ReverseOnto[From <: Tuple, +To <: Tuple] <: Tuple = From match
+    case x *: xs => ReverseOnto[xs, x *: To]
+    case EmptyTuple => To
 
   /** Transforms a tuple `(T1, ..., Tn)` into `(T1, ..., Ti)`. */
   type Take[T <: Tuple, N <: Int] <: Tuple = N match {
@@ -292,7 +289,7 @@ case object EmptyTuple extends Tuple {
 
 /** Tuple of arbitrary non-zero arity */
 sealed trait NonEmptyTuple extends Tuple {
-  import Tuple._
+  import Tuple.*
 
   /** Get the i-th element of this tuple.
    *  Equivalent to productElement but with a precise return type.

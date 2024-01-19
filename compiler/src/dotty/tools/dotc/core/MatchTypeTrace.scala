@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._, Symbols._, Decorators._
+import Types.*, Contexts.*, Symbols.*, Decorators.*
 import util.Property
 import Names.Name
 
@@ -12,10 +12,10 @@ object MatchTypeTrace:
 
   private enum TraceEntry:
     case TryReduce(scrut: Type)
-    case Stuck(scrut: Type, stuckCase: Type, otherCases: List[Type])
-    case NoInstance(scrut: Type, stuckCase: Type, fails: List[(Name, TypeBounds)])
+    case Stuck(scrut: Type, stuckCase: MatchTypeCaseSpec, otherCases: List[MatchTypeCaseSpec])
+    case NoInstance(scrut: Type, stuckCase: MatchTypeCaseSpec, fails: List[(Name, TypeBounds)])
     case EmptyScrutinee(scrut: Type)
-  import TraceEntry._
+  import TraceEntry.*
 
   private class MatchTrace:
     var entries: List[TraceEntry] = Nil
@@ -54,10 +54,10 @@ object MatchTypeTrace:
    *  not disjoint from it either, which means that the remaining cases `otherCases`
    *  cannot be visited. Only the first failure is recorded.
    */
-  def stuck(scrut: Type, stuckCase: Type, otherCases: List[Type])(using Context) =
+  def stuck(scrut: Type, stuckCase: MatchTypeCaseSpec, otherCases: List[MatchTypeCaseSpec])(using Context) =
     matchTypeFail(Stuck(scrut, stuckCase, otherCases))
 
-  def noInstance(scrut: Type, stuckCase: Type, fails: List[(Name, TypeBounds)])(using Context) =
+  def noInstance(scrut: Type, stuckCase: MatchTypeCaseSpec, fails: List[(Name, TypeBounds)])(using Context) =
     matchTypeFail(NoInstance(scrut, stuckCase, fails))
 
   /** Record a failure that scrutinee `scrut` is provably empty.
@@ -80,13 +80,16 @@ object MatchTypeTrace:
       case _ =>
         op
 
+  def caseText(spec: MatchTypeCaseSpec)(using Context): String =
+    caseText(spec.origMatchCase)
+
   def caseText(tp: Type)(using Context): String = tp match
     case tp: HKTypeLambda => caseText(tp.resultType)
     case defn.MatchCase(any, body) if any eq defn.AnyType => i"case _ => $body"
     case defn.MatchCase(pat, body) => i"case $pat => $body"
     case _ => i"case $tp"
 
-  private def casesText(cases: List[Type])(using Context) =
+  private def casesText(cases: List[MatchTypeCaseSpec])(using Context) =
     i"${cases.map(caseText)}%\n    %"
 
   private def explainEntry(entry: TraceEntry)(using Context): String = entry match
@@ -116,10 +119,15 @@ object MatchTypeTrace:
          |    ${fails.map((name, bounds) => i"$name$bounds")}%\n    %"""
 
   /** The failure message when the scrutinee `scrut` does not match any case in `cases`. */
-  def noMatchesText(scrut: Type, cases: List[Type])(using Context): String =
+  def noMatchesText(scrut: Type, cases: List[MatchTypeCaseSpec])(using Context): String =
     i"""failed since selector $scrut
        |matches none of the cases
        |
        |    ${casesText(cases)}"""
+
+  def illegalPatternText(scrut: Type, cas: MatchTypeCaseSpec.LegacyPatMat)(using Context): String =
+    i"""The match type contains an illegal case:
+       |    ${caseText(cas)}
+       |(this error can be ignored for now with `-source:3.3`)"""
 
 end MatchTypeTrace

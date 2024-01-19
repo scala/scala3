@@ -19,11 +19,11 @@ final class PcDocumentHighlightProvider(
   def collect(
       parent: Option[Tree]
   )(
-      tree: Tree,
+      tree: Tree | EndMarker,
       toAdjust: SourcePosition,
       sym: Option[Symbol]
   ): DocumentHighlight =
-    val (pos, _) = adjust(toAdjust)
+    val (pos, _) = toAdjust.adjust(text)
     tree match
       case _: NamedDefTree =>
         DocumentHighlight(pos.toLsp, DocumentHighlightKind.Write)

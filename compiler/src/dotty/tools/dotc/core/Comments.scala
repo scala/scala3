@@ -5,10 +5,10 @@ package core
 import scala.language.unsafeNulls
 
 import ast.{ untpd, tpd }
-import Symbols._, Contexts._
+import Symbols.*, Contexts.*
 import util.{SourceFile, ReadOnlyMap}
-import util.Spans._
-import util.CommentParsing._
+import util.Spans.*
+import util.CommentParsing.*
 import util.Property.Key
 import parsing.Parsers.Parser
 import reporting.ProperDefinitionNotFound
@@ -17,8 +17,7 @@ object Comments {
   val ContextDoc: Key[ContextDocstrings] = new Key[ContextDocstrings]
 
   /** Decorator for getting docbase out of context */
-  given CommentsContext: AnyRef with
-    extension (c: Context) def docCtx: Option[ContextDocstrings] = c.property(ContextDoc)
+  extension (c: Context) def docCtx: Option[ContextDocstrings] = c.property(ContextDoc)
 
   /** Context for Docstrings, contains basic functionality for getting
     * docstrings via `Symbol` and expanding templates

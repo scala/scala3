@@ -11,30 +11,30 @@ def withCap[T](op: Cap^ => T): T = {
 }
 
 def main(fs: Cap^): Unit = {
-  def badOp(io: Cap^{cap}): Unit ->{} Unit = {
+  def badOp(io: Cap^): Unit ->{} Unit = {
     val op1: Unit ->{io} Unit = (x: Unit) =>
-      expect[Cap^] {
+      expect[Cap^] {  // error
         io.use()
         fs  // error (limitation)
       }
 
     val op2: Unit ->{fs} Unit = (x: Unit) =>
-      expect[Cap^] {
+      expect[Cap^] { // error
         fs.use()
         io  // error (limitation)
       }
 
-    val op3: Unit ->{io} Unit = (x: Unit) =>  // ok
-      expect[Cap^] {
+    val op3: Unit ->{io} Unit = (x: Unit) =>
+      expect[Cap^] {  // error
         io.use()
         io
       }
 
     val op4: Unit ->{} Unit = (x: Unit) =>  // o k
-      expect[Cap^](io)
+      expect[Cap^](io) // error
 
     val op: Unit -> Unit = (x: Unit) =>
-      expect[Cap^] {
+      expect[Cap^] { // error
         io.use()    // error
         io          // error
       }

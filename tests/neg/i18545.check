@@ -1,0 +1,16 @@
+-- [E173] Reference Error: tests/neg/i18545.scala:13:20 ----------------------------------------------------------------
+13 |  def test: IOLocal.IOLocalImpl[Int] = // error
+   |            ^^^^^^^^^^^^^^^^^^^
+   |class IOLocalImpl cannot be accessed as a member of iolib.IOLocal.type from the top-level definitions in package tests.
+   |  private[IOLocal] class IOLocalImpl can only be accessed from object IOLocal in package iolib.
+-- [E173] Reference Error: tests/neg/i18545.scala:14:24 ----------------------------------------------------------------
+14 |    IOLocal.IOLocalImpl.apply(42) // error
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |method apply cannot be accessed as a member of iolib.IOLocal.IOLocalImpl.type from the top-level definitions in package tests.
+   |  private[IOLocal] method apply can only be accessed from object IOLocal in package iolib.
+-- [E050] Type Error: tests/neg/i18545.scala:15:22 ---------------------------------------------------------------------
+15 |  def test2 = IOLocal.IOLocalImpl(42) // error
+   |              ^^^^^^^^^^^^^^^^^^^
+   |              object IOLocalImpl in object IOLocal does not take parameters
+   |
+   | longer explanation available when compiling with `-explain`

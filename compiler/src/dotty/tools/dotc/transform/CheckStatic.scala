@@ -1,15 +1,15 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import dotty.tools.dotc.transform.MegaPhase._
-import Flags._
-import Contexts._
-import Symbols._
+import core.*
+import dotty.tools.dotc.transform.MegaPhase.*
+import Flags.*
+import Contexts.*
+import Symbols.*
 import dotty.tools.dotc.ast.tpd
-import reporting._
+import reporting.*
 
-import dotty.tools.dotc.transform.SymUtils._
+
 
 /** A transformer that check that requirements of Static fields\methods are implemented:
   *  1. Only objects can have members annotated with `@static`
@@ -24,11 +24,14 @@ import dotty.tools.dotc.transform.SymUtils._
   *  6. `@static` Lazy vals are currently unsupported.
   */
 class CheckStatic extends MiniPhase {
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = CheckStatic.name
 
   override def description: String = CheckStatic.description
+
+  override def runsAfter: Set[String] = Set(UncacheGivenAliases.name)
+    // UncachedGivenAliases eliminates static lazy vals, which are flagged as errors here
 
   override def transformTemplate(tree: tpd.Template)(using Context): tpd.Tree = {
     val defns = tree.body.collect{case t: ValOrDefDef => t}

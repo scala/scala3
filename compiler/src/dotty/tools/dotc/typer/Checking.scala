@@ -2,18 +2,18 @@ package dotty.tools
 package dotc
 package typer
 
-import core._
-import ast._
-import Contexts._
-import Types._
-import Flags._
-import Names._
-import StdNames._
-import Symbols._
-import Trees._
-import ProtoTypes._
-import Scopes._
-import CheckRealizable._
+import core.*
+import ast.*
+import Contexts.*
+import Types.*
+import Flags.*
+import Names.*
+import StdNames.*
+import Symbols.*
+import Trees.*
+import ProtoTypes.*
+import Scopes.*
+import CheckRealizable.*
 import ErrorReporting.errorTree
 import util.Spans.Span
 import Phases.refchecksPhase
@@ -23,28 +23,28 @@ import util.SrcPos
 import util.Spans.Span
 import rewrites.Rewrites.patch
 import inlines.Inlines
-import transform.SymUtils._
-import transform.ValueClasses._
-import Decorators._
+import Decorators.*
 import ErrorReporting.{err, errorType}
 import config.Printers.{typr, patmatch}
 import NameKinds.DefaultGetterName
-import NameOps._
+import NameOps.*
 import SymDenotations.{NoCompleter, NoDenotation}
 import Applications.unapplyArgs
 import Inferencing.isFullyDefined
 import transform.patmat.SpaceEngine.{isIrrefutable, isIrrefutableQuotePattern}
+import transform.ValueClasses.underlyingOfValueClass
 import config.Feature
 import config.Feature.sourceVersion
-import config.SourceVersion._
+import config.SourceVersion.*
+import config.MigrationVersion
 import printing.Formatting.hlAsKeyword
-import transform.TypeUtils.*
+import cc.isCaptureChecking
 
 import collection.mutable
-import reporting._
+import reporting.*
 
 object Checking {
-  import tpd._
+  import tpd.*
 
   /** Add further information for error messages involving applied types if the
    *  type is inferred:
@@ -67,7 +67,7 @@ object Checking {
    */
   def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds],
     instantiate: (Type, List[Type]) => Type, app: Type = NoType, tpt: Tree = EmptyTree)(using Context): Unit =
-    if ctx.phase != Phases.checkCapturesPhase then
+    if !isCaptureChecking then
       args.lazyZip(boundss).foreach { (arg, bound) =>
         if !bound.isLambdaSub && !arg.tpe.hasSimpleKind then
           errorTree(arg,
@@ -132,7 +132,7 @@ object Checking {
         if tp.isUnreducibleWild then
           report.errorOrMigrationWarning(
             showInferred(UnreducibleApplication(tycon), tp, tpt),
-            tree.srcPos, from = `3.0`)
+            tree.srcPos, MigrationVersion.Scala2to3)
       case _ =>
     }
     def checkValidIfApply(using Context): Unit =
@@ -152,7 +152,7 @@ object Checking {
             // if we attempt to check bounds of F-bounded mutually recursive Java interfaces.
             // Do check all bounds in Scala units and those bounds in Java units that
             // occur in applications of Scala type constructors.
-            && !(ctx.phase == Phases.checkCapturesPhase && !tycon.typeSymbol.is(CaptureChecked))
+            && !isCaptureChecking || tycon.typeSymbol.is(CaptureChecked)
             // Don't check bounds when capture checking type constructors that were not
             // themselves capture checked. Since the type constructor could not foresee
             // possible capture sets, it's better to be lenient for backwards compatibility.
@@ -218,7 +218,7 @@ object Checking {
     val rstatus = realizability(tp)
     if (rstatus ne Realizable)
       report.errorOrMigrationWarning(
-        em"$tp is not a legal $what\nsince it${rstatus.msg}", pos, from = `3.0`)
+        em"$tp is not a legal $what\nsince it${rstatus.msg}", pos, MigrationVersion.Scala2to3)
   }
 
   /** Given a parent `parent` of a class `cls`, if `parent` is a trait check that
@@ -332,8 +332,14 @@ object Checking {
                 || sym.owner.isContainedIn(prefix.cls) // sym reachable through member references
               )
             case prefix: NamedType =>
-              (!sym.is(Private) && prefix.derivesFrom(sym.owner)) ||
-              (!prefix.symbol.moduleClass.isStaticOwner && isInteresting(prefix.prefix))
+              !sym.is(Private) && prefix.derivesFrom(sym.owner)
+              || {
+                val pcls = prefix.symbol.moduleClass
+                if pcls.isStaticOwner then
+                  pcls.span.exists && pcls.defRunId == ctx.runId // cheaper approximation to isDefinedInCurrentRun
+                else
+                  isInteresting(prefix.prefix)
+              }
             case SuperType(thistp, _) => isInteresting(thistp)
             case AndType(tp1, tp2) => isInteresting(tp1) || isInteresting(tp2)
             case OrType(tp1, tp2) => isInteresting(tp1) && isInteresting(tp2)
@@ -342,15 +348,27 @@ object Checking {
             case _ => false
           }
 
-          if (isInteresting(pre)) {
-            val pre1 = this(pre, false, false)
-            if (locked.contains(tp) || tp.symbol.infoOrCompleter.isInstanceOf[NoCompleter])
-              throw CyclicReference(tp.symbol)
-            locked += tp
-            try if (!tp.symbol.isClass) checkInfo(tp.info)
-            finally locked -= tp
-            tp.withPrefix(pre1)
-          }
+          if isInteresting(pre) then
+            val traceCycles = CyclicReference.isTraced
+            try
+              if traceCycles then
+                CyclicReference.pushTrace("explore ", tp.symbol, " for cyclic references")
+              val pre1 = this(pre, false, false)
+              if locked.contains(tp)
+                  || tp.symbol.infoOrCompleter.isInstanceOf[NoCompleter]
+              then
+                throw CyclicReference(tp.symbol)
+              locked += tp
+              try
+                if tp.symbol.isOpaqueAlias then
+                  checkInfo(TypeAlias(tp.translucentSuperType))
+                else if !tp.symbol.isClass then
+                  checkInfo(tp.info)
+              finally
+                locked -= tp
+              tp.withPrefix(pre1)
+            finally
+              if traceCycles then CyclicReference.popTrace()
           else tp
         }
         catch {
@@ -387,11 +405,15 @@ object Checking {
    */
   def checkNonCyclic(sym: Symbol, info: Type, reportErrors: Boolean)(using Context): Type = {
     val checker = withMode(Mode.CheckCyclic)(new CheckNonCyclicMap(sym, reportErrors))
-    try checker.checkInfo(info)
+    try
+      val toCheck = info match
+        case info: RealTypeBounds if sym.isOpaqueAlias => TypeAlias(sym.opaqueAlias)
+        case _ => info
+      checker.checkInfo(toCheck)
     catch {
       case ex: CyclicReference =>
         if (reportErrors)
-          errorType(IllegalCyclicTypeReference(sym, checker.where, checker.lastChecked), sym.srcPos)
+          errorType(IllegalCyclicTypeReference(ex, sym, checker.where, checker.lastChecked), sym.srcPos)
         else info
     }
   }
@@ -517,7 +539,8 @@ object Checking {
         // note: this is not covered by the next test since terms can be abstract (which is a dual-mode flag)
         // but they can never be one of ClassOnlyFlags
     if !sym.isClass && sym.isOneOf(ClassOnlyFlags) then
-      fail(em"only classes can be ${(sym.flags & ClassOnlyFlags).flagsString}")
+      val illegal = sym.flags & ClassOnlyFlags
+      fail(em"only classes can be ${illegal.flagsString}")
     if (sym.is(AbsOverride) && !sym.owner.is(Trait))
       fail(AbstractOverrideOnlyInTraits(sym))
     if sym.is(Trait) then
@@ -537,6 +560,12 @@ object Checking {
         fail(em"Inline methods cannot be @tailrec")
     if sym.hasAnnotation(defn.TargetNameAnnot) && sym.isClass && sym.isTopLevelClass then
       fail(TargetNameOnTopLevelClass(sym))
+    if sym.hasAnnotation(defn.PublicInBinaryAnnot) then
+      if sym.is(Enum) then fail(em"@publicInBinary cannot be used on enum definitions")
+      else if sym.isType && !sym.is(Module) && !(sym.is(Given) || sym.companionModule.is(Given)) then fail(em"@publicInBinary cannot be used on ${sym.showKind} definitions")
+      else if !sym.owner.isClass && !(sym.is(Param) && sym.owner.isConstructor) then fail(em"@publicInBinary cannot be used on local definitions")
+      else if sym.is(ParamAccessor) && sym.is(Private) then fail(em"@publicInBinary cannot be non `val` constructor parameters")
+      else if sym.is(Private) && !sym.privateWithin.exists && !sym.isConstructor then fail(em"@publicInBinary cannot be used on private definitions\n\nConsider using `private[${sym.owner.name}]` or `protected` instead")
     if (sym.hasAnnotation(defn.NativeAnnot)) {
       if (!sym.is(Deferred))
         fail(NativeMembersMayNotHaveImplementation(sym))
@@ -690,7 +719,7 @@ object Checking {
     }
     val notPrivate = new NotPrivate
     val info = notPrivate(sym.info)
-    notPrivate.errors.foreach(report.errorOrMigrationWarning(_, sym.srcPos, from = `3.0`))
+    notPrivate.errors.foreach(report.errorOrMigrationWarning(_, sym.srcPos, MigrationVersion.Scala2to3))
     info
   }
 
@@ -708,7 +737,7 @@ object Checking {
       case _ =>
         report.error(ValueClassesMayNotContainInitalization(clazz), stat.srcPos)
     }
-    if (isDerivedValueClass(clazz)) {
+    if (clazz.isDerivedValueClass) {
       if (clazz.is(Trait))
         report.error(CannotExtendAnyVal(clazz), clazz.srcPos)
       if clazz.is(Module) then
@@ -843,11 +872,19 @@ object Checking {
     def reportNoRefinements(pos: SrcPos) =
       report.error("PolyFunction subtypes must refine the apply method", pos)
   }.traverse(tree)
+
+  /** Check that users do not extend the `PolyFunction` trait.
+   *  We only allow compiler generated `PolyFunction`s.
+   */
+  def checkPolyFunctionExtension(templ: Template)(using Context): Unit =
+    templ.parents.find(_.tpe.derivesFrom(defn.PolyFunctionClass)) match
+      case Some(parent) => report.error(s"`PolyFunction` marker trait is reserved for compiler generated refinements", parent.srcPos)
+      case None =>
 }
 
 trait Checking {
 
-  import tpd._
+  import tpd.*
 
   def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(using Context): Type =
     Checking.checkNonCyclic(sym, info, reportErrors)
@@ -878,7 +915,7 @@ trait Checking {
       case NonConforming, RefutableExtractor
 
     def fail(pat: Tree, pt: Type, reason: Reason): Boolean = {
-      import Reason._
+      import Reason.*
       val message = reason match
         case NonConforming =>
           var reportedPt = pt.dropAnnot(defn.UncheckedAnnot)
@@ -911,17 +948,26 @@ trait Checking {
           case RefutableExtractor => pat.source.atSpan(pat.span union sel.span)
         else pat.srcPos
       def rewriteMsg = Message.rewriteNotice("This patch", `3.2-migration`)
-      report.gradualErrorOrMigrationWarning(
+      report.errorOrMigrationWarning(
         message.append(
           i"""|
               |
               |If $usage is intentional, this can be communicated by $fix,
               |which $addendum.$rewriteMsg"""),
-        pos, warnFrom = `3.2`, errorFrom = `future`)
+        pos,
+        // we tighten for-comprehension without `case` to error in 3.4,
+        // but we keep pat-defs as warnings for now ("@unchecked"),
+        // until we propose an alternative way to assert exhaustivity to the typechecker.
+        if isPatDef then MigrationVersion.ForComprehensionUncheckedPathDefs
+        else MigrationVersion.ForComprehensionPatternWithoutCase
+      )
       false
     }
 
-    def check(pat: Tree, pt: Type): Boolean = (pt <:< pat.tpe) || fail(pat, pt, Reason.NonConforming)
+    def check(pat: Tree, pt: Type): Boolean =
+      pt.isTupleXXLExtract(pat.tpe) // See isTupleXXLExtract, fixes TupleXXL parameter type
+      || pt <:< pat.tpe
+      || fail(pat, pt, Reason.NonConforming)
 
     def recur(pat: Tree, pt: Type): Boolean =
       !sourceVersion.isAtLeast(`3.2`)
@@ -1063,14 +1109,18 @@ trait Checking {
   def checkValidInfix(tree: untpd.InfixOp, meth: Symbol)(using Context): Unit = {
     tree.op match {
       case id @ Ident(name: Name) =>
+        def methCompiledBeforeDeprecation =
+          meth.tastyInfo match
+            case Some(info) => info.version.major == 28 && info.version.minor < 4 // compiled before 3.4
+            case _ => false // compiled with the current compiler
         name.toTermName match {
           case name: SimpleName
           if !untpd.isBackquoted(id) &&
              !name.isOperatorName &&
              !meth.isDeclaredInfix &&
              !meth.maybeOwner.is(Scala2x) &&
-             !infixOKSinceFollowedBy(tree.right) &&
-             sourceVersion.isAtLeast(future) =>
+             !methCompiledBeforeDeprecation &&
+             !infixOKSinceFollowedBy(tree.right) =>
             val (kind, alternative) =
               if (ctx.mode.is(Mode.Type))
                 ("type", (n: Name) => s"prefix syntax $n[...]")
@@ -1078,15 +1128,15 @@ trait Checking {
                 ("extractor", (n: Name) => s"prefix syntax $n(...)")
               else
                 ("method", (n: Name) => s"method syntax .$n(...)")
-            def rewriteMsg = Message.rewriteNotice("The latter", options = "-deprecation")
-            report.deprecationWarning(
+            def rewriteMsg = Message.rewriteNotice("The latter", version = `3.4-migration`)
+            report.errorOrMigrationWarning(
               em"""Alphanumeric $kind $name is not declared ${hlAsKeyword("infix")}; it should not be used as infix operator.
                   |Instead, use ${alternative(name)} or backticked identifier `$name`.$rewriteMsg""",
-              tree.op.srcPos)
-            if (ctx.settings.deprecation.value) {
+              tree.op.srcPos,
+              MigrationVersion.AlphanumericInfix)
+            if MigrationVersion.AlphanumericInfix.needsPatch then
               patch(Span(tree.op.span.start, tree.op.span.start), "`")
               patch(Span(tree.op.span.end, tree.op.span.end), "`")
-            }
           case _ =>
         }
     }
@@ -1130,9 +1180,7 @@ trait Checking {
 
   /** Check that class does not declare same symbol twice */
   def checkNoDoubleDeclaration(cls: Symbol)(using Context): Unit = {
-    val seen = new mutable.HashMap[Name, List[Symbol]] {
-      override def default(key: Name) = Nil
-    }
+    val seen = new mutable.HashMap[Name, List[Symbol]].withDefaultValue(Nil)
     typr.println(i"check no double declarations $cls")
 
     def checkDecl(decl: Symbol): Unit = {
@@ -1141,7 +1189,8 @@ trait Checking {
         def javaFieldMethodPair =
           decl.is(JavaDefined) && other.is(JavaDefined) &&
           decl.is(Method) != other.is(Method)
-        if (decl.matches(other) && !javaFieldMethodPair) {
+        def staticNonStaticPair = decl.isScalaStatic != other.isScalaStatic
+        if (decl.matches(other) && !javaFieldMethodPair && !staticNonStaticPair) {
           def doubleDefError(decl: Symbol, other: Symbol): Unit =
             if (!decl.info.isErroneous && !other.info.isErroneous)
               report.error(DoubleDefinition(decl, other, cls), decl.srcPos)
@@ -1556,7 +1605,7 @@ trait Checking {
           && !qualType.member(sel.name).exists
           && !qualType.member(sel.name.toTypeName).exists
       then
-        report.error(NotAMember(qualType, sel.name, "value"), sel.imported.srcPos)
+        report.error(NotAMember(qualType, sel.name, "value", WildcardType), sel.imported.srcPos)
       if sel.isUnimport then
         if originals.contains(sel.name) then
           report.error(UnimportedAndImported(sel.name, targets.contains(sel.name)), sel.imported.srcPos)
@@ -1573,7 +1622,7 @@ trait Checking {
 }
 
 trait ReChecking extends Checking {
-  import tpd._
+  import tpd.*
   override def checkEnumParent(cls: Symbol, firstParent: Symbol)(using Context): Unit = ()
   override def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(using Context): Unit = ()
   override def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(using Context): Unit = ()
@@ -1589,7 +1638,7 @@ trait ReChecking extends Checking {
 }
 
 trait NoChecking extends ReChecking {
-  import tpd._
+  import tpd.*
   override def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(using Context): Type = info
   override def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, pos: SrcPos)(using Context): Unit = ()
   override def checkStable(tp: Type, pos: SrcPos, kind: String)(using Context): Unit = ()

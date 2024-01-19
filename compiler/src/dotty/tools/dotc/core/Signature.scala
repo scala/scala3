@@ -3,9 +3,9 @@ package core
 
 import scala.annotation.tailrec
 
-import Names._, Types._, Contexts._, StdNames._, Decorators._
+import Names.*, Types.*, Contexts.*, StdNames.*, Decorators.*
 import TypeErasure.sigName
-import Signature._
+import Signature.*
 
 /** The signature of a denotation.
  *

@@ -1,0 +1,38 @@
+-- [E173] Reference Error: tests/neg/publicInBinary-not-accessible.scala:16:4 ------------------------------------------
+16 |  a.p // error
+   |  ^^^
+   |  value p cannot be accessed as a member of (a : foo.A) from the top-level definitions in package foo.
+   |    private[A] value p can only be accessed from class A in package foo.
+-- [E173] Reference Error: tests/neg/publicInBinary-not-accessible.scala:17:4 ------------------------------------------
+17 |  a.a // error
+   |  ^^^
+   |  value a cannot be accessed as a member of (a² : foo.A) from the top-level definitions in package foo.
+   |    private[A] value a can only be accessed from class A in package foo.
+   |
+   |  where:    a  is a value in class A
+   |            a² is a parameter in method test
+-- [E173] Reference Error: tests/neg/publicInBinary-not-accessible.scala:18:4 ------------------------------------------
+18 |  a.b // error
+   |  ^^^
+   |  lazy value b cannot be accessed as a member of (a : foo.A) from the top-level definitions in package foo.
+   |    private[A] lazy value b can only be accessed from class A in package foo.
+-- [E173] Reference Error: tests/neg/publicInBinary-not-accessible.scala:19:4 ------------------------------------------
+19 |  a.c // error
+   |  ^^^
+   |  variable c cannot be accessed as a member of (a : foo.A) from the top-level definitions in package foo.
+   |    private[A] variable c can only be accessed from class A in package foo.
+-- [E173] Reference Error: tests/neg/publicInBinary-not-accessible.scala:20:4 ------------------------------------------
+20 |  a.d // error
+   |  ^^^
+   |  method d cannot be accessed as a member of (a : foo.A) from the top-level definitions in package foo.
+   |    private[A] method d can only be accessed from class A in package foo.
+-- [E173] Reference Error: tests/neg/publicInBinary-not-accessible.scala:21:4 ------------------------------------------
+21 |  a.e // error
+   |  ^^^
+   |  given instance e cannot be accessed as a member of (a : foo.A) from the top-level definitions in package foo.
+   |    private[A] given instance e can only be accessed from class A in package foo.
+-- [E173] Reference Error: tests/neg/publicInBinary-not-accessible.scala:22:4 ------------------------------------------
+22 |  a.f(using 1.0) // error
+   |  ^^^
+   |  given instance f cannot be accessed as a member of (a : foo.A) from the top-level definitions in package foo.
+   |    private[A] given instance f can only be accessed from class A in package foo.

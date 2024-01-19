@@ -27,7 +27,7 @@ covtest.MatchCaseClasses$
 f
 151
 163
-7
+8
 println
 Apply
 false
@@ -44,7 +44,7 @@ covtest.MatchCaseClasses$
 f
 148
 163
-7
+8
 <none>
 Block
 true
@@ -61,7 +61,7 @@ covtest.MatchCaseClasses$
 f
 184
 196
-8
+9
 println
 Apply
 false
@@ -78,7 +78,7 @@ covtest.MatchCaseClasses$
 f
 181
 196
-8
+9
 <none>
 Block
 true
@@ -95,7 +95,7 @@ covtest.MatchCaseClasses$
 f
 225
 237
-9
+10
 println
 Apply
 false
@@ -112,7 +112,7 @@ covtest.MatchCaseClasses$
 f
 222
 237
-9
+10
 <none>
 Block
 true
@@ -129,7 +129,7 @@ covtest.MatchCaseClasses$
 f
 275
 285
-11
+12
 println
 Apply
 false
@@ -146,7 +146,7 @@ covtest.MatchCaseClasses$
 f
 292
 304
-12
+13
 println
 Apply
 false
@@ -163,7 +163,7 @@ covtest.MatchCaseClasses$
 f
 275
 304
-11
+12
 <none>
 Block
 true
@@ -180,7 +180,7 @@ covtest.MatchCaseClasses$
 f
 325
 337
-13
+14
 println
 Apply
 false
@@ -197,7 +197,7 @@ covtest.MatchCaseClasses$
 f
 322
 337
-13
+14
 <none>
 Block
 true
@@ -214,7 +214,7 @@ covtest.MatchCaseClasses$
 f
 352
 368
-14
+15
 println
 Apply
 false
@@ -231,7 +231,7 @@ covtest.MatchCaseClasses$
 f
 349
 368
-14
+15
 <none>
 Block
 true
@@ -248,7 +248,7 @@ covtest.MatchCaseClasses$
 f
 101
 106
-6
+7
 f
 DefDef
 false

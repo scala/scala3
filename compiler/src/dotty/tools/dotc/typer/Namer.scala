@@ -2,15 +2,15 @@ package dotty.tools
 package dotc
 package typer
 
-import core._
-import ast._
-import Trees._, StdNames._, Scopes._, Denotations._, NamerOps._, ContextOps._
-import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._
-import Decorators._, Comments.{_, given}
+import core.*
+import ast.*
+import Trees.*, StdNames.*, Scopes.*, Denotations.*, NamerOps.*, ContextOps.*
+import Contexts.*, Symbols.*, Types.*, SymDenotations.*, Names.*, NameOps.*, Flags.*
+import Decorators.*, Comments.{_, given}
 import NameKinds.DefaultGetterName
-import ast.desugar, ast.desugar._
-import ProtoTypes._
-import util.Spans._
+import ast.desugar, ast.desugar.*
+import ProtoTypes.*
+import util.Spans.*
 import util.Property
 import collection.mutable
 import tpd.tpes
@@ -20,16 +20,15 @@ import config.Printers.typr
 import inlines.{Inlines, PrepareInlineable}
 import parsing.JavaParsers.JavaParser
 import parsing.Parsers.Parser
-import Annotations._
-import Inferencing._
-import transform.ValueClasses._
-import transform.TypeUtils._
-import transform.SymUtils._
+import Annotations.*
+import Inferencing.*
+import transform.ValueClasses.*
 import TypeErasure.erasure
-import reporting._
+import reporting.*
 import config.Feature.sourceVersion
-import config.SourceVersion._
+import config.SourceVersion.*
 
+import scala.compiletime.uninitialized
 
 /** This class creates symbols from definitions and imports and gives them
  *  lazy types.
@@ -53,7 +52,7 @@ import config.SourceVersion._
  */
 class Namer { typer: Typer =>
 
-  import untpd._
+  import untpd.*
 
   val TypedAhead      : Property.Key[tpd.Tree]            = new Property.Key
   val ExpandedTree    : Property.Key[untpd.Tree]          = new Property.Key
@@ -249,7 +248,7 @@ class Namer { typer: Typer =>
         val cls =
           createOrRefine[ClassSymbol](tree, name, flags, ctx.owner,
             cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
-            newClassSymbol(ctx.owner, name, _, _, _, tree.nameSpan, ctx.source.file))
+            newClassSymbol(ctx.owner, name, _, _, _, tree.nameSpan, ctx.compilationUnit.info))
         cls.completer.asInstanceOf[ClassCompleter].init()
         cls
       case tree: MemberDef =>
@@ -724,20 +723,27 @@ class Namer { typer: Typer =>
    *  Will call the callback with an implementation of type checking
    *  That will set the tpdTree and root tree for the compilation unit.
    */
-  def lateEnterUnit(typeCheckCB: (() => Unit) => Unit)(using Context) =
+  def lateEnterUnit(typeCheck: Boolean)(typeCheckCB: (() => Unit) => Unit)(using Context) =
     val unit = ctx.compilationUnit
 
     /** Index symbols in unit.untpdTree with lateCompile flag = true */
     def lateEnter()(using Context): Context =
       val saved = lateCompile
       lateCompile = true
-      try index(unit.untpdTree :: Nil) finally lateCompile = saved
+      try
+        index(unit.untpdTree :: Nil)
+      finally
+        lateCompile = saved
+        if !typeCheck then ctx.run.advanceLate()
 
     /** Set the tpdTree and root tree of the compilation unit */
     def lateTypeCheck()(using Context) =
-      unit.tpdTree = typer.typedExpr(unit.untpdTree)
-      val phase = new transform.SetRootTree()
-      phase.run
+      try
+        unit.tpdTree = typer.typedExpr(unit.untpdTree)
+        val phase = new transform.SetRootTree()
+        phase.run
+      finally
+        if typeCheck then ctx.run.advanceLate()
 
     unit.untpdTree =
       if (unit.isJava) new JavaParser(unit.source).parse()
@@ -748,9 +754,10 @@ class Namer { typer: Typer =>
         // inline body annotations are set in namer, capturing the current context
         // we need to prepare the context for inlining.
         lateEnter()
-        typeCheckCB { () =>
-          lateTypeCheck()
-        }
+        if typeCheck then
+          typeCheckCB { () =>
+            lateTypeCheck()
+          }
       }
     }
   end lateEnterUnit
@@ -1070,7 +1077,7 @@ class Namer { typer: Typer =>
 
     protected implicit val completerCtx: Context = localContext(cls)
 
-    private var localCtx: Context = _
+    private var localCtx: Context = uninitialized
 
     /** info to be used temporarily while completing the class, to avoid cyclic references. */
     private var tempInfo: TempClassInfo | Null = null
@@ -1181,7 +1188,7 @@ class Namer { typer: Typer =>
               val forwarderName = checkNoConflict(alias.toTypeName, isPrivate = false, span)
               var target = pathType.select(sym)
               if target.typeParams.nonEmpty then
-                target = target.EtaExpand(target.typeParams)
+                target = target.etaExpand(target.typeParams)
               newSymbol(
                 cls, forwarderName,
                 Exported | Final,
@@ -1244,7 +1251,7 @@ class Namer { typer: Typer =>
           if forwarder.isType then
             buf += tpd.TypeDef(forwarder.asType).withSpan(span)
           else
-            import tpd._
+            import tpd.*
             def extensionParamsCount(pt: Type): Int = pt match
               case pt: MethodOrPoly => 1 + extensionParamsCount(pt.resType)
               case _ => 0
@@ -1289,7 +1296,7 @@ class Namer { typer: Typer =>
           .foreach(addForwarder(name, _, span)) // ignore if any are not added
 
       def addWildcardForwarders(seen: List[TermName], span: Span): Unit =
-        val nonContextual = mutable.HashSet(seen: _*)
+        val nonContextual = mutable.HashSet(seen*)
         val fromCaseClass = pathType.widen.classSymbols.exists(_.is(Case))
         def isCaseClassSynthesized(mbr: Symbol) =
           fromCaseClass && defn.caseClassSynthesized.contains(mbr)
@@ -1502,7 +1509,7 @@ class Namer { typer: Typer =>
 
         def typedParentType(tree: untpd.Tree): tpd.Tree =
           val parentTpt = typer.typedType(parent, AnyTypeConstructorProto)
-          val ptpe = parentTpt.tpe
+          val ptpe = parentTpt.tpe.dealias.etaCollapse
           if ptpe.typeParams.nonEmpty
               && ptpe.underlyingClassRef(refinementOK = false).exists
           then
@@ -1896,7 +1903,10 @@ class Namer { typer: Typer =>
      */
     def expectedDefaultArgType =
       val originalTp = defaultParamType
-      val approxTp = wildApprox(originalTp)
+      val approxTp = withMode(Mode.TypevarsMissContext):
+        // assert TypevarsMissContext so that TyperState does not leak into approximation
+        // We approximate precisely because we want to unlink the type variable. Test case is i18795.scala.
+        wildApprox(originalTp)
       approxTp.stripPoly match
         case atp @ defn.ContextFunctionType(_, resType)
         if !defn.isNonRefinedFunction(atp) // in this case `resType` is lying, gives us only the non-dependent upper bound

@@ -3,19 +3,18 @@ package typer
 
 import java.lang.ArithmeticException
 
-import ast._
-import core._
-import Symbols._
-import Types._
-import Constants._
-import Names._
-import StdNames._
-import Contexts._
-import transform.TypeUtils._
+import ast.*
+import core.*
+import Symbols.*
+import Types.*
+import Constants.*
+import Names.*
+import StdNames.*
+import Contexts.*
 
 object ConstFold:
 
-  import tpd._
+  import tpd.*
 
   private val foldedBinops = Set[Name](
     nme.ZOR, nme.OR, nme.XOR, nme.ZAND, nme.AND, nme.EQ, nme.NE,

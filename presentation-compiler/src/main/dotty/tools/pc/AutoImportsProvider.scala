@@ -29,13 +29,12 @@ final class AutoImportsProvider(
 )(using ReportContext):
 
   def autoImports(isExtension: Boolean): List[AutoImportsResult] =
-    val uri = params.uri
+    val uri = params.uri().nn
+    val text = params.text().nn
     val filePath = Paths.get(uri)
-    driver.run(
-      uri,
-      SourceFile.virtual(filePath.toString, params.text)
-    )
-    val unit = driver.currentCtx.run.units.head
+    driver.run(uri, SourceFile.virtual(filePath.toString, text))
+
+    val unit = driver.currentCtx.run.nn.units.head
     val tree = unit.tpdTree
 
     val pos = driver.sourcePosition(params)
@@ -81,7 +80,7 @@ final class AutoImportsProvider(
             val generator =
               AutoImports.generator(
                 correctedPos,
-                params.text,
+                text,
                 tree,
                 unit.comments,
                 indexedContext.importContext,

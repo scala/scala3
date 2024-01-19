@@ -1,0 +1,36 @@
+-- Deprecation Warning: tests/warn/i19002.scala:5:20 -------------------------------------------------------------------
+5 |class TBar1 extends TFoo // warn
+  |                    ^^^^
+  |                    inheritance from trait TFoo is deprecated (since: FooLib 12.0): this class will be made final
+-- Deprecation Warning: tests/warn/i19002.scala:6:20 -------------------------------------------------------------------
+6 |trait TBar2 extends TFoo // warn
+  |                    ^^^^
+  |                    inheritance from trait TFoo is deprecated (since: FooLib 12.0): this class will be made final
+-- Deprecation Warning: tests/warn/i19002.scala:11:20 ------------------------------------------------------------------
+11 |class CBar1 extends CFoo // warn
+   |                    ^^^^
+   |                    inheritance from class CFoo is deprecated (since: FooLib 11.0)
+-- Deprecation Warning: tests/warn/i19002.scala:12:20 ------------------------------------------------------------------
+12 |trait CBar2 extends CFoo // warn
+   |                    ^^^^
+   |                    inheritance from class CFoo is deprecated (since: FooLib 11.0)
+-- Deprecation Warning: tests/warn/i19002.scala:17:20 ------------------------------------------------------------------
+17 |class ABar1 extends AFoo // warn
+   |                    ^^^^
+   |                    inheritance from class AFoo is deprecated: this class will be made final
+-- Deprecation Warning: tests/warn/i19002.scala:18:20 ------------------------------------------------------------------
+18 |trait ABar2 extends AFoo // warn
+   |                    ^^^^
+   |                    inheritance from class AFoo is deprecated: this class will be made final
+-- Deprecation Warning: tests/warn/i19002.scala:7:16 -------------------------------------------------------------------
+7 |def TBar3 = new TFoo {}  // warn
+  |                ^^^^
+  |                inheritance from trait TFoo is deprecated (since: FooLib 12.0): this class will be made final
+-- Deprecation Warning: tests/warn/i19002.scala:13:16 ------------------------------------------------------------------
+13 |def CBar3 = new CFoo {}  // warn
+   |                ^^^^
+   |                inheritance from class CFoo is deprecated (since: FooLib 11.0)
+-- Deprecation Warning: tests/warn/i19002.scala:19:16 ------------------------------------------------------------------
+19 |def ABar3 = new AFoo {}  // warn
+   |                ^^^^
+   |                inheritance from class AFoo is deprecated: this class will be made final

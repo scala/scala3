@@ -1,25 +1,16 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import Types._
-import Symbols._
-import Contexts._
-import Phases._
-import Flags._
-import StdNames._
-import SymUtils._
+import core.*
+import Types.*
+import Symbols.*
+import Contexts.*
+import Phases.*
+import Flags.*
+import StdNames.*
 
 /** Methods that apply to user-defined value classes */
 object ValueClasses {
-
-  def isDerivedValueClass(sym: Symbol)(using Context): Boolean = sym.isClass && {
-    val d = sym.denot
-    !d.isRefinementClass &&
-    d.isValueClass &&
-    (d.initial.symbol ne defn.AnyValClass) && // Compare the initial symbol because AnyVal does not exist after erasure
-    !d.isPrimitiveValueClass
-  }
 
   def isMethodWithExtension(sym: Symbol)(using Context): Boolean =
     val d = sym.denot.initial

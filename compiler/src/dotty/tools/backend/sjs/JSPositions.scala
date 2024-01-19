@@ -4,8 +4,8 @@ import scala.language.unsafeNulls
 
 import java.net.{URI, URISyntaxException}
 
-import dotty.tools.dotc.core._
-import Contexts._
+import dotty.tools.dotc.core.*
+import Contexts.*
 import Decorators.em
 
 import dotty.tools.dotc.report
@@ -17,7 +17,7 @@ import org.scalajs.ir
 
 /** Conversion utilities from dotty Positions to IR Positions. */
 class JSPositions()(using Context) {
-  import JSPositions._
+  import JSPositions.*
 
   private val sourceURIMaps: List[URIMap] = {
     ctx.settings.scalajsMapSourceURI.value.flatMap { option =>
@@ -64,7 +64,7 @@ class JSPositions()(using Context) {
     sourceAndSpan2irPos(sourcePos.source, sourcePos.span)
 
   private object span2irPosCache {
-    import dotty.tools.dotc.util._
+    import dotty.tools.dotc.util.*
 
     private var lastDotcSource: SourceFile = null
     private var lastIRSource: ir.Position.SourceFile = null

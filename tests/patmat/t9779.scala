@@ -7,7 +7,7 @@ trait Elems {
 }
 
 class BadMatch[A <: Elems](a: A) {
-  private def toLuaValue(eX: a.Elem[_]): String = eX match {
+  private def toLuaValue(eX: a.Elem[?]): String = eX match {
     case a.UnitElement => "" // type mismatch
   }
 }

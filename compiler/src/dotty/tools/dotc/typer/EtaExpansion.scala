@@ -2,18 +2,18 @@ package dotty.tools
 package dotc
 package typer
 
-import core._
+import core.*
 import ast.{Trees, untpd, tpd}
-import Contexts._
-import Types._
-import Flags._
-import Symbols._
-import Names._
+import Contexts.*
+import Types.*
+import Flags.*
+import Symbols.*
+import Names.*
 import NameKinds.UniqueName
-import util.Spans._
+import util.Spans.*
 import util.Property
 import collection.mutable
-import Trees._
+import Trees.*
 
 /** A class that handles argument lifting. Argument lifting is needed in the following
  *  scenarios:
@@ -25,7 +25,7 @@ import Trees._
  *  arguments can be duplicated as arguments to default argument methods.
  */
 abstract class Lifter {
-  import tpd._
+  import tpd.*
 
   /** Test indicating `expr` does not need lifting */
   def noLift(expr: Tree)(using Context): Boolean
@@ -208,7 +208,7 @@ object LiftToDefs extends LiftComplex {
 
 /** Lifter for eta expansion */
 object EtaExpansion extends LiftImpure {
-  import tpd._
+  import tpd.*
 
   /** Eta-expanding a tree means converting a method reference to a function value.
    *  @param    tree       The tree to expand
@@ -264,7 +264,7 @@ object EtaExpansion extends LiftImpure {
    *  But see comment on the `ExprType` case in function `prune` in class `ConstraintHandling`.
    */
   def etaExpand(tree: Tree, mt: MethodType, xarity: Int)(using Context): untpd.Tree = {
-    import untpd._
+    import untpd.*
     assert(!ctx.isAfterTyper || (ctx.phase eq ctx.base.inliningPhase), ctx.phase)
     val defs = new mutable.ListBuffer[tpd.Tree]
     val lifted: Tree = TypedSplice(liftApp(defs, tree))

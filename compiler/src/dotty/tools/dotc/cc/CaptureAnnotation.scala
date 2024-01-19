@@ -24,8 +24,17 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
   import CaptureAnnotation.*
   import tpd.*
 
-  /** A cache for boxed version of a capturing type with this annotation */
-  val boxedType = BoxedTypeCache()
+  /** A cache for the version of this annotation which differs in its boxed status. */
+  var boxDual: CaptureAnnotation | Null = null
+
+  /** A boxed annotation which is either the same annotation or its boxDual */
+  def boxedAnnot(using Context): CaptureAnnotation =
+    if boxed then this
+    else if boxDual != null then boxDual.nn
+    else
+      val dual = CaptureAnnotation(refs, boxed = true)(cls)
+      dual.boxDual = this
+      dual
 
   /** Reconstitute annotation tree from capture set */
   override def tree(using Context) =
@@ -54,7 +63,7 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
     val elems = refs.elems.toList
     val elems1 = elems.mapConserve(tm)
     if elems1 eq elems then this
-    else if elems1.forall(_.isInstanceOf[CaptureRef])
+    else if elems1.forall(_.isTrackableRef)
     then derivedAnnotation(CaptureSet(elems1.asInstanceOf[List[CaptureRef]]*), boxed)
     else EmptyAnnotation
 

@@ -1,28 +1,28 @@
 package dotty.tools.dotc
 package typer
 
-import dotty.tools.dotc.ast._
-import dotty.tools.dotc.config.Feature._
-import dotty.tools.dotc.config.SourceVersion._
-import dotty.tools.dotc.core._
-import dotty.tools.dotc.core.Annotations._
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.ast.*
+import dotty.tools.dotc.config.Feature.*
+import dotty.tools.dotc.config.SourceVersion.*
+import dotty.tools.dotc.core.*
+import dotty.tools.dotc.core.Annotations.*
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.*
+import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameKinds.PatMatGivenVarName
-import dotty.tools.dotc.core.Names._
-import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.Names.*
+import dotty.tools.dotc.core.StdNames.*
+import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.inlines.PrepareInlineable
 import dotty.tools.dotc.quoted.QuotePatterns
 import dotty.tools.dotc.staging.StagingLevel.*
-import dotty.tools.dotc.transform.SymUtils._
+
 import dotty.tools.dotc.typer.ErrorReporting.errorTree
-import dotty.tools.dotc.typer.Implicits._
-import dotty.tools.dotc.typer.Inferencing._
+import dotty.tools.dotc.typer.Implicits.*
+import dotty.tools.dotc.typer.Inferencing.*
 import dotty.tools.dotc.util.Property
-import dotty.tools.dotc.util.Spans._
+import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.util.Stats.record
 import dotty.tools.dotc.reporting.IllegalVariableInPatternAlternative
 import scala.collection.mutable
@@ -122,7 +122,7 @@ trait QuotesAndSplices {
       for arg <- typedArgs if arg.symbol.is(Mutable) do // TODO support these patterns. Possibly using scala.quoted.util.Var
         report.error("References to `var`s cannot be used in higher-order pattern", arg.srcPos)
       val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
-      val patType = if tree.args.isEmpty then pt else defn.FunctionOf(argTypes, pt)
+      val patType = if tree.args.isEmpty then pt else defn.FunctionNOf(argTypes, pt)
       val pat = typedPattern(tree.body, defn.QuotedExprClass.typeRef.appliedTo(patType))(using quotePatternSpliceContext)
       val baseType = pat.tpe.baseType(defn.QuotedExprClass)
       val argType = if baseType.exists then baseType.argTypesHi.head else defn.NothingType
@@ -148,7 +148,7 @@ trait QuotesAndSplices {
     if isInBraces then // ${x}(...) match an application
       val typedArgs = args.map(arg => typedExpr(arg))
       val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
-      val splice1 = typedSplicePattern(splice, defn.FunctionOf(argTypes, pt))
+      val splice1 = typedSplicePattern(splice, defn.FunctionNOf(argTypes, pt))
       untpd.cpy.Apply(tree)(splice1.select(nme.apply), typedArgs).withType(pt)
     else // $x(...) higher-order quasipattern
       if args.isEmpty then
@@ -266,7 +266,7 @@ trait QuotesAndSplices {
 }
 
 object QuotesAndSplices {
-  import tpd._
+  import tpd.*
 
   /** Key for mapping from quoted pattern type variable names into their symbol */
   private val TypeVariableKey = new Property.Key[collection.mutable.Map[TypeName, Symbol]]

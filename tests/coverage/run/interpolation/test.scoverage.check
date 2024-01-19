@@ -27,7 +27,7 @@ Object
 simple
 60
 78
-3
+4
 s
 Apply
 false
@@ -44,7 +44,7 @@ Object
 simple
 68
 76
-3
+4
 length
 Apply
 false
@@ -61,7 +61,7 @@ Object
 simple
 16
 26
-2
+3
 simple
 DefDef
 false
@@ -78,7 +78,7 @@ Object
 hexa
 113
 126
-6
+7
 f
 Apply
 false
@@ -95,7 +95,7 @@ Object
 hexa
 82
 90
-5
+6
 hexa
 DefDef
 false
@@ -112,7 +112,7 @@ Object
 main
 195
 224
-9
+10
 apply
 Apply
 false
@@ -127,15 +127,15 @@ Test$
 Object
 <empty>.Test$
 main
-195
-199
-9
-List
-Ident
+229
+278
+11
+map
+Apply
 false
 0
 false
-List
+xs.zipWithIndex.map((s, i) => println(s"$i: $s"))
 
 7
 interpolation/test.scala
@@ -145,25 +145,8 @@ Object
 <empty>.Test$
 main
 229
-278
-10
-map
-Apply
-false
-0
-false
-xs.zipWithIndex.map((s, i) => println(s"$i: $s"))
-
-8
-interpolation/test.scala
-<empty>
-Test$
-Object
-<empty>.Test$
-main
-229
 244
-10
+11
 zipWithIndex
 Select
 false
@@ -171,7 +154,7 @@ false
 false
 xs.zipWithIndex
 
-9
+8
 interpolation/test.scala
 <empty>
 Test$
@@ -180,7 +163,7 @@ Object
 $anonfun
 259
 277
-10
+11
 println
 Apply
 false
@@ -188,7 +171,7 @@ false
 false
 println(s"$i: $s")
 
-10
+9
 interpolation/test.scala
 <empty>
 Test$
@@ -197,7 +180,7 @@ Object
 $anonfun
 267
 276
-10
+11
 s
 Apply
 false
@@ -205,7 +188,7 @@ false
 false
 s"$i: $s"
 
-11
+10
 interpolation/test.scala
 <empty>
 Test$
@@ -214,7 +197,7 @@ Object
 main
 284
 309
-12
+13
 println
 Apply
 false
@@ -222,7 +205,7 @@ false
 false
 println(simple(1, "abc"))
 
-12
+11
 interpolation/test.scala
 <empty>
 Test$
@@ -231,7 +214,7 @@ Object
 main
 292
 308
-12
+13
 simple
 Apply
 false
@@ -239,7 +222,7 @@ false
 false
 simple(1, "abc")
 
-13
+12
 interpolation/test.scala
 <empty>
 Test$
@@ -248,7 +231,7 @@ Object
 main
 314
 332
-13
+14
 println
 Apply
 false
@@ -256,7 +239,7 @@ false
 false
 println(hexa(127))
 
-14
+13
 interpolation/test.scala
 <empty>
 Test$
@@ -265,7 +248,7 @@ Object
 main
 322
 331
-13
+14
 hexa
 Apply
 false
@@ -273,7 +256,7 @@ false
 false
 hexa(127)
 
-15
+14
 interpolation/test.scala
 <empty>
 Test$
@@ -282,7 +265,7 @@ Object
 main
 337
 355
-14
+15
 println
 Apply
 false
@@ -290,7 +273,7 @@ false
 false
 println(raw"a\\nb")
 
-16
+15
 interpolation/test.scala
 <empty>
 Test$
@@ -299,7 +282,7 @@ Object
 main
 345
 354
-14
+15
 raw
 Apply
 false
@@ -307,7 +290,7 @@ false
 false
 raw"a\\nb"
 
-17
+16
 interpolation/test.scala
 <empty>
 Test$
@@ -316,7 +299,7 @@ Object
 main
 130
 138
-8
+9
 main
 DefDef
 false

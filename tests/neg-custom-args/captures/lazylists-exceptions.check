@@ -1,13 +1,11 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists-exceptions.scala:37:4 --------------------------
-37 |    tabulate(10) { i => // error
-   |    ^
-   |    Found:    LazyList[Int]^
-   |    Required: LazyList[Int]^?
-   |
-   |    Note that reference (cap : caps.Cap), defined at level 2
-   |    cannot be included in outer capture set ?, defined at level 1 in method problem
+-- Error: tests/neg-custom-args/captures/lazylists-exceptions.scala:36:2 -----------------------------------------------
+36 |  try // error
+   |  ^
+   |  result of `try` cannot have type LazyList[Int]^ since
+   |  that type captures the root capability `cap`.
+   |  This is often caused by a locally generated exception capability leaking as part of its result.
+37 |    tabulate(10) { i =>
 38 |      if i > 9 then throw Ex1()
 39 |      i * i
 40 |    }
-   |
-   | longer explanation available when compiling with `-explain`
+41 |  catch case ex: Ex1 => LazyNil

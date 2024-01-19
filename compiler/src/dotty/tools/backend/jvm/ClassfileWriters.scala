@@ -4,7 +4,7 @@ import java.io.{DataOutputStream, IOException, BufferedOutputStream, FileOutputS
 import java.nio.ByteBuffer
 import java.nio.channels.{ClosedByInterruptException, FileChannel}
 import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file._
+import java.nio.file.*
 import java.nio.file.attribute.FileAttribute
 import java.util
 import java.util.concurrent.ConcurrentHashMap
@@ -15,7 +15,7 @@ import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.io.{AbstractFile, PlainFile}
 import dotty.tools.io.PlainFile.toPlainFile
 import BTypes.InternalName
-import scala.util.chaining._
+import scala.util.chaining.*
 import dotty.tools.io.JarArchive
 
 import scala.language.unsafeNulls
@@ -146,7 +146,7 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
     val storeOnly = compressionLevel == Deflater.NO_COMPRESSION
 
     val jarWriter: JarOutputStream = {
-      import scala.util.Properties._
+      import scala.util.Properties.*
       val manifest = new Manifest
       val attrs = manifest.getMainAttributes.nn
       attrs.put(MANIFEST_VERSION, "1.0")
@@ -186,7 +186,7 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
 
   private final class DirEntryWriter(base: Path) extends FileWriter {
     val builtPaths = new ConcurrentHashMap[Path, java.lang.Boolean]()
-    val noAttributes = Array.empty[FileAttribute[_]]
+    val noAttributes = Array.empty[FileAttribute[?]]
     private val isWindows = scala.util.Properties.isWin
 
     private def checkName(component: Path): Unit = if (isWindows) {
@@ -201,7 +201,7 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
       val parent = filePath.getParent
       if (!builtPaths.containsKey(parent)) {
         parent.iterator.forEachRemaining(checkName)
-        try Files.createDirectories(parent, noAttributes: _*)
+        try Files.createDirectories(parent, noAttributes*)
         catch {
           case e: FileAlreadyExistsException =>
             // `createDirectories` reports this exception if `parent` is an existing symlink to a directory

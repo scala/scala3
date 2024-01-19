@@ -3,12 +3,12 @@ package dotty.tools.backend.jvm
 import scala.language.unsafeNulls
 
 import scala.tools.asm.{ClassReader, Type, Handle }
-import scala.tools.asm.tree._
+import scala.tools.asm.tree.*
 
 import scala.collection.mutable
 import scala.util.control.{NoStackTrace, NonFatal}
-import scala.annotation._
-import scala.jdk.CollectionConverters._
+import scala.annotation.*
+import scala.jdk.CollectionConverters.*
 
 // Backported from scala/scala, commit sha: 724be0e9425b9ad07c244d25efdad695d75abbcf
 // https://github.com/scala/scala/blob/724be0e9425b9ad07c244d25efdad695d75abbcf/src/compiler/scala/tools/nsc/backend/jvm/analysis/BackendUtils.scala#L928
@@ -315,7 +315,7 @@ abstract class NestedClassesCollector[T](nestedOnly: Boolean) extends GenericSig
     if (annot.values != null) annot.values.asScala foreach visitConstant
   }
 
-  def visitAnnotations(annots: java.util.List[_ <: AnnotationNode]) = if (annots != null) annots.asScala foreach visitAnnotation
+  def visitAnnotations(annots: java.util.List[? <: AnnotationNode]) = if (annots != null) annots.asScala foreach visitAnnotation
   def visitAnnotationss(annotss: Array[java.util.List[AnnotationNode]]) = if (annotss != null) annotss foreach visitAnnotations
 
   def visitHandle(handle: Handle): Unit = {

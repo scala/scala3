@@ -1,20 +1,21 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import MegaPhase._
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.StdNames._
-import ast._
-import Flags._
+import core.*
+import MegaPhase.*
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.StdNames.*
+import ast.*
+import Flags.*
 import Names.Name
-import NameOps._
+import NameOps.*
 import NameKinds.{FieldName, ExplicitFieldName}
-import SymUtils._
-import Symbols._
-import Decorators._
-import DenotTransformers._
+
+import Symbols.*
+import Decorators.*
+import DenotTransformers.*
 import collection.mutable
+import Types.*
 
 object Constructors {
   val name: String = "constructors"
@@ -28,7 +29,7 @@ object Constructors {
  *     into the constructor if possible.
  */
 class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =>
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = Constructors.name
 
@@ -197,6 +198,10 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
              ) &&
              fn.symbol.info.resultType.classSymbol == outerParam.info.classSymbol =>
           ref(outerParam)
+        case Assign(lhs, rhs) if lhs.symbol.name == nme.OUTER => // not transform LHS of assignment to $outer field
+            cpy.Assign(tree)(lhs, super.transform(rhs))
+        case dd: DefDef if dd.name.endsWith(nme.OUTER.asSimpleName) => // not transform RHS of outer accessor
+          dd
         case tree: RefTree if tree.symbol.is(ParamAccessor) && tree.symbol.name == nme.OUTER =>
           ref(outerParam)
         case _ =>
@@ -352,7 +357,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     val expandedConstr =
       if (cls.isAllOf(NoInitsTrait)) {
         assert(finalConstrStats.isEmpty || {
-          import dotty.tools.dotc.transform.sjs.JSSymUtils._
+          import dotty.tools.dotc.transform.sjs.JSSymUtils.*
           ctx.settings.scalajs.value && cls.isJSType
         })
         constr

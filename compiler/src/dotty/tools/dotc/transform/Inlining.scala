@@ -1,14 +1,14 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import Flags._
-import Contexts._
-import Symbols._
-import SymUtils._
+import core.*
+import Flags.*
+import Contexts.*
+import Symbols.*
+
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.ast.Trees._
-import dotty.tools.dotc.quoted._
+import dotty.tools.dotc.ast.Trees.*
+import dotty.tools.dotc.quoted.*
 import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.ast.TreeMapWithImplicits
 import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
@@ -17,9 +17,10 @@ import dotty.tools.dotc.staging.StagingLevel
 import scala.collection.mutable.ListBuffer
 
 /** Inlines all calls to inline methods that are not in an inline method or a quote */
-class Inlining extends MacroTransform {
+class Inlining extends MacroTransform, IdentityDenotTransformer {
+  self =>
 
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = Inlining.name
 
@@ -75,7 +76,7 @@ class Inlining extends MacroTransform {
             && StagingLevel.level == 0
             && MacroAnnotations.hasMacroAnnotation(tree.symbol)
           then
-            val trees = (new MacroAnnotations).expandAnnotations(tree)
+            val trees = (new MacroAnnotations(self)).expandAnnotations(tree)
             val trees1 = trees.map(super.transform)
 
             // Find classes added to the top level from a package object

@@ -2,22 +2,21 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
-import MegaPhase._
-import Symbols._, Contexts._, Types._, StdNames._, NameOps._
+import core.*
+import MegaPhase.*
+import Symbols.*, Contexts.*, Types.*, StdNames.*, NameOps.*
 import patmat.SpaceEngine
-import util.Spans._
+import util.Spans.*
 import typer.Applications.*
-import SymUtils._
-import TypeUtils.*
+
 import Annotations.*
-import Flags._, Constants._
-import Decorators._
+import Flags.*, Constants.*
+import Decorators.*
 import NameKinds.{PatMatStdBinderName, PatMatAltsName, PatMatResultName}
 import config.Printers.patmatch
-import reporting._
-import ast._
-import util.Property._
+import reporting.*
+import ast.*
+import util.Property.*
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -27,14 +26,21 @@ import scala.collection.mutable
  *  where every pattern is an integer or string constant
  */
 class PatternMatcher extends MiniPhase {
-  import ast.tpd._
-  import PatternMatcher._
+  import ast.tpd.*
+  import PatternMatcher.*
 
   override def phaseName: String = PatternMatcher.name
 
   override def description: String = PatternMatcher.description
 
   override def runsAfter: Set[String] = Set(ElimRepeated.name)
+
+  private val InInlinedCode = new util.Property.Key[Boolean]
+  private def inInlinedCode(using Context) = ctx.property(InInlinedCode).getOrElse(false)
+
+  override def prepareForInlined(tree: Inlined)(using Context): Context =
+    if inInlinedCode then ctx
+    else ctx.fresh.setProperty(InInlinedCode, true)
 
   override def transformMatch(tree: Match)(using Context): Tree =
     if (tree.isInstanceOf[InlineMatch]) tree
@@ -47,16 +53,16 @@ class PatternMatcher extends MiniPhase {
         case rt => tree.tpe
       val translated = new Translator(matchType, this).translateMatch(tree)
 
-      // check exhaustivity and unreachability
-      SpaceEngine.checkExhaustivity(tree)
-      SpaceEngine.checkRedundancy(tree)
+      if !inInlinedCode then
+        // check exhaustivity and unreachability
+        SpaceEngine.checkMatch(tree)
 
       translated.ensureConforms(matchType)
     }
 }
 
 object PatternMatcher {
-  import ast.tpd._
+  import ast.tpd.*
 
   val name: String = "patternMatcher"
   val description: String = "compile pattern matches"
@@ -327,10 +333,10 @@ object PatternMatcher {
       /** Plan for matching the result of an unapply against argument patterns `args` */
       def unapplyPlan(unapp: Tree, args: List[Tree]): Plan = {
         def caseClass = unapp.symbol.owner.linkedClass
-        lazy val caseAccessors = caseClass.caseAccessors.filter(_.is(Method))
+        lazy val caseAccessors = caseClass.caseAccessors
 
         def isSyntheticScala2Unapply(sym: Symbol) =
-          sym.isAllOf(SyntheticCase) && sym.owner.is(Scala2x)
+          sym.is(Synthetic) && sym.owner.is(Scala2x)
 
         def tupleApp(i: Int, receiver: Tree) = // manually inlining the call to NonEmptyTuple#apply, because it's an inline method
           ref(defn.RuntimeTuplesModule)
@@ -353,12 +359,12 @@ object PatternMatcher {
                 .map(ref(unappResult).select(_))
               matchArgsPlan(selectors, args, onSuccess)
             }
+            else if (isUnapplySeq && unapplySeqTypeElemTp(unapp.tpe.widen.finalResultType).exists) {
+              unapplySeqPlan(unappResult, args)
+            }
             else if (isUnapplySeq && isProductSeqMatch(unapp.tpe.widen, args.length, unapp.srcPos)) {
               val arity = productArity(unapp.tpe.widen, unapp.srcPos)
               unapplyProductSeqPlan(unappResult, args, arity)
-            }
-            else if (isUnapplySeq && unapplySeqTypeElemTp(unapp.tpe.widen.finalResultType).exists) {
-              unapplySeqPlan(unappResult, args)
             }
             else if unappResult.info <:< defn.NonEmptyTupleTypeRef then
               val components = (0 until foldApplyTupleType(unappResult.denot.info).length).toList.map(tupleApp(_, ref(unappResult)))
@@ -370,8 +376,9 @@ object PatternMatcher {
                 val arity = productArity(get.tpe, unapp.srcPos)
                 if (isUnapplySeq)
                   letAbstract(get) { getResult =>
-                    if (arity > 0) unapplyProductSeqPlan(getResult, args, arity)
-                    else unapplySeqPlan(getResult, args)
+                    if unapplySeqTypeElemTp(get.tpe).exists
+                    then unapplySeqPlan(getResult, args)
+                    else unapplyProductSeqPlan(getResult, args, arity)
                   }
                 else
                   letAbstract(get) { getResult =>
@@ -505,9 +512,7 @@ object PatternMatcher {
     }
 
     private class RefCounter extends PlanTransform {
-      val count = new mutable.HashMap[Symbol, Int] {
-        override def default(key: Symbol) = 0
-      }
+      val count = new mutable.HashMap[Symbol, Int].withDefaultValue(0)
     }
 
     /** Reference counts for all labels */
@@ -1023,7 +1028,7 @@ object PatternMatcher {
           case Block((_: ValDef) :: Block(_, Match(_, cases)) :: Nil, _) => cases
           case _ => Nil
         val caseThreshold =
-          if ValueClasses.isDerivedValueClass(tpt.tpe.typeSymbol) then 1
+          if tpt.tpe.typeSymbol.isDerivedValueClass then 1
           else MinSwitchCases
         def typesInPattern(pat: Tree): List[Type] = pat match
           case Alternative(pats) => pats.flatMap(typesInPattern)

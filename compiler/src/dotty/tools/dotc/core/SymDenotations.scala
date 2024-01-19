@@ -2,16 +2,16 @@ package dotty.tools
 package dotc
 package core
 
-import Periods._, Contexts._, Symbols._, Denotations._, Names._, NameOps._, Annotations._
-import Types._, Flags._, Decorators._, DenotTransformers._, StdNames._, Scopes._
-import NameOps._, NameKinds._
+import Periods.*, Contexts.*, Symbols.*, Denotations.*, Names.*, NameOps.*, Annotations.*
+import Types.*, Flags.*, Decorators.*, DenotTransformers.*, StdNames.*, Scopes.*
+import NameOps.*, NameKinds.*
 import Phases.{Phase, typerPhase, unfusedPhases}
 import Constants.Constant
 import TypeApplications.TypeParamInfo
 import Scopes.Scope
 import dotty.tools.io.AbstractFile
-import Decorators._
-import ast._
+import Decorators.*
+import ast.*
 import ast.Trees.{LambdaTypeTree, TypeBoundsTree}
 import Trees.Literal
 import Variances.Variance
@@ -21,12 +21,12 @@ import util.Stats
 import java.util.WeakHashMap
 import scala.util.control.NonFatal
 import config.Config
-import reporting._
+import reporting.*
 import collection.mutable
-import transform.TypeUtils._
-import cc.{CapturingType, derivedCapturingType, Setup, EventuallyCapturingType, isEventuallyCapturingType}
+import cc.{CapturingType, derivedCapturingType}
 
 import scala.annotation.internal.sharable
+import scala.compiletime.uninitialized
 
 object SymDenotations {
 
@@ -167,12 +167,17 @@ object SymDenotations {
             println(i"${"  " * indent}completed $name in $owner")
           }
         }
-        else {
-          if (myFlags.is(Touched))
-            throw CyclicReference(this)(using ctx.withOwner(symbol))
-          myFlags |= Touched
-          atPhase(validFor.firstPhaseId)(completer.complete(this))
-        }
+        else
+          val traceCycles = CyclicReference.isTraced
+          try
+            if traceCycles then
+              CyclicReference.pushTrace("compute the signature of ", symbol, "")
+            if myFlags.is(Touched) then
+              throw CyclicReference(this)(using ctx.withOwner(symbol))
+            myFlags |= Touched
+            atPhase(validFor.firstPhaseId)(completer.complete(this))
+          finally
+            if traceCycles then CyclicReference.popTrace()
 
     protected[dotc] def info_=(tp: Type): Unit = {
       /* // DEBUG
@@ -1031,6 +1036,10 @@ object SymDenotations {
       isOneOf(EffectivelyErased)
       || is(Inline) && !isRetainedInline && !hasAnnotation(defn.ScalaStaticAnnot)
 
+    /** Is this a member that will become public in the generated binary */
+    def hasPublicInBinary(using Context): Boolean =
+      isTerm && hasAnnotation(defn.PublicInBinaryAnnot)
+
     /** ()T and => T types should be treated as equivalent for this symbol.
      *  Note: For the moment, we treat Scala-2 compiled symbols as loose matching,
      *  because the Scala library does not always follow the right conventions.
@@ -1193,7 +1202,14 @@ object SymDenotations {
      *  is defined in Scala 3 and is neither abstract nor open.
      */
     final def isEffectivelySealed(using Context): Boolean =
-      isOneOf(FinalOrSealed) || isClass && !isOneOf(EffectivelyOpenFlags)
+      isOneOf(FinalOrSealed)
+      || isClass && (!isOneOf(EffectivelyOpenFlags)
+      || isLocalToCompilationUnit)
+
+    final def isLocalToCompilationUnit(using Context): Boolean =
+      is(Private)
+      || owner.ownersIterator.exists(_.isTerm)
+      || accessBoundary(defn.RootClass).isContainedIn(symbol.topLevelClass)
 
     final def isTransparentClass(using Context): Boolean =
       is(TransparentType)
@@ -1695,7 +1711,7 @@ object SymDenotations {
             c.ensureCompleted()
       end completeChildrenIn
 
-      if is(Sealed) || isAllOf(JavaEnumTrait) then
+      if is(Sealed) || isAllOf(JavaEnum) && isClass then
         if !is(ChildrenQueried) then
           // Make sure all visible children are completed, so that
           // they show up in Child annotations. A possible child is visible if it
@@ -2431,7 +2447,7 @@ object SymDenotations {
     initPrivateWithin: Symbol)
     extends ClassDenotation(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin) {
 
-    private var packageObjsCache: List[ClassDenotation] = _
+    private var packageObjsCache: List[ClassDenotation] = uninitialized
     private var packageObjsRunId: RunId = NoRunId
     private var ambiguityWarningIssued: Boolean = false
 
@@ -2587,7 +2603,7 @@ object SymDenotations {
       for (sym <- scope.toList.iterator)
         // We need to be careful to not force the denotation of `sym` here,
         // otherwise it will be brought forward to the current run.
-        if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.assocFile == file)
+        if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.compUnitInfo != null && sym.asClass.compUnitInfo.nn.associatedFile == file)
           scope.unlink(sym, sym.lastKnownDenotation.name)
     }
   }
@@ -2967,7 +2983,10 @@ object SymDenotations {
     def apply(clsd: ClassDenotation)(implicit onBehalf: BaseData, ctx: Context)
         : (List[ClassSymbol], BaseClassSet) = {
       assert(isValid)
+      val traceCycles = CyclicReference.isTraced
       try
+        if traceCycles then
+          CyclicReference.pushTrace("compute the base classes of ", clsd.symbol, "")
         if (cache != null) cache.uncheckedNN
         else {
           if (locked) throw CyclicReference(clsd)
@@ -2980,7 +2999,9 @@ object SymDenotations {
           else onBehalf.signalProvisional()
           computed
         }
-      finally addDependent(onBehalf)
+      finally
+        if traceCycles then CyclicReference.popTrace()
+        addDependent(onBehalf)
     }
 
     def sameGroup(p1: Phase, p2: Phase) = p1.sameParentsStartId == p2.sameParentsStartId

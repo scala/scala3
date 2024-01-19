@@ -1,6 +1,8 @@
 // may not compile anymore in Scala 3.4+
 package pkg
 
+import scala.language.`3.3`
+
 trait P[+T]
 
 extension [T](inline parse0: P[T])

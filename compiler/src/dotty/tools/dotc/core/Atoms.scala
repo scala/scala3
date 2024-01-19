@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import Types._
+import Types.*
 
 /** Indicates the singleton types that a type must or may consist of.
  *  @param lo   The lower bound: singleton types in this set are guaranteed

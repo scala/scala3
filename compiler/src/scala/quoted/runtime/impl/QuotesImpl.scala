@@ -7,22 +7,23 @@ import dotty.tools.dotc
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Annotations
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.NameKinds
-import dotty.tools.dotc.core.NameOps._
-import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.core.NameOps.*
+import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.NoCompilationUnit
 import dotty.tools.dotc.quoted.MacroExpansion
 import dotty.tools.dotc.quoted.PickledQuotes
 import dotty.tools.dotc.quoted.QuotePatterns
-import dotty.tools.dotc.quoted.reflect._
+import dotty.tools.dotc.quoted.reflect.*
 
 import scala.quoted.runtime.{QuoteUnpickler, QuoteMatching}
-import scala.quoted.runtime.impl.printers._
+import scala.quoted.runtime.impl.printers.*
 
 import scala.reflect.TypeTest
+import dotty.tools.dotc.core.NameKinds.ExceptionBinderName
 
 object QuotesImpl {
 
@@ -70,11 +71,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       if self.isExprOf[X] then
         self.asInstanceOf[scala.quoted.Expr[X]]
       else
-        throw Exception(
-          s"""Expr cast exception: ${self.show}
-            |of type: ${reflect.Printer.TypeReprCode.show(reflect.asTerm(self).tpe)}
-            |did not conform to type: ${reflect.Printer.TypeReprCode.show(reflect.TypeRepr.of[X])}
-            |""".stripMargin
+        throw ExprCastException(
+          expectedType = reflect.Printer.TypeReprCode.show(reflect.TypeRepr.of[X]),
+          actualType = reflect.Printer.TypeReprCode.show(reflect.asTerm(self).tpe),
+          exprCode = self.show
         )
     }
   end extension
@@ -96,7 +96,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given TreeMethods: TreeMethods with
       extension (self: Tree)
-        def pos: Position = self.sourcePos
+        def pos: Position =
+          val treePos = self.sourcePos
+          if treePos.exists then treePos
+          else
+            if xCheckMacro then report.warning(s"Missing tree position (defaulting to position 0): ${Printer.TreeStructure.show(self)}\nThis is a compiler bug. Please report it.")
+            self.source.atSpan(dotc.util.Spans.Span(0))
+
         def symbol: Symbol = self.symbol
         def show(using printer: Printer[Tree]): String = printer.show(self)
         def isExpr: Boolean =
@@ -1024,7 +1030,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def apply(call: Option[Tree], bindings: List[Definition], expansion: Term): Inlined =
         withDefaultPos(tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.map { case b: tpd.MemberDef => b }, xCheckMacroValidExpr(expansion)))
       def copy(original: Tree)(call: Option[Tree], bindings: List[Definition], expansion: Term): Inlined =
-        tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], xCheckMacroValidExpr(expansion)).withSpan(original.span).withType(original.tpe)
+        original match
+          case original: Inlined =>
+            tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], xCheckMacroValidExpr(expansion))
+          case original =>
+            throw new IllegalArgumentException(i"Expected argument `original` to be an `Inlined` but was: ${original.show}")
       def unapply(x: Inlined): (Option[Tree /* Term | TypeTree */], List[Definition], Term) =
         (optional(x.call), x.bindings, x.body)
     end Inlined
@@ -1779,7 +1789,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def show(using printer: Printer[TypeRepr]): String = printer.show(self)
 
-        def seal: scala.quoted.Type[_] = self.asType
+        def seal: scala.quoted.Type[?] = self.asType
 
         def asType: scala.quoted.Type[?] =
           new TypeImpl(Inferred(self), SpliceScope.getCurrent)
@@ -1790,6 +1800,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def widenTermRefByName: TypeRepr = self.widenTermRefExpr
         def widenByName: TypeRepr = self.widenExpr
         def dealias: TypeRepr = self.dealias
+        def dealiasKeepOpaques: TypeRepr = self.dealiasKeepOpaques
         def simplified: TypeRepr = self.simplified
         def classSymbol: Option[Symbol] =
           if self.classSymbol.exists then Some(self.classSymbol.asClass)
@@ -2624,10 +2635,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def info: TypeRepr = self.denot.info
 
         def pos: Option[Position] =
-          if self.exists then Some(self.sourcePos) else None
+          if self.exists then
+            val symPos = self.sourcePos
+            if symPos.exists then Some(symPos)
+            else
+              if xCheckMacro then report.warning(s"Missing symbol position (defaulting to position 0): $self\nThis is a compiler bug. Please report it.")
+              Some(self.source.atSpan(dotc.util.Spans.Span(0)))
+          else None
 
         def docstring: Option[String] =
-          import dotc.core.Comments.CommentsContext
+          import dotc.core.Comments.docCtx
           val docCtx = ctx.docCtx.getOrElse {
             throw new RuntimeException(
               "DocCtx could not be found and documentations are unavailable. This is a compiler-internal error."

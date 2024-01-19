@@ -1,5 +1,6 @@
 import language.experimental.saferExceptions
 import scala.compiletime.uninitialized
+import scala.annotation.unchecked.uncheckedCaptures
 
 trait LzyList[+A]:
   def isEmpty: Boolean
@@ -13,7 +14,7 @@ object LzyNil extends LzyList[Nothing]:
 
 final class LzyCons[+A](hd: A, tl: () => LzyList[A]^) extends LzyList[A]:
   private var forced = false
-  private var cache: LzyList[A]^{this} = uninitialized
+  private var cache: LzyList[A @uncheckedCaptures]^{this} = uninitialized
   private def force =
     if !forced then { cache = tl(); forced = true }
     cache

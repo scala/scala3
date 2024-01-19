@@ -12,4 +12,4 @@
 -- Error: tests/neg-custom-args/captures/cc-this.scala:17:8 ------------------------------------------------------------
 17 |  class C4(val f: () => Int) extends C3 // error
    |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |  reference (C4.this.f : () => Int) is not included in the allowed capture set {} of pure base class class C3
+   |reference (C4.this.f : () => Int) captured by this self type is not included in the allowed capture set {} of pure base class class C3

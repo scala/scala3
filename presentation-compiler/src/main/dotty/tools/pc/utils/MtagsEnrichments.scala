@@ -9,6 +9,7 @@ import scala.meta.pc.RangeParams
 import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
 import scala.util.control.NonFatal
+import scala.jdk.OptionConverters.*
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.*
@@ -37,29 +38,29 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
     def sourcePosition(
         params: OffsetParams
     ): SourcePosition =
-      val uri = params.uri
-      val source = driver.openedFiles(uri)
+      val uri = params.uri()
+      val source = driver.openedFiles(uri.nn)
       val span = params match
-        case p: RangeParams if p.offset != p.endOffset =>
+        case p: RangeParams if p.offset() != p.endOffset() =>
           p.trimWhitespaceInRange.fold {
-            Spans.Span(p.offset, p.endOffset)
+            Spans.Span(p.offset(), p.endOffset())
           } {
             case trimmed: RangeParams =>
-              Spans.Span(trimmed.offset, trimmed.endOffset)
+              Spans.Span(trimmed.offset(), trimmed.endOffset())
             case offset =>
-              Spans.Span(p.offset, p.offset)
+              Spans.Span(p.offset(), p.offset())
           }
-        case _ => Spans.Span(params.offset)
+        case _ => Spans.Span(params.offset())
 
       new SourcePosition(source, span)
     end sourcePosition
 
     def localContext(params: OffsetParams): Context =
-      if driver.currentCtx.run.units.isEmpty then
+      if driver.currentCtx.run.nn.units.isEmpty then
         throw new RuntimeException(
           "No source files were passed to the Scala 3 presentation compiler"
         )
-      val unit = driver.currentCtx.run.units.head
+      val unit = driver.currentCtx.run.nn.units.head
       val pos = driver.sourcePosition(params)
       val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
       val tpdPath =
@@ -100,14 +101,57 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
       for
         uri <- InteractiveDriver.toUriOption(pos.source)
         range <- if pos.exists then Some(pos.toLsp) else None
-      yield new l.Location(uri.toString, range)
+      yield new l.Location(uri.toString(), range)
 
     def encloses(other: SourcePosition): Boolean =
       pos.start <= other.start && pos.end >= other.end
 
     def encloses(other: RangeParams): Boolean =
       pos.start <= other.offset() && pos.end >= other.endOffset()
+
+    /**
+     * @return (adjusted position, should strip backticks)
+     */
+    def adjust(
+        text: Array[Char],
+        forRename: Boolean = false,
+    )(using Context): (SourcePosition, Boolean) =
+      if !pos.span.isCorrect(text) then (pos, false)
+      else
+        val pos0 =
+          val span = pos.span
+          if span.exists && span.point > span.end then
+            pos.withSpan(
+              span
+                .withStart(span.point)
+                .withEnd(span.point + (span.end - span.start))
+            )
+          else pos
+
+        val pos1 =
+          if pos0.end > 0 && text(pos0.end - 1) == ',' then
+            pos0.withEnd(pos0.end - 1)
+          else pos0
+        val isBackticked =
+          text(pos1.start) == '`' &&
+            pos1.end > 0 &&
+            text(pos1.end - 1) == '`'
+        // when the old name contains backticks, the position is incorrect
+        val isOldNameBackticked = text(pos1.start) != '`' &&
+          pos1.start > 0 &&
+          text(pos1.start - 1) == '`' &&
+          text(pos1.end) == '`'
+        if isBackticked && forRename then
+          (pos1.withStart(pos1.start + 1).withEnd(pos1.end - 1), true)
+        else if isOldNameBackticked then
+          (pos1.withStart(pos1.start - 1).withEnd(pos1.end + 1), false)
+        else (pos1, false)
+    end adjust
   end extension
+
+  extension (span: Span)
+    def isCorrect(text: Array[Char]): Boolean =
+      !span.isZeroExtent && span.exists && span.start < text.size && span.end <= text.size
 
   extension (pos: RangeParams)
     def encloses(other: SourcePosition): Boolean =
@@ -186,6 +230,34 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
 
     def stripBackticks: String = s.stripPrefix("`").stripSuffix("`")
 
+  extension (text: Array[Char])
+    def indexAfterSpacesAndComments: Int = {
+      var isInComment = false
+      var startedStateChange = false
+      val index = text.indexWhere {
+        case '/' if !isInComment && !startedStateChange =>
+          startedStateChange = true
+          false
+        case '*' if !isInComment && startedStateChange =>
+          startedStateChange = false
+          isInComment = true
+          false
+        case '/' if isInComment && startedStateChange =>
+          startedStateChange = false
+          isInComment = false
+          false
+        case '*' if isInComment && !startedStateChange =>
+          startedStateChange = true
+          false
+        case c if isInComment || c.isSpaceChar || c == '\t' =>
+          startedStateChange = false
+          false
+        case _ => true
+      }
+      if (startedStateChange) index - 1
+      else index
+    }
+
   extension (search: SymbolSearch)
     def symbolDocumentation(symbol: Symbol)(using
         Context
@@ -208,11 +280,12 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
         sym,
         () => parentSymbols.iterator.map(toSemanticdbSymbol).toList.asJava,
       )
-      if documentation.isPresent then Some(documentation.get())
-      else None
+      documentation.nn.toScala
     end symbolDocumentation
   end extension
 
+  private val infixNames =
+    Set(nme.apply, nme.unapply, nme.unapplySeq)
   extension (tree: Tree)
     def qual: Tree =
       tree match
@@ -228,12 +301,35 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
         val denot = sym.denot.asSeenFrom(pre.tpe.widenTermRefExpr)
         (denot.info, sym.withUpdatedTpe(denot.info))
       catch case NonFatal(e) => (sym.info, sym)
+    
+    def isInfix(using ctx: Context) =
+      tree match
+        case Select(New(_), _) => false
+        case Select(_, name: TermName) if infixNames(name) => false
+        case Select(This(_), _) => false
+        // is a select statement without a dot `qual.name`
+        case sel @ Select(qual, _) if !sel.symbol.is(Synthetic) =>
+          val source = tree.source
+          !(qual.span.end until sel.nameSpan.start)
+            .map(source.apply)
+            .contains('.')
+        case _ => false
   end extension
 
   extension (imp: Import)
     def selector(span: Span)(using Context): Option[Symbol] =
       for sel <- imp.selectors.find(_.span.contains(span))
       yield imp.expr.symbol.info.member(sel.name).symbol
+
+  private val forCompMethods =
+    Set(nme.map, nme.flatMap, nme.withFilter, nme.foreach)
+  extension (sel: Select)
+    def isForComprehensionMethod(using Context): Boolean =
+      val syntheticName = sel.name match
+        case name: TermName => forCompMethods(name)
+        case _ => false
+      val wrongSpan = sel.qualifier.span.contains(sel.nameSpan)
+      syntheticName && wrongSpan
 
   extension (denot: Denotation)
     def allSymbols: List[Symbol] =

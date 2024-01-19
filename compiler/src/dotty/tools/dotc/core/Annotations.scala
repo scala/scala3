@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import Symbols._, Types._, Contexts._, Constants._, Phases.*
+import Symbols.*, Types.*, Contexts.*, Constants.*, Phases.*
 import ast.tpd, tpd.*
 import util.Spans.Span
 import printing.{Showable, Printer}
@@ -244,9 +244,6 @@ object Annotations {
         }
         else None
     }
-
-    def makeSourceFile(path: String, span: Span)(using Context): Annotation =
-      apply(defn.SourceFileAnnot, Literal(Constant(path)), span)
   }
 
   @sharable val EmptyAnnotation = Annotation(EmptyTree)

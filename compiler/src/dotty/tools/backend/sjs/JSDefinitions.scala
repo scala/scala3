@@ -4,14 +4,15 @@ import scala.language.unsafeNulls
 
 import scala.annotation.threadUnsafe
 
-import dotty.tools.dotc.core._
-import Names._
-import Types._
-import Contexts._
-import Symbols._
-import StdNames._
+import dotty.tools.dotc.core.*
+import Names.*
+import Types.*
+import Contexts.*
+import Symbols.*
+import StdNames.*
 
 import dotty.tools.dotc.config.SJSPlatform
+import scala.compiletime.uninitialized
 
 object JSDefinitions {
   /** The Scala.js-specific definitions for the current context. */
@@ -249,7 +250,7 @@ final class JSDefinitions()(using Context) {
     @threadUnsafe lazy val Selectable_reflectiveSelectableFromLangReflectiveCallsR = SelectableModule.requiredMethodRef("reflectiveSelectableFromLangReflectiveCalls")
     def Selectable_reflectiveSelectableFromLangReflectiveCalls(using Context) = Selectable_reflectiveSelectableFromLangReflectiveCallsR.symbol
 
-  private var allRefClassesCache: Set[Symbol] = _
+  private var allRefClassesCache: Set[Symbol] = uninitialized
   def allRefClasses(using Context): Set[Symbol] = {
     if (allRefClassesCache == null) {
       val baseNames = List("Object", "Boolean", "Character", "Byte", "Short",

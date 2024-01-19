@@ -6,12 +6,12 @@ import scala.language.unsafeNulls
 import dotty.tools.dotc.config.PathResolver.Defaults
 import dotty.tools.dotc.config.Settings.{Setting, SettingGroup}
 import dotty.tools.dotc.config.SourceVersion
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.rewrites.Rewrites
-import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory}
+import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory, NoAbstractFile}
 import Setting.ChoiceWithHelp
 
-import scala.util.chaining._
+import scala.util.chaining.*
 
 import java.util.zip.Deflater
 
@@ -120,8 +120,10 @@ trait CommonScalaSettings:
   // -explain-types setting is necessary for cross compilation, since it is mentioned in sbt-tpolecat, for instance
   // it is otherwise subsumed by -explain, and should be dropped as soon as we can.
   val explainTypes: Setting[Boolean] = BooleanSetting("-explain-types", "Explain type errors in more detail (deprecated, use -explain instead).", aliases = List("--explain-types", "-explaintypes"))
+  val explainCyclic: Setting[Boolean] = BooleanSetting("-explain-cyclic", "Explain cyclic reference errors in more detail.", aliases = List("--explain-cyclic"))
   val unchecked: Setting[Boolean] = BooleanSetting("-unchecked", "Enable additional warnings where generated code depends on assumptions.", initialValue = true, aliases = List("--unchecked"))
   val language: Setting[List[String]] = MultiStringSetting("-language", "feature", "Enable one or more language features.", aliases = List("--language"))
+  val experimental: Setting[Boolean] = BooleanSetting("-experimental", "Annotate all top-level definitions with @experimental. This enables the use of experimental features anywhere in the project.")
 
   /* Coverage settings */
   val coverageOutputDir = PathSetting("-coverage-out", "Destination for coverage classfiles and instrumentation data.", "", aliases = List("--coverage-out"))
@@ -165,6 +167,7 @@ private sealed trait WarningSettings:
   val WvalueDiscard: Setting[Boolean] = BooleanSetting("-Wvalue-discard", "Warn when non-Unit expression results are unused.")
   val WNonUnitStatement = BooleanSetting("-Wnonunit-statement", "Warn when block statements are non-Unit expressions.")
   val WimplausiblePatterns = BooleanSetting("-Wimplausible-patterns", "Warn if comparison with a pattern value looks like it might always fail.")
+  val WunstableInlineAccessors = BooleanSetting("-WunstableInlineAccessors", "Warn an inline methods has references to non-stable binary APIs.")
   val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     name = "-Wunused",
     helpArg = "warning",
@@ -349,6 +352,7 @@ private sealed trait YSettings:
   val YdebugTypeError: Setting[Boolean] = BooleanSetting("-Ydebug-type-error", "Print the stack trace when a TypeError is caught", false)
   val YdebugError: Setting[Boolean] = BooleanSetting("-Ydebug-error", "Print the stack trace when any error is caught.", false)
   val YdebugUnpickling: Setting[Boolean] = BooleanSetting("-Ydebug-unpickling", "Print the stack trace when an error occurs when reading Tasty.", false)
+  val YdebugCyclic: Setting[Boolean] = BooleanSetting("-Ydebug-cyclic", "Print the stack trace when a cyclic reference error occurs.", false)
   val YtermConflict: Setting[String] = ChoiceSetting("-Yresolve-term-conflict", "strategy", "Resolve term conflicts", List("package", "object", "error"), "error")
   val Ylog: Setting[List[String]] = PhasesSetting("-Ylog", "Log operations during")
   val YlogClasspath: Setting[Boolean] = BooleanSetting("-Ylog-classpath", "Output information about what classpath is being applied.")
@@ -395,7 +399,7 @@ private sealed trait YSettings:
   val YfromTastyIgnoreList: Setting[List[String]] = MultiStringSetting("-Yfrom-tasty-ignore-list", "file", "List of `tasty` files in jar files that will not be loaded when using -from-tasty.")
   val YnoExperimental: Setting[Boolean] = BooleanSetting("-Yno-experimental", "Disable experimental language features.")
   val YlegacyLazyVals: Setting[Boolean] = BooleanSetting("-Ylegacy-lazy-vals", "Use legacy (pre 3.3.0) implementation of lazy vals.")
-  val Yscala2Stdlib: Setting[Boolean] = BooleanSetting("-Yscala2-stdlib", "Used when compiling the Scala 2 standard library.")
+  val YcompileScala2Library: Setting[Boolean] = BooleanSetting("-Ycompile-scala2-library", "Used when compiling the Scala 2 standard library.")
   val YoutputOnlyTasty: Setting[Boolean] = BooleanSetting("-Youtput-only-tasty", "Used to only generate the TASTy file without the classfiles")
 
   val YprofileEnabled: Setting[Boolean] = BooleanSetting("-Yprofile-enabled", "Enable profiling.")
@@ -414,6 +418,9 @@ private sealed trait YSettings:
   val YrequireTargetName: Setting[Boolean] = BooleanSetting("-Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation.")
   val YrecheckTest: Setting[Boolean] = BooleanSetting("-Yrecheck-test", "Run basic rechecking (internal test only).")
   val YccDebug: Setting[Boolean] = BooleanSetting("-Ycc-debug", "Used in conjunction with captureChecking language import, debug info for captured references.")
+  val YccNew: Setting[Boolean] = BooleanSetting("-Ycc-new", "Used in conjunction with captureChecking language import, try out new variants (debug option)")
+  val YccLog: Setting[Boolean] = BooleanSetting("-Ycc-log", "Used in conjunction with captureChecking language import, print tracing and debug info")
+  val YccPrintSetup: Setting[Boolean] = BooleanSetting("-Ycc-print-setup", "Used in conjunction with captureChecking language import, print trees after cc.Setup phase")
 
   /** Area-specific debug output */
   val YexplainLowlevel: Setting[Boolean] = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")
@@ -429,4 +436,9 @@ private sealed trait YSettings:
   val YforceInlineWhileTyping: Setting[Boolean] = BooleanSetting("-Yforce-inline-while-typing", "Make non-transparent inline methods inline when typing. Emulates the old inlining behavior of 3.0.0-M3.")
 
   val YdebugMacros: Setting[Boolean] = BooleanSetting("-Ydebug-macros", "Show debug info when quote pattern match fails")
+
+  // Pipeline compilation options
+  val YjavaTasty: Setting[Boolean] = BooleanSetting("-Yjava-tasty", "Pickler phase should compute pickles for .java defined symbols for use by build tools")
+  val YjavaTastyOutput: Setting[AbstractFile] = OutputSetting("-Yjava-tasty-output", "directory|jar", "(Internal use only!) destination for generated .tasty files containing Java type signatures.", NoAbstractFile)
+  val YallowOutlineFromTasty: Setting[Boolean] = BooleanSetting("-Yallow-outline-from-tasty", "Allow outline TASTy to be loaded with the -from-tasty option.")
 end YSettings

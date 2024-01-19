@@ -1,5 +1,7 @@
 package scala.util.control
 
+import scala.compiletime.uninitialized
+
 /** Library implementation of nonlocal return.
  *
  *  Usage:
@@ -21,7 +23,7 @@ package scala.util.control
 object NonLocalReturns {
   @deprecated("Use scala.util.boundary.Break instead", "3.3")
   class ReturnThrowable[T] extends ControlThrowable {
-    private var myResult: T = _
+    private var myResult: T = uninitialized
     def throwReturn(result: T): Nothing = {
       myResult = result
       throw this
@@ -40,7 +42,7 @@ object NonLocalReturns {
     val returner = new ReturnThrowable[T]
     try op(using returner)
     catch {
-      case ex: ReturnThrowable[T] =>
+      case ex: ReturnThrowable[T @unchecked] =>
        if (ex.eq(returner)) ex.result else throw ex
     }
   }

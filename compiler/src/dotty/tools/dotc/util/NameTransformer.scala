@@ -4,7 +4,7 @@ package util
 
 import scala.language.unsafeNulls
 
-import core.Names._
+import core.Names.*
 
 import scala.annotation.internal.sharable
 

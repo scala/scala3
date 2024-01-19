@@ -2,8 +2,10 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
-import Contexts._, Phases._, Symbols._, Decorators._
+import scala.compiletime.uninitialized
+
+import core.*
+import Contexts.*, Phases.*, Symbols.*, Decorators.*
 import Flags.PackageVal
 import staging.StagingLevel.*
 
@@ -14,7 +16,7 @@ import staging.StagingLevel.*
  *  is described in his thesis.
  */
 object MegaPhase {
-  import ast.tpd._
+  import ast.tpd.*
 
   /** The base class of tree transforms. For each kind of tree K, there are
    *  two methods which can be overridden:
@@ -31,8 +33,8 @@ object MegaPhase {
    */
   abstract class MiniPhase extends Phase {
 
-    private[MegaPhase] var superPhase: MegaPhase = _
-    private[MegaPhase] var idxInGroup: Int = _
+    private[MegaPhase] var superPhase: MegaPhase = uninitialized
+    private[MegaPhase] var idxInGroup: Int = uninitialized
 
     /** List of names of phases that should have finished their processing of all compilation units
      *  before this phase starts
@@ -136,16 +138,22 @@ object MegaPhase {
       singletonGroup.run
   }
 }
-import MegaPhase._
+import MegaPhase.*
 
 class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
-  import ast.tpd._
+  import ast.tpd.*
 
   override val phaseName: String =
     if (miniPhases.length == 1) miniPhases(0).phaseName
     else miniPhases.map(_.phaseName).mkString("MegaPhase{", ", ", "}")
 
-  private var relaxedTypingCache: Boolean = _
+  /** Used in progress reporting to avoid super long phase names, also the precision is not so important here */
+  lazy val shortPhaseName: String =
+    if (miniPhases.length == 1) miniPhases(0).phaseName
+    else
+      s"MegaPhase{${miniPhases.head.phaseName},...,${miniPhases.last.phaseName}}"
+
+  private var relaxedTypingCache: Boolean = uninitialized
   private var relaxedTypingKnown = false
 
   override final def relaxedTyping: Boolean = {

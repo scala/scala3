@@ -1,12 +1,13 @@
 -- [E081] Type Error: tests/neg/i11561.scala:2:32 ----------------------------------------------------------------------
 2 |  val updateText1 = copy(text = _) // error
   |                                ^
-  |                                Could not infer type for parameter _$1 of anonymous function
+  |                                Missing parameter type
   |
-  |                                In expanded function:
-  |                                _$1 => State.this.text = _$1
-  |
-  |                                Expected type for the whole anonymous function: String
+  |                                I could not infer the type of the parameter _$1
+  |                                in expanded function:
+  |                                  _$1 => State.this.text = _$1
+  |                                Expected type for the whole anonymous function:
+  |                                  String
 -- [E052] Type Error: tests/neg/i11561.scala:3:30 ----------------------------------------------------------------------
 3 |  val updateText2 = copy(text = (_: String)) // error
   |                         ^^^^^^^^^^^^^^^^^^

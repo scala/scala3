@@ -2,6 +2,7 @@ package dotty.tools.pc.utils
 
 import scala.jdk.CollectionConverters.*
 import scala.meta.internal.mtags.CommonMtagsEnrichments.*
+import scala.language.unsafeNulls
 
 import dotty.tools.pc.utils.TestExtensions.*
 

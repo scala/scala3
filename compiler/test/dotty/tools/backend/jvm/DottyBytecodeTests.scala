@@ -308,7 +308,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         |import java.nio.file._
         |class Test {
         |  def test(xs: Array[String]) = {
-        |     val p4 = Paths.get("Hello", xs: _*)
+        |     val p4 = Paths.get("Hello", xs*)
         |  }
         |}
       """.stripMargin
@@ -1058,7 +1058,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         TypeOp(CHECKCAST, "scala/collection/immutable/$colon$colon"),
         VarOp(ASTORE, 3),
         VarOp(ALOAD, 3),
-        Invoke(INVOKEVIRTUAL, "scala/collection/immutable/$colon$colon", "next$access$1", "()Lscala/collection/immutable/List;", false),
+        Invoke(INVOKEVIRTUAL, "scala/collection/immutable/$colon$colon", "next", "()Lscala/collection/immutable/List;", false),
         VarOp(ASTORE, 4),
         VarOp(ALOAD, 3),
         Invoke(INVOKEVIRTUAL, "scala/collection/immutable/$colon$colon", "head", "()Ljava/lang/Object;", false),
@@ -1112,7 +1112,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         Invoke(INVOKESTATIC, "scala/runtime/BoxesRunTime", "unboxToInt", "(Ljava/lang/Object;)I", false),
         VarOp(ISTORE, 4),
         VarOp(ALOAD, 3),
-        Invoke(INVOKEVIRTUAL, "scala/collection/immutable/$colon$colon", "next$access$1", "()Lscala/collection/immutable/List;", false),
+        Invoke(INVOKEVIRTUAL, "scala/collection/immutable/$colon$colon", "next", "()Lscala/collection/immutable/List;", false),
         VarOp(ASTORE, 5),
         Op(ICONST_1),
         VarOp(ILOAD, 4),
@@ -1699,6 +1699,38 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       val expected = List(LineNumber(3, Label(0)))
       assertSameCode(instructions, expected)
 
+    }
+  }
+
+  @Test def i18816 = {
+    // The primary goal of this test is to check that `LineNumber` have correct numbers
+    val source =
+      """trait Context
+        |
+        |class A(x: Context) extends AnyVal:
+        |  given [T]: Context = x
+        |
+        |  def m1 =
+        |    println(m3)
+        |    def m2 =
+        |      m3 // line 9
+        |    println(m2)
+        |
+        |  def m3(using Context): String = ""
+        """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("A$.class", directory = false).input
+      val clsNode = loadClassNode(clsIn, skipDebugInfo = false)
+      val method  = getMethod(clsNode, "m2$1")
+      val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
+
+      // There used to be references to line 7 here
+      val expected = List(
+        LineNumber(9, Label(0)),
+      )
+
+      assertSameCode(instructions, expected)
     }
   }
 }

@@ -3,28 +3,28 @@ package dotc
 package core
 
 import interfaces.CompilerCallback
-import Decorators._
-import Periods._
-import Names._
-import Phases._
-import Types._
-import Symbols._
-import Scopes._
-import Uniques._
-import ast.Trees._
+import Decorators.*
+import Periods.*
+import Names.*
+import Phases.*
+import Types.*
+import Symbols.*
+import Scopes.*
+import Uniques.*
+import ast.Trees.*
 import ast.untpd
 import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, ReusableInstance}
 import typer.{Implicits, ImportInfo, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
 import inlines.Inliner
-import Nullables._
+import Nullables.*
 import Implicits.ContextualImplicits
-import config.Settings._
+import config.Settings.*
 import config.Config
-import reporting._
+import reporting.*
 import io.{AbstractFile, NoAbstractFile, PlainFile, Path}
 import scala.io.Codec
 import collection.mutable
-import printing._
+import printing.*
 import config.{JavaPlatform, SJSPlatform, Platform, ScalaSettings}
 import classfile.ReusableDataReader
 import StdNames.nme
@@ -34,10 +34,10 @@ import scala.annotation.internal.sharable
 
 import DenotTransformers.DenotTransformer
 import dotty.tools.dotc.profile.Profiler
-import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
+import dotty.tools.dotc.sbt.interfaces.{IncrementalCallback, ProgressCallback}
 import util.Property.Key
 import util.Store
-import plugins._
+import plugins.*
 import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
 
@@ -53,8 +53,9 @@ object Contexts {
   private val (notNullInfosLoc,      store8) = store7.newLocation[List[NotNullInfo]]()
   private val (importInfoLoc,        store9) = store8.newLocation[ImportInfo | Null]()
   private val (typeAssignerLoc,     store10) = store9.newLocation[TypeAssigner](TypeAssigner)
+  private val (progressCallbackLoc, store11) = store10.newLocation[ProgressCallback | Null]()
 
-  private val initialStore = store10
+  private val initialStore = store11
 
   /** The current context */
   inline def ctx(using ctx: Context): Context = ctx
@@ -176,6 +177,14 @@ object Contexts {
       def forceRun = settings.YdumpSbtInc.value || settings.YforceSbtPhases.value
       val local = incCallback
       local != null && local.enabled || forceRun
+
+    /** The Zinc compile progress callback implementation if we are run from Zinc, null otherwise */
+    def progressCallback: ProgressCallback | Null = store(progressCallbackLoc)
+
+    /** Run `op` if there exists a Zinc progress callback */
+    inline def withProgressCallback(inline op: ProgressCallback => Unit): Unit =
+      val local = progressCallback
+      if local != null then op(local)
 
     /** The current plain printer */
     def printerFn: Context => Printer = store(printerFnLoc)
@@ -405,7 +414,7 @@ object Contexts {
      *    from constructor parameters to class parameter accessors.
      */
     def superCallContext: Context = {
-      val locals = newScopeWith(owner.typeParams ++ owner.asClass.paramAccessors: _*)
+      val locals = newScopeWith(owner.typeParams ++ owner.asClass.paramAccessors*)
       superOrThisCallContext(owner.primaryConstructor, locals)
     }
 
@@ -549,7 +558,7 @@ object Contexts {
     private var _owner: Symbol = uninitialized
     final def owner: Symbol = _owner
 
-    private var _tree: Tree[?]= _
+    private var _tree: Tree[?] = uninitialized
     final def tree: Tree[?] = _tree
 
     private var _scope: Scope = uninitialized
@@ -675,6 +684,7 @@ object Contexts {
 
     def setCompilerCallback(callback: CompilerCallback): this.type = updateStore(compilerCallbackLoc, callback)
     def setIncCallback(callback: IncrementalCallback): this.type = updateStore(incCallbackLoc, callback)
+    def setProgressCallback(callback: ProgressCallback): this.type = updateStore(progressCallbackLoc, callback)
     def setPrinterFn(printer: Context => Printer): this.type = updateStore(printerFnLoc, printer)
     def setSettings(settingsState: SettingsState): this.type = updateStore(settingsStateLoc, settingsState)
     def setRun(run: Run | Null): this.type = updateStore(runLoc, run)
@@ -742,20 +752,18 @@ object Contexts {
       c
   end FreshContext
 
-  given ops: AnyRef with
-    extension (c: Context)
-      def addNotNullInfo(info: NotNullInfo) =
-        c.withNotNullInfos(c.notNullInfos.extendWith(info))
+  extension (c: Context)
+    def addNotNullInfo(info: NotNullInfo) =
+      c.withNotNullInfos(c.notNullInfos.extendWith(info))
 
-      def addNotNullRefs(refs: Set[TermRef]) =
-        c.addNotNullInfo(NotNullInfo(refs, Set()))
+    def addNotNullRefs(refs: Set[TermRef]) =
+      c.addNotNullInfo(NotNullInfo(refs, Set()))
 
-      def withNotNullInfos(infos: List[NotNullInfo]): Context =
-        if c.notNullInfos eq infos then c else c.fresh.setNotNullInfos(infos)
+    def withNotNullInfos(infos: List[NotNullInfo]): Context =
+      if c.notNullInfos eq infos then c else c.fresh.setNotNullInfos(infos)
 
-      def relaxedOverrideContext: Context =
-        c.withModeBits(c.mode &~ Mode.SafeNulls | Mode.RelaxedOverriding)
-  end ops
+    def relaxedOverrideContext: Context =
+      c.withModeBits(c.mode &~ Mode.SafeNulls | Mode.RelaxedOverriding)
 
   // TODO: Fix issue when converting ModeChanges and FreshModeChanges to extension givens
   extension (c: Context) {
@@ -905,7 +913,7 @@ object Contexts {
 
     def next()(using Context): FreshContext =
       val base = ctx.base
-      import base._
+      import base.*
       val nestedCtx =
         if inUse < pool.size then
           pool(inUse).reuseIn(ctx)
@@ -1053,6 +1061,7 @@ object Contexts {
       sources.clear()
       files.clear()
       comparers.clear()  // forces re-evaluation of top and bottom classes in TypeComparer
+      comparersInUse = 0
 
     // Test that access is single threaded
 

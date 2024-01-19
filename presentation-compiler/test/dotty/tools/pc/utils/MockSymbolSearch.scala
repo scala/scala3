@@ -14,6 +14,7 @@ import scala.meta.pc.{
   SymbolSearch,
   SymbolSearchVisitor
 }
+import scala.language.unsafeNulls
 
 import org.eclipse.lsp4j.Location
 
@@ -42,7 +43,7 @@ class MockSymbolSearch(
   ): SymbolSearch.Result =
     val query = WorkspaceSymbolQuery.exact(textQuery)
     workspace.search(query, visitor)
-    classpath.search(query, visitor)
+    classpath.search(query, visitor)._1
 
   override def searchMethods(
       textQuery: String,

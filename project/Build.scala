@@ -83,9 +83,9 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.3.1"
+  val referenceVersion = "3.4.0-RC1"
 
-  val baseVersion = "3.4.0-RC1"
+  val baseVersion = "3.4.1-RC1"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
@@ -101,7 +101,7 @@ object Build {
    *  set to 3.1.3. If it is going to be 3.1.0, it must be set to the latest
    *  3.0.x release.
    */
-  val previousDottyVersion = "3.3.1"
+  val previousDottyVersion = "3.4.0-RC1"
 
   object CompatMode {
     final val BinaryCompatible = 0
@@ -173,11 +173,23 @@ object Build {
   // Run tests with filter through vulpix test suite
   val testCompilation = inputKey[Unit]("runs integration test with the supplied filter")
 
+  sealed trait Scala2Library
+  // Use Scala 2 compiled library JAR
+  object Scala2LibraryJar extends Scala2Library
   // Use the TASTy jar from `scala2-library-tasty` in the classpath
   // This only works with `scala3-bootstrapped/scalac` and tests in `scala3-bootstrapped`
   //
-  // Enable in SBT with: set ThisBuild/Build.useScala2LibraryTasty := true
-  val useScala2LibraryTasty = settingKey[Boolean]("Use the TASTy jar from `scala2-library-tasty` in the classpath")
+  object Scala2LibraryTasty extends Scala2Library
+  // Use the TASTy jar from `scala2-library-cc-tasty` in the classpath
+  // This only works with `scala3-bootstrapped/scalac` and tests in `scala3-bootstrapped`
+  //
+  object Scala2LibraryCCTasty extends Scala2Library
+
+  // Set in SBT with:
+  //   - `set ThisBuild/Build.scala2Library := Build.Scala2LibraryJar` (default)
+  //   - `set ThisBuild/Build.scala2Library := Build.Scala2LibraryTasty`
+  //   - `set ThisBuild/Build.scala2Library := Build.Scala2LibraryCCTasty`
+  val scala2Library = settingKey[Scala2Library]("Choose which version of the Scala 2 library should be used")
 
   // Used to compile files similar to ./bin/scalac script
   val scalac = inputKey[Unit]("run the compiler using the correct classpath, or the user supplied classpath")
@@ -225,7 +237,7 @@ object Build {
 
     outputStrategy := Some(StdoutOutput),
 
-    useScala2LibraryTasty := false,
+    scala2Library := Scala2LibraryJar,
 
     // enable verbose exception messages for JUnit
     (Test / testOptions) += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "-s"),
@@ -579,6 +591,9 @@ object Build {
        // Note: bench/profiles/projects.yml should be updated accordingly.
        Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Ysafe-init"),
 
+      // Use source 3.3 to avoid fatal migration warnings on scalajs-ir
+      scalacOptions ++= Seq("-source", "3.3"),
+
       // Generate compiler.properties, used by sbt
       (Compile / resourceGenerators) += Def.task {
         import java.util._
@@ -642,12 +657,18 @@ object Build {
         val externalDeps = externalCompilerClasspathTask.value
         val jars = packageAll.value
 
-        val scala2LibraryTasty = jars.get("scala2-library-tasty") match {
-          case Some(scala2LibraryTastyJar) if useScala2LibraryTasty.value =>
-            Seq("-Ddotty.tests.tasties.scalaLibrary=" + scala2LibraryTastyJar)
-          case _ =>
-            if (useScala2LibraryTasty.value) log.warn("useScala2LibraryTasty is ignored on non-bootstrapped compiler")
-            Seq.empty
+        def libraryPathProperty(jarName: String): Seq[String] =
+          jars.get(jarName) match {
+            case Some(jar) =>
+              Seq(s"-Ddotty.tests.tasties.scalaLibrary=$jar")
+            case None =>
+              log.warn("Scala 2 library TASTy is ignored on non-bootstrapped compiler")
+              Seq.empty
+          }
+        val scala2LibraryTasty = scala2Library.value match {
+          case Scala2LibraryJar => Seq.empty
+          case Scala2LibraryTasty => libraryPathProperty("scala2-library-tasty")
+          case Scala2LibraryCCTasty => libraryPathProperty("scala2-library-cc-tasty")
         }
 
         scala2LibraryTasty ++ Seq(
@@ -709,6 +730,10 @@ object Build {
         val externalDeps = externalCompilerClasspathTask.value
         val jars = packageAll.value
 
+        val argsWithDefaultClasspath: List[String] =
+          if (args.contains("-classpath")) args
+          else insertClasspathInArgs(args, (baseDirectory.value / ".." / "out" / "default-last-scalac-out.jar").getPath)
+
         val scalaLib = findArtifactPath(externalDeps, "scala-library")
         val dottyLib = jars("scala3-library")
 
@@ -722,7 +747,7 @@ object Build {
         } else if (scalaLib == "") {
           println("Couldn't find scala-library on classpath, please run using script in bin dir instead")
         } else if (args.contains("-with-compiler")) {
-          val args1 = args.filter(_ != "-with-compiler")
+          val args1 = argsWithDefaultClasspath.filter(_ != "-with-compiler")
           val asm = findArtifactPath(externalDeps, "scala-asm")
           val dottyCompiler = jars("scala3-compiler")
           val dottyStaging = jars("scala3-staging")
@@ -731,7 +756,7 @@ object Build {
           val tastyCore = jars("tasty-core")
           val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
           run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface).mkString(File.pathSeparator)))
-        } else run(args)
+        } else run(argsWithDefaultClasspath)
       },
 
       run := scalac.evaluated,
@@ -747,6 +772,8 @@ object Build {
         val decompile = args0.contains("-decompile")
         val printTasty = args0.contains("-print-tasty")
         val debugFromTasty = args0.contains("-Ythrough-tasty")
+        val defaultOutputDirectory =
+          if (printTasty || decompile || debugFromTasty || args0.contains("-d")) Nil else List("-d", (baseDirectory.value / ".." / "out" / "default-last-scalac-out.jar").getPath)
         val args = args0.filter(arg => arg != "-repl" && arg != "-decompile" &&
             arg != "-with-compiler" && arg != "-Ythrough-tasty" && arg != "-print-tasty")
         val main =
@@ -755,14 +782,24 @@ object Build {
           else if (debugFromTasty) "dotty.tools.dotc.fromtasty.Debug"
           else "dotty.tools.dotc.Main"
 
-        var extraClasspath =
-          scalaLibTastyOpt match {
-            case Some(scalaLibTasty) if useScala2LibraryTasty.value =>
-              Seq(scalaLibTasty, scalaLib, dottyLib)
-            case _ =>
-              if (useScala2LibraryTasty.value) log.warn("useScala2LibraryTasty is ignored on non-bootstrapped compiler")
-              Seq(scalaLib, dottyLib)
-          }
+        val scala2LibraryTasty = scala2Library.value match {
+          case Scala2LibraryJar => Seq.empty
+          case Scala2LibraryTasty =>
+            jars.get("scala2-library-tasty") match {
+              case Some(jar) => Seq(jar)
+              case None =>
+                log.warn("Scala2LibraryTasty is ignored on non-bootstrapped compiler")
+                Seq.empty
+            }
+          case Scala2LibraryCCTasty =>
+            jars.get("scala2-library-cc-tasty") match {
+              case Some(jar) => Seq(jar)
+              case None =>
+                log.warn("Scala2LibraryCCTasty is ignored on non-bootstrapped compiler")
+                Seq.empty
+            }
+        }
+        var extraClasspath = scala2LibraryTasty ++ Seq(scalaLib, dottyLib)
 
         if (decompile && !args.contains("-classpath"))
           extraClasspath ++= Seq(".")
@@ -780,7 +817,7 @@ object Build {
           extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface)
         }
 
-        val fullArgs = main :: (if (printTasty) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator)))
+        val fullArgs = main :: defaultOutputDirectory ::: (if (printTasty) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator)))
 
         (Compile / runMain).toTask(fullArgs.mkString(" ", " ", ""))
       }.evaluated,
@@ -873,6 +910,7 @@ object Build {
         "scala3-tasty-inspector"  -> (LocalProject("scala3-tasty-inspector") / Compile / packageBin).value.getAbsolutePath,
         "tasty-core"     -> (LocalProject("tasty-core-bootstrapped") / Compile / packageBin).value.getAbsolutePath,
         "scala2-library-tasty" -> (LocalProject("scala2-library-tasty") / Compile / packageBin).value.getAbsolutePath,
+        "scala2-library-cc-tasty" -> (LocalProject("scala2-library-cc-tasty") / Compile / packageBin).value.getAbsolutePath,
       )
     },
 
@@ -1001,16 +1039,32 @@ object Build {
     withCommonSettings(Bootstrapped).
     dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
     settings(commonBootstrappedSettings).
+    settings(scala2LibraryBootstrappedSettings).
+    settings(moduleName := "scala2-library")
+
+  /** Scala 2 library compiled by dotty using the latest published sources of the library.
+   *
+   *  This version of the library is not (yet) TASTy/binary compatible with the Scala 2 compiled library.
+   */
+  lazy val `scala2-library-cc` = project.in(file("scala2-library-cc")).
+    withCommonSettings(Bootstrapped).
+    dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
+    settings(commonBootstrappedSettings).
+    settings(scala2LibraryBootstrappedSettings).
     settings(
-      moduleName := "scala2-library",
+      moduleName := "scala2-library-cc",
+      scalacOptions += "-Ycheck:all",
+    )
+
+  lazy val scala2LibraryBootstrappedSettings = Seq(
       javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value,
       Compile / scalacOptions ++= {
         Seq("-sourcepath", ((Compile/sourceManaged).value / "scala-library-src").toString)
       },
       Compile / doc / scalacOptions += "-Ydocument-synthetic-types",
-      scalacOptions += "-Yscala2-stdlib",
-      scalacOptions += "-Ycheck:all",
+      scalacOptions += "-Ycompile-scala2-library",
       scalacOptions -= "-Xfatal-warnings",
+      Compile / compile / logLevel := Level.Error,
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       libraryDependencies +=
@@ -1068,6 +1122,7 @@ object Build {
         "scala.annotation.specialized",
         "scala.annotation.unspecialized",
       ),
+      tastyMiMaTastyQueryVersionOverride := Some("1.1.2"),
       tastyMiMaPreviousArtifacts += "org.scala-lang" % "scala-library" % stdlibBootstrappedVersion,
       tastyMiMaCurrentClasspath := {
         val javaBootCp = tastyMiMaJavaBootClasspath.value
@@ -1086,18 +1141,18 @@ object Build {
              |   - final val MinorVersion = $minorVersion
              |   - final val ExperimentalVersion = 0
              | * Clean everything to generate a compiler with those new TASTy versions
-             | * Run scala2-library-bootstrapped/tastyMiMaReportIssues
+             | * Run ${name.value}/tastyMiMaReportIssues
              |""".stripMargin)
 
       }).value,
       Compile / exportJars := true,
       artifactName := { (sv: ScalaVersion, module: ModuleID, artifact: Artifact) =>
-        "scala2-library-" + dottyVersion + "." + artifact.extension
+        moduleName.value + "-" + dottyVersion + "." + artifact.extension
       },
       run := {
         val log = streams.value.log
+        val projectName = projectInfo.value.nameFormal
         val args: Seq[String] = spaceDelimited("<arg>").parsed
-        args.foreach(println)
         val rootDir = (ThisBuild / baseDirectory).value
         val srcDir = (Compile / scalaSource).value.relativeTo(rootDir).get
         val reference = (Compile/sourceManaged).value.relativeTo(rootDir).get / "scala-library-src"
@@ -1125,23 +1180,46 @@ object Build {
                 IO.copyFile(referenceStdlibPaths, destination)
               }
             }
+          case "diff" +: rest =>
+            log.info(s"Diffing ${name.value}/src with scala-library sources")
+            if (rest.size > 1) {
+              log.error(s"Too many arguments for $projectName/run diff")
+            } else {
+              val path = rest.headOption.getOrElse("")
+              val fullPath = srcDir / path
+              if (!fullPath.exists) {
+                log.error(s"$fullPath does not exist")
+              } else {
+                // `--diff-filter=ACMR` is missing `D` on purpose not to show all the files that have not been overwritten.
+                val command = s"git diff --diff-filter=ACMR --no-index --color=always -- $reference/$path $fullPath"
+                log.info(command)
+                import _root_.scala.sys.process._
+                command.!
+              }
+            }
           case _ =>
             val projectName = projectInfo.value.nameFormal
             println(
               s"""Usage:
                 |> $projectName/run list
-                |  -- lists all files that are not overriden in scala2-library-bootstrapped/src
+                |  -- lists all files that are not overriden in ${name.value}/src
                 |
                 |> $projectName/run clone <sources>*
-                |  -- clones the specified sources from the scala2-library-bootstrapped/src
+                |  -- clones the specified sources from the ${name.value}/src
                 |  -- example: $projectName/run clone scala/Option.scala
                 |
                 |> $projectName/run overwrite <sources>*
-                |  -- (danger) overwrites the specified sources from the scala2-library-bootstrapped/src
+                |  -- (danger) overwrites the specified sources from the ${name.value}/src
+                |
+                |> $projectName/run diff [path]
+                |  -- shows the git diff between the reference library sources the sources used to compile $projectName
+                |  -- [path] optional path in the library, eg:
+                |    -- $projectName/run diff scala/Predef.scala
+                |    -- $projectName/run diff scala/collection/immutable
                 |""".stripMargin)
         }
       }
-    )
+  )
 
   /** Packages the TASTy files of `scala2-library-bootstrapped` in a jar */
   lazy val `scala2-library-tasty` = project.in(file("scala2-library-tasty")).
@@ -1150,6 +1228,17 @@ object Build {
       exportJars := true,
       Compile / packageBin / mappings := {
         (`scala2-library-bootstrapped` / Compile / packageBin / mappings).value
+          .filter(_._2.endsWith(".tasty"))
+      },
+    )
+
+  /** Packages the TASTy files of `scala2-library-cc` in a jar */
+  lazy val `scala2-library-cc-tasty` = project.in(file("scala2-library-cc-tasty")).
+    withCommonSettings(Bootstrapped).
+    settings(
+      exportJars := true,
+      Compile / packageBin / mappings := {
+        (`scala2-library-cc` / Compile / packageBin / mappings).value
           .filter(_._2.endsWith(".tasty"))
       },
     )
@@ -1252,18 +1341,21 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   lazy val presentationCompilerSettings = {
-    val mtagsVersion = "1.0.0"
+    val mtagsVersion = "1.2.0+67-30f8ab53-SNAPSHOT"
 
     Seq(
+      resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
       libraryDependencies ++= Seq(
         "org.lz4" % "lz4-java" % "1.8.0",
         "io.get-coursier" % "interface" % "1.0.18",
         "org.scalameta" % "mtags-interfaces" % mtagsVersion,
       ),
-      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.11" % mtagsVersion % SourceDeps),
+      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.12" % mtagsVersion % SourceDeps),
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
-      (Compile / sourceGenerators) += Def.task {
+      scalacOptions ++= Seq("-source", "3.3"), // To avoid fatal migration warnings
+      Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Ysafe-init"),
+      Compile / sourceGenerators += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory
         val targetDir = (Compile/sourceManaged).value / "mtags-shared"
@@ -1491,6 +1583,7 @@ object Build {
         (
           (dir / "shared/src/test/scala" ** (("*.scala": FileFilter)
             -- "ReflectiveCallTest.scala" // uses many forms of structural calls that are not allowed in Scala 3 anymore
+            -- "UTF16Test.scala" // refutable pattern match
             )).get
 
           ++ (dir / "shared/src/test/require-sam" ** "*.scala").get
@@ -2024,10 +2117,13 @@ object Build {
       dependsOn(tastyCore).
       dependsOn(dottyCompiler).
       dependsOn(dottyLibrary).
+      bootstrappedSettings(
+        addCommandAlias("clean", ";scala3-bootstrapped/clean;scala2-library-bootstrapped/clean;scala2-library-cc/clean"),
+      ).
       nonBootstrappedSettings(
         addCommandAlias("run", "scala3-compiler/run"),
         // Clean everything by default
-        addCommandAlias("clean", ";scala3/clean;scala3-bootstrapped/clean"),
+        addCommandAlias("clean", ";scala3/clean;scala3-bootstrapped/clean;scala2-library-bootstrapped/clean;scala2-library-cc/clean"),
         // `publishLocal` on the non-bootstrapped compiler does not produce a
         // working distribution (it can't in general, since there's no guarantee
         // that the non-bootstrapped library is compatible with the
@@ -2067,7 +2163,8 @@ object Build {
             (Compile/doc/target).value
           },
           commonMiMaSettings,
-          mimaBinaryIssueFilters ++= MiMaFilters.Library
+          mimaBackwardIssueFilters := MiMaFilters.LibraryBackwards,
+          mimaForwardIssueFilters := MiMaFilters.LibraryForward,
         )
       } else base
     }
@@ -2087,7 +2184,16 @@ object Build {
         }
       )
 
-    def asTastyCoreScala2: Project = project.settings(commonScala2Settings)
+    def asTastyCoreScala2: Project = project
+      .settings(commonScala2Settings)
+      // need to add @annotation.internal.sharable to the classpath for compiling
+      // we don't actually publish this library anywhere, so it's fine.
+      // if someone depends on the sources of tasty-core in a scala 2 project,
+      // they should strip the sharable annotation, or add -Ytasty-reader
+      .dependsOn(dottyLibrary(NonBootstrapped) % Provided)
+      .settings(
+        scalacOptions += "-Ytasty-reader" // to read scala3 library
+      )
 
     def asDottyBench(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(dottyCompiler).

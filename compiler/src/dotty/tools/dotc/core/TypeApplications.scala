@@ -2,18 +2,16 @@ package dotty.tools
 package dotc
 package core
 
-import Types._
-import Contexts._
-import Symbols._
+import Types.*
+import Contexts.*
+import Symbols.*
 import SymDenotations.LazyType
-import Decorators._
-import util.Stats._
-import Names._
+import Decorators.*
+import util.Stats.*
+import Names.*
 import StdNames.nme
 import Flags.{Module, Provisional}
 import dotty.tools.dotc.config.Config
-import cc.boxedUnlessFun
-import dotty.tools.dotc.transform.TypeUtils.isErasedValueType
 
 object TypeApplications {
 
@@ -37,7 +35,7 @@ object TypeApplications {
 
     def apply(tycon: Type)(using Context): Type =
       assert(tycon.typeParams.nonEmpty, tycon)
-      tycon.EtaExpand(tycon.typeParamSymbols)
+      tycon.etaExpand(tycon.typeParamSymbols)
 
     /** Test that the parameter bounds in a hk type lambda `[X1,...,Xn] => C[X1, ..., Xn]`
      *  contain the bounds of the type parameters of `C`. This is necessary to be able to
@@ -72,7 +70,7 @@ object TypeApplications {
    */
   def EtaExpandIfHK(tparams: List[TypeParamInfo], args: List[Type])(using Context): List[Type] =
     if (tparams.isEmpty) args
-    else args.zipWithConserve(tparams)((arg, tparam) => arg.EtaExpandIfHK(tparam.paramInfoOrCompleter))
+    else args.zipWithConserve(tparams)((arg, tparam) => arg.etaExpandIfHK(tparam.paramInfoOrCompleter))
 
   /** A type map that tries to reduce (part of) the result type of the type lambda `tycon`
    *  with the given `args`(some of which are wildcard arguments represented by type bounds).
@@ -155,7 +153,7 @@ object TypeApplications {
   }
 }
 
-import TypeApplications._
+import TypeApplications.*
 
 /** A decorator that provides methods for modeling type application */
 class TypeApplications(val self: Type) extends AnyVal {
@@ -246,7 +244,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   def topType(using Context): Type =
     if self.hasSimpleKind then
       defn.AnyType
-    else EtaExpand(self.typeParams) match
+    else etaExpand(self.typeParams) match
       case tp: HKTypeLambda =>
         tp.derivedLambdaType(resType = tp.resultType.topType)
       case _ =>
@@ -303,7 +301,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Convert a type constructor `TC` which has type parameters `X1, ..., Xn`
    *  to `[X1, ..., Xn] -> TC[X1, ..., Xn]`.
    */
-  def EtaExpand(tparams: List[TypeParamInfo])(using Context): Type =
+  def etaExpand(tparams: List[TypeParamInfo])(using Context): Type =
     HKTypeLambda.fromParams(tparams, self.appliedTo(tparams.map(_.paramRef)))
       //.ensuring(res => res.EtaReduce =:= self, s"res = $res, core = ${res.EtaReduce}, self = $self, hc = ${res.hashCode}")
 
@@ -312,7 +310,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     if (isLambdaSub) self else EtaExpansion(self)
 
   /** Eta expand if `self` is a (non-lambda) class reference and `bound` is a higher-kinded type */
-  def EtaExpandIfHK(bound: Type)(using Context): Type = {
+  def etaExpandIfHK(bound: Type)(using Context): Type = {
     val hkParams = bound.hkTypeParams
     if (hkParams.isEmpty) self
     else self match {
@@ -321,6 +319,11 @@ class TypeApplications(val self: Type) extends AnyVal {
       case _ => self
     }
   }
+
+  /** Maps [Ts] => C[Ts] to C */
+  def etaCollapse(using Context): Type = self match
+    case EtaExpansion(classType) => classType
+    case _ => self
 
   /** The type representing
    *
@@ -354,7 +357,7 @@ class TypeApplications(val self: Type) extends AnyVal {
             }
             if ((dealiased eq stripped) || followAlias)
               try
-                val instantiated = dealiased.instantiate(args.mapConserve(_.boxedUnlessFun(self)))
+                val instantiated = dealiased.instantiate(args)
                 if (followAlias) instantiated.normalized else instantiated
               catch
                 case ex: IndexOutOfBoundsException =>
@@ -502,7 +505,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  Existential types in arguments are returned as TypeBounds instances.
    */
   final def argInfos(using Context): List[Type] = self.stripped match
-    case AppliedType(tycon, args) => args.boxedUnlessFun(tycon)
+    case AppliedType(tycon, args) => args
     case _ => Nil
 
   /** If this is an encoding of a function type, return its arguments, otherwise return Nil.

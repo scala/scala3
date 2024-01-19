@@ -1,29 +1,30 @@
 package dotty.tools.dotc.quoted
 
-import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.ast.{TreeTypeMap, tpd}
-import dotty.tools.dotc.config.Printers._
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.config.Printers.*
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.*
+import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Mode
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.core.tasty.{ PositionPickler, TastyPickler, TastyPrinter, TreePickler }
+import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.core.tasty.{ PositionPickler, TastyPickler, TastyPrinter, TreePickler, Attributes }
 import dotty.tools.dotc.core.tasty.DottyUnpickler
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
 import dotty.tools.dotc.report
 import dotty.tools.dotc.reporting.Message
 
 import scala.quoted.Quotes
-import scala.quoted.runtime.impl._
+import scala.quoted.runtime.impl.*
 
 import scala.collection.mutable
 
-import QuoteUtils._
+import QuoteUtils.*
+import dotty.tools.io.NoAbstractFile
 
 object PickledQuotes {
-  import tpd._
+  import tpd.*
 
   /** Pickle the tree of the quote into strings */
   def pickleQuote(tree: Tree)(using Context): List[String] =
@@ -217,7 +218,7 @@ object PickledQuotes {
   private def pickle(tree: Tree)(using Context): Array[Byte] = {
     quotePickling.println(i"**** pickling quote of\n$tree")
     val pickler = new TastyPickler(defn.RootClass)
-    val treePkl = new TreePickler(pickler)
+    val treePkl = new TreePickler(pickler, Attributes.empty)
     treePkl.pickle(tree :: Nil)
     treePkl.compactify()
     if tree.span.exists then
@@ -268,7 +269,7 @@ object PickledQuotes {
           quotePickling.println(s"**** unpickling quote from TASTY\n${TastyPrinter.showContents(bytes, ctx.settings.color.value == "never")}")
 
           val mode = if (isType) UnpickleMode.TypeTree else UnpickleMode.Term
-          val unpickler = new DottyUnpickler(bytes, mode)
+          val unpickler = new DottyUnpickler(NoAbstractFile, bytes, mode)
           unpickler.enter(Set.empty)
 
           val tree = unpickler.tree

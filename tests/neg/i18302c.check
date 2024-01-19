@@ -2,3 +2,7 @@
 4 |def polyFun: PolyFunction { def foo(x: Int): Int } = // error
   |                            ^^^^^^^^^^^^^^^^^^^^
   |                            PolyFunction only supports apply method refinements
+-- Error: tests/neg/i18302c.scala:5:6 ----------------------------------------------------------------------------------
+5 |  new PolyFunction { def foo(x: Int): Int = x + 1 } // error
+  |      ^^^^^^^^^^^^
+  |      `PolyFunction` marker trait is reserved for compiler generated refinements

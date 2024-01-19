@@ -1,6 +1,7 @@
 package dotty.tools.pc.utils
 
 import org.eclipse.lsp4j.CompletionItem
+import scala.language.unsafeNulls
 
 object TestCompletions:
 

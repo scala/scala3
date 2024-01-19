@@ -278,11 +278,35 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
     check(
       """
         |object <<Main>>/*class*/ {
-        |  val <<a>>/*variable,definition,readonly*/ = <<List>>/*class*/(1,2,3)
-        |  val <<y>>/*variable,definition,readonly*/ = <<Vector>>/*class*/(1,2)
-        |  val <<z>>/*variable,definition,readonly*/ = <<Set>>/*class*/(1,2,3)
-        |  val <<w>>/*variable,definition,readonly*/ = <<Right>>/*class*/(1)
+        |val <<a>>/*variable,definition,readonly*/ = <<List>>/*class*/(1,2,3)
+        |val <<y>>/*variable,definition,readonly*/ = <<Vector>>/*class*/(1,2)
+        |val <<z>>/*variable,definition,readonly*/ = <<Set>>/*class*/(1,2,3)
+        |val <<w>>/*variable,definition,readonly*/ = <<Right>>/*class*/(1)
         |}""".stripMargin
+    )
+
+  @Test def `predef1` =
+    check(
+      """
+        |object <<Main>>/*class*/ {
+        |  val <<a>>/*variable,definition,readonly*/ = <<List>>/*class*/(1,2,3)
+        |  val <<y>>/*class,definition*/ = <<List>>/*class*/
+        |  val <<z>>/*class,definition*/ = <<scala>>/*namespace*/.<<collection>>/*namespace*/.<<immutable>>/*namespace*/.<<List>>/*class*/
+        |}
+        |""".stripMargin
+    )
+
+  @Test def `val-object` =
+    check(
+      """
+        |case class <<X>>/*class*/(<<a>>/*variable,declaration,readonly*/: <<Int>>/*class,abstract*/)
+        |object <<X>>/*class*/
+        |
+        |object <<Main>>/*class*/ {
+        |  val <<x>>/*class,definition*/ = <<X>>/*class*/
+        |  val <<y>>/*variable,definition,readonly*/ = <<X>>/*class*/(1)
+        |}
+        |""".stripMargin
     )
 
   @Test def `case-class` =
@@ -331,4 +355,80 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
          |  } yield <<foo>>/*variable,readonly*/
          |}
          |""".stripMargin
+    )
+
+  @Test def `named-arg-backtick` =
+    check(
+        """|object <<Main>>/*class*/ {
+           |  def <<foo>>/*method,definition*/(<<`type`>>/*parameter,declaration,readonly*/: <<String>>/*type*/): <<String>>/*type*/ = <<`type`>>/*parameter,readonly*/
+           |  val <<x>>/*variable,definition,readonly*/ = <<foo>>/*method*/(
+           |    <<`type`>>/*parameter,readonly*/ = "abc"
+           |  )
+           |}
+          |""".stripMargin,
+    )
+
+  @Test def `end-marker` =
+    check(
+        """|def <<foo>>/*method,definition*/ =
+           |  1
+           |end <<foo>>/*method,definition*/
+           |""".stripMargin,
+    )
+
+  @Test def `constructor` =
+    check(
+      """
+        |object <<Bar>>/*class*/ {
+        |  class <<Abc>>/*class*/[<<T>>/*typeParameter,definition,abstract*/](<<a>>/*variable,declaration,readonly*/: <<T>>/*typeParameter,abstract*/)
+        |}
+        |
+        |object <<O>>/*class*/ {
+        |  val <<x>>/*variable,definition,readonly*/ = new <<Bar>>/*class*/.<<Abc>>/*class*/(2)
+        |  val <<y>>/*variable,definition,readonly*/ = new <<Bar>>/*class*/.<<Abc>>/*class*/[<<Int>>/*class,abstract*/](2)
+        |  val <<z>>/*variable,definition,readonly*/ = <<Bar>>/*class*/.<<Abc>>/*class*/(2)
+        |  val <<w>>/*variable,definition,readonly*/ = <<Bar>>/*class*/.<<Abc>>/*class*/[<<Int>>/*class,abstract*/](2)
+        |}""".stripMargin
+    )
+
+  @Test def `constructor1` =
+    check(
+      """
+        |object <<Main>>/*class*/ {
+        |  class <<Abc>>/*class*/[<<T>>/*typeParameter,definition,abstract*/](<<abc>>/*variable,declaration,readonly*/: <<T>>/*typeParameter,abstract*/)
+        |  object <<Abc>>/*class*/
+        |  val <<x>>/*variable,definition,readonly*/ = new <<Abc>>/*class*/(123)
+        |}""".stripMargin
+    )
+
+  @Test def `constructor2` =
+    check(
+      """
+        |object <<Main>>/*class*/ {
+        |  class <<Abc>>/*class*/[<<T>>/*typeParameter,definition,abstract*/](<<abc>>/*variable,declaration,readonly*/: <<T>>/*typeParameter,abstract*/)
+        |  object <<Abc>>/*class*/ {
+        |    def <<apply>>/*method,definition*/[<<T>>/*typeParameter,definition,abstract*/](<<abc>>/*parameter,declaration,readonly*/: <<T>>/*typeParameter,abstract*/, <<bde>>/*parameter,declaration,readonly*/: <<T>>/*typeParameter,abstract*/) = new <<Abc>>/*class*/(<<abc>>/*parameter,readonly*/)
+        |  }
+        |  val <<x>>/*variable,definition,readonly*/ = <<Abc>>/*class*/(123, 456)
+        |}""".stripMargin
+    )
+
+  @Test def `i5977` =
+    check(
+      """
+        |sealed trait <<ExtensionProvider>>/*interface,abstract*/ {
+        |  extension [<<A>>/*typeParameter,definition,abstract*/] (<<self>>/*parameter,declaration,readonly*/: <<A>>/*typeParameter,abstract*/) {
+        |    def <<typeArg>>/*method,declaration*/[<<B>>/*typeParameter,definition,abstract*/]: <<B>>/*typeParameter,abstract*/
+        |    def <<inferredTypeArg>>/*method,declaration*/[<<C>>/*typeParameter,definition,abstract*/](<<value>>/*parameter,declaration,readonly*/: <<C>>/*typeParameter,abstract*/): <<C>>/*typeParameter,abstract*/
+        |}
+        |
+        |object <<Repro>>/*class*/ {
+        |  def <<usage>>/*method,definition*/[<<A>>/*typeParameter,definition,abstract*/](<<f>>/*parameter,declaration,readonly*/: <<ExtensionProvider>>/*interface,abstract*/ ?=> <<A>>/*typeParameter,abstract*/ => <<Any>>/*class,abstract*/): <<Any>>/*class,abstract*/ = <<???>>/*method*/
+        |
+        |  <<usage>>/*method*/[<<Int>>/*class,abstract*/](<<_>>/*parameter,readonly*/.<<inferredTypeArg>>/*method*/("str"))
+        |  <<usage>>/*method*/[<<Int>>/*class,abstract*/](<<_>>/*parameter,readonly*/.<<inferredTypeArg>>/*method*/[<<String>>/*type*/]("str"))
+        |  <<usage>>/*method*/[<<Option>>/*class,abstract*/[<<Int>>/*class,abstract*/]](<<_>>/*parameter,readonly*/.<<typeArg>>/*method*/[<<Some>>/*class*/[<<Int>>/*class,abstract*/]].<<value>>/*variable,readonly*/.<<inferredTypeArg>>/*method*/("str"))
+        |  <<usage>>/*method*/[<<Option>>/*class,abstract*/[<<Int>>/*class,abstract*/]](<<_>>/*parameter,readonly*/.<<typeArg>>/*method*/[<<Some>>/*class*/[<<Int>>/*class,abstract*/]].<<value>>/*variable,readonly*/.<<inferredTypeArg>>/*method*/[<<String>>/*type*/]("str"))
+        |}
+        |""".stripMargin
     )

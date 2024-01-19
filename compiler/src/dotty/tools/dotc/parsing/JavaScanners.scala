@@ -2,13 +2,13 @@ package dotty.tools
 package dotc
 package parsing
 
-import core.Contexts._
+import core.Contexts.*
 import core.Names.SimpleName
-import Scanners._
+import Scanners.*
 import util.SourceFile
-import JavaTokens._
+import JavaTokens.*
 import scala.annotation.{switch, tailrec}
-import util.Chars._
+import util.Chars.*
 import PartialFunction.cond
 import core.Decorators.em
 

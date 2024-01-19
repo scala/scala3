@@ -1,11 +1,11 @@
 package dotty.tools.dotc
 package transform
 
-import core.Contexts._
-import core.NameKinds._
-import core.Symbols._
-import core.Flags._
-import core.Decorators._
+import core.Contexts.*
+import core.NameKinds.*
+import core.Symbols.*
+import core.Flags.*
+import core.Decorators.*
 import core.Names.TermName
 import MegaPhase.MiniPhase
 import config.Printers.transforms
@@ -37,7 +37,7 @@ object ProtectedAccessors {
    *  is not in a subclass or subtrait of `sym`?
    */
   def needsAccessorIfNotInSubclass(sym: Symbol)(using Context): Boolean =
-    sym.isTerm && sym.is(Protected) &&
+    sym.isTerm && sym.is(Protected) && !sym.hasPublicInBinary &&
     !sym.owner.is(Trait) && // trait methods need to be handled specially, are currently always public
     !insideBoundaryOf(sym)
 
@@ -48,7 +48,7 @@ object ProtectedAccessors {
 }
 
 class ProtectedAccessors extends MiniPhase {
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = ProtectedAccessors.name
 

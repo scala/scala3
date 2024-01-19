@@ -3,15 +3,15 @@ package dotty.tools.dotc.interactive
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.ast.NavigateAST
 import dotty.tools.dotc.config.Printers.interactiv
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Denotations.SingleDenotation
-import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.NameKinds.SimpleNameKind
-import dotty.tools.dotc.core.NameOps._
+import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Phases
-import dotty.tools.dotc.core.Scopes._
+import dotty.tools.dotc.core.Scopes.*
 import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol, defn, newSymbol}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
@@ -42,7 +42,7 @@ case class Completion(label: String, description: String, symbols: List[Symbol])
 
 object Completion:
 
-  import dotty.tools.dotc.ast.tpd._
+  import dotty.tools.dotc.ast.tpd.*
 
   /** Get possible completions from tree at `pos`
    *

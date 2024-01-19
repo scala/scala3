@@ -20,11 +20,10 @@ object TastyMiMaFilters {
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.math.Big*.underlying"),
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.math.ScalaNumericConversions.underlying"),
 
-    // Problem: super accessors
+    // Probably OK: super accessors
     // In Scala 3 these accessors are added in the `postyper` phase.
     // In Scala 2 these accessors are added in the `superaccessors` phase after typer.
-    // Are these accessors in the Scala 2 pickles? If so, it implies that TASTy Query/MiMa is ignoring them in Scala 2 but not Scala 3.
-    // Otherwise, if these are not in the Scala 2 pickles, we might need to remove them when compiling with -Yscala2-stdlib
+    // Handle as a special case in `ExtensionMethods`.
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.collection.immutable.IndexedSeqOps.superscala$collection$immutable$IndexedSeqOps$$slice"),
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.collection.immutable.StrictOptimizedSeqOps.superscala$collection$immutable$StrictOptimizedSeqOps$$sorted"),
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.collection.immutable.IndexedSeq.superscala$collection$immutable$IndexedSeq$$*"/* sameElements, canEqual */),
@@ -38,7 +37,7 @@ object TastyMiMaFilters {
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.util.control.NoStackTrace.superscala$util$control$NoStackTrace$$fillInStackTrace"),
 
     // TASTy-MiMa bug (probably OK): `private[scala] var` in case class
-    // This is probably because we can only access the next field from the scala library.
+    // This member should not have been loaded by TASTy-MiMa.
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.immutable.::.next$access$1"),
 
     // Probably OK: Problem Missing setter for `protected var`
@@ -56,18 +55,35 @@ object TastyMiMaFilters {
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.collection.convert.impl.TableStepperBase.maxLength_="),
 
     // Problem: ???
-    // Member is defined and has explicit result type
+    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.Predef.nn"), // The member scala.Predef.nn with signature (1,java.lang.Object):java.lang.Object does not have a correspondant in current version
+    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.Predef.ne"), // The member scala.Predef.ne with signature (java.lang.Object,java.lang.Object):scala.Boolean does not have a correspondant in current version
+    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.Predef.eq"), // The member scala.Predef.eq with signature (java.lang.Object,java.lang.Object):scala.Boolean does not have a correspondant in current version
+
+    // Probably OK: protected lazy val (processThread, (futureThread, futureValue), destroyer) = { ... }
+    // None of these can be accessed from user code.
+    // https://github.com/scala/scala/blob/cff8a9af4da67658d8e1e32f929e1aff03ffa384/src/library/scala/sys/process/ProcessImpl.scala#L99C5-L99C83
+    ProblemMatcher.make(ProblemKind.IncompatibleKindChange, "scala.sys.process.ProcessImpl.CompoundProcess.destroyer"), // before: lazy val; after: def
+    ProblemMatcher.make(ProblemKind.IncompatibleKindChange, "scala.sys.process.ProcessImpl.CompoundProcess.futureThread"), // before: lazy val; after: def
+    ProblemMatcher.make(ProblemKind.IncompatibleKindChange, "scala.sys.process.ProcessImpl.CompoundProcess.processThread"), // before: lazy val; after: def
+    ProblemMatcher.make(ProblemKind.IncompatibleKindChange, "scala.sys.process.ProcessImpl.CompoundProcess.futureValue"), // before: lazy val; after: def
+
+    // Probably Ok: defined within a `private[collection]` object
     // https://github.com/scala/scala/blob/2.13.x/src/library/scala/collection/convert/JavaCollectionWrappers.scala#L66-L71
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.convert.JavaCollectionWrappers.IterableWrapperTrait.iterator"), // The member scala.collection.convert.JavaCollectionWrappers.IterableWrapperTrait.iterator with signature ():scala.collection.convert.JavaCollectionWrappers.IteratorWrapper does not have a correspondant in current version
+
+    // Problem?
+    //   https://github.com/scala/scala/blob/2.13.x/src/library/scala/collection/mutable/ArrayBuilder.scala#L504C1-L504C87
+    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.mutable.ArrayBuilder.ofUnit.addAll"), // The member scala.collection.mutable.ArrayBuilder.ofUnit.addAll with signature (java.lang.Object,scala.Int,scala.Int):scala.collection.mutable.ArrayBuilder$.ofUnit does not have a correspondant in current version
+
+    // Probably OK (TASTy MiMa bug): Patched Predef members
+    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.Predef.valueOf"), // The member scala.Predef.valueOf with signature (1):java.lang.Object does not have a correspondant in current version
+    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.Predef.summon"), // The member scala.Predef.summon with signature (1,java.lang.Object):java.lang.Object does not have a correspondant in current version
 
     // TASTy-MiMa bugs
     ProblemMatcher.make(ProblemKind.InternalError, "scala.collection.SeqView.appendedAll"),
     ProblemMatcher.make(ProblemKind.InternalError, "scala.collection.SeqView.concat"),
     ProblemMatcher.make(ProblemKind.InternalError, "scala.collection.SeqView.prependedAll"),
     ProblemMatcher.make(ProblemKind.InternalError, "scala.concurrent.duration.package.*"),
-
-    // Problem? Very complicated signature
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.generic.IsMap.mapOpsIsMap"), // The symbol scala.collection.generic.IsMap.mapOpsIsMap has an incompatible type in current version: before: [CC0 <: ([X, Y] =>> scala.collection.MapOps[X, Y, ([X, Y] =>> scala.collection.Iterable[scala.Tuple2[X, Y]]), CC0[X, Y]]), K0, V0](((scala.collection.generic.IsMap[CC0[K0, V0]] { type V = V0 }) { type C = CC0[<refinement>.this.K, <refinement>.this.V] }) { type K = K0 }); after: [CC0 >: ([X, Y] =>> scala.Nothing) <: ([X, Y] =>> scala.collection.MapOps[X, Y, IsMap$.this.Tupled[([A] =>> scala.collection.Iterable[A])]#Ap, CC0[X, Y]]), K0, V0]{ 726875885 => (((scala.collection.generic.IsMap[CC0[K0, V0]] { type K = K0 }) { type V = V0 }) { type C = CC0[726875885.K, 726875885.V] }) }
 
     // Problems introduced in 2.13.11: Implicit classes with complex signatures
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.BuildFromLowPriority1.buildFromSortedSetOps"), // The symbol scala.collection.BuildFromLowPriority1.buildFromSortedSetOps has an incompatible type in current version: before: [CC <: ([X] =>> (scala.collection.SortedSet[X] & scala.collection.SortedSetOps[X, CC, ?])), A0, A](evidence$3: scala.package.Ordering[A])scala.collection.BuildFrom[(CC[A0] & scala.collection.SortedSet[A0]), A, (CC[A] & scala.collection.SortedSet[A])]; after: [CC >: ([X] =>> scala.Nothing) <: ([X] =>> scala.&[scala.collection.SortedSet[X], scala.collection.SortedSetOps[X, CC, ?]]), A0, A](evidence$3: scala.package.Ordering[A])scala.collection.BuildFrom[scala.&[CC[A0], scala.collection.SortedSet[A0]], A, scala.&[CC[A], scala.collection.SortedSet[A]]]

@@ -3,7 +3,7 @@ package rewrites
 
 import util.{SourceFile, Spans}
 import Spans.Span
-import core.Contexts._
+import core.Contexts.*
 import collection.mutable
 import scala.annotation.tailrec
 import dotty.tools.dotc.reporting.Reporter
@@ -15,7 +15,7 @@ import dotty.tools.dotc.reporting.CodeAction
 
 /** Handles rewriting of Scala2 files to Dotty */
 object Rewrites {
-  private class PatchedFiles extends mutable.HashMap[SourceFile, Patches]
+  private type PatchedFiles = mutable.HashMap[SourceFile, Patches]
 
   private case class Patch(span: Span, replacement: String) {
     def delta = replacement.length - (span.end - span.start)
@@ -114,6 +114,6 @@ object Rewrites {
  *  as an optional setting.
  */
 class Rewrites {
-  import Rewrites._
+  import Rewrites.*
   private val patched = new PatchedFiles
 }

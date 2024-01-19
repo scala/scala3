@@ -1,13 +1,13 @@
 package dotty.tools.dotc
 package core
 
-import Periods._
-import SymDenotations._
-import Contexts._
-import Types._
-import Symbols._
-import Denotations._
-import Phases._
+import Periods.*
+import SymDenotations.*
+import Contexts.*
+import Types.*
+import Symbols.*
+import Denotations.*
+import Phases.*
 
 object DenotTransformers {
 

@@ -10,6 +10,7 @@ enum SourceVersion:
   case `3.2-migration`, `3.2`
   case `3.3-migration`, `3.3`
   case `3.4-migration`, `3.4`
+  case `3.5-migration`, `3.5`
   // !!! Keep in sync with scala.runtime.stdlibPatches.language !!!
   case `future-migration`, `future`
 
@@ -17,6 +18,9 @@ enum SourceVersion:
 
   def stable: SourceVersion =
     if isMigrating then SourceVersion.values(ordinal + 1) else this
+
+  def prevMigrating: SourceVersion =
+    if isMigrating then this else SourceVersion.values(ordinal - 1).prevMigrating
 
   def isAtLeast(v: SourceVersion) = stable.ordinal >= v.ordinal
 

@@ -4,7 +4,6 @@ package inlines
 
 import ast.*, core.*
 import Flags.*, Symbols.*, Types.*, Decorators.*, Constants.*, Contexts.*
-import transform.SymUtils.*
 import StdNames.nme
 import typer.*
 import Names.Name
@@ -28,7 +27,7 @@ import scala.annotation.constructorOnly
 
 /** General support for inlining */
 object Inliner:
-  import tpd._
+  import tpd.*
 
   private[inlines] type DefBuffer = mutable.ListBuffer[ValOrDefDef]
 
@@ -143,8 +142,8 @@ end Inliner
  *  @param  rhsToInline  the body of the inlineable method that replaces the call.
  */
 class Inliner(val call: tpd.Tree)(using Context):
-  import tpd._
-  import Inliner._
+  import tpd.*
+  import Inliner.*
 
   private val methPart = funPart(call)
   protected val callTypeArgs = typeArgss(call).flatten
@@ -649,13 +648,13 @@ class Inliner(val call: tpd.Tree)(using Context):
     def treeSize(x: Any): Int =
       var siz = 0
       x match
-        case x: Trees.Inlined[_] =>
+        case x: Trees.Inlined[?] =>
         case x: Positioned =>
           var i = 0
           while i < x.productArity do
             siz += treeSize(x.productElement(i))
             i += 1
-        case x: List[_] =>
+        case x: List[?] =>
           var xs = x
           while xs.nonEmpty do
             siz += treeSize(xs.head)
@@ -734,7 +733,7 @@ class Inliner(val call: tpd.Tree)(using Context):
    */
   class InlineTyper(initialErrorCount: Int, @constructorOnly nestingLevel: Int = ctx.nestingLevel + 1)
   extends ReTyper(nestingLevel):
-    import reducer._
+    import reducer.*
 
     override def ensureAccessible(tpe: Type, superAccess: Boolean, pos: SrcPos)(using Context): Type = {
       tpe match {

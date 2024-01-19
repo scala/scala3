@@ -4,12 +4,16 @@ trait Cap:
 def withCap[T](op: (x: Cap^) => T): T = ???
 
 trait Box:
-  val get: () ->{} () ->{cap} Cap^
+  val get: () ->{} () => Cap^
 
 def main(): Unit =
   val leaked = withCap: (io: Cap^) =>
+    class Fuzz extends Box, Pure:
+      self =>
+      val get: () ->{} () ->{io} Cap^ =
+        () => () => io // error
     class Foo extends Box, Pure:
-      val get: () ->{} () ->{io} Cap^ = // error
+      val get: () ->{} () ->{io} Cap^ =
         () => () => io // error
     new Foo
   val bad = leaked.get()().use()  // using a leaked capability

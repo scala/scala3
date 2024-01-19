@@ -380,7 +380,7 @@ object Objects:
       case Some(theValue) =>
         theValue
       case _ =>
-        report.warning("[Internal error] Value not found " + x.show + "\nenv = " + data.show + ". Calling trace:\n" + Trace.show, Trace.position)
+        report.warning("[Internal error] Value not found " + x.show + "\nenv = " + data.show + ". " + Trace.show, Trace.position)
         Bottom
 
     def getVal(x: Symbol)(using data: Data, ctx: Context): Option[Value] = data.getVal(x)
@@ -565,7 +565,7 @@ object Objects:
 
   // --------------------------- domain operations -----------------------------
 
-  type ArgInfo = TraceValue[Value]
+  case class ArgInfo(value: Value, trace: Trace, tree: Tree)
 
   extension (a: Value)
     def join(b: Value): Value =
@@ -589,7 +589,7 @@ object Objects:
             values.map(ref => ref.widen(height)).join
 
           case Fun(code, thisV, klass, env) =>
-            Fun(code, thisV.widenRefOrCold(height), klass, env.widen(height))
+            Fun(code, thisV.widenRefOrCold(height), klass, env.widen(height - 1))
 
           case ref @ OfClass(klass, outer, _, args, env) =>
             val outer2 = outer.widen(height - 1)
@@ -619,7 +619,7 @@ object Objects:
   def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     value match
     case Cold =>
-      report.warning("Using cold alias. Calling trace:\n" + Trace.show, Trace.position)
+      report.warning("Using cold alias. " + Trace.show, Trace.position)
       Bottom
 
     case Bottom =>
@@ -698,13 +698,24 @@ object Objects:
 
     case Fun(code, thisV, klass, env) =>
       // meth == NoSymbol for poly functions
-      if meth.name.toString == "tupled" then
+      if meth.name == nme.tupled then
         value // a call like `fun.tupled`
       else
         code match
         case ddef: DefDef =>
-          given Env.Data = Env.of(ddef, args.map(_.value), env)
-          extendTrace(code) { eval(ddef.rhs, thisV, klass, cacheResult = true) }
+          if meth.name == nme.apply then
+            given Env.Data = Env.of(ddef, args.map(_.value), env)
+            extendTrace(code) { eval(ddef.rhs, thisV, klass, cacheResult = true) }
+          else
+            // The methods defined in `Any` and `AnyRef` are trivial and don't affect initialization.
+            if meth.owner == defn.AnyClass || meth.owner == defn.ObjectClass then
+              value
+            else
+              // In future, we will have Tasty for stdlib classes and can abstractly interpret that Tasty.
+              // For now, return `Cold` to ensure soundness and trigger a warning.
+              Cold
+            end if
+          end if
 
         case _ =>
           // by-name closure
@@ -781,7 +792,7 @@ object Objects:
               errorReadOtherStaticObject(State.currentObject, addr.owner)
               Bottom
           else if ref.isObjectRef && ref.klass.hasSource then
-            report.warning("Access uninitialized field " + field.show + ". Call trace: " + Trace.show, Trace.position)
+            report.warning("Access uninitialized field " + field.show + ". " + Trace.show, Trace.position)
             Bottom
           else
             // initialization error, reported by the initialization checker
@@ -789,7 +800,7 @@ object Objects:
         else if ref.hasVal(target) then
           ref.valValue(target)
         else if ref.isObjectRef && ref.klass.hasSource then
-          report.warning("Access uninitialized field " + field.show + ". Call trace: " + Trace.show, Trace.position)
+          report.warning("Access uninitialized field " + field.show + ". " + Trace.show, Trace.position)
           Bottom
         else
           // initialization error, reported by the initialization checker
@@ -836,7 +847,7 @@ object Objects:
       report.warning("[Internal error] unexpected tree in assignment, array = " + arr.show + Trace.show, Trace.position)
 
     case Cold =>
-      report.warning("Assigning to cold aliases is forbidden. Calling trace:\n" + Trace.show, Trace.position)
+      report.warning("Assigning to cold aliases is forbidden. " + Trace.show, Trace.position)
 
     case Bottom =>
 
@@ -851,7 +862,7 @@ object Objects:
         else
           Heap.writeJoin(addr, rhs)
       else
-        report.warning("Mutating a field before its initialization: " + field.show + ". Calling trace:\n" + Trace.show, Trace.position)
+        report.warning("Mutating a field before its initialization: " + field.show + ". " + Trace.show, Trace.position)
     end match
 
     Bottom
@@ -873,9 +884,14 @@ object Objects:
 
     case outer: (Ref | Cold.type | Bottom.type) =>
       if klass == defn.ArrayClass then
-        val arr = OfArray(State.currentObject, summon[Regions.Data])
-        Heap.writeJoin(arr.addr, Bottom)
-        arr
+        args.head.tree.tpe match
+          case ConstantType(Constants.Constant(0)) =>
+            // new Array(0)
+            Bottom
+          case _ =>
+            val arr = OfArray(State.currentObject, summon[Regions.Data])
+            Heap.writeJoin(arr.addr, Bottom)
+            arr
       else
         // Widen the outer to finitize the domain. Arguments already widened in `evalArgs`.
         val (outerWidened, envWidened) =
@@ -936,29 +952,34 @@ object Objects:
             Bottom
           end if
         case _ =>
-          report.warning("[Internal error] Variable not found " + sym.show + "\nenv = " + env.show + ". Calling trace:\n" + Trace.show, Trace.position)
+          // Only vals can be lazy
+          report.warning("[Internal error] Variable not found " + sym.show + "\nenv = " + env.show + ". " + Trace.show, Trace.position)
           Bottom
       else
         given Env.Data = env
-        // Assume forward reference check is doing a good job
-        val value = Env.valValue(sym)
-        if isByNameParam(sym) then
-          value match
-          case fun: Fun =>
-            given Env.Data = fun.env
-            eval(fun.code, fun.thisV, fun.klass)
-          case Cold =>
-            report.warning("Calling cold by-name alias. Call trace: \n" + Trace.show, Trace.position)
-            Bottom
-          case _: ValueSet | _: Ref | _: OfArray =>
-            report.warning("[Internal error] Unexpected by-name value " + value.show  + ". Calling trace:\n" + Trace.show, Trace.position)
-            Bottom
+        if sym.is(Flags.Lazy) then
+          val rhs = sym.defTree.asInstanceOf[ValDef].rhs
+          eval(rhs, thisV, sym.enclosingClass.asClass, cacheResult = true)
         else
-          value
+          // Assume forward reference check is doing a good job
+          val value = Env.valValue(sym)
+          if isByNameParam(sym) then
+            value match
+            case fun: Fun =>
+              given Env.Data = fun.env
+              eval(fun.code, fun.thisV, fun.klass)
+            case Cold =>
+              report.warning("Calling cold by-name alias. " + Trace.show, Trace.position)
+              Bottom
+            case _: ValueSet | _: Ref | _: OfArray =>
+              report.warning("[Internal error] Unexpected by-name value " + value.show  + ". " + Trace.show, Trace.position)
+              Bottom
+          else
+            value
 
-    case _ =>
+    case None =>
       if isByNameParam(sym) then
-        report.warning("Calling cold by-name alias. Call trace: \n" + Trace.show, Trace.position)
+        report.warning("Calling cold by-name alias. " + Trace.show, Trace.position)
         Bottom
       else
         Cold
@@ -983,10 +1004,10 @@ object Objects:
         else
           Heap.writeJoin(addr, value)
       case _ =>
-        report.warning("[Internal error] Variable not found " + sym.show + "\nenv = " + env.show + ". Calling trace:\n" + Trace.show, Trace.position)
+        report.warning("[Internal error] Variable not found " + sym.show + "\nenv = " + env.show + ". " + Trace.show, Trace.position)
 
     case _ =>
-      report.warning("Assigning to variables in outer scope. Calling trace:\n" + Trace.show, Trace.position)
+      report.warning("Assigning to variables in outer scope. " + Trace.show, Trace.position)
 
     Bottom
   }
@@ -1221,9 +1242,10 @@ object Objects:
 
       case vdef : ValDef =>
         // local val definition
-        val rhs = eval(vdef.rhs, thisV, klass)
         val sym = vdef.symbol
-        initLocal(vdef.symbol, rhs)
+        if !sym.is(Flags.Lazy) then
+          val rhs = eval(vdef.rhs, thisV, klass)
+          initLocal(sym, rhs)
         Bottom
 
       case ddef : DefDef =>
@@ -1311,7 +1333,7 @@ object Objects:
           case _ => List()
 
         val implicitArgsAfterScrutinee = evalArgs(implicits.map(Arg.apply), thisV, klass)
-        val args = implicitArgsBeforeScrutinee(fun) ++ (TraceValue(scrutinee, summon[Trace]) :: implicitArgsAfterScrutinee)
+        val args = implicitArgsBeforeScrutinee(fun) ++ (ArgInfo(scrutinee, summon[Trace], EmptyTree) :: implicitArgsAfterScrutinee)
         val unapplyRes = call(receiver, funRef.symbol, args, funRef.prefix, superType = NoType, needResolve = true)
 
         if fun.symbol.name == nme.unapplySeq then
@@ -1408,7 +1430,7 @@ object Objects:
       // call .lengthCompare or .length
       val lengthCompareDenot = getMemberMethod(scrutineeType, nme.lengthCompare, lengthCompareType)
       if lengthCompareDenot.exists then
-        call(scrutinee, lengthCompareDenot.symbol, TraceValue(Bottom, summon[Trace]) :: Nil, scrutineeType, superType = NoType, needResolve = true)
+        call(scrutinee, lengthCompareDenot.symbol, ArgInfo(Bottom, summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
       else
         val lengthDenot = getMemberMethod(scrutineeType, nme.length, lengthType)
         call(scrutinee, lengthDenot.symbol, Nil, scrutineeType, superType = NoType, needResolve = true)
@@ -1416,9 +1438,9 @@ object Objects:
 
       // call .apply
       val applyDenot = getMemberMethod(scrutineeType, nme.apply, applyType(elemType))
-      val applyRes = call(scrutinee, applyDenot.symbol, TraceValue(Bottom, summon[Trace]) :: Nil, scrutineeType, superType = NoType, needResolve = true)
+      val applyRes = call(scrutinee, applyDenot.symbol, ArgInfo(Bottom, summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
 
-      if isWildcardStarArg(pats.last) then
+      if isWildcardStarArgList(pats) then
         if pats.size == 1 then
           // call .toSeq
           val toSeqDenot = scrutineeType.member(nme.toSeq).suchThat(_.info.isParameterless)
@@ -1427,13 +1449,14 @@ object Objects:
         else
           // call .drop
           val dropDenot = getMemberMethod(scrutineeType, nme.drop, applyType(elemType))
-          val dropRes = call(scrutinee, dropDenot.symbol, TraceValue(Bottom, summon[Trace]) :: Nil, scrutineeType, superType = NoType, needResolve = true)
+          val dropRes = call(scrutinee, dropDenot.symbol, ArgInfo(Bottom, summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
           for pat <- pats.init do evalPattern(applyRes, pat)
           evalPattern(dropRes, pats.last)
         end if
       else
         // no patterns like `xs*`
-      for pat <- pats do evalPattern(applyRes, pat)
+        for pat <- pats do evalPattern(applyRes, pat)
+      end if
     end evalSeqPatterns
 
 
@@ -1528,7 +1551,7 @@ object Objects:
         case _ =>
           res.widen(1)
 
-      argInfos += TraceValue(widened, trace.add(arg.tree))
+      argInfos += ArgInfo(widened, trace.add(arg.tree), arg.tree)
     }
     argInfos.toList
 
@@ -1626,7 +1649,7 @@ object Objects:
             // The parameter check of traits comes late in the mixin phase.
             // To avoid crash we supply hot values for erroneous parent calls.
             // See tests/neg/i16438.scala.
-            val args: List[ArgInfo] = ctor.info.paramInfoss.flatten.map(_ => new ArgInfo(Bottom, Trace.empty))
+            val args: List[ArgInfo] = ctor.info.paramInfoss.flatten.map(_ => new ArgInfo(Bottom, Trace.empty, EmptyTree))
             extendTrace(superParent) {
               superCall(tref, ctor, args, tasks)
             }
@@ -1714,15 +1737,13 @@ object Objects:
   def errorMutateOtherStaticObject(currentObj: ClassSymbol, otherObj: ClassSymbol)(using Trace, Context) =
     val msg =
       s"Mutating ${otherObj.show} during initialization of ${currentObj.show}.\n" +
-      "Mutating other static objects during the initialization of one static object is forbidden. " +
-      "Calling trace:\n" + Trace.show
+      "Mutating other static objects during the initialization of one static object is forbidden. " + Trace.show
 
     report.warning(msg, Trace.position)
 
   def errorReadOtherStaticObject(currentObj: ClassSymbol, otherObj: ClassSymbol)(using Trace, Context) =
     val msg =
       "Reading mutable state of " + otherObj.show + " during initialization of " + currentObj.show + ".\n" +
-      "Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. " +
-      "Calling trace: " + Trace.show
+      "Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. " + Trace.show
 
     report.warning(msg, Trace.position)

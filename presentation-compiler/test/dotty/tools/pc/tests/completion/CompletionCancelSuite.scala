@@ -16,6 +16,7 @@ import scala.meta.internal.pc.{
   PresentationCompilerConfigImpl
 }
 import scala.meta.pc.{CancelToken, PresentationCompilerConfig}
+import scala.language.unsafeNulls
 
 import dotty.tools.pc.base.BaseCompletionSuite
 

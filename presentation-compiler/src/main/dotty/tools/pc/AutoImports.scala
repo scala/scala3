@@ -23,7 +23,7 @@ object AutoImports:
     def renameConfigMap(config: PresentationCompilerConfig)(using
         Context
     ): Map[Symbol, String] =
-      config.symbolPrefixes.asScala.flatMap { (from, to) =>
+      config.symbolPrefixes().nn.asScala.flatMap { (from, to) =>
         val pkg = SemanticdbSymbols.inverseSemanticdbSymbol(from)
         val rename = to.stripSuffix(".").stripSuffix("#")
         List(pkg, pkg.map(_.moduleClass)).flatten
@@ -246,7 +246,7 @@ object AutoImports:
         // see WorksheetProvider.worksheetScala3AdjustmentsForPC
         val indent =
           if pos.source.path.isWorksheet &&
-            editPos.getStart().getCharacter() == 0
+            editPos.getStart().nn.getCharacter() == 0
           then indent0.drop(2)
           else indent0
         val topPadding =

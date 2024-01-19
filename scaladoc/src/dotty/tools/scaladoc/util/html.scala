@@ -9,8 +9,8 @@ object HTML:
   type TagArg = AppliedTag | Seq[AppliedTag] | String | Seq[String]
 
   case class Tag(name: String):
-    def apply(tags: TagArg*): AppliedTag = apply()(tags:_*)
-    def apply(first: AttrArg, rest: AttrArg*): AppliedTag = apply((first +: rest):_*)()
+    def apply(tags: TagArg*): AppliedTag = apply()(tags*)
+    def apply(first: AttrArg, rest: AttrArg*): AppliedTag = apply((first +: rest)*)()
     def apply(attrs: AttrArg*)(tags: TagArg*): AppliedTag =
       def unpackTags(tags: TagArg*)(using sb: StringBuilder): StringBuilder =
         tags.foreach {
@@ -19,7 +19,7 @@ object HTML:
           case s: String =>
             sb.append(s.escapeReservedTokens)
           case s: Seq[AppliedTag | String] =>
-            unpackTags(s:_*)
+            unpackTags(s*)
         }
         sb
       val sb = StringBuilder()
@@ -31,7 +31,7 @@ object HTML:
           sb.append(" ").append(e)
       }
       sb.append(">")
-      unpackTags(tags:_*)(using sb)
+      unpackTags(tags*)(using sb)
       sb.append(s"</$name>")
       sb
 

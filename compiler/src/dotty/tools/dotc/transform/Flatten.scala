@@ -1,18 +1,20 @@
 package dotty.tools.dotc
 package transform
 
-import core._
+import core.*
 import DenotTransformers.SymTransformer
-import Contexts._
-import Flags._
+import Contexts.*
+import Flags.*
 import SymDenotations.SymDenotation
 import collection.mutable
 import MegaPhase.MiniPhase
 import util.Store
 
+import scala.compiletime.uninitialized
+
 /** Lift nested classes to toplevel */
 class Flatten extends MiniPhase with SymTransformer {
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = Flatten.name
 
@@ -24,7 +26,7 @@ class Flatten extends MiniPhase with SymTransformer {
 
   override def changesMembers: Boolean = true // the phase removes inner classes
 
-  private var LiftedDefs: Store.Location[mutable.ListBuffer[Tree] | Null] = _
+  private var LiftedDefs: Store.Location[mutable.ListBuffer[Tree] | Null] = uninitialized
   private def liftedDefs(using Context) = ctx.store(LiftedDefs)
 
   override def initContext(ctx: FreshContext): Unit =

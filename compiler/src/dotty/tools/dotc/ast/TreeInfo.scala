@@ -2,13 +2,13 @@ package dotty.tools
 package dotc
 package ast
 
-import core._
-import Flags._, Trees._, Types._, Contexts._
-import Names._, StdNames._, NameOps._, Symbols._
+import core.*
+import Flags.*, Trees.*, Types.*, Contexts.*
+import Names.*, StdNames.*, NameOps.*, Symbols.*
 import typer.ConstFold
 import reporting.trace
-import dotty.tools.dotc.transform.SymUtils._
-import Decorators._
+
+import Decorators.*
 import Constants.Constant
 import scala.collection.mutable
 
@@ -242,7 +242,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
 
   /** Does this list contain a named argument tree? */
   def hasNamedArg(args: List[Any]): Boolean = args exists isNamedArg
-  val isNamedArg: Any => Boolean = (arg: Any) => arg.isInstanceOf[Trees.NamedArg[_]]
+  val isNamedArg: Any => Boolean = (arg: Any) => arg.isInstanceOf[Trees.NamedArg[?]]
 
   /** Is this pattern node a catch-all (wildcard or variable) pattern? */
   def isDefaultCase(cdef: CaseDef): Boolean = cdef match {
@@ -376,21 +376,10 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case _ =>
       tree.tpe.isInstanceOf[ThisType]
   }
-
-  /** Under capture checking, an extractor for qualified roots `cap[Q]`.
-   */
-  object QualifiedRoot:
-
-    def unapply(tree: Apply)(using Context): Option[String] = tree match
-      case Apply(fn, Literal(lit) :: Nil) if fn.symbol == defn.Caps_capIn =>
-        Some(lit.value.asInstanceOf[String])
-      case _ =>
-        None
-  end QualifiedRoot
 }
 
 trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] =>
-  import untpd._
+  import untpd.*
 
   /** The underlying tree when stripping any TypedSplice or Parens nodes */
   override def unsplice(tree: Tree): Tree = tree match {
@@ -495,8 +484,8 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
 }
 
 trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
-  import TreeInfo._
-  import tpd._
+  import TreeInfo.*
+  import tpd.*
 
   /** The purity level of this statement.
    *  @return   Pure        if statement has no side effects
@@ -810,7 +799,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     }
   }
 
-  /** An extractor for def of a closure contained the block of the closure,
+  /** An extractor for the method of a closure contained the block of the closure,
    *  possibly with type ascriptions.
    */
   object possiblyTypedClosureDef:
@@ -990,8 +979,10 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def isStructuralTermSelectOrApply(tree: Tree)(using Context): Boolean = {
     def isStructuralTermSelect(tree: Select) =
       def hasRefinement(qualtpe: Type): Boolean = qualtpe.dealias match
-        case defn.PolyFunctionOf(_) =>
+        case defn.FunctionTypeOfMethod(_) =>
           false
+        case tp: MatchType =>
+          hasRefinement(tp.tryNormalize)
         case RefinedType(parent, rname, rinfo) =>
           rname == tree.name || hasRefinement(parent)
         case tp: TypeProxy =>
@@ -1058,7 +1049,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   def assertAllPositioned(tree: Tree)(using Context): Unit =
     tree.foreachSubTree {
-      case t: WithoutTypeOrPos[_] =>
+      case t: WithoutTypeOrPos[?] =>
       case t => assert(t.span.exists, i"$t")
     }
 

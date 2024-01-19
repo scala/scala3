@@ -1,0 +1,11 @@
+-- [E081] Type Error: tests/neg/i18188.scala:3:39 ----------------------------------------------------------------------
+3 |class A1[T](action: A1[T] ?=> String = "") // error
+  |                                       ^
+  |                                       Missing parameter type
+  |
+  |                                       I could not infer the type of the parameter contextual$1
+  |                                       in expanded function:
+  |                                         contextual$1 ?=> ""
+  |                                       What I could infer was: dotty.tools.dotc.typer.A1[<?>]
+  |                                       Expected type for the whole anonymous function:
+  |                                         (dotty.tools.dotc.typer.A1[<?>]) ?=> String

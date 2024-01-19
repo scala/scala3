@@ -7,7 +7,7 @@ trait ExprMap:
 
   /** Map sub-expressions an expression `e` with a type `T` */
   def transformChildren[T](e: Expr[T])(using Type[T])(using Quotes): Expr[T] = {
-    import quotes.reflect._
+    import quotes.reflect.*
     final class MapChildren() {
 
       def transformStatement(tree: Statement)(owner: Symbol): Statement = {

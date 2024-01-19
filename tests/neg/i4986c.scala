@@ -57,7 +57,7 @@ object Test {
 
   implicitly[U[Int, Option, Map]] // error
 
-  val u = new U[String, List, [A, _] =>> List[Option[_]]] { }
+  val u = new U[String, List, [A, _] =>> List[Option[?]]] { }
   val i = new u.I[Int]
   i.m[Option[Long]] // error
 }

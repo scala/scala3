@@ -9,24 +9,25 @@ import scala.tools.asm
 import scala.tools.asm.AnnotationVisitor
 import scala.tools.asm.ClassWriter
 import scala.collection.mutable
+import scala.compiletime.uninitialized
 
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees
-import dotty.tools.dotc.core.Annotations._
-import dotty.tools.dotc.core.Constants._
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Phases._
-import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.Annotations.*
+import dotty.tools.dotc.core.Constants.*
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Phases.*
+import dotty.tools.dotc.core.Decorators.*
+import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.NameKinds.ExpandedName
 import dotty.tools.dotc.core.Signature
-import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.NameKinds
-import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types
-import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.transform.GenericSignatures
 import dotty.tools.dotc.transform.ElimErasedValueType
@@ -44,12 +45,12 @@ import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
  */
 trait BCodeHelpers extends BCodeIdiomatic {
   // for some reason singleton types aren't allowed in constructor calls. will need several casts in code to enforce
-  //import global._
-  import bTypes._
-  import tpd._
-  import coreBTypes._
+  //import global.*
+  import bTypes.*
+  import tpd.*
+  import coreBTypes.*
   import int.{_, given}
-  import DottyBackendInterface._
+  import DottyBackendInterface.*
 
   // We need to access GenBCode phase to get access to post-processor components.
   // At this point it should always be initialized already.
@@ -291,7 +292,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
           }
         case Ident(nme.WILDCARD) =>
           // An underscore argument indicates that we want to use the default value for this parameter, so do not emit anything
-        case t: tpd.RefTree if t.symbol.owner.linkedClass.isAllOf(JavaEnumTrait) =>
+        case t: tpd.RefTree if t.symbol.owner.linkedClass.isAllOf(JavaEnum) =>
           val edesc = innerClasesStore.typeDescriptor(t.tpe) // the class descriptor of the enumeration class.
           val evalue = t.symbol.javaSimpleName // value the actual enumeration value.
           av.visitEnum(name, edesc, evalue)
@@ -396,6 +397,9 @@ trait BCodeHelpers extends BCodeIdiomatic {
       atPhase(erasurePhase) {
         val memberTpe =
           if (sym.is(Method)) sym.denot.info
+          else if sym.denot.validFor.phaseId > erasurePhase.id && sym.isField && sym.getter.exists then
+            // Memoization field of getter entered after erasure, see run/i17069 for an example
+            sym.getter.denot.info.resultType
           else owner.denot.thisType.memberInfo(sym)
         getGenericSignatureHelper(sym, owner, memberTpe).orNull
       }
@@ -576,7 +580,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
   /* builder of mirror classes */
   class JMirrorBuilder extends JCommonBuilder {
 
-    private var cunit: CompilationUnit = _
+    private var cunit: CompilationUnit = uninitialized
     def getCurrentCUnit(): CompilationUnit = cunit;
 
     /* Generate a mirror class for a top-level module. A mirror class is a class
@@ -700,10 +704,10 @@ trait BCodeHelpers extends BCodeIdiomatic {
    * classes.
    */
   private def typeToTypeKind(tp: Type)(ct: BCodeHelpers)(storage: ct.BCInnerClassGen): ct.bTypes.BType = {
-    import ct.bTypes._
+    import ct.bTypes.*
     val defn = ctx.definitions
-    import coreBTypes._
-    import Types._
+    import coreBTypes.*
+    import Types.*
     /**
       * Primitive types are represented as TypeRefs to the class symbol of, for example, scala.Int.
       * The `primitiveTypeMap` maps those class symbols to the corresponding PrimitiveBType.
@@ -851,7 +855,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
 object BCodeHelpers {
 
   class InvokeStyle(val style: Int) extends AnyVal {
-    import InvokeStyle._
+    import InvokeStyle.*
     def isVirtual: Boolean = this == Virtual
     def isStatic : Boolean = this == Static
     def isSpecial: Boolean = this == Special

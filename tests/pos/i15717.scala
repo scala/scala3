@@ -1,10 +1,10 @@
 //> using options -Werror
 class Test:
-  def pmat(xs: java.util.Vector[_]): String = xs.get(0) match
+  def pmat(xs: java.util.Vector[?]): String = xs.get(0) match
     case d: Double => d.toString() // was: error: unreachable case, which is spurious
     case _         => "shrug"
 
-  def pmatR(xs: java.util.Vector[_]): String =
+  def pmatR(xs: java.util.Vector[?]): String =
     val scr = xs.get(0)
     1.0 match
       case `scr` => scr.toString() // for the reverse provablyDisjoint case

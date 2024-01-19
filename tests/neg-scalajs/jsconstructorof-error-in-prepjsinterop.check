@@ -1,3 +1,17 @@
+-- [E003] Syntax Warning: tests/neg-scalajs/jsconstructorof-error-in-prepjsinterop.scala:16:41 -------------------------
+16 |  val c = js.constructorOf[NativeJSClass with NativeJSTrait] // error
+   |                                         ^^^^
+   |                             with as a type operator has been deprecated; use & instead
+   |                             This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E003] Syntax Warning: tests/neg-scalajs/jsconstructorof-error-in-prepjsinterop.scala:22:35 -------------------------
+22 |  val g = js.constructorOf[JSClass with JSTrait] // error
+   |                                   ^^^^
+   |                             with as a type operator has been deprecated; use & instead
+   |                             This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-scalajs/jsconstructorof-error-in-prepjsinterop.scala:13:27 -----------------------------------------
 13 |  val a = js.constructorOf[NativeJSTrait] // error
    |                           ^^^^^^^^^^^^^

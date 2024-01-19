@@ -1,0 +1,32 @@
+-- Error: tests/neg/i10075.scala:8:24 ----------------------------------------------------------------------------------
+8 |trait PolyTrait extends PolyFunction // error
+  |                        ^^^^^^^^^^^^
+  |                        `PolyFunction` marker trait is reserved for compiler generated refinements
+-- Error: tests/neg/i10075.scala:10:24 ---------------------------------------------------------------------------------
+10 |class PolyClass extends PolyTrait { // error
+   |                        ^^^^^^^^^
+   |                        `PolyFunction` marker trait is reserved for compiler generated refinements
+-- Error: tests/neg/i10075.scala:14:26 ---------------------------------------------------------------------------------
+14 |object PolyObject extends PolyFunction // error
+   |                          ^^^^^^^^^^^^
+   |                          `PolyFunction` marker trait is reserved for compiler generated refinements
+-- Error: tests/neg/i10075.scala:2:14 ----------------------------------------------------------------------------------
+2 |val foo = new PolyFunction { } // error
+  |              ^^^^^^^^^^^^
+  |              `PolyFunction` marker trait is reserved for compiler generated refinements
+-- Error: tests/neg/i10075.scala:3:14 ----------------------------------------------------------------------------------
+3 |val bar = new PolyFunction { def bar = 23 } // error
+  |              ^^^^^^^^^^^^
+  |              `PolyFunction` marker trait is reserved for compiler generated refinements
+-- Error: tests/neg/i10075.scala:4:14 ----------------------------------------------------------------------------------
+4 |val baz = new PolyFunction { def apply = 23 } // error
+  |              ^^^^^^^^^^^^
+  |              `PolyFunction` marker trait is reserved for compiler generated refinements
+-- Error: tests/neg/i10075.scala:5:14 ----------------------------------------------------------------------------------
+5 |val qux = new PolyFunction { def apply[T] = 47 } // error
+  |              ^^^^^^^^^^^^
+  |              `PolyFunction` marker trait is reserved for compiler generated refinements
+-- Error: tests/neg/i10075.scala:6:15 ----------------------------------------------------------------------------------
+6 |val quxx = new PolyFunction { def apply[T](x: T): T = x } // error
+  |               ^^^^^^^^^^^^
+  |               `PolyFunction` marker trait is reserved for compiler generated refinements

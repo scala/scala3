@@ -1,0 +1,6 @@
+## See #18882
+patmat.scala
+t9312.scala
+unapplySeq-implicit-arg.scala
+unapplySeq-implicit-arg2.scala
+unapplySeq-implicit-arg3.scala

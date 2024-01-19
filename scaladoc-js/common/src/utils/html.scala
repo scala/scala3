@@ -12,8 +12,8 @@ object HTML {
   case class Tag[T <: domhtml.Element](private val elemFactory: () => T):
     private def textNode(s: String): Text = document.createTextNode(s)
 
-    def apply(tags: TagArg*): T = apply()(tags:_*)
-    def apply(first: AttrArg, rest: AttrArg*): T = apply((first +: rest):_*)()
+    def apply(tags: TagArg*): T = apply()(tags*)
+    def apply(first: AttrArg, rest: AttrArg*): T = apply((first +: rest)*)()
     def apply(attrs: AttrArg*)(tags: TagArg*): T =
       val elem: T = elemFactory()
       def unpackTags(tags: TagArg*): Unit = tags.foreach {
@@ -26,11 +26,11 @@ object HTML {
         case ("id", id) => elem.id = id
         case ("class", value) => value.split("\\s+").foreach(cls => elem.classList.add(cls))
         case (attr, value) => elem.setAttribute(attr, value)
-        case s: Seq[AppliedAttr] => unpackAttributes(s*)
+        case s: Seq[AppliedAttr @unchecked] => unpackAttributes(s*)
       }
 
-      unpackTags(tags:_*)
-      unpackAttributes(attrs:_*)
+      unpackTags(tags*)
+      unpackAttributes(attrs*)
       elem
 
   object Tag:

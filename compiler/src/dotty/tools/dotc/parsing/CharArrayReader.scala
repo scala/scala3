@@ -2,7 +2,9 @@ package dotty.tools
 package dotc
 package parsing
 
-import util.Chars._
+import util.Chars.*
+
+import scala.compiletime.uninitialized
 
 abstract class CharArrayReader { self =>
 
@@ -16,7 +18,7 @@ abstract class CharArrayReader { self =>
   protected def error(msg: String, offset: Int): Unit
 
   /** the last read character */
-  var ch: Char = _
+  var ch: Char = uninitialized
 
   /** The offset one past the last read character */
   var charOffset: Int = startFrom

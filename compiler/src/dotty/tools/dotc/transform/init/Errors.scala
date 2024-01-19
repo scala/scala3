@@ -3,11 +3,11 @@ package dotc
 package transform
 package init
 
-import ast.tpd._
-import core._
+import ast.tpd.*
+import core.*
 import util.Property
 import util.SourcePosition
-import Types._, Symbols._, Contexts._
+import Types.*, Symbols.*, Contexts.*
 
 import Trace.Trace
 

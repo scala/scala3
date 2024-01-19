@@ -15,8 +15,8 @@ class SignatureHelpPatternSuite extends BaseSignatureHelpSuite:
         |  }
         |}
         |""".stripMargin,
-      """|map[B](f: ((Int, Int)) => B): List[B]
-         |       ^^^^^^^^^^^^^^^^^^^^
+      """|(Int, Int)
+         |      ^^^
          |""".stripMargin
     )
 

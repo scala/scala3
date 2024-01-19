@@ -19,7 +19,7 @@ object SourceCode {
     symbol.fullName
 
   def showFlags(using Quotes)(flags: quotes.reflect.Flags)(syntaxHighlight: SyntaxHighlight): String = {
-    import quotes.reflect._
+    import quotes.reflect.*
     val flagList = List.newBuilder[String]
     if (flags.is(Flags.Abstract)) flagList += "abstract"
     if (flags.is(Flags.Artifact)) flagList += "artifact"
@@ -52,7 +52,7 @@ object SourceCode {
     if (flags.is(Flags.Param)) flagList += "param"
     if (flags.is(Flags.ParamAccessor)) flagList += "paramAccessor"
     if (flags.is(Flags.Private)) flagList += "private"
-    if (flags.is(Flags.PrivateLocal)) flagList += "private[this]"
+    if (flags.is(Flags.PrivateLocal)) flagList += "private"
     if (flags.is(Flags.Protected)) flagList += "protected"
     if (flags.is(Flags.Scala2x)) flagList += "scala2x"
     if (flags.is(Flags.Sealed)) flagList += "sealed"
@@ -64,12 +64,12 @@ object SourceCode {
   }
 
   private class SourceCodePrinter[Q <: Quotes & Singleton](syntaxHighlight: SyntaxHighlight, fullNames: Boolean)(using val quotes: Q) {
-    import syntaxHighlight._
-    import quotes.reflect._
+    import syntaxHighlight.*
+    import quotes.reflect.*
 
-    private[this] val sb: StringBuilder = new StringBuilder
+    private val sb: StringBuilder = new StringBuilder
 
-    private[this] var indent: Int = 0
+    private var indent: Int = 0
     private def indented(printIndented: => Unit): Unit = {
       indent += 1
       printIndented
@@ -1441,8 +1441,8 @@ object SourceCode {
 
     private def escapedString(str: String): String = str flatMap escapedChar
 
-    private[this] val names = collection.mutable.Map.empty[Symbol, String]
-    private[this] val namesIndex = collection.mutable.Map.empty[String, Int]
+    private val names = collection.mutable.Map.empty[Symbol, String]
+    private val namesIndex = collection.mutable.Map.empty[String, Int]
 
     private def splicedName(sym: Symbol): Option[String] = {
       if sym.owner.isClassDef then None

@@ -78,8 +78,6 @@ A member is _eligible_ if all of the following holds:
 It is a compile-time error if a simple or renaming selector does not identify
 any eligible members.
 
-It is a compile-time error if a simple or renaming selector does not identify any eligible members.
-
 Type members are aliased by type definitions, and term members are aliased by method definitions. For instance:
 ```scala
 object O:

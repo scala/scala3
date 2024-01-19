@@ -4,7 +4,7 @@ package util
 
 import scala.annotation.internal.sharable
 
-import core.Contexts._
+import core.Contexts.*
 import collection.mutable
 
 @sharable object Stats {
@@ -19,9 +19,7 @@ import collection.mutable
 
   @volatile private var stack: List[String] = Nil
 
-  val hits: mutable.HashMap[String, Int] = new mutable.HashMap[String, Int] {
-    override def default(key: String): Int = 0
-  }
+  val hits: mutable.Map[String, Int] = new mutable.HashMap[String, Int].withDefaultValue(0)
 
   inline def record(inline fn: String, inline n: Int = 1, inline skip: Boolean = timerOnly): Unit =
     if (enabled && !skip) doRecord(fn, n)
@@ -32,7 +30,7 @@ import collection.mutable
       hits(name) += n
     }
 
-  def doRecordSize(fn: String, coll: scala.collection.Iterable[_]): coll.type =
+  def doRecordSize(fn: String, coll: scala.collection.Iterable[?]): coll.type =
     doRecord(fn, coll.size)
     coll
 

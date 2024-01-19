@@ -32,19 +32,24 @@ object HoverProvider:
       driver: InteractiveDriver,
       search: SymbolSearch
   )(implicit reportContext: ReportContext): ju.Optional[HoverSignature] =
-    val uri = params.uri
-    val sourceFile = SourceFile.virtual(params.uri, params.text)
+    val uri = params.uri().nn
+    val text = params.text().nn
+    val sourceFile = SourceFile.virtual(uri, text)
     driver.run(uri, sourceFile)
+    val unit = driver.compilationUnits.get(uri)
 
-    given ctx: Context = driver.currentCtx
+    given ctx: Context =
+      val ctx = driver.currentCtx
+      unit.map(ctx.fresh.setCompilationUnit).getOrElse(ctx)
     val pos = driver.sourcePosition(params)
-    val trees = driver.openedTrees(uri)
+    val path = unit
+      .map(unit => Interactive.pathTo(unit.tpdTree, pos.span))
+      .getOrElse(Interactive.pathTo(driver.openedTrees(uri), pos))
     val indexedContext = IndexedContext(ctx)
 
     def typeFromPath(path: List[Tree]) =
       if path.isEmpty then NoType else path.head.tpe
 
-    val path = Interactive.pathTo(trees, pos)
     val tp = typeFromPath(path)
     val tpw = tp.widenTermRefExpr
     // For expression we need to find all enclosing applies to get the exact generic type
@@ -54,7 +59,7 @@ object HoverProvider:
     then
       def report =
         val posId =
-          if path.isEmpty || path.head.sourcePos == null || !path.head.sourcePos.exists
+          if path.isEmpty || !path.head.sourcePos.exists
           then pos.start
           else path.head.sourcePos.start
         Report(
@@ -71,26 +76,23 @@ object HoverProvider:
               |path:
               |- ${path.map(_.toString()).mkString("\n- ")}
               |trees:
-              |- ${trees.map(_.toString()).mkString("\n- ")}
+              |- ${unit
+               .map(u => List(u.tpdTree))
+               .getOrElse(driver.openedTrees(uri).map(_.tree))
+               .map(_.toString()).mkString("\n- ")}
               |""".stripMargin,
           s"$uri::$posId"
         )
       end report
       reportContext.unsanitized.create(report, ifVerbose = true)
-      ju.Optional.empty()
+      ju.Optional.empty().nn
     else
       val skipCheckOnName =
         !pos.isPoint // don't check isHoveringOnName for RangeHover
 
-      val printerContext =
-        driver.compilationUnits.get(uri) match
-          case Some(unit) =>
-            val newctx =
-              ctx.fresh.setCompilationUnit(unit)
-            Interactive.contextOfPath(enclosing)(using newctx)
-          case None => ctx
+      val printerCtx = Interactive.contextOfPath(path)
       val printer = ShortenedTypePrinter(search, IncludeDefaultParam.Include)(
-        using IndexedContext(printerContext)
+        using IndexedContext(printerCtx)
       )
       MetalsInteractive.enclosingSymbolsWithExpressionType(
         enclosing,
@@ -125,7 +127,7 @@ object HoverProvider:
 
           val docString = symbolTpes
             .flatMap(symTpe => search.symbolDocumentation(symTpe._1))
-            .map(_.docstring)
+            .map(_.docstring())
             .mkString("\n")
           printer.expressionType(exprTpw) match
             case Some(expressionType) =>
@@ -141,11 +143,12 @@ object HoverProvider:
                   expressionType = Some(expressionType),
                   symbolSignature = Some(hoverString),
                   docstring = Some(docString),
-                  forceExpressionType = forceExpressionType
+                  forceExpressionType = forceExpressionType,
+                  contextInfo = printer.getUsedRenamesInfo
                 )
-              )
+              ).nn
             case _ =>
-              ju.Optional.empty
+              ju.Optional.empty().nn
           end match
       end match
     end if
@@ -175,6 +178,7 @@ object HoverProvider:
               new ScalaHover(
                 expressionType = Some(tpeString),
                 symbolSignature = Some(s"$valOrDef $name$tpeString"),
+                contextInfo = printer.getUsedRenamesInfo
               )
             )
           case RefinedType(parent, _, _) =>
@@ -188,7 +192,7 @@ object HoverProvider:
 
       refTpe.flatMap(findRefinement).asJava
     case _ =>
-      ju.Optional.empty()
+      ju.Optional.empty().nn
 
 end HoverProvider
 

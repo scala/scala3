@@ -19,8 +19,7 @@ import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.semanticdb.TypeOps
 import dotty.tools.dotc.cc.boxedCaptureSet
-import dotty.tools.dotc.core.Symbols.NoSymbol
-import dotty.tools.dotc.transform.SymUtils.isParamOrAccessor
+import dotty.tools.dotc.core.Symbols.{NoSymbol, isParamOrAccessor}
 import scala.collection.mutable
 import dotty.tools.dotc.core.Scopes.Scope
 import scala.collection.immutable.HashMap
@@ -138,7 +137,7 @@ class CheckShadowing extends MiniPhase:
     }
 
   private def nestedTypeTraverser(parent: Symbol) = new TreeTraverser:
-    import tpd._
+    import tpd.*
 
     override def traverse(tree: tpd.Tree)(using Context): Unit =
       tree match
@@ -154,7 +153,7 @@ class CheckShadowing extends MiniPhase:
 
   // To reach the imports during a miniphase traversal
   private def importTraverser = new TreeTraverser:
-    import tpd._
+    import tpd.*
 
     override def traverse(tree: tpd.Tree)(using Context): Unit =
       tree match
@@ -173,7 +172,7 @@ object CheckShadowing:
   val description = "check for elements shadowing other elements in scope"
 
   private class ShadowingData:
-    import dotty.tools.dotc.transform.CheckShadowing.ShadowingData._
+    import dotty.tools.dotc.transform.CheckShadowing.ShadowingData.*
     import collection.mutable.{Set => MutSet, Map => MutMap, Stack => MutStack}
 
     private val rootImports = MutSet[SingleDenotation]()

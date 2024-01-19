@@ -1,2 +1,1 @@
-Vector(Empty(0), Empty(1), Fill(0), Fill(1), Pour(0,1), Pour(1,0))
-Fill(1) Pour(1,0) Empty(0) Pour(1,0) Fill(1) Pour(1,0) --> Vector(4, 6)
+Illegal command line: more arguments expected

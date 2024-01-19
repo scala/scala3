@@ -2,15 +2,15 @@ package dotty.tools
 package dotc
 package typer
 
-import core._
-import ast._
-import Contexts._, Types._, Denotations._, Names._, StdNames._, NameOps._, Symbols._
+import core.*
+import ast.*
+import Contexts.*, Types.*, Denotations.*, Names.*, StdNames.*, NameOps.*, Symbols.*
 import NameKinds.DepParamName
-import Trees._
-import Constants._
+import Trees.*
+import Constants.*
 import util.{Stats, SimpleIdentityMap, SimpleIdentitySet}
-import Decorators._
-import Uniques._
+import Decorators.*
+import Uniques.*
 import inlines.Inlines
 import config.Printers.typr
 import Inferencing.*
@@ -25,7 +25,7 @@ import dotty.tools.dotc.util.Spans.{NoSpan, Span}
 
 object ProtoTypes {
 
-  import tpd._
+  import tpd.*
 
   /** A trait defining an `isCompatible` method. */
   trait Compatibility {
@@ -117,7 +117,7 @@ object ProtoTypes {
     def constrainResult(meth: Symbol, mt: Type, pt: Type)(using Context): Boolean =
       if (Inlines.isInlineable(meth)) {
         // Stricter behaviour in 3.4+: do not apply `wildApprox` to non-transparent inlines
-        if (Feature.sourceVersion.isAtLeast(SourceVersion.future)) {
+        if (Feature.sourceVersion.isAtLeast(SourceVersion.`3.4`)) {
           if (meth.is(Transparent)) {
             constrainResult(mt, wildApprox(pt))
             // do not constrain the result type of transparent inline methods
@@ -384,9 +384,9 @@ object ProtoTypes {
     def allArgTypesAreCurrent()(using Context): Boolean =
       state.typedArg.size == args.length
 
-    private def isUndefined(tp: Type): Boolean = tp match {
+    private def isUndefined(tp: Type): Boolean = tp.dealias match {
       case _: WildcardType => true
-      case defn.FunctionOf(args, result, _) => args.exists(isUndefined) || isUndefined(result)
+      case defn.FunctionNOf(args, result, _) => args.exists(isUndefined) || isUndefined(result)
       case _ => false
     }
 
@@ -425,7 +425,7 @@ object ProtoTypes {
               case ValDef(_, tpt, _) if !tpt.isEmpty => typer.typedType(tpt).typeOpt
               case _ => WildcardType
             }
-            targ = arg.withType(defn.FunctionOf(paramTypes, WildcardType))
+            targ = arg.withType(defn.FunctionNOf(paramTypes, WildcardType))
           case Some(_) if !force =>
             targ = arg.withType(WildcardType)
           case _ =>
@@ -966,7 +966,7 @@ object ProtoTypes {
 
   final def wildApprox(tp: Type)(using Context): Type = wildApprox(tp, null, Set.empty, Set.empty)
 
-  @sharable object AssignProto extends UncachedGroundType with MatchAlways
+  @sharable object LhsProto extends UncachedGroundType with MatchAlways
 
   private[ProtoTypes] class WildApproxMap(val seen: Set[TypeParamRef], val internal: Set[TypeLambda])(using Context) extends TypeMap {
     def apply(tp: Type): Type = wildApprox(tp, this, seen, internal)

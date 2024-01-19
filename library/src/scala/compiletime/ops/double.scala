@@ -5,7 +5,7 @@ object double:
   /** Addition of two `Double` singleton types.
    *  ```scala
    *  //{
-   *  import compiletime.ops.double._
+   *  import compiletime.ops.double.*
    *  //}
    *  val sum: 2.0 + 2.0 = 4.0
    *  ```
@@ -16,7 +16,7 @@ object double:
   /** Subtraction of two `Double` singleton types.
    *  ```scala
    *  //{
-   *  import compiletime.ops.double._
+   *  import compiletime.ops.double.*
    *  //}
    *  val sub: 4.0 - 2.0 = 2.0
    *  ```
@@ -27,7 +27,7 @@ object double:
   /** Multiplication of two `Double` singleton types.
    *  ```scala
    *  //{
-   *  import compiletime.ops.double._
+   *  import compiletime.ops.double.*
    *  //}
    *  val mul: 4.0 * 2.0 = 8.0
    *  ```
@@ -38,7 +38,7 @@ object double:
   /** Integer division of two `Double` singleton types.
    *  ```scala
    *  //{
-   *  import compiletime.ops.double._
+   *  import compiletime.ops.double.*
    *  //}
    *  val div: 5.0 / 2.0 = 2.5
    *  ```
@@ -49,7 +49,7 @@ object double:
   /** Remainder of the division of `X` by `Y`.
    *  ```scala
    *  //{
-   *  import compiletime.ops.double._
+   *  import compiletime.ops.double.*
    *  //}
    *  val mod: 5.0 % 2.0 = 1.0
    *  ```
@@ -60,7 +60,7 @@ object double:
   /** Less-than comparison of two `Double` singleton types.
    *  ```scala
    *  //{
-   *  import compiletime.ops.double._
+   *  import compiletime.ops.double.*
    *  //}
    *  val lt1: 4.0 < 2.0 = false
    *  val lt2: 2.0 < 4.0 = true
@@ -72,7 +72,7 @@ object double:
   /** Greater-than comparison of two `Double` singleton types.
    *  ```scala
    *  //{
-   *  import compiletime.ops.double._
+   *  import compiletime.ops.double.*
    *  //}
    *  val gt1: 4.0 > 2.0 = true
    *  val gt2: 2.0 > 2.0 = false
@@ -84,7 +84,7 @@ object double:
   /** Greater-or-equal comparison of two `Double` singleton types.
    *  ```scala
    *  //{
-   *  import compiletime.ops.double._
+   *  import compiletime.ops.double.*
    *  //}
    *  val ge1: 4.0 >= 2.0 = true
    *  val ge2: 2.0 >= 3.0 = false
@@ -96,7 +96,7 @@ object double:
   /** Less-or-equal comparison of two `Double` singleton types.
    *  ```scala
    *  //{
-   *  import compiletime.ops.double._
+   *  import compiletime.ops.double.*
    *  //}
    *  val lt1: 4.0 <= 2.0 = false
    *  val lt2: 2.0 <= 2.0 = true
@@ -108,7 +108,7 @@ object double:
   /** Absolute value of an `Double` singleton type.
    *  ```scala
    *  //{
-   *  import compiletime.ops.double._
+   *  import compiletime.ops.double.*
    *  //}
    *  val abs: Abs[-1.0] = 1.0
    *  ```
@@ -119,7 +119,7 @@ object double:
   /** Negation of an `Double` singleton type.
    *  ```scala
    *  //{
-   *  import compiletime.ops.double._
+   *  import compiletime.ops.double.*
    *  //}
    *  val neg1: Negate[-1.0] = 1.0
    *  val neg2: Negate[1.0] = -1.0
@@ -131,7 +131,7 @@ object double:
   /** Minimum of two `Double` singleton types.
    *  ```scala
    *  //{
-   *  import compiletime.ops.double._
+   *  import compiletime.ops.double.*
    *  //}
    *  val min: Min[-1.0, 1.0] = -1.0
    *  ```
@@ -142,7 +142,7 @@ object double:
   /** Maximum of two `Double` singleton types.
    *  ```scala
    *  //{
-   *  import compiletime.ops.double._
+   *  import compiletime.ops.double.*
    *  //}
    *  val max: Max[-1.0, 1.0] = 1.0
    *  ```
@@ -153,7 +153,7 @@ object double:
   /** Int conversion of a `Double` singleton type.
    *  ```scala
    *  //{
-   *  import compiletime.ops.double._
+   *  import compiletime.ops.double.*
    *  //}
    *  val x: ToInt[1.0] = 1
    *  ```
@@ -164,7 +164,7 @@ object double:
   /** Long conversion of a `Double` singleton type.
    *  ```scala
    *  //{
-   *  import compiletime.ops.double._
+   *  import compiletime.ops.double.*
    *  //}
    *  val x: ToLong[1.0] = 1L
    *  ```
@@ -175,7 +175,7 @@ object double:
   /** Float conversion of a `Double` singleton type.
    *  ```scala
    *  //{
-   *  import compiletime.ops.double._
+   *  import compiletime.ops.double.*
    *  //}
    *  val x: ToFloat[1.0] = 1.0f
    *  ```

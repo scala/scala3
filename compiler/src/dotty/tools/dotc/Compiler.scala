@@ -1,13 +1,12 @@
 package dotty.tools
 package dotc
 
-import core._
-import Contexts._
+import core.*
+import Contexts.*
 import typer.{TyperPhase, RefChecks}
-import cc.CheckCaptures
 import parsing.Parser
 import Phases.Phase
-import transform._
+import transform.*
 import dotty.tools.backend
 import backend.jvm.{CollectSuperCalls, GenBCode}
 import localopt.StringInterpolatorOpt
@@ -65,7 +64,6 @@ class Compiler {
          new CheckReentrant,         // Internal use only: Check that compiled program has no data races involving global vars
          new ElimPackagePrefixes,    // Eliminate references to package prefixes in Select nodes
          new CookComments,           // Cook the comments: expand variables, doc, etc.
-         new CheckStatic,            // Check restrictions that apply to @static members
          new CheckLoopingImplicits,  // Check that implicit defs do not call themselves in an infinite loop
          new BetaReduce,             // Reduce closure applications
          new InlineVals,             // Check right hand-sides of an `inline val`s
@@ -77,6 +75,7 @@ class Compiler {
     List(new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods
          new UncacheGivenAliases,    // Avoid caching RHS of simple parameterless given aliases
+         new CheckStatic,            // Check restrictions that apply to @static members
          new ElimByName,             // Map by-name parameters to functions
          new HoistSuperArgs,         // Hoist complex arguments of supercalls to enclosing scope
          new ForwardDepChecks,       // Check that there are no forward references to local vals
@@ -85,8 +84,8 @@ class Compiler {
          new PatternMatcher) ::      // Compile pattern matches
     List(new TestRecheck.Pre) ::     // Test only: run rechecker, enabled under -Yrecheck-test
     List(new TestRecheck) ::         // Test only: run rechecker, enabled under -Yrecheck-test
-    List(new CheckCaptures.Pre) ::   // Preparations for check captures phase, enabled under captureChecking
-    List(new CheckCaptures) ::       // Check captures, enabled under captureChecking
+    List(new cc.Setup) ::            // Preparations for check captures phase, enabled under captureChecking
+    List(new cc.CheckCaptures) ::    // Check captures, enabled under captureChecking
     List(new ElimOpaque,             // Turn opaque into normal aliases
          new sjs.ExplicitJSClasses,  // Make all JS classes explicit (Scala.js only)
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.

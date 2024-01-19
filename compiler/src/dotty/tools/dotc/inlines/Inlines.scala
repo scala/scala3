@@ -5,7 +5,6 @@ package inlines
 import ast.*, core.*
 import Flags.*, Symbols.*, Types.*, Decorators.*, Constants.*, Contexts.*
 import StdNames.{tpnme, nme}
-import transform.SymUtils._
 import typer.*
 import NameKinds.BodyRetainerName
 import SymDenotations.SymDenotation
@@ -22,7 +21,7 @@ import util.Spans.Span
 
 /** Support for querying inlineable methods and for inlining calls to such methods */
 object Inlines:
-  import tpd._
+  import tpd.*
 
   /** An exception signalling that an inline info cannot be computed due to a
    *  cyclic reference. i14772.scala shows a case where this happens.
@@ -64,6 +63,7 @@ object Inlines:
       )
       && !ctx.typer.hasInliningErrors
       && !ctx.base.stopInlining
+      && !ctx.mode.is(Mode.NoInline)
   }
 
   private def needsTransparentInlining(tree: Tree)(using Context): Boolean =
@@ -395,7 +395,7 @@ object Inlines:
    *  @param  rhsToInline  the body of the inlineable method that replaces the call.
    */
   private class InlineCall(call: tpd.Tree)(using Context) extends Inliner(call):
-    import tpd._
+    import tpd.*
     import Inlines.*
 
     /** The Inlined node representing the inlined call */

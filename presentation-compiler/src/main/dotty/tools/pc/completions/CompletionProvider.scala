@@ -41,32 +41,29 @@ class CompletionProvider(
     folderPath: Option[Path]
 )(using reports: ReportContext):
   def completions(): CompletionList =
-    val uri = params.uri
+    val uri = params.uri().nn
+    val text = params.text().nn
 
     val code = applyCompletionCursor(params)
-    val sourceFile = SourceFile.virtual(params.uri, code)
+    val sourceFile = SourceFile.virtual(uri, code)
     driver.run(uri, sourceFile)
 
     val ctx = driver.currentCtx
     val pos = driver.sourcePosition(params)
     val (items, isIncomplete) = driver.compilationUnits.get(uri) match
       case Some(unit) =>
-        val path =
-          Interactive.pathTo(driver.openedTrees(uri), pos)(using ctx)
 
         val newctx = ctx.fresh.setCompilationUnit(unit)
-        val tpdPath =
-          Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(
-            using newctx
-          )
+        val tpdPath = Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using newctx)
+
         val locatedCtx =
           Interactive.contextOfPath(tpdPath)(using newctx)
         val indexedCtx = IndexedContext(locatedCtx)
         val completionPos =
-          CompletionPos.infer(pos, params, path)(using newctx)
+          CompletionPos.infer(pos, params, tpdPath)(using newctx)
         val autoImportsGen = AutoImports.generator(
           completionPos.sourcePos,
-          params.text,
+          text,
           unit.tpdTree,
           unit.comments,
           indexedCtx,
@@ -75,13 +72,13 @@ class CompletionProvider(
         val (completions, searchResult) =
           new Completions(
             pos,
-            params.text,
+            text,
             ctx.fresh.setCompilationUnit(unit),
             search,
             buildTargetIdentifier,
             completionPos,
             indexedCtx,
-            path,
+            tpdPath,
             config,
             folderPath,
             autoImportsGen,
@@ -95,7 +92,7 @@ class CompletionProvider(
             idx,
             autoImportsGen,
             completionPos,
-            path,
+            tpdPath,
             indexedCtx
           )(using newctx)
         }
@@ -124,22 +121,22 @@ class CompletionProvider(
    * because scala parser trim end position to the last statement pos.
    */
   private def applyCompletionCursor(params: OffsetParams): String =
-    import params.*
+    val text = params.text().nn
+    val offset = params.offset().nn
+
     val isStartMultilineComment =
       val i = params.offset()
-      i >= 3 && (params.text().charAt(i - 1) match
+      i >= 3 && (text.charAt(i - 1) match
         case '*' =>
-          params.text().charAt(i - 2) == '*' &&
-          params.text().charAt(i - 3) == '/'
+          text.charAt(i - 2) == '*' &&
+          text.charAt(i - 3) == '/'
         case _ => false
       )
     if isStartMultilineComment then
       // Insert potentially missing `*/` to avoid comment out all codes after the "/**".
-      text.substring(0, offset) + Cursor.value + "*/" + text.substring(offset)
+      text.substring(0, offset).nn + Cursor.value + "*/" + text.substring(offset)
     else
-      text.substring(0, offset) + Cursor.value + text.substring(
-        offset
-      )
+      text.substring(0, offset).nn + Cursor.value + text.substring(offset)
   end applyCompletionCursor
 
   private def completionItems(
@@ -151,10 +148,7 @@ class CompletionProvider(
       indexedContext: IndexedContext
   )(using ctx: Context): CompletionItem =
     val printer =
-      ShortenedTypePrinter(search, IncludeDefaultParam.ResolveLater)(using
-        indexedContext
-      )
-    val editRange = completionPos.toEditRange
+      ShortenedTypePrinter(search, IncludeDefaultParam.ResolveLater)(using indexedContext)
 
     // For overloaded signatures we get multiple symbols, so we need
     // to recalculate the description
@@ -165,33 +159,30 @@ class CompletionProvider(
     val ident = completion.insertText.getOrElse(completion.label)
 
     def mkItem(
-        insertText: String,
+        newText: String,
         additionalEdits: List[TextEdit] = Nil,
         range: Option[LspRange] = None
     ): CompletionItem =
-      val nameEdit = new TextEdit(
-        range.getOrElse(editRange),
-        insertText
-      )
+      val oldText = params.text().nn.substring(completionPos.start, completionPos.end)
+      val editRange = if newText.startsWith(oldText) then completionPos.stripSuffixEditRange
+        else completionPos.toEditRange
+
+      val textEdit = new TextEdit(range.getOrElse(editRange), newText)
+
       val item = new CompletionItem(label)
       item.setSortText(f"${idx}%05d")
       item.setDetail(description)
-      item.setFilterText(
-        completion.filterText.getOrElse(completion.label)
-      )
-      item.setTextEdit(nameEdit)
-      item.setAdditionalTextEdits(
-        (completion.additionalEdits ++ additionalEdits).asJava
-      )
+      item.setFilterText(completion.filterText.getOrElse(completion.label))
+      item.setTextEdit(textEdit)
+      item.setAdditionalTextEdits((completion.additionalEdits ++ additionalEdits).asJava)
       completion.insertMode.foreach(item.setInsertTextMode)
 
-      completion
-        .completionData(buildTargetIdentifier)
-        .foreach(data => item.setData(data.toJson))
+      val data = completion.completionData(buildTargetIdentifier)
+      item.setData(data.toJson)
 
       item.setTags(completion.lspTags.asJava)
 
-      if config.isCompletionSnippetsEnabled then
+      if config.isCompletionSnippetsEnabled() then
         item.setInsertTextFormat(InsertTextFormat.Snippet)
 
       completion.command.foreach { command =>
@@ -224,7 +215,7 @@ class CompletionProvider(
 
     def mkItemWithImports(
         v: CompletionValue.Workspace | CompletionValue.Extension |
-          CompletionValue.Interpolator
+          CompletionValue.Interpolator | CompletionValue.ImplicitClass
     ) =
       val sym = v.symbol
       path match
@@ -235,18 +226,10 @@ class CompletionProvider(
             case Some(edits) =>
               edits match
                 case AutoImportEdits(Some(nameEdit), other) =>
-                  mkItem(
-                    nameEdit.getNewText(),
-                    other.toList,
-                    range = Some(nameEdit.getRange())
-                  )
+                  mkItem(nameEdit.getNewText().nn, other.toList, range = Some(nameEdit.getRange().nn))
                 case _ =>
                   mkItem(
-                    v.insertText.getOrElse(
-                      ident.backticked(
-                        backtickSoftKeyword
-                      ) + completionTextSuffix
-                    ),
+                    v.insertText.getOrElse( ident.backticked(backtickSoftKeyword) + completionTextSuffix),
                     edits.edits,
                     range = v.range
                   )
@@ -261,6 +244,10 @@ class CompletionProvider(
                   mkItem(
                     "{" + sym.fullNameBackticked + completionTextSuffix + "}"
                   )
+                case _ if v.isExtensionMethod =>
+                  mkItem(
+                    ident.backticked(backtickSoftKeyword) + completionTextSuffix
+                  )
                 case _ =>
                   mkItem(
                     sym.fullNameBackticked(
@@ -273,7 +260,7 @@ class CompletionProvider(
     end mkItemWithImports
 
     completion match
-      case v: (CompletionValue.Workspace | CompletionValue.Extension) =>
+      case v: (CompletionValue.Workspace | CompletionValue.Extension | CompletionValue.ImplicitClass) =>
         mkItemWithImports(v)
       case v: CompletionValue.Interpolator if v.isWorkspace || v.isExtension =>
         mkItemWithImports(v)

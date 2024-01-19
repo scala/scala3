@@ -85,18 +85,18 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       val newFlags = newFlags0.toArray
       if (!flags.options.containsSlice(newFlags)) self match {
         case self: JointCompilationSource =>
-          self.copy(flags = flags.and(newFlags:_*))
+          self.copy(flags = flags.and(newFlags*))
         case self: SeparateCompilationSource =>
-          self.copy(flags = flags.and(newFlags:_*))
+          self.copy(flags = flags.and(newFlags*))
       }
       else self
     }
 
     def withoutFlags(flags1: String*): TestSource = self match {
       case self: JointCompilationSource =>
-        self.copy(flags = flags.without(flags1: _*))
+        self.copy(flags = flags.without(flags1*))
       case self: SeparateCompilationSource =>
-        self.copy(flags = flags.without(flags1: _*))
+        self.copy(flags = flags.without(flags1*))
     }
 
     lazy val allToolArgs: ToolArgs =
@@ -490,7 +490,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       def scalacOptions = toolArgs.getOrElse(ToolName.Scalac, Nil)
 
       val flags = flags0
-        .and(scalacOptions: _*)
+        .and(scalacOptions*)
         .and("-d", targetDir.getPath)
         .withClasspath(targetDir.getPath)
 
@@ -610,17 +610,38 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           .run()
           .mkString(JFile.pathSeparator)
 
-      val stdlibClasspath = artifactClasspath("org.scala-lang", "scala3-library_3")
-      val scalacClasspath = artifactClasspath("org.scala-lang", "scala3-compiler_3")
-
       val pageWidth = TestConfiguration.pageWidth - 20
-      val flags1 = flags.copy(defaultClassPath = stdlibClasspath)
-        .withClasspath(targetDir.getPath)
-        .and("-d", targetDir.getPath)
-        .and("-pagewidth", pageWidth.toString)
 
-      val scalacCommand = Array("java", "-cp", scalacClasspath, "dotty.tools.dotc.Main")
-      val command = scalacCommand ++ flags1.all ++ files.map(_.getAbsolutePath)
+      val fileArgs = files.map(_.getAbsolutePath)
+
+      def scala2Command(): Array[String] = {
+        assert(!flags.options.contains("-scalajs"),
+          "Compilation tests with Scala.js on Scala 2 are not supported.\nThis test can be skipped using the `// scalajs: --skip` tag")
+        val stdlibClasspath = artifactClasspath("org.scala-lang", "scala-library")
+        val scalacClasspath = artifactClasspath("org.scala-lang", "scala-compiler")
+        val flagsArgs = flags
+          .copy(options = Array.empty, defaultClassPath = stdlibClasspath)
+          .withClasspath(targetDir.getPath)
+          .and("-d", targetDir.getPath)
+          .all
+        val scalacCommand = Array("java", "-cp", scalacClasspath, "scala.tools.nsc.Main")
+        scalacCommand ++ flagsArgs ++ fileArgs
+      }
+
+      def scala3Command(): Array[String] = {
+        val stdlibClasspath = artifactClasspath("org.scala-lang", "scala3-library_3")
+        val scalacClasspath = artifactClasspath("org.scala-lang", "scala3-compiler_3")
+        val flagsArgs = flags
+          .copy(defaultClassPath = stdlibClasspath)
+          .withClasspath(targetDir.getPath)
+          .and("-d", targetDir.getPath)
+          .and("-pagewidth", pageWidth.toString)
+          .all
+        val scalacCommand = Array("java", "-cp", scalacClasspath, "dotty.tools.dotc.Main")
+        scalacCommand ++ flagsArgs ++ fileArgs
+      }
+
+      val command = if compiler.startsWith("2") then scala2Command() else scala3Command()
       val process = Runtime.getRuntime.exec(command)
 
       val reporter = mkReporter
@@ -755,7 +776,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     end maybeFailureMessage
 
     def getWarnMapAndExpectedCount(files: Seq[JFile]): (HashMap[String, Integer], Int) =
-      val comment = raw"//( *)warn".r
+      val comment = raw"//( *)(nopos-)?warn".r
       val map = new HashMap[String, Integer]()
       var count = 0
       def bump(key: String): Unit =
@@ -766,8 +787,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       files.filter(isSourceFile).foreach { file =>
         Using(Source.fromFile(file, StandardCharsets.UTF_8.name)) { source =>
           source.getLines.zipWithIndex.foreach { case (line, lineNbr) =>
-            comment.findAllMatchIn(line).foreach { _ =>
-              bump(s"${file.getPath}:${lineNbr+1}")
+            comment.findAllMatchIn(line).foreach { m =>
+              m.group(2) match
+                case "nopos-" =>
+                  bump("nopos")
+                case _ => bump(s"${file.getPath}:${lineNbr+1}")
             }
           }
         }.get
@@ -788,7 +812,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           val key = s"${relativize(srcpos.source.file.toString())}:${srcpos.line + 1}"
           if !seenAt(key) then unexpected += key
         else
-          unpositioned += relativize(srcpos.source.file.toString())
+          if(!seenAt("nopos")) unpositioned += relativize(srcpos.source.file.toString())
 
       reporterWarnings.foreach(sawDiagnostic)
 

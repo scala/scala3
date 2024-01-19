@@ -14,7 +14,6 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.TreeOps
 import dotty.tools.dotc.{Driver, Main}
 import dotty.tools.dotc.decompiler
-import dotty.tools.dotc.core.Comments.CommentsContext
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators.{toTermName, toTypeName}
 import dotty.tools.dotc.core.Mode

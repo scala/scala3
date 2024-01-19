@@ -5,16 +5,15 @@ package tasty
 
 import scala.language.unsafeNulls
 
-import dotty.tools.tasty.TastyFormat._
-import dotty.tools.tasty.TastyBuffer._
+import dotty.tools.tasty.TastyFormat.*
+import dotty.tools.tasty.TastyBuffer.*
 
-import ast.Trees._
+import ast.Trees.*
 import ast.{untpd, tpd}
-import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, Flags._
-import Comments.{Comment, CommentsContext}
-import NameKinds._
-import StdNames.nme
-import transform.SymUtils._
+import Contexts.*, Symbols.*, Types.*, Names.*, Constants.*, Decorators.*, Annotations.*, Flags.*
+import Comments.{Comment, docCtx}
+import NameKinds.*
+import StdNames.{nme, tpnme}
 import config.Config
 import collection.mutable
 import reporting.{Profile, NoProfile}
@@ -24,12 +23,12 @@ import quoted.QuotePatterns
 object TreePickler:
   class StackSizeExceeded(val mdef: tpd.MemberDef) extends Exception
 
-class TreePickler(pickler: TastyPickler) {
+class TreePickler(pickler: TastyPickler, attributes: Attributes) {
   val buf: TreeBuffer = new TreeBuffer
   pickler.newSection(ASTsSection, buf)
-  import buf._
+  import buf.*
   import pickler.nameBuffer.nameIndex
-  import tpd._
+  import tpd.*
   import TreePickler.*
 
   private val symRefs = Symbols.MutableSymbolMap[Addr](256)
@@ -49,6 +48,9 @@ class TreePickler(pickler: TastyPickler) {
   private val docStrings = util.EqHashMap[untpd.MemberDef, Comment]()
 
   private var profile: Profile = NoProfile
+
+  private val isOutlinePickle: Boolean = attributes.isOutline
+  private val isJavaPickle: Boolean = attributes.isJava
 
   def treeAnnots(tree: untpd.MemberDef): List[Tree] =
     val ts = annotTrees.lookup(tree)
@@ -189,19 +191,19 @@ class TreePickler(pickler: TastyPickler) {
       def pickleExternalRef(sym: Symbol) = {
         val isShadowedRef =
           sym.isClass && tpe.prefix.member(sym.name).symbol != sym
-        if (sym.is(Flags.Private) || isShadowedRef) {
+        if sym.is(Flags.Private) || isShadowedRef then
           writeByte(if (tpe.isType) TYPEREFin else TERMREFin)
           withLength {
             pickleNameAndSig(sym.name, sym.signature, sym.targetName)
             pickleType(tpe.prefix)
             pickleType(sym.owner.typeRef)
           }
-        }
-        else {
+        else if isJavaPickle && sym == defn.FromJavaObjectSymbol then
+          pickleType(defn.ObjectType) // when unpickling Java TASTy, replace by <FromJavaObject>
+        else
           writeByte(if (tpe.isType) TYPEREF else TERMREF)
           pickleNameAndSig(sym.name, tpe.signature, sym.targetName)
           pickleType(tpe.prefix)
-        }
       }
       if (sym.is(Flags.Package)) {
         writeByte(if (tpe.isType) TYPEREFpkg else TERMREFpkg)
@@ -323,6 +325,11 @@ class TreePickler(pickler: TastyPickler) {
     if (!tree.isEmpty) pickleTree(tree)
   }
 
+  def pickleElidedUnlessEmpty(tree: Tree, tp: Type)(using Context): Unit =
+    if !tree.isEmpty then
+      writeByte(ELIDED)
+      pickleType(tp)
+
   def pickleDef(tag: Int, mdef: MemberDef, tpt: Tree, rhs: Tree = EmptyTree, pickleParams: => Unit = ())(using Context): Unit = {
     val sym = mdef.symbol
 
@@ -338,7 +345,12 @@ class TreePickler(pickler: TastyPickler) {
           case _: Template | _: Hole => pickleTree(tpt)
           case _ if tpt.isType => pickleTpt(tpt)
         }
-        pickleTreeUnlessEmpty(rhs)
+        if isOutlinePickle && sym.isTerm && isJavaPickle then
+          // TODO: if we introduce outline typing for Scala definitions
+          // then we will need to update the check here
+          pickleElidedUnlessEmpty(rhs, tpt.tpe)
+        else
+          pickleTreeUnlessEmpty(rhs)
         pickleModifiers(sym, mdef)
       }
     catch
@@ -349,7 +361,7 @@ class TreePickler(pickler: TastyPickler) {
         else
           throw ex
     if sym.is(Method) && sym.owner.isClass then
-      profile.recordMethodSize(sym, currentAddr.index - addr.index, mdef.span)
+      profile.recordMethodSize(sym, (currentAddr.index - addr.index) max 1, mdef.span)
     for docCtx <- ctx.docCtx do
       val comment = docCtx.docstrings.lookup(sym)
       if comment != null then
@@ -605,7 +617,17 @@ class TreePickler(pickler: TastyPickler) {
                 }
               }
             }
-            pickleStats(tree.constr :: rest)
+            if isJavaPickle then
+              val rest0 = rest.dropWhile:
+                case stat: ValOrDefDef => stat.symbol.is(Flags.Invisible)
+                case _ => false
+              if tree.constr.symbol.is(Flags.Invisible) then
+                writeByte(SPLITCLAUSE)
+                pickleStats(rest0)
+              else
+                pickleStats(tree.constr :: rest0)
+            else
+              pickleStats(tree.constr :: rest)
           }
         case Import(expr, selectors) =>
           writeByte(IMPORT)
@@ -734,7 +756,7 @@ class TreePickler(pickler: TastyPickler) {
   }
 
   def pickleModifiers(sym: Symbol, mdef: MemberDef)(using Context): Unit = {
-    import Flags._
+    import Flags.*
     var flags = sym.flags
     val privateWithin = sym.privateWithin
     if (privateWithin.exists) {
@@ -749,7 +771,7 @@ class TreePickler(pickler: TastyPickler) {
   }
 
   def pickleFlags(flags: FlagSet, isTerm: Boolean)(using Context): Unit = {
-    import Flags._
+    import Flags.*
     def writeModTag(tag: Int) = {
       assert(isModifierTag(tag))
       writeByte(tag)

@@ -3,7 +3,7 @@ package config
 
 import scala.language.unsafeNulls
 
-import core.Contexts._
+import core.Contexts.*
 
 import dotty.tools.io.{AbstractFile, Directory, JarArchive, PlainDirectory}
 
@@ -24,7 +24,7 @@ object Settings:
   val OutputTag: ClassTag[AbstractFile]  = ClassTag(classOf[AbstractFile])
 
   class SettingsState(initialValues: Seq[Any]):
-    private val values = ArrayBuffer(initialValues: _*)
+    private val values = ArrayBuffer(initialValues*)
     private var _wasRead: Boolean = false
 
     override def toString: String = s"SettingsState(values: ${values.toList})"

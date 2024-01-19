@@ -120,7 +120,7 @@ class BootstrappedOnlyCompilationTests {
 
   @Test def runMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runMacros")
-    compileFilesInDir("tests/run-macros", defaultOptions.and("-Xcheck-macros"))
+    compileFilesInDir("tests/run-macros", defaultOptions.and("-Xcheck-macros"), FileFilter.exclude(TestSources.runMacrosScala2LibraryTastyBlacklisted))
       .checkRuns()
   }
 
@@ -135,7 +135,7 @@ class BootstrappedOnlyCompilationTests {
       if scala.util.Properties.isWin then basicTests
       else compileDir("tests/old-tasty-interpreter-prototype", withTastyInspectorOptions) :: basicTests
 
-    aggregateTests(tests: _*).checkRuns()
+    aggregateTests(tests*).checkRuns()
   }
 
   @Test def runBootstrappedOnly: Unit = {

@@ -27,7 +27,7 @@ class SiteGeneratationTest extends BaseHtmlTest:
         content.assertTextsIn(".projectVersion", projectVersion)
         content.assertTextsIn("h1", header)
         content.assertTextsIn("title", title)
-        content.assertTextsIn(".breadcrumbs a", (parents :+ title):_*)
+        content.assertTextsIn(".breadcrumbs a", (parents :+ title)*)
         checks(content)
       }
 

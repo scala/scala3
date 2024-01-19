@@ -13,7 +13,7 @@ import PositionContext.PosCtx
 class CodeMarker(val name: String) extends Embedded {
 
   /** A range of positions between this marker and `other`. */
-  def to(other: CodeMarker): CodeRange = CodeRange(this, other)
+  infix def to(other: CodeMarker): CodeRange = CodeRange(this, other)
 
   /** The file containing this marker. */
   def file: PosCtx[TestFile] = posCtx.positionOf(this)._1

@@ -4,7 +4,7 @@ package dotc
 
 import scala.language.unsafeNulls
 
-import org.junit.{ Test, BeforeClass, AfterClass }
+import org.junit.{ Test, BeforeClass, AfterClass, Ignore }
 import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.experimental.categories.Category
@@ -44,7 +44,10 @@ class CompilationTests {
       // Run tests for legacy lazy vals
       compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.posLazyValsAllowlist)),
       compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
-      compileDir("tests/pos-special/stdlib", defaultOptions),
+    ) ::: (
+      // TODO create a folder for capture checking tests with the stdlib, or use tests/pos-custom-args/captures under this mode?
+      if Properties.usingScalaLibraryCCTasty then List(compileDir("tests/pos-special/stdlib", allowDeepSubtypes))
+      else Nil
     )
 
     if scala.util.Properties.isJavaAtLeast("16") then
@@ -60,6 +63,10 @@ class CompilationTests {
       compileFile("tests/rewrites/rewrites.scala", defaultOptions.and("-source", "3.0-migration").and("-rewrite", "-indent")),
       compileFile("tests/rewrites/rewrites3x.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
       compileFile("tests/rewrites/rewrites3x-fatal-warnings.scala", defaultOptions.and("-rewrite", "-source", "future-migration", "-Xfatal-warnings")),
+      compileFile("tests/rewrites/uninitialized-var.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
+      compileFile("tests/rewrites/with-type-operator.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
+      compileFile("tests/rewrites/private-this.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
+      compileFile("tests/rewrites/alphanumeric-infix-operator.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
       compileFile("tests/rewrites/filtering-fors.scala", defaultOptions.and("-rewrite", "-source", "3.2-migration")),
       compileFile("tests/rewrites/refutable-pattern-bindings.scala", defaultOptions.and("-rewrite", "-source", "3.2-migration")),
       compileFile("tests/rewrites/i8982.scala", defaultOptions.and("-indent", "-rewrite")),
@@ -126,7 +133,7 @@ class CompilationTests {
   @Test def negAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileNeg")
     aggregateTests(
-      compileFilesInDir("tests/neg", defaultOptions),
+      compileFilesInDir("tests/neg", defaultOptions, FileFilter.exclude(TestSources.negScala2LibraryTastyBlacklisted)),
       compileFilesInDir("tests/neg-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/neg-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking")),
       compileFile("tests/neg-custom-args/sourcepath/outer/nested/Test1.scala", defaultOptions.and("-sourcepath", "tests/neg-custom-args/sourcepath")),
@@ -209,8 +216,8 @@ class CompilationTests {
   @Test def checkInitGlobal: Unit = {
     implicit val testGroup: TestGroup = TestGroup("checkInitGlobal")
     val options = defaultOptions.and("-Ysafe-init-global", "-Xfatal-warnings")
-    compileFilesInDir("tests/init-global/neg", options).checkExpectedErrors()
-    compileFilesInDir("tests/init-global/pos", options).checkCompile()
+    compileFilesInDir("tests/init-global/neg", options, FileFilter.exclude(TestSources.negInitGlobalScala2LibraryTastyBlacklisted)).checkExpectedErrors()
+    compileFilesInDir("tests/init-global/pos", options, FileFilter.exclude(TestSources.posInitGlobalScala2LibraryTastyBlacklisted)).checkCompile()
   }
 
   // initialization tests
@@ -218,6 +225,7 @@ class CompilationTests {
     implicit val testGroup: TestGroup = TestGroup("checkInit")
     val options = defaultOptions.and("-Ysafe-init", "-Xfatal-warnings")
     compileFilesInDir("tests/init/neg", options).checkExpectedErrors()
+    compileFilesInDir("tests/init/warn", defaultOptions.and("-Ysafe-init")).checkWarnings()
     compileFilesInDir("tests/init/pos", options).checkCompile()
     compileFilesInDir("tests/init/crash", options.without("-Xfatal-warnings")).checkCompile()
     // The regression test for i12128 has some atypical classpath requirements.
@@ -243,6 +251,7 @@ class CompilationTests {
   }
 
   // parallel backend tests
+  @Ignore("Temporarily disabled due to frequent timeouts")
   @Test def parallelBackend: Unit = {
     given TestGroup = TestGroup("parallelBackend")
     val parallelism = Runtime.getRuntime().availableProcessors().min(16)

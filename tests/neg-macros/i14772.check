@@ -1,6 +1,11 @@
--- [E044] Cyclic Error: tests/neg-macros/i14772.scala:7:7 --------------------------------------------------------------
-7 |    foo(a)    // error
+-- [E044] Cyclic Error: tests/neg-macros/i14772.scala:8:7 --------------------------------------------------------------
+8 |    foo(a)    // error
   |       ^
   |       Overloaded or recursive method impl needs return type
+  |
+  |       The error occurred while trying to compute the signature of method $anonfun
+  |         which required to compute the signature of method impl
+  |
+  |        Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace.
   |
   | longer explanation available when compiling with `-explain`

@@ -28,17 +28,16 @@ object SignatureHelpProvider:
       params: OffsetParams,
       search: SymbolSearch
   ) =
-    val uri = params.uri
-    val sourceFile = SourceFile.virtual(params.uri, params.text)
-    driver.run(uri, sourceFile)
+    val uri = params.uri()
+    val sourceFile = SourceFile.virtual(params.uri().nn, params.text().nn)
+    driver.run(uri.nn, sourceFile)
 
     given ctx: Context = driver.currentCtx
 
     val pos = driver.sourcePosition(params)
-    val trees = driver.openedTrees(uri)
+    val trees = driver.openedTrees(uri.nn)
 
-    val path =
-      Interactive.pathTo(trees, pos).dropWhile(t => notCurrentApply(t, pos))
+    val path = Interactive.pathTo(trees, pos)
 
     val (paramN, callableN, alternatives) =
       Signatures.signatureHelp(path, pos.span)
@@ -70,38 +69,12 @@ object SignatureHelpProvider:
     )
   end signatureHelp
 
-  private def isValid(tree: tpd.Tree)(using Context): Boolean =
-    ctx.definitions.isTupleClass(
-      tree.symbol.owner.companionClass
-    ) || ctx.definitions.isFunctionType(tree.tpe)
-
-  private def notCurrentApply(
-      tree: tpd.Tree,
-      pos: SourcePosition
-  )(using Context): Boolean =
-    tree match
-      case unapply: tpd.UnApply =>
-        unapply.fun.span.contains(pos.span) || isValid(unapply)
-      case typeTree @ AppliedTypeTree(fun, _) =>
-        fun.span.contains(pos.span) || isValid(typeTree)
-      case typeApply @ TypeApply(fun, _) =>
-        fun.span.contains(pos.span) || isValid(typeApply)
-      case appl: tpd.GenericApply =>
-        /* find first apply that the cursor is located in arguments and not at function name
-         * for example in:
-         *   `Option(1).fold(2)(@@_ + 1)`
-         * we want to find the tree responsible for the entire location, not just `_ + 1`
-         */
-        appl.fun.span.contains(pos.span)
-
-      case _ => true
-
   private def withDocumentation(
       info: SymbolDocumentation,
       signature: Signatures.Signature,
       isJavaSymbol: Boolean
   ): Option[Signature] =
-    val allParams = info.parameters.asScala
+    val allParams = info.parameters().nn.asScala
     def updateParams(
         params: List[Signatures.Param],
         index: Int
@@ -114,11 +87,11 @@ object SignatureHelpProvider:
             case Some(paramDoc) =>
               val newName =
                 if isJavaSymbol && head.name.startsWith("x$") then
-                  paramDoc.displayName
+                  paramDoc.nn.displayName()
                 else head.name
               head.copy(
-                doc = Some(paramDoc.docstring),
-                name = newName
+                doc = Some(paramDoc.docstring.nn),
+                name = newName.nn
               ) :: rest
             case _ => head :: rest
 
@@ -132,7 +105,7 @@ object SignatureHelpProvider:
           val updated = updateParams(head, index)
           updated :: updateParamss(tail, index + head.size)
     val updatedParams = updateParamss(signature.paramss, 0)
-    Some(signature.copy(doc = Some(info.docstring), paramss = updatedParams))
+    Some(signature.copy(doc = Some(info.docstring().nn), paramss = updatedParams))
   end withDocumentation
 
   private def signatureToSignatureInformation(
@@ -174,12 +147,12 @@ object SignatureHelpProvider:
     documentation.foreach(info.setDocumentation(_))
     info
 
-  private def markupContent(content: String): l.MarkupContent =
-    if content.isEmpty then null
+  private def markupContent(content: String): l.MarkupContent | Null =
+    if content.isEmpty() then null
     else
       val markup = new l.MarkupContent
       markup.setKind("markdown")
-      markup.setValue(content.trim)
+      markup.setValue(content.trim())
       markup
 
 end SignatureHelpProvider

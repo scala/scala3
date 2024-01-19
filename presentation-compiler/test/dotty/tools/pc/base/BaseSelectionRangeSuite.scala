@@ -7,6 +7,7 @@ import scala.collection.immutable
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.{CompilerOffsetParams, EmptyCancelToken}
 import scala.meta.pc.OffsetParams
+import scala.language.unsafeNulls
 
 import dotty.tools.pc.utils.TestExtensions._
 

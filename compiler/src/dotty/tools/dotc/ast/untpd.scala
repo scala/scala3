@@ -2,15 +2,15 @@ package dotty.tools
 package dotc
 package ast
 
-import core._
-import Types._, Contexts._, Constants._, Names._, Flags._
+import core.*
+import Types.*, Contexts.*, Constants.*, Names.*, Flags.*
 import dotty.tools.dotc.typer.ProtoTypes
-import Symbols._, StdNames._, Trees._
+import Symbols.*, StdNames.*, Trees.*
 import util.{Property, SourceFile, NoSource}
 import util.Spans.Span
 import annotation.constructorOnly
 import annotation.internal.sharable
-import Decorators._
+import Decorators.*
 
 object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
@@ -42,7 +42,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** mods object name impl */
   case class ModuleDef(name: TermName, impl: Template)(implicit @constructorOnly src: SourceFile)
     extends MemberDef {
-    type ThisTree[+T <: Untyped] <: Trees.NameTree[T] with Trees.MemberDef[T] with ModuleDef
+    type ThisTree[+T <: Untyped] <: Trees.NameTree[T] & Trees.MemberDef[T] & ModuleDef
     def withName(name: Name)(using Context): ModuleDef = cpy.ModuleDef(this)(name.toTermName, impl)
   }
 
@@ -510,7 +510,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def scalaRuntimeDot(name: Name)(using SourceFile): Select = Select(scalaDot(nme.runtime), name)
   def scalaUnit(implicit src: SourceFile): Select = scalaDot(tpnme.Unit)
   def scalaAny(implicit src: SourceFile): Select = scalaDot(tpnme.Any)
-  def javaDotLangDot(name: Name)(implicit src: SourceFile): Select = Select(Select(Ident(nme.java), nme.lang), name)
 
   def captureRoot(using Context): Select =
     Select(scalaDot(nme.caps), nme.CAPTURE_ROOT)

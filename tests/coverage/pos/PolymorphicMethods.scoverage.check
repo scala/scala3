@@ -27,7 +27,7 @@ covtest.PolyMeth$
 f
 36
 41
-3
+4
 f
 DefDef
 false
@@ -44,7 +44,7 @@ covtest.PolyMeth$
 <init>
 60
 69
-4
+5
 f
 Apply
 false
@@ -61,7 +61,7 @@ covtest.PolyMeth$
 <init>
 147
 170
-6
+7
 f
 Apply
 false
@@ -78,7 +78,7 @@ covtest.PolyMeth$
 <init>
 147
 158
-6
+7
 <init>
 Apply
 false
@@ -95,7 +95,7 @@ covtest.C
 f
 187
 192
-9
+10
 f
 DefDef
 false

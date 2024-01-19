@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/foldinf-ill-kinded.scala:9:16 -------------------------------------------------
+9 |      ys.combine(x) // error
+  |      ^^^^^^^^^^^^^
+  |      Found:    Foo[List]
+  |      Required: Foo[Nothing]
+  |
+  | longer explanation available when compiling with `-explain`

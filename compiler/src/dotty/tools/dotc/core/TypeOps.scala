@@ -2,21 +2,20 @@ package dotty.tools
 package dotc
 package core
 
-import Contexts._, Types._, Symbols._, Names._, NameKinds.*, Flags._
-import SymDenotations._
-import util.Spans._
+import Contexts.*, Types.*, Symbols.*, Names.*, NameKinds.*, Flags.*
+import SymDenotations.*
+import util.Spans.*
 import util.Stats
-import Decorators._
-import StdNames._
+import Decorators.*
+import StdNames.*
 import collection.mutable
-import ast.tpd._
+import ast.tpd.*
 import reporting.trace
 import config.Printers.typr
 import config.Feature
-import transform.SymUtils.*
-import typer.ProtoTypes._
+import typer.ProtoTypes.*
 import typer.ForceDegree
-import typer.Inferencing._
+import typer.Inferencing.*
 import typer.IfBottom
 import reporting.TestingReporter
 import cc.{CapturingType, derivedCapturingType, CaptureSet, isBoxed, isBoxedCapturing}
@@ -99,7 +98,8 @@ object TypeOps:
         tp match {
           case tp: NamedType =>
             val sym = tp.symbol
-            if (sym.isStatic && !sym.maybeOwner.seesOpaques || (tp.prefix `eq` NoPrefix)) tp
+            if sym.isStatic && !sym.maybeOwner.seesOpaques || (tp.prefix `eq` NoPrefix)
+            then tp
             else derivedSelect(tp, atVariance(variance max 0)(this(tp.prefix)))
           case tp: LambdaType =>
             mapOverLambda(tp) // special cased common case
@@ -839,33 +839,34 @@ object TypeOps:
       }
     }
 
-    /** Gather GADT symbols and `ThisType`s found in `tp2`, ie. the scrutinee. */
+    /** Gather GADT symbols and singletons found in `tp2`, ie. the scrutinee. */
     object TraverseTp2 extends TypeTraverser:
-      val thisTypes = util.HashSet[ThisType]()
-      val gadtSyms  = new mutable.ListBuffer[Symbol]
+      val singletons = util.HashMap[Symbol, SingletonType]()
+      val gadtSyms = new mutable.ListBuffer[Symbol]
 
-      def traverse(tp: Type) = {
+      def traverse(tp: Type) = try
         val tpd = tp.dealias
         if tpd ne tp then traverse(tpd)
         else tp match
-          case tp: ThisType if !tp.tref.symbol.isStaticOwner && !thisTypes.contains(tp) =>
-            thisTypes += tp
+          case tp: ThisType if !singletons.contains(tp.tref.symbol) && !tp.tref.symbol.isStaticOwner =>
+            singletons(tp.tref.symbol) = tp
             traverseChildren(tp.tref)
-          case tp: TypeRef if tp.symbol.isAbstractOrParamType =>
+          case tp: TermRef if tp.symbol.is(Param) =>
+            singletons(tp.typeSymbol) = tp
+            traverseChildren(tp)
+          case tp: TypeRef if !gadtSyms.contains(tp.symbol) && tp.symbol.isAbstractOrParamType =>
             gadtSyms += tp.symbol
             traverseChildren(tp)
-            val owners = Iterator.iterate(tp.symbol)(_.maybeOwner).takeWhile(_.exists)
-            for sym <- owners do
-              // add ThisType's for the classes symbols in the ownership of `tp`
-              // for example, i16451.CanForward.scala, add `Namer.this`, as one of the owners of the type parameter `A1`
-              if sym.isClass && !sym.isAnonymousClass && !sym.isStaticOwner then
-                traverse(sym.thisType)
+            // traverse abstract type infos, to add any singletons
+            // for example, i16451.CanForward.scala, add `Namer.this`, from the info of the type parameter `A1`
+            // also, i19031.ci-reg2.scala, add `out`, from the info of the type parameter `A1` (from synthetic applyOrElse)
+            traverseChildren(tp.info)
           case _ =>
             traverseChildren(tp)
-      }
+      catch case ex: Throwable => handleRecursive("traverseTp2", tp.show, ex)
     TraverseTp2.traverse(tp2)
-    val thisTypes = TraverseTp2.thisTypes
-    val gadtSyms  = TraverseTp2.gadtSyms.toList
+    val singletons = TraverseTp2.singletons
+    val gadtSyms   = TraverseTp2.gadtSyms.toList
 
     // Prefix inference, given `p.C.this.Child`:
     //   1. return it as is, if `C.this` is found in `tp`, i.e. the scrutinee; or
@@ -875,10 +876,13 @@ object TypeOps:
     class InferPrefixMap extends TypeMap {
       var prefixTVar: Type | Null = null
       def apply(tp: Type): Type = tp match {
-        case tp @ ThisType(tref) if !tref.symbol.isStaticOwner =>
+        case tp: TermRef if singletons.contains(tp.symbol) =>
+          prefixTVar = singletons(tp.symbol) // e.g. tests/pos/i19031.ci-reg2.scala, keep out
+          prefixTVar.uncheckedNN
+        case ThisType(tref) if !tref.symbol.isStaticOwner =>
           val symbol = tref.symbol
-          if thisTypes.contains(tp) then
-            prefixTVar = tp // e.g. tests/pos/i16785.scala, keep Outer.this
+          if singletons.contains(symbol) then
+            prefixTVar = singletons(symbol) // e.g. tests/pos/i16785.scala, keep Outer.this
             prefixTVar.uncheckedNN
           else if symbol.is(Module) then
             TermRef(this(tref.prefix), symbol.sourceModule)
@@ -913,7 +917,8 @@ object TypeOps:
     }
 
     def instantiate(): Type = {
-      for tp <- mixins.reverseIterator do protoTp1 <:< tp
+      for tp <- mixins.reverseIterator do
+        protoTp1 <:< tp
       maximizeType(protoTp1, NoSpan)
       wildApprox(protoTp1)
     }

@@ -1,0 +1,345 @@
+-- [E192] Compatibility Error: tests/neg/inline-unstable-accessors.scala:10:6 ------------------------------------------
+10 |      valBinaryAPI1 + // error
+   |      ^^^^^^^^^^^^^
+   |      Unstable inline accessor foo$A$$inline$valBinaryAPI1 was generated in class A.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Access to non-public value valBinaryAPI1 causes the automatic generation of an accessor.
+   | This accessor is not stable, its name may change or it may disappear
+   | if not needed in a future version.
+   |
+   | To make sure that the inlined code is binary compatible you must make sure that
+   | value valBinaryAPI1 is public in the binary API.
+   |  * Option 1: Annotate value valBinaryAPI1 with @publicInBinary
+   |  * Option 2: Make value valBinaryAPI1 public
+   |
+   | This change may break binary compatibility if a previous version of this
+   | library was compiled with generated accessors. Binary compatibility should
+   | be checked using MiMa. If binary compatibility is broken, you should add the
+   | old accessor explicitly in the source code. The following code should be
+   | added to class A:
+   |   @publicInBinary private[A] final def foo$A$$inline$valBinaryAPI1: Int = this.valBinaryAPI1
+    --------------------------------------------------------------------------------------------------------------------
+-- [E192] Compatibility Error: tests/neg/inline-unstable-accessors.scala:11:6 ------------------------------------------
+11 |      valBinaryAPI2 + // error
+   |      ^^^^^^^^^^^^^
+   |      Unstable inline accessor foo$A$$inline$valBinaryAPI2 was generated in class A.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Access to non-public value valBinaryAPI2 causes the automatic generation of an accessor.
+   | This accessor is not stable, its name may change or it may disappear
+   | if not needed in a future version.
+   |
+   | To make sure that the inlined code is binary compatible you must make sure that
+   | value valBinaryAPI2 is public in the binary API.
+   |  * Option 1: Annotate value valBinaryAPI2 with @publicInBinary
+   |  * Option 2: Make value valBinaryAPI2 public
+   |
+   | This change may break binary compatibility if a previous version of this
+   | library was compiled with generated accessors. Binary compatibility should
+   | be checked using MiMa. If binary compatibility is broken, you should add the
+   | old accessor explicitly in the source code. The following code should be
+   | added to class A:
+   |   @publicInBinary private[A] def foo$A$$inline$valBinaryAPI2: Int = this.valBinaryAPI2
+    --------------------------------------------------------------------------------------------------------------------
+-- [E192] Compatibility Error: tests/neg/inline-unstable-accessors.scala:15:6 ------------------------------------------
+15 |    a.valBinaryAPI2 + // error
+   |    ^^^^^^^^^^^^^^^
+   |    Unstable inline accessor inline$valBinaryAPI2$i1 was generated in class B.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Access to non-public value valBinaryAPI2 causes the automatic generation of an accessor.
+   | This accessor is not stable, its name may change or it may disappear
+   | if not needed in a future version.
+   |
+   | To make sure that the inlined code is binary compatible you must make sure that
+   | value valBinaryAPI2 is public in the binary API.
+   |  * Option 1: Annotate value valBinaryAPI2 with @publicInBinary
+   |  * Option 2: Make value valBinaryAPI2 public
+   |
+   | This change may break binary compatibility if a previous version of this
+   | library was compiled with generated accessors. Binary compatibility should
+   | be checked using MiMa. If binary compatibility is broken, you should add the
+   | old accessor explicitly in the source code. The following code should be
+   | added to class B:
+   |   @publicInBinary private[B] def inline$valBinaryAPI2$i1(x$0: foo.A): Int = x$0.valBinaryAPI2
+    --------------------------------------------------------------------------------------------------------------------
+-- [E192] Compatibility Error: tests/neg/inline-unstable-accessors.scala:23:6 ------------------------------------------
+23 |      valBinaryAPI1 + // error
+   |      ^^^^^^^^^^^^^
+   |      Unstable inline accessor inline$valBinaryAPI1 was generated in class C.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Access to non-public value valBinaryAPI1 causes the automatic generation of an accessor.
+   | This accessor is not stable, its name may change or it may disappear
+   | if not needed in a future version.
+   |
+   | To make sure that the inlined code is binary compatible you must make sure that
+   | value valBinaryAPI1 is public in the binary API.
+   |  * Option 1: Annotate value valBinaryAPI1 with @publicInBinary
+   |  * Option 2: Make value valBinaryAPI1 public
+   |
+   | This change may break binary compatibility if a previous version of this
+   | library was compiled with generated accessors. Binary compatibility should
+   | be checked using MiMa. If binary compatibility is broken, you should add the
+   | old accessor explicitly in the source code. The following code should be
+   | added to class C:
+   |   @publicInBinary private[C] final def inline$valBinaryAPI1: Int = this.valBinaryAPI1
+    --------------------------------------------------------------------------------------------------------------------
+-- [E192] Compatibility Error: tests/neg/inline-unstable-accessors.scala:24:6 ------------------------------------------
+24 |      valBinaryAPI2 + // error
+   |      ^^^^^^^^^^^^^
+   |      Unstable inline accessor inline$valBinaryAPI2 was generated in class C.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Access to non-public value valBinaryAPI2 causes the automatic generation of an accessor.
+   | This accessor is not stable, its name may change or it may disappear
+   | if not needed in a future version.
+   |
+   | To make sure that the inlined code is binary compatible you must make sure that
+   | value valBinaryAPI2 is public in the binary API.
+   |  * Option 1: Annotate value valBinaryAPI2 with @publicInBinary
+   |  * Option 2: Make value valBinaryAPI2 public
+   |
+   | This change may break binary compatibility if a previous version of this
+   | library was compiled with generated accessors. Binary compatibility should
+   | be checked using MiMa. If binary compatibility is broken, you should add the
+   | old accessor explicitly in the source code. The following code should be
+   | added to class C:
+   |   @publicInBinary private[C] def inline$valBinaryAPI2: Int = this.valBinaryAPI2
+    --------------------------------------------------------------------------------------------------------------------
+-- [E192] Compatibility Error: tests/neg/inline-unstable-accessors.scala:28:6 ------------------------------------------
+28 |    c.valBinaryAPI2 + // error
+   |    ^^^^^^^^^^^^^^^
+   |    Unstable inline accessor inline$valBinaryAPI2$i2 was generated in class D.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Access to non-public value valBinaryAPI2 causes the automatic generation of an accessor.
+   | This accessor is not stable, its name may change or it may disappear
+   | if not needed in a future version.
+   |
+   | To make sure that the inlined code is binary compatible you must make sure that
+   | value valBinaryAPI2 is public in the binary API.
+   |  * Option 1: Annotate value valBinaryAPI2 with @publicInBinary
+   |  * Option 2: Make value valBinaryAPI2 public
+   |
+   | This change may break binary compatibility if a previous version of this
+   | library was compiled with generated accessors. Binary compatibility should
+   | be checked using MiMa. If binary compatibility is broken, you should add the
+   | old accessor explicitly in the source code. The following code should be
+   | added to class D:
+   |   @publicInBinary private[D] def inline$valBinaryAPI2$i2(x$0: foo.C): Int = x$0.valBinaryAPI2
+    --------------------------------------------------------------------------------------------------------------------
+-- [E192] Compatibility Error: tests/neg/inline-unstable-accessors.scala:36:6 ------------------------------------------
+36 |      valBinaryAPI1 + // error
+   |      ^^^^^^^^^^^^^
+   |      Unstable inline accessor inline$valBinaryAPI1 was generated in object E.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Access to non-public value valBinaryAPI1 causes the automatic generation of an accessor.
+   | This accessor is not stable, its name may change or it may disappear
+   | if not needed in a future version.
+   |
+   | To make sure that the inlined code is binary compatible you must make sure that
+   | value valBinaryAPI1 is public in the binary API.
+   |  * Option 1: Annotate value valBinaryAPI1 with @publicInBinary
+   |  * Option 2: Make value valBinaryAPI1 public
+   |
+   | This change may break binary compatibility if a previous version of this
+   | library was compiled with generated accessors. Binary compatibility should
+   | be checked using MiMa. If binary compatibility is broken, you should add the
+   | old accessor explicitly in the source code. The following code should be
+   | added to object E:
+   |   @publicInBinary private[E] final def inline$valBinaryAPI1: Int = foo.E.valBinaryAPI1
+    --------------------------------------------------------------------------------------------------------------------
+-- [E192] Compatibility Error: tests/neg/inline-unstable-accessors.scala:37:6 ------------------------------------------
+37 |      valBinaryAPI2 + // error
+   |      ^^^^^^^^^^^^^
+   |      Unstable inline accessor inline$valBinaryAPI2 was generated in object E.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Access to non-public value valBinaryAPI2 causes the automatic generation of an accessor.
+   | This accessor is not stable, its name may change or it may disappear
+   | if not needed in a future version.
+   |
+   | To make sure that the inlined code is binary compatible you must make sure that
+   | value valBinaryAPI2 is public in the binary API.
+   |  * Option 1: Annotate value valBinaryAPI2 with @publicInBinary
+   |  * Option 2: Make value valBinaryAPI2 public
+   |
+   | This change may break binary compatibility if a previous version of this
+   | library was compiled with generated accessors. Binary compatibility should
+   | be checked using MiMa. If binary compatibility is broken, you should add the
+   | old accessor explicitly in the source code. The following code should be
+   | added to object E:
+   |   @publicInBinary private[E] def inline$valBinaryAPI2: Int = foo.E.valBinaryAPI2
+    --------------------------------------------------------------------------------------------------------------------
+-- [E192] Compatibility Error: tests/neg/inline-unstable-accessors.scala:41:6 ------------------------------------------
+41 |    E.valBinaryAPI2 + // error
+   |    ^^^^^^^^^^^^^^^
+   |    Unstable inline accessor inline$valBinaryAPI2$i3 was generated in object F.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Access to non-public value valBinaryAPI2 causes the automatic generation of an accessor.
+   | This accessor is not stable, its name may change or it may disappear
+   | if not needed in a future version.
+   |
+   | To make sure that the inlined code is binary compatible you must make sure that
+   | value valBinaryAPI2 is public in the binary API.
+   |  * Option 1: Annotate value valBinaryAPI2 with @publicInBinary
+   |  * Option 2: Make value valBinaryAPI2 public
+   |
+   | This change may break binary compatibility if a previous version of this
+   | library was compiled with generated accessors. Binary compatibility should
+   | be checked using MiMa. If binary compatibility is broken, you should add the
+   | old accessor explicitly in the source code. The following code should be
+   | added to object F:
+   |   @publicInBinary private[F] def inline$valBinaryAPI2$i3(x$0: object foo.E): Int = x$0.valBinaryAPI2
+    --------------------------------------------------------------------------------------------------------------------
+-- [E192] Compatibility Error: tests/neg/inline-unstable-accessors.scala:49:6 ------------------------------------------
+49 |      valBinaryAPI1 + // error
+   |      ^^^^^^^^^^^^^
+   |      Unstable inline accessor inline$valBinaryAPI1 was generated in package G.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Access to non-public value valBinaryAPI1 causes the automatic generation of an accessor.
+   | This accessor is not stable, its name may change or it may disappear
+   | if not needed in a future version.
+   |
+   | To make sure that the inlined code is binary compatible you must make sure that
+   | value valBinaryAPI1 is public in the binary API.
+   |  * Option 1: Annotate value valBinaryAPI1 with @publicInBinary
+   |  * Option 2: Make value valBinaryAPI1 public
+   |
+   | This change may break binary compatibility if a previous version of this
+   | library was compiled with generated accessors. Binary compatibility should
+   | be checked using MiMa. If binary compatibility is broken, you should add the
+   | old accessor explicitly in the source code. The following code should be
+   | added to package G:
+   |   @publicInBinary private[G] def inline$valBinaryAPI1: Int = foo.G.valBinaryAPI1
+    --------------------------------------------------------------------------------------------------------------------
+-- [E192] Compatibility Error: tests/neg/inline-unstable-accessors.scala:50:6 ------------------------------------------
+50 |      valBinaryAPI2 + // error
+   |      ^^^^^^^^^^^^^
+   |      Unstable inline accessor inline$valBinaryAPI2 was generated in package G.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Access to non-public value valBinaryAPI2 causes the automatic generation of an accessor.
+   | This accessor is not stable, its name may change or it may disappear
+   | if not needed in a future version.
+   |
+   | To make sure that the inlined code is binary compatible you must make sure that
+   | value valBinaryAPI2 is public in the binary API.
+   |  * Option 1: Annotate value valBinaryAPI2 with @publicInBinary
+   |  * Option 2: Make value valBinaryAPI2 public
+   |
+   | This change may break binary compatibility if a previous version of this
+   | library was compiled with generated accessors. Binary compatibility should
+   | be checked using MiMa. If binary compatibility is broken, you should add the
+   | old accessor explicitly in the source code. The following code should be
+   | added to package G:
+   |   @publicInBinary private[G] def inline$valBinaryAPI2: Int = foo.G.valBinaryAPI2
+    --------------------------------------------------------------------------------------------------------------------
+-- [E192] Compatibility Error: tests/neg/inline-unstable-accessors.scala:54:6 ------------------------------------------
+54 |    G.valBinaryAPI2 + // error
+   |    ^^^^^^^^^^^^^^^
+   |    Unstable inline accessor inline$valBinaryAPI2$i4 was generated in package H.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Access to non-public value valBinaryAPI2 causes the automatic generation of an accessor.
+   | This accessor is not stable, its name may change or it may disappear
+   | if not needed in a future version.
+   |
+   | To make sure that the inlined code is binary compatible you must make sure that
+   | value valBinaryAPI2 is public in the binary API.
+   |  * Option 1: Annotate value valBinaryAPI2 with @publicInBinary
+   |  * Option 2: Make value valBinaryAPI2 public
+   |
+   | This change may break binary compatibility if a previous version of this
+   | library was compiled with generated accessors. Binary compatibility should
+   | be checked using MiMa. If binary compatibility is broken, you should add the
+   | old accessor explicitly in the source code. The following code should be
+   | added to package H:
+   |   @publicInBinary private[H] def inline$valBinaryAPI2$i4(x$0: foo.G): Int = x$0.valBinaryAPI2
+    --------------------------------------------------------------------------------------------------------------------
+-- [E192] Compatibility Error: tests/neg/inline-unstable-accessors.scala:62:6 ------------------------------------------
+62 |      valBinaryAPI1 + // error
+   |      ^^^^^^^^^^^^^
+   |      Unstable inline accessor inline$valBinaryAPI1 was generated in package I.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Access to non-public value valBinaryAPI1 causes the automatic generation of an accessor.
+   | This accessor is not stable, its name may change or it may disappear
+   | if not needed in a future version.
+   |
+   | To make sure that the inlined code is binary compatible you must make sure that
+   | value valBinaryAPI1 is public in the binary API.
+   |  * Option 1: Annotate value valBinaryAPI1 with @publicInBinary
+   |  * Option 2: Make value valBinaryAPI1 public
+   |
+   | This change may break binary compatibility if a previous version of this
+   | library was compiled with generated accessors. Binary compatibility should
+   | be checked using MiMa. If binary compatibility is broken, you should add the
+   | old accessor explicitly in the source code. The following code should be
+   | added to package I:
+   |   @publicInBinary private[I] def inline$valBinaryAPI1: Int = foo.I.valBinaryAPI1
+    --------------------------------------------------------------------------------------------------------------------
+-- [E192] Compatibility Error: tests/neg/inline-unstable-accessors.scala:63:6 ------------------------------------------
+63 |      valBinaryAPI2 + // error
+   |      ^^^^^^^^^^^^^
+   |      Unstable inline accessor inline$valBinaryAPI2 was generated in package I.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Access to non-public value valBinaryAPI2 causes the automatic generation of an accessor.
+   | This accessor is not stable, its name may change or it may disappear
+   | if not needed in a future version.
+   |
+   | To make sure that the inlined code is binary compatible you must make sure that
+   | value valBinaryAPI2 is public in the binary API.
+   |  * Option 1: Annotate value valBinaryAPI2 with @publicInBinary
+   |  * Option 2: Make value valBinaryAPI2 public
+   |
+   | This change may break binary compatibility if a previous version of this
+   | library was compiled with generated accessors. Binary compatibility should
+   | be checked using MiMa. If binary compatibility is broken, you should add the
+   | old accessor explicitly in the source code. The following code should be
+   | added to package I:
+   |   @publicInBinary private[I] def inline$valBinaryAPI2: Int = foo.I.valBinaryAPI2
+    --------------------------------------------------------------------------------------------------------------------
+-- [E192] Compatibility Error: tests/neg/inline-unstable-accessors.scala:67:6 ------------------------------------------
+67 |    I.valBinaryAPI2 + // error
+   |    ^^^^^^^^^^^^^^^
+   |    Unstable inline accessor inline$valBinaryAPI2$i5 was generated in package J.
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Access to non-public value valBinaryAPI2 causes the automatic generation of an accessor.
+   | This accessor is not stable, its name may change or it may disappear
+   | if not needed in a future version.
+   |
+   | To make sure that the inlined code is binary compatible you must make sure that
+   | value valBinaryAPI2 is public in the binary API.
+   |  * Option 1: Annotate value valBinaryAPI2 with @publicInBinary
+   |  * Option 2: Make value valBinaryAPI2 public
+   |
+   | This change may break binary compatibility if a previous version of this
+   | library was compiled with generated accessors. Binary compatibility should
+   | be checked using MiMa. If binary compatibility is broken, you should add the
+   | old accessor explicitly in the source code. The following code should be
+   | added to package J:
+   |   @publicInBinary private[J] def inline$valBinaryAPI2$i5(x$0: foo.I): Int = x$0.valBinaryAPI2
+    --------------------------------------------------------------------------------------------------------------------

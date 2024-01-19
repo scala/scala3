@@ -27,7 +27,7 @@ Object
 Test
 163
 201
-4
+5
 println
 Apply
 false
@@ -44,7 +44,7 @@ Object
 Test
 171
 200
-4
+5
 map
 Apply
 false
@@ -61,7 +61,7 @@ Object
 Test
 171
 182
-4
+5
 apply
 Apply
 false
@@ -75,27 +75,10 @@ type-apply/test.scala
 test$package$
 Object
 <empty>.test$package$
-Test
-171
-175
-4
-List
-Ident
-false
-0
-false
-List
-
-4
-type-apply/test.scala
-<empty>
-test$package$
-Object
-<empty>.test$package$
 $anonfun
 192
 199
-4
+5
 apply
 Apply
 false
@@ -103,24 +86,7 @@ false
 false
 List(a)
 
-5
-type-apply/test.scala
-<empty>
-test$package$
-Object
-<empty>.test$package$
-$anonfun
-192
-196
 4
-List
-Ident
-false
-0
-false
-List
-
-6
 type-apply/test.scala
 <empty>
 test$package$
@@ -129,7 +95,7 @@ Object
 Test
 0
 14
-1
+2
 Test
 DefDef
 false

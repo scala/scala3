@@ -35,14 +35,14 @@ object Test {
     // case _: Or => true
   }
 
-  def foo4a(x: Expr[_]) = x match {
+  def foo4a(x: Expr[?]) = x match {
     case _: IntLit => true
     case _: Sum => true
     case _: BooleanLit => true
     case _: Or => true
   }
 
-  def foo4b(x: Expr[_]) = x match {
+  def foo4b(x: Expr[?]) = x match {
     case _: Sum => true
     case _: Or => true
   }

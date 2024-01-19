@@ -125,10 +125,11 @@ Below are commonly used ones:
 Depending on what your PR is addressing, sometimes it doesn't make sense to run
 parts of the CI that usually ony runs on nightly builds.
 
-|---------------------------|----------------------------------------------------|
-| `[test_java8]`            | Execute unit tests on Java 8                       |
-| `[test_windows_full]`     | Execute unit tests on Windows                      |
-| `[test_non_bootstrapped]` | Execute unit tests using non-bootstrapped compiler |
+|-------------------------------|---------------------------------------------------------------------------|
+| `[test_java8]`                | Execute unit tests on Java 8                                              |
+| `[test_windows_full]`         | Execute unit tests on Windows                                             |
+| `[test_non_bootstrapped]`     | Execute unit tests using non-bootstrapped compiler                        |
+| `[test_scala2_library_tasty]` | Execute unit tests using bootstrapped-compiler with Scala 2 library TASTy |
 
 ### 7: Create your PR!
 

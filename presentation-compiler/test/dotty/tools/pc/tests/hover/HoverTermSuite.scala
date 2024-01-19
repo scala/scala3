@@ -412,3 +412,228 @@ class HoverTermSuite extends BaseHoverSuite:
          |""".stripMargin,
       "def this(): tailrec".hover
     )
+
+  @Test def `i5630` =
+    check(
+      """class MyIntOut(val value: Int)
+        |object MyIntOut:
+        |  extension (i: MyIntOut) def uneven = i.value % 2 == 1
+        |
+        |object Test:
+        |  val a = MyIntOut(1).un@@even
+        |""".stripMargin,
+      """extension (i: MyIntOut) def uneven: Boolean
+        |""".stripMargin.hover
+    )
+
+  @Test def `i5921` =
+    check(
+      """object Logarithms:
+        |  trait Logarithm
+        |  extension [K](vmap: Logarithm)
+        |    def multiply(k: Logarithm): Logarithm = ???
+        |
+        |object Test:
+        |  val in: Logarithms.Logarithm = ???
+        |  in.multi@@ply(in)
+        |""".stripMargin,
+      "extension [K](vmap: Logarithm) def multiply(k: Logarithm): Logarithm".hover
+    )
+
+  @Test def `i5976` =
+    check(
+      """sealed trait ExtensionProvider {
+        |  extension [A] (self: A) {
+        |    def typeArg[B <: A]: B
+        |    def noTypeArg: A
+        |  }
+        |}
+        |
+        |object Repro {
+        |  def usage[A](f: ExtensionProvider ?=> A => Any): Any = ???
+        |
+        |  usage[Option[Int]](_.typeArg[Some[Int]].value.noTyp@@eArg.typeArg[Int])
+        |}
+        |""".stripMargin,
+      """**Expression type**:
+        |```scala
+        |Int
+        |```
+        |**Symbol signature**:
+        |```scala
+        |extension [A](self: A) def noTypeArg: A
+        |```
+        |""".stripMargin
+    )
+
+  @Test def `i5976-1` =
+    check(
+      """sealed trait ExtensionProvider {
+        |  extension [A] (self: A) {
+        |    def typeArg[B <: A]: B
+        |    def noTypeArg: A
+        |  }
+        |}
+        |
+        |object Repro {
+        |  def usage[A](f: ExtensionProvider ?=> A => Any): Any = ???
+        |
+        |  usage[Option[Int]](_.type@@Arg[Some[Int]].value.noTypeArg.typeArg[Int])
+        |}
+        |""".stripMargin,
+      """**Expression type**:
+        |```scala
+        |Some[Int]
+        |```
+        |**Symbol signature**:
+        |```scala
+        |extension [A](self: A) def typeArg[B <: A]: B
+        |```
+        |""".stripMargin
+    )
+
+  @Test def `i5977` =
+    check(
+      """sealed trait ExtensionProvider {
+        |  extension [A] (self: A) {
+        |    def typeArg[B <: A]: B
+        |    def inferredTypeArg[C](value: C): C
+        |  }
+        |}
+        |
+        |object Repro {
+        |  def usage[A](f: ExtensionProvider ?=> A => Any): Any = ???
+        |
+        |  usage[Option[Int]](_.infer@@redTypeArg("str"))
+        |}
+        |""".stripMargin,
+      """**Expression type**:
+        |```scala
+        |String
+        |```
+        |**Symbol signature**:
+        |```scala
+        |extension [A](self: A) def inferredTypeArg[C](value: C): C
+        |```
+        |""".stripMargin
+    )
+
+  @Test def `i5977-1` =
+    check(
+      """sealed trait ExtensionProvider {
+        |  extension [A] (self: A) {
+        |    def typeArg[B <: A]: B
+        |    def inferredTypeArg[C](value: C): C
+        |  }
+        |}
+        |
+        |object Repro {
+        |  def usage[A](f: ExtensionProvider ?=> A => Any): Any = ???
+        |
+        |  usage[Option[Int]](_.infer@@redTypeArg[String]("str"))
+        |}
+        |""".stripMargin,
+      """**Expression type**:
+        |```scala
+        |String
+        |```
+        |**Symbol signature**:
+        |```scala
+        |extension [A](self: A) def inferredTypeArg[C](value: C): C
+        |```
+        |""".stripMargin
+    )
+
+  @Test def `i5977-2` =
+    check(
+      """sealed trait ExtensionProvider {
+        |  extension [A] (self: A) {
+        |    def typeArg[B <: A]: B
+        |    def inferredTypeArg[C](value: C): C
+        |  }
+        |}
+        |
+        |object Repro {
+        |  def usage[A](f: ExtensionProvider ?=> A => Any): Any = ???
+        |
+        |  usage[Option[Int]](_.typeArg[Some[Int]].value.infer@@redTypeArg("str"))
+        |}
+        |""".stripMargin,
+      """**Expression type**:
+        |```scala
+        |String
+        |```
+        |**Symbol signature**:
+        |```scala
+        |extension [A](self: A) def inferredTypeArg[C](value: C): C
+        |```
+        |""".stripMargin
+    )
+
+  @Test def `i5977-3` =
+    check(
+      """sealed trait ExtensionProvider {
+        |  extension [A] (self: A) {
+        |    def typeArg[B <: A]: B
+        |    def inferredTypeArg[C](value: C): C
+        |  }
+        |}
+        |
+        |object Repro {
+        |  def usage[A](f: ExtensionProvider ?=> A => Any): Any = ???
+        |
+        |  usage[Option[Int]](_.typeArg[Some[Int]].value.infer@@redTypeArg[String]("str"))
+        |}
+        |""".stripMargin,
+      """**Expression type**:
+        |```scala
+        |String
+        |```
+        |**Symbol signature**:
+        |```scala
+        |extension [A](self: A) def inferredTypeArg[C](value: C): C
+        |```
+        |""".stripMargin
+    )
+
+  @Test def `import-rename` =
+    check(
+      """
+        |import scala.collection.{AbstractMap => AB}
+        |import scala.collection.{Set => S}
+        |
+        |object Main {
+        |  def test(): AB[Int, String] = ???
+        |  <<val t@@t = test()>>
+        |}
+        |""".stripMargin,
+      """
+        |```scala
+        |type AB = AbstractMap
+        |```
+        |
+        |```scala
+        |val tt: AB[Int, String]
+        |```""".stripMargin,
+    )
+
+  @Test def `import-rename2` =
+    check(
+      """
+        |import scala.collection.{AbstractMap => AB}
+        |import scala.collection.{Set => S}
+        |
+        |object Main {
+        |  <<def te@@st(d: S[Int], f: S[Char]): AB[Int, String] = ???>>
+        |}
+        |""".stripMargin,
+      """
+        |```scala
+        |type S = Set
+        |type AB = AbstractMap
+        |```
+        |
+        |```scala
+        |def test(d: S[Int], f: S[Char]): AB[Int, String]
+        |```""".stripMargin,
+  )

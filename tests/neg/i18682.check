@@ -1,0 +1,50 @@
+-- [E006] Not Found Error: tests/neg/i18682.scala:3:8 ------------------------------------------------------------------
+3 |val _ = Fop(1)  // error
+  |        ^^^
+  |        Not found: Fop - did you mean Foo?
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i18682.scala:4:12 -----------------------------------------------------------------
+4 |val _ = new Fooo(2) // error
+  |            ^^^^
+  |            Not found: type Fooo - did you mean Foo?
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i18682.scala:6:8 ------------------------------------------------------------------
+6 |val _ = hellx // error
+  |        ^^^^^
+  |        Not found: hellx - did you mean hello?
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E008] Not Found Error: tests/neg/i18682.scala:16:12 ----------------------------------------------------------------
+16 |val _ = bar.Bap // error, App does not show as hint, too far away
+   |        ^^^^^^^
+   |        value Bap is not a member of object Bar
+-- [E008] Not Found Error: tests/neg/i18682.scala:17:12 ----------------------------------------------------------------
+17 |val _ = bar.Bap() // error
+   |        ^^^^^^^
+   |        value Bap is not a member of object Bar - did you mean bar.Baz?
+-- [E006] Not Found Error: tests/neg/i18682.scala:19:8 -----------------------------------------------------------------
+19 |val _ = error // error, java.lang.Error does not show as hint, since it is not a value
+   |        ^^^^^
+   |        Not found: error
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E008] Not Found Error: tests/neg/i18682.scala:22:50 ----------------------------------------------------------------
+22 |val _ = "123".view.reverse.padTo(5, '0').iterator.reverse // error, no hint since `reversed` is not accessible
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        value reverse is not a member of Iterator[Char]
+-- [E006] Not Found Error: tests/neg/i18682.scala:27:8 -----------------------------------------------------------------
+27 |val _ = pool // error
+   |        ^^^^
+   |        Not found: pool - did you mean cool? or perhaps wool?
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E008] Not Found Error: tests/neg/i18682.scala:29:12 ----------------------------------------------------------------
+29 |val _ = bar.poodle // error
+   |        ^^^^^^^^^^
+   |        value poodle is not a member of object Bar - did you mean bar.pool?
+-- [E008] Not Found Error: tests/neg/i18682.scala:31:12 ----------------------------------------------------------------
+31 |val _ = bar.ool // error
+   |        ^^^^^^^
+   |        value ool is not a member of object Bar - did you mean bar.cool? or perhaps bar.pool or bar.wool?

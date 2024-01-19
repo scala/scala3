@@ -843,6 +843,17 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |""".stripMargin,
     )
 
+  @Test def `named-arg-backtick` =
+    check(
+        """|object Main {
+           |  def foo(<<`type`>>: String): String = <<`type`>>
+           |  val x = foo(
+           |    <<`ty@@pe`>> = "abc"
+           |  )
+           |}
+           |""".stripMargin,
+    )
+
   @Test def `enum1` =
     check(
       """|enum FooEnum:
@@ -1174,3 +1185,282 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |val a = MyIntOut(1) <<+@@+>> 3
          |""".stripMargin,
     )
+
+  @Test def `constructor` =
+    check(
+      """
+        |object Main {
+        |  class <<A@@bc>>[T](abc: T)
+        |  val x = new <<Abc>>(123)
+        |}""".stripMargin
+    )
+
+  @Test def `constructor1` =
+    check(
+      """
+        |object Main {
+        |  case class <<Abc>>[T](abc: T)
+        |  val x = <<A@@bc>>(123)
+        |}""".stripMargin
+    )
+
+  @Test def `constructor2` =
+    check(
+      """
+        |object Main {
+        |  class <<A@@bc>>[T](abc: T)
+        |  object <<Abc>>
+        |  val x = new <<Abc>>(123)
+        |}""".stripMargin
+    )
+
+  @Test def `constructor3` =
+    check(
+      """
+        |object Main {
+        |  class <<Abc>>[T](abc: T)
+        |  object <<Abc>>
+        |  val x = new <<A@@bc>>(123)
+        |}""".stripMargin
+    )
+
+  @Test def `constructor4` =
+    check(
+      """
+        |object Main {
+        |  class <<Abc>>[T](abc: T)
+        |  object <<Ab@@c>>
+        |  val x = new <<Abc>>(123)
+        |}""".stripMargin
+    )
+
+  @Test def `constructor5` =
+    check(
+      """
+        |object Main {
+        |  class <<Abc>>[T](abc: T)
+        |  object <<Abc>> {
+        |    def apply(abc: Int, bde: Int) = new <<Abc>>(abc + bde)
+        |  }
+        |  val x = <<Ab@@c>>(123, 456)
+        |}""".stripMargin
+    )
+
+  @Test def `constructor6` =
+    check(
+      """
+        |class <<Abc>>[T](a: T)
+        |object O {
+        |  def foo(a: Int) = new <<Abc>>[Int](a)
+        |  val x = <<Ab@@c>>[Int](2)
+        |}""".stripMargin
+    )
+
+  @Test def `constructor7` =
+    check(
+      """
+        |object Bar {
+        |class <<Abc>>[T](a: T)
+        |}
+        |
+        |object O {
+        |  val x = new Bar.<<Ab@@c>>(2)
+        |}""".stripMargin
+    )
+
+  @Test def `constructor8` =
+    check(
+      """
+        |object Bar {
+        |class <<Abc>>[T](a: T)
+        |}
+        |
+        |object O {
+        |  val x = Bar.<<Ab@@c>>[Int](2)
+        |}""".stripMargin
+    )
+
+  @Test def `i5630` =
+    check(
+      """|class MyIntOut(val value: Int)
+         |object MyIntOut:
+         |  extension (i: MyIntOut) def <<uneven>> = i.value % 2 == 1
+         |
+         |val a = MyIntOut(1)
+         |val m = a.<<un@@even>>
+         |""".stripMargin
+    )
+
+  @Test def `i5630-2` =
+    check(
+      """|class MyIntOut(val value: Int)
+          |object MyIntOut:
+          |  extension (i: MyIntOut) def <<uneven>>(u: Int) = i.value % 2 == 1
+          |
+          |val a = MyIntOut(1).<<un@@even>>(3)
+          |""".stripMargin
+    )
+
+  @Test def `i5630-infix` =
+    check(
+      """|class MyIntOut(val value: Int)
+          |object MyIntOut:
+          |  extension (i: MyIntOut) def <<++>>(u: Int) = i.value + u
+          |
+          |val a = MyIntOut(1) <<+@@+>> 3
+          |""".stripMargin
+    )
+
+  @Test def `i5921-1` =
+    check(
+      """|object Logarithms:
+          |  opaque type Logarithm = Double
+          |  extension [K](vmap: Logarithm)
+          |    def <<multiply>>(k: Logarithm): Logarithm = ???
+          |
+          |object Test:
+          |  val in: Logarithms.Logarithm = ???
+          |  in.<<multi@@ply>>(in)
+          |""".stripMargin
+    )
+
+  @Test def `i5921-2` =
+    check(
+      """|object Logarithms:
+          |  opaque type Logarithm = Double
+          |  extension [K](vmap: Logarithm)
+          |    def <<mu@@ltiply>>(k: Logarithm): Logarithm = ???
+          |
+          |object Test:
+          |  val in: Logarithms.Logarithm = ???
+          |  in.<<multiply>>(in)
+          |""".stripMargin
+    )
+
+  @Test def `i5921-3` =
+    check(
+      """|object Logarithms:
+          |  opaque type Logarithm = Double
+          |  extension [K](vmap: Logarithm)
+          |    def <<multiply>>(k: Logarithm): Logarithm = ???
+          |  (2.0).<<mult@@iply>>(1.0)
+          |""".stripMargin
+    )
+
+  @Test def `i5921-4` =
+    check(
+      """|object Logarithms:
+          |  opaque type Logarithm = Double
+          |  extension [K](vmap: Logarithm)
+          |    def <<mult@@iply>>(k: Logarithm): Logarithm = ???
+          |  (2.0).<<multiply>>(1.0)
+          |""".stripMargin
+    )
+
+  @Test def `i5977` =
+    check(
+      """
+        |sealed trait ExtensionProvider {
+        |  extension [A] (self: A) {
+        |    def typeArg[B <: A]: B
+        |    def <<inferredTypeArg>>[C](value: C): C
+        |  }
+        |}
+        |
+        |object Repro {
+        |  def usage[A](f: ExtensionProvider ?=> A => Any): Any = ???
+        |
+        |  usage[Int](_.<<infe@@rredTypeArg>>("str"))
+        |  usage[Int](_.<<inferredTypeArg>>[String]("str"))
+        |  usage[Option[Int]](_.typeArg[Some[Int]].value.<<inferredTypeArg>>("str"))
+        |  usage[Option[Int]](_.typeArg[Some[Int]].value.<<inferredTypeArg>>[String]("str"))
+        |}
+        |""".stripMargin
+    )
+
+  @Test def `i5977-1` =
+    check(
+      """
+        |sealed trait ExtensionProvider {
+        |  extension [A] (self: A) {
+        |    def typeArg[B <: A]: B
+        |    def <<inferredTypeArg>>[C](value: C): C
+        |  }
+        |}
+        |
+        |object Repro {
+        |  def usage[A](f: ExtensionProvider ?=> A => Any): Any = ???
+        |
+        |  usage[Int](_.<<inferredTypeArg>>("str"))
+        |  usage[Int](_.<<infe@@rredTypeArg>>[String]("str"))
+        |  usage[Option[Int]](_.typeArg[Some[Int]].value.<<inferredTypeArg>>("str"))
+        |  usage[Option[Int]](_.typeArg[Some[Int]].value.<<inferredTypeArg>>[String]("str"))
+        |}
+        |""".stripMargin
+    )
+
+  @Test def `i5977-2` =
+    check(
+      """
+        |sealed trait ExtensionProvider {
+        |  extension [A] (self: A) {
+        |    def typeArg[B <: A]: B
+        |    def <<inferredTypeArg>>[C](value: C): C
+        |  }
+        |}
+        |
+        |object Repro {
+        |  def usage[A](f: ExtensionProvider ?=> A => Any): Any = ???
+        |
+        |  usage[Int](_.<<inferredTypeArg>>("str"))
+        |  usage[Int](_.<<inferredTypeArg>>[String]("str"))
+        |  usage[Option[Int]](_.typeArg[Some[Int]].value.<<inferr@@edTypeArg>>("str"))
+        |  usage[Option[Int]](_.typeArg[Some[Int]].value.<<inferredTypeArg>>[String]("str"))
+        |}
+        |""".stripMargin
+    )
+
+  @Test def `i5977-3` =
+    check(
+      """
+        |sealed trait ExtensionProvider {
+        |  extension [A] (self: A) {
+        |    def typeArg[B <: A]: B
+        |    def <<inferredTypeArg>>[C](value: C): C
+        |  }
+        |}
+        |
+        |object Repro {
+        |  def usage[A](f: ExtensionProvider ?=> A => Any): Any = ???
+        |
+        |  usage[Int](_.<<inferredTypeArg>>("str"))
+        |  usage[Int](_.<<inferredTypeArg>>[String]("str"))
+        |  usage[Option[Int]](_.typeArg[Some[Int]].value.<<inferredTypeArg>>("str"))
+        |  usage[Option[Int]](_.typeArg[Some[Int]].value.<<inferred@@TypeArg>>[String]("str"))
+        |}
+        |""".stripMargin
+    )
+
+  @Test def `i5977-4` =
+    check(
+      """
+        |sealed trait ExtensionProvider {
+        |  extension [A] (self: A) {
+        |    def typeArg[B <: A]: B
+        |    def <<inferre@@dTypeArg>>[C](value: C): C
+        |  }
+        |}
+        |
+        |object Repro {
+        |  def usage[A](f: ExtensionProvider ?=> A => Any): Any = ???
+        |
+        |  usage[Int](_.<<inferredTypeArg>>("str"))
+        |  usage[Int](_.<<inferredTypeArg>>[String]("str"))
+        |  usage[Option[Int]](_.typeArg[Some[Int]].value.<<inferredTypeArg>>("str"))
+        |  usage[Option[Int]](_.typeArg[Some[Int]].value.<<inferredTypeArg>>[String]("str"))
+        |}
+        |""".stripMargin
+    )
+
+
+end DocumentHighlightSuite

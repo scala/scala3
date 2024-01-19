@@ -1,12 +1,12 @@
 package dotty.tools.dotc.quoted
 
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.ast.tpd
 
 
 object QuotesCache {
-  import tpd._
+  import tpd.*
 
   /** A key to be used in a context property that caches the unpickled trees */
   private val QuotesCacheKey = new Property.Key[collection.mutable.Map[String | List[String], Tree]]

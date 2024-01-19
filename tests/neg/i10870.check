@@ -5,3 +5,5 @@
    |            Extension methods were tried, but the search failed with:
    |
    |                Overloaded or recursive method x needs return type
+   |                
+   |                 Run with -explain-cyclic for more details.

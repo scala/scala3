@@ -6,12 +6,12 @@ import scala.language.unsafeNulls
 
 import scala.collection.mutable
 
-import core._
-import Texts._, Types._, Flags._, Symbols._, Contexts._
-import Decorators._
+import core.*
+import Texts.*, Types.*, Flags.*, Symbols.*, Contexts.*
+import Decorators.*
 import reporting.Message
 import util.DiffUtil
-import Highlighting._
+import Highlighting.*
 
 object Formatting {
 
@@ -144,7 +144,7 @@ object Formatting {
         case Nil => ("", Nil)
       }
       val (args1, suffixes1) = args.lazyZip(suffixes).map(treatArg(_, _)).unzip
-      new StringContext(prefix :: suffixes1.toList: _*).s(args1: _*)
+      new StringContext(prefix :: suffixes1.toList*).s(args1*)
     }
   }
 

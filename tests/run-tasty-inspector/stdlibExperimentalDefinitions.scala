@@ -58,6 +58,9 @@ val experimentalDefinitionInLibrary = Set(
   //// New feature: into
   "scala.annotation.allowConversions",
 
+  //// New feature: @publicInBinary
+  "scala.annotation.publicInBinary",
+
   //// New feature: Macro annotations
   "scala.annotation.MacroAnnotation",
 
@@ -68,11 +71,8 @@ val experimentalDefinitionInLibrary = Set(
   "scala.annotation.init$.region",
 
    //// New APIs: Quotes
-  "scala.quoted.Quotes.reflectModule.TypeLambdaMethods.paramVariances",
-  "scala.quoted.Quotes.reflectModule.SymbolMethods.paramVariance",
   // Can be stabilized in 3.4.0 (unsure) or later
   "scala.quoted.Quotes.reflectModule.CompilationInfoModule.XmacroSettings",
-  "scala.quoted.Quotes.reflectModule.FlagsModule.JavaAnnotation",
   // Cant be stabilized yet.
   // Need newClass variant that can add constructor parameters.
   // Need experimental annotation macros to check that design works.
@@ -92,12 +92,10 @@ val experimentalDefinitionInLibrary = Set(
   "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.hasErasedArgs",
 
   // New feature: reverse method on Tuple
-  "scala.Tuple.reverse",
-  "scala.Tuple$.Helpers",
-  "scala.Tuple$.Helpers$",
-  "scala.Tuple$.Helpers$.ReverseImpl",
-  "scala.Tuple$.Reverse",
-  "scala.runtime.Tuples$.reverse"
+  "scala.Tuple.reverse", // can be stabilized in 3.5
+  "scala.Tuple$.Reverse", // can be stabilized in 3.5
+  "scala.Tuple$.ReverseOnto", // can be stabilized in 3.5
+  "scala.runtime.Tuples$.reverse", // can be stabilized in 3.5
 )
 
 

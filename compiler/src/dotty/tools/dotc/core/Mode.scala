@@ -10,7 +10,7 @@ package dotty.tools.dotc.core
  * Also, a setting is externally settable, while a mode isn't.
  */
 case class Mode(val bits: Int) extends AnyVal {
-  import Mode._
+  import Mode.*
   def | (that: Mode): Mode = Mode(bits | that.bits)
   def & (that: Mode): Mode = Mode(bits & that.bits)
   def &~ (that: Mode): Mode = Mode(bits & ~that.bits)
@@ -163,6 +163,6 @@ object Mode {
    */
   val RelaxedOverriding: Mode = newMode(30, "RelaxedOverriding")
 
-  /** We are checking the original call of an Inlined node */
-  val InlinedCall: Mode = newMode(31, "InlinedCall")
+  /** Skip inlining of methods. */
+  val NoInline: Mode = newMode(31, "NoInline")
 }

@@ -65,8 +65,8 @@ import scala.annotation.meta.param
  */
 @experimental
 final class newMain extends MainAnnotation[FromString, Any]:
-  import newMain._
-  import MainAnnotation._
+  import newMain.*
+  import MainAnnotation.*
 
   private val longArgRegex = "--[a-zA-Z][a-zA-Z0-9]+".r
   private val shortArgRegex = "-[a-zA-Z]".r

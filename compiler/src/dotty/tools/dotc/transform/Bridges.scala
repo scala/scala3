@@ -2,9 +2,9 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
-import Symbols._, Types._, Contexts._, Decorators._, Flags._, Scopes._, Phases._
-import DenotTransformers._
+import core.*
+import Symbols.*, Types.*, Contexts.*, Decorators.*, Flags.*, Scopes.*, Phases.*
+import DenotTransformers.*
 import ast.untpd
 import collection.{mutable, immutable}
 import util.SrcPos
@@ -16,7 +16,7 @@ import Erasure.Boxing.adaptClosure
 
 /** A helper class for generating bridge methods in class `root`. */
 class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
-  import ast.tpd._
+  import ast.tpd.*
 
   assert(ctx.phase == erasurePhase.next)
   private val preErasureCtx = ctx.withPhase(erasurePhase)

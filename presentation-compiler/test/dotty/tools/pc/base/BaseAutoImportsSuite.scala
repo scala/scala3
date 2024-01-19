@@ -5,6 +5,7 @@ import java.nio.file.Paths
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.CompilerOffsetParams
 import scala.meta.pc.AutoImportsResult
+import scala.language.unsafeNulls
 
 import dotty.tools.pc.utils.TextEdits
 

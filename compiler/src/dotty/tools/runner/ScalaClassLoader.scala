@@ -33,7 +33,7 @@ final class RichClassLoader(private val self: ClassLoader) extends AnyVal {
     val method = clsToRun.getMethod("main", classOf[Array[String]])
     if !Modifier.isStatic(method.getModifiers) then
       throw new NoSuchMethodException(s"$objectName.main is not static")
-    try asContext(method.invoke(null, Array(arguments.toArray: AnyRef): _*))
+    try asContext(method.invoke(null, Array(arguments.toArray: AnyRef)*))
     catch unwrapHandler({ case ex => throw ex })
   }
 
@@ -64,7 +64,7 @@ object ScalaClassLoader {
   def fromURLsParallelCapable(urls: Seq[URL], parent: ClassLoader | Null = null): URLClassLoader =
     new URLClassLoader(urls.toArray, if parent == null then bootClassLoader else parent)
 
-  @sharable private[this] val bootClassLoader: ClassLoader =
+  @sharable private val bootClassLoader: ClassLoader =
     if scala.util.Properties.isJavaAtLeast("9") then
       try
         ClassLoader.getSystemClassLoader.getParent

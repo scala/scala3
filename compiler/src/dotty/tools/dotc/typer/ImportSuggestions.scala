@@ -3,17 +3,18 @@ package dotc
 package typer
 
 import backend.sjs.JSDefinitions
-import core._
-import Contexts._, Types._, Symbols._, Names._, Decorators._, ProtoTypes._
-import Flags._, SymDenotations._
+import core.*
+import Contexts.*, Types.*, Symbols.*, Names.*, Decorators.*, ProtoTypes.*
+import Flags.*, SymDenotations.*
 import NameKinds.FlatName
-import StdNames._
+import StdNames.*
 import config.Printers.{implicits, implicitsDetailed}
 import ast.{untpd, tpd}
 import Implicits.{hasExtMethod, Candidate}
 import java.util.{Timer, TimerTask}
 import collection.mutable
 import scala.util.control.NonFatal
+import cc.isCaptureChecking
 
 /** This trait defines the method `importSuggestionAddendum` that adds an addendum
  *  to error messages suggesting additional imports.
@@ -24,7 +25,7 @@ trait ImportSuggestions:
   /** The maximal number of suggested imports to make */
   inline val MaxSuggestions = 10
 
-  import tpd._
+  import tpd.*
 
   /** Timeout to test a single implicit value as a suggestion, in ms */
   private inline val testOneImplicitTimeOut = 500
@@ -319,7 +320,7 @@ trait ImportSuggestions:
    *  If there's nothing to suggest, an empty string is returned.
    */
   override def importSuggestionAddendum(pt: Type)(using Context): String =
-    if ctx.phase == Phases.checkCapturesPhase then
+    if isCaptureChecking then
       return "" // it's too late then to look for implicits
     val (fullMatches, headMatches) =
       importSuggestions(pt)(using ctx.fresh.setExploreTyperState())

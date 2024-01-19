@@ -5,28 +5,28 @@ package interactive
 import scala.language.unsafeNulls
 
 import java.net.URI
-import java.io._
-import java.nio.file._
+import java.io.*
+import java.nio.file.*
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.charset.StandardCharsets
-import java.util.zip._
+import java.util.zip.*
 
-import scala.collection._
+import scala.collection.*
 import scala.io.Codec
 
 import dotty.tools.io.AbstractFile
 
 import ast.{Trees, tpd}
-import core._, core.Decorators._
-import Contexts._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
+import core.*, core.Decorators.*
+import Contexts.*, Names.*, NameOps.*, Symbols.*, SymDenotations.*, Trees.*, Types.*
 import Denotations.staticRef
-import classpath._
-import reporting._
-import util._
+import classpath.*
+import reporting.*
+import util.*
 
 /** A Driver subclass designed to be used from IDEs */
 class InteractiveDriver(val settings: List[String]) extends Driver {
-  import tpd._
+  import tpd.*
 
   override def sourcesRequired: Boolean = false
 
@@ -47,14 +47,10 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
 
   private val compiler: Compiler = new InteractiveCompiler
 
-  private val myOpenedFiles = new mutable.LinkedHashMap[URI, SourceFile] {
-    override def default(key: URI) = NoSource
-  }
+  private val myOpenedFiles = new mutable.LinkedHashMap[URI, SourceFile].withDefaultValue(NoSource)
   def openedFiles: Map[URI, SourceFile] = myOpenedFiles
 
-  private val myOpenedTrees = new mutable.LinkedHashMap[URI, List[SourceTree]] {
-    override def default(key: URI) = Nil
-  }
+  private val myOpenedTrees = new mutable.LinkedHashMap[URI, List[SourceTree]].withDefaultValue(Nil)
   def openedTrees: Map[URI, List[SourceTree]] = myOpenedTrees
 
   private val myCompilationUnits = new mutable.LinkedHashMap[URI, CompilationUnit]
@@ -148,7 +144,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   def run(uri: URI, sourceCode: String): List[Diagnostic] = run(uri, SourceFile.virtual(uri, sourceCode))
 
   def run(uri: URI, source: SourceFile): List[Diagnostic] = {
-    import typer.ImportInfo._
+    import typer.ImportInfo.*
 
     val previousCtx = myCtx
     try {

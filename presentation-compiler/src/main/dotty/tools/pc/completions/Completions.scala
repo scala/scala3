@@ -26,7 +26,6 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.interactive.Completion.Mode
-import dotty.tools.dotc.transform.SymUtils.*
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans
 import dotty.tools.dotc.util.Spans.Span
@@ -56,8 +55,8 @@ class Completions(
 
   val coursierComplete = new CoursierComplete(BuildInfo.scalaVersion)
 
+  private lazy val adjustedPath = Completion.resolveTypedOrUntypedPath(path, pos)
   private lazy val completionMode =
-    val adjustedPath = Completion.resolveTypedOrUntypedPath(path, pos)
     val mode = Completion.completionMode(adjustedPath, pos)
     path match
       case Literal(Constant(_: String)) :: _ => Mode.Term // literal completions
@@ -73,8 +72,8 @@ class Completions(
       case _ :: (withcursor @ Select(fun, name)) :: (appl: GenericApply) :: _
           if appl.fun == withcursor && name.decoded == Cursor.value =>
         false
-      case (_: Import) :: _ => false
-      case _ :: (_: Import) :: _ => false
+      case (_: (Import | Export)) :: _ => false
+      case _ :: (_: (Import | Export)) :: _ => false
       case (_: Ident) :: (_: SeqLiteral) :: _ => false
       case _ => true
 
@@ -87,7 +86,7 @@ class Completions(
     def hasSyntheticCursorSuffix: Boolean =
       if !sym.name.endsWith(Cursor.value) then false
       else
-        val realNameLength = sym.decodedName.length - Cursor.value.length
+        val realNameLength = sym.decodedName.length() - Cursor.value.length()
         sym.source == pos.source &&
         sym.span.start + realNameLength == pos.span.end
 
@@ -121,7 +120,7 @@ class Completions(
         val allAdvanced = advanced ++ keywords
         path match
           // should not show completions for toplevel
-          case Nil if pos.source.file.extension != "sc" =>
+          case Nil | (_: PackageDef) :: _ if pos.source.file.extension != "sc" =>
             (allAdvanced, SymbolSearch.Result.COMPLETE)
           case Select(qual, _) :: _ if qual.tpe.isErroneous =>
             (allAdvanced, SymbolSearch.Result.COMPLETE)
@@ -141,7 +140,8 @@ class Completions(
 
     val application = CompletionApplication.fromPath(path)
     val ordering = completionOrdering(application)
-    val values = application.postProcess(all.sorted(ordering))
+    val sorted = all.sorted(ordering)
+    val values = application.postProcess(sorted)
     (values, result)
   end completions
 
@@ -201,7 +201,7 @@ class Completions(
           paramss match
             case Nil => suffix
             case List(Nil) => suffix.withNewSuffix(SuffixKind.Brace)
-            case _ if config.isCompletionSnippetsEnabled =>
+            case _ if config.isCompletionSnippetsEnabled() =>
               val onlyParameterless = paramss.forall(_.isEmpty)
               lazy val onlyImplicitOrTypeParams = paramss.forall(
                 _.exists { sym =>
@@ -273,7 +273,7 @@ class Completions(
       completionPos: CompletionPos
   ): (List[CompletionValue], Boolean) =
     lazy val rawPath = Paths
-      .get(pos.source.path)
+      .get(pos.source.path).nn
     lazy val rawFileName = rawPath
       .getFileName()
       .toString()
@@ -391,7 +391,7 @@ class Completions(
       // class Fo@@
       case (td: TypeDef) :: _
           if Fuzzy.matches(
-            td.symbol.name.decoded.replace(Cursor.value, ""),
+            td.symbol.name.decoded.replace(Cursor.value, "").nn,
             filename
           ) =>
         val values = FilenameCompletions.contribute(filename, td)
@@ -442,6 +442,10 @@ class Completions(
           true,
         )
 
+      case (tree: (Import | Export)) :: _
+          if tree.selectors.exists(_.renamed.sourcePos.contains(pos)) =>
+        (List.empty, true)
+
       // From Scala 3.1.3-RC3 (as far as I know), path contains
       // `Literal(Constant(null))` on head for an incomplete program, in this case, just ignore the head.
       case Literal(Constant(null)) :: tl =>
@@ -451,8 +455,9 @@ class Completions(
         val args = NamedArgCompletions.contribute(
           pos,
           path,
+          adjustedPath,
           indexedContext,
-          config.isCompletionSnippetsEnabled
+          config.isCompletionSnippetsEnabled()
         )
         (args, false)
     end match
@@ -517,20 +522,44 @@ class Completions(
                 CompletionValue.Workspace(_, _, _, sym)
               ).map(visit).forall(_ == true),
         )
-        Some(search.search(query, buildTargetIdentifier, visitor))
+        Some(search.search(query, buildTargetIdentifier, visitor).nn)
       case CompletionKind.Members =>
         val visitor = new CompilerSearchVisitor(sym =>
-          if sym.is(ExtensionMethod) &&
+          def isExtensionMethod = sym.is(ExtensionMethod) &&
             qualType.widenDealias <:< sym.extensionParam.info.widenDealias
-          then
+          def isImplicitClass(owner: Symbol) =
+            val constructorParam =
+              owner.info
+                .membersBasedOnFlags(
+                  Flags.ParamAccessor,
+                  Flags.EmptyFlags,
+                )
+                .headOption
+                .map(_.info)
+            owner.isClass && owner.is(Flags.Implicit) &&
+            constructorParam.exists(p =>
+              qualType.widenDealias <:< p.widenDealias
+            )
+          end isImplicitClass
+
+          def isImplicitClassMethod = sym.is(Flags.Method) && !sym.isConstructor &&
+            isImplicitClass(sym.maybeOwner)
+
+          if isExtensionMethod then
             completionsWithSuffix(
               sym,
               sym.decodedName,
               CompletionValue.Extension(_, _, _)
             ).map(visit).forall(_ == true)
+          else if isImplicitClassMethod then
+            completionsWithSuffix(
+              sym,
+              sym.decodedName,
+              CompletionValue.ImplicitClass(_, _, _, sym.maybeOwner),
+            ).map(visit).forall(_ == true)
           else false,
         )
-        Some(search.searchMethods(query, buildTargetIdentifier, visitor))
+        Some(search.searchMethods(query, buildTargetIdentifier, visitor).nn)
     end match
   end enrichWithSymbolSearch
 
@@ -571,7 +600,7 @@ class Completions(
               val nameId =
                 if sym.isClass || sym.is(Module) then
                   // drop #|. at the end to avoid duplication
-                  name.substring(0, name.length - 1)
+                  name.substring(0, name.length() - 1).nn
                 else name
               val suffix =
                 if symOnly.snippetSuffix.addLabelSnippet then "[]" else ""
@@ -693,7 +722,7 @@ class Completions(
         if !ov.symbol.is(Deferred) then penalty |= MemberOrdering.IsNotAbstract
         penalty
       case CompletionValue.Workspace(_, sym, _, _) =>
-        symbolRelevance(sym) | (IsWorkspaceSymbol + sym.name.show.length)
+        symbolRelevance(sym) | (IsWorkspaceSymbol + sym.name.show.length())
       case sym: CompletionValue.Symbolic =>
         symbolRelevance(sym.symbol)
       case _ =>
@@ -767,7 +796,8 @@ class Completions(
       val fuzzyCache = mutable.Map.empty[CompletionValue, Int]
 
       def compareLocalSymbols(s1: Symbol, s2: Symbol): Int =
-        if s1.isLocal && s2.isLocal then
+        if s1.isLocal && s2.isLocal && s1.sourcePos.exists && s2.sourcePos.exists
+        then
           val firstIsAfter = s1.srcPos.isAfter(s2.srcPos)
           if firstIsAfter then -1 else 1
         else 0
@@ -782,9 +812,9 @@ class Completions(
       def fuzzyScore(o: CompletionValue.Symbolic): Int =
         fuzzyCache.getOrElseUpdate(
           o, {
-            val name = o.label.toLowerCase()
+            val name = o.label.toLowerCase().nn
             if name.startsWith(queryLower) then 0
-            else if name.toLowerCase().contains(queryLower) then 1
+            else if name.contains(queryLower) then 1
             else 2
           }
         )
@@ -809,6 +839,16 @@ class Completions(
         priority(o1) - priority(o2)
       end compareInApplyParams
 
+      def prioritizeKeywords(o1: CompletionValue, o2: CompletionValue): Int =
+        def priority(v: CompletionValue): Int =
+          v match
+            case _: CompletionValue.CaseKeyword => 0
+            case _: CompletionValue.NamedArg => 1
+            case _: CompletionValue.Keyword => 2
+            case _ => 3
+
+        priority(o1) - priority(o2)
+      end prioritizeKeywords
       /**
        * Some completion values should be shown first such as CaseKeyword and
        * NamedArg
@@ -885,7 +925,10 @@ class Completions(
           case _ =>
             val byApplyParams = compareInApplyParams(o1, o2)
             if byApplyParams != 0 then byApplyParams
-            else compareByRelevance(o1, o2)
+            else
+              val keywords = prioritizeKeywords(o1, o2)
+              if keywords != 0 then keywords
+              else compareByRelevance(o1, o2)
       end compare
 
 end Completions

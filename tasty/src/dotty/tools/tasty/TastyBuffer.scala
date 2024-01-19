@@ -1,6 +1,7 @@
 package dotty.tools.tasty
 
 import util.Util.dble
+import java.nio.charset.StandardCharsets
 
 object TastyBuffer {
 
@@ -113,6 +114,16 @@ class TastyBuffer(initialSize: Int) {
       y = y >>> 8
     }
     writeBytes(bytes, 8)
+  }
+
+  /** Write a UTF8 string encoded as `Nat UTF8-CodePoint*`,
+   *  where the `Nat` is the length of the code-points bytes.
+   */
+  def writeUtf8(x: String): Unit = {
+    val bytes = x.getBytes(StandardCharsets.UTF_8)
+    val length = bytes.length
+    writeNat(length)
+    writeBytes(bytes, length)
   }
 
   // -- Address handling --------------------------------------------

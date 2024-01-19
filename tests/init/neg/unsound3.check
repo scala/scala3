@@ -2,11 +2,11 @@
 10 |        if (x < 12) then foo().getC().b else newB // error
    |                         ^^^^^^^^^^^^^^
    |                         Access field value b on an uninitialized (Cold) object. Calling trace:
-   |                         -> class C {	[ unsound3.scala:5 ]
-   |                            ^
-   |                         -> val b = foo()	[ unsound3.scala:12 ]
-   |                                    ^^^^^
-   |                         -> def foo(): B = {	[ unsound3.scala:7 ]
-   |                            ^
-   |                         -> if (x < 12) then foo().getC().b else newB // error	[ unsound3.scala:10 ]
-   |                                             ^^^^^^^^^^^^^^
+   |                         ├── class C {	[ unsound3.scala:5 ]
+   |                         │   ^
+   |                         ├── val b = foo()	[ unsound3.scala:12 ]
+   |                         │           ^^^^^
+   |                         ├── def foo(): B = {	[ unsound3.scala:7 ]
+   |                         │   ^
+   |                         └── if (x < 12) then foo().getC().b else newB // error	[ unsound3.scala:10 ]
+   |                                              ^^^^^^^^^^^^^^

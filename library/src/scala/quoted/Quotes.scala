@@ -8,9 +8,9 @@ import scala.reflect.TypeTest
  *
  *  Usage:
  *  ```scala
- *  import scala.quoted._
+ *  import scala.quoted.*
  *  def myExpr[T](using Quotes): Expr[T] = {
- *     import quotes.reflect._
+ *     import quotes.reflect.*
  *     ???
  *  }
  *  ```
@@ -24,7 +24,7 @@ transparent inline def quotes(using q: Quotes): q.type = q
  *  This API does not have the static type guarantees that `Expr` and `Type` provide.
  *  `Quotes` are generated from an enclosing `${ ... }` or `scala.staging.run`. For example:
  *  ```scala sc:nocompile
- *  import scala.quoted._
+ *  import scala.quoted.*
  *  inline def myMacro: Expr[T] =
  *    ${ /* (quotes: Quotes) ?=> */ myExpr }
  *  def myExpr(using Quotes): Expr[T] =
@@ -105,9 +105,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *
    *  Usage:
    *  ```scala
-   *  import scala.quoted._
+   *  import scala.quoted.*
    *  def f(expr: Expr[Int])(using Quotes) =
-   *    import quotes.reflect._
+   *    import quotes.reflect.*
    *    val ast: Term = expr.asTerm
    *    ???
    *  ```
@@ -1622,7 +1622,30 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end ReturnMethods
 
-    /** Tree representing a variable argument list in the source code */
+    /** Tree representing a variable argument list in the source code.
+     *
+     *  This tree is used to encode varargs terms. The Repeated encapsulates
+     *  the sequence of the elements but needs to be wrapped in a
+     *  `scala.<repeated>[T]` (see `defn.RepeatedParamClass`). For example the
+     *   arguments `1, 2` of `List.apply(1, 2)` can be represented as follows:
+     *
+     *
+     *  ```scala
+     *  //{
+     *  import scala.quoted._
+     *  def inQuotes(using Quotes) = {
+     *    val q: Quotes = summon[Quotes]
+     *    import q.reflect._
+     *  //}
+     *    val intArgs = List(Literal(Constant(1)), Literal(Constant(2)))
+     *    Typed(
+     *     Repeated(intArgs, TypeTree.of[Int]),
+     *     Inferred(defn.RepeatedParamClass.typeRef.appliedTo(TypeRepr.of[Int]))
+     *  //{
+     *  }
+     *  //}
+     *  ```
+     */
     type Repeated <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Repeated` */
@@ -1633,8 +1656,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Repeated` */
     trait RepeatedModule { this: Repeated.type =>
+      /** Create a literal sequence of elements */
       def apply(elems: List[Term], tpt: TypeTree): Repeated
+      /** Copy a literal sequence of elements */
       def copy(original: Tree)(elems: List[Term], tpt: TypeTree): Repeated
+      /** Matches a literal sequence of elements */
       def unapply(x: Repeated): (List[Term], TypeTree)
     }
 
@@ -2354,10 +2380,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  `ParamClause` encodes the following enumeration
      *  ```scala
      *  //{
-     *  import scala.quoted._
+     *  import scala.quoted.*
      *  def inQuotes(using Quotes) = {
      *    val q: Quotes = summon[Quotes]
-     *    import q.reflect._
+     *    import q.reflect.*
      *  //}
      *    enum ParamClause:
      *      case TypeParamClause(params: List[TypeDef])
@@ -2416,10 +2442,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Is this a given parameter clause `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
         def isGiven: Boolean
         /** Is this a erased parameter clause `(erased x1: X1, ..., xn: Xn)` */
-        // TODO:deprecate in 3.4 and stabilize `erasedArgs` and `hasErasedArgs`.
-        // @deprecated("Use `hasErasedArgs`","3.4")
+        @deprecated("Use `hasErasedArgs` and `erasedArgs`", "3.4")
         def isErased: Boolean
-
         /** List of `erased` flags for each parameter of the clause */
         @experimental
         def erasedArgs: List[Boolean]
@@ -2606,10 +2630,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         *  Usage:
         *  ```scala
         *  //{
-        *  import scala.quoted._
+        *  import scala.quoted.*
         *  def f(using Quotes) = {
         *    val q: Quotes = summon[Quotes]
-        *    import q.reflect._
+        *    import q.reflect.*
         *    val typeRepr: TypeRepr = ???
         *  //}
         *    typeRepr.asType match
@@ -2651,6 +2675,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
         /** Follow aliases, annotated types until type is no longer alias type, annotated type. */
         def dealias: TypeRepr
+
+        /** Follow non-opaque aliases, annotated types until type is no longer alias type, annotated type. */
+        def dealiasKeepOpaques: TypeRepr
 
         /** A simplified version of this type which is equivalent wrt =:= to this type.
         *  Reduces typerefs, applied match types, and and or types.
@@ -3197,10 +3224,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Is this the type of using parameter clause `(implicit X1, ..., Xn)`, `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
         def isImplicit: Boolean
         /** Is this the type of erased parameter clause `(erased x1: X1, ..., xn: Xn)` */
-        // TODO:deprecate in 3.4 and stabilize `erasedParams` and `hasErasedParams`.
-        // @deprecated("Use `hasErasedParams`","3.4")
+        @deprecated("Use `hasErasedParams` and `erasedParams`", "3.4")
         def isErased: Boolean
-
         /** List of `erased` flags for each parameters of the clause */
         @experimental
         def erasedParams: List[Boolean]
@@ -3266,7 +3291,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          *  Variance flags can be one of `Flags.{Covariant, Contravariant, EmptyFlags}`.
          */
-        @experimental
         def paramVariances: List[Flags]
       end extension
     end TypeLambdaMethods
@@ -3742,7 +3766,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  ```scala
        *  //{
        *  given Quotes = ???
-       *  import quotes.reflect._
+       *  import quotes.reflect.*
        *  //}
        *  val moduleName: String = Symbol.freshName("MyModule")
        *  val parents = List(TypeTree.of[Object])
@@ -3764,7 +3788,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  ```scala
        *  //{
        *  given Quotes = ???
-       *  import quotes.reflect._
+       *  import quotes.reflect.*
        *  //}
        *  '{
        *    object MyModule$macro$1 extends Object:
@@ -4094,7 +4118,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  Variance flags can be one of `Flags.{Covariant, Contravariant, EmptyFlags}`.
          *  If this is not the symbol of a type parameter the result is `Flags.EmptyFlags`.
          */
-        @experimental
         def paramVariance: Flags
 
         /** Signature of this definition */
@@ -4119,10 +4142,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  Usages:
          *  ```scala
          *  def rhsExpr(using q: Quotes): Expr[Unit] =
-         *    import q.reflect._
+         *    import q.reflect.*
          *    '{ val y = ???; (y, y) }
          *  def aValDef(using q: Quotes)(owner: q.reflect.Symbol) =
-         *    import q.reflect._
+         *    import q.reflect.*
          *    val sym = Symbol.newVal(owner, "x", TypeRepr.of[Unit], Flags.EmptyFlags, Symbol.noSymbol)
          *    val rhs = rhsExpr(using sym.asQuotes).asTerm
          *    ValDef(sym, Some(rhs))
@@ -4131,7 +4154,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  ```scala
          *  //{
          *  def inQuotes(using q: Quotes) = {
-         *    import q.reflect._
+         *    import q.reflect.*
          *  //}
          *    new TreeMap:
          *      override def transformTerm(tree: Term)(owner: Symbol): Term =
@@ -4311,6 +4334,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       /** A dummy class symbol that is used to indicate repeated parameters
       *  compiled by the Scala compiler.
+      *
+      *  @see Repeated
       */
       def RepeatedParamClass: Symbol
 
@@ -4335,7 +4360,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       *   -  ...
       *   -  Nth element is `FunctionN`
       */
-      @deprecated("Use overload of `FunctionClass` with 1 or 2 arguments","3.4")
+      @deprecated("Use overload of `FunctionClass` with 1 or 2 arguments", "3.4")
       def FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol
 
       /** Class symbol of a function class `scala.FunctionN`.
@@ -4485,7 +4510,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def JavaStatic: Flags
 
       /** Is this an annotation defined in Java */
-      @experimental def JavaAnnotation: Flags
+      def JavaAnnotation: Flags
 
       /** Is this symbol `lazy` */
       def Lazy: Flags
@@ -4746,7 +4771,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *  ```scala
     *  //{
     *  def inQuotes(using q: Quotes) = {
-    *    import q.reflect._
+    *    import q.reflect.*
     *  //}
     *    class MyTreeAccumulator[X] extends TreeAccumulator[X] {
     *      def foldTree(x: X, tree: Tree)(owner: Symbol): X = ???
@@ -4859,7 +4884,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *  ```scala
     *  //{
     *  def inQuotes(using q: Quotes) = {
-    *    import q.reflect._
+    *    import q.reflect.*
     *  //}
     *    class MyTraverser extends TreeTraverser {
     *      override def traverseTree(tree: Tree)(owner: Symbol): Unit = ???
@@ -4885,7 +4910,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *  ```scala
     *  //{
     *  def inQuotes(using q: Quotes) = {
-    *    import q.reflect._
+    *    import q.reflect.*
     *  //}
     *    class MyTreeMap extends TreeMap {
     *      override def transformTree(tree: Tree)(owner: Symbol): Tree = ???

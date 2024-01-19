@@ -11,11 +11,11 @@ import dotty.tools.dotc.classpath.FileUtils.isTasty
 import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile }
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
-import Contexts._, Symbols._, Flags._, SymDenotations._, Types._, Scopes._, Names._
-import NameOps._
-import StdNames._
+import Contexts.*, Symbols.*, Flags.*, SymDenotations.*, Types.*, Scopes.*, Names.*
+import NameOps.*
+import StdNames.*
 import classfile.{ClassfileParser, ClassfileTastyUUIDParser}
-import Decorators._
+import Decorators.*
 
 import util.Stats
 import reporting.trace
@@ -24,11 +24,11 @@ import ast.desugar
 
 import parsing.JavaParsers.OutlineJavaParser
 import parsing.Parsers.OutlineParser
-import dotty.tools.tasty.TastyHeaderUnpickler
-
+import dotty.tools.tasty.{TastyHeaderUnpickler, UnpickleException, UnpicklerConfig, TastyVersion}
+import dotty.tools.dotc.core.tasty.TastyUnpickler
 
 object SymbolLoaders {
-  import ast.untpd._
+  import ast.untpd.*
 
   /** A marker trait for a completer that replaces the original
    *  Symbol loader for an unpickled root.
@@ -51,7 +51,7 @@ object SymbolLoaders {
   def enterClass(
       owner: Symbol, name: PreName, completer: SymbolLoader,
       flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(using Context): Symbol = {
-    val cls = newClassSymbol(owner, name.toTypeName.unmangleClassName.decode, flags, completer, assocFile = completer.sourceFileOrNull)
+    val cls = newClassSymbol(owner, name.toTypeName.unmangleClassName.decode, flags, completer, compUnitInfo = completer.compilationUnitInfo)
     enterNew(owner, cls, completer, scope)
   }
 
@@ -63,7 +63,7 @@ object SymbolLoaders {
     val module = newModuleSymbol(
       owner, name.toTermName.decode, modFlags, clsFlags,
       (module, _) => completer.proxy.withDecls(newScope).withSourceModule(module),
-      assocFile = completer.sourceFileOrNull)
+      compUnitInfo = completer.compilationUnitInfo)
     enterNew(owner, module, completer, scope)
     enterNew(owner, module.moduleClass, completer, scope)
   }
@@ -212,7 +212,7 @@ object SymbolLoaders {
   /** Load contents of a package
    */
   class PackageLoader(_sourceModule: TermSymbol, classPath: ClassPath) extends SymbolLoader {
-    override def sourceFileOrNull: AbstractFile | Null = null
+    def compilationUnitInfo: CompilationUnitInfo | Null = null
     override def sourceModule(using Context): TermSymbol = _sourceModule
     def description(using Context): String = "package loader " + sourceModule.fullName
 
@@ -316,7 +316,7 @@ abstract class SymbolLoader extends LazyType { self =>
   /** Load source or class file for `root`, return */
   def doComplete(root: SymDenotation)(using Context): Unit
 
-  def sourceFileOrNull: AbstractFile | Null
+  def compilationUnitInfo: CompilationUnitInfo | Null
 
   /** Description of the resource (ClassPath, AbstractFile)
    *  being processed by this loader
@@ -327,7 +327,7 @@ abstract class SymbolLoader extends LazyType { self =>
    *  but provides fresh slots for scope/sourceModule/moduleClass
    */
   def proxy: SymbolLoader = new SymbolLoader {
-    export self.{doComplete, sourceFileOrNull}
+    export self.{doComplete, compilationUnitInfo}
     def description(using Context): String = s"proxy to ${self.description}"
   }
 
@@ -404,7 +404,8 @@ abstract class SymbolLoader extends LazyType { self =>
 
 class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
 
-  override def sourceFileOrNull: AbstractFile | Null = classfile
+  def compilationUnitInfo: CompilationUnitInfo | Null = CompilationUnitInfo(classfile)
+
 
   def description(using Context): String = "class file " + classfile.toString
 
@@ -416,27 +417,43 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
 
 class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
 
-  override def sourceFileOrNull: AbstractFile | Null = tastyFile
+  private val unpickler: tasty.DottyUnpickler =
+    handleUnpicklingExceptions:
+      val tastyBytes = tastyFile.toByteArray
+      new tasty.DottyUnpickler(tastyFile, tastyBytes) // reads header and name table
+
+  val compilationUnitInfo: CompilationUnitInfo | Null = unpickler.compilationUnitInfo
 
   def description(using Context): String = "TASTy file " + tastyFile.toString
 
   override def doComplete(root: SymDenotation)(using Context): Unit =
-    val (classRoot, moduleRoot) = rootDenots(root.asClass)
-    val tastyBytes = tastyFile.toByteArray
-    val unpickler = new tasty.DottyUnpickler(tastyBytes)
-    unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))(using ctx.withSource(util.NoSource))
-    if mayLoadTreesFromTasty then
-      classRoot.classSymbol.rootTreeOrProvider = unpickler
-      moduleRoot.classSymbol.rootTreeOrProvider = unpickler
-    checkTastyUUID(tastyFile, tastyBytes)
+    handleUnpicklingExceptions:
+      checkTastyUUID()
+      val (classRoot, moduleRoot) = rootDenots(root.asClass)
+      unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))(using ctx.withSource(util.NoSource))
+      if mayLoadTreesFromTasty then
+        classRoot.classSymbol.rootTreeOrProvider = unpickler
+        moduleRoot.classSymbol.rootTreeOrProvider = unpickler
+
+  private def handleUnpicklingExceptions[T](thunk: =>T): T =
+    try thunk
+    catch case e: RuntimeException =>
+      val message = e match
+        case e: UnpickleException =>
+          s"""TASTy file ${tastyFile.canonicalPath} could not be read, failing with:
+            |  ${Option(e.getMessage).getOrElse("")}""".stripMargin
+        case _ =>
+          s"""TASTy file ${tastyFile.canonicalPath} is broken, reading aborted with ${e.getClass}
+            |  ${Option(e.getMessage).getOrElse("")}""".stripMargin
+      throw IOException(message, e)
 
 
-  private def checkTastyUUID(tastyFile: AbstractFile, tastyBytes: Array[Byte])(using Context): Unit =
+  private def checkTastyUUID()(using Context): Unit =
     val classfile =
       val className = tastyFile.name.stripSuffix(".tasty")
       tastyFile.resolveSibling(className + ".class")
     if classfile != null then
-      val tastyUUID = new TastyHeaderUnpickler(tastyBytes).readHeader()
+      val tastyUUID = unpickler.unpickler.header.uuid
       new ClassfileTastyUUIDParser(classfile)(ctx).checkTastyUUID(tastyUUID)
     else
       // This will be the case in any of our tests that compile with `-Youtput-only-tasty`
@@ -448,7 +465,7 @@ class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
 
 class SourcefileLoader(val srcfile: AbstractFile) extends SymbolLoader {
   def description(using Context): String = "source file " + srcfile.toString
-  override def sourceFileOrNull: AbstractFile | Null = srcfile
+  def compilationUnitInfo: CompilationUnitInfo | Null = CompilationUnitInfo(srcfile)
   def doComplete(root: SymDenotation)(using Context): Unit =
     ctx.run.nn.lateCompile(srcfile, typeCheck = ctx.settings.YretainTrees.value)
 }
@@ -456,7 +473,7 @@ class SourcefileLoader(val srcfile: AbstractFile) extends SymbolLoader {
 /** A NoCompleter which is also a SymbolLoader. */
 class NoLoader extends SymbolLoader with NoCompleter {
   def description(using Context): String = "NoLoader"
-  override def sourceFileOrNull: AbstractFile | Null = null
+  def compilationUnitInfo: CompilationUnitInfo | Null = null
   override def complete(root: SymDenotation)(using Context): Unit =
     super[NoCompleter].complete(root)
   def doComplete(root: SymDenotation)(using Context): Unit =
