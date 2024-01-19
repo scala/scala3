@@ -199,7 +199,7 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
          |""".stripMargin
     )
 
-  @Test def `export` =
+  @Test def `exportType1` =
     check(
       """object enumerations:
         |  trait <<SymbolKind>>
@@ -214,6 +214,74 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
         |
         |  val x = new Symbo@@lKind {}
         |  val y = new CymbalKind {}
+        |""".stripMargin
+    )
+
+  @Test def `exportType1Wild` =
+    check(
+      """object enumerations:
+        |  trait <<SymbolKind>>
+        |  trait CymbalKind
+        |
+        |object all:
+        |  export enumerations.SymbolKind
+        |
+        |@main def hello =
+        |  import all.SymbolKind
+        |  import enumerations.CymbalKind
+        |
+        |  val x = new Symbo@@lKind {}
+        |  val y = new CymbalKind {}
+        |""".stripMargin
+    )
+
+  @Test def `exportTerm1` =
+    check(
+      """class BitMap
+        |class Scanner:
+        |  def scan(): BitMap = ???
+        |class Copier:
+        |  private val scanUnit = new Scanner
+        |  export scanUnit.<<scan>>
+        |  def t1 = sc@@an()
+        |""".stripMargin
+    )
+
+  @Test def `exportTerm2` =
+    check(
+      """class BitMap
+        |class Scanner:
+        |  def scan(): BitMap = ???
+        |class Copier:
+        |  private val scanUnit = new Scanner
+        |  export scanUnit.<<scan>>
+        |class Test:
+        |  def t2(cpy: Copier) = cpy.sc@@an()
+        |""".stripMargin
+    )
+
+  @Test def `exportTerm1Wild` =
+    check(
+      """class BitMap
+        |class Scanner:
+        |  def scan(): BitMap = ???
+        |class Copier:
+        |  private val scanUnit = new Scanner
+        |  export scanUnit.<<*>>
+        |  def t1 = sc@@an()
+        |""".stripMargin
+    )
+
+  @Test def `exportTerm2Wild` =
+    check(
+      """class BitMap
+        |class Scanner:
+        |  def scan(): BitMap = ???
+        |class Copier:
+        |  private val scanUnit = new Scanner
+        |  export scanUnit.<<*>>
+        |class Test:
+        |  def t2(cpy: Copier) = cpy.sc@@an()
         |""".stripMargin
     )
 

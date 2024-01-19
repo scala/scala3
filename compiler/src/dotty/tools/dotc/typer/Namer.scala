@@ -1244,7 +1244,7 @@ class Namer { typer: Typer =>
                   (EmptyFlags, mbrInfo)
               var flagMask = RetainedExportFlags
               if sym.isTerm then flagMask |= HasDefaultParams | NoDefaultParams
-              var mbrFlags = Exported | Synthetic | Method | Final | maybeStable | sym.flags & flagMask
+              var mbrFlags = Exported | Method | Final | maybeStable | sym.flags & flagMask
               if sym.is(ExtensionMethod) || pathMethod.exists then
                 mbrFlags |= ExtensionMethod
               val forwarderName = checkNoConflict(alias, isPrivate = false, span)

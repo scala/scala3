@@ -10,7 +10,7 @@ import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.interactive.SourceTree
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
@@ -205,17 +205,9 @@ object MetalsInteractive:
             Nil
 
       case path @ head :: tail =>
-        if head.symbol.is(Exported) then
-          head.symbol.info match
-            case TypeAlias(target: NamedType) =>
-              val ss = target.symbol.sourceSymbol // exported type
-              List((ss, ss.info))
-            case info => info.finalResultType match
-              case target: NamedType =>
-                val ss = target.symbol.sourceSymbol // exported term
-                List((ss, ss.info))
-              case _ =>
-                enclosingSymbolsWithExpressionType(tail, pos, indexed, skipCheckOnName)
+        if head.symbol.is(ExportedType) then
+          val sym = head.symbol.sourceSymbol
+          List((sym, sym.info))
         else if head.symbol.is(Synthetic) then
           enclosingSymbolsWithExpressionType(
             tail,
