@@ -1105,7 +1105,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object TypeTreeTypeTest extends TypeTest[Tree, TypeTree]:
       def unapply(x: Tree): Option[TypeTree & x.type] = x match
-        case x: (tpd.TypeBoundsTree & x.type) => None
+        case TypeBoundsTreeTypeTest(_) => None
         case x: (tpd.Tree & x.type) if x.isType => Some(x)
         case _ => None
     end TypeTreeTypeTest
