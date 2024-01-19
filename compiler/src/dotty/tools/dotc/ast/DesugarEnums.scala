@@ -99,7 +99,7 @@ object DesugarEnums {
     val clazzOf = TypeApply(ref(defn.Predef_classOf.termRef), tpt :: Nil)
     val ctag    = Apply(TypeApply(ref(defn.ClassTagModule_apply.termRef), tpt :: Nil), clazzOf :: Nil)
     val apply   = Select(ref(defn.ArrayModule.termRef), nme.apply)
-    Apply(Apply(TypeApply(apply, tpt :: Nil), values), ctag :: Nil)
+    Apply(Apply(TypeApply(apply, tpt :: Nil), values), ctag :: Nil).setApplyKind(ApplyKind.Using)
 
   /**  The following lists of definitions for an enum type E and known value cases e_0, ..., e_n:
    *

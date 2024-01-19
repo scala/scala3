@@ -43,7 +43,7 @@ import config.Printers.{gadts, typr}
 import config.Feature
 import config.Feature.{sourceVersion, migrateTo3}
 import config.SourceVersion.*
-import rewrites.Rewrites.patch
+import rewrites.Rewrites, Rewrites.patch
 import staging.StagingLevel
 import reporting.*
 import Nullables.*
@@ -53,7 +53,6 @@ import config.Config
 import config.MigrationVersion
 
 import scala.annotation.constructorOnly
-import dotty.tools.dotc.rewrites.Rewrites
 
 object Typer {
 
@@ -127,7 +126,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                with Dynamic
                with Checking
                with QuotesAndSplices
-               with Deriving {
+               with Deriving
+               with Migrations {
 
   import Typer.*
   import tpd.{cpy => _, _}
@@ -2978,48 +2978,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         else tree1
     }
 
-  def typedAsFunction(tree: untpd.PostfixOp, pt: Type)(using Context): Tree = {
-    val untpd.PostfixOp(qual, Ident(nme.WILDCARD)) = tree: @unchecked
-    val pt1 = if (defn.isFunctionNType(pt)) pt else AnyFunctionProto
-    val nestedCtx = ctx.fresh.setNewTyperState()
-    val res = typed(qual, pt1)(using nestedCtx)
-    res match {
-      case closure(_, _, _) =>
-      case _ =>
-        val recovered = typed(qual)(using ctx.fresh.setExploreTyperState())
-        val msg = OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen, tree)
-        report.errorOrMigrationWarning(msg, tree.srcPos, MigrationVersion.Scala2to3)
-        if MigrationVersion.Scala2to3.needsPatch then
-          // Under -rewrite, patch `x _` to `(() => x)`
-          msg.actions
-            .headOption
-            .foreach(Rewrites.applyAction)
-          return typed(untpd.Function(Nil, qual), pt)
-    }
-    nestedCtx.typerState.commit()
-
-    lazy val (prefix, suffix) = res match {
-      case Block(mdef @ DefDef(_, vparams :: Nil, _, _) :: Nil, _: Closure) =>
-        val arity = vparams.length
-        if (arity > 0) ("", "") else ("(() => ", "())")
-      case _ =>
-        ("(() => ", ")")
-    }
-    def remedy =
-      if ((prefix ++ suffix).isEmpty) "simply leave out the trailing ` _`"
-      else s"use `$prefix<function>$suffix` instead"
-    def rewrite = Message.rewriteNotice("This construct", `3.4-migration`)
-    report.errorOrMigrationWarning(
-      em"""The syntax `<function> _` is no longer supported;
-          |you can $remedy$rewrite""",
-      tree.srcPos,
-      MigrationVersion.FunctionUnderscore)
-    if MigrationVersion.FunctionUnderscore.needsPatch then
-      patch(Span(tree.span.start), prefix)
-      patch(Span(qual.span.end, tree.span.end), suffix)
-
-    res
-  }
+  override def typedAsFunction(tree: untpd.PostfixOp, pt: Type)(using Context): Tree =
+    migrate(super.typedAsFunction(tree, pt))
 
   /** Translate infix operation expression `l op r` to
    *
@@ -3137,13 +3097,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             case tree: untpd.TypeDef =>
               // separate method to keep dispatching method `typedNamed` short which might help the JIT
               def typedTypeOrClassDef: Tree =
-                if tree.name eq tpnme.? then
-                  val addendum = if sym.owner.is(TypeParam)
-                    then ", use `_` to denote a higher-kinded type parameter"
-                    else ""
-                  val namePos = tree.sourcePos.withSpan(tree.nameSpan)
-                  report.errorOrMigrationWarning(
-                    em"`?` is not a valid type name$addendum", namePos, MigrationVersion.Scala2to3)
+                migrate(kindProjectorQMark(tree, sym))
                 if tree.isClassDef then
                   typedClassDef(tree, sym.asClass)(using ctx.localContext(tree, sym))
                 else
@@ -3818,24 +3772,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
       case wtp: MethodOrPoly =>
         def methodStr = methPart(tree).symbol.showLocated
-        if (matchingApply(wtp, pt))
+        if matchingApply(wtp, pt) then
+          migrate(contextBoundParams(tree, wtp, pt))
           if needsTupledDual(wtp, pt) then adapt(tree, pt.tupledDual, locked)
           else tree
         else if wtp.isContextualMethod then
-          def isContextBoundParams = wtp.stripPoly match
-            case MethodType(ContextBoundParamName(_) :: _) => true
-            case _ => false
-          if sourceVersion == `future-migration` && isContextBoundParams && pt.args.nonEmpty
-          then // Under future-migration, don't infer implicit arguments yet for parameters
-               // coming from context bounds. Issue a warning instead and offer a patch.
-            def rewriteMsg = Message.rewriteNotice("This code", `future-migration`)
-            report.migrationWarning(
-              em"""Context bounds will map to context parameters.
-                  |A `using` clause is needed to pass explicit arguments to them.$rewriteMsg""", tree.srcPos)
-            patch(Span(pt.args.head.span.start), "using ")
-            tree
-          else
-            adaptNoArgs(wtp)  // insert arguments implicitly
+          adaptNoArgs(wtp)  // insert arguments implicitly
         else if (tree.symbol.isPrimaryConstructor && tree.symbol.info.firstParamTypes.isEmpty)
           readapt(tree.appliedToNone) // insert () to primary constructors
         else
@@ -4441,7 +4383,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   protected def matchingApply(methType: MethodOrPoly, pt: FunProto)(using Context): Boolean =
     val isUsingApply = pt.applyKind == ApplyKind.Using
     methType.isContextualMethod == isUsingApply
-    || methType.isImplicitMethod && isUsingApply // for a transition allow `with` arguments for regular implicit parameters
+    || methType.isImplicitMethod && isUsingApply // for a transition allow `using` arguments for regular implicit parameters
 
   /** Check that `tree == x: pt` is typeable. Used when checking a pattern
    *  against a selector of type `pt`. This implementation accounts for
