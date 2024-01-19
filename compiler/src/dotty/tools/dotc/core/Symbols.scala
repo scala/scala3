@@ -325,7 +325,7 @@ object Symbols extends SymUtils {
 
     /** A symbol related to `sym` that is defined in source code.
      *
-     *  @see enclosingSourceSymbols
+     *  @see [[interactive.Interactive.enclosingSourceSymbols]]
      */
     @annotation.tailrec final def sourceSymbol(using Context): Symbol =
       if (!denot.exists)
