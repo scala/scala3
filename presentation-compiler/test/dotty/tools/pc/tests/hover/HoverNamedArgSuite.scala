@@ -11,7 +11,7 @@ class HoverNamedArgSuite extends BaseHoverSuite:
 
   override protected def mockEntries: MockEntries = new MockEntries:
     override def documentations: Set[SymbolDocumentation] = Set(
-      ScalaMockDocumentation("a/b.foo().(named)", "foo", List(MockParam("named")))
+      ScalaMockDocumentation("a/b.foo().(named)", "foo", List(), List(MockParam("named")))
     )
 
   @Test def `named` =

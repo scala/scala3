@@ -9,7 +9,6 @@ import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.ContextOps.localContext
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Definitions
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.Method
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
