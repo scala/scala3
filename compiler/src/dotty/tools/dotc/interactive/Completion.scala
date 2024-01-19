@@ -184,12 +184,12 @@ object Completion:
     val completions = adjustedPath match
         // Ignore synthetic select from `This` because in code it was `Ident`
         // See example in dotty.tools.languageserver.CompletionTest.syntheticThis
-        case Select(qual @ This(_), _) :: _ if qual.span.isSynthetic  => completer.scopeCompletions
-        case Select(qual, _) :: _           if qual.tpe.hasSimpleKind => completer.selectionCompletions(qual)
-        case Select(qual, _) :: _                                     => Map.empty
-        case (tree: ImportOrExport) :: _                              => completer.directMemberCompletions(tree.expr)
-        case (_: untpd.ImportSelector) :: Import(expr, _) :: _        => completer.directMemberCompletions(expr)
-        case _                                                        => completer.scopeCompletions
+        case Select(qual @ This(_), _) :: _ if qual.span.isSynthetic      => completer.scopeCompletions
+        case Select(qual, _) :: _           if qual.typeOpt.hasSimpleKind => completer.selectionCompletions(qual)
+        case Select(qual, _) :: _                                         => Map.empty
+        case (tree: ImportOrExport) :: _                                  => completer.directMemberCompletions(tree.expr)
+        case (_: untpd.ImportSelector) :: Import(expr, _) :: _            => completer.directMemberCompletions(expr)
+        case _                                                            => completer.scopeCompletions
 
     val describedCompletions = describeCompletions(completions)
     val backtickedCompletions =
@@ -348,7 +348,7 @@ object Completion:
     /** Widen only those types which are applied or are exactly nothing
      */
     def widenQualifier(qual: Tree)(using Context): Tree =
-      qual.tpe.widenDealias match
+      qual.typeOpt.widenDealias match
         case widenedType if widenedType.isExactlyNothing => qual.withType(widenedType)
         case appliedType: AppliedType => qual.withType(appliedType)
         case _ => qual
@@ -368,10 +368,10 @@ object Completion:
      *  These include inherited definitions but not members added by extensions or implicit conversions
      */
     def directMemberCompletions(qual: Tree)(using Context): CompletionMap =
-      if qual.tpe.isExactlyNothing then
+      if qual.typeOpt.isExactlyNothing then
         Map.empty
       else
-        accessibleMembers(qual.tpe).groupByName
+        accessibleMembers(qual.typeOpt).groupByName
 
     /** Completions introduced by imports directly in this context.
      *  Completions from outer contexts are not included.
@@ -415,7 +415,7 @@ object Completion:
 
     /** Completions from implicit conversions including old style extensions using implicit classes */
     private def implicitConversionMemberCompletions(qual: Tree)(using Context): CompletionMap =
-      if qual.tpe.isExactlyNothing || qual.tpe.isNullType then
+      if qual.typeOpt.isExactlyNothing || qual.typeOpt.isNullType then
         Map.empty
       else
         implicitConversionTargets(qual)(using ctx.fresh.setExploreTyperState())
@@ -432,7 +432,7 @@ object Completion:
       def tryApplyingReceiverToExtension(termRef: TermRef): Option[SingleDenotation] =
         ctx.typer.tryApplyingExtensionMethod(termRef, qual)
           .map { tree =>
-            val tpe = asDefLikeType(tree.tpe.dealias)
+            val tpe = asDefLikeType(tree.typeOpt.dealias)
             termRef.denot.asSingleDenotation.mapInfo(_ => tpe)
           }
 
@@ -453,16 +453,16 @@ object Completion:
 
       // 1. The extension method is visible under a simple name, by being defined or inherited or imported in a scope enclosing the reference.
       val termCompleter = new Completer(Mode.Term, prefix, pos)
-      val extMethodsInScope = termCompleter.scopeCompletions.toList.flatMap {
-        case (name, denots) => denots.collect { case d: SymDenotation if d.isTerm => (d.termRef, name.asTermName) }
-      }
+      val extMethodsInScope = termCompleter.scopeCompletions.toList.flatMap:
+        case (name, denots) => denots.collect:
+          case d: SymDenotation if d.isTerm && d.termRef.symbol.is(Extension) => (d.termRef, name.asTermName)
 
       // 2. The extension method is a member of some given instance that is visible at the point of the reference.
       val givensInScope = ctx.implicits.eligible(defn.AnyType).map(_.implicitRef.underlyingRef)
       val extMethodsFromGivensInScope = extractMemberExtensionMethods(givensInScope)
 
       // 3. The reference is of the form r.m and the extension method is defined in the implicit scope of the type of r.
-      val implicitScopeCompanions = ctx.run.nn.implicitScope(qual.tpe).companionRefs.showAsList
+      val implicitScopeCompanions = ctx.run.nn.implicitScope(qual.typeOpt).companionRefs.showAsList
       val extMethodsFromImplicitScope = extractMemberExtensionMethods(implicitScopeCompanions)
 
       // 4. The reference is of the form r.m and the extension method is defined in some given instance in the implicit scope of the type of r.
@@ -472,7 +472,7 @@ object Completion:
       val availableExtMethods = extMethodsFromGivensInImplicitScope ++ extMethodsFromImplicitScope ++ extMethodsFromGivensInScope ++ extMethodsInScope
       val extMethodsWithAppliedReceiver = availableExtMethods.flatMap {
         case (termRef, termName) =>
-          if termRef.symbol.is(ExtensionMethod) && !qual.tpe.isBottomType then
+          if termRef.symbol.is(ExtensionMethod) && !qual.typeOpt.isBottomType then
             tryApplyingReceiverToExtension(termRef)
               .map(denot => termName -> denot)
           else None
@@ -551,21 +551,25 @@ object Completion:
      * @param qual The argument to which the implicit conversion should be applied.
      * @return The set of types after `qual` implicit conversion.
      */
-    private def implicitConversionTargets(qual: Tree)(using Context): Set[Type] = {
+    private def implicitConversionTargets(qual: Tree)(using Context): Set[Type] =
       val typer = ctx.typer
-      val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.span).allImplicits
-      val targets = conversions.map(_.tree.tpe)
+      val targets = try {
+        val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.span).allImplicits
+        conversions.map(_.tree.typeOpt)
+      } catch {
+        case _ =>
+          interactiv.println(i"implicit conversion targets failed: ${qual.show}")
+          Set.empty
+      }
 
       interactiv.println(i"implicit conversion targets considered: ${targets.toList}%, %")
       targets
-    }
 
     /** Filter for names that should appear when looking for completions. */
-    private object completionsFilter extends NameFilter {
+    private object completionsFilter extends NameFilter:
       def apply(pre: Type, name: Name)(using Context): Boolean =
         !name.isConstructorName && name.toTermName.info.kind == SimpleNameKind
       def isStable = true
-    }
 
     extension (denotations: Seq[SingleDenotation])
       def groupByName(using Context): CompletionMap = denotations.groupBy(_.name)

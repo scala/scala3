@@ -1679,3 +1679,11 @@ class CompletionSuite extends BaseCompletionSuite:
         |""".stripMargin,
       ""
     )
+
+  @Test def `dont-crash-implicit-search` =
+    check(
+      """object M:
+        |  Array[Int].fi@@
+        |""".stripMargin,
+      ""
+    )

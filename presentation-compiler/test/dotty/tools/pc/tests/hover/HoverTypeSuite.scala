@@ -368,3 +368,29 @@ class HoverTypeSuite extends BaseHoverSuite:
       """|extension (i: MyIntOut) def uneven: Boolean
          |""".stripMargin.hover,
     )
+
+  @Test def `recursive-enum-without-type` =
+    check(
+      """class Wrapper(n: Int):
+        |  extension (x: Int)
+        |    def + (y: Int) = new Wrap@@per(x) + y
+        |""".stripMargin,
+      """```scala
+        |def this(n: Int): Wrapper
+        |```
+        |""".stripMargin
+    )
+
+  @Test def `recursive-enum-without-type-1` =
+    check(
+      """class Wrapper(n: Int):
+        |  def add(x: Int): Wrapper = ???
+        |  extension (x: Int)
+        |    def + (y: Int) = Wrap@@per(x).add(5)
+        |""".stripMargin,
+      """```scala
+        |def this(n: Int): Wrapper
+        |```
+        |""".stripMargin
+    )
+

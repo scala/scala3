@@ -122,7 +122,7 @@ class Completions(
           // should not show completions for toplevel
           case Nil | (_: PackageDef) :: _ if pos.source.file.extension != "sc" =>
             (allAdvanced, SymbolSearch.Result.COMPLETE)
-          case Select(qual, _) :: _ if qual.tpe.isErroneous =>
+          case Select(qual, _) :: _ if qual.typeOpt.isErroneous =>
             (allAdvanced, SymbolSearch.Result.COMPLETE)
           case Select(qual, _) :: _ =>
             val (_, compilerCompletions) = Completion.completions(pos)
@@ -752,7 +752,7 @@ class Completions(
         items
 
     def forSelect(sel: Select): CompletionApplication =
-      val tpe = sel.qualifier.tpe
+      val tpe = sel.qualifier.typeOpt
       val members = tpe.allMembers.map(_.symbol).toSet
 
       new CompletionApplication:

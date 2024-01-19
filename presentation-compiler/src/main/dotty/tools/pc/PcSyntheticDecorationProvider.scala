@@ -114,7 +114,7 @@ final class PcSyntheticDecorationsProvider(
   ): String =
     val tpdPath =
       Interactive.pathTo(unit.tpdTree, pos.span)
-    
+
     val indexedCtx = IndexedContext(Interactive.contextOfPath(tpdPath))
     val printer = ShortenedTypePrinter(
       symbolSearch
@@ -210,7 +210,7 @@ object TypeParameters:
           case sel: Select if sel.isInfix =>
             sel.sourcePos.withEnd(sel.nameSpan.end)
           case _ => fun.sourcePos
-        val tpes = args.map(_.tpe.stripTypeVar.widen.finalResultType)
+        val tpes = args.map(_.typeOpt.stripTypeVar.widen.finalResultType)
         Some((tpes, pos.endPos, fun))
       case _ => None
   private def inferredTypeArgs(args: List[Tree]): Boolean =
@@ -232,7 +232,7 @@ object InferredType:
             !vd.symbol.is(Flags.Enum) &&
             !isValDefBind(text, vd) =>
         if vd.symbol == vd.symbol.sourceSymbol then
-          Some(tpe.tpe, tpe.sourcePos.withSpan(vd.nameSpan), vd)
+          Some(tpe.typeOpt, tpe.sourcePos.withSpan(vd.nameSpan), vd)
         else None
       case vd @ DefDef(_, _, tpe, _)
           if isValidSpan(tpe.span, vd.nameSpan) &&
@@ -240,7 +240,7 @@ object InferredType:
             !vd.symbol.isConstructor &&
             !vd.symbol.is(Flags.Mutable) =>
         if vd.symbol == vd.symbol.sourceSymbol then
-          Some(tpe.tpe, tpe.sourcePos, vd)
+          Some(tpe.typeOpt, tpe.sourcePos, vd)
         else None
       case bd @ Bind(
             name,
