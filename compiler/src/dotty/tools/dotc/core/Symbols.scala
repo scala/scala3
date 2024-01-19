@@ -321,11 +321,6 @@ object Symbols extends SymUtils {
       }
       else if (denot.isPrimaryConstructor)
         denot.owner.sourceSymbol
-      else if denot.is(Exported) then
-        denot.info.finalResultType match
-          case TypeAlias(target: NamedType) => target.symbol.sourceSymbol // exported type
-          case target: NamedType            => target.symbol.sourceSymbol // exported term
-          case info                         => this
       else this
 
     /** The position of this symbol, or NoSpan if the symbol was not loaded

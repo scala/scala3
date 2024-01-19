@@ -1,0 +1,12 @@
+-- [E006] Not Found Error: tests/neg/export-leaks.scala:24:13 ----------------------------------------------------------
+24 |    val t1 = bar // error: Not found: bar
+   |             ^^^
+   |             Not found: bar
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/export-leaks.scala:25:13 ----------------------------------------------------------
+25 |    val t2 = foo // error: Not found: foo
+   |             ^^^
+   |             Not found: foo
+   |
+   | longer explanation available when compiling with `-explain`

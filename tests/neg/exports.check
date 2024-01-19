@@ -7,16 +7,21 @@
    |                     ^^^^^^^^^^^^^^
    |                     no eligible member scanAll at this.scanUnit
    |                     this.scanUnit.scanAll cannot be exported because it is not accessible
--- Error: tests/neg/exports.scala:25:21 --------------------------------------------------------------------------------
-25 |    export printUnit.bitmap         // error: no eligible member
-   |                     ^
-   |                     non-private given instance bitmap in class Copier refers to private value printUnit
-   |                     in its type signature => object Copier.this.printUnit.bitmap
+-- [E120] Naming Error: tests/neg/exports.scala:28:8 -------------------------------------------------------------------
+28 |    def status: List[String] = printUnit.status ++ scanUnit.status // error: double definition w/ printUnit.status
+   |        ^
+   |        Double definition:
+   |        final def status: List[String] in class Copier at line 23 and
+   |        def status: List[String] in class Copier at line 28
+   |        have the same type after erasure.
+   |
+   |        Consider adding a @targetName annotation to one of the conflicting definitions
+   |        for disambiguation.
 -- [E120] Naming Error: tests/neg/exports.scala:23:33 ------------------------------------------------------------------
 23 |    export printUnit.{stat => _, _} // error: double definition
    |                                 ^
    |                                 Double definition:
-   |                                 def status: List[String] in class Copier at line 28 and
+   |                                 final def status: List[String] in class Copier at line 24 and
    |                                 final def status: List[String] in class Copier at line 23
    |                                 have the same type after erasure.
    |
@@ -26,22 +31,12 @@
 24 |    export scanUnit._               // error: double definition
    |                    ^
    |                    Double definition:
-   |                    final def status: List[String] in class Copier at line 23 and
+   |                    final def status: List[String] in class Copier at line 26 and
    |                    final def status: List[String] in class Copier at line 24
    |                    have the same type after erasure.
    |
    |                    Consider adding a @targetName annotation to one of the conflicting definitions
    |                    for disambiguation.
--- [E120] Naming Error: tests/neg/exports.scala:26:21 ------------------------------------------------------------------
-26 |    export printUnit.status         // error: double definition
-   |                     ^
-   |                     Double definition:
-   |                     final def status: List[String] in class Copier at line 24 and
-   |                     final def status: List[String] in class Copier at line 26
-   |                     have the same type after erasure.
-   |
-   |                     Consider adding a @targetName annotation to one of the conflicting definitions
-   |                     for disambiguation.
 -- Error: tests/neg/exports.scala:35:24 --------------------------------------------------------------------------------
 35 |    export this.{concat => ++}   // error: no eligible member
    |                 ^^^^^^^^^^^^
@@ -52,12 +47,6 @@
    |               ^^^
    |               no eligible member foo at this.foo
    |               this.foo.foo cannot be exported because it is already a member of class Foo
--- [E120] Naming Error: tests/neg/exports.scala:46:15 ------------------------------------------------------------------
-46 |    export bar._  // error: double definition
-   |               ^
-   |               Double definition:
-   |               val bar: Bar in class Baz at line 45 and
-   |               final def bar: (Baz.this.bar.bar : => (Baz.this.bar.baz.bar : Bar)) in class Baz at line 46
 -- [E083] Type Error: tests/neg/exports.scala:57:11 --------------------------------------------------------------------
 57 |    export printer.*  // error: not stable
    |           ^^^^^^^
