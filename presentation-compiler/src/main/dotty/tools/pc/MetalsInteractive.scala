@@ -10,7 +10,7 @@ import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.core.Types.Type
+import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.SourceTree
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
@@ -109,6 +109,7 @@ object MetalsInteractive:
    * Returns the list of tuple enclosing symbol and
    * the symbol's expression type if possible.
    */
+  @tailrec
   def enclosingSymbolsWithExpressionType(
       path: List[Tree],
       pos: SourcePosition,
@@ -116,7 +117,7 @@ object MetalsInteractive:
       skipCheckOnName: Boolean = false
   ): List[(Symbol, Type)] =
     import indexed.ctx
-    @tailrec def go(path: List[Tree]): List[(Symbol, Type)] = path match
+    path match
       // For a named arg, find the target `DefDef` and jump to the param
       case NamedArg(name, _) :: Apply(fn, _) :: _ =>
         val funSym = fn.symbol
@@ -204,8 +205,24 @@ object MetalsInteractive:
             Nil
 
       case path @ head :: tail =>
-        if head.symbol.is(Synthetic) then
-          go(tail)
+        if head.symbol.is(Exported) then
+          head.symbol.info match
+            case TypeAlias(target: NamedType) =>
+              val ss = target.symbol.sourceSymbol // exported type
+              List((ss, ss.info))
+            case info => info.finalResultType match
+              case target: NamedType =>
+                val ss = target.symbol.sourceSymbol // exported term
+                List((ss, ss.info))
+              case _ =>
+                enclosingSymbolsWithExpressionType(tail, pos, indexed, skipCheckOnName)
+        else if head.symbol.is(Synthetic) then
+          enclosingSymbolsWithExpressionType(
+            tail,
+            pos,
+            indexed,
+            skipCheckOnName
+          )
         else if head.symbol != NoSymbol then
           if skipCheckOnName ||
             MetalsInteractive.isOnName(
@@ -219,24 +236,21 @@ object MetalsInteractive:
            * https://github.com/lampepfl/dotty/issues/15937
            */
           else if head.isInstanceOf[TypeTree] then
-            go(tail)
+            enclosingSymbolsWithExpressionType(tail, pos, indexed)
           else Nil
         else
           val recovered = recoverError(head, indexed)
           if recovered.isEmpty then
-            go(tail)
+            enclosingSymbolsWithExpressionType(
+              tail,
+              pos,
+              indexed,
+              skipCheckOnName
+            )
           else recovered.map(sym => (sym, sym.info))
         end if
       case Nil => Nil
-    end go
-    go(path).map { (sym, tp) =>
-      if sym.is(Synthetic) && sym.name == StdNames.nme.apply then
-        (sym, tp) // return synthetic apply, rather than the apply's owner
-      else if sym.isClassConstructor && sym.isPrimaryConstructor then
-        (sym, tp) // return the class constructor, rather than the class (so skip trait constructors)
-      else
-        (sym.sourceSymbol, tp)
-    }
+    end match
   end enclosingSymbolsWithExpressionType
 
   import dotty.tools.pc.utils.MtagsEnrichments.*

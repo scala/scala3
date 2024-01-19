@@ -22,10 +22,10 @@
     export scanUnit.{scanAll => foo} // error: no eligible member
     export printUnit.{stat => _, _} // error: double definition
     export scanUnit._               // error: double definition
-    export printUnit.bitmap         // error: no eligible member
-    export printUnit.status         // error: double definition
+    export printUnit.bitmap
+    export printUnit.status
 
-    def status: List[String] = printUnit.status ++ scanUnit.status
+    def status: List[String] = printUnit.status ++ scanUnit.status // error: double definition w/ printUnit.status
   }
 
   trait IterableOps[+A, +CC[_], +C] {
@@ -43,7 +43,7 @@
 
   class Baz {
     val bar: Bar = new Bar
-    export bar._  // error: double definition
+    export bar._
   }
   class Bar {
     val baz: Baz = new Baz
