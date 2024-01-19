@@ -608,14 +608,11 @@ object Signatures {
     else None
 
   /**
-   * The number of parameters before `tree` application. It is necessary to properly show
-   * parameter number for erroneous applications before current one.
-   *
-   * This handles currying, so for an application such as `foo(1, 2)(3)`, the result of
-   * `countParams` should be 1.
+   * The number of params lists before `tree` application.
+   * It handles currying, so for an application such as `foo(1, 2)(3)`, the result of
+   * `findParamssIndex` should be 1.
    *
    * @param tree           The tree to inspect.
-   * @param denot          Denotation of function we are trying to apply
    * @param alreadyCurried Number of subsequent Apply trees before current tree
    *
    * @return The index of paramss we are currently in.

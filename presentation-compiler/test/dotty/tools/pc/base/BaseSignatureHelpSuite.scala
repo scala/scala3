@@ -1,10 +1,11 @@
 package dotty.tools.pc.base
 
-import java.nio.file.Paths
+import org.eclipse.lsp4j.SignatureHelp
 
+import java.nio.file.Paths
 import scala.jdk.CollectionConverters.*
-import scala.meta.internal.metals.CompilerOffsetParams
 import scala.language.unsafeNulls
+import scala.meta.internal.metals.CompilerOffsetParams
 
 abstract class BaseSignatureHelpSuite extends BasePCSuite:
   def checkDoc(
@@ -27,6 +28,10 @@ abstract class BaseSignatureHelpSuite extends BasePCSuite:
         )
         .get()
     val out = new StringBuilder()
+
+    // this is default SignatureHelp value which should only be returned on crash
+    assert(result != new SignatureHelp())
+
     if (result != null) {
       result.getSignatures.asScala.zipWithIndex.foreach { case (signature, i) =>
         if (includeDocs) {

@@ -1038,7 +1038,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       ""
      )
 
-  @Test def `show-directly-when-unclosed` =
+  @Test def `dont-show-directly-when-unclosed` =
     check(
       """|object Main {
          |  def test(a: Int, b: Int): Int = ???
@@ -1264,18 +1264,6 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |""".stripMargin
     )
 
-  @Test def `implicit-param-without-ident` =
-    check(
-      """|object M:
-         |  trait Context
-         |  def test(x: Int)(using Context): Int = ???
-         |  test(@@)
-         |""".stripMargin,
-      """|test(x: Int)(using Context): Int
-         |     ^^^^^^
-         |""".stripMargin
-    )
-
   @Test def `implicit-param` =
     check(
       """|object M:
@@ -1373,8 +1361,15 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |  def a(using Int)(using String)(x: Int): Int = ???
          |  a(5)(@@)
          |""".stripMargin,
-      """|
-         |a(using Int)(using String)(x: Int): Int
+      """|a(using Int)(using String)(x: Int): Int
          |                   ^^^^^^
          |""".stripMargin
+    )
+
+  @Test def `dont-crash-at-last-position` =
+    check(
+      """|object M:
+         |  def test(x: Int): Int = ???
+         |  test(@@""".stripMargin,
+      ""
     )

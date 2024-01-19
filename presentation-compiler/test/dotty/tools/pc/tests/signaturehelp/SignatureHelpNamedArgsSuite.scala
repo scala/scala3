@@ -22,7 +22,7 @@ class SignatureHelpNamedArgsSuite extends BaseSignatureHelpSuite:
     check(
       """|object O:
          |  def method(paramA: Int, paramB: Int, paramC: Int, paramD: Int): Unit = ???
-         |  method(paramA = 1,  @@
+         |  method(paramA = 1,  @@)
          |""".stripMargin,
       """|method(paramA: Int, paramB: Int, paramC: Int, paramD: Int): Unit
          |                    ^^^^^^^^^^^

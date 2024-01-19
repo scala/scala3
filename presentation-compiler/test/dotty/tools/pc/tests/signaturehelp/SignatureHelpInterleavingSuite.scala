@@ -166,20 +166,6 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
         |""".stripMargin
     )
 
-  // Bug in compiler: TypeApply fun has incorrect span for clause interleaving
-  // @Test def `empty-current-param-1` =
-  //   check(
-  //     """
-  //       |object Test:
-  //       |  def pair[A](a: A)[B](b: B): (A, B) = (a, b)
-  //       |  pair[@@]
-  //     """.stripMargin,
-  //     """
-  //       |pair[A](a: A)[B](b: B): (A, B)
-  //       |     ^
-  //       |""".stripMargin
-  //   )
-
   @Test def `empty-current-param-check` =
     check(
       """

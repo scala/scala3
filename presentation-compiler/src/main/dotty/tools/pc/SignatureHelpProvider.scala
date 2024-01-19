@@ -48,7 +48,7 @@ object SignatureHelpProvider:
 
         given Context = localizedContext.fresh
           .setCompilationUnit(unit)
-          .setPrinterFn(_ => ShortenedTypePrinter(search, IncludeDefaultParam.Include)(using indexedContext))
+          .setPrinterFn(_ => ShortenedTypePrinter(search, IncludeDefaultParam.Never)(using indexedContext))
 
         val (paramN, callableN, alternatives) = Signatures.signatureHelp(path, pos.span)
 
