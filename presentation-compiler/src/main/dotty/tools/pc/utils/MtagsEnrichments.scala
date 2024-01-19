@@ -300,7 +300,7 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
     def seenFrom(sym: Symbol)(using Context): (Type, Symbol) =
       try
         val pre = tree.qual
-        val denot = sym.denot.asSeenFrom(pre.tpe.widenTermRefExpr)
+        val denot = sym.denot.asSeenFrom(pre.typeOpt.widenTermRefExpr)
         (denot.info, sym.withUpdatedTpe(denot.info))
       catch case NonFatal(e) => (sym.info, sym)
 
@@ -357,7 +357,7 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
               case t: GenericApply
                   if t.fun.srcPos.span.contains(
                     pos.span
-                  ) && !t.tpe.isErroneous =>
+                  ) && !t.typeOpt.isErroneous =>
                 tryTail(tail).orElse(Some(enclosing))
               case in: Inlined =>
                 tryTail(tail).orElse(Some(enclosing))

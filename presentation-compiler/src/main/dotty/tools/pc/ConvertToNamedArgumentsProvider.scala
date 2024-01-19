@@ -35,7 +35,7 @@ final class ConvertToNamedArgumentsProvider(
     val tree = Interactive.pathTo(trees, pos)(using newctx).headOption
 
     def paramss(fun: tpd.Tree)(using Context): List[String] =
-      fun.tpe match
+      fun.typeOpt match
         case m: MethodType => m.paramNamess.flatten.map(_.toString)
         case _ =>
           fun.symbol.rawParamss.flatten
