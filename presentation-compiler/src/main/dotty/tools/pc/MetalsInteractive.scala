@@ -229,7 +229,14 @@ object MetalsInteractive:
         end if
       case Nil => Nil
     end go
-    go(path).map((sym, tp) => (sym.sourceSymbol, tp))
+    go(path).map { (sym, tp) =>
+      if sym.is(Synthetic) && sym.name == StdNames.nme.apply then
+        (sym, tp) // return synthetic apply, rather than the apply's owner
+      else if sym.isClassConstructor && sym.isPrimaryConstructor then
+        (sym, tp) // return the class constructor, rather than the class (so skip trait constructors)
+      else
+        (sym.sourceSymbol, tp)
+    }
   end enclosingSymbolsWithExpressionType
 
   import dotty.tools.pc.utils.MtagsEnrichments.*
