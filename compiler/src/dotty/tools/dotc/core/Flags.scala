@@ -363,7 +363,7 @@ object Flags {
   val (Enum @ _, EnumVal @ _, _) = newFlags(40, "enum")
 
   /** An export forwarder */
-  val (Exported @ _, _, _) = newFlags(41, "exported")
+  val (Exported @ _, ExportedTerm @ _, ExportedType @ _) = newFlags(41, "exported")
 
   /** Labeled with `erased` modifier (erased value or class)  */
   val (Erased @ _, _, _) = newFlags(42, "erased")
