@@ -26,13 +26,13 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
       MockDocumentation("java/io/File#`<init>`(+1).", "<init>", Seq(), Seq("parent", "child")),
       MockDocumentation("java/io/File#`<init>`(+2).", "<init>", Seq(), Seq("parent", "child")),
       MockDocumentation("java/io/File#`<init>`(+3).", "<init>", Seq(), Seq("uri")),
-      ScalaMockDocumentation("java/util/Collections#singleton().", "singleton", List(MockParam("o"))),
+      ScalaMockDocumentation("java/util/Collections#singleton().", "singleton", List(MockParam("T")), List(MockParam("o"))),
       ScalaMockDocumentation("scala/Some#", "Some"),
-      ScalaMockDocumentation("scala/Option#fold().", "fold", List(MockParam("ifEmpty"), MockParam("f"))),
-      ScalaMockDocumentation("scala/Option.apply().", "apply", List(MockParam("x"))),
-      ScalaMockDocumentation("scala/collection/immutable/List#map().", "map", List(MockParam("f"))),
-      ScalaMockDocumentation("scala/collection/LinearSeqOps#foldLeft().", "foldLeft", List(MockParam("z"), MockParam("op"))),
-      ScalaMockDocumentation("scala/util/control/Exception.Catch#", "Catch", List(MockParam("pf"), MockParam("fin"), MockParam("rethrow")))
+      ScalaMockDocumentation("scala/Option#fold().", "fold", List(MockParam("B")), List(MockParam("ifEmpty"), MockParam("f"))),
+      ScalaMockDocumentation("scala/Option.apply().", "apply", List(), List(MockParam("x"))),
+      ScalaMockDocumentation("scala/collection/immutable/List#map().", "map", List(MockParam("B")), List(MockParam("f"))),
+      ScalaMockDocumentation("scala/collection/LinearSeqOps#foldLeft().", "foldLeft", List(MockParam("B")), List(MockParam("z"), MockParam("op"))),
+      ScalaMockDocumentation("scala/util/control/Exception.Catch#", "Catch", List(), List(MockParam("pf"), MockParam("fin"), MockParam("rethrow")))
     )
 
   @Test def `curry` =
@@ -45,6 +45,7 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
       s"""Found documentation for scala/Option#fold().
          |fold[B](ifEmpty: => B)(f: Int => B): B
          |                       ^^^^^^^^^^^
+         |  @param B Found documentation for type param B
          |  @param ifEmpty Found documentation for param ifEmpty
          |  @param f Found documentation for param f
           """.stripMargin
@@ -60,6 +61,7 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
       s"""|Found documentation for scala/Option#fold().
           |fold[B](ifEmpty: => B)(f: Int => B): B
           |        ^^^^^^^^^^^^^
+          |  @param B Found documentation for type param B
           |  @param ifEmpty Found documentation for param ifEmpty
           |  @param f Found documentation for param f
           |""".stripMargin
@@ -77,6 +79,7 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
       """|Found documentation for scala/collection/LinearSeqOps#foldLeft().
          |foldLeft[B](z: B)(op: (B, Int) => B): B
          |                  ^^^^^^^^^^^^^^^^^
+         |  @param B Found documentation for type param B
          |  @param z Found documentation for param z
          |  @param op Found documentation for param op
          |""".stripMargin
@@ -106,6 +109,7 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
       """|Found documentation for scala/collection/immutable/List#map().
          |map[B](f: Int => B): List[B]
          |       ^^^^^^^^^^^
+         |  @param B Found documentation for type param B
          |  @param f Found documentation for param f
          |""".stripMargin
     )
@@ -134,6 +138,7 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
       """|Found documentation for java/util/Collections#singleton().
          |singleton[T](o: T): java.util.Set[T]
          |             ^^^^
+         |  @param T Found documentation for type param T
          |  @param o Found documentation for param o
          |""".stripMargin
     )
@@ -146,8 +151,8 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |}
       """.stripMargin,
       """|Found documentation for scala/util/control/Exception.Catch#
-         |Catch[T](pf: scala.util.control.Exception.Catcher[T], fin: Option[scala.util.control.Exception.Finally], rethrow: Throwable => Boolean)
-         |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+         |Catch[T](pf: Catcher[T], fin: Option[Finally], rethrow: Throwable => Boolean)
+         |         ^^^^^^^^^^^^^^
          |  @param pf Found documentation for param pf
          |  @param fin Found documentation for param fin
          |  @param rethrow Found documentation for param rethrow
@@ -161,9 +166,9 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |  new java.io.File(@@)
         |}
       """.stripMargin,
-      """|File(uri: java.net.URI)
-         |     ^^^^^^^^^^^^^^^^^
-         |File(parent: java.io.File, child: String)
+      """|File(uri: URI)
+         |     ^^^^^^^^
+         |File(parent: File, child: String)
          |File(parent: String, child: String)
          |File(pathname: String)
          |""".stripMargin

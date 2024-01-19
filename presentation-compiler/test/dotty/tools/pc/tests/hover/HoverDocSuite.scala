@@ -10,10 +10,10 @@ class HoverDocSuite extends BaseHoverSuite:
 
   override protected def mockEntries: MockEntries = new MockEntries:
     override def documentations: Set[SymbolDocumentation] = Set(
-      ScalaMockDocumentation("java/lang/String#substring().", "substring", List(MockParam("beginIndex"))),
+      ScalaMockDocumentation("java/lang/String#substring().", "substring", List(), List(MockParam("beginIndex"))),
       ScalaMockDocumentation("java/util/Collections#emptyList().", "emptyList"),
-      ScalaMockDocumentation("_empty_/Alpha.apply().", "apply", List(MockParam("x"))),
-      ScalaMockDocumentation("_empty_/Alpha#", "init", List(MockParam("x"))),
+      ScalaMockDocumentation("_empty_/Alpha.apply().", "apply", List(), List(MockParam("x"))),
+      ScalaMockDocumentation("_empty_/Alpha#", "init", List(), List(MockParam("x"))),
       ScalaMockDocumentation("scala/collection/LinearSeqOps#headOption().", "headOption"),
     )
 

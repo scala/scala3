@@ -36,7 +36,8 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
   extension (driver: InteractiveDriver)
 
     def sourcePosition(
-        params: OffsetParams
+        params: OffsetParams,
+        isZeroExtent: Boolean = true
     ): SourcePosition =
       val uri = params.uri()
       val source = driver.openedFiles(uri.nn)
@@ -50,6 +51,7 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
             case offset =>
               Spans.Span(p.offset(), p.offset())
           }
+        case _ if !isZeroExtent => Spans.Span(params.offset(), params.offset() + 1)
         case _ => Spans.Span(params.offset())
 
       new SourcePosition(source, span)
@@ -301,7 +303,7 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
         val denot = sym.denot.asSeenFrom(pre.tpe.widenTermRefExpr)
         (denot.info, sym.withUpdatedTpe(denot.info))
       catch case NonFatal(e) => (sym.info, sym)
-    
+
     def isInfix(using ctx: Context) =
       tree match
         case Select(New(_), _) => false
