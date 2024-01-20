@@ -333,7 +333,9 @@ object Symbols extends SymUtils {
       else if (denot.is(ModuleVal))
         this.moduleClass.sourceSymbol // The module val always has a zero-extent position
       else if denot.is(ExportedType) then
-        denot.info.dropAlias.asInstanceOf[NamedType].symbol.sourceSymbol
+        denot.info.dropAlias.finalResultType.typeConstructor match
+          case tp: NamedType => tp.symbol.sourceSymbol
+          case _             => this
       else if (denot.is(Synthetic)) {
         val linked = denot.linkedClass
         if (linked.exists && !linked.is(Synthetic))
