@@ -1637,10 +1637,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *    val q: Quotes = summon[Quotes]
      *    import q.reflect._
      *  //}
-     *    val intArgs = List(Literal(Constant(1)), Literal(Constant(2)))
+     *    val intArgs = List(Literal(IntConstant(1)), Literal(IntConstant(2)))
      *    Typed(
-     *     Repeated(intArgs, TypeTree.of[Int]),
-     *     Inferred(defn.RepeatedParamClass.typeRef.appliedTo(TypeRepr.of[Int]))
+     *      Repeated(intArgs, TypeTree.of[Int]),
+     *      Inferred(defn.RepeatedParamClass.typeRef.appliedTo(TypeRepr.of[Int]))
+     *    )
      *  //{
      *  }
      *  //}
