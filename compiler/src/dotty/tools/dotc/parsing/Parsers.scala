@@ -4005,13 +4005,17 @@ object Parsers {
     def givenDef(start: Offset, mods: Modifiers, givenMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, givenMod)
       val nameStart = in.offset
-      val name = if isIdent && followingIsGivenSig() then ident() else EmptyTermName
 
+      val givenSigPart =
+        if isIdent && followingIsGivenSig() then Some(ident())
+        else if followingIsGivenSig() then Some(EmptyTermName)
+        else None
+      val name = givenSigPart.getOrElse(EmptyTermName)
       val gdef =
         val tparams = typeParamClauseOpt(ParamOwner.Given)
         newLineOpt()
         val vparamss =
-          if in.token == LPAREN && in.lookahead.isIdent(nme.using)
+          if in.token == LPAREN && givenSigPart.nonEmpty
           then termParamClauses(ParamOwner.Given)
           else Nil
         newLinesOpt()
