@@ -2381,8 +2381,7 @@ object ScaladocConfigs {
           s"$dottyLibrarySrc/scala/quoted=compile",
           s"$dottyLibrarySrc/scala/compiletime=compile",
           s"$dottyLibrarySrc/scala/util=compile",
-          s"$dottyLibrarySrc/scala/util/control=compile",
-          "docs/_docs/reference/enums=compile"
+          s"$dottyLibrarySrc/scala/util/control=compile"
         )
       ))
       .add(CommentSyntax(List(
