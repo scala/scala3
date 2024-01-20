@@ -2362,7 +2362,8 @@ object ScaladocConfigs {
         s"$dottyLibRoot/src/scala=compile",
         s"$dottyLibRoot/src/scala/compiletime=compile",
         s"$dottyLibRoot/src/scala/util=compile",
-        s"$dottyLibRoot/src/scala/util/control=compile"
+        s"$dottyLibRoot/src/scala/util/control=compile",
+        "docs/_docs/reference/enums=compile"
       )))
       .add(SiteRoot("docs"))
       .add(ApiSubdirectory(true))
@@ -2380,7 +2381,8 @@ object ScaladocConfigs {
           s"$dottyLibrarySrc/scala/quoted=compile",
           s"$dottyLibrarySrc/scala/compiletime=compile",
           s"$dottyLibrarySrc/scala/util=compile",
-          s"$dottyLibrarySrc/scala/util/control=compile"
+          s"$dottyLibrarySrc/scala/util/control=compile",
+          "docs/_docs/reference/enums=compile"
         )
       ))
       .add(CommentSyntax(List(
