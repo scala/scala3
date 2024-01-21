@@ -1135,6 +1135,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       buf.toList
     }
 
+    def collectSubTrees[A](f: PartialFunction[Tree, A])(using Context): List[A] =
+      val buf = mutable.ListBuffer[A]()
+      foreachSubTree(f.runWith(buf += _)(_))
+      buf.toList
+
     /** Set this tree as the `defTree` of its symbol and return this tree */
     def setDefTree(using Context): ThisTree = {
       val sym = tree.symbol

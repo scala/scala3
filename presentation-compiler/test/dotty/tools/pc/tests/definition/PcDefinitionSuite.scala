@@ -199,89 +199,67 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
          |""".stripMargin
     )
 
-  @Test def `exportType1` =
+  @Test def exportType0 =
     check(
-      """object enumerations:
-        |  trait <<SymbolKind>>
-        |  trait CymbalKind
-        |
-        |object all:
-        |  export enumerations.*
-        |
-        |@main def hello =
-        |  import all.SymbolKind
-        |  import enumerations.CymbalKind
-        |
-        |  val x = new Symbo@@lKind {}
-        |  val y = new CymbalKind {}
-        |""".stripMargin
-    )
-
-  @Test def `exportType1Wild` =
-    check(
-      """object enumerations:
-        |  trait <<SymbolKind>>
-        |  trait CymbalKind
-        |
-        |object all:
-        |  export enumerations.SymbolKind
-        |
-        |@main def hello =
-        |  import all.SymbolKind
-        |  import enumerations.CymbalKind
-        |
-        |  val x = new Symbo@@lKind {}
-        |  val y = new CymbalKind {}
-        |""".stripMargin
-    )
-
-  @Test def `exportTerm1` =
-    check(
-      """class BitMap
-        |class Scanner:
-        |  def scan(): BitMap = ???
-        |class Copier:
-        |  private val scanUnit = new Scanner
-        |  export scanUnit.<<scan>>
-        |  def t1 = sc@@an()
-        |""".stripMargin
-    )
-
-  @Test def `exportTerm2` =
-    check(
-      """class BitMap
-        |class Scanner:
-        |  def scan(): BitMap = ???
-        |class Copier:
-        |  private val scanUnit = new Scanner
-        |  export scanUnit.<<scan>>
+      """object Foo:
+        |  trait <<Cat>>
+        |object Bar:
+        |  export Foo.*
         |class Test:
-        |  def t2(cpy: Copier) = cpy.sc@@an()
+        |  import Bar.*
+        |  def test = new Ca@@t {}
         |""".stripMargin
     )
 
-  @Test def `exportTerm1Wild` =
+  @Test def exportType1 =
     check(
-      """class BitMap
-        |class Scanner:
-        |  def scan(): BitMap = ???
-        |class Copier:
-        |  private val scanUnit = new Scanner
-        |  export scanUnit.<<*>>
-        |  def t1 = sc@@an()
-        |""".stripMargin
-    )
-
-  @Test def `exportTerm2Wild` =
-    check(
-      """class BitMap
-        |class Scanner:
-        |  def scan(): BitMap = ???
-        |class Copier:
-        |  private val scanUnit = new Scanner
-        |  export scanUnit.<<*>>
+      """object Foo:
+        |  trait <<Cat>>[A]
+        |object Bar:
+        |  export Foo.*
         |class Test:
-        |  def t2(cpy: Copier) = cpy.sc@@an()
+        |  import Bar.*
+        |  def test = new Ca@@t[Int] {}
+        |""".stripMargin
+    )
+
+  @Test def exportTerm0Nullary =
+    check(
+      """trait Foo:
+        |  def <<meth>>: Int
+        |class Bar(val foo: Foo):
+        |  export foo.*
+        |  def test(bar: Bar) = bar.me@@th
+        |""".stripMargin
+    )
+
+  @Test def exportTerm0 =
+    check(
+      """trait Foo:
+        |  def <<meth>>(): Int
+        |class Bar(val foo: Foo):
+        |  export foo.*
+        |  def test(bar: Bar) = bar.me@@th()
+        |""".stripMargin
+    )
+
+  @Test def exportTerm1 =
+    check(
+      """trait Foo:
+        |  def <<meth>>(x: Int): Int
+        |class Bar(val foo: Foo):
+        |  export foo.*
+        |  def test(bar: Bar) = bar.me@@th(0)
+        |""".stripMargin
+    )
+
+  @Test def exportTerm1Poly =
+    check(
+      """trait Foo:
+        |  def <<meth>>[A](x: A): A
+        |class Bar(val foo: Foo):
+        |  export foo.*
+        |  def test(bar: Bar) = bar.me@@th(0)
         |""".stripMargin
     )
 
