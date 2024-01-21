@@ -845,7 +845,9 @@ object Types extends TypeUtils {
             safeIntersection = ctx.base.pendingMemberSearches.contains(name))
           joint match
             case joint: SingleDenotation
-            if isRefinedMethod && rinfo <:< joint.info =>
+            if isRefinedMethod
+              && (rinfo <:< joint.info
+                 || name == nme.apply && defn.isFunctionType(tp.parent)) =>
               // use `rinfo` to keep the right parameter names for named args. See i8516.scala.
               joint.derivedSingleDenotation(joint.symbol, rinfo, pre, isRefinedMethod)
             case _ =>
@@ -6479,7 +6481,7 @@ object Types extends TypeUtils {
     protected def needsRangeIfInvariant(refs: CaptureSet): Boolean = true
 
     override def mapCapturingType(tp: Type, parent: Type, refs: CaptureSet, v: Int): Type =
-      if v == 0 && needsRangeIfInvariant(refs) then
+      if v == 0 && needsRangeIfInvariant(refs) /* && false*/ then
         range(mapCapturingType(tp, parent, refs, -1), mapCapturingType(tp, parent, refs, 1))
       else
         super.mapCapturingType(tp, parent, refs, v)

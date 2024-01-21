@@ -1171,19 +1171,18 @@ class Definitions {
     }
   }
 
-  object RefinedFunctionOf {
+  object RefinedFunctionOf:
+
     /** Matches a refined `PolyFunction`/`FunctionN[...]`/`ContextFunctionN[...]`.
      *  Extracts the method type type and apply info.
      */
-    def unapply(tpe: RefinedType)(using Context): Option[MethodOrPoly] = {
+    def unapply(tpe: RefinedType)(using Context): Option[MethodOrPoly] =
       tpe.refinedInfo match
         case mt: MethodOrPoly
-        if tpe.refinedName == nme.apply
-        && (tpe.parent.derivesFrom(defn.PolyFunctionClass) || isFunctionNType(tpe.parent)) =>
-          Some(mt)
+        if tpe.refinedName == nme.apply && isFunctionType(tpe.parent) => Some(mt)
         case _ => None
-    }
-  }
+
+  end RefinedFunctionOf
 
   object PolyFunctionOf {
 
