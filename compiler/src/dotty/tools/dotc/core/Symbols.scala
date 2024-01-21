@@ -19,9 +19,7 @@ import DenotTransformers.*
 import StdNames.*
 import NameOps.*
 import NameKinds.LazyImplicitName
-import ast.tpd
-import tpd.{Tree, TreeProvider, TreeOps}
-import ast.TreeTypeMap
+import ast.*, tpd.*
 import Constants.Constant
 import Variances.Variance
 import reporting.Message
@@ -336,6 +334,15 @@ object Symbols extends SymUtils {
         denot.info.dropAlias.finalResultType.typeConstructor match
           case tp: NamedType => tp.symbol.sourceSymbol
           case _             => this
+      else if denot.is(ExportedTerm) then
+        val root = denot.maybeOwner match
+          case cls: ClassSymbol => cls.rootTreeContaining(name.toString)
+          case _                => EmptyTree
+        val targets = root.collectSubTrees:
+          case tree: DefDef if tree.name == name => methPart(tree.rhs).tpe
+        targets.match
+          case (tp: NamedType) :: _ => tp.symbol.sourceSymbol
+          case _                    => this
       else if (denot.is(Synthetic)) {
         val linked = denot.linkedClass
         if (linked.exists && !linked.is(Synthetic))
