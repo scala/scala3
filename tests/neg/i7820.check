@@ -1,0 +1,34 @@
+-- [E046] Cyclic Error: tests/neg/i7820.scala:1:23 ---------------------------------------------------------------------
+1 |trait A1 { type F[X <: F[_, _], Y] }  // error: cyclic reference involving type F
+  |                       ^
+  |                       Cyclic reference involving type F
+  |
+  |                        Run with -explain-cyclic for more details.
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E046] Cyclic Error: tests/neg/i7820.scala:2:23 ---------------------------------------------------------------------
+2 |trait A2 { type F[X <: F, Y] }        // error: cyclic reference involving type F
+  |                       ^
+  |                       Cyclic reference involving type F
+  |
+  |                        Run with -explain-cyclic for more details.
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E046] Cyclic Error: tests/neg/i7820.scala:3:23 ---------------------------------------------------------------------
+3 |trait A3 { type F[X >: F, Y] }        // error: cyclic reference involving type F
+  |                       ^
+  |                       Cyclic reference involving type F
+  |
+  |                        Run with -explain-cyclic for more details.
+  |
+  | longer explanation available when compiling with `-explain`
+-- Warning: tests/neg/i7820.scala:1:25 ---------------------------------------------------------------------------------
+1 |trait A1 { type F[X <: F[_, _], Y] }  // error: cyclic reference involving type F
+  |                         ^
+  |                         `_` is deprecated for wildcard arguments of types: use `?` instead
+  |                         This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+-- Warning: tests/neg/i7820.scala:1:28 ---------------------------------------------------------------------------------
+1 |trait A1 { type F[X <: F[_, _], Y] }  // error: cyclic reference involving type F
+  |                            ^
+  |                            `_` is deprecated for wildcard arguments of types: use `?` instead
+  |                            This construct can be rewritten automatically under -rewrite -source 3.4-migration.

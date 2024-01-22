@@ -48,9 +48,12 @@ object TypeApplications {
       || {
         val tparams = fn.typeParams
         val paramRefs = tparams.map(_.paramRef)
-        val prefix = fn match { case fn: TypeRef => fn.prefix       case _ => NoPrefix }
-        val owner  = fn match { case fn: TypeRef => fn.symbol.owner case _ => NoSymbol }
+        val prefix = fn.normalizedPrefix
+        val owner = fn.typeSymbol.maybeOwner
         tp.typeParams.corresponds(tparams) { (param1, param2) =>
+          // see tests/neg/variances-constr.scala
+          // its B parameter should have info <: Any, using class C as the owner
+          // rather than info <: A, using class Inner2 as the owner
           param2.paramInfo.asSeenFrom(prefix, owner) frozen_<:< param1.paramInfo.substParams(tp, paramRefs)
         }
       }
@@ -303,7 +306,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   def etaExpand(using Context): Type =
     val tparams = self.typeParams
     val resType = self.appliedTo(tparams.map(_.paramRef))
-    self match
+    self.dealias match
       case self: TypeRef if tparams.nonEmpty && self.symbol.isClass =>
         val owner = self.symbol.owner
         // Calling asSeenFrom on the type parameter infos is important
