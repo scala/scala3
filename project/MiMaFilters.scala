@@ -7,11 +7,7 @@ object MiMaFilters {
     // Only exceptional cases should be added here.
 
     // Breaking changes since last reference version
-    Build.previousDottyVersion -> Seq(
-      // This language feature was in 3.4.0-RC1 but will be removed in 3.4.0-RC2
-      ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#deprecated.ascriptionVarargsUnpacking"),
-      ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$deprecated$ascriptionVarargsUnpacking$"),
-    ),
+    Build.previousDottyVersion -> Seq.empty,
 
     // Breaking changes since last LTS
     Build.ltsDottyVersion -> Seq(
@@ -32,11 +28,6 @@ object MiMaFilters {
   val LibraryForward: Map[String, Seq[ProblemFilter]] = Map(
     // Additions that require a new minor version of the library
     Build.previousDottyVersion -> Seq(
-      // This language feature is not in 3.4.0-RC1 but will be added in 3.4.0-RC2
-      ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language.3.5-migration"),
-      ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language.3.5"),
-      ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E5$"),
-      ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E5$minusmigration$"),
     ),
 
     // Additions since last LTS
@@ -57,11 +48,15 @@ object MiMaFilters {
       ProblemFilters.exclude[MissingClassProblem]("scala.quoted.Quotes$reflectModule$ValOrDefDefMethods"),
       ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E4$"),
       ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E4$minusmigration$"),
+      ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E5$"),
+      ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E5$minusmigration$"),
       ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$clauseInterleaving$"),
       ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$relaxedExtensionImports$"),
       ProblemFilters.exclude[MissingClassProblem]("scala.scalajs.runtime.AnonFunctionXXL"),
       ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language.3.4-migration"),
       ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language.3.4"),
+      ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language.3.5-migration"),
+      ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language.3.5"),
       ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.clauseInterleaving"),
       ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.relaxedExtensionImports"),
     ),
