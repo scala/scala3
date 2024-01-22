@@ -1,0 +1,12 @@
+-- [E006] Not Found Error: tests/neg/i15784.scala:2:22 -----------------------------------------------------------------
+2 |  case List(_, Rest @ `a`) => Rest // error
+  |                      ^^^
+  |                      Not found: a
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i15784.scala:3:22 -----------------------------------------------------------------
+3 |  case List(_, Rest @ A) => Rest // error 
+  |                      ^
+  |                      Not found: A
+  |
+  | longer explanation available when compiling with `-explain`
