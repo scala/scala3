@@ -1251,7 +1251,10 @@ class Namer { typer: Typer =>
               newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
 
           forwarder.info = avoidPrivateLeaks(forwarder)
-          forwarder.addAnnotations(sym.annotations.filterConserve(_.symbol != defn.BodyAnnot))
+          forwarder.addAnnotations(sym.annotations.filterConserve { annot =>
+            annot.symbol != defn.BodyAnnot
+            && annot.symbol != defn.TailrecAnnot
+          })
 
           if forwarder.isType then
             buf += tpd.TypeDef(forwarder.asType).withSpan(span)
