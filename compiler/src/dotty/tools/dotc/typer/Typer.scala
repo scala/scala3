@@ -3906,7 +3906,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               if (arg.tpe.isError) Nil else untpd.NamedArg(pname, untpd.TypedSplice(arg)) :: Nil
             }
             val app = cpy.Apply(tree)(untpd.TypedSplice(tree), namedArgs)
-            if (wtp.isContextualMethod) app.setApplyKind(ApplyKind.Using)
+            val needsUsing = wtp.isContextualMethod || wtp.match
+              case MethodType(ContextBoundParamName(_) :: _) => sourceVersion.isAtLeast(`3.4`)
+              case _ => false
+            if needsUsing then app.setApplyKind(ApplyKind.Using)
             typr.println(i"try with default implicit args $app")
             typed(app, pt, locked)
           else issueErrors()

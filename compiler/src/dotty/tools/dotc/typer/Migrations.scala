@@ -106,12 +106,14 @@ trait Migrations:
       && isContextBoundParams
       && pt.applyKind != ApplyKind.Using
     then
-      def rewriteMsg = Message.rewriteNotice("This code", mversion.patchFrom)
+      def rewriteMsg =
+        if pt.args.isEmpty then ""
+        else Message.rewriteNotice("This code", mversion.patchFrom)
       report.errorOrMigrationWarning(
         em"""Context bounds will map to context parameters.
             |A `using` clause is needed to pass explicit arguments to them.$rewriteMsg""",
         tree.srcPos, mversion)
-      if mversion.needsPatch then
+      if mversion.needsPatch && pt.args.nonEmpty then
         patch(Span(pt.args.head.span.start), "using ")
   end contextBoundParams
 

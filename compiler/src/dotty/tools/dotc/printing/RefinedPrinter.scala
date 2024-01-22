@@ -309,7 +309,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toText(tp.argType) ~ " ?=>? " ~ toText(tp.resultType)
       case tp @ FunProto(args, resultType) =>
         "[applied to ("
-        ~ keywordText("using ").provided(tp.isContextualMethod)
+        ~ keywordText("using ").provided(tp.applyKind == ApplyKind.Using)
         ~ argsTreeText(args)
         ~ ") returning "
         ~ toText(resultType)
