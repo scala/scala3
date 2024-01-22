@@ -5,20 +5,11 @@ object MiMaFilters {
   val LibraryBackwards: Map[String, Seq[ProblemFilter]] = Map(
     // In general we should never have backwards incompatible changes in the library.
     // Only exceptional cases should be added here.
-    Build.previousDottyVersion -> Seq(
-      // This language feature was in 3.4.0-RC1 but will be removed in 3.4.0-RC2
-      ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#deprecated.ascriptionVarargsUnpacking"),
-      ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$deprecated$ascriptionVarargsUnpacking$"),
-    )
+    Build.previousDottyVersion -> Seq.empty
   )
   val LibraryForward: Map[String, Seq[ProblemFilter]] = Map(
     // Additions that require a new minor version of the library
     Build.previousDottyVersion -> Seq(
-      // This language feature is not in 3.4.0-RC1 but will be added in 3.4.0-RC2
-      ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language.3.5-migration"),
-      ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language.3.5"),
-      ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E5$"),
-      ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E5$minusmigration$"),
     )
   )
   val TastyCore: Seq[ProblemFilter] = Seq(
