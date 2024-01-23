@@ -2360,6 +2360,7 @@ object ScaladocConfigs {
       .add(DocumentSyntheticTypes(true))
       .add(SnippetCompiler(List(
         s"${dottyLibRoot}/scala=compile",
+        "docs/_docs/reference/new-types=compile"
       )))
       .add(SiteRoot("docs"))
       .add(ApiSubdirectory(true))
