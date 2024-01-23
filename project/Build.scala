@@ -103,6 +103,9 @@ object Build {
    */
   val previousDottyVersion = "3.4.0-RC1"
 
+  /** Version against which we check binary compatibility. */
+  val ltsDottyVersion = "3.3.0"
+
   object CompatMode {
     final val BinaryCompatible = 0
     final val SourceAndBinaryCompatible = 1
@@ -2163,6 +2166,14 @@ object Build {
             (Compile/doc/target).value
           },
           commonMiMaSettings,
+          mimaPreviousArtifacts += {
+            val thisProjectID = projectID.value
+            val crossedName = thisProjectID.crossVersion match {
+              case cv: Disabled => thisProjectID.name
+              case cv: Binary => s"${thisProjectID.name}_${cv.prefix}3${cv.suffix}"
+            }
+            (thisProjectID.organization % crossedName % ltsDottyVersion)
+          },
           mimaBackwardIssueFilters := MiMaFilters.LibraryBackwards,
           mimaForwardIssueFilters := MiMaFilters.LibraryForward,
         )
