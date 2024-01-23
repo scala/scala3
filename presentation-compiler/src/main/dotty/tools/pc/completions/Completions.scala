@@ -34,6 +34,7 @@ import dotty.tools.pc.completions.OverrideCompletions.OverrideExtractor
 import dotty.tools.pc.buildinfo.BuildInfo
 import dotty.tools.pc.utils.MtagsEnrichments.*
 import dotty.tools.dotc.core.Denotations.SingleDenotation
+import dotty.tools.dotc.interactive.Interactive
 
 class Completions(
     pos: SourcePosition,
@@ -230,21 +231,18 @@ class Completions(
       label: String,
       toCompletionValue: (String, SingleDenotation, CompletionSuffix) => CompletionValue
   ): List[CompletionValue] =
-    // workaround for earlier versions that force correctly detecting Java flags
-
     val sym = denot.symbol
-    def companionSynthetic = sym.companion.exists && sym.companion.is(Synthetic)
     // find the apply completion that would need a snippet
     val methodDenots: List[SingleDenotation] =
       if shouldAddSnippet && completionMode.is(Mode.Term) &&
-        (sym.is(Flags.Module) || sym.isClass && !sym.is(Flags.Trait)) && !sym.is(Flags.JavaDefined)
+        (sym.is(Flags.Module) || (Interactive.isImportedByDefault(sym) && sym.isField) || sym.isClass && !sym.is(Flags.Trait)) && !sym.is(Flags.JavaDefined)
       then
         val info =
           /* Companion will be added even for normal classes now,
            * but it will not show up from classpath. We can suggest
            * constructors based on those synthetic applies.
            */
-          if sym.isClass && companionSynthetic then sym.companionModule.info
+          if sym.isClass && sym.companionModule.exists then sym.companionModule.info
           else denot.info
         val applyDenots = info.member(nme.apply).allSymbols.map(_.asSingleDenotation)
         denot :: applyDenots
@@ -498,13 +496,18 @@ class Completions(
   ): Option[SymbolSearch.Result] =
     val query = completionPos.query
     if completionMode.is(Mode.Scope) && query.nonEmpty then
-      val filtered = indexedContext.scopeSymbols
-        .filter(sym => !sym.isConstructor && (!sym.is(Synthetic) || sym.is(Module)))
-
-      filtered.map { sym =>
-        visit(CompletionValue.Scope(sym.decodedName, sym, findSuffix(sym)))
-      }
-      Some(SymbolSearch.Result.INCOMPLETE)
+      val visitor = new CompilerSearchVisitor(sym =>
+        indexedContext.lookupSym(sym) match
+          case IndexedContext.Result.InScope => false
+            // visit(CompletionValue.Scope(sym.decodedName, sym, findSuffix(sym)))
+          case _ =>
+            completionsWithSuffix(
+              sym,
+              sym.decodedName,
+              CompletionValue.Workspace(_, _, _, sym)
+            ).map(visit).forall(_ == true),
+      )
+      Some(search.search(query, buildTargetIdentifier, visitor).nn)
     else if completionMode.is(Mode.Member) then
       val visitor = new CompilerSearchVisitor(sym =>
         def isExtensionMethod = sym.is(ExtensionMethod) &&

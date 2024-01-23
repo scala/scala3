@@ -34,6 +34,7 @@ enum CompletionSource:
   case MatchCompletionKind
   case CaseKeywordKind
   case DocumentKind
+  case ImplicitClassKind
 
 sealed trait CompletionValue:
   def label: String
@@ -145,6 +146,7 @@ object CompletionValue:
   ) extends Symbolic:
     val symbol: Symbol = denotation.symbol
     override def isFromWorkspace: Boolean = true
+    override def completionItemDataKind: Integer = CompletionSource.WorkspaceKind.ordinal
 
   /**
    * CompletionValue for old implicit classes methods via SymbolSearch
@@ -158,6 +160,7 @@ object CompletionValue:
     val symbol: Symbol = denotation.symbol
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Method
+    override def completionItemDataKind: Integer = CompletionSource.ImplicitClassKind.ordinal
     override def description(printer: ShortenedTypePrinter)(using Context): String =
       s"${printer.completionSymbol(symbol)} (implicit)"
 

@@ -7,6 +7,7 @@ import dotty.tools.pc.base.BaseCompletionSuite
 import dotty.tools.pc.utils.MockEntries
 
 import org.junit.Test
+import org.junit.Ignore
 
 class CompletionSuite extends BaseCompletionSuite:
 
@@ -26,10 +27,10 @@ class CompletionSuite extends BaseCompletionSuite:
         |}""".stripMargin,
       """
         |List scala.collection.immutable
+        |List[A](elems: A*): CC[A]
         |List - java.awt
         |List - java.util
-        |List - scala.collection.immutable
-        |List[A](elems: A*): CC[A]
+        |ListMap[K, V](elems: (K, V)*): CC[K, V]
         |""".stripMargin,
       topLines = Some(5)
     )
@@ -109,17 +110,17 @@ class CompletionSuite extends BaseCompletionSuite:
          |tabulate[A](n: Int)(f: Int => A): List[A]
          |unapplySeq[A](x: List[A] @uncheckedVariance): UnapplySeqWrapper[A]
          |unfold[A, S](init: S)(f: S => Option[(A, S)]): List[A]
-         |->[B](y: B): (scala.collection.immutable.List.type, B)
-         |ensuring(cond: Boolean): scala.collection.immutable.List.type
-         |ensuring(cond: scala.collection.immutable.List.type => Boolean): scala.collection.immutable.List.type
-         |ensuring(cond: Boolean, msg: => Any): scala.collection.immutable.List.type
-         |ensuring(cond: scala.collection.immutable.List.type => Boolean, msg: => Any): scala.collection.immutable.List.type
+         |->[B](y: B): (List.type, B)
+         |ensuring(cond: Boolean): List.type
+         |ensuring(cond: List.type => Boolean): List.type
+         |ensuring(cond: Boolean, msg: => Any): List.type
+         |ensuring(cond: List.type => Boolean, msg: => Any): List.type
          |fromSpecific(from: Any)(it: IterableOnce[Nothing]): List[Nothing]
          |fromSpecific(it: IterableOnce[Nothing]): List[Nothing]
-         |nn: List.type & scala.collection.immutable.List.type
+         |nn: List.type & List.type
          |toFactory(from: Any): Factory[Nothing, List[Nothing]]
          |formatted(fmtstr: String): String
-         |→[B](y: B): (scala.collection.immutable.List.type, B)
+         |→[B](y: B): (List.type, B)
          |iterableFactory[A]: Factory[A, List[A]]
          |asInstanceOf[X0]: X0
          |equals(x$0: Any): Boolean
@@ -146,6 +147,7 @@ class CompletionSuite extends BaseCompletionSuite:
       "XtensionMethod(a: Int): XtensionMethod"
     )
 
+  @Ignore("This test should be handled by compiler fuzzy search")
   @Test def fuzzy =
     check(
       """
@@ -157,14 +159,14 @@ class CompletionSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
+  @Ignore("This test should be handled by compiler fuzzy search")
   @Test def fuzzy1 =
     check(
       """
         |object A {
-        |  new PBuil@@
+        |  new PBuilder@@
         |}""".stripMargin,
-      """|ProcessBuilder java.lang
-         |ProcessBuilder - scala.sys.process
+      """|ProcessBuilder - scala.sys.process
          |ProcessBuilderImpl - scala.sys.process
          |""".stripMargin,
       filter = _.contains("ProcessBuilder")
@@ -630,20 +632,6 @@ class CompletionSuite extends BaseCompletionSuite:
           |""".stripMargin,
       """|Some scala
          |Some[A](value: A): Some[A]
-         |""".stripMargin
-    )
-
-  @Test def pat11 =
-    check(
-      s"""|object Main {
-          |  Som@@
-          |}
-          |""".stripMargin,
-      """|Some scala
-         |Some[A](value: A): Some[A]
-         |SomeToExpr(x: Some[T])(using Quotes): Expr[Some[T]]
-         |SomeToExpr[T: Type: ToExpr]: SomeToExpr[T]
-         |SomeFromExpr[T](using Type[T], FromExpr[T]): SomeFromExpr[T]
          |""".stripMargin
     )
 

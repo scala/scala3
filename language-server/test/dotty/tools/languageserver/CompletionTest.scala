@@ -1646,4 +1646,37 @@ class CompletionTest {
            |"""
       .completion(m1, Set(("selectDynamic", Method, "(field: String): Foo")))
       .completion(m2, Set(("banana", Method, "=> Int")))
+
+  @Test def shadowedImport: Unit =
+    code"""|
+           |import Matches.*
+           |object Matches {
+           |  val Number = "".r
+           |}
+           |object Main {
+           |  Num$m1
+           |}
+           |""".completion(m1, Set(
+             ("Number", Field, "scala.util.matching.Regex"),
+             ("NumberFormatException", Module, "NumberFormatException"),
+             ("Numeric", Field, "scala.math.Numeric")
+           ))
+
+  @Test def shadowedImportType: Unit =
+    code"""|
+           |import Matches.*
+           |object Matches {
+           |  val Number = "".r
+           |}
+           |object Main {
+           |  val x: Num$m1
+           |}
+           |""".completion(m1, Set(
+             ("Number", Class, "Number"),
+             ("Number", Field, "scala.util.matching.Regex"),
+             ("NumberFormatException", Module, "NumberFormatException"),
+             ("NumberFormatException", Field, "NumberFormatException"),
+             ("Numeric", Field, "Numeric"),
+             ("Numeric", Field, "scala.math.Numeric")
+           ))
 }

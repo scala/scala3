@@ -451,6 +451,20 @@ object Interactive {
   def sameName(n0: Name, n1: Name): Boolean =
     n0.stripModuleClassSuffix.toTermName eq n1.stripModuleClassSuffix.toTermName
 
+  /** https://scala-lang.org/files/archive/spec/3.4/02-identifiers-names-and-scopes.html
+   * import java.lang.*
+   * {
+   *   import scala.*
+   *   {
+   *     import Predef.*
+   *     { /* source */ }
+   *   }
+   * }
+   */
+  def isImportedByDefault(sym: Symbol)(using Context): Boolean =
+    val owner = sym.effectiveOwner
+    owner == defn.ScalaPredefModuleClass || owner == defn.ScalaPackageClass || owner == defn.JavaLangPackageClass
+
   private[interactive] def safely[T](op: => List[T]): List[T] =
     try op catch { case ex: TypeError => Nil }
 }
