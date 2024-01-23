@@ -8,7 +8,7 @@ A union type `A | B` includes all values of both types.
 
 
 ```scala sc-name:id
-opaque type Hash = Int
+type Hash = Int
 def lookupName(name: String) = ???
 def lookupPassword(hash: Hash) = ???
 
