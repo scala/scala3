@@ -2359,7 +2359,10 @@ object ScaladocConfigs {
       .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))
       .add(DocumentSyntheticTypes(true))
       .add(SnippetCompiler(List(
-        s"${dottyLibRoot}/scala=compile",
+        s"$dottyLibRoot/src/scala=compile",
+        s"$dottyLibRoot/src/scala/compiletime=compile",
+        s"$dottyLibRoot/src/scala/util=compile",
+        s"$dottyLibRoot/src/scala/util/control=compile"
       )))
       .add(SiteRoot("docs"))
       .add(ApiSubdirectory(true))
@@ -2375,7 +2378,9 @@ object ScaladocConfigs {
       .add(SnippetCompiler(
         List(
           s"$dottyLibrarySrc/scala/quoted=compile",
-          s"$dottyLibrarySrc/scala/compiletime=compile"
+          s"$dottyLibrarySrc/scala/compiletime=compile",
+          s"$dottyLibrarySrc/scala/util=compile",
+          s"$dottyLibrarySrc/scala/util/control=compile"
         )
       ))
       .add(CommentSyntax(List(
