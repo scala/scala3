@@ -1254,7 +1254,9 @@ class Namer { typer: Typer =>
           forwarder.addAnnotations(sym.annotations.filterConserve { annot =>
             annot.symbol != defn.BodyAnnot
             && annot.symbol != defn.TailrecAnnot
+            && annot.symbol != defn.MainAnnot
             && !annot.symbol.derivesFrom(defn.MacroAnnotationClass)
+            && !annot.symbol.derivesFrom(defn.MainAnnotationClass)
           })
 
           if forwarder.isType then
