@@ -42,8 +42,8 @@ are also represented as instances of these traits, but they get an additional
 refinement. In fact, the dependent function type above is just syntactic sugar for
 
 ```scala sc:nocompile
-new Function1[Entry, Entry#Key]:
-  def apply(e: Entry): e.Key = ???
+Function1[Entry, Entry#Key]:
+  def apply(e: Entry): e.Key
 ```
 
 [More details](./dependent-function-types-spec.md)

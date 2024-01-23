@@ -15,7 +15,7 @@ def foo[A](xs: List[A]): List[A] = xs.reverse
 val bar: [A] => List[A] => List[A]
 //       ^^^^^^^^^^^^^^^^^^^^^^^^^
 //       a polymorphic function type
-       = [a] => (xs: List[a]) => foo[a](xs)
+       = [A] => (xs: List[A]) => foo[A](xs)
 ```
 
 Scala already has _polymorphic methods_, i.e. methods which accepts type parameters.
