@@ -220,9 +220,31 @@ extension (tp: Type)
    *  type of `x`. If `x` and `y` are different variables then `{x*}` and `{y*}`
    *  are unrelated.
    */
-  def reach(using Context): CaptureRef =
-    assert(tp.isTrackableRef)
-    AnnotatedType(tp, Annotation(defn.ReachCapabilityAnnot, util.Spans.NoSpan))
+  def reach(using Context): CaptureRef = tp match
+    case tp: CaptureRef if tp.isTrackableRef =>
+      if tp.isReach then tp else ReachCapability(tp)
+
+  /** If `x` is a capture ref, its maybe capability `x?`, represented internally
+   *  as `x @maybeCapability`. `x?` stands for a capability `x` that might or might
+   *  not be part of a capture set. We have `{} <: {x?} <: {x}`. Maybe capabilities
+   *  cannot be propagated between sets. If `a <: b` and `a` acquires `x?` then
+   *  `x` is propagated to `b` as a conservative approximation.
+   *
+   *  Maybe capabilities should only arise for caoture sets that appear in invariant
+   *  position in their surrounding type. They are similar to TypeBunds types, but
+   *  restricted to capture sets. For instance,
+   *
+   *      Array[C^{x?}]
+   *
+   *  should be morally equivaelent to
+   *
+   *      Array[_ >: C^{} <: C^{x}]
+   *
+   *   but it has fewer issues with type inference. 
+   */
+  def maybe(using Context): CaptureRef = tp match
+    case tp: CaptureRef if tp.isTrackableRef =>
+      if tp.isMaybe then tp else MaybeCapability(tp)
 
   /** If `ref` is a trackable capture ref, and `tp` has only covariant occurrences of a
    *  universal capture set, replace all these occurrences by `{ref*}`. This implements
@@ -422,9 +444,14 @@ object ReachCapabilityApply:
 /** An extractor for `ref @annotation.internal.reachCapability`, which is used to express
  *  the reach capability `ref*` as a type.
  */
-object ReachCapability:
+class AnnotatedCapability(annot: Context ?=> ClassSymbol):
+  def apply(tp: Type)(using Context) =
+    AnnotatedType(tp, Annotation(annot, util.Spans.NoSpan))
   def unapply(tree: AnnotatedType)(using Context): Option[SingletonCaptureRef] = tree match
-    case AnnotatedType(parent: SingletonCaptureRef, ann)
-    if ann.symbol == defn.ReachCapabilityAnnot => Some(parent)
+    case AnnotatedType(parent: SingletonCaptureRef, ann) if ann.symbol == annot => Some(parent)
     case _ => None
+
+object ReachCapability extends AnnotatedCapability(defn.ReachCapabilityAnnot)
+object MaybeCapability extends AnnotatedCapability(defn.MaybeCapabilityAnnot)
+
 

@@ -68,11 +68,6 @@ object CheckCaptures:
    */
   final class SubstParamsMap(from: BindingType, to: List[Type])(using Context)
   extends ApproximatingTypeMap, IdempotentCaptRefMap:
-    /** This SubstParamsMap is exact if `to` only contains `CaptureRef`s. */
-    private val isExactSubstitution: Boolean = to.forall(_.isTrackableRef)
-
-    /** As long as this substitution is exact, there is no need to create `Range`s when mapping invariant positions. */
-    override protected def needsRangeIfInvariant(refs: CaptureSet): Boolean = !isExactSubstitution
 
     def apply(tp: Type): Type =
       tp match
