@@ -3436,7 +3436,8 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
           case MatchTypeCasePattern.BaseTypeTest(classType, argPatterns, needsConcreteScrut) =>
             val cls = classType.classSymbol.asClass
             scrut.baseType(cls) match
-              case base @ AppliedType(baseTycon, baseArgs) if baseTycon =:= classType =>
+              case base @ AppliedType(baseTycon, baseArgs) =>
+                // #19445 Don't check the prefix of baseTycon here; it is handled by `scrut <:< instantiatedPat`.
                 val innerScrutIsWidenedAbstract =
                   scrutIsWidenedAbstract
                     || (needsConcreteScrut && !isConcrete(scrut)) // no point in checking concreteness if it does not need to be concrete
