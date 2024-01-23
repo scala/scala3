@@ -99,7 +99,7 @@ enum class.
 Similarly, enum case declarations may not directly reference members of the enum's companion object,
 even if they are imported (directly, or by renaming). For example:
 
-```scala sc:fail
+```scala sc:nocompile
 import Planet.*
 enum Planet(mass: Double, radius: Double):
   private final val (mercuryMass, mercuryRadius) = (3.303e+23, 2.4397e6)

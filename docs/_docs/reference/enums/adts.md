@@ -100,7 +100,7 @@ below:
 The following `View` enum has a contravariant type parameter `T` and a single case `Refl`, representing a function
 mapping a type `T` to itself:
 
-```scala sc:fail
+```scala sc:nocompile
 enum View[-T]:
   case Refl(f: T => T)
 ```
@@ -118,7 +118,7 @@ function type, leading to the following error:
 
 Because `Refl` does not declare explicit parameters, it looks to the compiler like the following:
 
-```scala sc:fail
+```scala sc:nocompile
 enum View[-T]:
   case Refl[/*synthetic*/-T1](f: T1 => T1) extends View[T1]
 ```
