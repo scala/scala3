@@ -156,7 +156,7 @@ The members of a union type are the members of its join.
 The following code does not typecheck, because method `hello` is not a member of
 `AnyRef` which is the join of `A | B`.
 
-```scala sc:fail
+```scala
 trait A { def hello: String }
 trait B { def hello: String }
 
