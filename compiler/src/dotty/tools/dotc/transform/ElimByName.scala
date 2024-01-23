@@ -102,8 +102,7 @@ class ElimByName extends MiniPhase, InfoTransformer:
     val meth = newAnonFun(ctx.owner, MethodType(Nil, argType), coord = arg.span)
     Closure(meth,
         _ => arg.changeOwnerAfter(ctx.owner, meth, thisPhase),
-        targetType = defn.ByNameFunction(argType),
-        inferred = true
+        targetType = defn.ByNameFunction(argType)
       ).withSpan(arg.span)
 
   private def isByNameRef(tree: Tree)(using Context): Boolean =
