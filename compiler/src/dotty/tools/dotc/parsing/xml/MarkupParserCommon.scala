@@ -202,6 +202,14 @@ private[dotty] trait MarkupParserCommon {
   /** skip optional space S? */
   def xSpaceOpt(): Unit = while (isSpace(ch) && !eof) nextch()
 
+  /** skip optional space S? and return the number of consumed characters */
+  def xSpaceOptN(): Int =
+    var i = 0
+    while (isSpace(ch) && !eof) do
+      nextch()
+      i += 1
+    i
+
   /** scan [3] S ::= (#x20 | #x9 | #xD | #xA)+ */
   def xSpace(): Unit =
     if (isSpace(ch)) { nextch(); xSpaceOpt() }
