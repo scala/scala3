@@ -60,7 +60,7 @@ enum Kind(val name: String):
   case Trait(override val typeParams: Seq[TypeParameter], override val argsLists: Seq[TermParameterList])
     extends Kind("trait") with Classlike
   case Enum(override val typeParams: Seq[TypeParameter], override val argsLists: Seq[TermParameterList]) extends Kind("enum") with Classlike
-  case EnumCase(kind: Object.type | Kind.Type | Val.type | Class) extends Kind("case")
+  case EnumCase(kind: Object.type | Kind.Type | Val.type | Class) extends Kind(kind.name)
   case Def(paramLists: Seq[Either[TermParameterList,TypeParameterList]])
     extends Kind("def")
   case Extension(on: ExtensionTarget, m: Kind.Def) extends Kind("def")
@@ -146,9 +146,9 @@ case class HierarchyGraph(edges: Seq[(LinkToType, LinkToType)], sealedNodes: Set
   def vertecies: Seq[LinkToType] = edges.flatten((a, b) => Seq(a, b)).distinct
   def verteciesWithId: Map[LinkToType, Int] = vertecies.zipWithIndex.toMap
   def +(edge: (LinkToType, LinkToType)): HierarchyGraph = this ++ Seq(edge)
-  def ++(edges: Seq[(LinkToType, LinkToType)]): HierarchyGraph = 
+  def ++(edges: Seq[(LinkToType, LinkToType)]): HierarchyGraph =
     this.copy(edges = this.edges.view.concat(edges).distinct.toSeq)
-    
+
 object HierarchyGraph:
   def empty = HierarchyGraph(Seq.empty)
   def withEdges(edges: Seq[(LinkToType, LinkToType)]) = HierarchyGraph.empty ++ edges
