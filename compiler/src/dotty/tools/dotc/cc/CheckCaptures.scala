@@ -68,7 +68,6 @@ object CheckCaptures:
    */
   final class SubstParamsMap(from: BindingType, to: List[Type])(using Context)
   extends ApproximatingTypeMap, IdempotentCaptRefMap:
-
     def apply(tp: Type): Type =
       tp match
         case tp: ParamRef =>

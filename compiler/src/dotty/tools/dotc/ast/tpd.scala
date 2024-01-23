@@ -117,14 +117,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  where the closure's type is the target type of the expression (FunctionN, unless
    *  otherwise specified).
    */
-  def Closure(meth: TermSymbol, rhsFn: List[List[Tree]] => Tree, targs: List[Tree] = Nil, targetType: Type = NoType)(using Context): Block = {
-    val targetTpt = if (targetType.exists) TypeTree(targetType) else EmptyTree
+  def Closure(meth: TermSymbol, rhsFn: List[List[Tree]] => Tree, targs: List[Tree] = Nil, targetType: Type = NoType, inferred: Boolean = false)(using Context): Block = {
+    val targetTpt = if (targetType.exists) TypeTree(targetType, inferred) else EmptyTree
     val call =
       if (targs.isEmpty) Ident(TermRef(NoPrefix, meth))
       else TypeApply(Ident(TermRef(NoPrefix, meth)), targs)
-    Block(
-      DefDef(meth, rhsFn) :: Nil,
-      Closure(Nil, call, targetTpt))
+    var mdef = DefDef(meth, rhsFn)
+    if inferred then mdef = cpy.DefDef(mdef)(tpt = TypeTree(mdef.tpt.tpe, inferred))
+    Block(mdef :: Nil, Closure(Nil, call, targetTpt))
   }
 
   /** A closure whose anonymous function has the given method type */
