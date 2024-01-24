@@ -370,17 +370,10 @@ object MarkupParsers {
         // parse more XML?
         if (charComingAfter(xSpaceOpt()) == '<') {
           while {
-            if xSpaceOptN() == 0 then
-              nextch()
-              if content_LT(ts) then // Is `</>` valid xml?
-                xToken("/>")
-              charComingAfter(xSpaceOpt()) == '<'
-            else
-              // this is surely not a special node as any special node 
-              // should start with `<{special symbol}` without space.
-              nextch()
-              ts.append(element)
-              charComingAfter(xSpaceOpt()) == '<'
+            xSpaceOpt()
+            nextch()
+            content_LT(ts)
+            charComingAfter(xSpaceOpt()) == '<'
           } do ()
           handle.makeXMLseq(Span(start, curOffset, start), ts)
         }
