@@ -1,4 +1,21 @@
-def x = <div>FooBar</div><!-- /.modal-content -->
+
+object Test {
+  import scala.xml.*
+  def main(args: Array[String]): Unit = {
+    val xml =  <div>FooBar</div><!-- /.modal-content -->
+    assert(
+      xml match
+        case Seq(elm: Elem, comment: Comment) if
+            elm.label == "div" &&
+            elm.child(0) == Atom(Text("FooBar")) &&
+            comment.label == " /.modal-content "
+              => true
+        case _ => false
+      ,
+      xml
+    )
+  }
+}
 
 package scala.xml {
   type MetaData = AnyRef
@@ -16,7 +33,7 @@ package scala.xml {
     def child = Nil
   }
   class Elem(prefix: String, val label: String, attributes1: MetaData, scope: NamespaceBinding, minimizeEmpty: Boolean, val child: Node*) extends Node
-  class NodeBuffer extends Seq[Node] {
+  class NodeBuffer extends Seq[Node] { 
     val nodes = scala.collection.mutable.ArrayBuffer.empty[Node]
     def &+(o: Any): NodeBuffer =
       o match {
