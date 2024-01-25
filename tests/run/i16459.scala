@@ -2,12 +2,18 @@ object Test {
   import scala.xml.*
   def main(args: Array[String]): Unit = {
 
-  val xml = if(true) {
+  val singleQuotedTextCase = if(true) {
     <script type="text/javascript">
       'location.reload()'
       'foo bar'
      </script>
   } else <div>empty</div>
+  
+  val casePatMatch = for (case t @ <foo>FooBar</foo> <- Seq(xml))
+   yield t
+  // TODO: This fails
+  val casePatMatchWithCond = for (case t @ <foo>FooBar</foo>  if true <- Seq(xml))
+   yield t
 
   assert(
     xml match
@@ -45,6 +51,9 @@ package scala.xml {
     def child = Nil
   }
   class Elem(prefix: String, val label: String, attributes1: MetaData, scope: NamespaceBinding, minimizeEmpty: Boolean, val child: Node*) extends Node
+  object Elem {
+    def unapply(e:Elem):Option[(String,String,Any,Text,Any)] = Some(("dummy","dummy",null,null,null))
+  }
   class NodeBuffer extends Seq[Node] { 
     val nodes = scala.collection.mutable.ArrayBuffer.empty[Node]
     def &+(o: Any): NodeBuffer = o match {
