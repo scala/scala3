@@ -134,6 +134,13 @@ class TypeUtils {
     def namedTupleElementTypes(using Context): List[(TermName, Type)] =
       namedTupleElementTypesUpTo(Int.MaxValue)
 
+    def namedTupleNames(using Context): List[Name] =
+      self.normalized.dealias match
+        case defn.NamedTuple(nmes, _) =>
+          nmes.tupleElementTypes.getOrElse(Nil).map:
+            case ConstantType(Constants.Constant(str: String)) => str.toTermName
+        case _ => Nil
+
     def isNamedTupleType(using Context): Boolean = self match
       case defn.NamedTuple(_, _) => true
       case _ => false

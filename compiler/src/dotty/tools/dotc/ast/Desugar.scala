@@ -1502,8 +1502,11 @@ object desugar {
         tree1.withSpan(tree.span)
       else
         cpy.Tuple(tree)(elemValues)
-    val names = elems.collect:
+    var names = elems.collect:
       case NamedArg(name, arg) => name
+    if names.isEmpty then
+      typer.Inferencing.isFullyDefined(pt, typer.ForceDegree.failBottom)
+      names = pt.namedTupleNames
     if names.isEmpty || ctx.mode.is(Mode.Pattern) then
       tup
     else

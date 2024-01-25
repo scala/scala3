@@ -61,14 +61,24 @@
 28 |    case (name = n, age = a) => () // error // error
    |                    ^^^^^^^
    |                    No element named `age` is defined in selector type (String, Int)
--- [E172] Type Error: tests/neg/named-tuples.scala:30:27 ---------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg/named-tuples.scala:30:21 ------------------------------------------------------
 30 |  val pp = person ++ (1, 2)  // error
-   |                           ^
-   |            Cannot prove that Tuple.Disjoint[(("name" : String), ("age" : String)), Tuple] =:= (true : Boolean).
--- [E172] Type Error: tests/neg/named-tuples.scala:33:18 ---------------------------------------------------------------
+   |                     ^^^^^^
+   |                     Found:    (Int, Int)
+   |                     Required: NamedTuple.NamedTuple[N2, Tuple]
+   |
+   |                     where:    N2 is a type variable with constraint <: Tuple
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/named-tuples.scala:33:12 ------------------------------------------------------
 33 |  person ++ (1, 2) match // error
-   |                  ^
-   |            Cannot prove that Tuple.Disjoint[(("name" : String), ("age" : String)), Tuple] =:= (true : Boolean).
+   |            ^^^^^^
+   |            Found:    (Int, Int)
+   |            Required: NamedTuple.NamedTuple[N2, Tuple]
+   |
+   |            where:    N2 is a type variable with constraint <: Tuple
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg/named-tuples.scala:36:17 ---------------------------------------------------------------------------
 36 |  val bad = ("", age = 10) // error
    |                 ^^^^^^^^
@@ -103,8 +113,8 @@
 -- Warning: tests/neg/named-tuples.scala:25:29 -------------------------------------------------------------------------
 25 |  val (name = x, agee = y) = person // error
    |                             ^^^^^^
-   |pattern's type (String, Int) is more specialized than the right hand side expression's type (name : String, age : Int)
+   |    pattern's type (String, Int) does not match the right hand side expression's type (name : String, age : Int)
    |
-   |If the narrowing is intentional, this can be communicated by adding `: @unchecked` after the expression,
-   |which may result in a MatchError at runtime.
-   |This patch can be rewritten automatically under -rewrite -source 3.2-migration.
+   |    If the narrowing is intentional, this can be communicated by adding `: @unchecked` after the expression,
+   |    which may result in a MatchError at runtime.
+   |    This patch can be rewritten automatically under -rewrite -source 3.2-migration.
