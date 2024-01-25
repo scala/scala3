@@ -2,18 +2,12 @@ object Test {
   import scala.xml.*
   def main(args: Array[String]): Unit = {
 
-  val singleQuotedTextCase = if(true) {
+  val xml = if(true) {
     <script type="text/javascript">
       'location.reload()'
       'foo bar'
      </script>
   } else <div>empty</div>
-  
-  val casePatMatch = for (case t @ <foo>FooBar</foo> <- Seq(xml))
-   yield t
-  // TODO: This fails
-  val casePatMatchWithCond = for (case t @ <foo>FooBar</foo>  if true <- Seq(xml))
-   yield t
 
   assert(
     xml match
@@ -26,7 +20,47 @@ object Test {
       ,
       xml
     )
+  // Scala 3 syntax
+  val auxiliary0 = if true then {
+    <script type="text/javascript">
+      'location.reload()'
+      'foo bar'
+     </script>
+  } else <div>empty</div>
+
+  val auxiliary1 = if true then
+    <script type="text/javascript">
+      'location.reload()'
+      'foo bar'
+     </script>
+  else <div>empty</div>
+  
+  val auxiliary2 = if true then <div>A</div>else <div>B</div>
+
+  // Note:
+  // This does not pass in Scala 2.12.18 and 2.13.12
+  // due to "Sequence argument type annotation `: _*` cannot be used here:"
+  val auxiliary3 = if(true) <div>A</div>else <div>B</div>
+  
+  // Note: This passes in Scala  2.12.18 and 2.13.12 too.
+  val auxiliary4 = if(true) <div attr="...">A</div>else <div attr="...">B</div>
+
+  // Pattern match without guard.
+  // Note: This passes in Scala  2.12.18 and 2.13.12 too.
+  val auxiliary5 = for (case _ @ <div>empty</div> <- Seq(xml)) yield ()
+  // Note: These pass in Scala  2.12.18 and 2.13.12.
+  val auxiliary6 = for (case _ @ <div>empty</div><- Seq(xml)) yield ()
+  val auxiliary7 = for (case _ @ <div>empty</div><-Seq(xml)) yield ()
+  // Pattern match with if guard.
+  // Note: This passes in Scala  2.12.18 and 2.13.12 too.
+  val auxiliary8 = for (case _ @ <foo>FooBar</foo> <- Seq(xml) if true)
+  // Note: These pass in Scala  2.12.18 and 2.13.12.
+  val auxiliary9 = for (case _ @ <foo>FooBar</foo><- Seq(xml) if true)
+  val auxiliary10 = for (case _ @ <foo>FooBar</foo><-Seq(xml) if true)
+   yield ()
+  
   }
+
 }
 
 package scala.xml {
@@ -46,10 +80,7 @@ package scala.xml {
     def child: Seq[Node]
     override def toString = label + child.mkString
   }
-  class Comment(commentText: String) extends Node{
-    def label = commentText
-    def child = Nil
-  }
+
   class Elem(prefix: String, val label: String, attributes1: MetaData, scope: NamespaceBinding, minimizeEmpty: Boolean, val child: Node*) extends Node
   object Elem {
     def unapply(e:Elem):Option[(String,String,Any,Text,Any)] = Some(("dummy","dummy",null,null,null))
