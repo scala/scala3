@@ -1,0 +1,4 @@
+-- Error: tests/neg-macros/macro-deprecation.scala:5:18 ----------------------------------------------------------------
+5 |inline def f = ${ impl } // error
+  |                  ^^^^
+  |                  method impl is deprecated
