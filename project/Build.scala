@@ -101,7 +101,10 @@ object Build {
    *  set to 3.1.3. If it is going to be 3.1.0, it must be set to the latest
    *  3.0.x release.
    */
-  val previousDottyVersion = "3.4.0-RC1"
+  val previousDottyVersion = "3.4.0-RC3"
+
+  /** Version against which we check binary compatibility. */
+  val ltsDottyVersion = "3.3.0"
 
   object CompatMode {
     final val BinaryCompatible = 0
@@ -2163,6 +2166,14 @@ object Build {
             (Compile/doc/target).value
           },
           commonMiMaSettings,
+          mimaPreviousArtifacts += {
+            val thisProjectID = projectID.value
+            val crossedName = thisProjectID.crossVersion match {
+              case cv: Disabled => thisProjectID.name
+              case cv: Binary => s"${thisProjectID.name}_${cv.prefix}3${cv.suffix}"
+            }
+            (thisProjectID.organization % crossedName % ltsDottyVersion)
+          },
           mimaBackwardIssueFilters := MiMaFilters.LibraryBackwards,
           mimaForwardIssueFilters := MiMaFilters.LibraryForward,
         )
@@ -2360,6 +2371,9 @@ object ScaladocConfigs {
       .add(DocumentSyntheticTypes(true))
       .add(SnippetCompiler(List(
         s"${dottyLibRoot}/scala=compile",
+        s"$dottyLibRoot/src/scala/compiletime=compile",
+        s"$dottyLibRoot/src/scala/util=compile",
+        s"$dottyLibRoot/src/scala/util/control=compile",
         "docs/_docs/reference/new-types=compile"
       )))
       .add(SiteRoot("docs"))
@@ -2376,7 +2390,9 @@ object ScaladocConfigs {
       .add(SnippetCompiler(
         List(
           s"$dottyLibrarySrc/scala/quoted=compile",
-          s"$dottyLibrarySrc/scala/compiletime=compile"
+          s"$dottyLibrarySrc/scala/compiletime=compile",
+          s"$dottyLibrarySrc/scala/util=compile",
+          s"$dottyLibrarySrc/scala/util/control=compile"
         )
       ))
       .add(CommentSyntax(List(
