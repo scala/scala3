@@ -54,10 +54,12 @@ object Test {
   // Pattern match with if guard.
   // Note: This passes in Scala  2.12.18 and 2.13.12 too.
   val auxiliary8 = for (case _ @ <foo>FooBar</foo> <- Seq(xml) if true)
+    yield ()
   // Note: These pass in Scala  2.12.18 and 2.13.12.
   val auxiliary9 = for (case _ @ <foo>FooBar</foo><- Seq(xml) if true)
+    yield ()
   val auxiliary10 = for (case _ @ <foo>FooBar</foo><-Seq(xml) if true)
-   yield ()
+    yield ()
   
   }
 
