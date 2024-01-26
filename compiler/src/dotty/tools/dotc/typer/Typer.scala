@@ -4428,7 +4428,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         if isPure then
           missingArgs(tree, tree.tpe.widen)
         else
-          report.warning(UnusedNonUnitValue(tree.tpe))
+          report.warning(UnusedNonUnitValue(tree.tpe),original.srcPos)
       case _ if isUnitExpr =>
         if isPure then
           report.warning(PureUnitExpression(original, tree.tpe), original.srcPos)

@@ -792,7 +792,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     def unapply(tree: Tree)(using Context): Option[DefDef] = tree match {
       case Block((meth : DefDef) :: Nil, closure: Closure) if meth.symbol == closure.meth.symbol =>
         Some(meth)
-      case Block((vd:ValDef) :: _, Block((meth:DefDef)::Nil,closure:Closure)) if  meth.symbol == closure.meth.symbol =>
+      case Block((vd: ValDef) :: _, Block((meth: DefDef)::Nil, closure: Closure)) if  meth.symbol == closure.meth.symbol =>
         Some(meth)
       case Block(Nil, expr) =>
         unapply(expr)
