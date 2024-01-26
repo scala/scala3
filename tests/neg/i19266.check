@@ -1,3 +1,4 @@
+unused value of type Double => Some[String]
 -- [E178] Type Error: tests/neg/i19266.scala:13:4 ----------------------------------------------------------------------
 13 |    fn2(2) // error
    |    ^^^^^^
