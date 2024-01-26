@@ -240,7 +240,7 @@ extension (tp: Type)
    *
    *      Array[_ >: C^{} <: C^{x}]
    *
-   *   but it has fewer issues with type inference. 
+   *   but it has fewer issues with type inference.
    */
   def maybe(using Context): CaptureRef = tp match
     case tp: CaptureRef if tp.isTrackableRef =>

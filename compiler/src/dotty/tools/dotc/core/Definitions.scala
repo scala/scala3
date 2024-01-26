@@ -535,6 +535,10 @@ class Definitions {
       List(AnyType), EmptyScope)
   @tu lazy val SingletonType: TypeRef = SingletonClass.typeRef
 
+  @tu lazy val MaybeCapabilityAnnot: ClassSymbol =
+    completeClass(enterCompleteClassSymbol(
+      ScalaPackageClass, tpnme.maybeCapability, Final, List(StaticAnnotationClass.typeRef)))
+
   @tu lazy val CollectionSeqType: TypeRef  = requiredClassRef("scala.collection.Seq")
   @tu lazy val SeqType: TypeRef            = requiredClassRef("scala.collection.immutable.Seq")
   @tu lazy val SeqModule: Symbol           = requiredModule("scala.collection.immutable.Seq")
@@ -993,7 +997,7 @@ class Definitions {
 
   // Annotation base classes
   @tu lazy val AnnotationClass: ClassSymbol = requiredClass("scala.annotation.Annotation")
-  // @tu lazy val StaticAnnotationClass: ClassSymbol = requiredClass("scala.annotation.StaticAnnotation")
+  @tu lazy val StaticAnnotationClass: ClassSymbol = requiredClass("scala.annotation.StaticAnnotation")
   @tu lazy val RefiningAnnotationClass: ClassSymbol = requiredClass("scala.annotation.RefiningAnnotation")
   @tu lazy val JavaAnnotationClass: ClassSymbol = requiredClass("java.lang.annotation.Annotation")
 
@@ -1054,7 +1058,6 @@ class Definitions {
   @tu lazy val FunctionalInterfaceAnnot: ClassSymbol = requiredClass("java.lang.FunctionalInterface")
   @tu lazy val TargetNameAnnot: ClassSymbol = requiredClass("scala.annotation.targetName")
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
-  @tu lazy val MaybeCapabilityAnnot = requiredClass("scala.annotation.internal.maybeCapability")
   @tu lazy val ReachCapabilityAnnot = requiredClass("scala.annotation.internal.reachCapability")
   @tu lazy val RequiresCapabilityAnnot: ClassSymbol = requiredClass("scala.annotation.internal.requiresCapability")
   @tu lazy val RetainsAnnot: ClassSymbol = requiredClass("scala.annotation.retains")
@@ -2137,7 +2140,8 @@ class Definitions {
       AnyValClass,
       NullClass,
       NothingClass,
-      SingletonClass)
+      SingletonClass,
+      MaybeCapabilityAnnot)
 
   @tu lazy val syntheticCoreClasses: List[Symbol] = syntheticScalaClasses ++ List(
     EmptyPackageVal,
