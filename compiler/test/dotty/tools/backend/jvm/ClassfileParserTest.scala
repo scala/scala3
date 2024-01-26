@@ -36,6 +36,7 @@ class ClassfileParserTest {
       // in ClassfileConstants! that would defeat the purpose of the test
       "CONSTANT_CLASS",
       "CONSTANT_DOUBLE",
+      "CONSTANT_DYNAMIC",
       "CONSTANT_FIELDREF",
       "CONSTANT_FLOAT",
       "CONSTANT_INTEGER",
@@ -45,7 +46,9 @@ class ClassfileParserTest {
       "CONSTANT_METHODHANDLE",
       "CONSTANT_METHODREF",
       "CONSTANT_METHODTYPE",
+      "CONSTANT_MODULE",
       "CONSTANT_NAMEANDTYPE",
+      "CONSTANT_PACKAGE",
       "CONSTANT_STRING",
       "CONSTANT_UNICODE",
       "CONSTANT_UTF8",
