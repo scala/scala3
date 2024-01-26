@@ -4,4 +4,4 @@
   |         Found:    Inv[? >: IO <: box IO^{f}]
   |         Required: box Inv[box IO^?]^?
   |
-  | longer explanation available when compiling with `-explain`
+  | longer   explanation available when compiling with `-explain`
