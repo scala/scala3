@@ -1,0 +1,12 @@
+-- [E178] Type Error: tests/neg/i19266.scala:13:4 ----------------------------------------------------------------------
+13 |    fn2(2) // error
+   |    ^^^^^^
+   |    missing argument list for value of type String => Some[String]
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E178] Type Error: tests/neg/i19266.scala:19:4 ----------------------------------------------------------------------
+19 |    fn3(4) // error
+   |    ^^^^^^
+   |    missing argument list for value of type Double => Some[String]
+   |
+   | longer explanation available when compiling with `-explain`
