@@ -1,5 +1,5 @@
--- Warning: tests/init-global/neg/mutable-read6.scala:7:35 -------------------------------------------------------------
-7 |    final def source: SourceFile = _source 
+-- Warning: tests/init-global/warn/mutable-read6.scala:7:35 ------------------------------------------------------------
+7 |    final def source: SourceFile = _source // warn
   |                                   ^^^^^^^
   |Reading mutable state of object Contexts during initialization of object Implicits.
   |Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. Calling trace:
@@ -7,6 +7,5 @@
   |│   ^
   |├── val NoMatchingFailure: SearchFailure = SearchFailure(1, NoContext.source)	[ mutable-read6.scala:15 ]
   |│                                                           ^^^^^^^^^^^^^^^^
-  |└── final def source: SourceFile = _source	[ mutable-read6.scala:7 ]
+  |└── final def source: SourceFile = _source // warn	[ mutable-read6.scala:7 ]
   |                                   ^^^^^^^
-No warnings can be incurred under -Werror.

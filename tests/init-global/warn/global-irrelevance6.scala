@@ -6,5 +6,4 @@ object A:
   val n = array(0).foo()       // ok, no crash
 
 object B:
-  var y = A.array(0).foo() * 2
-
+  var y = A.array(0).foo() * 2 // warn

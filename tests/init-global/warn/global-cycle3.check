@@ -1,11 +1,10 @@
--- Warning: tests/init-global/neg/global-cycle3.scala:2:21 -------------------------------------------------------------
-2 |  def foo(): Int = B.a + 10  
+-- Warning: tests/init-global/warn/global-cycle3.scala:2:21 ------------------------------------------------------------
+2 |  def foo(): Int = B.a + 10 // warn
   |                   ^^^
   |                   Access uninitialized field value a. Calling trace:
   |                   ├── object B {	[ global-cycle3.scala:5 ]
   |                   │   ^
   |                   ├── val a: Int = A(4).foo()	[ global-cycle3.scala:6 ]
   |                   │                ^^^^^^^^^^
-  |                   └── def foo(): Int = B.a + 10	[ global-cycle3.scala:2 ]
+  |                   └── def foo(): Int = B.a + 10 // warn	[ global-cycle3.scala:2 ]
   |                                        ^^^
-No warnings can be incurred under -Werror.

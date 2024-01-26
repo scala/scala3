@@ -7,4 +7,4 @@ object B:
   val boxB: Box = new Box(5)
   val boxA: Box = A.box
   val m: Int = boxB.value
-  val n: Int = boxA.value
+  val n: Int = boxA.value // warn

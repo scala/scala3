@@ -5,7 +5,7 @@ object A:
   array(0) = new Box(10)
 
   def length: Int = array.length
-  def apply(i: Int): Box = array(i)
+  def apply(i: Int): Box = array(i) // warn
   def drop(n: Int): Seq[Box] = array.toSeq
   def toSeq: Seq[Box] = array.toSeq
 
@@ -15,4 +15,3 @@ object A:
 object B:
   A.array match
   case A(b*) =>
-

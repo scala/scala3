@@ -7,4 +7,4 @@ object A:
 object B:
   val box: A.Box = A.box
   val a: Int = box.initial
-  val b: Int = box.value
+  val b: Int = box.value // warn

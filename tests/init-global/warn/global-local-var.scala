@@ -7,11 +7,10 @@ class A(x: Int) {
       sum += i
       i += 1
 
-    B.a + 10 + sum
+    B.a + 10 + sum // warn
   }
 }
 
 object B {
   val a: Int = A(4).foo()
 }
-

@@ -3,6 +3,5 @@ object A {
 }
 
 object B {
-  def foo(): Int = A.a * 2
+  def foo(): Int = A.a * 2 // warn
 }
-

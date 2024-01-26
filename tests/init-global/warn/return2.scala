@@ -1,9 +1,9 @@
 object A:
   def foo(x: Int): Int => Int =
-    val f = (a: Int) => a + B.n
+    val f = (a: Int) => a + B.n // warn
     var i = 0
 
-    val g = () => return f
+    val g = () => return f // warn
 
     if x <= 0 then g()
 
@@ -11,4 +11,3 @@ object A:
 
 object B:
   val n = A.foo(-10)(20)
-

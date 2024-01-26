@@ -6,10 +6,9 @@ object A:
     var x = 6
     new Pair(
       y => x = y,
-      (() => x)
+      (() => x) // warn
     )
 
 
 object B:
   var y = A.p.g()
-

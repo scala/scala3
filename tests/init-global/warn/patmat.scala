@@ -1,4 +1,4 @@
-object A:
+object A: // warn
   val a: Option[Int] = Some(3)
   a match
   case Some(x) => println(x * 2 + B.a.size)
@@ -26,7 +26,7 @@ object C:
 
   val a: Int = Inner.b
 
-  object Inner:
+  object Inner: // warn
     val b: Int = 10
 
     val foo: () => Int = () => C.a
@@ -34,4 +34,3 @@ object C:
     (Box(foo): Box[() => Int] | Holder[Int]) match
     case Box(f) => f()
     case Holder(x) => x
-

@@ -1,5 +1,5 @@
--- Warning: tests/init-global/neg/mutable-read5.scala:4:38 -------------------------------------------------------------
-4 |  def name(s: String): Name = Name(0, chrs.length) 
+-- Warning: tests/init-global/warn/mutable-read5.scala:4:38 ------------------------------------------------------------
+4 |  def name(s: String): Name = Name(0, chrs.length) // warn
   |                                      ^^^^
   |Reading mutable state of object Names during initialization of object StdNames.
   |Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. Calling trace:
@@ -7,6 +7,5 @@
   |│   ^
   |├── val AnyRef: Names.Name = Names.name("AnyRef")	[ mutable-read5.scala:7 ]
   |│                            ^^^^^^^^^^^^^^^^^^^^
-  |└── def name(s: String): Name = Name(0, chrs.length)	[ mutable-read5.scala:4 ]
+  |└── def name(s: String): Name = Name(0, chrs.length) // warn	[ mutable-read5.scala:4 ]
   |                                        ^^^^
-No warnings can be incurred under -Werror.

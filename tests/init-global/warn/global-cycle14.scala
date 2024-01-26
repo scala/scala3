@@ -5,11 +5,10 @@ object O {
   val d = Data(3)
 }
 
-object A {
+object A { // warn
   val n: Int = B.m
 }
 
 object B {
-  val m: Int = A.n
+  val m: Int = A.n // warn
 }
-

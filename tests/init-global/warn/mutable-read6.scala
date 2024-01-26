@@ -4,7 +4,7 @@ object Contexts:
   val NoContext: Context = new Context
   class Context:
     private var _source: SourceFile = null
-    final def source: SourceFile = _source
+    final def source: SourceFile = _source // warn
     def setSource(source: SourceFile) = {
       this._source = source
     }

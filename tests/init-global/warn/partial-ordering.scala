@@ -1,4 +1,4 @@
-object Names:
+object Names: // warn
   val ctorString = "<init>"
   val ctorName: MethodName = MethodName.apply(ctorString)
 

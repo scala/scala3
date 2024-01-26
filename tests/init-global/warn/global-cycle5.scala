@@ -7,7 +7,7 @@ object A {
 }
 
 object B {
-  val b: Int = A.a.foo()
+  val b: Int = A.a.foo() // warn
 }
 
 class Y extends X {

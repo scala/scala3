@@ -1,6 +1,6 @@
--- Warning: tests/init-global/neg/line-spacing.scala:4:7 ---------------------------------------------------------------
+-- Warning: tests/init-global/warn/line-spacing.scala:4:7 --------------------------------------------------------------
 3 |    B
-4 |      .s.length 
+4 |      .s.length // warn
   |    ^
   |    Access uninitialized field value s. Calling trace:
   |    ├── object B {	[ line-spacing.scala:7 ]
@@ -9,6 +9,5 @@
   |    │                       ^^^
   |    ├── def a: Int =	[ line-spacing.scala:2 ]
   |    │   ^
-  |    └── .s.length	[ line-spacing.scala:4 ]
+  |    └── .s.length // warn	[ line-spacing.scala:4 ]
   |        ^
-No warnings can be incurred under -Werror.

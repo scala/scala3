@@ -1,9 +1,9 @@
 class IdAndMsg(val id: Int,  val msg: String = "")
 
-case object ObjA extends IdAndMsg(1)
+case object ObjA extends IdAndMsg(1) // warn
 case object ObjB extends IdAndMsg(2)
 
-object IdAndMsg {
+object IdAndMsg { // warn
   val values = List(ObjA , ObjB)
 }
 

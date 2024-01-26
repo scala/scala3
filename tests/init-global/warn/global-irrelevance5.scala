@@ -3,5 +3,4 @@ object A:
   array(0) = 10
 
 object B:
-  var y = A.array(0) * 2
-
+  var y = A.array(0) * 2 // warn

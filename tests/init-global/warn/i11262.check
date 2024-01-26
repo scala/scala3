@@ -1,15 +1,14 @@
--- Warning: tests/init-global/neg/i11262.scala:1:7 ---------------------------------------------------------------------
-1 |object A { val x: String = B.y }  
+-- Warning: tests/init-global/warn/i11262.scala:1:7 --------------------------------------------------------------------
+1 |object A { val x: String = B.y } // warn
   |       ^
   |       Cyclic initialization: object A -> object B -> object A. Calling trace:
-  |       ├── object A { val x: String = B.y }	[ i11262.scala:1 ]
+  |       ├── object A { val x: String = B.y } // warn	[ i11262.scala:1 ]
   |       │                              ^
-  |       └── object B { val y: String = A.x }	[ i11262.scala:2 ]
+  |       └── object B { val y: String = A.x } // warn	[ i11262.scala:2 ]
   |                                      ^
--- Warning: tests/init-global/neg/i11262.scala:2:29 --------------------------------------------------------------------
-2 |object B { val y: String = A.x }  
+-- Warning: tests/init-global/warn/i11262.scala:2:29 -------------------------------------------------------------------
+2 |object B { val y: String = A.x } // warn
   |                           ^^^
   |                           Access uninitialized field value x. Calling trace:
-  |                           └── object B { val y: String = A.x }	[ i11262.scala:2 ]
+  |                           └── object B { val y: String = A.x } // warn	[ i11262.scala:2 ]
   |                                                          ^^^
-No warnings can be incurred under -Werror.

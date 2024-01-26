@@ -1,21 +1,20 @@
--- Warning: tests/init-global/neg/t9360.scala:8:9 ----------------------------------------------------------------------
-8 |  object AObj extends BaseClass(s)     
+-- Warning: tests/init-global/warn/t9360.scala:8:9 ---------------------------------------------------------------------
+8 |  object AObj extends BaseClass(s) // warn
   |         ^
   |         Cyclic initialization: object AObj -> object Obj -> object AObj. Calling trace:
-  |         ├── object AObj extends BaseClass(s)	[ t9360.scala:8 ]
+  |         ├── object AObj extends BaseClass(s) // warn	[ t9360.scala:8 ]
   |         │                                 ^
-  |         ├── object Obj {	[ t9360.scala:5 ]
+  |         ├── object Obj { // warn	[ t9360.scala:5 ]
   |         │   ^
   |         └── val list = List(AObj, BObj)	[ t9360.scala:12 ]
   |                             ^^^^
--- Warning: tests/init-global/neg/t9360.scala:5:7 ----------------------------------------------------------------------
-5 |object Obj {                           
+-- Warning: tests/init-global/warn/t9360.scala:5:7 ---------------------------------------------------------------------
+5 |object Obj { // warn
   |       ^
   |       Cyclic initialization: object Obj -> object BObj -> object Obj. Calling trace:
-  |       ├── object Obj {	[ t9360.scala:5 ]
+  |       ├── object Obj { // warn	[ t9360.scala:5 ]
   |       │   ^
   |       ├── val list = List(AObj, BObj)	[ t9360.scala:12 ]
   |       │                         ^^^^
   |       └── object BObj extends BaseClass(s)	[ t9360.scala:10 ]
   |                                         ^
-No warnings can be incurred under -Werror.

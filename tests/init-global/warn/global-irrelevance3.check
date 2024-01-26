@@ -1,5 +1,5 @@
--- Warning: tests/init-global/neg/global-irrelevance3.scala:9:13 -------------------------------------------------------
-9 |      (() => x)   
+-- Warning: tests/init-global/warn/global-irrelevance3.scala:9:13 ------------------------------------------------------
+9 |      (() => x) // warn
   |             ^
   |Reading mutable state of object A during initialization of object B.
   |Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. Calling trace:
@@ -7,6 +7,5 @@
   |│   ^
   |├── var y = A.p.g()	[ global-irrelevance3.scala:14 ]
   |│           ^^^^^^^
-  |└── (() => x)	[ global-irrelevance3.scala:9 ]
+  |└── (() => x) // warn	[ global-irrelevance3.scala:9 ]
   |           ^
-No warnings can be incurred under -Werror.

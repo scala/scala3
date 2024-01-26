@@ -7,7 +7,7 @@ class B extends A {
 }
 
 class C extends A {
-  def foo(): Int = O.a + 10
+  def foo(): Int = O.a + 10 // warn
 }
 
 class D(x: Int) {
@@ -17,4 +17,3 @@ class D(x: Int) {
 object O {
   val a: Int = D(5).bar().foo()
 }
-

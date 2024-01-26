@@ -1,5 +1,5 @@
--- Warning: tests/init-global/neg/unapply-implicit-arg3.scala:4:25 -----------------------------------------------------
-4 |    def m2(i: Int) = i + i2 
+-- Warning: tests/init-global/warn/unapply-implicit-arg3.scala:4:25 ----------------------------------------------------
+4 |    def m2(i: Int) = i + i2 // warn
   |                         ^^
   |                         Access uninitialized field value i2. Calling trace:
   |                         ├── object Bar {	[ unapply-implicit-arg3.scala:1 ]
@@ -10,6 +10,5 @@
   |                         │   ^
   |                         ├── if i == 0 then Some(f1.m1(i)) else Some(f1.m2(i))	[ unapply-implicit-arg3.scala:7 ]
   |                         │                                           ^^^^^^^^
-  |                         └── def m2(i: Int) = i + i2	[ unapply-implicit-arg3.scala:4 ]
+  |                         └── def m2(i: Int) = i + i2 // warn	[ unapply-implicit-arg3.scala:4 ]
   |                                                  ^^
-No warnings can be incurred under -Werror.

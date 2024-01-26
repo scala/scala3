@@ -1,5 +1,5 @@
--- Warning: tests/init-global/neg/mutable-read7.scala:7:17 -------------------------------------------------------------
-7 |  if (Positioned.debug) { 
+-- Warning: tests/init-global/warn/mutable-read7.scala:7:17 ------------------------------------------------------------
+7 |  if (Positioned.debug) { // warn
   |      ^^^^^^^^^^^^^^^^
   |Reading mutable state of object Positioned during initialization of object Trees.
   |Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. Calling trace:
@@ -11,6 +11,5 @@
   |│   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |├── abstract class Positioned:	[ mutable-read7.scala:6 ]
   |│   ^
-  |└── if (Positioned.debug) {	[ mutable-read7.scala:7 ]
+  |└── if (Positioned.debug) { // warn	[ mutable-read7.scala:7 ]
   |        ^^^^^^^^^^^^^^^^
-No warnings can be incurred under -Werror.

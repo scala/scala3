@@ -1,7 +1,7 @@
-object A {
+object A { // warn
   val n: Int = B.m
   class Inner {
-    println(n)
+    println(n) // warn
   }
 }
 

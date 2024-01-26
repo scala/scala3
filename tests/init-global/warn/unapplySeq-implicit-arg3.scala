@@ -1,6 +1,6 @@
 object Bar {
   class Foo {
-    def m(seq: Seq[Int]) = i1 +: seq
+    def m(seq: Seq[Int]) = i1 +: seq // warn
   }
   def unapplySeq(using f1: Foo)(seqi: Seq[Int])(using Foo): Option[Seq[Int]] =
     Some(f1.m(seqi))
@@ -10,4 +10,3 @@ object Bar {
     case _ => 0
   }
 }
-

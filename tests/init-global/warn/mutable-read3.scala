@@ -6,4 +6,4 @@ object B:
   val boxes: Array[A.Box] = new Array(1)
   boxes(0) = A.box
   val box: A.Box = boxes(0)
-  val x: Int = box.value
+  val x: Int = box.value // warn

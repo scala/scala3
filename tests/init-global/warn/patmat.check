@@ -1,8 +1,8 @@
--- Warning: tests/init-global/neg/patmat.scala:1:7 ---------------------------------------------------------------------
-1 |object A:                             
+-- Warning: tests/init-global/warn/patmat.scala:1:7 --------------------------------------------------------------------
+1 |object A: // warn
   |       ^
   |       Cyclic initialization: object A -> object B -> object A. Calling trace:
-  |       ├── object A:	[ patmat.scala:1 ]
+  |       ├── object A: // warn	[ patmat.scala:1 ]
   |       │   ^
   |       ├── case Some(x) => println(x * 2 + B.a.size)	[ patmat.scala:4 ]
   |       │                                   ^
@@ -10,11 +10,11 @@
   |       │   ^
   |       └── if A.a.isEmpty then println(xs.size)	[ patmat.scala:12 ]
   |              ^
--- Warning: tests/init-global/neg/patmat.scala:29:9 --------------------------------------------------------------------
-29 |  object Inner:                
+-- Warning: tests/init-global/warn/patmat.scala:29:9 -------------------------------------------------------------------
+29 |  object Inner: // warn
    |         ^
    |         Cyclic initialization: object Inner -> object C -> object Inner. Calling trace:
-   |         ├── object Inner:	[ patmat.scala:29 ]
+   |         ├── object Inner: // warn	[ patmat.scala:29 ]
    |         │   ^
    |         ├── case Box(f) => f()	[ patmat.scala:35 ]
    |         │                  ^^^
@@ -24,4 +24,3 @@
    |         │   ^
    |         └── val a: Int = Inner.b	[ patmat.scala:27 ]
    |                          ^^^^^
-No warnings can be incurred under -Werror.

@@ -1,21 +1,20 @@
--- Warning: tests/init-global/neg/t5366.scala:3:12 ---------------------------------------------------------------------
-3 |case object ObjA extends IdAndMsg(1)     
+-- Warning: tests/init-global/warn/t5366.scala:3:12 --------------------------------------------------------------------
+3 |case object ObjA extends IdAndMsg(1) // warn
   |            ^
   |            Cyclic initialization: object ObjA -> object IdAndMsg -> object ObjA. Calling trace:
-  |            ├── case object ObjA extends IdAndMsg(1)	[ t5366.scala:3 ]
+  |            ├── case object ObjA extends IdAndMsg(1) // warn	[ t5366.scala:3 ]
   |            │                            ^
-  |            ├── object IdAndMsg {	[ t5366.scala:6 ]
+  |            ├── object IdAndMsg { // warn	[ t5366.scala:6 ]
   |            │   ^
   |            └── val values = List(ObjA , ObjB)	[ t5366.scala:7 ]
   |                                  ^^^^
--- Warning: tests/init-global/neg/t5366.scala:6:7 ----------------------------------------------------------------------
-6 |object IdAndMsg {                        
+-- Warning: tests/init-global/warn/t5366.scala:6:7 ---------------------------------------------------------------------
+6 |object IdAndMsg { // warn
   |       ^
   |       Cyclic initialization: object IdAndMsg -> object ObjB -> object IdAndMsg. Calling trace:
-  |       ├── object IdAndMsg {	[ t5366.scala:6 ]
+  |       ├── object IdAndMsg { // warn	[ t5366.scala:6 ]
   |       │   ^
   |       ├── val values = List(ObjA , ObjB)	[ t5366.scala:7 ]
   |       │                            ^^^^
   |       └── case object ObjB extends IdAndMsg(2)	[ t5366.scala:4 ]
   |                                    ^
-No warnings can be incurred under -Werror.

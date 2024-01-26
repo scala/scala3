@@ -1,9 +1,9 @@
-object A {
+object A { // warn
   val n: Int = B.m
 }
 
 object B {
-  val m: Int = A.n
+  val m: Int = A.n // warn
 }
 
 abstract class TokensCommon {
@@ -16,4 +16,3 @@ object JavaTokens extends TokensCommon {
   final def maxToken: Int = DOUBLE
   final val DOUBLE = 188
 }
-

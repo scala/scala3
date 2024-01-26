@@ -1,37 +1,36 @@
--- Warning: tests/init-global/neg/global-list.scala:3:7 ----------------------------------------------------------------
-3 |object O:                  
+-- Warning: tests/init-global/warn/global-list.scala:3:7 ---------------------------------------------------------------
+3 |object O: // warn
   |       ^
   |       Cyclic initialization: object O -> object Foo -> object O. Calling trace:
-  |       ├── object O:	[ global-list.scala:3 ]
+  |       ├── object O: // warn	[ global-list.scala:3 ]
   |       │   ^
   |       ├── val a = Foo("Apple")	[ global-list.scala:4 ]
   |       │           ^^^
   |       ├── object Foo:	[ global-list.scala:8 ]
   |       │   ^
-  |       └── val all: List[Foo] = List(O.a, O.b, O.c)	[ global-list.scala:9 ]
+  |       └── val all: List[Foo] = List(O.a, O.b, O.c) // warn // warn // warn	[ global-list.scala:9 ]
   |                                     ^
--- Warning: tests/init-global/neg/global-list.scala:9:30 ---------------------------------------------------------------
-9 |  val all: List[Foo] = List(O.a, O.b, O.c) 
+-- Warning: tests/init-global/warn/global-list.scala:9:30 --------------------------------------------------------------
+9 |  val all: List[Foo] = List(O.a, O.b, O.c) // warn // warn // warn
   |                            ^^^
-  |                            Access uninitialized field value a. Calling trace:
-  |                            ├── object Foo:	[ global-list.scala:8 ]
-  |                            │   ^
-  |                            └── val all: List[Foo] = List(O.a, O.b, O.c)	[ global-list.scala:9 ]
-  |                                                          ^^^
--- Warning: tests/init-global/neg/global-list.scala:9:35 ---------------------------------------------------------------
-9 |  val all: List[Foo] = List(O.a, O.b, O.c) 
+  |                      Access uninitialized field value a. Calling trace:
+  |                      ├── object Foo:	[ global-list.scala:8 ]
+  |                      │   ^
+  |                      └── val all: List[Foo] = List(O.a, O.b, O.c) // warn // warn // warn	[ global-list.scala:9 ]
+  |                                                    ^^^
+-- Warning: tests/init-global/warn/global-list.scala:9:35 --------------------------------------------------------------
+9 |  val all: List[Foo] = List(O.a, O.b, O.c) // warn // warn // warn
   |                                 ^^^
-  |                                 Access uninitialized field value b. Calling trace:
-  |                                 ├── object Foo:	[ global-list.scala:8 ]
-  |                                 │   ^
-  |                                 └── val all: List[Foo] = List(O.a, O.b, O.c)	[ global-list.scala:9 ]
-  |                                                                    ^^^
--- Warning: tests/init-global/neg/global-list.scala:9:40 ---------------------------------------------------------------
-9 |  val all: List[Foo] = List(O.a, O.b, O.c) 
+  |                      Access uninitialized field value b. Calling trace:
+  |                      ├── object Foo:	[ global-list.scala:8 ]
+  |                      │   ^
+  |                      └── val all: List[Foo] = List(O.a, O.b, O.c) // warn // warn // warn	[ global-list.scala:9 ]
+  |                                                         ^^^
+-- Warning: tests/init-global/warn/global-list.scala:9:40 --------------------------------------------------------------
+9 |  val all: List[Foo] = List(O.a, O.b, O.c) // warn // warn // warn
   |                                      ^^^
-  |                                      Access uninitialized field value c. Calling trace:
-  |                                      ├── object Foo:	[ global-list.scala:8 ]
-  |                                      │   ^
-  |                                      └── val all: List[Foo] = List(O.a, O.b, O.c)	[ global-list.scala:9 ]
-  |                                                                              ^^^
-No warnings can be incurred under -Werror.
+  |                      Access uninitialized field value c. Calling trace:
+  |                      ├── object Foo:	[ global-list.scala:8 ]
+  |                      │   ^
+  |                      └── val all: List[Foo] = List(O.a, O.b, O.c) // warn // warn // warn	[ global-list.scala:9 ]
+  |                                                              ^^^

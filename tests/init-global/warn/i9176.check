@@ -1,9 +1,8 @@
--- Warning: tests/init-global/neg/i9176.scala:2:12 ---------------------------------------------------------------------
-2 |case object A extends Foo(B) 
+-- Warning: tests/init-global/warn/i9176.scala:2:12 --------------------------------------------------------------------
+2 |case object A extends Foo(B) // warn
   |            ^
   |            Cyclic initialization: object A -> object B -> object A. Calling trace:
-  |            ├── case object A extends Foo(B)	[ i9176.scala:2 ]
+  |            ├── case object A extends Foo(B) // warn	[ i9176.scala:2 ]
   |            │                             ^
   |            └── case object B extends Foo(A)	[ i9176.scala:3 ]
   |                                          ^
-No warnings can be incurred under -Werror.

@@ -1,11 +1,10 @@
--- Warning: tests/init-global/neg/global-region1.scala:3:51 ------------------------------------------------------------
-3 |class D(var y: Int) extends B { def foo(): Int = A.m }    
+-- Warning: tests/init-global/warn/global-region1.scala:3:51 -----------------------------------------------------------
+3 |class D(var y: Int) extends B { def foo(): Int = A.m } // warn
   |                                                 ^^^
-  |                             Access uninitialized field value m. Calling trace:
-  |                             ├── object A:	[ global-region1.scala:6 ]
-  |                             │   ^
-  |                             ├── val m: Int = box1.value.foo()	[ global-region1.scala:9 ]
-  |                             │                ^^^^^^^^^^^^^^^^
-  |                             └── class D(var y: Int) extends B { def foo(): Int = A.m }	[ global-region1.scala:3 ]
-  |                                                                                  ^^^
-No warnings can be incurred under -Werror.
+  |                     Access uninitialized field value m. Calling trace:
+  |                     ├── object A:	[ global-region1.scala:6 ]
+  |                     │   ^
+  |                     ├── val m: Int = box1.value.foo()	[ global-region1.scala:9 ]
+  |                     │                ^^^^^^^^^^^^^^^^
+  |                     └── class D(var y: Int) extends B { def foo(): Int = A.m } // warn	[ global-region1.scala:3 ]
+  |                                                                          ^^^

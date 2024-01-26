@@ -5,5 +5,4 @@ object A:
 object B:
   val boxes: Array[A.Box] = Array(A.box)
   val box: A.Box = boxes(0)
-  val x: Int = box.value
-
+  val x: Int = box.value // warn

@@ -8,17 +8,16 @@ object DeadLockTest {
 
   }
 
-  object Parent {
+  object Parent { // warn
     trait Child {
       Thread.sleep(2000) // ensure concurrent behavior
       val parent = Parent
       def siblings = parent.children - this
     }
 
-    object Child1 extends Child
+    object Child1 extends Child // warn
     object Child2 extends Child
 
     final val children = Set(Child1, Child2)
   }
 }
-

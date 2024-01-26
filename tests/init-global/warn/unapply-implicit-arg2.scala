@@ -4,7 +4,7 @@ object Bar {
     def m2(i: Int) = i+2
   }
   def unapply(using f1: Foo)(i: Int): Option[Int] =
-    if i == 0 then Some(f1.m1(i1)) else Some(f1.m2(i2))
+    if i == 0 then Some(f1.m1(i1)) else Some(f1.m2(i2)) // warn
 
   given Foo = new Foo
   val i1: Int = 0
@@ -12,4 +12,3 @@ object Bar {
     case Bar(i) => i
     case _ => 0
 }
-

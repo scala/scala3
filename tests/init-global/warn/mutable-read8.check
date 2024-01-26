@@ -1,5 +1,5 @@
--- Warning: tests/init-global/neg/mutable-read8.scala:6:12 -------------------------------------------------------------
-6 |  if (Stats.monitored) println("record stats") 
+-- Warning: tests/init-global/warn/mutable-read8.scala:6:12 ------------------------------------------------------------
+6 |  if (Stats.monitored) println("record stats") // warn
   |      ^^^^^^^^^^^^^^^
   |Reading mutable state of object Stats during initialization of object NoCompleter.
   |Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. Calling trace:
@@ -9,6 +9,5 @@
   |│   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |├── class UncachedGroundType {	[ mutable-read8.scala:5 ]
   |│   ^
-  |└── if (Stats.monitored) println("record stats")	[ mutable-read8.scala:6 ]
+  |└── if (Stats.monitored) println("record stats") // warn	[ mutable-read8.scala:6 ]
   |        ^^^^^^^^^^^^^^^
-No warnings can be incurred under -Werror.
