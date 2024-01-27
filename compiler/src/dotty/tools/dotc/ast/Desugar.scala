@@ -1505,8 +1505,10 @@ object desugar {
     var names = elems.collect:
       case NamedArg(name, arg) => name
     if names.isEmpty then
-      typer.Inferencing.isFullyDefined(pt, typer.ForceDegree.failBottom)
-      names = pt.namedTupleNames
+      val pt1 = pt.stripTypeVar match
+        case p: TypeParamRef => ctx.typerState.constraint.entry(p).hiBound
+        case _               => NoType
+      names = pt1.orElse(pt).namedTupleNames
     if names.isEmpty || ctx.mode.is(Mode.Pattern) then
       tup
     else

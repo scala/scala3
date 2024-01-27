@@ -72,3 +72,12 @@ object Test1:
     p3 match
       case (Person2(nn, a), Address(c, z, s, number)) =>
         println(s"$nn, aged $a in $z $c, $s $number")
+
+  // don't force type vars too early (while typing named tuples)
+  def ifBefore[T](end: Int)(op: => T, default: T): T = ???
+  def ifBeforeTest(end: Int) =
+    sealed trait Type
+    case class TypeRef() extends Type
+    case object NoType extends Type
+    def readQualId(): (Int, TypeRef) = ???
+    val (mixId, mixTpe) = ifBefore(end)(readQualId(), (2, NoType))
