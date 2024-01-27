@@ -1,0 +1,4 @@
+-- Error: tests/neg/i19531/A.scala:3:35 --------------------------------------------------------------------------------
+3 |  inline def myMacro(): x.type = ${myMacroExpr}  // error
+  |                                   ^
+  |Cyclic macro dependency; macro refers to a toplevel symbol in tests/neg/i19531/A.scala from which the macro is called
