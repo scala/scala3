@@ -54,8 +54,7 @@ class Driver {
       if (ctx.settings.XprintSuspension.value)
         report.echo(i"compiling suspended $suspendedUnits%, %")
       val run1 = compiler.newRun
-      for unit <- suspendedUnits do unit.suspended = false
-      run1.compileUnits(suspendedUnits)
+      run1.compileSuspendedUnits(suspendedUnits)
       finish(compiler, run1)(using MacroClassLoader.init(ctx.fresh))
 
   protected def initCtx: Context = (new ContextBase).initialCtx

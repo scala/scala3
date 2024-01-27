@@ -945,7 +945,10 @@ object Denotations {
     }
 
     def staleSymbolError(using Context): Nothing =
-      throw new StaleSymbol(staleSymbolMsg)
+      if symbol.isPackageObject && ctx.run != null && ctx.run.nn.isCompilingSuspended then
+        throw TypeError(em"Cyclic macro dependency; macro refers to a toplevel symbol in ${symbol.source} from which the macro is called")
+      else
+        throw new StaleSymbol(staleSymbolMsg)
 
     def staleSymbolMsg(using Context): String = {
       def ownerMsg = this match {
