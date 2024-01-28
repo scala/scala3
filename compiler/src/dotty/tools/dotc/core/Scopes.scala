@@ -172,7 +172,7 @@ object Scopes {
           result.nn.unlink(sym)
         if keep(sym) then
           val newName = rename(sym, sym.name)
-          if newName ne sym.name then
+          if newName != sym.name then
             drop()
             result.nn.enter(newName, sym)
         else
