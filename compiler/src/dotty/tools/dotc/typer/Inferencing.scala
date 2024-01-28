@@ -203,19 +203,20 @@ object Inferencing {
      *           in this case should not be instantiated further, false otherwise.
      */
     private def instantiate(tvar: TypeVar, fromBelow: Boolean): Boolean =
+      var inst = tvar.typeToInstantiateWith(fromBelow)
+      var improved = false
       if fromBelow && force.canImprove(tvar) then
-        val inst = tvar.typeToInstantiateWith(fromBelow = true)
         if apply(true, inst) then
           // need to recursively check before improving, since improving adds type vars
           // which should not be instantiated at this point
           val better = improve(tvar)(inst)
           if better <:< TypeComparer.fullUpperBound(tvar.origin) then
-            typr.println(i"forced instantiation of invariant ${tvar.origin} = $inst, improved to $better")
-            tvar.instantiateWith(better)
-            return true
-      val inst = tvar.instantiate(fromBelow)
+            typr.println(i"forced instantiation of invariant ${tvar.origin}: $inst was improved to $better")
+            inst = better
+            improved = true
+      tvar.instantiateWith(inst)
       typr.println(i"forced instantiation of ${tvar.origin} = $inst")
-      false
+      improved
 
     private var toMaximize: List[TypeVar] = Nil
 

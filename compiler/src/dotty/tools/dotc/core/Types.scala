@@ -4913,8 +4913,7 @@ object Types extends TypeUtils {
      *  is also a singleton type.
      */
     def instantiate(fromBelow: Boolean)(using Context): Type =
-      val tp = typeToInstantiateWith(fromBelow)
-      instantiateWith(tp)
+      instantiateWith(typeToInstantiateWith(fromBelow))
 
     /** Widen unions when instantiating this variable in the current context? */
     def widenUnions(using Context): Boolean = !ctx.typerState.constraint.isHard(this)
