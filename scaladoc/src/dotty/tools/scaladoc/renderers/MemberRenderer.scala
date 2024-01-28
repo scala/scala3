@@ -323,6 +323,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       val (allInherited, allDefined) = nonExperimental.partition(isInherited)
       val (depDefined, defined) = allDefined.partition(isDeprecated)
       val (depInherited, inherited) = allInherited.partition(isDeprecated)
+      val (abstractInherited, concreteInherited) = inherited.partition(isAbstract)
       val normalizedName = name.toLowerCase
       val definedWithGroup = if Set("methods", "fields").contains(normalizedName) then
           val (abstr, concr) = defined.partition(isAbstract)
@@ -335,7 +336,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
       definedWithGroup ++ List(
         actualGroup(s"Deprecated ${normalizedName}", depDefined),
-        actualGroup(s"Inherited ${normalizedName}", inherited),
+        actualGroup(s"Inherited ${normalizedName}", concreteInherited),
+        actualGroup(s"Inherited and Abstract ${normalizedName}", abstractInherited),
         actualGroup(s"Deprecated and Inherited ${normalizedName}", depInherited),
         actualGroup(name = s"Experimental ${normalizedName}", experimental)
       )
