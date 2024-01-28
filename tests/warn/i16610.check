@@ -1,0 +1,5 @@
+-- Warning: tests/warn/i16610.scala:11:2 -------------------------------------------------------------------------------
+11 |  /** // warn
+   |  ^
+   |  Ambiguous Scaladoc comment on multiple cases is ignored.
+   |  Remove the comment or make separate cases to add Scaladoc comments to each of them.
