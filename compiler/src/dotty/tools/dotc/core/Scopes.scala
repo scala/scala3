@@ -175,7 +175,7 @@ object Scopes {
 
     def implicitDecls(using Context): List[TermRef] = Nil
 
-    def openForMutations: MutableScope = unsupported("openForMutations")
+    def openForMutations: MutableScope = unsupported(s"openForMutations $this")
 
     final def toText(printer: Printer): Text = printer.toText(this)
 
