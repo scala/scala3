@@ -727,10 +727,10 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
             }
           val erasedDecls = decls.filteredScope(
               keep = sym => !sym.isType || sym.isClass,
-              rename = (sym, name) =>
+              rename = sym =>
                 if sym.lastKnownDenotation.unforcedAnnotation(defn.TargetNameAnnot).isDefined
                 then sym.targetName
-                else name
+                else null
             )
           val selfType1 = if cls.is(Module) then cls.sourceModule.termRef else NoType
           tp.derivedClassInfo(NoPrefix, erasedParents, erasedDecls, selfType1)

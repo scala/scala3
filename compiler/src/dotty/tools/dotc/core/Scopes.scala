@@ -165,15 +165,15 @@ object Scopes {
      */
     final def filteredScope(
         keep: Symbol => Boolean,
-        rename: (Symbol, Name) => Name = (_, name) => name)(using Context): Scope =
+        rename: Symbol => Name | Null = _ => null)(using Context): Scope =
       var result: MutableScope | Null = null
       for sym <- iterator do
         def drop() =
           if result == null then result = cloneScope
           result.nn.unlink(sym)
         if keep(sym) then
-          val newName = rename(sym, sym.name)
-          if newName != sym.name then
+          val newName = rename(sym)
+          if newName != null then
             drop()
             result.nn.enter(newName, sym)
         else
