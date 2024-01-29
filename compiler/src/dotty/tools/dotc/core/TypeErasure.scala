@@ -729,6 +729,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
               keep = sym => !sym.isType || sym.isClass,
               rename = sym =>
                 if sym.lastKnownDenotation.unforcedAnnotation(defn.TargetNameAnnot).isDefined
+                  && sym.targetName != sym.name
                 then sym.targetName
                 else null
             )
