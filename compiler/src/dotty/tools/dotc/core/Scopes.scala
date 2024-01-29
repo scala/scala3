@@ -160,6 +160,7 @@ object Scopes {
 
     /** The scope that keeps only those symbols from this scope that match the
      *  given predicates, renamed with the given rename function.
+     *  If renaming is not needed for a symbol, the rename function should return `null`.
      *  If all symbols match and none are renamed, returns the scope itself, otherwise
      *  a copy with the matching and renamed symbols.
      */
