@@ -441,6 +441,9 @@ object Inlines:
             unrollTupleTypes(tail).map(head :: _)
           case tpe: TermRef if tpe.symbol == defn.EmptyTupleModule =>
             Some(Nil)
+          case tpRef: TypeRef => tpRef.info match
+            case MatchAlias(alias) => unrollTupleTypes(alias.tryNormalize)
+            case _ => None
           case _ =>
             None
 
