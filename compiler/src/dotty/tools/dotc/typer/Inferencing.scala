@@ -383,8 +383,9 @@ object Inferencing {
   def isSkolemFree(tp: Type)(using Context): Boolean =
     !tp.existsPart(_.isInstanceOf[SkolemType])
 
-  /** The list of uninstantiated type variables bound by some prefix of type `T` which
-   *  occur in at least one formal parameter type of a prefix application.
+  /** The list of uninstantiated type variables bound by some prefix of type `T` or
+   *  by arguments of an application prefix, which occur at least once as a formal type parameter
+   *  of an application either from a prefix or an argument of an application node.
    *  Considered prefixes are:
    *    - The function `f` of an application node `f(e1, .., en)`
    *    - The function `f` of a type application node `f[T1, ..., Tn]`
