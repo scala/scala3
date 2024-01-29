@@ -383,8 +383,9 @@ object Inferencing {
   def isSkolemFree(tp: Type)(using Context): Boolean =
     !tp.existsPart(_.isInstanceOf[SkolemType])
 
-  /** The list of uninstantiated type variables bound by some prefix of type `T` which
-   *  occur in at least one formal parameter type of a prefix application.
+  /** The list of uninstantiated type variables bound by some prefix of type `T` or
+   *  by arguments of an application prefix, which occur at least once as a formal type parameter
+   *  of an application either from a prefix or an argument of an application node.
    *  Considered prefixes are:
    *    - The function `f` of an application node `f(e1, .., en)`
    *    - The function `f` of a type application node `f[T1, ..., Tn]`
@@ -392,8 +393,10 @@ object Inferencing {
    *    - The result expression `e` of a block `{s1; .. sn; e}`.
    */
   def tvarsInParams(tree: Tree, locked: TypeVars)(using Context): List[TypeVar] = {
-    @tailrec def boundVars(tree: Tree, acc: List[TypeVar]): List[TypeVar] = tree match {
-      case Apply(fn, _) => boundVars(fn, acc)
+    def boundVars(tree: Tree, acc: List[TypeVar]): List[TypeVar] = tree match {
+      case Apply(fn, args) =>
+        val argTpVars = args.flatMap(boundVars(_, Nil))
+        boundVars(fn, acc ++ argTpVars)
       case TypeApply(fn, targs) =>
         val tvars = targs.filter(_.isInstanceOf[InferredTypeTree]).tpes.collect {
           case tvar: TypeVar
@@ -406,16 +409,18 @@ object Inferencing {
       case Block(_, expr) => boundVars(expr, acc)
       case _ => acc
     }
-    @tailrec def occurring(tree: Tree, toTest: List[TypeVar], acc: List[TypeVar]): List[TypeVar] =
+    def occurring(tree: Tree, toTest: List[TypeVar], acc: List[TypeVar]): List[TypeVar] =
       if (toTest.isEmpty) acc
       else tree match {
-        case Apply(fn, _) =>
+        case Apply(fn, args) =>
+          val argsOcc = args.flatMap(occurring(_, toTest, Nil))
+          val argsNocc = toTest.filterNot(argsOcc.contains)
           fn.tpe.widen match {
             case mtp: MethodType =>
-              val (occ, nocc) = toTest.partition(tvar => mtp.paramInfos.exists(tvar.occursIn))
-              occurring(fn, nocc, occ ::: acc)
+              val (occ, nocc) = argsNocc.partition(tvar => mtp.paramInfos.exists(tvar.occursIn))
+              occurring(fn, nocc, occ ::: argsOcc ::: acc)
             case _ =>
-              occurring(fn, toTest, acc)
+              occurring(fn, argsNocc, argsOcc ::: acc)
           }
         case TypeApply(fn, targs) => occurring(fn, toTest, acc)
         case Select(pre, _) => occurring(pre, toTest, acc)
