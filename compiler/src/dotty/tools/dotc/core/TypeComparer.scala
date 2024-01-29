@@ -2508,6 +2508,19 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         NoType
     }
 
+  /** There's a window of vulnerability between ElimByName and Erasure where some
+   *  ExprTypes `=> T` that appear as parameters of function types are not yet converted
+   *  to by-name functions `() ?=> T`. These would cause an assertion violation when
+   *  used as operands of & or |. We fix this on the fly here. As explained in
+   *  ElimByName, we can't fix it beforehand by mapping all occurrences of `=> T` to
+   *  `() ?=> T` since that could lead to cycles.
+   */
+  private def dropExpr(tp: Type): Type = tp match
+    case ExprType(rt) if Phases.elimByNamePhase <= ctx.phase && !ctx.erasedTypes =>
+      defn.ByNameFunction(rt)
+    case _ =>
+      tp
+
   private def andTypeGen(tp1: Type, tp2: Type, op: (Type, Type) => Type,
       original: (Type, Type) => Type = _ & _, isErased: Boolean = ctx.erasedTypes): Type = trace(s"andTypeGen(${tp1.show}, ${tp2.show})", subtyping, show = true) {
     val t1 = distributeAnd(tp1, tp2)
@@ -2516,7 +2529,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       val t2 = distributeAnd(tp2, tp1)
       if (t2.exists) t2
       else if (isErased) erasedGlb(tp1, tp2)
-      else liftIfHK(tp1, tp2, op, original, _ | _)
+      else liftIfHK(dropExpr(tp1), dropExpr(tp2), op, original, _ | _)
         // The ` | ` on variances is needed since variances are associated with bounds
         // not lambdas. Example:
         //
@@ -2561,7 +2574,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       val t2 = distributeOr(tp2, tp1, isSoft)
       if (t2.exists) t2
       else if (isErased) erasedLub(tp1, tp2)
-      else liftIfHK(tp1, tp2, OrType.balanced(_, _, soft = isSoft), _ | _, _ & _)
+      else liftIfHK(dropExpr(tp1), dropExpr(tp2), OrType.balanced(_, _, soft = isSoft), _ | _, _ & _)
     }
   }
 
