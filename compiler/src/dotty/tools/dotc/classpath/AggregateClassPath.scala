@@ -102,10 +102,15 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
     ClassPathEntries(distinctPackages, distinctClassesAndSources)
   }
 
-  /**
-   * Returns only one entry for each name. If there's both a source and a class entry, it
-   * creates an entry containing both of them. If there would be more than one class or source
-   * entries for the same class it always would use the first entry of each type found on a classpath.
+  /** Returns only one entry for each name.
+   *
+   *  If there's both a source and a class entry, it
+   *  creates an entry containing both of them. If there would be more than one class or source
+   *  entries for the same class it always would use the first entry of each type found on a classpath.
+   *
+   *  A TASTy file with no class file entry will be chosen over a class file entry. This can happen if we load
+   *  the Scala 2 library as it has one JAR containing the class files and one JAR containing the TASTy files.
+   *  As classpath orders are not guaranteed to be deterministic we might end up having the TASTy in a later classpath entry.
    */
   private def mergeClassesAndSources(entries: scala.collection.Seq[ClassRepresentation]): Seq[ClassRepresentation] = {
     // based on the implementation from MergedClassPath
@@ -124,6 +129,12 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
             mergedEntries(index) = BinaryAndSourceFilesEntry(existing, entry)
           case (entry: BinaryFileEntry, existing: SourceFileEntry) =>
             mergedEntries(index) = BinaryAndSourceFilesEntry(entry, existing)
+          case (entry: StandaloneTastyFileEntry, _: ClassFileEntry) =>
+            // Here we do not create a TastyWithClassFileEntry because the TASTy and the classfile
+            // come from different classpaths. These may not have the same TASTy UUID.
+            mergedEntries(index) = entry
+          case (entry: StandaloneTastyFileEntry, BinaryAndSourceFilesEntry(_: ClassFileEntry, sourceEntry)) =>
+            mergedEntries(index) = BinaryAndSourceFilesEntry(entry, sourceEntry)
           case _ =>
       }
       else {

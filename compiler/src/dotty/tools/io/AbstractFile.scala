@@ -258,6 +258,9 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   final def resolveSibling(name: String): AbstractFile | Null =
     container.lookupName(name, directory = false)
 
+  final def resolveSiblingWithExtension(extension: String): AbstractFile | Null =
+    resolveSibling(name.stripSuffix(this.extension) + extension)
+
   private def fileOrSubdirectoryNamed(name: String, isDir: Boolean): AbstractFile =
     lookupName(name, isDir) match {
       case null =>

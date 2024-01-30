@@ -52,7 +52,8 @@ sealed trait BinaryFileEntry extends ClassRepresentation {
 object BinaryFileEntry {
   def apply(file: AbstractFile): BinaryFileEntry =
     if file.isTasty then
-      TastyWithClassFileEntry(file)
+      if file.resolveSiblingWithExtension("class") != null then TastyWithClassFileEntry(file)
+      else StandaloneTastyFileEntry(file)
     else
       ClassFileEntry(file)
 }
@@ -64,6 +65,11 @@ private[dotty] final case class ClassFileEntry(file: AbstractFile) extends Binar
 
 /** A TASTy file that has an associated class file */
 private[dotty] final case class TastyWithClassFileEntry(file: AbstractFile) extends BinaryFileEntry {
+  def binary: Option[AbstractFile] = Some(file)
+}
+
+/** A TASTy file that does not have an associated class file */
+private[dotty] final case class StandaloneTastyFileEntry(file: AbstractFile) extends BinaryFileEntry {
   def binary: Option[AbstractFile] = Some(file)
 }
 
