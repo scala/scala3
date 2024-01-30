@@ -499,7 +499,6 @@ class Completions(
       val visitor = new CompilerSearchVisitor(sym =>
         indexedContext.lookupSym(sym) match
           case IndexedContext.Result.InScope => false
-            // visit(CompletionValue.Scope(sym.decodedName, sym, findSuffix(sym)))
           case _ =>
             completionsWithSuffix(
               sym,

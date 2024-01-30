@@ -18,9 +18,6 @@ import dotty.tools.pc.utils.MtagsEnrichments.*
 import org.eclipse.lsp4j as l
 import scala.annotation.tailrec
 
-enum CompletionKind:
-  case Empty, Scope, Members
-
 case class CompletionPos(
     start: Int,
     end: Int,
@@ -92,43 +89,6 @@ object CompletionPos:
         case _ => false
 
     loop(path)
-
-
-  /**
-   * Returns the start offset of the identifier starting as the given offset position.
-   */
-  private def inferIdentStart(
-      pos: SourcePosition,
-      text: String,
-      path: List[Tree]
-  )(using Context): Int =
-    def fallback: Int =
-      var i = pos.point - 1
-      while i >= 0 && Chars.isIdentifierPart(text.charAt(i)) do i -= 1
-      i + 1
-    def loop(enclosing: List[Tree]): Int =
-      enclosing match
-        case Nil => fallback
-        case head :: tl =>
-          if !head.sourcePos.contains(pos) then loop(tl)
-          else
-            head match
-              case i: Ident => i.sourcePos.point
-              case s: Select =>
-                if s.name.toTermName == nme.ERROR || s.span.exists && pos.span.point < s.span.point
-                then fallback
-                else s.span.point
-              case Import(_, sel) =>
-                sel
-                  .collectFirst {
-                    case ImportSelector(imported, renamed, _)
-                        if imported.sourcePos.contains(pos) =>
-                      imported.sourcePos.point
-                  }
-                  .getOrElse(fallback)
-              case _ => fallback
-    loop(path)
-  end inferIdentStart
 
   /**
    * Returns the end offset of the identifier starting as the given offset position.

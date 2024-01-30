@@ -40,6 +40,24 @@ sealed trait IndexedContext:
       case None => Result.Missing
   end lookupSym
 
+  val x = List -> Int
+
+  /**
+   * Scala by default imports following packages:
+   * https://scala-lang.org/files/archive/spec/3.4/02-identifiers-names-and-scopes.html
+   * import java.lang.*
+   * {
+   *   import scala.*
+   *   {
+   *     import Predef.*
+   *     { /* source */ }
+   *   }
+   * }
+   *
+   * This check is necessary for proper scope resolution, because when we compare symbols from
+   * index including the underlying type like scala.collection.immutable.List it actually
+   * is in current scope in form of type forwarder imported from Predef.
+   */
   private def isNotConflictingWithDefault(sym: Symbol, queriedSym: Symbol): Boolean =
     sym.info.widenDealias =:= queriedSym.info.widenDealias && (Interactive.isImportedByDefault(sym))
 
@@ -51,9 +69,9 @@ sealed trait IndexedContext:
   // detects import scope aliases like
   // object Predef:
   //   val Nil = scala.collection.immutable.Nil
-  private def isTermAliasOf(termAlias: Symbol, sym: Symbol): Boolean =
+  private def isTermAliasOf(termAlias: Symbol, queriedSym: Symbol): Boolean =
     termAlias.isTerm && (
-      sym.info match
+      queriedSym.info match
         case clz: ClassInfo => clz.appliedRef =:= termAlias.info.resultType
         case _ => false
     )
