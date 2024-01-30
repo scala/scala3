@@ -1602,15 +1602,17 @@ object desugar {
    *  skipping elements that are not convertible.
    */
   def patternsToParams(elems: List[Tree])(using Context): List[ValDef] =
-    def toParam(elem: Tree, tpt: Tree): Tree =
+    def toParam(elem: Tree, tpt: Tree, span: Span): Tree =
       elem match
-        case Annotated(elem1, _) => toParam(elem1, tpt)
-        case Typed(elem1, tpt1) => toParam(elem1, tpt1)
-        case Ident(id: TermName) => ValDef(id, tpt, EmptyTree).withFlags(Param)
+        case Annotated(elem1, _) => toParam(elem1, tpt, span)
+        case Typed(elem1, tpt1) => toParam(elem1, tpt1, span)
+        case Ident(id: TermName) => ValDef(id, tpt, EmptyTree).withFlags(Param).withSpan(span)
         case _ => EmptyTree
-    elems.map(param => toParam(param, TypeTree()).withSpan(param.span)).collect {
-      case vd: ValDef => vd
-    }
+    elems
+      .map: param =>
+        toParam(param, TypeTree(), param.span)
+      .collect:
+        case vd: ValDef => vd
 
   def makeContextualFunction(formals: List[Tree], paramNamesOrNil: List[TermName], body: Tree, erasedParams: List[Boolean])(using Context): Function = {
     val mods = Given
