@@ -1937,7 +1937,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             if (bounds != null) sym.info = bounds
           }
           b
-        case t: UnApply if t.symbol.is(Inline) => Inlines.inlinedUnapply(t)
+        case t: UnApply if t.symbol.is(Inline) =>
+          assert(!t.symbol.is(Transparent))
+          cpy.UnApply(t)(fun = Inlines.inlinedUnapplyFun(t.fun)) // TODO inline these in the inlining phase (see #19382)
         case t => t
       }
   }
