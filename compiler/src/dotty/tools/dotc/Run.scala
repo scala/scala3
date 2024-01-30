@@ -358,6 +358,17 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     compiling = false
   }
 
+  private var myCompilingSuspended: Boolean = false
+
+  /** Is this run started via a compilingSuspended? */
+  def isCompilingSuspended: Boolean = myCompilingSuspended
+
+  /** Compile units `us` which were suspended in a previous run */
+  def compileSuspendedUnits(us: List[CompilationUnit]): Unit =
+    myCompilingSuspended = true
+    for unit <- us do unit.suspended = false
+    compileUnits(us)
+
   /** Enter top-level definitions of classes and objects contained in source file `file`.
    *  The newly added symbols replace any previously entered symbols.
    *  If `typeCheck = true`, also run typer on the compilation unit, and set
