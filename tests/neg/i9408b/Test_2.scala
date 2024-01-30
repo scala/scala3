@@ -8,4 +8,4 @@ object Test {
   val length: Int = "abc" // warn
 }
 
-// nopos-error: No warnings can be incurred under -Werror.
+// nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)

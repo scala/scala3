@@ -2,4 +2,4 @@
 15 |        case '{HCons(_,$t)} => // warn (in .check file)
    |                     ^
    |             Use of `_` for lambda in quoted pattern. Use explicit lambda instead or use `$_` to match any term.
-No warnings can be incurred under -Werror.
+No warnings can be incurred under -Werror (or -Xfatal-warnings)

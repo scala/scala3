@@ -10,4 +10,4 @@ object B {
   val x: Int = ""  // ok
   val y: String = 1 // warn: feature
 }
-// nopos-error: No warnings can be incurred under -Werror.
+// nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)

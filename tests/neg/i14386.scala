@@ -46,4 +46,4 @@ def braced() =
     log(level, msg)           // warn
    }
    end"""
-// nopos-error: No warnings can be incurred under -Werror.
+// nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)

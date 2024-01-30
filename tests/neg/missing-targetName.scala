@@ -9,4 +9,4 @@ class & {   // error
   val frozen_& : Int = ???  // warn
   object some_???           // warn
 }
-// nopos-error: No warnings can be incurred under -Werror.
+// nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)

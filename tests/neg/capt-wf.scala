@@ -35,4 +35,4 @@ def test(c: Cap, other: String): Unit =
   val y3: String^{ev} = ??? // error cs is empty
 
   ()
-// nopos-error: No warnings can be incurred under -Werror.
+// nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)

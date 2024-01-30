@@ -2,4 +2,4 @@
 5 |inline def f = ${ impl } // warn (in .check file)
   |                  ^^^^
   |                  method impl is deprecated
-No warnings can be incurred under -Werror.
+No warnings can be incurred under -Werror (or -Xfatal-warnings)

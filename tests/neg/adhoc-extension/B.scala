@@ -8,4 +8,4 @@ object O {
   val a = new A {}  // warn
   object E extends A  // warn
 }
-// nopos-error: No warnings can be incurred under -Werror.
+// nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)

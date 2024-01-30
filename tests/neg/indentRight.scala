@@ -33,4 +33,4 @@ object Test {
 
   println("!")  // error: expected a toplevel definition
 }
-// nopos-error: No warnings can be incurred under -Werror.
+// nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)

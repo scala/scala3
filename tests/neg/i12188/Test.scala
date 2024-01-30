@@ -10,4 +10,4 @@ def foo(x: P): Unit =
   x match           // warn
   case _: PC1 =>
 
-// nopos-error: No warnings can be incurred under -Werror.
+// nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)

@@ -7,4 +7,4 @@ object Foo {
   private def myMethodFailing(a: Int, b: Int, c: Int) = a + 0 // warn // warn
   myMethodFailing(1, 2, 3)
 }
-// nopos-error: No warnings can be incurred under -Werror.
+// nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)

@@ -58,4 +58,4 @@
    |                               ^^^^^^^^^^^^
    |                 Passing null as name to a constructor of scala.Enumeration.Val requires reflection at run-time.
    |                 The resulting program is unlikely to function properly.
-No warnings can be incurred under -Werror.
+No warnings can be incurred under -Werror (or -Xfatal-warnings)

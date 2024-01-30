@@ -36,4 +36,4 @@ class ExtendsValWithNullName extends Enumeration {
   protected class Val2 extends Val(1, null) // warn
 }
 
-// nopos-error: No warnings can be incurred under -Werror.
+// nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)

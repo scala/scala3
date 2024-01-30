@@ -32,4 +32,4 @@ object Test {
   broken.foo // no extra error, and no pure expression warning
   broken.foo() // same
 }
-// nopos-error: No warnings can be incurred under -Werror.
+// nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)

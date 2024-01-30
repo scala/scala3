@@ -20,9 +20,9 @@ object Macros {
 
     inline def size(inline expr: HList ): Int = {
       ${sizeImpl('expr,0)}
-    } 
+    }
 
   }
 }
 
-// nopos-error No warnings can be incurred under -Werror.
+// nopos-error No warnings can be incurred under -Werror (or -Xfatal-warnings)

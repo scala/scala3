@@ -209,9 +209,9 @@ abstract class Reporter extends interfaces.ReporterResult {
   def incomplete(dia: Diagnostic)(using Context): Unit =
     incompleteHandler(dia, ctx)
 
-  def finalizeReporting()(using Context) = 
+  def finalizeReporting()(using Context) =
     if (hasWarnings && ctx.settings.XfatalWarnings.value)
-      report(new Error("No warnings can be incurred under -Werror.", NoSourcePosition))
+      report(new Error("No warnings can be incurred under -Werror (or -Xfatal-warnings)", NoSourcePosition))
 
   /** Summary of warnings and errors */
   def summary: String = {

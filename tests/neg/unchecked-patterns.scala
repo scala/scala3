@@ -25,4 +25,4 @@ object Test {
   val Pair(t1, t2) = (5, 5)          // OK
   val Triple(u1, u2, u3) = (5, 5, 5) // OK
 }
-// nopos-error: No warnings can be incurred under -Werror.
+// nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)

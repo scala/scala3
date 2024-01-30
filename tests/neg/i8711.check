@@ -18,4 +18,4 @@
 14 |    case x: C => x // error
    |         ^
    |         this case is unreachable since type A | B and class C are unrelated
-No warnings can be incurred under -Werror.
+No warnings can be incurred under -Werror (or -Xfatal-warnings)

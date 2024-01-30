@@ -30,4 +30,4 @@
 41 |	class UnderDerived(x: Int, y: Int, z: Int) extends Derived(x, 1, y, z) // warn // warn // warn
    |	                                   ^
    |	                                   value z in class UnderDerived shadows field z inherited from trait Base
-No warnings can be incurred under -Werror.
+No warnings can be incurred under -Werror (or -Xfatal-warnings)

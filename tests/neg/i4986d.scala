@@ -22,4 +22,4 @@ trait Bar[A]
 type Barable[A] = {
   def bar(implicit ev: Bar[A]): Any // ok
 }
-// nopos-error: No warnings can be incurred under -Werror.
+// nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)

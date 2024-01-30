@@ -42,4 +42,4 @@ object i17612b:
 
 	def main(args: Array[String]) =
 		val derived = new Derived(1, 1, 1, 1)
-// nopos-error: No warnings can be incurred under -Werror.
+// nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)
