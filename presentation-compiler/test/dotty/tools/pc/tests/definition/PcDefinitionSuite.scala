@@ -263,6 +263,17 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
         |""".stripMargin
     )
 
+  @Test def exportTerm1Overload =
+    check(
+      """trait Foo:
+        |  def <<meth>>(x: Int): Int
+        |  def meth(x: String): String
+        |class Bar(val foo: Foo):
+        |  export foo.*
+        |  def test(bar: Bar) = bar.me@@th(0)
+        |""".stripMargin
+    )
+
   @Test def `named-arg-local` =
     check(
       """|
