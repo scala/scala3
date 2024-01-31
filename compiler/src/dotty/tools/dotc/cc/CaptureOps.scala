@@ -230,13 +230,13 @@ extension (tp: Type)
    *  cannot be propagated between sets. If `a <: b` and `a` acquires `x?` then
    *  `x` is propagated to `b` as a conservative approximation.
    *
-   *  Maybe capabilities should only arise for caoture sets that appear in invariant
+   *  Maybe capabilities should only arise for capture sets that appear in invariant
    *  position in their surrounding type. They are similar to TypeBunds types, but
    *  restricted to capture sets. For instance,
    *
    *      Array[C^{x?}]
    *
-   *  should be morally equivaelent to
+   *  should be morally equivalent to
    *
    *      Array[_ >: C^{} <: C^{x}]
    *
@@ -441,9 +441,6 @@ object ReachCapabilityApply:
     case Apply(reach, arg :: Nil) if reach.symbol == defn.Caps_reachCapability => Some(arg)
     case _ => None
 
-/** An extractor for `ref @annotation.internal.reachCapability`, which is used to express
- *  the reach capability `ref*` as a type.
- */
 class AnnotatedCapability(annot: Context ?=> ClassSymbol):
   def apply(tp: Type)(using Context) =
     AnnotatedType(tp, Annotation(annot, util.Spans.NoSpan))
@@ -451,7 +448,14 @@ class AnnotatedCapability(annot: Context ?=> ClassSymbol):
     case AnnotatedType(parent: SingletonCaptureRef, ann) if ann.symbol == annot => Some(parent)
     case _ => None
 
+/** An extractor for `ref @annotation.internal.reachCapability`, which is used to express
+ *  the reach capability `ref*` as a type.
+ */
 object ReachCapability extends AnnotatedCapability(defn.ReachCapabilityAnnot)
+
+/** An extractor for `ref @maybeCapability`, which is used to express
+ *  the maybe capability `ref?` as a type.
+ */
 object MaybeCapability extends AnnotatedCapability(defn.MaybeCapabilityAnnot)
 
 
