@@ -348,6 +348,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     runCtx.withProgressCallback: cb =>
       _progress = Progress(cb, this, fusedPhases.map(_.traversals).sum)
     runPhases(allPhases = fusedPhases)(using runCtx)
+    ctx.reporter.finalizeReporting()
     if (!ctx.reporter.hasErrors)
       Rewrites.writeBack()
     suppressions.runFinished(hasErrors = ctx.reporter.hasErrors)

@@ -9,10 +9,11 @@ object Foo {
 
 opaque type Bar = Foo
 object Bar {
-  given Monad[Bar] = summon[Monad[Foo]] // error
+  given Monad[Bar] = summon[Monad[Foo]] // warn
 }
 
 object Test extends App {
   println(summon[Monad[Foo]].id)
   println(summon[Monad[Bar]].id)
 }
+// nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)

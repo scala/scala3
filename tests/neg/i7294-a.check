@@ -1,5 +1,5 @@
 -- [E007] Type Mismatch Error: tests/neg/i7294-a.scala:10:20 -----------------------------------------------------------
-10 |    case x: T => x.g(10) // error // error
+10 |    case x: T => x.g(10) // error
    |                 ^^^^^^^
    |                 Found:    Any
    |                 Required: T
@@ -7,8 +7,8 @@
    |                 where:    T is a type in given instance f with bounds <: foo.Foo
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg/i7294-a.scala:10:12 --------------------------------------------------------------------------------
-10 |    case x: T => x.g(10) // error // error
+-- Warning: tests/neg/i7294-a.scala:10:12 ------------------------------------------------------------------------------
+10 |    case x: T => x.g(10) // error
    |            ^
    |            Result of implicit search for scala.reflect.TypeTest[Nothing, T] will change.
    |            Current result foo.Test.f will be no longer eligible
@@ -24,3 +24,4 @@
    |            This will be an error in Scala 3.5 and later.
    |
    |            where:    T is a type in given instance f with bounds <: foo.Foo
+No warnings can be incurred under -Werror (or -Xfatal-warnings)

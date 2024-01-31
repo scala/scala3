@@ -1,5 +1,5 @@
--- Error: tests/neg/i6716.scala:12:39 ----------------------------------------------------------------------------------
-12 |  given Monad[Bar] = summon[Monad[Foo]] // error
+-- Warning: tests/neg/i6716.scala:12:39 --------------------------------------------------------------------------------
+12 |  given Monad[Bar] = summon[Monad[Foo]] // warn
    |                                       ^
    |                             Result of implicit search for Monad[Foo] will change.
    |                             Current result Bar.given_Monad_Bar will be no longer eligible
@@ -13,3 +13,4 @@
    |                               - rearrange definitions so that Bar.given_Monad_Bar comes earlier,
    |                               - use an explicit argument.
    |                             This will be an error in Scala 3.5 and later.
+No warnings can be incurred under -Werror (or -Xfatal-warnings)
