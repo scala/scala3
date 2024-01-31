@@ -785,24 +785,21 @@ object Build {
           else if (debugFromTasty) "dotty.tools.dotc.fromtasty.Debug"
           else "dotty.tools.dotc.Main"
 
-        val scala2LibraryTasty = scala2Library.value match {
-          case Scala2LibraryJar => Seq.empty
+        var extraClasspath = Seq(scalaLib, dottyLib)
+
+        scala2Library.value match {
+          case Scala2LibraryJar =>
           case Scala2LibraryTasty =>
             jars.get("scala2-library-tasty") match {
-              case Some(jar) => Seq(jar)
-              case None =>
-                log.warn("Scala2LibraryTasty is ignored on non-bootstrapped compiler")
-                Seq.empty
-            }
+              case Some(jar) => extraClasspath :+= jar
+              case None => log.warn("Scala2LibraryTasty is ignored on non-bootstrapped compiler")
+            };
           case Scala2LibraryCCTasty =>
             jars.get("scala2-library-cc-tasty") match {
-              case Some(jar) => Seq(jar)
-              case None =>
-                log.warn("Scala2LibraryCCTasty is ignored on non-bootstrapped compiler")
-                Seq.empty
+              case Some(jar) => extraClasspath :+= jar
+              case None => log.warn("Scala2LibraryCCTasty is ignored on non-bootstrapped compiler")
             }
         }
-        var extraClasspath = scala2LibraryTasty ++ Seq(scalaLib, dottyLib)
 
         if (decompile && !args.contains("-classpath"))
           extraClasspath ++= Seq(".")
@@ -1269,13 +1266,6 @@ object Build {
       Test / javaOptions += "-Ddotty.scala.library=" + (`scala2-library-bootstrapped` / Compile / packageBin).value.getAbsolutePath,
       Compile / compile / fullClasspath ~= {
         _.filterNot(file => file.data.getName == s"scala-library-$stdlibBootstrappedVersion.jar")
-      },
-      Compile / compile / dependencyClasspath := {
-        // make sure that the scala2-library (tasty of `scala2-library-tasty`) is listed before the scala-library (classfiles)
-        val (bootstrappedLib, otherLibs) =
-          (Compile / compile / dependencyClasspath).value
-            .partition(_.data.getName == s"scala2-library-${dottyVersion}.jar")
-        bootstrappedLib ++ otherLibs
       },
     )
 
@@ -1923,6 +1913,7 @@ object Build {
         (`scala3-interfaces` / publishLocalBin),
         (`scala3-compiler-bootstrapped` / publishLocalBin),
         (`scala3-library-bootstrapped` / publishLocalBin),
+        (`scala2-library-tasty` / publishLocal),
         (`scala3-library-bootstrappedJS` / publishLocalBin),
         (`tasty-core-bootstrapped` / publishLocalBin),
         (`scala3-staging` / publishLocalBin),
