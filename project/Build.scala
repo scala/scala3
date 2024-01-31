@@ -1761,7 +1761,7 @@ object Build {
       ),
       libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
         "nl.big-o" % "liqp" % "0.8.2",
-        "org.jsoup" % "jsoup" % "1.14.3", // Needed to process .html files for static site
+        "org.jsoup" % "jsoup" % "1.17.2", // Needed to process .html files for static site
         Dependencies.`jackson-dataformat-yaml`,
 
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
