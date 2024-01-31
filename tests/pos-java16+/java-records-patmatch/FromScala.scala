@@ -23,3 +23,9 @@ object C:
     r match {
       case R1(i, _) => i
     }
+
+  def useR2: String =
+    val r = R2("asd")
+    r match {
+      case R2(s) => s
+    }
