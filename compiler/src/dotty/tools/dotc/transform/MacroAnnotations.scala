@@ -141,7 +141,7 @@ class MacroAnnotations(phase: IdentityDenotTransformer):
     def traverse(tree: tpd.Tree)(using Context): Unit = tree match
       case tdef @ TypeDef(_, template: Template) =>
         val isSymbolInDecls = tdef.symbol.asClass.info.decls.toList.toSet
-        for tree <- template.body do
+        for tree <- template.body if tree.isDef do
           if tree.symbol.owner != tdef.symbol then
             report.error(em"Macro added a definition with the wrong owner - ${tree.symbol.owner} - ${tdef.symbol} in ${tree.source}", tree.srcPos)
           else if !isSymbolInDecls(tree.symbol) then
