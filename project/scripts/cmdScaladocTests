@@ -37,7 +37,7 @@ dist/target/pack/bin/scaladoc \
   "-snippet-compiler:scaladoc-testcases/docs=compile" \
   "-comment-syntax:scaladoc-testcases/src/example/comment-md=markdown,scaladoc-testcases/src/example/comment-wiki=wiki" \
   -siteroot scaladoc-testcases/docs \
-  -project-footer "Copyright (c) 2002-2024, LAMP/EPFL" \
+  -project-footer "Copyright (c) 2002-$(date +%Y), LAMP/EPFL" \
   -default-template static-site-main \
   -author -groups -revision main -project-version "${DOTTY_BOOTSTRAPPED_VERSION}" \
   "-quick-links:Learn::https://docs.scala-lang.org/,Install::https://www.scala-lang.org/download/,Playground::https://scastie.scala-lang.org,Find A Library::https://index.scala-lang.org,Community::https://www.scala-lang.org/community/,Blog::https://www.scala-lang.org/blog/," \
