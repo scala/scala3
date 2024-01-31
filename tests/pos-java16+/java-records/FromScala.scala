@@ -41,3 +41,7 @@ object C:
     val l2: Long = r3.l(43L, 44L)
     // supertype
     val isRecord: java.lang.Record = r3
+
+  def useR4: Unit =
+    val r4 = R4(1)
+    val i: Int = r4.t
