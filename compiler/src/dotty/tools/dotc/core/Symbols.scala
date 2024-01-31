@@ -339,7 +339,7 @@ object Symbols extends SymUtils {
           case cls: ClassSymbol => cls.rootTreeContaining(name.toString)
           case _                => EmptyTree
         val targets = root.collectSubTrees:
-          case tree: DefDef if tree.name == name => methPart(tree.rhs).tpe
+          case tree: DefDef if tree.symbol == denot.symbol => methPart(tree.rhs).tpe
         targets.match
           case (tp: NamedType) :: _ => tp.symbol.sourceSymbol
           case _                    => this
