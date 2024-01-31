@@ -151,7 +151,6 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   assert(moduleRoot.isTerm)
 
   checkVersion(using ictx)
-  checkScala2Stdlib(using ictx)
 
   private val loadingMirror = defn(using ictx) // was: mirrorThatLoaded(classRoot)
 
@@ -237,9 +236,6 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         "\n found: " + major + "." + minor +
         " in " + source)
   }
-
-  private def checkScala2Stdlib(using Context): Unit =
-    assert(!ctx.settings.YcompileScala2Library.value, "No Scala 2 libraries should be unpickled under -Ycompile-scala2-library")
 
   /** The `decls` scope associated with given symbol */
   protected def symScope(sym: Symbol): Scope = symScopes.getOrElseUpdate(sym, newScope(0))
