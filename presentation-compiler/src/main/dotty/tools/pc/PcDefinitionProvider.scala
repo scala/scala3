@@ -124,7 +124,7 @@ class PcDefinitionProvider(
         val isLocal = sym.source == pos.source
         if isLocal then
           val defs =
-            Interactive.findDefinitions(List(sym), driver, false, false)
+            Interactive.findDefinitions(List(sym), driver, false, false).filter(_.source == sym.source)
           defs.headOption match
             case Some(srcTree) =>
               val pos = srcTree.namePos
