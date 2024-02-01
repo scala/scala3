@@ -3150,3 +3150,8 @@ class UnstableInlineAccessor(accessed: Symbol, accessorTree: tpd.Tree)(using Con
     if accessor.owner.name.isPackageObjectName then accessor.owner.owner.name.stripModuleClassSuffix
     else accessor.owner.name.stripModuleClassSuffix
 }
+
+class VolatileOnVal()(using Context)
+extends SyntaxMsg(VolatileOnValID):
+  protected def msg(using Context): String = "values cannot be volatile"
+  protected def explain(using Context): String = ""
