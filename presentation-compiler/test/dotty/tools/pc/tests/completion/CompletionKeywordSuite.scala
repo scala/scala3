@@ -38,8 +38,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  // tr@@
         |}
         |""".stripMargin,
-      """|transient scala (commit: '')
-         |transparentTrait - scala.annotation (commit: '')""".stripMargin,
+      "transparentTrait - scala.annotation (commit: '')",
       includeCommitCharacter = true
     )
 
@@ -58,8 +57,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  **/
         |}
         |""".stripMargin,
-     """|transient scala (commit: '')
-        |transparentTrait - scala.annotation (commit: '')""".stripMargin,
+     "transparentTrait - scala.annotation (commit: '')",
       includeCommitCharacter = true
     )
 
@@ -414,12 +412,9 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |}
       """.stripMargin,
       """|def
-         |deprecated scala
-         |deprecatedInheritance scala
-         |deprecatedName scala
-         |deprecatedOverriding scala
+         |derived - scala.CanEqual
+         |deprecated - scala.runtime.stdLibPatches.language
          |""".stripMargin,
-      topLines = Some(5)
     )
 
   @Test def `protected-val` =
@@ -472,10 +467,10 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
          |  def hello(u@@)
          |}""".stripMargin,
       """|using (commit: '')
-         |unsafeExceptions scala (commit: '')
-         |unchecked scala (commit: '')
          |unsafe - scala.caps (commit: '')
          |unsafeNulls - scala.runtime.stdLibPatches.language (commit: '')
+         |unused - scala.annotation (commit: '')
+         |unshared - scala.annotation.internal (commit: '')
          |""".stripMargin,
       includeCommitCharacter = true,
       topLines = Some(5)
@@ -486,11 +481,11 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
       """|object A{
          |  def hello(a: String, u@@)
          |}""".stripMargin,
-      """|unsafeExceptions scala
-         |unchecked scala
-         |unsafe - scala.caps
+      """|unsafe - scala.caps
          |unsafeNulls - scala.runtime.stdLibPatches.language
-         |unused - scala.annotation """.stripMargin,
+         |unused - scala.annotation
+         |unshared - scala.annotation.internal
+         |unspecialized - scala.annotation""".stripMargin,
       topLines = Some(5)
     )
 

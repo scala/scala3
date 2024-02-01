@@ -54,8 +54,7 @@ class CompletionPatternSuite extends BaseCompletionSuite:
         |    case ma@@
         |  }
         |}""".stripMargin,
-      """|main scala
-         |macros - scala.languageFeature.experimental
+      """|macros - scala.languageFeature.experimental
          |macroImpl - scala.reflect.macros.internal
          |""".stripMargin
     )
