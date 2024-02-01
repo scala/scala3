@@ -3507,7 +3507,7 @@ Occurrences:
 [16:9..16:15): Object -> java/lang/Object#
 [17:8..17:17): scalameta <- local4
 [17:19..17:25): String -> scala/Predef.String#
-[18:6..18:6): <- local6
+[19:4..19:4): <- local6
 [19:8..19:17): scalameta <- local5
 [20:2..20:3): V -> example/StructuralTypes.V.
 [20:4..20:13): scalameta -> scala/reflect/Selectable#selectDynamic().
