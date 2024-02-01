@@ -1,4 +1,8 @@
 object C:
+
+  def useR0: Unit =
+    val r = R0()
+
   def useR1: Unit =
     // constructor signature
     val r = R1(123, "hello")
