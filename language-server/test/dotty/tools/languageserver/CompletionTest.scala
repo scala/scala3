@@ -1019,11 +1019,11 @@ class CompletionTest {
           |  val x = Bar.${m1}"""
       .completion(
         ("getClass", Method, "[X0 >: Foo.Bar.type](): Class[? <: X0]"),
-        ("ensuring", Method, "(cond: Boolean): A"),
+        ("ensuring", Method, "(cond: Boolean): Foo.Bar.type"),
         ("##", Method, "=> Int"),
         ("nn", Method, "=> Foo.Bar.type"),
         ("==", Method, "(x$0: Any): Boolean"),
-        ("ensuring", Method, "(cond: Boolean, msg: => Any): A"),
+        ("ensuring", Method, "(cond: Boolean, msg: => Any): Foo.Bar.type"),
         ("ne", Method, "(x$0: Object): Boolean"),
         ("valueOf", Method, "($name: String): Foo.Bar"),
         ("equals", Method, "(x$0: Any): Boolean"),
@@ -1031,21 +1031,21 @@ class CompletionTest {
         ("hashCode", Method, "(): Int"),
         ("notifyAll", Method, "(): Unit"),
         ("values", Method, "=> Array[Foo.Bar]"),
-        ("→", Method, "[B](y: B): (A, B)"),
+        ("→", Method, "[B](y: B): (Foo.Bar.type, B)"),
         ("!=", Method, "(x$0: Any): Boolean"),
         ("fromOrdinal", Method, "(ordinal: Int): Foo.Bar"),
         ("asInstanceOf", Method, "[X0]: X0"),
-        ("->", Method, "[B](y: B): (A, B)"),
+        ("->", Method, "[B](y: B): (Foo.Bar.type, B)"),
         ("wait", Method, "(x$0: Long, x$1: Int): Unit"),
         ("`back-tick`", Field, "Foo.Bar"),
         ("notify", Method, "(): Unit"),
         ("formatted", Method, "(fmtstr: String): String"),
-        ("ensuring", Method, "(cond: A => Boolean, msg: => Any): A"),
+        ("ensuring", Method, "(cond: Foo.Bar.type => Boolean, msg: => Any): Foo.Bar.type"),
         ("wait", Method, "(): Unit"),
         ("isInstanceOf", Method, "[X0]: Boolean"),
         ("`match`", Field, "Foo.Bar"),
         ("toString", Method, "(): String"),
-        ("ensuring", Method, "(cond: A => Boolean): A"),
+        ("ensuring", Method, "(cond: Foo.Bar.type => Boolean): Foo.Bar.type"),
         ("eq", Method, "(x$0: Object): Boolean"),
         ("synchronized", Method, "[X0](x$0: X0): X0")
       )
@@ -1576,6 +1576,61 @@ class CompletionTest {
            |"""
       .completion(m1, Set(("TTT", Field, "T.TTT")))
 
+  @Test def properTypeVariable: Unit =
+    code"""|object M:
+           |  List(1,2,3).filterNo$m1
+           |"""
+      .completion(m1, Set(("filterNot", Method, "(p: Int => Boolean): List[Int]")))
+
+  @Test def properTypeVariableForExtensionMethods: Unit =
+    code"""|object M:
+           |  extension [T](x: List[T]) def test(aaa: T): T = ???
+           |  List(1,2,3).tes$m1
+           |
+           |"""
+      .completion(m1, Set(("test", Method, "(aaa: Int): Int")))
+
+  @Test def properTypeVariableForExtensionMethodsByName: Unit =
+    code"""|object M:
+           |  extension [T](xs: List[T]) def test(p: T => Boolean): List[T] = ???
+           |  List(1,2,3).tes$m1
+           |"""
+      .completion(m1, Set(("test", Method, "(p: Int => Boolean): List[Int]")))
+
+  @Test def genericExtensionTypeParameterInference: Unit =
+    code"""|object M:
+           |  extension [T](xs: T) def test(p: T): T = ???
+           |  3.tes$m1
+           |"""
+      .completion(m1, Set(("test", Method, "(p: Int): Int")))
+
+  @Test def genericExtensionTypeParameterInferenceByName: Unit =
+    code"""|object M:
+           |  extension [T](xs: T) def test(p: T => Boolean): T = ???
+           |  3.tes$m1
+           |"""
+      .completion(m1, Set(("test", Method, "(p: Int => Boolean): Int")))
+
+  @Test def properTypeVariableForImplicitDefs: Unit =
+    code"""|object M:
+           |  implicit class ListUtils[T](xs: List[T]) {
+           |    def test(p: T => Boolean): List[T] = ???
+           |  }
+           |  List(1,2,3).tes$m1
+           |"""
+      .completion(m1, Set(("test", Method, "(p: Int => Boolean): List[Int]")))
+
+  @Test def properTypeParameterForImplicitDefs: Unit =
+    code"""|object M:
+           |  implicit class ListUtils[T](xs: T) {
+           |    def test(p: T => Boolean): T = ???
+           |  }
+           |  new ListUtils(1).tes$m1
+           |  1.tes$m2
+           |"""
+      .completion(m1, Set(("test", Method, "(p: Int => Boolean): Int")))
+      .completion(m2, Set(("test", Method, "(p: Int => Boolean): Int")))
+
   @Test def selectDynamic: Unit =
     code"""|import scala.language.dynamics
            |class Foo extends Dynamic {
@@ -1591,4 +1646,37 @@ class CompletionTest {
            |"""
       .completion(m1, Set(("selectDynamic", Method, "(field: String): Foo")))
       .completion(m2, Set(("banana", Method, "=> Int")))
+
+  @Test def shadowedImport: Unit =
+    code"""|
+           |import Matches.*
+           |object Matches {
+           |  val Number = "".r
+           |}
+           |object Main {
+           |  Num$m1
+           |}
+           |""".completion(m1, Set(
+             ("Number", Field, "scala.util.matching.Regex"),
+             ("NumberFormatException", Module, "NumberFormatException"),
+             ("Numeric", Field, "scala.math.Numeric")
+           ))
+
+  @Test def shadowedImportType: Unit =
+    code"""|
+           |import Matches.*
+           |object Matches {
+           |  val Number = "".r
+           |}
+           |object Main {
+           |  val x: Num$m1
+           |}
+           |""".completion(m1, Set(
+             ("Number", Class, "Number"),
+             ("Number", Field, "scala.util.matching.Regex"),
+             ("NumberFormatException", Module, "NumberFormatException"),
+             ("NumberFormatException", Field, "NumberFormatException"),
+             ("Numeric", Field, "Numeric"),
+             ("Numeric", Field, "scala.math.Numeric")
+           ))
 }

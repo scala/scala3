@@ -773,7 +773,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
-  @Test def `case_class_param` =
+  @Test def `case-class-param` =
     check(
       """|case class Foo(fooBar: Int, gooBar: Int)
          |class Bar(val fooBaz: Int, val fooBal: Int) {
@@ -790,6 +790,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|fooBar: String
          |fooBar: List[Int]
+         |fooBar(n: Int): A
          |""".stripMargin,
     )
 
@@ -825,7 +826,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |MyType - demo.other""".stripMargin,
     )
 
-  @Test def `method-name-conflict` = 
+  @Test def `method-name-conflict` =
     checkEdit(
       """|package demo
          |

@@ -160,16 +160,16 @@ object InterpolatorCompletions:
           completions.completionsWithSuffix(
             sym,
             label,
-            (name, s, suffix) =>
+            (name, denot, suffix) =>
               CompletionValue.Interpolator(
-                s,
+                denot.symbol,
                 label,
                 Some(newText(name, suffix.toEditOpt, identOrSelect)),
                 Nil,
                 Some(cursor.withStart(identOrSelect.span.start).toLsp),
                 // Needed for VS Code which will not show the completion otherwise
                 Some(identOrSelect.name.toString() + "." + label),
-                s,
+                denot.symbol,
                 isExtension = isExtension
               ),
           )
@@ -290,9 +290,9 @@ object InterpolatorCompletions:
         completions.completionsWithSuffix(
           sym,
           label,
-          (name, s, suffix) =>
+          (name, denot, suffix) =>
             CompletionValue.Interpolator(
-              s,
+              denot.symbol,
               label,
               Some(newText(name, suffix.toEditOpt)),
               additionalEdits(),
