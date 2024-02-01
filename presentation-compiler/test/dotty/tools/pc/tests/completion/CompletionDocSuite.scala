@@ -215,6 +215,7 @@ class CompletionDocSuite extends BaseCompletionSuite:
       """
         |> Found documentation for scala/package.Vector.
         |Vector scala.collection.immutable
+        |Vector[A](elems: A*): CC[A]
         |""".stripMargin,
       includeDocs = true
     )
@@ -316,5 +317,6 @@ class CompletionDocSuite extends BaseCompletionSuite:
         |}
       """.stripMargin,
       """|myNumbers: Vector[Int]
+         |myNumbers(i: Int): A
          |""".stripMargin
     )

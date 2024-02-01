@@ -14,6 +14,7 @@ import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Definitions
+import dotty.tools.dotc.core.Denotations.Denotation
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.StdNames
@@ -441,7 +442,7 @@ class CompletionValueGenerator(
   end labelForCaseMember
 
   def toCompletionValue(
-      sym: Symbol,
+      denot: Denotation,
       label: String,
       autoImport: Option[l.TextEdit]
   ): CompletionValue.CaseKeyword =
@@ -449,7 +450,7 @@ class CompletionValueGenerator(
       (if patternOnly.nonEmpty then "" else " ") +
         (if clientSupportsSnippets then "$0" else "")
     CompletionValue.CaseKeyword(
-      sym,
+      denot,
       label,
       Some(label + cursorSuffix),
       autoImport.toList,
