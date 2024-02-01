@@ -906,9 +906,9 @@ class Namer { typer: Typer =>
             && (definesMember || inheritsConcreteMember)
           )
           ||
-          // remove synthetic constructor of a java Record if it clashes with a non-synthetic constructor
-          (denot.isConstructor
-            && isJavaRecord(denot.owner)
+          // remove synthetic constructor or method of a java Record if it clashes with a non-synthetic constructor
+          (isJavaRecord(denot.owner)
+            && (denot.isConstructor || definesMember)
             && denot.owner.unforcedDecls.lookupAll(denot.name).exists(c => c != denot.symbol && c.info.matches(denot.info))
           )
         )
