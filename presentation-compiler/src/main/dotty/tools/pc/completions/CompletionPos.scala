@@ -76,20 +76,6 @@ object CompletionPos:
     (i, tabIndented)
   end inferIndent
 
-  private def isImportOrExportSelect(
-      pos: SourcePosition,
-      path: List[Tree],
-  )(using Context): Boolean =
-    @tailrec
-    def loop(enclosing: List[Tree]): Boolean =
-      enclosing match
-        case head :: tl if !head.sourcePos.contains(pos) => loop(tl)
-        case (tree: (Import | Export)) :: _ =>
-          tree.selectors.exists(_.imported.sourcePos.contains(pos))
-        case _ => false
-
-    loop(path)
-
   /**
    * Returns the end offset of the identifier starting as the given offset position.
    */

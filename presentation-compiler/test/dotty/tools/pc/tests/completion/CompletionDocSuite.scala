@@ -317,5 +317,6 @@ class CompletionDocSuite extends BaseCompletionSuite:
         |}
       """.stripMargin,
       """|myNumbers: Vector[Int]
+         |myNumbers(i: Int): A
          |""".stripMargin
     )

@@ -40,8 +40,6 @@ sealed trait IndexedContext:
       case None => Result.Missing
   end lookupSym
 
-  val x = List -> Int
-
   /**
    * Scala by default imports following packages:
    * https://scala-lang.org/files/archive/spec/3.4/02-identifiers-names-and-scopes.html

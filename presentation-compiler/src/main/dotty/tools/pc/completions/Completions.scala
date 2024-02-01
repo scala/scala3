@@ -235,7 +235,7 @@ class Completions(
     // find the apply completion that would need a snippet
     val methodDenots: List[SingleDenotation] =
       if shouldAddSnippet && completionMode.is(Mode.Term) &&
-        (sym.is(Flags.Module) || (Interactive.isImportedByDefault(sym) && sym.isField) || sym.isClass && !sym.is(Flags.Trait)) && !sym.is(Flags.JavaDefined)
+        (sym.is(Flags.Module) || sym.isField || sym.isClass && !sym.is(Flags.Trait)) && !sym.is(Flags.JavaDefined)
       then
         val info =
           /* Companion will be added even for normal classes now,
