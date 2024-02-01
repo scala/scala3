@@ -854,7 +854,7 @@ object JavaParsers {
 
       // generate the canonical constructor
       val canonicalConstructor =
-        DefDef(nme.CONSTRUCTOR, joinParams(tparams, List(header)), TypeTree(), EmptyTree)
+        DefDef(nme.CONSTRUCTOR, joinParams(Nil, List(header)), TypeTree(), EmptyTree)
           .withMods(Modifiers(Flags.JavaDefined | Flags.Synthetic, mods.privateWithin))
 
       // return the trees
@@ -866,7 +866,7 @@ object JavaParsers {
             tparams = tparams,
             true
           )
-        ).withMods(mods)
+        ).withMods(mods.withFlags(Flags.JavaDefined | Flags.Final))
       }
       addCompanionObject(statics, recordTypeDef)
     end recordDecl
