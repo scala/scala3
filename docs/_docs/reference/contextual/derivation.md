@@ -396,8 +396,9 @@ Both `eqSum` and `eqProduct` have a by-name parameter `elems`, because the argum
 Pulling this all together we have the following complete implementation,
 
 ```scala
+import scala.collection.AbstractIterable
+import scala.compiletime.{erasedValue, error, summonInline}
 import scala.deriving.*
-import scala.compiletime.{error, erasedValue, summonInline}
 
 inline def summonInstances[T, Elems <: Tuple]: List[Eq[?]] =
   inline erasedValue[Elems] match
