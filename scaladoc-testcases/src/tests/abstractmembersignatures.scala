@@ -9,6 +9,8 @@ trait TestTrait:
 class TestClass:
   def shouldBeConcrete: Int = 1
 
+abstract class TestInheritedAbstractMembers extends TestTrait
+
 abstract class AbstractTestClass:
   def shouldBeAbstract: Int
   def shouldBeConcrete: Int = 1

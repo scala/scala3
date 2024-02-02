@@ -18,10 +18,10 @@ class AbstractMembers extends ScaladocTest("abstractmembersignatures"):
   def runTest = {
     afterRendering {
       val actualSignatures = signaturesFromDocumentation()
-
       actualSignatures.foreach { (k, v) => k match
         case "Abstract methods" => assertTrue(v.forall(_._2 == "shouldBeAbstract"))
         case "Concrete methods" => assertTrue(v.forall(_._2 == "shouldBeConcrete"))
+        case "Inherited and Abstract methods" => assertTrue(v.forall(_._2 == "shouldBeAbstract"))
         case "Classlikes" => assertTrue(v.forall((m, n) => m.contains("abstract") == n.contains("Abstract")))
         case _ =>
       }
