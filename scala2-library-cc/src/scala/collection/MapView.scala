@@ -81,7 +81,7 @@ object MapView extends MapViewFactory {
 
   @SerialVersionUID(3L)
   object EmptyMapView extends AbstractMapView[Any, Nothing] {
-  // !!! cc problem: crash when we replace the line with
+  // !!! cc problem? type mismatch when we replace the line with
   // private val EmptyMapView: MapView[Any, Nothing] = new AbstractMapView[Any, Nothing] {
     override def get(key: Any): Option[Nothing] = None
     override def iterator: Iterator[Nothing] = Iterator.empty[Nothing]

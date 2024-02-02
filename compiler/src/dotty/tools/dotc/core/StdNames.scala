@@ -537,6 +537,7 @@ object StdNames {
     val ManifestFactory: N      = "ManifestFactory"
     val manifestToTypeTag: N    = "manifestToTypeTag"
     val map: N                  = "map"
+    val maybeCapability: N      = "maybeCapability"
     val materializeClassTag: N  = "materializeClassTag"
     val materializeWeakTypeTag: N = "materializeWeakTypeTag"
     val materializeTypeTag: N   = "materializeTypeTag"

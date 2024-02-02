@@ -535,6 +535,10 @@ class Definitions {
       List(AnyType), EmptyScope)
   @tu lazy val SingletonType: TypeRef = SingletonClass.typeRef
 
+  @tu lazy val MaybeCapabilityAnnot: ClassSymbol =
+    completeClass(enterCompleteClassSymbol(
+      ScalaPackageClass, tpnme.maybeCapability, Final, List(StaticAnnotationClass.typeRef)))
+
   @tu lazy val CollectionSeqType: TypeRef  = requiredClassRef("scala.collection.Seq")
   @tu lazy val SeqType: TypeRef            = requiredClassRef("scala.collection.immutable.Seq")
   @tu lazy val SeqModule: Symbol           = requiredModule("scala.collection.immutable.Seq")
@@ -993,7 +997,7 @@ class Definitions {
 
   // Annotation base classes
   @tu lazy val AnnotationClass: ClassSymbol = requiredClass("scala.annotation.Annotation")
-  // @tu lazy val StaticAnnotationClass: ClassSymbol = requiredClass("scala.annotation.StaticAnnotation")
+  @tu lazy val StaticAnnotationClass: ClassSymbol = requiredClass("scala.annotation.StaticAnnotation")
   @tu lazy val RefiningAnnotationClass: ClassSymbol = requiredClass("scala.annotation.RefiningAnnotation")
   @tu lazy val JavaAnnotationClass: ClassSymbol = requiredClass("java.lang.annotation.Annotation")
 
@@ -1171,19 +1175,18 @@ class Definitions {
     }
   }
 
-  object RefinedFunctionOf {
+  object RefinedFunctionOf:
+
     /** Matches a refined `PolyFunction`/`FunctionN[...]`/`ContextFunctionN[...]`.
      *  Extracts the method type type and apply info.
      */
-    def unapply(tpe: RefinedType)(using Context): Option[MethodOrPoly] = {
+    def unapply(tpe: RefinedType)(using Context): Option[MethodOrPoly] =
       tpe.refinedInfo match
         case mt: MethodOrPoly
-        if tpe.refinedName == nme.apply
-        && (tpe.parent.derivesFrom(defn.PolyFunctionClass) || isFunctionNType(tpe.parent)) =>
-          Some(mt)
+        if tpe.refinedName == nme.apply && isFunctionType(tpe.parent) => Some(mt)
         case _ => None
-    }
-  }
+
+  end RefinedFunctionOf
 
   object PolyFunctionOf {
 
@@ -2137,7 +2140,8 @@ class Definitions {
       AnyValClass,
       NullClass,
       NothingClass,
-      SingletonClass)
+      SingletonClass,
+      MaybeCapabilityAnnot)
 
   @tu lazy val syntheticCoreClasses: List[Symbol] = syntheticScalaClasses ++ List(
     EmptyPackageVal,

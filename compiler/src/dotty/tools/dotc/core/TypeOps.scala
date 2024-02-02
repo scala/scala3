@@ -540,18 +540,6 @@ object TypeOps:
         val sym = tp.symbol
         forbidden.contains(sym)
 
-      /** We need to split the set into upper and lower approximations
-       *  only if it contains a local element. The idea here is that at the
-       *  time we perform an `avoid` all local elements are already accounted for
-       *  and no further elements will be added afterwards. So we can just keep
-       *  the set as it is. See comment by @linyxus on #16261.
-       */
-      override def needsRangeIfInvariant(refs: CaptureSet): Boolean =
-        refs.elems.exists {
-          case ref: TermRef => toAvoid(ref)
-          case _ => false
-        }
-
       override def apply(tp: Type): Type = tp match
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
           val lo = TypeComparer.instanceType(

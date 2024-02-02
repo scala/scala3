@@ -845,7 +845,9 @@ object Types extends TypeUtils {
             safeIntersection = ctx.base.pendingMemberSearches.contains(name))
           joint match
             case joint: SingleDenotation
-            if isRefinedMethod && rinfo <:< joint.info =>
+            if isRefinedMethod
+              && (rinfo <:< joint.info
+                 || name == nme.apply && defn.isFunctionType(tp.parent)) =>
               // use `rinfo` to keep the right parameter names for named args. See i8516.scala.
               joint.derivedSingleDenotation(joint.symbol, rinfo, pre, isRefinedMethod)
             case _ =>
@@ -2198,7 +2200,11 @@ object Types extends TypeUtils {
     /** Is this a reach reference of the form `x*`? */
     def isReach(using Context): Boolean = false // overridden in AnnotatedType
 
+    /** Is this a maybe reference of the form `x?`? */
+    def isMaybe(using Context): Boolean = false // overridden in AnnotatedType
+
     def stripReach(using Context): CaptureRef = this // overridden in AnnotatedType
+    def stripMaybe(using Context): CaptureRef = this // overridden in AnnotatedType
 
     /** Is this reference the generic root capability `cap` ? */
     def isRootCapability(using Context): Boolean = false
@@ -5618,14 +5624,21 @@ object Types extends TypeUtils {
     }
 
     override def isTrackableRef(using Context) =
-      isReach && parent.isTrackableRef
+      (isReach || isMaybe) && parent.isTrackableRef
 
     /** Is this a reach reference of the form `x*`? */
     override def isReach(using Context): Boolean =
       annot.symbol == defn.ReachCapabilityAnnot
 
-    override def stripReach(using Context): SingletonCaptureRef =
-      (if isReach then parent else this).asInstanceOf[SingletonCaptureRef]
+    /** Is this a reach reference of the form `x*`? */
+    override def isMaybe(using Context): Boolean =
+      annot.symbol == defn.MaybeCapabilityAnnot
+
+    override def stripReach(using Context): CaptureRef =
+      if isReach then parent.asInstanceOf[CaptureRef] else this
+
+    override def stripMaybe(using Context): CaptureRef =
+      if isMaybe then parent.asInstanceOf[CaptureRef] else this
 
     override def normalizedRef(using Context): CaptureRef =
       if isReach then AnnotatedType(stripReach.normalizedRef, annot) else this
@@ -6474,15 +6487,6 @@ object Types extends TypeUtils {
           else
             tp.derivedLambdaType(tp.paramNames, formals, restpe)
       }
-
-    /** Overridden in TypeOps.avoid and in CheckCaptures.substParamsMap */
-    protected def needsRangeIfInvariant(refs: CaptureSet): Boolean = true
-
-    override def mapCapturingType(tp: Type, parent: Type, refs: CaptureSet, v: Int): Type =
-      if v == 0 && needsRangeIfInvariant(refs) then
-        range(mapCapturingType(tp, parent, refs, -1), mapCapturingType(tp, parent, refs, 1))
-      else
-        super.mapCapturingType(tp, parent, refs, v)
 
     protected def reapply(tp: Type): Type = apply(tp)
   }
