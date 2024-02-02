@@ -3288,3 +3288,20 @@ object UnusedSymbol {
     def privateMembers(using Context): UnusedSymbol = new UnusedSymbol(i"unused private member")
     def patVars(using Context): UnusedSymbol = new UnusedSymbol(i"unused pattern variable")
 }
+
+class InvalidMultipleAssignmentSource(found: Type)(using Context)
+  extends TypeMsg(InvalidMultipleAssignmentSourceID) {
+  def msg(using Context) =
+    i"""invalid source of multiple assignment.
+        |The right hand side must be a tuple but $found was found."""
+  def explain(using Context) = ""
+}
+
+class MultipleAssignmentShapeMismatch(found: Int, required: Int)(using Context)
+  extends TypeMsg(MultipleAssignmentShapeMismatchID) {
+  def msg(using Context) =
+    i"""Source and target of multiple assignment have different sizes.
+        |Source: $found
+        |Target: $required"""
+  def explain(using Context) = ""
+}
