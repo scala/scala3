@@ -2442,7 +2442,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def canBeInvalidated(sym: Symbol): Boolean =
       sym.is(Synthetic)
       && (desugar.isRetractableCaseClassMethodName(sym.name) ||
-         (sym.owner.is(JavaDefined) && sym.owner.derivesFrom(defn.JavaRecordClass)))
+         (sym.owner.is(JavaDefined) && sym.owner.derivesFrom(defn.JavaRecordClass) && sym.is(Method)))
 
     if !sym.info.exists then
       // it's a discarded method (synthetic case class method or synthetic java record constructor or overriden member), drop it
