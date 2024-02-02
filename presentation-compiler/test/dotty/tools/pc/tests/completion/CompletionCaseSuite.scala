@@ -542,7 +542,9 @@ class CompletionCaseSuite extends BaseCompletionSuite:
         |    ca@@
         |  }
         |}""".stripMargin,
-      ""
+      """
+        |case
+        |""".stripMargin
     )
 
   @Test def `private-member-2` =
@@ -722,3 +724,17 @@ class CompletionCaseSuite extends BaseCompletionSuite:
          |""".stripMargin,
       "case (Int, Int) => scala",
     )
+  
+  @Test def `keyword-only` =
+    check(
+      """
+        |sealed trait Alpha
+        |object A {
+        |  List.empty[Alpha].groupBy{
+        |    ca@@
+        |  }
+        |}
+        |""".stripMargin,
+      "case",
+    )
+
