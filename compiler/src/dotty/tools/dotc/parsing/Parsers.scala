@@ -1765,12 +1765,11 @@ object Parsers {
           RefinedTypeTree(rejectWildcardType(t), refinement(indentOK = true))
         })
       else if Feature.ccEnabled && in.isIdent(nme.UPARROW) && isCaptureUpArrow then
-        val upArrowStart = in.offset
-        in.nextToken()
-        def cs =
-          if in.token == LBRACE then captureSet()
-          else atSpan(upArrowStart)(captureRoot) :: Nil
-        makeRetaining(t, cs, tpnme.retains)
+        atSpan(t.span.start):
+          in.nextToken()
+          if in.token == LBRACE
+          then makeRetaining(t, captureSet(), tpnme.retains)
+          else makeRetaining(t, Nil, tpnme.retainsCap)
       else
         t
     }

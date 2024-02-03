@@ -98,10 +98,14 @@ extension (tree: Tree)
         tree.putAttachment(Captures, refs)
         refs
 
-  /** The arguments of a @retains or @retainsByName annotation */
+  /** The arguments of a @retains, @retainsCap or @retainsByName annotation */
   def retainedElems(using Context): List[Tree] = tree match
-    case Apply(_, Typed(SeqLiteral(elems, _), _) :: Nil) => elems
-    case _ => Nil
+    case Apply(_, Typed(SeqLiteral(elems, _), _) :: Nil) =>
+      elems
+    case _ =>
+      if tree.symbol.maybeOwner == defn.RetainsCapAnnot
+      then ref(defn.captureRoot.termRef) :: Nil
+      else Nil
 
 extension (tp: Type)
 
@@ -207,7 +211,7 @@ extension (tp: Type)
   def dropAllRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
     val tm = new TypeMap:
       def apply(t: Type) = t match
-        case AnnotatedType(parent, annot) if annot.symbol == defn.RetainsAnnot =>
+        case AnnotatedType(parent, annot) if annot.symbol.isRetains =>
           apply(parent)
         case _ =>
           mapOver(t)
@@ -325,6 +329,14 @@ extension (cls: ClassSymbol)
       bc.is(CaptureChecked) && selfType.exists && selfType.captureSet.elems == refs.elems
 
 extension (sym: Symbol)
+
+  /** This symbol is one of `retains` or `retainsCap` */
+  def isRetains(using Context): Boolean =
+    sym == defn.RetainsAnnot || sym == defn.RetainsCapAnnot
+
+  /** This symbol is one of `retains`, `retainsCap`, or`retainsByName` */
+  def isRetainsLike(using Context): Boolean =
+    isRetains || sym == defn.RetainsByNameAnnot
 
   /** A class is pure if:
    *   - one its base types has an explicitly declared self type with an empty capture set

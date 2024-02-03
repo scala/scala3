@@ -27,7 +27,7 @@ import config.{Config, Feature}
 
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
-import cc.{CaptureSet, CapturingType, toCaptureSet, IllegalCaptureRef}
+import cc.{CaptureSet, CapturingType, toCaptureSet, IllegalCaptureRef, isRetains}
 import dotty.tools.dotc.parsing.JavaParsers
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
@@ -643,7 +643,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         def toTextRetainsAnnot =
           try changePrec(GlobalPrec)(toText(arg) ~ "^" ~ toTextCaptureSet(captureSet))
           catch case ex: IllegalCaptureRef => toTextAnnot
-        if annot.symbol.maybeOwner == defn.RetainsAnnot
+        if annot.symbol.maybeOwner.isRetains
             && Feature.ccEnabled && !printDebug
             && Phases.checkCapturesPhase.exists // might be missing on -Ytest-pickler
         then toTextRetainsAnnot

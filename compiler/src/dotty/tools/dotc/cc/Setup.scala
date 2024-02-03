@@ -120,7 +120,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case tp @ CapturingType(parent, refs) =>
         if tp.isBoxed then tp else tp.boxed
       case tp @ AnnotatedType(parent, ann) =>
-        if ann.symbol == defn.RetainsAnnot
+        if ann.symbol.isRetains
         then CapturingType(parent, ann.tree.toCaptureSet, boxed = true)
         else tp.derivedAnnotatedType(box(parent), ann)
       case tp1 @ AppliedType(tycon, args) if defn.isNonRefinedFunction(tp1) =>
@@ -192,7 +192,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
       def apply(tp: Type) =
         val tp1 = tp match
-          case AnnotatedType(parent, annot) if annot.symbol == defn.RetainsAnnot =>
+          case AnnotatedType(parent, annot) if annot.symbol.isRetains =>
             // Drop explicit retains annotations
             apply(parent)
           case tp @ AppliedType(tycon, args) =>
@@ -283,7 +283,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             t.derivedCapturingType(this(parent), refs)
           case t @ AnnotatedType(parent, ann) =>
             val parent1 = this(parent)
-            if ann.symbol == defn.RetainsAnnot then
+            if ann.symbol.isRetains then
               for tpt <- tptToCheck do
                 checkWellformedLater(parent1, ann.tree, tpt)
               CapturingType(parent1, ann.tree.toCaptureSet)

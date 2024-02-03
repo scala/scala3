@@ -38,7 +38,7 @@ import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
-import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, RetainingType, isCaptureChecking}
+import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, isCaptureChecking, isRetains, isRetainsLike}
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
@@ -4025,7 +4025,7 @@ object Types extends TypeUtils {
               mapOver(tp)
             case AnnotatedType(parent, ann) if ann.refersToParamOf(thisLambdaType) =>
               val parent1 = mapOver(parent)
-              if ann.symbol == defn.RetainsAnnot || ann.symbol == defn.RetainsByNameAnnot then
+              if ann.symbol.isRetainsLike then
                 range(
                   AnnotatedType(parent1, CaptureSet.empty.toRegularAnnotation(ann.symbol)),
                   AnnotatedType(parent1, CaptureSet.universal.toRegularAnnotation(ann.symbol)))
@@ -5315,10 +5315,10 @@ object Types extends TypeUtils {
           else if (clsd.is(Module)) givenSelf
           else if (ctx.erasedTypes) appliedRef
           else givenSelf.dealiasKeepAnnots match
-            case givenSelf1 @ AnnotatedType(tp, ann) if ann.symbol == defn.RetainsAnnot =>
-              givenSelf1.derivedAnnotatedType(tp & appliedRef, ann)
+            case givenSelf1 @ AnnotatedType(tp, ann) if ann.symbol.isRetains =>
+              givenSelf1.derivedAnnotatedType(AndType.make(tp, appliedRef), ann)
             case _ =>
-              AndType(givenSelf, appliedRef)
+              AndType.make(givenSelf, appliedRef)
         }
       selfTypeCache.nn
     }
