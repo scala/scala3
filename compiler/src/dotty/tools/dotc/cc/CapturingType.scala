@@ -58,8 +58,7 @@ object CapturingType:
     case AnnotatedType(parent, ann: CaptureAnnotation)
     if isCaptureCheckingOrSetup =>
       Some((parent, ann.refs))
-    case AnnotatedType(parent, ann)
-    if ann.symbol == defn.RetainsAnnot && isCaptureChecking =>
+    case AnnotatedType(parent, ann) if ann.symbol.isRetains && isCaptureChecking =>
       // There are some circumstances where we cannot map annotated types
       // with retains annotations to capturing types, so this second recognizer
       // path still has to exist. One example is when checking capture sets

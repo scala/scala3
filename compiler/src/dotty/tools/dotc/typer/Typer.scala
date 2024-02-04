@@ -48,7 +48,7 @@ import staging.StagingLevel
 import reporting.*
 import Nullables.*
 import NullOpsDecorator.*
-import cc.CheckCaptures
+import cc.{CheckCaptures, isRetainsLike}
 import config.Config
 import config.MigrationVersion
 
@@ -2940,9 +2940,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val arg1 = typed(tree.arg, pt)
     if (ctx.mode is Mode.Type) {
       val cls = annot1.symbol.maybeOwner
-      if Feature.ccEnabled
-          && (cls == defn.RetainsAnnot || cls == defn.RetainsByNameAnnot)
-      then
+      if Feature.ccEnabled && cls.isRetainsLike then
         CheckCaptures.checkWellformed(arg1, annot1)
       if arg1.isType then
         assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
