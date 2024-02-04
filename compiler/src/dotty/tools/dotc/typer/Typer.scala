@@ -1621,15 +1621,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case untpd.Annotated(scrut1, _) => isParamRef(scrut1)
         case untpd.Ident(id) => id == params.head.name
       fnBody match
-        case untpd.Match(scrut, untpd.CaseDef(untpd.Tuple(elems), untpd.EmptyTree, rhs) :: Nil)
+        case untpd.Match(scrut, cases @ untpd.CaseDef(untpd.Tuple(elems), untpd.EmptyTree, rhs) :: Nil)
         if scrut.span.isSynthetic && isParamRef(scrut) && elems.hasSameLengthAs(protoFormals) =>
           // If `pt` is N-ary function type, convert synthetic lambda
           //   x$1 => x$1 match case (a1, ..., aN) => e
           // to
           //   (a1, ..., aN) => e
           val params1 = desugar.patternsToParams(elems)
-          if params1.hasSameLengthAs(elems) then
-            desugared = cpy.Function(tree)(params1, rhs)
+          desugared = if params1.hasSameLengthAs(elems)
+            then cpy.Function(tree)(params1, rhs)
+            else desugar.makeCaseLambda(cases, desugar.MatchCheck.IrrefutablePatDef, protoFormals.length)
         case _ =>
 
     if desugared.isEmpty then
