@@ -392,7 +392,6 @@ class Completions(
         val values = FilenameCompletions.contribute(filename, td)
         (values, true)
       case (lit @ Literal(Constant(_: String))) :: _ =>
-        println("COMpletion")
         val completions = InterpolatorCompletions
           .contribute(
             text,
