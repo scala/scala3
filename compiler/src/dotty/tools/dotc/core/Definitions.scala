@@ -791,6 +791,7 @@ class Definitions {
   @tu lazy val MirrorClass: ClassSymbol = requiredClass("scala.deriving.Mirror")
   @tu lazy val Mirror_ProductClass: ClassSymbol = requiredClass("scala.deriving.Mirror.Product")
     @tu lazy val Mirror_Product_fromProduct: Symbol = Mirror_ProductClass.requiredMethod(nme.fromProduct)
+    @tu lazy val Mirror_Product_defaultArgument: Symbol = Mirror_ProductClass.requiredMethod(nme.defaultArgument)
   @tu lazy val Mirror_SumClass: ClassSymbol = requiredClass("scala.deriving.Mirror.Sum")
   @tu lazy val Mirror_SingletonClass: ClassSymbol = requiredClass("scala.deriving.Mirror.Singleton")
   @tu lazy val Mirror_SingletonProxyClass: ClassSymbol = requiredClass("scala.deriving.Mirror.SingletonProxy")

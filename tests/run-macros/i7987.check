@@ -4,4 +4,5 @@ scala.deriving.Mirror.Product {
   type MirroredLabel >: "Some" <: "Some"
   type MirroredElemTypes >: scala.*:[scala.Int, scala.Tuple$package.EmptyTuple] <: scala.*:[scala.Int, scala.Tuple$package.EmptyTuple]
   type MirroredElemLabels >: scala.*:["value", scala.Tuple$package.EmptyTuple] <: scala.*:["value", scala.Tuple$package.EmptyTuple]
+  type MirroredElemHasDefaults >: scala.*:[false, scala.Tuple$package.EmptyTuple] <: scala.*:[false, scala.Tuple$package.EmptyTuple]
 }
