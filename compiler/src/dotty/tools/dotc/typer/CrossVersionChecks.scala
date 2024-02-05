@@ -159,10 +159,12 @@ class CrossVersionChecks extends MiniPhase:
     val tpe = tree.tpe
     tpe.foreachPart {
       case TypeRef(_, sym: Symbol)  =>
-        checkDeprecated(sym, tree.srcPos)
+        if tree.span.isSourceDerived then
+          checkDeprecated(sym, tree.srcPos)
         checkExperimentalRef(sym, tree.srcPos)
       case TermRef(_, sym: Symbol)  =>
-        checkDeprecated(sym, tree.srcPos)
+        if tree.span.isSourceDerived then
+          checkDeprecated(sym, tree.srcPos)
         checkExperimentalRef(sym, tree.srcPos)
       case _ =>
     }
