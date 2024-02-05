@@ -1116,9 +1116,9 @@ object Build {
         _.filterNot(file => file.data.getName == s"scala-library-$stdlibBootstrappedVersion.jar")
       },
       mimaCheckDirection := "both",
-      mimaBackwardIssueFilters := MiMaFilters.StdlibBootstrappedBackwards,
-      mimaForwardIssueFilters := MiMaFilters.StdlibBootstrappedForward,
-      customMimaReportBinaryIssues("MiMaFilters.{StdlibBootstrappedForward, StdlibBootstrappedBackwards}"),
+      mimaBackwardIssueFilters := Scala2LibraryBootstrappedMiMaFilters.BackwardsBreakingChanges,
+      mimaForwardIssueFilters := Scala2LibraryBootstrappedMiMaFilters.ForwardsBreakingChanges,
+      customMimaReportBinaryIssues("Scala2LibraryBootstrappedMiMaFilters.{BackwardsBreakingChanges, ForwardsBreakingChanges}"),
       mimaPreviousArtifacts += "org.scala-lang" % "scala-library" % stdlibBootstrappedVersion,
       mimaExcludeAnnotations ++= Seq(
         "scala.annotation.experimental",
@@ -2177,9 +2177,9 @@ object Build {
             }
             (thisProjectID.organization % crossedName % ltsDottyVersion)
           },
-          mimaBackwardIssueFilters := MiMaFilters.LibraryBackwards,
-          mimaForwardIssueFilters := MiMaFilters.LibraryForward,
-          customMimaReportBinaryIssues("MiMaFilters.{LibraryForward, LibraryBackwards}"),
+          mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
+          mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
+          customMimaReportBinaryIssues("MiMaFilters.Scala3Library.{ForwardsBreakingChanges, BackwardsBreakingChanges}"),
         )
       } else base
     }
