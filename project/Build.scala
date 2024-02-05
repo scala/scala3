@@ -531,7 +531,8 @@ object Build {
     settings(commonMiMaSettings).
     settings(
       versionScheme := Some("semver-spec"),
-      mimaBinaryIssueFilters ++= MiMaFilters.Interfaces
+      mimaBinaryIssueFilters ++= MiMaFilters.Interfaces,
+      customMimaReportBinaryIssues("MiMaFilters.Interfaces"),
     )
 
   /** Find an artifact with the given `name` in `classpath` */
@@ -1117,6 +1118,7 @@ object Build {
       mimaCheckDirection := "both",
       mimaBackwardIssueFilters := MiMaFilters.StdlibBootstrappedBackwards,
       mimaForwardIssueFilters := MiMaFilters.StdlibBootstrappedForward,
+      customMimaReportBinaryIssues("MiMaFilters.{StdlibBootstrappedForward, StdlibBootstrappedBackwards}"),
       mimaPreviousArtifacts += "org.scala-lang" % "scala-library" % stdlibBootstrappedVersion,
       mimaExcludeAnnotations ++= Seq(
         "scala.annotation.experimental",
@@ -2102,6 +2104,15 @@ object Build {
       packResourceDir += (baseDirectory.value / "bin" -> "bin"),
     )
 
+  private def customMimaReportBinaryIssues(issueFilterLocation: String) = mimaReportBinaryIssues := {
+    mimaReportBinaryIssues.result.value match {
+      case Inc(inc: Incomplete) =>
+        streams.value.log.error(s"\n$issueFilterLocation are used as filters\n ")
+        throw inc
+      case Value(v) => v
+    }
+  }
+
   implicit class ProjectDefinitions(val project: Project) extends AnyVal {
 
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
@@ -2168,6 +2179,7 @@ object Build {
           },
           mimaBackwardIssueFilters := MiMaFilters.LibraryBackwards,
           mimaForwardIssueFilters := MiMaFilters.LibraryForward,
+          customMimaReportBinaryIssues("MiMaFilters.{LibraryForward, LibraryBackwards}"),
         )
       } else base
     }
@@ -2182,6 +2194,7 @@ object Build {
         if (mode == Bootstrapped) Def.settings(
           commonMiMaSettings,
           mimaBinaryIssueFilters ++= MiMaFilters.TastyCore,
+          customMimaReportBinaryIssues("MiMaFilters.TastyCore"),
         ) else {
           Nil
         }
