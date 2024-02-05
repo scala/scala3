@@ -78,6 +78,13 @@ object Util:
       case _ =>
         None
 
+  object TypeCast:
+    def unapply(tree: Tree)(using Context): Option[(Tree, Type)] =
+      tree match
+        case TypeApply(Select(qual, _), typeArg) if tree.symbol.isTypeCast =>
+          Some(qual, typeArg.head.tpe)
+        case _ => None
+
   def resolve(cls: ClassSymbol, sym: Symbol)(using Context): Symbol = log("resove " + cls + ", " + sym, printer, (_: Symbol).show):
     if sym.isEffectivelyFinal then sym
     else sym.matchingMember(cls.appliedRef)
