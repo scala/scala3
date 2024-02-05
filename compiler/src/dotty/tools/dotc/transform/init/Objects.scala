@@ -859,7 +859,7 @@ object Objects:
       report.warning("[Internal error] unexpected tree in assignment, fun = " + fun.code.show + Trace.show, Trace.position)
 
     case arr: OfArray =>
-      report.warning("[Internal error] unexpected tree in assignment, array = " + arr.show + s", owner = ${field.owner}\n" + Trace.show, Trace.position)
+      report.warning("[Internal error] unexpected tree in assignment, array = " + arr.show + Trace.show, Trace.position)
 
     case Cold =>
       report.warning("Assigning to cold aliases is forbidden. " + Trace.show, Trace.position)
