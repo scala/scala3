@@ -228,9 +228,9 @@ object InterpolatorCompletions:
   )(using ctx: Context, reportsContext: ReportContext): List[CompletionValue] =
     val litStartPos = lit.span.start
     val litEndPos = lit.span.end - Cursor.value.length()
-    val nameStart = Spans.Span(completionPos.point - interpolator.name.size, completionPos.queryEnd)
+    val nameStart = Spans.Span(completionPos.queryEnd - interpolator.name.size, completionPos.queryEnd)
     val nameRange = completionPos.originalCursorPosition.withSpan(nameStart).toLsp
-    val hasClosingBrace: Boolean = text.charAt(completionPos.point) == '}'
+    val hasClosingBrace: Boolean = text.charAt(completionPos.queryEnd) == '}'
     val hasOpeningBrace: Boolean = text.charAt(nameStart.start - 1) == '{'
 
     def additionalEdits(): List[l.TextEdit] =

@@ -83,7 +83,7 @@ class Completions(
       else
         val realNameLength = sym.decodedName.length() - Cursor.value.length()
         sym.source == completionPos.originalCursorPosition.source &&
-        sym.span.start + realNameLength == completionPos.point
+        sym.span.start + realNameLength == completionPos.queryEnd
 
     val generalExclude =
       isUninterestingSymbol(sym) ||
