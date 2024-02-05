@@ -531,7 +531,8 @@ object Build {
     settings(commonMiMaSettings).
     settings(
       versionScheme := Some("semver-spec"),
-      mimaBinaryIssueFilters ++= MiMaFilters.Interfaces,
+      mimaForwardIssueFilters := MiMaFilters.Interfaces.ForwardsBreakingChanges,
+      mimaBackwardIssueFilters := MiMaFilters.Interfaces.BackwardsBreakingChanges,
       customMimaReportBinaryIssues("MiMaFilters.Interfaces"),
     )
 
@@ -1118,7 +1119,7 @@ object Build {
       mimaCheckDirection := "both",
       mimaBackwardIssueFilters := Scala2LibraryBootstrappedMiMaFilters.BackwardsBreakingChanges,
       mimaForwardIssueFilters := Scala2LibraryBootstrappedMiMaFilters.ForwardsBreakingChanges,
-      customMimaReportBinaryIssues("Scala2LibraryBootstrappedMiMaFilters.{BackwardsBreakingChanges, ForwardsBreakingChanges}"),
+      customMimaReportBinaryIssues("Scala2LibraryBootstrappedMiMaFilters"),
       mimaPreviousArtifacts += "org.scala-lang" % "scala-library" % stdlibBootstrappedVersion,
       mimaExcludeAnnotations ++= Seq(
         "scala.annotation.experimental",
@@ -2107,7 +2108,7 @@ object Build {
   private def customMimaReportBinaryIssues(issueFilterLocation: String) = mimaReportBinaryIssues := {
     mimaReportBinaryIssues.result.value match {
       case Inc(inc: Incomplete) =>
-        streams.value.log.error(s"\n$issueFilterLocation are used as filters\n ")
+        streams.value.log.error(s"\nFilers in $issueFilterLocation are used in this check.\n ")
         throw inc
       case Value(v) => v
     }
@@ -2179,7 +2180,7 @@ object Build {
           },
           mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
           mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
-          customMimaReportBinaryIssues("MiMaFilters.Scala3Library.{ForwardsBreakingChanges, BackwardsBreakingChanges}"),
+          customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
         )
       } else base
     }
@@ -2193,7 +2194,8 @@ object Build {
         versionScheme := Some("semver-spec"),
         if (mode == Bootstrapped) Def.settings(
           commonMiMaSettings,
-          mimaBinaryIssueFilters ++= MiMaFilters.TastyCore,
+          mimaForwardIssueFilters := MiMaFilters.TastyCore.ForwardsBreakingChanges,
+          mimaBackwardIssueFilters := MiMaFilters.TastyCore.BackwardsBreakingChanges,
           customMimaReportBinaryIssues("MiMaFilters.TastyCore"),
         ) else {
           Nil

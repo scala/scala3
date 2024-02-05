@@ -41,12 +41,13 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.relaxedExtensionImports"),
       ),
     )
+
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // In general we should never have backwards incompatible changes in the library.
       // Only exceptional cases should be added here.
 
       // Breaking changes since last reference version
-      Build.previousDottyVersion -> Seq.empty,
+      Build.previousDottyVersion -> Seq.empty, // We should never break backwards compatibility
 
       // Breaking changes since last LTS
       Build.ltsDottyVersion -> Seq(
@@ -66,9 +67,38 @@ object MiMaFilters {
     )
   }
 
-  val TastyCore: Seq[ProblemFilter] = Seq(
-  )
-  val Interfaces: Seq[ProblemFilter] = Seq(
-  )
+  object TastyCore {
+    val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
+      // Additions that require a new minor version of tasty core
+      Build.previousDottyVersion -> Seq(
+      ),
+
+      // Additions since last LTS
+      Build.ltsDottyVersion -> Seq(
+      )
+    )
+
+    val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
+      // Breaking changes since last LTS
+      Build.ltsDottyVersion -> Seq.empty // We should never break backwards compatibility
+    )
+  }
+
+  object Interfaces {
+    val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
+      // Additions that require a new minor version of interfaces
+      Build.previousDottyVersion -> Seq(
+      ),
+
+      // Additions since last LTS
+      Build.ltsDottyVersion -> Seq(
+      )
+    )
+
+    val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
+      // Breaking changes since last LTS
+      Build.ltsDottyVersion -> Seq.empty // We should never break backwards compatibility
+    )
+  }
 
 }
