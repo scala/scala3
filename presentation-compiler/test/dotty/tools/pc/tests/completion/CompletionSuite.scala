@@ -1619,7 +1619,7 @@ class CompletionSuite extends BaseCompletionSuite:
       assertSingleItem = false
     )
 
-  @Test def `prepend-when-inside` =
+  @Test def `replace-when-inside` =
     checkEdit(
       """|object O:
          |  pri@@nt()

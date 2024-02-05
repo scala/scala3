@@ -166,7 +166,7 @@ class CompletionProvider(
         additionalEdits: List[TextEdit] = Nil,
         range: Option[LspRange] = None
     ): CompletionItem =
-      val oldText = String(params.text().nn.substring(completionPos.queryStart, completionPos.identEnd))
+      val oldText = params.text().nn.substring(completionPos.queryStart, completionPos.identEnd)
       val editRange = if newText.startsWith(oldText) then completionPos.stripSuffixEditRange
         else completionPos.toEditRange
 
@@ -229,7 +229,6 @@ class CompletionProvider(
             case Some(edits) =>
               edits match
                 case AutoImportEdits(Some(nameEdit), other) =>
-                  println(nameEdit)
                   mkItem(nameEdit.getNewText().nn, other.toList, range = Some(nameEdit.getRange().nn))
                 case _ =>
                   mkItem(
