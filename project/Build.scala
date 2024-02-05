@@ -531,7 +531,9 @@ object Build {
     settings(commonMiMaSettings).
     settings(
       versionScheme := Some("semver-spec"),
-      mimaBinaryIssueFilters ++= MiMaFilters.Interfaces
+      mimaForwardIssueFilters := MiMaFilters.Interfaces.ForwardsBreakingChanges,
+      mimaBackwardIssueFilters := MiMaFilters.Interfaces.BackwardsBreakingChanges,
+      customMimaReportBinaryIssues("MiMaFilters.Interfaces"),
     )
 
   /** Find an artifact with the given `name` in `classpath` */
@@ -1115,8 +1117,9 @@ object Build {
         _.filterNot(file => file.data.getName == s"scala-library-$stdlibBootstrappedVersion.jar")
       },
       mimaCheckDirection := "both",
-      mimaBackwardIssueFilters := MiMaFilters.StdlibBootstrappedBackwards,
-      mimaForwardIssueFilters := MiMaFilters.StdlibBootstrappedForward,
+      mimaBackwardIssueFilters := Scala2LibraryBootstrappedMiMaFilters.BackwardsBreakingChanges,
+      mimaForwardIssueFilters := Scala2LibraryBootstrappedMiMaFilters.ForwardsBreakingChanges,
+      customMimaReportBinaryIssues("Scala2LibraryBootstrappedMiMaFilters"),
       mimaPreviousArtifacts += "org.scala-lang" % "scala-library" % stdlibBootstrappedVersion,
       mimaExcludeAnnotations ++= Seq(
         "scala.annotation.experimental",
@@ -2102,6 +2105,15 @@ object Build {
       packResourceDir += (baseDirectory.value / "bin" -> "bin"),
     )
 
+  private def customMimaReportBinaryIssues(issueFilterLocation: String) = mimaReportBinaryIssues := {
+    mimaReportBinaryIssues.result.value match {
+      case Inc(inc: Incomplete) =>
+        streams.value.log.error(s"\nFilers in $issueFilterLocation are used in this check.\n ")
+        throw inc
+      case Value(v) => v
+    }
+  }
+
   implicit class ProjectDefinitions(val project: Project) extends AnyVal {
 
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
@@ -2166,8 +2178,9 @@ object Build {
             }
             (thisProjectID.organization % crossedName % ltsDottyVersion)
           },
-          mimaBackwardIssueFilters := MiMaFilters.LibraryBackwards,
-          mimaForwardIssueFilters := MiMaFilters.LibraryForward,
+          mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
+          mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
+          customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
         )
       } else base
     }
@@ -2181,7 +2194,9 @@ object Build {
         versionScheme := Some("semver-spec"),
         if (mode == Bootstrapped) Def.settings(
           commonMiMaSettings,
-          mimaBinaryIssueFilters ++= MiMaFilters.TastyCore,
+          mimaForwardIssueFilters := MiMaFilters.TastyCore.ForwardsBreakingChanges,
+          mimaBackwardIssueFilters := MiMaFilters.TastyCore.BackwardsBreakingChanges,
+          customMimaReportBinaryIssues("MiMaFilters.TastyCore"),
         ) else {
           Nil
         }
