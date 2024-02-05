@@ -635,7 +635,7 @@ class CompletionInterpolatorSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|class Paths
          |object Main {
-         |  s"this is an interesting {java.nio.file.Paths}"
+         |  s"this is an interesting ${java.nio.file.Paths}"
          |}
          |""".stripMargin,
       assertSingleItem = false,
@@ -708,6 +708,26 @@ class CompletionInterpolatorSuite extends BaseCompletionSuite:
          |def main = s"  ${aaa.plus($0)}"
          |""".stripMargin,
       filterText = "aaa.plus"
+    )
+
+
+  @Test def `extension3` =
+    checkEdit(
+      """|trait Cursor
+         |
+         |extension (c: Cursor) def spelling: String = "hello"
+         |object Main {
+         |  val c = new Cursor {}
+         |  val x = s"$c.spelli@@"
+         |}
+         |""".stripMargin,
+      """|trait Cursor
+         |
+         |extension (c: Cursor) def spelling: String = "hello"
+         |object Main {
+         |  val c = new Cursor {}
+         |  val x = s"${c.spelling$0}"
+         |}""".stripMargin
     )
 
   @Test def `filter-by-type` =
