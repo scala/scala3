@@ -6,52 +6,54 @@ import java.net.URI
 import scala.meta.pc.OffsetParams
 
 import dotty.tools.dotc.ast.untpd.*
-import dotty.tools.dotc.ast.untpd.ImportSelector
 import dotty.tools.dotc.core.Contexts.*
-import dotty.tools.dotc.core.StdNames.*
-import dotty.tools.dotc.util.Chars
 import dotty.tools.dotc.util.SourcePosition
-import dotty.tools.dotc.util.Spans
+import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.pc.utils.MtagsEnrichments.*
 
 import org.eclipse.lsp4j as l
-import scala.annotation.tailrec
+
+case object Cursor:
+  val value = "CURSOR"
 
 case class CompletionPos(
-    start: Int,
-    end: Int,
-    query: String,
-    cursorPos: SourcePosition,
-    sourceUri: URI
+  queryStart: Int,
+  identEnd: Int,
+  query: String,
+  originalCursorPosition: SourcePosition,
+  sourceUri: URI
 ):
-
-  def sourcePos: SourcePosition = cursorPos.withSpan(Spans.Span(start, end))
-  def stripSuffixEditRange: l.Range = new l.Range(cursorPos.offsetToPos(start), cursorPos.offsetToPos(end))
-  def toEditRange: l.Range = cursorPos.withStart(start).withEnd(cursorPos.point).toLsp
-
-end CompletionPos
+  def queryEnd: Int = originalCursorPosition.point
+  def point: Int = originalCursorPosition.point
+  def stripSuffixEditRange: l.Range = new l.Range(originalCursorPosition.offsetToPos(queryStart), originalCursorPosition.offsetToPos(identEnd))
+  def toEditRange: l.Range = originalCursorPosition.withStart(queryStart).withEnd(originalCursorPosition.point).toLsp
+  def toSourcePosition: SourcePosition = originalCursorPosition.withSpan(Span(queryStart, queryEnd, point))
 
 object CompletionPos:
 
   def infer(
-      cursorPos: SourcePosition,
+      sourcePosition: SourcePosition,
       offsetParams: OffsetParams,
       adjustedPath: List[Tree]
   )(using Context): CompletionPos =
-    infer(cursorPos, offsetParams.uri().nn, offsetParams.text().nn, adjustedPath)
+    infer(sourcePosition, offsetParams.uri().nn, String(sourcePosition.source.content()), adjustedPath)
 
   def infer(
-      cursorPos: SourcePosition,
+      sourcePos: SourcePosition,
       uri: URI,
       text: String,
       adjustedPath: List[Tree]
   )(using Context): CompletionPos =
-    val identEnd = inferIdentEnd(cursorPos, text)
-    val query = Completion.completionPrefix(adjustedPath, cursorPos)
-    val start = cursorPos.point - query.length()
+    val identEnd = adjustedPath match
+      case (ident: Ident) :: _ if ident.toString.contains(Cursor.value) =>
+        ident.span.end - Cursor.value.length
+      case _ => sourcePos.end
 
-    CompletionPos(start, identEnd, query.nn, cursorPos, uri)
+    val query = Completion.completionPrefix(adjustedPath, sourcePos)
+    val start = sourcePos.end - query.length()
+
+    CompletionPos(start, identEnd, query.nn, sourcePos, uri)
   end infer
 
   /**
@@ -75,13 +77,5 @@ object CompletionPos:
     do i += 1
     (i, tabIndented)
   end inferIndent
-
-  /**
-   * Returns the end offset of the identifier starting as the given offset position.
-   */
-  private def inferIdentEnd(pos: SourcePosition, text: String): Int =
-    var i = pos.point
-    while i < text.length() && Chars.isIdentifierPart(text.charAt(i)) do i += 1
-    i
 
 end CompletionPos

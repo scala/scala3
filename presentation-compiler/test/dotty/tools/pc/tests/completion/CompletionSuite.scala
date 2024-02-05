@@ -1608,7 +1608,7 @@ class CompletionSuite extends BaseCompletionSuite:
       assertSingleItem = false
     )
 
-  @Test def `prepend-instead-of-replace-duplicate-word` =
+  @Test def `prepend-duplicate-word` =
     checkEdit(
       """|object O:
          |  println@@println()
@@ -1619,13 +1619,13 @@ class CompletionSuite extends BaseCompletionSuite:
       assertSingleItem = false
     )
 
-  @Test def `replace-when-inside` =
+  @Test def `prepend-when-inside` =
     checkEdit(
       """|object O:
-         |  print@@ln()
+         |  pri@@nt()
          |""".stripMargin,
       """|object O:
-         |  println()
+         |  print()
          |""".stripMargin,
       assertSingleItem = false
     )

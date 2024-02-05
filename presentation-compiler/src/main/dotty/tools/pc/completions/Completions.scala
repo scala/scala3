@@ -37,7 +37,6 @@ import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.interactive.Interactive
 
 class Completions(
-    pos: SourcePosition,
     text: String,
     ctx: Context,
     search: SymbolSearch,
@@ -56,7 +55,7 @@ class Completions(
   given context: Context = ctx
 
   private lazy val coursierComplete = new CoursierComplete(BuildInfo.scalaVersion)
-  private lazy val completionMode = Completion.completionMode(adjustedPath, pos)
+  private lazy val completionMode = Completion.completionMode(adjustedPath, completionPos.originalCursorPosition)
 
   private lazy val shouldAddSnippet =
     path match
@@ -83,8 +82,8 @@ class Completions(
       if !sym.name.endsWith(Cursor.value) then false
       else
         val realNameLength = sym.decodedName.length() - Cursor.value.length()
-        sym.source == pos.source &&
-        sym.span.start + realNameLength == pos.span.end
+        sym.source == completionPos.originalCursorPosition.source &&
+        sym.span.start + realNameLength == completionPos.point
 
     val generalExclude =
       isUninterestingSymbol(sym) ||
@@ -107,7 +106,7 @@ class Completions(
   end includeSymbol
 
   def completions(): (List[CompletionValue], SymbolSearch.Result) =
-    val (advanced, exclusive) = advancedCompletions(path, pos, completionPos)
+    val (advanced, exclusive) = advancedCompletions(path, completionPos.originalCursorPosition, completionPos)
     val (all, result) =
       if exclusive then (advanced, SymbolSearch.Result.COMPLETE)
       else
@@ -116,19 +115,19 @@ class Completions(
         val allAdvanced = advanced ++ keywords
         path match
           // should not show completions for toplevel
-          case Nil | (_: PackageDef) :: _ if pos.source.file.extension != "sc" =>
+          case Nil | (_: PackageDef) :: _ if completionPos.originalCursorPosition.source.file.extension != "sc" =>
             (allAdvanced, SymbolSearch.Result.COMPLETE)
           case Select(qual, _) :: _ if qual.typeOpt.isErroneous =>
             (allAdvanced, SymbolSearch.Result.COMPLETE)
           case Select(qual, _) :: _ =>
-            val compilerCompletions = Completion.rawCompletions(pos, completionMode, completionPos.query, path, adjustedPath)
+            val compilerCompletions = Completion.rawCompletions(completionPos.originalCursorPosition, completionMode, completionPos.query, path, adjustedPath)
             val (compiler, result) = compilerCompletions
               .toList
               .flatMap(toCompletionValues)
               .filterInteresting(qual.typeOpt.widenDealias)
             (allAdvanced ++ compiler, result)
           case _ =>
-            val compilerCompletions = Completion.rawCompletions(pos, completionMode, completionPos.query, path, adjustedPath)
+            val compilerCompletions = Completion.rawCompletions(completionPos.originalCursorPosition, completionMode, completionPos.query, path, adjustedPath)
             val (compiler, result) = compilerCompletions
               .toList
               .flatMap(toCompletionValues)
@@ -393,10 +392,10 @@ class Completions(
         val values = FilenameCompletions.contribute(filename, td)
         (values, true)
       case (lit @ Literal(Constant(_: String))) :: _ =>
+        println("COMpletion")
         val completions = InterpolatorCompletions
           .contribute(
             text,
-            pos,
             completionPos,
             indexedContext,
             lit,
@@ -657,7 +656,7 @@ class Completions(
 
   private def isNotLocalForwardReference(sym: Symbol)(using Context): Boolean =
     !sym.isLocalToBlock ||
-      !sym.srcPos.isAfter(pos) ||
+      !sym.srcPos.isAfter(completionPos.originalCursorPosition) ||
       sym.is(Param)
 
   private def computeRelevancePenalty(
@@ -676,7 +675,7 @@ class Completions(
     def symbolRelevance(sym: Symbol): Int =
       var relevance = 0
       // symbols defined in this file are more relevant
-      if pos.source != sym.source || sym.is(Package) then
+      if completionPos.originalCursorPosition.source != sym.source || sym.is(Package) then
         relevance |= IsNotDefinedInFile
 
       // fields are more relevant than non fields (such as method)

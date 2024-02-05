@@ -40,11 +40,11 @@ class CompletionInterpolatorSuite extends BaseCompletionSuite:
 
   @Test def `string2` =
     checkEdit(
-      s"""|object Main {
-          |  val myName = ""
-          |  def message = "$$myNa@@me"
-          |}
-          |""".stripMargin,
+      """|object Main {
+         |  val myName = ""
+         |  def message = "$myNa@@me"
+         |}
+         |""".stripMargin,
       """|object Main {
          |  val myName = ""
          |  def message = s"${myName$0}me"
@@ -758,4 +758,37 @@ class CompletionInterpolatorSuite extends BaseCompletionSuite:
          |  val a = s"${ListBuffer($0)}""
          |}""".stripMargin,
       filter = _.contains("[A]")
+    )
+
+  @Test def `dont-show-when-writing-before-dollar` =
+    check(
+      """|object M:
+         |  val host = ""
+         |  val path = ""
+         |
+         |  println(s"host@@$path")}
+         |""".stripMargin,
+      ""
+    )
+
+  @Test def `show-when-writing-between-dollars` =
+    check(
+      """|object M:
+         |  val host = ""
+         |  val path = ""
+         |
+         |  println(s"$host@@$path")}
+         |""".stripMargin,
+      "host: String"
+    )
+
+  @Test def `show-when-writing-between-dollars-2` =
+    check(
+      """|object M:
+         |  val host = ""
+         |  val path = ""
+         |
+         |  println(s"$ho@@$path")}
+         |""".stripMargin,
+      "host: String"
     )

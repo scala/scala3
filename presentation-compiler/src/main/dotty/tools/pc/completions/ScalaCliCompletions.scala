@@ -26,7 +26,7 @@ class ScalaCliCompletions(
 
   def contribute(dependency: String) =
     val completions = coursierComplete.complete(dependency)
-    val (editStart, editEnd) = CoursierComplete.inferEditRange(pos.point, text)
+    val (editStart, editEnd) = CoursierComplete.inferEditRange(pos.end, text)
     val editRange = pos.withStart(editStart).withEnd(editEnd).toLsp
     completions
       .map(insertText =>
