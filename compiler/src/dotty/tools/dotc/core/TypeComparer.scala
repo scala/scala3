@@ -3410,29 +3410,38 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       // Actual matching logic
 
       val instances = Array.fill[Type](spec.captureCount)(NoType)
+      val noInstances = mutable.ListBuffer.empty[(TypeName, TypeBounds)]
 
       def rec(pattern: MatchTypeCasePattern, scrut: Type, variance: Int, scrutIsWidenedAbstract: Boolean): Boolean =
         pattern match
-          case MatchTypeCasePattern.Capture(num, isWildcard) =>
+          case MatchTypeCasePattern.Capture(num, /* isWildcard = */ true) =>
+            // instantiate the wildcard in a way that the subtype test always succeeds
+            instances(num) = variance match
+              case 1  => scrut.hiBound // actually important if we are not in a class type constructor
+              case -1 => scrut.loBound
+              case 0  => scrut
+            !instances(num).isError
+
+          case MatchTypeCasePattern.Capture(num, /* isWildcard = */ false) =>
+            def failNotSpecific(bounds: TypeBounds): TypeBounds =
+              noInstances += spec.origMatchCase.paramNames(num) -> bounds
+              bounds
+
             instances(num) = scrut match
               case scrut: TypeBounds =>
-                if isWildcard then
-                  // anything will do, as long as it conforms to the bounds for the subsequent `scrut <:< instantiatedPat` test
-                  scrut.hi
-                else if scrutIsWidenedAbstract then
-                  // always keep the TypeBounds so that we can report the correct NoInstances
-                  scrut
+                if scrutIsWidenedAbstract then
+                  failNotSpecific(scrut)
                 else
                   variance match
                     case 1  => scrut.hi
                     case -1 => scrut.lo
-                    case 0  => scrut
+                    case 0  => failNotSpecific(scrut)
               case _ =>
-                if !isWildcard && scrutIsWidenedAbstract && variance != 0 then
-                  // force a TypeBounds to report the correct NoInstances
+                if scrutIsWidenedAbstract && variance != 0 then
+                  // fail as not specific
                   // the Nothing and Any bounds are used so that they are not displayed; not for themselves in particular
-                  if variance > 0 then TypeBounds(defn.NothingType, scrut)
-                  else TypeBounds(scrut, defn.AnyType)
+                  if variance > 0 then failNotSpecific(TypeBounds(defn.NothingType, scrut))
+                  else failNotSpecific(TypeBounds(scrut, defn.AnyType))
                 else
                   scrut
             !instances(num).isError
@@ -3508,12 +3517,8 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
           MatchResult.Stuck
 
       if rec(spec.pattern, scrut, variance = 1, scrutIsWidenedAbstract = false) then
-        if instances.exists(_.isInstanceOf[TypeBounds]) then
-          MatchResult.NoInstance {
-            constrainedCaseLambda.paramNames.zip(instances).collect {
-              case (name, bounds: TypeBounds) => (name, bounds)
-            }
-          }
+        if noInstances.nonEmpty then
+          MatchResult.NoInstance(noInstances.toList)
         else
           val defn.MatchCase(instantiatedPat, reduced) =
             instantiateParamsSpec(instances, constrainedCaseLambda)(constrainedCaseLambda.resultType): @unchecked
