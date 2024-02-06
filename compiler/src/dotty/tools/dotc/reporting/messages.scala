@@ -2775,7 +2775,11 @@ extends SyntaxMsg(TargetNameOnTopLevelClassID):
 class NotClassType(tp: Type)(using Context)
 extends TypeMsg(NotClassTypeID), ShowMatchTrace(tp):
   def msg(using Context) = i"$tp is not a class type"
-  def explain(using Context) = ""
+  def explain(using Context) =
+    i"""A class type includes classes and traits in a specific order. Defining a class, even an anonymous class,
+        |requires specifying a linearization order for the traits it extends. For example, `A & B` is not a class type
+        |because it doesn't specify which trait takes precedence, A or B. For more information about class types, please see the Scala Language Specification.
+        |Class types also can't have refinements."""
 
 class NotConstant(suffix: String, tp: Type)(using Context)
 extends TypeMsg(NotConstantID), ShowMatchTrace(tp):
