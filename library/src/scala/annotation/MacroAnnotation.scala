@@ -25,7 +25,7 @@ trait MacroAnnotation extends StaticAnnotation:
    *  #### Restrictions
    *   - All definitions in the result must have the same owner. The owner can be recovered from `Symbol.spliceOwner`.
    *     - Special case: an annotated top-level `def`, `val`, `var`, `lazy val` can return a `class`/`object`
-definition that is owned by the package or package object.
+   *                     definition that is owned by the package or package object.
    *   - Can not return a `type`.
    *   - Annotated top-level `class`/`object` can not return top-level `def`, `val`, `var`, `lazy val`.
    *   - Can not see new definition in user written code.
