@@ -168,6 +168,13 @@ object CheckCaptures:
             if !seen.contains(t) then
               seen += t
               traverseChildren(t)
+
+              // Check the lower bound of path dependent types.
+              // See issue #19330.
+              val isTypeParam = t.prefix eq NoPrefix
+              t.info match
+                case TypeBounds(lo, hi) if !isTypeParam => traverse(lo)
+                case _ =>
           case AnnotatedType(_, ann) if ann.symbol == defn.UncheckedCapturesAnnot =>
             ()
           case t =>
