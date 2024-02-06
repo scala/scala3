@@ -5,6 +5,7 @@ import core.*
 import Flags.*
 import Contexts.*
 import Symbols.*
+import StdNames.*
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees.*
@@ -44,8 +45,12 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
     tree match {
       case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
         new TreeTraverser {
+
           def traverse(tree: Tree)(using Context): Unit =
             tree match
+              case tree: Select if PatternMatcher.isPatmatGenerated(tree) =>
+               // Purposefully skip any nodes introduced by the pattern matcher. We
+               // will inline them at a later stage.
               case tree: RefTree if !Inlines.inInlineMethod && StagingLevel.level == 0 =>
                 assert(!tree.symbol.isInlineMethod, tree.show)
               case _ =>

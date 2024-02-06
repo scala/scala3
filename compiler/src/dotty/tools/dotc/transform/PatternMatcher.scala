@@ -78,6 +78,11 @@ object PatternMatcher {
   def isPatmatGenerated(sym: Symbol)(using Context): Boolean =
     sym.is(Synthetic) && sym.name.is(PatMatStdBinderName)
 
+  def isPatmatGenerated(select: Select)(using Context): Boolean = select match {
+    case Select(sel, nme.isEmpty | nme.get) if isPatmatGenerated(sel.symbol) => true
+    case _ => false
+  }
+
   /** The pattern matching translator.
    *  Its general structure is a pipeline:
    *

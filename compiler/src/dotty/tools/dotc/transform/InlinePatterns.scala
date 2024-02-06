@@ -3,8 +3,10 @@ package dotc
 package transform
 
 import core.*
+import inlines.Inlines
 import MegaPhase.*
-import Symbols.*, Contexts.*, Types.*, Decorators.*
+import Symbols.*, Contexts.*, Types.*, Decorators.*, StdNames.*
+import Flags.*
 import NameOps.*
 import Names.*
 
@@ -36,7 +38,14 @@ class InlinePatterns extends MiniPhase:
   // by the pattern matcher but are still not visible in that group of phases.
   override def runsAfterGroupsOf: Set[String] = Set(PatternMatcher.name)
 
-  override def transformApply(app: Apply)(using Context): Tree =
+  override def transformSelect(sel: Select)(using Context): Tree =
+    if PatternMatcher.isPatmatGenerated(sel) && sel.symbol.is(Inline) then
+      val tree = Inlines.inlineCall(sel)
+      report.log(i"inline $sel -> $tree")
+      tree
+    else sel
+
+  override def transformApply(app: Apply)(using Context): Tree = {
     if app.symbol.name.isUnapplyName && !app.tpe.isInstanceOf[MethodicType] then
       app match
         case App(Select(fn, name), argss) =>
@@ -46,6 +55,7 @@ class InlinePatterns extends MiniPhase:
         case _ =>
           app
     else app
+  }
 
   private object App:
     def unapply(app: Tree): (Tree, List[List[Tree]]) =
