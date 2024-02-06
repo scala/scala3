@@ -1199,7 +1199,7 @@ class Namer { typer: Typer =>
                 target = target.etaExpand(target.typeParams)
               newSymbol(
                 cls, forwarderName,
-                Exported | Final,
+                MandatoryExportTypeFlags | (sym.flags & RetainedExportTypeFlags),
                 TypeAlias(target),
                 coord = span)
               // Note: This will always create unparameterzied aliases. So even if the original type is
@@ -1245,11 +1245,8 @@ class Namer { typer: Typer =>
                     then addPathMethodParams(pathMethod.info, mbr.info.widenExpr)
                     else mbr.info.ensureMethodic
                   (EmptyFlags, mbrInfo)
-              var flagMask = RetainedExportFlags
-              if sym.isTerm then flagMask |= HasDefaultParams | NoDefaultParams
-              var mbrFlags = Exported | Method | Final | maybeStable | sym.flags & flagMask
-              if sym.is(ExtensionMethod) || pathMethod.exists then
-                mbrFlags |= ExtensionMethod
+              var mbrFlags = MandatoryExportTermFlags | maybeStable | (sym.flags & RetainedExportTermFlags)
+              if pathMethod.exists then mbrFlags |= ExtensionMethod
               val forwarderName = checkNoConflict(alias, isPrivate = false, span)
               newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
 
