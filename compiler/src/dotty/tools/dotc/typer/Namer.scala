@@ -1733,8 +1733,14 @@ class Namer { typer: Typer =>
         val tpe = (paramss: @unchecked) match
           case TypeSymbols(tparams) :: TermSymbols(vparams) :: Nil => tpFun(tparams, vparams)
           case TermSymbols(vparams) :: Nil => tpFun(Nil, vparams)
+        val rhsCtx = (paramss: @unchecked) match
+          case TypeSymbols(tparams) :: TermSymbols(_) :: Nil =>
+            val rhsCtx = ctx.fresh.setFreshGADTBounds
+            rhsCtx.gadtState.addToConstraint(tparams)
+            rhsCtx
+          case TermSymbols(_) :: Nil => ctx
         if (isFullyDefined(tpe, ForceDegree.none)) tpe
-        else typedAheadExpr(mdef.rhs, tpe).tpe
+        else typedAheadExpr(mdef.rhs, tpe)(using rhsCtx).tpe
 
       case TypedSplice(tpt: TypeTree) if !isFullyDefined(tpt.tpe, ForceDegree.none) =>
         mdef match {
