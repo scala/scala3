@@ -246,7 +246,7 @@ class Completions(
            */
           if sym.isClass && sym.companionModule.exists then sym.companionModule.info
           else denot.info
-        val applyDenots = info.member(nme.apply).allSymbols.map(_.asSingleDenotation)
+        val applyDenots = info.member(nme.apply).allSymbols.map(_.asSeenFrom(info).asSingleDenotation)
         denot :: applyDenots
       else denot :: Nil
 
