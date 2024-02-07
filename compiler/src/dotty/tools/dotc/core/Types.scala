@@ -5043,7 +5043,7 @@ object Types extends TypeUtils {
         record("MatchType.reduce computed")
         if (myReduced != null) record("MatchType.reduce cache miss")
         myReduced =
-          trace(i"reduce match type $this $hashCode", matchTypes, show = true)(inMode(Mode.Type) {
+          trace(i"reduce match type $this $hashCode", matchTypes, show = true)(withMode(Mode.Type) {
             def matchCases(cmp: TrackingTypeComparer): Type =
               val saved = ctx.typerState.snapshot()
               try cmp.matchCases(scrutinee.normalized, cases.map(MatchTypeCaseSpec.analyze(_)))
