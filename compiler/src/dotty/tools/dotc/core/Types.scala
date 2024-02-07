@@ -5025,17 +5025,11 @@ object Types extends TypeUtils {
           tp.underlying
       }
 
-      def updateReductionContext(footprint: collection.Set[Type]): Unit =
-        reductionContext = util.HashMap()
-        for (tp <- footprint)
-          reductionContext(tp) = contextInfo(tp)
-        matchTypes.println(i"footprint for $this $hashCode: ${footprint.toList.map(x => (x, contextInfo(x)))}%, %")
-
       def isUpToDate: Boolean =
         reductionContext.keysIterator.forall: tp =>
           reductionContext(tp) `eq` contextInfo(tp)
 
-      def computeFootprint(): Unit =
+      def setReductionContext(): Unit =
         new TypeTraverser:
           var footprint: Set[Type] = Set()
           var deep: Boolean = true
@@ -5067,6 +5061,7 @@ object Types extends TypeUtils {
           for tp <- footprint do
             reductionContext(tp) = contextInfo(tp)
           matchTypes.println(i"footprint for $thisMatchType $hashCode: ${footprint.toList.map(x => (x, contextInfo(x)))}%, %")
+      end setReductionContext
 
       record("MatchType.reduce called")
       if !Config.cacheMatchReduced
@@ -5077,21 +5072,21 @@ object Types extends TypeUtils {
         record("MatchType.reduce computed")
         if (myReduced != null) record("MatchType.reduce cache miss")
         myReduced =
-          trace(i"reduce match type $this $hashCode", matchTypes, show = true)(withMode(Mode.Type) {
-            computeFootprint()
-            def matchCases(cmp: TrackingTypeComparer): Type =
-              val saved = ctx.typerState.snapshot()
-              try cmp.matchCases(scrutinee.normalized, cases.map(MatchTypeCaseSpec.analyze(_)))
-              catch case ex: Throwable =>
-                handleRecursive("reduce type ", i"$scrutinee match ...", ex)
-              finally
-                //updateReductionContext(cmp.footprint)
-                ctx.typerState.resetTo(saved)
-                  // this drops caseLambdas in constraint and undoes any typevar
-                  // instantiations during matchtype reduction
+          trace(i"reduce match type $this $hashCode", matchTypes, show = true):
+            withMode(Mode.Type):
+              setReductionContext()
+              def matchCases(cmp: MatchReducer): Type =
+                val saved = ctx.typerState.snapshot()
+                try
+                  cmp.matchCases(scrutinee.normalized, cases.map(MatchTypeCaseSpec.analyze(_)))
+                catch case ex: Throwable =>
+                  handleRecursive("reduce type ", i"$scrutinee match ...", ex)
+                finally
+                  ctx.typerState.resetTo(saved)
+                    // this drops caseLambdas in constraint and undoes any typevar
+                    // instantiations during matchtype reduction
+              TypeComparer.reduceMatchWith(matchCases)
 
-            TypeComparer.tracked(matchCases)
-          })
       //else println(i"no change for $this $hashCode / $myReduced")
       myReduced.nn
     }
