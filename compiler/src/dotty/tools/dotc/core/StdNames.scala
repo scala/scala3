@@ -812,6 +812,9 @@ object StdNames {
       case _  => termName("x$" + i)
     }
 
+    def isProductAccessorName(name: Name): Boolean =
+      name.startsWith("_") && name.toString.drop(1).toIntOption.isDefined
+
     def productAccessorName(j: Int): TermName = (j: @switch) match {
       case 1  => nme._1
       case 2  => nme._2

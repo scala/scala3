@@ -453,8 +453,7 @@ object Signatures {
    * Filter returning only members starting with underscore followed with number
    */
   private object underscoreMembersFilter extends NameFilter {
-    def apply(pre: Type, name: Name)(using Context): Boolean =
-      name.startsWith("_") && name.toString.drop(1).toIntOption.isDefined
+    def apply(pre: Type, name: Name)(using Context): Boolean = nme.isProductAccessorName(name)
     def isStable = true
   }
 

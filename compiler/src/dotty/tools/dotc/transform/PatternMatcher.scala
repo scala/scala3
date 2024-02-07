@@ -80,6 +80,7 @@ object PatternMatcher {
 
   def isPatmatGenerated(select: Select)(using Context): Boolean = select match {
     case Select(sel, nme.isEmpty | nme.get) if isPatmatGenerated(sel.symbol) => true
+    case Select(sel, name) if isPatmatGenerated(sel.symbol) && nme.isProductAccessorName(name) => true
     case _ => false
   }
 
