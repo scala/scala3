@@ -26,6 +26,8 @@ class CompilationTests {
   import CompilationTests._
   import CompilationTest.aggregateTests
 
+  def `isJava16+`: Boolean = scala.util.Properties.isJavaAtLeast("16")
+
   // Positive tests ------------------------------------------------------------
 
   @Test def pos: Unit = {
@@ -50,7 +52,7 @@ class CompilationTests {
       else Nil
     )
 
-    if scala.util.Properties.isJavaAtLeast("16") then
+    if `isJava16+` then
       tests ::= compileFilesInDir("tests/pos-java16+", defaultOptions.and("-Ysafe-init"))
 
     aggregateTests(tests*).checkCompile()
@@ -155,13 +157,18 @@ class CompilationTests {
 
   @Test def runAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runAll")
-    aggregateTests(
+    var tests = List(
       compileFilesInDir("tests/run", defaultOptions.and("-Ysafe-init")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/run-custom-args/captures", allowDeepSubtypes.and("-language:experimental.captureChecking")),
       // Run tests for legacy lazy vals.
       compileFilesInDir("tests/run", defaultOptions.and("-Ysafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.runLazyValsAllowlist)),
-    ).checkRuns()
+    )
+
+    if `isJava16+` then
+      tests ::= compileFilesInDir("tests/run-java16+", defaultOptions.and("-Ysafe-init"))
+
+    aggregateTests(tests*).checkRuns()
   }
 
   // Generic java signatures tests ---------------------------------------------
