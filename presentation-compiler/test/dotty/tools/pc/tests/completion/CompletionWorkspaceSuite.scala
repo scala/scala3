@@ -790,7 +790,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|fooBar: String
          |fooBar: List[Int]
-         |fooBar(n: Int): A
+         |fooBar(n: Int): Int
          |""".stripMargin,
     )
 
