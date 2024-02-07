@@ -3054,7 +3054,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   end provablyDisjointTypeArgs
 
   protected def explainingTypeComparer(short: Boolean) = ExplainingTypeComparer(comparerContext, short)
-  protected def trackingTypeComparer = TrackingTypeComparer(comparerContext)
+  protected def matchReducer = MatchReducer(comparerContext)
 
   private def inSubComparer[T, Cmp <: TypeComparer](comparer: Cmp)(op: Cmp => T): T =
     val saved = myInstance
@@ -3068,8 +3068,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     inSubComparer(cmp)(op)
     cmp.lastTrace(header)
 
-  def tracked[T](op: TrackingTypeComparer => T)(using Context): T =
-    inSubComparer(trackingTypeComparer)(op)
+  def reduceMatchWith[T](op: MatchReducer => T)(using Context): T =
+    inSubComparer(matchReducer)(op)
 }
 
 object TypeComparer {
@@ -3236,14 +3236,14 @@ object TypeComparer {
   def explained[T](op: ExplainingTypeComparer => T, header: String = "Subtype trace:", short: Boolean = false)(using Context): String =
     comparing(_.explained(op, header, short))
 
-  def tracked[T](op: TrackingTypeComparer => T)(using Context): T =
-    comparing(_.tracked(op))
+  def reduceMatchWith[T](op: MatchReducer => T)(using Context): T =
+    comparing(_.reduceMatchWith(op))
 
   def subCaptures(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult =
     comparing(_.subCaptures(refs1, refs2, frozen))
 }
 
-object TrackingTypeComparer:
+object MatchReducer:
   import printing.*, Texts.*
   enum MatchResult extends Showable:
     case Reduced(tp: Type)
@@ -3259,38 +3259,16 @@ object TrackingTypeComparer:
       case Stuck              => "Stuck"
       case NoInstance(fails)  => "NoInstance(" ~ Text(fails.map(p.toText(_) ~ p.toText(_)), ", ") ~ ")"
 
-class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
-  import TrackingTypeComparer.*
+/** A type comparer for reducing match types.
+ *  TODO: Not sure this needs to be a type comparer. Can we make it a
+ *  separate class?
+ */
+class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
+  import MatchReducer.*
 
   init(initctx)
 
-  override def trackingTypeComparer = this
-
-  val footprint: mutable.Set[Type] = mutable.Set[Type]()
-
-  override def bounds(param: TypeParamRef)(using Context): TypeBounds = {
-    if (param.binder `ne` caseLambda) footprint += param
-    super.bounds(param)
-  }
-
-  override def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(using Context): Boolean = {
-    if (param.binder `ne` caseLambda) footprint += param
-    super.addOneBound(param, bound, isUpper)
-  }
-
-  override def gadtBounds(sym: Symbol)(using Context): TypeBounds | Null = {
-    if (sym.exists) footprint += sym.typeRef
-    super.gadtBounds(sym)
-  }
-
-  override def gadtAddBound(sym: Symbol, b: Type, isUpper: Boolean): Boolean =
-    if (sym.exists) footprint += sym.typeRef
-    super.gadtAddBound(sym, b, isUpper)
-
-  override def typeVarInstance(tvar: TypeVar)(using Context): Type = {
-    footprint += tvar
-    super.typeVarInstance(tvar)
-  }
+  override def matchReducer = this
 
   def matchCases(scrut: Type, cases: List[MatchTypeCaseSpec])(using Context): Type = {
     // a reference for the type parameters poisoned during matching
