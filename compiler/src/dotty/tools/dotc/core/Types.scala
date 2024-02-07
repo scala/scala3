@@ -5009,6 +5009,8 @@ object Types extends TypeUtils {
         case ex: Throwable =>
           handleRecursive("normalizing", s"${scrutinee.show} match ..." , ex)
 
+    private def thisMatchType = this
+
     def reduced(using Context): Type = {
 
       def contextInfo(tp: Type): Type = tp match {
@@ -5027,12 +5029,44 @@ object Types extends TypeUtils {
         reductionContext = util.HashMap()
         for (tp <- footprint)
           reductionContext(tp) = contextInfo(tp)
-        typr.println(i"footprint for $this $hashCode: ${footprint.toList.map(x => (x, contextInfo(x)))}%, %")
+        matchTypes.println(i"footprint for $this $hashCode: ${footprint.toList.map(x => (x, contextInfo(x)))}%, %")
 
       def isUpToDate: Boolean =
-        reductionContext.keysIterator.forall { tp =>
+        reductionContext.keysIterator.forall: tp =>
           reductionContext(tp) `eq` contextInfo(tp)
-        }
+
+      def computeFootprint(): Unit =
+        new TypeTraverser:
+          var footprint: Set[Type] = Set()
+          var deep: Boolean = true
+          val seen = util.HashSet[Type]()
+          def traverse(tp: Type) =
+            if !seen.contains(tp) then
+              seen += tp
+              tp match
+                case tp: NamedType =>
+                  if tp.symbol.is(TypeParam) then footprint += tp
+                  traverseChildren(tp)
+                case _: AppliedType | _: RefinedType =>
+                  if deep then traverseChildren(tp)
+                case TypeBounds(lo, hi) =>
+                  traverse(hi)
+                case tp: TypeVar =>
+                  footprint += tp
+                  traverse(tp.underlying)
+                case tp: TypeParamRef =>
+                  footprint += tp
+                case _ =>
+                  traverseChildren(tp)
+          end traverse
+
+          traverse(scrutinee)
+          deep = false
+          cases.foreach(traverse)
+          reductionContext = util.HashMap()
+          for tp <- footprint do
+            reductionContext(tp) = contextInfo(tp)
+          matchTypes.println(i"footprint for $thisMatchType $hashCode: ${footprint.toList.map(x => (x, contextInfo(x)))}%, %")
 
       record("MatchType.reduce called")
       if !Config.cacheMatchReduced
@@ -5044,19 +5078,21 @@ object Types extends TypeUtils {
         if (myReduced != null) record("MatchType.reduce cache miss")
         myReduced =
           trace(i"reduce match type $this $hashCode", matchTypes, show = true)(withMode(Mode.Type) {
+            computeFootprint()
             def matchCases(cmp: TrackingTypeComparer): Type =
               val saved = ctx.typerState.snapshot()
               try cmp.matchCases(scrutinee.normalized, cases.map(MatchTypeCaseSpec.analyze(_)))
               catch case ex: Throwable =>
                 handleRecursive("reduce type ", i"$scrutinee match ...", ex)
               finally
-                updateReductionContext(cmp.footprint)
+                //updateReductionContext(cmp.footprint)
                 ctx.typerState.resetTo(saved)
                   // this drops caseLambdas in constraint and undoes any typevar
                   // instantiations during matchtype reduction
 
             TypeComparer.tracked(matchCases)
           })
+      //else println(i"no change for $this $hashCode / $myReduced")
       myReduced.nn
     }
 
