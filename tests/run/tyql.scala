@@ -1,9 +1,11 @@
 //> using options -source future
+
 // !!! Needs to be compiled currently with -Ycheck:all since that avoids problem
 // with illegal opaque types in match types (issue #19434).
 
 import language.experimental.modularity
 import language.experimental.namedTuples
+import NamedTuple.{NamedTuple, AnyNamedTuple}
 
 /* This is a demonstrator that shows how to map regular for expressions to
  * internal data that can be optimized by a query engine. It needs NamedTuples
@@ -51,7 +53,7 @@ object Expr:
 
   // Note: All field names of constructors in the query language are prefixed with `$`
   // so that we don't accidentally pick a field name of a constructor class where we want
-  // a name of the domain model instead.
+  // a name in the domain model instead.
 
   // Some sample constructors for Exprs
   case class Gt($x: Expr.Of[Int], $y: Expr.Of[Int]) extends Expr.Of[Boolean]
@@ -63,6 +65,18 @@ object Expr:
   // Todo: Make it strongly typed like the other cases, along the lines
   // of the commented out version below.
   case class Select[A]($x: Expr.Of[A], $name: String) extends Expr
+
+  case class Single[S <: String, A]($x: Expr.Of[A])
+  extends Expr.Of[NamedTuple[S *: EmptyTuple, A *: EmptyTuple]]
+
+  case class Concat[A <: AnyNamedTuple, B <: AnyNamedTuple]($x: Expr.Of[A], $y: Expr.Of[B])
+  extends Expr.Of[NamedTuple.Concat[A, B]]
+
+  case class Join[A <: AnyNamedTuple](a: A)
+  extends Expr.Of[NamedTuple.Map[A, StripExpr]]
+
+  type StripExpr[E] = E match
+    case Expr.Of[b] => b
 
   // Also weakly typed in the arguents since these two classes model universal equality */
   case class Eq($x: Expr, $y: Expr) extends Expr.Of[Boolean]
@@ -88,6 +102,17 @@ object Expr:
   case class Fun[A, B](param: Ref[A], f: B)
 
   type Pred[A] = Fun[A, Expr.Of[Boolean]]
+
+  /** Explicit conversion from
+   *      (name_1: Expr.Of[T_1], ..., name_n: Expr.Of[T_n])
+   *  to
+   *      Expr.Of[(name_1: T_1, ..., name_n: T_n)]
+   */
+  extension [A <: AnyNamedTuple](x: A) def toRow: Join[A] = Join(x)
+
+  /** Same as _.toRow, as an implicit conversion */
+  given [A <: AnyNamedTuple] => Conversion[A, Expr.Join[A]] = Expr.Join(_)
+
 end Expr
 
 /** The type of database queries. So far, we have queries
@@ -131,7 +156,8 @@ type Person = (name: String, age: Int, addr: Address)
 
 @main def Test =
 
-  val cities: Query[City] = Table[City]("city")
+  val cities = Table[City]("cities")
+
   val q1 = cities.map: c =>
     c.zipCode
   val q2 = cities.withFilter: city =>
@@ -153,10 +179,34 @@ type Person = (name: String, age: Int, addr: Address)
     yield
       city
 
+  val addresses = Table[Address]("addresses")
+  val q5 =
+    for
+      city <- cities
+      addr <- addresses
+      if addr.street == city.name
+    yield
+      (name = city.name, num = addr.number)
+
+  val q6 =
+    cities.map: city =>
+      (name = city.name, zipCode = city.zipCode)
+
+  def run[T](q: Query[T]): Iterator[T] = ???
+
+  def x1: Iterator[Int] = run(q1)
+  def x2: Iterator[String] = run(q2)
+  def x3: Iterator[String] = run(q3)
+  def x4: Iterator[City] = run(q4)
+  def x5: Iterator[(name: String, num: Int)] = run(q5)
+  def x6: Iterator[(name: String, zipCode: Int)] = run(q6)
+
   println(q1)
   println(q2)
   println(q3)
   println(q4)
+  println(q5)
+  println(q6)
 
 /* The following is not needed currently
 
