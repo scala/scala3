@@ -141,6 +141,11 @@ checkfiles with the test outputs.
 $ sbt
 > testCompilation --update-checkfiles
 ```
+Or for ScalaJS
+```bash
+$ sbt
+> sjsCompilerTests/testOnly -- -Ddotty.tests.updateCheckfiles=TRUE
+```
 
 Use `--help` to see all the options
 ```bash
