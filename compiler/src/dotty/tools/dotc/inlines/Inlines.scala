@@ -5,6 +5,7 @@ package inlines
 import ast.*, core.*
 import Flags.*, Symbols.*, Types.*, Decorators.*, Constants.*, Contexts.*
 import StdNames.{tpnme, nme}
+import NameOps.*
 import typer.*
 import NameKinds.BodyRetainerName
 import SymDenotations.SymDenotation
@@ -54,6 +55,16 @@ object Inlines:
   def needsInlining(tree: Tree)(using Context): Boolean = tree match {
     case Block(_, expr) => needsInlining(expr)
     case _ =>
+      def isUnapplyExpressionWithDummy: Boolean =
+        // The first step of typing an `unapply` consists in typing the call
+        // with a dummy argument (see Applications.typedUnApply). We delay the
+        // inlining of this call.
+        def rec(tree: Tree): Boolean = tree match
+          case Apply(_, ProtoTypes.dummyTreeOfType(_) :: Nil) => true
+          case Apply(fn, _) => rec(fn)
+          case _ => false
+        tree.symbol.name.isUnapplyName && rec(tree)
+
       isInlineable(tree.symbol)
       && !tree.tpe.widenTermRefExpr.isInstanceOf[MethodOrPoly]
       && StagingLevel.level == 0
@@ -64,6 +75,7 @@ object Inlines:
       && !ctx.typer.hasInliningErrors
       && !ctx.base.stopInlining
       && !ctx.mode.is(Mode.NoInline)
+      && !isUnapplyExpressionWithDummy
   }
 
   private def needsTransparentInlining(tree: Tree)(using Context): Boolean =
