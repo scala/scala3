@@ -54,9 +54,20 @@ object Formatting {
     object Show extends ShowImplicits1:
       inline def apply[A](using inline z: Show[A]): Show[A] = z
 
+      given [X: Show]: Show[Option[X]] with
+        def show(x: Option[X]) = new CtxShow:
+          def run(using Context) = x.map(show1)
+      end given
+
       given [X: Show]: Show[Seq[X]] with
         def show(x: Seq[X]) = new CtxShow:
           def run(using Context) = x.map(show1)
+
+      given [K: Show, V: Show]: Show[Map[K, V]] with
+        def show(x: Map[K, V]) = new CtxShow:
+          def run(using Context) =
+            x.map((k, v) => s"${show1(k)} => ${show1(v)}")
+      end given
 
       given [H: Show, T <: Tuple: Show]: Show[H *: T] with
         def show(x: H *: T) = new CtxShow:
