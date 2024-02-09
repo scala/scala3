@@ -124,6 +124,7 @@ object ValidationScript:
 
   def tmpScalaCliScript(command: String, args: Seq[String]): File = tmpScript(s"""
     |#!/usr/bin/env bash
+    |export JAVA_HOME=${sys.props("java.home")}
     |scala-cli ${command} -S "$$1" --server=false ${args.mkString(" ")}
     |""".stripMargin
   )
@@ -242,6 +243,7 @@ class CommitBisect(validationScript: File, shouldFail: Boolean, bootstrapped: Bo
     val bisectRunScript = raw"""
       |scalaVersion=$$(sbt "print ${scala3CompilerProject}/version" | tail -n1)
       |rm -rf out
+      |export JAVA_HOME=${sys.props("java.home")}
       |sbt "clean; set every doc := new File(\"unused\"); set scaladoc/Compile/resourceGenerators := (\`${scala3Project}\`/Compile/resourceGenerators).value; ${scala3Project}/publishLocal"
       |${validationCommandStatusModifier}${validationScript.getAbsolutePath} "$$scalaVersion"
     """.stripMargin
