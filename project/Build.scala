@@ -2360,6 +2360,7 @@ object ScaladocConfigs {
       .add(DocumentSyntheticTypes(true))
       .add(SnippetCompiler(List(
         s"$dottyLibRoot/src/scala=compile",
+        s"$dottyLibRoot/src/scala/quoted=compile",
         s"$dottyLibRoot/src/scala/compiletime=compile",
         s"$dottyLibRoot/src/scala/util=compile",
         s"$dottyLibRoot/src/scala/util/control=compile",
@@ -2376,14 +2377,6 @@ object ScaladocConfigs {
     Scala3.value
       .add(defaultSourceLinks(version + "-bin-SNAPSHOT-nonbootstrapped", version).value)
       .add(ProjectVersion(version))
-      .add(SnippetCompiler(
-        List(
-          s"$dottyLibrarySrc/scala/quoted=compile",
-          s"$dottyLibrarySrc/scala/compiletime=compile",
-          s"$dottyLibrarySrc/scala/util=compile",
-          s"$dottyLibrarySrc/scala/util/control=compile"
-        )
-      ))
       .add(CommentSyntax(List(
         s"$dottyLibrarySrc=markdown",
         s"$scalaLibrarySrc=wiki",
