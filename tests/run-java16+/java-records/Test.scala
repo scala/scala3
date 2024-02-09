@@ -12,3 +12,10 @@ object Test:
 
     val R1(i) = r1
     assert(i == 42)
+
+    val r2 = R2("foo", 9)
+    val R2(s, _) = r2
+    assert(s == "foo")
+
+    r2 match
+      case R2(_, i) => assert(i == 9)
