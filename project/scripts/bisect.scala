@@ -244,8 +244,9 @@ class CommitBisect(validationScript: File, shouldFail: Boolean, bootstrapped: Bo
       |scalaVersion=$$(sbt "print ${scala3CompilerProject}/version" | tail -n1)
       |rm -rf out
       |export JAVA_HOME=${sys.props("java.home")}
-      |sbt "clean; set every doc := new File(\"unused\"); set scaladoc/Compile/resourceGenerators := (\`${scala3Project}\`/Compile/resourceGenerators).value; ${scala3Project}/publishLocal"
-      |${validationCommandStatusModifier}${validationScript.getAbsolutePath} "$$scalaVersion"
+      |(sbt "clean; set every doc := new File(\"unused\"); set scaladoc/Compile/resourceGenerators := (\`${scala3Project}\`/Compile/resourceGenerators).value; ${scala3Project}/publishLocal" \
+      |  || (echo "Failed to build compiler, skip $$scalaVersion"; git bisect skip) \
+      |) && ${validationCommandStatusModifier}${validationScript.getAbsolutePath} "$$scalaVersion"
     """.stripMargin
     "git bisect start".!
     s"git bisect bad $fistBadHash".!
