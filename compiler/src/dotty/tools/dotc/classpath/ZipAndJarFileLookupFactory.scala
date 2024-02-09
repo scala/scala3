@@ -41,22 +41,23 @@ sealed trait ZipAndJarFileLookupFactory {
  */
 object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
   private case class ZipArchiveClassPath(zipFile: File, override val release: Option[String])
-    extends ZipArchiveFileLookup[ClassFileEntryImpl]
+    extends ZipArchiveFileLookup[BinaryFileEntry]
     with NoSourcePaths {
 
     override def findClassFile(className: String): Option[AbstractFile] =
       findClass(className).map(_.file)
 
     // This method is performance sensitive as it is used by SBT's ExtractDependencies phase.
-    override def findClass(className: String): Option[ClassFileEntryImpl] = {
+    override def findClass(className: String): Option[BinaryFileEntry] = {
       val (pkg, simpleClassName) = PackageNameUtils.separatePkgAndClassNames(className)
       val binaries = files(PackageName(pkg), simpleClassName + ".tasty", simpleClassName + ".class")
       binaries.find(_.file.isTasty).orElse(binaries.find(_.file.isClass))
     }
 
-    override private[dotty] def classes(inPackage: PackageName): Seq[ClassFileEntry] = files(inPackage)
+    override private[dotty] def classes(inPackage: PackageName): Seq[BinaryFileEntry] = files(inPackage)
 
-    override protected def createFileEntry(file: FileZipArchive#Entry): ClassFileEntryImpl = ClassFileEntryImpl(file)
+    override protected def createFileEntry(file: FileZipArchive#Entry): BinaryFileEntry = BinaryFileEntry(file)
+
     override protected def isRequiredFileType(file: AbstractFile): Boolean =
       file.isTasty || (file.isClass && file.classToTasty.isEmpty)
   }
@@ -128,10 +129,10 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
         subpackages.map(packageFile => PackageEntryImpl(inPackage.entryName(packageFile.name)))
     }
 
-    override private[dotty] def classes(inPackage: PackageName): Seq[ClassFileEntry] = cachedPackages.get(inPackage.dottedString) match {
+    override private[dotty] def classes(inPackage: PackageName): Seq[BinaryFileEntry] = cachedPackages.get(inPackage.dottedString) match {
       case None => Seq.empty
       case Some(PackageFileInfo(pkg, _)) =>
-        (for (file <- pkg if file.isClass) yield ClassFileEntryImpl(file)).toSeq
+        (for (file <- pkg if file.isClass) yield ClassFileEntry(file)).toSeq
     }
 
     override private[dotty] def hasPackage(pkg: PackageName) = cachedPackages.contains(pkg.dottedString)
@@ -162,7 +163,7 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
  */
 object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
   private case class ZipArchiveSourcePath(zipFile: File)
-    extends ZipArchiveFileLookup[SourceFileEntryImpl]
+    extends ZipArchiveFileLookup[SourceFileEntry]
     with NoClassPaths {
 
     def release: Option[String] = None
@@ -171,7 +172,7 @@ object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
 
     override private[dotty] def sources(inPackage: PackageName): Seq[SourceFileEntry] = files(inPackage)
 
-    override protected def createFileEntry(file: FileZipArchive#Entry): SourceFileEntryImpl = SourceFileEntryImpl(file)
+    override protected def createFileEntry(file: FileZipArchive#Entry): SourceFileEntry = SourceFileEntry(file)
     override protected def isRequiredFileType(file: AbstractFile): Boolean = file.isScalaOrJavaSource
   }
 

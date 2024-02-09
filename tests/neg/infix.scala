@@ -1,4 +1,4 @@
-//> using options -source future -deprecation -Xfatal-warnings
+//> using options -source future -deprecation
 
 // Compile with -strict -Xfatal-warnings -deprecation
 class C:

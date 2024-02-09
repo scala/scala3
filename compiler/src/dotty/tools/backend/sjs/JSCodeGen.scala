@@ -643,7 +643,7 @@ class JSCodeGen()(using genCtx: Context) {
         kind,
         None,
         superClass,
-        genClassInterfaces(sym, forJSClass = false),
+        genClassInterfaces(sym, forJSClass = true),
         None,
         jsNativeLoadSpec,
         Nil,

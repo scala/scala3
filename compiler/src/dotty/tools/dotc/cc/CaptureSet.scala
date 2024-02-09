@@ -145,15 +145,16 @@ sealed abstract class CaptureSet extends Showable:
 
   /** x subsumes x
    *   this subsumes this.f
-   *   x subsumes y  ==>  x* subsumes y
-   *   x subsumes y  ==>  x* subsumes y*
+   *   x subsumes y  ==>  x* subsumes y, x subsumes y?
+   *   x subsumes y  ==>  x* subsumes y*, x? subsumes y?
    */
   extension (x: CaptureRef)
      private def subsumes(y: CaptureRef)(using Context): Boolean =
       (x eq y)
       || x.isRootCapability
       || y.match
-          case y: TermRef => !y.isReach && (y.prefix eq x)
+          case y: TermRef => y.prefix eq x
+          case MaybeCapability(y1) => x.stripMaybe.subsumes(y1)
           case _ => false
       || x.match
           case ReachCapability(x1) => x1.subsumes(y.stripReach)
@@ -312,6 +313,8 @@ sealed abstract class CaptureSet extends Showable:
   def substParams(tl: BindingType, to: List[Type])(using Context) =
     map(Substituters.SubstParamsMap(tl, to))
 
+  def maybe(using Context): CaptureSet = map(MaybeMap())
+
   /** Invoke handler if this set has (or later aquires) the root capability `cap` */
   def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
     if isUniversal then handler()
@@ -445,6 +448,8 @@ object CaptureSet:
     def isConst = isSolved
     def isAlwaysEmpty = false
 
+    def isMaybeSet = false // overridden in BiMapped
+
     /** A handler to be invoked if the root reference `cap` is added to this set */
     var rootAddedHandler: () => Context ?=> Unit = () => ()
 
@@ -490,9 +495,10 @@ object CaptureSet:
         if elem.isRootCapability then
           rootAddedHandler()
         newElemAddedHandler(elem)
+        val normElem = if isMaybeSet then elem else elem.stripMaybe
         // assert(id != 5 || elems.size != 3, this)
         val res = (CompareResult.OK /: deps): (r, dep) =>
-          r.andAlso(dep.tryInclude(elem, this))
+          r.andAlso(dep.tryInclude(normElem, this))
         res.orElse:
           elems -= elem
           res.addToTrace(this)
@@ -507,6 +513,8 @@ object CaptureSet:
         case elem: ThisType if levelLimit.exists =>
           levelLimit.isContainedIn(elem.cls.levelOwner)
         case ReachCapability(elem1) =>
+          levelOK(elem1)
+        case MaybeCapability(elem1) =>
           levelOK(elem1)
         case _ =>
           true
@@ -760,6 +768,7 @@ object CaptureSet:
       if source eq origin then supApprox.map(bimap.inverse)
       else source.upperApprox(this).map(bimap) ** supApprox
 
+    override def isMaybeSet: Boolean = bimap.isInstanceOf[MaybeMap]
     override def toString = s"BiMapped$id($source, elems = $elems)"
   end BiMapped
 
@@ -840,8 +849,7 @@ object CaptureSet:
       upper.isAlwaysEmpty || upper.isConst && upper.elems.size == 1 && upper.elems.contains(r1)
     if variance > 0 || isExact then upper
     else if variance < 0 then CaptureSet.empty
-    else if ctx.mode.is(Mode.Printing) then upper
-    else assert(false, i"trying to add $upper from $r via ${tm.getClass} in a non-variant setting")
+    else upper.maybe
 
   /** Apply `f` to each element in `xs`, and join result sets with `++` */
   def mapRefs(xs: Refs, f: CaptureRef => CaptureSet)(using Context): CaptureSet =
@@ -979,6 +987,26 @@ object CaptureSet:
 
   /** The current VarState, as passed by the implicit context */
   def varState(using state: VarState): VarState = state
+
+  /** Maps `x` to `x?` */
+  private class MaybeMap(using Context) extends BiTypeMap:
+
+    def apply(t: Type) = t match
+      case t: CaptureRef if t.isTrackableRef => t.maybe
+      case _ => mapOver(t)
+
+    override def toString = "Maybe"
+
+    lazy val inverse = new BiTypeMap:
+
+      def apply(t: Type) = t match
+        case t: CaptureRef if t.isMaybe => t.stripMaybe
+        case t => mapOver(t)
+
+      def inverse = MaybeMap.this
+
+      override def toString = "Maybe.inverse"
+  end MaybeMap
 
   /* Not needed:
   def ofClass(cinfo: ClassInfo, argTypes: List[Type])(using Context): CaptureSet =

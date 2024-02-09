@@ -879,6 +879,10 @@ class Namer { typer: Typer =>
      *  with a user-defined method in the same scope with a matching type.
      */
     private def invalidateIfClashingSynthetic(denot: SymDenotation): Unit =
+
+      def isJavaRecord(owner: Symbol) =
+        owner.is(JavaDefined) && owner.derivesFrom(defn.JavaRecordClass)
+
       def isCaseClassOrCompanion(owner: Symbol) =
         owner.isClass && {
           if (owner.is(Module)) owner.linkedClass.is(CaseClass)
@@ -902,9 +906,9 @@ class Namer { typer: Typer =>
             && (definesMember || inheritsConcreteMember)
           )
           ||
-          // remove synthetic constructor of a java Record if it clashes with a non-synthetic constructor
-          (denot.isConstructor
-            && denot.owner.is(JavaDefined) && denot.owner.derivesFrom(defn.JavaRecordClass)
+          // remove synthetic constructor or method of a java Record if it clashes with a non-synthetic constructor
+          (isJavaRecord(denot.owner)
+            && denot.is(Method)
             && denot.owner.unforcedDecls.lookupAll(denot.name).exists(c => c != denot.symbol && c.info.matches(denot.info))
           )
         )
@@ -1199,7 +1203,7 @@ class Namer { typer: Typer =>
                 target = target.etaExpand(target.typeParams)
               newSymbol(
                 cls, forwarderName,
-                Exported | Final,
+                MandatoryExportTypeFlags | (sym.flags & RetainedExportTypeFlags),
                 TypeAlias(target),
                 coord = span)
               // Note: This will always create unparameterzied aliases. So even if the original type is
@@ -1245,11 +1249,8 @@ class Namer { typer: Typer =>
                     then addPathMethodParams(pathMethod.info, mbr.info.widenExpr)
                     else mbr.info.ensureMethodic
                   (EmptyFlags, mbrInfo)
-              var flagMask = RetainedExportFlags
-              if sym.isTerm then flagMask |= HasDefaultParams | NoDefaultParams
-              var mbrFlags = Exported | Method | Final | maybeStable | sym.flags & flagMask
-              if sym.is(ExtensionMethod) || pathMethod.exists then
-                mbrFlags |= ExtensionMethod
+              var mbrFlags = MandatoryExportTermFlags | maybeStable | (sym.flags & RetainedExportTermFlags)
+              if pathMethod.exists then mbrFlags |= ExtensionMethod
               val forwarderName = checkNoConflict(alias, isPrivate = false, span)
               newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
 

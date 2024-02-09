@@ -452,10 +452,10 @@ The lambda arguments will replace the variables that might have been extruded.
 
 ```scala
 '{ ((x: Int) => x + 1).apply(2) } match
-  case '{ ((y: Int) => $f(y)).apply($z: Int) } =>
+  case '{ ((y: Int) => $f(y): Int).apply($z: Int) } =>
     // f may contain references to `x` (replaced by `$y`)
-    // f = (y: Expr[Int]) => '{ $y + 1 }
-    f(z) // generates '{ 2 + 1 }
+    // f = '{ (y: Int) => $y + 1 }
+    Expr.betaReduce('{ $f($z)}) // generates '{ 2 + 1 }
 ```
 
 

@@ -8,5 +8,6 @@ object B {
   "".foo
 
   val x: Int = ""  // ok
-  val y: String = 1 // error: feature
+  val y: String = 1 // warn: feature
 }
+// nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)

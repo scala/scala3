@@ -118,13 +118,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  otherwise specified).
    */
   def Closure(meth: TermSymbol, rhsFn: List[List[Tree]] => Tree, targs: List[Tree] = Nil, targetType: Type = NoType)(using Context): Block = {
-    val targetTpt = if (targetType.exists) TypeTree(targetType) else EmptyTree
+    val targetTpt = if (targetType.exists) TypeTree(targetType, inferred = true) else EmptyTree
     val call =
       if (targs.isEmpty) Ident(TermRef(NoPrefix, meth))
       else TypeApply(Ident(TermRef(NoPrefix, meth)), targs)
-    Block(
-      DefDef(meth, rhsFn) :: Nil,
-      Closure(Nil, call, targetTpt))
+    var mdef0 = DefDef(meth, rhsFn)
+    val mdef = cpy.DefDef(mdef0)(tpt = TypeTree(mdef0.tpt.tpe, inferred = true))
+    Block(mdef :: Nil, Closure(Nil, call, targetTpt))
   }
 
   /** A closure whose anonymous function has the given method type */
@@ -1141,6 +1141,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       foreachSubTree { tree => if (f(tree)) buf += tree }
       buf.toList
     }
+
+    def collectSubTrees[A](f: PartialFunction[Tree, A])(using Context): List[A] =
+      val buf = mutable.ListBuffer[A]()
+      foreachSubTree(f.runWith(buf += _)(_))
+      buf.toList
 
     /** Set this tree as the `defTree` of its symbol and return this tree */
     def setDefTree(using Context): ThisTree = {

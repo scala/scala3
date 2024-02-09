@@ -1183,10 +1183,7 @@ private[collection] class TrieMapIterator[K, V](var level: Int, private var ct: 
         stack(d) = arr1
         stackpos(d) = -1
         val it = newIterator(level + 1, ct, _mustInit = false)
-        val xss: Array[Array[BasicNode]] = it.stack.asInstanceOf
-          // !!! cc split into separate xss and asInstanceOf needed because cc gets confused with
-          // two-dimensinal invariant arrays
-        xss(0) = arr2
+        it.stack(0) = arr2
         it.stackpos(0) = -1
         it.depth = 0
         it.advance() // <-- fix it

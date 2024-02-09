@@ -191,9 +191,9 @@ def !
 10
 scoverage-samples-implicit-class.scala
 org.scoverage.samples
-scoverage-samples-implicit-class$package$
+scoverage-samples-implicit-class$package
 Object
-org.scoverage.samples.scoverage-samples-implicit-class$package$
+org.scoverage.samples.scoverage-samples-implicit-class$package
 StringOpssssss
 79
 108

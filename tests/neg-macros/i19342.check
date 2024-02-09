@@ -1,0 +1,6 @@
+-- Error: tests/neg-macros/i19342.scala:5:26 ---------------------------------------------------------------------------
+5 |    case '{ ((y: Int) => $f(y)).apply($z: Int) } => () // error
+  |                          ^
+  |                          Type must be fully defined.
+  |                          Consider annotating the splice using a type ascription:
+  |                            ($f(y): XYZ).

@@ -12,7 +12,7 @@ object Macros {
     private def sizeImpl(e: Expr[HList], n:Int)(using qctx:Quotes): Expr[Int] = {
       import quotes.reflect.*
       e match {
-        case '{HCons(_,$t)} => // error
+        case '{HCons(_,$t)} => // warn (in .check file)
           sizeImpl(t,n+1)
         case '{HNil} => Expr(n)
       }
@@ -24,3 +24,5 @@ object Macros {
 
   }
 }
+
+// nopos-error No warnings can be incurred under -Werror (or -Xfatal-warnings)

@@ -397,7 +397,7 @@ trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] with Iterable
       if (i != headSize)
         fail
     }
-    iterableFactory.from(bs.map(_.result())).asInstanceOf // !!! needed for cc
+    iterableFactory.from(bs.map(_.result()))
   }
 
   def filter(pred: A => Boolean): C^{this, pred} = fromSpecific(new View.Filter(this, pred, isFlipped = false))

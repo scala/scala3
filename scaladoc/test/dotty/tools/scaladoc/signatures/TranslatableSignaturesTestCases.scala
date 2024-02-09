@@ -45,7 +45,7 @@ class ExtensionMethodParamsSignature extends SignatureTest("extensionParams", Si
 
 class ClassModifiers extends SignatureTest("classModifiers", SignatureTest.classlikeKinds)
 
-class EnumSignatures extends SignatureTest("enumSignatures", SignatureTest.all)
+class EnumSignatures extends SignatureTest("enumSignatures", "case" +: SignatureTest.all)
 
 class StructuralTypes extends SignatureTest("structuralTypes", SignatureTest.members)
 

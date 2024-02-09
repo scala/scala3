@@ -906,6 +906,7 @@ object Parsers {
       var braces = 0
       while (true) {
         val token = lookahead.token
+        if (query != LARROW && token == XMLSTART) return false
         if (braces == 0) {
           if (token == query) return true
           if (stopScanTokens.contains(token) || lookahead.isNestedEnd) return false
@@ -927,6 +928,7 @@ object Parsers {
       lookahead.nextToken()
       while (parens != 0 && lookahead.token != EOF) {
         val token = lookahead.token
+        if (token == XMLSTART) return true
         if (token == LPAREN) parens += 1
         else if (token == RPAREN) parens -= 1
         lookahead.nextToken()
@@ -1763,12 +1765,11 @@ object Parsers {
           RefinedTypeTree(rejectWildcardType(t), refinement(indentOK = true))
         })
       else if Feature.ccEnabled && in.isIdent(nme.UPARROW) && isCaptureUpArrow then
-        val upArrowStart = in.offset
-        in.nextToken()
-        def cs =
-          if in.token == LBRACE then captureSet()
-          else atSpan(upArrowStart)(captureRoot) :: Nil
-        makeRetaining(t, cs, tpnme.retains)
+        atSpan(t.span.start):
+          in.nextToken()
+          if in.token == LBRACE
+          then makeRetaining(t, captureSet(), tpnme.retains)
+          else makeRetaining(t, Nil, tpnme.retainsCap)
       else
         t
     }
@@ -2651,6 +2652,8 @@ object Parsers {
       parents match {
         case parent :: Nil if !in.isNestedStart =>
           reposition(if (parent.isType) ensureApplied(wrapNew(parent)) else parent)
+        case tkn if in.token == INDENT =>
+          New(templateBodyOpt(emptyConstructor, parents, Nil))
         case _ =>
           New(reposition(templateBodyOpt(emptyConstructor, parents, Nil)))
       }
