@@ -205,7 +205,7 @@ object Inferencing {
     private def instantiate(tvar: TypeVar, fromBelow: Boolean): Boolean =
       if fromBelow && force.canImprove(tvar) then
         val inst = tvar.typeToInstantiateWith(fromBelow = true)
-        if apply(true, inst) then
+        if isFullyDefined(inst, ForceDegree.none) then
           // need to recursively check before improving, since improving adds type vars
           // which should not be instantiated at this point
           val better = improve(tvar)(inst)

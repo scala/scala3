@@ -27,10 +27,10 @@ class CompletionSuite extends BaseCompletionSuite:
         |}""".stripMargin,
       """
         |List scala.collection.immutable
-        |List[A](elems: A*): CC[A]
+        |List[A](elems: A*): List[A]
         |List - java.awt
         |List - java.util
-        |ListMap[K, V](elems: (K, V)*): CC[K, V]
+        |ListMap[K, V](elems: (K, V)*): ListMap[K, V]
         |""".stripMargin,
       topLines = Some(5)
     )
@@ -180,7 +180,7 @@ class CompletionSuite extends BaseCompletionSuite:
         |  TrieMap@@
         |}""".stripMargin,
       """|TrieMap scala.collection.concurrent
-         |TrieMap[K, V](elems: (K, V)*): CC[K, V]
+         |TrieMap[K, V](elems: (K, V)*): TrieMap[K, V]
          |""".stripMargin
     )
 
@@ -1710,5 +1710,27 @@ class CompletionSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|test(p: Int => Boolean): List[Int]
          |""".stripMargin
+    )
+
+  @Test def `instantiate-type-vars-in-extra-apply-completions` =
+    check(
+      """|object M:
+         |  val fooBar = List(123)
+         |  foo@@
+         |""".stripMargin,
+      """|fooBar: List[Int]
+         |fooBar(n: Int): Int
+         |""".stripMargin
+    )
+
+  @Test def `show-underlying-type-instead-of-CC` =
+    check(
+      """|object M:
+         |  List@@
+         |""".stripMargin,
+      """|List[A](elems: A*): List[A]
+         |ListMap[K, V](elems: (K, V)*): ListMap[K, V]
+         |""".stripMargin,
+      filter = _.contains("[")
     )
 

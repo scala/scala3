@@ -48,7 +48,7 @@ import staging.StagingLevel
 import reporting.*
 import Nullables.*
 import NullOpsDecorator.*
-import cc.CheckCaptures
+import cc.{CheckCaptures, isRetainsLike}
 import config.Config
 import config.MigrationVersion
 
@@ -2548,10 +2548,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def canBeInvalidated(sym: Symbol): Boolean =
       sym.is(Synthetic)
       && (desugar.isRetractableCaseClassMethodName(sym.name) ||
-        (sym.isConstructor && sym.owner.derivesFrom(defn.JavaRecordClass)))
+         (sym.owner.is(JavaDefined) && sym.owner.derivesFrom(defn.JavaRecordClass) && sym.is(Method)))
 
     if !sym.info.exists then
-      // it's a discarded method (synthetic case class method or synthetic java record constructor), drop it
+      // it's a discarded method (synthetic case class method or synthetic java record constructor or overriden member), drop it
       assert(canBeInvalidated(sym))
       sym.owner.info.decls.openForMutations.unlink(sym)
       return EmptyTree
@@ -2940,9 +2940,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val arg1 = typed(tree.arg, pt)
     if (ctx.mode is Mode.Type) {
       val cls = annot1.symbol.maybeOwner
-      if Feature.ccEnabled
-          && (cls == defn.RetainsAnnot || cls == defn.RetainsByNameAnnot)
-      then
+      if Feature.ccEnabled && cls.isRetainsLike then
         CheckCaptures.checkWellformed(arg1, annot1)
       if arg1.isType then
         assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)

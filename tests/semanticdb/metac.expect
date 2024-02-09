@@ -399,7 +399,7 @@ Diagnostics => 3 entries
 Synthetics => 2 entries
 
 Symbols:
-example/Anonymous# => class Anonymous extends Object { self: Anonymous & Anonymous => +9 decls }
+example/Anonymous# => class Anonymous extends Object { self: Anonymous => +9 decls }
 example/Anonymous#Bar# => trait Bar extends Object { self: Bar => +2 decls }
 example/Anonymous#Bar#`<init>`(). => primary ctor <init> (): Bar
 example/Anonymous#Bar#bar(). => abstract method bar => String
@@ -3414,7 +3414,7 @@ local1 => selfparam self: B
 local2 => selfparam self: B & C1
 selfs/B# => class B extends Object { self: B => +1 decls }
 selfs/B#`<init>`(). => primary ctor <init> (): B
-selfs/C1# => class C1 extends B { self: C1 & C1 => +1 decls }
+selfs/C1# => class C1 extends B { self: C1 => +1 decls }
 selfs/C1#`<init>`(). => primary ctor <init> (): C1
 selfs/C2# => class C2 extends B { self: B & C2 => +1 decls }
 selfs/C2#`<init>`(). => primary ctor <init> (): C2

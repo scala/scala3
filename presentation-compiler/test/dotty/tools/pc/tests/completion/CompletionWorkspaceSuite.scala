@@ -768,8 +768,29 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |  def main: Unit = incre@@
          |""".stripMargin,
       """|increment3: Int
-         |increment: Int
-         |increment2: Int
+         |increment - a: Int
+         |increment2 - a.c: Int
+         |""".stripMargin
+    )
+
+  @Test def `indent-method` =
+    check(
+      """|package a:
+         |  val y = 123
+         |  given intGiven: Int = 123
+         |  type Alpha = String
+         |  class Foo(x: Int)
+         |  object X:
+         |    val x = 123
+         |  def fooBar(x: Int) = x + 1
+         |  package b:
+         |    def fooBar(x: String) = x.length
+         |
+         |package c:
+         |  def main() = foo@@
+         |""".stripMargin,
+      """|fooBar - a(x: Int): Int
+         |fooBar - a.b(x: String): Int
          |""".stripMargin
     )
 
@@ -790,7 +811,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|fooBar: String
          |fooBar: List[Int]
-         |fooBar(n: Int): A
+         |fooBar(n: Int): Int
          |""".stripMargin,
     )
 
@@ -848,5 +869,21 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |  }
          |}
          |""".stripMargin,
-      filter = _.contains("mmmm(x: Int)")
+      filter = _.contains("mmmm - demo.O")
+    )
+
+  @Test def `method-label` =
+    check(
+      """|package demo
+         |
+         |object O {
+         | def method(i: Int): Int = i + 1
+         |}
+         |
+         |object Main {
+         |  val x = meth@@
+         |}
+         |""".stripMargin,
+      """|method - demo.O(i: Int): Int
+         |""".stripMargin
     )

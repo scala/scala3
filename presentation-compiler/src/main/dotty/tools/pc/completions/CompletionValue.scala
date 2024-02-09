@@ -6,6 +6,7 @@ import scala.meta.internal.pc.CompletionItemData
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Denotations.Denotation
 import dotty.tools.dotc.core.Flags.*
+import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.pc.printer.ShortenedTypePrinter
@@ -108,7 +109,7 @@ object CompletionValue:
         s"${label}${description(printer)}"
       else s"$label: ${description(printer)}"
 
-    private def labelWithSuffix(printer: ShortenedTypePrinter)(using Context): String =
+    protected def labelWithSuffix(printer: ShortenedTypePrinter)(using Context): String =
       if snippetSuffix.addLabelSnippet
       then
         val printedParams = symbol.info.typeParams.map(p =>
@@ -144,6 +145,11 @@ object CompletionValue:
   ) extends Symbolic:
     override def isFromWorkspace: Boolean = true
     override def completionItemDataKind: Integer = CompletionSource.WorkspaceKind.ordinal
+
+    override def labelWithDescription(printer: ShortenedTypePrinter)(using Context): String =
+      if symbol.is(Method) && symbol.name != nme.apply then
+        s"${labelWithSuffix(printer)} - ${printer.fullNameString(symbol.effectiveOwner)}"
+      else super.labelWithDescription(printer)
 
   /**
    * CompletionValue for old implicit classes methods via SymbolSearch
@@ -268,6 +274,7 @@ object CompletionValue:
     )(using Context): String =
       if isExtension then s"${printer.completionSymbol(symbol)} (extension)"
       else super.description(printer)
+    override def isExtensionMethod: Boolean = isExtension
   end Interpolator
 
   case class MatchCompletion(

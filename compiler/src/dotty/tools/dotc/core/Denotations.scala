@@ -22,6 +22,7 @@ import config.Config
 import config.Printers.overload
 import util.common.*
 import typer.ProtoTypes.NoViewsAllowed
+import reporting.Message
 import collection.mutable.ListBuffer
 
 import scala.compiletime.uninitialized
@@ -954,10 +955,9 @@ object Denotations {
     }
 
     def staleSymbolError(using Context): Nothing =
-      if symbol.isPackageObject && ctx.run != null && ctx.run.nn.isCompilingSuspended then
-        throw TypeError(em"Cyclic macro dependency; macro refers to a toplevel symbol in ${symbol.source} from which the macro is called")
-      else
-        throw new StaleSymbol(staleSymbolMsg)
+      if symbol.isPackageObject && ctx.run != null && ctx.run.nn.isCompilingSuspended
+      then throw StaleSymbolTypeError(symbol)
+      else throw StaleSymbolException(staleSymbolMsg)
 
     def staleSymbolMsg(using Context): String = {
       def ownerMsg = this match {
@@ -1365,9 +1365,19 @@ object Denotations {
     else
       NoSymbol
 
+  trait StaleSymbol extends Exception
+
   /** An exception for accessing symbols that are no longer valid in current run */
-  class StaleSymbol(msg: => String) extends Exception {
+  class StaleSymbolException(msg: => String) extends Exception, StaleSymbol {
     util.Stats.record("stale symbol")
     override def getMessage(): String = msg
   }
+
+  /** An exception that is at the same type a StaleSymbol and a TypeError.
+   *  Sine it is a TypeError it can be reported as a nroaml error instead of crashing
+   *  the compiler.
+   */
+  class StaleSymbolTypeError(symbol: Symbol)(using Context) extends TypeError, StaleSymbol:
+    def toMessage(using Context) =
+      em"Cyclic macro dependency; macro refers to a toplevel symbol in ${symbol.source} from which the macro is called"
 }

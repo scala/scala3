@@ -164,13 +164,17 @@ object CaseKeywordCompletion:
             (si, label)
           }
       }
-      val caseItems = res.map((si, label) =>
-        completionGenerator.toCompletionValue(
-          si.sym,
-          label,
-          autoImportsGen.renderImports(si.importSel.toList)
-        )
-      )
+      val caseItems =
+        if res.isEmpty then completionGenerator.caseKeywordOnly
+        else
+          res.map((si, label) =>
+            completionGenerator.toCompletionValue(
+              si.sym,
+              label,
+              autoImportsGen.renderImports(si.importSel.toList),
+            )
+          )
+
       includeExhaustive match
         // In `List(foo).map { cas@@} we want to provide also `case (exhaustive)` completion
         // which works like exhaustive match.
@@ -440,6 +444,20 @@ class CompletionValueGenerator(
       Some(out)
     end if
   end labelForCaseMember
+
+  def caseKeywordOnly: List[CompletionValue.Keyword] =
+    if patternOnly.isEmpty then
+      val label = "case"
+      val suffix =
+        if clientSupportsSnippets then " $0 =>"
+        else " "
+      List(
+        CompletionValue.Keyword(
+          label,
+          Some(label + suffix),
+        )
+      )
+    else Nil
 
   def toCompletionValue(
       denot: Denotation,
