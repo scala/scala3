@@ -2323,6 +2323,13 @@ object ScaladocConfigs {
       .withTargets(tastyRoots)
   }
 
+  def snippetCompilerTargets(dottyLibSrc:String) = List(
+    s"$dottyLibSrc/scala=compile",
+    s"$dottyLibSrc/scala/quoted=compile",
+    s"$dottyLibSrc/scala/compiletime=compile",
+    s"$dottyLibSrc/scala/util=compile",
+    s"$dottyLibSrc/scala/util/control=compile",
+  )
   lazy val Scala3 = Def.task {
     val dottyJars: Seq[java.io.File] = Seq(
       (`scala2-library-bootstrapped`/Compile/products).value,
@@ -2358,12 +2365,8 @@ object ScaladocConfigs {
       )))
       .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))
       .add(DocumentSyntheticTypes(true))
-      .add(SnippetCompiler(List(
-        s"$dottyLibRoot/src/scala=compile",
-        s"$dottyLibRoot/src/scala/quoted=compile",
-        s"$dottyLibRoot/src/scala/compiletime=compile",
-        s"$dottyLibRoot/src/scala/util=compile",
-        s"$dottyLibRoot/src/scala/util/control=compile",
+      .add(SnippetCompiler(
+        snippetCompilerTargets(s"$dottyLibRoot/src") ++ List(
         "docs/_docs/reference/enums=compile"
       )))
       .add(SiteRoot("docs"))
@@ -2377,6 +2380,7 @@ object ScaladocConfigs {
     Scala3.value
       .add(defaultSourceLinks(version + "-bin-SNAPSHOT-nonbootstrapped", version).value)
       .add(ProjectVersion(version))
+      .add(SnippetCompiler(snippetCompilerTargets(dottyLibrarySrc)))
       .add(CommentSyntax(List(
         s"$dottyLibrarySrc=markdown",
         s"$scalaLibrarySrc=wiki",
