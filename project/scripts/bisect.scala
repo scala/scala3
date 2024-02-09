@@ -1,3 +1,4 @@
+//> using jvm 17 // Maximal JDK version which can be used with all Scala 3 versions, can be overriden via command line arguments '--jvm=21'
 /*
 This script will bisect a problem with the compiler based on success/failure of the validation script passed as an argument.
 It starts with a fast bisection on released nightly builds.
