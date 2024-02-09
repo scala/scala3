@@ -1636,6 +1636,7 @@ class Definitions {
   def isAbstractFunctionClass(cls: Symbol): Boolean = isVarArityClass(cls, str.AbstractFunction)
   def isTupleClass(cls: Symbol): Boolean = isVarArityClass(cls, str.Tuple)
   def isProductClass(cls: Symbol): Boolean = isVarArityClass(cls, str.Product)
+  def isJavaRecordClass(cls: Symbol): Boolean = cls.is(JavaDefined) && cls.derivesFrom(JavaRecordClass)
 
   def isBoxedUnitClass(cls: Symbol): Boolean =
     cls.isClass && (cls.owner eq ScalaRuntimePackageClass) && cls.name == tpnme.BoxedUnit

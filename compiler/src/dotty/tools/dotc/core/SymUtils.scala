@@ -249,6 +249,10 @@ class SymUtils:
     def caseAccessors(using Context): List[Symbol] =
       self.info.decls.filter(_.is(CaseAccessor))
 
+    // TODO: Check if `Synthetic` is stamped properly
+    def javaRecordComponents(using Context): List[Symbol] =
+      self.info.decls.filter(sym => sym.is(Synthetic) && sym.is(Method) && !sym.isConstructor)
+
     def getter(using Context): Symbol =
       if (self.isGetter) self else accessorNamed(self.asTerm.name.getterName)
 

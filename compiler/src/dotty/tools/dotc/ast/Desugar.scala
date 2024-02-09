@@ -869,13 +869,10 @@ object desugar {
 
         val unapplyRHS =
           if (arity == 0) Literal(Constant(true))
-          else tupleApply(
-            vParams.map(
-              param => Select(Ident(unapplyParam.name), param.name)
-            )
-          )
+          else Ident(unapplyParam.name)
 
         val unapplyResTp = if (arity == 0) Literal(Constant(true)) else TypeTree()
+
         val unapplyMeth = DefDef(
           nme.unapply,
           joinParams(derivedTparams, (unapplyParam :: Nil) :: Nil),

@@ -343,8 +343,28 @@ object PatternMatcher {
             .select(defn.RuntimeTuples_apply)
             .appliedTo(receiver, Literal(Constant(i)))
 
-        if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)
-          def tupleSel(sym: Symbol) = ref(scrutinee).select(sym)
+        def resultTypeSym = unapp.symbol.info.resultType.typeSymbol
+
+        def isSyntheticJavaRecordUnapply(sym: Symbol) =
+          // Since the `unapply` symbol is marked as inline, the `Typer` wraps the body of the `unapply` in a separate
+          // anonymous class. The result type alone is not enough to distinguish that we're calling the synthesized unapply —
+          // we could have defined a separate `unapply` method returning a Java record somewhere, hence we resort to using
+          // the `coord`.
+          sym.is(Synthetic) && sym.isAnonymousClass && {
+            val resultSym = resultTypeSym
+            // TODO: Can a user define a separate unapply function in Java?
+            val unapplyFn = resultSym.linkedClass.info.decl(nme.unapply)
+            // TODO: This is nasty, can we add an attachment on the anonymous function for a prior link?
+            defn.isJavaRecordClass(resultSym) && unapplyFn.symbol.coord == sym.coord
+          }
+
+        def tupleSel(sym: Symbol) = ref(scrutinee).select(sym)
+        def recordSel(sym: Symbol) = tupleSel(sym).appliedToTermArgs(Nil)
+
+        if (isSyntheticJavaRecordUnapply(unapp.symbol.owner))
+          val components = resultTypeSym.javaRecordComponents.map(recordSel)
+          matchArgsPlan(components, args, onSuccess)
+        else if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)
           val isGenericTuple = defn.isTupleClass(caseClass) &&
             !defn.isTupleNType(tree.tpe match { case tp: OrType => tp.join case tp => tp }) // widen even hard unions, to see if it's a union of tuples
           val components = if isGenericTuple then caseAccessors.indices.toList.map(tupleApp(_, ref(scrutinee))) else caseAccessors.map(tupleSel)
