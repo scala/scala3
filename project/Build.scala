@@ -531,7 +531,9 @@ object Build {
     settings(commonMiMaSettings).
     settings(
       versionScheme := Some("semver-spec"),
-      mimaBinaryIssueFilters ++= MiMaFilters.Interfaces
+      mimaForwardIssueFilters := MiMaFilters.Interfaces.ForwardsBreakingChanges,
+      mimaBackwardIssueFilters := MiMaFilters.Interfaces.BackwardsBreakingChanges,
+      customMimaReportBinaryIssues("MiMaFilters.Interfaces"),
     )
 
   /** Find an artifact with the given `name` in `classpath` */
@@ -785,24 +787,21 @@ object Build {
           else if (debugFromTasty) "dotty.tools.dotc.fromtasty.Debug"
           else "dotty.tools.dotc.Main"
 
-        val scala2LibraryTasty = scala2Library.value match {
-          case Scala2LibraryJar => Seq.empty
+        var extraClasspath = Seq(scalaLib, dottyLib)
+
+        scala2Library.value match {
+          case Scala2LibraryJar =>
           case Scala2LibraryTasty =>
             jars.get("scala2-library-tasty") match {
-              case Some(jar) => Seq(jar)
-              case None =>
-                log.warn("Scala2LibraryTasty is ignored on non-bootstrapped compiler")
-                Seq.empty
-            }
+              case Some(jar) => extraClasspath :+= jar
+              case None => log.warn("Scala2LibraryTasty is ignored on non-bootstrapped compiler")
+            };
           case Scala2LibraryCCTasty =>
             jars.get("scala2-library-cc-tasty") match {
-              case Some(jar) => Seq(jar)
-              case None =>
-                log.warn("Scala2LibraryCCTasty is ignored on non-bootstrapped compiler")
-                Seq.empty
+              case Some(jar) => extraClasspath :+= jar
+              case None => log.warn("Scala2LibraryCCTasty is ignored on non-bootstrapped compiler")
             }
         }
-        var extraClasspath = scala2LibraryTasty ++ Seq(scalaLib, dottyLib)
 
         if (decompile && !args.contains("-classpath"))
           extraClasspath ++= Seq(".")
@@ -1066,6 +1065,7 @@ object Build {
       },
       Compile / doc / scalacOptions += "-Ydocument-synthetic-types",
       scalacOptions += "-Ycompile-scala2-library",
+      scalacOptions += "-Yscala2Unpickler:never",
       scalacOptions -= "-Xfatal-warnings",
       Compile / compile / logLevel := Level.Error,
       ivyConfigurations += SourceDeps.hide,
@@ -1117,8 +1117,9 @@ object Build {
         _.filterNot(file => file.data.getName == s"scala-library-$stdlibBootstrappedVersion.jar")
       },
       mimaCheckDirection := "both",
-      mimaBackwardIssueFilters := MiMaFilters.StdlibBootstrappedBackwards,
-      mimaForwardIssueFilters := MiMaFilters.StdlibBootstrappedForward,
+      mimaBackwardIssueFilters := Scala2LibraryBootstrappedMiMaFilters.BackwardsBreakingChanges,
+      mimaForwardIssueFilters := Scala2LibraryBootstrappedMiMaFilters.ForwardsBreakingChanges,
+      customMimaReportBinaryIssues("Scala2LibraryBootstrappedMiMaFilters"),
       mimaPreviousArtifacts += "org.scala-lang" % "scala-library" % stdlibBootstrappedVersion,
       mimaExcludeAnnotations ++= Seq(
         "scala.annotation.experimental",
@@ -1269,13 +1270,6 @@ object Build {
       Test / javaOptions += "-Ddotty.scala.library=" + (`scala2-library-bootstrapped` / Compile / packageBin).value.getAbsolutePath,
       Compile / compile / fullClasspath ~= {
         _.filterNot(file => file.data.getName == s"scala-library-$stdlibBootstrappedVersion.jar")
-      },
-      Compile / compile / dependencyClasspath := {
-        // make sure that the scala2-library (tasty of `scala2-library-tasty`) is listed before the scala-library (classfiles)
-        val (bootstrappedLib, otherLibs) =
-          (Compile / compile / dependencyClasspath).value
-            .partition(_.data.getName == s"scala2-library-${dottyVersion}.jar")
-        bootstrappedLib ++ otherLibs
       },
     )
 
@@ -1770,7 +1764,7 @@ object Build {
       ),
       libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
         "nl.big-o" % "liqp" % "0.8.2",
-        "org.jsoup" % "jsoup" % "1.14.3", // Needed to process .html files for static site
+        "org.jsoup" % "jsoup" % "1.17.2", // Needed to process .html files for static site
         Dependencies.`jackson-dataformat-yaml`,
 
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
@@ -1923,6 +1917,7 @@ object Build {
         (`scala3-interfaces` / publishLocalBin),
         (`scala3-compiler-bootstrapped` / publishLocalBin),
         (`scala3-library-bootstrapped` / publishLocalBin),
+        (`scala2-library-tasty` / publishLocal),
         (`scala3-library-bootstrappedJS` / publishLocalBin),
         (`tasty-core-bootstrapped` / publishLocalBin),
         (`scala3-staging` / publishLocalBin),
@@ -2110,6 +2105,15 @@ object Build {
       packResourceDir += (baseDirectory.value / "bin" -> "bin"),
     )
 
+  private def customMimaReportBinaryIssues(issueFilterLocation: String) = mimaReportBinaryIssues := {
+    mimaReportBinaryIssues.result.value match {
+      case Inc(inc: Incomplete) =>
+        streams.value.log.error(s"\nFilers in $issueFilterLocation are used in this check.\n ")
+        throw inc
+      case Value(v) => v
+    }
+  }
+
   implicit class ProjectDefinitions(val project: Project) extends AnyVal {
 
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
@@ -2174,8 +2178,9 @@ object Build {
             }
             (thisProjectID.organization % crossedName % ltsDottyVersion)
           },
-          mimaBackwardIssueFilters := MiMaFilters.LibraryBackwards,
-          mimaForwardIssueFilters := MiMaFilters.LibraryForward,
+          mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
+          mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
+          customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
         )
       } else base
     }
@@ -2189,7 +2194,9 @@ object Build {
         versionScheme := Some("semver-spec"),
         if (mode == Bootstrapped) Def.settings(
           commonMiMaSettings,
-          mimaBinaryIssueFilters ++= MiMaFilters.TastyCore,
+          mimaForwardIssueFilters := MiMaFilters.TastyCore.ForwardsBreakingChanges,
+          mimaBackwardIssueFilters := MiMaFilters.TastyCore.BackwardsBreakingChanges,
+          customMimaReportBinaryIssues("MiMaFilters.TastyCore"),
         ) else {
           Nil
         }

@@ -725,14 +725,14 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
                 tr1 :: trs1.filterNot(_.isAnyRef)
               case nil => nil
             }
-          var erasedDecls = decls.filteredScope(sym => !sym.isType || sym.isClass).openForMutations
-          for dcl <- erasedDecls.iterator do
-            if dcl.lastKnownDenotation.unforcedAnnotation(defn.TargetNameAnnot).isDefined
-               && dcl.targetName != dcl.name
-            then
-              if erasedDecls eq decls then erasedDecls = erasedDecls.cloneScope
-              erasedDecls.unlink(dcl)
-              erasedDecls.enter(dcl.targetName, dcl)
+          val erasedDecls = decls.filteredScope(
+              keep = sym => !sym.isType || sym.isClass,
+              rename = sym =>
+                if sym.lastKnownDenotation.unforcedAnnotation(defn.TargetNameAnnot).isDefined
+                  && sym.targetName != sym.name
+                then sym.targetName
+                else null
+            )
           val selfType1 = if cls.is(Module) then cls.sourceModule.termRef else NoType
           tp.derivedClassInfo(NoPrefix, erasedParents, erasedDecls, selfType1)
             // can't replace selftype by NoType because this would lose the sourceModule link
@@ -814,7 +814,8 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         eraseResult(tp1.resultType) match
           case rt: MethodType => rt
           case rt => MethodType(Nil, Nil, rt)
-      case tp1 => this(tp1)
+      case tp1 =>
+        this(tp1)
 
   private def eraseDerivedValueClass(tp: Type)(using Context): Type = {
     val cls = tp.classSymbol.asClass

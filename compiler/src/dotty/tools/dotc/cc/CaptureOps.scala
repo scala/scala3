@@ -98,10 +98,14 @@ extension (tree: Tree)
         tree.putAttachment(Captures, refs)
         refs
 
-  /** The arguments of a @retains or @retainsByName annotation */
+  /** The arguments of a @retains, @retainsCap or @retainsByName annotation */
   def retainedElems(using Context): List[Tree] = tree match
-    case Apply(_, Typed(SeqLiteral(elems, _), _) :: Nil) => elems
-    case _ => Nil
+    case Apply(_, Typed(SeqLiteral(elems, _), _) :: Nil) =>
+      elems
+    case _ =>
+      if tree.symbol.maybeOwner == defn.RetainsCapAnnot
+      then ref(defn.captureRoot.termRef) :: Nil
+      else Nil
 
 extension (tp: Type)
 
@@ -207,7 +211,7 @@ extension (tp: Type)
   def dropAllRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
     val tm = new TypeMap:
       def apply(t: Type) = t match
-        case AnnotatedType(parent, annot) if annot.symbol == defn.RetainsAnnot =>
+        case AnnotatedType(parent, annot) if annot.symbol.isRetains =>
           apply(parent)
         case _ =>
           mapOver(t)
@@ -220,9 +224,31 @@ extension (tp: Type)
    *  type of `x`. If `x` and `y` are different variables then `{x*}` and `{y*}`
    *  are unrelated.
    */
-  def reach(using Context): CaptureRef =
-    assert(tp.isTrackableRef)
-    AnnotatedType(tp, Annotation(defn.ReachCapabilityAnnot, util.Spans.NoSpan))
+  def reach(using Context): CaptureRef = tp match
+    case tp: CaptureRef if tp.isTrackableRef =>
+      if tp.isReach then tp else ReachCapability(tp)
+
+  /** If `x` is a capture ref, its maybe capability `x?`, represented internally
+   *  as `x @maybeCapability`. `x?` stands for a capability `x` that might or might
+   *  not be part of a capture set. We have `{} <: {x?} <: {x}`. Maybe capabilities
+   *  cannot be propagated between sets. If `a <: b` and `a` acquires `x?` then
+   *  `x` is propagated to `b` as a conservative approximation.
+   *
+   *  Maybe capabilities should only arise for capture sets that appear in invariant
+   *  position in their surrounding type. They are similar to TypeBunds types, but
+   *  restricted to capture sets. For instance,
+   *
+   *      Array[C^{x?}]
+   *
+   *  should be morally equivalent to
+   *
+   *      Array[_ >: C^{} <: C^{x}]
+   *
+   *   but it has fewer issues with type inference.
+   */
+  def maybe(using Context): CaptureRef = tp match
+    case tp: CaptureRef if tp.isTrackableRef =>
+      if tp.isMaybe then tp else MaybeCapability(tp)
 
   /** If `ref` is a trackable capture ref, and `tp` has only covariant occurrences of a
    *  universal capture set, replace all these occurrences by `{ref*}`. This implements
@@ -326,6 +352,14 @@ extension (cls: ClassSymbol)
 
 extension (sym: Symbol)
 
+  /** This symbol is one of `retains` or `retainsCap` */
+  def isRetains(using Context): Boolean =
+    sym == defn.RetainsAnnot || sym == defn.RetainsCapAnnot
+
+  /** This symbol is one of `retains`, `retainsCap`, or`retainsByName` */
+  def isRetainsLike(using Context): Boolean =
+    isRetains || sym == defn.RetainsByNameAnnot
+
   /** A class is pure if:
    *   - one its base types has an explicitly declared self type with an empty capture set
    *   - or it is a value class
@@ -419,12 +453,21 @@ object ReachCapabilityApply:
     case Apply(reach, arg :: Nil) if reach.symbol == defn.Caps_reachCapability => Some(arg)
     case _ => None
 
+class AnnotatedCapability(annot: Context ?=> ClassSymbol):
+  def apply(tp: Type)(using Context) =
+    AnnotatedType(tp, Annotation(annot, util.Spans.NoSpan))
+  def unapply(tree: AnnotatedType)(using Context): Option[SingletonCaptureRef] = tree match
+    case AnnotatedType(parent: SingletonCaptureRef, ann) if ann.symbol == annot => Some(parent)
+    case _ => None
+
 /** An extractor for `ref @annotation.internal.reachCapability`, which is used to express
  *  the reach capability `ref*` as a type.
  */
-object ReachCapability:
-  def unapply(tree: AnnotatedType)(using Context): Option[SingletonCaptureRef] = tree match
-    case AnnotatedType(parent: SingletonCaptureRef, ann)
-    if ann.symbol == defn.ReachCapabilityAnnot => Some(parent)
-    case _ => None
+object ReachCapability extends AnnotatedCapability(defn.ReachCapabilityAnnot)
+
+/** An extractor for `ref @maybeCapability`, which is used to express
+ *  the maybe capability `ref?` as a type.
+ */
+object MaybeCapability extends AnnotatedCapability(defn.MaybeCapabilityAnnot)
+
 

@@ -1,0 +1,14 @@
+-- Warning: tests/init-global/warn/return2.scala:3:30 ------------------------------------------------------------------
+3 |    val f = (a: Int) => a + B.n // warn
+  |                            ^^^
+  |                            Access uninitialized field value n. Calling trace:
+  |                            ├── object B:	[ return2.scala:12 ]
+  |                            │   ^
+  |                            ├── val n = A.foo(-10)(20)	[ return2.scala:13 ]
+  |                            │           ^^^^^^^^^^^^^^
+  |                            └── val f = (a: Int) => a + B.n // warn	[ return2.scala:3 ]
+  |                                                        ^^^
+-- Warning: tests/init-global/warn/return2.scala:6:18 ------------------------------------------------------------------
+6 |    val g = () => return f // warn
+  |                  ^^^^^^^^
+  |            Non local returns are no longer supported; use `boundary` and `boundary.break` in `scala.util` instead

@@ -160,7 +160,7 @@ final class FileZipArchive(jpath: JPath, release: Option[String]) extends ZipArc
     override def sizeOption: Option[Int] = Some(zipEntry.getSize.toInt)
   }
 
-  @volatile lazy val (root, allDirs): (DirEntry, collection.Map[String, DirEntry]) = {
+  lazy val (root, allDirs): (DirEntry, collection.Map[String, DirEntry]) = {
     val root = new DirEntry("/", null)
     val dirs = mutable.HashMap[String, DirEntry]("/" -> root)
     val zipFile = openZipFile()

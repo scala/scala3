@@ -174,9 +174,9 @@ def g
 9
 Constructor.scala
 covtest
-O$
+O
 Object
-covtest.O$
+covtest.O
 g
 203
 208
@@ -191,9 +191,9 @@ def g
 10
 Constructor.scala
 covtest
-O$
+O
 Object
-covtest.O$
+covtest.O
 y
 223
 228
@@ -208,9 +208,9 @@ def y
 11
 Constructor.scala
 covtest
-O$
+O
 Object
-covtest.O$
+covtest.O
 <init>
 235
 239
@@ -225,9 +225,9 @@ g(y)
 12
 Constructor.scala
 covtest
-O$
+O
 Object
-covtest.O$
+covtest.O
 <init>
 237
 238

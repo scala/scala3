@@ -854,13 +854,13 @@ object JavaParsers {
 
       val accessors =
         (for (name, (tpt, annots)) <- fieldsByName yield
-          DefDef(name, Nil, tpt, unimplementedExpr)
+          DefDef(name, List(Nil), tpt, unimplementedExpr)
             .withMods(Modifiers(Flags.JavaDefined | Flags.Method | Flags.Synthetic))
         ).toList
 
       // generate the canonical constructor
       val canonicalConstructor =
-        DefDef(nme.CONSTRUCTOR, joinParams(tparams, List(header)), TypeTree(), EmptyTree)
+        DefDef(nme.CONSTRUCTOR, joinParams(Nil, List(header)), TypeTree(), EmptyTree)
           .withMods(Modifiers(Flags.JavaDefined | Flags.Synthetic, mods.privateWithin))
 
       // return the trees
@@ -872,7 +872,7 @@ object JavaParsers {
             tparams = tparams,
             needsDummyConstr = true
           )
-        ).withMods(mods)
+        ).withMods(mods.withFlags(Flags.JavaDefined | Flags.Final))
       }
       addCompanionObject(statics, recordTypeDef)
     end recordDecl

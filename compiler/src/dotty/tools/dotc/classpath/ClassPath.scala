@@ -3,6 +3,7 @@
  */
 package dotty.tools.dotc.classpath
 
+import dotty.tools.dotc.classpath.FileUtils.isTasty
 import dotty.tools.io.AbstractFile
 import dotty.tools.io.ClassRepresentation
 
@@ -12,14 +13,6 @@ case class ClassPathEntries(packages: scala.collection.Seq[PackageEntry], classe
 
 object ClassPathEntries {
   val empty = ClassPathEntries(Seq.empty, Seq.empty)
-}
-
-trait ClassFileEntry extends ClassRepresentation {
-  def file: AbstractFile
-}
-
-trait SourceFileEntry extends ClassRepresentation {
-  def file: AbstractFile
 }
 
 case class PackageName(dottedString: String) {
@@ -48,28 +41,50 @@ trait PackageEntry {
   def name: String
 }
 
-private[dotty] case class ClassFileEntryImpl(file: AbstractFile) extends ClassFileEntry {
+/** A TASTy file or classfile */
+sealed trait BinaryFileEntry extends ClassRepresentation {
+  def file: AbstractFile
   final def fileName: String = file.name
-  def name: String = FileUtils.stripClassExtension(file.name) // class name
-
-  def binary: Option[AbstractFile] = Some(file)
-  def source: Option[AbstractFile] = None
+  final def name: String = FileUtils.stripClassExtension(file.name) // class name
+  final def source: Option[AbstractFile] = None
 }
 
-private[dotty] case class SourceFileEntryImpl(file: AbstractFile) extends SourceFileEntry {
+object BinaryFileEntry {
+  def apply(file: AbstractFile): BinaryFileEntry =
+    if file.isTasty then
+      if file.resolveSiblingWithExtension("class") != null then TastyWithClassFileEntry(file)
+      else StandaloneTastyFileEntry(file)
+    else
+      ClassFileEntry(file)
+}
+
+/** A classfile or .sig that does not have an associated TASTy file */
+private[dotty] final case class ClassFileEntry(file: AbstractFile) extends BinaryFileEntry {
+  def binary: Option[AbstractFile] = Some(file)
+}
+
+/** A TASTy file that has an associated class file */
+private[dotty] final case class TastyWithClassFileEntry(file: AbstractFile) extends BinaryFileEntry {
+  def binary: Option[AbstractFile] = Some(file)
+}
+
+/** A TASTy file that does not have an associated class file */
+private[dotty] final case class StandaloneTastyFileEntry(file: AbstractFile) extends BinaryFileEntry {
+  def binary: Option[AbstractFile] = Some(file)
+}
+
+private[dotty] final case class SourceFileEntry(file: AbstractFile) extends ClassRepresentation {
   final def fileName: String = file.name
   def name: String = FileUtils.stripSourceExtension(file.name)
-
   def binary: Option[AbstractFile] = None
   def source: Option[AbstractFile] = Some(file)
 }
 
-private[dotty] case class ClassAndSourceFilesEntry(classFile: AbstractFile, srcFile: AbstractFile) extends ClassRepresentation {
-  final def fileName: String = classFile.name
-  def name: String = FileUtils.stripClassExtension(classFile.name)
-
-  def binary: Option[AbstractFile] = Some(classFile)
-  def source: Option[AbstractFile] = Some(srcFile)
+private[dotty] final case class BinaryAndSourceFilesEntry(binaryEntry: BinaryFileEntry, sourceEntry: SourceFileEntry) extends ClassRepresentation {
+  final def fileName: String = binaryEntry.fileName
+  def name: String = binaryEntry.name
+  def binary: Option[AbstractFile] = binaryEntry.binary
+  def source: Option[AbstractFile] = sourceEntry.source
 }
 
 private[dotty] case class PackageEntryImpl(name: String) extends PackageEntry
@@ -81,5 +96,5 @@ private[dotty] trait NoSourcePaths {
 
 private[dotty] trait NoClassPaths {
   def findClassFile(className: String): Option[AbstractFile] = None
-  private[dotty] def classes(inPackage: PackageName): Seq[ClassFileEntry] = Seq.empty
+  private[dotty] def classes(inPackage: PackageName): Seq[BinaryFileEntry] = Seq.empty
 }
