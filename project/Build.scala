@@ -2370,7 +2370,7 @@ object ScaladocConfigs {
       .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))
       .add(DocumentSyntheticTypes(true))
       .add(SnippetCompiler(List(
-        s"${dottyLibRoot}/scala=compile",
+        s"$dottyLibRoot/src/scala=compile",
         s"$dottyLibRoot/src/scala/compiletime=compile",
         s"$dottyLibRoot/src/scala/util=compile",
         s"$dottyLibRoot/src/scala/util/control=compile",
