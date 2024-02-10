@@ -414,9 +414,12 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         .appliedTo(clsOf(tpe))
 
     def makeProductMirror(pre: Type, cls: Symbol, tps: Option[List[Type]]): TreeWithErrors =
-      val accessors = cls.caseAccessors
+      val (accessors, accessorType) = if (defn.isJavaRecordClass(cls)) then
+        (cls.javaRecordComponents, (t: Type) => t.resultType)
+      else
+        (cls.caseAccessors, identity[Type])
       val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
-      val typeElems = tps.getOrElse(accessors.map(mirroredType.resultType.memberInfo(_).widenExpr))
+      val typeElems = tps.getOrElse(accessors.map(accessor => accessorType(mirroredType.resultType.memberInfo(accessor)).widenExpr))
       val nestedPairs = TypeOps.nestedPairs(typeElems)
       val (monoType, elemsType) = mirroredType match
         case mirroredType: HKTypeLambda =>
