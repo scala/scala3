@@ -345,23 +345,13 @@ object PatternMatcher {
 
         def resultTypeSym = unapp.symbol.info.resultType.typeSymbol
 
-        def isSyntheticJavaRecordUnapply(sym: Symbol) =
-          // Since the `unapply` symbol is marked as inline, the `Typer` wraps the body of the `unapply` in a separate
-          // anonymous class. The result type alone is not enough to distinguish that we're calling the synthesized unapply —
-          // we could have defined a separate `unapply` method returning a Java record somewhere, hence we resort to using
-          // the `coord`.
-          sym.is(Synthetic) && sym.isAnonymousClass && {
-            val resultSym = resultTypeSym
-            // TODO: Can a user define a separate unapply function in Java?
-            val unapplyFn = resultSym.linkedClass.info.decl(nme.unapply)
-            // TODO: This is nasty, can we add an attachment on the anonymous function for a prior link?
-            defn.isJavaRecordClass(resultSym) && unapplyFn.symbol.coord == sym.coord
-          }
-
+        // TODO: Check Scala -> Java, erased?
+        def isJavaRecordUnapply(sym: Symbol) = defn.isJavaRecordClass(resultTypeSym)
         def tupleSel(sym: Symbol) = ref(scrutinee).select(sym)
         def recordSel(sym: Symbol) = tupleSel(sym).appliedToTermArgs(Nil)
 
-        if (isSyntheticJavaRecordUnapply(unapp.symbol.owner))
+        // TODO: Move this to the correct location
+        if (isJavaRecordUnapply(unapp.symbol.owner))
           val components = resultTypeSym.javaRecordComponents.map(recordSel)
           matchArgsPlan(components, args, onSuccess)
         else if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)

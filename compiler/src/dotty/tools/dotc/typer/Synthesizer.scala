@@ -407,6 +407,12 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     def newTupleMirror(arity: Int): Tree =
       New(defn.RuntimeTupleMirrorTypeRef, Literal(Constant(arity)) :: Nil)
 
+    def newJavaRecordReflectMirror(tpe: Type) =
+      ref(defn.JavaRecordReflectMirrorModule)
+        .select(nme.apply)
+        .appliedToType(tpe)
+        .appliedTo(clsOf(tpe))
+
     def makeProductMirror(pre: Type, cls: Symbol, tps: Option[List[Type]]): TreeWithErrors =
       val accessors = cls.caseAccessors
       val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
@@ -427,6 +433,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       }
       val mirrorRef =
         if cls.useCompanionAsProductMirror then companionPath(mirroredType, span)
+        else if defn.isJavaRecordClass(cls) then newJavaRecordReflectMirror(cls.typeRef)
         else if defn.isTupleClass(cls) then newTupleMirror(typeElems.size) // TODO: cls == defn.PairClass when > 22
         else anonymousMirror(monoType, MirrorImpl.OfProduct(pre), span)
       withNoErrors(mirrorRef.cast(mirrorType).withSpan(span))
@@ -458,6 +465,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             val reason = s"it reduces to a tuple with arity $arity, expected arity <= $maxArity"
             withErrors(i"${defn.PairClass} is not a generic product because $reason")
         case MirrorSource.ClassSymbol(pre, cls) =>
+        
           if cls.isGenericProduct then
             if ctx.runZincPhases then
               // The mirror should be resynthesized if the constructor of the
