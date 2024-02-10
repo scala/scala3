@@ -744,11 +744,10 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
          |  def getT: T = 1
          |val <<c>> = Foo.getT
          |""".stripMargin,
-      """|import Foo.T
-         |object Foo:
+      """|object Foo:
          |  opaque type T = Int
          |  def getT: T = 1
-         |val c: T = Foo.getT
+         |val c: Foo.T = Foo.getT
          |""".stripMargin
     )
 
@@ -779,13 +778,12 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
          |
          |val <<m>> = O.get
          |""".stripMargin,
-      """|import O.M
-         |object O:
+      """|object O:
          |  opaque type M = Int
          |  type W = M => Int
          |  def get: W = ???
          |
-         |val m: M => Int = O.get
+         |val m: O.M => Int = O.get
          |""".stripMargin
     )
 

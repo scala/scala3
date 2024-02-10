@@ -151,8 +151,8 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |}
       """.stripMargin,
       """|Found documentation for scala/util/control/Exception.Catch#
-         |Catch[T](pf: Catcher[T], fin: Option[Finally], rethrow: Throwable => Boolean)
-         |         ^^^^^^^^^^^^^^
+         |Catch[T](pf: control.Exception.Catcher[T], fin: Option[control.Exception.Finally], rethrow: Throwable => Boolean)
+         |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
          |  @param pf Found documentation for param pf
          |  @param fin Found documentation for param fin
          |  @param rethrow Found documentation for param rethrow

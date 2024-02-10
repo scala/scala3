@@ -437,7 +437,7 @@ class HoverTermSuite extends BaseHoverSuite:
         |  val in: Logarithms.Logarithm = ???
         |  in.multi@@ply(in)
         |""".stripMargin,
-      "extension [K](vmap: Logarithm) def multiply(k: Logarithm): Logarithm".hover
+      "extension [K](vmap: Logarithms.Logarithm) def multiply(k: Logarithms.Logarithm): Logarithms.Logarithm".hover
     )
 
   @Test def `i5976` =

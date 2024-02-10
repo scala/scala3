@@ -108,7 +108,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |tabulate[A](n1: Int, n2: Int, n3: Int, n4: Int)(f: (Int, Int, Int, Int) => A): List[List[List[List[A]]] @uncheckedVariance]
          |tabulate[A](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(f: (Int, Int, Int, Int, Int) => A): List[List[List[List[List[A]]]] @uncheckedVariance]
          |tabulate[A](n: Int)(f: Int => A): List[A]
-         |unapplySeq[A](x: List[A] @uncheckedVariance): UnapplySeqWrapper[A]
+         |unapplySeq[A](x: List[A] @uncheckedVariance): SeqFactory.UnapplySeqWrapper[A]
          |unfold[A, S](init: S)(f: S => Option[(A, S)]): List[A]
          |->[B](y: B): (List.type, B)
          |ensuring(cond: Boolean): List.type
@@ -517,8 +517,8 @@ class CompletionSuite extends BaseCompletionSuite:
       """.stripMargin,
       """|until(end: Int): Range
          |until(end: Int, step: Int): Range
-         |until(end: Long): Exclusive[Long]
-         |until(end: Long, step: Long): Exclusive[Long]
+         |until(end: Long): NumericRange.Exclusive[Long]
+         |until(end: Long, step: Long): NumericRange.Exclusive[Long]
          |""".stripMargin,
       postProcessObtained = _.replace("Float", "Double"),
       stableOrder = false

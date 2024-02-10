@@ -229,7 +229,7 @@ class HoverDefnSuite extends BaseHoverSuite:
          |```
          |**Symbol signature**:
          |```scala
-         |val x: Option[T]
+         |val x: Option[Derived.T]
          |```
          |""".stripMargin.hover
     )

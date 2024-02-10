@@ -118,7 +118,7 @@ class CompletionOverrideSuite extends BaseCompletionSuite:
         |""".stripMargin
     )
 
-  @Test def `import` = // import position is flak
+  @Test def `import` =
     checkEdit(
       """
         |object Main {

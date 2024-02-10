@@ -806,7 +806,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |
          |val j = MyTy@@
          |""".stripMargin,
-      """|MyType(m: Long): MyType
+      """|MyType(m: Long): other.MyType
          |MyType - demo.other""".stripMargin,
     )
 
@@ -822,7 +822,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |
          |val j = MyTy@@
          |""".stripMargin,
-      """|MyType(m: Long): MyType
+      """|MyType(m: Long): other.MyType
          |MyType - demo.other""".stripMargin,
     )
 
