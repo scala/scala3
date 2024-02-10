@@ -2108,7 +2108,7 @@ object Build {
   private def customMimaReportBinaryIssues(issueFilterLocation: String) = mimaReportBinaryIssues := {
     mimaReportBinaryIssues.result.value match {
       case Inc(inc: Incomplete) =>
-        streams.value.log.error(s"\nFilers in $issueFilterLocation are used in this check.\n ")
+        streams.value.log.error(s"\nFilters in $issueFilterLocation are used in this check.\n ")
         throw inc
       case Value(v) => v
     }
