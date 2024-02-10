@@ -10,6 +10,14 @@ object MiMaFilters {
       Build.mimaPreviousDottyVersion -> Seq(
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.annotation.experimental.this"),
         ProblemFilters.exclude[FinalClassProblem]("scala.annotation.experimental"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.fromArray"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.fromIArray"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.Tuple.helpers"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.Tuple$helpers$"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.fromArray"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.fromIArray"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.namedTuples"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$namedTuples$"),
       ),
 
       // Additions since last LTS
