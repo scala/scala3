@@ -106,7 +106,7 @@ class Completions(
   end includeSymbol
 
   def completions(): (List[CompletionValue], SymbolSearch.Result) =
-    val (advanced, exclusive) = advancedCompletions(path, completionPos.originalCursorPosition, completionPos)
+    val (advanced, exclusive) = advancedCompletions(path, completionPos)
     val (all, result) =
       if exclusive then (advanced, SymbolSearch.Result.COMPLETE)
       else
@@ -264,9 +264,9 @@ class Completions(
    */
   private def advancedCompletions(
       path: List[Tree],
-      pos: SourcePosition,
       completionPos: CompletionPos
   ): (List[CompletionValue], Boolean) =
+    val pos = completionPos.originalCursorPosition
     lazy val rawPath = Paths
       .get(pos.source.path).nn
     lazy val rawFileName = rawPath
@@ -443,7 +443,7 @@ class Completions(
       // From Scala 3.1.3-RC3 (as far as I know), path contains
       // `Literal(Constant(null))` on head for an incomplete program, in this case, just ignore the head.
       case Literal(Constant(null)) :: tl =>
-        advancedCompletions(tl, pos, completionPos)
+        advancedCompletions(tl, completionPos)
 
       case _ =>
         val args = NamedArgCompletions.contribute(

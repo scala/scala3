@@ -37,8 +37,8 @@ object CompletionPos:
       adjustedPath: List[Tree]
   )(using Context): CompletionPos =
     val identEnd = adjustedPath match
-      case (ident: Ident) :: _ if ident.toString.contains(Cursor.value) =>
-        ident.span.end - Cursor.value.length
+      case (refTree: RefTree) :: _ if refTree.name.toString.contains(Cursor.value) =>
+        refTree.span.end - Cursor.value.length
       case _ => sourcePos.end
 
     val query = Completion.completionPrefix(adjustedPath, sourcePos)
