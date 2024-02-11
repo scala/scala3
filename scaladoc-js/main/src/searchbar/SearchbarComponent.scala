@@ -148,7 +148,7 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
             val htmlEntries = results.map(result => result.pageEntry.toHTML(result.indices))
             val loadMoreElement = createLoadMoreElement
 
-            def loadMoreResults(entries: List[raw.HTMLElement]): Unit = {
+            def loadMoreResults(entries: List[HTMLElement]): Unit = {
               loadMoreElement.onclick = (event: Event) => {
                 entries.take(resultsChunkSize).foreach(_.classList.remove("hidden"))
                 val nextElems = entries.drop(resultsChunkSize)
@@ -192,7 +192,7 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
     }
   }
 
-  def createLoadingAnimation: raw.HTMLElement =
+  def createLoadingAnimation: HTMLElement =
     div(cls := "loading-wrapper")(
       div(cls := "loading")
     )
@@ -346,7 +346,7 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
     val selectedElement = resultsDiv.querySelector("[selected]")
     if selectedElement != null then {
       selectedElement.removeAttribute("selected")
-      def recur(elem: raw.Element): raw.Element = {
+      def recur(elem: Element): Element = {
         val prev = elem.previousElementSibling
         if prev == null then null
         else {
@@ -366,7 +366,7 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
   }
   private def handleArrowDown() = {
     val selectedElement = resultsDiv.querySelector("[selected]")
-    def recur(elem: raw.Element): raw.Element = {
+    def recur(elem: Element): Element = {
       val next = elem.nextElementSibling
       if next == null then null
       else {

@@ -7,9 +7,10 @@ import scala.util.{Success,Failure}
 import org.scalajs.dom._
 import org.scalajs.dom.ext._
 import scala.scalajs.js.annotation.JSExportTopLevel
-import org.scalajs.dom.ext.Ajax
+import org.scalajs.dom._
 import scala.scalajs.js
 import scala.scalajs.js.JSON
+import scala.scalajs.js.Thenable.Implicits.thenable2future
 
 import utils.HTML._
 
@@ -33,7 +34,7 @@ class DropdownHandler:
     btn.classList.add("disabled")
     btn.classList.add("hidden")
 
-  private def getURLContent(url: String): Future[String] = Ajax.get(url).map(_.responseText)
+  private def getURLContent(url: String): Future[String] = fetch(url).flatMap(_.text())
 
   window.sessionStorage.getItem(KEY) match
     case null => // If no key, returns null
@@ -68,7 +69,7 @@ end DropdownHandler
 def dropdownHandler(e: Event) =
   e.stopPropagation()
   if document.getElementById("version-dropdown").getElementsByTagName("a").size > 0 &&
-     window.getSelection.toString.length == 0 then
+     window.getSelection().toString.length == 0 then
     document.getElementById("version-dropdown").classList.toggle("expanded")
     document.getElementById("dropdown-trigger").classList.toggle("selected")
 
