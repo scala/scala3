@@ -17,6 +17,9 @@ import java.net.URI
 class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearchEngine, parser: QueryParser):
   val initialChunkSize = 5
   val resultsChunkSize = 20
+
+  val querySearch = Option(URLSearchParams(window.location.search).get("search")).filter(_.nonEmpty)
+
   def pathToRoot() = window.document.documentElement.getAttribute("data-pathToRoot")
   extension (p: PageEntry)
     def toHTML(boldChars: Set[Int]) =
@@ -262,7 +265,8 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
     document.body.addEventListener("keydown", (e: KeyboardEvent) => handleGlobalKeyDown(e))
 
   private val inputElem: html.Input =
-    input(cls := "scaladoc-searchbar-input", `type` := "search", `placeholder`:= "Find anything").tap { element =>
+    val initialValue = querySearch.getOrElse("")
+    input(cls := "scaladoc-searchbar-input", `type` := "search", `placeholder`:= "Find anything", value := initialValue).tap { element =>
       element.addEventListener("input", { e =>
         clearTimeout(timeoutHandle)
         val inputValue = e.target.asInstanceOf[html.Input].value
@@ -453,3 +457,7 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
   }
 
   inputElem.dispatchEvent(new Event("input"))
+  if (querySearch.isDefined && !document.body.contains(rootDiv)) {
+    document.body.appendChild(rootDiv)
+    inputElem.focus()
+  }
