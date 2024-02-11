@@ -20,6 +20,8 @@ productions map to AST nodes.
 The following description of Scala tokens uses literal characters `‘c’` when
 referring to the ASCII fragment `\u0000` – `\u007F`.
 
+Informal descriptions are typeset as `“some comment”`.
+
 ## Lexical Syntax
 
 The lexical syntax of Scala is given by the following grammar in EBNF form:
@@ -99,7 +101,10 @@ semi             ::=  ‘;’ |  nl {nl}
 
 ## Optional Braces
 
-The lexical analyzer also inserts `indent` and `outdent` tokens that represent regions of indented code [at certain points](../reference/other-new-features/indentation.md)
+The principle of optional braces is that any keyword that can be followed by `{` can also be followed by an indented block, without needing an intervening `:`.
+(Allowing an optional `:` would be counterproductive since it would introduce several ways to do the same thing.)
+
+The lexical analyzer inserts `indent` and `outdent` tokens that represent regions of indented code [at certain points](./other-new-features/indentation.md).
 
 In the context-free productions below we use the notation `<<< ts >>>`
 to indicate a token sequence `ts` that is either enclosed in a pair of braces `{ ts }` or that constitutes an indented region `indent ts outdent`. Analogously, the
@@ -181,7 +186,7 @@ FunTypeArgs       ::=  InfixType
                     |  ‘(’ [ FunArgTypes ] ‘)’
                     |  FunParamClause
 FunParamClause    ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
-TypedFunParam     ::=  [`erased`] id ‘:’ Type
+TypedFunParam     ::=  [`erased`] id ‘:’ IntoType
 MatchType         ::=  InfixType `match` <<< TypeCaseClauses >>>
 InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
 RefinedType       ::=  AnnotType {[nl] Refinement}                              RefinedTypeTree(t, ds)
@@ -201,14 +206,17 @@ SimpleType1       ::=  id                                                       
 Singleton         ::=  SimpleRef
                     |  SimpleLiteral
                     |  Singleton ‘.’ id
-FunArgType        ::=  [`erased`] Type
-                    |  [`erased`] ‘=>’ Type                                     PrefixOp(=>, t)
+FunArgType        ::=  IntoType
+                    |  ‘=>’ IntoType                                            PrefixOp(=>, t)
 FunArgTypes       ::=  FunArgType { ‘,’ FunArgType }
 ParamType         ::=  [‘=>’] ParamValueType
-ParamValueType    ::=  [‘into’] ExactParamType                                  Into(t)
-ExactParamType    ::=  ParamValueType [‘*’]                                     PostfixOp(t, "*")
+ParamValueType    ::=  IntoType [‘*’]                                           PostfixOp(t, "*")
+IntoType          ::=  [‘into’] IntoTargetType                                  Into(t)
+                    |  ‘(’ ‘into’ IntoTargetType ‘)’
+IntoTargetType    ::=  Type
+                    |  FunTypeArgs (‘=>’ | ‘?=>’) IntoType
 TypeArgs          ::=  ‘[’ Types ‘]’                                            ts
-Refinement        ::=  :<<< [RefineDef] {semi [RefineDef]} >>>                  ds
+Refinement        ::=  :<<< [RefineDef] {semi [RefineDcl]} >>>                  ds
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]                                  TypeBoundsTree(lo, hi)
 TypeParamBounds   ::=  TypeBounds {‘:’ Type}                                    ContextBounds(typeBounds, tps)
 Types             ::=  Type {‘,’ Type}
@@ -223,7 +231,7 @@ BlockResult       ::=  FunParams (‘=>’ | ‘?=>’) Block
                     |  HkTypeParamClause ‘=>’ Block
                     |  Expr1
 FunParams         ::=  Bindings
-                    |  [`erased`] id
+                    |  id
                     |  ‘_’
 Expr1             ::=  [‘inline’] ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[semi] ‘else’ Expr] If(Parens(cond), thenp, elsep?)
                     |  [‘inline’] ‘if’  Expr ‘then’ Expr [[semi] ‘else’ Expr]    If(cond, thenp, elsep?)
@@ -272,7 +280,7 @@ ColonArgument     ::=  colon [LambdaStart]
 LambdaStart       ::=  FunParams (‘=>’ | ‘?=>’)
                     |  HkTypeParamClause ‘=>’
 Quoted            ::=  ‘'’ ‘{’ Block ‘}’
-                    |  ‘'’ ‘[’ Type ‘]’
+                    |  ‘'’ ‘[’ TypeBlock ‘]’
 ExprSplice        ::= spliceId                                                  -- if inside quoted block
                     |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted pattern
                     |  ‘$’ ‘{’ Pattern ‘}’                                      -- when inside quoted pattern
@@ -294,6 +302,8 @@ BlockStat         ::=  Import
                     |  Extension
                     |  Expr1
                     |  EndMarker
+TypeBlock         ::=  {TypeBlockStat semi} Type
+TypeBlockStat     ::=  ‘type’ {nl} TypeDcl
 
 ForExpr           ::=  ‘for’ ‘(’ Enumerators0 ‘)’ {nl} [‘do‘ | ‘yield’] Expr     ForYield(enums, expr) / ForDo(enums, expr)
                     |  ‘for’ ‘{’ Enumerators0 ‘}’ {nl} [‘do‘ | ‘yield’] Expr
@@ -376,8 +386,8 @@ Param             ::=  id ‘:’ ParamType [‘=’ Expr]
 
 ### Bindings and Imports
 ```ebnf
-Bindings          ::=  ‘(’[`erased`] [Binding {‘,’ [`erased`] Binding}] ‘)’
-Binding           ::=  (id | ‘_’) [‘:’ Type]                                    ValDef(_, id, tpe, EmptyTree)
+Bindings          ::=  ‘(’ [Binding {‘,’ Binding}] ‘)’
+Binding           ::=  [`erased`] (id | ‘_’) [‘:’ Type]                           ValDef(_, id, tpe, EmptyTree)
 
 Modifier          ::=  LocalModifier
                     |  AccessModifier
@@ -390,6 +400,10 @@ LocalModifier     ::=  ‘abstract’
                     |  ‘implicit’
                     |  ‘lazy’
                     |  ‘inline’
+                    |  ‘transparent’
+                    |  ‘infix’
+                    |  ‘erased’
+
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
 AccessQualifier   ::=  ‘[’ id ‘]’
 
@@ -414,9 +428,11 @@ EndMarkerTag      ::=  id | ‘if’ | ‘while’ | ‘for’ | ‘match’ | �
 
 ### Definitions
 ```ebnf
-RefineDef         ::=  ‘val’ ValDef
-                    |  ‘def’ DefDef
+RefineDcl         ::=  ‘val’ ValDcl
+                    |  ‘def’ DefDcl
                     |  ‘type’ {nl} TypeDef
+ValDcl            ::=  ids ‘:’ Type
+DefDcl            ::=  DefSig ‘:’ Type
 
 Def               ::=  ‘val’ PatDef
                     |  ‘var’ PatDef
