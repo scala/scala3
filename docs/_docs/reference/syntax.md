@@ -383,6 +383,8 @@ LocalModifier     ::=  ‘abstract’
                     |  ‘implicit’
                     |  ‘lazy’
                     |  ‘inline’
+                    |  ‘transparent’
+                    |  ‘infix’
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
 AccessQualifier   ::=  ‘[’ id ‘]’
 
@@ -409,24 +411,22 @@ EndMarkerTag      ::=  id | ‘if’ | ‘while’ | ‘for’ | ‘match’ | �
 ```
 RefineDcl         ::=  ‘val’ ValDcl
                     |  ‘def’ DefDcl
-                    |  ‘type’ {nl} TypeDcl
-Dcl               ::=  RefineDcl
-                    |  ‘var’ VarDcl
+                    |  ‘type’ {nl} TypeDef
 ValDcl            ::=  ids ‘:’ Type
-VarDcl            ::=  ids ‘:’ Type
 DefDcl            ::=  DefSig ‘:’ Type
-DefSig            ::=  id [DefTypeParamClause] [TypelessClauses] [DefImplicitClause]
-TypeDcl           ::=  id [TypeParamClause] {FunParamClause} TypeBounds
 
 Def               ::=  ‘val’ PatDef
                     |  ‘var’ PatDef
                     |  ‘def’ DefDef
                     |  ‘type’ {nl} TypeDcl
                     |  TmplDef
-PatDef            ::=  ids [‘:’ Type] ‘=’ Expr
-                    |  Pattern2 [‘:’ Type] ‘=’ Expr
-DefDef            ::=  DefSig [‘:’ Type] ‘=’ Expr
-                    |  ‘this’ TypelessClauses [DefImplicitClause] ‘=’ ConstrExpr
+PatDef            ::=  ids [‘:’ Type] [‘=’ Expr]
+                    |  Pattern2 [‘:’ Type] [‘=’ Expr]                           PatDef(_, pats, tpe?, expr)
+DefDef            ::=  DefSig [‘:’ Type] [‘=’ Expr]                             DefDef(_, name, paramss, tpe, expr)
+                    |  ‘this’ TypelessClauses [DefImplicitClause] ‘=’ ConstrExpr DefDef(_, <init>, vparamss, EmptyTree, expr | Block)
+DefSig            ::=  id [DefParamClauses] [DefImplicitClause]
+TypeDef           ::=  id [TypeParamClause] {FunParamClause} TypeBounds         TypeDefTree(_, name, tparams, bound
+                       [‘=’ Type]
 
 TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef
