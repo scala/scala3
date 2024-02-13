@@ -23,6 +23,7 @@ import collection.mutable
 import ProtoTypes.*
 import staging.StagingLevel
 import inlines.Inlines.inInlineMethod
+import cc.{isRetainsLike, CaptureAnnotation}
 
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
@@ -162,6 +163,13 @@ object TreeChecker {
    */
   def checkNoOrphans(tp0: Type, tree: untpd.Tree = untpd.EmptyTree)(using Context): Type = new TypeMap() {
     val definedBinders = new java.util.IdentityHashMap[Type, Any]
+    private var inRetainingAnnot = false
+
+    def insideRetainingAnnot[T](op: => T): T =
+      val saved = inRetainingAnnot
+      inRetainingAnnot = true
+      try op finally inRetainingAnnot = saved
+
     def apply(tp: Type): Type = {
       tp match {
         case tp: BindingType =>
@@ -169,10 +177,20 @@ object TreeChecker {
           mapOver(tp)
           definedBinders.remove(tp)
         case tp: ParamRef =>
-          assert(definedBinders.get(tp.binder) != null, s"orphan param: ${tp.show}, hash of binder = ${System.identityHashCode(tp.binder)}, tree = ${tree.show}, type = $tp0")
+          val isValidRef =
+            definedBinders.get(tp.binder) != null
+              || inRetainingAnnot
+              // Inside a normal @retains annotation, the captured references could be ill-formed. See issue #19661.
+              // But this is ok since capture checking does not rely on them.
+          assert(isValidRef, s"orphan param: ${tp.show}, hash of binder = ${System.identityHashCode(tp.binder)}, tree = ${tree.show}, type = $tp0")
         case tp: TypeVar =>
           assert(tp.isInstantiated, s"Uninstantiated type variable: ${tp.show}, tree = ${tree.show}")
           apply(tp.underlying)
+        case tp @ AnnotatedType(underlying, annot) if annot.symbol.isRetainsLike && !annot.isInstanceOf[CaptureAnnotation] =>
+          val underlying1 = this(underlying)
+          val annot1 = insideRetainingAnnot:
+            annot.mapWith(this)
+          derivedAnnotatedType(tp, underlying1, annot1)
         case _ =>
           mapOver(tp)
       }
