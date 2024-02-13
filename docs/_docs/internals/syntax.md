@@ -104,7 +104,7 @@ semi             ::=  ‘;’ |  nl {nl}
 The principle of optional braces is that any keyword that can be followed by `{` can also be followed by an indented block, without needing an intervening `:`.
 (Allowing an optional `:` would be counterproductive since it would introduce several ways to do the same thing.)
 
-The lexical analyzer inserts `indent` and `outdent` tokens that represent regions of indented code [at certain points](./other-new-features/indentation.md).
+The lexical analyzer inserts `indent` and `outdent` tokens that represent regions of indented code [at certain points](../reference/other-new-features/indentation.md).
 
 In the context-free productions below we use the notation `<<< ts >>>`
 to indicate a token sequence `ts` that is either enclosed in a pair of braces `{ ts }` or that constitutes an indented region `indent ts outdent`. Analogously, the
