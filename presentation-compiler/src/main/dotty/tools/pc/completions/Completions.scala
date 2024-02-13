@@ -548,14 +548,7 @@ class Completions(
         else false,
       )
       Some(search.searchMethods(query, buildTargetIdentifier, visitor).nn)
-    else
-      val filtered = indexedContext.scopeSymbols
-        .filter(sym => !sym.isConstructor && (!sym.is(Synthetic) || sym.is(Module)))
-
-      filtered.map { sym =>
-        visit(CompletionValue.Scope(sym.decodedName, sym, findSuffix(sym)))
-      }
-      Some(SymbolSearch.Result.INCOMPLETE)
+    else Some(SymbolSearch.Result.INCOMPLETE)
 
   end enrichWithSymbolSearch
 

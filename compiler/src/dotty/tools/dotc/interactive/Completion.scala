@@ -90,29 +90,20 @@ object Completion:
 
     val completionSymbolKind: Mode =
       path match
-        case untpd.Ident(_) :: untpd.Import(_, _) :: _ => Mode.ImportOrExport
-        case untpd.Ident(_) :: (_: untpd.ImportSelector) :: _ => Mode.ImportOrExport
-        case untpd.Literal(Constants.Constant(_: String)) :: _ => Mode.Term // literal completions
+        case untpd.Ident(_) :: (_: untpd.ImportSelector) :: _ => Mode.ImportOrExport // import scala.@@
+        case untpd.Ident(_) :: (_: untpd.ImportOrExport) :: _ => Mode.ImportOrExport | Mode.Scope // import TrieMa@@
+
+        case untpd.Literal(Constants.Constant(_: String)) :: _ => Mode.Term | Mode.Scope // literal completions
         case (ref: untpd.RefTree) :: _ =>
-          if (ref.name.isTermName) Mode.Term
-          else if (ref.name.isTypeName) Mode.Type
+          val maybeSelectMembers = if ref.isInstanceOf[untpd.Select] then Mode.Member else Mode.Scope
+
+          if (ref.name.isTermName) Mode.Term | maybeSelectMembers
+          else if (ref.name.isTypeName) Mode.Type | maybeSelectMembers
           else Mode.None
 
-        case (sel: untpd.ImportSelector) :: _ =>
-          if sel.imported.span.contains(pos.span) then Mode.ImportOrExport
-          else Mode.None // Can't help completing the renaming
-
-        case (_: untpd.ImportOrExport) :: _ => Mode.ImportOrExport
         case _ => Mode.None
 
-    val completionKind: Mode =
-      path match
-        case Nil | (_: untpd.PackageDef) :: _ => Mode.None
-        case untpd.Ident(_) :: (_: untpd.ImportSelector) :: _ => Mode.Member
-        case (_: untpd.Select) :: _ => Mode.Member
-        case _ => Mode.Scope
-
-    completionSymbolKind | completionKind
+    completionSymbolKind
 
   /** When dealing with <errors> in varios palces we check to see if they are
    *  due to incomplete backticks. If so, we ensure we get the full prefix
@@ -141,17 +132,9 @@ object Completion:
       i + 1
 
     path match
-      case (sel: untpd.ImportSelector) :: _ =>
-        completionPrefix(sel.imported :: Nil, pos)
-
       case untpd.Ident(_) :: (sel: untpd.ImportSelector) :: _ if !sel.isGiven =>
         if sel.isWildcard then pos.source.content()(pos.point - 1).toString
         else completionPrefix(sel.imported :: Nil, pos)
-
-      case (tree: untpd.ImportOrExport) :: _ =>
-        tree.selectors.find(_.span.contains(pos.span)).map: selector =>
-          completionPrefix(selector :: Nil, pos)
-        .getOrElse("")
 
       // Foo.`se<TAB> will result in Select(Ident(Foo), <error>)
       case (select: untpd.Select) :: _ if select.name == nme.ERROR =>
@@ -211,7 +194,6 @@ object Completion:
       case tpd.Select(qual, _) :: _               if qual.typeOpt.hasSimpleKind => completer.selectionCompletions(qual)
       case tpd.Select(qual, _) :: _                                             => Map.empty
       case (tree: tpd.ImportOrExport) :: _                                      => completer.directMemberCompletions(tree.expr)
-      case (_: untpd.ImportSelector) :: tpd.Import(expr, _) :: _                => completer.directMemberCompletions(expr)
       case _                                                                    => completer.scopeCompletions
 
     interactiv.println(i"""completion info with pos    = $pos,

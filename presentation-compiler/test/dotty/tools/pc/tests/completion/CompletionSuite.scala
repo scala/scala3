@@ -1734,3 +1734,40 @@ class CompletionSuite extends BaseCompletionSuite:
       filter = _.contains("[")
     )
 
+  @Test def `empty-import` =
+    check(
+      """|import @@
+         |""".stripMargin,
+      """|java <root>
+         |javax <root>
+         |""".stripMargin,
+      filter = _.startsWith("java")
+    )
+
+  @Test def `empty-import-selector` =
+    check(
+      """|import java.@@
+         |""".stripMargin,
+      """|util java
+         |""".stripMargin,
+      filter = _.startsWith("util")
+    )
+
+  @Test def `empty-export` =
+    check(
+      """|export @@
+         |""".stripMargin,
+      """|java <root>
+         |javax <root>
+         |""".stripMargin,
+      filter = _.startsWith("java")
+    )
+
+  @Test def `empty-export-selector` =
+    check(
+      """|export java.@@
+         |""".stripMargin,
+      """|util java
+         |""".stripMargin,
+      filter = _.startsWith("util")
+    )

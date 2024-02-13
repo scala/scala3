@@ -558,18 +558,6 @@ class CompletionInterpolatorSuite extends BaseCompletionSuite:
       filter = _.contains("hello")
     )
 
-  @Test def `brace-token-error-pos` =
-    checkEditLine(
-      """|object Main {
-         |  val hello = ""
-         |  ___
-         |}
-         |""".stripMargin,
-      """s"Hello ${@@"""".stripMargin,
-      """s"Hello ${hello"""".stripMargin,
-      filter = _.contains("hello")
-    )
-
   @Test def `brace-token-error` =
     checkEditLine(
       """|object Main {
