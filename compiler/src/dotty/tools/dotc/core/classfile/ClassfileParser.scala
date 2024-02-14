@@ -895,7 +895,6 @@ class ClassfileParser(
     var exceptions: List[NameOrString] = Nil
     var annotations: List[Annotation] = Nil
     var namedParams: Map[Int, TermName] = Map.empty
-    var recordComponents: List[(NameOrString, NameOrString)] = Nil
 
     def complete(tp: Type, isVarargs: Boolean = false)(using Context): Type = {
       val updatedType =
@@ -913,7 +912,7 @@ class ClassfileParser(
           if ct != null then ConstantType(ct) else updatedType
         else updatedType
 
-      annotations.foreach(annot => sym.addAnnotation(annot))
+      annotations.foreach(sym.addAnnotation)
 
       exceptions.foreach { ex =>
         val cls = getClassSymbol(ex.name)
@@ -1000,7 +999,7 @@ class ClassfileParser(
           // https://docs.oracle.com/javase/specs/jvms/se15/preview/specs/records-jvms.html
         case tpnme.RecordATTR =>
           // Each member is /not/ sythetic on purpose
-          res.recordComponents = parseRecord(attrLen)
+          parseRecord()
         case _ =>
       }
       in.bp = end
@@ -1013,15 +1012,21 @@ class ClassfileParser(
       * each component within the `Record` in the order of the canonical
       * constructor.
       */
-    def parseRecord(len: Int): List[(NameOrString, NameOrString)] = {
+    def parseRecord(): Unit = {
       val componentsCount = in.nextChar.toInt
-      val components = for (_ <- 0 to componentsCount) yield
-        val name = pool.getName(in.nextChar.toInt)
-        val descriptor = pool.getClassName(in.nextChar.toInt)
-        // TODO: Parse the attribute information per component
+      val components = for (i <- 0 until componentsCount) yield
+        val nameIndex = in.nextChar.toInt
+        val descriptorIndex = in.nextChar.toInt
+
+        val name = pool.getName(nameIndex)
+        val descriptor = pool.getName(descriptorIndex)
+
+        // TODO: Do we want to respect the JVM and /not/ stamp this as `Synthetic`?
+        instanceScope.lookup(name.name).setFlag(Flags.Synthetic)
+
+        // TODO: Double /where/ we want these attributes to sit.
         skipAttributes()
-        (name, descriptor)
-      components.toList
+        (name, name)
     }
 
     /**
