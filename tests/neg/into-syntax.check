@@ -1,0 +1,61 @@
+-- [E040] Syntax Error: tests/neg/into-syntax.scala:7:22 ---------------------------------------------------------------
+7 |  def f1(x: List[into Int]) = () // error // error
+  |                      ^^^
+  |                      ',' or ']' expected, but identifier found
+-- Error: tests/neg/into-syntax.scala:11:20 ----------------------------------------------------------------------------
+11 |  def f4(x: into Int*) = () // error
+   |                    ^
+   |                    `*` cannot directly follow `into` parameter
+   |                    the `into` parameter needs to be put in parentheses
+-- [E040] Syntax Error: tests/neg/into-syntax.scala:21:23 --------------------------------------------------------------
+21 |  def f11(x: ((y: into Int) => into Int => Int)*) = () // error // error
+   |                       ^^^
+   |                       ')' expected, but identifier found
+-- Error: tests/neg/into-syntax.scala:24:14 ----------------------------------------------------------------------------
+24 |  def f14(x: (into Int) => Int) = () // error
+   |              ^^^^
+   |              no `into` modifier allowed here
+-- Error: tests/neg/into-syntax.scala:25:14 ----------------------------------------------------------------------------
+25 |  def f15(x: (into Int, into Int)) = () // error // error
+   |              ^^^^
+   |              no `into` modifier allowed here
+-- Error: tests/neg/into-syntax.scala:25:24 ----------------------------------------------------------------------------
+25 |  def f15(x: (into Int, into Int)) = () // error // error
+   |                        ^^^^
+   |                        no `into` modifier allowed here
+-- Error: tests/neg/into-syntax.scala:26:14 ----------------------------------------------------------------------------
+26 |  def f16(x: (into Int, into Int) => Int) = () // error // error
+   |              ^^^^
+   |              no `into` modifier allowed here
+-- Error: tests/neg/into-syntax.scala:26:24 ----------------------------------------------------------------------------
+26 |  def f16(x: (into Int, into Int) => Int) = () // error // error
+   |                        ^^^^
+   |                        no `into` modifier allowed here
+-- [E040] Syntax Error: tests/neg/into-syntax.scala:27:27 --------------------------------------------------------------
+27 |  def f17(x: into (y: into Int, z: into Int) => into Int) = () // error // error // error
+   |                           ^^^
+   |                           ')' expected, but identifier found
+-- [E019] Syntax Error: tests/neg/into-syntax.scala:27:44 --------------------------------------------------------------
+27 |  def f17(x: into (y: into Int, z: into Int) => into Int) = () // error // error // error
+   |                                            ^
+   |                                            Missing return type
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/into-syntax.scala:7:17 ------------------------------------------------------------
+7 |  def f1(x: List[into Int]) = () // error // error
+  |                 ^^^^
+  |                 Not found: type into - did you mean into.type?
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/into-syntax.scala:21:18 -----------------------------------------------------------
+21 |  def f11(x: ((y: into Int) => into Int => Int)*) = () // error // error
+   |                  ^^^^
+   |                  Not found: type into - did you mean into.type?
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/into-syntax.scala:27:22 -----------------------------------------------------------
+27 |  def f17(x: into (y: into Int, z: into Int) => into Int) = () // error // error // error
+   |                      ^^^^
+   |                      Not found: type into - did you mean into.type?
+   |
+   | longer explanation available when compiling with `-explain`

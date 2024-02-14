@@ -18,13 +18,27 @@ object Test:
   def g(x: into Text) =
     println(x.str)
 
+  def g2(x: into Text) =
+    println(x.str)
+
+  def g3(x: Text) =
+    println(x.str)
 
   g("abc")  // OK
   val gg = g
-  gg("abc") // straight eta expansion is also OK
+  gg("abc") // warn, eta expansion does not preserve into
+
+  val c1 = if ??? then g else g2
+  c1("abc") // warn, eta expansion does not preserve into
+
+  val c2 = if ??? then g else g3
+  c2("abc") // warn, eta expesnion does not preserve into
+
+  val c3 = if ??? then g3 else g
+  c3("abc") // warn, eta expesnion does not preserve into
 
   def h1[X](x: X)(y: X): Unit = ()
 
   def h(x: into Text) =
     val y = h1(x)
-    y("abc")  // warn, inference through type variable does not propagate
+    y("abc")  // warn, eta expesnion does not preserve into
