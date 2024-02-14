@@ -141,7 +141,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
                 |"""
       val enableXprintSuspensionHint =
         if ctx.settings.XprintSuspension.value then ""
-        else "\n\nCompiling with  -Xprint-suspension   gives more information."
+        else "\n\nCompile with -Xprint-suspension for information."
       report.error(em"""Cyclic macro dependencies $where
                     |Compilation stopped since no further progress can be made.
                     |
