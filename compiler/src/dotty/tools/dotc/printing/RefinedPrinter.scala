@@ -244,7 +244,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case _ =>
             val tsym = tycon.typeSymbol
             if tycon.isRepeatedParam then toTextLocal(args.head) ~ "*"
-            else if tp.isConvertibleParam then "into " ~ toText(args.head)
+            else if tp.isInto then atPrec(GlobalPrec)( "into " ~ toText(args.head) )
             else if defn.isFunctionSymbol(tsym) then toTextFunction(tp)
             else if isInfixType(tp) then
               val l :: r :: Nil = args: @unchecked
@@ -647,6 +647,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             && Feature.ccEnabled && !printDebug
             && Phases.checkCapturesPhase.exists // might be missing on -Ytest-pickler
         then toTextRetainsAnnot
+        else if annot.symbol.enclosingClass == defn.IntoAnnot && !printDebug then
+          atPrec(GlobalPrec):
+            Str("into ") ~ toText(arg)
         else toTextAnnot
       case EmptyTree =>
         "<empty>"

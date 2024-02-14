@@ -1089,7 +1089,7 @@ trait Checking {
     if sym.name == nme.apply
        && sym.owner.derivesFrom(defn.ConversionClass)
        && !sym.info.isErroneous
-       && !expected.isConvertibleParam
+       && !expected.isInto
     then
       def conv = methPart(tree) match
         case Select(qual, _) => qual.symbol.orElse(sym.owner)

@@ -419,8 +419,8 @@ object Types extends TypeUtils {
       typeSymbol eq defn.RepeatedParamClass
 
     /** Is this a parameter type that allows implicit argument converson? */
-    def isConvertibleParam(using Context): Boolean =
-      typeSymbol eq defn.IntoType
+    def isInto(using Context): Boolean =
+      typeSymbol eq ???
 
     /** Is this the type of a method that has a repeated parameter type as
      *  last parameter type?
@@ -4131,34 +4131,14 @@ object Types extends TypeUtils {
         case ExprType(resType) => ExprType(addAnnotation(resType, cls, param))
         case _ => AnnotatedType(tp, Annotation(cls, param.span))
 
-      def wrapConvertible(tp: Type) =
-        AppliedType(defn.IntoType.typeRef, tp :: Nil)
-
-      /** Add `Into[..] to the type itself and if it is a function type, to all its
-       *  curried result type(s) as well.
-       */
-      def addInto(tp: Type): Type = tp match
-        case tp @ AppliedType(tycon, args) if tycon.typeSymbol == defn.RepeatedParamClass =>
-          tp.derivedAppliedType(tycon, addInto(args.head) :: Nil)
-        case tp @ AppliedType(tycon, args) if defn.isFunctionNType(tp) =>
-          wrapConvertible(tp.derivedAppliedType(tycon, args.init :+ addInto(args.last)))
-        case tp @ defn.RefinedFunctionOf(rinfo) =>
-          wrapConvertible(tp.derivedRefinedType(refinedInfo = addInto(rinfo)))
-        case tp: MethodOrPoly =>
-          tp.derivedLambdaType(resType = addInto(tp.resType))
-        case ExprType(resType) =>
-          ExprType(addInto(resType))
-        case _ =>
-          wrapConvertible(tp)
-
       def paramInfo(param: Symbol) =
-        var paramType = param.info.annotatedToRepeated
+        var paramType = param.info
+          .annotatedToRepeated
+          //.mapIntoAnnot(defn.IntoType.appliedTo(_))
         if param.is(Inline) then
           paramType = addAnnotation(paramType, defn.InlineParamAnnot, param)
         if param.is(Erased) then
           paramType = addAnnotation(paramType, defn.ErasedParamAnnot, param)
-        if param.hasAnnotation(defn.AllowConversionsAnnot) then
-          paramType = addInto(paramType)
         paramType
 
       apply(params.map(_.name.asTermName))(
