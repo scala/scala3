@@ -486,6 +486,15 @@ object JavaParsers {
           case SEALED =>
             flags |= Flags.Sealed
             in.nextToken()
+          // JEP-409: Special trick for the 'non-sealed' java keyword
+          case IDENTIFIER if in.name.toString == "non" =>
+            val lookahead = in.LookaheadScanner()
+            ({lookahead.nextToken(); lookahead.token}, {lookahead.nextToken(); lookahead.name.toString}) match
+              case (MINUS, "sealed") =>
+                in.nextToken(); in.nextToken() // skip '-' and 'sealed'. Nothing more to do
+              case _ =>
+                syntaxError(em"Identifier '${in.name}' is not allowed here")
+            in.nextToken()
           case _ =>
             val privateWithin: TypeName =
               if (isPackageAccess && !inInterface) thisPackageName
