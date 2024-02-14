@@ -884,7 +884,7 @@ object Scanners {
             nextChar()
             ch match {
               case 'x' | 'X' => base = 16 ; nextChar()
-              case 'b' | 'B' => base = 2  ; nextChar()
+              //case 'b' | 'B' => base = 2  ; nextChar()
               case _         => base = 10 ; putChar('0')
             }
             if (base != 10 && !isNumberSeparator(ch) && digit2int(ch, base) < 0)
