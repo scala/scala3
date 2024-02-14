@@ -895,13 +895,15 @@ class ClassfileParser(
     var exceptions: List[NameOrString] = Nil
     var annotations: List[Annotation] = Nil
     var namedParams: Map[Int, TermName] = Map.empty
+    var recordComponents: List[(NameOrString, NameOrString)] = Nil
+
     def complete(tp: Type, isVarargs: Boolean = false)(using Context): Type = {
       val updatedType =
         if sig == null then tp
         else {
           val newType = sigToType(sig, sym, isVarargs)
-          if (ctx.debug && ctx.verbose)
-            println("" + sym + "; signature = " + sig + " type = " + newType)
+          if (ctx.verbose)
+            report.debuglog("" + sym + "; signature = " + sig + " type = " + newType)
           newType
         }
 
@@ -995,9 +997,31 @@ class ClassfileParser(
             report.log(s"$sym in ${sym.owner} is a java 8+ default method.")
           }
 
+          // https://docs.oracle.com/javase/specs/jvms/se15/preview/specs/records-jvms.html
+        case tpnme.RecordATTR =>
+          // Each member is /not/ sythetic on purpose
+          res.recordComponents = parseRecord(attrLen)
         case _ =>
       }
       in.bp = end
+    }
+
+    /**
+      * Parse the `Record` attribute.
+      *
+      * The `Record` attribute contains the _name_ and _descriptor_ for
+      * each component within the `Record` in the order of the canonical
+      * constructor.
+      */
+    def parseRecord(len: Int): List[(NameOrString, NameOrString)] = {
+      val componentsCount = in.nextChar.toInt
+      val components = for (_ <- 0 to componentsCount) yield
+        val name = pool.getName(in.nextChar.toInt)
+        val descriptor = pool.getClassName(in.nextChar.toInt)
+        // TODO: Parse the attribute information per component
+        skipAttributes()
+        (name, descriptor)
+      components.toList
     }
 
     /**

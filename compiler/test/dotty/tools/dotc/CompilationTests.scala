@@ -53,7 +53,11 @@ class CompilationTests {
     )
 
     if `isJava16+` then
-      tests ::= compileFilesInDir("tests/pos-java16+", defaultOptions.and("-Ysafe-init"))
+      // We need to make sure that the ingested java class files are compiled correctly as well!
+      tests ++= List(
+        compileFilesInDir("tests/pos-java16+", defaultOptions.and("-Ysafe-init")),
+        compileFilesInDir("tests/pos-java16+", defaultOptions.and("-Ysafe-init").compileJavaThenScala),
+      )
 
     aggregateTests(tests*).checkCompile()
   }
