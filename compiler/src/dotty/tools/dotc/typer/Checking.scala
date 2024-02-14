@@ -1250,30 +1250,6 @@ trait Checking {
   def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit =
     Checking.checkDerivedValueClass(clazz, stats)
 
-  /** Given a parent `parent` of a class `cls`, if `parent` is a trait check that
-   *  the superclass of `cls` derived from the superclass of `parent`.
-   *
-   *  An exception is made if `cls` extends `Any`, and `parent` is `java.io.Serializable`
-   *  or `java.lang.Comparable`. These two classes are treated by Scala as universal
-   *  traits. E.g. the following is OK:
-   *
-   *      ... extends Any with java.io.Serializable
-   *
-   *  The standard library relies on this idiom.
-   */
-  def checkTraitInheritance(parent: Symbol, cls: ClassSymbol, pos: SrcPos)(using Context): Unit =
-    parent match {
-      case parent: ClassSymbol if parent.is(Trait) =>
-        val psuper = parent.superClass
-        val csuper = cls.superClass
-        val ok = csuper.derivesFrom(psuper) ||
-          parent.is(JavaDefined) && csuper == defn.AnyClass &&
-          (parent == defn.JavaSerializableClass || parent == defn.ComparableClass)
-        if (!ok)
-          report.error(em"illegal trait inheritance: super$csuper does not derive from $parent's super$psuper", pos)
-      case _ =>
-    }
-
   /** Check that case classes are not inherited by case classes.
    */
   def checkCaseInheritance(parent: Symbol, caseCls: ClassSymbol, pos: SrcPos)(using Context): Unit =
@@ -1650,7 +1626,6 @@ trait NoChecking extends ReChecking {
   override def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit = ()
   override def checkSimpleKinded(tpt: Tree)(using Context): Tree = tpt
   override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
-  override def checkTraitInheritance(parentSym: Symbol, cls: ClassSymbol, pos: SrcPos)(using Context): Unit = ()
   override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: SrcPos)(using Context): Unit = ()
   override def checkNoForwardDependencies(vparams: List[ValDef])(using Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: SrcPos)(using Context): Type = tp
