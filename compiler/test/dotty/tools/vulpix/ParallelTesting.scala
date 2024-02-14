@@ -498,6 +498,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         case None => true
 
       def scalacOptions = toolArgs.getOrElse(ToolName.Scalac, Nil)
+      def javacOptions  = toolArgs.getOrElse(ToolName.Javac, Nil)
 
       val flags = flags0
         .and(scalacOptions: _*)
@@ -512,11 +513,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
       def compileWithJavac(fs: Array[String]) = if (fs.nonEmpty) {
         val fullArgs = Array(
-          "javac",
           "-encoding", StandardCharsets.UTF_8.name,
-        ) ++ flags.javacFlags ++ fs
+        ) ++ flags.javacFlags ++ javacOptions++ fs
 
-        val process = Runtime.getRuntime.exec(fullArgs)
+        val process = Runtime.getRuntime.exec("javac" +: fullArgs)
         val output = Source.fromInputStream(process.getErrorStream).mkString
 
         if waitForJudiciously(process) != 0 then Some(output)
