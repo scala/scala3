@@ -99,6 +99,6 @@ class ToolArgsTest:
   @Test def `tool is present`: Unit = assertEquals("-hey" :: Nil, toolArgsFor(ToolName.Test)("// test: -hey" :: Nil))
   @Test def `missing tool is absent`: Unit = assertEquals(Nil, toolArgsFor(ToolName.Javac)("// test: -hey" :: Nil))
   @Test def `multitool is present`: Unit =
-    assertEquals("-hey" :: Nil, toolArgsFor(ToolName.Test)("// test: -hey" :: "// javac: -d /tmp" :: Nil))
-    assertEquals("-d" :: "/tmp" :: Nil, toolArgsFor(ToolName.Javac)("// test: -hey" :: "// javac: -d /tmp" :: Nil))
+    assertEquals("-hey" :: Nil, toolArgsFor(ToolName.Test, None)("// test: -hey" :: "// java: -d /tmp" :: Nil))
+    assertEquals("-d" :: "/tmp" :: Nil, toolArgsFor(ToolName.Java, None)("// test: -hey" :: "// java: -d /tmp" :: Nil))
 end ToolArgsTest
