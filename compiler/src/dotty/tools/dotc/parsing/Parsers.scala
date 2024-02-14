@@ -1532,13 +1532,15 @@ object Parsers {
      *  PolyFunType    ::=  HKTypeParamClause '=>' Type
      *                   |  HKTypeParamClause ‘->’ [CaptureSet] Type   -- under pureFunctions
      *  FunTypeArgs    ::=  InfixType
-     *                   |  `(' [ [ ‘['erased']  FunArgType {`,' FunArgType } ] `)'
-     *                   |  '(' [ ‘['erased'] TypedFunParam {',' TypedFunParam } ')'
+     *                   |  `(' [ FunArgType {`,' FunArgType } ] `)'
+     *                   |  '(' [ TypedFunParam {',' TypedFunParam } ')'
+     *  MatchType      ::=  InfixType `match` <<< TypeCaseClauses >>>
      */
     def typ(): Tree =
       val start = in.offset
       var imods = Modifiers()
-      var erasedArgs: ListBuffer[Boolean] = ListBuffer()
+      val erasedArgs: ListBuffer[Boolean] = ListBuffer()
+
       def functionRest(params: List[Tree]): Tree =
         val paramSpan = Span(start, in.lastOffset)
         atSpan(start, in.offset) {
@@ -1567,7 +1569,8 @@ object Parsers {
           else
             accept(ARROW)
 
-          val resultType = if isPure then capturesAndResult(typ) else typ()
+          val resultType =
+            if isPure then capturesAndResult(typ) else typ()
           if token == TLARROW then
             for case ValDef(_, tpt, _) <- params do
               if isByNameType(tpt) then
@@ -1585,98 +1588,93 @@ object Parsers {
             Function(params, resultType)
         }
 
-      var isValParamList = false
+      def typeRest(t: Tree) = in.token match
+        case ARROW | CTXARROW =>
+          erasedArgs.addOne(false)
+          functionRest(t :: Nil)
+        case MATCH =>
+          matchType(t)
+        case FORSOME =>
+          syntaxError(ExistentialTypesNoLongerSupported())
+          t
+        case _ if isPureArrow =>
+          erasedArgs.addOne(false)
+          functionRest(t :: Nil)
+        case _ =>
+          if erasedArgs.contains(true) && !t.isInstanceOf[FunctionWithMods] then
+            syntaxError(ErasedTypesCanOnlyBeFunctionTypes(), implicitKwPos(start))
+          t
 
-      val t =
-        if (in.token == LPAREN) {
+      var isValParamList = false
+      if in.token == LPAREN then
+        in.nextToken()
+        if in.token == RPAREN then
           in.nextToken()
-          if (in.token == RPAREN) {
-            in.nextToken()
-            functionRest(Nil)
-          }
-          else {
-            val paramStart = in.offset
-            def addErased() =
-              erasedArgs.addOne(isErasedKw)
-              if isErasedKw then { in.skipToken(); }
-            addErased()
-            val ts = in.currentRegion.withCommasExpected {
+          functionRest(Nil)
+        else
+          val paramStart = in.offset
+          def addErased() =
+            erasedArgs.addOne(isErasedKw)
+            if isErasedKw then in.skipToken()
+          addErased()
+          val args =
+            in.currentRegion.withCommasExpected:
               funArgType() match
                 case Ident(name) if name != tpnme.WILDCARD && in.isColon =>
                   isValParamList = true
-                  def funParam(start: Offset, mods: Modifiers) = {
-                    atSpan(start) {
+                  def funParam(start: Offset, mods: Modifiers) =
+                    atSpan(start):
                       addErased()
                       typedFunParam(in.offset, ident(), imods)
-                    }
-                  }
                   commaSeparatedRest(
                     typedFunParam(paramStart, name.toTermName, imods),
                     () => funParam(in.offset, imods))
                 case t =>
-                  def funParam() = {
-                      addErased()
-                      funArgType()
-                  }
-                  commaSeparatedRest(t, funParam)
-            }
-            accept(RPAREN)
-            if isValParamList || in.isArrow || isPureArrow then
-              functionRest(ts)
-            else {
-              val ts1 = ts.mapConserve { t =>
-                if isByNameType(t) then
-                  syntaxError(ByNameParameterNotSupported(t), t.span)
-                  stripByNameType(t)
-                else
-                  t
-              }
-              val tuple = atSpan(start) { makeTupleOrParens(ts1) }
-              infixTypeRest(
-                refinedTypeRest(
-                  withTypeRest(
-                    annotTypeRest(
-                      simpleTypeRest(tuple)))))
-            }
-          }
-        }
-        else if (in.token == LBRACKET) {
-          val start = in.offset
-          val tparams = typeParamClause(ParamOwner.TypeParam)
-          if (in.token == TLARROW)
-            atSpan(start, in.skipToken())(LambdaTypeTree(tparams, toplevelTyp()))
-          else if (in.token == ARROW || isPureArrow(nme.PUREARROW)) {
-            val arrowOffset = in.skipToken()
-            val body = toplevelTyp()
-            atSpan(start, arrowOffset) {
-              getFunction(body) match {
-                case Some(f) =>
-                  PolyFunction(tparams, body)
-                case None =>
-                  syntaxError(em"Implementation restriction: polymorphic function types must have a value parameter", arrowOffset)
-                  Ident(nme.ERROR.toTypeName)
-              }
-            }
-          }
-          else { accept(TLARROW); typ() }
-        }
-        else if (in.token == INDENT) enclosed(INDENT, typ())
-        else infixType()
-
-      in.token match
-        case ARROW | CTXARROW =>
-          erasedArgs.addOne(false)
-          functionRest(t :: Nil)
-        case MATCH => matchType(t)
-        case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
-        case _ =>
-          if isPureArrow then
-            erasedArgs.addOne(false)
-            functionRest(t :: Nil)
+                  def funArg() =
+                    erasedArgs.addOne(false)
+                    funArgType()
+                  commaSeparatedRest(t, funArg)
+          accept(RPAREN)
+          if isValParamList || in.isArrow || isPureArrow then
+            functionRest(args)
           else
-            if (erasedArgs.contains(true) && !t.isInstanceOf[FunctionWithMods])
-              syntaxError(ErasedTypesCanOnlyBeFunctionTypes(), implicitKwPos(start))
-            t
+            val args1 = args.mapConserve: t =>
+              if isByNameType(t) then
+                syntaxError(ByNameParameterNotSupported(t), t.span)
+                stripByNameType(t)
+              else
+                t
+            val tuple = atSpan(start):
+              makeTupleOrParens(args1)
+            typeRest:
+              infixTypeRest:
+                refinedTypeRest:
+                  withTypeRest:
+                    annotTypeRest:
+                      simpleTypeRest(tuple)
+      else if in.token == LBRACKET then
+        val start = in.offset
+        val tparams = typeParamClause(ParamOwner.TypeParam)
+        if in.token == TLARROW then
+          atSpan(start, in.skipToken()):
+            LambdaTypeTree(tparams, toplevelTyp())
+        else if in.token == ARROW || isPureArrow(nme.PUREARROW) then
+          val arrowOffset = in.skipToken()
+          val body = toplevelTyp()
+          atSpan(start, arrowOffset):
+            getFunction(body) match
+              case Some(f) =>
+                PolyFunction(tparams, body)
+              case None =>
+                syntaxError(em"Implementation restriction: polymorphic function types must have a value parameter", arrowOffset)
+                Ident(nme.ERROR.toTypeName)
+        else
+          accept(TLARROW)
+          typ()
+      else if in.token == INDENT then
+        enclosed(INDENT, typ())
+      else
+        typeRest(infixType())
     end typ
 
     private def makeKindProjectorTypeDef(name: TypeName): TypeDef = {
@@ -1713,7 +1711,7 @@ object Parsers {
     private def implicitKwPos(start: Int): Span =
       Span(start, start + nme.IMPLICITkw.asSimpleName.length)
 
-    /** TypedFunParam   ::= id ':' Type */
+    /** TypedFunParam   ::= [`erased`] id ':' Type */
     def typedFunParam(start: Offset, name: TermName, mods: Modifiers = EmptyModifiers): ValDef =
       atSpan(start) {
         acceptColon()
@@ -2068,7 +2066,7 @@ object Parsers {
      */
     def paramType(): Tree = paramTypeOf(paramValueType)
 
-    /** ParamValueType ::= [`into`] Type [`*']
+    /** ParamValueType ::= Type [`*']
      */
     def paramValueType(): Tree = {
       val t = maybeInto(toplevelTyp)
@@ -2425,7 +2423,7 @@ object Parsers {
         Match(t, inBracesOrIndented(caseClauses(() => caseClause())))
       }
 
-    /**    `match' `{' TypeCaseClauses `}'
+    /**    `match' <<< TypeCaseClauses >>>
      */
     def matchType(t: Tree): MatchTypeTree =
       atSpan(startOffset(t), accept(MATCH)) {
@@ -2435,7 +2433,7 @@ object Parsers {
     /** FunParams         ::=  Bindings
      *                     |   id
      *                     |   `_'
-     *  Bindings          ::=  `(' [[‘erased’] Binding {`,' Binding}] `)'
+     *  Bindings          ::=  `(' [Binding {`,' Binding}] `)'
      */
     def funParams(mods: Modifiers, location: Location): List[Tree] =
       if in.token == LPAREN then
@@ -3173,7 +3171,7 @@ object Parsers {
      *                  |  AccessModifier
      *                  |  override
      *                  |  opaque
-     *  LocalModifier  ::= abstract | final | sealed | open | implicit | lazy | erased | inline | transparent
+     *  LocalModifier  ::= abstract | final | sealed | open | implicit | lazy | inline | transparent | infix | erased
      */
     def modifiers(allowed: BitSet = modifierTokens, start: Modifiers = Modifiers()): Modifiers = {
       @tailrec
@@ -3326,7 +3324,7 @@ object Parsers {
     /** ClsTermParamClause    ::=  ‘(’ ClsParams ‘)’ | UsingClsTermParamClause
      *  UsingClsTermParamClause::= ‘(’ ‘using’ [‘erased’] (ClsParams | ContextTypes) ‘)’
      *  ClsParams         ::=  ClsParam {‘,’ ClsParam}
-     *  ClsParam          ::=  {Annotation}
+     *  ClsParam          ::=  {Annotation} [{Modifier} (‘val’ | ‘var’)] Param
      *
      *  TypelessClause    ::= DefTermParamClause
      *                      | UsingParamClause

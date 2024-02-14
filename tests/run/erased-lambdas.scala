@@ -3,8 +3,8 @@
 
 // lambdas should parse and work
 
-type F = (erased Int, String) => String
-type S = (Int, erased String) => Int
+type F = (erased x: Int, y: String) => String
+type S = (x: Int, erased y: String) => Int
 
 def useF(f: F) = f(5, "a")
 def useS(f: S) = f(5, "a")
@@ -16,7 +16,7 @@ val fsExpl = (x: Int, erased y: String) => x
 
 // contextual lambdas should work
 
-type FC = (Int, erased String) ?=> Int
+type FC = (x: Int, erased y: String) ?=> Int
 
 def useCtx(f: FC) = f(using 5, "a")
 
@@ -25,7 +25,7 @@ val fCvExpl = (x: Int, erased y: String) ?=> x
 
 // nested lambdas should work
 
-val nested: Int => (String, erased Int) => FC = a => (_, erased _) => (c, erased d) ?=> a + c
+val nested: Int => (x: String, erased y: Int) => FC = a => (_, erased _) => (c, erased d) ?=> a + c
 
 @main def Test() =
   assert("a" == useF(ff))
