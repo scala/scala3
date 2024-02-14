@@ -1021,8 +1021,7 @@ class ClassfileParser(
         val name = pool.getName(nameIndex)
         val descriptor = pool.getName(descriptorIndex)
 
-        // TODO: Do we want to respect the JVM and /not/ stamp this as `Synthetic`?
-        instanceScope.lookup(name.name).setFlag(Flags.Synthetic)
+        instanceScope.lookup(name.name).setFlag(Flags.ParamAccessor)
 
         // TODO: Double /where/ we want these attributes to sit.
         skipAttributes()

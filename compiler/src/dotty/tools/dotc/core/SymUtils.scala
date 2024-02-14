@@ -258,7 +258,7 @@ class SymUtils:
 
     // TODO: Check if `Synthetic` is stamped properly
     def javaRecordComponents(using Context): List[Symbol] =
-      self.info.decls.filter(sym => sym.is(Synthetic) && sym.is(Method) && !sym.isConstructor)
+      self.info.decls.filter(_.is(ParamAccessor))
 
     def getter(using Context): Symbol =
       if (self.isGetter) self else accessorNamed(self.asTerm.name.getterName)
