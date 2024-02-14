@@ -57,7 +57,7 @@ val experimentalDefinitionInLibrary = Set(
   "scala.caps$",
 
   //// New feature: into
-  "scala.annotation.internal.into",
+  "scala.annotation.into",
   "scala.annotation.internal.$into",
 
   //// New feature: @publicInBinary
