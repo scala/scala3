@@ -142,26 +142,6 @@ object CheckCaptures:
 
       private val seen = new EqHashSet[TypeRef]
 
-      /** Check that there is at least one method containing carrier and defined
-       *  in the scope of tparam. E.g. this is OK:
-       *    def f[T] = { ... var x: T ... }
-       *  So is this:
-       *    class C[T] { def f() = { class D { var x: T }}}
-       *  But this is not OK:
-       *    class C[T] { object o { var x: T }}
-       */
-      extension (tparam: Symbol) def isParametricIn(carrier: Symbol): Boolean =
-        carrier.exists && {
-          val encl = carrier.owner.enclosingMethodOrClass
-          if encl.isClass then tparam.isParametricIn(encl)
-          else
-            def recur(encl: Symbol): Boolean =
-              if tparam.owner == encl then true
-              else if encl.isStatic || !encl.exists then false
-              else recur(encl.owner.enclosingMethodOrClass)
-            recur(encl)
-        }
-
       def traverse(t: Type) =
         t.dealiasKeepAnnots match
           case t: TypeRef =>
