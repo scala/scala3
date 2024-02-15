@@ -128,7 +128,24 @@ object SpaceEngine {
       else if spaces2.corresponds(spaces)(_ eq _) then space else Or(spaces2)
     case typ: Typ =>
       if decompose(typ).isEmpty then Empty
-      else space
+      else
+        val tp = typ.tp
+        if tp.classSymbol.is(CaseClass) then
+          val companion = tp.typeConstructor.dealias match
+            case tp: TypeRef => TermRef(tp.prefix, tp.symbol.companionModule)
+            case _           => NoType
+          val synUnapp = companion.member(nme.unapply)
+          if synUnapp.exists
+              && !synUnapp.hasAltWithInline(!_.symbol.is(Synthetic))
+              && !companion.member(nme.unapplySeq).exists
+          then
+            val fun = TermRef(companion, nme.unapply, synUnapp)
+            val own = synUnapp.symbol.owner
+            val arity = if own.is(Scala2x) then own.linkedClass.caseAccessors.size else productArity(tp)
+            val sig = signature(fun, tp, arity)
+            Prod(tp, fun, sig.map(Typ(_, false))).simplify
+          else space
+        else space
     case _ => space
   })
 
@@ -370,7 +387,8 @@ object SpaceEngine {
       project(pat)
 
     case Typed(_, tpt) =>
-      Typ(erase(tpt.tpe.stripAnnots, isValue = true, isTyped = true), decomposed = false)
+      val isTyped = !tpt.tpe.hasAnnotation(defn.UncheckedAnnot)
+      Typ(erase(tpt.tpe.stripAnnots, isValue = true, isTyped = isTyped), decomposed = false)
 
     case This(_) =>
       Typ(pat.tpe.stripAnnots, decomposed = false)
@@ -762,9 +780,9 @@ object SpaceEngine {
           val isUnapplySeq = fun.symbol.name eq nme.unapplySeq
           val paramsStr = params.map(doShow(_, flattenList = isUnapplySeq)).mkString("(", ", ", ")")
           val prefix = fun.prefix match
-            case pre: TermRef => pre.symbol.typeRef
+            case pre: TermRef => TypeRef(pre.prefix, pre.symbol)
             case pre          => pre
-          prefix.typeConstructor.show + paramsStr
+          prefix.show + paramsStr
       case Or(ss) =>
         ss.map(doShow(_, flattenList)).mkString(" | ")
     }
