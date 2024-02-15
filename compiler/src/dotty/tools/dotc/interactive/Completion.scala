@@ -90,8 +90,8 @@ object Completion:
 
     val completionSymbolKind: Mode =
       path match
-        case untpd.Ident(_) :: (_: untpd.ImportSelector) :: _ => Mode.ImportOrExport // import scala.@@
-        case untpd.Ident(_) :: (_: untpd.ImportOrExport) :: _ => Mode.ImportOrExport | Mode.Scope // import TrieMa@@
+        case GenericImportSelector(_) => Mode.ImportOrExport // import scala.@@
+        case GenericImportOrExport(_) => Mode.ImportOrExport | Mode.Scope // import TrieMa@@
 
         case untpd.Literal(Constants.Constant(_: String)) :: _ => Mode.Term | Mode.Scope // literal completions
         case (ref: untpd.RefTree) :: _ =>
@@ -132,7 +132,7 @@ object Completion:
       i + 1
 
     path match
-      case untpd.Ident(_) :: (sel: untpd.ImportSelector) :: _ if !sel.isGiven =>
+      case GenericImportSelector(sel) if !sel.isGiven =>
         if sel.isWildcard then pos.source.content()(pos.point - 1).toString
         else completionPrefix(sel.imported :: Nil, pos)
 
@@ -151,6 +151,20 @@ object Completion:
 
 
   end completionPrefix
+
+  private object GenericImportSelector:
+    def unapply(path: List[untpd.Tree]): Option[untpd.ImportSelector] =
+      path match
+        case untpd.Ident(_) :: (sel: untpd.ImportSelector) :: _ => Some(sel)
+        case (sel: untpd.ImportSelector) :: _ => Some(sel)
+        case _ => None
+
+  private object GenericImportOrExport:
+    def unapply(path: List[untpd.Tree]): Option[untpd.ImportOrExport] =
+      path match
+        case untpd.Ident(_) :: (importOrExport: untpd.ImportOrExport) :: _ => Some(importOrExport)
+        case (importOrExport: untpd.ImportOrExport) :: _ => Some(importOrExport)
+        case _ => None
 
   /** Inspect `path` to determine the offset where the completion result should be inserted. */
   def completionOffset(untpdPath: List[untpd.Tree]): Int =

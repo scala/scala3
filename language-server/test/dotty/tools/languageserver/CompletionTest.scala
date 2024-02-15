@@ -1679,4 +1679,20 @@ class CompletionTest {
              ("Numeric", Field, "Numeric"),
              ("Numeric", Field, "scala.math.Numeric")
            ))
+
+  @Test def `empty-import-selector`: Unit =
+    code"""|import java.$m1
+           |"""
+      .completion(results => {
+        val interestingResults = results.filter(_.getLabel().startsWith("util"))
+        assertEquals(1, interestingResults.size)
+      })
+
+  @Test def `empty-export-selector`: Unit =
+    code"""|export java.$m1
+           |"""
+    .completion(results => {
+      val interestingResults = results.filter(_.getLabel().startsWith("util"))
+      assertEquals(1, interestingResults.size)
+    })
 }

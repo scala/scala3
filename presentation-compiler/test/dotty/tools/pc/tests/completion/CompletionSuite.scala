@@ -1771,3 +1771,93 @@ class CompletionSuite extends BaseCompletionSuite:
          |""".stripMargin,
       filter = _.startsWith("util")
     )
+
+  @Test def `annotation` =
+    check(
+      """|@Over@@
+         |object M {}
+         |""".stripMargin,
+      """|Override java.lang
+         |""".stripMargin,
+      filter = _ == "Override java.lang"
+    )
+
+  @Test def `no-annotation` =
+    check(
+      """|
+         |object M {
+         |  Overr@@
+         |}
+         |""".stripMargin,
+      """|Override java.lang
+         |""".stripMargin,
+      filter = _ == "Override java.lang"
+    )
+
+  @Test def `no-annotation-param-first-pos` =
+    check(
+      """|
+         |object M {
+         |  def hello(Overr@@)
+         |}
+         |""".stripMargin,
+      ""
+    )
+
+  @Test def `no-annotation-param-second-pos` =
+    check(
+      """|
+         |object M {
+         |  def hello(x: Int, Overr@@)
+         |}
+         |""".stripMargin,
+      ""
+    )
+
+  @Test def `no-annotation-param-second-list` =
+    check(
+      """|
+         |object M {
+         |  def hello(x: Int)(Overr@@)
+         |}
+         |""".stripMargin,
+      ""
+    )
+
+
+  @Test def `annotation-param-first-pos` =
+    check(
+      """|
+         |object M {
+         |  def hello(@Overr@@)
+         |}
+         |""".stripMargin,
+      """|Override java.lang
+         |""".stripMargin,
+      filter = _ == "Override java.lang"
+    )
+
+  @Test def `annotation-param-second-pos` =
+    check(
+      """|
+         |object M {
+         |  def hello(x: Int, @Overr@@)
+         |}
+         |""".stripMargin,
+      """|Override java.lang
+         |""".stripMargin,
+      filter = _ == "Override java.lang"
+    )
+
+  @Test def `annotation-param-second-list` =
+    check(
+      """|
+         |object M {
+         |  def hello(x: Int)( @Overr@@)
+         |}
+         |""".stripMargin,
+      """|Override java.lang
+         |""".stripMargin,
+      filter = _ == "Override java.lang"
+    )
+
