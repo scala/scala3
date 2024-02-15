@@ -8,7 +8,8 @@ Capture checking is a research project that modifies the Scala type system to tr
 ```scala
 import language.experimental.captureChecking
 ```
-At present, capture checking is still highly experimental and unstable.
+At present, capture checking is still highly experimental and unstable, and it evolves quickly.
+Before trying it out, make sure you have the latest version of Scala.
 
 To get an idea what capture checking can do, let's start with a small example:
 ```scala
