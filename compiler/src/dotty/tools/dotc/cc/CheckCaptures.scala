@@ -151,9 +151,9 @@ object CheckCaptures:
 
               // Check the lower bound of path dependent types.
               // See issue #19330.
-              val isMember = t.prefix eq NoPrefix
+              val isMember = t.prefix ne NoPrefix
               t.info match
-                case TypeBounds(lo, _) if !isMember => traverse(lo)
+                case TypeBounds(lo, _) if isMember => traverse(lo)
                 case _ =>
           case AnnotatedType(_, ann) if ann.symbol == defn.UncheckedCapturesAnnot =>
             ()
