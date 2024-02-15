@@ -73,7 +73,7 @@ For Scala 3 code, the `into` modifier is preferred, because it adheres to the pr
 
 ## Restrictions
 
-The `into` modifier is only allowed in the types method parameters. It can be given either for the whole type, or some result type of a top-level function type, but not anywhere else. The `into` modifier does not propagate outside the method. In particular, a partially applied method does not propagate `into` modifiers to its result.
+The `into` modifier is only allowed in the types of method parameters. It can be given either for the whole type, or some result type of a top-level function type, but not anywhere else. The `into` modifier does not propagate outside the method. In particular, a partially applied method does not propagate `into` modifiers to its result.
 
 **Example:**
 
@@ -117,4 +117,4 @@ IntoType          ::=  [‘into’] IntoTargetType
 IntoTargetType    ::=  Type
                     |  FunTypeArgs (‘=>’ | ‘?=>’) IntoType
 ```
-As the grammar shows, `into` can only applied to the type of a parameter; it is illegal in other positions. Also, `into` modifiers in vararg types have to be enclosed in parentheses.
+As the grammar shows, `into` can only applied in the type of a parameter; it is illegal in other positions. Also, `into` modifiers in vararg types have to be enclosed in parentheses.
