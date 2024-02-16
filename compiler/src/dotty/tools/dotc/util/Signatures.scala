@@ -221,7 +221,7 @@ object Signatures {
         val funSymbol = fun.symbol
         val alternatives = if funSymbol.isLocalToBlock then List(funSymbol.denot) else
           funSymbol.owner.info.member(funSymbol.name).alternatives
-        val alternativeIndex = alternatives.map(_.symbol).indexOf(funSymbol) max 0
+        val alternativeIndex = bestAlternative(alternatives, params, paramssListIndex)
         (alternativeIndex, alternatives)
 
     if alternativeIndex < alternatives.length then
@@ -660,24 +660,56 @@ object Signatures {
         case msg: NoMatchingOverload => msg.alternatives
         case _                       => Nil
 
-    val userParamsTypes = params.map(_.tpe)
 
     // Assign a score to each alternative (how many parameters are correct so far), and
     // use that to determine what is the current active signature.
+    val alternativeIndex = bestAlternative(alternatives, params, paramssIndex)
+    (alternativeIndex, alternatives)
+  }
+
+  /**
+   * Given a list of alternatives, and a list of parameters, returns the index of the best
+   * alternative, i.e. the alternative that has the most formal parameters matching the given
+   * arguments and the least number of formal parameters.
+   *
+   * @param alternatives  The list of alternatives to inspect.
+   * @param params        The parameters that were given at the call site.
+   * @param paramssIndex  Index of paramss we are currently in.
+   *
+   * @return The index of the best alternative.
+   */
+  private def bestAlternative(alternatives: List[SingleDenotation], params: List[tpd.Tree], paramssIndex: Int)(using Context): Int =
+    val userParamsTypes = params.map(
+      _.tpe match
+        case e: PreviousErrorType =>
+          /**
+            * In case:
+            *  def foo(i: Int, s: String): Unit = ???
+            *  def foo(i: Boolean, s: Int, x: Double): Unit = ???
+            *  foo(false, @@)
+            *
+            * `false` has error type: `Required: Int, Found: Boolean`
+            */
+          e.msg match
+            case tm: TypeMismatch =>
+              tm.found
+            case _ => e
+        case t => t
+    )
     val alternativesScores = alternatives.map { alt =>
       val alreadyCurriedBonus = if (alt.symbol.paramSymss.length > paramssIndex) 1 else 0
-      alt.info.stripPoly match
-        case tpe: MethodType => alreadyCurriedBonus +
-          userParamsTypes.zip(tpe.paramInfos).takeWhile{ case (t0, t1) => t0 <:< t1 }.size
-        case _ => 0
+        alt.info.stripPoly match
+          case tpe: MethodType =>
+            val score = alreadyCurriedBonus +
+              userParamsTypes
+                .zip(tpe.paramInfos)
+                .takeWhile { case (t0, t1) =>t0 <:< t1 }
+                .size
+            (score, -tpe.paramInfos.length)
+          case _ => (0, 0)
     }
-
-    val bestAlternative =
-      if (alternativesScores.isEmpty) 0
-      else alternativesScores.zipWithIndex.maxBy(_._1)._2
-
-    (bestAlternative, alternatives)
-  }
+    if (alternativesScores.isEmpty) 0
+    else alternativesScores.zipWithIndex.maxBy(_._1)._2
 }
 
 
