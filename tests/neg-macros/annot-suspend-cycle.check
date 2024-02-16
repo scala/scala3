@@ -9,4 +9,4 @@ Compilation stopped since no further progress can be made.
 
 To fix this, place macros in one set of files and their callers in another.
 
-Compiling with  -Xprint-suspension   gives more information.
+Compile with -Xprint-suspension for information.
