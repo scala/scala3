@@ -2678,11 +2678,8 @@ object Types extends TypeUtils {
      *  refinement type `T { X = U; ... }`
      */
     def reduceProjection(using Context): Type =
-      if (isType || true) {
-        val reduced = prefix.lookupRefined(name)
-        if (reduced.exists) reduced else this
-      }
-      else this
+      val reduced = prefix.lookupRefined(name)
+      if reduced.exists then reduced else this
 
     /** Guard against cycles that can arise if given `op`
      *  follows info. The problematic cases are a type alias to itself or
@@ -6593,9 +6590,6 @@ object Types extends TypeUtils {
         val y = foldOver(x, tp.paramInfos)
         variance = saved
         this(y, restpe)
-
-      //case tp: TermRef =>
-      //  if stopBecauseStaticOrLocal(tp) then x else applyToPrefix(x, tp)
 
       case tp: TypeVar =>
         this(x, tp.underlying)
