@@ -1,0 +1,5 @@
+> a/compile
+# test depending on variations of Java paths
+> b/run
+# double check against the real java classes
+> bAlt/run
