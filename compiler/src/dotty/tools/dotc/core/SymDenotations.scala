@@ -1501,6 +1501,13 @@ object SymDenotations {
     def namedType(using Context): NamedType =
       if (isType) typeRef else termRef
 
+    /** Like typeRef, but the prefix is widened.
+     *
+     *  See tests/neg/i19619/Test.scala
+     */
+    def javaTypeRef(using Context) =
+      TypeRef(maybeOwner.reachablePrefix.widen, symbol)
+
     /** Like typeRef, but objects in the prefix are represented by their singleton type,
      *  this means we output `pre.O.member` rather than `pre.O$.this.member`.
      *
