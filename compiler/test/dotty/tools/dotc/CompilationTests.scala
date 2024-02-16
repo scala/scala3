@@ -171,6 +171,7 @@ class CompilationTests {
 
     if `isJava16+` then
       tests ::= compileFilesInDir("tests/run-java16+", defaultOptions.and("-Ysafe-init"))
+      tests ::= compileFilesInDir("tests/pos-java16+", defaultOptions.and("-Ysafe-init").compileJavaThenScala)
 
     aggregateTests(tests*).checkRuns()
   }
