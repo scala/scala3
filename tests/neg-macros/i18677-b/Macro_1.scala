@@ -1,5 +1,3 @@
-//> using -expermiental
-
 import annotation.MacroAnnotation
 import quoted.*
 

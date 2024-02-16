@@ -216,7 +216,7 @@ Experimental definitions can only be referenced in an experimental scope. Experi
 
    <details>
    <summary>Example 1</summary>
-   
+
    ```scala
    import scala.annotation.experimental
 
@@ -242,7 +242,7 @@ Experimental definitions can only be referenced in an experimental scope. Experi
      }
    }
    ```
-   
+
    </details>
 
 5. Annotations of an experimental definition are in experimental scopes. Examples:
@@ -264,9 +264,6 @@ Experimental definitions can only be referenced in an experimental scope. Experi
    ```
 
    </details>
-
-6. Any code compiled using a [_Nightly_](https://search.maven.org/artifact/org.scala-lang/scala3-compiler_3) or _Snapshot_ version of the compiler is considered to be in an experimental scope.
-Can use the `-Yno-experimental` compiler flag to disable it and run as a proper release.
 
 In any other situation, a reference to an experimental definition will cause a compilation error.
 

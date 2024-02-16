@@ -29,6 +29,7 @@ class BootstrappedOnlyCompilationTests {
     aggregateTests(
       compileFilesInDir("tests/bench", defaultOptions.without("-Yno-deep-subtypes")),
       compileFilesInDir("tests/pos-macros", defaultOptions.and("-Xcheck-macros")),
+      compileFilesInDir("tests/pos-no-experimental", defaultOptions.without("-experimental")),
     ).checkCompile()
   }
 
@@ -104,8 +105,10 @@ class BootstrappedOnlyCompilationTests {
 
   @Test def negMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileNegWithCompiler")
-    compileFilesInDir("tests/neg-macros", defaultOptions.and("-Xcheck-macros"))
-      .checkExpectedErrors()
+    aggregateTests(
+      compileFilesInDir("tests/neg-macros", defaultOptions.and("-Xcheck-macros")),
+      compileFilesInDir("tests/neg-no-experimental", defaultOptions.without("-experimental")),
+    ).checkExpectedErrors()
   }
 
   @Test def negWithCompiler: Unit = {

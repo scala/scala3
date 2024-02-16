@@ -1675,7 +1675,10 @@ object Build {
 
   lazy val `scaladoc-testcases` = project.in(file("scaladoc-testcases")).
     dependsOn(`scala3-compiler-bootstrapped`).
-    settings(commonBootstrappedSettings)
+    settings(commonBootstrappedSettings).
+    settings(
+      scalacOptions += "-experimental",
+    )
 
 
   /**
@@ -1758,6 +1761,7 @@ object Build {
       SourceLinksIntegrationTest / test:= ((SourceLinksIntegrationTest / test) dependsOn generateScalaDocumentation.toTask("")).value,
     ).
     settings(
+      scalacOptions += "-experimental", // FIXME scaladoc should not use exprimental APIs
       Compile / resourceGenerators ++= Seq(
         generateStaticAssetsTask.taskValue,
         bundleCSS.taskValue
@@ -2155,9 +2159,6 @@ object Build {
           settings(
             versionScheme := Some("semver-spec"),
             libraryDependencies += "org.scala-lang" % "scala-library" % stdlibVersion,
-            // Make sure we do not refer to experimental features outside an experimental scope.
-            // In other words, disable NIGHTLY/SNAPSHOT experimental scope.
-            scalacOptions += "-Yno-experimental",
           ).
           settings(dottyLibrarySettings)
       if (mode == Bootstrapped) {

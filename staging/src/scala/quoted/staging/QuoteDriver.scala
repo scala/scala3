@@ -37,7 +37,10 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
     val ctx = {
       val ctx0 = QuotesCache.init(initCtx.fresh)
       val ctx1 = setup(settings.compilerArgs.toArray :+ "dummy.scala", ctx0).get._2
-      setCompilerSettings(ctx1.fresh.setSetting(ctx1.settings.outputDir, outDir), settings)
+      val ctx2 = ctx1.fresh
+      ctx2.setSetting(ctx1.settings.outputDir, outDir)
+      ctx2.setSetting(ctx1.settings.experimental, true)
+      setCompilerSettings(ctx2, settings)
     }
 
     new QuoteCompiler().newRun(ctx).compileExpr(exprBuilder) match
