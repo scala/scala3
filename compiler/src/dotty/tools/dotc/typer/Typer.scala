@@ -461,6 +461,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 if (isSelfDenot(defDenot)) curOwner.enclosingClass.thisType
                 else if (ctx.isJava && defDenot.symbol.isStatic) {
                   defDenot.symbol.namedType
+                }
+                else if (ctx.isJava && defDenot.symbol.isClass) {
+                  // in a java context a raw identifier to a class should have a widened prefix.
+                  defDenot.symbol.javaTypeRef
                 } else {
                   val effectiveOwner =
                     if (curOwner.isTerm && defDenot.symbol.maybeOwner.isType)
