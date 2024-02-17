@@ -4012,7 +4012,7 @@ object Parsers {
         val tparams = typeParamClauseOpt(ParamOwner.Given)
         newLineOpt()
         val vparamss =
-          if in.token == LPAREN && in.lookahead.isIdent(nme.using)
+          if in.token == LPAREN && (in.lookahead.isIdent(nme.using) || name != EmptyTermName)
           then termParamClauses(ParamOwner.Given)
           else Nil
         newLinesOpt()
