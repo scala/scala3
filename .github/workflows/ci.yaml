@@ -662,6 +662,7 @@ jobs:
 
       - name: Generate Website
         run: |
+          git config --global --add safe.directory /__w/dotty/dotty
           ./project/scripts/genDocs -doc-snapshot
 
       - name: Deploy Website to dotty-website
