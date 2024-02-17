@@ -68,8 +68,11 @@ jobs:
       - name: Set JDK 16 as default
         run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
 
+      ## Workaround for https://github.com/actions/runner/issues/2033 (See https://github.com/lampepfl/dotty/pull/19720)
       - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+        run: |
+          git config --global --add safe.directory /__w/dotty/dotty
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v3
@@ -120,7 +123,9 @@ jobs:
         run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
 
       - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+        run: |
+          git config --global --add safe.directory /__w/dotty/dotty
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v3
@@ -144,6 +149,7 @@ jobs:
         run: |
           ./project/scripts/sbt ";sjsSandbox/run ;sjsSandbox/test ;sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
 
+
   test_windows_fast:
     runs-on: [self-hosted, Windows]
     if: "(
@@ -159,8 +165,10 @@ jobs:
 
     steps:
       - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
         shell: cmd
+        run: |
+          git config --global --add safe.directory /__w/dotty/dotty
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Git Checkout
         uses: actions/checkout@v3
@@ -201,8 +209,10 @@ jobs:
 
     steps:
       - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
         shell: cmd
+        run: |
+          git config --global --add safe.directory /__w/dotty/dotty
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Git Checkout
         uses: actions/checkout@v3
@@ -239,7 +249,9 @@ jobs:
          )"
     steps:
       - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+        run: |
+          git config --global --add safe.directory /__w/dotty/dotty
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v3
@@ -282,7 +294,9 @@ jobs:
 
     steps:
       - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+        run: |
+          git config --global --add safe.directory /__w/dotty/dotty
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v3
@@ -331,7 +345,9 @@ jobs:
 
     steps:
       - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+        run: |
+          git config --global --add safe.directory /__w/dotty/dotty
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v3
@@ -380,7 +396,9 @@ jobs:
 
     steps:
       - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+        run: |
+          git config --global --add safe.directory /__w/dotty/dotty
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v3
@@ -427,7 +445,9 @@ jobs:
 
     steps:
       - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+        run: |
+          git config --global --add safe.directory /__w/dotty/dotty
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v3
@@ -474,7 +494,9 @@ jobs:
         run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
 
       - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+        run: |
+          git config --global --add safe.directory /__w/dotty/dotty
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v3
@@ -518,7 +540,9 @@ jobs:
 
     steps:
       - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+        run: |
+          git config --global --add safe.directory /__w/dotty/dotty
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v3
@@ -572,7 +596,9 @@ jobs:
 
     steps:
       - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+        run: |
+          git config --global --add safe.directory /__w/dotty/dotty
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v3
@@ -623,7 +649,9 @@ jobs:
 
     steps:
       - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+        run: |
+          git config --global --add safe.directory /__w/dotty/dotty
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v3
