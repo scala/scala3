@@ -13,12 +13,14 @@ import core.Constants.Constant
 import core.NameOps.isContextFunction
 import core.StdNames.nme
 import core.Types.*
+import core.Decorators.*
 import coverage.*
 import typer.LiftCoverage
 import util.{SourcePosition, SourceFile}
 import util.Spans.Span
 import localopt.StringInterpolatorOpt
 import inlines.Inlines
+import scala.util.matching.Regex
 
 /** Implements code coverage by inserting calls to scala.runtime.coverage.Invoker
   * ("instruments" the source code).
@@ -57,6 +59,18 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     super.run
 
     Serializer.serialize(coverage, outputPath, ctx.settings.sourceroot.value)
+
+  private def isClassIncluded(sym: Symbol)(using Context): Boolean =
+    val excludedClassNamePatterns = ctx.settings.coverageExcludePackages.value.map(_.r.pattern)
+    excludedClassNamePatterns.isEmpty || !excludedClassNamePatterns.exists(
+      _.matcher(sym.fullName.toText(ctx.printerFn(ctx)).show).nn.matches
+    )
+
+  private def isFileIncluded(file: SourceFile)(using Context): Boolean =
+    val excludedFilePatterns = ctx.settings.coverageExcludeFiles.value.map(_.r.pattern)
+    excludedFilePatterns.isEmpty || !excludedFilePatterns.exists(
+      _.matcher(file.path.replace(".scala", "")).nn.matches
+    )
 
   override protected def newTransformer(using Context) =
     CoverageTransformer(ctx.settings.coverageOutputDir.value)
@@ -269,8 +283,17 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
             transformDefDef(tree)
 
           case tree: PackageDef =>
-            // only transform the statements of the package
-            cpy.PackageDef(tree)(tree.pid, transform(tree.stats))
+            if (isFileIncluded(tree.srcPos.sourcePos.source) && isClassIncluded(tree.symbol))
+              // only transform the statements of the package
+              cpy.PackageDef(tree)(tree.pid, transform(tree.stats))
+            else
+              tree
+
+          case tree: TypeDef =>
+            if (isFileIncluded(tree.srcPos.sourcePos.source) && isClassIncluded(tree.symbol))
+              super.transform(tree)
+            else
+              tree
 
           case tree: Assign =>
             // only transform the rhs
