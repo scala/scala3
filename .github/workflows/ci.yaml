@@ -612,8 +612,8 @@ jobs:
       SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 
     steps:
-      - name: Set JDK 17 as default
-        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
+      - name: Set JDK 8 as default
+        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory /__w/dotty/dotty
@@ -723,6 +723,8 @@ jobs:
       SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 
     steps:
+      - name: Set JDK 8 as default
+        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory /__w/dotty/dotty
