@@ -1,13 +1,12 @@
-FROM ruby:2.7
+FROM ruby:3.3
 
 RUN apt-get install -y curl \
   && curl -sL https://deb.nodesource.com/setup_18.x | bash - \
   && apt-get install -y nodejs \
   && curl -L https://www.npmjs.com/install.sh | sh
 
-RUN gem update --system
-RUN gem install sass-embedded -v 1.58.0
-RUN gem install bundler:1.17.2 jekyll
+RUN gem update --system 3.5.6
+RUN gem install bundler:2.5.6
 
 WORKDIR /srv/jekyll
 

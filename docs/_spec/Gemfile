@@ -1,8 +1,8 @@
-# To build the spec on Travis CI
 source "https://rubygems.org"
+ruby "3.3"
 
-gem "jekyll", "3.6.3"
-gem "webrick"
+gem "jekyll", "4.3.3"
 gem "rouge"
-# gem 's3_website'
-gem "redcarpet", "3.5.1"
+gem "rexml"
+gem "sass-embedded"
+gem "csv"

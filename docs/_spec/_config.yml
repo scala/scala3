@@ -5,7 +5,7 @@ versionCompareMessage: "an upcoming"
 safe: true
 lsi: false
 highlighter: false
-markdown: redcarpet
+markdown: kramdown
 encoding: utf-8
-redcarpet:
-  extensions: ["no_intra_emphasis", "fenced_code_blocks", "autolink", "tables", "with_toc_data", "strikethrough", "lax_spacing", "space_after_headers", "superscript", "footnotes", "disable_indented_code_blocks"]
+kramdown:
+  input: GFM
