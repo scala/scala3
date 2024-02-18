@@ -277,11 +277,13 @@ object Extractor {
 SimplePattern ::= StableId ‘(’ [Patterns ‘,’] [varid ‘@’] ‘_’ ‘*’ ‘)’
 ```
 
-A _pattern sequence_ ´p_1, ..., p_n´ appears in two contexts.
-First, in a constructor pattern ´c(q_1, ..., q_m, p_1, ..., p_n)´, where ´c´ is a case class which has ´m+1´ primary constructor parameters,  ending in a [repeated parameter](04-basic-definitions.html#repeated-parameters) of type `S*`.
-Second, in an extractor pattern ´x(q_1, ..., q_m, p_1, ..., p_n)´ if the extractor object ´x´ does not have an `unapply` method, but it does define an `unapplySeq` method with a result type that is an extractor type for type `(T_1, ... , T_m, Seq[S])` (if `m = 0`, an extractor type for the type `Seq[S]` is also accepted). The expected type for the patterns ´p_i´ is ´S´.
+A _pattern sequence_ ´p_1, ..., p_n´ appears in the following two contexts:
+
+1. In a constructor pattern ´c(q_1, ..., q_m, p_1, ..., p_n)´, where ´c´ is a case class which has ´m+1´ primary constructor parameters,  ending in a [repeated parameter](04-basic-definitions.html#repeated-parameters) of type `S*`.
+2. In an extractor pattern ´x(q_1, ..., q_m, p_1, ..., p_n)´ _if_ the extractor object ´x´ does _not_ have an `unapply` method, but _defines_ an `unapplySeq` method with a result type that is an extractor type for type `(T_1, ... , T_m, Seq[S])`. If `m = 0`, an extractor type for the type `Seq[S]` is permitted. The expected type for the patterns ´p_i´ is ´S´.
 
 The last pattern in a pattern sequence may be a _sequence wildcard_ `_*`.
+
 Each element pattern ´p_i´ is type-checked with ´S´ as expected type, unless it is a sequence wildcard.
 If a final sequence wildcard is present, the pattern matches all values ´v´ that are sequences which start with elements matching patterns ´p_1, ..., p_{n-1}´.
 If no final sequence wildcard is given, the pattern matches all values ´v´ that are sequences of length ´n´ which consist of elements matching patterns ´p_1, ..., p_n´.
@@ -317,11 +319,14 @@ The alternative pattern matches a value ´v´ if at least one its alternatives m
 
 A _given pattern_ introduces an _anonymous given instance_ of the _type_ matched by `TypePat` to the scope of the clause that a given pattern occurs _within_.
 
-The rules for the _name_ synthesized for each anonymous instance is defined in the reference. If multiple names synthesized by the compiler are _not_ unique, this will result in an error.
+The rules for the _name_ synthesized for each anonymous instance is defined in the reference.
+
+If multiple names synthesized by the compiler are _not_ unique, the pattern is [illegal](#bound-variables).
 
 ###### Example 1
 
-In the following example, the type pattern matches a non-null instance of the `String` class. The given pattern _introduces_ an _anonymous given instance_ of type `String`, synthesized as `given_String`, to the local scope. 
+In the following example, the type pattern matches a non-null instance of the `String` class. 
+The given pattern _introduces_ an _anonymous given instance_ of type `String`, synthesized as `given_String`, to the local scope. 
 
 Summoning an implicit of type `String` within the body of the case clause resolves to this new instance; the program prints `"bar"` instead of `"foo"` first.
 
@@ -336,7 +341,9 @@ println(summon[String]) // "foo" is printed
 ```
 ###### Example 2
 
-In the following example, a generic type pattern `List[_]` is bound. This matches a type of `List[t]` where `t` is an anonymous type _within_ the local scope. `t` is _inferred_ to be a subtype of `Int` within the body of the case clause and can return `Int` without any casts.
+In the following example, a generic type pattern `List[_]` is bound. 
+This matches a type of `List[t]` where `t` is an anonymous type _within_ the local scope. 
+`t` is _inferred_ to be a subtype of `Int` within the body of the case clause and can return `Int` without any casts.
 
 ```scala
 def foo: Int =
@@ -356,6 +363,21 @@ Later version of Scala provide a much simplified version of regular expression p
 A _sequence pattern_ is a pattern that stands in a position where either (1) a pattern of a type `T` which is conforming to `Seq[A]` for some `A` is expected, or (2) a case class constructor that has an iterated formal parameter `A*`.
 A wildcard star pattern `_*` in the rightmost position stands for arbitrary long sequences.
 It can be bound to variables using `@`, as usual, in which case the variable will have the type `Seq[A]`.
+
+### Bound variables
+
+A pattern may bind variables. Let `p` be a pattern and `´x_1´, ..., ´x_n´` be the variables with a _name_.
+
+Patterns may:
+
+1.  Introduce bound variables directly if _p_ is a:
+   1.  [Variable pattern](#variable-patterns)
+   1.  [Typed pattern](#typed-patterns)
+   1.  [Given pattern](#given-patterns)
+   1.  [Pattern binder](#pattern-binders)
+1.  Introduce bound variables as a result of a legal _sub-pattern_ in all other cases.
+
+A pattern is illegal if the _name_ of `´x_i´` is not unique.
 
 ### Irrefutable Patterns
 
