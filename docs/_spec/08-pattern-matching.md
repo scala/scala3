@@ -17,6 +17,8 @@ chapter: 8
                     |  Pattern3
   Pattern3        ::=  SimplePattern
                     |  SimplePattern {id [nl] SimplePattern}
+                    |  GivenPattern
+  GivenPattern    ::=  ‘given’ TypePat
   SimplePattern   ::=  ‘_’
                     |  varid
                     |  Literal
@@ -306,6 +308,41 @@ A _pattern alternative_ `´p_1´ | ... | ´p_n´` consists of a number of altern
 All alternative patterns are type checked with the expected type of the pattern.
 They may not bind variables other than wildcards.
 The alternative pattern matches a value ´v´ if at least one its alternatives matches ´v´.
+
+### Given patterns
+
+```ebnf
+  GivenPattern   ::= TypePat
+```
+
+A _given pattern_ introduces an _anonymous given instance_ of the _type_ matched by `TypePat` to the scope of the clause that a given pattern occurs _within_.
+
+The rules for the _name_ synthesized for each anonymous instance is defined in the reference. If multiple names synthesized by the compiler are _not_ unique, this will result in an error.
+
+###### Example 1
+
+In the following example, the type pattern matches a non-null instance of the `String` class. The given pattern _introduces_ an _anonymous given instance_ of type `String`, synthesized as `given_String`, to the local scope. 
+
+Summoning an implicit of type `String` within the body of the case clause resolves to this new instance; the program prints `"bar"` instead of `"foo"` first.
+
+```scala
+
+given String = "foo"
+
+"bar" match
+  case given String => println(summon[String]) // "bar" is printed
+
+println(summon[String]) // "foo" is printed
+```
+###### Example 2
+
+In the following example, a generic type pattern `List[_]` is bound. This matches a type of `List[t]` where `t` is an anonymous type _within_ the local scope. `t` is _inferred_ to be a subtype of `Int` within the body of the case clause and can return `Int` without any casts.
+
+```scala
+def foo: Int =
+  List(1) match
+    case given List[_] => summon[List[?]].head // returns `1`
+```
 
 ### XML Patterns
 
