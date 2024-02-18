@@ -276,14 +276,12 @@ object Extractor {
 ```ebnf
 SimplePattern ::= StableId ‘(’ [Patterns ‘,’] [varid ‘@’] ‘_’ ‘*’ ‘)’
 ```
-
 A _pattern sequence_ ´p_1, ..., p_n´ appears in the following two contexts:
 
 1. In a constructor pattern ´c(q_1, ..., q_m, p_1, ..., p_n)´, where ´c´ is a case class which has ´m+1´ primary constructor parameters,  ending in a [repeated parameter](04-basic-definitions.html#repeated-parameters) of type `S*`.
 2. In an extractor pattern ´x(q_1, ..., q_m, p_1, ..., p_n)´ _if_ the extractor object ´x´ does _not_ have an `unapply` method, but _defines_ an `unapplySeq` method with a result type that is an extractor type for type `(T_1, ... , T_m, Seq[S])`. If `m = 0`, an extractor type for the type `Seq[S]` is permitted. The expected type for the patterns ´p_i´ is ´S´.
 
 The last pattern in a pattern sequence may be a _sequence wildcard_ `_*`.
-
 Each element pattern ´p_i´ is type-checked with ´S´ as expected type, unless it is a sequence wildcard.
 If a final sequence wildcard is present, the pattern matches all values ´v´ that are sequences which start with elements matching patterns ´p_1, ..., p_{n-1}´.
 If no final sequence wildcard is given, the pattern matches all values ´v´ that are sequences of length ´n´ which consist of elements matching patterns ´p_1, ..., p_n´.
