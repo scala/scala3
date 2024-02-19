@@ -48,6 +48,8 @@ function renderMath({el, result, text}) {
 
     const spans = [];
 
+    console.log(text);
+
     // get the spans of all math elements
     while(match = re.exec(text)) {
 	const start = match.index;
@@ -67,22 +69,20 @@ function renderMath({el, result, text}) {
 	const parent = new DocumentFragment();
 	katex.render(str, parent, { throwOnError: false });
 	const children = parent.children;
-	// TODO: Double check mutiple elements aren't possible 
 	if (children.length == 1) {
 	    span.span = children[0];
+	} else {
+	    console.log("more children");
 	}
     }
 
-    // Here we start the merging between the katex output and highlight output.
-    if (spans.length != 0) {
-
-	// This is essentially our iterator
-	var offset = 0;
+    function go(parent, offset, spans) {
+	
 	var span = spans.shift();
-	var child = el.firstChild;
-
-	// highlight only supports one level of nesting.
-	while (child) {
+	var child = parent.firstChild;
+	
+	while (child && span) {
+	    
 	    if (child instanceof Text) {
 		const str = child.wholeText;
 		const start = offset;
@@ -91,33 +91,46 @@ function renderMath({el, result, text}) {
 		if (span.start >= start && span.end <= end) {
 		    const beforeText = str.substring(0, span.start - start);
 		    if (beforeText) {
-			el.insertBefore(new Text(beforeText), child);
+			parent.insertBefore(new Text(beforeText), child);
 		    }
-		    
 		    const afterText = str.substring(span.end - start);
-		    child = el.replaceChild(span.span, child);
-		    
-		    if (afterText) {
-			const afterChild = new Text(afterText);
-			if (child.nextSibling) {
-			    el.insertBefore(afterChild, child.nextSibling);
-			} else {
-			    el.appendChild(afterChild);
-			}
+		    const newChild = span.span;
+		    parent.replaceChild(newChild, child);
+		    child = newChild;
+		    const afterChild = new Text(afterText);
+		    const next = child.nextSibling;
+		    if (next) {
+			parent.insertBefore(afterChild, next);
+		    } else {
+			parent.appendChild(afterChild);
 		    }
-		    
 		    offset = span.end;
-		    
+		    span = spans.shift();
 		} else {
 		    offset = end;
 		}
-	    } else if (child.tagName) {
-		const str = child.innerHTML;
-		offset += str.length;
+	    } else if (child.tagName == "SPAN") {
+		spans.unshift(span);
+		offset = go(child, offset, spans);
+	    } else {
+		console.log("oh no!");
+	    }
+
+	    while (span && offset > span.end) {
+		// TODO:
+		console.log("dropping span...");
+		span = spans.shift();
 	    }
 
 	    child = child.nextSibling;
 	}
+
+	return offset;
+    }
+
+    // Here we start the merging between the katex output and highlight output.
+    if (spans.length != 0) {
+	go(el, 0, spans);
     }
 }
 
@@ -135,6 +148,7 @@ document.addEventListener("DOMContentLoaded", function() {
       // We ignore 'code' here, because highlight will deal with it.
       ignoredTags: ['script', 'noscript', 'style', 'code'],
   });
+  hljs.configure({ cssSelector: 'code' });
   hljs.highlightAll();
   $("pre nobr").addClass("fixws");
   // point when all necessary js is done, so PDF to be rendered
