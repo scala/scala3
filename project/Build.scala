@@ -2138,6 +2138,16 @@ object Build {
         // default.
         addCommandAlias("publishLocal", "scala3-bootstrapped/publishLocal"),
         repl := (`scala3-compiler-bootstrapped` / repl).value,
+        (Compile / console) := (Compile / console).dependsOn(Def.task {
+          import _root_.scala.io.AnsiColor._
+          val msg = "`console` uses the reference Scala version. Use `repl` instead."
+          val f = "═" * (msg.length + 2)
+          val box =
+            s"""╔$f╗
+               |║ ${BOLD}$msg$RESET ║
+               |╚$f╝""".stripMargin
+          streams.value.log.warn(box)
+        }).value,
       ).
       settings(
         publish / skip := true
