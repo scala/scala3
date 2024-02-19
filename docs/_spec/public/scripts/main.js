@@ -41,23 +41,101 @@ if(window.jekyllEnv !== 'spec-pdf') {
   );
 }
 
-// no language auto-detect so that EBNF isn't detected as scala
-hljs.configure({
-  languages: []
+// See https://github.com/highlightjs/highlight.js/issues/2889 for additional context.
+function renderMath({el, result, text}) {
+
+    const re = RegExp('´', 'g');
+
+    const spans = [];
+
+    // get the spans of all math elements
+    while(match = re.exec(text)) {
+	const start = match.index;
+	match = re.exec(text);
+	if(match == null) {
+	    break;
+	} else {
+	    const end = match.index + 1;
+	    spans.push({start, end});
+	}
+    }
+
+    // render spans using katex
+    for(const span of spans) {
+	const {start, end} = span;
+	const str = text.substring(start + 1, end - 1);
+	const parent = new DocumentFragment();
+	katex.render(str, parent, { throwOnError: false });
+	const children = parent.children;
+	// TODO: Double check mutiple elements aren't possible 
+	if (children.length == 1) {
+	    span.span = children[0];
+	}
+    }
+
+    // Here we start the merging between the katex output and highlight output.
+    if (spans.length != 0) {
+
+	// This is essentially our iterator
+	var offset = 0;
+	var span = spans.shift();
+	var child = el.firstChild;
+
+	// highlight only supports one level of nesting.
+	while (child) {
+	    if (child instanceof Text) {
+		const str = child.wholeText;
+		const start = offset;
+		const end = start + str.length;
+
+		if (span.start >= start && span.end <= end) {
+		    const beforeText = str.substring(0, span.start - start);
+		    if (beforeText) {
+			el.insertBefore(new Text(beforeText), child);
+		    }
+		    
+		    const afterText = str.substring(span.end - start);
+		    child = el.replaceChild(span.span, child);
+		    
+		    if (afterText) {
+			const afterChild = new Text(afterText);
+			if (child.nextSibling) {
+			    el.insertBefore(afterChild, child.nextSibling);
+			} else {
+			    el.appendChild(afterChild);
+			}
+		    }
+		    
+		    offset = span.end;
+		    
+		} else {
+		    offset = end;
+		}
+	    } else if (child.tagName) {
+		const str = child.innerHTML;
+		offset += str.length;
+	    }
+
+	    child = child.nextSibling;
+	}
+    }
+}
+
+hljs.addPlugin({
+    'after:highlightElement': renderMath
 });
 
 // KaTeX configuration
 document.addEventListener("DOMContentLoaded", function() {
   renderMathInElement(document.body, {
-    delimiters: [
-      {left: "´", right: "´", display: false}, // "display: false" -> inline
-      {left: "$$", right: "$$", display: true}
-    ],
-    ignoredTags: ['script', 'noscript', 'style', 'textarea'],
+      delimiters: [
+	  {left: "´", right: "´", display: false}, // "display: false" -> inline
+	  {left: "$$", right: "$$", display: true}
+      ],
+      // We ignore 'code' here, because highlight will deal with it.
+      ignoredTags: ['script', 'noscript', 'style', 'code'],
   });
-  // syntax highlighting after KaTeX is loaded,
-  // so that math can be used in code blocks
-  hljs.initHighlighting();
+  hljs.highlightAll();
   $("pre nobr").addClass("fixws");
   // point when all necessary js is done, so PDF to be rendered
   window.status = "loaded";

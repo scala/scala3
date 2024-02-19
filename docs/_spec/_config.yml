@@ -4,8 +4,9 @@ thisScalaVersion: 2.13
 versionCompareMessage: "an upcoming"
 safe: true
 lsi: false
-highlighter: false
 markdown: kramdown
 encoding: utf-8
+highlighter: none
 kramdown:
-  input: GFM
+  syntax_highlighter_opts:
+    disable : true
