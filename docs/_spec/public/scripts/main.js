@@ -71,8 +71,6 @@ function renderMath({el, result, text}) {
 	const children = parent.children;
 	if (children.length == 1) {
 	    span.span = children[0];
-	} else {
-	    console.log("more children");
 	}
     }
 
@@ -82,12 +80,13 @@ function renderMath({el, result, text}) {
 	var child = parent.firstChild;
 	
 	while (child && span) {
-	    
+
 	    if (child instanceof Text) {
 		const str = child.wholeText;
 		const start = offset;
 		const end = start + str.length;
-
+		
+		// TODO: Deal with the other situation, where our math span encompasses multiple highlight spans...
 		if (span.start >= start && span.end <= end) {
 		    const beforeText = str.substring(0, span.start - start);
 		    if (beforeText) {
@@ -113,11 +112,10 @@ function renderMath({el, result, text}) {
 		spans.unshift(span);
 		offset = go(child, offset, spans);
 	    } else {
-		console.log("oh no!");
+		console.log("skipping element");
 	    }
 
 	    while (span && offset > span.end) {
-		// TODO:
 		console.log("dropping span...");
 		span = spans.shift();
 	    }
