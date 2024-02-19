@@ -255,7 +255,7 @@ object Types extends TypeUtils {
     /** Is this type exactly `Any`, or a type lambda ending in `Any`? */
     def isTopOfSomeKind(using Context): Boolean = dealias match
       case tp: TypeLambda => tp.resType.isTopOfSomeKind
-      case _ => isExactlyAny
+      case _ => dealias.isExactlyAny
 
     def isBottomType(using Context): Boolean =
       if ctx.mode.is(Mode.SafeNulls) && !ctx.phase.erasedTypes then hasClassSymbol(defn.NothingClass)
