@@ -1733,6 +1733,58 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       assertSameCode(instructions, expected)
     }
   }
+
+  @Test def newInPrefixesOfDefaultParam = {
+    val source =
+      s"""class A:
+         |  def f(x: Int = 1): Int = x
+         |
+         |class Test:
+         | def meth1() = (new A).f()
+         | def meth2() = { val a = new A; a.f() }
+         """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Test.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+      val meth1      = getMethod(clsNode, "meth1")
+      val meth2      = getMethod(clsNode, "meth2")
+
+      val instructions1 = instructionsFromMethod(meth1)
+      val instructions2 = instructionsFromMethod(meth2)
+
+      assert(instructions1 == instructions2,
+        "`assert` was not properly inlined in `meth1`\n" +
+        diffInstructions(instructions1, instructions2))
+    }
+  }
+
+  @Test def newInDependentOfDefaultParam = {
+    val source =
+      s"""class A:
+         |  def i: Int = 1
+         |
+         |class Test:
+         |  def f(a: A)(x: Int = a.i): Int = x
+         |  def meth1() = f(new A)()
+         |  def meth2() = { val a = new A; f(a)() }
+         """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Test.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+      val meth1      = getMethod(clsNode, "meth1")
+      val meth2      = getMethod(clsNode, "meth2")
+
+      val instructions1 = instructionsFromMethod(meth1)
+      val instructions2 = instructionsFromMethod(meth2)
+
+      assert(instructions1 == instructions2,
+        "`assert` was not properly inlined in `meth1`\n" +
+        diffInstructions(instructions1, instructions2))
+    }
+  }
+
 }
 
 object invocationReceiversTestCode {
