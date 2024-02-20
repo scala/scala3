@@ -39,7 +39,7 @@ object TastyPrinter:
     val noColor = args.contains("-color:never")
     val allowBetasty = args.contains(betastyOpt)
     var printLastLine = false
-    def printTasty(fileName: String, bytes: Array[Byte], isBestEffortTasty: Boolean = false): Unit =
+    def printTasty(fileName: String, bytes: Array[Byte], isBestEffortTasty: Boolean): Unit =
       println(line)
       println(fileName)
       println(line)
