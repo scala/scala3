@@ -447,6 +447,9 @@ class TreeUnpickler(reader: TastyReader,
               }
             case FLEXIBLEtype =>
               FlexibleType(readType())
+            case _ if isBestEffortTasty =>
+              goto(end)
+              new PreviousErrorType
           }
         assert(currentAddr == end, s"$start $currentAddr $end ${astTagToString(tag)}")
         result
