@@ -4275,14 +4275,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val tree1 =
         if ((pt eq AnyTypeConstructorProto) || tp.typeParamSymbols.isEmpty) tree
         else {
-          val tp1 =
-            if (ctx.isJava)
-              // Cook raw type
-              AppliedType(tree.tpe, tp.typeParams.map(Function.const(TypeBounds.empty)))
-            else
-              // Eta-expand higher-kinded type
-              tree.tpe.etaExpand(tp.typeParamSymbols)
-          tree.withType(tp1)
+          if (ctx.isJava)
+            // Cook raw type
+            val typeArgs = tp.typeParams.map(Function.const(TypeBounds.empty))
+            val tree1 = AppliedTypeTree(tree, typeArgs.map(TypeTree(_)))
+            val tp1 = AppliedType(tree.tpe, typeArgs)
+            tree1.withType(tp1)
+          else
+            // Eta-expand higher-kinded type
+            val tp1 = tree.tpe.etaExpand(tp.typeParamSymbols)
+            tree.withType(tp1)
         }
       if (ctx.mode.is(Mode.Pattern) || ctx.mode.isQuotedPattern || tree1.tpe <:< pt) tree1
       else err.typeMismatch(tree1, pt)

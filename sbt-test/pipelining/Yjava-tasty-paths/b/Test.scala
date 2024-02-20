@@ -43,7 +43,7 @@ object B {
       val cd_ii_Raw: RawTypes#C[?]#D[?] = cd_ii
 
       RawTypes.mii_Raw_Raw(cd_ii_Raw)
-      // RawTypes.mii_Raw_Raw2(cd_ii_Raw) // error: dotty still doesnt rewrite the tree of a raw type to a type with wildcards
+      RawTypes.mii_Raw_Raw2(cd_ii_Raw)
     }
   }
 
