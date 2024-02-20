@@ -122,7 +122,10 @@ abstract class Lifter {
     case TypeApply(fn, targs) =>
       cpy.TypeApply(tree)(liftApp(defs, fn), targs)
     case Select(pre, name) if isPureRef(tree) =>
-      cpy.Select(tree)(liftPrefix(defs, pre), name)
+      val liftedPrefix =
+        if tree.symbol.is(HasDefaultParams) then liftPrefix(defs, pre)
+        else liftNonIdempotentPrefix(defs, pre)
+      cpy.Select(tree)(liftedPrefix, name)
     case Block(stats, expr) =>
       liftApp(defs ++= stats, expr)
     case New(tpt) =>
@@ -138,8 +141,26 @@ abstract class Lifter {
    *
    *  unless `pre` is idempotent.
    */
-  def liftPrefix(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree =
+  def liftNonIdempotentPrefix(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree =
     if (isIdempotentExpr(tree)) tree else lift(defs, tree)
+
+  /** Lift prefix `pre` of an application `pre.f(...)` to
+   *
+   *     val x0 = pre
+   *     x0.f(...)
+   *
+   *  unless `pre` is idempotent reference, a `this` reference, a literal value, or a or the prefix of an `init` (`New` tree).
+   *
+   *  Note that default arguments will refer to the prefix, we do not want
+   *  to re-evaluate a complex expression each time we access a getter.
+   */
+  def liftPrefix(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree =
+    tree match
+      case tree: Literal => tree
+      case tree: This => tree
+      case tree: New => tree // prefix of <init> call
+      case tree: RefTree if isIdempotentExpr(tree) => tree
+      case _ => lift(defs, tree)
 }
 
 /** No lifting at all */
