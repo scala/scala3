@@ -323,9 +323,9 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  } yield k
         |}
       """.stripMargin,
-      """|to(end: Int): Inclusive
+      """|to(end: Int): Range.Inclusive
          |   ^^^^^^^^
-         |to(end: Int, step: Int): Inclusive
+         |to(end: Int, step: Int): Range.Inclusive
          |""".stripMargin,
       stableOrder = false
     )
@@ -502,8 +502,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  new scala.util.control.Exception.Catch(@@)
         |}
       """.stripMargin,
-      """|Catch[T](pf: Catcher[T], fin: Option[Finally], rethrow: Throwable => Boolean)
-         |         ^^^^^^^^^^^^^^
+      """|Catch[T](pf: control.Exception.Catcher[T], fin: Option[control.Exception.Finally], rethrow: Throwable => Boolean)
+         |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -1135,8 +1135,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |  def test(a: Foo.Test, b: Foo.Test): Int = ???
          |  test(Foo.Test(1), @@)
          |""".stripMargin,
-      """|test(a: Test, b: Test): Int
-         |              ^^^^^^^
+      """|test(a: Foo.Test, b: Foo.Test): Int
+         |                  ^^^^^^^^^^^
          |""".stripMargin
     )
 

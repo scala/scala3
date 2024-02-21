@@ -8,7 +8,7 @@ import org.junit.Test
 
 class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
 
-  @Test def `type-params` = 
+  @Test def `type-params` =
     check(
       """|object Main {
          |  def hello[T](t: T) = t
@@ -23,7 +23,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
       kind = Some(DecorationKind.TypeParameter)
     )
 
-  @Test def `type-params2` = 
+  @Test def `type-params2` =
     check(
       """|object Main {
          |  def hello[T](t: T) = t
@@ -38,7 +38,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
       kind = Some(DecorationKind.TypeParameter)
     )
 
-  @Test def `implicit-param` = 
+  @Test def `implicit-param` =
     check(
       """|case class User(name: String)
          |object Main {
@@ -57,7 +57,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
       kind = Some(DecorationKind.ImplicitParameter)
     )
 
-  @Test def `implicit-conversion` = 
+  @Test def `implicit-conversion` =
     check(
       """|case class User(name: String)
          |object Main {
@@ -74,7 +74,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
       kind = Some(DecorationKind.ImplicitConversion)
     )
 
-  @Test def `using-param` = 
+  @Test def `using-param` =
     check(
       """|case class User(name: String)
          |object Main {
@@ -93,7 +93,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
       kind = Some(DecorationKind.ImplicitParameter)
     )
 
-  @Test def `given-conversion` = 
+  @Test def `given-conversion` =
     check(
       """|case class User(name: String)
          |object Main {
@@ -110,7 +110,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
       kind = Some(DecorationKind.ImplicitConversion)
     )
 
-  @Test def `given-conversion2` = 
+  @Test def `given-conversion2` =
     check(
       """|trait Xg:
          |  def doX: Int
@@ -128,7 +128,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          |""".stripMargin
     )
 
-  @Test def `basic` = 
+  @Test def `basic` =
     check(
       """|object Main {
          |  val foo = 123
@@ -140,7 +140,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          |""".stripMargin
     )
 
-  @Test def `list` = 
+  @Test def `list` =
     check(
       """|object Main {
          |  val foo = List[Int](123)
@@ -152,7 +152,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          |""".stripMargin
     )
 
-  @Test def `list2` = 
+  @Test def `list2` =
     check(
       """|object O {
          |  def m = 1 :: List(1)
@@ -164,7 +164,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          |""".stripMargin
     )
 
-  @Test def `two-param` = 
+  @Test def `two-param` =
     check(
       """|object Main {
          |  val foo = Map((1, "abc"))
@@ -176,7 +176,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          |""".stripMargin
     )
 
-  @Test def `tuple` = 
+  @Test def `tuple` =
     check(
       """|object Main {
          |  val foo = (123, 456)
@@ -188,7 +188,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          |""".stripMargin
     )
 
-  @Test def `import-needed` = 
+  @Test def `import-needed` =
     check(
       """|object Main {
          |  val foo = List[String]("").toBuffer[String]
@@ -200,7 +200,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          |""".stripMargin
     )
 
-  @Test def `lambda-type` = 
+  @Test def `lambda-type` =
     check(
     """|object Main {
        |  val foo = () => 123
@@ -212,7 +212,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
        |""".stripMargin
     )
 
-  @Test def `block` = 
+  @Test def `block` =
     check(
       """|object Main {
          |  val foo = { val z = 123; z + 2}
@@ -224,7 +224,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          |""".stripMargin
     )
 
-  @Test def `refined-types` = 
+  @Test def `refined-types` =
     check(
       """|object O{
          |  trait Foo {
@@ -246,7 +246,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          |""".stripMargin
     )
 
-  @Test def `refined-types1` = 
+  @Test def `refined-types1` =
     check(
       """|object O{
          |  trait Foo {
@@ -266,7 +266,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          |""".stripMargin
     )
 
-  @Test def `refined-types4` = 
+  @Test def `refined-types4` =
     check(
       """|trait Foo extends Selectable {
          |  type T
@@ -292,7 +292,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          |""".stripMargin
     )
 
-  @Test def `dealias` = 
+  @Test def `dealias` =
     check(
       """|class Foo() {
          |  type T = Int
@@ -314,7 +314,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          |""".stripMargin
     )
 
-  @Test def `dealias2` = 
+  @Test def `dealias2` =
     check(
       """|object Foo {
          |  type T = Int
@@ -330,7 +330,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          |""".stripMargin
     )
 
-  @Test def `dealias3` = 
+  @Test def `dealias3` =
     check(
       """|object Foo:
          |  opaque type T = Int
@@ -340,11 +340,11 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
       """|object Foo:
          |  opaque type T = Int
          |  def getT: T = 1
-         |val c: T = Foo.getT
+         |val c: Foo.T = Foo.getT
          |""".stripMargin
     )
 
-  @Test def `dealias4` = 
+  @Test def `dealias4` =
     check(
       """|object O:
          | type M = Int
@@ -362,7 +362,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          |""".stripMargin
     )
 
-  @Test def `dealias5` = 
+  @Test def `dealias5` =
     check(
       """|object O:
          | opaque type M = Int
@@ -376,11 +376,11 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          | type W = M => Int
          | def get: W = ???
          |
-         |val m: M => Int = O.get
+         |val m: O.M => Int = O.get
          |""".stripMargin
     )
 
-  @Test def `explicit-tuple` = 
+  @Test def `explicit-tuple` =
     check(
       """|object Main {
          |  val x = Tuple2.apply(1, 2)
@@ -392,7 +392,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          |""".stripMargin
     )
 
-  @Test def `explicit-tuple1` = 
+  @Test def `explicit-tuple1` =
     check(
       """|object Main {
          |  val x = Tuple2(1, 2)
@@ -404,7 +404,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          |""".stripMargin
     )
 
-  @Test def `tuple-unapply` = 
+  @Test def `tuple-unapply` =
     check(
       """|object Main {
          |  val (fst, snd) = (1, 2)
@@ -416,7 +416,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          |""".stripMargin
     )
 
-  @Test def `list-unapply` = 
+  @Test def `list-unapply` =
     check(
       """|object Main {
          |  val hd :: tail = List(1, 2)
@@ -428,7 +428,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          |""".stripMargin
     )
 
-  @Test def `list-match` = 
+  @Test def `list-match` =
     check(
       """|object Main {
          |  val x = List(1, 2) match {
@@ -444,7 +444,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          |""".stripMargin
     )
 
-  @Test def `case-class-unapply` = 
+  @Test def `case-class-unapply` =
     check(
       """|object Main {
          |case class Foo[A](x: A, y: A)
@@ -458,7 +458,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          |""".stripMargin
     )
 
-  @Test def `valueOf` = 
+  @Test def `valueOf` =
     check(
       """|object O {
          |  def foo[Total <: Int](implicit total: ValueOf[Total]): Int = total.value
@@ -472,7 +472,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          |""".stripMargin
     )
 
-  @Test def `case-class1` = 
+  @Test def `case-class1` =
     check(
       """|object O {
          |case class A(x: Int, g: Int)(implicit y: String)
@@ -483,8 +483,8 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
          |}
          |""".stripMargin
     )
-   
-  @Test def `ord` = 
+
+  @Test def `ord` =
     check(
       """
         |object Main {
@@ -498,7 +498,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
         |""".stripMargin
     )
 
-  @Test def `val-def-with-bind` = 
+  @Test def `val-def-with-bind` =
     check(
       """
         |object O {
@@ -512,7 +512,7 @@ class SyntheticDecorationsSuite extends BaseSyntheticDecorationsSuite:
         |""".stripMargin
     )
 
-  @Test def `val-def-with-bind-and-comment` = 
+  @Test def `val-def-with-bind-and-comment` =
     check(
       """
         |object O {

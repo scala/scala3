@@ -53,8 +53,8 @@ class BaseSyntheticDecorationsSuite extends BasePCSuite {
       val obtained = TextEdits.applyEdits(withPkg, edits)
 
       assertNoDiff(
-        obtained,
         pkgWrap(expected),
+        obtained,
       )
 
 }

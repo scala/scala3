@@ -135,10 +135,9 @@ class ShortenedTypePrinter(
     }.nextOption
 
   private def isAccessibleStatically(sym: Symbol): Boolean =
-    sym.isStatic || // Java static
-      sym.maybeOwner.ownersIterator.forall { s =>
+    sym.is(JavaStatic) || // Java static
+      sym.maybeOwner.ownersIterator.forall: s =>
         s.is(Package) || s.is(Module)
-      }
 
   private def optionalRootPrefix(sym: Symbol): Text =
     // If the symbol has toplevel clash we need to prepend `_root_.` to the symbol to disambiguate
@@ -166,6 +165,37 @@ class ShortenedTypePrinter(
           res.toPrefixText
       }
 
+  /** Find a shortened prefix for a symbol which can be accessed statically in current run.
+   *  @param sym - statically accessible symbol
+   *
+   *  @return shortened prefix for sym
+   */
+  private def missingSymbolPrefixOf(sym: Symbol): Text =
+
+    def toTextPrefix0(owner: Symbol, acc: List[Symbol], wasPreviousAConflict: Boolean): List[Symbol] =
+      if !owner.exists then acc
+      else if owner.is(Synthetic) then toTextPrefix0(owner.maybeOwner, acc, wasPreviousAConflict)
+      else
+        indexedCtx.lookupSym(owner) match
+          case Result.Conflict => toTextPrefix0(owner.maybeOwner, owner :: acc, wasPreviousAConflict = true)
+          // Previous owner was at conflict so we have to include current one in prefix to disambiguate
+          case _ if wasPreviousAConflict => toTextPrefix0(owner.maybeOwner, owner :: acc, wasPreviousAConflict = false)
+          // If symbol is defined in the current run, we want to strip the symbol until first InScope is found
+          case Result.InScope if sym.isDefinedInCurrentRun => owner :: acc
+          // We want to avoid package names in the shortened names
+          case Result.InScope if owner.is(Package) || owner.isPackageObject => acc
+          case Result.Missing if owner.is(Package) || owner.isPackageObject =>
+            // if current owner is nested, we want to import current owner and return collected prefix
+            if owner.maybeOwner.exists && acc.nonEmpty then
+              missingImports += ImportSel.Direct(acc.head)
+              acc
+            else // otherwise we want to avoid fully qualified path prefix, and we import original symbol directly
+              missingImports += ImportSel.Direct(sym)
+              Nil
+          case _ => toTextPrefix0(owner.maybeOwner, owner :: acc, wasPreviousAConflict = false)
+
+    toTextPrefix0(sym.maybeOwner, Nil, false).foldLeft(Text()): (acc, sym) =>
+      acc ~ sym.name.toText(this) ~ "."
 
   override def toTextPrefixOf(tp: NamedType): Text = controlled {
     val maybeRenamedPrefix: Option[Text] = findRename(tp)
@@ -176,15 +206,11 @@ class ShortenedTypePrinter(
         indexedCtx.lookupSym(tp.symbol) match
           // symbol is missing and is accessible statically, we can import it and add proper prefix
           case Result.Missing if isAccessibleStatically(tp.symbol) =>
-            maybeRenamedPrefix.getOrElse:
-              missingImports += ImportSel.Direct(tp.symbol)
-              Text()
+            maybeRenamedPrefix.getOrElse(missingSymbolPrefixOf(tp.symbol))
           // the symbol is in scope, we can omit the prefix
           case Result.InScope => Text()
           // the symbol is in conflict, we have to include prefix to avoid ambiguity
-          case Result.Conflict =>
-            maybeRenamedPrefix.getOrElse(super.toTextPrefixOf(tp))
-          case _ => super.toTextPrefixOf(tp)
+          case _ => maybeRenamedPrefix.getOrElse(super.toTextPrefixOf(tp))
 
     optionalRootPrefix(tp.symbol) ~ trimmedPrefix
   }
