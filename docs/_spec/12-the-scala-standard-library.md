@@ -68,11 +68,7 @@ abstract class Any {
   def isInstanceOf[a]: Boolean
 
   /** Type cast; needs to be inlined to work as given */ */
-  def asInstanceOf[A]: A = this match {
-    case x: A => x
-    case _ => if (this eq null) this
-              else throw new ClassCastException()
-  }
+  def asInstanceOf[A]: A
 }
 
 /** The root class of all value types */
