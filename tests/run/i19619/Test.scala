@@ -1,6 +1,7 @@
 import lib.InnerClass
 import lib.InnerClassGen
 import lib.RawTypes
+import lib.InnerClassSub
 
 @main def Test =
 
@@ -40,3 +41,19 @@ import lib.RawTypes
 
     RawTypes.mii_Raw_Raw(cd_ii_Raw)
     RawTypes.mii_Raw_Raw2(cd_ii_Raw)
+
+  locally:
+    val ici: InnerClassSub = new InnerClassSub()
+    // val ici_inner1: ici.Inner[Long] = ici.createInner[Long](47L) // error
+    val ici_inner2: InnerClass#Inner[Long] = ici.createInnerSub[Long](47L)
+    val ici_inner2_2: InnerClass#Inner[Long] = ici.createInnerSub2[Long](47L)
+    val ici_inner3: InnerClass#Inner[Long] = InnerClassSub.createInnerStatic[Long](47L)
+
+    val ici_outer: InnerClassSub#Outer[Long] = new ici.Outer[Long]()
+    val ici_nested1: InnerClassSub#Outer[Long]#Nested[Int] = new ici_outer.Nested[Int](47L, 23)
+    val ici_nested2: InnerClass#Outer[Long]#Nested[Int] = ici.createNestedSub[Long, Int](47L, 23)
+    val ici_nested2_2: InnerClass#Outer[Long]#Nested[Int] = ici.createNestedSub2[Long, Int](47L, 23)
+    val ici_nested3: InnerClass#Outer[Long]#Nested[Int] = InnerClassSub.createNestedStatic[Long, Int](47L, 23)
+
+    InnerClass.consumeNestedStatic(ici_nested3)
+    InnerClass.consumeNestedStatic2(ici_nested3)
