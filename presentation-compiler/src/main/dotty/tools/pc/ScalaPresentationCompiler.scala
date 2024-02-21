@@ -106,15 +106,15 @@ case class ScalaPresentationCompiler(
       new PcSemanticTokensProvider(driver, params).provide().asJava
     }
 
-  override def syntheticDecorations(
-        params: SyntheticDecorationsParams
-    ): ju.concurrent.CompletableFuture[ju.List[SyntheticDecoration]] =
+  override def inlayHints(
+      params: InlayHintsParams
+  ): ju.concurrent.CompletableFuture[ju.List[l.InlayHint]] =
     compilerAccess.withInterruptableCompiler(Some(params))(
-      new ju.ArrayList[SyntheticDecoration](),
+      new ju.ArrayList[l.InlayHint](),
       params.token(),
     ) { access =>
       val driver = access.compiler()
-      new PcSyntheticDecorationsProvider(driver, params, search)
+      new PcInlayHintsProvider(driver, params, search)
         .provide()
         .asJava
     }
