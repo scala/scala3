@@ -1542,17 +1542,19 @@ class Namer { typer: Typer =>
       end parentType
 
       /** Check parent type tree `parent` for the following well-formedness conditions:
-       *  (1) It must be a class type with a stable prefix (@see checkClassTypeWithStablePrefix)
+       *  (1) It must be a class type with a stable prefix (unless `isJava`) (@see checkClassTypeWithStablePrefix)
        *  (2) If may not derive from itself
        *  (3) The class is not final
        *  (4) If the class is sealed, it is defined in the same compilation unit as the current class
+       *
+       * @param isJava  If true, the parent type is in Java mode, and we do not require a stable prefix
        */
-      def checkedParentType(parent: untpd.Tree): Type = {
+      def checkedParentType(parent: untpd.Tree, isJava: Boolean): Type = {
         val ptype = parentType(parent)(using completerCtx.superCallContext).dealiasKeepAnnots
         if (cls.isRefinementClass) ptype
         else {
           val pt = checkClassType(ptype, parent.srcPos,
-              traitReq = parent ne parents.head, stablePrefixReq = true)
+              traitReq = parent ne parents.head, stablePrefixReq = !isJava)
           if (pt.derivesFrom(cls)) {
             val addendum = parent match {
               case Select(qual: Super, _) if Feature.migrateTo3 =>
@@ -1621,7 +1623,9 @@ class Namer { typer: Typer =>
       val parentTypes = defn.adjustForTuple(cls, cls.typeParams,
         defn.adjustForBoxedUnit(cls,
           addUsingTraits(
-            ensureFirstIsClass(cls, parents.map(checkedParentType(_)))
+            locally:
+              val isJava = ctx.isJava
+              ensureFirstIsClass(cls, parents.map(checkedParentType(_, isJava)))
           )
         )
       )
