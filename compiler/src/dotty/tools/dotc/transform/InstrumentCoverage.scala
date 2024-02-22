@@ -61,7 +61,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     Serializer.serialize(coverage, outputPath, ctx.settings.sourceroot.value)
 
   private def isClassIncluded(sym: Symbol)(using Context): Boolean =
-    val excludedClassNamePatterns = ctx.settings.coverageExcludePackages.value.map(_.r.pattern)
+    val excludedClassNamePatterns = ctx.settings.coverageExcludeClasslikes.value.map(_.r.pattern)
     excludedClassNamePatterns.isEmpty || !excludedClassNamePatterns.exists(
       _.matcher(sym.fullName.toText(ctx.printerFn(ctx)).show).nn.matches
     )
