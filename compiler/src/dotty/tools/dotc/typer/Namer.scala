@@ -1738,8 +1738,9 @@ class Namer { typer: Typer =>
         val tpe = (paramss: @unchecked) match
           case TypeSymbols(tparams) :: TermSymbols(vparams) :: Nil => tpFun(tparams, vparams)
           case TermSymbols(vparams) :: Nil => tpFun(Nil, vparams)
+        val rhsCtx = prepareRhsCtx(ctx.fresh, paramss)
         if (isFullyDefined(tpe, ForceDegree.none)) tpe
-        else typedAheadExpr(mdef.rhs, tpe).tpe
+        else typedAheadExpr(mdef.rhs, tpe)(using rhsCtx).tpe
 
       case TypedSplice(tpt: TypeTree) if !isFullyDefined(tpt.tpe, ForceDegree.none) =>
         mdef match {
@@ -1937,14 +1938,7 @@ class Namer { typer: Typer =>
     var rhsCtx = ctx.fresh.addMode(Mode.InferringReturnType)
     if sym.isInlineMethod then rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
     if sym.is(ExtensionMethod) then rhsCtx = rhsCtx.addMode(Mode.InExtensionMethod)
-    val typeParams = paramss.collect { case TypeSymbols(tparams) => tparams }.flatten
-    if (typeParams.nonEmpty) {
-      // we'll be typing an expression from a polymorphic definition's body,
-      // so we must allow constraining its type parameters
-      // compare with typedDefDef, see tests/pos/gadt-inference.scala
-      rhsCtx.setFreshGADTBounds
-      rhsCtx.gadtState.addToConstraint(typeParams)
-    }
+    rhsCtx = prepareRhsCtx(rhsCtx, paramss)
 
     def typedAheadRhs(pt: Type) =
       PrepareInlineable.dropInlineIfError(sym,
@@ -1989,4 +1983,15 @@ class Namer { typer: Typer =>
       lhsType orElse WildcardType
     }
   end inferredResultType
+
+  /** Prepare a GADT-aware context used to type the RHS of a ValOrDefDef. */
+  def prepareRhsCtx(rhsCtx: FreshContext, paramss: List[List[Symbol]])(using Context): FreshContext =
+    val typeParams = paramss.collect { case TypeSymbols(tparams) => tparams }.flatten
+    if typeParams.nonEmpty then
+      // we'll be typing an expression from a polymorphic definition's body,
+      // so we must allow constraining its type parameters
+      // compare with typedDefDef, see tests/pos/gadt-inference.scala
+      rhsCtx.setFreshGADTBounds
+      rhsCtx.gadtState.addToConstraint(typeParams)
+    rhsCtx
 }
