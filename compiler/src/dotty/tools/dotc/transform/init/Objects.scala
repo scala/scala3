@@ -203,6 +203,7 @@ object Objects:
 
   /**
    * Represents a lambda expression
+   * @param klass The enclosing class of the anonymous function's creation site
    */
   case class Fun(code: Tree, thisV: ThisValue, klass: ClassSymbol, env: Env.Data) extends ValueElement:
     def show(using Context) = "Fun(" + code.show + ", " + thisV.show + ", " + klass.show + ")"
@@ -600,9 +601,10 @@ object Objects:
           case _ => a
 
     def filterType(tpe: Type)(using Context): Value =
+      // if tpe is SAMType and a is Fun, allow it
       val baseClasses = tpe.baseClasses
       if baseClasses.isEmpty then a
-      else filterClass(baseClasses.head)
+      else filterClass(baseClasses.head) // could have called ClassSymbol, but it does not handle OrType and AndType
 
     def filterClass(sym: Symbol)(using Context): Value =
         if !sym.isClass then a
@@ -613,7 +615,11 @@ object Objects:
             case ref: Ref if ref.klass.isSubClass(klass) => ref
             case ref: Ref => Bottom
             case ValueSet(values) => values.map(v => v.filterClass(klass)).join
-            case _ => a // TODO: could be more precise for OfArray; possibly add class information for Fun
+            case arr: OfArray => if defn.ArrayClass.isSubClass(klass) then arr else Bottom
+            case fun: Fun => if defn.Function1.isSubClass(klass) then fun else Bottom
+            // TODO: could be more precise for OfArray; possibly add class information for Fun
+            // If ArrayClass.isSubClass(klass) keep the array else discard (see Definitions.scala)
+            // For function, if any superclass is FunctionClass (or a single abstract method interface?), allow it
 
   extension (value: Ref | Cold.type)
     def widenRefOrCold(height : Int)(using Context) : Ref | Cold.type = value.widen(height).asInstanceOf[ThisValue]
@@ -859,7 +865,7 @@ object Objects:
       report.warning("[Internal error] unexpected tree in assignment, fun = " + fun.code.show + Trace.show, Trace.position)
 
     case arr: OfArray =>
-      report.warning("[Internal error] unexpected tree in assignment, array = " + arr.show + Trace.show, Trace.position)
+      report.warning("[Internal error] unexpected tree in assignment, array = " + arr.show + " field = " + field + Trace.show, Trace.position)
 
     case Cold =>
       report.warning("Assigning to cold aliases is forbidden. " + Trace.show, Trace.position)
@@ -1566,7 +1572,7 @@ object Objects:
             report.warning("The argument should be a constant integer value", arg)
             res.widen(1)
         case _ =>
-          res.widen(1)
+          res.widen(1) // TODO: changing to widen(2) causes standard library analysis to loop infinitely
 
       argInfos += ArgInfo(widened, trace.add(arg.tree), arg.tree)
     }
