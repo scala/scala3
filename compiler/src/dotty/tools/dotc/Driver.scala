@@ -10,6 +10,7 @@ import dotty.tools.io.AbstractFile
 import reporting.*
 import core.Decorators.*
 import config.Feature
+import dotty.tools.dotc.config.ScalaSettings
 
 import scala.util.control.NonFatal
 import fromtasty.{TASTYCompiler, TastyFileUtil}
@@ -199,6 +200,7 @@ class Driver {
   }
 
   def main(args: Array[String]): Unit = {
+    println("settings: " + ScalaSettings.allSettings)
     // Preload scala.util.control.NonFatal. Otherwise, when trying to catch a StackOverflowError,
     // we may try to load it but fail with another StackOverflowError and lose the original exception,
     // see <https://groups.google.com/forum/#!topic/scala-user/kte6nak-zPM>.
