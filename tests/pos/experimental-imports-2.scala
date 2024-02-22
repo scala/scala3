@@ -1,7 +1,7 @@
 //> using options -Yno-experimental
 
 class Test0 {
-  import language.experimental.namedTypeArguments // error
+  import language.experimental.namedTypeArguments
   object Foo {
     inline def f[S, T](x: S): T = ???
     def g(x: Int) = f[T = Any](x)

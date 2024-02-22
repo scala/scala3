@@ -1,3 +1,5 @@
+//> using options -Yno-experimental
+
 import language.experimental.erasedDefinitions
 
 object scalax:

@@ -545,14 +545,21 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           report.error("`erased` definition cannot be implemented with en expression of type Null", tree.srcPos)
 
     private def annotateExperimental(sym: Symbol)(using Context): Unit =
-      def isTopLevelDefinitionInSource(sym: Symbol) =
-        !sym.is(Package) && !sym.name.isPackageObjectName &&
-        (sym.owner.is(Package) || (sym.owner.isPackageObject && !sym.isConstructor))
-      if !sym.hasAnnotation(defn.ExperimentalAnnot)
-        && (ctx.settings.experimental.value && isTopLevelDefinitionInSource(sym))
-        || (sym.is(Module) && sym.companionClass.hasAnnotation(defn.ExperimentalAnnot))
-      then
+      def companionOfExperimental =
+        sym.is(Module) && sym.companionClass.hasAnnotation(defn.ExperimentalAnnot)
+      def topLevelDefinitionWithExperimentalEnabledInUnit =
+        sym.isTopLevelDefinition && (Feature.isExperimentalGloballyEnabled || Feature.isExperimentalByImportEnabled)
+      if !sym.hasAnnotation(defn.ExperimentalAnnot) && (companionOfExperimental || topLevelDefinitionWithExperimentalEnabledInUnit) then
         sym.addAnnotation(Annotation(defn.ExperimentalAnnot, sym.span))
+
+      // TODO do this on import statement
+      val topLevelDefinition = sym.topLevelDefinition
+      if topLevelDefinition.exists &&
+        !topLevelDefinition.hasAnnotation(defn.ExperimentalAnnot)
+        && Feature.isExperimentalByImportEnabled
+      then
+        topLevelDefinition.addAnnotation(Annotation(defn.ExperimentalAnnot, sym.span))
+        if topLevelDefinition.is(Module) then topLevelDefinition.companionModule.addAnnotation(Annotation(defn.ExperimentalAnnot, sym.span))
 
     private def scala2LibPatch(tree: TypeDef)(using Context) =
       val sym = tree.symbol

@@ -32,6 +32,22 @@ object Feature:
   val pureFunctions = experimental("pureFunctions")
   val captureChecking = experimental("captureChecking")
   val into = experimental("into")
+  val relaxedExtensionImports = experimental("relaxedExtensionImports")
+
+  // TODO compute this list
+  // TODO remove features that do not enable experimental mode
+  val experimentalAutoEnableFeatures: List[TermName] = List(
+    namedTypeArguments,
+    genericNumberLiterals,
+    erasedDefinitions,
+    fewerBraces,
+    saferExceptions,
+    clauseInterleaving,
+    pureFunctions,
+    captureChecking,
+    into,
+    relaxedExtensionImports,
+  )
 
   val globalOnlyImports: Set[TermName] = Set(pureFunctions, captureChecking)
 
@@ -132,19 +148,20 @@ object Feature:
       false
 
   def checkExperimentalFeature(which: String, srcPos: SrcPos, note: => String = "")(using Context) =
-    if !isExperimentalEnabled then
+    if !isExperimentalGloballyEnabled && !isExperimentalByImportEnabled && !isExperimentalUnstableEnabled then
       report.error(
         em"""Experimental $which may only be used under experimental mode:
             |  1. In a definition marked as @experimental
-            |  2. Compiling with the -experimental compiler flag
-            |  3. With a nightly or snapshot version of the compiler$note
+            |  2. An experimental language import is in scope or within the current definition
+            |  3. Compiling with the -experimental compiler flag
+            |  4. With a nightly or snapshot version of the compiler$note
           """, srcPos)
 
   private def ccException(sym: Symbol)(using Context): Boolean =
     ccEnabled && defn.ccExperimental.contains(sym)
 
   def checkExperimentalDef(sym: Symbol, srcPos: SrcPos)(using Context) =
-    if !isExperimentalEnabled then
+    if !isExperimentalGloballyEnabled && !isExperimentalByImportEnabled && !isExperimentalUnstableEnabled then
       val experimentalSym =
         if sym.hasAnnotation(defn.ExperimentalAnnot) then sym
         else if sym.owner.hasAnnotation(defn.ExperimentalAnnot) then sym.owner
@@ -162,8 +179,22 @@ object Feature:
         if setting.startsWith("experimental.") && setting != "experimental.macros"
     do checkExperimentalFeature(s"feature $setting", NoSourcePosition)
 
-  def isExperimentalEnabled(using Context): Boolean =
-    (Properties.experimental && !ctx.settings.YnoExperimental.value) || ctx.settings.experimental.value
+
+  /** Experimental mode enabled by default in nightly or snapshot version of the compiler without `-Yno-experimental` */
+  def isExperimentalUnstableEnabled(using Context): Boolean =
+    Properties.experimental && !ctx.settings.YnoExperimental.value
+
+  /** Experimental mode enabled in this compilation unit
+   *  - Compiled with `-experimental`
+   *  - Compiled with `-language:experimental.xyz`
+   */
+  def isExperimentalGloballyEnabled(using Context): Boolean =
+    ctx.settings.experimental.value ||
+    experimentalAutoEnableFeatures.exists(enabledBySetting)
+
+  /** Experimental mode enabled by a `language.experimental` import in scope */
+  def isExperimentalByImportEnabled(using Context): Boolean =
+    experimentalAutoEnableFeatures.exists(enabledByImport)
 
   /** Handle language import `import language.<prefix>.<imported>` if it is one
    *  of the global imports `pureFunctions` or `captureChecking`. In this case

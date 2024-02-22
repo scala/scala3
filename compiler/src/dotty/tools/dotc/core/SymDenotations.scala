@@ -1254,6 +1254,19 @@ object SymDenotations {
     final def isTopLevelClass(using Context): Boolean =
       !this.exists || this.isEffectiveRoot || this.is(PackageClass) || this.owner.is(PackageClass)
 
+    /** The top-level definition containing this denotation.
+     *  Returns top-level class or members of top-level package objects.
+     *  If this is not in a definition, returns NoSymbol.
+     */
+    @tailrec final def topLevelDefinition(using Context): Symbol =
+      if !this.exists || this.is(Package) then NoSymbol
+      else if this.isTopLevelDefinition then this.symbol
+      else this.owner.topLevelDefinition
+
+    final def isTopLevelDefinition(using Context): Boolean =
+      !this.is(Package) && !this.name.isPackageObjectName &&
+      (this.owner.is(Package) || (this.owner.isPackageObject && !this.isConstructor))
+
     /** The package class containing this denotation */
     final def enclosingPackageClass(using Context): Symbol =
       if (this.is(PackageClass)) symbol else owner.enclosingPackageClass

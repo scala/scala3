@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings
+//> using options -Xfatal-warnings -Yno-experimental
 
 import language.experimental.into
 
