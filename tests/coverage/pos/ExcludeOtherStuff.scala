@@ -1,4 +1,4 @@
-//> using options -coverage-exclude-packages:covtest.Oject,covtest.Tait
+//> using options -coverage-exclude-classlikes:covtest.Oject,covtest.Tait
 
 package covtest
 
