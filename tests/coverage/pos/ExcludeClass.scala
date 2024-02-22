@@ -1,4 +1,4 @@
-//> using options -coverage-exclude-packages:covtest.Klass
+//> using options -coverage-exclude-classlikes:covtest.Klass
 
 package covtest
 
