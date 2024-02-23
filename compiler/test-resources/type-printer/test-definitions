@@ -19,5 +19,7 @@ scala> trait E
 scala> implicit def x: Int = 1
 def x: Int
 
+scala> import scala.language.experimental.erasedDefinitions
+
 scala> erased def y: Int = 1
 def y: Int
