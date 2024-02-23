@@ -101,7 +101,7 @@ object Build {
    *  set to 3.1.3. If it is going to be 3.1.0, it must be set to the latest
    *  3.0.x release.
    */
-  val previousDottyVersion = "3.4.0-RC3"
+  val previousDottyVersion = "3.4.0"
 
   /** Version against which we check binary compatibility. */
   val ltsDottyVersion = "3.3.0"
