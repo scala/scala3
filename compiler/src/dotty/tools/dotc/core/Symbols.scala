@@ -107,16 +107,23 @@ object Symbols extends SymUtils {
     private def computeDenot(lastd: SymDenotation)(using Context): SymDenotation = {
       util.Stats.record("Symbol.computeDenot")
       val now = ctx.period
+      val prev = checkedPeriod
       checkedPeriod = now
-      if (lastd.validFor contains now) lastd else recomputeDenot(lastd)
+      if lastd.validFor.contains(now) then
+        lastd
+      else
+        val newd = recomputeDenot(lastd)
+        if newd.exists then
+          lastDenot = newd
+        else
+          checkedPeriod = prev
+        newd
     }
 
     /** Overridden in NoSymbol */
     protected def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = {
       util.Stats.record("Symbol.recomputeDenot")
-      val newd = lastd.current.asInstanceOf[SymDenotation]
-      lastDenot = newd
-      newd
+      lastd.current.asSymDenotation
     }
 
     /** The original denotation of this symbol, without forcing anything */
