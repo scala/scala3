@@ -549,6 +549,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         !sym.is(Package) && !sym.name.isPackageObjectName &&
         (sym.owner.is(Package) || (sym.owner.isPackageObject && !sym.isConstructor))
       if !sym.hasAnnotation(defn.ExperimentalAnnot)
+        && !sym.ownersIterator.contains(defn.LanguageModuleClass)
         && (ctx.settings.experimental.value && isTopLevelDefinitionInSource(sym))
         || (sym.is(Module) && sym.companionClass.hasAnnotation(defn.ExperimentalAnnot))
       then
