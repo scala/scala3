@@ -20,6 +20,14 @@ object language:
    */
   object experimental:
 
+    /** Enable use of experimental APIs by making the current scope an experimental one.
+     *
+     * @see [[https://dotty.epfl.ch/docs/reference/other-new-features/experimental-defs]]
+     */
+    @compileTimeOnly("`mode` can only be used at compile time in import statements")
+    object mode
+
+
     /* Experimental support for richer dependent types (disabled for now)
      * One can still run the compiler with support for parsing singleton applications
      * using command line option `-language:experimental.dependent`.

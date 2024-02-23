@@ -23,6 +23,7 @@ object Feature:
   private val genericNumberLiterals = experimental("genericNumberLiterals")
   val scala2macros = experimental("macros")
 
+  val mode = experimental("mode")
   val dependent = experimental("dependent")
   val erasedDefinitions = experimental("erasedDefinitions")
   val symbolLiterals = deprecated("symbolLiterals")
@@ -37,6 +38,7 @@ object Feature:
   // TODO compute this list
   // TODO remove features that do not enable experimental mode
   val experimentalAutoEnableFeatures: List[TermName] = List(
+    mode,
     namedTypeArguments,
     genericNumberLiterals,
     erasedDefinitions,
