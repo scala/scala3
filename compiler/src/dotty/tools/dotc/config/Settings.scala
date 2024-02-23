@@ -170,6 +170,15 @@ object Settings:
           case (StringTag, arg2 :: args2) =>
             if (arg2 startsWith "-") missingArg
             else setString(arg2, args2)
+          case (OutputTag, _) if argRest.nonEmpty =>
+            val path = Directory(argRest)
+            val isJar = path.extension == "jar"
+            if (!isJar && !path.isDirectory)
+              fail(s"'$argRest' does not exist or is not a directory or .jar file", args)
+            else {
+              val output = if (isJar) JarArchive.create(path) else new PlainDirectory(path)
+              update(output, args)
+            }
           case (OutputTag, arg :: args) =>
             val path = Directory(arg)
             val isJar = path.extension == "jar"
@@ -183,10 +192,15 @@ object Settings:
             setInt(argRest, args)
           case (IntTag, arg2 :: args2) =>
             setInt(arg2, args2)
-          case (VersionTag, _) =>
+          case (VersionTag, _) if argRest.nonEmpty =>
             ScalaVersion.parse(argRest) match {
               case Success(v) => update(v, args)
               case Failure(ex) => fail(ex.getMessage, args)
+            }
+          case (VersionTag, arg2 :: args2) =>
+            ScalaVersion.parse(arg2) match {
+              case Success(v) => update(v, args2)
+              case Failure(ex) => fail(ex.getMessage, args2)
             }
           case (_, Nil) =>
             missingArg

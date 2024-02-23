@@ -87,7 +87,7 @@ class SettingsTests {
 
   @Test def `bad option warning consumes an arg`: Unit =
     object Settings extends SettingGroup:
-      val option = BooleanSetting("", "-option", "Some option")
+      val option = BooleanSetting("", "option", "Some option")
 
     val args = List("-adoption", "dogs", "cats")
     val summary = Settings.processArguments(args, processAll = true)
@@ -97,7 +97,7 @@ class SettingsTests {
 
   @Test def `bad option settings throws`: Unit =
     object Settings extends SettingGroup:
-      val option = BooleanSetting("", "-option", "Some option")
+      val option = BooleanSetting("", "option", "Some option")
 
     def checkMessage(s: String): (Throwable => Boolean) = t =>
       if t.getMessage == s then true
@@ -112,12 +112,12 @@ class SettingsTests {
 
   @Test def validateChoices: Unit =
     object Settings extends SettingGroup:
-      val foo = ChoiceSetting("", "-foo", "foo", "Foo", List("a", "b"), "a")
-      val bar = IntChoiceSetting("", "-bar", "Bar", List(0, 1, 2), 0)
-      val baz = IntChoiceSetting("", "-baz", "Baz", 0 to 10, 10)
+      val foo = ChoiceSetting("", "foo", "foo", "Foo", List("a", "b"), "a")
+      val bar = IntChoiceSetting("", "bar", "Bar", List(0, 1, 2), 0)
+      val baz = IntChoiceSetting("", "baz", "Baz", 0 to 10, 10)
 
-      val quux = ChoiceSetting("", "-quux", "quux", "Quux", List(), "")
-      val quuz = IntChoiceSetting("", "-quuz", "Quuz", List(), 0)
+      val quux = ChoiceSetting("", "quux", "quux", "Quux", List(), "")
+      val quuz = IntChoiceSetting("", "quuz", "Quuz", List(), 0)
 
     locally {
       val args = List("-foo", "b", "-bar", "1", "-baz", "5")
@@ -181,10 +181,10 @@ class SettingsTests {
 
   @Test def `Set BooleanSettings correctly`: Unit =
     object Settings extends SettingGroup:
-      val foo = BooleanSetting("", "-foo", "foo", false)
-      val bar = BooleanSetting("", "-bar", "bar", true)
-      val baz = BooleanSetting("", "-baz", "baz", false)
-      val qux = BooleanSetting("", "-qux", "qux", false)
+      val foo = BooleanSetting("", "foo", "foo", false)
+      val bar = BooleanSetting("", "bar", "bar", true)
+      val baz = BooleanSetting("", "baz", "baz", false)
+      val qux = BooleanSetting("", "qux", "qux", false)
     import Settings._
 
     val args = List("-foo:true", "-bar:false", "-baz", "-qux:true", "-qux:false")
