@@ -85,7 +85,7 @@ object Build {
 
   val referenceVersion = "3.3.1"
 
-  val baseVersion = "3.4.1-RC1"
+  val baseVersion = "3.4.2-RC1"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
@@ -1338,7 +1338,7 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   lazy val presentationCompilerSettings = {
-    val mtagsVersion = "1.2.0+67-30f8ab53-SNAPSHOT"
+    val mtagsVersion = "1.2.2+25-bb9dfbb9-SNAPSHOT"
 
     Seq(
       resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
@@ -1688,7 +1688,7 @@ object Build {
   lazy val `scaladoc-js-common` = project.in(file("scaladoc-js/common")).
     enablePlugins(DottyJSPlugin).
     dependsOn(`scala3-library-bootstrappedJS`).
-    settings(libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13))
+    settings(libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "2.8.0"))
 
   lazy val `scaladoc-js-main` = project.in(file("scaladoc-js/main")).
     enablePlugins(DottyJSPlugin).
@@ -1704,7 +1704,7 @@ object Build {
     settings(
       Test / fork := false,
       scalaJSUseMainModuleInitializer := true,
-      libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13)
+      libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "2.8.0")
     )
 
   def generateDocumentation(configTask: Def.Initialize[Task[GenerationConfig]]) =
@@ -2108,7 +2108,7 @@ object Build {
   private def customMimaReportBinaryIssues(issueFilterLocation: String) = mimaReportBinaryIssues := {
     mimaReportBinaryIssues.result.value match {
       case Inc(inc: Incomplete) =>
-        streams.value.log.error(s"\nFilers in $issueFilterLocation are used in this check.\n ")
+        streams.value.log.error(s"\nFilters in $issueFilterLocation are used in this check.\n ")
         throw inc
       case Value(v) => v
     }

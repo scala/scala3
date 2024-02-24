@@ -1542,17 +1542,19 @@ class Namer { typer: Typer =>
       end parentType
 
       /** Check parent type tree `parent` for the following well-formedness conditions:
-       *  (1) It must be a class type with a stable prefix (@see checkClassTypeWithStablePrefix)
+       *  (1) It must be a class type with a stable prefix (unless `isJava`) (@see checkClassTypeWithStablePrefix)
        *  (2) If may not derive from itself
        *  (3) The class is not final
        *  (4) If the class is sealed, it is defined in the same compilation unit as the current class
+       *
+       * @param isJava  If true, the parent type is in Java mode, and we do not require a stable prefix
        */
-      def checkedParentType(parent: untpd.Tree): Type = {
+      def checkedParentType(parent: untpd.Tree, isJava: Boolean): Type = {
         val ptype = parentType(parent)(using completerCtx.superCallContext).dealiasKeepAnnots
         if (cls.isRefinementClass) ptype
         else {
           val pt = checkClassType(ptype, parent.srcPos,
-              traitReq = parent ne parents.head, stablePrefixReq = true)
+              traitReq = parent ne parents.head, stablePrefixReq = !isJava)
           if (pt.derivesFrom(cls)) {
             val addendum = parent match {
               case Select(qual: Super, _) if Feature.migrateTo3 =>
@@ -1621,7 +1623,9 @@ class Namer { typer: Typer =>
       val parentTypes = defn.adjustForTuple(cls, cls.typeParams,
         defn.adjustForBoxedUnit(cls,
           addUsingTraits(
-            ensureFirstIsClass(cls, parents.map(checkedParentType(_)))
+            locally:
+              val isJava = ctx.isJava
+              ensureFirstIsClass(cls, parents.map(checkedParentType(_, isJava)))
           )
         )
       )
@@ -1734,8 +1738,9 @@ class Namer { typer: Typer =>
         val tpe = (paramss: @unchecked) match
           case TypeSymbols(tparams) :: TermSymbols(vparams) :: Nil => tpFun(tparams, vparams)
           case TermSymbols(vparams) :: Nil => tpFun(Nil, vparams)
+        val rhsCtx = prepareRhsCtx(ctx.fresh, paramss)
         if (isFullyDefined(tpe, ForceDegree.none)) tpe
-        else typedAheadExpr(mdef.rhs, tpe).tpe
+        else typedAheadExpr(mdef.rhs, tpe)(using rhsCtx).tpe
 
       case TypedSplice(tpt: TypeTree) if !isFullyDefined(tpt.tpe, ForceDegree.none) =>
         mdef match {
@@ -1933,14 +1938,7 @@ class Namer { typer: Typer =>
     var rhsCtx = ctx.fresh.addMode(Mode.InferringReturnType)
     if sym.isInlineMethod then rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
     if sym.is(ExtensionMethod) then rhsCtx = rhsCtx.addMode(Mode.InExtensionMethod)
-    val typeParams = paramss.collect { case TypeSymbols(tparams) => tparams }.flatten
-    if (typeParams.nonEmpty) {
-      // we'll be typing an expression from a polymorphic definition's body,
-      // so we must allow constraining its type parameters
-      // compare with typedDefDef, see tests/pos/gadt-inference.scala
-      rhsCtx.setFreshGADTBounds
-      rhsCtx.gadtState.addToConstraint(typeParams)
-    }
+    rhsCtx = prepareRhsCtx(rhsCtx, paramss)
 
     def typedAheadRhs(pt: Type) =
       PrepareInlineable.dropInlineIfError(sym,
@@ -1985,4 +1983,15 @@ class Namer { typer: Typer =>
       lhsType orElse WildcardType
     }
   end inferredResultType
+
+  /** Prepare a GADT-aware context used to type the RHS of a ValOrDefDef. */
+  def prepareRhsCtx(rhsCtx: FreshContext, paramss: List[List[Symbol]])(using Context): FreshContext =
+    val typeParams = paramss.collect { case TypeSymbols(tparams) => tparams }.flatten
+    if typeParams.nonEmpty then
+      // we'll be typing an expression from a polymorphic definition's body,
+      // so we must allow constraining its type parameters
+      // compare with typedDefDef, see tests/pos/gadt-inference.scala
+      rhsCtx.setFreshGADTBounds
+      rhsCtx.gadtState.addToConstraint(typeParams)
+    rhsCtx
 }

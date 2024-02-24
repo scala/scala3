@@ -461,6 +461,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 if (isSelfDenot(defDenot)) curOwner.enclosingClass.thisType
                 else if (ctx.isJava && defDenot.symbol.isStatic) {
                   defDenot.symbol.namedType
+                }
+                else if (ctx.isJava && defDenot.symbol.isClass) {
+                  // in a java context a raw identifier to a class should have a widened prefix.
+                  defDenot.symbol.javaTypeRef
                 } else {
                   val effectiveOwner =
                     if (curOwner.isTerm && defDenot.symbol.maybeOwner.isType)
@@ -1621,15 +1625,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case untpd.Annotated(scrut1, _) => isParamRef(scrut1)
         case untpd.Ident(id) => id == params.head.name
       fnBody match
-        case untpd.Match(scrut, untpd.CaseDef(untpd.Tuple(elems), untpd.EmptyTree, rhs) :: Nil)
+        case untpd.Match(scrut, cases @ untpd.CaseDef(untpd.Tuple(elems), untpd.EmptyTree, rhs) :: Nil)
         if scrut.span.isSynthetic && isParamRef(scrut) && elems.hasSameLengthAs(protoFormals) =>
           // If `pt` is N-ary function type, convert synthetic lambda
           //   x$1 => x$1 match case (a1, ..., aN) => e
           // to
           //   (a1, ..., aN) => e
           val params1 = desugar.patternsToParams(elems)
-          if params1.hasSameLengthAs(elems) then
-            desugared = cpy.Function(tree)(params1, rhs)
+          desugared = if params1.hasSameLengthAs(elems)
+            then cpy.Function(tree)(params1, rhs)
+            else desugar.makeCaseLambda(cases, desugar.MatchCheck.IrrefutablePatDef, protoFormals.length)
         case _ =>
 
     if desugared.isEmpty then
@@ -4271,14 +4276,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val tree1 =
         if ((pt eq AnyTypeConstructorProto) || tp.typeParamSymbols.isEmpty) tree
         else {
-          val tp1 =
-            if (ctx.isJava)
-              // Cook raw type
-              AppliedType(tree.tpe, tp.typeParams.map(Function.const(TypeBounds.empty)))
-            else
-              // Eta-expand higher-kinded type
-              tree.tpe.etaExpand(tp.typeParamSymbols)
-          tree.withType(tp1)
+          if (ctx.isJava)
+            // Cook raw type
+            val typeArgs = tp.typeParams.map(Function.const(TypeBounds.empty))
+            val tree1 = AppliedTypeTree(tree, typeArgs.map(TypeTree(_)))
+            val tp1 = AppliedType(tree.tpe, typeArgs)
+            tree1.withType(tp1)
+          else
+            // Eta-expand higher-kinded type
+            val tp1 = tree.tpe.etaExpand(tp.typeParamSymbols)
+            tree.withType(tp1)
         }
       if (ctx.mode.is(Mode.Pattern) || ctx.mode.isQuotedPattern || tree1.tpe <:< pt) tree1
       else err.typeMismatch(tree1, pt)

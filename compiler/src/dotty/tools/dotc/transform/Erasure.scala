@@ -2,6 +2,7 @@ package dotty.tools
 package dotc
 package transform
 
+import ast.Trees
 import core.Phases.*
 import core.DenotTransformers.*
 import core.Denotations.*
@@ -1044,7 +1045,21 @@ object Erasure {
 
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree =
       if cls.is(Flags.Erased) then erasedDef(cls)
-      else super.typedClassDef(cdef, cls)
+      else
+        val typedTree@TypeDef(name, impl @ Template(constr, _, self, _)) = super.typedClassDef(cdef, cls): @unchecked
+        // In the case where a trait extends a class, we need to strip any non trait class from the signature
+        // and accept the first one (see tests/run/mixins.scala)
+        val newTraits = impl.parents.tail.filterConserve: tree =>
+          def isTraitConstructor = tree match
+            case Trees.Block(_, expr) => // Specific management for trait constructors (see tests/pos/i9213.scala)
+              expr.symbol.isConstructor && expr.symbol.owner.is(Flags.Trait)
+            case _ => tree.symbol.isConstructor && tree.symbol.owner.is(Flags.Trait)
+          tree.symbol.is(Flags.Trait) || isTraitConstructor
+
+        val newParents =
+          if impl.parents.tail eq newTraits then impl.parents
+          else impl.parents.head :: newTraits
+        cpy.TypeDef(typedTree)(rhs = cpy.Template(impl)(parents = newParents))
 
     override def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree =
       typed(tree.arg, pt)

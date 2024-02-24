@@ -1645,6 +1645,8 @@ object Types extends TypeUtils {
           pre.refinedInfo match {
             case tp: AliasingBounds =>
               if (pre.refinedName ne name) loop(pre.parent) else tp.alias
+            case tp: SingletonType =>
+              if pre.refinedName ne name then loop(pre.parent) else tp
             case _ =>
               loop(pre.parent)
           }
@@ -2676,11 +2678,8 @@ object Types extends TypeUtils {
      *  refinement type `T { X = U; ... }`
      */
     def reduceProjection(using Context): Type =
-      if (isType) {
-        val reduced = prefix.lookupRefined(name)
-        if (reduced.exists) reduced else this
-      }
-      else this
+      val reduced = prefix.lookupRefined(name)
+      if reduced.exists then reduced else this
 
     /** Guard against cycles that can arise if given `op`
      *  follows info. The problematic cases are a type alias to itself or
@@ -2765,14 +2764,14 @@ object Types extends TypeUtils {
      *     (S | T)#A --> S#A | T#A
      */
     def derivedSelect(prefix: Type)(using Context): Type =
-      if (prefix eq this.prefix) this
-      else if (prefix.isExactlyNothing) prefix
+      if prefix eq this.prefix then this
+      else if prefix.isExactlyNothing then prefix
       else {
+        val res =
+          if (isType && currentValidSymbol.isAllOf(ClassTypeParam)) argForParam(prefix)
+          else prefix.lookupRefined(name)
+        if (res.exists) return res
         if (isType) {
-          val res =
-            if (currentValidSymbol.isAllOf(ClassTypeParam)) argForParam(prefix)
-            else prefix.lookupRefined(name)
-          if (res.exists) return res
           if (Config.splitProjections)
             prefix match {
               case prefix: AndType =>
@@ -5009,6 +5008,8 @@ object Types extends TypeUtils {
         case ex: Throwable =>
           handleRecursive("normalizing", s"${scrutinee.show} match ..." , ex)
 
+    private def thisMatchType = this
+
     def reduced(using Context): Type = {
 
       def contextInfo(tp: Type): Type = tp match {
@@ -5023,16 +5024,43 @@ object Types extends TypeUtils {
           tp.underlying
       }
 
-      def updateReductionContext(footprint: collection.Set[Type]): Unit =
-        reductionContext = util.HashMap()
-        for (tp <- footprint)
-          reductionContext(tp) = contextInfo(tp)
-        typr.println(i"footprint for $this $hashCode: ${footprint.toList.map(x => (x, contextInfo(x)))}%, %")
-
       def isUpToDate: Boolean =
-        reductionContext.keysIterator.forall { tp =>
+        reductionContext.keysIterator.forall: tp =>
           reductionContext(tp) `eq` contextInfo(tp)
-        }
+
+      def setReductionContext(): Unit =
+        new TypeTraverser:
+          var footprint: Set[Type] = Set()
+          var deep: Boolean = true
+          val seen = util.HashSet[Type]()
+          def traverse(tp: Type) =
+            if !seen.contains(tp) then
+              seen += tp
+              tp match
+                case tp: NamedType =>
+                  if tp.symbol.is(TypeParam) then footprint += tp
+                  traverseChildren(tp)
+                case _: AppliedType | _: RefinedType =>
+                  if deep then traverseChildren(tp)
+                case TypeBounds(lo, hi) =>
+                  traverse(hi)
+                case tp: TypeVar =>
+                  footprint += tp
+                  traverse(tp.underlying)
+                case tp: TypeParamRef =>
+                  footprint += tp
+                case _ =>
+                  traverseChildren(tp)
+          end traverse
+
+          traverse(scrutinee)
+          deep = false
+          cases.foreach(traverse)
+          reductionContext = util.HashMap()
+          for tp <- footprint do
+            reductionContext(tp) = contextInfo(tp)
+          matchTypes.println(i"footprint for $thisMatchType $hashCode: ${footprint.toList.map(x => (x, contextInfo(x)))}%, %")
+      end setReductionContext
 
       record("MatchType.reduce called")
       if !Config.cacheMatchReduced
@@ -5043,20 +5071,22 @@ object Types extends TypeUtils {
         record("MatchType.reduce computed")
         if (myReduced != null) record("MatchType.reduce cache miss")
         myReduced =
-          trace(i"reduce match type $this $hashCode", matchTypes, show = true)(withMode(Mode.Type) {
-            def matchCases(cmp: TrackingTypeComparer): Type =
-              val saved = ctx.typerState.snapshot()
-              try cmp.matchCases(scrutinee.normalized, cases.map(MatchTypeCaseSpec.analyze(_)))
-              catch case ex: Throwable =>
-                handleRecursive("reduce type ", i"$scrutinee match ...", ex)
-              finally
-                updateReductionContext(cmp.footprint)
-                ctx.typerState.resetTo(saved)
-                  // this drops caseLambdas in constraint and undoes any typevar
-                  // instantiations during matchtype reduction
+          trace(i"reduce match type $this $hashCode", matchTypes, show = true):
+            withMode(Mode.Type):
+              setReductionContext()
+              def matchCases(cmp: MatchReducer): Type =
+                val saved = ctx.typerState.snapshot()
+                try
+                  cmp.matchCases(scrutinee.normalized, cases.map(MatchTypeCaseSpec.analyze(_)))
+                catch case ex: Throwable =>
+                  handleRecursive("reduce type ", i"$scrutinee match ...", ex)
+                finally
+                  ctx.typerState.resetTo(saved)
+                    // this drops caseLambdas in constraint and undoes any typevar
+                    // instantiations during matchtype reduction
+              TypeComparer.reduceMatchWith(matchCases)
 
-            TypeComparer.tracked(matchCases)
-          })
+      //else println(i"no change for $this $hashCode / $myReduced")
       myReduced.nn
     }
 
@@ -6532,7 +6562,7 @@ object Types extends TypeUtils {
       record(s"foldOver $getClass")
       record(s"foldOver total")
       tp match {
-      case tp: TypeRef =>
+      case tp: NamedType =>
         if stopBecauseStaticOrLocal(tp) then x
         else
           val tp1 = tp.prefix.lookupRefined(tp.name)
@@ -6560,9 +6590,6 @@ object Types extends TypeUtils {
         val y = foldOver(x, tp.paramInfos)
         variance = saved
         this(y, restpe)
-
-      case tp: TermRef =>
-        if stopBecauseStaticOrLocal(tp) then x else applyToPrefix(x, tp)
 
       case tp: TypeVar =>
         this(x, tp.underlying)
