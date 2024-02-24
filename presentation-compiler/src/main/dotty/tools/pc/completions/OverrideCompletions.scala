@@ -95,7 +95,7 @@ object OverrideCompletions:
     // not using `td.tpe.abstractTermMembers` because those members includes
     // the abstract members in `td.tpe`. For example, when we type `def foo@@`,
     // `td.tpe.abstractTermMembers` contains `method foo: <error>` and it overrides the parent `foo` method.
-    val overridables = td.tpe.parents
+    val overridables = td.typeOpt.parents
       .flatMap { parent =>
         parent.membersBasedOnFlags(
           flags,
@@ -279,7 +279,7 @@ object OverrideCompletions:
         else ""
       (indent, indent, lastIndent)
     end calcIndent
-    val abstractMembers = defn.tpe.abstractTermMembers.map(_.symbol)
+    val abstractMembers = defn.typeOpt.abstractTermMembers.map(_.symbol)
 
     val caseClassOwners = Set("Product", "Equals")
     val overridables =
@@ -307,7 +307,7 @@ object OverrideCompletions:
     if edits.isEmpty then Nil
     else
       // A list of declarations in the class/object to implement
-      val decls = defn.tpe.decls.toList
+      val decls = defn.typeOpt.decls.toList
         .filter(sym =>
           !sym.isPrimaryConstructor &&
             !sym.isTypeParam &&
@@ -418,7 +418,7 @@ object OverrideCompletions:
       // `iterator` method in `new Iterable[Int] { def iterato@@ }`
       // should be completed as `def iterator: Iterator[Int]` instead of `Iterator[A]`.
       val seenFrom =
-        val memInfo = defn.tpe.memberInfo(sym.symbol)
+        val memInfo = defn.typeOpt.memberInfo(sym.symbol)
         if memInfo.isErroneous || memInfo.finalResultType.isAny then
           sym.info.widenTermRefExpr
         else memInfo

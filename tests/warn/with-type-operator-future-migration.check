@@ -1,0 +1,7 @@
+-- [E003] Syntax Migration Warning: tests/warn/with-type-operator-future-migration.scala:5:13 --------------------------
+5 |def foo: Int with String = ??? // warn
+  |             ^^^^
+  |             with as a type operator has been deprecated; use & instead
+  |             This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+  |
+  | longer explanation available when compiling with `-explain`

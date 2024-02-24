@@ -202,23 +202,6 @@ class SignatureHelpPatternSuite extends BaseSignatureHelpSuite:
          |""".stripMargin
     )
 
-  @Test def `pat4` =
-    check(
-      """
-        |object & {
-        |  def unapply[A](a: A): Some[(A, A)] = Some((a, a))
-        |}
-        |object a {
-        |  "" match {
-        |    case "" & s@@
-        |  }
-        |}
-      """.stripMargin,
-      """|(String, String)
-         |         ^^^^^^
-         |""".stripMargin
-    )
-
   @Test def `pat5` =
     check(
       """
@@ -252,6 +235,24 @@ class SignatureHelpPatternSuite extends BaseSignatureHelpSuite:
       """.stripMargin,
       """|(Option[Int])
          | ^^^^^^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `shortened` =
+    check(
+      """
+        |object Test {
+        |  def unapply(command: java.io.File): Option[java.io.File] = {
+        |    Some(Some(1))
+        |  }
+        |
+        |  "" match {
+        |    case Test(@@) =>
+        |  }
+        |}
+      """.stripMargin,
+      """|(File)
+         | ^^^^
          |""".stripMargin
     )
 

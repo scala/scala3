@@ -114,6 +114,10 @@ object FileUtils {
       if classOrModuleName.endsWith("$")
         && classOrModuleName != "Null$" // scala.runtime.Null$
         && classOrModuleName != "Nothing$" // scala.runtime.Nothing$
+        // Special case for `object $` in Amonite.
+        // This is an ad-hoc workaround for Amonite `object $`. See issue #19702
+        // This definition is not valid Scala.
+        && classOrModuleName != "$"
       then classOrModuleName.stripSuffix("$")
       else classOrModuleName
     className + SUFFIX_TASTY

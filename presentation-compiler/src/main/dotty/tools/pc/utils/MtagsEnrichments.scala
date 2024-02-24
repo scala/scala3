@@ -36,7 +36,8 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
   extension (driver: InteractiveDriver)
 
     def sourcePosition(
-        params: OffsetParams
+        params: OffsetParams,
+        isZeroExtent: Boolean = true
     ): SourcePosition =
       val uri = params.uri()
       val source = driver.openedFiles(uri.nn)
@@ -50,6 +51,7 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
             case offset =>
               Spans.Span(p.offset(), p.offset())
           }
+        case _ if !isZeroExtent => Spans.Span(params.offset(), params.offset() + 1)
         case _ => Spans.Span(params.offset())
 
       new SourcePosition(source, span)
@@ -298,10 +300,10 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
     def seenFrom(sym: Symbol)(using Context): (Type, Symbol) =
       try
         val pre = tree.qual
-        val denot = sym.denot.asSeenFrom(pre.tpe.widenTermRefExpr)
+        val denot = sym.denot.asSeenFrom(pre.typeOpt.widenTermRefExpr)
         (denot.info, sym.withUpdatedTpe(denot.info))
       catch case NonFatal(e) => (sym.info, sym)
-    
+
     def isInfix(using ctx: Context) =
       tree match
         case Select(New(_), _) => false
@@ -314,6 +316,24 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
             .map(source.apply)
             .contains('.')
         case _ => false
+
+    def children(using Context): List[Tree] =
+      val collector = new TreeAccumulator[List[Tree]]:
+        def apply(x: List[Tree], tree: Tree)(using Context): List[Tree] =
+          tree :: x
+      collector
+        .foldOver(Nil, tree)
+        .reverse
+
+    /**
+     * Returns the children of the tree that overlap with the given span.
+     */
+    def enclosedChildren(span: Span)(using Context): List[Tree] =
+      tree.children
+        .filter(tree =>
+          tree.sourcePos.exists && tree.span.start <= span.end && tree.span.end >= span.start
+        )
+    end enclosedChildren
   end extension
 
   extension (imp: Import)
@@ -355,7 +375,7 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
               case t: GenericApply
                   if t.fun.srcPos.span.contains(
                     pos.span
-                  ) && !t.tpe.isErroneous =>
+                  ) && !t.typeOpt.isErroneous =>
                 tryTail(tail).orElse(Some(enclosing))
               case in: Inlined =>
                 tryTail(tail).orElse(Some(enclosing))

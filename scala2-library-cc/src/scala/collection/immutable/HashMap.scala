@@ -2384,7 +2384,7 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
             )
             currentValueCursor += 1
           }
-        }.asInstanceOf // !!! cc gets confused with representation of capture sets in invariant position
+        }
       case hm: collection.mutable.HashMap[K, V] =>
         val iter = hm.nodeIterator
         while (iter.hasNext) {

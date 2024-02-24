@@ -26,7 +26,7 @@ trait ClassPath {
 
   final def hasPackage(pkg: String): Boolean = hasPackage(PackageName(pkg))
   final def packages(inPackage: String): Seq[PackageEntry] = packages(PackageName(inPackage))
-  final def classes(inPackage: String): Seq[ClassFileEntry] = classes(PackageName(inPackage))
+  final def classes(inPackage: String): Seq[BinaryFileEntry] = classes(PackageName(inPackage))
   final def sources(inPackage: String): Seq[SourceFileEntry] = sources(PackageName(inPackage))
   final def list(inPackage: String): ClassPathEntries = list(PackageName(inPackage))
 
@@ -43,7 +43,7 @@ trait ClassPath {
 
   private[dotty] def hasPackage(pkg: PackageName): Boolean
   private[dotty] def packages(inPackage: PackageName): Seq[PackageEntry]
-  private[dotty] def classes(inPackage: PackageName): Seq[ClassFileEntry]
+  private[dotty] def classes(inPackage: PackageName): Seq[BinaryFileEntry]
   private[dotty] def sources(inPackage: PackageName): Seq[SourceFileEntry]
 
   /**

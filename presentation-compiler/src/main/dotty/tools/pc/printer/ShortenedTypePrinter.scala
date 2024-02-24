@@ -7,6 +7,7 @@ import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
 
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Denotations.Denotation
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameKinds.ContextBoundParamName
@@ -36,7 +37,7 @@ import org.eclipse.lsp4j.TextEdit
  * A type printer that shortens types by replacing fully qualified names with shortened versions.
  *
  * The printer supports symbol renames found in scope and will use the rename if it is available.
- * It also handlse custom renames as specified in the `renameConfigMap` parameter.
+ * It also handle custom renames as specified in the `renameConfigMap` parameter.
  */
 class ShortenedTypePrinter(
     symbolSearch: SymbolSearch,
@@ -45,7 +46,7 @@ class ShortenedTypePrinter(
     isTextEdit: Boolean = false,
     renameConfigMap: Map[Symbol, String] = Map.empty
 )(using indexedCtx: IndexedContext, reportCtx: ReportContext) extends RefinedPrinter(indexedCtx.ctx):
-  private val missingImports: mutable.Set[ImportSel] = mutable.Set.empty
+  private val missingImports: mutable.Set[ImportSel] = mutable.LinkedHashSet.empty
   private val defaultWidth = 1000
 
   private val methodFlags =
@@ -62,9 +63,11 @@ class ShortenedTypePrinter(
       AbsOverride,
       Lazy
     )
-  
-  private val foundRenames = collection.mutable.Map.empty[Symbol, String]
-  
+
+  private val foundRenames = collection.mutable.LinkedHashMap.empty[Symbol, String]
+
+  def getUsedRenames: Map[Symbol, String] = foundRenames.toMap
+
   def getUsedRenamesInfo(using Context): List[String] =
     foundRenames.map { (from, to) =>
       s"type $to = ${from.showName}"
@@ -190,7 +193,7 @@ class ShortenedTypePrinter(
 
   override protected def selectionString(tp: NamedType): String =
     indexedCtx.rename(tp.symbol) match
-      case Some(value) => 
+      case Some(value) =>
         foundRenames += tp.symbol -> value
         value
       case None => super.selectionString(tp)
@@ -250,9 +253,10 @@ class ShortenedTypePrinter(
     lazy val effectiveOwner = sym.effectiveOwner
     sym.isType && (effectiveOwner == defn.ScalaPackageClass || effectiveOwner == defn.ScalaPredefModuleClass)
 
-  def completionSymbol(sym: Symbol): String =
-    val info = sym.info.widenTermRefExpr
+  def completionSymbol(denotation: Denotation): String =
+    val info = denotation.info.widenTermRefExpr
     val typeSymbol = info.typeSymbol
+    val sym = denotation.symbol
 
     lazy val typeEffectiveOwner =
       if typeSymbol != NoSymbol then " " + fullNameString(typeSymbol.effectiveOwner)
@@ -503,7 +507,7 @@ class ShortenedTypePrinter(
         case head :: Nil => s": $head"
         case many => many.mkString(": ", ": ", "")
       s"$keywordName$paramTypeString$bounds"
-    else if param.is(Flags.Given) && param.name.toString.contains('$') then
+    else if param.isAllOf(Given | Param) && param.name.startsWith("x$") then
       // For Anonymous Context Parameters
       // print only type string
       // e.g. "using Ord[T]" instead of "using x$0: Ord[T]"

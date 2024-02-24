@@ -1,0 +1,16 @@
+-- Deprecation Warning: tests/warn/t3235-minimal.scala:5:21 ------------------------------------------------------------
+5 |    assert(123456789.round == 123456789) // warn
+  |           ^^^^^^^^^^^^^^^
+  |method round in class RichInt is deprecated since 2.11.0: this is an integer type; there is no reason to round it.  Perhaps you meant to call this on a floating-point value?
+-- Deprecation Warning: tests/warn/t3235-minimal.scala:6:16 ------------------------------------------------------------
+6 |    assert(math.round(123456789) == 123456789) // warn
+  |           ^^^^^^^^^^
+  |method round in package scala.math is deprecated since 2.11.0: This is an integer type; there is no reason to round it. Perhaps you meant to call this with a floating-point value?
+-- Deprecation Warning: tests/warn/t3235-minimal.scala:7:32 ------------------------------------------------------------
+7 |    assert(1234567890123456789L.round == 1234567890123456789L) // warn
+  |           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |method round in class RichLong is deprecated since 2.11.0: this is an integer type; there is no reason to round it.  Perhaps you meant to call this on a floating-point value?
+-- Deprecation Warning: tests/warn/t3235-minimal.scala:8:16 ------------------------------------------------------------
+8 |    assert(math.round(1234567890123456789L) == 1234567890123456789L) // warn
+  |           ^^^^^^^^^^
+  |method round in package scala.math is deprecated since 2.11.0: This is an integer type; there is no reason to round it. Perhaps you meant to call this with a floating-point value?

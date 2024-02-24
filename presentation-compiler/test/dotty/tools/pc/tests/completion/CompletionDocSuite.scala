@@ -16,14 +16,14 @@ class CompletionDocSuite extends BaseCompletionSuite:
       MockDocumentation("java/lang/String#join().", "join", Seq(), Seq("delimiter", "elements")),
       MockDocumentation("java/lang/String#substring().", "substring", Seq(), Seq("beginIndex")),
       MockDocumentation("java/lang/String#substring(+1).", "substring", Seq(), Seq("beginIndex", "endIndex")),
-      ScalaMockDocumentation("scala/collection/Iterator#sliding().", "sliding", List(MockParam("size"), MockParam("step", "1"))),
-      ScalaMockDocumentation("scala/collection/immutable/TreeMap#insert().", "insert", List(MockParam("key"), MockParam("value"))),
+      ScalaMockDocumentation("scala/collection/Iterator#sliding().", "sliding", List(), List(MockParam("size"), MockParam("step", "1"))),
+      ScalaMockDocumentation("scala/collection/immutable/TreeMap#insert().", "insert", List(), List(MockParam("key"), MockParam("value"))),
       ScalaMockDocumentation("scala/Option#isDefined().", "isDefined"),
       ScalaMockDocumentation("scala/util/DynamicVariable#", "DynamicVariable"),
       ScalaMockDocumentation("scala/util/DynamicVariable.", "DynamicVariable"),
-      ScalaMockDocumentation("scala/io/Source#reportWarning().", "reportWarning", List(MockParam("pos"), MockParam("msg"), MockParam("out", "Console.out"))),
+      ScalaMockDocumentation("scala/io/Source#reportWarning().", "reportWarning", List(), List(MockParam("pos"), MockParam("msg"), MockParam("out", "Console.out"))),
       ScalaMockDocumentation("scala/Predef.println().", "println"),
-      ScalaMockDocumentation("scala/Predef.println(+1).", "println", List(MockParam("x"))),
+      ScalaMockDocumentation("scala/Predef.println(+1).", "println", List(), List(MockParam("x"))),
       ScalaMockDocumentation("scala/Predef.", "Predef"),
       ScalaMockDocumentation("scala/runtime/stdLibPatches/Predef.", "Predef"),
       ScalaMockDocumentation("scala/util/control/Exception.Catch#", "Catch"),
@@ -215,6 +215,7 @@ class CompletionDocSuite extends BaseCompletionSuite:
       """
         |> Found documentation for scala/package.Vector.
         |Vector scala.collection.immutable
+        |Vector[A](elems: A*): Vector[A]
         |""".stripMargin,
       includeDocs = true
     )
@@ -316,5 +317,6 @@ class CompletionDocSuite extends BaseCompletionSuite:
         |}
       """.stripMargin,
       """|myNumbers: Vector[Int]
+         |myNumbers(i: Int): Int
          |""".stripMargin
     )

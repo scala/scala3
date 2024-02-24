@@ -38,7 +38,7 @@ import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
-import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, RetainingType, isCaptureChecking}
+import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, isCaptureChecking, isRetains, isRetainsLike}
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
@@ -197,7 +197,7 @@ object Types extends TypeUtils {
      */
     def isRef(sym: Symbol, skipRefined: Boolean = true)(using Context): Boolean = this match {
       case this1: TypeRef =>
-        this1.info match { // see comment in Namer#typeDefSig
+        this1.info match { // see comment in Namer#TypeDefCompleter#typeSig
           case TypeAlias(tp) => tp.isRef(sym, skipRefined)
           case _ => this1.symbol eq sym
         }
@@ -845,7 +845,9 @@ object Types extends TypeUtils {
             safeIntersection = ctx.base.pendingMemberSearches.contains(name))
           joint match
             case joint: SingleDenotation
-            if isRefinedMethod && rinfo <:< joint.info =>
+            if isRefinedMethod
+              && (rinfo <:< joint.info
+                 || name == nme.apply && defn.isFunctionType(tp.parent)) =>
               // use `rinfo` to keep the right parameter names for named args. See i8516.scala.
               joint.derivedSingleDenotation(joint.symbol, rinfo, pre, isRefinedMethod)
             case _ =>
@@ -1643,6 +1645,8 @@ object Types extends TypeUtils {
           pre.refinedInfo match {
             case tp: AliasingBounds =>
               if (pre.refinedName ne name) loop(pre.parent) else tp.alias
+            case tp: SingletonType =>
+              if pre.refinedName ne name then loop(pre.parent) else tp
             case _ =>
               loop(pre.parent)
           }
@@ -2198,7 +2202,11 @@ object Types extends TypeUtils {
     /** Is this a reach reference of the form `x*`? */
     def isReach(using Context): Boolean = false // overridden in AnnotatedType
 
+    /** Is this a maybe reference of the form `x?`? */
+    def isMaybe(using Context): Boolean = false // overridden in AnnotatedType
+
     def stripReach(using Context): CaptureRef = this // overridden in AnnotatedType
+    def stripMaybe(using Context): CaptureRef = this // overridden in AnnotatedType
 
     /** Is this reference the generic root capability `cap` ? */
     def isRootCapability(using Context): Boolean = false
@@ -2670,11 +2678,8 @@ object Types extends TypeUtils {
      *  refinement type `T { X = U; ... }`
      */
     def reduceProjection(using Context): Type =
-      if (isType) {
-        val reduced = prefix.lookupRefined(name)
-        if (reduced.exists) reduced else this
-      }
-      else this
+      val reduced = prefix.lookupRefined(name)
+      if reduced.exists then reduced else this
 
     /** Guard against cycles that can arise if given `op`
      *  follows info. The problematic cases are a type alias to itself or
@@ -2759,14 +2764,14 @@ object Types extends TypeUtils {
      *     (S | T)#A --> S#A | T#A
      */
     def derivedSelect(prefix: Type)(using Context): Type =
-      if (prefix eq this.prefix) this
-      else if (prefix.isExactlyNothing) prefix
+      if prefix eq this.prefix then this
+      else if prefix.isExactlyNothing then prefix
       else {
+        val res =
+          if (isType && currentValidSymbol.isAllOf(ClassTypeParam)) argForParam(prefix)
+          else prefix.lookupRefined(name)
+        if (res.exists) return res
         if (isType) {
-          val res =
-            if (currentValidSymbol.isAllOf(ClassTypeParam)) argForParam(prefix)
-            else prefix.lookupRefined(name)
-          if (res.exists) return res
           if (Config.splitProjections)
             prefix match {
               case prefix: AndType =>
@@ -4025,7 +4030,7 @@ object Types extends TypeUtils {
               mapOver(tp)
             case AnnotatedType(parent, ann) if ann.refersToParamOf(thisLambdaType) =>
               val parent1 = mapOver(parent)
-              if ann.symbol == defn.RetainsAnnot || ann.symbol == defn.RetainsByNameAnnot then
+              if ann.symbol.isRetainsLike then
                 range(
                   AnnotatedType(parent1, CaptureSet.empty.toRegularAnnotation(ann.symbol)),
                   AnnotatedType(parent1, CaptureSet.universal.toRegularAnnotation(ann.symbol)))
@@ -5003,6 +5008,8 @@ object Types extends TypeUtils {
         case ex: Throwable =>
           handleRecursive("normalizing", s"${scrutinee.show} match ..." , ex)
 
+    private def thisMatchType = this
+
     def reduced(using Context): Type = {
 
       def contextInfo(tp: Type): Type = tp match {
@@ -5017,16 +5024,43 @@ object Types extends TypeUtils {
           tp.underlying
       }
 
-      def updateReductionContext(footprint: collection.Set[Type]): Unit =
-        reductionContext = util.HashMap()
-        for (tp <- footprint)
-          reductionContext(tp) = contextInfo(tp)
-        typr.println(i"footprint for $this $hashCode: ${footprint.toList.map(x => (x, contextInfo(x)))}%, %")
-
       def isUpToDate: Boolean =
-        reductionContext.keysIterator.forall { tp =>
+        reductionContext.keysIterator.forall: tp =>
           reductionContext(tp) `eq` contextInfo(tp)
-        }
+
+      def setReductionContext(): Unit =
+        new TypeTraverser:
+          var footprint: Set[Type] = Set()
+          var deep: Boolean = true
+          val seen = util.HashSet[Type]()
+          def traverse(tp: Type) =
+            if !seen.contains(tp) then
+              seen += tp
+              tp match
+                case tp: NamedType =>
+                  if tp.symbol.is(TypeParam) then footprint += tp
+                  traverseChildren(tp)
+                case _: AppliedType | _: RefinedType =>
+                  if deep then traverseChildren(tp)
+                case TypeBounds(lo, hi) =>
+                  traverse(hi)
+                case tp: TypeVar =>
+                  footprint += tp
+                  traverse(tp.underlying)
+                case tp: TypeParamRef =>
+                  footprint += tp
+                case _ =>
+                  traverseChildren(tp)
+          end traverse
+
+          traverse(scrutinee)
+          deep = false
+          cases.foreach(traverse)
+          reductionContext = util.HashMap()
+          for tp <- footprint do
+            reductionContext(tp) = contextInfo(tp)
+          matchTypes.println(i"footprint for $thisMatchType $hashCode: ${footprint.toList.map(x => (x, contextInfo(x)))}%, %")
+      end setReductionContext
 
       record("MatchType.reduce called")
       if !Config.cacheMatchReduced
@@ -5037,20 +5071,22 @@ object Types extends TypeUtils {
         record("MatchType.reduce computed")
         if (myReduced != null) record("MatchType.reduce cache miss")
         myReduced =
-          trace(i"reduce match type $this $hashCode", matchTypes, show = true)(inMode(Mode.Type) {
-            def matchCases(cmp: TrackingTypeComparer): Type =
-              val saved = ctx.typerState.snapshot()
-              try cmp.matchCases(scrutinee.normalized, cases.map(MatchTypeCaseSpec.analyze(_)))
-              catch case ex: Throwable =>
-                handleRecursive("reduce type ", i"$scrutinee match ...", ex)
-              finally
-                updateReductionContext(cmp.footprint)
-                ctx.typerState.resetTo(saved)
-                  // this drops caseLambdas in constraint and undoes any typevar
-                  // instantiations during matchtype reduction
+          trace(i"reduce match type $this $hashCode", matchTypes, show = true):
+            withMode(Mode.Type):
+              setReductionContext()
+              def matchCases(cmp: MatchReducer): Type =
+                val saved = ctx.typerState.snapshot()
+                try
+                  cmp.matchCases(scrutinee.normalized, cases.map(MatchTypeCaseSpec.analyze(_)))
+                catch case ex: Throwable =>
+                  handleRecursive("reduce type ", i"$scrutinee match ...", ex)
+                finally
+                  ctx.typerState.resetTo(saved)
+                    // this drops caseLambdas in constraint and undoes any typevar
+                    // instantiations during matchtype reduction
+              TypeComparer.reduceMatchWith(matchCases)
 
-            TypeComparer.tracked(matchCases)
-          })
+      //else println(i"no change for $this $hashCode / $myReduced")
       myReduced.nn
     }
 
@@ -5315,10 +5351,10 @@ object Types extends TypeUtils {
           else if (clsd.is(Module)) givenSelf
           else if (ctx.erasedTypes) appliedRef
           else givenSelf.dealiasKeepAnnots match
-            case givenSelf1 @ AnnotatedType(tp, ann) if ann.symbol == defn.RetainsAnnot =>
-              givenSelf1.derivedAnnotatedType(tp & appliedRef, ann)
+            case givenSelf1 @ AnnotatedType(tp, ann) if ann.symbol.isRetains =>
+              givenSelf1.derivedAnnotatedType(AndType.make(tp, appliedRef), ann)
             case _ =>
-              AndType(givenSelf, appliedRef)
+              AndType.make(givenSelf, appliedRef)
         }
       selfTypeCache.nn
     }
@@ -5618,14 +5654,21 @@ object Types extends TypeUtils {
     }
 
     override def isTrackableRef(using Context) =
-      isReach && parent.isTrackableRef
+      (isReach || isMaybe) && parent.isTrackableRef
 
     /** Is this a reach reference of the form `x*`? */
     override def isReach(using Context): Boolean =
       annot.symbol == defn.ReachCapabilityAnnot
 
-    override def stripReach(using Context): SingletonCaptureRef =
-      (if isReach then parent else this).asInstanceOf[SingletonCaptureRef]
+    /** Is this a reach reference of the form `x*`? */
+    override def isMaybe(using Context): Boolean =
+      annot.symbol == defn.MaybeCapabilityAnnot
+
+    override def stripReach(using Context): CaptureRef =
+      if isReach then parent.asInstanceOf[CaptureRef] else this
+
+    override def stripMaybe(using Context): CaptureRef =
+      if isMaybe then parent.asInstanceOf[CaptureRef] else this
 
     override def normalizedRef(using Context): CaptureRef =
       if isReach then AnnotatedType(stripReach.normalizedRef, annot) else this
@@ -6475,15 +6518,6 @@ object Types extends TypeUtils {
             tp.derivedLambdaType(tp.paramNames, formals, restpe)
       }
 
-    /** Overridden in TypeOps.avoid and in CheckCaptures.substParamsMap */
-    protected def needsRangeIfInvariant(refs: CaptureSet): Boolean = true
-
-    override def mapCapturingType(tp: Type, parent: Type, refs: CaptureSet, v: Int): Type =
-      if v == 0 && needsRangeIfInvariant(refs) then
-        range(mapCapturingType(tp, parent, refs, -1), mapCapturingType(tp, parent, refs, 1))
-      else
-        super.mapCapturingType(tp, parent, refs, v)
-
     protected def reapply(tp: Type): Type = apply(tp)
   }
 
@@ -6528,7 +6562,7 @@ object Types extends TypeUtils {
       record(s"foldOver $getClass")
       record(s"foldOver total")
       tp match {
-      case tp: TypeRef =>
+      case tp: NamedType =>
         if stopBecauseStaticOrLocal(tp) then x
         else
           val tp1 = tp.prefix.lookupRefined(tp.name)
@@ -6556,9 +6590,6 @@ object Types extends TypeUtils {
         val y = foldOver(x, tp.paramInfos)
         variance = saved
         this(y, restpe)
-
-      case tp: TermRef =>
-        if stopBecauseStaticOrLocal(tp) then x else applyToPrefix(x, tp)
 
       case tp: TypeVar =>
         this(x, tp.underlying)

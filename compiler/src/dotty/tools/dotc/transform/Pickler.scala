@@ -9,7 +9,7 @@ import tasty.*
 import config.Printers.{noPrinter, pickling}
 import config.Feature
 import java.io.PrintStream
-import io.ClassfileWriterOps
+import io.FileWriters.TastyWriter
 import StdNames.{str, nme}
 import Periods.*
 import Phases.*
@@ -19,8 +19,9 @@ import reporting.{ThrowingReporter, Profile, Message}
 import collection.mutable
 import util.concurrent.{Executor, Future}
 import compiletime.uninitialized
-import dotty.tools.io.JarArchive
+import dotty.tools.io.{JarArchive, AbstractFile}
 import dotty.tools.dotc.printing.OutlinePrinter
+import scala.annotation.constructorOnly
 
 object Pickler {
   val name: String = "pickler"
@@ -32,8 +33,17 @@ object Pickler {
    */
   inline val ParallelPickling = true
 
-  class EarlyFileWriter(writer: ClassfileWriterOps):
-    export writer.{writeTasty, close}
+  class EarlyFileWriter private (writer: TastyWriter, origin: AbstractFile):
+    def this(dest: AbstractFile)(using @constructorOnly ctx: Context) = this(TastyWriter(dest), dest)
+
+    export writer.writeTasty
+
+    def close(): Unit =
+      writer.close()
+      origin match {
+        case jar: JarArchive => jar.close() // also close the file system
+        case _ =>
+      }
 }
 
 /** This phase pickles trees */
@@ -184,7 +194,7 @@ class Pickler extends Phase {
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
     val sigWriter: Option[Pickler.EarlyFileWriter] = ctx.settings.YjavaTastyOutput.value match
       case jar: JarArchive if jar.exists =>
-        Some(Pickler.EarlyFileWriter(ClassfileWriterOps(jar)))
+        Some(Pickler.EarlyFileWriter(jar))
       case _ =>
         None
     val units0 =
@@ -225,9 +235,11 @@ class Pickler extends Phase {
         (cls, pickled) <- unit.pickled
         if cls.isDefinedInCurrentRun
       do
-        val binaryName = cls.binaryClassName.replace('.', java.io.File.separatorChar).nn
-        val binaryClassName = if (cls.is(Module)) binaryName.stripSuffix(str.MODULE_SUFFIX).nn else binaryName
-        writer.writeTasty(binaryClassName, pickled())
+        val binaryClassName = cls.binaryClassName
+        val internalName =
+          if (cls.is(Module)) binaryClassName.stripSuffix(str.MODULE_SUFFIX).nn
+          else binaryClassName
+        val _ = writer.writeTasty(internalName, pickled())
         count += 1
     finally
       writer.close()

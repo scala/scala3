@@ -2101,7 +2101,7 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
             )
             currentValueCursor += 1
           }
-        }.asInstanceOf // !!! cc gets confused with representation of capture sets in invariant position
+        }
       case other =>
         val it = other.iterator
         while(it.hasNext) addOne(it.next())

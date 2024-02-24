@@ -115,7 +115,7 @@ object SpaceEngine {
   def decompose(typ: Typ)(using Context): List[Typ]          = typ.decompose
 
   /** Simplify space such that a space equal to `Empty` becomes `Empty` */
-  def computeSimplify(space: Space)(using Context): Space = trace(s"simplify($space)")(space match {
+  def computeSimplify(space: Space)(using Context): Space = trace(i"simplify($space)")(space match {
     case Prod(tp, fun, spaces) =>
       val sps = spaces.mapconserve(simplify)
       if sps.contains(Empty) then Empty
@@ -166,7 +166,7 @@ object SpaceEngine {
   }
 
   /** Is `a` a subspace of `b`? Equivalent to `simplify(simplify(a) - simplify(b)) == Empty`, but faster */
-  def computeIsSubspace(a: Space, b: Space)(using Context): Boolean = trace(s"isSubspace($a, $b)") {
+  def computeIsSubspace(a: Space, b: Space)(using Context): Boolean = trace(i"isSubspace($a, $b)") {
     val a2 = simplify(a)
     val b2 = simplify(b)
     if (a ne a2) || (b ne b2) then isSubspace(a2, b2)
@@ -195,7 +195,7 @@ object SpaceEngine {
   }
 
   /** Intersection of two spaces  */
-  def intersect(a: Space, b: Space)(using Context): Space = trace(s"$a & $b") {
+  def intersect(a: Space, b: Space)(using Context): Space = trace(i"intersect($a & $b)") {
     (a, b) match {
       case (Empty, _) | (_, Empty) => Empty
       case (_, Or(ss)) => Or(ss.map(intersect(a, _)).filter(_ ne Empty))
@@ -220,7 +220,7 @@ object SpaceEngine {
   }
 
   /** The space of a not covered by b */
-  def minus(a: Space, b: Space)(using Context): Space = trace(s"$a - $b") {
+  def minus(a: Space, b: Space)(using Context): Space = trace(i"minus($a - $b)") {
     (a, b) match {
       case (Empty, _) => Empty
       case (_, Empty) => a
@@ -657,17 +657,15 @@ object SpaceEngine {
   }
 
   extension (tp: Type)
-    /** A type is decomposable to children if it has a simple kind, it's sealed,
-      * abstract (or a trait) - so its not a sealed concrete class that can be instantiated on its own,
-      * has no anonymous children, which we wouldn't be able to name as counter-examples,
-      * but does have children.
-      *
-      * A sealed trait with no subclasses is considered not decomposable and thus is treated as an opaque type.
-      * A sealed trait with subclasses that then get removed after `refineUsingParent`, decomposes to the empty list.
-      * So that's why we consider whether a type has children. */
     def isDecomposableToChildren(using Context): Boolean =
-      val cls = tp.classSymbol
-      tp.hasSimpleKind && cls.is(Sealed) && cls.isOneOf(AbstractOrTrait) && !cls.hasAnonymousChild && cls.children.nonEmpty
+      val sym = tp.typeSymbol  // e.g. Foo[List[Int]] = type Foo (i19275)
+      val cls = tp.classSymbol // e.g. Foo[List[Int]] = class List
+      tp.hasSimpleKind                  // can't decompose higher-kinded types
+        && cls.is(Sealed)
+        && cls.isOneOf(AbstractOrTrait) // ignore sealed non-abstract classes
+        && !cls.hasAnonymousChild       // can't name anonymous classes as counter-examples
+        && cls.children.nonEmpty        // can't decompose without children
+        && !sym.isOpaqueAlias           // can't instantiate subclasses to conform to an opaque type (i19275)
 
   val ListOfNoType    = List(NoType)
   val ListOfTypNoType = ListOfNoType.map(Typ(_, decomposed = true))

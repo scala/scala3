@@ -6,7 +6,6 @@ import java.util.concurrent.ExecutionException
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.CompilerOffsetParams
 import scala.meta.internal.pc.CodeActionErrorMessages
-import scala.meta.pc.DisplayableException
 import scala.language.unsafeNulls
 
 import dotty.tools.pc.base.BaseCodeActionSuite

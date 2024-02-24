@@ -160,8 +160,8 @@ trait IterableFactory[+CC[_]] extends Serializable, Pure {
     *  @param   elem the element computation
     *  @return  A $coll that contains the results of `n1 x n2` evaluations of `elem`.
     */
-  def fill[A](n1: Int, n2: Int)(elem: => A): CC[CC[A] @uncheckedVariance]^{elem} = // !!! problem with checking rhs under cc
-  	??? // fill(n1)(fill(n2)(elem))
+  def fill[A](n1: Int, n2: Int)(elem: => A): CC[(CC[A]^{elem}) @uncheckedVariance]^{elem} =
+  	fill(n1)(fill(n2)(elem))
 
   /** Produces a three-dimensional $coll containing the results of some element computation a number of times.
     *  @param   n1  the number of elements in the 1st dimension
@@ -170,8 +170,8 @@ trait IterableFactory[+CC[_]] extends Serializable, Pure {
     *  @param   elem the element computation
     *  @return  A $coll that contains the results of `n1 x n2 x n3` evaluations of `elem`.
     */
-  def fill[A](n1: Int, n2: Int, n3: Int)(elem: => A): CC[CC[CC[A]] @uncheckedVariance]^{elem} = // !!! problem with checking rhs under cc
-    ??? // fill(n1)(fill(n2, n3)(elem)).unsafeAssumePure
+  def fill[A](n1: Int, n2: Int, n3: Int)(elem: => A): CC[(CC[CC[A]^{elem}]^{elem}) @uncheckedVariance]^{elem} =
+    fill(n1)(fill(n2, n3)(elem))
 
   /** Produces a four-dimensional $coll containing the results of some element computation a number of times.
     *  @param   n1  the number of elements in the 1st dimension
@@ -181,8 +181,8 @@ trait IterableFactory[+CC[_]] extends Serializable, Pure {
     *  @param   elem the element computation
     *  @return  A $coll that contains the results of `n1 x n2 x n3 x n4` evaluations of `elem`.
     */
-  def fill[A](n1: Int, n2: Int, n3: Int, n4: Int)(elem: => A): CC[CC[CC[CC[A]]] @uncheckedVariance]^{elem} = // !!! problem with checking rhs under cc
-    ??? // fill(n1)(fill(n2, n3, n4)(elem))
+  def fill[A](n1: Int, n2: Int, n3: Int, n4: Int)(elem: => A): CC[(CC[CC[CC[A]^{elem}]^{elem}]^{elem}) @uncheckedVariance]^{elem} =
+    fill(n1)(fill(n2, n3, n4)(elem))
 
   /** Produces a five-dimensional $coll containing the results of some element computation a number of times.
     *  @param   n1  the number of elements in the 1st dimension
@@ -193,8 +193,8 @@ trait IterableFactory[+CC[_]] extends Serializable, Pure {
     *  @param   elem the element computation
     *  @return  A $coll that contains the results of `n1 x n2 x n3 x n4 x n5` evaluations of `elem`.
     */
-  def fill[A](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(elem: => A): CC[CC[CC[CC[CC[A]]]] @uncheckedVariance]^{elem} = // !!! problem with checking rhs under cc
-    ??? // fill(n1)(fill(n2, n3, n4, n5)(elem))
+  def fill[A](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(elem: => A): CC[(CC[CC[CC[CC[A]^{elem}]^{elem}]^{elem}]^{elem}) @uncheckedVariance]^{elem} =
+    fill(n1)(fill(n2, n3, n4, n5)(elem))
 
   /** Produces a $coll containing values of a given function over a range of integer values starting from 0.
     *  @param  n   The number of elements in the $coll
@@ -210,8 +210,8 @@ trait IterableFactory[+CC[_]] extends Serializable, Pure {
     *  @return A $coll consisting of elements `f(i1, i2)`
     *          for `0 <= i1 < n1` and `0 <= i2 < n2`.
     */
-  def tabulate[A](n1: Int, n2: Int)(f: (Int, Int) => A): CC[CC[A] @uncheckedVariance]^{f} = // !!! problem with checking rhs under cc
-    ??? // tabulate(n1)(i1 => tabulate(n2)(f(i1, _)))
+  def tabulate[A](n1: Int, n2: Int)(f: (Int, Int) => A): CC[(CC[A]^{f}) @uncheckedVariance]^{f} =
+    tabulate(n1)(i1 => tabulate(n2)(f(i1, _)))
 
   /** Produces a three-dimensional $coll containing values of a given function over ranges of integer values starting from 0.
     *  @param   n1  the number of elements in the 1st dimension
@@ -221,8 +221,8 @@ trait IterableFactory[+CC[_]] extends Serializable, Pure {
     *  @return A $coll consisting of elements `f(i1, i2, i3)`
     *          for `0 <= i1 < n1`, `0 <= i2 < n2`, and `0 <= i3 < n3`.
     */
-  def tabulate[A](n1: Int, n2: Int, n3: Int)(f: (Int, Int, Int) => A): CC[CC[CC[A]] @uncheckedVariance]^{f} = // !!! problem with checking rhs under cc
-    ??? // tabulate(n1)(i1 => tabulate(n2, n3)(f(i1, _, _)))
+  def tabulate[A](n1: Int, n2: Int, n3: Int)(f: (Int, Int, Int) => A): CC[(CC[CC[A]^{f}]^{f}) @uncheckedVariance]^{f} =
+    tabulate(n1)(i1 => tabulate(n2, n3)(f(i1, _, _)))
 
   /** Produces a four-dimensional $coll containing values of a given function over ranges of integer values starting from 0.
     *  @param   n1  the number of elements in the 1st dimension
@@ -233,8 +233,8 @@ trait IterableFactory[+CC[_]] extends Serializable, Pure {
     *  @return A $coll consisting of elements `f(i1, i2, i3, i4)`
     *          for `0 <= i1 < n1`, `0 <= i2 < n2`, `0 <= i3 < n3`, and `0 <= i4 < n4`.
     */
-  def tabulate[A](n1: Int, n2: Int, n3: Int, n4: Int)(f: (Int, Int, Int, Int) => A): CC[CC[CC[CC[A]]] @uncheckedVariance]^{f} = // !!! problem with checking rhs under cc
-    ??? // tabulate(n1)(i1 => tabulate(n2, n3, n4)(f(i1, _, _, _)))
+  def tabulate[A](n1: Int, n2: Int, n3: Int, n4: Int)(f: (Int, Int, Int, Int) => A): CC[(CC[CC[CC[A]^{f}]^{f}]^{f}) @uncheckedVariance]^{f} =
+    tabulate(n1)(i1 => tabulate(n2, n3, n4)(f(i1, _, _, _)))
 
   /** Produces a five-dimensional $coll containing values of a given function over ranges of integer values starting from 0.
     *  @param   n1  the number of elements in the 1st dimension
@@ -246,8 +246,8 @@ trait IterableFactory[+CC[_]] extends Serializable, Pure {
     *  @return A $coll consisting of elements `f(i1, i2, i3, i4, i5)`
     *          for `0 <= i1 < n1`, `0 <= i2 < n2`, `0 <= i3 < n3`, `0 <= i4 < n4`, and `0 <= i5 < n5`.
     */
-  def tabulate[A](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(f: (Int, Int, Int, Int, Int) => A): CC[CC[CC[CC[CC[A]]]] @uncheckedVariance]^{f} = // !!! problem with checking rhs under cc
-    ??? // tabulate(n1)(i1 => tabulate(n2, n3, n4, n5)(f(i1, _, _, _, _)))
+  def tabulate[A](n1: Int, n2: Int, n3: Int, n4: Int, n5: Int)(f: (Int, Int, Int, Int, Int) => A): CC[(CC[CC[CC[CC[A]^{f}]^{f}]^{f}]^{f}) @uncheckedVariance]^{f} =
+    tabulate(n1)(i1 => tabulate(n2, n3, n4, n5)(f(i1, _, _, _, _)))
 
   /** Concatenates all argument collections into a single $coll.
    *

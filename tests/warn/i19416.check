@@ -1,0 +1,4 @@
+-- [E193] Syntax Warning: tests/warn/i19416.scala:2:18 -----------------------------------------------------------------
+2 |    @volatile val x: Int = ??? // warn
+  |                  ^
+  |                  values cannot be volatile

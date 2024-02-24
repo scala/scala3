@@ -1,0 +1,6 @@
+-- [E050] Type Error: tests/neg/context-bounds-migration-future.scala:9:2 ----------------------------------------------
+9 |  foo(C[Int]()) // error
+  |  ^^^
+  |  method foo does not take more parameters
+  |
+  | longer explanation available when compiling with `-explain`
