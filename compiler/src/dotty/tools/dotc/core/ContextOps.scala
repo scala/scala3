@@ -59,13 +59,16 @@ object ContextOps:
         val preSym = pre.typeSymbol
         // 1. Try to search in current type and parents.
         val directSearch =
-          if name.isTypeName && name.endsWith(StdNames.str.MODULE_SUFFIX) then
-            pre.findMember(name.stripModuleClassSuffix, pre, required, excluded) match
-              case NoDenotation => NoDenotation
-              case symDenot: SymDenotation =>
-                symDenot.companionModule.denot
-          else
-            pre.findMember(name, pre, required, excluded)
+          def asModule =
+            if name.isTypeName && name.endsWith(StdNames.str.MODULE_SUFFIX) then
+              pre.findMember(name.stripModuleClassSuffix, pre, required, excluded) match
+                case NoDenotation => NoDenotation
+                case symDenot: SymDenotation =>
+                  symDenot.companionModule.denot
+            else NoDenotation
+          pre.findMember(name, pre, required, excluded) match
+            case NoDenotation => asModule
+            case denot => denot
 
         // 2. Try to search in companion class if current is an object.
         def searchCompanionClass = if lookInCompanion && preSym.is(Flags.Module) then
