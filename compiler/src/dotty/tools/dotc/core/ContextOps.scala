@@ -55,11 +55,17 @@ object ContextOps:
     final def javaFindMember(name: Name, pre: Type, lookInCompanion: Boolean, required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags): Denotation =
       assert(ctx.isJava)
       inContext(ctx) {
-
+        import dotty.tools.dotc.core.NameOps.*
         val preSym = pre.typeSymbol
-
         // 1. Try to search in current type and parents.
-        val directSearch = pre.findMember(name, pre, required, excluded)
+        val directSearch =
+          if name.isTypeName && name.endsWith(StdNames.str.MODULE_SUFFIX) then
+            pre.findMember(name.stripModuleClassSuffix, pre, required, excluded) match
+              case NoDenotation => NoDenotation
+              case symDenot: SymDenotation =>
+                symDenot.companionModule.denot
+          else
+            pre.findMember(name, pre, required, excluded)
 
         // 2. Try to search in companion class if current is an object.
         def searchCompanionClass = if lookInCompanion && preSym.is(Flags.Module) then
