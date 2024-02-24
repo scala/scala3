@@ -101,3 +101,49 @@ class SelectionRangeSuite extends BaseSelectionRangeSuite:
            |}<<region<<""".stripMargin
       )
     )
+
+  @Test def `function params` =
+    check(
+      """|object Main extends App {
+         |  def func(a@@: Int, b: Int) =
+         |    a + b
+         |}""".stripMargin,
+      List[String](
+        """|object Main extends App {
+           |  def func(>>region>>a: Int<<region<<, b: Int) =
+           |    a + b
+           |}""".stripMargin,
+        """|object Main extends App {
+           |  def func(>>region>>a: Int, b: Int<<region<<) =
+           |    a + b
+           |}""".stripMargin,
+        """|object Main extends App {
+           |  >>region>>def func(a: Int, b: Int) =
+           |    a + b<<region<<
+           |}""".stripMargin
+      )
+    )
+    check(
+      """|object Main extends App {
+         |  val func = (a@@: Int, b: Int) =>
+         |    a + b
+         |}""".stripMargin,
+      List[String](
+        """|object Main extends App {
+           |  val func = (>>region>>a: Int<<region<<, b: Int) =>
+           |    a + b
+           |}""".stripMargin,
+        """|object Main extends App {
+           |  val func = (>>region>>a: Int, b: Int<<region<<) =>
+           |    a + b
+           |}""".stripMargin,
+        """|object Main extends App {
+           |  val func = >>region>>(a: Int, b: Int) =>
+           |    a + b<<region<<
+           |}""".stripMargin,
+        """|object Main extends App {
+           |  >>region>>val func = (a: Int, b: Int) =>
+           |    a + b<<region<<
+           |}""".stripMargin
+      )
+    )
