@@ -4449,13 +4449,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           missingArgs(tree, tree.tpe.widen)
         else
           report.warning(UnusedNonUnitValue(tree.tpe),original.srcPos)
-      case _ if isUnitExpr =>
-        if isPure then
+      case _ if isPure =>
+        if isUnitExpr then
           report.warning(PureUnitExpression(original, tree.tpe), original.srcPos)
-      case _  =>
-        if isPure then
+        else
           report.warning(PureExpressionInStatementPosition(original, exprOwner), original.srcPos)
-
+      case _ =>
   /** Types the body Scala 2 macro declaration `def f = macro <body>` */
   protected def typedScala2MacroBody(call: untpd.Tree)(using Context): Tree =
     // TODO check that call is to a method with valid signature
