@@ -163,7 +163,7 @@ object Feature:
     do checkExperimentalFeature(s"feature $setting", NoSourcePosition)
 
   def isExperimentalEnabled(using Context): Boolean =
-    (Properties.experimental || ctx.settings.experimental.value) && !ctx.settings.YnoExperimental.value
+    (Properties.experimental && !ctx.settings.YnoExperimental.value) || ctx.settings.experimental.value
 
   /** Handle language import `import language.<prefix>.<imported>` if it is one
    *  of the global imports `pureFunctions` or `captureChecking`. In this case
