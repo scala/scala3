@@ -61,7 +61,7 @@ object ContextOps:
         val directSearch =
           def asModule =
             if name.isTypeName && name.endsWith(StdNames.str.MODULE_SUFFIX) then
-              pre.findMember(name.stripModuleClassSuffix, pre, required, excluded) match
+              pre.findMember(name.stripModuleClassSuffix.moduleClassName, pre, required, excluded) match
                 case NoDenotation => NoDenotation
                 case symDenot: SymDenotation =>
                   symDenot.companionModule.denot
