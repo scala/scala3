@@ -41,7 +41,10 @@ object ContextOps:
             else pre.findMember(name, pre, required, excluded)
           }
           else // we are in the outermost context belonging to a class; self is invisible here. See inClassContext.
-            ctx.owner.findMember(name, ctx.owner.thisType, required, excluded)
+            if ctx.isJava then
+              javaFindMember(name, ctx.owner.thisType, lookInCompanion = true,required, excluded)
+            else
+              ctx.owner.findMember(name, ctx.owner.thisType, required, excluded)
         else
           ctx.scope.denotsNamed(name).filterWithFlags(required, excluded).toDenot(NoPrefix)
       }
