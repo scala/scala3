@@ -110,7 +110,7 @@ object Symbols extends SymUtils {
     }
 
     private def computeDenot(lastd: SymDenotation)(using Context): SymDenotation = {
-      // Written that way do that it comes in at 32 bytes and is therefore inlineable for
+      // Written that way so that it comes in at 32 bytes and is therefore inlineable for
       // the JIT (reputedly, cutoff is at 35 bytes)
       util.Stats.record("Symbol.computeDenot")
       val now = ctx.period
