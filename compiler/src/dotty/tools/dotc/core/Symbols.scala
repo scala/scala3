@@ -110,25 +110,28 @@ object Symbols extends SymUtils {
     }
 
     private def computeDenot(lastd: SymDenotation)(using Context): SymDenotation = {
+      // Written that way do that it comes in at 32 bytes and is therefore inlineable for
+      // the JIT (reputedly, cutoff is at 35 bytes)
       util.Stats.record("Symbol.computeDenot")
       val now = ctx.period
-      val prev = checkedPeriod
       checkedPeriod = now
-      if lastd.validFor.contains(now) then
-        lastd
-      else
-        val newd = recomputeDenot(lastd)
-        if newd.exists then
-          lastDenot = newd
-        else
-          checkedPeriod = prev
-        newd
+      if lastd.validFor.contains(now) then lastd else recomputeDenot(lastd)
     }
 
     /** Overridden in NoSymbol */
     protected def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = {
       util.Stats.record("Symbol.recomputeDenot")
-      lastd.current.asSymDenotation
+      val newd = lastd.current.asInstanceOf[SymDenotation]
+      lastDenot = newd
+      if !newd.exists && lastd.initial.validFor.firstPhaseId > ctx.phaseId then
+        // We are trying to bring forward a symbol that is defined only at a later phase
+        // (typically, a nested Java class, invisible before erasure).
+        // In that case, keep the checked period to the previous validity, which
+        // means we will try another bring forward when the symbol is referenced
+        // at a later phase. Otherwise we'd get stuck on NoDenotation here.
+        // See #15562 and test i15562b in ReplCompilerTests
+        checkedPeriod = lastd.initial.validFor
+      newd
     }
 
     /** The original denotation of this symbol, without forcing anything */
@@ -798,7 +801,7 @@ object Symbols extends SymUtils {
       cls: ClassSymbol,
       name: TermName = nme.WILDCARD,
       selfInfo: Type = NoType)(using Context): TermSymbol =
-    newSymbol(cls, name, SelfSymFlags, selfInfo orElse cls.classInfo.selfType, coord = cls.coord)
+    newSymbol(cls, name, SelfSymFlags, selfInfo.orElse(cls.classInfo.selfType), coord = cls.coord)
 
   /** Create new type parameters with given owner, names, and flags.
    *  @param boundsFn  A function that, given type refs to the newly created
@@ -965,7 +968,7 @@ object Symbols extends SymUtils {
    */
   def getPackageClassIfDefined(path: PreName)(using Context): Symbol =
     staticRef(path.toTypeName, isPackage = true, generateStubs = false)
-      .disambiguate(_ is PackageClass).symbol
+      .disambiguate(_.is(PackageClass)).symbol
 
   def requiredModule(path: PreName)(using Context): TermSymbol = {
     val name = path.toTermName
