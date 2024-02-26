@@ -1,4 +1,6 @@
 import scala.compiletime.{CustomShow, hasCustomShow}
+import language.experimental
+
 object Regular:
   trait Foo[T]
   type Baz = Foo["To Infinity And Beyond!"]

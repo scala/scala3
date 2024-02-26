@@ -1,7 +1,7 @@
 package scala
 package compiletime
 
-import annotation.compileTimeOnly
+import annotation.{compileTimeOnly, experimental}
 
 /** Use this method when you have a type, do not have a value for it but want to
  *  pattern match on it. For example, given a type `Tup <: Tuple`, one can
@@ -184,6 +184,7 @@ extension [T](x: T)
   * error/warning message, the compiler first tries to fetch a custom show via
   * the dependent type class `CustomShow`.
   */
+@experimental
 class hasCustomShow extends scala.annotation.StaticAnnotation
 
 /** Custom show dependent type class of compiler errors of given class `T` that
@@ -193,5 +194,6 @@ class hasCustomShow extends scala.annotation.StaticAnnotation
   * uses its `Out` dependent type as the error. If no such value is available,
   * then the compiler proceeds to show the type as the default behavior.
   */
+@experimental
 trait CustomShow[T]:
   type Out <: String & Singleton
