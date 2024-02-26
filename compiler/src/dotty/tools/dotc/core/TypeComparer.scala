@@ -1030,17 +1030,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         if tp1 ne tp1norm then recur(tp1norm, tp2)
         else either(recur(tp11, tp2), recur(tp12, tp2))
       case tp1: MatchType =>
-        def compareUpper =
-          val lub1 = tp1.cases.foldLeft(defn.NothingType: Type): (acc, case1) =>
-            if acc.exists then
-              val rhs = case1.resultType match { case defn.MatchCase(_, body) => body }
-              val isRecursive = rhs.existsPart(_.isInstanceOf[LazyRef])
-              if isRecursive then NoType else lub(acc, rhs)
-            else acc
-          if lub1.exists then
-            recur(lub1, tp2)
-          else
-            recur(tp1.underlying, tp2)
         def compareMatch = tp2 match {
           case tp2: MatchType =>
             // we allow a small number of scrutinee types to be widened:
@@ -1058,7 +1047,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             tp1.cases.corresponds(tp2.cases)(isSubType)
           case _ => false
         }
-        (!caseLambda.exists || canWidenAbstract) && compareUpper || compareMatch
+        (!caseLambda.exists || canWidenAbstract) && recur(tp1.underlying, tp2) || compareMatch
       case tp1: AnnotatedType if tp1.isRefining =>
         isNewSubType(tp1.parent)
       case JavaArrayType(elem1) =>
