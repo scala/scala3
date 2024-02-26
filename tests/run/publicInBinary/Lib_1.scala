@@ -1,6 +1,8 @@
-//> using options -Werror -WunstableInlineAccessors
+//> using options -Werror -WunstableInlineAccessors -experimental
 
 package foo
+
+import scala.language.experimental.mode
 
 import scala.annotation.publicInBinary
 

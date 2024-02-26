@@ -1,5 +1,7 @@
 // scalajs: --skip
 
+import scala.language.experimental.mode
+
 import scala.annotation.*
 import collection.mutable
 import scala.util.CommandLineParser.FromString
@@ -22,7 +24,6 @@ object Test:
     callMain(Array("23", "2", "3"))
 end Test
 
-@experimental
 class myMain extends MainAnnotation[FromString, Int]:
   import MainAnnotation.{ Info, Parameter }
 

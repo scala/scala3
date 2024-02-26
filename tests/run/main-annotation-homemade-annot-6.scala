@@ -1,5 +1,6 @@
 // scalajs: --skip
 
+import scala.language.experimental.mode
 import scala.annotation.*
 
 /** Foo docs */
@@ -18,7 +19,6 @@ object Test:
       method.invoke(null, Array[String]("1", "2"))
 end Test
 
-@experimental
 class myMain extends MainAnnotation[Make, Any]:
   import MainAnnotation.*
 
@@ -47,7 +47,6 @@ class myMain extends MainAnnotation[Make, Any]:
     f()
     println()
 
-@experimental
 case class MyParamAnnot(n: Int) extends MainAnnotation.ParameterAnnotation
 
 trait Make[T]:

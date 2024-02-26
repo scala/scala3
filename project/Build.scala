@@ -1056,6 +1056,7 @@ object Build {
     settings(
       moduleName := "scala2-library-cc",
       scalacOptions += "-Ycheck:all",
+      scalacOptions += "-language:experimental.mode",
     )
 
   lazy val scala2LibraryBootstrappedSettings = Seq(
@@ -1756,6 +1757,9 @@ object Build {
     settings(
       SourceLinksIntegrationTest / scalaSource := baseDirectory.value / "test-source-links",
       SourceLinksIntegrationTest / test:= ((SourceLinksIntegrationTest / test) dependsOn generateScalaDocumentation.toTask("")).value,
+    ).
+    settings(
+      scalacOptions += "-experimental" // workaround use of experimental .info in Scaladoc2AnchorCreator
     ).
     settings(
       Compile / resourceGenerators ++= Seq(

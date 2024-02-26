@@ -1,5 +1,7 @@
 // scalajs: --skip
 
+import scala.language.experimental.mode
+
 import scala.annotation.*
 import scala.util.CommandLineParser.FromString
 
@@ -12,7 +14,6 @@ object Test:
     method.invoke(null, Array[String]())
 end Test
 
-@experimental
 class mainManyArgs(i1: Int, s2: String, i3: Int) extends MainAnnotation[FromString, Any]:
   import MainAnnotation.*
 

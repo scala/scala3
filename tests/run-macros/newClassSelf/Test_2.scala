@@ -1,3 +1,5 @@
+import scala.language.experimental.mode
+
 @main def Test: Unit = {
   val a: Bar = makeClass("A")
   a.bar()

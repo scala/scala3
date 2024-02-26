@@ -1,5 +1,7 @@
 // scalajs: --skip
 
+import scala.language.experimental.mode
+
 import scala.collection.mutable
 import scala.annotation.*
 import util.CommandLineParser.FromString
@@ -30,7 +32,6 @@ object Test:
 end Test
 
 // This is a toy example, it only works with positional args
-@experimental
 class myMain(runs: Int = 3)(after: String*) extends MainAnnotation[FromString, Any]:
   import MainAnnotation.*
 

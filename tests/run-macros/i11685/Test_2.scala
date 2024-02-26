@@ -1,3 +1,5 @@
+import scala.language.experimental.mode
+
 import test.MyMacro
 
 trait Command {

@@ -1,3 +1,4 @@
+import scala.language.experimental.mode
 import mymacro.addClass
 
 @addClass def foo(): Unit =

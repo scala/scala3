@@ -1,5 +1,6 @@
 //> using options -Werror -WunstableInlineAccessors
 
+import scala.language.experimental.mode
 import scala.quoted.*
 import scala.annotation.publicInBinary
 

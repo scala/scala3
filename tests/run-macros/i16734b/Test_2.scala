@@ -1,3 +1,5 @@
+import scala.language.experimental.mode
+
 type F1Inv[A]
 type F1Cov[+A]
 type F1Con[-A]

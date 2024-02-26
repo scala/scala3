@@ -1,5 +1,7 @@
 // scalajs: --skip
 
+import scala.language.experimental.mode
+
 import scala.concurrent._
 import scala.annotation.*
 import scala.collection.mutable
@@ -30,7 +32,6 @@ object Test:
     callMain("getMany", Array("0", "1"))
 end Test
 
-@experimental
 class mainAwait(timeout: Int = 2) extends MainAnnotation[FromString, Future[Any]]:
   import MainAnnotation.*
 

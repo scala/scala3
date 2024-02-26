@@ -1,3 +1,4 @@
+import scala.language.experimental.mode
 @main def Test: Unit = {
   val foo: Foo = makeClass("foo")
   foo.foo()

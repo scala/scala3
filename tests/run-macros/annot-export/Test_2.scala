@@ -1,3 +1,5 @@
+import scala.language.experimental.mode
+
 object Bar:
   @returnClassName
   def f(): String = ??? // def f(): String = "Bar"

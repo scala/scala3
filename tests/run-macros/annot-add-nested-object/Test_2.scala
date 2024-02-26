@@ -1,3 +1,5 @@
+import scala.language.experimental.mode
+
 class Foo():
   @addClass def foo(): Unit =
     println("macro generated main")

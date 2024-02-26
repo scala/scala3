@@ -1,3 +1,4 @@
+import scala.language.experimental.mode
 import scala.quoted.*
 
 inline def typeVariances[A <: AnyKind]: String =

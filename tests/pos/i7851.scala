@@ -1,3 +1,5 @@
+import scala.language.experimental.mode
+
 trait Wrappable[T] { }
 given Wrappable[Float] with { }
 

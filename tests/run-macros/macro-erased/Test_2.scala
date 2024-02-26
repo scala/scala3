@@ -1,3 +1,5 @@
+import scala.language.experimental.mode
+
 object Test {
   def main(args: Array[String]): Unit = {
     assert(Macro.foo1(1) == 0)

@@ -1,3 +1,5 @@
+import scala.language.experimental.mode
+
 @bind("a")
 val foo: String = "foo"
 

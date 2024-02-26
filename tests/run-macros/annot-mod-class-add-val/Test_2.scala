@@ -1,3 +1,5 @@
+import scala.language.experimental.mode
+
 @addMemoToString("This is Foo")
 class Foo
   //> private val string$macro$1: String = "This is Foo"

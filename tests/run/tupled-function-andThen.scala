@@ -1,3 +1,4 @@
+import scala.language.experimental.mode
 import scala.util.TupledFunction
 
 object Test {

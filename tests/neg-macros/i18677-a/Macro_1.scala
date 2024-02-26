@@ -1,5 +1,4 @@
-//> using -expermiental
-
+import scala.language.experimental.mode
 import annotation.MacroAnnotation
 import quoted.*
 

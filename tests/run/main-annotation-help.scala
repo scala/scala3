@@ -1,5 +1,6 @@
 // scalajs: --skip
 
+import scala.language.experimental.mode
 import scala.annotation.newMain
 
 import scala.util.CommandLineParser.FromString

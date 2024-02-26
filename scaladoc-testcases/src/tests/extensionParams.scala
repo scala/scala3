@@ -1,5 +1,7 @@
 package tests.extensionParams
 
+import scala.language.experimental.mode // FIXME remove
+
 trait Animal
 
 extension [A](thiz: A)

@@ -74,7 +74,7 @@ class Driver {
     val ictx = rootCtx.fresh
     val summary = command.distill(args, ictx.settings)(ictx.settingsState)(using ictx)
     ictx.setSettings(summary.sstate)
-    Feature.checkExperimentalSettings(using ictx)
+    // Feature.checkExperimentalSettings(using ictx)
     MacroClassLoader.init(ictx)
     Positioned.init(using ictx)
 

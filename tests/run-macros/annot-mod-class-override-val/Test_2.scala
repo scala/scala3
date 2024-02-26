@@ -1,3 +1,5 @@
+import scala.language.experimental.mode
+
 class Foo:
   val val1: String = "?"
   def def1: String = "?"

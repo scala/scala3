@@ -1,3 +1,5 @@
+import scala.language.experimental.mode
+
 @main def Test =
   println("Hello, world!")
 

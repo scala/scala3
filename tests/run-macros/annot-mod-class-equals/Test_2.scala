@@ -1,3 +1,5 @@
+import scala.language.experimental.mode
+
 @equals class Foo(val a: String, val b: Int)
   //> override def equals(that: Any): Boolean =
   //>   that match

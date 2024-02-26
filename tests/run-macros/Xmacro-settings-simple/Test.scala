@@ -1,5 +1,6 @@
 //> using options -Xmacro-settings:one,two,three
 
+import scala.language.experimental.mode
 import x.*
 
 object Test {

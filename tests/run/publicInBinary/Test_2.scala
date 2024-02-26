@@ -1,3 +1,5 @@
+import scala.language.experimental.mode
+
 import foo.*
 
 @main def Test: Unit =

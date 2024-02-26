@@ -1,3 +1,5 @@
+import scala.language.experimental.mode
+
 class Bar:
   @memoize
   def fib(n: Int): Int =

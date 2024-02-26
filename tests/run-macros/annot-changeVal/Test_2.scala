@@ -1,3 +1,5 @@
+import scala.language.experimental.mode
+
 import ChangeVal._
 
 class Bar:

@@ -1,5 +1,7 @@
 // scalajs: --skip
 
+import scala.language.experimental.mode
+
 import scala.annotation.*
 import collection.mutable
 import scala.util.CommandLineParser.FromString
@@ -31,7 +33,6 @@ end Test
 
 
 
-@experimental
 final class newMain extends MainAnnotation[FromString, Any]:
   import newMain._
   import MainAnnotation._
@@ -317,6 +318,5 @@ final class newMain extends MainAnnotation[FromString, Any]:
 end newMain
 
 object newMain:
-  @experimental
   final class Alias(val aliases: String*) extends MainAnnotation.ParameterAnnotation
 end newMain

@@ -1,3 +1,5 @@
+//> using options -language:experimental.mode
+
 package crash.test
 
 import scala.language.dynamics

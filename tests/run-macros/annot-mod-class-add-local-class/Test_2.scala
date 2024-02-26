@@ -1,3 +1,5 @@
+import scala.language.experimental.mode
+
 @addInnerClass
 class Foo
   //> def toString(): String =

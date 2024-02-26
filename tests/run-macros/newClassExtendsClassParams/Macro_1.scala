@@ -1,3 +1,5 @@
+import scala.language.experimental.mode
+
 import scala.quoted.*
 
 inline def makeClass(inline name: String): Foo = ${ makeClassExpr('name) }

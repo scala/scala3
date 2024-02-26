@@ -1,3 +1,5 @@
+import scala.language.experimental.mode
+
 import scala.annotation.publicInBinary
 
 class A:

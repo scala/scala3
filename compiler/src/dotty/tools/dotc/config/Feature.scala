@@ -150,41 +150,35 @@ object Feature:
       false
 
   def checkExperimentalFeature(which: String, srcPos: SrcPos, note: => String = "")(using Context) =
-    if !isExperimentalGloballyEnabled && !isExperimentalByImportEnabled && !isExperimentalUnstableEnabled then
+    if !isExperimentalGloballyEnabled && !isExperimentalByImportEnabled then
       report.error(
         em"""Experimental $which may only be used under experimental mode:
             |  1. In a definition marked as @experimental
             |  2. An experimental language import is in scope or within the current definition
-            |  3. Compiling with the -experimental compiler flag
-            |  4. With a nightly or snapshot version of the compiler$note
+            |     Example: import scala.language.experimental.mode
+            |  3. Compiling with the -experimental compiler flag$note
           """, srcPos)
 
   private def ccException(sym: Symbol)(using Context): Boolean =
     ccEnabled && defn.ccExperimental.contains(sym)
 
   def checkExperimentalDef(sym: Symbol, srcPos: SrcPos)(using Context) =
-    if !isExperimentalGloballyEnabled && !isExperimentalByImportEnabled && !isExperimentalUnstableEnabled then
-      val experimentalSym =
-        if sym.hasAnnotation(defn.ExperimentalAnnot) then sym
-        else if sym.owner.hasAnnotation(defn.ExperimentalAnnot) then sym.owner
-        else NoSymbol
-      if !ccException(experimentalSym) then
-        val symMsg =
-          if experimentalSym.exists
-          then i"$experimentalSym is marked @experimental"
-          else i"$sym inherits @experimental"
-        report.error(em"$symMsg and therefore may only be used in an experimental scope.", srcPos)
+    val experimentalSym =
+      if sym.hasAnnotation(defn.ExperimentalAnnot) then sym
+      else if sym.owner.hasAnnotation(defn.ExperimentalAnnot) then sym.owner
+      else NoSymbol
+    if !ccException(experimentalSym) then
+      val symMsg =
+        if experimentalSym.exists
+        then i"$experimentalSym is marked @experimental"
+        else i"$sym inherits @experimental"
+      checkExperimentalFeature("definition", srcPos, s"\n\n$symMsg")
 
   /** Check that experimental compiler options are only set for snapshot or nightly compiler versions. */
-  def checkExperimentalSettings(using Context): Unit =
-    for setting <- ctx.settings.language.value
-        if setting.startsWith("experimental.") && setting != "experimental.macros"
-    do checkExperimentalFeature(s"feature $setting", NoSourcePosition)
-
-
-  /** Experimental mode enabled by default in nightly or snapshot version of the compiler without `-Yno-experimental` */
-  def isExperimentalUnstableEnabled(using Context): Boolean =
-    Properties.experimental && !ctx.settings.YnoExperimental.value
+  // def checkExperimentalSettings(using Context): Unit =
+  //   for setting <- ctx.settings.language.value
+  //       if setting.startsWith("experimental.") && setting != "experimental.macros"
+  //   do checkExperimentalFeature(s"feature $setting", NoSourcePosition)
 
   /** Experimental mode enabled in this compilation unit
    *  - Compiled with `-experimental`

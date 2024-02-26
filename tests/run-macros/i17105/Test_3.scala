@@ -1,3 +1,4 @@
+import scala.language.experimental.mode
 import reflect.Selectable.reflectiveSelectable
 
 class Hoe { def f(x: Int): String = s"Hoe got ${x}" }

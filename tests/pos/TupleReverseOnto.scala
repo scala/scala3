@@ -1,3 +1,4 @@
+import scala.language.experimental.mode
 import scala.Tuple.*
 def test[T1, T2, T3, T4] =
   summon[ReverseOnto[(T1, T2), (T3, T4)] =:= ReverseOnto[(T1, T2), (T3, T4)]]

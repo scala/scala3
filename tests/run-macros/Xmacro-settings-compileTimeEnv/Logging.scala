@@ -1,4 +1,4 @@
-import scala.compiletime.*
+import scala.language.experimental.mode
 import scala.quoted.*
 
 

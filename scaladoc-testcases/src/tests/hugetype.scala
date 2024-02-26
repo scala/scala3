@@ -1,5 +1,7 @@
 package tests.hugetype
 
+import scala.language.experimental.mode // FIXME remove
+
 import compiletime._
 import compiletime.ops.int._
 import scala.annotation.experimental
@@ -17,6 +19,7 @@ import scala.annotation.experimental
  * - He took me to a bar full of actor types trying to get noticed.
  *
  */
+@experimental // FIXME remove
 type Take[T <: Tuple, N <: Int] <: Tuple = N match {
   case 0 => EmptyTuple
   case S[n1] => T match {
