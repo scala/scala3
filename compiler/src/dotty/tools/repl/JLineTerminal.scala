@@ -27,12 +27,12 @@ class JLineTerminal extends java.io.Closeable {
   private val history = new DefaultHistory
   def dumbTerminal = Option(System.getenv("TERM")) == Some("dumb")
 
-  private def blue(str: String)(using Context) =
-    if (ctx.settings.color.value != "never") Console.BLUE + str + Console.RESET
+  private def promptColor(str: String)(using Context) =
+    if (ctx.settings.color.value != "never") Console.MAGENTA + str + Console.RESET
     else str
   protected def promptStr = "scala"
-  private def prompt(using Context)        = blue(s"\n$promptStr> ")
-  private def newLinePrompt(using Context) = blue("     | ")
+  private def prompt(using Context)        = promptColor(s"\n$promptStr> ")
+  private def newLinePrompt(using Context) = promptColor("     | ")
 
   /** Blockingly read line from `System.in`
    *

@@ -429,8 +429,7 @@ class ReplDriver(settings: Array[String],
           val formattedTypeDefs =  // don't render type defs if wrapper initialization failed
             if newState.invalidObjectIndexes.contains(state.objectIndex) then Seq.empty
             else typeDefs(wrapperModule.symbol)
-          val highlighted = (formattedTypeDefs ++ formattedMembers)
-            .map(d => new Diagnostic(d.msg.mapMsg(SyntaxHighlighting.highlight), d.pos, d.level))
+          val highlighted = (formattedTypeDefs ++ formattedMembers).map(d => new Diagnostic(d.msg, d.pos, d.level))
           (newState, highlighted)
         }
         .getOrElse {

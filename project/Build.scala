@@ -627,6 +627,7 @@ object Build {
         "org.jline" % "jline-reader" % "3.19.0",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.19.0",
         "org.jline" % "jline-terminal-jna" % "3.19.0", // needed for Windows
+        "com.lihaoyi" %% "pprint" % "0.8.1", // pretty printing in REPL
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
       ),
 
