@@ -579,9 +579,9 @@ object Build {
       libraryDependencies ++= Seq(
         "org.scala-lang.modules" % "scala-asm" % "9.6.0-scala-1", // used by the backend
         Dependencies.compilerInterface,
-        "org.jline" % "jline-reader" % "3.24.1",   // used by the REPL
-        "org.jline" % "jline-terminal" % "3.24.1",
-        "org.jline" % "jline-terminal-jna" % "3.24.1", // needed for Windows
+        "org.jline" % "jline-reader" % "3.25.1",   // used by the REPL
+        "org.jline" % "jline-terminal" % "3.25.1",
+        "org.jline" % "jline-terminal-jna" % "3.25.1", // needed for Windows
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
       ),
 
