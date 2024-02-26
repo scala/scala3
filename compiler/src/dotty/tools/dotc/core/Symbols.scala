@@ -122,15 +122,16 @@ object Symbols extends SymUtils {
     protected def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = {
       util.Stats.record("Symbol.recomputeDenot")
       val newd = lastd.current.asInstanceOf[SymDenotation]
-      lastDenot = newd
-      if !newd.exists && lastd.initial.validFor.firstPhaseId > ctx.phaseId then
+      if newd.exists || lastd.initial.validFor.firstPhaseId <= ctx.phaseId then
+        lastDenot = newd
+      else
         // We are trying to bring forward a symbol that is defined only at a later phase
         // (typically, a nested Java class, invisible before erasure).
-        // In that case, keep the checked period to the previous validity, which
-        // means we will try another bring forward when the symbol is referenced
-        // at a later phase. Otherwise we'd get stuck on NoDenotation here.
+        // In that case, keep lastDenot as it was and set the checked period to lastDenot's
+        // previous validity, which means we will try another bring forward when the symbol
+        // is referenced at a later phase. Otherwise we'd get stuck on NoDenotation here.
         // See #15562 and test i15562b in ReplCompilerTests
-        checkedPeriod = lastd.initial.validFor
+        checkedPeriod = lastd.validFor
       newd
     }
 
