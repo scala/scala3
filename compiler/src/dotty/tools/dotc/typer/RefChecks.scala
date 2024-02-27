@@ -654,8 +654,8 @@ object RefChecks {
 
         val missingMethods = grouped.toList flatMap {
           case (name, syms) =>
-            val withoutSetters = syms filterNot (_.isSetter)
-            if (withoutSetters.nonEmpty) withoutSetters else syms
+            syms.filterConserve(!_.isSetter)
+              .distinctBy(_.signature) // Avoid duplication for similar definitions (#19731)
         }
 
         def stubImplementations: List[String] = {
@@ -666,7 +666,7 @@ object RefChecks {
 
           if (regrouped.tail.isEmpty)
             membersStrings(regrouped.head._2)
-          else (regrouped.sortBy("" + _._1.name) flatMap {
+          else (regrouped.sortBy(_._1.name.toString()) flatMap {
             case (owner, members) =>
               ("// Members declared in " + owner.fullName) +: membersStrings(members) :+ ""
           }).init
@@ -685,7 +685,7 @@ object RefChecks {
           return
         }
 
-        for (member <- missing) {
+        for (member <- missingMethods) {
           def showDclAndLocation(sym: Symbol) =
             s"${sym.showDcl} in ${sym.owner.showLocated}"
           def undefined(msg: String) =
@@ -1002,9 +1002,9 @@ object RefChecks {
   end checkNoPrivateOverrides
 
   def checkVolatile(sym: Symbol)(using Context): Unit =
-    if sym.isVolatile && !sym.is(Mutable) then 
+    if sym.isVolatile && !sym.is(Mutable) then
       report.warning(VolatileOnVal(), sym.srcPos)
-  
+
   /** Check that unary method definition do not receive parameters.
    *  They can only receive inferred parameters such as type parameters and implicit parameters.
    */
