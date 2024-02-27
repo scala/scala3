@@ -127,6 +127,8 @@ trait CommonScalaSettings:
 
   /* Coverage settings */
   val coverageOutputDir = PathSetting("-coverage-out", "Destination for coverage classfiles and instrumentation data.", "", aliases = List("--coverage-out"))
+  val coverageExcludeClasslikes: Setting[List[String]] = MultiStringSetting("-coverage-exclude-classlikes", "packages, classes and modules", "List of regexes for packages, classes and modules to exclude from coverage.", aliases = List("--coverage-exclude-classlikes"))
+  val coverageExcludeFiles: Setting[List[String]] = MultiStringSetting("-coverage-exclude-files", "files", "List of regexes for files to exclude from coverage.", aliases = List("--coverage-exclude-files"))
 
   /* Other settings */
   val encoding: Setting[String] = StringSetting("-encoding", "encoding", "Specify character encoding used by source files.", Properties.sourceEncoding, aliases = List("--encoding"))
