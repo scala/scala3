@@ -405,7 +405,14 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
               pickleType(tp)
           }
         case This(qual) =>
-          if (qual.isEmpty) pickleType(tree.tpe)
+          if (qual.isEmpty)
+            if tree.tpe.isSingleton then pickleType(tree.tpe)
+            else
+              // This may happen when pickling a `This` inside a capture set. See #19662.
+              // In this case, we pickle the tree as null.asInstanceOf[tree.tpe].
+              // Since the pickled tree is not the same as the input, special handling is needed
+              // in the tree printer when testing the pickler. See [[PlainPrinter#homogenize]].
+              pickleTree(Literal(Constant(null)).cast(tree.tpe).withSpan(tree.span))
           else {
             writeByte(QUALTHIS)
             val ThisType(tref) = tree.tpe: @unchecked

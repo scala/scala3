@@ -15,7 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
-import cc.{CapturingType, RetainingType, CaptureSet, ReachCapability, MaybeCapability, isBoxed, levelOwner, retainedElems}
+import cc.{CapturingType, RetainingType, CaptureSet, ReachCapability, MaybeCapability, isBoxed, levelOwner, retainedElems, isRetainsLike}
 
 class PlainPrinter(_ctx: Context) extends Printer {
 
@@ -60,7 +60,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         case OrType(tp1, tp2) =>
           homogenize(tp1) | homogenize(tp2)
         case AnnotatedType(parent, annot)
-        if !ctx.mode.is(Mode.Type) && annot.symbol == defn.UncheckedVarianceAnnot =>
+        if !ctx.mode.is(Mode.Type) && annot.symbol == defn.UncheckedVarianceAnnot
+           || annot.symbol.isRetainsLike =>
           homogenize(parent)
         case tp: SkolemType =>
           homogenize(tp.info)
