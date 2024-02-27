@@ -69,13 +69,15 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     Serializer.serialize(coverage, outputPath, ctx.settings.sourceroot.value)
 
   private def isClassIncluded(sym: Symbol)(using Context): Boolean =
+    val fqn = sym.fullName.toText(ctx.printerFn(ctx)).show
     coverageExcludeClasslikePatterns.isEmpty || !coverageExcludeClasslikePatterns.exists(
-      _.matcher(sym.fullName.toText(ctx.printerFn(ctx)).show).nn.matches
+      _.matcher(fqn).nn.matches
     )
 
   private def isFileIncluded(file: SourceFile)(using Context): Boolean =
+    val normalizedPath = file.path.replace(".scala", "")
     coverageExcludeFilePatterns.isEmpty || !coverageExcludeFilePatterns.exists(
-      _.matcher(file.path.replace(".scala", "")).nn.matches
+      _.matcher(normalizedPath).nn.matches
     )
 
   override protected def newTransformer(using Context) =
