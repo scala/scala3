@@ -601,10 +601,11 @@ object Objects:
           case _ => a
 
     def filterType(tpe: Type)(using Context): Value =
-      // if tpe is SAMType and a is Fun, allow it
       val baseClasses = tpe.baseClasses
       if baseClasses.isEmpty then a
-      else filterClass(baseClasses.head) // could have called ClassSymbol, but it does not handle OrType and AndType
+      else tpe match
+        case t @ SAMType(_, _) if a.isInstanceOf[Fun] => a // if tpe is SAMType and a is Fun, allow it
+        case _ => filterClass(baseClasses.head) // could have called ClassSymbol, but it does not handle OrType and AndType
 
     def filterClass(sym: Symbol)(using Context): Value =
         if !sym.isClass then a
@@ -616,10 +617,9 @@ object Objects:
             case ref: Ref => Bottom
             case ValueSet(values) => values.map(v => v.filterClass(klass)).join
             case arr: OfArray => if defn.ArrayClass.isSubClass(klass) then arr else Bottom
-            case fun: Fun => if defn.Function1.isSubClass(klass) then fun else Bottom
-            // TODO: could be more precise for OfArray; possibly add class information for Fun
-            // If ArrayClass.isSubClass(klass) keep the array else discard (see Definitions.scala)
-            // For function, if any superclass is FunctionClass (or a single abstract method interface?), allow it
+            case fun: Fun =>
+              val functionSuperCls = klass.baseClasses.filter(defn.isFunctionClass)
+              if functionSuperCls.nonEmpty then fun else Bottom
 
   extension (value: Ref | Cold.type)
     def widenRefOrCold(height : Int)(using Context) : Ref | Cold.type = value.widen(height).asInstanceOf[ThisValue]
