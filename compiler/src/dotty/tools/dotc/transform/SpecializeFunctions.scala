@@ -3,7 +3,7 @@ package transform
 
 import ast.Trees.*, ast.tpd, core.*
 import Contexts.*, Types.*, Decorators.*, Symbols.*, DenotTransformers.*
-import SymDenotations.*, Scopes.*, StdNames.*, NameOps.*, Names.*
+import SymDenotations.*, Scopes.*, StdNames.*, NameOps.*, Names.*, NameKinds.*
 import MegaPhase.MiniPhase
 
 
@@ -25,7 +25,24 @@ class SpecializeFunctions extends MiniPhase {
   /** Create forwarders from the generic applys to the specialized ones.
    */
   override def transformDefDef(ddef: DefDef)(using Context) = {
-    if ddef.name != nme.apply
+    // Note on special case for inline `apply`s:
+    //   `apply` and `apply$retainedBody` are specialized in this transformation.
+    //   `apply$retainedBody` have the name kind `BodyRetainerName`, these contain
+    //   the runtime implementation of an inline `apply` that implements (or overrides)
+    //   the `FunctionN.apply` method. The inline method is not specialized, it will
+    //   be replaced with the implementation of `apply$retainedBody`. The following code
+    //      inline def apply(x: Int): Double = x.toDouble:Double
+    //      private def apply$retainedBody(x: Int): Double = x.toDouble:Double
+    //   in is transformed into
+    //      inline def apply(x: Int): Double = x.toDouble:Double
+    //      private def apply$retainedBody(x: Int): Double = this.apply$mcDI$sp(x)
+    //      def apply$mcDI$sp(v: Int): Double = x.toDouble:Double
+    //   after erasure it will become
+    //      def apply(v: Int): Double = this.apply$mcDI$sp(v) // from apply$retainedBody
+    //      def apply$mcDI$sp(v: Int): Double = v.toDouble():Double
+    //      def apply(v1: Object): Object = Double.box(this.apply(Int.unbox(v1))) // erasure bridge
+
+    if ddef.name.asTermName.exclude(BodyRetainerName) != nme.apply
        || ddef.termParamss.length != 1
        || ddef.termParamss.head.length > 2
        || !ctx.owner.isClass
@@ -44,12 +61,12 @@ class SpecializeFunctions extends MiniPhase {
       defn.isSpecializableFunction(cls, paramTypes, retType)
     }
 
-    if (sym.is(Flags.Deferred) || !isSpecializable) return ddef
+    if (sym.is(Flags.Deferred) || sym.is(Flags.Inline) || !isSpecializable) return ddef
 
     val specializedApply = newSymbol(
         cls,
         specName.nn,
-        sym.flags | Flags.Synthetic,
+        (sym.flags | Flags.Synthetic) &~ Flags.Private, // Private flag can be set if the name is a BodyRetainerName
         sym.info
       ).entered
 
