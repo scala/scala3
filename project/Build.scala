@@ -1229,6 +1229,7 @@ object Build {
   lazy val `scala2-library-tasty` = project.in(file("scala2-library-tasty")).
     withCommonSettings(Bootstrapped).
     settings(
+      moduleName := "scala2-library-tasty-experimental",
       exportJars := true,
       Compile / packageBin / mappings := {
         (`scala2-library-bootstrapped` / Compile / packageBin / mappings).value
@@ -1240,6 +1241,7 @@ object Build {
   lazy val `scala2-library-cc-tasty` = project.in(file("scala2-library-cc-tasty")).
     withCommonSettings(Bootstrapped).
     settings(
+      moduleName := "scala2-library-cc-tasty-experimental",
       exportJars := true,
       Compile / packageBin / mappings := {
         (`scala2-library-cc` / Compile / packageBin / mappings).value
