@@ -94,8 +94,8 @@ The following is the list of all the principal areas of the compiler and the cor
 - Linting (especially unused warnings) / Reporting UX: @szymon-rd
 
 ### Infrastructure
-- CI: @anatoliykmetyuk
-- Community Build: @anatoliykmetyuk
+- CI: @hamzaremmal
+- Community Build: @hamzaremmal
 - Open Community Build: @WojciechMazur
 - Vulpix: @dwijnand, @prolativ
 - Benchmarks: @mbovel
