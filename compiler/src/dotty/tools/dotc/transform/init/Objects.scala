@@ -27,6 +27,7 @@ import scala.collection.immutable.ListSet
 import scala.collection.mutable
 import scala.annotation.tailrec
 import scala.annotation.constructorOnly
+import dotty.tools.dotc.core.Flags.AbstractOrTrait
 
 /** Check initialization safety of static objects
  *
@@ -618,8 +619,7 @@ object Objects:
             case ValueSet(values) => values.map(v => v.filterClass(klass)).join
             case arr: OfArray => if defn.ArrayClass.isSubClass(klass) then arr else Bottom
             case fun: Fun =>
-              val functionSuperCls = klass.baseClasses.filter(defn.isFunctionClass)
-              if functionSuperCls.nonEmpty then fun else Bottom
+              if klass.isOneOf(AbstractOrTrait) && klass.baseClasses.exists(defn.isFunctionClass) then fun else Bottom
 
   extension (value: Ref | Cold.type)
     def widenRefOrCold(height : Int)(using Context) : Ref | Cold.type = value.widen(height).asInstanceOf[ThisValue]
@@ -1572,7 +1572,7 @@ object Objects:
             report.warning("The argument should be a constant integer value", arg)
             res.widen(1)
         case _ =>
-          res.widen(1) // TODO: changing to widen(2) causes standard library analysis to loop infinitely
+          if res.isInstanceOf[Fun] then res.widen(2) else res.widen(1) // TODO: changing to widen(2) causes standard library analysis to loop infinitely
 
       argInfos += ArgInfo(widened, trace.add(arg.tree), arg.tree)
     }
