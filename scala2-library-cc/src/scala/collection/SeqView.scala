@@ -30,6 +30,7 @@ trait SeqViewOps[+A, +CC[_], +C] extends Any with IterableOps[A, CC, C] {
   def length: Int
   def apply(x: Int): A
   def appended[B >: A](elem: B): CC[B]^{this}
+  def updated[B >: A](index: Int, elem: B): CC[B]^{this}
   def prepended[B >: A](elem: B): CC[B]^{this}
   def reverse: C^{this}
   def sorted[B >: A](implicit ord: Ordering[B]): C^{this}
@@ -44,6 +45,16 @@ trait SeqView[+A] extends SeqViewOps[A, View, View[A]] with View[A] {
 
   override def map[B](f: A => B): SeqView[B]^{this, f} = new SeqView.Map(this, f)
   override def appended[B >: A](elem: B): SeqView[B]^{this} = new SeqView.Appended(this, elem)
+
+  // Copied from SeqOps. This is needed due to the change of class hierarchy in stdlib.
+  // See #19660.
+  override def updated[B >: A](index: Int, elem: B): View[B]^{this} = {
+    if(index < 0) throw new IndexOutOfBoundsException(index.toString)
+    val k = knownSize
+    if(k >= 0 && index >= k) throw new IndexOutOfBoundsException(index.toString)
+    iterableFactory.from(new View.Updated(this, index, elem))
+  }
+
   override def prepended[B >: A](elem: B): SeqView[B]^{this} = new SeqView.Prepended(elem, this)
   override def reverse: SeqView[A]^{this} = new SeqView.Reverse(this)
   override def take(n: Int): SeqView[A]^{this} = new SeqView.Take(this, n)
