@@ -2376,8 +2376,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val bound2 = if tree.bound.isEmpty then
       val lub = cases1.foldLeft(defn.NothingType: Type): (acc, case1) =>
         if !acc.exists then NoType
-        else if case1.body.tpe.existsPart(_.isInstanceOf[LazyRef]) then NoType
-        else acc | TypeOps.avoid(case1.body.tpe, patVars(case1))
+        else if case1.body.tpe.isProvisional then NoType
+        else acc | case1.body.tpe
       if lub.exists then TypeTree(lub, inferred = true)
       else bound1
     else bound1
