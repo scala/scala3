@@ -302,11 +302,24 @@ object AutoImports:
           }.headOption
         case _ => None
 
-    def skipUsingDirectivesOffset =
+    def firstMemberDefinitionStart(tree: Tree)(using Context): Option[Int] =
+      tree match
+        case PackageDef(_, stats) =>
+          stats.flatMap {
+            case s: PackageDef => firstMemberDefinitionStart(s)
+            case stat if stat.span.exists => Some(stat.span.start)
+            case _ => None
+          }.headOption
+        case _ => None
+
+
+    def skipUsingDirectivesOffset(
+      firstObjectPos: Int = firstMemberDefinitionStart(tree).getOrElse(0)
+    ): Int =
+      val firstObjectLine = pos.source.offsetToLine(firstObjectPos)
       comments
         .takeWhile(comment =>
-          !comment.isDocComment && comment.span.end < firstObjectBody(tree)
-            .fold(0)(_.span.start)
+          !comment.isDocComment && pos.source.offsetToLine(comment.span.end) + 1 < firstObjectLine
         )
         .lastOption
         .fold(0)(_.span.end + 1)
@@ -318,7 +331,7 @@ object AutoImports:
         val (lineNumber, padTop) = lastImportStatement match
           case Some(stm) => (stm.endPos.line + 1, false)
           case None if pkg.pid.symbol.isEmptyPackage =>
-            (pos.source.offsetToLine(skipUsingDirectivesOffset), false)
+            (pos.source.offsetToLine(skipUsingDirectivesOffset()), false)
           case None =>
             val pos = pkg.pid.endPos
             val line =
@@ -330,7 +343,7 @@ object AutoImports:
         new AutoImportPosition(offset, text, padTop)
       }
 
-    def forScript(isAmmonite: Boolean): Option[AutoImportPosition] =
+    def forScript(path: String): Option[AutoImportPosition] =
       firstObjectBody(tree).map { tmpl =>
         val lastImportStatement =
           tmpl.body.takeWhile(_.isInstanceOf[Import]).lastOption
@@ -340,10 +353,11 @@ object AutoImports:
             offset
           case None =>
             val scriptOffset =
-              if isAmmonite then
-                ScriptFirstImportPosition.ammoniteScStartOffset(text, comments)
-              else
-                ScriptFirstImportPosition.scalaCliScStartOffset(text, comments)
+              if path.isAmmoniteGeneratedFile
+              then ScriptFirstImportPosition.ammoniteScStartOffset(text, comments)
+              else if path.isScalaCLIGeneratedFile
+              then ScriptFirstImportPosition.scalaCliScStartOffset(text, comments)
+              else Some(skipUsingDirectivesOffset(tmpl.span.start))
 
             scriptOffset.getOrElse {
               val tmplPoint = tmpl.self.srcPos.span.point
@@ -359,14 +373,16 @@ object AutoImports:
 
     def fileStart =
       AutoImportPosition(
-        skipUsingDirectivesOffset,
+        skipUsingDirectivesOffset(),
         0,
         padTop = false
       )
 
     val scriptPos =
-      if path.isAmmoniteGeneratedFile then forScript(isAmmonite = true)
-      else if path.isScalaCLIGeneratedFile then forScript(isAmmonite = false)
+      if path.isAmmoniteGeneratedFile ||
+         path.isScalaCLIGeneratedFile ||
+         path.isWorksheet
+      then forScript(path)
       else None
 
     scriptPos

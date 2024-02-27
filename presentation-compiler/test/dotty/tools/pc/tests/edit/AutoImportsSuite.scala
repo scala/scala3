@@ -342,6 +342,69 @@ class AutoImportsSuite extends BaseAutoImportsSuite:
       )
     )
 
+  @Test def `worksheet-import` =
+    checkWorksheetEdit(
+      worksheetPcWrapper(
+        """|//> using scala 3.3.0
+           |
+           |// Some comment
+           |
+           |// Object comment
+           |object A {
+           |  val p: <<Path>> = ???
+           |}
+           |""".stripMargin
+      ),
+      worksheetPcWrapper(
+        """|//> using scala 3.3.0
+           |
+           |// Some comment
+           |import java.nio.file.Path
+           |
+           |// Object comment
+           |object A {
+           |  val p: Path = ???
+           |}
+           |""".stripMargin
+      )
+    )
+
+  @Test def `object-import` =
+    checkEdit(
+      """|object A {
+         |  //some comment
+         |  val p: <<Path>> = ???
+         |}
+         |""".stripMargin,
+      """|import java.nio.file.Path
+         |object A {
+         |  //some comment
+         |  val p: Path = ???
+         |}
+         |""".stripMargin,
+    )
+
+  @Test def `toplevels-import` =
+    checkEdit(
+      """|//some comment
+         |
+         |val p: <<Path>> = ???
+         |
+         |//some other comment
+         |
+         |val v = 1
+         |""".stripMargin,
+      """|//some comment
+         |import java.nio.file.Path
+         |
+         |val p: Path = ???
+         |
+         |//some other comment
+         |
+         |val v = 1
+         |""".stripMargin,
+    )
+
   private def ammoniteWrapper(code: String): String =
     // Vaguely looks like a scala file that Ammonite generates
     // from a sc file.
@@ -358,6 +421,11 @@ class AutoImportsSuite extends BaseAutoImportsSuite:
         |$code
         |}
         |""".stripMargin
+
+  private def worksheetPcWrapper(code: String): String =
+    s"""|object worksheet{
+        |$code
+        |}""".stripMargin
 
   // https://dotty.epfl.ch/docs/internals/syntax.html#soft-keywords
   @Test
