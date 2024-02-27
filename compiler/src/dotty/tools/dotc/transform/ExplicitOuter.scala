@@ -227,7 +227,7 @@ object ExplicitOuter {
   private def hasLocalInstantiation(cls: ClassSymbol)(using Context): Boolean =
     // Modules are normally locally instantiated, except if they are declared in a trait,
     // in which case they will be instantiated in the classes that mix in the trait.
-    cls.owner.ownersIterator.takeWhile(!_.isStatic).exists(_.isTerm)
+    cls.owner.ownersIterator.takeWhile(!_.isStaticOwner).exists(_.isTerm)
     || cls.is(Private, butNot = Module)
     || cls.is(Module) && !cls.owner.is(Trait)
 
