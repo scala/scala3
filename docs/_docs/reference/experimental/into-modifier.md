@@ -63,7 +63,7 @@ Note that a vararg parameter type with into modifiers needs to be put in parenth
 ## Retrofitting Scala 2 libraries
 
 There is also an annotation `@into` in the `scala.annotation` package that has
-has the same effect as an `into` modifier. It is intended to be used for retrofitting Scala 2 library code so that Scala 3 conversions can be applied to arguments without language imports. For instance, the definitions of
+the same effect as an `into` modifier. It is intended to be used for retrofitting Scala 2 library code so that Scala 3 conversions can be applied to arguments without language imports. For instance, the definitions of
 `++` and `flatMap` in the Scala 2.13 `List` class could be retrofitted as follows.
 ```scala
   def ++ (elems: IterableOnce[A] @into): List[A]

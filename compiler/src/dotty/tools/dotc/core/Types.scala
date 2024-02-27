@@ -1928,7 +1928,7 @@ object Types extends TypeUtils {
             case res => res
           }
           defn.FunctionNOf(
-            mt.paramInfos.mapConserve: 
+            mt.paramInfos.mapConserve:
               _.translateFromRepeated(toArray = isJava)
                .mapIntoAnnot(defn.IntoParamAnnot, null),
             result1, isContextual)
@@ -1989,7 +1989,7 @@ object Types extends TypeUtils {
         val tp1 = tp.mapIntoAnnot(from, to)
         if annot.symbol == from then
           if to == null then tp1
-          else AnnotatedType(tp1, Annotation(to, from.span))
+          else AnnotatedType(tp1, Annotation(to, annot.tree.span))
         else self.derivedAnnotatedType(tp1, annot)
       case AppliedType(tycon, arg :: Nil) if tycon.typeSymbol == defn.RepeatedParamClass =>
         val arg1 = arg.mapIntoAnnot(from, to)
