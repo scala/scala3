@@ -1546,6 +1546,7 @@ class Namer { typer: Typer =>
        *  (2) If may not derive from itself
        *  (3) The class is not final
        *  (4) If the class is sealed, it is defined in the same compilation unit as the current class
+       *      (unless defined in Java. See JEP-409)
        *
        * @param isJava  If true, the parent type is in Java mode, and we do not require a stable prefix
        */
@@ -1569,7 +1570,7 @@ class Namer { typer: Typer =>
             if pclazz.is(Final) then
               report.error(ExtendFinalClass(cls, pclazz), cls.srcPos)
             else if pclazz.isEffectivelySealed && pclazz.associatedFile != cls.associatedFile then
-              if pclazz.is(Sealed) then
+              if pclazz.is(Sealed) && !pclazz.is(JavaDefined) then
                 report.error(UnableToExtendSealedClass(pclazz), cls.srcPos)
               else if sourceVersion.isAtLeast(future) then
                 checkFeature(nme.adhocExtensions,
