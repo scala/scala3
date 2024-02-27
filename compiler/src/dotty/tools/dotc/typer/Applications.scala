@@ -1492,7 +1492,7 @@ trait Applications extends Compatibility {
 
         val dummyArg = dummyTreeOfType(ownType)
         val (newUnapplyFn, unapplyApp) =
-          val unapplyAppCall = withMode(Mode.NoInline):
+          val unapplyAppCall =
             typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
           inlinedUnapplyFnAndApp(dummyArg, unapplyAppCall)
 
