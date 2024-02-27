@@ -70,19 +70,45 @@ jobs:
   backport-to-main:
     name: Create pull request with backport to main
     permissions:
-      pull-requests: write  # for repo-sync/pull-request to create a PR
+      contents: write       # it pushes a new branch
+      pull-requests: write  # it creates a pr
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      BRANCH_NAME: reference-merge-${{ github.event.head_commit.id }}
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v3
-      - uses: repo-sync/pull-request@v2
         with:
-          destination_branch: main
-          pr_label: area:documentation
-          pr_title: Sync with the stable documentation branch
-          pr_body: |
-            This pull request is syncing the main with changes from language-reference-stable.
+          fetch-depth: 0
 
-            It was created automatically after ${{ github.event.head_commit.id }} by @${{ github.event.head_commit.author.username }}
-          pr_assignee: ${{ github.event.head_commit.author.username }}
+      - name: Sync files with main
+        run: |
+          Retained=`cat .github/workflows/reference-sync/paths.txt`
+          git restore --source=origin/main -- .
+          echo "$Retained" | xargs git restore --
 
+      - name: Commit
+        run: |
+          git config --global user.email "noreply@github.com"
+          git config --global user.name "github-actions[bot]"
+          git add -A .
+          git commit -m "Sync the documentation branch"
+
+      - name: Push
+        run: |
+          Url=${{ github.server_url }}
+          Server=${Url#*://}
+          Scheme=${Url%%://*}
+          Remote=${Scheme}://${{ github.token }}@${Server}/${{ github.repository }}
+          git push $Remote HEAD:refs/heads/$BRANCH_NAME
+
+      - name: Prepare the message and create a pull request
+        run: |
+          <.github/workflows/reference-sync/pr-template.md sed -E "
+            s^<<commit-id>>^${{ github.event.head_commit.id }}^g;
+            s^<<author>>^${{ github.event.head_commit.author.username }}^g;
+            s^<<repo-url>>^${Url}/${{ github.repository }}^g;
+            s^<<branch-name>>^${BRANCH_NAME}^g;
+          " \
+            | hub pull-request -f -b main -h ${BRANCH_NAME} -a ${{ github.event.head_commit.author.username }} -l area:documentation -F -
