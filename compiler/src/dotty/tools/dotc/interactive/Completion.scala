@@ -92,6 +92,7 @@ object Completion:
       path match
         case GenericImportSelector(sel) =>
           if sel.imported.span.contains(pos.span) then Mode.ImportOrExport // import scala.@@
+          else if sel.isGiven && sel.bound.span.contains(pos.span) then Mode.ImportOrExport
           else Mode.None // import scala.{util => u@@}
         case GenericImportOrExport(_) => Mode.ImportOrExport | Mode.Scope // import TrieMa@@
         case untpd.Literal(Constants.Constant(_: String)) :: _ => Mode.Term | Mode.Scope // literal completions
@@ -133,8 +134,9 @@ object Completion:
       i + 1
 
     path match
-      case GenericImportSelector(sel) if !sel.isGiven =>
-        if sel.isWildcard then pos.source.content()(pos.point - 1).toString
+      case GenericImportSelector(sel) =>
+        if sel.isGiven then completionPrefix(sel.bound :: Nil, pos)
+        else if sel.isWildcard then pos.source.content()(pos.point - 1).toString
         else completionPrefix(sel.imported :: Nil, pos)
 
       // Foo.`se<TAB> will result in Select(Ident(Foo), <error>)
