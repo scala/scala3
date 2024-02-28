@@ -5,6 +5,9 @@ public class J {
 	public static p.J f() {
 		return p.J.j;
 	}
+	public static Module$ module2() {
+		return p.Module$.MODULE$;
+	}
 	public static p.Module$ module() {
 		return p.Module$.MODULE$;
 	}
