@@ -458,3 +458,8 @@ class ReplVerboseTests extends ReplTest(ReplTest.defaultOptions :+ "-verbose"):
   }
 
 end ReplVerboseTests
+
+class ReplHighlightTests extends ReplTest(ReplTest.defaultOptions.filterNot(_.startsWith("-color")) :+ "-color:always"):
+  @Test def i18596: Unit = initially:
+    run("""(1 to 500).foldRight("x") { case (_, n) => s"<x>$n</x>" }""")
+
