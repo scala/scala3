@@ -1,3 +1,5 @@
+//> using options -experimental -Yno-experimental
+
 class Foo():
   @addClass def foo(): Unit =
     println("macro generated main")

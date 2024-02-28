@@ -1,3 +1,5 @@
+//> using options -experimental -Yno-experimental
+
 object Bar:
   @returnClassName
   def f(): String = ??? // def f(): String = "Bar"

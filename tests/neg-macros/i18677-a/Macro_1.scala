@@ -1,4 +1,4 @@
-//> using -expermiental
+//> using options -experimental -Yno-experimental
 
 import annotation.MacroAnnotation
 import quoted.*

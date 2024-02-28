@@ -1,3 +1,5 @@
+//> using options -experimental -Yno-experimental
+
 package crash.test
 
 case class Stack private[crash] (

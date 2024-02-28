@@ -1,3 +1,5 @@
+//> using options -experimental -Yno-experimental
+
 class Bar:
   @foo def bar(x: Int) = x + 1
 

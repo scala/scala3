@@ -1,3 +1,5 @@
+//> using options -experimental -Yno-experimental
+
 class Bar:
   @memoize
   def fib(n: Int): Int =
