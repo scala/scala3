@@ -213,7 +213,11 @@ class CompletionTest {
         ("FileDescriptor", Class, "java.io.FileDescriptor"),
         ("FileDescriptor", Module, "java.io.FileDescriptor"),
       )
+  }
 
+  @Test def noImportRename: Unit = {
+    code"""import java.io.{FileDescriptor => Fo$m1}"""
+      .noCompletions()
   }
 
   @Test def importGivenByType: Unit = {
@@ -1695,4 +1699,12 @@ class CompletionTest {
       val interestingResults = results.filter(_.getLabel().startsWith("util"))
       assertEquals(1, interestingResults.size)
     })
+
+  @Test def methodsWithInstantiatedTypeVars: Unit =
+    code"""|object M:
+           |  Map.empty[Int, String].getOrEls$m1
+           |"""
+     .completion(m1, Set(
+       ("getOrElse", Method, "[V1 >: String](key: Int, default: => V1): V1"),
+     ))
 }

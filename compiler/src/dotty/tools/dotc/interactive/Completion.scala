@@ -90,9 +90,10 @@ object Completion:
 
     val completionSymbolKind: Mode =
       path match
-        case GenericImportSelector(_) => Mode.ImportOrExport // import scala.@@
+        case GenericImportSelector(sel) =>
+          if sel.imported.span.contains(pos.span) then Mode.ImportOrExport // import scala.@@
+          else Mode.None // import scala.{util => u@@}
         case GenericImportOrExport(_) => Mode.ImportOrExport | Mode.Scope // import TrieMa@@
-
         case untpd.Literal(Constants.Constant(_: String)) :: _ => Mode.Term | Mode.Scope // literal completions
         case (ref: untpd.RefTree) :: _ =>
           val maybeSelectMembers = if ref.isInstanceOf[untpd.Select] then Mode.Member else Mode.Scope
