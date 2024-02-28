@@ -2008,6 +2008,13 @@ class Definitions {
     CapabilityAnnot, RequiresCapabilityAnnot,
     RetainsAnnot, RetainsCapAnnot, RetainsByNameAnnot)
 
+  /** Experimental language features defined in `scala.runtime.stdLibPatches.language.experimental`.
+   *
+   *  This list does not include `scala.language.experimental.macros`.
+   */
+  @tu lazy val languageExperimentalFeatures: List[TermSymbol] =
+    LanguageExperimentalModule.moduleClass.info.decls.toList.filter(_.isAllOf(Lazy | Module)).map(_.asTerm)
+
   // ----- primitive value class machinery ------------------------------------------
 
   class PerRun[T](generate: Context ?=> T) {

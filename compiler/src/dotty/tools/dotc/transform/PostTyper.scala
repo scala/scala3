@@ -546,8 +546,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       }
 
     override def transformStats[T](trees: List[Tree], exprOwner: Symbol, wrapResult: List[Tree] => Context ?=> T)(using Context): T =
-      try super.transformStats(trees, exprOwner, wrapResult)
-      finally Checking.checkExperimentalImports(trees)
+      Checking.checkAndAdaptExperimentalImports(trees)
+      super.transformStats(trees, exprOwner, wrapResult)
 
     /** Transforms the rhs tree into a its default tree if it is in an `erased` val/def.
      *  Performed to shrink the tree that is known to be erased later.
@@ -590,8 +590,10 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         (sym.owner.is(Package) || (sym.owner.isPackageObject && !sym.isConstructor))
       if sym.is(Module) then
         ExperimentalAnnotation.copy(sym.companionClass).foreach(sym.addAnnotation)
-      if !sym.hasAnnotation(defn.ExperimentalAnnot) && ctx.settings.experimental.value && isTopLevelDefinitionInSource(sym) then
-        sym.addAnnotation(ExperimentalAnnotation("Added by -experimental", sym.span))
+      if !sym.hasAnnotation(defn.ExperimentalAnnot)
+        && Feature.isExperimentalEnabledBySetting && isTopLevelDefinitionInSource(sym)
+      then
+        sym.addAnnotation(ExperimentalAnnotation("Added by -experimental or -language:experimental.*", sym.span))
 
     // It needs to run at the phase of the postTyper --- otherwise, the test of the symbols will use
     // the transformed denotation with added `Serializable` and `AbstractFunction1`.
