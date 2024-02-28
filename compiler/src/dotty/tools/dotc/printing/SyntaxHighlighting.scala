@@ -124,9 +124,9 @@ object SyntaxHighlighting {
         }
       }
 
-      val parser = new Parser(source)
-      val trees = parser.blockStatSeq()
       try
+        val parser = new Parser(source)
+        val trees = parser.blockStatSeq()
         TreeHighlighter.highlight(trees)
 
 
@@ -149,4 +149,5 @@ object SyntaxHighlighting {
           in
     }
   }
+
 }
