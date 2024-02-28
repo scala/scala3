@@ -198,9 +198,9 @@ jobs:
       - name: Test with Scala 2 library TASTy
         run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryTasty ;scala3-bootstrapped/test"
 
-      # TODO test all the test configurations in non-CC library (currently disabled due to bug while loading the library)
-      # - name: Test with Scala 2 library with CC TASTy
-      #   run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryCCTasty ;scala3-bootstrapped/test"
+      # TODO increase coverage to `scala3-bootstrapped/test`
+      - name: Test with Scala 2 library with CC TASTy
+        run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryCCTasty ;scala3-bootstrapped/testCompilation pos"
 
 
   test_windows_fast:
