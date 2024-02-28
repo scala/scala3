@@ -304,6 +304,7 @@ object Trees {
 
     def withFlags(flags: FlagSet): ThisTree[Untyped] = withMods(untpd.Modifiers(flags))
     def withAddedFlags(flags: FlagSet): ThisTree[Untyped] = withMods(rawMods | flags)
+    def withAddedAnnotation(annot: Tree[Untyped]): ThisTree[Untyped] = withMods(rawMods.withAddedAnnotation(annot))
 
     /** Destructively update modifiers. To be used with care. */
     def setMods(mods: untpd.Modifiers): Unit = myMods = mods

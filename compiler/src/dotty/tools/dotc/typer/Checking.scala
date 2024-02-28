@@ -1082,14 +1082,14 @@ trait Checking {
 
   /** If `tree` is an application of a new-style implicit conversion (using the apply
    *  method of a `scala.Conversion` instance), check that the expected type is
-   *  a convertible formal parameter type or that implicit conversions are enabled.
+   *  annotated with @$into or that implicit conversions are enabled.
    */
   def checkImplicitConversionUseOK(tree: Tree, expected: Type)(using Context): Unit =
     val sym = tree.symbol
     if sym.name == nme.apply
        && sym.owner.derivesFrom(defn.ConversionClass)
        && !sym.info.isErroneous
-       && !expected.isConvertibleParam
+       && !expected.isInto
     then
       def conv = methPart(tree) match
         case Select(qual, _) => qual.symbol.orElse(sym.owner)

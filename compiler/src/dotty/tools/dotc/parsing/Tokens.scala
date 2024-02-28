@@ -238,6 +238,9 @@ object Tokens extends TokensCommon {
 
   final val canStartPatternTokens = atomicExprTokens | openParensTokens | BitSet(USCORE, QUOTE)
 
+  val canFollowSimpleTypeTokens =
+    BitSet(AT, WITH, COLONop, COLONfollow, COLONeol, LBRACE, IDENTIFIER, BACKQUOTED_IDENT, ARROW, CTXARROW, MATCH, FORSOME)
+
   final val templateIntroTokens: TokenSet = BitSet(CLASS, TRAIT, OBJECT, ENUM, CASECLASS, CASEOBJECT)
 
   final val dclIntroTokens: TokenSet = BitSet(DEF, VAL, VAR, TYPE, GIVEN)

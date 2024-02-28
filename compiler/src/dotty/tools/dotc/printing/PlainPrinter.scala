@@ -286,7 +286,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
           toTextGlobal(tp.resultType)
         }
       case AnnotatedType(tpe, annot) =>
-        if annot.symbol == defn.InlineParamAnnot || annot.symbol == defn.ErasedParamAnnot then toText(tpe)
+        if annot.symbol == defn.InlineParamAnnot || annot.symbol == defn.ErasedParamAnnot
+        then toText(tpe)
+        else if (annot.symbol == defn.IntoAnnot || annot.symbol == defn.IntoParamAnnot)
+            && !printDebug
+        then atPrec(GlobalPrec)( Str("into ") ~ toText(tpe) )
         else toTextLocal(tpe) ~ " " ~ toText(annot)
       case tp: TypeVar =>
         def toTextCaret(tp: Type) = if printDebug then toTextLocal(tp) ~ Str("^") else toText(tp)

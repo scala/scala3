@@ -2335,9 +2335,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           && checkedArgs(1).tpe.derivesFrom(defn.RuntimeExceptionClass)
       then
         report.error(em"throws clause cannot be defined for RuntimeException", checkedArgs(1).srcPos)
-      else if tycon == defn.IntoType then
-        // <into> is defined in package scala but this should be hidden from user programs
-        report.error(em"not found: <into>", tpt1.srcPos)
       else if (ctx.isJava)
         if tycon eq defn.ArrayClass then
           checkedArgs match {

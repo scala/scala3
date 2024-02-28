@@ -178,21 +178,7 @@ object desugar {
     val valName = normalizeName(vdef, tpt).asTermName
     var mods1 = vdef.mods
 
-    def dropInto(tpt: Tree): Tree = tpt match
-      case Into(tpt1) =>
-        mods1 = vdef.mods.withAddedAnnotation(
-          TypedSplice(
-            Annotation(defn.AllowConversionsAnnot, tpt.span.startPos).tree))
-        tpt1
-      case ByNameTypeTree(tpt1) =>
-        cpy.ByNameTypeTree(tpt)(dropInto(tpt1))
-      case PostfixOp(tpt1, op) if op.name == tpnme.raw.STAR =>
-        cpy.PostfixOp(tpt)(dropInto(tpt1), op)
-      case _ =>
-        tpt
-
-    val vdef1 = cpy.ValDef(vdef)(name = valName, tpt = dropInto(tpt))
-      .withMods(mods1)
+    val vdef1 = cpy.ValDef(vdef)(name = valName).withMods(mods1)
 
     if isSetterNeeded(vdef) then
       val setterParam = makeSyntheticParameter(tpt = SetterParamTree().watching(vdef))
@@ -1876,8 +1862,11 @@ object desugar {
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)
           Select(t, op.name)
       case PrefixOp(op, t) =>
-        val nspace = if (ctx.mode.is(Mode.Type)) tpnme else nme
-        Select(t, nspace.UNARY_PREFIX ++ op.name)
+        if op.name == tpnme.into then
+          Annotated(t, New(ref(defn.IntoAnnot.typeRef), Nil :: Nil))
+        else
+          val nspace = if (ctx.mode.is(Mode.Type)) tpnme else nme
+          Select(t, nspace.UNARY_PREFIX ++ op.name)
       case ForDo(enums, body) =>
         makeFor(nme.foreach, nme.foreach, enums, body) orElse tree
       case ForYield(enums, body) =>
