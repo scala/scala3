@@ -1254,11 +1254,12 @@ object Trees {
         case _ => finalize(tree, untpd.Ident(name)(sourceFile(tree)))
       }
       def Select(tree: Tree)(qualifier: Tree, name: Name)(using Context): Select = tree match {
-        case tree: SelectWithSig =>
-          if ((qualifier eq tree.qualifier) && (name == tree.name)) tree
-          else finalize(tree, SelectWithSig(qualifier, name, tree.sig)(sourceFile(tree)))
         case tree: Select if (qualifier eq tree.qualifier) && (name == tree.name) => tree
-        case _ => finalize(tree, untpd.Select(qualifier, name)(sourceFile(tree)))
+        case _ =>
+          val tree1 = tree match
+            case tree: SelectWithSig => untpd.SelectWithSig(qualifier, name, tree.sig)(using sourceFile(tree))
+            case _ => untpd.Select(qualifier, name)(using sourceFile(tree))
+          finalize(tree, tree1)
       }
       /** Copy Ident or Select trees */
       def Ref(tree: RefTree)(name: Name)(using Context): RefTree = tree match {
