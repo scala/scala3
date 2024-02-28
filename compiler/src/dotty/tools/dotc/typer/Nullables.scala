@@ -283,7 +283,7 @@ object Nullables:
     */
     def usedOutOfOrder(using Context): Boolean =
       val refSym = ref.symbol
-      val refOwner = refSym.owner
+      val refOwner = refSym.maybeOwner
 
       @tailrec def recur(s: Symbol): Boolean =
         s != NoSymbol
