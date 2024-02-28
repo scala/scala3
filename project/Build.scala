@@ -83,7 +83,7 @@ object Build {
 
   val referenceVersion = "3.3.1"
 
-  val baseVersion = "3.3.2"
+  val baseVersion = "3.3.3"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
