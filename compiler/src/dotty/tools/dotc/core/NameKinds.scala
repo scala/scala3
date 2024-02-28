@@ -290,18 +290,16 @@ object NameKinds {
    */
   val ContextBoundParamName: UniqueNameKind    = new UniqueNameKind("evidence$")
 
-  /** The name of an inferred contextual function parameter:
-   *
-   *      val x: A ?=> B = b
-   *
-   *  becomes:
-   *
-   *      val x: A ?=> B = (contextual$1: A) ?=> b
-   */
-  val ContextFunctionParamName: UniqueNameKind = new UniqueNameKind("contextual$")
+  // Reuse an existing NameKind to avoid breaking the tasty readers of Scala 3.3.0 and 3.3.1
+  // see https://github.com/playframework/playframework/issues/12418
+  val ContextFunctionParamName: UniqueNameKind = ContextBoundParamName
+  val CanThrowEvidenceName: UniqueNameKind = ContextBoundParamName
+
+  // Generate NameKinds matching the ones used in 3.3.2 so we can unpickle 3.3.2 code.
+  val ContextFunctionParamName_332: UniqueNameKind = new UniqueNameKind("contextual$")
+  val CanThrowEvidenceName_332: UniqueNameKind = new UniqueNameKind("canThrow$")
 
   /** Other unique names */
-  val CanThrowEvidenceName: UniqueNameKind   = new UniqueNameKind("canThrow$")
   val TempResultName: UniqueNameKind         = new UniqueNameKind("ev$")
   val DepParamName: UniqueNameKind           = new UniqueNameKind("(param)")
   val LazyImplicitName: UniqueNameKind       = new UniqueNameKind("$_lazy_implicit_$")
