@@ -614,7 +614,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     }
     def Function(tree: Tree)(args: List[Tree], body: Tree)(using Context): Tree = tree match {
       case tree: Function if (args eq tree.args) && (body eq tree.body) => tree
-      case _ => finalize(tree, untpd.Function(args, body)(tree.source))
+      case _ =>
+        val tree1 = tree match
+          case tree: FunctionWithMods => untpd.FunctionWithMods(args, body, tree.mods, tree.erasedParams)(using tree.source)
+          case _ => untpd.Function(args, body)(using tree.source)
+        finalize(tree, tree1)
     }
     def PolyFunction(tree: Tree)(targs: List[Tree], body: Tree)(using Context): Tree = tree match {
       case tree: PolyFunction if (targs eq tree.targs) && (body eq tree.body) => tree
