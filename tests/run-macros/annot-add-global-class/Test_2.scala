@@ -1,3 +1,5 @@
+//> using options -experimental -Yno-experimental
+
 import mymacro.addClass
 
 @addClass def foo(): Unit =

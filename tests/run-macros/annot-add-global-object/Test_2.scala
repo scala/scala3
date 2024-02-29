@@ -1,3 +1,5 @@
+//> using options -experimental -Yno-experimental
+
 @addClass def foo(): Unit =
   println("macro generated main")
   println("executed in: " + (new Throwable().getStackTrace().head.getClassName))

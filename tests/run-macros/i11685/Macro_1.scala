@@ -1,3 +1,5 @@
+//> using options -experimental -Yno-experimental
+
 package test
 
 import scala.quoted.*
