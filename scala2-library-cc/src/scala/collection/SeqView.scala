@@ -48,7 +48,7 @@ trait SeqView[+A] extends SeqViewOps[A, View, View[A]] with View[A] {
 
   // Copied from SeqOps. This is needed due to the change of class hierarchy in stdlib.
   // See #19660.
-  override def updated[B >: A](index: Int, elem: B): View[B]^{this} = {
+  inline override def updated[B >: A](index: Int, elem: B): View[B]^{this} = {
     if(index < 0) throw new IndexOutOfBoundsException(index.toString)
     val k = knownSize
     if(k >= 0 && index >= k) throw new IndexOutOfBoundsException(index.toString)
