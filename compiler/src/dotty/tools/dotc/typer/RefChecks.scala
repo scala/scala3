@@ -702,8 +702,8 @@ object RefChecks {
 
         val missingMethods = grouped.toList flatMap {
           case (name, syms) =>
-            val withoutSetters = syms filterNot (_.isSetter)
-            if (withoutSetters.nonEmpty) withoutSetters else syms
+            syms.filterConserve(!_.isSetter)
+              .distinctBy(_.signature) // Avoid duplication for similar definitions (#19731)
         }
 
         def stubImplementations: List[String] = {
@@ -714,7 +714,7 @@ object RefChecks {
 
           if (regrouped.tail.isEmpty)
             membersStrings(regrouped.head._2)
-          else (regrouped.sortBy("" + _._1.name) flatMap {
+          else (regrouped.sortBy(_._1.name.toString()) flatMap {
             case (owner, members) =>
               ("// Members declared in " + owner.fullName) +: membersStrings(members) :+ ""
           }).init
@@ -733,7 +733,7 @@ object RefChecks {
           return
         }
 
-        for (member <- missing) {
+        for (member <- missingMethods) {
           def showDclAndLocation(sym: Symbol) =
             s"${sym.showDcl} in ${sym.owner.showLocated}"
           def undefined(msg: String) =
