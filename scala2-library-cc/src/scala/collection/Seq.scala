@@ -957,7 +957,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
     *                                    lazy collection this exception may be thrown at a later time or not at
     *                                    all (if the end of the collection is never evaluated).
     */
-  def updated[B >: A](index: Int, elem: B): CC[B] = {
+  override def updated[B >: A](index: Int, elem: B): CC[B] = {
     if(index < 0) throw new IndexOutOfBoundsException(index.toString)
     val k = knownSize
     if(k >= 0 && index >= k) throw new IndexOutOfBoundsException(index.toString)
