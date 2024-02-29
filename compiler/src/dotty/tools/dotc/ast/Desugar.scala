@@ -1978,10 +1978,7 @@ object desugar {
         val applyVParams = args.zipWithIndex.map {
           case (p, n) => makeSyntheticParameter(n + 1, p)
         }
-        tree match
-          case tree: FunctionWithMods =>
-            untpd.FunctionWithMods(applyVParams, result, tree.mods, tree.erasedParams)
-          case _ => untpd.Function(applyVParams, result)
+        cpy.Function(tree)(applyVParams, result).asInstanceOf[untpd.Function]
     }
   }
 
