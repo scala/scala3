@@ -102,9 +102,12 @@ class Completions(
     end if
   end includeSymbol
 
+  val fuzzyMatcher: Name => Boolean = name =>
+    Fuzzy.matchesSubCharacters(completionPos.query, name.toString)
+
   def enrichedCompilerCompletions(qualType: Type): (List[CompletionValue], SymbolSearch.Result) =
     val compilerCompletions = Completion
-      .rawCompletions(completionPos.originalCursorPosition, completionMode, completionPos.query, path, adjustedPath)
+      .rawCompletions(completionPos.originalCursorPosition, completionMode, completionPos.query, path, adjustedPath, Some(fuzzyMatcher))
 
     compilerCompletions
       .toList
@@ -116,9 +119,8 @@ class Completions(
     val (all, result) =
       if exclusive then (advanced, SymbolSearch.Result.COMPLETE)
       else
-        val keywords = KeywordsCompletions.contribute(path, completionPos, comments)
+        val keywords = KeywordsCompletions.contribute(adjustedPath, completionPos, comments)
         val allAdvanced = advanced ++ keywords
-
         path match
           // should not show completions for toplevel
           case Nil | (_: PackageDef) :: _ if !completionPos.originalCursorPosition.source.file.ext.isScalaScript =>
