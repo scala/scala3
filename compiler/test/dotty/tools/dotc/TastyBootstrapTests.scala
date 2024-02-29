@@ -51,7 +51,7 @@ class TastyBootstrapTests {
         Properties.compilerInterface, Properties.scalaLibrary, Properties.scalaAsm,
         Properties.dottyInterfaces, Properties.jlineTerminal, Properties.jlineReader,
       ).mkString(File.pathSeparator),
-      Array("-Ycheck-reentrant", "-language:postfixOps", "-Xsemanticdb")
+      Array("-Ycheck-reentrant", "-Ylog:checkReentrant+", "-language:postfixOps", "-Xsemanticdb")
     )
 
     val libraryDirs = List(Paths.get("library/src"), Paths.get("library/src-bootstrapped"))

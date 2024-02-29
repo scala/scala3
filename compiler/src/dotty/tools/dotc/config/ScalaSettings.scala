@@ -23,19 +23,7 @@ object ScalaSettingCategories:
   val AdvancedSetting = "X"
   val VerboseSetting = "V"
 
-object ScalaSettings extends SettingGroup with AllScalaSettings:
-
-  val settingsByCategory: Map[String, List[Setting[_]]] = 
-    allSettings.groupBy(_.category)
-      .view.mapValues(_.toList).toMap
-      .withDefaultValue(Nil)
-  def categories: List[String] = settingsByCategory.keys.toList
-  val rootSettings: List[Setting[_]] = settingsByCategory(RootSetting)
-  val warningSettings: List[Setting[_]] = settingsByCategory(WarningSetting)
-  val forkSettings: List[Setting[_]] = settingsByCategory(ForkSetting)
-  val advancedSettings: List[Setting[_]] = settingsByCategory(AdvancedSetting)
-  val verboseSettings: List[Setting[_]] = settingsByCategory(VerboseSetting)
-  val settingsByAliases: Map[String, Setting[_]] = allSettings.flatMap(s => s.aliases.map(_ -> s)).toMap
+object ScalaSettings:
 
   private lazy val minTargetVersion = classfileVersionMap.keysIterator.map(_.toInt).min
   private lazy val maxTargetVersion = classfileVersionMap.keysIterator.map(_.toInt).max
@@ -69,6 +57,19 @@ object ScalaSettings extends SettingGroup with AllScalaSettings:
       else defaultWidth
     else defaultWidth
   }
+  
+class ScalaSettings extends SettingGroup, AllScalaSettings:
+  val settingsByCategory: Map[String, List[Setting[_]]] = 
+    allSettings.groupBy(_.category)
+      .view.mapValues(_.toList).toMap
+      .withDefaultValue(Nil)
+  def categories: List[String] = settingsByCategory.keys.toList
+  val rootSettings: List[Setting[_]] = settingsByCategory(RootSetting)
+  val warningSettings: List[Setting[_]] = settingsByCategory(WarningSetting)
+  val forkSettings: List[Setting[_]] = settingsByCategory(ForkSetting)
+  val advancedSettings: List[Setting[_]] = settingsByCategory(AdvancedSetting)
+  val verboseSettings: List[Setting[_]] = settingsByCategory(VerboseSetting)
+  val settingsByAliases: Map[String, Setting[_]] = allSettings.flatMap(s => s.aliases.map(_ -> s)).toMap
 
 trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSettings, WarningSettings, XSettings, YSettings:
   self: SettingGroup =>

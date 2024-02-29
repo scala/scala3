@@ -5,7 +5,7 @@ import Settings.*
 import core.Contexts.*
 
 abstract class CompilerCommand extends CliCommand:
-  type ConcreteSettings = ScalaSettings.type
+  type ConcreteSettings = ScalaSettings
 
   final def helpMsg(using settings: ConcreteSettings)(using SettingsState, Context): String =
     settings.allSettings.find(isHelping) match
