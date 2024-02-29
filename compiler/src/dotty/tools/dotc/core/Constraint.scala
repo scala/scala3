@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._
+import Types.*, Contexts.*
 import printing.Showable
 import util.{SimpleIdentitySet, SimpleIdentityMap}
 
@@ -137,6 +137,9 @@ abstract class Constraint extends Showable {
 
   /** The same as this constraint, but with `tv` marked as hard. */
   def withHard(tv: TypeVar)(using Context): This
+
+  /** Mark toplevel type vars in `tp` as hard. */
+  def hardenTypeVars(tp: Type)(using Context): This
 
   /** Gives for each instantiated type var that does not yet have its `inst` field
    *  set, the instance value stored in the constraint. Storing instances in constraints

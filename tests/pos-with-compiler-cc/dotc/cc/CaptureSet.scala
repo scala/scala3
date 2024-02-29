@@ -39,7 +39,7 @@ import annotation.retains
  *  if the mapped function is either a bijection or if it is idempotent
  *  on capture references (c.f. doc comment on `map` below).
  */
-sealed abstract class CaptureSet extends Showable, caps.Pure:
+sealed abstract class CaptureSet extends Showable, Pure:
   import CaptureSet.*
 
   /** The elements of this capture set. For capture variables,

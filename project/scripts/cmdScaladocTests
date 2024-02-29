@@ -23,8 +23,8 @@ SOURCE_LINKS_VERSION="${GITHUB_SHA:-$DOTTY_BOOTSTRAPPED_VERSION}"
 dist/target/pack/bin/scaladoc \
   -d "$OUT1" \
   -project "scaladoc testcases" \
-  -source-links:out/bootstrap/stdlib-bootstrapped/scala-"${DOTTY_NONBOOTSTRAPPED_VERSION}"/src_managed/main/scala-library-src=github://scala/scala/v"${STDLIB_VERSION}"#src/library \
-  -source-links:out/bootstrap/stdlib-bootstrapped/scala-"${DOTTY_NONBOOTSTRAPPED_VERSION}"/src_managed/main/dotty-library-src=github://"${SOURCE_LINKS_REPOSITORY}"/"${SOURCE_LINKS_VERSION}"\#library/src \
+  -source-links:out/bootstrap/scala2-library-bootstrapped/scala-"${DOTTY_NONBOOTSTRAPPED_VERSION}"/src_managed/main/scala-library-src=github://scala/scala/v"${STDLIB_VERSION}"#src/library \
+  -source-links:out/bootstrap/scala2-library-bootstrapped/scala-"${DOTTY_NONBOOTSTRAPPED_VERSION}"/src_managed/main/dotty-library-src=github://"${SOURCE_LINKS_REPOSITORY}"/"${SOURCE_LINKS_VERSION}"\#library/src \
   -source-links:github://"${SOURCE_LINKS_REPOSITORY}"/"${SOURCE_LINKS_VERSION}" \
   "-external-mappings:.*scala/.*::scaladoc3::https://dotty.epfl.ch/api/,.*java/.*::javadoc::https://docs.oracle.com/javase/8/docs/api/" \
   "-skip-by-regex:.+\.internal($|\..+)" \
@@ -37,7 +37,7 @@ dist/target/pack/bin/scaladoc \
   "-snippet-compiler:scaladoc-testcases/docs=compile" \
   "-comment-syntax:scaladoc-testcases/src/example/comment-md=markdown,scaladoc-testcases/src/example/comment-wiki=wiki" \
   -siteroot scaladoc-testcases/docs \
-  -project-footer "Copyright (c) 2002-2023, LAMP/EPFL" \
+  -project-footer "Copyright (c) 2002-$(date +%Y), LAMP/EPFL" \
   -default-template static-site-main \
   -author -groups -revision main -project-version "${DOTTY_BOOTSTRAPPED_VERSION}" \
   "-quick-links:Learn::https://docs.scala-lang.org/,Install::https://www.scala-lang.org/download/,Playground::https://scastie.scala-lang.org,Find A Library::https://index.scala-lang.org,Community::https://www.scala-lang.org/community/,Blog::https://www.scala-lang.org/blog/," \

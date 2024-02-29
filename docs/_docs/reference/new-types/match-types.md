@@ -140,6 +140,8 @@ An instantiation `Is` is _minimal_ for `Xs` if all type variables in `Xs` that
 appear covariantly and nonvariantly in `Is` are as small as possible and all
 type variables in `Xs` that appear contravariantly in `Is` are as large as
 possible.  Here, "small" and "large" are understood with respect to  `<:`.
+But, type parameter will not be "large" if a pattern containing it is matched
+against lambda case in co- or contra-variant position.
 
 For simplicity, we have omitted constraint handling so far. The full formulation
 of subtyping tests describes them as a function from a constraint and a pair of

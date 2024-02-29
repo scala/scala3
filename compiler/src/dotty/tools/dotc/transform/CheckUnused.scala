@@ -1,6 +1,7 @@
 package dotty.tools.dotc.transform
 
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.ast.tpd.{Inlined, TreeTraverser}
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.ast.untpd.ImportSelector
@@ -205,7 +206,7 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
    * corresponding context property
    */
   private def traverser = new TreeTraverser:
-    import tpd._
+    import tpd.*
     import UnusedData.ScopeType
 
     /* Register every imports, definition and usage */
@@ -229,15 +230,15 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
           pushInBlockTemplatePackageDef(tree)
           traverseChildren(tree)(using newCtx)
           popOutBlockTemplatePackageDef()
-        case t:tpd.ValDef =>
+        case t: tpd.ValDef =>
           prepareForValDef(t)
           traverseChildren(tree)(using newCtx)
           transformValDef(t)
-        case t:tpd.DefDef =>
+        case t: tpd.DefDef =>
           prepareForDefDef(t)
           traverseChildren(tree)(using newCtx)
           transformDefDef(t)
-        case t:tpd.TypeDef =>
+        case t: tpd.TypeDef =>
           prepareForTypeDef(t)
           traverseChildren(tree)(using newCtx)
           transformTypeDef(t)
@@ -248,6 +249,10 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
           prepareForAssign(t)
           traverseChildren(tree)
         case _: tpd.InferredTypeTree =>
+        case t@tpd.RefinedTypeTree(tpt, refinements) =>
+          //! DIFFERS FROM MINIPHASE
+          typeTraverser(unusedDataApply).traverse(t.tpe)
+          traverse(tpt)(using newCtx)
         case t@tpd.TypeTree() =>
           //! DIFFERS FROM MINIPHASE
           typeTraverser(unusedDataApply).traverse(t.tpe)
@@ -291,9 +296,9 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
         case UnusedSymbol(t, _, WarnTypes.PatVars) =>
           report.warning(s"unused pattern variable", t)
         case UnusedSymbol(t, _, WarnTypes.UnsetLocals) =>
-          report.warning(s"unset local variable", t)
+          report.warning(s"unset local variable, consider using an immutable val instead", t)
         case UnusedSymbol(t, _, WarnTypes.UnsetPrivates) =>
-          report.warning(s"unset private variable", t)
+          report.warning(s"unset private variable, consider using an immutable val instead", t)
     }
 
 end CheckUnused
@@ -333,7 +338,7 @@ object CheckUnused:
    * - usage
    */
   private class UnusedData:
-    import collection.mutable.{Set => MutSet, Map => MutMap, Stack => MutStack}
+    import collection.mutable.{Set => MutSet, Map => MutMap, Stack => MutStack, ListBuffer => MutList}
     import UnusedData.*
 
     /** The current scope during the tree traversal */
@@ -342,7 +347,7 @@ object CheckUnused:
     var unusedAggregate: Option[UnusedResult] = None
 
     /* IMPORTS */
-    private val impInScope = MutStack(MutSet[tpd.Import]())
+    private val impInScope = MutStack(MutList[tpd.Import]())
     /**
      * We store the symbol along with their accessibility without import.
      * Accessibility to their definition in outer context/scope
@@ -419,12 +424,12 @@ object CheckUnused:
       if !tpd.languageImport(imp.expr).nonEmpty && !imp.isGeneratedByEnum && !isTransparentAndInline(imp) then
         impInScope.top += imp
         unusedImport ++= imp.selectors.filter { s =>
-          !shouldSelectorBeReported(imp, s) && !isImportExclusion(s)
+          !shouldSelectorBeReported(imp, s) && !isImportExclusion(s) && !isImportIgnored(imp, s)
         }
 
     /** Register (or not) some `val` or `def` according to the context, scope and flags */
     def registerDef(memDef: tpd.MemberDef)(using Context): Unit =
-      if memDef.isValidMemberDef then
+      if memDef.isValidMemberDef && !isDefIgnored(memDef) then
         if memDef.isValidParam then
           if memDef.symbol.isOneOf(GivenOrImplicit) then
             if !paramsToSkip.contains(memDef.symbol) then
@@ -445,7 +450,7 @@ object CheckUnused:
     def pushScope(newScopeType: ScopeType): Unit =
       // unused imports :
       currScopeType.push(newScopeType)
-      impInScope.push(MutSet())
+      impInScope.push(MutList())
       usedInScope.push(MutSet())
 
     def registerSetVar(sym: Symbol): Unit =
@@ -503,7 +508,6 @@ object CheckUnused:
 
     def getUnused(using Context): UnusedResult =
       popScope()
-
       val sortedImp =
         if ctx.settings.WunusedHas.imports || ctx.settings.WunusedHas.strictNoImplicitWarn then
           unusedImport.map(d => UnusedSymbol(d.srcPos, d.name, WarnTypes.Imports)).toList
@@ -557,11 +561,19 @@ object CheckUnused:
         else
           Nil
       val warnings =
-        List(sortedImp, sortedLocalDefs, sortedExplicitParams, sortedImplicitParams,
-                  sortedPrivateDefs, sortedPatVars, unsetLocalDefs, unsetPrivateDefs).flatten.sortBy { s =>
-        val pos = s.pos.sourcePos
-        (pos.line, pos.column)
-      }
+        val unsorted =
+          sortedImp :::
+          sortedLocalDefs :::
+          sortedExplicitParams :::
+          sortedImplicitParams :::
+          sortedPrivateDefs :::
+          sortedPatVars :::
+          unsetLocalDefs :::
+          unsetPrivateDefs
+        unsorted.sortBy { s =>
+          val pos = s.pos.sourcePos
+          (pos.line, pos.column)
+        }
       UnusedResult(warnings.toSet)
     end getUnused
     //============================ HELPERS ====================================
@@ -595,14 +607,14 @@ object CheckUnused:
      * package a:
      *   val x: Int = 0
      * package b:
-     *   import a._ // no warning
+     *   import a.* // no warning
      * }}}
      * --- WITH OBJECT : OK ---
      * {{{
      * object a:
      *   val x: Int = 0
      * object b:
-     *   import a._ // unused warning
+     *   import a.* // unused warning
      * }}}
      */
     private def isConstructorOfSynth(sym: Symbol)(using Context): Boolean =
@@ -633,6 +645,20 @@ object CheckUnused:
         imp.expr.tpe.member(sel.name.toTypeName).alternatives.exists(_.symbol.isOneOf(GivenOrImplicit))
       )
 
+    /**
+     * Ignore CanEqual imports
+     */
+    private def isImportIgnored(imp: tpd.Import, sel: ImportSelector)(using Context): Boolean =
+      (sel.isWildcard && sel.isGiven && imp.expr.tpe.allMembers.exists(p => p.symbol.typeRef.baseClasses.exists(_.derivesFrom(defn.CanEqualClass)) && p.symbol.isOneOf(GivenOrImplicit))) ||
+      (imp.expr.tpe.member(sel.name.toTermName).alternatives
+        .exists(p => p.symbol.isOneOf(GivenOrImplicit) && p.symbol.typeRef.baseClasses.exists(_.derivesFrom(defn.CanEqualClass))))
+
+    /**
+     * Ignore definitions of CanEqual given
+     */
+    private def isDefIgnored(memDef: tpd.MemberDef)(using Context): Boolean =
+      memDef.symbol.isOneOf(GivenOrImplicit) && memDef.symbol.typeRef.baseClasses.exists(_.derivesFrom(defn.CanEqualClass))
+
     extension (tree: ImportSelector)
       def boundTpe: Type = tree.bound match {
         case untpd.TypedSplice(tree1) => tree1.tpe
@@ -657,8 +683,10 @@ object CheckUnused:
         val simpleSelections = qual.tpe.member(sym.name).alternatives
         val typeSelections = sels.flatMap(n => qual.tpe.member(n.name.toTypeName).alternatives)
         val termSelections = sels.flatMap(n => qual.tpe.member(n.name.toTermName).alternatives)
+        val sameTermPath = qual.isTerm && sym.exists && sym.owner.isType && qual.tpe.typeSymbol == sym.owner.asType
         val selectionsToDealias = typeSelections ::: termSelections
-        val qualHasSymbol = simpleSelections.map(_.symbol).contains(sym) || (simpleSelections ::: selectionsToDealias).map(_.symbol).map(dealias).contains(dealiasedSym)
+        val renamedSelection = if sameTermPath then sels.find(sel => sel.imported.name == sym.name) else None
+        val qualHasSymbol = simpleSelections.map(_.symbol).contains(sym) || (simpleSelections ::: selectionsToDealias).map(_.symbol).map(dealias).contains(dealiasedSym) || renamedSelection.isDefined
         def selector = sels.find(sel => (sel.name.toTermName == sym.name || sel.name.toTypeName == sym.name) && symName.map(n => n.toTermName == sel.rename).getOrElse(true))
         def dealiasedSelector = if(isDerived) sels.flatMap(sel => selectionsToDealias.map(m => (sel, m.symbol))).collect {
           case (sel, sym) if dealias(sym) == dealiasedSym => sel
@@ -668,7 +696,7 @@ object CheckUnused:
           else None
         def wildcard = sels.find(sel => sel.isWildcard && ((sym.is(Given) == sel.isGiven && sel.bound.isEmpty) || sym.is(Implicit)))
         if qualHasSymbol && (!isAccessible || sym.isRenamedSymbol(symName)) && sym.exists then
-          selector.orElse(dealiasedSelector).orElse(givenSelector).orElse(wildcard) // selector with name or wildcard (or given)
+          selector.orElse(dealiasedSelector).orElse(givenSelector).orElse(wildcard).orElse(renamedSelection) // selector with name or wildcard (or given)
         else
           None
 
@@ -705,8 +733,7 @@ object CheckUnused:
 
       /** A function is overriden. Either has `override flags` or parent has a matching member (type and name) */
       private def isOverriden(using Context): Boolean =
-        sym.is(Flags.Override) ||
-          (sym.exists && sym.owner.thisType.parents.exists(p => sym.matchingMember(p).exists))
+        sym.is(Flags.Override) || (sym.exists && sym.owner.thisType.parents.exists(p => sym.matchingMember(p).exists))
 
     end extension
 

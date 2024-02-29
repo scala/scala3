@@ -14,4 +14,5 @@ def test(using Cap) =
   def c1 = new C(f)
   def c2 = c1
   def c3 = c2.y
+  val c4: C^ = c3
   val _ = c3: C^

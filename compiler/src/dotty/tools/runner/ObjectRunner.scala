@@ -19,7 +19,7 @@ trait CommonRunner {
    *  @throws java.lang.reflect.InvocationTargetException
    */
   def run(urls: Seq[URL], objectName: String, arguments: Seq[String]): Unit = {
-    import RichClassLoader._
+    import RichClassLoader.*
     ScalaClassLoader.fromURLsParallelCapable(urls).run(objectName, arguments)
   }
 

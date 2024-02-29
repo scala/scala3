@@ -5,7 +5,7 @@ import scala.language.unsafeNulls
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.TreeOps
 import dotty.tools.dotc.{Driver, Main}
-import dotty.tools.dotc.core.Comments.CommentsContext
+import dotty.tools.dotc.core.Comments.docCtx
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators.{toTermName, toTypeName}
 import dotty.tools.dotc.core.Mode
@@ -18,6 +18,7 @@ import dotty.tools.vulpix.TestConfiguration
 
 import org.junit.Test
 import org.junit.Assert.{assertEquals, assertFalse, fail}
+import dotty.tools.io.AbstractFile
 
 class CommentPicklingTest {
 
@@ -92,7 +93,7 @@ class CommentPicklingTest {
       val out = tmp./("out")
       out.createDirectory()
 
-      val options = compileOptions.and("-d", out.toAbsolute.toString).and(sourceFiles: _*)
+      val options = compileOptions.and("-d", out.toAbsolute.toString).and(sourceFiles*)
       val reporter = TestReporter.reporter(System.out, logLevel = ERROR)
       Main.process(options.all, reporter)
       assertFalse("Compilation failed.", reporter.hasErrors)
@@ -116,7 +117,7 @@ class CommentPicklingTest {
       implicit val ctx: Context = setup(args, initCtx).map(_._2).getOrElse(initCtx)
       ctx.initialize()
       val trees = files.flatMap { f =>
-        val unpickler = new DottyUnpickler(f.toByteArray())
+        val unpickler = new DottyUnpickler(AbstractFile.getFile(f.jpath), f.toByteArray())
         unpickler.enter(roots = Set.empty)
         unpickler.rootTrees(using ctx)
       }

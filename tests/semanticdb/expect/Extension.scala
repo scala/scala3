@@ -16,3 +16,12 @@ extension (s: String)
 
 trait Functor[F[_]]:
   extension [T](t: F[T]) def map[U](f: T => U): F[U]
+
+opaque type Deck = Long
+object Deck:
+  extension (data: Deck)
+    def fooSize: Int = ???
+
+object DeckUsage:
+  val deck: Deck = ???
+  deck.fooSize

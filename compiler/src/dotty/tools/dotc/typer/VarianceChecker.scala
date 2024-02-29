@@ -2,16 +2,18 @@ package dotty.tools.dotc
 package typer
 
 import dotty.tools.dotc.ast.{ Trees, tpd }
-import core._
-import Types._, Contexts._, Flags._, Symbols._, Trees._
-import Decorators._
-import Variances._
-import NameKinds._
+import core.*
+import Types.*, Contexts.*, Flags.*, Symbols.*, Trees.*
+import Decorators.*
+import Variances.*
+import NameKinds.*
 import util.SrcPos
 import config.Printers.variances
 import config.Feature.migrateTo3
 import reporting.trace
 import printing.Formatting.hl
+
+import scala.compiletime.uninitialized
 
 /** Provides `check` method to check that all top-level definitions
  *  in tree are variance correct. Does not recurse inside methods.
@@ -63,11 +65,11 @@ object VarianceChecker {
 }
 
 class VarianceChecker(using Context) {
-  import VarianceChecker._
-  import tpd._
+  import VarianceChecker.*
+  import tpd.*
 
   private object Validator extends TypeAccumulator[Option[VarianceError]] {
-    private var base: Symbol = _
+    private var base: Symbol = uninitialized
 
     /** The variance of a symbol occurrence of `tvar` seen at the level of the definition of `base`.
      *  The search proceeds from `base` to the owner of `tvar`.
@@ -130,8 +132,6 @@ class VarianceChecker(using Context) {
               case TypeAlias(alias) => this(status, alias)
               case _ => foldOver(status, tp)
             }
-          case tp: MethodOrPoly =>
-            this(status, tp.resultType) // params will be checked in their TypeDef or ValDef nodes.
           case AnnotatedType(_, annot) if annot.symbol == defn.UncheckedVarianceAnnot =>
             status
           case tp: ClassInfo =>
@@ -144,12 +144,26 @@ class VarianceChecker(using Context) {
       }
     }
 
-    def validateDefinition(base: Symbol): Option[VarianceError] = {
-      val saved = this.base
+    def checkInfo(info: Type): Option[VarianceError] = info match
+      case info: MethodOrPoly =>
+        checkInfo(info.resultType) // params will be checked in their TypeDef or ValDef nodes.
+      case _ =>
+        apply(None, info)
+
+    def validateDefinition(base: Symbol): Option[VarianceError] =
+      val savedBase = this.base
       this.base = base
-      try apply(None, base.info)
-      finally this.base = saved
-    }
+      val savedVariance = variance
+      def isLocal =
+        base.isAllOf(PrivateLocal)
+        || base.is(Private) && !base.hasAnnotation(defn.AssignedNonLocallyAnnot)
+      if base.is(Mutable, butNot = Method) && !isLocal then
+        base.removeAnnotation(defn.AssignedNonLocallyAnnot)
+        variance = 0
+      try checkInfo(base.info)
+      finally
+        this.base = savedBase
+        this.variance = savedVariance
   }
 
   private object Traverser extends TreeTraverser {

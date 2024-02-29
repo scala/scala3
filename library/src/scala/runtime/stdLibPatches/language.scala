@@ -69,14 +69,6 @@ object language:
     @compileTimeOnly("`clauseInterleaving` can only be used at compile time in import statements")
     object clauseInterleaving
 
-    /** Adds support for relaxed imports of extension methods.
-      * Extension methods with the same name can be imported from several places.
-      *
-      * @see [[http://dotty.epfl.ch/docs/reference/contextual/extension-methods]]
-      */
-    @compileTimeOnly("`relaxedExtensionImports` can only be used at compile time in import statements")
-    object relaxedExtensionImports
-
     /** Experimental support for pure function type syntax
      *
      *  @see [[https://dotty.epfl.ch/docs/reference/experimental/purefuns]]
@@ -98,6 +90,14 @@ object language:
      */
     @compileTimeOnly("`into` can only be used at compile time in import statements")
     object into
+
+    /** Was needed to add support for relaxed imports of extension methods.
+      * The language import is no longer needed as this is now a standard feature since SIP was accepted.
+      * @see [[http://dotty.epfl.ch/docs/reference/contextual/extension-methods]]
+      */
+    @compileTimeOnly("`relaxedExtensionImports` can only be used at compile time in import statements")
+    @deprecated("The experimental.relaxedExtensionImports language import is no longer needed since the feature is now standard", since = "3.4")
+    object relaxedExtensionImports
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.
@@ -114,6 +114,7 @@ object language:
      */
     @compileTimeOnly("`symbolLiterals` can only be used at compile time in import statements")
     object symbolLiterals
+
   end deprecated
 
   /** Where imported, auto-tupling is disabled.
@@ -230,5 +231,36 @@ object language:
     */
   @compileTimeOnly("`3.3` can only be used at compile time in import statements")
   object `3.3`
+
+  /** Set source version to 3.4-migration.
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.4-migration` can only be used at compile time in import statements")
+  object `3.4-migration`
+
+  /** Set source version to 3.4
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.4` can only be used at compile time in import statements")
+  object `3.4`
+
+  /** Set source version to 3.5-migration.
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.5-migration` can only be used at compile time in import statements")
+  object `3.5-migration`
+
+  /** Set source version to 3.5
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.5` can only be used at compile time in import statements")
+  object `3.5`
+
+  // !!! Keep in sync with dotty.tools.dotc.config.SourceVersion !!!
+  // Also add tests in `tests/pos/source-import-3-x.scala` and `tests/pos/source-import-3-x-migration.scala`
 
 end language

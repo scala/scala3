@@ -2,14 +2,14 @@ package dotty.tools
 package dotc
 package core
 
-import Decorators._
-import Symbols._
-import Types._
-import Flags._
+import Decorators.*
+import Symbols.*
+import Types.*
+import Flags.*
 import Contexts.ctx
 import dotty.tools.dotc.reporting.trace
 import config.Feature.migrateTo3
-import config.Printers._
+import config.Printers.*
 
 trait PatternTypeConstrainer { self: TypeComparer =>
 
@@ -76,7 +76,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
   def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false): Boolean = trace(i"constrainPatternType($scrut, $pat)", gadts) {
 
     def classesMayBeCompatible: Boolean = {
-      import Flags._
+      import Flags.*
       val patCls = pat.classSymbol
       val scrCls = scrut.classSymbol
       !patCls.exists || !scrCls.exists || {
@@ -263,29 +263,22 @@ trait PatternTypeConstrainer { self: TypeComparer =>
 
     trace(i"constraining simple pattern type $tp >:< $pt", gadts, (res: Boolean) => i"$res gadt = ${ctx.gadt}") {
       (tp, pt) match {
-        case (AppliedType(tyconS, argsS), AppliedType(tyconP, argsP)) =>
-          val saved = state.nn.constraint
-          val result =
-            ctx.gadtState.rollbackGadtUnless {
-              tyconS.typeParams.lazyZip(argsS).lazyZip(argsP).forall { (param, argS, argP) =>
-                val variance = param.paramVarianceSign
-                if variance == 0 || assumeInvariantRefinement ||
-                  // As a special case, when pattern and scrutinee types have the same type constructor,
-                  // we infer better bounds for pattern-bound abstract types.
-                  argP.typeSymbol.isPatternBound && patternTp.classSymbol == scrutineeTp.classSymbol
-                then
-                  val TypeBounds(loS, hiS) = argS.bounds
-                  val TypeBounds(loP, hiP) = argP.bounds
-                  var res = true
-                  if variance <  1 then res &&= isSubType(loS, hiP)
-                  if variance > -1 then res &&= isSubType(loP, hiS)
-                  res
-                else true
-              }
-            }
-          if !result then
-            constraint = saved
-          result
+        case (AppliedType(tyconS, argsS), AppliedType(tyconP, argsP)) => rollbackConstraintsUnless:
+          tyconS.typeParams.lazyZip(argsS).lazyZip(argsP).forall { (param, argS, argP) =>
+            val variance = param.paramVarianceSign
+            if variance == 0 || assumeInvariantRefinement ||
+              // As a special case, when pattern and scrutinee types have the same type constructor,
+              // we infer better bounds for pattern-bound abstract types.
+              argP.typeSymbol.isPatternBound && patternTp.classSymbol == scrutineeTp.classSymbol
+            then
+              val TypeBounds(loS, hiS) = argS.bounds
+              val TypeBounds(loP, hiP) = argP.bounds
+              var res = true
+              if variance <  1 then res &&= isSubType(loS, hiP)
+              if variance > -1 then res &&= isSubType(loP, hiS)
+              res
+            else true
+          }
         case _ =>
           // Give up if we don't get AppliedType, e.g. if we upcasted to Any.
           // Note that this doesn't mean that patternTp, scrutineeTp cannot possibly

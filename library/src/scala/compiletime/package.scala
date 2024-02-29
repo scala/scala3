@@ -117,13 +117,9 @@ transparent inline def constValue[T]: T =
  *  `(constValue[X1], ..., constValue[Xn])`.
  */
 inline def constValueTuple[T <: Tuple]: T =
-  val res =
-    inline erasedValue[T] match
-      case _: EmptyTuple => EmptyTuple
-      case _: (t *: ts) => constValue[t] *: constValueTuple[ts]
-    end match
-  res.asInstanceOf[T]
-end constValueTuple
+  // implemented in dotty.tools.dotc.typer.Inliner
+  error("Compiler bug: `constValueTuple` was not evaluated by the compiler")
+
 
 /** Summons first given matching one of the listed cases. E.g. in
  *
@@ -168,13 +164,8 @@ transparent inline def summonInline[T]: T =
  *  @return the given values typed as elements of the tuple
  */
 inline def summonAll[T <: Tuple]: T =
-  val res =
-    inline erasedValue[T] match
-      case _: EmptyTuple => EmptyTuple
-      case _: (t *: ts) => summonInline[t] *: summonAll[ts]
-    end match
-  res.asInstanceOf[T]
-end summonAll
+  // implemented in dotty.tools.dotc.typer.Inliner
+  error("Compiler bug: `summonAll` was not evaluated by the compiler")
 
 /** Assertion that an argument is by-name. Used for nullability checking. */
 def byName[T](x: => T): T = x

@@ -1,25 +1,26 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import core.Names.Name
-import core.DenotTransformers._
-import core.SymDenotations._
-import core.Contexts._
-import core.Symbols._
-import core.Types._
-import core.Flags._
-import core.StdNames._
+import core.DenotTransformers.*
+import core.SymDenotations.*
+import core.Contexts.*
+import core.Symbols.*
+import core.Types.*
+import core.Flags.*
+import core.StdNames.*
 import core.NameKinds.{DocArtifactName, OuterSelectName}
-import core.Decorators._
-import core.Phases._
+import core.Decorators.*
+import core.Phases.*
 import core.Mode
-import typer._
-import reporting._
-import ast.Trees._
+import typer.*
+import reporting.*
+import ast.Trees.*
 import ast.{tpd, untpd}
-import util.Chars._
+import util.Chars.*
 import collection.mutable
-import ProtoTypes._
+import ProtoTypes.*
 import staging.StagingLevel
 import inlines.Inlines.inInlineMethod
 
@@ -38,8 +39,8 @@ import scala.util.control.NonFatal
  *     represented as TypeTrees then).
  */
 class TreeChecker extends Phase with SymTransformer {
-  import ast.tpd._
-  import TreeChecker._
+  import ast.tpd.*
+  import TreeChecker.*
 
   private val seenClasses = collection.mutable.HashMap[String, Symbol]()
   private val seenModuleVals = collection.mutable.HashMap[String, Symbol]()
@@ -89,7 +90,7 @@ class TreeChecker extends Phase with SymTransformer {
     if (ctx.phaseId <= erasurePhase.id) {
       val initial = symd.initial
       assert(symd == initial || symd.signature == initial.signature,
-        i"""Signature of ${sym} in ${sym.ownersIterator.toList}%, % changed at phase ${ctx.phase.prevMega}
+        i"""Signature of ${sym} in ${sym.ownersIterator.toList}%, % changed at phase ${ctx.phase.prev.megaPhase}
            |Initial info: ${initial.info}
            |Initial sig : ${initial.signature}
            |Current info: ${symd.info}
@@ -108,7 +109,7 @@ class TreeChecker extends Phase with SymTransformer {
       check(ctx.base.allPhases.toIndexedSeq, ctx)
 
   def check(phasesToRun: Seq[Phase], ctx: Context): Tree = {
-    val fusedPhase = ctx.phase.prevMega(using ctx)
+    val fusedPhase = ctx.phase.prev.megaPhase(using ctx)
     report.echo(s"checking ${ctx.compilationUnit} after phase ${fusedPhase}")(using ctx)
 
     inContext(ctx) {
@@ -129,7 +130,7 @@ class TreeChecker extends Phase with SymTransformer {
     catch {
       case NonFatal(ex) =>     //TODO CHECK. Check that we are bootstrapped
         inContext(checkingCtx) {
-          println(i"*** error while checking ${ctx.compilationUnit} after phase ${ctx.phase.prevMega(using ctx)} ***")
+          println(i"*** error while checking ${ctx.compilationUnit} after phase ${ctx.phase.prev.megaPhase(using ctx)} ***")
         }
         throw ex
     }
@@ -185,7 +186,7 @@ object TreeChecker {
    *      tpt, SeqLiteral elemtpt, ValDef tpt, DefDef tpt, and TypeDef rhs.
    */
   object TreeNodeChecker extends untpd.TreeTraverser:
-    import untpd._
+    import untpd.*
     def traverse(tree: Tree)(using Context) = tree match
       case t: TypeTree                      => assert(assertion = false, i"TypeTree not expected: $t")
       case t @ TypeApply(fun, _targs)       => traverse(fun)
@@ -206,7 +207,7 @@ object TreeChecker {
 
 
   class Checker(phasesToCheck: Seq[Phase]) extends ReTyper with Checking {
-    import ast.tpd._
+    import ast.tpd.*
 
     protected val nowDefinedSyms = util.HashSet[Symbol]()
     private val patBoundSyms = util.HashSet[Symbol]()
@@ -445,14 +446,13 @@ object TreeChecker {
       assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
       val tpe = tree.typeOpt
 
-      // Polymorphic apply methods stay structural until Erasure
-      val isPolyFunctionApply = (tree.name eq nme.apply) && tree.qualifier.typeOpt.derivesFrom(defn.PolyFunctionClass)
-      // Erased functions stay structural until Erasure
-      val isErasedFunctionApply = (tree.name eq nme.apply) && tree.qualifier.typeOpt.derivesFrom(defn.ErasedFunctionClass)
+      // PolyFunction apply method stay structural until Erasure
+      val isRefinedFunctionApply = (tree.name eq nme.apply) && tree.qualifier.typeOpt.derivesFrom(defn.PolyFunctionClass)
+
       // Outer selects are pickled specially so don't require a symbol
       val isOuterSelect = tree.name.is(OuterSelectName)
       val isPrimitiveArrayOp = ctx.erasedTypes && nme.isPrimitiveName(tree.name)
-      if !(tree.isType || isPolyFunctionApply || isErasedFunctionApply || isOuterSelect || isPrimitiveArrayOp) then
+      if !(tree.isType || isRefinedFunctionApply || isOuterSelect || isPrimitiveArrayOp) then
         val denot = tree.denot
         assert(denot.exists, i"Selection $tree with type $tpe does not have a denotation")
         assert(denot.symbol.exists, i"Denotation $denot of selection $tree with type $tpe does not have a symbol, qualifier type = ${tree.qualifier.typeOpt}")
@@ -494,6 +494,18 @@ object TreeChecker {
     override def typedSuper(tree: untpd.Super, pt: Type)(using Context): Tree =
       assert(tree.qual.typeOpt.isInstanceOf[ThisType], i"expect prefix of Super to be This, actual = ${tree.qual}")
       super.typedSuper(tree, pt)
+
+    override def typedNew(tree: untpd.New, pt: Type)(using Context): Tree =
+      val tree1 = super.typedNew(tree, pt).asInstanceOf[tpd.New]
+      val sym = tree1.tpe.typeSymbol
+      if postTyperPhase <= ctx.phase then // postTyper checks that `New` nodes can be instantiated
+        assert(!tree1.tpe.isInstanceOf[TermRef], s"New should not have a TermRef type: ${tree1.tpe}")
+        assert(
+          !sym.is(Module)
+          || ctx.erasedTypes // TODO add check for module initialization after erasure (LazyVals transformation)
+          || ctx.owner == sym.companionModule,
+          i"new of $sym module should only exist in ${sym.companionModule} but was in ${ctx.owner}")
+      tree1
 
     override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree = tree match
       case Apply(Select(qual, nme.CONSTRUCTOR), _)
@@ -568,6 +580,14 @@ object TreeChecker {
 
       super.typedClassDef(cdef, cls)
     }
+
+    override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree =
+      val tpdTree = super.typedValDef(vdef, sym)
+      vdef.tpt.tpe match
+        case _: ValueType => () // ok
+        case _: ExprType if sym.isOneOf(TermParamOrAccessor) => () // ok
+        case _ => assert(false, i"wrong type, expected a value type for ${sym.fullName}, but found: ${sym.info}")
+      tpdTree
 
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree =
       def defParamss = ddef.paramss.filter(!_.isEmpty).nestedMap(_.symbol)
@@ -687,6 +707,25 @@ object TreeChecker {
         assert(!tree.expr.isInstanceOf[untpd.Quote] || inInlineMethod, i"missed quote cancellation in $tree")
       super.typedSplice(tree, pt)
 
+    override def typedQuotePattern(tree: untpd.QuotePattern, pt: Type)(using Context): Tree =
+      assert(ctx.mode.is(Mode.Pattern))
+      for binding <- tree.bindings do
+        assert(binding.isInstanceOf[untpd.Bind], i"expected Bind in QuotePattern bindings but was: $binding")
+      super.typedQuotePattern(tree, pt)
+
+    override def typedSplicePattern(tree: untpd.SplicePattern, pt: Type)(using Context): Tree =
+      assert(ctx.mode.isQuotedPattern)
+      def isAppliedIdent(rhs: untpd.Tree): Boolean = rhs match
+        case _: Ident => true
+        case rhs: GenericApply => isAppliedIdent(rhs.fun)
+        case _ => false
+      def isEtaExpandedIdent(arg: untpd.Tree): Boolean = arg match
+        case closureDef(ddef) => isAppliedIdent(ddef.rhs) || isEtaExpandedIdent(ddef.rhs)
+        case _ => false
+      for arg <- tree.args do
+        assert(arg.isInstanceOf[untpd.Ident] || isEtaExpandedIdent(arg), i"HOAS argument expected Ident or eta-expanded Ident but was: $arg")
+      super.typedSplicePattern(tree, pt)
+
     override def typedHole(tree: untpd.Hole, pt: Type)(using Context): Tree = {
       val tree1 @ Hole(isTerm, idx, args, content) = super.typedHole(tree, pt): @unchecked
 
@@ -696,7 +735,7 @@ object TreeChecker {
       // Check that we only add the captured type `T` instead of a more complex type like `List[T]`.
       // If we have `F[T]` with captured `F` and `T`, we should list `F` and `T` separately in the args.
       for arg <- args do
-        assert(arg.isTerm || arg.tpe.isInstanceOf[TypeRef], "Expected TypeRef in Hole type args but got: " + arg.tpe)
+        assert(arg.isTerm || arg.tpe.isInstanceOf[TypeRef | TermRef | ThisType], "Unexpected type arg in Hole: " + arg.tpe)
 
       // Check result type of the hole
       if isTerm then assert(tree1.typeOpt <:< pt)
@@ -712,15 +751,15 @@ object TreeChecker {
               defn.AnyType
             case tpe => tpe
           defn.QuotedExprClass.typeRef.appliedTo(tpe)
-        else defn.QuotedTypeClass.typeRef.appliedTo(arg.typeOpt.widenTermRefExpr)
+        else defn.QuotedTypeClass.typeRef.appliedTo(arg.typeOpt)
       }
       val expectedResultType =
         if isTerm then defn.QuotedExprClass.typeRef.appliedTo(tree1.typeOpt)
         else defn.QuotedTypeClass.typeRef.appliedTo(tree1.typeOpt)
       val contextualResult =
-        defn.FunctionOf(List(defn.QuotesClass.typeRef), expectedResultType, isContextual = true)
+        defn.FunctionNOf(List(defn.QuotesClass.typeRef), expectedResultType, isContextual = true)
       val expectedContentType =
-        defn.FunctionOf(argQuotedTypes, contextualResult)
+        defn.FunctionNOf(argQuotedTypes, contextualResult)
       assert(content.typeOpt =:= expectedContentType, i"unexpected content of hole\nexpected: ${expectedContentType}\nwas: ${content.typeOpt}")
 
       tree1
@@ -732,23 +771,16 @@ object TreeChecker {
     override def adapt(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree = {
       def isPrimaryConstructorReturn =
         ctx.owner.isPrimaryConstructor && pt.isRef(ctx.owner.owner) && tree.tpe.isRef(defn.UnitClass)
-      def infoStr(tp: Type) = tp match {
-        case tp: TypeRef =>
-          val sym = tp.symbol
-          i"${sym.showLocated} with ${tp.designator}, flags = ${sym.flagsString}, underlying = ${tp.underlyingIterator.toList}%, %"
-        case _ =>
-          "??"
-      }
-      if (ctx.mode.isExpr &&
-          !tree.isEmpty &&
-          !isPrimaryConstructorReturn &&
-          !pt.isInstanceOf[FunOrPolyProto])
+      if ctx.mode.isExpr
+        && !tree.isEmpty
+        && !isPrimaryConstructorReturn
+        && !pt.isInstanceOf[FunOrPolyProto]
+      then
         assert(tree.tpe <:< pt, {
           val mismatch = TypeMismatch(tree.tpe, pt, Some(tree))
-          i"""|${mismatch.msg}
-              |found: ${infoStr(tree.tpe)}
-              |expected: ${infoStr(pt)}
-              |tree = $tree""".stripMargin
+          i"""|Type Mismatch:
+              |${mismatch.message}
+              |tree = $tree ${tree.className}""".stripMargin
         })
       tree
     }

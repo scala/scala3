@@ -11,10 +11,10 @@ import java.nio.file.{FileSystems, Files}
 
 import dotty.tools.dotc.classpath.PackageNameUtils.{packageContains, separatePkgAndClassNames}
 import dotty.tools.io.{AbstractFile, PlainFile, ClassPath, ClassRepresentation, EfficientClassPath, JDK9Reflectors}
-import FileUtils._
+import FileUtils.*
 import PlainFile.toPlainFile
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.collection.immutable.ArraySeq
 import scala.util.control.NonFatal
 
@@ -126,9 +126,9 @@ trait JFileDirectoryLookup[FileEntryType <: ClassRepresentation] extends Directo
 }
 
 object JrtClassPath {
-  import java.nio.file._, java.net.URI
+  import java.nio.file.*, java.net.URI
   def apply(release: Option[String]): Option[ClassPath] = {
-    import scala.util.Properties._
+    import scala.util.Properties.*
     if (!isJavaAtLeast("9")) None
     else {
       // Longer term we'd like an official API for this in the JDK
@@ -165,7 +165,7 @@ object JrtClassPath {
   * The implementation assumes that no classes exist in the empty package.
   */
 final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath with NoSourcePaths {
-  import java.nio.file.Path, java.nio.file._
+  import java.nio.file.Path, java.nio.file.*
   type F = Path
   private val dir: Path = fs.getPath("/packages")
 
@@ -214,7 +214,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath with No
   * Implementation `ClassPath` based on the \$JAVA_HOME/lib/ct.sym backing http://openjdk.java.net/jeps/247
   */
 final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends ClassPath with NoSourcePaths {
-  import java.nio.file.Path, java.nio.file._
+  import java.nio.file.Path, java.nio.file.*
 
   private val fileSystem: FileSystem = FileSystems.newFileSystem(ctSym, null: ClassLoader)
   private val root: Path = fileSystem.getRootDirectories.iterator.next
@@ -278,15 +278,17 @@ case class DirectoryClassPath(dir: JFile) extends JFileDirectoryLookup[ClassFile
 
   def findClassFile(className: String): Option[AbstractFile] = {
     val relativePath = FileUtils.dirPath(className)
-    val classFile = new JFile(dir, relativePath + ".class")
-    if (classFile.exists) {
-      Some(classFile.toPath.toPlainFile)
-    }
-    else None
+    val tastyFile = new JFile(dir, relativePath + ".tasty")
+    if tastyFile.exists then Some(tastyFile.toPath.toPlainFile)
+    else
+      val classFile = new JFile(dir, relativePath + ".class")
+      if classFile.exists then  Some(classFile.toPath.toPlainFile)
+      else None
   }
 
   protected def createFileEntry(file: AbstractFile): ClassFileEntryImpl = ClassFileEntryImpl(file)
-  protected def isMatchingFile(f: JFile): Boolean = f.isClass
+  protected def isMatchingFile(f: JFile): Boolean =
+    f.isTasty || (f.isClass && f.classToTasty.isEmpty)
 
   private[dotty] def classes(inPackage: PackageName): Seq[ClassFileEntry] = files(inPackage)
 }

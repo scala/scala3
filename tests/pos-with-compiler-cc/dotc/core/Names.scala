@@ -32,7 +32,7 @@ object Names {
    *  in a name table. A derived term name adds a tag, and possibly a number
    *  or a further simple name to some other name.
    */
-  abstract class Name extends Designator, Showable, caps.Pure derives CanEqual {
+  abstract class Name extends Designator, Showable, Pure derives CanEqual {
 
     /** A type for names of the same kind as this name */
     type ThisName <: Name

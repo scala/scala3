@@ -2,23 +2,22 @@ package dotty.tools
 package dotc
 package core
 
-import Periods._
-import Names._
-import Scopes._
-import Flags._
-import Decorators._
-import Contexts._
-import Phases._
-import SymDenotations._
-import Denotations._
-import printing.Texts._
+import Periods.*
+import Names.*
+import Scopes.*
+import Flags.*
+import Decorators.*
+import Contexts.*
+import Phases.*
+import SymDenotations.*
+import Denotations.*
+import printing.Texts.*
 import printing.Printer
-import Types._
-import util.Spans._
-import DenotTransformers._
-import StdNames._
-import NameOps._
-import transform.SymUtils._
+import Types.*
+import util.Spans.*
+import DenotTransformers.*
+import StdNames.*
+import NameOps.*
 import NameKinds.LazyImplicitName
 import ast.tpd
 import tpd.{Tree, TreeProvider, TreeOps}
@@ -31,8 +30,12 @@ import io.AbstractFile
 import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap}
 import scala.annotation.internal.sharable
 import config.Printers.typr
+import dotty.tools.dotc.classpath.FileUtils.isScalaBinary
 
-object Symbols {
+import scala.compiletime.uninitialized
+import dotty.tools.tasty.TastyVersion
+
+object Symbols extends SymUtils {
 
   implicit def eqSymbol: CanEqual[Symbol, Symbol] = CanEqual.derived
 
@@ -77,16 +80,17 @@ object Symbols {
 
     /** Does this symbol retain its definition tree?
      *  A good policy for this needs to balance costs and benefits, where
-     *  costs are mainly memoty leaks, in particular across runs.
+     *  costs are mainly memory leaks, in particular across runs.
      */
     def retainsDefTree(using Context): Boolean =
       ctx.settings.YretainTrees.value ||
       denot.owner.isTerm ||                // no risk of leaking memory after a run for these
       denot.isOneOf(InlineOrProxy) ||      // need to keep inline info
-      ctx.settings.YcheckInit.value        // initialization check
+      ctx.settings.YcheckInit.value ||     // initialization check
+      ctx.settings.YcheckInitGlobal.value
 
     /** The last denotation of this symbol */
-    private var lastDenot: SymDenotation = _
+    private var lastDenot: SymDenotation = uninitialized
     private var checkedPeriod: Period = Nowhere
 
     private[core] def invalidateDenotCache(): Unit = { checkedPeriod = Nowhere }
@@ -150,7 +154,7 @@ object Symbols {
       * symbols defined by the user in a prior run of the REPL, that are still valid.
       */
     final def isDefinedInSource(using Context): Boolean =
-      span.exists && isValidInCurrentRun && associatedFileMatches(_.extension != "class")
+      span.exists && isValidInCurrentRun && associatedFileMatches(!_.isScalaBinary)
 
     /** Is symbol valid in current run? */
     final def isValidInCurrentRun(using Context): Boolean =
@@ -261,17 +265,32 @@ object Symbols {
 
     /** The source or class file from which this class or
      *  the class containing this symbol was generated, null if not applicable.
-     *  Note that this the returned classfile might be the top-level class
+     *  Note that the returned classfile might be from the top-level class
+     *  containing this symbol instead of the directly enclosing class.
+     */
+    def associatedFile(using Context): AbstractFile | Null =
+      val compUnitInfo = compilationUnitInfo
+      if compUnitInfo == null then (null: AbstractFile | Null)
+      else compUnitInfo.associatedFile
+
+    /** The compilation unit info (associated file, tasty versions, ...).
+     *  Note that the returned CompilationUnitInfo might be from the top-level class
      *  containing this symbol instead of the directly enclosing class.
      *  Overridden in ClassSymbol
      */
-    def associatedFile(using Context): AbstractFile | Null =
-      lastDenot.topLevelClass.associatedFile
+    def compilationUnitInfo(using Context): CompilationUnitInfo | Null =
+      lastDenot.topLevelClass.compilationUnitInfo
+
+    /** The info of the TASTy from which this symbol was loaded, None if not applicable. */
+    def tastyInfo(using Context): Option[TastyInfo] =
+      val compUnitInfo = compilationUnitInfo
+      if compUnitInfo == null then None
+      else compUnitInfo.tastyInfo
 
     /** The class file from which this class was generated, null if not applicable. */
     final def binaryFile(using Context): AbstractFile | Null = {
       val file = associatedFile
-      if (file != null && file.extension == "class") file else null
+      if file != null && file.isScalaBinary then file else null
     }
 
     /** A trap to avoid calling x.symbol on something that is already a symbol.
@@ -284,7 +303,7 @@ object Symbols {
 
     final def source(using Context): SourceFile = {
       def valid(src: SourceFile): SourceFile =
-        if (src.exists && src.file.extension != "class") src
+        if (src.exists && !src.file.isScalaBinary) src
         else NoSource
 
       if (!denot.exists) NoSource
@@ -349,7 +368,7 @@ object Symbols {
     def paramRef(using Context): TypeRef = denot.typeRef
 
     /** Copy a symbol, overriding selective fields.
-     *  Note that `coord` and `associatedFile` will be set from the fields in `owner`, not
+     *  Note that `coord` and `compilationUnitInfo` will be set from the fields in `owner`, not
      *  the fields in `sym`. */
     def copy(using Context)(
         owner: Symbol = this.owner,
@@ -358,13 +377,14 @@ object Symbols {
         info: Type = this.info,
         privateWithin: Symbol = this.privateWithin,
         coord: Coord = NoCoord, // Can be `= owner.coord` once we bootstrap
-        associatedFile: AbstractFile | Null = null // Can be `= owner.associatedFile` once we bootstrap
+        compUnitInfo: CompilationUnitInfo | Null = null // Can be `= owner.associatedFile` once we bootstrap
     ): Symbol = {
       val coord1 = if (coord == NoCoord) owner.coord else coord
-      val associatedFile1 = if (associatedFile == null) owner.associatedFile else associatedFile
+      val compilationUnitInfo1 = if (compilationUnitInfo == null) owner.compilationUnitInfo else compilationUnitInfo
+
 
       if isClass then
-        newClassSymbol(owner, name.asTypeName, flags, _ => info, privateWithin, coord1, associatedFile1)
+        newClassSymbol(owner, name.asTypeName, flags, _ => info, privateWithin, coord1, compilationUnitInfo1)
       else
         newSymbol(owner, name, flags, info, privateWithin, coord1)
     }
@@ -392,7 +412,7 @@ object Symbols {
   type TermSymbol = Symbol { type ThisName = TermName }
   type TypeSymbol = Symbol { type ThisName = TypeName }
 
-  class ClassSymbol private[Symbols] (coord: Coord, val assocFile: AbstractFile | Null, id: Int, nestingLevel: Int)
+  class ClassSymbol private[Symbols] (coord: Coord, val compUnitInfo: CompilationUnitInfo | Null, id: Int, nestingLevel: Int)
     extends Symbol(coord, id, nestingLevel) {
 
     type ThisName = TypeName
@@ -452,9 +472,9 @@ object Symbols {
     }
 
     /** The source or class file from which this class was generated, null if not applicable. */
-    override def associatedFile(using Context): AbstractFile | Null =
-      if assocFile != null || this.is(Package) || this.owner.is(Package) then assocFile
-      else super.associatedFile
+    override def compilationUnitInfo(using Context): CompilationUnitInfo | Null =
+      if compUnitInfo != null || this.is(Package) || this.owner.is(Package) then compUnitInfo
+      else super.compilationUnitInfo
 
     private var mySource: SourceFile = NoSource
 
@@ -462,10 +482,16 @@ object Symbols {
       if !mySource.exists && !denot.is(Package) then
         // this allows sources to be added in annotations after `sourceOfClass` is first called
         val file = associatedFile
-        if file != null && file.extension != "class" then
+        if file != null && !file.isScalaBinary then
           mySource = ctx.getSource(file)
         else
           mySource = defn.patchSource(this)
+          if !mySource.exists then
+            val compUnitInfo = compilationUnitInfo
+            if compUnitInfo != null then
+              compUnitInfo.tastyInfo.flatMap(_.attributes.sourceFile) match
+                case Some(path) => mySource = ctx.getSource(path)
+                case _ =>
           if !mySource.exists then
             mySource = atPhaseNoLater(flattenPhase) {
               denot.topLevelClass.unforcedAnnotation(defn.SourceFileAnnot) match
@@ -484,7 +510,7 @@ object Symbols {
   }
 
   @sharable object NoSymbol extends Symbol(NoCoord, 0, 0) {
-    override def associatedFile(using Context): AbstractFile | Null = NoSource.file
+    override def compilationUnitInfo(using Context): CompilationUnitInfo | Null = CompilationUnitInfo(NoSource.file)
     override def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = NoDenotation
   }
 
@@ -533,9 +559,9 @@ object Symbols {
       infoFn: ClassSymbol => Type,
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
-      assocFile: AbstractFile | Null = null)(using Context): ClassSymbol
+      compUnitInfo: CompilationUnitInfo | Null = null)(using Context): ClassSymbol
   = {
-    val cls = new ClassSymbol(coord, assocFile, ctx.base.nextSymId, ctx.nestingLevel)
+    val cls = new ClassSymbol(coord, compUnitInfo, ctx.base.nextSymId, ctx.nestingLevel)
     val denot = SymDenotation(cls, owner, name, flags, infoFn(cls), privateWithin)
     cls.denot = denot
     cls
@@ -551,11 +577,11 @@ object Symbols {
       selfInfo: Type = NoType,
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
-      assocFile: AbstractFile | Null = null)(using Context): ClassSymbol =
+      compUnitInfo: CompilationUnitInfo | Null = null)(using Context): ClassSymbol =
     newClassSymbol(
         owner, name, flags,
         ClassInfo(owner.thisType, _, parents, decls, selfInfo),
-        privateWithin, coord, assocFile)
+        privateWithin, coord, compUnitInfo)
 
   /** Same as `newCompleteClassSymbol` except that `parents` can be a list of arbitrary
    *  types which get normalized into type refs and parameter bindings.
@@ -568,7 +594,7 @@ object Symbols {
       selfInfo: Type = NoType,
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
-      assocFile: AbstractFile | Null = null)(using Context): ClassSymbol = {
+      compUnitInfo: CompilationUnitInfo | Null = null)(using Context): ClassSymbol = {
     def completer = new LazyType {
       def complete(denot: SymDenotation)(using Context): Unit = {
         val cls = denot.asClass.classSymbol
@@ -576,7 +602,7 @@ object Symbols {
         denot.info = ClassInfo(owner.thisType, cls, parentTypes.map(_.dealias), decls, selfInfo)
       }
     }
-    newClassSymbol(owner, name, flags, completer, privateWithin, coord, assocFile)
+    newClassSymbol(owner, name, flags, completer, privateWithin, coord, compUnitInfo)
   }
 
   def newRefinedClassSymbol(coord: Coord = NoCoord)(using Context): ClassSymbol =
@@ -594,7 +620,7 @@ object Symbols {
       infoFn: (TermSymbol, ClassSymbol) => Type, // typically a ModuleClassCompleterWithDecls
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
-      assocFile: AbstractFile | Null = null)(using Context): TermSymbol
+      compUnitInfo: CompilationUnitInfo | Null = null)(using Context): TermSymbol
   = {
     val base = owner.thisType
     val modclsFlags = clsFlags | ModuleClassCreationFlags
@@ -602,7 +628,7 @@ object Symbols {
     val module = newSymbol(
       owner, name, modFlags | ModuleValCreationFlags, NoCompleter, privateWithin, coord)
     val modcls = newClassSymbol(
-      owner, modclsName, modclsFlags, infoFn(module, _), privateWithin, coord, assocFile)
+      owner, modclsName, modclsFlags, infoFn(module, _), privateWithin, coord, compUnitInfo)
     module.info =
       if (modcls.isCompleted) TypeRef(owner.thisType, modcls)
       else new ModuleCompleter(modcls)
@@ -623,12 +649,12 @@ object Symbols {
       decls: Scope,
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
-      assocFile: AbstractFile | Null = null)(using Context): TermSymbol =
+      compUnitInfo: CompilationUnitInfo | Null = null)(using Context): TermSymbol =
     newModuleSymbol(
         owner, name, modFlags, clsFlags,
         (module, modcls) => ClassInfo(
           owner.thisType, modcls, parents, decls, TermRef(owner.thisType, module)),
-        privateWithin, coord, assocFile)
+        privateWithin, coord, compUnitInfo)
 
   /** Same as `newCompleteModuleSymbol` except that `parents` can be a list of arbitrary
    *  types which get normalized into type refs and parameter bindings.
@@ -642,7 +668,7 @@ object Symbols {
       decls: Scope,
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
-      assocFile: AbstractFile | Null = null)(using Context): TermSymbol = {
+      compUnitInfo: CompilationUnitInfo | Null = null)(using Context): TermSymbol = {
     def completer(module: Symbol) = new LazyType {
       def complete(denot: SymDenotation)(using Context): Unit = {
         val cls = denot.asClass.classSymbol
@@ -653,7 +679,7 @@ object Symbols {
     newModuleSymbol(
         owner, name, modFlags, clsFlags,
         (module, modcls) => completer(module),
-        privateWithin, coord, assocFile)
+        privateWithin, coord, compUnitInfo)
   }
 
   /** Create a package symbol with associated package class
@@ -693,17 +719,17 @@ object Symbols {
   /** Create a stub symbol that will issue a missing reference error
    *  when attempted to be completed.
    */
-  def newStubSymbol(owner: Symbol, name: Name, file: AbstractFile | Null = null)(using Context): Symbol = {
+  def newStubSymbol(owner: Symbol, name: Name, compUnitInfo: CompilationUnitInfo | Null = null)(using Context): Symbol = {
     def stubCompleter = new StubInfo()
     val normalizedOwner = if (owner.is(ModuleVal)) owner.moduleClass else owner
-    typr.println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
+    typr.println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, compilation unit = $compUnitInfo")
     typr.println(s"decls = ${normalizedOwner.unforcedDecls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
     //if (base.settings.debug.value) throw new Error()
     val stub = name match {
       case name: TermName =>
-        newModuleSymbol(normalizedOwner, name, EmptyFlags, EmptyFlags, stubCompleter, assocFile = file)
+        newModuleSymbol(normalizedOwner, name, EmptyFlags, EmptyFlags, stubCompleter, compUnitInfo = compUnitInfo)
       case name: TypeName =>
-        newClassSymbol(normalizedOwner, name, EmptyFlags, stubCompleter, assocFile = file)
+        newClassSymbol(normalizedOwner, name, EmptyFlags, stubCompleter, compUnitInfo = compUnitInfo)
     }
     stub
   }

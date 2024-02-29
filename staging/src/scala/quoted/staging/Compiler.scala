@@ -26,9 +26,9 @@ object Compiler:
   def make(appClassloader: ClassLoader)(implicit settings: Settings): Compiler =
     new Compiler:
 
-      private[this] val driver: QuoteDriver = new QuoteDriver(appClassloader)
+      private val driver: QuoteDriver = new QuoteDriver(appClassloader)
 
-      private[this] var running = false
+      private var running = false
 
       def run[T](exprBuilder: Quotes => Expr[T]): T = synchronized {
         try

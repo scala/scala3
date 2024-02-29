@@ -1,29 +1,30 @@
 package dotty.tools.dotc.quoted
 
-import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.ast.{TreeTypeMap, tpd}
-import dotty.tools.dotc.config.Printers._
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.config.Printers.*
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.*
+import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Mode
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.core.tasty.{ PositionPickler, TastyPickler, TastyPrinter, TreePickler }
+import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.core.tasty.{ PositionPickler, TastyPickler, TastyPrinter, TreePickler, Attributes }
 import dotty.tools.dotc.core.tasty.DottyUnpickler
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
 import dotty.tools.dotc.report
 import dotty.tools.dotc.reporting.Message
 
 import scala.quoted.Quotes
-import scala.quoted.runtime.impl._
+import scala.quoted.runtime.impl.*
 
 import scala.collection.mutable
 
-import QuoteUtils._
+import QuoteUtils.*
+import dotty.tools.io.NoAbstractFile
 
 object PickledQuotes {
-  import tpd._
+  import tpd.*
 
   /** Pickle the tree of the quote into strings */
   def pickleQuote(tree: Tree)(using Context): List[String] =
@@ -81,12 +82,12 @@ object PickledQuotes {
 
   /** Unpickle the tree contained in the TastyExpr */
   def unpickleTerm(pickled: String | List[String], typeHole: TypeHole, termHole: ExprHole)(using Context): Tree = {
-    val unpickled = withMode(Mode.ReadPositions)(unpickle(pickled, isType = false))
-    val Inlined(call, Nil, expansion) = unpickled: @unchecked
-    val inlineCtx = inlineContext(call)
-    val expansion1 = spliceTypes(expansion, typeHole)(using inlineCtx)
-    val expansion2 = spliceTerms(expansion1, typeHole, termHole)(using inlineCtx)
-    cpy.Inlined(unpickled)(call, Nil, expansion2)
+    withMode(Mode.ReadPositions)(unpickle(pickled, isType = false)) match
+      case tree @ Inlined(call, Nil, expansion) =>
+        val inlineCtx = inlineContext(tree)
+        val expansion1 = spliceTypes(expansion, typeHole)(using inlineCtx)
+        val expansion2 = spliceTerms(expansion1, typeHole, termHole)(using inlineCtx)
+        cpy.Inlined(tree)(call, Nil, expansion2)
   }
 
 
@@ -98,7 +99,7 @@ object PickledQuotes {
 
   /** Replace all term holes with the spliced terms */
   private def spliceTerms(tree: Tree, typeHole: TypeHole, termHole: ExprHole)(using Context): Tree = {
-    def evaluateHoles = new TreeMap {
+    def evaluateHoles = new TreeMapWithPreciseStatContexts {
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
         case Hole(isTerm, idx, args, _) =>
           inContext(SpliceScope.contextWithNewSpliceScope(tree.sourcePos)) {
@@ -217,7 +218,7 @@ object PickledQuotes {
   private def pickle(tree: Tree)(using Context): Array[Byte] = {
     quotePickling.println(i"**** pickling quote of\n$tree")
     val pickler = new TastyPickler(defn.RootClass)
-    val treePkl = new TreePickler(pickler)
+    val treePkl = new TreePickler(pickler, Attributes.empty)
     treePkl.pickle(tree :: Nil)
     treePkl.compactify()
     if tree.span.exists then
@@ -268,7 +269,7 @@ object PickledQuotes {
           quotePickling.println(s"**** unpickling quote from TASTY\n${TastyPrinter.showContents(bytes, ctx.settings.color.value == "never")}")
 
           val mode = if (isType) UnpickleMode.TypeTree else UnpickleMode.Term
-          val unpickler = new DottyUnpickler(bytes, mode)
+          val unpickler = new DottyUnpickler(NoAbstractFile, bytes, mode)
           unpickler.enter(Set.empty)
 
           val tree = unpickler.tree

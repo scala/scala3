@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package core
 
-import Types._, Symbols._, Contexts._
+import Types.*, Symbols.*, Contexts.*
 import cc.CaptureSet.IdempotentCaptRefMap
 
 /** Substitution operations on types. See the corresponding `subst` and
@@ -165,7 +165,7 @@ object Substituters:
 
   final class SubstBindingMap(from: BindingType, to: BindingType)(using Context) extends DeepTypeMap, BiTypeMap {
     def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
-    def inverse(tp: Type): Type = tp.subst(to, from)
+    def inverse = SubstBindingMap(to, from)
   }
 
   final class Subst1Map(from: Symbol, to: Type)(using Context) extends DeepTypeMap {
@@ -182,14 +182,14 @@ object Substituters:
 
   final class SubstSymMap(from: List[Symbol], to: List[Symbol])(using Context) extends DeepTypeMap, BiTypeMap {
     def apply(tp: Type): Type = substSym(tp, from, to, this)(using mapCtx)
-    def inverse(tp: Type) = tp.substSym(to, from) // implicitly requires that `to` contains no duplicates.
+    def inverse = SubstSymMap(to, from) // implicitly requires that `to` contains no duplicates.
   }
 
   final class SubstThisMap(from: ClassSymbol, to: Type)(using Context) extends DeepTypeMap {
     def apply(tp: Type): Type = substThis(tp, from, to, this)(using mapCtx)
   }
 
-  final class SubstRecThisMap(from: Type, to: Type)(using Context) extends DeepTypeMap {
+  final class SubstRecThisMap(from: Type, to: Type)(using Context) extends DeepTypeMap, IdempotentCaptRefMap {
     def apply(tp: Type): Type = substRecThis(tp, from, to, this)(using mapCtx)
   }
 

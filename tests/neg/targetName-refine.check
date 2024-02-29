@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/targetName-refine.scala:7:27 --------------------------------------------------
+7 |val x: T { def f: Int } = C() // error
+  |                          ^^^
+  |                          Found:    C
+  |                          Required: T{def f: Int}
+  |
+  | longer explanation available when compiling with `-explain`

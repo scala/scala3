@@ -12,10 +12,12 @@ import xsbti.Position;
 
 import java.io.File;
 import java.util.Optional;
+import java.util.function.Function;
 
 public class PositionBridge implements Position {
   private final SourcePosition pos;
   private final SourceFile src;
+  private final String pathId;
 
   public static final Position noPosition = new Position() {
     public Optional<java.io.File> sourceFile() {
@@ -45,9 +47,10 @@ public class PositionBridge implements Position {
     }
   };
 
-  public PositionBridge(SourcePosition pos, SourceFile src) {
+  public PositionBridge(SourcePosition pos, String path) {
     this.pos = pos;
-    this.src = src;
+    this.src = pos.source();
+    this.pathId = path;
   }
 
   @Override
@@ -82,17 +85,7 @@ public class PositionBridge implements Position {
 
   @Override
   public Optional<String> sourcePath() {
-    if (!src.exists())
-      return Optional.empty();
-
-    AbstractFile sourceFile = pos.source().file();
-    if (sourceFile instanceof ZincPlainFile) {
-      return Optional.of(((ZincPlainFile) sourceFile).underlying().id());
-    } else if (sourceFile instanceof ZincVirtualFile) {
-      return Optional.of(((ZincVirtualFile) sourceFile).underlying().id());
-    } else {
-      return Optional.of(sourceFile.path());
-    }
+    return Optional.of(pathId);
   }
 
   @Override
@@ -131,7 +124,7 @@ public class PositionBridge implements Position {
     else
       return path;
   }
-  
+
   @Override
   public Optional<Integer> startOffset() {
     if (src.content().length == 0)

@@ -1,4 +1,4 @@
-object leakWarm {
+class leakWarm {
     abstract class A(tag: Int) {
         class B(x: Int) {
             val y = x

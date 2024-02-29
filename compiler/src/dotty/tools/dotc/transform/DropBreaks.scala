@@ -6,9 +6,9 @@ import ast.{Trees, tpd}
 import core.*
 import Decorators.*
 import NameKinds.BoundaryName
-import MegaPhase._
-import Types._, Contexts._, Flags._, DenotTransformers._
-import Symbols._, StdNames._, Trees._
+import MegaPhase.*
+import Types.*, Contexts.*, Flags.*, DenotTransformers.*
+import Symbols.*, StdNames.*, Trees.*
 import util.Property
 import Constants.Constant
 import Flags.MethodOrLazy
@@ -41,7 +41,7 @@ object DropBreaks:
 class DropBreaks extends MiniPhase:
   import DropBreaks.*
 
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = DropBreaks.name
 
@@ -122,7 +122,7 @@ class DropBreaks extends MiniPhase:
           case id: Ident =>
             val arg = (args: @unchecked) match
               case arg :: Nil => arg
-              case Nil => Literal(Constant(())).withSpan(tree.span)
+              case Nil => unitLiteral.withSpan(tree.span)
             Some((id.symbol, arg))
           case _ => None
       case _ => None

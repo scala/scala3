@@ -4,9 +4,9 @@ package core
 import scala.collection.mutable
 import scala.annotation.switch
 import scala.annotation.internal.sharable
-import Names._
-import Symbols._
-import Contexts._
+import Names.*
+import Symbols.*
+import Contexts.*
 
 object StdNames {
 
@@ -34,7 +34,6 @@ object StdNames {
     inline val MODULE_INSTANCE_FIELD      = "MODULE$"
 
     inline val Function                   = "Function"
-    inline val ErasedFunction             = "ErasedFunction"
     inline val ContextFunction            = "ContextFunction"
     inline val ErasedContextFunction      = "ErasedContextFunction"
     inline val AbstractFunction           = "AbstractFunction"
@@ -121,6 +120,7 @@ object StdNames {
     val BITMAP_TRANSIENT: N           = s"${BITMAP_PREFIX}trans$$"    // initialization bitmap for transient lazy vals
     val BITMAP_CHECKINIT: N           = s"${BITMAP_PREFIX}init$$"      // initialization bitmap for checkinit values
     val BITMAP_CHECKINIT_TRANSIENT: N = s"${BITMAP_PREFIX}inittrans$$" // initialization bitmap for transient checkinit values
+    val CC_REACH: N                   = "$reach"
     val DEFAULT_GETTER: N             = str.DEFAULT_GETTER
     val DEFAULT_GETTER_INIT: N        = "$lessinit$greater"
     val DO_WHILE_PREFIX: N            = "doWhile$"
@@ -177,6 +177,7 @@ object StdNames {
     final val typeTag: N    = "typeTag"
     final val Expr: N       = "Expr"
     final val String: N     = "String"
+    final val Option: N     = "Option"
     final val Annotation: N = "Annotation"
 
     // fictions we use as both types and terms
@@ -213,7 +214,6 @@ object StdNames {
     final val Throwable: N           = "Throwable"
     final val IOOBException: N       = "IndexOutOfBoundsException"
     final val FunctionXXL: N         = "FunctionXXL"
-    final val ErasedFunction: N      = "ErasedFunction"
 
     final val Abs: N                  = "Abs"
     final val And: N                  = "&&"
@@ -299,6 +299,7 @@ object StdNames {
     val SELF: N                     = "$this"
     val SKOLEM: N                   = "<skolem>"
     val TRAIT_CONSTRUCTOR: N        = "$init$"
+    val TRY_BLOCK: N                = "<try block>"
     val THROWS: N                   = "$throws"
     val U2EVT: N                    = "u2evt$"
     val ALLARGS: N                  = "$allArgs"
@@ -394,6 +395,7 @@ object StdNames {
     val UNIT : N                = "UNIT"
     val acc: N                  = "acc"
     val adhocExtensions: N      = "adhocExtensions"
+    val andThen: N              = "andThen"
     val annotation: N           = "annotation"
     val any2stringadd: N        = "any2stringadd"
     val anyHash: N              = "anyHash"
@@ -432,6 +434,7 @@ object StdNames {
     val bytes: N                = "bytes"
     val canEqual_ : N           = "canEqual"
     val canEqualAny : N         = "canEqualAny"
+    val capIn: N                = "capIn"
     val caps: N                 = "caps"
     val captureChecking: N      = "captureChecking"
     val checkInitialized: N     = "checkInitialized"
@@ -442,11 +445,13 @@ object StdNames {
     val command: N              = "command"
     val common: N               = "common"
     val compiletime : N         = "compiletime"
+    val compose: N              = "compose"
     val conforms_ : N           = "$conforms"
     val contents: N             = "contents"
     val copy: N                 = "copy"
-    val currentMirror: N        = "currentMirror"
     val create: N               = "create"
+    val currentMirror: N        = "currentMirror"
+    val curried: N              = "curried"
     val definitions: N          = "definitions"
     val delayedInit: N          = "delayedInit"
     val delayedInitArg: N       = "delayedInit$body"
@@ -621,6 +626,7 @@ object StdNames {
     val transparent : N         = "transparent"
     val tree : N                = "tree"
     val true_ : N               = "true"
+    val tupled: N               = "tupled"
     val typedProductIterator: N = "typedProductIterator"
     val typeTagToManifest: N    = "typeTagToManifest"
     val unapply: N              = "unapply"

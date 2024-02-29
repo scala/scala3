@@ -52,7 +52,8 @@ class Pair[+A, +B](x: A, y: B):
 def test2(ct: CanThrow[Exception], fs: FileSystem) =
   def x: Int ->{ct} String = ???
   def y: Logger^{fs} = ???
-  def p = Pair(x, y)
+  def p = Pair[Int ->{ct} String, Logger^{fs}](x, y)
+  def p3 = Pair(x, y)
   def f = () => p.fst
 
 

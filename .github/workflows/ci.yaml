@@ -18,6 +18,8 @@ on:
       - '*'
     branches-ignore:
       - 'gh-readonly-queue/**'
+      - 'release-**'
+      - 'lts-**'
   pull_request:
   merge_group:
   schedule:
@@ -70,13 +72,13 @@ jobs:
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -121,26 +123,71 @@ jobs:
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Cmd Tests
         run: |
-          ./project/scripts/sbt ";dist/pack; scala3-bootstrapped/compile; scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/* ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test; scala3-compiler-bootstrapped/scala3CompilerCoursierTest:test"
+          ./project/scripts/sbt ";dist/pack; scala3-bootstrapped/compile; scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/* ;scala2-library-tasty-tests/run ;scala2-library-tasty-tests/test; scala3-compiler-bootstrapped/scala3CompilerCoursierTest:test"
           ./project/scripts/cmdTests
           ./project/scripts/bootstrappedOnlyCmdTests
 
       - name: Scala.js Test
         run: |
           ./project/scripts/sbt ";sjsSandbox/run ;sjsSandbox/test ;sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
+
+      - name: Test with Scala 2 library TASTy (fast)
+        run: ./project/scripts/sbt ";set ThisBuild/Build.useScala2LibraryTasty := true ;scala3-bootstrapped/testCompilation i5; scala3-bootstrapped/testCompilation tests/run/typelevel-peano.scala; scala3-bootstrapped/testOnly dotty.tools.backend.jvm.DottyBytecodeTests" # only test a subset of test to avoid doubling the CI execution time
+
+  test_scala2_library_tasty:
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2021-03-22
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+         || (
+           github.event_name == 'pull_request'
+           && contains(github.event.pull_request.body, '[test_scala2_library_tasty]')
+         )
+         || (
+           github.event_name == 'workflow_dispatch'
+           && github.repository == 'lampepfl/dotty'
+         )"
+
+    steps:
+      - name: Set JDK 16 as default
+        run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
+
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
+      - name: Checkout cleanup script
+        uses: actions/checkout@v4
+
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
+      - name: Test with Scala 2 library TASTy
+        run: ./project/scripts/sbt ";set ThisBuild/Build.useScala2LibraryTasty := true ;scala3-bootstrapped/test"
+
 
   test_windows_fast:
     runs-on: [self-hosted, Windows]
@@ -161,7 +208,7 @@ jobs:
         shell: cmd
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Test
         run: sbt ";scala3-bootstrapped/compile"
@@ -203,7 +250,7 @@ jobs:
         shell: cmd
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Test
         run: sbt ";dist/pack ;scala3-bootstrapped/compile ;scala3-bootstrapped/test"
@@ -240,20 +287,25 @@ jobs:
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: MiMa
         run: |
-          ./project/scripts/sbt ";scala3-interfaces/mimaReportBinaryIssues ;scala3-library-bootstrapped/mimaReportBinaryIssues ;scala3-library-bootstrappedJS/mimaReportBinaryIssues; tasty-core-bootstrapped/mimaReportBinaryIssues"
+          ./project/scripts/sbt ";scala3-interfaces/mimaReportBinaryIssues ;scala3-library-bootstrapped/mimaReportBinaryIssues ;scala3-library-bootstrappedJS/mimaReportBinaryIssues; tasty-core-bootstrapped/mimaReportBinaryIssues; scala2-library-bootstrapped/mimaReportBinaryIssues"
+
+      - name: TASTy MiMa
+        run: |
+          # This script cleans the compiler and recompiles it from scratch (keep as last run)
+          ./project/scripts/scala2-library-tasty-mima.sh
 
   community_build_a:
     runs-on: [self-hosted, Linux]
@@ -283,13 +335,13 @@ jobs:
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -332,13 +384,13 @@ jobs:
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -381,13 +433,13 @@ jobs:
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -428,13 +480,13 @@ jobs:
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -475,20 +527,20 @@ jobs:
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Test
         run: |
-          ./project/scripts/sbt ";dist/pack ;scala3-bootstrapped/compile ;scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/* ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test"
+          ./project/scripts/sbt ";dist/pack ;scala3-bootstrapped/compile ;scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/* ;scala2-library-tasty-tests/run ;scala2-library-tasty-tests/test"
           ./project/scripts/cmdTests
           ./project/scripts/bootstrappedOnlyCmdTests
 
@@ -519,13 +571,13 @@ jobs:
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -573,13 +625,13 @@ jobs:
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -623,13 +675,13 @@ jobs:
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -696,7 +748,7 @@ jobs:
     if: "failure() && github.event_name == 'schedule'"
     steps:
       - name: Checkout issue template
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Open an issue
         uses: JasonEtco/create-an-issue@v2

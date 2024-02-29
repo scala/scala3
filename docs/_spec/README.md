@@ -1,6 +1,6 @@
 # WIP Scala 3 Language Specification
 
-**This is still a work in progress, and should *not* be regarded as a source of truth.**
+**This is still a work in progress. There are still Scala 3 features missing, as well as some areas that have not been updated since 2.13 yet.**
 
 First of all, the language specification is meant to be correct, precise and clear.
 
@@ -25,8 +25,8 @@ To preview locally, run the following commands in the docs/_spec subfolder:
 env UID="$(id -u)" GID="$(id -g)" docker-compose up
 ```
 
-and open http://0.0.0.0:4000/files/archive/spec/2.13/ to view the spec. Jekyll will rebuild as you edit the markdown, but make sure to restart it when you change `_config.yml`.
-<!-- 
+and open http://0.0.0.0:4000/files/archive/spec/3.4/ to view the spec. Jekyll will rebuild as you edit the markdown, but make sure to restart it when you change `_config.yml`.
+<!--
 To preview locally, run the following commands in the root of your checkout scala/scala:
 `bundle install` to install Jekyll and `bundle exec jekyll serve -d build/spec/ -s spec/ -w --baseurl=""` to start it,
 and open http://0.0.0.0:4000/ to view the spec. Jekyll will rebuild as you edit the markdown, but make sure to restart it when you change `_config.yml`.

@@ -12,14 +12,14 @@ trait U {
   val f2: Int
 }
 
-object Test0 extends U {
+class Test0 extends U {
   final val f1 = 1
   final val f2 = 2
   final val f3 = f1 + f2
   val f4: 3 = f3
 }
 
-object Test1 extends U {
+class Test1 extends U {
   final val f1 = 1
   final val f3 = f1 + f2
   final val f2 = 2
@@ -28,7 +28,7 @@ object Test1 extends U {
 
 }
 
-object Test extends T {
+class Test extends T {
  override final val f1 = /*super.f1*/ 1 + f2  // error
  override final val f2 = 2                    // error
  override final val f3 = {println(3); 3}      // error
@@ -37,7 +37,7 @@ object Test extends T {
  def g: 3 = { println("g"); 3 }
  final val x = g + 1
  def main(args: Array[String]): Unit = {
-   Test0
-   Test1
+   new Test0
+   new Test1
  }
 }

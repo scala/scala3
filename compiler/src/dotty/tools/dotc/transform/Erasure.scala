@@ -2,39 +2,38 @@ package dotty.tools
 package dotc
 package transform
 
-import core.Phases._
-import core.DenotTransformers._
-import core.Denotations._
-import core.SymDenotations._
-import core.Symbols._
-import core.Contexts._
-import core.Types._
-import core.Names._
-import core.StdNames._
-import core.NameOps._
+import core.Phases.*
+import core.DenotTransformers.*
+import core.Denotations.*
+import core.SymDenotations.*
+import core.Symbols.*
+import core.Contexts.*
+import core.Types.*
+import core.Names.*
+import core.StdNames.*
+import core.NameOps.*
 import core.NameKinds.{AdaptedClosureName, BodyRetainerName, DirectMethName}
 import core.Scopes.newScopeWith
-import core.Decorators._
-import core.Constants._
-import core.Definitions._
+import core.Decorators.*
+import core.Constants.*
+import core.Definitions.*
 import core.Annotations.BodyAnnotation
 import typer.NoChecking
 import inlines.Inlines
-import typer.ProtoTypes._
+import typer.ProtoTypes.*
 import typer.ErrorReporting.errorTree
 import typer.Checking.checkValue
-import core.TypeErasure._
-import core.Decorators._
+import core.TypeErasure.*
+import core.Decorators.*
 import dotty.tools.dotc.ast.{tpd, untpd}
 import ast.TreeTypeMap
 import dotty.tools.dotc.core.{Constants, Flags}
-import ValueClasses._
-import TypeUtils._
-import ContextFunctionResults._
-import ExplicitOuter._
+import ValueClasses.*
+import ContextFunctionResults.*
+import ExplicitOuter.*
 import core.Mode
 import util.Property
-import reporting._
+import reporting.*
 
 class Erasure extends Phase with DenotTransformer {
 
@@ -190,18 +189,20 @@ class Erasure extends Phase with DenotTransformer {
   def assertErased(tp: Type, tree: tpd.Tree = tpd.EmptyTree)(using Context): Unit = {
     def isAllowed(cls: Symbol, sourceName: String) =
       tp.typeSymbol == cls && ctx.compilationUnit.source.file.name == sourceName
-    assert(isErasedType(tp) ||
-           isAllowed(defn.ArrayClass, "Array.scala") ||
-           isAllowed(defn.TupleClass, "Tuple.scala") ||
-           isAllowed(defn.NonEmptyTupleClass, "Tuple.scala") ||
-           isAllowed(defn.PairClass, "Tuple.scala"),
-        i"The type $tp - ${tp.toString} of class ${tp.getClass} of tree $tree : ${tree.tpe} / ${tree.getClass} is illegal after erasure, phase = ${ctx.phase.prev}")
+    assert(
+      isErasedType(tp)
+      || isAllowed(defn.ArrayClass, "Array.scala")
+      || isAllowed(defn.TupleClass, "Tuple.scala")
+      || isAllowed(defn.NonEmptyTupleClass, "Tuple.scala")
+      || isAllowed(defn.PairClass, "Tuple.scala")
+      || isAllowed(defn.PureClass, "Pure.scala"),
+      i"The type $tp - ${tp.toString} of class ${tp.getClass} of tree $tree : ${tree.tpe} / ${tree.getClass} is illegal after erasure, phase = ${ctx.phase.prev}")
   }
 }
 
 object Erasure {
-  import tpd._
-  import TypeTestsCasts._
+  import tpd.*
+  import TypeTestsCasts.*
 
   val name: String = "erasure"
   val description: String = "rewrite types to JVM model"
@@ -317,7 +318,7 @@ object Erasure {
           cast(tree1, pt)
         case _ =>
           val cls = pt.classSymbol
-          if (cls eq defn.UnitClass) constant(tree, Literal(Constant(())))
+          if (cls eq defn.UnitClass) constant(tree, unitLiteral)
           else {
             assert(cls ne defn.ArrayClass)
             ref(unboxMethod(cls.asClass)).appliedTo(tree)
@@ -539,7 +540,7 @@ object Erasure {
   end Boxing
 
   class Typer(erasurePhase: DenotTransformer) extends typer.ReTyper with NoChecking {
-    import Boxing._
+    import Boxing.*
 
     def isErased(tree: Tree)(using Context): Boolean = tree match {
       case TypeApply(Select(qual, _), _) if tree.symbol == defn.Any_typeCast =>
@@ -678,9 +679,7 @@ object Erasure {
           inContext(preErasureCtx) {
             val qualTp = tree.qualifier.typeOpt.widen
             if qualTp.derivesFrom(defn.PolyFunctionClass) then
-              erasePolyFunctionApply(qualTp.select(nme.apply).widen).classSymbol
-            else if defn.isErasedFunctionType(qualTp) then
-              eraseErasedFunctionApply(qualTp.select(nme.apply).widen.asInstanceOf[MethodType]).classSymbol
+              eraseRefinedFunctionApply(qualTp.select(nme.apply).widen).classSymbol
             else
               NoSymbol
           }
@@ -762,7 +761,9 @@ object Erasure {
         val symIsPrimitive = sym.owner.isPrimitiveValueClass
 
         def originalQual: Type =
-          erasure(tree.qualifier.typeOpt.widen.finalResultType)
+          erasure(
+            inContext(preErasureCtx):
+              tree.qualifier.typeOpt.widen.finalResultType)
 
         if (qualIsPrimitive && !symIsPrimitive || qual.tpe.widenDealias.isErasedValueType)
           recur(box(qual))
@@ -822,6 +823,11 @@ object Erasure {
       }
     }
 
+    override def typedBind(tree: untpd.Bind, pt: Type)(using Context): Bind =
+      atPhase(erasurePhase):
+        checkBind(promote(tree))
+      super.typedBind(tree, pt)
+
     /** Besides normal typing, this method does uncurrying and collects parameters
      *  to anonymous functions of arity > 22.
      */
@@ -867,7 +873,7 @@ object Erasure {
 
           app(fun1)
         case t =>
-          if ownArgs.isEmpty then fun1
+          if ownArgs.isEmpty || t.isError then fun1
           else throw new MatchError(i"tree $tree has unexpected type of function $fun/$fun1: $t, was $origFunType, args = $ownArgs")
     end typedApply
 

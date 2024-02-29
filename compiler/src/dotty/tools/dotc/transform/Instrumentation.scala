@@ -2,15 +2,17 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
-import Contexts._
-import Symbols._
-import Flags._
+import core.*
+import Contexts.*
+import Symbols.*
+import Flags.*
 
-import Decorators._
-import MegaPhase._
-import Names._
+import Decorators.*
+import MegaPhase.*
+import Names.*
 import Constants.Constant
+
+import scala.compiletime.uninitialized
 
 
 /** The phase is enabled if the -Yinstrument option is set.
@@ -18,7 +20,7 @@ import Constants.Constant
  *  It does this by generating a call to dotty.tools.dotc.util.Stats.doRecord.
  */
 class Instrumentation extends MiniPhase { thisPhase =>
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = Instrumentation.name
 
@@ -40,11 +42,11 @@ class Instrumentation extends MiniPhase { thisPhase =>
     "::", "+=", "toString", "newArray", "box", "toCharArray", "termName", "typeName",
     "slice", "staticRef", "requiredClass")
 
-  private var namesToRecord: Set[Name] = _
-  private var collectionNamesToRecord: Set[Name] = _
-  private var Stats_doRecord: Symbol = _
-  private var Stats_doRecordSize: Symbol = _
-  private var CollectionIterableClass: ClassSymbol = _
+  private var namesToRecord: Set[Name] = uninitialized
+  private var collectionNamesToRecord: Set[Name] = uninitialized
+  private var Stats_doRecord: Symbol = uninitialized
+  private var Stats_doRecordSize: Symbol = uninitialized
+  private var CollectionIterableClass: ClassSymbol = uninitialized
 
   override def prepareForUnit(tree: Tree)(using Context): Context =
     namesToRecord = namesOfInterest.map(_.toTermName).toSet

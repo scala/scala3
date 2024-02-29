@@ -1,12 +1,12 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import MegaPhase._
-import Contexts._
-import Symbols._
-import Types._
-import StdNames._
+import core.*
+import MegaPhase.*
+import Contexts.*
+import Symbols.*
+import Types.*
+import StdNames.*
 import dotty.tools.dotc.ast.tpd
 
 
@@ -19,7 +19,7 @@ import scala.collection.immutable.::
  * Additionally it optimizes calls to scala.Array.ofDim functions by replacing them with calls to newArray with specific dimensions
  */
 class ArrayConstructors extends MiniPhase {
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = ArrayConstructors.name
 
@@ -38,10 +38,10 @@ class ArrayConstructors extends MiniPhase {
       val cs = tp.tpe.classSymbol
       tree.fun match {
         case Apply(TypeApply(t: Ident, targ), dims)
-          if !TypeErasure.isGeneric(targ.head.tpe) && !ValueClasses.isDerivedValueClass(cs) =>
+          if !TypeErasure.isGeneric(targ.head.tpe) && !cs.isDerivedValueClass =>
           expand(targ.head.tpe, dims)
         case Apply(TypeApply(t: Select, targ), dims)
-          if !TypeErasure.isGeneric(targ.head.tpe) && !ValueClasses.isDerivedValueClass(cs) =>
+          if !TypeErasure.isGeneric(targ.head.tpe) && !cs.isDerivedValueClass =>
           Block(t.qualifier :: Nil, expand(targ.head.tpe, dims))
         case _ => tree
       }

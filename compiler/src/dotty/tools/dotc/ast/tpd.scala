@@ -4,13 +4,11 @@ package ast
 
 import dotty.tools.dotc.transform.{ExplicitOuter, Erasure}
 import typer.ProtoTypes
-import transform.SymUtils._
-import transform.TypeUtils._
-import core._
+import core.*
 import Scopes.newScope
-import util.Spans._, Types._, Contexts._, Constants._, Names._, Flags._, NameOps._
-import Symbols._, StdNames._, Annotations._, Trees._, Symbols._
-import Decorators._, DenotTransformers._
+import util.Spans.*, Types.*, Contexts.*, Constants.*, Names.*, Flags.*, NameOps.*
+import Symbols.*, StdNames.*, Annotations.*, Trees.*, Symbols.*
+import Decorators.*, DenotTransformers.*
 import collection.{immutable, mutable}
 import util.{Property, SourceFile}
 import NameKinds.{TempResultName, OuterSelectName}
@@ -18,6 +16,7 @@ import typer.ConstFold
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
+import scala.compiletime.uninitialized
 
 /** Some creators for typed trees */
 object tpd extends Trees.Instance[Type] with TypedTreeInfo {
@@ -57,14 +56,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     case _: RefTree | _: GenericApply =>
       ta.assignType(untpd.TypeApply(fn, args), fn, args)
     case _ =>
-      assert(ctx.reporter.errorsReported)
+      assert(ctx.reporter.errorsReported, s"unexpected tree for type application: $fn")
       ta.assignType(untpd.TypeApply(fn, args), fn, args)
 
   def Literal(const: Constant)(using Context): Literal =
     ta.assignType(untpd.Literal(const))
 
   def unitLiteral(using Context): Literal =
-    Literal(Constant(()))
+    Literal(Constant(())).withAttachment(SyntheticUnit, ())
 
   def nullLiteral(using Context): Literal =
     Literal(Constant(null))
@@ -172,6 +171,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def Quote(body: Tree, tags: List[Tree])(using Context): Quote =
     untpd.Quote(body, tags).withBodyType(body.tpe)
+
+  def QuotePattern(bindings: List[Tree], body: Tree, quotes: Tree, proto: Type)(using Context): QuotePattern =
+    ta.assignType(untpd.QuotePattern(bindings, body, quotes), proto)
 
   def Splice(expr: Tree, tpe: Type)(using Context): Splice =
     untpd.Splice(expr).withType(tpe)
@@ -346,24 +348,27 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   /** An anonymous class
    *
-   *      new parents { forwarders }
+   *      new parents { termForwarders; typeAliases }
    *
-   *  where `forwarders` contains forwarders for all functions in `fns`.
-   *  @param parents    a non-empty list of class types
-   *  @param fns        a non-empty of functions for which forwarders should be defined in the class.
-   *  The class has the same owner as the first function in `fns`.
-   *  Its position is the union of all functions in `fns`.
+   *  @param parents        a non-empty list of class types
+   *  @param termForwarders a non-empty list of forwarding definitions specified by their name and the definition they forward to.
+   *  @param typeMembers    a possibly-empty list of type members specified by their name and their right hand side.
+   *
+   *  The class has the same owner as the first function in `termForwarders`.
+   *  Its position is the union of all symbols in `termForwarders`.
    */
-  def AnonClass(parents: List[Type], fns: List[TermSymbol], methNames: List[TermName])(using Context): Block = {
-    AnonClass(fns.head.owner, parents, fns.map(_.span).reduceLeft(_ union _)) { cls =>
-      def forwarder(fn: TermSymbol, name: TermName) = {
+  def AnonClass(parents: List[Type], termForwarders: List[(TermName, TermSymbol)],
+      typeMembers: List[(TypeName, TypeBounds)] = Nil)(using Context): Block = {
+    AnonClass(termForwarders.head._2.owner, parents, termForwarders.map(_._2.span).reduceLeft(_ union _)) { cls =>
+      def forwarder(name: TermName, fn: TermSymbol) = {
         val fwdMeth = fn.copy(cls, name, Synthetic | Method | Final).entered.asTerm
         for overridden <- fwdMeth.allOverriddenSymbols do
           if overridden.is(Extension) then fwdMeth.setFlag(Extension)
           if !overridden.is(Deferred) then fwdMeth.setFlag(Override)
         DefDef(fwdMeth, ref(fn).appliedToArgss(_))
       }
-      fns.lazyZip(methNames).map(forwarder)
+      termForwarders.map((name, sym) => forwarder(name, sym)) ++
+      typeMembers.map((name, info) => TypeDef(newSymbol(cls, name, Synthetic, info).entered))
     }
   }
 
@@ -407,7 +412,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case pre: ThisType =>
         tp.isType ||
         pre.cls.isStaticOwner ||
-        tp.symbol.isParamOrAccessor && !pre.cls.is(Trait) && ctx.owner.enclosingClass == pre.cls
+        tp.symbol.isParamOrAccessor && !pre.cls.is(Trait) && !tp.symbol.owner.is(Trait) && ctx.owner.enclosingClass == pre.cls
           // was ctx.owner.enclosingClass.derivesFrom(pre.cls) which was not tight enough
           // and was spuriously triggered in case inner class would inherit from outer one
           // eg anonymous TypeMap inside TypeMap.andThen
@@ -745,7 +750,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    override def Inlined(tree: Tree)(call: Tree, bindings: List[MemberDef], expansion: Tree)(using Context): Inlined = {
+    override def Inlined(tree: Inlined)(call: Tree, bindings: List[MemberDef], expansion: Tree)(using Context): Inlined = {
       val tree1 = untpdCpy.Inlined(tree)(call, bindings, expansion)
       tree match {
         case tree: Inlined if sameTypes(bindings, tree.bindings) && (expansion.tpe eq tree.expansion.tpe) =>
@@ -1146,7 +1151,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     def etaExpandCFT(using Context): Tree =
       def expand(target: Tree, tp: Type)(using Context): Tree = tp match
-        case defn.ContextFunctionType(argTypes, resType, _) =>
+        case defn.ContextFunctionType(argTypes, resType) =>
           val anonFun = newAnonFun(
             ctx.owner,
             MethodType.companion(isContextual = true)(argTypes, resType),
@@ -1255,7 +1260,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    */
   private class MapToUnderlying extends TreeMap {
     override def transform(tree: Tree)(using Context): Tree = tree match {
-      case tree: Ident if isBinding(tree.symbol) && skipLocal(tree.symbol) =>
+      case tree: Ident if isBinding(tree.symbol) && skipLocal(tree.symbol) && !tree.symbol.is(Module) =>
         tree.symbol.defTree match {
           case defTree: ValOrDefDef =>
             val rhs = defTree.rhs
@@ -1278,6 +1283,21 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       !(sym.is(Method) && sym.info.isInstanceOf[MethodOrPoly]) // if is a method it is parameterless
   }
 
+  /** A tree traverser that generates the the same import contexts as original typer for statements.
+   *  TODO: Should we align TreeMapWithPreciseStatContexts and also keep track of exprOwners?
+   */
+  abstract class TreeTraverserWithPreciseImportContexts extends TreeTraverser:
+    override def apply(x: Unit, trees: List[Tree])(using Context): Unit =
+      def recur(trees: List[Tree]): Unit = trees match
+        case (imp: Import) :: rest =>
+          traverse(rest)(using ctx.importContext(imp, imp.symbol))
+        case tree :: rest =>
+          traverse(tree)
+          traverse(rest)
+        case Nil =>
+      recur(trees)
+  end TreeTraverserWithPreciseImportContexts
+
   extension (xs: List[tpd.Tree])
     def tpes: List[Type] = xs match {
       case x :: xs1 => x.tpe :: xs1.tpes
@@ -1288,7 +1308,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   trait TreeProvider {
     protected def computeRootTrees(using Context): List[Tree]
 
-    private var myTrees: List[Tree] | Null = _
+    private var myTrees: List[Tree] | Null = uninitialized
 
     /** Get trees defined by this provider. Cache them if -Yretain-trees is set. */
     def rootTrees(using Context): List[Tree] =
@@ -1389,17 +1409,17 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  EmptyTree calls (for parameters) cancel the next-enclosing call in the list instead of being added to it.
    *  We assume parameters are never nested inside parameters.
    */
-  override def inlineContext(call: Tree)(using Context): Context = {
+  override def inlineContext(tree: Inlined)(using Context): Context = {
     // We assume enclosingInlineds is already normalized, and only process the new call with the head.
     val oldIC = enclosingInlineds
 
     val newIC =
-      if call.isEmpty then
+      if tree.inlinedFromOuterScope then
         oldIC match
           case t1 :: ts2 => ts2
           case _ => oldIC
       else
-        call :: oldIC
+        tree.call :: oldIC
 
     val ctx1 = ctx.fresh.setProperty(InlinedCalls, newIC)
     if oldIC.isEmpty then ctx1.setProperty(InlinedTrees, new Counter) else ctx1
@@ -1512,6 +1532,25 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           imported(sym, sel.imported, renamedOpt)
         }
     }
+  }
+
+  /** Creates the tuple containing the given elements */
+  def tupleTree(elems: List[Tree])(using Context): Tree = {
+    val arity = elems.length
+    if arity == 0 then
+      ref(defn.EmptyTupleModule)
+    else if arity <= Definitions.MaxTupleArity then
+      // TupleN[elem1Tpe, ...](elem1, ...)
+      ref(defn.TupleType(arity).nn.typeSymbol.companionModule)
+        .select(nme.apply)
+        .appliedToTypes(elems.map(_.tpe.widenIfUnstable))
+        .appliedToArgs(elems)
+    else
+      // TupleXXL.apply(elems*) // TODO add and use Tuple.apply(elems*) ?
+      ref(defn.TupleXXLModule)
+        .select(nme.apply)
+        .appliedToVarargs(elems.map(_.asInstance(defn.ObjectType)), TypeTree(defn.ObjectType))
+        .asInstance(defn.tupleType(elems.map(elem => elem.tpe.widenIfUnstable)))
   }
 
   /** Creates the tuple type tree representation of the type trees in `ts` */

@@ -9,7 +9,7 @@ trait Z {
 
 class A extends Z {
   type Y <: Tuple2[Any, Any]
-  def unpair[X <: Y]: Head[X] = ""
+  def unpair[X <: Y]: Head[X] = "" // error
   def any[X <: Y]: Any = unpair[X]
 }
 

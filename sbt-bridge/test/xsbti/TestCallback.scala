@@ -1,4 +1,4 @@
-/** Copied from https://github.com/sbt/sbt/blob/0.13/interface/src/test/scala/xsbti/TestCallback.scala */
+// Taken from https://github.com/sbt/zinc/blob/aa1c04f445092e87f76aaceee4da61ea0724419e/internal/zinc-testing/src/main/scala/xsbti/TestCallback.scala
 package xsbti
 
 import java.io.File
@@ -8,61 +8,121 @@ import xsbti.VirtualFileRef
 import xsbti.api.ClassLike
 import xsbti.api.DependencyContext
 import DependencyContext._
-import java.util.EnumSet
+import java.{util => ju}
+import ju.Optional
 
-class TestCallback extends AnalysisCallback
-{
-  case class TestUsedName(name: String, scopes: EnumSet[UseScope])
+class TestCallback extends AnalysisCallback2 {
+  case class TestUsedName(name: String, scopes: ju.EnumSet[UseScope])
+
   val classDependencies = new ArrayBuffer[(String, String, DependencyContext)]
-  val binaryDependencies = new ArrayBuffer[(File, String, String, File, DependencyContext)]
-  val products = new ArrayBuffer[(File, File)]
-  val usedNamesAndScopes = scala.collection.mutable.Map.empty[String, Set[TestUsedName]].withDefaultValue(Set.empty)
-  val classNames = scala.collection.mutable.Map.empty[File, Set[(String, String)]].withDefaultValue(Set.empty)
-  val apis: scala.collection.mutable.Map[File, Seq[ClassLike]] = scala.collection.mutable.Map.empty
+  val binaryDependencies =
+    new ArrayBuffer[(Path, String, String, VirtualFileRef, DependencyContext)]
+  val productClassesToSources =
+    scala.collection.mutable.Map.empty[Path, VirtualFileRef]
+  val usedNamesAndScopes = scala.collection.mutable.Map
+    .empty[String, Set[TestUsedName]]
+    .withDefaultValue(Set.empty)
+  val classNames = scala.collection.mutable.Map
+    .empty[VirtualFileRef, Set[(String, String)]]
+    .withDefaultValue(Set.empty)
+  val apis: scala.collection.mutable.Map[VirtualFileRef, Seq[ClassLike]] =
+    scala.collection.mutable.Map.empty
 
   def usedNames = usedNamesAndScopes.view.mapValues(_.map(_.name)).toMap
 
-  override def startSource(source: File): Unit = {
-    assert(!apis.contains(source), s"startSource can be called only once per source file: $source")
+  override def startSource(source: File): Unit = ???
+  override def startSource(source: VirtualFile): Unit = {
+    assert(
+      !apis.contains(source),
+      s"startSource can be called only once per source file: $source"
+    )
     apis(source) = Seq.empty
   }
-  override def startSource(source: VirtualFile): Unit = ???
 
-  override def binaryDependency(binary: File, name: String, fromClassName: String, source: File, context: DependencyContext): Unit = {
+  override def binaryDependency(
+      binary: File,
+      name: String,
+      fromClassName: String,
+      source: File,
+      context: DependencyContext
+  ): Unit = ???
+  override def binaryDependency(
+      binary: Path,
+      name: String,
+      fromClassName: String,
+      source: VirtualFileRef,
+      context: DependencyContext
+  ): Unit = {
     binaryDependencies += ((binary, name, fromClassName, source, context))
   }
-  override def binaryDependency(binary: Path, name: String, fromClassName: String, source: VirtualFileRef, context: DependencyContext): Unit = ???
 
-  override def generatedNonLocalClass(source: File,
-                             module: File,
-                             binaryClassName: String,
-                             srcClassName: String): Unit = {
-    products += ((source, module))
-    classNames(source) += ((srcClassName, binaryClassName))
+  override def generatedNonLocalClass(
+      source: File,
+      module: File,
+      binaryClassName: String,
+      srcClassName: String
+  ): Unit = ???
+
+  override def generatedNonLocalClass(
+      sourceFile: VirtualFileRef,
+      classFile: Path,
+      binaryClassName: String,
+      srcClassName: String
+  ): Unit = {
+    productClassesToSources += ((classFile, sourceFile))
+    classNames(sourceFile) += ((srcClassName, binaryClassName))
     ()
   }
-  override def generatedNonLocalClass(source: VirtualFileRef, module: Path, binaryClassName: String, srcClassName: String): Unit = ???
 
-  override def generatedLocalClass(source: File, module: File): Unit = {
-    products += ((source, module))
+  override def generatedLocalClass(source: File, module: File): Unit = ???
+  override def generatedLocalClass(
+      sourceFile: VirtualFileRef,
+      classFile: Path
+  ): Unit = {
+    productClassesToSources += ((classFile, sourceFile))
     ()
   }
-  override def generatedLocalClass(source: VirtualFileRef, module: Path): Unit = ???
 
-  override def classDependency(onClassName: String, sourceClassName: String, context: DependencyContext): Unit = {
-    if (onClassName != sourceClassName) classDependencies += ((onClassName, sourceClassName, context))
+  override def classDependency(
+      onClassName: String,
+      sourceClassName: String,
+      context: DependencyContext
+  ): Unit = {
+    if (onClassName != sourceClassName)
+      classDependencies += ((onClassName, sourceClassName, context))
   }
 
-  override def usedName(className: String, name: String, scopes: EnumSet[UseScope]): Unit = {
+  override def usedName(
+      className: String,
+      name: String,
+      scopes: ju.EnumSet[UseScope]
+  ): Unit = {
     usedNamesAndScopes(className) += TestUsedName(name, scopes)
   }
 
-  override def api(source: File, classApi: ClassLike): Unit = {
+  override def api(source: File, classApi: ClassLike): Unit = ???
+  override def api(source: VirtualFileRef, classApi: ClassLike): Unit = {
     apis(source) = classApi +: apis(source)
   }
-  override def api(source: VirtualFileRef, classApi: ClassLike): Unit = ???
 
-  override def problem(category: String, pos: xsbti.Position, message: String, severity: xsbti.Severity, reported: Boolean): Unit = ()
+  override def problem(
+      category: String,
+      pos: xsbti.Position,
+      message: String,
+      severity: xsbti.Severity,
+      reported: Boolean
+  ): Unit = ()
+  override def problem2(
+      category: String,
+      pos: Position,
+      msg: String,
+      severity: Severity,
+      reported: Boolean,
+      rendered: Optional[String],
+      diagnosticCode: Optional[xsbti.DiagnosticCode],
+      diagnosticRelatedInformation: ju.List[xsbti.DiagnosticRelatedInformation],
+      actions: ju.List[xsbti.Action]
+  ): Unit = ()
   override def dependencyPhaseCompleted(): Unit = ()
   override def apiPhaseCompleted(): Unit = ()
   override def enabled(): Boolean = true
@@ -71,29 +131,39 @@ class TestCallback extends AnalysisCallback
   override def mainClass(source: VirtualFileRef, className: String): Unit = ???
 
   override def classesInOutputJar(): java.util.Set[String] = ???
-  override def getPickleJarPair(): java.util.Optional[xsbti.T2[Path, Path]] = ???
+  override def getPickleJarPair(): java.util.Optional[xsbti.T2[Path, Path]] =
+    ???
   override def isPickleJava(): Boolean = ???
 }
 
 object TestCallback {
-  case class ExtractedClassDependencies(memberRef: Map[String, Set[String]],
-                                        inheritance: Map[String, Set[String]],
-                                        localInheritance: Map[String, Set[String]])
+  case class ExtractedClassDependencies(
+      memberRef: Map[String, Set[String]],
+      inheritance: Map[String, Set[String]],
+      localInheritance: Map[String, Set[String]]
+  )
   object ExtractedClassDependencies {
     def fromPairs(
-                   memberRefPairs: collection.Seq[(String, String)],
-                   inheritancePairs: collection.Seq[(String, String)],
-                   localInheritancePairs: collection.Seq[(String, String)]
-                 ): ExtractedClassDependencies = {
-      ExtractedClassDependencies(pairsToMultiMap(memberRefPairs),
+        memberRefPairs: collection.Seq[(String, String)],
+        inheritancePairs: collection.Seq[(String, String)],
+        localInheritancePairs: collection.Seq[(String, String)]
+    ): ExtractedClassDependencies = {
+      ExtractedClassDependencies(
+        pairsToMultiMap(memberRefPairs),
         pairsToMultiMap(inheritancePairs),
-        pairsToMultiMap(localInheritancePairs))
+        pairsToMultiMap(localInheritancePairs)
+      )
     }
 
-    private def pairsToMultiMap[A, B](pairs: collection.Seq[(A, B)]): Map[A, Set[B]] = {
-      pairs.groupBy(_._1).view.mapValues(values => values.map(_._2).toSet)
-        .toMap.withDefaultValue(Set.empty)
+    private def pairsToMultiMap[A, B](
+        pairs: collection.Seq[(A, B)]
+    ): Map[A, Set[B]] = {
+      pairs
+        .groupBy(_._1)
+        .view
+        .mapValues(values => values.map(_._2).toSet)
+        .toMap
+        .withDefaultValue(Set.empty)
     }
   }
 }
-

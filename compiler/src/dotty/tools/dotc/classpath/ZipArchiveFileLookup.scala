@@ -9,7 +9,7 @@ import java.io.File
 import java.net.URL
 
 import dotty.tools.io.{ AbstractFile, FileZipArchive }
-import FileUtils._
+import FileUtils.*
 import dotty.tools.io.{EfficientClassPath, ClassRepresentation}
 
 /**
@@ -40,6 +40,15 @@ trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends Efficie
     for {
       dirEntry <- findDirEntry(inPackage).toSeq
       entry <- dirEntry.iterator if isRequiredFileType(entry)
+    }
+    yield createFileEntry(entry)
+
+  protected def files(inPackage: PackageName, names: String*): Seq[FileEntryType] =
+    for {
+      dirEntry <- findDirEntry(inPackage).toSeq
+      name <- names
+      entry <- Option(dirEntry.lookupName(name, directory = false))
+      if isRequiredFileType(entry)
     }
     yield createFileEntry(entry)
 

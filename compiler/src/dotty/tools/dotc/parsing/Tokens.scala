@@ -5,7 +5,7 @@ package parsing
 import scala.language.unsafeNulls
 
 import collection.immutable.BitSet
-import core.Decorators._
+import core.Decorators.*
 import core.StdNames.nme
 
 abstract class TokensCommon {
@@ -14,7 +14,7 @@ abstract class TokensCommon {
   type Token = Int
   type TokenSet = BitSet
 
-  def tokenRange(lo: Int, hi: Int): TokenSet = BitSet(lo to hi: _*)
+  def tokenRange(lo: Int, hi: Int): TokenSet = BitSet(lo to hi *)
 
   val tokenString, debugString: Array[String] = new Array[String](maxToken + 1)
 
@@ -221,10 +221,13 @@ object Tokens extends TokensCommon {
 
   final val openParensTokens = BitSet(LBRACE, LPAREN, LBRACKET)
 
-  final val canStartExprTokens3: TokenSet =
-      atomicExprTokens
+  final val canStartInfixExprTokens =
+    atomicExprTokens
     | openParensTokens
-    | BitSet(INDENT, QUOTE, IF, WHILE, FOR, NEW, TRY, THROW)
+    | BitSet(QUOTE, NEW)
+
+  final val canStartExprTokens3: TokenSet =
+    canStartInfixExprTokens | BitSet(INDENT, IF, WHILE, FOR, TRY, THROW)
 
   final val canStartExprTokens2: TokenSet = canStartExprTokens3 | BitSet(DO)
 
@@ -232,6 +235,8 @@ object Tokens extends TokensCommon {
     THIS, SUPER, USCORE, LPAREN, LBRACE, AT)
 
   final val canStartTypeTokens: TokenSet = canStartInfixTypeTokens | BitSet(LBRACE)
+
+  final val canStartPatternTokens = atomicExprTokens | openParensTokens | BitSet(USCORE, QUOTE)
 
   final val templateIntroTokens: TokenSet = BitSet(CLASS, TRAIT, OBJECT, ENUM, CASECLASS, CASEOBJECT)
 

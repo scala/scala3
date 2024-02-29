@@ -2,10 +2,10 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
-import Flags._
-import MegaPhase._
-import Symbols._, Contexts._, Types._, Decorators._
+import core.*
+import Flags.*
+import MegaPhase.*
+import Symbols.*, Contexts.*, Types.*, Decorators.*
 import StdNames.nme
 import ast.TreeTypeMap
 
@@ -33,7 +33,7 @@ import scala.collection.mutable.ListBuffer
  *  return context functions. See i6375.scala.
  */
 class BetaReduce extends MiniPhase:
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = BetaReduce.name
 
@@ -45,7 +45,7 @@ class BetaReduce extends MiniPhase:
     app1
 
 object BetaReduce:
-  import ast.tpd._
+  import ast.tpd.*
 
   val name: String = "betaReduce"
   val description: String = "reduce closure applications"
@@ -82,7 +82,7 @@ object BetaReduce:
           case _ => None
       case Block(stats, expr) if stats.forall(isPureBinding) =>
         recur(expr, argss).map(cpy.Block(fn)(stats, _))
-      case Inlined(call, bindings, expr) if bindings.forall(isPureBinding) =>
+      case fn @ Inlined(call, bindings, expr) if bindings.forall(isPureBinding) =>
         recur(expr, argss).map(cpy.Inlined(fn)(call, bindings, _))
       case Typed(expr, tpt) =>
         recur(expr, argss)
@@ -90,7 +90,7 @@ object BetaReduce:
         recur(expr, argss)
       case _ => None
     tree match
-      case Apply(Select(fn, nme.apply), args) if defn.isFunctionType(fn.tpe) =>
+      case Apply(Select(fn, nme.apply), args) if defn.isFunctionNType(fn.tpe) =>
         recur(fn, List(args)) match
           case Some(reduced) =>
             seq(bindingsBuf.result(), reduced).withSpan(tree.span)

@@ -22,9 +22,19 @@ i15922.scala
 t5031_2.scala
 i16997.scala
 i7414.scala
+i17588.scala
+i9804.scala
+i13433.scala
+i16649-irrefutable.scala
+strict-pattern-bindings-3.0-migration.scala
+i17186b.scala
+i11982a.scala
 
 # Tree is huge and blows stack for printing Text
 i7034.scala
+
+# Causes cyclic reference by interacting with compiler stdlib types
+stdlib
 
 # Stale symbol: package object scala
 seqtype-cycle
@@ -49,6 +59,10 @@ i6505.scala
 i15158.scala
 i15155.scala
 i15827.scala
+i17149.scala
+tuple-fold.scala
+mt-redux-norm.perspective.scala
+i18211.scala
 
 # Opaque type
 i5720.scala
@@ -93,6 +107,7 @@ i4176-gadt.scala
 
 # GADT difference
 i13974a.scala
+i15867.scala
 
 java-inherited-type1
 

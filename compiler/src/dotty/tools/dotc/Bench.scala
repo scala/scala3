@@ -1,11 +1,12 @@
 package dotty.tools
 package dotc
 
-import core.Contexts._
+import core.Contexts.*
 import reporting.Reporter
 import io.AbstractFile
 
 import scala.annotation.internal.sharable
+import scala.compiletime.uninitialized
 
 /** A main class for running compiler benchmarks. Can instantiate a given
  *  number of compilers and run each (sequentially) a given number of times
@@ -17,7 +18,7 @@ object Bench extends Driver:
   @sharable private var numCompilers = 1
   @sharable private var waitAfter = -1
   @sharable private var curCompiler = 0
-  @sharable private var times: Array[Int] = _
+  @sharable private var times: Array[Int] = uninitialized
 
   override def doCompile(compiler: Compiler, files: List[AbstractFile])(using Context): Reporter =
     var reporter: Reporter = emptyReporter

@@ -13,7 +13,7 @@ import java.nio.file.Files
 import java.util.zip.{ ZipEntry, ZipFile }
 import java.util.jar.Manifest
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 /** An abstraction for zip files and streams.  Everything is written the way
  *  it is for performance: we come through here a lot on every run.  Be careful
@@ -52,7 +52,7 @@ object ZipArchive {
       else path.substring(idx + 1)
   }
 }
-import ZipArchive._
+import ZipArchive.*
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
 abstract class ZipArchive(override val jpath: JPath, release: Option[String]) extends AbstractFile with Equals {
   self =>
@@ -72,6 +72,7 @@ abstract class ZipArchive(override val jpath: JPath, release: Option[String]) ex
     // have to keep this name for compat with sbt's compiler-interface
     def getArchive: ZipFile = null
     override def underlyingSource: Option[ZipArchive] = Some(self)
+    override def container: Entry = parent
     override def toString: String = self.path + "(" + path + ")"
   }
 
@@ -213,7 +214,7 @@ final class FileZipArchive(jpath: JPath, release: Option[String]) extends ZipArc
     case _                 => false
   }
 
-  private[this] var closeables: List[java.io.Closeable] = Nil
+  private var closeables: List[java.io.Closeable] = Nil
   override def close(): Unit = {
     closeables.foreach(_.close)
     closeables = Nil
@@ -280,7 +281,7 @@ final class ManifestResources(val url: URL) extends ZipArchive(null, None) {
     }
   }
 
-  private[this] var closeables: List[java.io.Closeable] = Nil
+  private var closeables: List[java.io.Closeable] = Nil
   override def close(): Unit = {
     closeables.foreach(_.close())
     closeables = Nil

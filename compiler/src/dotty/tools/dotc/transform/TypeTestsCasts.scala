@@ -4,19 +4,19 @@ package transform
 
 import scala.language.unsafeNulls as _
 
-import core._
-import Contexts._, Symbols._, Types._, Constants._, StdNames._, Decorators._
+import core.*
+import Contexts.*, Symbols.*, Types.*, Constants.*, StdNames.*, Decorators.*
 import ast.untpd
-import Erasure.Boxing._
-import TypeErasure._
-import ValueClasses._
-import SymUtils._
-import core.Flags._
-import util.Spans._
-import reporting._
+import Erasure.Boxing.*
+import TypeErasure.*
+
+import core.Flags.*
+import util.Spans.*
+import reporting.*
 import config.Printers.{ transforms => debug }
 
 import patmat.Typ
+import dotty.tools.dotc.util.SrcPos
 
 /** This transform normalizes type tests and type casts,
  *  also replacing type tests with singleton argument type with reference equality check
@@ -29,7 +29,7 @@ import patmat.Typ
  * cannot be rewritten before erasure. That's why TypeTestsCasts is called from Erasure.
  */
 object TypeTestsCasts {
-  import ast.tpd._
+  import ast.tpd.*
   import typer.Inferencing.maximizeType
   import typer.ProtoTypes.constrained
 
@@ -74,7 +74,7 @@ object TypeTestsCasts {
     }.apply(tp)
 
     /** Returns true if the type arguments of `P` can be determined from `X` */
-    def typeArgsTrivial(X: Type, P: AppliedType)(using Context) = inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds) {
+    def typeArgsDeterminable(X: Type, P: AppliedType)(using Context) = inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds) {
       val AppliedType(tycon, _) = P
 
       def underlyingLambda(tp: Type): TypeLambda = tp.ensureLambdaSub match {
@@ -82,7 +82,7 @@ object TypeTestsCasts {
         case tp: TypeProxy => underlyingLambda(tp.superType)
       }
       val typeLambda = underlyingLambda(tycon)
-      val tvars = constrained(typeLambda, untpd.EmptyTree, alwaysAddTypeVars = true)._2.map(_.tpe)
+      val tvars = constrained(typeLambda)
       val P1 = tycon.appliedTo(tvars)
 
       debug.println("before " + ctx.typerState.constraint.show)
@@ -154,8 +154,12 @@ object TypeTestsCasts {
 
           case x =>
             // always false test warnings are emitted elsewhere
-            TypeComparer.provablyDisjoint(x, tpe.derivedAppliedType(tycon, targs.map(_ => WildcardType)))
-            || typeArgsTrivial(X, tpe)
+            // provablyDisjoint wants fully applied types as input; because we're in the middle of erasure, we sometimes get raw types here
+            val xApplied =
+              val tparams = x.typeParams
+              if tparams.isEmpty then x else x.appliedTo(tparams.map(_ => WildcardType))
+            TypeComparer.provablyDisjoint(xApplied, tpe.derivedAppliedType(tycon, targs.map(_ => WildcardType)))
+            || typeArgsDeterminable(X, tpe)
             ||| i"its type arguments can't be determined from $X"
         }
       case AndType(tp1, tp2)    => recur(X, tp1) && recur(X, tp2)
@@ -218,7 +222,7 @@ object TypeTestsCasts {
             !(!testCls.isPrimitiveValueClass && foundCls.isPrimitiveValueClass) &&
                // foundCls can be `Boolean`, while testCls is `Integer`
                // it can happen in `(3: Boolean | Int).isInstanceOf[Int]`
-            !isDerivedValueClass(foundCls) && !isDerivedValueClass(testCls)
+            !foundCls.isDerivedValueClass && !testCls.isDerivedValueClass
                // we don't have the logic to handle derived value classes
 
           /** Check whether a runtime test that a value of `foundCls` can be a `testCls`
@@ -285,7 +289,7 @@ object TypeTestsCasts {
             Typed(expr, tree.args.head) // Replace cast by type ascription (which does not generate any bytecode)
           else if (testCls eq defn.BoxedUnitClass)
             // as a special case, casting to Unit always successfully returns Unit
-            Block(expr :: Nil, Literal(Constant(()))).withSpan(expr.span)
+            Block(expr :: Nil, unitLiteral).withSpan(expr.span)
           else if (foundClsSymPrimitive)
             if (testCls.isPrimitiveValueClass) primitiveConversion(expr, testCls)
             else derivedTree(box(expr), defn.Any_asInstanceOf, testType)
@@ -359,11 +363,8 @@ object TypeTestsCasts {
         if (sym.isTypeTest) {
           val argType = tree.args.head.tpe
           val isTrusted = tree.hasAttachment(PatternMatcher.TrustedTypeTestKey)
-          val isUnchecked = expr.tpe.widenTermRefExpr.hasAnnotation(defn.UncheckedAnnot)
-          if !isTrusted && !isUnchecked then
-            val whyNot = whyUncheckable(expr.tpe, argType, tree.span)
-            if whyNot.nonEmpty then
-              report.uncheckedWarning(em"the type test for $argType cannot be checked at runtime because $whyNot", expr.srcPos)
+          if !isTrusted then
+            checkTypePattern(expr.tpe, argType, expr.srcPos)
           transformTypeTest(expr, argType,
             flagUnrelated = enclosingInlineds.isEmpty) // if test comes from inlined code, dont't flag it even if it always false
         }
@@ -381,6 +382,19 @@ object TypeTestsCasts {
     }
     interceptWith(expr)
   }
+
+  /** After PatternMatcher, only Bind nodes are present in simple try-catch trees
+   *  See i19013
+   */
+  def checkBind(tree: Bind)(using Context) =
+    checkTypePattern(defn.ThrowableType, tree.body.tpe, tree.srcPos)
+
+  private def checkTypePattern(exprTpe: Type, castTpe: Type, pos: SrcPos)(using Context) =
+    val isUnchecked = exprTpe.widenTermRefExpr.hasAnnotation(defn.UncheckedAnnot)
+    if !isUnchecked then
+      val whyNot = whyUncheckable(exprTpe, castTpe, pos.span)
+      if whyNot.nonEmpty then
+        report.uncheckedWarning(UncheckedTypePattern(castTpe, whyNot), pos)
 
   private def effectiveClass(tp: Type)(using Context): Symbol =
     if tp.isRef(defn.PairClass) then effectiveClass(erasure(tp))

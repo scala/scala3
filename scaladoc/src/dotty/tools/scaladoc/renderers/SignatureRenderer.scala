@@ -18,7 +18,7 @@ trait SignatureRenderer:
   def renderElement(e: SignaturePart, modifiers: AppliedAttr*): AppliedTag = renderElementWith(e, modifiers*)
 
   def renderLink(name: String, dri: DRI, modifiers: AppliedAttr*) =
-    renderLinkContent(name, dri, modifiers:_*)
+    renderLinkContent(name, dri, modifiers*)
 
   def unresolvedLink(content: TagArg, modifiers: AppliedAttr*) =
     span(Attr("data-unresolved-link") := "", modifiers)(content)
@@ -26,7 +26,7 @@ trait SignatureRenderer:
   def renderLinkContent(content: TagArg, dri: DRI, modifiers: AppliedAttr*) =
     link(dri) match
       case Some(link) => a(href := link, modifiers)(content)
-      case _ => unresolvedLink(content, modifiers:_*)
+      case _ => unresolvedLink(content, modifiers*)
 
   def renderElementWith(e: SignaturePart, modifiers: AppliedAttr*) = e match
     case Name(name, dri) =>
@@ -34,7 +34,7 @@ trait SignatureRenderer:
       renderLink(name, dri, attrs*)
     case Type(name, Some(dri)) =>
       val attrs = Seq(Attr("t") := "t") ++ modifiers
-      renderLink(name, dri, attrs:_*)
+      renderLink(name, dri, attrs*)
     case Type(name, None) => span(Attr("t") := "t")(name)
     case Keyword(name) => span(Attr("t") := "k")(name)
     case Plain(name) => raw(name)

@@ -30,7 +30,7 @@ trait ClassLikeSupport:
     else Kind.Class(Nil, Nil)
 
   private def kindForClasslike(classDef: ClassDef): Kind =
-    def typeArgs = classDef.getTypeParams.map(mkTypeArgument(_))
+    def typeArgs = classDef.getTypeParams.map(mkTypeArgument(_, classDef))
 
     def parameterModifier(parameter: Symbol): String =
       val fieldSymbol = classDef.symbol.declaredField(parameter.normalizedName)
@@ -47,9 +47,13 @@ trait ClassLikeSupport:
         Some(classDef.constructor.symbol)
           .filter(s => s.exists && !s.isHiddenByVisibility)
           .map( _.tree.asInstanceOf[DefDef])
-      constr.fold(Nil)(
-        _.termParamss.map(pList => api.TermParameterList(pList.params.map(p => mkParameter(p, parameterModifier)), paramListModifier(pList.params)))
+
+      constr.fold(Nil)(_.termParamss.map(pList =>
+        api.TermParameterList(
+          pList.params.map(p => mkParameter(p, classDef, parameterModifier)),
+          paramListModifier(pList.params),
         )
+      ))
 
     if classDef.symbol.flags.is(Flags.Module) then Kind.Object
     else if classDef.symbol.flags.is(Flags.Trait) then
@@ -85,7 +89,7 @@ trait ClassLikeSupport:
     def getSupertypesGraph(link: LinkToType, to: Seq[Tree]): Seq[(LinkToType, LinkToType)] =
       to.flatMap { case tree =>
         val symbol = if tree.symbol.isClassConstructor then tree.symbol.owner else tree.symbol
-        val signature = signatureWithName(tree.asSignature)
+        val signature = signatureWithName(tree.asSignature(classDef))
         val superLink = LinkToType(signature, symbol.dri, bareClasslikeKind(symbol))
         val nextTo = unpackTreeToClassDef(tree).parents
         if symbol.isHiddenByVisibility then getSupertypesGraph(link, nextTo)
@@ -96,16 +100,16 @@ trait ClassLikeSupport:
       .filterNot((s, t) => s.isHiddenByVisibility)
       .map {
         case (symbol, tpe) =>
-          val signature = signatureWithName(tpe.asSignature)
+          val signature = signatureWithName(tpe.asSignature(classDef))
           LinkToType(signature, symbol.dri, bareClasslikeKind(symbol))
       }
     val selfType = classDef.self.map { (valdef: ValDef) =>
       val symbol = valdef.symbol
       val tpe = valdef.tpt.tpe
-      val signature = signatureWithName(tpe.asSignature)
+      val signature = signatureWithName(tpe.asSignature(classDef))
       LinkToType(signature, symbol.dri, Kind.Type(false, false, Seq.empty))
     }
-    val selfSignature: DSignature = signatureWithName(typeForClass(classDef).asSignature)
+    val selfSignature: DSignature = signatureWithName(typeForClass(classDef).asSignature(classDef))
 
     val graph = HierarchyGraph.withEdges(
       getSupertypesGraph(LinkToType(selfSignature, classDef.symbol.dri, bareClasslikeKind(classDef.symbol)), unpackTreeToClassDef(classDef).parents)
@@ -148,19 +152,19 @@ trait ClassLikeSupport:
       case dd: DefDef if isDocumentableExtension(dd.symbol) =>
         dd.symbol.extendedSymbol.map { extSym =>
           val memberInfo = unwrapMemberInfo(c, dd.symbol)
-          val typeParams = dd.symbol.extendedTypeParams.map(mkTypeArgument(_, memberInfo.genericTypes))
+          val typeParams = dd.symbol.extendedTypeParams.map(mkTypeArgument(_, c, memberInfo.genericTypes))
           val termParams = dd.symbol.extendedTermParamLists.zipWithIndex.flatMap { case (termParamList, index) =>
             memberInfo.termParamLists(index) match
               case MemberInfo.EvidenceOnlyParameterList => None
               case MemberInfo.RegularParameterList(info) =>
-                Some(api.TermParameterList(termParamList.params.map(mkParameter(_, memberInfo = info)), paramListModifier(termParamList.params)))
+                Some(api.TermParameterList(termParamList.params.map(mkParameter(_, c, memberInfo = info)), paramListModifier(termParamList.params)))
               case _ => assert(false, "memberInfo.termParamLists contains a type parameter list !")
           }
           val target = ExtensionTarget(
             extSym.symbol.normalizedName,
             typeParams,
             termParams,
-            extSym.tpt.asSignature,
+            extSym.tpt.asSignature(c),
             extSym.tpt.symbol.dri,
             extSym.symbol.pos.get.start
           )
@@ -190,7 +194,7 @@ trait ClassLikeSupport:
         Some(parseMethod(c, dd.symbol))
 
       case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && (!td.symbol.flags.is(Flags.Case) || !td.symbol.flags.is(Flags.Enum)) =>
-        Some(parseTypeDef(td))
+        Some(parseTypeDef(td, c))
 
       case vd: ValDef if !isSyntheticField(vd.symbol) && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum)) =>
         Some(parseValDef(c, vd))
@@ -268,7 +272,7 @@ trait ClassLikeSupport:
 
     def getParentsAsLinkToTypes: List[LinkToType] =
       c.getParentsAsTreeSymbolTuples.map {
-        (tree, symbol) => LinkToType(tree.asSignature, symbol.dri, bareClasslikeKind(symbol))
+        (tree, symbol) => LinkToType(tree.asSignature(c), symbol.dri, bareClasslikeKind(symbol))
       }
 
     def getParentsAsTreeSymbolTuples: List[(Tree, Symbol)] =
@@ -324,7 +328,7 @@ trait ClassLikeSupport:
 
     val enumTypes = companion.membersToDocument.collect {
       case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && td.symbol.flags.is(Flags.Enum) && td.symbol.flags.is(Flags.Case) => td
-    }.toList.map(parseTypeDef)
+    }.toList.map(parseTypeDef(_, classDef))
 
     val enumNested = companion.membersToDocument.collect {
       case c: ClassDef if c.symbol.flags.is(Flags.Case) && c.symbol.flags.is(Flags.Enum) => processTree(c)(parseClasslike(c))
@@ -351,7 +355,7 @@ trait ClassLikeSupport:
 
     val memberInfo = unwrapMemberInfo(c, methodSymbol)
 
-    val unshuffledMemberInfoParamLists = 
+    val unshuffledMemberInfoParamLists =
       if methodSymbol.isExtensionMethod && methodSymbol.isRightAssoc then
         // Taken from RefinedPrinter.scala
         // If you change the names of the clauses below, also change them in right-associative-extension-methods.md
@@ -367,7 +371,7 @@ trait ClassLikeSupport:
           rightTyParams ::: rightParam ::: rest6
         else
           memberInfo.paramLists // it wasn't a binary operator, after all.
-      else 
+      else
         memberInfo.paramLists
 
     val croppedUnshuffledMemberInfoParamLists = unshuffledMemberInfoParamLists.takeRight(paramLists.length)
@@ -377,10 +381,10 @@ trait ClassLikeSupport:
         case (_: TermParamClause, MemberInfo.EvidenceOnlyParameterList) => Nil
         case (pList: TermParamClause, MemberInfo.RegularParameterList(info)) =>
             Some(Left(api.TermParameterList(pList.params.map(
-              mkParameter(_, paramPrefix, memberInfo = info)), paramListModifier(pList.params)
+              mkParameter(_, c, paramPrefix, memberInfo = info)), paramListModifier(pList.params)
             )))
         case (TypeParamClause(genericTypeList), MemberInfo.TypeParameterList(memInfoTypes)) =>
-          Some(Right(genericTypeList.map(mkTypeArgument(_, memInfoTypes, memberInfo.contextBounds))))
+          Some(Right(genericTypeList.map(mkTypeArgument(_, c, memInfoTypes, memberInfo.contextBounds))))
         case (_,_) =>
           assert(false, s"croppedUnshuffledMemberInfoParamLists and SymOps.nonExtensionParamLists disagree on whether this clause is a type or term one")
       }
@@ -388,7 +392,7 @@ trait ClassLikeSupport:
 
     val methodKind =
       if methodSymbol.isClassConstructor then Kind.Constructor(basicDefKind)
-      else if methodSymbol.flags.is(Flags.Implicit) then 
+      else if methodSymbol.flags.is(Flags.Implicit) then
         val termParamLists: List[TermParamClause] = methodSymbol.nonExtensionTermParamLists
         extractImplicitConversion(method.returnTpt.tpe) match
           case Some(conversion) if termParamLists.size == 0 || (termParamLists.size == 1 && termParamLists.head.params.size == 0) =>
@@ -402,7 +406,7 @@ trait ClassLikeSupport:
             ))
           case _ =>
             Kind.Implicit(basicDefKind, None)
-      else if methodSymbol.flags.is(Flags.Given) then Kind.Given(basicDefKind, Some(method.returnTpt.tpe.asSignature), extractImplicitConversion(method.returnTpt.tpe))
+      else if methodSymbol.flags.is(Flags.Given) then Kind.Given(basicDefKind, Some(method.returnTpt.tpe.asSignature(c)), extractImplicitConversion(method.returnTpt.tpe))
       else specificKind(basicDefKind)
 
     val origin = if !methodSymbol.isOverridden then Origin.RegularlyDefined else
@@ -418,7 +422,7 @@ trait ClassLikeSupport:
     mkMember(
       methodSymbol,
       methodKind,
-      method.returnTpt.tpe.asSignature
+      method.returnTpt.tpe.asSignature(c),
     )(
       modifiers = modifiers,
       origin = origin,
@@ -428,28 +432,31 @@ trait ClassLikeSupport:
 
   def mkParameter(
     argument: ValDef,
+    classDef: ClassDef,
     prefix: Symbol => String = _ => "",
     isExtendedSymbol: Boolean = false,
     isGrouped: Boolean = false,
-    memberInfo: Map[String, TypeRepr] = Map.empty) =
-      val inlinePrefix = if argument.symbol.flags.is(Flags.Inline) then "inline " else ""
-      val nameIfNotSynthetic = Option.when(!argument.symbol.flags.is(Flags.Synthetic))(argument.symbol.normalizedName)
-      val name = argument.symbol.normalizedName
-      api.TermParameter(
-        argument.symbol.getAnnotations(),
-        inlinePrefix + prefix(argument.symbol),
-        nameIfNotSynthetic,
-        argument.symbol.dri,
-        memberInfo.get(name).fold(argument.tpt.asSignature)(_.asSignature),
-        isExtendedSymbol,
-        isGrouped
-      )
+    memberInfo: Map[String, TypeRepr] = Map.empty,
+  ) =
+    val inlinePrefix = if argument.symbol.flags.is(Flags.Inline) then "inline " else ""
+    val nameIfNotSynthetic = Option.when(!argument.symbol.flags.is(Flags.Synthetic))(argument.symbol.normalizedName)
+    val name = argument.symbol.normalizedName
+    api.TermParameter(
+      argument.symbol.getAnnotations(),
+      inlinePrefix + prefix(argument.symbol),
+      nameIfNotSynthetic,
+      argument.symbol.dri,
+      memberInfo.get(name).fold(argument.tpt.asSignature(classDef))(_.asSignature(classDef)),
+      isExtendedSymbol,
+      isGrouped
+    )
 
   def mkTypeArgument(
     argument: TypeDef,
+    classDef: ClassDef,
     memberInfo: Map[String, TypeBounds] = Map.empty,
-    contextBounds: Map[String, DSignature] = Map.empty
-    ): TypeParameter =
+    contextBounds: Map[String, DSignature] = Map.empty,
+  ): TypeParameter =
     val variancePrefix: "+" | "-" | "" =
       if  argument.symbol.flags.is(Flags.Covariant) then "+"
       else if argument.symbol.flags.is(Flags.Contravariant) then "-"
@@ -457,7 +464,7 @@ trait ClassLikeSupport:
 
     val name = argument.symbol.normalizedName
     val normalizedName = if name.matches("_\\$\\d*") then "_" else name
-    val boundsSignature = memberInfo.get(name).fold(argument.rhs.asSignature)(_.asSignature)
+    val boundsSignature = memberInfo.get(name).fold(argument.rhs.asSignature(classDef))(_.asSignature(classDef))
     val signature = contextBounds.get(name) match
       case None => boundsSignature
       case Some(contextBoundsSignature) =>
@@ -471,14 +478,14 @@ trait ClassLikeSupport:
       signature
     )
 
-  def parseTypeDef(typeDef: TypeDef): Member =
+  def parseTypeDef(typeDef: TypeDef, classDef: ClassDef): Member =
     def isTreeAbstract(typ: Tree): Boolean = typ match {
       case TypeBoundsTree(_, _) => true
       case LambdaTypeTree(params, body) => isTreeAbstract(body)
       case _ => false
     }
     val (generics, tpeTree) = typeDef.rhs match
-      case LambdaTypeTree(params, body) => (params.map(mkTypeArgument(_)), body)
+      case LambdaTypeTree(params, body) => (params.map(mkTypeArgument(_, classDef)), body)
       case tpe => (Nil, tpe)
 
     val defaultKind = Kind.Type(!isTreeAbstract(typeDef.rhs), typeDef.symbol.isOpaque, generics).asInstanceOf[Kind.Type]
@@ -492,19 +499,19 @@ trait ClassLikeSupport:
           Some(Link(l.tpe.typeSymbol.owner.name, l.tpe.typeSymbol.owner.dri))
         case _ => None
       }
-      mkMember(typeDef.symbol, Kind.Exported(kind), tpeTree.asSignature)(
+      mkMember(typeDef.symbol, Kind.Exported(kind), tpeTree.asSignature(classDef))(
         deprecated = typeDef.symbol.isDeprecated(),
         origin = Origin.ExportedFrom(origin),
         experimental = typeDef.symbol.isExperimental()
       )
     }
-    else mkMember(typeDef.symbol, kind, tpeTree.asSignature)(deprecated = typeDef.symbol.isDeprecated())
+    else mkMember(typeDef.symbol, kind, tpeTree.asSignature(classDef))(deprecated = typeDef.symbol.isDeprecated())
 
   def parseValDef(c: ClassDef, valDef: ValDef): Member =
     def defaultKind = if valDef.symbol.flags.is(Flags.Mutable) then Kind.Var else Kind.Val
     val memberInfo = unwrapMemberInfo(c, valDef.symbol)
     val kind = if valDef.symbol.flags.is(Flags.Implicit) then Kind.Implicit(Kind.Val, extractImplicitConversion(valDef.tpt.tpe))
-      else if valDef.symbol.flags.is(Flags.Given) then Kind.Given(Kind.Val, Some(memberInfo.res.asSignature), extractImplicitConversion(valDef.tpt.tpe))
+      else if valDef.symbol.flags.is(Flags.Given) then Kind.Given(Kind.Val, Some(memberInfo.res.asSignature(c)), extractImplicitConversion(valDef.tpt.tpe))
       else if valDef.symbol.flags.is(Flags.Enum) then Kind.EnumCase(Kind.Val)
       else defaultKind
 
@@ -514,7 +521,7 @@ trait ClassLikeSupport:
         .filterNot(m => m == Modifier.Lazy || m == Modifier.Final)
       case _ => valDef.symbol.getExtraModifiers()
 
-    mkMember(valDef.symbol, kind, memberInfo.res.asSignature)(
+    mkMember(valDef.symbol, kind, memberInfo.res.asSignature(c))(
       modifiers = modifiers,
       deprecated = valDef.symbol.isDeprecated(),
       experimental = valDef.symbol.isExperimental()
@@ -552,7 +559,7 @@ trait ClassLikeSupport:
     contextBounds: Map[String, DSignature] = Map.empty,
   ){
     val genericTypes: Map[String, TypeBounds] = paramLists.collect{ case MemberInfo.TypeParameterList(types) => types }.headOption.getOrElse(Map())
-    
+
     val termParamLists: List[MemberInfo.ParameterList] = paramLists.filter(_.isTerm)
   }
 
@@ -562,7 +569,7 @@ trait ClassLikeSupport:
       case EvidenceOnlyParameterList                                         extends ParameterList(isTerm = true, isUsing = false)
       case RegularParameterList(m: Map[String, TypeRepr])(isUsing: Boolean)  extends ParameterList(isTerm = true, isUsing)
       case TypeParameterList(m: Map[String, TypeBounds])                     extends ParameterList(isTerm = false, isUsing = false)
-    
+
     export ParameterList.{RegularParameterList, EvidenceOnlyParameterList, TypeParameterList}
 
 
@@ -571,7 +578,7 @@ trait ClassLikeSupport:
     val baseTypeRepr = typeForClass(c).memberType(symbol)
 
     def isSyntheticEvidence(name: String) =
-      if !name.startsWith(NameKinds.EvidenceParamName.separator) then false else
+      if !name.startsWith(NameKinds.ContextBoundParamName.separator) then false else
         // This assumes that every parameter that starts with `evidence$` and is implicit is generated by compiler to desugar context bound.
         // Howrever, this is just a heuristic, so
         // `def foo[A](evidence$1: ClassTag[A]) = 1`
@@ -604,13 +611,18 @@ trait ClassLikeSupport:
       val (paramsThatLookLikeContextBounds, contextBounds) =
         evidences.partitionMap {
           case (_, AppliedType(tpe, List(typeParam: ParamRef))) =>
-            Right(nameForRef(typeParam) -> tpe.asSignature)
+            Right(nameForRef(typeParam) -> tpe.asSignature(c))
           case (name, original) =>
             findParamRefs(original) match
               case Nil => Left((name, original))
               case typeParam :: _ =>
                 val name = nameForRef(typeParam)
-                val signature = Seq(Plain("(["), dotty.tools.scaladoc.Type(name, None), Plain("]"), Keyword(" =>> ")) ++ original.asSignature ++ Seq(Plain(")"))
+                val signature = Seq(
+                  Plain("(["),
+                  dotty.tools.scaladoc.Type(name, None),
+                  Plain("]"),
+                  Keyword(" =>> "),
+                ) ++ original.asSignature(c) ++ Seq(Plain(")"))
                 Right(name -> signature.toList)
         }
 
@@ -619,7 +631,7 @@ trait ClassLikeSupport:
       val termParamList = if newParams.isEmpty && contextBounds.nonEmpty
         then MemberInfo.EvidenceOnlyParameterList
         else MemberInfo.RegularParameterList(newParams)(isUsing)
-        
+
 
       MemberInfo(memberInfo.paramLists :+ termParamList, methodType.resType, contextBounds.toMap)
 

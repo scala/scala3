@@ -49,7 +49,7 @@ However, if such a method misses arguments for its implicit parameters, such arg
 
 The actual arguments that are eligible to be passed to an implicit parameter of type ´T´ fall into two categories.
 First, eligible are all identifiers ´x´ that can be accessed at the point of the method call without a prefix and that denote an [implicit definition](#the-implicit-modifier) or an implicit parameter.
-To be accessible without a prefix, an identifier must be a local name, a member of an enclosing template or a name introduced by an [import clause](04-basic-declarations-and-definitions.html#import-clauses).
+To be accessible without a prefix, an identifier must be a local name, a member of an enclosing template or a name introduced by an [import clause](04-basic-definitions.html#import-clauses).
 If there are no eligible identifiers under this rule, then, second, eligible are also all `implicit` members of some object that belongs to the implicit scope of the implicit parameter's type, ´T´.
 
 The _implicit scope_ of a type ´T´ consists of all [companion modules](05-classes-and-objects.html#object-definitions) of classes that are associated with the implicit parameter's type.

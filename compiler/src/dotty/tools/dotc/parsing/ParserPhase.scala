@@ -22,7 +22,7 @@ class Parser extends Phase {
    */
   private[dotc] var firstXmlPos: SourcePosition = NoSourcePosition
 
-  def parse(using Context) = monitor("parser") {
+  def parse(using Context): Boolean = monitor("parser") {
     val unit = ctx.compilationUnit
     unit.untpdTree =
       if (unit.isJava) new JavaParsers.JavaParser(unit.source).parse()
@@ -30,6 +30,7 @@ class Parser extends Phase {
         val p = new Parsers.Parser(unit.source)
         //  p.in.debugTokenStream = true
         val tree = p.parse()
+        ctx.compilationUnit.comments = p.in.comments
         if (p.firstXmlPos.exists && !firstXmlPos.exists)
           firstXmlPos = p.firstXmlPos
         tree
@@ -45,10 +46,15 @@ class Parser extends Phase {
         report.inform(s"parsing ${unit.source}")
         ctx.fresh.setCompilationUnit(unit).withRootImports
 
-    unitContexts.foreach(parse(using _))
+    val unitContexts0 =
+      for
+        unitContext <- unitContexts
+        if parse(using unitContext)
+      yield unitContext
+
     record("parsedTrees", ast.Trees.ntrees)
 
-    unitContexts.map(_.compilationUnit)
+    unitContexts0.map(_.compilationUnit)
   }
 
   def run(using Context): Unit = unsupported("run")

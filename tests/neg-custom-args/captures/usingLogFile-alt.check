@@ -1,7 +1,10 @@
 -- Error: tests/neg-custom-args/captures/usingLogFile-alt.scala:18:2 ---------------------------------------------------
-18 |  usingFile(  // error
+18 |  usingFile( // error
    |  ^^^^^^^^^
-   |  Sealed type variable T cannot  be instantiated to box () => Unit since
-   |  that type captures the root capability `cap`.
-   |  This is often caused by a local capability in the body of method usingFile
-   |  leaking as part of its result.
+   |  reference (file : java.io.OutputStream^{lcap}) is not included in the allowed capture set {x$0, x$0²}
+   |
+   |  Note that reference (file : java.io.OutputStream^{lcap}), defined in method $anonfun
+   |  cannot be included in outer capture set {x$0, x$0} which is associated with package <root>
+   |
+   |  where:    x$0  is a reference to a value parameter
+   |            x$0² is a reference to a value parameter

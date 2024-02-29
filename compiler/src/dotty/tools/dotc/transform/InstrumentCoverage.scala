@@ -97,7 +97,9 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         id = id,
         start = pos.start,
         end = pos.end,
-        line = pos.line,
+        // +1 to account for the line number starting at 1
+        // the internal line number is 0-base https://github.com/lampepfl/dotty/blob/18ada516a85532524a39a962b2ddecb243c65376/compiler/src/dotty/tools/dotc/util/SourceFile.scala#L173-L176
+        line = pos.line + 1,
         desc = sourceFile.content.slice(pos.start, pos.end).mkString,
         symbolName = tree.symbol.name.toSimpleName.toString,
         treeName = tree.getClass.getSimpleName.nn,
@@ -188,12 +190,9 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
      * If the tree is empty, return itself and don't instrument.
      */
     private def transformBranch(tree: Tree)(using Context): Tree =
-      import dotty.tools.dotc.core.Decorators.{show,i}
-      if tree.isEmpty || tree.span.isSynthetic then
+      if tree.isEmpty then
         // - If t.isEmpty then `transform(t) == t` always hold,
         //   so we can avoid calling transform in that case.
-        // - If tree.span.isSynthetic then the branch has been generated
-        //   by the frontend phases, so we don't want to instrument it.
         tree
       else
         val transformed = transform(tree)
@@ -237,8 +236,8 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
             val InstrumentedParts(pre, coverageCall, expr) = tryInstrument(fun)
 
             if coverageCall.isEmpty then
-              // `fun` cannot be instrumented, and `args` is a type so we keep this tree as it is
-              tree
+              // `fun` cannot be instrumented and `args` is a type, but `expr` may have been transformed
+              cpy.TypeApply(tree)(expr, args)
             else
               // expr[T] shouldn't be transformed to:
               // {invoked(...), expr}[T]
@@ -353,10 +352,8 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       // recursively transform the guard, but keep the pat
       val transformedGuard = transform(guard)
 
-      // ensure that the body is always instrumented by inserting a call to Invoker.invoked at its beginning
-      val coverageCall = createInvokeCall(tree.body, pos)
-      val transformedBody = transform(tree.body)
-      val instrumentedBody = InstrumentedParts.singleExprTree(coverageCall, transformedBody)
+      // ensure that the body is always instrumented as a branch
+      val instrumentedBody = transformBranch(tree.body)
 
       cpy.CaseDef(tree)(pat, transformedGuard, instrumentedBody)
 
@@ -457,8 +454,13 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
          * they shouldn't be lifted.
          */
         val sym = fun.symbol
-        sym.exists && (isShortCircuitedOp(sym) || StringInterpolatorOpt.isCompilerIntrinsic(sym))
-      end
+        sym.exists && (
+          isShortCircuitedOp(sym)
+          || StringInterpolatorOpt.isCompilerIntrinsic(sym)
+          || sym == defn.Object_synchronized
+          || isContextFunctionApply(fun)
+        )
+      end isUnliftableFun
 
       val fun = tree.fun
       val nestedApplyNeedsLift = fun match
@@ -467,6 +469,12 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
       nestedApplyNeedsLift ||
       !isUnliftableFun(fun) && !tree.args.isEmpty && !tree.args.forall(LiftCoverage.noLift)
+
+    private def isContextFunctionApply(fun: Tree)(using Context): Boolean =
+      fun match
+        case Select(prefix, nme.apply) =>
+          defn.isContextFunctionType(prefix.tpe.widen)
+        case _ => false
 
     /** Check if an Apply can be instrumented. Prevents this phase from generating incorrect code. */
     private def canInstrumentApply(tree: Apply)(using Context): Boolean =

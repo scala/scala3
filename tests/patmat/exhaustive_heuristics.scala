@@ -18,8 +18,8 @@ object Test {
   // well, in truth, we do rewrite List() to Nil, but otherwise we do nothing
   // the full rewrite List(a, b) to a :: b :: Nil, for example is planned (but not sure it's a good idea)
   List(true, false) match {
-    case List(_, _, _:_*) =>
-    case List(node, _:_*)  =>
+    case List(_, _, _*) =>
+    case List(node, _*)  =>
     case Nil =>
   }
 

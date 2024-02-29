@@ -14,7 +14,7 @@ import scala.tools.asm
  * This representation is immutable and independent of the compiler data structures, hence it can
  * be queried by concurrent threads.
  */
-abstract class BTypes extends caps.Pure {
+abstract class BTypes extends Pure {
 
   val int: DottyBackendInterface
   import int.given
@@ -47,7 +47,7 @@ abstract class BTypes extends caps.Pure {
    * A BType is either a primitve type, a ClassBType, an ArrayBType of one of these, or a MethodType
    * referring to BTypes.
    */
-  /*sealed*/ trait BType extends caps.Pure { // Not sealed for now due to SI-8546
+  /*sealed*/ trait BType extends Pure { // Not sealed for now due to SI-8546
     final override def toString: String = this match {
       case UNIT   => "V"
       case BOOL   => "Z"

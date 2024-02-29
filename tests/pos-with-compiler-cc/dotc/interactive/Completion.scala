@@ -538,7 +538,7 @@ object Completion {
   /** Temporary data structure representing denotations with the same name introduced in a given scope
    *  as a member of a type, by a local definition or by an import clause
    */
-  private case class ScopedDenotations(denots: Seq[SingleDenotation], ctx: DetachedContext) extends caps.Pure
+  private case class ScopedDenotations(denots: Seq[SingleDenotation], ctx: DetachedContext) extends Pure
 
   /**
    * The completion mode: defines what kinds of symbols should be included in the completion

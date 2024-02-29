@@ -2,11 +2,11 @@ package dotty.tools
 package dotc
 package core
 
-import Types._
-import Contexts._
-import Symbols._
-import Decorators._
-import Flags._
+import Types.*
+import Contexts.*
+import Symbols.*
+import Decorators.*
+import Flags.*
 import config.Config
 import config.Printers.typr
 import typer.ProtoTypes.{newTypeVar, representedParamRef}
@@ -54,7 +54,7 @@ trait ConstraintHandling {
   protected var homogenizeArgs: Boolean = false
 
   /** We are currently comparing type lambdas. Used as a flag for
-   *  optimization: when `false`, no need to do an expensive `pruneLambdaParams`
+   *  optimization: when `false`, no need to do an expensive `avoidLambdaParams`
    */
   protected var comparedTypeLambdas: Set[TypeLambda] = Set.empty
 
@@ -63,6 +63,14 @@ trait ConstraintHandling {
    *  toplevel; it is turned on again when we add parts of the scrutinee to the constraint.
    */
   protected var canWidenAbstract: Boolean = true
+
+  /**
+   * Used for match type reduction.
+   * When an abstract type may not be widened, according to `widenAbstractOKFor`,
+   * we record it in this set, so that we can ultimately fail the reduction, but
+   * with all the information that comes out from continuing to widen the abstract type.
+   */
+  protected var poisoned: Set[TypeParamRef] = Set.empty
 
   protected var myNecessaryConstraintsOnly = false
   /** When collecting the constraints needed for a particular subtyping
@@ -102,7 +110,7 @@ trait ConstraintHandling {
    *
    *  If we trust bounds, then the lower bound of `X` is `x.M` since `x.M >: 1`.
    *  Then even if we correct levels on instantiation to eliminate the local `x`,
-   *  it is alreay too late, we'd get `Int & String` as instance, which does not
+   *  it is already too late, we'd get `Int & String` as instance, which does not
    *  satisfy the original constraint `X >: 1`.
    *
    *  But if `trustBounds` is false, we do not conclude the `x.M >: 1` since
@@ -558,13 +566,6 @@ trait ConstraintHandling {
         inst
   end approximation
 
-  private def isTransparent(tp: Type, traitOnly: Boolean)(using Context): Boolean = tp match
-    case AndType(tp1, tp2) =>
-      isTransparent(tp1, traitOnly) && isTransparent(tp2, traitOnly)
-    case _ =>
-      val cls = tp.underlyingClassRef(refinementOK = false).typeSymbol
-      cls.isTransparentClass && (!traitOnly || cls.is(Trait))
-
   /** If `tp` is an intersection such that some operands are transparent trait instances
    *  and others are not, replace as many transparent trait instances as possible with Any
    *  as long as the result is still a subtype of `bound`. But fall back to the
@@ -577,7 +578,7 @@ trait ConstraintHandling {
     var dropped: List[Type] = List() // the types dropped so far, last one on top
 
     def dropOneTransparentTrait(tp: Type): Type =
-      if isTransparent(tp, traitOnly = true) && !kept.contains(tp) then
+      if tp.isTransparent(traitOnly = true) && !kept.contains(tp) then
         dropped = tp :: dropped
         defn.AnyType
       else tp match
@@ -650,7 +651,7 @@ trait ConstraintHandling {
     def widenOr(tp: Type) =
       if widenUnions then
         val tpw = tp.widenUnion
-        if (tpw ne tp) && !isTransparent(tpw, traitOnly = false) && (tpw <:< bound) then tpw else tp
+        if (tpw ne tp) && !tpw.isTransparent() && (tpw <:< bound) then tpw else tp
       else tp.hardenUnions
 
     def widenSingle(tp: Type) =
@@ -681,7 +682,7 @@ trait ConstraintHandling {
     case tp: AndType =>
       tp.derivedAndType(tp.tp1.hardenUnions, tp.tp2.hardenUnions)
     case tp: RefinedType =>
-      tp.derivedRefinedType(tp.parent.hardenUnions, tp.refinedName, tp.refinedInfo)
+      tp.derivedRefinedType(parent = tp.parent.hardenUnions)
     case tp: RecType =>
       tp.rebind(tp.parent.hardenUnions)
     case tp: HKTypeLambda =>
@@ -708,8 +709,8 @@ trait ConstraintHandling {
       // Widening can add extra constraints, in particular the widened type might
       // be a type variable which is now instantiated to `param`, and therefore
       // cannot be used as an instantiation of `param` without creating a loop.
-      // If that happens, we run `instanceType` again to find a new instantation.
-      // (we do not check for non-toplevel occurences: those should never occur
+      // If that happens, we run `instanceType` again to find a new instantiation.
+      // (we do not check for non-toplevel occurrences: those should never occur
       // since `addOneBound` disallows recursive lower bounds).
       if constraint.occursAtToplevel(param, widened) then
         instanceType(param, fromBelow, widenUnions, maxLevel)

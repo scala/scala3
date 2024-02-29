@@ -15,14 +15,20 @@ def test(): Unit =
     case _: Ex1 => ???
     case _: Ex2 => ???
 
-  try  // error
+  val x = try // error
+    () => foo(1)
+  catch
+    case _: Ex1 => ???
+    case _: Ex2 => ???
+
+  val y = try  // error
     () => Cell(foo(1))
   catch
     case _: Ex1 => ???
     case _: Ex2 => ???
 
-  val b = try  // error
-    Cell(() => foo(1))//: Cell[box {ev} () => Unit] <: Cell[box {cap} () => Unit]
+  val b = try // error
+    Cell(() => foo(1))
   catch
     case _: Ex1 => ???
     case _: Ex2 => ???

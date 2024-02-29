@@ -13,3 +13,9 @@
 6 |    val out = new ObjectOutputStream(println)
   |                                     ^^^^^^^
   |method println is eta-expanded even though java.io.OutputStream does not have the @FunctionalInterface annotation.
+-- Warning: tests/neg/i2033.scala:7:18 ---------------------------------------------------------------------------------
+7 |    val arr = bos toByteArray ()  // error
+  |                  ^^^^^^^^^^^
+  |                  Alphanumeric method toByteArray is not declared infix; it should not be used as infix operator.
+  |                  Instead, use method syntax .toByteArray(...) or backticked identifier `toByteArray`.
+  |                  The latter can be rewritten automatically under -rewrite -source 3.4-migration.

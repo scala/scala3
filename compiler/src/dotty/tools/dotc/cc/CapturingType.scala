@@ -4,6 +4,7 @@ package cc
 
 import core.*
 import Types.*, Symbols.*, Contexts.*
+import Decorators.i
 
 /** A (possibly boxed) capturing type. This is internally represented as an annotated type with a @retains
  *  or @retainsByName annotation, but the extractor will succeed only at phase CheckCaptures.
@@ -25,58 +26,62 @@ import Types.*, Symbols.*, Contexts.*
  */
 object CapturingType:
 
-  /** Smart constructor that drops empty capture sets and fuses compatible capturiong types.
+  /** Smart constructor that
+   *   - drops empty capture sets
+   *   - drops a capability class expansion if it is further refined with another capturing type
+   *   - fuses compatible capturing types.
    *  An outer type capturing type A can be fused with an inner capturing type B if their
    *  boxing status is the same or if A is boxed.
    */
   def apply(parent: Type, refs: CaptureSet, boxed: Boolean = false)(using Context): Type =
     if refs.isAlwaysEmpty then parent
     else parent match
+      case parent @ CapturingType(parent1, refs1) if refs1 eq defn.expandedUniversalSet =>
+        apply(parent1, refs, boxed)
       case parent @ CapturingType(parent1, refs1) if boxed || !parent.isBoxed =>
         apply(parent1, refs ++ refs1, boxed)
       case _ =>
         AnnotatedType(parent, CaptureAnnotation(refs, boxed)(defn.RetainsAnnot))
 
-  /** An extractor that succeeds only during CheckCapturingPhase. Boxing statis is
-   *  returned separately by CaptureOps.isBoxed.
+  /** An extractor for CapturingTypes. Capturing types are recognized if
+   *   - the annotation is a CaptureAnnotation and we are not past CheckCapturingPhase, or
+   *   - the annotation is a @retains and we are in CheckCapturingPhase,
+   *  but not if the IgnoreCaptures mode is set.
+   *  Boxing status is returned separately by CaptureOps.isBoxed.
    */
   def unapply(tp: AnnotatedType)(using Context): Option[(Type, CaptureSet)] =
-    if ctx.phase == Phases.checkCapturesPhase
-      && tp.annot.symbol == defn.RetainsAnnot
-      && !ctx.mode.is(Mode.IgnoreCaptures)
-    then
-      EventuallyCapturingType.unapply(tp)
-    else None
+    if ctx.mode.is(Mode.IgnoreCaptures) then None
+    else decomposeCapturingType(tp)
+
+  /** Decompose `tp` as a capturing type without taking IgnoreCaptures into account */
+  def decomposeCapturingType(tp: Type)(using Context): Option[(Type, CaptureSet)] = tp match
+    case AnnotatedType(parent, ann: CaptureAnnotation)
+    if isCaptureCheckingOrSetup =>
+      Some((parent, ann.refs))
+    case AnnotatedType(parent, ann)
+    if ann.symbol == defn.RetainsAnnot && isCaptureChecking =>
+      // There are some circumstances where we cannot map annotated types
+      // with retains annotations to capturing types, so this second recognizer
+      // path still has to exist. One example is when checking capture sets
+      // of dependent function type results for well-formedness. E.g. in
+      // `(x: C^{f}) -> () ->{x} Unit` we need to check that the capture set of
+      // `x` is not empty. We use the original, untransformed type for that
+      // since the transformed type already normalizes capture sets which would
+      // drop subsumed references. But the original type refers to the untransfomed
+      // type `C^{f}` which does not have a capture annotation yet. The transformed
+      // type would be in a copy of the dependent function type, but it is useless
+      // since we need to check the original reference.
+      try Some((parent, ann.tree.toCaptureSet))
+      catch case ex: IllegalCaptureRef => None
+    case _ =>
+      None
 
   /** Check whether a type is uncachable when computing `baseType`.
-    * - Avoid caching all the types during the setup phase, since at that point
-    *   the capture set variables are not fully installed yet.
-    * - Avoid caching capturing types when IgnoreCaptures mode is set, since the
-    *   capture sets may be thrown away in the computed base type.
-    */
+   *  We avoid caching capturing types when IgnoreCaptures mode is set.
+   */
   def isUncachable(tp: Type)(using Context): Boolean =
-    ctx.phase == Phases.checkCapturesPhase &&
-      (Setup.isDuringSetup || ctx.mode.is(Mode.IgnoreCaptures) && tp.isEventuallyCapturingType)
+    ctx.mode.is(Mode.IgnoreCaptures) && decomposeCapturingType(tp).isDefined
 
 end CapturingType
-
-/** An extractor for types that will be capturing types at phase CheckCaptures. Also
- *  included are types that indicate captures on enclosing call-by-name parameters
- *  before phase ElimByName.
- */
-object EventuallyCapturingType:
-
-  def unapply(tp: AnnotatedType)(using Context): Option[(Type, CaptureSet)] =
-    val sym = tp.annot.symbol
-    if sym == defn.RetainsAnnot || sym == defn.RetainsByNameAnnot then
-      tp.annot match
-        case ann: CaptureAnnotation =>
-          Some((tp.parent, ann.refs))
-        case ann =>
-          try Some((tp.parent, ann.tree.toCaptureSet))
-          catch case ex: IllegalCaptureRef => None
-    else None
-
-end EventuallyCapturingType
 
 

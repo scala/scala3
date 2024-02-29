@@ -5,7 +5,7 @@ object IntEqualityTestTreeMaker {
 class Test {
   def isBelow(n: Int, s: String): Boolean = false
 
-  def foo(xs: List[(Int, String)]): Unit = (xs filter (isBelow _).tupled) match {
+  def foo(xs: List[(Int, String)]): Unit = xs.filter(isBelow.tupled) match {
     case Nil =>
     case matches =>
   }

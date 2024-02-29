@@ -1,0 +1,5 @@
+## See #18882
+patmat.scala
+patmat-interpolator.scala
+unapplySeq-implicit-arg-pos.scala
+global-cycle11.scala

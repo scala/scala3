@@ -17,7 +17,7 @@ object Annotations {
     if (tree.symbol.isConstructor) tree.symbol.owner
     else tree.tpe.typeSymbol
 
-  abstract class Annotation extends Showable, caps.Pure {
+  abstract class Annotation extends Showable, Pure {
 
     def tree(using Context): Tree
 

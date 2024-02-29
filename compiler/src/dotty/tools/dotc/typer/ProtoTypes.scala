@@ -2,27 +2,30 @@ package dotty.tools
 package dotc
 package typer
 
-import core._
-import ast._
-import Contexts._, Types._, Denotations._, Names._, StdNames._, NameOps._, Symbols._
+import core.*
+import ast.*
+import Contexts.*, Types.*, Denotations.*, Names.*, StdNames.*, NameOps.*, Symbols.*
 import NameKinds.DepParamName
-import Trees._
-import Constants._
+import Trees.*
+import Constants.*
 import util.{Stats, SimpleIdentityMap, SimpleIdentitySet}
-import Decorators._
-import Uniques._
+import Decorators.*
+import Uniques.*
 import inlines.Inlines
 import config.Printers.typr
 import Inferencing.*
 import ErrorReporting.*
 import util.SourceFile
 import TypeComparer.necessarySubType
+import dotty.tools.dotc.core.Flags.Transparent
+import dotty.tools.dotc.config.{ Feature, SourceVersion }
 
 import scala.annotation.internal.sharable
+import dotty.tools.dotc.util.Spans.{NoSpan, Span}
 
 object ProtoTypes {
 
-  import tpd._
+  import tpd.*
 
   /** A trait defining an `isCompatible` method. */
   trait Compatibility {
@@ -105,7 +108,7 @@ object ProtoTypes {
       if !res then ctx.typerState.constraint = savedConstraint
       res
 
-    /** Constrain result with special case if `meth` is an inlineable method in an inlineable context.
+    /** Constrain result with special case if `meth` is a transparent inlineable method in an inlineable context.
      *  In that case, we should always succeed and not constrain type parameters in the expected type,
      *  because the actual return type can be a subtype of the currently known return type.
      *  However, we should constrain parameters of the declared return type. This distinction is
@@ -113,8 +116,21 @@ object ProtoTypes {
      */
     def constrainResult(meth: Symbol, mt: Type, pt: Type)(using Context): Boolean =
       if (Inlines.isInlineable(meth)) {
-        constrainResult(mt, wildApprox(pt))
-        true
+        // Stricter behaviour in 3.4+: do not apply `wildApprox` to non-transparent inlines
+        if (Feature.sourceVersion.isAtLeast(SourceVersion.`3.4`)) {
+          if (meth.is(Transparent)) {
+            constrainResult(mt, wildApprox(pt))
+            // do not constrain the result type of transparent inline methods
+            true
+          } else {
+            constrainResult(mt, pt)
+          }
+        } else {
+          // Best-effort to fix https://github.com/lampepfl/dotty/issues/9685 in the 3.3.x series
+          // while preserving source compatibility as much as possible
+          val methodMatchedType = constrainResult(mt, wildApprox(pt))
+          meth.is(Transparent) || methodMatchedType
+        }
       }
       else constrainResult(mt, pt)
   }
@@ -165,7 +181,7 @@ object ProtoTypes {
    *
    *       [ ].name: proto
    */
-  abstract case class SelectionProto(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)
+  abstract case class SelectionProto(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean, nameSpan: Span)
   extends CachedProxyType with ProtoType with ValueTypeOrProto {
 
     /** Is the set of members of this type unknown, in the sense that we
@@ -211,9 +227,7 @@ object ProtoTypes {
               || tp1.isValueType && compat.normalizedCompatible(NamedType(tp1, name, m), memberProto, keepConstraint))
                 // Note: can't use `m.info` here because if `m` is a method, `m.info`
                 //       loses knowledge about `m`'s default arguments.
-          mbr match // hasAltWith inlined for performance
-            case mbr: SingleDenotation => mbr.exists && qualifies(mbr)
-            case _ => mbr hasAltWith qualifies
+          mbr.hasAltWithInline(qualifies)
         catch case ex: TypeError =>
           // A scenario where this can happen is in pos/15673.scala:
           // We have a type `CC[A]#C` where `CC`'s upper bound is `[X] => Any`, but
@@ -230,9 +244,9 @@ object ProtoTypes {
 
     def underlying(using Context): Type = WildcardType
 
-    def derivedSelectionProto(name: Name, memberProto: Type, compat: Compatibility)(using Context): SelectionProto =
-      if ((name eq this.name) && (memberProto eq this.memberProto) && (compat eq this.compat)) this
-      else SelectionProto(name, memberProto, compat, privateOK)
+    def derivedSelectionProto(name: Name, memberProto: Type, compat: Compatibility, nameSpan: Span)(using Context): SelectionProto =
+      if ((name eq this.name) && (memberProto eq this.memberProto) && (compat eq this.compat) && (nameSpan == this.nameSpan)) this
+      else SelectionProto(name, memberProto, compat, privateOK, nameSpan)
 
     override def isErroneous(using Context): Boolean =
       memberProto.isErroneous
@@ -240,14 +254,14 @@ object ProtoTypes {
     override def unusableForInference(using Context): Boolean =
       memberProto.unusableForInference
 
-    def map(tm: TypeMap)(using Context): SelectionProto = derivedSelectionProto(name, tm(memberProto), compat)
+    def map(tm: TypeMap)(using Context): SelectionProto = derivedSelectionProto(name, tm(memberProto), compat, nameSpan)
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T = ta(x, memberProto)
 
     override def deepenProto(using Context): SelectionProto =
-      derivedSelectionProto(name, memberProto.deepenProto, compat)
+      derivedSelectionProto(name, memberProto.deepenProto, compat, nameSpan)
 
     override def deepenProtoTrans(using Context): SelectionProto =
-      derivedSelectionProto(name, memberProto.deepenProtoTrans, compat)
+      derivedSelectionProto(name, memberProto.deepenProtoTrans, compat, nameSpan)
 
     override def computeHash(bs: Hashable.Binders): Int = {
       val delta = (if (compat eq NoViewsAllowed) 1 else 0) | (if (privateOK) 2 else 0)
@@ -268,12 +282,12 @@ object ProtoTypes {
     }
   }
 
-  class CachedSelectionProto(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)
-  extends SelectionProto(name, memberProto, compat, privateOK)
+  class CachedSelectionProto(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean, nameSpan: Span)
+  extends SelectionProto(name, memberProto, compat, privateOK, nameSpan)
 
   object SelectionProto {
-    def apply(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)(using Context): SelectionProto = {
-      val selproto = new CachedSelectionProto(name, memberProto, compat, privateOK)
+    def apply(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean, nameSpan: Span)(using Context): SelectionProto = {
+      val selproto = new CachedSelectionProto(name, memberProto, compat, privateOK, nameSpan)
       if (compat eq NoViewsAllowed) unique(selproto) else selproto
     }
   }
@@ -281,11 +295,11 @@ object ProtoTypes {
   /** Create a selection proto-type, but only one level deep;
    *  treat constructors specially
    */
-  def shallowSelectionProto(name: Name, tp: Type, typer: Typer)(using Context): TermType =
+  def shallowSelectionProto(name: Name, tp: Type, typer: Typer, nameSpan: Span)(using Context): TermType =
     if (name.isConstructorName) WildcardType
     else tp match
-      case tp: UnapplyFunProto => new UnapplySelectionProto(name)
-      case tp => SelectionProto(name, IgnoredProto(tp), typer, privateOK = true)
+      case tp: UnapplyFunProto => new UnapplySelectionProto(name, nameSpan)
+      case tp => SelectionProto(name, IgnoredProto(tp), typer, privateOK = true, nameSpan)
 
   /** A prototype for expressions [] that are in some unspecified selection operation
    *
@@ -295,12 +309,12 @@ object ProtoTypes {
    *  operation is further selection. In this case, the expression need not be a value.
    *  @see checkValue
    */
-  @sharable object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed, true)
+  @sharable object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed, true, NoSpan)
 
-  @sharable object SingletonTypeProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed, true)
+  @sharable object SingletonTypeProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed, true, NoSpan)
 
   /** A prototype for selections in pattern constructors */
-  class UnapplySelectionProto(name: Name) extends SelectionProto(name, WildcardType, NoViewsAllowed, true)
+  class UnapplySelectionProto(name: Name, nameSpan: Span) extends SelectionProto(name, WildcardType, NoViewsAllowed, true, nameSpan)
 
   trait ApplyingProto extends ProtoType   // common trait of ViewProto and FunProto
   trait FunOrPolyProto extends ProtoType: // common trait of PolyProto and FunProto
@@ -370,9 +384,9 @@ object ProtoTypes {
     def allArgTypesAreCurrent()(using Context): Boolean =
       state.typedArg.size == args.length
 
-    private def isUndefined(tp: Type): Boolean = tp match {
+    private def isUndefined(tp: Type): Boolean = tp.dealias match {
       case _: WildcardType => true
-      case defn.FunctionOf(args, result, _) => args.exists(isUndefined) || isUndefined(result)
+      case defn.FunctionNOf(args, result, _) => args.exists(isUndefined) || isUndefined(result)
       case _ => false
     }
 
@@ -411,7 +425,7 @@ object ProtoTypes {
               case ValDef(_, tpt, _) if !tpt.isEmpty => typer.typedType(tpt).typeOpt
               case _ => WildcardType
             }
-            targ = arg.withType(defn.FunctionOf(paramTypes, WildcardType))
+            targ = arg.withType(defn.FunctionNOf(paramTypes, WildcardType))
           case Some(_) if !force =>
             targ = arg.withType(WildcardType)
           case _ =>
@@ -599,7 +613,7 @@ object ProtoTypes {
     def isMatchedBy(tp: Type, keepConstraint: Boolean)(using Context): Boolean =
       ctx.typer.isApplicableType(tp, argType :: Nil, resultType) || {
         resType match {
-          case selProto @ SelectionProto(selName: TermName, mbrType, _, _) =>
+          case selProto @ SelectionProto(selName: TermName, mbrType, _, _, _) =>
             ctx.typer.hasExtensionMethodNamed(tp, selName, argType, mbrType)
               //.reporting(i"has ext $tp $name $argType $mbrType: $result")
           case _ =>
@@ -712,7 +726,7 @@ object ProtoTypes {
     tl: TypeLambda, owningTree: untpd.Tree,
     alwaysAddTypeVars: Boolean,
     nestingLevel: Int = ctx.nestingLevel
-  ): (TypeLambda, List[TypeTree]) = {
+  ): (TypeLambda, List[TypeVar]) = {
     val state = ctx.typerState
     val addTypeVars = alwaysAddTypeVars || !owningTree.isEmpty
     if (tl.isInstanceOf[PolyType])
@@ -720,33 +734,31 @@ object ProtoTypes {
         s"inconsistent: no typevars were added to committable constraint ${state.constraint}")
       // hk type lambdas can be added to constraints without typevars during match reduction
 
-    def newTypeVars(tl: TypeLambda): List[TypeTree] =
-      for (paramRef <- tl.paramRefs)
-      yield {
-        val tt = InferredTypeTree().withSpan(owningTree.span)
+    def newTypeVars(tl: TypeLambda): List[TypeVar] =
+      for paramRef <- tl.paramRefs
+      yield
         val tvar = TypeVar(paramRef, state, nestingLevel)
         state.ownedVars += tvar
-        tt.withType(tvar)
-      }
+        tvar
 
     val added = state.constraint.ensureFresh(tl)
-    val tvars = if (addTypeVars) newTypeVars(added) else Nil
-    TypeComparer.addToConstraint(added, tvars.tpes.asInstanceOf[List[TypeVar]])
+    val tvars = if addTypeVars then newTypeVars(added) else Nil
+    TypeComparer.addToConstraint(added, tvars)
     (added, tvars)
   }
 
-  def constrained(tl: TypeLambda, owningTree: untpd.Tree)(using Context): (TypeLambda, List[TypeTree]) =
+  def constrained(tl: TypeLambda, owningTree: untpd.Tree)(using Context): (TypeLambda, List[TypeVar]) =
     constrained(tl, owningTree,
       alwaysAddTypeVars = tl.isInstanceOf[PolyType] && ctx.typerState.isCommittable)
 
-  /**  Same as `constrained(tl, EmptyTree)`, but returns just the created type lambda */
-  def constrained(tl: TypeLambda)(using Context): TypeLambda =
-    constrained(tl, EmptyTree)._1
+  /**  Same as `constrained(tl, EmptyTree, alwaysAddTypeVars = true)`, but returns just the created type vars. */
+  def constrained(tl: TypeLambda)(using Context): List[TypeVar] =
+    constrained(tl, EmptyTree, alwaysAddTypeVars = true)._2
 
   /** Instantiate `tl` with fresh type variables added to the constraint. */
   def instantiateWithTypeVars(tl: TypeLambda)(using Context): Type =
-    val targs = constrained(tl, ast.tpd.EmptyTree, alwaysAddTypeVars = true)._2
-    tl.instantiate(targs.tpes)
+    val tvars = constrained(tl)
+    tl.instantiate(tvars)
 
   /** A fresh type variable added to the current constraint.
    *  @param  bounds        The initial bounds of the variable
@@ -765,7 +777,7 @@ object ProtoTypes {
         pt => bounds :: Nil,
         pt => represents.orElse(defn.AnyType))
     constrained(poly, untpd.EmptyTree, alwaysAddTypeVars = true, nestingLevel)
-      ._2.head.tpe.asInstanceOf[TypeVar]
+      ._2.head
 
   /** If `param` was created using `newTypeVar(..., represents = X)`, returns X.
    *  This is used in:
@@ -921,7 +933,7 @@ object ProtoTypes {
       }
       approxOr
     case tp: SelectionProto =>
-      tp.derivedSelectionProto(tp.name, wildApprox(tp.memberProto, theMap, seen, internal), NoViewsAllowed)
+      tp.derivedSelectionProto(tp.name, wildApprox(tp.memberProto, theMap, seen, internal), NoViewsAllowed, tp.nameSpan)
     case tp: ViewProto =>
       tp.derivedViewProto(
           wildApprox(tp.argType, theMap, seen, internal),
@@ -954,7 +966,7 @@ object ProtoTypes {
 
   final def wildApprox(tp: Type)(using Context): Type = wildApprox(tp, null, Set.empty, Set.empty)
 
-  @sharable object AssignProto extends UncachedGroundType with MatchAlways
+  @sharable object LhsProto extends UncachedGroundType with MatchAlways
 
   private[ProtoTypes] class WildApproxMap(val seen: Set[TypeParamRef], val internal: Set[TypeLambda])(using Context) extends TypeMap {
     def apply(tp: Type): Type = wildApprox(tp, this, seen, internal)

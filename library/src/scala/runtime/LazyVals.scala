@@ -25,12 +25,12 @@ object LazyVals {
       throwInitializationException()
   }
 
-  private[this] val base: Int = {
+  private val base: Int = {
     val processors = java.lang.Runtime.getRuntime.nn.availableProcessors()
     8 * processors * processors
   }
 
-  private[this] val monitors: Array[Object] =
+  private val monitors: Array[Object] =
     Array.tabulate(base)(_ => new Object)
 
   private def getMonitor(obj: Object, fieldId: Int = 0) = {
@@ -135,7 +135,7 @@ object LazyVals {
   }
 
   // kept for backward compatibility
-  def getOffset(clz: Class[_], name: String): Long = {
+  def getOffset(clz: Class[?], name: String): Long = {
     @nowarn
     val r = unsafe.objectFieldOffset(clz.getDeclaredField(name))
     if (debug)

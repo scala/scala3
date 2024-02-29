@@ -2,21 +2,22 @@ package dotty.tools
 package dotc
 package typer
 
-import ast._
-import core._
-import Types._, ProtoTypes._, Contexts._, Decorators._, Denotations._, Symbols._
-import Implicits._, Flags._, Constants.Constant
-import Trees._
-import NameOps._
+import ast.*
+import core.*
+import Types.*, ProtoTypes.*, Contexts.*, Decorators.*, Denotations.*, Symbols.*
+import Implicits.*, Flags.*, Constants.Constant
+import Trees.*
+import NameOps.*
+import util.Spans.NoSpan
 import util.SrcPos
 import config.Feature
-import reporting._
+import reporting.*
 import collection.mutable
 
 
 object ErrorReporting {
 
-  import tpd._
+  import tpd.*
 
   def errorTree(tree: untpd.Tree, msg: Message, pos: SrcPos)(using Context): tpd.Tree =
     tree.withType(errorType(msg, pos))
@@ -55,7 +56,7 @@ object ErrorReporting {
     val meth = err.exprStr(methPart(tree))
     val info = if tree.symbol.exists then tree.symbol.info else mt
     if isCallableWithSingleEmptyArgumentList(info) then
-      report.error(MissingEmptyArgumentList(meth), tree.srcPos)
+      report.error(MissingEmptyArgumentList(meth, tree), tree.srcPos)
     else
       report.error(MissingArgumentList(meth, tree.symbol), tree.srcPos)
 
@@ -69,6 +70,15 @@ object ErrorReporting {
           case tp: MatchType => MatchTypeTrace.record(tp.tryNormalize)
           case _ => foldOver(s, tp)
     tps.foldLeft("")(collectMatchTrace)
+
+  /** A mixin trait that can produce added elements for an error message */
+  trait Addenda:
+    self =>
+    def toAdd(using Context): List[String] = Nil
+    def ++ (follow: Addenda) = new Addenda:
+      override def toAdd(using Context) = self.toAdd ++ follow.toAdd
+
+  object NothingToAdd extends Addenda
 
   class Errors(using Context) {
 
@@ -162,12 +172,12 @@ object ErrorReporting {
 
     def patternConstrStr(tree: Tree): String = ???
 
-    def typeMismatch(tree: Tree, pt: Type, implicitFailure: SearchFailureType = NoMatchingImplicits): Tree = {
+    def typeMismatch(tree: Tree, pt: Type, addenda: Addenda = NothingToAdd): Tree = {
       val normTp = normalize(tree.tpe, pt)
       val normPt = normalize(pt, pt)
 
       def contextFunctionCount(tp: Type): Int = tp.stripped match
-        case defn.ContextFunctionType(_, restp, _) => 1 + contextFunctionCount(restp)
+        case defn.ContextFunctionType(_, restp) => 1 + contextFunctionCount(restp)
         case _ => 0
       def strippedTpCount = contextFunctionCount(tree.tpe) - contextFunctionCount(normTp)
       def strippedPtCount = contextFunctionCount(pt) - contextFunctionCount(normPt)
@@ -184,7 +194,7 @@ object ErrorReporting {
           "\nMaybe you are missing an else part for the conditional?"
         case _ => ""
 
-      errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), implicitFailure.whyNoConversion, missingElse))
+      errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), (addenda.toAdd :+ missingElse)*))
     }
 
     /** A subtype log explaining why `found` does not conform to `expected` */
@@ -194,7 +204,7 @@ object ErrorReporting {
           |  $found
           |conforms to
           |  $expected
-          |but the comparison trace ended with `false`:
+          |but none of the attempts shown below succeeded:
           |"""
       val c = ctx.typerState.constraint
       val constraintText =
@@ -203,7 +213,7 @@ object ErrorReporting {
         else
           i"""a constraint with:
              |$c"""
-      i"""${TypeComparer.explained(_.isSubType(found, expected), header)}
+      i"""${TypeComparer.explained(_.isSubType(found, expected), header, short = !ctx.settings.Ydebug.value)}
          |
          |The tests were made under $constraintText"""
 
@@ -266,7 +276,7 @@ object ErrorReporting {
       else
         val add = suggestImports(
           ViewProto(qualType.widen,
-            SelectionProto(tree.name, WildcardType, NoViewsAllowed, privateOK = false)))
+            SelectionProto(tree.name, WildcardType, NoViewsAllowed, privateOK = false, NoSpan)))
         if add.isEmpty then ""
         else ", but could be made available as an extension method." ++ add
     end selectErrorAddendum

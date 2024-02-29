@@ -1,14 +1,15 @@
 package dotty.tools.dotc
 
-import reporting._
-import Diagnostic._
+import reporting.*
+import Diagnostic.*
 import util.{SourcePosition, NoSourcePosition, SrcPos}
-import core._
-import Contexts._, Flags.*, Symbols._, Decorators._
+import core.*
+import Contexts.*, Flags.*, Symbols.*, Decorators.*
 import config.SourceVersion
-import ast._
+import ast.*
 import config.Feature.sourceVersion
 import java.lang.System.currentTimeMillis
+import dotty.tools.dotc.config.MigrationVersion
 
 object report:
 
@@ -80,14 +81,11 @@ object report:
     if ctx.settings.YdebugError.value then Thread.dumpStack()
     if ctx.settings.YdebugTypeError.value then ex.printStackTrace()
 
-  def errorOrMigrationWarning(msg: Message, pos: SrcPos, from: SourceVersion)(using Context): Unit =
-    if sourceVersion.isAtLeast(from) then
-      if sourceVersion.isMigrating && sourceVersion.ordinal <= from.ordinal then migrationWarning(msg, pos)
-      else error(msg, pos)
-
-  def gradualErrorOrMigrationWarning(msg: Message, pos: SrcPos, warnFrom: SourceVersion, errorFrom: SourceVersion)(using Context): Unit =
-    if sourceVersion.isAtLeast(errorFrom) then errorOrMigrationWarning(msg, pos, errorFrom)
-    else if sourceVersion.isAtLeast(warnFrom) then warning(msg, pos)
+  def errorOrMigrationWarning(msg: Message, pos: SrcPos, migrationVersion: MigrationVersion)(using Context): Unit =
+    if sourceVersion.isAtLeast(migrationVersion.errorFrom) then
+      if !sourceVersion.isMigrating then error(msg, pos)
+      else if ctx.settings.rewrite.value.isEmpty then migrationWarning(msg, pos)
+    else if sourceVersion.isAtLeast(migrationVersion.warnFrom) then warning(msg, pos)
 
   def restrictionError(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     error(msg.mapMsg("Implementation restriction: " + _), pos)
@@ -131,61 +129,35 @@ object report:
   private object messageRendering extends MessageRendering
 
   // Should only be called from Run#enrichErrorMessage.
-  def enrichErrorMessage(errorMessage: String)(using Context): String = try {
+  def enrichErrorMessage(errorMessage: String)(using Context): String =
+    if ctx.settings.YnoEnrichErrorMessages.value then errorMessage
+    else try enrichErrorMessage1(errorMessage)
+    catch case _: Throwable => errorMessage // don't introduce new errors trying to report errors, so swallow exceptions
+
+  private def enrichErrorMessage1(errorMessage: String)(using Context): String = {
+    import untpd.*, config.Settings.*
     def formatExplain(pairs: List[(String, Any)]) = pairs.map((k, v) => f"$k%20s: $v").mkString("\n")
 
     val settings = ctx.settings.userSetSettings(ctx.settingsState).sortBy(_.name)
-    val tree     = ctx.tree
-    val sym      = tree.symbol
-    val pos      = tree.sourcePos
-    val path     = pos.source.path
-    val site     = ctx.outersIterator.map(_.owner).filter(sym => !sym.exists || sym.isClass || sym.is(Method)).next()
-
-    import untpd.*
-    extension (tree: Tree) def summaryString: String = tree match
-      case Literal(const)     => s"Literal($const)"
-      case Ident(name)        => s"Ident(${name.decode})"
-      case Select(qual, name) => s"Select(${qual.summaryString}, ${name.decode})"
-      case tree: NameTree     => (if tree.isType then "type " else "") + tree.name.decode
-      case tree               => s"${tree.className}${if tree.symbol.exists then s"(${tree.symbol})" else ""}"
+    def showSetting(s: Setting[?]): String = if s.value == "" then s"${s.name} \"\"" else s"${s.name} ${s.value}"
 
     val info1 = formatExplain(List(
       "while compiling"    -> ctx.compilationUnit,
-      "during phase"       -> ctx.phase.prevMega,
+      "during phase"       -> ctx.phase.megaPhase,
       "mode"               -> ctx.mode,
       "library version"    -> scala.util.Properties.versionString,
       "compiler version"   -> dotty.tools.dotc.config.Properties.versionString,
-      "settings"           -> settings.map(s => if s.value == "" then s"${s.name} \"\"" else s"${s.name} ${s.value}").mkString(" "),
+      "settings"           -> settings.map(showSetting).mkString(" "),
     ))
-    val symbolInfos = if sym eq NoSymbol then List("symbol" -> sym) else List(
-      "symbol"             -> sym.showLocated,
-      "symbol definition"  -> s"${sym.showDcl} (a ${sym.className})",
-      "symbol package"     -> sym.enclosingPackageClass.fullName,
-      "symbol owners"      -> sym.showExtendedLocation,
-    )
-    val info2 = formatExplain(List(
-      "tree"               -> tree.summaryString,
-      "tree position"      -> (if pos.exists then s"$path:${pos.line + 1}:${pos.column}" else s"$path:<unknown>"),
-      "tree type"          -> tree.typeOpt.show,
-    ) ::: symbolInfos ::: List(
-      "call site"          -> s"${site.showLocated} in ${site.enclosingPackageClass}"
-    ))
-    val context_s = try
-      s"""  == Source file context for tree position ==
-         |
-         |${messageRendering.messageAndPos(Diagnostic.Error("", pos))}""".stripMargin
-    catch case _: Exception => "<Cannot read source file>"
     s"""
        |  $errorMessage
        |
        |  An unhandled exception was thrown in the compiler.
        |  Please file a crash report here:
        |  https://github.com/lampepfl/dotty/issues/new/choose
+       |  For non-enriched exceptions, compile with -Yno-enrich-error-messages.
        |
        |$info1
-       |
-       |$info2
-       |
-       |$context_s""".stripMargin
-  } catch case _: Throwable => errorMessage // don't introduce new errors trying to report errors, so swallow exceptions
+       |""".stripMargin
+  }
 end report

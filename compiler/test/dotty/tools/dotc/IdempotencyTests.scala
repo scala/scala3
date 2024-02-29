@@ -45,7 +45,7 @@ class IdempotencyTests {
             compileList(testDir.getName, sources.reverse, opt)(TestGroup("idempotency/orderIdempotency2"))
           )
         }
-      aggregateTests(tests: _*)
+      aggregateTests(tests*)
     }
 
     def check(name: String) = {

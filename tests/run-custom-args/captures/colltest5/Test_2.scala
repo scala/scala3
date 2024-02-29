@@ -61,7 +61,7 @@ object Test {
     println(xs16)
   }
 
-  def viewOps(xs: View[Int]^{cap}) = {
+  def viewOps(xs: View[Int]^) = {
     val strPlusInt: (String, Int) => String = _ + _
     val intPlusStr: (Int, String) => String = _ + _
     val isEven: Int => Boolean = _ % 2 == 0

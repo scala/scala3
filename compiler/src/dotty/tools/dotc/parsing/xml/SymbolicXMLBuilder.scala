@@ -4,14 +4,15 @@ package parsing
 package xml
 
 import scala.language.unsafeNulls
+import scala.compiletime.uninitialized
 
 import scala.collection.mutable
-import core._
-import Decorators._
+import core.*
+import Decorators.*
 import Flags.Mutable
-import Names._, StdNames._, ast.Trees._, ast.{tpd, untpd}
-import Symbols._, Contexts._
-import util.Spans._
+import Names.*, StdNames.*, ast.Trees.*, ast.{tpd, untpd}
+import Symbols.*, Contexts.*
+import util.Spans.*
 import Parsers.Parser
 
 /** This class builds instance of `Tree` that represent XML.
@@ -28,11 +29,11 @@ import Parsers.Parser
 class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
 
   import Constants.Constant
-  import untpd._
+  import untpd.*
 
   import parser.atSpan
 
-  private[parsing] var isPattern: Boolean = _
+  private[parsing] var isPattern: Boolean = uninitialized
 
   private object xmltypes extends ScalaTypeNames {
     val _Comment: TypeName             = "Comment"
@@ -66,7 +67,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
   import xmlterms.{_Null, __Elem, __Text, _buf, _md, _plus, _scope, _tmpscope, _xml}
 
   // convenience methods
-  private def LL[A](x: A*): List[List[A]] = List(List(x:_*))
+  private def LL[A](x: A*): List[List[A]] = List(x.toList)
   private def const(x: Any) = Literal(Constant(x))
   private def wild                          = Ident(nme.WILDCARD)
   private def wildStar                      = Ident(tpnme.WILDCARD_STAR)
@@ -220,7 +221,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
         if (pre == null) (_scala_xml_UnprefixedAttribute, baseArgs)
                     else (_scala_xml_PrefixedAttribute  , const(pre) :: baseArgs)
 
-      Assign(Ident(_md), New(clazz, LL(attrArgs: _*)))
+      Assign(Ident(_md), New(clazz, LL(attrArgs*)))
     }
 
     def handlePrefixedAttribute(pre: String, key: String, value: Tree)  = mkAttributeTree(pre, key, value)

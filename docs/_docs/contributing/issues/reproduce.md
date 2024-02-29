@@ -1,24 +1,61 @@
 ---
 layout: doc-page
 title: Reproducing an Issue
+redirectFrom: /docs/contributing/workflow/reproduce.html
 ---
 
-To try fixing it, you will first need to reproduce the issue, so that
-- you can understand its cause
-- you can verify that any changes made to the codebase have a positive impact on the issue.
+The first step is to reproduce the issue you're trying to fix. Say you want to
+reproduce locally issue [#7710], you would first copy the code from the
+*"Minimised Code"* section of the issue to a file named e.g.
+`local/i7710.scala`, and then try to compile it from the sbt console opened in
+the dotty root directory:
 
-Say you want to reproduce locally issue [#7710], you would first copy the code from the *"Minimised Code"*
-section of the issue to a file named e.g. `local/i7710.scala`,
-and then try to compile it from the sbt console opened in the dotty root directory:
 ```bash
 $ sbt
-sbt:scala3> scala3/scalac -d local/out local/i7710.scala
+sbt:scala3> scalac -d local/out local/i7710.scala
 ```
 > Here, the `-d` flag specifies a directory `local/out` where generated code will be output.
 
-You can then verify that the local reproduction has the same behaviour as originally reported in the issue.
-If so, then you can start to try and fix it. Otherwise, perhaps the issue is out of date, or
-is missing information about how to accurately reproduce the issue.
+You can then verify that the local reproduction has the same behaviour as
+originally reported in the issue. If so, then you can start to try and fix it.
+Otherwise, perhaps the issue is out of date, or is missing information about how
+to accurately reproduce the issue.
+
+## Compiling files with scalac
+
+Let's take a deeper look at this `scalac` command we just used. As we have seen
+you can compile a test file either from sbt:
+
+```bash
+$ sbt
+> scalac <OPTIONS> <FILE>
+```
+
+in the same way that you could from terminal:
+
+```bash
+$ scalac <OPTIONS> <FILE>
+```
+
+Here are some useful debugging `<OPTIONS>`:
+
+* `-Xprint:PHASE1,PHASE2,...` or `-Xprint:all`: prints the `AST` after each
+  specified phase. Phase names can be found by examining the
+  `dotty.tools.dotc.transform.*` classes for their `phaseName` field e.g., `-Xprint:erasure`.
+  You can discover all phases in the `dotty.tools.dotc.Compiler` class
+* `-Ylog:PHASE1,PHASE2,...` or `-Ylog:all`: enables `ctx.log("")` logging for
+  the specified phase.
+* `-Ycheck:all` verifies the consistency of `AST` nodes between phases, in
+  particular checks that types do not change. Some phases currently can't be
+  `Ycheck`ed, therefore in the tests we run:
+  `-Ycheck:tailrec,resolveSuper,mixin,restoreScopes,labelDef`.
+* the last frontier of debugging (before actual debugging) is the range of logging capabilities that
+can be enabled through the `dotty.tools.dotc.config.Printers` object. Change any of the desired printer from `noPrinter` to
+`default` and this will give you the full logging capability of the compiler.
+
+You may also want to further inspect the types of a piece of code to verify the
+AST. Check out the section on [How to Inspect
+Values](../debugging/inspection.md) for a detailed guide on this.
 
 ## Dotty Issue Workspace
 
@@ -85,24 +122,25 @@ the dollar notation: `$1` for the first argument, `$2` for the second and so on.
 
 ### Multiline Commands
 
-Inside a `launch.iss` file, one command can be spread accross multiple lines. For example,
+Inside a `launch.iss` file, one command can be spread across multiple lines. For example,
 if your command has multiple arguments, you can put each argument on a new line.
 
-Multiline commands can even have comments inbetween lines. This is useful
+Multiline commands can even have comments in-between lines. This is useful
 if you want to try variants of a command with optional arguments (such as configuration).
 You can put the optional arguments on separate lines, and then decide when they are passed to
 the command by placing `#` in front to convert it to a comment (i.e. the argument will
 not be passed). This saves typing the same arguments each time you want to use them.
 
-The following `launch.iss` file is an example of how you can use multiline commands as a
-template for solving issues that [run compiled code](../issues/testing.md#checking-program-output). It demonstrates configuring the
-`scala3/scalac` command using compiler flags, which are commented out.
-Put your favourite flags there for quick usage.
+The following `launch.iss` file is an example of how you can use multiline
+commands as a template for solving issues that [run compiled
+code](../testing.md#checking-program-output). It demonstrates configuring
+the `scala3/scalac` command using compiler flags, which are commented out. Put
+your favourite flags there for quick usage.
 
 ```bash
 $ (rm -rv out || true) && mkdir out # clean up compiler output, create `out` dir.
 
-scala3/scalac  # Invoke the compiler task defined by the Dotty sbt project
+scalac  # Invoke the compiler task defined by the Dotty sbt project
   -d $here/out  # All the artefacts go to the `out` folder created earlier
   # -Xprint:typer  # Useful debug flags, commented out and ready for quick usage. Should you need one, you can quickly access it by uncommenting it.
   # -Ydebug-error
@@ -113,7 +151,7 @@ scala3/scalac  # Invoke the compiler task defined by the Dotty sbt project
   # -Ycheck:all
   $here/$1.scala  # Invoke the compiler on the file passed as the second argument to the `issue` command. E.g. `issue foo Hello` will compile `Hello.scala` assuming the issue folder name is `foo`.
 
-scala3/scala -classpath $here/out Test  # Run main method of `Test` generated by the compiler run.
+scala -classpath $here/out Test  # Run main method of `Test` generated by the compiler run.
 ```
 
 ## Conclusion

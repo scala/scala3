@@ -1,13 +1,13 @@
 package dotty.tools.backend.sjs
 
-import dotty.tools.dotc.core._
+import dotty.tools.dotc.core.*
 import Names.TermName
-import Types._
-import Contexts._
-import Symbols._
+import Types.*
+import Contexts.*
+import Symbols.*
 import Decorators.em
 
-import dotty.tools.dotc.ast.tpd._
+import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.backend.jvm.DottyPrimitives
 import dotty.tools.dotc.report
 import dotty.tools.dotc.util.ReadOnlyMap
@@ -64,7 +64,7 @@ object JSPrimitives {
 }
 
 class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
-  import JSPrimitives._
+  import JSPrimitives.*
 
   private lazy val jsPrimitives: ReadOnlyMap[Symbol, Int] = initJSPrimitives(using ictx)
 

@@ -27,7 +27,7 @@ Class
 <init>
 22
 29
-1
+2
 apply
 Apply
 false
@@ -42,26 +42,9 @@ Vals
 Class
 <empty>.Vals
 <init>
-22
-26
-1
-List
-Ident
-false
-0
-false
-List
-
-2
-lifting/test.scala
-<empty>
-Vals
-Class
-<empty>.Vals
-<init>
 41
 57
-2
+3
 ::
 Apply
 false
@@ -69,7 +52,7 @@ false
 false
 l :: List(1,2,3)
 
-3
+2
 lifting/test.scala
 <empty>
 Vals
@@ -78,7 +61,7 @@ Class
 <init>
 46
 57
-2
+3
 apply
 Apply
 false
@@ -86,24 +69,7 @@ false
 false
 List(1,2,3)
 
-4
-lifting/test.scala
-<empty>
-Vals
-Class
-<empty>.Vals
-<init>
-46
-50
-2
-List
-Ident
-false
-0
-false
-List
-
-5
+3
 lifting/test.scala
 <empty>
 A
@@ -112,7 +78,7 @@ Class
 msg
 104
 136
-5
+6
 +
 Apply
 false
@@ -120,7 +86,7 @@ false
 false
 "string" + a + "." + b + "." + c
 
-6
+4
 lifting/test.scala
 <empty>
 A
@@ -129,7 +95,7 @@ Class
 msg
 104
 132
-5
+6
 +
 Apply
 false
@@ -137,7 +103,7 @@ false
 false
 "string" + a + "." + b + "."
 
-7
+5
 lifting/test.scala
 <empty>
 A
@@ -146,7 +112,7 @@ Class
 msg
 104
 126
-5
+6
 +
 Apply
 false
@@ -154,7 +120,7 @@ false
 false
 "string" + a + "." + b
 
-8
+6
 lifting/test.scala
 <empty>
 A
@@ -163,7 +129,7 @@ Class
 msg
 104
 122
-5
+6
 +
 Apply
 false
@@ -171,7 +137,7 @@ false
 false
 "string" + a + "."
 
-9
+7
 lifting/test.scala
 <empty>
 A
@@ -180,7 +146,7 @@ Class
 msg
 104
 116
-5
+6
 +
 Apply
 false
@@ -188,7 +154,7 @@ false
 false
 "string" + a
 
-10
+8
 lifting/test.scala
 <empty>
 A
@@ -197,7 +163,7 @@ Class
 msg
 70
 77
-5
+6
 msg
 DefDef
 false
@@ -205,7 +171,7 @@ false
 false
 def msg
 
-11
+9
 lifting/test.scala
 <empty>
 A
@@ -214,7 +180,7 @@ Class
 integer
 139
 150
-6
+7
 integer
 DefDef
 false
@@ -222,7 +188,7 @@ false
 false
 def integer
 
-12
+10
 lifting/test.scala
 <empty>
 A
@@ -231,7 +197,7 @@ Class
 ex
 162
 168
-7
+8
 ex
 DefDef
 false
@@ -239,7 +205,7 @@ false
 false
 def ex
 
-13
+11
 lifting/test.scala
 <empty>
 test$package$
@@ -248,7 +214,7 @@ Object
 Test
 221
 224
-11
+12
 <init>
 Apply
 false
@@ -256,7 +222,7 @@ false
 false
 A()
 
-14
+12
 lifting/test.scala
 <empty>
 test$package$
@@ -265,7 +231,7 @@ Object
 f
 241
 246
-13
+14
 f
 DefDef
 false
@@ -273,7 +239,7 @@ false
 false
 def f
 
-15
+13
 lifting/test.scala
 <empty>
 test$package$
@@ -282,7 +248,7 @@ Object
 Test
 264
 286
-14
+15
 msg
 Apply
 false
@@ -290,7 +256,7 @@ false
 false
 a.msg(i, 0, a.integer)
 
-16
+14
 lifting/test.scala
 <empty>
 test$package$
@@ -299,7 +265,7 @@ Object
 Test
 276
 285
-14
+15
 integer
 Select
 false
@@ -307,7 +273,7 @@ false
 false
 a.integer
 
-17
+15
 lifting/test.scala
 <empty>
 test$package$
@@ -316,7 +282,7 @@ Object
 Test
 289
 299
-15
+16
 println
 Apply
 false
@@ -324,7 +290,7 @@ false
 false
 println(x)
 
-18
+16
 lifting/test.scala
 <empty>
 test$package$
@@ -333,7 +299,7 @@ Object
 Test
 306
 334
-16
+17
 msg
 Apply
 false
@@ -341,7 +307,7 @@ false
 false
 a.ex.msg(i, 0, a.ex.integer)
 
-19
+17
 lifting/test.scala
 <empty>
 test$package$
@@ -350,7 +316,7 @@ Object
 Test
 306
 310
-16
+17
 ex
 Select
 false
@@ -358,7 +324,7 @@ false
 false
 a.ex
 
-20
+18
 lifting/test.scala
 <empty>
 test$package$
@@ -367,7 +333,7 @@ Object
 Test
 321
 325
-16
+17
 ex
 Select
 false
@@ -375,7 +341,7 @@ false
 false
 a.ex
 
-21
+19
 lifting/test.scala
 <empty>
 test$package$
@@ -384,7 +350,7 @@ Object
 Test
 321
 333
-16
+17
 integer
 Select
 false
@@ -392,7 +358,7 @@ false
 false
 a.ex.integer
 
-22
+20
 lifting/test.scala
 <empty>
 test$package$
@@ -401,7 +367,7 @@ Object
 Test
 337
 347
-17
+18
 println
 Apply
 false
@@ -409,7 +375,7 @@ false
 false
 println(x)
 
-23
+21
 lifting/test.scala
 <empty>
 test$package$
@@ -418,7 +384,7 @@ Object
 Test
 354
 370
-18
+19
 msg
 Apply
 false
@@ -426,7 +392,7 @@ false
 false
 a.msg(f(), 0, i)
 
-24
+22
 lifting/test.scala
 <empty>
 test$package$
@@ -435,7 +401,7 @@ Object
 Test
 360
 363
-18
+19
 f
 Apply
 false
@@ -443,7 +409,7 @@ false
 false
 f()
 
-25
+23
 lifting/test.scala
 <empty>
 test$package$
@@ -452,7 +418,7 @@ Object
 Test
 373
 383
-19
+20
 println
 Apply
 false
@@ -460,7 +426,7 @@ false
 false
 println(x)
 
-26
+24
 lifting/test.scala
 <empty>
 test$package$
@@ -469,7 +435,7 @@ Object
 Test
 188
 202
-10
+11
 Test
 DefDef
 false

@@ -1,6 +1,8 @@
 package dotty.tools
 package dotc.util
 
+import scala.compiletime.uninitialized
+
 object GenericHashMap:
 
   /** The number of elements up to which dense packing is used.
@@ -27,9 +29,9 @@ abstract class GenericHashMap[Key, Value]
     (initialCapacity: Int, capacityMultiple: Int) extends MutableMap[Key, Value]:
   import GenericHashMap.DenseLimit
 
-  protected var used: Int = _
-  protected var limit: Int = _
-  protected var table: Array[AnyRef | Null] = _
+  protected var used: Int = uninitialized
+  protected var limit: Int = uninitialized
+  protected var table: Array[AnyRef | Null] = uninitialized
   clear()
 
   private def allocate(capacity: Int) =
@@ -129,12 +131,20 @@ abstract class GenericHashMap[Key, Value]
     null
 
   def getOrElseUpdate(key: Key, value: => Value): Value =
-    var v: Value | Null = lookup(key)
-    if v == null then
-      val v1 = value
-      v = v1
-      update(key, v1)
-    v.uncheckedNN
+    // created by blending lookup and update, avoid having to recompute hash and probe
+    Stats.record(statsItem("lookup-or-update"))
+    var idx = firstIndex(key)
+    var k = keyAt(idx)
+    while k != null do
+      if isEqual(k, key) then return valueAt(idx)
+      idx = nextIndex(idx)
+      k = keyAt(idx)
+    val v = value
+    setKey(idx, key)
+    setValue(idx, v)
+    used += 1
+    if used > limit then growTable()
+    v
 
   private def addOld(key: Key, value: Value): Unit =
     Stats.record(statsItem("re-enter"))

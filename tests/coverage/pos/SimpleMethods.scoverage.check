@@ -27,7 +27,7 @@ covtest.C
 a
 28
 33
-3
+4
 a
 DefDef
 false
@@ -44,7 +44,7 @@ covtest.C
 b
 46
 51
-4
+5
 b
 DefDef
 false
@@ -61,7 +61,7 @@ covtest.C
 c
 69
 74
-5
+6
 c
 DefDef
 false
@@ -78,7 +78,7 @@ covtest.C
 d
 88
 93
-6
+7
 d
 DefDef
 false
@@ -95,7 +95,7 @@ covtest.C
 e
 106
 111
-7
+8
 e
 DefDef
 false
@@ -112,7 +112,7 @@ covtest.C
 block
 128
 137
-9
+10
 block
 DefDef
 false
@@ -129,7 +129,7 @@ covtest.C
 cond
 206
 210
-14
+15
 <none>
 Literal
 true
@@ -146,7 +146,7 @@ covtest.C
 cond
 220
 225
-15
+16
 <none>
 Literal
 true
@@ -163,7 +163,7 @@ covtest.C
 cond
 168
 176
-13
+14
 cond
 DefDef
 false
@@ -180,7 +180,7 @@ covtest.C
 partialCond
 271
 273
-18
+19
 <none>
 Literal
 true
@@ -195,9 +195,26 @@ C
 Class
 covtest.C
 partialCond
+273
+273
+19
+<none>
+Literal
+true
+0
+false
+
+
+11
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+partialCond
 229
 244
-17
+18
 partialCond
 DefDef
 false
@@ -205,7 +222,7 @@ false
 false
 def partialCond
 
-11
+12
 SimpleMethods.scala
 covtest
 C
@@ -214,30 +231,13 @@ covtest.C
 new1
 277
 285
-20
+21
 new1
 DefDef
 false
 0
 false
 def new1
-
-12
-SimpleMethods.scala
-covtest
-C
-Class
-covtest.C
-tryCatch
-330
-332
-23
-<none>
-Literal
-true
-0
-false
-()
 
 13
 SimpleMethods.scala
@@ -246,15 +246,15 @@ C
 Class
 covtest.C
 tryCatch
-349
-366
-25
+330
+332
+24
 <none>
-Block
-false
+Literal
+true
 0
 false
-case e: Exception
+()
 
 14
 SimpleMethods.scala
@@ -263,9 +263,26 @@ C
 Class
 covtest.C
 tryCatch
+367
+371
+26
+<none>
+Block
+true
+0
+false
+=> 1
+
+15
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+tryCatch
 301
 313
-22
+23
 tryCatch
 DefDef
 false

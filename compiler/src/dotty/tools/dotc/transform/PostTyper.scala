@@ -4,20 +4,20 @@ package transform
 
 import dotty.tools.dotc.ast.{Trees, tpd, untpd, desugar}
 import scala.collection.mutable
-import core._
+import core.*
 import dotty.tools.dotc.typer.Checking
 import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.typer.VarianceChecker
 import typer.ErrorReporting.errorTree
-import Types._, Contexts._, Names._, Flags._, DenotTransformers._, Phases._
-import SymDenotations._, StdNames._, Annotations._, Trees._, Scopes._
-import Decorators._
-import Symbols._, SymUtils._, NameOps._
+import Types.*, Contexts.*, Names.*, Flags.*, DenotTransformers.*, Phases.*
+import SymDenotations.*, StdNames.*, Annotations.*, Trees.*, Scopes.*
+import Decorators.*
+import Symbols.*, NameOps.*
 import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
 import config.Feature
 import util.SrcPos
-import reporting._
+import reporting.*
 import NameKinds.WildcardParamName
 
 object PostTyper {
@@ -60,8 +60,8 @@ object PostTyper {
  *  mini-phase or subfunction of a macro phase equally well. But taken by themselves
  *  they do not warrant their own group of miniphases before pickling.
  */
-class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase =>
-  import tpd._
+class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
+  import tpd.*
 
   override def phaseName: String = PostTyper.name
 
@@ -79,6 +79,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
   def newTransformer(using Context): Transformer =
     new PostTyperTransformer
+
+  private var compilingScala2StdLib = false
+  override def initContext(ctx: FreshContext): Unit =
+    compilingScala2StdLib = ctx.settings.YcompileScala2Library.value(using ctx)
 
   val superAcc: SuperAccessors = new SuperAccessors(thisPhase)
   val synthMbr: SyntheticMembers = new SyntheticMembers(thisPhase)
@@ -168,7 +172,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             if sym.is(Param) then
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.ParamMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
             else if sym.is(ParamAccessor) then
+              // @publicInBinary is not a meta-annotation and therefore not kept by `keepAnnotationsCarrying`
+              val publicInBinaryAnnotOpt = sym.getAnnotation(defn.PublicInBinaryAnnot)
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot))
+              for publicInBinaryAnnot <- publicInBinaryAnnotOpt do sym.addAnnotation(publicInBinaryAnnot)
             else
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
           if sym.isScala2Macro && !ctx.settings.XignoreScala2Macros.value then
@@ -246,7 +253,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
     private object dropInlines extends TreeMap {
       override def transform(tree: Tree)(using Context): Tree = tree match {
-        case Inlined(call, _, expansion) =>
+        case tree @ Inlined(call, _, expansion) =>
           val newExpansion = PruneErasedDefs.trivialErasedTree(tree)
           cpy.Inlined(tree)(call, Nil, newExpansion)
         case _ => super.transform(tree)
@@ -261,9 +268,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       def check(qual: Tree) =
         if !qual.tpe.isStable then
           report.error(em"Parameter untupling cannot be used for call-by-name parameters", tree.srcPos)
-      tree match
-        case Select(qual, _) => check(qual)    // simple select _n
-        case Apply(TypeApply(Select(qual, _), _), _) => check(qual) // generic select .apply[T](n)
+      appliedCore(closureBody(tree)) match
+        case Select(qual, _) => check(qual)
+        // simple select _n                    Select(qual, _n)
+        // generic select .apply[T](n)         Apply(TypeApply(Select(qual, _), _), _)
+        // context closure x ?=> f(using x)    Block(List(DefDef($anonfun, _, _, Apply(Select(Select(qual, _n), _), _)))
 
     def checkNotPackage(tree: Tree)(using Context): Tree =
       if !tree.symbol.is(Package) then tree
@@ -357,13 +366,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             case _ =>
               super.transform(tree1)
           }
-        case Inlined(call, bindings, expansion) if !call.isEmpty =>
+        case tree @ Inlined(call, bindings, expansion) if !tree.inlinedFromOuterScope =>
           val pos = call.sourcePos
           CrossVersionChecks.checkExperimentalRef(call.symbol, pos)
-          withMode(Mode.InlinedCall)(transform(call))
+          withMode(Mode.NoInline)(transform(call))
           val callTrace = Inlines.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
-          cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(call)))
+          cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(tree)))
         case templ: Template =>
+          Checking.checkPolyFunctionExtension(templ)
           withNoCheckNews(templ.parents.flatMap(newPart)) {
             forwardParamAccessors(templ)
             synthMbr.addSyntheticMembers(
@@ -373,15 +383,19 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             )
           }
         case tree: ValDef =>
+          annotateExperimental(tree.symbol)
           registerIfHasMacroAnnotations(tree)
           checkErasedDef(tree)
+          Checking.checkPolyFunctionType(tree.tpt)
           val tree1 = cpy.ValDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
           if tree1.removeAttachment(desugar.UntupledParam).isDefined then
             checkStableSelection(tree.rhs)
           processValOrDefDef(super.transform(tree1))
         case tree: DefDef =>
+          annotateExperimental(tree.symbol)
           registerIfHasMacroAnnotations(tree)
           checkErasedDef(tree)
+          Checking.checkPolyFunctionType(tree.tpt)
           annotateContextResults(tree)
           val tree1 = cpy.DefDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
           processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
@@ -406,14 +420,13 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                   if illegalRefs.nonEmpty then
                     report.error(
                       em"The type of a class parent cannot refer to constructor parameters, but ${parent.tpe} refers to ${illegalRefs.map(_.name.show).mkString(",")}", parent.srcPos)
-            // Add SourceFile annotation to top-level classes
             if sym.owner.is(Package) then
+              // Add SourceFile annotation to top-level classes
+              // TODO remove this annotation once the reference compiler uses the TASTy source file attribute.
               if ctx.compilationUnit.source.exists && sym != defn.SourceFileAnnot then
                 val reference = ctx.settings.sourceroot.value
                 val relativePath = util.SourceFile.relativePath(ctx.compilationUnit.source, reference)
-                sym.addAnnotation(Annotation.makeSourceFile(relativePath, tree.span))
-              if Feature.pureFunsEnabled && sym != defn.WithPureFunsAnnot then
-                sym.addAnnotation(Annotation(defn.WithPureFunsAnnot, tree.span))
+                sym.addAnnotation(Annotation(defn.SourceFileAnnot, Literal(Constants.Constant(relativePath)), tree.span))
           else
             if !sym.is(Param) && !sym.owner.isOneOf(AbstractOrTrait) then
               Checking.checkGoodBounds(tree.symbol)
@@ -423,7 +436,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                 if sym.isOpaqueAlias then
                   VarianceChecker.checkLambda(rhs, TypeBounds.upper(sym.opaqueAlias))
               case _ =>
-          processMemberDef(super.transform(tree))
+          processMemberDef(super.transform(scala2LibPatch(tree)))
         case tree: Bind =>
           if tree.symbol.isType && !tree.symbol.name.is(WildcardParamName) then
             Checking.checkGoodBounds(tree.symbol)
@@ -483,7 +496,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           )
         case Block(_, Closure(_, _, tpt)) if ExpandSAMs.needsWrapperClass(tpt.tpe) =>
           superAcc.withInvalidCurrentClass(super.transform(tree))
-        case _: Quote =>
+        case tree: RefinedTypeTree =>
+          Checking.checkPolyFunctionType(tree)
+          super.transform(tree)
+        case _: Quote | _: QuotePattern =>
           ctx.compilationUnit.needsStaging = true
           super.transform(tree)
         case tree =>
@@ -506,7 +522,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       if (sym.isEffectivelyErased) dropInlines.transform(rhs) else rhs
 
     private def registerNeedsInlining(tree: Tree)(using Context): Unit =
-      if tree.symbol.is(Inline) && !Inlines.inInlineMethod && !ctx.mode.is(Mode.InlinedCall) then
+      if tree.symbol.is(Inline) && !Inlines.inInlineMethod && !ctx.mode.is(Mode.NoInline) then
         ctx.compilationUnit.needsInlining = true
 
     /** Check if the definition has macro annotation and sets `compilationUnit.hasMacroAnnotations` if needed. */
@@ -528,9 +544,65 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           report.error("`erased` definition cannot be implemented with en expression of type Null", tree.srcPos)
 
     private def annotateExperimental(sym: Symbol)(using Context): Unit =
-      if sym.is(Module) && sym.companionClass.hasAnnotation(defn.ExperimentalAnnot) then
+      def isTopLevelDefinitionInSource(sym: Symbol) =
+        !sym.is(Package) && !sym.name.isPackageObjectName &&
+        (sym.owner.is(Package) || (sym.owner.isPackageObject && !sym.isConstructor))
+      if !sym.hasAnnotation(defn.ExperimentalAnnot)
+        && (ctx.settings.experimental.value && isTopLevelDefinitionInSource(sym))
+        || (sym.is(Module) && sym.companionClass.hasAnnotation(defn.ExperimentalAnnot))
+      then
         sym.addAnnotation(Annotation(defn.ExperimentalAnnot, sym.span))
-        sym.companionModule.addAnnotation(Annotation(defn.ExperimentalAnnot, sym.span))
 
+    private def scala2LibPatch(tree: TypeDef)(using Context) =
+      val sym = tree.symbol
+      if compilingScala2StdLib && sym.is(ModuleClass) then
+        // Add Serializable to companion objects of serializable classes,
+        // and add AbstractFunction1 to companion objects of case classes with 1 parameter.
+        tree.rhs match
+          case impl: Template =>
+            var parents1 = impl.parents
+            val companionClass = sym.companionClass
+            if !sym.derivesFrom(defn.SerializableClass) && companionClass.derivesFrom(defn.SerializableClass) then
+              parents1 = parents1 :+ TypeTree(defn.SerializableType)
+            argTypeOfCaseClassThatNeedsAbstractFunction1(sym) match
+              case Some(args) if parents1.head.symbol.owner == defn.ObjectClass =>
+                parents1 = New(defn.AbstractFunctionClass(1).typeRef).select(nme.CONSTRUCTOR).appliedToTypes(args).ensureApplied :: parents1.tail
+              case _ =>
+            val impl1 = cpy.Template(impl)(parents = parents1)
+            cpy.TypeDef(tree)(rhs = impl1)
+      else tree
   }
+
+  protected override def infoMayChange(sym: Symbol)(using Context): Boolean =
+    compilingScala2StdLib && sym.isAllOf(ModuleClass, butNot = Package)
+
+  def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match
+    case info: ClassInfo =>
+      var parents1 = info.parents
+      val companionClass = sym.companionClass
+      if !sym.derivesFrom(defn.SerializableClass) && companionClass.derivesFrom(defn.SerializableClass) then
+        parents1 = parents1 :+ defn.SerializableType
+      argTypeOfCaseClassThatNeedsAbstractFunction1(sym) match
+        case Some(args) if parents1.head.typeSymbol == defn.ObjectClass =>
+          parents1 = defn.AbstractFunctionClass(1).typeRef.appliedTo(args) :: parents1.tail
+        case _ =>
+      if parents1 ne info.parents then info.derivedClassInfo(declaredParents = parents1)
+      else tp
+    case _ => tp
+
+  private def argTypeOfCaseClassThatNeedsAbstractFunction1(sym: Symbol)(using Context): Option[List[Type]] =
+    val companionClass = sym.companionClass
+    if companionClass.is(CaseClass)
+      && !companionClass.primaryConstructor.is(Private)
+      && !companionClass.primaryConstructor.info.isVarArgsMethod
+    then
+      sym.info.decl(nme.apply).info match
+        case info: MethodType =>
+          info.paramInfos match
+            case arg :: Nil =>
+              Some(arg :: info.resultType :: Nil)
+            case args => None
+        case _ => None
+    else
+      None
 }

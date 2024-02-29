@@ -1,6 +1,6 @@
 -- [E006] Not Found Error: tests/neg/i16653.scala:1:7 ------------------------------------------------------------------
 1 |import demo.implicits._ // error
   |       ^^^^
-  |       Not found: demo
+  |       Not found: demo - did you mean Demo?
   |
   | longer explanation available when compiling with `-explain`

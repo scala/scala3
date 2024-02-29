@@ -1,0 +1,42 @@
+-- [E188] Syntax Error: tests/neg/i18090.scala:2:18 --------------------------------------------------------------------
+2 |def foo(using xs: Int*) = xs // error
+  |                  ^^^^
+  |                  repeated parameters are not allowed in a using clause
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E188] Syntax Error: tests/neg/i18090.scala:3:27 --------------------------------------------------------------------
+3 |def foo5(using d: Int, xs: Int*) = xs // error
+  |                           ^^^^
+  |                           repeated parameters are not allowed in a using clause
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E188] Syntax Error: tests/neg/i18090.scala:4:22 --------------------------------------------------------------------
+4 |def foo2(implicit xs: Int*) = xs // error
+  |                      ^^^^
+  |                      repeated parameters are not allowed in a implicit clause
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E188] Syntax Error: tests/neg/i18090.scala:5:35 --------------------------------------------------------------------
+5 |def foo3(u: Int)(using d: Int, xs: Int*) = xs // error
+  |                                   ^^^^
+  |                                   repeated parameters are not allowed in a using clause
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E188] Syntax Error: tests/neg/i18090.scala:6:38 --------------------------------------------------------------------
+6 |def foo4(u: Int)(implicit d: Int, xs: Int*) = xs // error
+  |                                      ^^^^
+  |                                      repeated parameters are not allowed in a implicit clause
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E188] Syntax Error: tests/neg/i18090.scala:9:20 --------------------------------------------------------------------
+9 |  def bar(using xs: Float*) = ??? // error
+  |                    ^^^^^^
+  |                    repeated parameters are not allowed in a using clause
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E188] Syntax Error: tests/neg/i18090.scala:10:33 -------------------------------------------------------------------
+10 |  def bar2(using d: Boolean, xs: Float*) = ??? // error
+   |                                 ^^^^^^
+   |                                 repeated parameters are not allowed in a using clause
+   |
+   | longer explanation available when compiling with `-explain`

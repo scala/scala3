@@ -1,0 +1,173 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+scoverage-samples-case.scala
+org.scoverage.samples
+PriceEngine
+Class
+org.scoverage.samples.PriceEngine
+$anonfun
+362
+368
+18
+stop
+Apply
+false
+0
+false
+stop()
+
+1
+scoverage-samples-case.scala
+org.scoverage.samples
+PriceEngine
+Class
+org.scoverage.samples.PriceEngine
+$anonfun
+353
+368
+17
+<none>
+Block
+true
+0
+false
+=>\n      stop()
+
+2
+scoverage-samples-case.scala
+org.scoverage.samples
+PriceEngine
+Class
+org.scoverage.samples.PriceEngine
+$anonfun
+400
+406
+21
+stop
+Apply
+false
+0
+false
+stop()
+
+3
+scoverage-samples-case.scala
+org.scoverage.samples
+PriceEngine
+Class
+org.scoverage.samples.PriceEngine
+$anonfun
+391
+406
+20
+<none>
+Block
+true
+0
+false
+=>\n      stop()
+
+4
+scoverage-samples-case.scala
+org.scoverage.samples
+PriceEngine
+Class
+org.scoverage.samples.PriceEngine
+receive
+302
+313
+16
+receive
+DefDef
+false
+0
+false
+def receive
+
+5
+scoverage-samples-case.scala
+org.scoverage.samples
+PriceEngine
+Class
+org.scoverage.samples.PriceEngine
+stop
+470
+485
+26
+println
+Apply
+false
+0
+false
+println("stop")
+
+6
+scoverage-samples-case.scala
+org.scoverage.samples
+PriceEngine
+Class
+org.scoverage.samples.PriceEngine
+stop
+470
+485
+26
+println
+Apply
+true
+0
+false
+println("stop")
+
+7
+scoverage-samples-case.scala
+org.scoverage.samples
+PriceEngine
+Class
+org.scoverage.samples.PriceEngine
+stop
+485
+485
+26
+<none>
+Literal
+true
+0
+false
+
+
+8
+scoverage-samples-case.scala
+org.scoverage.samples
+PriceEngine
+Class
+org.scoverage.samples.PriceEngine
+stop
+414
+422
+24
+stop
+DefDef
+false
+0
+false
+def stop
+

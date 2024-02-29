@@ -235,15 +235,4 @@ object Config {
    */
   inline val checkLevelsOnConstraints = false
   inline val checkLevelsOnInstantiation = true
-
-  /** If true, print capturing types in the form `{c} T`.
-   *  If false, print them in the form `T @retains(c)`.
-   */
-  inline val printCaptureSetsAsPrefix = true
-
-  /** If true, allow mappping capture set variables under captureChecking with maps that are neither
-   *  bijective nor idempotent. We currently do now know how to do this correctly in all
-   *  cases, though.
-   */
-  inline val ccAllowUnsoundMaps = false
 }

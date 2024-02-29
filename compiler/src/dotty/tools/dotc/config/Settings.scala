@@ -3,7 +3,7 @@ package config
 
 import scala.language.unsafeNulls
 
-import core.Contexts._
+import core.Contexts.*
 
 import dotty.tools.io.{AbstractFile, Directory, JarArchive, PlainDirectory}
 
@@ -24,7 +24,7 @@ object Settings:
   val OutputTag: ClassTag[AbstractFile]  = ClassTag(classOf[AbstractFile])
 
   class SettingsState(initialValues: Seq[Any]):
-    private val values = ArrayBuffer(initialValues: _*)
+    private val values = ArrayBuffer(initialValues*)
     private var _wasRead: Boolean = false
 
     override def toString: String = s"SettingsState(values: ${values.toList})"
@@ -62,6 +62,7 @@ object Settings:
     prefix: String = "",
     aliases: List[String] = Nil,
     depends: List[(Setting[?], Any)] = Nil,
+    ignoreInvalidArgs: Boolean = false,
     propertyClass: Option[Class[?]] = None)(private[Settings] val idx: Int) {
 
     private var changed: Boolean = false
@@ -104,8 +105,16 @@ object Settings:
       def fail(msg: String, args: List[String]) =
         ArgsSummary(sstate, args, errors :+ msg, warnings)
 
+      def warn(msg: String, args: List[String]) =
+        ArgsSummary(sstate, args, errors, warnings :+ msg)
+
       def missingArg =
-        fail(s"missing argument for option $name", args)
+        val msg = s"missing argument for option $name"
+        if ignoreInvalidArgs then warn(msg + ", the tag was ignored", args)  else fail(msg, args)
+
+      def invalidChoices(invalid: List[String]) =
+        val msg = s"invalid choice(s) for $name: ${invalid.mkString(",")}"
+        if ignoreInvalidArgs then warn(msg + ", the tag was ignored", args) else fail(msg, args)
 
       def setBoolean(argValue: String, args: List[String]) =
         if argValue.equalsIgnoreCase("true") || argValue.isEmpty then update(true, args)
@@ -144,7 +153,7 @@ object Settings:
             choices match
               case Some(valid) => strings.filterNot(valid.contains) match
                 case Nil => update(strings, args)
-                case invalid => fail(s"invalid choice(s) for $name: ${invalid.mkString(",")}", args)
+                case invalid => invalidChoices(invalid)
               case _ => update(strings, args)
         case (StringTag, _) if argRest.nonEmpty || choices.exists(_.contains("")) =>
           setString(argRest, args)
@@ -286,6 +295,9 @@ object Settings:
 
     def MultiChoiceHelpSetting(name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]], aliases: List[String] = Nil): Setting[List[ChoiceWithHelp[String]]] =
       publish(Setting(name, descr, default, helpArg, Some(choices), aliases = aliases))
+
+    def UncompleteMultiChoiceHelpSetting(name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]], aliases: List[String] = Nil): Setting[List[ChoiceWithHelp[String]]] =
+      publish(Setting(name, descr, default, helpArg, Some(choices), aliases = aliases, ignoreInvalidArgs = true))
 
     def IntSetting(name: String, descr: String, default: Int, aliases: List[String] = Nil): Setting[Int] =
       publish(Setting(name, descr, default, aliases = aliases))

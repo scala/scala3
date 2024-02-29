@@ -2,10 +2,10 @@ package dotty.tools
 package dotc
 package ast
 
-import core._
-import Types._, Names._, NameOps._, Flags._, util.Spans._, Contexts._, Constants._
+import core.*
+import Types.*, Names.*, NameOps.*, Flags.*, util.Spans.*, Contexts.*, Constants.*
 import typer.{ ConstFold, ProtoTypes }
-import SymDenotations._, Symbols._, Denotations._, StdNames._, Comments._
+import SymDenotations.*, Symbols.*, Denotations.*, StdNames.*, Comments.*
 import collection.mutable.ListBuffer
 import printing.Printer
 import printing.Texts.Text
@@ -16,7 +16,7 @@ import annotation.internal.sharable
 import annotation.unchecked.uncheckedVariance
 import annotation.constructorOnly
 import compiletime.uninitialized
-import Decorators._
+import Decorators.*
 import staging.StagingLevel.*
 
 object Trees {
@@ -31,6 +31,8 @@ object Trees {
 
   /** Property key for backquoted identifiers and definitions */
   val Backquoted: Property.StickyKey[Unit] = Property.StickyKey()
+
+  val SyntheticUnit: Property.StickyKey[Unit] = Property.StickyKey()
 
   /** Trees take a parameter indicating what the type of their `tpe` field
    *  is. Two choices: `Type` or `Untyped`.
@@ -455,7 +457,7 @@ object Trees {
         val point = span.point
         if name.toTermName == nme.ERROR then
           Span(point)
-        else if qualifier.span.start > span.start then // right associative
+        else if qualifier.span.exists && qualifier.span.start > span.point then // right associative
           val realName = name.stripModuleClassSuffix.lastPart
           Span(span.start, span.start + realName.length, point)
         else
@@ -673,6 +675,9 @@ object Trees {
    */
   case class Inlined[+T <: Untyped] private[ast] (call: tpd.Tree, bindings: List[MemberDef[T]], expansion: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends Tree[T] {
+
+    def inlinedFromOuterScope: Boolean = call.isEmpty
+
     type ThisTree[+T <: Untyped] = Inlined[T]
     override def isTerm = expansion.isTerm
     override def isType = expansion.isType
@@ -686,9 +691,9 @@ object Trees {
    *  phases. After `pickleQuotes` phase, the only quotes that exist are in `inline`
    *  methods. These are dropped when we remove the inline method implementations.
    *
-   *  Type quotes `'[body]` from the parser are desugared into quote patterns (using a `Type.of[T]]`)
-   *  when type checking. TASTy files will not contain type quotes. Type quotes are used again
-   *  in the `staging` phase to represent the reification of `Type.of[T]]`.
+   *  Type quotes `'[body]` from the parser are typed into `QuotePattern`s when type checking.
+   *  TASTy files will not contain type quotes. Type quotes are used again in the `staging`
+   *  phase to represent the reification of `Type.of[T]]`.
    *
    *  Type tags `tags` are always empty before the `staging` phase. Tags for stage inconsistent
    *  types are added in the `staging` phase to level 0 quotes. Tags for types that refer to
@@ -703,12 +708,6 @@ object Trees {
 
     /** Is this a type quote `'[tpe]' */
     def isTypeQuote = body.isType
-
-    /** Type of the quoted expression as seen from outside the quote */
-    def bodyType(using Context): Type =
-      val quoteType = typeOpt // `Quotes ?=> Expr[T]` or `Quotes ?=> Type[T]`
-      val exprType = quoteType.argInfos.last // `Expr[T]` or `Type[T]`
-      exprType.argInfos.head // T
 
     /** Set the type of the body of the quote */
     def withBodyType(tpe: Type)(using Context): Quote[Type] =
@@ -737,13 +736,30 @@ object Trees {
     type ThisTree[+T <: Untyped] = Splice[T]
   }
 
+  /** A tree representing a quote pattern `'{ type binding1; ...; body }` or `'[ type binding1; ...; body ]`.
+   *  `QuotePattern`s are created the type checker when typing an `untpd.Quote` in a pattern context.
+   *
+   *  `QuotePattern`s are checked are encoded into `unapply`s  in the `staging` phase.
+   *
+   *   The `bindings` contain the list of quote pattern type variable definitions (`Bind`s) in the oreder in
+   *   which they are defined in the source.
+   *
+   *   @param  bindings  Type variable definitions (`Bind` tree)
+   *   @param  body      Quoted pattern (without type variable definitions)
+   *   @param  quotes    A reference to the given `Quotes` instance in scope
+   */
+  case class QuotePattern[+T <: Untyped] private[ast] (bindings: List[Tree[T]], body: Tree[T], quotes: Tree[T])(implicit @constructorOnly src: SourceFile)
+    extends PatternTree[T] {
+    type ThisTree[+T <: Untyped] = QuotePattern[T]
+  }
+
   /** A tree representing a pattern splice `${ pattern }`, `$ident` or `$ident(args*)` in a quote pattern.
    *
    *  Parser will only create `${ pattern }` and `$ident`, hence they will not have args.
    *  While typing, the `$ident(args*)` the args are identified and desugared into a `SplicePattern`
    *  containing them.
    *
-   *  SplicePattern are removed after typing the pattern and are not present in TASTy.
+   *  `SplicePattern` can only be contained within a `QuotePattern`.
    *
    *  @param body  The tree that was spliced
    *  @param args  The arguments of the splice (the HOAS arguments)
@@ -756,14 +772,14 @@ object Trees {
   /** A type tree that represents an existing or inferred type */
   case class TypeTree[+T <: Untyped]()(implicit @constructorOnly src: SourceFile)
     extends DenotingTree[T] with TypTree[T] {
-    type ThisTree[+T <: Untyped] = TypeTree[T]
+    type ThisTree[+T <: Untyped] <: TypeTree[T]
     override def isEmpty: Boolean = !hasType
     override def toString: String =
       s"TypeTree${if (hasType) s"[$typeOpt]" else ""}"
   }
 
   /** Tree that replaces a level 1 splices in pickled (level 0) quotes.
-   *  It is only used when picking quotes (will never be in a TASTy file).
+   *  It is only used when pickling quotes (will never be in a TASTy file).
    *
    *  @param isTerm If this hole is a term, otherwise it is a type hole.
    *  @param idx The index of the hole in it's enclosing level 0 quote.
@@ -780,7 +796,8 @@ object Trees {
    *    - as a (result-)type of an inferred ValDef or DefDef.
    *  Every TypeVar is created as the type of one InferredTypeTree.
    */
-  class InferredTypeTree[+T <: Untyped](implicit @constructorOnly src: SourceFile) extends TypeTree[T]
+  class InferredTypeTree[+T <: Untyped](implicit @constructorOnly src: SourceFile) extends TypeTree[T]:
+    type ThisTree[+T <: Untyped] <: InferredTypeTree[T]
 
   /** ref.type */
   case class SingletonTypeTree[+T <: Untyped] private[ast] (ref: Tree[T])(implicit @constructorOnly src: SourceFile)
@@ -915,11 +932,11 @@ object Trees {
     def rhs(using Context): Tree[T] = { forceFields(); preRhs.asInstanceOf[Tree[T]] }
 
     def leadingTypeParams(using Context): List[TypeDef[T]] = paramss match
-      case (tparams @ (tparam: TypeDef[_]) :: _) :: _ => tparams.asInstanceOf[List[TypeDef[T]]]
+      case (tparams @ (tparam: TypeDef[?]) :: _) :: _ => tparams.asInstanceOf[List[TypeDef[T]]]
       case _ => Nil
 
     def trailingParamss(using Context): List[ParamClause[T]] = paramss match
-      case ((tparam: TypeDef[_]) :: _) :: paramss1 => paramss1
+      case ((tparam: TypeDef[?]) :: _) :: paramss1 => paramss1
       case _ => paramss
 
     def termParamss(using Context): List[List[ValDef[T]]] =
@@ -1163,6 +1180,7 @@ object Trees {
     type Inlined = Trees.Inlined[T]
     type Quote = Trees.Quote[T]
     type Splice = Trees.Splice[T]
+    type QuotePattern = Trees.QuotePattern[T]
     type SplicePattern = Trees.SplicePattern[T]
     type TypeTree = Trees.TypeTree[T]
     type InferredTypeTree = Trees.InferredTypeTree[T]
@@ -1192,7 +1210,6 @@ object Trees {
 
     @sharable val EmptyTree: Thicket = genericEmptyTree
     @sharable val EmptyValDef: ValDef = genericEmptyValDef
-    @sharable val ContextualEmptyTree: Thicket = new EmptyTree() // an empty tree marking a contextual closure
 
     // ----- Auxiliary creation methods ------------------
 
@@ -1330,10 +1347,17 @@ object Trees {
         case tree: SeqLiteral if (elems eq tree.elems) && (elemtpt eq tree.elemtpt) => tree
         case _ => finalize(tree, untpd.SeqLiteral(elems, elemtpt)(sourceFile(tree)))
       }
-      def Inlined(tree: Tree)(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree)(using Context): Inlined = tree match {
-        case tree: Inlined if (call eq tree.call) && (bindings eq tree.bindings) && (expansion eq tree.expansion) => tree
-        case _ => finalize(tree, untpd.Inlined(call, bindings, expansion)(sourceFile(tree)))
-      }
+      // Positions of trees are automatically pushed down except when we reach an Inlined tree. Therefore, we
+      // make sure the new expansion has a position by copying the one of the original Inlined tree.
+      def Inlined(tree: Inlined)(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree)(using Context): Inlined =
+        if (call eq tree.call) && (bindings eq tree.bindings) && (expansion eq tree.expansion) then tree
+        else
+          // Copy the span from the original Inlined tree if the new expansion doesn't have a span.
+          val expansionWithSpan =
+            if expansion.span.exists then expansion
+            else expansion.withSpan(tree.expansion.span)
+          finalize(tree, untpd.Inlined(call, bindings, expansionWithSpan)(sourceFile(tree)))
+
       def Quote(tree: Tree)(body: Tree, tags: List[Tree])(using Context): Quote = tree match {
         case tree: Quote if (body eq tree.body) && (tags eq tree.tags) => tree
         case _ => finalize(tree, untpd.Quote(body, tags)(sourceFile(tree)))
@@ -1341,6 +1365,10 @@ object Trees {
       def Splice(tree: Tree)(expr: Tree)(using Context): Splice = tree match {
         case tree: Splice if (expr eq tree.expr) => tree
         case _ => finalize(tree, untpd.Splice(expr)(sourceFile(tree)))
+      }
+      def QuotePattern(tree: Tree)(bindings: List[Tree], body: Tree, quotes: Tree)(using Context): QuotePattern = tree match {
+        case tree: QuotePattern if (bindings eq tree.bindings) && (body eq tree.body) && (quotes eq tree.quotes) => tree
+        case _ => finalize(tree, untpd.QuotePattern(bindings, body, quotes)(sourceFile(tree)))
       }
       def SplicePattern(tree: Tree)(body: Tree, args: List[Tree])(using Context): SplicePattern = tree match {
         case tree: SplicePattern if (body eq tree.body) && (args eq tree.args) => tree
@@ -1464,7 +1492,7 @@ object Trees {
      *  innermost enclosing call for which the inlined version is currently
      *  processed.
      */
-    protected def inlineContext(call: tpd.Tree)(using Context): Context = ctx
+    protected def inlineContext(tree: Inlined)(using Context): Context = ctx
 
     /** The context to use when mapping or accumulating over a tree */
     def localCtx(tree: Tree)(using Context): Context
@@ -1534,8 +1562,8 @@ object Trees {
               cpy.Try(tree)(transform(block), transformSub(cases), transform(finalizer))
             case SeqLiteral(elems, elemtpt) =>
               cpy.SeqLiteral(tree)(transform(elems), transform(elemtpt))
-            case Inlined(call, bindings, expansion) =>
-              cpy.Inlined(tree)(call, transformSub(bindings), transform(expansion)(using inlineContext(call)))
+            case tree @ Inlined(call, bindings, expansion) =>
+              cpy.Inlined(tree)(call, transformSub(bindings), transform(expansion)(using inlineContext(tree)))
             case TypeTree() =>
               tree
             case SingletonTypeTree(ref) =>
@@ -1571,6 +1599,9 @@ object Trees {
             case tree @ TypeDef(name, rhs) =>
               cpy.TypeDef(tree)(name, transform(rhs))
             case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
+              // Currently we do not have cases where we expect `tree.derived` to contain trees for typed trees.
+              // If it is the case we will fall in `transformMoreCases` and throw an exception there.
+              // In the future we might keep the `derived` clause after typing, in that case we might want to start handling it here.
               cpy.Template(tree)(transformSub(constr), transform(tree.parents), Nil, transformSub(self), transformStats(tree.body, tree.symbol))
             case Import(expr, selectors) =>
               cpy.Import(tree)(transform(expr), selectors)
@@ -1587,6 +1618,8 @@ object Trees {
               cpy.Quote(tree)(transform(body)(using quoteContext), transform(tags))
             case tree @ Splice(expr) =>
               cpy.Splice(tree)(transform(expr)(using spliceContext))
+            case tree @ QuotePattern(bindings, body, quotes) =>
+              cpy.QuotePattern(tree)(transform(bindings), transform(body)(using quoteContext), transform(quotes))
             case tree @ SplicePattern(body, args) =>
               cpy.SplicePattern(tree)(transform(body)(using spliceContext), transform(args))
             case tree @ Hole(isTerm, idx, args, content) =>
@@ -1676,8 +1709,8 @@ object Trees {
               this(this(this(x, block), handler), finalizer)
             case SeqLiteral(elems, elemtpt) =>
               this(this(x, elems), elemtpt)
-            case Inlined(call, bindings, expansion) =>
-              this(this(x, bindings), expansion)(using inlineContext(call))
+            case tree @ Inlined(call, bindings, expansion) =>
+              this(this(x, bindings), expansion)(using inlineContext(tree))
             case TypeTree() =>
               x
             case SingletonTypeTree(ref) =>
@@ -1734,6 +1767,8 @@ object Trees {
               this(this(x, body)(using quoteContext), tags)
             case Splice(expr) =>
               this(x, expr)(using spliceContext)
+            case QuotePattern(bindings, body, quotes) =>
+              this(this(this(x, bindings), body)(using quoteContext), quotes)
             case SplicePattern(body, args) =>
               this(this(x, body)(using spliceContext), args)
             case Hole(_, _, args, content) =>

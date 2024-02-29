@@ -4,7 +4,7 @@ package reporting
 
 import scala.language.unsafeNulls
 
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.util.SourcePosition
 
 import java.util.regex.PatternSyntaxException
@@ -36,8 +36,8 @@ final case class WConf(confs: List[(List[MessageFilter], Action)]):
   }.getOrElse(Action.Warning)
 
 object WConf:
-  import Action._
-  import MessageFilter._
+  import Action.*
+  import MessageFilter.*
 
   private type Conf = (List[MessageFilter], Action)
 
@@ -106,7 +106,7 @@ object WConf:
   def fromSettings(settings: List[String]): Either[List[String], WConf] =
     if (settings.isEmpty) Right(WConf(Nil))
     else
-      val parsedConfs: List[Either[List[String], (List[MessageFilter], Action)]] = settings.map(conf =>
+      val parsedConfs: List[Either[List[String], (List[MessageFilter], Action)]] = settings.reverse.map(conf =>
         val filtersAndAction = conf.split(':')
         if filtersAndAction.length != 2 then Left(List("exactly one `:` expected (<filter>&...&<filter>:<action>)"))
         else
@@ -117,7 +117,7 @@ object WConf:
       else Right(WConf(configs))
 
 class Suppression(val annotPos: SourcePosition, filters: List[MessageFilter], val start: Int, end: Int, val verbose: Boolean):
-  private[this] var _used = false
+  private var _used = false
   def used: Boolean = _used
   def markUsed(): Unit = { _used = true }
 

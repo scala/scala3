@@ -33,7 +33,7 @@ def tabulate[A](n: Int)(gen: Int => A): LazyList[A]^{gen} =
 class Ex1 extends Exception
 
 def problem =
-  try  // error
+  try // error
     tabulate(10) { i =>
       if i > 9 then throw Ex1()
       i * i

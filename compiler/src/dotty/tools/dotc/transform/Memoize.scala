@@ -1,24 +1,25 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import DenotTransformers._
-import Contexts._
+import core.*
+import DenotTransformers.*
+import Contexts.*
 import Phases.*
 import SymDenotations.SymDenotation
-import Denotations._
-import Symbols._
-import SymUtils._
-import Constants._
-import MegaPhase._
-import NameOps._
-import Flags._
-import Decorators._
+import Denotations.*
+import Symbols.*
+
+import Constants.*
+import MegaPhase.*
+import NameOps.*
+import Flags.*
+import Decorators.*
 import StdNames.nme
 
-import sjs.JSSymUtils._
+import sjs.JSSymUtils.*
 
 import util.Store
+import scala.compiletime.uninitialized
 
 object Memoize {
   val name: String = "memoize"
@@ -46,13 +47,13 @@ object Memoize {
  */
 class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import Memoize.MyState
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = Memoize.name
 
   override def description: String = Memoize.description
 
-  private var MyState: Store.Location[MyState] = _
+  private var MyState: Store.Location[MyState] = uninitialized
   private def myState(using Context): MyState = ctx.store(MyState)
 
   override def initContext(ctx: FreshContext): Unit =
@@ -173,7 +174,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
             myState.classesThatNeedReleaseFence += sym.owner
           val initializer =
             if isErasableBottomField(field, tree.termParamss.head.head.tpt.tpe.classSymbol)
-            then Literal(Constant(()))
+            then unitLiteral
             else Assign(ref(field), adaptToField(field, ref(tree.termParamss.head.head.symbol)))
           val setterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(using ctx.withOwner(sym)))
           sym.keepAnnotationsCarrying(thisPhase, Set(defn.SetterMetaAnnot))

@@ -1,4 +1,4 @@
 -- [E008] Not Found Error: tests/neg/i6724.scala:7:17 ------------------------------------------------------------------
-7 |  def f(foo: Foo.Baz): Foo[_] = foo // error
+7 |  def f(foo: Foo.Baz): Foo[?] = foo // error
   |             ^^^^^^^
   |             type Baz is not a member of object Foo - did you mean Foo.Bar?

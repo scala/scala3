@@ -20,70 +20,70 @@ object ToExpr {
   /** Default implementation of `ToExpr[Boolean]` */
   given BooleanToExpr[T <: Boolean]: ToExpr[T] with {
     def apply(x: T)(using Quotes) =
-      import quotes.reflect._
+      import quotes.reflect.*
       Literal(BooleanConstant(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default implementation of `ToExpr[Byte]` */
   given ByteToExpr[T <: Byte]: ToExpr[T] with {
     def apply(x: T)(using Quotes) =
-      import quotes.reflect._
+      import quotes.reflect.*
       Literal(ByteConstant(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default implementation of `ToExpr[Short]` */
   given ShortToExpr[T <: Short]: ToExpr[T] with {
     def apply(x: T)(using Quotes) =
-      import quotes.reflect._
+      import quotes.reflect.*
       Literal(ShortConstant(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default implementation of `ToExpr[Int]` */
   given IntToExpr[T <: Int]: ToExpr[T] with {
     def apply(x: T)(using Quotes) =
-      import quotes.reflect._
+      import quotes.reflect.*
       Literal(IntConstant(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default implementation of `ToExpr[Long]` */
   given LongToExpr[T <: Long]: ToExpr[T] with {
     def apply(x: T)(using Quotes) =
-      import quotes.reflect._
+      import quotes.reflect.*
       Literal(LongConstant(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default implementation of `ToExpr[Float]` */
   given FloatToExpr[T <: Float]: ToExpr[T] with {
     def apply(x: T)(using Quotes) =
-      import quotes.reflect._
+      import quotes.reflect.*
       Literal(FloatConstant(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default implementation of `ToExpr[Double]` */
   given DoubleToExpr[T <: Double]: ToExpr[T] with {
     def apply(x: T)(using Quotes) =
-      import quotes.reflect._
+      import quotes.reflect.*
       Literal(DoubleConstant(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default implementation of `ToExpr[Char]` */
   given CharToExpr[T <: Char]: ToExpr[T] with {
     def apply(x: T)(using Quotes) =
-      import quotes.reflect._
+      import quotes.reflect.*
       Literal(CharConstant(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default implementation of `ToExpr[String]` */
   given StringToExpr[T <: String]: ToExpr[T] with {
     def apply(x: T)(using Quotes) =
-      import quotes.reflect._
+      import quotes.reflect.*
       Literal(StringConstant(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default implementation of `ToExpr[Class[T]]` */
   given ClassToExpr[T <: Class[?]]: ToExpr[T] with {
     def apply(x: T)(using Quotes) = {
-      import quotes.reflect._
+      import quotes.reflect.*
       Ref(defn.Predef_classOf).appliedToType(TypeRepr.typeConstructorOf(x)).asExpr.asInstanceOf[Expr[T]]
     }
   }
@@ -97,63 +97,63 @@ object ToExpr {
   /** Default implementation of `ToExpr[Array[T]]` */
   given ArrayToExpr[T: Type: ToExpr: ClassTag]: ToExpr[Array[T]] with {
     def apply(arr: Array[T])(using Quotes): Expr[Array[T]] =
-      '{ Array[T](${Expr(arr.toSeq)}: _*)(${Expr(summon[ClassTag[T]])}) }
+      '{ Array[T](${Expr(arr.toSeq)}*)(${Expr(summon[ClassTag[T]])}) }
   }
 
   /** Default implementation of `ToExpr[Array[Boolean]]` */
   given ArrayOfBooleanToExpr: ToExpr[Array[Boolean]] with {
     def apply(array: Array[Boolean])(using Quotes): Expr[Array[Boolean]] =
       if (array.length == 0) '{ Array.emptyBooleanArray }
-      else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}: _*) }
+      else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}*) }
   }
 
   /** Default implementation of `ToExpr[Array[Byte]]` */
   given ArrayOfByteToExpr: ToExpr[Array[Byte]] with {
     def apply(array: Array[Byte])(using Quotes): Expr[Array[Byte]] =
       if (array.length == 0) '{ Array.emptyByteArray }
-      else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}: _*) }
+      else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}*) }
   }
 
   /** Default implementation of `ToExpr[Array[Short]]` */
   given ArrayOfShortToExpr: ToExpr[Array[Short]] with {
     def apply(array: Array[Short])(using Quotes): Expr[Array[Short]] =
       if (array.length == 0) '{ Array.emptyShortArray }
-      else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}: _*) }
+      else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}*) }
   }
 
   /** Default implementation of `ToExpr[Array[Char]]` */
   given ArrayOfCharToExpr: ToExpr[Array[Char]] with {
     def apply(array: Array[Char])(using Quotes): Expr[Array[Char]] =
       if (array.length == 0) '{ Array.emptyCharArray }
-      else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}: _*) }
+      else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}*) }
   }
 
   /** Default implementation of `ToExpr[Array[Int]]` */
   given ArrayOfIntToExpr: ToExpr[Array[Int]] with {
     def apply(array: Array[Int])(using Quotes): Expr[Array[Int]] =
       if (array.length == 0) '{ Array.emptyIntArray }
-      else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}: _*) }
+      else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}*) }
   }
 
   /** Default implementation of `ToExpr[Array[Long]]` */
   given ArrayOfLongToExpr: ToExpr[Array[Long]] with {
     def apply(array: Array[Long])(using Quotes): Expr[Array[Long]] =
       if (array.length == 0) '{ Array.emptyLongArray }
-      else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}: _*) }
+      else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}*) }
   }
 
   /** Default implementation of `ToExpr[Array[Float]]` */
   given ArrayOfFloatToExpr: ToExpr[Array[Float]] with {
     def apply(array: Array[Float])(using Quotes): Expr[Array[Float]] =
       if (array.length == 0) '{ Array.emptyFloatArray }
-      else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}: _*) }
+      else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}*) }
   }
 
   /** Default implementation of `ToExpr[Array[Double]]` */
   given ArrayOfDoubleToExpr: ToExpr[Array[Double]] with {
     def apply(array: Array[Double])(using Quotes): Expr[Array[Double]] =
       if (array.length == 0) '{ Array.emptyDoubleArray }
-      else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}: _*) }
+      else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}*) }
   }
 
   /** Default implementation of `ToExpr[IArray[T]]` */
@@ -183,13 +183,13 @@ object ToExpr {
   /** Default implementation of `ToExpr[Set[T]]` */
   given SetToExpr[T: Type: ToExpr]: ToExpr[Set[T]] with {
     def apply(set: Set[T])(using Quotes): Expr[Set[T]] =
-      '{ Set(${Expr(set.toSeq)}: _*) }
+      '{ Set(${Expr(set.toSeq)}*) }
   }
 
   /** Default implementation of `ToExpr[Map[T, U]]` */
   given MapToExpr[T: Type: ToExpr, U: Type: ToExpr]: ToExpr[Map[T, U]] with {
     def apply(map: Map[T, U])(using Quotes): Expr[Map[T, U]] =
-    '{ Map(${Expr(map.toSeq)}: _*) }
+    '{ Map(${Expr(map.toSeq)}*) }
   }
 
   /** Default implementation of `ToExpr[Option[T]]` */
@@ -422,14 +422,15 @@ object ToExpr {
   /** Default implementation of `ToExpr[BigDecimal using the default MathContext]` */
   given BigDecimalToExpr: ToExpr[BigDecimal] with {
     def apply(x: BigDecimal)(using Quotes): Expr[BigDecimal] =
-      '{ BigDecimal(${Expr(x.toString)}) }
+      val bigDecimal: String = "" + x // workaround "method toString in class BigDecimal does not take parameters" in scaladoc/generateScalaDocumentation
+      '{ BigDecimal(${Expr(bigDecimal)}) }
   }
 
   /** Default implementation of `ToExpr[StringContext]` */
   given StringContextToExpr: ToExpr[StringContext] with {
     def apply(stringContext: StringContext)(using Quotes): Expr[StringContext] =
       val parts = Varargs(stringContext.parts.map(Expr(_)))
-      '{ StringContext($parts: _*) }
+      '{ StringContext($parts*) }
   }
 
 }

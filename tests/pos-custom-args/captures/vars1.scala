@@ -8,11 +8,11 @@ object Test:
   var defaultIncompleteHandler: ErrorHandler = ???
   @uncheckedCaptures
   var incompleteHandler: ErrorHandler = defaultIncompleteHandler
-  val x = incompleteHandler.unsafeUnbox
+  private val x = incompleteHandler.unsafeUnbox
   val _ : ErrorHandler = x
   val _ = x(1, "a")
 
-  def defaultIncompleteHandler1(): ErrorHandler = ???
+  def defaultIncompleteHandler1(): (Int, String) => Unit = ???
   val defaultIncompleteHandler2: ErrorHandler = ???
   @uncheckedCaptures
   var incompleteHandler1: ErrorHandler = defaultIncompleteHandler1()
@@ -25,6 +25,6 @@ object Test:
 
   incompleteHandler1 = defaultIncompleteHandler2
   incompleteHandler1 = defaultIncompleteHandler2
-  val saved = incompleteHandler1
+  private val saved = incompleteHandler1
 
 

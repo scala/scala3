@@ -1,0 +1,6 @@
+-- Error: tests/neg/alphanumeric-infix-operator.scala:8:6 --------------------------------------------------------------
+8 |  foo x 1 // error (because it was compiled with 3.4+)
+  |      ^
+  |      Alphanumeric method x is not declared infix; it should not be used as infix operator.
+  |      Instead, use method syntax .x(...) or backticked identifier `x`.
+  |      The latter can be rewritten automatically under -rewrite -source 3.4-migration.

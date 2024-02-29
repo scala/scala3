@@ -1,12 +1,12 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import dotty.tools.dotc.transform.MegaPhase._
-import Flags._
-import Contexts._
-import Symbols._
-import Decorators._
+import core.*
+import dotty.tools.dotc.transform.MegaPhase.*
+import Flags.*
+import Contexts.*
+import Symbols.*
+import Decorators.*
 
 /** A no-op transform that checks whether the compiled sources are re-entrant.
  *  If -Ycheck:reentrant is set, the phase makes sure that there are no variables
@@ -27,7 +27,7 @@ import Decorators._
  *     for immutable array.
  */
 class CheckReentrant extends MiniPhase {
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = CheckReentrant.name
 

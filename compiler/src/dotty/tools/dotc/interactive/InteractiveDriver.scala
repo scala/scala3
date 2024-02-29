@@ -5,28 +5,28 @@ package interactive
 import scala.language.unsafeNulls
 
 import java.net.URI
-import java.io._
-import java.nio.file._
+import java.io.*
+import java.nio.file.*
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.charset.StandardCharsets
-import java.util.zip._
+import java.util.zip.*
 
-import scala.collection._
+import scala.collection.*
 import scala.io.Codec
 
 import dotty.tools.io.AbstractFile
 
 import ast.{Trees, tpd}
-import core._, core.Decorators._
-import Contexts._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
+import core.*, core.Decorators.*
+import Contexts.*, Names.*, NameOps.*, Symbols.*, SymDenotations.*, Trees.*, Types.*
 import Denotations.staticRef
-import classpath._
-import reporting._
-import util._
+import classpath.*
+import reporting.*
+import util.*
 
 /** A Driver subclass designed to be used from IDEs */
 class InteractiveDriver(val settings: List[String]) extends Driver {
-  import tpd._
+  import tpd.*
 
   override def sourcesRequired: Boolean = false
 
@@ -145,10 +145,10 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     (fromSource ++ fromClassPath).distinct
   }
 
-  def run(uri: URI, sourceCode: String): List[Diagnostic] = run(uri, toSource(uri, sourceCode))
+  def run(uri: URI, sourceCode: String): List[Diagnostic] = run(uri, SourceFile.virtual(uri, sourceCode))
 
   def run(uri: URI, source: SourceFile): List[Diagnostic] = {
-    import typer.ImportInfo._
+    import typer.ImportInfo.*
 
     val previousCtx = myCtx
     try {
@@ -297,9 +297,6 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     cleanupTree(tree)
   }
 
-  private def toSource(uri: URI, sourceCode: String): SourceFile =
-    SourceFile.virtual(Paths.get(uri).toString, sourceCode)
-
   /**
    * Initialize this driver and compiler.
    *
@@ -323,7 +320,7 @@ object InteractiveDriver {
     else
       try
         // We don't use file.file here since it'll be null
-        // for the VirtualFiles created by InteractiveDriver#toSource
+        // for the VirtualFiles created by SourceFile#virtual
         // TODO: To avoid these round trip conversions, we could add an
         // AbstractFile#toUri method and implement it by returning a constant
         // passed as a parameter to a constructor of VirtualFile

@@ -3,20 +3,22 @@ package dotc
 package core
 package tasty
 
+import scala.compiletime.uninitialized
+
 import dotty.tools.tasty.{TastyFormat, TastyBuffer, TastyReader}
 import TastyFormat.SOURCE
 import TastyBuffer.{Addr, NameRef}
 
-import util.Spans._
+import util.Spans.*
 import Names.TermName
 
 /** Unpickler for tree positions */
 class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
-  import reader._
+  import reader.*
 
-  private var myLineSizes: Array[Int] = _
-  private var mySpans: util.HashMap[Addr, Span] = _
-  private var mySourcePaths: util.HashMap[Addr, String] = _
+  private var myLineSizes: Array[Int] = uninitialized
+  private var mySpans: util.HashMap[Addr, Span] = uninitialized
+  private var mySourceNameRefs: util.HashMap[Addr, NameRef] = uninitialized
   private var isDefined = false
 
   def ensureDefined(): Unit = {
@@ -29,15 +31,14 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
         i += 1
 
       mySpans = util.HashMap[Addr, Span]()
-      mySourcePaths = util.HashMap[Addr, String]()
+      mySourceNameRefs = util.HashMap[Addr, NameRef]()
       var curIndex = 0
       var curStart = 0
       var curEnd = 0
       while (!isAtEnd) {
         val header = readInt()
         if (header == SOURCE) {
-          val path = nameAtRef(readNameRef()).toString
-          mySourcePaths(Addr(curIndex)) = path
+          mySourceNameRefs(Addr(curIndex)) = readNameRef()
         }
         else {
           val addrDelta = header >> 3
@@ -62,9 +63,9 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
     mySpans
   }
 
-  private[tasty] def sourcePaths: util.ReadOnlyMap[Addr, String] = {
+  private[tasty] def sourceNameRefs: util.ReadOnlyMap[Addr, NameRef] = {
     ensureDefined()
-    mySourcePaths
+    mySourceNameRefs
   }
 
   private[tasty] def lineSizes: Array[Int] = {
@@ -73,5 +74,5 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
   }
 
   def spanAt(addr: Addr): Span = spans.getOrElse(addr, NoSpan)
-  def sourcePathAt(addr: Addr): String = sourcePaths.getOrElse(addr, "")
+  def sourcePathAt(addr: Addr): String = sourceNameRefs.get(addr).fold("")(nameAtRef(_).toString)
 }

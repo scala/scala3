@@ -1,12 +1,12 @@
 package scala
 
-import annotation.showAsInfix
-import compiletime._
-import compiletime.ops.int._
+import annotation.{experimental, showAsInfix}
+import compiletime.*
+import compiletime.ops.int.*
 
 /** Tuple of arbitrary arity */
 sealed trait Tuple extends Product {
-  import Tuple._
+  import Tuple.*
 
   /** Create a copy of this tuple as an Array */
   inline def toArray: Array[Object] =
@@ -78,6 +78,13 @@ sealed trait Tuple extends Product {
    */
   inline def splitAt[This >: this.type <: Tuple](n: Int): Split[This, n.type] =
     runtime.Tuples.splitAt(this, n).asInstanceOf[Split[This, n.type]]
+
+  /** Given a tuple `(a1, ..., am)`, returns the reversed tuple `(am, ..., a1)`
+   *  consisting all its elements.
+   */
+  @experimental
+  inline def reverse[This >: this.type <: Tuple]: Reverse[This] =
+    runtime.Tuples.reverse(this).asInstanceOf[Reverse[This]]
 }
 
 object Tuple {
@@ -89,7 +96,7 @@ object Tuple {
   }
 
   /** Type of the head of a tuple */
-  type Head[X <: NonEmptyTuple] = X match {
+  type Head[X <: Tuple] = X match {
     case x *: _ => x
   }
 
@@ -101,7 +108,7 @@ object Tuple {
   }
 
   /** Type of the tail of a tuple */
-  type Tail[X <: NonEmptyTuple] <: Tuple = X match {
+  type Tail[X <: Tuple] <: Tuple = X match {
     case _ *: xs => xs
   }
 
@@ -193,6 +200,16 @@ object Tuple {
    */
   type IsMappedBy[F[_]] = [X <: Tuple] =>> X =:= Map[InverseMap[X, F], F]
 
+  /** Type of the reversed tuple */
+  @experimental
+  type Reverse[X <: Tuple] = ReverseOnto[X, EmptyTuple]
+
+  /** Prepends all elements of a tuple in reverse order onto the other tuple */
+  @experimental
+  type ReverseOnto[From <: Tuple, +To <: Tuple] <: Tuple = From match
+    case x *: xs => ReverseOnto[xs, x *: To]
+    case EmptyTuple => To
+
   /** Transforms a tuple `(T1, ..., Tn)` into `(T1, ..., Ti)`. */
   type Take[T <: Tuple, N <: Int] <: Tuple = N match {
     case 0 => EmptyTuple
@@ -272,7 +289,7 @@ case object EmptyTuple extends Tuple {
 
 /** Tuple of arbitrary non-zero arity */
 sealed trait NonEmptyTuple extends Tuple {
-  import Tuple._
+  import Tuple.*
 
   /** Get the i-th element of this tuple.
    *  Equivalent to productElement but with a precise return type.
@@ -297,7 +314,6 @@ sealed trait NonEmptyTuple extends Tuple {
    */
   inline def tail[This >: this.type <: NonEmptyTuple]: Tail[This] =
     runtime.Tuples.tail(this).asInstanceOf[Tail[This]]
-
 }
 
 @showAsInfix

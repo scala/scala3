@@ -76,7 +76,7 @@ object Denotations {
   /** A PreDenotation represents a group of single denotations or a single multi-denotation
    *  It is used as an optimization to avoid forming MultiDenotations too eagerly.
    */
-  abstract class PreDenotation extends caps.Pure {
+  abstract class PreDenotation extends Pure {
 
     /** A denotation in the group exists */
     def exists: Boolean

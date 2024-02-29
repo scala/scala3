@@ -1,21 +1,20 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import Symbols._, Types._, Contexts._, Names._, StdNames._, Constants._, SymUtils._
-import Flags._
-import DenotTransformers._
-import Decorators._
-import NameOps._
+import core.*
+import Symbols.*, Types.*, Contexts.*, Names.*, StdNames.*, Constants.*
+import Flags.*
+import DenotTransformers.*
+import Decorators.*
+import NameOps.*
 import Annotations.Annotation
 import typer.ProtoTypes.constrained
 import ast.untpd
-import ValueClasses.isDerivedValueClass
-import SymUtils._
+
 import util.Property
 import util.Spans.Span
 import config.Printers.derive
-import NullOpsDecorator._
+import NullOpsDecorator.*
 
 object SyntheticMembers {
 
@@ -53,8 +52,8 @@ object SyntheticMembers {
  *    def hashCode(): Int
  */
 class SyntheticMembers(thisPhase: DenotTransformer) {
-  import SyntheticMembers._
-  import ast.tpd._
+  import SyntheticMembers.*
+  import ast.tpd.*
 
   private var myValueSymbols: List[Symbol] = Nil
   private var myCaseSymbols: List[Symbol] = Nil
@@ -90,7 +89,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
   def caseAndValueMethods(clazz: ClassSymbol)(using Context): List[Tree] = {
     val clazzType = clazz.appliedRef
     lazy val accessors =
-      if (isDerivedValueClass(clazz)) clazz.paramAccessors.take(1) // Tail parameters can only be `erased`
+      if clazz.isDerivedValueClass then clazz.paramAccessors.take(1) // Tail parameters can only be `erased`
       else clazz.caseAccessors
     val isEnumValue = clazz.isAnonymousClass && clazz.info.parents.head.classSymbol.is(Enum)
     val isSimpleEnumValue = isEnumValue && !clazz.owner.isAllOf(EnumCase)
@@ -98,12 +97,12 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     val isNonJavaEnumValue = isEnumValue && !isJavaEnumValue
 
     val symbolsToSynthesize: List[Symbol] =
-      if (clazz.is(Case))
-        if (clazz.is(Module)) caseModuleSymbols
+      if clazz.is(Case) then
+        if clazz.is(Module) then caseModuleSymbols
         else caseSymbols
-      else if (isNonJavaEnumValue) nonJavaEnumValueSymbols
-      else if (isEnumValue) enumValueSymbols
-      else if (isDerivedValueClass(clazz)) valueSymbols
+      else if isNonJavaEnumValue then nonJavaEnumValueSymbols
+      else if isEnumValue then enumValueSymbols
+      else if clazz.isDerivedValueClass then valueSymbols
       else Nil
 
     def syntheticDefIfMissing(sym: Symbol): List[Tree] =
@@ -161,7 +160,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         case nme.productArity => Literal(Constant(accessors.length))
         case nme.productPrefix if isEnumValue => nameRef
         case nme.productPrefix => ownName
-        case nme.productElement => productElementBody(accessors.length, vrefss.head.head)
+        case nme.productElement =>
+          if ctx.settings.YcompileScala2Library.value then productElementBodyForScala2Compat(accessors.length, vrefss.head.head)
+          else productElementBody(accessors.length, vrefss.head.head)
         case nme.productElementName => productElementNameBody(accessors.length, vrefss.head.head)
       }
       report.log(s"adding $synthetic to $clazz at ${ctx.phase}")
@@ -185,9 +186,36 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  ```
      */
     def productElementBody(arity: Int, index: Tree)(using Context): Tree = {
-      // case N => _${N + 1}
+      // case N => this._${N + 1}
       val cases = 0.until(arity).map { i =>
         val sel = This(clazz).select(nme.selectorName(i), _.info.isParameterless)
+        CaseDef(Literal(Constant(i)), EmptyTree, sel)
+      }
+
+      Match(index, (cases :+ generateIOBECase(index)).toList)
+    }
+
+    /** The class
+     *
+     *  ```
+     *  case class C(x: T, y: T)
+     *  ```
+     *
+     *  gets the `productElement` method:
+     *
+     *  ```
+     *  def productElement(index: Int): Any = index match {
+     *    case 0 => this.x
+     *    case 1 => this.y
+     *    case _ => throw new IndexOutOfBoundsException(index.toString)
+     *  }
+     *  ```
+     */
+    def productElementBodyForScala2Compat(arity: Int, index: Tree)(using Context): Tree = {
+      val caseParams = ctx.owner.owner.caseAccessors
+      // case N => this.${paramNames(N)}
+      val cases = caseParams.zipWithIndex.map { (caseParam, i) =>
+        val sel = This(clazz).select(caseParam)
         CaseDef(Literal(Constant(i)), EmptyTree, sel)
       }
 
@@ -501,12 +529,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
             (rawRef, rawInfo)
       baseInfo match
         case tl: PolyType =>
-          val (tl1, tpts) = constrained(tl, untpd.EmptyTree, alwaysAddTypeVars = true)
-          val targs =
-            for (tpt <- tpts) yield
-              tpt.tpe match {
-                case tvar: TypeVar => tvar.instantiate(fromBelow = false)
-              }
+          val tvars = constrained(tl)
+          val targs = for tvar <- tvars yield
+            tvar.instantiate(fromBelow = false)
           (baseRef.appliedTo(targs), extractParams(tl.instantiate(targs)))
         case methTpe =>
           (baseRef, extractParams(methTpe))
@@ -552,7 +577,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
             .map((pre, child) => rawRef(child).asSeenFrom(pre, child.owner))
           case _ =>
             cls.children.map(rawRef)
-      end computeChildTypes
+
       val childTypes = computeChildTypes
       val cases =
         for (patType, idx) <- childTypes.zipWithIndex yield
@@ -639,8 +664,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     val clazz = ctx.owner.asClass
     val syntheticMembers = serializableObjectMethod(clazz) ::: serializableEnumValueMethod(clazz) ::: caseAndValueMethods(clazz)
     checkInlining(syntheticMembers)
-    addMirrorSupport(
-      cpy.Template(impl)(body = syntheticMembers ::: impl.body))
+    val impl1 = cpy.Template(impl)(body = syntheticMembers ::: impl.body)
+    if ctx.settings.YcompileScala2Library.value then impl1
+    else addMirrorSupport(impl1)
   }
 
   private def checkInlining(syntheticMembers: List[Tree])(using Context): Unit =

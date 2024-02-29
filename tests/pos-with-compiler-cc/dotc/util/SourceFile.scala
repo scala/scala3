@@ -60,7 +60,7 @@ object ScriptSourceFile {
   }
 }
 
-class SourceFile(val file: AbstractFile, computeContent: -> Array[Char]) extends interfaces.SourceFile, caps.Pure {
+class SourceFile(val file: AbstractFile, computeContent: -> Array[Char]) extends interfaces.SourceFile, Pure {
   import SourceFile._
 
   private var myContent: Array[Char] | Null = null

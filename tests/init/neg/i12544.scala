@@ -2,18 +2,23 @@ enum Enum:
   case Case
   case Case2(x: Int)
 
-def g(b: Enum.B): Int = b.foo()
+class Outer:
+  val e = new Enum2
 
-object Enum:
-  object nested:
-    val a: Enum = Case
+  class Enum2:
+    class nested:
+      val a: Enum = Enum.Case
 
-  val b: Enum = f(nested.a)
+    val b: Enum = f((new nested).a)
 
-  def f(e: Enum): Enum = e
+    def f(e: Enum): Enum = e
 
-  class B() { def foo() = n + 1 }
-  g(new B())                       // error
-  val n: Int = 10
+    class B() { def foo() = n + 1 }
+    def g(b: B): Int = b.foo()
+    g(new B()) // error
+    val n: Int = 10
 
-@main def main(): Unit = println(Enum.b)
+@main def main(): Unit = {
+  val o = new Outer
+  print(o.e.b)
+}

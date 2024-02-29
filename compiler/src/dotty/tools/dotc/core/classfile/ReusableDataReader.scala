@@ -9,10 +9,10 @@ import java.io.{DataInputStream, InputStream}
 import java.nio.{BufferUnderflowException, ByteBuffer}
 
 final class ReusableDataReader() extends DataReader {
-  private[this] var data = new Array[Byte](32768)
-  private[this] var bb: ByteBuffer = ByteBuffer.wrap(data)
-  private[this] var size = 0
-  private[this] val reader: DataInputStream = {
+  private var data = new Array[Byte](32768)
+  private var bb: ByteBuffer = ByteBuffer.wrap(data)
+  private var size = 0
+  private val reader: DataInputStream = {
     val stream = new InputStream {
       override def read(): Int = try {
         bb.get & 0xff

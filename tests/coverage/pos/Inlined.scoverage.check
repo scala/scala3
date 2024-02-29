@@ -27,7 +27,7 @@ covtest.Inlined$package$
 testInlined
 288
 330
-10
+11
 assertFailed
 Apply
 false
@@ -44,7 +44,7 @@ covtest.Inlined$package$
 testInlined
 288
 330
-10
+11
 assertFailed
 Apply
 true
@@ -59,15 +59,15 @@ Inlined$package$
 Object
 covtest.Inlined$package$
 testInlined
-155
-162
-6
-apply
-Apply
-false
+330
+330
+11
+<none>
+Literal
+true
 0
 false
-List(l)
+
 
 3
 Inlined.scala
@@ -77,14 +77,14 @@ Object
 covtest.Inlined$package$
 testInlined
 155
-159
-6
-List
-Ident
+162
+7
+apply
+Apply
 false
 0
 false
-List
+List(l)
 
 4
 Inlined.scala
@@ -95,7 +95,7 @@ covtest.Inlined$package$
 testInlined
 155
 169
-6
+7
 length
 Select
 false
@@ -112,7 +112,7 @@ covtest.Inlined$package$
 testInlined
 288
 330
-10
+11
 assertFailed
 Apply
 false
@@ -129,7 +129,7 @@ covtest.Inlined$package$
 testInlined
 288
 330
-10
+11
 assertFailed
 Apply
 true
@@ -144,15 +144,15 @@ Inlined$package$
 Object
 covtest.Inlined$package$
 testInlined
-180
-187
-7
-apply
-Apply
-false
+330
+330
+11
+<none>
+Literal
+true
 0
 false
-List(l)
+
 
 8
 Inlined.scala
@@ -162,14 +162,14 @@ Object
 covtest.Inlined$package$
 testInlined
 180
-184
-7
-List
-Ident
+187
+8
+apply
+Apply
 false
 0
 false
-List
+List(l)
 
 9
 Inlined.scala
@@ -180,7 +180,7 @@ covtest.Inlined$package$
 testInlined
 180
 194
-7
+8
 length
 Select
 false
@@ -197,7 +197,7 @@ covtest.Inlined$package$
 testInlined
 288
 330
-10
+11
 assertFailed
 Apply
 false
@@ -214,7 +214,7 @@ covtest.Inlined$package$
 testInlined
 288
 330
-10
+11
 assertFailed
 Apply
 true
@@ -229,9 +229,26 @@ Inlined$package$
 Object
 covtest.Inlined$package$
 testInlined
+330
+330
+11
+<none>
+Literal
+true
+0
+false
+
+
+13
+Inlined.scala
+covtest
+Inlined$package$
+Object
+covtest.Inlined$package$
+testInlined
 86
 101
-3
+4
 testInlined
 DefDef
 false

@@ -1,5 +1,5 @@
 final class Capture {
-  private[this] var m: Boolean = false
+  private var m: Boolean = false
 
   (0 to 10).foreach { i =>      // error
     f()
@@ -14,7 +14,7 @@ final class Capture {
 }
 
 final class Capture2 {
-  private[this] var m: Boolean = false
+  private var m: Boolean = false
 
   (0 to 10).foreach { i =>
     f()

@@ -8,26 +8,28 @@ def test(cap1: Cap, cap2: Cap) =
   val z = () => if x("") == "" then "a" else "b"
   val zc: () ->{cap1} String = z
   val z2 = () => { x = identity }
-  val z2c: () -> Unit = z2  // error
+  val z2c: () -> Unit = z2
+  var a = f
 
-  var a: String => String = f // error
-  var b: List[String => String] = Nil // error
-  val u = a  // was error, now ok
-  a("")  // was error, now ok
-  b.head // was error, now ok
+  var b: List[String ->{cap1, cap2} String] = Nil
+  val u = a
+  a("")
+  b.head
 
-  def scope =
-    val cap3: Cap = CC()
+  def scope(cap3: Cap) =
     def g(x: String): String = if cap3 == cap3 then "" else "a"
-    a = g
-    b = List(g)
+    def h(): String = ""
+    a = x => g(x)      // error
+    a = g      // error
+
+    b = List(g) // error
     val gc = g
     g
 
-  val s = scope
-  val sc: String => String = scope
+  val s = scope(new CC)
+  val sc: String => String = scope(new CC)
 
-  def local[sealed T](op: Cap -> T): T = op(CC())
+  def local[T](op: CC^ -> T): T = op(CC())
 
   local { cap3 => // error
     def g(x: String): String = if cap3 == cap3 then "" else "a"

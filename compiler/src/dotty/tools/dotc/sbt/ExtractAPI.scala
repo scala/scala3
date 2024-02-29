@@ -5,20 +5,19 @@ import scala.language.unsafeNulls
 
 import ExtractDependencies.internalError
 import ast.{Positioned, Trees, tpd}
-import core._
-import core.Decorators._
-import Annotations._
-import Contexts._
-import Flags._
-import Phases._
-import Trees._
-import Types._
-import Symbols._
-import Names._
-import NameOps._
+import core.*
+import core.Decorators.*
+import Annotations.*
+import Contexts.*
+import Flags.*
+import Phases.*
+import Trees.*
+import Types.*
+import Symbols.*
+import Names.*
+import NameOps.*
 import inlines.Inlines
 import transform.ValueClasses
-import transform.SymUtils._
 import dotty.tools.io.File
 import java.io.PrintWriter
 
@@ -49,12 +48,14 @@ class ExtractAPI extends Phase {
   override def description: String = ExtractAPI.description
 
   override def isRunnable(using Context): Boolean = {
-    def forceRun = ctx.settings.YdumpSbtInc.value || ctx.settings.YforceSbtPhases.value
-    super.isRunnable && (ctx.sbtCallback != null || forceRun)
+    super.isRunnable && ctx.runZincPhases
   }
 
   // Check no needed. Does not transform trees
   override def isCheckable: Boolean = false
+
+  // when `-Yjava-tasty` is set we actually want to run this phase on Java sources
+  override def skipIfJava(using Context): Boolean = false
 
   // SuperAccessors need to be part of the API (see the scripted test
   // `trait-super` for an example where this matters), this is only the case
@@ -65,9 +66,9 @@ class ExtractAPI extends Phase {
 
   override def run(using Context): Unit = {
     val unit = ctx.compilationUnit
-    val sourceFile = unit.source.file
-    if (ctx.sbtCallback != null)
-      ctx.sbtCallback.startSource(sourceFile.file)
+    val sourceFile = unit.source
+    ctx.withIncCallback: cb =>
+      cb.startSource(sourceFile)
 
     val apiTraverser = new ExtractAPICollector
     val classes = apiTraverser.apiSource(unit.tpdTree)
@@ -75,18 +76,17 @@ class ExtractAPI extends Phase {
 
     if (ctx.settings.YdumpSbtInc.value) {
       // Append to existing file that should have been created by ExtractDependencies
-      val pw = new PrintWriter(File(sourceFile.jpath).changeExtension("inc").toFile
+      val pw = new PrintWriter(File(sourceFile.file.jpath).changeExtension("inc").toFile
         .bufferedWriter(append = true), true)
       try {
         classes.foreach(source => pw.println(DefaultShowAPI(source)))
       } finally pw.close()
     }
 
-    if ctx.sbtCallback != null &&
-      !ctx.compilationUnit.suspendedAtInliningPhase // already registered before this unit was suspended
-    then
-      classes.foreach(ctx.sbtCallback.api(sourceFile.file, _))
-      mainClasses.foreach(ctx.sbtCallback.mainClass(sourceFile.file, _))
+    ctx.withIncCallback: cb =>
+      if !ctx.compilationUnit.suspendedAtInliningPhase then // already registered before this unit was suspended
+        classes.foreach(cb.api(sourceFile, _))
+        mainClasses.foreach(cb.mainClass(sourceFile, _))
   }
 }
 
@@ -137,7 +137,7 @@ object ExtractAPI:
  *  http://www.scala-sbt.org/0.13/docs/Understanding-Recompilation.html#Hashing+an+API+representation
  */
 private class ExtractAPICollector(using Context) extends ThunkHolder {
-  import tpd._
+  import tpd.*
   import xsbti.api
 
   /** This cache is necessary for correctness, see the comment about inherited
@@ -276,7 +276,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
             report.error(ex, csym.sourcePos)
             defn.ObjectType :: Nil
         }
-      if (ValueClasses.isDerivedValueClass(csym)) {
+      if (csym.isDerivedValueClass) {
         val underlying = ValueClasses.valueClassUnbox(csym).info.finalResultType
         // The underlying type of a value class should be part of the name hash
         // of the value class (see the test `value-class-underlying`), this is accomplished
@@ -568,7 +568,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       case ExprType(resultType) =>
         withMarker(apiType(resultType), byNameMarker)
       case MatchType(bound, scrut, cases) =>
-        val s = combineApiTypes(apiType(bound) :: apiType(scrut) :: cases.map(apiType): _*)
+        val s = combineApiTypes(apiType(bound) :: apiType(scrut) :: cases.map(apiType)*)
         withMarker(s, matchMarker)
       case ConstantType(constant) =>
         api.Constant.of(apiType(constant.tpe), constant.stringValue)
@@ -616,7 +616,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       apiType(lo), apiType(hi))
 
   def apiVariance(v: Int): api.Variance = {
-    import api.Variance._
+    import api.Variance.*
     if (v < 0) Contravariant
     else if (v > 0) Covariant
     else Invariant
@@ -678,11 +678,16 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
 
     // In the Scala2 ExtractAPI phase we only extract annotations that extend
     // StaticAnnotation, but in Dotty we currently pickle all annotations so we
-    // extract everything (except annotations missing from the classpath which
-    // we simply skip over, and inline body annotations which are handled above).
+    // extract everything, except:
+    // - annotations missing from the classpath which we simply skip over
+    // - inline body annotations which are handled above
+    // - the Child annotation since we already extract children via
+    //   `api.ClassLike#childrenOfSealedClass` and adding this annotation would
+    //   lead to overcompilation when using zinc's
+    //   `IncOptions#useOptimizedSealed`.
     s.annotations.foreach { annot =>
       val sym = annot.symbol
-      if sym.exists && sym != defn.BodyAnnot then
+      if sym.exists && sym != defn.BodyAnnot && sym != defn.ChildAnnot then
         annots += apiAnnotation(annot)
     }
 

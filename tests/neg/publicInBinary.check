@@ -1,0 +1,40 @@
+-- Error: tests/neg/publicInBinary.scala:8:22 --------------------------------------------------------------------------
+8 |@publicInBinary class C: // error
+  |                      ^
+  |                      @publicInBinary cannot be used on class definitions
+-- Error: tests/neg/publicInBinary.scala:10:24 -------------------------------------------------------------------------
+10 |    @publicInBinary def g = () // error
+   |                        ^
+   |                        @publicInBinary cannot be used on local definitions
+-- Error: tests/neg/publicInBinary.scala:12:24 -------------------------------------------------------------------------
+12 |class D[@publicInBinary T] // error
+   |                        ^
+   |                        @publicInBinary cannot be used on type definitions
+-- Error: tests/neg/publicInBinary.scala:16:21 -------------------------------------------------------------------------
+16 |@publicInBinary enum Enum1: // error
+   |                     ^
+   |                     @publicInBinary cannot be used on enum definitions
+-- Error: tests/neg/publicInBinary.scala:20:23 -------------------------------------------------------------------------
+20 |  @publicInBinary case A // error
+   |                       ^
+   |                       @publicInBinary cannot be used on enum definitions
+-- Error: tests/neg/publicInBinary.scala:21:23 -------------------------------------------------------------------------
+21 |  @publicInBinary case B(a: Int) // error
+   |                       ^
+   |                       @publicInBinary cannot be used on enum definitions
+-- Error: tests/neg/publicInBinary.scala:25:18 -------------------------------------------------------------------------
+25 |  @publicInBinary x: Int, // error
+   |                  ^
+   |                  @publicInBinary cannot be non `val` constructor parameters
+-- Error: tests/neg/publicInBinary.scala:26:31 -------------------------------------------------------------------------
+26 |  @publicInBinary private[Bar] y: Int, // error
+   |                               ^
+   |                               @publicInBinary cannot be non `val` constructor parameters
+-- Error: tests/neg/publicInBinary.scala:7:21 --------------------------------------------------------------------------
+7 |@publicInBinary type A // error
+  |                     ^
+  |                     @publicInBinary cannot be used on type definitions
+-- Error: tests/neg/publicInBinary.scala:14:22 -------------------------------------------------------------------------
+14 |def f(@publicInBinary x: Int) = 3 // error
+   |                      ^
+   |                      @publicInBinary cannot be used on local definitions

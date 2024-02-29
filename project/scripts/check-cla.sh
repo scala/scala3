@@ -2,7 +2,7 @@
 set -eux
 
 echo "Pull request submitted by $AUTHOR";
-if [ "$AUTHOR" = "github-actions[bot]" ] ; then
+if [[ "$AUTHOR" == "github-actions[bot]" || "$AUTHOR" == "dependabot[bot]" ]] ; then
   echo "CLA check for $AUTHOR successful";
 else
   signed=$(curl -s "https://www.lightbend.com/contribute/cla/scala/check/$AUTHOR" | jq -r ".signed");

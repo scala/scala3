@@ -26,6 +26,9 @@ object Util:
   opaque type Arg  = Tree | ByNameArg
   case class ByNameArg(tree: Tree)
 
+  object Arg:
+    def apply(tree: Tree): Arg = tree
+
   extension (arg: Arg)
     def isByName = arg.isInstanceOf[ByNameArg]
     def tree: Tree = arg match
@@ -64,14 +67,14 @@ object Util:
       case _ => None
 
   object PolyFun:
-    def unapply(tree: Tree)(using Context): Option[Tree] =
+    def unapply(tree: Tree)(using Context): Option[DefDef] =
       tree match
       case Block((cdef: TypeDef) :: Nil, Typed(NewExpr(tref, _, _, _), _))
       if tref.symbol.isAnonymousClass && tref <:< defn.PolyFunctionType
       =>
         val body = cdef.rhs.asInstanceOf[Template].body
         val apply = body.head.asInstanceOf[DefDef]
-        Some(apply.rhs)
+        Some(apply)
       case _ =>
         None
 
@@ -98,3 +101,8 @@ object Util:
 
     // A concrete class may not be instantiated if the self type is not satisfied
     instantiable && cls.enclosingPackageClass != defn.StdLibPatchesPackage.moduleClass
+
+  /** Whether the class or its super class/trait contains any mutable fields? */
+  def isMutable(cls: ClassSymbol)(using Context): Boolean =
+    cls.classInfo.decls.exists(_.is(Flags.Mutable)) ||
+    cls.parentSyms.exists(parentCls => isMutable(parentCls.asClass))

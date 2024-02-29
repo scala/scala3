@@ -4,16 +4,32 @@ import annotation.experimental
 
 @experimental object caps:
 
+  class Cap // should be @erased
+
   /** The universal capture reference (deprecated) */
   @deprecated("Use `cap` instead")
-  val `*`: Any = ()
+  val `*`: Cap = cap
 
   /** The universal capture reference */
-  val cap: Any = ()
+  val cap: Cap = Cap()
+
+  given Cap = cap
+
+  /** Reach capabilities x* which appear as terms in @retains annotations are encoded
+   *  as `caps.reachCapability(x)`. When converted to CaptureRef types in capture sets
+   *  they are  represented as `x.type @annotation.internal.reachCapability`.
+   */
+  extension (x: Any) def reachCapability: Any = x
 
   object unsafe:
 
     extension [T](x: T)
+      /** A specific cast operation to remove a capture set.
+       *  If argument is of type `T^C`, assume it is of type `T` instead.
+       *  Calls to this method are treated specially by the capture checker.
+       */
+      def unsafeAssumePure: T = x
+
       /** If argument is of type `cs T`, converts to type `box cs T`. This
       *  avoids the error that would be raised when boxing `*`.
       */
@@ -34,15 +50,3 @@ import annotation.experimental
       def unsafeBoxFunArg: T => U = f
 
   end unsafe
-
-  /** An annotation that expresses the sealed modifier on a type parameter
-   *  Should not be directly referred to in source
-   */
-  @deprecated("The Sealed annotation should not be directly used in source code.\nUse the `sealed` modifier on type parameters instead.")
-  class Sealed extends annotation.Annotation
-
-  /** Mixing in this trait forces a trait or class to be pure, i.e.
-   *  have no capabilities retained in its self type.
-   */
-  trait Pure:
-    this: Pure =>

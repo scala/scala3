@@ -9,15 +9,15 @@ import io.{ClassPath, Directory, Path}
 import classpath.{AggregateClassPath, ClassPathFactory, JrtClassPath}
 import ClassPath.split
 import PartialFunction.condOpt
-import core.Contexts._
-import Settings._
+import core.Contexts.*
+import Settings.*
 import dotty.tools.io.File
 
 object PathResolver {
 
   // Imports property/environment functions which suppress
   // security exceptions.
-  import AccessControl._
+  import AccessControl.*
 
   def firstNonEmpty(xs: String*): String = xs find (_ != "") getOrElse ""
 
@@ -208,7 +208,7 @@ class PathResolver(using c: Context) {
       if (!settings.classpath.isDefault) settings.classpath.value
       else sys.env.getOrElse("CLASSPATH", ".")
 
-    import classPathFactory._
+    import classPathFactory.*
 
     // Assemble the elements!
     def basis: List[Iterable[ClassPath]] =

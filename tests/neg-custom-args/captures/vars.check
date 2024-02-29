@@ -1,26 +1,28 @@
--- Error: tests/neg-custom-args/captures/vars.scala:13:6 ---------------------------------------------------------------
-13 |  var a: String => String = f // error
-   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |  Mutable variable a cannot have type box String => String since
-   |  that type captures the root capability `cap`.
-   |  This restriction serves to prevent local capabilities from escaping the scope where they are defined.
--- Error: tests/neg-custom-args/captures/vars.scala:14:6 ---------------------------------------------------------------
-14 |  var b: List[String => String] = Nil // error
-   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |  Mutable variable b cannot have type List[String => String] since
-   |  the part String => String of that type captures the root capability `cap`.
-   |  This restriction serves to prevent local capabilities from escaping the scope where they are defined.
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:11:24 -----------------------------------------
-11 |  val z2c: () -> Unit = z2  // error
-   |                        ^^
-   |                        Found:    () ->{z2} Unit
-   |                        Required: () -> Unit
+-- Error: tests/neg-custom-args/captures/vars.scala:22:14 --------------------------------------------------------------
+22 |    a = x => g(x)      // error
+   |             ^^^^
+   |             reference (cap3 : Cap) is not included in the allowed capture set {cap1} of variable a
+   |
+   |             Note that reference (cap3 : Cap), defined in method scope
+   |             cannot be included in outer capture set {cap1} of variable a which is associated with method test
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:23:8 ------------------------------------------
+23 |    a = g      // error
+   |        ^
+   |        Found:    (x: String) ->{cap3} String
+   |        Required: (x$0: String) ->{cap1} String
+   |
+   |        Note that reference (cap3 : Cap), defined in method scope
+   |        cannot be included in outer capture set {cap1} of variable a which is associated with method test
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/vars.scala:32:2 ---------------------------------------------------------------
-32 |  local { cap3 => // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:25:12 -----------------------------------------
+25 |    b = List(g) // error
+   |        ^^^^^^^
+   |        Found:    List[box (x$0: String) ->{cap3} String]
+   |        Required: List[box String ->{cap1, cap2} String]
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/vars.scala:34:2 ---------------------------------------------------------------
+34 |  local { cap3 => // error
    |  ^^^^^
-   |  Sealed type variable T cannot  be instantiated to box (x$0: String) => String since
-   |  that type captures the root capability `cap`.
-   |  This is often caused by a local capability in the body of method local
-   |  leaking as part of its result.
+   |  local reference cap3 leaks into outer capture set of type parameter T of method local

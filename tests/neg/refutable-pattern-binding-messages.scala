@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 object Test {
   // refutable extractor
   object Positive { def unapply(i: Int): Option[Int] = Some(i).filter(_ > 0) }

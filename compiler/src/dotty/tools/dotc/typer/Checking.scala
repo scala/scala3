@@ -2,18 +2,18 @@ package dotty.tools
 package dotc
 package typer
 
-import core._
-import ast._
-import Contexts._
-import Types._
-import Flags._
-import Names._
-import StdNames._
-import Symbols._
-import Trees._
-import ProtoTypes._
-import Scopes._
-import CheckRealizable._
+import core.*
+import ast.*
+import Contexts.*
+import Types.*
+import Flags.*
+import Names.*
+import StdNames.*
+import Symbols.*
+import Trees.*
+import ProtoTypes.*
+import Scopes.*
+import CheckRealizable.*
 import ErrorReporting.errorTree
 import util.Spans.Span
 import Phases.refchecksPhase
@@ -23,28 +23,28 @@ import util.SrcPos
 import util.Spans.Span
 import rewrites.Rewrites.patch
 import inlines.Inlines
-import transform.SymUtils._
-import transform.ValueClasses._
-import Decorators._
+import Decorators.*
 import ErrorReporting.{err, errorType}
 import config.Printers.{typr, patmatch}
 import NameKinds.DefaultGetterName
-import NameOps._
+import NameOps.*
 import SymDenotations.{NoCompleter, NoDenotation}
 import Applications.unapplyArgs
 import Inferencing.isFullyDefined
-import transform.patmat.SpaceEngine.{isIrrefutable, isIrrefutableQuotedPattern}
+import transform.patmat.SpaceEngine.{isIrrefutable, isIrrefutableQuotePattern}
+import transform.ValueClasses.underlyingOfValueClass
 import config.Feature
 import config.Feature.sourceVersion
-import config.SourceVersion._
+import config.SourceVersion.*
+import config.MigrationVersion
 import printing.Formatting.hlAsKeyword
-import transform.TypeUtils.*
+import cc.isCaptureChecking
 
 import collection.mutable
-import reporting._
+import reporting.*
 
 object Checking {
-  import tpd._
+  import tpd.*
 
   /** Add further information for error messages involving applied types if the
    *  type is inferred:
@@ -67,7 +67,7 @@ object Checking {
    */
   def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds],
     instantiate: (Type, List[Type]) => Type, app: Type = NoType, tpt: Tree = EmptyTree)(using Context): Unit =
-    if ctx.phase != Phases.checkCapturesPhase then
+    if !isCaptureChecking then
       args.lazyZip(boundss).foreach { (arg, bound) =>
         if !bound.isLambdaSub && !arg.tpe.hasSimpleKind then
           errorTree(arg,
@@ -132,7 +132,7 @@ object Checking {
         if tp.isUnreducibleWild then
           report.errorOrMigrationWarning(
             showInferred(UnreducibleApplication(tycon), tp, tpt),
-            tree.srcPos, from = `3.0`)
+            tree.srcPos, MigrationVersion.Scala2to3)
       case _ =>
     }
     def checkValidIfApply(using Context): Unit =
@@ -145,7 +145,18 @@ object Checking {
     val checker = new TypeTraverser:
       def traverse(tp: Type) =
         tp match
-          case AppliedType(tycon, argTypes) =>
+          case AppliedType(tycon, argTypes)
+          if !(tycon.typeSymbol.is(JavaDefined) && ctx.compilationUnit.isJava)
+            // Don't check bounds in Java units that refer to Java type constructors.
+            // Scala is not obliged to do Java type checking and in fact i17763 goes wrong
+            // if we attempt to check bounds of F-bounded mutually recursive Java interfaces.
+            // Do check all bounds in Scala units and those bounds in Java units that
+            // occur in applications of Scala type constructors.
+            && !isCaptureChecking || tycon.typeSymbol.is(CaptureChecked)
+            // Don't check bounds when capture checking type constructors that were not
+            // themselves capture checked. Since the type constructor could not foresee
+            // possible capture sets, it's better to be lenient for backwards compatibility.
+          =>
             checkAppliedType(
               untpd.AppliedTypeTree(TypeTree(tycon), argTypes.map(TypeTree(_)))
                 .withType(tp).withSpan(tpt.span.toSynthetic),
@@ -207,7 +218,7 @@ object Checking {
     val rstatus = realizability(tp)
     if (rstatus ne Realizable)
       report.errorOrMigrationWarning(
-        em"$tp is not a legal $what\nsince it${rstatus.msg}", pos, from = `3.0`)
+        em"$tp is not a legal $what\nsince it${rstatus.msg}", pos, MigrationVersion.Scala2to3)
   }
 
   /** Given a parent `parent` of a class `cls`, if `parent` is a trait check that
@@ -371,7 +382,7 @@ object Checking {
 
   /** Check that `info` of symbol `sym` is not cyclic.
    *  @pre     sym is not yet initialized (i.e. its type is a Completer).
-   *  @return  `info` where every legal F-bounded reference is proctected
+   *  @return  `info` where every legal F-bounded reference is protected
    *                  by a `LazyRef`, or `ErrorType` if a cycle was detected and reported.
    */
   def checkNonCyclic(sym: Symbol, info: Type, reportErrors: Boolean)(using Context): Type = {
@@ -412,7 +423,7 @@ object Checking {
         case tree: RefTree =>
           checkRef(tree, tree.symbol)
           foldOver(x, tree)
-        case tree: This =>
+        case tree: This if tree.tpe.classSymbol == refineCls =>
           selfRef(tree)
         case tree: TypeTree =>
           val checkType = new TypeAccumulator[Unit] {
@@ -507,11 +518,7 @@ object Checking {
         // but they can never be one of ClassOnlyFlags
     if !sym.isClass && sym.isOneOf(ClassOnlyFlags) then
       val illegal = sym.flags & ClassOnlyFlags
-      if sym.is(TypeParam) && illegal == Sealed && Feature.ccEnabled && cc.allowUniversalInBoxed then
-        if !sym.owner.is(Method) then
-          fail(em"only method type parameters can be sealed")
-      else
-        fail(em"only classes can be ${illegal.flagsString}")
+      fail(em"only classes can be ${illegal.flagsString}")
     if (sym.is(AbsOverride) && !sym.owner.is(Trait))
       fail(AbstractOverrideOnlyInTraits(sym))
     if sym.is(Trait) then
@@ -531,6 +538,12 @@ object Checking {
         fail(em"Inline methods cannot be @tailrec")
     if sym.hasAnnotation(defn.TargetNameAnnot) && sym.isClass && sym.isTopLevelClass then
       fail(TargetNameOnTopLevelClass(sym))
+    if sym.hasAnnotation(defn.PublicInBinaryAnnot) then
+      if sym.is(Enum) then fail(em"@publicInBinary cannot be used on enum definitions")
+      else if sym.isType && !sym.is(Module) && !(sym.is(Given) || sym.companionModule.is(Given)) then fail(em"@publicInBinary cannot be used on ${sym.showKind} definitions")
+      else if !sym.owner.isClass && !(sym.is(Param) && sym.owner.isConstructor) then fail(em"@publicInBinary cannot be used on local definitions")
+      else if sym.is(ParamAccessor) && sym.is(Private) then fail(em"@publicInBinary cannot be non `val` constructor parameters")
+      else if sym.is(Private) && !sym.privateWithin.exists && !sym.isConstructor then fail(em"@publicInBinary cannot be used on private definitions\n\nConsider using `private[${sym.owner.name}]` or `protected` instead")
     if (sym.hasAnnotation(defn.NativeAnnot)) {
       if (!sym.is(Deferred))
         fail(NativeMembersMayNotHaveImplementation(sym))
@@ -555,6 +568,8 @@ object Checking {
         fail(CannotHaveSameNameAs(sym, cls, CannotHaveSameNameAs.CannotBeOverridden))
         sym.setFlag(Private) // break the overriding relationship by making sym Private
       }
+    if sym.isWrappedToplevelDef && !sym.isType && sym.flags.is(Infix, butNot = Extension) then
+      fail(ModifierNotAllowedForDefinition(Flags.Infix, s"A top-level ${sym.showKind} cannot be infix."))
     checkApplicable(Erased,
       !sym.isOneOf(MutableOrLazy, butNot = Given) && !sym.isType || sym.isClass)
     checkCombination(Final, Open)
@@ -584,6 +599,8 @@ object Checking {
       report.error(ModifierNotAllowedForDefinition(Sealed), flagSourcePos(Sealed))
     if mods.is(Final, butNot = Synthetic) then
       report.warning(RedundantModifier(Final), flagSourcePos(Final))
+    if mods.is(Infix) then
+      report.error(ModifierNotAllowedForDefinition(Infix), flagSourcePos(Infix))
 
   /** Check the type signature of the symbol `M` defined by `tree` does not refer
    *  to a private type or value which is invisible at a point where `M` is still
@@ -680,7 +697,7 @@ object Checking {
     }
     val notPrivate = new NotPrivate
     val info = notPrivate(sym.info)
-    notPrivate.errors.foreach(report.errorOrMigrationWarning(_, sym.srcPos, from = `3.0`))
+    notPrivate.errors.foreach(report.errorOrMigrationWarning(_, sym.srcPos, MigrationVersion.Scala2to3))
     info
   }
 
@@ -698,8 +715,10 @@ object Checking {
       case _ =>
         report.error(ValueClassesMayNotContainInitalization(clazz), stat.srcPos)
     }
-    if (isDerivedValueClass(clazz)) {
+    if (clazz.isDerivedValueClass) {
       if (clazz.is(Trait))
+        report.error(CannotExtendAnyVal(clazz), clazz.srcPos)
+      if clazz.is(Module) then
         report.error(CannotExtendAnyVal(clazz), clazz.srcPos)
       if (clazz.is(Abstract))
         report.error(ValueClassesMayNotBeAbstract(clazz), clazz.srcPos)
@@ -787,7 +806,9 @@ object Checking {
     for case imp @ Import(qual, selectors) <- trees do
       def isAllowedImport(sel: untpd.ImportSelector) =
         val name = Feature.experimental(sel.name)
-        name == Feature.scala2macros || name == Feature.erasedDefinitions
+        name == Feature.scala2macros
+        || name == Feature.erasedDefinitions
+        || name == Feature.captureChecking
 
       languageImport(qual) match
         case Some(nme.experimental)
@@ -804,11 +825,44 @@ object Checking {
           else Feature.checkExperimentalFeature("features", imp.srcPos)
         case _ =>
   end checkExperimentalImports
+
+  /** Checks that PolyFunction only have valid refinements.
+   *
+   *  It only supports `apply` methods with one parameter list and optional type arguments.
+   */
+  def checkPolyFunctionType(tree: Tree)(using Context): Unit = new TreeTraverser {
+    def traverse(tree: Tree)(using Context): Unit = tree match
+      case tree: RefinedTypeTree if tree.tpe.derivesFrom(defn.PolyFunctionClass) =>
+        if tree.refinements.isEmpty then
+          reportNoRefinements(tree.srcPos)
+        tree.refinements.foreach {
+          case refinement: DefDef if refinement.name != nme.apply =>
+            report.error("PolyFunction only supports apply method refinements", refinement.srcPos)
+          case refinement: DefDef if !defn.PolyFunctionOf.isValidPolyFunctionInfo(refinement.tpe.widen) =>
+            report.error("Implementation restriction: PolyFunction apply must have exactly one parameter list and optionally type arguments. No by-name nor varags are allowed.", refinement.srcPos)
+          case _ =>
+        }
+      case _: RefTree if tree.symbol == defn.PolyFunctionClass =>
+        reportNoRefinements(tree.srcPos)
+      case _ =>
+        traverseChildren(tree)
+
+    def reportNoRefinements(pos: SrcPos) =
+      report.error("PolyFunction subtypes must refine the apply method", pos)
+  }.traverse(tree)
+
+  /** Check that users do not extend the `PolyFunction` trait.
+   *  We only allow compiler generated `PolyFunction`s.
+   */
+  def checkPolyFunctionExtension(templ: Template)(using Context): Unit =
+    templ.parents.find(_.tpe.derivesFrom(defn.PolyFunctionClass)) match
+      case Some(parent) => report.error(s"`PolyFunction` marker trait is reserved for compiler generated refinements", parent.srcPos)
+      case None =>
 }
 
 trait Checking {
 
-  import tpd._
+  import tpd.*
 
   def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(using Context): Type =
     Checking.checkNonCyclic(sym, info, reportErrors)
@@ -839,7 +893,7 @@ trait Checking {
       case NonConforming, RefutableExtractor
 
     def fail(pat: Tree, pt: Type, reason: Reason): Boolean = {
-      import Reason._
+      import Reason.*
       val message = reason match
         case NonConforming =>
           var reportedPt = pt.dropAnnot(defn.UncheckedAnnot)
@@ -847,19 +901,15 @@ trait Checking {
           val problem = if pat.tpe <:< reportedPt then "is more specialized than" else "does not match"
           em"pattern's type ${pat.tpe} $problem the right hand side expression's type $reportedPt"
         case RefutableExtractor =>
-          val extractor =
-            val UnApply(fn, _, _) = pat: @unchecked
-            tpd.funPart(fn) match
-              case Select(id, _) => id
-              case _ => EmptyTree
-          if extractor.isEmpty then
-            em"pattern binding uses refutable extractor"
-          else if extractor.symbol eq defn.QuoteMatching_ExprMatch then
-            em"pattern binding uses refutable extractor `'{...}`"
-          else if extractor.symbol eq defn.QuoteMatching_TypeMatch then
-            em"pattern binding uses refutable extractor `'[...]`"
-          else
-            em"pattern binding uses refutable extractor `$extractor`"
+          val extractor = pat match
+            case UnApply(fn, _, _) =>
+              tpd.funPart(fn) match
+                case Select(id, _) if !id.isEmpty => id.show
+                case _ => ""
+            case QuotePattern(_, body, _) =>
+              if body.isTerm then "'{...}" else "'[...]"
+          if extractor.isEmpty then em"pattern binding uses refutable extractor"
+          else em"pattern binding uses refutable extractor `$extractor`"
 
       val fix =
         if isPatDef then "adding `: @unchecked` after the expression"
@@ -876,17 +926,26 @@ trait Checking {
           case RefutableExtractor => pat.source.atSpan(pat.span union sel.span)
         else pat.srcPos
       def rewriteMsg = Message.rewriteNotice("This patch", `3.2-migration`)
-      report.gradualErrorOrMigrationWarning(
+      report.errorOrMigrationWarning(
         message.append(
           i"""|
               |
               |If $usage is intentional, this can be communicated by $fix,
               |which $addendum.$rewriteMsg"""),
-        pos, warnFrom = `3.2`, errorFrom = `future`)
+        pos,
+        // we tighten for-comprehension without `case` to error in 3.4,
+        // but we keep pat-defs as warnings for now ("@unchecked"),
+        // until we propose an alternative way to assert exhaustivity to the typechecker.
+        if isPatDef then MigrationVersion.ForComprehensionUncheckedPathDefs
+        else MigrationVersion.ForComprehensionPatternWithoutCase
+      )
       false
     }
 
-    def check(pat: Tree, pt: Type): Boolean = (pt <:< pat.tpe) || fail(pat, pt, Reason.NonConforming)
+    def check(pat: Tree, pt: Type): Boolean =
+      pt.isTupleXXLExtract(pat.tpe) // See isTupleXXLExtract, fixes TupleXXL parameter type
+      || pt <:< pat.tpe
+      || fail(pat, pt, Reason.NonConforming)
 
     def recur(pat: Tree, pt: Type): Boolean =
       !sourceVersion.isAtLeast(`3.2`)
@@ -898,7 +957,7 @@ trait Checking {
             recur(pat1, pt)
           case UnApply(fn, implicits, pats) =>
             check(pat, pt) &&
-            (isIrrefutable(fn, pats.length) || isIrrefutableQuotedPattern(fn, implicits, pt) || fail(pat, pt, Reason.RefutableExtractor)) && {
+            (isIrrefutable(fn, pats.length) || fail(pat, pt, Reason.RefutableExtractor)) && {
               val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.srcPos)
               pats.corresponds(argPts)(recur)
             }
@@ -908,6 +967,8 @@ trait Checking {
             check(pat, pt) && recur(arg, pt)
           case Ident(nme.WILDCARD) =>
             true
+          case pat: QuotePattern =>
+            isIrrefutableQuotePattern(pat, pt) || fail(pat, pt, Reason.RefutableExtractor)
           case _ =>
             check(pat, pt)
         }
@@ -952,6 +1013,11 @@ trait Checking {
       report.error(
         em"Implementation restriction: ${path.tpe.classSymbol} is not a valid prefix for a wildcard export, as it is a package",
         path.srcPos)
+
+  /** Check that the definition name isn't root. */
+  def checkNonRootName(name: Name, nameSpan: Span)(using Context): Unit =
+    if name == nme.ROOTPKG then
+      report.error(em"Illegal use of root package name.", ctx.source.atSpan(nameSpan))
 
   /** Check that module `sym` does not clash with a class of the same name
    *  that is concurrently compiled in another source file.
@@ -1021,14 +1087,18 @@ trait Checking {
   def checkValidInfix(tree: untpd.InfixOp, meth: Symbol)(using Context): Unit = {
     tree.op match {
       case id @ Ident(name: Name) =>
+        def methCompiledBeforeDeprecation =
+          meth.tastyInfo match
+            case Some(info) => info.version.major == 28 && info.version.minor < 4 // compiled before 3.4
+            case _ => false // compiled with the current compiler
         name.toTermName match {
           case name: SimpleName
           if !untpd.isBackquoted(id) &&
              !name.isOperatorName &&
              !meth.isDeclaredInfix &&
              !meth.maybeOwner.is(Scala2x) &&
-             !infixOKSinceFollowedBy(tree.right) &&
-             sourceVersion.isAtLeast(future) =>
+             !methCompiledBeforeDeprecation &&
+             !infixOKSinceFollowedBy(tree.right) =>
             val (kind, alternative) =
               if (ctx.mode.is(Mode.Type))
                 ("type", (n: Name) => s"prefix syntax $n[...]")
@@ -1036,15 +1106,15 @@ trait Checking {
                 ("extractor", (n: Name) => s"prefix syntax $n(...)")
               else
                 ("method", (n: Name) => s"method syntax .$n(...)")
-            def rewriteMsg = Message.rewriteNotice("The latter", options = "-deprecation")
-            report.deprecationWarning(
+            def rewriteMsg = Message.rewriteNotice("The latter", version = `3.4-migration`)
+            report.errorOrMigrationWarning(
               em"""Alphanumeric $kind $name is not declared ${hlAsKeyword("infix")}; it should not be used as infix operator.
                   |Instead, use ${alternative(name)} or backticked identifier `$name`.$rewriteMsg""",
-              tree.op.srcPos)
-            if (ctx.settings.deprecation.value) {
+              tree.op.srcPos,
+              MigrationVersion.AlphanumericInfix)
+            if MigrationVersion.AlphanumericInfix.needsPatch then
               patch(Span(tree.op.span.start, tree.op.span.start), "`")
               patch(Span(tree.op.span.end, tree.op.span.end), "`")
-            }
           case _ =>
         }
     }
@@ -1077,7 +1147,7 @@ trait Checking {
       case tp @ AppliedType(tycon, args) =>
         tp.derivedAppliedType(tycon, args.mapConserve(checkGoodBounds))
       case tp: RefinedType =>
-        tp.derivedRefinedType(tp.parent, tp.refinedName, checkGoodBounds(tp.refinedInfo))
+        tp.derivedRefinedType(refinedInfo = checkGoodBounds(tp.refinedInfo))
       case _ =>
         tp
     }
@@ -1506,17 +1576,23 @@ trait Checking {
    *  (2) Check that no import selector is renamed more than once.
    */
   def checkImportSelectors(qualType: Type, selectors: List[untpd.ImportSelector])(using Context): Unit =
-    val seen = mutable.Set.empty[Name]
+    val originals = mutable.Set.empty[Name]
+    val targets = mutable.Set.empty[Name]
 
     def checkIdent(sel: untpd.ImportSelector): Unit =
       if sel.name != nme.ERROR
           && !qualType.member(sel.name).exists
           && !qualType.member(sel.name.toTypeName).exists
       then
-        report.error(NotAMember(qualType, sel.name, "value"), sel.imported.srcPos)
-      if seen.contains(sel.name) then
-        report.error(ImportRenamedTwice(sel.imported), sel.imported.srcPos)
-      seen += sel.name
+        report.error(NotAMember(qualType, sel.name, "value", WildcardType), sel.imported.srcPos)
+      if sel.isUnimport then
+        if originals.contains(sel.name) then
+          report.error(UnimportedAndImported(sel.name, targets.contains(sel.name)), sel.imported.srcPos)
+      else
+        if targets.contains(sel.rename) then
+          report.error(ImportedTwice(sel.rename), sel.renamed.orElse(sel.imported).srcPos)
+        targets += sel.rename
+      originals += sel.name
 
     if !ctx.compilationUnit.isJava then
       for sel <- selectors do
@@ -1525,7 +1601,7 @@ trait Checking {
 }
 
 trait ReChecking extends Checking {
-  import tpd._
+  import tpd.*
   override def checkEnumParent(cls: Symbol, firstParent: Symbol)(using Context): Unit = ()
   override def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(using Context): Unit = ()
   override def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(using Context): Unit = ()
@@ -1541,7 +1617,7 @@ trait ReChecking extends Checking {
 }
 
 trait NoChecking extends ReChecking {
-  import tpd._
+  import tpd.*
   override def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(using Context): Type = info
   override def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, pos: SrcPos)(using Context): Unit = ()
   override def checkStable(tp: Type, pos: SrcPos, kind: String)(using Context): Unit = ()

@@ -17,7 +17,7 @@ import dotty.tools.dotc.report
  *  @version 1.0
  *
  */
-trait BCodeIdiomatic extends caps.Pure {
+trait BCodeIdiomatic extends Pure {
   val int: DottyBackendInterface
   final lazy val bTypes = new BTypesFromSymbols[int.type](int)
 
@@ -55,7 +55,8 @@ trait BCodeIdiomatic extends caps.Pure {
     case "18" => asm.Opcodes.V18
     case "19" => asm.Opcodes.V19
     case "20" => asm.Opcodes.V20
-    case "21" => asm.Opcodes.V21*/
+    case "21" => asm.Opcodes.V21
+    case "22" => asm.Opcodes.V22*/
   }
 
   lazy val majorVersion: Int = (classfileVersion & 0xFF)

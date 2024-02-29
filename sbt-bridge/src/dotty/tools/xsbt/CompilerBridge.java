@@ -19,6 +19,6 @@ public final class CompilerBridge implements CompilerInterface2 {
   public void run(VirtualFile[] sources, DependencyChanges changes, String[] options, Output output,
     AnalysisCallback callback, Reporter delegate, CompileProgress progress, Logger log) {
     CompilerBridgeDriver driver = new CompilerBridgeDriver(options, output);
-    driver.run(sources, callback, log, delegate);
+    driver.run(sources, callback, log, delegate, progress);
   }
 }

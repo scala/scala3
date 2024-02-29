@@ -82,8 +82,8 @@ ContextFunction22
 ContextFunction23
 ContextFunction24
 ContextFunction25
-class java.lang.Exception: Erased function classes are not supported. Use a refined `scala.runtime.ErasedFunction`
-ErasedFunction
+class java.lang.Exception: Erased function classes are not supported. Use a refined `scala.PolyFunction`
+PolyFunction
 Tuple2
 Tuple3
 Tuple4

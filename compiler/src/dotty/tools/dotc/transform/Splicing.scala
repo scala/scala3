@@ -1,25 +1,25 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import Decorators._
-import Flags._
-import Types._
-import Contexts._
-import Symbols._
-import Constants._
-import ast.Trees._
+import core.*
+import Decorators.*
+import Flags.*
+import Types.*
+import Contexts.*
+import Symbols.*
+import Constants.*
+import ast.Trees.*
 import ast.{TreeTypeMap, untpd}
-import util.Spans._
-import SymUtils._
-import NameKinds._
+import util.Spans.*
+
+import NameKinds.*
 import dotty.tools.dotc.ast.tpd
 
 import scala.collection.mutable
-import dotty.tools.dotc.core.Annotations._
-import dotty.tools.dotc.core.Names._
-import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.quoted._
+import dotty.tools.dotc.core.Annotations.*
+import dotty.tools.dotc.core.Names.*
+import dotty.tools.dotc.core.StdNames.*
+import dotty.tools.dotc.quoted.*
 import dotty.tools.dotc.config.ScalaRelease.*
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.staging.QuoteTypeTags
@@ -72,7 +72,7 @@ object Splicing:
  *
  */
 class Splicing extends MacroTransform:
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = Splicing.name
 
@@ -197,7 +197,7 @@ class Splicing extends MacroTransform:
           if tree.isTerm then
             if isCaptured(tree.symbol) then
               val tpe = tree.tpe.widenTermRefExpr match {
-                case tpw: MethodicType => tpw.toFunctionType(isJava = false)
+                case tpw: MethodicType => tpw.toFunctionType()
                 case tpw => tpw
               }
               spliced(tpe)(capturedTerm(tree))
@@ -209,7 +209,7 @@ class Splicing extends MacroTransform:
                 // Dealias references to captured types
                 TypeTree(tree.tpe.dealias)
             else super.transform(tree)
-        case tree: TypeTree =>
+        case _: TypeTree | _: SingletonTypeTree =>
           if containsCapturedType(tree.tpe) && level >= 1 then getTagRefFor(tree)
           else tree
         case tree @ Assign(lhs: RefTree, rhs) =>
@@ -291,7 +291,7 @@ class Splicing extends MacroTransform:
 
     private def capturedTerm(tree: Tree)(using Context): Tree =
       val tpe = tree.tpe.widenTermRefExpr match
-        case tpw: MethodicType => tpw.toFunctionType(isJava = false)
+        case tpw: MethodicType => tpw.toFunctionType()
         case tpw => tpw
       capturedTerm(tree, tpe)
 
@@ -314,10 +314,7 @@ class Splicing extends MacroTransform:
       )
 
     private def capturedType(tree: Tree)(using Context): Symbol =
-      val tpe = tree.tpe.widenTermRefExpr
-      val bindingSym = refBindingMap
-        .getOrElseUpdate(tree.symbol, (TypeTree(tree.tpe), newQuotedTypeClassBinding(tpe)))._2
-      bindingSym
+      refBindingMap.getOrElseUpdate(tree.symbol, (TypeTree(tree.tpe), newQuotedTypeClassBinding(tree.tpe)))._2
 
     private def capturedPartTypes(quote: Quote)(using Context): Tree =
       val (tags, body1) = inContextWithQuoteTypeTags {

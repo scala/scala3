@@ -27,7 +27,7 @@ Object
 f1
 15
 21
-1
+2
 f1
 DefDef
 false
@@ -44,7 +44,7 @@ Object
 f2
 56
 62
-2
+3
 f2
 DefDef
 false
@@ -61,7 +61,7 @@ Object
 g1
 114
 120
-5
+6
 g1
 DefDef
 false
@@ -78,7 +78,7 @@ Object
 g2
 175
 181
-8
+9
 g2
 DefDef
 false
@@ -95,7 +95,7 @@ Object
 main
 277
 297
-11
+12
 println
 Apply
 false
@@ -112,7 +112,7 @@ Object
 main
 285
 296
-11
+12
 f1
 Apply
 false
@@ -129,7 +129,7 @@ Object
 main
 302
 322
-12
+13
 println
 Apply
 false
@@ -146,7 +146,7 @@ Object
 main
 310
 321
-12
+13
 apply
 Apply
 false
@@ -163,7 +163,7 @@ Object
 main
 310
 318
-12
+13
 apply
 Apply
 false
@@ -180,7 +180,7 @@ Object
 main
 310
 315
-12
+13
 apply
 Apply
 false
@@ -197,7 +197,7 @@ Object
 main
 310
 312
-12
+13
 f2
 Ident
 false
@@ -214,7 +214,7 @@ Object
 main
 327
 365
-13
+14
 println
 Apply
 false
@@ -231,7 +231,7 @@ Object
 main
 335
 364
-13
+14
 apply
 Apply
 false
@@ -248,7 +248,7 @@ Object
 main
 370
 408
-14
+15
 println
 Apply
 false
@@ -265,7 +265,7 @@ Object
 main
 378
 407
-14
+15
 g2
 Apply
 false
@@ -282,7 +282,7 @@ Object
 main
 235
 243
-10
+11
 main
 DefDef
 false

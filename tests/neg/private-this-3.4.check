@@ -1,0 +1,12 @@
+-- Error: tests/neg/private-this-3.4.scala:6:16 ------------------------------------------------------------------------
+6 |  private[this] def foo: Int = ??? // error: migration warning
+  |                ^
+  |                The [this] qualifier will be deprecated in the future; it should be dropped.
+  |                See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
+  |                This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+-- Error: tests/neg/private-this-3.4.scala:7:18 ------------------------------------------------------------------------
+7 |  protected[this] def bar: Int = ??? // error: migration warning
+  |                  ^
+  |                  The [this] qualifier will be deprecated in the future; it should be dropped.
+  |                  See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
+  |                  This construct can be rewritten automatically under -rewrite -source 3.4-migration.

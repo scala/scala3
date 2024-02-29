@@ -27,7 +27,7 @@ covtest.Literals$package$
 block
 31
 50
-3
+4
 println
 Apply
 false
@@ -44,7 +44,7 @@ covtest.Literals$package$
 block
 17
 26
-2
+3
 block
 DefDef
 false
@@ -61,7 +61,7 @@ covtest.Literals$package$
 f
 177
 180
-8
+9
 ???
 Ident
 false
@@ -78,7 +78,7 @@ covtest.Literals$package$
 f
 137
 142
-8
+9
 f
 DefDef
 false
@@ -95,7 +95,7 @@ covtest.Literals$package$
 main
 201
 212
-11
+12
 f
 Apply
 false
@@ -112,7 +112,7 @@ covtest.Literals$package$
 main
 182
 190
-10
+11
 main
 DefDef
 false

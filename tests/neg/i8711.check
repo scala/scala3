@@ -1,0 +1,12 @@
+-- [E030] Match case Unreachable Error: tests/neg/i8711.scala:9:9 ------------------------------------------------------
+9 |    case x: B => x // error: this case is unreachable since class A is not a subclass of class B
+  |         ^^^^
+  |         Unreachable case
+-- [E030] Match case Unreachable Error: tests/neg/i8711.scala:14:9 -----------------------------------------------------
+14 |    case x: C => x // error
+   |         ^^^^
+   |         Unreachable case
+-- [E030] Match case Unreachable Error: tests/neg/i8711.scala:19:9 -----------------------------------------------------
+19 |    case x: (B | C) => x // error
+   |         ^^^^^^^^^^
+   |         Unreachable case

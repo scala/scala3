@@ -188,7 +188,7 @@ object Flags {
     flag
   }
 
-  def commonFlags(flagss: FlagSet*): FlagSet = union(flagss.map(_.toCommonFlags): _*)
+  def commonFlags(flagss: FlagSet*): FlagSet = union(flagss.map(_.toCommonFlags)*)
 
   /** The empty flag set */
   val EmptyFlags: FlagSet = FlagSet(0)
@@ -308,8 +308,8 @@ object Flags {
    */
   val (_, StableRealizable @ _, _) = newFlags(24, "<stable>")
 
-  /** A case parameter accessor */
-  val (_, CaseAccessor @ _, _) = newFlags(25, "<caseaccessor>")
+  /** A case parameter accessor / an unpickled Scala 2 TASTy (only for Scala 2 stdlib) */
+  val (_, CaseAccessor @ _, Scala2Tasty @ _) = newFlags(25, "<caseaccessor>", "<scala-2-tasty>")
 
   /** A Scala 2x super accessor / an unpickled Scala 2.x class */
   val (SuperParamAliasOrScala2x @ _, SuperParamAlias @ _, Scala2x @ _) = newFlags(26, "<super-param-alias>", "<scala-2.x>")
@@ -404,10 +404,10 @@ object Flags {
   /** Children were queried on this class */
   val (_, _, ChildrenQueried @ _) = newFlags(56, "<children-queried>")
 
-  /** A module variable (Scala 2.x only)
-   *  (re-used as a flag for private parameter accessors in Recheck)
+  /** A module variable (Scala 2.x only) / a capture-checked class
+   *  (Scala2ModuleVar is re-used as a flag for private parameter accessors in Recheck)
    */
-  val (_, Scala2ModuleVar @ _, _) = newFlags(57, "<modulevar>")
+  val (_, Scala2ModuleVar @ _, CaptureChecked @ _) = newFlags(57, "<modulevar>/<cc>")
 
   /** A macro */
   val (Macro @ _, _, _) = newFlags(58, "<macro>")
@@ -576,7 +576,7 @@ object Flags {
   val InlineMethod: FlagSet                  = Inline | Method
   val InlineParam: FlagSet                   = Inline | Param
   val InlineByNameProxy: FlagSet             = InlineProxy | Method
-  val JavaEnumTrait: FlagSet                 = JavaDefined | Enum                             // A Java enum trait
+  val JavaEnum: FlagSet                      = JavaDefined | Enum                             // A Java enum trait
   val JavaEnumValue: FlagSet                 = JavaDefined | EnumValue                        // A Java enum value
   val StaticProtected: FlagSet               = JavaDefined | JavaStatic | Protected           // Java symbol which is `protected` and `static`
   val JavaModule: FlagSet                    = JavaDefined | Module                           // A Java companion object

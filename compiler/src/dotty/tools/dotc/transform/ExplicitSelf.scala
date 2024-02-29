@@ -1,9 +1,9 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import Contexts._, Types._, MegaPhase._, ast.Trees._, Symbols._, Decorators._, Flags._
-import SymUtils.*
+import core.*
+import Contexts.*, Types.*, MegaPhase.*, ast.Trees.*, Symbols.*, Decorators.*, Flags.*
+
 
 /** Transform references of the form
  *
@@ -20,7 +20,7 @@ import SymUtils.*
  *  Also replaces idents referring to the self type with ThisTypes.
  */
 class ExplicitSelf extends MiniPhase {
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = ExplicitSelf.name
 

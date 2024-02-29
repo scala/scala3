@@ -13,6 +13,9 @@ import dotty.tools.dotc.core.Contexts.ContextBase;
 import dotty.tools.dotc.Main;
 import dotty.tools.xsbt.InterfaceCompileFailed;
 import dotty.tools.xsbt.DelegatingReporter;
+import dotty.tools.xsbt.OldIncrementalCallback;
+
+import dotty.tools.dotc.sbt.interfaces.IncrementalCallback;
 
 // deprecation warnings are suppressed because scala3-sbt-bridge must stay compatible with Zinc 1.3
 // see https://github.com/lampepfl/dotty/issues/10816
@@ -60,9 +63,11 @@ public class CachedCompilerImpl implements CachedCompiler {
       return msg;
     });
 
+    IncrementalCallback incCallback = new OldIncrementalCallback(callback);
+
     Context ctx = new ContextBase().initialCtx().fresh()
-      .setSbtCallback(callback)
-      .setReporter(new DelegatingReporter(delegate));
+      .setIncCallback(incCallback)
+      .setReporter(new DelegatingReporter(delegate, source -> source.file().absolutePath()));
 
     dotty.tools.dotc.reporting.Reporter reporter = Main.process(commandArguments(sources), ctx);
     if (reporter.hasErrors()) {

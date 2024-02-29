@@ -2,12 +2,16 @@ import language.experimental.saferExceptions
 
 class Ex1 extends Exception("Ex1")
 class Ex2 extends Exception("Ex2")
+class Ex3 extends Exception("Ex3")
 
 def foo0(i: Int): (CanThrow[Ex1], CanThrow[Ex2]) ?-> Unit =
   if i > 0 then throw new Ex1 else throw new Ex2
 
-def foo01(i: Int): CanThrow[Ex1] ?-> CanThrow[Ex2] ?-> Unit =
+/* Does not work yet curried dependent CFTs are not yet handled in typer
+
+def foo01(i: Int): (ct: CanThrow[Ex1]) ?-> CanThrow[Ex2] ?->{ct} Unit =
   if i > 0 then throw new Ex1 else throw new Ex2
+*/
 
 def foo1(i: Int): Unit throws Ex1 throws Ex2 =
   if i > 0 then throw new Ex1 else throw new Ex1
@@ -32,6 +36,11 @@ def foo7(i: Int)(using CanThrow[Ex1]): Unit throws Ex1 | Ex2 =
 
 def foo8(i: Int)(using CanThrow[Ex2]): Unit throws Ex2 | Ex1 =
   if i > 0 then throw new Ex1 else throw new Ex2
+
+def foo9(i: Int): Unit throws Ex1 | Ex2 | Ex3 =
+  if i > 0 then throw new Ex1
+  else if i < 0 then throw new Ex2
+  else throw new Ex3
 
 def test(): Unit =
   try

@@ -1,6 +1,6 @@
 package dotty.tools.dotc
 
-import config.Properties._
+import config.Properties.*
 import config.CompilerCommand
 
 object ScalacCommand extends CompilerCommand:

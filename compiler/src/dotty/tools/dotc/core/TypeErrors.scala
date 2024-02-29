@@ -2,15 +2,15 @@ package dotty.tools
 package dotc
 package core
 
-import Types._
-import Symbols._
-import Flags._
-import Names._
-import Contexts._
-import SymDenotations._
-import Denotations._
-import Decorators._
-import reporting._
+import Types.*
+import Symbols.*
+import Flags.*
+import Names.*
+import Contexts.*
+import SymDenotations.*
+import Denotations.*
+import Decorators.*
+import reporting.*
 import ast.untpd
 import config.Printers.{cyclicErrors, noPrinter}
 
@@ -22,7 +22,11 @@ abstract class TypeError(using creationContext: Context) extends Exception(""):
    *  This is expensive and only useful for debugging purposes.
    */
   def computeStackTrace: Boolean =
-    ctx.debug || (cyclicErrors != noPrinter && this.isInstanceOf[CyclicReference] && !(ctx.mode is Mode.CheckCyclic))
+    ctx.debug
+    || (cyclicErrors != noPrinter && this.isInstanceOf[CyclicReference] && !(ctx.mode is Mode.CheckCyclic))
+    || ctx.settings.YdebugTypeError.value
+    || ctx.settings.YdebugError.value
+    || ctx.settings.YdebugUnpickling.value
 
   override def fillInStackTrace(): Throwable =
     if computeStackTrace then super.fillInStackTrace().nn
@@ -131,14 +135,18 @@ end handleRecursive
  * so it requires knowing denot already.
  * @param denot
  */
-class CyclicReference private (val denot: SymDenotation)(using Context) extends TypeError:
+class CyclicReference(val denot: SymDenotation)(using Context) extends TypeError:
   var inImplicitSearch: Boolean = false
 
-  override def toMessage(using Context): Message =
-    val cycleSym = denot.symbol
+  val cycleSym = denot.symbol
 
-    // cycleSym.flags would try completing denot and would fail, but here we can use flagsUNSAFE to detect flags
-    // set by the parser.
+  // cycleSym.flags would try completing denot and would fail, but here we can use flagsUNSAFE to detect flags
+  // set by the parser.
+  def unsafeFlags = cycleSym.flagsUNSAFE
+  def isMethod = unsafeFlags.is(Method)
+  def isVal = !isMethod && cycleSym.isTerm
+
+  override def toMessage(using Context): Message =
     val unsafeFlags = cycleSym.flagsUNSAFE
     val isMethod = unsafeFlags.is(Method)
     val isVal = !isMethod && cycleSym.isTerm
@@ -177,10 +185,21 @@ object CyclicReference:
   def apply(denot: SymDenotation)(using Context): CyclicReference =
     val ex = new CyclicReference(denot)
     if ex.computeStackTrace then
-      cyclicErrors.println(s"Cyclic reference involving! $denot")
+      cyclicErrors.println(s"Cyclic reference involving $denot")
       val sts = ex.getStackTrace.asInstanceOf[Array[StackTraceElement]]
       for (elem <- sts take 200)
         cyclicErrors.println(elem.toString)
     ex
 end CyclicReference
 
+class UnpicklingError(denot: Denotation, where: String, cause: Throwable)(using Context) extends TypeError:
+  override def toMessage(using Context): Message =
+    val debugUnpickling = cause match
+      case cause: UnpicklingError => ""
+      case _ =>
+        if ctx.settings.YdebugUnpickling.value then
+          cause.getStackTrace().nn.mkString("\n    ", "\n    ", "")
+        else "\n\nRun with -Ydebug-unpickling to see full stack trace."
+    em"""Could not read definition $denot$where. Caused by the following exception:
+        |$cause$debugUnpickling"""
+end UnpicklingError

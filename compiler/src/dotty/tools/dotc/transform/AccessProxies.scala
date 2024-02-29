@@ -2,15 +2,14 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
-import Contexts._
-import Symbols._
-import Flags._
-import Names._
-import NameOps._
-import Decorators._
-import TypeUtils._
-import Types._
+import core.*
+import Contexts.*
+import Symbols.*
+import Flags.*
+import Names.*
+import NameOps.*
+import Decorators.*
+import Types.*
 import util.Spans.Span
 import config.Printers.transforms
 
@@ -18,8 +17,8 @@ import config.Printers.transforms
  *  inline accessors and protected accessors.
  */
 abstract class AccessProxies {
-  import ast.tpd._
-  import AccessProxies._
+  import ast.tpd.*
+  import AccessProxies.*
 
   /** accessor -> accessed */
   private val accessedBy = MutableSymbolMap[Symbol]()
@@ -32,7 +31,11 @@ abstract class AccessProxies {
   /** The accessor definitions that need to be added to class `cls` */
   private def accessorDefs(cls: Symbol)(using Context): Iterator[DefDef] =
     for accessor <- cls.info.decls.iterator; accessed <- accessedBy.get(accessor) yield
-      DefDef(accessor.asTerm, prefss => {
+      accessorDef(accessor, accessed)
+
+  protected def accessorDef(accessor: Symbol, accessed: Symbol)(using Context): DefDef =
+    DefDef(accessor.asTerm,
+      prefss => {
         def numTypeParams = accessed.info match {
           case info: PolyType => info.paramNames.length
           case _ => 0
@@ -42,7 +45,7 @@ abstract class AccessProxies {
           if (passReceiverAsArg(accessor.name))
             (argss.head.head.select(accessed), targs.takeRight(numTypeParams), argss.tail)
           else
-            (if (accessed.isStatic) ref(accessed) else ref(TermRef(cls.thisType, accessed)),
+            (if (accessed.isStatic) ref(accessed) else ref(TermRef(accessor.owner.thisType, accessed)),
              targs, argss)
         val rhs =
           if (accessor.name.isSetterName &&
@@ -54,7 +57,8 @@ abstract class AccessProxies {
               .appliedToArgss(forwardedArgss)
               .etaExpandCFT(using ctx.withOwner(accessor))
         rhs.withSpan(accessed.span)
-      })
+      }
+    )
 
   /** Add all needed accessors to the `body` of class `cls` */
   def addAccessorDefs(cls: Symbol, body: List[Tree])(using Context): List[Tree] = {
@@ -64,7 +68,7 @@ abstract class AccessProxies {
   }
 
   trait Insert {
-    import ast.tpd._
+    import ast.tpd.*
 
     /** The name of the accessor for definition with given `name` in given `site` */
     def accessorNameOf(name: TermName, site: Symbol)(using Context): TermName
@@ -149,7 +153,7 @@ abstract class AccessProxies {
     def accessorIfNeeded(tree: Tree)(using Context): Tree = tree match {
       case tree: RefTree if needsAccessor(tree.symbol) =>
         if (tree.symbol.isConstructor) {
-          report.error("Implementation restriction: cannot use private constructors in inlineable methods", tree.srcPos)
+          report.error("Cannot use private constructors in inline methods. You can use @publicInBinary to make constructor accessible in inline methods.", tree.srcPos)
           tree // TODO: create a proper accessor for the private constructor
         }
         else useAccessor(tree)

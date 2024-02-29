@@ -1,0 +1,16 @@
+-- Error: tests/neg/6314-6.scala:26:3 ----------------------------------------------------------------------------------
+26 |  (new YY {}).boom // error: object creation impossible
+   |   ^
+   |object creation impossible, since def apply(fa: String): Int in trait XX in object Test3 is not defined 
+   |(Note that
+   | parameter String in def apply(fa: String): Int in trait XX in object Test3 does not match
+   | parameter Test3.Bar[X & Object with Test3.YY {...}#Foo] in def apply(fa: Test3.Bar[X & YY.this.Foo]): Test3.Bar[Y & YY.this.Foo] in trait YY in object Test3
+   | )
+-- Error: tests/neg/6314-6.scala:52:3 ----------------------------------------------------------------------------------
+52 |  (new YY {}).boom // error: object creation impossible
+   |   ^
+   |object creation impossible, since def apply(fa: String): Int in trait XX in object Test4 is not defined 
+   |(Note that
+   | parameter String in def apply(fa: String): Int in trait XX in object Test4 does not match
+   | parameter Test4.Bar[X & Object with Test4.YY {...}#FooAlias] in def apply(fa: Test4.Bar[X & YY.this.FooAlias]): Test4.Bar[Y & YY.this.FooAlias] in trait YY in object Test4
+   | )

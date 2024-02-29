@@ -4,18 +4,18 @@ package sjs
 
 import scala.annotation.tailrec
 
-import dotty.tools.dotc.core._
-import Constants._
-import Contexts._
-import Flags._
-import Names._
-import Scopes._
-import Symbols._
-import StdNames._
-import Types._
+import dotty.tools.dotc.core.*
+import Constants.*
+import Contexts.*
+import Flags.*
+import Names.*
+import Scopes.*
+import Symbols.*
+import StdNames.*
+import Types.*
 import Decorators.em
 
-import dotty.tools.dotc.transform.MegaPhase._
+import dotty.tools.dotc.transform.MegaPhase.*
 
 import dotty.tools.backend.sjs.JSDefinitions.jsdefn
 
@@ -106,8 +106,8 @@ import dotty.tools.backend.sjs.JSDefinitions.jsdefn
  *  some point in the future.
  */
 class JUnitBootstrappers extends MiniPhase {
-  import JUnitBootstrappers._
-  import ast.tpd._
+  import JUnitBootstrappers.*
+  import ast.tpd.*
 
   override def phaseName: String = JUnitBootstrappers.name
 
@@ -156,7 +156,7 @@ class JUnitBootstrappers extends MiniPhase {
     val moduleSym = newCompleteModuleSymbol(owner, bootstrapperName,
       Synthetic, Synthetic,
       List(defn.ObjectType, junitdefn.BootstrapperType), newScope,
-      coord = testClass.span, assocFile = testClass.assocFile).entered
+      coord = testClass.span, compUnitInfo = testClass.compUnitInfo).entered
     val classSym = moduleSym.moduleClass.asClass
 
     val constr = genConstructor(classSym)

@@ -27,7 +27,7 @@ covtest.A
 print
 82
 94
-6
+7
 println
 Apply
 false
@@ -44,7 +44,7 @@ covtest.A
 print
 68
 77
-6
+7
 print
 DefDef
 false
@@ -61,7 +61,7 @@ covtest.A
 instance
 97
 109
-7
+8
 instance
 DefDef
 false
@@ -78,7 +78,7 @@ covtest.B
 print
 166
 179
-11
+12
 print
 Apply
 false
@@ -95,7 +95,7 @@ covtest.B
 print
 184
 206
-12
+13
 println
 Apply
 false
@@ -112,7 +112,7 @@ covtest.B
 print
 192
 205
-12
+13
 instance
 Select
 false
@@ -129,7 +129,7 @@ covtest.B
 print
 139
 157
-10
+11
 print
 DefDef
 false
@@ -146,7 +146,7 @@ covtest.Select$package$
 test
 237
 240
-15
+16
 <init>
 Apply
 false
@@ -163,7 +163,7 @@ covtest.Select$package$
 test
 254
 259
-16
+17
 <init>
 Apply
 false
@@ -180,7 +180,7 @@ covtest.Select$package$
 test
 263
 281
-18
+19
 print
 Apply
 false
@@ -197,7 +197,7 @@ covtest.Select$package$
 test
 263
 273
-18
+19
 instance
 Select
 false
@@ -214,7 +214,7 @@ covtest.Select$package$
 test
 345
 354
-19
+20
 print
 Apply
 false
@@ -231,7 +231,7 @@ covtest.Select$package$
 test
 208
 216
-14
+15
 test
 DefDef
 false

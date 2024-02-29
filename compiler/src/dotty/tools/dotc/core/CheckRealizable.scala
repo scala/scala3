@@ -2,9 +2,9 @@ package dotty.tools
 package dotc
 package core
 
-import Contexts._, Types._, Symbols._, Names._, Flags._
+import Contexts.*, Types.*, Symbols.*, Names.*, Flags.*
 import Denotations.SingleDenotation
-import Decorators._
+import Decorators.*
 import collection.mutable
 import config.SourceVersion.future
 import config.Feature.sourceVersion
@@ -62,7 +62,7 @@ object CheckRealizable {
   * Type.isStable).
   */
 class CheckRealizable(using Context) {
-  import CheckRealizable._
+  import CheckRealizable.*
 
   /** A set of all fields that have already been checked. Used
    *  to avoid infinite recursions when analyzing recursive types.

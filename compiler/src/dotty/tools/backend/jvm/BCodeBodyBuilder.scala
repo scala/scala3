@@ -13,16 +13,15 @@ import BCodeHelpers.InvokeStyle
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.CompilationUnit
-import dotty.tools.dotc.core.Constants._
+import dotty.tools.dotc.core.Constants.*
 import dotty.tools.dotc.core.Flags.{Label => LabelFlag, _}
-import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.StdNames.{nme, str}
-import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.transform.Erasure
-import dotty.tools.dotc.transform.SymUtils._
-import dotty.tools.dotc.util.Spans._
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Phases._
+import dotty.tools.dotc.util.Spans.*
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Phases.*
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.dotc.report
 
@@ -33,13 +32,13 @@ import dotty.tools.dotc.report
  *
  */
 trait BCodeBodyBuilder extends BCodeSkelBuilder {
-  // import global._
-  // import definitions._
-  import tpd._
+  // import global.*
+  // import definitions.*
+  import tpd.*
   import int.{_, given}
   import DottyBackendInterface.symExtensions
-  import bTypes._
-  import coreBTypes._
+  import bTypes.*
+  import coreBTypes.*
 
   protected val primitives: DottyPrimitives
 
@@ -79,14 +78,14 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
       tree match {
         case Assign(lhs @ DesugaredSelect(qual, _), rhs) =>
-          val savedStackHeight = stackHeight
+          val savedStackSize = stack.recordSize()
           val isStatic = lhs.symbol.isStaticMember
           if (!isStatic) {
-            genLoadQualifier(lhs)
-            stackHeight += 1
+            val qualTK = genLoad(qual)
+            stack.push(qualTK)
           }
           genLoad(rhs, symInfoTK(lhs.symbol))
-          stackHeight = savedStackHeight
+          stack.restoreSize(savedStackSize)
           lineNumber(tree)
           // receiverClass is used in the bytecode to access the field. using sym.owner may lead to IllegalAccessError
           val receiverClass = qual.tpe.typeSymbol
@@ -126,7 +125,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       assert(resKind.isNumericType || (resKind == BOOL),
              s"$resKind is not a numeric or boolean type [operation: ${fun.symbol}]")
 
-      import ScalaPrimitivesOps._
+      import ScalaPrimitivesOps.*
 
       args match {
         // unary operation
@@ -150,9 +149,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           }
 
           genLoad(larg, resKind)
-          stackHeight += resKind.size
+          stack.push(resKind)
           genLoad(rarg, if (isShift) INT else resKind)
-          stackHeight -= resKind.size
+          stack.pop()
 
           (code: @switch) match {
             case ADD => bc add resKind
@@ -179,7 +178,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     def genArrayOp(tree: Tree, code: Int, expectedType: BType): BType = tree match{
 
       case Apply(DesugaredSelect(arrayObj, _), args) =>
-      import ScalaPrimitivesOps._
+      import ScalaPrimitivesOps.*
       val k = tpeTK(arrayObj)
       genLoad(arrayObj, k)
       val elementType = typeOfArrayOp.getOrElse[bTypes.BType](code, abort(s"Unknown operation on arrays: $tree code: $code"))
@@ -189,19 +188,19 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       if (isArrayGet(code)) {
         // load argument on stack
         assert(args.length == 1, s"Too many arguments for array get operation: $tree");
-        stackHeight += 1
+        stack.push(k)
         genLoad(args.head, INT)
-        stackHeight -= 1
+        stack.pop()
         generatedType = k.asArrayBType.componentType
         bc.aload(elementType)
       }
       else if (isArraySet(code)) {
         val List(a1, a2) = args
-        stackHeight += 1
+        stack.push(k)
         genLoad(a1, INT)
-        stackHeight += 1
+        stack.push(INT)
         genLoad(a2)
-        stackHeight -= 2
+        stack.pop(2)
         generatedType = UNIT
         bc.astore(elementType)
       } else {
@@ -235,7 +234,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           val resKind       = if (hasUnitBranch) UNIT else tpeTK(tree)
 
           val postIf = new asm.Label
-          genLoadTo(thenp, resKind, LoadDestination.Jump(postIf, stackHeight))
+          genLoadTo(thenp, resKind, LoadDestination.Jump(postIf, stack.recordSize()))
           markProgramPoint(failure)
           genLoadTo(elsep, resKind, LoadDestination.FallThrough)
           markProgramPoint(postIf)
@@ -262,7 +261,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
       val code = primitives.getPrimitive(tree, receiver.tpe)
 
-      import ScalaPrimitivesOps._
+      import ScalaPrimitivesOps.*
 
       if (isArithmeticOp(code))                genArithmeticOp(tree, code)
       else if (code == CONCAT) genStringConcat(tree)
@@ -294,8 +293,10 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       )
     }
 
-    def genLoad(tree: Tree): Unit = {
-      genLoad(tree, tpeTK(tree))
+    def genLoad(tree: Tree): BType = {
+      val generatedType = tpeTK(tree)
+      genLoad(tree, generatedType)
+      generatedType
     }
 
     /* Generate code for trees that produce values on the stack */
@@ -364,6 +365,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             case t @ Ident(_) => (t, Nil)
           }
 
+          val savedStackSize = stack.recordSize()
           if (!fun.symbol.isStaticMember) {
             // load receiver of non-static implementation of lambda
 
@@ -372,10 +374,12 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             // AbstractValidatingLambdaMetafactory.validateMetafactoryArgs
 
             val DesugaredSelect(prefix, _) = fun: @unchecked
-            genLoad(prefix)
+            val prefixTK = genLoad(prefix)
+            stack.push(prefixTK)
           }
 
           genLoadArguments(env, fun.symbol.info.firstParamTypes map toTypeKind)
+          stack.restoreSize(savedStackSize)
           generatedType = genInvokeDynamicLambda(NoSymbol, fun.symbol, env.size, functionalInterface)
 
         case app @ Apply(_, _) =>
@@ -494,9 +498,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       dest match
         case LoadDestination.FallThrough =>
           ()
-        case LoadDestination.Jump(label, targetStackHeight) =>
-          if targetStackHeight < stackHeight then
-            val stackDiff = stackHeight - targetStackHeight
+        case LoadDestination.Jump(label, targetStackSize) =>
+          val stackDiff = stack.heightDiffWrt(targetStackSize)
+          if stackDiff != 0 then
             if expectedType == UNIT then
               bc dropMany stackDiff
             else
@@ -599,7 +603,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       if dest == LoadDestination.FallThrough then
         val resKind = tpeTK(tree)
         val jumpTarget = new asm.Label
-        registerJumpDest(labelSym, resKind, LoadDestination.Jump(jumpTarget, stackHeight))
+        registerJumpDest(labelSym, resKind, LoadDestination.Jump(jumpTarget, stack.recordSize()))
         genLoad(expr, resKind)
         markProgramPoint(jumpTarget)
         resKind
@@ -657,7 +661,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       markProgramPoint(loop)
 
       if isInfinite then
-        val dest = LoadDestination.Jump(loop, stackHeight)
+        val dest = LoadDestination.Jump(loop, stack.recordSize())
         genLoadTo(body, UNIT, dest)
         dest
       else
@@ -672,7 +676,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             val failure = new asm.Label
             genCond(cond, success, failure, targetIfNoJump = success)
             markProgramPoint(success)
-            genLoadTo(body, UNIT, LoadDestination.Jump(loop, stackHeight))
+            genLoadTo(body, UNIT, LoadDestination.Jump(loop, stack.recordSize()))
             markProgramPoint(failure)
         end match
         LoadDestination.FallThrough
@@ -765,10 +769,10 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           // on the stack (contrary to what the type in the AST says).
 
           // scala/bug#10290: qual can be `this.$outer()` (not just `this`), so we call genLoad (not just ALOAD_0)
-          genLoad(superQual)
-          stackHeight += 1
+          val superQualTK = genLoad(superQual)
+          stack.push(superQualTK)
           genLoadArguments(args, paramTKs(app))
-          stackHeight -= 1
+          stack.pop()
           generatedType = genCallMethod(fun.symbol, InvokeStyle.Super, app.span)
 
         // 'new' constructor call: Note: since constructors are
@@ -790,9 +794,10 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               assert(classBTypeFromSymbol(ctor.owner) == rt, s"Symbol ${ctor.owner.showFullName} is different from $rt")
               mnode.visitTypeInsn(asm.Opcodes.NEW, rt.internalName)
               bc dup generatedType
-              stackHeight += 2
+              stack.push(rt)
+              stack.push(rt)
               genLoadArguments(args, paramTKs(app))
-              stackHeight -= 2
+              stack.pop(2)
               genCallMethod(ctor, InvokeStyle.Special, app.span)
 
             case _ =>
@@ -825,12 +830,11 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               else if (app.hasAttachment(BCodeHelpers.UseInvokeSpecial)) InvokeStyle.Special
               else InvokeStyle.Virtual
 
-            val savedStackHeight = stackHeight
+            val savedStackSize = stack.recordSize()
             if invokeStyle.hasInstance then
-              genLoadQualifier(fun)
-              stackHeight += 1
+              stack.push(genLoadQualifier(fun))
             genLoadArguments(args, paramTKs(app))
-            stackHeight = savedStackHeight
+            stack.restoreSize(savedStackSize)
 
             val DesugaredSelect(qual, name) = fun: @unchecked // fun is a Select, also checked in genLoadQualifier
             val isArrayClone = name == nme.clone_ && qual.tpe.widen.isInstanceOf[JavaArrayType]
@@ -888,7 +892,10 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       bc iconst   elems.length
       bc newarray elmKind
 
-      stackHeight += 3 // during the genLoad below, there is the result, its dup, and the index
+      // during the genLoad below, there is the result, its dup, and the index
+      stack.push(generatedType)
+      stack.push(generatedType)
+      stack.push(INT)
 
       var i = 0
       var rest = elems
@@ -901,7 +908,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         i = i + 1
       }
 
-      stackHeight -= 3
+      stack.pop(3)
 
       generatedType
     }
@@ -917,7 +924,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val (generatedType, postMatch, postMatchDest) =
         if dest == LoadDestination.FallThrough then
           val postMatch = new asm.Label
-          (tpeTK(tree), postMatch, LoadDestination.Jump(postMatch, stackHeight))
+          (tpeTK(tree), postMatch, LoadDestination.Jump(postMatch, stack.recordSize()))
         else
           (expectedType, null, dest)
 
@@ -1179,7 +1186,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     /* Emit code to Load the qualifier of `tree` on top of the stack. */
-    def genLoadQualifier(tree: Tree): Unit = {
+    def genLoadQualifier(tree: Tree): BType = {
       lineNumber(tree)
       tree match {
         case DesugaredSelect(qualifier, _) => genLoad(qualifier)
@@ -1188,6 +1195,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             case Some(sel) => genLoadQualifier(sel)
             case None =>
               assert(t.symbol.owner == this.claszSymbol)
+              UNIT
           }
         case _                    => abort(s"Unknown qualifier $tree")
       }
@@ -1200,14 +1208,14 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             btpes match
               case btpe :: btpes1 =>
                 genLoad(arg, btpe)
-                stackHeight += btpe.size
+                stack.push(btpe)
                 loop(args1, btpes1)
               case _ =>
           case _ =>
 
-      val savedStackHeight = stackHeight
+      val savedStackSize = stack.recordSize()
       loop(args, btpes)
-      stackHeight = savedStackHeight
+      stack.restoreSize(savedStackSize)
     end genLoadArguments
 
     def genLoadModule(tree: Tree): BType = {
@@ -1258,7 +1266,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
     /* Generate coercion denoted by "code" */
     def genCoercion(code: Int): Unit = {
-      import ScalaPrimitivesOps._
+      import ScalaPrimitivesOps.*
       (code: @switch) match {
         case B2B | S2S | C2C | I2I | L2L | F2F | D2D => ()
         case _ =>
@@ -1307,13 +1315,13 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             }.sum
             bc.genNewStringBuilder(approxBuilderSize)
 
-            stackHeight += 1 // during the genLoad below, there is a reference to the StringBuilder on the stack
+            stack.push(jlStringBuilderRef) // during the genLoad below, there is a reference to the StringBuilder on the stack
             for (elem <- concatArguments) {
               val elemType = tpeTK(elem)
               genLoad(elem, elemType)
               bc.genStringBuilderAppend(elemType)
             }
-            stackHeight -= 1
+            stack.pop()
 
             bc.genStringBuilderEnd
           } else {
@@ -1331,7 +1339,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             var totalArgSlots = 0
             var countConcats = 1     // ie. 1 + how many times we spilled
 
-            val savedStackHeight = stackHeight
+            val savedStackSize = stack.recordSize()
 
             for (elem <- concatArguments) {
               val tpe = tpeTK(elem)
@@ -1339,7 +1347,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
               // Unlikely spill case
               if (totalArgSlots + elemSlots >= MaxIndySlots) {
-                stackHeight = savedStackHeight + countConcats
+                stack.restoreSize(savedStackSize)
+                for _ <- 0 until countConcats do
+                  stack.push(StringRef)
                 bc.genIndyStringConcat(recipe.toString, argTypes.result(), constVals.result())
                 countConcats += 1
                 totalArgSlots = 0
@@ -1364,10 +1374,10 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
                   val tpe = tpeTK(elem)
                   argTypes += tpe.toASMType
                   genLoad(elem, tpe)
-                  stackHeight += 1
+                  stack.push(tpe)
               }
             }
-            stackHeight = savedStackHeight
+            stack.restoreSize(savedStackSize)
             bc.genIndyStringConcat(recipe.toString, argTypes.result(), constVals.result())
 
             // If we spilled, generate one final concat
@@ -1432,7 +1442,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val mdescr   = bmType.descriptor
 
       val isInterface = isEmittedInterface(receiverClass)
-      import InvokeStyle._
+      import InvokeStyle.*
       if (style == Super) {
         if (isInterface && !method.is(JavaDefined)) {
           val args = new Array[BType](bmType.argumentTypes.length + 1)
@@ -1486,7 +1496,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         } else if (tk.isRef) { // REFERENCE(_) | ARRAY(_)
           bc.emitIF_ACMP(op, success)
         } else {
-          import Primitives._
+          import Primitives.*
           def useCmpG = if (negated) op == GT || op == GE else op == LT || op == LE
           (tk: @unchecked) match {
             case LONG   => emit(asm.Opcodes.LCMP)
@@ -1501,7 +1511,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
     /* Emits code to compare (and consume) stack-top and zero using the 'op' operator */
     private def genCZJUMP(success: asm.Label, failure: asm.Label, op: TestOp, tk: BType, targetIfNoJump: asm.Label, negated: Boolean = false): Unit = {
-      import Primitives._
+      import Primitives.*
       if (targetIfNoJump == success) genCZJUMP(failure, success, op.negate(), tk, targetIfNoJump, negated = !negated)
       else {
         if (tk.isIntSizedType) { // BOOL, BYTE, CHAR, SHORT, or INT
@@ -1562,9 +1572,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         } else {
           val tk = tpeTK(l).maxType(tpeTK(r))
           genLoad(l, tk)
-          stackHeight += tk.size
+          stack.push(tk)
           genLoad(r, tk)
-          stackHeight -= tk.size
+          stack.pop()
           genCJUMP(success, failure, op, tk, targetIfNoJump)
         }
       }
@@ -1673,15 +1683,15 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         val equalsMethod: Symbol = {
           if (l.tpe <:< defn.BoxedNumberClass.info) {
             if (r.tpe <:< defn.BoxedNumberClass.info) defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumNum)
-            else if (r.tpe <:< defn.BoxedCharClass.info) NoSymbol // ctx.requiredMethod(BoxesRunTimeTypeRef, nme.equalsNumChar) // this method is private
+            else if (r.tpe <:< defn.BoxedCharClass.info) defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumChar)
             else defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumObject)
           } else defn.BoxesRunTimeModule_externalEquals
         }
 
         genLoad(l, ObjectRef)
-        stackHeight += 1
+        stack.push(ObjectRef)
         genLoad(r, ObjectRef)
-        stackHeight -= 1
+        stack.pop()
         genCallMethod(equalsMethod, InvokeStyle.Static)
         genCZJUMP(success, failure, Primitives.NE, BOOL, targetIfNoJump)
       }
@@ -1697,9 +1707,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         } else if (isNonNullExpr(l)) {
           // SI-7852 Avoid null check if L is statically non-null.
           genLoad(l, ObjectRef)
-          stackHeight += 1
+          stack.push(ObjectRef)
           genLoad(r, ObjectRef)
-          stackHeight -= 1
+          stack.pop()
           genCallMethod(defn.Any_equals, InvokeStyle.Virtual)
           genCZJUMP(success, failure, Primitives.NE, BOOL, targetIfNoJump)
         } else {
@@ -1709,9 +1719,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           val lNonNull = new asm.Label
 
           genLoad(l, ObjectRef)
-          stackHeight += 1
+          stack.push(ObjectRef)
           genLoad(r, ObjectRef)
-          stackHeight -= 1
+          stack.pop()
           locals.store(eqEqTempLocal)
           bc dup ObjectRef
           genCZJUMP(lNull, lNonNull, Primitives.EQ, ObjectRef, targetIfNoJump = lNull)
@@ -1814,7 +1824,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         else
           jliLambdaMetaFactoryMetafactoryHandle
 
-      bc.jmethod.visitInvokeDynamicInsn(methodName, desc, metafactory, bsmArgs: _*)
+      bc.jmethod.visitInvokeDynamicInsn(methodName, desc, metafactory, bsmArgs*)
 
       generatedType
     }

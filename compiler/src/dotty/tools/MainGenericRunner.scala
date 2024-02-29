@@ -148,7 +148,7 @@ object MainGenericRunner {
     case (o @ javaOption(striped)) :: tail =>
       processArgs(tail, settings.withJavaArgs(striped).withScalaArgs(o))
     case (o @ scalaOption(_*)) :: tail =>
-      val remainingArgs = (CommandLineParser.expandArg(o) ++ tail).toList
+      val remainingArgs = CommandLineParser.expandArg(o) ++ tail
       processArgs(remainingArgs, settings)
     case (o @ colorOption(_*)) :: tail =>
       processArgs(tail, settings.withScalaArgs(o))
@@ -195,7 +195,7 @@ object MainGenericRunner {
 
       case ExecuteMode.PossibleRun =>
         val newClasspath = (settings.classPath :+ ".").flatMap(_.split(classpathSeparator).filter(_.nonEmpty)).map(File(_).toURI.toURL)
-        import dotty.tools.runner.RichClassLoader._
+        import dotty.tools.runner.RichClassLoader.*
         val newClassLoader = ScalaClassLoader.fromURLsParallelCapable(newClasspath)
         val targetToRun = settings.possibleEntryPaths.to(LazyList).find { entryPath =>
           newClassLoader.tryToLoadClass(entryPath).orElse {

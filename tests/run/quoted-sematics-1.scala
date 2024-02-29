@@ -82,7 +82,7 @@ def typeChecks(g: Gamma)(level: 0 | 1)(term: Term): Option[Type] =
       yield LambdaType(t, res)
     case App(fun, arg) => // T-App
       for
-        LambdaType(t1, t2) <- typeChecks(g)(level)(fun)
+        case LambdaType(t1, t2) <- typeChecks(g)(level)(fun)
         `t1` <- typeChecks(g)(level)(arg)
       yield t2
     case Box(body) if level == 0 => // T-Box
@@ -90,16 +90,16 @@ def typeChecks(g: Gamma)(level: 0 | 1)(term: Term): Option[Type] =
     case Lift(body) if level == 0 => // T-Lift
       for NatType <- typeChecks(g)(0)(body) yield BoxType(NatType)
     case Splice(body) if level == 1 => // T-Unbox
-      for BoxType(t) <- typeChecks(g)(0)(body) yield t
+      for case BoxType(t) <- typeChecks(g)(0)(body) yield t
     case Match(scrutinee, pat, thenp, elsep) => // T-Pat
       for
-        BoxType(t1) <- typeChecks(g)(0)(scrutinee)
+        case BoxType(t1) <- typeChecks(g)(0)(scrutinee)
         delta <- typePatChecks(g, t1)(pat)
         t <- typeChecks(g ++ delta)(0)(thenp)
         `t` <- typeChecks(g)(0)(elsep)
       yield t
     case Fix(t) if level == 0 =>
-      for LambdaType(t1, t2) <- typeChecks(g)(0)(t) yield t2 // T-Fix
+      for case LambdaType(t1, t2) <- typeChecks(g)(0)(t) yield t2 // T-Fix
     case _ => None
   if res.isEmpty then
     println(s"Failed to type $term at level $level with environment $g")

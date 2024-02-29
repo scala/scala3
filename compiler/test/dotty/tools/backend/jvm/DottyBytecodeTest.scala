@@ -202,7 +202,7 @@ trait DottyBytecodeTest {
     assert(succ, msg)
   }
 
-  private def sameCharacteristics(clazzA: ClassNode, clazzB: ClassNode)(f: AsmNode[_] => String): (Boolean, String) = {
+  private def sameCharacteristics(clazzA: ClassNode, clazzB: ClassNode)(f: AsmNode[?] => String): (Boolean, String) = {
     val ms1 = clazzA.fieldsAndMethods.toIndexedSeq
     val ms2 = clazzB.fieldsAndMethods.toIndexedSeq
     val name1 = clazzA.name
@@ -254,7 +254,7 @@ trait DottyBytecodeTest {
     }
     .getOrElse(fail("Could not find constructor for object `Test`"))
 
-  private def boxingError(ins: List[_], source: String) =
+  private def boxingError(ins: List[?], source: String) =
     s"""|----------------------------------
         |${ins.mkString("\n")}
         |----------------------------------
@@ -271,7 +271,7 @@ trait DottyBytecodeTest {
     }
     .getOrElse(fail("Could not find constructor for object `Test`"))
 
-  protected def boxingInstructions(method: MethodNode): (List[_], Boolean) = {
+  protected def boxingInstructions(method: MethodNode): (List[?], Boolean) = {
     val ins = instructionsFromMethod(method)
     val boxed = ins.exists {
       case Invoke(op, owner, name, desc, itf) =>

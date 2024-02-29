@@ -1,5 +1,9 @@
 package cctest
 
+trait IterableOnce[A]:
+  this: IterableOnce[A]^ =>
+  def iterator: Iterator[A]^{this}
+
 abstract class Iterator[T]:
   thisIterator: Iterator[T]^ =>
 
@@ -9,6 +13,9 @@ abstract class Iterator[T]:
     def hasNext = thisIterator.hasNext
     def next = f(thisIterator.next)
 end Iterator
+
+private[this] final class ConcatIteratorCell[A](head: => IterableOnce[A]^):
+  def headIterator: Iterator[A]^{this} = head.iterator
 
 class C
 type Cap = C^

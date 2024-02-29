@@ -25,6 +25,9 @@ println("hello, world")
 ```
 
 ## Output (click arrow to expand)
+<!--
+Note: to get a full crash log when using scala-cli, run compilation with the flag `--server=false`
+-->
 <details>
 
 ```scala

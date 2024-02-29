@@ -1,0 +1,12 @@
+class Foo:
+  private def foo1: Int = ???
+  private def foo2: Int = ???
+  private def foo3: Int = ???
+  private def foo4: Int = ???
+  private  def foo5: Int = ???
+
+  protected def bar1: Int = ???
+  protected def bar2: Int = ???
+  protected def bar3: Int = ???
+  protected def bar4: Int = ???
+  protected  def bar5: Int = ???

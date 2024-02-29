@@ -28,7 +28,7 @@ sealed trait AsmNode[+T] {
 object AsmNode {
   type AsmMethod = AsmNode[MethodNode]
   type AsmField = AsmNode[FieldNode]
-  type AsmMember = AsmNode[_]
+  type AsmMember = AsmNode[?]
 
   implicit class ClassNodeOps(val node: ClassNode) {
     def fieldsAndMethods: List[AsmMember] = {

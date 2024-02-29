@@ -8,10 +8,10 @@ import java.lang.Float.intBitsToFloat
 import java.lang.Double.longBitsToDouble
 
 import core.unpickleScala2.PickleBuffer
-import core.Names._
+import core.Names.*
 
 object ShowPickled {
-  import core.unpickleScala2.PickleFormat._
+  import core.unpickleScala2.PickleFormat.*
 
   case class PickleBufferEntry(num: Int, startIndex: Int, tag: Int, bytes: Array[Byte]) {
     def isName: Boolean = tag == TERMname || tag == TYPEname

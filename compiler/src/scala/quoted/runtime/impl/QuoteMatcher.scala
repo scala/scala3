@@ -3,8 +3,10 @@ package runtime.impl
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.*
+import dotty.tools.dotc.core.Mode.GadtConstraintInference
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.*
@@ -91,7 +93,11 @@ import dotty.tools.dotc.util.optional
  *   '{ val x: T = e1; e2 } =?= '{ val y: P = p1; p2 }   ===>   withEnv(x -> y)('[T] =?= '[P] &&& '{e1} =?= '{p1} &&& '{e2} =?= '{p2})
  *
  *   /* Match def */
- *   '{ def x0(x1: T1, ..., xn: Tn): T0 = e1; e2 } =?= '{ def y0(y1: P1, ..., yn: Pn): P0 = p1; p2 }   ===>   withEnv(x0 -> y0, ..., xn -> yn)('[T0] =?= '[P0] &&& ... &&& '[Tn] =?= '[Pn] &&& '{e1} =?= '{p1} &&& '{e2} =?= '{p2})
+ *   '{ def x0(x1: T1, ..., xn: Tn)...(y1: U1, ..., ym: Um): T0 = e1; e2 } =?= '{ def y0(z1: P1, ..., zn: Pn)...(w1: Q1, ..., wn: Qn): P0 = p1; p2 }   ===>
+ *           /* Note that types of parameters can depend on earlier parameters */
+ *           withEnv(x1 -> y1, ..., zn -> zn)(...withEnv(y1 -> w1, ..., ym -> wm)(
+ *             ('[T1] =?= '[P1] &&& ... &&&'[T1] =?= '[P1]) &&& ... &&& ('[U1] =?= '[Q1] &&& ... &&&'[Um] =?= '[Qm])
+ *             &&& '[T0] =?= '[P0] &&& '{e1} =?= '{p1} && '{e2} =?= '{p2})...)
  *
  *   // Types
  *
@@ -100,11 +106,8 @@ import dotty.tools.dotc.util.optional
  *
  *   ```
  */
-object QuoteMatcher {
+class QuoteMatcher(debug: Boolean) {
   import tpd.*
-
-  // TODO use flag from Context. Maybe -debug or add -debug-macros
-  private inline val debug = false
 
   /** Sequence of matched expressions.
    *  These expressions are part of the scrutinee and will be bound to the quote pattern term splices.
@@ -122,10 +125,62 @@ object QuoteMatcher {
 
   private def withEnv[T](env: Env)(body: Env ?=> T): T = body(using env)
 
-  def treeMatch(scrutineeTree: Tree, patternTree: Tree)(using Context): Option[MatchingExprs] =
-    given Env = Map.empty
-    optional:
-      scrutineeTree =?= patternTree
+  /** Evaluate the result of pattern matching against a quote pattern.
+   *  Implementation of the runtime of `QuoteMatching.{ExprMatch, TypeMatch}.unapply`.
+   */
+  def treeMatch(scrutinee: Tree, pattern: Tree)(using Context): Option[Tuple] = {
+    val (pat1, typeHoles, ctx1) = instrumentTypeHoles(pattern)
+    inContext(ctx1) {
+      optional {
+        given Env = Map.empty
+        scrutinee =?= pat1
+      }.map { matchings =>
+        lazy val spliceScope = SpliceScope.getCurrent
+        // After matching and doing all subtype checks, we have to approximate all the type bindings
+        // that we have found, seal them in a quoted.Type and add them to the result
+        val typeHoleApproximations = typeHoles.map(typeHoleApproximation)
+        val matchedTypes = typeHoleApproximations.map { tpe =>
+          new TypeImpl(TypeTree(tpe).withSpan(scrutinee.span), spliceScope)
+        }
+        val matchedExprs =
+          val typeHoleMap: Type => Type =
+            if typeHoles.isEmpty then identity
+            else new TypeMap {
+              private val typeHoleMapping = Map(typeHoles.zip(typeHoleApproximations)*)
+              def apply(tp: Type): Type = tp match
+                case TypeRef(NoPrefix, _) => typeHoleMapping.getOrElse(tp.typeSymbol, tp)
+                case _ => mapOver(tp)
+            }
+          if matchings.isEmpty then Nil
+          else matchings.map(_.toExpr(typeHoleMap, spliceScope))
+        val results = matchedTypes ++ matchedExprs
+        Tuple.fromIArray(IArray.unsafeFromArray(results.toArray))
+      }
+    }
+  }
+
+  def instrumentTypeHoles(pat: Tree)(using Context): (Tree, List[Symbol], Context) =
+    def isTypeHoleDef(tree: Tree): Boolean = tree match
+      case tree: TypeDef => tree.symbol.hasAnnotation(defn.QuotedRuntimePatterns_patternTypeAnnot)
+      case _ => false
+    pat match
+      case tpd.Inlined(_, Nil, pat2) => instrumentTypeHoles(pat2)
+      case tpd.Block(stats @ ((typeHole: TypeDef) :: _), expr) if isTypeHoleDef(typeHole) =>
+        val (holeDefs, otherStats) = stats.span(isTypeHoleDef)
+        val holeSyms = holeDefs.map(_.symbol)
+        val ctx1 = ctx.fresh.setFreshGADTBounds.addMode(GadtConstraintInference)
+        ctx1.gadtState.addToConstraint(holeSyms)
+        (tpd.cpy.Block(pat)(otherStats, expr), holeSyms, ctx1)
+      case _ =>
+        (pat, Nil, ctx)
+
+  /** Type approximation of a quote pattern type variable.
+   *  Should only be approximated after matching the tree.
+   */
+  def typeHoleApproximation(sym: Symbol)(using Context): Type =
+    val fromAboveAnnot = sym.hasAnnotation(defn.QuotedRuntimePatterns_fromAboveAnnot)
+    val fullBounds = ctx.gadt.fullBounds(sym)
+    if fromAboveAnnot then fullBounds.nn.hi else fullBounds.nn.lo
 
   /** Check that all trees match with `mtch` and concatenate the results with &&& */
   private def matchLists[T](l1: List[T], l2: List[T])(mtch: (T, T) => MatchingExprs): optional[MatchingExprs] = (l1, l2) match {
@@ -181,7 +236,7 @@ object QuoteMatcher {
           case _ => None
       end TypeTreeTypeTest
 
-      val res = pattern match
+      def runMatch(): optional[MatchingExprs] = pattern match
 
         /* Term hole */
         // Match a scala.internal.Quoted.patternHole typed as a repeated argument and return the scrutinee tree
@@ -206,12 +261,34 @@ object QuoteMatcher {
         // Matches an open term and wraps it into a lambda that provides the free variables
         case Apply(TypeApply(Ident(_), List(TypeTree())), SeqLiteral(args, _) :: Nil)
             if pattern.symbol.eq(defn.QuotedRuntimePatterns_higherOrderHole) =>
+
+          /* Some of method symbols in arguments of higher-order term hole are eta-expanded.
+           * e.g.
+           * g: (Int) => Int
+           * => {
+           *   def $anonfun(y: Int): Int = g(y)
+           *   closure($anonfun)
+           * }
+           *
+           * f: (using Int) => Int
+           * => f(using x)
+           * This function restores the symbol of the original method from
+           * the eta-expanded function.
+           */
+          def getCapturedIdent(arg: Tree)(using Context): Ident =
+            arg match
+              case id: Ident => id
+              case Apply(fun, _) => getCapturedIdent(fun)
+              case Block((ddef: DefDef) :: _, _: Closure) => getCapturedIdent(ddef.rhs)
+              case Typed(expr, _) => getCapturedIdent(expr)
+
           val env = summon[Env]
-          val capturedArgs = args.map(_.symbol)
-          val captureEnv = env.filter((k, v) => !capturedArgs.contains(v))
+          val capturedIds = args.map(getCapturedIdent)
+          val capturedSymbols = capturedIds.map(_.symbol)
+          val captureEnv = env.filter((k, v) => !capturedSymbols.contains(v))
           withEnv(captureEnv) {
             scrutinee match
-              case ClosedPatternTerm(scrutinee) => matchedOpen(scrutinee, pattern.tpe, args, env)
+              case ClosedPatternTerm(scrutinee) => matchedOpen(scrutinee, pattern.tpe, capturedIds, args.map(_.tpe), env)
               case _ => notMatched
           }
 
@@ -341,19 +418,34 @@ object QuoteMatcher {
             case scrutinee @ DefDef(_, paramss1, tpt1, _) =>
               pattern match
                 case pattern @ DefDef(_, paramss2, tpt2, _) =>
-                  def rhsEnv: Env =
-                    val paramSyms: List[(Symbol, Symbol)] =
-                      for
-                        (clause1, clause2) <- paramss1.zip(paramss2)
-                        (param1, param2) <- clause1.zip(clause2)
-                      yield
-                        param1.symbol -> param2.symbol
-                    val oldEnv: Env = summon[Env]
-                    val newEnv: List[(Symbol, Symbol)] = (scrutinee.symbol -> pattern.symbol) :: paramSyms
-                    oldEnv ++ newEnv
-                  matchLists(paramss1, paramss2)(_ =?= _)
-                    &&& tpt1 =?= tpt2
-                    &&& withEnv(rhsEnv)(scrutinee.rhs =?= pattern.rhs)
+                  def matchErasedParams(sctype: Type, pttype: Type): optional[MatchingExprs] =
+                    (sctype, pttype) match
+                      case (sctpe: MethodType, pttpe: MethodType) =>
+                        if sctpe.erasedParams.sameElements(pttpe.erasedParams) then
+                          matchErasedParams(sctpe.resType, pttpe.resType)
+                        else
+                          notMatched
+                      case _ => matched
+
+                  def matchParamss(scparamss: List[ParamClause], ptparamss: List[ParamClause])(using Env): optional[(Env, MatchingExprs)] =
+                    (scparamss, ptparamss) match {
+                      case (scparams :: screst, ptparams :: ptrest) =>
+                        val mr1 = matchLists(scparams, ptparams)(_ =?= _)
+                        val newEnv = summon[Env] ++ scparams.map(_.symbol).zip(ptparams.map(_.symbol))
+                        val (resEnv, mrrest) = withEnv(newEnv)(matchParamss(screst, ptrest))
+                        (resEnv, mr1 &&& mrrest)
+                      case (Nil, Nil) => (summon[Env], matched)
+                      case _ => notMatched
+                    }
+
+                  val ematch = matchErasedParams(scrutinee.tpe.widenTermRefExpr, pattern.tpe.widenTermRefExpr)
+                  val (pEnv, pmatch) = matchParamss(paramss1, paramss2)
+                  val defEnv = pEnv + (scrutinee.symbol -> pattern.symbol)
+
+                  ematch
+                  &&& pmatch
+                  &&& withEnv(defEnv)(tpt1 =?= tpt2)
+                  &&& withEnv(defEnv)(scrutinee.rhs =?= pattern.rhs)
                 case _ => notMatched
 
             case Closure(_, _, tpt1) =>
@@ -373,24 +465,32 @@ object QuoteMatcher {
             // No Match
             case _ =>
               notMatched
+      end runMatch
 
-      if (debug && res == notMatched)
-        val quotes = QuotesImpl()
-        println(
-          s""">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-              |Scrutinee
-              |  ${scrutinee.show}
-              |did not match pattern
-              |  ${pattern.show}
-              |
-              |with environment: ${summon[Env]}
-              |
-              |Scrutinee: ${quotes.reflect.Printer.TreeStructure.show(scrutinee.asInstanceOf)}
-              |Pattern: ${quotes.reflect.Printer.TreeStructure.show(pattern.asInstanceOf)}
-              |
-              |""".stripMargin)
+      if debug then
+        try {
+          runMatch()
+        } catch {
+          case e: util.boundary.Break[?] =>
+            val quotes = QuotesImpl()
+            println(
+              s""">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+                  |Scrutinee
+                  |  ${scrutinee.show}
+                  |did not match pattern
+                  |  ${pattern.show}
+                  |
+                  |with environment: ${summon[Env]}
+                  |
+                  |Scrutinee: ${quotes.reflect.Printer.TreeStructure.show(scrutinee.asInstanceOf)}
+                  |Pattern: ${quotes.reflect.Printer.TreeStructure.show(pattern.asInstanceOf)}
+                  |
+                  |""".stripMargin)
+            throw e
+        }
+      else
+        runMatch()
 
-      res
     end =?=
 
   end extension
@@ -444,10 +544,11 @@ object QuoteMatcher {
      *
      *  @param tree Scrutinee sub-tree that matched
      *  @param patternTpe Type of the pattern hole (from the pattern)
-     *  @param args HOAS arguments (from the pattern)
+     *  @param argIds Identifiers of HOAS arguments (from the pattern)
+     *  @param argTypes Eta-expanded types of HOAS arguments (from the pattern)
      *  @param env Mapping between scrutinee and pattern variables
      */
-    case OpenTree(tree: Tree, patternTpe: Type, args: List[Tree], env: Env)
+    case OpenTree(tree: Tree, patternTpe: Type, argIds: List[Tree], argTypes: List[Type], env: Env)
 
     /** Return the expression that was extracted from a hole.
      *
@@ -457,22 +558,25 @@ object QuoteMatcher {
      *
      *  This expression is assumed to be a valid expression in the given splice scope.
      */
-    def toExpr(mapTypeHoles: TypeMap, spliceScope: Scope)(using Context): Expr[Any] = this match
+    def toExpr(mapTypeHoles: Type => Type, spliceScope: Scope)(using Context): Expr[Any] = this match
       case MatchResult.ClosedTree(tree) =>
         new ExprImpl(tree, spliceScope)
-      case MatchResult.OpenTree(tree, patternTpe, args, env) =>
-        val names: List[TermName] = args.map {
-          case Block(List(DefDef(nme.ANON_FUN, _, _, Apply(Ident(name), _))), _) => name.asTermName
-          case arg => arg.symbol.name.asTermName
-        }
-        val paramTypes = args.map(x => mapTypeHoles(x.tpe.widenTermRefExpr))
+      case MatchResult.OpenTree(tree, patternTpe, argIds, argTypes, env) =>
+        val names: List[TermName] = argIds.map(_.symbol.name.asTermName)
+        val paramTypes = argTypes.map(tpe => mapTypeHoles(tpe.widenTermRefExpr))
         val methTpe = MethodType(names)(_ => paramTypes, _ => mapTypeHoles(patternTpe))
         val meth = newAnonFun(ctx.owner, methTpe)
         def bodyFn(lambdaArgss: List[List[Tree]]): Tree = {
-          val argsMap = args.view.map(_.symbol).zip(lambdaArgss.head).toMap
+          val argsMap = argIds.view.map(_.symbol).zip(lambdaArgss.head).toMap
           val body = new TreeMap {
             override def transform(tree: Tree)(using Context): Tree =
               tree match
+                /*
+                 * When matching a method call `f(0)` against a HOAS pattern `p(g)` where
+                 * f has a method type `(x: Int): Int` and  `f` maps to `g`, `p` should hold
+                 * `g.apply(0)` because the type of `g` is `Int => Int` due to eta expansion.
+                 */
+                case Apply(fun, args) if env.contains(tree.symbol) => transform(fun).select(nme.apply).appliedToArgs(args.map(transform))
                 case tree: Ident => env.get(tree.symbol).flatMap(argsMap.get).getOrElse(tree)
                 case tree => super.transform(tree)
           }.transform(tree)
@@ -481,7 +585,7 @@ object QuoteMatcher {
         val hoasClosure = Closure(meth, bodyFn)
         new ExprImpl(hoasClosure, spliceScope)
 
-  private inline def notMatched: optional[MatchingExprs] =
+  private inline def notMatched[T]: optional[T] =
     optional.break()
 
   private inline def matched: MatchingExprs =
@@ -490,8 +594,8 @@ object QuoteMatcher {
   private inline def matched(tree: Tree)(using Context): MatchingExprs =
     Seq(MatchResult.ClosedTree(tree))
 
-  private def matchedOpen(tree: Tree, patternTpe: Type, args: List[Tree], env: Env)(using Context): MatchingExprs =
-    Seq(MatchResult.OpenTree(tree, patternTpe, args, env))
+  private def matchedOpen(tree: Tree, patternTpe: Type, argIds: List[Tree], argTypes: List[Type], env: Env)(using Context): MatchingExprs =
+    Seq(MatchResult.OpenTree(tree, patternTpe, argIds, argTypes, env))
 
   extension (self: MatchingExprs)
       /** Concatenates the contents of two successful matchings */

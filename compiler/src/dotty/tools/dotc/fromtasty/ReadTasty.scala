@@ -2,16 +2,16 @@ package dotty.tools
 package dotc
 package fromtasty
 
-import core._
-import Decorators._
-import Contexts._
+import core.*
+import Decorators.*
+import Contexts.*
 import Symbols.{Symbol, ClassSymbol}
 import SymDenotations.ClassDenotation
 import Denotations.staticRef
-import NameOps._
+import NameOps.*
 import ast.Trees.Tree
 import Phases.Phase
-
+import core.tasty.Attributes
 
 /** Load trees from TASTY files */
 class ReadTasty extends Phase {
@@ -22,7 +22,15 @@ class ReadTasty extends Phase {
     ctx.settings.fromTasty.value
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
-    withMode(Mode.ReadPositions)(units.flatMap(readTASTY(_)))
+    withMode(Mode.ReadPositions) {
+      val nextUnits = collection.mutable.ListBuffer.empty[CompilationUnit]
+      val unitContexts = units.view.map(ctx.fresh.setCompilationUnit)
+      for unitContext <- unitContexts if addTasty(nextUnits += _)(using unitContext) do ()
+      nextUnits.toList
+    }
+
+  def addTasty(fn: CompilationUnit => Unit)(using Context): Boolean = monitor(phaseName):
+    readTASTY(ctx.compilationUnit).foreach(fn)
 
   def readTASTY(unit: CompilationUnit)(using Context): Option[CompilationUnit] = unit match {
     case unit: TASTYCompilationUnit =>
@@ -39,9 +47,16 @@ class ReadTasty extends Phase {
             case unpickler: tasty.DottyUnpickler =>
               if (cls.rootTree.isEmpty) None
               else {
-                val unit = CompilationUnit(cls, cls.rootTree, forceTrees = true)
-                unit.pickled += (cls -> (() => unpickler.unpickler.bytes))
-                Some(unit)
+                val attributes = unpickler.tastyAttributes
+                if attributes.isJava && !ctx.settings.YjavaTasty.value then
+                  // filter out Java compilation units if -Yjava-tasty is not set
+                  None
+                else if attributes.isOutline && !ctx.settings.YallowOutlineFromTasty.value then
+                  cannotUnpickle("it contains outline signatures and -Yallow-outline-from-tasty is not set.")
+                else
+                  val unit = CompilationUnit(cls, cls.rootTree, forceTrees = true)
+                  unit.pickled += (cls -> (() => unpickler.unpickler.bytes))
+                  Some(unit)
               }
             case tree: Tree[?] =>
               // TODO handle correctly this case correctly to get the tree or avoid it completely.
@@ -62,8 +77,8 @@ class ReadTasty extends Phase {
       staticRef(className) match {
         case clsd: ClassDenotation =>
           clsd.infoOrCompleter match {
-            case info: ClassfileLoader =>
-              info.load(clsd) // sets cls.rootTreeOrProvider and cls.moduleClass.treeProvider as a side-effect
+            case info: TastyLoader =>
+              info.doComplete(clsd) // sets cls.rootTreeOrProvider and cls.moduleClass.treeProvider as a side-effect
             case _ =>
           }
           def moduleClass = clsd.owner.info.member(className.moduleClassName).symbol
@@ -77,7 +92,7 @@ class ReadTasty extends Phase {
           }
       }
     case unit =>
-     Some(unit)
+      Some(unit)
   }
 
   def run(using Context): Unit = unsupported("run")

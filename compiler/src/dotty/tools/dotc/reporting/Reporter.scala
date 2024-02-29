@@ -4,11 +4,11 @@ package reporting
 
 import scala.language.unsafeNulls
 
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol}
-import dotty.tools.dotc.reporting.Diagnostic._
-import dotty.tools.dotc.reporting.Message._
+import dotty.tools.dotc.reporting.Diagnostic.*
+import dotty.tools.dotc.reporting.Message.*
 import dotty.tools.dotc.util.NoSourcePosition
 
 import java.io.{BufferedReader, PrintWriter}
@@ -63,7 +63,7 @@ object Reporter {
  * error messages.
  */
 abstract class Reporter extends interfaces.ReporterResult {
-  import Reporter._
+  import Reporter.*
 
   /** Report a diagnostic */
   def doReport(dia: Diagnostic)(using Context): Unit
@@ -109,8 +109,13 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   private var errors: List[Error] = Nil
 
+  private var warnings: List[Warning] = Nil
+
   /** All errors reported by this reporter (ignoring outer reporters) */
   def allErrors: List[Error] = errors
+
+  /** All warnings reported by this reporter (ignoring outer reporters) */
+  def allWarnings: List[Warning] = warnings
 
   /** Were sticky errors reported? Overridden in StoreReporter. */
   def hasStickyErrors: Boolean = false
@@ -149,15 +154,11 @@ abstract class Reporter extends interfaces.ReporterResult {
       val key = w.enablingOption.name
       addUnreported(key, 1)
     case _                                                  =>
-      // conditional warnings that are not enabled are not fatal
-      val d = dia match
-        case w: Warning if ctx.settings.XfatalWarnings.value => w.toError
-        case _                                               => dia
-      if !isHidden(d) then // avoid isHidden test for summarized warnings so that message is not forced
-        markReported(d)
-        withMode(Mode.Printing)(doReport(d))
-        d match {
-          case _: Warning => _warningCount += 1
+      if !isHidden(dia) then // avoid isHidden test for summarized warnings so that message is not forced
+        dia match {
+          case w: Warning =>
+            warnings = w :: warnings
+            _warningCount += 1
           case e: Error   =>
             errors = e :: errors
             _errorCount += 1
@@ -166,16 +167,24 @@ abstract class Reporter extends interfaces.ReporterResult {
           case _: Info    => // nothing to do here
           // match error if d is something else
         }
+        markReported(dia)
+        withMode(Mode.Printing)(doReport(dia))
   end issueUnconfigured
 
   def issueIfNotSuppressed(dia: Diagnostic)(using Context): Unit =
+    def toErrorIfFatal(dia: Diagnostic) = dia match
+      case w: Warning if ctx.settings.silentWarnings.value => dia
+      case w: ConditionalWarning if w.isSummarizedConditional => dia
+      case w: Warning if ctx.settings.XfatalWarnings.value => w.toError
+      case _ => dia
+
     def go() =
-      import Action._
+      import Action.*
       dia match
-        case w: Warning => WConf.parsed.action(w) match
+        case w: Warning => WConf.parsed.action(dia) match
           case Error   => issueUnconfigured(w.toError)
-          case Warning => issueUnconfigured(w)
-          case Verbose => issueUnconfigured(w.setVerbose())
+          case Warning => issueUnconfigured(toErrorIfFatal(w))
+          case Verbose => issueUnconfigured(toErrorIfFatal(w.setVerbose()))
           case Info    => issueUnconfigured(w.toInfo)
           case Silent  =>
         case _ => issueUnconfigured(dia)

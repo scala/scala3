@@ -130,7 +130,7 @@ object Preparser {
         val tagsWithoutDiagram = tags.filterNot(pair => stripTags.contains(pair._1))
 
         val bodyTags: mutable.Map[TagKey, List[String]] =
-          mutable.Map((tagsWithoutDiagram).toSeq: _*)
+          mutable.Map((tagsWithoutDiagram).toSeq*)
 
         def allTags(key: SimpleTagKey): List[String] =
           (bodyTags remove key).getOrElse(Nil).reverse

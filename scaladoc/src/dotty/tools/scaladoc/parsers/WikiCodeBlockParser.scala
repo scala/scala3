@@ -142,7 +142,7 @@ class WikiCodeBlockParser(
           codeBlock.setCharsFromContent
           block.appendChild(codeBlock)
         } else {
-          val codeBlock = new Text(SegmentedSequence.create(segments.asScala.toSeq:_*))
+          val codeBlock = new Text(SegmentedSequence.create(segments.asScala.toSeq*))
           block.appendChild(codeBlock)
         }
       }

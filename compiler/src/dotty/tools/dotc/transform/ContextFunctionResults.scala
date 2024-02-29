@@ -2,11 +2,11 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
-import Contexts._, Symbols._, Types._, Annotations._, Constants._, Phases._
+import core.*
+import Contexts.*, Symbols.*, Types.*, Annotations.*, Constants.*, Phases.*
 import StdNames.nme
 import ast.untpd
-import ast.tpd._
+import ast.tpd.*
 import config.Config
 
 object ContextFunctionResults:
@@ -20,7 +20,7 @@ object ContextFunctionResults:
    */
   def annotateContextResults(mdef: DefDef)(using Context): Unit =
     def contextResultCount(rhs: Tree, tp: Type): Int = tp match
-      case defn.ContextFunctionType(_, resTpe, _) =>
+      case defn.ContextFunctionType(_, resTpe) =>
         rhs match
           case closureDef(meth) => 1 + contextResultCount(meth.rhs, resTpe)
           case _ => 0
@@ -58,7 +58,8 @@ object ContextFunctionResults:
    */
   def contextResultsAreErased(sym: Symbol)(using Context): Boolean =
     def allErased(tp: Type): Boolean = tp.dealias match
-      case defn.ContextFunctionType(_, resTpe, erasedParams) => !erasedParams.contains(false) && allErased(resTpe)
+      case ft @ defn.FunctionTypeOfMethod(mt: MethodType) if mt.isContextualMethod =>
+        mt.nonErasedParamCount == 0 && allErased(mt.resType)
       case _ => true
     contextResultCount(sym) > 0 && allErased(sym.info.finalResultType)
 
@@ -67,13 +68,13 @@ object ContextFunctionResults:
    */
   def integrateContextResults(tp: Type, crCount: Int)(using Context): Type =
     if crCount == 0 then tp
-    else tp match
+    else tp.dealias match
       case ExprType(rt) =>
         integrateContextResults(rt, crCount)
       case tp: MethodOrPoly =>
         tp.derivedLambdaType(resType = integrateContextResults(tp.resType, crCount))
-      case defn.ContextFunctionType(argTypes, resType, erasedParams) =>
-        MethodType(argTypes, integrateContextResults(resType, crCount - 1))
+      case defn.FunctionTypeOfMethod(mt) if mt.isContextualMethod =>
+        mt.derivedLambdaType(resType = integrateContextResults(mt.resType, crCount - 1))
 
   /** The total number of parameters of method `sym`, not counting
    *  erased parameters, but including context result parameters.
@@ -83,16 +84,13 @@ object ContextFunctionResults:
     def contextParamCount(tp: Type, crCount: Int): Int =
       if crCount == 0 then 0
       else
-        val defn.ContextFunctionType(params, resTpe, erasedParams) = tp: @unchecked
+        val defn.ContextFunctionType(params, resTpe) = tp: @unchecked
         val rest = contextParamCount(resTpe, crCount - 1)
-        if erasedParams.contains(true) then erasedParams.count(_ == false) + rest else params.length + rest
+        val nonErasedParams = params.count(!_.hasAnnotation(defn.ErasedParamAnnot))
+        nonErasedParams + rest
 
     def normalParamCount(tp: Type): Int = tp.widenExpr.stripPoly match
-      case mt @ MethodType(pnames) =>
-        val rest = normalParamCount(mt.resType)
-        if mt.hasErasedParams then
-          mt.erasedParams.count(_ == false) + rest
-        else pnames.length + rest
+      case mt @ MethodType(pnames) => mt.nonErasedParamCount + normalParamCount(mt.resType)
       case _ => contextParamCount(tp, contextResultCount(sym))
 
     normalParamCount(sym.info)
@@ -103,7 +101,7 @@ object ContextFunctionResults:
     def recur(tp: Type, n: Int): Type =
       if n == 0 then tp
       else tp match
-        case defn.ContextFunctionType(_, resTpe, _) => recur(resTpe, n - 1)
+        case defn.FunctionTypeOfMethod(mt) => recur(mt.resType, n - 1)
     recur(meth.info.finalResultType, depth)
 
   /** Should selection `tree` be eliminated since it refers to an `apply`
@@ -117,8 +115,8 @@ object ContextFunctionResults:
     else tree match
       case Select(qual, name) =>
         if name == nme.apply then
-          qual.tpe match
-            case defn.ContextFunctionType(_, _, _) =>
+          qual.tpe.nn.dealias match
+            case defn.FunctionTypeOfMethod(mt) if mt.isContextualMethod =>
               integrateSelect(qual, n + 1)
             case _ if defn.isContextFunctionClass(tree.symbol.maybeOwner) => // for TermRefs
               integrateSelect(qual, n + 1)

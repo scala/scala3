@@ -1,23 +1,24 @@
 package dotty.tools.repl
 
-import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.ast.{tpd, untpd}
 import dotty.tools.dotc.ast.tpd.TreeOps
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.Names._
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.CompilationUnitInfo
+import dotty.tools.dotc.core.Decorators.*
+import dotty.tools.dotc.core.Flags.*
+import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.StdNames.*
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.dotc.transform.PostTyper
 import dotty.tools.dotc.typer.ImportInfo.{withRootImports, RootRef}
 import dotty.tools.dotc.typer.TyperPhase
-import dotty.tools.dotc.util.Spans._
+import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.util.{ParsedComment, Property, SourceFile}
 import dotty.tools.dotc.{CompilationUnit, Compiler, Run}
-import dotty.tools.repl.results._
+import dotty.tools.repl.results.*
 
 import scala.collection.mutable
 import scala.util.chaining.given
@@ -93,9 +94,9 @@ class ReplCompiler extends Compiler:
   end compile
 
   final def typeOf(expr: String)(using state: State): Result[String] =
-    typeCheck(expr).map { tree =>
+    typeCheck(expr).map { (_, tpdTree) =>
       given Context = state.context
-      tree.rhs match {
+      tpdTree.rhs match {
         case Block(xs, _) => xs.last.tpe.widen.show
         case _ =>
           """Couldn't compute the type of your expression, so sorry :(
@@ -129,7 +130,7 @@ class ReplCompiler extends Compiler:
       Iterator(sym) ++ sym.allOverriddenSymbols
     }
 
-    typeCheck(expr).map {
+    typeCheck(expr).map { (_, tpdTree) => tpdTree match
       case ValDef(_, _, Block(stats, _)) if stats.nonEmpty =>
         val stat = stats.last.asInstanceOf[tpd.Tree]
         if (stat.tpe.isError) stat.tpe.show
@@ -152,11 +153,11 @@ class ReplCompiler extends Compiler:
     }
   }
 
-  final def typeCheck(expr: String, errorsAllowed: Boolean = false)(using state: State): Result[tpd.ValDef] = {
+  final def typeCheck(expr: String, errorsAllowed: Boolean = false)(using state: State): Result[(untpd.ValDef, tpd.ValDef)] = {
 
     def wrapped(expr: String, sourceFile: SourceFile, state: State)(using Context): Result[untpd.PackageDef] = {
       def wrap(trees: List[untpd.Tree]): untpd.PackageDef = {
-        import untpd._
+        import untpd.*
 
         val valdef = ValDef("expr".toTermName, TypeTree(), Block(trees, unitLiteral).withSpan(Span(0, expr.length)))
         val tmpl = Template(emptyConstructor, Nil, Nil, EmptyValDef, List(valdef))
@@ -181,22 +182,32 @@ class ReplCompiler extends Compiler:
       }
     }
 
-    def unwrapped(tree: tpd.Tree, sourceFile: SourceFile)(using Context): Result[tpd.ValDef] = {
-      def error: Result[tpd.ValDef] =
-        List(new Diagnostic.Error(s"Invalid scala expression",
-          sourceFile.atSpan(Span(0, sourceFile.content.length)))).errors
+    def error[Tree <: untpd.Tree](sourceFile: SourceFile): Result[Tree] =
+      List(new Diagnostic.Error(s"Invalid scala expression",
+        sourceFile.atSpan(Span(0, sourceFile.content.length)))).errors
 
-      import tpd._
+    def unwrappedTypeTree(tree: tpd.Tree, sourceFile0: SourceFile)(using Context): Result[tpd.ValDef] = {
+      import tpd.*
       tree match {
         case PackageDef(_, List(TypeDef(_, tmpl: Template))) =>
           tmpl.body
               .collectFirst { case dd: ValDef if dd.name.show == "expr" => dd.result }
-              .getOrElse(error)
+              .getOrElse(error[tpd.ValDef](sourceFile0))
         case _ =>
-          error
+          error[tpd.ValDef](sourceFile0)
       }
     }
 
+    def unwrappedUntypedTree(tree: untpd.Tree, sourceFile0: SourceFile)(using Context): Result[untpd.ValDef] =
+      import untpd.*
+      tree match {
+        case PackageDef(_, List(TypeDef(_, tmpl: Template))) =>
+          tmpl.body
+              .collectFirst { case dd: ValDef if dd.name.show == "expr" => dd.result }
+              .getOrElse(error[untpd.ValDef](sourceFile0))
+        case _ =>
+          error[untpd.ValDef](sourceFile0)
+      }
 
     val src = SourceFile.virtual("<typecheck>", expr)
     inContext(state.context.fresh
@@ -209,7 +220,10 @@ class ReplCompiler extends Compiler:
         ctx.run.nn.compileUnits(unit :: Nil, ctx)
 
         if (errorsAllowed || !ctx.reporter.hasErrors)
-          unwrapped(unit.tpdTree, src)
+          for
+            tpdTree <- unwrappedTypeTree(unit.tpdTree, src)
+            untpdTree <- unwrappedUntypedTree(unit.untpdTree, src)
+          yield untpdTree -> tpdTree
         else
           ctx.reporter.removeBufferedMessages.errors
       }
@@ -220,7 +234,7 @@ object ReplCompiler:
   val objectNames = mutable.Map.empty[Int, TermName]
 end ReplCompiler
 
-class ReplCompilationUnit(source: SourceFile) extends CompilationUnit(source):
+class ReplCompilationUnit(source: SourceFile) extends CompilationUnit(source, CompilationUnitInfo(source.file)):
   override def isSuspendable: Boolean = false
 
 /** A placeholder phase that receives parse trees..

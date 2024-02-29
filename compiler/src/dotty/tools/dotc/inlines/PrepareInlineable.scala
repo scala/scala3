@@ -3,29 +3,30 @@ package dotc
 package inlines
 
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
-import Trees._
-import core._
-import Flags._
-import Symbols._
-import Flags._
-import Types._
-import Decorators._
+import Trees.*
+import core.*
+import Flags.*
+import Symbols.*
+import Flags.*
+import Types.*
+import Decorators.*
 import StdNames.nme
-import Contexts._
+import Contexts.*
 import Names.{Name, TermName}
 import NameKinds.{InlineAccessorName, UniqueInlineName}
 import inlines.Inlines
-import NameOps._
-import Annotations._
+import NameOps.*
+import Annotations.*
 import transform.{AccessProxies, Splicer}
 import staging.CrossStageSafety
-import transform.SymUtils.*
 import config.Printers.inlining
 import util.Property
 import staging.StagingLevel
+import dotty.tools.dotc.reporting.Message
+import dotty.tools.dotc.util.SrcPos
 
 object PrepareInlineable {
-  import tpd._
+  import tpd.*
 
   private val InlineAccessorsKey = new Property.Key[InlineAccessors]
 
@@ -72,6 +73,7 @@ object PrepareInlineable {
         sym.isTerm &&
         (sym.isOneOf(AccessFlags) || sym.privateWithin.exists) &&
         !sym.isContainedIn(inlineSym) &&
+        !sym.hasPublicInBinary &&
         !(sym.isStableMember && sym.info.widenTermRefExpr.isInstanceOf[ConstantType]) &&
         !sym.isInlineMethod &&
         (Inlines.inInlineMethod || StagingLevel.level > 0)
@@ -87,6 +89,11 @@ object PrepareInlineable {
 
       override def transform(tree: Tree)(using Context): Tree =
         postTransform(super.transform(preTransform(tree)))
+
+      protected def checkUnstableAccessor(accessedTree: Tree, accessor: Symbol)(using Context): Unit =
+        if ctx.settings.WunstableInlineAccessors.value then
+          val accessorTree = accessorDef(accessor, accessedTree.symbol)
+          report.warning(reporting.UnstableInlineAccessor(accessedTree.symbol, accessorTree), accessedTree)
     }
 
     /** Direct approach: place the accessor with the accessed symbol. This has the
@@ -101,7 +108,11 @@ object PrepareInlineable {
             report.error("Implementation restriction: cannot use private constructors in inline methods", tree.srcPos)
             tree // TODO: create a proper accessor for the private constructor
           }
-          else useAccessor(tree)
+          else
+            val accessor = useAccessor(tree)
+            if tree != accessor then
+              checkUnstableAccessor(tree, accessor.symbol)
+            accessor
         case _ =>
           tree
       }
@@ -179,6 +190,8 @@ object PrepareInlineable {
             accessorName = InlineAccessorName(UniqueInlineName.fresh(accessed.name)),
             accessorInfo = abstractQualType(addQualType(dealiasMap(accessedType))),
             accessed = accessed)
+
+          checkUnstableAccessor(tree, accessor)
 
           val (leadingTypeArgs, otherArgss) = splitArgs(argss)
           val argss1 = joinArgs(

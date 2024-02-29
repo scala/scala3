@@ -2,15 +2,18 @@ package dotty.tools
 package dotc
 package typer
 
-import core._
-import Phases._
-import Contexts._
-import Symbols._
+import core.*
+import Run.SubPhase
+import Phases.*
+import Contexts.*
+import Symbols.*
 import ImportInfo.withRootImports
 import parsing.{Parser => ParserPhase}
 import config.Printers.typr
 import inlines.PrepareInlineable
-import util.Stats._
+import util.Stats.*
+import dotty.tools.dotc.config.Feature
+import dotty.tools.dotc.config.SourceVersion
 
 /**
  *
@@ -31,13 +34,13 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
   // Run regardless of parsing errors
   override def isRunnable(implicit ctx: Context): Boolean = true
 
-  def enterSyms(using Context): Unit = monitor("indexing") {
+  def enterSyms(using Context)(using subphase: SubPhase): Boolean = monitor(subphase.name) {
     val unit = ctx.compilationUnit
     ctx.typer.index(unit.untpdTree)
     typr.println("entered: " + unit.source)
   }
 
-  def typeCheck(using Context): Unit = monitor("typechecking") {
+  def typeCheck(using Context)(using subphase: SubPhase): Boolean = monitor(subphase.name) {
     val unit = ctx.compilationUnit
     try
       if !unit.suspended then
@@ -46,23 +49,23 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
         record("retained untyped trees", unit.untpdTree.treeSize)
         record("retained typed trees after typer", unit.tpdTree.treeSize)
         ctx.run.nn.suppressions.reportSuspendedMessages(unit.source)
-    catch
-      case ex: CompilationUnit.SuspendException =>
-      case ex: Throwable =>
-        println(s"$ex while typechecking $unit")
-        throw ex
+    catch case _: CompilationUnit.SuspendException => ()
   }
 
-  def javaCheck(using Context): Unit = monitor("checking java") {
+  def javaCheck(using Context)(using subphase: SubPhase): Boolean = monitor(subphase.name) {
     val unit = ctx.compilationUnit
     if unit.isJava then
       JavaChecks.check(unit.tpdTree)
   }
 
   protected def discardAfterTyper(unit: CompilationUnit)(using Context): Boolean =
-    unit.isJava || unit.suspended
+    (unit.isJava && !ctx.settings.YjavaTasty.value) || unit.suspended
+
+  override val subPhases: List[SubPhase] = List(
+    SubPhase("indexing"), SubPhase("typechecking"), SubPhase("checkingJava"))
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
+    val List(Indexing @ _, Typechecking @ _, CheckingJava @ _) = subPhases: @unchecked
     val unitContexts =
       for unit <- units yield
         val newCtx0 = ctx.fresh.setPhase(this.start).setCompilationUnit(unit)
@@ -73,11 +76,16 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
         else
           newCtx
 
-    unitContexts.foreach(enterSyms(using _))
+    val unitContexts0 = runSubPhase(Indexing) {
+      for
+        unitContext <- unitContexts
+        if enterSyms(using unitContext)
+      yield unitContext
+    }
 
     ctx.base.parserPhase match {
       case p: ParserPhase =>
-        if p.firstXmlPos.exists && !defn.ScalaXmlPackageClass.exists then
+        if p.firstXmlPos.exists && !defn.ScalaXmlPackageClass.exists && Feature.sourceVersion == SourceVersion.future then
           report.error(
             """To support XML literals, your project must depend on scala-xml.
               |See https://github.com/scala/scala-xml for more information.""".stripMargin,
@@ -85,11 +93,22 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
       case _ =>
     }
 
-    unitContexts.foreach(typeCheck(using _))
-    record("total trees after typer", ast.Trees.ntrees)
-    unitContexts.foreach(javaCheck(using _)) // after typechecking to avoid cycles
+    val unitContexts1 = runSubPhase(Typechecking) {
+      for
+        unitContext <- unitContexts0
+        if typeCheck(using unitContext)
+      yield unitContext
+    }
 
-    val newUnits = unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)
+    record("total trees after typer", ast.Trees.ntrees)
+
+    val unitContexts2 = runSubPhase(CheckingJava) {
+      for
+        unitContext <- unitContexts1
+        if javaCheck(using unitContext) // after typechecking to avoid cycles
+      yield unitContext
+    }
+    val newUnits = unitContexts2.map(_.compilationUnit).filterNot(discardAfterTyper)
     ctx.run.nn.checkSuspendedUnits(newUnits)
     newUnits
 

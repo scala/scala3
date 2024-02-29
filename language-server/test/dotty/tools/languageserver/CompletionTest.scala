@@ -32,14 +32,14 @@ class CompletionTest {
 
   @Test def completionFromScalaPackage: Unit = {
     code"class Foo { val foo: Conv${m1} }"
-      .completion(("Conversion", Class, "scala.Conversion"))
+      .completion(("Conversion", Class, "Conversion"))
   }
 
   @Test def completionFromScalaPackageObject: Unit = {
     code"class Foo { val foo: BigD${m1} }"
       .completion(
-        ("BigDecimal", Field, "scala.BigDecimal"),
-        ("BigDecimal", Method, "=> math.BigDecimal.type"),
+        ("BigDecimal", Field, "BigDecimal"),
+        ("BigDecimal", Field, "scala.math.BigDecimal"),
       )
   }
 
@@ -47,14 +47,14 @@ class CompletionTest {
     code"class Foo { val foo: IArr${m1} }"
       .completion(
         ("IArray", Module, "IArray"),
-        ("IArray", Field, "scala.IArray"),
+        ("IArray", Field, "IArray"),
       )
   }
 
   @Test def completionFromJavaDefaults: Unit = {
     code"class Foo { val foo: Runn${m1} }"
       .completion(
-        ("Runnable", Class, "java.lang.Runnable"),
+        ("Runnable", Class, "Runnable"),
         ("Runnable", Module, "Runnable"),
       )
   }
@@ -971,7 +971,7 @@ class CompletionTest {
           ("implicitNotFound", Module, "scala.annotation.implicitNotFound"),
       )
       .completion(m2,
-          ("main", Class, "scala.main"),
+          ("main", Class, "main"),
           ("main", Module, "main"),
       )
 
@@ -1523,9 +1523,72 @@ class CompletionTest {
           |object Test:
           |  def foo: ArrayBuffer[Fo${m1}] = ???
           """
-      .completion(m1, Set(
-          ("Foo",Class,"Foo")
-        )
-      )
+      .completion(m1, Set(("Foo",Class,"Foo")))
   }
+
+  @Test def extensionDefinitionCompletions: Unit =
+    code"""|trait Foo
+           |object T:
+           |  extension (x: Fo$m1)
+           |"""
+      .completion(m1, Set(("Foo",Class,"Foo")))
+
+  @Test def extensionDefinitionCompletionsSelect: Unit =
+    code"""|object Test:
+           |  class TestSelect()
+           |object T:
+           |  extension (x: Test.TestSel$m1)
+           |"""
+      .completion(m1, Set(
+        ("TestSelect", Module, "Test.TestSelect"), ("TestSelect", Class, "Test.TestSelect")
+      ))
+
+  @Test def extensionDefinitionCompletionsSelectNested: Unit =
+    code"""|object Test:
+           |  object Test2:
+           |    class TestSelect()
+           |object T:
+           |  extension (x: Test.Test2.TestSel$m1)
+           |"""
+      .completion(m1, Set(
+        ("TestSelect", Module, "Test.Test2.TestSelect"), ("TestSelect", Class, "Test.Test2.TestSelect")
+      ))
+
+  @Test def extensionDefinitionCompletionsSelectInside: Unit =
+    code"""|object Test:
+           |  object Test2:
+           |    class TestSelect()
+           |object T:
+           |  extension (x: Test.Te$m1.TestSelect)
+           |"""
+      .completion(m1, Set(("Test2", Module, "Test.Test2")))
+
+  @Test def extensionDefinitionCompletionsTypeParam: Unit =
+    code"""|object T:
+           |  extension [TypeParam](x: TypePar$m1)
+           |"""
+      .completion(m1, Set(("TypeParam", Field, "T.TypeParam")))
+
+
+  @Test def typeParamCompletions: Unit =
+    code"""|object T:
+           |  def xxx[TTT](x: TT$m1)
+           |"""
+      .completion(m1, Set(("TTT", Field, "T.TTT")))
+
+  @Test def selectDynamic: Unit =
+    code"""|import scala.language.dynamics
+           |class Foo extends Dynamic {
+           |  def banana: Int = 42
+           |  def selectDynamic(field: String): Foo = this
+           |  def applyDynamicNamed(name: String)(arg: (String, Int)): Foo = this
+           |  def updateDynamic(name: String)(value: Int): Foo = this
+           |}
+           |object Test:
+           |  val x = new Foo()
+           |  x.sele$m1
+           |  x.bana$m2
+           |"""
+      .completion(m1, Set(("selectDynamic", Method, "(field: String): Foo")))
+      .completion(m2, Set(("banana", Method, "=> Int")))
 }

@@ -102,7 +102,7 @@ class SemanticdbTests:
       |inspect with:
       |  diff $expect ${expect.resolveSibling("" + expect.getFileName + ".out")}
       |Or else update all expect files with
-      |  sbt 'scala3-compiler-bootstrapped/test:runMain dotty.tools.dotc.semanticdb.updateExpect'""".stripMargin)
+      |  sbt 'scala3-compiler-bootstrapped/Test/runMain dotty.tools.dotc.semanticdb.updateExpect'""".stripMargin)
     Files.walk(target).sorted(Comparator.reverseOrder).forEach(Files.delete)
     if errors.nonEmpty then
       fail(s"${errors.size} errors in expect test.")
@@ -130,7 +130,7 @@ class SemanticdbTests:
     val target = Files.createTempDirectory("semanticdb")
     val javaArgs = Array("-d", target.toString) ++ javaFiles().map(_.toString)
     val javac = ToolProvider.getSystemJavaCompiler
-    val exitJava = javac.run(null, null, null, javaArgs:_*)
+    val exitJava = javac.run(null, null, null, javaArgs*)
     assert(exitJava == 0, "java compiler has errors")
     val args = Array(
       "-Xsemanticdb",
@@ -142,7 +142,8 @@ class SemanticdbTests:
       "-sourceroot", expectSrc.toString,
       "-classpath", target.toString,
       "-Xignore-scala2-macros",
-      "-usejavacp"
+      "-usejavacp",
+      "-Wunused:all"
     ) ++ inputFiles().map(_.toString)
     val exit = Main.process(args)
     assertFalse(s"dotc errors: ${exit.errorCount}", exit.hasErrors)

@@ -1,4 +1,4 @@
-import caps.unsafe.*
+import annotation.unchecked.uncheckedCaptures
 def test =
-  val tasks = new collection.mutable.ArrayBuffer[() => Unit]
-  val _: Unit = tasks.foreach(((task: () => Unit) => task()).unsafeBoxFunArg)
+  val tasks = new collection.mutable.ArrayBuffer[(() => Unit) @uncheckedCaptures]
+  val _: Unit = tasks.foreach(((task: () => Unit) => task()))

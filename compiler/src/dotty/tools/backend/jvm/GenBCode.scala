@@ -3,12 +3,13 @@ package dotty.tools.backend.jvm
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.report
-import dotty.tools.dotc.core._
+import dotty.tools.dotc.core.*
 import dotty.tools.dotc.interfaces.CompilerCallback
-import Contexts._
-import Symbols._
-import dotty.tools.io._
+import Contexts.*
+import Symbols.*
+import dotty.tools.io.*
 import scala.collection.mutable
+import scala.compiletime.uninitialized
 
 class GenBCode extends Phase { self =>
 
@@ -25,7 +26,7 @@ class GenBCode extends Phase { self =>
   private val entryPoints = new mutable.HashSet[String]()
   def registerEntryPoint(s: String): Unit = entryPoints += s
 
-  private var _backendInterface: DottyBackendInterface = _
+  private var _backendInterface: DottyBackendInterface = uninitialized
   def backendInterface(using ctx: Context): DottyBackendInterface = {
     if _backendInterface eq null then
       // Enforce usage of FreshContext so we would be able to modify compilation unit between runs
@@ -36,7 +37,7 @@ class GenBCode extends Phase { self =>
     _backendInterface
   }
 
-  private var _codeGen: CodeGen = _
+  private var _codeGen: CodeGen = uninitialized
   def codeGen(using Context): CodeGen = {
     if _codeGen eq null then
       val int = backendInterface
@@ -45,46 +46,51 @@ class GenBCode extends Phase { self =>
     _codeGen
   }
 
-  private var _bTypes: BTypesFromSymbols[DottyBackendInterface] = _
+  private var _bTypes: BTypesFromSymbols[DottyBackendInterface] = uninitialized
   def bTypes(using Context): BTypesFromSymbols[DottyBackendInterface] = {
     if _bTypes eq null then
       _bTypes = BTypesFromSymbols(backendInterface, frontendAccess)
     _bTypes
   }
 
-  private var _frontendAccess: PostProcessorFrontendAccess | Null = _
+  private var _frontendAccess: PostProcessorFrontendAccess | Null = uninitialized
   def frontendAccess(using Context): PostProcessorFrontendAccess = {
     if _frontendAccess eq null then
       _frontendAccess = PostProcessorFrontendAccess.Impl(backendInterface, entryPoints)
     _frontendAccess.nn
   }
 
-  private var _postProcessor: PostProcessor | Null = _
+  private var _postProcessor: PostProcessor | Null = uninitialized
   def postProcessor(using Context): PostProcessor = {
     if _postProcessor eq null then
       _postProcessor = new PostProcessor(frontendAccess, bTypes)
     _postProcessor.nn
   }
 
-  override def run(using ctx: Context): Unit =
-    // CompilationUnit is the only component that will differ between each run invocation
-    // We need to update it to have correct source positions.
-    // FreshContext is always enforced when creating backend interface
-    backendInterface.ctx
+  private var _generatedClassHandler: GeneratedClassHandler | Null = uninitialized
+  def generatedClassHandler(using Context): GeneratedClassHandler = {
+    if _generatedClassHandler eq null then
+      _generatedClassHandler = GeneratedClassHandler(postProcessor)
+    _generatedClassHandler.nn
+  }
+
+  override def run(using Context): Unit =
+    frontendAccess.frontendSynchWithoutContext {
+      backendInterface.ctx
       .asInstanceOf[FreshContext]
       .setCompilationUnit(ctx.compilationUnit)
-    val generated = codeGen.genUnit(ctx.compilationUnit)
-    // In Scala 2, the backend might use global optimizations which might delay post-processing to build the call graph.
-    // In Scala 3, we don't perform backend optimizations and always perform post-processing immediately.
-    // https://github.com/scala/scala/pull/6057
-    postProcessor.postProcessAndSendToDisk(generated)
+    }
+    codeGen.genUnit(ctx.compilationUnit)
     (ctx.compilerCallback: CompilerCallback | Null) match {
       case cb: CompilerCallback => cb.onSourceCompiled(ctx.source)
       case null => ()
     }
 
   override def runOn(units: List[CompilationUnit])(using ctx:Context): List[CompilationUnit] = {
-    try super.runOn(units)
+    try
+      val result = super.runOn(units)
+      generatedClassHandler.complete()
+      result
     finally
       // frontendAccess and postProcessor are created lazilly, clean them up only if they were initialized
       if _frontendAccess ne null then
@@ -100,6 +106,7 @@ class GenBCode extends Phase { self =>
         }
       if _postProcessor ne null then
         postProcessor.classfileWriter.close()
+      generatedClassHandler.close()
   }
 }
 

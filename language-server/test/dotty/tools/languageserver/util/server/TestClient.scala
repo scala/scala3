@@ -14,7 +14,7 @@ import scala.collection.mutable.Buffer
 class TestClient extends DottyClient {
 
   class Log[T] {
-    private[this] val log = Buffer.empty[T]
+    private val log = Buffer.empty[T]
 
     def +=(elem: T): this.type = { log += elem; this }
     def get: List[T] = log.toList

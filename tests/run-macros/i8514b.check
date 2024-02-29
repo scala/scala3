@@ -1,5 +1,5 @@
 B
-A[[T >: scala.Nothing <: scala.Any] => P[T], scala.Predef.String]
+A[[T >: scala.Nothing <: scala.Any] =>> P[T], scala.Predef.String]
 java.lang.Object
 scala.Matchable
 scala.Any

@@ -11,7 +11,7 @@ format corresponding to the backing data structure, e.g. `ExprType(...)`
 corresponds to `class ExprType`, defined in [Types.scala].
 
 > You can inspect the representation of any type using the [dotty.tools.printTypes][DottyTypeStealer]
-> script, its usage and integration into your debugging workflow is [described here](../issues/inspection.md).
+> script, its usage and integration into your debugging workflow is [described here](../debugging/inspection.md).
 
 ### Types of Definitions
 

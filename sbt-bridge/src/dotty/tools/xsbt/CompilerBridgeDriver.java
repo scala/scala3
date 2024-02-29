@@ -10,15 +10,26 @@ import dotty.tools.dotc.Driver;
 import dotty.tools.dotc.ScalacCommand;
 import dotty.tools.dotc.config.Properties;
 import dotty.tools.dotc.core.Contexts;
+import dotty.tools.dotc.util.SourceFile;
 import dotty.tools.io.AbstractFile;
+import dotty.tools.io.PlainFile;
+import dotty.tools.io.Path;
+import dotty.tools.io.Streamable;
 import scala.collection.mutable.ListBuffer;
+import scala.jdk.javaapi.CollectionConverters;
 import scala.io.Codec;
 import xsbti.Problem;
 import xsbti.*;
 import xsbti.compile.Output;
+import xsbti.compile.CompileProgress;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Comparator;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Arrays;
 
 public class CompilerBridgeDriver extends Driver {
@@ -50,15 +61,72 @@ public class CompilerBridgeDriver extends Driver {
     return false;
   }
 
-  synchronized public void run(VirtualFile[] sources, AnalysisCallback callback, Logger log, Reporter delegate) {
-    DelegatingReporter reporter = new DelegatingReporter(delegate);
+  private static VirtualFile asVirtualFile(SourceFile sourceFile, DelegatingReporter reporter,
+      HashMap<AbstractFile, VirtualFile> lookup) {
+    return lookup.computeIfAbsent(sourceFile.file(), path -> {
+      reportMissingFile(reporter, sourceFile);
+      if (sourceFile.file().jpath() != null)
+        return new FallbackPathBasedFile(sourceFile);
+      else
+        return new FallbackVirtualFile(sourceFile);
+    });
+  }
+
+  private static void reportMissingFile(DelegatingReporter reporter, SourceFile sourceFile) {
+    String underline = String.join("", Collections.nCopies(sourceFile.path().length(), "^"));
+    String message =
+      sourceFile.path() + ": Missing Zinc virtual file\n" +
+      underline + "\n" +
+      "    Falling back to placeholder for the given source file (of class " + sourceFile.getClass().getName() + ")\n" +
+      "    This is likely a bug in incremental compilation for the Scala 3 compiler.\n" +
+      "    Please report it to the Scala 3 maintainers at https://github.com/lampepfl/dotty/issues.";
+    reporter.reportBasicWarning(message);
+  }
+
+  synchronized public void run(
+      VirtualFile[] sources, AnalysisCallback callback, Logger log, Reporter delegate, CompileProgress progress) {
+    VirtualFile[] sortedSources = new VirtualFile[sources.length];
+    System.arraycopy(sources, 0, sortedSources, 0, sources.length);
+    Arrays.sort(sortedSources, (x0, x1) -> x0.id().compareTo(x1.id()));
+
+    ListBuffer<AbstractFile> sourcesBuffer = new ListBuffer<>();
+    HashMap<AbstractFile, VirtualFile> lookup = new HashMap<>(sources.length, 0.25f);
+
+    for (int i = 0; i < sources.length; i++) {
+      VirtualFile source = sortedSources[i];
+      AbstractFile abstractFile = asDottyFile(source);
+      sourcesBuffer.append(abstractFile);
+      lookup.put(abstractFile, source);
+    }
+
+    DelegatingReporter reporter = new DelegatingReporter(delegate, sourceFile -> {
+      // TODO: possible situation here where we use -from-tasty and TASTy source files but
+      // the reporter log is associated to a Scala source file?
+
+      // Zinc will use the output of this function to possibly lookup a mapped virtual file,
+      // e.g. convert `${ROOT}/Foo.scala` to `/path/to/Foo.scala` if it exists in the lookup map.
+      VirtualFile vf = lookup.get(sourceFile.file());
+      if (vf != null)
+        return vf.id();
+      else
+        // follow Zinc, which uses the path of the source file as a fallback.
+        return sourceFile.path();
+    });
+
+    ProgressCallbackImpl progressCallback = new ProgressCallbackImpl(progress);
+
+    IncrementalCallback incCallback = new IncrementalCallback(callback, sourceFile ->
+      asVirtualFile(sourceFile, reporter, lookup)
+    );
+
     try {
       log.debug(this::infoOnCachedCompiler);
 
       Contexts.Context initialCtx = initCtx()
         .fresh()
         .setReporter(reporter)
-        .setSbtCallback(callback);
+        .setIncCallback(incCallback)
+        .setProgressCallback(progressCallback);
 
       Contexts.Context context = setup(args, initialCtx).map(t -> t._2).getOrElse(() -> initialCtx);
 
@@ -70,28 +138,28 @@ public class CompilerBridgeDriver extends Driver {
         log.debug(this::prettyPrintCompilationArguments);
         Compiler compiler = newCompiler(context);
 
-        VirtualFile[] sortedSources = new VirtualFile[sources.length];
-        System.arraycopy(sources, 0, sortedSources, 0, sources.length);
-        Arrays.sort(
-          sortedSources,
-          new Comparator<VirtualFile>() {
-            @Override
-            public int compare(VirtualFile x0, VirtualFile x1) {
-              return x0.id().compareTo(x1.id());
-            }
-          }
-        );
-
-        ListBuffer<AbstractFile> sourcesBuffer = new ListBuffer<>();
-        for (VirtualFile file: sortedSources)
-          sourcesBuffer.append(asDottyFile(file));
         doCompile(compiler, sourcesBuffer.toList(), context);
 
         for (xsbti.Problem problem: delegate.problems()) {
-          callback.problem(problem.category(), problem.position(), problem.message(), problem.severity(),
-            true);
+          try {
+            AnalysisCallback2 callback2 = (AnalysisCallback2)callback;
+            callback2.problem2(
+              problem.category(),
+              problem.position(),
+              problem.message(),
+              problem.severity(),
+              true, // reported
+              problem.rendered(),
+              problem.diagnosticCode(),
+              problem.diagnosticRelatedInformation(),
+              problem.actions()
+            );
+          } catch (NoClassDefFoundError e) {
+            callback.problem(problem.category(), problem.position(), problem.message(), problem.severity(),
+              true);
+          }
         }
-      } else {  
+      } else {
         delegate.printSummary();
       }
 
@@ -105,11 +173,28 @@ public class CompilerBridgeDriver extends Driver {
   }
 
   private static AbstractFile asDottyFile(VirtualFile virtualFile) {
-    if (virtualFile instanceof PathBasedFile)
-      return new ZincPlainFile((PathBasedFile) virtualFile);
+    if (virtualFile instanceof PathBasedFile) {
+      java.nio.file.Path path = ((PathBasedFile) virtualFile).toPath();
+      return new PlainFile(new Path(path));
+    }
 
     try {
-      return new ZincVirtualFile(virtualFile);
+      return new dotty.tools.io.VirtualFile(virtualFile.name(), virtualFile.id()) {
+        {
+          // fill in the content
+          try (OutputStream output = output()) {
+            try (InputStream input = virtualFile.input()) {
+              Streamable.Bytes bytes = new Streamable.Bytes() {
+                @Override
+                public InputStream inputStream() {
+                  return input;
+                }
+              };
+              output.write(bytes.toByteArray());
+            }
+          }
+        }
+      };
     } catch (IOException e) {
       throw new IllegalArgumentException("invalid file " + virtualFile.name(), e);
     }

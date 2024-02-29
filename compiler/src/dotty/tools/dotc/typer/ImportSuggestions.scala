@@ -3,17 +3,18 @@ package dotc
 package typer
 
 import backend.sjs.JSDefinitions
-import core._
-import Contexts._, Types._, Symbols._, Names._, Decorators._, ProtoTypes._
-import Flags._, SymDenotations._
+import core.*
+import Contexts.*, Types.*, Symbols.*, Names.*, Decorators.*, ProtoTypes.*
+import Flags.*, SymDenotations.*
 import NameKinds.FlatName
-import StdNames._
+import StdNames.*
 import config.Printers.{implicits, implicitsDetailed}
 import ast.{untpd, tpd}
 import Implicits.{hasExtMethod, Candidate}
 import java.util.{Timer, TimerTask}
 import collection.mutable
 import scala.util.control.NonFatal
+import cc.isCaptureChecking
 
 /** This trait defines the method `importSuggestionAddendum` that adds an addendum
  *  to error messages suggesting additional imports.
@@ -24,7 +25,7 @@ trait ImportSuggestions:
   /** The maximal number of suggested imports to make */
   inline val MaxSuggestions = 10
 
-  import tpd._
+  import tpd.*
 
   /** Timeout to test a single implicit value as a suggestion, in ms */
   private inline val testOneImplicitTimeOut = 500
@@ -195,7 +196,7 @@ trait ImportSuggestions:
       && {
         val task = new TimerTask:
           def run() =
-            println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
+            implicits.println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
             ctx.run.nn.isCancelled = true
         val span = ctx.owner.srcPos.span
         val (expectedType, argument, kind) = pt match
@@ -237,7 +238,7 @@ trait ImportSuggestions:
           // don't suggest things that are imported by default
 
       def extensionImports = pt match
-        case ViewProto(argType, SelectionProto(name: TermName, _, _, _)) =>
+        case ViewProto(argType, SelectionProto(name: TermName, _, _, _, _)) =>
           roots.flatMap(extensionMethod(_, name, argType))
         case _ =>
           Nil
@@ -319,7 +320,7 @@ trait ImportSuggestions:
    *  If there's nothing to suggest, an empty string is returned.
    */
   override def importSuggestionAddendum(pt: Type)(using Context): String =
-    if ctx.phase == Phases.checkCapturesPhase then
+    if isCaptureChecking then
       return "" // it's too late then to look for implicits
     val (fullMatches, headMatches) =
       importSuggestions(pt)(using ctx.fresh.setExploreTyperState())
@@ -330,7 +331,7 @@ trait ImportSuggestions:
     def importString(ref: TermRef): String =
       val imported =
         if ref.symbol.is(ExtensionMethod) then
-          s"${ctx.printer.toTextPrefix(ref.prefix).show}${ref.symbol.name}"
+          s"${ctx.printer.toTextPrefixOf(ref).show}${ref.symbol.name}"
         else
           ctx.printer.toTextRef(ref).show
       s"  import $imported"

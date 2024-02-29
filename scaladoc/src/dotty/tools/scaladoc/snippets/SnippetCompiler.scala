@@ -21,7 +21,7 @@ import dotty.tools.dotc.util.{ SourcePosition, NoSourcePosition, SourceFile, NoS
 import scala.util.{ Try, Success, Failure }
 
 class SnippetCompiler(
-  val snippetCompilerSettings: Seq[SnippetCompilerSetting[_]],
+  val snippetCompilerSettings: Seq[SnippetCompilerSetting[?]],
   target: AbstractFile = new VirtualDirectory("(memory)")
 ):
   object SnippetDriver extends Driver:

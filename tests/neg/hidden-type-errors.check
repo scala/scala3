@@ -1,0 +1,20 @@
+-- [E007] Type Mismatch Error: tests/neg/hidden-type-errors/Test.scala:8:24 --------------------------------------------
+8 |   val x = X.doSomething("XXX") // error
+  |           ^^^^^^^^^^^^^^^^^^^^
+  |           Found:    String
+  |           Required: Int
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  |
+  | Tree: t12717.A.bar("XXX")
+  | I tried to show that
+  |   String
+  | conforms to
+  |   Int
+  | but none of the attempts shown below succeeded:
+  |
+  |   ==> String  <:  Int  = false
+  |
+  | The tests were made under the empty constraint
+   ---------------------------------------------------------------------------------------------------------------------

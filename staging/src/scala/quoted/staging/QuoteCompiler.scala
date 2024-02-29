@@ -5,6 +5,7 @@ import dotty.tools.unsupported
 import dotty.tools.dotc._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.CompilationUnitInfo
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Mode
@@ -33,7 +34,7 @@ import scala.quoted.{Expr, Quotes, Type}
 private class QuoteCompiler extends Compiler:
 
   /** Either `Left` with name of the classfile generated or `Right` with the value contained in the expression */
-  private[this] var result: Either[String, Any] = null
+  private var result: Either[String, Any] = null
 
   override protected def frontendPhases: List[List[Phase]] =
     List(List(new QuotedFrontend))
@@ -62,18 +63,19 @@ private class QuoteCompiler extends Compiler:
     def phaseName: String = "quotedFrontend"
 
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
+      // NOTE: although this is a phase, there is no need to track xsbti.CompileProgress here.
       units.flatMap {
         case exprUnit: ExprCompilationUnit =>
           val ctx1 = ctx.fresh.setPhase(this.start).setCompilationUnit(exprUnit)
           implicit val unitCtx: Context = SpliceScope.setSpliceScope(new RunScope)(using ctx1)
 
           val pos = Span(0)
-          val assocFile = new VirtualFile("<quote>")
+          val compUnitInfo = CompilationUnitInfo(new VirtualFile("<quote>"))
 
           // Places the contents of expr in a compilable tree for a class with the following format.
           // `package __root__ { class ' { def apply: Any = <expr> } }`
           val cls = newCompleteClassSymbol(defn.RootClass, outputClassName, EmptyFlags,
-            defn.ObjectType :: Nil, newScope, coord = pos, assocFile = assocFile).entered.asClass
+            defn.ObjectType :: Nil, newScope, coord = pos, compUnitInfo = compUnitInfo).entered.asClass
           cls.enter(newDefaultConstructor(cls), EmptyScope)
           val meth = newSymbol(cls, nme.apply, Method, ExprType(defn.AnyType), coord = pos).entered
 
@@ -93,8 +95,9 @@ private class QuoteCompiler extends Compiler:
               val classTree = ClassDef(cls, DefDef(cls.primaryConstructor.asTerm), run :: Nil)
               val tree = PackageDef(ref(defn.RootPackage).asInstanceOf[Ident], classTree :: Nil).withSpan(pos)
               val source = SourceFile.virtual("<quoted.Expr>", "")
+              val unitInfo = CompilationUnitInfo(source.file, tastyInfo = None)
               result = Left(outputClassName.toString)
-              Some(CompilationUnit(source, tree, forceTrees = true))
+              Some(CompilationUnit(source, tree, forceTrees = true, unitInfo))
       }
 
     /** Get the literal value if this tree only contains a literal tree */
@@ -113,7 +116,7 @@ private class QuoteCompiler extends Compiler:
     /** Unpickle and optionally compile the expression.
      *  Returns either `Left` with name of the classfile generated or `Right` with the value contained in the expression.
      */
-    def compileExpr(exprBuilder:  Quotes => Expr[_]): Either[String, Any] =
+    def compileExpr(exprBuilder:  Quotes => Expr[?]): Either[String, Any] =
       val units = new ExprCompilationUnit(exprBuilder) :: Nil
       compileUnits(units)
       result

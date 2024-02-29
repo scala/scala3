@@ -2,11 +2,11 @@ package dotty.tools.dotc.semanticdb
 
 import dotty.tools.dotc.core
 import core.Symbols.{ Symbol , defn, NoSymbol }
-import core.Contexts._
+import core.Contexts.*
 import core.Names
 import core.Names.Name
 import core.Types.{Type, TypeBounds}
-import core.Flags._
+import core.Flags.*
 import core.NameKinds
 import core.StdNames.nme
 import SymbolInformation.{Kind => k}
@@ -20,8 +20,8 @@ import scala.annotation.internal.sharable
 import scala.annotation.switch
 
 object Scala3:
-  import Symbols._
-  import core.NameOps._
+  import Symbols.*
+  import core.NameOps.*
 
   @sharable private val unicodeEscape = raw"\$$u(\p{XDigit}{4})".r
   @sharable private val locals        = raw"local(\d+)".r
@@ -29,7 +29,7 @@ object Scala3:
 
   private val WILDCARDTypeName = nme.WILDCARD.toTypeName
 
-  def range(span: Span, treeSource: SourceFile)(using Context): Option[Range] =
+  def range(span: Span, treeSource: SourceFile): Option[Range] =
     def lineCol(offset: Int) = (treeSource.offsetToLine(offset), treeSource.column(offset))
     val (startLine, startCol) = lineCol(span.start)
     val (endLine, endCol) = lineCol(span.end)
@@ -47,7 +47,8 @@ object Scala3:
       // for secondary constructors `this`
       desig match
         case sym: Symbol =>
-          if sym.isConstructor && nameInSource == nme.THISkw.toString then
+          if sym.isConstructor
+          && (sym.isPrimaryConstructor || nameInSource == nme.THISkw.toString) then
             true
           else
             val target =
@@ -216,7 +217,8 @@ object Scala3:
 
       def isEmptyNumbered: Boolean =
         !name.is(NameKinds.WildcardParamName)
-        && !name.is(NameKinds.EvidenceParamName)
+        && !name.is(NameKinds.ContextBoundParamName)
+        && !name.is(NameKinds.ContextFunctionParamName)
         && { name match
           case NameKinds.AnyNumberedName(nme.EMPTY, _) => true
           case _                                       => false
@@ -483,6 +485,8 @@ object Scala3:
   given Ordering[SymbolOccurrence] = (x, y) => compareRange(x.range, y.range)
 
   given Ordering[SymbolInformation] = Ordering.by[SymbolInformation, String](_.symbol)(IdentifierOrdering())
+
+  given Ordering[Diagnostic] = (x, y) => compareRange(x.range, y.range)
 
   given Ordering[Synthetic] = (x, y) => compareRange(x.range, y.range)
 

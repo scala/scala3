@@ -1,11 +1,11 @@
 package dotty.tools.dotc.quoted
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Symbols.*
 
 object QuoteUtils:
-  import tpd._
+  import tpd.*
 
   /** Get the owner of a tree if it has one */
   def treeOwner(tree: Tree)(using Context): Option[Symbol] = {

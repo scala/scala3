@@ -22,11 +22,8 @@ object CommentPickler:
 
     def pickleComment(addr: Addr, comment: Comment): Unit =
       if addr != NoAddr then
-        val bytes = comment.raw.getBytes(StandardCharsets.UTF_8).nn
-        val length = bytes.length
         buf.writeAddr(addr)
-        buf.writeNat(length)
-        buf.writeBytes(bytes, length)
+        buf.writeUtf8(comment.raw)
         buf.writeLongInt(comment.span.coords)
 
     def traverse(x: Any): Unit = x match

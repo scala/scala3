@@ -1,7 +1,7 @@
 -- [E129] Potential Issue Warning: tests/neg-macros/annot-suspend-cycle/Macro.scala:7:4 --------------------------------
 7 |    new Foo
   |    ^^^^^^^
-  |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+  |    A pure expression does nothing in statement position
   |
   | longer explanation available when compiling with `-explain`
 Cyclic macro dependencies in tests/neg-macros/annot-suspend-cycle/Test.scala.

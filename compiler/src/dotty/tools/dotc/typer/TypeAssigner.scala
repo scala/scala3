@@ -2,14 +2,14 @@ package dotty.tools
 package dotc
 package typer
 
-import core._
-import ast._
-import Contexts._, ContextOps._, Constants._, Types._, Symbols._, Names._, Flags._, Decorators._
-import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._
+import core.*
+import ast.*
+import Contexts.*, ContextOps.*, Constants.*, Types.*, Symbols.*, Names.*, Flags.*, Decorators.*
+import ErrorReporting.*, Annotations.*, Denotations.*, SymDenotations.*, StdNames.*
 import util.SrcPos
-import NameOps._
+import NameOps.*
 import collection.mutable
-import reporting._
+import reporting.*
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 import cc.CaptureSet
 
@@ -22,7 +22,11 @@ trait TypeAssigner {
    */
   def qualifyingClass(tree: untpd.Tree, qual: Name, packageOK: Boolean)(using Context): Symbol = {
     def qualifies(sym: Symbol) =
-      sym.isClass && (
+      sym.isClass &&
+      // `this` in a polymorphic function type never refers to the desugared refinement.
+      // In other refinements, `this` does refer to the refinement but is deprecated
+      // (see `Checking#checkRefinementNonCyclic`).
+      !(sym.isRefinementClass && sym.derivesFrom(defn.PolyFunctionClass)) && (
           qual.isEmpty ||
           sym.name == qual ||
           sym.is(Module) && sym.name.stripModuleClassSuffix == qual)
@@ -103,8 +107,10 @@ trait TypeAssigner {
     val tpe1 = accessibleType(tpe, superAccess)
     if tpe1.exists then tpe1
     else tpe match
-      case tpe: NamedType => inaccessibleErrorType(tpe, superAccess, pos)
-      case NoType => tpe
+      case tpe: NamedType =>
+        if tpe.termSymbol.hasPublicInBinary && tpd.enclosingInlineds.nonEmpty then tpe
+        else inaccessibleErrorType(tpe, superAccess, pos)
+      case _ => tpe
 
   /** Return a potentially skolemized version of `qualTpe` to be used
    *  as a prefix when selecting `name`.
@@ -122,7 +128,7 @@ trait TypeAssigner {
     val qualType0 = qual1.tpe.widenIfUnstable
     val qualType =
       if !qualType0.hasSimpleKind && tree.name != nme.CONSTRUCTOR then
-        // constructors are selected on typeconstructor, type arguments are passed afterwards
+        // constructors are selected on type constructor, type arguments are passed afterwards
         errorType(em"$qualType0 takes type parameters", qual1.srcPos)
       else if !qualType0.isInstanceOf[TermType] && !qualType0.isError then
         errorType(em"$qualType0 is illegal as a selection prefix", qual1.srcPos)
@@ -161,7 +167,7 @@ trait TypeAssigner {
 
   def importSuggestionAddendum(pt: Type)(using Context): String = ""
 
-  def notAMemberErrorType(tree: untpd.Select, qual: Tree)(using Context): ErrorType =
+  def notAMemberErrorType(tree: untpd.Select, qual: Tree, proto: Type)(using Context): ErrorType =
     val qualType = qual.tpe.widenIfUnstable
     def kind = if tree.isType then "type" else "value"
     val foundWithoutNull = qualType match
@@ -173,7 +179,7 @@ trait TypeAssigner {
     def addendum = err.selectErrorAddendum(tree, qual, qualType, importSuggestionAddendum, foundWithoutNull)
     val msg: Message =
       if tree.name == nme.CONSTRUCTOR then em"$qualType does not have a constructor"
-      else NotAMember(qualType, tree.name, kind, addendum)
+      else NotAMember(qualType, tree.name, kind, proto, addendum)
     errorType(msg, tree.srcPos)
 
   def inaccessibleErrorType(tpe: NamedType, superAccess: Boolean, pos: SrcPos)(using Context): Type =
@@ -202,7 +208,7 @@ trait TypeAssigner {
   def assignType(tree: untpd.Select, qual: Tree)(using Context): Select =
     val rawType = selectionType(tree, qual)
     val checkedType = ensureAccessible(rawType, qual.isInstanceOf[Super], tree.srcPos)
-    val ownType = checkedType.orElse(notAMemberErrorType(tree, qual))
+    val ownType = checkedType.orElse(notAMemberErrorType(tree, qual, WildcardType))
     assignType(tree, ownType)
 
   /** Normalize type T appearing in a new T by following eta expansions to
@@ -293,6 +299,8 @@ trait TypeAssigner {
           else fntpe.resultType // fast path optimization
         else
           errorType(em"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.srcPos)
+      case err: ErrorType =>
+        err
       case t =>
         if (ctx.settings.Ydebug.value) new FatalError("").printStackTrace()
         errorType(err.takesNoParamsMsg(fn, ""), tree.srcPos)
@@ -401,7 +409,17 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.Closure, meth: Tree, target: Tree)(using Context): Closure =
     tree.withType(
-      if (target.isEmpty) meth.tpe.widen.toFunctionType(isJava = meth.symbol.is(JavaDefined), tree.env.length)
+      if target.isEmpty then
+        def methTypeWithoutEnv(info: Type): Type = info match
+          case mt: MethodType =>
+            val dropLast = tree.env.length
+            val paramNames = mt.paramNames.dropRight(dropLast)
+            val paramInfos = mt.paramInfos.dropRight(dropLast)
+            mt.derivedLambdaType(paramNames, paramInfos)
+          case pt: PolyType =>
+            pt.derivedLambdaType(resType = methTypeWithoutEnv(pt.resType))
+        val methodicType = if tree.env.isEmpty then meth.tpe.widen else methTypeWithoutEnv(meth.tpe.widen)
+        methodicType.toFunctionType(isJava = meth.symbol.is(JavaDefined))
       else target.tpe)
 
   def assignType(tree: untpd.CaseDef, pat: Tree, body: Tree)(using Context): CaseDef = {
@@ -512,6 +530,9 @@ trait TypeAssigner {
   def assignType(tree: untpd.UnApply, proto: Type)(using Context): UnApply =
     tree.withType(proto)
 
+  def assignType(tree: untpd.QuotePattern, proto: Type)(using Context): QuotePattern =
+    tree.withType(proto)
+
   def assignType(tree: untpd.ValDef, sym: Symbol)(using Context): ValDef =
     tree.withType(if (sym.exists) assertExists(sym.termRef) else NoType)
 
@@ -546,5 +567,3 @@ object TypeAssigner extends TypeAssigner:
   def seqLitType(tree: untpd.SeqLiteral, elemType: Type)(using Context) = tree match
     case tree: untpd.JavaSeqLiteral => defn.ArrayOf(elemType)
     case _ => if ctx.erasedTypes then defn.SeqType else defn.SeqType.appliedTo(elemType)
-
-

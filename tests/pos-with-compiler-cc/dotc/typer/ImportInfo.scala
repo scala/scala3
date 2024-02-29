@@ -53,7 +53,7 @@ object ImportInfo {
 class ImportInfo(symf: Context ?-> Symbol,
                  val selectors: List[untpd.ImportSelector],
                  val qualifier: untpd.Tree,
-                 val isRootImport: Boolean = false) extends Showable, caps.Pure {
+                 val isRootImport: Boolean = false) extends Showable, Pure {
 
   private def symNameOpt = qualifier match {
     case ref: untpd.RefTree => Some(ref.name.asTermName)

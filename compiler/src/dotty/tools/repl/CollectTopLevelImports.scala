@@ -1,8 +1,10 @@
 package dotty.tools.repl
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Phases.Phase
+
+import scala.compiletime.uninitialized
 
 /** A phase that collects user defined top level imports.
  *
@@ -10,11 +12,11 @@ import dotty.tools.dotc.core.Phases.Phase
  *  after Typer.
  */
 class CollectTopLevelImports extends Phase {
-  import tpd._
+  import tpd.*
 
   def phaseName: String = "collectTopLevelImports"
 
-  private var myImports: List[Import] = _
+  private var myImports: List[Import] = uninitialized
   def imports: List[Import] = myImports
 
   def run(using Context): Unit = {

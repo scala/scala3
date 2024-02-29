@@ -1,3 +1,23 @@
+-- [E007] Type Mismatch Error: tests/neg/i13780.scala:12:32 ------------------------------------------------------------
+12 |  def unpair[X <: Y]: Head[X] = "" // error
+   |                                ^^
+   |                                Found:    ("" : String)
+   |                                Required: Head[X]
+   |
+   |                                where:    X is a type in method unpair with bounds <: A.this.Y
+   |
+   |
+   |                                Note: a match type could not be fully reduced:
+   |
+   |                                  trying to reduce  Head[X]
+   |                                  failed since selector X
+   |                                  does not uniquely determine parameters a, b in
+   |                                    case (a, b) => a
+   |                                  The computed bounds for the parameters are:
+   |                                    a
+   |                                    b
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/i13780.scala:18:31 ------------------------------------------------------------
 18 |  def int[X <: Y]: Int = unpair[X]  // error
    |                         ^^^^^^^^^
@@ -14,8 +34,8 @@
    |                           does not uniquely determine parameters a, b in
    |                             case (a, b) => a
    |                           The computed bounds for the parameters are:
-   |                             a >: Int
-   |                             b >: Int
+   |                             a <: Int
+   |                             b <: Int
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/i13780.scala:23:37 ------------------------------------------------------------
@@ -34,7 +54,7 @@
    |                                 does not uniquely determine parameters a, b in
    |                                   case (a, b) => a
    |                                 The computed bounds for the parameters are:
-   |                                   a >: String
-   |                                   b >: String
+   |                                   a <: String
+   |                                   b <: String
    |
    | longer explanation available when compiling with `-explain`

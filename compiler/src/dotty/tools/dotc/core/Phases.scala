@@ -2,17 +2,17 @@ package dotty.tools
 package dotc
 package core
 
-import Periods._
-import Contexts._
+import Periods.*
+import Contexts.*
 import dotty.tools.backend.jvm.GenBCode
-import DenotTransformers._
-import Denotations._
-import Decorators._
+import DenotTransformers.*
+import Denotations.*
+import Decorators.*
 import config.Printers.config
 import scala.collection.mutable.ListBuffer
-import dotty.tools.dotc.transform.MegaPhase._
-import dotty.tools.dotc.transform._
-import Periods._
+import dotty.tools.dotc.transform.MegaPhase.*
+import dotty.tools.dotc.transform.*
+import Periods.*
 import parsing.Parser
 import printing.XprintMode
 import typer.{TyperPhase, RefChecks}
@@ -21,6 +21,7 @@ import typer.ImportInfo.withRootImports
 import ast.{tpd, untpd}
 import scala.annotation.internal.sharable
 import scala.util.control.NonFatal
+import scala.compiletime.uninitialized
 
 object Phases {
 
@@ -205,30 +206,30 @@ object Phases {
         if nextDenotTransformerId(i) == phase.id then
           nextDenotTransformerId(i) = nextDenotTransformerId(phase.id + 1)
 
-    private var myParserPhase: Phase = _
-    private var myTyperPhase: Phase = _
-    private var myPostTyperPhase: Phase = _
-    private var mySbtExtractDependenciesPhase: Phase = _
-    private var myPicklerPhase: Phase = _
-    private var myInliningPhase: Phase = _
-    private var myStagingPhase: Phase = _
-    private var mySplicingPhase: Phase = _
-    private var myFirstTransformPhase: Phase = _
-    private var myCollectNullableFieldsPhase: Phase = _
-    private var myRefChecksPhase: Phase = _
-    private var myPatmatPhase: Phase = _
-    private var myElimRepeatedPhase: Phase = _
-    private var myElimByNamePhase: Phase = _
-    private var myExtensionMethodsPhase: Phase = _
-    private var myExplicitOuterPhase: Phase = _
-    private var myGettersPhase: Phase = _
-    private var myErasurePhase: Phase = _
-    private var myElimErasedValueTypePhase: Phase = _
-    private var myLambdaLiftPhase: Phase = _
-    private var myCountOuterAccessesPhase: Phase = _
-    private var myFlattenPhase: Phase = _
-    private var myGenBCodePhase: Phase = _
-    private var myCheckCapturesPhase: Phase = _
+    private var myParserPhase: Phase = uninitialized
+    private var myTyperPhase: Phase = uninitialized
+    private var myPostTyperPhase: Phase = uninitialized
+    private var mySbtExtractDependenciesPhase: Phase = uninitialized
+    private var myPicklerPhase: Phase = uninitialized
+    private var myInliningPhase: Phase = uninitialized
+    private var myStagingPhase: Phase = uninitialized
+    private var mySplicingPhase: Phase = uninitialized
+    private var myFirstTransformPhase: Phase = uninitialized
+    private var myCollectNullableFieldsPhase: Phase = uninitialized
+    private var myRefChecksPhase: Phase = uninitialized
+    private var myPatmatPhase: Phase = uninitialized
+    private var myElimRepeatedPhase: Phase = uninitialized
+    private var myElimByNamePhase: Phase = uninitialized
+    private var myExtensionMethodsPhase: Phase = uninitialized
+    private var myExplicitOuterPhase: Phase = uninitialized
+    private var myGettersPhase: Phase = uninitialized
+    private var myErasurePhase: Phase = uninitialized
+    private var myElimErasedValueTypePhase: Phase = uninitialized
+    private var myLambdaLiftPhase: Phase = uninitialized
+    private var myCountOuterAccessesPhase: Phase = uninitialized
+    private var myFlattenPhase: Phase = uninitialized
+    private var myGenBCodePhase: Phase = uninitialized
+    private var myCheckCapturesPhase: Phase = uninitialized
 
     final def parserPhase: Phase = myParserPhase
     final def typerPhase: Phase = myTyperPhase
@@ -299,12 +300,23 @@ object Phases {
      */
     def phaseName: String
 
+    /** This property is queried when phases are first assembled.
+     *  If it is false, the phase will be dropped from the set of phases to traverse.
+     */
+    def isEnabled(using Context): Boolean = true
+
+    /** This property is queried before a phase is run.
+     *  If it is false, the phase is skipped.
+     */
     def isRunnable(using Context): Boolean =
       !ctx.reporter.hasErrors
         // TODO: This might test an unintended condition.
         // To find out whether any errors have been reported during this
         // run one calls `errorsReported`, not `hasErrors`.
         // But maybe changing this would prevent useful phases from running?
+
+    /** True for all phases except NoPhase */
+    def exists: Boolean = true
 
     /** If set, allow missing or superfluous arguments in applications
      *  and type applications.
@@ -317,19 +329,38 @@ object Phases {
     /** List of names of phases that should precede this phase */
     def runsAfter: Set[String] = Set.empty
 
+    /** for purposes of progress tracking, overridden in TyperPhase */
+    def subPhases: List[Run.SubPhase] = Nil
+    final def traversals: Int = if subPhases.isEmpty then 1 else subPhases.length
+
+    /** skip the phase for a Java compilation unit, may depend on -Yjava-tasty */
+    def skipIfJava(using Context): Boolean = true
+
     /** @pre `isRunnable` returns true */
     def run(using Context): Unit
 
     /** @pre `isRunnable` returns true */
-    def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
-      units.map { unit =>
-        val unitCtx = ctx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
-        try run(using unitCtx)
-        catch case ex: Throwable if !ctx.run.enrichedErrorMessage =>
-          println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
-          throw ex
-        unitCtx.compilationUnit
-      }
+    def runOn(units: List[CompilationUnit])(using runCtx: Context): List[CompilationUnit] =
+      val buf = List.newBuilder[CompilationUnit]
+      // factor out typedAsJava check when not needed
+      val doSkipJava = ctx.settings.YjavaTasty.value && this <= picklerPhase && skipIfJava
+      for unit <- units do
+        given unitCtx: Context = runCtx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
+        if ctx.run.enterUnit(unit) then
+          try
+            if doSkipJava && unit.typedAsJava then
+              ()
+            else
+              run
+          catch case ex: Throwable if !ctx.run.enrichedErrorMessage =>
+            println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
+            throw ex
+          finally ctx.run.advanceUnit()
+          buf += unitCtx.compilationUnit
+        end if
+      end for
+      buf.result()
+    end runOn
 
     /** Convert a compilation unit's tree to a string; can be overridden */
     def show(tree: untpd.Tree)(using Context): String =
@@ -360,14 +391,15 @@ object Phases {
     /** Can this transform change the base types of a type? */
     def changesBaseTypes: Boolean = changesParents
 
-    def isEnabled(using Context): Boolean = true
-
-    def exists: Boolean = true
-
     def initContext(ctx: FreshContext): Unit = ()
 
+    /** A hook that allows to transform the usual context passed to the function
+     *  that prints a compilation unit after a phase
+     */
+    def printingContext(ctx: Context): Context = ctx
+
     private var myPeriod: Period = Periods.InvalidPeriod
-    private var myBase: ContextBase = _
+    private var myBase: ContextBase = uninitialized
     private var myErasedTypes = false
     private var myFlatClasses = false
     private var myRefChecked = false
@@ -425,8 +457,8 @@ object Phases {
     final def prev: Phase =
       if (id > FirstPhaseId) myBase.phases(start - 1) else NoPhase
 
-    final def prevMega(using Context): Phase =
-      ctx.base.fusedContaining(ctx.phase.prev)
+    final def megaPhase(using Context): Phase =
+      ctx.base.fusedContaining(this)
 
     final def next: Phase =
       if (hasNext) myBase.phases(end + 1) else NoPhase
@@ -436,12 +468,33 @@ object Phases {
     final def iterator: Iterator[Phase] =
       Iterator.iterate(this)(_.next) takeWhile (_.hasNext)
 
-    final def monitor(doing: String)(body: => Unit)(using Context): Unit =
-      try body
-      catch
-        case NonFatal(ex) =>
-          report.echo(s"exception occurred while $doing ${ctx.compilationUnit}")
+    /** Cancellable region, if not cancelled, run the body in the context of the current compilation unit.
+      * Enrich crash messages.
+      */
+    final def monitor(doing: String)(body: Context ?=> Unit)(using Context): Boolean =
+      val unit = ctx.compilationUnit
+      if ctx.run.enterUnit(unit) then
+        try {body; true}
+        catch case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
+          report.echo(ctx.run.enrichErrorMessage(s"exception occurred while $doing $unit"))
           throw ex
+        finally ctx.run.advanceUnit()
+      else
+        false
+
+    inline def runSubPhase[T](id: Run.SubPhase)(inline body: (Run.SubPhase, Context) ?=> T)(using Context): T =
+      given Run.SubPhase = id
+      try
+        body
+      finally
+        ctx.run.enterNextSubphase()
+
+    /** Do not run if compile progress has been cancelled */
+    final def cancellable(body: Context ?=> Unit)(using Context): Boolean =
+      if ctx.run.enterRegion() then
+        {body; true}
+      else
+        false
 
     override def toString: String = phaseName
   }

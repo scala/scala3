@@ -6,7 +6,7 @@ object int:
    *
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  type S[N <: Int] <: Int = N match {
    *    case 0 => 1
@@ -23,7 +23,7 @@ object int:
   /** Addition of two `Int` singleton types.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val sum: 2 + 2 = 4
    *  ```
@@ -34,7 +34,7 @@ object int:
   /** Subtraction of two `Int` singleton types.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val sub: 4 - 2 = 2
    *  ```
@@ -45,7 +45,7 @@ object int:
   /** Multiplication of two `Int` singleton types.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val mul: 4 * 2 = 8
    *  ```
@@ -56,7 +56,7 @@ object int:
   /** Integer division of two `Int` singleton types.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val div: 5 / 2 = 2
    *  ```
@@ -67,7 +67,7 @@ object int:
   /** Remainder of the division of `X` by `Y`.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val mod: 5 % 2 = 1
    *  ```
@@ -78,7 +78,7 @@ object int:
   /** Binary left shift of `X` by `Y`.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val lshift: 1 << 2 = 4
    *  ```
@@ -89,7 +89,7 @@ object int:
   /** Binary right shift of `X` by `Y`.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val rshift: 10 >> 1 = 5
    *  ```
@@ -100,7 +100,7 @@ object int:
   /** Binary right shift of `X` by `Y`, filling the left with zeros.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val rshiftzero: 10 >>> 1 = 5
    *  ```
@@ -111,7 +111,7 @@ object int:
   /** Bitwise xor of `X` and `Y`.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val xor: 10 ^ 30 = 20
    *  ```
@@ -122,7 +122,7 @@ object int:
   /** Less-than comparison of two `Int` singleton types.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val lt1: 4 < 2 = false
    *  val lt2: 2 < 4 = true
@@ -134,7 +134,7 @@ object int:
   /** Greater-than comparison of two `Int` singleton types.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val gt1: 4 > 2 = true
    *  val gt2: 2 > 2 = false
@@ -146,7 +146,7 @@ object int:
   /** Greater-or-equal comparison of two `Int` singleton types.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val ge1: 4 >= 2 = true
    *  val ge2: 2 >= 3 = false
@@ -158,7 +158,7 @@ object int:
   /** Less-or-equal comparison of two `Int` singleton types.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val lt1: 4 <= 2 = false
    *  val lt2: 2 <= 2 = true
@@ -170,7 +170,7 @@ object int:
   /** Bitwise and of `X` and `Y`.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val and1: BitwiseAnd[4, 4] = 4
    *  val and2: BitwiseAnd[10, 5] = 0
@@ -182,7 +182,7 @@ object int:
   /** Bitwise or of `X` and `Y`.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val or: BitwiseOr[10, 11] = 11
    *  ```
@@ -193,7 +193,7 @@ object int:
   /** Absolute value of an `Int` singleton type.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val abs: Abs[-1] = 1
    *  ```
@@ -204,7 +204,7 @@ object int:
   /** Negation of an `Int` singleton type.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val neg1: Negate[-1] = 1
    *  val neg2: Negate[1] = -1
@@ -216,7 +216,7 @@ object int:
   /** Minimum of two `Int` singleton types.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val min: Min[-1, 1] = -1
    *  ```
@@ -227,7 +227,7 @@ object int:
   /** Maximum of two `Int` singleton types.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val max: Max[-1, 1] = 1
    *  ```
@@ -238,7 +238,7 @@ object int:
   /** String conversion of an `Int` singleton type.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val abs: ToString[1] = "1"
    *  ```
@@ -250,7 +250,7 @@ object int:
   /** Long conversion of an `Int` singleton type.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val x: ToLong[1] = 1L
    *  ```
@@ -261,7 +261,7 @@ object int:
   /** Float conversion of an `Int` singleton type.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val x: ToFloat[1] = 1.0f
    *  ```
@@ -272,7 +272,7 @@ object int:
   /** Double conversion of an `Int` singleton type.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val x: ToDouble[1] = 1.0
    *  ```
@@ -286,7 +286,7 @@ object int:
    * in other words if it is equal to zero.
    *  ```scala
    *  //{
-   *  import compiletime.ops.int._
+   *  import compiletime.ops.int.*
    *  //}
    *  val zero_lzc: NumberOfLeadingZeros[0] = 32
    *  val eight_lzc: NumberOfLeadingZeros[8] = 28

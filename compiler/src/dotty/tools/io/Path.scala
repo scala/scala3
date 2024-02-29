@@ -8,11 +8,11 @@ package dotty.tools.io
 import scala.language.unsafeNulls
 
 import java.io.RandomAccessFile
-import java.nio.file._
+import java.nio.file.*
 import java.net.{URI, URL}
 import java.nio.file.attribute.{BasicFileAttributes, FileTime}
 import java.io.IOException
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.Random.alphanumeric
 
 /** An abstraction for filesystem paths.  The differences between
@@ -63,7 +63,7 @@ object Path {
   private[io] def randomPrefix: String = alphanumeric take 6 mkString ""
   private[io] def fail(msg: String): Nothing = throw FileOperationException(msg)
 }
-import Path._
+import Path.*
 
 /** The Path constructor is private so we can enforce some
  *  semantics regarding how a Path might relate to the world.

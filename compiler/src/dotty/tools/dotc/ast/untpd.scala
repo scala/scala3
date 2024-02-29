@@ -2,15 +2,15 @@ package dotty.tools
 package dotc
 package ast
 
-import core._
-import Types._, Contexts._, Constants._, Names._, Flags._
+import core.*
+import Types.*, Contexts.*, Constants.*, Names.*, Flags.*
 import dotty.tools.dotc.typer.ProtoTypes
-import Symbols._, StdNames._, Trees._
+import Symbols.*, StdNames.*, Trees.*
 import util.{Property, SourceFile, NoSource}
 import util.Spans.Span
 import annotation.constructorOnly
 import annotation.internal.sharable
-import Decorators._
+import Decorators.*
 
 object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
@@ -42,7 +42,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** mods object name impl */
   case class ModuleDef(name: TermName, impl: Template)(implicit @constructorOnly src: SourceFile)
     extends MemberDef {
-    type ThisTree[+T <: Untyped] <: Trees.NameTree[T] with Trees.MemberDef[T] with ModuleDef
+    type ThisTree[+T <: Untyped] <: Trees.NameTree[T] & Trees.MemberDef[T] & ModuleDef
     def withName(name: Name)(using Context): ModuleDef = cpy.ModuleDef(this)(name.toTermName, impl)
   }
 
@@ -137,6 +137,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     val rename: TermName = renamed match
       case Ident(rename: TermName) => rename
       case _ => name
+
+    def isUnimport = rename == nme.WILDCARD
   }
 
   case class Number(digits: String, kind: NumberKind)(implicit @constructorOnly src: SourceFile) extends TermTree
@@ -147,11 +149,21 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case Floating
   }
 
-  /** {x1, ..., xN} T   (only relevant under captureChecking) */
+  /** {x1, ..., xN} T   (only relevant under captureChecking)
+   *  Created when parsing function types so that capture set and result type
+   *  is combined in a single node.
+   */
   case class CapturesAndResult(refs: List[Tree], parent: Tree)(implicit @constructorOnly src: SourceFile) extends TypTree
 
-  /** Short-lived usage in typer, does not need copy/transform/fold infrastructure */
-  case class DependentTypeTree(tp: List[Symbol] => Type)(implicit @constructorOnly src: SourceFile) extends Tree
+  /** A type tree appearing somewhere in the untyped DefDef of a lambda, it will be typed using `tpFun`.
+   *
+   *  @param isResult  Is this the result type of the lambda? This is handled specially in `Namer#valOrDefDefSig`.
+   *  @param tpFun     Compute the type of the type tree given the parameters of the lambda.
+   *                   A lambda has at most one type parameter list followed by exactly one term parameter list.
+   *
+   *  Note: This is only used briefly in Typer and does not need the copy/transform/fold infrastructure.
+   */
+  case class InLambdaTypeTree(isResult: Boolean, tpFun: (List[TypeSymbol], List[TermSymbol]) => Type)(implicit @constructorOnly src: SourceFile) extends Tree
 
   @sharable object EmptyTypeIdent extends Ident(tpnme.EMPTY)(NoSource) with WithoutTypeOrPos[Untyped] {
     override def isEmpty: Boolean = true
@@ -399,6 +411,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Inlined(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree)(implicit src: SourceFile): Inlined = new Inlined(call, bindings, expansion)
   def Quote(body: Tree, tags: List[Tree])(implicit src: SourceFile): Quote = new Quote(body, tags)
   def Splice(expr: Tree)(implicit src: SourceFile): Splice = new Splice(expr)
+  def QuotePattern(bindings: List[Tree], body: Tree, quotes: Tree)(implicit src: SourceFile): QuotePattern = new QuotePattern(bindings, body, quotes)
   def SplicePattern(body: Tree, args: List[Tree])(implicit src: SourceFile): SplicePattern = new SplicePattern(body, args)
   def TypeTree()(implicit src: SourceFile): TypeTree = new TypeTree()
   def InferredTypeTree()(implicit src: SourceFile): TypeTree = new InferredTypeTree()
@@ -479,7 +492,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def InferredTypeTree(tpe: Type)(using Context): TypedSplice =
     TypedSplice(new InferredTypeTree().withTypeUnchecked(tpe))
 
-  def unitLiteral(implicit src: SourceFile): Literal = Literal(Constant(()))
+  def unitLiteral(implicit src: SourceFile): Literal = Literal(Constant(())).withAttachment(SyntheticUnit, ())
 
   def ref(tp: NamedType)(using Context): Tree =
     TypedSplice(tpd.ref(tp))
@@ -497,10 +510,12 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def scalaRuntimeDot(name: Name)(using SourceFile): Select = Select(scalaDot(nme.runtime), name)
   def scalaUnit(implicit src: SourceFile): Select = scalaDot(tpnme.Unit)
   def scalaAny(implicit src: SourceFile): Select = scalaDot(tpnme.Any)
-  def javaDotLangDot(name: Name)(implicit src: SourceFile): Select = Select(Select(Ident(nme.java), nme.lang), name)
 
   def captureRoot(using Context): Select =
     Select(scalaDot(nme.caps), nme.CAPTURE_ROOT)
+
+  def captureRootIn(using Context): Select =
+    Select(scalaDot(nme.caps), nme.capIn)
 
   def makeRetaining(parent: Tree, refs: List[Tree], annotName: TypeName)(using Context): Annotated =
     Annotated(parent, New(scalaAnnotationDot(annotName), List(refs)))

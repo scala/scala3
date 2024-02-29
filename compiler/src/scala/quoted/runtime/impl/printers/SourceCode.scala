@@ -19,7 +19,7 @@ object SourceCode {
     symbol.fullName
 
   def showFlags(using Quotes)(flags: quotes.reflect.Flags)(syntaxHighlight: SyntaxHighlight): String = {
-    import quotes.reflect._
+    import quotes.reflect.*
     val flagList = List.newBuilder[String]
     if (flags.is(Flags.Abstract)) flagList += "abstract"
     if (flags.is(Flags.Artifact)) flagList += "artifact"
@@ -52,7 +52,7 @@ object SourceCode {
     if (flags.is(Flags.Param)) flagList += "param"
     if (flags.is(Flags.ParamAccessor)) flagList += "paramAccessor"
     if (flags.is(Flags.Private)) flagList += "private"
-    if (flags.is(Flags.PrivateLocal)) flagList += "private[this]"
+    if (flags.is(Flags.PrivateLocal)) flagList += "private"
     if (flags.is(Flags.Protected)) flagList += "protected"
     if (flags.is(Flags.Scala2x)) flagList += "scala2x"
     if (flags.is(Flags.Sealed)) flagList += "sealed"
@@ -64,12 +64,12 @@ object SourceCode {
   }
 
   private class SourceCodePrinter[Q <: Quotes & Singleton](syntaxHighlight: SyntaxHighlight, fullNames: Boolean)(using val quotes: Q) {
-    import syntaxHighlight._
-    import quotes.reflect._
+    import syntaxHighlight.*
+    import quotes.reflect.*
 
-    private[this] val sb: StringBuilder = new StringBuilder
+    private val sb: StringBuilder = new StringBuilder
 
-    private[this] var indent: Int = 0
+    private var indent: Int = 0
     private def indented(printIndented: => Unit): Unit = {
       indent += 1
       printIndented
@@ -158,7 +158,7 @@ object SourceCode {
           for paramClause <- paramss do
             paramClause match
               case TermParamClause(params) =>
-                printArgsDefs(params)
+                printMethdArgsDefs(params)
               case TypeParamClause(params) =>
                 printTargsDefs(stats.collect { case targ: TypeDef => targ  }.filter(_.symbol.isTypeParam).zip(params))
         }
@@ -313,7 +313,7 @@ object SourceCode {
         this += highlightKeyword("def ") += highlightValDef(name1)
         for clause <-  paramss do
           clause match
-            case TermParamClause(params) => printArgsDefs(params)
+            case TermParamClause(params) => printMethdArgsDefs(params)
             case TypeParamClause(params) => printTargsDefs(params.zip(params))
         if (!isConstructor) {
           this += ": "
@@ -460,7 +460,7 @@ object SourceCode {
 
       case tree @ Lambda(params, body) =>  // must come before `Block`
         inParens {
-          printArgsDefs(params)
+          printLambdaArgsDefs(params)
           this += (if tree.tpe.isContextFunctionType then " ?=> " else  " => ")
           printTree(body)
         }
@@ -804,29 +804,37 @@ object SourceCode {
       }
     }
 
-    private def printArgsDefs(args: List[ValDef])(using elideThis: Option[Symbol]): Unit = {
+    private def printSeparatedParamDefs(list: List[ValDef])(using elideThis: Option[Symbol]): Unit = list match {
+      case Nil =>
+      case x :: Nil => printParamDef(x)
+      case x :: xs =>
+        printParamDef(x)
+        this += ", "
+        printSeparatedParamDefs(xs)
+    }
+
+    private def printMethdArgsDefs(args: List[ValDef])(using elideThis: Option[Symbol]): Unit = {
       val argFlags = args match {
         case Nil => Flags.EmptyFlags
         case arg :: _ => arg.symbol.flags
       }
-      if (argFlags.is(Flags.Erased | Flags.Given)) {
-        if (argFlags.is(Flags.Given)) this += " given"
-        if (argFlags.is(Flags.Erased)) this += " erased"
-        this += " "
+      inParens {
+        if (argFlags.is(Flags.Implicit) && !argFlags.is(Flags.Given)) this += "implicit "
+        if (argFlags.is(Flags.Given)) this += "using "
+
+        printSeparatedParamDefs(args)
+      }
+    }
+
+    private def printLambdaArgsDefs(args: List[ValDef])(using elideThis: Option[Symbol]): Unit = {
+      val argFlags = args match {
+        case Nil => Flags.EmptyFlags
+        case arg :: _ => arg.symbol.flags
       }
       inParens {
         if (argFlags.is(Flags.Implicit) && !argFlags.is(Flags.Given)) this += "implicit "
 
-        def printSeparated(list: List[ValDef]): Unit = list match {
-          case Nil =>
-          case x :: Nil => printParamDef(x)
-          case x :: xs =>
-            printParamDef(x)
-            this += ", "
-            printSeparated(xs)
-        }
-
-        printSeparated(args)
+        printSeparatedParamDefs(args)
       }
     }
 
@@ -846,6 +854,9 @@ object SourceCode {
     private def printParamDef(arg: ValDef)(using elideThis: Option[Symbol]): Unit = {
       val name = splicedName(arg.symbol).getOrElse(arg.symbol.name)
       val sym = arg.symbol.owner
+
+      if (arg.symbol.flags.is(Flags.Erased)) this += "erased "
+
       if sym.isDefDef && sym.name == "<init>" then
         val ClassDef(_, _, _, _, body) = sym.owner.tree: @unchecked
         body.collectFirst {
@@ -1189,12 +1200,12 @@ object SourceCode {
         }
 
       case SuperType(thistpe, supertpe) =>
-        printType(supertpe)
+        printType(thistpe)
         this += highlightTypeDef(".super")
 
       case TypeLambda(paramNames, tparams, body) =>
         inSquare(printMethodicTypeParams(paramNames, tparams))
-        this += highlightTypeDef(" => ")
+        this += highlightTypeDef(" =>> ")
         printType(body)
 
       case ParamRef(lambda, idx) =>
@@ -1372,28 +1383,24 @@ object SourceCode {
 
     private def printProtectedOrPrivate(definition: Definition): Boolean = {
       var prefixWasPrinted = false
-      def printWithin(within: TypeRepr) = within match {
-        case TypeRef(_, name) => this += name
-        case _ => printFullClassName(within)
-      }
-      if (definition.symbol.flags.is(Flags.Protected)) {
+      def printWithin(within: Option[TypeRepr]) = within match
+        case _ if definition.symbol.flags.is(Flags.Local) => inSquare(this += "this")
+        case Some(TypeRef(_, name)) => inSquare(this += name)
+        case Some(within) => inSquare(printFullClassName(within))
+        case _ =>
+
+      if definition.symbol.flags.is(Flags.Protected) then
         this += highlightKeyword("protected")
-        definition.symbol.protectedWithin match {
-          case Some(within) =>
-            inSquare(printWithin(within))
-          case _ =>
-        }
+        printWithin(definition.symbol.protectedWithin)
         prefixWasPrinted = true
-      } else {
-        definition.symbol.privateWithin match {
-          case Some(within) =>
-            this += highlightKeyword("private")
-            inSquare(printWithin(within))
-            prefixWasPrinted = true
-          case _ =>
-        }
-      }
-      if (prefixWasPrinted)
+      else
+        val privateWithin = definition.symbol.privateWithin
+        if privateWithin.isDefined || definition.symbol.flags.is(Flags.Private) then
+          this += highlightKeyword("private")
+          printWithin(definition.symbol.privateWithin)
+          prefixWasPrinted = true
+
+      if prefixWasPrinted then
         this += " "
       prefixWasPrinted
     }
@@ -1434,8 +1441,8 @@ object SourceCode {
 
     private def escapedString(str: String): String = str flatMap escapedChar
 
-    private[this] val names = collection.mutable.Map.empty[Symbol, String]
-    private[this] val namesIndex = collection.mutable.Map.empty[String, Int]
+    private val names = collection.mutable.Map.empty[Symbol, String]
+    private val namesIndex = collection.mutable.Map.empty[String, Int]
 
     private def splicedName(sym: Symbol): Option[String] = {
       if sym.owner.isClassDef then None

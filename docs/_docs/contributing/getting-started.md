@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: Getting Started
+redirectFrom: /docs/contributing/workflow.html
 ---
 
 ## Scala CLA
@@ -25,16 +26,23 @@ never a bad idea to check.
 - [git] is essential for managing the Scala 3 code, and contributing to GitHub,
   where the code is hosted.
 - A Java Virtual Machine (JDK 8 or higher), required for running the build tool.
-  - download Java from [Oracle Java 8][java8], [Oracle Java 11][java11],
-   or [AdoptOpenJDK 8/11][adopt]. Refer to [JDK Compatibility][compat] for Scala/Java compatibility detail.
+    - There are multiple ways to get and manage different Java versions. Some
+      popular options are:
+        - [SDKMAN!](https://sdkman.io/)
+        - [Coursier](https://get-coursier.io/docs/cli-java)
+        - Or just download Java directly from [Oracle Java 8][java8], [Oracle
+          Java 11][java11], or [AdoptOpenJDK 8/11][adopt]. Refer to [JDK
+          Compatibility][compat] for Scala/Java compatibility detail.
   - Verify that the JVM is installed by running the following command in a terminal: `java -version`.
 - [sbt][sbt-download], the build tool required to build the Scala 3 compiler and libraries.
 
 ## Nice To Have
 
-An IDE, such as [Metals] will help you develop in Scala 3 with features such as autocompletion or goto-definition,
-and with the [VS Code][vs-code] text editor you can even use the Scala debugger, or create interactive worksheets for an
-iterative workflow.
+An IDE, such as [Metals] will help you develop in Scala 3 with features such as
+autocompletion, code navigation, debugging, and interactive worksheets.
+
+Another popular options is [IntelliJ IDEA for
+Scala](https://www.jetbrains.com/help/idea/discover-intellij-idea-for-scala.html).
 
 ## Compiling and Running
 
@@ -43,7 +51,6 @@ Start by cloning the repository:
 ```bash
 $ git clone https://github.com/lampepfl/dotty.git
 $ cd dotty
-$ sbt managedSources # Needed for IDE import to succeed
 ```
 
 Dotty provides a standard sbt build: compiling, running and starting a repl can
@@ -56,11 +63,12 @@ $ sbt
 hello world
 ```
 
-There are also bash scripts that can be used in the same way. Assuming that you have cloned the Dotty repo locally, append
-the following line on your `.bash_profile`:
+There are also bash scripts that can be used in the same way. Assuming that you
+have cloned the Dotty repo locally, append the following line on your
+`.bash_profile`, or equivalent for your shell:
 
 ```shell
-$ export PATH=$HOME/dotty/bin:$PATH
+$ export PATH=<path to cloned dotty>/bin:$PATH
 ```
 
 and you will be able to run the corresponding commands directly from your console:
@@ -72,7 +80,6 @@ $ scalac tests/pos/HelloWorld.scala
 # Run it with the proper classpath
 $ scala HelloWorld
 ```
-
 
 ## Starting a REPL
 
@@ -109,15 +116,13 @@ where `dotty-version` can be found in the file `project/Build.scala`, like `3.0.
 ## Generating Documentation
 
 To generate this page and other static page docs, run
+
 ```bash
 $ sbt
 > scaladoc/generateScalaDocumentation
 ```
-For more information, see `scaladoc/README.md`.
 
-Before contributing to Dotty, we invite you to consult the
-[Dotty Developer Guidelines](https://github.com/lampepfl/dotty/blob/main/CONTRIBUTING.md).
-
+For more information, see the [scaladoc section](./scaladoc.md).
 
 ## Community
 

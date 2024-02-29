@@ -4,20 +4,22 @@ package util
 
 import scala.language.unsafeNulls
 
-import dotty.tools.io._
-import Spans._
-import core.Contexts._
+import dotty.tools.io.*
+import Spans.*
+import core.Contexts.*
 
 import scala.io.Codec
-import Chars._
+import Chars.*
 import scala.annotation.internal.sharable
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.compiletime.uninitialized
 import scala.util.chaining.given
 
 import java.io.File.separator
+import java.net.URI
 import java.nio.charset.StandardCharsets
-import java.nio.file.{FileSystemException, NoSuchFileException}
+import java.nio.file.{FileSystemException, NoSuchFileException, Paths}
 import java.util.Optional
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.regex.Pattern
@@ -60,7 +62,7 @@ object ScriptSourceFile {
 }
 
 class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
-  import SourceFile._
+  import SourceFile.*
 
   private var myContent: Array[Char] | Null = null
 
@@ -136,7 +138,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
     buf.toArray
   }
 
-  private var lineIndicesCache: Array[Int] = _
+  private var lineIndicesCache: Array[Int] = uninitialized
   private def lineIndices: Array[Int] =
     if lineIndicesCache eq null then
       lineIndicesCache = calculateLineIndicesFromContents()
@@ -222,6 +224,13 @@ object SourceFile {
     SourceFile(new VirtualFile(name.replace(separator, "/"), content.getBytes(StandardCharsets.UTF_8)), content.toCharArray)
       .tap(_._maybeInComplete = maybeIncomplete)
 
+  /** A helper method to create a virtual source file for given URI.
+   *  It relies on SourceFile#virtual implementation to create the virtual file.
+   */
+  def virtual(uri: URI, content: String): SourceFile =
+    val path = Paths.get(uri).toString
+    SourceFile.virtual(path, content)
+
   /** Returns the relative path of `source` within the `reference` path
    *
    *  It returns the absolute path of `source` if it is not contained in `reference`.
@@ -251,7 +260,7 @@ object SourceFile {
         // and use both slashes as separators, or on other OS and use forward slash
         // as separator, backslash as file name character.
 
-        import scala.jdk.CollectionConverters._
+        import scala.jdk.CollectionConverters.*
         val path = refPath.relativize(sourcePath)
         path.iterator.asScala.mkString("/")
       else

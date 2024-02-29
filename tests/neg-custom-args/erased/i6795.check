@@ -1,4 +1,0 @@
--- Error: tests/neg-custom-args/erased/i6795.scala:1:13 ----------------------------------------------------------------
-1 |erased class Foo // error
-  |^^^^^^^^^^^^^^^^
-  |modifier(s) `erased` incompatible with type definition

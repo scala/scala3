@@ -1,9 +1,9 @@
 package dotty.tools.dotc
 package transform
 
-import ast.Trees._, ast.tpd, core._
-import Contexts._, Types._, Decorators._, Symbols._, DenotTransformers._
-import SymDenotations._, Scopes._, StdNames._, NameOps._, Names._
+import ast.Trees.*, ast.tpd, core.*
+import Contexts.*, Types.*, Decorators.*, Symbols.*, DenotTransformers.*
+import SymDenotations.*, Scopes.*, StdNames.*, NameOps.*, Names.*
 import MegaPhase.MiniPhase
 
 
@@ -11,7 +11,7 @@ import MegaPhase.MiniPhase
  *  specialized form.
  */
 class SpecializeFunctions extends MiniPhase {
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = SpecializeFunctions.name
 
@@ -85,10 +85,10 @@ class SpecializeFunctions extends MiniPhase {
             case Select(qual, _) =>
               val qual1 = qual.tpe.widen match
                 case defn.ByNameFunction(res) =>
-                  // Need to cast to regular function, since specialied apply methods
+                  // Need to cast to regular function, since specialized apply methods
                   // are not members of ContextFunction0. The cast will be eliminated in
                   // erasure.
-                  qual.cast(defn.FunctionOf(Nil, res))
+                  qual.cast(defn.FunctionNOf(Nil, res))
                 case _ =>
                   qual
               qual1.select(specializedApply)

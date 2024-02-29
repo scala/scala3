@@ -2,23 +2,23 @@ package dotty.tools
 package dotc
 package typer
 
-import core._
+import core.*
 import util.Spans.Span
-import Contexts._
-import Types._, Flags._, Symbols._, Names._, StdNames._, Constants._
+import Contexts.*
+import Types.*, Flags.*, Symbols.*, Names.*, StdNames.*, Constants.*
 import TypeErasure.{erasure, hasStableErasure}
-import Decorators._
-import ProtoTypes._
+import Decorators.*
+import ProtoTypes.*
 import Inferencing.{fullyDefinedType, isFullyDefined}
 import ast.untpd
-import transform.SymUtils._
-import transform.TypeUtils._
-import transform.SyntheticMembers._
+import transform.SyntheticMembers.*
 import util.Property
 import ast.Trees.genericEmptyTree
 import annotation.{tailrec, constructorOnly}
-import ast.tpd._
-import Synthesizer._
+import ast.tpd.*
+import Synthesizer.*
+import sbt.ExtractDependencies.*
+import xsbti.api.DependencyContext.*
 
 /** Synthesize terms for special classes */
 class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
@@ -102,11 +102,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       case AppliedType(_, funArgs @ fun :: tupled :: Nil) =>
         def functionTypeEqual(baseFun: Type, actualArgs: List[Type],
             actualRet: Type, expected: Type) =
-          expected =:= defn.FunctionOf(actualArgs, actualRet,
+          expected =:= defn.FunctionNOf(actualArgs, actualRet,
             defn.isContextFunctionType(baseFun))
         val arity: Int =
-          if defn.isErasedFunctionType(fun) then -1 // TODO support?
-          else if defn.isFunctionType(fun) then
+          if defn.isFunctionNType(fun) then
             // TupledFunction[(...) => R, ?]
             fun.functionArgInfos match
               case funArgs :+ funRet
@@ -114,11 +113,11 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                 // TupledFunction[(...funArgs...) => funRet, ?]
                 funArgs.size
               case _ => -1
-          else if defn.isFunctionType(tupled) then
+          else if defn.isFunctionNType(tupled) then
             // TupledFunction[?, (...) => R]
             tupled.functionArgInfos match
               case tupledArgs :: funRet :: Nil =>
-                defn.tupleTypes(tupledArgs.dealias) match
+                tupledArgs.tupleElementTypes match
                   case Some(funArgs) if functionTypeEqual(tupled, funArgs, funRet, fun) =>
                     // TupledFunction[?, ((...funArgs...)) => funRet]
                     funArgs.size
@@ -166,7 +165,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
       def cmpWithBoxed(cls1: ClassSymbol, cls2: ClassSymbol) =
         cls2 == defn.NothingClass
-        || cls2 == defn.boxedType(cls1.typeRef).symbol
+        || cls2 == defn.boxedClass(cls1)
         || cls1.isNumericValueClass && cls2.derivesFrom(defn.BoxedNumberClass)
 
       if cls1.isPrimitiveValueClass then
@@ -380,6 +379,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                 // avoid type aliases for tuples
                 Right(MirrorSource.GenericTuple(types))
               case _ => reduce(tp.underlying)
+          case tp: MatchType => reduce(tp.normalized)
           case _ => reduce(tp.superType)
       case tp @ AndType(l, r) =>
         for
@@ -408,7 +408,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       New(defn.RuntimeTupleMirrorTypeRef, Literal(Constant(arity)) :: Nil)
 
     def makeProductMirror(pre: Type, cls: Symbol, tps: Option[List[Type]]): TreeWithErrors =
-      val accessors = cls.caseAccessors.filterNot(_.isAllOf(PrivateLocal))
+      val accessors = cls.caseAccessors
       val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
       val typeElems = tps.getOrElse(accessors.map(mirroredType.resultType.memberInfo(_).widenExpr))
       val nestedPairs = TypeOps.nestedPairs(typeElems)
@@ -429,7 +429,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         if cls.useCompanionAsProductMirror then companionPath(mirroredType, span)
         else if defn.isTupleClass(cls) then newTupleMirror(typeElems.size) // TODO: cls == defn.PairClass when > 22
         else anonymousMirror(monoType, MirrorImpl.OfProduct(pre), span)
-      withNoErrors(mirrorRef.cast(mirrorType))
+      withNoErrors(mirrorRef.cast(mirrorType).withSpan(span))
     end makeProductMirror
 
     MirrorSource.reduce(mirroredType) match
@@ -442,12 +442,12 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
               mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, singleton.name)
             }
             val mirrorRef = New(defn.Mirror_SingletonProxyClass.typeRef, singletonPath :: Nil)
-            withNoErrors(mirrorRef.cast(mirrorType))
+            withNoErrors(mirrorRef.cast(mirrorType).withSpan(span))
           else
             val mirrorType = formal.constrained_& {
               mirrorCore(defn.Mirror_SingletonClass, mirroredType, mirroredType, singleton.name)
             }
-            withNoErrors(singletonPath.cast(mirrorType))
+            withNoErrors(singletonPath.cast(mirrorType).withSpan(span))
         case MirrorSource.GenericTuple(tps) =>
           val maxArity = Definitions.MaxTupleArity
           val arity = tps.size
@@ -458,7 +458,14 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             val reason = s"it reduces to a tuple with arity $arity, expected arity <= $maxArity"
             withErrors(i"${defn.PairClass} is not a generic product because $reason")
         case MirrorSource.ClassSymbol(pre, cls) =>
-          if cls.isGenericProduct then makeProductMirror(pre, cls, None)
+          if cls.isGenericProduct then
+            if ctx.runZincPhases then
+              // The mirror should be resynthesized if the constructor of the
+              // case class `cls` changes. See `sbt-test/source-dependencies/mirror-product`.
+              val rec = ctx.compilationUnit.depRecorder
+              rec.addClassDependency(cls, DependencyByMemberRef)
+              rec.addUsedName(cls.primaryConstructor)
+            makeProductMirror(pre, cls, None)
           else withErrors(i"$cls is not a generic product because ${cls.whyNotGenericProduct}")
       case Left(msg) =>
         withErrors(i"type `$mirroredType` is not a generic product because $msg")
@@ -478,6 +485,13 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     val clsIsGenericSum = cls.isGenericSum(pre)
 
     if acceptableMsg.isEmpty && clsIsGenericSum then
+      if ctx.runZincPhases then
+        // The mirror should be resynthesized if any child of the sealed class
+        // `cls` changes. See `sbt-test/source-dependencies/mirror-sum`.
+        val rec = ctx.compilationUnit.depRecorder
+        rec.addClassDependency(cls, DependencyByMemberRef)
+        rec.addUsedName(cls, includeSealedChildren = true)
+
       val elemLabels = cls.children.map(c => ConstantType(Constant(c.name.toString)))
 
       def internalError(msg: => String)(using Context): Unit =
@@ -727,8 +741,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     def recur(handlers: SpecialHandlers): TreeWithErrors = handlers match
       case (cls, handler) :: rest =>
         def baseWithRefinements(tp: Type): Type = tp.dealias match
-          case tp @ RefinedType(parent, rname, rinfo) =>
-            tp.derivedRefinedType(baseWithRefinements(parent), rname, rinfo)
+          case tp: RefinedType =>
+            tp.derivedRefinedType(parent = baseWithRefinements(tp.parent))
           case _ =>
             tp.baseType(cls)
         val base = baseWithRefinements(formal)

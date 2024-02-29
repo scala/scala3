@@ -4,17 +4,17 @@ package core
 package tasty
 
 import dotty.tools.tasty.TastyBuffer
-import TastyBuffer._
+import TastyBuffer.*
 
 import collection.mutable
 import Names.{Name, chrs, SimpleName, DerivedName, TypeName}
-import NameKinds._
-import NameOps._
+import NameKinds.*
+import NameOps.*
 import scala.io.Codec
 import NameTags.{SIGNED, TARGETSIGNED}
 
 class NameBuffer extends TastyBuffer(10000) {
-  import NameBuffer._
+  import NameBuffer.*
 
   private val nameRefs = new mutable.LinkedHashMap[Name, NameRef]
 
@@ -48,6 +48,10 @@ class NameBuffer extends TastyBuffer(10000) {
         ref
     }
   }
+
+  def utf8Index(value: String): NameRef =
+    import Decorators.toTermName
+    nameIndex(value.toTermName)
 
   private inline def withLength(inline op: Unit, lengthWidth: Int = 1): Unit = {
     val lengthAddr = currentAddr

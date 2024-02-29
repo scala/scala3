@@ -4,24 +4,27 @@ package parsing
 
 import scala.language.unsafeNulls
 
-import core.Names._, core.Contexts._, core.Decorators._, util.Spans._
-import core.StdNames._, core.Comments._
+import core.Names.*, core.Contexts.*, core.Decorators.*, util.Spans.*
+import core.StdNames.*, core.Comments.*
 import util.SourceFile
-import util.Chars._
+import util.Chars.*
 import util.{SourcePosition, CharBuffer}
 import util.Spans.Span
 import config.Config
-import Tokens._
+import Tokens.*
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 import scala.collection.immutable.SortedMap
 import rewrites.Rewrites.patch
 import config.Feature
 import config.Feature.{migrateTo3, fewerBracesEnabled}
-import config.SourceVersion.`3.0`
+import config.SourceVersion.{`3.0`, `3.0-migration`}
+import config.MigrationVersion
 import reporting.{NoProfile, Profile, Message}
 
 import java.util.Objects
+import dotty.tools.dotc.reporting.Message.rewriteNotice
+import dotty.tools.dotc.config.Feature.sourceVersion
 
 object Scanners {
 
@@ -227,11 +230,11 @@ object Scanners {
       */
     private var docstringMap: SortedMap[Int, Comment] = SortedMap.empty
 
-    /* A Buffer for comment positions */
-    private val commentPosBuf = new mutable.ListBuffer[Span]
+    /* A Buffer for comments */
+    private val commentBuf = new mutable.ListBuffer[Comment]
 
-    /** Return a list of all the comment positions */
-    def commentSpans: List[Span] = commentPosBuf.toList
+    /** Return a list of all the comments */
+    def comments: List[Comment] = commentBuf.toList
 
     private def addComment(comment: Comment): Unit = {
       val lookahead = lookaheadReader()
@@ -246,18 +249,19 @@ object Scanners {
     def getDocComment(pos: Int): Option[Comment] = docstringMap.get(pos)
 
     /** A buffer for comments */
-    private val commentBuf = CharBuffer(initialCharBufferSize)
+    private val currentCommentBuf = CharBuffer(initialCharBufferSize)
 
     def toToken(identifier: SimpleName): Token =
       def handleMigration(keyword: Token): Token =
         if scala3keywords.contains(keyword) && migrateTo3 then
           val what = tokenString(keyword)
           report.errorOrMigrationWarning(
-            em"$what is now a keyword, write `$what` instead of $what to keep it as an identifier",
+            em"$what is now a keyword, write `$what` instead of $what to keep it as an identifier${rewriteNotice("This", `3.0-migration`)}",
             sourcePos(),
-            from = `3.0`)
-          patch(source, Span(offset), "`")
-          patch(source, Span(offset + identifier.length), "`")
+            MigrationVersion.Scala2to3)
+          if MigrationVersion.Scala2to3.needsPatch then
+            patch(source, Span(offset), "`")
+            patch(source, Span(offset + identifier.length), "`")
           IDENTIFIER
         else keyword
       val idx = identifier.start
@@ -467,7 +471,7 @@ object Scanners {
             em"""$what starts with an operator;
                 |it is now treated as a continuation of the $previous,
                 |not as a separate statement.""",
-            sourcePos(), from = `3.0`)
+            sourcePos(), MigrationVersion.Scala2to3)
         true
       }
 
@@ -523,7 +527,7 @@ object Scanners {
      *
      *      The following tokens can start an indentation region:
      *
-     *         :  =  =>  <-  if  then  else  while  do  try  catch  
+     *         :  =  =>  <-  if  then  else  while  do  try  catch
      *         finally  for  yield  match  throw  return  with
      *
      *      Inserting an INDENT starts a new indentation region with the indentation of the current
@@ -1019,7 +1023,7 @@ object Scanners {
 
     private def skipComment(): Boolean = {
       def appendToComment(ch: Char) =
-        if (keepComments) commentBuf.append(ch)
+        if (keepComments) currentCommentBuf.append(ch)
       def nextChar() = {
         appendToComment(ch)
         Scanner.this.nextChar()
@@ -1047,9 +1051,9 @@ object Scanners {
       def finishComment(): Boolean = {
         if (keepComments) {
           val pos = Span(start, charOffset - 1, start)
-          val comment = Comment(pos, commentBuf.toString)
-          commentBuf.clear()
-          commentPosBuf += pos
+          val comment = Comment(pos, currentCommentBuf.toString)
+          currentCommentBuf.clear()
+          commentBuf += comment
 
           if (comment.isDocComment)
             addComment(comment)
@@ -1065,7 +1069,7 @@ object Scanners {
       else if (ch == '*') { nextChar(); skipComment(); finishComment() }
       else {
         // This was not a comment, remove the `/` from the buffer
-        commentBuf.clear()
+        currentCommentBuf.clear()
         false
       }
     }

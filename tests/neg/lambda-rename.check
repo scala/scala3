@@ -1,0 +1,34 @@
+-- [E007] Type Mismatch Error: tests/neg/lambda-rename.scala:4:33 ------------------------------------------------------
+4 |val a: (x: Int) => Bar[x.type] = ??? : ((x: Int) => Foo[x.type]) // error
+  |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                                 Found:    (x: Int) => Foo[x.type]
+  |                                 Required: (x: Int) => Bar[x.type]
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/lambda-rename.scala:7:33 ------------------------------------------------------
+7 |val b: HK[[X] =>> Foo[(X, X)]] = ??? : HK[[X] =>> Bar[(X, X)]] // error
+  |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                                 Found:    HK[[X] =>> Bar[(X, X)]]
+  |                                 Required: HK[[X] =>> Foo[(X, X)]]
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/lambda-rename.scala:10:33 -----------------------------------------------------
+10 |val c: HK[[X] =>> Foo[(X, X)]] = ??? : HK[[Y] =>> Foo[(X, X)]] // error
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                 Found:    HK[[Y] =>> Foo[(X, X)]]
+   |                                 Required: HK[[X²] =>> Foo[(X², X²)]]
+   |
+   |                                 where:    X  is a class in the empty package
+   |                                           X² is a type variable
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/lambda-rename.scala:12:33 -----------------------------------------------------
+12 |val d: HK[[Y] =>> Foo[(X, X)]] = ??? : HK[[X] =>> Foo[(X, X)]] // error
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                 Found:    HK[[X] =>> Foo[(X, X)]]
+   |                                 Required: HK[[Y] =>> Foo[(X², X²)]]
+   |
+   |                                 where:    X  is a type variable
+   |                                           X² is a class in the empty package
+   |
+   | longer explanation available when compiling with `-explain`

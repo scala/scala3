@@ -1,6 +1,6 @@
 package dotty.tools.dotc.decompiler
 
-import dotty.tools.dotc.fromtasty._
+import dotty.tools.dotc.fromtasty.*
 import dotty.tools.dotc.core.Phases.Phase
 
 /** Compiler from tasty to user readable high text representation

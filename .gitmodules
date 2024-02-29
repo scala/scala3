@@ -21,17 +21,13 @@
 	url = https://github.com/dotty-staging/fastparse
 [submodule "community-build/community-projects/stdLib213"]
 	path = community-build/community-projects/stdLib213
-	url = https://github.com/dotty-staging/scala
+	url = https://github.com/dotty-staging/scala213
 [submodule "community-build/community-projects/sourcecode"]
 	path = community-build/community-projects/sourcecode
 	url = https://github.com/dotty-staging/sourcecode
 [submodule "community-build/community-projects/scala-xml"]
 	path = community-build/community-projects/scala-xml
 	url = https://github.com/dotty-staging/scala-xml
-[submodule "community-build/community-projects/shapeless"]
-	path = community-build/community-projects/shapeless
-	url = https://github.com/dotty-staging/shapeless
-	branch = shapeless-3-staging
 [submodule "community-build/community-projects/xml-interpolator"]
 	path = community-build/community-projects/xml-interpolator
 	url = https://github.com/dotty-staging/xml-interpolator.git
@@ -222,3 +218,6 @@
 [submodule "community-build/community-projects/parboiled2"]
 	path = community-build/community-projects/parboiled2
 	url = https://github.com/dotty-staging/parboiled2.git
+[submodule "community-build/community-projects/shapeless-3"]
+	path = community-build/community-projects/shapeless-3
+	url = https://github.com/dotty-staging/shapeless-3.git

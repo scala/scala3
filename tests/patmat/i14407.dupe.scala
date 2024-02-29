@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 @main def Test =
   val it: Int = 42
   42L match

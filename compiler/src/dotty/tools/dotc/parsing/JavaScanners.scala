@@ -2,13 +2,13 @@ package dotty.tools
 package dotc
 package parsing
 
-import core.Contexts._
+import core.Contexts.*
 import core.Names.SimpleName
-import Scanners._
+import Scanners.*
 import util.SourceFile
-import JavaTokens._
+import JavaTokens.*
 import scala.annotation.{switch, tailrec}
-import util.Chars._
+import util.Chars.*
 import PartialFunction.cond
 import core.Decorators.em
 
@@ -439,6 +439,7 @@ object JavaScanners {
         }
         oct.asInstanceOf[Char]
       end octal
+      var skip = false
       def greatEscape: Char =
         nextChar()
         if '0' <= ch && ch <= '7' then octal
@@ -455,11 +456,12 @@ object JavaScanners {
             case '\\' => '\\'
             case CR | LF if inTextBlock =>
               if !scanOnly then nextChar()
+              skip = true
               0
             case _    =>
               if !scanOnly then error("invalid escape character", charOffset - 1)
               ch
-          if x != 0 then nextChar()
+          if !skip then nextChar()
           x
       end greatEscape
 
@@ -470,7 +472,7 @@ object JavaScanners {
           val res = ch
           nextChar()
           res
-      if c != 0 && !scanOnly then putChar(c)
+      if !skip && !scanOnly then putChar(c)
     end getlitch
 
     /** Read a triple-quote delimited text block, starting after the first three double quotes.

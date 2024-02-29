@@ -1,29 +1,29 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import Decorators._
-import Flags._
-import Types._
-import Contexts._
-import Symbols._
-import Constants._
-import ast.Trees._
+import core.*
+import Decorators.*
+import Flags.*
+import Types.*
+import Contexts.*
+import Symbols.*
+import Constants.*
+import ast.Trees.*
 import ast.untpd
 import ast.TreeTypeMap
-import SymUtils._
-import NameKinds._
+
+import NameKinds.*
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.config.ScalaRelease.*
 
-import scala.collection.mutable
-import dotty.tools.dotc.core.Annotations._
-import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.quoted._
+import dotty.tools.dotc.core.Annotations.*
+import dotty.tools.dotc.core.StdNames.*
+import dotty.tools.dotc.quoted.*
 import dotty.tools.dotc.inlines.Inlines
 
 import scala.annotation.constructorOnly
+import scala.collection.mutable
 
 /** Translates quoted terms and types to `unpickleExprV2` or `unpickleType` method calls.
  *
@@ -69,8 +69,8 @@ import scala.annotation.constructorOnly
  *
  */
 class PickleQuotes extends MacroTransform {
-  import PickleQuotes._
-  import tpd._
+  import PickleQuotes.*
+  import tpd.*
 
   override def phaseName: String = PickleQuotes.name
 
@@ -106,16 +106,19 @@ class PickleQuotes extends MacroTransform {
   private def extractHolesContents(quote: tpd.Quote)(using Context): (List[Tree], tpd.Quote) =
     class HoleContentExtractor extends Transformer:
       private val holeContents = List.newBuilder[Tree]
+      private val stagedClasses = mutable.HashSet.empty[Symbol]
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
         tree match
           case tree @ Hole(isTerm, _, _, content) =>
             assert(isTerm)
             assert(!content.isEmpty)
             holeContents += content
-            val holeType = getTermHoleType(tree.tpe)
+            val holeType = getPicklableHoleType(tree.tpe, stagedClasses)
             val hole = untpd.cpy.Hole(tree)(content = EmptyTree).withType(holeType)
-            cpy.Inlined(tree)(EmptyTree, Nil, hole)
+            Inlined(EmptyTree, Nil, hole).withSpan(tree.span)
           case tree: DefTree =>
+            if tree.symbol.isClass then
+              stagedClasses += tree.symbol
             val newAnnotations = tree.symbol.annotations.mapconserve { annot =>
               annot.derivedAnnotation(transform(annot.tree)(using ctx.withOwner(tree.symbol)))
             }
@@ -132,19 +135,6 @@ class PickleQuotes extends MacroTransform {
                 derivedAnnotatedType(tp, underlying1, annot.derivedAnnotation(transform(annot.tree)))
               case _ => mapOver(tp)
         }
-      }
-
-      /** Remove references to local types that will not be defined in this quote */
-      private def getTermHoleType(using Context) = new TypeMap() {
-        override def apply(tp: Type): Type = tp match
-          case tp @ TypeRef(NoPrefix, _) =>
-            // reference to term with a type defined in outer quote
-            getTypeHoleType(tp)
-          case tp @ TermRef(NoPrefix, _) =>
-            // widen term refs to terms defined in outer quote
-            apply(tp.widenTermRefExpr)
-          case tp =>
-            mapOver(tp)
       }
 
       /** Get the holeContents of the transformed tree */
@@ -196,11 +186,11 @@ class PickleQuotes extends MacroTransform {
       cpy.Quote(quote)(Block(tdefs, body1), quote.tags)
 
   private def mkTagSymbolAndAssignType(typeArg: Tree, idx: Int)(using Context): TypeDef = {
-    val holeType = getTypeHoleType(typeArg.tpe.select(tpnme.Underlying))
+    val holeType = getPicklableHoleType(typeArg.tpe.select(tpnme.Underlying), _ => false)
     val hole = untpd.cpy.Hole(typeArg)(isTerm = false, idx, Nil, EmptyTree).withType(holeType)
     val local = newSymbol(
       owner = ctx.owner,
-      name = UniqueName.fresh(hole.tpe.dealias.typeSymbol.name.toTypeName),
+      name = UniqueName.fresh(typeArg.symbol.name.toTypeName),
       flags = Synthetic,
       info = TypeAlias(typeArg.tpe.select(tpnme.Underlying)),
       coord = typeArg.span
@@ -209,29 +199,15 @@ class PickleQuotes extends MacroTransform {
     ctx.typeAssigner.assignType(untpd.TypeDef(local.name, hole), local).withSpan(typeArg.span)
   }
 
-  /** Remove references to local types that will not be defined in this quote */
-  private def getTypeHoleType(using Context) = new TypeMap() {
-    override def apply(tp: Type): Type = tp match
-      case tp: TypeRef if tp.typeSymbol.isTypeSplice =>
-        apply(tp.dealias)
-      case tp @ TypeRef(pre, _) if isLocalPath(pre) =>
-        val hiBound = tp.typeSymbol.info match
-          case info: ClassInfo => info.parents.reduce(_ & _)
-          case info => info.hiBound
-        apply(hiBound)
-      case tp =>
-        mapOver(tp)
-
-    private def isLocalPath(tp: Type): Boolean = tp match
-      case NoPrefix => true
-      case tp: TermRef if !tp.symbol.is(Package) => isLocalPath(tp.prefix)
-      case tp => false
-  }
-
+  /** Avoid all non-static types except those defined in the quote. */
+  private def getPicklableHoleType(tpe: Type, isStagedClasses: Symbol => Boolean)(using Context) =
+    new TypeOps.AvoidMap {
+      def toAvoid(tp: NamedType) = !isStagedClasses(tp.typeSymbol) && !isStaticPrefix(tp)
+    }.apply(tpe)
 }
 
 object PickleQuotes {
-  import tpd._
+  import tpd.*
 
   val name: String = "pickleQuotes"
   val description: String = "turn quoted trees into explicit run-time data structures"
@@ -350,7 +326,7 @@ object PickleQuotes {
               defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)),
             args =>
               val cases = holeContents.zipWithIndex.map { case (splice, idx) =>
-                val defn.FunctionOf(argTypes, defn.FunctionOf(quotesType :: _, _, _), _) = splice.tpe: @unchecked
+                val defn.FunctionNOf(argTypes, defn.FunctionNOf(quotesType :: _, _, _), _) = splice.tpe: @unchecked
                 val rhs = {
                   val spliceArgs = argTypes.zipWithIndex.map { (argType, i) =>
                     args(1).select(nme.apply).appliedTo(Literal(Constant(i))).asInstance(argType)

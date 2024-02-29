@@ -2,12 +2,15 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
-import Flags._, Symbols._, Contexts._, Scopes._, Decorators._, Types.Type
+import core.*
+import Flags.*, Symbols.*, Contexts.*, Scopes.*, Decorators.*, Types.Type
 import NameKinds.DefaultGetterName
-import NullOpsDecorator._
+import NullOpsDecorator.*
 import collection.immutable.BitSet
 import scala.annotation.tailrec
+import cc.isCaptureChecking
+
+import scala.compiletime.uninitialized
 
 /** A module that can produce a kind of iterator (`Cursor`),
  *  which yields all pairs of overriding/overridden symbols
@@ -31,7 +34,7 @@ object OverridingPairs:
      */
     protected def exclude(sym: Symbol): Boolean =
       !sym.memberCanMatchInheritedSymbols
-      || ctx.phase == Phases.checkCapturesPhase && sym.is(Recheck.ResetPrivate)
+      || isCaptureChecking && sym.is(Recheck.ResetPrivate)
 
     /** The parents of base that are checked when deciding whether an overriding
      *  pair has already been treated in a parent class.
@@ -117,10 +120,10 @@ object OverridingPairs:
     private var nextEntry = curEntry
 
     /** The current candidate symbol for overriding */
-    var overriding: Symbol = _
+    var overriding: Symbol = uninitialized
 
     /** If not null: The symbol overridden by overriding */
-    var overridden: Symbol = _
+    var overridden: Symbol = uninitialized
 
     //@M: note that next is called once during object initialization
     final def hasNext: Boolean = nextEntry != null

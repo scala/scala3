@@ -5,7 +5,7 @@ import annotation.{experimental, tailrec, constructorOnly}
 import collection.mutable
 import language.`3.3`
 
-case class Symbol(name: String, initOwner: Symbol | Null) extends caps.Pure:
+case class Symbol(name: String, initOwner: Symbol | Null) extends Pure:
   def owner = initOwner.nn
   private var myInfo: Type = uninitialized
   def infoOrCompleter: Type = myInfo
@@ -29,7 +29,7 @@ object NoSymbol extends Symbol("", null):
   override def exists: Boolean = false
   override def orElse(alt: => Symbol): Symbol = alt
 
-abstract class Type extends caps.Pure:
+abstract class Type extends Pure:
   def exists = true
   def show: String
 case class IntType()(using @constructorOnly c: Context) extends Type:

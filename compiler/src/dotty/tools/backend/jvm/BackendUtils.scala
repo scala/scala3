@@ -5,7 +5,7 @@ import scala.tools.asm.Handle
 import scala.tools.asm.tree.InvokeDynamicInsnNode
 import asm.tree.ClassNode
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.report
 
 import scala.language.unsafeNulls
@@ -36,6 +36,7 @@ class BackendUtils(val postProcessor: PostProcessor) {
     case "19" => asm.Opcodes.V19
     case "20" => asm.Opcodes.V20
     case "21" => asm.Opcodes.V21
+    case "22" => asm.Opcodes.V22
   }
 
   lazy val extraProc: Int = {
@@ -91,9 +92,9 @@ class BackendUtils(val postProcessor: PostProcessor) {
   * methods.
   */
   def addLambdaDeserialize(classNode: ClassNode, implMethodsArray: Array[Handle]): Unit = {
-    import asm.Opcodes._
-    import bTypes._
-    import coreBTypes._
+    import asm.Opcodes.*
+    import bTypes.*
+    import coreBTypes.*
 
     val cw = classNode
 
@@ -103,12 +104,10 @@ class BackendUtils(val postProcessor: PostProcessor) {
     // stack map frames and invokes the `getCommonSuperClass` method. This method expects all
     // ClassBTypes mentioned in the source code to exist in the map.
 
-    val serlamObjDesc = MethodBType(jliSerializedLambdaRef :: Nil, ObjectRef).descriptor
-
-    val mv = cw.visitMethod(ACC_PRIVATE + ACC_STATIC + ACC_SYNTHETIC, "$deserializeLambda$", serlamObjDesc, null, null)
+    val mv = cw.visitMethod(ACC_PRIVATE + ACC_STATIC + ACC_SYNTHETIC, "$deserializeLambda$", serializedLamdaObjDesc, null, null)
     def emitLambdaDeserializeIndy(targetMethods: Seq[Handle]): Unit = {
       mv.visitVarInsn(ALOAD, 0)
-      mv.visitInvokeDynamicInsn("lambdaDeserialize", serlamObjDesc, jliLambdaDeserializeBootstrapHandle, targetMethods: _*)
+      mv.visitInvokeDynamicInsn("lambdaDeserialize", serializedLamdaObjDesc, jliLambdaDeserializeBootstrapHandle, targetMethods*)
     }
 
     val targetMethodGroupLimit = 255 - 1 - 3 // JVM limit. See See MAX_MH_ARITY in CallSite.java
@@ -131,6 +130,11 @@ class BackendUtils(val postProcessor: PostProcessor) {
     mv.visitLabel(terminalLabel)
     emitLambdaDeserializeIndy(groups(numGroups - 1).toIndexedSeq)
     mv.visitInsn(ARETURN)
+  }
+
+  private lazy val serializedLamdaObjDesc = {
+    import coreBTypes.{ObjectRef, jliSerializedLambdaRef}
+    MethodBType(jliSerializedLambdaRef :: Nil, ObjectRef).descriptor
   }
 
   /**

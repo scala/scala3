@@ -1,0 +1,8 @@
+-- [E172] Type Error: tests/neg/i16453b2.scala:11:19 -------------------------------------------------------------------
+11 |  val ko = get[Int] // error
+   |                   ^
+   |No given instance of type Ctx => Option[Int] was found for parameter fn of method get
+   |
+   |Note: implicit conversions are not automatically applied to arguments of using clauses. You will have to pass the argument explicitly.
+   |The following implicits in scope can be implicitly converted to Ctx => Option[Int]:
+   |- final given def foo2[A]: Ctx => Int

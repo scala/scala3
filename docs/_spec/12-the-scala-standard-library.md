@@ -12,10 +12,23 @@ Some of these classes are described in the following.
 ![Class hierarchy of Scala](public/images/classhierarchy.png)
 
 <!-- TODO: Briefly mention scala.deprecated somewhere, and link to [deprecated page](./A%3F-deprecated.md) -->
+
+## Fundamental Type Aliases
+
+The `scala` package provides the following fundamental type aliases, which expose to user code some forms of [types](./03-types.html) that cannot otherwise be written:
+
+```scala
+type AnyKind = ´x´           // where ´x´ is the internal AnyKind type
+type Nothing = ´x´           // where ´x´ is the internal Nothing type
+type | = [A, B] =>> A ´｜´ B // where ｜ is the internal union type operator
+type & = [A, B] =>> A ´＆´ B // where ＆ is the internal intersection type operator
+```
+
 ## Root Classes
 
-The root of this hierarchy is formed by class `Any`.
+The root of this hierarchy is formed by class `scala.Any`.
 Every class in a Scala execution environment inherits directly or indirectly from this class.
+By definition, `Any` is also the top [proper type](./03-types.html#proper-types).
 Class `Any` has two direct subclasses: `AnyRef` and `AnyVal`.
 
 The subclass `AnyRef` represents all values which are represented as objects in the underlying host system.
@@ -304,41 +317,41 @@ case class Tuple´n´[+T_1, ..., +T_n](_1: T_1, ..., _´n´: T_´n´) {
 -->
 ### The `Function` Classes
 
-For each class type `Function´n´` where ´n = 0, ..., 22´, Scala defines the following function class:
+For each natural ´n \geq 0´, the `scala` package defines the following function class:
 
 ```scala
 package scala
 trait Function´_n´[-´T_1´, ..., -´T_n´, +´R´]:
   def apply(´x_1´: ´T_1´, ..., ´x_n´: ´T_n´): ´R´
+```
+
+These classes participate in the desugaring of [concrete function types](./03-types.html#function-types).
+
+For values of ´n \leq 22´, the `Function´_n´` classes define additional methods:
+```scala
+package scala
+trait Function´_n´[-´T_1´, ..., -´T_n´, +´R´]:
+  ...
   override def toString = "<function´_n´>"
   def curried: ´T_1´ => ... => ´T_n´ => R = ...
   def tupled: ((´T_1´, ..., ´T_n´)) => R = ...
 ```
 
-For function types `Function´n´` where ´n > 22´, Scala defines a unique function class:
-
-```scala
-package scala
-trait FunctionXXL:
-  def apply(xs: IArray[Object]): Object
-  override def toString = "<functionXXL>"
-```
-
-There is no loss of type safety, as the internal representation is still `Function´n´` for all ´n´.
-However this means methods `curried` and `tupled` are not available on functions with more than 22 parameters.
-
 The implicitly imported [`Predef`](#the-predef-object) object defines the name
 `Function` as an alias of `Function1`.
 
-<!-- TODO: Remove below ? -->
 The `PartialFunction` subclass of `Function1` represents functions that (indirectly) specify their domain.
 Use the `isDefined` method to query whether the partial function is defined for a given input (i.e., whether the input is part of the function's domain).
 
 ```scala
 class PartialFunction[-A, +B] extends Function1[A, B] {
   def isDefinedAt(x: A): Boolean
+
+  ... // various derived methods
 }
 ```
+
+`PartialFunction` participates in the desugaring of [pattern matching anonymous functions](08-pattern-matching.html#pattern-matching-anonymous-functions).
 
 ### Trait `Product`
 <!-- TODO: Move somewhere else ? -->
@@ -348,6 +361,58 @@ All case classes automatically extend the `Product` trait (and generate syntheti
 ### Trait `Enum`
 <!-- TODO: Move somewhere else ? -->
 All enum definitions automatically extend the `reflect.Enum` trait (and generate synthetic methods to conform to it).
+
+### Tuple Classes
+
+Tuples are a form of _HLists_ defined by the following classes:
+
+```scala
+/** Superclass of all tuples. */
+sealed trait Tuple extends Product:
+  /** Return a new tuple by prepending the element to `this` tuple. */
+  inline def *: [H, This >: this.type <: Tuple] (x: H): H *: This = ...
+  ...
+
+object Tuple:
+  /** Type of the element at position N in the tuple X. */
+  type Elem[X <: Tuple, N <: Int] = ...
+  ...
+
+/** A tuple of 0 elements. */
+type EmptyTuple = EmptyTuple.type
+
+/** A tuple of 0 elements. */
+case object EmptyTuple extends Tuple:
+  override def toString(): String = "()"
+
+/** Tuple of arbitrary non-zero arity */
+sealed trait NonEmptyTuple extends Tuple:
+  /** Get the i-th element of this tuple. */
+  inline def apply[This >: this.type <: NonEmptyTuple](n: Int): Elem[This, n.type] = ...
+  ...
+
+sealed abstract class *:[+H, +T <: Tuple] extends NonEmptyTuple
+
+object `*:` :
+  def unapply[H, T <: Tuple](x: H *: T): (H, T) = (x.head, x.tail)
+```
+
+For ´1 \leq n \leq 22´, the concrete implementations of `*:` are instances of `Tuple´_n´` classes, which also implement corresponding `Product´_n´` traits.
+They are defined at least as follows in the standard Scala library (they might also add other methods and implement other traits).
+
+```scala
+trait Product´_n´[+´T_1´, ..., +´T_n´] extends Product:
+  override def productArity: Int = ´n´
+  def _1: ´T_1´
+  ...
+  def _n: ´T_n´
+
+final case class Tuple´_n´[+´T_1´, ..., +´T_n´](_1: ´T_1´, ..., _n: ´T_n´)
+    extends *:[´T_1´, ´T_2´ *: ... _: ´T_n´ *: EmptyTuple]
+    with Product´_n´[´T_1´, ..., ´T_n´]
+```
+
+For ´n > 22´, the concrete implementations of ´*:´ are instances of implementation-specific private classes.
 
 ### Class `Array`
 

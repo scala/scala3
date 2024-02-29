@@ -30,7 +30,7 @@ enabling us to handle situations where a value is not present. Note that `S` is
 the type of the successor of some singleton type. For example the type `S[1]` is
 the singleton type `2`.
 
-Since tuples are not constant types, even if their constituants are, there is `constValueTuple`, which given a tuple type `(X1, ..., Xn)`, returns a tuple value `(constValue[X1], ..., constValue[Xn])`.
+Since tuples are not constant types, even if their constituents are, there is `constValueTuple`, which given a tuple type `(X1, ..., Xn)`, returns a tuple value `(constValue[X1], ..., constValue[Xn])`.
 
 ### `erasedValue`
 

@@ -2,17 +2,17 @@ package dotty.tools
 package dotc
 package transform
 
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.*
+import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.Flags.*
+import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.inlines.Inlines
 
 /** Check that `tree.rhs` can be right hand-side of an `inline` value definition. */
 class InlineVals extends MiniPhase:
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = InlineVals.name
 

@@ -1,3 +1,4 @@
+//> using options -Xfatal-warnings -Wimplausible-patterns
 enum Recovery:
   case RecoveryCompleted
 

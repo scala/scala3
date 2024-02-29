@@ -144,7 +144,7 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
             (("1900","01","01"), name)
 
       def dateFrom(tf: TemplateFile, default: String = "1900-01-01"): String =
-        val pageSettings = tf.settings.get("page").collect{ case m: Map[String @unchecked, _] => m }
+        val pageSettings = tf.settings.get("page").collect{ case m: Map[String @unchecked, ?] => m }
         pageSettings.flatMap(_.get("date").collect{ case s: String => s}).getOrElse(default) // blogs without date are last
 
       val posts = List(rootPath.resolve("_posts"))

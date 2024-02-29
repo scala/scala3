@@ -1,3 +1,4 @@
+//> using options -Xfatal-warnings -Wimplausible-patterns
 trait Is[A]
 case object IsInt extends Is[Int]
 case object IsString extends Is[String]
@@ -6,7 +7,7 @@ case class C[A](is: Is[A], value: A)
 @main
 def Test = {
   val c_string: C[String] = C(IsString, "name")
-  val c_any: C[_] = c_string
+  val c_any: C[?] = c_string
   val any: Any = c_string
 
   // Case 1: error

@@ -1,9 +1,7 @@
--- [E032] Syntax Error: tests/neg/t5702-neg-bad-brace.scala:8:21 -------------------------------------------------------
+-- Error: tests/neg/t5702-neg-bad-brace.scala:8:20 ---------------------------------------------------------------------
 8 |      case List(1, _*} => // error: pattern expected
-  |                     ^
-  |                     pattern expected
-  |
-  | longer explanation available when compiling with `-explain`
+  |                    ^
+  |                    spread operator `*` not allowed here; must come last in a parameter list
 -- [E040] Syntax Error: tests/neg/t5702-neg-bad-brace.scala:11:0 -------------------------------------------------------
 11 |} // error: eof expected, but '}' found
    |^

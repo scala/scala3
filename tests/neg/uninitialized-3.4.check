@@ -1,0 +1,6 @@
+-- Error: tests/neg/uninitialized-3.4.scala:7:15 -----------------------------------------------------------------------
+7 |  var a: Int = _ // error: migration warning
+  |               ^
+  |               `= _` has been deprecated; use `= uninitialized` instead.
+  |               `uninitialized` can be imported with `scala.compiletime.uninitialized`.
+  |               This construct can be rewritten automatically under -rewrite -source 3.4-migration.

@@ -7,14 +7,14 @@ import java.io.{PrintWriter, StringWriter}
 import java.lang.reflect.{InvocationTargetException, Method => JLRMethod}
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.*
+import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameKinds.FlatName
 import dotty.tools.dotc.core.Names.Name
-import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.StdNames.*
+import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Denotations.staticRef
 import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.core.Constants.Constant
@@ -30,7 +30,8 @@ import scala.reflect.ClassTag
 import dotty.tools.dotc.quoted.{PickledQuotes, QuoteUtils}
 
 import scala.quoted.Quotes
-import scala.quoted.runtime.impl._
+import scala.quoted.runtime.impl.*
+import dotty.tools.dotc.core.NameKinds
 
 /** Utility class to splice quoted expressions */
 object Splicer {
@@ -89,7 +90,7 @@ object Splicer {
   /** Checks that no symbol that was generated within the macro expansion has an out of scope reference */
   def checkEscapedVariables(tree: Tree, expansionOwner: Symbol)(using Context): tree.type =
     new TreeTraverser {
-      private[this] var locals = Set.empty[Symbol]
+      private var locals = Set.empty[Symbol]
       private def markSymbol(sym: Symbol)(using Context): Unit =
           locals = locals + sym
       private def markDef(tree: Tree)(using Context): Unit = tree match {
@@ -214,6 +215,13 @@ object Splicer {
             report.error("Macro cannot be implemented with an `inline` method", fn.srcPos)
           args.flatten.foreach(checkIfValidArgument)
 
+        case Call(fn, args) if fn.symbol.name.is(NameKinds.InlineAccessorName) =>
+          // TODO suggest use of @binaryAPI once we have the annotation
+          report.error(
+            i"""Macro implementation is not statically accessible.
+              |
+              |Non-static inline accessor was generated in ${fn.symbol.owner}
+              |""".stripMargin, tree.srcPos)
         case _ =>
           report.error(
             """Malformed macro.
@@ -245,7 +253,7 @@ object Splicer {
           case expr: Ident if expr.symbol.isAllOf(InlineByNameProxy) =>
             // inline proxy for by-name parameter
             expr.symbol.defTree.asInstanceOf[DefDef].rhs
-          case Inlined(EmptyTree, _, body1) => body1
+          case tree: Inlined if tree.inlinedFromOuterScope => tree.expansion
           case _ => body
         }
         new ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(body1, ctx.owner)).withSpan(body1.span), SpliceScope.getCurrent)

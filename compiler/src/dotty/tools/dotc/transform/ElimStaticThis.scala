@@ -1,9 +1,9 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import Contexts._
-import Flags._
+import core.*
+import Contexts.*
+import Flags.*
 import dotty.tools.dotc.ast.tpd
 import MegaPhase.MiniPhase
 import dotty.tools.dotc.core.Types.{ThisType, TermRef}
@@ -12,7 +12,7 @@ import dotty.tools.dotc.core.Types.{ThisType, TermRef}
  *  corresponding modules.
  */
 class ElimStaticThis extends MiniPhase {
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = ElimStaticThis.name
 

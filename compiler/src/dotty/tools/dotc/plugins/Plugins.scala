@@ -3,13 +3,16 @@ package plugins
 
 import scala.language.unsafeNulls
 
-import core._
-import Contexts._
+import core.*
+import Contexts.*
 import Decorators.em
 import config.{ PathResolver, Feature }
-import dotty.tools.io._
-import Phases._
+import dotty.tools.io.*
+import Phases.*
 import config.Printers.plugins.{ println => debug }
+import config.Properties
+
+import scala.compiletime.uninitialized
 
 /** Support for run-time loading of compiler plugins.
  *
@@ -44,7 +47,7 @@ trait Plugins {
     goods map (_.get)
   }
 
-  private var _roughPluginsList: List[Plugin] = _
+  private var _roughPluginsList: List[Plugin] = uninitialized
   protected def roughPluginsList(using Context): List[Plugin] =
     if (_roughPluginsList == null) {
       _roughPluginsList = loadRoughPluginsList
@@ -96,7 +99,7 @@ trait Plugins {
     plugs
   }
 
-  private var _plugins: List[Plugin] = _
+  private var _plugins: List[Plugin] = uninitialized
   def plugins(using Context): List[Plugin] =
     if (_plugins == null) {
       _plugins = loadPlugins
@@ -126,7 +129,7 @@ trait Plugins {
     val updatedPlan = Plugins.schedule(plan, pluginPhases)
 
     // add research plugins
-    if (Feature.isExperimentalEnabled)
+    if Properties.experimental && !ctx.settings.YnoExperimental.value then
       plugins.collect { case p: ResearchPlugin => p }.foldRight(updatedPlan) {
         (plug, plan) => plug.init(options(plug), plan)
       }

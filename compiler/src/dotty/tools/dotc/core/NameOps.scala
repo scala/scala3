@@ -6,11 +6,11 @@ import java.security.MessageDigest
 import java.nio.CharBuffer
 import scala.io.Codec
 import Int.MaxValue
-import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._, Types._
+import Names.*, StdNames.*, Contexts.*, Symbols.*, Flags.*, NameKinds.*, Types.*
 import util.Chars.{isOperatorPart, digit2int}
 import Decorators.*
-import Definitions._
-import nme._
+import Definitions.*
+import nme.*
 
 object NameOps {
 
@@ -109,12 +109,22 @@ object NameOps {
         false
     }
 
-    /** is this the name of an object enclosing packagel-level definitions? */
+    /** is this the name of an object enclosing package-level definitions? */
     def isPackageObjectName: Boolean = name match {
       case name: TermName => name == nme.PACKAGE || name.endsWith(str.TOPLEVEL_SUFFIX)
       case name: TypeName =>
         name.toTermName match {
           case ModuleClassName(original) => original.isPackageObjectName
+          case _ => false
+        }
+    }
+
+    /** is this the name of an object enclosing top-level definitions? */
+    def isTopLevelPackageObjectName: Boolean = name match {
+      case name: TermName => name.endsWith(str.TOPLEVEL_SUFFIX)
+      case name: TypeName =>
+        name.toTermName match {
+          case ModuleClassName(original) => original.isTopLevelPackageObjectName
           case _ => false
         }
     }
@@ -236,10 +246,12 @@ object NameOps {
      */
     def isPlainFunction(using Context): Boolean = functionArity >= 0
 
-    /** Is a function name that contains `mustHave` as a substring */
-    private def isSpecificFunction(mustHave: String)(using Context): Boolean =
+    /** Is a function name that contains `mustHave` as a substring
+     *  and has arity `minArity` or greater.
+     */
+    private def isSpecificFunction(mustHave: String, minArity: Int = 0)(using Context): Boolean =
       val suffixStart = functionSuffixStart
-      isFunctionPrefix(suffixStart, mustHave) && funArity(suffixStart) >= 0
+      isFunctionPrefix(suffixStart, mustHave) && funArity(suffixStart) >= minArity
 
     def isContextFunction(using Context): Boolean = isSpecificFunction("Context")
     def isImpureFunction(using Context): Boolean = isSpecificFunction("Impure")

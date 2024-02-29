@@ -16,6 +16,11 @@ The issue supervisor is responsible for:
     - Attempting to reproduce the issue (or label “stat:cannot reproduce”)
     - Further minimizing the issue or asking the reporter of the issue to minimize it correctly (or label “stat:needs minimization”)
   - Identifying which issues are of considerable importance and bringing them to the attention of the team during the Dotty meeting, where they can be filtered and added to the [Future Versions](https://github.com/lampepfl/dotty/milestone/46) milestone.
+  - Identifying if a report is really a feature request and if so, converting it to
+    a [feature request discussion](https://github.com/lampepfl/dotty/discussions/categories/feature-requests).
+- Keeping an eye on new
+[discussions](https://github.com/lampepfl/dotty/discussions), making sure they
+don't go unanswered and also correctly labeling new feature requests.
 
 Other core teammates are responsible for providing information to the issue supervisor in a timely manner when it is requested if they have that information.
 
@@ -32,7 +37,6 @@ The issue supervisor schedule is maintained in the [Issue Supervisor Statistics 
 An issue supervisor needs to have all the accesses and privileges required to get their job done. This might include:
 
 - Admin rights in lampepfl/dotty repository
-- Admin rights in lampepfl/dotty-feature-requests repository
 - Permission to create new repositories in lampepfl organization (needed to fork repositories for the community build)
 - Access to the LAMP slack to be able to ask for help with the infrastructure, triaging and such
 
@@ -62,24 +66,25 @@ At the end of their supervision period, the supervisor reports to the team durin
 The following is the list of all the principal areas of the compiler and the core team members who are responsible for their maintenance:
 
 ### Compiler
-- Parser: @odersky
-- Typer: @odersky, @smarter, (@dwijnand)
+- Parser: @odersky, @hamzaremmal
+- Typer: @odersky, @smarter, (@dwijnand), @noti0nal
 - Erasure: @smarter, @odersky
 - Enums: @bishabosha
-- Derivation & Mirrors: @bishabosha, (@dwijnand)
+- Derivation & Mirrors: @bishabosha, (@dwijnand), @EugeneFlesselle
 - Export: @bishabosha, @odersky
 - Pattern Matching: @dwijnand, (@liufengyun), @sjrd
-- Inline: @nicolasstucki, @odersky
-- Metaprogramming (Quotes, Reflect, Staging): @nicolasstucki, @jchyb
-- Match types: @sjrd, @dwijnand, @Decel
+- Inline: @nicolasstucki, @odersky, @hamzaremmal
+- Metaprogramming (Quotes, Reflect, Staging): @nicolasstucki, @jchyb, @hamzaremmal
+- Match types: @sjrd, @dwijnand, @Decel, @Linyxus
 - GADT: @dwijnand, @Linyxus
 - Initialization checker: @olhotak, @liufengyun
 - Safe nulls: @noti0na1, @olhotak
-- Lazy vals: @szymon-rd, @sjrd
+- Transforms: @szymon-rd, @sjrd, @odersky, @smarter
 - tailrec: @sjrd, @mbovel
 - JS backend: @sjrd
 - JVM backend: @sjrd
-- Java-compat: @smarter
+- Java-compat: @smarter, @dwijnand
+- Capture checker: @odersky, @Linyxus
 
 ### Tooling
 - REPL: @dwijnand, @prolativ

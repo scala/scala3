@@ -12,7 +12,7 @@ import scala.annotation.internal.sharable
 
 /** A source position is comprised of a span and a source file */
 case class SourcePosition(source: SourceFile, span: Span, outer: SourcePosition = NoSourcePosition)
-extends SrcPos, interfaces.SourcePosition, Showable, caps.Pure {
+extends SrcPos, interfaces.SourcePosition, Showable, Pure {
 
   def sourcePos(using Context) = this
 

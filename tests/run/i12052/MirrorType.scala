@@ -1,4 +1,3 @@
-import scala.quoted._
 import scala.deriving._
 import scala.compiletime.{erasedValue, constValue, summonFrom, summonInline}
 

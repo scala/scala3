@@ -37,7 +37,22 @@ trait SchemaDerivation {
   inline given gen[A]: Schema[A] = derived
 }
 
-case class H(i: Int)
+case class X15(i: Int)
+case class X14(i: X15)
+case class X13(i: X14)
+case class X12(i: X13)
+case class X11(i: X12)
+case class X10(i: X11)
+case class X9(i: X10)
+case class X8(i: X9)
+case class X7(i: X8)
+case class X6(i: X7)
+case class X5(i: X6)
+case class X4(i: X5)
+case class X3(i: X4)
+case class X2(i: X3)
+case class X1(i: X2)
+case class H(i: X1)
 case class G(h: H)
 case class F(g: G)
 case class E(f: Option[F])

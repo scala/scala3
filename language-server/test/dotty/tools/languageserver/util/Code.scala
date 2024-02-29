@@ -48,7 +48,7 @@ object Code {
      * perform actions such as finding all references, etc.
      */
     def code(args: Embedded*): ScalaSourceWithPositions = {
-      val (text, positions) = textAndPositions(args: _*)
+      val (text, positions) = textAndPositions(args*)
       ScalaSourceWithPositions(text, positions)
     }
 
@@ -58,7 +58,7 @@ object Code {
      * @see code
      */
     def ws(args: Embedded*): WorksheetWithPositions = {
-      val (text, positions) = textAndPositions(args: _*)
+      val (text, positions) = textAndPositions(args*)
       WorksheetWithPositions(text, positions)
     }
 
@@ -69,7 +69,7 @@ object Code {
      * @see code
      */
     def tasty(args: Embedded*): TastyWithPositions = {
-      val (text, positions) = textAndPositions(args: _*)
+      val (text, positions) = textAndPositions(args*)
       TastyWithPositions(text, positions)
     }
 
@@ -190,7 +190,7 @@ object Code {
   }
 
   object Project {
-    private[this] val count = new java.util.concurrent.atomic.AtomicInteger()
+    private val count = new java.util.concurrent.atomic.AtomicInteger()
     private def freshName: String = s"project${count.incrementAndGet()}"
 
     /**

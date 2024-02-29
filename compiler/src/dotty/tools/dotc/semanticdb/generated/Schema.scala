@@ -5,7 +5,7 @@
 // Protofile syntax: PROTO3
 
 package dotty.tools.dotc.semanticdb
-import dotty.tools.dotc.semanticdb.internal._
+import dotty.tools.dotc.semanticdb.internal.*
 import scala.annotation.internal.sharable
 
 sealed abstract class Schema(val value: _root_.scala.Int)  extends SemanticdbGeneratedEnum  derives CanEqual {
@@ -13,35 +13,35 @@ sealed abstract class Schema(val value: _root_.scala.Int)  extends SemanticdbGen
   def isLegacy: _root_.scala.Boolean = false
   def isSemanticdb3: _root_.scala.Boolean = false
   def isSemanticdb4: _root_.scala.Boolean = false
-  
+
   final def asRecognized: _root_.scala.Option[dotty.tools.dotc.semanticdb.Schema.Recognized] = if (isUnrecognized) _root_.scala.None else _root_.scala.Some(this.asInstanceOf[dotty.tools.dotc.semanticdb.Schema.Recognized])
 }
 
 object Schema  {
   sealed trait Recognized extends Schema
-  
-  
+
+
   @SerialVersionUID(0L)
   case object LEGACY extends Schema(0) with Schema.Recognized {
     val index = 0
     val name = "LEGACY"
     override def isLegacy: _root_.scala.Boolean = true
   }
-  
+
   @SerialVersionUID(0L)
   case object SEMANTICDB3 extends Schema(3) with Schema.Recognized {
     val index = 1
     val name = "SEMANTICDB3"
     override def isSemanticdb3: _root_.scala.Boolean = true
   }
-  
+
   @SerialVersionUID(0L)
   case object SEMANTICDB4 extends Schema(4) with Schema.Recognized {
     val index = 2
     val name = "SEMANTICDB4"
     override def isSemanticdb4: _root_.scala.Boolean = true
   }
-  
+
   @SerialVersionUID(0L)
   final case class Unrecognized(unrecognizedValue: _root_.scala.Int)  extends Schema(unrecognizedValue) with SemanticdbUnrecognizedEnum
   lazy val values = scala.collection.immutable.Seq(LEGACY, SEMANTICDB3, SEMANTICDB4)
@@ -51,6 +51,6 @@ object Schema  {
     case 4 => SEMANTICDB4
     case __other => Unrecognized(__other)
   }
-  
-  
+
+
 }

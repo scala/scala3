@@ -10,7 +10,6 @@ import printing.Formatting.hl
 import config.SourceVersion
 
 import scala.language.unsafeNulls
-
 import scala.annotation.threadUnsafe
 
 /** ## Tips for error message generation
@@ -51,6 +50,13 @@ object Message:
    */
   private class Seen(disambiguate: Boolean):
 
+    /** The set of lambdas that were opened at some point during printing. */
+    private val openedLambdas = new collection.mutable.HashSet[LambdaType]
+
+    /** Register that `tp` was opened during printing. */
+    def openLambda(tp: LambdaType): Unit =
+      openedLambdas += tp
+
     val seen = new collection.mutable.HashMap[SeenKey, List[Recorded]]:
       override def default(key: SeenKey) = Nil
 
@@ -82,15 +88,29 @@ object Message:
       def followAlias(e1: Recorded): Recorded = e1 match {
         case e1: Symbol if e1.isAliasType =>
           val underlying = e1.typeRef.underlyingClassRef(refinementOK = false).typeSymbol
-          if (underlying.name == e1.name) underlying else e1
+          if (underlying.name == e1.name) underlying else e1.namedType.dealias.typeSymbol
         case _ => e1
       }
       val key = SeenKey(str, isType)
       val existing = seen(key)
       lazy val dealiased = followAlias(entry)
 
-      // alts: The alternatives in `existing` that are equal, or follow (an alias of) `entry`
-      var alts = existing.dropWhile(alt => dealiased ne followAlias(alt))
+      /** All lambda parameters with the same name are given the same superscript as
+       *  long as their corresponding binder has been printed.
+       *  See tests/neg/lambda-rename.scala for test cases.
+       */
+      def sameSuperscript(cur: Recorded, existing: Recorded) =
+        (cur eq existing) ||
+        (cur, existing).match
+          case (cur: ParamRef, existing: ParamRef) =>
+            (cur.paramName eq existing.paramName) &&
+            openedLambdas.contains(cur.binder) &&
+            openedLambdas.contains(existing.binder)
+          case _ =>
+            false
+
+      // The length of alts corresponds to the number of superscripts we need to print.
+      var alts = existing.dropWhile(alt => !sameSuperscript(dealiased, followAlias(alt)))
       if alts.isEmpty then
         alts = entry :: existing
         seen(key) = alts
@@ -208,10 +228,20 @@ object Message:
       case tp: SkolemType => seen.record(tp.repr.toString, isType = true, tp)
       case _ => super.toTextRef(tp)
 
+    override def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: Text): Text =
+      info match
+        case info: LambdaType =>
+          seen.openLambda(info)
+        case _ =>
+      super.toTextMethodAsFunction(info, isPure, refs)
+
     override def toText(tp: Type): Text =
       if !tp.exists || tp.isErroneous then seen.nonSensical = true
       tp match
         case tp: TypeRef if useSourceModule(tp.symbol) => Str("object ") ~ super.toText(tp)
+        case tp: LambdaType =>
+          seen.openLambda(tp)
+          super.toText(tp)
         case _ => super.toText(tp)
 
     override def toText(sym: Symbol): Text =
@@ -378,11 +408,16 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
     override def canExplain = true
 
   /** Override with `true` for messages that should always be shown even if their
-   *  position overlaps another messsage of a different class. On the other hand
+   *  position overlaps another message of a different class. On the other hand
    *  multiple messages of the same class with overlapping positions will lead
    *  to only a single message of that class to be issued.
    */
   def showAlways = false
+
+  /** A list of actions attached to this message to address the issue this
+    * message represents.
+    */
+  def actions(using Context): List[CodeAction] = List.empty
 
   override def toString = msg
 }

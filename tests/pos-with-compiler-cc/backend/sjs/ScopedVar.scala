@@ -1,6 +1,6 @@
 package dotty.tools.backend.sjs
 
-class ScopedVar[A](init: A) extends caps.Pure {
+class ScopedVar[A](init: A) extends Pure {
   import ScopedVar.Assignment
 
   private[ScopedVar] var value = init

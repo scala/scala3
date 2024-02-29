@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-glb.scala:7:19 ----------------------------------------
+7 |  val x2: Foo[T] = x1  // error
+  |                   ^^
+  |                   Found:    (x1 : (Foo[T] & Foo[Any])^{io})
+  |                   Required: Foo[T]
+  |
+  | longer explanation available when compiling with `-explain`
