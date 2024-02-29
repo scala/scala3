@@ -1,7 +1,7 @@
 -- [E081] Type Error: tests/neg/i11350.scala:1:39 ----------------------------------------------------------------------
 1 |class A1[T](action: A1[T] ?=> String = "") // error
   |                                       ^
-  |                                       Could not infer type for parameter contextual$1 of anonymous function
+  |                                       Could not infer type for parameter evidence$1 of anonymous function
   |
   |                                       Partially inferred type for the parameter: A1[<?>]
   |
@@ -9,7 +9,7 @@
 -- [E081] Type Error: tests/neg/i11350.scala:2:39 ----------------------------------------------------------------------
 2 |class A2[T](action: A1[T] ?=> String = summon[A1[T]]) // error
   |                                       ^
-  |                                       Could not infer type for parameter contextual$2 of anonymous function
+  |                                       Could not infer type for parameter evidence$2 of anonymous function
   |
   |                                       Partially inferred type for the parameter: A1[<?>]
   |

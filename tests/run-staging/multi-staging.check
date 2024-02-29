@@ -1,5 +1,5 @@
 stage1 code: ((q1: scala.quoted.Quotes) ?=> {
   val x1: scala.Int = 2
-  scala.quoted.runtime.Expr.quote[scala.Int](1.+(scala.quoted.runtime.Expr.splice[scala.Int](((contextual$5: scala.quoted.Quotes) ?=> scala.quoted.Expr.apply[scala.Int](x1)(scala.quoted.ToExpr.IntToExpr[scala.Int])(contextual$5))))).apply(using q1)
+  scala.quoted.runtime.Expr.quote[scala.Int](1.+(scala.quoted.runtime.Expr.splice[scala.Int](((evidence$5: scala.quoted.Quotes) ?=> scala.quoted.Expr.apply[scala.Int](x1)(scala.quoted.ToExpr.IntToExpr[scala.Int])(evidence$5))))).apply(using q1)
 })
 3
