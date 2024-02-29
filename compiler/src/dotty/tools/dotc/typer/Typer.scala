@@ -688,7 +688,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       report.error(StableIdentPattern(tree, pt), tree.srcPos)
 
   def typedSelect(tree0: untpd.Select, pt: Type, qual: Tree)(using Context): Tree =
-    val selName = tree0.name
+    val selName =
+      if ctx.isJava && tree0.name.isTypeName && tree0.name.endsWith(StdNames.str.MODULE_SUFFIX) then
+        tree0.name.stripModuleClassSuffix.moduleClassName
+      else
+        tree0.name
     val tree = cpy.Select(tree0)(qual, selName)
     val superAccess = qual.isInstanceOf[Super]
     val rawType = selectionType(tree, qual)
