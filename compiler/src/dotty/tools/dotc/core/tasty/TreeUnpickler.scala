@@ -65,6 +65,15 @@ class TreeUnpickler(reader: TastyReader,
   /** A map from addresses of definition entries to the symbols they define */
   private val symAtAddr  = new mutable.HashMap[Addr, Symbol]
 
+  private def addrOfSymbol(sym: Symbol): Option[Addr] = symAtAddr.iterator.collectFirst {
+    case (addr, s) if s == sym => addr
+  }
+
+  private def locatedSymbol(sym: Symbol)(using Context): String =
+    addrOfSymbol(sym) match
+      case Some(addr) => i"local $sym @ ${addr.index}"
+      case None => i"external $sym"
+
   /** A temporary map from addresses of definition entries to the trees they define.
    *  Used to remember trees of symbols that are created by a completion. Emptied
    *  once the tree is inlined into a larger tree.
@@ -297,7 +306,7 @@ class TreeUnpickler(reader: TastyReader,
     /** The symbol defined by current definition */
     def symbolAtCurrent()(using Context): Symbol = symAtAddr.get(currentAddr) match {
       case Some(sym) =>
-        assert(ctx.owner == sym.owner, i"owner discrepancy for $sym, expected: ${ctx.owner}, found: ${sym.owner}")
+        assert(ctx.owner == sym.owner, i"owner discrepancy for ${locatedSymbol(sym)}, expected: ${locatedSymbol(ctx.owner)}, found: ${locatedSymbol(sym.owner)}")
         sym
       case None =>
         createSymbol()
