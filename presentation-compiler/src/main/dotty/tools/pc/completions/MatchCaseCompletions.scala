@@ -532,8 +532,8 @@ class MatchCaseExtractor(
                 name.toString().replace(Cursor.value, "")
               ) && (text
               .charAt(
-                completionPos.start - 1
-              ) == ' ' || text.charAt(completionPos.start - 1) == '.') =>
+                completionPos.queryStart - 1
+              ) == ' ' || text.charAt(completionPos.queryStart - 1) == '.') =>
           Some(qualifier)
         case _ => None
   end MatchExtractor

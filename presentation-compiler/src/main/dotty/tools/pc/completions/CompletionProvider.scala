@@ -61,11 +61,10 @@ class CompletionProvider(
         val locatedCtx = Interactive.contextOfPath(tpdPath)(using newctx)
         val indexedCtx = IndexedContext(locatedCtx)
 
-        val completionPos =
-          CompletionPos.infer(pos, params, adjustedPath)(using locatedCtx)
+        val completionPos = CompletionPos.infer(pos, params, adjustedPath)(using locatedCtx)
 
         val autoImportsGen = AutoImports.generator(
-          completionPos.sourcePos,
+          completionPos.toSourcePosition,
           text,
           unit.tpdTree,
           unit.comments,
@@ -75,7 +74,6 @@ class CompletionProvider(
 
         val (completions, searchResult) =
           new Completions(
-            pos,
             text,
             locatedCtx,
             search,
@@ -120,7 +118,7 @@ class CompletionProvider(
    *   val a = 1
    *   @@
    * }}}
-   * it's required to modify actual code by addition Ident.
+   * it's required to modify actual code by additional Ident.
    *
    * Otherwise, completion poisition doesn't point at any tree
    * because scala parser trim end position to the last statement pos.
@@ -168,7 +166,7 @@ class CompletionProvider(
         additionalEdits: List[TextEdit] = Nil,
         range: Option[LspRange] = None
     ): CompletionItem =
-      val oldText = params.text().nn.substring(completionPos.start, completionPos.end)
+      val oldText = params.text().nn.substring(completionPos.queryStart, completionPos.identEnd)
       val editRange = if newText.startsWith(oldText) then completionPos.stripSuffixEditRange
         else completionPos.toEditRange
 
@@ -287,6 +285,3 @@ class CompletionProvider(
     end match
   end completionItems
 end CompletionProvider
-
-case object Cursor:
-  val value = "CURSOR"

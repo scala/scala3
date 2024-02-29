@@ -12,6 +12,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Symbols.Symbol
+import dotty.tools.dotc.util.Spans
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.CompilerSearchVisitor
@@ -24,7 +25,6 @@ object InterpolatorCompletions:
 
   def contribute(
       text: String,
-      pos: SourcePosition,
       completionPos: CompletionPos,
       indexedContext: IndexedContext,
       lit: Literal,
@@ -35,12 +35,12 @@ object InterpolatorCompletions:
       config: PresentationCompilerConfig,
       buildTargetIdentifier: String
   )(using Context, ReportContext) =
-    InterpolationSplice(pos.span.point, text.toCharArray().nn, text) match
+    InterpolationSplice(completionPos.queryEnd, text.toCharArray().nn, text) match
       case Some(interpolator) =>
         InterpolatorCompletions.contributeScope(
           text,
           lit,
-          pos,
+          completionPos,
           interpolator,
           indexedContext,
           completions,
@@ -55,7 +55,6 @@ object InterpolatorCompletions:
           lit,
           path,
           text,
-          pos,
           completionPos,
           completions,
           snippetsEnabled,
@@ -106,7 +105,6 @@ object InterpolatorCompletions:
       lit: Literal,
       path: List[Tree],
       text: String,
-      cursor: SourcePosition,
       completionPos: CompletionPos,
       completions: Completions,
       areSnippetsSupported: Boolean,
@@ -166,7 +164,7 @@ object InterpolatorCompletions:
                 label,
                 Some(newText(name, suffix.toEditOpt, identOrSelect)),
                 Nil,
-                Some(cursor.withStart(identOrSelect.span.start).toLsp),
+                Some(completionPos.originalCursorPosition.withStart(identOrSelect.span.start).toLsp),
                 // Needed for VS Code which will not show the completion otherwise
                 Some(identOrSelect.name.toString() + "." + label),
                 denot.symbol,
@@ -219,7 +217,7 @@ object InterpolatorCompletions:
   private def contributeScope(
       text: String,
       lit: Literal,
-      position: SourcePosition,
+      completionPos: CompletionPos,
       interpolator: InterpolationSplice,
       indexedContext: IndexedContext,
       completions: Completions,
@@ -230,6 +228,7 @@ object InterpolatorCompletions:
   )(using ctx: Context, reportsContext: ReportContext): List[CompletionValue] =
     val litStartPos = lit.span.start
     val litEndPos = lit.span.end - Cursor.value.length()
+    val position = completionPos.originalCursorPosition
     val span = position.span
     val nameStart =
       span.withStart(span.start - interpolator.name.size)
