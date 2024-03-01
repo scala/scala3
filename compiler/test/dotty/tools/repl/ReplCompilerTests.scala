@@ -4,8 +4,9 @@ import scala.language.unsafeNulls
 
 import java.util.regex.Pattern
 
-import org.junit.Assert.{assertTrue => assert, _}
-import org.junit.{Ignore, Test}
+import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
+import org.junit.Assert.{assertTrue => assert}
+import org.junit.Test
 import dotty.tools.dotc.core.Contexts.Context
 
 class ReplCompilerTests extends ReplTest:
@@ -107,28 +108,21 @@ class ReplCompilerTests extends ReplTest:
     assertEquals(expected, lines())
   }
 
-  // FIXME: Tests are not run in isolation, the classloader is corrupted after the first exception
-  @Ignore @Test def i3305: Unit = {
-    initially {
-      run("null.toString")
-      assert(storedOutput().startsWith("java.lang.NullPointerException"))
-    }
+  @Test def `i3305 SOE meh`: Unit = initially:
+    run("def foo: Int = 1 + foo; foo")
+    assert(storedOutput().startsWith("java.lang.StackOverflowError"))
 
-    initially {
-      run("def foo: Int = 1 + foo; foo")
-      assert(storedOutput().startsWith("def foo: Int\njava.lang.StackOverflowError"))
-    }
+  @Test def `i3305 NPE`: Unit = initially:
+    run("null.toString")
+    assert(storedOutput().startsWith("java.lang.NullPointerException"))
 
-    initially {
-      run("""throw new IllegalArgumentException("Hello")""")
-      assert(storedOutput().startsWith("java.lang.IllegalArgumentException: Hello"))
-    }
+  @Test def `i3305 IAE`: Unit = initially:
+    run("""throw new IllegalArgumentException("Hello")""")
+    assertTrue(storedOutput().startsWith("java.lang.IllegalArgumentException: Hello"))
 
-    initially {
-      run("val (x, y) = null")
-      assert(storedOutput().startsWith("scala.MatchError: null"))
-    }
-  }
+  @Test def `i3305 ME`: Unit = initially:
+    run("val (x, y) = null")
+    assert(storedOutput().startsWith("scala.MatchError: null"))
 
   @Test def i2789: Unit = initially {
     run("(x: Int) => println(x)")
@@ -436,6 +430,23 @@ class ReplCompilerTests extends ReplTest:
     assertEquals("2", storedOutput().trim)
     s2
   }
+
+  @Test def `i17333 print null result of toString`: Unit =
+    initially:
+      run("val tpolecat = new Object { override def toString(): String = null }")
+    .andThen:
+      val last = lines().last
+      assertTrue(last, last.startsWith("val tpolecat: Object = null"))
+      assertTrue(last, last.endsWith("""// result of "tpolecat.toString" is null"""))
+
+  @Test def `i17333 print toplevel object with null toString`: Unit =
+    initially:
+      run("object tpolecat { override def toString(): String = null }")
+    .andThen:
+      run("tpolecat")
+      val last = lines().last
+      assertTrue(last, last.startsWith("val res0: tpolecat.type = null"))
+      assertTrue(last, last.endsWith("""// result of "res0.toString" is null"""))
 
 object ReplCompilerTests:
 
