@@ -155,7 +155,7 @@ class CompletionProvider(
 
     // For overloaded signatures we get multiple symbols, so we need
     // to recalculate the description
-    // related issue https://github.com/lampepfl/dotty/issues/11941
+    // related issue https://github.com/scala/scala3/issues/11941
     lazy val kind: CompletionItemKind = completion.completionItemKind
     val description = completion.description(printer)
     val label = completion.labelWithDescription(printer)

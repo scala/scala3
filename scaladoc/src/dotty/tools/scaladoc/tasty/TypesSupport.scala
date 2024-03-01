@@ -298,7 +298,7 @@ trait TypesSupport:
       }
 
       case tpe =>
-        val msg = s"Encountered unsupported type. Report this problem to https://github.com/lampepfl/dotty/.\n" +
+        val msg = s"Encountered unsupported type. Report this problem to https://github.com/scala/scala3/.\n" +
           s"${tpe.show(using Printer.TypeReprStructure)}"
         throw MatchError(msg)
 

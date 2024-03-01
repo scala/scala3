@@ -91,7 +91,7 @@ These constructs are proposed to be dropped without a new construct replacing th
 - [Auto application](dropped-features/auto-apply.md),
 - [Weak conformance](dropped-features/weak-conformance.md),
 - Compound types (replaced by [Intersection types](new-types/intersection-types.md)),
-- [Auto tupling](https://github.com/lampepfl/dotty/pull/4311) (implemented, but not merged).
+- [Auto tupling](https://github.com/scala/scala3/pull/4311) (implemented, but not merged).
 
 The date when these constructs are dropped varies. The current status is:
 

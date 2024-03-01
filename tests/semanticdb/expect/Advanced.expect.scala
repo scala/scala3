@@ -43,7 +43,7 @@ object Test/*<-advanced::Test.*/ {
     }
   }
 
-  // see: https://github.com/lampepfl/dotty/pull/14608#discussion_r835642563
+  // see: https://github.com/scala/scala3/pull/14608#discussion_r835642563
   lazy val foo/*<-advanced::Test.foo.*/: (reflect.Selectable/*->scala::reflect::Selectable#*/ { type A/*<-local16*/ = Int/*->scala::Int#*/ }) &/*->scala::`&`#*/ (reflect.Selectable/*->scala::reflect::Selectable#*/ { type A/*<-local17*/ = Int/*->scala::Int#*/; val a/*<-local18*/: A/*->local17*/ }) = ???/*->scala::Predef.`???`().*/
   def bar/*<-advanced::Test.bar().*/: foo/*->advanced::Test.foo.*/.A/*->local17*/ = foo/*->advanced::Test.foo.*/.a/*->scala::reflect::Selectable#selectDynamic().*/
 }

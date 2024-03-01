@@ -126,7 +126,7 @@ object DottyBackendInterface {
        *  See also `genPlainClass` in `BCodeSkelBuilder.scala`.
        *
        *  TODO: remove the special handing of `LazyBitMapName` once we swtich to
-       *        the new lazy val encoding: https://github.com/lampepfl/dotty/issues/7140
+       *        the new lazy val encoding: https://github.com/scala/scala3/issues/7140
        */
       def isStaticModuleField(using Context): Boolean =
         sym.owner.isStaticModuleClass && sym.isField && !sym.name.is(LazyBitMapName) && !sym.name.is(LazyLocalName)

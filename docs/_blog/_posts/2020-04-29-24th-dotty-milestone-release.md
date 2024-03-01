@@ -76,13 +76,13 @@ Bar 22
 Bar 22
 ```
 
-This new change, however, comes with rather intricated rules – if you are interested to learn about them in details, see [documentation](https://dotty.epfl.ch/docs/reference/metaprogramming/inline.html#rules-for-overriding) on inlines and the PR #[8543](https://github.com/lampepfl/dotty/pull/8543/files) which introduced the change.
+This new change, however, comes with rather intricated rules – if you are interested to learn about them in details, see [documentation](https://dotty.epfl.ch/docs/reference/metaprogramming/inline.html#rules-for-overriding) on inlines and the PR #[8543](https://github.com/scala/scala3/pull/8543/files) which introduced the change.
 
 # Let us know what you think!
 
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 
@@ -125,7 +125,7 @@ According to `git shortlog -sn --no-merges 0.23.0-RC1..0.24.0-RC1` these are:
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
 Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
-and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.
@@ -134,7 +134,7 @@ We are looking forward to having you join the team of contributors.
 
 Dotty now has a set of widely-used community libraries that are built against every nightly Dotty
 snapshot. Currently, this includes shapeless, ScalaPB, algebra, scalatest, scopt and squants.
-Join our [community build](https://github.com/lampepfl/dotty/tree/main/community-build)
+Join our [community build](https://github.com/scala/scala3/tree/main/community-build)
 to make sure that our regression suite includes your library.
 
 [Scastie]: https://scastie.scala-lang.org/?target=dotty

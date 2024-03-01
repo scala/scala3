@@ -154,7 +154,7 @@ object report:
        |
        |  An unhandled exception was thrown in the compiler.
        |  Please file a crash report here:
-       |  https://github.com/lampepfl/dotty/issues/new/choose
+       |  https://github.com/scala/scala3/issues/new/choose
        |  For non-enriched exceptions, compile with -Yno-enrich-error-messages.
        |
        |$info1

@@ -50,11 +50,11 @@ smoothly, but the *Parallelism and Concurrency* course given in the
 Spring semester teaches Spark, which means we needed to support it in Dotty!
 
 Luckily, this turned out to be mostly straightforward: we adopted the [object
-serialization scheme](https://github.com/lampepfl/dotty/pull/5775) and [lambda
-serialization scheme](https://github.com/lampepfl/dotty/pull/5837) pioneered by
+serialization scheme](https://github.com/scala/scala3/pull/5775) and [lambda
+serialization scheme](https://github.com/scala/scala3/pull/5837) pioneered by
 Scala 2, and that was enough to make our Spark assignments run correctly! This
 doesn't mean that our support is perfect however, so don't hesitate to [open an
-issue](http://github.com/lampepfl/dotty/issues) if something is amiss.
+issue](http://github.com/scala/scala3/issues) if something is amiss.
 
 ## Introducing top level definitions
 
@@ -74,7 +74,7 @@ def b = a._2
 You can read about [dropping package
 objects](https://dotty.epfl.ch/docs/reference/dropped-features/package-objects.html)
 at the documentation linked or at the relevant PR
-[#5754](https://github.com/lampepfl/dotty/pull/5754).
+[#5754](https://github.com/scala/scala3/pull/5754).
 
 ## All things impl... implied
 
@@ -211,7 +211,7 @@ object B {
 **You can read more about** [implied
 imports](https://dotty.epfl.ch/docs/reference/contextual/import-delegate.html)
 from the docs or the relevant PR
-[#5868](https://github.com/lampepfl/dotty/pull/5868).
+[#5868](https://github.com/scala/scala3/pull/5868).
 
 As we mentioned above, *context queries* are functions with (only) inferable
 parameters. Here is an example of such a function:
@@ -227,9 +227,9 @@ merely an alignment of IFTs into the new scheme.
 **You can read more about** the alternative to implicits through the *Contextual
 Abstractions* section of our documentation or for a deep dive from the relevant
 PR chain that originated from
-[#5458](https://github.com/lampepfl/dotty/pull/5458). The syntax changes for new
+[#5458](https://github.com/scala/scala3/pull/5458). The syntax changes for new
 implicits are summarized in
-[#5825](https://github.com/lampepfl/dotty/pull/5825).
+[#5825](https://github.com/scala/scala3/pull/5825).
 
 This release offers the support for _type class derivation_ as a language
 feature. Type class derivation is a way to generate instances of certain type
@@ -279,8 +279,8 @@ def derived[T] given Generic[T] = ...
 **You can read more about** [Type class
 Derivation](https://dotty.epfl.ch/docs/reference/contextual/derivation.html) or
 have a deep dive at the relevant PRs:
-[#5540](https://github.com/lampepfl/dotty/pull/5540) and
-[#5839](https://github.com/lampepfl/dotty/pull/5839).
+[#5540](https://github.com/scala/scala3/pull/5540) and
+[#5839](https://github.com/scala/scala3/pull/5839).
 
 _Multiversal equality_ is now supported through the `Eql` marker trait (renamed
 from `Eq` to differentiate it from Cats' `Eq`). For example, in order to be able
@@ -292,7 +292,7 @@ implied for Eql[Int, String] = Eql.derived
 ```
 
 **You can read more about** how we based multiversal equality on type class derivation through
-the relevant PR [#5843](https://github.com/lampepfl/dotty/pull/5843).
+the relevant PR [#5843](https://github.com/scala/scala3/pull/5843).
 
 _Implicit conversions_ are now defined by implied instances of the
 `scala.Conversion` class. For example:
@@ -311,7 +311,7 @@ important with the documentation of each feature, please consult the
 
 ## Implicit resolution rule changes
 
-PR [#5887](https://github.com/lampepfl/dotty/pull/5887) applies the following
+PR [#5887](https://github.com/scala/scala3/pull/5887) applies the following
 changes to implicit resolution:
 
 1. nested implicits always take precedence over outer ones
@@ -324,12 +324,12 @@ changes to implicit resolution:
 data model for semantic information such as symbols and types about programs in
 Scala and other languages. SemanticDB decouples production and consumption of
 semantic information, establishing documented means for communication between
-tools. With PR [#5761](https://github.com/lampepfl/dotty/pull/5761) we add the
+tools. With PR [#5761](https://github.com/scala/scala3/pull/5761) we add the
 first prototype for the generation of SemanticDB information from TASTy.
 
 ## And much more!
 
-Please read our [release notes](https://github.com/lampepfl/dotty/releases/tag/0.13.0-RC1)
+Please read our [release notes](https://github.com/scala/scala3/releases/tag/0.13.0-RC1)
 for more details!
 
 # Trying out Dotty
@@ -360,7 +360,7 @@ the IDE sections of the [getting-started page](https://docs.scala-lang.org/scala
 
 Releases are available for download on the _Releases_
 section of the Dotty repository:
-[https://github.com/lampepfl/dotty/releases](https://github.com/lampepfl/dotty/releases)
+[https://github.com/scala/scala3/releases](https://github.com/scala/scala3/releases)
 
 For macOS users, we also provide a [homebrew](https://brew.sh/) package that can be installed by
 running:
@@ -379,7 +379,7 @@ brew upgrade dotty
 
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 
@@ -417,7 +417,7 @@ According to `git shortlog -sn --no-merges 0.12.0-RC1..0.13.0-RC1` these are:
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
 Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
-and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.

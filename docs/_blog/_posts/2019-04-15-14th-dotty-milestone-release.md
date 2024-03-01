@@ -72,7 +72,7 @@ For more information, please read more in the [documentation](https://dotty.epfl
 
 
 ## An immutable array type
-A new type, `scala.IArray[T]`, is added, which is an immutable version of the `Array` type. Its implementation deserves a special attention, as it uses the new Dotty features in an elegant way (the below is an abstract from the corresponding [commit](https://github.com/lampepfl/dotty/commit/af2a0e66eb4b1204eac5dcb1d979486b92ef93d7#diff-156dc405d9f228bbc0fe406dfba63f65):
+A new type, `scala.IArray[T]`, is added, which is an immutable version of the `Array` type. Its implementation deserves a special attention, as it uses the new Dotty features in an elegant way (the below is an abstract from the corresponding [commit](https://github.com/scala/scala3/commit/af2a0e66eb4b1204eac5dcb1d979486b92ef93d7#diff-156dc405d9f228bbc0fe406dfba63f65):
 
 ```scala
 opaque type IArray[T] = Array[T]
@@ -131,7 +131,7 @@ Some of the other changes include:
 
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 
@@ -171,7 +171,7 @@ According to `git shortlog -sn --no-merges 0.13.0-RC1..0.14.0-RC1` these are:
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
 Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
-and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.

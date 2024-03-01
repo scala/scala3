@@ -40,7 +40,7 @@ while [[ $# -gt 0 ]]; do
       # pass all remaining arguments to scala, e.g. to avoid interpreting them here as -D or -J
       while [[ $# -gt 0 ]]; do addScala "$1" && shift ; done
       ;;
-    # Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
+    # Optimize for short-running applications, see https://github.com/scala/scala3/issues/222
     -Oshort)
       addScala "-Oshort" && \
       addJava "-XX:+TieredCompilation" && addJava "-XX:TieredStopAtLevel=1" && shift ;;

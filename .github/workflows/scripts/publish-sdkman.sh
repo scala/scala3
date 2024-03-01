@@ -10,8 +10,8 @@
 set -u
 
 # latest stable dotty version
-DOTTY_VERSION=$(curl -s https://api.github.com/repos/lampepfl/dotty/releases/latest  | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-DOTTY_URL="https://github.com/lampepfl/dotty/releases/download/$DOTTY_VERSION/scala3-$DOTTY_VERSION.zip"
+DOTTY_VERSION=$(curl -s https://api.github.com/repos/scala/scala3/releases/latest  | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+DOTTY_URL="https://github.com/scala/scala3/releases/download/$DOTTY_VERSION/scala3-$DOTTY_VERSION.zip"
 
 # checking if dotty version is available
 if ! curl --output /dev/null --silent --head --fail "$DOTTY_URL"; then
