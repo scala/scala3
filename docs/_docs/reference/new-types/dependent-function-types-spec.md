@@ -4,7 +4,7 @@ title: "Dependent Function Types - More Details"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/new-types/dependent-function-types-spec.html
 ---
 
-Initial implementation in [PR #3464](https://github.com/lampepfl/dotty/pull/3464).
+Initial implementation in [PR #3464](https://github.com/scala/scala3/pull/3464).
 
 ## Syntax
 
@@ -46,7 +46,7 @@ same way that other functions do, see
 The example below defines a trait `C` and the two dependent function types
 `DF` and `IDF` and prints the results of the respective function applications:
 
-[depfuntype.scala]: https://github.com/lampepfl/dotty/blob/main/tests/pos/depfuntype.scala
+[depfuntype.scala]: https://github.com/scala/scala3/blob/main/tests/pos/depfuntype.scala
 
 ```scala
 trait C { type M; val m: M }
@@ -70,7 +70,7 @@ type IDF = (x: C) ?=> x.M
 
 In the following example the depend type `f.Eff` refers to the effect type `CanThrow`:
 
-[eff-dependent.scala]: https://github.com/lampepfl/dotty/blob/main/tests/run/eff-dependent.scala
+[eff-dependent.scala]: https://github.com/scala/scala3/blob/main/tests/run/eff-dependent.scala
 
 ```scala
 trait Effect

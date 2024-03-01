@@ -28,7 +28,7 @@ Say we want to release the 0.14.0 version. In this section we describe the proce
 CI is set to automatically detect the tags of the format discussed above and perform the required release operations. Precisely, it will do two things for the release tags:
 
 - Publish the release jars to Maven
-- Create the drafts at the GitHub [release](https://github.com/lampepfl/dotty/releases) page of the repository with the artefacts of the release.
+- Create the drafts at the GitHub [release](https://github.com/scala/scala3/releases) page of the repository with the artefacts of the release.
 
 The CI operation is entirely automatic provided you have tagged the release correctly. No need to do anything here.
 
@@ -50,11 +50,11 @@ However, you may end up with as many as 6 tasks being run. The auxiliary tasks m
 ### Release Procedure Checklist
 Before we start the release procedure, we create an issue with a release checklist. As we go through the release, we update the checklist. To generate the checklist, run the following command:
 
-`bash <(curl -sL https://raw.githubusercontent.com/lampepfl/dotty/main/docs/docs/contributing/checklist.sh) <stable_release>`
+`bash <(curl -sL https://raw.githubusercontent.com/scala/scala3/main/docs/docs/contributing/checklist.sh) <stable_release>`
 
 Above, `<stable_release>` is the stable version being released. For example, if you are releasing `0.14.0` and `0.15.0-RC1`, this variable is `14` and the command is as follows:
 
-`bash <(curl -sL https://raw.githubusercontent.com/lampepfl/dotty/main/docs/docs/contributing/checklist.sh) 14`
+`bash <(curl -sL https://raw.githubusercontent.com/scala/scala3/main/docs/docs/contributing/checklist.sh) 14`
 
 Copy and paste the output into the release issue.
 
@@ -73,10 +73,10 @@ After the release is done, we document it as follows:
 During the release process we ensure that various parts of the community are
 also prepared for the new version of Scala so that users can hit the ground
 running when the new release is announced. You can see an example of this
-[here](https://github.com/lampepfl/dotty/issues/17559).
+[here](https://github.com/scala/scala3/issues/17559).
 
 # Procedure in Bash Scripts
-The below procedure is compiled from [this](https://github.com/lampepfl/dotty/issues/5907#issue-409313505) and [this](https://github.com/lampepfl/dotty/issues/6235#issue-429265748) checklists. It assumes we want to publish the `0.14.0` given the `0.14.0-RC1` release candidate.
+The below procedure is compiled from [this](https://github.com/scala/scala3/issues/5907#issue-409313505) and [this](https://github.com/scala/scala3/issues/6235#issue-429265748) checklists. It assumes we want to publish the `0.14.0` given the `0.14.0-RC1` release candidate.
 
 Note that at the same time we will also publish the `0.15.0-RC1` release. We publish two releases at the same time as per the logic outlined at the [Example/At the Dotty Repo](#at-the-dotty-repo) and the [Model](#model) sections above: the step (5) in the algorithm outlined in the [Example](#at-the-dotty-repo) for the release cycle of `0.14.0` is the step (1) in the release cycle of `0.15.0`.
 
@@ -101,7 +101,7 @@ git merge 0.14.x
 git push origin main
 
 ######## Publish the 0.15.0-RC1 unstable version – begin the release cycle for 0.15.0 ########
-# Move all the unfinished tasks from Milestone 15 to Milestone 16 on GitHub – see https://github.com/lampepfl/dotty/milestones
+# Move all the unfinished tasks from Milestone 15 to Milestone 16 on GitHub – see https://github.com/scala/scala3/milestones
 
 git checkout -b 0.15.x
 

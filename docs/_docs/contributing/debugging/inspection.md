@@ -181,6 +181,6 @@ class StealBox:
         assert(empty.name.toString == "<empty>")
 ```
 
-[DottyTypeStealer]: https://github.com/lampepfl/dotty/blob/master/compiler/test/dotty/tools/DottyTypeStealer.scala
-[ScalaSettings]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/config/ScalaSettings.scala
-[symbols]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/core/SymDenotations.scala
+[DottyTypeStealer]: https://github.com/scala/scala3/blob/master/compiler/test/dotty/tools/DottyTypeStealer.scala
+[ScalaSettings]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/config/ScalaSettings.scala
+[symbols]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/core/SymDenotations.scala

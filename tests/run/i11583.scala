@@ -5,7 +5,7 @@ class Context:
 class Env:
   type Extra
 
-// TODO: enable after https://github.com/lampepfl/dotty/issues/11700 is fixed
+// TODO: enable after https://github.com/scala/scala3/issues/11700 is fixed
 // extension [Ctx <: Context](using ctx: Ctx)(tpe: ctx.Type)(using env: Env)
 //   /** essentially: `extension (s: String) def &&:(b: Boolean)(i: Int)`
 //     * but exercises the RefinedPrinter and safety of reordering parameters

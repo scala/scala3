@@ -126,7 +126,7 @@ object ProtoTypes {
             constrainResult(mt, pt)
           }
         } else {
-          // Best-effort to fix https://github.com/lampepfl/dotty/issues/9685 in the 3.3.x series
+          // Best-effort to fix https://github.com/scala/scala3/issues/9685 in the 3.3.x series
           // while preserving source compatibility as much as possible
           val methodMatchedType = constrainResult(mt, wildApprox(pt))
           meth.is(Transparent) || methodMatchedType

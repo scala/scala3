@@ -131,7 +131,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         // Should we do this transformation earlier, say in Constructors? Or would that just cause
         // pain for scala-{js, native}?
         //
-        // @sjrd (https://github.com/lampepfl/dotty/pull/9181#discussion_r457458205):
+        // @sjrd (https://github.com/scala/scala3/pull/9181#discussion_r457458205):
         // moving that before the back-end would make things significantly more complicated for
         // Scala.js and Native. Both have a first-class concept of ModuleClass, and encode the
         // singleton pattern of MODULE$ in a completely different way. In the Scala.js IR, there
@@ -142,7 +142,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
 
         // TODO: remove `!f.name.is(LazyBitMapName)` once we change lazy val encoding
-        //       https://github.com/lampepfl/dotty/issues/7140
+        //       https://github.com/scala/scala3/issues/7140
         //
         // Lazy val encoding assumes bitmap fields are non-static
         //
