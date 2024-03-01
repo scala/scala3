@@ -81,8 +81,6 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
 
   override def view: SeqView[A] = new SeqView.Id[A](this)
 
-  def iterableFactory: FreeSeqFactory[CC]
-
   /** Get the element at the specified index. This operation is provided for convenience in `Seq`. It should
     * not be assumed to be efficient unless you have an `IndexedSeq`. */
   @throws[IndexOutOfBoundsException]
@@ -167,7 +165,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
   def prependedAll[B >: A](prefix: IterableOnce[B]^): CC[B] = iterableFactory.from(prefix match {
     case prefix: Iterable[B] => new View.Concat(prefix, this)
     case _ => prefix.iterator ++ iterator
-  })
+  }).unsafeAssumePure // assume pure OK since iterableFactory.from is eager for Seq
 
   /** Alias for `prependedAll` */
   @`inline` override final def ++: [B >: A](prefix: IterableOnce[B]^): CC[B] = prependedAll(prefix)
@@ -532,6 +530,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
 
   @deprecated("Use .reverseIterator.map(f).to(...) instead of .reverseMap(f)", "2.13.0")
   def reverseMap[B](f: A => B): CC[B] = iterableFactory.from(new View.Map(View.fromIteratorProvider(() => reverseIterator), f))
+    .unsafeAssumePure // assume pure OK since iterableFactory.from is eager for Seq
 
   /** Iterates over distinct permutations of elements.
    *
@@ -947,7 +946,8 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
     */
   def patch[B >: A](from: Int, other: IterableOnce[B]^, replaced: Int): CC[B] =
     iterableFactory.from(new View.Patched(this, from, other, replaced))
-
+      .unsafeAssumePure // assume pure OK since iterableFactory.from is eager for Seq
+      
   /** A copy of this $coll with one single replaced element.
     *  @param  index  the position of the replacement
     *  @param  elem   the replacing element

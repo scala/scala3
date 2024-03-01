@@ -297,16 +297,20 @@ object IterableFactory {
 }
 
 // !!! Needed to add this separate trait
-trait FreeSeqFactory[+CC[A]] extends IterableFactory[CC]:
-  def from[A](source: IterableOnce[A]^): CC[A]
-  override def apply[A](elems: A*): CC[A] = from(elems)
+//trait FreeSeqFactory[+CC[A]] extends IterableFactory[CC]:
+//  def from[A](source: IterableOnce[A]^): CC[A]
+//  override def apply[A](elems: A*): CC[A]
+
+// type FreeSeqFactory[+CC[A] <: SeqOps[A, Seq, Seq[A]]] = SeqFactory[CC]
 
 /**
   * @tparam CC Collection type constructor (e.g. `List`)
   */
-trait SeqFactory[+CC[A] <: SeqOps[A, Seq, Seq[A]]] extends FreeSeqFactory[CC] {
+trait SeqFactory[+CC[A] <: SeqOps[A, Seq, Seq[A]]] extends IterableFactory[CC] {
   import SeqFactory.UnapplySeqWrapper
   final def unapplySeq[A](x: CC[A] @uncheckedVariance): UnapplySeqWrapper[A] = new UnapplySeqWrapper(x) // TODO is uncheckedVariance sound here?
+  def from[A](source: IterableOnce[A]^): CC[A]
+  override def apply[A](elems: A*): CC[A] = from(elems)
 }
 
 object SeqFactory {
