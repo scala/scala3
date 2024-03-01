@@ -436,8 +436,8 @@ class ReplCompilerTests extends ReplTest:
       run("val tpolecat = new Object { override def toString(): String = null }")
     .andThen:
       val last = lines().last
-      assertTrue(last, last.startsWith("val tpolecat: Object = anon"))
-      assertTrue(last, last.endsWith("""// return value of "tpolecat.toString" is null"""))
+      assertTrue(last, last.startsWith("val tpolecat: Object = null"))
+      assertTrue(last, last.endsWith("""// result of "tpolecat.toString" is null"""))
 
   @Test def `i17333 print toplevel object with null toString`: Unit =
     initially:
@@ -445,8 +445,8 @@ class ReplCompilerTests extends ReplTest:
     .andThen:
       run("tpolecat")
       val last = lines().last
-      assertTrue(last, last.startsWith("val res0: tpolecat.type = tpolecat"))
-      assertTrue(last, last.endsWith("""// return value of "res0.toString" is null"""))
+      assertTrue(last, last.startsWith("val res0: tpolecat.type = null"))
+      assertTrue(last, last.endsWith("""// result of "res0.toString" is null"""))
 
 object ReplCompilerTests:
 
