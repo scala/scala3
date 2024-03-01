@@ -233,6 +233,7 @@ class CompletionSuite extends BaseCompletionSuite:
         |""".stripMargin,
       """|JavaConverters - scala.collection
          |JavaConversions - scala.concurrent
+         |AsJavaConverters - scala.collection.convert
          |AsJavaConsumer - scala.jdk.FunctionWrappers
          |AsJavaConverters - scala.collection.convert
          |FromJavaConsumer - scala.jdk.FunctionWrappers
@@ -404,6 +405,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |Function20 scala
          |Function21 scala
          |Function22 scala
+         |PartialFunction scala
          |""".stripMargin,
       topLines = Some(25)
     )
@@ -795,6 +797,10 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|intNumber: Int
+         |toInt: Int
+         |instance: Int
+         |asInstanceOf[X0]: X0
+         |isInstanceOf[X0]: Boolean
          |""".stripMargin
     )
 
@@ -1105,7 +1111,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|first: java.util.List[Int]
-         |""".stripMargin
+         |""".stripMargin,
+      topLines = Some(1)
     )
 
   @Test def `object-at-type-pos` =
@@ -1490,6 +1497,7 @@ class CompletionSuite extends BaseCompletionSuite:
       """|object O:
          |  val a = List.apply($0)
          |""".stripMargin,
+      assertSingleItem = false
     )
 
   @Test def `multiline-comment` =
@@ -1557,6 +1565,16 @@ class CompletionSuite extends BaseCompletionSuite:
         |""".stripMargin,
       """Set scala.collection
         |SetOps scala.collection
+        |GenSet scala.collection
+        |AbstractSet scala.collection
+        |BitSet scala.collection
+        |BitSetOps scala.collection
+        |SortedSet scala.collection
+        |SortedSetFactoryDefaults scala.collection
+        |SortedSetOps scala.collection
+        |StrictOptimizedSetOps scala.collection
+        |StrictOptimizedSortedSetOps scala.collection
+        |GenSet = scala.collection.Set[X]
         |""".stripMargin
     )
 
@@ -1566,6 +1584,16 @@ class CompletionSuite extends BaseCompletionSuite:
         |""".stripMargin,
       """Set scala.collection
         |SetOps scala.collection
+        |GenSet scala.collection
+        |AbstractSet scala.collection
+        |BitSet scala.collection
+        |BitSetOps scala.collection
+        |SortedSet scala.collection
+        |SortedSetFactoryDefaults scala.collection
+        |SortedSetOps scala.collection
+        |StrictOptimizedSetOps scala.collection
+        |StrictOptimizedSortedSetOps scala.collection
+        |GenSet = scala.collection.Set[X]
         |""".stripMargin,
     )
 
@@ -1606,7 +1634,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |  List(1,2,3).tes@@
          |""".stripMargin,
       """|test(p: Int => Boolean): List[Int]
-         |""".stripMargin
+         |""".stripMargin,
+      topLines = Some(1)
     )
 
   @Test def `old-style-extension-type-variable-inference` =
@@ -1618,7 +1647,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |  List(1,2,3).tes@@
          |""".stripMargin,
       """|test(p: Int => Boolean): List[Int]
-         |""".stripMargin
+         |""".stripMargin,
+      topLines = Some(1)
     )
 
   @Test def `instantiate-type-vars-in-extra-apply-completions` =
@@ -1774,3 +1804,17 @@ class CompletionSuite extends BaseCompletionSuite:
       filter = _ == "Override java.lang"
     )
 
+  @Test def `fuzzy-search-test` =
+    check(
+      """|
+         |object MyInterface {
+         |  def someMethod(x: Int): Int = ???
+         |}
+         |object Test {
+         |  MyInterface.m@@
+         |}
+         |""".stripMargin,
+      """|someMethod(x: Int): Int
+         |""".stripMargin,
+      topLines = Some(1)
+    )

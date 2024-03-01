@@ -16,6 +16,7 @@ import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Comments.Comment
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameOps.*
@@ -26,14 +27,13 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.interactive.Completion.Mode
+import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
-import dotty.tools.pc.completions.OverrideCompletions.OverrideExtractor
 import dotty.tools.pc.buildinfo.BuildInfo
+import dotty.tools.pc.completions.OverrideCompletions.OverrideExtractor
 import dotty.tools.pc.utils.MtagsEnrichments.*
-import dotty.tools.dotc.core.Denotations.SingleDenotation
-
 
 class Completions(
     text: String,
@@ -103,7 +103,8 @@ class Completions(
   end includeSymbol
 
   val fuzzyMatcher: Name => Boolean = name =>
-    Fuzzy.matchesSubCharacters(completionPos.query, name.toString)
+    if completionMode.is(Mode.Member) then CompletionFuzzy.matchesSubCharacters(completionPos.query, name.toString)
+    else CompletionFuzzy.matches(completionPos.query, name.toString)
 
   def enrichedCompilerCompletions(qualType: Type): (List[CompletionValue], SymbolSearch.Result) =
     val compilerCompletions = Completion
@@ -119,8 +120,9 @@ class Completions(
     val (all, result) =
       if exclusive then (advanced, SymbolSearch.Result.COMPLETE)
       else
-        val keywords = KeywordsCompletions.contribute(adjustedPath, completionPos, comments)
+        val keywords = KeywordsCompletions.contribute(path, completionPos, comments)
         val allAdvanced = advanced ++ keywords
+
         path match
           // should not show completions for toplevel
           case Nil | (_: PackageDef) :: _ if !completionPos.originalCursorPosition.source.file.ext.isScalaScript =>
@@ -423,7 +425,7 @@ class Completions(
 
       // class Fo@@
       case (td: TypeDef) :: _
-          if Fuzzy.matches(
+          if CompletionFuzzy.matches(
             td.symbol.name.decoded.replace(Cursor.value, "").nn,
             filename
           ) =>

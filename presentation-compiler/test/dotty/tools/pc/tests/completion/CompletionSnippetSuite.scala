@@ -15,6 +15,7 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
         |}
         |""".stripMargin,
       """|apply($0)
+         |unapplySeq($0)
          |""".stripMargin
     )
 
@@ -429,7 +430,8 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |  extension (s: String)
           |    def bar = 0
           |  val bar = "abc".bar
-      """.stripMargin
+      """.stripMargin,
+      filter = _.contains("bar: Int")
     )
 
   // https://github.com/scalameta/metals/issues/4004
@@ -446,5 +448,6 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |  extension (s: String)
           |    def bar() = 0
           |  val bar = "abc".bar()
-      """.stripMargin
+      """.stripMargin,
+      filter = _.contains("bar: Int")
     )
