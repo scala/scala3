@@ -140,8 +140,8 @@ object Build {
   val stdlibBootstrappedVersion = "2.13.12"
 
   val dottyOrganization = "org.scala-lang"
-  val dottyGithubUrl = "https://github.com/lampepfl/dotty"
-  val dottyGithubRawUserContentUrl = "https://raw.githubusercontent.com/lampepfl/dotty"
+  val dottyGithubUrl = "https://github.com/scala/scala3"
+  val dottyGithubRawUserContentUrl = "https://raw.githubusercontent.com/scala/scala3"
 
 
   val isRelease = sys.env.get("RELEASEBUILD") == Some("yes")
@@ -379,7 +379,7 @@ object Build {
       "-skip-by-regex:.+\\.impl($|\\..+)",
       "-project-logo", "docs/_assets/images/logo.svg",
       "-social-links:" +
-        "github::https://github.com/lampepfl/dotty," +
+        "github::https://github.com/scala/scala3," +
         "discord::https://discord.com/invite/scala," +
         "twitter::https://twitter.com/scala_lang",
       // contains special definitions which are "transplanted" elsewhere
@@ -1859,7 +1859,7 @@ object Build {
             .add(ProjectVersion(baseVersion))
             .remove[VersionsDictionaryUrl]
             .add(SourceLinks(List(
-              s"${temp.getAbsolutePath}=github://lampepfl/dotty/language-reference-stable"
+              s"${temp.getAbsolutePath}=github://scala/scala3/language-reference-stable"
             )))
             .withTargets(List("___fake___.scala"))
         }
@@ -2027,7 +2027,7 @@ object Build {
     scmInfo := Some(
       ScmInfo(
         url(dottyGithubUrl),
-        "scm:git:git@github.com:lampepfl/dotty.git"
+        "scm:git:git@github.com:scala/scala3.git"
       )
     ),
     developers := List(
@@ -2262,7 +2262,7 @@ object ScaladocConfigs {
     sys.env.get("GITHUB_SHA") match {
       case Some(sha) =>
         s"${sourcesPrefix}github://${sys.env("GITHUB_REPOSITORY")}/$sha$outputPrefix"
-      case None => s"${sourcesPrefix}github://lampepfl/dotty/$v$outputPrefix"
+      case None => s"${sourcesPrefix}github://scala/scala3/$v$outputPrefix"
     }
 
   def defaultSourceLinks(version: String = dottyNonBootstrappedVersion, refVersion: String = dottyVersion) = Def.task {
@@ -2273,7 +2273,7 @@ object ScaladocConfigs {
         scalaSrcLink(stdLibVersion, srcManaged(version, "scala") + "="),
         dottySrcLink(refVersion, "library/src=", "#library/src"),
         dottySrcLink(refVersion),
-        "docs=github://lampepfl/dotty/main#docs"
+        "docs=github://scala/scala3/main#docs"
       )
     )
   }
@@ -2281,7 +2281,7 @@ object ScaladocConfigs {
   lazy val DefaultGenerationSettings = Def.task {
     def projectVersion = version.value
     def socialLinks = SocialLinks(List(
-      "github::https://github.com/lampepfl/dotty",
+      "github::https://github.com/scala/scala3",
       "discord::https://discord.com/invite/scala",
       "twitter::https://twitter.com/scala_lang",
     ))
