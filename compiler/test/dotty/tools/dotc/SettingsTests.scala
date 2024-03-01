@@ -72,7 +72,7 @@ class SettingsTests {
 
   @Test def `dont crash on many options`: Unit =
     object Settings extends SettingGroup:
-      val option = BooleanSetting("", "-option", "Some option")
+      val option = BooleanSetting("", "option", "Some option")
 
     val limit = 6000
     val args = List.fill(limit)("-option")
@@ -169,7 +169,7 @@ class SettingsTests {
 
   @Test def `Allow IntSetting's to be set with a colon`: Unit =
     object Settings extends SettingGroup:
-      val foo = IntSetting("", "-foo", "foo", 80)
+      val foo = IntSetting("", "foo", "foo", 80)
     import Settings._
 
     val args = List("-foo:100")
