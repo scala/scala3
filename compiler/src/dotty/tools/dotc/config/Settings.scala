@@ -82,7 +82,9 @@ object Settings:
     propertyClass: Option[Class[?]] = None,
     deprecationMsg: Option[String] = None,
     // kept only for -Ykind-projector option compatibility
-    legacyArgs: Boolean = false)(private[Settings] val idx: Int) {
+    legacyArgs: Boolean = false,
+    mapValue: (SettingsState, T) => T = (a, b: T) => b)(private[Settings] val idx: Int) {
+
   
     validateSettingString(prefix.getOrElse(name))
     aliases.foreach(validateSettingString)
@@ -94,7 +96,7 @@ object Settings:
 
     val allFullNames: List[String] = s"$name" :: s"-$name" :: aliases  
 
-    def valueIn(state: SettingsState): T = state.value(idx).asInstanceOf[T]
+    def valueIn(state: SettingsState): T = mapValue(state, state.value(idx).asInstanceOf[T])
 
     def updateIn(state: SettingsState, x: Any): SettingsState = x match
       case _: T => state.update(idx, x)
@@ -113,6 +115,8 @@ object Settings:
         case Some(xs)               => xs.mkString(", ")
         case None                   => ""
       }
+
+    def mapValue(f: (SettingsState, T) => T): Setting[T] = copy(mapValue = f)(idx)
 
     def tryToSet(state: ArgsSummary): ArgsSummary = {
       val ArgsSummary(sstate, arg :: args, errors, warnings) = state: @unchecked

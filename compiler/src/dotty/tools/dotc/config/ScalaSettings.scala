@@ -3,7 +3,7 @@ package config
 
 import scala.language.unsafeNulls
 import dotty.tools.dotc.config.PathResolver.Defaults
-import dotty.tools.dotc.config.Settings.{Setting, SettingGroup, SettingCategory}
+import dotty.tools.dotc.config.Settings.{Setting, SettingGroup, SettingCategory, SettingsState}
 import dotty.tools.dotc.config.SourceVersion
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.rewrites.Rewrites
@@ -156,13 +156,42 @@ private sealed trait VerboseSettings:
 private sealed trait WarningSettings:
   self: SettingGroup =>
 
-  val Whelp: Setting[Boolean] = BooleanSetting(WarningSetting, "W", "Print a synopsis of warning options.")
+  val Whelp: Setting[Boolean] = BooleanSetting(WarningSetting, "Whelp", "Print a synopsis of warning options.")
+
+  val W: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
+    WarningSetting, 
+    name = "W", 
+    helpArg = "warning",
+    descr = "Enable sets of warnings or print a synopsis of warning options.",
+    choices = List(
+      ChoiceWithHelp("default", "Enable default warnings"),
+      ChoiceWithHelp("all", "Enable all warnings"),
+    ),
+    default =  Nil
+  )
+
+  enum WarningGroup(val enabledBy: Set[String]):
+    case Default extends WarningGroup(Set("default", "all"))
+    case All extends WarningGroup(Set("all"))
+  
+  def overrideValueWithW[T](group: WarningGroup, overrideWhen: T, overrideTo: T)(ss: SettingsState, v: T): T = 
+    if W.valueIn(ss).map(_.toString).exists(group.enabledBy.contains) && v == overrideWhen then overrideTo
+    else v
+    
+  def overrideWithW(group: WarningGroup)(ss: SettingsState, v: Boolean): Boolean = 
+    overrideValueWithW(group, false, true)(ss, v)
+
   val XfatalWarnings: Setting[Boolean] = BooleanSetting(WarningSetting, "Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
+    .mapValue(overrideWithW(WarningGroup.Default))
   val WvalueDiscard: Setting[Boolean] = BooleanSetting(WarningSetting, "Wvalue-discard", "Warn when non-Unit expression results are unused.")
+    .mapValue(overrideWithW(WarningGroup.Default))
   val WNonUnitStatement = BooleanSetting(WarningSetting, "Wnonunit-statement", "Warn when block statements are non-Unit expressions.")
+      .mapValue(overrideWithW(WarningGroup.Default))
   val WenumCommentDiscard = BooleanSetting(WarningSetting, "Wenum-comment-discard", "Warn when a comment ambiguously assigned to multiple enum cases is discarded.")
   val WimplausiblePatterns = BooleanSetting(WarningSetting, "Wimplausible-patterns", "Warn if comparison with a pattern value looks like it might always fail.")
+    .mapValue(overrideWithW(WarningGroup.Default))
   val WunstableInlineAccessors = BooleanSetting(WarningSetting, "WunstableInlineAccessors", "Warn an inline methods has references to non-stable binary APIs.")
+    .mapValue(overrideWithW(WarningGroup.Default))
   val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     WarningSetting,
     name = "Wunused",
@@ -195,7 +224,8 @@ private sealed trait WarningSettings:
         )
     ),
     default = Nil
-  )
+  ).mapValue(overrideValueWithW(WarningGroup.Default, Nil, List(ChoiceWithHelp("linted", ""))))
+
   object WunusedHas:
     def isChoiceSet(s: String)(using Context) = Wunused.value.pipe(us => us.contains(s))
     def allOr(s: String)(using Context) = Wunused.value.pipe(us => us.contains("all") || us.contains(s))
@@ -282,7 +312,7 @@ private sealed trait WarningSettings:
       ChoiceWithHelp("type-parameter-shadow", "Warn when a type parameter shadows a type already in the scope"),
     ),
     default = Nil
-  )
+  ).mapValue(overrideValueWithW(WarningGroup.Default, Nil, List(ChoiceWithHelp("all", ""))))
 
   object WshadowHas:
     def allOr(s: String)(using Context) =
