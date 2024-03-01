@@ -53,7 +53,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
          || github.event_name == 'push'
          || (
            github.event_name == 'pull_request'
@@ -62,17 +62,17 @@ jobs:
          )
          || (
            github.event_name == 'workflow_dispatch'
-           && github.repository == 'lampepfl/dotty'
+           && github.repository == 'scala/scala3'
          )"
     steps:
       - name: Set JDK 16 as default
         run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
 
-      ## Workaround for https://github.com/actions/runner/issues/2033 (See https://github.com/lampepfl/dotty/pull/19720)
+      ## Workaround for https://github.com/actions/runner/issues/2033 (See https://github.com/scala/scala3/pull/19720)
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/dotty/dotty
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+          git config --global --add safe.directory /__w/scala3/scala3
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v3
@@ -105,7 +105,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
          || github.event_name == 'push'
          || github.event_name == 'merge_group'
          || (
@@ -115,7 +115,7 @@ jobs:
          )
          || (
            github.event_name == 'workflow_dispatch'
-           && github.repository == 'lampepfl/dotty'
+           && github.repository == 'scala/scala3'
          )"
 
     steps:
@@ -124,8 +124,8 @@ jobs:
 
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/dotty/dotty
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+          git config --global --add safe.directory /__w/scala3/scala3
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v3
@@ -167,8 +167,8 @@ jobs:
       - name: Reset existing repo
         shell: cmd
         run: |
-          git config --global --add safe.directory /__w/dotty/dotty
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+          git config --global --add safe.directory /__w/scala3/scala3
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Git Checkout
         uses: actions/checkout@v3
@@ -199,7 +199,7 @@ jobs:
 
   test_windows_full:
     runs-on: [self-hosted, Windows]
-    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
          || github.event_name == 'push'
          || (
            github.event_name == 'pull_request'
@@ -211,8 +211,8 @@ jobs:
       - name: Reset existing repo
         shell: cmd
         run: |
-          git config --global --add safe.directory /__w/dotty/dotty
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+          git config --global --add safe.directory /__w/scala3/scala3
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Git Checkout
         uses: actions/checkout@v3
@@ -235,7 +235,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
          || github.event_name == 'push'
          || github.event_name == 'merge_group'
          || (
@@ -245,13 +245,13 @@ jobs:
          )
          || (
            github.event_name == 'workflow_dispatch'
-           && github.repository == 'lampepfl/dotty'
+           && github.repository == 'scala/scala3'
          )"
     steps:
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/dotty/dotty
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+          git config --global --add safe.directory /__w/scala3/scala3
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v3
@@ -278,7 +278,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
          || github.event_name == 'push'
          || github.event_name == 'merge_group'
          || (
@@ -289,14 +289,14 @@ jobs:
          )
          || (
            github.event_name == 'workflow_dispatch'
-           && github.repository == 'lampepfl/dotty'
+           && github.repository == 'scala/scala3'
          )"
 
     steps:
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/dotty/dotty
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+          git config --global --add safe.directory /__w/scala3/scala3
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v3
@@ -312,6 +312,7 @@ jobs:
 
       - name: Test
         run: |
+          git config --global --add safe.directory /__w/scala3/scala3
           git submodule sync
           git submodule update --init --recursive --jobs 7
           ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestA"
@@ -329,7 +330,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
          || github.event_name == 'push'
          || github.event_name == 'merge_group'
          || (
@@ -340,14 +341,14 @@ jobs:
          )
          || (
            github.event_name == 'workflow_dispatch'
-           && github.repository == 'lampepfl/dotty'
+           && github.repository == 'scala/scala3'
          )"
 
     steps:
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/dotty/dotty
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+          git config --global --add safe.directory /__w/scala3/scala3
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v3
@@ -363,6 +364,7 @@ jobs:
 
       - name: Test
         run: |
+          git config --global --add safe.directory /__w/scala3/scala3
           git submodule sync
           git submodule update --init --recursive --jobs 7
           ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestB"
@@ -380,7 +382,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
          || github.event_name == 'push'
          || github.event_name == 'merge_group'
          || (
@@ -391,14 +393,14 @@ jobs:
          )
          || (
            github.event_name == 'workflow_dispatch'
-           && github.repository == 'lampepfl/dotty'
+           && github.repository == 'scala/scala3'
          )"
 
     steps:
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/dotty/dotty
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+          git config --global --add safe.directory /__w/scala3/scala3
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v3
@@ -414,6 +416,7 @@ jobs:
 
       - name: Test
         run: |
+          git config --global --add safe.directory /__w/scala3/scala3
           git submodule sync
           git submodule update --init --recursive --jobs 7
           ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestC"
@@ -431,7 +434,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
          || github.event_name == 'push'
          || (
            github.event_name == 'pull_request'
@@ -440,14 +443,14 @@ jobs:
          )
          || (
            github.event_name == 'workflow_dispatch'
-           && github.repository == 'lampepfl/dotty'
+           && github.repository == 'scala/scala3'
          )"
 
     steps:
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/dotty/dotty
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+          git config --global --add safe.directory /__w/scala3/scala3
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v3
@@ -474,7 +477,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
 
-    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
          || (
            github.event_name == 'push'
            && startsWith(github.event.ref, 'refs/tags/')
@@ -486,7 +489,7 @@ jobs:
          )
          || (
            github.event_name == 'workflow_dispatch'
-           && github.repository == 'lampepfl/dotty'
+           && github.repository == 'scala/scala3'
          )"
 
     steps:
@@ -495,8 +498,8 @@ jobs:
 
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/dotty/dotty
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+          git config --global --add safe.directory /__w/scala3/scala3
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v3
@@ -530,7 +533,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [test_non_bootstrapped, test, mima, community_build_a, community_build_b, community_build_c, test_sbt, test_java8]
-    if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'lampepfl/dotty'"
+    if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'scala/scala3'"
     env:
       NIGHTLYBUILD: yes
       PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
@@ -541,8 +544,8 @@ jobs:
     steps:
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/dotty/dotty
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+          git config --global --add safe.directory /__w/scala3/scala3
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v3
@@ -583,7 +586,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [publish_nightly]
-    if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'lampepfl/dotty'"
+    if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'scala/scala3'"
     env:
       NIGHTLYBUILD: yes
       DOTTY_WEBSITE_BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # If you need to change this:
@@ -597,8 +600,8 @@ jobs:
     steps:
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/dotty/dotty
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+          git config --global --add safe.directory /__w/scala3/scala3
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v3
@@ -614,7 +617,7 @@ jobs:
 
       - name: Generate Website
         run: |
-          git config --global --add safe.directory /__w/dotty/dotty
+          git config --global --add safe.directory /__w/scala3/scala3
           ./project/scripts/genDocs -doc-snapshot
 
       - name: Deploy Website to dotty-website
@@ -650,8 +653,8 @@ jobs:
     steps:
       - name: Reset existing repo
         run: |
-          git config --global --add safe.directory /__w/dotty/dotty
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+          git config --global --add safe.directory /__w/scala3/scala3
+          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v3
