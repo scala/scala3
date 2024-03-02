@@ -84,7 +84,7 @@ object IsSeq {
           def toIterable: Iterable[Char] = new immutable.WrappedString(s)
           protected[this] def coll: String = s
           protected[this] def fromSpecific(coll: IterableOnce[Char]^): String = coll.iterator.mkString
-          def iterableFactory: FreeSeqFactory[immutable.ArraySeq] = immutable.ArraySeq.untagged
+          def iterableFactory: IterableFactory[immutable.ArraySeq] = immutable.ArraySeq.untagged
           override def empty: String = ""
           protected[this] def newSpecificBuilder: mutable.Builder[Char, String] = new StringBuilder
           def iterator: Iterator[Char] = s.iterator
@@ -102,7 +102,7 @@ object IsSeq {
           def toIterable: Iterable[A] = mutable.ArraySeq.make[A](a)
           protected def coll: Array[A] = a
           protected def fromSpecific(coll: IterableOnce[A]^): Array[A] = Array.from(coll)
-          def iterableFactory: FreeSeqFactory[mutable.ArraySeq] = mutable.ArraySeq.untagged
+          def iterableFactory: IterableFactory[mutable.ArraySeq] = mutable.ArraySeq.untagged
           override def empty: Array[A] = Array.empty[A]
           protected def newSpecificBuilder: mutable.Builder[A, Array[A]] = Array.newBuilder
           def iterator: Iterator[A] = a.iterator
