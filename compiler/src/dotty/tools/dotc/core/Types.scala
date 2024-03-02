@@ -1441,9 +1441,12 @@ object Types extends TypeUtils {
     private def dealias1(keep: AnnotatedType => Context ?=> Boolean, keepOpaques: Boolean)(using Context): Type = this match {
       case tp: TypeRef =>
         if (tp.symbol.isClass) tp
+        else if keepOpaques && tp.symbol.is(Opaque) then tp
         else tp.info match {
-          case TypeAlias(alias) if !(keepOpaques && tp.symbol.is(Opaque)) =>
+          case TypeAlias(alias) =>
             alias.dealias1(keep, keepOpaques)
+          case MatchAlias(alias: AppliedType) =>
+            (alias: Type).dealias1(keep, keepOpaques)
           case _ => tp
         }
       case app @ AppliedType(tycon, _) =>
