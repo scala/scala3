@@ -4,7 +4,7 @@ class Test { test =>
   }
 
   val a = new A
-  println(a)
+  println(a)       // warn
 
 
   class B {
