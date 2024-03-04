@@ -70,9 +70,14 @@ object Settings:
     aliases: List[String] = Nil,
     depends: List[(Setting[?], Any)] = Nil,
     ignoreInvalidArgs: Boolean = false,
-    propertyClass: Option[Class[?]] = None)(private[Settings] val idx: Int) {
+    propertyClass: Option[Class[?]] = None,
+    deprecationMsg: Option[String] = None)(private[Settings] val idx: Int) {
 
     assert(name.startsWith(s"-$category"), s"Setting $name does not start with category -$category")
+
+    // Without the following assertion, it would be easy to mistakenly try to pass a file to a setting that ignores invalid args.
+    // Example: -opt Main.scala would be interpreted as -opt:Main.scala, and the source file would be ignored.
+    assert(!(summon[ClassTag[T]] == ListTag && ignoreInvalidArgs), s"Ignoring invalid args is not supported for multivalue settings: $name")
 
     val allFullNames: List[String] = s"$name" :: s"-$name" :: aliases  
 
@@ -150,6 +155,24 @@ object Settings:
               update(x, args)
         catch case _: NumberFormatException =>
           fail(s"$argValue is not an integer argument for $name", args)
+        
+      def setOutput(argValue: String, args: List[String]) = 
+        val path = Directory(argValue)
+        val isJar = path.extension == "jar"
+        if (!isJar && !path.isDirectory)
+          fail(s"'$argValue' does not exist or is not a directory or .jar file", args)
+        else {
+          val output = if (isJar) JarArchive.create(path) else new PlainDirectory(path)
+          update(output, args)
+        }
+
+      def appendList(strings: List[String], args: List[String]) =
+        choices match
+          case Some(valid) => strings.filterNot(valid.contains) match
+            case Nil => update(strings, args)
+            case invalid => invalidChoices(invalid)
+          case _ => update(strings, args)
+
 
       def doSet(argRest: String) = 
         ((summon[ClassTag[T]], args): @unchecked) match {
@@ -157,38 +180,20 @@ object Settings:
             setBoolean(argRest, args)
           case (OptionTag, _) =>
             update(Some(propertyClass.get.getConstructor().newInstance()), args)
-          case (ListTag, _) =>
-            if (argRest.isEmpty) missingArg
-            else
-              val strings = argRest.split(",").toList
-              choices match
-                case Some(valid) => strings.filterNot(valid.contains) match
-                  case Nil => update(strings, args)
-                  case invalid => invalidChoices(invalid)
-                case _ => update(strings, args)
+          case (ListTag, args) if argRest.nonEmpty =>
+            val strings = argRest.split(",").toList
+            appendList(strings, args)
+          case (ListTag, arg2 :: args2) if !(arg2 startsWith "-")=>
+            appendList(arg2 :: Nil, args2)
           case (StringTag, _) if argRest.nonEmpty || choices.exists(_.contains("")) =>
             setString(argRest, args)
           case (StringTag, arg2 :: args2) =>
             if (arg2 startsWith "-") missingArg
             else setString(arg2, args2)
-          case (OutputTag, _) if argRest.nonEmpty =>
-            val path = Directory(argRest)
-            val isJar = path.extension == "jar"
-            if (!isJar && !path.isDirectory)
-              fail(s"'$argRest' does not exist or is not a directory or .jar file", args)
-            else {
-              val output = if (isJar) JarArchive.create(path) else new PlainDirectory(path)
-              update(output, args)
-            }
-          case (OutputTag, arg :: args) =>
-            val path = Directory(arg)
-            val isJar = path.extension == "jar"
-            if (!isJar && !path.isDirectory)
-              fail(s"'$arg' does not exist or is not a directory or .jar file", args)
-            else {
-              val output = if (isJar) JarArchive.create(path) else new PlainDirectory(path)
-              update(output, args)
-            }
+          case (OutputTag, args) if argRest.nonEmpty =>
+            setOutput(argRest, args)
+          case (OutputTag, arg2 :: args2) =>
+            setOutput(arg2, args2)
           case (IntTag, args) if argRest.nonEmpty =>
             setInt(argRest, args)
           case (IntTag, arg2 :: args2) =>
@@ -214,7 +219,10 @@ object Settings:
         if(prefix.isEmpty) arg.dropWhile(_ != ':').drop(1) else arg.drop(prefix.get.length)
       
       if matches(arg) then 
-        doSet(argValRest)
+        if deprecationMsg.isDefined then
+          warn(s"Option $name is deprecated: ${deprecationMsg.get}", args)
+        else 
+          doSet(argValRest)
       else
         state
     }
@@ -334,9 +342,6 @@ object Settings:
     def MultiChoiceHelpSetting(category: String, name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]], aliases: List[String] = Nil): Setting[List[ChoiceWithHelp[String]]] =
       publish(Setting(category, validateAndPrependName(name), descr, default, helpArg, Some(choices), aliases = aliases.map(validateSetting)))
 
-    def UncompleteMultiChoiceHelpSetting(category: String, name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]], aliases: List[String] = Nil): Setting[List[ChoiceWithHelp[String]]] =
-      publish(Setting(category, validateAndPrependName(name), descr, default, helpArg, Some(choices), aliases = aliases.map(validateSetting), ignoreInvalidArgs = true))
-
     def IntSetting(category: String, name: String, descr: String, default: Int, aliases: List[String] = Nil): Setting[Int] =
       publish(Setting(category, validateAndPrependName(name), descr, default, aliases = aliases.map(validateSetting)))
 
@@ -364,5 +369,8 @@ object Settings:
 
     def OptionSetting[T: ClassTag](category: String, name: String, descr: String, aliases: List[String] = Nil): Setting[Option[T]] =
       publish(Setting(category, validateAndPrependName(name), descr, None, propertyClass = Some(summon[ClassTag[T]].runtimeClass), aliases = aliases.map(validateSetting)))
+    
+    def DeprecatedSetting(category: String, name: String, descr: String, deprecationMsg: String): Setting[Boolean] =
+      publish(Setting(category, validateAndPrependName(name), descr, false, deprecationMsg = Some(deprecationMsg)))
   }
 end Settings

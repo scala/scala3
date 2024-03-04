@@ -296,9 +296,9 @@ private sealed trait WarningSettings:
          |to prevent the shell from expanding patterns.""".stripMargin,
   )
 
-  val Xlint: Setting[List[ChoiceWithHelp[String]]] = UncompleteMultiChoiceHelpSetting(
-    AdvancedSetting,
-    name = "Xlint",
+  val Wshadow: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
+    WarningSetting,
+    name = "Wshadow",
     helpArg = "advanced warning",
     descr = "Enable or disable specific `lint` warnings",
     choices = List(
@@ -309,9 +309,9 @@ private sealed trait WarningSettings:
     default = Nil
   )
 
-  object XlintHas:
+  object WshadowHas:
     def allOr(s: String)(using Context) =
-      Xlint.value.pipe(us => us.contains("all") || us.contains(s))
+      Wshadow.value.pipe(us => us.contains("all") || us.contains(s))
     def privateShadow(using Context) =
       allOr("private-shadow")
     def typeParameterShadow(using Context) =
@@ -357,6 +357,10 @@ private sealed trait XSettings:
   }
 
   val XmacroSettings: Setting[List[String]] = MultiStringSetting(AdvancedSetting, "Xmacro-settings", "setting1,setting2,..settingN", "List of settings which exposed to the macros")
+
+  // Deprecated
+  val Xlint: Setting[_] = DeprecatedSetting(AdvancedSetting, "Xlint", "Enable or disable specific warnings", "Use -Wshadow to enable shadowing lints or -W:<opt> to enable specific sets of warnings.")
+
 end XSettings
 
 /** -Y "Forking" as in forked tongue or "Private" settings */

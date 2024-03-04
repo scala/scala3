@@ -1,4 +1,4 @@
-//> using options -Xlint:type-parameter-shadow -Xfatal-warnings
+//> using options -Wshadow:type-parameter-shadow -Xfatal-warnings
 
 object i17613b:
 	import importTry._
