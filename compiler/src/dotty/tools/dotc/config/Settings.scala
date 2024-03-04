@@ -8,6 +8,7 @@ import core.Contexts.*
 import dotty.tools.io.{AbstractFile, Directory, JarArchive, PlainDirectory}
 
 import annotation.tailrec
+import annotation.internal.unshared
 import collection.mutable.ArrayBuffer
 import collection.mutable
 import reflect.ClassTag
@@ -240,6 +241,7 @@ object Settings:
 
   class SettingGroup {
 
+    @unshared
     private val _allSettings = new ArrayBuffer[Setting[?]]
     def allSettings: Seq[Setting[?]] = _allSettings.toSeq
 
@@ -307,6 +309,7 @@ object Settings:
       setting
     }
 
+    @unshared
     val settingCharacters = "[a-zA-Z0-9_\\-]*".r
     def validateSetting(setting: String): String =
       assert(settingCharacters.matches(setting), s"Setting $setting contains invalid characters")

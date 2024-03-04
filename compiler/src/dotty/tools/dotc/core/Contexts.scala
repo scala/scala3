@@ -861,7 +861,7 @@ object Contexts {
                        with Phases.PhasesBase
                        with Plugins {
 
-    val settings: ScalaSettings = new ScalaSettings()
+    val settings: ScalaSettings = ScalaSettings
 
     /** The initial context */
     val initialCtx: Context = FreshContext.initial(this: @unchecked, settings)

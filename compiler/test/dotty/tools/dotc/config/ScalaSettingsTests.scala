@@ -67,7 +67,7 @@ class ScalaSettingsTests:
 
   @Test def `WConf setting is parsed`: Unit =
     import reporting.{Action, Diagnostic, NoExplanation}
-    val sets = new ScalaSettings()
+    val sets = ScalaSettings
     val args = List("-Wconf:cat=deprecation:s,cat=feature:e", "-Wconf:msg=a problem\\.:s")
     val sumy = ArgsSummary(sets.defaultState, args, errors = Nil, warnings = Nil)
     val proc = sets.processArguments(sumy, processAll = true, skipped = Nil)
@@ -85,7 +85,7 @@ class ScalaSettingsTests:
 
   @Test def `i18367 rightmost WConf flags take precedence over flags to the left`: Unit =
     import reporting.{Action, Diagnostic}
-    val sets = new ScalaSettings()
+    val sets = ScalaSettings
     val args = List("-Wconf:cat=deprecation:e", "-Wconf:cat=deprecation:s")
     val sumy = ArgsSummary(sets.defaultState, args, errors = Nil, warnings = Nil)
     val proc = sets.processArguments(sumy, processAll = true, skipped = Nil)
