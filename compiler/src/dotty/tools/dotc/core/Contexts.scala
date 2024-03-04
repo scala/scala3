@@ -513,7 +513,7 @@ object Contexts {
       s"""Context(
          |${outersIterator.map(ctx => cinfo(using ctx)).mkString("\n\n")})""".stripMargin
 
-    def settings: ScalaSettings            = base.settings
+    def settings: ScalaSettings.type            = base.settings
     def definitions: Definitions           = base.definitions
     def platform: Platform                 = base.platform
     def pendingUnderlying: util.HashSet[Type]      = base.pendingUnderlying
@@ -861,7 +861,7 @@ object Contexts {
                        with Phases.PhasesBase
                        with Plugins {
 
-    val settings: ScalaSettings = ScalaSettings
+    val settings: ScalaSettings.type = ScalaSettings
 
     /** The initial context */
     val initialCtx: Context = FreshContext.initial(this: @unchecked, settings)

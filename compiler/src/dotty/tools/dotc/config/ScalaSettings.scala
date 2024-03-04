@@ -23,8 +23,6 @@ object ScalaSettingCategories:
   val AdvancedSetting = "X"
   val VerboseSetting = "V"
 
-type ScalaSettings = ScalaSettings.type
-
 object ScalaSettings extends SettingGroup, AllScalaSettings:
   val settingsByCategory: Map[String, List[Setting[_]]] = 
     allSettings.groupBy(_.category)
