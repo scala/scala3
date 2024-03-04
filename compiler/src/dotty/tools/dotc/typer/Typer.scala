@@ -3993,10 +3993,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
       // Reasons NOT to eta expand:
       //  - we reference a constructor
+      //  - we reference an inline implicit def (see #19862)
       //  - we are in a pattern
       //  - the current tree is a synthetic apply which is not expandable (eta-expasion would simply undo that)
       if arity >= 0
          && !tree.symbol.isConstructor
+         && !tree.symbol.isAllOf(InlineImplicitMethod)
          && !ctx.mode.is(Mode.Pattern)
          && !(isSyntheticApply(tree) && !functionExpected)
       then
