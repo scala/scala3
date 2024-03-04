@@ -242,7 +242,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val refsText = if showAsCap then rootSetText else toTextCaptureSet(refs)
         toTextCapturing(parent, refsText, boxText)
       case tp @ RetainingType(parent, refs) =>
-        if ctx.compilationUnit.needsCaptureChecking then
+        if Feature.ccEnabledSomewhere then
           val refsText = refs match
             case ref :: Nil if ref.symbol == defn.captureRoot => rootSetText
             case _ => toTextRetainedElems(refs)
