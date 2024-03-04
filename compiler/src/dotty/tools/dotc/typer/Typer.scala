@@ -724,7 +724,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     then
       report.error(StableIdentPattern(tree, pt), tree.srcPos)
 
-  def typedSelect(tree0: untpd.Select, pt: Type, qual: Tree)(using Context): Tree =
+  def typedSelectWithAdapt(tree0: untpd.Select, pt: Type, qual: Tree)(using Context): Tree =
     val selName = tree0.name
     val tree = cpy.Select(tree0)(qual, selName)
     val superAccess = qual.isInstanceOf[Super]
@@ -753,7 +753,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
        // there's a simply visible type variable in the result; try again with a more defined qualifier type
        // There's a second trial where we try to instantiate all type variables in `qual.tpe.widen`,
        // but that is done only after we search for extension methods or conversions.
-      return typedSelect(tree, pt, qual)
+      return typedSelectWithAdapt(tree, pt, qual)
 
     // Otherwise, try to expand a named tuple selection
     val namedTupleElems = qual.tpe.widenDealias.namedTupleElementTypes
@@ -769,7 +769,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     // to the Tuple class of the right arity and select from that one
     if qual.tpe.isSmallGenericTuple then
       val elems = qual.tpe.widenTermRefExpr.tupleElementTypes.getOrElse(Nil)
-      return typedSelect(tree, pt, qual.cast(defn.tupleType(elems)))
+      return typedSelectWithAdapt(tree, pt, qual.cast(defn.tupleType(elems)))
 
     // Otherwise try an extension or conversion
     if selName.isTermName then
@@ -796,7 +796,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
       if qual1.tpe.isSmallGenericTuple then
         gadts.println(i"Tuple member selection healed by GADT approximation")
-        return typedSelect(tree, pt, qual1)
+        return typedSelectWithAdapt(tree, pt, qual1)
 
       val tree2 = tryExtensionOrConversion(tree1, pt, IgnoredProto(pt), qual1, ctx.typerState.ownedVars, this, inSelect = true)
       if !tree2.isEmpty then
@@ -805,7 +805,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     // Otherwise, if there are uninstantiated type variables in the qualifier type,
     // instantiate them and try again
     if canDefineFurther(qual.tpe.widen) then
-      return typedSelect(tree, pt, qual)
+      return typedSelectWithAdapt(tree, pt, qual)
 
     def dynamicSelect(pt: Type) =
       val tree2 = cpy.Select(tree0)(untpd.TypedSplice(qual), selName)
@@ -854,7 +854,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           inaccessibleErrorType(rawType, superAccess, tree.srcPos)
         case _ =>
           notAMemberErrorType(tree, qual, pt))
-  end typedSelect
+  end typedSelectWithAdapt
 
   /** Expand a selection A.m on a context bound companion A with type
    *  `<context-bound-companion>[ref_1 | ... | ref_N]` as described by
@@ -906,7 +906,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case witness: TermRef =>
         val altQual = tpd.ref(witness).withSpan(qual.span)
         val altCtx = ctx.fresh.setNewTyperState()
-        val alt = typedSelect(tree, pt, altQual)(using altCtx)
+        val alt = typedSelectWithAdapt(tree, pt, altQual)(using altCtx)
         def current = (alt, altCtx.typerState, witness)
         if altCtx.reporter.hasErrors then prevs
         else
@@ -938,7 +938,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if ctx.isJava then
         javaSelection(qual)
       else
-        typedSelect(tree, pt, qual).withSpan(tree.span).computeNullable()
+        typedSelectWithAdapt(tree, pt, qual).withSpan(tree.span).computeNullable()
 
     def javaSelection(qual: Tree)(using Context) =
       val tree1 = assignType(cpy.Select(tree)(qual, tree.name), qual)
@@ -3879,7 +3879,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             if isExtension then return found
             else
               checkImplicitConversionUseOK(found, selProto)
-              return withoutMode(Mode.ImplicitsEnabled)(typedSelect(tree, pt, found))
+              return withoutMode(Mode.ImplicitsEnabled)(typedSelectWithAdapt(tree, pt, found))
           case failure: SearchFailure =>
             if failure.isAmbiguous then
               return
