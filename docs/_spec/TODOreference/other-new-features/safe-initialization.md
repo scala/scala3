@@ -226,10 +226,6 @@ A value `v` is _effectively hot_ if any of the following is true:
 
 - `v` is `Hot`.
 - `v` is `ThisRef` and all fields of the underlying object are assigned.
-- `v` is `Warm[C] { ... }` and
-  1. `C` does not contain inner classes; and
-  2. Calling any method on `v` encounters no initialization errors and the method return value is _effectively hot_; and
-  3. Each field of `v` is _effectively hot_.
 - `v` is `Fun(e, V, C)` and calling the function encounters no errors and the
   function return value is _effectively hot_.
 - The root object (refered by `ThisRef`) is _effectively hot_.

@@ -982,11 +982,7 @@ object Semantic:
             reporter.report(PromoteError(msg + "\n" + fields)(trace))
 
         case warm: Warm =>
-          if !promoted.contains(warm) then
-            promoted.add(warm)
-            val errors = warm.tryPromote(msg)
-            if errors.nonEmpty then promoted.remove(warm)
-            reporter.reportAll(errors)
+          reporter.report(PromoteError(msg)(trace))
 
         case fun @ Fun(body, thisV, klass) =>
           if !promoted.contains(fun) then
@@ -1006,85 +1002,6 @@ object Semantic:
         case RefSet(refs) =>
           refs.foreach(_.promote(msg))
     }
-  end extension
-
-  extension (warm: Warm)
-    /** Try early promotion of warm objects
-     *
-     *  Promotion is expensive and should only be performed for small classes.
-     *
-     *  1. for each concrete method `m` of the warm object:
-     *     call the method and promote the result
-     *
-     *  2. for each concrete field `f` of the warm object:
-     *     promote the field value
-     *
-     *  If the object contains nested classes as members, the checker simply
-     *  reports a warning to avoid expensive checks.
-     *
-     */
-    def tryPromote(msg: String): Contextual[List[Error]] = log("promote " + warm.show + ", promoted = " + promoted, printer) {
-      val obj = warm.objekt
-
-      def doPromote(klass: ClassSymbol, subClass: ClassSymbol, subClassSegmentHot: Boolean)(using Reporter): Unit =
-        val outer = obj.outer(klass)
-        val isHotSegment = outer.isHot && {
-          val ctor = klass.primaryConstructor
-          val ctorDef = ctor.defTree.asInstanceOf[DefDef]
-          val params = ctorDef.termParamss.flatten.map(_.symbol)
-          // We have cached all parameters on the object
-          params.forall(param => obj.field(param).isHot)
-        }
-
-        // Check invariant: subClassSegmentHot ==> isHotSegment
-        //
-        // This invariant holds because of the Scala/Java/JVM restriction that we cannot use `this` in super constructor calls.
-        if subClassSegmentHot && !isHotSegment then
-          report.warning("[Internal error] Expect current segment to be transitively initialized (Hot) in promotion, current klass = " + klass.show +
-              ", subclass = " + subClass.show + Trace.show, Trace.position)
-
-        // If the outer and parameters of a class are all hot, then accessing fields and methods of the current
-        // segment of the object should be OK. They may only create problems via virtual method calls on `this`, but
-        // those methods are checked as part of the check for the class where they are defined.
-        if !isHotSegment then
-          for member <- klass.info.decls do
-            if member.isClass then
-              val error = PromoteError("Promotion cancelled as the value contains inner " + member.show + ".")(Trace.empty)
-              reporter.report(error)
-            else if !member.isType && !member.isConstructor  && !member.is(Flags.Deferred) then
-              given Trace = Trace.empty
-              if member.is(Flags.Method, butNot = Flags.Accessor) then
-                val args = member.info.paramInfoss.flatten.map(_ => new ArgInfo(Hot: Value, Trace.empty))
-                val res = warm.call(member, args, receiver = warm.klass.typeRef, superType = NoType)
-                withTrace(trace.add(member.defTree)) {
-                  res.promote("Could not verify that the return value of " + member.show + " is transitively initialized (Hot). It was found to be " + res.show + ".")
-                }
-              else
-                val res = warm.select(member, receiver = warm.klass.typeRef)
-                withTrace(trace.add(member.defTree)) {
-                  res.promote("Could not verify that the field " + member.show + " is transitively initialized (Hot). It was found to be " + res.show + ".")
-                }
-          end for
-
-        // Promote parents
-        //
-        // Note that a parameterized trait may only get parameters from the class that extends the trait.
-        // A trait may not supply constructor arguments to another trait.
-        if !klass.is(Flags.Trait) then
-          val superCls = klass.superClass
-          if superCls.hasSource then doPromote(superCls.asClass, klass, isHotSegment)
-          val mixins = klass.baseClasses.tail.takeWhile(_ != superCls)
-          for mixin <- mixins if mixin.hasSource do doPromote(mixin.asClass, klass, isHotSegment)
-      end doPromote
-
-      val errors = Reporter.stopEarly {
-        doPromote(warm.klass, subClass = warm.klass, subClassSegmentHot = false)
-      }
-
-      if errors.isEmpty then Nil
-      else UnsafePromotion(msg, errors.head)(trace) :: Nil
-    }
-
   end extension
 
 // ----- Policies ------------------------------------------------------
