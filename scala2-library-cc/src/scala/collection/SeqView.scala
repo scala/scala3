@@ -34,12 +34,38 @@ trait SeqViewOps[+A, +CC[_], +C] extends Any with IterableOps[A, CC, C] {
   def reverse: C^{this}
   def sorted[B >: A](implicit ord: Ordering[B]): C^{this}
 
-  // Placeholder implementation for that method in SeqOps.
+  // Placeholder implementations for the corresponding methods in SeqOps.
   // This is needed due to the change in the class hierarchy in cc stdlib.
   // See #19660 and #19819.
+  // -------------------
   def updated[B >: A](index: Int, elem: B): CC[B]^{this} =
     assert(false, "This is a placeholder implementation in the capture checked Scala 2 library.")
     ???
+  def padTo[B >: A](len: Int, elem: B): CC[B]^{this} =
+    assert(false, "This is a placeholder implementation in the capture checked Scala 2 library.")
+    ???
+  def patch[B >: A](from: Int, other: IterableOnce[B]^, replaced: Int): CC[B]^{this, other} =
+    assert(false, "This is a placeholder implementation in the capture checked Scala 2 library.")
+    ???
+  def combinations(n: Int): Iterator[C^{this}]^{this} =
+    assert(false, "This is a placeholder implementation in the capture checked Scala 2 library.")
+    ???
+  def sortBy[B](f: A => B)(implicit ord: Ordering[B]): C^{this, f} =
+    assert(false, "This is a placeholder implementation in the capture checked Scala 2 library.")
+    ???
+  def sortWith(lt: (A, A) => Boolean): C^{this, lt} =
+    assert(false, "This is a placeholder implementation in the capture checked Scala 2 library.")
+    ???
+  def permutations: Iterator[C^{this}]^{this} =
+    assert(false, "This is a placeholder implementation in the capture checked Scala 2 library.")
+    ???
+  def distinct: C^{this} =
+    assert(false, "This is a placeholder implementation in the capture checked Scala 2 library.")
+    ???
+  def distinctBy[B](f: A -> B): C^{this} =
+    assert(false, "This is a placeholder implementation in the capture checked Scala 2 library.")
+    ???
+  // -------------------
 
   def reverseIterator: Iterator[A]^{this} = reversed.iterator
 }
