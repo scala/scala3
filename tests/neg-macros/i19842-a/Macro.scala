@@ -16,7 +16,6 @@ object Macros {
       name,
       Flags.Implicit,
       Flags.EmptyFlags,
-      // Without TypeRep.of[Object] it would fail with java.lang.AssertionError: assertion failed: First parent must be a class
       List(TypeRepr.of[Object], TypeRepr.of[Serializer[T]]),
       _ => Nil,
       Symbol.noSymbol

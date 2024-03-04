@@ -1,0 +1,22 @@
+-- Error: tests/neg-macros/i19842-b/Test.scala:9:50 --------------------------------------------------------------------
+9 |@main def Test = summon[Serializer[ValidationCls]] // error
+  |                                                  ^
+  |Exception occurred while executing macro expansion.
+  |java.lang.AssertionError: assertion failed: Parents of class symbol differs from the parents in the tree for object objectSerializer$macro$1
+  |
+  |Parents in symbol: [class Object, trait Serializer]
+  |Parents in tree: [class Object, trait Serializer, trait Foo]
+  |
+  |	at scala.runtime.Scala3RunTime$.assertFailed(Scala3RunTime.scala:8)
+  |	at dotty.tools.dotc.transform.TreeChecker$.checkParents(TreeChecker.scala:209)
+  |	at scala.quoted.runtime.impl.QuotesImpl$reflect$ClassDef$.module(QuotesImpl.scala:257)
+  |	at scala.quoted.runtime.impl.QuotesImpl$reflect$ClassDef$.module(QuotesImpl.scala:256)
+  |	at Macros$.makeSerializer(Macro.scala:27)
+  |
+  |---------------------------------------------------------------------------------------------------------------------
+  |Inline stack trace
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  |This location contains code that was inlined from Test.scala:5
+5 |    implicit inline def implicitMakeSerializer[T]: Serializer[T] = ${ Macros.makeSerializer[T] }
+  |                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   ---------------------------------------------------------------------------------------------------------------------
