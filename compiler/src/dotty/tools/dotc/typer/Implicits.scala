@@ -661,15 +661,9 @@ trait ImplicitRunInfo:
             case t: TypeLambda =>
               for p <- t.paramRefs do partSeen += p
               traverseChildren(t)
-            case t: MatchType =>
-              traverseChildren(t)
-              traverse(t.normalized)
-            case MatchType.InDisguise(mt)
-                if !t.isInstanceOf[LazyRef] // skip recursive applications (eg. Tuple.Map)
-            =>
-              traverse(mt)
             case t =>
               traverseChildren(t)
+              traverse(t.normalized)
       catch case ex: Throwable => handleRecursive("collectParts of", t.show, ex)
 
       def apply(tp: Type): collection.Set[Type] =
