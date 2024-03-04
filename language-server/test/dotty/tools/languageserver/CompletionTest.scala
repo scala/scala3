@@ -35,6 +35,20 @@ class CompletionTest {
       .completion(("Conversion", Class, "Conversion"))
   }
 
+  @Test def implicitSearchCrash: Unit =
+    code"""
+          |object Test:
+          |  trait Foo:
+          |    def test(): String
+          |  given Int = ???
+          |  given (using ev: Int): Conversion[String, Foo] = ???
+          |
+          |  val test = {
+          |    "".tes$m1
+          |    1
+          |  }"""
+      .completion(("test", Method, "(): String"))
+
   @Test def completionFromScalaPackageObject: Unit = {
     code"class Foo { val foo: BigD${m1} }"
       .completion(
