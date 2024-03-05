@@ -187,9 +187,9 @@ object Settings:
             setBoolean(argRest, args)
           case (OptionTag, _) =>
             update(Some(propertyClass.get.getConstructor().newInstance()), args)
-          case (_, args) =>
+          case (ct, args) =>
             val argInArgRest = !argRest.isEmpty
-            val argAfterParam = !argInArgRest && args.nonEmpty && !args.head.startsWith("-")
+            val argAfterParam = !argInArgRest && args.nonEmpty && (ct == IntTag || !args.head.startsWith("-"))
             if argInArgRest then
               doSetArg(argRest, args)
             else if argAfterParam then
