@@ -72,7 +72,7 @@ object Splicer {
           if !ctx.reporter.hasErrors then
             report.error("Macro expansion was aborted by the macro without any errors reported. Macros should issue errors to end-users when aborting a macro expansion with StopMacroExpansion.", splicePos)
           // errors have been emitted
-          EmptyTree
+          ref(defn.Predef_undefined).withType(ErrorType(em"macro expansion was stopped"))
         case ex: StopInterpretation =>
           report.error(ex.msg, ex.pos)
           ref(defn.Predef_undefined).withType(ErrorType(ex.msg))

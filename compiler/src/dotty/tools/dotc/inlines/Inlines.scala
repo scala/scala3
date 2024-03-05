@@ -451,7 +451,7 @@ object Inlines:
       // different for bindings from arguments and bindings from body.
       val inlined = tpd.Inlined(call, bindings, expansion)
 
-      if !hasOpaqueProxies || !inlined.tpe.exists then inlined
+      if !hasOpaqueProxies then inlined
       else
         val target =
           if inlinedMethod.is(Transparent) then call.tpe & inlined.tpe
