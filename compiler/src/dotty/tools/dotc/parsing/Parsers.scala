@@ -30,7 +30,7 @@ import scala.annotation.tailrec
 import rewrites.Rewrites.{patch, overlapsPatch}
 import reporting.*
 import config.Feature
-import config.Feature.{sourceVersion, migrateTo3, globalOnlyImports}
+import config.Feature.{sourceVersion, migrateTo3}
 import config.SourceVersion.*
 import config.SourceVersion
 import dotty.tools.dotc.config.MigrationVersion
