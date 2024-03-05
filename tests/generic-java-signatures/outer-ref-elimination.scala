@@ -26,6 +26,8 @@ class T8 { def t8(): Unit = new AnyRef { class C8; test(classOf[C8]) } }
 // the field x.
 class T9 { var x = 451; def t9(): Unit = { class C9 {def getX = x}; test(classOf[C9])} }
 
+class T10 { private[T10] class C10; test(classOf[C10]) }
+
 object Test {
   def main(args: Array[String]): Unit = {
     T1
@@ -37,5 +39,6 @@ object Test {
     new T7().t7()
     new T8().t8()
     new T9().t9()
+    new T10()
   }
 }
