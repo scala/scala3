@@ -54,24 +54,20 @@ object IsSeq {
     seqOpsIsSeqVal.asInstanceOf[IsSeq[CC0[A0]] { type A = A0; type C = CC0[A0] }]
 
   /** !!! Under cc, views are not Seqs and can't use SeqOps.
-   *  So this should be renamed to seqViewIsIterable
-   */
-  implicit def seqViewIsSeq[CC0[X] <: SeqView[X], A0]: IsIterable[CC0[A0]] { type A = A0; type C = View[A0] } =
-    new IsIterable[CC0[A0]] {
-      type A = A0
-      type C = View[A]
-      def apply(coll: CC0[A0]): IterableOps[A0, View, View[A0]] = coll
-    }
+    * Therefore, [[seqViewIsSeq]] now returns an [[IsIterable]].
+    * The helper method [[seqViewIsSeq_]] is added to make the binary compatible.
+    */
+  @annotation.targetName("seqViewIsSeq")
+  def seqViewIsSeq_[CC0[X] <: SeqView[X], A0]: IsSeq[CC0[A0]] { type A = A0; type C = View[A0] } = ???
+  implicit inline def seqViewIsSeq[CC0[X] <: SeqView[X], A0]: IsIterable[CC0[A0]] { type A = A0; type C = View[A0] } = seqViewIsSeq_[CC0, A0].asInstanceOf
 
   /** !!! Under cc, views are not Seqs and can't use SeqOps.
-   *  So this should be renamed to stringViewIsIterable
-   */
-  implicit val stringViewIsSeq: IsIterable[StringView] { type A = Char; type C = View[Char] } =
-    new IsIterable[StringView] {
-      type A = Char
-      type C = View[Char]
-      def apply(coll: StringView): IterableOps[Char, View, View[Char]] = coll
-    }
+    * Therefore, [[stringViewIsSeq]] now returns an [[IsIterable]].
+    * The helper method [[stringViewIsSeq__]] is added to make the binary compatible.
+    */
+  @annotation.targetName("stringViewIsSeq")
+  val stringViewIsSeq_ : IsSeq[StringView] { type A = Char; type C = View[Char] } = ???
+  inline implicit def stringViewIsSeq: IsIterable[StringView] { type A = Char; type C = View[Char] } = stringViewIsSeq_.asInstanceOf
 
   implicit val stringIsSeq: IsSeq[String] { type A = Char; type C = String } =
     new IsSeq[String] {
