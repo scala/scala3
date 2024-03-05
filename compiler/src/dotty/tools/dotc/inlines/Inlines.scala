@@ -494,14 +494,14 @@ object Inlines:
 
       // Take care that only argument bindings go into `bindings`, since positions are
       // different for bindings from arguments and bindings from body.
-      val res = tpd.Inlined(call, bindings, expansion)
+      val inlined = tpd.Inlined(call, bindings, expansion)
 
-      if !hasOpaqueProxies then res
+      if !hasOpaqueProxies || !inlined.tpe.exists then inlined
       else
         val target =
-          if inlinedMethod.is(Transparent) then call.tpe & res.tpe
+          if inlinedMethod.is(Transparent) then call.tpe & inlined.tpe
           else call.tpe
-        res.ensureConforms(target)
+        inlined.ensureConforms(target)
           // Make sure that the sealing with the declared type
           // is type correct. Without it we might get problems since the
           // expression's type is the opaque alias but the call's type is
