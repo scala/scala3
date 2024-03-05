@@ -58,7 +58,8 @@ object IsSeq {
     * The helper method [[seqViewIsSeq_]] is added to make the binary compatible.
     */
   @annotation.targetName("seqViewIsSeq")
-  def seqViewIsSeq_[CC0[X] <: SeqView[X], A0]: IsSeq[CC0[A0]] { type A = A0; type C = View[A0] } = ???
+  @annotation.publicInBinary
+  private[IsSeq] def seqViewIsSeq_[CC0[X] <: SeqView[X], A0]: IsSeq[CC0[A0]] { type A = A0; type C = View[A0] } = ???
   implicit inline def seqViewIsSeq[CC0[X] <: SeqView[X], A0]: IsIterable[CC0[A0]] { type A = A0; type C = View[A0] } = seqViewIsSeq_[CC0, A0].asInstanceOf
 
   /** !!! Under cc, views are not Seqs and can't use SeqOps.
@@ -66,7 +67,8 @@ object IsSeq {
     * The helper method [[stringViewIsSeq__]] is added to make the binary compatible.
     */
   @annotation.targetName("stringViewIsSeq")
-  val stringViewIsSeq_ : IsSeq[StringView] { type A = Char; type C = View[Char] } = ???
+  @annotation.publicInBinary
+  private[IsSeq] val stringViewIsSeq_ : IsSeq[StringView] { type A = Char; type C = View[Char] } = ???
   inline implicit def stringViewIsSeq: IsIterable[StringView] { type A = Char; type C = View[Char] } = stringViewIsSeq_.asInstanceOf
 
   implicit val stringIsSeq: IsSeq[String] { type A = Char; type C = String } =
