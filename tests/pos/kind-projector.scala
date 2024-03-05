@@ -1,4 +1,4 @@
-//> using options -Ykind-projector
+//> using options -Ykind-projector:enable
 
 package kind_projector
 

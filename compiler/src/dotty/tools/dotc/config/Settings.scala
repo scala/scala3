@@ -72,9 +72,10 @@ object Settings:
     ignoreInvalidArgs: Boolean = false,
     propertyClass: Option[Class[?]] = None,
     deprecationMsg: Option[String] = None)(private[Settings] val idx: Int) {
-
+  
+    
     assert(name.startsWith(s"-$category"), s"Setting $name does not start with category -$category")
-
+    assert(!choices.contains(""), s"Empty string is not supported as a choice for setting $name")
     // Without the following assertion, it would be easy to mistakenly try to pass a file to a setting that ignores invalid args.
     // Example: -opt Main.scala would be interpreted as -opt:Main.scala, and the source file would be ignored.
     assert(!(summon[ClassTag[T]] == ListTag && ignoreInvalidArgs), s"Ignoring invalid args is not supported for multivalue settings: $name")
@@ -165,6 +166,12 @@ object Settings:
           val output = if (isJar) JarArchive.create(path) else new PlainDirectory(path)
           update(output, args)
         }
+      
+      def setVersion(argValue: String, args: List[String]) =
+        ScalaVersion.parse(argValue) match {
+          case Success(v) => update(v, args)
+          case Failure(ex) => fail(ex.getMessage, args)
+        }
 
       def appendList(strings: List[String], args: List[String]) =
         choices match
@@ -180,37 +187,30 @@ object Settings:
             setBoolean(argRest, args)
           case (OptionTag, _) =>
             update(Some(propertyClass.get.getConstructor().newInstance()), args)
-          case (ListTag, args) if argRest.nonEmpty =>
-            val strings = argRest.split(",").toList
-            appendList(strings, args)
-          case (ListTag, arg2 :: args2) if !(arg2 startsWith "-")=>
-            appendList(arg2 :: Nil, args2)
-          case (StringTag, _) if argRest.nonEmpty || choices.exists(_.contains("")) =>
-            setString(argRest, args)
-          case (StringTag, arg2 :: args2) =>
-            if (arg2 startsWith "-") missingArg
-            else setString(arg2, args2)
-          case (OutputTag, args) if argRest.nonEmpty =>
-            setOutput(argRest, args)
-          case (OutputTag, arg2 :: args2) =>
-            setOutput(arg2, args2)
-          case (IntTag, args) if argRest.nonEmpty =>
-            setInt(argRest, args)
-          case (IntTag, arg2 :: args2) =>
-            setInt(arg2, args2)
-          case (VersionTag, _) if argRest.nonEmpty =>
-            ScalaVersion.parse(argRest) match {
-              case Success(v) => update(v, args)
-              case Failure(ex) => fail(ex.getMessage, args)
-            }
-          case (VersionTag, arg2 :: args2) =>
-            ScalaVersion.parse(arg2) match {
-              case Success(v) => update(v, args2)
-              case Failure(ex) => fail(ex.getMessage, args2)
-            }
-          case (_, Nil) =>
-            missingArg
+          case (_, args) =>
+            val argInArgRest = !argRest.isEmpty
+            val argAfterParam = !argInArgRest && args.nonEmpty && !args.head.startsWith("-")
+            if argInArgRest then
+              doSetArg(argRest, args)
+            else if argAfterParam then
+              doSetArg(args.head, args.tail)
+            else missingArg
         }
+
+      def doSetArg(arg: String, argsLeft: List[String]) = summon[ClassTag[T]] match
+          case ListTag =>
+            val strings = arg.split(",").toList
+            appendList(strings, argsLeft)
+          case StringTag =>
+            setString(arg, argsLeft)
+          case OutputTag =>
+            setOutput(arg, argsLeft)
+          case IntTag =>
+            setInt(arg, argsLeft)
+          case VersionTag =>
+            setVersion(arg, argsLeft)
+          case _ =>
+            missingArg
 
       def matches(argName: String): Boolean = 
         (allFullNames).exists(_ == argName.takeWhile(_ != ':')) || prefix.exists(arg.startsWith)
