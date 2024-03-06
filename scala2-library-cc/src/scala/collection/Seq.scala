@@ -206,7 +206,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
     *
     * @return a new $coll consisting of all the elements of this $coll without duplicates.
     */
-  def distinct: C = distinctBy(identity)
+  override def distinct: C = distinctBy(identity)
 
   /** Selects all the elements of this $coll ignoring the duplicates as determined by `==` after applying
     * the transforming function `f`.
@@ -215,7 +215,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
     * @tparam B the type of the elements after being transformed by `f`
     * @return a new $coll consisting of all the elements of this $coll without duplicates.
     */
-  def distinctBy[B](f: A -> B): C = fromSpecific(new View.DistinctBy(this, f))
+  override def distinctBy[B](f: A -> B): C = fromSpecific(new View.DistinctBy(this, f))
 
   /** Returns new $coll with elements in reversed order.
    *
@@ -293,7 +293,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
    *          all elements of this $coll followed by the minimal number of occurrences of `elem` so
    *          that the resulting collection has a length of at least `len`.
    */
-  def padTo[B >: A](len: Int, elem: B): CC[B] = iterableFactory.from(new View.PadTo(this, len, elem))
+  override def padTo[B >: A](len: Int, elem: B): CC[B] = iterableFactory.from(new View.PadTo(this, len, elem))
 
   /** Computes the length of the longest segment that starts from the first element
     *  and whose elements all satisfy some predicate.
@@ -544,7 +544,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
    *    // List(b, b, a)
    *  }}}
    */
-  def permutations: Iterator[C] =
+  override def permutations: Iterator[C] =
     if (isEmpty) Iterator.single(coll)
     else new PermutationsItr
 
@@ -585,7 +585,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
    *    // List(b, a)
    *  }}}
    */
-  def combinations(n: Int): Iterator[C] =
+  override def combinations(n: Int): Iterator[C] =
     if (n < 0 || n > size) Iterator.empty
     else new CombinationsItr(n)
 
@@ -759,7 +759,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
    *    List("Bobby", "Bob", "John", "Steve", "Tom")
    *  }}}
    */
-  def sortWith(lt: (A, A) => Boolean): C = sorted(Ordering.fromLessThan(lt))
+  override def sortWith(lt: (A, A) => Boolean): C = sorted(Ordering.fromLessThan(lt))
 
   /** Sorts this $coll according to the Ordering which results from transforming
     * an implicitly given Ordering with a transformation function.
@@ -786,7 +786,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
     *    res0: Array[String] = Array(The, dog, fox, the, lazy, over, brown, quick, jumped)
     *  }}}
     */
-  def sortBy[B](f: A => B)(implicit ord: Ordering[B]): C = sorted(ord on f)
+  override def sortBy[B](f: A => B)(implicit ord: Ordering[B]): C = sorted(ord on f)
 
   /** Produces the range of all indices of this sequence.
     * $willForceEvaluation
@@ -944,7 +944,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
     *                   except that `replaced` elements starting from `from` are replaced
     *                   by all the elements of `other`.
     */
-  def patch[B >: A](from: Int, other: IterableOnce[B]^, replaced: Int): CC[B] =
+  override def patch[B >: A](from: Int, other: IterableOnce[B]^, replaced: Int): CC[B] =
     iterableFactory.from(new View.Patched(this, from, other, replaced))
       .unsafeAssumePure // assume pure OK since iterableFactory.from is eager for Seq
       
@@ -957,7 +957,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
     *                                    lazy collection this exception may be thrown at a later time or not at
     *                                    all (if the end of the collection is never evaluated).
     */
-  def updated[B >: A](index: Int, elem: B): CC[B] = {
+  override def updated[B >: A](index: Int, elem: B): CC[B] = {
     if(index < 0) throw new IndexOutOfBoundsException(index.toString)
     val k = knownSize
     if(k >= 0 && index >= k) throw new IndexOutOfBoundsException(index.toString)

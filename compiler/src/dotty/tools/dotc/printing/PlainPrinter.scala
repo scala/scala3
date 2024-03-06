@@ -242,10 +242,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val refsText = if showAsCap then rootSetText else toTextCaptureSet(refs)
         toTextCapturing(parent, refsText, boxText)
       case tp @ RetainingType(parent, refs) =>
-        val refsText = refs match
-          case ref :: Nil if ref.symbol == defn.captureRoot => rootSetText
-          case _ => toTextRetainedElems(refs)
-        toTextCapturing(parent, refsText, "") ~ Str("R").provided(printDebug)
+        if Feature.ccEnabledSomewhere then
+          val refsText = refs match
+            case ref :: Nil if ref.symbol == defn.captureRoot => rootSetText
+            case _ => toTextRetainedElems(refs)
+          toTextCapturing(parent, refsText, "") ~ Str("R").provided(printDebug)
+        else toText(parent)
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely
       case tp: ErrorType =>
