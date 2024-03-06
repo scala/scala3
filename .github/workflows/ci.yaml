@@ -200,7 +200,7 @@ jobs:
 
       # TODO increase coverage to `scala3-bootstrapped/test`
       - name: Test with Scala 2 library with CC TASTy
-        run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryCCTasty ;scala3-bootstrapped/testCompilation pos"
+        run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryCCTasty ;scala3-bootstrapped/testCompilation"
 
 
   test_windows_fast:
