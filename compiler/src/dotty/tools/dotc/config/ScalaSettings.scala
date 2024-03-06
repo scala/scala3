@@ -435,8 +435,6 @@ private sealed trait YSettings:
   val Yinstrument: Setting[Boolean] = BooleanSetting("-Yinstrument", "Add instrumentation code that counts allocations and closure creations.")
   val YinstrumentDefs: Setting[Boolean] = BooleanSetting("-Yinstrument-defs", "Add instrumentation code that counts method calls; needs -Yinstrument to be set, too.")
 
-  val YforceInlineWhileTyping: Setting[Boolean] = BooleanSetting("-Yforce-inline-while-typing", "Make non-transparent inline methods inline when typing. Emulates the old inlining behavior of 3.0.0-M3.")
-
   val YdebugMacros: Setting[Boolean] = BooleanSetting("-Ydebug-macros", "Show debug info when quote pattern match fails")
 
   // Pipeline compilation options

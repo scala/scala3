@@ -81,7 +81,6 @@ object Inlines:
   private def needsTransparentInlining(tree: Tree)(using Context): Boolean =
     tree.symbol.is(Transparent)
     || ctx.mode.is(Mode.ForceInline)
-    || ctx.settings.YforceInlineWhileTyping.value
 
   /** Try to inline a call to an inline method. Fail with error if the maximal
    *  inline depth is exceeded.
