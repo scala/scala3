@@ -109,7 +109,7 @@ object HoverProvider:
           val exprTpw = tpe.widenTermRefExpr.metalsDealias
           val hoverString =
             tpw match
-              // https://github.com/lampepfl/dotty/issues/8891
+              // https://github.com/scala/scala3/issues/8891
               case tpw: ImportType =>
                 printer.hoverSymbol(symbol, symbol.paramRef)
               case _ =>

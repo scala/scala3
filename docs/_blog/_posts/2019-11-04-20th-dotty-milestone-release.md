@@ -127,16 +127,16 @@ It is easy to forget to put `then` at the end of the line if nothing else follow
 ## Metaprogramming Progress
 We are making a steady progress developing and improving the metaprogramming features of Dotty. Here are metaprogramming highlights of this release:
 
-- Fix #7189: Do not try to load contents if file does not exist [#7476](https://github.com/lampepfl/dotty/pull/7476)
-- Add customizable names for definitions in quotes [#7346](https://github.com/lampepfl/dotty/pull/7346)
-- Rename scala.quoted.matching.{Bind => Sym} [#7332](https://github.com/lampepfl/dotty/pull/7332)
-- Replace AsFunction implicit class with Expr.reduce [#7299](https://github.com/lampepfl/dotty/pull/7299)
+- Fix #7189: Do not try to load contents if file does not exist [#7476](https://github.com/scala/scala3/pull/7476)
+- Add customizable names for definitions in quotes [#7346](https://github.com/scala/scala3/pull/7346)
+- Rename scala.quoted.matching.{Bind => Sym} [#7332](https://github.com/scala/scala3/pull/7332)
+- Replace AsFunction implicit class with Expr.reduce [#7299](https://github.com/scala/scala3/pull/7299)
 
 # Let us know what you think!
 
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 
@@ -173,7 +173,7 @@ According to `git shortlog -sn --no-merges 0.19.0-RC1..0.20.0-RC1` these are:
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
 Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
-and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.

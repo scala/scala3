@@ -1503,7 +1503,7 @@ object Trees {
       * It ensures that the source is correct, and that the local context is used if
       * that's necessary for transforming the whole tree.
       * TODO: ensure transform is always called with the correct context as argument
-      * @see https://github.com/lampepfl/dotty/pull/13880#discussion_r836395977
+      * @see https://github.com/scala/scala3/pull/13880#discussion_r836395977
       */
     def transformCtx(tree: Tree)(using Context): Context =
       val sourced =

@@ -57,13 +57,13 @@ abstract class PcCollector[T](
       .pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx)
       .dropWhile(t => // NamedArg anyway doesn't have symbol
         t.symbol == NoSymbol && !t.isInstanceOf[NamedArg] ||
-          // same issue https://github.com/lampepfl/dotty/issues/15937 as below
+          // same issue https://github.com/scala/scala3/issues/15937 as below
           t.isInstanceOf[TypeTree]
       )
 
   val path = rawPath match
     // For type it will sometimes go into the wrong tree since TypeTree also contains the same span
-    // https://github.com/lampepfl/dotty/issues/15937
+    // https://github.com/scala/scala3/issues/15937
     case TypeApply(sel: Select, _) :: tail if sel.span.contains(pos.span) =>
       Interactive.pathTo(sel, pos.span) ::: rawPath
     case _ => rawPath
@@ -583,7 +583,7 @@ abstract class PcCollector[T](
       t
     }
 
-  // NOTE: Connected to https://github.com/lampepfl/dotty/issues/16771
+  // NOTE: Connected to https://github.com/scala/scala3/issues/16771
   // `sel.nameSpan` is calculated incorrectly in (1 + 2).toString
   // See test DocumentHighlightSuite.select-parentheses
   private def selectNameSpan(sel: Select): Span =

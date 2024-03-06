@@ -250,7 +250,7 @@ object Interactive {
    *  Note that if the given `pos` points out places for incomplete parses,
    *  this method returns `errorTermTree` (`Literal(Consotant(null)`).
    *
-   *  @see https://github.com/lampepfl/dotty/issues/15294
+   *  @see https://github.com/scala/scala3/issues/15294
    */
   def pathTo(trees: List[SourceTree], pos: SourcePosition)(using Context): List[Tree] =
     pathTo(trees.map(_.tree), pos.span)

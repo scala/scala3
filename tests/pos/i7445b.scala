@@ -1,4 +1,4 @@
-// https://github.com/lampepfl/dotty/issues/7445
+// https://github.com/scala/scala3/issues/7445
 
 type O1[A] = {
   type OutInner[Ts] <: Tuple = Ts match {

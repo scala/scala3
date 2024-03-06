@@ -118,8 +118,8 @@ object SemanticdbSymbols:
     b.toString
 
   /**
-   *  Taken from https://github.com/lampepfl/dotty/blob/2db43dae1480825227eb30d291b0dd0f0494e0f6/compiler/src/dotty/tools/dotc/semanticdb/ExtractSemanticDB.scala#L293
-   *  In future might be replaced by usage of compiler implementation after merging https://github.com/lampepfl/dotty/pull/12885
+   *  Taken from https://github.com/scala/scala3/blob/2db43dae1480825227eb30d291b0dd0f0494e0f6/compiler/src/dotty/tools/dotc/semanticdb/ExtractSemanticDB.scala#L293
+   *  In future might be replaced by usage of compiler implementation after merging https://github.com/scala/scala3/pull/12885
    */
   private def addSymName(b: StringBuilder, sym: Symbol)(using Context): Unit =
 

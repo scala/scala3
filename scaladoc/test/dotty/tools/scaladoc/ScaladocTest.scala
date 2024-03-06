@@ -27,7 +27,7 @@ abstract class ScaladocTest(val name: String):
       tastyFiles = tastyFiles(name),
       output = getTempDir().getRoot,
       projectVersion = Some("1.0"),
-      sourceLinks = List("github://lampepfl/dotty/master")
+      sourceLinks = List("github://scala/scala3/master")
     )
 
   @Test

@@ -12,9 +12,9 @@ also documents the inner workings of the Scala 3 compiler, `dotc`.
 Keep in mind that the code for `dotc` is continually changing, so the ideas
 discussed in this guide may fall out of date. This is a living document, so
 please consider contributing to it on
-[GitHub](https://github.com/lampepfl/dotty/tree/main/docs/_docs/contributing) if
+[GitHub](https://github.com/scala/scala3/tree/main/docs/_docs/contributing) if
 you notice anything out of date, or report any issues
-[here](https://github.com/lampepfl/dotty/issues).
+[here](https://github.com/scala/scala3/issues).
 
 ### Get the most from This Guide
 

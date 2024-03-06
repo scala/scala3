@@ -77,4 +77,4 @@ A class that is neither `abstract` nor `open` is similar to a `sealed` class: it
 
 ## Migration
 
-`open` is a new modifier in Scala 3. To allow cross compilation between Scala 2.13 and Scala 3.0 without warnings, the feature warning for ad-hoc extensions is produced only under `-source future`. It will be produced by default [from Scala 3.4 on](https://github.com/lampepfl/dotty/issues/16334).
+`open` is a new modifier in Scala 3. To allow cross compilation between Scala 2.13 and Scala 3.0 without warnings, the feature warning for ad-hoc extensions is produced only under `-source future`. It will be produced by default [from Scala 3.4 on](https://github.com/scala/scala3/issues/16334).

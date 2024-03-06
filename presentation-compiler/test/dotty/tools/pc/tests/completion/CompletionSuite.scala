@@ -888,7 +888,7 @@ class CompletionSuite extends BaseCompletionSuite:
       topLines = Some(2)
     )
 
-  // issues with scala 3 https://github.com/lampepfl/dotty/pull/13515
+  // issues with scala 3 https://github.com/scala/scala3/pull/13515
   @Test def ordering4 =
     check(
       s"""|class Main {
