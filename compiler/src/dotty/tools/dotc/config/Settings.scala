@@ -71,7 +71,9 @@ object Settings:
     depends: List[(Setting[?], Any)] = Nil,
     ignoreInvalidArgs: Boolean = false,
     propertyClass: Option[Class[?]] = None,
-    deprecationMsg: Option[String] = None)(private[Settings] val idx: Int) {
+    deprecationMsg: Option[String] = None,
+    // kept only for -Ykind-projector option compatibility
+    legacyArgs: Boolean = false)(private[Settings] val idx: Int) {
   
     
     assert(name.startsWith(s"-$category"), s"Setting $name does not start with category -$category")
@@ -188,7 +190,7 @@ object Settings:
           case (OptionTag, _) =>
             update(Some(propertyClass.get.getConstructor().newInstance()), args)
           case (ct, args) =>
-            val argInArgRest = !argRest.isEmpty
+            val argInArgRest = !argRest.isEmpty || (legacyArgs && choices.exists(_.contains("")))
             val argAfterParam = !argInArgRest && args.nonEmpty && (ct == IntTag || !args.head.startsWith("-"))
             if argInArgRest then
               doSetArg(argRest, args)
@@ -335,6 +337,10 @@ object Settings:
 
     def ChoiceSetting(category: String, name: String, helpArg: String, descr: String, choices: List[String], default: String, aliases: List[String] = Nil): Setting[String] =
       publish(Setting(category, validateAndPrependName(name), descr, default, helpArg, Some(choices), aliases = aliases.map(validateSetting)))
+
+    // Allows only args after :, but supports empty string as a choice. Used for -Ykind-projector
+    def LegacyChoiceSetting(category: String, name: String, helpArg: String, descr: String, choices: List[String], default: String, aliases: List[String] = Nil): Setting[String] =
+      publish(Setting(category, validateAndPrependName(name), descr, default, helpArg, Some(choices), aliases = aliases.map(validateSetting), legacyArgs = true))
 
     def MultiChoiceSetting(category: String, name: String, helpArg: String, descr: String, choices: List[String], default: List[String], aliases: List[String] = Nil): Setting[List[String]] =
       publish(Setting(category, validateAndPrependName(name), descr, default, helpArg, Some(choices), aliases = aliases.map(validateSetting)))
