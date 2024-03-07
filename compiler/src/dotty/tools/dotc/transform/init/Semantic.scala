@@ -992,7 +992,7 @@ object Semantic:
                 eval(body, thisV, klass, cacheResult = true)
               }
               given Trace = Trace.empty.add(body)
-              res.promote("Only transitively initialized (Hot) values can be returned by functions. The function " + fun.show + " returns " + res.show + ".")
+              res.promote("Only transitively initialized (Hot) values can be returned by functions. The value is " + fun.show + " returns " + res.show + ".")
             }
             if errors.nonEmpty then
               reporter.report(UnsafePromotion(msg, errors.head)(trace))
