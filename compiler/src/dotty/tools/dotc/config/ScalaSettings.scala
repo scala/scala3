@@ -299,8 +299,8 @@ private sealed trait WarningSettings:
   val Wshadow: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     WarningSetting,
     name = "Wshadow",
-    helpArg = "advanced warning",
-    descr = "Enable or disable specific `lint` warnings",
+    helpArg = "warning",
+    descr = "Enable or disable specific `shadow` warnings",
     choices = List(
       ChoiceWithHelp("all", ""),
       ChoiceWithHelp("private-shadow", "Warn if a private field or class parameter shadows a superclass field"),
@@ -359,7 +359,7 @@ private sealed trait XSettings:
   val XmacroSettings: Setting[List[String]] = MultiStringSetting(AdvancedSetting, "Xmacro-settings", "setting1,setting2,..settingN", "List of settings which exposed to the macros")
 
   // Deprecated
-  val Xlint: Setting[_] = DeprecatedSetting(AdvancedSetting, "Xlint", "Enable or disable specific warnings", "Use -Wshadow to enable shadowing lints or -W:<opt> to enable specific sets of warnings.")
+  val Xlint: Setting[_] = DeprecatedSetting(AdvancedSetting, "Xlint", "Enable or disable specific warnings", "Use -Wshadow to enable shadowing lints.")
 
 end XSettings
 

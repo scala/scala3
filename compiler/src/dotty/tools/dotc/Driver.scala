@@ -10,7 +10,6 @@ import dotty.tools.io.AbstractFile
 import reporting.*
 import core.Decorators.*
 import config.Feature
-import dotty.tools.dotc.config.ScalaSettings
 
 import scala.util.control.NonFatal
 import fromtasty.{TASTYCompiler, TastyFileUtil}

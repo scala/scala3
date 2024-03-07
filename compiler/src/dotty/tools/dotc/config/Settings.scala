@@ -77,7 +77,7 @@ object Settings:
   
     
     assert(name.startsWith(s"-$category"), s"Setting $name does not start with category -$category")
-    assert(!choices.contains(""), s"Empty string is not supported as a choice for setting $name")
+    assert(legacyArgs || !choices.exists(_.contains("")), s"Empty string is not supported as a choice for setting $name")
     // Without the following assertion, it would be easy to mistakenly try to pass a file to a setting that ignores invalid args.
     // Example: -opt Main.scala would be interpreted as -opt:Main.scala, and the source file would be ignored.
     assert(!(summon[ClassTag[T]] == ListTag && ignoreInvalidArgs), s"Ignoring invalid args is not supported for multivalue settings: $name")
