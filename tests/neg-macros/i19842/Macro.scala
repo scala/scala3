@@ -1,3 +1,4 @@
+//> using options -experimental -Yno-experimental
 
 import scala.annotation.{experimental, targetName}
 import scala.quoted.*

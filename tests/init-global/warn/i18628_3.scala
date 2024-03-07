@@ -1,3 +1,5 @@
+//> using options -experimental -Yno-experimental
+
 import scala.annotation.init.widen
 
 object Test:
