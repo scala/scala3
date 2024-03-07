@@ -36,6 +36,26 @@ object Definitions {
    *  else without affecting the set of programs that can be compiled.
    */
   val MaxImplementedFunctionArity: Int = MaxTupleArity
+
+  /** Cached function types of arbitary arities.
+   *  Function types are created on demand with newFunctionNTrait, which is
+   *  called from a synthesizer installed in ScalaPackageClass.
+   */
+  private class FunType(prefix: String):
+    private var classRefs: Array[TypeRef | Null] = new Array(22)
+    def apply(n: Int)(using Context): TypeRef =
+      while n >= classRefs.length do
+        val classRefs1 = new Array[TypeRef | Null](classRefs.length * 2)
+        Array.copy(classRefs, 0, classRefs1, 0, classRefs.length)
+        classRefs = classRefs1
+      if classRefs(n) == null then
+        val funName = s"scala.$prefix$n"
+        classRefs(n) =
+          if prefix.startsWith("Impure")
+          then staticRef(funName.toTypeName).symbol.typeRef
+          else requiredClassRef(funName)
+      classRefs(n).nn
+  end FunType
 }
 
 /** A class defining symbols and types of standard definitions
@@ -1515,26 +1535,6 @@ class Definitions {
 
   def SpecializedTuple(base: Symbol, args: List[Type])(using Context): Symbol =
     base.owner.requiredClass(base.name.specializedName(args))
-
-  /** Cached function types of arbitary arities.
-   *  Function types are created on demand with newFunctionNTrait, which is
-   *  called from a synthesizer installed in ScalaPackageClass.
-   */
-  private class FunType(prefix: String):
-    private var classRefs: Array[TypeRef | Null] = new Array(22)
-    def apply(n: Int): TypeRef =
-      while n >= classRefs.length do
-        val classRefs1 = new Array[TypeRef | Null](classRefs.length * 2)
-        Array.copy(classRefs, 0, classRefs1, 0, classRefs.length)
-        classRefs = classRefs1
-      if classRefs(n) == null then
-        val funName = s"scala.$prefix$n"
-        classRefs(n) =
-          if prefix.startsWith("Impure")
-          then staticRef(funName.toTypeName).symbol.typeRef
-          else requiredClassRef(funName)
-      classRefs(n).nn
-  end FunType
 
   private def funTypeIdx(isContextual: Boolean, isImpure: Boolean): Int =
       (if isContextual then 1 else 0)
