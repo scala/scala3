@@ -602,11 +602,12 @@ object Objects:
           case _ => a
 
     def filterType(tpe: Type)(using Context): Value =
-      val baseClasses = tpe.baseClasses
-      if baseClasses.isEmpty then a
-      else tpe match
+      tpe match
         case t @ SAMType(_, _) if a.isInstanceOf[Fun] => a // if tpe is SAMType and a is Fun, allow it
-        case _ => filterClass(baseClasses.head) // could have called ClassSymbol, but it does not handle OrType and AndType
+        case _ =>
+          val baseClasses = tpe.baseClasses
+          if baseClasses.isEmpty then a
+          else filterClass(baseClasses.head) // could have called ClassSymbol, but it does not handle OrType and AndType
 
     def filterClass(sym: Symbol)(using Context): Value =
         if !sym.isClass then a
@@ -614,8 +615,7 @@ object Objects:
           val klass = sym.asClass
           a match
             case Cold => Cold
-            case ref: Ref if ref.klass.isSubClass(klass) => ref
-            case ref: Ref => Bottom
+            case ref: Ref => if ref.klass.isSubClass(klass) then ref else Bottom
             case ValueSet(values) => values.map(v => v.filterClass(klass)).join
             case arr: OfArray => if defn.ArrayClass.isSubClass(klass) then arr else Bottom
             case fun: Fun =>
@@ -1572,7 +1572,7 @@ object Objects:
             report.warning("The argument should be a constant integer value", arg)
             res.widen(1)
         case _ =>
-          if res.isInstanceOf[Fun] then res.widen(2) else res.widen(1) // TODO: changing to widen(2) causes standard library analysis to loop infinitely
+          if res.isInstanceOf[Fun] then res.widen(2) else res.widen(1)
 
       argInfos += ArgInfo(widened, trace.add(arg.tree), arg.tree)
     }
