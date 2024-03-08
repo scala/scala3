@@ -163,17 +163,14 @@ object Feature:
     s"""Experimental $which may only be used under experimental mode:
        |  1. in a definition marked as @experimental, or
        |  2. an experimental feature is imported at the package level, or
-       |  3. compiling with the -experimental compiler flag, or
-       |  4. with a nightly or snapshot version of the compiler.
+       |  3. compiling with the -experimental compiler flag.
        |""".stripMargin
 
   def isExperimentalEnabled(using Context): Boolean =
-    (Properties.unstableExperimentalEnabled && !ctx.settings.YnoExperimental.value) ||
     ctx.settings.experimental.value ||
     experimentalAutoEnableFeatures.exists(enabled)
 
   def isExperimentalEnabledBySetting(using Context): Boolean =
-    (Properties.unstableExperimentalEnabled && !ctx.settings.YnoExperimental.value) ||
     ctx.settings.experimental.value ||
     experimentalAutoEnableFeatures.exists(enabledBySetting)
 

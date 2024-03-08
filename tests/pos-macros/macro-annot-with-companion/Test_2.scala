@@ -1,3 +1,4 @@
+//> using options -experimental
 
 @transform
 class Foo

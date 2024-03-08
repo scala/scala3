@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import scala.annotation.MacroAnnotation
 
 import scala.quoted.*

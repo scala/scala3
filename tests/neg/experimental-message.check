@@ -6,8 +6,7 @@
    |  Experimental definition may only be used under experimental mode:
    |    1. in a definition marked as @experimental, or
    |    2. an experimental feature is imported at the package level, or
-   |    3. compiling with the -experimental compiler flag, or
-   |    4. with a nightly or snapshot version of the compiler.
+   |    3. compiling with the -experimental compiler flag.
 -- Error: tests/neg/experimental-message.scala:16:2 --------------------------------------------------------------------
 16 |  f2() // error
    |  ^^
@@ -16,8 +15,7 @@
    |  Experimental definition may only be used under experimental mode:
    |    1. in a definition marked as @experimental, or
    |    2. an experimental feature is imported at the package level, or
-   |    3. compiling with the -experimental compiler flag, or
-   |    4. with a nightly or snapshot version of the compiler.
+   |    3. compiling with the -experimental compiler flag.
 -- Error: tests/neg/experimental-message.scala:17:2 --------------------------------------------------------------------
 17 |  f3() // error
    |  ^^
@@ -26,5 +24,4 @@
    |  Experimental definition may only be used under experimental mode:
    |    1. in a definition marked as @experimental, or
    |    2. an experimental feature is imported at the package level, or
-   |    3. compiling with the -experimental compiler flag, or
-   |    4. with a nightly or snapshot version of the compiler.
+   |    3. compiling with the -experimental compiler flag.
