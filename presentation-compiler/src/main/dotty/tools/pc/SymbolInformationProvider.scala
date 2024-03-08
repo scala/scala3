@@ -14,18 +14,13 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.pc.utils.MtagsEnrichments.metalsDealias
 import dotty.tools.pc.SemanticdbSymbols
+import dotty.tools.pc.utils.MtagsEnrichments.allSymbols
 
 class SymbolInformationProvider(using Context):
   private def toSymbols(
       pkg: String,
       parts: List[(String, Boolean)],
   ): List[Symbol] =
-    def collectSymbols(denotation: Denotation): List[Symbol] =
-      denotation match
-        case MultiDenotation(denot1, denot2) =>
-          collectSymbols(denot1) ++ collectSymbols(denot2)
-        case denot => List(denot.symbol)
-
     def loop(
         owners: List[Symbol],
         parts: List[(String, Boolean)],
@@ -37,7 +32,7 @@ class SymbolInformationProvider(using Context):
               val next =
                 if isClass then owner.info.member(typeName(head))
                 else owner.info.member(termName(head))
-              collectSymbols(next).filter(_.exists)
+              next.allSymbols
             }
           if foundSymbols.nonEmpty then loop(foundSymbols, tl)
           else Nil
@@ -70,9 +65,8 @@ class SymbolInformationProvider(using Context):
       catch case NonFatal(e) => Nil
 
     val (searchedSymbol, alternativeSymbols) =
-      foundSymbols.partition(compilerSymbol =>
+      foundSymbols.partition: compilerSymbol =>
         SemanticdbSymbols.symbolName(compilerSymbol) == symbol
-      )
 
     searchedSymbol match
       case Nil => None
