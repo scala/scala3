@@ -188,7 +188,7 @@ object SourceCode {
           case Select(newTree: New, _) =>
             printType(newTree.tpe)(using Some(cdef.symbol))
           case parent: Term =>
-            throw new MatchError(parent.show(using Printer.TreeStructure))
+            cannotBeShownAsSource(parent.show(using Printer.TreeStructure))
         }
 
         def printSeparated(list: List[Tree /* Term | TypeTree */]): Unit = list match {
@@ -536,7 +536,7 @@ object SourceCode {
         printCaseDef(tree)
 
       case _ =>
-        throw new MatchError(tree.show(using Printer.TreeStructure))
+        cannotBeShownAsSource(tree.show(using Printer.TreeStructure))
 
     }
 
@@ -934,7 +934,7 @@ object SourceCode {
           case Ident("unapply" | "unapplySeq") =>
             this += fun.symbol.owner.fullName.stripSuffix("$")
           case _ =>
-            throw new MatchError(fun.show(using Printer.TreeStructure))
+            cannotBeShownAsSource(fun.show(using Printer.TreeStructure))
         }
         inParens(printPatterns(patterns, ", "))
 
@@ -953,7 +953,7 @@ object SourceCode {
         printTree(v)
 
       case _ =>
-        throw new MatchError(pattern.show(using Printer.TreeStructure))
+        cannotBeShownAsSource(pattern.show(using Printer.TreeStructure))
 
     }
 
@@ -1079,7 +1079,7 @@ object SourceCode {
         printTypeTree(tpt)
 
       case _ =>
-        throw new MatchError(tree.show(using Printer.TreeStructure))
+        cannotBeShownAsSource(tree.show(using Printer.TreeStructure))
 
     }
 
@@ -1248,7 +1248,7 @@ object SourceCode {
         printType(rhs)
 
       case _ =>
-        throw new MatchError(tpe.show(using Printer.TypeReprStructure))
+        cannotBeShownAsSource(tpe.show(using Printer.TypeReprStructure))
     }
 
     private def printSelector(sel: Selector): this.type = sel match {
@@ -1287,7 +1287,7 @@ object SourceCode {
           val sym = annot.tpe.typeSymbol
           sym != Symbol.requiredClass("scala.forceInline") &&
           sym.maybeOwner != Symbol.requiredPackage("scala.annotation.internal")
-        case x => throw new MatchError(x.show(using Printer.TreeStructure))
+        case x => cannotBeShownAsSource(x.show(using Printer.TreeStructure))
       }
       printAnnotations(annots)
       if (annots.nonEmpty) this += " "
@@ -1457,6 +1457,9 @@ object SourceCode {
         Some(name)
       }
     }
+
+    private def cannotBeShownAsSource(x: String): Nothing =
+      throw new Exception(s"$x does not have a source representation")
 
     private object SpecialOp {
       def unapply(arg: Tree): Option[(String, List[Term])] = arg match {
