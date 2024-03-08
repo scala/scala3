@@ -65,7 +65,7 @@ import scala.annotation.constructorOnly
  *     whole-program analysis. However, the check is not modular in terms of project boundaries.
  *
  */
-object Objects:
+class Objects:
 
   // ----------------------------- abstract domain -----------------------------
 
@@ -1734,16 +1734,20 @@ object Objects:
       if cls.isAllOf(Flags.JavaInterface) then Bottom
       else evalType(tref.prefix, thisV, klass, elideObjectAccess = cls.isStatic)
 
+  val mutateErrorSet: mutable.Set[(ClassSymbol, ClassSymbol)] = mutable.Set.empty
   def errorMutateOtherStaticObject(currentObj: ClassSymbol, otherObj: ClassSymbol)(using Trace, Context) =
-    val msg =
-      s"Mutating ${otherObj.show} during initialization of ${currentObj.show}.\n" +
-      "Mutating other static objects during the initialization of one static object is forbidden. " + Trace.show
+    if mutateErrorSet.add((currentObj, otherObj)) then
+      val msg =
+        s"Mutating ${otherObj.show} during initialization of ${currentObj.show}.\n" +
+        "Mutating other static objects during the initialization of one static object is forbidden. " + Trace.show
 
-    report.warning(msg, Trace.position)
+      report.warning(msg, Trace.position)
 
+  val readErrorSet: mutable.Set[(ClassSymbol, ClassSymbol)] = mutable.Set.empty
   def errorReadOtherStaticObject(currentObj: ClassSymbol, otherObj: ClassSymbol)(using Trace, Context) =
-    val msg =
-      "Reading mutable state of " + otherObj.show + " during initialization of " + currentObj.show + ".\n" +
-      "Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. " + Trace.show
+    if readErrorSet.add((currentObj, otherObj)) then
+      val msg =
+        "Reading mutable state of " + otherObj.show + " during initialization of " + currentObj.show + ".\n" +
+        "Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. " + Trace.show
 
-    report.warning(msg, Trace.position)
+      report.warning(msg, Trace.position)
