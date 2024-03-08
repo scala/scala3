@@ -1,3 +1,5 @@
+import scala.language.experimental.erasedDefinitions
+
 object PhantomEq {
   import EqUtil.*
 

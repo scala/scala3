@@ -1,3 +1,5 @@
+import scala.language.experimental.erasedDefinitions
+
 object `inline-match-gadt` {
   class Exactly[T]
   erased def exactType[T]: Exactly[T] = compiletime.erasedValue

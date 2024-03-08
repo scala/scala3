@@ -1,3 +1,4 @@
+import scala.language.experimental.erasedDefinitions
 
 /* This is a version of ../pos/phantomEq.scala that tests phantom with separate compilation */
 object EqUtil {

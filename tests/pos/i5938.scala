@@ -1,8 +1,11 @@
+import scala.language.experimental.erasedDefinitions
+
 import compiletime.summonFrom
+import compiletime.erasedValue
 
 trait Link[T, A]
 
-inline def link[T] =
+transparent inline def link[T] =
   summonFrom {
     case _: Link[T, s] =>
       summonFrom {
@@ -12,7 +15,7 @@ inline def link[T] =
 
 class Foo
 object Foo {
-  erased implicit val barLink: Link[Foo, Bar.type] = null
+  erased implicit val barLink: Link[Foo, Bar.type] = erasedValue
 }
 
 implicit object Bar {
