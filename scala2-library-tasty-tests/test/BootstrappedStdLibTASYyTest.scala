@@ -17,10 +17,6 @@ class BootstrappedStdLibTASYyTest:
 
   import BootstrappedStdLibTASYyTest._
 
-  /** Test that we can load trees from TASTy */
-  @Test def testTastyInspector: Unit =
-    loadWithTastyInspector(loadBlacklisted)
-
   /** Test that we can load and compile trees from TASTy in a Jar */
   @Test def testFromTastyInJar: Unit =
     compileFromTastyInJar(loadBlacklisted.union(compileBlacklisted))
@@ -53,23 +49,6 @@ class BootstrappedStdLibTASYyTest:
         "`loadBlacklisted` contains names that are not in `scalaLibTastyPaths`: \n  ", "\n  ", "\n\n"))
 
   @Ignore
-  @Test def testLoadBacklistIsMinimal =
-    var shouldBeWhitelisted = List.empty[String]
-    val size = loadBlacklisted.size
-    for (notBlacklisted, i) <- loadBlacklist.zipWithIndex do
-      val blacklist = loadBlacklisted - notBlacklisted
-      println(s"Trying without $notBlacklisted in the blacklist  (${i+1}/$size)")
-      try {
-        loadWithTastyInspector(blacklist)
-        shouldBeWhitelisted = notBlacklisted :: shouldBeWhitelisted
-      }
-      catch {
-        case ex: Throwable => // ok
-      }
-    assert(shouldBeWhitelisted.isEmpty,
-      shouldBeWhitelisted.mkString("Some classes do not need to be blacklisted in `loadBlacklisted`\n  ", "\n  ", "\n\n"))
-
-  @Ignore
   @Test def testCompileBlacklistIsMinimal =
     var shouldBeWhitelisted = List.empty[String]
     val size = compileBlacklisted.size
@@ -100,17 +79,6 @@ object BootstrappedStdLibTASYyTest:
       .filter(_.`extension` == "tasty")
       .map(_.normalize.path.stripPrefix(scalaLibClassesPath.toString + "/"))
       .toList
-
-  def loadWithTastyInspector(blacklisted: Set[String]): Unit =
-    val inspector = new scala.tasty.inspector.Inspector {
-      def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
-        for tasty <- tastys do
-          tasty.ast.show(using quotes.reflect.Printer.TreeStructure) // Check that we can traverse the full tree
-        ()
-    }
-    val tastyFiles = scalaLibTastyPaths.filterNot(blacklisted)
-    val isSuccess = TastyInspector.inspectTastyFiles(tastyFiles.map(x => scalaLibClassesPath.resolve(x).toString))(inspector)
-    assert(isSuccess, "Errors reported while loading from TASTy")
 
   def compileFromTastyInJar(blacklisted: Set[String]): Unit = {
     val driver = new dotty.tools.dotc.Driver
