@@ -306,7 +306,7 @@ class ExtractUsedNamesSpecification {
     // All classes extend Object
     "Object",
     // All classes have a default constructor called <init>
-    "java.lang.Object;init;",
+    "Object;init;",
     // the return type of the default constructor is Unit
     "Unit"
   )

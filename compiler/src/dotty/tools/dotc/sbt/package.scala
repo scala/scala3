@@ -12,7 +12,7 @@ inline val InlineParamHash = 1997 // 302nd prime
 extension (sym: Symbol)
 
   def constructorName(using Context) =
-    sym.owner.fullName ++ ";init;"
+    sym.owner.name ++ ";init;"
 
   /** Mangle a JVM symbol name in a format better suited for internal uses by sbt. */
   def zincMangledName(using Context): Name =
