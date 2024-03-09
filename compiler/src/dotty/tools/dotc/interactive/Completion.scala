@@ -526,7 +526,7 @@ object Completion:
       // There are four possible ways for an extension method to be applicable
 
       // 1. The extension method is visible under a simple name, by being defined or inherited or imported in a scope enclosing the reference.
-      val termCompleter = new Completer(Mode.Term, prefix, pos, _.startsWith(prefix))
+      val termCompleter = new Completer(Mode.Term, prefix, pos, prefixFilter)
       val extMethodsInScope = termCompleter.scopeCompletions.toList.flatMap {
         case (name, denots) => denots.collect { case d: SymDenotation if d.isTerm => (d.termRef, name.asTermName) }
       }
@@ -609,7 +609,6 @@ object Completion:
     private def implicitConversionTargets(qual: tpd.Tree)(using Context): Set[SearchSuccess] = {
       val typer = ctx.typer
       val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.span).allImplicits
-      conversions.map(_.tree.typeOpt)
 
       interactiv.println(i"implicit conversion targets considered: ${conversions.toList}%, %")
       conversions

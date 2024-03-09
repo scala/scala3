@@ -533,7 +533,6 @@ class CompletionSuite extends BaseCompletionSuite:
          |until(end: Long): Exclusive[Long]
          |until(end: Long, step: Long): Exclusive[Long]
          |""".stripMargin,
-      postProcessObtained = _.replace("Float", "Double"),
       stableOrder = false
     )
 
@@ -1817,4 +1816,25 @@ class CompletionSuite extends BaseCompletionSuite:
       """|someMethod(x: Int): Int
          |""".stripMargin,
       topLines = Some(1)
+    )
+
+  @Test def `fuzzy-search-test-multiple` =
+    check(
+      """|
+         |trait MyInterface {
+         |  def someMethod(x: Int): Int = ???
+         |}
+         |object Test {
+         |  extension (interface: MyInterface) def someExtMethod(x: Int): Int = ???
+         |  implicit class MyInterfaceExtension(interface: MyInterface):
+         |    def someOldExtMethod(x: Int): Int = ???
+         |  val x: MyInterface = ???
+         |  x.m@@
+         |}
+         |""".stripMargin,
+      """|someMethod(x: Int): Int
+         |someExtMethod(x: Int): Int
+         |someOldExtMethod(x: Int): Int
+         |""".stripMargin,
+      topLines = Some(3)
     )
