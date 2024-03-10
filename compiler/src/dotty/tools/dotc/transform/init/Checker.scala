@@ -50,7 +50,8 @@ class Checker extends Phase:
         Semantic.checkClasses(classes)(using checkCtx)
 
       if ctx.settings.YcheckInitGlobal.value then
-        Objects.checkClasses(classes)(using checkCtx)
+        val obj = new Objects
+        obj.checkClasses(classes)(using checkCtx)
     }
 
     units0
