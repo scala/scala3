@@ -115,7 +115,7 @@ object SpaceEngine {
   def decompose(typ: Typ)(using Context): List[Typ]          = typ.decompose
 
   /** Simplify space such that a space equal to `Empty` becomes `Empty` */
-  def computeSimplify(space: Space)(using Context): Space = trace(s"simplify($space)")(space match {
+  def computeSimplify(space: Space)(using Context): Space = trace(i"simplify($space)")(space match {
     case Prod(tp, fun, spaces) =>
       val sps = spaces.mapconserve(simplify)
       if sps.contains(Empty) then Empty
@@ -166,7 +166,7 @@ object SpaceEngine {
   }
 
   /** Is `a` a subspace of `b`? Equivalent to `simplify(simplify(a) - simplify(b)) == Empty`, but faster */
-  def computeIsSubspace(a: Space, b: Space)(using Context): Boolean = trace(s"isSubspace($a, $b)") {
+  def computeIsSubspace(a: Space, b: Space)(using Context): Boolean = trace(i"isSubspace($a, $b)") {
     val a2 = simplify(a)
     val b2 = simplify(b)
     if (a ne a2) || (b ne b2) then isSubspace(a2, b2)
@@ -195,7 +195,7 @@ object SpaceEngine {
   }
 
   /** Intersection of two spaces  */
-  def intersect(a: Space, b: Space)(using Context): Space = trace(s"$a & $b") {
+  def intersect(a: Space, b: Space)(using Context): Space = trace(i"intersect($a & $b)") {
     (a, b) match {
       case (Empty, _) | (_, Empty) => Empty
       case (_, Or(ss)) => Or(ss.map(intersect(a, _)).filter(_ ne Empty))
@@ -220,7 +220,7 @@ object SpaceEngine {
   }
 
   /** The space of a not covered by b */
-  def minus(a: Space, b: Space)(using Context): Space = trace(s"$a - $b") {
+  def minus(a: Space, b: Space)(using Context): Space = trace(i"minus($a - $b)") {
     (a, b) match {
       case (Empty, _) => Empty
       case (_, Empty) => a
@@ -773,7 +773,7 @@ object SpaceEngine {
   }
 
   private def exhaustivityCheckable(sel: Tree)(using Context): Boolean = {
-    val seen = collection.mutable.Set.empty[Type]
+    val seen = collection.mutable.Set.empty[Symbol]
 
     // Possible to check everything, but be compatible with scalac by default
     def isCheckable(tp: Type): Boolean =
@@ -789,7 +789,7 @@ object SpaceEngine {
       tpw.isRef(defn.BooleanClass) ||
       classSym.isAllOf(JavaEnum) ||
       classSym.is(Case) && {
-        if seen.add(tpw) then productSelectorTypes(tpw, sel.srcPos).exists(isCheckable(_))
+        if seen.add(classSym) then productSelectorTypes(tpw, sel.srcPos).exists(isCheckable(_))
         else true // recursive case class: return true and other members can still fail the check
       }
 

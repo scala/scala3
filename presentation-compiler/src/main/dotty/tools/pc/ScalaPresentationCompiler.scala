@@ -19,12 +19,14 @@ import scala.meta.internal.metals.EmptyReportContext
 import scala.meta.internal.metals.ReportContext
 import scala.meta.internal.metals.ReportLevel
 import scala.meta.internal.metals.StdReportContext
+import scala.meta.internal.mtags.CommonMtagsEnrichments.*
 import scala.meta.internal.pc.CompilerAccess
 import scala.meta.internal.pc.DefinitionResultImpl
 import scala.meta.internal.pc.EmptyCompletionList
 import scala.meta.internal.pc.EmptySymbolSearch
 import scala.meta.internal.pc.PresentationCompilerConfigImpl
 import scala.meta.pc.*
+import scala.meta.pc.{PcSymbolInformation as IPcSymbolInformation}
 
 import dotty.tools.dotc.reporting.StoreReporter
 import dotty.tools.pc.completions.CompletionProvider
@@ -34,6 +36,7 @@ import dotty.tools.pc.buildinfo.BuildInfo
 import org.eclipse.lsp4j.DocumentHighlight
 import org.eclipse.lsp4j.TextEdit
 import org.eclipse.lsp4j as l
+import scala.meta.internal.pc.SymbolInformationProvider
 
 case class ScalaPresentationCompiler(
     buildTargetIdentifier: String = "",
@@ -106,15 +109,15 @@ case class ScalaPresentationCompiler(
       new PcSemanticTokensProvider(driver, params).provide().asJava
     }
 
-  override def syntheticDecorations(
-        params: SyntheticDecorationsParams
-    ): ju.concurrent.CompletableFuture[ju.List[SyntheticDecoration]] =
+  override def inlayHints(
+      params: InlayHintsParams
+  ): ju.concurrent.CompletableFuture[ju.List[l.InlayHint]] =
     compilerAccess.withInterruptableCompiler(Some(params))(
-      new ju.ArrayList[SyntheticDecoration](),
+      new ju.ArrayList[l.InlayHint](),
       params.token(),
     ) { access =>
       val driver = access.compiler()
-      new PcSyntheticDecorationsProvider(driver, params, search)
+      new PcInlayHintsProvider(driver, params, search)
         .provide()
         .asJava
     }
@@ -183,6 +186,21 @@ case class ScalaPresentationCompiler(
 
   def diagnosticsForDebuggingPurposes(): ju.List[String] =
     List[String]().asJava
+
+  override def info(
+      symbol: String
+  ): CompletableFuture[Optional[IPcSymbolInformation]] =
+    compilerAccess.withNonInterruptableCompiler[Optional[IPcSymbolInformation]](
+      None
+    )(
+      Optional.empty(),
+      EmptyCancelToken,
+    ) { access =>
+      SymbolInformationProvider(using access.compiler().currentCtx)
+        .info(symbol)
+        .map(_.asJava)
+        .asJava
+    }
 
   def semanticdbTextDocument(
       filename: URI,

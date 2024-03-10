@@ -112,7 +112,7 @@ class HoverTermSuite extends BaseHoverSuite:
         |  }
         |}
         |""".stripMargin,
-      // https://github.com/lampepfl/dotty/issues/8835
+      // https://github.com/scala/scala3/issues/8835
       """|object num: a.Xtension
          |""".stripMargin.hover
     )

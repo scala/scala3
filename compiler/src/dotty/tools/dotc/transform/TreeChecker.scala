@@ -23,6 +23,7 @@ import collection.mutable
 import ProtoTypes.*
 import staging.StagingLevel
 import inlines.Inlines.inInlineMethod
+import cc.{isRetainsLike, CaptureAnnotation}
 
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
@@ -162,6 +163,13 @@ object TreeChecker {
    */
   def checkNoOrphans(tp0: Type, tree: untpd.Tree = untpd.EmptyTree)(using Context): Type = new TypeMap() {
     val definedBinders = new java.util.IdentityHashMap[Type, Any]
+    private var inRetainingAnnot = false
+
+    def insideRetainingAnnot[T](op: => T): T =
+      val saved = inRetainingAnnot
+      inRetainingAnnot = true
+      try op finally inRetainingAnnot = saved
+
     def apply(tp: Type): Type = {
       tp match {
         case tp: BindingType =>
@@ -169,10 +177,20 @@ object TreeChecker {
           mapOver(tp)
           definedBinders.remove(tp)
         case tp: ParamRef =>
-          assert(definedBinders.get(tp.binder) != null, s"orphan param: ${tp.show}, hash of binder = ${System.identityHashCode(tp.binder)}, tree = ${tree.show}, type = $tp0")
+          val isValidRef =
+            definedBinders.get(tp.binder) != null
+              || inRetainingAnnot
+              // Inside a normal @retains annotation, the captured references could be ill-formed. See issue #19661.
+              // But this is ok since capture checking does not rely on them.
+          assert(isValidRef, s"orphan param: ${tp.show}, hash of binder = ${System.identityHashCode(tp.binder)}, tree = ${tree.show}, type = $tp0")
         case tp: TypeVar =>
           assert(tp.isInstantiated, s"Uninstantiated type variable: ${tp.show}, tree = ${tree.show}")
           apply(tp.underlying)
+        case tp @ AnnotatedType(underlying, annot) if annot.symbol.isRetainsLike && !annot.isInstanceOf[CaptureAnnotation] =>
+          val underlying1 = this(underlying)
+          val annot1 = insideRetainingAnnot:
+            annot.mapWith(this)
+          derivedAnnotatedType(tp, underlying1, annot1)
         case _ =>
           mapOver(tp)
       }
@@ -547,8 +565,24 @@ object TreeChecker {
         i"owner chain = ${tree.symbol.ownersIterator.toList}%, %, ctxOwners = ${ctx.outersIterator.map(_.owner).toList}%, %")
     }
 
+    private def checkParents(tree: untpd.TypeDef)(using Context): Unit = {
+      val TypeDef(_, impl: Template) = tree: @unchecked
+      assert(ctx.owner.isClass)
+      val sym = ctx.owner.asClass
+      if !sym.isPrimitiveValueClass then
+        val symbolParents = sym.classInfo.parents.map(_.dealias.typeSymbol)
+        val treeParents = impl.parents.map(_.tpe.dealias.typeSymbol)
+        assert(symbolParents == treeParents,
+        i"""Parents of class symbol differs from the parents in the tree for $sym
+            |
+            |Parents in symbol: $symbolParents
+            |Parents in tree: $treeParents
+            |""".stripMargin)
+    }
+
     override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree = {
       assert(sym.info.isInstanceOf[ClassInfo | TypeBounds], i"wrong type, expect a template or type bounds for ${sym.fullName}, but found: ${sym.info}")
+      if sym.isClass then checkParents(tdef)
       super.typedTypeDef(tdef, sym)
     }
 
@@ -560,6 +594,8 @@ object TreeChecker {
       assert(cls.primaryConstructor == constr.symbol, i"mismatch, primary constructor ${cls.primaryConstructor}, in tree = ${constr.symbol}")
       checkOwner(impl)
       checkOwner(impl.constr)
+
+      checkParents(cdef)
 
       def isNonMagicalMember(x: Symbol) =
         !x.isValueClassConvertMethod &&
@@ -812,7 +848,7 @@ object TreeChecker {
             else err.getStackTrace.nn.mkString("  ", "  \n", "")
 
           report.error(
-            s"""Malformed tree was found while expanding macro with -Xcheck-macros.
+            em"""Malformed tree was found while expanding macro with -Xcheck-macros.
                |The tree does not conform to the compiler's tree invariants.
                |
                |Macro was:

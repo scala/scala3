@@ -19,12 +19,12 @@ You can learn more about Dotty on our [website](http://dotty.epfl.ch).
 <!--more-->
 
 This is our seventh scheduled release according to our [6-week release schedule](https://dotty.epfl.ch/docs/usage/version-numbers.html).
-The [previous technology preview](https://github.com/lampepfl/dotty/releases/tag/0.6.0-RC1) focussed
+The [previous technology preview](https://github.com/scala/scala3/releases/tag/0.6.0-RC1) focussed
 on bug fixes and stability work.
 
 ## What’s new in the 0.7.0-RC1 technology preview?
 
-### Enum Simplification [#4003](https://github.com/lampepfl/dotty/pull/4003)
+### Enum Simplification [#4003](https://github.com/scala/scala3/pull/4003)
 The previously introduced syntax and rules for enum were arguably too complex. We can considerably
 simplify them by taking away one capability: that cases can have bodies which can define members.
 Arguably, if we choose an ADT decomposition of a problem, it's good style to write all methods using
@@ -75,7 +75,7 @@ and how to use them to model [Algebraic Data Types](https://dotty.epfl.ch/docs/r
 visit the respective sections in our documentation.
 
 
-### Erased terms [#3342](https://github.com/lampepfl/dotty/pull/3342)
+### Erased terms [#3342](https://github.com/scala/scala3/pull/3342)
 The `erased` modifier can be used on parameters, `val` and `def` to enforce that no reference to
 those terms is ever used. As they are never used, they can safely be removed during compilation.
 
@@ -103,10 +103,10 @@ For more information, visit the [Erased Terms](https://dotty.epfl.ch/docs/refere
 section of our documentation.
 
 **Note**: Erased terms replace _phantom types_: they have similar semantics, but with the added
-advantage that any type can be an erased parameter. See [#3410](https://github.com/lampepfl/dotty/pull/3410).
+advantage that any type can be an erased parameter. See [#3410](https://github.com/scala/scala3/pull/3410).
 
 
-### Improved IDE support [#3960](https://github.com/lampepfl/dotty/pull/3960)
+### Improved IDE support [#3960](https://github.com/scala/scala3/pull/3960)
 The Dotty language server now supports context sensitive IDE completions. Completions now include
 local and imported definitions. Members completions take possible implicit conversions into account.
 
@@ -183,7 +183,7 @@ compile-time. For example, writing `(eval(a), eval(a))` instead of `(eval(a),
 eval(b))` in the example above should be an error, but it was not caught by
 Scala 2 or previous versions of Dotty, whereas we now get a type mismatch error
 as expected. More work remains to be done to fix the remaining [GADT-related
-issues](https://github.com/lampepfl/dotty/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen+gadt),
+issues](https://github.com/scala/scala3/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen+gadt),
 but so far no show-stopper has been found.
 
 ## Trying out Dotty
@@ -210,7 +210,7 @@ the IDE sections of the [getting-started page](https://docs.scala-lang.org/scala
 ### Standalone installation
 Releases are available for download on the _Releases_
 section of the Dotty repository:
-[https://github.com/lampepfl/dotty/releases](https://github.com/lampepfl/dotty/releases)
+[https://github.com/scala/scala3/releases](https://github.com/scala/scala3/releases)
 
 We also provide a [homebrew](https://brew.sh/) package that can be installed by running:
 
@@ -227,7 +227,7 @@ brew upgrade dotty
 ## Let us know what you think!
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 Thank you to all the contributors who made this release possible!
@@ -255,7 +255,7 @@ According to `git shortlog -sn --no-merges 0.6.0..0.7.0-RC1` these are:
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
 Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
-and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry-points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.

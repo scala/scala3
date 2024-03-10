@@ -27,6 +27,7 @@ import scala.collection.immutable.ListSet
 import scala.collection.mutable
 import scala.annotation.tailrec
 import scala.annotation.constructorOnly
+import dotty.tools.dotc.core.Flags.AbstractOrTrait
 
 /** Check initialization safety of static objects
  *
@@ -203,6 +204,7 @@ object Objects:
 
   /**
    * Represents a lambda expression
+   * @param klass The enclosing class of the anonymous function's creation site
    */
   case class Fun(code: Tree, thisV: ThisValue, klass: ClassSymbol, env: Env.Data) extends ValueElement:
     def show(using Context) = "Fun(" + code.show + ", " + thisV.show + ", " + klass.show + ")"
@@ -599,6 +601,26 @@ object Objects:
 
           case _ => a
 
+    def filterType(tpe: Type)(using Context): Value =
+      tpe match
+        case t @ SAMType(_, _) if a.isInstanceOf[Fun] => a // if tpe is SAMType and a is Fun, allow it
+        case _ =>
+          val baseClasses = tpe.baseClasses
+          if baseClasses.isEmpty then a
+          else filterClass(baseClasses.head) // could have called ClassSymbol, but it does not handle OrType and AndType
+
+    def filterClass(sym: Symbol)(using Context): Value =
+        if !sym.isClass then a
+        else
+          val klass = sym.asClass
+          a match
+            case Cold => Cold
+            case ref: Ref => if ref.klass.isSubClass(klass) then ref else Bottom
+            case ValueSet(values) => values.map(v => v.filterClass(klass)).join
+            case arr: OfArray => if defn.ArrayClass.isSubClass(klass) then arr else Bottom
+            case fun: Fun =>
+              if klass.isOneOf(AbstractOrTrait) && klass.baseClasses.exists(defn.isFunctionClass) then fun else Bottom
+
   extension (value: Ref | Cold.type)
     def widenRefOrCold(height : Int)(using Context) : Ref | Cold.type = value.widen(height).asInstanceOf[ThisValue]
 
@@ -617,7 +639,7 @@ object Objects:
    * @param needResolve  Whether the target of the call needs resolution?
    */
   def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
-    value match
+    value.filterClass(meth.owner) match
     case Cold =>
       report.warning("Using cold alias. " + Trace.show, Trace.position)
       Bottom
@@ -733,7 +755,6 @@ object Objects:
    * @param args         Arguments of the constructor call (all parameter blocks flatten to a list).
    */
   def callConstructor(value: Value, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
-
     value match
     case ref: Ref =>
       if ctor.hasSource then
@@ -768,7 +789,7 @@ object Objects:
    * @param needResolve  Whether the target of the selection needs resolution?
    */
   def select(value: Value, field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] = log("select " + field.show + ", this = " + value.show, printer, (_: Value).show) {
-    value match
+    value.filterClass(field.owner) match
     case Cold =>
       report.warning("Using cold alias", Trace.position)
       Bottom
@@ -839,12 +860,12 @@ object Objects:
    * @param rhsTyp      The type of the right-hand side.
    */
   def assign(lhs: Value, field: Symbol, rhs: Value, rhsTyp: Type): Contextual[Value] = log("Assign" + field.show + " of " + lhs.show + ", rhs = " + rhs.show, printer, (_: Value).show) {
-    lhs match
+    lhs.filterClass(field.owner) match
     case fun: Fun =>
       report.warning("[Internal error] unexpected tree in assignment, fun = " + fun.code.show + Trace.show, Trace.position)
 
     case arr: OfArray =>
-      report.warning("[Internal error] unexpected tree in assignment, array = " + arr.show + Trace.show, Trace.position)
+      report.warning("[Internal error] unexpected tree in assignment, array = " + arr.show + " field = " + field + Trace.show, Trace.position)
 
     case Cold =>
       report.warning("Assigning to cold aliases is forbidden. " + Trace.show, Trace.position)
@@ -876,8 +897,7 @@ object Objects:
    * @param args        The arguments passsed to the constructor.
    */
   def instantiate(outer: Value, klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", outer = " + outer + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
-    outer match
-
+    outer.filterClass(klass.owner) match
     case _ : Fun | _: OfArray  =>
       report.warning("[Internal error] unexpected outer in instantiating a class, outer = " + outer.show + ", class = " + klass.show + ", " + Trace.show, Trace.position)
       Bottom
@@ -1090,6 +1110,9 @@ object Objects:
           val outer = outerValue(tref, thisV, klass)
           instantiate(outer, cls, ctor, args)
         }
+
+      case TypeCast(elem, tpe) =>
+        eval(elem, thisV, klass).filterType(tpe)
 
       case Apply(ref, arg :: Nil) if ref.symbol == defn.InitRegionMethod =>
         val regions2 = Regions.extend(expr.sourcePos)
@@ -1549,7 +1572,7 @@ object Objects:
             report.warning("The argument should be a constant integer value", arg)
             res.widen(1)
         case _ =>
-          res.widen(1)
+          if res.isInstanceOf[Fun] then res.widen(2) else res.widen(1)
 
       argInfos += ArgInfo(widened, trace.add(arg.tree), arg.tree)
     }

@@ -1,3 +1,5 @@
+//> using options -experimental -Yno-experimental
+
 @addInnerClass
 class Foo
   //> class Show:

@@ -6,8 +6,10 @@ object Test {
   def f(x: String): Unit = ()
 
   def foo(c: Consumer[String]) = c.accept("")
+  def bar(c: String => Unit) = c("")
 
   def main(args: Array[String]) = {
     foo(f)
+    bar(f)
   }
 }

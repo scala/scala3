@@ -191,7 +191,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |""".stripMargin
     )
 
-  // https://github.com/lampepfl/dotty/issues/15244
+  // https://github.com/scala/scala3/issues/15244
   @Test def `vararg` =
     check(
       """
@@ -1499,3 +1499,37 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |     ^
          |""".stripMargin
      )
+
+  @Test def `correct-alternative` =
+    check(
+      """
+        |object x {
+        |  def foo(i: Int, s: String): Unit = ???
+        |  def foo(i: Boolean, s: Int, x: Double): Unit = ???
+        |
+        |  foo(false, @@)
+        |}
+        |""".stripMargin,
+      """
+        |foo(i: Boolean, s: Int, x: Double): Unit
+        |                ^^^^^^
+        |foo(i: Int, s: String): Unit
+        |""".stripMargin
+    )
+
+  @Test def `correct-alternative1` =
+    check(
+      """
+        |object x {
+        |  def foo(i: Boolean, s: String)(b: Int): Unit = ???
+        |  def foo(i: Boolean, s: Int)(b: String): Unit = ???
+        |
+        |  foo(false, 123)(@@)
+        |}
+        |""".stripMargin,
+      """
+        |foo(i: Boolean, s: Int)(b: String): Unit
+        |                        ^^^^^^^^^
+        |foo(i: Boolean, s: String)(b: Int): Unit
+        |""".stripMargin
+    )

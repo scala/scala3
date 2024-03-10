@@ -41,7 +41,7 @@ class HoverTypeSuite extends BaseHoverSuite:
     )
 
   // We should produce a shorter type but:
-  // https://github.com/lampepfl/dotty/issues/11683
+  // https://github.com/scala/scala3/issues/11683
   @Test def `enums` =
     check(
       """|
@@ -125,7 +125,7 @@ class HoverTypeSuite extends BaseHoverSuite:
    * As user can actually supply params to them by hand when
    * invoking the extension method, we always show them next to the
    * method itself.
-   * https://github.com/lampepfl/dotty/issues/13123
+   * https://github.com/scala/scala3/issues/13123
    */
   @Test def `extension-methods-complex` =
     check(

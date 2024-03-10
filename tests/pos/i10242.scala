@@ -1,6 +1,6 @@
 //> using options -source:3.3
 
-// https://github.com/lampepfl/dotty/issues/10242
+// https://github.com/scala/scala3/issues/10242
 type Foo[A, B <: A] = A
 
 type Bar[A] = A match {

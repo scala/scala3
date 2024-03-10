@@ -152,7 +152,7 @@ To print out the trees after all phases:
 scalac -Xprint:all ../issues/Playground.scala
 ```
 
-To find out the list of all the phases and their names, check out [this](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/Compiler.scala#L34) line in `Compiler.scala`. Each `Phase` object has `phaseName` defined on it, this is the phase name.
+To find out the list of all the phases and their names, check out [this](https://github.com/scala/scala3/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/Compiler.scala#L34) line in `Compiler.scala`. Each `Phase` object has `phaseName` defined on it, this is the phase name.
 
 ## Printing out stack traces of compile time errors
 You can use the flag `-Ydebug-error` to get the stack trace of all the compile-time errors. Consider the following file:
@@ -207,7 +207,7 @@ val YshowVarBounds    = BooleanSetting("-Yshow-var-bounds"   , "Print type varia
 val YtestPickler      = BooleanSetting("-Ytest-pickler"      , "self-test for pickling functionality; should be used with -Ystop-after:pickler")
 ```
 
-They are defined in [ScalaSettings.scala](https://github.com/lampepfl/dotty/blob/main/compiler/src/dotty/tools/dotc/config/ScalaSettings.scala). E.g. `YprintPos` is defined as:
+They are defined in [ScalaSettings.scala](https://github.com/scala/scala3/blob/main/compiler/src/dotty/tools/dotc/config/ScalaSettings.scala). E.g. `YprintPos` is defined as:
 
 ```scala
 val YprintPos: Setting[Boolean] = BooleanSetting("-Yprint-pos", "show tree positions.")
@@ -244,7 +244,7 @@ package <empty>@<Playground.scala:1> {
 
 ### Figuring out an object creation site
 #### Via ID
-Every [Positioned](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/ast/Positioned.scala) (a parent class of `Tree`) object has a `uniqueId` field. It is an integer that is unique for that tree and doesn't change from compile run to compile run. You can output these IDs from any printer (such as the ones used by `.show` and `-Xprint`) via `-Yshow-tree-ids` flag, e.g.:
+Every [Positioned](https://github.com/scala/scala3/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/ast/Positioned.scala) (a parent class of `Tree`) object has a `uniqueId` field. It is an integer that is unique for that tree and doesn't change from compile run to compile run. You can output these IDs from any printer (such as the ones used by `.show` and `-Xprint`) via `-Yshow-tree-ids` flag, e.g.:
 
 ```shell
 scalac -Xprint:typer -Yshow-tree-ids  ../issues/Playground.scala
@@ -355,7 +355,7 @@ if (tree.show == """println("Hello World")""") {
 }
 ```
 
-In other words, you have a reference to the object and want to know were it was created. To do so, go to the class definition of that object. In our case, `tree` is a [`Tree`](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/ast/Trees.scala#L52). Now, create a new `val` member of that type:
+In other words, you have a reference to the object and want to know were it was created. To do so, go to the class definition of that object. In our case, `tree` is a [`Tree`](https://github.com/scala/scala3/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/ast/Trees.scala#L52). Now, create a new `val` member of that type:
 
 ```scala
 val tracer = Thread.currentThread.getStackTrace.mkString("\n")
@@ -380,7 +380,7 @@ Dotty has a lot of debug calls scattered throughout the code, most of which are 
 These do not follow any particular system and so probably it will be easier to go with `println` most of the times instead.
 
 #### Printers
-Defined in [Printers.scala](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/config/Printers.scala) as a set of variables, each responsible for its own domain. To enable them, replace `noPrinter` with `default`. [Example](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/typer/Typer.scala#L2226) from the code:
+Defined in [Printers.scala](https://github.com/scala/scala3/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/config/Printers.scala) as a set of variables, each responsible for its own domain. To enable them, replace `noPrinter` with `default`. [Example](https://github.com/scala/scala3/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/typer/Typer.scala#L2226) from the code:
 
 ```scala
 typr.println(i"make contextual function $tree / $pt ---> $ifun")
@@ -389,13 +389,13 @@ typr.println(i"make contextual function $tree / $pt ---> $ifun")
 `typr` is a printer.
 
 #### Tracing
-Defined in [trace.scala](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/reporting/trace.scala). [Example](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/typer/Typer.scala#L2232) from the code:
+Defined in [trace.scala](https://github.com/scala/scala3/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/reporting/trace.scala). [Example](https://github.com/scala/scala3/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/typer/Typer.scala#L2232) from the code:
 
 ```scala
 trace(i"typing $tree", typr, show = true) { // ...
 ```
 
-To enable globally, change [tracingEnabled](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/config/Config.scala#L164) to `true` (will recompile a lot of code).
+To enable globally, change [tracingEnabled](https://github.com/scala/scala3/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/config/Config.scala#L164) to `true` (will recompile a lot of code).
 
 You also need to set the printer referenced in the call (in the example, `typr`) to `default` as explained in the section on printers.
 
@@ -406,4 +406,4 @@ trace.force(i"typing $tree", typr, show = true) { // ...
 ```
 
 #### Reporter
-Defined in [Reporter.scala](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/reporting/Reporter.scala). Enables calls such as `report.log`. To enable, run scalac with `-Ylog:typer` option.
+Defined in [Reporter.scala](https://github.com/scala/scala3/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/reporting/Reporter.scala). Enables calls such as `report.log`. To enable, run scalac with `-Ylog:typer` option.

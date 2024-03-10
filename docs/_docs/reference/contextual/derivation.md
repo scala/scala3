@@ -104,7 +104,7 @@ given TC[DerivingType] = TC.derived
 // simplified form of:
 given TC[ [A_1, ..., A_K] =>> DerivingType[A_1, ..., A_K] ] = TC.derived
 ```
-If `DerivingType` takes less arguments than `F` (`N < K`), we use only the rightmost parameters from the type lambda:
+If `DerivingType` takes fewer arguments than `F` (`N < K`), we use only the rightmost parameters from the type lambda:
 ```scala
 given TC[ [A_1, ..., A_K] =>> DerivingType[A_(K-N+1), ..., A_K] ] = TC.derived
 
@@ -112,7 +112,7 @@ given TC[ [A_1, ..., A_K] =>> DerivingType[A_(K-N+1), ..., A_K] ] = TC.derived
 given TC[ [A_1, ..., A_K] =>> DerivingType ] = TC.derived
 ```
 
-If `F` takes less arguments than `DerivingType` (`K < N`), we fill in the remaining leftmost slots with type parameters of the given:
+If `F` takes fewer arguments than `DerivingType` (`K < N`), we fill in the remaining leftmost slots with type parameters of the given:
 ```scala
 given [T_1, ... T_(N-K)]: TC[[A_1, ..., A_K] =>> DerivingType[T_1, ... T_(N-K), A_1, ..., A_K]] = TC.derived
 ```
@@ -158,7 +158,7 @@ of the `Mirror` type class available.
 ## `Mirror`
 
 `scala.deriving.Mirror` type class instances provide information at the type level about the components and labelling of the type.
-They also provide minimal term level infrastructure to allow higher level libraries to provide comprehensive
+They also provide minimal term-level infrastructure to allow higher-level libraries to provide comprehensive
 derivation support.
 
 Instances of the `Mirror` type class are generated automatically by the compiler
@@ -269,14 +269,14 @@ No given instance of type deriving.Mirror.Of[A] was found for parameter x of met
 Note the following properties of `Mirror` types,
 
 + Properties are encoded using types rather than terms. This means that they have no runtime footprint unless used and
-  also that they are a compile time feature for use with Scala 3's metaprogramming facilities.
+  also that they are a compile-time feature for use with Scala 3's metaprogramming facilities.
 + There is no restriction against the mirrored type being a local or inner class.
 + The kinds of `MirroredType` and `MirroredElemTypes` match the kind of the data type the mirror is an instance for.
   This allows `Mirror`s to support ADTs of all kinds.
 + There is no distinct representation type for sums or products (ie. there is no `HList` or `Coproduct` type as in
   Scala 2 versions of Shapeless). Instead the collection of child types of a data type is represented by an ordinary,
   possibly parameterized, tuple type. Scala 3's metaprogramming facilities can be used to work with these tuple types
-  as-is, and higher level libraries can be built on top of them.
+  as-is, and higher-level libraries can be built on top of them.
 + For both product and sum types, the elements of `MirroredElemTypes` are arranged in definition order (i.e. `Branch[T]`
   precedes `Leaf[T]` in `MirroredElemTypes` for `Tree` because `Branch` is defined before `Leaf` in the source file).
   This means that `Mirror.Sum` differs in this respect from Shapeless's generic representation for ADTs in Scala 2,
@@ -303,16 +303,16 @@ has a context `Mirror` parameter, or not at all (e.g. they might use some comple
 instance using Scala 3 macros or runtime reflection). We expect that (direct or indirect) `Mirror` based implementations
 will be the most common and that is what this document emphasises.
 
-Type class authors will most likely use higher level derivation or generic programming libraries to implement
-`derived` methods. An example of how a `derived` method might be implemented using _only_ the low level facilities
+Type class authors will most likely use higher-level derivation or generic programming libraries to implement
+`derived` methods. An example of how a `derived` method might be implemented using _only_ the low-level facilities
 described above and Scala 3's general metaprogramming features is provided below. It is not anticipated that type class
 authors would normally implement a `derived` method in this way, however this walkthrough can be taken as a guide for
-authors of the higher level derivation libraries that we expect typical type class authors will use (for a fully
+authors of the higher-level derivation libraries that we expect typical type class authors will use (for a fully
 worked out example of such a library, see [Shapeless 3](https://github.com/milessabin/shapeless/tree/shapeless-3)).
 
-## How to write a type class `derived` method using low level mechanisms
+## How to write a type class `derived` method using low-level mechanisms
 
-The low-level method we will use to implement a type class `derived` method in this example exploits three new type-level constructs in Scala 3: inline methods, inline matches, and implicit searches via  `summonInline` or `summonFrom`.
+The low-level technique we will use to implement a type class `derived` method in this example exploits three new type-level constructs in Scala 3: inline methods, inline matches, and implicit searches via  `summonInline` or `summonFrom`.
 Given this definition of the `Eq` type class,
 
 ```scala
@@ -335,13 +335,13 @@ inline def derived[T](using m: Mirror.Of[T]): Eq[T] =
 ```
 
 Note that `derived` is defined as an `inline def`.
-This means that the method will be inlined at all call sites (for instance the compiler generated instance definitions in the companion objects of ADTs which have a `deriving Eq` clause).
+This means that the method will be inlined at all call sites (for instance the compiler-generated instance definitions in the companion objects of ADTs which have a `deriving Eq` clause).
 
 > Inlining of complex code is potentially expensive if overused (meaning slower compile times) so we should be careful to limit how many times `derived` is called for the same type.
-> For example, when computing an instance for a sum type, it may be necessary to call `derived` recursively to compute an instance for a one of its child cases.
+> For example, when computing an instance for a sum type, it may be necessary to call `derived` recursively to compute an instance for each one of its child cases.
 > That child case may in turn be a product type, that declares a field referring back to the parent sum type.
 > To compute the instance for this field, we should not call `derived` recursively, but instead summon from the context.
-> Typically the found given instance will be the root given instance that initially called `derived`.
+> Typically, the found given instance will be the root given instance that initially called `derived`.
 
 The body of `derived` (1) first materializes the `Eq` instances for all the child types of type the instance is being derived for.
 This is either all the branches of a sum type or all the fields of a product type.
@@ -380,7 +380,7 @@ def eqSum[T](s: Mirror.SumOf[T], elems: => List[Eq[?]]): Eq[T] =
       (s.ordinal(y) == ordx) && check(x, y, elems(ordx)) // (4)
 ```
 
-In the product case, `eqProduct` we test the runtime values of the arguments to `eqv` for equality as products based on the `Eq` instances for the fields of the data type (5),
+In the product case, `eqProduct`, we test the runtime values of the arguments to `eqv` for equality as products based on the `Eq` instances for the fields of the data type (5),
 
 ```scala
 import scala.deriving.Mirror
@@ -396,8 +396,9 @@ Both `eqSum` and `eqProduct` have a by-name parameter `elems`, because the argum
 Pulling this all together we have the following complete implementation,
 
 ```scala
+import scala.collection.AbstractIterable
+import scala.compiletime.{erasedValue, error, summonInline}
 import scala.deriving.*
-import scala.compiletime.{error, erasedValue, summonInline}
 
 inline def summonInstances[T, Elems <: Tuple]: List[Eq[?]] =
   inline erasedValue[Elems] match
@@ -486,7 +487,7 @@ Alternative approaches can be taken to the way that `derived` methods can be def
 inlined variants using Scala 3 macros, whilst being more involved for type class authors to write than the example
 above, can produce code for type classes like `Eq` which eliminate all the abstraction artefacts (eg. the `Lists` of
 child instances in the above) and generate code which is indistinguishable from what a programmer might write by hand.
-As a third example, using a higher level library such as Shapeless the type class author could define an equivalent
+As a third example, using a higher-level library such as Shapeless, the type class author could define an equivalent
 `derived` method as,
 
 ```scala
@@ -508,7 +509,7 @@ inline def derived[A](using gen: K0.Generic[A]): Eq[A] =
 The framework described here enables all three of these approaches without mandating any of them.
 
 For a brief discussion on how to use macros to write a type class `derived`
-method please read more at [How to write a type class `derived` method using macros](./derivation-macro.md).
+method, please read more at [How to write a type class `derived` method using macros](./derivation-macro.md).
 
 ## Syntax
 
@@ -539,22 +540,22 @@ This type class derivation framework is intentionally very small and low-level. 
 infrastructure in compiler-generated `Mirror` instances,
 
 + type members encoding properties of the mirrored types.
-+ a minimal value level mechanism for working generically with terms of the mirrored types.
++ a minimal value-level mechanism for working generically with terms of the mirrored types.
 
 The `Mirror` infrastructure can be seen as an extension of the existing `Product` infrastructure for case classes:
-typically `Mirror` types will be implemented by the ADTs companion object, hence the type members and the `ordinal` or
+typically, `Mirror` types will be implemented by the ADTs companion object, hence the type members and the `ordinal` or
 `fromProduct` methods will be members of that object. The primary motivation for this design decision, and the
 decision to encode properties via types rather than terms was to keep the bytecode and runtime footprint of the
 feature small enough to make it possible to provide `Mirror` instances _unconditionally_.
 
-Whilst `Mirrors` encode properties precisely via type members, the value level `ordinal` and `fromProduct` are
+Whilst `Mirrors` encode properties precisely via type members, the value-level `ordinal` and `fromProduct` are
 somewhat weakly typed (because they are defined in terms of `MirroredMonoType`) just like the members of `Product`.
 This means that code for generic type classes has to ensure that type exploration and value selection proceed in
 lockstep and it has to assert this conformance in some places using casts. If generic type classes are correctly
 written these casts will never fail.
 
-As mentioned, however, the compiler-provided mechanism is intentionally very low level and it is anticipated that
-higher level type class derivation and generic programming libraries will build on this and Scala 3's other
+As mentioned, however, the compiler-provided mechanism is intentionally very low-level and it is anticipated that
+higher-level type class derivation and generic programming libraries will build on this and Scala 3's other
 metaprogramming facilities to hide these low-level details from type class authors and general users. Type class
 derivation in the style of both Shapeless and Magnolia are possible (a prototype of Shapeless 3, which combines
 aspects of both Shapeless 2 and Magnolia has been developed alongside this language feature) as is a more aggressively

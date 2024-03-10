@@ -25,14 +25,14 @@ stability and reliability.
 
 ## What’s new in the 0.4.0-RC1 technology preview?
 
-### Rewritten REPL [#2991](https://github.com/lampepfl/dotty/pull/2991)
+### Rewritten REPL [#2991](https://github.com/scala/scala3/pull/2991)
 The original Dotty REPL was a proof of concept hacked together
 from
-[an ancient version of the scalac REPL](https://github.com/lampepfl/dotty/pull/1082#issuecomment-183905504).
+[an ancient version of the scalac REPL](https://github.com/scala/scala3/pull/1082#issuecomment-183905504).
 It worked by creating Scala source files from the user input using string
 concatenation, this made it easy to adapt it for Dotty since it did not rely on
 the internals of scalac, but it was also fragile and hard to reason about.
-The [new REPL](https://github.com/lampepfl/dotty/pull/2991) instead works by
+The [new REPL](https://github.com/scala/scala3/pull/2991) instead works by
 manipulating ASTs (Abstract Syntax Trees), this is more robust and will make it
 easier to develop new features: we have already implemented auto-completion
 support (by reusing the APIs we had created for
@@ -42,7 +42,7 @@ Note that the user interface of the REPL has not changed: like in the old REPL
 we use code adapted from the [Ammonite REPL](http://ammonite.io/#Ammonite-REPL)
 to provide syntax highlighting, multi-line editing, history, etc.
 
-### Scala 2.12 support [#2827](https://github.com/lampepfl/dotty/pull/2827)
+### Scala 2.12 support [#2827](https://github.com/scala/scala3/pull/2827)
 Since our first release, it has been possible to use Scala 2 libraries in a
 Dotty project as explained in the
 [dotty-example-project](https://github.com/smarter/dotty-example-project#getting-your-project-to-compile-with-dotty).
@@ -82,7 +82,7 @@ the IDE sections of the [getting-started page](https://docs.scala-lang.org/scala
 ### Standalone installation
 Releases are available for download on the _Releases_
 section of the Dotty repository:
-[https://github.com/lampepfl/dotty/releases](https://github.com/lampepfl/dotty/releases)
+[https://github.com/scala/scala3/releases](https://github.com/scala/scala3/releases)
 
 We also provide a [homebrew](https://brew.sh/) package that can be installed by running:
 
@@ -99,7 +99,7 @@ brew upgrade dotty
 ## Let us know what you think!
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 Thank you to all the contributors who made this release possible!
@@ -131,7 +131,7 @@ According to `git shortlog -sn --no-merges 0.3.0-RC2..0.4.0-RC1` these are:
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
 You can have a look at our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
 the [Awesome Error Messages](http://scala-lang.org/blog/2016/10/14/dotty-errors.html) project or some of
-the simple [Dotty issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+the simple [Dotty issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry-points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.

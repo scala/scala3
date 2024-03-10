@@ -78,13 +78,13 @@ tools // contains helpers and the `scala` generic runner
 ```
 
 
-[Phases]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/core/Phases.scala
-[CompilationUnit]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/CompilationUnit.scala
+[Phases]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/core/Phases.scala
+[CompilationUnit]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/CompilationUnit.scala
 
-[dotty.tools]: https://github.com/lampepfl/dotty/tree/master/compiler/src/dotty/tools
-[ScalaSettings]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/config/ScalaSettings.scala
+[dotty.tools]: https://github.com/scala/scala3/tree/master/compiler/src/dotty/tools
+[ScalaSettings]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/config/ScalaSettings.scala
 [syntax]: https://docs.scala-lang.org/scala3/reference/syntax.html
-[Main]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/Main.scala
-[Driver]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/Driver.scala
-[Compiler]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/Compiler.scala
-[Run]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/Run.scala
+[Main]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/Main.scala
+[Driver]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/Driver.scala
+[Compiler]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/Compiler.scala
+[Run]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/Run.scala

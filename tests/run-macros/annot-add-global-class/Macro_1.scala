@@ -1,3 +1,5 @@
+//> using options -experimental -Yno-experimental
+
 package mymacro
 
 import scala.annotation.{experimental, MacroAnnotation}

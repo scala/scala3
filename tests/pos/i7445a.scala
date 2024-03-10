@@ -1,4 +1,4 @@
-// https://github.com/lampepfl/dotty/issues/7445
+// https://github.com/scala/scala3/issues/7445
 
 object Main {
   type O1[A] = {

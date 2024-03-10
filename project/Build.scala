@@ -83,9 +83,9 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.3.1"
+  val referenceVersion = "3.4.0"
 
-  val baseVersion = "3.4.1-RC1"
+  val baseVersion = "3.4.2-RC1"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
@@ -101,7 +101,7 @@ object Build {
    *  set to 3.1.3. If it is going to be 3.1.0, it must be set to the latest
    *  3.0.x release.
    */
-  val previousDottyVersion = "3.4.0-RC3"
+  val previousDottyVersion = "3.4.0"
 
   /** Version against which we check binary compatibility. */
   val ltsDottyVersion = "3.3.0"
@@ -140,8 +140,8 @@ object Build {
   val stdlibBootstrappedVersion = "2.13.12"
 
   val dottyOrganization = "org.scala-lang"
-  val dottyGithubUrl = "https://github.com/lampepfl/dotty"
-  val dottyGithubRawUserContentUrl = "https://raw.githubusercontent.com/lampepfl/dotty"
+  val dottyGithubUrl = "https://github.com/scala/scala3"
+  val dottyGithubRawUserContentUrl = "https://raw.githubusercontent.com/scala/scala3"
 
 
   val isRelease = sys.env.get("RELEASEBUILD") == Some("yes")
@@ -379,7 +379,7 @@ object Build {
       "-skip-by-regex:.+\\.impl($|\\..+)",
       "-project-logo", "docs/_assets/images/logo.svg",
       "-social-links:" +
-        "github::https://github.com/lampepfl/dotty," +
+        "github::https://github.com/scala/scala3," +
         "discord::https://discord.com/invite/scala," +
         "twitter::https://twitter.com/scala_lang",
       // contains special definitions which are "transplanted" elsewhere
@@ -624,9 +624,9 @@ object Build {
       libraryDependencies ++= Seq(
         "org.scala-lang.modules" % "scala-asm" % "9.6.0-scala-1", // used by the backend
         Dependencies.compilerInterface,
-        "org.jline" % "jline-reader" % "3.19.0",   // used by the REPL
-        "org.jline" % "jline-terminal" % "3.19.0",
-        "org.jline" % "jline-terminal-jna" % "3.19.0", // needed for Windows
+        "org.jline" % "jline-reader" % "3.25.1",   // used by the REPL
+        "org.jline" % "jline-terminal" % "3.25.1",
+        "org.jline" % "jline-terminal-jna" % "3.25.1", // needed for Windows
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
       ),
 
@@ -1229,6 +1229,7 @@ object Build {
   lazy val `scala2-library-tasty` = project.in(file("scala2-library-tasty")).
     withCommonSettings(Bootstrapped).
     settings(
+      moduleName := "scala2-library-tasty-experimental",
       exportJars := true,
       Compile / packageBin / mappings := {
         (`scala2-library-bootstrapped` / Compile / packageBin / mappings).value
@@ -1240,6 +1241,7 @@ object Build {
   lazy val `scala2-library-cc-tasty` = project.in(file("scala2-library-cc-tasty")).
     withCommonSettings(Bootstrapped).
     settings(
+      moduleName := "scala2-library-cc-tasty-experimental",
       exportJars := true,
       Compile / packageBin / mappings := {
         (`scala2-library-cc` / Compile / packageBin / mappings).value
@@ -1338,7 +1340,7 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   lazy val presentationCompilerSettings = {
-    val mtagsVersion = "1.2.0+67-30f8ab53-SNAPSHOT"
+    val mtagsVersion = "1.2.2+44-42e0515a-SNAPSHOT"
 
     Seq(
       resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
@@ -1688,7 +1690,7 @@ object Build {
   lazy val `scaladoc-js-common` = project.in(file("scaladoc-js/common")).
     enablePlugins(DottyJSPlugin).
     dependsOn(`scala3-library-bootstrappedJS`).
-    settings(libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13))
+    settings(libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "2.8.0"))
 
   lazy val `scaladoc-js-main` = project.in(file("scaladoc-js/main")).
     enablePlugins(DottyJSPlugin).
@@ -1704,7 +1706,7 @@ object Build {
     settings(
       Test / fork := false,
       scalaJSUseMainModuleInitializer := true,
-      libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13)
+      libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "2.8.0")
     )
 
   def generateDocumentation(configTask: Def.Initialize[Task[GenerationConfig]]) =
@@ -1857,7 +1859,7 @@ object Build {
             .add(ProjectVersion(baseVersion))
             .remove[VersionsDictionaryUrl]
             .add(SourceLinks(List(
-              s"${temp.getAbsolutePath}=github://lampepfl/dotty/language-reference-stable"
+              s"${temp.getAbsolutePath}=github://scala/scala3/language-reference-stable"
             )))
             .withTargets(List("___fake___.scala"))
         }
@@ -2025,7 +2027,7 @@ object Build {
     scmInfo := Some(
       ScmInfo(
         url(dottyGithubUrl),
-        "scm:git:git@github.com:lampepfl/dotty.git"
+        "scm:git:git@github.com:scala/scala3.git"
       )
     ),
     developers := List(
@@ -2108,7 +2110,7 @@ object Build {
   private def customMimaReportBinaryIssues(issueFilterLocation: String) = mimaReportBinaryIssues := {
     mimaReportBinaryIssues.result.value match {
       case Inc(inc: Incomplete) =>
-        streams.value.log.error(s"\nFilers in $issueFilterLocation are used in this check.\n ")
+        streams.value.log.error(s"\nFilters in $issueFilterLocation are used in this check.\n ")
         throw inc
       case Value(v) => v
     }
@@ -2138,6 +2140,16 @@ object Build {
         // default.
         addCommandAlias("publishLocal", "scala3-bootstrapped/publishLocal"),
         repl := (`scala3-compiler-bootstrapped` / repl).value,
+        (Compile / console) := (Compile / console).dependsOn(Def.task {
+          import _root_.scala.io.AnsiColor._
+          val msg = "`console` uses the reference Scala version. Use `repl` instead."
+          val f = "═" * (msg.length + 2)
+          val box =
+            s"""╔$f╗
+               |║ ${BOLD}$msg$RESET ║
+               |╚$f╝""".stripMargin
+          streams.value.log.warn(box)
+        }).value,
       ).
       settings(
         publish / skip := true
@@ -2250,7 +2262,7 @@ object ScaladocConfigs {
     sys.env.get("GITHUB_SHA") match {
       case Some(sha) =>
         s"${sourcesPrefix}github://${sys.env("GITHUB_REPOSITORY")}/$sha$outputPrefix"
-      case None => s"${sourcesPrefix}github://lampepfl/dotty/$v$outputPrefix"
+      case None => s"${sourcesPrefix}github://scala/scala3/$v$outputPrefix"
     }
 
   def defaultSourceLinks(version: String = dottyNonBootstrappedVersion, refVersion: String = dottyVersion) = Def.task {
@@ -2261,7 +2273,7 @@ object ScaladocConfigs {
         scalaSrcLink(stdLibVersion, srcManaged(version, "scala") + "="),
         dottySrcLink(refVersion, "library/src=", "#library/src"),
         dottySrcLink(refVersion),
-        "docs=github://lampepfl/dotty/main#docs"
+        "docs=github://scala/scala3/main#docs"
       )
     )
   }
@@ -2269,7 +2281,7 @@ object ScaladocConfigs {
   lazy val DefaultGenerationSettings = Def.task {
     def projectVersion = version.value
     def socialLinks = SocialLinks(List(
-      "github::https://github.com/lampepfl/dotty",
+      "github::https://github.com/scala/scala3",
       "discord::https://discord.com/invite/scala",
       "twitter::https://twitter.com/scala_lang",
     ))

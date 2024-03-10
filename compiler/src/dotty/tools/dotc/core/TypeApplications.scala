@@ -33,15 +33,11 @@ object TypeApplications {
    */
   object EtaExpansion:
 
-    def apply(tycon: Type)(using Context): Type =
-      assert(tycon.typeParams.nonEmpty, tycon)
-      tycon.etaExpand(tycon.typeParamSymbols)
-
     /** Test that the parameter bounds in a hk type lambda `[X1,...,Xn] => C[X1, ..., Xn]`
      *  contain the bounds of the type parameters of `C`. This is necessary to be able to
      *  contract the hk lambda to `C`.
      */
-    private def weakerBounds(tp: HKTypeLambda, tparams: List[ParamInfo])(using Context): Boolean =
+    private def weakerBounds(tp: HKTypeLambda, fn: Type)(using Context): Boolean =
       val onlyEmptyBounds = tp.typeParams.forall(_.paramInfo == TypeBounds.empty)
       onlyEmptyBounds
         // Note: this pre-test helps efficiency. It is also necessary to workaround  #9965 since in some cases
@@ -50,18 +46,24 @@ object TypeApplications {
         // In this case, we can still return true if we know that the hk lambda bounds
         // are empty anyway.
       || {
+        val tparams = fn.typeParams
         val paramRefs = tparams.map(_.paramRef)
+        val prefix = fn.normalizedPrefix
+        val owner = fn.typeSymbol.maybeOwner
         tp.typeParams.corresponds(tparams) { (param1, param2) =>
-          param2.paramInfo frozen_<:< param1.paramInfo.substParams(tp, paramRefs)
+          // see tests/neg/variances-constr.scala
+          // its B parameter should have info <: Any, using class C as the owner
+          // rather than info <: A, using class Inner2 as the owner
+          param2.paramInfo.asSeenFrom(prefix, owner) frozen_<:< param1.paramInfo.substParams(tp, paramRefs)
         }
       }
 
     def unapply(tp: Type)(using Context): Option[Type] = tp match
-      case tp @ HKTypeLambda(tparams, AppliedType(fn: Type, args))
+      case tp @ HKTypeLambda(tparams, AppliedType(fn, args))
       if fn.typeSymbol.isClass
          && tparams.hasSameLengthAs(args)
          && args.lazyZip(tparams).forall((arg, tparam) => arg == tparam.paramRef)
-         && weakerBounds(tp, fn.typeParams) => Some(fn)
+         && weakerBounds(tp, fn) => Some(fn)
       case _ => None
 
   end EtaExpansion
@@ -244,7 +246,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   def topType(using Context): Type =
     if self.hasSimpleKind then
       defn.AnyType
-    else etaExpand(self.typeParams) match
+    else self.etaExpand match
       case tp: HKTypeLambda =>
         tp.derivedLambdaType(resType = tp.resultType.topType)
       case _ =>
@@ -301,21 +303,44 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Convert a type constructor `TC` which has type parameters `X1, ..., Xn`
    *  to `[X1, ..., Xn] -> TC[X1, ..., Xn]`.
    */
-  def etaExpand(tparams: List[TypeParamInfo])(using Context): Type =
-    HKTypeLambda.fromParams(tparams, self.appliedTo(tparams.map(_.paramRef)))
-      //.ensuring(res => res.EtaReduce =:= self, s"res = $res, core = ${res.EtaReduce}, self = $self, hc = ${res.hashCode}")
+  def etaExpand(using Context): Type =
+    val tparams = self.typeParams
+    val resType = self.appliedTo(tparams.map(_.paramRef))
+    self.dealias match
+      case self: TypeRef if tparams.nonEmpty && self.symbol.isClass =>
+        val owner = self.symbol.owner
+        // Calling asSeenFrom on the type parameter infos is important
+        // so that class type references within another prefix have
+        // their type parameters' info fixed.
+        // e.g. from pos/i18569:
+        //    trait M1:
+        //      trait A
+        //      trait F[T <: A]
+        //    object M2 extends M1
+        // Type parameter T in M1.F has an upper bound of M1#A
+        // But eta-expanding M2.F should have type parameters with an upper-bound of M2.A.
+        // So we take the prefix M2.type and the F symbol's owner, M1,
+        // to call asSeenFrom on T's info.
+        HKTypeLambda(tparams.map(_.paramName))(
+          tl => tparams.map(p => HKTypeLambda.toPInfo(tl.integrate(tparams, p.paramInfo.asSeenFrom(self.prefix, owner)))),
+          tl => tl.integrate(tparams, resType))
+      case _ =>
+        HKTypeLambda.fromParams(tparams, resType)
 
   /** If self is not lambda-bound, eta expand it. */
   def ensureLambdaSub(using Context): Type =
-    if (isLambdaSub) self else EtaExpansion(self)
+    if isLambdaSub then self
+    else
+      assert(self.typeParams.nonEmpty, self)
+      self.etaExpand
 
   /** Eta expand if `self` is a (non-lambda) class reference and `bound` is a higher-kinded type */
   def etaExpandIfHK(bound: Type)(using Context): Type = {
     val hkParams = bound.hkTypeParams
     if (hkParams.isEmpty) self
     else self match {
-      case self: TypeRef if self.symbol.isClass && self.typeParams.length == hkParams.length =>
-        EtaExpansion(self)
+      case self: TypeRef if self.symbol.isClass && self.typeParams.hasSameLengthAs(hkParams) =>
+        etaExpand
       case _ => self
     }
   }

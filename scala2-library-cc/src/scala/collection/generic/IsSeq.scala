@@ -54,24 +54,22 @@ object IsSeq {
     seqOpsIsSeqVal.asInstanceOf[IsSeq[CC0[A0]] { type A = A0; type C = CC0[A0] }]
 
   /** !!! Under cc, views are not Seqs and can't use SeqOps.
-   *  So this should be renamed to seqViewIsIterable
-   */
-  implicit def seqViewIsSeq[CC0[X] <: SeqView[X], A0]: IsIterable[CC0[A0]] { type A = A0; type C = View[A0] } =
-    new IsIterable[CC0[A0]] {
-      type A = A0
-      type C = View[A]
-      def apply(coll: CC0[A0]): IterableOps[A0, View, View[A0]] = coll
-    }
+    * Therefore, [[seqViewIsSeq]] now returns an [[IsIterable]].
+    * The helper method [[seqViewIsSeq_]] is added to make the binary compatible.
+    */
+  @annotation.targetName("seqViewIsSeq")
+  @annotation.publicInBinary
+  private[IsSeq] def seqViewIsSeq_[CC0[X] <: SeqView[X], A0]: IsSeq[CC0[A0]] { type A = A0; type C = View[A0] } = ???
+  implicit inline def seqViewIsSeq[CC0[X] <: SeqView[X], A0]: IsIterable[CC0[A0]] { type A = A0; type C = View[A0] } = seqViewIsSeq_[CC0, A0].asInstanceOf
 
   /** !!! Under cc, views are not Seqs and can't use SeqOps.
-   *  So this should be renamed to stringViewIsIterable
-   */
-  implicit val stringViewIsSeq: IsIterable[StringView] { type A = Char; type C = View[Char] } =
-    new IsIterable[StringView] {
-      type A = Char
-      type C = View[Char]
-      def apply(coll: StringView): IterableOps[Char, View, View[Char]] = coll
-    }
+    * Therefore, [[stringViewIsSeq]] now returns an [[IsIterable]].
+    * The helper method [[stringViewIsSeq__]] is added to make the binary compatible.
+    */
+  @annotation.targetName("stringViewIsSeq")
+  @annotation.publicInBinary
+  private[IsSeq] val stringViewIsSeq_ : IsSeq[StringView] { type A = Char; type C = View[Char] } = ???
+  inline implicit def stringViewIsSeq: IsIterable[StringView] { type A = Char; type C = View[Char] } = stringViewIsSeq_.asInstanceOf
 
   implicit val stringIsSeq: IsSeq[String] { type A = Char; type C = String } =
     new IsSeq[String] {
@@ -84,7 +82,7 @@ object IsSeq {
           def toIterable: Iterable[Char] = new immutable.WrappedString(s)
           protected[this] def coll: String = s
           protected[this] def fromSpecific(coll: IterableOnce[Char]^): String = coll.iterator.mkString
-          def iterableFactory: FreeSeqFactory[immutable.ArraySeq] = immutable.ArraySeq.untagged
+          def iterableFactory: IterableFactory[immutable.ArraySeq] = immutable.ArraySeq.untagged
           override def empty: String = ""
           protected[this] def newSpecificBuilder: mutable.Builder[Char, String] = new StringBuilder
           def iterator: Iterator[Char] = s.iterator
@@ -102,7 +100,7 @@ object IsSeq {
           def toIterable: Iterable[A] = mutable.ArraySeq.make[A](a)
           protected def coll: Array[A] = a
           protected def fromSpecific(coll: IterableOnce[A]^): Array[A] = Array.from(coll)
-          def iterableFactory: FreeSeqFactory[mutable.ArraySeq] = mutable.ArraySeq.untagged
+          def iterableFactory: IterableFactory[mutable.ArraySeq] = mutable.ArraySeq.untagged
           override def empty: Array[A] = Array.empty[A]
           protected def newSpecificBuilder: mutable.Builder[A, Array[A]] = Array.newBuilder
           def iterator: Iterator[A] = a.iterator

@@ -86,11 +86,12 @@ trait PropertiesTrait {
 
   /** Whether the current version of compiler is experimental
    *
-   *  1. Snapshot, nightly releases and non-bootstrapped compiler are experimental.
-   *  2. Features supported by experimental versions of the compiler:
-   *     - research plugins
+   *  Snapshot, nightly releases and non-bootstrapped compiler are experimental.
    */
-  val experimental: Boolean = versionString.contains("SNAPSHOT") || versionString.contains("NIGHTLY") || versionString.contains("nonbootstrapped")
+  val unstableExperimentalEnabled: Boolean = versionString.contains("SNAPSHOT") || versionString.contains("NIGHTLY") || versionString.contains("nonbootstrapped")
+
+  /** Whether the current version of compiler supports research plugins. */
+  val researchPluginEnabled: Boolean = versionString.contains("SNAPSHOT") || versionString.contains("NIGHTLY") || versionString.contains("nonbootstrapped")
 
   val copyrightString: String       = scalaPropOrElse("copyright.string", "(c) 2002-2017 LAMP/EPFL")
 

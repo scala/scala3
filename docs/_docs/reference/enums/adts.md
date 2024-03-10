@@ -170,4 +170,4 @@ The changes are specified below as deltas with respect to the Scala syntax given
 
 ## Reference
 
-For more information, see [Issue #1970](https://github.com/lampepfl/dotty/issues/1970).
+For more information, see [Issue #1970](https://github.com/scala/scala3/issues/1970).

@@ -33,7 +33,7 @@ case class SourceTree(tree: tpd.Import | tpd.NameTree, source: SourceFile) {
         }
         val position = {
           // FIXME: This is incorrect in some cases, like with backquoted identifiers,
-          //        see https://github.com/lampepfl/dotty/pull/1634#issuecomment-257079436
+          //        see https://github.com/scala/scala3/pull/1634#issuecomment-257079436
           val (start, end) =
             if (!treeSpan.isSynthetic)
               (treeSpan.point, treeSpan.point + nameLength)

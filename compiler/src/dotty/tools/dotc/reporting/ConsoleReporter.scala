@@ -4,7 +4,7 @@ package reporting
 
 import core.Contexts.*
 import java.io.{ BufferedReader, PrintWriter }
-import Diagnostic.Error
+import Diagnostic.*
 
 /**
   * This class implements a Reporter that displays messages on a text console
@@ -18,9 +18,11 @@ class ConsoleReporter(
 
   override def doReport(dia: Diagnostic)(using Context): Unit = {
     super.doReport(dia)
-    dia match
-      case dia: Error if ctx.settings.Xprompt.value => Reporter.displayPrompt(reader, writer)
-      case _                                        =>
+    if ctx.settings.Xprompt.value then
+      dia match
+        case _: Error                                        => Reporter.displayPrompt(reader, writer)
+        case _: Warning if ctx.settings.XfatalWarnings.value => Reporter.displayPrompt(reader, writer)
+        case _                                                 =>
   }
 }
 

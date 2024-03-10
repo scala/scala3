@@ -1,3 +1,4 @@
+//> using options -experimental -Yno-experimental
 // scalajs: --skip
 
 import scala.concurrent._

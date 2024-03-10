@@ -76,7 +76,7 @@ class CoursierScalaTests:
 
     def emptyArgsEqualsRepl() =
       val output = CoursierScalaTests.csScalaCmd()
-      assertTrue(output.mkString("\n").contains("Unable to create a system terminal")) // Scala attempted to create REPL so we can assume it is working
+      assertTrue(output.mkString("\n").contains("Unable to create a terminal")) // Scala attempted to create REPL so we can assume it is working
     emptyArgsEqualsRepl()
 
     def run() =
@@ -133,7 +133,7 @@ class CoursierScalaTests:
 
     def replWithArgs() =
       val output = CoursierScalaTests.csScalaCmd("-source", "3.0-migration")
-      assertTrue(output.mkString("\n").contains("Unable to create a system terminal")) // Scala attempted to create REPL so we can assume it is working
+      assertTrue(output.mkString("\n").contains("Unable to create a terminal")) // Scala attempted to create REPL so we can assume it is working
     replWithArgs()
 
     def argumentFile() =

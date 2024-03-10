@@ -638,7 +638,7 @@ trait Applications extends Compatibility {
               defaultArg.tpe.widen match
                 case _: MethodOrPoly if testOnly => matchArgs(args1, formals1, n + 1)
                 case _ => matchArgs(args1, addTyped(treeToArg(defaultArg)), n + 1)
-            else if methodType.isContextualMethod && ctx.mode.is(Mode.ImplicitsEnabled) then
+            else if methodType.isImplicitMethod && ctx.mode.is(Mode.ImplicitsEnabled) then
               matchArgs(args1, addTyped(treeToArg(implicitArg)), n + 1)
             else
               missingArg(n)
@@ -1492,7 +1492,7 @@ trait Applications extends Compatibility {
 
         val dummyArg = dummyTreeOfType(ownType)
         val (newUnapplyFn, unapplyApp) =
-          val unapplyAppCall = withMode(Mode.NoInline):
+          val unapplyAppCall =
             typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
           inlinedUnapplyFnAndApp(dummyArg, unapplyAppCall)
 
@@ -2123,34 +2123,27 @@ trait Applications extends Compatibility {
           else resolveMapped(alts1, _.widen.appliedTo(targs1.tpes), pt1)
 
       case pt =>
-        val compat0 = pt.dealias match
-          case defn.FunctionNOf(args, resType, _) =>
-            narrowByTypes(alts, args, resType)
-          case _ =>
-            Nil
-        if (compat0.isEmpty) then
-          val compat = alts.filterConserve(normalizedCompatible(_, pt, keepConstraint = false))
-          if (compat.isEmpty)
-            /*
-            * the case should not be moved to the enclosing match
-            * since SAM type must be considered only if there are no candidates
-            * For example, the second f should be chosen for the following code:
-            *   def f(x: String): Unit = ???
-            *   def f: java.io.OutputStream = ???
-            *   new java.io.ObjectOutputStream(f)
-            */
-            pt match {
-              case SAMType(mtp, _) =>
-                narrowByTypes(alts, mtp.paramInfos, mtp.resultType)
-              case _ =>
-                // pick any alternatives that are not methods since these might be convertible
-                // to the expected type, or be used as extension method arguments.
-                val convertible = alts.filterNot(alt =>
-                    normalize(alt, IgnoredProto(pt)).widenSingleton.isInstanceOf[MethodType])
-                if convertible.length == 1 then convertible else compat
-            }
-          else compat
-        else compat0
+        val compat = alts.filterConserve(normalizedCompatible(_, pt, keepConstraint = false))
+        if compat.isEmpty then
+          pt match
+            case SAMType(mtp, _) =>
+              // If we have a SAM type as expected type, treat it as if the expression was eta-expanded
+              // Note 1: No need to do that for function types, the previous normalizedCompatible test already
+              // handles those.
+              // Note 2: This case should not be moved to the enclosing match
+              // since fSAM types must be considered only if there are no candidates.
+              // For example, the second f should be chosen for the following code:
+              //    def f(x: String): Unit = ???
+              //    def f: java.io.OutputStream = ???
+              //    new java.io.ObjectOutputStream(f)
+              narrowByTypes(alts, mtp.paramInfos, mtp.resultType)
+            case _ =>
+              // pick any alternatives that are not methods since these might be convertible
+              // to the expected type, or be used as extension method arguments.
+              val convertible = alts.filterNot(alt =>
+                  normalize(alt, IgnoredProto(pt)).widenSingleton.isInstanceOf[MethodType])
+              if convertible.length == 1 then convertible else compat
+        else compat
     }
 
     /** The type of alternative `alt` after instantiating its first parameter

@@ -37,7 +37,6 @@ import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.interactive.Interactive
 
 class Completions(
-    pos: SourcePosition,
     text: String,
     ctx: Context,
     search: SymbolSearch,
@@ -56,7 +55,7 @@ class Completions(
   given context: Context = ctx
 
   private lazy val coursierComplete = new CoursierComplete(BuildInfo.scalaVersion)
-  private lazy val completionMode = Completion.completionMode(adjustedPath, pos)
+  private lazy val completionMode = Completion.completionMode(adjustedPath, completionPos.originalCursorPosition)
 
   private lazy val shouldAddSnippet =
     path match
@@ -83,8 +82,8 @@ class Completions(
       if !sym.name.endsWith(Cursor.value) then false
       else
         val realNameLength = sym.decodedName.length() - Cursor.value.length()
-        sym.source == pos.source &&
-        sym.span.start + realNameLength == pos.span.end
+        sym.source == completionPos.originalCursorPosition.source &&
+        sym.span.start + realNameLength == completionPos.queryEnd
 
     val generalExclude =
       isUninterestingSymbol(sym) ||
@@ -107,7 +106,7 @@ class Completions(
   end includeSymbol
 
   def completions(): (List[CompletionValue], SymbolSearch.Result) =
-    val (advanced, exclusive) = advancedCompletions(path, pos, completionPos)
+    val (advanced, exclusive) = advancedCompletions(path, completionPos)
     val (all, result) =
       if exclusive then (advanced, SymbolSearch.Result.COMPLETE)
       else
@@ -116,19 +115,19 @@ class Completions(
         val allAdvanced = advanced ++ keywords
         path match
           // should not show completions for toplevel
-          case Nil | (_: PackageDef) :: _ if pos.source.file.extension != "sc" =>
+          case Nil | (_: PackageDef) :: _ if completionPos.originalCursorPosition.source.file.extension != "sc" =>
             (allAdvanced, SymbolSearch.Result.COMPLETE)
           case Select(qual, _) :: _ if qual.typeOpt.isErroneous =>
             (allAdvanced, SymbolSearch.Result.COMPLETE)
           case Select(qual, _) :: _ =>
-            val compilerCompletions = Completion.rawCompletions(pos, completionMode, completionPos.query, path, adjustedPath)
+            val compilerCompletions = Completion.rawCompletions(completionPos.originalCursorPosition, completionMode, completionPos.query, path, adjustedPath)
             val (compiler, result) = compilerCompletions
               .toList
               .flatMap(toCompletionValues)
               .filterInteresting(qual.typeOpt.widenDealias)
             (allAdvanced ++ compiler, result)
           case _ =>
-            val compilerCompletions = Completion.rawCompletions(pos, completionMode, completionPos.query, path, adjustedPath)
+            val compilerCompletions = Completion.rawCompletions(completionPos.originalCursorPosition, completionMode, completionPos.query, path, adjustedPath)
             val (compiler, result) = compilerCompletions
               .toList
               .flatMap(toCompletionValues)
@@ -265,9 +264,9 @@ class Completions(
    */
   private def advancedCompletions(
       path: List[Tree],
-      pos: SourcePosition,
       completionPos: CompletionPos
   ): (List[CompletionValue], Boolean) =
+    val pos = completionPos.originalCursorPosition
     lazy val rawPath = Paths
       .get(pos.source.path).nn
     lazy val rawFileName = rawPath
@@ -396,7 +395,6 @@ class Completions(
         val completions = InterpolatorCompletions
           .contribute(
             text,
-            pos,
             completionPos,
             indexedContext,
             lit,
@@ -445,7 +443,7 @@ class Completions(
       // From Scala 3.1.3-RC3 (as far as I know), path contains
       // `Literal(Constant(null))` on head for an incomplete program, in this case, just ignore the head.
       case Literal(Constant(null)) :: tl =>
-        advancedCompletions(tl, pos, completionPos)
+        advancedCompletions(tl, completionPos)
 
       case _ =>
         val args = NamedArgCompletions.contribute(
@@ -497,14 +495,18 @@ class Completions(
     val query = completionPos.query
     if completionMode.is(Mode.Scope) && query.nonEmpty then
       val visitor = new CompilerSearchVisitor(sym =>
-        indexedContext.lookupSym(sym) match
-          case IndexedContext.Result.InScope => false
-          case _ =>
-            completionsWithSuffix(
-              sym,
-              sym.decodedName,
-              CompletionValue.Workspace(_, _, _, sym)
-            ).map(visit).forall(_ == true),
+        if !(sym.is(Flags.ExtensionMethod) ||
+          (sym.maybeOwner.is(Flags.Implicit) && sym.maybeOwner.isClass))
+        then
+          indexedContext.lookupSym(sym) match
+            case IndexedContext.Result.InScope => false
+            case _ =>
+              completionsWithSuffix(
+                sym,
+                sym.decodedName,
+                CompletionValue.Workspace(_, _, _, sym)
+              ).map(visit).forall(_ == true)
+        else false,
       )
       Some(search.search(query, buildTargetIdentifier, visitor).nn)
     else if completionMode.is(Mode.Member) then
@@ -526,8 +528,10 @@ class Completions(
           )
         end isImplicitClass
 
-        def isImplicitClassMethod = sym.is(Flags.Method) && !sym.isConstructor &&
-          isImplicitClass(sym.maybeOwner)
+        def isDefaultVariableSetter = sym.is(Flags.Accessor) && sym.is(Flags.Method)
+        def isImplicitClassMember =
+          isImplicitClass(sym.maybeOwner) && !sym.is(Flags.Synthetic) && sym.isPublic
+          && !sym.isConstructor && !isDefaultVariableSetter
 
         if isExtensionMethod then
           completionsWithSuffix(
@@ -535,7 +539,7 @@ class Completions(
             sym.decodedName,
             CompletionValue.Extension(_, _, _)
           ).map(visit).forall(_ == true)
-        else if isImplicitClassMethod then
+        else if isImplicitClassMember then
           completionsWithSuffix(
             sym,
             sym.decodedName,
@@ -544,14 +548,7 @@ class Completions(
         else false,
       )
       Some(search.searchMethods(query, buildTargetIdentifier, visitor).nn)
-    else
-      val filtered = indexedContext.scopeSymbols
-        .filter(sym => !sym.isConstructor && (!sym.is(Synthetic) || sym.is(Module)))
-
-      filtered.map { sym =>
-        visit(CompletionValue.Scope(sym.decodedName, sym, findSuffix(sym)))
-      }
-      Some(SymbolSearch.Result.INCOMPLETE)
+    else Some(SymbolSearch.Result.INCOMPLETE)
 
   end enrichWithSymbolSearch
 
@@ -651,7 +648,7 @@ class Completions(
 
   private def isNotLocalForwardReference(sym: Symbol)(using Context): Boolean =
     !sym.isLocalToBlock ||
-      !sym.srcPos.isAfter(pos) ||
+      !sym.srcPos.isAfter(completionPos.originalCursorPosition) ||
       sym.is(Param)
 
   private def computeRelevancePenalty(
@@ -670,7 +667,7 @@ class Completions(
     def symbolRelevance(sym: Symbol): Int =
       var relevance = 0
       // symbols defined in this file are more relevant
-      if pos.source != sym.source || sym.is(Package) then
+      if completionPos.originalCursorPosition.source != sym.source || sym.is(Package) then
         relevance |= IsNotDefinedInFile
 
       // fields are more relevant than non fields (such as method)

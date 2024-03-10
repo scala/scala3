@@ -180,7 +180,7 @@ scala> Color.Red.compareTo(Color.Green)
 val res15: Int = -1
 ```
 
-For a more in-depth example of using Scala 3 enums from Java, see [this test](https://github.com/lampepfl/dotty/tree/main/tests/run/enum-java). In the test, the enums are defined in the `MainScala.scala` file and used from a Java source, `Test.java`.
+For a more in-depth example of using Scala 3 enums from Java, see [this test](https://github.com/scala/scala3/tree/main/tests/run/enum-java). In the test, the enums are defined in the `MainScala.scala` file and used from a Java source, `Test.java`.
 
 ## Implementation
 
@@ -218,5 +218,5 @@ val Red: Color = $new(0, "Red")
 
 ## Reference
 
-For more information, see [Issue #1970](https://github.com/lampepfl/dotty/issues/1970) and
-[PR #4003](https://github.com/lampepfl/dotty/pull/4003).
+For more information, see [Issue #1970](https://github.com/scala/scala3/issues/1970) and
+[PR #4003](https://github.com/scala/scala3/pull/4003).

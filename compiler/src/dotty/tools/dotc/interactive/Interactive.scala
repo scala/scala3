@@ -250,7 +250,7 @@ object Interactive {
    *  Note that if the given `pos` points out places for incomplete parses,
    *  this method returns `errorTermTree` (`Literal(Consotant(null)`).
    *
-   *  @see https://github.com/lampepfl/dotty/issues/15294
+   *  @see https://github.com/scala/scala3/issues/15294
    */
   def pathTo(trees: List[SourceTree], pos: SourcePosition)(using Context): List[Tree] =
     pathTo(trees.map(_.tree), pos.span)
@@ -297,14 +297,14 @@ object Interactive {
           else
             outer
         case tree @ Block(stats, expr) =>
-          val localCtx = outer.fresh.setNewScope
+          val localCtx = outer.localContext(tree, outer.owner).setNewScope
           stats.foreach {
             case stat: MemberDef => localCtx.enter(stat.symbol)
             case _ =>
           }
-          contextOfStat(stats, nested, ctx.owner, localCtx)
+          contextOfStat(stats, nested, localCtx.owner, localCtx)
         case tree @ CaseDef(pat, _, _) =>
-          val localCtx = outer.fresh.setNewScope
+          val localCtx = outer.localContext(tree, outer.owner).setNewScope
           pat.foreachSubTree {
             case bind: Bind => localCtx.enter(bind.symbol)
             case _ =>
