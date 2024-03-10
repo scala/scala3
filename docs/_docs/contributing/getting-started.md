@@ -127,7 +127,7 @@ For more information, see the [scaladoc section](./scaladoc.md).
 ## Community
 
 The main development discussion channels are:
-- [github.com/lampepfl/dotty/discussions](https://github.com/lampepfl/dotty/discussions)
+- [github.com/scala/scala3/discussions](https://github.com/scala/scala3/discussions)
 - [contributors.scala-lang.org](https://contributors.scala-lang.org)
 - [gitter.im/scala/contributors](https://gitter.im/scala/contributors)
 
@@ -141,5 +141,5 @@ The main development discussion channels are:
 [adopt]: https://adoptopenjdk.net/
 [compat]: https://docs.scala-lang.org/overviews/jdk-compatibility/overview.html
 [scala-cla]: https://www.lightbend.com/contribute/cla/scala
-[dotty-issue]: https://github.com/lampepfl/dotty/issues
-[dotty-discussion]: https://github.com/lampepfl/dotty/discussions
+[dotty-issue]: https://github.com/scala/scala3/issues
+[dotty-discussion]: https://github.com/scala/scala3/discussions

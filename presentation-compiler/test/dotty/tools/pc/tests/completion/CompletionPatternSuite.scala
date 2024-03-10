@@ -54,9 +54,7 @@ class CompletionPatternSuite extends BaseCompletionSuite:
         |    case ma@@
         |  }
         |}""".stripMargin,
-      """|macros - scala.languageFeature.experimental
-         |macroImpl - scala.reflect.macros.internal
-         |""".stripMargin
+      ""
     )
 
   @Test def `bind2` =

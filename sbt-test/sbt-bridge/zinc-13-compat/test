@@ -1,3 +1,3 @@
 # this little app test that scala3-sbt-bridge is compatible with Zinc 1.3
-# this is necessary to maintain the compatibility with Bloop (see https://github.com/lampepfl/dotty/issues/10816)
+# this is necessary to maintain the compatibility with Bloop (see https://github.com/scala/scala3/issues/10816)
 > run

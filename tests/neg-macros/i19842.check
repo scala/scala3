@@ -1,0 +1,32 @@
+-- Error: tests/neg-macros/i19842/Test.scala:9:50 ----------------------------------------------------------------------
+9 |@main def Test = summon[Serializer[ValidationCls]] // error
+  |                                                  ^
+  |Malformed tree was found while expanding macro with -Xcheck-macros.
+  |The tree does not conform to the compiler's tree invariants.
+  |
+  |Macro was:
+  |scala.quoted.runtime.Expr.splice[Serializer[ValidationCls]](((contextual$2: scala.quoted.Quotes) ?=> Macros.makeSerializer[ValidationCls](scala.quoted.Type.of[ValidationCls](contextual$2), contextual$2)))
+  |
+  |The macro returned:
+  |{
+  |  object objectSerializer$macro$1 extends Serializer[ValidationCls] { this: objectSerializer$macro$1.type =>
+  |    
+  |  }
+  |  objectSerializer$macro$1
+  |}
+  |
+  |Error:
+  |assertion failed: Parents of class symbol differs from the parents in the tree for object objectSerializer$macro$1
+  |
+  |Parents in symbol: [class Object, trait Serializer]
+  |Parents in tree: [trait Serializer]
+  |
+  |
+  |stacktrace available when compiling with `-Ydebug`
+  |---------------------------------------------------------------------------------------------------------------------
+  |Inline stack trace
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  |This location contains code that was inlined from Test.scala:5
+5 |    implicit inline def implicitMakeSerializer[T]: Serializer[T] = ${ Macros.makeSerializer[T] }
+  |                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   ---------------------------------------------------------------------------------------------------------------------

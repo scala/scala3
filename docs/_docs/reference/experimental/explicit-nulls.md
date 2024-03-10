@@ -431,7 +431,7 @@ When dealing with local mutable variables, there are two questions:
      x = null
    ```
 
-See [more examples](https://github.com/lampepfl/dotty/blob/main/tests/explicit-nulls/neg/flow-varref-in-closure.scala).
+See [more examples](https://github.com/scala/scala3/blob/main/tests/explicit-nulls/neg/flow-varref-in-closure.scala).
 
 Currently, we are unable to track paths with a mutable variable prefix.
 For example, `x.a` if `x` is mutable.

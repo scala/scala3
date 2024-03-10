@@ -38,7 +38,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  // tr@@
         |}
         |""".stripMargin,
-      "transparentTrait - scala.annotation (commit: '')",
+      "",
       includeCommitCharacter = true
     )
 
@@ -57,7 +57,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  **/
         |}
         |""".stripMargin,
-     "transparentTrait - scala.annotation (commit: '')",
+     "",
       includeCommitCharacter = true
     )
 
@@ -412,8 +412,6 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |}
       """.stripMargin,
       """|def
-         |derived - scala.CanEqual
-         |deprecated - scala.runtime.stdLibPatches.language
          |""".stripMargin,
     )
 
@@ -428,7 +426,6 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
       """.stripMargin,
       """|val
          |var
-         |varargs - scala.annotation
          |""".stripMargin
     )
 
@@ -467,13 +464,8 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
          |  def hello(u@@)
          |}""".stripMargin,
       """|using (commit: '')
-         |unsafe - scala.caps (commit: '')
-         |unsafeNulls - scala.runtime.stdLibPatches.language (commit: '')
-         |unused - scala.annotation (commit: '')
-         |unshared - scala.annotation.internal (commit: '')
          |""".stripMargin,
       includeCommitCharacter = true,
-      topLines = Some(5)
     )
 
   @Test def `not-using` =
@@ -481,12 +473,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
       """|object A{
          |  def hello(a: String, u@@)
          |}""".stripMargin,
-      """|unsafe - scala.caps
-         |unsafeNulls - scala.runtime.stdLibPatches.language
-         |unused - scala.annotation
-         |unshared - scala.annotation.internal
-         |unspecialized - scala.annotation""".stripMargin,
-      topLines = Some(5)
+      "",
     )
 
   @Test def `extends-class` =

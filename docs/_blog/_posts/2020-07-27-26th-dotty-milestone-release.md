@@ -35,7 +35,7 @@ extension (ss: Seq[String]):
   def longestString: String = longestStrings.head
 ```
 
-You can read more about the new syntax in the [documentation](https://dotty.epfl.ch/docs/reference/contextual/extension-methods.html). For the discussion, see [PR](https://github.com/lampepfl/dotty/pull/9255).
+You can read more about the new syntax in the [documentation](https://dotty.epfl.ch/docs/reference/contextual/extension-methods.html). For the discussion, see [PR](https://github.com/scala/scala3/pull/9255).
 
 # Local Selectable Instances
 Local and anonymous classes that extend `Selectable` get more refined types than other classes. For example:
@@ -78,7 +78,7 @@ val result = constValueTuple["foo" *: "bar" *: 10 *: 2.5 *: EmptyTuple]
 println(result)  // (foo,bar,10,2.5)
 ```
 
-This feature was introduced by PR [#9209](https://github.com/lampepfl/dotty/pull/9209).
+This feature was introduced by PR [#9209](https://github.com/scala/scala3/pull/9209).
 
 # Per-run time budget for import suggestions
 Import suggestions is a feature useful for debugging but potentially taxing for performance. Therefore, we have added the `-Ximport-suggestion-timeout <time-in-ms>` to allow specifying the timeout (in milliseconds) after which the suggestions mechanism should stop the lookup. The timeout budget is per-run (and not per suggestion) which ensures that the performance does not degrade in case of too many suggestions.
@@ -87,7 +87,7 @@ Import suggestions is a feature useful for debugging but potentially taxing for 
 
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 
@@ -119,7 +119,7 @@ According to `git shortlog -sn --no-merges 0.25.0-RC2..0.26.0-RC1` these are:
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
 Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
-and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.
@@ -128,7 +128,7 @@ We are looking forward to having you join the team of contributors.
 
 Dotty now has a set of widely-used community libraries that are built against every nightly Dotty
 snapshot. Currently, this includes shapeless, ScalaPB, algebra, scalatest, scopt and squants.
-Join our [community build](https://github.com/lampepfl/dotty/tree/main/community-build)
+Join our [community build](https://github.com/scala/scala3/tree/main/community-build)
 to make sure that our regression suite includes your library.
 
 [Scastie]: https://scastie.scala-lang.org/?target=dotty

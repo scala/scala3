@@ -16,7 +16,7 @@ RefineStat    ::= ‘val’ VarDcl | ‘def’ DefDcl | ‘type’ {nl} TypeDcl
 ## Implementation of Structural Types
 
 The standard library defines a universal marker trait
-[`scala.Selectable`](https://github.com/lampepfl/dotty/blob/main/library/src/scala/Selectable.scala):
+[`scala.Selectable`](https://github.com/scala/scala3/blob/main/library/src/scala/Selectable.scala):
 
 ```scala
 trait Selectable extends Any
@@ -150,4 +150,4 @@ conversion that can turn `v` into a `Selectable`, and the selection methods coul
 
 ## Context
 
-For more information, see [Rethink Structural Types](https://github.com/lampepfl/dotty/issues/1886).
+For more information, see [Rethink Structural Types](https://github.com/scala/scala3/issues/1886).

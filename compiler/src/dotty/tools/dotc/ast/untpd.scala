@@ -118,7 +118,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree])(implicit @constructorOnly src: SourceFile) extends TypTree
   case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree)(implicit @constructorOnly src: SourceFile) extends DefTree
   case class ExtMethods(paramss: List[ParamClause], methods: List[Tree])(implicit @constructorOnly src: SourceFile) extends Tree
-  case class Into(tpt: Tree)(implicit @constructorOnly src: SourceFile) extends Tree
   case class MacroTree(expr: Tree)(implicit @constructorOnly src: SourceFile) extends Tree
 
   case class ImportSelector(imported: Ident, renamed: Tree = EmptyTree, bound: Tree = EmptyTree)(implicit @constructorOnly src: SourceFile) extends Tree {
@@ -552,6 +551,12 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     ValDef(nme.syntheticParamName(n), if (tpt == null) TypeTree() else tpt, EmptyTree)
       .withFlags(flags)
 
+  def isInto(t: Tree)(using Context): Boolean = t match
+    case PrefixOp(Ident(tpnme.into), _) => true
+    case Function(_, res) => isInto(res)
+    case Parens(t) => isInto(t)
+    case _ => false
+
   def lambdaAbstract(params: List[ValDef] | List[TypeDef], tpt: Tree)(using Context): Tree =
     params match
       case Nil               => tpt
@@ -609,7 +614,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     }
     def Function(tree: Tree)(args: List[Tree], body: Tree)(using Context): Tree = tree match {
       case tree: Function if (args eq tree.args) && (body eq tree.body) => tree
-      case _ => finalize(tree, untpd.Function(args, body)(tree.source))
+      case _ =>
+        val tree1 = tree match
+          case tree: FunctionWithMods => untpd.FunctionWithMods(args, body, tree.mods, tree.erasedParams)(using tree.source)
+          case _ => untpd.Function(args, body)(using tree.source)
+        finalize(tree, tree1)
     }
     def PolyFunction(tree: Tree)(targs: List[Tree], body: Tree)(using Context): Tree = tree match {
       case tree: PolyFunction if (targs eq tree.targs) && (body eq tree.body) => tree
@@ -666,9 +675,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def ExtMethods(tree: Tree)(paramss: List[ParamClause], methods: List[Tree])(using Context): Tree = tree match
       case tree: ExtMethods if (paramss eq tree.paramss) && (methods == tree.methods) => tree
       case _ => finalize(tree, untpd.ExtMethods(paramss, methods)(tree.source))
-    def Into(tree: Tree)(tpt: Tree)(using Context): Tree = tree match
-      case tree: Into if tpt eq tree.tpt => tree
-      case _ => finalize(tree, untpd.Into(tpt)(tree.source))
     def ImportSelector(tree: Tree)(imported: Ident, renamed: Tree, bound: Tree)(using Context): Tree = tree match {
       case tree: ImportSelector if (imported eq tree.imported) && (renamed eq tree.renamed) && (bound eq tree.bound) => tree
       case _ => finalize(tree, untpd.ImportSelector(imported, renamed, bound)(tree.source))
@@ -734,8 +740,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.PatDef(tree)(mods, transform(pats), transform(tpt), transform(rhs))
       case ExtMethods(paramss, methods) =>
         cpy.ExtMethods(tree)(transformParamss(paramss), transformSub(methods))
-      case Into(tpt) =>
-        cpy.Into(tree)(transform(tpt))
       case ImportSelector(imported, renamed, bound) =>
         cpy.ImportSelector(tree)(transformSub(imported), transform(renamed), transform(bound))
       case Number(_, _) | TypedSplice(_) =>
@@ -791,8 +795,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(this(this(x, pats), tpt), rhs)
       case ExtMethods(paramss, methods) =>
         this(paramss.foldLeft(x)(apply), methods)
-      case Into(tpt) =>
-        this(x, tpt)
       case ImportSelector(imported, renamed, bound) =>
         this(this(this(x, imported), renamed), bound)
       case Number(_, _) =>

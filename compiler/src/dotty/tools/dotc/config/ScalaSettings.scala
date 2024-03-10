@@ -127,6 +127,8 @@ trait CommonScalaSettings:
 
   /* Coverage settings */
   val coverageOutputDir = PathSetting("-coverage-out", "Destination for coverage classfiles and instrumentation data.", "", aliases = List("--coverage-out"))
+  val coverageExcludeClasslikes: Setting[List[String]] = MultiStringSetting("-coverage-exclude-classlikes", "packages, classes and modules", "List of regexes for packages, classes and modules to exclude from coverage.", aliases = List("--coverage-exclude-classlikes"))
+  val coverageExcludeFiles: Setting[List[String]] = MultiStringSetting("-coverage-exclude-files", "files", "List of regexes for files to exclude from coverage.", aliases = List("--coverage-exclude-files"))
 
   /* Other settings */
   val encoding: Setting[String] = StringSetting("-encoding", "encoding", "Specify character encoding used by source files.", Properties.sourceEncoding, aliases = List("--encoding"))
@@ -397,7 +399,7 @@ private sealed trait YSettings:
   val YretainTrees: Setting[Boolean] = BooleanSetting("-Yretain-trees", "Retain trees for top-level classes, accessible from ClassSymbol#tree")
   val YshowTreeIds: Setting[Boolean] = BooleanSetting("-Yshow-tree-ids", "Uniquely tag all tree nodes in debugging output.")
   val YfromTastyIgnoreList: Setting[List[String]] = MultiStringSetting("-Yfrom-tasty-ignore-list", "file", "List of `tasty` files in jar files that will not be loaded when using -from-tasty.")
-  val YnoExperimental: Setting[Boolean] = BooleanSetting("-Yno-experimental", "Disable experimental language features.")
+  val YnoExperimental: Setting[Boolean] = BooleanSetting("-Yno-experimental", "Disable experimental language features by default in NIGHTLY/SNAPSHOT versions of the compiler.")
   val YlegacyLazyVals: Setting[Boolean] = BooleanSetting("-Ylegacy-lazy-vals", "Use legacy (pre 3.3.0) implementation of lazy vals.")
   val YcompileScala2Library: Setting[Boolean] = BooleanSetting("-Ycompile-scala2-library", "Used when compiling the Scala 2 standard library.")
   val YoutputOnlyTasty: Setting[Boolean] = BooleanSetting("-Youtput-only-tasty", "Used to only generate the TASTy file without the classfiles")
@@ -432,8 +434,6 @@ private sealed trait YSettings:
 
   val Yinstrument: Setting[Boolean] = BooleanSetting("-Yinstrument", "Add instrumentation code that counts allocations and closure creations.")
   val YinstrumentDefs: Setting[Boolean] = BooleanSetting("-Yinstrument-defs", "Add instrumentation code that counts method calls; needs -Yinstrument to be set, too.")
-
-  val YforceInlineWhileTyping: Setting[Boolean] = BooleanSetting("-Yforce-inline-while-typing", "Make non-transparent inline methods inline when typing. Emulates the old inlining behavior of 3.0.0-M3.")
 
   val YdebugMacros: Setting[Boolean] = BooleanSetting("-Ydebug-macros", "Show debug info when quote pattern match fails")
 

@@ -419,8 +419,9 @@ object Types extends TypeUtils {
       typeSymbol eq defn.RepeatedParamClass
 
     /** Is this a parameter type that allows implicit argument converson? */
-    def isConvertibleParam(using Context): Boolean =
-      typeSymbol eq defn.IntoType
+    def isInto(using Context): Boolean = this match
+      case AnnotatedType(_, annot) => annot.symbol == defn.IntoParamAnnot
+      case _ => false
 
     /** Is this the type of a method that has a repeated parameter type as
      *  last parameter type?
@@ -1927,7 +1928,9 @@ object Types extends TypeUtils {
             case res => res
           }
           defn.FunctionNOf(
-            mt.paramInfos.mapConserve(_.translateFromRepeated(toArray = isJava)),
+            mt.paramInfos.mapConserve:
+              _.translateFromRepeated(toArray = isJava)
+               .mapIntoAnnot(defn.IntoParamAnnot, null),
             result1, isContextual)
         if mt.hasErasedParams then
           defn.PolyFunctionOf(mt)
@@ -1974,6 +1977,38 @@ object Types extends TypeUtils {
         tp.translateParameterized(typeSym, defn.RepeatedParamClass)
       case _ => this
     }
+
+    /** A mapping between mapping one kind of into annotation to another or
+     *  dropping into annotations.
+     *  @param from the into annotation to map
+     *  @param to   either the replacement annotation symbol, or `null`
+     *              in which case the `from` annotations are dropped.
+     */
+    def mapIntoAnnot(from: ClassSymbol, to: ClassSymbol | Null)(using Context): Type = this match
+      case self @ AnnotatedType(tp, annot) =>
+        val tp1 = tp.mapIntoAnnot(from, to)
+        if annot.symbol == from then
+          if to == null then tp1
+          else AnnotatedType(tp1, Annotation(to, annot.tree.span))
+        else self.derivedAnnotatedType(tp1, annot)
+      case AppliedType(tycon, arg :: Nil) if tycon.typeSymbol == defn.RepeatedParamClass =>
+        val arg1 = arg.mapIntoAnnot(from, to)
+        if arg1 eq arg then this
+        else AppliedType(tycon, arg1 :: Nil)
+      case defn.FunctionOf(argTypes, resType, isContextual) =>
+        val resType1 = resType.mapIntoAnnot(from, to)
+        if resType1 eq resType then this
+        else defn.FunctionOf(argTypes, resType1, isContextual)
+      case RefinedType(parent, rname, mt: MethodOrPoly) =>
+        val mt1 = mt.mapIntoAnnot(from, to)
+        if mt1 eq mt then this
+        else RefinedType(parent.mapIntoAnnot(from, to), rname, mt1)
+      case mt: MethodOrPoly =>
+        mt.derivedLambdaType(resType = mt.resType.mapIntoAnnot(from, to))
+      case tp: ExprType =>
+        tp.derivedExprType(tp.resType.mapIntoAnnot(from, to))
+      case _ =>
+        this
 
     /** A type capturing `ref` */
     def capturing(ref: CaptureRef)(using Context): Type =
@@ -4122,6 +4157,7 @@ object Types extends TypeUtils {
     /** Produce method type from parameter symbols, with special mappings for repeated
      *  and inline parameters:
      *   - replace @repeated annotations on Seq or Array types by <repeated> types
+     *   - map into annotations to $into annotations
      *   - add @inlineParam to inline parameters
      *   - add @erasedParam to erased parameters
      *   - wrap types of parameters that have an @allowConversions annotation with Into[_]
@@ -4131,34 +4167,14 @@ object Types extends TypeUtils {
         case ExprType(resType) => ExprType(addAnnotation(resType, cls, param))
         case _ => AnnotatedType(tp, Annotation(cls, param.span))
 
-      def wrapConvertible(tp: Type) =
-        AppliedType(defn.IntoType.typeRef, tp :: Nil)
-
-      /** Add `Into[..] to the type itself and if it is a function type, to all its
-       *  curried result type(s) as well.
-       */
-      def addInto(tp: Type): Type = tp match
-        case tp @ AppliedType(tycon, args) if tycon.typeSymbol == defn.RepeatedParamClass =>
-          tp.derivedAppliedType(tycon, addInto(args.head) :: Nil)
-        case tp @ AppliedType(tycon, args) if defn.isFunctionNType(tp) =>
-          wrapConvertible(tp.derivedAppliedType(tycon, args.init :+ addInto(args.last)))
-        case tp @ defn.RefinedFunctionOf(rinfo) =>
-          wrapConvertible(tp.derivedRefinedType(refinedInfo = addInto(rinfo)))
-        case tp: MethodOrPoly =>
-          tp.derivedLambdaType(resType = addInto(tp.resType))
-        case ExprType(resType) =>
-          ExprType(addInto(resType))
-        case _ =>
-          wrapConvertible(tp)
-
       def paramInfo(param: Symbol) =
-        var paramType = param.info.annotatedToRepeated
+        var paramType = param.info
+          .annotatedToRepeated
+          .mapIntoAnnot(defn.IntoAnnot, defn.IntoParamAnnot)
         if param.is(Inline) then
           paramType = addAnnotation(paramType, defn.InlineParamAnnot, param)
         if param.is(Erased) then
           paramType = addAnnotation(paramType, defn.ErasedParamAnnot, param)
-        if param.hasAnnotation(defn.AllowConversionsAnnot) then
-          paramType = addInto(paramType)
         paramType
 
       apply(params.map(_.name.asTermName))(

@@ -41,30 +41,30 @@ To the best of our knowledge, cross-compiling libraries should be able to use Sc
 If you experience a bug with anything except the unsupported features mentioned above, please file a bug report.
 
 # Stability
-As we're getting closer to the release of Scala 3, we are continuing to focus on the stability and performance of the language. In this release, we have fixed support of objects under JDK9+ (PR [#9181](https://github.com/lampepfl/dotty/pull/9181)). The issue was, due to the changes in JDK9+ compared to JDK8, our initialization scheme for objects did not work under JDK9+. The aforementioned fixed that issue, thereby unblocking JDK9+ support for Dotty.
+As we're getting closer to the release of Scala 3, we are continuing to focus on the stability and performance of the language. In this release, we have fixed support of objects under JDK9+ (PR [#9181](https://github.com/scala/scala3/pull/9181)). The issue was, due to the changes in JDK9+ compared to JDK8, our initialization scheme for objects did not work under JDK9+. The aforementioned fixed that issue, thereby unblocking JDK9+ support for Dotty.
 
-We are also continuing to work on stabilising enums. PR [#9532](https://github.com/lampepfl/dotty/pull/9532) corrects the deserialization and serialization of singleton enum values with `ObjectInputStream` and `ObjectOutputStream`. PR [#9549](https://github.com/lampepfl/dotty/pull/9549) enables overriding the `toString` method on enums – previously this was not possible because of the way enums were desugared.
+We are also continuing to work on stabilising enums. PR [#9532](https://github.com/scala/scala3/pull/9532) corrects the deserialization and serialization of singleton enum values with `ObjectInputStream` and `ObjectOutputStream`. PR [#9549](https://github.com/scala/scala3/pull/9549) enables overriding the `toString` method on enums – previously this was not possible because of the way enums were desugared.
 
 # Performance
 We are also focusing these days on making the compiler faster and memory-efficient. For the past month, we were looking in the compiler's memory footprint. We were trying to determine what was allocated in unreasonable amounts during compilation and trying to resolve these allocation issues. The following PRs attempt to increase the performance of the compiler:
 
-- Optimize megaphase [#9597](https://github.com/lampepfl/dotty/pull/9597)
-- Cache all memberNamed results [#9633](https://github.com/lampepfl/dotty/pull/9633)
-- Parallelize position pickling [#9619](https://github.com/lampepfl/dotty/pull/9619)
-- Simplify TypeComparer [#9405](https://github.com/lampepfl/dotty/pull/9405)
-- Optimize and simplify SourcePosition handling [#9561](https://github.com/lampepfl/dotty/pull/9561)
+- Optimize megaphase [#9597](https://github.com/scala/scala3/pull/9597)
+- Cache all memberNamed results [#9633](https://github.com/scala/scala3/pull/9633)
+- Parallelize position pickling [#9619](https://github.com/scala/scala3/pull/9619)
+- Simplify TypeComparer [#9405](https://github.com/scala/scala3/pull/9405)
+- Optimize and simplify SourcePosition handling [#9561](https://github.com/scala/scala3/pull/9561)
 
 # Metaprogramming
 We are keeping the work on the metaprogramming API improvements. For this release, the following PRs bring better API to metaprogrammers:
 
-- Avoid leak of internal implementation in tasty.Reflection [#9613](https://github.com/lampepfl/dotty/pull/9613)
-- Redefine quoted.Expr.betaReduce [#9469](https://github.com/lampepfl/dotty/pull/9469)
+- Avoid leak of internal implementation in tasty.Reflection [#9613](https://github.com/scala/scala3/pull/9613)
+- Redefine quoted.Expr.betaReduce [#9469](https://github.com/scala/scala3/pull/9469)
 
 # Let us know what you think!
 
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 Thank you to all the contributors who made this release possible 🎉
@@ -100,7 +100,7 @@ According to `git shortlog -sn --no-merges 0.26.0-RC1..0.27.0-RC1` these are:
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
 Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
-and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.
@@ -109,7 +109,7 @@ We are looking forward to having you join the team of contributors.
 
 Dotty now has a set of widely-used community libraries that are built against every nightly Dotty
 snapshot. Currently, this includes shapeless, ScalaPB, algebra, scalatest, scopt and squants.
-Join our [community build](https://github.com/lampepfl/dotty/tree/main/community-build)
+Join our [community build](https://github.com/scala/scala3/tree/main/community-build)
 to make sure that our regression suite includes your library.
 
 [Scastie]: https://scastie.scala-lang.org/?target=dotty

@@ -24,12 +24,12 @@ You can learn more about Dotty on our [website](https://dotty.epfl.ch).
 <!--more-->
 
 This is our eighth scheduled release according to our [6-week release schedule](https://dotty.epfl.ch/docs/usage/version-numbers.html).
-The [previous technology preview](https://github.com/lampepfl/dotty/releases/tag/0.7.0-RC1) simplified
+The [previous technology preview](https://github.com/scala/scala3/releases/tag/0.7.0-RC1) simplified
 enums, introduced erased terms, improved IDE support and improved pattern matching for GADT.
 
 ## What’s new in the 0.8.0-RC1 technology preview?
 
-### sbt 1 support [#3872](https://github.com/lampepfl/dotty/pull/3872)
+### sbt 1 support [#3872](https://github.com/scala/scala3/pull/3872)
 Starting with Dotty 0.8.0, we will only support versions of sbt >= 1.1.4. Migrating to sbt 1
 lets us use the new improved incremental compiler for Scala called [Zinc](https://github.com/sbt/zinc),
 and enables integration with tools such as [Bloop](https://scalacenter.github.io/bloop/).
@@ -43,7 +43,7 @@ If you are already using Dotty with sbt 0.13, follow these simple steps to upgra
   ```
 - replace usages of `.withDottyCompat()` by `.withDottyCompat(scalaVersion.value)`
 
-### Unchecked warnings [#4045](https://github.com/lampepfl/dotty/pull/4045)
+### Unchecked warnings [#4045](https://github.com/scala/scala3/pull/4045)
 Dotty now emits `unchecked` warnings like `scalac` whenever a type test is performed but cannot be
 fully checked at runtime because of type erasure. For example:
 
@@ -64,7 +64,7 @@ def foo[T](x: T) = x match {
 }
 ```
 
-### Kind Polymorphism [#4108](https://github.com/lampepfl/dotty/pull/4108)
+### Kind Polymorphism [#4108](https://github.com/scala/scala3/pull/4108)
 Normally type parameters in Scala are partitioned into kinds. First-level types are types of values.
 Higher-kinded types are type constructors such as `List` or `Map`. The kind of a type is indicated
 by the top type of which it is a subtype. Normal types are subtypes of `Any`, covariant single
@@ -94,7 +94,7 @@ f[[X] =>> String]
 (i.e. `-Ykind-polymorphism`). For more information, visit the [Kind Polymorphism](https://dotty.epfl.ch/docs/reference/other-new-features/kind-polymorphism.html)
 section of our documentation.
 
-### Improved support for SAM type [#4152](https://github.com/lampepfl/dotty/pull/4152)
+### Improved support for SAM type [#4152](https://github.com/scala/scala3/pull/4152)
 This release includes fixes to [SAM types](https://www.scala-lang.org/news/2.12.0/#lambda-syntax-for-sam-types)
 that greatly improve interoperability with Java 8 lambdas. One can now easily write Scala code that
 uses Java streams:
@@ -139,7 +139,7 @@ the IDE sections of the [getting-started page](https://docs.scala-lang.org/scala
 ### Standalone installation
 Releases are available for download on the _Releases_
 section of the Dotty repository:
-[https://github.com/lampepfl/dotty/releases](https://github.com/lampepfl/dotty/releases)
+[https://github.com/scala/scala3/releases](https://github.com/scala/scala3/releases)
 
 We also provide a [homebrew](https://brew.sh/) package that can be installed by running:
 
@@ -156,7 +156,7 @@ brew upgrade dotty
 ## Let us know what you think!
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 Thank you to all the contributors who made this release possible!
@@ -187,7 +187,7 @@ According to `git shortlog -sn --no-merges 0.7.0..0.8.0-RC1` these are:
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
 Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
-and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry-points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.

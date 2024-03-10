@@ -129,7 +129,7 @@ trait Plugins {
     val updatedPlan = Plugins.schedule(plan, pluginPhases)
 
     // add research plugins
-    if Properties.experimental && !ctx.settings.YnoExperimental.value then
+    if Properties.researchPluginEnabled then
       plugins.collect { case p: ResearchPlugin => p }.foldRight(updatedPlan) {
         (plug, plan) => plug.init(options(plug), plan)
       }

@@ -1,4 +1,4 @@
-// https://github.com/lampepfl/dotty/issues/13334
+// https://github.com/scala/scala3/issues/13334
 trait DFC
 given DFC = new DFC {}
 

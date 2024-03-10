@@ -95,7 +95,7 @@ checks if `tp1` is a subtype of `tp2`.
 
 ### Type rebasing ###
 **FIXME**: This section is no longer accurate because
-https://github.com/lampepfl/dotty/pull/331 changed the handling of refined
+https://github.com/scala/scala3/pull/331 changed the handling of refined
 types.
 
 Consider [tests/pos/refinedSubtyping.scala][5]
@@ -132,8 +132,8 @@ TODO
 ## Type inference via constraint solving ##
 TODO
 
-[1]: https://github.com/lampepfl/dotty/blob/main/compiler/src/dotty/tools/dotc/core/Types.scala
+[1]: https://github.com/scala/scala3/blob/main/compiler/src/dotty/tools/dotc/core/Types.scala
 [2]: https://github.com/samuelgruetter/dotty/blob/classdiagrampdf/dotty-types.pdf
 [3]: https://github.com/samuelgruetter/scaladiagrams/tree/print-descendants
-[4]: https://github.com/lampepfl/dotty/blob/main/compiler/src/dotty/tools/dotc/core/TypeComparer.scala
-[5]: https://github.com/lampepfl/dotty/blob/main/tests/pos/refinedSubtyping.scala
+[4]: https://github.com/scala/scala3/blob/main/compiler/src/dotty/tools/dotc/core/TypeComparer.scala
+[5]: https://github.com/scala/scala3/blob/main/tests/pos/refinedSubtyping.scala

@@ -1463,14 +1463,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           if isErasedClass then arg.withAddedFlags(Erased) else arg
         }
         return typedDependent(newParams)
-      val resTpt = TypeTree(mt.nonDependentResultApprox).withSpan(body.span)
-      val typeArgs = appDef.termParamss.head.map(_.tpt) :+ resTpt
       val core =
         if mt.hasErasedParams then TypeTree(defn.PolyFunctionClass.typeRef)
         else
+          val resTpt = TypeTree(mt.nonDependentResultApprox).withSpan(body.span)
+          val paramTpts = appDef.termParamss.head.map(p => TypeTree(p.tpt.tpe).withSpan(p.tpt.span))
           val funSym = defn.FunctionSymbol(numArgs, isContextual, isImpure)
           val tycon = TypeTree(funSym.typeRef)
-          AppliedTypeTree(tycon, typeArgs)
+          AppliedTypeTree(tycon, paramTpts :+ resTpt)
       RefinedTypeTree(core, List(appDef), ctx.owner.asClass)
     end typedDependent
 
@@ -2335,9 +2335,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           && checkedArgs(1).tpe.derivesFrom(defn.RuntimeExceptionClass)
       then
         report.error(em"throws clause cannot be defined for RuntimeException", checkedArgs(1).srcPos)
-      else if tycon == defn.IntoType then
-        // <into> is defined in package scala but this should be hidden from user programs
-        report.error(em"not found: <into>", tpt1.srcPos)
       else if (ctx.isJava)
         if tycon eq defn.ArrayClass then
           checkedArgs match {
@@ -2378,7 +2375,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       report.error(MatchTypeScrutineeCannotBeHigherKinded(sel1Tpe), sel1.srcPos)
     val pt1 = if (bound1.isEmpty) pt else bound1.tpe
     val cases1 = tree.cases.mapconserve(typedTypeCase(_, sel1Tpe, pt1))
-    assignType(cpy.MatchTypeTree(tree)(bound1, sel1, cases1), bound1, sel1, cases1)
+    val bound2 = if tree.bound.isEmpty then
+      val lub = cases1.foldLeft(defn.NothingType: Type): (acc, case1) =>
+        if !acc.exists then NoType
+        else if case1.body.tpe.isProvisional then NoType
+        else acc | case1.body.tpe
+      if lub.exists then TypeTree(lub, inferred = true)
+      else bound1
+    else bound1
+    assignType(cpy.MatchTypeTree(tree)(bound2, sel1, cases1), bound2, sel1, cases1)
   }
 
   def typedByNameTypeTree(tree: untpd.ByNameTypeTree)(using Context): ByNameTypeTree = tree.result match
@@ -3988,10 +3993,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
       // Reasons NOT to eta expand:
       //  - we reference a constructor
+      //  - we reference an inline implicit def (see #19862)
       //  - we are in a pattern
       //  - the current tree is a synthetic apply which is not expandable (eta-expasion would simply undo that)
       if arity >= 0
          && !tree.symbol.isConstructor
+         && !tree.symbol.isAllOf(InlineImplicitMethod)
          && !ctx.mode.is(Mode.Pattern)
          && !(isSyntheticApply(tree) && !functionExpected)
       then
@@ -4284,7 +4291,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             tree1.withType(tp1)
           else
             // Eta-expand higher-kinded type
-            val tp1 = tree.tpe.etaExpand(tp.typeParamSymbols)
+            val tp1 = tree.tpe.etaExpand
             tree.withType(tp1)
         }
       if (ctx.mode.is(Mode.Pattern) || ctx.mode.isQuotedPattern || tree1.tpe <:< pt) tree1

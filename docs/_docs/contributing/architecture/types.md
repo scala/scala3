@@ -143,5 +143,5 @@ Type -+- proxy_type --+- NamedType --------+- TypeRef
 
 ```
 
-[Types.scala]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/core/Types.scala
-[DottyTypeStealer]: https://github.com/lampepfl/dotty/blob/master/compiler/test/dotty/tools/DottyTypeStealer.scala
+[Types.scala]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/core/Types.scala
+[DottyTypeStealer]: https://github.com/scala/scala3/blob/master/compiler/test/dotty/tools/DottyTypeStealer.scala

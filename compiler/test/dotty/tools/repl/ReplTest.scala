@@ -40,6 +40,10 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
 
   def contextually[A](op: Context ?=> A): A = op(using initialState.context)
 
+  /** Returns the `(<instance completions>, <companion completions>)`*/
+  def tabComplete(src: String)(implicit state: State): List[String] =
+    completions(src.length, src, state).map(_.value).sorted
+
   extension [A](state: State)
     infix def andThen(op: State ?=> A): A = op(using state)
 
@@ -104,6 +108,6 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
   }
 
 object ReplTest:
-  val commonOptions = Array("-color:never", "-language:experimental.erasedDefinitions", "-pagewidth", "80")
+  val commonOptions = Array("-color:never", "-pagewidth", "80")
   val defaultOptions = commonOptions ++ Array("-classpath", TestConfiguration.basicClasspath)
   lazy val withStagingOptions = commonOptions ++ Array("-classpath", TestConfiguration.withStagingClasspath)

@@ -1,3 +1,5 @@
+//> using options -experimental -Yno-experimental
+
 @genToString("This is Foo")
 class Foo
   //> override def toString(): String = "This is Foo"

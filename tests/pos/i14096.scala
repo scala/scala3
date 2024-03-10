@@ -1,4 +1,4 @@
-// https://github.com/lampepfl/dotty/issues/14096
+// https://github.com/scala/scala3/issues/14096
 object Test:
   object Forte:
     def test[T](i: Int, config: String = ""): Int = 1

@@ -251,7 +251,7 @@ can enter an inconsistent state and cause spurious test failures. If you suspect
 you can run `rm -rf out/*` from the root of the repository and run your tests again. If that fails, you
 can try `git clean -xfd`.
 
-[CompilationTests]: https://github.com/lampepfl/dotty/blob/master/compiler/test/dotty/tools/dotc/CompilationTests.scala
-[compiler/test]: https://github.com/lampepfl/dotty/blob/master/compiler/test/
-[compiler/test/dotc]: https://github.com/lampepfl/dotty/tree/master/compiler/test/dotc
-[SemanticdbTests]: https://github.com/lampepfl/dotty/blob/master/compiler/test/dotty/tools/dotc/semanticdb/SemanticdbTests.scala
+[CompilationTests]: https://github.com/scala/scala3/blob/master/compiler/test/dotty/tools/dotc/CompilationTests.scala
+[compiler/test]: https://github.com/scala/scala3/blob/master/compiler/test/
+[compiler/test/dotc]: https://github.com/scala/scala3/tree/master/compiler/test/dotc
+[SemanticdbTests]: https://github.com/scala/scala3/blob/master/compiler/test/dotty/tools/dotc/semanticdb/SemanticdbTests.scala

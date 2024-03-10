@@ -1,3 +1,4 @@
+//> using options -experimental -Yno-experimental
 // scalajs: --skip
 
 sealed trait Expression:
@@ -23,7 +24,7 @@ import scala.annotation.{ MainAnnotation, experimental }
 import scala.annotation.MainAnnotation.{ Info, Parameter }
 import scala.util.CommandLineParser.FromString
 
-@experimental class showAndEval extends MainAnnotation[FromString, Expression]:
+class showAndEval extends MainAnnotation[FromString, Expression]:
   def command(info: Info, args: Seq[String]): Option[Seq[String]] =
     assert(info.parameters.forall(param => param.typeName == "Number"), "Only Number parameters allowed")
     println(s"executing ${info.name} with inputs: ${args.mkString(" ")}")

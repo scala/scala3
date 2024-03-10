@@ -39,6 +39,11 @@ class PublicInBinaryTests extends DottyBytecodeTest {
   private def checkPublicClass(classNode: ClassNode): Unit =
     assert((classNode.access & privateOrProtectedOpcode) == 0)
 
+  override def initCtx =
+    val ctx0 = super.initCtx
+    ctx0.setSetting(ctx0.settings.experimental, true)
+    ctx0.setSetting(ctx0.settings.YnoExperimental, true)
+
   @Test
   def publicInBinaryDef(): Unit = {
     val code =
