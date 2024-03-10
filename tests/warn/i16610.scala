@@ -1,3 +1,4 @@
+//> using options -Wenum-comment-discard
 /**
  * Description of enum
  */
