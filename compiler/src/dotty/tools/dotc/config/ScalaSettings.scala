@@ -388,6 +388,7 @@ private sealed trait YSettings:
   val YshowPrintErrors: Setting[Boolean] = BooleanSetting("-Yshow-print-errors", "Don't suppress exceptions thrown during tree printing.")
   val YprintTasty: Setting[Boolean] = BooleanSetting("-Yprint-tasty", "Prints the generated TASTY to stdout.")
   val YtestPickler: Setting[Boolean] = BooleanSetting("-Ytest-pickler", "Self-test for pickling functionality; should be used with -Ystop-after:pickler.")
+  val YtestPicklerCheck: Setting[Boolean] = BooleanSetting("-Ytest-pickler-check", "Self-test for pickling -print-tasty output; should be used with -Ytest-pickler.")
   val YcheckReentrant: Setting[Boolean] = BooleanSetting("-Ycheck-reentrant", "Check that compiled program does not contain vars that can be accessed from a global root.")
   val YdropComments: Setting[Boolean] = BooleanSetting("-Ydrop-docs", "Drop documentation when scanning source files.", aliases = List("-Ydrop-comments"))
   val YcookComments: Setting[Boolean] = BooleanSetting("-Ycook-docs", "Cook the documentation (type check `@usecase`, etc.)", aliases = List("-Ycook-comments"))

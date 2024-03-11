@@ -20,9 +20,12 @@ import dotty.tools.tasty.TastyBuffer.Addr
 object TastyPrinter:
 
   def showContents(bytes: Array[Byte], noColor: Boolean): String =
+    showContents(bytes, noColor, testPickler = false)
+
+  def showContents(bytes: Array[Byte], noColor: Boolean, testPickler: Boolean = false): String =
     val printer =
-      if noColor then new TastyPrinter(bytes)
-      else new TastyAnsiiPrinter(bytes)
+      if noColor then new TastyPrinter(bytes, testPickler)
+      else new TastyAnsiiPrinter(bytes, testPickler)
     printer.showContents()
 
   def main(args: Array[String]): Unit = {
@@ -62,7 +65,9 @@ object TastyPrinter:
       println(line)
   }
 
-class TastyPrinter(bytes: Array[Byte]) {
+class TastyPrinter(bytes: Array[Byte], val testPickler: Boolean) {
+
+  def this(bytes: Array[Byte]) = this(bytes, testPickler = false)
 
   class TastyPrinterUnpickler extends TastyUnpickler(bytes) {
     var namesStart: Addr = uninitialized
@@ -84,9 +89,16 @@ class TastyPrinter(bytes: Array[Byte]) {
   private def printHeader(sb: StringBuilder): Unit =
     val header = unpickler.header
     sb.append("Header:\n")
-    sb.append(s"  version: ${header.majorVersion}.${header.minorVersion}.${header.experimentalVersion}\n")
-    sb.append("  tooling: ").append(header.toolingVersion).append("\n")
-    sb.append("     UUID: ").append(header.uuid).append("\n")
+    if testPickler then
+      // these fields are not stable when the TASTy/compiler versions change, so not useful for testing
+      sb.append("  version: <elided>\n")
+      sb.append("  tooling: <elided>\n")
+      sb.append("     UUID: <elided>\n")
+    else
+      sb.append(s"  version: ${header.majorVersion}.${header.minorVersion}.${header.experimentalVersion}\n")
+      sb.append("  tooling: ").append(header.toolingVersion).append("\n")
+      sb.append("     UUID: ").append(header.uuid).append("\n")
+    end if
     sb.append("\n")
 
   private def printNames(sb: StringBuilder): Unit =
@@ -230,6 +242,8 @@ class TastyPrinter(bytes: Array[Byte]) {
       import reader.*
       sb.append(s"\n\nAttributes (${reader.endAddr.index - reader.startAddr.index} bytes, starting from $base):\n")
       while !isAtEnd do
+        // TODO: Should we elide attributes under testPickler? (i.e.
+        //   if we add new attributes many check files will need to be updated)
         val tag = readByte()
         sb.append("  ").append(attributeTagToString(tag))
         if isBooleanAttrTag(tag) then ()

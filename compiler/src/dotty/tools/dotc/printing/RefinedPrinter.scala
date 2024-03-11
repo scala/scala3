@@ -1010,7 +1010,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         var modsText = modText(constr.mods, constr.symbol, "", isType = false)
         if (!modsText.isEmpty) modsText = " " ~ modsText
         if (constr.mods.hasAnnotations && !constr.mods.hasFlags) modsText = modsText ~~ " this"
-        withEnclosingDef(constr) { addParamssText(tparamsTxt ~~ modsText, constr.trailingParamss) }
+        val ctorParamss =
+          // for fake `(x$1: Unit): Foo` constructor, don't print the param (span is not reconstructed correctly)
+          if constr.symbol.isAllOf(JavaParsers.fakeFlags) then Nil else constr.trailingParamss
+        withEnclosingDef(constr) { addParamssText(tparamsTxt ~~ modsText, ctorParamss) }
       }
     val parentsText = Text(impl.parents.map(constrText), if (ofNew) keywordStr(" with ") else ", ")
     val derivedText = Text(impl.derived.map(toText(_)), ", ")
