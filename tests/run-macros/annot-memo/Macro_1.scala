@@ -2,7 +2,7 @@
 
 import scala.annotation.{experimental, MacroAnnotation}
 import scala.quoted._
-import scala.collection.mutable
+import scala.collection.concurrent
 
 @experimental
 class memoize extends MacroAnnotation:
@@ -13,14 +13,14 @@ class memoize extends MacroAnnotation:
         (param.tpt.tpe.asType, tpt.tpe.asType) match
           case ('[t], '[u]) =>
             val cacheName = Symbol.freshName(name + "Cache")
-            val cacheSymbol = Symbol.newVal(Symbol.spliceOwner, cacheName, TypeRepr.of[mutable.Map[t, u]], Flags.Private, Symbol.noSymbol)
+            val cacheSymbol = Symbol.newVal(Symbol.spliceOwner, cacheName, TypeRepr.of[concurrent.Map[t, u]], Flags.Private, Symbol.noSymbol)
             val cacheRhs =
               given Quotes = cacheSymbol.asQuotes
-              '{ mutable.Map.empty[t, u] }.asTerm
+              '{ concurrent.TrieMap.empty[t, u] }.asTerm
             val cacheVal = ValDef(cacheSymbol, Some(cacheRhs))
             val newRhs =
               given Quotes = tree.symbol.asQuotes
-              val cacheRefExpr = Ref(cacheSymbol).asExprOf[mutable.Map[t, u]]
+              val cacheRefExpr = Ref(cacheSymbol).asExprOf[concurrent.Map[t, u]]
               val paramRefExpr = Ref(param.symbol).asExprOf[t]
               val rhsExpr = rhsTree.asExprOf[u]
               '{ $cacheRefExpr.getOrElseUpdate($paramRefExpr, $rhsExpr) }.asTerm
