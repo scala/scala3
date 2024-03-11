@@ -1,4 +1,4 @@
-//> using options -Werror -WunstableInlineAccessors -explain
+//> using options -experimental -Yno-experimental -Werror -WunstableInlineAccessors -explain
 
 package foo
 import scala.annotation.publicInBinary
