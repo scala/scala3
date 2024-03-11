@@ -697,7 +697,6 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
         |""".stripMargin
     )
 
-  // TODO: Add a separate option for hints for context bounds
   @Test def `context-bounds1` =
     check(
      """|package example
