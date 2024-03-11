@@ -1,3 +1,5 @@
+import scala.language.experimental.erasedDefinitions
+
 /** In this implementation variant of =:= (called =::=) we erase all instantiations and definitions of =::= */
 object WithNormalState {
   import Utils.*
@@ -24,5 +26,5 @@ object WithNormalState {
 
 object Utils {
   type =::=[From, To]
-  erased given tpEquals[A]: A =::= A = compiletime.erasedValue
+  erased given tpEquals[A]: (A =::= A) = compiletime.erasedValue
 }

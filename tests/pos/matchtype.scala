@@ -1,4 +1,6 @@
-import compiletime.*
+import scala.language.experimental.erasedDefinitions
+import compiletime.erasedValue
+import compiletime.ops.int.S
 object Test {
   type T[X] = X match {
     case String => Int
@@ -6,7 +8,7 @@ object Test {
   }
 
   type Len[X] <: Int = X match {
-    case Unit => 0
+    case EmptyTuple => 0
     case x *: xs => S[Len[xs]]
   }
 
@@ -28,7 +30,7 @@ object Test {
   erased val z1: Head[(Int, String)] = 22
 
   type Concat[X <: Tuple, Y <: Tuple] <: Tuple = X match {
-    case Unit => Y
+    case EmptyTuple => Y
     case x1 *: xs1 => x1 *: Concat[xs1, Y]
   }
 
@@ -55,8 +57,8 @@ object Test {
   erased val y4: Elem[(String, Int, Boolean), 2] = erasedValue[Boolean]
   erased val z4: Boolean = erasedValue[Elem[(String, Int, Boolean), 2]]
 
-  erased val y5: Concat[Unit, (String, Int)] = erasedValue[(String, Int)]
-  erased val z5: (String, Int) = erasedValue[Concat[Unit, (String, Int)]]
+  erased val y5: Concat[EmptyTuple, (String, Int)] = erasedValue[(String, Int)]
+  erased val z5: (String, Int) = erasedValue[Concat[EmptyTuple, (String, Int)]]
   erased val y6: Concat[(Boolean, Boolean), (String, Int)] = erasedValue[Boolean *: Boolean *: (String, Int)]
   erased val z6: Boolean *: Boolean *: (String, Int) = erasedValue[Concat[(Boolean, Boolean), (String, Int)]]
   erased val y7: (Boolean, Boolean, String, Int) = erasedValue[Concat[(Boolean, Boolean), String *: Int *: EmptyTuple]]
