@@ -466,7 +466,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.ref(tp).asInstanceOf[tpd.RefTree])
       def apply(sym: Symbol): Ref =
         assert(sym.isTerm)
-        withDefaultPos(tpd.ref(sym).asInstanceOf[tpd.RefTree])
+        val refTree = tpd.ref(sym) match
+          case t @ tpd.This(ident) => // not a RefTree, so we need to work around this - issue #19732
+            // ident in `This` can be a TypeIdent of sym, so we manually prepare the ref here,
+            // knowing that the owner is actually `This`.
+            val term = Select(This(sym.owner), sym)
+            term.asInstanceOf[tpd.RefTree]
+          case other => other.asInstanceOf[tpd.RefTree]
+        withDefaultPos(refTree)
     end Ref
 
     type Ident = tpd.Ident
