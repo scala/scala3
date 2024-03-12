@@ -19,7 +19,7 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
         |  def foo()/*: Unit<<scala/Unit#>>*/ = {
         |    implicit val imp: Int = 2
         |    def addOne(x: Int)(implicit one: Int)/*: Int<<scala/Int#>>*/ = x + one
-        |    val x/*: Int<<scala/Int#>>*/ = addOne(1)/*(imp<<(3:17)>>)*/
+        |    val x/*: Int<<scala/Int#>>*/ = addOne(1)/*(using imp<<(3:17)>>)*/
         |  }
         |}
         |""".stripMargin
@@ -66,7 +66,7 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
         |object Main {
         |  implicit val imp: Int = 2
         |  def addOne(x: Int)(implicit one: Int)/*: Int<<scala/Int#>>*/ = x + one
-        |  val x/*: Int<<scala/Int#>>*/ = addOne(1)/*(imp<<(3:15)>>)*/
+        |  val x/*: Int<<scala/Int#>>*/ = addOne(1)/*(using imp<<(3:15)>>)*/
         |}
         |""".stripMargin
     )
@@ -100,7 +100,7 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
         |object Main {
         |  implicit val imp: Int = 2
         |  def addOne(x: Int)(using one: Int)/*: Int<<scala/Int#>>*/ = x + one
-        |  val x/*: Int<<scala/Int#>>*/ = addOne(1)/*(imp<<(3:15)>>)*/
+        |  val x/*: Int<<scala/Int#>>*/ = addOne(1)/*(using imp<<(3:15)>>)*/
         |}
         |""".stripMargin
     )
@@ -502,7 +502,7 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
         |}
         |""".stripMargin,
      """|object Main {
-        |  val ordered/*: String<<scala/Predef.String#>>*/ = /*augmentString<<scala/Predef.augmentString().>>(*/"acb"/*)*/.sorted/*[Char<<scala/Char#>>]*//*(Char<<scala/math/Ordering.Char.>>)*/
+        |  val ordered/*: String<<scala/Predef.String#>>*/ = /*augmentString<<scala/Predef.augmentString().>>(*/"acb"/*)*/.sorted/*[Char<<scala/Char#>>]*//*(using Char<<scala/math/Ordering.Char.>>)*/
         |}
         |""".stripMargin
     )
@@ -608,18 +608,18 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
         |
         |  /*StringTestOps<<(6:17)>>(*/"foo"/*)*/ should {
         |    /*StringTestOps<<(6:17)>>(*/"checkThing1"/*)*/ in {
-        |      checkThing1[String]/*(instancesString<<(10:15)>>)*/
-        |    }/*(here<<(5:15)>>)*/
+        |      checkThing1[String]/*(using instancesString<<(10:15)>>)*/
+        |    }/*(using here<<(5:15)>>)*/
         |    /*StringTestOps<<(6:17)>>(*/"checkThing2"/*)*/ in {
-        |      checkThing2[String]/*(instancesString<<(10:15)>>, instancesString<<(10:15)>>)*/
-        |    }/*(here<<(5:15)>>)*/
-        |  }/*(subjectRegistrationFunction<<(3:15)>>)*/
+        |      checkThing2[String]/*(using instancesString<<(10:15)>>, instancesString<<(10:15)>>)*/
+        |    }/*(using here<<(5:15)>>)*/
+        |  }/*(using subjectRegistrationFunction<<(3:15)>>)*/
         |
         |  /*StringTestOps<<(6:17)>>(*/"bar"/*)*/ should {
         |    /*StringTestOps<<(6:17)>>(*/"checkThing1"/*)*/ in {
-        |      checkThing1[String]/*(instancesString<<(10:15)>>)*/
-        |    }/*(here<<(5:15)>>)*/
-        |  }/*(subjectRegistrationFunction<<(3:15)>>)*/
+        |      checkThing1[String]/*(using instancesString<<(10:15)>>)*/
+        |    }/*(using here<<(5:15)>>)*/
+        |  }/*(using subjectRegistrationFunction<<(3:15)>>)*/
         |
         |  def checkThing1[A](implicit ev: Eq[A])/*: Nothing<<scala/Nothing#>>*/ = ???
         |  def checkThing2[A](implicit ev: Eq[A], sem: Semigroup[A])/*: Nothing<<scala/Nothing#>>*/ = ???
@@ -662,6 +662,106 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
         |""".stripMargin,
      """|package example
         |case class ErrorMessage(error)
+        |""".stripMargin
+    )
+
+  @Test def `anonymous-given` =
+    check(
+     """|package example
+        |
+        |trait Ord[T]:
+        |  def compare(x: T, y: T): Int
+        |
+        |given intOrd: Ord[Int] with
+        |  def compare(x: Int, y: Int) =
+        |    if x < y then -1 else if x > y then +1 else 0
+        |
+        |given Ord[String] with
+        |  def compare(x: String, y: String) =
+        |    x.compare(y)
+        |
+        |""".stripMargin,
+     """|package example
+        |
+        |trait Ord[T]:
+        |  def compare(x: T, y: T): Int
+        |
+        |given intOrd: Ord[Int] with
+        |  def compare(x: Int, y: Int)/*: Int<<scala/Int#>>*/ =
+        |    if x < y then -1 else if x > y then +1 else 0
+        |
+        |given Ord[String] with
+        |  def compare(x: String, y: String)/*: Int<<scala/Int#>>*/ =
+        |    /*augmentString<<scala/Predef.augmentString().>>(*/x/*)*/.compare(y)
+        |
+        |""".stripMargin
+    )
+
+  @Test def `context-bounds1` =
+    check(
+     """|package example
+        |object O {
+        |  given Int = 1
+        |  def test[T: Ordering](x: T)(using Int) = ???
+        |  test(1)
+        |}
+        |""".stripMargin,
+     """|package example
+        |object O {
+        |  given Int = 1
+        |  def test[T: Ordering](x: T)(using Int)/*: Nothing<<scala/Nothing#>>*/ = ???
+        |  test/*[Int<<scala/Int#>>]*/(1)/*(using Int<<scala/math/Ordering.Int.>>, given_Int<<(2:8)>>)*/
+        |}
+        |""".stripMargin
+    )
+
+  @Test def `context-bounds2` =
+    check(
+     """|package example
+        |object O {
+        |  def test[T: Ordering](x: T) = ???
+        |  test(1)
+        |}
+        |""".stripMargin,
+     """|package example
+        |object O {
+        |  def test[T: Ordering](x: T)/*: Nothing<<scala/Nothing#>>*/ = ???
+        |  test/*[Int<<scala/Int#>>]*/(1)/*(using Int<<scala/math/Ordering.Int.>>)*/
+        |}
+        |""".stripMargin
+    )
+
+  @Test def `context-bounds3` =
+    check(
+     """|package example
+        |object O {
+        |  def test[T: Ordering](x: T)(using Int) = ???
+        |  test(1)
+        |}
+        |""".stripMargin,
+     """|package example
+        |object O {
+        |  def test[T: Ordering](x: T)(using Int)/*: Nothing<<scala/Nothing#>>*/ = ???
+        |  test/*[Int<<scala/Int#>>]*/(1)/*(using Int<<scala/math/Ordering.Int.>>)*/
+        |}
+        |""".stripMargin
+    )
+
+  @Test def `context-bounds4` =
+    check(
+     """|package example
+        |object O {
+        |  implicit val i: Int = 123
+        |  def test[T: Ordering](x: T)(implicit v: Int) = ???
+        |  test(1)
+        |}
+        |""".stripMargin,
+     """|package example
+        |object O {
+        |  implicit val i: Int = 123
+        |  def test[T: Ordering](x: T)(implicit v: Int)/*: Nothing<<scala/Nothing#>>*/ = ???
+        |  test/*[Int<<scala/Int#>>]*/(1)/*(using Int<<scala/math/Ordering.Int.>>, i<<(2:15)>>)*/
+        |}
         |""".stripMargin
     )
 }
