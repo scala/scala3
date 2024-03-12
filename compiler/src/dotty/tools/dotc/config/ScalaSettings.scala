@@ -23,18 +23,7 @@ object ScalaSettingCategories:
   val AdvancedSetting = "X"
   val VerboseSetting = "V"
 
-object ScalaSettings extends SettingGroup, AllScalaSettings:
-  val settingsByCategory: Map[String, List[Setting[_]]] = 
-    allSettings.groupBy(_.category)
-      .view.mapValues(_.toList).toMap
-      .withDefaultValue(Nil)
-  def categories: List[String] = settingsByCategory.keys.toList
-  val rootSettings: List[Setting[_]] = settingsByCategory(RootSetting)
-  val warningSettings: List[Setting[_]] = settingsByCategory(WarningSetting)
-  val forkSettings: List[Setting[_]] = settingsByCategory(ForkSetting)
-  val advancedSettings: List[Setting[_]] = settingsByCategory(AdvancedSetting)
-  val verboseSettings: List[Setting[_]] = settingsByCategory(VerboseSetting)
-  val settingsByAliases: Map[String, Setting[_]] = allSettings.flatMap(s => s.aliases.map(_ -> s)).toMap
+object ScalaSettingsProperties:
 
   private lazy val minTargetVersion = classfileVersionMap.keysIterator.map(_.toInt).min
   private lazy val maxTargetVersion = classfileVersionMap.keysIterator.map(_.toInt).max
@@ -68,6 +57,23 @@ object ScalaSettings extends SettingGroup, AllScalaSettings:
       else defaultWidth
     else defaultWidth
   }
+
+object ScalaSettings extends ScalaSettings
+
+// Kept as seperate type to avoid breaking backward compatibility
+abstract class ScalaSettings extends SettingGroup, AllScalaSettings:
+  val settingsByCategory: Map[String, List[Setting[_]]] = 
+    allSettings.groupBy(_.category)
+      .view.mapValues(_.toList).toMap
+      .withDefaultValue(Nil)
+  def categories: List[String] = settingsByCategory.keys.toList
+  val rootSettings: List[Setting[_]] = settingsByCategory(RootSetting)
+  val warningSettings: List[Setting[_]] = settingsByCategory(WarningSetting)
+  val forkSettings: List[Setting[_]] = settingsByCategory(ForkSetting)
+  val advancedSettings: List[Setting[_]] = settingsByCategory(AdvancedSetting)
+  val verboseSettings: List[Setting[_]] = settingsByCategory(VerboseSetting)
+  val settingsByAliases: Map[String, Setting[_]] = allSettings.flatMap(s => s.aliases.map(_ -> s)).toMap
+
   
 trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSettings, WarningSettings, XSettings, YSettings:
   self: SettingGroup =>
@@ -76,7 +82,7 @@ trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSetti
   val semanticdbTarget: Setting[String] = PathSetting(RootSetting, "semanticdb-target", "Specify an alternative output directory for SemanticDB files.", "")
   val semanticdbText: Setting[Boolean] = BooleanSetting(RootSetting, "semanticdb-text", "Specifies whether to include source code in SemanticDB files or not.")
 
-  val source: Setting[String] = ChoiceSetting(RootSetting, "source", "source version", "source version", ScalaSettings.supportedSourceVersions, SourceVersion.defaultSourceVersion.toString, aliases = List("--source"))
+  val source: Setting[String] = ChoiceSetting(RootSetting, "source", "source version", "source version", ScalaSettingsProperties.supportedSourceVersions, SourceVersion.defaultSourceVersion.toString, aliases = List("--source"))
   val uniqid: Setting[Boolean] = BooleanSetting(RootSetting, "uniqid", "Uniquely tag all identifiers in debugging output.", aliases = List("--unique-id"))
   val rewrite: Setting[Option[Rewrites]] = OptionSetting[Rewrites](RootSetting, "rewrite", "When used in conjunction with a `...-migration` source version, rewrites sources to migrate to new version.", aliases = List("--rewrite"))
   val fromTasty: Setting[Boolean] = BooleanSetting(RootSetting, "from-tasty", "Compile classes from tasty files. The arguments are .tasty or .jar files.", aliases = List("--from-tasty"))
@@ -119,17 +125,17 @@ trait CommonScalaSettings:
   val sourcepath: Setting[String] = PathSetting(RootSetting, "sourcepath", "Specify location(s) of source files.", Defaults.scalaSourcePath, aliases = List("--source-path"))
   val sourceroot: Setting[String] = PathSetting(RootSetting, "sourceroot", "Specify workspace root directory.", ".")
 
-  val classpath: Setting[String] = PathSetting(RootSetting, "classpath", "Specify where to find user class files.", ScalaSettings.defaultClasspath, aliases = List("-cp", "--class-path"))
+  val classpath: Setting[String] = PathSetting(RootSetting, "classpath", "Specify where to find user class files.", ScalaSettingsProperties.defaultClasspath, aliases = List("-cp", "--class-path"))
   val outputDir: Setting[AbstractFile] = OutputSetting(RootSetting, "d", "directory|jar", "Destination for generated classfiles.",
     new PlainDirectory(Directory(".")))
   val color: Setting[String] = ChoiceSetting(RootSetting, "color", "mode", "Colored output", List("always", "never"/*, "auto"*/), "always"/* "auto"*/, aliases = List("--color"))
   val verbose: Setting[Boolean] = BooleanSetting(RootSetting, "verbose", "Output messages about what the compiler is doing.", aliases = List("--verbose"))
   val version: Setting[Boolean] = BooleanSetting(RootSetting, "version", "Print product version and exit.", aliases = List("--version"))
   val help: Setting[Boolean] = BooleanSetting(RootSetting, "help", "Print a synopsis of standard options.", aliases = List("--help", "-h"))
-  val pageWidth: Setting[Int] = IntSetting(RootSetting, "pagewidth", "Set page width", ScalaSettings.defaultPageWidth, aliases = List("--page-width"))
+  val pageWidth: Setting[Int] = IntSetting(RootSetting, "pagewidth", "Set page width", ScalaSettingsProperties.defaultPageWidth, aliases = List("--page-width"))
   val silentWarnings: Setting[Boolean] = BooleanSetting(RootSetting, "nowarn", "Silence all warnings.", aliases = List("--no-warnings"))
 
-  val javaOutputVersion: Setting[String] = ChoiceSetting(RootSetting, "java-output-version", "version", "Compile code with classes specific to the given version of the Java platform available on the classpath and emit bytecode for this version. Corresponds to -release flag in javac.", ScalaSettings.supportedReleaseVersions, "", aliases = List("-release", "--release"))
+  val javaOutputVersion: Setting[String] = ChoiceSetting(RootSetting, "java-output-version", "version", "Compile code with classes specific to the given version of the Java platform available on the classpath and emit bytecode for this version. Corresponds to -release flag in javac.", ScalaSettingsProperties.supportedReleaseVersions, "", aliases = List("-release", "--release"))
 
   val deprecation: Setting[Boolean] = BooleanSetting(RootSetting, "deprecation", "Emit warning and location for usages of deprecated APIs.", aliases = List("--deprecation"))
   val feature: Setting[Boolean] = BooleanSetting(RootSetting, "feature", "Emit warning and location for usages of features that should be imported explicitly.", aliases = List("--feature"))
@@ -181,13 +187,13 @@ private sealed trait VerboseSettings:
 private sealed trait WarningSettings:
   self: SettingGroup =>
 
-  val Whelp: Setting[Boolean] = BooleanSetting(WarningSetting, "-W", "Print a synopsis of warning options.")
-  val XfatalWarnings: Setting[Boolean] = BooleanSetting(WarningSetting, "-Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
-  val WvalueDiscard: Setting[Boolean] = BooleanSetting(WarningSetting, "-Wvalue-discard", "Warn when non-Unit expression results are unused.")
-  val WNonUnitStatement = BooleanSetting(WarningSetting, "-Wnonunit-statement", "Warn when block statements are non-Unit expressions.")
-  val WenumCommentDiscard = BooleanSetting(WarningSetting, "-Wenum-comment-discard", "Warn when a comment ambiguously assigned to multiple enum cases is discarded.")
-  val WimplausiblePatterns = BooleanSetting(WarningSetting, "-Wimplausible-patterns", "Warn if comparison with a pattern value looks like it might always fail.")
-  val WunstableInlineAccessors = BooleanSetting(WarningSetting, "-WunstableInlineAccessors", "Warn an inline methods has references to non-stable binary APIs.")
+  val Whelp: Setting[Boolean] = BooleanSetting(WarningSetting, "W", "Print a synopsis of warning options.")
+  val XfatalWarnings: Setting[Boolean] = BooleanSetting(WarningSetting, "Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
+  val WvalueDiscard: Setting[Boolean] = BooleanSetting(WarningSetting, "Wvalue-discard", "Warn when non-Unit expression results are unused.")
+  val WNonUnitStatement = BooleanSetting(WarningSetting, "Wnonunit-statement", "Warn when block statements are non-Unit expressions.")
+  val WenumCommentDiscard = BooleanSetting(WarningSetting, "Wenum-comment-discard", "Warn when a comment ambiguously assigned to multiple enum cases is discarded.")
+  val WimplausiblePatterns = BooleanSetting(WarningSetting, "Wimplausible-patterns", "Warn if comparison with a pattern value looks like it might always fail.")
+  val WunstableInlineAccessors = BooleanSetting(WarningSetting, "WunstableInlineAccessors", "Warn an inline methods has references to non-stable binary APIs.")
   val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     WarningSetting,
     name = "Wunused",
@@ -338,7 +344,7 @@ private sealed trait XSettings:
   val XignoreScala2Macros: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xignore-scala2-macros", "Ignore errors when compiling code that calls Scala2 macros, these will fail at runtime.")
   val XimportSuggestionTimeout: Setting[Int] = IntSetting(AdvancedSetting, "Ximport-suggestion-timeout", "Timeout (in ms) for searching for import suggestions when errors are reported.", 8000)
   val Xsemanticdb: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xsemanticdb", "Store information in SemanticDB.", aliases = List("-Ysemanticdb"))
-  val XuncheckedJavaOutputVersion: Setting[String] = ChoiceSetting(AdvancedSetting, "Xunchecked-java-output-version", "target", "Emit bytecode for the specified version of the Java platform. This might produce bytecode that will break at runtime. Corresponds to -target flag in javac. When on JDK 9+, consider -java-output-version as a safer alternative.", ScalaSettings.supportedTargetVersions, "", aliases = List("-Xtarget", "--Xtarget"))
+  val XuncheckedJavaOutputVersion: Setting[String] = ChoiceSetting(AdvancedSetting, "Xunchecked-java-output-version", "target", "Emit bytecode for the specified version of the Java platform. This might produce bytecode that will break at runtime. Corresponds to -target flag in javac. When on JDK 9+, consider -java-output-version as a safer alternative.", ScalaSettingsProperties.supportedTargetVersions, "", aliases = List("-Xtarget", "--Xtarget"))
   val XcheckMacros: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xcheck-macros", "Check some invariants of macro generated code while expanding macros", aliases = List("--Xcheck-macros"))
   val XmainClass: Setting[String] = StringSetting(AdvancedSetting, "Xmain-class", "path", "Class for manifest's Main-Class entry (only useful with -d <jar>)", "")
   val XimplicitSearchLimit: Setting[Int] = IntSetting(AdvancedSetting, "Ximplicit-search-limit", "Maximal number of expressions to be generated in an implicit search", 50000)
