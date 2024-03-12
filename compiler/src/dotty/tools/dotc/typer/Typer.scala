@@ -714,9 +714,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val elems = qual.tpe.widenTermRefExpr.tupleElementTypes.getOrElse(Nil)
       typedSelect(tree, pt, qual.cast(defn.tupleType(elems)))
     else
-      val tree1 = tryExtensionOrConversion(
+      val tree1 = {
+        if selName.isTypeName then EmptyTree
+        else tryExtensionOrConversion(
           tree, pt, IgnoredProto(pt), qual, ctx.typerState.ownedVars, this, inSelect = true)
-        .orElse {
+        }.orElse {
           if ctx.gadt.isNarrowing then
             // try GADT approximation if we're trying to select a member
             // Member lookup cannot take GADTs into account b/c of cache, so we
