@@ -17,8 +17,6 @@ import Inferencing.*
 import ErrorReporting.*
 import util.SourceFile
 import TypeComparer.necessarySubType
-import dotty.tools.dotc.core.Flags.Transparent
-import dotty.tools.dotc.config.{ Feature, SourceVersion }
 
 import scala.annotation.internal.sharable
 import dotty.tools.dotc.util.Spans.{NoSpan, Span}
@@ -108,7 +106,7 @@ object ProtoTypes {
       if !res then ctx.typerState.constraint = savedConstraint
       res
 
-    /** Constrain result with special case if `meth` is a transparent inlineable method in an inlineable context.
+    /** Constrain result with special case if `meth` is an inlineable method in an inlineable context.
      *  In that case, we should always succeed and not constrain type parameters in the expected type,
      *  because the actual return type can be a subtype of the currently known return type.
      *  However, we should constrain parameters of the declared return type. This distinction is
@@ -116,21 +114,8 @@ object ProtoTypes {
      */
     def constrainResult(meth: Symbol, mt: Type, pt: Type)(using Context): Boolean =
       if (Inlines.isInlineable(meth)) {
-        // Stricter behaviour in 3.4+: do not apply `wildApprox` to non-transparent inlines
-        if (Feature.sourceVersion.isAtLeast(SourceVersion.`3.4`)) {
-          if (meth.is(Transparent)) {
-            constrainResult(mt, wildApprox(pt))
-            // do not constrain the result type of transparent inline methods
-            true
-          } else {
-            constrainResult(mt, pt)
-          }
-        } else {
-          // Best-effort to fix https://github.com/scala/scala3/issues/9685 in the 3.3.x series
-          // while preserving source compatibility as much as possible
-          val methodMatchedType = constrainResult(mt, wildApprox(pt))
-          meth.is(Transparent) || methodMatchedType
-        }
+        constrainResult(mt, wildApprox(pt))
+        true
       }
       else constrainResult(mt, pt)
   }
