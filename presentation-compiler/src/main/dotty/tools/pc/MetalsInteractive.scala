@@ -220,7 +220,7 @@ object MetalsInteractive:
           then List((head.symbol, head.typeOpt))
           /* Type tree for List(1) has an Int type variable, which has span
            * but doesn't exist in code.
-           * https://github.com/lampepfl/dotty/issues/15937
+           * https://github.com/scala/scala3/issues/15937
            */
           else if head.isInstanceOf[TypeTree] then
             enclosingSymbolsWithExpressionType(tail, pos, indexed)

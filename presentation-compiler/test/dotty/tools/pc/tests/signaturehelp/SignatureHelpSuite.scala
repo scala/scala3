@@ -191,7 +191,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |""".stripMargin
     )
 
-  // https://github.com/lampepfl/dotty/issues/15244
+  // https://github.com/scala/scala3/issues/15244
   @Test def `vararg` =
     check(
       """

@@ -4,7 +4,7 @@ import scala.language.strictEquality
 
 /**
   * Multiversal Equality: https://dotty.epfl.ch/docs/reference/contextual/multiversal-equality.html
-  * scala.Eq definition: https://github.com/lampepfl/dotty/blob/master/library/src/scala/CanEqual.scala
+  * scala.Eq definition: https://github.com/scala/scala3/blob/master/library/src/scala/CanEqual.scala
   */
 object MultiversalEquality {
 

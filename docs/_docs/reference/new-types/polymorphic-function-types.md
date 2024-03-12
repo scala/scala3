@@ -33,7 +33,7 @@ In Scala 3 this is now possible. The type of the `bar` value above is
 This type describes function values which take a type `A` as a parameter,
 then take a list of type `List[A]`, and return a list of the same type `List[A]`.
 
-[More details](https://github.com/lampepfl/dotty/pull/4672)
+[More details](https://github.com/scala/scala3/pull/4672)
 
 
 ## Example Usage

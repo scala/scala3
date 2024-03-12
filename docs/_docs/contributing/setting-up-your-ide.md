@@ -34,7 +34,7 @@ want to make sure you do two things:
 
 1. You'll want to find and change the following under
     `commonBootstrappedSettings` which is found in the
-    [`Build.scala`](https://github.com/lampepfl/dotty/blob/main/project/Build.scala)
+    [`Build.scala`](https://github.com/scala/scala3/blob/main/project/Build.scala)
     file.
 
 ```diff

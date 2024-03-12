@@ -15,11 +15,11 @@ The issue supervisor is responsible for:
   - Modifying issue labels to best capture information about the issues
     - Attempting to reproduce the issue (or label “stat:cannot reproduce”)
     - Further minimizing the issue or asking the reporter of the issue to minimize it correctly (or label “stat:needs minimization”)
-  - Identifying which issues are of considerable importance and bringing them to the attention of the team during the Dotty meeting, where they can be filtered and added to the [Future Versions](https://github.com/lampepfl/dotty/milestone/46) milestone.
+  - Identifying which issues are of considerable importance and bringing them to the attention of the team during the Dotty meeting, where they can be filtered and added to the [Future Versions](https://github.com/scala/scala3/milestone/46) milestone.
   - Identifying if a report is really a feature request and if so, converting it to
-    a [feature request discussion](https://github.com/lampepfl/dotty/discussions/categories/feature-requests).
+    a [feature request discussion](https://github.com/scala/scala3/discussions/categories/feature-requests).
 - Keeping an eye on new
-[discussions](https://github.com/lampepfl/dotty/discussions), making sure they
+[discussions](https://github.com/scala/scala3/discussions), making sure they
 don't go unanswered and also correctly labeling new feature requests.
 
 Other core teammates are responsible for providing information to the issue supervisor in a timely manner when it is requested if they have that information.

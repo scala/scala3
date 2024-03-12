@@ -53,7 +53,7 @@ class BackticksAreFine6 extends FooPlus[BazPlus[Int => `-*`, `-*`, Int]]
 class BackticksAreFine7 extends Foo[λ[`-x` => BazPlus[x => `-*`, Int, x]]]
 class BackticksAreFine8 extends Foo[λ[`x` => BazPlus[x => `*`, Int, x]]]
 
-// https://github.com/lampepfl/dotty/issues/13141
+// https://github.com/scala/scala3/issues/13141
 // i13141
 object A {
   class X { type Blah = Int }

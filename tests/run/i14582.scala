@@ -1,4 +1,4 @@
-// https://github.com/lampepfl/dotty/issues/14582
+// https://github.com/scala/scala3/issues/14582
 @main def Test() =
   val map = Map(
     "a" -> 1,

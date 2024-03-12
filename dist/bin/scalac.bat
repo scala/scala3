@@ -55,7 +55,7 @@ if defined _CONSUME_REMAINING (
     set _SCALA_ARGS=!_SCALA_ARGS! "%__ARG%"
     shift
 ) else if "%__ARG%"=="-Oshort" (
-    @rem optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
+    @rem optimize for short-running applications, see https://github.com/scala/scala3/issues/222
     set _JAVA_ARGS=!_JAVA_ARGS! "-XX:+TieredCompilation" "-XX:TieredStopAtLevel=1"
     set _SCALA_ARGS=!_SCALA_ARGS! -Oshort
     shift

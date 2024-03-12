@@ -1,4 +1,4 @@
-// https://github.com/lampepfl/dotty/issues/14642
+// https://github.com/scala/scala3/issues/14642
 case object A
 case class B()
 case class C()

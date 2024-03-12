@@ -24,23 +24,23 @@ You can learn more about Dotty on our [website](https://dotty.epfl.ch).
 <!--more-->
 
 This is our ninth scheduled release according to our [6-week release schedule](https://dotty.epfl.ch/docs/usage/version-numbers.html).
-The [previous technology preview](https://github.com/lampepfl/dotty/releases/tag/0.8.0-RC1) added
+The [previous technology preview](https://github.com/scala/scala3/releases/tag/0.8.0-RC1) added
 support for sbt 1, introduced improved unchecked warnings and improved SAM type support.
 
 ## What’s new in the 0.9.0-RC1 technology preview?
 
-### Improved REPL [#4680](https://github.com/lampepfl/dotty/pull/4680)
+### Improved REPL [#4680](https://github.com/scala/scala3/pull/4680)
 The REPL now uses [JLine 3](https://github.com/jline/jline3) under the hood which improves on
 many aspects such as, auto-completions and multi-line editing. The REPL now also works on Windows!
 
 
-### Documentation support in the IDE [#4461](https://github.com/lampepfl/dotty/pull/4461), [#4648](https://github.com/lampepfl/dotty/pull/4648)
+### Documentation support in the IDE [#4461](https://github.com/scala/scala3/pull/4461), [#4648](https://github.com/scala/scala3/pull/4648)
 The Dotty IDE will now display documentation while hovering over symbols that were previously
 compiled by the Dotty compiler. In the future, we plan to let users query the documentation
 in the REPL as well.
 
 
-### Drop requirement that implicit functions must be non-empty [#4549](https://github.com/lampepfl/dotty/pull/4549)
+### Drop requirement that implicit functions must be non-empty [#4549](https://github.com/scala/scala3/pull/4549)
 We remove the arbitrary restriction that parameters of implicit functions must by non-empty.
 We can now write:
 ```scala
@@ -63,7 +63,7 @@ timed {
 Both definitions above are equivalent.
 
 
-### Emit feature warnings for implicit conversions [#4229](https://github.com/lampepfl/dotty/pull/4229)
+### Emit feature warnings for implicit conversions [#4229](https://github.com/scala/scala3/pull/4229)
 Implicit conversions are easily the most misused feature in Scala. We now emit feature warnings
 when encountering an implicit conversion definition, just like Scala 2 does.
 
@@ -76,7 +76,7 @@ unless the conversion is:
   (we might extend this to more conversions).
 
 
-### Optimise s and raw interpolators [#3961](https://github.com/lampepfl/dotty/pull/3961)
+### Optimise s and raw interpolators [#3961](https://github.com/scala/scala3/pull/3961)
 `s` and `raw` string interpolators were known to be slower than their not type-safe counterparts:
 ```scala
 s"Hello $name!"
@@ -89,7 +89,7 @@ The compiler will now desugar the former into the latter. Special thanks to
 compiler!
 
 
-### Support for compiler plugins [#3438](https://github.com/lampepfl/dotty/pull/3438)
+### Support for compiler plugins [#3438](https://github.com/scala/scala3/pull/3438)
 Dotty now supports Compiler plugins. Compiler plugins let you customize the compiler pipeline
 without having to modify the compiler source code. A major difference compared to Scala 2 is
 that Dotty plugins must run after the type checker. Being able to influence normal type checking
@@ -123,7 +123,7 @@ the IDE sections of the [getting-started page](https://docs.scala-lang.org/scala
 ### Standalone installation
 Releases are available for download on the _Releases_
 section of the Dotty repository:
-[https://github.com/lampepfl/dotty/releases](https://github.com/lampepfl/dotty/releases)
+[https://github.com/scala/scala3/releases](https://github.com/scala/scala3/releases)
 
 We also provide a [homebrew](https://brew.sh/) package that can be installed by running:
 
@@ -144,7 +144,7 @@ installing anything. Note however that Scastie only supports Dotty 0.7.0-RC1.
 ## Let us know what you think!
 If you have questions or any sort of feedback, feel free to send us a message on our
 [Gitter channel](https://gitter.im/lampepfl/dotty). If you encounter a bug, please
-[open an issue on GitHub](https://github.com/lampepfl/dotty/issues/new).
+[open an issue on GitHub](https://github.com/scala/scala3/issues/new).
 
 ## Contributing
 Thank you to all the contributors who made this release possible!
@@ -180,7 +180,7 @@ According to `git shortlog -sn --no-merges 0.8.0..0.9.0-RC1` these are:
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
 Head to our [Getting Started page for new contributors](https://dotty.epfl.ch/docs/contributing/getting-started.html),
-and have a look at some of the [good first issues](https://github.com/lampepfl/dotty/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
+and have a look at some of the [good first issues](https://github.com/scala/scala3/issues?q=is%3Aissue+is%3Aopen+label%3Aexp%3Anovice).
 They make perfect entry-points into hacking on the compiler.
 
 We are looking forward to having you join the team of contributors.
