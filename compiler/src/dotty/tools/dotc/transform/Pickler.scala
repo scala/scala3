@@ -304,14 +304,33 @@ class Pickler extends Phase {
                     |  diff before-pickling.txt after-pickling.txt""")
   end testSame
 
-  private def testSamePrinted(printed: String, checkContents: String, cls: ClassSymbol, check: AbstractFile)(using Context) =
-    import java.nio.charset.StandardCharsets.UTF_8
-    def normal(s: String) = new String(s.getBytes(UTF_8), UTF_8)
-    val unequal = printed.length() != checkContents.length() || normal(printed) != normal(checkContents)
-    if unequal then
+  private def testSamePrinted(printed: String, checkContents: String, cls: ClassSymbol, check: AbstractFile)(using Context): Unit = {
+    if hasDiff(printed, checkContents) then
       output("after-printing.txt", printed)
       report.error(em"""TASTy printer difference for $cls in ${cls.source}, for details:
                     |
                     |  diff ${check.toString} after-printing.txt""")
-  end testSamePrinted
+  }
+
+  /** Reuse diff logic from compiler/test/dotty/tools/vulpix/FileDiff.scala */
+  private def hasDiff(actual: String, expect: String): Boolean =
+    import scala.util.Using
+    import scala.io.Source
+    val actualLines = Using(Source.fromString(actual))(_.getLines().toList).get
+    val expectLines = Using(Source.fromString(expect))(_.getLines().toList).get
+    !matches(actualLines, expectLines)
+
+  private def matches(actual: String, expect: String): Boolean = {
+    import java.io.File
+    val actual1 = actual.stripLineEnd
+    val expect1  = expect.stripLineEnd
+
+    // handle check file path mismatch on windows
+    actual1 == expect1 || File.separatorChar == '\\' && actual1.replace('\\', '/') == expect1
+  }
+
+  private def matches(actual: Seq[String], expect: Seq[String]): Boolean = {
+    actual.length == expect.length
+    && actual.lazyZip(expect).forall(matches)
+  }
 }
