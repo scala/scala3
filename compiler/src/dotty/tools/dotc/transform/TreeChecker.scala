@@ -198,6 +198,17 @@ object TreeChecker {
     }
   }.apply(tp0)
 
+  def checkParents(sym: ClassSymbol, parents: List[tpd.Tree])(using Context): Unit =
+    val symbolParents = sym.classInfo.parents.map(_.dealias.typeSymbol)
+    val treeParents = parents.map(_.tpe.dealias.typeSymbol)
+    assert(symbolParents == treeParents,
+      i"""Parents of class symbol differs from the parents in the tree for $sym
+          |
+          |Parents in symbol: $symbolParents
+          |Parents in tree: $treeParents
+          |""".stripMargin)
+  end checkParents
+
   /** Run some additional checks on the nodes of the trees.  Specifically:
    *
    *    - TypeTree can only appear in TypeApply args, New, Typed tpt, Closure
@@ -570,14 +581,7 @@ object TreeChecker {
       assert(ctx.owner.isClass)
       val sym = ctx.owner.asClass
       if !sym.isPrimitiveValueClass then
-        val symbolParents = sym.classInfo.parents.map(_.dealias.typeSymbol)
-        val treeParents = impl.parents.map(_.tpe.dealias.typeSymbol)
-        assert(symbolParents == treeParents,
-        i"""Parents of class symbol differs from the parents in the tree for $sym
-            |
-            |Parents in symbol: $symbolParents
-            |Parents in tree: $treeParents
-            |""".stripMargin)
+        TreeChecker.checkParents(sym, impl.parents)
     }
 
     override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree = {
