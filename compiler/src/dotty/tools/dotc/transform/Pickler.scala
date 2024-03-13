@@ -307,9 +307,10 @@ class Pickler extends Phase {
   private def testSamePrinted(printed: String, checkContents: String, cls: ClassSymbol, check: AbstractFile)(using Context): Unit = {
     if hasDiff(printed, checkContents) then
       output("after-printing.txt", printed)
-      report.error(em"""TASTy printer difference for $cls in ${cls.source}, for details:
-                    |
-                    |  diff ${check.toString} after-printing.txt""")
+      report.error(em"""TASTy printer difference for $cls in ${cls.source}, did not match ${check},
+                    |  output dumped in after-printing.txt, check diff with `git diff --no-index -- after-printing.txt ${check}`
+                    |  actual output:
+                    |$printed""")
   }
 
   /** Reuse diff logic from compiler/test/dotty/tools/vulpix/FileDiff.scala */
