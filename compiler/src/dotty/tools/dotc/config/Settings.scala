@@ -25,6 +25,9 @@ object Settings:
   val OptionTag: ClassTag[Option[?]]     = ClassTag(classOf[Option[?]])
   val OutputTag: ClassTag[AbstractFile]  = ClassTag(classOf[AbstractFile])
 
+  trait SettingCategory:
+    def prefixLetter: String
+
   class SettingsState(initialValues: Seq[Any], initialChanged: Set[Int] = Set.empty):
     private val values = ArrayBuffer(initialValues*)
     private val changed: mutable.Set[Int] = initialChanged.to(mutable.Set)
@@ -59,8 +62,14 @@ object Settings:
       ArgsSummary(sstate, arguments.tail, errors, warnings :+ msg)
   }
 
+  @unshared
+  val settingCharacters = "[a-zA-Z0-9_\\-]*".r
+  def validateSettingString(name: String): Unit = 
+    assert(settingCharacters.matches(name), s"Setting string $name contains invalid characters")
+
+
   case class Setting[T: ClassTag] private[Settings] (
-    category: String,
+    category: SettingCategory,
     name: String,
     description: String,
     default: T,
@@ -75,8 +84,9 @@ object Settings:
     // kept only for -Ykind-projector option compatibility
     legacyArgs: Boolean = false)(private[Settings] val idx: Int) {
   
-    
-    assert(name.startsWith(s"-$category"), s"Setting $name does not start with category -$category")
+    validateSettingString(prefix.getOrElse(name))
+    aliases.foreach(validateSettingString)
+    assert(name.startsWith(s"-${category.prefixLetter}"), s"Setting $name does not start with category -$category")
     assert(legacyArgs || !choices.exists(_.contains("")), s"Empty string is not supported as a choice for setting $name")
     // Without the following assertion, it would be easy to mistakenly try to pass a file to a setting that ignores invalid args.
     // Example: -opt Main.scala would be interpreted as -opt:Main.scala, and the source file would be ignored.
@@ -319,64 +329,58 @@ object Settings:
       setting
     }
 
-    @unshared
-    val settingCharacters = "[a-zA-Z0-9_\\-]*".r
-    def validateSetting(setting: String): String =
-      assert(settingCharacters.matches(setting), s"Setting $setting contains invalid characters")
-      setting 
-
-    def validateAndPrependName(name: String): String =
+    def prependName(name: String): String =
       assert(!name.startsWith("-"), s"Setting $name cannot start with -")
-      "-" + validateSetting(name)
+      "-" + name
 
-    def BooleanSetting(category: String, name: String, descr: String, initialValue: Boolean = false, aliases: List[String] = Nil): Setting[Boolean] =
-      publish(Setting(category, validateAndPrependName(name), descr, initialValue, aliases = aliases.map(validateSetting)))
+    def BooleanSetting(category: SettingCategory, name: String, descr: String, initialValue: Boolean = false, aliases: List[String] = Nil): Setting[Boolean] =
+      publish(Setting(category, prependName(name), descr, initialValue, aliases = aliases))
 
-    def StringSetting(category: String, name: String, helpArg: String, descr: String, default: String, aliases: List[String] = Nil): Setting[String] =
-      publish(Setting(category, validateAndPrependName(name), descr, default, helpArg, aliases = aliases.map(validateSetting)))
+    def StringSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: String, aliases: List[String] = Nil): Setting[String] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases))
 
-    def ChoiceSetting(category: String, name: String, helpArg: String, descr: String, choices: List[String], default: String, aliases: List[String] = Nil): Setting[String] =
-      publish(Setting(category, validateAndPrependName(name), descr, default, helpArg, Some(choices), aliases = aliases.map(validateSetting)))
+    def ChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: String, aliases: List[String] = Nil): Setting[String] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases))
 
     // Allows only args after :, but supports empty string as a choice. Used for -Ykind-projector
-    def LegacyChoiceSetting(category: String, name: String, helpArg: String, descr: String, choices: List[String], default: String, aliases: List[String] = Nil): Setting[String] =
-      publish(Setting(category, validateAndPrependName(name), descr, default, helpArg, Some(choices), aliases = aliases.map(validateSetting), legacyArgs = true))
+    def LegacyChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: String, aliases: List[String] = Nil): Setting[String] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases, legacyArgs = true))
 
-    def MultiChoiceSetting(category: String, name: String, helpArg: String, descr: String, choices: List[String], default: List[String], aliases: List[String] = Nil): Setting[List[String]] =
-      publish(Setting(category, validateAndPrependName(name), descr, default, helpArg, Some(choices), aliases = aliases.map(validateSetting)))
+    def MultiChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: List[String], aliases: List[String] = Nil): Setting[List[String]] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases))
 
-    def MultiChoiceHelpSetting(category: String, name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]], aliases: List[String] = Nil): Setting[List[ChoiceWithHelp[String]]] =
-      publish(Setting(category, validateAndPrependName(name), descr, default, helpArg, Some(choices), aliases = aliases.map(validateSetting)))
+    def MultiChoiceHelpSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]], aliases: List[String] = Nil): Setting[List[ChoiceWithHelp[String]]] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases))
 
-    def IntSetting(category: String, name: String, descr: String, default: Int, aliases: List[String] = Nil): Setting[Int] =
-      publish(Setting(category, validateAndPrependName(name), descr, default, aliases = aliases.map(validateSetting)))
+    def IntSetting(category: SettingCategory, name: String, descr: String, default: Int, aliases: List[String] = Nil): Setting[Int] =
+      publish(Setting(category, prependName(name), descr, default, aliases = aliases))
 
-    def IntChoiceSetting(category: String, name: String, descr: String, choices: Seq[Int], default: Int): Setting[Int] =
-      publish(Setting(category, validateAndPrependName(name), descr, default, choices = Some(choices)))
+    def IntChoiceSetting(category: SettingCategory, name: String, descr: String, choices: Seq[Int], default: Int): Setting[Int] =
+      publish(Setting(category, prependName(name), descr, default, choices = Some(choices)))
 
-    def MultiStringSetting(category: String, name: String, helpArg: String, descr: String, default: List[String] = Nil, aliases: List[String] = Nil): Setting[List[String]] =
-      publish(Setting(category, validateAndPrependName(name), descr, default, helpArg, aliases = aliases.map(validateSetting)))
+    def MultiStringSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: List[String] = Nil, aliases: List[String] = Nil): Setting[List[String]] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases))
 
-    def OutputSetting(category: String, name: String, helpArg: String, descr: String, default: AbstractFile): Setting[AbstractFile] =
-      publish(Setting(category, validateAndPrependName(name), descr, default, helpArg))
+    def OutputSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: AbstractFile): Setting[AbstractFile] =
+      publish(Setting(category, prependName(name), descr, default, helpArg))
 
-    def PathSetting(category: String, name: String, descr: String, default: String, aliases: List[String] = Nil): Setting[String] =
-      publish(Setting(category, validateAndPrependName(name), descr, default, aliases = aliases.map(validateSetting)))
+    def PathSetting(category: SettingCategory, name: String, descr: String, default: String, aliases: List[String] = Nil): Setting[String] =
+      publish(Setting(category, prependName(name), descr, default, aliases = aliases))
 
-    def PhasesSetting(category: String, name: String, descr: String, default: String = "", aliases: List[String] = Nil): Setting[List[String]] =
-      publish(Setting(category, validateAndPrependName(name), descr, if (default.isEmpty) Nil else List(default), aliases = aliases.map(validateSetting)))
+    def PhasesSetting(category: SettingCategory, name: String, descr: String, default: String = "", aliases: List[String] = Nil): Setting[List[String]] =
+      publish(Setting(category, prependName(name), descr, if (default.isEmpty) Nil else List(default), aliases = aliases))
 
-    def PrefixSetting(category: String, name: String, descr: String): Setting[List[String]] =
+    def PrefixSetting(category: SettingCategory, name: String, descr: String): Setting[List[String]] =
       val prefix = name.takeWhile(_ != '<')
-      publish(Setting(category, "-" + name, descr, Nil, prefix = Some(validateSetting(prefix))))
+      publish(Setting(category, "-" + name, descr, Nil, prefix = Some(prefix)))
 
-    def VersionSetting(category: String, name: String, descr: String, default: ScalaVersion = NoScalaVersion): Setting[ScalaVersion] =
-      publish(Setting(category, validateAndPrependName(name), descr, default))
+    def VersionSetting(category: SettingCategory, name: String, descr: String, default: ScalaVersion = NoScalaVersion): Setting[ScalaVersion] =
+      publish(Setting(category, prependName(name), descr, default))
 
-    def OptionSetting[T: ClassTag](category: String, name: String, descr: String, aliases: List[String] = Nil): Setting[Option[T]] =
-      publish(Setting(category, validateAndPrependName(name), descr, None, propertyClass = Some(summon[ClassTag[T]].runtimeClass), aliases = aliases.map(validateSetting)))
+    def OptionSetting[T: ClassTag](category: SettingCategory, name: String, descr: String, aliases: List[String] = Nil): Setting[Option[T]] =
+      publish(Setting(category, prependName(name), descr, None, propertyClass = Some(summon[ClassTag[T]].runtimeClass), aliases = aliases))
     
-    def DeprecatedSetting(category: String, name: String, descr: String, deprecationMsg: String): Setting[Boolean] =
-      publish(Setting(category, validateAndPrependName(name), descr, false, deprecationMsg = Some(deprecationMsg)))
+    def DeprecatedSetting(category: SettingCategory, name: String, descr: String, deprecationMsg: String): Setting[Boolean] =
+      publish(Setting(category, prependName(name), descr, false, deprecationMsg = Some(deprecationMsg)))
   }
 end Settings

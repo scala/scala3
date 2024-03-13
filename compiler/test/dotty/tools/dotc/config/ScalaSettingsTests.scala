@@ -3,7 +3,7 @@ package config
 
 import CommandLineParser.tokenize
 import Settings._
-
+import dotty.tools.dotc.config.ScalaSettingCategories._
 import org.junit.Test
 import org.junit.Assert._
 import core.Decorators.toMessage
@@ -12,7 +12,7 @@ class ScalaSettingsTests:
 
   @Test def `A setting with aliases is accepted`: Unit =
     class MySettings extends SettingGroup:
-      val classpath: Setting[String] = PathSetting("", "classpath", "Specify where to find user class files.", ".", aliases = List("--class-path", "-cp"))
+      val classpath: Setting[String] = PathSetting(RootSetting, "classpath", "Specify where to find user class files.", ".", aliases = List("--class-path", "-cp"))
     val settings = MySettings()
     val args = tokenize("-cp path/to/classes1:other/path/to/classes2")
     val summary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
@@ -25,7 +25,7 @@ class ScalaSettingsTests:
 
   @Test def `A multistring setting is multivalued`: Unit =
     class SUT extends SettingGroup:
-      val language: Setting[List[String]] = MultiStringSetting("", "language", "feature", "Enable one or more language features.")
+      val language: Setting[List[String]] = MultiStringSetting(RootSetting, "language", "feature", "Enable one or more language features.")
     val sut  = SUT()
     val args = tokenize("-language:implicitConversions,dynamics")
     val sumy = ArgsSummary(sut.defaultState, args, errors = Nil, warnings = Nil)
@@ -39,7 +39,7 @@ class ScalaSettingsTests:
 
   @Test def `t9719 Apply -language more than once`: Unit =
     class SUT extends SettingGroup:
-      val language: Setting[List[String]] = MultiStringSetting("", "language", "feature", "Enable one or more language features.")
+      val language: Setting[List[String]] = MultiStringSetting(RootSetting, "language", "feature", "Enable one or more language features.")
     val sut  = SUT()
     val args = tokenize("-language:implicitConversions -language:dynamics")
     val sumy = ArgsSummary(sut.defaultState, args, errors = Nil, warnings = Nil)
@@ -53,7 +53,7 @@ class ScalaSettingsTests:
 
   @Test def `Warn if multistring element is supplied multiply`: Unit =
     class SUT extends SettingGroup:
-      val language: Setting[List[String]] = MultiStringSetting("", "language", "feature", "Enable one or more language features.")
+      val language: Setting[List[String]] = MultiStringSetting(RootSetting, "language", "feature", "Enable one or more language features.")
     val sut  = SUT()
     val args = tokenize("-language:dynamics -language:implicitConversions -language:dynamics")
     val sumy = ArgsSummary(sut.defaultState, args, errors = Nil, warnings = Nil)

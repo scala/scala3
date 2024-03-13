@@ -2,9 +2,8 @@ package dotty.tools.dotc
 package config
 
 import scala.language.unsafeNulls
-import dotty.tools.backend.jvm.BackendUtils.classfileVersionMap
 import dotty.tools.dotc.config.PathResolver.Defaults
-import dotty.tools.dotc.config.Settings.{Setting, SettingGroup}
+import dotty.tools.dotc.config.Settings.{Setting, SettingGroup, SettingCategory}
 import dotty.tools.dotc.config.SourceVersion
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.rewrites.Rewrites
@@ -16,62 +15,32 @@ import scala.util.chaining.*
 
 import java.util.zip.Deflater
 
-object ScalaSettingCategories:
-  val RootSetting = ""
-  val WarningSetting = "W"
-  val ForkSetting = "Y"
-  val AdvancedSetting = "X"
-  val VerboseSetting = "V"
-
-object ScalaSettingsProperties:
-
-  private lazy val minTargetVersion = classfileVersionMap.keysIterator.map(_.toInt).min
-  private lazy val maxTargetVersion = classfileVersionMap.keysIterator.map(_.toInt).max
-
-  def supportedTargetVersions: List[String] =
-    (minTargetVersion to maxTargetVersion).toList.map(_.toString)
-
-  def supportedReleaseVersions: List[String] =
-    if scala.util.Properties.isJavaAtLeast("9") then
-      val jdkVersion = JDK9Reflectors.runtimeVersionMajor(JDK9Reflectors.runtimeVersion()).intValue()
-      val maxVersion = Math.min(jdkVersion, maxTargetVersion)
-      (minTargetVersion to maxVersion).toList.map(_.toString)
-    else List(minTargetVersion).map(_.toString)
-
-  def supportedScalaReleaseVersions: List[String] =
-    ScalaRelease.values.toList.map(_.show)
-
-  def supportedSourceVersions: List[String] =
-    SourceVersion.values.toList.map(_.toString)
-
-  def defaultClasspath: String = sys.env.getOrElse("CLASSPATH", ".")
-
-  def defaultPageWidth: Int = {
-    val defaultWidth = 80
-    val columnsVar = System.getenv("COLUMNS")
-    if columnsVar != null then columnsVar.toInt
-    else if Properties.isWin then
-      val ansiconVar = System.getenv("ANSICON") // eg. "142x32766 (142x26)"
-      if ansiconVar != null && ansiconVar.matches("[0-9]+x.*") then
-        ansiconVar.substring(0, ansiconVar.indexOf("x")).toInt
-      else defaultWidth
-    else defaultWidth
-  }
+enum ScalaSettingCategories(val prefixLetter: String) extends SettingCategory:
+  // Root settings, a category for setting that are used to configure the core compilation process
+  case RootSetting extends ScalaSettingCategories("")
+  // Warning settings, a category for settings that are used to enable and configure warnings
+  case WarningSetting extends ScalaSettingCategories("W")
+  // Fork / private settings, a category for settings that enable private or advanced features, mainly used for debugging the compiler
+  case ForkSetting extends ScalaSettingCategories("Y")
+  // Advanced settings, a category for settings that enable advanced, often unstable, features
+  case AdvancedSetting extends ScalaSettingCategories("X")
+  // Verbose settings, a category to configure the verbosity of the compiler
+  case VerboseSetting extends ScalaSettingCategories("V")
 
 object ScalaSettings extends ScalaSettings
 
 // Kept as seperate type to avoid breaking backward compatibility
 abstract class ScalaSettings extends SettingGroup, AllScalaSettings:
-  val settingsByCategory: Map[String, List[Setting[_]]] = 
+  val settingsByCategory: Map[SettingCategory, List[Setting[_]]] = 
     allSettings.groupBy(_.category)
       .view.mapValues(_.toList).toMap
       .withDefaultValue(Nil)
-  def categories: List[String] = settingsByCategory.keys.toList
-  val rootSettings: List[Setting[_]] = settingsByCategory(RootSetting)
-  val warningSettings: List[Setting[_]] = settingsByCategory(WarningSetting)
-  val forkSettings: List[Setting[_]] = settingsByCategory(ForkSetting)
-  val advancedSettings: List[Setting[_]] = settingsByCategory(AdvancedSetting)
-  val verboseSettings: List[Setting[_]] = settingsByCategory(VerboseSetting)
+  def categories: List[SettingCategory] = settingsByCategory.keys.toList.sortBy(_.prefixLetter)
+  val rootSettings: List[Setting[_]] = settingsByCategory(RootSetting).sortBy(_.name)
+  val warningSettings: List[Setting[_]] = settingsByCategory(WarningSetting).sortBy(_.name)
+  val forkSettings: List[Setting[_]] = settingsByCategory(ForkSetting).sortBy(_.name)
+  val advancedSettings: List[Setting[_]] = settingsByCategory(AdvancedSetting).sortBy(_.name)
+  val verboseSettings: List[Setting[_]] = settingsByCategory(VerboseSetting).sortBy(_.name)
   val settingsByAliases: Map[String, Setting[_]] = allSettings.flatMap(s => s.aliases.map(_ -> s)).toMap
 
   
