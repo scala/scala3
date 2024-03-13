@@ -27,7 +27,7 @@ Names (217 bytes, starting from 80):
     20: T
     21: Nothing
     22: Positions
-    23: tests/pos/i19806/J_SCALA_ONLY.java
+    23: <elided source file name>
     24: Comments
     25: Attributes
 
@@ -152,10 +152,10 @@ Positions (145 bytes, starting from 448):
    140: 46 .. 46
 
   source paths:
-     0: 23 [tests/pos/i19806/J_SCALA_ONLY.java]
+     0: 23 [<elided source file name>]
 
 
 Attributes (4 bytes, starting from 597):
   JAVAattr
   OUTLINEattr
-  SOURCEFILEattr 23 [tests/pos/i19806/J_SCALA_ONLY.java]
+  SOURCEFILEattr 23 [<elided source file name>]
