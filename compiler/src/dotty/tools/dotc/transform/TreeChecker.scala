@@ -418,31 +418,35 @@ object TreeChecker {
     }
 
     override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree = {
-      val res = tree match {
-        case _: untpd.TypedSplice | _: untpd.Thicket | _: EmptyValDef[?] =>
-          super.typedUnadapted(tree, pt, locked)
-        case _ if tree.isType =>
-          promote(tree)
-        case _ =>
-          val tree1 = super.typedUnadapted(tree, pt, locked)
-          def isSubType(tp1: Type, tp2: Type) =
-            (tp1 eq tp2) || // accept NoType / NoType
-            (tp1 <:< tp2)
-          def divergenceMsg(tp1: Type, tp2: Type) =
-            s"""Types differ
-               |Original type : ${tree.typeOpt.show}
-               |After checking: ${tree1.tpe.show}
-               |Original tree : ${tree.show}
-               |After checking: ${tree1.show}
-               |Why different :
-             """.stripMargin + core.TypeComparer.explained(_.isSubType(tp1, tp2))
-          if (tree.hasType) // it might not be typed because Typer sometimes constructs new untyped trees and resubmits them to typedUnadapted
-            assert(isSubType(tree1.tpe, tree.typeOpt), divergenceMsg(tree1.tpe, tree.typeOpt))
-          tree1
-      }
-      checkNoOrphans(res.tpe)
-      phasesToCheck.foreach(_.checkPostCondition(res))
-      res
+      try
+        val res = tree match
+          case _: untpd.TypedSplice | _: untpd.Thicket | _: EmptyValDef[?] =>
+            super.typedUnadapted(tree, pt, locked)
+          case _ if tree.isType =>
+            promote(tree)
+          case _ =>
+            val tree1 = super.typedUnadapted(tree, pt, locked)
+            def isSubType(tp1: Type, tp2: Type) =
+              (tp1 eq tp2) || // accept NoType / NoType
+              (tp1 <:< tp2)
+            def divergenceMsg(tp1: Type, tp2: Type) =
+              s"""Types differ
+                |Original type : ${tree.typeOpt.show}
+                |After checking: ${tree1.tpe.show}
+                |Original tree : ${tree.show}
+                |After checking: ${tree1.show}
+                |Why different :
+              """.stripMargin + core.TypeComparer.explained(_.isSubType(tp1, tp2))
+            if (tree.hasType) // it might not be typed because Typer sometimes constructs new untyped trees and resubmits them to typedUnadapted
+              assert(isSubType(tree1.tpe, tree.typeOpt), divergenceMsg(tree1.tpe, tree.typeOpt))
+            tree1
+        checkNoOrphans(res.tpe)
+        phasesToCheck.foreach(_.checkPostCondition(res))
+        res
+      catch case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
+        val treeStr = tree.show(using ctx.withPhase(ctx.phase.prev.megaPhase))
+        println(ctx.run.enrichErrorMessage(s"exception while retyping $treeStr of class ${tree.className} # ${tree.uniqueId}"))
+        throw ex
     }
 
     def checkNotRepeated(tree: Tree)(using Context): tree.type = {
