@@ -158,7 +158,7 @@ trait ImportSuggestions:
     // Candidates that are already available without explicit import because they
     // are already provided by the context (imported or inherited) or because they
     // are in the implicit scope of `pt`.
-    val alreadyAvailableCandidates: Set[Symbol] = {
+    lazy val alreadyAvailableCandidates: Set[Symbol] = {
       val wildProto = wildApprox(pt)
       val contextualCandidates = ctx.implicits.eligible(wildProto)
       val implicitScopeCandidates = ctx.run.nn.implicitScope(wildProto).eligible
