@@ -69,6 +69,7 @@ class Pickler extends Phase {
 
   // Maps that keep a record if -Ytest-pickler is set.
   private val beforePickling = new mutable.HashMap[ClassSymbol, String]
+  private val printedTasty = new mutable.HashMap[ClassSymbol, String]
   private val pickledBytes = new mutable.HashMap[ClassSymbol, (CompilationUnit, Array[Byte])]
 
   /** Drop any elements of this list that are linked module classes of other elements in the list */
@@ -184,7 +185,10 @@ class Pickler extends Phase {
         else
           val pickled = computePickled()
           reportPositionWarnings()
-          if ctx.settings.YtestPickler.value then pickledBytes(cls) = (unit, pickled)
+          if ctx.settings.YtestPickler.value then
+            pickledBytes(cls) = (unit, pickled)
+            if ctx.settings.YtestPicklerCheck.value then
+              printedTasty(cls) = TastyPrinter.showContents(pickled, noColor = true, testPickler = true)
           () => pickled
 
       unit.pickled += (cls -> demandPickled)
@@ -251,15 +255,22 @@ class Pickler extends Phase {
   private def testUnpickler(using Context): Unit =
     pickling.println(i"testing unpickler at run ${ctx.runId}")
     ctx.initialize()
+    val resolveCheck = ctx.settings.YtestPicklerCheck.value
     val unpicklers =
       for ((cls, (unit, bytes)) <- pickledBytes) yield {
         val unpickler = new DottyUnpickler(unit.source.file, bytes)
         unpickler.enter(roots = Set.empty)
-        cls -> (unit, unpickler)
+        val optCheck =
+          if resolveCheck then
+            val resolved = unit.source.file.resolveSibling(s"${cls.name.mangledString}.tastycheck")
+            if resolved == null then None
+            else Some(resolved)
+          else None
+        cls -> (unit, unpickler, optCheck)
       }
     pickling.println("************* entered toplevel ***********")
     val rootCtx = ctx
-    for ((cls, (unit, unpickler)) <- unpicklers) do
+    for ((cls, (unit, unpickler, optCheck)) <- unpicklers) do
       val testJava = unit.typedAsJava
       if testJava then
         if unpickler.unpickler.nameAtRef.contents.exists(_ == nme.FromJavaObject) then
@@ -268,6 +279,15 @@ class Pickler extends Phase {
       val freshUnit = CompilationUnit(rootCtx.compilationUnit.source)
       freshUnit.needsCaptureChecking = unit.needsCaptureChecking
       freshUnit.knowsPureFuns = unit.knowsPureFuns
+      optCheck match
+        case Some(check) =>
+          import java.nio.charset.StandardCharsets.UTF_8
+          val checkContents = String(check.toByteArray, UTF_8)
+          inContext(rootCtx.fresh.setCompilationUnit(freshUnit)):
+            testSamePrinted(printedTasty(cls), checkContents, cls, check)
+        case None =>
+          ()
+
       inContext(printerContext(testJava)(using rootCtx.fresh.setCompilationUnit(freshUnit))):
         testSame(i"$unpickled%\n%", beforePickling(cls), cls)
 
@@ -283,4 +303,35 @@ class Pickler extends Phase {
                     |
                     |  diff before-pickling.txt after-pickling.txt""")
   end testSame
+
+  private def testSamePrinted(printed: String, checkContents: String, cls: ClassSymbol, check: AbstractFile)(using Context): Unit = {
+    for lines <- diff(printed, checkContents) do
+      output("after-printing.txt", printed)
+      report.error(em"""TASTy printer difference for $cls in ${cls.source}, did not match ${check},
+                    |  output dumped in after-printing.txt, check diff with `git diff --no-index -- $check after-printing.txt`
+                    |  actual output:
+                    |$lines%\n%""")
+  }
+
+  /** Reuse diff logic from compiler/test/dotty/tools/vulpix/FileDiff.scala */
+  private def diff(actual: String, expect: String): Option[Seq[String]] =
+    import scala.util.Using
+    import scala.io.Source
+    val actualLines = Using(Source.fromString(actual))(_.getLines().toList).get
+    val expectLines = Using(Source.fromString(expect))(_.getLines().toList).get
+    Option.when(!matches(actualLines, expectLines))(actualLines)
+
+  private def matches(actual: String, expect: String): Boolean = {
+    import java.io.File
+    val actual1 = actual.stripLineEnd
+    val expect1  = expect.stripLineEnd
+
+    // handle check file path mismatch on windows
+    actual1 == expect1 || File.separatorChar == '\\' && actual1.replace('\\', '/') == expect1
+  }
+
+  private def matches(actual: Seq[String], expect: Seq[String]): Boolean = {
+    actual.length == expect.length
+    && actual.lazyZip(expect).forall(matches)
+  }
 }

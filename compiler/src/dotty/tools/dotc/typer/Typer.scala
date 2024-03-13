@@ -631,7 +631,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case checkedType: NamedType if !prefixIsElidable(checkedType) =>
           ref(checkedType).withSpan(tree.span)
         case _ =>
-          tree.withType(checkedType)
+          def isScalaModuleRef = checkedType match
+            case moduleRef: TypeRef if moduleRef.symbol.is(ModuleClass, butNot = JavaDefined) => true
+            case _ => false
+          if ctx.isJava && isScalaModuleRef then
+            cpy.Ident(tree)(tree.name.unmangleClassName).withType(checkedType)
+          else
+            tree.withType(checkedType)
       val tree2 = toNotNullTermRef(tree1, pt)
       checkLegalValue(tree2, pt)
       tree2
@@ -765,26 +771,30 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     def typeSelectOnTerm(using Context): Tree =
       val qual = typedExpr(tree.qualifier, shallowSelectionProto(tree.name, pt, this, tree.nameSpan))
-      typedSelect(tree, pt, qual).withSpan(tree.span).computeNullable()
-
-    def javaSelectOnType(qual: Tree)(using Context) =
-      // semantic name conversion for `O$` in java code
-      if !qual.symbol.is(JavaDefined) then
-        val tree2 = untpd.cpy.Select(tree)(qual, tree.name.unmangleClassName)
-        assignType(tree2, qual)
+      if ctx.isJava then
+        javaSelection(qual)
       else
-        assignType(cpy.Select(tree)(qual, tree.name), qual)
+        typedSelect(tree, pt, qual).withSpan(tree.span).computeNullable()
+
+    def javaSelection(qual: Tree)(using Context) =
+      val tree1 = assignType(cpy.Select(tree)(qual, tree.name), qual)
+      tree1.tpe match
+        case moduleRef: TypeRef if moduleRef.symbol.is(ModuleClass, butNot = JavaDefined) =>
+          // handle unmangling of module names (Foo$ -> Foo[ModuleClass])
+          cpy.Select(tree)(qual, tree.name.unmangleClassName).withType(moduleRef)
+        case _ =>
+          tree1
 
     def tryJavaSelectOnType(using Context): Tree = tree.qualifier match {
       case sel @ Select(qual, name) =>
         val qual1 = untpd.cpy.Select(sel)(qual, name.toTypeName)
         val qual2 = typedType(qual1, WildcardType)
-        javaSelectOnType(qual2)
+        javaSelection(qual2)
 
       case id @ Ident(name) =>
         val qual1 = untpd.cpy.Ident(id)(name.toTypeName)
         val qual2 = typedType(qual1, WildcardType)
-        javaSelectOnType(qual2)
+        javaSelection(qual2)
 
       case _ =>
         errorTree(tree, em"cannot convert to type selection") // will never be printed due to fallback
