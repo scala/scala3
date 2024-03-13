@@ -305,21 +305,21 @@ class Pickler extends Phase {
   end testSame
 
   private def testSamePrinted(printed: String, checkContents: String, cls: ClassSymbol, check: AbstractFile)(using Context): Unit = {
-    if hasDiff(printed, checkContents) then
+    for lines <- diff(printed, checkContents) do
       output("after-printing.txt", printed)
       report.error(em"""TASTy printer difference for $cls in ${cls.source}, did not match ${check},
-                    |  output dumped in after-printing.txt, check diff with `git diff --no-index -- after-printing.txt ${check}`
+                    |  output dumped in after-printing.txt, check diff with `git diff --no-index -- $check after-printing.txt`
                     |  actual output:
-                    |$printed""")
+                    |$lines%\n%""")
   }
 
   /** Reuse diff logic from compiler/test/dotty/tools/vulpix/FileDiff.scala */
-  private def hasDiff(actual: String, expect: String): Boolean =
+  private def diff(actual: String, expect: String): Option[Seq[String]] =
     import scala.util.Using
     import scala.io.Source
     val actualLines = Using(Source.fromString(actual))(_.getLines().toList).get
     val expectLines = Using(Source.fromString(expect))(_.getLines().toList).get
-    !matches(actualLines, expectLines)
+    Option.when(!matches(actualLines, expectLines))(actualLines)
 
   private def matches(actual: String, expect: String): Boolean = {
     import java.io.File

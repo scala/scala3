@@ -3,7 +3,7 @@ Header:
   tooling: <elided>
      UUID: <elided>
 
-Names (217 bytes, starting from 80):
+Names (217 bytes, starting from <elided base index>):
      0: ASTs
      1: p
      2: J
@@ -31,8 +31,7 @@ Names (217 bytes, starting from 80):
     24: Comments
     25: Attributes
 
-
-Trees (145 bytes, starting from 300):
+Trees (145 bytes, starting from <elided base index>):
      0: PACKAGE(142)
      3:   TERMREFpkg 1 [p]
      5:   VALDEF(11) 2 [J]
@@ -113,7 +112,7 @@ Trees (145 bytes, starting from 300):
    143:           SHAREDtype 38
    145:
 
-Positions (145 bytes, starting from 448):
+Positions (145 bytes, starting from <elided base index>):
   lines: 23
   line sizes:
      10, 0, 19, 0, 15, 0, 35, 29, 3, 0, 36, 29, 3, 0, 52, 41, 3, 0, 53, 41
@@ -154,8 +153,7 @@ Positions (145 bytes, starting from 448):
   source paths:
      0: 23 [<elided source file name>]
 
-
-Attributes (4 bytes, starting from 597):
+Attributes (4 bytes, starting from <elided base index>):
   JAVAattr
   OUTLINEattr
   SOURCEFILEattr 23 [<elided source file name>]
