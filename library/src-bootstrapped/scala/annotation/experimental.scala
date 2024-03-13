@@ -6,4 +6,5 @@ package scala.annotation
  *  @syntax markdown
  */
 @deprecatedInheritance("Scheduled for being final in the future", "3.4.0")
-class experimental extends StaticAnnotation
+class experimental(message: String) extends StaticAnnotation:
+  def this() = this("")

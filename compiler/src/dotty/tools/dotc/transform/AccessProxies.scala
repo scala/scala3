@@ -12,6 +12,7 @@ import Decorators.*
 import Types.*
 import util.Spans.Span
 import config.Printers.transforms
+import Annotations.ExperimentalAnnotation
 
 /** A utility class for generating access proxies. Currently used for
  *  inline accessors and protected accessors.
@@ -84,8 +85,7 @@ abstract class AccessProxies {
       val sym = newSymbol(owner, name, Synthetic | Method, info, coord = accessed.span).entered
       if accessed.is(Private) then sym.setFlag(Final)
       else if sym.allOverriddenSymbols.exists(!_.is(Deferred)) then sym.setFlag(Override)
-      if accessed.hasAnnotation(defn.ExperimentalAnnot) then
-        sym.addAnnotation(defn.ExperimentalAnnot)
+      ExperimentalAnnotation.copy(accessed).foreach(sym.addAnnotation)
       sym
     }
 
