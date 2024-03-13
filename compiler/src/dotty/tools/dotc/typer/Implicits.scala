@@ -1078,9 +1078,8 @@ trait Implicits:
    *                         it should be applied, EmptyTree otherwise.
    *  @param span            The position where errors should be reported.
    */
-  def inferImplicit(pt: Type, argument: Tree, span: Span)(using Context): SearchResult =
-    ctx.profiler.beforeImplicitSearch(pt)
-    try trace(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
+  def inferImplicit(pt: Type, argument: Tree, span: Span)(using Context): SearchResult = ctx.profiler.onImplicitSearch(pt) {
+    trace(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
       record("inferImplicit")
       assert(ctx.phase.allowsImplicitSearch,
         if (argument.isEmpty) i"missing implicit parameter of type $pt after typer at phase ${ctx.phase}"
@@ -1147,7 +1146,8 @@ trait Implicits:
         }
       // If we are at the outermost implicit search then emit the implicit dictionary, if any.
       ctx.searchHistory.emitDictionary(span, result)
-    } finally ctx.profiler.afterImplicitSearch(pt)
+    }
+  }
 
   /** Try to typecheck an implicit reference */
   def typedImplicit(cand: Candidate, pt: Type, argument: Tree, span: Span)(using Context): SearchResult =  trace(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {

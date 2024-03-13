@@ -16,8 +16,11 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.core.Symbols.Symbol
+import dotty.tools.dotc.core.Flags
+import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 import dotty.tools.io.AbstractFile
 import annotation.internal.sharable
+import dotty.tools.dotc.core.Symbols.NoSymbol
 
 object Profiler {
   def apply()(using Context): Profiler =
@@ -78,15 +81,39 @@ sealed trait Profiler {
 
   def afterPhase(phase: Phase, profileBefore: ProfileSnap): Unit
 
+  inline def onUnit[T](phase: Phase, unit: CompilationUnit)(inline body: T): T =
+    beforeUnit(phase, unit)
+    try body
+    finally afterUnit(phase, unit)
   def beforeUnit(phase: Phase, unit: CompilationUnit): Unit = ()
   def afterUnit(phase: Phase,  unit: CompilationUnit): Unit = ()
 
+  inline def onTypedImplDef[T](sym: Symbol)(inline body: T): T =
+    beforeTypedImplDef(sym)
+    try body
+    finally afterTypedImplDef(sym)
   def beforeTypedImplDef(sym: Symbol): Unit = ()
   def afterTypedImplDef(sym: Symbol): Unit = ()
 
+
+  inline def onImplicitSearch[T](pt: Type)(inline body: T): T =
+    beforeImplicitSearch(pt)
+    try body
+    finally afterImplicitSearch(pt)
   def beforeImplicitSearch(pt: Type): Unit  = ()
   def afterImplicitSearch(pt: Type): Unit = ()
 
+  inline def onMacroExpansion[T](macroSym: Symbol)(inline body: T): T =
+    beforeMacroExpansion(macroSym)
+    try body
+    finally afterMacroExpansion(macroSym)
+  def beforeMacroExpansion(macroSym: Symbol): Unit = ()
+  def afterMacroExpansion(macroSym: Symbol): Unit = ()
+
+  inline def onCompletion[T](root: Symbol, associatedFile: AbstractFile)(inline body: T): T =
+    beforeCompletion(root, associatedFile)
+    try body
+    finally afterCompletion(root, associatedFile)
   def beforeCompletion(root: Symbol, associatedFile: AbstractFile): Unit = ()
   def afterCompletion(root: Symbol, associatedFile: AbstractFile): Unit = ()
 }
@@ -280,13 +307,42 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
 
   override def beforeImplicitSearch(pt: Type): Unit =
     if chromeTrace != null
-    then chromeTrace.traceDurationEventStart(Category.Implicit, "?[" + pt.typeSymbol.fullName + "]", colour = "yellow")
-
+    then chromeTrace.traceDurationEventStart(Category.Implicit, s"?[${symbolName(pt.typeSymbol)}]", colour = "yellow")
 
   override def afterImplicitSearch(pt: Type): Unit =
     if chromeTrace != null
-    then chromeTrace.traceDurationEventEnd(Category.Implicit, "?[" + pt.typeSymbol.fullName + "]", colour = "yellow")
+    then chromeTrace.traceDurationEventEnd(Category.Implicit, s"?[${symbolName(pt.typeSymbol)}]", colour = "yellow")
 
+  override def beforeMacroExpansion(macroSym: Symbol): Unit =
+    if chromeTrace != null
+    then chromeTrace.traceDurationEventStart(Category.Macro, s"«${symbolName(macroSym)}»", colour = "olive")
+
+  override def afterMacroExpansion(macroSym: Symbol): Unit =
+    if chromeTrace != null
+    then chromeTrace.traceDurationEventEnd(Category.Macro, s"«${symbolName(macroSym)}»", colour = "olive")
+
+  override def beforeCompletion(root: Symbol, associatedFile: AbstractFile): Unit =
+    if chromeTrace != null
+    then
+      chromeTrace.traceDurationEventStart(Category.Completion, "↯", colour = "thread_state_sleeping")
+      chromeTrace.traceDurationEventStart(Category.File, associatedFile.name)
+      chromeTrace.traceDurationEventStart(Category.Completion, completionName(root, associatedFile))
+
+  override def afterCompletion(root: Symbol, associatedFile: AbstractFile): Unit =
+    if chromeTrace != null
+    then
+      chromeTrace.traceDurationEventEnd(Category.Completion, completionName(root, associatedFile))
+      chromeTrace.traceDurationEventEnd(Category.File, associatedFile.name)
+      chromeTrace.traceDurationEventEnd(Category.Completion, "↯", colour = "thread_state_sleeping")
+
+  private def symbolName(sym: Symbol): String = sym.name.toString
+  private def completionName(root: Symbol, associatedFile: AbstractFile): String =
+    def isTopLevel = root.owner != NoSymbol && root.owner.is(Flags.Package)
+    if root.is(Flags.Package) || isTopLevel
+    then root.javaBinaryName
+    else
+      val enclosing = root.enclosingClass
+      s"${enclosing.javaBinaryName}::${root.name}"
 }
 
 case class EventType(name: String)

@@ -2830,9 +2830,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case _ =>
         typed(rhs)
 
-  def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree =
-    ctx.profiler.beforeTypedImplDef(sym)
-    try {
+  def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree = ctx.profiler.onTypedImplDef(sym) {
     val ValDef(name, tpt, _) = vdef
     checkNonRootName(vdef.name, vdef.nameSpan)
     completeAnnotations(vdef, sym)
@@ -2848,7 +2846,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
     postProcessInfo(vdef1, sym)
     vdef1.setDefTree
-  } finally ctx.profiler.afterTypedImplDef(sym)
+  }
 
   private def retractDefDef(sym: Symbol)(using Context): Tree =
     // it's a discarded method (synthetic case class method or synthetic java record constructor or overridden member), drop it
@@ -2860,7 +2858,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     sym.owner.info.decls.openForMutations.unlink(sym)
     EmptyTree
 
-  def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree = if !sym.info.exists then retractDefDef(sym) else {
+  def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree = if !sym.info.exists then retractDefDef(sym) else ctx.profiler.onTypedImplDef {
 
     // TODO: - Remove this when `scala.language.experimental.erasedDefinitions` is no longer experimental.
     //       - Modify signature to `erased def erasedValue[T]: T`
@@ -2960,7 +2958,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     postProcessInfo(ddef2, sym)
     ddef2.setDefTree
       //todo: make sure dependent method types do not depend on implicits or by-name params
-  } finally ctx.profiler.afterTypedImplDef(sym)
+  }
 
   /** (1) Check that the signature of the class member does not return a repeated parameter type
    *  (2) If info is an erased class, set erased flag of member
@@ -2972,9 +2970,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if !sym.is(Module) && !sym.isConstructor && sym.info.finalResultType.isErasedClass then
       sym.setFlag(Erased)
 
-  def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree = {
-    ctx.profiler.beforeTypedImplDef(sym)
-    try {
+  def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree = ctx.profiler.onTypedImplDef(sym) {
     val TypeDef(name, rhs) = tdef
     completeAnnotations(tdef, sym)
     val rhs1 = tdef.rhs match
@@ -2986,12 +2982,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       checkFullyAppliedType(rhs1, "Opaque type alias must be fully applied, but ")
       checkNoContextFunctionType(rhs1)
     assignType(cpy.TypeDef(tdef)(name, rhs1), sym)
-    } finally  ctx.profiler.afterTypedImplDef(sym)
   }
 
-  def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree =
-    ctx.profiler.beforeTypedImplDef(cls)
-    try {
+  def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree = ctx.profiler.onTypedImplDef(cls) {
     if (!cls.info.isInstanceOf[ClassInfo]) return EmptyTree.assertingErrorsReported
 
     val TypeDef(name, impl @ Template(constr, _, self, _)) = cdef: @unchecked
@@ -3218,7 +3211,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
       cdef1
     }
-  } finally ctx.profiler.afterTypedImplDef(cls)
+  }
 
       // todo later: check that
       //  1. If class is non-abstract, it is instantiatable:
