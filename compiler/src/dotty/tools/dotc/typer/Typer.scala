@@ -3003,8 +3003,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   /** Translate infix operation expression `l op r` to
    *
    *    l.op(r)   			        if `op` is left-associative
-   *    { val x = l; r.op(x) }  if `op` is right-associative call-by-value and `l` is impure
-   *    r.op(l)                 if `op` is right-associative call-by-name or `l` is pure
+   *    { val x = l; r.op(x) }  if `op` is right-associative call-by-value and `l` is impure, and not in a quote pattern
+   *    r.op(l)                 if `op` is right-associative call-by-name, or `l` is pure, or in a quote pattern
    *
    *  Translate infix type    `l op r` to `op[l, r]`
    *  Translate infix pattern `l op r` to `op(l, r)`
@@ -3021,7 +3021,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         typedUnApply(cpy.Apply(tree)(op, l :: r :: Nil), pt)
       else {
         val app = typedApply(desugar.binop(l, op, r), pt)
-        if op.name.isRightAssocOperatorName then
+        if op.name.isRightAssocOperatorName && !ctx.mode.is(Mode.QuotedExprPattern) then
           val defs = new mutable.ListBuffer[Tree]
           def lift(app: Tree): Tree = (app: @unchecked) match
             case Apply(fn, args) =>
