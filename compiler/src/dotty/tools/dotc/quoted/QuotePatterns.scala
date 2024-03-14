@@ -28,7 +28,9 @@ object QuotePatterns:
   /** Check for restricted patterns */
   def checkPattern(quotePattern: QuotePattern)(using Context): Unit = new tpd.TreeTraverser {
     def traverse(tree: Tree)(using Context): Unit = tree match {
-      case _: SplicePattern =>
+      case tree: SplicePattern =>
+        if !tree.body.typeOpt.derivesFrom(defn.QuotedExprClass) then
+          report.error(i"Spice pattern must match an Expr[...]", tree.body.srcPos)
       case tdef: TypeDef if tdef.symbol.isClass =>
         val kind = if tdef.symbol.is(Module) then "objects" else "classes"
         report.error(em"Implementation restriction: cannot match $kind", tree.srcPos)
