@@ -1683,10 +1683,12 @@ class Objects:
     end if
 
     // class body
+    val whiteList = Set("scala.collection.immutable.Vector.emptyIterator")
     tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
-        val res = eval(vdef.rhs, thisV, klass)
+        var res = eval(vdef.rhs, thisV, klass)
         val sym = vdef.symbol
+        if (whiteList.contains(sym.showFullName)) res = Bottom
         if sym.is(Flags.Mutable) then
           val addr = Heap.fieldVarAddr(summon[Regions.Data], sym, State.currentObject)
           thisV.initVar(sym, addr)
