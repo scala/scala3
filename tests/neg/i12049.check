@@ -15,17 +15,17 @@
   |                    case B => String
   |
   | longer explanation available when compiling with `-explain`
--- [E184] Type Error: tests/neg/i12049.scala:14:23 ---------------------------------------------------------------------
+-- Error: tests/neg/i12049.scala:14:23 ---------------------------------------------------------------------------------
 14 |val y3: String = ??? : Last[Int *: Int *: Boolean *: String *: EmptyTuple]  // error
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                       Match type reduction failed since selector EmptyTuple
+   |                       ^
+   |                       Match type reduction failed since selector EmptyTuple.type
    |                       matches none of the cases
    |
    |                           case _ *: _ *: t => Last[t]
    |                           case t *: EmptyTuple => t
--- [E184] Type Error: tests/neg/i12049.scala:22:26 ---------------------------------------------------------------------
+-- Error: tests/neg/i12049.scala:22:26 ---------------------------------------------------------------------------------
 22 |val z3: (A, B, A) = ??? : Reverse[(A, B, A)] // error
-   |                          ^^^^^^^^^^^^^^^^^^
+   |                          ^
    |                          Match type reduction failed since selector A *: EmptyTuple.type
    |                          matches none of the cases
    |
@@ -45,17 +45,17 @@
    |                      Therefore, reduction cannot advance to the remaining case
    |
    |                        case B => String
--- [E184] Type Error: tests/neg/i12049.scala:25:26 ---------------------------------------------------------------------
+-- Error: tests/neg/i12049.scala:25:26 ---------------------------------------------------------------------------------
 25 |val _ = summon[String =:= Last[Int *: Int *: Boolean *: String *: EmptyTuple]] // error
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                          Match type reduction failed since selector EmptyTuple
+   |                          ^
+   |                          Match type reduction failed since selector EmptyTuple.type
    |                          matches none of the cases
    |
    |                              case _ *: _ *: t => Last[t]
    |                              case t *: EmptyTuple => t
--- [E184] Type Error: tests/neg/i12049.scala:26:29 ---------------------------------------------------------------------
+-- Error: tests/neg/i12049.scala:26:29 ---------------------------------------------------------------------------------
 26 |val _ = summon[(A, B, A) =:= Reverse[(A, B, A)]] // error
-   |                             ^^^^^^^^^^^^^^^^^^
+   |                             ^
    |                             Match type reduction failed since selector A *: EmptyTuple.type
    |                             matches none of the cases
    |

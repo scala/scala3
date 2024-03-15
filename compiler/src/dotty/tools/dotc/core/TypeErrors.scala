@@ -53,6 +53,9 @@ object TypeError:
     def toMessage(using Context) = msg
 end TypeError
 
+class MatchTypeReductionError(msg: Message)(using Context) extends TypeError:
+  def toMessage(using Context) = msg
+
 class MalformedType(pre: Type, denot: Denotation, absMembers: Set[Name])(using Context) extends TypeError:
   def toMessage(using Context) = em"malformed type: $pre is not a legal prefix for $denot because it contains abstract type member${if (absMembers.size == 1) "" else "s"} ${absMembers.mkString(", ")}"
 
