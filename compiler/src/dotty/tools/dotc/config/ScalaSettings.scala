@@ -111,6 +111,53 @@ trait CommonScalaSettings:
   val help: Setting[Boolean] = BooleanSetting("-help", "Print a synopsis of standard options.", aliases = List("--help", "-h"))
   val pageWidth: Setting[Int] = IntSetting("-pagewidth", "Set page width", ScalaSettings.defaultPageWidth, aliases = List("--page-width"))
   val silentWarnings: Setting[Boolean] = BooleanSetting("-nowarn", "Silence all warnings.", aliases = List("--no-warnings"))
+  val XfatalWarnings: Setting[Boolean] = BooleanSetting("-Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
+  val Wconf: Setting[List[String]] = MultiStringSetting(
+    "-Wconf",
+    "patterns",
+    default = List(),
+    descr =
+      s"""Configure compiler warnings.
+         |Syntax: -Wconf:<filters>:<action>,<filters>:<action>,...
+         |multiple <filters> are combined with &, i.e., <filter>&...&<filter>
+         |
+         |<filter>
+         |  - Any message: any
+         |
+         |  - Message categories: cat=deprecation, cat=feature, cat=unchecked
+         |
+         |  - Message content: msg=regex
+         |    The regex need only match some part of the message, not all of it.
+         |
+         |  - Message id: id=E129
+         |    The message id is printed with the warning.
+         |
+         |  - Message name: name=PureExpressionInStatementPosition
+         |    The message name is printed with the warning in verbose warning mode.
+         |
+         |In verbose warning mode the compiler prints matching filters for warnings.
+         |Verbose mode can be enabled globally using `-Wconf:any:verbose`, or locally
+         |using the @nowarn annotation (example: `@nowarn("v") def test = try 1`).
+         |
+         |<action>
+         |  - error / e
+         |  - warning / w
+         |  - verbose / v (emit warning, show additional help for writing `-Wconf` filters)
+         |  - info / i    (infos are not counted as warnings and not affected by `-Werror`)
+         |  - silent / s
+         |
+         |The default configuration is empty.
+         |
+         |User-defined configurations are added to the left. The leftmost rule matching
+         |a warning message defines the action.
+         |
+         |Examples:
+         |  - change every warning into an error: -Wconf:any:error
+         |  - silence deprecations: -Wconf:cat=deprecation:s
+         |
+         |Note: on the command-line you might need to quote configurations containing `*` or `&`
+         |to prevent the shell from expanding patterns.""".stripMargin,
+  )
 
   val javaOutputVersion: Setting[String] = ChoiceSetting("-java-output-version", "version", "Compile code with classes specific to the given version of the Java platform available on the classpath and emit bytecode for this version. Corresponds to -release flag in javac.", ScalaSettings.supportedReleaseVersions, "", aliases = List("-release", "--release"))
 
@@ -165,7 +212,6 @@ private sealed trait WarningSettings:
   self: SettingGroup =>
 
   val Whelp: Setting[Boolean] = BooleanSetting("-W", "Print a synopsis of warning options.")
-  val XfatalWarnings: Setting[Boolean] = BooleanSetting("-Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
   val WvalueDiscard: Setting[Boolean] = BooleanSetting("-Wvalue-discard", "Warn when non-Unit expression results are unused.")
   val WNonUnitStatement = BooleanSetting("-Wnonunit-statement", "Warn when block statements are non-Unit expressions.")
   val WenumCommentDiscard = BooleanSetting("-Wenum-comment-discard", "Warn when a comment ambiguously assigned to multiple enum cases is discarded.")
@@ -229,53 +275,6 @@ private sealed trait WarningSettings:
       allOr("linted")
     def strictNoImplicitWarn(using Context) =
       isChoiceSet("strict-no-implicit-warn")
-
-  val Wconf: Setting[List[String]] = MultiStringSetting(
-    "-Wconf",
-    "patterns",
-    default = List(),
-    descr =
-      s"""Configure compiler warnings.
-         |Syntax: -Wconf:<filters>:<action>,<filters>:<action>,...
-         |multiple <filters> are combined with &, i.e., <filter>&...&<filter>
-         |
-         |<filter>
-         |  - Any message: any
-         |
-         |  - Message categories: cat=deprecation, cat=feature, cat=unchecked
-         |
-         |  - Message content: msg=regex
-         |    The regex need only match some part of the message, not all of it.
-         |
-         |  - Message id: id=E129
-         |    The message id is printed with the warning.
-         |
-         |  - Message name: name=PureExpressionInStatementPosition
-         |    The message name is printed with the warning in verbose warning mode.
-         |
-         |In verbose warning mode the compiler prints matching filters for warnings.
-         |Verbose mode can be enabled globally using `-Wconf:any:verbose`, or locally
-         |using the @nowarn annotation (example: `@nowarn("v") def test = try 1`).
-         |
-         |<action>
-         |  - error / e
-         |  - warning / w
-         |  - verbose / v (emit warning, show additional help for writing `-Wconf` filters)
-         |  - info / i    (infos are not counted as warnings and not affected by `-Werror`)
-         |  - silent / s
-         |
-         |The default configuration is empty.
-         |
-         |User-defined configurations are added to the left. The leftmost rule matching
-         |a warning message defines the action.
-         |
-         |Examples:
-         |  - change every warning into an error: -Wconf:any:error
-         |  - silence deprecations: -Wconf:cat=deprecation:s
-         |
-         |Note: on the command-line you might need to quote configurations containing `*` or `&`
-         |to prevent the shell from expanding patterns.""".stripMargin,
-  )
 
 /** -X "Extended" or "Advanced" settings */
 private sealed trait XSettings:
