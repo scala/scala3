@@ -79,6 +79,7 @@ object Settings:
     aliases: List[String] = Nil,
     depends: List[(Setting[?], Any)] = Nil,
     ignoreInvalidArgs: Boolean = false,
+    preferPrevious: Boolean = false,
     propertyClass: Option[Class[?]] = None,
     deprecationMsg: Option[String] = None,
     // kept only for -Ykind-projector option compatibility
@@ -125,10 +126,15 @@ object Settings:
             valueList.filter(current.contains).foreach(s => dangers :+= s"Setting $name set to $s redundantly")
             current ++ valueList
           else
-            if sstate.wasChanged(idx) then dangers :+= s"Flag $name set repeatedly"
+            if sstate.wasChanged(idx) then
+              assert(!preferPrevious, "should have shortcutted with ignoreValue, side-effect may be present!")
+              dangers :+= s"Flag $name set repeatedly"
             value
         ArgsSummary(updateIn(sstate, valueNew), args, errors, dangers)
       end update
+
+      def ignoreValue(args: List[String]): ArgsSummary =
+        ArgsSummary(sstate, args, errors, warnings)
 
       def fail(msg: String, args: List[String]) =
         ArgsSummary(sstate, args, errors :+ msg, warnings)
@@ -196,7 +202,8 @@ object Settings:
       def doSet(argRest: String) =
         ((summon[ClassTag[T]], args): @unchecked) match {
           case (BooleanTag, _) =>
-            setBoolean(argRest, args)
+            if sstate.wasChanged(idx) && preferPrevious then ignoreValue(args)
+            else setBoolean(argRest, args)
           case (OptionTag, _) =>
             update(Some(propertyClass.get.getConstructor().newInstance()), args)
           case (ct, args) =>
@@ -216,7 +223,10 @@ object Settings:
           case StringTag =>
             setString(arg, argsLeft)
           case OutputTag =>
-            setOutput(arg, argsLeft)
+            if sstate.wasChanged(idx) && preferPrevious then
+              ignoreValue(argsLeft) // do not risk side effects e.g. overwriting a jar
+            else
+              setOutput(arg, argsLeft)
           case IntTag =>
             setInt(arg, argsLeft)
           case VersionTag =>
@@ -333,8 +343,8 @@ object Settings:
       assert(!name.startsWith("-"), s"Setting $name cannot start with -")
       "-" + name
 
-    def BooleanSetting(category: SettingCategory, name: String, descr: String, initialValue: Boolean = false, aliases: List[String] = Nil): Setting[Boolean] =
-      publish(Setting(category, prependName(name), descr, initialValue, aliases = aliases))
+    def BooleanSetting(category: SettingCategory, name: String, descr: String, initialValue: Boolean = false, aliases: List[String] = Nil, preferPrevious: Boolean = false): Setting[Boolean] =
+      publish(Setting(category, prependName(name), descr, initialValue, aliases = aliases, preferPrevious = preferPrevious))
 
     def StringSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: String, aliases: List[String] = Nil): Setting[String] =
       publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases))
@@ -357,8 +367,8 @@ object Settings:
     def MultiStringSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: List[String] = Nil, aliases: List[String] = Nil): Setting[List[String]] =
       publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases))
 
-    def OutputSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: AbstractFile, aliases: List[String] = Nil): Setting[AbstractFile] =
-      publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases))
+    def OutputSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: AbstractFile, aliases: List[String] = Nil, preferPrevious: Boolean = false): Setting[AbstractFile] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases, preferPrevious = preferPrevious))
 
     def PathSetting(category: SettingCategory, name: String, descr: String, default: String, aliases: List[String] = Nil): Setting[String] =
       publish(Setting(category, prependName(name), descr, default, aliases = aliases))
