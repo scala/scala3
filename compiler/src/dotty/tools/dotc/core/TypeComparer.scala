@@ -3595,22 +3595,9 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
             NoType
       case Nil =>
         val casesText = MatchTypeTrace.noMatchesText(scrut, cases)
-        ErrorType(reporting.MatchTypeNoCases(casesText))
+        throw MatchTypeReductionError(em"Match type reduction $casesText")
 
-    inFrozenConstraint {
-      if scrut.isError then
-        // if the scrutinee is an error type
-        // then just return that as the result
-        // not doing so will result in the first type case matching
-        // because ErrorType (as a FlexType) is <:< any type case
-        // this situation can arise from any kind of nesting of match types,
-        // e.g. neg/i12049 `Tuple.Concat[Reverse[ts], (t2, t1)]`
-        // if Reverse[ts] fails with no matches,
-        // the error type should be the reduction of the Concat too
-        scrut
-      else
-        recur(cases)
-    }
+    inFrozenConstraint(recur(cases))
   }
 }
 
