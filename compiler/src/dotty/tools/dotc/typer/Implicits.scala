@@ -663,7 +663,7 @@ trait ImplicitRunInfo:
               traverseChildren(t)
             case t =>
               traverseChildren(t)
-              traverse(try t.normalized catch case _: MatchTypeReductionError => t)
+              traverse(t.normalized)
       catch case ex: Throwable => handleRecursive("collectParts of", t.show, ex)
 
       def apply(tp: Type): collection.Set[Type] =

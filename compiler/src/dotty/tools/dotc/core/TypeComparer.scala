@@ -3594,8 +3594,8 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
             MatchTypeTrace.emptyScrutinee(scrut)
             NoType
       case Nil =>
-        val casesText = MatchTypeTrace.noMatchesText(scrut, cases)
-        throw MatchTypeReductionError(em"Match type reduction $casesText")
+        MatchTypeTrace.noMatches(scrut, cases)
+        NoType
 
     inFrozenConstraint(recur(cases))
   }
