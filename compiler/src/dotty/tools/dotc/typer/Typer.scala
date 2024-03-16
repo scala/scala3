@@ -4281,7 +4281,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     def adaptType(tp: Type): Tree = {
       val tree1 =
-        if ((pt eq AnyTypeConstructorProto) || tp.typeParamSymbols.isEmpty) tree
+        if pt eq AnyTypeConstructorProto then tree
+        else if tp.typeParamSymbols.isEmpty || tp.typeParamSymbols.isEmpty then
+          // call typeParamSymbols twice, to get the stable results
+          // (see also note inside typeParamSymbols)
+          // given `type LifecycleF = [_] =>> Any` in pos/i19942.scala
+          // with an Ident of LifecycleF, calling typeParams will return:
+          // 1. [type _] a list of the symbol _ in the type def tree, on the first call
+          // 2. [+_] a list of a lambda param, afterwards
+          // we only want to eta-expand if there are real type param symbols, so we check twice
+          tree
         else {
           if (ctx.isJava)
             // Cook raw type
