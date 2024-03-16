@@ -543,7 +543,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         recur(tp1.parent, tp2)
       case tp1: MatchType =>
         val reduced = tp1.reduced
-        if reduced.exists then
+        if reduced.exists && !reduced.isError then
           recur(reduced, tp2) && recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp1) }
         else thirdTry
       case _: FlexType =>
@@ -786,7 +786,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         either(recur(tp1, tp21), recur(tp1, tp22)) || fourthTry
       case tp2: MatchType =>
         val reduced = tp2.reduced
-        if reduced.exists then
+        if reduced.exists && !reduced.isError then
           recur(tp1, reduced) && recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp2) }
         else
           fourthTry
