@@ -28,6 +28,8 @@ class T9 { var x = 451; def t9(): Unit = { class C9 {def getX = x}; test(classOf
 
 class T10 { private[T10] class C10; test(classOf[C10]) }
 
+class T11 { class D11 { private[D11] class C11; test(classOf[C11]) } }
+
 object Test {
   def main(args: Array[String]): Unit = {
     T1
@@ -40,5 +42,6 @@ object Test {
     new T8().t8()
     new T9().t9()
     new T10()
+    val t11 = new T11(); new t11.D11()
   }
 }
