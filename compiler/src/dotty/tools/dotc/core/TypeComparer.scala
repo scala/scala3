@@ -3567,6 +3567,13 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
     def matchMissingCaptures(spec: MatchTypeCaseSpec.MissingCaptures): MatchResult =
       MatchResult.Stuck
 
+    /**
+     * Report the failed match type reduction when possible, leave it unreduced otherwise
+     * See constvalue-of-failed-match-type.scala for an example where this is needed
+     */
+    inline def tryReportingReductionError(typeError: TypeError) =
+      if ctx.isTyper then throw typeError else NoType
+
     def recur(remaining: List[MatchTypeCaseSpec]): Type = remaining match
       case (cas: MatchTypeCaseSpec.LegacyPatMat) :: _ if sourceVersion.isAtLeast(SourceVersion.`3.4`) =>
         val errorText = MatchTypeTrace.illegalPatternText(scrut, cas)
@@ -3594,8 +3601,9 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
             MatchTypeTrace.emptyScrutinee(scrut)
             NoType
       case Nil =>
-        val casesText = MatchTypeTrace.noMatchesText(scrut, cases)
-        throw MatchTypeReductionError(em"Match type reduction $casesText")
+        tryReportingReductionError:
+          val casesText = MatchTypeTrace.noMatchesText(scrut, cases)
+          MatchTypeReductionError(em"Match type reduction $casesText")
 
     inFrozenConstraint(recur(cases))
   }
