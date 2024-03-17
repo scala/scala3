@@ -1,16 +1,8 @@
--- [E007] Type Mismatch Error: tests/neg/6570-1.scala:23:27 ------------------------------------------------------------
+-- Error: tests/neg/6570-1.scala:23:11 ---------------------------------------------------------------------------------
 23 |  def thing = new Trait1 {} // error
-   |                           ^
-   |                           Found:    Object with Trait1 {...}
-   |                           Required: N[Box[Int & String]]
-   |
-   |                           Note: a match type could not be fully reduced:
-   |
-   |                             trying to reduce  N[Box[Int & String]]
-   |                             failed since selector Box[Int & String]
-   |                             is uninhabited (there are no values of that type).
-   |
-   | longer explanation available when compiling with `-explain`
+   |           ^
+   |           Match type reduction failed since selector Box[Int & String]
+   |           is uninhabited (there are no values of that type).
 -- [E007] Type Mismatch Error: tests/neg/6570-1.scala:36:54 ------------------------------------------------------------
 36 |  def foo[T <: Cov[Box[Int]]](c: Root[T]): Trait2 = c.thing  // error
    |                                                    ^^^^^^^

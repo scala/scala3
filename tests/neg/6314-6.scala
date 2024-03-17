@@ -21,9 +21,9 @@ object Test3 {
   trait YY extends XX {
     type Foo = X & Y
 
-    def apply(fa: Bar[X & Foo]): Bar[Y & Foo] = fa
+    def apply(fa: Bar[X & Foo]): Bar[Y & Foo] = fa // error // error
   }
-  (new YY {}).boom // error: object creation impossible
+  (new YY {}).boom
 }
 
 object Test4 {
@@ -47,7 +47,7 @@ object Test4 {
   trait YY extends XX {
     type Foo = X & Y
 
-    def apply(fa: Bar[X & FooAlias]): Bar[Y & FooAlias] = fa
+    def apply(fa: Bar[X & FooAlias]): Bar[Y & FooAlias] = fa // error // error
   }
-  (new YY {}).boom // error: object creation impossible
+  (new YY {}).boom
 }

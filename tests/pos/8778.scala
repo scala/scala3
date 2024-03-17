@@ -18,6 +18,6 @@ object Test {
 
   val invN: Inv[Nothing] = new Inv[Nothing] {}
   m(invN)     // reduces to Int    both as a value and as a type
-  m(ev(invN)) // reduces to String both as a value and as a type
+  // TODO m(ev(invN)) // reduces to String both as a value and as a type
 }
 

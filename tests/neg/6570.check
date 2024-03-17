@@ -17,19 +17,11 @@
    |                             x >: Int
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/6570.scala:29:29 --------------------------------------------------------------
+-- Error: tests/neg/6570.scala:29:13 -----------------------------------------------------------------------------------
 29 |    def thing = new Trait1 {} // error
-   |                             ^
-   |                             Found:    Object with Base.Trait1 {...}
-   |                             Required: Base.N[String & Int]
-   |
-   |                             Note: a match type could not be fully reduced:
-   |
-   |                               trying to reduce  Base.N[String & Int]
-   |                               failed since selector String & Int
-   |                               is uninhabited (there are no values of that type).
-   |
-   | longer explanation available when compiling with `-explain`
+   |             ^
+   |             Match type reduction failed since selector String & Int
+   |             is uninhabited (there are no values of that type).
 -- [E007] Type Mismatch Error: tests/neg/6570.scala:47:32 --------------------------------------------------------------
 47 |  def foo(c: Child): Trait2 = c.thing  // error
    |                              ^^^^^^^
@@ -46,45 +38,21 @@
    |                                  a >: Int
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/6570.scala:51:29 --------------------------------------------------------------
+-- Error: tests/neg/6570.scala:51:13 -----------------------------------------------------------------------------------
 51 |    def thing = new Trait1 {} // error
-   |                             ^
-   |                             Found:    Object with Base.Trait1 {...}
-   |                             Required: Base.N[String & Int]
-   |
-   |                             Note: a match type could not be fully reduced:
-   |
-   |                               trying to reduce  Base.N[String & Int]
-   |                               failed since selector String & Int
-   |                               is uninhabited (there are no values of that type).
-   |
-   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/6570.scala:69:29 --------------------------------------------------------------
+   |             ^
+   |             Match type reduction failed since selector String & Int
+   |             is uninhabited (there are no values of that type).
+-- Error: tests/neg/6570.scala:69:13 -----------------------------------------------------------------------------------
 69 |    def thing = new Trait1 {} // error
-   |                             ^
-   |                             Found:    Object with Base.Trait1 {...}
-   |                             Required: Base.N[String & Int]
-   |
-   |                             Note: a match type could not be fully reduced:
-   |
-   |                               trying to reduce  Base.N[String & Int]
-   |                               failed since selector String & Int
-   |                               is uninhabited (there are no values of that type).
-   |
-   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/6570.scala:86:29 --------------------------------------------------------------
+   |             ^
+   |             Match type reduction failed since selector String & Int
+   |             is uninhabited (there are no values of that type).
+-- Error: tests/neg/6570.scala:86:13 -----------------------------------------------------------------------------------
 86 |    def thing = new Trait1 {} // error
-   |                             ^
-   |                             Found:    Object with Base.Trait1 {...}
-   |                             Required: Base.N[String & Int]
-   |
-   |                             Note: a match type could not be fully reduced:
-   |
-   |                               trying to reduce  Base.N[String & Int]
-   |                               failed since selector String & Int
-   |                               is uninhabited (there are no values of that type).
-   |
-   | longer explanation available when compiling with `-explain`
+   |             ^
+   |             Match type reduction failed since selector String & Int
+   |             is uninhabited (there are no values of that type).
 -- [E007] Type Mismatch Error: tests/neg/6570.scala:103:32 -------------------------------------------------------------
 103 |  def foo(c: Child): Trait2 = c.thing  // error
     |                              ^^^^^^^
@@ -101,16 +69,8 @@
     |                                  t >: Int
     |
     | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/6570.scala:107:29 -------------------------------------------------------------
+-- Error: tests/neg/6570.scala:107:13 ----------------------------------------------------------------------------------
 107 |    def thing = new Trait1 {} // error
-    |                             ^
-    |                             Found:    Object with Base.Trait1 {...}
-    |                             Required: Base.N[String & Int]
-    |
-    |                             Note: a match type could not be fully reduced:
-    |
-    |                               trying to reduce  Base.N[String & Int]
-    |                               failed since selector String & Int
-    |                               is uninhabited (there are no values of that type).
-    |
-    | longer explanation available when compiling with `-explain`
+    |             ^
+    |             Match type reduction failed since selector String & Int
+    |             is uninhabited (there are no values of that type).

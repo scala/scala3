@@ -232,58 +232,26 @@
    |                       case Test.E2 => String
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:105:40 ----------------------------------------------------
+-- Error: tests/neg/matchtype-seq.scala:105:11 -------------------------------------------------------------------------
 105 |  identity[T9[Tuple2[Nothing, String]]](1) // error
-    |                                        ^
-    |                                        Found:    (1 : Int)
-    |                                        Required: Test.T9[(Nothing, String)]
-    |
-    |                                        Note: a match type could not be fully reduced:
-    |
-    |                                          trying to reduce  Test.T9[(Nothing, String)]
-    |                                          failed since selector (Nothing, String)
-    |                                          is uninhabited (there are no values of that type).
-    |
-    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:106:40 ----------------------------------------------------
+    |           ^
+    |           Match type reduction failed since selector (Nothing, String)
+    |           is uninhabited (there are no values of that type).
+-- Error: tests/neg/matchtype-seq.scala:106:11 -------------------------------------------------------------------------
 106 |  identity[T9[Tuple2[String, Nothing]]]("1") // error
-    |                                        ^^^
-    |                                        Found:    ("1" : String)
-    |                                        Required: Test.T9[(String, Nothing)]
-    |
-    |                                        Note: a match type could not be fully reduced:
-    |
-    |                                          trying to reduce  Test.T9[(String, Nothing)]
-    |                                          failed since selector (String, Nothing)
-    |                                          is uninhabited (there are no values of that type).
-    |
-    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:107:37 ----------------------------------------------------
+    |           ^
+    |           Match type reduction failed since selector (String, Nothing)
+    |           is uninhabited (there are no values of that type).
+-- Error: tests/neg/matchtype-seq.scala:107:11 -------------------------------------------------------------------------
 107 |  identity[T9[Tuple2[Int, Nothing]]](1) // error
-    |                                     ^
-    |                                     Found:    (1 : Int)
-    |                                     Required: Test.T9[(Int, Nothing)]
-    |
-    |                                     Note: a match type could not be fully reduced:
-    |
-    |                                       trying to reduce  Test.T9[(Int, Nothing)]
-    |                                       failed since selector (Int, Nothing)
-    |                                       is uninhabited (there are no values of that type).
-    |
-    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:108:37 ----------------------------------------------------
+    |           ^
+    |           Match type reduction failed since selector (Int, Nothing)
+    |           is uninhabited (there are no values of that type).
+-- Error: tests/neg/matchtype-seq.scala:108:11 -------------------------------------------------------------------------
 108 |  identity[T9[Tuple2[Nothing, Int]]]("1") // error
-    |                                     ^^^
-    |                                     Found:    ("1" : String)
-    |                                     Required: Test.T9[(Nothing, Int)]
-    |
-    |                                     Note: a match type could not be fully reduced:
-    |
-    |                                       trying to reduce  Test.T9[(Nothing, Int)]
-    |                                       failed since selector (Nothing, Int)
-    |                                       is uninhabited (there are no values of that type).
-    |
-    | longer explanation available when compiling with `-explain`
+    |           ^
+    |           Match type reduction failed since selector (Nothing, Int)
+    |           is uninhabited (there are no values of that type).
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:109:29 ----------------------------------------------------
 109 |  identity[T9[Tuple2[?, ?]]]("") // error
     |                             ^^

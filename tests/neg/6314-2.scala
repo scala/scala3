@@ -17,8 +17,8 @@ object G {
 
   def main(args: Array[String]): Unit = {
     val a: Bar[X & Foo] = "hello" // error
-    val i: Bar[Y & Foo] = Foo.apply[Bar](a)
-    val b: Int = i // error
+    val i: Bar[Y & Foo] = Foo.apply[Bar](a) // error // error
+    val b: Int = i
     println(b + 1)
   }
 }
