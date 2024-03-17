@@ -14,7 +14,6 @@ object MatchTypeTrace:
     case TryReduce(scrut: Type)
     case Stuck(scrut: Type, stuckCase: MatchTypeCaseSpec, otherCases: List[MatchTypeCaseSpec])
     case NoInstance(scrut: Type, stuckCase: MatchTypeCaseSpec, fails: List[(Name, TypeBounds)])
-    case EmptyScrutinee(scrut: Type)
   import TraceEntry.*
 
   private class MatchTrace:
@@ -60,12 +59,6 @@ object MatchTypeTrace:
   def noInstance(scrut: Type, stuckCase: MatchTypeCaseSpec, fails: List[(Name, TypeBounds)])(using Context) =
     matchTypeFail(NoInstance(scrut, stuckCase, fails))
 
-  /** Record a failure that scrutinee `scrut` is provably empty.
-   *  Only the first failure is recorded.
-   */
-  def emptyScrutinee(scrut: Type)(using Context) =
-    matchTypeFail(EmptyScrutinee(scrut))
-
   /** Record in the trace that we are trying to reduce `scrut` when performing `op`
    *  If `op` succeeds the entry is removed after exit. If `op` fails, it stays.
    */
@@ -95,9 +88,6 @@ object MatchTypeTrace:
   private def explainEntry(entry: TraceEntry)(using Context): String = entry match
     case TryReduce(scrut: Type) =>
       i"  trying to reduce  $scrut"
-    case EmptyScrutinee(scrut) =>
-      i"""  failed since selector $scrut
-         |  is uninhabited (there are no values of that type)."""
     case Stuck(scrut, stuckCase, otherCases) =>
       val msg =
         i"""  failed since selector $scrut
@@ -124,6 +114,10 @@ object MatchTypeTrace:
        |matches none of the cases
        |
        |    ${casesText(cases)}"""
+
+  def emptyScrutineeText(scrut: Type)(using Context): String =
+    i"""failed since selector $scrut
+       |is uninhabited (there are no values of that type)."""
 
   def illegalPatternText(scrut: Type, cas: MatchTypeCaseSpec.LegacyPatMat)(using Context): String =
     i"""The match type contains an illegal case:

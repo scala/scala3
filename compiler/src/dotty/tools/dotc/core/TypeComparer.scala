@@ -3598,8 +3598,9 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
             // probably disjoint from it, we prevent reduction.
             // See `tests/neg/6570.scala` and `6570-1.scala` for examples that
             // exploit emptiness to break match type soundness.
-            MatchTypeTrace.emptyScrutinee(scrut)
-            NoType
+            tryReportingReductionError:
+              val scrutText = MatchTypeTrace.emptyScrutineeText(scrut)
+              MatchTypeReductionError(em"Match type reduction $scrutText")
       case Nil =>
         tryReportingReductionError:
           val casesText = MatchTypeTrace.noMatchesText(scrut, cases)
