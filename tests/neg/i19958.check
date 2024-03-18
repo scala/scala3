@@ -1,0 +1,8 @@
+-- [E008] Not Found Error: tests/neg/i19958.scala:1:21 -----------------------------------------------------------------
+1 |val b = new Object().unit // error
+  |        ^^^^^^^^^^^^^^^^^
+  |        value unit is not a member of Object - did you mean Object.wait?
+-- [E008] Not Found Error: tests/neg/i19958.scala:10:10 ----------------------------------------------------------------
+10 |val d = c.unit // error
+   |        ^^^^^^
+   |        value unit is not a member of C - did you mean c.blit? or perhaps c.wait?
