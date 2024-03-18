@@ -1066,6 +1066,7 @@ object Build {
       Compile / doc / scalacOptions += "-Ydocument-synthetic-types",
       scalacOptions += "-Ycompile-scala2-library",
       scalacOptions += "-Yscala2Unpickler:never",
+      scalacOptions += "-Yno-experimental",
       scalacOptions -= "-Xfatal-warnings",
       Compile / compile / logLevel := Level.Error,
       ivyConfigurations += SourceDeps.hide,
