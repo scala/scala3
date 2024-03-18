@@ -200,7 +200,7 @@ object Settings:
           case (OptionTag, _) =>
             update(Some(propertyClass.get.getConstructor().newInstance()), args)
           case (ct, args) =>
-            val argInArgRest = !argRest.isEmpty || (legacyArgs && choices.exists(_.contains("")))
+            val argInArgRest = !argRest.isEmpty || legacyArgs
             val argAfterParam = !argInArgRest && args.nonEmpty && (ct == IntTag || !args.head.startsWith("-"))
             if argInArgRest then
               doSetArg(argRest, args)
@@ -339,12 +339,8 @@ object Settings:
     def StringSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: String, aliases: List[String] = Nil): Setting[String] =
       publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases))
 
-    def ChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: String, aliases: List[String] = Nil): Setting[String] =
-      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases))
-
-    // Allows only args after :, but supports empty string as a choice. Used for -Ykind-projector
-    def LegacyChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: String, aliases: List[String] = Nil): Setting[String] =
-      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases, legacyArgs = true))
+    def ChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: String, aliases: List[String] = Nil, legacyArgs: Boolean = false): Setting[String] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases, legacyArgs = legacyArgs))
 
     def MultiChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: List[String], aliases: List[String] = Nil): Setting[List[String]] =
       publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases))
@@ -374,8 +370,8 @@ object Settings:
       val prefix = name.takeWhile(_ != '<')
       publish(Setting(category, "-" + name, descr, Nil, prefix = Some(prefix)))
 
-    def VersionSetting(category: SettingCategory, name: String, descr: String, default: ScalaVersion = NoScalaVersion): Setting[ScalaVersion] =
-      publish(Setting(category, prependName(name), descr, default))
+    def VersionSetting(category: SettingCategory, name: String, descr: String, default: ScalaVersion = NoScalaVersion, legacyArgs: Boolean = false): Setting[ScalaVersion] =
+      publish(Setting(category, prependName(name), descr, default, legacyArgs = legacyArgs))
 
     def OptionSetting[T: ClassTag](category: SettingCategory, name: String, descr: String, aliases: List[String] = Nil): Setting[Option[T]] =
       publish(Setting(category, prependName(name), descr, None, propertyClass = Some(summon[ClassTag[T]].runtimeClass), aliases = aliases))
