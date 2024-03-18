@@ -182,7 +182,17 @@ class TypeApplications(val self: Type) extends AnyVal {
         val tsym = self.symbol
         if (tsym.isClass) tsym.typeParams
         else tsym.infoOrCompleter match {
-          case info: LazyType if isTrivial(self.prefix, tsym) => info.completerTypeParams(tsym)
+          case info: LazyType if isTrivial(self.prefix, tsym) =>
+            val tparams = info.completerTypeParams(tsym)
+            if tsym.isCompleted then tsym.info.typeParams
+              // Completers sometimes represent parameters as symbols where
+              // the completed type represents them as paramrefs. Make sure we get
+              // a stable result by calling `typeParams` recursively. Test case
+              // is pos/i19942.scala, where parameter F0 has initially a Namer#TypeDefCompleter.
+              // After calling its completerTypeParams, we get a list of parameter symbols
+              // and as a side effect F0 is completed. Calling typeParams on the completed
+              // type gives a list of paramrefs.
+            else tparams
           case _ => self.info.typeParams
         }
       case self: AppliedType =>
