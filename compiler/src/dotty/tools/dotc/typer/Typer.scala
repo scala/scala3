@@ -4293,7 +4293,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     def adaptType(tp: Type): Tree = {
       val tree1 =
-        if ((pt eq AnyTypeConstructorProto) || tp.typeParamSymbols.isEmpty) tree
+        if (pt eq AnyTypeConstructorProto) || tp.typeParamSymbols.isEmpty then tree
         else {
           if (ctx.isJava)
             // Cook raw type
