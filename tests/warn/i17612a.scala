@@ -1,4 +1,4 @@
-//> using options  -Xlint:private-shadow -source:3.3
+//> using options  -Wshadow:private-shadow -source:3.3
 
 object i17612a:
 	class Base(var x: Int, val y: Int, var z: Int):

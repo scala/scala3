@@ -1,4 +1,4 @@
-//> using options  -Xlint:type-parameter-shadow
+//> using options  -Wshadow:type-parameter-shadow
 
 object i17613a:
 	class B:
