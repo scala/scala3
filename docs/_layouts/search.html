@@ -47,11 +47,11 @@ title: Search
 
     // Set search term and title:
     var searchTerm = decodeURIComponent(parameters["searchTerm"]);
-    document.getElementById("searching-for").innerHTML = 'Search results for "' + searchTerm + '"';
+    document.getElementById("searching-for").innerText = 'Search results for "' + searchTerm + '"';
     document.title = searchTerm + ' - Search results';
 
     if (!window.Worker) {
-        document.getElementById("searching-for").innerHTML =
+        document.getElementById("searching-for").innerText =
             "Couldn't search for \"" + searchTerm + "\", " +
             "web workers not supported. Please update your browser.";
     }
