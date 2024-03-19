@@ -1826,7 +1826,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 // check `pat` here and throw away the result.
                 val gadtCtx: Context = ctx.fresh.setFreshGADTBounds
                 val pat1 = typedPattern(pat, selType)(using gadtCtx)
-                val Typed(_, tpt) = tpd.unbind(tpd.unsplice(pat1)): @unchecked
+                val tpt = tpd.unbind(tpd.unsplice(pat1)) match
+                  case Typed(_, tpt) => tpt
+                  case UnApply(fun, _, p1 :: _) if fun.symbol == defn.TypeTest_unapply => p1
                 instantiateMatchTypeProto(pat1, pt) match {
                   case defn.MatchCase(patternTp, _) => tpt.tpe frozen_=:= patternTp
                   case _ => false
