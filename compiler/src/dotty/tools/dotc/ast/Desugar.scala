@@ -1943,12 +1943,27 @@ object desugar {
       case AndType(tp1, tp2) => stripToCore(tp1) ::: stripToCore(tp2)
       case _ => defn.AnyType :: Nil
     }
+
+    val refinements1 = Trees.flatten:
+      refinements.mapConserve {
+        case tree: ValDef if tree.mods.is(Mutable) =>
+          val getter =
+            cpy.DefDef(tree)(name = tree.name, paramss = Nil, tpt = tree.tpt, rhs = tree.rhs)
+              .withFlags(tree.mods.flags & (AccessFlags | Synthetic))
+          val setterParam = makeSyntheticParameter(tpt = tree.tpt)
+          val setter =
+            cpy.DefDef(tree)(name = tree.name.setterName, paramss = List(List(setterParam)), tpt = untpd.scalaUnit, rhs = EmptyTree)
+              .withFlags(tree.mods.flags & (AccessFlags | Synthetic))
+          Thicket(getter, setter)
+        case tree => tree
+      }
+
     val parentCores = stripToCore(parent.tpe)
     val untpdParent = TypedSplice(parent)
     val (classParents, self) =
       if (parentCores.length == 1 && (parent.tpe eq parentCores.head)) (untpdParent :: Nil, EmptyValDef)
       else (parentCores map TypeTree, ValDef(nme.WILDCARD, untpdParent, EmptyTree))
-    val impl = Template(emptyConstructor, classParents, Nil, self, refinements)
+    val impl = Template(emptyConstructor, classParents, Nil, self, refinements1)
     TypeDef(tpnme.REFINE_CLASS, impl).withFlags(Trait)
   }
 

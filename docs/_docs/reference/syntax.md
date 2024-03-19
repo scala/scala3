@@ -415,6 +415,7 @@ EndMarkerTag      ::=  id | ‘if’ | ‘while’ | ‘for’ | ‘match’ | �
 ```
 RefineDcl         ::=  ‘val’ ValDcl
                     |  ‘def’ DefDcl
+                    |  ‘var’ ValDcl
                     |  ‘type’ {nl} TypeDef
 ValDcl            ::=  ids ‘:’ Type
 DefDcl            ::=  DefSig ‘:’ Type
