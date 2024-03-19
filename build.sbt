@@ -16,7 +16,6 @@ val `scala3-bench-bootstrapped` = Build.`scala3-bench-bootstrapped`
 val `scala3-bench-micro` = Build.`scala3-bench-micro`
 val `scala2-library-bootstrapped` = Build.`scala2-library-bootstrapped`
 val `scala2-library-tasty` = Build.`scala2-library-tasty`
-val `scala2-library-tasty-tests` = Build.`scala2-library-tasty-tests`
 val `scala2-library-cc` = Build.`scala2-library-cc`
 val `scala2-library-cc-tasty` = Build.`scala2-library-cc-tasty`
 val `tasty-core` = Build.`tasty-core`
