@@ -20,7 +20,7 @@ Here, ´c´ is a constructor of a class ´C´, which must conform to the class `
 Annotations may apply to definitions, types, or expressions.
 An annotation of a definition appears in front of that definition.
 An annotation of a type appears after that type.
-An annotation of an expression ´e´ appears after the expression ´e´, separated by a colon.
+An annotation of an expression appears after that expression, separated by a colon.
 More than one annotation clause may apply to an entity.
 The order in which these annotations are given does not matter.
 
@@ -86,7 +86,7 @@ def f(x: Option[Int]) = (x: @unchecked) match {
 ```
 Without the `@unchecked` annotation, a Scala compiler could infer that the pattern match is non-exhaustive, and could produce a warning because `Option` is a `sealed` class.
 
-* `@uncheckedStable` When applied a value definition, it allows the defined value to appear in a path, even if its type is [volatile](03-types.html#volatile-types).
+* `@uncheckedStable` When applied to a value definition, it allows the defined value to appear in a path, even if its type is [volatile](03-types.html#volatile-types).
 For instance, the following member definitions are legal:
 ```scala
 type A { type T }
@@ -97,7 +97,7 @@ val y: x.T                       // OK since `x' is still a path
 Without the `@uncheckedStable` annotation, the designator `x` would not be a path since its type `A with B` is volatile.
 Hence, the reference `x.T` would be malformed.
 
-When applied to value definitions that have non-volatile types, the annotation has no effect.
+When applied to value definitions that have no volatile types, the annotation has no effect.
 
 * `@specialized` When applied to the definition of a type parameter, this annotation causes the compiler to generate specialized definitions for primitive types.
 An optional list of primitive types may be given, in which case specialization takes into account only those types.
