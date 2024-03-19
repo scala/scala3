@@ -1,0 +1,4 @@
+-- Error: tests/neg-macros/i19941.scala:7:14 ---------------------------------------------------------------------------
+7 |    case '{ ${hd *: tl} : *:[Int, EmptyTuple] } => '{ ??? } // error
+  |              ^^^^^^^^
+  |              Splice pattern must match an Expr[...]
