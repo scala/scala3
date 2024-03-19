@@ -30,7 +30,7 @@ object QuotePatterns:
     def traverse(tree: Tree)(using Context): Unit = tree match {
       case tree: SplicePattern =>
         if !tree.body.typeOpt.derivesFrom(defn.QuotedExprClass) then
-          report.error(i"Spice pattern must match an Expr[...]", tree.body.srcPos)
+          report.error(i"Splice pattern must match an Expr[...]", tree.body.srcPos)
       case tdef: TypeDef if tdef.symbol.isClass =>
         val kind = if tdef.symbol.is(Module) then "objects" else "classes"
         report.error(em"Implementation restriction: cannot match $kind", tree.srcPos)
