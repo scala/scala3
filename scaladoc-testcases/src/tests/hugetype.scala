@@ -3,6 +3,7 @@ package tests.hugetype
 import compiletime._
 import compiletime.ops.int._
 import scala.annotation.experimental
+import scala.annotation.nowarn
 
 /**
  * a particular group of people or things that share similar characteristics and form a smaller division of a larger set:
@@ -39,7 +40,7 @@ trait XD extends E:
    */
   @experimental
   @deprecated
-  protected override final implicit transparent inline abstract infix def same[A](a: A): A = a
+  protected override final implicit transparent inline abstract infix def same[A](a: A): A = a: @nowarn
 
 trait Parent[X, A[_], B[_, _]]
 

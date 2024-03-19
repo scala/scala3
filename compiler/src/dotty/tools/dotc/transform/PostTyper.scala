@@ -369,7 +369,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           }
         case tree @ Inlined(call, bindings, expansion) if !tree.inlinedFromOuterScope =>
           val pos = call.sourcePos
-          CrossVersionChecks.checkExperimentalRef(call.symbol, pos)
+          CrossVersionChecks.checkRef(call.symbol, pos)
           withMode(Mode.NoInline)(transform(call))
           val callTrace = Inlines.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(tree)))
