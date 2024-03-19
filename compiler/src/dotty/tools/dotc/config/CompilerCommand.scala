@@ -9,11 +9,14 @@ abstract class CompilerCommand extends CliCommand:
 
   final def helpMsg(using settings: ConcreteSettings)(using SettingsState, Context): String =
     settings.allSettings.find(isHelping) match
-      case Some(s) => s.description
+      case Some(s) => 
+        println("Hello!!") // To chyba nie CliCommand??
+        s.description
       case _ =>
+        println("No: " + settings.W.value)
         if (settings.help.value) usageMessage
         else if (settings.Vhelp.value) vusageMessage
-        else if (settings.Whelp.value) wusageMessage
+        else if (settings.W.value.exists(_.name == "help")) wusageMessage
         else if (settings.Xhelp.value) xusageMessage
         else if (settings.Yhelp.value) yusageMessage
         else if (settings.showPlugins.value) ctx.base.pluginDescriptions
@@ -22,5 +25,5 @@ abstract class CompilerCommand extends CliCommand:
 
   final def isHelpFlag(using settings: ConcreteSettings)(using SettingsState): Boolean =
     import settings.*
-    val flags = Set(help, Vhelp,  Whelp, Xhelp, Yhelp, showPlugins, XshowPhases)
+    val flags = Set(help, Vhelp, Xhelp, Yhelp, showPlugins, XshowPhases)
     flags.exists(_.value) || allSettings.exists(isHelping)

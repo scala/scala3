@@ -83,16 +83,18 @@ object Settings:
     deprecationMsg: Option[String] = None,
     // kept only for -Ykind-projector option compatibility
     legacyArgs: Boolean = false,
-    mapValue: (SettingsState, T) => T = (a, b: T) => b)(private[Settings] val idx: Int) {
+    mapValue: (SettingsState, T) => T = (a, b: T) => b,
+    helpOnMissing: Boolean = false)(private[Settings] val idx: Int) {
 
-  
+    private val ct = summon[ClassTag[T]]
     validateSettingString(prefix.getOrElse(name))
     aliases.foreach(validateSettingString)
     assert(name.startsWith(s"-${category.prefixLetter}"), s"Setting $name does not start with category -$category")
     assert(legacyArgs || !choices.exists(_.contains("")), s"Empty string is not supported as a choice for setting $name")
     // Without the following assertion, it would be easy to mistakenly try to pass a file to a setting that ignores invalid args.
     // Example: -opt Main.scala would be interpreted as -opt:Main.scala, and the source file would be ignored.
-    assert(!(summon[ClassTag[T]] == ListTag && ignoreInvalidArgs), s"Ignoring invalid args is not supported for multivalue settings: $name")
+    assert(!(ct == ListTag && ignoreInvalidArgs), s"Ignoring invalid args is not supported for multivalue settings: $name")
+    assert(!helpOnMissing || ct == StringTag || ct == ListTag, s"helpOnMissing is only supported for String or List settings: $name")
 
     val allFullNames: List[String] = s"$name" :: s"-$name" :: aliases  
 
@@ -142,7 +144,9 @@ object Settings:
 
       def missingArg =
         val msg = s"missing argument for option $name"
-        if ignoreInvalidArgs then warn(msg + ", the tag was ignored", args)  else fail(msg, args)
+        if helpOnMissing then update("help", args)
+        else if ignoreInvalidArgs then warn(msg + ", the tag was ignored", args) 
+        else fail(msg, args)
 
       def invalidChoices(invalid: List[String]) =
         val msg = s"invalid choice(s) for $name: ${invalid.mkString(",")}"
@@ -349,8 +353,8 @@ object Settings:
     def MultiChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: List[String], aliases: List[String] = Nil): Setting[List[String]] =
       publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases))
 
-    def MultiChoiceHelpSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]], aliases: List[String] = Nil): Setting[List[ChoiceWithHelp[String]]] =
-      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases))
+    def MultiChoiceHelpSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]], aliases: List[String] = Nil, helpOnMissing: Boolean = false): Setting[List[ChoiceWithHelp[String]]] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases, helpOnMissing = helpOnMissing))
 
     def IntSetting(category: SettingCategory, name: String, descr: String, default: Int, aliases: List[String] = Nil): Setting[Int] =
       publish(Setting(category, prependName(name), descr, default, aliases = aliases))

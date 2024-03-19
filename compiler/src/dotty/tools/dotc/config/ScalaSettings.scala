@@ -156,18 +156,18 @@ private sealed trait VerboseSettings:
 private sealed trait WarningSettings:
   self: SettingGroup =>
 
-  val Whelp: Setting[Boolean] = BooleanSetting(WarningSetting, "Whelp", "Print a synopsis of warning options.")
-
   val W: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     WarningSetting, 
     name = "W", 
     helpArg = "warning",
     descr = "Enable sets of warnings or print a synopsis of warning options.",
     choices = List(
+      ChoiceWithHelp("help", "Print a synopsis of warning options"),
       ChoiceWithHelp("default", "Enable default warnings"),
       ChoiceWithHelp("all", "Enable all warnings"),
     ),
-    default =  Nil
+    default =  Nil,
+    helpOnMissing = true
   )
 
   enum WarningGroup(val enabledBy: Set[String]):
