@@ -78,7 +78,7 @@ object MatchTypeTrace:
    */
   def recurseWith(scrut: Type)(op: => Type)(using Context): Type =
     ctx.property(MatchTrace) match
-      case Some(trace) =>
+      case Some(trace) if !trace.entries.contains(TryReduce(scrut)) =>
         val prev = trace.entries
         trace.entries = TryReduce(scrut) :: prev
         val res = op

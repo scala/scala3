@@ -46,12 +46,6 @@
    |
    |                        case t1 *: t2 *: ts => Tuple.Concat[Reverse[ts], (t2, t1)]
    |                        case EmptyTuple => EmptyTuple
-   |                      trying to reduce  Reverse[A *: EmptyTuple.type]
-   |                      failed since selector A *: EmptyTuple.type
-   |                      matches none of the cases
-   |
-   |                        case t1 *: t2 *: ts => Tuple.Concat[Reverse[ts], (t2, t1)]
-   |                        case EmptyTuple => EmptyTuple
    |
    | longer explanation available when compiling with `-explain`
 -- [E172] Type Error: tests/neg/i12049.scala:24:20 ---------------------------------------------------------------------
@@ -89,12 +83,6 @@
    |                            Note: a match type could not be fully reduced:
    |
    |                              trying to reduce  Tuple.Concat[Reverse[A *: EmptyTuple.type], (B, A)]
-   |                              trying to reduce  Reverse[A *: EmptyTuple.type]
-   |                              failed since selector A *: EmptyTuple.type
-   |                              matches none of the cases
-   |
-   |                                case t1 *: t2 *: ts => Tuple.Concat[Reverse[ts], (t2, t1)]
-   |                                case EmptyTuple => EmptyTuple
    |                              trying to reduce  Reverse[A *: EmptyTuple.type]
    |                              failed since selector A *: EmptyTuple.type
    |                              matches none of the cases
