@@ -2099,7 +2099,8 @@ object Parsers {
     def condExpr(altToken: Token): Tree =
       val t: Tree =
         if in.token == LPAREN then
-          var t: Tree = atSpan(in.offset) { Parens(inParens(exprInParens())) }
+          var t: Tree = atSpan(in.offset):
+            makeTupleOrParens(inParensWithCommas(commaSeparated(exprInParens)))
           if in.token != altToken then
             if toBeContinued(altToken) then
               t = inSepRegion(InCond) {
