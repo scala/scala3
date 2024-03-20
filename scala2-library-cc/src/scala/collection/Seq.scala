@@ -118,7 +118,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
     * Note that :-ending operators are right associative (see example).
     * A mnemonic for `+:` vs. `:+` is: the COLon goes on the COLlection side.
     */
-  @`inline` final def +: [B >: A](elem: B): CC[B] = prepended(elem)
+  @`inline` override final def +: [B >: A](elem: B): CC[B] = prepended(elem)
 
   /** A copy of this $coll with an element appended.
     *
@@ -148,7 +148,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
     * Note that :-ending operators are right associative (see example).
     * A mnemonic for `+:` vs. `:+` is: the COLon goes on the COLlection side.
     */
-  @`inline` final def :+ [B >: A](elem: B): CC[B] = appended(elem)
+  @`inline` override final def :+ [B >: A](elem: B): CC[B] = appended(elem)
 
   /** As with `:++`, returns a new collection containing the elements from the left operand followed by the
     *  elements from the right operand.
