@@ -13,7 +13,6 @@ import collection.mutable.ArrayBuffer
 import collection.mutable
 import reflect.ClassTag
 import scala.util.{Success, Failure}
-import dotty.tools.dotc.config.Settings.Setting.ChoiceWithHelp
 
 object Settings:
 
@@ -84,7 +83,8 @@ object Settings:
     // kept only for -Ykind-projector option compatibility
     legacyArgs: Boolean = false,
     mapValue: (SettingsState, T) => T = (a, b: T) => b,
-    helpOnMissing: Boolean = false)(private[Settings] val idx: Int) {
+    helpOnMissing: Boolean = false,
+    choiceHelp: Option[Map[Any, String]] = None)(private[Settings] val idx: Int) {
 
     private val ct = summon[ClassTag[T]]
     validateSettingString(prefix.getOrElse(name))
@@ -95,6 +95,7 @@ object Settings:
     // Example: -opt Main.scala would be interpreted as -opt:Main.scala, and the source file would be ignored.
     assert(!(ct == ListTag && ignoreInvalidArgs), s"Ignoring invalid args is not supported for multivalue settings: $name")
     assert(!helpOnMissing || ct == StringTag || ct == ListTag, s"helpOnMissing is only supported for String or List settings: $name")
+    assert(choices.isDefined || choiceHelp.isEmpty, s"choiceHelp is only supported for settings with choices: $name")
 
     val allFullNames: List[String] = s"$name" :: s"-$name" :: aliases  
 
@@ -109,12 +110,17 @@ object Settings:
     def isMultivalue: Boolean = summon[ClassTag[T]] == ListTag
 
     def acceptsNoArg: Boolean = summon[ClassTag[T]] == BooleanTag || summon[ClassTag[T]] == OptionTag || choices.exists(_.contains(""))
-    
+            s"\n- $name${if description.isEmpty() then "" else s" :\n\t${description.replace("\n","\n\t")}"}"
     def legalChoices: String =
+      def toString[T](choice: T) = 
+        choiceHelp match 
+          case Some(choiceMap) => s"\n- $choice${if choiceMap.isDefinedAt(choice) then s":\n\t${choiceMap(choice).replace("\n","\n\t")}" else ""}" 
+          case None => choice.toString
+        
       choices match {
         case Some(xs) if xs.isEmpty => ""
         case Some(r: Range)         => s"${r.head}..${r.last}"
-        case Some(xs)               => xs.mkString(", ")
+        case Some(xs)               => xs.map(toString).mkString(", ")
         case None                   => ""
       }
 
@@ -144,7 +150,9 @@ object Settings:
 
       def missingArg =
         val msg = s"missing argument for option $name"
-        if helpOnMissing then update("help", args)
+        if helpOnMissing then 
+          val helpValue = if ct == StringTag then "help" else List("help")
+          update(helpValue, args)
         else if ignoreInvalidArgs then warn(msg + ", the tag was ignored", args) 
         else fail(msg, args)
 
@@ -253,18 +261,6 @@ object Settings:
       def value(using Context): T = setting.valueIn(ctx.settingsState)
       def update(x: T)(using Context): SettingsState = setting.updateIn(ctx.settingsState, x)
       def isDefault(using Context): Boolean = setting.isDefaultIn(ctx.settingsState)
-
-    /**
-     * A choice with help description.
-     *
-     * NOTE : `equals` and `toString` have special behaviors
-     */
-    case class ChoiceWithHelp[T](name: T, description: String):
-      override def equals(x: Any): Boolean = x match
-        case s:String => s == name.toString()
-        case _ => false
-      override def toString(): String =
-        s"\n- $name${if description.isEmpty() then "" else s" :\n\t${description.replace("\n","\n\t")}"}"
   end Setting
 
   class SettingGroup {
@@ -350,11 +346,8 @@ object Settings:
     def ChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: String, aliases: List[String] = Nil, legacyArgs: Boolean = false): Setting[String] =
       publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases, legacyArgs = legacyArgs))
 
-    def MultiChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: List[String], aliases: List[String] = Nil): Setting[List[String]] =
-      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases))
-
-    def MultiChoiceHelpSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]], aliases: List[String] = Nil, helpOnMissing: Boolean = false): Setting[List[ChoiceWithHelp[String]]] =
-      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases, helpOnMissing = helpOnMissing))
+    def MultiChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: List[String], aliases: List[String] = Nil, helpOnMissing: Boolean = false, choiceHelp: Option[Map[Any, String]] = None): Setting[List[String]] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases, helpOnMissing = helpOnMissing, choiceHelp = choiceHelp))
 
     def IntSetting(category: SettingCategory, name: String, descr: String, default: Int, aliases: List[String] = Nil): Setting[Int] =
       publish(Setting(category, prependName(name), descr, default, aliases = aliases))

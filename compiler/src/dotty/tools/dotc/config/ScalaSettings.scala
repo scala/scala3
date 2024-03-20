@@ -8,7 +8,6 @@ import dotty.tools.dotc.config.SourceVersion
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.rewrites.Rewrites
 import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory, NoAbstractFile}
-import Setting.ChoiceWithHelp
 import ScalaSettingCategories.*
 
 import scala.util.chaining.*
@@ -156,16 +155,17 @@ private sealed trait VerboseSettings:
 private sealed trait WarningSettings:
   self: SettingGroup =>
 
-  val W: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
+  val W: Setting[List[String]] = MultiChoiceSetting(
     WarningSetting, 
     name = "W", 
     helpArg = "warning",
     descr = "Enable sets of warnings or print a synopsis of warning options.",
-    choices = List(
-      ChoiceWithHelp("help", "Print a synopsis of warning options"),
-      ChoiceWithHelp("default", "Enable default warnings"),
-      ChoiceWithHelp("all", "Enable all warnings"),
-    ),
+    choices = List("help", "default", "all"),
+    choiceHelp = Some(Map(
+      "help" -> "Print a synopsis of warning options",
+      "default" -> "Enable default warnings",
+      "all" -> "Enable all warnings"
+    )),
     default =  Nil,
     helpOnMissing = true
   )
@@ -182,7 +182,6 @@ private sealed trait WarningSettings:
     overrideValueWithW(group, false, true)(ss, v)
 
   val XfatalWarnings: Setting[Boolean] = BooleanSetting(WarningSetting, "Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
-    .mapValue(overrideWithW(WarningGroup.Default))
   val WvalueDiscard: Setting[Boolean] = BooleanSetting(WarningSetting, "Wvalue-discard", "Warn when non-Unit expression results are unused.")
     .mapValue(overrideWithW(WarningGroup.Default))
   val WNonUnitStatement = BooleanSetting(WarningSetting, "Wnonunit-statement", "Warn when block statements are non-Unit expressions.")
@@ -192,39 +191,43 @@ private sealed trait WarningSettings:
     .mapValue(overrideWithW(WarningGroup.Default))
   val WunstableInlineAccessors = BooleanSetting(WarningSetting, "WunstableInlineAccessors", "Warn an inline methods has references to non-stable binary APIs.")
     .mapValue(overrideWithW(WarningGroup.Default))
-  val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
+  val Wunused: Setting[List[String]] = MultiChoiceSetting(
     WarningSetting,
     name = "Wunused",
     helpArg = "warning",
     descr = "Enable or disable specific `unused` warnings",
     choices = List(
-      ChoiceWithHelp("nowarn", ""),
-      ChoiceWithHelp("all",""),
-      ChoiceWithHelp(
-        name = "imports",
-        description = "Warn if an import selector is not referenced.\n" +
+      "nowarn", 
+      "all", 
+      "imports", 
+      "privates", 
+      "locals", 
+      "explicits", 
+      "implicits",
+       "params", 
+       "linted", 
+       "strict-no-implicit-warn", 
+       "unsafe-warn-patvars"
+      ),
+    choiceHelp = Some(Map(
+      "nowarn" -> "",
+      "all" -> "",
+      "imports" -> ("Warn if an import selector is not referenced.\n" +
         "NOTE : overrided by -Wunused:strict-no-implicit-warn"),
-        ChoiceWithHelp("privates","Warn if a private member is unused"),
-        ChoiceWithHelp("locals","Warn if a local definition is unused"),
-        ChoiceWithHelp("explicits","Warn if an explicit parameter is unused"),
-        ChoiceWithHelp("implicits","Warn if an implicit parameter is unused"),
-        ChoiceWithHelp("params","Enable -Wunused:explicits,implicits"),
-        ChoiceWithHelp("linted","Enable -Wunused:imports,privates,locals,implicits"),
-        ChoiceWithHelp(
-          name = "strict-no-implicit-warn",
-          description = "Same as -Wunused:import, only for imports of explicit named members.\n" +
-          "NOTE : This overrides -Wunused:imports and NOT set by -Wunused:all"
-        ),
-        // ChoiceWithHelp("patvars","Warn if a variable bound in a pattern is unused"),
-        ChoiceWithHelp(
-          name = "unsafe-warn-patvars",
-          description = "(UNSAFE) Warn if a variable bound in a pattern is unused.\n" +
-          "This warning can generate false positive, as warning cannot be\n" +
-          "suppressed yet."
-        )
-    ),
+      "privates" -> "Warn if a private member is unused",
+      "locals" -> "Warn if a local definition is unused",
+      "explicits" -> "Warn if an explicit parameter is unused",
+      "implicits" -> "Warn if an implicit parameter is unused",
+      "params" -> "Enable -Wunused:explicits,implicits",
+      "linted" -> "Enable -Wunused:imports,privates,locals,implicits",
+      "strict-no-implicit-warn" -> ("Same as -Wunused:import, only for imports of explicit named members.\n" +
+        "NOTE : This overrides -Wunused:imports and NOT set by -Wunused:all"),
+      "unsafe-warn-patvars" -> ("(UNSAFE) Warn if a variable bound in a pattern is unused.\n" +
+        "This warning can generate false positive, as warning cannot be\n" +
+        "suppressed yet.")
+    )),
     default = Nil
-  ).mapValue(overrideValueWithW(WarningGroup.Default, Nil, List(ChoiceWithHelp("linted", ""))))
+  ).mapValue(overrideValueWithW(WarningGroup.Default, Nil, List("linted")))
 
   object WunusedHas:
     def isChoiceSet(s: String)(using Context) = Wunused.value.pipe(us => us.contains(s))
@@ -301,18 +304,19 @@ private sealed trait WarningSettings:
          |to prevent the shell from expanding patterns.""".stripMargin,
   )
 
-  val Wshadow: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
+  val Wshadow: Setting[List[String]] = MultiChoiceSetting(
     WarningSetting,
     name = "Wshadow",
     helpArg = "warning",
     descr = "Enable or disable specific `shadow` warnings",
-    choices = List(
-      ChoiceWithHelp("all", ""),
-      ChoiceWithHelp("private-shadow", "Warn if a private field or class parameter shadows a superclass field"),
-      ChoiceWithHelp("type-parameter-shadow", "Warn when a type parameter shadows a type already in the scope"),
-    ),
+    choices = List("all", "private-shadow", "type-parameter-shadow"),
+    choiceHelp = Some(Map(
+      "all" -> "",
+      "private-shadow" -> "Warn if a private field or class parameter shadows a superclass field",
+      "type-parameter-shadow" -> "Warn when a type parameter shadows a type already in the scope"
+    )),
     default = Nil
-  ).mapValue(overrideValueWithW(WarningGroup.Default, Nil, List(ChoiceWithHelp("all", ""))))
+  ).mapValue(overrideValueWithW(WarningGroup.Default, Nil, List("all")))
 
   object WshadowHas:
     def allOr(s: String)(using Context) =

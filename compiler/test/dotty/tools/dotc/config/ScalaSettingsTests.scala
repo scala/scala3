@@ -96,5 +96,4 @@ class ScalaSettingsTests:
     assertEquals(Action.Silent, sut.action(depr))
 
 
-
 end ScalaSettingsTests
