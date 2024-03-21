@@ -7,3 +7,6 @@
    |│   ^
    |└── val b: Int = A.a.foo() // warn	[ global-cycle5.scala:10 ]
    |                 ^^^
+   |The mutable state is created through: Calling trace:
+   |└── object A {	[ global-cycle5.scala:5 ]
+   |    ^

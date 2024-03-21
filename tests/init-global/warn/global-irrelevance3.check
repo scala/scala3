@@ -9,3 +9,4 @@
   |│           ^^^^^^^
   |└── (() => x) // warn	[ global-irrelevance3.scala:9 ]
   |           ^
+  |The mutable state is created through: 

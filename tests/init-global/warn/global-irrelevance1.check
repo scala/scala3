@@ -7,3 +7,6 @@
   |│   ^
   |└── var y = A.x * 2 // warn	[ global-irrelevance1.scala:5 ]
   |            ^^^
+  |The mutable state is created through: Calling trace:
+  |└── object A:	[ global-irrelevance1.scala:1 ]
+  |    ^

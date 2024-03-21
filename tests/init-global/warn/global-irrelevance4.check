@@ -9,3 +9,4 @@
   |       │   ^^^^^^^^^
   |       └── (y => x = y), // warn	[ global-irrelevance4.scala:8 ]
   |            ^^^^^^^^^^
+  |       The mutable state is created through: 
