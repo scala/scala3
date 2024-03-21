@@ -167,6 +167,8 @@ class Compiler {
     val rctx =
       if ctx.settings.Xsemanticdb.value then
         ctx.addMode(Mode.ReadPositions)
+      else if ctx.settings.YcheckInitGlobal.value then
+        ctx.addMode(Mode.ReadPositions)
       else
         ctx
     new Run(this, rctx)
