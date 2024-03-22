@@ -648,16 +648,23 @@ trait ConstraintHandling {
    * as those could leak the annotation to users (see run/inferred-repeated-result).
    */
   def widenInferred(inst: Type, bound: Type, widenUnions: Boolean)(using Context): Type =
-    def typeSize(tp: Type): Int = tp match
-      case tp: AndOrType => typeSize(tp.tp1) + typeSize(tp.tp2)
-      case _ => 1
-
     def widenOr(tp: Type) =
-      val tpw = tp.widenUnion
-      if (tpw ne tp) && !tpw.isTransparent() && (tpw <:< bound) then tpw else tp
+      if widenUnions then
+        val tpw = tp.widenUnion
+        if tpw ne tp then
+          if tpw.isTransparent() then
+            // Now also widen singletons of soft unions. Before these were skipped
+            // since we widenUnion on soft unions is independent of whether singletons
+            // are widened or not. This avoids an expensive subtype check in widenSingle,
+            // see 19907_*.scala for test cases.
+            tp.widenSingletons()
+          else if tpw <:< bound then tpw
+          else tp
+        else tp
+      else tp.hardenUnions
 
     def widenSingle(tp: Type) =
-      val tpw = tp.widenSingletons
+      val tpw = tp.widenSingletons(skipSoftUnions = widenUnions)
       if (tpw ne tp) && (tpw <:< bound) then tpw else tp
 
     def isSingleton(tp: Type): Boolean = tp match
@@ -667,16 +674,8 @@ trait ConstraintHandling {
     val wideInst =
       if isSingleton(bound) then inst
       else
-        val widenedFromUnion =
-          if widenUnions && typeSize(inst) > 64 then
-            // If the inferred type `inst` is too large, the subtype check for `bound` in `widenSingle`
-            // can be expensive due to comparisons between large union types, so we avoid it by
-            // `widenUnion` directly here.
-            // See issue #19907.
-            widenOr(inst)
-          else
-            val widenedFromSingle = widenSingle(inst)
-            if widenUnions then widenOr(widenedFromSingle) else widenedFromSingle.hardenUnions
+        val widenedFromSingle = widenSingle(inst)
+        val widenedFromUnion = widenOr(widenedFromSingle)
         val widened = dropTransparentTraits(widenedFromUnion, bound)
         widenIrreducible(widened)
 
