@@ -519,6 +519,16 @@ class CheckCaptures extends Recheck, SymTransformer:
       if sym.isConstructor then
         val cls = sym.owner.asClass
 
+        /** Check if the class or one of its parents has a root capability,
+         *  which means that the class has a capability annotation or an impure
+         *  function type.
+         */
+        def hasUniversalCapability(tp: Type): Boolean = tp match
+          case CapturingType(parent, ref) =>
+            ref.isUniversal || hasUniversalCapability(parent)
+          case tp =>
+            tp.isCapabilityClassRef || tp.parents.exists(hasUniversalCapability)
+
         /** First half of result pair:
          *  Refine the type of a constructor call `new C(t_1, ..., t_n)`
          *  to C{val x_1: T_1, ..., x_m: T_m} where x_1, ..., x_m are the tracked
@@ -528,7 +538,8 @@ class CheckCaptures extends Recheck, SymTransformer:
          */
         def addParamArgRefinements(core: Type, initCs: CaptureSet): (Type, CaptureSet) =
           var refined: Type = core
-          var allCaptures: CaptureSet = initCs
+          var allCaptures: CaptureSet = if hasUniversalCapability(core)
+            then CaptureSet.universal else initCs
           for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
             val getter = cls.info.member(getterName).suchThat(_.is(ParamAccessor)).symbol
             if getter.termRef.isTracked && !getter.is(Private) then
