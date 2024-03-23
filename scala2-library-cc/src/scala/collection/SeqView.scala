@@ -65,6 +65,10 @@ trait SeqViewOps[+A, +CC[_], +C] extends Any with IterableOps[A, CC, C] {
   def distinctBy[B](f: A -> B): C^{this} =
     assert(false, "This is a placeholder implementation in the capture checked Scala 2 library.")
     ???
+
+  // The following methods are copied from [[SeqOps]].
+  @`inline` def +: [B >: A](elem: B): CC[B]^{this} = prepended(elem)
+  @`inline` def :+ [B >: A](elem: B): CC[B]^{this} = appended(elem)
   // -------------------
 
   def reverseIterator: Iterator[A]^{this} = reversed.iterator
