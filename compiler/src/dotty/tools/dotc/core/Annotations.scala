@@ -72,12 +72,11 @@ object Annotations {
     def refersToParamOf(tl: TermLambda)(using Context): Boolean =
       val args = arguments
       if args.isEmpty then false
-      else tree.existsSubTree {
-        case id: Ident => id.tpe.stripped match
+      else tree.existsSubTree:
+        case id: (Ident | This) => id.tpe.stripped match
           case TermParamRef(tl1, _) => tl eq tl1
           case _ => false
         case _ => false
-      }
 
     /** A string representation of the annotation. Overridden in BodyAnnotation.
      */
