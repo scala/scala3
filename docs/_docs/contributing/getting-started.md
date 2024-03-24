@@ -50,7 +50,7 @@ Start by cloning the repository:
 
 ```bash
 $ git clone https://github.com/scala/scala3.git
-$ cd dotty
+$ cd scala3
 ```
 
 Dotty provides a standard sbt build: compiling, running and starting a repl can
