@@ -49,8 +49,8 @@ Scala](https://www.jetbrains.com/help/idea/discover-intellij-idea-for-scala.html
 Start by cloning the repository:
 
 ```bash
-$ git clone https://github.com/lampepfl/dotty.git
-$ cd dotty
+$ git clone https://github.com/scala/scala3.git
+$ cd scala3
 ```
 
 Dotty provides a standard sbt build: compiling, running and starting a repl can
