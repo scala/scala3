@@ -3442,6 +3442,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   private def flattenOr(tp: Type)(using Context): Type =
     var options: List[Type] = Nil
     var doUpdate: Boolean = false
+    // Null and Nothing are sub types of everything, and are puled out post-typing via TypeOps, nevertheless,
+    // we reduce to at most one of each at this stage
+    var nullRef: Option[Type] = None
+    var nothingRef: Option[Type] = None
 
     def offer(next: Type): Unit =
       // By checking at insert time, we will never add an element to the internal state if it is invalidated by
@@ -3450,6 +3454,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case OrType(o1, o2) =>
           offer(o1)
           offer(o2)
+        case nothing if nothing.isNothingType =>
+          if (nothingRef.isDefined)
+            doUpdate = true
+          else
+            nothingRef = Some(nothing)
+        case nul if nul.isNullType =>
+          if (nullRef.isDefined)
+            doUpdate = true
+          else
+            nullRef = Some(nul)
         case _ =>
           if (!options.exists(prior => next <:< prior))
             options = next :: options
@@ -3458,7 +3472,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     offer(tp)
     if (doUpdate)
-      val typesToAdd = options.reverse.tails.flatMap {
+      val distinctTypes = options.reverse.tails.map {
         case curr :: allLaterAdditions
           if !allLaterAdditions.exists(later => curr <:< later) =>
           Some(curr)
@@ -3466,6 +3480,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           doUpdate = true
           None
       }
+
+      val typesToAdd = (Iterator(nothingRef, nullRef) ++ distinctTypes).flatten
 
       def addHelper(add: Type, orTree: List[Option[Type]], iter: Int = 0): List[Option[Type]] =
         orTree match
