@@ -9,6 +9,3 @@
   |│                            ^^^^^^^^^^^^^^^^^^^^
   |└── def name(s: String): Name = Name(0, chrs.length) // warn	[ mutable-read5.scala:4 ]
   |                                        ^^^^
-  |The mutable state is created through: Calling trace:
-  |└── object Names:	[ mutable-read5.scala:1 ]
-  |    ^

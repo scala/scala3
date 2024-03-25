@@ -7,7 +7,7 @@
   |│   ^
   |└── val x: Int = box.value // warn	[ mutable-array.scala:8 ]
   |                 ^^^^^^^^^
-  |The mutable state is created through: Calling trace:
+  |The mutable state is created through: 
   |├── object A:	[ mutable-array.scala:1 ]
   |│   ^
   |├── val box: Box = new Box(0)	[ mutable-array.scala:3 ]

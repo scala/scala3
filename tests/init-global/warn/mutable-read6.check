@@ -9,7 +9,7 @@
   |│                                                           ^^^^^^^^^^^^^^^^
   |└── final def source: SourceFile = _source // warn	[ mutable-read6.scala:7 ]
   |                                   ^^^^^^^
-  |The mutable state is created through: Calling trace:
+  |The mutable state is created through: 
   |├── object Contexts:	[ mutable-read6.scala:3 ]
   |│   ^
   |├── val NoContext: Context = new Context	[ mutable-read6.scala:4 ]

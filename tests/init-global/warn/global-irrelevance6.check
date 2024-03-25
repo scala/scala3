@@ -7,7 +7,7 @@
   |│   ^
   |└── var y = A.array(0).foo() * 2 // warn	[ global-irrelevance6.scala:9 ]
   |            ^^^^^^^^^^
-  |The mutable state is created through: Calling trace:
+  |The mutable state is created through: 
   |├── object A:	[ global-irrelevance6.scala:4 ]
   |│   ^
   |└── val array: Array[Box] = new Array(1)	[ global-irrelevance6.scala:5 ]

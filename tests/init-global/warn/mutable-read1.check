@@ -7,7 +7,7 @@
    |│   ^
    |└── val n: Int = boxA.value // warn	[ mutable-read1.scala:10 ]
    |                 ^^^^^^^^^^
-   |The mutable state is created through: Calling trace:
+   |The mutable state is created through: 
    |├── object A:	[ mutable-read1.scala:3 ]
    |│   ^
    |├── val box: Box = new Box(4)	[ mutable-read1.scala:4 ]

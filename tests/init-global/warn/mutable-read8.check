@@ -11,6 +11,3 @@
   |│   ^
   |└── if (Stats.monitored) println("record stats") // warn	[ mutable-read8.scala:6 ]
   |        ^^^^^^^^^^^^^^^
-  |The mutable state is created through: Calling trace:
-  |└── object Stats {	[ mutable-read8.scala:1 ]
-  |    ^

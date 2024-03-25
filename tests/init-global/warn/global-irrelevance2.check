@@ -11,6 +11,3 @@
   |  │   ^
   |  └── A.x =  b * 2 // warn	[ global-irrelevance2.scala:5 ]
   |      ^^^^^^^^^^^^
-  |  The mutable state is created through: Calling trace:
-  |  └── object A:	[ global-irrelevance2.scala:1 ]
-  |      ^

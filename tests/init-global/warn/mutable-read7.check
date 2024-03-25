@@ -13,6 +13,3 @@
   |│   ^
   |└── if (Positioned.debug) { // warn	[ mutable-read7.scala:7 ]
   |        ^^^^^^^^^^^^^^^^
-  |The mutable state is created through: Calling trace:
-  |└── object Positioned:	[ mutable-read7.scala:1 ]
-  |    ^

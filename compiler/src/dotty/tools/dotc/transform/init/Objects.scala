@@ -1759,24 +1759,31 @@ class Objects:
       if cls.isAllOf(Flags.JavaInterface) then Bottom
       else evalType(tref.prefix, thisV, klass, elideObjectAccess = cls.isStatic)
 
+  def printTraceWhenMultiple(trace: Trace)(using Context): String =
+    if trace.toVector.size > 1 then
+      Trace.buildStacktrace(trace, "The mutable state is created through: " + System.lineSeparator())
+    else ""
+
   val mutateErrorSet: mutable.Set[(ClassSymbol, ClassSymbol)] = mutable.Set.empty
   def errorMutateOtherStaticObject(currentObj: ClassSymbol, addr: Heap.Addr)(using Trace, Context) =
     val otherObj = addr.owner
+    val addr_trace = addr.getTrace
     if mutateErrorSet.add((currentObj, otherObj)) then
       val msg =
         s"Mutating ${otherObj.show} during initialization of ${currentObj.show}.\n" +
         "Mutating other static objects during the initialization of one static object is forbidden. " + Trace.show +
-        "The mutable state is created through: " + Trace.show(using addr.getTrace)
+        printTraceWhenMultiple(addr_trace)
 
       report.warning(msg, Trace.position)
 
   val readErrorSet: mutable.Set[(ClassSymbol, ClassSymbol)] = mutable.Set.empty
   def errorReadOtherStaticObject(currentObj: ClassSymbol, addr: Heap.Addr)(using Trace, Context) =
     val otherObj = addr.owner
+    val addr_trace = addr.getTrace
     if readErrorSet.add((currentObj, otherObj)) then
       val msg =
         "Reading mutable state of " + otherObj.show + " during initialization of " + currentObj.show + ".\n" +
         "Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. " + Trace.show +
-        "The mutable state is created through: " + Trace.show(using addr.getTrace)
+        printTraceWhenMultiple(addr_trace)
 
       report.warning(msg, Trace.position)
