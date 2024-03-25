@@ -197,7 +197,7 @@ class Objects:
    *
    * @param owner The static object whose initialization creates the array.
    */
-  case class OfArray(owner: ClassSymbol, regions: Regions.Data)(using @constructorOnly ctx: Context) extends ValueElement:
+  case class OfArray(owner: ClassSymbol, regions: Regions.Data)(using @constructorOnly ctx: Context, @constructorOnly trace: Trace) extends ValueElement:
     val klass: ClassSymbol = defn.ArrayClass
     val addr: Heap.Addr = Heap.arrayAddr(regions, owner)
     def show(using Context) = "OfArray(owner = " + owner.show + ")"
@@ -455,9 +455,11 @@ class Objects:
     abstract class Addr:
       /** The static object which owns the mutable slot */
       def owner: ClassSymbol
+      def getTrace: Trace = Trace.empty
 
     /** The address for mutable fields of objects. */
-    private case class FieldAddr(regions: Regions.Data, field: Symbol, owner: ClassSymbol) extends Addr
+    private case class FieldAddr(regions: Regions.Data, field: Symbol, owner: ClassSymbol)(trace: Trace) extends Addr:
+      override def getTrace: Trace = trace
 
     /** The address for mutable local variables . */
     private case class LocalVarAddr(regions: Regions.Data, sym: Symbol, owner: ClassSymbol) extends Addr
@@ -497,11 +499,11 @@ class Objects:
     def localVarAddr(regions: Regions.Data, sym: Symbol, owner: ClassSymbol): Addr =
       LocalVarAddr(regions, sym, owner)
 
-    def fieldVarAddr(regions: Regions.Data, sym: Symbol, owner: ClassSymbol): Addr =
-      FieldAddr(regions, sym, owner)
+    def fieldVarAddr(regions: Regions.Data, sym: Symbol, owner: ClassSymbol)(using Trace): Addr =
+      FieldAddr(regions, sym, owner)(summon[Trace])
 
-    def arrayAddr(regions: Regions.Data, owner: ClassSymbol)(using Context): Addr =
-      FieldAddr(regions, defn.ArrayClass, owner)
+    def arrayAddr(regions: Regions.Data, owner: ClassSymbol)(using Trace, Context): Addr =
+      FieldAddr(regions, defn.ArrayClass, owner)(summon[Trace])
 
     def getHeapData()(using mutable: MutableData): Data = mutable.heap
 
@@ -654,12 +656,12 @@ class Objects:
         if arr.addr.owner == State.currentObject then
           Heap.read(arr.addr)
         else
-          errorReadOtherStaticObject(State.currentObject, arr.addr.owner)
+          errorReadOtherStaticObject(State.currentObject, arr.addr)
           Bottom
       else if target == defn.Array_update then
         assert(args.size == 2, "Incorrect number of arguments for Array update, found = " + args.size)
         if arr.addr.owner != State.currentObject then
-          errorMutateOtherStaticObject(State.currentObject, arr.addr.owner)
+          errorMutateOtherStaticObject(State.currentObject, arr.addr)
         else
           Heap.writeJoin(arr.addr, args.tail.head.value)
         Bottom
@@ -810,7 +812,7 @@ class Objects:
             if addr.owner == State.currentObject then
               Heap.read(addr)
             else
-              errorReadOtherStaticObject(State.currentObject, addr.owner)
+              errorReadOtherStaticObject(State.currentObject, addr)
               Bottom
           else if ref.isObjectRef && ref.klass.hasSource then
             report.warning("Access uninitialized field " + field.show + ". " + Trace.show, Trace.position)
@@ -879,7 +881,7 @@ class Objects:
       if ref.hasVar(field) then
         val addr = ref.varAddr(field)
         if addr.owner != State.currentObject then
-          errorMutateOtherStaticObject(State.currentObject, addr.owner)
+          errorMutateOtherStaticObject(State.currentObject, addr)
         else
           Heap.writeJoin(addr, rhs)
       else
@@ -968,7 +970,7 @@ class Objects:
           if addr.owner == State.currentObject then
             Heap.read(addr)
           else
-            errorReadOtherStaticObject(State.currentObject, addr.owner)
+            errorReadOtherStaticObject(State.currentObject, addr)
             Bottom
           end if
         case _ =>
@@ -1020,7 +1022,7 @@ class Objects:
       Env.getVar(sym) match
       case Some(addr) =>
         if addr.owner != State.currentObject then
-          errorMutateOtherStaticObject(State.currentObject, addr.owner)
+          errorMutateOtherStaticObject(State.currentObject, addr)
         else
           Heap.writeJoin(addr, value)
       case _ =>
@@ -1757,20 +1759,31 @@ class Objects:
       if cls.isAllOf(Flags.JavaInterface) then Bottom
       else evalType(tref.prefix, thisV, klass, elideObjectAccess = cls.isStatic)
 
+  def printTraceWhenMultiple(trace: Trace)(using Context): String =
+    if trace.toVector.size > 1 then
+      Trace.buildStacktrace(trace, "The mutable state is created through: " + System.lineSeparator())
+    else ""
+
   val mutateErrorSet: mutable.Set[(ClassSymbol, ClassSymbol)] = mutable.Set.empty
-  def errorMutateOtherStaticObject(currentObj: ClassSymbol, otherObj: ClassSymbol)(using Trace, Context) =
+  def errorMutateOtherStaticObject(currentObj: ClassSymbol, addr: Heap.Addr)(using Trace, Context) =
+    val otherObj = addr.owner
+    val addr_trace = addr.getTrace
     if mutateErrorSet.add((currentObj, otherObj)) then
       val msg =
         s"Mutating ${otherObj.show} during initialization of ${currentObj.show}.\n" +
-        "Mutating other static objects during the initialization of one static object is forbidden. " + Trace.show
+        "Mutating other static objects during the initialization of one static object is forbidden. " + Trace.show +
+        printTraceWhenMultiple(addr_trace)
 
       report.warning(msg, Trace.position)
 
   val readErrorSet: mutable.Set[(ClassSymbol, ClassSymbol)] = mutable.Set.empty
-  def errorReadOtherStaticObject(currentObj: ClassSymbol, otherObj: ClassSymbol)(using Trace, Context) =
+  def errorReadOtherStaticObject(currentObj: ClassSymbol, addr: Heap.Addr)(using Trace, Context) =
+    val otherObj = addr.owner
+    val addr_trace = addr.getTrace
     if readErrorSet.add((currentObj, otherObj)) then
       val msg =
         "Reading mutable state of " + otherObj.show + " during initialization of " + currentObj.show + ".\n" +
-        "Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. " + Trace.show
+        "Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. " + Trace.show +
+        printTraceWhenMultiple(addr_trace)
 
       report.warning(msg, Trace.position)

@@ -9,3 +9,8 @@
   |│        ^^^^^
   |└── def apply(i: Int): Box = array(i) // warn	[ patmat-unapplySeq2.scala:8 ]
   |                             ^^^^^^^^
+  |The mutable state is created through: 
+  |├── object A:	[ patmat-unapplySeq2.scala:1 ]
+  |│   ^
+  |└── val array: Array[Box] = new Array(1)	[ patmat-unapplySeq2.scala:4 ]
+  |                            ^^^^^^^^^^^^

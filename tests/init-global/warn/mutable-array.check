@@ -7,3 +7,10 @@
   |│   ^
   |└── val x: Int = box.value // warn	[ mutable-array.scala:8 ]
   |                 ^^^^^^^^^
+  |The mutable state is created through: 
+  |├── object A:	[ mutable-array.scala:1 ]
+  |│   ^
+  |├── val box: Box = new Box(0)	[ mutable-array.scala:3 ]
+  |│                  ^^^^^^^^^^
+  |└── class Box(var value: Int)	[ mutable-array.scala:2 ]
+  |    ^^^^^^^^^^^^^^^^^^^^^^^^^
