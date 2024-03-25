@@ -87,6 +87,9 @@ object Build {
 
   val baseVersion = "3.4.2-RC1"
 
+  // LTS or Next
+  val versionLine = "Next"
+
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
   // TODO: Have the vscode extension fetch these numbers from the Internet
@@ -2006,6 +2009,10 @@ object Build {
         "scm:git:git@github.com:scala/scala3.git"
       )
     ),
+    pomExtra :=
+      <properties>
+        <scala.versionLine>{versionLine}</scala.versionLine>
+      </properties>,
     developers := List(
       Developer(
         id = "odersky",
