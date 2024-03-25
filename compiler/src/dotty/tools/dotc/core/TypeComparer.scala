@@ -487,7 +487,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def widenOK =
           (tp2.widenSingletons eq tp2)
           && (tp1.widenSingletons ne tp1)
-          && inFrozenGadtAndConstraint(recur(tp1.widenSingletons, tp2))
+          && inFrozenGadtAndConstraint(recur(tp1.widenSingletons(), tp2))
 
         def joinOK = tp2.dealiasKeepRefiningAnnots match {
           case tp2: AppliedType if !tp2.tycon.typeSymbol.isClass =>
