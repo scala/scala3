@@ -107,7 +107,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     val clazz = sup.symbol
     val currentClass = ctx.owner.enclosingClass
 
-    if (sym.isTerm && !sym.is(Method, butNot = Accessor) && !ctx.owner.isAllOf(ParamForwarder))
+    if sym.isTerm && !sym.is(Method, butNot = Accessor) && !ctx.owner.isAllOf(ParamForwarder) && !sym.owner.isInlineTrait then
       // ParamForwaders as installed ParamForwarding.scala do use super calls to vals
       report.error(em"super may be not be used on ${sym.underlyingSymbol}", sel.srcPos)
     else if (isDisallowed(sym))
