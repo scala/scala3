@@ -1607,7 +1607,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     def paramBounds(tparam: Symbol): TypeBounds =
       tparam.info.substApprox(tparams2.asInstanceOf[List[Symbol]], args2).bounds
 
-    /** Test all arguments. Hard argument tests (according to isHard) are deferred in
+    /** Test all arguments. Incomplete argument tests (according to isIncomplete) are deferred in
      *  the first run and picked up in the second.
      */
     def recurArgs(args1: List[Type], args2: List[Type], tparams2: List[ParamInfo],
@@ -1630,8 +1630,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
          *  comparison will instantiate or constrain type variables first.
          */
         def isIncomplete(arg1: Type, arg2: Type): Boolean =
-          val arg1d = arg1.stripped
-          val arg2d = arg2.stripped
+          val arg1d = arg1.strippedDealias
+          val arg2d = arg2.strippedDealias
           (v >= 0) && (arg1d.isInstanceOf[AndType] || arg2d.isInstanceOf[OrType])
           ||
           (v <= 0) && (arg1d.isInstanceOf[OrType] || arg2d.isInstanceOf[AndType])
@@ -1726,7 +1726,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         val rest1 = args1.tail
         if !canDefer
             || rest1.isEmpty && deferred1.isEmpty
-                // skip the hardness test if this is the last argument and no previous arguments were hard
+                // skip the incompleteness test if this is the last argument and no previous argument tests were incomplete
             || !isIncomplete(arg1, arg2)
         then
           isSubArg(arg1, arg2)
