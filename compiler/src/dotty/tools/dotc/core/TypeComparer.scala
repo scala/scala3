@@ -1707,13 +1707,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         val tparam = tparams2.head
         val v = tparam.paramVarianceSign
 
-        /** An argument test is hard if it implies a comparison A <: B where
+        /** An argument test is incomplete if it implies a comparison A <: B where
          *  A is an AndType or B is an OrType. In these cases we need to run an
          *  either, which can lose solutions if there are type variables involved.
          *  So we defer such tests to run last, on the chance that some other argument
          *  comparison will instantiate or constrain type variables first.
          */
-        def isHard(arg1: Type, arg2: Type): Boolean =
+        def isIncomplete(arg1: Type, arg2: Type): Boolean =
           val arg1d = arg1.stripped
           val arg2d = arg2.stripped
           (v >= 0) && (arg1d.isInstanceOf[AndType] || arg2d.isInstanceOf[OrType])
@@ -1811,7 +1811,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         if !canDefer
             || rest1.isEmpty && deferred1.isEmpty
                 // skip the hardness test if this is the last argument and no previous arguments were hard
-            || !isHard(arg1, arg2)
+            || !isIncomplete(arg1, arg2)
         then
           isSubArg(arg1, arg2)
           && recurArgs(
