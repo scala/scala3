@@ -66,9 +66,12 @@ import dotty.tools.dotc.core.Flags.AbstractOrTrait
  *     whole-program analysis. However, the check is not modular in terms of project boundaries.
  *
  */
+import Decorators.*
 class Objects(using Context @constructorOnly):
   val immutableHashSetBuider: Symbol = requiredClass("scala.collection.immutable.HashSetBuilder")
   val HashSetBuilder_rootNode: Symbol = immutableHashSetBuider.requiredValue("rootNode")
+  
+  val whiteList = Set(HashSetBuilder_rootNode)
 
   // ----------------------------- abstract domain -----------------------------
 
@@ -1685,7 +1688,6 @@ class Objects(using Context @constructorOnly):
     end if
 
     // class body
-    val whiteList = Set(HashSetBuilder_rootNode)
     tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
         val sym = vdef.symbol
