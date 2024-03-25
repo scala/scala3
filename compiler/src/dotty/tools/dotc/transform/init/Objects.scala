@@ -69,6 +69,7 @@ import dotty.tools.dotc.core.Flags.AbstractOrTrait
 import Decorators.*
 class Objects(using Context @constructorOnly):
   val immutableHashSetBuider: Symbol = requiredClass("scala.collection.immutable.HashSetBuilder")
+  // TODO: this should really be an annotation on the rhs of the field initializer rather than the field itself.
   val HashSetBuilder_rootNode: Symbol = immutableHashSetBuider.requiredValue("rootNode")
   
   val whiteList = Set(HashSetBuilder_rootNode)
