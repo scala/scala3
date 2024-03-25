@@ -3414,20 +3414,85 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   def typedType(tree: untpd.Tree, pt: Type = WildcardType, mapPatternBounds: Boolean = false)(using Context): Tree =
     val tree1 = withMode(Mode.Type) { typed(tree, pt) }
+    val tree2 = tree1 match
+      case inferredTree: InferredTypeTree if inferredTree.hasType =>
+        inferredTree.tpe match
+          case or: OrType =>
+            val res = flattenOr(or)
+            tree1.withType(res)
+          case _ =>
+            tree1
+      case _ =>
+        tree1
     if mapPatternBounds && ctx.mode.is(Mode.Pattern) && !ctx.isAfterTyper then
-      tree1 match
-        case tree1: TypeBoundsTree =>
+      tree2 match
+        case tree2: TypeBoundsTree =>
           // Associate a pattern-bound type symbol with the wildcard.
           // The bounds of the type symbol can be constrained when comparing a pattern type
           // with an expected type in typedTyped. The type symbol and the defining Bind node
           // are eliminated once the enclosing pattern has been typechecked; see `indexPattern`
           // in `typedCase`.
           val boundName = WildcardParamName.fresh().toTypeName
-          val wildcardSym = newPatternBoundSymbol(boundName, tree1.tpe & pt, tree.span)
-          untpd.Bind(boundName, tree1).withType(wildcardSym.typeRef)
-        case tree1 =>
-          tree1
-    else tree1
+          val wildcardSym = newPatternBoundSymbol(boundName, tree2.tpe & pt, tree.span)
+          untpd.Bind(boundName, tree2).withType(wildcardSym.typeRef)
+        case tree2 =>
+          tree2
+    else tree2
+
+  private def flattenOr(tp: Type)(using Context): Type =
+    var options: List[Type] = Nil
+    var doUpdate: Boolean = false
+
+    def offer(next: Type): Unit =
+      // By checking at insert time, we will never add an element to the internal state if it is invalidated by
+      // a later element. Thus as extract time, we only need to validate for those prepended after that point
+      next match
+        case OrType(o1, o2) =>
+          offer(o1)
+          offer(o2)
+        case _ =>
+          if (!options.exists(prior => next <:< prior))
+            options = next :: options
+          else
+            doUpdate = true
+
+    offer(tp)
+    if (doUpdate)
+      val typesToAdd = options.reverse.tails.flatMap {
+        case curr :: allLaterAdditions
+          if !allLaterAdditions.exists(later => curr <:< later) =>
+          Some(curr)
+        case _ =>
+          doUpdate = true
+          None
+      }
+
+      def addHelper(add: Type, orTree: List[Option[Type]], iter: Int = 0): List[Option[Type]] =
+        orTree match
+          case None :: more =>
+            var res = Some(add) :: more
+            for (i <- 1 to iter) {
+              res = None :: res
+            }
+            res
+          case Some(next) :: more =>
+            addHelper(add | next, more, iter + 1)
+          case Nil =>
+            var res: List[Option[Type]] = List(Some(add))
+            for (i <- 1 to iter) {
+              res = None :: res
+            }
+            res
+
+      val res = typesToAdd.foldLeft[List[Option[Type]]](Nil) {
+        case (orTree, add) =>
+          addHelper(add, orTree)
+      }.flatten.reduceLeft(_ | _)
+      //println(s"${tp.show} ===> ${res.show} (${ctx.tree.show})")
+      res
+    else
+      tp
+
 
   def typedPattern(tree: untpd.Tree, selType: Type = WildcardType)(using Context): Tree =
     withMode(Mode.Pattern)(typed(tree, selType))
