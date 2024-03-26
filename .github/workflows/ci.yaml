@@ -353,6 +353,9 @@ jobs:
          )"
 
     steps:
+      ######################################################################################
+      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
+      ######################################################################################
       - name: Set JDK 8 as default
         run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
@@ -407,6 +410,9 @@ jobs:
          )"
 
     steps:
+      ######################################################################################
+      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
+      ######################################################################################
       - name: Set JDK 8 as default
         run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
@@ -461,6 +467,9 @@ jobs:
          )"
 
     steps:
+      ######################################################################################
+      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
+      ######################################################################################
       - name: Set JDK 8 as default
         run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
@@ -562,6 +571,9 @@ jobs:
          )"
 
     steps:
+      ####################################################################################
+      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. THIS TEST IS SPECIFIC FOR JAVA 8 ##
+      ####################################################################################
       - name: Set JDK 8 as default
         run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
 
@@ -611,6 +623,9 @@ jobs:
       SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 
     steps:
+      ######################################################################################
+      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
+      ######################################################################################
       - name: Set JDK 8 as default
         run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
@@ -722,6 +737,9 @@ jobs:
       SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 
     steps:
+      ######################################################################################
+      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
+      ######################################################################################
       - name: Set JDK 8 as default
         run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
