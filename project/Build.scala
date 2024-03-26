@@ -1808,6 +1808,10 @@ object Build {
     publishTo := sonatypePublishToBundle.value,
     publishConfiguration ~= (_.withOverwrite(true)),
     publishLocalConfiguration ~= (_.withOverwrite(true)),
+    projectID ~= {id =>
+      val line = "scala.versionLine" -> versionLine
+      id.withExtraAttributes(id.extraAttributes + line)
+    },
     Test / publishArtifact := false,
     homepage := Some(url(dottyGithubUrl)),
     licenses += (("Apache-2.0",
@@ -1818,10 +1822,6 @@ object Build {
         "scm:git:git@github.com:scala/scala3.git"
       )
     ),
-    pomExtra :=
-      <properties>
-        <scala.versionLine>{versionLine}</scala.versionLine>
-      </properties>,
     developers := List(
       Developer(
         id = "odersky",
