@@ -269,6 +269,9 @@ abstract class Reporter extends interfaces.ReporterResult {
   /** If this reporter buffers messages, remove and return all buffered messages. */
   def removeBufferedMessages(using Context): List[Diagnostic] = Nil
 
+  /** If this reporter buffers messages, apply `f` to all buffered messages. */
+  def mapBufferedMessages(f: Diagnostic => Diagnostic)(using Context): Unit = ()
+
   /** Issue all messages in this reporter to next outer one, or make sure they are written. */
   def flush()(using Context): Unit =
     val msgs = removeBufferedMessages
