@@ -1683,6 +1683,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  @param  tparams2  The type parameters of the type constructor applied to `args2`
    */
   def isSubArgs(args1: List[Type], args2: List[Type], tp1: Type, tparams2: List[ParamInfo]): Boolean = {
+
     /** The bounds of parameter `tparam`, where all references to type paramneters
      *  are replaced by corresponding arguments (or their approximations in the case of
      *  wildcard arguments).
@@ -1690,11 +1691,34 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     def paramBounds(tparam: Symbol): TypeBounds =
       tparam.info.substApprox(tparams2.asInstanceOf[List[Symbol]], args2).bounds
 
-    def recurArgs(args1: List[Type], args2: List[Type], tparams2: List[ParamInfo]): Boolean =
-      if (args1.isEmpty) args2.isEmpty
+    /** Test all arguments. Incomplete argument tests (according to isIncomplete) are deferred in
+     *  the first run and picked up in the second.
+     */
+    def recurArgs(args1: List[Type], args2: List[Type], tparams2: List[ParamInfo],
+                  canDefer: Boolean,
+                  deferred1: List[Type], deferred2: List[Type], deferredTparams2: List[ParamInfo]): Boolean =
+      if args1.isEmpty then
+        args2.isEmpty
+        && (deferred1.isEmpty
+            || recurArgs(
+                  deferred1.reverse, deferred2.reverse, deferredTparams2.reverse,
+                  canDefer = false, Nil, Nil, Nil))
       else args2.nonEmpty && tparams2.nonEmpty && {
         val tparam = tparams2.head
         val v = tparam.paramVarianceSign
+
+        /** An argument test is incomplete if it implies a comparison A <: B where
+         *  A is an AndType or B is an OrType. In these cases we need to run an
+         *  either, which can lose solutions if there are type variables involved.
+         *  So we defer such tests to run last, on the chance that some other argument
+         *  comparison will instantiate or constrain type variables first.
+         */
+        def isIncomplete(arg1: Type, arg2: Type): Boolean =
+          val arg1d = arg1.strippedDealias
+          val arg2d = arg2.strippedDealias
+          (v >= 0) && (arg1d.isInstanceOf[AndType] || arg2d.isInstanceOf[OrType])
+          ||
+          (v <= 0) && (arg1d.isInstanceOf[OrType] || arg2d.isInstanceOf[AndType])
 
         /** Try a capture conversion:
          *  If the original left-hand type `leftRoot` is a path `p.type`,
@@ -1781,10 +1805,26 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 else if v > 0 then isSubType(arg1, arg2)
                 else isSameType(arg2, arg1)
 
-        isSubArg(args1.head, args2.head)
-      } && recurArgs(args1.tail, args2.tail, tparams2.tail)
+        val arg1 = args1.head
+        val arg2 = args2.head
+        val rest1 = args1.tail
+        if !canDefer
+            || rest1.isEmpty && deferred1.isEmpty
+                // skip the incompleteness test if this is the last argument and no previous argument tests were incomplete
+            || !isIncomplete(arg1, arg2)
+        then
+          isSubArg(arg1, arg2)
+          && recurArgs(
+                rest1, args2.tail, tparams2.tail, canDefer,
+                deferred1, deferred2, deferredTparams2)
+        else
+          recurArgs(
+            rest1, args2.tail, tparams2.tail, canDefer,
+            arg1 :: deferred1, arg2 :: deferred2, tparams2.head :: deferredTparams2)
+      }
 
-    recurArgs(args1, args2, tparams2)
+    recurArgs(args1, args2, tparams2, canDefer = true, Nil, Nil, Nil)
+
   }
 
   /** Test whether `tp1` has a base type of the form `B[T1, ..., Tn]` where
