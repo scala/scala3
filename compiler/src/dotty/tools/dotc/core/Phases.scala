@@ -220,6 +220,7 @@ object Phases {
     private var myPatmatPhase: Phase = uninitialized
     private var myElimRepeatedPhase: Phase = uninitialized
     private var myElimByNamePhase: Phase = uninitialized
+    private var myElimOpaquePhase: Phase = uninitialized
     private var myExtensionMethodsPhase: Phase = uninitialized
     private var myExplicitOuterPhase: Phase = uninitialized
     private var myGettersPhase: Phase = uninitialized
@@ -245,6 +246,7 @@ object Phases {
     final def patmatPhase: Phase = myPatmatPhase
     final def elimRepeatedPhase: Phase = myElimRepeatedPhase
     final def elimByNamePhase: Phase = myElimByNamePhase
+    final def elimOpaquePhase: Phase = myElimOpaquePhase
     final def extensionMethodsPhase: Phase = myExtensionMethodsPhase
     final def explicitOuterPhase: Phase = myExplicitOuterPhase
     final def gettersPhase: Phase = myGettersPhase
@@ -272,6 +274,7 @@ object Phases {
       myRefChecksPhase = phaseOfClass(classOf[RefChecks])
       myElimRepeatedPhase = phaseOfClass(classOf[ElimRepeated])
       myElimByNamePhase = phaseOfClass(classOf[ElimByName])
+      myElimOpaquePhase = phaseOfClass(classOf[ElimOpaque])
       myExtensionMethodsPhase = phaseOfClass(classOf[ExtensionMethods])
       myErasurePhase = phaseOfClass(classOf[Erasure])
       myElimErasedValueTypePhase = phaseOfClass(classOf[ElimErasedValueType])
@@ -511,6 +514,7 @@ object Phases {
   def refchecksPhase(using Context): Phase              = ctx.base.refchecksPhase
   def elimRepeatedPhase(using Context): Phase           = ctx.base.elimRepeatedPhase
   def elimByNamePhase(using Context): Phase             = ctx.base.elimByNamePhase
+  def elimOpaquePhase(using Context): Phase             = ctx.base.elimOpaquePhase
   def extensionMethodsPhase(using Context): Phase       = ctx.base.extensionMethodsPhase
   def explicitOuterPhase(using Context): Phase          = ctx.base.explicitOuterPhase
   def gettersPhase(using Context): Phase                = ctx.base.gettersPhase
