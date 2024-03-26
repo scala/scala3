@@ -1,5 +1,6 @@
 import java.io.File
 import java.nio.file._
+import scala.xml.{Elem, Node as XmlNode}
 
 import Process._
 import Modes._
@@ -2009,10 +2010,20 @@ object Build {
         "scm:git:git@github.com:scala/scala3.git"
       )
     ),
-    pomExtra :=
-      <properties>
-        <scala.versionLine>{versionLine}</scala.versionLine>
-      </properties>,
+    pomPostProcess := {
+      case node: Elem =>
+        if ((node\"properties").isEmpty)
+          node.copy(child = node.child :+ <properties><scala.versionLine>{versionLine}</scala.versionLine></properties>)
+        else {
+          val newChildren = node.child.map {
+            case elem: Elem if elem.label == "properties" =>
+              elem.copy(child = elem.child :+ <scala.versionLine>{versionLine}</scala.versionLine>)
+            case other =>
+              other
+          }
+          node.copy(child = newChildren)
+        }
+    },
     developers := List(
       Developer(
         id = "odersky",
