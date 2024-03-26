@@ -1,0 +1,25 @@
+-- [E007] Type Mismatch Error: tests/neg/19680b.scala:2:21 -------------------------------------------------------------
+2 |def Test = List(1,2)("hello") // error: found String, required Int
+  |                     ^^^^^^^
+  |                     Found:    ("hello" : String)
+  |                     Required: Int
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  |
+  | Tree: "hello"
+  | I tried to show that
+  |   ("hello" : String)
+  | conforms to
+  |   Int
+  | but none of the attempts shown below succeeded:
+  |
+  |   ==> ("hello" : String)  <:  Int
+  |     ==> String  <:  Int  = false
+  |
+  | The tests were made under the empty constraint
+  |
+  | The required type comes from a parameter of the automatically
+  | inserted `apply` method of `List[Int]`,
+  | which is the type of `List.apply[Int]([1,2 : Int]*)`.
+   ---------------------------------------------------------------------------------------------------------------------

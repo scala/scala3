@@ -1080,7 +1080,37 @@ trait Applications extends Compatibility {
               simpleApply(fun1, proto)
             } {
               (failedVal, failedState) =>
-                def fail = { failedState.commit(); failedVal }
+                def fail =
+                  insertedApplyNote()
+                  failedState.commit()
+                  failedVal
+
+                /** If the applied function is an automatically inserted `apply`
+                  * method and one of its arguments has a type mismatch , append
+                  * a note to the error message that explains where the required
+                  * type comes from. See #19680 and associated test case.
+                  */
+                def insertedApplyNote() =
+                  if fun1.symbol.name == nme.apply && fun1.span.isSynthetic then
+                    fun1 match
+                      case Select(qualifier, _) =>
+                        failedState.reporter.mapBufferedMessages:
+                          case dia: Diagnostic.Error =>
+                            dia.msg match
+                              case msg: TypeMismatch =>
+                                msg.inTree match
+                                  case Some(arg) if tree.args.exists(_.span == arg.span) =>
+                                    val Select(qualifier, _) = fun1: @unchecked
+                                    val noteText =
+                                      i"""The required type comes from a parameter of the automatically
+                                         |inserted `apply` method of `${qualifier.tpe}`,
+                                         |which is the type of `${qualifier.show}`.""".stripMargin
+                                    Diagnostic.Error(msg.appendExplanation("\n\n" + noteText), dia.pos)
+                                  case _ => dia
+                              case msg => dia
+                          case dia => dia
+                      case _ => ()
+
                 // Try once with original prototype and once (if different) with tupled one.
                 // The reason we need to try both is that the decision whether to use tupled
                 // or not was already taken but might have to be revised when an implicit
