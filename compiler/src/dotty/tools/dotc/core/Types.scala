@@ -5028,7 +5028,7 @@ object Types extends TypeUtils {
 
     private def thisMatchType = this
 
-    def reduced(using Context): Type = {
+    def reduced(using Context): Type = atPhaseNoLater(elimOpaquePhase) {
 
       def contextInfo(tp: Type): Type = tp match {
         case tp: TypeParamRef =>
