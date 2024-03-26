@@ -145,7 +145,7 @@ object SyntaxHighlighting {
 
         highlighted.toString
       catch
-        case(e): StackOverflowError =>
+        case e: StackOverflowError =>
           in
     }
   }
