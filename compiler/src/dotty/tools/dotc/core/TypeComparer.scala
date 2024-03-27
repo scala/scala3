@@ -3634,23 +3634,14 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
             MatchTypeTrace.emptyScrutinee(scrut)
             NoType
       case Nil =>
-        val casesText = MatchTypeTrace.noMatchesText(scrut, cases)
-        ErrorType(reporting.MatchTypeNoCases(casesText))
+        /* TODO warn ? then re-enable warn/12974.scala:26
+        val noCasesText = MatchTypeTrace.noMatchesText(scrut, cases)
+        report.warning(reporting.MatchTypeNoCases(noCasesText), pos = ???)
+        */
+        MatchTypeTrace.noMatches(scrut, cases)
+        NoType
 
-    inFrozenConstraint {
-      if scrut.isError then
-        // if the scrutinee is an error type
-        // then just return that as the result
-        // not doing so will result in the first type case matching
-        // because ErrorType (as a FlexType) is <:< any type case
-        // this situation can arise from any kind of nesting of match types,
-        // e.g. neg/i12049 `Tuple.Concat[Reverse[ts], (t2, t1)]`
-        // if Reverse[ts] fails with no matches,
-        // the error type should be the reduction of the Concat too
-        scrut
-      else
-        recur(cases)
-    }
+    inFrozenConstraint(recur(cases))
   }
 }
 

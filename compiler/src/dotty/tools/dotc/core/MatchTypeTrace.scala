@@ -12,6 +12,7 @@ object MatchTypeTrace:
 
   private enum TraceEntry:
     case TryReduce(scrut: Type)
+    case NoMatches(scrut: Type, cases: List[MatchTypeCaseSpec])
     case Stuck(scrut: Type, stuckCase: MatchTypeCaseSpec, otherCases: List[MatchTypeCaseSpec])
     case NoInstance(scrut: Type, stuckCase: MatchTypeCaseSpec, fails: List[(Name, TypeBounds)])
     case EmptyScrutinee(scrut: Type)
@@ -50,6 +51,12 @@ object MatchTypeTrace:
           case _ =>
       case _ =>
 
+  /** Record a failure that scrutinee `scrut` does not match any case in `cases`.
+   *  Only the first failure is recorded.
+   */
+  def noMatches(scrut: Type, cases: List[MatchTypeCaseSpec])(using Context) =
+    matchTypeFail(NoMatches(scrut, cases))
+
   /** Record a failure that scrutinee `scrut` does not match `stuckCase` but is
    *  not disjoint from it either, which means that the remaining cases `otherCases`
    *  cannot be visited. Only the first failure is recorded.
@@ -71,7 +78,7 @@ object MatchTypeTrace:
    */
   def recurseWith(scrut: Type)(op: => Type)(using Context): Type =
     ctx.property(MatchTrace) match
-      case Some(trace) =>
+      case Some(trace) if !trace.entries.contains(TryReduce(scrut)) =>
         val prev = trace.entries
         trace.entries = TryReduce(scrut) :: prev
         val res = op
@@ -95,6 +102,11 @@ object MatchTypeTrace:
   private def explainEntry(entry: TraceEntry)(using Context): String = entry match
     case TryReduce(scrut: Type) =>
       i"  trying to reduce  $scrut"
+    case NoMatches(scrut, cases) =>
+      i"""  failed since selector $scrut
+         |  matches none of the cases
+         |
+         |    ${casesText(cases)}"""
     case EmptyScrutinee(scrut) =>
       i"""  failed since selector $scrut
          |  is uninhabited (there are no values of that type)."""
