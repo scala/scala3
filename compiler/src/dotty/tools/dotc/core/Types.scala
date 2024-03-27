@@ -2708,13 +2708,21 @@ object Types extends TypeUtils {
       case _ => true
     }
 
-    /** Reduce a type-ref `T { X = U; ... } # X`  to   `U`
-     *  provided `U` does not refer with a RecThis to the
-     *  refinement type `T { X = U; ... }`
+    /** Reduce a type ref P # X, where X is a type alias and P is a refined type or
+     *  a class type. If P is a refined type `T { X = U; ... }`, reduce P to U,
+     *  provided U does not refer with a RecThis to the same refined type. If P is a
+     *  class type, reduce it to the dealiasd version of P # X. This means that at typer
+     *  we create projections only for inner classes with class prefixes, since projections
+     *  of P # X where X is an abstract type are handled by skolemization. At later phases
+     *  these projections might arise, though.
      */
     def reduceProjection(using Context): Type =
       val reduced = prefix.lookupRefined(name)
-      if reduced.exists then reduced else this
+      if reduced.exists then reduced
+      else prefix.stripTypeVar match
+        case pre: (AppliedType | TypeRef)
+        if prefix.dealias.typeSymbol.isClass && this.symbol.isAliasType => dealias
+        case _ => this
 
     /** Guard against cycles that can arise if given `op`
      *  follows info. The problematic cases are a type alias to itself or
