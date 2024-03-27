@@ -64,9 +64,13 @@ object Annotations {
             else
               val tp1 = tm(tree.tpe)
               foldOver(if tp1 frozen_=:= tree.tpe then x else tp1, tree)
-        val diff = findDiff(NoType, args)
+        val diff = if symbol.isRetainsLike then defn.AnyType else findDiff(NoType, args)
+          // If this is a @retains annotation, the diff check seems to be unreliable.
+          // We work around this issue by always mapping @retains annotations. See #20035.
+          //
+          // FIXME: investigate why the diff check is incorrect for @retains
         if tm.isRange(diff) then EmptyAnnotation
-        else if diff.exists || symbol.isRetainsLike then derivedAnnotation(tm.mapOver(tree))
+        else if diff.exists then derivedAnnotation(tm.mapOver(tree))
         else this
 
     /** Does this annotation refer to a parameter of `tl`? */
@@ -79,7 +83,10 @@ object Annotations {
           case _ => false
         case ref: This => ref.tpe match
           case TermParamRef(tl1, _) => tl eq tl1
-          case AnnotatedType(tp1, annot1) => annot1.refersToParamOf(tl)
+          case AnnotatedType(tp1, annot1) =>
+            // The type of captured elements in @retains annotation could themself
+            // refer to term parameters.  See #20035.
+            annot1.refersToParamOf(tl)
           case _ => false
         case _ => false
 
