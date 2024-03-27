@@ -2721,7 +2721,7 @@ object Types extends TypeUtils {
       if reduced.exists then reduced
       else prefix.stripTypeVar match
         case pre: (AppliedType | TypeRef)
-        if prefix.typeSymbol.isClass && this.symbol.isAliasType => dealias
+        if prefix.dealias.typeSymbol.isClass && this.symbol.isAliasType => dealias
         case _ => this
 
     /** Guard against cycles that can arise if given `op`
