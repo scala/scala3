@@ -2529,6 +2529,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         if isSuperOf(sub) then NoType else tp
   end dropIfSuper
 
+  /** If some (|-operand of) `tp` is a subtype of `sup` replace it with `NoType`. */
   private def dropIfSub(tp: Type, sup: Type, canConstrain: Boolean): Type =
 
     def isSubOf(sup: Type): Boolean = sup match
