@@ -13,7 +13,9 @@ import dotty.tools.dotc.inlines.InlineTraits.*
 import dotty.tools.dotc.ast.TreeMapWithImplicits
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Decorators.*
-import dotty.tools.dotc.core.DenotTransformers.InfoTransformer
+import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
+import dotty.tools.dotc.core.Denotations.SingleDenotation
+import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.staging.StagingLevel
 import dotty.tools.dotc.core.Constants.*
@@ -22,7 +24,7 @@ import scala.collection.mutable.ListBuffer
 import javax.xml.transform.Templates
 
 /** TODO */
-class TraitInlining extends MacroTransform, InfoTransformer {
+class TraitInlining extends MacroTransform, DenotTransformer {
   self =>
 
   import tpd.*
@@ -56,15 +58,28 @@ class TraitInlining extends MacroTransform, InfoTransformer {
           super.transform(tree)
   }
 
-  def transformInfo(tp: Type, sym: Symbol)(using Context): Type = {
-    tp match
-      case tp @ ClassInfo(_, cls, _, decls, _) if needsTraitInlining(sym.asClass) =>
-        val newDecls = decls.cloneScope
-        inlinedMemberSymbols(sym.asClass).foreach(newDecls.enter)
-        tp.derivedClassInfo(decls = newDecls)
+  def transform(ref: SingleDenotation)(using Context): SingleDenotation = {
+    val sym = ref.symbol
+    ref match {
+      case ref: SymDenotation if sym.isClass && !sym.is(Module) && sym.maybeOwner.isInlineTrait =>
+        val newName =
+          if sym.is(Module) then (sym.name.toString + "inline$trait$").toTypeName // TODO use NameKinds
+          else (sym.name.toString + "$inline$trait").toTypeName // TODO use NameKinds
+        ref.copySymDenotation(name = newName)
+      case ref: SymDenotation =>
+        ref.info match
+          case tp @ ClassInfo(_, cls, _, decls, _) if needsTraitInlining(sym.asClass) =>
+            val newDecls = decls.cloneScope
+            inlinedMemberSymbols(sym.asClass).foreach(newDecls.enter)
+            val newInfo = tp.derivedClassInfo(decls = newDecls)
+            ref.copySymDenotation(info = newInfo).copyCaches(ref, ctx.phase.next)
+          case _ =>
+            ref
       case _ =>
-        tp
+        ref
+    }
   }
+
 }
 
 object TraitInlining:

@@ -37,7 +37,7 @@ class DeferInlineTraits extends MiniPhase with SymTransformer:
     && !sym.is(ParamAccessor)
     && !sym.is(Private)
     && !sym.isLocalDummy
-    && sym.owner.isInlineTrait
+    && sym.ownersIterator.exists(_.isInlineTrait)
 
 
 object DeferInlineTraits:

@@ -45,7 +45,7 @@ object Inlines:
   /** Can a call to method `meth` be inlined? */
   def isInlineable(meth: Symbol)(using Context): Boolean =
     def isSuperCallInInlineTraitGeneratedMethod =
-      meth.maybeOwner.isInlineTrait
+      meth.ownersIterator.exists(_.isInlineTrait)
       && ctx.owner.is(Synthetic)
       && ctx.owner.owner.isClass
       && ctx.owner.overriddenSymbol(meth.owner.asClass) == meth

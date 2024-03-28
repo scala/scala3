@@ -7,8 +7,10 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameOps.*
+import dotty.tools.dotc.core.Names.TypeName
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.core.Scopes.newScope
 import dotty.tools.dotc.report
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.util.Spans.Span
@@ -29,70 +31,124 @@ object InlineTraits:
    */
   def inlinedMemberSymbols(cls: ClassSymbol)(using Context): List[Symbol] =
     assert(!cls.isInlineTrait, cls)
-    val parents = cls.info.parents
-
-    def parentTargs(inlinableDecl: Symbol): List[Type] =
-      val baseClass = inlinableDecl.owner.asClass
-      mixinParentTypeOf(cls, baseClass).baseType(baseClass) match
-        case AppliedType(_, targs) => targs
-        case _ => Nil
-
-    def inlinedSymbol(inlinableDecl: Symbol, traitTargs: List[Type]): Symbol =
-      val flags = inlinableDecl.flags | Override | Synthetic
-      val info = inlinableDecl.info
-        .substThis(inlinableDecl.owner.asClass, ThisType.raw(cls.typeRef))
-        .subst(inlinableDecl.owner.typeParams, traitTargs)
-      val privateWithin = inlinableDecl.privateWithin // TODO what should `privateWithin` be?
-      newSymbol(cls, inlinableDecl.name, flags, info, privateWithin, cls.span)
-
-    def needsInlinedDecl(sym: Symbol): Boolean =
-      sym.isTerm && !sym.isConstructor && !sym.is(ParamAccessor)
-      && sym.owner.isInlineTrait
-
     for
       denot <- cls.typeRef.allMembers.toList
-      inlinableDecl = denot.symbol
-      if needsInlinedDecl(inlinableDecl)
+      sym = denot.symbol
+      if isInlinableMember(sym)
     yield
-      inlinedSymbol(inlinableDecl, parentTargs(inlinableDecl))
-
+      val traitTargs = parentTargs(cls, sym)
+      if sym.isClass then inlinedSymbolClassDef(cls, sym.asClass, traitTargs)
+      else inlinedSymbolValOrDef(cls, sym, traitTargs)
   end inlinedMemberSymbols
 
+  private def isInlinableMember(sym: Symbol)(using Context): Boolean =
+    (sym.isTerm || sym.isClass)
+    && !sym.isConstructor && !sym.is(ParamAccessor)
+    && sym.owner.isInlineTrait
+
+  private def parentTargs(cls: ClassSymbol, inlinableDecl: Symbol)(using Context): List[Type] =
+    val baseClass = inlinableDecl.owner.asClass
+    mixinParentTypeOf(cls, baseClass).baseType(baseClass) match
+      case AppliedType(_, targs) => targs
+      case _ => Nil
+
+  private def inlinedSymbolValOrDef(cls: ClassSymbol, inlinableDecl: Symbol, traitTargs: List[Type])(using Context): Symbol =
+    val flags = inlinableDecl.flags | Override | Synthetic
+    val info = inlinableDecl.info
+      .substThis(inlinableDecl.owner.asClass, ThisType.raw(cls.typeRef))
+      .subst(inlinableDecl.owner.typeParams, traitTargs)
+    val privateWithin = inlinableDecl.privateWithin // TODO what should `privateWithin` be?
+    newSymbol(cls, inlinableDecl.name, flags, info, privateWithin, cls.span)
+
+  private def inlinedSymbolClassDef(cls: ClassSymbol, inlinableDecl: ClassSymbol, traitTargs: List[Type])(using Context): ClassSymbol =
+    def infoFn(cls1: ClassSymbol) =
+      inlinableDecl.info.asInstanceOf[ClassInfo].derivedClassInfo(
+        prefix = cls.typeRef,
+        declaredParents = defn.ObjectType :: cls.thisType.select(inlinableDecl) :: Nil,
+        decls = newScope,
+        // selfInfo = ,
+      )
+
+    val newCls = newClassSymbol(
+      owner = cls,
+      name = inlinableDecl.name.toTypeName,
+      flags = inlinableDecl.flags | Synthetic,
+      infoFn = infoFn,
+      privateWithin = NoSymbol,
+      coord = cls.coord
+    )
+
+    newConstructor(
+      newCls,
+      flags = EmptyFlags,
+      paramNames = Nil,
+      paramTypes = Nil,
+      privateWithin = NoSymbol,
+      coord = newCls.coord
+    ).entered
+
+    for
+      decl <- inlinableDecl.info.decls.toList
+      if decl.isTerm && !decl.isConstructor && !decl.is(ParamAccessor)
+    do
+      inlinedSymbolValOrDef(newCls, decl, traitTargs).entered
+
+    newCls
+  end inlinedSymbolClassDef
 
   def inlinedDefs(cls: ClassSymbol)(using Context): List[Tree] =
-    def makeValOrDef(inlinedDecl: Symbol): Tree =
-      def makeSuperSelect(using Context) =
-        ctx.compilationUnit.needsInlining = true
-        val inlinableDecl = inlinedDecl.allOverriddenSymbols.find { sym =>
-          !sym.is(Deferred) && sym.owner.isInlineTrait
-        }.getOrElse(inlinedDecl.nextOverriddenSymbol)
-        val parent = mixinParentTypeOf(cls, inlinableDecl.owner.asClass)
-        Super(This(cls), parent.typeSymbol.name.asTypeName).select(inlinableDecl)
-
-      def rhs(using Context)(argss: List[List[Tree]]) =
-        if inlinedDecl.is(Deferred) then EmptyTree
-        else if inlinedDecl.is(Mutable) && inlinedDecl.name.isSetterName then Literal(Constant(()))
-        else makeSuperSelect.appliedToArgss(argss)
-
-      if inlinedDecl.is(Method) then DefDef(inlinedDecl.asTerm, rhs(using ctx.withOwner(inlinedDecl))).withSpan(cls.span)
-      else ValDef(inlinedDecl.asTerm, rhs(using ctx.withOwner(inlinedDecl))(Nil)).withSpan(cls.span)
-
     atPhase(ctx.phase.next) { cls.info.decls.toList }
       .filter(sym => sym.is(Synthetic) && sym.nextOverriddenSymbol.maybeOwner.isInlineTrait)
-      .map(makeValOrDef)
+      .map { sym =>
+        if sym.isClass then inlinedClassDefs(cls, sym.asClass)
+        else inlinedValOrDefDefs(cls, sym)
+      }
 
-  end inlinedDefs
+  private def inlinedValOrDefDefs(cls: ClassSymbol, inlinedDecl: Symbol)(using Context): Tree =
+    val inlinableDecl = inlinedDecl.allOverriddenSymbols.find { sym =>
+      !sym.is(Deferred) && sym.owner.isInlineTrait
+    }.getOrElse(inlinedDecl.nextOverriddenSymbol)
+    val parent = mixinParentTypeOf(inlinedDecl.owner.asClass, inlinableDecl.owner.asClass).typeSymbol.name.asTypeName
+    valOrDefDefInlineOverride(cls, inlinedDecl, parent, inlinableDecl)
+
+  private def inlinedClassDefs(cls: ClassSymbol, inlinedDecl: ClassSymbol)(using Context): Tree =
+    val parent = inlinedDecl.info.parents.last.typeSymbol
+    val members = parent.info.decls.toList.filterNot(_.is(ParamAccessor)).zip(inlinedDecl.info.decls.toList).collect {
+      case (overridden, decl) if decl.isTerm && !decl.isConstructor && !decl.is(ParamAccessor) =>
+        assert(overridden.name == decl.name, (overridden, decl)) // TODO find better wy to recover `overridden` from `decl`
+        val parent = mixinParentTypeOf(decl.owner.asClass, overridden.owner.asClass).typeSymbol.name.asTypeName
+        valOrDefDefInlineOverride(cls, decl, parent, overridden)
+    }
+    ClassDef(
+      inlinedDecl.asClass,
+      DefDef(inlinedDecl.primaryConstructor.asTerm),
+      body = members,
+      superArgs = List.empty[Tree]
+    ).withSpan(inlinedDecl.span)
+
+  private def valOrDefDefInlineOverride(cls: ClassSymbol, decl: Symbol, parent: TypeName, overridden: Symbol)(using Context): Tree =
+    def rhs(argss: List[List[Tree]])(using Context) =
+      if decl.is(Deferred) then EmptyTree
+      else if decl.is(Mutable) && decl.name.isSetterName then Literal(Constant(()))
+      else
+        ctx.compilationUnit.needsInlining = true
+        Super(This(ctx.owner.owner.asClass), parent).select(overridden).appliedToArgss(argss)
+
+    if decl.is(Method) then DefDef(decl.asTerm, rhs(_)(using ctx.withOwner(decl))).withSpan(cls.span)
+    else ValDef(decl.asTerm, rhs(Nil)(using ctx.withOwner(decl))).withSpan(cls.span)
 
   private def mixinParentTypeOf(cls: ClassSymbol, baseClass: ClassSymbol)(using Context): Type =
     cls.info.parents.findLast(parent => parent.typeSymbol.derivesFrom(baseClass)).get
 
   /** Register inline members RHS in `@bodyAnnotation`s */
-  def registerInlineTraitInfo(cls: ClassSymbol, stats: List[Tree])(using Context): Unit =
+  def registerInlineTraitInfo(stats: List[Tree])(using Context): Unit =
     for stat <- stats do
       stat match
         case stat: ValOrDefDef if !stat.symbol.is(Inline) && !stat.symbol.is(Deferred) =>
           // TODO? val rhsToInline = PrepareInlineable.wrapRHS(stat, stat.tpt, stat.rhs)
           PrepareInlineable.registerInlineInfo(stat.symbol, stat.rhs/*TODO? rhsToInline*/)
+        case TypeDef(_, rhs: Template) =>
+          registerInlineTraitInfo(rhs.body)
         case _ =>
 
   /** Checks if members are supported in inline traits */
@@ -105,7 +161,7 @@ object InlineTraits:
           else if sym.is(Private) then report.error(em"Implementation restriction: private ${sym.kindString} cannot be defined in inline traits", stat.srcPos)
           else () // Ok
         case stat: TypeDef =>
-          if sym.isClass then report.error(em"Implementation restriction: ${sym.kindString} cannot be defined in inline traits", stat.srcPos)
+          if sym.isClass && !sym.is(Trait) then report.error(em"Implementation restriction: ${sym.kindString} cannot be defined in inline traits", stat.srcPos)
           else () // OK
         case _: Import =>
           report.error(em"Implementation restriction: import cannot be defined in inline traits", stat.srcPos)

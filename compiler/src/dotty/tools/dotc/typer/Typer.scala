@@ -2816,7 +2816,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if !ctx.isAfterTyper then
         if cls.isInlineTrait then
           InlineTraits.checkValidInlineTraitMember(body1)
-          InlineTraits.registerInlineTraitInfo(cls, body1)
+          InlineTraits.registerInlineTraitInfo(body1)
         else
           InlineTraits.adaptNoInit(cls, parents1)
           // body1 = InlineTraits.inlinedMembers(cls, parents1) ::: body1
