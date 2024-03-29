@@ -1,0 +1,15 @@
+-- Warning: tests/init-global/warn/mutable-read7.scala:7:17 ------------------------------------------------------------
+7 |  if (Positioned.debug) { // warn
+  |      ^^^^^^^^^^^^^^^^
+  |Reading mutable state of object Positioned during initialization of object Trees.
+  |Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. Calling trace:
+  |├── object Trees:	[ mutable-read7.scala:11 ]
+  |│   ^
+  |├── val emptyTree = new Tree	[ mutable-read7.scala:13 ]
+  |│                   ^^^^^^^^
+  |├── class Tree extends Positioned	[ mutable-read7.scala:12 ]
+  |│   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |├── abstract class Positioned:	[ mutable-read7.scala:6 ]
+  |│   ^
+  |└── if (Positioned.debug) { // warn	[ mutable-read7.scala:7 ]
+  |        ^^^^^^^^^^^^^^^^

@@ -1,4 +1,4 @@
-// https://github.com/lampepfl/dotty/issues/13691
+// https://github.com/scala/scala3/issues/13691
 import language.experimental.saferExceptions
 
 trait Decoder[+T]:

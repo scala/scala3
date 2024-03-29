@@ -138,7 +138,7 @@ final class InferredTypeProvider(
           adjustOpt.foreach(adjust => endPos.setEnd(adjust.adjustedEndPos))
           new TextEdit(
             endPos,
-            ": " + printType(optDealias(tpt.tpe)) + {
+            ": " + printType(optDealias(tpt.typeOpt)) + {
               if withParens then ")" else ""
             }
           )
@@ -211,7 +211,7 @@ final class InferredTypeProvider(
           adjustOpt.foreach(adjust => end.setEnd(adjust.adjustedEndPos))
           new TextEdit(
             end,
-            ": " + printType(optDealias(tpt.tpe))
+            ": " + printType(optDealias(tpt.typeOpt))
           )
         end typeNameEdit
 
@@ -241,7 +241,7 @@ final class InferredTypeProvider(
         def baseEdit(withParens: Boolean) =
           new TextEdit(
             bind.endPos.toLsp,
-            ": " + printType(optDealias(body.tpe)) + {
+            ": " + printType(optDealias(body.typeOpt)) + {
               if withParens then ")" else ""
             }
           )
@@ -274,7 +274,7 @@ final class InferredTypeProvider(
       case Some(i @ Ident(name)) =>
         val typeNameEdit = new TextEdit(
           i.endPos.toLsp,
-          ": " + printType(optDealias(i.tpe.widen))
+          ": " + printType(optDealias(i.typeOpt.widen))
         )
         typeNameEdit :: imports
 

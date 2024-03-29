@@ -44,11 +44,13 @@ Occurrences:
 
 Diagnostics:
 [3:14..3:16): [warning] unused private member
-[4:16..4:16): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+[4:16..4:16): [warning] Ignoring [this] qualifier.
+This syntax will be deprecated in the future; it should be dropped.
 See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [4:20..4:22): [warning] unused private member
-[7:18..7:18): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+[7:18..7:18): [warning] Ignoring [this] qualifier.
+This syntax will be deprecated in the future; it should be dropped.
 See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 
@@ -397,7 +399,7 @@ Diagnostics => 3 entries
 Synthetics => 2 entries
 
 Symbols:
-example/Anonymous# => class Anonymous extends Object { self: Anonymous & Anonymous => +9 decls }
+example/Anonymous# => class Anonymous extends Object { self: Anonymous => +9 decls }
 example/Anonymous#Bar# => trait Bar extends Object { self: Bar => +2 decls }
 example/Anonymous#Bar#`<init>`(). => primary ctor <init> (): Bar
 example/Anonymous#Bar#bar(). => abstract method bar => String
@@ -817,11 +819,13 @@ Occurrences:
 
 Diagnostics:
 [18:9..18:10): [warning] unused explicit parameter
-[20:23..20:23): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+[20:23..20:23): [warning] Ignoring [this] qualifier.
+This syntax will be deprecated in the future; it should be dropped.
 See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [20:27..20:28): [warning] unused explicit parameter
-[22:23..22:23): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+[22:23..22:23): [warning] Ignoring [this] qualifier.
+This syntax will be deprecated in the future; it should be dropped.
 See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [22:27..22:28): [warning] unused explicit parameter
@@ -3410,7 +3414,7 @@ local1 => selfparam self: B
 local2 => selfparam self: B & C1
 selfs/B# => class B extends Object { self: B => +1 decls }
 selfs/B#`<init>`(). => primary ctor <init> (): B
-selfs/C1# => class C1 extends B { self: C1 & C1 => +1 decls }
+selfs/C1# => class C1 extends B { self: C1 => +1 decls }
 selfs/C1#`<init>`(). => primary ctor <init> (): C1
 selfs/C2# => class C2 extends B { self: B & C2 => +1 decls }
 selfs/C2#`<init>`(). => primary ctor <init> (): C2
@@ -3503,7 +3507,7 @@ Occurrences:
 [16:9..16:15): Object -> java/lang/Object#
 [17:8..17:17): scalameta <- local4
 [17:19..17:25): String -> scala/Predef.String#
-[18:6..18:6): <- local6
+[19:4..19:4): <- local6
 [19:8..19:17): scalameta <- local5
 [20:2..20:3): V -> example/StructuralTypes.V.
 [20:4..20:13): scalameta -> scala/reflect/Selectable#selectDynamic().
@@ -4129,16 +4133,20 @@ Occurrences:
 
 Diagnostics:
 [2:20..2:21): [warning] unused explicit parameter
-[5:16..5:16): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+[5:16..5:16): [warning] Ignoring [this] qualifier.
+This syntax will be deprecated in the future; it should be dropped.
 See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
-[7:16..7:16): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+[7:16..7:16): [warning] Ignoring [this] qualifier.
+This syntax will be deprecated in the future; it should be dropped.
 See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
-[12:16..12:16): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+[12:16..12:16): [warning] Ignoring [this] qualifier.
+This syntax will be deprecated in the future; it should be dropped.
 See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
-[13:16..13:16): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+[13:16..13:16): [warning] Ignoring [this] qualifier.
+This syntax will be deprecated in the future; it should be dropped.
 See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 

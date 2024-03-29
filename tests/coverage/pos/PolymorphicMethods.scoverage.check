@@ -21,9 +21,9 @@
 0
 PolymorphicMethods.scala
 covtest
-PolyMeth$
+PolyMeth
 Object
-covtest.PolyMeth$
+covtest.PolyMeth
 f
 36
 41
@@ -38,9 +38,9 @@ def f
 1
 PolymorphicMethods.scala
 covtest
-PolyMeth$
+PolyMeth
 Object
-covtest.PolyMeth$
+covtest.PolyMeth
 <init>
 60
 69
@@ -55,9 +55,9 @@ this.f(0)
 2
 PolymorphicMethods.scala
 covtest
-PolyMeth$
+PolyMeth
 Object
-covtest.PolyMeth$
+covtest.PolyMeth
 <init>
 147
 170
@@ -72,9 +72,9 @@ C[String]().f("str", 0)
 3
 PolymorphicMethods.scala
 covtest
-PolyMeth$
+PolyMeth
 Object
-covtest.PolyMeth$
+covtest.PolyMeth
 <init>
 147
 158

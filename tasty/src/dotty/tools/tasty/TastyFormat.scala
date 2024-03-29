@@ -316,7 +316,7 @@ object TastyFormat {
   /** Natural number. Each increment of the `MinorVersion`, within
    *  a series declared by the `MajorVersion`, breaks forward
    *  compatibility, but remains backwards compatible, with all
-   *  preceeding `MinorVersion`.
+   *  preceding `MinorVersion`.
    */
   final val MinorVersion: Int = 3
 

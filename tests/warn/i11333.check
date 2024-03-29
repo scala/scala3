@@ -1,0 +1,30 @@
+-- [E167] Lossy Conversion Warning: tests/warn/i11333.scala:4:19 -------------------------------------------------------
+4 |  val f1: Float  = 123456789            // warn
+  |                   ^^^^^^^^^
+  |                   Widening conversion from Int to Float loses precision.
+  |                   Write `.toFloat` instead.
+-- [E167] Lossy Conversion Warning: tests/warn/i11333.scala:5:19 -------------------------------------------------------
+5 |  val d1: Double = 1234567890123456789L // warn
+  |                   ^^^^^^^^^^^^^^^^^^^^
+  |                   Widening conversion from Long to Double loses precision.
+  |                   Write `.toDouble` instead.
+-- [E167] Lossy Conversion Warning: tests/warn/i11333.scala:6:19 -------------------------------------------------------
+6 |  val f2: Float  = 123456789L           // warn
+  |                   ^^^^^^^^^^
+  |                   Widening conversion from Long to Float loses precision.
+  |                   Write `.toFloat` instead.
+-- [E167] Lossy Conversion Warning: tests/warn/i11333.scala:12:21 ------------------------------------------------------
+12 |  val f1_b: Float  = i1 // warn
+   |                     ^^
+   |                     Widening conversion from Int to Float loses precision.
+   |                     Write `.toFloat` instead.
+-- [E167] Lossy Conversion Warning: tests/warn/i11333.scala:13:21 ------------------------------------------------------
+13 |  val d1_b: Double = l1 // warn
+   |                     ^^
+   |                     Widening conversion from Long to Double loses precision.
+   |                     Write `.toDouble` instead.
+-- [E167] Lossy Conversion Warning: tests/warn/i11333.scala:14:21 ------------------------------------------------------
+14 |  val f2_b: Float  = l2 // warn
+   |                     ^^
+   |                     Widening conversion from Long to Float loses precision.
+   |                     Write `.toFloat` instead.

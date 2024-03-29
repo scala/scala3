@@ -34,6 +34,7 @@ import Denotations.SingleDenotation
 import annotation.threadUnsafe
 
 import scala.util.control.NonFatal
+import dotty.tools.dotc.inlines.Inlines
 
 object Applications {
   import tpd.*
@@ -1408,6 +1409,50 @@ trait Applications extends Compatibility {
           }
       }
 
+    /** Inlines the unapply function before the dummy argument
+     *
+     *  A call `P.unapply[...](using l1, ..)(`dummy`)(using t1, ..)` becomes
+     *  ```
+     *  {
+     *    class $anon {
+     *      def unapply(s: S)(using t1: T1, ..): R =
+     *        ... // inlined code for: P.unapply[...](using l1, ..)(s)(using t1, ..)
+     *    }
+     *    new $anon
+     *  }.unapply(`dummy`)(using t1, ..)
+     *  ```
+     */
+    def inlinedUnapplyFnAndApp(dummyArg: Tree, unapplyAppCall: Tree): (Tree, Tree) =
+      def rec(unapp: Tree): (Tree, Tree) =
+        unapp match
+          case DynamicUnapply(_) =>
+            report.error(em"Structural unapply is not supported", unapplyFn.srcPos)
+            (unapplyFn, unapplyAppCall)
+          case Apply(fn, `dummyArg` :: Nil) =>
+            val inlinedUnapplyFn = Inlines.inlinedUnapplyFun(fn)
+            (inlinedUnapplyFn, inlinedUnapplyFn.appliedToArgs(`dummyArg` :: Nil))
+          case Apply(fn, args) =>
+            val (fn1, app) = rec(fn)
+            (fn1, tpd.cpy.Apply(unapp)(app, args))
+
+      if unapplyAppCall.symbol.isAllOf(Transparent | Inline) then rec(unapplyAppCall)
+      else (unapplyFn, unapplyAppCall)
+    end inlinedUnapplyFnAndApp
+
+    def unapplyImplicits(dummyArg: Tree, unapp: Tree): List[Tree] =
+      val res = List.newBuilder[Tree]
+      def loop(unapp: Tree): Unit = unapp match
+        case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); res ++= args2
+        case Apply(unapply, `dummyArg` :: Nil) =>
+        case Inlined(u, _, _) => loop(u)
+        case DynamicUnapply(_) => report.error(em"Structural unapply is not supported", unapplyFn.srcPos)
+        case Apply(fn, args) => assert(args.nonEmpty); loop(fn); res ++= args
+        case _ => ().assertingErrorsReported
+
+      loop(unapp)
+      res.result()
+    end unapplyImplicits
+
     /** Add a `Bind` node for each `bound` symbol in a type application `unapp` */
     def addBinders(unapp: Tree, bound: List[Symbol]) = unapp match {
       case TypeApply(fn, args) =>
@@ -1446,20 +1491,10 @@ trait Applications extends Compatibility {
             unapplyArgType
 
         val dummyArg = dummyTreeOfType(ownType)
-        val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
-        def unapplyImplicits(unapp: Tree): List[Tree] = {
-          val res = List.newBuilder[Tree]
-          def loop(unapp: Tree): Unit = unapp match {
-            case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); res ++= args2
-            case Apply(unapply, `dummyArg` :: Nil) =>
-            case Inlined(u, _, _) => loop(u)
-            case DynamicUnapply(_) => report.error(em"Structural unapply is not supported", unapplyFn.srcPos)
-            case Apply(fn, args) => assert(args.nonEmpty); loop(fn); res ++= args
-            case _ => ().assertingErrorsReported
-          }
-          loop(unapp)
-          res.result()
-        }
+        val (newUnapplyFn, unapplyApp) =
+          val unapplyAppCall = withMode(Mode.NoInline):
+            typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
+          inlinedUnapplyFnAndApp(dummyArg, unapplyAppCall)
 
         var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.srcPos)
         for (argType <- argTypes) assert(!isBounds(argType), unapplyApp.tpe.show)
@@ -1475,7 +1510,7 @@ trait Applications extends Compatibility {
             List.fill(argTypes.length - args.length)(WildcardType)
         }
         val unapplyPatterns = bunchedArgs.lazyZip(argTypes) map (typed(_, _))
-        val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns), ownType)
+        val result = assignType(cpy.UnApply(tree)(newUnapplyFn, unapplyImplicits(dummyArg, unapplyApp), unapplyPatterns), ownType)
         unapp.println(s"unapply patterns = $unapplyPatterns")
         if (ownType.stripped eq selType.stripped) || ownType.isError then result
         else tryWithTypeTest(Typed(result, TypeTree(ownType)), selType)
@@ -2088,34 +2123,27 @@ trait Applications extends Compatibility {
           else resolveMapped(alts1, _.widen.appliedTo(targs1.tpes), pt1)
 
       case pt =>
-        val compat0 = pt.dealias match
-          case defn.FunctionNOf(args, resType, _) =>
-            narrowByTypes(alts, args, resType)
-          case _ =>
-            Nil
-        if (compat0.isEmpty) then
-          val compat = alts.filterConserve(normalizedCompatible(_, pt, keepConstraint = false))
-          if (compat.isEmpty)
-            /*
-            * the case should not be moved to the enclosing match
-            * since SAM type must be considered only if there are no candidates
-            * For example, the second f should be chosen for the following code:
-            *   def f(x: String): Unit = ???
-            *   def f: java.io.OutputStream = ???
-            *   new java.io.ObjectOutputStream(f)
-            */
-            pt match {
-              case SAMType(mtp, _) =>
-                narrowByTypes(alts, mtp.paramInfos, mtp.resultType)
-              case _ =>
-                // pick any alternatives that are not methods since these might be convertible
-                // to the expected type, or be used as extension method arguments.
-                val convertible = alts.filterNot(alt =>
-                    normalize(alt, IgnoredProto(pt)).widenSingleton.isInstanceOf[MethodType])
-                if convertible.length == 1 then convertible else compat
-            }
-          else compat
-        else compat0
+        val compat = alts.filterConserve(normalizedCompatible(_, pt, keepConstraint = false))
+        if compat.isEmpty then
+          pt match
+            case SAMType(mtp, _) =>
+              // If we have a SAM type as expected type, treat it as if the expression was eta-expanded
+              // Note 1: No need to do that for function types, the previous normalizedCompatible test already
+              // handles those.
+              // Note 2: This case should not be moved to the enclosing match
+              // since fSAM types must be considered only if there are no candidates.
+              // For example, the second f should be chosen for the following code:
+              //    def f(x: String): Unit = ???
+              //    def f: java.io.OutputStream = ???
+              //    new java.io.ObjectOutputStream(f)
+              narrowByTypes(alts, mtp.paramInfos, mtp.resultType)
+            case _ =>
+              // pick any alternatives that are not methods since these might be convertible
+              // to the expected type, or be used as extension method arguments.
+              val convertible = alts.filterNot(alt =>
+                  normalize(alt, IgnoredProto(pt)).widenSingleton.isInstanceOf[MethodType])
+              if convertible.length == 1 then convertible else compat
+        else compat
     }
 
     /** The type of alternative `alt` after instantiating its first parameter

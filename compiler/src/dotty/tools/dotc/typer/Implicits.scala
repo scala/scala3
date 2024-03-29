@@ -1074,7 +1074,7 @@ trait Implicits:
         if (argument.isEmpty) i"missing implicit parameter of type $pt after typer at phase ${ctx.phase.phaseName}"
         else i"type error: ${argument.tpe} does not conform to $pt${err.whyNoMatchStr(argument.tpe, pt)}")
 
-      val usableForInference = !pt.unusableForInference
+      val usableForInference = pt.exists && !pt.unusableForInference
         && (argument.isEmpty || !argument.tpe.unusableForInference)
 
       val result0 = if usableForInference then

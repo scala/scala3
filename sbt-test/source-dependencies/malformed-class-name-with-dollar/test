@@ -1,5 +1,5 @@
 > compile
 $ copy-file changes/A.scala A.scala
-# It seems that https://github.com/lampepfl/dotty/pull/10784 break incremental compilation here
+# It seems that https://github.com/scala/scala3/pull/10784 break incremental compilation here
 > clean
 > compile

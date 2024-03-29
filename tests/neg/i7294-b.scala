@@ -9,3 +9,4 @@ inline given f[T <: Foo]: T = ??? match {
 }
 
 @main def Test = f
+// nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)

@@ -1,0 +1,11 @@
+-- Warning: tests/init-global/warn/patmat-unapplySeq2.scala:8:32 -------------------------------------------------------
+8 |  def apply(i: Int): Box = array(i) // warn
+  |                           ^^^^^^^^
+  |Reading mutable state of object A during initialization of object B.
+  |Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. Calling trace:
+  |├── object B:	[ patmat-unapplySeq2.scala:15 ]
+  |│   ^
+  |├── case A(b*) =>	[ patmat-unapplySeq2.scala:17 ]
+  |│        ^^^^^
+  |└── def apply(i: Int): Box = array(i) // warn	[ patmat-unapplySeq2.scala:8 ]
+  |                             ^^^^^^^^

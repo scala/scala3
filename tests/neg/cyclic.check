@@ -1,0 +1,14 @@
+-- [E044] Cyclic Error: tests/neg/cyclic.scala:6:12 --------------------------------------------------------------------
+6 |  def i() = f()  // error
+  |            ^
+  |            Overloaded or recursive method f needs return type
+  |
+  |            The error occurred while trying to compute the signature of method f
+  |              which required to compute the signature of method g
+  |              which required to compute the signature of method h
+  |              which required to compute the signature of method i
+  |              which required to compute the signature of method f
+  |
+  |             Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace.
+  |
+  | longer explanation available when compiling with `-explain`

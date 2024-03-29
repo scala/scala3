@@ -35,9 +35,9 @@ val usageMessage = """
   |* --releases <releases-range>
   |    Bisect only releases from the given range (defaults to all releases).
   |    The range format is <first>...<last>, where both <first> and <last> are optional, e.g.
-  |    * 3.1.0-RC1-bin-20210827-427d313-NIGHTLY..3.2.1-RC1-bin-20220716-bb9c8ff-NIGHTLY
-  |    * 3.2.1-RC1-bin-20220620-de3a82c-NIGHTLY..
-  |    * ..3.3.0-RC1-bin-20221124-e25362d-NIGHTLY
+  |    * 3.1.0-RC1-bin-20210827-427d313-NIGHTLY...3.2.1-RC1-bin-20220716-bb9c8ff-NIGHTLY
+  |    * 3.2.1-RC1-bin-20220620-de3a82c-NIGHTLY...
+  |    * ...3.3.0-RC1-bin-20221124-e25362d-NIGHTLY
   |    The ranges are treated as inclusive.
   |
   |* --bootstrapped
@@ -169,9 +169,13 @@ class Releases(val releases: Vector[Release])
 
 object Releases:
   lazy val allReleases: Vector[Release] =
-    val re = raw"""(?<=title=")(.+-bin-\d{8}-\w{7}-NIGHTLY)(?=/")""".r
-    val html = Source.fromURL("https://repo1.maven.org/maven2/org/scala-lang/scala3-compiler_3/")
-    re.findAllIn(html.mkString).map(Release.apply).toVector
+    val re = raw"<version>(.+-bin-\d{8}-\w{7}-NIGHTLY)</version>".r
+    val xml = io.Source.fromURL(
+      "https://repo1.maven.org/maven2/org/scala-lang/scala3-compiler_3/maven-metadata.xml"
+    )
+    re.findAllMatchIn(xml.mkString)
+      .flatMap{ m => Option(m.group(1)).map(Release.apply) }
+      .toVector
 
   def fromRange(range: ReleasesRange): Vector[Release] = range.filter(allReleases)
 
@@ -237,7 +241,7 @@ class CommitBisect(validationScript: File, shouldFail: Boolean, bootstrapped: Bo
     val validationCommandStatusModifier = if shouldFail then "! " else "" // invert the process status if failure was expected
     val bisectRunScript = raw"""
       |scalaVersion=$$(sbt "print ${scala3CompilerProject}/version" | tail -n1)
-      |rm -r out
+      |rm -rf out
       |sbt "clean; set every doc := new File(\"unused\"); set scaladoc/Compile/resourceGenerators := (\`${scala3Project}\`/Compile/resourceGenerators).value; ${scala3Project}/publishLocal"
       |${validationCommandStatusModifier}${validationScript.getAbsolutePath} "$$scalaVersion"
     """.stripMargin

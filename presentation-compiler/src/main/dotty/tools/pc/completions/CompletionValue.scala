@@ -4,7 +4,9 @@ package completions
 import scala.meta.internal.pc.CompletionItemData
 
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Denotations.Denotation
 import dotty.tools.dotc.core.Flags.*
+import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.pc.printer.ShortenedTypePrinter
@@ -33,6 +35,7 @@ enum CompletionSource:
   case MatchCompletionKind
   case CaseKeywordKind
   case DocumentKind
+  case ImplicitClassKind
 
 sealed trait CompletionValue:
   def label: String
@@ -61,7 +64,8 @@ end CompletionValue
 object CompletionValue:
 
   sealed trait Symbolic extends CompletionValue:
-    def symbol: Symbol
+    def denotation: Denotation
+    val symbol = denotation.symbol
     def isFromWorkspace: Boolean = false
     override def completionItemDataKind = CompletionItemData.None
     def isExtensionMethod: Boolean = false
@@ -105,7 +109,7 @@ object CompletionValue:
         s"${label}${description(printer)}"
       else s"$label: ${description(printer)}"
 
-    private def labelWithSuffix(printer: ShortenedTypePrinter)(using Context): String =
+    protected def labelWithSuffix(printer: ShortenedTypePrinter)(using Context): String =
       if snippetSuffix.addLabelSnippet
       then
         val printedParams = symbol.info.typeParams.map(p =>
@@ -114,41 +118,60 @@ object CompletionValue:
         s"${label}${printedParams.mkString("[", ",", "]")}"
       else label
 
-    override def description(printer: ShortenedTypePrinter)(
-      using Context
-    ): String =
-      printer.completionSymbol(symbol)
+    override def description(printer: ShortenedTypePrinter)(using Context): String =
+      printer.completionSymbol(denotation)
+
   end Symbolic
 
   case class Compiler(
       label: String,
-      symbol: Symbol,
+      denotation: Denotation,
       override val snippetSuffix: CompletionSuffix
-  ) extends Symbolic {
+  ) extends Symbolic:
     override def completionItemDataKind: Integer = CompletionSource.CompilerKind.ordinal
-  }
+
   case class Scope(
       label: String,
-      symbol: Symbol,
+      denotation: Denotation,
       override val snippetSuffix: CompletionSuffix,
-  ) extends Symbolic {
+  ) extends Symbolic:
     override def completionItemDataKind: Integer = CompletionSource.ScopeKind.ordinal
-  }
+
   case class Workspace(
       label: String,
-      symbol: Symbol,
+      denotation: Denotation,
       override val snippetSuffix: CompletionSuffix,
       override val importSymbol: Symbol
   ) extends Symbolic:
     override def isFromWorkspace: Boolean = true
     override def completionItemDataKind: Integer = CompletionSource.WorkspaceKind.ordinal
 
+    override def labelWithDescription(printer: ShortenedTypePrinter)(using Context): String =
+      if symbol.is(Method) && symbol.name != nme.apply then
+        s"${labelWithSuffix(printer)} - ${printer.fullNameString(symbol.effectiveOwner)}"
+      else super.labelWithDescription(printer)
+
+  /**
+   * CompletionValue for old implicit classes methods via SymbolSearch
+   */
+  case class ImplicitClass(
+      label: String,
+      denotation: Denotation,
+      override val snippetSuffix: CompletionSuffix,
+      override val importSymbol: Symbol,
+  ) extends Symbolic:
+    override def completionItemKind(using Context): CompletionItemKind =
+      CompletionItemKind.Method
+    override def completionItemDataKind: Integer = CompletionSource.ImplicitClassKind.ordinal
+    override def description(printer: ShortenedTypePrinter)(using Context): String =
+      s"${printer.completionSymbol(denotation)} (implicit)"
+
   /**
    * CompletionValue for extension methods via SymbolSearch
    */
   case class Extension(
       label: String,
-      symbol: Symbol,
+      denotation: Denotation,
       override val snippetSuffix: CompletionSuffix
   ) extends Symbolic:
     override def completionItemKind(using Context): CompletionItemKind =
@@ -156,7 +179,7 @@ object CompletionValue:
     override def completionItemDataKind: Integer = CompletionSource.ExtensionKind.ordinal
     override def isExtensionMethod: Boolean = true
     override def description(printer: ShortenedTypePrinter)(using Context): String =
-      s"${printer.completionSymbol(symbol)} (extension)"
+      s"${printer.completionSymbol(denotation)} (extension)"
 
   /**
    * @param shortenedNames shortened type names by `Printer`. This field should be used for autoImports
@@ -169,7 +192,7 @@ object CompletionValue:
   case class Override(
       label: String,
       value: String,
-      symbol: Symbol,
+      denotation: Denotation,
       override val additionalEdits: List[TextEdit],
       override val filterText: Option[String],
       override val range: Option[Range]
@@ -185,7 +208,7 @@ object CompletionValue:
   case class NamedArg(
       label: String,
       tpe: Type,
-      symbol: Symbol
+      denotation: Denotation
   ) extends Symbolic:
     override def insertText: Option[String] = Some(label.replace("$", "$$").nn)
     override def completionItemDataKind: Integer = CompletionSource.OverrideKind.ordinal
@@ -235,7 +258,7 @@ object CompletionValue:
       CompletionItemKind.Folder
 
   case class Interpolator(
-      symbol: Symbol,
+      denotation: Denotation,
       label: String,
       override val insertText: Option[String],
       override val additionalEdits: List[TextEdit],
@@ -251,6 +274,7 @@ object CompletionValue:
     )(using Context): String =
       if isExtension then s"${printer.completionSymbol(symbol)} (extension)"
       else super.description(printer)
+    override def isExtensionMethod: Boolean = isExtension
   end Interpolator
 
   case class MatchCompletion(
@@ -266,7 +290,7 @@ object CompletionValue:
       desc
 
   case class CaseKeyword(
-      symbol: Symbol,
+      denotation: Denotation,
       label: String,
       override val insertText: Option[String],
       override val additionalEdits: List[TextEdit],

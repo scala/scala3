@@ -164,24 +164,31 @@ to load the TASTy and the runtime to load the original classfiles.
 
 The library is compiled in `scala2-library-bootstrapped` with TASTy and classfiles.
 These classfiles should not be used. The `scala2-library-tasty` project repackages the
-JAR `scala2-library-bootstrapped` to only keep TASTy files. The `scala2-library-tasty-tests` provides some basic tests using the library TASTy JAR.
-
-```
-$ sbt
-> scala2-library-tasty/compile
-> scala2-library-tasty-tests/run
-> scala2-library-tasty-tests/test
-```
+JAR `scala2-library-bootstrapped` to only keep TASTy files.
 
 We can enable this library in the build using the SBT setting `useScala2LibraryTasty`. This setting can only be used by bootstrapped compiler tests and is currently only supported for `test` (or `testCompilation`) and `scalac` (or `run`).
 
 ```
 $ sbt
-> set ThisBuild/Build.useScala2LibraryTasty := true
+> set ThisBuild/Build.scala2Library := Build.Scala2LibraryTasty
 > scala3-compiler-bootstrapped/scalac MyFile.scala
 > scala3-compiler-bootstrapped/test
 > scala3-compiler-bootstrapped/testCompilation
 ```
+
+By default `scala2Library` is set to `Scala2LibraryJar`. This setting can be set to stop using the Scala 2 library TASTy.
+```
+> set ThisBuild/Build.scala2Library := Build.Scala2LibraryJar
+```
+
+#### Scala 2 library with CC TASTy tests
+These follow the same structure as the _Scala 2 library TASTy tests_ but add captured checked signatures to the library. The library is compiled in `scala2-library-cc` (instead of `scala2-library-bootstrapped`) and `scala2-library-cc-tasty` (instead of `scala2-library-cc-tasty`).
+
+We can also enable this library in the build using the SBT setting `useScala2LibraryTasty`.
+```
+> set ThisBuild/Build.scala2Library := Build.Scala2LibraryCCTasty
+```
+
 
 ### From TASTy tests
 
@@ -239,7 +246,7 @@ can enter an inconsistent state and cause spurious test failures. If you suspect
 you can run `rm -rf out/*` from the root of the repository and run your tests again. If that fails, you
 can try `git clean -xfd`.
 
-[CompilationTests]: https://github.com/lampepfl/dotty/blob/master/compiler/test/dotty/tools/dotc/CompilationTests.scala
-[compiler/test]: https://github.com/lampepfl/dotty/blob/master/compiler/test/
-[compiler/test/dotc]: https://github.com/lampepfl/dotty/tree/master/compiler/test/dotc
-[SemanticdbTests]: https://github.com/lampepfl/dotty/blob/master/compiler/test/dotty/tools/dotc/semanticdb/SemanticdbTests.scala
+[CompilationTests]: https://github.com/scala/scala3/blob/master/compiler/test/dotty/tools/dotc/CompilationTests.scala
+[compiler/test]: https://github.com/scala/scala3/blob/master/compiler/test/
+[compiler/test/dotc]: https://github.com/scala/scala3/tree/master/compiler/test/dotc
+[SemanticdbTests]: https://github.com/scala/scala3/blob/master/compiler/test/dotty/tools/dotc/semanticdb/SemanticdbTests.scala

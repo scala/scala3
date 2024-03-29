@@ -290,15 +290,25 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     /** This callback is executed once the compilation of this test source finished */
     private final def onComplete(testSource: TestSource, reportersOrCrash: Try[Seq[TestReporter]], logger: LoggedRunnable): Unit =
-      reportersOrCrash match {
-        case TryFailure(exn) => onFailure(testSource, Nil, logger, Some(s"Fatal compiler crash when compiling: ${testSource.title}:\n${exn.getMessage}${exn.getStackTrace.map("\n\tat " + _).mkString}"))
-        case TrySuccess(reporters) if !reporters.exists(_.skipped) =>
-          maybeFailureMessage(testSource, reporters) match {
-            case Some(msg) => onFailure(testSource, reporters, logger, Option(msg).filter(_.nonEmpty))
-            case None => onSuccess(testSource, reporters, logger)
+      try
+        reportersOrCrash match
+          case TryFailure(exn) => onFailure(testSource, Nil, logger, Some(s"Fatal compiler crash when compiling: ${testSource.title}:\n${exn.getMessage}${exn.getStackTrace.map("\n\tat " + _).mkString}"))
+          case TrySuccess(reporters) if !reporters.exists(_.skipped) =>
+            maybeFailureMessage(testSource, reporters) match {
+              case Some(msg) => onFailure(testSource, reporters, logger, Option(msg).filter(_.nonEmpty))
+              case None => onSuccess(testSource, reporters, logger)
+            }
+          case _ =>
+      catch case ex: Throwable =>
+        echo(s"Exception thrown onComplete (probably by a reporter) in $testSource: ${ex.getClass}")
+        Try(ex.printStackTrace())
+          .recover{ _ =>
+            val trace = ex.getStackTrace.map(_.toString) // compute this first in case getStackTrace throws an exception
+            echo(s"${ex.getClass.getName} message could not be printed due to an exception while computing the message.")
+            if trace.nonEmpty then trace.foreach(echo) else echo(s"${ex.getClass.getName} stack trace is empty.")
           }
-        case _ =>
-      }
+          .getOrElse(echo(s"${ex.getClass.getName} stack trace could not be printed due to an exception while printing the stack trace."))
+        failTestSource(testSource)
 
     /**
      * Based on the reporters obtained after the compilation, determines if this test has failed.
@@ -776,7 +786,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     end maybeFailureMessage
 
     def getWarnMapAndExpectedCount(files: Seq[JFile]): (HashMap[String, Integer], Int) =
-      val comment = raw"//( *)warn".r
+      val comment = raw"//( *)(nopos-)?warn".r
       val map = new HashMap[String, Integer]()
       var count = 0
       def bump(key: String): Unit =
@@ -787,8 +797,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       files.filter(isSourceFile).foreach { file =>
         Using(Source.fromFile(file, StandardCharsets.UTF_8.name)) { source =>
           source.getLines.zipWithIndex.foreach { case (line, lineNbr) =>
-            comment.findAllMatchIn(line).foreach { _ =>
-              bump(s"${file.getPath}:${lineNbr+1}")
+            comment.findAllMatchIn(line).foreach { m =>
+              m.group(2) match
+                case "nopos-" =>
+                  bump("nopos")
+                case _ => bump(s"${file.getPath}:${lineNbr+1}")
             }
           }
         }.get
@@ -809,7 +822,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           val key = s"${relativize(srcpos.source.file.toString())}:${srcpos.line + 1}"
           if !seenAt(key) then unexpected += key
         else
-          unpositioned += relativize(srcpos.source.file.toString())
+          if(!seenAt("nopos")) unpositioned += relativize(srcpos.source.file.toString())
 
       reporterWarnings.foreach(sawDiagnostic)
 

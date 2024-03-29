@@ -1001,6 +1001,10 @@ object RefChecks {
           report.error(em"private $sym cannot override ${other.showLocated}", sym.srcPos)
   end checkNoPrivateOverrides
 
+  def checkVolatile(sym: Symbol)(using Context): Unit =
+    if sym.isVolatile && !sym.is(Mutable) then 
+      report.warning(VolatileOnVal(), sym.srcPos)
+  
   /** Check that unary method definition do not receive parameters.
    *  They can only receive inferred parameters such as type parameters and implicit parameters.
    */
@@ -1183,6 +1187,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     if tree.symbol.exists then
       checkNoPrivateOverrides(tree)
       val sym = tree.symbol
+      checkVolatile(sym)
       if (sym.exists && sym.owner.isTerm) {
         tree.rhs match {
           case Ident(nme.WILDCARD) => report.error(UnboundPlaceholderParameter(), sym.srcPos)

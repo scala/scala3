@@ -1,12 +1,24 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/byname.scala:10:6 ----------------------------------------
-10 |  h(f2()) // error
-   |    ^^^^
-   |    Found:    (x$0: Int) ->{cap1} Int
-   |    Required: (x$0: Int) ->{cap2} Int
-   |
-   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/byname.scala:19:5 -------------------------------------------------------------
 19 |  h(g()) // error
    |    ^^^
    |    reference (cap2 : Cap^) is not included in the allowed capture set {cap1}
    |    of an enclosing function literal with expected type () ?->{cap1} I
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/byname.scala:4:2 -----------------------------------------
+ 4 |  def f() = if cap1 == cap1 then g else g // error
+   |  ^
+   |  Found:    (x$0: Int) ->{cap2} Int
+   |  Required: (x$0: Int) -> Int
+   |
+   |  Note that the expected type Int => Int
+   |  is the previously inferred result type of method test
+   |  which is also the type seen in separately compiled sources.
+   |  The new inferred type (x$0: Int) ->{cap2} Int
+   |  must conform to this type.
+ 5 |  def g(x: Int) = if cap2 == cap2 then 1 else x
+ 6 |  def g2(x: Int) = if cap1 == cap1 then 1 else x
+ 7 |  def f2() = if cap1 == cap1 then g2 else g2
+ 8 |  def h(ff: => Int ->{cap2} Int) = ff
+ 9 |  h(f())
+10 |  h(f2())
+   |
+   | longer explanation available when compiling with `-explain`

@@ -1,6 +1,5 @@
 
-trait Stepper[+A]:
-  this: Stepper[A]^ =>
+trait Stepper[+A]
 
 object Stepper:
   trait EfficientSplit
@@ -8,7 +7,6 @@ object Stepper:
 sealed trait StepperShape[-T, S <: Stepper[_]^] extends Pure
 
 trait IterableOnce[+A] extends Any:
-  this: IterableOnce[A]^ =>
   def stepper[S <: Stepper[_]^{this}](implicit shape: StepperShape[A, S]): S = ???
 
 sealed abstract class ArraySeq[T] extends IterableOnce[T], Pure:

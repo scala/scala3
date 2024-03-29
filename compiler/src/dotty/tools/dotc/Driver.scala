@@ -54,8 +54,7 @@ class Driver {
       if (ctx.settings.XprintSuspension.value)
         report.echo(i"compiling suspended $suspendedUnits%, %")
       val run1 = compiler.newRun
-      for unit <- suspendedUnits do unit.suspended = false
-      run1.compileUnits(suspendedUnits)
+      run1.compileSuspendedUnits(suspendedUnits)
       finish(compiler, run1)(using MacroClassLoader.init(ctx.fresh))
 
   protected def initCtx: Context = (new ContextBase).initialCtx
@@ -127,7 +126,7 @@ class Driver {
    *  The trade-off is that you can only pass a SimpleReporter to this method
    *  and not a normal Reporter which is more powerful.
    *
-   *  Usage example: [[https://github.com/lampepfl/dotty/tree/master/compiler/test/dotty/tools/dotc/InterfaceEntryPointTest.scala]]
+   *  Usage example: [[https://github.com/scala/scala3/tree/master/compiler/test/dotty/tools/dotc/InterfaceEntryPointTest.scala]]
    *
    *  @param args       Arguments to pass to the compiler.
    *  @param simple     Used to log errors, warnings, and info messages.
@@ -144,7 +143,7 @@ class Driver {
 
   /** Principal entry point to the compiler.
    *
-   *  Usage example: [[https://github.com/lampepfl/dotty/tree/master/compiler/test/dotty/tools/dotc/EntryPointsTest.scala.disabled]]
+   *  Usage example: [[https://github.com/scala/scala3/tree/master/compiler/test/dotty/tools/dotc/EntryPointsTest.scala.disabled]]
    *  in method `runCompiler`
    *
    *  @param args       Arguments to pass to the compiler.
@@ -183,7 +182,7 @@ class Driver {
    *  the other overloads cannot be overridden, instead you
    *  should override this one which they call internally.
    *
-   *  Usage example: [[https://github.com/lampepfl/dotty/tree/master/compiler/test/dotty/tools/dotc/EntryPointsTest.scala.disabled]]
+   *  Usage example: [[https://github.com/scala/scala3/tree/master/compiler/test/dotty/tools/dotc/EntryPointsTest.scala.disabled]]
    *  in method `runCompilerWithContext`
    *
    *  @param args       Arguments to pass to the compiler.

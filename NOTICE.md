@@ -1,6 +1,6 @@
 Dotty (https://dotty.epfl.ch)
-Copyright 2012-2023 EPFL
-Copyright 2012-2023 Lightbend, Inc.
+Copyright 2012-2024 EPFL
+Copyright 2012-2024 Lightbend, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License"):
 http://www.apache.org/licenses/LICENSE-2.0
@@ -104,4 +104,4 @@ major authors were omitted by oversight.
 [3] https://github.com/sbt/sbt/tree/0.13/compile/interface/src/main/scala/xsbt
 [4] https://github.com/scoverage/scalac-scoverage-plugin
 [5] https://github.com/scalameta/metals
-[6] https://github.com/lampepfl/dotty/pull/5783/files
+[6] https://github.com/scala/scala3/pull/5783/files

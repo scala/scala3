@@ -72,7 +72,7 @@ These constructs are restricted to make the language safer.
  - [Given Imports](contextual/given-imports.md): implicits now require a special form of import, to make the import clearly visible.
  - [Type Projection](dropped-features/type-projection.md): only classes can be used as prefix `C` of a type projection `C#A`. Type projection on abstract types is no longer supported since it is unsound.
  - [Multiversal equality](contextual/multiversal-equality.md) implements an "opt-in" scheme to rule out nonsensical comparisons with `==` and `!=`.
- - [infix](https://github.com/lampepfl/dotty/pull/5975)
+ - [infix](https://github.com/scala/scala3/pull/5975)
  makes method application syntax uniform across code bases.
 
 Unrestricted implicit conversions continue to be available in Scala 3.0, but will be deprecated and removed later. Unrestricted versions of the other constructs in the list above are available only under `-source 3.0-migration`.
@@ -100,7 +100,7 @@ These constructs are proposed to be dropped without a new construct replacing th
  - [Auto application](dropped-features/auto-apply.md),
  - [Weak conformance](dropped-features/weak-conformance.md),
  - [Compound types](new-types/intersection-types.md),
- - [Auto tupling](https://github.com/lampepfl/dotty/pull/4311) (implemented, but not merged).
+ - [Auto tupling](https://github.com/scala/scala3/pull/4311) (implemented, but not merged).
 
 The date when these constructs are dropped varies. The current status is:
 
@@ -148,7 +148,7 @@ These are additions to the language that make it more powerful or pleasant to us
  - [Enums](enums/enums.md) provide concise syntax for enumerations and [algebraic data types](enums/adts.md).
  - [Parameter untupling](other-new-features/parameter-untupling.md) avoids having to use `case` for tupled parameter destructuring.
  - [Dependent function types](new-types/dependent-function-types.md) generalize dependent methods to dependent function values and types.
- - [Polymorphic function types](https://github.com/lampepfl/dotty/pull/4672) generalize polymorphic methods to dependent function values and types. _Current status_: There is a proposal, and a prototype implementation, but the implementation has not been finalized or merged yet.
+ - [Polymorphic function types](https://github.com/scala/scala3/pull/4672) generalize polymorphic methods to dependent function values and types. _Current status_: There is a proposal, and a prototype implementation, but the implementation has not been finalized or merged yet.
  - [Kind polymorphism](other-new-features/kind-polymorphism.md) allows the definition of operators working equally on types and type constructors.
 
 **Status: mixed**

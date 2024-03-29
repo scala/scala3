@@ -38,7 +38,7 @@ import config.Feature.sourceVersion
 import config.SourceVersion.*
 import config.MigrationVersion
 import printing.Formatting.hlAsKeyword
-import cc.isCaptureChecking
+import cc.{isCaptureChecking, isRetainsLike}
 
 import collection.mutable
 import reporting.*
@@ -332,8 +332,14 @@ object Checking {
                 || sym.owner.isContainedIn(prefix.cls) // sym reachable through member references
               )
             case prefix: NamedType =>
-              (!sym.is(Private) && prefix.derivesFrom(sym.owner)) ||
-              (!prefix.symbol.moduleClass.isStaticOwner && isInteresting(prefix.prefix))
+              !sym.is(Private) && prefix.derivesFrom(sym.owner)
+              || {
+                val pcls = prefix.symbol.moduleClass
+                if pcls.isStaticOwner then
+                  pcls.span.exists && pcls.defRunId == ctx.runId // cheaper approximation to isDefinedInCurrentRun
+                else
+                  isInteresting(prefix.prefix)
+              }
             case SuperType(thistp, _) => isInteresting(thistp)
             case AndType(tp1, tp2) => isInteresting(tp1) || isInteresting(tp2)
             case OrType(tp1, tp2) => isInteresting(tp1) && isInteresting(tp2)
@@ -342,15 +348,27 @@ object Checking {
             case _ => false
           }
 
-          if (isInteresting(pre)) {
-            val pre1 = this(pre, false, false)
-            if (locked.contains(tp) || tp.symbol.infoOrCompleter.isInstanceOf[NoCompleter])
-              throw CyclicReference(tp.symbol)
-            locked += tp
-            try if (!tp.symbol.isClass) checkInfo(tp.info)
-            finally locked -= tp
-            tp.withPrefix(pre1)
-          }
+          if isInteresting(pre) then
+            val traceCycles = CyclicReference.isTraced
+            try
+              if traceCycles then
+                CyclicReference.pushTrace("explore ", tp.symbol, " for cyclic references")
+              val pre1 = this(pre, false, false)
+              if locked.contains(tp)
+                  || tp.symbol.infoOrCompleter.isInstanceOf[NoCompleter]
+              then
+                throw CyclicReference(tp.symbol)
+              locked += tp
+              try
+                if tp.symbol.isOpaqueAlias then
+                  checkInfo(TypeAlias(tp.translucentSuperType))
+                else if !tp.symbol.isClass then
+                  checkInfo(tp.info)
+              finally
+                locked -= tp
+              tp.withPrefix(pre1)
+            finally
+              if traceCycles then CyclicReference.popTrace()
           else tp
         }
         catch {
@@ -387,11 +405,15 @@ object Checking {
    */
   def checkNonCyclic(sym: Symbol, info: Type, reportErrors: Boolean)(using Context): Type = {
     val checker = withMode(Mode.CheckCyclic)(new CheckNonCyclicMap(sym, reportErrors))
-    try checker.checkInfo(info)
+    try
+      val toCheck = info match
+        case info: RealTypeBounds if sym.isOpaqueAlias => TypeAlias(sym.opaqueAlias)
+        case _ => info
+      checker.checkInfo(toCheck)
     catch {
       case ex: CyclicReference =>
         if (reportErrors)
-          errorType(IllegalCyclicTypeReference(sym, checker.where, checker.lastChecked), sym.srcPos)
+          errorType(IllegalCyclicTypeReference(ex, sym, checker.where, checker.lastChecked), sym.srcPos)
         else info
     }
   }
@@ -683,8 +705,7 @@ object Checking {
             declaredParents =
               tp.declaredParents.map(p => transformedParent(apply(p)))
             )
-        case tp @ AnnotatedType(underlying, annot)
-        if annot.symbol == defn.RetainsAnnot || annot.symbol == defn.RetainsByNameAnnot =>
+        case tp @ AnnotatedType(underlying, annot) if annot.symbol.isRetainsLike =>
           val underlying1 = this(underlying)
           val saved = inCaptureSet
           inCaptureSet = true
@@ -1158,9 +1179,7 @@ trait Checking {
 
   /** Check that class does not declare same symbol twice */
   def checkNoDoubleDeclaration(cls: Symbol)(using Context): Unit = {
-    val seen = new mutable.HashMap[Name, List[Symbol]] {
-      override def default(key: Name) = Nil
-    }
+    val seen = new mutable.HashMap[Name, List[Symbol]].withDefaultValue(Nil)
     typr.println(i"check no double declarations $cls")
 
     def checkDecl(decl: Symbol): Unit = {
@@ -1169,7 +1188,8 @@ trait Checking {
         def javaFieldMethodPair =
           decl.is(JavaDefined) && other.is(JavaDefined) &&
           decl.is(Method) != other.is(Method)
-        if (decl.matches(other) && !javaFieldMethodPair) {
+        def staticNonStaticPair = decl.isScalaStatic != other.isScalaStatic
+        if (decl.matches(other) && !javaFieldMethodPair && !staticNonStaticPair) {
           def doubleDefError(decl: Symbol, other: Symbol): Unit =
             if (!decl.info.isErroneous && !other.info.isErroneous)
               report.error(DoubleDefinition(decl, other, cls), decl.srcPos)

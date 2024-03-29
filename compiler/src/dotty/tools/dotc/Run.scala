@@ -343,9 +343,12 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     runCtx.setProfiler(Profiler())
     unfusedPhases.foreach(_.initContext(runCtx))
     val fusedPhases = runCtx.base.allPhases
+    if ctx.settings.explainCyclic.value then
+      runCtx.setProperty(CyclicReference.Trace, new CyclicReference.Trace())
     runCtx.withProgressCallback: cb =>
       _progress = Progress(cb, this, fusedPhases.map(_.traversals).sum)
     runPhases(allPhases = fusedPhases)(using runCtx)
+    ctx.reporter.finalizeReporting()
     if (!ctx.reporter.hasErrors)
       Rewrites.writeBack()
     suppressions.runFinished(hasErrors = ctx.reporter.hasErrors)
@@ -355,6 +358,17 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     }
     compiling = false
   }
+
+  private var myCompilingSuspended: Boolean = false
+
+  /** Is this run started via a compilingSuspended? */
+  def isCompilingSuspended: Boolean = myCompilingSuspended
+
+  /** Compile units `us` which were suspended in a previous run */
+  def compileSuspendedUnits(us: List[CompilationUnit]): Unit =
+    myCompilingSuspended = true
+    for unit <- us do unit.suspended = false
+    compileUnits(us)
 
   /** Enter top-level definitions of classes and objects contained in source file `file`.
    *  The newly added symbols replace any previously entered symbols.

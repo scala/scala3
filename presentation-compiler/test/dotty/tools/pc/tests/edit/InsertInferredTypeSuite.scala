@@ -789,6 +789,28 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
          |""".stripMargin
     )
 
+  @Test def `import-rename` =
+    checkEdit(
+      """
+        |package a
+        |import scala.collection.{AbstractMap => AB}
+        |
+        |object Main {
+        |  def test(): AB[Int, String] = ???
+        |  val <<x>> = test()
+        |}
+        |""".stripMargin,
+      """
+        |package a
+        |import scala.collection.{AbstractMap => AB}
+        |
+        |object Main {
+        |  def test(): AB[Int, String] = ???
+        |  val x: AB[Int, String] = test()
+        |}
+        |""".stripMargin
+    )
+
   def checkEdit(
       original: String,
       expected: String

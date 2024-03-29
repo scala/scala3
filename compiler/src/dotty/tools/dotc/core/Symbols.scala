@@ -19,9 +19,7 @@ import DenotTransformers.*
 import StdNames.*
 import NameOps.*
 import NameKinds.LazyImplicitName
-import ast.tpd
-import tpd.{Tree, TreeProvider, TreeOps}
-import ast.TreeTypeMap
+import ast.*, tpd.*
 import Constants.Constant
 import Variances.Variance
 import reporting.Message
@@ -134,7 +132,7 @@ object Symbols extends SymUtils {
     final def lastKnownDenotation: SymDenotation =
       lastDenot
 
-    private[core] def defRunId: RunId =
+    private[dotc] def defRunId: RunId =
       lastDenot.validFor.runId
 
     private inline def associatedFileMatches(inline filter: AbstractFile => Boolean)(using Context): Boolean =
@@ -325,13 +323,26 @@ object Symbols extends SymUtils {
 
     /** A symbol related to `sym` that is defined in source code.
      *
-     *  @see enclosingSourceSymbols
+     *  @see [[interactive.Interactive.enclosingSourceSymbols]]
      */
     @annotation.tailrec final def sourceSymbol(using Context): Symbol =
       if (!denot.exists)
         this
       else if (denot.is(ModuleVal))
         this.moduleClass.sourceSymbol // The module val always has a zero-extent position
+      else if denot.is(ExportedType) then
+        denot.info.dropAlias.finalResultType.typeConstructor match
+          case tp: NamedType => tp.symbol.sourceSymbol
+          case _             => this
+      else if denot.is(ExportedTerm) then
+        val root = denot.maybeOwner match
+          case cls: ClassSymbol => cls.rootTreeContaining(name.toString)
+          case _                => EmptyTree
+        val targets = root.collectSubTrees:
+          case tree: DefDef if tree.symbol == denot.symbol => methPart(tree.rhs).tpe
+        targets.match
+          case (tp: NamedType) :: _ => tp.symbol.sourceSymbol
+          case _                    => this
       else if (denot.is(Synthetic)) {
         val linked = denot.linkedClass
         if (linked.exists && !linked.is(Synthetic))

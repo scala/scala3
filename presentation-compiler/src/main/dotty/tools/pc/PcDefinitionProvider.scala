@@ -108,7 +108,7 @@ class PcDefinitionProvider(
       case Nil =>
         path.headOption match
           case Some(value: Literal) =>
-            definitionsForSymbol(List(value.tpe.widen.typeSymbol), pos)
+            definitionsForSymbol(List(value.typeOpt.widen.typeSymbol), pos)
           case _ => DefinitionResultImpl.empty
       case _ =>
         definitionsForSymbol(typeSymbols, pos)
@@ -124,7 +124,7 @@ class PcDefinitionProvider(
         val isLocal = sym.source == pos.source
         if isLocal then
           val defs =
-            Interactive.findDefinitions(List(sym), driver, false, false)
+            Interactive.findDefinitions(List(sym), driver, false, false).filter(_.source == sym.source)
           defs.headOption match
             case Some(srcTree) =>
               val pos = srcTree.namePos

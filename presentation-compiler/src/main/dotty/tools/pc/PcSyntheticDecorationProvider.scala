@@ -39,6 +39,8 @@ final class PcSyntheticDecorationsProvider(
   val source =
     SourceFile.virtual(filePath.toString, sourceText)
   driver.run(uri, source)
+
+  given InferredType.Text = InferredType.Text(text)
   given ctx: Context = driver.currentCtx
   val unit = driver.currentCtx.run.nn.units.head
 
@@ -112,7 +114,7 @@ final class PcSyntheticDecorationsProvider(
   ): String =
     val tpdPath =
       Interactive.pathTo(unit.tpdTree, pos.span)
-    
+
     val indexedCtx = IndexedContext(Interactive.contextOfPath(tpdPath))
     val printer = ShortenedTypePrinter(
       symbolSearch
@@ -208,7 +210,7 @@ object TypeParameters:
           case sel: Select if sel.isInfix =>
             sel.sourcePos.withEnd(sel.nameSpan.end)
           case _ => fun.sourcePos
-        val tpes = args.map(_.tpe.stripTypeVar.widen.finalResultType)
+        val tpes = args.map(_.typeOpt.stripTypeVar.widen.finalResultType)
         Some((tpes, pos.endPos, fun))
       case _ => None
   private def inferredTypeArgs(args: List[Tree]): Boolean =
@@ -219,13 +221,18 @@ object TypeParameters:
 end TypeParameters
 
 object InferredType:
-  def unapply(tree: Tree)(using Context) =
+  opaque type Text = Array[Char]
+  object Text:
+    def apply(text: Array[Char]): Text = text
+
+  def unapply(tree: Tree)(using text: Text, cxt: Context) =
     tree match
       case vd @ ValDef(_, tpe, _)
           if isValidSpan(tpe.span, vd.nameSpan) &&
-            !vd.symbol.is(Flags.Enum) =>
+            !vd.symbol.is(Flags.Enum) &&
+            !isValDefBind(text, vd) =>
         if vd.symbol == vd.symbol.sourceSymbol then
-          Some(tpe.tpe, tpe.sourcePos.withSpan(vd.nameSpan), vd)
+          Some(tpe.typeOpt, tpe.sourcePos.withSpan(vd.nameSpan), vd)
         else None
       case vd @ DefDef(_, _, tpe, _)
           if isValidSpan(tpe.span, vd.nameSpan) &&
@@ -233,7 +240,7 @@ object InferredType:
             !vd.symbol.isConstructor &&
             !vd.symbol.is(Flags.Mutable) =>
         if vd.symbol == vd.symbol.sourceSymbol then
-          Some(tpe.tpe, tpe.sourcePos, vd)
+          Some(tpe.typeOpt, tpe.sourcePos, vd)
         else None
       case bd @ Bind(
             name,
@@ -246,6 +253,14 @@ object InferredType:
     tpeSpan.isZeroExtent &&
       nameSpan.exists &&
       !nameSpan.isZeroExtent
+
+  /* If is left part of val definition bind:
+   * val <<t>> @ ... =
+   */
+  def isValDefBind(text: Text, vd: ValDef)(using Context) =
+    val afterDef = text.drop(vd.nameSpan.end)
+    val index = afterDef.indexAfterSpacesAndComments
+    index >= 0 && index < afterDef.size && afterDef(index) == '@'
 
 end InferredType
 

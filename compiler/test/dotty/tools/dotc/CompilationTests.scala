@@ -45,9 +45,9 @@ class CompilationTests {
       compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.posLazyValsAllowlist)),
       compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
     ) ::: (
-      // FIXME: This fails due to a bug involving self types and capture checking
-      if Properties.usingScalaLibraryTasty then Nil
-      else List(compileDir("tests/pos-special/stdlib", allowDeepSubtypes))
+      // TODO create a folder for capture checking tests with the stdlib, or use tests/pos-custom-args/captures under this mode?
+      if Properties.usingScalaLibraryCCTasty then List(compileDir("tests/pos-special/stdlib", allowDeepSubtypes))
+      else Nil
     )
 
     if scala.util.Properties.isJavaAtLeast("16") then
@@ -215,9 +215,8 @@ class CompilationTests {
   // initialization tests
   @Test def checkInitGlobal: Unit = {
     implicit val testGroup: TestGroup = TestGroup("checkInitGlobal")
-    val options = defaultOptions.and("-Ysafe-init-global", "-Xfatal-warnings")
-    compileFilesInDir("tests/init-global/neg", options, FileFilter.exclude(TestSources.negInitGlobalScala2LibraryTastyBlacklisted)).checkExpectedErrors()
-    compileFilesInDir("tests/init-global/pos", options, FileFilter.exclude(TestSources.posInitGlobalScala2LibraryTastyBlacklisted)).checkCompile()
+    compileFilesInDir("tests/init-global/warn", defaultOptions.and("-Ysafe-init-global"), FileFilter.exclude(TestSources.negInitGlobalScala2LibraryTastyBlacklisted)).checkWarnings()
+    compileFilesInDir("tests/init-global/pos", defaultOptions.and("-Ysafe-init-global", "-Xfatal-warnings"), FileFilter.exclude(TestSources.posInitGlobalScala2LibraryTastyBlacklisted)).checkCompile()
   }
 
   // initialization tests
@@ -225,6 +224,7 @@ class CompilationTests {
     implicit val testGroup: TestGroup = TestGroup("checkInit")
     val options = defaultOptions.and("-Ysafe-init", "-Xfatal-warnings")
     compileFilesInDir("tests/init/neg", options).checkExpectedErrors()
+    compileFilesInDir("tests/init/warn", defaultOptions.and("-Ysafe-init")).checkWarnings()
     compileFilesInDir("tests/init/pos", options).checkCompile()
     compileFilesInDir("tests/init/crash", options.without("-Xfatal-warnings")).checkCompile()
     // The regression test for i12128 has some atypical classpath requirements.

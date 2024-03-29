@@ -1,0 +1,12 @@
+-- [E081] Type Error: tests/neg/i19334.scala:6:4 -----------------------------------------------------------------------
+6 |  f(_) // error was OOM formatting TypeVar(TypeParamRef(T)) when offering explanations
+  |    ^
+  |    Missing parameter type
+  |
+  |    I could not infer the type of the parameter _$1
+  |    in expanded function:
+  |      _$1 => f(_$1)
+  |    Expected type for the whole anonymous function:
+  |      T
+  |
+  |    where:    T is a type variable

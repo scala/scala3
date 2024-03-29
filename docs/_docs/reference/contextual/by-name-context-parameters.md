@@ -61,5 +61,5 @@ No local given instance was generated because the synthesized argument is not re
 
 ## Reference
 
-For more information, see [Issue #1998](https://github.com/lampepfl/dotty/issues/1998)
+For more information, see [Issue #1998](https://github.com/scala/scala3/issues/1998)
 and the associated [Scala SIP](https://docs.scala-lang.org/sips/byname-implicits.html).

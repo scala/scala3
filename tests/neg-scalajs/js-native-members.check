@@ -1,31 +1,36 @@
 -- Warning: tests/neg-scalajs/js-native-members.scala:24:16 ------------------------------------------------------------
 24 |  private[this] def this(x: Int) = this() // ok
    |                ^
-   |                The [this] qualifier will be deprecated in the future; it should be dropped.
+   |                Ignoring [this] qualifier.
+   |                This syntax will be deprecated in the future; it should be dropped.
    |                See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
    |                This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 -- Warning: tests/neg-scalajs/js-native-members.scala:28:16 ------------------------------------------------------------
 28 |  private[this] val a: Int = js.native // error
    |                ^
-   |                The [this] qualifier will be deprecated in the future; it should be dropped.
+   |                Ignoring [this] qualifier.
+   |                This syntax will be deprecated in the future; it should be dropped.
    |                See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
    |                This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 -- Warning: tests/neg-scalajs/js-native-members.scala:32:16 ------------------------------------------------------------
 32 |  private[this] var d: Int = js.native // error
    |                ^
-   |                The [this] qualifier will be deprecated in the future; it should be dropped.
+   |                Ignoring [this] qualifier.
+   |                This syntax will be deprecated in the future; it should be dropped.
    |                See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
    |                This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 -- Warning: tests/neg-scalajs/js-native-members.scala:36:16 ------------------------------------------------------------
 36 |  private[this] def g(): Int = js.native // error
    |                ^
-   |                The [this] qualifier will be deprecated in the future; it should be dropped.
+   |                Ignoring [this] qualifier.
+   |                This syntax will be deprecated in the future; it should be dropped.
    |                See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
    |                This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 -- Warning: tests/neg-scalajs/js-native-members.scala:49:25 ------------------------------------------------------------
 49 |  class X3 private[this] () extends js.Object { // ok
    |                         ^
-   |                         The [this] qualifier will be deprecated in the future; it should be dropped.
+   |                         Ignoring [this] qualifier.
+   |                         This syntax will be deprecated in the future; it should be dropped.
    |                         See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
    |                         This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 -- [E003] Syntax Warning: tests/neg-scalajs/js-native-members.scala:58:44 ----------------------------------------------

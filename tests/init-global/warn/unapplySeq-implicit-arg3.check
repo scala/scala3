@@ -1,0 +1,14 @@
+-- Warning: tests/init-global/warn/unapplySeq-implicit-arg3.scala:3:27 -------------------------------------------------
+3 |    def m(seq: Seq[Int]) = i1 +: seq // warn
+  |                           ^^
+  |Access uninitialized field value i1. Calling trace:
+  |├── object Bar {	[ unapplySeq-implicit-arg3.scala:1 ]
+  |│   ^
+  |├── case Bar(i, _) => i	[ unapplySeq-implicit-arg3.scala:9 ]
+  |│        ^^^^^^^^^
+  |├── def unapplySeq(using f1: Foo)(seqi: Seq[Int])(using Foo): Option[Seq[Int]] =	[ unapplySeq-implicit-arg3.scala:5 ]
+  |│   ^
+  |├── Some(f1.m(seqi))	[ unapplySeq-implicit-arg3.scala:6 ]
+  |│        ^^^^^^^^^^
+  |└── def m(seq: Seq[Int]) = i1 +: seq // warn	[ unapplySeq-implicit-arg3.scala:3 ]
+  |                           ^^

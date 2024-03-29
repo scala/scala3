@@ -1,3 +1,4 @@
+//> using options -explain-cyclic
 def test=
   val o1 = ownerWorks(1)
   println(o1)

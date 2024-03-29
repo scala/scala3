@@ -45,7 +45,8 @@ object Scaladoc:
     apiSubdirectory : Boolean = false,
     scastieConfiguration: String = "",
     defaultTemplate: Option[String] = None,
-    quickLinks: List[QuickLink] = List.empty
+    quickLinks: List[QuickLink] = List.empty,
+    dynamicSideMenu: Boolean = false,
   )
 
   def run(args: Array[String], rootContext: CompilerContext): Reporter =
@@ -228,7 +229,8 @@ object Scaladoc:
         apiSubdirectory.get,
         scastieConfiguration.get,
         defaultTemplate.nonDefault,
-        quickLinksParsed
+        quickLinksParsed,
+        dynamicSideMenu.get,
       )
       (Some(docArgs), newContext)
     }

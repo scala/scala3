@@ -68,12 +68,6 @@ object CheckCaptures:
    */
   final class SubstParamsMap(from: BindingType, to: List[Type])(using Context)
   extends ApproximatingTypeMap, IdempotentCaptRefMap:
-    /** This SubstParamsMap is exact if `to` only contains `CaptureRef`s. */
-    private val isExactSubstitution: Boolean = to.forall(_.isTrackableRef)
-
-    /** As long as this substitution is exact, there is no need to create `Range`s when mapping invariant positions. */
-    override protected def needsRangeIfInvariant(refs: CaptureSet): Boolean = !isExactSubstitution
-
     def apply(tp: Type): Type =
       tp match
         case tp: ParamRef =>
@@ -672,17 +666,13 @@ class CheckCaptures extends Recheck, SymTransformer:
     def checkInferredResult(tp: Type, tree: ValOrDefDef)(using Context): Type =
       val sym = tree.symbol
 
-      def isLocal =
-        sym.owner.ownersIterator.exists(_.isTerm)
-        || sym.accessBoundary(defn.RootClass).isContainedIn(sym.topLevelClass)
-
       def canUseInferred =    // If canUseInferred is false, all capturing types in the type of `sym` need to be given explicitly
         sym.is(Private)                   // private symbols can always have inferred types
         || sym.name.is(DefaultGetterName) // default getters are exempted since otherwise it would be
                                           // too annoying. This is a hole since a defualt getter's result type
                                           // might leak into a type variable.
         ||                                // non-local symbols cannot have inferred types since external capture types are not inferred
-          isLocal                         // local symbols still need explicit types if
+          sym.isLocalToCompilationUnit    // local symbols still need explicit types if
           && !sym.owner.is(Trait)         // they are defined in a trait, since we do OverridingPairs checking before capture inference
 
       def addenda(expected: Type) = new Addenda:
@@ -847,9 +837,13 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  where local capture roots are instantiated to root variables.
      */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda)(using Context): Type =
-      val expected1 = alignDependentFunction(addOuterRefs(expected, actual), actual.stripCapturing)
+      var expected1 = alignDependentFunction(expected, actual.stripCapturing)
       val actualBoxed = adaptBoxed(actual, expected1, tree.srcPos)
       //println(i"check conforms $actualBoxed <<< $expected1")
+
+      if actualBoxed eq actual then
+        // Only `addOuterRefs` when there is no box adaptation
+        expected1 = addOuterRefs(expected1, actual)
       if isCompatible(actualBoxed, expected1) then
         if debugSuccesses then tree match
             case Ident(_) =>
@@ -1178,7 +1172,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** Check that self types of subclasses conform to self types of super classes.
      *  (See comment below how this is achieved). The check assumes that classes
      *  without an explicit self type have the universal capture set `{cap}` on the
-     *  self type. If a class without explicit self type is not `effectivelyFinal`
+     *  self type. If a class without explicit self type is not `effectivelySealed`
      *  it is checked that the inferred self type is universal, in order to assure
      *  that joint and separate compilation give the same result.
      */
@@ -1208,23 +1202,20 @@ class CheckCaptures extends Recheck, SymTransformer:
             checkSelfAgainstParents(root, root.baseClasses)
             val selfType = root.asClass.classInfo.selfType
             interpolator(startingVariance = -1).traverse(selfType)
-            if !root.isEffectivelySealed  then
-              def matchesExplicitRefsInBaseClass(refs: CaptureSet, cls: ClassSymbol): Boolean =
-                cls.baseClasses.tail.exists { psym =>
-                  val selfType = psym.asClass.givenSelfType
-                  selfType.exists && selfType.captureSet.elems == refs.elems
-                }
-              selfType match
-                case CapturingType(_, refs: CaptureSet.Var)
-                if !refs.elems.exists(_.isRootCapability) && !matchesExplicitRefsInBaseClass(refs, root) =>
-                  // Forbid inferred self types unless they are already implied by an explicit
-                  // self type in a parent.
-                  report.error(
-                    em"""$root needs an explicitly declared self type since its
-                        |inferred self type $selfType
-                        |is not visible in other compilation units that define subclasses.""",
-                    root.srcPos)
-                case _ =>
+            selfType match
+              case CapturingType(_, refs: CaptureSet.Var)
+              if !root.isEffectivelySealed
+                  && !refs.elems.exists(_.isRootCapability)
+                  && !root.matchesExplicitRefsInBaseClass(refs)
+              =>
+                // Forbid inferred self types unless they are already implied by an explicit
+                // self type in a parent.
+                report.error(
+                  em"""$root needs an explicitly declared self type since its
+                      |inferred self type $selfType
+                      |is not visible in other compilation units that define subclasses.""",
+                  root.srcPos)
+              case _ =>
             parentTrees -= root
             capt.println(i"checked $root with $selfType")
     end checkSelfTypes

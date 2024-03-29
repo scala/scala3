@@ -13,6 +13,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
@@ -53,14 +54,16 @@ class CompletionProvider(
     val (items, isIncomplete) = driver.compilationUnits.get(uri) match
       case Some(unit) =>
 
-        val newctx = ctx.fresh.setCompilationUnit(unit)
+        val newctx = ctx.fresh.setCompilationUnit(unit).withPhase(Phases.typerPhase(using ctx))
         val tpdPath = Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using newctx)
+        val adjustedPath = Interactive.resolveTypedOrUntypedPath(tpdPath, pos)(using newctx)
 
-        val locatedCtx =
-          Interactive.contextOfPath(tpdPath)(using newctx)
+        val locatedCtx = Interactive.contextOfPath(tpdPath)(using newctx)
         val indexedCtx = IndexedContext(locatedCtx)
+
         val completionPos =
-          CompletionPos.infer(pos, params, tpdPath)(using newctx)
+          CompletionPos.infer(pos, params, adjustedPath)(using locatedCtx)
+
         val autoImportsGen = AutoImports.generator(
           completionPos.sourcePos,
           text,
@@ -69,16 +72,18 @@ class CompletionProvider(
           indexedCtx,
           config
         )
+
         val (completions, searchResult) =
           new Completions(
             pos,
             text,
-            ctx.fresh.setCompilationUnit(unit),
+            locatedCtx,
             search,
             buildTargetIdentifier,
             completionPos,
             indexedCtx,
             tpdPath,
+            adjustedPath,
             config,
             folderPath,
             autoImportsGen,
@@ -94,7 +99,7 @@ class CompletionProvider(
             completionPos,
             tpdPath,
             indexedCtx
-          )(using newctx)
+          )(using locatedCtx)
         }
         val isIncomplete = searchResult match
           case SymbolSearch.Result.COMPLETE => false
@@ -152,7 +157,7 @@ class CompletionProvider(
 
     // For overloaded signatures we get multiple symbols, so we need
     // to recalculate the description
-    // related issue https://github.com/lampepfl/dotty/issues/11941
+    // related issue https://github.com/scala/scala3/issues/11941
     lazy val kind: CompletionItemKind = completion.completionItemKind
     val description = completion.description(printer)
     val label = completion.labelWithDescription(printer)
@@ -215,7 +220,7 @@ class CompletionProvider(
 
     def mkItemWithImports(
         v: CompletionValue.Workspace | CompletionValue.Extension |
-          CompletionValue.Interpolator
+          CompletionValue.Interpolator | CompletionValue.ImplicitClass
     ) =
       val sym = v.symbol
       path match
@@ -238,21 +243,29 @@ class CompletionProvider(
               r match
                 case IndexedContext.Result.InScope =>
                   mkItem(
-                    ident.backticked(backtickSoftKeyword) + completionTextSuffix
+                    v.insertText.getOrElse(
+                      ident.backticked(
+                        backtickSoftKeyword
+                      ) + completionTextSuffix
+                    ),
+                    range = v.range,
                   )
                 case _ if isInStringInterpolation =>
                   mkItem(
-                    "{" + sym.fullNameBackticked + completionTextSuffix + "}"
+                    "{" + sym.fullNameBackticked + completionTextSuffix + "}",
+                    range = v.range
                   )
                 case _ if v.isExtensionMethod =>
                   mkItem(
-                    ident.backticked(backtickSoftKeyword) + completionTextSuffix
+                    ident.backticked(backtickSoftKeyword) + completionTextSuffix,
+                    range = v.range
                   )
                 case _ =>
                   mkItem(
                     sym.fullNameBackticked(
                       backtickSoftKeyword
-                    ) + completionTextSuffix
+                    ) + completionTextSuffix,
+                    range = v.range
                   )
               end match
           end match
@@ -260,7 +273,7 @@ class CompletionProvider(
     end mkItemWithImports
 
     completion match
-      case v: (CompletionValue.Workspace | CompletionValue.Extension) =>
+      case v: (CompletionValue.Workspace | CompletionValue.Extension | CompletionValue.ImplicitClass) =>
         mkItemWithImports(v)
       case v: CompletionValue.Interpolator if v.isWorkspace || v.isExtension =>
         mkItemWithImports(v)

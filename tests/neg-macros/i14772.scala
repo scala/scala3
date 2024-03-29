@@ -1,3 +1,4 @@
+//> using options -explain-cyclic
 import scala.quoted.*
 
 object A {

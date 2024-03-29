@@ -18,7 +18,7 @@ Dotty 0.1.2 targets Java 8. We don't have plans to add support for earlier versi
 
 # Reporting Bugs / Known Issues
 
-Please [file](https://github.com/lampepfl/dotty/issues) any bugs you encounter. If you’re unsure whether something is a bug,
+Please [file](https://github.com/scala/scala3/issues) any bugs you encounter. If you’re unsure whether something is a bug,
 please ask on the Dotty [gitter channel](https://github.com/lampepfl/dotty).
 
 # Dotty Doc
@@ -86,27 +86,27 @@ This release ships with the following features:
 [9]: http://docs.scala-lang.org/sips/pending/static-members.html
 [10]: http://docs.scala-lang.org/sips/pending/improved-lazy-val-initialization.html
 [11]: http://magarciaepfl.github.io/scala/
-[12]: https://github.com/lampepfl/dotty/commit/b2215ed23311b2c99ea638f9d7fcad9737dba588
-[13]: https://github.com/lampepfl/dotty/pull/187
-[14]: https://github.com/lampepfl/dotty/pull/217
+[12]: https://github.com/scala/scala3/commit/b2215ed23311b2c99ea638f9d7fcad9737dba588
+[13]: https://github.com/scala/scala3/pull/187
+[14]: https://github.com/scala/scala3/pull/217
 [15]: reference/other-new-features/trait-parameters.html
-[16]: https://github.com/lampepfl/dotty/commit/89540268e6c49fb92b9ca61249e46bb59981bf5a
-[17]: https://github.com/lampepfl/dotty/pull/174
-[18]: https://github.com/lampepfl/dotty/pull/488
-[19]: https://github.com/lampepfl/dotty/pull/174
-[20]: https://github.com/lampepfl/dotty/pull/411
-[21]: https://github.com/lampepfl/dotty/pull/1364
-[22]: https://github.com/lampepfl/dotty/pull/1227
-[23]: https://github.com/lampepfl/dotty/pull/117
-[24]: https://github.com/lampepfl/dotty/pull/2532
-[25]: https://github.com/lampepfl/dotty/pull/2194
-[26]: https://github.com/lampepfl/dotty/pull/213
-[27]: https://github.com/lampepfl/dotty/pull/2513
-[28]: https://github.com/lampepfl/dotty/pull/2361
-[29]: https://github.com/lampepfl/dotty/pull/1453
+[16]: https://github.com/scala/scala3/commit/89540268e6c49fb92b9ca61249e46bb59981bf5a
+[17]: https://github.com/scala/scala3/pull/174
+[18]: https://github.com/scala/scala3/pull/488
+[19]: https://github.com/scala/scala3/pull/174
+[20]: https://github.com/scala/scala3/pull/411
+[21]: https://github.com/scala/scala3/pull/1364
+[22]: https://github.com/scala/scala3/pull/1227
+[23]: https://github.com/scala/scala3/pull/117
+[24]: https://github.com/scala/scala3/pull/2532
+[25]: https://github.com/scala/scala3/pull/2194
+[26]: https://github.com/scala/scala3/pull/213
+[27]: https://github.com/scala/scala3/pull/2513
+[28]: https://github.com/scala/scala3/pull/2361
+[29]: https://github.com/scala/scala3/pull/1453
 [30]: reference/contextual/context-functions.html
-[31]: https://github.com/lampepfl/dotty/pull/2136
-[32]: https://github.com/lampepfl/dotty/pull/1758
+[31]: https://github.com/scala/scala3/pull/2136
+[32]: https://github.com/scala/scala3/pull/1758
 [33]: reference/metaprogramming/inline.html
 
 # Contributors

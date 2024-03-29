@@ -14,6 +14,7 @@ import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Definitions
+import dotty.tools.dotc.core.Denotations.Denotation
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.StdNames
@@ -74,8 +75,8 @@ object CaseKeywordCompletion:
     val parents: Parents = selector match
       case EmptyTree =>
         val seenFromType = parent match
-          case TreeApply(fun, _) if !fun.tpe.isErroneous => fun.tpe
-          case _ => parent.tpe
+          case TreeApply(fun, _) if !fun.typeOpt.isErroneous => fun.typeOpt
+          case _ => parent.typeOpt
         seenFromType.paramInfoss match
           case (head :: Nil) :: _
               if definitions.isFunctionType(head) || head.isRef(
@@ -84,7 +85,7 @@ object CaseKeywordCompletion:
             val argTypes = head.argTypes.init
             new Parents(argTypes, definitions)
           case _ => new Parents(NoType, definitions)
-      case sel => new Parents(sel.tpe, definitions)
+      case sel => new Parents(sel.typeOpt, definitions)
 
     val selectorSym = parents.selector.widen.metalsDealias.typeSymbol
 
@@ -163,13 +164,17 @@ object CaseKeywordCompletion:
             (si, label)
           }
       }
-      val caseItems = res.map((si, label) =>
-        completionGenerator.toCompletionValue(
-          si.sym,
-          label,
-          autoImportsGen.renderImports(si.importSel.toList)
-        )
-      )
+      val caseItems =
+        if res.isEmpty then completionGenerator.caseKeywordOnly
+        else
+          res.map((si, label) =>
+            completionGenerator.toCompletionValue(
+              si.sym,
+              label,
+              autoImportsGen.renderImports(si.importSel.toList),
+            )
+          )
+
       includeExhaustive match
         // In `List(foo).map { cas@@} we want to provide also `case (exhaustive)` completion
         // which works like exhaustive match.
@@ -240,7 +245,7 @@ object CaseKeywordCompletion:
       completionPos,
       clientSupportsSnippets
     )
-    val tpe = selector.tpe.widen.metalsDealias.bounds.hi match
+    val tpe = selector.typeOpt.widen.metalsDealias.bounds.hi match
       case tr @ TypeRef(_, _) => tr.underlying
       case t => t
 
@@ -440,8 +445,22 @@ class CompletionValueGenerator(
     end if
   end labelForCaseMember
 
+  def caseKeywordOnly: List[CompletionValue.Keyword] =
+    if patternOnly.isEmpty then
+      val label = "case"
+      val suffix =
+        if clientSupportsSnippets then " $0 =>"
+        else " "
+      List(
+        CompletionValue.Keyword(
+          label,
+          Some(label + suffix),
+        )
+      )
+    else Nil
+
   def toCompletionValue(
-      sym: Symbol,
+      denot: Denotation,
       label: String,
       autoImport: Option[l.TextEdit]
   ): CompletionValue.CaseKeyword =
@@ -449,7 +468,7 @@ class CompletionValueGenerator(
       (if patternOnly.nonEmpty then "" else " ") +
         (if clientSupportsSnippets then "$0" else "")
     CompletionValue.CaseKeyword(
-      sym,
+      denot,
       label,
       Some(label + cursorSuffix),
       autoImport.toList,

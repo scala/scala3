@@ -55,17 +55,17 @@ See [Inliner].
 #### Compiletime Ops Types
 See `tryCompiletimeConstantFold` in [Types].
 
-[Showable]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/printing/Showable.scala
-[PlainPrinter]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/printing/PlainPrinter.scala
-[RefinedPrinter]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/printing/RefinedPrinter.scala
-[ErrorMessageID]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/reporting/ErrorMessageID.scala
-[messages]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/reporting/messages.scala
-[Synthesizer]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/typer/Synthesizer.scala
-[SyntheticMembers]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/transform/SyntheticMembers.scala
-[quotes-impl]: https://github.com/lampepfl/dotty/tree/master/compiler/src/scala/quoted/runtime/impl
-[Inliner]: https://github.com/lampepfl/dotty/blob/main/compiler/src/dotty/tools/dotc/inlines/Inliner.scala
-[Types]: https://github.com/lampepfl/dotty/tree/master/compiler/src/dotty/tools/dotc/core/Types.scala
-[Completion]: https://github.com/lampepfl/dotty/tree/master/compiler/src/dotty/tools/dotc/interactive/Completion.scala
-[DesugarEnums]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/ast/DesugarEnums.scala
-[Desugar]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/ast/Desugar.scala
-[Space]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/transform/patmat/Space.scala
+[Showable]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/printing/Showable.scala
+[PlainPrinter]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/printing/PlainPrinter.scala
+[RefinedPrinter]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/printing/RefinedPrinter.scala
+[ErrorMessageID]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/reporting/ErrorMessageID.scala
+[messages]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/reporting/messages.scala
+[Synthesizer]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/typer/Synthesizer.scala
+[SyntheticMembers]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/transform/SyntheticMembers.scala
+[quotes-impl]: https://github.com/scala/scala3/tree/master/compiler/src/scala/quoted/runtime/impl
+[Inliner]: https://github.com/scala/scala3/blob/main/compiler/src/dotty/tools/dotc/inlines/Inliner.scala
+[Types]: https://github.com/scala/scala3/tree/master/compiler/src/dotty/tools/dotc/core/Types.scala
+[Completion]: https://github.com/scala/scala3/tree/master/compiler/src/dotty/tools/dotc/interactive/Completion.scala
+[DesugarEnums]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/ast/DesugarEnums.scala
+[Desugar]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/ast/Desugar.scala
+[Space]: https://github.com/scala/scala3/blob/master/compiler/src/dotty/tools/dotc/transform/patmat/Space.scala

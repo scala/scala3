@@ -3,35 +3,37 @@
 class UnableToTransformValue extends Enumeration {
   val a = {
     println("oh, oh!")
-    Value // error
+    Value // warn
   }
   val b = {
     println("oh, oh!")
-    Value(4) // error
+    Value(4) // warn
   }
 }
 
 class ValueWithNullName extends Enumeration {
-  val a = Value(null) // error
-  val b = Value(10, null) // error
+  val a = Value(null) // warn
+  val b = Value(10, null) // warn
 }
 
 class NewValWithNoName extends Enumeration {
-  val a = new Val // error
-  val b = new Val(10) // error
+  val a = new Val // warn
+  val b = new Val(10) // warn
 }
 
 class NewValWithNullName extends Enumeration {
-  val a = new Val(null) // error
-  val b = new Val(10, null) // error
+  val a = new Val(null) // warn
+  val b = new Val(10, null) // warn
 }
 
 class ExtendsValWithNoName extends Enumeration {
-  protected class Val1 extends Val // error
-  protected class Val2 extends Val(1) // error
+  protected class Val1 extends Val // warn
+  protected class Val2 extends Val(1) // warn
 }
 
 class ExtendsValWithNullName extends Enumeration {
-  protected class Val1 extends Val(null) // error
-  protected class Val2 extends Val(1, null) // error
+  protected class Val1 extends Val(null) // warn
+  protected class Val2 extends Val(1, null) // warn
 }
+
+// nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)

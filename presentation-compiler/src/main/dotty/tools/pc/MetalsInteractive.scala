@@ -1,19 +1,14 @@
-package dotty.tools.pc
+package dotty.tools
+package pc
 
 import scala.annotation.tailrec
 
-import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.ast.tpd.*
-import dotty.tools.dotc.ast.untpd
-import dotty.tools.dotc.core.Contexts.*
-import dotty.tools.dotc.core.Flags.*
-import dotty.tools.dotc.core.Names.Name
-import dotty.tools.dotc.core.StdNames
-import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.core.Types.Type
-import dotty.tools.dotc.interactive.SourceTree
-import dotty.tools.dotc.util.SourceFile
-import dotty.tools.dotc.util.SourcePosition
+import dotc.*
+import ast.*, tpd.*
+import core.*, Contexts.*, Decorators.*, Flags.*, Names.*, Symbols.*, Types.*
+import interactive.*
+import util.*
+import util.SourcePosition
 
 object MetalsInteractive:
 
@@ -190,7 +185,7 @@ object MetalsInteractive:
        */
       case (tpt: TypeTree) :: parent :: _
           if tpt.span != parent.span && !tpt.symbol.is(Synthetic) =>
-        List((tpt.symbol, tpt.tpe))
+        List((tpt.symbol, tpt.typeOpt))
 
       /* TypeTest class https://dotty.epfl.ch/docs/reference/other-new-features/type-test.html
        * compiler automatically adds unapply if possible, we need to find the type symbol
@@ -205,7 +200,10 @@ object MetalsInteractive:
             Nil
 
       case path @ head :: tail =>
-        if head.symbol.is(Synthetic) then
+        if head.symbol.is(Exported) then
+          val sym = head.symbol.sourceSymbol
+          List((sym, sym.info))
+        else if head.symbol.is(Synthetic) then
           enclosingSymbolsWithExpressionType(
             tail,
             pos,
@@ -222,7 +220,7 @@ object MetalsInteractive:
           then List((head.symbol, head.typeOpt))
           /* Type tree for List(1) has an Int type variable, which has span
            * but doesn't exist in code.
-           * https://github.com/lampepfl/dotty/issues/15937
+           * https://github.com/scala/scala3/issues/15937
            */
           else if head.isInstanceOf[TypeTree] then
             enclosingSymbolsWithExpressionType(tail, pos, indexed)

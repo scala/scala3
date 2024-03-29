@@ -83,14 +83,13 @@ object InterpolatorCompletions:
           case _: Select => true
           case _ => false
         } =>
-      val allLiterals = parent match
-        case SeqLiteral(elems, _) =>
-          elems
-        case _ => Nil
-      expr.elems.zip(allLiterals.tail).collectFirst {
-        case (i: (Ident | Select), literal) if literal == lit =>
-          i
-      }
+      parent match
+        case SeqLiteral(elems, _) if elems.size > 0 =>
+          expr.elems.zip(elems.tail).collectFirst {
+            case (i: (Ident | Select), literal) if literal == lit =>
+              i
+          }
+        case _ => None
   end interpolatorMemberArg
 
   /**
@@ -161,16 +160,16 @@ object InterpolatorCompletions:
           completions.completionsWithSuffix(
             sym,
             label,
-            (name, s, suffix) =>
+            (name, denot, suffix) =>
               CompletionValue.Interpolator(
-                s,
+                denot.symbol,
                 label,
                 Some(newText(name, suffix.toEditOpt, identOrSelect)),
                 Nil,
                 Some(cursor.withStart(identOrSelect.span.start).toLsp),
                 // Needed for VS Code which will not show the completion otherwise
                 Some(identOrSelect.name.toString() + "." + label),
-                s,
+                denot.symbol,
                 isExtension = isExtension
               ),
           )
@@ -291,9 +290,9 @@ object InterpolatorCompletions:
         completions.completionsWithSuffix(
           sym,
           label,
-          (name, s, suffix) =>
+          (name, denot, suffix) =>
             CompletionValue.Interpolator(
-              s,
+              denot.symbol,
               label,
               Some(newText(name, suffix.toEditOpt)),
               additionalEdits(),
