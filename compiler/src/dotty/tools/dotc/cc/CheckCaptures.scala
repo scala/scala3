@@ -249,6 +249,44 @@ class CheckCaptures extends Recheck, SymTransformer:
           else i"references $cs1$cs1description are not all",
           pos, provenance)
 
+    def showRef(ref: CaptureRef)(using Context): String =
+        ctx.printer.toTextCaptureRef(ref).show
+
+    // Uses 4-space indent as a trial
+    def checkReachCapsIsolated(tpe: Type, pos: SrcPos)(using Context): Unit =
+
+        object checker extends TypeTraverser:
+            var refVariances: Map[Boolean, Int] = Map.empty
+            var seenReach: CaptureRef | Null = null
+            def traverse(tp: Type) =
+                tp match
+                case CapturingType(parent, refs) =>
+                    traverse(parent)
+                    for ref <- refs.elems do
+                        if ref.isReach && !ref.stripReach.isInstanceOf[TermParamRef]
+                            || ref.isRootCapability
+                        then
+                            val isReach = ref.isReach
+                            def register() =
+                                refVariances = refVariances.updated(isReach, variance)
+                                seenReach = ref
+                            refVariances.get(isReach) match
+                                case None => register()
+                                case Some(v) => if v != 0 && variance == 0 then register()
+                case _ =>
+                    traverseChildren(tp)
+
+        checker.traverse(tpe)
+        if checker.refVariances.size == 2
+            && checker.refVariances(true) >= 0
+            && checker.refVariances(false) <= 0
+        then
+            report.error(
+                em"""Reach capability ${showRef(checker.seenReach.nn)} and universal capability cap cannot both
+                    |appear in the type $tpe of this expression""",
+                pos)
+    end checkReachCapsIsolated
+
     /** The current environment */
     private val rootEnv: Env = inContext(ictx):
       Env(defn.RootClass, EnvKind.Regular, CaptureSet.empty, null)
@@ -779,8 +817,10 @@ class CheckCaptures extends Recheck, SymTransformer:
           report.error(ex.getMessage.nn)
           tree.tpe
         finally curEnv = saved
-      if tree.isTerm && !pt.isBoxedCapturing then
-        markFree(res.boxedCaptureSet, tree.srcPos)
+      if tree.isTerm then
+        checkReachCapsIsolated(res.widen, tree.srcPos)
+        if !pt.isBoxedCapturing then
+          markFree(res.boxedCaptureSet, tree.srcPos)
       res
 
     override def recheckFinish(tpe: Type, tree: Tree, pt: Type)(using Context): Type =
