@@ -42,32 +42,26 @@ val zzz = x ^^^ x ^^^ x
 
 
 object Minimized:
-  trait DFVal[+T <: Int, +P]
 
-  trait Summon[R, T <: R]
-  given [R, T <: R]: Summon[R, T] with {}
+  trait Sub[T, R >: T]
+  given [T, R >: T]: Sub[T, R] with {}
 
-  trait Candidate[R]:
-    type OutW <: Int
+  trait Candidate[-R]:
     type OutP
-  given [W <: Int, P, R <: DFVal[W, P]]: Candidate[R] with
-    type OutW = W
+  given [P]: Candidate[Option[P]] with
     type OutP = P
 
-  extension [L <: DFVal[Int, Any]](lhs: L)(using icL: Candidate[L])
-    def ^^^[R](rhs: R)
-              (using icR: Candidate[R])
-              : DFVal[icL.OutW, icL.OutP | icR.OutP] = ???
+  extension [L <: Option[Any]](lhs: L)(using icL: Candidate[L])
+    def ^^^[R](rhs: R)(using icR: Candidate[R]): Option[icL.OutP | icR.OutP] = ???
     def ^^^ : Unit = ???
 
   extension [L](lhs: L)
-    def ^^^[RW <: Int, RP](rhs: DFVal[RW, RP])
-                          (using es: Summon[L, lhs.type])
-                          (using c: Candidate[L])
-                          (using check: c.OutW =:= c.OutW)
-                          : DFVal[c.OutW, c.OutP | RP] = ???
+    def ^^^[R](rhs: Option[R])
+              (using es: Sub[lhs.type, L])
+              (using c: Candidate[L])
+              (using check: c.OutP =:= c.OutP): Option[c.OutP | R] = ???
 
-  val x: DFVal[8, true] = ???
+  val x: Option[true] = ???
   val z1 = x ^^^ x // Ok
   val z2 = z1 ^^^ x // Ok
   val zzz = x ^^^ x ^^^ x // Error before changes
