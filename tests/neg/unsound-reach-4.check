@@ -1,0 +1,5 @@
+-- Error: tests/neg/unsound-reach-4.scala:20:19 ------------------------------------------------------------------------
+20 |    escaped = boom.use(f)  // error
+   |              ^^^^^^^^
+   |              Reach capability backdoor* and universal capability cap cannot both
+   |              appear in the type (x: F): box File^{backdoor*} of this expression
