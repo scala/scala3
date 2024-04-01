@@ -2780,8 +2780,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         typeIndexedLambdaTypeTree(rhs, tparams, body)
       case rhs =>
         typedType(rhs)
-    checkFullyAppliedType(rhs1)
-    if sym.isOpaqueAlias then checkNoContextFunctionType(rhs1)
+    if sym.isOpaqueAlias then
+      checkFullyAppliedType(rhs1, "Opaque type alias must be fully applied, but ")
+      checkNoContextFunctionType(rhs1)
     assignType(cpy.TypeDef(tdef)(name, rhs1), sym)
   }
 
