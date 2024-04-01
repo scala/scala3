@@ -1896,34 +1896,33 @@ class Namer { typer: Typer =>
     val paramSymss = normalizeIfConstructor(ddef.paramss.nestedMap(symbolOfTree), isConstructor)
     sym.setParamss(paramSymss)
 
+    /** We add `tracked` to context bound witnesses that have abstract type members */
+    def needsTracked(sym: Symbol, param: ValDef)(using Context) =
+      !sym.is(Tracked)
+      && param.hasAttachment(ContextBoundParam)
+      && sym.info.memberNames(abstractTypeNameFilter).nonEmpty
 
     /** Set every context bound evidence parameter of a class to be tracked,
-     *  provided it has a type that has an abstract type member and the parameter's
-     *  name is not a synthetic, unaddressable name. Reset private and local flags
-     *  so that the parameter becomes a `val`. Do the same for all context bound
-     *  evidence parameters of a `given` class. This is because in Desugar.addParamRefinements
-     *  we create refinements for these parameters in the result type of the implicit
-     *  access method.
+     *  provided it has a type that has an abstract type member. Reset private and local flags
+     *  so that the parameter becomes a `val`.
      */
     def setTracked(param: ValDef): Unit =
       val sym = symbolOfTree(param)
       sym.maybeOwner.maybeOwner.infoOrCompleter match
-        case info: TempClassInfo =>
-          if !sym.is(Tracked)
-              && param.hasAttachment(ContextBoundParam)
-              && (sym.info.memberNames(abstractTypeNameFilter).nonEmpty
-                  || sym.maybeOwner.maybeOwner.is(Given))
-          then
-            typr.println(i"set tracked $param, $sym: ${sym.info} containing ${sym.info.memberNames(abstractTypeNameFilter).toList}")
-            for acc <- info.decls.lookupAll(sym.name) if acc.is(ParamAccessor) do
-              acc.resetFlag(PrivateLocal)
-              acc.setFlag(Tracked)
-              sym.setFlag(Tracked)
+        case info: TempClassInfo if needsTracked(sym, param) =>
+          typr.println(i"set tracked $param, $sym: ${sym.info} containing ${sym.info.memberNames(abstractTypeNameFilter).toList}")
+          for acc <- info.decls.lookupAll(sym.name) if acc.is(ParamAccessor) do
+            acc.resetFlag(PrivateLocal)
+            acc.setFlag(Tracked)
+            sym.setFlag(Tracked)
         case _ =>
 
     def wrapMethType(restpe: Type): Type =
       instantiateDependent(restpe, paramSymss)
       methodType(paramSymss, restpe, ddef.mods.is(JavaDefined))
+
+    def wrapRefinedMethType(restpe: Type): Type =
+      wrapMethType(addParamRefinements(restpe, paramSymss))
 
     if isConstructor then
       if sym.isPrimaryConstructor && Feature.enabled(modularity) then
@@ -1931,6 +1930,14 @@ class Namer { typer: Typer =>
       // set result type tree to unit, but take the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)
       wrapMethType(effectiveResultType(sym, paramSymss))
+    else if sym.isAllOf(Given | Method) && Feature.enabled(modularity) then
+      // set every context bound evidence parameter of a given companion method
+      // to be tracked, provided it has a type that has an abstract type member.
+      // Add refinements for all tracked parameters to the result type.
+      for params <- ddef.termParamss; param <- params do
+        val psym = symbolOfTree(param)
+        if needsTracked(psym, param) then psym.setFlag(Tracked)
+      valOrDefDefSig(ddef, sym, paramSymss, wrapRefinedMethType)
     else
       valOrDefDefSig(ddef, sym, paramSymss, wrapMethType)
   end defDefSig

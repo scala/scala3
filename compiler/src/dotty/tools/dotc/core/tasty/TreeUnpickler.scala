@@ -31,7 +31,8 @@ import util.{SourceFile, Property}
 import ast.{Trees, tpd, untpd}
 import Trees.*
 import Decorators.*
-import dotty.tools.dotc.quoted.QuotePatterns
+import config.Feature
+import quoted.QuotePatterns
 
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
 import TastyBuffer.*
@@ -919,6 +920,8 @@ class TreeUnpickler(reader: TastyReader,
           val resType =
             if name == nme.CONSTRUCTOR then
               effectiveResultType(sym, paramss)
+            else if sym.isAllOf(Given | Method) && Feature.enabled(Feature.modularity) then
+              addParamRefinements(tpt.tpe, paramss)
             else
               tpt.tpe
           sym.info = methodType(paramss, resType)

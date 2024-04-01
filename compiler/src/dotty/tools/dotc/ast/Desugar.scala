@@ -597,7 +597,7 @@ object desugar {
     // but not on the constructor parameters. The reverse is true for
     // annotations on class _value_ parameters.
     val constrTparams = impliedTparams.map(toDefParam(_, KeepAnnotations.WitnessOnly))
-    def defVparamss =
+    val constrVparamss =
       if (originalVparamss.isEmpty) { // ensure parameter list is non-empty
         if (isCaseClass)
           report.error(CaseClassMissingParamList(cdef), namePos)
@@ -608,10 +608,6 @@ object desugar {
         ListOfNil
       }
       else originalVparamss.nestedMap(toDefParam(_, KeepAnnotations.All, keepDefault = true))
-    val constrVparamss = defVparamss
-      // defVparamss also needed as separate tree nodes in implicitWrappers below.
-      // Need to be separate because they are `watch`ed in addParamRefinements.
-      // See parsercombinators-givens.scala for a test case.
     val derivedTparams =
       constrTparams.zipWithConserve(impliedTparams)((tparam, impliedParam) =>
         derivedTypeParam(tparam).withAnnotations(impliedParam.mods.annotations))
@@ -709,14 +705,6 @@ object desugar {
       }
       appliedTypeTree(tycon, targs)
     }
-
-    def addParamRefinements(core: Tree, paramss: List[List[ValDef]]): Tree =
-      val refinements =
-        for params <- paramss; param <- params; if param.mods.is(Tracked) yield
-          ValDef(param.name, SingletonTypeTree(TermRefTree().watching(param)), EmptyTree)
-            .withSpan(param.span)
-      if refinements.isEmpty then core
-      else RefinedTypeTree(core, refinements).showing(i"refined result: $result", Printers.desugar)
 
     // a reference to the class type bound by `cdef`, with type parameters coming from the constructor
     val classTypeRef = appliedRef(classTycon)
@@ -938,24 +926,17 @@ object desugar {
         Nil
       }
       else {
-        val defParamss = defVparamss.nestedMapConserve: param =>
-            // for context bound parameters, we assume that they might have embedded types
-            // so they should be treated as tracked.
-            if param.hasAttachment(ContextBoundParam) && Feature.enabled(Feature.modularity)
-            then param.withFlags(param.mods.flags | Tracked)
-            else param
-          match
-            case Nil :: paramss =>
-              paramss // drop leading () that got inserted by class
-                      // TODO: drop this once we do not silently insert empty class parameters anymore
-            case paramss => paramss
+        val defParamss = constrVparamss match
+          case Nil :: paramss =>
+            paramss // drop leading () that got inserted by class
+                    // TODO: drop this once we do not silently insert empty class parameters anymore
+          case paramss => paramss
         val finalFlag = if ctx.settings.YcompileScala2Library.value then EmptyFlags else Final
         // implicit wrapper is typechecked in same scope as constructor, so
         // we can reuse the constructor parameters; no derived params are needed.
         DefDef(
-          className.toTermName, joinParams(constrTparams, defParamss),
-          addParamRefinements(classTypeRef, defParamss), creatorExpr)
-          .withMods(companionMods | mods.flags.toTermFlags & (GivenOrImplicit | Inline) | finalFlag)
+          className.toTermName, joinParams(constrTparams, defParamss), classTypeRef, creatorExpr
+        ) .withMods(companionMods | mods.flags.toTermFlags & (GivenOrImplicit | Inline) | finalFlag)
           .withSpan(cdef.span) :: Nil
       }
 
