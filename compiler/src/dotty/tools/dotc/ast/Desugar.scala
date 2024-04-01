@@ -1144,6 +1144,8 @@ object desugar {
           case tree: TypeDef => tree.name.toString
           case tree: AppliedTypeTree if followArgs && tree.args.nonEmpty =>
             s"${apply(x, tree.tpt)}_${extractArgs(tree.args)}"
+          case ContextBoundTypeTree(tycon, paramName, _) =>
+            s"${apply(x, tycon)}_$paramName"
           case InfixOp(left, op, right) =>
             if followArgs then s"${op.name}_${extractArgs(List(left, right))}"
             else op.name.toString
