@@ -7,12 +7,13 @@ import Types.*, Contexts.*, Symbols.*, Flags.*, Decorators.*
 import Names.{Name, TermName}
 import Constants.Constant
 
-class TypeUtils {
+import Names.Name
 
+class TypeUtils:
   /** A decorator that provides methods on types
    *  that are needed in the transformer pipeline.
    */
-  extension (self: Type) {
+  extension (self: Type)
 
     def isErasedValueType(using Context): Boolean =
       self.isInstanceOf[ErasedValueType]
@@ -178,5 +179,11 @@ class TypeUtils {
     def isThisTypeOf(cls: Symbol)(using Context) = self match
       case self: Types.ThisType => self.cls == cls
       case _ => false
-  }
-}
+      
+    /** Strip all outer refinements off this type */
+    def stripRefinement: Type = self match
+      case self: RefinedOrRecType => self.parent.stripRefinement
+      case seld => self
+
+end TypeUtils
+

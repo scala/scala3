@@ -4416,7 +4416,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           cpy.Ident(qual)(qual.symbol.name.sourceModuleName.toTypeName)
         case _ =>
           errorTree(tree, em"cannot convert from $tree to an instance creation expression")
-      val tycon = ctorResultType.underlyingClassRef(refinementOK = false)
+      val tycon = ctorResultType.underlyingClassRef(refinementOK = true)
       typed(
         untpd.Select(
           untpd.New(untpd.TypedSplice(tpt.withType(tycon))),

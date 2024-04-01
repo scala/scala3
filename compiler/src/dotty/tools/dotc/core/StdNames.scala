@@ -629,6 +629,7 @@ object StdNames {
     val toString_ : N           = "toString"
     val toTypeConstructor: N    = "toTypeConstructor"
     val tpe : N                 = "tpe"
+    val tracked: N              = "tracked"
     val transparent : N         = "transparent"
     val tree : N                = "tree"
     val true_ : N               = "true"

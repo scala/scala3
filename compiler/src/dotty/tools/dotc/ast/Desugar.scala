@@ -429,13 +429,13 @@ object desugar {
   private def toDefParam(tparam: TypeDef, keepAnnotations: Boolean): TypeDef = {
     var mods = tparam.rawMods
     if (!keepAnnotations) mods = mods.withAnnotations(Nil)
-    tparam.withMods(mods & (EmptyFlags | Sealed) | Param)
+    tparam.withMods(mods & EmptyFlags | Param)
   }
   private def toDefParam(vparam: ValDef, keepAnnotations: Boolean, keepDefault: Boolean): ValDef = {
     var mods = vparam.rawMods
     if (!keepAnnotations) mods = mods.withAnnotations(Nil)
     val hasDefault = if keepDefault then HasDefault else EmptyFlags
-    vparam.withMods(mods & (GivenOrImplicit | Erased | hasDefault) | Param)
+    vparam.withMods(mods & (GivenOrImplicit | Erased | hasDefault | Tracked) | Param)
   }
 
   def mkApply(fn: Tree, paramss: List[ParamClause])(using Context): Tree =
@@ -860,9 +860,8 @@ object desugar {
         // implicit wrapper is typechecked in same scope as constructor, so
         // we can reuse the constructor parameters; no derived params are needed.
         DefDef(
-          className.toTermName, joinParams(constrTparams, defParamss),
-          classTypeRef, creatorExpr)
-          .withMods(companionMods | mods.flags.toTermFlags & (GivenOrImplicit | Inline) | finalFlag)
+          className.toTermName, joinParams(constrTparams, defParamss), classTypeRef, creatorExpr
+        ) .withMods(companionMods | mods.flags.toTermFlags & (GivenOrImplicit | Inline) | finalFlag)
           .withSpan(cdef.span) :: Nil
       }
 
@@ -890,7 +889,9 @@ object desugar {
       }
       if mods.isAllOf(Given | Inline | Transparent) then
         report.error("inline given instances cannot be trasparent", cdef)
-      val classMods = if mods.is(Given) then mods &~ (Inline | Transparent) | Synthetic else mods
+      var classMods = if mods.is(Given) then mods &~ (Inline | Transparent) | Synthetic else mods
+      if vparamAccessors.exists(_.mods.is(Tracked)) then
+        classMods |= Dependent
       cpy.TypeDef(cdef: TypeDef)(
         name = className,
         rhs = cpy.Template(impl)(constr, parents1, clsDerived, self1,
