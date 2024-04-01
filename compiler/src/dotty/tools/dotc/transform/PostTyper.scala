@@ -583,7 +583,9 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       if !sym.hasAnnotation(defn.ExperimentalAnnot) && ctx.settings.experimental.value && isTopLevelDefinitionInSource(sym) then
         sym.addAnnotation(ExperimentalAnnotation("Added by -experimental", sym.span))
 
-    private def scala2LibPatch(tree: TypeDef)(using Context) =
+    // It needs to run at the phase of the postTyper --- otherwise, the test of the symbols will use
+    // the transformed denotation with added `Serializable` and `AbstractFunction`.
+    private def scala2LibPatch(tree: TypeDef)(using Context) = atPhase(thisPhase):
       val sym = tree.symbol
       if compilingScala2StdLib && sym.is(ModuleClass) then
         // Add Serializable to companion objects of serializable classes,
