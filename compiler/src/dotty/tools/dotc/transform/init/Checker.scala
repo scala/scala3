@@ -36,12 +36,16 @@ class Checker extends Phase:
     traverser.traverse(unit.tpdTree)
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
-    val checkCtx = ctx.fresh.setPhase(this.start)
+    val checkCtx = ctx.fresh.setPhase(this)
     val traverser = new InitTreeTraverser()
-    val unitContexts = units.map(unit => checkCtx.fresh.setCompilationUnit(unit))
 
     val units0 =
-      for unitContext <- unitContexts if traverse(traverser)(using unitContext) yield unitContext.compilationUnit
+      for
+        unit <- units
+        unitContext = checkCtx.fresh.setCompilationUnit(unit)
+        if traverse(traverser)(using unitContext)
+      yield
+        unitContext.compilationUnit
 
     cancellable {
       val classes = traverser.getClasses()

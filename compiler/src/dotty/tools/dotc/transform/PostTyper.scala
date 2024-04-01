@@ -76,6 +76,13 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
   override def changesMembers: Boolean = true // the phase adds super accessors and synthetic members
 
+  /**
+   * Serializable and AbstractFunction are added for scala2-library companion object of case class
+   *
+   * Ideally `compilingScala2StdLib` should be used, but it is initialized too late to be effective.
+   */
+  override def changesParents: Boolean = true
+
   override def transformPhase(using Context): Phase = thisPhase.next
 
   def newTransformer(using Context): Transformer =
