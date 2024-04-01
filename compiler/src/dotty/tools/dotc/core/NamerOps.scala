@@ -16,8 +16,21 @@ object NamerOps:
    */
   def effectiveResultType(ctor: Symbol, paramss: List[List[Symbol]])(using Context): Type =
     paramss match
-      case TypeSymbols(tparams) :: _ => ctor.owner.typeRef.appliedTo(tparams.map(_.typeRef))
-      case _ => ctor.owner.typeRef
+      case TypeSymbols(tparams) :: rest =>
+        addParamRefinements(ctor.owner.typeRef.appliedTo(tparams.map(_.typeRef)), rest)
+      case _ =>
+        addParamRefinements(ctor.owner.typeRef, paramss)
+
+  /** Given a method with tracked term-parameters `p1, ..., pn`, and result type `R`, add the
+   *  refinements R { p1 = p1' } ... { pn = pn' }, where pi' is the term parameter ref
+   *  of the parameter and pi is its name. This matters only under experimental.modularity,
+   *  since wothout it there are no tracked parameters. Parameter refinements are added for
+   *  constructors and given companion methods.
+   */
+  def addParamRefinements(resType: Type, paramss: List[List[Symbol]])(using Context): Type =
+    paramss.flatten.foldLeft(resType): (rt, param) =>
+      if param.is(Tracked) then RefinedType(rt, param.name, param.termRef)
+      else rt
 
   /** Split dependent class refinements off parent type. Add them to `refinements`,
    *  unless it is null.
