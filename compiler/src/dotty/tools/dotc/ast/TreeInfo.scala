@@ -1105,7 +1105,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           case AndType(ref, nn1) if qual.tpe eq ref =>
             qual.tpe.widen match
               case OrNull(nn2) if nn1 eq nn2 =>
-              	Some(qual)
+                Some(qual)
               case _ => None
           case _ => None
       case _ => None

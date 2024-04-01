@@ -328,8 +328,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             else
               tree
           def app1 =
-   		    	// reverse order of transforming args and fun. This way, we get a chance to see other
-   			    // well-formedness errors before reporting errors in possible inferred type args of fun.
+            // reverse order of transforming args and fun. This way, we get a chance to see other
+            // well-formedness errors before reporting errors in possible inferred type args of fun.
             val args1 = transform(app.args)
             cpy.Apply(app)(transform(app.fun), args1)
           methPart(app) match

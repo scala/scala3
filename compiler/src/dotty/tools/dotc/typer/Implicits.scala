@@ -411,9 +411,9 @@ object Implicits:
   /** Search mode to use for possibly avoiding looping givens */
   enum SearchMode:
     case Old,          // up to 3.3, old mode w/o protection
-    	 CompareWarn,  // from 3.4, old mode, warn if new mode would change result
-    	 CompareErr,   // from 3.5, old mode, error if new mode would change result
-    	 New           // from future, new mode where looping givens are avoided
+         CompareWarn,  // from 3.4, old mode, warn if new mode would change result
+         CompareErr,   // from 3.5, old mode, error if new mode would change result
+         New           // from future, new mode where looping givens are avoided
 
   /** The result of an implicit search */
   sealed abstract class SearchResult extends Showable {

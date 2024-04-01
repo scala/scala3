@@ -1340,7 +1340,7 @@ object Types extends TypeUtils {
      *
      *  For instance, if `A` is an unconstrained type variable, then
      *
-     * 	      ArrayBuffer[Int] | ArrayBuffer[A]
+     *    ArrayBuffer[Int] | ArrayBuffer[A]
      *
      *  is approximated by constraining `A` to be =:= to `Int` and returning `ArrayBuffer[Int]`
      *  instead of `ArrayBuffer[? >: Int | A <: Int & A]`
@@ -3488,7 +3488,7 @@ object Types extends TypeUtils {
     private var myFactorCount = 0
     override def andFactorCount =
       if myFactorCount == 0 then
-      	myFactorCount = tp1.andFactorCount + tp2.andFactorCount
+        myFactorCount = tp1.andFactorCount + tp2.andFactorCount
       myFactorCount
 
     def derivedAndType(tp1: Type, tp2: Type)(using Context): Type =
@@ -3766,7 +3766,7 @@ object Types extends TypeUtils {
    *    LambdaType   |   TermLambda      |   TypeLambda
    *    -------------+-------------------+------------------
    *    HKLambda     |   HKTermLambda    |   HKTypeLambda
-   *    MethodOrPoly |   MethodType	     |   PolyType
+   *    MethodOrPoly |   MethodType      |   PolyType
    */
   trait LambdaType extends BindingType with TermType { self =>
     type ThisName <: Name

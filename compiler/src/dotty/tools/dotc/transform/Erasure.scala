@@ -594,9 +594,9 @@ object Erasure {
 
     def erasedDef(sym: Symbol)(using Context): Tree =
       if sym.isClass then
-      	// We cannot simply drop erased classes, since then they would not generate classfiles
-      	// and would not be visible under separate compilation. So we transform them to
-      	// empty interfaces instead.
+        // We cannot simply drop erased classes, since then they would not generate classfiles
+        // and would not be visible under separate compilation. So we transform them to
+        // empty interfaces instead.
         tpd.ClassDef(sym.asClass, DefDef(sym.primaryConstructor.asTerm), Nil)
       else
         if sym.owner.isClass then sym.dropAfter(erasurePhase)
@@ -667,7 +667,7 @@ object Erasure {
      */
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
       if tree.name == nme.apply && integrateSelect(tree) then
-      	return typed(tree.qualifier, pt)
+        return typed(tree.qualifier, pt)
 
       val qual1 = typed(tree.qualifier, AnySelectionProto)
 
