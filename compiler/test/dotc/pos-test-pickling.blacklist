@@ -127,5 +127,7 @@ i20053b.scala
 # alias types at different levels of dereferencing
 parsercombinators-givens.scala
 parsercombinators-givens-2.scala
+parsercombinators-arrow.scala
+
 
 
