@@ -976,12 +976,14 @@ object Parsers {
      *  i.e. an identifier followed by type and value parameters, followed by `:`?
      *  @pre  The current token is an identifier
      */
-    def followingIsGivenSig() =
+    def followingIsOldStyleGivenSig() =
       val lookahead = in.LookaheadScanner()
       if lookahead.isIdent then
         lookahead.nextToken()
+      var paramsSeen = false
       def skipParams(): Unit =
         if lookahead.token == LPAREN || lookahead.token == LBRACKET then
+          paramsSeen = true
           lookahead.skipParens()
           skipParams()
         else if lookahead.isNewLine then
@@ -989,6 +991,16 @@ object Parsers {
           skipParams()
       skipParams()
       lookahead.isColon
+      && {
+        !in.featureEnabled(Feature.modularity)
+        || { // with modularity language import, a `:` at EOL after an identifier represents a single identifier given
+             // Example:
+             //    given C:
+             //      def f = ...
+          lookahead.nextToken()
+          !lookahead.isAfterLineEnd
+        }
+      }
 
     def followingIsExtension() =
       val next = in.lookahead.token
@@ -1808,7 +1820,9 @@ object Parsers {
 
     def infixTypeRest(t: Tree, operand: Location => Tree = refinedTypeFn): Tree =
       infixOps(t, canStartInfixTypeTokens, operand, Location.ElseWhere, ParseKind.Type,
-        isOperator = !followingIsVararg() && !isPureArrow
+        isOperator = !followingIsVararg()
+                     && !isPureArrow
+                     && !(isIdent(nme.as) && in.featureEnabled(Feature.modularity))
                      && nextCanFollowOperator(canStartInfixTypeTokens))
 
     /** RefinedType   ::=  WithType {[nl] Refinement} [`^` CaptureSet]
@@ -4101,15 +4115,30 @@ object Parsers {
         syntaxError(em"extension clause can only define methods", stat.span)
     }
 
-    /** GivenDef           ::=  [GivenSig] (GivenType [‘=’ Expr] | StructuralInstance)
-     *  GivenSig           ::=  [id] [DefTypeParamClause] {UsingParamClauses} ‘:’
-     *  GivenType          ::=  AnnotType1 {id [nl] AnnotType1}
+    /** GivenDef           ::=  OldGivenDef | NewGivenDef
+     *  OldGivenDef        ::=  [OldGivenSig] (GivenType [‘=’ Expr] | StructuralInstance)
+     *  OldGivenSig        ::=  [id] [DefTypeParamClause] {UsingParamClauses} ‘:’
      *  StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} [‘with’ WithTemplateBody]
+     *
+     *  NewGivenDef        ::=  [GivenConditional '=>'] NewGivenSig
+     *  GivenConditional   ::=  [DefTypeParamClause | UsingParamClause] {UsingParamClause}
+     *  NewGivenSig        ::=  GivenType ['as' id] ([‘=’ Expr] | TemplateBody)
+     *                      |   ConstrApps ['as' id] TemplateBody
+     *
+     *  GivenType          ::=  AnnotType1 {id [nl] AnnotType1}
      */
     def givenDef(start: Offset, mods: Modifiers, givenMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, givenMod)
       val nameStart = in.offset
-      val name = if isIdent && followingIsGivenSig() then ident() else EmptyTermName
+      var name = if isIdent && followingIsOldStyleGivenSig() then ident() else EmptyTermName
+      var newSyntaxAllowed = in.featureEnabled(Feature.modularity)
+
+      def moreConstrApps() =
+        if newSyntaxAllowed && in.token == COMMA then
+          in.nextToken()
+          constrApps()
+        else // need to be careful with last `with`
+          withConstrApps()
 
       // TODO Change syntax description
       def adjustDefParams(paramss: List[ParamClause]): List[ParamClause] =
@@ -4128,14 +4157,24 @@ object Parsers {
           else Nil
         newLinesOpt()
         val noParams = tparams.isEmpty && vparamss.isEmpty
-        if !(name.isEmpty && noParams) then acceptColon()
+        if !(name.isEmpty && noParams) then
+          if in.isColon then
+            newSyntaxAllowed = false
+            in.nextToken()
+          else if newSyntaxAllowed then accept(ARROW)
+          else acceptColon()
         val parents =
           if isSimpleLiteral then
             rejectWildcardType(annotType()) :: Nil
           else constrApp() match
-            case parent: Apply => parent :: withConstrApps()
-            case parent if in.isIdent => infixTypeRest(parent, _ => annotType1()) :: Nil
-            case parent => parent :: withConstrApps()
+            case parent: Apply => parent :: moreConstrApps()
+            case parent if in.isIdent =>
+              infixTypeRest(parent, _ => annotType1()) :: Nil
+            case parent => parent :: moreConstrApps()
+        if newSyntaxAllowed && in.isIdent(nme.as) then
+          in.nextToken()
+          name = ident()
+
         val parentsIsType = parents.length == 1 && parents.head.isType
         if in.token == EQUALS && parentsIsType then
           accept(EQUALS)
@@ -4145,7 +4184,7 @@ object Parsers {
             ValDef(name, parents.head, subExpr())
           else
             DefDef(name, adjustDefParams(joinParams(tparams, vparamss)), parents.head, subExpr())
-        else if (isStatSep || isStatSeqEnd) && parentsIsType then
+        else if (isStatSep || isStatSeqEnd) && parentsIsType && !newSyntaxAllowed then
           if name.isEmpty then
             syntaxError(em"anonymous given cannot be abstract")
           DefDef(name, adjustDefParams(joinParams(tparams, vparamss)), parents.head, EmptyTree)
@@ -4156,8 +4195,13 @@ object Parsers {
             else vparam
           val constr = makeConstructor(tparams, vparamss1)
           val templ =
-            if isStatSep || isStatSeqEnd then Template(constr, parents, Nil, EmptyValDef, Nil)
-            else withTemplate(constr, parents)
+            if isStatSep || isStatSeqEnd then
+              Template(constr, parents, Nil, EmptyValDef, Nil)
+            else if !newSyntaxAllowed || in.token == WITH then
+              withTemplate(constr, parents)
+            else
+              possibleTemplateStart()
+              templateBodyOpt(constr, parents, Nil)
           if noParams && !mods.is(Inline) then ModuleDef(name, templ)
           else TypeDef(name.toTypeName, templ)
       end gdef
