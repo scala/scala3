@@ -237,12 +237,13 @@ object desugar {
 
     def desugarRhs(rhs: Tree): Tree = rhs match
       case ContextBounds(tbounds, cxbounds) =>
+        val isMember = flags.isAllOf(DeferredGivenFlags)
         for bound <- cxbounds do
           val evidenceName = bound match
             case ContextBoundTypeTree(_, _, ownName) if !ownName.isEmpty =>
               ownName
-            case _ if Config.nameSingleContextBounds && cxbounds.tail.isEmpty
-                && Feature.enabled(Feature.modularity) =>
+            case _ if Config.nameSingleContextBounds && !isMember
+                && cxbounds.tail.isEmpty && Feature.enabled(Feature.modularity) =>
               tdef.name.toTermName
             case _ =>
               freshName(bound)
@@ -491,6 +492,14 @@ object desugar {
       case _ =>
         Apply(fn, params.map(refOfDef))
     }
+
+  def typeDef(tdef: TypeDef)(using Context): Tree =
+    val evidenceBuf = new mutable.ListBuffer[ValDef]
+    val result = desugarContextBounds(
+        tdef, evidenceBuf,
+        (tdef.mods.flags.toTermFlags & AccessFlags) | Lazy | DeferredGivenFlags,
+        inventGivenOrExtensionName, Nil)
+    if evidenceBuf.isEmpty then result else Thicket(result :: evidenceBuf.toList)
 
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(using Context): Tree = {
@@ -1426,7 +1435,7 @@ object desugar {
       case tree: TypeDef =>
         if (tree.isClassDef) classDef(tree)
         else if (ctx.mode.isQuotedPattern) quotedPatternTypeDef(tree)
-        else tree
+        else typeDef(tree)
       case tree: DefDef =>
         if (tree.name.isConstructorName) tree // was already handled by enclosing classDef
         else defDef(tree)

@@ -30,7 +30,7 @@ object Range {
     * @requires
     *   `lowerBound` is lesser than or equal to `upperBound`.
     */
-  def apply[Bound: Comparable](lowerBound: Bound, upperBound: Bound) =
+  def apply[Bound](lowerBound: Bound, upperBound: Bound)(using Comparable[Bound]) =
     require(lowerBound `le` upperBound)
     new Range(lowerBound, upperBound)
 
