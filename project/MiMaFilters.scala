@@ -20,6 +20,8 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$namedTuples$"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.modularity"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$modularity$"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.compiletime.package#package.deferred"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.WitnessNames"),
       ),
 
       // Additions since last LTS

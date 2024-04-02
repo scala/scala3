@@ -257,7 +257,16 @@ object desugar {
       case _ =>
         rhs
 
-    cpy.TypeDef(tdef)(rhs = desugarRhs(tdef.rhs))
+    val tdef1 = cpy.TypeDef(tdef)(rhs = desugarRhs(tdef.rhs))
+    if Feature.enabled(Feature.modularity)
+        && evidenceNames.nonEmpty
+        && !evidenceNames.contains(tdef.name.toTermName)
+        && !allParamss.nestedExists(_.name == tdef.name.toTermName)
+    then
+      tdef1.withAddedAnnotation:
+        WitnessNamesAnnot(evidenceNames.toList).withSpan(tdef.span)
+    else
+      tdef1
   end desugarContextBounds
 
   private def elimContextBounds(meth: DefDef, isPrimaryConstructor: Boolean)(using Context): DefDef =
@@ -323,9 +332,9 @@ object desugar {
 
     def getterParamss(n: Int): List[ParamClause] =
       mapParamss(takeUpTo(paramssNoRHS, n)) {
-        tparam => dropContextBounds(toDefParam(tparam, keepAnnotations = true))
+        tparam => dropContextBounds(toDefParam(tparam, KeepAnnotations.All))
       } {
-        vparam => toDefParam(vparam, keepAnnotations = true, keepDefault = false)
+        vparam => toDefParam(vparam, KeepAnnotations.All, keepDefault = false)
       }
 
     def defaultGetters(paramss: List[ParamClause], n: Int): List[DefDef] = paramss match
@@ -430,7 +439,12 @@ object desugar {
   private def addEvidenceParams(meth: DefDef, params: List[ValDef])(using Context): DefDef =
     if params.isEmpty then return meth
 
-    val boundNames = params.map(_.name).toSet
+    var boundNames = params.map(_.name).toSet
+    for mparams <- meth.paramss; mparam <- mparams do
+      mparam match
+        case tparam: TypeDef if tparam.mods.annotations.exists(WitnessNamesAnnot.unapply(_).isDefined) =>
+          boundNames += tparam.name.toTermName
+        case _ =>
 
     //println(i"add ev params ${meth.name}, ${boundNames.toList}")
 
@@ -463,16 +477,26 @@ object desugar {
 
   @sharable private val synthetic = Modifiers(Synthetic)
 
-  /** Filter annotations in `mods` according to `keep` */
-  private def filterAnnots(mods: Modifiers, keep: Boolean)(using Context) =
-    if keep then mods else mods.withAnnotations(Nil)
+  /** Which annotations to keep in derived parameters */
+  private enum KeepAnnotations:
+    case None, All, WitnessOnly
 
-  private def toDefParam(tparam: TypeDef, keepAnnotations: Boolean)(using Context): TypeDef =
-    val mods = filterAnnots(tparam.rawMods, keepAnnotations)
+  /** Filter annotations in `mods` according to `keep` */
+  private def filterAnnots(mods: Modifiers, keep: KeepAnnotations)(using Context) = keep match
+    case KeepAnnotations.None => mods.withAnnotations(Nil)
+    case KeepAnnotations.All => mods
+    case KeepAnnotations.WitnessOnly =>
+      mods.withAnnotations:
+        mods.annotations.filter:
+          case WitnessNamesAnnot(_) => true
+          case _ => false
+
+  private def toDefParam(tparam: TypeDef, keep: KeepAnnotations)(using Context): TypeDef =
+    val mods = filterAnnots(tparam.rawMods, keep)
     tparam.withMods(mods & EmptyFlags | Param)
 
-  private def toDefParam(vparam: ValDef, keepAnnotations: Boolean, keepDefault: Boolean)(using Context): ValDef = {
-    val mods = filterAnnots(vparam.rawMods, keepAnnotations)
+  private def toDefParam(vparam: ValDef, keep: KeepAnnotations, keepDefault: Boolean)(using Context): ValDef = {
+    val mods = filterAnnots(vparam.rawMods, keep)
     val hasDefault = if keepDefault then HasDefault else EmptyFlags
     // Need to ensure that tree is duplicated since term parameters can be watched
     // and cloning a term parameter will copy its watchers to the clone, which means
@@ -573,7 +597,7 @@ object desugar {
     // Annotations on class _type_ parameters are set on the derived parameters
     // but not on the constructor parameters. The reverse is true for
     // annotations on class _value_ parameters.
-    val constrTparams = impliedTparams.map(toDefParam(_, keepAnnotations = false))
+    val constrTparams = impliedTparams.map(toDefParam(_, KeepAnnotations.WitnessOnly))
     val constrVparamss =
       if (originalVparamss.isEmpty) { // ensure parameter list is non-empty
         if (isCaseClass)
@@ -584,7 +608,7 @@ object desugar {
         report.error(CaseClassMissingNonImplicitParamList(cdef), namePos)
         ListOfNil
       }
-      else originalVparamss.nestedMap(toDefParam(_, keepAnnotations = true, keepDefault = true))
+      else originalVparamss.nestedMap(toDefParam(_, KeepAnnotations.All, keepDefault = true))
     val derivedTparams =
       constrTparams.zipWithConserve(impliedTparams)((tparam, impliedParam) =>
         derivedTypeParam(tparam).withAnnotations(impliedParam.mods.annotations))
@@ -606,7 +630,7 @@ object desugar {
             defDef(
               addEvidenceParams(
                 cpy.DefDef(ddef)(paramss = joinParams(constrTparams, ddef.paramss)),
-                evidenceParams(constr1).map(toDefParam(_, keepAnnotations = false, keepDefault = false)))))
+                evidenceParams(constr1).map(toDefParam(_, KeepAnnotations.None, keepDefault = false)))))
         case stat =>
           stat
       }

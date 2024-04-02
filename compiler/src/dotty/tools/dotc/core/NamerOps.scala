@@ -4,8 +4,10 @@ package core
 
 import Contexts.*, Symbols.*, Types.*, Flags.*, Scopes.*, Decorators.*, Names.*, NameOps.*
 import SymDenotations.{LazyType, SymDenotation}, StdNames.nme
+import ContextOps.enter
 import TypeApplications.EtaExpansion
 import collection.mutable
+import config.Printers.typr
 
 /** Operations that are shared between Namer and TreeUnpickler */
 object NamerOps:
@@ -256,4 +258,55 @@ object NamerOps:
       rhsCtx.gadtState.addBound(psym, tr, isUpper = true)
     }
 
+  /** Create a context-bound companion for type symbol `tsym`, which has a context
+   *  bound that defines a set of witnesses with names `witnessNames`.
+   *
+   *  @param parans  If `tsym` is a type parameter, a list of parameter symbols
+   *                 that include all witnesses, otherwise the empty list.
+   *
+   *  The context-bound companion has as name the name of `tsym` translated to
+   *  a term name. We create a synthetic val of the form
+   *
+   *    val A: `<context-bound-companion>`[witnessRef1 | ... | witnessRefN]
+   *
+   *  where
+   *
+   *      <context-bound-companion> is the CBCompanion type created in Definitions
+   *      withnessRefK is a refence to the K'th witness.
+   *
+   *  The companion has the same access flags as the original type.
+   */
+  def addContextBoundCompanionFor(tsym: Symbol, witnessNames: List[TermName], params: List[Symbol])(using Context): Unit =
+    val prefix = ctx.owner.thisType
+    val companionName = tsym.name.toTermName
+    val witnessRefs =
+      if params.nonEmpty then
+        witnessNames.map: witnessName =>
+            prefix.select(params.find(_.name == witnessName).get)
+      else
+        witnessNames.map(TermRef(prefix, _))
+    val cbtype = defn.CBCompanion.typeRef.appliedTo:
+      witnessRefs.reduce[Type](OrType(_, _, soft = false))
+    val cbc = newSymbol(
+        ctx.owner, companionName,
+        (tsym.flagsUNSAFE & (AccessFlags)).toTermFlags | Synthetic,
+        cbtype)
+    typr.println(s"context bound companion created $cbc for $witnessNames in ${ctx.owner}")
+    ctx.enter(cbc)
+  end addContextBoundCompanionFor
+
+  /** Add context bound companions to all context-bound types declared in
+   *  this class. This assumes that these types already have their
+   *  WitnessNames annotation set even before they are completed. This is
+   *  the case for unpickling but currently not for Namer. So the method
+   *  is only called during unpickling, and is not part of NamerOps.
+   */
+  def addContextBoundCompanions(cls: ClassSymbol)(using Context): Unit =
+    for sym <- cls.info.decls do
+      if sym.isType && !sym.isClass then
+        for ann <- sym.annotationsUNSAFE do
+          if ann.symbol == defn.WitnessNamesAnnot then
+            ann.tree match
+              case ast.tpd.WitnessNamesAnnot(witnessNames) =>
+                addContextBoundCompanionFor(sym, witnessNames, Nil)
 end NamerOps
