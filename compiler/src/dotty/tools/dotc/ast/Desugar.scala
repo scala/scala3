@@ -10,7 +10,7 @@ import Annotations.Annotation
 import NameKinds.{UniqueName, ContextBoundParamName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
 import typer.{Namer, Checking}
 import util.{Property, SourceFile, SourcePosition, SrcPos, Chars}
-import config.Feature.{sourceVersion, migrateTo3, enabled}
+import config.{Feature, Config}
 import config.SourceVersion.*
 import collection.mutable
 import reporting.*
@@ -45,6 +45,11 @@ object desugar {
   /** An attachment key to indicate that a ValDef originated from parameter untupling.
    */
   val UntupledParam: Property.Key[Unit] = Property.StickyKey()
+
+  /** An attachment key to indicate that a ValDef is an evidence parameter
+   *  for a context bound.
+   */
+  val ContextBoundParam: Property.Key[Unit] = Property.StickyKey()
 
   /** What static check should be applied to a Match? */
   enum MatchCheck {
@@ -195,17 +200,6 @@ object desugar {
     else vdef1
   end valDef
 
-  def makeImplicitParameters(
-      tpts: List[Tree], implicitFlag: FlagSet,
-      mkParamName: Int => TermName,
-      forPrimaryConstructor: Boolean = false
-  )(using Context): List[ValDef] =
-    for (tpt, i) <- tpts.zipWithIndex yield {
-       val paramFlags: FlagSet = if (forPrimaryConstructor) LocalParamAccessor else Param
-       val epname = mkParamName(i)
-       ValDef(epname, tpt, EmptyTree).withFlags(paramFlags | implicitFlag)
-    }
-
   def mapParamss(paramss: List[ParamClause])
                 (mapTypeParam: TypeDef => TypeDef)
                 (mapTermParam: ValDef => ValDef)(using Context): List[ParamClause] =
@@ -232,34 +226,57 @@ object desugar {
   private def defDef(meth: DefDef, isPrimaryConstructor: Boolean = false)(using Context): Tree =
     addDefaultGetters(elimContextBounds(meth, isPrimaryConstructor))
 
+  private def desugarContextBounds(
+      tdef: TypeDef,
+      evidenceBuf: mutable.ListBuffer[ValDef],
+      flags: FlagSet,
+      freshName: untpd.Tree => TermName,
+      allParamss: List[ParamClause])(using Context): TypeDef =
+
+    val evidenceNames = mutable.ListBuffer[TermName]()
+
+    def desugarRhs(rhs: Tree): Tree = rhs match
+      case ContextBounds(tbounds, cxbounds) =>
+        for bound <- cxbounds do
+          val evidenceName = bound match
+            case ContextBoundTypeTree(_, _, ownName) if !ownName.isEmpty =>
+              ownName
+            case _ if Config.nameSingleContextBounds && cxbounds.tail.isEmpty
+                && Feature.enabled(Feature.modularity) =>
+              tdef.name.toTermName
+            case _ =>
+              freshName(bound)
+          evidenceNames += evidenceName
+          val evidenceParam = ValDef(evidenceName, bound, EmptyTree).withFlags(flags)
+          evidenceParam.pushAttachment(ContextBoundParam, ())
+          evidenceBuf += evidenceParam
+        tbounds
+      case LambdaTypeTree(tparams, body) =>
+        cpy.LambdaTypeTree(rhs)(tparams, desugarRhs(body))
+      case _ =>
+        rhs
+
+    cpy.TypeDef(tdef)(rhs = desugarRhs(tdef.rhs))
+  end desugarContextBounds
+
   private def elimContextBounds(meth: DefDef, isPrimaryConstructor: Boolean)(using Context): DefDef =
     val DefDef(_, paramss, tpt, rhs) = meth
     val evidenceParamBuf = mutable.ListBuffer[ValDef]()
 
     var seenContextBounds: Int = 0
-    def desugarContextBounds(rhs: Tree): Tree = rhs match
-      case ContextBounds(tbounds, cxbounds) =>
-        val iflag = if sourceVersion.isAtLeast(`future`) then Given else Implicit
-        evidenceParamBuf ++= makeImplicitParameters(
-          cxbounds, iflag,
-          // Just like with `makeSyntheticParameter` on nameless parameters of
-          // using clauses, we only need names that are unique among the
-          // parameters of the method since shadowing does not affect
-          // implicit resolution in Scala 3.
-          mkParamName = i =>
-            val index = seenContextBounds + 1 // Start at 1 like FreshNameCreator.
-            val ret = ContextBoundParamName(EmptyTermName, index)
-            seenContextBounds += 1
-            ret,
-          forPrimaryConstructor = isPrimaryConstructor)
-        tbounds
-      case LambdaTypeTree(tparams, body) =>
-        cpy.LambdaTypeTree(rhs)(tparams, desugarContextBounds(body))
-      case _ =>
-        rhs
+    def freshName(unused: Tree) =
+      seenContextBounds += 1 // Start at 1 like FreshNameCreator.
+      ContextBoundParamName(EmptyTermName, seenContextBounds)
+      // Just like with `makeSyntheticParameter` on nameless parameters of
+      // using clauses, we only need names that are unique among the
+      // parameters of the method since shadowing does not affect
+      // implicit resolution in Scala 3.
+
     val paramssNoContextBounds =
+      val iflag = if Feature.sourceVersion.isAtLeast(`future`) then Given else Implicit
+      val flags = if isPrimaryConstructor then iflag | LocalParamAccessor else iflag | Param
       mapParamss(paramss) {
-        tparam => cpy.TypeDef(tparam)(rhs = desugarContextBounds(tparam.rhs))
+        tparam => desugarContextBounds(tparam, evidenceParamBuf, flags, freshName, paramss)
       }(identity)
 
     rhs match
@@ -399,43 +416,70 @@ object desugar {
         (Nil, tree)
 
   /**  Add all evidence parameters in `params` as implicit parameters to `meth`.
-   *   If the parameters of `meth` end in an implicit parameter list or using clause,
-   *   evidence parameters are added in front of that list. Otherwise they are added
-   *   as a separate parameter clause.
+   *   The position of the added parameters is determined as follows:
+   *
+   *     - If there is an existing parameter list that refers to one of the added
+   *       parameters in one of its parameter types, add the new parameters
+   *       in front of the first such parameter list.
+   *     - Otherwise, if the last parameter list consists implicit or using parameters,
+   *       join the new parameters in front of this parameter list, creating one
+   *       parameter list (this is equilavent to Scala 2's scheme).
+   *     - Otherwise, add the new parameter list at the end as a separate parameter clause.
    */
   private def addEvidenceParams(meth: DefDef, params: List[ValDef])(using Context): DefDef =
-    params match
+    if params.isEmpty then return meth
+
+    val boundNames = params.map(_.name).toSet
+
+    //println(i"add ev params ${meth.name}, ${boundNames.toList}")
+
+    def references(vdef: ValDef): Boolean =
+      vdef.tpt.existsSubTree:
+        case Ident(name: TermName) => boundNames.contains(name)
+        case _ => false
+
+    def recur(mparamss: List[ParamClause]): List[ParamClause] = mparamss match
+      case ValDefs(mparams) :: _ if mparams.exists(references) =>
+        params :: mparamss
+      case ValDefs(mparams @ (mparam :: _)) :: Nil if mparam.mods.isOneOf(GivenOrImplicit) =>
+        (params ++ mparams) :: Nil
+      case mparams :: mparamss1 =>
+        mparams :: recur(mparamss1)
       case Nil =>
-        meth
-      case evidenceParams =>
-        val paramss1 = meth.paramss.reverse match
-          case ValDefs(vparams @ (vparam :: _)) :: rparamss if vparam.mods.isOneOf(GivenOrImplicit) =>
-            ((evidenceParams ++ vparams) :: rparamss).reverse
-          case _ =>
-            meth.paramss :+ evidenceParams
-        cpy.DefDef(meth)(paramss = paramss1)
+        params :: Nil
+
+    cpy.DefDef(meth)(paramss = recur(meth.paramss))
+  end addEvidenceParams
 
   /** The parameters generated from the contextual bounds of `meth`, as generated by `desugar.defDef` */
   private def evidenceParams(meth: DefDef)(using Context): List[ValDef] =
     meth.paramss.reverse match {
       case ValDefs(vparams @ (vparam :: _)) :: _ if vparam.mods.isOneOf(GivenOrImplicit) =>
-        vparams.takeWhile(_.name.is(ContextBoundParamName))
+        vparams.takeWhile(_.hasAttachment(ContextBoundParam))
       case _ =>
         Nil
     }
 
   @sharable private val synthetic = Modifiers(Synthetic)
 
-  private def toDefParam(tparam: TypeDef, keepAnnotations: Boolean): TypeDef = {
-    var mods = tparam.rawMods
-    if (!keepAnnotations) mods = mods.withAnnotations(Nil)
+  /** Filter annotations in `mods` according to `keep` */
+  private def filterAnnots(mods: Modifiers, keep: Boolean)(using Context) =
+    if keep then mods else mods.withAnnotations(Nil)
+
+  private def toDefParam(tparam: TypeDef, keepAnnotations: Boolean)(using Context): TypeDef =
+    val mods = filterAnnots(tparam.rawMods, keepAnnotations)
     tparam.withMods(mods & EmptyFlags | Param)
-  }
-  private def toDefParam(vparam: ValDef, keepAnnotations: Boolean, keepDefault: Boolean): ValDef = {
-    var mods = vparam.rawMods
-    if (!keepAnnotations) mods = mods.withAnnotations(Nil)
+
+  private def toDefParam(vparam: ValDef, keepAnnotations: Boolean, keepDefault: Boolean)(using Context): ValDef = {
+    val mods = filterAnnots(vparam.rawMods, keepAnnotations)
     val hasDefault = if keepDefault then HasDefault else EmptyFlags
-    vparam.withMods(mods & (GivenOrImplicit | Erased | hasDefault | Tracked) | Param)
+    // Need to ensure that tree is duplicated since term parameters can be watched
+    // and cloning a term parameter will copy its watchers to the clone, which means
+    // we'd get cross-talk between the original parameter and the clone.
+    ValDef(vparam.name, vparam.tpt, vparam.rhs)
+      .withSpan(vparam.span)
+      .withAttachmentsFrom(vparam)
+      .withMods(mods & (GivenOrImplicit | Erased | hasDefault | Tracked) | Param)
   }
 
   def mkApply(fn: Tree, paramss: List[ParamClause])(using Context): Tree =
@@ -609,6 +653,11 @@ object desugar {
       case _ => false
     }
 
+    def isRepeated(tree: Tree): Boolean = stripByNameType(tree) match {
+      case PostfixOp(_, Ident(tpnme.raw.STAR)) => true
+      case _ => false
+    }
+
     def appliedRef(tycon: Tree, tparams: List[TypeDef] = constrTparams, widenHK: Boolean = false) = {
       val targs = for (tparam <- tparams) yield {
         val targ = refOfDef(tparam)
@@ -623,11 +672,6 @@ object desugar {
         if (widenHK) fullyApplied(tparam) else targ
       }
       appliedTypeTree(tycon, targs)
-    }
-
-    def isRepeated(tree: Tree): Boolean = stripByNameType(tree) match {
-      case PostfixOp(_, Ident(tpnme.raw.STAR)) => true
-      case _ => false
     }
 
     // a reference to the class type bound by `cdef`, with type parameters coming from the constructor
@@ -667,7 +711,7 @@ object desugar {
       }
       ensureApplied(nu)
 
-    val copiedAccessFlags = if migrateTo3 then EmptyFlags else AccessFlags
+    val copiedAccessFlags = if Feature.migrateTo3 then EmptyFlags else AccessFlags
 
     // Methods to add to a case class C[..](p1: T1, ..., pN: Tn)(moreParams)
     //     def _1: T1 = this.p1
@@ -850,12 +894,11 @@ object desugar {
         Nil
       }
       else {
-        val defParamss = constrVparamss match {
+        val defParamss = constrVparamss match
           case Nil :: paramss =>
             paramss // drop leading () that got inserted by class
                     // TODO: drop this once we do not silently insert empty class parameters anymore
           case paramss => paramss
-        }
         val finalFlag = if ctx.settings.YcompileScala2Library.value then EmptyFlags else Final
         // implicit wrapper is typechecked in same scope as constructor, so
         // we can reuse the constructor parameters; no derived params are needed.
@@ -1681,14 +1724,13 @@ object desugar {
       .collect:
         case vd: ValDef => vd
 
-  def makeContextualFunction(formals: List[Tree], paramNamesOrNil: List[TermName], body: Tree, erasedParams: List[Boolean])(using Context): Function = {
-    val mods = Given
-    val params = makeImplicitParameters(formals, mods,
-      mkParamName = i =>
-        if paramNamesOrNil.isEmpty then ContextFunctionParamName.fresh()
-        else paramNamesOrNil(i))
-    FunctionWithMods(params, body, Modifiers(mods), erasedParams)
-  }
+  def makeContextualFunction(formals: List[Tree], paramNamesOrNil: List[TermName], body: Tree, erasedParams: List[Boolean])(using Context): Function =
+    val paramNames =
+      if paramNamesOrNil.nonEmpty then paramNamesOrNil
+      else formals.map(_ => ContextFunctionParamName.fresh())
+    val params = for (tpt, pname) <- formals.zip(paramNames) yield
+      ValDef(pname, tpt, EmptyTree).withFlags(Given | Param)
+    FunctionWithMods(params, body, Modifiers(Given), erasedParams)
 
   private def derivedValDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(using Context) = {
     val vdef = ValDef(named.name.asTermName, tpt, rhs)
