@@ -406,6 +406,11 @@ class Namer { typer: Typer =>
         enterSymbol(sym)
         setDocstring(sym, origStat)
         addEnumConstants(mdef, sym)
+        mdef match
+          case tdef: TypeDef if ctx.owner.isClass =>
+            for case WitnessNamesAnnot(witnessNames) <- tdef.mods.annotations do
+              addContextBoundCompanionFor(symbolOfTree(tdef), witnessNames, Nil)
+          case _ =>
         ctx
       case stats: Thicket =>
         stats.toList.foreach(recur)
@@ -1749,12 +1754,6 @@ class Namer { typer: Typer =>
       val sym = tree.symbol
       if sym.isConstructor then sym.owner else sym
 
-  /** Enter and typecheck parameter list */
-  def completeParams(params: List[MemberDef])(using Context): Unit = {
-    index(params)
-    for (param <- params) typedAheadExpr(param)
-  }
-
   /** The signature of a module valdef.
    *  This will compute the corresponding module class TypeRef immediately
    *  without going through the defined type of the ValDef. This is necessary
@@ -1852,6 +1851,30 @@ class Namer { typer: Typer =>
   def defDefSig(ddef: DefDef, sym: Symbol, completer: Namer#Completer)(using Context): Type =
     // Beware: ddef.name need not match sym.name if sym was freshened!
     val isConstructor = sym.name == nme.CONSTRUCTOR
+
+    val witnessNamesOfParam = mutable.Map[TypeDef, List[TermName]]()
+    if !ddef.name.is(DefaultGetterName) && !sym.is(Synthetic) then
+      for params <- ddef.paramss; case tdef: TypeDef <- params do
+        for case WitnessNamesAnnot(ws) <- tdef.mods.annotations do
+          witnessNamesOfParam(tdef) = ws
+
+    /** Are all names in `wnames` defined by the longest prefix of all `params`
+     *  that have been typed ahead (i.e. that carry the TypedAhead attachment)?
+     */
+    def allParamsSeen(wnames: List[TermName], params: List[MemberDef]) =
+      (wnames.toSet[Name] -- params.takeWhile(_.hasAttachment(TypedAhead)).map(_.name)).isEmpty
+
+    /** Enter and typecheck parameter list, add context companions as.
+     *  Once all witness parameters for a context bound are seen, create a
+     *  context bound companion for it.
+     */
+    def completeParams(params: List[MemberDef])(using Context): Unit =
+      index(params)
+      for param <- params do
+        typedAheadExpr(param)
+        for (tdef, wnames) <- witnessNamesOfParam do
+          if wnames.contains(param.name) && allParamsSeen(wnames, params) then
+            addContextBoundCompanionFor(symbolOfTree(tdef), wnames, params.map(symbolOfTree))
 
     // The following 3 lines replace what was previously just completeParams(tparams).
     // But that can cause bad bounds being computed, as witnessed by
