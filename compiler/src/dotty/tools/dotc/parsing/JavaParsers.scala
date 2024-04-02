@@ -440,11 +440,11 @@ object JavaParsers {
       }
     }
 
-    def modifiers(inInterface: Boolean): Modifiers = {
+    def modifiers(inInterface: Boolean, annots0: List[Tree] = Nil): Modifiers = {
       var flags: FlagSet = Flags.JavaDefined
       // assumed true unless we see public/private/protected
       var isPackageAccess = true
-      var annots = new ListBuffer[Tree]
+      var annots = ListBuffer.from[Tree](annots0)
       def addAnnot(tpt: Tree) =
         annots += atSpan(in.offset) {
           in.nextToken()
@@ -453,7 +453,7 @@ object JavaParsers {
 
       while (true)
         in.token match {
-          case AT if (in.lookaheadToken != INTERFACE) =>
+          case AT if in.lookaheadToken != INTERFACE =>
             in.nextToken()
             annotation() match {
               case Some(anno) => annots += anno
@@ -1080,24 +1080,30 @@ object JavaParsers {
     /** CompilationUnit ::= [package QualId semi] TopStatSeq
       */
     def compilationUnit(): Tree = {
-      val start = in.offset
+      val buf = ListBuffer.empty[Tree]
+      var start = in.offset
+      val leadingAnnots = if (in.token == AT) annotations() else Nil
       val pkg: RefTree =
-        if (in.token == AT || in.token == PACKAGE) {
-          annotations()
+        if in.token == PACKAGE then
+          if !leadingAnnots.isEmpty then
+            //if (unit.source.file.name != "package-info.java")
+            //  syntaxError(pos, "package annotations must be in file package-info.java")
+            start = in.offset
           accept(PACKAGE)
           val pkg = qualId()
           accept(SEMI)
           pkg
-        }
         else
+          if !leadingAnnots.isEmpty then
+            buf ++= typeDecl(start, modifiers(inInterface = false, annots0 = leadingAnnots))
           Ident(nme.EMPTY_PACKAGE)
       thisPackageName = convertToTypeName(pkg) match {
         case Some(t)  => t.name.toTypeName
         case _        => tpnme.EMPTY
       }
-      val buf = new ListBuffer[Tree]
-      while (in.token == IMPORT)
-        buf ++= importDecl()
+      if buf.isEmpty then
+        while in.token == IMPORT do
+          buf ++= importDecl()
       while (in.token != EOF && in.token != RBRACE) {
         while (in.token == SEMI) in.nextToken()
         if (in.token != EOF) {
