@@ -126,7 +126,7 @@ object Phases {
      *  The list should never contain NoPhase.
      *  if fusion is enabled, phases in same subgroup will be fused to single phase.
      */
-    final def usePhases(phasess: List[Phase], fuse: Boolean = true): Unit = {
+    final def usePhases(phasess: List[Phase], runCtx: FreshContext, fuse: Boolean = true): Unit = {
 
       val flatPhases = collection.mutable.ListBuffer[Phase]()
 
@@ -161,11 +161,21 @@ object Phases {
         phase match {
           case p: MegaPhase =>
             val miniPhases = p.miniPhases
-            miniPhases.foreach{ phase =>
+            for phase <- miniPhases do
               checkRequirements(phase)
-              phase.init(this, nextPhaseId)}
+              // Given phases a chance to initialize state based on the run context.
+              //
+              // `phase.initContext` should be called before `phase.init` as the later calls abstract methods
+              // `changesMembers` and `changeParents` which may depend on the run context.
+              //
+              // See `PostTyper.changeParents`
+              phase.initContext(runCtx)
+              phase.init(this, nextPhaseId)
+            end for
             p.init(this, miniPhases.head.id, miniPhases.last.id)
           case _ =>
+            // See comment above about the ordering of the two calls.
+            phase.initContext(runCtx)
             phase.init(this, nextPhaseId)
             checkRequirements(phase)
         }
