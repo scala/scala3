@@ -1830,6 +1830,18 @@ class Namer { typer: Typer =>
       case _ =>
         WildcardType
     }
+
+    // translate `given T = deferred` to an abstract given with HasDefault flag
+    if sym.is(Given) then
+      mdef.rhs match
+        case rhs: RefTree
+        if rhs.name == nme.deferred
+            && typedAheadExpr(rhs).symbol == defn.Compiletime_deferred
+            && sym.maybeOwner.is(Trait) =>
+          sym.resetFlag(Final)
+          sym.setFlag(Deferred | HasDefault)
+        case _ =>
+
     val mbrTpe = paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
     if (ctx.explicitNulls && mdef.mods.is(JavaDefined))
       JavaNullInterop.nullifyMember(sym, mbrTpe, mdef.mods.isAllOf(JavaEnumValue))
