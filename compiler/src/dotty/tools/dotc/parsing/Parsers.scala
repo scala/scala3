@@ -2196,9 +2196,9 @@ object Parsers {
       if (in.token == tok) { in.nextToken(); toplevelTyp() }
       else EmptyTree
 
-    /** TypeParamBounds   ::=  TypeBounds {`<%' Type} {`:' Type}
+    /** TypeAndCtxBounds  ::=  TypeBounds [`:` ContextBounds]
      */
-    def typeParamBounds(pname: TypeName): Tree = {
+    def typeAndCtxBounds(pname: TypeName): Tree = {
       val t = typeBounds()
       val cbs = contextBounds(pname)
       if (cbs.isEmpty) t
@@ -2207,8 +2207,16 @@ object Parsers {
 
     /** ContextBound      ::=  Type [`as` id] */
     def contextBound(pname: TypeName): Tree =
-      ContextBoundTypeTree(toplevelTyp(), pname, EmptyTermName)
+      val t = toplevelTyp()
+      val ownName =
+        if isIdent(nme.as) && in.featureEnabled(Feature.modularity) then
+          in.nextToken()
+          ident()
+        else EmptyTermName
+      ContextBoundTypeTree(t, pname, ownName)
 
+    /** ContextBounds     ::= ContextBound | `{` ContextBound {`,` ContextBound} `}`
+     */
     def contextBounds(pname: TypeName): List[Tree] =
       if in.isColon then
         in.nextToken()
@@ -3411,7 +3419,7 @@ object Parsers {
             }
             else ident().toTypeName
           val hkparams = typeParamClauseOpt(ParamOwner.Type)
-          val bounds = if (isAbstractOwner) typeBounds() else typeParamBounds(name)
+          val bounds = if (isAbstractOwner) typeBounds() else typeAndCtxBounds(name)
           TypeDef(name, lambdaAbstract(hkparams, bounds)).withMods(mods)
         }
       }
