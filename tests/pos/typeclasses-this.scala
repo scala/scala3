@@ -1,4 +1,4 @@
-//> using options -source future -language:experimental.modularity
+//> using options -language:experimental.modularity -source future
 
 class Common:
 
@@ -8,6 +8,13 @@ class Common:
       def compareTo(y: Self): Int
       def < (y: Self): Boolean = compareTo(y) < 0
       def > (y: Self): Boolean = compareTo(y) > 0
+      def <= (y: Self): Boolean = compareTo(y) <= 0
+      def >= (y: Self): Boolean = compareTo(y) >= 0
+      def max(y: Self): Self = if x < y then y else x
+
+  trait Show:
+    type Self
+    extension (x: Self) def show: String
 
   trait SemiGroup:
     type Self
@@ -25,21 +32,19 @@ class Common:
     extension [A](x: Self[A])
       def flatMap[B](f: A => Self[B]): Self[B]
       def map[B](f: A => B) = x.flatMap(f `andThen` pure)
-
 end Common
-
 
 object Instances extends Common:
 
-  given intOrd: (Int is Ord) with
-    type Self = Int
+  given intOrd: Int is Ord with
     extension (x: Int)
       def compareTo(y: Int) =
         if x < y then -1
         else if x > y then +1
         else 0
 
-  given listOrd[T](using ord: T is Ord): (List[T] is Ord) with
+//  given [T](using tracked val ev: Ord { type Self = T}): Ord { type Self = List[T] } with
+  given [T: Ord]: List[T] is Ord with
     extension (xs: List[T]) def compareTo(ys: List[T]): Int = (xs, ys) match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -47,20 +52,16 @@ object Instances extends Common:
       case (x :: xs1, y :: ys1) =>
         val fst = x.compareTo(y)
         if (fst != 0) fst else xs1.compareTo(ys1)
-  end listOrd
 
-  given listMonad: (List is Monad) with
+  given listMonad: List is Monad with
     extension [A](xs: List[A]) def flatMap[B](f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
 
-
   type Reader[Ctx] = [X] =>> Ctx => X
 
-  //given [Ctx] => Reader[Ctx] is Monad as readerMonad:
-
-  given readerMonad[Ctx]: (Reader[Ctx] is Monad) with
+  given readerMonad[Ctx]: Reader[Ctx] is Monad with
     extension [A](r: Ctx => A) def flatMap[B](f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
@@ -75,17 +76,17 @@ object Instances extends Common:
     def second = xs.tail.head
     def third = xs.tail.tail.head
 
-  extension [M, A](using m: Monad)(xss: m.Self[m.Self[A]])
-    def flatten: m.Self[A] =
+  extension [M[_]: Monad, A](xss: M[M[A]])
+    def flatten: M[A] =
       xss.flatMap(identity)
 
-  def maximum[T](xs: List[T])(using T is Ord): T =
-    xs.reduceLeft((x, y) => if (x < y) y else x)
+  def maximum[T: Ord](xs: List[T]): T =
+    xs.reduce(_ `max` _)
 
-  def descending[T](using asc: T is Ord): T is Ord = new:
-    extension (x: T) def compareTo(y: T) = asc.compareTo(y)(x)
+  given descending[T: Ord]: T is Ord with
+    extension (x: T) def compareTo(y: T) = T.compareTo(y)(x)
 
-  def minimum[T](xs: List[T])(using T is Ord) =
+  def minimum[T: Ord](xs: List[T]) =
     maximum(xs)(using descending)
 
   def test(): Unit =
@@ -98,8 +99,9 @@ object Instances extends Common:
 // Adapted from the Rust by Example book: https://doc.rust-lang.org/rust-by-example/trait.html
 //
 //           lines  words  chars
-// wc Scala: 30     115     853
+// wc Scala: 28     105     793
 // wc Rust : 57     193    1466
+
 trait Animal:
   type Self
   // Associated function signature; `Self` refers to the implementor type.
@@ -121,18 +123,7 @@ class Sheep(val name: String):
       println(s"$name gets a haircut!")
       isNaked = true
 
-/*
-instance Sheep: Animal with
-  def apply(name: String) = Sheep(name)
-  extension (self: Self)
-    def name: String = self.name
-    def noise: String = if self.isNaked then "baaaaah?" else "baaaaah!"
-    override def talk(): Unit =
-      println(s"$name pauses briefly... $noise")
-*/
-
-// Implement the `Animal` trait for `Sheep`.
-given (Sheep is Animal) with
+given Sheep is Animal with
   def apply(name: String) = Sheep(name)
   extension (self: Self)
     def name: String = self.name

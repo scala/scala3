@@ -1,20 +1,21 @@
 //> using options -language:experimental.modularity -source future
 import compiletime.deferred
 
-trait Ord[Self]:
+trait Ord:
+  type Self
   def less(x: Self, y: Self): Boolean
 
 trait A:
   type Elem
-  given Ord[Elem] = deferred
-  def foo = summon[Ord[Elem]]
+  given Elem is Ord = deferred
+  def foo = summon[Elem is Ord]
 
 trait B:
   type Elem: Ord
-  def foo = summon[Ord[Elem]]
+  def foo = summon[Elem is Ord]
 
 object Inst:
-  given Ord[Int]:
+  given Int is Ord:
     def less(x: Int, y: Int) = x < y
 
 object Test1:

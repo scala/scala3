@@ -127,10 +127,11 @@ i20053b.scala
 # alias types at different levels of dereferencing
 parsercombinators-givens.scala
 parsercombinators-givens-2.scala
+parsercombinators-ctx-bounds.scala
+parsercombinators-this.scala
 parsercombinators-arrow.scala
+parsercombinators-new-syntax.scala
 hylolib-deferred-given
 hylolib-cb
-
-
-
+hylolib
 
