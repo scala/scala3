@@ -31,9 +31,13 @@
 onmessage = function({ data: { docs, search } }) {
     const regexForTerm = (query) => {
         const escaped = query.replace(/([\.\*\+\?\|\(\)\[\]\\])/g, '\\$1');
-        return query.toLowerCase() !== query
-            ? new RegExp(escaped.replace(/([A-Z])/g, "[a-z]*$1"))
-            : new RegExp(escaped, "i");
+        if (query.toLowerCase() != query) {
+            // Regexp that matches CamelCase subbits: "BiSe" is
+            // "[a-z]*Bi[a-z]*Se" and matches "BitSet", "ABitSet", ...
+            return new RegExp(escaped.replace(/([A-Z])/g,"[a-z]*$1"));
+        }
+        // if query is all lower case make a normal case insensitive search
+        return new RegExp(escaped, "i");
     };
 
     const searchRegex = regexForTerm(search);
