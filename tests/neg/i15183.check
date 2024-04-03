@@ -1,0 +1,96 @@
+
+-- [E172] Type Error: tests/neg/i15183/test_2.scala:2:17 ---------------------------------------------------------------
+2 |enum Env derives Decoder:  // error
+  |                 ^
+  |No given instance of type Tuple.Map[m.MirroredElemTypes, Decoder] was found for parameter d of given instance derived in object Decoder.
+  |I found:
+  |
+  |    Decoder.summonTuple[(Env.Local : Env), ((Env.Sit : Env), (Env.Prod : Env))](
+  |      Decoder.derived[(Env.Local : Env)](
+  |        Env.Local.$asInstanceOf[
+  |          scala.deriving.Mirror.Singleton{
+  |            type MirroredMonoType = (Env.Local : Env); type MirroredType = (Env.Local : Env);
+  |              type MirroredLabel = ("Local" : String)
+  |          }
+  |        ],
+  |      /* missing */summon[Tuple.Map[?1.MirroredElemTypes, Decoder]]),
+  |    ???)
+  |
+  |But no implicit values were found that match type Tuple.Map[?1.MirroredElemTypes, Decoder]
+  |
+  |where:    ?1 is an unknown value of type scala.deriving.Mirror.Singleton{
+  |  type MirroredMonoType = (Env.Local : Env); type MirroredType = (Env.Local : Env);
+  |    type MirroredLabel = ("Local" : String)
+  |}
+  |.
+  |
+  |Note: a match type could not be fully reduced:
+  |
+  |  trying to reduce  Tuple.Map[m.MirroredElemTypes, Decoder]
+  |  failed since selector m.MirroredElemTypes
+  |  does not match  case EmptyTuple => EmptyTuple
+  |  and cannot be shown to be disjoint from it either.
+  |  Therefore, reduction cannot advance to the remaining case
+  |
+  |    case h *: t => Decoder[h] *: Tuple.Map[t, Decoder]
+-- [E172] Type Error: tests/neg/i15183/test_2.scala:5:18 ---------------------------------------------------------------
+5 |enum Env2 derives Decoder: // error
+  |                  ^
+  |No given instance of type Tuple.Map[m.MirroredElemTypes, Decoder] was found for parameter d of given instance derived in object Decoder.
+  |I found:
+  |
+  |    Decoder.summonTuple[Env2.Local, (Env2.Sit, Env2.Prod)](
+  |      Decoder.derived[Env2.Local](
+  |        Env2.Local.$asInstanceOf[
+  |          scala.deriving.Mirror.Product{
+  |            type MirroredMonoType = Env2.Local; type MirroredType = Env2.Local; type MirroredLabel = ("Local" : String);
+  |              type MirroredElemTypes = EmptyTuple.type; type MirroredElemLabels = EmptyTuple.type
+  |          }
+  |        ],
+  |      /* missing */summon[Tuple.Map[EmptyTuple.type, Decoder]]),
+  |    ???)
+  |
+  |But no implicit values were found that match type Tuple.Map[EmptyTuple.type, Decoder].
+  |
+  |Note: a match type could not be fully reduced:
+  |
+  |  trying to reduce  Tuple.Map[m.MirroredElemTypes, Decoder]
+  |  failed since selector m.MirroredElemTypes
+  |  does not match  case EmptyTuple => EmptyTuple
+  |  and cannot be shown to be disjoint from it either.
+  |  Therefore, reduction cannot advance to the remaining case
+  |
+  |    case h *: t => Decoder[h] *: Tuple.Map[t, Decoder]
+-- [E172] Type Error: tests/neg/i15183/test_2.scala:10:19 --------------------------------------------------------------
+10 |enum Shape derives Decoder: // error
+   |                   ^
+   |No given instance of type Tuple.Map[m.MirroredElemTypes, Decoder] was found for parameter d of given instance derived in object Decoder.
+   |I found:
+   |
+   |    Decoder.summonTuple[Shape.Rectangle, Shape.Circle *: EmptyTuple.type](
+   |      Decoder.derived[Shape.Rectangle](
+   |        Shape.Rectangle.$asInstanceOf[
+   |          scala.deriving.Mirror.Product{
+   |            type MirroredMonoType = Shape.Rectangle; type MirroredType = Shape.Rectangle;
+   |              type MirroredLabel = ("Rectangle" : String); type MirroredElemTypes = (Double, Double);
+   |              type MirroredElemLabels = (("width" : String), ("height" : String))
+   |          }
+   |        ],
+   |        Decoder.summonTuple[Double, Double *: EmptyTuple.type](Decoder.given_Decoder_Double,
+   |          Decoder.summonTuple[Double, EmptyTuple.type](Decoder.given_Decoder_Double,
+   |            /* missing */summon[Tuple.Map[EmptyTuple.type, Decoder]])
+   |        )
+   |      ),
+   |    ???)
+   |
+   |But no implicit values were found that match type Tuple.Map[EmptyTuple.type, Decoder].
+   |
+   |Note: a match type could not be fully reduced:
+   |
+   |  trying to reduce  Tuple.Map[m.MirroredElemTypes, Decoder]
+   |  failed since selector m.MirroredElemTypes
+   |  does not match  case EmptyTuple => EmptyTuple
+   |  and cannot be shown to be disjoint from it either.
+   |  Therefore, reduction cannot advance to the remaining case
+   |
+   |    case h *: t => Decoder[h] *: Tuple.Map[t, Decoder]

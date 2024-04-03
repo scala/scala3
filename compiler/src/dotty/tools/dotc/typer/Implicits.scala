@@ -615,9 +615,9 @@ trait ImplicitRunInfo:
     if migrateTo3 then false else sym.is(Package) || sym.isPackageObject
 
   /** Is `sym` an anchor type for which givens may exist? Anchor types are classes,
-    *  opaque type aliases, match aliases and abstract types, but not type parameters
-    *  or package objects.
-    */
+   *  abstract types, opaque type aliases, and unreducible match aliases, but not type parameters
+   *  or package objects.
+   */
   private def isAnchor(sym: Symbol) =
     sym.isClass && !isExcluded(sym)
     || sym.isOpaqueAlias
@@ -636,7 +636,7 @@ trait ImplicitRunInfo:
         else if implicitScopeCache.contains(t) then parts += t
         else
           partSeen += t
-          t.dealias match
+          t.dealias.normalized match
             case t: TypeRef =>
               if isAnchor(t.symbol) then
                 parts += t
@@ -663,7 +663,6 @@ trait ImplicitRunInfo:
               traverseChildren(t)
             case t =>
               traverseChildren(t)
-              traverse(t.normalized)
       catch case ex: Throwable => handleRecursive("collectParts of", t.show, ex)
 
       def apply(tp: Type): collection.Set[Type] =

@@ -1,0 +1,5 @@
+
+-- [E172] Type Error: tests/neg/i20071/test_2.scala:3:20 ---------------------------------------------------------------
+3 |def test: Unit = bar // error
+  |                    ^
+  |                    No given instance of type M[Decoder] was found for parameter d of method bar
