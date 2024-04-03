@@ -1839,11 +1839,7 @@ trait Applications extends Compatibility {
       else -1
 
     def compareWithTypes(tp1: Type, tp2: Type) = {
-      val ownerScore =
-        val sym1 = alt1.symbol
-        val sym2 = alt2.symbol
-        if sym1 == sym2 then comparePrefixes(widenPrefix(alt1), widenPrefix(alt2))
-        else compareOwner(sym1.maybeOwner, sym2.maybeOwner)
+      val ownerScore = compareOwner(alt1.symbol.maybeOwner, alt2.symbol.maybeOwner)
 
       def winsType1 = isAsSpecific(alt1, tp1, alt2, tp2)
       def winsType2 = isAsSpecific(alt2, tp2, alt1, tp1)
@@ -1874,11 +1870,14 @@ trait Applications extends Compatibility {
       val strippedType2 = stripImplicit(fullType2)
 
       val result = compareWithTypes(strippedType1, strippedType2)
-      if (result != 0) result
-      else if (strippedType1 eq fullType1)
-        if (strippedType2 eq fullType2) 0         // no implicits either side: its' a draw
+      if result != 0 then result
+      else if strippedType1 eq fullType1 then
+        if strippedType2 eq fullType2 then
+          if alt1.symbol != alt2.symbol then 0    // no implicits either side: it's a draw ...
+          else comparePrefixes(                   // ... unless the symbol is the same, in which case
+            widenPrefix(alt1), widenPrefix(alt2)) // we compare prefixes
         else 1                                    // prefer 1st alternative with no implicits
-      else if (strippedType2 eq fullType2) -1     // prefer 2nd alternative with no implicits
+      else if strippedType2 eq fullType2 then -1  // prefer 2nd alternative with no implicits
       else compareWithTypes(fullType1, fullType2) // continue by comparing implicits parameters
   }
   end compare
