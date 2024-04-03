@@ -1807,8 +1807,38 @@ trait Applications extends Compatibility {
         else tp
     }
 
+    def widenPrefix(alt: TermRef): Type = alt.prefix.widen match
+      case pre: (TypeRef | ThisType) if pre.typeSymbol.is(Module) =>
+        pre.parents.reduceLeft(TypeComparer.andType(_, _))
+      case wpre => wpre
+
+    /** If two alternatives have the same symbol, we pick the one with the most
+     *  specific prefix. To determine that, we widen the prefix types and also
+     *  widen module classes to the intersection of their parent classes. Then
+     *  if one of the resulting types is a more specific value type than the other,
+     *  it wins. Example:
+     *
+     *     trait A { given M = ... }
+     *     trait B extends A
+     *     object a extends A
+     *     object b extends B
+     *
+     *  In this case `b.M` would be regarded as more specific than `a.M`.
+     */
+    def comparePrefixes(pre1: Type, pre2: Type) =
+      val winsPrefix1 = isAsSpecificValueType(pre1, pre2)
+      val winsPrefix2 = isAsSpecificValueType(pre2, pre1)
+      if winsPrefix1 == winsPrefix2 then 0
+      else if winsPrefix1 then 1
+      else -1
+
     def compareWithTypes(tp1: Type, tp2: Type) = {
-      val ownerScore = compareOwner(alt1.symbol.maybeOwner, alt2.symbol.maybeOwner)
+      val ownerScore =
+        val sym1 = alt1.symbol
+        val sym2 = alt2.symbol
+        if sym1 == sym2 then comparePrefixes(widenPrefix(alt1), widenPrefix(alt2))
+        else compareOwner(sym1.maybeOwner, sym2.maybeOwner)
+
       def winsType1 = isAsSpecific(alt1, tp1, alt2, tp2)
       def winsType2 = isAsSpecific(alt2, tp2, alt1, tp1)
 
