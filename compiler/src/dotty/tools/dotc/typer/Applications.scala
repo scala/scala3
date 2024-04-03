@@ -1614,11 +1614,12 @@ trait Applications extends Compatibility {
     *  Module classes also inherit the relationship from their companions. This means,
     *  if no direct derivation exists between `sym1` and `sym2` also perform the following
     *  tests:
-    *   - If both sym1 and sym1 are module classes that have companion classes,
-    *     and sym2 does not inherit implicit members from a base class (#),
-    *     compare the companion classes.
-    *   - If sym1 is a module class with a companion, and sym2 is a normal class or trait,
-    *     compare the companion with sym2.
+    *   - If both sym1 and sym2 are module classes that have companion classes,
+    *     compare the companion classes. Return the result of that comparison,
+    *     provided the module class with the larger companion class does not itself
+    *     inherit implicit members from a base class (#),
+    *   - If one sym is a module class with a companion, and the other is a normal class or trait,
+    *     compare the companion with the other class or trait.
     *
     *  Condition (#) is necessary to make `compareOwner(_, _) > 0` a transitive relation.
     *  For instance:
@@ -1642,17 +1643,22 @@ trait Applications extends Compatibility {
     *  This means we get an ambiguity between `a` and `b` in all cases.
     */
   def compareOwner(sym1: Symbol, sym2: Symbol)(using Context): Int =
+    def cls1 = sym1.companionClass
+    def cls2 = sym2.companionClass
     if sym1 == sym2 then 0
     else if sym1.isSubClass(sym2) then 1
     else if sym2.isSubClass(sym1) then -1
-    else if sym1.is(Module) then
-      val cls1 = sym1.companionClass
-      if sym2.is(Module) then
-        if sym2.thisType.implicitMembers.forall(_.symbol.owner == sym2) then // test for (#)
-          compareOwner(cls1, sym2.companionClass)
-        else 0
-      else compareOwner(cls1, sym2)
-    else 0
+    else
+      if sym1.is(Module) && sym2.is(Module) then
+        val r = compareOwner(cls1, cls2)
+        if r == 0 then 0
+        else
+          val larger = if r < 0 then sym1 else sym2
+          if larger.thisType.implicitMembers.forall(_.symbol.owner == larger) then r
+          else 0
+      else if sym1.is(Module) then compareOwner(cls1, sym2)
+      else if sym2.is(Module) then compareOwner(sym1, cls2)
+      else 0
 
   /** Compare two alternatives of an overloaded call or an implicit search.
    *
