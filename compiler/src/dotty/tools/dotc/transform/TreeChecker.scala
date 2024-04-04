@@ -837,9 +837,19 @@ object TreeChecker {
 
   def checkMacroGeneratedTree(original: tpd.Tree, expansion: tpd.Tree)(using Context): Unit =
     if ctx.settings.XcheckMacros.value then
+      // We want make sure that transparent inline macros are checked in the same way that
+      // non transparent macros are, so we try to prepare a context which would make
+      // the checks behave the same way for both types of macros.
+      // 
+      // E.g. Different instances of skolem types are by definition not able to be a subtype of
+      // one another, however in practice this is only upheld during typer phase, and we do not want
+      // it to be upheld during this check.
+      // See issue: #17009
       val checkingCtx = ctx
         .fresh
         .setReporter(new ThrowingReporter(ctx.reporter))
+        .setPhase(ctx.base.inliningPhase)
+
       val phases = ctx.base.allPhases.toList
       val treeChecker = new LocalChecker(previousPhases(phases))
 
