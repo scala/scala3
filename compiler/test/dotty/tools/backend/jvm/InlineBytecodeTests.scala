@@ -765,4 +765,24 @@ class InlineBytecodeTests extends DottyBytecodeTest {
           diffInstructions(instructions1, instructions2))
     }
   }
+
+  @Test def beta_reduce_elide_unit_binding = {
+    val source = """class Test:
+                   |  def test = ((u: Unit) => u).apply(())
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Test.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      val fun = getMethod(clsNode, "test")
+      val instructions = instructionsFromMethod(fun)
+      val expected = List(Op(RETURN))
+
+      assert(instructions == expected,
+        "`i was not properly beta-reduced in `test`\n" + diffInstructions(instructions, expected))
+
+    }
+  }
+
 }
