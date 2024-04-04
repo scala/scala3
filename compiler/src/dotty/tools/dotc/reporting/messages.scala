@@ -2456,7 +2456,7 @@ class ExtensionNullifiedByMember(method: Symbol, target: Symbol)(using Context)
   def kind = MessageKind.PotentialIssue
   def msg(using Context) =
     i"""Extension method ${hl(method.name.toString)} will never be selected
-       |because ${hl(target.name.toString)} already has a member with the same name."""
+       |because ${hl(target.name.toString)} already has a member with the same name and compatible parameter types."""
   def explain(using Context) =
     i"""An extension method can be invoked as a regular method, but if that is intended,
        |it should not be defined as an extension.
