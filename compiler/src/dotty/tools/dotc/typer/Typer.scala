@@ -922,9 +922,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         import untpd.*
         var templ1 = templ
         def isEligible(tp: Type) =
-        	tp.exists
-        	&& !tp.typeSymbol.is(Final)
-        	&& (!tp.isTopType || tp.isAnyRef) // Object is the only toplevel class that can be instantiated
+          tp.exists
+          && !tp.typeSymbol.is(Final)
+          && (!tp.isTopType || tp.isAnyRef) // Object is the only toplevel class that can be instantiated
         if (templ1.parents.isEmpty &&
             isFullyDefined(pt, ForceDegree.flipBottom) &&
             isSkolemFree(pt) &&
@@ -3002,7 +3002,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   /** Translate infix operation expression `l op r` to
    *
-   *    l.op(r)   			        if `op` is left-associative
+   *    l.op(r)                 if `op` is left-associative
    *    { val x = l; r.op(x) }  if `op` is right-associative call-by-value and `l` is impure, and not in a quote pattern
    *    r.op(l)                 if `op` is right-associative call-by-name, or `l` is pure, or in a quote pattern
    *
@@ -4377,7 +4377,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case poly: PolyType
         if !(ctx.mode is Mode.Type) && dummyTreeOfType.unapply(tree).isEmpty =>
             // If we are in a conversion from a TermRef with polymorphic underlying
-        	  // type, give up. In this case the typed `null` literal cannot be instantiated.
+            // type, give up. In this case the typed `null` literal cannot be instantiated.
             // Test case was but i18695.scala, but it got fixed by a different tweak in #18719.
             // We leave test for this condition in as a defensive measure in case
             // it arises somewhere else.

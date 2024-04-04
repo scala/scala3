@@ -1359,8 +1359,8 @@ trait Applications extends Compatibility {
              || ctx.reporter.hasErrors
           then result
           else notAnExtractor(result)
-          	// It might be that the result of typedExpr is an `apply` selection or implicit conversion.
-          	// Reject in this case.
+          // It might be that the result of typedExpr is an `apply` selection or implicit conversion.
+          // Reject in this case.
 
         def tryWithTypeArgs(qual: untpd.Tree, targs: List[Tree])(fallBack: (Tree, TyperState) => Tree): Tree =
           tryEither {

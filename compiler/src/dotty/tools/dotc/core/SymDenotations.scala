@@ -772,7 +772,7 @@ object SymDenotations {
      *  This can mean one of two things:
      *   - the method and class are defined in a structural given instance, or
      *   - the class is an implicit class and the method is its implicit conversion.
-	 */
+     */
     final def isCoDefinedGiven(cls: Symbol)(using Context): Boolean =
       is(Method) && isOneOf(GivenOrImplicit)
       && ( is(Synthetic)                 // previous scheme used in 3.0
@@ -1071,8 +1071,8 @@ object SymDenotations {
      */
     final def moduleClass(using Context): Symbol = {
       def notFound = {
-      	if (Config.showCompletions) println(s"missing module class for $name: $myInfo")
-      	NoSymbol
+        if (Config.showCompletions) println(s"missing module class for $name: $myInfo")
+        NoSymbol
       }
       if (this.is(ModuleVal))
         myInfo match {
