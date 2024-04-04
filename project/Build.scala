@@ -43,7 +43,7 @@ object DottyJSPlugin extends AutoPlugin {
   override def requires: Plugins = ScalaJSPlugin
 
   override def projectSettings: Seq[Setting[_]] = Def.settings(
-    commonBootstrappedSettings,
+    // commonBootstrappedSettings, // instead apply bootstrapped at each use site
 
     /* #11709 Remove the dependency on scala3-library that ScalaJSPlugin adds.
      * Instead, in this build, we use `.dependsOn` relationships to depend on
@@ -875,6 +875,7 @@ object Build {
 
   lazy val nonBootstrappedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
     // packageAll packages all and then returns a map with the abs location
+    exportPipelining := false, // classes are needed for scala3-sbt-bridge
     packageAll := Def.taskDyn { // Use a dynamic task to avoid loops when loading the settings
       Def.task {
         Map(
@@ -1043,7 +1044,6 @@ object Build {
   lazy val `scala2-library-bootstrapped` = project.in(file("scala2-library-bootstrapped")).
     withCommonSettings(Bootstrapped).
     dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
-    settings(commonBootstrappedSettings).
     settings(scala2LibraryBootstrappedSettings).
     settings(moduleName := "scala2-library")
 
@@ -1054,7 +1054,6 @@ object Build {
   lazy val `scala2-library-cc` = project.in(file("scala2-library-cc")).
     withCommonSettings(Bootstrapped).
     dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
-    settings(commonBootstrappedSettings).
     settings(scala2LibraryBootstrappedSettings).
     settings(
       moduleName := "scala2-library-cc",
@@ -1261,6 +1260,9 @@ object Build {
     settings(
       description := "sbt compiler bridge for Dotty",
 
+      // Compile / scalacOptions += "-Ylog-classpath",
+      exportPipelining := false, // classes are needed for compiling the bootstrapped projects
+
       Test / sources := Seq(),
       Compile / scalaSource := baseDirectory.value,
       Compile / javaSource := baseDirectory.value,
@@ -1278,7 +1280,7 @@ object Build {
   lazy val `scala3-sbt-bridge-tests` = project.in(file("sbt-bridge/test")).
     dependsOn(dottyCompiler(Bootstrapped) % Test).
     dependsOn(`scala3-sbt-bridge`).
-    settings(commonBootstrappedSettings).
+    withCommonSettings(Bootstrapped).
     settings(
       Compile / sources := Seq(),
       Test / scalaSource := baseDirectory.value,
@@ -1367,7 +1369,7 @@ object Build {
 
   lazy val `scala3-language-server` = project.in(file("language-server")).
     dependsOn(dottyCompiler(Bootstrapped)).
-    settings(commonBootstrappedSettings).
+    withCommonSettings(Bootstrapped).
     settings(
       libraryDependencies ++= Seq(
         "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.6.0",
@@ -1410,6 +1412,7 @@ object Build {
    *  useful, as that would not provide the linker and JS runners.
    */
   lazy val sjsSandbox = project.in(file("sandbox/scalajs")).
+    withCommonSettings(Bootstrapped).
     enablePlugins(DottyJSPlugin).
     dependsOn(`scala3-library-bootstrappedJS`).
     settings(
@@ -1427,6 +1430,7 @@ object Build {
    *  It will grow in the future, as more stuff is confirmed to be supported.
    */
   lazy val sjsJUnitTests = project.in(file("tests/sjs-junit")).
+    withCommonSettings(Bootstrapped).
     enablePlugins(DottyJSPlugin).
     dependsOn(`scala3-library-bootstrappedJS`).
     settings(
@@ -1655,7 +1659,7 @@ object Build {
 
   lazy val `scaladoc-testcases` = project.in(file("scaladoc-testcases")).
     dependsOn(`scala3-compiler-bootstrapped`).
-    settings(commonBootstrappedSettings)
+    withCommonSettings(Bootstrapped)
 
 
   /**
@@ -1666,11 +1670,13 @@ object Build {
    *                   Made as an indepented project to be scaladoc-agnostic.
    */
   lazy val `scaladoc-js-common` = project.in(file("scaladoc-js/common")).
+    withCommonSettings(Bootstrapped).
     enablePlugins(DottyJSPlugin).
     dependsOn(`scala3-library-bootstrappedJS`).
     settings(libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "2.8.0"))
 
   lazy val `scaladoc-js-main` = project.in(file("scaladoc-js/main")).
+    withCommonSettings(Bootstrapped).
     enablePlugins(DottyJSPlugin).
     dependsOn(`scaladoc-js-common`).
     settings(
@@ -1679,6 +1685,7 @@ object Build {
     )
 
   lazy val `scaladoc-js-contributors` = project.in(file("scaladoc-js/contributors")).
+    withCommonSettings(Bootstrapped).
     enablePlugins(DottyJSPlugin).
     dependsOn(`scaladoc-js-common`).
     settings(
@@ -1729,7 +1736,7 @@ object Build {
 
   lazy val scaladoc = project.in(file("scaladoc")).
     configs(SourceLinksIntegrationTest).
-    settings(commonBootstrappedSettings).
+    withCommonSettings(Bootstrapped).
     dependsOn(`scala3-compiler-bootstrapped`).
     dependsOn(`scala3-tasty-inspector`).
     settings(inConfig(SourceLinksIntegrationTest)(Defaults.testSettings)).
@@ -1950,7 +1957,7 @@ object Build {
 
   lazy val `community-build` = project.in(file("community-build")).
     dependsOn(dottyLibrary(Bootstrapped)).
-    settings(commonBootstrappedSettings).
+    withCommonSettings(Bootstrapped).
     settings(
       prepareCommunityBuild := {
         (`scala3-sbt-bridge` / publishLocal).value

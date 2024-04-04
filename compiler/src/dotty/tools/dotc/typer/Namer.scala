@@ -1936,7 +1936,8 @@ class Namer { typer: Typer =>
           approxTp
 
     var rhsCtx = ctx.fresh.addMode(Mode.InferringReturnType)
-    if sym.isInlineMethod then rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
+    // if sym.isInlineMethod then rhsCtx = rhsCtx.addMode(Mode.InlineableBody) // TODO: remove because it's unused
+    if sym.is(Inline) then rhsCtx = rhsCtx.addMode(Mode.InlineRHS)
     if sym.is(ExtensionMethod) then rhsCtx = rhsCtx.addMode(Mode.InExtensionMethod)
     rhsCtx = prepareRhsCtx(rhsCtx, paramss)
 

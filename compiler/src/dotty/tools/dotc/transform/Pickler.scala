@@ -14,6 +14,7 @@ import StdNames.{str, nme}
 import Periods.*
 import Phases.*
 import Symbols.*
+import StdNames.str
 import Flags.Module
 import reporting.{ThrowingReporter, Profile, Message}
 import collection.mutable
@@ -33,7 +34,7 @@ object Pickler {
    */
   inline val ParallelPickling = true
 
-  class EarlyFileWriter private (writer: TastyWriter, origin: AbstractFile):
+  class EarlyFileWriter private (writer: TastyWriter, val origin: AbstractFile):
     def this(dest: AbstractFile)(using @constructorOnly ctx: Context) = this(TastyWriter(dest), dest)
 
     export writer.writeTasty
@@ -44,6 +45,74 @@ object Pickler {
         case jar: JarArchive => jar.close() // also close the file system
         case _ =>
       }
+
+  def writeEarlyTasty(units: List[CompilationUnit])(using Context): Unit =
+    val earlyOut = ctx.settings.YearlyTastyOutput.value
+    val base =
+      if earlyOut.isDirectory && earlyOut.exists then
+        Pickler.EarlyFileWriter(earlyOut) :: Nil
+      else
+        Nil
+
+    val writers =
+      if ctx.isOutlineFirstPass then
+        val extra = Pickler.EarlyFileWriter(ctx.settings.YoutlineClasspath.value)
+        extra +: base
+      else
+        base
+    if writers.nonEmpty then
+      writeSigFiles(units, writers)
+
+  // Why we only write to early output in the first run?
+  // ===================================================
+  // TL;DR the point of pipeline compilation is to start downstream projects early,
+  // so we don't want to wait for suspended units to be compiled.
+  //
+  // But why is it safe to ignore suspended units?
+  // If this project contains a transparent macro that is called in the same project,
+  // the compilation unit of that call will be suspended (if the macro implementation
+  // is also in this project), causing a second run.
+  // However before we do that run, we will have already requested sbt to begin
+  // early downstream compilation. This means that the suspended definitions will not
+  // be visible in *early* downstream compilation.
+  //
+  // However, sbt will by default prevent downstream compilation happening in this scenario,
+  // due to the existence of macro definitions. So we are protected from failure if user tries
+  // to use the suspended definitions.
+  //
+  // Additionally, it is recommended for the user to move macro implementations to another project
+  // if they want to force early output. In this scenario the suspensions will no longer occur, so now
+  // they will become visible in the early-output.
+  //
+  // See `sbt-test/pipelining/pipelining-scala-macro` and `sbt-test/pipelining/pipelining-scala-macro-force`
+  // for examples of this in action.
+  //
+  // Therefore we only need to write to early output in the first run. We also provide the option
+  // to diagnose suspensions with the `-Yno-suspended-units` flag.
+  private def writeSigFiles(units: List[CompilationUnit], writers: Seq[Pickler.EarlyFileWriter])(using Context): Unit = {
+    try
+      for
+        unit <- units
+        (cls, pickled) <- locally {
+          if ctx.isOutlineFirstPass then
+            unit.outlinePickled
+          else
+            assert(!ctx.isOutline)
+            unit.pickled
+        }
+        if cls.isDefinedInCurrentRun
+      do
+        val internalName =
+          if cls.is(Module) then cls.binaryClassName.stripSuffix(str.MODULE_SUFFIX).nn
+          else cls.binaryClassName
+        val bytes = pickled()
+        writers.foreach(_.writeTasty(internalName, bytes))
+    finally
+      writers.foreach(_.close())
+      if ctx.settings.verbose.value then
+        report.echo(s"[sig files written to ${writers.map(_.origin).mkString(", ")}]")
+    end try
+  }
 }
 
 /** This phase pickles trees */
@@ -56,7 +125,7 @@ class Pickler extends Phase {
 
   // No need to repickle trees coming from TASTY
   override def isRunnable(using Context): Boolean =
-    super.isRunnable && (!ctx.settings.fromTasty.value || ctx.settings.YjavaTasty.value)
+    super.isRunnable && !ctx.settings.fromTasty.value
 
   // when `-Yjava-tasty` is set we actually want to run this phase on Java sources
   override def skipIfJava(using Context): Boolean = false
@@ -92,11 +161,9 @@ class Pickler extends Phase {
         body(scratch)
       }
 
-  private val executor = Executor[Array[Byte]]()
+  private var executor = Executor[Array[Byte]]()
 
-  private def useExecutor(using Context) =
-    Pickler.ParallelPickling && !ctx.settings.YtestPickler.value &&
-    !ctx.settings.YjavaTasty.value // disable parallel pickling when `-Yjava-tasty` is set (internal testing only)
+  private def useExecutor(using Context) = Pickler.ParallelPickling && !ctx.settings.YtestPickler.value
 
   private def printerContext(isOutline: Boolean)(using Context): Context =
     if isOutline then ctx.fresh.setPrinterFn(OutlinePrinter(_))
@@ -120,7 +187,7 @@ class Pickler extends Phase {
       if isJavaAttr then
         // assert that Java sources didn't reach Pickler without `-Yjava-tasty`.
         assert(ctx.settings.YjavaTasty.value, "unexpected Java source file without -Yjava-tasty")
-      val isOutline = isJavaAttr // TODO: later we may want outline for Scala sources too
+      val isOutline = isJavaAttr || ctx.isOutlineFirstPass
       val attributes = Attributes(
         sourceFile = sourceRelativePath,
         scala2StandardLibrary = ctx.settings.YcompileScala2Library.value,
@@ -191,27 +258,21 @@ class Pickler extends Phase {
               printedTasty(cls) = TastyPrinter.showContents(pickled, noColor = true, testPickler = true)
           () => pickled
 
-      unit.pickled += (cls -> demandPickled)
+      if ctx.isOutlineFirstPass then
+        unit.outlinePickled += (cls -> demandPickled)
+      else // either non-outline, or second pass
+        unit.pickled += (cls -> demandPickled)
     end for
   }
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
-    val sigWriter: Option[Pickler.EarlyFileWriter] = ctx.settings.YjavaTastyOutput.value match
-      case jar: JarArchive if jar.exists =>
-        Some(Pickler.EarlyFileWriter(jar))
-      case _ =>
-        None
     val units0 =
-      if ctx.settings.fromTasty.value then
-        // we still run the phase for the side effect of writing the pipeline tasty files
-        units
+      if useExecutor then
+        executor.start()
+        try super.runOn(units)
+        finally executor.close() // NOTE: each run will create a new Pickler phase, so safe to close here.
       else
-        if useExecutor then
-          executor.start()
-          try super.runOn(units)
-          finally executor.close()
-        else
-          super.runOn(units)
+        super.runOn(units)
     if ctx.settings.YtestPickler.value then
       val ctx2 = ctx.fresh
         .setSetting(ctx.settings.YreadComments, true)
@@ -222,34 +283,7 @@ class Pickler extends Phase {
           .setReporter(new ThrowingReporter(ctx.reporter))
           .addMode(Mode.ReadPositions)
       )
-    val result =
-      if ctx.settings.YjavaTasty.value then
-        sigWriter.foreach(writeJavaSigFiles(units0, _))
-        units0.filterNot(_.typedAsJava) // remove java sources, this is the terminal phase when `-Yjava-tasty` is set
-      else
-        units0
-    result
-  }
-
-  private def writeJavaSigFiles(units: List[CompilationUnit], writer: Pickler.EarlyFileWriter)(using Context): Unit = {
-    var count = 0
-    try
-      for
-        unit <- units if unit.typedAsJava
-        (cls, pickled) <- unit.pickled
-        if cls.isDefinedInCurrentRun
-      do
-        val binaryClassName = cls.binaryClassName
-        val internalName =
-          if (cls.is(Module)) binaryClassName.stripSuffix(str.MODULE_SUFFIX).nn
-          else binaryClassName
-        val _ = writer.writeTasty(internalName, pickled())
-        count += 1
-    finally
-      writer.close()
-      if ctx.settings.verbose.value then
-        report.echo(s"[$count java sig files written]")
-    end try
+    units0
   }
 
   private def testUnpickler(using Context): Unit =

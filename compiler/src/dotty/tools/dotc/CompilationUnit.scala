@@ -18,6 +18,8 @@ import StdNames.nme
 import scala.annotation.internal.sharable
 import scala.util.control.NoStackTrace
 import transform.MacroAnnotations
+import dotty.tools.dotc.interfaces.AbstractFile
+import dotty.tools.io.NoAbstractFile
 
 class CompilationUnit protected (val source: SourceFile, val info: CompilationUnitInfo | Null) {
 
@@ -28,13 +30,16 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
   var tpdTree: tpd.Tree = tpd.EmptyTree
 
   /** Is this the compilation unit of a Java file */
-  def isJava: Boolean = source.file.name.endsWith(".java")
+  def isJava: Boolean = source.file.ext.isJava
 
   /** Is this the compilation unit of a Java file, or TASTy derived from a Java file */
-  def typedAsJava = isJava || {
-    val infoNN = info
-    infoNN != null && infoNN.tastyInfo.exists(_.attributes.isJava)
-  }
+  def typedAsJava =
+    val ext = source.file.ext
+    ext.isJavaOrTasty && (ext.isJava || tastyInfo.exists(_.attributes.isJava))
+
+  def tastyInfo: Option[TastyInfo] =
+    val local = info
+    if local == null then None else local.tastyInfo
 
 
   /** The source version for this unit, as determined by a language import */
@@ -42,6 +47,7 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
 
   /** Pickled TASTY binaries, indexed by class. */
   var pickled: Map[ClassSymbol, () => Array[Byte]] = Map()
+  var outlinePickled: Map[ClassSymbol, () => Array[Byte]] = Map()
 
   /** The fresh name creator for the current unit.
    *  FIXME(#7661): This is not fine-grained enough to enable reproducible builds,
@@ -94,12 +100,17 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
     // when this unit is unsuspended.
     depRecorder.clear()
     if !suspended then
-      if (ctx.settings.XprintSuspension.value)
-        report.echo(i"suspended: $this")
-      suspended = true
-      ctx.run.nn.suspendedUnits += this
-      if ctx.phase == Phases.inliningPhase then
-        suspendedAtInliningPhase = true
+      if ctx.settings.YnoSuspendedUnits.value then
+        report.error(i"Compilation unit suspended $this (-Yno-suspended-units is set)")
+      else
+        if (ctx.settings.XprintSuspension.value)
+          report.echo(i"suspended: $this")
+        suspended = true
+        ctx.run.nn.suspendedUnits += this
+        if ctx.phase == Phases.inliningPhase then
+          suspendedAtInliningPhase = true
+        else if ctx.settings.YearlyTastyOutput.value != NoAbstractFile then
+          report.error(i"Compilation units may not be suspended before inlining with -Ypickle-write")
     throw CompilationUnit.SuspendException()
 
   private var myAssignmentSpans: Map[Int, List[Span]] | Null = null

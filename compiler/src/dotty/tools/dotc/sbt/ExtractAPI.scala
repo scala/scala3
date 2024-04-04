@@ -15,12 +15,16 @@ import Trees.*
 import Types.*
 import Symbols.*
 import Names.*
+import StdNames.str
 import NameOps.*
 import inlines.Inlines
 import transform.ValueClasses
-import dotty.tools.io.File
+import transform.Pickler
+import dotty.tools.io.{File, FileExtension, JarArchive}
+import util.{Property, SourceFile}
 import java.io.PrintWriter
 
+import ExtractAPI.NonLocalClassSymbolsInCurrentUnits
 
 import scala.collection.mutable
 import scala.util.hashing.MurmurHash3
@@ -47,22 +51,75 @@ class ExtractAPI extends Phase {
 
   override def description: String = ExtractAPI.description
 
-  override def isRunnable(using Context): Boolean = {
-    super.isRunnable && ctx.runZincPhases
-  }
-
   // Check no needed. Does not transform trees
   override def isCheckable: Boolean = false
-
-  // when `-Yjava-tasty` is set we actually want to run this phase on Java sources
-  override def skipIfJava(using Context): Boolean = false
 
   // SuperAccessors need to be part of the API (see the scripted test
   // `trait-super` for an example where this matters), this is only the case
   // after `PostTyper` (unlike `ExtractDependencies`, the simplication to trees
   // done by `PostTyper` do not affect this phase because it only cares about
   // definitions, and `PostTyper` does not change definitions).
-  override def runsAfter: Set[String] = Set(transform.PostTyper.name)
+  override def runsAfter: Set[String] = Set(transform.Pickler.name) // why pickler - because we need the tasty
+  override def isRunnable(using Context): Boolean =
+    super.isRunnable && (ctx.runZincPhases || ctx.settings.YjavaTasty.value) && !ctx.isOutlineSecondPass
+
+  // when `-Yjava-tasty` is set we actually want to run this phase on Java sources
+  override def skipIfJava(using Context): Boolean = false
+
+  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
+    val nonLocalClassSymbols = new mutable.HashSet[Symbol]
+    val ctx0 = ctx.withProperty(NonLocalClassSymbolsInCurrentUnits, Some(nonLocalClassSymbols))
+    inContext(ctx0) {
+      val units0 = super.runOn(units)
+      val scalaUnits =
+        if ctx.settings.YjavaTasty.value then
+          units0.filterNot(_.typedAsJava) // remove java sources, this is the terminal phase when `-Ypickle-java` is set
+        else
+          units0 // still run the phase for the side effects (writing TASTy files to -Yearly-tasty-output)
+      ctx.withIncCallback(recordNonLocalClasses(nonLocalClassSymbols, _))
+      Pickler.writeEarlyTasty(units0)
+      ExtractAPI.signalPipelineCompleted()
+      scalaUnits
+    }
+  end runOn
+
+  private def recordNonLocalClasses(nonLocalClassSymbols: mutable.HashSet[Symbol], cb: interfaces.IncrementalCallback)(using Context): Unit =
+    for cls <- nonLocalClassSymbols do
+      val sourceFile = cls.source
+      if sourceFile.exists && cls.isDefinedInCurrentRun then
+        recordNonLocalClass(cls, sourceFile, cb)
+
+  private def recordNonLocalClass(cls: Symbol, sourceFile: SourceFile, cb: interfaces.IncrementalCallback)(using Context): Unit =
+    def registerProductNames(fullClassName: String, binaryClassName: String) =
+      val pathToClassFile = s"${binaryClassName.replace('.', java.io.File.separatorChar)}.class"
+
+      val classFile = {
+        ctx.settings.outputDir.value match {
+          case jar: JarArchive =>
+            // important detail here, even on Windows, Zinc expects the separator within the jar
+            // to be the system default, (even if in the actual jar file the entry always uses '/').
+            // see https://github.com/sbt/zinc/blob/dcddc1f9cfe542d738582c43f4840e17c053ce81/internal/compiler-bridge/src/main/scala/xsbt/JarUtils.scala#L47
+            new java.io.File(s"$jar!$pathToClassFile")
+          case outputDir =>
+            new java.io.File(outputDir.file, pathToClassFile)
+        }
+      }
+
+      cb.generatedNonLocalClass(sourceFile, classFile.toPath(), binaryClassName, fullClassName)
+    end registerProductNames
+
+    val fullClassName = atPhase(sbtExtractDependenciesPhase) {
+      ExtractDependencies.classNameAsString(cls)
+    }
+    val binaryClassName = cls.binaryClassName
+    registerProductNames(fullClassName, binaryClassName)
+
+    // Register the names of top-level module symbols that emit two class files
+    val isTopLevelUniqueModule =
+      cls.owner.is(PackageClass) && cls.is(ModuleClass) && cls.companionClass == NoSymbol
+    if isTopLevelUniqueModule then
+      registerProductNames(fullClassName, binaryClassName.stripSuffix(str.MODULE_SUFFIX))
+  end recordNonLocalClass
 
   override def run(using Context): Unit = {
     val unit = ctx.compilationUnit
@@ -70,13 +127,14 @@ class ExtractAPI extends Phase {
     ctx.withIncCallback: cb =>
       cb.startSource(sourceFile)
 
-    val apiTraverser = new ExtractAPICollector
+    val nonLocalClassSymbols = ctx.property(NonLocalClassSymbolsInCurrentUnits).get
+    val apiTraverser = ExtractAPICollector(nonLocalClassSymbols)
     val classes = apiTraverser.apiSource(unit.tpdTree)
     val mainClasses = apiTraverser.mainClasses
 
     if (ctx.settings.YdumpSbtInc.value) {
       // Append to existing file that should have been created by ExtractDependencies
-      val pw = new PrintWriter(File(sourceFile.file.jpath).changeExtension("inc").toFile
+      val pw = new PrintWriter(File(sourceFile.file.jpath).changeExtension(FileExtension.Inc).toFile
         .bufferedWriter(append = true), true)
       try {
         classes.foreach(source => pw.println(DefaultShowAPI(source)))
@@ -93,6 +151,30 @@ class ExtractAPI extends Phase {
 object ExtractAPI:
   val name: String = "sbt-api"
   val description: String = "sends a representation of the API of classes to sbt"
+
+  def signalPipelineCompleted()(using Context): Unit =
+
+    ctx.withIncCallback: cb =>
+      ctx.depsFinishPromiseOpt match
+        case Some(promise) =>
+          assert(ctx.isOutlineSecondPass, "promise should only be set in the second pass")
+          // suspended units could cause this to be completed twice
+          // TODO: instead of promise, we have a stream?
+          // the problem is that suspension is not always going to be the same,
+          // so each time all promises succeed, you would then install listeners in the compilers
+          // with suspended units. Anyway this along with Pickler.writeEarlyTasty need to
+          // agree upon reentrancy of writing early-tasty/signalling to sbt, because waiting for
+          // suspended units kills the purpose, so do we warn if it occurs, or expect the user to
+          // turn on -Yno-suspended-units? (or we forbid supension in typer phase with -Ypickle-write)
+          promise.success(())
+        case _ =>
+          assert(!ctx.isOutlineSecondPass, s"in -Youtline second pass must have deps finish promise set")
+          cb.apiPhaseCompleted()
+          if !ctx.isOutline then
+            cb.dependencyPhaseCompleted() // in outlining, wait until the second pass
+  end signalPipelineCompleted
+
+  private val NonLocalClassSymbolsInCurrentUnits: Property.Key[mutable.HashSet[Symbol]] = Property.Key()
 
 /** Extracts full (including private members) API representation out of Symbols and Types.
  *
@@ -136,7 +218,7 @@ object ExtractAPI:
  *  without going through an intermediate representation, see
  *  http://www.scala-sbt.org/0.13/docs/Understanding-Recompilation.html#Hashing+an+API+representation
  */
-private class ExtractAPICollector(using Context) extends ThunkHolder {
+private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])(using Context) extends ThunkHolder {
   import tpd.*
   import xsbti.api
 
@@ -254,6 +336,8 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       childrenOfSealedClass, topLevel, tparams)
 
     allNonLocalClassesInSrc += cl
+    if !sym.isLocal then
+      nonLocalClassSymbols += sym
 
     if (sym.isStatic && !sym.is(Trait) && ctx.platform.hasMainMethod(sym)) {
        // If sym is an object, all main methods count, otherwise only @static ones count.
