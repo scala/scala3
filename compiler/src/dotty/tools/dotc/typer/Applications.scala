@@ -1429,7 +1429,8 @@ trait Applications extends Compatibility {
             report.error(em"Structural unapply is not supported", unapplyFn.srcPos)
             (unapplyFn, unapplyAppCall)
           case Apply(fn, `dummyArg` :: Nil) =>
-            val inlinedUnapplyFn = Inlines.inlinedUnapplyFun(fn)
+            val inlinedUnapplyFn = withoutMode(Mode.Pattern):
+              Inlines.inlinedUnapplyFun(fn)
             (inlinedUnapplyFn, inlinedUnapplyFn.appliedToArgs(`dummyArg` :: Nil))
           case Apply(fn, args) =>
             val (fn1, app) = rec(fn)
