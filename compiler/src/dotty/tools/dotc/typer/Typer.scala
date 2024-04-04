@@ -2187,12 +2187,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             errorTree(tree, em"Something's wrong: missing original symbol for type tree")
         }
       case _ =>
-        val pt1 = cleanupRetains(pt)
-          // Cleans up retains annotations in inferred type trees. This is needed because
-          // during the typer, it is infeasible to correctly infer the capture sets in most
-          // cases, resulting ill-formed capture sets that could crash the pickler later on.
-          // See #20035.
-        completeTypeTree(InferredTypeTree(), pt1, tree)
+        completeTypeTree(InferredTypeTree(), pt, tree)
 
   def typedInLambdaTypeTree(tree: untpd.InLambdaTypeTree, pt: Type)(using Context): Tree =
     val tp =
