@@ -288,7 +288,8 @@ The search proceeds as in the case of implicit parameters, where the implicit sc
 If such a view is found, the selection ´e.m´ is converted to `´v´(´e´).´m´`.
 1.  In a selection ´e.m(\mathit{args})´ with ´e´ of type ´T´, if the selector ´m´ denotes some member(s) of ´T´, but none of these members is applicable to the arguments ´\mathit{args}´.
 In this case a view ´v´ is searched which is applicable to ´e´ and whose result contains a method ´m´ which is applicable to ´\mathit{args}´.
-The search proceeds as in the case of implicit parameters, where the implicit scope is the one of ´T´.  If such a view is found, the selection ´e.m´ is converted to `´v´(´e´).´m(\mathit{args})´`.
+The search proceeds as in the case of implicit parameters, where the implicit scope is the one of `´T´ => ´\mathit{pt}´`.
+If such a view is found, the selection ´e.m´ is converted to `´v´(´e´).´m(\mathit{args})´`.
 
 The implicit view, if it is found, can accept its argument ´e´ as a call-by-value or as a call-by-name parameter.
 However, call-by-value implicits take precedence over call-by-name implicits.
