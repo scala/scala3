@@ -23,7 +23,7 @@ import scala.util.control.NonFatal
 import config.Config
 import reporting.*
 import collection.mutable
-import cc.{CapturingType, derivedCapturingType}
+import cc.{CapturingType, derivedCapturingType, stripCapturing}
 
 import scala.annotation.internal.sharable
 import scala.compiletime.uninitialized
@@ -2232,7 +2232,7 @@ object SymDenotations {
         tp match {
           case tp @ TypeRef(prefix, _) =>
             def foldGlb(bt: Type, ps: List[Type]): Type = ps match {
-              case p :: ps1 => foldGlb(bt & recur(p), ps1)
+              case p :: ps1 => foldGlb(bt & recur(p.stripCapturing), ps1)
               case _ => bt
             }
 
