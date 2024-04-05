@@ -3518,7 +3518,7 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
             stableScrut.member(typeMemberName) match
               case denot: SingleDenotation if denot.exists =>
                 val info = denot.info match
-                  case TypeAlias(alias)                => alias              // Extract the alias
+                  case alias: AliasingBounds           => alias.alias        // Extract the alias
                   case ClassInfo(prefix, cls, _, _, _) => prefix.select(cls) // Re-select the class from the prefix
                   case info => info // Notably, RealTypeBounds, which will eventually give a MatchResult.NoInstances
                 val infoRefersToSkolem = stableScrut.isInstanceOf[SkolemType] && stableScrut.occursIn(info)
