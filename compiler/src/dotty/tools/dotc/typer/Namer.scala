@@ -2087,7 +2087,7 @@ class Namer { typer: Typer =>
             if defaultTp.exists then TypeOps.SimplifyKeepUnchecked() else null)
         match
           case ctp: ConstantType if sym.isInlineVal => ctp
-          case tp => TypeComparer.widenInferred(tp, pt, widenUnions = true)
+          case tp => TypeComparer.widenInferred(tp, pt, Widen.Unions)
 
     // Replace aliases to Unit by Unit itself. If we leave the alias in
     // it would be erased to BoxedUnit.

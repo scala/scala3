@@ -44,8 +44,6 @@ import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
-
-
 object Types extends TypeUtils {
 
   @sharable private var nextId = 0
@@ -329,6 +327,21 @@ object Types extends TypeUtils {
 
     /** Is this type a (possibly aliased) singleton type? */
     def isSingleton(using Context): Boolean = dealias.isInstanceOf[SingletonType]
+
+    /** Is this upper-bounded by a (possibly aliased) singleton type?
+     *  Overridden in TypeVar
+     */
+    def isSingletonBounded(frozen: Boolean)(using Context): Boolean = this.dealias.normalized match
+      case tp: SingletonType => tp.isStable
+      case tp: TypeRef =>
+        tp.name == tpnme.Singleton && tp.symbol == defn.SingletonClass
+        || tp.superType.isSingletonBounded(frozen)
+      case tp: TypeVar if !tp.isInstantiated =>
+        if frozen then tp frozen_<:< defn.SingletonType else tp <:< defn.SingletonType
+      case tp: HKTypeLambda => false
+      case tp: TypeProxy => tp.superType.isSingletonBounded(frozen)
+      case AndType(tpL, tpR) => tpL.isSingletonBounded(frozen) || tpR.isSingletonBounded(frozen)
+      case _ => false
 
     /** Is this type of kind `AnyKind`? */
     def hasAnyKind(using Context): Boolean = {
@@ -4924,7 +4937,11 @@ object Types extends TypeUtils {
    *  @param  creatorState     the typer state in which the variable was created.
    *  @param  initNestingLevel the initial nesting level of the type variable. (c.f. nestingLevel)
    */
-  final class TypeVar private(initOrigin: TypeParamRef, creatorState: TyperState | Null, val initNestingLevel: Int) extends CachedProxyType with ValueType {
+  final class TypeVar private(
+      initOrigin: TypeParamRef,
+      creatorState: TyperState | Null,
+      val initNestingLevel: Int,
+      precise: Boolean) extends CachedProxyType with ValueType {
     private var currentOrigin = initOrigin
 
     def origin: TypeParamRef = currentOrigin
@@ -5012,7 +5029,7 @@ object Types extends TypeUtils {
     }
 
     def typeToInstantiateWith(fromBelow: Boolean)(using Context): Type =
-      TypeComparer.instanceType(origin, fromBelow, widenUnions, nestingLevel)
+      TypeComparer.instanceType(origin, fromBelow, widenPolicy, nestingLevel)
 
     /** Instantiate variable from the constraints over its `origin`.
      *  If `fromBelow` is true, the variable is instantiated to the lub
@@ -5029,7 +5046,10 @@ object Types extends TypeUtils {
         instantiateWith(tp)
 
     /** Widen unions when instantiating this variable in the current context? */
-    def widenUnions(using Context): Boolean = !ctx.typerState.constraint.isHard(this)
+    def widenPolicy(using Context): Widen =
+      if precise then Widen.None
+      else if ctx.typerState.constraint.isHard(this) then Widen.Singletons
+      else Widen.Unions
 
     /** For uninstantiated type variables: the entry in the constraint (either bounds or
      *  provisional instance value)
@@ -5070,8 +5090,17 @@ object Types extends TypeUtils {
     }
   }
   object TypeVar:
-    def apply(using Context)(initOrigin: TypeParamRef, creatorState: TyperState | Null, nestingLevel: Int = ctx.nestingLevel) =
-      new TypeVar(initOrigin, creatorState, nestingLevel)
+    def apply(using Context)(
+        initOrigin: TypeParamRef,
+        creatorState: TyperState | Null,
+        nestingLevel: Int = ctx.nestingLevel,
+        precise: Boolean = false) =
+      new TypeVar(initOrigin, creatorState, nestingLevel, precise)
+
+  enum Widen:
+    case None        // no widening
+    case Singletons  // widen singletons but not unions
+    case Unions      // widen singletons and unions
 
   type TypeVars = SimpleIdentitySet[TypeVar]
 

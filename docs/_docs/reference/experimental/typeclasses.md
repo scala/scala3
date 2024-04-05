@@ -7,7 +7,7 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/typeclasses
 
 # Some Proposed Changes for Better Support of Type Classes
 
-Martin Odersky, 8.1.2024
+Martin Odersky, 8.1.2024, edited 5.4.2024
 
 A type class in Scala is a pattern where we define
 
@@ -26,6 +26,8 @@ under source version `future` if the additional experimental language import `mo
 ```
   scala compile -source:future -language:experimental.modularity
 ```
+
+It is intended to turn features described here into proposals under the Scala improvement process. A first installment is SIP 64, which covers some syntactic changes, names for context bounds, multiple context bounds and deferred givens. The order of exposition described in this note is different from the planned proposals of SIPs. This doc is not a guide on how to sequence details, but instead wants to present a vision of what is possible. For instance, we start here with a feature (Self types and `is` syntax) that has turned out to be controversial and that will probably be proposed only late in the sequence of SIPs.
 
 ## Generalizing Context Bounds
 
@@ -54,6 +56,8 @@ requires that `Ordering` is a trait or class with a single type parameter (which
 
   trait Monoid extends SemiGroup:
     def unit: Self
+  object Monoid:
+    def unit[M](using m: Monoid { type Self = M}): M
 
   trait Functor:
     type Self[A]
@@ -129,7 +133,7 @@ We introduce a standard type alias `is` in the Scala package or in `Predef`, def
   infix type is[A <: AnyKind, B <: {type Self <: AnyKind}] = B { type Self = A }
 ```
 
-This makes writing instance definitions quite pleasant. Examples:
+This makes writing instance definitions and using clauses quite pleasant. Examples:
 
 ```scala
   given Int is Ord ...
@@ -137,6 +141,9 @@ This makes writing instance definitions quite pleasant. Examples:
 
   type Reader = [X] =>> Env => X
   given Reader is Monad ...
+
+  object Monoid:
+    def unit[M](using m: M is Monoid): M
 ```
 
 (more examples will follow below)
@@ -682,7 +689,7 @@ With the improvements proposed here, the library can now be expressed quite clea
 
 ## Suggested Improvements unrelated to Type Classes
 
-The following improvements elsewhere would make sense alongside the suggested changes to type classes. But they are currently not part of this proposal or implementation.
+The following two improvements elsewhere would make sense alongside the suggested changes to type classes. But only the first (fixing singleton) forms a part of this proposal and is implemented.
 
 ### Fixing Singleton
 
@@ -704,7 +711,7 @@ Then, instead of using an unsound upper bound we can use a context bound:
 def f[X: Singleton](x: X) = ...
 ```
 
-The context bound would be treated specially by the compiler so that no using clause is generated at runtime.
+The context bound is treated specially by the compiler so that no using clause is generated at runtime (this is straightforward, using the erased definitions mechanism).
 
 _Aside_: This can also lead to a solution how to express precise type variables. We can introduce another special type class `Precise` and use it like this:
 
