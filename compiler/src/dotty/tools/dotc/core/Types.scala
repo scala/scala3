@@ -5892,7 +5892,7 @@ object Types extends TypeUtils {
 
       /** Copy type aliases refinements to `toTp` from `fromTp` */
       def withRefinements(toType: Type, fromTp: Type): Type = fromTp.dealias match
-        case RefinedType(fromParent, name, info: TypeAlias) if tp0.member(name).exists =>
+        case RefinedType(fromParent, name, info: AliasingBounds) if tp0.member(name).exists =>
           val parent1 = withRefinements(toType, fromParent)
           RefinedType(toType, name, info)
         case _ => toType
