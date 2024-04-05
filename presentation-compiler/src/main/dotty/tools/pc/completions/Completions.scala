@@ -405,6 +405,22 @@ class Completions(
           true,
         )
 
+      // unapply pattern
+      case Ident(name) :: (unapp : UnApply) :: _ =>
+        (
+          CaseKeywordCompletion.contribute(
+            EmptyTree, // no selector
+            completionPos,
+            indexedContext,
+            config,
+            search,
+            parent = unapp,
+            autoImports,
+            patternOnly = Some(name.decoded)
+          ),
+          false,
+        )
+
       // class FooImpl extends Foo:
       //   def x|
       case OverrideExtractor(td, completing, start, exhaustive, fallbackName) =>
