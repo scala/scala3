@@ -35,7 +35,7 @@ class HealType(pos: SrcPos)(using Context) extends TypeMap {
       case tp: TermRef =>
         val inconsistentRoot = levelInconsistentRootOfPath(tp)
         if inconsistentRoot.exists then levelError(inconsistentRoot, tp, pos)
-        else tp
+        else mapOver(tp)
       case tp: AnnotatedType =>
         derivedAnnotatedType(tp, apply(tp.parent), tp.annot)
       case _ =>
