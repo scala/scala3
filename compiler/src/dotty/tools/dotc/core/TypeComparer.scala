@@ -3257,8 +3257,8 @@ object TypeComparer {
   def subtypeCheckInProgress(using Context): Boolean =
     comparing(_.subtypeCheckInProgress)
 
-  def instanceType(param: TypeParamRef, fromBelow: Boolean, widenUnions: Boolean, maxLevel: Int = Int.MaxValue)(using Context): Type =
-    comparing(_.instanceType(param, fromBelow, widenUnions, maxLevel))
+  def instanceType(param: TypeParamRef, fromBelow: Boolean, widen: Widen, maxLevel: Int = Int.MaxValue)(using Context): Type =
+    comparing(_.instanceType(param, fromBelow, widen: Widen, maxLevel))
 
   def approximation(param: TypeParamRef, fromBelow: Boolean, maxLevel: Int = Int.MaxValue)(using Context): Type =
     comparing(_.approximation(param, fromBelow, maxLevel))
@@ -3278,8 +3278,8 @@ object TypeComparer {
   def addToConstraint(tl: TypeLambda, tvars: List[TypeVar])(using Context): Boolean =
     comparing(_.addToConstraint(tl, tvars))
 
-  def widenInferred(inst: Type, bound: Type, widenUnions: Boolean)(using Context): Type =
-    comparing(_.widenInferred(inst, bound, widenUnions))
+  def widenInferred(inst: Type, bound: Type, widen: Widen)(using Context): Type =
+    comparing(_.widenInferred(inst, bound, widen: Widen))
 
   def dropTransparentTraits(tp: Type, bound: Type)(using Context): Type =
     comparing(_.dropTransparentTraits(tp, bound))

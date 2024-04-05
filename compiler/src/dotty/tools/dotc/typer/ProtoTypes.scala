@@ -701,6 +701,12 @@ object ProtoTypes {
       case FunProto((arg: untpd.TypedSplice) :: Nil, _) => arg.isExtensionReceiver
       case _ => false
 
+  object SingletonConstrained:
+    def unapply(tp: Type)(using Context): Option[Type] = tp.dealias match
+      case RefinedType(parent, tpnme.Self, TypeAlias(tp))
+      if parent.typeSymbol == defn.SingletonClass => Some(tp)
+      case _ => None
+
   /** Add all parameters of given type lambda `tl` to the constraint's domain.
    *  If the constraint contains already some of these parameters in its domain,
    *  make a copy of the type lambda and add the copy's type parameters instead.
@@ -713,26 +719,41 @@ object ProtoTypes {
     tl: TypeLambda, owningTree: untpd.Tree,
     alwaysAddTypeVars: Boolean,
     nestingLevel: Int = ctx.nestingLevel
-  ): (TypeLambda, List[TypeVar]) = {
+  ): (TypeLambda, List[TypeVar]) =
     val state = ctx.typerState
     val addTypeVars = alwaysAddTypeVars || !owningTree.isEmpty
     if (tl.isInstanceOf[PolyType])
       assert(!ctx.typerState.isCommittable || addTypeVars,
         s"inconsistent: no typevars were added to committable constraint ${state.constraint}")
       // hk type lambdas can be added to constraints without typevars during match reduction
+    val added = state.constraint.ensureFresh(tl)
 
-    def newTypeVars(tl: TypeLambda): List[TypeVar] =
-      for paramRef <- tl.paramRefs
-      yield
-        val tvar = TypeVar(paramRef, state, nestingLevel)
+    def singletonConstrainedRefs(tp: Type): Set[TypeParamRef] = tp match
+      case tp: MethodType if tp.isContextualMethod =>
+        val ownBounds =
+          for case SingletonConstrained(ref: TypeParamRef) <- tp.paramInfos
+          yield ref
+        ownBounds.toSet ++ singletonConstrainedRefs(tp.resType)
+      case tp: LambdaType =>
+        singletonConstrainedRefs(tp.resType)
+      case _ =>
+        Set.empty
+
+    val singletonRefs = singletonConstrainedRefs(added)
+    def isSingleton(ref: TypeParamRef) = singletonRefs.contains(ref)
+
+    def newTypeVars: List[TypeVar] =
+      for paramRef <- added.paramRefs yield
+        val tvar = TypeVar(paramRef, state, nestingLevel, precise = isSingleton(paramRef))
         state.ownedVars += tvar
         tvar
 
-    val added = state.constraint.ensureFresh(tl)
-    val tvars = if addTypeVars then newTypeVars(added) else Nil
+    val tvars = if addTypeVars then newTypeVars else Nil
     TypeComparer.addToConstraint(added, tvars)
+    for paramRef <- added.paramRefs do
+      if isSingleton(paramRef) then paramRef <:< defn.SingletonType
     (added, tvars)
-  }
+  end constrained
 
   def constrained(tl: TypeLambda, owningTree: untpd.Tree)(using Context): (TypeLambda, List[TypeVar]) =
     constrained(tl, owningTree,
