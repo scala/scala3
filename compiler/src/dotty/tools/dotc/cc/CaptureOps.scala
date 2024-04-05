@@ -289,7 +289,7 @@ extension (tp: Type)
       var ok = true
       def traverse(t: Type): Unit =
         if ok then
-          t match
+          t.dealias match
             case CapturingType(_, cs) if cs.isUniversal && variance <= 0 =>
               ok = false
             case _ =>

@@ -259,7 +259,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             var refVariances: Map[Boolean, Int] = Map.empty
             var seenReach: CaptureRef | Null = null
             def traverse(tp: Type) =
-                tp match
+                tp.dealias match
                 case CapturingType(parent, refs) =>
                     traverse(parent)
                     for ref <- refs.elems do
