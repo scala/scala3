@@ -8,6 +8,7 @@ import MegaPhase.*
 import Symbols.*, Contexts.*, Types.*, Decorators.*
 import StdNames.nme
 import ast.TreeTypeMap
+import Constants.Constant
 
 import scala.collection.mutable.ListBuffer
 
@@ -133,7 +134,7 @@ object BetaReduce:
               else if arg.tpe.dealias.isInstanceOf[ConstantType] then arg.tpe.dealias
               else arg.tpe.widen
             val binding = ValDef(newSymbol(ctx.owner, param.name, flags, tpe, coord = arg.span), arg).withSpan(arg.span)
-            if !(tpe.isInstanceOf[ConstantType] && isPureExpr(arg)) then
+            if !((tpe.isInstanceOf[ConstantType] || tpe.derivesFrom(defn.UnitClass)) && isPureExpr(arg)) then
               bindings += binding
             binding.symbol
 
@@ -147,6 +148,7 @@ object BetaReduce:
     val expansion1 = new TreeMap {
       override def transform(tree: Tree)(using Context) = tree.tpe.widenTermRefExpr match
         case ConstantType(const) if isPureExpr(tree) => cpy.Literal(tree)(const)
+        case tpe: TypeRef if tpe.derivesFrom(defn.UnitClass) && isPureExpr(tree) => cpy.Literal(tree)(Constant(()))
         case _ => super.transform(tree)
     }.transform(expansion)
 
