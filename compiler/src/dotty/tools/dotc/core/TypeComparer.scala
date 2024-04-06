@@ -2304,7 +2304,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         Stats.record("cache same type")
         sames = new util.EqHashMap()
       val res =
-        try isSubType(tp1, tp2) && isSubType(tp2, tp1)
+        try rollbackConstraintsUnless(isSubType(tp1, tp2) && isSubType(tp2, tp1))
         finally
           sameLevel -= 1
           sames = savedSames
