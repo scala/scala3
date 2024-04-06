@@ -3,11 +3,10 @@ package dotc
 package parsing
 
 import scala.language.unsafeNulls
-
 import scala.annotation.internal.sharable
 import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.BitSet
-import util.{ SourceFile, SourcePosition, NoSourcePosition }
+import util.{NoSourcePosition, SourceFile, SourcePosition}
 import Tokens.*
 import Scanners.*
 import xml.MarkupParsers.MarkupParser
@@ -15,7 +14,7 @@ import core.*
 import Flags.*
 import Contexts.*
 import Names.*
-import NameKinds.{WildcardParamName, QualifiedName}
+import NameKinds.{QualifiedName, WildcardParamName}
 import NameOps.*
 import ast.{Positioned, Trees}
 import ast.Trees.*
@@ -26,14 +25,16 @@ import Symbols.NoSymbol
 import ScriptParsers.*
 import Decorators.*
 import util.Chars
+
 import scala.annotation.tailrec
-import rewrites.Rewrites.{patch, overlapsPatch}
+import rewrites.Rewrites.{overlapsPatch, patch}
 import reporting.*
 import config.Feature
-import config.Feature.{sourceVersion, migrateTo3}
+import config.Feature.{migrateTo3, sourceVersion}
 import config.SourceVersion.*
 import config.SourceVersion
 import dotty.tools.dotc.config.MigrationVersion
+import dotty.tools.repl.ReplFilter
 
 object Parsers {
 
@@ -4499,7 +4500,10 @@ object Parsers {
       topstats() match {
         case List(stat @ PackageDef(_, _)) => stat
         case Nil => EmptyTree  // without this case we'd get package defs without positions
-        case stats => PackageDef(Ident(nme.EMPTY_PACKAGE), stats)
+        case stats =>
+          val passing = ReplFilter.pass(stats)
+          if (passing.nonEmpty) PackageDef(Ident(nme.EMPTY_PACKAGE), passing)
+          else EmptyTree
       }
     }
   }

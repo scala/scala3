@@ -1,5 +1,6 @@
 package dotty.tools.repl
 
+import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Contexts.*
 
 import java.io.PrintStream
@@ -7,12 +8,23 @@ import java.lang.reflect.Constructor
 import scala.util.{Failure, Success, Try}
 
 
-trait ReplFilter
+abstract class ReplFilter(securityWarning: String):
+  final def pass(stats: List[untpd.Tree]): List[untpd.Tree] =
+    passImpl(stats) match
+      case Some(passed) => passed
+      case None =>
+        ReplFilter.println(securityWarning.split('\n').mkString(s"${Console.YELLOW}* ", s"${Console.RESET}", ""))
+        Nil
+  def passImpl(stats: List[untpd.Tree]): Option[List[untpd.Tree]]
+
 
 object ReplFilter:
   private var replFilterOpt: Option[ReplFilter] = None
   private var isInitialized_ : Boolean = false
-  def init(rootCtx: Context): Either[Throwable, ReplFilter] =
+  private var out_ : Option[PrintStream] = None
+
+  def init(rootCtx: Context, out: PrintStream): Either[Throwable, ReplFilter] =
+    out_ = Some(out)
     val returnValue =
       rootCtx.settings.rootSettings.find(_.name == "-replfilter") match
         case Some(replFilterSetting) =>
@@ -20,9 +32,9 @@ object ReplFilter:
           Try(Class.forName(replFilterClassName)) match
             case Success(clazz : Class[?]) =>
               clazz.getDeclaredConstructor() match
-                case c: Constructor[?] => 
+                case c: Constructor[?] =>
                   c.newInstance() match
-                    case rf: ReplFilter => 
+                    case rf: ReplFilter =>
                       replFilterOpt = Some(rf)
                       Right(rf)
                     case rf if rf != null => Left(RuntimeException(s"Provided REPL filter class has an inappropriate type"))
@@ -35,4 +47,9 @@ object ReplFilter:
     isInitialized_ = true
     returnValue
 
-  def isInitialized: Boolean = isInitialized_
+  final def isInitialized: Boolean = isInitialized_
+
+  final def pass(stats: List[untpd.Tree]): List[untpd.Tree] =
+    replFilterOpt.toList.flatMap(rf => rf.pass(stats))
+
+  final def println(str: String): Unit = out_.foreach(f => f.println(str))
