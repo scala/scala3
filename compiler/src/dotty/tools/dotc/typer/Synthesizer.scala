@@ -238,12 +238,19 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   end synthesizedValueOf
 
   val synthesizedSingleton: SpecialHandler = (formal, span) => formal match
-    case SingletonConstrained(tp) =>
+    case PreciseConstrained(tp, true) =>
       if tp.isSingletonBounded(frozen = false) then
         withNoErrors:
           ref(defn.Compiletime_erasedValue).appliedToType(formal).withSpan(span)
       else
         withErrors(i"$tp is not a singleton")
+    case _ =>
+      EmptyTreeNoError
+
+  val synthesizedPrecise: SpecialHandler = (formal, span) => formal match
+    case PreciseConstrained(tp, false) =>
+      withNoErrors:
+        ref(defn.Compiletime_erasedValue).appliedToType(formal).withSpan(span)
     case _ =>
       EmptyTreeNoError
 
@@ -749,6 +756,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     defn.ManifestClass        -> synthesizedManifest,
     defn.OptManifestClass     -> synthesizedOptManifest,
     defn.SingletonClass       -> synthesizedSingleton,
+    defn.PreciseClass         -> synthesizedPrecise,
   )
 
   def tryAll(formal: Type, span: Span)(using Context): TreeWithErrors =

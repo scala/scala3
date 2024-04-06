@@ -36,9 +36,12 @@ object Test:
   class C2[T](x: T)(using T is Singleton):
     def fld: T = x
   val y2 = C2("hi")
-  val _: "hi" = y1.fld
+  val _: "hi" = y2.fld
 
   class C3[T: Singleton](x: T):
     def fld: T = x
   val y3 = C3("hi")
-  val _: "hi" = y1.fld
+  val _: "hi" = y3.fld
+
+
+

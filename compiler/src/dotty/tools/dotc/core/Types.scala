@@ -4941,7 +4941,7 @@ object Types extends TypeUtils {
       initOrigin: TypeParamRef,
       creatorState: TyperState | Null,
       val initNestingLevel: Int,
-      precise: Boolean) extends CachedProxyType with ValueType {
+      val precise: Boolean) extends CachedProxyType with ValueType {
     private var currentOrigin = initOrigin
 
     def origin: TypeParamRef = currentOrigin
@@ -5045,9 +5045,19 @@ object Types extends TypeUtils {
       else
         instantiateWith(tp)
 
+    def isPrecise(using Context) =
+      precise
+      || {
+        val constr = ctx.typerState.constraint
+        constr.upper(origin).exists: tparam =>
+          constr.typeVarOfParam(tparam) match
+            case tvar: TypeVar => tvar.precise
+            case _ => false
+      }
+
     /** Widen unions when instantiating this variable in the current context? */
     def widenPolicy(using Context): Widen =
-      if precise then Widen.None
+      if isPrecise then Widen.None
       else if ctx.typerState.constraint.isHard(this) then Widen.Singletons
       else Widen.Unions
 

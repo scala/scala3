@@ -444,6 +444,39 @@ This is less of a disruption than it might appear at first:
  - Simplification of the language since a feature is dropped
  - Eliminate non-obvious and misleading syntax.
 
+
+### Bonus: Fixing Singleton
+
+We know the current treatment of `Singleton` as a type bound is broken since
+`x.type | y.type <: Singleton` holds by the subtyping rules for union types, even though `x.type | y.type` is clearly not a singleton.
+
+A better approach is to treat `Singleton` as a type class that is interpreted specially by the compiler.
+
+We can do this in a backwards-compatible way by defining `Singleton` like this:
+
+```scala
+trait Singleton:
+  type Self
+```
+
+Then, instead of using an unsound upper bound we can use a context bound:
+
+```scala
+def f[X: Singleton](x: X) = ...
+```
+
+The context bound is treated specially by the compiler so that no using clause is generated at runtime (this is straightforward, using the erased definitions mechanism).
+
+### Bonus: Precise Typing
+
+This approach also presents a solution to the problem how to express precise type variables. We can introduce another special type class `Precise` and use it like this:
+
+```scala
+def f[X: Precise](x: X) = ...
+```
+Like a `Singleton` bound, a `Precise` bound disables automatic widening of singleton types or union types in inferred instances of type variable `X`. But there is no requirement that the type argument _must_ be a singleton.
+
+
 ## Summary of Syntax Changes
 
 Here is the complete context-free syntax for all proposed features.
@@ -692,38 +725,10 @@ Dimi Racordon tried to [port some core elements](https://github.com/kyouko-taiga
 
 With the improvements proposed here, the library can now be expressed quite clearly and straightforwardly. See tests/pos/hylolib in this PR for details.
 
-## Suggested Improvements unrelated to Type Classes
+## Suggested Improvement unrelated to Type Classes
 
-The following two improvements elsewhere would make sense alongside the suggested changes to type classes. But only the first (fixing singleton) forms a part of this proposal and is implemented.
+The following improvement would make sense alongside the suggested changes to type classes. But it does not form part of this proposal and is not yet implemented.
 
-### Fixing Singleton
-
-We know the current treatment of `Singleton` as a type bound is broken since
-`x.type | y.type <: Singleton` holds by the subtyping rules for union types, even though `x.type | y.type` is clearly not a singleton.
-
-A better approach is to treat `Singleton` as a type class that is interpreted specially by the compiler.
-
-We can do this in a backwards-compatible way by defining `Singleton` like this:
-
-```scala
-trait Singleton:
-  type Self
-```
-
-Then, instead of using an unsound upper bound we can use a context bound:
-
-```scala
-def f[X: Singleton](x: X) = ...
-```
-
-The context bound is treated specially by the compiler so that no using clause is generated at runtime (this is straightforward, using the erased definitions mechanism).
-
-_Aside_: This can also lead to a solution how to express precise type variables. We can introduce another special type class `Precise` and use it like this:
-
-```scala
-def f[X: Precise](x: X) = ...
-```
-This would disable automatic widening of singleton types in inferred instances of type variable `X`.
 
 ### Using `as` also in Patterns
 
