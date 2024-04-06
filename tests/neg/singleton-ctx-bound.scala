@@ -18,3 +18,18 @@ object Test:
   f3(if ??? then 1 else 2)   // error
   f3(3 * 2) // OK
   f3(6) // OK
+
+import compiletime.*
+
+trait A:
+  type Elem: Singleton
+
+class B extends A:
+  type Elem = 1 // OK
+
+class C[X: Singleton] extends A:
+  type Elem = X // OK
+
+class D extends A:  // error
+  type Elem = Int
+

@@ -535,6 +535,8 @@ class Definitions {
   def ConsType: TypeRef                 = ConsClass.typeRef
   @tu lazy val SeqFactoryClass: Symbol  = requiredClass("scala.collection.SeqFactory")
 
+  @tu lazy val PreciseClass: ClassSymbol = requiredClass("scala.Precise")
+
   @tu lazy val SingletonClass: ClassSymbol =
     // needed as a synthetic class because Scala 2.x refers to it in classfiles
     // but does not define it as an explicit class.

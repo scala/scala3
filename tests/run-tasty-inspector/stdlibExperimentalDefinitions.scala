@@ -79,6 +79,9 @@ val experimentalDefinitionInLibrary = Set(
   "scala.NamedTuple$",
   "scala.NamedTupleDecomposition",
   "scala.NamedTupleDecomposition$",
+
+  // New feature: Precise trait
+  "scala.Precise",
 )
 
 
