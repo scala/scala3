@@ -148,6 +148,12 @@ class ReplDriver(settings: Array[String],
       s"""Welcome to Scala $simpleVersionString ($javaVersion, Java $javaVmName).
          |Type in expressions for evaluation. Or try :help.""".stripMargin)
 
+    ReplFilter.init(rootCtx).swap.toOption.collect {
+      case e: Throwable =>
+        out.println(s"${Console.RED}Error loading REPL filter, all entries will be passing${Console.RESET}")
+        out.println(s"${Console.RED}- ${e.getMessage}${Console.RESET}")
+    }
+
     /** Blockingly read a line, getting back a parse result */
     def readLine()(using state: State): ParseResult = {
       given Context = state.context
