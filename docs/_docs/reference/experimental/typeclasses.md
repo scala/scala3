@@ -220,13 +220,15 @@ So far, an unnamed context bound for a type parameter gets a synthesized fresh n
     xs.foldLeft(A.unit)(_ `combine` _)
 ```
 
-The use of a name like `A` above in two variants, both as a type name and as a term name is of course familiar to Scala programmers. We use the same convention for classes and companion objects. In retrospect, the idea of generalizing this to also cover type parameters is obvious. It is surprising that it was not brought up before.
+In Scala we are already familiar with using one name for two related things where one version names a type and the other an associated value. For instance, we use that convention for classes and companion objects. In retrospect, the idea of generalizing this to also cover type parameters is obvious. It is surprising that it was not brought up before.
 
 **Proposed Rules**
 
  1. The generated evidence parameter for a context bound `A : C as a` has name `a`
  2. The generated evidence for a context bound `A : C` without an `as` binding has name `A` (seen as a term name). So, `A : C` is equivalent to `A : C as A`.
  3. If there are multiple context bounds for a type parameter, as in `A : {C_1, ..., C_n}`, the generated evidence parameter for every context bound `C_i` has a fresh synthesized name, unless the context bound carries an `as` clause, in which case rule (1) applies.
+
+TODO: Present context bound proxy concept.
 
 The default naming convention reduces the need for named context bounds. But named context bounds are still essential, for at least two reasons:
 
@@ -357,6 +359,8 @@ given Int is Monoid:
   extension (x: Int) def combine(y: Int) = x + y
   def unit = 0
 ```
+Here, the second given can be read as if `A` is an `Ord` then `List[A]` is also an`Ord`. Or: for all `A: Ord`, `List[A]` is `Ord`. The arrow can be seen as an implication, note also the analogy to pattern matching syntax.
+
 If explicit names are desired, we add them with `as` clauses:
 ```scala
 given String is Ord as intOrd:
@@ -558,6 +562,7 @@ Here are some standard type classes, which were mostly already introduced at the
   def minimum[T: Ord](xs: List[T]) =
     maximum(xs)(using descending)
 ```
+The `Reader` type is a bit hairy. It is a type class (written in the parameterized syntax) where we fix a context `Ctx` and then let `Reader` be the polymorphic function type over `X` that takes a context `Ctx` and returns an `X`. Type classes like this are commonly used in monadic effect systems.
 
 
 ### Example 2

@@ -138,7 +138,7 @@ when typechecking recursive class graphs. So an explicit `tracked` looks like th
 
 Since `tracked` parameters create refinements in constructor types,
 it is now possible that a class has a parent that is a refined type.
-Previously such types were not permitted, since we were not quite sure how to handle them. But with tracked parameters it becomes pressing so
+Previously such types were not permitted, since we were not quite sure how to handle them. But with tracked parameters it becomes pressing to
 admit such types.
 
 **Proposal** Allow refined types as parent types of classes. All refinements that are inherited in this way become synthetic members of the class.
