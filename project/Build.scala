@@ -1400,6 +1400,9 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
     )
 
+  lazy val `scala3-repl-filter` = project.in(file("repl-filter")).
+    dependsOn(dottyCompiler(Bootstrapped)).withCommonSettings(Bootstrapped)
+
   /** A sandbox to play with the Scala.js back-end of dotty.
    *
    *  This sandbox is compiled with dotty with support for Scala.js. It can be
