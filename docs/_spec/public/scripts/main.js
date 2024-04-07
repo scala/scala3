@@ -5,25 +5,22 @@ function currentChapter() {
 function heading(i, heading, $heading) {
   const currentLevel = parseInt(heading.tagName.substring(1));
   const headerCounts = this.headerCounts;
-  let result = "";
+
   if (currentLevel === this.headerLevel) {
     headerCounts[this.headerLevel]++;
-    result = `${headerCounts[this.headerLevel]} ${$heading.text()}`;
   } else if (currentLevel < this.headerLevel) {
     while (currentLevel < this.headerLevel) {
       headerCounts[this.headerLevel] = 1;
       this.headerLevel--;
     }
     headerCounts[this.headerLevel]++;
-    result = `${headerCounts[this.headerLevel]} ${$heading.text()}`;
   } else {
     while (currentLevel > this.headerLevel) {
       this.headerLevel++;
       headerCounts[this.headerLevel] = 1;
     }
-    result = `${headerCounts[this.headerLevel]} ${$heading.text()}`;
   }
-  return result;
+  return `${headerCounts[this.headerLevel]} ${$heading.text()}`;
 }
 
 // ignore when using wkhtmltopdf, or it won't work...
