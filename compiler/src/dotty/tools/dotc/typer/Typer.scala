@@ -48,7 +48,7 @@ import staging.StagingLevel
 import reporting.*
 import Nullables.*
 import NullOpsDecorator.*
-import cc.{CheckCaptures, isRetainsLike, cleanupRetains}
+import cc.{CheckCaptures, isRetainsLike}
 import config.Config
 import config.MigrationVersion
 

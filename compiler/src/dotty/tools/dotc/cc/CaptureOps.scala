@@ -445,15 +445,12 @@ extension (tp: AnnotatedType)
     case ann: CaptureAnnotation => ann.boxed
     case _ => false
 
-class CleanupRetains(using Context) extends TypeMap:
-  def apply(tp: Type): Type = cleanupRetains(tp, this)
-
 /** Drop retains annotations in the type. */
-def cleanupRetains(tp: Type, theMap: CleanupRetains | Null = null)(using Context): Type =
-  def mapOver = (if theMap != null then theMap else new CleanupRetains).mapOver(tp)
-  tp match
-    case RetainingType(tp, _) => tp
-    case _ => mapOver
+class CleanupRetains(using Context) extends TypeMap:
+  def apply(tp: Type): Type =
+    tp match
+      case RetainingType(tp, _) => tp
+      case _ => mapOver(tp)
 
 /** An extractor for `caps.reachCapability(ref)`, which is used to express a reach
  *  capability as a tree in a @retains annotation.

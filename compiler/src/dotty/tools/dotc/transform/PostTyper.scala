@@ -286,8 +286,12 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
     // See #20035.
     private def cleanupRetainsAnnot(symbol: Symbol, tpt: Tree)(using Context): Tree =
       tpt match
-        case tpt: InferredTypeTree if !symbol.allOverriddenSymbols.hasNext =>
-          val tpe1 = cleanupRetains(tpt.tpe) 
+        case tpt: InferredTypeTree
+        if !symbol.allOverriddenSymbols.hasNext =>
+          // if there are overridden symbols, the annotation comes from an explicit type of the overridden symbol
+          // and should be retained.
+          val tm = new CleanupRetains
+          val tpe1 = tm(tpt.tpe)
           tpt.withType(tpe1)
         case _ => tpt
 
