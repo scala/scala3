@@ -454,7 +454,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case _ => false
 
         def signatureChanges =
-          (tree.tpt.hasRememberedType || tree.tpt.isInstanceOf[InferredTypeTree]) && !sym.isConstructor || paramSignatureChanges
+          tree.tpt.hasRememberedType && !sym.isConstructor || paramSignatureChanges
 
         // Replace an existing symbol info with inferred types where capture sets of
         // TypeParamRefs and TermParamRefs put in correspondence by BiTypeMaps with the

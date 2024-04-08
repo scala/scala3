@@ -9,7 +9,7 @@
    |  Found:    (x$0: Int) ->{cap2} Int
    |  Required: (x$0: Int) -> Int
    |
-   |  Note that the expected type Int -> Int
+   |  Note that the expected type Int ->{} Int
    |  is the previously inferred result type of method test
    |  which is also the type seen in separately compiled sources.
    |  The new inferred type (x$0: Int) ->{cap2} Int

@@ -449,7 +449,8 @@ extension (tp: AnnotatedType)
 class CleanupRetains(using Context) extends TypeMap:
   def apply(tp: Type): Type =
     tp match
-      case RetainingType(tp, _) => tp
+      case AnnotatedType(tp, annot) if annot.symbol == defn.RetainsAnnot || annot.symbol == defn.RetainsByNameAnnot =>
+        RetainingType(tp, Nil, byName = annot.symbol == defn.RetainsByNameAnnot)
       case _ => mapOver(tp)
 
 /** An extractor for `caps.reachCapability(ref)`, which is used to express a reach
