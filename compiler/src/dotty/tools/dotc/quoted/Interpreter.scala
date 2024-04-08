@@ -368,6 +368,9 @@ object Interpreter:
   }
 
   def suspendOnMissing(sym: Symbol, pos: SrcPos)(using Context): Nothing =
-    if ctx.settings.XprintSuspension.value then
-      report.echo(i"suspension triggered by a dependency on $sym", pos)
-    ctx.compilationUnit.suspend() // this throws a SuspendException
+    if ctx.settings.YnoSuspendedUnits.value then
+      throw StopInterpretation(em"suspension triggered by a dependency on missing $sym not allowed with -Yno-suspended-units", pos)
+    else
+      if ctx.settings.XprintSuspension.value then
+        report.echo(i"suspension triggered by a dependency on missing $sym", pos)
+      ctx.compilationUnit.suspend() // this throws a SuspendException

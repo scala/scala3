@@ -1033,7 +1033,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     }
   }
 
-  private def expandMacro(body: Tree, splicePos: SrcPos)(using Context) = {
+  private def expandMacro(body: Tree, splicePos: SrcPos)(using Context): Tree = {
     assert(level == 0)
     val inlinedFrom = enclosingInlineds.last
     val dependencies = macroDependencies(body)(using spliceContext)
@@ -1048,7 +1048,12 @@ class Inliner(val call: tpd.Tree)(using Context):
         if (suspendable && ctx.settings.XprintSuspension.value)
           report.echo(i"suspension triggered by macro call to ${sym.showLocated} in ${sym.associatedFile}", call.srcPos)
       if suspendable then
-        ctx.compilationUnit.suspend() // this throws a SuspendException
+        if ctx.settings.YnoSuspendedUnits.value then
+          return ref(defn.Predef_undefined)
+            .withType(ErrorType(em"could not expand macro, suspended units are disabled by -Yno-suspended-units"))
+            .withSpan(splicePos.span)
+        else
+          ctx.compilationUnit.suspend() // this throws a SuspendException
 
     val evaluatedSplice = inContext(quoted.MacroExpansion.context(inlinedFrom)) {
       Splicer.splice(body, splicePos, inlinedFrom.srcPos, MacroClassLoader.fromContext)
