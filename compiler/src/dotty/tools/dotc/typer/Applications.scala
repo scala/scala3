@@ -1190,8 +1190,7 @@ trait Applications extends Compatibility {
           case _                                             => tree.withType(TryDynamicCallType)
         }
         if (typedFn.tpe eq TryDynamicCallType) tryDynamicTypeApply()
-        else
-          ConstFold(assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs))
+        else assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
     }
   }
 
