@@ -1615,11 +1615,12 @@ trait Applications extends Compatibility {
     *  Module classes also inherit the relationship from their companions. This means,
     *  if no direct derivation exists between `sym1` and `sym2` also perform the following
     *  tests:
-    *   - If both sym1 and sym1 are module classes that have companion classes,
-    *     and sym2 does not inherit implicit members from a base class (#),
-    *     compare the companion classes.
-    *   - If sym1 is a module class with a companion, and sym2 is a normal class or trait,
-    *     compare the companion with sym2.
+    *   - If both sym1 and sym2 are module classes that have companion classes,
+    *     compare the companion classes. Return the result of that comparison,
+    *     provided the module class with the larger companion class does not itself
+    *     inherit implicit members from a base class (#),
+    *   - If one sym is a module class with a companion, and the other is a normal class or trait,
+    *     compare the companion with the other class or trait.
     *
     *  Condition (#) is necessary to make `compareOwner(_, _) > 0` a transitive relation.
     *  For instance:
@@ -1643,17 +1644,22 @@ trait Applications extends Compatibility {
     *  This means we get an ambiguity between `a` and `b` in all cases.
     */
   def compareOwner(sym1: Symbol, sym2: Symbol)(using Context): Int =
+    def cls1 = sym1.companionClass
+    def cls2 = sym2.companionClass
     if sym1 == sym2 then 0
     else if sym1.isSubClass(sym2) then 1
     else if sym2.isSubClass(sym1) then -1
-    else if sym1.is(Module) then
-      val cls1 = sym1.companionClass
-      if sym2.is(Module) then
-        if sym2.thisType.implicitMembers.forall(_.symbol.owner == sym2) then // test for (#)
-          compareOwner(cls1, sym2.companionClass)
-        else 0
-      else compareOwner(cls1, sym2)
-    else 0
+    else
+      if sym1.is(Module) && sym2.is(Module) then
+        val r = compareOwner(cls1, cls2)
+        if r == 0 then 0
+        else
+          val larger = if r < 0 then sym1 else sym2
+          if larger.thisType.implicitMembers.forall(_.symbol.owner == larger) then r
+          else 0
+      else if sym1.is(Module) then compareOwner(cls1, sym2)
+      else if sym2.is(Module) then compareOwner(sym1, cls2)
+      else 0
 
   /** Compare two alternatives of an overloaded call or an implicit search.
    *
@@ -1808,10 +1814,38 @@ trait Applications extends Compatibility {
         else tp
     }
 
-    def compareWithTypes(tp1: Type, tp2: Type) = {
+    def widenPrefix(alt: TermRef): Type = alt.prefix.widen match
+      case pre: (TypeRef | ThisType) if pre.typeSymbol.is(Module) =>
+        pre.parents.reduceLeft(TypeComparer.andType(_, _))
+      case wpre => wpre
+
+    /** If two alternatives have the same symbol, we pick the one with the most
+     *  specific prefix. To determine that, we widen the prefix types and also
+     *  widen module classes to the intersection of their parent classes. Then
+     *  if one of the resulting types is a more specific value type than the other,
+     *  it wins. Example:
+     *
+     *     trait A { given M = ... }
+     *     trait B extends A
+     *     object a extends A
+     *     object b extends B
+     *
+     *  In this case `b.M` would be regarded as more specific than `a.M`.
+     */
+    def comparePrefixes =
+      val pre1 = widenPrefix(alt1)
+      val pre2 = widenPrefix(alt2)
+      val winsPrefix1 = isAsSpecificValueType(pre1, pre2)
+      val winsPrefix2 = isAsSpecificValueType(pre2, pre1)
+      if winsPrefix1 == winsPrefix2 then 0
+      else if winsPrefix1 then 1
+      else -1
+
+    def compareWithTypes(tp1: Type, tp2: Type) =
       val ownerScore = compareOwner(alt1.symbol.maybeOwner, alt2.symbol.maybeOwner)
-      def winsType1 = isAsSpecific(alt1, tp1, alt2, tp2)
-      def winsType2 = isAsSpecific(alt2, tp2, alt1, tp1)
+
+      val winsType1 = isAsSpecific(alt1, tp1, alt2, tp2)
+      val winsType2 = isAsSpecific(alt2, tp2, alt1, tp1)
 
       overload.println(i"compare($alt1, $alt2)? $tp1 $tp2 $ownerScore $winsType1 $winsType2")
       if winsType1 && winsType2
@@ -1820,15 +1854,14 @@ trait Applications extends Compatibility {
         // alternatives are the same after following ExprTypes, pick one of them
         // (prefer the one that is not a method, but that's arbitrary).
         if alt1.widenExpr =:= alt2 then -1 else 1
-      else if ownerScore == 1 then
-        if winsType1 || !winsType2 then 1 else 0
-      else if ownerScore == -1 then
-        if winsType2 || !winsType1 then -1 else 0
-      else if winsType1 then
-        if winsType2 then 0 else 1
-      else
-        if winsType2 then -1 else 0
-    }
+      else ownerScore match
+        case  1 => if winsType1 || !winsType2 then  1 else 0
+        case -1 => if winsType2 || !winsType1 then -1 else 0
+        case  0 =>
+          if winsType1 != winsType2 then if winsType1 then 1 else -1
+          else if alt1.symbol == alt2.symbol then comparePrefixes
+          else 0
+    end compareWithTypes
 
     if alt1.symbol.is(ConstructorProxy) && !alt2.symbol.is(ConstructorProxy) then -1
     else if alt2.symbol.is(ConstructorProxy) && !alt1.symbol.is(ConstructorProxy) then 1
