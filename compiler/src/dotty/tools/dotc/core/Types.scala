@@ -456,12 +456,14 @@ object Types extends TypeUtils {
     /** Is this a MethodType for which the parameters will not be used? */
     def hasErasedParams(using Context): Boolean = false
 
-    /** Is this a match type or a higher-kinded abstraction of one?
-     */
+    /** Is this a match type or a higher-kinded abstraction of one? */
     def isMatch(using Context): Boolean = stripped match
       case tp: MatchType => true
       case tp: HKTypeLambda => tp.resType.isMatch
       case _ => false
+
+    /** Does this application expand to a match type? */
+    def isMatchAlias(using Context): Boolean = underlyingMatchType.exists
 
     def underlyingMatchType(using Context): Type = stripped match {
       case tp: MatchType => tp
@@ -4610,19 +4612,6 @@ object Types extends TypeUtils {
       case _ =>
         NoType
     }
-
-    /** Does this application expand to a match type? */
-    def isMatchAlias(using Context): Boolean = tycon.stripTypeVar match
-      case tycon: TypeRef =>
-        tycon.info match
-          case AliasingBounds(alias) =>
-            alias.underlyingMatchType.exists
-            /* This is the only true case since anything other than
-             * a TypeRef of an alias with an underlying match type
-             * should have been already reduced by `appliedTo` in the TypeAssigner.
-             */
-          case _ => false
-      case _ => false
 
     /** Is this an unreducible application to wildcard arguments?
      *  This is the case if tycon is higher-kinded. This means

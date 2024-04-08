@@ -622,7 +622,7 @@ trait ImplicitRunInfo:
     sym.isClass && !isExcluded(sym)
     || sym.isOpaqueAlias
     || sym.is(Deferred, butNot = Param)
-    || sym.info.isInstanceOf[MatchAlias]
+    || sym.info.isMatchAlias
 
   private def computeIScope(rootTp: Type): OfTypeImplicits =
 
