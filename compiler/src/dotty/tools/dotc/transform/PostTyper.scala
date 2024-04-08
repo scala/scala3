@@ -548,11 +548,10 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       def isTopLevelDefinitionInSource(sym: Symbol) =
         !sym.is(Package) && !sym.name.isPackageObjectName &&
         (sym.owner.is(Package) || (sym.owner.isPackageObject && !sym.isConstructor))
-      if !sym.hasAnnotation(defn.ExperimentalAnnot)
-        && (ctx.settings.experimental.value && isTopLevelDefinitionInSource(sym))
-        || (sym.is(Module) && sym.companionClass.hasAnnotation(defn.ExperimentalAnnot))
-      then
-        sym.addAnnotation(Annotation(defn.ExperimentalAnnot, sym.span))
+      if sym.is(Module) then
+        ExperimentalAnnotation.copy(sym.companionClass).foreach(sym.addAnnotation)
+      if !sym.hasAnnotation(defn.ExperimentalAnnot) && ctx.settings.experimental.value && isTopLevelDefinitionInSource(sym) then
+        sym.addAnnotation(ExperimentalAnnotation("Added by -experimental", sym.span))
 
     private def scala2LibPatch(tree: TypeDef)(using Context) =
       val sym = tree.symbol

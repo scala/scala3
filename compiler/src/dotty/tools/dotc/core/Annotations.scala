@@ -275,4 +275,30 @@ object Annotations {
           }
       }
   }
+
+  object ExperimentalAnnotation {
+
+    /** Create an instance of `@experimental(<msg>)` */
+    def apply(msg: String, span: Span)(using Context): Annotation =
+      Annotation(defn.ExperimentalAnnot, Literal(Constant(msg)), span)
+
+    /** Matches and extracts the message from an instance of `@experimental(msg)`
+     *  Returns `Some("")` for `@experimental` with no message.
+     */
+    def unapply(a: Annotation)(using Context): Option[String] =
+      if a.symbol ne defn.ExperimentalAnnot then
+        None
+      else a.argumentConstant(0) match
+        case Some(Constant(msg: String)) => Some(msg)
+        case _ => Some("")
+
+    /** Makes a copy of the `@experimental(msg)` annotation on `sym`
+     *  None is returned if the symbol does not have an `@experimental` annotation.
+     */
+    def copy(sym: Symbol)(using Context): Option[Annotation] =
+      sym.getAnnotation(defn.ExperimentalAnnot).map {
+        case annot @ ExperimentalAnnotation(msg) => ExperimentalAnnotation(msg, annot.tree.span)
+      }
+  }
+
 }
