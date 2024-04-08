@@ -1053,6 +1053,7 @@ object Build {
     settings(commonBootstrappedSettings).
     settings(scala2LibraryBootstrappedSettings).
     settings(moduleName := "scala2-library")
+    // -Ycheck:all is set in project/scripts/scala2-library-tasty-mima.sh
 
   /** Scala 2 library compiled by dotty using the latest published sources of the library.
    *
