@@ -622,7 +622,7 @@ trait ImplicitRunInfo:
     sym.isClass && !isExcluded(sym)
     || sym.isOpaqueAlias
     || sym.is(Deferred, butNot = Param)
-    || sym.info.isInstanceOf[MatchAlias]
+    || sym.info.isMatchAlias
 
   private def computeIScope(rootTp: Type): OfTypeImplicits =
 
@@ -636,7 +636,7 @@ trait ImplicitRunInfo:
         else if implicitScopeCache.contains(t) then parts += t
         else
           partSeen += t
-          t.dealias match
+          t.dealias.normalized match
             case t: TypeRef =>
               if isAnchor(t.symbol) then
                 parts += t
@@ -663,7 +663,6 @@ trait ImplicitRunInfo:
               traverseChildren(t)
             case t =>
               traverseChildren(t)
-              traverse(t.normalized)
       catch case ex: Throwable => handleRecursive("collectParts of", t.show, ex)
 
       def apply(tp: Type): collection.Set[Type] =
@@ -775,6 +774,7 @@ trait ImplicitRunInfo:
    *     if `T` is of the form `(P#x).type`, the anchors of `P`.
    *   - If `T` is the this-type of a static object, the anchors of a term reference to that object.
    *   - If `T` is some other this-type `P.this.type`, the anchors of `P`.
+   *   - If `T` is match type or an applied match alias, the anchors of the normalization of `T`.
    *   - If `T` is some other type, the union of the anchors of each constituent type of `T`.
    *
    *  The _implicit scope_ of a type `tp` is the smallest set S of term references (i.e. TermRefs)
@@ -787,7 +787,7 @@ trait ImplicitRunInfo:
    *   - If `T` is a reference to an opaque type alias named `A`, S includes
    *     a reference to an object `A` defined in the same scope as the type, if it exists,
    *     as well as the implicit scope of `T`'s underlying type or bounds.
-   *   - If `T` is a reference to an an abstract type or match type alias named `A`,
+   *   - If `T` is a reference to an an abstract type or unreducible match type alias named `A`,
    *     S includes a reference to an object `A` defined in the same scope as the type,
    *     if it exists, as well as the implicit scopes of `T`'s lower and upper bound,
    *     if present.

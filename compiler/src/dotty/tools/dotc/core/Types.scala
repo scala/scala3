@@ -456,14 +456,19 @@ object Types extends TypeUtils {
     /** Is this a MethodType for which the parameters will not be used? */
     def hasErasedParams(using Context): Boolean = false
 
-    /** Is this a match type or a higher-kinded abstraction of one?
-     */
-    def isMatch(using Context): Boolean = underlyingMatchType.exists
+    /** Is this a match type or a higher-kinded abstraction of one? */
+    def isMatch(using Context): Boolean = stripped match
+      case tp: MatchType => true
+      case tp: HKTypeLambda => tp.resType.isMatch
+      case _ => false
+
+    /** Does this application expand to a match type? */
+    def isMatchAlias(using Context): Boolean = underlyingMatchType.exists
 
     def underlyingMatchType(using Context): Type = stripped match {
       case tp: MatchType => tp
       case tp: HKTypeLambda => tp.resType.underlyingMatchType
-      case tp: AppliedType if tp.isMatchAlias => tp.superType.underlyingMatchType
+      case tp: AppliedType => tp.underlyingMatchType
       case _ => NoType
     }
 
@@ -4529,6 +4534,9 @@ object Types extends TypeUtils {
     private var myEvalRunId: RunId = NoRunId
     private var myEvalued: Type = uninitialized
 
+    private var validUnderlyingMatch: Period = Nowhere
+    private var cachedUnderlyingMatch: Type = uninitialized
+
     def isGround(acc: TypeAccumulator[Boolean])(using Context): Boolean =
       if myGround == 0 then myGround = if acc.foldOver(true, this) then 1 else -1
       myGround > 0
@@ -4585,30 +4593,37 @@ object Types extends TypeUtils {
         case nil => x
       foldArgs(op(x, tycon), args)
 
+    /** Exists if the tycon is a TypeRef of an alias with an underlying match type.
+     *  Anything else should have already been reduced in `appliedTo` by the TypeAssigner.
+     */
+    override def underlyingMatchType(using Context): Type =
+      if ctx.period != validUnderlyingMatch then
+        validUnderlyingMatch = if tycon.isProvisional then Nowhere else ctx.period
+        cachedUnderlyingMatch = superType.underlyingMatchType
+      cachedUnderlyingMatch
+
     override def tryNormalize(using Context): Type = tycon.stripTypeVar match {
       case tycon: TypeRef =>
-        def tryMatchAlias = tycon.info match {
-          case MatchAlias(alias) =>
+        def tryMatchAlias = tycon.info match
+          case AliasingBounds(alias) if isMatchAlias =>
             trace(i"normalize $this", typr, show = true) {
               MatchTypeTrace.recurseWith(this) {
                 alias.applyIfParameterized(args.map(_.normalized)).tryNormalize
+                /* `applyIfParameterized` may reduce several HKTypeLambda applications
+                 * before the underlying MatchType is reached.
+                 * Even if they do not involve any match type normalizations yet,
+                 * we still want to record these reductions in the MatchTypeTrace.
+                 * They should however only be attempted if they eventually expand
+                 * to a match type, which is ensured by the `isMatchAlias` guard.
+                 */
               }
             }
           case _ =>
             NoType
-        }
         tryCompiletimeConstantFold.orElse(tryMatchAlias)
       case _ =>
         NoType
     }
-
-    /** Does this application expand to a match type? */
-    def isMatchAlias(using Context): Boolean = tycon.stripTypeVar match
-      case tycon: TypeRef =>
-        tycon.info match
-          case _: MatchAlias => true
-          case _ => false
-      case _ => false
 
     /** Is this an unreducible application to wildcard arguments?
      *  This is the case if tycon is higher-kinded. This means
@@ -5137,20 +5152,9 @@ object Types extends TypeUtils {
     def apply(bound: Type, scrutinee: Type, cases: List[Type])(using Context): MatchType =
       unique(new CachedMatchType(bound, scrutinee, cases))
 
-    def thatReducesUsingGadt(tp: Type)(using Context): Boolean = tp match
-      case MatchType.InDisguise(mt) => mt.reducesUsingGadt
-      case mt: MatchType            => mt.reducesUsingGadt
-      case _                        => false
-
-    /** Extractor for match types hidden behind an AppliedType/MatchAlias. */
-    object InDisguise:
-      def unapply(tp: AppliedType)(using Context): Option[MatchType] = tp match
-        case AppliedType(tycon: TypeRef, args) => tycon.info match
-          case MatchAlias(alias) => alias.applyIfParameterized(args) match
-            case mt: MatchType => Some(mt)
-            case _ => None
-          case _ => None
-        case _ => None
+    def thatReducesUsingGadt(tp: Type)(using Context): Boolean = tp.underlyingMatchType match
+      case mt: MatchType => mt.reducesUsingGadt
+      case _ => false
   }
 
   enum MatchTypeCasePattern:
@@ -5635,6 +5639,14 @@ object Types extends TypeUtils {
     def upper(hi: Type)(using Context): TypeBounds = apply(defn.NothingType, hi)
     def lower(lo: Type)(using Context): TypeBounds = apply(lo, defn.AnyType)
   }
+
+  object AliasingBounds:
+    /** A MatchAlias if alias is a match type and a TypeAlias o.w.
+     *  Note that aliasing a MatchAlias returns a normal TypeAlias.
+     */
+    def apply(alias: Type)(using Context): AliasingBounds =
+      if alias.isMatch then MatchAlias(alias) else TypeAlias(alias)
+    def unapply(tp: AliasingBounds): Option[Type] = Some(tp.alias)
 
   object TypeAlias {
     def apply(alias: Type)(using Context): TypeAlias = unique(new TypeAlias(alias))
