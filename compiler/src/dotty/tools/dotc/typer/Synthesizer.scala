@@ -378,7 +378,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                 // avoid type aliases for tuples
                 Right(MirrorSource.GenericTuple(types))
               case _ => reduce(tp.underlying)
-          case tp: MatchType => reduce(tp.normalized)
+          case tp: MatchType => reduce(tp.tryNormalize.orElse(tp.superType))
           case _ => reduce(tp.superType)
       case tp @ AndType(l, r) =>
         for
