@@ -468,7 +468,7 @@ object Types extends TypeUtils {
     def underlyingMatchType(using Context): Type = stripped match {
       case tp: MatchType => tp
       case tp: HKTypeLambda => tp.resType.underlyingMatchType
-      case tp: AppliedType if tp.isMatchAlias => tp.superType.underlyingMatchType
+      case tp: AppliedType => tp.underlyingMatchType
       case _ => NoType
     }
 
@@ -4534,6 +4534,9 @@ object Types extends TypeUtils {
     private var myEvalRunId: RunId = NoRunId
     private var myEvalued: Type = uninitialized
 
+    private var validUnderlyingMatch: Period = Nowhere
+    private var cachedUnderlyingMatch: Type = uninitialized
+
     def isGround(acc: TypeAccumulator[Boolean])(using Context): Boolean =
       if myGround == 0 then myGround = if acc.foldOver(true, this) then 1 else -1
       myGround > 0
@@ -4589,6 +4592,15 @@ object Types extends TypeUtils {
         case arg :: rest => foldArgs(op(x, arg), rest)
         case nil => x
       foldArgs(op(x, tycon), args)
+
+    /** Exists if the tycon is a TypeRef of an alias with an underlying match type.
+     *  Anything else should have already been reduced in `appliedTo` by the TypeAssigner.
+     */
+    override def underlyingMatchType(using Context): Type =
+      if ctx.period != validUnderlyingMatch then
+        validUnderlyingMatch = if tycon.isProvisional then Nowhere else ctx.period
+        cachedUnderlyingMatch = superType.underlyingMatchType
+      cachedUnderlyingMatch
 
     override def tryNormalize(using Context): Type = tycon.stripTypeVar match {
       case tycon: TypeRef =>
