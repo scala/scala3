@@ -4196,7 +4196,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     def adaptToSubType(wtp: Type): Tree =
       // try converting a constant to the target type
-      ConstFold(tree).tpe.widenTermRefExpr.normalized match
+      tree.tpe.widenTermRefExpr.normalized match
         case ConstantType(x) =>
           val converted = x.convertTo(pt)
           if converted != null && (converted ne x) then
