@@ -1038,22 +1038,25 @@ class Inliner(val call: tpd.Tree)(using Context):
     val inlinedFrom = enclosingInlineds.last
     val dependencies = macroDependencies(body)(using spliceContext)
     val suspendable = ctx.compilationUnit.isSuspendable
+    val printSuspensions = ctx.settings.XprintSuspension.value
     if dependencies.nonEmpty && !ctx.reporter.errorsReported then
+      val hints: mutable.ListBuffer[String] | Null =
+        if printSuspensions then mutable.ListBuffer.empty[String] else null
       for sym <- dependencies do
         if ctx.compilationUnit.source.file == sym.associatedFile then
           report.error(em"Cannot call macro $sym defined in the same source file", call.srcPos)
         else if ctx.settings.YnoSuspendedUnits.value then
           val addendum = ", suspension prevented by -Yno-suspended-units"
           report.error(em"Cannot call macro $sym defined in the same compilation run$addendum", call.srcPos)
-        if (suspendable && ctx.settings.XprintSuspension.value)
-          report.echo(i"suspension triggered by macro call to ${sym.showLocated} in ${sym.associatedFile}", call.srcPos)
+        if suspendable && printSuspensions then
+          hints.nn += i"suspension triggered by macro call to ${sym.showLocated} in ${sym.associatedFile}"
       if suspendable then
         if ctx.settings.YnoSuspendedUnits.value then
           return ref(defn.Predef_undefined)
             .withType(ErrorType(em"could not expand macro, suspended units are disabled by -Yno-suspended-units"))
             .withSpan(splicePos.span)
         else
-          ctx.compilationUnit.suspend() // this throws a SuspendException
+          ctx.compilationUnit.suspend(hints.nn.toList.mkString(", ")) // this throws a SuspendException
 
     val evaluatedSplice = inContext(quoted.MacroExpansion.context(inlinedFrom)) {
       Splicer.splice(body, splicePos, inlinedFrom.srcPos, MacroClassLoader.fromContext)

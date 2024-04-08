@@ -1667,7 +1667,7 @@ class Namer { typer: Typer =>
 
     final override def complete(denot: SymDenotation)(using Context): Unit =
       denot.resetFlag(Touched) // allow one more completion
-      ctx.compilationUnit.suspend()
+      ctx.compilationUnit.suspend(i"reset $denot")
   }
 
   /** Typecheck `tree` during completion using `typed`, and remember result in TypedAhead map */

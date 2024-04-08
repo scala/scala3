@@ -130,6 +130,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     myUnits = us
 
   var suspendedUnits: mutable.ListBuffer[CompilationUnit] = mutable.ListBuffer()
+  var suspendedHints: mutable.Map[CompilationUnit, String] = mutable.HashMap()
 
   def checkSuspendedUnits(newUnits: List[CompilationUnit])(using Context): Unit =
     if newUnits.isEmpty && suspendedUnits.nonEmpty && !ctx.reporter.errorsReported then

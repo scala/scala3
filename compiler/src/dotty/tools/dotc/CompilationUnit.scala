@@ -90,17 +90,17 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
   /** Suspends the compilation unit by thowing a SuspendException
    *  and recording the suspended compilation unit
    */
-  def suspend()(using Context): Nothing =
+  def suspend(hint: => String)(using Context): Nothing =
     assert(isSuspendable)
     // Clear references to symbols that may become stale. No need to call
     // `depRecorder.sendToZinc()` since all compilation phases will be rerun
     // when this unit is unsuspended.
     depRecorder.clear()
     if !suspended then
-      if ctx.settings.XprintSuspension.value then
-        report.echo(i"suspended: $this")
       suspended = true
       ctx.run.nn.suspendedUnits += this
+      if ctx.settings.XprintSuspension.value then
+        ctx.run.nn.suspendedHints += (this -> hint)
       if ctx.phase == Phases.inliningPhase then
         suspendedAtInliningPhase = true
     throw CompilationUnit.SuspendException()
@@ -120,7 +120,7 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
 
   override def isJava: Boolean = false
 
-  override def suspend()(using Context): Nothing =
+  override def suspend(hint: => String)(using Context): Nothing =
     throw CompilationUnit.SuspendException()
 
   override def assignmentSpans(using Context): Map[Int, List[Span]] = Map.empty

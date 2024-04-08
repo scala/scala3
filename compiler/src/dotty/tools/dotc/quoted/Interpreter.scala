@@ -371,6 +371,4 @@ object Interpreter:
     if ctx.settings.YnoSuspendedUnits.value then
       throw StopInterpretation(em"suspension triggered by a dependency on missing $sym not allowed with -Yno-suspended-units", pos)
     else
-      if ctx.settings.XprintSuspension.value then
-        report.echo(i"suspension triggered by a dependency on missing $sym", pos)
-      ctx.compilationUnit.suspend() // this throws a SuspendException
+      ctx.compilationUnit.suspend(i"suspension triggered by a dependency on missing $sym") // this throws a SuspendException
