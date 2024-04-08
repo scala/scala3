@@ -1831,18 +1831,20 @@ trait Applications extends Compatibility {
      *
      *  In this case `b.M` would be regarded as more specific than `a.M`.
      */
-    def comparePrefixes(pre1: Type, pre2: Type) =
+    def comparePrefixes =
+      val pre1 = widenPrefix(alt1)
+      val pre2 = widenPrefix(alt2)
       val winsPrefix1 = isAsSpecificValueType(pre1, pre2)
       val winsPrefix2 = isAsSpecificValueType(pre2, pre1)
       if winsPrefix1 == winsPrefix2 then 0
       else if winsPrefix1 then 1
       else -1
 
-    def compareWithTypes(tp1: Type, tp2: Type) = {
+    def compareWithTypes(tp1: Type, tp2: Type) =
       val ownerScore = compareOwner(alt1.symbol.maybeOwner, alt2.symbol.maybeOwner)
 
-      def winsType1 = isAsSpecific(alt1, tp1, alt2, tp2)
-      def winsType2 = isAsSpecific(alt2, tp2, alt1, tp1)
+      val winsType1 = isAsSpecific(alt1, tp1, alt2, tp2)
+      val winsType2 = isAsSpecific(alt2, tp2, alt1, tp1)
 
       overload.println(i"compare($alt1, $alt2)? $tp1 $tp2 $ownerScore $winsType1 $winsType2")
       if winsType1 && winsType2
@@ -1851,15 +1853,14 @@ trait Applications extends Compatibility {
         // alternatives are the same after following ExprTypes, pick one of them
         // (prefer the one that is not a method, but that's arbitrary).
         if alt1.widenExpr =:= alt2 then -1 else 1
-      else if ownerScore == 1 then
-        if winsType1 || !winsType2 then 1 else 0
-      else if ownerScore == -1 then
-        if winsType2 || !winsType1 then -1 else 0
-      else if winsType1 then
-        if winsType2 then 0 else 1
-      else
-        if winsType2 then -1 else 0
-    }
+      else ownerScore match
+        case  1 => if winsType1 || !winsType2 then  1 else 0
+        case -1 => if winsType2 || !winsType1 then -1 else 0
+        case  0 =>
+          if winsType1 != winsType2 then if winsType1 then 1 else -1
+          else if alt1.symbol == alt2.symbol then comparePrefixes
+          else 0
+    end compareWithTypes
 
     if alt1.symbol.is(ConstructorProxy) && !alt2.symbol.is(ConstructorProxy) then -1
     else if alt2.symbol.is(ConstructorProxy) && !alt1.symbol.is(ConstructorProxy) then 1
@@ -1870,14 +1871,11 @@ trait Applications extends Compatibility {
       val strippedType2 = stripImplicit(fullType2)
 
       val result = compareWithTypes(strippedType1, strippedType2)
-      if result != 0 then result
-      else if strippedType1 eq fullType1 then
-        if strippedType2 eq fullType2 then
-          if alt1.symbol != alt2.symbol then 0    // no implicits either side: it's a draw ...
-          else comparePrefixes(                   // ... unless the symbol is the same, in which case
-            widenPrefix(alt1), widenPrefix(alt2)) // we compare prefixes
+      if (result != 0) result
+      else if (strippedType1 eq fullType1)
+        if (strippedType2 eq fullType2) 0         // no implicits either side: its' a draw
         else 1                                    // prefer 1st alternative with no implicits
-      else if strippedType2 eq fullType2 then -1  // prefer 2nd alternative with no implicits
+      else if (strippedType2 eq fullType2) -1     // prefer 2nd alternative with no implicits
       else compareWithTypes(fullType1, fullType2) // continue by comparing implicits parameters
   }
   end compare
