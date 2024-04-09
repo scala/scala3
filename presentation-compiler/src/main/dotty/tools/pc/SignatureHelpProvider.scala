@@ -70,7 +70,7 @@ object SignatureHelpProvider:
         new l.SignatureHelp(
           signatureInfos.map(signatureToSignatureInformation).asJava,
           callableN,
-          if signatureInfos.isEmpty then null else paramN
+          paramN
         )
       case _ => new l.SignatureHelp()
   end signatureHelp
