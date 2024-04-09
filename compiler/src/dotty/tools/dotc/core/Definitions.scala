@@ -648,7 +648,7 @@ class Definitions {
   @tu lazy val StringModule: Symbol = StringClass.linkedClass
     @tu lazy val String_+ : TermSymbol = enterMethod(StringClass, nme.raw.PLUS, methOfAny(StringType), Final)
     @tu lazy val String_valueOf_Object: Symbol = StringModule.info.member(nme.valueOf).suchThat(_.info.firstParamTypes match {
-      case List(pt) => pt.isAny || pt.stripNull.isAnyRef
+      case List(pt) => pt.isAny || pt.stripNull().isAnyRef
       case _ => false
     }).symbol
 
@@ -660,13 +660,13 @@ class Definitions {
   @tu lazy val ClassCastExceptionClass: ClassSymbol   = requiredClass("java.lang.ClassCastException")
     @tu lazy val ClassCastExceptionClass_stringConstructor: TermSymbol  = ClassCastExceptionClass.info.member(nme.CONSTRUCTOR).suchThat(_.info.firstParamTypes match {
       case List(pt) =>
-        pt.stripNull.isRef(StringClass)
+        pt.stripNull().isRef(StringClass)
       case _ => false
     }).symbol.asTerm
   @tu lazy val ArithmeticExceptionClass: ClassSymbol  = requiredClass("java.lang.ArithmeticException")
     @tu lazy val ArithmeticExceptionClass_stringConstructor: TermSymbol  = ArithmeticExceptionClass.info.member(nme.CONSTRUCTOR).suchThat(_.info.firstParamTypes match {
       case List(pt) =>
-        pt.stripNull.isRef(StringClass)
+        pt.stripNull().isRef(StringClass)
       case _ => false
     }).symbol.asTerm
 

@@ -14,7 +14,7 @@ object NullOpsDecorator:
      *  If this type isn't (syntactically) nullable, then returns the type unchanged.
      *  The type will not be changed if explicit-nulls is not enabled.
      */
-    def stripNull(using Context): Type = {
+    def stripNull(stripFlexibleTypes: Boolean = true)(using Context): Type = {
       def strip(tp: Type): Type =
         val tpWiden = tp.widenDealias
         val tpStripped = tpWiden match {
@@ -33,6 +33,9 @@ object NullOpsDecorator:
             if (tp1s ne tp1) && (tp2s ne tp2) then
               tp.derivedAndType(tp1s, tp2s)
             else tp
+          case tp: FlexibleType =>
+            val hi1 = strip(tp.hi)
+            if stripFlexibleTypes then hi1 else tp.derivedFlexibleType(hi1)
           case tp @ TypeBounds(lo, hi) =>
             tp.derivedTypeBounds(strip(lo), strip(hi))
           case tp => tp
@@ -44,7 +47,7 @@ object NullOpsDecorator:
 
     /** Is self (after widening and dealiasing) a type of the form `T | Null`? */
     def isNullableUnion(using Context): Boolean = {
-      val stripped = self.stripNull
+      val stripped = self.stripNull()
       stripped ne self
     }
   end extension

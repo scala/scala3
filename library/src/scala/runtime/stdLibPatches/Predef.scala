@@ -1,5 +1,7 @@
 package scala.runtime.stdLibPatches
 
+import scala.annotation.experimental
+
 object Predef:
   import compiletime.summonFrom
 
@@ -60,5 +62,4 @@ object Predef:
      *  `eq` or `ne` methods, only `==` and `!=` inherited from `Any`. */
     inline def ne(inline y: AnyRef | Null): Boolean =
       !(x eq y)
-
 end Predef

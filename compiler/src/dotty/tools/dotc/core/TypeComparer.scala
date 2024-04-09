@@ -864,6 +864,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             false
         }
         compareClassInfo
+      case tp2: FlexibleType =>
+        recur(tp1, tp2.lo)
       case _ =>
         fourthTry
     }
@@ -1059,6 +1061,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp1: ExprType if ctx.phaseId > gettersPhase.id =>
         // getters might have converted T to => T, need to compensate.
         recur(tp1.widenExpr, tp2)
+      case tp1: FlexibleType =>
+        recur(tp1.hi, tp2)
       case _ =>
         false
     }
@@ -3437,6 +3441,8 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
             isConcrete(tp1.underlying)
           case tp1: AndOrType =>
             isConcrete(tp1.tp1) && isConcrete(tp1.tp2)
+          case tp1: FlexibleType =>
+            isConcrete(tp1.hi)
           case _ =>
             val tp2 = tp1.stripped.stripLazyRef
             (tp2 ne tp) && isConcrete(tp2)
