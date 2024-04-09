@@ -15,12 +15,13 @@ import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Types.Type
-import dotty.tools.dotc.core.Symbols.Symbol
+import dotty.tools.dotc.core.Symbols.{Symbol, NoSymbol}
 import dotty.tools.dotc.core.Flags
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 import dotty.tools.io.AbstractFile
 import annotation.internal.sharable
-import dotty.tools.dotc.core.Symbols.NoSymbol
+import dotty.tools.dotc.core.Periods.InitialRunId
+import scala.collection.mutable.UnrolledBuffer
 
 object Profiler {
   def apply()(using Context): Profiler =
@@ -37,11 +38,14 @@ object Profiler {
   private[profile] val emptySnap: ProfileSnap = ProfileSnap(0, "", 0, 0, 0, 0, 0, 0, 0, 0)
 }
 
-case class GcEventData(pool:String, reportTimeNs: Long, gcStartMillis:Long, gcEndMillis:Long, name:String, action:String, cause:String, threads:Long)
+case class GcEventData(pool:String, reportTimeNs: Long, gcStartMillis:Long, gcEndMillis:Long, durationMillis: Long, name:String, action:String, cause:String, threads:Long){
+  val endNanos = System.nanoTime()
+}
 
 case class ProfileSnap(threadId: Long, threadName: String, snapTimeNanos : Long,
                        idleTimeNanos:Long, cpuTimeNanos: Long, userTimeNanos: Long,
-                       allocatedBytes:Long, heapBytes:Long,totalClassesLoaded: Long, totalJITCompilationTime: Long) {
+                       allocatedBytes:Long, heapBytes:Long,
+                       totalClassesLoaded: Long, totalJITCompilationTime: Long) {
   def updateHeap(heapBytes:Long): ProfileSnap =
     copy(heapBytes = heapBytes)
 }
@@ -75,55 +79,58 @@ case class ProfileRange(start: ProfileSnap, end:ProfileSnap, phase:Phase, purpos
   def retainedHeapMB: Double = toMegaBytes(end.heapBytes - start.heapBytes)
 }
 
+private opaque type TracedEventId <: String = String
+private object TracedEventId:
+  def apply(stringValue: String): TracedEventId = stringValue
+  final val Empty: TracedEventId = ""
+
 sealed trait Profiler {
 
   def finished(): Unit
 
-  def beforePhase(phase: Phase): ProfileSnap
-
-  def afterPhase(phase: Phase, profileBefore: ProfileSnap): Unit
+  inline def onPhase[T](phase: Phase)(inline body: T): T =
+    val (event, snapshot) = beforePhase(phase)
+    try body
+    finally afterPhase(event, phase, snapshot)
+  protected def beforePhase(phase: Phase): (TracedEventId, ProfileSnap) = (TracedEventId.Empty, Profiler.emptySnap)
+  protected def afterPhase(event: TracedEventId, phase: Phase, profileBefore: ProfileSnap): Unit = ()
 
   inline def onUnit[T](phase: Phase, unit: CompilationUnit)(inline body: T): T =
-    beforeUnit(phase, unit)
+    val event = beforeUnit(phase, unit)
     try body
-    finally afterUnit(phase, unit)
-  def beforeUnit(phase: Phase, unit: CompilationUnit): Unit = ()
-  def afterUnit(phase: Phase,  unit: CompilationUnit): Unit = ()
+    finally afterUnit(event)
+  protected def beforeUnit(phase: Phase, unit: CompilationUnit): TracedEventId = TracedEventId.Empty
+  protected def afterUnit(event: TracedEventId): Unit = ()
 
-  inline def onTypedImplDef[T](sym: Symbol)(inline body: T): T =
-    beforeTypedImplDef(sym)
+  inline def onTypedDef[T](sym: Symbol)(inline body: T): T =
+    val event = beforeTypedDef(sym)
     try body
-    finally afterTypedImplDef(sym)
-  def beforeTypedImplDef(sym: Symbol): Unit = ()
-  def afterTypedImplDef(sym: Symbol): Unit = ()
-
+    finally afterTypedDef(event)
+   protected def beforeTypedDef(sym: Symbol): TracedEventId = TracedEventId.Empty
+   protected def afterTypedDef(token: TracedEventId): Unit = ()
 
   inline def onImplicitSearch[T](pt: Type)(inline body: T): T =
-    beforeImplicitSearch(pt)
+    val event = beforeImplicitSearch(pt)
     try body
-    finally afterImplicitSearch(pt)
-  def beforeImplicitSearch(pt: Type): Unit  = ()
-  def afterImplicitSearch(pt: Type): Unit = ()
+    finally afterImplicitSearch(event)
+  protected def beforeImplicitSearch(pt: Type): TracedEventId  = TracedEventId.Empty
+  protected def afterImplicitSearch(event: TracedEventId): Unit = ()
 
-  inline def onMacroExpansion[T](macroSym: Symbol)(inline body: T): T =
-    beforeMacroExpansion(macroSym)
+  inline def onMacroSplice[T](macroSym: Symbol)(inline body: T): T =
+    val event = beforeMacroSplice(macroSym)
     try body
-    finally afterMacroExpansion(macroSym)
-  def beforeMacroExpansion(macroSym: Symbol): Unit = ()
-  def afterMacroExpansion(macroSym: Symbol): Unit = ()
+    finally afterMacroSplice(event)
+  protected def beforeMacroSplice(macroSym: Symbol): TracedEventId = TracedEventId.Empty
+  protected def afterMacroSplice(event: TracedEventId): Unit = ()
 
-  inline def onCompletion[T](root: Symbol, associatedFile: AbstractFile)(inline body: T): T =
-    beforeCompletion(root, associatedFile)
+  inline def onCompletion[T](root: Symbol, associatedFile: => AbstractFile)(inline body: T): T =
+    val (event, completionName) = beforeCompletion(root, associatedFile)
     try body
-    finally afterCompletion(root, associatedFile)
-  def beforeCompletion(root: Symbol, associatedFile: AbstractFile): Unit = ()
-  def afterCompletion(root: Symbol, associatedFile: AbstractFile): Unit = ()
+    finally afterCompletion(event, completionName)
+  protected def beforeCompletion(root: Symbol, associatedFile: => AbstractFile): (TracedEventId, String) = (TracedEventId.Empty, "")
+  protected def afterCompletion(event: TracedEventId, completionName: String): Unit = ()
 }
 private [profile] object NoOpProfiler extends Profiler {
-
-  override def beforePhase(phase: Phase): ProfileSnap = Profiler.emptySnap
-
-  override def afterPhase(phase: Phase, profileBefore: ProfileSnap): Unit = ()
 
   override def finished(): Unit = ()
 }
@@ -137,39 +144,6 @@ private [profile] object RealProfiler {
   val threadMx: ExtendedThreadMxBean = ExtendedThreadMxBean.proxy
   if (threadMx.isThreadCpuTimeSupported) threadMx.setThreadCpuTimeEnabled(true)
   private val idGen = new AtomicInteger()
-}
-
-private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) extends Profiler with NotificationListener {
-  def completeBackground(threadRange: ProfileRange): Unit =
-    reporter.reportBackground(this, threadRange)
-
-  def outDir: AbstractFile = ctx.settings.outputDir.value
-
-  val id: Int = RealProfiler.idGen.incrementAndGet()
-
-  private val mainThread = Thread.currentThread()
-
-  enum Category:
-    def name: String = this.toString().toLowerCase()
-    case Run, Phase, File, TypeCheck, Implicit, Macro, Completion
-  given Conversion[Category, String] = _.name
-
-
-  private [profile] val chromeTrace =
-    if ctx.settings.YprofileTrace.isDefault
-    then null
-    else
-      // Scala 2 combined traces from different runs by storing them in buffer
-      // It would lead to high memory usage when profiling larger codebases
-      // Instead create file with suffix for subsequent runs
-      val filename = ctx.settings.YprofileTrace.value
-      val suffix = if(id > 1) s".$id" else ""
-      ChromeTrace(Paths.get(s"$filename$suffix"))
-  private var nextAfterUnitSnap:Long = System.nanoTime()
-
-  if chromeTrace != null
-  then chromeTrace.traceDurationEventStart(Category.Run, "scalac-" + id)
-
 
   @nowarn("cat=deprecation")
   private[profile] def snapThread(idleTimeNanos: Long): ProfileSnap = {
@@ -187,13 +161,42 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
       heapBytes = readHeapUsage(),
       totalClassesLoaded = classLoaderMx.getTotalLoadedClassCount,
       totalJITCompilationTime = compileMx.getTotalCompilationTime
-
     )
   }
   private def readHeapUsage() = RealProfiler.memoryMx.getHeapMemoryUsage.getUsed
+}
+
+private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) extends Profiler with NotificationListener {
+  val id: Int = RealProfiler.idGen.incrementAndGet()
+  private val mainThread = Thread.currentThread()
+  private val gcEvents = UnrolledBuffer[GcEventData]()
+  private var nextAfterUnitSnap: Long = System.nanoTime()
+
+  private final val GcThreadId = "GC"
+
+  enum Category:
+    def name: String = this.toString().toLowerCase()
+    case Run, Phase, File, TypeCheck, Implicit, Macro, Completion
+  private [profile] val chromeTrace =
+    if ctx.settings.YprofileTrace.isDefault
+    then null
+    else
+      val filename = ctx.settings.YprofileTrace.value
+      // Compilation units requiring multi-stage compilation (macros) would create a new profiler instances
+      // We need to store the traces in the seperate file to prevent overriding its content.
+      // Alternatives: sharing ChromeTrace instance between all runs / manual concatation after all runs are done
+      val suffix = if ctx.runId > InitialRunId then s".${ctx.runId}" else ""
+      ChromeTrace(Paths.get(s"$filename$suffix"))
+
+  private val compilerRunEvent: TracedEventId = traceDurationStart(Category.Run, s"stage-${ctx.runId}")
+
+  def completeBackground(threadRange: ProfileRange): Unit =
+    reporter.reportBackground(this, threadRange)
+
+  def outDir: AbstractFile = ctx.settings.outputDir.value
 
   @nowarn
-  private def doGC: Unit = {
+  private def doGC(): Unit = {
     System.gc()
     System.runFinalization()
   }
@@ -213,9 +216,14 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
     }
     reporter.close(this)
     if chromeTrace != null then
-      chromeTrace.traceDurationEventEnd(Category.Run, "scalac-" + id)
+      traceDurationEnd(Category.Run, compilerRunEvent)
+      for gcEvent <- gcEvents
+      do {
+        val durationNanos = TimeUnit.MILLISECONDS.toNanos(gcEvent.durationMillis)
+        val startNanos = gcEvent.endNanos - durationNanos
+        chromeTrace.traceDurationEvent(gcEvent.name, startNanos, durationNanos, tid = GcThreadId)
+      }
       chromeTrace.close()
-
   }
 
 
@@ -224,10 +232,10 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
     import java.lang.{Integer => jInt}
     val reportNs = System.nanoTime()
     val data = notification.getUserData
-    val seq = notification.getSequenceNumber
-    val message = notification.getMessage
+    // val seq = notification.getSequenceNumber
+    // val message = notification.getMessage
     val tpe = notification.getType
-    val time= notification.getTimeStamp
+    // val time= notification.getTimeStamp
     data match {
       case cd: CompositeData if tpe == "com.sun.management.gc.notification" =>
         val name = cd.get("gcName").toString
@@ -238,106 +246,105 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
         val startTime = info.get("startTime").asInstanceOf[jLong].longValue()
         val endTime = info.get("endTime").asInstanceOf[jLong].longValue()
         val threads = info.get("GcThreadCount").asInstanceOf[jInt].longValue()
-        reporter.reportGc(this, GcEventData("", reportNs, startTime, endTime, name, action, cause, threads))
+        val gcEvent = GcEventData("", reportNs, startTime, endTime, duration, name, action, cause, threads)
+        synchronized { gcEvents += gcEvent }
+        reporter.reportGc(gcEvent)
     }
   }
 
-  override def afterPhase(phase: Phase, snapBefore: ProfileSnap): Unit = {
+  override def afterPhase(event: TracedEventId, phase: Phase, snapBefore: ProfileSnap): Unit = {
     assert(mainThread eq Thread.currentThread())
-    val initialSnap = snapThread(0)
+    val initialSnap = RealProfiler.snapThread(0)
     if (ctx.settings.YprofileExternalTool.value.contains(phase.toString)) {
       println("Profile hook stop")
       ExternalToolHook.after()
     }
     val finalSnap = if (ctx.settings.YprofileRunGcBetweenPhases.value.contains(phase.toString)) {
-      doGC
-      initialSnap.updateHeap(readHeapUsage())
+      doGC()
+      initialSnap.updateHeap(RealProfiler.readHeapUsage())
     }
     else initialSnap
-
-    if chromeTrace != null
-    then chromeTrace.traceDurationEventEnd(Category.Phase, phase.phaseName)
+    traceDurationEnd(Category.Phase, event)
 
     reporter.reportForeground(this, ProfileRange(snapBefore, finalSnap, phase, "", 0, Thread.currentThread))
   }
 
-  override def beforePhase(phase: Phase): ProfileSnap = {
+  override def beforePhase(phase: Phase): (TracedEventId, ProfileSnap) = {
     assert(mainThread eq Thread.currentThread())
-    if chromeTrace != null
-    then chromeTrace.traceDurationEventStart(Category.Phase, phase.phaseName)
-
+    val eventId = traceDurationStart(Category.Phase, phase.phaseName)
     if (ctx.settings.YprofileRunGcBetweenPhases.value.contains(phase.toString))
-      doGC
+      doGC()
     if (ctx.settings.YprofileExternalTool.value.contains(phase.toString)) {
       println("Profile hook start")
       ExternalToolHook.before()
     }
-    snapThread(0)
+    (eventId, RealProfiler.snapThread(0))
   }
 
-  override def beforeUnit(phase: Phase, unit: CompilationUnit): Unit = {
+  override def beforeUnit(phase: Phase, unit: CompilationUnit): TracedEventId = {
     assert(mainThread eq Thread.currentThread())
-    if (chromeTrace != null) chromeTrace.traceDurationEventStart(Category.File, unit.source.name)
+    traceDurationStart(Category.File, unit.source.name)
   }
 
-  override def afterUnit(phase: Phase,  unit: CompilationUnit): Unit = {
+  override def afterUnit(event: TracedEventId): Unit = {
     assert(mainThread eq Thread.currentThread())
-    if (chromeTrace != null) {
+    if chromeTrace != null then
       val now = System.nanoTime()
-      chromeTrace.traceDurationEventEnd(Category.File, unit.source.name)
-      if (now > nextAfterUnitSnap) {
-        val initialSnap = snapThread(0)
-        chromeTrace.nn.traceCounterEvent("allocBytes", "allocBytes", initialSnap.allocatedBytes, processWide = false)
-        chromeTrace.nn.traceCounterEvent("heapBytes", "heapBytes", initialSnap.heapBytes, processWide = true)
-        chromeTrace.nn.traceCounterEvent("classesLoaded", "classesLoaded", initialSnap.totalClassesLoaded, processWide = true)
-        chromeTrace.nn.traceCounterEvent("jitCompilationTime", "jitCompilationTime", initialSnap.totalJITCompilationTime, processWide = true)
-        chromeTrace.nn.traceCounterEvent("userTime", "userTime", initialSnap.userTimeNanos, processWide = false)
-        chromeTrace.nn.traceCounterEvent("cpuTime", "cpuTime", initialSnap.cpuTimeNanos, processWide = false)
-        chromeTrace.nn.traceCounterEvent("idleTime", "idleTime", initialSnap.idleTimeNanos, processWide = false)
+      traceDurationEnd(Category.File, event)
+      if now > nextAfterUnitSnap then
+        val initialSnap = RealProfiler.snapThread(0)
+        chromeTrace.traceCounterEvent("allocBytes", "allocBytes", initialSnap.allocatedBytes, processWide = false)
+        chromeTrace.traceCounterEvent("heapBytes", "heapBytes", initialSnap.heapBytes, processWide = true)
+        chromeTrace.traceCounterEvent("classesLoaded", "classesLoaded", initialSnap.totalClassesLoaded, processWide = true)
+        chromeTrace.traceCounterEvent("jitCompilationTime", "jitCompilationTime", initialSnap.totalJITCompilationTime, processWide = true)
+        chromeTrace.traceCounterEvent("userTime", "userTime", initialSnap.userTimeNanos, processWide = false)
+        chromeTrace.traceCounterEvent("cpuTime", "cpuTime", initialSnap.cpuTimeNanos, processWide = false)
+        chromeTrace.traceCounterEvent("idleTime", "idleTime", initialSnap.idleTimeNanos, processWide = false)
         nextAfterUnitSnap = System.nanoTime() + 10 * 1000 * 1000
-      }
-    }
   }
 
-  override def beforeTypedImplDef(sym: Symbol): Unit =
-    if chromeTrace != null
-    then chromeTrace.traceDurationEventStart(Category.TypeCheck, sym.fullName.toString)
+  override def beforeTypedDef(sym: Symbol): TracedEventId = traceDurationStart(Category.TypeCheck, symbolName(sym))
+  override def afterTypedDef(event: TracedEventId): Unit = traceDurationEnd(Category.TypeCheck, event)
 
-  override def afterTypedImplDef(sym: Symbol): Unit =
-    if chromeTrace != null
-    then chromeTrace.traceDurationEventEnd(Category.TypeCheck, sym.fullName.toString)
+  override def beforeImplicitSearch(pt: Type): TracedEventId = traceDurationStart(Category.Implicit, s"?[${symbolName(pt.typeSymbol)}]", colour = "yellow")
+  override def afterImplicitSearch(event: TracedEventId): Unit = traceDurationEnd(Category.Implicit, event, colour = "yellow")
 
-  override def beforeImplicitSearch(pt: Type): Unit =
-    if chromeTrace != null
-    then chromeTrace.traceDurationEventStart(Category.Implicit, s"?[${symbolName(pt.typeSymbol)}]", colour = "yellow")
+  override def beforeMacroSplice(macroSym: Symbol): TracedEventId = traceDurationStart(Category.Macro, s"«${symbolName(macroSym)}»", colour = "olive")
+  override def afterMacroSplice(event: TracedEventId): Unit = traceDurationEnd(Category.Macro, event, colour = "olive")
 
-  override def afterImplicitSearch(pt: Type): Unit =
-    if chromeTrace != null
-    then chromeTrace.traceDurationEventEnd(Category.Implicit, s"?[${symbolName(pt.typeSymbol)}]", colour = "yellow")
+  override def beforeCompletion(root: Symbol, associatedFile: => AbstractFile): (TracedEventId, String) =
+    if chromeTrace == null
+    then (TracedEventId.Empty, "")
+    else
+      val completionName=  this.completionName(root, associatedFile)
+      val event = TracedEventId(associatedFile.name)
+      chromeTrace.traceDurationEventStart(Category.Completion.name, "↯", colour = "thread_state_sleeping")
+      chromeTrace.traceDurationEventStart(Category.File.name, event)
+      chromeTrace.traceDurationEventStart(Category.Completion.name, completionName)
+      (event, completionName)
 
-  override def beforeMacroExpansion(macroSym: Symbol): Unit =
-    if chromeTrace != null
-    then chromeTrace.traceDurationEventStart(Category.Macro, s"«${symbolName(macroSym)}»", colour = "olive")
-
-  override def afterMacroExpansion(macroSym: Symbol): Unit =
-    if chromeTrace != null
-    then chromeTrace.traceDurationEventEnd(Category.Macro, s"«${symbolName(macroSym)}»", colour = "olive")
-
-  override def beforeCompletion(root: Symbol, associatedFile: AbstractFile): Unit =
+  override def afterCompletion(event: TracedEventId, completionName: String): Unit =
     if chromeTrace != null
     then
-      chromeTrace.traceDurationEventStart(Category.Completion, "↯", colour = "thread_state_sleeping")
-      chromeTrace.traceDurationEventStart(Category.File, associatedFile.name)
-      chromeTrace.traceDurationEventStart(Category.Completion, completionName(root, associatedFile))
+      chromeTrace.traceDurationEventEnd(Category.Completion.name, completionName)
+      chromeTrace.traceDurationEventEnd(Category.File.name, event)
+      chromeTrace.traceDurationEventEnd(Category.Completion.name, "↯", colour = "thread_state_sleeping")
 
-  override def afterCompletion(root: Symbol, associatedFile: AbstractFile): Unit =
+
+  private inline def traceDurationStart(category: Category, inline eventName: String, colour: String = ""): TracedEventId =
+    if chromeTrace == null
+    then TracedEventId.Empty
+    else
+      val event = TracedEventId(eventName)
+      chromeTrace.traceDurationEventStart(category.name, event, colour)
+      event
+
+  private inline def traceDurationEnd(category: Category, event: TracedEventId, colour: String = ""): Unit =
     if chromeTrace != null
-    then
-      chromeTrace.traceDurationEventEnd(Category.Completion, completionName(root, associatedFile))
-      chromeTrace.traceDurationEventEnd(Category.File, associatedFile.name)
-      chromeTrace.traceDurationEventEnd(Category.Completion, "↯", colour = "thread_state_sleeping")
+    then chromeTrace.traceDurationEventEnd(category.name, event, colour)
 
-  private def symbolName(sym: Symbol): String = sym.name.toString
+
+  private def symbolName(sym: Symbol): String = s"${sym.showKind} ${sym.showName}"
   private def completionName(root: Symbol, associatedFile: AbstractFile): String =
     def isTopLevel = root.owner != NoSymbol && root.owner.is(Flags.Package)
     if root.is(Flags.Package) || isTopLevel
@@ -361,7 +368,7 @@ sealed trait ProfileReporter {
   def reportBackground(profiler: RealProfiler, threadRange: ProfileRange): Unit
   def reportForeground(profiler: RealProfiler, threadRange: ProfileRange): Unit
 
-  def reportGc(profiler: RealProfiler, data: GcEventData): Unit
+  def reportGc(data: GcEventData): Unit
 
   def header(profiler: RealProfiler) :Unit
   def close(profiler: RealProfiler) :Unit
@@ -384,13 +391,8 @@ object ConsoleProfileReporter extends ProfileReporter {
   override def header(profiler: RealProfiler): Unit =
     println(s"Profiler start (${profiler.id}) ${profiler.outDir}")
 
-  override def reportGc(profiler: RealProfiler, data: GcEventData): Unit =
+  override def reportGc(data: GcEventData): Unit =
     println(s"Profiler GC reported ${data.gcEndMillis - data.gcStartMillis}ms")
-    if(profiler.chromeTrace != null){
-      val duration = TimeUnit.MILLISECONDS.toNanos(data.gcEndMillis - data.gcStartMillis + 1)
-      val start = data.reportTimeNs - duration
-      profiler.chromeTrace.traceDurationEvent(data.name, start, duration, EventType.GC.name)
-    }
 }
 
 class StreamProfileReporter(out:PrintWriter) extends ProfileReporter {
@@ -408,12 +410,10 @@ class StreamProfileReporter(out:PrintWriter) extends ProfileReporter {
   private def reportCommon(tpe:EventType, profiler: RealProfiler, threadRange: ProfileRange): Unit =
     out.println(s"$tpe,${threadRange.start.snapTimeNanos},${threadRange.end.snapTimeNanos},${profiler.id},${threadRange.phase.id},${threadRange.phase.phaseName.replace(',', ' ')},${threadRange.purpose},${threadRange.taskCount},${threadRange.thread.getId},${threadRange.thread.getName},${threadRange.runNs},${threadRange.idleNs},${threadRange.cpuNs},${threadRange.userNs},${threadRange.allocatedBytes},${threadRange.end.heapBytes} ")
 
-  override def reportGc(profiler: RealProfiler, data: GcEventData): Unit = {
+  override def reportGc(data: GcEventData): Unit = {
     val duration = TimeUnit.MILLISECONDS.toNanos(data.gcEndMillis - data.gcStartMillis + 1)
     val start = data.reportTimeNs - duration
     out.println(s"${EventType.GC},$start,${data.reportTimeNs},${data.gcStartMillis}, ${data.gcEndMillis},${data.name},${data.action},${data.cause},${data.threads}")
-    if profiler.chromeTrace != null
-    then profiler.chromeTrace.traceDurationEvent(data.name, start, duration, EventType.GC.name)
   }
 
 

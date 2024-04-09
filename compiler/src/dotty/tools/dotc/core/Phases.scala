@@ -370,9 +370,8 @@ object Phases {
       // Test that we are in a state where we need to check if the phase should be skipped for a java file,
       // this prevents checking the expensive `unit.typedAsJava` unnecessarily.
       val doCheckJava = skipIfJava && !isAfterLastJavaPhase
-      for unit <- units do
+      for unit <- units do ctx.profiler.onUnit(this, unit):
         given unitCtx: Context = runCtx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
-        ctx.profiler.beforeUnit(this, unit)
         if ctx.run.enterUnit(unit) then
           try
             if doCheckJava && unit.typedAsJava then
@@ -382,9 +381,7 @@ object Phases {
           catch case ex: Throwable if !ctx.run.enrichedErrorMessage =>
             println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
             throw ex
-          finally
-            ctx.profiler.afterUnit(this, unit)
-            ctx.run.advanceUnit()
+          finally ctx.run.advanceUnit()
           buf += unitCtx.compilationUnit
         end if
       end for

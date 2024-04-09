@@ -171,9 +171,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
     val clazz = inst.getClass
     val name = fn.name.asTermName
     val method = getMethod(clazz, name, paramsSig(fn))
-    ctx.profiler.onMacroExpansion(fn){
-      stopIfRuntimeException(method.invoke(inst, args*), method)
-    }
+    stopIfRuntimeException(method.invoke(inst, args*), method)
   }
 
   private def interpretedStaticFieldAccess(sym: Symbol): Object = {

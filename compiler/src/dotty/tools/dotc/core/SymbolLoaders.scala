@@ -333,18 +333,15 @@ abstract class SymbolLoader extends LazyType { self =>
     def description(using Context): String = s"proxy to ${self.description}"
   }
 
-  private inline def tryProfileCompletion[T](root: SymDenotation)(inline body: T)(using Context): T = {
-    if ctx.profiler eq null
-    then body
-    else
-      val sym = root.symbol
-      val associatedFile = root.symbol.associatedFile match
-        case file: AbstractFile => file
-        case _ => NoAbstractFile
-      ctx.profiler.onCompletion(sym, associatedFile)(body)
+  private inline def profileCompletion[T](root: SymDenotation)(inline body: T)(using Context): T = {
+    val sym = root.symbol
+    def associatedFile = root.symbol.associatedFile match
+      case file: AbstractFile => file
+      case _ => NoAbstractFile
+    ctx.profiler.onCompletion(sym, associatedFile)(body)
   }
 
-  override def complete(root: SymDenotation)(using Context): Unit = tryProfileCompletion(root) {
+  override def complete(root: SymDenotation)(using Context): Unit = profileCompletion(root) {
     def signalError(ex: Exception): Unit = {
       if (ctx.debug) ex.printStackTrace()
       val msg = ex.getMessage()
@@ -418,6 +415,7 @@ abstract class SymbolLoader extends LazyType { self =>
 class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
 
   def compilationUnitInfo: CompilationUnitInfo | Null = CompilationUnitInfo(classfile)
+
 
   def description(using Context): String = "class file " + classfile.toString
 

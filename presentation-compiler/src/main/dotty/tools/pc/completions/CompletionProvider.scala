@@ -22,7 +22,6 @@ import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.parsing.Tokens
 import dotty.tools.dotc.util.SourceFile
-import dotty.tools.dotc.profile.Profiler
 import dotty.tools.pc.AutoImports.AutoImportEdits
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
 import dotty.tools.pc.printer.ShortenedTypePrinter

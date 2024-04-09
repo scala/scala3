@@ -63,7 +63,7 @@ final class ChromeTrace(f: Path) extends Closeable {
     traceWriter.close()
   }
 
-  def traceDurationEvent(name: String, startNanos: Long, durationNanos: Long, tid: String = this.tid(), pidSuffix: String = ""): Unit = synchronized {
+  def traceDurationEvent(name: String, startNanos: Long, durationNanos: Long, tid: String = this.tid(), pidSuffix: String = ""): Unit = {
     val durationMicros = nanosToMicros(durationNanos)
     val startMicros = nanosToMicros(startNanos)
     objStart()
@@ -85,7 +85,7 @@ final class ChromeTrace(f: Path) extends Closeable {
       str2("pid", pid, "-", pidSuffix)
   }
 
-  def traceCounterEvent(name: String, counterName: String, count: Long, processWide: Boolean): Unit = synchronized {
+  def traceCounterEvent(name: String, counterName: String, count: Long, processWide: Boolean): Unit = {
     objStart()
     str("cat", "scalac")
     str("name", name)
@@ -104,7 +104,7 @@ final class ChromeTrace(f: Path) extends Closeable {
   def traceDurationEventStart(cat: String, name: String, colour: String = "", pidSuffix: String = tid()): Unit = traceDurationEventStartEnd(EventType.Start, cat, name, colour, pidSuffix)
   def traceDurationEventEnd(cat: String, name: String, colour: String = "", pidSuffix: String = tid()): Unit = traceDurationEventStartEnd(EventType.End, cat, name, colour, pidSuffix)
 
-  private def traceDurationEventStartEnd(eventType: String, cat: String, name: String, colour: String, pidSuffix: String = ""): Unit = synchronized {
+  private def traceDurationEventStartEnd(eventType: String, cat: String, name: String, colour: String, pidSuffix: String = ""): Unit = {
     objStart()
     str("cat", cat)
     str("name", name)
