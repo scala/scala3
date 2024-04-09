@@ -981,17 +981,23 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }
 
     if (untpd.isWildcardStarArg(tree)) {
+
+      def fromRepeated(pt: Type): Type = pt match
+        case pt: FlexibleType =>
+          pt.derivedFlexibleType(fromRepeated(pt.hi))
+        case _ =>
+          if ctx.mode.isQuotedPattern then
+            // FIXME(#8680): Quoted patterns do not support Array repeated arguments
+            pt.translateFromRepeated(toArray = false, translateWildcard = true)
+          else
+            pt.translateFromRepeated(toArray = false, translateWildcard = true)
+            | pt.translateFromRepeated(toArray = true, translateWildcard = true)
+
       def typedWildcardStarArgExpr = {
         // A sequence argument `xs: _*` can be either a `Seq[T]` or an `Array[_ <: T]`,
         // irrespective of whether the method we're calling is a Java or Scala method,
         // so the expected type is the union `Seq[T] | Array[_ <: T]`.
-        val ptArg =
-          // FIXME(#8680): Quoted patterns do not support Array repeated arguments
-          if ctx.mode.isQuotedPattern then
-            pt.translateFromRepeated(toArray = false, translateWildcard = true)
-          else
-            pt.translateFromRepeated(toArray = false, translateWildcard = true)
-            | pt.translateFromRepeated(toArray = true,  translateWildcard = true)
+        val ptArg = fromRepeated(pt)
         val expr0 = typedExpr(tree.expr, ptArg)
         val expr1 = if ctx.explicitNulls && (!ctx.mode.is(Mode.Pattern)) then
             if expr0.tpe.isNullType then
@@ -1079,7 +1085,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      * with annotation contructor, as named arguments are not allowed anywhere else in Java.
      * Under explicit nulls, the pt could be nullable. We need to strip `Null` type first.
      */
-    val arg1 = pt.stripNull match {
+    val arg1 = pt.stripNull() match {
       case AppliedType(a, typ :: Nil) if ctx.isJava && a.isRef(defn.ArrayClass) =>
         tryAlternatively { typed(tree.arg, pt) } {
             val elemTp = untpd.TypedSplice(TypeTree(typ))
@@ -1906,7 +1912,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val case1 = typedCase(cas, sel, wideSelType, tpe)(using caseCtx)
         caseCtx = Nullables.afterPatternContext(sel, case1.pat)
         if !alreadyStripped && Nullables.matchesNull(case1) then
-          wideSelType = wideSelType.stripNull
+          wideSelType = wideSelType.stripNull()
           alreadyStripped = true
         case1
       }
@@ -1929,7 +1935,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val case1 = typedCase(cas, sel, wideSelType, pt)(using caseCtx)
       caseCtx = Nullables.afterPatternContext(sel, case1.pat)
       if !alreadyStripped && Nullables.matchesNull(case1) then
-        wideSelType = wideSelType.stripNull
+        wideSelType = wideSelType.stripNull()
         alreadyStripped = true
       case1
     }
@@ -2129,7 +2135,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     else res
 
   def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(using Context): SeqLiteral = {
-    val elemProto = pt.stripNull.elemType match {
+    val elemProto = pt.stripNull().elemType match {
       case NoType => WildcardType
       case bounds: TypeBounds => WildcardType(bounds)
       case elemtp => elemtp

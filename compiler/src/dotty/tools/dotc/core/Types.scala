@@ -307,6 +307,7 @@ object Types extends TypeUtils {
       isRef(defn.ObjectClass) && (typeSymbol eq defn.FromJavaObjectSymbol)
 
     def containsFromJavaObject(using Context): Boolean = this match
+      case tp: FlexibleType => tp.underlying.containsFromJavaObject
       case tp: OrType => tp.tp1.containsFromJavaObject || tp.tp2.containsFromJavaObject
       case tp: AndType => tp.tp1.containsFromJavaObject && tp.tp2.containsFromJavaObject
       case _ => isFromJavaObject
@@ -345,6 +346,7 @@ object Types extends TypeUtils {
     /** Is this type guaranteed not to have `null` as a value? */
     final def isNotNull(using Context): Boolean = this match {
       case tp: ConstantType => tp.value.value != null
+      case tp: FlexibleType => false
       case tp: ClassInfo => !tp.cls.isNullableClass && tp.cls != defn.NothingClass
       case tp: AppliedType => tp.superType.isNotNull
       case tp: TypeBounds => tp.lo.isNotNull
@@ -374,6 +376,7 @@ object Types extends TypeUtils {
       case AppliedType(tycon, args) => tycon.unusableForInference || args.exists(_.unusableForInference)
       case RefinedType(parent, _, rinfo) => parent.unusableForInference || rinfo.unusableForInference
       case TypeBounds(lo, hi) => lo.unusableForInference || hi.unusableForInference
+      case tp: FlexibleType => tp.underlying.unusableForInference
       case tp: AndOrType => tp.tp1.unusableForInference || tp.tp2.unusableForInference
       case tp: LambdaType => tp.resultType.unusableForInference || tp.paramInfos.exists(_.unusableForInference)
       case WildcardType(optBounds) => optBounds.unusableForInference
@@ -930,7 +933,7 @@ object Types extends TypeUtils {
             // Selecting `name` from a type `T | Null` is like selecting `name` from `T`, if
             // unsafeNulls is enabled and T is a subtype of AnyRef.
             // This can throw at runtime, but we trade soundness for usability.
-            tp1.findMember(name, pre.stripNull, required, excluded)
+            tp1.findMember(name, pre.stripNull(), required, excluded)
           case _ =>
             searchAfterJoin
         else searchAfterJoin
@@ -1354,13 +1357,13 @@ object Types extends TypeUtils {
      *  then the top-level union isn't widened. This is needed so that type inference can infer nullable types.
      */
     def widenUnion(using Context): Type = widen match
-      case tp: OrType => tp match
-        case OrNull(tp1) =>
-          // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
+      case tp: OrType =>
+        val tp1 = tp.stripNull(stripFlexibleTypes = false)
+        if tp1 ne tp then
           val tp1Widen = tp1.widenUnionWithoutNull
-          if (tp1Widen.isRef(defn.AnyClass)) tp1Widen
+          if tp1Widen.isRef(defn.AnyClass) then tp1Widen
           else tp.derivedOrType(tp1Widen, defn.NullType)
-        case _ =>
+        else
           tp.widenUnionWithoutNull
       case tp =>
         tp.widenUnionWithoutNull
@@ -1375,6 +1378,8 @@ object Types extends TypeUtils {
         tp.rebind(tp.parent.widenUnion)
       case tp: HKTypeLambda =>
         tp.derivedLambdaType(resType = tp.resType.widenUnion)
+      case tp: FlexibleType =>
+        tp.derivedFlexibleType(tp.hi.widenUnionWithoutNull)
       case tp =>
         tp
 
@@ -3453,6 +3458,50 @@ object Types extends TypeUtils {
     }
   }
 
+  // --- FlexibleType -----------------------------------------------------------------
+
+  /* A flexible type is a type with a custom subtyping relationship.
+   * It is used by explicit nulls to represent a type coming from Java which can be
+   * considered as nullable or non-nullable depending on the context, in a similar way to Platform
+   * Types in Kotlin. A `FlexibleType(T)` generally behaves like a type variable with special bounds
+   * `T | Null .. T`, so that `T | Null <: FlexibleType(T) <: T`.
+   * A flexible type will be erased to its original type `T`.
+   */
+  case class FlexibleType(lo: Type, hi: Type) extends CachedProxyType with ValueType {
+
+    override def underlying(using Context): Type = hi
+
+    def derivedFlexibleType(hi: Type)(using Context): Type =
+      if hi eq this.hi then this else FlexibleType(hi)
+
+    override def computeHash(bs: Binders): Int = doHash(bs, hi)
+
+    override final def baseClasses(using Context): List[ClassSymbol] = hi.baseClasses
+  }
+
+  object FlexibleType {
+    def apply(tp: Type)(using Context): Type = tp match {
+      case ft: FlexibleType => ft
+      case _ =>
+        // val tp1 = tp.stripNull()
+        // if tp1.isNullType then
+        //   // (Null)? =:= ? >: Null <: (Object & Null)
+        //   FlexibleType(tp, AndType(defn.ObjectType, defn.NullType))
+        // else
+        //   // (T | Null)? =:= ? >: T | Null <: T
+        //   // (T)? =:= ? >: T | Null <: T
+        //   val hi = tp1
+        //   val lo = if hi eq tp then OrNull(hi) else tp
+        //   FlexibleType(lo, hi)
+        //
+        // The commented out code does more work to analyze the original type to ensure the
+        // flexible type is always a subtype of the original type and the Object type.
+        // It is not necessary according to the use cases, so we choose to use a simpler
+        // rule.
+        FlexibleType(OrNull(tp), tp)
+    }
+  }
+
   // --- AndType/OrType ---------------------------------------------------------------
 
   abstract class AndOrType extends CachedGroundType with ValueType {
@@ -3707,7 +3756,8 @@ object Types extends TypeUtils {
       assert(!ctx.isAfterTyper, s"$tp in $where") // we check correct kinds at PostTyper
       throw TypeError(em"$tp is not a value type, cannot be used $where")
 
-  /** An extractor object to pattern match against a nullable union.
+  /** An extractor object to pattern match against a nullable union
+   *  (including flexible types).
    *  e.g.
    *
    *  (tp: Type) match
@@ -3718,7 +3768,7 @@ object Types extends TypeUtils {
     def apply(tp: Type)(using Context) =
       if tp.isNullType then tp else OrType(tp, defn.NullType, soft = false)
     def unapply(tp: Type)(using Context): Option[Type] =
-      val tp1 = tp.stripNull
+      val tp1 = tp.stripNull()
       if tp1 ne tp then Some(tp1) else None
   }
 
@@ -5962,6 +6012,8 @@ object Types extends TypeUtils {
         samClass(tp.underlying)
       case tp: AnnotatedType =>
         samClass(tp.underlying)
+      case tp: FlexibleType =>
+        samClass(tp.underlying)
       case _ =>
         NoSymbol
 
@@ -6092,6 +6144,8 @@ object Types extends TypeUtils {
       tp.derivedJavaArrayType(elemtp)
     protected def derivedExprType(tp: ExprType, restpe: Type): Type =
       tp.derivedExprType(restpe)
+    protected def derivedFlexibleType(tp: FlexibleType, hi: Type): Type =
+      tp.derivedFlexibleType(hi)
     // note: currying needed  because Scala2 does not support param-dependencies
     protected def derivedLambdaType(tp: LambdaType)(formals: List[tp.PInfo], restpe: Type): Type =
       tp.derivedLambdaType(tp.paramNames, formals, restpe)
@@ -6214,6 +6268,9 @@ object Types extends TypeUtils {
 
         case tp: OrType =>
           derivedOrType(tp, this(tp.tp1), this(tp.tp2))
+
+        case tp: FlexibleType =>
+          derivedFlexibleType(tp, this(tp.hi))
 
         case tp: MatchType =>
           val bound1 = this(tp.bound)
@@ -6502,6 +6559,17 @@ object Types extends TypeUtils {
           if (underlying.isExactlyNothing) underlying
           else tp.derivedAnnotatedType(underlying, annot)
       }
+
+    override protected def derivedFlexibleType(tp: FlexibleType, hi: Type): Type =
+      hi match {
+        case Range(lo, hi) =>
+          // We know FlexibleType(t).hi = t and FlexibleType(t).lo = OrNull(t)
+          range(OrNull(lo), hi)
+        case _ =>
+          if (hi.isExactlyNothing) hi
+          else tp.derivedFlexibleType(hi)
+      }
+
     override protected def derivedCapturingType(tp: Type, parent: Type, refs: CaptureSet): Type =
       parent match // TODO ^^^ handle ranges in capture sets as well
         case Range(lo, hi) =>
@@ -6629,6 +6697,9 @@ object Types extends TypeUtils {
         this(y, restpe)
 
       case tp: TypeVar =>
+        this(x, tp.underlying)
+
+      case tp: FlexibleType =>
         this(x, tp.underlying)
 
       case ExprType(restpe) =>

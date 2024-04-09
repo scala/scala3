@@ -971,7 +971,7 @@ trait Applications extends Compatibility {
             // one can imagine the original signature-polymorphic method as
             // being infinitely overloaded, with each individual overload only
             // being brought into existence as needed
-            val originalResultType = funRef.symbol.info.resultType.stripNull
+            val originalResultType = funRef.symbol.info.resultType.stripNull()
             val resultType =
               if !originalResultType.isRef(defn.ObjectClass) then originalResultType
               else AvoidWildcardsMap()(proto.resultType.deepenProtoTrans) match
