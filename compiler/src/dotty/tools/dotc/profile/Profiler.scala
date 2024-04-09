@@ -32,6 +32,8 @@ object Profiler {
       new RealProfiler(reporter)
     }
 
+  final def NoOp: Profiler = NoOpProfiler
+
   private[profile] val emptySnap: ProfileSnap = ProfileSnap(0, "", 0, 0, 0, 0, 0, 0, 0, 0)
 }
 
