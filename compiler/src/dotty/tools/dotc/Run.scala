@@ -661,4 +661,6 @@ object Run {
         report.enrichErrorMessage(errorMessage)
       else
         errorMessage
+    def doNotEnrichErrorMessage: Unit =
+      if run != null then run.myEnrichedErrorMessage = true
 }
