@@ -1255,6 +1255,8 @@ class Namer { typer: Typer =>
               newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
 
           forwarder.info = avoidPrivateLeaks(forwarder)
+
+          // Add annotations at the member level
           forwarder.addAnnotations(sym.annotations.filterConserve { annot =>
             annot.symbol != defn.BodyAnnot
             && annot.symbol != defn.TailrecAnnot
@@ -1290,6 +1292,15 @@ class Namer { typer: Typer =>
               foreachDefaultGetterOf(sym.asTerm,
                 getter => addForwarder(
                   getter.name.asTermName, getter.asSeenFrom(path.tpe), span))
+
+            // adding annotations at the parameter level
+            // TODO: This probably needs to be filtered to avoid adding some annotation
+            // such as MacroAnnotations
+            if sym.is(Method) then
+              for (orig, forwarded) <- sym.paramSymss.lazyZip(forwarder.paramSymss)
+                  (origParameter, exportedParameter) <- orig.lazyZip(forwarded)
+              do
+                exportedParameter.addAnnotations(origParameter.annotations)
       end addForwarder
 
       def addForwardersNamed(name: TermName, alias: TermName, span: Span): Unit =
