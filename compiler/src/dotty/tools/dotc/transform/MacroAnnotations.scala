@@ -107,8 +107,8 @@ class MacroAnnotations(phase: IdentityDenotTransformer):
             if !ctx.reporter.hasErrors then
               report.error("Macro expansion was aborted by the macro without any errors reported. Macros should issue errors to end-users when aborting a macro expansion with StopMacroExpansion.", annot.tree)
             List(tree)
-          case Interpreter.MissingClassDefinedInCurrentRun(sym) =>
-            Interpreter.suspendOnMissing(sym, annot.tree)
+          case Interpreter.MissingClassValidInCurrentRun(sym, origin) =>
+            Interpreter.suspendOnMissing(sym, origin, annot.tree)
           case NonFatal(ex) =>
             val stack0 = ex.getStackTrace.takeWhile(_.getClassName != "dotty.tools.dotc.transform.MacroAnnotations")
             val stack = stack0.take(1 + stack0.lastIndexWhere(_.getMethodName == "transform"))
