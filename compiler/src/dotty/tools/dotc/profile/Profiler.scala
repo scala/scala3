@@ -185,10 +185,12 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
       // Compilation units requiring multi-stage compilation (macros) would create a new profiler instances
       // We need to store the traces in the seperate file to prevent overriding its content.
       // Alternatives: sharing ChromeTrace instance between all runs / manual concatation after all runs are done
-      val suffix = if ctx.runId > InitialRunId then s".${ctx.runId}" else ""
+      // FIXME: The first assigned runId is equal to 2 instead of 1 (InitialRunId).
+      // Fix me when bug described in Compiler.runId is resolved by removing +/- 1 adjustments
+      val suffix = if ctx.runId > InitialRunId + 1 then s".${ctx.runId - 1}" else ""
       ChromeTrace(Paths.get(s"$filename$suffix"))
 
-  private val compilerRunEvent: TracedEventId = traceDurationStart(Category.Run, s"stage-${ctx.runId}")
+  private val compilerRunEvent: TracedEventId = traceDurationStart(Category.Run, s"scalac-$id")
 
   def completeBackground(threadRange: ProfileRange): Unit =
     reporter.reportBackground(this, threadRange)
