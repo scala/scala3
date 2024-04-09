@@ -8,6 +8,7 @@ import dotty.tools.dotc.quoted.QuotesCache
 import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory}
 import dotty.tools.repl.AbstractFileClassLoader
 import dotty.tools.dotc.reporting._
+import dotty.tools.dotc.config.Settings.Setting.value
 import dotty.tools.dotc.util.ClasspathFromClassloader
 import scala.quoted._
 import scala.quoted.staging.Compiler
@@ -40,7 +41,20 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
       setCompilerSettings(ctx1.fresh.setSetting(ctx1.settings.outputDir, outDir), settings)
     }
 
-    new QuoteCompiler().newRun(ctx).compileExpr(exprBuilder) match
+    val compiledExpr = 
+      try
+        new QuoteCompiler().newRun(ctx).compileExpr(exprBuilder)
+      catch case ex: dotty.tools.FatalError =>
+        val enrichedMessage =
+          s"""An unhandled exception was thrown in the staging compiler.
+            |This might be caused by using an incorrect classloader
+            |when creating the `staging.Compiler` instance with `staging.Compiler.make`.
+            |For details, please refer to the documentation.
+            |For non-enriched exceptions, compile with -Yno-enrich-error-messages.""".stripMargin
+        if ctx.settings.YnoEnrichErrorMessages.value(using ctx) then throw ex
+        else throw new Exception(enrichedMessage, ex)
+    
+    compiledExpr match
       case Right(value) =>
         value.asInstanceOf[T]
 
