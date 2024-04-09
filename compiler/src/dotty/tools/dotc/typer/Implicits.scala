@@ -724,7 +724,7 @@ trait ImplicitRunInfo:
               companions ++= iscopeRefs(t.underlying)
       end addCompanions
 
-      def addPath(pre: Type): Unit = pre.dealias match
+      def addPath(pre: Type): Unit = pre.dealias.normalized match
         case pre: ThisType if pre.cls.is(Module) && pre.cls.isStaticOwner =>
           addPath(pre.cls.sourceModule.termRef)
         case pre: TermRef if !isExcluded(pre.symbol) =>
@@ -817,7 +817,7 @@ trait ImplicitRunInfo:
                   else AndType.make(apply(lo), apply(hi))
                 case u => apply(u)
 
-          def apply(t: Type) = t.dealias match
+          def apply(t: Type) = t.dealias.normalized match
             case t: TypeRef =>
               if t.symbol.isClass || isAnchor(t.symbol) then t else applyToUnderlying(t)
             case t: TypeVar => apply(t.underlying)
