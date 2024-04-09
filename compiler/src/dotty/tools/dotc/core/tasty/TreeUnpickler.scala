@@ -1542,8 +1542,6 @@ class TreeUnpickler(reader: TastyReader,
               // as the reduction of the match type definition!
               //
               // We also override the type, as that's what Typer does.
-              // The difference here is that a match type that reduces to a non-match type
-              // makes the TypeRef for that definition will have a TypeAlias info instead of a MatchAlias.
               tpt.overwriteType(tpt.tpe.normalized)
               tpt
             case TYPEBOUNDStpt =>
