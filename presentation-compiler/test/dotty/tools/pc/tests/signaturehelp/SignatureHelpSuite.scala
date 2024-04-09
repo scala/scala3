@@ -1533,3 +1533,28 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |foo(i: Boolean, s: String)(b: Int): Unit
         |""".stripMargin
     )
+
+  @Test def `proper-param-empty-list` =
+    check(
+      """
+        |object x {
+        |  def foo[K, V](): Unit = ???
+        |  foo(@@)
+        |}
+        |""".stripMargin,
+      "foo[K, V](): Unit"
+    )
+  
+  @Test def `proper-param-list-after-param-empty-list` =
+    check(
+      """
+        |object x {
+        |  def foo[K, V]()(x: Int): Unit = ???
+        |  foo()(@@)
+        |}
+        |""".stripMargin,
+      """
+      |foo[K, V]()(x: Int): Unit
+      |            ^^^^^^
+      """.stripMargin
+    )
