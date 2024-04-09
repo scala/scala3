@@ -151,7 +151,8 @@ class Compiler {
     List(new GenBCode) ::             // Generate JVM bytecode
     Nil
 
-  var runId: Int = 1
+  // Initially 0, so that the first nextRunId call would return InitialRunId == 1
+  private var runId: Int = 0
   def nextRunId: Int = {
     runId += 1; runId
   }
