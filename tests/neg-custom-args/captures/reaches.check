@@ -41,3 +41,8 @@
    |                         Required: File^{id*}
    |
    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/reaches.scala:77:5 ------------------------------------------------------------
+77 |  ps.map((x, y) => compose1(x, y)) // error: cannot mix cap and *
+   |  ^^^^^^
+   |  Reach capability cap and universal capability cap cannot both
+   |  appear in the type [B](f: ((box A ->{ps*} A, box A ->{ps*} A)) => B): List[B] of this expression
