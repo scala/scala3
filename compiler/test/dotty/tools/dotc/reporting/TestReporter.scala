@@ -70,8 +70,8 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
     }
 
     if dia.level >= WARNING then
-      _diagnosticBuf.append(dia)
       _consoleReporter.doReport(dia)
+      _diagnosticBuf.append(dia)
     printMessageAndPos(dia, extra)
   }
 }
