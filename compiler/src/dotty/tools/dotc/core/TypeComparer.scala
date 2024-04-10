@@ -3518,20 +3518,75 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
                 false
 
           case MatchTypeCasePattern.TypeMemberExtractor(typeMemberName, capture) =>
+            /** Try to remove references to `skolem` from a type in accordance with the spec.
+             *
+             *  If any reference to `skolem` remains in the result type,
+             *  `refersToSkolem` is set to true.
+             */
+            class DropSkolemMap(skolem: SkolemType) extends TypeMap:
+              var refersToSkolem = false
+              def apply(tp: Type): Type =
+                tp match
+                  case `skolem` =>
+                    refersToSkolem = true
+                    tp
+                  case tp: NamedType =>
+                    var savedRefersToSkolem = refersToSkolem
+                    refersToSkolem = false
+                    try
+                      val pre1 = apply(tp.prefix)
+                      if refersToSkolem then
+                        tp match
+                          case tp: TermRef => tp.info.widenExpr.dealias match
+                            case info: SingletonType =>
+                              refersToSkolem = false
+                              apply(info)
+                            case _ =>
+                              tp.derivedSelect(pre1)
+                          case tp: TypeRef => tp.info match
+                            case info: AliasingBounds =>
+                              refersToSkolem = false
+                              apply(info.alias)
+                            case _ =>
+                              tp.derivedSelect(pre1)
+                      else
+                        tp.derivedSelect(pre1)
+                    finally
+                      refersToSkolem |= savedRefersToSkolem
+                  case tp: LazyRef =>
+                    // By default, TypeMap maps LazyRefs lazily. We need to
+                    // force it for `refersToSkolem` to be correctly set.
+                    apply(tp.ref)
+                  case _ =>
+                    mapOver(tp)
+            end DropSkolemMap
+            /** Try to remove references to `skolem` from `u` in accordance with the spec.
+             *
+             *  If any reference to `skolem` remains in the result type, return
+             *  NoType instead.
+             */
+            def dropSkolem(u: Type, skolem: SkolemType): Type =
+              val dmap = DropSkolemMap(skolem)
+              val res = dmap(u)
+              if dmap.refersToSkolem then NoType else res
+
             val stableScrut: SingletonType = scrut match
               case scrut: SingletonType => scrut
               case _                    => SkolemType(scrut)
+
             stableScrut.member(typeMemberName) match
               case denot: SingleDenotation if denot.exists =>
                 val info = denot.info match
                   case alias: AliasingBounds           => alias.alias        // Extract the alias
                   case ClassInfo(prefix, cls, _, _, _) => prefix.select(cls) // Re-select the class from the prefix
                   case info => info // Notably, RealTypeBounds, which will eventually give a MatchResult.NoInstances
-                val infoRefersToSkolem = stableScrut.isInstanceOf[SkolemType] && stableScrut.occursIn(info)
-                val info1 = info match
-                  case info: TypeBounds        => info                       // Will already trigger a MatchResult.NoInstances
-                  case _ if infoRefersToSkolem => RealTypeBounds(info, info) // Explicitly trigger a MatchResult.NoInstances
-                  case _                       => info                       // We have a match
+                val info1 = stableScrut match
+                  case skolem: SkolemType =>
+                    dropSkolem(info, skolem).orElse:
+                      info match
+                        case info: TypeBounds  => info                       // Will already trigger a MatchResult.NoInstances
+                        case _                 => RealTypeBounds(info, info) // Explicitly trigger a MatchResult.NoInstances
+                  case _ => info
                 rec(capture, info1, variance = 0, scrutIsWidenedAbstract)
               case _ =>
                 false
