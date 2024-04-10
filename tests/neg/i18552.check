@@ -8,5 +8,6 @@
   |---------------------------------------------------------------------------------------------------------------------
   | Explanation (enabled by `-explain`)
   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  | Refining a basetype of a case class is not allowed, enabling better GADT constraints in case class patterns.
+  | Refining a basetype of a case class is not allowed.
+  | This is a limitation that enables better GADT constraints in case class patterns
    ---------------------------------------------------------------------------------------------------------------------

@@ -897,7 +897,8 @@ object RefChecks {
           if baseCls.typeParams.exists(_.paramVarianceSign != 0)
           problem <- variantInheritanceProblems(baseCls, caseCls, i"base $baseCls", "case ")
           withExplain = problem.appendExplanation:
-            "Refining a basetype of a case class is not allowed, enabling better GADT constraints in case class patterns."
+            """Refining a basetype of a case class is not allowed.
+              |This is a limitation that enables better GADT constraints in case class patterns""".stripMargin
         do report.errorOrMigrationWarning(withExplain, clazz.srcPos, MigrationVersion.Scala2to3)
       checkNoAbstractMembers()
       if (abstractErrors.isEmpty)
