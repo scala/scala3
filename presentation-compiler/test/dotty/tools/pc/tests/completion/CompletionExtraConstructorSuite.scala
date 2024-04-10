@@ -512,3 +512,27 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
       includeCompletionKind = true
     )
 
+  @Test def `prepend-new` =
+    checkSnippet(
+      """|object Wrapper:
+         |  Try@@
+         |
+         |""".stripMargin,
+      """|Try
+         |Try($0)
+         |new Try
+         |""".stripMargin,
+    )
+
+  @Test def `prepend-new-fully-qualified-path` =
+    checkSnippet(
+      """|object Wrapper:
+         |  scala.util.Try@@
+         |
+         |""".stripMargin,
+      """|Try
+         |Try($0)
+         |new scala.util.Try
+         |""".stripMargin,
+    )
+

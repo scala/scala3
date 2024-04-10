@@ -626,7 +626,6 @@ class CompletionInterpolatorSuite extends BaseCompletionSuite:
          |  s"this is an interesting ${java.nio.file.Paths}"
          |}
          |""".stripMargin,
-      itemIndex = 0,
       assertSingleItem = false,
     )
 

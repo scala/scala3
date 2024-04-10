@@ -79,6 +79,9 @@ object CompletionValue:
       )
     def importSymbol: Symbol = symbol
 
+    override def range: Option[Range] =
+      snippetAffix.toInsertRange
+
     def completionItemKind(using Context): CompletionItemKind =
       val symbol = this.symbol
       if symbol.is(Package) || symbol.is(Module) then

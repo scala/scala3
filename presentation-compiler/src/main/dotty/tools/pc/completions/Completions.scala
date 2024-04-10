@@ -33,6 +33,8 @@ import dotty.tools.pc.completions.OverrideCompletions.OverrideExtractor
 import dotty.tools.pc.buildinfo.BuildInfo
 import dotty.tools.pc.utils.MtagsEnrichments.*
 import dotty.tools.dotc.core.Denotations.SingleDenotation
+import org.eclipse.lsp4j.TextEdit
+import org.eclipse.lsp4j.Position
 
 class Completions(
     text: String,
@@ -144,7 +146,7 @@ class Completions(
       denots: Seq[SingleDenotation]
   ): List[CompletionValue] =
     denots.toList.flatMap: denot =>
-      completionsWithSuffix(
+      completionsWithAffix(
         denot,
         completion.show,
         (label, denot, suffix) => CompletionValue.Compiler(label, denot, suffix)
@@ -189,7 +191,7 @@ class Completions(
     CompletionAffix.empty
       .chain { suffix => // for [] suffix
         if shouldAddSnippet && symbol.info.typeParams.nonEmpty then
-          suffix.withNewSuffixSnippet(SuffixKind.Bracket)
+          suffix.withNewSuffixSnippet(Affix(SuffixKind.Bracket))
         else suffix
       }
       .chain { suffix => // for () suffix
@@ -197,7 +199,7 @@ class Completions(
           val paramss = getParams(symbol)
           paramss match
             case Nil => suffix
-            case List(Nil) => suffix.withNewSuffix(SuffixKind.Brace)
+            case List(Nil) => suffix.withNewSuffix(Affix(SuffixKind.Brace))
             case _ if config.isCompletionSnippetsEnabled() =>
               val onlyParameterless = paramss.forall(_.isEmpty)
               lazy val onlyImplicitOrTypeParams = paramss.forall(
@@ -205,28 +207,27 @@ class Completions(
                   sym.isType || sym.is(Implicit) || sym.is(Given)
                 }
               )
-              if onlyParameterless then suffix.withNewSuffix(SuffixKind.Brace)
+              if onlyParameterless then suffix.withNewSuffix(Affix(SuffixKind.Brace))
               else if onlyImplicitOrTypeParams then suffix
-              else if suffix.hasSnippet then
-                suffix.withNewSuffix(SuffixKind.Brace)
-              else suffix.withNewSuffixSnippet(SuffixKind.Brace)
+              else if suffix.hasSnippet then suffix.withNewSuffix(Affix(SuffixKind.Brace))
+              else suffix.withNewSuffixSnippet(Affix(SuffixKind.Brace))
             case _ => suffix
           end match
         else suffix
       }
       .chain { suffix => // for {} suffix
         if shouldAddSnippet && isNew && isAbstractType(symbol) then
-          if suffix.hasSnippet then suffix.withNewSuffix(SuffixKind.Template)
-          else suffix.withNewSuffixSnippet(SuffixKind.Template)
+          if suffix.hasSnippet then suffix.withNewSuffix(Affix(SuffixKind.Template))
+          else suffix.withNewSuffixSnippet(Affix(SuffixKind.Template))
         else suffix
       }
 
   end findSuffix
 
-  def completionsWithSuffix(
+  def completionsWithAffix(
       denot: SingleDenotation,
       label: String,
-      toCompletionValue: (String, SingleDenotation, CompletionAffix) => CompletionValue
+      toCompletionValue: (String, SingleDenotation, CompletionAffix) => CompletionValue.Symbolic
   ): List[CompletionValue] =
     val sym = denot.symbol
     val hasNonSyntheticConstructor = sym.name.isTypeName && sym.isClass
@@ -258,17 +259,30 @@ class Completions(
 
       else denot :: Nil
 
-    val requiresInitDisambiguiation = methodDenots.exists(_.symbol.isConstructor) && methodDenots.exists(_.symbol.name == nme.apply)
+    val existsApply = methodDenots.exists(_.symbol.name == nme.apply)
 
     methodDenots.map { methodDenot =>
       val suffix = findSuffix(methodDenot.symbol)
-      val affix = if methodDenot.symbol.isConstructor && requiresInitDisambiguiation then
-        suffix.withNewPrefix(PrefixKind.New)
+      val currentPrefix = adjustedPath match
+        case Select(qual, _) :: _ => Some(qual.show + ".", qual.span.start)
+        case _ => None
+
+      val affix = if methodDenot.symbol.isConstructor && existsApply then
+        adjustedPath match
+          case (select @ Select(qual, _)) :: _ =>
+            val start = qual.span.start
+            val insertRange = select.sourcePos.startPos.withEnd(completionPos.queryEnd).toLsp
+
+            suffix
+              .withCurrentPrefix(qual.show + ".")
+              .withNewPrefix(Affix(PrefixKind.New, insertRange = Some(insertRange)))
+          case _ =>
+            suffix.withNewPrefix(Affix(PrefixKind.New))
       else suffix
       val name = undoBacktick(label)
       toCompletionValue(name, methodDenot, affix)
     }
-  end completionsWithSuffix
+  end completionsWithAffix
 
   /**
    * @return Tuple of completionValues and flag. If the latter boolean value is true
@@ -522,7 +536,7 @@ class Completions(
                 )
               )
             case _ =>
-              completionsWithSuffix(
+              completionsWithAffix(
                 sym,
                 sym.decodedName,
                 CompletionValue.Workspace(_, _, _, sym)
@@ -555,13 +569,13 @@ class Completions(
           && !sym.isConstructor && !isDefaultVariableSetter
 
         if isExtensionMethod then
-          completionsWithSuffix(
+          completionsWithAffix(
             sym,
             sym.decodedName,
             CompletionValue.Extension(_, _, _)
           ).map(visit).forall(_ == true)
         else if isImplicitClassMember then
-          completionsWithSuffix(
+          completionsWithAffix(
             sym,
             sym.decodedName,
             CompletionValue.ImplicitClass(_, _, _, sym.maybeOwner),
@@ -602,7 +616,7 @@ class Completions(
       .groupBy(_.symbol.fullName) // we somehow have to ignore proxy type
 
     symbolicCompletionsMap.foreach: (name, denots) =>
-      lazy val existsTypeWithSuffix: Boolean = symbolicCompletionsMap
+      lazy val existsTypeWithoutSuffix: Boolean = !symbolicCompletionsMap
         .get(name.toTypeName)
         .forall(_.forall(sym => sym.snippetAffix.suffixes.nonEmpty))
 
@@ -610,7 +624,7 @@ class Completions(
         typeResultMappings += name -> denots
       // show non synthetic symbols
       // companion test should not result TrieMap[K, V]
-      else if name.isTermName && existsTypeWithSuffix then
+      else if name.isTermName && !existsTypeWithoutSuffix then
         typeResultMappings += name -> denots
       else if name.isTypeName then
         typeResultMappings += name -> denots

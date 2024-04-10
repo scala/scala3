@@ -153,7 +153,7 @@ object InterpolatorCompletions:
               sym.name.toString()
             ) =>
           val label = sym.name.decoded
-          completions.completionsWithSuffix(
+          completions.completionsWithAffix(
             sym,
             label,
             (name, denot, suffix) =>
@@ -284,7 +284,7 @@ object InterpolatorCompletions:
             sym.name.decoded
           ) && !sym.isType =>
         val label = sym.name.decoded
-        completions.completionsWithSuffix(
+        completions.completionsWithAffix(
           sym,
           label,
           (name, denot, suffix) =>

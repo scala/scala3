@@ -310,8 +310,19 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |""".stripMargin,
       """|Try
          |Try($0)
-         |new Try
+         |new scala.util.Try
          |""".stripMargin
+    )
+
+  @Test def `case-class2-edit` =
+    checkEditLine(
+      s"""|object Main {
+          |  ___
+          |}
+          |""".stripMargin,
+      "scala.util.Tr@@",
+      "new scala.util.Try",
+      filter = _.contains("new Try")
     )
 
   @Test def `case-class3` =

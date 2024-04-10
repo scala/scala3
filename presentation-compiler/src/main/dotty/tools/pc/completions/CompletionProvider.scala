@@ -197,7 +197,7 @@ class CompletionProvider(
     end mkItem
 
     val completionTextSuffix = completion.snippetAffix.toSuffix
-    val completionTextPrefix = completion.snippetAffix.toPrefix
+    val completionTextPrefix = completion.snippetAffix.toInsertPrefix
 
     lazy val isInStringInterpolation =
       path match
