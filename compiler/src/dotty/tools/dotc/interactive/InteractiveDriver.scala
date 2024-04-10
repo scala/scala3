@@ -34,7 +34,6 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive)
     rootCtx.setSetting(rootCtx.settings.YretainTrees, true)
     rootCtx.setSetting(rootCtx.settings.YcookComments, true)
-    rootCtx.setSetting(rootCtx.settings.YreadComments, true)
     val ctx = setup(settings.toArray, rootCtx) match
       case Some((_, ctx)) => ctx
       case None => rootCtx

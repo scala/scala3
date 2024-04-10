@@ -981,13 +981,15 @@ class TreeUnpickler(reader: TastyReader,
       if !sym.isType && !sym.is(ParamAccessor) then
         sym.info = ta.avoidPrivateLeaks(sym)
 
-      if (ctx.settings.YreadComments.value) {
-        assert(ctx.docCtx.isDefined, "`-Yread-docs` enabled, but no `docCtx` is set.")
-        commentUnpicklerOpt.foreach { commentUnpickler =>
+      commentUnpicklerOpt.foreach { commentUnpickler =>
+        def loadComment() =
           val comment = commentUnpickler.commentAt(start)
-          ctx.docCtx.get.addDocstring(tree.symbol, comment)
-          tree.setComment(comment)
-        }
+          tree.setComment(comment) // TODO should this be set?
+          comment
+        if ctx.settings.YreadDocsEagerly.value then
+          ctx.docCtx.get.addDocstring(tree.symbol, loadComment())
+        else
+          ctx.docCtx.get.registerLoader(tree.symbol, loadComment)
       }
 
       tree.setDefTree

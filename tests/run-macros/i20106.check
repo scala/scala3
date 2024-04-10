@@ -1,0 +1,16 @@
+docs from same compilation run:
+Some(/**
+ * my doc string for Main
+ *
+ * @param tracks track listing
+ * */)
+docs loaded from tasty:
+Some(/**
+ * my doc string for Main
+ *
+ * @param tracks track listing
+ * */)
+docs from same compilation run:
+Some(/**
+ * Doc of Test
+ * */)

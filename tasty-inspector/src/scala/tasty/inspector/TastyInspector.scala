@@ -100,7 +100,6 @@ object TastyInspector:
         reset()
         val ctx2 = ctx.fresh
             .addMode(Mode.ReadPositions)
-            .setSetting(ctx.settings.YreadComments, true)
         new TASTYRun(this, ctx2)
 
     new InspectorDriver

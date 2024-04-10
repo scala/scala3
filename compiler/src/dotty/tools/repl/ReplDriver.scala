@@ -83,7 +83,6 @@ class ReplDriver(settings: Array[String],
   private def initialCtx(settings: List[String]) = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions | Mode.Interactive)
     rootCtx.setSetting(rootCtx.settings.YcookComments, true)
-    rootCtx.setSetting(rootCtx.settings.YreadComments, true)
     setupRootCtx(this.settings ++ settings, rootCtx)
   }
 

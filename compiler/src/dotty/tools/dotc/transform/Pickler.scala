@@ -203,7 +203,6 @@ class Pickler extends Phase {
         super.runOn(units)
     if ctx.settings.YtestPickler.value then
       val ctx2 = ctx.fresh
-        .setSetting(ctx.settings.YreadComments, true)
         .setSetting(ctx.settings.YshowPrintErrors, true)
       testUnpickler(
         using ctx2

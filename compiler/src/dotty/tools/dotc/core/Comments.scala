@@ -24,17 +24,30 @@ object Comments {
     */
   class ContextDocstrings {
 
-    private val _docstrings: MutableSymbolMap[Comment] = MutableSymbolMap[Comment](512) // FIXME: 2nd [Comment] needed or "not a class type"
+    private val docstrings: MutableSymbolMap[Comment | CommentLoader] = MutableSymbolMap[Comment | CommentLoader](512) // FIXME: 2nd [Comment] needed or "not a class type"
+
+    private class CommentLoader(val load: () => Option[Comment])
 
     val templateExpander: CommentExpander = new CommentExpander
 
-    def docstrings: ReadOnlyMap[Symbol, Comment] = _docstrings
+    def docstring(sym: Symbol): Option[Comment] =
+      docstrings.get(sym).flatMap {
+        case comment: Comment => Some(comment)
+        case commentLoader: CommentLoader =>
+          val commentOpt = commentLoader.load()
+          commentOpt match
+            case Some(comment) => docstrings.update(sym, comment)
+            case None => docstrings.remove(sym)
+          commentOpt
+      }
 
-    def docstring(sym: Symbol): Option[Comment] = _docstrings.get(sym)
+    def registerLoader(sym: Symbol, loader: () => Option[Comment]): Unit =
+      docstrings.update(sym, CommentLoader(loader))
 
     def addDocstring(sym: Symbol, doc: Option[Comment]): Unit =
-      doc.foreach(d => _docstrings.update(sym, d))
+      doc.foreach(d => docstrings.update(sym, d))
   }
+
 
   /**
    * A `Comment` contains the unformatted docstring, it's position and potentially more

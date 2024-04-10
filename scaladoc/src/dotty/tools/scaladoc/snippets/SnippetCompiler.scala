@@ -31,7 +31,7 @@ class SnippetCompiler(
       rootCtx.setSetting(rootCtx.settings.experimental, true)
       rootCtx.setSetting(rootCtx.settings.YretainTrees, true)
       rootCtx.setSetting(rootCtx.settings.YcookComments, true)
-      rootCtx.setSetting(rootCtx.settings.YreadComments, true)
+      rootCtx.setSetting(rootCtx.settings.YreadDocsEagerly, true)
       rootCtx.setSetting(rootCtx.settings.color, "never")
       rootCtx.setSetting(rootCtx.settings.XimportSuggestionTimeout, 0)
 

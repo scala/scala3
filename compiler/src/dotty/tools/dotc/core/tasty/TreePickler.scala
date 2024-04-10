@@ -366,9 +366,10 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
     if sym.is(Method) && sym.owner.isClass then
       profile.recordMethodSize(sym, (currentAddr.index - addr.index) max 1, mdef.span)
     for docCtx <- ctx.docCtx do
-      val comment = docCtx.docstrings.lookup(sym)
-      if comment != null then
-        docStrings(mdef) = comment
+      docCtx.docstring(sym) match
+        case Some(comment) =>
+          docStrings(mdef) = comment
+        case _ =>
   }
 
   def pickleParam(tree: Tree)(using Context): Unit = {

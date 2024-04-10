@@ -394,7 +394,7 @@ private sealed trait YSettings:
   val YcheckReentrant: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycheck-reentrant", "Check that compiled program does not contain vars that can be accessed from a global root.")
   val YdropComments: Setting[Boolean] = BooleanSetting(ForkSetting, "Ydrop-docs", "Drop documentation when scanning source files.", aliases = List("-Ydrop-comments"))
   val YcookComments: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycook-docs", "Cook the documentation (type check `@usecase`, etc.)", aliases = List("-Ycook-comments"))
-  val YreadComments: Setting[Boolean] = BooleanSetting(ForkSetting, "Yread-docs", "Read documentation from tasty.")
+  val YreadDocsEagerly: Setting[Boolean] = BooleanSetting(ForkSetting, "Yread-docs", "Read documentation eagerly from TASTy")
   val YforceSbtPhases: Setting[Boolean] = BooleanSetting(ForkSetting, "Yforce-sbt-phases", "Run the phases used by sbt for incremental compilation (ExtractDependencies and ExtractAPI) even if the compiler is ran outside of sbt, for debugging.")
   val YdumpSbtInc: Setting[Boolean] = BooleanSetting(ForkSetting, "Ydump-sbt-inc", "For every compiled foo.scala, output the API representation and dependencies used for sbt incremental compilation in foo.inc, implies -Yforce-sbt-phases.")
   val YcheckAllPatmat: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycheck-all-patmat", "Check exhaustivity and redundancy of all pattern matching (used for testing the algorithm).")

@@ -108,10 +108,6 @@ class CommentPicklingTest {
   }
 
   private class UnpicklingDriver extends Driver {
-    override def initCtx =
-      val ctx = super.initCtx.fresh
-      ctx.setSetting(ctx.settings.YreadComments, true)
-      ctx
 
     def unpickle[T](args: Array[String], files: List[File])(fn: (List[tpd.Tree], Context) => T): T = {
       implicit val ctx: Context = setup(args, initCtx).map(_._2).getOrElse(initCtx)
