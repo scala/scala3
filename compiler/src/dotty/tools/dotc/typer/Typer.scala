@@ -3271,7 +3271,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val paramTypes = {
       val hasWildcard = formals.exists(_.existsPart(_.isInstanceOf[WildcardType], StopAt.Static))
       if hasWildcard then formals.map(_ => untpd.TypeTree())
-      else formals.map(formal => untpd.TypeTree(formal.loBound)) // about loBound, see tests/pos/i18649.scala
+      else formals.map(formal => untpd.InferredTypeTree(formal.loBound)) // about loBound, see tests/pos/i18649.scala
     }
 
     val erasedParams = pt match {
