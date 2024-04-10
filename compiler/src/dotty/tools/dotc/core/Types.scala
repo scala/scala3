@@ -1534,6 +1534,12 @@ object Types extends TypeUtils {
       if (normed.exists) normed else this
     }
 
+    final def dealiasNormalized(using Context): Type =
+      val dealiased = dealias
+      dealiased.tryNormalize match
+        case NoType => dealiased
+        case normed => normed.dealiasNormalized
+
     /** If this type can be normalized at the top-level by rewriting match types
      *  of S[n] types, the result after applying all toplevel normalizations,
      *  otherwise NoType
