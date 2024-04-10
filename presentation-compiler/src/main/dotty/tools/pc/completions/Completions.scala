@@ -33,8 +33,7 @@ import dotty.tools.pc.completions.OverrideCompletions.OverrideExtractor
 import dotty.tools.pc.buildinfo.BuildInfo
 import dotty.tools.pc.utils.MtagsEnrichments.*
 import dotty.tools.dotc.core.Denotations.SingleDenotation
-import org.eclipse.lsp4j.TextEdit
-import org.eclipse.lsp4j.Position
+
 
 class Completions(
     text: String,

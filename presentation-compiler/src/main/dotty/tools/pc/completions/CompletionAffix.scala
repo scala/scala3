@@ -1,7 +1,7 @@
 package dotty.tools.pc.completions
 
-import org.eclipse.lsp4j.TextEdit
 import org.eclipse.lsp4j.Position
+import org.eclipse.lsp4j.Range
 
 /**
  * @param suffixes which we should insert
@@ -42,7 +42,7 @@ case class CompletionAffix(
 
   given Ordering[Position] = Ordering.by(elem => (elem.getLine, elem.getCharacter))
 
-  def toInsertRange: Option[org.eclipse.lsp4j.Range] =
+  def toInsertRange: Option[Range] =
     import scala.language.unsafeNulls
 
     val ranges = prefixes.collect:
@@ -51,7 +51,7 @@ case class CompletionAffix(
     for
       startPos <- ranges.map(_.getStart).minOption
       endPos   <- ranges.map(_.getEnd).maxOption
-    yield org.eclipse.lsp4j.Range(startPos, endPos)
+    yield Range(startPos, endPos)
 
   private def loopPrefix(prefixes: List[PrefixKind]) =
     prefixes match
@@ -92,4 +92,4 @@ enum PrefixKind:
 type Suffix = Affix[SuffixKind]
 type Prefix = Affix[PrefixKind]
 
-private case class Affix[+T](kind: T, insertRange: Option[org.eclipse.lsp4j.Range] = None)
+private case class Affix[+T](kind: T, insertRange: Option[Range] = None)
