@@ -812,7 +812,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       )
 
       assert(instructions == expected,
-        "`i was not properly beta-reduced in `test`\n" + diffInstructions(instructions, expected))
+        "`i was not properly inlined in `test`\n" + diffInstructions(instructions, expected))
 
     }
   }
