@@ -249,7 +249,8 @@ object TypeOps:
           mergeRefinedOrApplied(tp1, tp21) & mergeRefinedOrApplied(tp1, tp22)
         case _ =>
           fail
-      tp1 match {
+      if tp1 eq tp2 then tp1
+      else tp1 match {
         case tp1 @ RefinedType(parent1, name1, rinfo1) =>
           tp2 match {
             case RefinedType(parent2, `name1`, rinfo2) =>
@@ -273,6 +274,7 @@ object TypeOps:
           }
         case AndType(tp11, tp12) =>
           mergeRefinedOrApplied(tp11, tp2) & mergeRefinedOrApplied(tp12, tp2)
+        case tp1: TypeParamRef if tp1 == tp2 => tp1
         case _ => fail
       }
     }
