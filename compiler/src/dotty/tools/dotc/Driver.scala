@@ -52,7 +52,10 @@ class Driver {
     if !ctx.reporter.errorsReported && run.suspendedUnits.nonEmpty then
       val suspendedUnits = run.suspendedUnits.toList
       if (ctx.settings.XprintSuspension.value)
+        val suspendedHints = run.suspendedHints.toList
         report.echo(i"compiling suspended $suspendedUnits%, %")
+        for (unit, hint) <- suspendedHints do
+          report.echo(s"  $unit: $hint")
       val run1 = compiler.newRun
       run1.compileSuspendedUnits(suspendedUnits)
       finish(compiler, run1)(using MacroClassLoader.init(ctx.fresh))
