@@ -636,7 +636,7 @@ trait ImplicitRunInfo:
         else if implicitScopeCache.contains(t) then parts += t
         else
           partSeen += t
-          t.dealias.normalized match
+          t.dealias match
             case t: TypeRef =>
               if isAnchor(t.symbol) then
                 parts += t
@@ -817,7 +817,7 @@ trait ImplicitRunInfo:
                   else AndType.make(apply(lo), apply(hi))
                 case u => apply(u)
 
-          def apply(t: Type) = t.dealias match
+          def apply(t: Type) = t.dealias.normalized match
             case t: TypeRef =>
               if t.symbol.isClass || isAnchor(t.symbol) then t else applyToUnderlying(t)
             case t: TypeVar => apply(t.underlying)

@@ -268,8 +268,8 @@ class Namer { typer: Typer =>
             else if flags.isAllOf(EnumValue) && ctx.owner.isStaticOwner then flags |= JavaStatic
           case tree: TypeDef =>
             def analyzeRHS(rhs: Tree): Unit = rhs match
-              case _: TypeBoundsTree | _: MatchTypeTree =>
-                flags |= Deferred // Typedefs with Match rhs classify as abstract
+              case _: TypeBoundsTree =>
+                flags |= Deferred
               case LambdaTypeTree(_, body) =>
                 analyzeRHS(body)
               case _ =>
