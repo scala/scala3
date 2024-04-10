@@ -445,6 +445,14 @@ extension (tp: AnnotatedType)
     case ann: CaptureAnnotation => ann.boxed
     case _ => false
 
+/** Drop retains annotations in the type. */
+class CleanupRetains(using Context) extends TypeMap:
+  def apply(tp: Type): Type =
+    tp match
+      case AnnotatedType(tp, annot) if annot.symbol == defn.RetainsAnnot || annot.symbol == defn.RetainsByNameAnnot =>
+        RetainingType(tp, Nil, byName = annot.symbol == defn.RetainsByNameAnnot)
+      case _ => mapOver(tp)
+
 /** An extractor for `caps.reachCapability(ref)`, which is used to express a reach
  *  capability as a tree in a @retains annotation.
  */
