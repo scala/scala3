@@ -138,6 +138,16 @@ class BootstrappedOnlyCompilationTests {
     aggregateTests(tests*).checkRuns()
   }
 
+  @Test def runScala2LibraryFromTasty: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("runScala2LibraryFromTasty")
+    // These tests recompile the entire scala2-library from TASTy,
+    // they are resource intensive and should not run alongside other tests to avoid timeouts
+    aggregateTests(
+      compileFile("tests/run-custom-args/scala2-library-from-tasty-jar.scala", withCompilerOptions),
+      compileFile("tests/run-custom-args/scala2-library-from-tasty.scala", withCompilerOptions),
+    ).limitThreads(2).checkRuns() // TODO reduce to limitThreads(1) if it still causes problems, this would be around 50% slower based on local benchmarking
+  }
+
   @Test def runBootstrappedOnly: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runBootstrappedOnly")
     aggregateTests(
