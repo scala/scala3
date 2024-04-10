@@ -61,7 +61,7 @@ object TypeTestsCasts {
     extension (inline b: Boolean) inline def |||(inline s: String): String = if b then "" else s
 
     // Run just before ElimOpaque transform (which follows RefChecks)
-    def isAbstract(P: Type) = !P.dealias.typeSymbol.isClass
+    def isAbstract(P: Type) = !P.typeSymbol.isClass
 
     def replaceP(tp: Type)(using Context) = new TypeMap {
       def apply(tp: Type) = tp match {
@@ -133,10 +133,10 @@ object TypeTestsCasts {
     }
 
     def recur(X: Type, P: Type): String = trace(s"recur(${X.show}, ${P.show})") {
-      (X <:< P) ||| P.dealias.match
+      (X <:< P) ||| P.dealiasNormalized.match
       case _: SingletonType     => ""
-      case _: TypeProxy
-      if isAbstract(P)          => i"it refers to an abstract type member or type parameter"
+      case tp: TypeProxy
+      if isAbstract(tp)          => i"it refers to an abstract type member or type parameter"
       case defn.ArrayOf(tpT)    =>
         X match {
           case defn.ArrayOf(tpE)   => recur(tpE, tpT)

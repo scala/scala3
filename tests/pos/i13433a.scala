@@ -2,7 +2,7 @@
 
 import scala.reflect.TypeTest
 
-type Matcher[A] = A match { case String => String }
+type Matcher[A] = A match { case String => A }
 
 def patternMatch[A](a: Any)(using tt: TypeTest[Any, Matcher[A]]): Option[Matcher[A]] = {
   // type T = RDF.Triple[Rdf]
@@ -20,6 +20,11 @@ def patternMatchWithAlias[A](a: Any)(using tt: TypeTest[Any, Matcher[A]]): Optio
   }
 }
 
+type S = String
+type MS = Matcher[S]
+
+type S2 = MS
+type MS2 = Matcher[S2]
 
 @main def main = {
   println(patternMatch[String]("abc"))
@@ -31,4 +36,13 @@ def patternMatchWithAlias[A](a: Any)(using tt: TypeTest[Any, Matcher[A]]): Optio
 
   println(patternMatch[String](1))
   println(patternMatchWithAlias[String](1))
+
+  println(patternMatch[String]("abc")(using (s: Any) => {
+    if s.isInstanceOf[S] then Some[s.type & Matcher[String]](s.asInstanceOf[s.type & Matcher[String]]) else None}))
+  println(patternMatch[String]("abc")(using (s: Any) => {
+    if s.isInstanceOf[MS] then Some[s.type & Matcher[String]](s.asInstanceOf[s.type & Matcher[String]]) else None}))
+  println(patternMatch[String]("abc")(using (s: Any) => {
+    if s.isInstanceOf[S2] then Some[s.type & Matcher[String]](s.asInstanceOf[s.type & Matcher[String]]) else None}))
+  println(patternMatch[String]("abc")(using (s: Any) => {
+    if s.isInstanceOf[MS2] then Some[s.type & Matcher[String]](s.asInstanceOf[s.type & Matcher[String]]) else None}))
 }
