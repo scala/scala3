@@ -779,3 +779,27 @@ class CompletionInterpolatorSuite extends BaseCompletionSuite:
          |""".stripMargin,
       "host: String"
     )
+
+  @Test def `prepend-new-missing-interpolator` =
+    checkSnippet(
+      """|object Wrapper:
+         |  "$Try@@"
+         |
+         |""".stripMargin,
+      """|Try$0
+         |{Try($0)}
+         |{new Try$0}
+         |""".stripMargin,
+    )
+
+  @Test def `prepend-new-interpolator` =
+    checkSnippet(
+      """|object Wrapper:
+         |  s"$Try@@"
+         |
+         |""".stripMargin,
+      """|Try
+         |{Try($0)}
+         |{new Try}
+         |""".stripMargin,
+    )

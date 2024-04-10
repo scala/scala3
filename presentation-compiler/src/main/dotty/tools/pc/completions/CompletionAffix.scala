@@ -53,9 +53,9 @@ case class CompletionAffix(
       endPos   <- ranges.map(_.getEnd).maxOption
     yield Range(startPos, endPos)
 
-  private def loopPrefix(prefixes: List[PrefixKind]) =
+  private def loopPrefix(prefixes: List[PrefixKind]): String =
     prefixes match
-      case PrefixKind.New :: tail => "new "
+      case PrefixKind.New :: tail => "new " + loopPrefix(tail)
       case _ => ""
 
   /**

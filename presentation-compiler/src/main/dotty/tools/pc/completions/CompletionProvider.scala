@@ -161,6 +161,25 @@ class CompletionProvider(
     val label = completion.labelWithDescription(printer)
     val ident = completion.insertText.getOrElse(completion.label)
 
+    lazy val isInStringInterpolation =
+      path match
+        // s"My name is $name"
+        case (_: Ident) :: (_: SeqLiteral) :: (_: Typed) :: Apply(
+              Select(Apply(Select(Select(_, name), _), _), _),
+              _
+            ) :: _ =>
+          name == StdNames.nme.StringContext
+        // "My name is $name"
+        case Literal(Constant(_: String)) :: _ =>
+          true
+        case _ =>
+          false
+
+    def wrapInBracketsIfRequired(newText: String): String =
+      if completion.snippetAffix.nonEmpty && isInStringInterpolation then
+        "{" + newText + "}"
+      else newText
+
     def mkItem(
         newText: String,
         additionalEdits: List[TextEdit] = Nil,
@@ -170,7 +189,7 @@ class CompletionProvider(
       val editRange = if newText.startsWith(oldText) then completionPos.stripSuffixEditRange
         else completionPos.toEditRange
 
-      val textEdit = new TextEdit(range.getOrElse(editRange), newText)
+      val textEdit = new TextEdit(range.getOrElse(editRange), wrapInBracketsIfRequired(newText))
 
       val item = new CompletionItem(label)
       item.setSortText(f"${idx}%05d")
@@ -198,20 +217,6 @@ class CompletionProvider(
 
     val completionTextSuffix = completion.snippetAffix.toSuffix
     val completionTextPrefix = completion.snippetAffix.toInsertPrefix
-
-    lazy val isInStringInterpolation =
-      path match
-        // s"My name is $name"
-        case (_: Ident) :: (_: SeqLiteral) :: (_: Typed) :: Apply(
-              Select(Apply(Select(Select(_, name), _), _), _),
-              _
-            ) :: _ =>
-          name == StdNames.nme.StringContext
-        // "My name is $name"
-        case Literal(Constant(_: String)) :: _ =>
-          true
-        case _ =>
-          false
 
     lazy val backtickSoftKeyword = path match
       case (_: Select) :: _ => false
@@ -243,13 +248,12 @@ class CompletionProvider(
                 case IndexedContext.Result.InScope =>
                   mkItem(
                     v.insertText.getOrElse(
-                      completionTextPrefix +
-                      ident.backticked(
-                        backtickSoftKeyword
-                      ) + completionTextSuffix
+                      completionTextPrefix + ident.backticked(backtickSoftKeyword) + completionTextSuffix
                     ),
                     range = v.range,
                   )
+                // Special case when symbol is out of scope, and there is no auto import.
+                // It means that it will use fully qualified path
                 case _ if isInStringInterpolation =>
                   mkItem(
                     "{" + completionTextPrefix + sym.fullNameBackticked + completionTextSuffix + "}",
@@ -280,10 +284,7 @@ class CompletionProvider(
       case _ =>
         val nameText = completion.insertText.getOrElse(ident.backticked(backtickSoftKeyword))
         val nameWithAffixes = completionTextPrefix + nameText + completionTextSuffix
-        val insertText = if completion.snippetAffix.nonEmpty && isInStringInterpolation then
-          "{" + nameWithAffixes + "}"
-        else nameWithAffixes
-        mkItem(insertText, range = completion.range)
+        mkItem(nameWithAffixes, range = completion.range)
 
     end match
   end completionItems

@@ -262,10 +262,6 @@ class Completions(
 
     methodDenots.map { methodDenot =>
       val suffix = findSuffix(methodDenot.symbol)
-      val currentPrefix = adjustedPath match
-        case Select(qual, _) :: _ => Some(qual.show + ".", qual.span.start)
-        case _ => None
-
       val affix = if methodDenot.symbol.isConstructor && existsApply then
         adjustedPath match
           case (select @ Select(qual, _)) :: _ =>
@@ -606,7 +602,6 @@ class Completions(
   /** If we try to complete TypeName, we should favor types over terms with same name value and without suffix.
    */
   def deduplicateCompletions(completions: List[CompletionValue]): List[CompletionValue] =
-    val typeResultMappings = mutable.Map.empty[Name, Seq[CompletionValue]]
     val (symbolicCompletions, rest) = completions.partition:
       _.isInstanceOf[CompletionValue.Symbolic]
 
@@ -614,21 +609,19 @@ class Completions(
       .collect { case symbolic: CompletionValue.Symbolic => symbolic }
       .groupBy(_.symbol.fullName) // we somehow have to ignore proxy type
 
-    symbolicCompletionsMap.foreach: (name, denots) =>
+    val filteredSymbolicCompletions = symbolicCompletionsMap.filter: (name, denots) =>
       lazy val existsTypeWithoutSuffix: Boolean = !symbolicCompletionsMap
         .get(name.toTypeName)
         .forall(_.forall(sym => sym.snippetAffix.suffixes.nonEmpty))
 
-      if completionMode.is(Mode.Term) && !completionMode.is(Mode.ImportOrExport) then
-        typeResultMappings += name -> denots
+      (completionMode.is(Mode.Term) && !completionMode.is(Mode.ImportOrExport)) ||
       // show non synthetic symbols
       // companion test should not result TrieMap[K, V]
-      else if name.isTermName && !existsTypeWithoutSuffix then
-        typeResultMappings += name -> denots
-      else if name.isTypeName then
-        typeResultMappings += name -> denots
+      (name.isTermName && !existsTypeWithoutSuffix) ||
+      name.isTypeName
+    .toList.unzip._2.flatten
 
-    typeResultMappings.toList.unzip._2.flatten ++ rest
+    filteredSymbolicCompletions ++ rest
 
   extension (l: List[CompletionValue])
     def filterInteresting(
