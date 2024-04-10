@@ -785,4 +785,36 @@ class InlineBytecodeTests extends DottyBytecodeTest {
     }
   }
 
+  @Test def inline_match_scrutinee_with_side_effect = {
+    val source = """class Test:
+                   |  inline def inlineTest(): Int =
+                   |    inline {
+                   |      println("scrutinee")
+                   |      (1, 2)
+                   |    } match
+                   |      case (e1, e2) => e1 + e2
+                   |
+                   |  def test: Int = inlineTest()
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Test.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      val fun = getMethod(clsNode, "test")
+      val instructions = instructionsFromMethod(fun)
+      val expected = List(
+        Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+        Ldc(LDC, "scrutinee"),
+        Invoke(INVOKEVIRTUAL, "scala/Predef$", "println", "(Ljava/lang/Object;)V", false),
+        Op(ICONST_3),
+        Op(IRETURN),
+      )
+
+      assert(instructions == expected,
+        "`i was not properly inlined in `test`\n" + diffInstructions(instructions, expected))
+
+    }
+  }
+
 }

@@ -860,46 +860,71 @@ class Inliner(val call: tpd.Tree)(using Context):
           case _ => sel.tpe
         }
         val selType = if (sel.isEmpty) wideSelType else selTyped(sel)
-        reduceInlineMatch(sel, selType, cases.asInstanceOf[List[CaseDef]], this) match {
-          case Some((caseBindings, rhs0)) =>
-            // drop type ascriptions/casts hiding pattern-bound types (which are now aliases after reducing the match)
-            // note that any actually necessary casts will be reinserted by the typing pass below
-            val rhs1 = rhs0 match {
-              case Block(stats, t) if t.span.isSynthetic =>
-                t match {
-                  case Typed(expr, _) =>
-                    Block(stats, expr)
-                  case TypeApply(sel@Select(expr, _), _) if sel.symbol.isTypeCast =>
-                    Block(stats, expr)
-                  case _ =>
-                    rhs0
-                }
-              case _ => rhs0
-            }
-            val rhs2 = rhs1 match {
-              case Typed(expr, tpt) if rhs1.span.isSynthetic => constToLiteral(expr)
-              case _ => constToLiteral(rhs1)
-            }
-            val (usedBindings, rhs3) = dropUnusedDefs(caseBindings, rhs2)
-            val rhs = seq(usedBindings, rhs3)
-            inlining.println(i"""--- reduce:
-                                |$tree
-                                |--- to:
-                                |$rhs""")
-            typedExpr(rhs, pt)
-          case None =>
-            def guardStr(guard: untpd.Tree) = if (guard.isEmpty) "" else i" if $guard"
-            def patStr(cdef: untpd.CaseDef) = i"case ${cdef.pat}${guardStr(cdef.guard)}"
-            val msg =
-              if (tree.selector.isEmpty)
-                em"""cannot reduce summonFrom with
-                   | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}"""
-              else
-                em"""cannot reduce inline match with
-                    | scrutinee:  $sel : ${selType}
-                    | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}"""
-            errorTree(tree, msg)
+
+        /** Make an Inlined that has no bindings. */
+        def flattenInlineBlock(tree: Tree): Tree = {
+          def inlineBlock(call: Tree, stats: List[Tree], expr: Tree): Block =
+            def inlinedTree(tree: Tree) = Inlined(call, Nil, tree).withSpan(tree.span)
+            val stats1 = stats.map:
+              case stat: ValDef => cpy.ValDef(stat)(rhs = inlinedTree(stat.rhs))
+              case stat: DefDef => cpy.DefDef(stat)(rhs = inlinedTree(stat.rhs))
+              case stat => inlinedTree(stat)
+            cpy.Block(tree)(stats1, flattenInlineBlock(inlinedTree(expr)))
+
+          tree match
+            case tree @ Inlined(call, bindings, expr) if !bindings.isEmpty =>
+              inlineBlock(call, bindings, expr)
+            case tree @ Inlined(call, Nil, Block(stats, expr)) =>
+              inlineBlock(call, stats, expr)
+            case _ =>
+              tree
         }
+
+        def reduceInlineMatchExpr(sel: Tree): Tree = flattenInlineBlock(sel) match
+          case Block(stats, expr) =>
+            cpy.Block(sel)(stats, reduceInlineMatchExpr(expr))
+          case _ =>
+            reduceInlineMatch(sel, selType, cases.asInstanceOf[List[CaseDef]], this) match {
+              case Some((caseBindings, rhs0)) =>
+                // drop type ascriptions/casts hiding pattern-bound types (which are now aliases after reducing the match)
+                // note that any actually necessary casts will be reinserted by the typing pass below
+                val rhs1 = rhs0 match {
+                  case Block(stats, t) if t.span.isSynthetic =>
+                    t match {
+                      case Typed(expr, _) =>
+                        Block(stats, expr)
+                      case TypeApply(sel@Select(expr, _), _) if sel.symbol.isTypeCast =>
+                        Block(stats, expr)
+                      case _ =>
+                        rhs0
+                    }
+                  case _ => rhs0
+                }
+                val rhs2 = rhs1 match {
+                  case Typed(expr, tpt) if rhs1.span.isSynthetic => constToLiteral(expr)
+                  case _ => constToLiteral(rhs1)
+                }
+                val (usedBindings, rhs3) = dropUnusedDefs(caseBindings, rhs2)
+                val rhs = seq(usedBindings, rhs3)
+                inlining.println(i"""--- reduce:
+                                    |$tree
+                                    |--- to:
+                                    |$rhs""")
+                typedExpr(rhs, pt)
+              case None =>
+                def guardStr(guard: untpd.Tree) = if (guard.isEmpty) "" else i" if $guard"
+                def patStr(cdef: untpd.CaseDef) = i"case ${cdef.pat}${guardStr(cdef.guard)}"
+                val msg =
+                  if (tree.selector.isEmpty)
+                    em"""cannot reduce summonFrom with
+                      | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}"""
+                  else
+                    em"""cannot reduce inline match with
+                        | scrutinee:  $sel : ${selType}
+                        | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}"""
+                errorTree(tree, msg)
+            }
+        reduceInlineMatchExpr(sel)
       }
 
     override def newLikeThis(nestingLevel: Int): Typer = new InlineTyper(initialErrorCount, nestingLevel)
