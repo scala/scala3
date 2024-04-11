@@ -982,10 +982,7 @@ class TreeUnpickler(reader: TastyReader,
         sym.info = ta.avoidPrivateLeaks(sym)
 
       commentUnpicklerOpt.foreach { commentUnpickler =>
-        def loadComment() =
-          val comment = commentUnpickler.commentAt(start)
-          tree.setComment(comment) // TODO should this be set?
-          comment
+        def loadComment() = commentUnpickler.commentAt(start)
         if ctx.settings.YreadDocsEagerly.value then
           ctx.docCtx.get.addDocstring(tree.symbol, loadComment())
         else
