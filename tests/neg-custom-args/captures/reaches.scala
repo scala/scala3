@@ -59,3 +59,21 @@ def attack2 =
   val leaked = usingFile[File^{id*}]: f =>
     val f1: File^{id*} = id(f) // error
     f1
+
+class List[+A]:
+  def head: A = ???
+  def tail: List[A] = ???
+  def map[B](f: A => B): List[B] = ???
+  def nonEmpty: Boolean = ???
+
+extension [A](x: A) def :: (xs: List[A]): List[A] = ???
+
+object Nil extends List[Nothing]
+
+def compose1[A, B, C](f: A => B, g: B => C): A ->{f, g} C =
+  z => g(f(z))
+
+def mapCompose[A](ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
+  ps.map((x, y) => compose1(x, y)) // error: cannot mix cap and *
+
+
