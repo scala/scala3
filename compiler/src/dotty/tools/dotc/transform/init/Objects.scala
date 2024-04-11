@@ -11,6 +11,7 @@ import StdNames.*
 import Names.TermName
 import NameKinds.OuterSelectName
 import NameKinds.SuperAccessorName
+import Decorators.*
 
 import ast.tpd.*
 import util.{ SourcePosition, NoSourcePosition }
@@ -66,12 +67,11 @@ import dotty.tools.dotc.core.Flags.AbstractOrTrait
  *     whole-program analysis. However, the check is not modular in terms of project boundaries.
  *
  */
-import Decorators.*
 class Objects(using Context @constructorOnly):
   val immutableHashSetBuider: Symbol = requiredClass("scala.collection.immutable.HashSetBuilder")
   // TODO: this should really be an annotation on the rhs of the field initializer rather than the field itself.
   val HashSetBuilder_rootNode: Symbol = immutableHashSetBuider.requiredValue("rootNode")
-  
+
   val whiteList = Set(HashSetBuilder_rootNode)
 
   // ----------------------------- abstract domain -----------------------------

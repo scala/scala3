@@ -76,13 +76,29 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
   override def changesMembers: Boolean = true // the phase adds super accessors and synthetic members
 
+  /**
+   * Serializable and AbstractFunction1 are added for companion objects of case classes in scala2-library
+   */
+  override def changesParents: Boolean =
+    if !initContextCalled then
+      throw new Exception("Calling changesParents before initContext, should call initContext first")
+    compilingScala2StdLib
+
   override def transformPhase(using Context): Phase = thisPhase.next
 
   def newTransformer(using Context): Transformer =
     new PostTyperTransformer
 
+  /**
+   * Used to check that `changesParents` is called after `initContext`.
+   *
+   * This contract is easy to break and results in subtle bugs.
+   */
+  private var initContextCalled = false
+
   private var compilingScala2StdLib = false
   override def initContext(ctx: FreshContext): Unit =
+    initContextCalled = true
     compilingScala2StdLib = ctx.settings.YcompileScala2Library.value(using ctx)
 
   val superAcc: SuperAccessors = new SuperAccessors(thisPhase)
@@ -576,7 +592,9 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       if !sym.hasAnnotation(defn.ExperimentalAnnot) && ctx.settings.experimental.value && isTopLevelDefinitionInSource(sym) then
         sym.addAnnotation(ExperimentalAnnotation("Added by -experimental", sym.span))
 
-    private def scala2LibPatch(tree: TypeDef)(using Context) =
+    // It needs to run at the phase of the postTyper --- otherwise, the test of the symbols will use
+    // the transformed denotation with added `Serializable` and `AbstractFunction1`.
+    private def scala2LibPatch(tree: TypeDef)(using Context) = atPhase(thisPhase):
       val sym = tree.symbol
       if compilingScala2StdLib && sym.is(ModuleClass) then
         // Add Serializable to companion objects of serializable classes,

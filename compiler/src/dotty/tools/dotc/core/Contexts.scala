@@ -892,7 +892,7 @@ object Contexts {
     val definitions: Definitions = new Definitions
 
     // Set up some phases to get started */
-    usePhases(List(SomePhase))
+    usePhases(List(SomePhase), FreshContext(this))
 
     /** Initializes the `ContextBase` with a starting context.
      *  This initializes the `platform` and the `definitions`.

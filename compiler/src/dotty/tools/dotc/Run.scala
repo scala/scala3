@@ -293,10 +293,13 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       if (ctx.settings.YtestPickler.value) List("pickler")
       else ctx.settings.YstopAfter.value
 
+    val runCtx = ctx.fresh
+    runCtx.setProfiler(Profiler())
+
     val pluginPlan = ctx.base.addPluginPhases(ctx.base.phasePlan)
     val phases = ctx.base.fusePhases(pluginPlan,
       ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, stopAfter, ctx.settings.Ycheck.value)
-    ctx.base.usePhases(phases)
+    ctx.base.usePhases(phases, runCtx)
 
     if ctx.settings.YnoDoubleBindings.value then
       ctx.base.checkNoDoubleBindings = true
@@ -340,9 +343,6 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       profiler.finished()
     }
 
-    val runCtx = ctx.fresh
-    runCtx.setProfiler(Profiler())
-    unfusedPhases.foreach(_.initContext(runCtx))
     val fusedPhases = runCtx.base.allPhases
     if ctx.settings.explainCyclic.value then
       runCtx.setProperty(CyclicReference.Trace, new CyclicReference.Trace())
