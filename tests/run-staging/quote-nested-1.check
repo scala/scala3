@@ -1,1 +1,1 @@
-((q: scala.quoted.Quotes) ?=> scala.quoted.runtime.Expr.quote[scala.Int](3).apply(using q))
+((q: scala.quoted.Quotes) ?=> scala.quoted.runtime.Expr.quote[3](3).apply(using q))
