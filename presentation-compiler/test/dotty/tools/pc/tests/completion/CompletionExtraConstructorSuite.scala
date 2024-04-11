@@ -559,9 +559,7 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |object Main:
          |  TestObject@@
          |""".stripMargin,
-      """|TestClass($0)
-         |new Wrapper.TestClass
-         |TestClass
+      """|TestObject test
          |""".stripMargin
     )
 
