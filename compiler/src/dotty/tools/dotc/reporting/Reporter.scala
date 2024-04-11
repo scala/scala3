@@ -15,6 +15,7 @@ import java.io.{BufferedReader, PrintWriter}
 import scala.annotation.internal.sharable
 import scala.collection.mutable
 import core.Decorators.em
+import core.handleRecursive
 
 object Reporter {
   /** Convert a SimpleReporter into a real Reporter */
@@ -155,6 +156,12 @@ abstract class Reporter extends interfaces.ReporterResult {
       addUnreported(key, 1)
     case _                                                  =>
       if !isHidden(dia) then // avoid isHidden test for summarized warnings so that message is not forced
+        try
+          withMode(Mode.Printing)(doReport(dia))
+        catch case ex: Throwable =>
+          // #20158: Don't increment the error count, otherwise we might suppress
+          // the RecursiveOverflow error and not print any error at all.
+          handleRecursive("error reporting", dia.message, ex)
         dia match {
           case w: Warning =>
             warnings = w :: warnings
@@ -168,7 +175,6 @@ abstract class Reporter extends interfaces.ReporterResult {
           // match error if d is something else
         }
         markReported(dia)
-        withMode(Mode.Printing)(doReport(dia))
   end issueUnconfigured
 
   def issueIfNotSuppressed(dia: Diagnostic)(using Context): Unit =
