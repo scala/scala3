@@ -182,11 +182,10 @@ class CompletionDocSuite extends BaseCompletionSuite:
         |}
       """.stripMargin,
       """
-        |> Found documentation for scala/util/Try.
-        |Try scala.util
         |> Found documentation for scala/util/Try.apply().
         |Try[T](r: => T): Try[T]
-        |new Try[T]: Try[T]
+        |> Found documentation for scala/util/Try.
+        |Try scala.util
         |""".stripMargin,
       includeDocs = true
     )
@@ -200,7 +199,7 @@ class CompletionDocSuite extends BaseCompletionSuite:
       """.stripMargin,
       """
         |> Found documentation for scala/collection/mutable/StringBuilder.
-        |StringBuilder scala.collection.mutable
+        |StringBuilder(): StringBuilder
         |""".stripMargin,
       includeDocs = true,
       topLines = Some(1)
@@ -214,9 +213,9 @@ class CompletionDocSuite extends BaseCompletionSuite:
         |}
       """.stripMargin,
       """
+        |Vector[A](elems: A*): Vector[A]
         |> Found documentation for scala/package.Vector.
         |Vector scala.collection.immutable
-        |Vector[A](elems: A*): Vector[A]
         |""".stripMargin,
       includeDocs = true
     )
@@ -247,8 +246,8 @@ class CompletionDocSuite extends BaseCompletionSuite:
         |  scala.util.Failure@@
         |}
       """.stripMargin,
-      """|Failure scala.util
-         |Failure[T](exception: Throwable): Failure[T]
+      """|Failure[T](exception: Throwable): Failure[T]
+         |Failure scala.util
          |""".stripMargin,
       includeDocs = true
     )
@@ -306,7 +305,7 @@ class CompletionDocSuite extends BaseCompletionSuite:
         |  }
         |}
       """.stripMargin,
-      """|myNumbers: Vector[Int]
-         |myNumbers(i: Int): Int
+      """|myNumbers(i: Int): Int
+         |myNumbers: Vector[Int]
          |""".stripMargin
     )

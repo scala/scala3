@@ -304,25 +304,33 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
 
   @Test def `case-class2` =
     checkSnippet(
-      s"""|object Main {
-          |  scala.util.Tr@@
+      s"""|object wrapper:
+          |  case class Test2(x: Int)
+          |  object Test2:
+          |    def apply(x: Int): Test2 = ???
+          |object Main {
+          |  wrapper.Test@@
           |}
           |""".stripMargin,
-      """|Try
-         |Try($0)
-         |new scala.util.Try
+      """|Test2($0)
+         |new wrapper.Test2
+         |Test2
          |""".stripMargin
     )
 
   @Test def `case-class2-edit` =
     checkEditLine(
-      s"""|object Main {
+      s"""|object wrapper:
+          |  case class Test2(x: Int)
+          |  object Test2:
+          |    def apply(x: Int): Test2 = ???
+          |object Main {
           |  ___
           |}
           |""".stripMargin,
-      "scala.util.Tr@@",
-      "new scala.util.Try",
-      filter = _.contains("new Try")
+      "wrapper.Test@@",
+      "new wrapper.Test2",
+      filter = _.contains("new Test2")
     )
 
   @Test def `case-class3` =
@@ -333,9 +341,8 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |""".stripMargin,
       // Note: the class and trait items in here are invalid. So
       // they are filtered out.
-      """|Try -  scala.util
-         |Try($0) - [T](r: => T): Try[T]
-         |new Try - [T]: Try[T]
+      """|Try($0) - [T](r: => T): Try[T]
+         |Try -  scala.util
          |""".stripMargin,
       includeDetail = true
     )
@@ -365,10 +372,10 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |  Wi@@
           |}
           |""".stripMargin,
-      """|Widget -  example
-         |Widget($0) - (name: String): Widget
+      """|Widget($0) - (name: String): Widget
          |Widget($0) - (age: Int): Widget
          |Widget($0) - (name: String, age: Int): Widget
+         |Widget -  example
          |""".stripMargin,
       includeDetail = true,
       topLines = Some(4)
@@ -396,12 +403,13 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |  ListMa@@
           |}
           |""".stripMargin,
-      """|ListMap -  scala.collection.immutable
-         |ListMap -  scala.collection.mutable
+      """|ListMap($0) - [K, V](elems: (K, V)*): ListMap[K, V]
+         |new ListMap - [K, V]: ListMap[K, V]
+         |ListMap -  scala.collection.immutable
          |ListMap($0) - [K, V](elems: (K, V)*): ListMap[K, V]
          |new ListMap - [K, V]: ListMap[K, V]
+         |ListMap -  scala.collection.mutable
          |ListMapBuilder - [K, V]: ListMapBuilder[K, V]
-         |new ListMap - [K, V]: ListMap[K, V]
          |ConcurrentSkipListMap -  java.util.concurrent
          |""".stripMargin,
       includeDetail = true,

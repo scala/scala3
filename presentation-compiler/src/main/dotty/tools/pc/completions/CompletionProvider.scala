@@ -32,6 +32,7 @@ import org.eclipse.lsp4j.InsertTextFormat
 import org.eclipse.lsp4j.InsertTextMode
 import org.eclipse.lsp4j.Range as LspRange
 import org.eclipse.lsp4j.TextEdit
+import dotty.tools.dotc.cc.CaptureSet.empty
 
 class CompletionProvider(
     search: SymbolSearch,
@@ -153,13 +154,17 @@ class CompletionProvider(
     val printer =
       ShortenedTypePrinter(search, IncludeDefaultParam.ResolveLater)(using indexedContext)
 
+    val underlyingCompletion = completion match
+      case CompletionValue.ExtraMethod(_, underlying) => underlying
+      case other => other
+
     // For overloaded signatures we get multiple symbols, so we need
     // to recalculate the description
-    // related issue https://github.com/scala/scala3/issues/11941
-    lazy val kind: CompletionItemKind = completion.completionItemKind
-    val description = completion.description(printer)
-    val label = completion.labelWithDescription(printer)
-    val ident = completion.insertText.getOrElse(completion.label)
+    // related issue https://github.com/lampepfl/scala3/issues/11941
+    lazy val kind: CompletionItemKind = underlyingCompletion.completionItemKind
+    val description = underlyingCompletion.description(printer)
+    val label = underlyingCompletion.labelWithDescription(printer)
+    val ident = underlyingCompletion.insertText.getOrElse(underlyingCompletion.label)
 
     lazy val isInStringInterpolation =
       path match
@@ -176,7 +181,7 @@ class CompletionProvider(
           false
 
     def wrapInBracketsIfRequired(newText: String): String =
-      if completion.snippetAffix.nonEmpty && isInStringInterpolation then
+      if underlyingCompletion.snippetAffix.nonEmpty && isInStringInterpolation then
         "{" + newText + "}"
       else newText
 
@@ -194,20 +199,20 @@ class CompletionProvider(
       val item = new CompletionItem(label)
       item.setSortText(f"${idx}%05d")
       item.setDetail(description)
-      item.setFilterText(completion.filterText.getOrElse(completion.label))
+      item.setFilterText(underlyingCompletion.filterText.getOrElse(underlyingCompletion.label))
       item.setTextEdit(textEdit)
-      item.setAdditionalTextEdits((completion.additionalEdits ++ additionalEdits).asJava)
-      completion.insertMode.foreach(item.setInsertTextMode)
+      item.setAdditionalTextEdits((underlyingCompletion.additionalEdits ++ additionalEdits).asJava)
+      underlyingCompletion.insertMode.foreach(item.setInsertTextMode)
 
-      val data = completion.completionData(buildTargetIdentifier)
+      val data = underlyingCompletion.completionData(buildTargetIdentifier)
       item.setData(data.toJson)
 
-      item.setTags(completion.lspTags.asJava)
+      item.setTags(underlyingCompletion.lspTags.asJava)
 
       if config.isCompletionSnippetsEnabled() then
         item.setInsertTextFormat(InsertTextFormat.Snippet)
 
-      completion.command.foreach { command =>
+      underlyingCompletion.command.foreach { command =>
         item.setCommand(new Command("", command))
       }
 
@@ -215,8 +220,8 @@ class CompletionProvider(
       item
     end mkItem
 
-    val completionTextSuffix = completion.snippetAffix.toSuffix
-    val completionTextPrefix = completion.snippetAffix.toInsertPrefix
+    val completionTextSuffix = underlyingCompletion.snippetAffix.toSuffix
+    val completionTextPrefix = underlyingCompletion.snippetAffix.toInsertPrefix
 
     lazy val backtickSoftKeyword = path match
       case (_: Select) :: _ => false
@@ -276,15 +281,15 @@ class CompletionProvider(
       end match
     end mkItemWithImports
 
-    completion match
+    underlyingCompletion match
       case v: (CompletionValue.Workspace | CompletionValue.Extension | CompletionValue.ImplicitClass) =>
         mkItemWithImports(v)
       case v: CompletionValue.Interpolator if v.isWorkspace || v.isExtension =>
         mkItemWithImports(v)
       case _ =>
-        val nameText = completion.insertText.getOrElse(ident.backticked(backtickSoftKeyword))
+        val nameText = underlyingCompletion.insertText.getOrElse(ident.backticked(backtickSoftKeyword))
         val nameWithAffixes = completionTextPrefix + nameText + completionTextSuffix
-        mkItem(nameWithAffixes, range = completion.range)
+        mkItem(nameWithAffixes, range = underlyingCompletion.range)
 
     end match
   end completionItems

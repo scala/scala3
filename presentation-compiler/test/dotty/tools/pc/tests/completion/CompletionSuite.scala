@@ -26,8 +26,8 @@ class CompletionSuite extends BaseCompletionSuite:
         |  Lis@@
         |}""".stripMargin,
       """
-        |List scala.collection.immutable
         |List[A](elems: A*): List[A]
+        |List scala.collection.immutable
         |List - java.awt
         |List - java.util
         |""".stripMargin,
@@ -178,10 +178,10 @@ class CompletionSuite extends BaseCompletionSuite:
         |object A {
         |  TrieMap@@
         |}""".stripMargin,
-      """|TrieMap scala.collection.concurrent
-         |TrieMap[K, V](elems: (K, V)*): TrieMap[K, V]
+      """|TrieMap[K, V](elems: (K, V)*): TrieMap[K, V]
          |new TrieMap[K, V]: TrieMap[K, V]
          |new TrieMap[K, V](hashf: Hashing[K], ef: Equiv[K]): TrieMap[K, V]
+         |TrieMap scala.collection.concurrent
          |""".stripMargin
     )
 
@@ -629,8 +629,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|Some(value) scala
-         |Some scala
          |Some[A](value: A): Some[A]
+         |Some scala
          |""".stripMargin
     )
 
@@ -641,8 +641,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |    case List(Som@@)
           |}
           |""".stripMargin,
-      """|Some scala
-         |Some[A](value: A): Some[A]
+      """|Some[A](value: A): Some[A]
+         |Some scala
          |""".stripMargin
     )
 
@@ -667,8 +667,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|Some(value) scala
-         |Seq scala.collection.immutable
-         |Set scala.collection.immutable
+         |Set[A](elems: A*): Set[A]
+         |Seq[A](elems: A*): Seq[A]
          |""".stripMargin,
       topLines = Some(3)
     )
@@ -1627,8 +1627,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |  val fooBar = List(123)
          |  foo@@
          |""".stripMargin,
-      """|fooBar: List[Int]
-         |fooBar(n: Int): Int
+      """|fooBar(n: Int): Int
+         |fooBar: List[Int]
          |""".stripMargin
     )
 
@@ -1638,9 +1638,11 @@ class CompletionSuite extends BaseCompletionSuite:
          |  List@@
          |""".stripMargin,
       """|List[A](elems: A*): List[A]
+         |ListSet[A](elems: A*): ListSet[A] - scala.collection.immutable
          |ListMap[K, V](elems: (K, V)*): ListMap[K, V] - scala.collection.immutable
          |new ListMap[K, V]: ListMap[K, V] - scala.collection.immutable
          |new ListSet[A]: ListSet[A] - scala.collection.immutable
+         |ListMap[K, V](elems: (K, V)*): ListMap[K, V] - scala.collection.mutable
          |new ListMap[K, V]: ListMap[K, V] - scala.collection.mutable
          |""".stripMargin,
       filter = _.contains("[")

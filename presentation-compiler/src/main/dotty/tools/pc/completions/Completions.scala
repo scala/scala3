@@ -8,7 +8,7 @@ import scala.collection.mutable
 import scala.meta.internal.metals.Fuzzy
 import scala.meta.internal.metals.ReportContext
 import scala.meta.internal.mtags.CoursierComplete
-import scala.meta.internal.pc.{IdentifierComparator, MemberOrdering}
+import scala.meta.internal.pc.{IdentifierComparator, MemberOrdering, CompletionFuzzy}
 import scala.meta.pc.*
 
 import dotty.tools.dotc.ast.tpd.*
@@ -232,16 +232,18 @@ class Completions(
     val hasNonSyntheticConstructor = sym.name.isTypeName && sym.isClass
       && !sym.is(ModuleClass) && !sym.is(Trait) && !sym.is(Abstract) && !sym.is(Flags.JavaDefined)
 
-    val methodDenots: List[SingleDenotation] =
+    val (extraMethodDenots, skipOriginalDenot): (List[SingleDenotation], Boolean) =
       if shouldAddSnippet && isNew && hasNonSyntheticConstructor then
-        sym.info.member(nme.CONSTRUCTOR).allSymbols.map(_.asSingleDenotation)
+        val constructors = sym.info.member(nme.CONSTRUCTOR).allSymbols.map(_.asSingleDenotation)
           .filter(_.symbol.isAccessibleFrom(denot.info))
+        constructors -> true
+
       else if shouldAddSnippet && completionMode.is(Mode.Term) && sym.name.isTermName && !sym.is(Flags.Method) && !sym.is(Flags.JavaDefined) then
         val constructors = if sym.isAllOf(ConstructorProxyModule) then
           sym.companionClass.info.member(nme.CONSTRUCTOR).allSymbols
         else
           val companionApplies  = denot.info.member(nme.apply).allSymbols
-          val classConstructors = if sym.companionClass.exists then
+          val classConstructors = if sym.companionClass.exists && !sym.companionClass.isOneOf(AbstractOrTrait) then
             sym.companionClass.info.member(nme.CONSTRUCTOR).allSymbols
           else Nil
 
@@ -250,33 +252,44 @@ class Completions(
           else
             companionApplies ++ classConstructors
 
-        val extraDenots = constructors.map(_.asSeenFrom(denot.info).asSingleDenotation)
+        val result = constructors.map(_.asSeenFrom(denot.info).asSingleDenotation)
           .filter(_.symbol.isAccessibleFrom(denot.info))
 
-        if sym.isAllOf(ConstructorProxyModule) || sym.is(Trait) then extraDenots
-        else denot :: extraDenots
+        result -> (sym.isAllOf(ConstructorProxyModule) || sym.is(Trait))
+      else Nil -> false
 
-      else denot :: Nil
+    val extraCompletionValues =
+      val existsApply = extraMethodDenots.exists(_.symbol.name == nme.apply)
 
-    val existsApply = methodDenots.exists(_.symbol.name == nme.apply)
+      extraMethodDenots.map { methodDenot =>
+        val suffix = findSuffix(methodDenot.symbol)
+        val affix = if methodDenot.symbol.isConstructor && existsApply then
+          adjustedPath match
+            case (select @ Select(qual, _)) :: _ =>
+              val start = qual.span.start
+              val insertRange = select.sourcePos.startPos.withEnd(completionPos.queryEnd).toLsp
 
-    methodDenots.map { methodDenot =>
-      val suffix = findSuffix(methodDenot.symbol)
-      val affix = if methodDenot.symbol.isConstructor && existsApply then
-        adjustedPath match
-          case (select @ Select(qual, _)) :: _ =>
-            val start = qual.span.start
-            val insertRange = select.sourcePos.startPos.withEnd(completionPos.queryEnd).toLsp
+              suffix
+                .withCurrentPrefix(qual.show + ".")
+                .withNewPrefix(Affix(PrefixKind.New, insertRange = Some(insertRange)))
+            case _ =>
+              suffix.withNewPrefix(Affix(PrefixKind.New))
+        else suffix
+        val name = undoBacktick(label)
 
-            suffix
-              .withCurrentPrefix(qual.show + ".")
-              .withNewPrefix(Affix(PrefixKind.New, insertRange = Some(insertRange)))
-          case _ =>
-            suffix.withNewPrefix(Affix(PrefixKind.New))
-      else suffix
+        CompletionValue.ExtraMethod(
+          owner = denot,
+          extraMethod = toCompletionValue(name, methodDenot, affix)
+        )
+      }
+
+    if skipOriginalDenot then extraCompletionValues
+    else
+      val suffix = findSuffix(denot.symbol)
       val name = undoBacktick(label)
-      toCompletionValue(name, methodDenot, affix)
-    }
+      val denotCompletionValue = toCompletionValue(name, denot, suffix)
+      denotCompletionValue :: extraCompletionValues
+
   end completionsWithAffix
 
   /**
@@ -638,7 +651,10 @@ class Completions(
             case ck: CompletionValue.CaseKeyword => (ck.label, true)
             case symOnly: CompletionValue.Symbolic =>
               val sym = symOnly.symbol
-              val name = SemanticdbSymbols.symbolName(sym)
+              val name = symOnly match
+                case CompletionValue.ExtraMethod(owner, extraMethod) =>
+                  SemanticdbSymbols.symbolName(owner.symbol) + SemanticdbSymbols.symbolName(extraMethod.symbol)
+                case _ => SemanticdbSymbols.symbolName(sym)
               val suffix =
                 if symOnly.snippetAffix.addLabelSnippet then "[]" else ""
               val id = name + suffix
@@ -749,18 +765,24 @@ class Completions(
       relevance
     end symbolRelevance
 
+    def computeRelevance(sym: Symbol, completionValue: CompletionValue.Symbolic) =
+      completionValue match
+        case _: CompletionValue.Override =>
+          var penalty = symbolRelevance(sym)
+          // show the abstract members first
+          if !sym.is(Deferred) then penalty |= MemberOrdering.IsNotAbstract
+          penalty
+        case _: CompletionValue.Workspace =>
+          symbolRelevance(sym) | (IsWorkspaceSymbol + sym.name.show.length())
+        case _ => symbolRelevance(sym)
+
     completion match
-      case ov: CompletionValue.Override =>
-        var penalty = symbolRelevance(ov.symbol)
-        // show the abstract members first
-        if !ov.symbol.is(Deferred) then penalty |= MemberOrdering.IsNotAbstract
-        penalty
-      case CompletionValue.Workspace(_, denot, _, _) =>
-        symbolRelevance(denot.symbol) | (IsWorkspaceSymbol + denot.name.show.length())
+      case CompletionValue.ExtraMethod(owner, extraMethod) =>
+        computeRelevance(owner.symbol, extraMethod)
       case sym: CompletionValue.Symbolic =>
-        symbolRelevance(sym.symbol)
-      case _ =>
-        Int.MaxValue
+        computeRelevance(sym.symbol, sym)
+      case _ => Int.MaxValue
+
   end computeRelevancePenalty
 
   private lazy val isEvilMethod: Set[Name] = Set[Name](
@@ -868,6 +890,7 @@ class Completions(
         def priority(v: CompletionValue): Int =
           v match
             case _: CompletionValue.Compiler => 0
+            case CompletionValue.ExtraMethod(_, _: CompletionValue.Compiler) => 0
             case _ => 1
 
         priority(o1) - priority(o2)
@@ -909,12 +932,19 @@ class Completions(
 
       def methodScore(v: CompletionValue.Symbolic)(using Context): Int =
         val sym = v.symbol
-        val workspacePenalty = if v.isInstanceOf[CompletionValue.Workspace] then 3 else 0
+        val workspacePenalty = v match
+          case CompletionValue.ExtraMethod(_, _: CompletionValue.Workspace) => 5
+          case _: CompletionValue.Workspace => 5
+          case _ => 0
+
+        val isExtraMethod = v.isInstanceOf[CompletionValue.ExtraMethod]
         val methodPenalty =
           if isNew && sym.isConstructor then -1
-          else if !completionMode.is(Mode.Member) && sym.name == nme.apply then 1
-          else if sym.isConstructor then 2
-          else 0
+          else if isExtraMethod && !sym.isConstructor then 1
+          else if isExtraMethod then 2
+          else if !sym.isAllOf(SyntheticModule) then 3
+          else 4
+
         workspacePenalty + methodPenalty
 
       override def compare(o1: CompletionValue, o2: CompletionValue): Int =
@@ -942,14 +972,14 @@ class Completions(
                 )
                 if byFuzzy != 0 then byFuzzy
                 else
-                  val byMethodScore = Integer.compare(
-                    methodScore(sym1),
-                    methodScore(sym2)
-                  )
-                  if byMethodScore != 0 then byMethodScore
+                  val byRelevance = compareByRelevance(o1, o2)
+                  if byRelevance != 0 then byRelevance
                   else
-                    val byRelevance = compareByRelevance(o1, o2)
-                    if byRelevance != 0 then byRelevance
+                    val byMethodScore = Integer.compare(
+                      methodScore(sym1),
+                      methodScore(sym2)
+                    )
+                    if byMethodScore != 0 then byMethodScore
                     else
                       val byIdentifier = IdentifierComparator.compare(
                         s1.name.show,

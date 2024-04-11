@@ -4,6 +4,7 @@ import dotty.tools.pc.base.BaseCompletionSuite
 
 import org.junit.runners.MethodSorters
 import org.junit.{FixMethodOrder, Test}
+import org.junit.Ignore
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class CompletionInterpolatorSuite extends BaseCompletionSuite:
@@ -627,6 +628,7 @@ class CompletionInterpolatorSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       assertSingleItem = false,
+      filter = _.contains("java.nio.file")
     )
 
 
@@ -744,7 +746,6 @@ class CompletionInterpolatorSuite extends BaseCompletionSuite:
          |  val a = s"${ListBuffer($0)}""
          |}""".stripMargin,
       assertSingleItem = false,
-      itemIndex = 1
     )
 
   @Test def `dont-show-when-writing-before-dollar` =
@@ -782,24 +783,59 @@ class CompletionInterpolatorSuite extends BaseCompletionSuite:
 
   @Test def `prepend-new-missing-interpolator` =
     checkSnippet(
+      """|case class TestClass(x: Int)
+         |object TestClass:
+         |  def apply(x: Int): TestClass = ???
+         |object Main:
+         |  "$TestClas@@"
+         |""".stripMargin,
+      """|{TestClass($0)}
+         |{new TestClass$0}
+         |TestClass$0
+         |""".stripMargin
+    )
+
+  @Ignore("This case is not yet supported by metals")
+  @Test def `prepend-new-missing-interpolator-with-prefix` =
+    checkSnippet(
       """|object Wrapper:
-         |  "$Try@@"
-         |
+         |  case class TestClass(x: Int)
+         |  object TestClass:
+         |    def apply(x: Int): TestClass = ???
+         |object Main:
+         |  "$Wrapper.TestClas@@"
          |""".stripMargin,
-      """|Try$0
-         |{Try($0)}
-         |{new Try$0}
+      """|{Wrapper.TestClass($0)}
+         |{new Wrapper.TestClass$0}
+         |{Wrapper.TestClass$0}
+         |""".stripMargin
+    )
+
+  @Test def `prepend-new-with-prefix` =
+    checkSnippet(
+      """|object Wrapper:
+         |  case class TestClass(x: Int)
+         |  object TestClass:
+         |    def apply(x: Int): TestClass = ???
+         |object Main:
+         |  s"$Wrapper.TestClas@@"
          |""".stripMargin,
+      """|{Wrapper.TestClass($0)}
+         |{new Wrapper.TestClass$0}
+         |{Wrapper.TestClass$0}
+         |""".stripMargin
     )
 
   @Test def `prepend-new-interpolator` =
     checkSnippet(
-      """|object Wrapper:
-         |  s"$Try@@"
-         |
+      """|case class TestClass(x: Int)
+         |object TestClass:
+         |  def apply(x: Int): TestClass = ???
+         |object Main:
+         |  s"$TestClas@@"
          |""".stripMargin,
-      """|Try
-         |{Try($0)}
-         |{new Try}
-         |""".stripMargin,
+      """|{TestClass($0)}
+         |{new TestClass}
+         |TestClass
+         |""".stripMargin
     )

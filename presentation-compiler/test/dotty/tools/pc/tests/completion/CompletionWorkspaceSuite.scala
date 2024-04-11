@@ -810,8 +810,8 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       """|fooBar: String
-         |fooBar: List[Int]
          |fooBar(n: Int): Int - test.A
+         |fooBar: List[Int]
          |""".stripMargin,
     )
 
@@ -827,8 +827,8 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |
          |val j = MyTy@@
          |""".stripMargin,
-      """|MyType - demo.other
-         |MyType(m: Long): MyType - demo.other
+      """|MyType(m: Long): MyType - demo.other
+         |MyType - demo.other
          """.stripMargin,
     )
 
@@ -844,8 +844,8 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |
          |val j = MyTy@@
          |""".stripMargin,
-      """|MyType - demo.other
-         |MyType(m: Long): MyType - demo.other
+      """|MyType(m: Long): MyType - demo.other
+         |MyType - demo.other
       """.stripMargin,
     )
 

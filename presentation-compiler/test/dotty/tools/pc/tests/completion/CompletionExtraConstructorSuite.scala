@@ -8,6 +8,7 @@ import dotty.tools.pc.utils.MockEntries
 
 import org.junit.Test
 import org.junit.Ignore
+import scala.collection.immutable.ListMapBuilder
 
 class CompletionExtraConstructorSuite extends BaseCompletionSuite:
 
@@ -50,8 +51,8 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |  case class TestClass(x: Int)
          |  TestCla@@
          |""".stripMargin,
-      """|TestClass test.Wrapper (Module)
-         |TestClass(x: Int): TestClass (Method)
+      """|TestClass(x: Int): TestClass (Method)
+         |TestClass test.Wrapper (Module)
          |""".stripMargin,
       includeCompletionKind = true
     )
@@ -62,8 +63,8 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |  case class TestClass()
          |  TestCla@@
          |""".stripMargin,
-      """|TestClass test.Wrapper (Module)
-         |TestClass(): TestClass (Method)
+      """|TestClass(): TestClass (Method)
+         |TestClass test.Wrapper (Module)
          |""".stripMargin,
       includeCompletionKind = true
     )
@@ -74,56 +75,60 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |  case class TestClass[T](x: T)
          |  TestCla@@
          |""".stripMargin,
-      """|TestClass test.Wrapper (Module)
-         |TestClass[T](x: T): TestClass[T] (Method)
+      """|TestClass[T](x: T): TestClass[T] (Method)
+         |TestClass test.Wrapper (Module)
          |""".stripMargin,
       includeCompletionKind = true
     )
 
-  @Ignore
+  // TODO We first need to detect support when to add additional braces / colon
+  // missing new TestClass(x: Int): TestClass (Constructor)
   @Test def `extra-new-completions-abstract-class-1` =
     check(
       """|object Wrapper:
          |  abstract class TestClass(x: Int)
          |  TestCla@@
          |""".stripMargin,
-      """|new TestClass(x: Int): TestClass (Constructor)
+      """|
          |""".stripMargin,
       includeCompletionKind = true
     )
 
-  @Ignore
+  // TODO We first need to detect support when to add additional braces / colon
+  // missing new TestClass(): TestClass (Constructor)
   @Test def `extra-new-completions-abstract-class-2` =
     check(
       """|object Wrapper:
          |  abstract class TestClass()
          |  TestCla@@
          |""".stripMargin,
-      """|new TestClass(): TestClass (Constructor)
+      """|
          |""".stripMargin,
       includeCompletionKind = true
     )
 
-  @Ignore
+  // TODO We first need to detect support when to add additional braces / colon
+  // missing new TestClass[T](x: T): TestClass[T] (Constructor)
   @Test def `extra-new-completions-abstract-class-3` =
     check(
       """|object Wrapper:
          |  abstract class TestClass[T](x: T)
          |  TestCla@@
          |""".stripMargin,
-      """|new TestClass[T](x: T): TestClass[T] (Constructor)
+      """|
          |""".stripMargin,
       includeCompletionKind = true
     )
 
-  @Ignore
+  // TODO We first need to detect support when to add additional braces / colon
+  // missing new TestClass (Constructor)
   @Test def `extra-new-completions-trait-1` =
     check(
       """|object Wrapper:
          |  trait TestClass
          |  TestCla@@
          |""".stripMargin,
-      """|new TestClass (Constructor)
+      """|
          |""".stripMargin,
       includeCompletionKind = true
     )
@@ -136,9 +141,9 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |    def apply(x: Int, y: Int): TestClass = TestClass(x + y)
          |  TestCla@@
          |""".stripMargin,
-      """|TestClass test.Wrapper (Module)
-         |TestClass(x: Int, y: Int): TestClass (Method)
+      """|TestClass(x: Int, y: Int): TestClass (Method)
          |new TestClass(x: Int): TestClass (Constructor)
+         |TestClass test.Wrapper (Module)
          |""".stripMargin,
       includeCompletionKind = true
     )
@@ -152,9 +157,9 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |  TestCla@@
          |}
          |""".stripMargin,
-      """|TestClass test.Wrapper (Module)
-         |TestClass(x: Int): TestClass (Method)
+      """|TestClass(x: Int): TestClass (Method)
          |new TestClass(x: Int): TestClass (Constructor)
+         |TestClass test.Wrapper (Module)
          |""".stripMargin,
       includeCompletionKind = true
     )
@@ -167,13 +172,15 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |    def apply(): TestClass = TestClass(1)
          |    TestCla@@
          |""".stripMargin,
-      """|TestClass test.Wrapper (Module)
-         |TestClass(): TestClass (Method)
+      """|TestClass(): TestClass (Method)
          |new TestClass(): TestClass (Constructor)
+         |TestClass test.Wrapper (Module)
          |""".stripMargin,
       includeCompletionKind = true
     )
 
+  // TODO We first need to detect support when to add additional braces / colon
+  // missing new TestClass(x: Int): TestClass (Constructor)
   @Test def `extra-new-completions-abstract-class-with-companion-1` =
     check(
       """|object Wrapper:
@@ -182,13 +189,14 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |    def apply(x: Int, y: Int): TestClass = ???
          |  TestCla@@
          |""".stripMargin,
-      """|TestClass test.Wrapper (Module)
-         |TestClass(x: Int, y: Int): TestClass (Method)
-         |new TestClass(x: Int): TestClass (Constructor)
+      """|TestClass(x: Int, y: Int): TestClass (Method)
+         |TestClass test.Wrapper (Module)
          |""".stripMargin,
       includeCompletionKind = true
     )
 
+  // TODO We first need to detect support when to add additional braces / colon
+  // missing new TestClass(x: Int): TestClass (Constructor)
   @Test def `extra-new-completions-abstract-class-with-companion-2` =
     check(
       """|object Wrapper:
@@ -197,13 +205,14 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |    def apply(x: Int): TestClass = ???
          |  TestCla@@
          |""".stripMargin,
-      """|TestClass test.Wrapper (Module)
-         |TestClass(x: Int): TestClass (Method)
-         |new TestClass(x: Int): TestClass (Constructor)
+      """|TestClass(x: Int): TestClass (Method)
+         |TestClass test.Wrapper (Module)
          |""".stripMargin,
       includeCompletionKind = true
     )
 
+  // TODO We first need to detect support when to add additional braces / colon
+  // missing new TestClass(): TestClass (Constructor)
   @Test def `extra-new-completions-abstract-class-with-companion-3` =
     check(
       """|object Wrapper:
@@ -212,13 +221,14 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |    def apply(): TestClass = ???
          |  TestCla@@
          |""".stripMargin,
-      """|TestClass test.Wrapper (Module)
-         |TestClass(): TestClass (Method)
-         |new TestClass(): TestClass (Constructor)
+      """|TestClass(): TestClass (Method)
+         |TestClass test.Wrapper (Module)
          |""".stripMargin,
       includeCompletionKind = true
     )
 
+  // TODO We first need to detect support when to add additional braces / colon
+  // missing new TestClass(x: Int): TestClass (Constructor)
   @Test def `extra-new-completions-trait-with-companion-1` =
     check(
       """|object Wrapper:
@@ -227,13 +237,14 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |    def apply(x: Int, y: Int): TestClass = ???
          |  TestCla@@
          |""".stripMargin,
-      """|TestClass test.Wrapper (Module)
-         |TestClass(x: Int, y: Int): TestClass (Method)
-         |new TestClass(x: Int): TestClass (Constructor)
+      """|TestClass(x: Int, y: Int): TestClass (Method)
+         |TestClass test.Wrapper (Module)
          |""".stripMargin,
       includeCompletionKind = true
     )
 
+  // TODO We first need to detect support when to add additional braces / colon
+  // missing new TestClass(x: Int): TestClass (Constructor)
   @Test def `extra-new-completions-trait-with-companion-2` =
     check(
       """|object Wrapper:
@@ -242,13 +253,14 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |    def apply(x: Int): TestClass = ???
          |  TestCla@@
          |""".stripMargin,
-      """|TestClass test.Wrapper (Module)
-         |TestClass(x: Int): TestClass (Method)
-         |new TestClass(x: Int): TestClass (Constructor)
+      """|TestClass(x: Int): TestClass (Method)
+         |TestClass test.Wrapper (Module)
          |""".stripMargin,
       includeCompletionKind = true
     )
 
+  // TODO We first need to detect support when to add additional braces / colon
+  // missing new TestClass(): TestClass (Constructor)
   @Test def `extra-new-completions-trait-with-companion-3` =
     check(
       """|object Wrapper:
@@ -257,14 +269,15 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |    def apply(): TestClass = ???
          |  TestCla@@
          |""".stripMargin,
-      """|TestClass test.Wrapper (Module)
-         |TestClass(): TestClass (Method)
-         |new TestClass(): TestClass (Constructor)
+      """|TestClass(): TestClass (Method)
+         |TestClass test.Wrapper (Module)
          |""".stripMargin,
       includeCompletionKind = true
     )
 
   // This test should have new TestClass completion without parentheses. The actual issue is with printer, edit text is correct
+  // TODO We first need to detect support when to add additional braces / colon
+  // missing new TestClass(): TestClass (Constructor)
   @Test def `extra-new-completions-trait-with-companion-4` =
     check(
       """|object Wrapper:
@@ -273,9 +286,8 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |    def apply(): TestClass = ???
          |  TestCla@@
          |""".stripMargin,
-      """|TestClass test.Wrapper (Module)
-         |TestClass(): TestClass (Method)
-         |new TestClass(): TestClass (Constructor)
+      """|TestClass(): TestClass (Method)
+         |TestClass test.Wrapper (Module)
          |""".stripMargin,
       includeCompletionKind = true
     )
@@ -286,9 +298,8 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |    def apply(): TestClass = ???
          |  TestCla@@
          |""".stripMargin,
-      """|TestClass
-         |TestClass()
-         |new TestClass
+      """|TestClass()
+         |TestClass
          |""".stripMargin,
     )
 
@@ -330,11 +341,11 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |    def apply(z: Int): TestClass = ???
          |  TestCla@@
          |""".stripMargin,
-      """|TestClass test.Wrapper (Module)
-         |TestClass(z: Int): TestClass (Method)
+      """|TestClass(z: Int): TestClass (Method)
          |new TestClass(): TestClass (Constructor)
          |new TestClass(x: Int): TestClass (Constructor)
          |new TestClass(x: Int, y: Int): TestClass (Constructor)
+         |TestClass test.Wrapper (Module)
          |""".stripMargin,
       includeCompletionKind = true
     )
@@ -350,12 +361,12 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |    def apply(z: Int, w: Int): TestClass = ???
          |  TestCla@@
          |""".stripMargin,
-      """|TestClass test.Wrapper (Module)
-         |TestClass(z: Int): TestClass (Method)
+      """|TestClass(z: Int): TestClass (Method)
          |TestClass(z: Int, w: Int): TestClass (Method)
          |new TestClass(): TestClass (Constructor)
          |new TestClass(x: Int): TestClass (Constructor)
          |new TestClass(x: Int, y: Int): TestClass (Constructor)
+         |TestClass test.Wrapper (Module)
          |""".stripMargin,
       includeCompletionKind = true
     )
@@ -370,11 +381,11 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |    def apply(x: Int): TestClass = ???
          |  TestCla@@
          |""".stripMargin,
-      """|TestClass test.Wrapper (Module)
-         |TestClass(x: Int): TestClass (Method)
+      """|TestClass(x: Int): TestClass (Method)
          |new TestClass(): TestClass (Constructor)
          |new TestClass(x: Int): TestClass (Constructor)
          |new TestClass(x: Int, y: Int): TestClass (Constructor)
+         |TestClass test.Wrapper (Module)
          |""".stripMargin,
       includeCompletionKind = true
     )
@@ -389,11 +400,11 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |    def apply(x: Int): TestClass = ???
          |  TestCla@@
          |""".stripMargin,
-      """|TestClass test.Wrapper (Module)
+      """|TestClass(): TestClass (Method)
          |TestClass(x: Int): TestClass (Method)
-         |TestClass(): TestClass (Method)
          |new TestClass(x: Int): TestClass (Constructor)
          |new TestClass(x: Int, y: Int): TestClass (Constructor)
+         |TestClass test.Wrapper (Module)
          |""".stripMargin,
       includeCompletionKind = true
     )
@@ -401,22 +412,23 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
   @Test def `multiple-extra-new-constructors-with-companion-same-signature-trait` =
     check(
       """|object Wrapper:
-         |  trait TestClass:
-         |    def this(x: Int) = this()
-         |    def this(x: Int, y: Int) = this()
+         |  trait TestClass
          |  object TestClass:
          |    def apply(x: Int): TestClass = ???
          |  TestCla@@
          |""".stripMargin,
-      """|TestClass test.Wrapper (Module)
-         |TestClass(x: Int): TestClass (Method)
-         |new TestClass(): TestClass (Constructor)
-         |new TestClass(x: Int): TestClass (Constructor)
-         |new TestClass(x: Int, y: Int): TestClass (Constructor)
+      """|TestClass(x: Int): TestClass (Method)
+         |TestClass test.Wrapper (Module)
          |""".stripMargin,
       includeCompletionKind = true
     )
 
+
+  // TODO We first need to detect support when to add additional braces / colon
+  // missing:
+  // new TestClass(): TestClass (Constructor)
+  // new TestClass(x: Int): TestClass (Constructor)
+  // new TestClass(x: Int, y: Int): TestClass (Constructor)
   @Test def `multiple-extra-new-constructors-with-companion-same-signature-abstract` =
     check(
       """|object Wrapper:
@@ -427,11 +439,8 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |    def apply(x: Int): TestClass = ???
          |  TestCla@@
          |""".stripMargin,
-      """|TestClass test.Wrapper (Module)
-         |TestClass(x: Int): TestClass (Method)
-         |new TestClass(): TestClass (Constructor)
-         |new TestClass(x: Int): TestClass (Constructor)
-         |new TestClass(x: Int, y: Int): TestClass (Constructor)
+      """|TestClass(x: Int): TestClass (Method)
+         |TestClass test.Wrapper (Module)
          |""".stripMargin,
       includeCompletionKind = true
     )
@@ -502,12 +511,11 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |  TestCla@@
          |}
          |""".stripMargin,
-      """|
-         |TestClass - test.Wrapper (Module)
-         |TestClass(x: Int): TestClass - test.Wrapper (Method)
+      """|TestClass(x: Int): TestClass - test.Wrapper (Method)
          |new TestClass(): TestClass - test.Wrapper (Constructor)
          |new TestClass(x: Int): TestClass - test.Wrapper (Constructor)
          |new TestClass(x: Int, y: Int): TestClass - test.Wrapper (Constructor)
+         |TestClass - test.Wrapper (Module)
          |""".stripMargin,
       includeCompletionKind = true
     )
@@ -515,24 +523,32 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
   @Test def `prepend-new` =
     checkSnippet(
       """|object Wrapper:
-         |  Try@@
-         |
+         |  case class TestClass(x: Int)
+         |  object TestClass:
+         |    def apply(x: Int): TestClass = ???
+         |object Main {
+         |  TestClas@@
+         |}
          |""".stripMargin,
-      """|Try
-         |Try($0)
-         |new Try
-         |""".stripMargin,
+      """|TestClass($0)
+         |new TestClass
+         |TestClass
+         |""".stripMargin
     )
 
   @Test def `prepend-new-fully-qualified-path` =
     checkSnippet(
       """|object Wrapper:
-         |  scala.util.Try@@
-         |
+         |  case class TestClass(x: Int)
+         |  object TestClass:
+         |    def apply(x: Int): TestClass = ???
+         |object Main {
+         |  Wrapper.Test@@
+         |}
          |""".stripMargin,
-      """|Try
-         |Try($0)
-         |new scala.util.Try
-         |""".stripMargin,
+      """|TestClass($0)
+         |new Wrapper.TestClass
+         |TestClass
+         |""".stripMargin
     )
 
