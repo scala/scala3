@@ -1,4 +1,4 @@
-//> using options -Wvalue-discard -Wconf:msg=non-Unit:s
+//> using options -Xfatal-warnings -Wvalue-discard -Wconf:msg=non-Unit:s
 
 import scala.collection.mutable
 import scala.annotation.nowarn

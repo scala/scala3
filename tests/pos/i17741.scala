@@ -1,4 +1,4 @@
-//> using options -Wnonunit-statement
+//> using options -Xfatal-warnings -Wnonunit-statement
 
 class Node()
 class Elem(
