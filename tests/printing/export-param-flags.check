@@ -1,0 +1,13 @@
+[[syntax trees at end of                     typer]] // tests/printing/export-param-flags.scala
+package <empty> {
+  final lazy module val A: A = new A()
+  final module class A() extends Object() { this: A.type =>
+    inline def inlinedParam(inline x: Int): Int = x.+(x):Int
+  }
+  final lazy module val Exported: Exported = new Exported()
+  final module class Exported() extends Object() { this: Exported.type =>
+    export A.*
+    final inline def inlinedParam(inline x: Int): Int = A.inlinedParam(x)
+  }
+}
+

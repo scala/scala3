@@ -1293,7 +1293,7 @@ class Namer { typer: Typer =>
                 getter => addForwarder(
                   getter.name.asTermName, getter.asSeenFrom(path.tpe), span))
 
-            // adding annotations at the parameter level
+            // adding annotations and flags at the parameter level
             // TODO: This probably needs to be filtered to avoid adding some annotation
             // such as MacroAnnotations
             if sym.is(Method) then
@@ -1301,6 +1301,8 @@ class Namer { typer: Typer =>
                   (origParameter, exportedParameter) <- orig.lazyZip(forwarded)
               do
                 exportedParameter.addAnnotations(origParameter.annotations)
+                if exportedParameter.isTerm then
+                  exportedParameter.setFlag(origParameter.flags & RetainedExportTermParamFlags)
       end addForwarder
 
       def addForwardersNamed(name: TermName, alias: TermName, span: Span): Unit =
