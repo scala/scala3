@@ -43,7 +43,7 @@ object Docstrings {
           }
 
           val commentWithUsecases = expanded.copy(usecases = typedUsecases)
-          docCtx.addDocstring(sym, Some(commentWithUsecases))
+          docCtx.addDocstring(sym, commentWithUsecases)
           commentWithUsecases
         }
     }
@@ -52,7 +52,7 @@ object Docstrings {
     val tplExp = docCtx.templateExpander
     tplExp.defineVariables(sym)
     val newComment = comment.expand(tplExp.expandedDocComment(sym, owner, _))
-    docCtx.addDocstring(sym, Some(newComment))
+    docCtx.addDocstring(sym, newComment)
     newComment
   }
 

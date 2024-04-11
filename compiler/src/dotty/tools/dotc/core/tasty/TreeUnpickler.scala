@@ -984,7 +984,7 @@ class TreeUnpickler(reader: TastyReader,
       commentUnpicklerOpt.foreach { commentUnpickler =>
         def loadComment() = commentUnpickler.commentAt(start)
         if ctx.settings.YreadDocsEagerly.value then
-          ctx.docCtx.get.addDocstring(tree.symbol, loadComment())
+          loadComment().foreach(doc => ctx.docCtx.get.addDocstring(tree.symbol, doc))
         else
           ctx.docCtx.get.registerLoader(tree.symbol, loadComment)
       }

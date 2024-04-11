@@ -44,8 +44,8 @@ object Comments {
     def registerLoader(sym: Symbol, loader: () => Option[Comment]): Unit =
       docstrings.update(sym, CommentLoader(loader))
 
-    def addDocstring(sym: Symbol, doc: Option[Comment]): Unit =
-      doc.foreach(d => docstrings.update(sym, d))
+    def addDocstring(sym: Symbol, doc: Comment): Unit =
+      docstrings.update(sym, doc)
   }
 
 

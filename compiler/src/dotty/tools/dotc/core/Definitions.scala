@@ -2169,7 +2169,7 @@ class Definitions {
   @tu lazy val LazyValsControlState = requiredClass(s"$LazyValsModuleName.LazyValControlState")
 
   def addSyntheticSymbolsComments(using Context): Unit =
-    def add(sym: Symbol, doc: String) = ctx.docCtx.foreach(_.addDocstring(sym, Some(Comment(NoSpan, doc))))
+    def add(sym: Symbol, doc: String) = ctx.docCtx.foreach(_.addDocstring(sym, Comment(NoSpan, doc)))
 
     add(AnyClass,
     """/** Class `Any` is the root of the Scala class hierarchy.  Every class in a Scala
