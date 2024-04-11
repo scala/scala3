@@ -32,7 +32,6 @@ import org.eclipse.lsp4j.InsertTextFormat
 import org.eclipse.lsp4j.InsertTextMode
 import org.eclipse.lsp4j.Range as LspRange
 import org.eclipse.lsp4j.TextEdit
-import dotty.tools.dotc.cc.CaptureSet.empty
 
 class CompletionProvider(
     search: SymbolSearch,

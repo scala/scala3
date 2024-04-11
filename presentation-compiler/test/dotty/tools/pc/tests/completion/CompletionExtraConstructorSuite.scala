@@ -552,3 +552,16 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
+  @Test def `dont-include-private-members` =
+    check(
+      """|object TestObject:
+         |  private def apply(i: Int) = i
+         |object Main:
+         |  TestObject@@
+         |""".stripMargin,
+      """|TestClass($0)
+         |new Wrapper.TestClass
+         |TestClass
+         |""".stripMargin
+    )
+
