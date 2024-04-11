@@ -54,10 +54,10 @@ class Driver {
       if (ctx.settings.XprintSuspension.value)
         val suspendedHints = run.suspendedHints.toList
         report.echo(i"compiling suspended $suspendedUnits%, %")
-        for (unit, hint) <- suspendedHints do
-          report.echo(s"  $unit: $hint")
+        for (unit, (hint, atInlining)) <- suspendedHints do
+          report.echo(s"  $unit at ${if atInlining then "inlining" else "typer"}: $hint")
       val run1 = compiler.newRun
-      run1.compileSuspendedUnits(suspendedUnits)
+      run1.compileSuspendedUnits(suspendedUnits, !run.suspendedAtTyperPhase)
       finish(compiler, run1)(using MacroClassLoader.init(ctx.fresh))
 
   protected def initCtx: Context = (new ContextBase).initialCtx
@@ -65,13 +65,6 @@ class Driver {
   protected def sourcesRequired: Boolean = true
 
   protected def command: CompilerCommand = ScalacCommand
-
-  private def setupAsyncTasty(ictx: FreshContext): Unit = inContext(ictx):
-    ictx.settings.YearlyTastyOutput.value match
-      case earlyOut if earlyOut.isDirectory && earlyOut.exists =>
-        ictx.setInitialAsyncTasty()
-      case _ =>
-        () // do nothing
 
   /** Setup context with initialized settings from CLI arguments, then check if there are any settings that
    *  would change the default behaviour of the compiler.
@@ -89,7 +82,6 @@ class Driver {
     Positioned.init(using ictx)
 
     inContext(ictx) {
-      setupAsyncTasty(ictx)
       if !ctx.settings.YdropComments.value || ctx.settings.YreadComments.value then
         ictx.setProperty(ContextDoc, new ContextDocstrings)
       val fileNamesOrNone = command.checkUsage(summary, sourcesRequired)(using ctx.settings)(using ctx.settingsState)

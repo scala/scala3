@@ -26,7 +26,12 @@ import scala.concurrent.Promise
 import dotty.tools.dotc.transform.Pickler.writeSigFilesAsync
 
 import scala.util.chaining.given
-import dotty.tools.io.FileWriters.BufferingDelayedReporting
+import dotty.tools.io.FileWriters.{EagerReporter, BufferingReporter}
+import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
+import dotty.tools.dotc.sbt.asyncZincPhasesCompleted
+import scala.concurrent.ExecutionContext
+import scala.util.control.NonFatal
+import java.util.concurrent.atomic.AtomicBoolean
 
 object Pickler {
   val name: String = "pickler"
@@ -38,84 +43,158 @@ object Pickler {
    */
   inline val ParallelPickling = true
 
-  class AsyncTastyHolder(val earlyOut: AbstractFile, val promise: Promise[AsyncTastyState])
-  class AsyncTastyState(val hasErrors: Boolean, val pending: Option[BufferingDelayedReporting])
+  /**A holder for syncronization points and reports when writing TASTy asynchronously.
+   * The callbacks should only be called once.
+   */
+  class AsyncTastyHolder private (
+      val earlyOut: AbstractFile, incCallback: IncrementalCallback | Null)(using @constructorOnly ex: ExecutionContext):
+    import scala.concurrent.Future as StdFuture
+    import scala.concurrent.Await
+    import scala.concurrent.duration.Duration
+    import AsyncTastyHolder.Signal
 
-  // Why we only write to early output in the first run?
-  // ===================================================
-  // TL;DR the point of pipeline compilation is to start downstream projects early,
-  // so we don't want to wait for suspended units to be compiled.
-  //
-  // But why is it safe to ignore suspended units?
-  // If this project contains a transparent macro that is called in the same project,
-  // the compilation unit of that call will be suspended (if the macro implementation
-  // is also in this project), causing a second run.
-  // However before we do that run, we will have already requested sbt to begin
-  // early downstream compilation. This means that the suspended definitions will not
-  // be visible in *early* downstream compilation.
-  //
-  // However, sbt will by default prevent downstream compilation happening in this scenario,
-  // due to the existence of macro definitions. So we are protected from failure if user tries
-  // to use the suspended definitions.
-  //
-  // Additionally, it is recommended for the user to move macro implementations to another project
-  // if they want to force early output. In this scenario the suspensions will no longer occur, so now
-  // they will become visible in the early-output.
-  //
-  // See `sbt-test/pipelining/pipelining-scala-macro` and `sbt-test/pipelining/pipelining-scala-macro-force`
-  // for examples of this in action.
-  //
-  // Therefore we only need to write to early output in the first run. We also provide the option
-  // to diagnose suspensions with the `-Yno-suspended-units` flag.
-  def writeSigFilesAsync(
-      tasks: List[(String, Array[Byte])],
-      writer: EarlyFileWriter,
-      promise: Promise[AsyncTastyState])(using ctx: ReadOnlyContext): Unit = {
-    try
-      for (internalName, pickled) <- tasks do
-        val _ = writer.writeTasty(internalName, pickled)
-    finally
-      try
-        writer.close()
-      finally
-        promise.success(
-          AsyncTastyState(
+    private val _cancel = AtomicBoolean(false)
+
+    /**Cancel any outstanding work.
+     * This should be done at the end of a run, e.g. if there were errors that prevented reaching the backend. */
+    def cancel(): Unit =
+      while
+        val cancelled = _cancel.get()
+        !cancelled && !_cancel.compareAndSet(false, true)
+      do ()
+      if incCallback != null then
+        asyncTastyWritten.trySuccess(None) // cancel the wait for TASTy writing
+      if incCallback != null then
+        asyncAPIComplete.trySuccess(Signal.Cancelled) // cancel the wait for API completion
+
+    /** check if the work has been cancelled. */
+    def cancelled: Boolean = _cancel.get()
+
+    private val asyncTastyWritten = Promise[Option[AsyncTastyHolder.State]]()
+    private val asyncAPIComplete =
+      if incCallback == null then Promise.successful(Signal.Done) // no need to wait for API completion
+      else Promise[Signal]()
+
+    private val backendFuture: StdFuture[Option[BufferingReporter]] =
+      val asyncState = asyncTastyWritten.future
+        .zipWith(asyncAPIComplete.future)((state, api) => state.filterNot(_ => api == Signal.Cancelled))
+      asyncState.map: optState =>
+        optState.flatMap: state =>
+          if incCallback != null && state.done && !state.hasErrors then
+            asyncZincPhasesCompleted(incCallback, state.pending)
+          else state.pending
+
+    /** awaits the state of async TASTy operations indefinitely, returns optionally any buffered reports. */
+    def sync(): Option[BufferingReporter] =
+      Await.result(backendFuture, Duration.Inf)
+
+    def signalAPIComplete(): Unit =
+      if incCallback != null then
+        asyncAPIComplete.trySuccess(Signal.Done)
+
+    /** should only be called once */
+    def signalAsyncTastyWritten()(using ctx: ReadOnlyContext): Unit =
+      val done = !ctx.run.suspendedAtTyperPhase
+      if done then
+        try
+          // when we are done, i.e. no suspended units,
+          // we should close the file system so it can be read in the same JVM process.
+          // Note: we close even if we have been cancelled.
+          earlyOut match
+            case jar: JarArchive => jar.close()
+            case _ =>
+        catch
+          case NonFatal(t) =>
+            ctx.reporter.error(em"Error closing early output: ${t}")
+
+      asyncTastyWritten.trySuccess:
+        Some(
+          AsyncTastyHolder.State(
             hasErrors = ctx.reporter.hasErrors,
+            done = done,
             pending = (
               ctx.reporter match
-                case buffered: BufferingDelayedReporting => Some(buffered)
-                case _ => None
+                case buffered: BufferingReporter => Some(buffered)
+                case _: EagerReporter => None // already reported
             )
           )
         )
-      end try
-    end try
+    end signalAsyncTastyWritten
+  end AsyncTastyHolder
+
+  object AsyncTastyHolder:
+    /** The state after writing async tasty. Any errors should have been reported, or pending.
+     *  if suspendedUnits is true, then we can't signal Zinc yet.
+     */
+    private class State(val hasErrors: Boolean, val done: Boolean, val pending: Option[BufferingReporter])
+    private enum Signal:
+      case Done, Cancelled
+
+    /**Create a holder for Asynchronous state of early-TASTy operations.
+     * the `ExecutionContext` parameter is used to call into Zinc to signal
+     * that API and Dependency phases are complete.
+     */
+    def init(using Context, ExecutionContext): AsyncTastyHolder =
+      AsyncTastyHolder(ctx.settings.YearlyTastyOutput.value, ctx.incCallback)
+
+
+  /** Asynchronously writes TASTy files to the destination -Yearly-tasty-output.
+   *  If no units have been suspended, then we are "done", which enables Zinc to be signalled.
+   *
+   *  If there are suspended units, (due to calling a macro defined in the same run), then the API is incomplete,
+   *  so it would be a mistake to signal Zinc. This is a sensible default, because Zinc by default will ignore the
+   *  signal if there are macros in the API.
+   *  - See `sbt-test/pipelining/pipelining-scala-macro` for an example.
+   *
+   *  TODO: The user can override this default behaviour in Zinc to always listen to the signal,
+   *  (e.g. if they define the macro implementation in an upstream, non-pipelined project).
+   *  - See `sbt-test/pipelining/pipelining-scala-macro-force` where we force Zinc to listen to the signal.
+   *  If the user wants force early output to be written, then they probably also want to benefit from pipelining,
+   *  which then makes suspension problematic as it increases compilation times.
+   *  Proposal: perhaps we should provide a flag `-Ystrict-pipelining` (as an alternative to `-Yno-suspended-units`),
+   *    which fails in the condition of definition of a macro where its implementation is in the same project.
+   *    (regardless of if it is used); this is also more strict than preventing suspension at typer.
+   *    The user is then certain that they are always benefitting as much as possible from pipelining.
+   */
+  def writeSigFilesAsync(
+      tasks: List[(String, Array[Byte])],
+      writer: EarlyFileWriter,
+      async: AsyncTastyHolder)(using ctx: ReadOnlyContext): Unit = {
+    try
+      try
+        for (internalName, pickled) <- tasks do
+          if !async.cancelled then
+            val _ = writer.writeTasty(internalName, pickled)
+      catch
+        case NonFatal(t) => ctx.reporter.exception(em"writing TASTy to early output", t)
+      finally
+        writer.close()
+    catch
+      case NonFatal(t) => ctx.reporter.exception(em"closing early output writer", t)
+    finally
+      async.signalAsyncTastyWritten()
   }
 
-  class EarlyFileWriter private (writer: TastyWriter, origin: AbstractFile):
-    def this(dest: AbstractFile)(using @constructorOnly ctx: ReadOnlyContext) = this(TastyWriter(dest), dest)
+  class EarlyFileWriter private (writer: TastyWriter):
+    def this(dest: AbstractFile)(using @constructorOnly ctx: ReadOnlyContext) = this(TastyWriter(dest))
 
-    export writer.writeTasty
-
-    def close(): Unit =
-      writer.close()
-      origin match {
-        case jar: JarArchive => jar.close() // also close the file system
-        case _ =>
-      }
+    export writer.{writeTasty, close}
 }
 
 /** This phase pickles trees */
 class Pickler extends Phase {
   import ast.tpd.*
 
-  def doAsyncTasty(using Context): Boolean = ctx.asyncTastyPromise.isDefined
+  private def doAsyncTasty(using Context): Boolean = ctx.run.nn.asyncTasty.isDefined
+
+  private var fastDoAsyncTasty: Boolean = false
 
   override def phaseName: String = Pickler.name
 
   override def description: String = Pickler.description
 
-  // No need to repickle trees coming from TASTY
+  // No need to repickle trees coming from TASTY, however in the case that we need to write TASTy to early-output,
+  // then we need to run this phase to send the tasty from compilation units to the early-output.
   override def isRunnable(using Context): Boolean =
     super.isRunnable && (!ctx.settings.fromTasty.value || doAsyncTasty)
 
@@ -189,7 +268,7 @@ class Pickler extends Phase {
       // skip the rest of the phase, as tasty is already "pickled",
       // however we still need to set up tasks to write TASTy to
       // early output when pipelining is enabled.
-      if doAsyncTasty then
+      if fastDoAsyncTasty then
         runFromTasty(unit)
       return ()
 
@@ -226,7 +305,7 @@ class Pickler extends Phase {
       val positionWarnings = new mutable.ListBuffer[Message]()
       def reportPositionWarnings() = positionWarnings.foreach(report.warning(_))
 
-      val internalName = if doAsyncTasty then computeInternalName(cls) else ""
+      val internalName = if fastDoAsyncTasty then computeInternalName(cls) else ""
 
       def computePickled(): Array[Byte] = inContext(ctx.fresh) {
         serialized.run { scratch =>
@@ -258,7 +337,7 @@ class Pickler extends Phase {
             println(TastyPrinter.showContents(pickled, ctx.settings.color.value == "never"))
             println(i"**** end of pickled info of $cls")
 
-          if doAsyncTasty then
+          if fastDoAsyncTasty then
             serialized.commit(internalName, pickled)
 
           pickled
@@ -289,19 +368,21 @@ class Pickler extends Phase {
   }
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
-    val isConcurrent = useExecutor
+    val useExecutor = this.useExecutor
 
-    val writeTask: Option[() => Unit] = ctx.asyncTastyPromise.map: holder =>
-      () =>
-        given ReadOnlyContext = if isConcurrent then ReadOnlyContext.buffered else ReadOnlyContext.eager
-        val writer = Pickler.EarlyFileWriter(holder.earlyOut)
-        writeSigFilesAsync(serialized.result(), writer, holder.promise)
+    val writeTask: Option[() => Unit] =
+      ctx.run.nn.asyncTasty.map: async =>
+        fastDoAsyncTasty = true
+        () =>
+          given ReadOnlyContext = if useExecutor then ReadOnlyContext.buffered else ReadOnlyContext.eager
+          val writer = Pickler.EarlyFileWriter(async.earlyOut)
+          writeSigFilesAsync(serialized.result(), writer, async)
 
     def runPhase(writeCB: (doWrite: () => Unit) => Unit) =
       super.runOn(units).tap(_ => writeTask.foreach(writeCB))
 
     val result =
-      if isConcurrent then
+      if useExecutor then
         executor.start()
         try
           runPhase: doWrite =>

@@ -36,15 +36,21 @@ import dotty.tools.dotc.report
 
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.BackendReporting
 import scala.annotation.constructorOnly
+import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicBoolean
 
-/** Copied from `dotty.tools.backend.jvm.ClassfileWriters` but no `PostProcessorFrontendAccess` needed */
+/** !!!Copied from `dotty.tools.backend.jvm.ClassfileWriters` but no `PostProcessorFrontendAccess` needed.
+ * this should probably be changed to wrap that class instead.
+ *
+ * Until then, any changes to this file should be copied to `dotty.tools.backend.jvm.ClassfileWriters` as well.
+ */
 object FileWriters {
   type InternalName = String
   type NullableFile =  AbstractFile | Null
 
   inline def ctx(using ReadOnlyContext): ReadOnlyContext = summon[ReadOnlyContext]
 
-  sealed trait DelayedReporting {
+  sealed trait DelayedReporter {
     def hasErrors: Boolean
     def error(message: Context ?=> Message, position: SourcePosition): Unit
     def warning(message: Context ?=> Message, position: SourcePosition): Unit
@@ -52,9 +58,14 @@ object FileWriters {
 
     def error(message: Context ?=> Message): Unit = error(message, NoSourcePosition)
     def warning(message: Context ?=> Message): Unit = warning(message, NoSourcePosition)
+    final def exception(reason: Context ?=> Message, throwable: Throwable): Unit =
+      error({
+        val trace = throwable.getStackTrace().nn.mkString("\n  ")
+        em"An unhandled exception was thrown in the compiler while\n  ${reason.message}.\n${throwable}\n  $trace"
+      }, NoSourcePosition)
   }
 
-  final class EagerDelayedReporting(using captured: Context) extends DelayedReporting:
+  final class EagerReporter(using captured: Context) extends DelayedReporter:
     private var _hasErrors = false
 
     def hasErrors: Boolean = _hasErrors
@@ -68,62 +79,96 @@ object FileWriters {
 
     def log(message: String): Unit = report.echo(message)
 
-  final class BufferingDelayedReporting extends DelayedReporting {
+  final class BufferingReporter extends DelayedReporter {
     // We optimise access to the buffered reports for the common case - that there are no warning/errors to report
     // We could use a listBuffer etc - but that would be extra allocation in the common case
-    // Note - all access is externally synchronized, as this allow the reports to be generated in on thread and
-    // consumed in another
-    private var bufferedReports = List.empty[Report]
-    private var _hasErrors = false
+    // buffered logs are updated atomically.
+
+    private val _bufferedReports = AtomicReference(List.empty[Report])
+    private val _hasErrors = AtomicBoolean(false)
+
     enum Report(val relay: Context ?=> BackendReporting => Unit):
       case Error(message: Context => Message, position: SourcePosition) extends Report(ctx ?=> _.error(message(ctx), position))
       case Warning(message: Context => Message, position: SourcePosition) extends Report(ctx ?=> _.warning(message(ctx), position))
       case Log(message: String) extends Report(_.log(message))
 
-    def hasErrors: Boolean = synchronized:
-      _hasErrors
+    /** Atomically record that an error occurred */
+    private def recordError(): Unit =
+      while
+        val old = _hasErrors.get
+        !old && !_hasErrors.compareAndSet(old, true)
+      do ()
 
-    def error(message: Context ?=> Message, position: SourcePosition): Unit = synchronized:
-      bufferedReports ::= Report.Error({case given Context => message}, position)
-      _hasErrors = true
+    /** Atomically add a report to the log */
+    private def recordReport(report: Report): Unit =
+      while
+        val old = _bufferedReports.get
+        !_bufferedReports.compareAndSet(old, report :: old)
+      do ()
 
-    def warning(message: Context ?=> Message, position: SourcePosition): Unit = synchronized:
-      bufferedReports ::= Report.Warning({case given Context => message}, position)
+    /** atomically extract and clear the buffered reports */
+    private def resetReports(): List[Report] =
+      while
+        val old = _bufferedReports.get
+        if _bufferedReports.compareAndSet(old, Nil) then
+          return old
+        else
+          true
+      do ()
+      throw new AssertionError("Unreachable")
 
-    def log(message: String): Unit = synchronized:
-      bufferedReports ::= Report.Log(message)
+    def hasErrors: Boolean = _hasErrors.get()
+    def hasReports: Boolean = _bufferedReports.get().nonEmpty
+
+    def error(message: Context ?=> Message, position: SourcePosition): Unit =
+      recordReport(Report.Error({case given Context => message}, position))
+      recordError()
+
+    def warning(message: Context ?=> Message, position: SourcePosition): Unit =
+      recordReport(Report.Warning({case given Context => message}, position))
+
+    def log(message: String): Unit =
+      recordReport(Report.Log(message))
 
     /** Should only be called from main compiler thread. */
-    def relayReports(toReporting: BackendReporting)(using Context): Unit = synchronized:
-      if bufferedReports.nonEmpty then
-        bufferedReports.reverse.foreach(_.relay(toReporting))
-        bufferedReports = Nil
+    def relayReports(toReporting: BackendReporting)(using Context): Unit =
+      val reports = resetReports()
+      if reports.nonEmpty then
+        reports.reverse.foreach(_.relay(toReporting))
   }
 
-  trait ReadSettings:
+  trait ReadOnlySettings:
     def jarCompressionLevel: Int
     def debug: Boolean
 
-  trait ReadOnlyContext:
+  trait ReadOnlyRun:
+    def suspendedAtTyperPhase: Boolean
 
-    val settings: ReadSettings
-    val reporter: DelayedReporting
+  trait ReadOnlyContext:
+    val run: ReadOnlyRun
+    val settings: ReadOnlySettings
+    val reporter: DelayedReporter
 
   trait BufferedReadOnlyContext extends ReadOnlyContext:
-    val reporter: BufferingDelayedReporting
+    val reporter: BufferingReporter
 
   object ReadOnlyContext:
-    def readSettings(using ctx: Context): ReadSettings = new:
+    def readSettings(using ctx: Context): ReadOnlySettings = new:
       val jarCompressionLevel = ctx.settings.YjarCompressionLevel.value
       val debug = ctx.settings.Ydebug.value
 
+    def readRun(using ctx: Context): ReadOnlyRun = new:
+      val suspendedAtTyperPhase = ctx.run.suspendedAtTyperPhase
+
     def buffered(using Context): BufferedReadOnlyContext = new:
       val settings = readSettings
-      val reporter = BufferingDelayedReporting()
+      val reporter = BufferingReporter()
+      val run = readRun
 
     def eager(using Context): ReadOnlyContext = new:
       val settings = readSettings
-      val reporter = EagerDelayedReporting()
+      val reporter = EagerReporter()
+      val run = readRun
 
   /**
    * The interface to writing classfiles. GeneratedClassHandler calls these methods to generate the

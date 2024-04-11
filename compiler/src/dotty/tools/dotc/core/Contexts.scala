@@ -31,11 +31,9 @@ import StdNames.nme
 import compiletime.uninitialized
 
 import scala.annotation.internal.sharable
-import scala.concurrent.Promise
 
 import DenotTransformers.DenotTransformer
 import dotty.tools.dotc.profile.Profiler
-import dotty.tools.dotc.transform.Pickler.AsyncTastyHolder
 import dotty.tools.dotc.sbt.interfaces.{IncrementalCallback, ProgressCallback}
 import util.Property.Key
 import util.Store
@@ -56,9 +54,8 @@ object Contexts {
   private val (importInfoLoc,        store9) = store8.newLocation[ImportInfo | Null]()
   private val (typeAssignerLoc,     store10) = store9.newLocation[TypeAssigner](TypeAssigner)
   private val (progressCallbackLoc, store11) = store10.newLocation[ProgressCallback | Null]()
-  private val (tastyPromiseLoc,     store12) = store11.newLocation[Option[AsyncTastyHolder]](None)
 
-  private val initialStore = store12
+  private val initialStore = store11
 
   /** The current context */
   inline def ctx(using ctx: Context): Context = ctx
@@ -199,8 +196,6 @@ object Contexts {
 
     /** The current settings values */
     def settingsState: SettingsState = store(settingsStateLoc)
-
-    def asyncTastyPromise: Option[AsyncTastyHolder] = store(tastyPromiseLoc)
 
     /** The current compilation unit */
     def compilationUnit: CompilationUnit = store(compilationUnitLoc)
@@ -690,9 +685,6 @@ object Contexts {
       updateStore(compilationUnitLoc, compilationUnit)
     }
 
-    def setInitialAsyncTasty(): this.type =
-      assert(store(tastyPromiseLoc) == None, "trying to set async tasty promise twice!")
-      updateStore(tastyPromiseLoc, Some(AsyncTastyHolder(settings.YearlyTastyOutput.value, Promise())))
 
     def setCompilerCallback(callback: CompilerCallback): this.type = updateStore(compilerCallbackLoc, callback)
     def setIncCallback(callback: IncrementalCallback): this.type = updateStore(incCallbackLoc, callback)

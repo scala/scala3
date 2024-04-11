@@ -90,14 +90,7 @@ class ExtractAPI extends Phase {
       val sourceFile = cls.source
       if sourceFile.exists && cls.isDefinedInCurrentRun then
         recordNonLocalClass(cls, sourceFile, cb)
-    for holder <- ctx.asyncTastyPromise do
-      import scala.concurrent.ExecutionContext.Implicits.global
-      // do not expect to be completed with failure
-      holder.promise.future.foreach: state =>
-        if !state.hasErrors then
-          // We also await the promise at GenBCode to emit warnings/errors
-          cb.apiPhaseCompleted()
-          cb.dependencyPhaseCompleted()
+    ctx.run.nn.asyncTasty.foreach(_.signalAPIComplete())
 
   private def recordNonLocalClass(cls: Symbol, sourceFile: SourceFile, cb: interfaces.IncrementalCallback)(using Context): Unit =
     def registerProductNames(fullClassName: String, binaryClassName: String) =
