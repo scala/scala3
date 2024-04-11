@@ -51,6 +51,7 @@ import NullOpsDecorator.*
 import cc.{CheckCaptures, isRetainsLike}
 import config.Config
 import config.MigrationVersion
+import transform.CheckUnused.OriginalName
 
 import scala.annotation.constructorOnly
 
@@ -629,7 +630,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val checkedType = checkNotShadowed(ownType)
       val tree1 = checkedType match
         case checkedType: NamedType if !prefixIsElidable(checkedType) =>
-          ref(checkedType).withSpan(tree.span)
+          ref(checkedType).withSpan(tree.span).withAttachment(OriginalName, name)
         case _ =>
           def isScalaModuleRef = checkedType match
             case moduleRef: TypeRef if moduleRef.symbol.is(ModuleClass, butNot = JavaDefined) => true
