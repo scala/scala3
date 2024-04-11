@@ -1600,7 +1600,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         val tycon1 = liftToThis(tp.tycon)
         if (tycon1 ne tp.tycon) tp.derivedAppliedType(tycon1, tp.args) else tp
       case tp: TypeVar if tp.isInstantiated =>
-        liftToThis(tp.inst)
+        liftToThis(tp.instanceOpt)
       case tp: AnnotatedType =>
         val parent1 = liftToThis(tp.parent)
         if (parent1 ne tp.parent) tp.derivedAnnotatedType(parent1, tp.annot) else tp
@@ -2521,14 +2521,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     def isSuperOf(sub: Type): Boolean = sub match
       case AndType(sub1, sub2) => isSuperOf(sub1) || isSuperOf(sub2)
-      case sub: TypeVar if sub.isInstantiated => isSuperOf(sub.inst)
+      case sub: TypeVar if sub.isInstantiated => isSuperOf(sub.instanceOpt)
       case _ => isSubTypeWhenFrozen(sub, tp)
 
     tp match
       case tp @ AndType(tp1, tp2) =>
         recombine(dropIfSuper(tp1, sub), dropIfSuper(tp2, sub), tp)
       case tp: TypeVar if tp.isInstantiated =>
-        dropIfSuper(tp.inst, sub)
+        dropIfSuper(tp.instanceOpt, sub)
       case _ =>
         if isSuperOf(sub) then NoType else tp
   end dropIfSuper
@@ -2538,14 +2538,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     def isSubOf(sup: Type): Boolean = sup match
       case OrType(sup1, sup2) => isSubOf(sup1) || isSubOf(sup2)
-      case sup: TypeVar if sup.isInstantiated => isSubOf(sup.inst)
+      case sup: TypeVar if sup.isInstantiated => isSubOf(sup.instanceOpt)
       case _ => isSubType(tp, sup, whenFrozen = !canConstrain)
 
     tp match
       case tp @ OrType(tp1, tp2) =>
         recombine(dropIfSub(tp1, sup, canConstrain), dropIfSub(tp2, sup, canConstrain), tp)
       case tp: TypeVar if tp.isInstantiated =>
-        dropIfSub(tp.inst, sup, canConstrain)
+        dropIfSub(tp.instanceOpt, sup, canConstrain)
       case _ =>
         if isSubOf(sup) then NoType else tp
   end dropIfSub
