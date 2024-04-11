@@ -1,4 +1,4 @@
--- [E007] Type Mismatch Error: tests/neg/i12049.scala:6:16 -------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg/i12049a.scala:6:16 ------------------------------------------------------------
 6 |val x: String = ??? : M[B] // error
   |                ^^^^^^^^^^
   |                Found:    M[B]
@@ -15,7 +15,7 @@
   |                    case B => String
   |
   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/i12049.scala:14:17 ------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg/i12049a.scala:14:17 -----------------------------------------------------------
 14 |val y3: String = ??? : Last[Int *: Int *: Boolean *: String *: EmptyTuple]  // error
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                 Found:    Last[EmptyTuple]
@@ -31,7 +31,7 @@
    |                     case t *: EmptyTuple => t
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/i12049.scala:22:20 ------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg/i12049a.scala:22:20 -----------------------------------------------------------
 22 |val z3: (A, B, A) = ??? : Reverse[(A, B, A)] // error
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^
    |                    Found:    Tuple.Concat[Reverse[A *: EmptyTuple.type], (B, A)]
@@ -48,7 +48,7 @@
    |                        case EmptyTuple => EmptyTuple
    |
    | longer explanation available when compiling with `-explain`
--- [E172] Type Error: tests/neg/i12049.scala:24:20 ---------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/i12049a.scala:24:20 --------------------------------------------------------------------
 24 |val _ = summon[M[B]]  // error
    |                    ^
    |                    No given instance of type M[B] was found for parameter x of method summon in object Predef
@@ -62,7 +62,7 @@
    |                      Therefore, reduction cannot advance to the remaining case
    |
    |                        case B => String
--- [E172] Type Error: tests/neg/i12049.scala:25:78 ---------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/i12049a.scala:25:78 --------------------------------------------------------------------
 25 |val _ = summon[String =:= Last[Int *: Int *: Boolean *: String *: EmptyTuple]] // error
    |                                                                              ^
    |                                                                  Cannot prove that String =:= Last[EmptyTuple].
@@ -75,7 +75,7 @@
    |
    |                                                                      case _ *: _ *: t => Last[t]
    |                                                                      case t *: EmptyTuple => t
--- [E172] Type Error: tests/neg/i12049.scala:26:48 ---------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/i12049a.scala:26:48 --------------------------------------------------------------------
 26 |val _ = summon[(A, B, A) =:= Reverse[(A, B, A)]] // error
    |                                                ^
    |                            Cannot prove that (A, B, A) =:= Tuple.Concat[Reverse[A *: EmptyTuple.type], (B, A)].
@@ -89,7 +89,7 @@
    |
    |                                case t1 *: t2 *: ts => Tuple.Concat[Reverse[ts], (t2, t1)]
    |                                case EmptyTuple => EmptyTuple
--- [E008] Not Found Error: tests/neg/i12049.scala:28:21 ----------------------------------------------------------------
+-- [E008] Not Found Error: tests/neg/i12049a.scala:28:21 ---------------------------------------------------------------
 28 |val _ = (??? : M[B]).length // error
    |        ^^^^^^^^^^^^^^^^^^^
    |        value length is not a member of M[B]
