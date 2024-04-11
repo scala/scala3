@@ -4694,7 +4694,7 @@ object Types extends TypeUtils {
           case AliasingBounds(alias) if isMatchAlias =>
             trace(i"normalize $this", typr, show = true) {
               MatchTypeTrace.recurseWith(this) {
-                alias.applyIfParameterized(args.map(_.normalized)).tryNormalize
+                alias.applyIfParameterized(args).tryNormalize
                 /* `applyIfParameterized` may reduce several HKTypeLambda applications
                  * before the underlying MatchType is reached.
                  * Even if they do not involve any match type normalizations yet,
