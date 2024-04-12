@@ -96,7 +96,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
       """|age = : Int
          |followers = : Int
          |Main test
-         |User test
+         |User(name: String = ..., age: Int = ..., address: String = ..., followers: Int = ...): User
          |""".stripMargin,
       topLines = Option(4)
     )
@@ -130,7 +130,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
       """|age = : Int
          |followers = : Int
          |Main test
-         |User test
+         |User(name: String = ..., age: Int = ..., address: String = ..., followers: Int = ...): User
          |""".stripMargin,
       topLines = Option(4)
     )

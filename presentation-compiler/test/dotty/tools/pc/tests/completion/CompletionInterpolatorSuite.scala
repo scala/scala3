@@ -4,6 +4,7 @@ import dotty.tools.pc.base.BaseCompletionSuite
 
 import org.junit.runners.MethodSorters
 import org.junit.{FixMethodOrder, Test}
+import org.junit.Ignore
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class CompletionInterpolatorSuite extends BaseCompletionSuite:
@@ -542,7 +543,7 @@ class CompletionInterpolatorSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       """s"Hello $hello@@"""".stripMargin,
-      """s"Hello $helloMethod"""".stripMargin,
+      """s"Hello ${helloMethod($0)}"""".stripMargin,
       filter = _.contains("a: Int")
     )
 
@@ -627,9 +628,9 @@ class CompletionInterpolatorSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       assertSingleItem = false,
-      // Scala 3 has an additional Paths() completion
-      itemIndex = 2
+      filter = _.contains("java.nio.file")
     )
+
 
   @Test def `auto-imports-prefix-with-interpolator` =
     checkEdit(
@@ -644,7 +645,6 @@ class CompletionInterpolatorSuite extends BaseCompletionSuite:
          |  s"this is an interesting ${java.nio.file.Paths}"
          |}
          |""".stripMargin,
-      // Scala 3 has an additional Paths object completion
       itemIndex = 1,
       assertSingleItem = false
     )
@@ -745,7 +745,7 @@ class CompletionInterpolatorSuite extends BaseCompletionSuite:
          |object Main {
          |  val a = s"${ListBuffer($0)}""
          |}""".stripMargin,
-      filter = _.contains("[A]")
+      assertSingleItem = false,
     )
 
   @Test def `dont-show-when-writing-before-dollar` =
@@ -779,4 +779,63 @@ class CompletionInterpolatorSuite extends BaseCompletionSuite:
          |  println(s"$ho@@$path")}
          |""".stripMargin,
       "host: String"
+    )
+
+  @Test def `prepend-new-missing-interpolator` =
+    checkSnippet(
+      """|case class TestClass(x: Int)
+         |object TestClass:
+         |  def apply(x: Int): TestClass = ???
+         |object Main:
+         |  "$TestClas@@"
+         |""".stripMargin,
+      """|{TestClass($0)}
+         |{new TestClass$0}
+         |TestClass$0
+         |""".stripMargin
+    )
+
+  @Ignore("This case is not yet supported by metals")
+  @Test def `prepend-new-missing-interpolator-with-prefix` =
+    checkSnippet(
+      """|object Wrapper:
+         |  case class TestClass(x: Int)
+         |  object TestClass:
+         |    def apply(x: Int): TestClass = ???
+         |object Main:
+         |  "$Wrapper.TestClas@@"
+         |""".stripMargin,
+      """|{Wrapper.TestClass($0)}
+         |{new Wrapper.TestClass$0}
+         |{Wrapper.TestClass$0}
+         |""".stripMargin
+    )
+
+  @Test def `prepend-new-with-prefix` =
+    checkSnippet(
+      """|object Wrapper:
+         |  case class TestClass(x: Int)
+         |  object TestClass:
+         |    def apply(x: Int): TestClass = ???
+         |object Main:
+         |  s"$Wrapper.TestClas@@"
+         |""".stripMargin,
+      """|{Wrapper.TestClass($0)}
+         |{new Wrapper.TestClass$0}
+         |{Wrapper.TestClass$0}
+         |""".stripMargin
+    )
+
+  @Test def `prepend-new-interpolator` =
+    checkSnippet(
+      """|case class TestClass(x: Int)
+         |object TestClass:
+         |  def apply(x: Int): TestClass = ???
+         |object Main:
+         |  s"$TestClas@@"
+         |""".stripMargin,
+      """|{TestClass($0)}
+         |{new TestClass}
+         |TestClass
+         |""".stripMargin
     )
