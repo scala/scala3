@@ -233,7 +233,6 @@ class CompletionSuite extends BaseCompletionSuite:
         |""".stripMargin,
       """|JavaConverters - scala.collection
          |JavaConversions - scala.concurrent
-         |AsJavaConverters - scala.collection.convert
          |AsJavaConsumer - scala.jdk.FunctionWrappers
          |AsJavaConverters - scala.collection.convert
          |FromJavaConsumer - scala.jdk.FunctionWrappers
@@ -1342,7 +1341,15 @@ class CompletionSuite extends BaseCompletionSuite:
        |FormView - javax.swing.text.html
        |Formatter - java.util
        |Formatter - java.util.logging
-       |FocusEvent - java.awt.event""".stripMargin
+       |FocusEvent - java.awt.event
+       |ClassFormatError java.lang
+       |ClassNotFoundException java.lang
+       |NumberFormatException java.lang
+       |NoClassDefFoundError java.lang
+       |NumberFormatException java.lang
+       |StringFormat scala.Predef
+       |StringFormat[A] scala.Predef
+       """.stripMargin
 
   @Test def `extension-definition-scope` =
     check(
@@ -1557,14 +1564,12 @@ class CompletionSuite extends BaseCompletionSuite:
       assertSingleItem = false
     )
 
-
   @Test def `multi-export` =
     check(
       """export scala.collection.{AbstractMap, Set@@}
         |""".stripMargin,
       """Set scala.collection
         |SetOps scala.collection
-        |GenSet scala.collection
         |AbstractSet scala.collection
         |BitSet scala.collection
         |BitSetOps scala.collection
@@ -1583,7 +1588,6 @@ class CompletionSuite extends BaseCompletionSuite:
         |""".stripMargin,
       """Set scala.collection
         |SetOps scala.collection
-        |GenSet scala.collection
         |AbstractSet scala.collection
         |BitSet scala.collection
         |BitSetOps scala.collection
@@ -1672,6 +1676,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |new ListSet[A]: ListSet[A] - scala.collection.immutable
          |ListMap[K, V](elems: (K, V)*): ListMap[K, V] - scala.collection.mutable
          |new ListMap[K, V]: ListMap[K, V] - scala.collection.mutable
+         |LazyList[A](elems: A*): LazyList[A]
          |""".stripMargin,
       filter = _.contains("[")
     )
