@@ -29,7 +29,7 @@ import dotty.tools.dotc.core.Types.TypeBounds
 import dotty.tools.dotc.core.Types.WildcardType
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.IndexedContext
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 import scala.annotation.tailrec
 
 object NamedArgCompletions:

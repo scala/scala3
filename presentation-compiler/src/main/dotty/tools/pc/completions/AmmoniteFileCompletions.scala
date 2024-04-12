@@ -12,7 +12,7 @@ import dotty.tools.dotc.ast.tpd.Tree
 import dotty.tools.dotc.ast.untpd.ImportSelector
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.StdNames.*
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j as l
 

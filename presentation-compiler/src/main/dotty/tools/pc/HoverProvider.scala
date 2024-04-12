@@ -23,7 +23,7 @@ import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.printer.ShortenedTypePrinter
 import dotty.tools.pc.printer.ShortenedTypePrinter.IncludeDefaultParam
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 object HoverProvider:
 
@@ -106,7 +106,7 @@ object HoverProvider:
             if symbol.name == nme.selectDynamic || symbol.name == nme.applyDynamic =>
           fallbackToDynamics(path, printer)
         case symbolTpes @ ((symbol, tpe) :: _) =>
-          val exprTpw = tpe.widenTermRefExpr.metalsDealias
+          val exprTpw = tpe.widenTermRefExpr.deepDealias
           val hoverString =
             tpw match
               // https://github.com/scala/scala3/issues/8891
@@ -121,7 +121,7 @@ object HoverProvider:
                   if tpe != NoType then tpe
                   else tpw
 
-                printer.hoverSymbol(sym, finalTpe)
+                printer.hoverSymbol(sym, finalTpe.deepDealias)
             end match
           end hoverString
 
@@ -185,9 +185,9 @@ object HoverProvider:
             findRefinement(parent)
           case _ => None
 
-      val refTpe = sel.typeOpt.widen.metalsDealias match
+      val refTpe = sel.typeOpt.widen.deepDealias match
         case r: RefinedType => Some(r)
-        case t: (TermRef | TypeProxy) => Some(t.termSymbol.info.metalsDealias)
+        case t: (TermRef | TypeProxy) => Some(t.termSymbol.info.deepDealias)
         case _ => None
 
       refTpe.flatMap(findRefinement).asJava
