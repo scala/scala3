@@ -566,8 +566,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait DefDefModule { this: DefDef.type =>
       /** Create a method definition `def f[..](...)` with the signature defined in the symbol.
        *
-       *  The `rhsFn` is a function that receives references to its parameters and should return
-       *  `Some` containing the implementation of the method. Returns `None` the method has no implementation.
+       *  The `rhsFn` is a function that receives references to its parameters, and should return
+       *  `Some` containing the implementation of the method, or `None` if the method has no implementation.
        *  Any definition directly inside the implementation should have `symbol` as owner.
        *
        *  Use `Symbol.asQuotes` to create the rhs using quoted code.
@@ -643,8 +643,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait ValDefModule { this: ValDef.type =>
       /** Create a value definition `val x`, `var x` or `lazy val x` with the signature defined in the symbol.
        *
-       *  The `rhs` should return be `Some` containing the implementation of the method.
-       *  Returns `None` the method has no implementation.
+       *  The `rhs` should return `Some` containing the implementation of the method,
+       *  or `None` if the method has no implementation.
        *  Any definition directly inside the implementation should have `symbol` as owner.
        *
        *  Use `Symbol.asQuotes` to create the rhs using quoted code.
