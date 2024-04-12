@@ -41,6 +41,7 @@ class Driver {
           report.error(ex.getMessage.nn) // signals that we should fail compilation.
         case ex: Throwable if ctx.usedBestEffortTasty =>
           report.bestEffortError(ex, "Some best-effort tasty files were not able to be read.")
+          throw ex
         case ex: TypeError if !runOrNull.enrichedErrorMessage =>
           println(runOrNull.enrichErrorMessage(s"${ex.toMessage} while compiling ${files.map(_.path).mkString(", ")}"))
           throw ex

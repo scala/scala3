@@ -455,7 +455,7 @@ class TreeUnpickler(reader: TastyReader,
         result
       }
 
-      def readSimpleType(): Type = tag match {
+      def readSimpleType(): Type = (tag: @switch) match {
         case TYPEREFdirect | TERMREFdirect =>
           NamedType(NoPrefix, readSymRef())
         case TYPEREFsymbol | TERMREFsymbol =>
@@ -497,8 +497,9 @@ class TreeUnpickler(reader: TastyReader,
           typeAtAddr.getOrElseUpdate(ref, forkAt(ref).readType())
         case BYNAMEtype =>
           ExprType(readType())
-        case ERRORtype if isBestEffortTasty =>
-          new PreviousErrorType
+        case ERRORtype =>
+          if isBestEffortTasty then new PreviousErrorType
+          else throw new Error(s"Illegal ERRORtype in non Best Effort TASTy file")
         case _ =>
           ConstantType(readConstant(tag))
       }

@@ -12,3 +12,6 @@ i14834.scala
 # other type related crashes
 i4653.scala
 overrideClass.scala
+
+# repeating <error> on a top level type definition
+# i18750.scala 

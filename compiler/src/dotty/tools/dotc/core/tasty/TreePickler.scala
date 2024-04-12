@@ -73,7 +73,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
    *  For regular non best-effort compilation (without best-effort and without using .betasty on classpath),
    *  this will always return true.
    */
-  private inline def passesConditionForErroringBestEffortCode(condition: Boolean)(using Context): Boolean =
+  private inline def passesConditionForErroringBestEffortCode(condition: => Boolean)(using Context): Boolean =
     ((!ctx.isBestEffort && ctx.reporter.errorsReported) || ctx.usedBestEffortTasty) || condition
 
   def addrOfSym(sym: Symbol): Option[Addr] =
