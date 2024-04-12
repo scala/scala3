@@ -97,10 +97,9 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
         |def main = "foo".iden@@
         |""".stripMargin,
      """|identity: String (implicit)
-        |indent(x$0: Int): String
-        |stripIndent(): String
-        |isDefinedAt(idx: Int): Boolean
-        |""".stripMargin // identity2 won't be available
+        |""".stripMargin, // identity2 won't be available
+      filter = _.contains("(implicit)")
+
     )
 
   @Test def `filter-by-type-subtype` =
