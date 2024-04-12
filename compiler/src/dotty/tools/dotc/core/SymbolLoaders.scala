@@ -418,7 +418,7 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
 }
 
 class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
-  val isBestEffortTasty = tastyFile.extension == "betasty"
+  val isBestEffortTasty = tastyFile.hasBetastyExtension
   private val unpickler: tasty.DottyUnpickler =
     handleUnpicklingExceptions:
       val tastyBytes = tastyFile.toByteArray

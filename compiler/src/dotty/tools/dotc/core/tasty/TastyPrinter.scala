@@ -61,7 +61,7 @@ object TastyPrinter:
         val jar = JarArchive.open(Path(arg), create = false)
         try
           for file <- jar.iterator() if file.hasTastyExtension do
-            printTasty(s"$arg ${file.path}", file.toByteArray)
+            printTasty(s"$arg ${file.path}", file.toByteArray, isBestEffortTasty = false)
         finally jar.close()
       else
         println(s"Not a '.tasty' or '.jar' file: $arg")

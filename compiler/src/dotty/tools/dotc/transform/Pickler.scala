@@ -194,7 +194,7 @@ class Pickler extends Phase {
   override def isRunnable(using Context): Boolean =
     (super.isRunnable || ctx.isBestEffort)
     && (!ctx.settings.fromTasty.value || doAsyncTasty)
-    && (!ctx.usesBestEffortTasty || ctx.isBestEffort)
+    && (!ctx.usedBestEffortTasty || ctx.isBestEffort)
     // we do not want to pickle `.betasty` if will not create the file either way
 
   // when `-Yjava-tasty` is set we actually want to run this phase on Java sources
