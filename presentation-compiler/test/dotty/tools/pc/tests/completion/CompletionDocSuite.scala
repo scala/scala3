@@ -305,7 +305,6 @@ class CompletionDocSuite extends BaseCompletionSuite:
         |  }
         |}
       """.stripMargin,
-      """|myNumbers(i: Int): Int
-         |myNumbers: Vector[Int]
+      """|myNumbers: Vector[Int]
          |""".stripMargin
     )

@@ -810,7 +810,6 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       """|fooBar: String
-         |fooBar(n: Int): Int - test.A
          |fooBar: List[Int]
          |""".stripMargin,
     )

@@ -238,7 +238,9 @@ class Completions(
           .filter(_.symbol.isAccessibleFrom(denot.info))
         constructors -> true
 
-      else if shouldAddSnippet && completionMode.is(Mode.Term) && sym.name.isTermName && !sym.is(Flags.Method) && !sym.is(Flags.JavaDefined) then
+      else if shouldAddSnippet && completionMode.is(Mode.Term) && sym.name.isTermName &&
+          !sym.is(Flags.JavaDefined) && (sym.isClass || sym.is(Module) || (sym.isField && denot.info.isInstanceOf[TermRef])) then
+
         val constructors = if sym.isAllOf(ConstructorProxyModule) then
           sym.companionClass.info.member(nme.CONSTRUCTOR).allSymbols
         else

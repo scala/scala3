@@ -1627,8 +1627,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |  val fooBar = List(123)
          |  foo@@
          |""".stripMargin,
-      """|fooBar(n: Int): Int
-         |fooBar: List[Int]
+      """|fooBar: List[Int]
          |""".stripMargin
     )
 
