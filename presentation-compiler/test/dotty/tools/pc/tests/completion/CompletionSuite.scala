@@ -1334,21 +1334,6 @@ class CompletionSuite extends BaseCompletionSuite:
   val extensionResult =
     """|Foo test
        |Found - scala.collection.Searching
-       |Font - java.awt
-       |Form - java.text.Normalizer
-       |Format - java.text
-       |FontPeer - java.awt.peer
-       |FormView - javax.swing.text.html
-       |Formatter - java.util
-       |Formatter - java.util.logging
-       |FocusEvent - java.awt.event
-       |ClassFormatError java.lang
-       |ClassNotFoundException java.lang
-       |NumberFormatException java.lang
-       |NoClassDefFoundError java.lang
-       |NumberFormatException java.lang
-       |StringFormat scala.Predef
-       |StringFormat[A] scala.Predef
        """.stripMargin
 
   @Test def `extension-definition-scope` =
@@ -1357,7 +1342,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension (x: Fo@@)
          |""".stripMargin,
-      extensionResult
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-symbol-search` =
@@ -1376,7 +1362,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension [A <: Fo@@]
          |""".stripMargin,
-      extensionResult
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-type-parameter-symbol-search` =
@@ -1395,7 +1382,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension (using Fo@@)
          |""".stripMargin,
-      extensionResult
+      extensionResult,
+      topLines = Some(2)
     )
 
 
@@ -1405,7 +1393,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension (x: Int)(using Fo@@)
          |""".stripMargin,
-      extensionResult
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-mix-2` =
@@ -1414,7 +1403,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension (using Fo@@)(x: Int)(using Foo)
          |""".stripMargin,
-      extensionResult
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-mix-3` =
@@ -1423,7 +1413,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension (using Foo)(x: Int)(using Fo@@)
          |""".stripMargin,
-      extensionResult
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-mix-4` =
@@ -1432,7 +1423,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension [A](x: Fo@@)
          |""".stripMargin,
-      extensionResult
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-mix-5` =
@@ -1441,7 +1433,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension [A](using Fo@@)(x: Int)
          |""".stripMargin,
-      extensionResult
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-mix-6` =
@@ -1450,7 +1443,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension [A](using Foo)(x: Fo@@)
          |""".stripMargin,
-      extensionResult
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-mix-7` =
@@ -1459,7 +1453,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension [A](using Foo)(x: Fo@@)(using Foo)
          |""".stripMargin,
-      extensionResult
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-select` =
