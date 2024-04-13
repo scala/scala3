@@ -6180,6 +6180,10 @@ object Types extends TypeUtils {
       variance = saved
       derivedLambdaType(tp)(ptypes1, this(restpe))
 
+    protected def mapOverTypeVar(tp: TypeVar) =
+      val inst = tp.instanceOpt
+      if (inst.exists) apply(inst) else tp
+
     def isRange(tp: Type): Boolean = tp.isInstanceOf[Range]
 
     protected def mapCapturingType(tp: Type, parent: Type, refs: CaptureSet, v: Int): Type =
@@ -6217,8 +6221,7 @@ object Types extends TypeUtils {
           derivedTypeBounds(tp, lo1, this(tp.hi))
 
         case tp: TypeVar =>
-          val inst = tp.instanceOpt
-          if (inst.exists) apply(inst) else tp
+          mapOverTypeVar(tp)
 
         case tp: ExprType =>
           derivedExprType(tp, this(tp.resultType))
@@ -6631,6 +6634,16 @@ object Types extends TypeUtils {
           else
             tp.derivedLambdaType(tp.paramNames, formals, restpe)
       }
+
+    override protected def mapOverTypeVar(tp: TypeVar) =
+      val inst = tp.instanceOpt
+      if !inst.exists then tp
+      else
+        // We can keep the original type var if its instance is not transformed
+        // by the ApproximatingTypeMap. This allows for simpler bounds and for
+        // derivedSkolemType to retain more skolems, by keeping the info unchanged.
+        val res = apply(inst)
+        if res eq inst then tp else res
 
     protected def reapply(tp: Type): Type = apply(tp)
   }
