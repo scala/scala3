@@ -67,7 +67,8 @@ object ErrorReporting {
         if s.nonEmpty then s
         else
           val normed = tp.normalized
-          val r = MatchTypeTrace.record(normed.tryNormalize)
+          val toTrace = if normed.isMatchAlias then normed else normed.dealias
+          val r = MatchTypeTrace.record(toTrace.tryNormalize)
           if r.nonEmpty then r else foldOver(s, tp)
     tps.foldLeft("")(collectMatchTrace)
 
