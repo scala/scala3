@@ -1,0 +1,3 @@
+
+@void @void
+class Foo

@@ -1,20 +1,24 @@
 package dotty.tools.dotc
 package transform
 
+import ast.tpd
+import ast.Trees.*
+import ast.TreeMapWithTrackedStats
 import core.*
 import Flags.*
+import Decorators.*
 import Contexts.*
 import Symbols.*
+import Decorators.*
+import config.Printers.inlining
+import DenotTransformers.IdentityDenotTransformer
+import MacroAnnotations.hasMacroAnnotation
+import inlines.Inlines
+import quoted.*
+import staging.StagingLevel
+import util.Property
 
-import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.ast.Trees.*
-import dotty.tools.dotc.quoted.*
-import dotty.tools.dotc.inlines.Inlines
-import dotty.tools.dotc.ast.TreeMapWithImplicits
-import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
-import dotty.tools.dotc.staging.StagingLevel
-
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable
 
 /** Inlines all calls to inline methods that are not in an inline method or a quote */
 class Inlining extends MacroTransform, IdentityDenotTransformer {
@@ -56,38 +60,21 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
 
   def newTransformer(using Context): Transformer = new Transformer {
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
-      new InliningTreeMap().transform(tree)
+      InliningTreeMap().transform(tree)
   }
 
-  private class InliningTreeMap extends TreeMapWithImplicits {
+  private class InliningTreeMap extends TreeMapWithTrackedStats {
 
     /** List of top level classes added by macro annotation in a package object.
      *  These are added to the PackageDef that owns this particular package object.
      */
-    private val newTopClasses = MutableSymbolMap[ListBuffer[Tree]]()
+    private val newTopClasses = MutableSymbolMap[mutable.ListBuffer[Tree]]()
 
     override def transform(tree: Tree)(using Context): Tree = {
       tree match
         case tree: MemberDef =>
-          if tree.symbol.is(Inline) then tree
-          else if tree.symbol.is(Param) then super.transform(tree)
-          else if
-            !tree.symbol.isPrimaryConstructor
-            && StagingLevel.level == 0
-            && MacroAnnotations.hasMacroAnnotation(tree.symbol)
-          then
-            val trees = (new MacroAnnotations(self)).expandAnnotations(tree)
-            val trees1 = trees.map(super.transform)
-
-            // Find classes added to the top level from a package object
-            val (topClasses, trees2) =
-              if ctx.owner.isPackageObject then trees1.partition(_.symbol.owner == ctx.owner.owner)
-              else (Nil, trees1)
-            if topClasses.nonEmpty then
-              newTopClasses.getOrElseUpdate(ctx.owner.owner, new ListBuffer) ++= topClasses
-
-            flatTree(trees2)
-          else super.transform(tree)
+          // Fetch the latest tracked tree (It might have already been transformed by its companion)
+          transformMemberDef(getTracked(tree.symbol).getOrElse(tree))
         case _: Typed | _: Block =>
           super.transform(tree)
         case _: PackageDef =>
@@ -113,7 +100,49 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
                 else Inlines.inlineCall(tree1)
           else super.transform(tree)
     }
+
+    private def transformMemberDef(tree: MemberDef)(using Context) : Tree =
+      if tree.symbol.is(Inline) then tree
+      else if tree.symbol.is(Param) then
+        super.transform(tree)
+      else if
+        !tree.symbol.isPrimaryConstructor
+        && StagingLevel.level == 0
+        && tree.symbol.hasMacroAnnotation
+      then
+        // Fetch the companion's tree
+        val companionSym =
+          if tree.symbol.is(ModuleClass) then tree.symbol.companionClass
+          else if tree.symbol.is(ModuleVal) then NoSymbol
+          else tree.symbol.companionModule.moduleClass
+
+        // Expand and process MacroAnnotations
+        val companion = getTracked(companionSym)
+        val (trees, newCompanion) = MacroAnnotations.expandAnnotations(tree, companion)
+
+        // Enter the new symbols & Update the tracked trees
+        (newCompanion.toList ::: trees).foreach: tree =>
+          MacroAnnotations.enterMissingSymbols(tree, self)
+
+        // Perform inlining on the expansion of the annotations
+        val trees1 = trees.map(super.transform)
+        trees1.foreach(updateTracked)
+        if newCompanion ne companion then
+          newCompanion.map(super.transform).foreach(updateTracked)
+
+        // Find classes added to the top level from a package object
+        val (topClasses, trees2) =
+          if ctx.owner.isPackageObject then trees1.partition(_.symbol.owner == ctx.owner.owner)
+          else (Nil, trees1)
+        if topClasses.nonEmpty then
+          newTopClasses.getOrElseUpdate(ctx.owner.owner, new mutable.ListBuffer) ++= topClasses
+        flatTree(trees2)
+      else
+        updateTracked(super.transform(tree))
+    end transformMemberDef
+
   }
+
 }
 
 object Inlining:

@@ -45,9 +45,12 @@ trait MacroAnnotation extends StaticAnnotation:
    *  import scala.collection.concurrent
    *
    *  class memoize extends MacroAnnotation:
-   *    def transform(using Quotes)(tree: quotes.reflect.Definition): List[quotes.reflect.Definition] =
+   *    def transform(using Quotes)(
+   *      definition: quotes.reflect.Definition,
+   *      companion: Option[quotes.reflect.Definition]
+   *    ): List[quotes.reflect.Definition] =
    *      import quotes.reflect.*
-   *      tree match
+   *      definition match
    *        case DefDef(name, TermParamClause(param  :: Nil) :: Nil, tpt, Some(rhsTree)) =>
    *          (param.tpt.tpe.asType, tpt.tpe.asType) match
    *            case ('[t], '[u]) =>
@@ -58,16 +61,17 @@ trait MacroAnnotation extends StaticAnnotation:
    *                '{ concurrent.TrieMap.empty[t, u] }.asTerm
    *              val cacheVal = ValDef(cacheSymbol, Some(cacheRhs))
    *              val newRhs =
-   *                given Quotes = tree.symbol.asQuotes
+   *                given Quotes = definition.symbol.asQuotes
    *                val cacheRefExpr = Ref(cacheSymbol).asExprOf[concurrent.Map[t, u]]
    *                val paramRefExpr = Ref(param.symbol).asExprOf[t]
    *                val rhsExpr = rhsTree.asExprOf[u]
    *                '{ $cacheRefExpr.getOrElseUpdate($paramRefExpr, $rhsExpr) }.asTerm
-   *              val newTree = DefDef.copy(tree)(name, TermParamClause(param :: Nil) :: Nil, tpt, Some(newRhs))
+   *              val newTree = DefDef.copy(definition)(name, TermParamClause(param :: Nil) :: Nil, tpt, Some(newRhs))
    *              List(cacheVal, newTree)
    *        case _ =>
    *          report.error("Annotation only supported on `def` with a single argument are supported")
-   *          List(tree)
+   *          List(definition)
+   *    end transform
    *  ```
    *  with this macro annotation a user can write
    *  ```scala
@@ -102,11 +106,14 @@ trait MacroAnnotation extends StaticAnnotation:
    *
    *  @experimental
    *  class equals extends MacroAnnotation:
-   *    def transform(using Quotes)(tree: quotes.reflect.Definition): List[quotes.reflect.Definition] =
+   *    def transform(using Quotes)(
+   *      definition: quotes.reflect.Definition,
+   *      companion: Option[quotes.reflect.Definition]
+   *    ): List[quotes.reflect.Definition] =
    *      import quotes.reflect.*
-   *      tree match
+   *      definition match
    *        case ClassDef(className, ctr, parents, self, body) =>
-   *          val cls = tree.symbol
+   *          val cls = definition.symbol
    *
    *          val constructorParameters = ctr.paramss.collect { case clause: TermParamClause => clause }
    *          if constructorParameters.size != 1 || constructorParameters.head.params.isEmpty then
@@ -139,10 +146,11 @@ trait MacroAnnotation extends StaticAnnotation:
    *          val hashCodeOverrideDef = DefDef(hashCodeOverrideSym, _ => Some(Ref(hashSym)))
    *
    *          val newBody = equalsOverrideDef :: hashVal :: hashCodeOverrideDef :: body
-   *          List(ClassDef.copy(tree)(className, ctr, parents, self, newBody))
+   *          List(ClassDef.copy(definition)(className, ctr, parents, self, newBody))
    *        case _ =>
    *          report.error("Annotation only supports `class`")
-   *          List(tree)
+   *          List(definition)
+   *    end transform
    *
    *    private def equalsExpr[T: Type](that: Expr[Any], thisFields: List[Expr[Any]])(using Quotes): Expr[Boolean] =
    *      '{
@@ -204,9 +212,10 @@ trait MacroAnnotation extends StaticAnnotation:
    *    override def hashCode(): Int = hash$macro$1
    *  ```
    *
-   *  @param Quotes Implicit instance of Quotes used for tree reflection
-   *  @param tree   Tree that will be transformed
+   *  @param Quotes     Implicit instance of Quotes used for tree reflection
+   *  @param definition Tree that will be transformed
+   *  @param companion  Tree for the companion class or module if the definition is respectively a module or a class
    *
    *  @syntax markdown
    */
-  def transform(using Quotes)(tree: quotes.reflect.Definition): List[quotes.reflect.Definition]
+  def transform(using Quotes)(definition: quotes.reflect.Definition, companion: Option[quotes.reflect.Definition]): List[quotes.reflect.Definition]

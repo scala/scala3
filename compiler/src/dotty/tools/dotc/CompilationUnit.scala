@@ -17,7 +17,7 @@ import config.{SourceVersion, Feature}
 import StdNames.nme
 import scala.annotation.internal.sharable
 import scala.util.control.NoStackTrace
-import transform.MacroAnnotations
+import transform.MacroAnnotations.isMacroAnnotation
 
 class CompilationUnit protected (val source: SourceFile, val info: CompilationUnitInfo | Null) {
 
@@ -193,7 +193,7 @@ object CompilationUnit {
             case _ =>
         case _ =>
       for annot <- tree.symbol.annotations do
-        if MacroAnnotations.isMacroAnnotation(annot) then
+        if annot.isMacroAnnotation then
           ctx.compilationUnit.hasMacroAnnotations = true
       traverseChildren(tree)
     }
