@@ -1791,7 +1791,7 @@ trait Applications extends Compatibility {
      *       a. always as good as a method or a polymorphic method.
      *       b. as good as a member of any other type `tp2` if `asGoodValueType(tp1, tp2) = true`
      */
-    def isAsGood(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = trace(i"isAsSpecific $tp1 $tp2", overload) {
+    def isAsGood(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = trace(i"isAsGood $tp1 $tp2", overload) {
       tp1 match
         case tp1: MethodType => // (1)
           tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]

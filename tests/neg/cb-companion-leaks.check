@@ -1,4 +1,4 @@
--- [E194] Type Error: tests/neg/cb-companion-leaks.scala:9:23 ----------------------------------------------------------
+-- [E195] Type Error: tests/neg/cb-companion-leaks.scala:9:23 ----------------------------------------------------------
 9 |  def foo[A: {C, D}] = A // error
   |                       ^
   |                       context bound companion value A cannot be used as a value
@@ -20,7 +20,7 @@
   | companion value with the (term-)name `A`. However, these context bound companions
   | are not values themselves, they can only be referred to in selections.
    ---------------------------------------------------------------------------------------------------------------------
--- [E194] Type Error: tests/neg/cb-companion-leaks.scala:13:10 ---------------------------------------------------------
+-- [E195] Type Error: tests/neg/cb-companion-leaks.scala:13:10 ---------------------------------------------------------
 13 |  val x = A  // error
    |          ^
    |          context bound companion value A cannot be used as a value
@@ -42,7 +42,7 @@
    | companion value with the (term-)name `A`. However, these context bound companions
    | are not values themselves, they can only be referred to in selections.
     --------------------------------------------------------------------------------------------------------------------
--- [E194] Type Error: tests/neg/cb-companion-leaks.scala:15:9 ----------------------------------------------------------
+-- [E195] Type Error: tests/neg/cb-companion-leaks.scala:15:9 ----------------------------------------------------------
 15 |  val y: A.type = ??? // error
    |         ^
    |         context bound companion value A cannot be used as a value
