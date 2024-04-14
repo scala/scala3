@@ -1584,7 +1584,7 @@ object Types extends TypeUtils {
      *  a class, the class type ref, otherwise NoType.
      *  @param  refinementOK   If `true` we also skip refinements.
      */
-    def underlyingClassRef(refinementOK: Boolean)(using Context): Type = dealias match {
+    def underlyingClassRef(refinementOK: Boolean)(using Context): Type = dealiasNormalized match {
       case tp: TypeRef =>
         if (tp.symbol.isClass) tp
         else if (tp.symbol.isAliasType) tp.underlying.underlyingClassRef(refinementOK)
