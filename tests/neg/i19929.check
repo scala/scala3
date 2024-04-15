@@ -1,5 +1,0 @@
--- Error: tests/neg/i19929.scala:5:6 -----------------------------------------------------------------------------------
-5 |  val _: a.M = ??? // error was crash
-  |      ^
-  |      cannot resolve reference to type (a : A).M
-  |      the classfile defining the type might be missing from the classpath
