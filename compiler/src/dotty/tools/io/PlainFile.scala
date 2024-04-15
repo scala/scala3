@@ -13,7 +13,7 @@ import java.nio.file.{InvalidPathException, Paths}
 
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
 class PlainDirectory(givenPath: Directory) extends PlainFile(givenPath) {
-  override def isDirectory: Boolean = true
+  override val isDirectory: Boolean = true
   override def iterator(): Iterator[PlainFile] = givenPath.list.filter(_.exists).map(new PlainFile(_))
   override def delete(): Unit = givenPath.deleteRecursively()
 }
@@ -78,7 +78,7 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
   }
 
   /** Is this abstract file a directory? */
-  def isDirectory: Boolean = givenPath.isDirectory
+  val isDirectory: Boolean = givenPath.isDirectory
 
   /** Returns the time that this abstract file was last modified. */
   def lastModified: Long = givenPath.lastModified.toMillis
