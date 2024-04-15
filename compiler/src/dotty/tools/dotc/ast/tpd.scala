@@ -471,26 +471,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     case ConstantType(value) => Literal(value)
   }
 
-  /** A path that corresponds to the given type `tp`. Error if `tp` is not a refinement
-   *  of an addressable singleton type.
-   */
-  def pathFor(tp: Type)(using Context): Tree = {
-    def recur(tp: Type): Tree = tp match {
-      case tp: NamedType =>
-        tp.info match {
-          case TypeAlias(alias) => recur(alias)
-          case _: TypeBounds => EmptyTree
-          case _ => singleton(tp)
-        }
-      case tp: TypeProxy => recur(tp.superType)
-      case _ => EmptyTree
-    }
-    recur(tp).orElse {
-      report.error(em"$tp is not an addressable singleton type")
-      TypeTree(tp)
-    }
-  }
-
   /** A tree representing a `newXYZArray` operation of the right
    *  kind for the given element type in `elemTpe`. No type arguments or
    *  `length` arguments are given.
