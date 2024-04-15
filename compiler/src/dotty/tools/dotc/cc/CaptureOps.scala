@@ -107,7 +107,7 @@ extension (tp: Type)
       case tp @ CapturingType(parent, refs) =>
         val pcs = getBoxed(parent)
         if tp.isBoxed then refs ++ pcs else pcs
-      case tp: TypeRef if tp.symbol.isAbstractType => CaptureSet.empty
+      case tp: TypeRef if tp.symbol.isAbstractOrParamType => CaptureSet.empty
       case tp: TypeProxy => getBoxed(tp.superType)
       case tp: AndType => getBoxed(tp.tp1) ** getBoxed(tp.tp2)
       case tp: OrType => getBoxed(tp.tp1) ++ getBoxed(tp.tp2)

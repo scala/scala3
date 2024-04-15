@@ -266,7 +266,7 @@ object TypeErasure {
         tp.paramNames, tp.paramNames map (Function.const(TypeBounds.upper(defn.ObjectType))), tp.resultType)
 
     if (defn.isPolymorphicAfterErasure(sym)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
-    else if (sym.isAbstractType) TypeAlias(WildcardType)
+    else if (sym.isAbstractOrParamType) TypeAlias(WildcardType)
     else if sym.is(ConstructorProxy) then NoType
     else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(using preErasureCtx))
     else if (sym.is(Label)) erase.eraseResult(sym.info)(using preErasureCtx)

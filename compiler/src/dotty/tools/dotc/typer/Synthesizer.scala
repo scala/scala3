@@ -657,7 +657,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
     def canManifest(tp: Manifestable, topLevel: Boolean) =
       val sym = tp.typeSymbol
-      !sym.isAbstractType
+      !sym.isAbstractOrParamType
       && hasStableErasure(tp)
       && !(topLevel && defn.isBottomClassAfterErasure(sym))
 
