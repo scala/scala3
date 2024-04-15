@@ -360,7 +360,7 @@ object ExplicitOuter {
           // macro generated code to be able to pinpoint the root problem.
       }
     case tpe: TypeProxy =>
-      outerPrefix(tpe.underlying)
+      atPhaseNoLater(erasurePhase)(outerPrefix(tpe.superType))
   }
 
   /** It's possible (i1755.scala gives an example) that the type
