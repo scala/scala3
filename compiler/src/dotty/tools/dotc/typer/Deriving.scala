@@ -31,7 +31,7 @@ trait Deriving {
     /** A version of Type#underlyingClassRef that works also for higher-kinded types */
     private def underlyingClassRef(tp: Type): Type = tp match {
       case tp: TypeRef if tp.symbol.isClass => tp
-      case tp: TypeRef if tp.symbol.isAbstractType => NoType
+      case tp: TypeRef if tp.symbol.isAbstractOrParamType => NoType
       case tp: TermRef => NoType
       case tp: TypeProxy => underlyingClassRef(tp.superType)
       case _ => NoType
