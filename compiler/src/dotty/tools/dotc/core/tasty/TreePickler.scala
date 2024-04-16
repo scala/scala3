@@ -66,15 +66,16 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
     fillRef(lengthAddr, currentAddr, relative = true)
   }
 
-  /** There are certain expectations with code which is naturally able to reach pickling
-   *  phase as opposed to one that uses best-effort compilation features.
-   *  When pickling betasty files, we do some custom checks, in case those expectations
-   *  cannot be fulfilled, and if then we can try to do something else.
-   *  For regular non best-effort compilation (without best-effort and without using .betasty on classpath),
-   *  this will always return true.
+  /** There are certain expectations with code which is naturally able to reach
+   *  pickling phase as opposed to one that uses best-effort compilation features.
+   *  When pickling betasty files, we do some custom checks, in case those
+   *  expectations cannot be fulfilled, and if so, then we can try to do something
+   *  else (usually pickle an ERRORtype).
+   *  For regular non best-effort compilation (without -Ybest-effort with thrown errors
+   *  and without using .betasty on classpath), this will always return true.
    */
   private inline def passesConditionForErroringBestEffortCode(condition: => Boolean)(using Context): Boolean =
-    ((!ctx.isBestEffort && ctx.reporter.errorsReported) || ctx.usedBestEffortTasty) || condition
+    !((ctx.isBestEffort && ctx.reporter.errorsReported) || ctx.usedBestEffortTasty) || condition
 
   def addrOfSym(sym: Symbol): Option[Addr] =
     symRefs.get(sym)
