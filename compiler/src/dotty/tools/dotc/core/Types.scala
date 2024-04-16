@@ -4054,7 +4054,7 @@ object Types extends TypeUtils {
             tp match
               case CapturingType(parent, refs) =>
                 (compute(status, parent, theAcc) /: refs.elems) {
-                  (s, ref) => ref match
+                  (s, ref) => ref.stripReach match
                     case tp: TermParamRef if tp.binder eq thisLambdaType => combine(s, CaptureDeps)
                     case _ => s
                 }
