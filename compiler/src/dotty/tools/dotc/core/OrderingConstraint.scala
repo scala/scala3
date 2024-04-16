@@ -815,6 +815,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     newConstraint(hardVars = this.hardVars + tv)
 
   def instType(tvar: TypeVar): Type = entry(tvar.origin) match
+    case TypeBounds(lo, hi) if lo eq hi => lo
     case _: TypeBounds => NoType
     case tp: TypeParamRef => typeVarOfParam(tp).orElse(tp)
     case tp => tp
