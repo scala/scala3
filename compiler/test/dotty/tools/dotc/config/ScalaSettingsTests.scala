@@ -108,6 +108,7 @@ class ScalaSettingsTests:
       createTestCase(settings.YjavaTasty            , settings.XjavaTasty),
       createTestCase(settings.YearlyTastyOutput     , settings.XearlyTastyOutput, ":./"),
       createTestCase(settings.YallowOutlineFromTasty, settings.XallowOutlineFromTasty),
+      createTestCase(settings.YcheckInit            , settings.WcheckInit),
     ).map: (deprecatedArgument, newSetting) =>
       val args = List(deprecatedArgument)
       val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
@@ -135,6 +136,7 @@ class ScalaSettingsTests:
       createTestCase(settings.YjavaTasty            , settings.XjavaTasty),
       createTestCase(settings.YearlyTastyOutput     , settings.XearlyTastyOutput, ":./"),
       createTestCase(settings.YallowOutlineFromTasty, settings.XallowOutlineFromTasty),
+      createTestCase(settings.YcheckInit            , settings.WcheckInit),
     ).flatten.map: (deprecatedArgument, newSetting) =>
       val args = List(deprecatedArgument)
       val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
