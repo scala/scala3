@@ -1907,8 +1907,8 @@ trait Applications extends Compatibility {
     def comparePrefixes =
       val pre1 = widenPrefix(alt1)
       val pre2 = widenPrefix(alt2)
-      val winsPrefix1 = isAsSpecificValueType(pre1, pre2)
-      val winsPrefix2 = isAsSpecificValueType(pre2, pre1)
+      val winsPrefix1 = isAsGoodValueType(pre1, pre2)
+      val winsPrefix2 = isAsGoodValueType(pre2, pre1)
       if winsPrefix1 == winsPrefix2 then 0
       else if winsPrefix1 then 1
       else -1
