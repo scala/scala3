@@ -360,7 +360,7 @@ private sealed trait XSettings:
   val XmacroSettings: Setting[List[String]] = MultiStringSetting(AdvancedSetting, "Xmacro-settings", "setting1,setting2,..settingN", "List of settings which exposed to the macros")
 
   // Deprecated
-  val Xlint: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
+  val Xlint: Setting[List[ChoiceWithHelp[String]]] = UncompleteMultiChoiceHelpSetting(
     AdvancedSetting,
     name = "Xlint",
     helpArg = "advanced warning",
@@ -371,7 +371,7 @@ private sealed trait XSettings:
       ChoiceWithHelp("type-parameter-shadow", "Warn when a type parameter shadows a type already in the scope"),
     ),
     default = Nil,
-    deprecation = Some(Deprecation("Use -Wshadow to enable shadowing lints.", "-Wshadow"))
+    deprecation = Some(Deprecation("Use -Wshadow to enable shadowing lints.", "-Wshadow")),
   )
 
 end XSettings
