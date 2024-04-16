@@ -3993,7 +3993,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Is this symbol an anonymous function? */
         def isAnonymousFunction: Boolean
 
-        /** Is this symbol an abstract type? */
+        /** Is this symbol an abstract type or a type parameter? */
         def isAbstractType: Boolean
 
         /** Is this the constructor of a class? */
