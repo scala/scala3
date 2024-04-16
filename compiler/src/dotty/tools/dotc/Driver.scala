@@ -54,10 +54,10 @@ class Driver {
       if (ctx.settings.XprintSuspension.value)
         val suspendedHints = run.suspendedHints.toList
         report.echo(i"compiling suspended $suspendedUnits%, %")
-        for (unit, hint) <- suspendedHints do
-          report.echo(s"  $unit: $hint")
+        for (unit, (hint, atInlining)) <- suspendedHints do
+          report.echo(s"  $unit at ${if atInlining then "inlining" else "typer"}: $hint")
       val run1 = compiler.newRun
-      run1.compileSuspendedUnits(suspendedUnits)
+      run1.compileSuspendedUnits(suspendedUnits, !run.suspendedAtTyperPhase)
       finish(compiler, run1)(using MacroClassLoader.init(ctx.fresh))
 
   protected def initCtx: Context = (new ContextBase).initialCtx

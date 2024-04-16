@@ -98,11 +98,15 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
     depRecorder.clear()
     if !suspended then
       suspended = true
-      ctx.run.nn.suspendedUnits += this
+      val currRun = ctx.run.nn
+      currRun.suspendedUnits += this
+      val isInliningPhase = ctx.phase == Phases.inliningPhase
       if ctx.settings.XprintSuspension.value then
-        ctx.run.nn.suspendedHints += (this -> hint)
-      if ctx.phase == Phases.inliningPhase then
+        currRun.suspendedHints += (this -> (hint, isInliningPhase))
+      if isInliningPhase then
         suspendedAtInliningPhase = true
+      else
+        currRun.suspendedAtTyperPhase = true
     throw CompilationUnit.SuspendException()
 
   private var myAssignmentSpans: Map[Int, List[Span]] | Null = null
