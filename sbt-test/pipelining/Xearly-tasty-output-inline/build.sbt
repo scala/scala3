@@ -4,7 +4,7 @@
 // defines a inline method.
 lazy val a = project.in(file("a"))
   .settings(
-    scalacOptions ++= Seq("-Yearly-tasty-output", ((ThisBuild / baseDirectory).value / "a-early.jar").toString),
+    scalacOptions ++= Seq("-Xearly-tasty-output", ((ThisBuild / baseDirectory).value / "a-early.jar").toString),
     scalacOptions += "-Ycheck:all",
   )
 

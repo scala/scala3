@@ -35,16 +35,16 @@ A step-by-step migration is made possible with the following measures:
  4. Some deprecation warnings are already available under the `-source future` setting.
 
 To smooth the transition for codebases that use kind-projector, we adopt the following measures under the command line
-option `-Ykind-projector`:
+option `-Xkind-projector`:
 
  1. In Scala 3.0, `*` is available as a type parameter placeholder.
  2. In Scala 3.2, `*` is deprecated in favor of `_`. A `-rewrite` option is
     available to rewrite one to the other.
  3. In Scala 3.3, `*` is removed again, and all type parameter placeholders will be expressed with `_`.
 
-These rules make it possible to cross-build between Scala 2 using the kind projector plugin and Scala 3.0 - 3.2 using the compiler option `-Ykind-projector`.
+These rules make it possible to cross-build between Scala 2 using the kind projector plugin and Scala 3.0 - 3.2 using the compiler option `-Xkind-projector`.
 
 There is also a migration path for users that want a one-time transition to syntax with `_` as a type parameter placeholder.
-With option `-Ykind-projector:underscores` Scala 3 will regard `_` as a type parameter placeholder, leaving `?` as the only syntax for wildcards.
+With option `-Xkind-projector:underscores` Scala 3 will regard `_` as a type parameter placeholder, leaving `?` as the only syntax for wildcards.
 
 To cross-compile with old Scala 2 sources, while using `_` a placeholder, you must use options `-Xsource:3 -P:kind-projector:underscore-placeholders` together with a recent version of kind-projector (`0.13` and higher) and most recent versions of Scala 2 (`2.13.5` and higher and `2.12.14` and higher)

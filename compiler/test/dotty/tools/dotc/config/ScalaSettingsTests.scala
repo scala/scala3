@@ -88,6 +88,59 @@ class ScalaSettingsTests:
     val nowr = new Diagnostic.Warning("This is a problem.".toMessage, util.NoSourcePosition)
     assertEquals(Action.Silent, sut.action(nowr))
 
+  @Test def `Lifted options are correctly mapped to their replacements`: Unit =
+    def createTestCase(oldSetting: Setting[_], newSetting: Setting[_], value: String = "") =
+      s"${oldSetting.name}$value" -> newSetting
+
+    val settings = ScalaSettings
+    List(
+      createTestCase(settings.YtermConflict         , settings.XtermConflict, ":package"),
+      createTestCase(settings.YnoGenericSig         , settings.XnoGenericSig),
+      createTestCase(settings.Ydumpclasses          , settings.Xdumpclasses,":./"),
+      createTestCase(settings.YjarCompressionLevel  , settings.XjarCompressionLevel,":0"),
+      createTestCase(settings.YkindProjector        , settings.XkindProjector, ":underscores"),
+      createTestCase(settings.YdropComments         , settings.XdropComments),
+      createTestCase(settings.YcookComments         , settings.XcookComments),
+      createTestCase(settings.YreadComments         , settings.XreadComments),
+      createTestCase(settings.YnoDecodeStacktraces  , settings.XnoDecodeStacktraces),
+      createTestCase(settings.YnoEnrichErrorMessages, settings.XnoEnrichErrorMessages),
+      createTestCase(settings.YdebugMacros          , settings.XdebugMacros),
+      createTestCase(settings.YjavaTasty            , settings.XjavaTasty),
+      createTestCase(settings.YearlyTastyOutput     , settings.XearlyTastyOutput, ":./"),
+      createTestCase(settings.YallowOutlineFromTasty, settings.XallowOutlineFromTasty),
+    ).map: (deprecatedArgument, newSetting) =>
+      val args = List(deprecatedArgument)
+      val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
+      val conf = settings.processArguments(argSummary, processAll = true, skipped = Nil)
+      assert(!newSetting.isDefaultIn(conf.sstate), s"Setting $deprecatedArgument was not forwarded to ${newSetting.name}")
+
+  @Test def `Lifted options aliases are correctly mapped to their replacements`: Unit =
+    def createTestCase(oldSetting: Setting[_], newSetting: Setting[_], value: String = "") =
+      oldSetting.aliases.map: alias =>
+        s"$alias$value" -> newSetting
+
+    val settings = ScalaSettings
+    List(
+      createTestCase(settings.YtermConflict         , settings.XtermConflict, ":package"),
+      createTestCase(settings.YnoGenericSig         , settings.XnoGenericSig),
+      createTestCase(settings.Ydumpclasses          , settings.Xdumpclasses,":./"),
+      createTestCase(settings.YjarCompressionLevel  , settings.XjarCompressionLevel,":0"),
+      createTestCase(settings.YkindProjector        , settings.XkindProjector, ":underscores"),
+      createTestCase(settings.YdropComments         , settings.XdropComments),
+      createTestCase(settings.YcookComments         , settings.XcookComments),
+      createTestCase(settings.YreadComments         , settings.XreadComments),
+      createTestCase(settings.YnoDecodeStacktraces  , settings.XnoDecodeStacktraces),
+      createTestCase(settings.YnoEnrichErrorMessages, settings.XnoEnrichErrorMessages),
+      createTestCase(settings.YdebugMacros          , settings.XdebugMacros),
+      createTestCase(settings.YjavaTasty            , settings.XjavaTasty),
+      createTestCase(settings.YearlyTastyOutput     , settings.XearlyTastyOutput, ":./"),
+      createTestCase(settings.YallowOutlineFromTasty, settings.XallowOutlineFromTasty),
+    ).flatten.map: (deprecatedArgument, newSetting) =>
+      val args = List(deprecatedArgument)
+      val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
+      val conf = settings.processArguments(argSummary, processAll = true, skipped = Nil)
+      assert(!newSetting.isDefaultIn(conf.sstate), s"Setting alias $deprecatedArgument was not forwarded to ${newSetting.name}")
+
   @Test def `i18367 rightmost WConf flags take precedence over flags to the left`: Unit =
     import reporting.{Action, Diagnostic}
     val sets = ScalaSettings

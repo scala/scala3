@@ -385,7 +385,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
         }
       catch
         case ex: Throwable =>
-          if !ctx.settings.YnoDecodeStacktraces.value
+          if !ctx.settings.XnoDecodeStacktraces.value
             && handleRecursive.underlyingStackOverflowOrNull(ex) != null then
             throw StackSizeExceeded(mdef)
           else
@@ -924,7 +924,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
           em"""Recursion limit exceeded while pickling ${ex.mdef}
               |in ${ex.mdef.symbol.showLocated}.
               |You could try to increase the stacksize using the -Xss JVM option.
-              |For the unprocessed stack trace, compile with -Yno-decode-stacktraces.""",
+              |For the unprocessed stack trace, compile with -Xno-decode-stacktraces.""",
           ex.mdef.srcPos)
 
     def missing = forwardSymRefs.keysIterator

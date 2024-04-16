@@ -80,12 +80,12 @@ object SymbolLoaders {
       // offer a setting to resolve the conflict one way or the other.
       // This was motivated by the desire to use YourKit probes, which
       // require yjp.jar at runtime. See SI-2089.
-      if (ctx.settings.YtermConflict.value == "package" || ctx.mode.is(Mode.Interactive)) {
+      if (ctx.settings.XtermConflict.value == "package" || ctx.mode.is(Mode.Interactive)) {
         report.warning(
           s"Resolving package/object name conflict in favor of package ${preExisting.fullName}. The object will be inaccessible.")
         owner.asClass.delete(preExisting)
       }
-      else if (ctx.settings.YtermConflict.value == "object") {
+      else if (ctx.settings.XtermConflict.value == "object") {
         report.warning(
           s"Resolving package/object name conflict in favor of object ${preExisting.fullName}.  The package will be inaccessible.")
         return NoSymbol
@@ -470,7 +470,7 @@ class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
       new ClassfileTastyUUIDParser(classfile)(ctx).checkTastyUUID(tastyUUID)
     else
       // This will be the case in any of our tests that compile with `-Youtput-only-tasty`, or when
-      // tasty file compiled by `-Yearly-tasty-output-write` comes from an early output jar.
+      // tasty file compiled by `-Xearly-tasty-output-write` comes from an early output jar.
       report.inform(s"No classfiles found for $tastyFile when checking TASTy UUID")
 
   private def checkBeTastyUUID(tastyFile: AbstractFile, tastyBytes: Array[Byte])(using Context): Unit =

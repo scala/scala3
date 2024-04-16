@@ -52,13 +52,13 @@ class ExtractAPI extends Phase {
   override def description: String = ExtractAPI.description
 
   override def isRunnable(using Context): Boolean = {
-    super.isRunnable && (ctx.runZincPhases || ctx.settings.YjavaTasty.value)
+    super.isRunnable && (ctx.runZincPhases || ctx.settings.XjavaTasty.value)
   }
 
   // Check no needed. Does not transform trees
   override def isCheckable: Boolean = false
 
-  // when `-Yjava-tasty` is set we actually want to run this phase on Java sources
+  // when `-Xjava-tasty` is set we actually want to run this phase on Java sources
   override def skipIfJava(using Context): Boolean = false
 
   // SuperAccessors need to be part of the API (see the scripted test
@@ -79,8 +79,8 @@ class ExtractAPI extends Phase {
         units // still run the phase for the side effects (writing TASTy files to -Yearly-tasty-output)
     if doZincCallback then
       ctx.withIncCallback(recordNonLocalClasses(nonLocalClassSymbols, _))
-    if ctx.settings.YjavaTasty.value then
-      units0.filterNot(_.typedAsJava) // remove java sources, this is the terminal phase when `-Yjava-tasty` is set
+    if ctx.settings.XjavaTasty.value then
+      units0.filterNot(_.typedAsJava) // remove java sources, this is the terminal phase when `-Xjava-tasty` is set
     else
       units0
   end runOn

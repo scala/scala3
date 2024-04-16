@@ -43,7 +43,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
   import tpd.*
 
   private val xCheckMacro: Boolean = ctx.settings.XcheckMacros.value
-  private val yDebugMacro: Boolean = ctx.settings.YdebugMacros.value
+  private val yDebugMacro: Boolean = ctx.settings.XdebugMacros.value
 
   extension [T](self: scala.quoted.Expr[T])
     def show: String =

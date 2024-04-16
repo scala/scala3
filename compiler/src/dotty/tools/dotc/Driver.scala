@@ -84,7 +84,7 @@ class Driver {
     Positioned.init(using ictx)
 
     inContext(ictx) {
-      if !ctx.settings.YdropComments.value || ctx.settings.YreadComments.value then
+      if !ctx.settings.XdropComments.value || ctx.settings.XreadComments.value then
         ictx.setProperty(ContextDoc, new ContextDocstrings)
       val fileNamesOrNone = command.checkUsage(summary, sourcesRequired)(using ctx.settings)(using ctx.settingsState)
       fileNamesOrNone.map { fileNames =>
