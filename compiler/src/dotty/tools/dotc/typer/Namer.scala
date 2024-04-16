@@ -274,7 +274,7 @@ class Namer { typer: Typer =>
                 analyzeRHS(body)
               case _ =>
                 if rhs.isEmpty || flags.is(Opaque) then flags |= Deferred
-            analyzeRHS(tree.rhs)
+            if flags.is(Param) then tree.rhs else analyzeRHS(tree.rhs)
 
         // to complete a constructor, move one context further out -- this
         // is the context enclosing the class. Note that the context in which a
