@@ -4,35 +4,36 @@ function currentChapter() {
 
 function heading(i, heading, $heading) {
   const currentLevel = parseInt(heading.tagName.substring(1));
-  const headerCounts = this.headerCounts;
 
   if (currentLevel === this.headerLevel) {
-    headerCounts[this.headerLevel]++;
+    this.headerCounts[this.headerLevel]++;
   } else if (currentLevel < this.headerLevel) {
     while (currentLevel < this.headerLevel) {
-      headerCounts[this.headerLevel] = 1;
+      this.headerCounts[this.headerLevel] = 1;
       this.headerLevel--;
     }
-    headerCounts[this.headerLevel]++;
+    this.headerCounts[this.headerLevel]++;
   } else {
     while (currentLevel > this.headerLevel) {
       this.headerLevel++;
-      headerCounts[this.headerLevel] = 1;
+      this.headerCounts[this.headerLevel] = 1;
     }
   }
-  return `${headerCounts[this.headerLevel]} ${$heading.text()}`;
+  return `${this.headerCounts[this.headerLevel]} ${$heading.text()}`;
 }
 
 // ignore when using wkhtmltopdf, or it won't work...
 if (window.jekyllEnv !== 'spec-pdf') {
-  $('#toc').toc({
-    selectors: 'h1,h2,h3',
-    smoothScrolling: false,
-    chapter: currentChapter(),
-    headerLevel: 1,
-    headerCounts: [-1, currentChapter() - 1, 1, 1],
-    headerText: heading
-  });
+  $('#toc').toc(
+    {
+      'selectors': 'h1,h2,h3',
+      'smoothScrolling': false,
+      'chapter': currentChapter(),
+      'headerLevel': 1,
+      'headerCounts': [-1, currentChapter() - 1, 1, 1],
+      'headerText': heading
+    }
+  );
 }
 
 // no language auto-detect so that EBNF isn't detected as scala
