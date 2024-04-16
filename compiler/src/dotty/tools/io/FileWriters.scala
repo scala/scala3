@@ -38,6 +38,7 @@ import dotty.tools.backend.jvm.PostProcessorFrontendAccess.BackendReporting
 import scala.annotation.constructorOnly
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.ConcurrentModificationException
 
 /** !!!Copied from `dotty.tools.backend.jvm.ClassfileWriters` but no `PostProcessorFrontendAccess` needed.
  * this should probably be changed to wrap that class instead.
@@ -55,6 +56,11 @@ object FileWriters {
     def error(message: Context ?=> Message, position: SourcePosition): Unit
     def warning(message: Context ?=> Message, position: SourcePosition): Unit
     def log(message: String): Unit
+
+    final def toBuffered: Option[BufferingReporter] = this match
+      case buffered: BufferingReporter =>
+        if buffered.hasReports then Some(buffered) else None
+      case _: EagerReporter => None
 
     def error(message: Context ?=> Message): Unit = error(message, NoSourcePosition)
     def warning(message: Context ?=> Message): Unit = warning(message, NoSourcePosition)
@@ -94,28 +100,18 @@ object FileWriters {
 
     /** Atomically record that an error occurred */
     private def recordError(): Unit =
-      while
-        val old = _hasErrors.get
-        !old && !_hasErrors.compareAndSet(old, true)
-      do ()
+      _hasErrors.set(true)
 
     /** Atomically add a report to the log */
     private def recordReport(report: Report): Unit =
-      while
-        val old = _bufferedReports.get
-        !_bufferedReports.compareAndSet(old, report :: old)
-      do ()
+      _bufferedReports.getAndUpdate(report :: _)
 
-    /** atomically extract and clear the buffered reports */
+    /** atomically extract and clear the buffered reports, must only be called at a synchonization point. */
     private def resetReports(): List[Report] =
-      while
-        val old = _bufferedReports.get
-        if _bufferedReports.compareAndSet(old, Nil) then
-          return old
-        else
-          true
-      do ()
-      throw new AssertionError("Unreachable")
+      val curr = _bufferedReports.get()
+      if curr.nonEmpty && !_bufferedReports.compareAndSet(curr, Nil) then
+        throw ConcurrentModificationException("concurrent modification of buffered reports")
+      else curr
 
     def hasErrors: Boolean = _hasErrors.get()
     def hasReports: Boolean = _bufferedReports.get().nonEmpty

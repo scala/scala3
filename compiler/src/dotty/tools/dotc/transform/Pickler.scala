@@ -53,22 +53,21 @@ object Pickler {
     import scala.concurrent.duration.Duration
     import AsyncTastyHolder.Signal
 
-    private val _cancel = AtomicBoolean(false)
+    private val _cancelled = AtomicBoolean(false)
 
     /**Cancel any outstanding work.
-     * This should be done at the end of a run, e.g. if there were errors that prevented reaching the backend. */
+     * This should be done at the end of a run, e.g. background work may be running even though
+     * errors in main thread will prevent reaching the backend. */
     def cancel(): Unit =
-      while
-        val cancelled = _cancel.get()
-        !cancelled && !_cancel.compareAndSet(false, true)
-      do ()
-      if incCallback != null then
+      if _cancelled.compareAndSet(false, true) then
         asyncTastyWritten.trySuccess(None) // cancel the wait for TASTy writing
-      if incCallback != null then
-        asyncAPIComplete.trySuccess(Signal.Cancelled) // cancel the wait for API completion
+        if incCallback != null then
+          asyncAPIComplete.trySuccess(Signal.Cancelled) // cancel the wait for API completion
+      else
+        () // nothing else to do
 
     /** check if the work has been cancelled. */
-    def cancelled: Boolean = _cancel.get()
+    def cancelled: Boolean = _cancelled.get()
 
     private val asyncTastyWritten = Promise[Option[AsyncTastyHolder.State]]()
     private val asyncAPIComplete =
@@ -81,7 +80,7 @@ object Pickler {
       asyncState.map: optState =>
         optState.flatMap: state =>
           if incCallback != null && state.done && !state.hasErrors then
-            asyncZincPhasesCompleted(incCallback, state.pending)
+            asyncZincPhasesCompleted(incCallback, state.pending).toBuffered
           else state.pending
 
     /** awaits the state of async TASTy operations indefinitely, returns optionally any buffered reports. */
@@ -112,11 +111,7 @@ object Pickler {
           AsyncTastyHolder.State(
             hasErrors = ctx.reporter.hasErrors,
             done = done,
-            pending = (
-              ctx.reporter match
-                case buffered: BufferingReporter => Some(buffered)
-                case _: EagerReporter => None // already reported
-            )
+            pending = ctx.reporter.toBuffered
           )
         )
     end signalAsyncTastyWritten

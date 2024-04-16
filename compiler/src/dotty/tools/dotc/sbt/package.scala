@@ -17,7 +17,7 @@ inline val TermNameHash = 1987 // 300th prime
 inline val TypeNameHash = 1993 // 301st prime
 inline val InlineParamHash = 1997 // 302nd prime
 
-def asyncZincPhasesCompleted(cb: IncrementalCallback, pending: Option[BufferingReporter]): Option[BufferingReporter] =
+def asyncZincPhasesCompleted(cb: IncrementalCallback, pending: Option[BufferingReporter]): BufferingReporter =
   val zincReporter = pending match
     case Some(buffered) => buffered
     case None => BufferingReporter()
@@ -27,7 +27,7 @@ def asyncZincPhasesCompleted(cb: IncrementalCallback, pending: Option[BufferingR
   catch
     case NonFatal(t) =>
       zincReporter.exception(em"signaling API and Dependencies phases completion", t)
-  if zincReporter.hasErrors then Some(zincReporter) else None
+  zincReporter
 
 extension (sym: Symbol)
 
