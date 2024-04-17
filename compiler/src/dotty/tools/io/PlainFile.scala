@@ -77,7 +77,7 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
   }
 
   /** Is this abstract file a directory? */
-  val isDirectory: Boolean = givenPath.isDirectory
+  val isDirectory: Boolean = givenPath.isDirectory // cached for performance on Windows
 
   /** Returns the time that this abstract file was last modified. */
   def lastModified: Long = givenPath.lastModified.toMillis
