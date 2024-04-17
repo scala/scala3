@@ -1293,25 +1293,43 @@ trait Implicits:
        *  @return  a number > 0   if `alt1` is preferred over `alt2`
        *           a number < 0   if `alt2` is preferred over `alt1`
        *           0              if neither alternative is preferred over the other
+       *  The behavior depends on the source version
+       *      before 3.5: compare with preferGeneral = false
+       *             3.5: compare twice with preferGeneral = false and true, warning if result is different,
+       *                  return old result with preferGeneral = false
+       *   3.6-migration: compare twice with preferGeneral = false and true, warning if result is different,
+       *                  return new result with preferGeneral = true
+       *  3.6 and higher: compare with preferGeneral = true
+       *
        */
       def compareAlternatives(alt1: RefAndLevel, alt2: RefAndLevel): Int =
         def comp(using Context) = explore(compare(alt1.ref, alt2.ref, preferGeneral = true))
         if alt1.ref eq alt2.ref then 0
         else if alt1.level != alt2.level then alt1.level - alt2.level
         else
-          val cmp = comp(using searchContext())
-          if Feature.sourceVersion == SourceVersion.`3.5-migration` then
+          var cmp = comp(using searchContext())
+          val sv = Feature.sourceVersion
+          if sv == SourceVersion.`3.5` || sv == SourceVersion.`3.6-migration` then
             val prev = comp(using searchContext().addMode(Mode.OldImplicitResolution))
             if cmp != prev then
               def choice(c: Int) = c match
                 case -1 => "the second alternative"
                 case  1 => "the first alternative"
                 case _  => "none - it's ambiguous"
-              report.warning(
-                em"""Change in given search preference for $pt between alternatives ${alt1.ref} and ${alt2.ref}
-                    |Previous choice: ${choice(prev)}
-                    |New choice     : ${choice(cmp)}""", srcPos)
-          cmp
+              if sv == SourceVersion.`3.5` then
+                report.warning(
+                  em"""Given search preference for $pt between alternatives ${alt1.ref} and ${alt2.ref} will change
+                      |Current choice           : ${choice(prev)}
+                      |New choice from Scala 3.6: ${choice(cmp)}""", srcPos)
+                prev
+              else
+                report.warning(
+                  em"""Change in given search preference for $pt between alternatives ${alt1.ref} and ${alt2.ref}
+                      |Previous choice          : ${choice(prev)}
+                      |New choice from Scala 3.6: ${choice(cmp)}""", srcPos)
+                cmp
+            else cmp
+          else cmp
       end compareAlternatives
 
       /** If `alt1` is also a search success, try to disambiguate as follows:

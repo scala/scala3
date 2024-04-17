@@ -1795,7 +1795,7 @@ trait Applications extends Compatibility {
      *     available in 3.0-migration if mode `Mode.OldImplicitResolution` is turned on as well.
      *     It is used to highlight differences between Scala 2 and 3 behavior.
      *
-     *   - In Scala 3.0-3.4, the behavior is as follows: `T <:p U` iff there is an impliit conversion
+     *   - In Scala 3.0-3.5, the behavior is as follows: `T <:p U` iff there is an impliit conversion
      *     from `T` to `U`, or
      *
      *        flip(T) <: flip(U)
@@ -1810,15 +1810,14 @@ trait Applications extends Compatibility {
      *     of parameters are not affected. So `T <: U` would imply `Set[Cmp[U]] <:p Set[Cmp[T]]`,
      *     as usual, because `Set` is non-variant.
      *
-     *   - From Scala 3.5, `T <:p U` means `T <: U` or `T` convertible to `U`
+     *   - From Scala 3.6, `T <:p U` means `T <: U` or `T` convertible to `U`
      *     for overloading resolution (when `preferGeneral is false), and the opposite relation
      *     `U <: T` or `U convertible to `T` for implicit disambiguation between givens
      *     (when `preferGeneral` is true). For old-style implicit values, the 3.4 behavior is kept.
      *     If one of the alternatives is a given and the other is an implicit, the given wins.
      *
-     *   - In Scala 3.5-migration, use the 3.5 scheme normally, and the 3.4 scheme if
-     *     `Mode.OldImplicitResolution` is on. This is used to highlight differences in the
-     *     two resolution schemes.
+     *   - In Scala 3.5 and Scala 3.6-migration, we issue a warning if the result under
+     *     Scala 3.6 differ wrt to the old behavior up to 3.5.
      *
      *  Also and only for given resolution: If a compared type refers to a given or its module class, use
      *  the intersection of its parent classes instead.
@@ -1844,8 +1843,8 @@ trait Applications extends Compatibility {
             || !alt1isGiven && !alt2isGiven
         then
           // Intermediate rules: better means specialize, but map all type arguments downwards
-          // These are enabled for 3.0-3.4, and for all comparisons between old-style implicits,
-          // and in 3.5-migration when we compare with previous rules.
+          // These are enabled for 3.0-3.5, and for all comparisons between old-style implicits,
+          // and in 3.5 amd 3.6-migration when we compare with previous rules.
           val flip = new TypeMap:
             def apply(t: Type) = t match
               case t @ AppliedType(tycon, args) =>
