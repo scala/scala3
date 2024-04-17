@@ -680,36 +680,39 @@ object CheckUnused:
           }
 
       /** Given an import and accessibility, return selector that matches import<->symbol */
-      private def isInImport(imp: tpd.Import, isAccessible: Boolean, symName: Option[Name], isDerived: Boolean)(using Context): Option[ImportSelector] =
+      private def isInImport(imp: tpd.Import, isAccessible: Boolean, altName: Option[Name], isDerived: Boolean)(using Context): Option[ImportSelector] =
         val tpd.Import(qual, sels) = imp
-        val dealiasedSym = dealias(sym)
-        val simpleSelections = qual.tpe.member(sym.name).alternatives
-        val typeSelections = sels.flatMap(n => qual.tpe.member(n.name.toTypeName).alternatives)
-        val termSelections = sels.flatMap(n => qual.tpe.member(n.name.toTermName).alternatives)
-        val sameTermPath = qual.isTerm && sym.exists && sym.owner.isType && qual.tpe.typeSymbol == sym.owner.asType
-        val selectionsToDealias = typeSelections ::: termSelections
-        val renamedSelection = if sameTermPath then sels.find(sel => sel.imported.name == sym.name) else None
-        val qualHasSymbol = simpleSelections.map(_.symbol).contains(sym) || (simpleSelections ::: selectionsToDealias).map(_.symbol).map(dealias).contains(dealiasedSym) || renamedSelection.isDefined
-        def selector = sels.find(sel => (sel.name.toTermName == sym.name || sel.name.toTypeName == sym.name) && symName.map(n => n.toTermName == sel.rename).getOrElse(true))
-        def dealiasedSelector = if(isDerived) sels.flatMap(sel => selectionsToDealias.map(m => (sel, m.symbol))).collect {
-          case (sel, sym) if dealias(sym) == dealiasedSym => sel
-        }.headOption else None
+        val qualTpe = qual.tpe
+        val dealiasedSym = sym.dealias
+        val simpleSelections = qualTpe.member(sym.name).alternatives
+        val selectionsToDealias = sels.flatMap(sel =>
+          qualTpe.member(sel.name.toTypeName).alternatives
+          ::: qualTpe.member(sel.name.toTermName).alternatives)
+        def qualHasSymbol = simpleSelections.map(_.symbol).contains(sym) || (simpleSelections ::: selectionsToDealias).map(_.symbol).map(_.dealias).contains(dealiasedSym)
+        def selector = sels.find(sel => (sel.name.toTermName == sym.name || sel.name.toTypeName == sym.name) && altName.map(n => n.toTermName == sel.rename).getOrElse(true))
+        def dealiasedSelector =
+          if isDerived then
+            sels.flatMap(sel => selectionsToDealias.map(m => (sel, m.symbol))).collect {
+              case (sel, sym) if sym.dealias == dealiasedSym => sel
+            }.headOption
+          else None
         def givenSelector = if sym.is(Given) || sym.is(Implicit)
           then sels.filter(sel => sel.isGiven && !sel.bound.isEmpty).find(sel => sel.boundTpe =:= sym.info)
           else None
         def wildcard = sels.find(sel => sel.isWildcard && ((sym.is(Given) == sel.isGiven && sel.bound.isEmpty) || sym.is(Implicit)))
-        if qualHasSymbol && (!isAccessible || sym.isRenamedSymbol(symName)) && sym.exists then
-          selector.orElse(dealiasedSelector).orElse(givenSelector).orElse(wildcard).orElse(renamedSelection) // selector with name or wildcard (or given)
+        if sym.exists && qualHasSymbol && (!isAccessible || sym.isRenamedSymbol(altName)) then
+          selector.orElse(dealiasedSelector).orElse(givenSelector).orElse(wildcard) // selector with name or wildcard (or given)
         else
           None
 
       private def isRenamedSymbol(symNameInScope: Option[Name])(using Context) =
         sym.name != nme.NO_NAME && symNameInScope.exists(_.toSimpleName != sym.name.toSimpleName)
 
-      private def dealias(symbol: Symbol)(using Context): Symbol =
-        if(symbol.isType && symbol.asType.denot.isAliasType) then
-          symbol.asType.typeRef.dealias.typeSymbol
-        else symbol
+      private def dealias(using Context): Symbol =
+        if sym.isType && sym.asType.denot.isAliasType then
+          sym.asType.typeRef.dealias.typeSymbol
+        else sym
+
       /** Annotated with @unused */
       private def isUnusedAnnot(using Context): Boolean =
         sym.annotations.exists(a => a.symbol == ctx.definitions.UnusedAnnot)
