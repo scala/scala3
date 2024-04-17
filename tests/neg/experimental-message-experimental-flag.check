@@ -2,7 +2,7 @@
 -- Error: tests/neg/experimental-message-experimental-flag/Test_2.scala:3:10 -------------------------------------------
 3 |def g() = f() // error
   |          ^
-  |          method f is marked @experimental: Added by -experimental or -language:experimental.*
+  |          method f is marked @experimental: Added by -experimental
   |
   |          Experimental definition may only be used under experimental mode:
   |            1. in a definition marked as @experimental, or

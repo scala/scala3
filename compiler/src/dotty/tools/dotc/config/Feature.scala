@@ -170,9 +170,8 @@ object Feature:
     ctx.settings.experimental.value ||
     experimentalAutoEnableFeatures.exists(enabled)
 
-  def isExperimentalEnabledBySetting(using Context): Boolean =
-    ctx.settings.experimental.value ||
-    experimentalAutoEnableFeatures.exists(enabledBySetting)
+  def experimentalEnabledByLanguageSetting(using Context): Option[TermName] =
+    experimentalAutoEnableFeatures.find(enabledBySetting)
 
   def isExperimentalEnabledByImport(using Context): Boolean =
     experimentalAutoEnableFeatures.exists(enabledByImport)

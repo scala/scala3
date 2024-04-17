@@ -417,7 +417,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             )
           }
         case tree: ValDef =>
-          annotateExperimental(tree.symbol)
+          annotateExperimentalCompanion(tree.symbol)
           registerIfHasMacroAnnotations(tree)
           checkErasedDef(tree)
           Checking.checkPolyFunctionType(tree.tpt)
@@ -426,7 +426,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             checkStableSelection(tree.rhs)
           processValOrDefDef(super.transform(tree1))
         case tree: DefDef =>
-          annotateExperimental(tree.symbol)
           registerIfHasMacroAnnotations(tree)
           checkErasedDef(tree)
           Checking.checkPolyFunctionType(tree.tpt)
@@ -438,7 +437,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           val sym = tree.symbol
           if (sym.isClass)
             VarianceChecker.check(tree)
-            annotateExperimental(sym)
+            annotateExperimentalCompanion(sym)
             checkMacroAnnotation(sym)
             if sym.isOneOf(GivenOrImplicit) then
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.CompanionClassMetaAnnot), orNoneOf = defn.MetaAnnots)
@@ -584,16 +583,9 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         else if tpe.derivesFrom(defn.NullClass) then
           report.error("`erased` definition cannot be implemented with en expression of type Null", tree.srcPos)
 
-    private def annotateExperimental(sym: Symbol)(using Context): Unit =
-      def isTopLevelDefinitionInSource(sym: Symbol) =
-        !sym.is(Package) && !sym.name.isPackageObjectName &&
-        (sym.owner.is(Package) || (sym.owner.isPackageObject && !sym.isConstructor))
+    private def annotateExperimentalCompanion(sym: Symbol)(using Context): Unit =
       if sym.is(Module) then
         ExperimentalAnnotation.copy(sym.companionClass).foreach(sym.addAnnotation)
-      if !sym.hasAnnotation(defn.ExperimentalAnnot)
-        && Feature.isExperimentalEnabledBySetting && isTopLevelDefinitionInSource(sym)
-      then
-        sym.addAnnotation(ExperimentalAnnotation("Added by -experimental or -language:experimental.*", sym.span))
 
     // It needs to run at the phase of the postTyper --- otherwise, the test of the symbols will use
     // the transformed denotation with added `Serializable` and `AbstractFunction1`.

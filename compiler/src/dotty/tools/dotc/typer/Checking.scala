@@ -836,20 +836,23 @@ object Checking {
       }
 
     if ctx.owner.is(Package) || ctx.owner.name.startsWith(str.REPL_SESSION_LINE) then
+      def markTopLevelDefsAsExperimental(why: String): Unit =
+        for tree <- nonExperimentalStats(trees) do
+          tree match
+            case tree: MemberDef =>
+              val sym = tree.symbol
+              if !sym.isExperimental then
+                sym.addAnnotation(ExperimentalAnnotation(s"Added by $why", sym.span))
+            case tree =>
+              // There is no definition to attach the @experimental annotation
+              report.error(s"Implementation restriction: top-level `val _ = ...` is not supported with $why.", tree.srcPos)
       unitExperimentalLanguageImports match
-        case imp :: _ =>
-          // mark all top-level definitions as @experimental
-          for tree <- nonExperimentalStats(trees) do
-            tree match
-              case tree: MemberDef =>
-                // TODO move this out of checking (into posttyper?)
-                val sym = tree.symbol
-                if !sym.isExperimental then
-                  sym.addAnnotation(ExperimentalAnnotation(i"Added by top level $imp", sym.span))
-              case tree =>
-                // There is no definition to attach the @experimental annotation
-                report.error("Implementation restriction: top-level `val _ = ...` is not supported with experimental language imports.", tree.srcPos)
+        case imp :: _ => markTopLevelDefsAsExperimental(i"top level $imp")
         case _ =>
+          Feature.experimentalEnabledByLanguageSetting match
+            case Some(sel) => markTopLevelDefsAsExperimental(i"-language:experimental.$sel")
+            case _ if ctx.settings.experimental.value => markTopLevelDefsAsExperimental(i"-experimental")
+            case _ =>
     else
       for imp <- unitExperimentalLanguageImports do
         Feature.checkExperimentalFeature("feature local import", imp.srcPos)
