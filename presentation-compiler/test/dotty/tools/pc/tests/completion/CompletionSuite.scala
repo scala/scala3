@@ -1838,3 +1838,42 @@ class CompletionSuite extends BaseCompletionSuite:
          |""".stripMargin,
       topLines = Some(3)
     )
+
+  @Test def `context-bound-in-extension-construct` =
+    check(
+      """
+        |object x {
+        |  extension [T: Orde@@]
+        |}
+        |""".stripMargin,
+      """Ordered[T] scala.math
+        |Ordering[T] scala.math
+        |""".stripMargin,
+      topLines = Some(2)
+    )
+
+  @Test def `context-bounds-in-extension-construct` =
+    check(
+      """
+        |object x {
+        |  extension [T: Ordering: Orde@@]
+        |}
+        |""".stripMargin,
+      """Ordered[T] scala.math
+        |Ordering[T] scala.math
+        |""".stripMargin,
+      topLines = Some(2)
+    )
+
+  @Test def `type-bound-in-extension-construct` =
+    check(
+      """
+        |object x {
+        |  extension [T <: Orde@@]
+        |}
+        |""".stripMargin,
+      """Ordered[T] scala.math
+        |Ordering[T] scala.math
+        |""".stripMargin,
+      topLines = Some(2)
+    )
