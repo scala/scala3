@@ -1,4 +1,4 @@
-//> using options -source 3.5-migration
+//> using options -source 3.6-migration
 
 class A
 class B extends A
