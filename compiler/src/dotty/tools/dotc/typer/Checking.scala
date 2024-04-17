@@ -821,29 +821,39 @@ object Checking {
       case Nil =>
         Nil
 
-    for case imp @ Import(qual, selectors) <- trees do
+    def unitExperimentalLanguageImports =
       def isAllowedImport(sel: untpd.ImportSelector) =
         val name = Feature.experimental(sel.name)
         name == Feature.scala2macros
         || name == Feature.captureChecking
+      trees.filter {
+        case Import(qual, selectors) =>
+          languageImport(qual) match
+            case Some(nme.experimental) =>
+              !selectors.forall(isAllowedImport) && !ctx.owner.isInExperimentalScope
+            case _ => false
+        case _ => false
+      }
 
-      languageImport(qual) match
-        case Some(nme.experimental)
-        if !ctx.owner.isInExperimentalScope && !selectors.forall(isAllowedImport) =>
-          if ctx.owner.is(Package) || ctx.owner.name.startsWith(str.REPL_SESSION_LINE) then
-            // mark all top-level definitions as @experimental
-            for tree <- nonExperimentalStats(trees) do
-              tree match
-                case tree: MemberDef =>
-                  // TODO move this out of checking (into posttyper?)
-                  val sym = tree.symbol
-                  if !sym.isExperimental then
-                    sym.addAnnotation(ExperimentalAnnotation(i"Added by top level $imp", sym.span))
-                case tree =>
-                  // There is no definition to attach the @experimental annotation
-                  report.error("Implementation restriction: top-level `val _ = ...` is not supported with experimental language imports.", tree.srcPos)
-          else Feature.checkExperimentalFeature("feature local import", imp.srcPos)
+    if ctx.owner.is(Package) || ctx.owner.name.startsWith(str.REPL_SESSION_LINE) then
+      unitExperimentalLanguageImports match
+        case imp :: _ =>
+          // mark all top-level definitions as @experimental
+          for tree <- nonExperimentalStats(trees) do
+            tree match
+              case tree: MemberDef =>
+                // TODO move this out of checking (into posttyper?)
+                val sym = tree.symbol
+                if !sym.isExperimental then
+                  sym.addAnnotation(ExperimentalAnnotation(i"Added by top level $imp", sym.span))
+              case tree =>
+                // There is no definition to attach the @experimental annotation
+                report.error("Implementation restriction: top-level `val _ = ...` is not supported with experimental language imports.", tree.srcPos)
         case _ =>
+    else
+      for imp <- unitExperimentalLanguageImports do
+        Feature.checkExperimentalFeature("feature local import", imp.srcPos)
+
   end checkAndAdaptExperimentalImports
 
   /** Checks that PolyFunction only have valid refinements.
