@@ -302,14 +302,18 @@ trait ConstraintHandling {
       false
     else
       val bound = legalBound(param, rawBound, isUpper)
+      lazy val recBound = bound.existsPart(_ eq param, StopAt.Static)
+
+      // If the narrowed bounds are equal and not recursive,
+      // we can remove `param` from the constraint.
+      def tryReplace(lo: Type, hi: Type): Boolean =
+        val equalBounds = (if isUpper then lo else hi) eq bound
+        val canReplace = equalBounds && !recBound
+        if canReplace then constraint = constraint.replace(param, bound)
+        canReplace
+
       val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
-      val equalBounds = (if isUpper then lo else hi) eq bound
-      if equalBounds && !bound.existsPart(_ eq param, StopAt.Static) then
-        // The narrowed bounds are equal and not recursive,
-        // so we can remove `param` from the constraint.
-        constraint = constraint.replace(param, bound)
-        true
-      else
+      tryReplace(lo, hi) || locally:
         // Narrow one of the bounds of type parameter `param`
         // If `isUpper` is true, ensure that `param <: `bound`, otherwise ensure
         // that `param >: bound`.
@@ -328,7 +332,9 @@ trait ConstraintHandling {
         || {
           constraint = c1
           val TypeBounds(lo, hi) = constraint.entry(param): @unchecked
-          isSub(lo, hi)
+          val isSat = isSub(lo, hi)
+          if isSat then tryReplace(lo, hi) // isSub may have introduced new constraints
+          isSat
         }
   end addOneBound
 
