@@ -437,7 +437,7 @@ object Contexts {
 
     /** The super- or this-call context with given owner and locals. */
     private def superOrThisCallContext(owner: Symbol, locals: Scope): FreshContext = {
-      var classCtx = outersIterator.dropWhile(!_.isClassDefContext).next()
+      val classCtx = outersIterator.dropWhile(!_.isClassDefContext).next()
       classCtx.outer.fresh.setOwner(owner)
         .setScope(locals)
         .setMode(classCtx.mode)
