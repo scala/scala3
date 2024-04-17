@@ -413,8 +413,8 @@ class Pickler extends Phase {
       )
     if ctx.isBestEffort then
       val outpath =
-        ctx.settings.outputDir.value.jpath.toAbsolutePath.normalize
-          .resolve("META-INF")
+        ctx.settings.outputDir.value.jpath.toAbsolutePath.nn.normalize.nn
+          .resolve("META-INF").nn
           .resolve("best-effort")
       Files.createDirectories(outpath)
       BestEffortTastyWriter.write(outpath.nn, result)
