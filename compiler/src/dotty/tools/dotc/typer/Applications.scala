@@ -2267,13 +2267,13 @@ trait Applications extends Compatibility {
     case _ => (Nil, 0)
 
   /** Resolve overloading by mapping to a different problem where each alternative's
-   *  type is mapped with `f`, alternatives with non-existing types are dropped, and the
+   *  type is mapped with `f`, alternatives with non-existing types or symbols are dropped, and the
    *  expected type is `pt`. Map the results back to the original alternatives.
    */
   def resolveMapped(alts: List[TermRef], f: TermRef => Type, pt: Type)(using Context): List[TermRef] =
     val reverseMapping = alts.flatMap { alt =>
       val t = f(alt)
-      if t.exists then
+      if t.exists && alt.symbol.exists then
         val (trimmed, skipped) = trimParamss(t.stripPoly, alt.symbol.rawParamss)
         val mappedSym = alt.symbol.asTerm.copy(info = t)
         mappedSym.rawParamss = trimmed
