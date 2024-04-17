@@ -1880,7 +1880,7 @@ trait Applications extends Compatibility {
         val tp1p = prepare(tp1)
         val tp2p = prepare(tp2)
 
-        if Feature.sourceVersion.isAtMost(SourceVersion.`3.4`)
+        if Feature.sourceVersion.isAtMost(SourceVersion.`3.5`)
             || oldResolution
             || !alt1isGiven && !alt2isGiven
         then
