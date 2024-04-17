@@ -116,21 +116,6 @@ class TypeUtils {
 
     def refinedWith(name: Name, info: Type)(using Context) = RefinedType(self, name, info)
 
-    /** The TermRef referring to the companion of the underlying class reference
-     *  of this type, while keeping the same prefix.
-     */
-    def mirrorCompanionRef(using Context): TermRef = self match {
-      case AndType(tp1, tp2) =>
-        val c1 = tp1.classSymbol
-        val c2 = tp2.classSymbol
-        if c1.isSubClass(c2) then tp1.mirrorCompanionRef
-        else tp2.mirrorCompanionRef // precondition: the parts of the AndType have already been checked to be non-overlapping
-      case self @ TypeRef(prefix, _) if self.symbol.isClass =>
-        prefix.select(self.symbol.companionModule).asInstanceOf[TermRef]
-      case self: TypeProxy =>
-        self.superType.mirrorCompanionRef
-    }
-
     /** Is this type a methodic type that takes at least one parameter? */
     def takesParams(using Context): Boolean = self.stripPoly match
       case mt: MethodType => mt.paramNames.nonEmpty || mt.resType.takesParams
