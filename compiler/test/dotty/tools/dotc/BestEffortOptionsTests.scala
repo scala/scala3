@@ -10,10 +10,10 @@ import java.io.{File => JFile}
 
 import scala.language.unsafeNulls
 
-class BestEffortCompilationTests {
+class BestEffortOptionsTests {
   import ParallelTesting._
   import vulpix.TestConfiguration._
-  import BestEffortCompilationTests._
+  import BestEffortOptionsTests._
   import CompilationTest.aggregateTests
 
   // Since TASTy and beTASTy files are read in a lazy manner (only when referenced by the source .scala file)
@@ -42,7 +42,7 @@ class BestEffortCompilationTests {
   }
 }
 
-object BestEffortCompilationTests extends ParallelTesting {
+object BestEffortOptionsTests extends ParallelTesting {
   def maxDuration = 45.seconds
   def numberOfSlaves = Runtime.getRuntime.availableProcessors()
   def safeMode = Properties.testsSafeMode

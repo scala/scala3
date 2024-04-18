@@ -1610,7 +1610,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  '-Ywith-best-effort-tasty' to test the TastyReader for Best Effort TASTy.
    */
   def compileBestEffortTastyInDir(f: String, flags: TestFlags, picklingFilter: FileFilter, unpicklingFilter: FileFilter)(
-      implicit testGroup: TestGroup): BestEffortCompilationTest = {
+      implicit testGroup: TestGroup): BestEffortOptionsTest = {
     val bestEffortFlag = "-Ybest-effort"
     val semanticDbFlag = "-Xsemanticdb"
     assert(!flags.options.contains(bestEffortFlag), "Best effort compilation flag should not be added manually")
@@ -1687,7 +1687,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         new CompilationFromBestEffortTasty(testGroup.name, f, flags, bestEffortDir)
       }
 
-    new BestEffortCompilationTest(
+    new BestEffortOptionsTest(
       new CompilationTest(bestEffortTargets).keepOutput,
       new CompilationTest(fromTastyTargets).keepOutput,
       bestEffortDirs,
@@ -1735,7 +1735,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       (step1Compilation, step2Compilation, bestEffortDir)
     }.unzip3
 
-    BestEffortCompilationTest(
+    BestEffortOptionsTest(
       new CompilationTest(step1Targets).keepOutput,
       new CompilationTest(step2Targets).keepOutput,
       bestEffortDirs,
@@ -1770,7 +1770,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
   }
 
-  class BestEffortCompilationTest(step1: CompilationTest, step2: CompilationTest, bestEffortDirs: List[JFile], shouldDelete: Boolean)(implicit testGroup: TestGroup) {
+  class BestEffortOptionsTest(step1: CompilationTest, step2: CompilationTest, bestEffortDirs: List[JFile], shouldDelete: Boolean)(implicit testGroup: TestGroup) {
 
     def checkNoCrash()(implicit summaryReport: SummaryReporting): this.type = {
       step1.checkNoBestEffortError() // Compile all files to generate the class files with best effort tasty
