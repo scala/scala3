@@ -5173,17 +5173,17 @@ object Types extends TypeUtils {
           trace(i"reduce match type $this $hashCode", matchTypes, show = true):
             withMode(Mode.Type):
               setReductionContext()
-              def matchCases(cmp: MatchReducer): Type =
+              TypeComparer.reduceMatchWith: cmp =>
                 val saved = ctx.typerState.snapshot()
                 try
-                  cmp.matchCases(scrutinee.normalized, cases.map(MatchTypeCaseSpec.analyze(_)))
+                  cmp.matchCases(scrutinee.normalized, cases.map(MatchTypeCaseSpec.analyze))
                 catch case ex: Throwable =>
+                  myReduced = NoType
                   handleRecursive("reduce type ", i"$scrutinee match ...", ex)
                 finally
                   ctx.typerState.resetTo(saved)
                     // this drops caseLambdas in constraint and undoes any typevar
                     // instantiations during matchtype reduction
-              TypeComparer.reduceMatchWith(matchCases)
 
       //else println(i"no change for $this $hashCode / $myReduced")
       myReduced.nn
