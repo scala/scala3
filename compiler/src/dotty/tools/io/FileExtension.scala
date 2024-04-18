@@ -5,6 +5,7 @@ import dotty.tools.dotc.util.EnumFlags.FlagSet
 
 enum FileExtension(val toLowerCase: String):
   case Tasty extends FileExtension("tasty")
+  case Betasty extends FileExtension("betasty")
   case Class extends FileExtension("class")
   case Jar extends FileExtension("jar")
   case Scala extends FileExtension("scala")
@@ -24,6 +25,8 @@ enum FileExtension(val toLowerCase: String):
 
   /** represents `".tasty"` */
   def isTasty = this == Tasty
+  /** represents `".betasty"` */
+  def isBetasty = this == Betasty
   /** represents `".class"` */
   def isClass = this == Class
   /** represents `".scala"` */
@@ -60,6 +63,7 @@ object FileExtension:
     case "java" => Java
     case "zip" => Zip
     case "inc" => Inc
+    case "betasty" => Betasty
     case _ => slowLookup(s)
 
   // slower than initialLookup, keep in sync with initialLookup
@@ -72,6 +76,7 @@ object FileExtension:
     else if s.equalsIgnoreCase("java") then Java
     else if s.equalsIgnoreCase("zip") then Zip
     else if s.equalsIgnoreCase("inc") then Inc
+    else if s.equalsIgnoreCase("betasty") then Betasty
     else External(s)
 
   def from(s: String): FileExtension =

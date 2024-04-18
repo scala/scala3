@@ -39,6 +39,9 @@ class Driver {
       catch
         case ex: FatalError =>
           report.error(ex.getMessage.nn) // signals that we should fail compilation.
+        case ex: Throwable if ctx.usedBestEffortTasty =>
+          report.bestEffortError(ex, "Some best-effort tasty files were not able to be read.")
+          throw ex
         case ex: TypeError if !runOrNull.enrichedErrorMessage =>
           println(runOrNull.enrichErrorMessage(s"${ex.toMessage} while compiling ${files.map(_.path).mkString(", ")}"))
           throw ex
@@ -102,8 +105,8 @@ class Driver {
             None
           else file.ext match
             case FileExtension.Jar => Some(file.path)
-            case FileExtension.Tasty =>
-              TastyFileUtil.getClassPath(file) match
+            case FileExtension.Tasty | FileExtension.Betasty =>
+              TastyFileUtil.getClassPath(file, ctx.withBestEffortTasty) match
                 case Some(classpath) => Some(classpath)
                 case _ =>
                   report.error(em"Could not load classname from: ${file.path}")

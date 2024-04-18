@@ -32,6 +32,7 @@ import dotty.tools.dotc.sbt.asyncZincPhasesCompleted
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 import java.util.concurrent.atomic.AtomicBoolean
+import java.nio.file.Files
 
 object Pickler {
   val name: String = "pickler"
@@ -191,7 +192,11 @@ class Pickler extends Phase {
   // No need to repickle trees coming from TASTY, however in the case that we need to write TASTy to early-output,
   // then we need to run this phase to send the tasty from compilation units to the early-output.
   override def isRunnable(using Context): Boolean =
-    super.isRunnable && (!ctx.settings.fromTasty.value || doAsyncTasty)
+    (super.isRunnable || ctx.isBestEffort)
+    && (!ctx.settings.fromTasty.value || doAsyncTasty)
+    && (!ctx.usedBestEffortTasty || ctx.isBestEffort)
+    // we do not want to pickle `.betasty` if do not plan to actually create the
+    // betasty file (as signified by the -Ybest-effort option)
 
   // when `-Yjava-tasty` is set we actually want to run this phase on Java sources
   override def skipIfJava(using Context): Boolean = false
@@ -238,7 +243,8 @@ class Pickler extends Phase {
 
   private val executor = Executor[Array[Byte]]()
 
-  private def useExecutor(using Context) = Pickler.ParallelPickling && !ctx.settings.YtestPickler.value
+  private def useExecutor(using Context) =
+    Pickler.ParallelPickling && !ctx.isBestEffort && !ctx.settings.YtestPickler.value
 
   private def printerContext(isOutline: Boolean)(using Context): Context =
     if isOutline then ctx.fresh.setPrinterFn(OutlinePrinter(_))
@@ -257,6 +263,7 @@ class Pickler extends Phase {
 
   override def run(using Context): Unit = {
     val unit = ctx.compilationUnit
+    val isBestEffort = ctx.reporter.errorsReported || ctx.usedBestEffortTasty
     pickling.println(i"unpickling in run ${ctx.runId}")
 
     if ctx.settings.fromTasty.value then
@@ -292,9 +299,16 @@ class Pickler extends Phase {
         isOutline = isOutline
       )
 
-      val pickler = new TastyPickler(cls)
+      val pickler = new TastyPickler(cls, isBestEffortTasty = isBestEffort)
       val treePkl = new TreePickler(pickler, attributes)
-      treePkl.pickle(tree :: Nil)
+      val successful =
+        try
+          treePkl.pickle(tree :: Nil)
+          true
+        catch
+          case NonFatal(ex) if ctx.isBestEffort =>
+            report.bestEffortError(ex, "Some best-effort tasty files will not be generated.")
+            false
       Profile.current.recordTasty(treePkl.buf.length)
 
       val positionWarnings = new mutable.ListBuffer[Message]()
@@ -329,7 +343,7 @@ class Pickler extends Phase {
           // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
           if ctx.settings.YprintTasty.value || pickling != noPrinter then
             println(i"**** pickled info of $cls")
-            println(TastyPrinter.showContents(pickled, ctx.settings.color.value == "never"))
+            println(TastyPrinter.showContents(pickled, ctx.settings.color.value == "never", isBestEffortTasty = false))
             println(i"**** end of pickled info of $cls")
 
           if fastDoAsyncTasty then
@@ -339,26 +353,27 @@ class Pickler extends Phase {
         }
       }
 
-      /** A function that returns the pickled bytes. Depending on `Pickler.ParallelPickling`
-       *  either computes the pickled data in a future or eagerly before constructing the
-       *  function value.
-       */
-      val demandPickled: () => Array[Byte] =
-        if useExecutor then
-          val futurePickled = executor.schedule(computePickled)
-          () =>
-            try futurePickled.force.get
-            finally reportPositionWarnings()
-        else
-          val pickled = computePickled()
-          reportPositionWarnings()
-          if ctx.settings.YtestPickler.value then
-            pickledBytes(cls) = (unit, pickled)
-            if ctx.settings.YtestPicklerCheck.value then
-              printedTasty(cls) = TastyPrinter.showContents(pickled, noColor = true, testPickler = true)
-          () => pickled
+      if successful then
+        /** A function that returns the pickled bytes. Depending on `Pickler.ParallelPickling`
+         *  either computes the pickled data in a future or eagerly before constructing the
+         *  function value.
+         */
+        val demandPickled: () => Array[Byte] =
+          if useExecutor then
+            val futurePickled = executor.schedule(computePickled)
+            () =>
+              try futurePickled.force.get
+              finally reportPositionWarnings()
+          else
+            val pickled = computePickled()
+            reportPositionWarnings()
+            if ctx.settings.YtestPickler.value then
+              pickledBytes(cls) = (unit, pickled)
+              if ctx.settings.YtestPicklerCheck.value then
+                printedTasty(cls) = TastyPrinter.showContents(pickled, noColor = true, isBestEffortTasty = false, testPickler = true)
+            () => pickled
 
-      unit.pickled += (cls -> demandPickled)
+        unit.pickled += (cls -> demandPickled)
     end for
   }
 
@@ -396,6 +411,13 @@ class Pickler extends Phase {
           .setReporter(new ThrowingReporter(ctx.reporter))
           .addMode(Mode.ReadPositions)
       )
+    if ctx.isBestEffort then
+      val outpath =
+        ctx.settings.outputDir.value.jpath.toAbsolutePath.nn.normalize.nn
+          .resolve("META-INF").nn
+          .resolve("best-effort")
+      Files.createDirectories(outpath)
+      BestEffortTastyWriter.write(outpath.nn, result)
     result
   }
 
@@ -405,7 +427,7 @@ class Pickler extends Phase {
     val resolveCheck = ctx.settings.YtestPicklerCheck.value
     val unpicklers =
       for ((cls, (unit, bytes)) <- pickledBytes) yield {
-        val unpickler = new DottyUnpickler(unit.source.file, bytes)
+        val unpickler = new DottyUnpickler(unit.source.file, bytes, isBestEffortTasty = false)
         unpickler.enter(roots = Set.empty)
         val optCheck =
           if resolveCheck then
