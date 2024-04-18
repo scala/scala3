@@ -51,7 +51,7 @@ object RefChecks {
       }}
 
       for (name <- defaultMethodNames) {
-        val methods = clazz.info.member(name).alternatives.map(_.symbol)
+        val methods = clazz.thisType.member(name).alternatives.map(_.symbol)
         val haveDefaults = methods.filter(_.hasDefaultParams)
         if (haveDefaults.length > 1) {
           val owners = haveDefaults map (_.owner)
