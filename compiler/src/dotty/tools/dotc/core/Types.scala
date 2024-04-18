@@ -5123,11 +5123,6 @@ object Types extends TypeUtils {
           tp.underlying
       }
 
-      def isUpToDate: Boolean =
-        (reductionContext ne null) &&
-        reductionContext.keysIterator.forall: tp =>
-          reductionContext(tp) `eq` contextInfo(tp)
-
       def setReductionContext(): Unit =
         new TypeTraverser:
           var footprint: Set[Type] = Set()
@@ -5162,15 +5157,22 @@ object Types extends TypeUtils {
           matchTypes.println(i"footprint for $thisMatchType $hashCode: ${footprint.toList.map(x => (x, contextInfo(x)))}%, %")
       end setReductionContext
 
+      def changedReductionContext(): Boolean =
+        val isUpToDate =
+          (reductionContext ne null) &&
+          reductionContext.keysIterator.forall: tp =>
+            reductionContext(tp) `eq` contextInfo(tp)
+        if !isUpToDate then setReductionContext()
+        !isUpToDate
+
       record("MatchType.reduce called")
       if !Config.cacheMatchReduced
           || myReduced == null
-          || !isUpToDate
+          || changedReductionContext()
           || MatchTypeTrace.isRecording
       then
         record("MatchType.reduce computed")
         if (myReduced != null) record("MatchType.reduce cache miss")
-        if !isUpToDate then setReductionContext()
         val saved = ctx.typerState.snapshot()
         try
           myReduced = trace(i"reduce match type $this $hashCode", matchTypes, show = true):
