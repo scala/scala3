@@ -5100,7 +5100,7 @@ object Types extends TypeUtils {
     def underlying(using Context): Type = bound
 
     private var myReduced: Type | Null = null
-    private var reductionContext: util.MutableMap[Type, Type] = uninitialized
+    private var reductionContext: util.MutableMap[Type, Type] | Null = null
 
     override def tryNormalize(using Context): Type =
       try
@@ -5124,10 +5124,6 @@ object Types extends TypeUtils {
         case tp: TypeVar =>
           tp.underlying
       }
-
-      def isUpToDate: Boolean =
-        reductionContext.keysIterator.forall: tp =>
-          reductionContext(tp) `eq` contextInfo(tp)
 
       def setReductionContext(): Unit =
         new TypeTraverser:
@@ -5159,33 +5155,36 @@ object Types extends TypeUtils {
           cases.foreach(traverse)
           reductionContext = util.HashMap()
           for tp <- footprint do
-            reductionContext(tp) = contextInfo(tp)
+            reductionContext.nn(tp) = contextInfo(tp)
           matchTypes.println(i"footprint for $thisMatchType $hashCode: ${footprint.toList.map(x => (x, contextInfo(x)))}%, %")
       end setReductionContext
+
+      def changedReductionContext(): Boolean =
+        val isUpToDate = reductionContext != null && reductionContext.nn.iterator.forall(contextInfo(_) `eq` _)
+        if !isUpToDate then setReductionContext()
+        !isUpToDate
 
       record("MatchType.reduce called")
       if !Config.cacheMatchReduced
           || myReduced == null
-          || !isUpToDate
+          || changedReductionContext()
           || MatchTypeTrace.isRecording
       then
         record("MatchType.reduce computed")
         if (myReduced != null) record("MatchType.reduce cache miss")
-        myReduced =
-          trace(i"reduce match type $this $hashCode", matchTypes, show = true):
+        val saved = ctx.typerState.snapshot()
+        try
+          myReduced = trace(i"reduce match type $this $hashCode", matchTypes, show = true):
             withMode(Mode.Type):
-              setReductionContext()
-              def matchCases(cmp: MatchReducer): Type =
-                val saved = ctx.typerState.snapshot()
-                try
-                  cmp.matchCases(scrutinee.normalized, cases.map(MatchTypeCaseSpec.analyze(_)))
-                catch case ex: Throwable =>
-                  handleRecursive("reduce type ", i"$scrutinee match ...", ex)
-                finally
-                  ctx.typerState.resetTo(saved)
-                    // this drops caseLambdas in constraint and undoes any typevar
-                    // instantiations during matchtype reduction
-              TypeComparer.reduceMatchWith(matchCases)
+              TypeComparer.reduceMatchWith: cmp =>
+                cmp.matchCases(scrutinee.normalized, cases.map(MatchTypeCaseSpec.analyze))
+        catch case ex: Throwable =>
+          myReduced = NoType
+          handleRecursive("reduce type ", i"$scrutinee match ...", ex)
+        finally
+          ctx.typerState.resetTo(saved)
+          // this drops caseLambdas in constraint and undoes any typevar
+          // instantiations during matchtype reduction
 
       //else println(i"no change for $this $hashCode / $myReduced")
       myReduced.nn
@@ -5193,10 +5192,9 @@ object Types extends TypeUtils {
 
     /** True if the reduction uses GADT constraints. */
     def reducesUsingGadt(using Context): Boolean =
-      (reductionContext ne null) && reductionContext.keysIterator.exists {
-        case tp: TypeRef => reductionContext(tp).exists
-        case _           => false
-      }
+      reductionContext != null && reductionContext.nn.iterator.exists:
+        case (tp: TypeRef, tpCtx) => tpCtx.exists
+        case _ => false
 
     override def computeHash(bs: Binders): Int = doHash(bs, scrutinee, bound :: cases)
 
