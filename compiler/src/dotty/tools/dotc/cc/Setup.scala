@@ -407,8 +407,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
         case tree @ TypeApply(fn, args) =>
           traverse(fn)
-          for case arg: TypeTree <- args do
-            transformTT(arg, boxed = true, exact = false) // type arguments in type applications are boxed
+          fn match
+            case Select(qual, nme.asInstanceOf_) =>
+              // No need to box type arguments of an asInstanceOf call. See #20224.
+            case _ =>
+              for case arg: TypeTree <- args do
+                transformTT(arg, boxed = true, exact = false) // type arguments in type applications are boxed
 
         case tree: TypeDef if tree.symbol.isClass =>
           inContext(ctx.withOwner(tree.symbol)):
