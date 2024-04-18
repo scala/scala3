@@ -5124,6 +5124,7 @@ object Types extends TypeUtils {
       }
 
       def isUpToDate: Boolean =
+        (reductionContext ne null) &&
         reductionContext.keysIterator.forall: tp =>
           reductionContext(tp) `eq` contextInfo(tp)
 
@@ -5169,10 +5170,10 @@ object Types extends TypeUtils {
       then
         record("MatchType.reduce computed")
         if (myReduced != null) record("MatchType.reduce cache miss")
+        if !isUpToDate then setReductionContext()
         myReduced =
           trace(i"reduce match type $this $hashCode", matchTypes, show = true):
             withMode(Mode.Type):
-              setReductionContext()
               TypeComparer.reduceMatchWith: cmp =>
                 val saved = ctx.typerState.snapshot()
                 try
