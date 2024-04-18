@@ -5098,7 +5098,7 @@ object Types extends TypeUtils {
     def underlying(using Context): Type = bound
 
     private var myReduced: Type | Null = null
-    private var reductionContext: util.MutableMap[Type, Type] = uninitialized
+    private var reductionContext: util.MutableMap[Type, Type] | Null = null
 
     override def tryNormalize(using Context): Type =
       try
@@ -5153,15 +5153,12 @@ object Types extends TypeUtils {
           cases.foreach(traverse)
           reductionContext = util.HashMap()
           for tp <- footprint do
-            reductionContext(tp) = contextInfo(tp)
+            reductionContext.nn(tp) = contextInfo(tp)
           matchTypes.println(i"footprint for $thisMatchType $hashCode: ${footprint.toList.map(x => (x, contextInfo(x)))}%, %")
       end setReductionContext
 
       def changedReductionContext(): Boolean =
-        val isUpToDate =
-          (reductionContext ne null) &&
-          reductionContext.keysIterator.forall: tp =>
-            reductionContext(tp) `eq` contextInfo(tp)
+        val isUpToDate = reductionContext != null && reductionContext.nn.iterator.forall(contextInfo(_) `eq` _)
         if !isUpToDate then setReductionContext()
         !isUpToDate
 
@@ -5193,10 +5190,9 @@ object Types extends TypeUtils {
 
     /** True if the reduction uses GADT constraints. */
     def reducesUsingGadt(using Context): Boolean =
-      (reductionContext ne null) && reductionContext.keysIterator.exists {
-        case tp: TypeRef => reductionContext(tp).exists
-        case _           => false
-      }
+      reductionContext != null && reductionContext.nn.iterator.exists:
+        case (tp: TypeRef, tpCtx) => tpCtx.exists
+        case _ => false
 
     override def computeHash(bs: Binders): Int = doHash(bs, scrutinee, bound :: cases)
 
