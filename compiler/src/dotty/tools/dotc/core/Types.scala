@@ -5171,20 +5171,19 @@ object Types extends TypeUtils {
         record("MatchType.reduce computed")
         if (myReduced != null) record("MatchType.reduce cache miss")
         if !isUpToDate then setReductionContext()
-        myReduced =
-          trace(i"reduce match type $this $hashCode", matchTypes, show = true):
+        val saved = ctx.typerState.snapshot()
+        try
+          myReduced = trace(i"reduce match type $this $hashCode", matchTypes, show = true):
             withMode(Mode.Type):
               TypeComparer.reduceMatchWith: cmp =>
-                val saved = ctx.typerState.snapshot()
-                try
-                  cmp.matchCases(scrutinee.normalized, cases.map(MatchTypeCaseSpec.analyze))
-                catch case ex: Throwable =>
-                  myReduced = NoType
-                  handleRecursive("reduce type ", i"$scrutinee match ...", ex)
-                finally
-                  ctx.typerState.resetTo(saved)
-                    // this drops caseLambdas in constraint and undoes any typevar
-                    // instantiations during matchtype reduction
+                cmp.matchCases(scrutinee.normalized, cases.map(MatchTypeCaseSpec.analyze))
+        catch case ex: Throwable =>
+          myReduced = NoType
+          handleRecursive("reduce type ", i"$scrutinee match ...", ex)
+        finally
+          ctx.typerState.resetTo(saved)
+          // this drops caseLambdas in constraint and undoes any typevar
+          // instantiations during matchtype reduction
 
       //else println(i"no change for $this $hashCode / $myReduced")
       myReduced.nn
