@@ -2991,7 +2991,7 @@ object Types extends TypeUtils {
      */
     override def isTrackableRef(using Context) =
       ((prefix eq NoPrefix)
-      || symbol.is(ParamAccessor) && (prefix eq symbol.owner.thisType)
+      || symbol.is(ParamAccessor) && prefix.isThisTypeOf(symbol.owner)
       || isRootCapability
       ) && !symbol.isOneOf(UnstableValueFlags)
 
