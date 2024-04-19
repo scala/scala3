@@ -705,10 +705,16 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
             """Quote with type should not be pickled.
               |Quote with type should only exists after staging phase at staging level 0.""".stripMargin)
           writeByte(QUOTE)
-          pickleTree(body)
+          withLength {
+            pickleTree(body)
+            pickleType(tree.bodyType)
+          }
         case Splice(expr) =>
           writeByte(SPLICE)
-          pickleTree(expr)
+          withLength {
+            pickleTree(expr)
+            pickleType(tree.tpe)
+          }
         case QuotePattern(bindings, body, quotes)  =>
           writeByte(QUOTEPATTERN)
           withLength {

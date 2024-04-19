@@ -110,8 +110,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   WHILE          Length cond_Term body_Term                        -- while cond do body
                   REPEATED       Length elem_Type elem_Term*                       -- Varargs argument of type `elem`
                   SELECTouter    Length levels_Nat qual_Term underlying_Type       -- Follow `levels` outer links, starting from `qual`, with given `underlying` type
-                  QUOTE                 body_Term                                  -- Quoted expression `'{ body }`
-                  SPLICE                expr_Term                                  -- Spliced expression `${ expr }`
+                  QUOTE          Length body_Term bodyTpe_Type                     -- Quoted expression `'{ body }` of a body typed as `bodyTpe`
+                  SPLICE         Length expr_Term tpe_Type                         -- Spliced expression `${ expr }` typed as `tpe`
                   SPLICEPATTEN   Length pat_Term tpe_Type args_Term*               -- Pattern splice `${pat}` or `$pat(args*)` in a quoted pattern of type `tpe`
     -- patterns:
                   BIND           Length boundName_NameRef patType_Type pat_Term    -- name @ pat, wherev `patType` is the type of the bound symbol
@@ -547,8 +547,6 @@ object TastyFormat {
   final val BOUNDED = 102
   final val EXPLICITtpt = 103
   final val ELIDED = 104
-  final val QUOTE = 105
-  final val SPLICE = 106
 
   // Tree Cat. 4:    tag Nat AST
   final val firstNatASTTreeTag = IDENT
@@ -615,10 +613,12 @@ object TastyFormat {
   final val TYPEREFin = 175
   final val SELECTin = 176
   final val EXPORT = 177
-  final val QUOTEPATTERN = 178
-  final val SPLICEPATTERN = 179
+  final val QUOTE = 178
+  final val SPLICE = 179
   final val METHODtype = 180
   final val APPLYsigpoly = 181
+  final val QUOTEPATTERN = 182
+  final val SPLICEPATTERN = 183
 
   final val MATCHtype = 190
   final val MATCHtpt = 191

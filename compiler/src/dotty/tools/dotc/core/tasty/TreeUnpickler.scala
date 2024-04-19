@@ -1314,10 +1314,6 @@ class TreeUnpickler(reader: TastyReader,
           NamedArg(readName(), readTree())
         case EXPLICITtpt =>
           readTpt()
-        case QUOTE =>
-          Quote(readTree(), Nil)
-        case SPLICE =>
-          Splice(readTree())
         case _ =>
           readPathTree()
       }
@@ -1555,6 +1551,10 @@ class TreeUnpickler(reader: TastyReader,
               val hi = if currentAddr == end then lo else readTpt()
               val alias = if currentAddr == end then EmptyTree else readTpt()
               createNullableTypeBoundsTree(lo, hi, alias)
+            case QUOTE =>
+              Quote(readTree(), Nil).withBodyType(readType())
+            case SPLICE =>
+              Splice(readTree()).withType(readType())
             case QUOTEPATTERN =>
               val bodyReader = fork
               skipTree()
