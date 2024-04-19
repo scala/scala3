@@ -135,5 +135,14 @@ class TypeUtils {
       case _ =>
         val cls = self.underlyingClassRef(refinementOK = false).typeSymbol
         cls.isTransparentClass && (!traitOnly || cls.is(Trait))
+
+    /** Is this type the ThisType of class `cls?`. Note we can't use `self eq cls.thisType` for this,
+     *  since ThisTypes take TermRef parameters and semantically equal TermRefs could have different
+     *  forms (for instance one could use as a prefix the ThisType of an enclosing static module or package,
+     *  and the other could select it from something further out)
+     */
+    def isThisTypeOf(cls: Symbol)(using Context) = self match
+      case self: Types.ThisType => self.cls == cls
+      case _ => false
   }
 }
