@@ -369,12 +369,16 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   def setupTraverser(recheckDef: DefRecheck) = new TreeTraverserWithPreciseImportContexts:
 
     def transformResultType(tpt: TypeTree, sym: Symbol)(using Context): Unit =
-      transformTT(tpt,
-          boxed = !ccConfig.allowUniversalInBoxed && sym.is(Mutable, butNot = Method),
-            // types of mutable variables are boxed in pre 3.3 codee
-          exact = sym.allOverriddenSymbols.hasNext,
-            // types of symbols that override a parent don't get a capture set TODO drop
-        )
+      try
+        transformTT(tpt,
+            boxed = !ccConfig.allowUniversalInBoxed && sym.is(Mutable, butNot = Method),
+              // types of mutable variables are boxed in pre 3.3 codee
+            exact = sym.allOverriddenSymbols.hasNext,
+              // types of symbols that override a parent don't get a capture set TODO drop
+          )
+      catch case ex: IllegalCaptureRef =>
+        capt.println(i"fail while transforming result type $tpt of $sym")
+        throw ex
       val addDescription = new TypeTraverser:
         def traverse(tp: Type) = tp match
           case tp @ CapturingType(parent, refs) =>

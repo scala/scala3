@@ -237,7 +237,7 @@ class Inliner(val call: tpd.Tree)(using Context):
       if bindingFlags.is(Inline) && argIsBottom then
         newArg = Typed(newArg, TypeTree(formal.widenExpr)) // type ascribe RHS to avoid type errors in expansion. See i8612.scala
       if isByName then DefDef(boundSym, newArg)
-      else ValDef(boundSym, newArg)
+      else ValDef(boundSym, newArg, inferred = true)
     }.withSpan(boundSym.span)
     inlining.println(i"parameter binding: $binding, $argIsBottom")
     buf += binding
@@ -319,7 +319,7 @@ class Inliner(val call: tpd.Tree)(using Context):
             else pre
 
       val binding = accountForOpaques(
-        ValDef(selfSym.asTerm, QuoteUtils.changeOwnerOfTree(rhs, selfSym)).withSpan(selfSym.span))
+        ValDef(selfSym.asTerm, QuoteUtils.changeOwnerOfTree(rhs, selfSym), inferred = true).withSpan(selfSym.span))
       bindingsBuf += binding
       inlining.println(i"proxy at $level: $selfSym = ${bindingsBuf.last}")
       lastSelf = selfSym
@@ -368,7 +368,7 @@ class Inliner(val call: tpd.Tree)(using Context):
               RefinedType(parent, refinement._1, TypeAlias(refinement._2))
             )
             val refiningSym = newSym(InlineBinderName.fresh(), Synthetic, refinedType).asTerm
-            val refiningDef = ValDef(refiningSym, tpd.ref(ref).cast(refinedType)).withSpan(span)
+            val refiningDef = ValDef(refiningSym, tpd.ref(ref).cast(refinedType), inferred = true).withSpan(span)
             inlining.println(i"add opaque alias proxy $refiningDef for $ref in $tp")
             bindingsBuf += refiningDef
             opaqueProxies += ((ref, refiningSym.termRef))
