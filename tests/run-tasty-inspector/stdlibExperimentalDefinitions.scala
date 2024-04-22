@@ -51,9 +51,7 @@ val experimentalDefinitionInLibrary = Set(
   "scala.annotation.init$.widen",
   "scala.annotation.init$.region",
 
-   //// New APIs: Quotes
-  // Can be stabilized in 3.5.0 or later
-  "scala.quoted.Quotes.reflectModule.SymbolMethods.isSuperAccessor",
+  //// New APIs: Quotes
   // Can be stabilized in 3.5.0 (unsure) or later
   "scala.quoted.Quotes.reflectModule.CompilationInfoModule.XmacroSettings",
   // Cant be stabilized yet.

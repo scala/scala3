@@ -48,7 +48,10 @@ object MiMaFilters {
       // Only exceptional cases should be added here.
 
       // Breaking changes since last reference version
-      Build.mimaPreviousDottyVersion -> Seq.empty, // We should never break backwards compatibility
+      Build.mimaPreviousDottyVersion -> // Seq.empty, // We should never break backwards compatibility
+        Seq(
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SymbolMethods.isSuperAccessor"), // This change is acceptable. See comment in `Breaking changes since last LTS`.
+        ),
 
       // Breaking changes since last LTS
       Build.mimaPreviousLTSDottyVersion -> Seq(
