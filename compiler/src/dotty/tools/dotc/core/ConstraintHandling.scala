@@ -327,7 +327,7 @@ trait ConstraintHandling {
         (c1 eq constraint)
         || {
           constraint = c1
-          val TypeBounds(lo, hi) = constraint.entry(param): @unchecked
+          val TypeBounds(lo, hi) = constraint.nonParamBounds(param)
           isSub(lo, hi)
         }
   end addOneBound

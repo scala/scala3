@@ -104,6 +104,18 @@ object OrderingConstraint {
     def updateEntries(c: OrderingConstraint, poly: TypeLambda, entries: Array[Type])(using Context): OrderingConstraint =
       c.newConstraint(boundsMap = c.boundsMap.updated(poly, entries))
     def initial = NoType
+
+    override def update(prev: OrderingConstraint, current: OrderingConstraint,
+        poly: TypeLambda, idx: Int, entry: Type)(using Context): OrderingConstraint =
+      entry match
+        case TypeBounds(lo, hi) if lo eq hi =>
+          val replaceParams = new TypeMap:
+            def apply(tp: Type): Type = tp match
+              case tp: TypeParamRef => current.typeVarOfParam(tp)
+              case _ => mapOver(tp)
+          super.update(prev, current, poly, idx, replaceParams(hi))
+        case _ =>
+          super.update(prev, current, poly, idx, entry)
   }
 
   private val lowerLens: ConstraintLens[List[TypeParamRef]] = new ConstraintLens[List[TypeParamRef]] {
@@ -483,7 +495,10 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     case param: TypeParamRef if contains(param) =>
       todos += (if isUpper then order(_, _, param) else order(_, param, _))
       NoType
-    case tp: TypeBounds =>
+    case tp: TypeBounds if tp.lo ne tp.hi =>
+      // IMPROVE
+      //  - pass current ? or
+      //  - do opt in add too
       val lo1 = stripParams(tp.lo, todos, !isUpper).orElse(defn.NothingType)
       val hi1 = stripParams(tp.hi, todos, isUpper).orElse(tp.topType)
       tp.derivedTypeBounds(lo1, hi1)
