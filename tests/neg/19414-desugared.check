@@ -1,0 +1,4 @@
+-- [E172] Type Error: tests/neg/19414-desugared.scala:22:34 ------------------------------------------------------------
+22 |  summon[BodySerializer[JsObject]] // error: Ambiguous given instances
+   |                                  ^
+   |Ambiguous given instances: both given instance given_Writer_JsValue and given instance given_Writer_JsObject match type Writer[B] of parameter writer of given instance given_BodySerializer_B
