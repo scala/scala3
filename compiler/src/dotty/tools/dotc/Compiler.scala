@@ -67,6 +67,7 @@ class Compiler {
          new CookComments,           // Cook the comments: expand variables, doc, etc.
          new CheckLoopingImplicits,  // Check that implicit defs do not call themselves in an infinite loop
          new BetaReduce,             // Reduce closure applications
+         new Devirtualize,           // Devirtualize method calls
          new InlineVals,             // Check right hand-sides of an `inline val`s
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new ElimRepeated,           // Rewrite vararg parameters and arguments
