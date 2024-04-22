@@ -3626,7 +3626,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   private def adapt1(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree = {
     assert(pt.exists && !pt.isInstanceOf[ExprType] || ctx.reporter.errorsReported, i"tree: $tree, pt: $pt")
-    def methodStr = err.refStr(methPart(tree).tpe)
 
     def readapt(tree: Tree)(using Context) = adapt(tree, pt, locked)
     def readaptSimplified(tree: Tree)(using Context) = readapt(simplify(tree, pt, locked))
@@ -3803,49 +3802,38 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 arg :: inferArgsAfter(arg)
         end implicitArgs
 
-        val args = implicitArgs(wtp.paramInfos, 0, pt)
-
-        def propagatedFailure(args: List[Tree]): Type = args match {
-          case arg :: args1 =>
-            arg.tpe match {
-              case ambi: AmbiguousImplicits =>
-                propagatedFailure(args1) match {
-                  case NoType | (_: AmbiguousImplicits) => ambi
-                  case failed => failed
-                }
-              case failed: SearchFailureType => failed
-              case _ => propagatedFailure(args1)
-            }
-          case Nil => NoType
-        }
-
-        val propFail = propagatedFailure(args)
-
-        def issueErrors(): Tree = {
-          def paramSymWithMethodTree(paramName: TermName) =
-            if tree.symbol.exists then
-              tree.symbol.paramSymss.flatten
-                .map(sym => sym.name -> sym)
-                .toMap
-                .get(paramName)
-                .map((_, tree))
-            else
-              None
-
-          wtp.paramNames.lazyZip(wtp.paramInfos).lazyZip(args).foreach { (paramName, formal, arg) =>
-            arg.tpe match {
+        /** Reports errors for arguments of `appTree` that have a
+          * `SearchFailureType`, recursively traversing arguments that are
+          * themselves applications. `mt` must be the type of `appTree.fun`.
+          */
+        def reportErrors(appTree: Apply, mt: MethodType): Unit =
+          val Apply(fun, args) = appTree
+          for (paramName, formal, arg) <- mt.paramNames.lazyZip(mt.paramInfos).lazyZip(args) do
+            arg.tpe match
               case failure: SearchFailureType =>
-                report.error(
-                  missingArgMsg(arg, formal, implicitParamString(paramName, methodStr, tree), paramSymWithMethodTree(paramName)),
-                  tree.srcPos.endPos
-                )
-              case _ =>
-            }
-          }
-          untpd.Apply(tree, args).withType(propFail)
-        }
+                arg match
+                  case childAppTree: Apply =>
+                    childAppTree.fun.tpe.widen match
+                      case childMt: MethodType => reportErrors(childAppTree, childMt)
+                      case _ => ()
+                  case _ => ()
 
-        if (propFail.exists) {
+                val methodStr = err.refStr(methPart(fun).tpe)
+                val paramStr = implicitParamString(paramName, methodStr, fun)
+                val paramSymWithMethodCallTree =
+                  fun.symbol.paramSymss.flatten
+                    .find(_.name == paramName)
+                    .map((_, appTree))
+                val message = missingArgMsg(arg, formal, paramStr, paramSymWithMethodCallTree)
+                // Note: if the same error type appears on several trees, we
+                // might report it several times, but this is not a problem
+                // because only the first one will be displayed. We traverse in
+                // post-order, so that the most detailed message gets displayed.
+                report.error(message, fun.srcPos.endPos)
+              case _ => ()
+
+        val args = implicitArgs(wtp.paramInfos, 0, pt)
+        if (args.tpes.exists(_.isInstanceOf[SearchFailureType])) {
           // If there are several arguments, some arguments might already
           // have influenced the context, binding variables, but later ones
           // might fail. In that case the constraint and instantiated variables
@@ -3854,15 +3842,36 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
           // If method has default params, fall back to regular application
           // where all inferred implicits are passed as named args.
-          if hasDefaultParams && !propFail.isInstanceOf[AmbiguousImplicits] then
-            val namedArgs = wtp.paramNames.lazyZip(args).flatMap { (pname, arg) =>
-              if (arg.tpe.isError) Nil else untpd.NamedArg(pname, untpd.TypedSplice(arg)) :: Nil
-            }
+          if hasDefaultParams then
+            // Only keep the arguments that don't have an error type, or that
+            // have an `AmbiguousImplicits` error type. The later ensures that a
+            // default argument can't override an ambiguous implicit. See tests
+            // `given-ambiguous-default*` and `19414*`.
+            val namedArgs =
+              wtp.paramNames.lazyZip(args)
+                .filter((_, arg) => !arg.tpe.isError || arg.tpe.isInstanceOf[AmbiguousImplicits])
+                .map((pname, arg) => untpd.NamedArg(pname, untpd.TypedSplice(arg)))
+
             val app = cpy.Apply(tree)(untpd.TypedSplice(tree), namedArgs)
             if (wtp.isContextualMethod) app.setApplyKind(ApplyKind.Using)
             typr.println(i"try with default implicit args $app")
-            typed(app, pt, locked)
-          else issueErrors()
+            val retyped = typed(app, pt, locked)
+
+            // If the retyped tree still has an error type and is an `Apply`
+            // node, we can report the errors for each argument nicely.
+            // Otherwise, we don't report anything here.
+            retyped match
+              case retyped: Apply if retyped.tpe.isError => reportErrors(retyped, wtp)
+              case _ => ()
+
+            retyped
+          else
+            val firstNonAmbiguous = args.tpes.find(tp => tp.isError && !tp.isInstanceOf[AmbiguousImplicits])
+            def firstError = args.tpes.find(_.isError)
+            val errorType = firstNonAmbiguous.orElse(firstError).getOrElse(NoType)
+            val res = untpd.Apply(tree, args).withType(errorType)
+            reportErrors(res, wtp)
+            res
         }
         else tree match {
           case tree: Block =>

@@ -4,13 +4,10 @@
    |          No given instance of type => Monad[F] was found for parameter ev of method blaMonad in object Test.
    |          I found:
    |
-   |              Test.blaMonad[F², S](Test.blaMonad[F³, S²])
+   |              Test.blaMonad[F², S]
    |
-   |          But method blaMonad in object Test does not match type => Monad[F²]
+   |          But method blaMonad in object Test does not match type => Monad[F]
    |
    |          where:    F  is a type variable with constraint <: [_] =>> Any
    |                    F² is a type variable with constraint <: [_] =>> Any
-   |                    F³ is a type variable with constraint <: [_] =>> Any
-   |                    S  is a type variable
-   |                    S² is a type variable
    |          .
