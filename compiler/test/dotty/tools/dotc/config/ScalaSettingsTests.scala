@@ -13,6 +13,8 @@ import java.net.URI
 import java.nio.file.Files
 import scala.util.Using
 
+import scala.annotation.nowarn
+
 class ScalaSettingsTests:
 
   @Test def `A setting with aliases is accepted`: Unit =
@@ -88,7 +90,8 @@ class ScalaSettingsTests:
     val nowr = new Diagnostic.Warning("This is a problem.".toMessage, util.NoSourcePosition)
     assertEquals(Action.Silent, sut.action(nowr))
 
-  @Test def `Lifted options are correctly mapped to their replacements`: Unit =
+  @nowarn("cat=deprecation")
+  @Test def `Deprecated options are correctly mapped to their replacements`: Unit =
     def createTestCase(oldSetting: Setting[_], newSetting: Setting[_], value: String = "") =
       s"${oldSetting.name}$value" -> newSetting
 
@@ -109,13 +112,44 @@ class ScalaSettingsTests:
       createTestCase(settings.YearlyTastyOutput     , settings.XearlyTastyOutput, ":./"),
       createTestCase(settings.YallowOutlineFromTasty, settings.XallowOutlineFromTasty),
       createTestCase(settings.YcheckInit            , settings.WcheckInit),
+      createTestCase(settings.Xlint                 , settings.Wshadow, ":all"),
     ).map: (deprecatedArgument, newSetting) =>
       val args = List(deprecatedArgument)
       val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
       val conf = settings.processArguments(argSummary, processAll = true, skipped = Nil)
       assert(!newSetting.isDefaultIn(conf.sstate), s"Setting $deprecatedArgument was not forwarded to ${newSetting.name}")
 
-  @Test def `Lifted options aliases are correctly mapped to their replacements`: Unit =
+  @nowarn("cat=deprecation")
+  @Test def `Deprecated options should not be set if old option was incorrect`: Unit =
+    def createTestCase(oldSetting: Setting[_], newSetting: Setting[_], value: String = ":illegal") =
+      s"${oldSetting.name}:$value" -> newSetting
+
+    val settings = ScalaSettings
+    List(
+      createTestCase(settings.YtermConflict         , settings.XtermConflict),
+      createTestCase(settings.YnoGenericSig         , settings.XnoGenericSig),
+      createTestCase(settings.Ydumpclasses          , settings.Xdumpclasses, ""),
+      createTestCase(settings.YjarCompressionLevel  , settings.XjarCompressionLevel),
+      createTestCase(settings.YkindProjector        , settings.XkindProjector),
+      createTestCase(settings.YdropComments         , settings.XdropComments),
+      createTestCase(settings.YcookComments         , settings.XcookComments),
+      createTestCase(settings.YreadComments         , settings.XreadComments),
+      createTestCase(settings.YnoDecodeStacktraces  , settings.XnoDecodeStacktraces),
+      createTestCase(settings.YnoEnrichErrorMessages, settings.XnoEnrichErrorMessages),
+      createTestCase(settings.YdebugMacros          , settings.XdebugMacros),
+      createTestCase(settings.YjavaTasty            , settings.XjavaTasty),
+      createTestCase(settings.YearlyTastyOutput     , settings.XearlyTastyOutput),
+      createTestCase(settings.YallowOutlineFromTasty, settings.XallowOutlineFromTasty),
+      createTestCase(settings.YcheckInit            , settings.WcheckInit),
+      createTestCase(settings.Xlint                 , settings.Wshadow),
+    ).map: (deprecatedArgument, newSetting) =>
+      val args = List(deprecatedArgument)
+      val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
+      val conf = settings.processArguments(argSummary, processAll = true, skipped = Nil)
+      assert(newSetting.isDefaultIn(conf.sstate), s"Setting $deprecatedArgument was forwarded to ${newSetting.name}, when it should be ignored because first option was erroreus")
+
+  @nowarn("cat=deprecation")
+  @Test def `Deprecated options aliases are correctly mapped to their replacements`: Unit =
     def createTestCase(oldSetting: Setting[_], newSetting: Setting[_], value: String = "") =
       oldSetting.aliases.map: alias =>
         s"$alias$value" -> newSetting
@@ -137,6 +171,7 @@ class ScalaSettingsTests:
       createTestCase(settings.YearlyTastyOutput     , settings.XearlyTastyOutput, ":./"),
       createTestCase(settings.YallowOutlineFromTasty, settings.XallowOutlineFromTasty),
       createTestCase(settings.YcheckInit            , settings.WcheckInit),
+      createTestCase(settings.Xlint                 , settings.Wshadow, ":all"),
     ).flatten.map: (deprecatedArgument, newSetting) =>
       val args = List(deprecatedArgument)
       val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)

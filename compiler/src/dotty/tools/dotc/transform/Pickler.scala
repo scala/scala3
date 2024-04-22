@@ -131,7 +131,7 @@ object Pickler {
      * that API and Dependency phases are complete.
      */
     def init(using Context, ExecutionContext): AsyncTastyHolder =
-      AsyncTastyHolder(ctx.settings.YearlyTastyOutput.value, ctx.incCallback)
+      AsyncTastyHolder(ctx.settings.XearlyTastyOutput.value, ctx.incCallback)
 
 
   /** Asynchronously writes TASTy files to the destination -Yearly-tasty-output.

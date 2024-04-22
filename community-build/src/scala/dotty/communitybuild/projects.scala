@@ -503,7 +503,7 @@ object projects:
     project        = "verify",
     sbtTestCommand = "verifyJVM/test",
     sbtDocCommand = "verifyJVM/doc",
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros") // TODO enable -Xcheck-macros
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(flag != "-Xcheck-macros" && flag != "-Xlint") // TODO enable -Xcheck-macros, wrong flag -Xlint
   )
 
   lazy val discipline = SbtCommunityProject(
