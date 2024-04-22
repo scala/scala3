@@ -112,7 +112,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   SELECTouter    Length levels_Nat qual_Term underlying_Type       -- Follow `levels` outer links, starting from `qual`, with given `underlying` type
                   QUOTE          Length body_Term bodyTpe_Type                     -- Quoted expression `'{ body }` of a body typed as `bodyTpe`
                   SPLICE         Length expr_Term tpe_Type                         -- Spliced expression `${ expr }` typed as `tpe`
-                  SPLICEPATTEN   Length pat_Term tpe_Type args_Term*               -- Pattern splice `${pat}` or `$pat(args*)` in a quoted pattern of type `tpe`
+                  SPLICEPATTEN   Length pat_Term tpe_Type targs_Type* args_Term*   -- Pattern splice `${pat}` or `$pat[targs*](args*)` in a quoted pattern of type `tpe`.
     -- patterns:
                   BIND           Length boundName_NameRef patType_Type pat_Term    -- name @ pat, wherev `patType` is the type of the bound symbol
                   ALTERNATIVE    Length alt_Term*                                  -- alt1 | ... | altn   as a pattern

@@ -725,10 +725,14 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
             bindings.foreach(pickleTree)
           }
         case SplicePattern(pat, args) =>
+          val targs = Nil // SplicePattern `targs` will be added with #18271
           writeByte(SPLICEPATTERN)
           withLength {
             pickleTree(pat)
             pickleType(tree.tpe)
+            for targ <- targs do
+              writeByte(EXPLICITtpt)
+              pickleTree(targ)
             args.foreach(pickleTree)
           }
         case Hole(_, idx, args, _) =>
