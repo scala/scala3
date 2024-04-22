@@ -21,6 +21,9 @@ call :args %*
 
 call :compilerJavaClasspathArgs
 
+@rem we need to escape % in the java command path, for some reason this doesnt work in common.bat
+set "_JAVACMD=!_JAVACMD:%%=%%%%!"
+
 call "%_JAVACMD%" %_JAVA_ARGS% -classpath "%_JVM_CP_ARGS%" "-Dscala.usejavacp=true" "-Dscala.home=%_PROG_HOME%" dotty.tools.MainGenericCompiler %_SCALA_ARGS%
 if not %ERRORLEVEL%==0 (
     set _EXITCODE=1

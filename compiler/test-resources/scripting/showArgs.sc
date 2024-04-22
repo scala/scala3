@@ -1,4 +1,4 @@
-#!/usr/bin/env scala
+#!/usr/bin/env bin/scala
 
 // precise output format expected by BashScriptsTests.scala
 def main(args: Array[String]): Unit =

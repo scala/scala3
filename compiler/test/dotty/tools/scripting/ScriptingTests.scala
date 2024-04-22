@@ -47,7 +47,10 @@ class ScriptingTests:
    */
   @Test def scriptingMainTests =
     assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
-    for (scriptFile, scriptArgs) <- scalaFilesWithArgs(".sc") do
+    for
+      (scriptFile, scriptArgs) <- scalaFilesWithArgs(".sc")
+      if !scriptFile.getName().endsWith("Nu.sc")
+    do
       showScriptUnderTest(scriptFile)
       val unexpectedJar = script2jar(scriptFile)
       unexpectedJar.delete
@@ -66,7 +69,10 @@ class ScriptingTests:
    */
   @Test def scriptingJarTest =
     assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
-    for (scriptFile, scriptArgs) <- scalaFilesWithArgs(".sc") do
+    for
+      (scriptFile, scriptArgs) <- scalaFilesWithArgs(".sc")
+      if !scriptFile.getName().endsWith("Nu.sc")
+    do
       showScriptUnderTest(scriptFile)
       val expectedJar = script2jar(scriptFile)
       expectedJar.delete

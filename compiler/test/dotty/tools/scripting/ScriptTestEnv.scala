@@ -125,8 +125,21 @@ object ScriptTestEnv {
 
 
   def packBinDir = "dist/target/pack/bin"
-  def packLibDir = "dist/target/pack/lib"
+  // def packLibDir = "dist/target/pack/lib" // replaced by packMavenDir
+  def packMavenDir = "dist/target/pack/maven2"
+  def packVersionFile = "dist/target/pack/VERSION"
   def packBinScalaExists: Boolean = Files.exists(Paths.get(s"$packBinDir/scala"))
+
+  def packScalaVersion: String = {
+    val versionFile = Paths.get(packVersionFile)
+    if Files.exists(versionFile) then
+      val lines = Files.readAllLines(versionFile).asScala
+      lines.find { _.startsWith("version:=") } match
+        case Some(line) => line.drop(9)
+        case None => sys.error(s"no version:= found in $packVersionFile")
+    else
+      sys.error(s"no $packVersionFile found")
+  }
 
   def listJars(dir: String): List[File] =
     val packlibDir = Paths.get(dir).toFile

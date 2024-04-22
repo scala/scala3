@@ -12,6 +12,8 @@ import pl.project13.scala.sbt.JmhPlugin
 import pl.project13.scala.sbt.JmhPlugin.JmhKeys.Jmh
 import sbt.Package.ManifestAttributes
 import sbt.PublishBinPlugin.autoImport._
+import dotty.tools.sbtplugin.RepublishPlugin
+import dotty.tools.sbtplugin.RepublishPlugin.autoImport._
 import sbt.plugins.SbtPlugin
 import sbt.ScriptedPlugin.autoImport._
 import xerial.sbt.pack.PackPlugin
@@ -26,6 +28,8 @@ import sbttastymima.TastyMiMaPlugin
 import sbttastymima.TastyMiMaPlugin.autoImport._
 
 import scala.util.Properties.isJavaAtLeast
+import scala.collection.mutable
+
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import org.scalajs.linker.interface.{ModuleInitializer, StandardConfig}
 
@@ -113,6 +117,9 @@ object Build {
    *  set to 3.3.0.
    */
   val mimaPreviousLTSDottyVersion = "3.3.0"
+
+  /** Version of Scala CLI to download */
+  val scalaCliLauncherVersion = "1.3.1"
 
   object CompatMode {
     final val BinaryCompatible = 0
@@ -2114,13 +2121,22 @@ object Build {
     packMain := Map(),
     publishArtifact := false,
     packGenerateMakefile := false,
-    packExpandedClasspath := true,
-    packArchiveName := "scala3-" + dottyVersion
+    packArchiveName := "scala3-" + dottyVersion,
+    republishRepo := target.value / "republish",
+    republishLaunchers := {
+      val cliV = scalaCliLauncherVersion
+      Seq(
+        ("scala-cli.jar", cliV, url(s"https://github.com/VirtusLab/scala-cli/releases/download/v$cliV/scala-cli.jar"))
+      )
+    },
+    Compile / pack := (Compile / pack).dependsOn(republish).value,
   )
 
   lazy val dist = project.asDist(Bootstrapped)
     .settings(
       packResourceDir += (baseDirectory.value / "bin" -> "bin"),
+      packResourceDir += (republishRepo.value / "maven2" -> "maven2"),
+      packResourceDir += (republishRepo.value / "etc" -> "etc"),
     )
 
   private def customMimaReportBinaryIssues(issueFilterLocation: String) = mimaReportBinaryIssues := {
@@ -2255,9 +2271,19 @@ object Build {
 
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(PackPlugin).
+      enablePlugins(RepublishPlugin).
       withCommonSettings.
-      dependsOn(`scala3-interfaces`, dottyCompiler, dottyLibrary, tastyCore, `scala3-staging`, `scala3-tasty-inspector`, scaladoc).
       settings(commonDistSettings).
+      dependsOn(
+        `scala3-interfaces`,
+        dottyCompiler,
+        dottyLibrary,
+        tastyCore,
+        `scala3-staging`,
+        `scala3-tasty-inspector`,
+        scaladoc,
+        `scala3-sbt-bridge`, // for scala-cli
+      ).
       bootstrappedSettings(
         target := baseDirectory.value / "target" // override setting in commonBootstrappedSettings
       )
