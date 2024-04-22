@@ -26,6 +26,9 @@ object ScalaSettingsProperties:
   def supportedSourceVersions: List[String] =
     SourceVersion.values.toList.map(_.toString)
 
+  def supportedLanguageFeatures: List[String] =
+    Feature.values.toList.map(_.toString)
+
   def defaultClasspath: String = sys.env.getOrElse("CLASSPATH", ".")
 
   def defaultPageWidth: Int = {

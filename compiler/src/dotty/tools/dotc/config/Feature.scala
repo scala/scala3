@@ -41,6 +41,15 @@ object Feature:
     defn.languageExperimentalFeatures
       .map(sym => experimental(sym.name))
       .filterNot(_ == captureChecking) // TODO is this correct?
+      
+  val values = List(
+    nme.help,
+    nme.noAutoTupling, nme.dynamics, nme.unsafeNulls, nme.postfixOps, nme.strictEquality,
+    nme.implicitConversions, nme.adhocExtensions,
+    namedTypeArguments, genericNumberLiterals, scala2macros,
+    dependent, erasedDefinitions, symbolLiterals, fewerBraces, saferExceptions,
+    clauseInterleaving, pureFunctions, captureChecking, into
+  )
 
   /** Is `feature` enabled by by a command-line setting? The enabling setting is
    *

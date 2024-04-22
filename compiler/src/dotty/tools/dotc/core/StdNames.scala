@@ -509,6 +509,7 @@ object StdNames {
     val _hashCode_ : N          = "_hashCode"
     val hash_ : N               = "hash"
     val head: N                 = "head"
+    val help: N                 = "help"
     val higherKinds: N          = "higherKinds"
     val idx: N                  = "idx"
     val identity: N             = "identity"
