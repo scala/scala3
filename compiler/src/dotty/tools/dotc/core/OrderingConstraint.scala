@@ -489,29 +489,27 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *  @param isUpper   If true, `bound` is an upper bound, else a lower bound.
    */
   private def stripParams(
+      current: OrderingConstraint,
       tp: Type,
       todos: mutable.ListBuffer[(OrderingConstraint, TypeParamRef) => OrderingConstraint],
       isUpper: Boolean)(using Context): Type = tp match {
-    case param: TypeParamRef if contains(param) =>
+    case param: TypeParamRef if current.contains(param) =>
       todos += (if isUpper then order(_, _, param) else order(_, param, _))
       NoType
-    case tp: TypeBounds if tp.lo ne tp.hi =>
-      // IMPROVE
-      //  - pass current ? or
-      //  - do opt in add too
-      val lo1 = stripParams(tp.lo, todos, !isUpper).orElse(defn.NothingType)
-      val hi1 = stripParams(tp.hi, todos, isUpper).orElse(tp.topType)
+    case tp: TypeBounds =>
+      val lo1 = stripParams(current, tp.lo, todos, !isUpper).orElse(defn.NothingType)
+      val hi1 = stripParams(current, tp.hi, todos, isUpper).orElse(tp.topType)
       tp.derivedTypeBounds(lo1, hi1)
     case tp: AndType if isUpper =>
-      val tp1 = stripParams(tp.tp1, todos, isUpper)
-      val tp2 = stripParams(tp.tp2, todos, isUpper)
+      val tp1 = stripParams(current, tp.tp1, todos, isUpper)
+      val tp2 = stripParams(current, tp.tp2, todos, isUpper)
       if (tp1.exists)
         if (tp2.exists) tp.derivedAndType(tp1, tp2)
         else tp1
       else tp2
     case tp: OrType if !isUpper =>
-      val tp1 = stripParams(tp.tp1, todos, isUpper)
-      val tp2 = stripParams(tp.tp2, todos, isUpper)
+      val tp1 = stripParams(current, tp.tp1, todos, isUpper)
+      val tp2 = stripParams(current, tp.tp2, todos, isUpper)
       if (tp1.exists)
         if (tp2.exists) tp.derivedOrType(tp1, tp2)
         else tp1
@@ -542,7 +540,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     while (i < poly.paramNames.length) {
       val param = poly.paramRefs(i)
       val bounds = dropWildcards(nonParamBounds(param))
-      val stripped = stripParams(bounds, todos, isUpper = true)
+      val stripped = stripParams(current, bounds, todos, isUpper = true)
       current = boundsLens.update(this, current, param, stripped)
       while todos.nonEmpty do
         current = todos.head(current, param)
