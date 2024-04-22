@@ -111,7 +111,7 @@ object OrderingConstraint {
         case TypeBounds(lo, hi) if lo eq hi =>
           val replaceParams = new TypeMap:
             def apply(tp: Type): Type = tp match
-              case tp: TypeParamRef => current.typeVarOfParam(tp)
+              case tp: TypeParamRef => current.typeVarOfParam(tp).orElse(tp)
               case _ => mapOver(tp)
           super.update(prev, current, poly, idx, replaceParams(hi))
         case _ =>
