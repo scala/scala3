@@ -1,19 +1,21 @@
--- Error: tests/neg-custom-args/captures/effect-swaps.scala:62:6 -------------------------------------------------------
-61 |    Result:
-62 |      Future: // error, escaping label from Result
-   |    ^
-   |local reference contextual$1 from (using contextual$1: boundary.Label[box Result[box Future[box T^?]^{fr, contextual$1, contextual$1}, box E^?]^?]^):
-   |  box Result[box Future[box T^?]^{fr, contextual$1, contextual$1}, box E^?]^? leaks into outer capture set of type parameter T of method apply in object boundary
-63 |        fr.await.ok
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps.scala:64:8 ----------------------------------
+63 |      Result:
+64 |        Future: // error, escaping label from Result
+   |      ^
+   |      Found:    Result.Ok[box Future[box T^?]^{fr, contextual$1}]
+   |      Required: Result[Future[T], Nothing]
+65 |          fr.await.ok
    |--------------------------------------------------------------------------------------------------------------------
    |Inline stack trace
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-   |This location contains code that was inlined from effect-swaps.scala:37
-37 |    boundary:
-   |    ^^^^^^^^
+   |This location contains code that was inlined from effect-swaps.scala:41
+41 |    boundary(Ok(body))
+   |             ^^^^^^^^
     --------------------------------------------------------------------------------------------------------------------
--- Error: tests/neg-custom-args/captures/effect-swaps.scala:66:11 ------------------------------------------------------
-66 |    Result.make: // error, escaping label from Result
-   |    ^^^^^^^^^^^
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/effect-swaps.scala:68:15 ------------------------------------------------------
+68 |        Result.make: //lbl ?=> // error, escaping label from Result
+   |        ^^^^^^^^^^^
    |local reference contextual$9 from (using contextual$9: boundary.Label[Result[box Future[box T^?]^{fr, contextual$9}, box E^?]]^):
    |  box Future[box T^?]^{fr, contextual$9} leaks into outer capture set of type parameter T of method make in object Result
