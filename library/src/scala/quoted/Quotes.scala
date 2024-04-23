@@ -211,6 +211,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *               +- MatchCase
    *               +- TypeBounds
    *               +- NoPrefix
+   * 
+   *  +- MethodTypeKind
    *
    *  +- Selector -+- SimpleSelector
    *               +- RenameSelector
@@ -3234,6 +3236,22 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `MethodOrPoly` */
     given MethodOrPolyTypeTest: TypeTest[TypeRepr, MethodOrPoly]
 
+    /** Type which decides on the kind of parameter list represented by `MethodType`. */
+    type MethodTypeKind
+
+    /** Module object of `type MethodKind`  */
+    val MethodTypeKind: MethodTypeKindModule
+
+    /** Methods of the module object `val MethodKind` */
+    trait MethodTypeKindModule { this: MethodTypeKind.type =>
+      /** Represents a parameter list without any implicitness of parameters, like (x1: X1, x2: X2, ...) */
+      val Plain: MethodTypeKind
+      /** Represents a parameter list with implicit parameters, like `(implicit X1, ..., Xn)`, `(using X1, ..., Xn)`, `(using x1: X1, ..., xn: Xn)` */
+      val Implicit: MethodTypeKind
+      /** Represents a parameter list of a contextual method, like `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
+      val Contextual: MethodTypeKind
+    }
+
     /** Type of the definition of a method taking a single list of parameters. It's return type may be a MethodType. */
     type MethodType <: MethodOrPoly
 
@@ -3246,6 +3264,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val MethodType` */
     trait MethodTypeModule { this: MethodType.type =>
       def apply(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType
+      def apply(kind: MethodTypeKind)(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType
       def unapply(x: MethodType): (List[String], List[TypeRepr], TypeRepr)
     }
 
@@ -3255,8 +3274,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `MethodType` */
     trait MethodTypeMethods:
       extension (self: MethodType)
-        /** Is this the type of using parameter clause `(implicit X1, ..., Xn)`, `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
+        /** Is this the type of parameter clause like `(implicit X1, ..., Xn)`, `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
         def isImplicit: Boolean
+        /** Is this the type of parameter clause like `(using X1, ..., Xn)` or `(using x1: X1, x2: X2, ... )` */
+        def isContextual: Boolean
+        /** Returns a MethodTypeKind object representing the implicitness of the MethodType parameter clause. */ 
+        def methodTypeKind: MethodTypeKind
         /** Is this the type of erased parameter clause `(erased x1: X1, ..., xn: Xn)` */
         @deprecated("Use `hasErasedParams` and `erasedParams`", "3.4")
         def isErased: Boolean
