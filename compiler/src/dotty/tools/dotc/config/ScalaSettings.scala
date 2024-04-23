@@ -114,7 +114,7 @@ trait CommonScalaSettings:
   val explainTypes: Setting[Boolean] = BooleanSetting(RootSetting, "explain-types", "Explain type errors in more detail (deprecated, use -explain instead).", aliases = List("--explain-types", "-explaintypes"))
   val explainCyclic: Setting[Boolean] = BooleanSetting(RootSetting, "explain-cyclic", "Explain cyclic reference errors in more detail.", aliases = List("--explain-cyclic"))
   val unchecked: Setting[Boolean] = BooleanSetting(RootSetting, "unchecked", "Enable additional warnings where generated code depends on assumptions.", initialValue = true, aliases = List("--unchecked"))
-  val language: Setting[List[String]] = MultiChoiceSetting(RootSetting, "language", "feature", "Enable one or more language features.", choices = ScalaSettingsProperties.supportedLanguageFeatures, aliases = List("--language"))
+  val language: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(RootSetting, "language", "feature", "Enable one or more language features.", choices = ScalaSettingsProperties.supportedLanguageFeatures, default = Nil, aliases = List("--language"))
   val experimental: Setting[Boolean] = BooleanSetting(RootSetting, "experimental", "Annotate all top-level definitions with @experimental. This enables the use of experimental features anywhere in the project.")
 
   /* Coverage settings */
@@ -492,3 +492,4 @@ private sealed trait YSettings:
   @deprecated(message = "Scheduled for removal.", since = "3.5.0")
   val YoutputOnlyTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Youtput-only-tasty", "Used to only generate the TASTy file without the classfiles", deprecation = Deprecation.removed())
 end YSettings
+
