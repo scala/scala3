@@ -5,6 +5,7 @@
   |
   |       The error occurred while trying to compute the signature of method $anonfun
   |         which required to compute the signature of method impl
+  |         which required to type the right hand side of method impl since no explicit type was given
   |
   |        Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace.
   |

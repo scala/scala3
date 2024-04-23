@@ -349,10 +349,7 @@ object Checking {
           }
 
           if isInteresting(pre) then
-            val traceCycles = CyclicReference.isTraced
-            try
-              if traceCycles then
-                CyclicReference.pushTrace("explore ", tp.symbol, " for cyclic references")
+            CyclicReference.trace(i"explore ${tp.symbol} for cyclic references"):
               val pre1 = this(pre, false, false)
               if locked.contains(tp)
                   || tp.symbol.infoOrCompleter.isInstanceOf[NoCompleter]
@@ -367,8 +364,6 @@ object Checking {
               finally
                 locked -= tp
               tp.withPrefix(pre1)
-            finally
-              if traceCycles then CyclicReference.popTrace()
           else tp
         }
         catch {

@@ -1442,7 +1442,8 @@ class Namer { typer: Typer =>
 
       def process(stats: List[Tree])(using Context): Unit = stats match
         case (stat: Export) :: stats1 =>
-          processExport(stat, NoSymbol)
+          CyclicReference.trace(i"elaborate the export clause $stat"):
+            processExport(stat, NoSymbol)
           process(stats1)
         case (stat: Import) :: stats1 =>
           process(stats1)(using ctx.importContext(stat, symbolOfTree(stat)))
@@ -1954,8 +1955,9 @@ class Namer { typer: Typer =>
     rhsCtx = prepareRhsCtx(rhsCtx, paramss)
 
     def typedAheadRhs(pt: Type) =
-      PrepareInlineable.dropInlineIfError(sym,
-        typedAheadExpr(mdef.rhs, pt)(using rhsCtx))
+      CyclicReference.trace(i"type the right hand side of $sym since no explicit type was given"):
+        PrepareInlineable.dropInlineIfError(sym,
+          typedAheadExpr(mdef.rhs, pt)(using rhsCtx))
 
     def rhsType =
       // For default getters, we use the corresponding parameter type as an

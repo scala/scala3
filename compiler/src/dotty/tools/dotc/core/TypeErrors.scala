@@ -198,20 +198,31 @@ object CyclicReference:
         cyclicErrors.println(elem.toString)
     ex
 
-  type TraceElement = (/*prefix:*/ String, Symbol, /*suffix:*/ String)
+  type TraceElement = Context ?=> String
   type Trace = mutable.ArrayBuffer[TraceElement]
   val Trace = Property.Key[Trace]
 
-  def isTraced(using Context) =
+  private def isTraced(using Context) =
     ctx.property(CyclicReference.Trace).isDefined
 
-  def pushTrace(info: TraceElement)(using Context): Unit =
+  private def pushTrace(info: Context ?=> String)(using Context): Unit =
     for buf <- ctx.property(CyclicReference.Trace) do
       buf += info
 
-  def popTrace()(using Context): Unit =
+  private def popTrace()(using Context): Unit =
     for buf <- ctx.property(CyclicReference.Trace) do
       buf.dropRightInPlace(1)
+
+  inline def trace[T](info: TraceElement)(inline op: => T)(using Context): T =
+    val traceCycles = isTraced
+    try
+      if traceCycles then pushTrace(info)
+      op
+    finally
+      if traceCycles then popTrace()
+
+  inline def trace[T](prefix: String, sym: Symbol)(inline op: => T)(using Context): T =
+    trace((ctx: Context) ?=> i"$prefix$sym")(op)
 end CyclicReference
 
 class UnpicklingError(denot: Denotation, where: String, cause: Throwable)(using Context) extends TypeError:
