@@ -274,6 +274,23 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
         |""".stripMargin
     )
 
+  @Test def exportTermExtension =
+    check(
+      """|package a
+         |class Test extends A {
+         |  assert("Hello".fo@@o == "HelloFoo")
+         |}
+         |
+         |trait A {
+         |  export B.*
+         |}
+         |
+         |object B {
+         |  extension (value: String) def <<foo>>: String = s"${value}Foo"
+         |}
+         |""".stripMargin
+    )
+
   @Test def `named-arg-local` =
     check(
       """|
