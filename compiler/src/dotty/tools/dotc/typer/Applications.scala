@@ -275,7 +275,20 @@ object Applications {
         if (getterDenot.exists) qual.select(TermRef(qual.tpe, getterName, getterDenot))
         else EmptyTree
       if !meth.isClassConstructor then
-        selectGetter(receiver)
+        val res = selectGetter(receiver)
+        if res.isEmpty && meth.is(Given) then
+          val classSym = meth.info.finalResultType.typeSymbol
+          if classSym.isClass && classSym.isAllOf(Given | Synthetic) then
+            // `meth` is an implicit wrapper: the `given def` desugared from a
+            // `given C(...)` or `given C with ...` by  `desugar#classDef`.
+            // Therefore, we can try to look for the default getters of the
+            // constructor of the `given class`. We find it via the `given
+            // def`'s result type. See #20088 and associated test cases.
+            val classRefTree = receiver.select(classSym)
+            val constructorSym = classSym.primaryConstructor.asTerm
+            findDefaultGetter(constructorSym, classRefTree, idx)
+          else res
+        else res
       else
         // default getters for class constructors are found in the companion object
         val cls = meth.owner
