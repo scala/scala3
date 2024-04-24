@@ -347,13 +347,20 @@ object PatternMatcher {
         def tupleApp(i: Int, receiver: Tree) = // manually inlining the call to NonEmptyTuple#apply, because it's an inline method
           ref(defn.RuntimeTuplesModule)
             .select(defn.RuntimeTuples_apply)
-            .appliedTo(receiver, Literal(Constant(i)))
+            .appliedTo(
+              receiver.ensureConforms(defn.NonEmptyTupleTypeRef), // If scrutinee is a named tuple, cast to underlying tuple
+              Literal(Constant(i)))
 
         if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)
-          def tupleSel(sym: Symbol) = ref(scrutinee).select(sym)
+          def tupleSel(sym: Symbol) =
+            // If scrutinee is a named tuple, cast to underlying tuple, so that we can
+            // continue to select with _1, _2, ...
+            ref(scrutinee).ensureConforms(scrutinee.info.stripNamedTuple).select(sym)
           val isGenericTuple = defn.isTupleClass(caseClass) &&
             !defn.isTupleNType(tree.tpe match { case tp: OrType => tp.join case tp => tp }) // widen even hard unions, to see if it's a union of tuples
-          val components = if isGenericTuple then caseAccessors.indices.toList.map(tupleApp(_, ref(scrutinee))) else caseAccessors.map(tupleSel)
+          val components =
+            if isGenericTuple then caseAccessors.indices.toList.map(tupleApp(_, ref(scrutinee)))
+            else caseAccessors.map(tupleSel)
           matchArgsPlan(components, args, onSuccess)
         else if unappType.isRef(defn.BooleanClass) then
           TestPlan(GuardTest, unapp, unapp.span, onSuccess)
