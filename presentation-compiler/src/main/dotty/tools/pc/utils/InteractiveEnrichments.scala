@@ -401,7 +401,6 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
     def deepDealias(using Context): Type =
       tpe.dealias match
         case app @ AppliedType(tycon, params) =>
-          // we dealias applied type params by hand, because `dealias` doesn't do it
           AppliedType(tycon, params.map(_.deepDealias))
         case aliasingBounds: AliasingBounds =>
           aliasingBounds.derivedAlias(aliasingBounds.alias.dealias)
