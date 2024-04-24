@@ -2700,7 +2700,7 @@ object Types extends TypeUtils {
       symd.maybeOwner.membersNeedAsSeenFrom(prefix) && !symd.is(NonMember)
       || prefix.match
         case prefix: Types.ThisType =>
-          (symd.isAbstractType
+          (symd.isAbstractOrParamType
             || symd.isTerm
                 && !symd.flagsUNSAFE.isOneOf(Module | Final | Param)
                 && !symd.isConstructor
