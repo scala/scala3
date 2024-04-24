@@ -1584,7 +1584,8 @@ object Types extends TypeUtils {
         else if (tp.symbol.isAliasType) tp.underlying.underlyingClassRef(refinementOK)
         else NoType
       case tp: AppliedType =>
-        if (tp.tycon.isLambdaSub) NoType
+        if tp.isMatchAlias then tp.tryNormalize.underlyingClassRef(refinementOK)
+        else if (tp.tycon.isLambdaSub) NoType
         else tp.superType.underlyingClassRef(refinementOK)
       case tp: AnnotatedType =>
         tp.parent.underlyingClassRef(refinementOK)
