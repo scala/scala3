@@ -19,6 +19,7 @@ import language.experimental.namedTuples
   val _: (String, Int) = (name = "", age = 0) // ok, conversion
   val _: NameOnly = person // error
   val _: Person = nameOnly // error
+  val _: Person = (name = "") ++ nameOnly // error
   person._1 // error
 
   val _: (age: Int, name: String) = person // error
@@ -57,4 +58,4 @@ import language.experimental.namedTuples
     // upcast (first: Int, age: Int) to (Int, Int), and then use the downwards
     // conversion to (name: Int, age: Int). This one would be harder to guard against.
 
-
+  val typo: (name: ?, age: ?) = (name = "he", ag = 1) // error
