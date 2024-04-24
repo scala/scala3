@@ -20,7 +20,7 @@ import Recheck.*
 import scala.collection.mutable
 import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult}
 import StdNames.nme
-import NameKinds.{DefaultGetterName, WildcardParamName}
+import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
 import reporting.trace
 
 /** The capture checker */
@@ -1288,10 +1288,14 @@ class CheckCaptures extends Recheck, SymTransformer:
                     val added = widened.filter(isAllowed(_))
                     capt.println(i"heal $ref in $cs by widening to $added")
                     if !added.subCaptures(cs, frozen = false).isOK then
-                      val location = if meth.exists then i" of $meth" else ""
+                      val location = if meth.exists then i" of ${meth.showLocated}" else ""
+                      val paramInfo =
+                        if ref.paramName.info.kind.isInstanceOf[UniqueNameKind]
+                        then i"${ref.paramName} from ${ref.binder}"
+                        else i"${ref.paramName}"
                       val debugSetInfo = if ctx.settings.YccDebug.value then i" $cs" else ""
                       report.error(
-                        i"local reference ${ref.paramName} leaks into outer capture set$debugSetInfo of type parameter $paramName$location",
+                        i"local reference $paramInfo leaks into outer capture set$debugSetInfo of type parameter $paramName$location",
                         tree.srcPos)
                     else
                       widened.elems.foreach(recur)
