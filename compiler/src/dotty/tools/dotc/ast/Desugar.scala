@@ -1254,8 +1254,9 @@ object desugar {
           pats.forall(isVarPattern)
         case _ => false
       }
+
       val isMatchingTuple: Tree => Boolean = {
-        case Tuple(es) => isTuplePattern(es.length)
+        case Tuple(es) => isTuplePattern(es.length) && !hasNamedArg(es)
         case _ => false
       }
 
