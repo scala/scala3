@@ -207,7 +207,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
     def toTextNamedTuple(elems: List[(TermName, Type)]): Text =
       val elemsText = atPrec(GlobalPrec):
-        Text(elems.map((name, tp) => toText(name) ~ " : " ~ toText(tp)), ", ")
+        Text(elems.map((name, tp) => toText(name) ~ " : " ~ argText(tp)), ", ")
       "(" ~ elemsText ~ ")"
 
     def isInfixType(tp: Type): Boolean = tp match
