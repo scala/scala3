@@ -1461,7 +1461,7 @@ object desugar {
       mismatchOpt match
         case Some(misMatch) =>
           report.error(em"Illegal combination of named and unnamed tuple elements", misMatch.srcPos)
-          elems.mapConserve(dropNamedArg)
+          elems.mapConserve(stripNamedArg)
         case None => elems
     case _ => elems
   end checkWellFormedTupleElems
@@ -1475,7 +1475,7 @@ object desugar {
   def tuple(tree: Tuple, pt: Type)(using Context): Tree =
     var elems = checkWellFormedTupleElems(tree.trees)
     if ctx.mode.is(Mode.Pattern) then elems = adaptPatternArgs(elems, pt)
-    val elemValues = elems.mapConserve(dropNamedArg)
+    val elemValues = elems.mapConserve(stripNamedArg)
     val tup =
       val arity = elems.length
       if arity <= Definitions.MaxTupleArity then
