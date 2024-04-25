@@ -1085,7 +1085,7 @@ object Build {
       scalacOptions += "-Yscala2Unpickler:never",
       scalacOptions += "-Yno-experimental",
       scalacOptions -= "-Xfatal-warnings",
-      Compile / compile / logLevel := Level.Error,
+      Compile / compile / logLevel.withRank(KeyRanks.Invisible) := Level.Error,
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       libraryDependencies +=
