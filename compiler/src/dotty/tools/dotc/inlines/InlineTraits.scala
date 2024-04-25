@@ -41,6 +41,21 @@ object InlineTraits:
       else inlinedSymbolValOrDef(cls, sym, traitTargs)
   end inlinedMemberSymbols
 
+  def inlinedPrivateMemberSymbols(cls: ClassSymbol)(using Context): List[Symbol] =
+    assert(!cls.isInlineTrait, cls)
+    println("     ")
+    for
+      parent <- cls.info.parents
+      parentSym = parent.typeSymbol
+      if parentSym.isAllOf(InlineTrait)
+      sym <- parentSym.info.decls.toList
+      if sym.isTerm && sym.is(Private)
+    yield
+      val traitTargs = parentTargs(cls, sym)
+      inlinedSymbolPrivateValOrDef(cls, sym, traitTargs)
+
+
+
   private def isInlinableMember(sym: Symbol)(using Context): Boolean =
     (sym.isTerm || sym.isClass)
     && !sym.isConstructor && !sym.is(ParamAccessor)
@@ -59,6 +74,15 @@ object InlineTraits:
       .subst(inlinableDecl.owner.typeParams, traitTargs)
     val privateWithin = inlinableDecl.privateWithin // TODO what should `privateWithin` be?
     newSymbol(cls, inlinableDecl.name, flags, info, privateWithin, cls.span)
+
+  private def inlinedSymbolPrivateValOrDef(cls: ClassSymbol, inlinableDecl: Symbol, traitTargs: List[Type])(using Context): Symbol =
+    val name = atPhase(ctx.phase.next) { inlinableDecl.name }
+    val flags = inlinableDecl.flags | Synthetic
+    val info = inlinableDecl.info
+      .substThis(inlinableDecl.owner.asClass, ThisType.raw(cls.typeRef))
+      .subst(inlinableDecl.owner.typeParams, traitTargs)
+    val privateWithin = inlinableDecl.privateWithin // TODO what should `privateWithin` be?
+    newSymbol(cls, name, flags, info, privateWithin, cls.span)
 
   private def inlinedSymbolClassDef(cls: ClassSymbol, inlinableDecl: ClassSymbol, traitTargs: List[Type])(using Context): ClassSymbol =
     def infoFn(cls1: ClassSymbol) =
@@ -98,7 +122,7 @@ object InlineTraits:
 
   def inlinedDefs(cls: ClassSymbol)(using Context): List[Tree] =
     atPhase(ctx.phase.next) { cls.info.decls.toList }
-      .filter(sym => sym.is(Synthetic) && sym.nextOverriddenSymbol.maybeOwner.isInlineTrait)
+      .filter(sym => sym.is(Synthetic) && (atPhase(ctx.phase.next) { sym.nextOverriddenSymbol }.maybeOwner.isInlineTrait))
       .map { sym =>
         if sym.isClass then inlinedClassDefs(cls, sym.asClass)
         else inlinedValOrDefDefs(cls, sym)
@@ -158,7 +182,7 @@ object InlineTraits:
       stat match
         case stat: ValOrDefDef =>
           if sym.is(Module) then report.error(em"Implementation restriction: object cannot be defined in inline traits", stat.srcPos)
-          else if sym.is(Private) then report.error(em"Implementation restriction: private ${sym.kindString} cannot be defined in inline traits", stat.srcPos)
+          // else if sym.is(Private) then report.error(em"Implementation restriction: private ${sym.kindString} cannot be defined in inline traits", stat.srcPos)
           else () // Ok
         case stat: TypeDef =>
           if sym.isClass && !sym.is(Trait) then report.error(em"Implementation restriction: ${sym.kindString} cannot be defined in inline traits", stat.srcPos)

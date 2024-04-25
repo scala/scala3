@@ -71,8 +71,12 @@ class TraitInlining extends MacroTransform, DenotTransformer {
           case tp @ ClassInfo(_, cls, _, decls, _) if needsTraitInlining(sym.asClass) =>
             val newDecls = decls.cloneScope
             inlinedMemberSymbols(sym.asClass).foreach(newDecls.enter)
+            inlinedPrivateMemberSymbols(sym.asClass).foreach(newDecls.enter)
             val newInfo = tp.derivedClassInfo(decls = newDecls)
             ref.copySymDenotation(info = newInfo).copyCaches(ref, ctx.phase.next)
+          case _ if ref.isTerm && ref.owner.isInlineTrait && ref.is(Private) =>
+            val newName = (sym.name.expandedName(ref.owner).toString + "$inline$trait").toTermName // TODO use NameKinds
+            ref.copySymDenotation(name = newName, initFlags = ref.flags &~ Private)
           case _ =>
             ref
       case _ =>
