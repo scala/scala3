@@ -205,7 +205,7 @@ object CyclicReference:
   private def isTraced(using Context) =
     ctx.property(CyclicReference.Trace).isDefined
 
-  private def pushTrace(info: Context ?=> String)(using Context): Unit =
+  private def pushTrace(info: TraceElement)(using Context): Unit =
     for buf <- ctx.property(CyclicReference.Trace) do
       buf += info
 
