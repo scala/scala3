@@ -1513,6 +1513,7 @@ object Build {
             "compliantArrayIndexOutOfBounds" -> (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant),
             "compliantArrayStores" -> (sems.arrayStores == CheckedBehavior.Compliant),
             "compliantNegativeArraySizes" -> (sems.negativeArraySizes == CheckedBehavior.Compliant),
+            "compliantNullPointers" -> (sems.nullPointers == CheckedBehavior.Compliant),
             "compliantStringIndexOutOfBounds" -> (sems.stringIndexOutOfBounds == CheckedBehavior.Compliant),
             "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
             "strictFloats" -> sems.strictFloats,
@@ -1579,6 +1580,7 @@ object Build {
           (dir / "shared/src/test/scala" ** (("*.scala": FileFilter)
             -- "ReflectiveCallTest.scala" // uses many forms of structural calls that are not allowed in Scala 3 anymore
             -- "UTF16Test.scala" // refutable pattern match
+            -- "CharsetTest.scala" // bogus @tailrec that Scala 2 ignores but Scala 3 flags as an error
             )).get
 
           ++ (dir / "shared/src/test/require-sam" ** "*.scala").get
