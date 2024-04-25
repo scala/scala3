@@ -46,13 +46,15 @@ object NamedTuple:
     inline def head: Tuple.Elem[V, 0] = apply(0)
 
     /** The tuple consisting of all elements of this tuple except the first one */
-    inline def tail: Tuple.Drop[V, 1] = toTuple.drop(1)
+    inline def tail: NamedTuple[Tuple.Tail[N], Tuple.Tail[V]] =
+      toTuple.drop(1).asInstanceOf[NamedTuple[Tuple.Tail[N], Tuple.Tail[V]]]
 
     /** The last element value of this tuple */
     inline def last: Tuple.Last[V] = apply(size - 1).asInstanceOf[Tuple.Last[V]]
 
     /** The tuple consisting of all elements of this tuple except the last one */
-    inline def init: Tuple.Init[V] = toTuple.take(size - 1).asInstanceOf[Tuple.Init[V]]
+    inline def init: NamedTuple[Tuple.Init[N], Tuple.Init[V]] =
+      toTuple.take(size - 1).asInstanceOf[NamedTuple[Tuple.Init[N], Tuple.Init[V]]]
 
     /** The tuple consisting of the first `n` elements of this tuple, or all
      *  elements if `n` exceeds `size`.
@@ -67,7 +69,11 @@ object NamedTuple:
       toTuple.drop(n)
 
     /** The tuple `(x.take(n), x.drop(n))` */
-    inline def splitAt(n: Int): NamedTuple[Tuple.Split[N, n.type], Tuple.Split[V, n.type]] =
+    inline def splitAt(n: Int):
+      (NamedTuple[Tuple.Take[N, n.type], Tuple.Take[V, n.type]],
+       NamedTuple[Tuple.Drop[N, n.type], Tuple.Drop[V, n.type]]) =
+        // would be nice if this could have type `Split[NamedTuple[N, V]]` instead, but
+        // we get a type error then. Similar for other methods here.
       toTuple.splitAt(n)
 
     /** The tuple consisting of all elements of this tuple followed by all elements
@@ -188,6 +194,12 @@ object NamedTuple:
    */
   type From[T] <: AnyNamedTuple
 
+  /** The type of the empty named tuple */
+  type Empty = EmptyTuple.type
+
+  /** The empty named tuple */
+  val Empty: Empty = EmptyTuple.asInstanceOf[Empty]
+
 end NamedTuple
 
 /** Separate from NamedTuple object so that we can match on the opaque type NamedTuple. */
@@ -202,3 +214,4 @@ object NamedTupleDecomposition:
   /** The value types of a named tuple represented as a regular tuple. */
   type DropNames[NT <: AnyNamedTuple] <: Tuple = NT match
     case NamedTuple[_, x] => x
+
