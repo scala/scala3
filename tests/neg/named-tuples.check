@@ -101,11 +101,3 @@
    |                                Required: (name : ?, age : ?)
    |
    | longer explanation available when compiling with `-explain`
--- Warning: tests/neg/named-tuples.scala:27:29 -------------------------------------------------------------------------
-27 |  val (name = x, agee = y) = person // error
-   |                             ^^^^^^
-   |pattern's type (String, Int) is more specialized than the right hand side expression's type (name : String, age : Int)
-   |
-   |If the narrowing is intentional, this can be communicated by adding `: @unchecked` after the expression,
-   |which may result in a MatchError at runtime.
-   |This patch can be rewritten automatically under -rewrite -source 3.2-migration.
