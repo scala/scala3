@@ -135,6 +135,7 @@ object TypeTestsCasts {
     def recur(X: Type, P: Type): String = trace(s"recur(${X.show}, ${P.show})") {
       (X <:< P) ||| P.dealias.match
       case _: SingletonType     => ""
+      case MatchType.Normalizing(tp) => recur(X, tp)
       case _: TypeProxy
       if isAbstract(P)          => i"it refers to an abstract type member or type parameter"
       case defn.ArrayOf(tpT)    =>
