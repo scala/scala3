@@ -3833,7 +3833,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               case _ => ()
 
         val args = implicitArgs(wtp.paramInfos, 0, pt)
-        if (args.tpes.exists(_.isInstanceOf[SearchFailureType])) {
+        val firstFailure = args.tpes.find(_.isInstanceOf[SearchFailureType])
+        if (firstFailure.isDefined) {
           // If there are several arguments, some arguments might already
           // have influenced the context, binding variables, but later ones
           // might fail. In that case the constraint and instantiated variables
@@ -3866,10 +3867,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
             retyped
           else
-            val firstNonAmbiguous = args.tpes.find(tp => tp.isError && !tp.isInstanceOf[AmbiguousImplicits])
-            def firstError = args.tpes.find(_.isError)
-            val errorType = firstNonAmbiguous.orElse(firstError).getOrElse(NoType)
-            val res = untpd.Apply(tree, args).withType(errorType)
+            val res = untpd.Apply(tree, args).withType(firstFailure.get)
             reportErrors(res, wtp)
             res
         }
