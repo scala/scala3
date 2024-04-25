@@ -630,7 +630,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val checkedType = checkNotShadowed(ownType)
       val tree1 = checkedType match
         case checkedType: NamedType if !prefixIsElidable(checkedType) =>
-          ref(checkedType).withSpan(tree.span).withAttachment(OriginalName, name)
+          ref(checkedType).withSpan(tree.span)
         case _ =>
           def isScalaModuleRef = checkedType match
             case moduleRef: TypeRef if moduleRef.symbol.is(ModuleClass, butNot = JavaDefined) => true
@@ -663,7 +663,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val selection = untpd.cpy.Select(tree)(qualifier, name)
       typed(selection, pt)
     else if rawType.exists then
-      setType(ensureAccessible(rawType, superAccess = false, tree.srcPos))
+      val ref = setType(ensureAccessible(rawType, superAccess = false, tree.srcPos))
+      if ref.symbol.name != name then
+        ref.withAttachment(OriginalName, name)
+      else ref
     else if name == nme._scope then
       // gross hack to support current xml literals.
       // awaiting a better implicits based solution for library-supported xml
