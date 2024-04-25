@@ -1396,9 +1396,9 @@ class TreeUnpickler(reader: TastyReader,
               val fn = readTree()
               val args = until(end)(readTree())
               if fn.symbol.isConstructor then constructorApply(fn, args)
-              else if fn.symbol == defn.QuotedRuntime_exprQuote then quotedExpr(fn, args)
-              else if fn.symbol == defn.QuotedRuntime_exprSplice then splicedExpr(fn, args)
-              else if fn.symbol == defn.QuotedRuntime_exprNestedSplice then nestedSpliceExpr(fn, args)
+              else if fn.symbol == defn.QuotedRuntime_exprQuote then quotedExpr(fn, args) // decode pre 3.5.0 encoding
+              else if fn.symbol == defn.QuotedRuntime_exprSplice then splicedExpr(fn, args) // decode pre 3.5.0 encoding
+              else if fn.symbol == defn.QuotedRuntime_exprNestedSplice then nestedSpliceExpr(fn, args) // decode pre 3.5.0 encoding
               else tpd.Apply(fn, args)
             case TYPEAPPLY =>
               tpd.TypeApply(readTree(), until(end)(readTpt()))
@@ -1520,7 +1520,7 @@ class TreeUnpickler(reader: TastyReader,
               val unapply = UnApply(fn, implicitArgs, argPats, patType)
               if fn.symbol == defn.QuoteMatching_ExprMatch_unapply
                  || fn.symbol == defn.QuoteMatching_TypeMatch_unapply
-              then QuotePatterns.decode(unapply)
+              then QuotePatterns.decode(unapply) // decode pre 3.5.0 encoding
               else unapply
             case REFINEDtpt =>
               val refineCls = symAtAddr.getOrElse(start,
@@ -1568,6 +1568,24 @@ class TreeUnpickler(reader: TastyReader,
               val hi = if currentAddr == end then lo else readTpt()
               val alias = if currentAddr == end then EmptyTree else readTpt()
               createNullableTypeBoundsTree(lo, hi, alias)
+            case QUOTE =>
+              Quote(readTree(), Nil).withBodyType(readType())
+            case SPLICE =>
+              Splice(readTree()).withType(readType())
+            case QUOTEPATTERN =>
+              val bodyReader = fork
+              skipTree()
+              val quotes = readTree()
+              val patType = readType()
+              val bindings = readStats(ctx.owner, end)
+              val body = bodyReader.readTree() // need bindings in scope, so needs to be read before
+              QuotePattern(bindings, body, quotes, patType)
+            case SPLICEPATTERN =>
+              val pat = readTree()
+              val patType = readType()
+              val (targs, args) = until(end)(readTree()).span(_.isType)
+              assert(targs.isEmpty, "unexpected type arguments in SPLICEPATTERN") // `targs` will be needed for #18271. Until this fearure is added they should be empty.
+              SplicePattern(pat, args, patType)
             case HOLE =>
               readHole(end, isTerm = true)
             case _ =>
