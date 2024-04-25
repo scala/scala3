@@ -104,7 +104,7 @@ class ScalaSettingsTests:
   private def wconfSrcFilterTest(argsStr: String,
                                  warning: reporting.Diagnostic.Warning): Either[List[String], reporting.Action] =
     import reporting.Diagnostic
-    val settings = new ScalaSettings
+    val settings = ScalaSettings
     val args = ArgsSummary(settings.defaultState, List(argsStr), errors = Nil, warnings = Nil)
     val proc = settings.processArguments(args, processAll = true, skipped = Nil)
     val wconfStr = settings.Wconf.valueIn(proc.sstate)
