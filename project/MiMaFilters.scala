@@ -56,6 +56,7 @@ object MiMaFilters {
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeModule.apply"),
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeMethods.methodTypeKind"),
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeMethods.isContextual"),
+          ProblemFilters.exclude[FinalClassProblem]("scala.annotation.experimental"),
         ),
 
       // Breaking changes since last LTS
