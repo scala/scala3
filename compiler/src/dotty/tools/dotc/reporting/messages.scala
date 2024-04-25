@@ -2980,7 +2980,7 @@ class MissingImplicitArgument(
      *  def foo(implicit foo: Foo): Any = ???
      */
     arg.tpe match
-      case ambi: AmbiguousImplicits =>
+      case ambi: AmbiguousImplicits if !ambi.nested =>
         (ambi.alt1, ambi.alt2) match
           case (alt @ AmbiguousImplicitMsg(msg), _) =>
             userDefinedAmbiguousImplicitMsg(alt, msg)
