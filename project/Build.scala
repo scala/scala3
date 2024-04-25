@@ -26,6 +26,8 @@ import sbttastymima.TastyMiMaPlugin
 import sbttastymima.TastyMiMaPlugin.autoImport._
 
 import scala.util.Properties.isJavaAtLeast
+import scala.collection.mutable
+
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import org.scalajs.linker.interface.{ModuleInitializer, StandardConfig}
 
@@ -2110,17 +2112,128 @@ object Build {
     )
   )
 
-  lazy val commonDistSettings = Seq(
+  lazy val DistCacheConfig = config("DistCacheConfig") extend Compile
+
+  val distModules = taskKey[Seq[(ModuleID, Map[Artifact, File])]]("fetch local artifacts for distribution.")
+  val distResolvedArtifacts = taskKey[Seq[ResolvedArtifacts]]("Resolve the dependencies for the distribution")
+  val distCaching = taskKey[File]("cache the dependencies for the distribution")
+
+  def evalPublishSteps(dependencies: Seq[ProjectReference]): Def.Initialize[Task[Seq[(ModuleID, Map[Artifact, File])]]] = {
+    val publishAllLocalBin = dependencies.map({ d => ((d / publishLocalBin / packagedArtifacts)) }).join
+    val resolveId = dependencies.map({ d => ((d / projectID)) }).join
+    Def.task {
+      val s = streams.value
+      val log = s.log
+      val published = publishAllLocalBin.value
+      val ids = resolveId.value
+
+      ids.zip(published)
+    }
+  }
+
+  case class SimpleModuleId(org: String, name: String, revision: String) {
+    override def toString = s"$org:$name:$revision"
+  }
+  case class ResolvedArtifacts(id: SimpleModuleId, jar: File, pom: File)
+
+  def commonDistSettings(dependencies: Seq[ClasspathDep[ProjectReference]]) = Seq(
     packMain := Map(),
     publishArtifact := false,
     packGenerateMakefile := false,
-    packExpandedClasspath := true,
-    packArchiveName := "scala3-" + dottyVersion
+    packArchiveName := "scala3-" + dottyVersion,
+    DistCacheConfig / distModules := {
+      evalPublishSteps(dependencies.map(_.project)).value
+    },
+    DistCacheConfig / distResolvedArtifacts := {
+      val localArtifactIds = (DistCacheConfig / distModules).value
+      val report = (thisProjectRef / updateFull).value
+
+      val found = mutable.Map.empty[SimpleModuleId, ResolvedArtifacts]
+      val evicted = mutable.Set.empty[SimpleModuleId]
+
+      localArtifactIds.foreach({ case (id, as) =>
+        val simpleId = {
+          val name0 = id.crossVersion match {
+            case _: CrossVersion.Binary =>
+              // projectID does not add binary suffix
+              (id.name + "_3").ensuring(!id.name.endsWith("_3") && id.revision.startsWith("3."))
+            case _ => id.name
+          }
+          SimpleModuleId(id.organization, name0, id.revision)
+        }
+        var jarOrNull: File = null
+        var pomOrNull: File = null
+        as.foreach({ case (a, f) =>
+          if (a.`type` == "jar") {
+            jarOrNull = f
+          } else if (a.`type` == "pom") {
+            pomOrNull = f
+          }
+        })
+        assert(jarOrNull != null, s"Could not find jar for ${id}")
+        assert(pomOrNull != null, s"Could not find pom for ${id}")
+        evicted += simpleId.copy(revision = simpleId.revision + "-nonbootstrapped")
+        found(simpleId) = ResolvedArtifacts(simpleId, jarOrNull, pomOrNull)
+      })
+
+      report.allModuleReports.foreach { mr =>
+        val simpleId = {
+          val id = mr.module
+          SimpleModuleId(id.organization, id.name, id.revision)
+        }
+
+        if (!found.contains(simpleId) && !evicted(simpleId)) {
+          var jarOrNull: File = null
+          var pomOrNull: File = null
+          mr.artifacts.foreach({ case (a, f) =>
+            if (a.`type` == "jar" || a.`type` == "bundle") {
+              jarOrNull = f
+            } else if (a.`type` == "pom") {
+              pomOrNull = f
+            }
+          })
+          assert(jarOrNull != null, s"Could not find jar for ${simpleId}")
+          if (pomOrNull == null) {
+            val jarPath = jarOrNull.toPath
+            // we found the jar, so assume we can resolve a sibling pom file
+            val pomPath = jarPath.resolveSibling(jarPath.getFileName.toString.stripSuffix(".jar") + ".pom")
+            assert(Files.exists(pomPath), s"Could not find pom for ${simpleId}")
+            pomOrNull = pomPath.toFile
+          }
+          found(simpleId) = ResolvedArtifacts(simpleId, jarOrNull, pomOrNull)
+        }
+
+      }
+      found.values.toSeq
+    },
+    DistCacheConfig / distCaching := {
+      val resolved = (DistCacheConfig / distResolvedArtifacts).value
+      val targetDir = target.value
+      val cacheDir = targetDir / "local-repo"
+      val mavenRepo = cacheDir / "maven2"
+      IO.createDirectory(mavenRepo)
+      resolved.foreach { ra =>
+        val jar = ra.jar
+        val pom = ra.pom
+
+        val pathElems = ra.id.org.split('.').toVector :+ ra.id.name :+ ra.id.revision
+        val artifactDir = pathElems.foldLeft(mavenRepo)(_ / _)
+        IO.createDirectory(artifactDir)
+        IO.copyFile(jar, artifactDir / jar.getName)
+        IO.copyFile(pom, artifactDir / pom.getName)
+      }
+      cacheDir
+    },
+    Compile / pack := {
+      val localRepo = (DistCacheConfig / distCaching).value
+      (Compile / pack).value
+    }
   )
 
   lazy val dist = project.asDist(Bootstrapped)
     .settings(
       packResourceDir += (baseDirectory.value / "bin" -> "bin"),
+      packResourceDir += (target.value / "local-repo" -> "local"),
     )
 
   private def customMimaReportBinaryIssues(issueFilterLocation: String) = mimaReportBinaryIssues := {
@@ -2251,11 +2364,23 @@ object Build {
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(PackPlugin).
       withCommonSettings.
-      dependsOn(`scala3-interfaces`, dottyCompiler, dottyLibrary, tastyCore, `scala3-staging`, `scala3-tasty-inspector`, scaladoc).
-      settings(commonDistSettings).
+      dependsOn(
+        `scala3-interfaces`,
+        dottyCompiler,
+        dottyLibrary,
+        tastyCore,
+        `scala3-staging`,
+        `scala3-tasty-inspector`,
+        scaladoc,
+        `scala3-sbt-bridge`, // for scala-cli
+      ).
+      withDepSettings(commonDistSettings).
       bootstrappedSettings(
         target := baseDirectory.value / "target" // override setting in commonBootstrappedSettings
       )
+
+    def withDepSettings(f: Seq[ClasspathDep[ProjectReference]] => Seq[Setting[?]]): Project =
+      project.settings(f(project.dependencies))
 
     def withCommonSettings(implicit mode: Mode): Project = project.settings(mode match {
       case NonBootstrapped => commonNonBootstrappedSettings

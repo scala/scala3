@@ -24,3 +24,9 @@ function onExit() {
   [[ "$saved_stty" != "" ]] && restoreSttySettings
   exit $scala_exit_status
 }
+
+declare -a scala_args
+
+addScala () {
+  scala_args+=("'$1'")
+}
