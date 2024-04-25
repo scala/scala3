@@ -23,3 +23,5 @@ type MS = Matcher[S]
 
 type S2 = MS
 type MS2 = Matcher[S2]
+
+type Mstuck = Matcher[Nothing]

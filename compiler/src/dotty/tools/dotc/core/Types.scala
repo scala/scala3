@@ -5214,6 +5214,10 @@ object Types extends TypeUtils {
     def thatReducesUsingGadt(tp: Type)(using Context): Boolean = tp.underlyingMatchType match
       case mt: MatchType => mt.reducesUsingGadt
       case _ => false
+
+    object Normalizing:
+      def unapply(tp: Type)(using Context): Option[Type] =
+        Some(tp.tryNormalize).filter(_.exists)
   }
 
   enum MatchTypeCasePattern:

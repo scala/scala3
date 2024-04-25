@@ -1,4 +1,3 @@
-//> using options -Xfatal-warnings -deprecation -feature
 
 @main def main = {
   println(patternMatch[String]("abc"))
@@ -19,4 +18,6 @@
     if s.isInstanceOf[S2] then Some[s.type & Matcher[String]](s.asInstanceOf[s.type & Matcher[String]]) else None}))
   println(patternMatch[String]("abc")(using (s: Any) => {
     if s.isInstanceOf[MS2] then Some[s.type & Matcher[String]](s.asInstanceOf[s.type & Matcher[String]]) else None}))
+  println(patternMatch[String]("abc")(using (s: Any) => {
+    if s.isInstanceOf[Mstuck] then Some[s.type & Matcher[String]](s.asInstanceOf[s.type & Matcher[String]]) else None})) // warn
 }
