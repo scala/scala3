@@ -159,6 +159,7 @@ The following restrictions apply to named tuple elements:
     (tuple: Tuple) match
         case (age = x) => // error
     ```
+ 4. Regular selector names `_1`, `_2`, ... are not allowed as names in named tuples.
 
 ### Syntax
 
