@@ -50,7 +50,12 @@ object MiMaFilters {
       // Breaking changes since last reference version
       Build.mimaPreviousDottyVersion -> // Seq.empty, // We should never break backwards compatibility
         Seq(
-          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SymbolMethods.isSuperAccessor"), // This change is acceptable. See comment in `Breaking changes since last LTS`.
+          // `ReversedMissingMethodProblem`s are acceptable. See comment in `Breaking changes since last LTS`.
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SymbolMethods.isSuperAccessor"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.MethodTypeKind"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeModule.apply"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeMethods.methodTypeKind"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeMethods.isContextual"),
         ),
 
       // Breaking changes since last LTS

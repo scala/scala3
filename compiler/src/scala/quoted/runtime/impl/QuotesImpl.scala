@@ -2215,6 +2215,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object MethodType extends MethodTypeModule:
       def apply(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType =
         Types.MethodType(paramNames.map(_.toTermName))(paramInfosExp, resultTypeExp)
+      def apply(kind: MethodTypeKind)(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType =
+        val companion = kind match
+          case MethodTypeKind.Contextual => Types.ContextualMethodType
+          case MethodTypeKind.Implicit => Types.ImplicitMethodType
+          case MethodTypeKind.Plain => Types.MethodType
+        companion.apply(paramNames.map(_.toTermName))(paramInfosExp, resultTypeExp)
       def unapply(x: MethodType): (List[String], List[TypeRepr], TypeRepr) =
         (x.paramNames.map(_.toString), x.paramTypes, x.resType)
     end MethodType
@@ -2223,6 +2229,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       extension (self: MethodType)
         def isErased: Boolean = false
         def isImplicit: Boolean = self.isImplicitMethod
+        def isContextual: Boolean = self.isContextualMethod
+        def methodTypeKind: MethodTypeKind = 
+          self.companion match
+            case Types.ContextualMethodType => MethodTypeKind.Contextual
+            case Types.ImplicitMethodType => MethodTypeKind.Implicit
+            case _ => MethodTypeKind.Plain
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
 
         def erasedParams: List[Boolean] = self.erasedParams
