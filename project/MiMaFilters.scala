@@ -9,6 +9,7 @@ object MiMaFilters {
       // Additions that require a new minor version of the library
       Build.mimaPreviousDottyVersion -> Seq(
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.annotation.experimental.this"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.annotation.experimental"),
       ),
 
       // Additions since last LTS
