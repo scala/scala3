@@ -161,7 +161,8 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
       tree match {
         case tree: TypeDef if tree.isClassDef =>
           val exports = genExport(sym)
-          assert(exports.isEmpty, s"got non-empty exports for $sym")
+          if (exports.nonEmpty)
+            exporters.getOrElseUpdate(sym.owner, mutable.ListBuffer.empty) ++= exports
 
           if (isJSAny(sym))
             transformJSClassDef(tree)
@@ -174,8 +175,10 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
         case tree: ValOrDefDef =>
           // Prepare exports
           val exports = genExport(sym)
-          if (exports.nonEmpty)
-            exporters.getOrElseUpdate(sym.owner, mutable.ListBuffer.empty) ++= exports
+          if (exports.nonEmpty) {
+            val target = if (sym.isConstructor) sym.owner.owner else sym.owner
+            exporters.getOrElseUpdate(target, mutable.ListBuffer.empty) ++= exports
+          }
 
           if (sym.isLocalToBlock)
             super.transform(tree)
