@@ -95,7 +95,8 @@ abstract class CyclicMsg(errorId: ErrorMessageID)(using Context) extends Message
   protected def context: String = ex.optTrace match
     case Some(trace) =>
       s"\n\nThe error occurred while trying to ${
-        trace.map((prefix, sym, suffix) => i"$prefix$sym$suffix").mkString("\n  which required to ")
+        trace.map(identity) // map with identity will turn Context ?=> String elements to String elements
+          .mkString("\n  which required to ")
       }$debugInfo"
     case None =>
       "\n\n Run with -explain-cyclic for more details."

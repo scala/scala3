@@ -6,7 +6,9 @@
   |           dotty.tools.dotc.core.CyclicReference: Recursive value o2 needs type
   |
   |           The error occurred while trying to compute the signature of method test
+  |             which required to type the right hand side of method test since no explicit type was given
   |             which required to compute the signature of value o2
+  |             which required to type the right hand side of value o2 since no explicit type was given
   |             which required to compute the signature of value o2
   |
   |            Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace.
