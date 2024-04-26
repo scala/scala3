@@ -31,6 +31,7 @@ import org.scalajs.ir.Names.{ClassName, MethodName, SimpleMethodName}
 import org.scalajs.ir.OriginalName
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees.OptimizerHints
+import org.scalajs.ir.Version.Unversioned
 
 import dotty.tools.dotc.transform.sjs.JSSymUtils.*
 
@@ -354,7 +355,8 @@ class JSCodeGen()(using genCtx: Context) {
 
     // Generate members (constructor + methods)
 
-    val generatedNonFieldMembers = new mutable.ListBuffer[js.MemberDef]
+    val methodsBuilder = List.newBuilder[js.MethodDef]
+    val jsNativeMembersBuilder = List.newBuilder[js.JSNativeMemberDef]
 
     val tpl = td.rhs.asInstanceOf[Template]
     for (tree <- tpl.constr :: tpl.body) {
@@ -365,23 +367,25 @@ class JSCodeGen()(using genCtx: Context) {
           // fields are added via genClassFields(), but we need to generate the JS native members
           val sym = vd.symbol
           if (!sym.is(Module) && sym.hasAnnotation(jsdefn.JSNativeAnnot))
-            generatedNonFieldMembers += genJSNativeMemberDef(vd)
+            jsNativeMembersBuilder += genJSNativeMemberDef(vd)
 
         case dd: DefDef =>
           val sym = dd.symbol
           if sym.hasAnnotation(jsdefn.JSNativeAnnot) then
             if !sym.is(Accessor) then
-              generatedNonFieldMembers += genJSNativeMemberDef(dd)
+              jsNativeMembersBuilder += genJSNativeMemberDef(dd)
           else
-            generatedNonFieldMembers ++= genMethod(dd)
+            methodsBuilder ++= genMethod(dd)
 
         case _ =>
           throw new FatalError("Illegal tree in body of genScalaClass(): " + tree)
       }
     }
 
-    // Generate fields and add to methods + ctors
-    val generatedMembers = genClassFields(td) ++ generatedNonFieldMembers.toList
+    val (fields, staticGetterDefs) = if (!isHijacked) genClassFields(td) else (Nil, Nil)
+
+    val jsNativeMembers = jsNativeMembersBuilder.result()
+    val generatedMethods = methodsBuilder.result() ::: staticGetterDefs
 
     // Generate member exports
     val memberExports = jsExportsGen.genMemberExports(sym)
@@ -422,12 +426,12 @@ class JSCodeGen()(using genCtx: Context) {
       if (isDynamicImportThunk) List(genDynamicImportForwarder(sym))
       else Nil
 
-    val allMemberDefsExceptStaticForwarders =
-      generatedMembers ::: memberExports ::: optStaticInitializer ::: optDynamicImportForwarder
+    val allMethodsExceptStaticForwarders: List[js.MethodDef] =
+      generatedMethods ::: optStaticInitializer ::: optDynamicImportForwarder
 
     // Add static forwarders
-    val allMemberDefs = if (!isCandidateForForwarders(sym)) {
-      allMemberDefsExceptStaticForwarders
+    val allMethods = if (!isCandidateForForwarders(sym)) {
+      allMethodsExceptStaticForwarders
     } else {
       if (isStaticModule(sym)) {
         /* If the module class has no linked class, we must create one to
@@ -446,22 +450,23 @@ class JSCodeGen()(using genCtx: Context) {
                 Nil,
                 None,
                 None,
-                forwarders,
-                Nil
+                fields = Nil,
+                methods = forwarders,
+                jsConstructor = None,
+                jsMethodProps = Nil,
+                jsNativeMembers = Nil,
+                topLevelExportDefs = Nil
             )(js.OptimizerHints.empty)
             generatedStaticForwarderClasses += sym -> forwardersClassDef
           }
         }
-        allMemberDefsExceptStaticForwarders
+        allMethodsExceptStaticForwarders
       } else {
         val forwarders = genStaticForwardersForClassOrInterface(
-            allMemberDefsExceptStaticForwarders, sym)
-        allMemberDefsExceptStaticForwarders ::: forwarders
+            allMethodsExceptStaticForwarders, sym)
+        allMethodsExceptStaticForwarders ::: forwarders
       }
     }
-
-    // Hashed definitions of the class
-    val hashedDefs = ir.Hashers.hashMemberDefs(allMemberDefs)
 
     // The complete class definition
     val kind =
@@ -478,11 +483,15 @@ class JSCodeGen()(using genCtx: Context) {
         genClassInterfaces(sym, forJSClass = false),
         None,
         None,
-        hashedDefs,
+        fields,
+        allMethods,
+        jsConstructor = None,
+        memberExports,
+        jsNativeMembers,
         topLevelExportDefs)(
         optimizerHints)
 
-    classDefinition
+    ir.Hashers.hashClassDef(classDefinition)
   }
 
   /** Gen the IR ClassDef for a Scala.js-defined JS class. */
@@ -546,22 +555,22 @@ class JSCodeGen()(using genCtx: Context) {
     }
 
     // Static members (exported from the companion object)
-    val staticMembers = {
+    val (staticFields, staticExports) = {
       val module = sym.companionModule
       if (!module.exists) {
-        Nil
+        (Nil, Nil)
       } else {
         val companionModuleClass = module.moduleClass
-        val exports = withScopedVars(currentClassSym := companionModuleClass) {
+        val (staticFields, staticExports) = withScopedVars(currentClassSym := companionModuleClass) {
           jsExportsGen.genStaticExports(companionModuleClass)
         }
-        if (exports.exists(_.isInstanceOf[js.JSFieldDef])) {
-          val classInitializer =
+
+        if (staticFields.nonEmpty) {
+          generatedMethods +=
             genStaticConstructorWithStats(ir.Names.ClassInitializerName, genLoadModule(companionModuleClass))
-          exports :+ classInitializer
-        } else {
-          exports
         }
+
+        (staticFields, staticExports)
       }
     }
 
@@ -587,17 +596,12 @@ class JSCodeGen()(using genCtx: Context) {
       (ctor, jsClassCaptures)
     }
 
-    // Generate fields (and add to methods + ctors)
-    val generatedMembers = {
-      genClassFields(td) :::
-      generatedConstructor ::
-      jsExportsGen.genJSClassDispatchers(sym, dispatchMethodNames.result().distinct) :::
-      generatedMethods.toList :::
-      staticMembers
-    }
+    // Generate fields
+    val (fields, staticGetterDefs) = genClassFields(td)
 
-    // Hashed definitions of the class
-    val hashedMemberDefs = ir.Hashers.hashMemberDefs(generatedMembers)
+    val methods = generatedMethods.toList ::: staticGetterDefs
+    val jsMethodProps =
+      jsExportsGen.genJSClassDispatchers(sym, dispatchMethodNames.result().distinct) ::: staticExports
 
     // The complete class definition
     val kind =
@@ -613,11 +617,15 @@ class JSCodeGen()(using genCtx: Context) {
         genClassInterfaces(sym, forJSClass = true),
         jsSuperClass = jsClassCaptures.map(_.head.ref),
         None,
-        hashedMemberDefs,
+        fields ::: staticFields,
+        methods,
+        Some(generatedConstructor),
+        jsMethodProps,
+        jsNativeMembers = Nil,
         topLevelExports)(
         OptimizerHints.empty)
 
-    classDefinition
+    ir.Hashers.hashClassDef(classDefinition)
   }
 
   /** Gen the IR ClassDef for a raw JS class or trait.
@@ -646,6 +654,10 @@ class JSCodeGen()(using genCtx: Context) {
         genClassInterfaces(sym, forJSClass = true),
         None,
         jsNativeLoadSpec,
+        Nil,
+        Nil,
+        None,
+        Nil,
         Nil,
         Nil)(
         OptimizerHints.empty)
@@ -681,10 +693,7 @@ class JSCodeGen()(using genCtx: Context) {
       if (!isCandidateForForwarders(sym)) genMethodsList
       else genMethodsList ::: genStaticForwardersForClassOrInterface(genMethodsList, sym)
 
-    // Hashed definitions of the interface
-    val hashedDefs = ir.Hashers.hashMemberDefs(allMemberDefs)
-
-    js.ClassDef(
+    val classDef = js.ClassDef(
         classIdent,
         originalNameOfClass(sym),
         ClassKind.Interface,
@@ -693,9 +702,15 @@ class JSCodeGen()(using genCtx: Context) {
         superInterfaces,
         None,
         None,
-        hashedDefs,
+        Nil,
+        allMemberDefs,
+        None,
+        Nil,
+        Nil,
         Nil)(
         OptimizerHints.empty)
+
+    ir.Hashers.hashClassDef(classDef)
   }
 
   private def genClassInterfaces(sym: ClassSymbol, forJSClass: Boolean)(
@@ -763,15 +778,15 @@ class JSCodeGen()(using genCtx: Context) {
    *  Precondition: `isCandidateForForwarders(sym)` is true
    */
   def genStaticForwardersForClassOrInterface(
-      existingMembers: List[js.MemberDef], sym: Symbol)(
-      implicit pos: SourcePosition): List[js.MemberDef] = {
+      existingMethods: List[js.MethodDef], sym: Symbol)(
+      implicit pos: SourcePosition): List[js.MethodDef] = {
     val module = sym.companionModule
     if (!module.exists) {
       Nil
     } else {
       val moduleClass = module.moduleClass
       if (!moduleClass.isJSType)
-        genStaticForwardersFromModuleClass(existingMembers, moduleClass)
+        genStaticForwardersFromModuleClass(existingMethods, moduleClass)
       else
         Nil
     }
@@ -781,13 +796,13 @@ class JSCodeGen()(using genCtx: Context) {
    *
    *  Precondition: `isCandidateForForwarders(moduleClass)` is true
    */
-  def genStaticForwardersFromModuleClass(existingMembers: List[js.MemberDef],
+  def genStaticForwardersFromModuleClass(existingMethods: List[js.MethodDef],
       moduleClass: Symbol)(
-      implicit pos: SourcePosition): List[js.MemberDef] = {
+      implicit pos: SourcePosition): List[js.MethodDef] = {
 
     assert(moduleClass.is(ModuleClass), moduleClass)
 
-    val existingPublicStaticMethodNames = existingMembers.collect {
+    val existingPublicStaticMethodNames = existingMethods.collect {
       case js.MethodDef(flags, name, _, _, _, _)
           if flags.namespace == js.MemberNamespace.PublicStatic =>
         name.name
@@ -849,7 +864,7 @@ class JSCodeGen()(using genCtx: Context) {
 
         js.MethodDef(flags, methodIdent, originalName, jsParams, resultType, Some {
           genApplyMethod(genLoadModule(moduleClass), m, jsParams.map(_.ref))
-        })(OptimizerHints.empty, None)
+        })(OptimizerHints.empty, Unversioned)
       }
     }
 
@@ -859,12 +874,15 @@ class JSCodeGen()(using genCtx: Context) {
   // Generate the fields of a class ------------------------------------------
 
   /** Gen definitions for the fields of a class. */
-  private def genClassFields(td: TypeDef): List[js.MemberDef] = {
+  private def genClassFields(td: TypeDef): (List[js.AnyFieldDef], List[js.MethodDef]) = {
     val classSym = td.symbol.asClass
     assert(currentClassSym.get == classSym,
         "genClassFields called with a ClassDef other than the current one")
 
     val isJSClass = classSym.isNonNativeJSClass
+
+    val fieldDefs = List.newBuilder[js.AnyFieldDef]
+    val staticGetterDefs = List.newBuilder[js.MethodDef]
 
     // Term members that are neither methods nor modules are fields
     classSym.info.decls.filter { f =>
@@ -872,7 +890,7 @@ class JSCodeGen()(using genCtx: Context) {
         && !f.hasAnnotation(jsdefn.JSNativeAnnot)
         && !f.hasAnnotation(jsdefn.JSOptionalAnnot)
         && !f.hasAnnotation(jsdefn.JSExportStaticAnnot)
-    }.flatMap({ f =>
+    }.foreach { f =>
       implicit val pos = f.span
 
       val isTopLevelExport = f.hasAnnotation(jsdefn.JSExportTopLevelAnnot)
@@ -897,28 +915,27 @@ class JSCodeGen()(using genCtx: Context) {
         else irTpe0
 
       if (isJSClass && f.isJSExposed)
-        js.JSFieldDef(flags, genExpr(f.jsName)(f.sourcePos), irTpe) :: Nil
+        fieldDefs += js.JSFieldDef(flags, genExpr(f.jsName)(f.sourcePos), irTpe)
       else
         val fieldIdent = encodeFieldSym(f)
         val originalName = originalNameOfField(f)
-        val fieldDef = js.FieldDef(flags, fieldIdent, originalName, irTpe)
-        val optionalStaticFieldGetter =
-          if isJavaStatic then
-            // Here we are generating a public static getter for the static field,
-            // this is its API for other units. This is necessary for singleton
-            // enum values, which are backed by static fields.
-            val className = encodeClassName(classSym)
-            val body = js.Block(
-                js.LoadModule(className),
-                js.SelectStatic(className, fieldIdent)(irTpe))
-            js.MethodDef(js.MemberFlags.empty.withNamespace(js.MemberNamespace.PublicStatic),
-                encodeStaticMemberSym(f), originalName, Nil, irTpe,
-                Some(body))(
-                OptimizerHints.empty, None) :: Nil
-          else
-            Nil
-        fieldDef :: optionalStaticFieldGetter
-    }).toList
+        fieldDefs += js.FieldDef(flags, fieldIdent, originalName, irTpe)
+        if isJavaStatic then
+          // Here we are generating a public static getter for the static field,
+          // this is its API for other units. This is necessary for singleton
+          // enum values, which are backed by static fields.
+          val className = encodeClassName(classSym)
+          val body = js.Block(
+              js.LoadModule(className),
+              js.SelectStatic(className, fieldIdent)(irTpe))
+          staticGetterDefs += js.MethodDef(
+              js.MemberFlags.empty.withNamespace(js.MemberNamespace.PublicStatic),
+              encodeStaticMemberSym(f), originalName, Nil, irTpe,
+              Some(body))(
+              OptimizerHints.empty, Unversioned)
+    }
+
+    (fieldDefs.result(), staticGetterDefs.result())
   }
 
   def genExposedFieldIRType(f: Symbol): jstpe.Type = {
@@ -956,7 +973,7 @@ class JSCodeGen()(using genCtx: Context) {
         Nil,
         jstpe.NoType,
         Some(stats))(
-        OptimizerHints.empty, None)
+        OptimizerHints.empty, Unversioned)
   }
 
   private def genRegisterReflectiveInstantiation(sym: Symbol)(
@@ -1122,7 +1139,7 @@ class JSCodeGen()(using genCtx: Context) {
 
     val constructorDef = js.JSConstructorDef(
         js.MemberFlags.empty.withNamespace(js.MemberNamespace.Constructor),
-        formalArgs, restParam, constructorBody)(OptimizerHints.empty, None)
+        formalArgs, restParam, constructorBody)(OptimizerHints.empty, Unversioned)
 
     (jsClassCaptures, constructorDef)
   }
@@ -1504,7 +1521,7 @@ class JSCodeGen()(using genCtx: Context) {
       } else if (sym.is(Deferred)) {
         Some(js.MethodDef(js.MemberFlags.empty, methodName, originalName,
             jsParams, toIRType(patchedResultType(sym)), None)(
-            OptimizerHints.empty, None))
+            OptimizerHints.empty, Unversioned))
       } else if (isIgnorableDefaultParam) {
         // #11592
         None
@@ -1545,7 +1562,7 @@ class JSCodeGen()(using genCtx: Context) {
             val namespace = js.MemberNamespace.Constructor
             js.MethodDef(js.MemberFlags.empty.withNamespace(namespace),
                 methodName, originalName, jsParams, jstpe.NoType, Some(genStat(rhs)))(
-                optimizerHints, None)
+                optimizerHints, Unversioned)
           } else {
             val namespace = if (isMethodStaticInIR(sym)) {
               if (sym.isPrivate) js.MemberNamespace.PrivateStatic
@@ -1590,7 +1607,7 @@ class JSCodeGen()(using genCtx: Context) {
     if (namespace.isStatic || !currentClassSym.isNonNativeJSClass) {
       val flags = js.MemberFlags.empty.withNamespace(namespace)
       js.MethodDef(flags, methodName, originalName, jsParams, resultIRType, Some(genBody()))(
-            optimizerHints, None)
+            optimizerHints, Unversioned)
     } else {
       val thisLocalIdent = freshLocalIdent("this")
       withScopedVars(
@@ -1606,7 +1623,7 @@ class JSCodeGen()(using genCtx: Context) {
 
         js.MethodDef(flags, methodName, originalName,
             thisParamDef :: jsParams, resultIRType, Some(genBody()))(
-            optimizerHints, None)
+            optimizerHints, Unversioned)
       }
     }
   }
@@ -2323,36 +2340,18 @@ class JSCodeGen()(using genCtx: Context) {
 
     // Partition class members.
     val privateFieldDefs = mutable.ListBuffer.empty[js.FieldDef]
-    val classDefMembers = mutable.ListBuffer.empty[js.MemberDef]
-    val instanceMembers = mutable.ListBuffer.empty[js.MemberDef]
-    var constructor: Option[js.JSConstructorDef] = None
+    val jsFieldDefs = mutable.ListBuffer.empty[js.JSFieldDef]
 
-    originalClassDef.memberDefs.foreach {
+    originalClassDef.fields.foreach {
       case fdef: js.FieldDef =>
         privateFieldDefs += fdef
 
       case fdef: js.JSFieldDef =>
-        instanceMembers += fdef
-
-      case mdef: js.MethodDef =>
-        assert(mdef.flags.namespace.isStatic,
-            "Non-static, unexported method in non-native JS class")
-        classDefMembers += mdef
-
-      case cdef: js.JSConstructorDef =>
-        assert(constructor.isEmpty, "two ctors in class")
-        constructor = Some(cdef)
-
-      case mdef: js.JSMethodDef =>
-        assert(!mdef.flags.namespace.isStatic, "Exported static method")
-        instanceMembers += mdef
-
-      case property: js.JSPropertyDef =>
-        instanceMembers += property
-
-      case nativeMemberDef: js.JSNativeMemberDef =>
-        throw new FatalError("illegal native JS member in JS class at " + nativeMemberDef.pos)
+        jsFieldDefs += fdef
     }
+
+    assert(originalClassDef.jsNativeMembers.isEmpty,
+        "Found JS native members in anonymous JS class at " + pos)
 
     assert(originalClassDef.topLevelExportDefs.isEmpty,
         "Found top-level exports in anonymous JS class at " + pos)
@@ -2363,8 +2362,9 @@ class JSCodeGen()(using genCtx: Context) {
       val parent = js.ClassIdent(jsNames.ObjectClass)
       js.ClassDef(originalClassDef.name, originalClassDef.originalName,
           ClassKind.AbstractJSType, None, Some(parent), interfaces = Nil,
-          jsSuperClass = None, jsNativeLoadSpec = None,
-          classDefMembers.toList, Nil)(
+          jsSuperClass = None, jsNativeLoadSpec = None, fields = Nil,
+          methods = originalClassDef.methods, jsConstructor = None,
+          jsMethodProps = Nil, jsNativeMembers = Nil, topLevelExportDefs = Nil)(
           originalClassDef.optimizerHints)
     }
 
@@ -2375,7 +2375,7 @@ class JSCodeGen()(using genCtx: Context) {
     val jsClassCaptures = originalClassDef.jsClassCaptures.getOrElse {
       throw new AssertionError(s"no class captures for anonymous JS class at $pos")
     }
-    val js.JSConstructorDef(_, ctorParams, ctorRestParam, ctorBody) = constructor.getOrElse {
+    val js.JSConstructorDef(_, ctorParams, ctorRestParam, ctorBody) = originalClassDef.jsConstructor.getOrElse {
       throw new AssertionError("No ctor found")
     }
     assert(ctorParams.isEmpty && ctorRestParam.isEmpty,
@@ -2399,20 +2399,12 @@ class JSCodeGen()(using genCtx: Context) {
     def memberLambda(params: List[js.ParamDef], restParam: Option[js.ParamDef], body: js.Tree)(implicit pos: ir.Position): js.Closure =
       js.Closure(arrow = false, captureParams = Nil, params, restParam, body, captureValues = Nil)
 
-    val memberDefinitions0 = instanceMembers.toList.map {
-      case fdef: js.FieldDef =>
-        throw new AssertionError("unexpected FieldDef")
+    val fieldDefinitions = jsFieldDefs.toList.map { fdef =>
+      implicit val pos = fdef.pos
+      js.Assign(js.JSSelect(selfRef, fdef.name), jstpe.zeroOf(fdef.ftpe))
+    }
 
-      case fdef: js.JSFieldDef =>
-        implicit val pos = fdef.pos
-        js.Assign(js.JSSelect(selfRef, fdef.name), jstpe.zeroOf(fdef.ftpe))
-
-      case mdef: js.MethodDef =>
-        throw new AssertionError("unexpected MethodDef")
-
-      case cdef: js.JSConstructorDef =>
-        throw new AssertionError("unexpected JSConstructorDef")
-
+    val memberDefinitions0 = originalClassDef.jsMethodProps.toList.map {
       case mdef: js.JSMethodDef =>
         implicit val pos = mdef.pos
         val impl = memberLambda(mdef.args, mdef.restParam, mdef.body)
@@ -2434,13 +2426,12 @@ class JSCodeGen()(using genCtx: Context) {
         js.JSMethodApply(js.JSGlobalRef("Object"),
             js.StringLiteral("defineProperty"),
             List(selfRef, pdef.name, descriptor))
-
-      case nativeMemberDef: js.JSNativeMemberDef =>
-        throw new FatalError("illegal native JS member in JS class at " + nativeMemberDef.pos)
     }
 
+    val memberDefinitions1 = fieldDefinitions ::: memberDefinitions0
+
     val memberDefinitions = if (privateFieldDefs.isEmpty) {
-      memberDefinitions0
+      memberDefinitions1
     } else {
       /* Private fields, declared in FieldDefs, are stored in a separate
        * object, itself stored as a non-enumerable field of the `selfRef`.
@@ -2481,7 +2472,7 @@ class JSCodeGen()(using genCtx: Context) {
             )
         )
       }
-      definePrivateFieldsObj :: memberDefinitions0
+      definePrivateFieldsObj :: memberDefinitions1
     }
 
     // Transform the constructor body.
@@ -3581,7 +3572,7 @@ class JSCodeGen()(using genCtx: Context) {
           NoOriginalName,
           paramDefs,
           jstpe.AnyType,
-          Some(body))(OptimizerHints.empty, None)
+          Some(body))(OptimizerHints.empty, Unversioned)
     }
   }
 
