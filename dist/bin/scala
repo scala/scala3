@@ -54,7 +54,8 @@ done
 
 # exec here would prevent onExit from being called, leaving terminal in unusable state
 [ -z "${ConEmuPID-}" -o -n "${cygwin-}" ] && export MSYSTEM= PWD= # workaround for #12405
-eval "\"$SCALA_CLI_LAUNCHER\"" \
+eval "\"$JAVACMD\"" \
+  "-jar \"$SCALA_CLI_JAR\"" \
   "--cli-default-scala-version \"$SCALA_VERSION\"" \
   "-r \"$MVN_REPOSITORY\"" \
   "${scala_args[@]}"
