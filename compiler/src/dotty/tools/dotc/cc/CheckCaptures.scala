@@ -358,9 +358,17 @@ class CheckCaptures extends Recheck, SymTransformer:
     def markFree(cs: CaptureSet, pos: SrcPos)(using Context): Unit =
       if !cs.isAlwaysEmpty then
         forallOuterEnvsUpTo(ctx.owner.topLevelClass): env =>
-          def isVisibleFromEnv(sym: Symbol) =
-            (env.kind == EnvKind.NestedInOwner || env.owner != sym)
-            && env.owner.isContainedIn(sym)
+          // Whether a symbol is defined inside the owner of the environment?
+          inline def isContainedInEnv(sym: Symbol) =
+            if env.kind == EnvKind.NestedInOwner then
+              sym.isProperlyContainedIn(env.owner)
+            else
+              sym.isContainedIn(env.owner)
+          // A captured reference with the symbol `sym` is visible from the environment
+          // if `sym` is not defined inside the owner of the environment
+          inline def isVisibleFromEnv(sym: Symbol) = !isContainedInEnv(sym)
+          // Only captured references that are visible from the environment
+          // should be included.
           val included = cs.filter:
             case ref: TermRef => isVisibleFromEnv(ref.symbol.owner)
             case ref: ThisType => isVisibleFromEnv(ref.cls)
@@ -378,6 +386,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           // there won't be an apply; need to include call captures now
           includeCallCaptures(tree.symbol, tree.srcPos)
       else
+        //debugShowEnvs()
         markFree(tree.symbol, tree.srcPos)
       super.recheckIdent(tree, pt)
 
@@ -946,6 +955,19 @@ class CheckCaptures extends Recheck, SymTransformer:
           expected
     end addOuterRefs
 
+    /** A debugging method for showing the envrionments during capture checking. */
+    private def debugShowEnvs()(using Context): Unit =
+      def showEnv(env: Env): String = i"Env(${env.owner}, ${env.kind}, ${env.captured})"
+      val sb = StringBuilder()
+      @annotation.tailrec def walk(env: Env | Null): Unit =
+        if env != null then
+          sb ++= showEnv(env)
+          sb ++= "\n"
+          walk(env.outer0)
+      sb ++= "===== Current Envs ======\n"
+      walk(curEnv)
+      sb ++= "===== End          ======\n"
+      println(sb.result())
 
     /** Adapt `actual` type to `expected` type by inserting boxing and unboxing conversions
      *
@@ -1085,6 +1107,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                   pos)
                 }
               if !insertBox then  // unboxing
+                //debugShowEnvs()
                 markFree(criticalSet, pos)
               adaptedType(!boxed)
           else
