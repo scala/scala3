@@ -52,7 +52,7 @@ object TupleOps:
     case EmptyTuple => Y *: EmptyTuple
 
   inline def appendIfDistinct[X <: Tuple, Y](xs: X, y: Y): AppendIfDistinct[X, Y] =
-    (if xs.containsType[Y] then xs else xs :* y).asInstanceOf[AppendIfDistinct[X, Y]]
+    (if xs.contains(y) then xs else xs :* y).asInstanceOf[AppendIfDistinct[X, Y]]
 
   /** `X` with all elements from `Y` that do not occur in `X` appended */
   type ConcatDistinct[X <: Tuple, Y <: Tuple] <: Tuple = Y match
@@ -137,10 +137,10 @@ object NamedTupleOps:
   val x1: IndexOf[Names, "first"] = constValue
   val _: 0 = x1
 
-  val x2: IndexOf[Names, "age"] = names.indexOfType["age"]
+  val x2: IndexOf[Names, "age"] = names.indexOf("age")
   val _: 2 = x2
 
-  val x3: IndexOf[Names, "what?"] = names.indexOfType["what?"]
+  val x3: IndexOf[Names, "what?"] = names.indexOf("what?")
   val _: 3 = x3
 
   type Releases = "first" *: "middle" *: EmptyTuple
@@ -149,7 +149,7 @@ object NamedTupleOps:
   val releases: Releases = ("first", "middle")
   val releaseValues: ReleaseValues = (1.0, true)
 
-  val x4 = values.updateOrAppend(names.indexOfType["age"], 11)
+  val x4 = values.updateOrAppend(names.indexOf("age"), 11)
     //updateOrAppend[Values](values)[IndexOf[Names, "age"], 11](indexOf[Names](names)["age"]("age"), 11)
   val _: ("Bob", "Miller", 11) = x4
   assert(("Bob", "Miller", 11) == x4)

@@ -184,8 +184,8 @@ object NamedTuple:
    *  @syntax markdown
    */
   type Zip[X <: AnyNamedTuple, Y <: AnyNamedTuple] =
-    Tuple.Conforms[Names[X], Names[Y]] match
-      case true =>
+    Names[X] match
+      case Names[Y] =>
         NamedTuple[Names[X], Tuple.Zip[DropNames[X], DropNames[Y]]]
 
   /** A type specially treated by the compiler to represent all fields of a
