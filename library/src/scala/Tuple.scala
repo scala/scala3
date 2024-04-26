@@ -118,6 +118,7 @@ object Tuple:
   // even though it only matches non-empty tuples.
   // Avoids bounds check failures from an irreducible type
   // like `Tuple.Head[Tuple.Tail[X]]`
+  // Other types that don't reduce for empty tuples follow the same principle.
   type Head[X <: Tuple] = X match
     case x *: _ => x
 
@@ -273,22 +274,6 @@ object Tuple:
    */
   type Union[T <: Tuple] = Fold[T, Nothing, [x, y] =>> x | y]
 
-  /** A type level Boolean indicating whether the tuple `X` conforms
-   *  to the tuple `Y`. This means:
-   *   - the two tuples have the same number of elements
-   *   - for corresponding elements `x` in `X` and `y` in `Y`, `x` matches `y`.
-   *  @pre  The elements of `X` are assumed to be singleton types
-   */
-  type Conforms[X <: Tuple, Y <: Tuple] <: Boolean = Y match
-    case EmptyTuple =>
-      X match
-        case EmptyTuple => true
-        case _ => false
-    case y *: ys =>
-      X match
-        case `y` *: xs => Conforms[xs, ys]
-        case _ => false
-
   /** A type level Boolean indicating whether the tuple `X` has an element
    *  that matches `Y`.
    *  @pre  The elements of `X` are assumed to be singleton types
@@ -350,25 +335,14 @@ object Tuple:
 
   extension [X <: Tuple](inline x: X)
 
-    /** The index (starting at 0) of the first element in the type `X` of `x`
-     *  that matches type `Y`.
+    /** The index (starting at 0) of the first occurrence of y.type in the type `X` of `x`
+     *  or Size[X] if no such element exists.
      */
-    inline def indexOfType[Y] = constValue[IndexOf[X, Y]]
+    transparent inline def indexOf(y: Any): Int = constValue[IndexOf[X, y.type]]
 
-    /** A boolean indicating whether there is an element in the type `X` of `x`
-     *  that matches type `Y`.
+    /** A boolean indicating whether there is an element `y.type` in the type `X` of `x`
      */
-    inline def containsType[Y] = constValue[Contains[X, Y]]
-
-    /* Note: It would be nice to add the following two extension methods:
-
-      inline def indexOf[Y: Precise](y: Y) = constValue[IndexOf[X, Y]]
-      inline def containsType[Y: Precise](y: Y) = constValue[Contains[X, Y]]
-
-    because we could then move indexOf/contains completely to the value level.
-    But this requires `Y` to be inferred precisely, and therefore a mechanism
-    like the `Precise` context bound used above, which does not yet exist.
-    */
+    transparent inline def contains(y: Any): Boolean = constValue[Contains[X, y.type]]
 
   end extension
 
@@ -380,7 +354,7 @@ object Tuple:
     using eqHead: CanEqual[H1, H2], eqTail: CanEqual[T1, T2]
   ): CanEqual[H1 *: T1, H2 *: T2] = CanEqual.derived
 
-  object helpers:
+  private object helpers:
 
     /** Used to implement IndicesWhere */
     type IndicesWhereHelper[X <: Tuple, P[_] <: Boolean, N <: Int] <: Tuple = X match
