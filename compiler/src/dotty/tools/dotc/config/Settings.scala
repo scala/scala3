@@ -119,14 +119,23 @@ object Settings:
     def tryToSet(state: ArgsSummary): ArgsSummary =
       val ArgsSummary(sstate, arg :: args, errors, warnings) = state: @unchecked
 
-      def update(value: Any, args: List[String]): ArgsSummary =
+      /**
+        * Updates the value in state
+        *
+        * @param getValue it is crucial that this argument is passed by name, as [setOutput] have side effects.
+        * @param argStringValue string value of currently proccessed argument that will be used to set deprecation replacement
+        * @param args remaining arguments to process
+        * @return new argumment state
+        */
+      def update(getValue: => Any, argStringValue: String, args: List[String]): ArgsSummary =
         deprecation match
           case Some(Deprecation(msg, replacedBy)) =>
             val deprecatedMsg = s"Option $name is deprecated: $msg"
-            if argValRest.isBlank() then state.deprecated(replacedBy, deprecatedMsg)
-            else state.deprecated(s"$replacedBy:$argValRest", deprecatedMsg)
+            if argStringValue.isEmpty then state.deprecated(replacedBy, deprecatedMsg)
+            else state.deprecated(s"$replacedBy:$argStringValue", deprecatedMsg)
 
           case None =>
+            val value = getValue
             var dangers = warnings
             val valueNew =
               if sstate.wasChanged(idx) && isMultivalue then
@@ -154,8 +163,8 @@ object Settings:
         if ignoreInvalidArgs then state.warn(msg + ", the tag was ignored") else state.fail(msg)
 
       def setBoolean(argValue: String, args: List[String]) =
-        if argValue.equalsIgnoreCase("true") || argValue.isEmpty then update(true, args)
-        else if argValue.equalsIgnoreCase("false") then update(false, args)
+        if argValue.equalsIgnoreCase("true") || argValue.isEmpty then update(true, argValue, args)
+        else if argValue.equalsIgnoreCase("false") then update(false, argValue, args)
         else state.fail(s"$argValue is not a valid choice for boolean setting $name")
 
       def setString(argValue: String, args: List[String]) =
@@ -163,7 +172,7 @@ object Settings:
           case Some(xs) if !xs.contains(argValue) =>
             state.fail(s"$argValue is not a valid choice for $name")
           case _ =>
-            update(argValue, args)
+            update(argValue, argValue, args)
 
       def setInt(argValue: String, args: List[String]) =
         argValue.toIntOption.map: intValue =>
@@ -173,7 +182,7 @@ object Settings:
             case Some(xs) if !xs.contains(intValue) =>
               state.fail(s"$argValue is not a valid choice for $name")
             case _ =>
-              update(intValue, args)
+              update(intValue, argValue, args)
         .getOrElse:
           state.fail(s"$argValue is not an integer argument for $name")
 
@@ -183,20 +192,21 @@ object Settings:
         if (!isJar && !path.isDirectory) then
           state.fail(s"'$argValue' does not exist or is not a directory or .jar file")
         else
-          val output = if (isJar) JarArchive.create(path) else new PlainDirectory(path)
-          update(output, args)
+          /* Side effect, do not change this method to evaluate eagerly */
+          def output = if (isJar) JarArchive.create(path) else new PlainDirectory(path)
+          update(output, argValue, args)
 
       def setVersion(argValue: String, args: List[String]) =
         ScalaVersion.parse(argValue) match
-          case Success(v) => update(v, args)
+          case Success(v) => update(v, argValue, args)
           case Failure(ex) => state.fail(ex.getMessage)
 
-      def appendList(strings: List[String], args: List[String]) =
+      def appendList(strings: List[String], argValue: String, args: List[String]) =
         choices match
           case Some(valid) => strings.filterNot(valid.contains) match
-            case Nil => update(strings, args)
+            case Nil => update(strings, argValue, args)
             case invalid => invalidChoices(invalid)
-          case _ => update(strings, args)
+          case _ => update(strings, argValue, args)
 
       def doSet(argRest: String) =
         ((summon[ClassTag[T]], args): @unchecked) match
@@ -204,7 +214,7 @@ object Settings:
             if sstate.wasChanged(idx) && preferPrevious then ignoreValue(args)
             else setBoolean(argRest, args)
           case (OptionTag, _) =>
-            update(Some(propertyClass.get.getConstructor().newInstance()), args)
+            update(Some(propertyClass.get.getConstructor().newInstance()), "", args)
           case (ct, args) =>
             val argInArgRest = !argRest.isEmpty || legacyArgs
             val argAfterParam = !argInArgRest && args.nonEmpty && (ct == IntTag || !args.head.startsWith("-"))
@@ -217,7 +227,7 @@ object Settings:
       def doSetArg(arg: String, argsLeft: List[String]) = summon[ClassTag[T]] match
           case ListTag =>
             val strings = arg.split(",").toList
-            appendList(strings, argsLeft)
+            appendList(strings, arg, argsLeft)
           case StringTag =>
             setString(arg, argsLeft)
           case OutputTag =>
