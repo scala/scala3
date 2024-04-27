@@ -833,7 +833,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           dynSelected match
             case Apply(sel: Select, _) if !sel.denot.symbol.exists =>
               // Reject corner case where selectDynamic needs annother selectDynamic to be called. E.g. as in neg/unselectable-fields.scala.
-              report.error(i"Cannot use selectDynamic here since it it needs another selectDynamic to be invoked", tree.srcPos)
+              report.error(i"Cannot use selectDynamic here since it needs another selectDynamic to be invoked", tree.srcPos)
             case _ =>
           return dynSelected.ensureConforms(fieldType)
         case _ =>
