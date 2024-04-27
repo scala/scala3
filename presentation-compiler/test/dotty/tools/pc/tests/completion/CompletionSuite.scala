@@ -634,6 +634,30 @@ class CompletionSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
+  @Test def patRecursive =
+    check(
+      s"""|object Main {
+          |  Option(List(Option(1))) match {
+          |    case Some(List(None, Som@@))
+          |}
+          |""".stripMargin,
+      """|Some(value) scala
+         |Some[A](value: A): Some[A]
+         |Some scala
+         |""".stripMargin
+    )
+    check(
+      s"""|object Main {
+          |  Option(Option(1)) match {
+          |    case Some(Som@@)
+          |}
+          |""".stripMargin,
+      """|Some(value) scala
+         |Some[A](value: A): Some[A]
+         |Some scala
+         |""".stripMargin
+    )
+
   @Test def pat1 =
     check(
       s"""|object Main {
@@ -641,7 +665,9 @@ class CompletionSuite extends BaseCompletionSuite:
           |    case List(Som@@)
           |}
           |""".stripMargin,
-      """|Some[A](value: A): Some[A]
+      """|Some(value) scala
+         |Some scala
+         |Some[A](value: A): Some[A]
          |Some scala
          |""".stripMargin
     )
