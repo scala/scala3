@@ -822,14 +822,20 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     // and the selector is neither applied nor assigned to,
     // expand to a typed dynamic dispatch using selectDynamic wrapped in a cast
     if qual.tpe.derivesFrom(defn.SelectableClass) && !isDynamicExpansion(tree)
-      && !pt.isInstanceOf[FunOrPolyProto] && pt != LhsProto
+        && !pt.isInstanceOf[FunOrPolyProto] && pt != LhsProto
     then
       val fieldsType = qual.tpe.select(tpnme.Fields).dealias.simplified
       val fields = fieldsType.namedTupleElementTypes
       typr.println(i"try dyn select $qual, $selName, $fields")
       fields.find(_._1 == selName) match
         case Some((_, fieldType)) =>
-          return dynamicSelect(fieldType).ensureConforms(fieldType)
+          val dynSelected = dynamicSelect(fieldType)
+          dynSelected match
+            case Apply(sel: Select, _) if !sel.denot.symbol.exists =>
+              // Reject corner case where selectDynamic needs annother selectDynamic to be called. E.g. as in neg/unselectable-fields.scala.
+              report.error(i"Cannot use selectDynamic here since it it needs another selectDynamic to be invoked", tree.srcPos)
+            case _ =>
+          return dynSelected.ensureConforms(fieldType)
         case _ =>
 
     // Otherwise, report an error
