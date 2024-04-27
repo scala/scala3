@@ -340,9 +340,9 @@ private sealed trait XSettings:
   val XdebugMacros: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xdebug-macros", "Show debug info when quote pattern match fails")
 
   /** Pipeline compilation options */
-  val XjavaTasty: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xjava-tasty", "Pickler phase should compute TASTy for .java defined symbols for use by build tools", aliases = List("-Xpickle-java"), preferPrevious = true)
-  val XearlyTastyOutput: Setting[AbstractFile] = OutputSetting(AdvancedSetting, "Xearly-tasty-output", "directory|jar", "Destination to write generated .tasty files to for use in pipelined compilation.", NoAbstractFile, aliases = List("-Xpickle-write"), preferPrevious = true)
-  val XallowOutlineFromTasty: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xallow-outline-from-tasty", "Allow outline TASTy to be loaded with the -from-tasty option.")
+  val XjavaTasty: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xjava-tasty", "Pickler phase should compute TASTy for .java defined symbols for use by build tools", aliases = List("-Xpickle-java", "-Yjava-tasty", "-Ypickle-java"), preferPrevious = true)
+  val XearlyTastyOutput: Setting[AbstractFile] = OutputSetting(AdvancedSetting, "Xearly-tasty-output", "directory|jar", "Destination to write generated .tasty files to for use in pipelined compilation.", NoAbstractFile, aliases = List("-Xpickle-write", "-Yearly-tasty-output", "-Ypickle-write"), preferPrevious = true)
+  val XallowOutlineFromTasty: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xallow-outline-from-tasty", "Allow outline TASTy to be loaded with the -from-tasty option.", aliases = List("-Yallow-outline-from-tasty"))
 
   val XmixinForceForwarders = ChoiceSetting(
     AdvancedSetting,
@@ -489,12 +489,13 @@ private sealed trait YSettings:
   val YnoEnrichErrorMessages: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-enrich-error-messages", "Show raw error messages, instead of enriching them with contextual information.", deprecation = Some(Deprecation("Use -Xno-enrich-error-messages instead.", "-Xno-enrich-error-messages")))
   @deprecated(message = "Lifted to -X, Scheduled for removal in 3.6.0", since = "3.5.0")
   val YdebugMacros: Setting[Boolean] = BooleanSetting(ForkSetting, "Ydebug-macros", "Show debug info when quote pattern match fails", deprecation = Some(Deprecation("Use -Xdebug-macros instead.", "-Xdebug-macros")))
-  @deprecated(message = "Lifted to -X, Scheduled for removal in 3.6.0", since = "3.5.0")
-  val YjavaTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Yjava-tasty", "Pickler phase should compute TASTy for .java defined symbols for use by build tools", aliases = List("-Ypickle-java"), preferPrevious = true, deprecation = Some(Deprecation("Use -Xjava-tasty instead.", "-Xjava-tasty")))
-  @deprecated(message = "Lifted to -X, Scheduled for removal in 3.6.0", since = "3.5.0")
-  val YearlyTastyOutput: Setting[AbstractFile] = OutputSetting(ForkSetting, "Yearly-tasty-output", "directory|jar", "Destination to write generated .tasty files to for use in pipelined compilation.", NoAbstractFile, aliases = List("-Ypickle-write"), preferPrevious = true, deprecation = Some(Deprecation("Use -Xearly-tasty-output instead.", "-Xearly-tasty-output")))
-  @deprecated(message = "Lifted to -X, Scheduled for removal in 3.6.0", since = "3.5.0")
-  val YallowOutlineFromTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Yallow-outline-from-tasty", "Allow outline TASTy to be loaded with the -from-tasty option.", deprecation = Some(Deprecation("Use -Xallow-outline-from-tasty instead.", "-Xallow-outline-from-tasty")))
+
+  // @deprecated(message = "Lifted to -X, Scheduled for removal in 3.8.0", since = "3.7.0")
+  // val YjavaTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Yjava-tasty", "Pickler phase should compute TASTy for .java defined symbols for use by build tools", aliases = List("-Ypickle-java"), preferPrevious = true, deprecation = Some(Deprecation("Use -Xjava-tasty instead.", "-Xjava-tasty")))
+  // @deprecated(message = "Lifted to -X, Scheduled for removal in 3.8.0", since = "3.7.0")
+  // val YearlyTastyOutput: Setting[AbstractFile] = OutputSetting(ForkSetting, "Yearly-tasty-output", "directory|jar", "Destination to write generated .tasty files to for use in pipelined compilation.", NoAbstractFile, aliases = List("-Ypickle-write"), preferPrevious = true, deprecation = Some(Deprecation("Use -Xearly-tasty-output instead.", "-Xearly-tasty-output")))
+  // @deprecated(message = "Lifted to -X, Scheduled for removal in 3.8.0", since = "3.7.0")
+  // val YallowOutlineFromTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Yallow-outline-from-tasty", "Allow outline TASTy to be loaded with the -from-tasty option.", deprecation = Some(Deprecation("Use -Xallow-outline-from-tasty instead.", "-Xallow-outline-from-tasty")))
 
   // Deprecated: lifted from -Y to -W
   @deprecated(message = "Lifted to -W, Scheduled for removal in 3.6.0", since = "3.5.0")
