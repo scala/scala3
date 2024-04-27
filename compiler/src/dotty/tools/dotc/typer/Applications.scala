@@ -1733,7 +1733,7 @@ trait Applications extends Compatibility {
   def compare(alt1: TermRef, alt2: TermRef, preferGeneral: Boolean = false)(using Context): Int = trace(i"compare($alt1, $alt2)", overload) {
     record("resolveOverloaded.compare")
 
-    val compareGivens = alt1.symbol.is(Given) || alt2.symbol.is(Given)
+    val compareGivens = alt1.symbol.is(Given) && alt2.symbol.is(Given)
 
     /** Is alternative `alt1` with type `tp1` as good as alternative
      *  `alt2` with type `tp2` ?
