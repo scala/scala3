@@ -232,11 +232,11 @@ class SettingsTests {
 
       import Settings._
 
-      Files.writeString(file1, "test1")
-      Files.writeString(file2, "test2")
+      Files.write(file1, "test1".getBytes())
+      Files.write(file2, "test2".getBytes())
 
-      val file1StateBefore = Files.readString(file1)
-      val file2StateBefore = Files.readString(file2)
+      val file1StateBefore = String(Files.readAllBytes(file1))
+      val file2StateBefore = String(Files.readAllBytes(file2))
 
       val creationTime = Files.getLastModifiedTime(file1)
       val args = List(s"-testOutput:${file1.toString}", s"-testOutput:${file2.toString}")
@@ -244,8 +244,8 @@ class SettingsTests {
 
       // The output is a new filesystem without information of original path
       // We can't check the `testOutput.value` as in other tests.
-      assertNotEquals(file1StateBefore, Files.readString(file1))
-      assertEquals(file2StateBefore, Files.readString(file2))
+      assertNotEquals(file1StateBefore, String(Files.readAllBytes(file1)))
+      assertEquals(file2StateBefore, String(Files.readAllBytes(file2)))
 
     }(Files.deleteIfExists(_), Files.deleteIfExists(_))
 
@@ -253,7 +253,7 @@ class SettingsTests {
     val result = Using.resource(Files.createTempFile("myfile", ".jar").nn){ file =>
       object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
-        val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true, deprecation = Some(Deprecation("deprecated", "XtestOutput")))
+        val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true, deprecation = Deprecation.renamed("XtestOutput"))
 
       import Settings._
 

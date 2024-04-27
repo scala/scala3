@@ -61,8 +61,8 @@ object Settings:
     def warn(msg: String): Settings.ArgsSummary =
       ArgsSummary(sstate, arguments.tail, errors, warnings :+ msg)
 
-    def deprecated(extraArg: String, msg: String): Settings.ArgsSummary =
-      ArgsSummary(sstate, extraArg +: arguments.tail, errors, warnings :+ msg)
+    def deprecated(msg: String, extraArgs: List[String] = Nil): Settings.ArgsSummary =
+      ArgsSummary(sstate, extraArgs ++ arguments.tail, errors, warnings :+ msg)
 
   @unshared
   val settingCharacters = "[a-zA-Z0-9_\\-]*".r
@@ -129,11 +129,12 @@ object Settings:
         */
       def update(getValue: => Any, argStringValue: String, args: List[String]): ArgsSummary =
         deprecation match
-          case Some(Deprecation(msg, replacedBy)) =>
+          case Some(Deprecation(msg, Some(replacedBy))) =>
             val deprecatedMsg = s"Option $name is deprecated: $msg"
-            if argStringValue.isEmpty then state.deprecated(replacedBy, deprecatedMsg)
-            else state.deprecated(s"$replacedBy:$argStringValue", deprecatedMsg)
+            if argStringValue.isEmpty then state.deprecated(deprecatedMsg, List(replacedBy))
+            else state.deprecated(deprecatedMsg, List(s"$replacedBy:$argStringValue"))
 
+          case Some(Deprecation(msg, _)) => state.deprecated(msg)
           case None =>
             val value = getValue
             var dangers = warnings
@@ -262,10 +263,14 @@ object Settings:
     * @param msg           deprecation message that will be displayed in following format: s"Option $name is deprecated: $msg"
     * @param replacedBy    option that is substituting current option
     */
-  case class Deprecation(
+  case class Deprecation private(
     msg: String,
-    replacedBy: String,
+    replacedBy: Option[String] = None,
   )
+
+  object Deprecation:
+    def renamed(replacement: String) = Some(Deprecation(s"Use $replacement instead.", Some(replacement)))
+    def removed(removedVersion: String) = Some(Deprecation(s"Scheduled for removal in s$removedVersion", None))
 
   object Setting:
     extension [T](setting: Setting[T])

@@ -127,6 +127,8 @@ object PostProcessorFrontendAccess {
       override val jarCompressionLevel: Int = s.XjarCompressionLevel.value
       override val backendParallelism: Int = s.YbackendParallelism.value
       override val backendMaxWorkerQueue: Option[Int] = s.YbackendWorkerQueue.valueSetByUser
+
+      @annotation.nowarn("cat=deprecation")
       override val outputOnlyTasty: Boolean = s.YoutputOnlyTasty.value
      }
 
