@@ -203,10 +203,6 @@ extension (tp: Type)
     case _ =>
       false
 
-  def isCapabilityClassRef(using Context) = tp.dealiasKeepAnnots match
-    case _: TypeRef | _: AppliedType => tp.typeSymbol.hasAnnotation(defn.CapabilityAnnot)
-    case _ => false
-
   /** Drop @retains annotations everywhere */
   def dropAllRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
     val tm = new TypeMap:
