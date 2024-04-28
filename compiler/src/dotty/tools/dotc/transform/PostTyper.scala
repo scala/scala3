@@ -279,13 +279,15 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       }
     }
 
-    def checkUsableAsValue(tree: Tree)(using Context): Unit =
+    def checkUsableAsValue(tree: Tree)(using Context): Tree =
       def unusable(msg: Symbol => Message) =
-        report.error(msg(tree.symbol), tree.srcPos)
+        errorTree(tree, msg(tree.symbol))
       if tree.symbol.is(ConstructorProxy) then
         unusable(ConstructorProxyNotValue(_))
-      if tree.symbol.isContextBoundCompanion then
+      else if tree.symbol.isContextBoundCompanion then
         unusable(ContextBoundCompanionNotValue(_))
+      else
+        tree
 
     def checkStableSelection(tree: Tree)(using Context): Unit =
       def check(qual: Tree) =
@@ -330,11 +332,11 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           if tree.isType then
             checkNotPackage(tree)
           else
-            checkUsableAsValue(tree)
             registerNeedsInlining(tree)
-            tree.tpe match {
+            val tree1 = checkUsableAsValue(tree)
+            tree1.tpe match {
               case tpe: ThisType => This(tpe.cls).withSpan(tree.span)
-              case _ => tree
+              case _ => tree1
             }
         case tree @ Select(qual, name) =>
           registerNeedsInlining(tree)
@@ -342,8 +344,9 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             Checking.checkRealizable(qual.tpe, qual.srcPos)
             withMode(Mode.Type)(super.transform(checkNotPackage(tree)))
           else
-            checkUsableAsValue(tree)
-            transformSelect(tree, Nil)
+            checkUsableAsValue(tree) match
+              case tree1: Select => transformSelect(tree1, Nil)
+              case tree1 => tree1
         case tree: Apply =>
           val methType = tree.fun.tpe.widen.asInstanceOf[MethodType]
           val app =
