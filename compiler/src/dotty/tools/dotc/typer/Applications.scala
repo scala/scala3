@@ -1104,7 +1104,6 @@ trait Applications extends Compatibility {
                               case msg: TypeMismatch =>
                                 msg.inTree match
                                   case Some(arg) if tree.args.exists(_.span == arg.span) =>
-                                    val Select(qualifier, _) = fun1: @unchecked
                                     val noteText =
                                       i"""The required type comes from a parameter of the automatically
                                          |inserted `apply` method of `${qualifier.tpe}`,
