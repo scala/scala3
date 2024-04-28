@@ -2366,7 +2366,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val tparam = untpd.Ident(tree.paramName).withSpan(tree.span)
     if tycon.tpe.typeParams.nonEmpty then
       typed(untpd.AppliedTypeTree(tyconSplice, tparam :: Nil))
-    else if Feature.enabled(modularity) && tycon.tpe.member(tpnme.Self).symbol.isAbstractType then
+    else if Feature.enabled(modularity) && tycon.tpe.member(tpnme.Self).symbol.isAbstractOrParamType then
       val tparamSplice = untpd.TypedSplice(typedExpr(tparam))
       typed(untpd.RefinedTypeTree(tyconSplice, List(untpd.TypeDef(tpnme.Self, tparamSplice))))
     else
