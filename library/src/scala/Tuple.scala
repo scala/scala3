@@ -338,9 +338,15 @@ object Tuple:
      */
     transparent inline def indexOf(y: Any): Int = constValue[IndexOf[X, y.type]]
 
-    /** A boolean indicating whether there is an element `y.type` in the type `X` of `x`
-     */
-    transparent inline def contains(y: Any): Boolean = constValue[Contains[X, y.type]]
+    /** A boolean indicating whether there is an element `y.type` in the type `X` of `x` */
+    // Note this isn't equivalent to `constValue[Contains[X, y.type]]`
+    // since it also accepts cases unknown at compiletime.
+    // Also note it would be unsound to use a type parameter for `y` in the
+    // type level `Contains`, since it is rightfully not covariant in `Y`.
+    inline def contains(y: Any): Contains[X, y.type] =
+      x.productIterator.contains(y).asInstanceOf[Contains[X, y.type]]
+
+    // TODO containsType ?
 
   end extension
 
