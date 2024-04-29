@@ -90,15 +90,10 @@ sealed trait Tuple extends Product:
   inline def reverseOnto[This >: this.type <: Tuple, Acc <: Tuple](acc: Acc): ReverseOnto[This, Acc] =
     (this.reverse ++ acc).asInstanceOf[ReverseOnto[This, Acc]]
 
-  /** A tuple consisting of all elements of this tuple that have types
-   *  for which the given type level predicate `P` reduces to the literal
-   *  constant `true`.
-   */
-  inline def filter[This >: this.type <: Tuple, P[_ <: Union[This]] <: Boolean]: Filter[This, P] =
-    val toInclude = constValueTuple[IndicesWhere[This, P]].toArray
-    val arr = new Array[Object](toInclude.length)
-    for i <- 0 until toInclude.length do
-      arr(i) = this.productElement(toInclude(i).asInstanceOf[Int]).asInstanceOf[Object]
+  /** A tuple consisting of all elements of this tuple that satisfy the predicate `p`. */
+  inline def filter[This >: this.type <: Tuple, P[_ <: Union[This]] <: Boolean]
+                   (p: (x: Union[This]) => P[x.type]): Filter[This, P] =
+    val arr = this.toArray.filter(x => p(x.asInstanceOf[Union[This]]))
     Tuple.fromArray(arr).asInstanceOf[Filter[This, P]]
 
 object Tuple:
