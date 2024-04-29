@@ -246,10 +246,9 @@ object Tuple:
    *  constant `true`. A predicate `P[X]` is a type that can be either `true`
    *  or `false`. For example:
    *  ```scala
-   *  type IsString[x] <: Boolean = x match {
+   *  type IsString[x] <: Boolean = x match
    *    case String => true
    *    case _ => false
-   *  }
    *  summon[Tuple.Filter[(1, "foo", 2, "bar"), IsString] =:= ("foo", "bar")]
    *  ```
    *  @syntax markdown
@@ -325,26 +324,21 @@ object Tuple:
     fromArray(xs, xs.length)
 
   /** Convert the first `n` elements of an array into a tuple of unknown arity and types */
-  def fromArray[T](xs: Array[T], n: Int): Tuple = {
-    val xs2 = xs match {
+  def fromArray[T](xs: Array[T], n: Int): Tuple =
+    val xs2 = xs match
       case xs: Array[Object] => xs
       case xs => xs.map(_.asInstanceOf[Object])
-    }
     runtime.Tuples.fromArray(xs2, n)
-  }
 
   /** Convert an immutable array into a tuple of unknown arity and types */
   def fromIArray[T](xs: IArray[T]): Tuple = fromIArray(xs, xs.length)
 
   /** Convert the first `n` elements of an immutable array into a tuple of unknown arity and types */
-  def fromIArray[T](xs: IArray[T], n: Int): Tuple = {
-    val xs2: IArray[Object] = xs match {
+  def fromIArray[T](xs: IArray[T], n: Int): Tuple =
+    val xs2: IArray[Object] = xs match
       case xs: IArray[Object] @unchecked => xs
-      case _ =>
-        xs.map(_.asInstanceOf[Object])
-    }
+      case _ => xs.map(_.asInstanceOf[Object])
     runtime.Tuples.fromIArray(xs2, n)
-  }
 
   /** Convert a Product into a tuple of unknown arity and types */
   def fromProduct(product: Product): Tuple =
@@ -394,9 +388,8 @@ end Tuple
 type EmptyTuple = EmptyTuple.type
 
 /** A tuple of 0 elements. */
-case object EmptyTuple extends Tuple {
+case object EmptyTuple extends Tuple:
   override def toString(): String = "()"
-}
 
 /** Tuple of arbitrary non-zero arity */
 sealed trait NonEmptyTuple extends Tuple
@@ -404,6 +397,5 @@ sealed trait NonEmptyTuple extends Tuple
 @showAsInfix
 sealed abstract class *:[+H, +T <: Tuple] extends NonEmptyTuple
 
-object *: {
+object `*:`:
   def unapply[H, T <: Tuple](x: H *: T): (H, T) = (x.head, x.tail)
-}
