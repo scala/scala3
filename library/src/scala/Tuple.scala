@@ -94,7 +94,7 @@ sealed trait Tuple extends Product:
    *  for which the given type level predicate `P` reduces to the literal
    *  constant `true`.
    */
-  inline def filter[This >: this.type <: Tuple, P[_] <: Boolean]: Filter[This, P] =
+  inline def filter[This >: this.type <: Tuple, P[_ <: Union[This]] <: Boolean]: Filter[This, P] =
     val toInclude = constValueTuple[IndicesWhere[This, P]].toArray
     val arr = new Array[Object](toInclude.length)
     for i <- 0 until toInclude.length do
@@ -216,7 +216,7 @@ object Tuple:
    *  ```
    *  @syntax markdown
    */
-  type Filter[X <: Tuple, P[_] <: Boolean] <: Tuple = X match
+  type Filter[X <: Tuple, P[_ <: Union[X]] <: Boolean] <: Tuple = X match
     case EmptyTuple => EmptyTuple
     case x *: xs => P[x] match
       case true => x *: Filter[xs, P]
@@ -225,7 +225,7 @@ object Tuple:
   /** A tuple consisting of those indices `N` of tuple `X` where the predicate `P`
    *  is true for `Elem[X, N]`. Indices are type level values <: Int.
    */
-  type IndicesWhere[X <: Tuple, P[_] <: Boolean] =
+  type IndicesWhere[X <: Tuple, P[_ <: Union[X]] <: Boolean] =
     helpers.IndicesWhereHelper[X, P, 0]
 
   /** The type of the tuple consisting of all element values of
@@ -355,7 +355,7 @@ object Tuple:
   private object helpers:
 
     /** Used to implement IndicesWhere */
-    type IndicesWhereHelper[X <: Tuple, P[_] <: Boolean, N <: Int] <: Tuple = X match
+    type IndicesWhereHelper[X <: Tuple, P[_ <: Union[X]] <: Boolean, N <: Int] <: Tuple = X match
       case EmptyTuple => EmptyTuple
       case h *: t => P[h] match
         case true => N *: IndicesWhereHelper[t, P, S[N]]
