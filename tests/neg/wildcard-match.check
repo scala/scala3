@@ -87,8 +87,7 @@
    |                                   trying to reduce  shapeless.tuples.length[T2]
    |                                   trying to reduce  Tuple.Size[shapeless.tuples.to[T2]]
    |                                   failed since selector shapeless.tuples.to[T2]
-   |                                   does not uniquely determine parameters x, xs in
-   |                                     case x *: xs => scala.compiletime.ops.int.S[Tuple.Size[xs]]
-   |                                   The computed bounds for the parameters are:
-   |                                     x <: Int
+   |                                   does not uniquely determine parameter xs in
+   |                                     case _ *: xs => scala.compiletime.ops.int.S[Tuple.Size[xs]]
+   |                                   The computed bounds for the parameter are:
    |                                     xs <: (Int, Int)
