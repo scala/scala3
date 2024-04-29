@@ -154,12 +154,12 @@ object Tuple:
   type Split[X <: Tuple, N <: Int] = (Take[X, N], Drop[X, N])
 
   /** Type of a tuple with an element appended */
-  type Append[X <: Tuple, Y] <: NonEmptyTuple = X match
+  type Append[X <: Tuple, +Y] <: NonEmptyTuple = X match
     case EmptyTuple => Y *: EmptyTuple
     case x *: xs => x *: Append[xs, Y]
 
   /** An infix shorthand for `Append[X, Y]` */
-  infix type :*[X <: Tuple, Y] = Append[X, Y]
+  infix type :*[X <: Tuple, +Y] = Append[X, Y]
 
   /** Type of the concatenation of two tuples `X` and `Y` */
   // Can be covariant in `Y` since it never appears as a match type scrutinee.
