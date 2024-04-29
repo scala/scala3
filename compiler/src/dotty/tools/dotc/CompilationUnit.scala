@@ -57,6 +57,9 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
    */
   var needsInlining: Boolean = false
 
+  /** TODO */
+  var needsTraitInlining: Boolean = false
+
   var hasMacroAnnotations: Boolean = false
 
   /** Set to `true` if inliner added anonymous mirrors that need to be completed */

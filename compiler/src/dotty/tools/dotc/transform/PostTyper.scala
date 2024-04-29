@@ -441,9 +441,13 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             checkMacroAnnotation(sym)
             if sym.isOneOf(GivenOrImplicit) then
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.CompanionClassMetaAnnot), orNoneOf = defn.MetaAnnots)
+            if sym.isInlineTrait then
+              Feature.checkExperimentalFeature("inline trait", tree, "\nConsider using @experimental inline trait")
             tree.rhs match
               case impl: Template =>
                 for parent <- impl.parents do
+                  if parent.symbol.isInlineTrait || (parent.symbol.isConstructor && parent.symbol.owner.isInlineTrait) then
+                    ctx.compilationUnit.needsTraitInlining = true
                   Checking.checkTraitInheritance(parent.tpe.classSymbol, sym.asClass, parent.srcPos)
                   // Constructor parameters are in scope when typing a parent.
                   // While they can safely appear in a parent tree, to preserve

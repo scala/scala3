@@ -48,6 +48,7 @@ class Compiler {
   protected def picklerPhases: List[List[Phase]] =
     List(new Pickler) ::            // Generate TASTY info
     List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
+    List(new TraitInlining) ::      // Generate inline trait members
     List(new Inlining) ::           // Inline and execute macros
     List(new PostInlining) ::       // Add mirror support for inlined code
     List(new CheckUnused.PostInlining) ::  // Check for unused elements
@@ -66,6 +67,7 @@ class Compiler {
          new CookComments,           // Cook the comments: expand variables, doc, etc.
          new CheckLoopingImplicits,  // Check that implicit defs do not call themselves in an infinite loop
          new BetaReduce,             // Reduce closure applications
+         new Devirtualize,           // Devirtualize method calls
          new InlineVals,             // Check right hand-sides of an `inline val`s
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new ElimRepeated,           // Rewrite vararg parameters and arguments
@@ -93,6 +95,7 @@ class Compiler {
          new StringInterpolatorOpt,  // Optimizes raw and s and f string interpolators by rewriting them to string concatenations or formats
          new DropBreaks) ::          // Optimize local Break throws by rewriting them
     List(new PruneErasedDefs,        // Drop erased definitions from scopes and simplify erased expressions
+         new DeferInlineTraits,      // Defer all members in inline traits
          new UninitializedDefs,      // Replaces `compiletime.uninitialized` by `_`
          new InlinePatterns,         // Remove placeholders of inlined patterns
          new VCInlineMethods,        // Inlines calls to value class methods

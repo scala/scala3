@@ -49,7 +49,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
 
   /** Add outer accessors if a class always needs an outer pointer */
   override def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match {
-    case tp @ ClassInfo(_, cls, _, decls, _) if needsOuterAlways(cls) =>
+    case tp @ ClassInfo(_, cls, _, decls, _) if needsOuterAlways(cls) && !cls.maybeOwner.isInlineTrait =>
       val newDecls = decls.cloneScope
       newOuterAccessors(cls).foreach(newDecls.enter)
       tp.derivedClassInfo(decls = newDecls)
@@ -77,7 +77,8 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
       ensureOuterAccessors(cls)
 
     val clsHasOuter = hasOuter(cls)
-    if (clsHasOuter || cls.mixins.exists(needsOuterIfReferenced)) {
+    if cls.maybeOwner.isInlineTrait then impl
+    else if (clsHasOuter || cls.mixins.exists(needsOuterIfReferenced)) {
       val newDefs = new mutable.ListBuffer[Tree]
 
       if (clsHasOuter)

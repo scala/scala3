@@ -29,7 +29,7 @@ import Inferencing.*
 import Dynamic.isDynamicExpansion
 import EtaExpansion.etaExpand
 import TypeComparer.CompareResult
-import inlines.{Inlines, PrepareInlineable}
+import inlines.{Inlines, PrepareInlineable, InlineTraits}
 import util.Spans.*
 import util.common.*
 import util.{Property, SimpleIdentityMap, SrcPos}
@@ -2811,7 +2811,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       cdef.withType(UnspecifiedErrorType)
     else {
       val dummy = localDummy(cls, impl)
-      val body1 = addAccessorDefs(cls, typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1)
+      var body1 = addAccessorDefs(cls, typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1)
+
+      if !ctx.isAfterTyper then
+        if cls.isInlineTrait then
+          InlineTraits.checkValidInlineTraitMember(body1)
+          InlineTraits.registerInlineTraitInfo(body1)
+        else
+          InlineTraits.adaptNoInit(cls, parents1)
+          // body1 = InlineTraits.inlinedMembers(cls, parents1) ::: body1
 
       checkNoDoubleDeclaration(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, Nil, self1, body1)

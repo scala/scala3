@@ -428,6 +428,9 @@ object RefChecks {
       def otherTp(self: Type) =
         self.memberInfo(other)
 
+      def isInlinedFromInlineTrait =
+        member.is(Synthetic) && other.owner.isInlineTrait
+
       refcheck.println(i"check override ${infoString(member)} overriding ${infoString(other)}")
 
       def noErrorType = !memberTp(self).isErroneous && !otherTp(self).isErroneous
@@ -546,7 +549,7 @@ object RefChecks {
         overrideError("cannot be used here - opaque type aliases cannot be overridden")
       else if (!other.is(Deferred) && member.isClass)
         overrideError("cannot be used here - classes can only override abstract types")
-      else if other.isEffectivelyFinal then // (1.2)
+      else if other.isEffectivelyFinal && !isInlinedFromInlineTrait then // (1.2)
         overrideError(i"cannot override final member ${other.showLocated}")
       else if (member.is(ExtensionMethod) && !other.is(ExtensionMethod)) // (1.3)
         overrideError("is an extension method, cannot override a normal method")
@@ -585,7 +588,7 @@ object RefChecks {
           overrideError("needs `override` modifier")
       else if (other.is(AbsOverride) && other.isIncompleteIn(clazz) && !member.is(AbsOverride))
         overrideError("needs `abstract override` modifiers")
-      else if member.is(Override) && other.is(Mutable) then
+      else if member.is(Override) && other.is(Mutable) && !isInlinedFromInlineTrait then
         overrideError("cannot override a mutable variable")
       else if (member.isAnyOverride &&
         !(member.owner.thisType.baseClasses exists (_ isSubClass other.owner)) &&

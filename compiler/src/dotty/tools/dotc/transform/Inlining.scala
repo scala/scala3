@@ -11,8 +11,10 @@ import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.quoted.*
 import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.ast.TreeMapWithImplicits
+import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
 import dotty.tools.dotc.staging.StagingLevel
+
 
 import scala.collection.mutable.ListBuffer
 
@@ -46,7 +48,7 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
         new TreeTraverser {
           def traverse(tree: Tree)(using Context): Unit =
             tree match
-              case tree: RefTree if !Inlines.inInlineMethod && StagingLevel.level == 0 =>
+              case tree: RefTree if !Inlines.inInlineContext && StagingLevel.level == 0 =>
                 assert(!tree.symbol.isInlineMethod, tree.show)
               case _ =>
                 traverseChildren(tree)
