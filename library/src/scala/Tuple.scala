@@ -244,7 +244,6 @@ object Tuple:
     case (x *: xs, y *: ys) => (x, y) *: Zip[xs, ys]
     case (EmptyTuple, _) => EmptyTuple
     case (_, EmptyTuple) => EmptyTuple
-    case _ => Tuple
 
   /** Converts a tuple `(F[T1], ..., F[Tn])` to `(T1,  ... Tn)` */
   type InverseMap[X <: Tuple, F[_]] <: Tuple = X match
