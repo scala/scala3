@@ -22,8 +22,8 @@ sealed trait Tuple extends Product {
     runtime.Tuples.toIArray(this)
 
   /** Return a copy of `this` tuple with an element appended */
-  inline def :* [This >: this.type <: Tuple, L] (x: L): Append[This, L] =
-    runtime.Tuples.append(x, this).asInstanceOf[Append[This, L]]
+  inline def :* [This >: this.type <: Tuple, L] (x: L): This :* L =
+    runtime.Tuples.append(x, this).asInstanceOf[This :* L]
 
   /** Return a new tuple by prepending the element to `this` tuple.
    *  This operation is O(this.size)
@@ -117,6 +117,9 @@ object Tuple {
     case EmptyTuple => Y *: EmptyTuple
     case x *: xs => x *: Append[xs, Y]
   }
+
+  /** An infix shorthand for `Append[X, Y]` */
+  infix type :*[X <: Tuple, Y] = Append[X, Y]
 
   /** Type of the head of a tuple */
   type Head[X <: Tuple] = X match {
