@@ -22,13 +22,13 @@ sealed trait Tuple extends Product:
     runtime.Tuples.toIArray(this)
 
   /** Return a copy of `this` tuple with an element appended */
-  inline def :* [This >: this.type <: Tuple, L] (x: L): Append[This, L] =
+  inline def :* [This >: this.type <: Tuple, L](x: L): Append[This, L] =
     runtime.Tuples.append(x, this).asInstanceOf[Append[This, L]]
 
   /** Return a new tuple by prepending the element to `this` tuple.
    *  This operation is O(this.size)
    */
-  inline def *: [H, This >: this.type <: Tuple] (x: H): H *: This =
+  inline def *: [H, This >: this.type <: Tuple](x: H): H *: This =
     runtime.Tuples.cons(x, this).asInstanceOf[H *: This]
 
   /** Return a new tuple by concatenating `this` tuple with `that` tuple.
@@ -104,14 +104,13 @@ object Tuple:
   /** The size of a tuple, represented as a literal constant subtype of Int */
   type Size[X <: Tuple] <: Int = X match
     case EmptyTuple => 0
-    case x *: xs => S[Size[xs]]
+    case _ *: xs => S[Size[xs]]
 
   /** The type of the element at position N in the tuple X */
   type Elem[X <: Tuple, N <: Int] = X match
-    case x *: xs =>
-      N match
-        case 0 => x
-        case S[n1] => Elem[xs, n1]
+    case x *: xs => N match
+      case 0 => x
+      case S[n1] => Elem[xs, n1]
 
   /** The type of the first element of a tuple */
   // Only bounded by `<: Tuple` not `<: NonEmptyTuple`
@@ -134,8 +133,7 @@ object Tuple:
   /** The type of the initial part of a tuple without its last element */
   type Init[X <: Tuple] <: Tuple = X match
     case _ *: EmptyTuple => EmptyTuple
-    case x *: xs =>
-      x *: Init[xs]
+    case x *: xs => x *: Init[xs]
 
   /** The type of the tuple consisting of the first `N` elements of `X`,
    *  or all elements if `N` exceeds `Size[X]`.
@@ -149,27 +147,24 @@ object Tuple:
   /** The type of the tuple consisting of all elements of `X` except the first `N` ones,
    *  or no elements if `N` exceeds `Size[X]`.
    */
-  type Drop[X <: Tuple, N <: Int] <: Tuple = N match {
+  type Drop[X <: Tuple, N <: Int] <: Tuple = N match
     case 0 => X
-    case S[n1] => X match {
+    case S[n1] => X match
       case EmptyTuple => EmptyTuple
-      case x *: xs => Drop[xs, n1]
-    }
-  }
+      case _ *: xs => Drop[xs, n1]
 
   /** The pair type `(Take(X, N), Drop[X, N]). */
   type Split[X <: Tuple, N <: Int] = (Take[X, N], Drop[X, N])
 
   /** Type of a tuple with an element appended */
-  type Append[X <: Tuple, Y] <: NonEmptyTuple = X match {
+  type Append[X <: Tuple, Y] <: NonEmptyTuple = X match
     case EmptyTuple => Y *: EmptyTuple
     case x *: xs => x *: Append[xs, Y]
-  }
 
   /** Type of the concatenation of two tuples `X` and `Y` */
   type Concat[X <: Tuple, +Y <: Tuple] <: Tuple = X match
     case EmptyTuple => Y
-    case x1 *: xs1 => x1 *: Concat[xs1, Y]
+    case x *: xs => x *: Concat[xs, Y]
 
   /** An infix shorthand for `Concat[X, Y]` */
   infix type ++[X <: Tuple, +Y <: Tuple] = Concat[X, Y]
@@ -179,27 +174,27 @@ object Tuple:
    */
   type IndexOf[X <: Tuple, Y] <: Int = X match
     case Y *: _ => 0
-    case x *: xs => S[IndexOf[xs, Y]]
+    case _ *: xs => S[IndexOf[xs, Y]]
     case EmptyTuple => 0
 
   /** Fold a tuple `(T1, ..., Tn)` into `F[T1, F[... F[Tn, Z]...]]]` */
-  type Fold[Tup <: Tuple, Z, F[_, _]] = Tup match
+  type Fold[X <: Tuple, Z, F[_, _]] = X match
     case EmptyTuple => Z
-    case h *: t => F[h, Fold[t, Z, F]]
+    case x *: xs => F[x, Fold[xs, Z, F]]
 
   /** The type of tuple `X` mapped with the type-level function `F`.
    *  If `X = (T1, ..., Ti)` then `Map[X, F] = `(F[T1], ..., F[Ti])`.
    */
-  type Map[Tup <: Tuple, F[_ <: Union[Tup]]] <: Tuple = Tup match
+  type Map[X <: Tuple, F[_ <: Union[X]]] <: Tuple = X match
     case EmptyTuple => EmptyTuple
-    case h *: t => F[h] *: Map[t, F]
+    case x *: xs => F[x] *: Map[xs, F]
 
   /** The type of tuple `X` flat-mapped with the type-level function `F`.
    *  If `X = (T1, ..., Ti)` then `FlatMap[X, F] = `F[T1] ++ ... ++ F[Ti]`
    */
-  type FlatMap[Tup <: Tuple, F[_ <: Union[Tup]] <: Tuple] <: Tuple = Tup match
+  type FlatMap[X <: Tuple, F[_ <: Union[X]] <: Tuple] <: Tuple = X match
     case EmptyTuple => EmptyTuple
-    case h *: t => Concat[F[h], FlatMap[t, F]]
+    case x *: xs => Concat[F[x], FlatMap[xs, F]]
     // TODO: implement term level analogue
 
   /** The type of the tuple consisting of all elements of tuple `X` that have types
@@ -217,9 +212,9 @@ object Tuple:
    */
   type Filter[X <: Tuple, P[_] <: Boolean] <: Tuple = X match
     case EmptyTuple => EmptyTuple
-    case h *: t => P[h] match
-      case true => h *: Filter[t, P]
-      case false => Filter[t, P]
+    case x *: xs => P[x] match
+      case true => x *: Filter[xs, P]
+      case false => Filter[xs, P]
 
   /** A tuple consisting of those indices `N` of tuple `X` where the predicate `P`
    *  is true for `Elem[X, N]`. Indices are type level values <: Int.
@@ -242,17 +237,16 @@ object Tuple:
    *  ```
    *  @syntax markdown
    */
-  type Zip[T1 <: Tuple, T2 <: Tuple] <: Tuple = (T1, T2) match
-    case (h1 *: t1, h2 *: t2) => (h1, h2) *: Zip[t1, t2]
+  type Zip[X <: Tuple, Y <: Tuple] <: Tuple = (X, Y) match
+    case (x *: xs, y *: ys) => (x, y) *: Zip[xs, ys]
     case (EmptyTuple, _) => EmptyTuple
     case (_, EmptyTuple) => EmptyTuple
     case _ => Tuple
 
   /** Converts a tuple `(F[T1], ..., F[Tn])` to `(T1,  ... Tn)` */
-  type InverseMap[X <: Tuple, F[_]] <: Tuple = X match {
-    case F[x] *: t => x *: InverseMap[t, F]
+  type InverseMap[X <: Tuple, F[_]] <: Tuple = X match
+    case F[x] *: xs => x *: InverseMap[xs, F]
     case EmptyTuple => EmptyTuple
-  }
 
   /** Implicit evidence. IsMappedBy[F][X] is present in the implicit scope iff
    *  X is a tuple for which each element's type is constructed via `F`. E.g.
@@ -280,7 +274,7 @@ object Tuple:
    */
   type Contains[X <: Tuple, Y] <: Boolean = X match
     case Y *: _ => true
-    case x *: xs => Contains[xs, Y]
+    case _ *: xs => Contains[xs, Y]
     case EmptyTuple => false
 
   /** A type level Boolean indicating whether the type `Y` contains
@@ -288,10 +282,9 @@ object Tuple:
    *  @pre  The elements of `X` and `Y` are assumed to be singleton types
    */
   type Disjoint[X <: Tuple, Y <: Tuple] <: Boolean = X match
-    case x *: xs =>
-      Contains[Y, x] match
-        case true => false
-        case false => Disjoint[xs, Y]
+    case x *: xs => Contains[Y, x] match
+      case true => false
+      case false => Disjoint[xs, Y]
     case EmptyTuple => true
 
   /** Empty tuple */
