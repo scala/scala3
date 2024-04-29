@@ -34,6 +34,8 @@ sealed trait Tuple extends Product:
   /** Return a new tuple by concatenating `this` tuple with `that` tuple.
    *  This operation is O(this.size + that.size)
    */
+  // Contrarily to `this`, `that` does not need a type parameter
+  // since `++` is covariant in its second argument.
   inline def ++ [This >: this.type <: Tuple](that: Tuple): This ++ that.type =
     runtime.Tuples.concat(this, that).asInstanceOf[Concat[This, that.type]]
 
@@ -165,6 +167,7 @@ object Tuple:
   infix type :*[X <: Tuple, Y] = Append[X, Y]
 
   /** Type of the concatenation of two tuples `X` and `Y` */
+  // Can be covariant in `Y` since it never appears as a match type scrutinee.
   type Concat[X <: Tuple, +Y <: Tuple] <: Tuple = X match
     case EmptyTuple => Y
     case x *: xs => x *: Concat[xs, Y]
