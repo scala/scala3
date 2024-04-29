@@ -151,7 +151,7 @@ find_lib () {
   done
 }
 
-SCALA_CLI_JAR=$(find_lib "*scala-cli*")
+SCALA_CLI_JAR="$PROG_HOME/etc/scala-cli.jar"
 
 declare -a scala_args
 

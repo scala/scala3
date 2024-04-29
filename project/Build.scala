@@ -118,6 +118,9 @@ object Build {
    */
   val mimaPreviousLTSDottyVersion = "3.3.0"
 
+  /** Version of Scala CLI to download */
+  val scalaCliLauncherVersion = "1.3.0"
+
   object CompatMode {
     final val BinaryCompatible = 0
     final val SourceAndBinaryCompatible = 1
@@ -2119,17 +2122,21 @@ object Build {
     publishArtifact := false,
     packGenerateMakefile := false,
     packArchiveName := "scala3-" + dottyVersion,
-    republishRepo := target.value / "local-repo",
-    Compile / pack := {
-      val localRepo = republishClasspath.value // republish all artifacts to local repo
-      (Compile / pack).value
-    }
+    republishRepo := target.value / "republish",
+    republishLaunchers := {
+      val cliV = scalaCliLauncherVersion
+      Seq(
+        ("scala-cli.jar", cliV, url(s"https://github.com/VirtusLab/scala-cli/releases/download/v$cliV/scala-cli.jar"))
+      )
+    },
+    Compile / pack := (Compile / pack).dependsOn(republish).value,
   )
 
   lazy val dist = project.asDist(Bootstrapped)
     .settings(
       packResourceDir += (baseDirectory.value / "bin" -> "bin"),
-      packResourceDir += (target.value / "local-repo" -> "local"),
+      packResourceDir += (republishRepo.value / "maven2" -> "maven2"),
+      packResourceDir += (republishRepo.value / "etc" -> "etc"),
     )
 
   private def customMimaReportBinaryIssues(issueFilterLocation: String) = mimaReportBinaryIssues := {
@@ -2260,6 +2267,7 @@ object Build {
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(PackPlugin).
       enablePlugins(RepublishPlugin).
+      bootstrappedEnablePlugins(DottyJSPlugin).
       withCommonSettings.
       settings(commonDistSettings).
       dependsOn(
@@ -2271,6 +2279,9 @@ object Build {
         `scala3-tasty-inspector`,
         scaladoc,
         `scala3-sbt-bridge`, // for scala-cli
+      ).
+      bootstrappedDependsOn(
+        `scala3-library-bootstrappedJS` // for scala-cli
       ).
       bootstrappedSettings(
         target := baseDirectory.value / "target" // override setting in commonBootstrappedSettings

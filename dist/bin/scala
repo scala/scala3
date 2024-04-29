@@ -44,7 +44,7 @@ if [ -z "$SCALA_VERSION" ]; then
   exit 1
 fi
 
-MVN_REPOSITORY="file://$PROG_HOME/local/maven2"
+MVN_REPOSITORY="file://$PROG_HOME/maven2"
 
 # escape all script arguments
 while [[ $# -gt 0 ]]; do
