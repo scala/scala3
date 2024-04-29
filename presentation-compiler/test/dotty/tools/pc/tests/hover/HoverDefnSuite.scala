@@ -223,13 +223,8 @@ class HoverDefnSuite extends BaseHoverSuite:
          |  <<val @@x = Derived.f(42)>>
          |}
          |""".stripMargin,
-      """|**Expression type**:
-         |```scala
-         |Option[Int]
-         |```
-         |**Symbol signature**:
-         |```scala
-         |val x: Option[T]
+      """|```scala
+         |val x: Option[Int]
          |```
          |""".stripMargin.hover
     )
