@@ -1650,6 +1650,7 @@ object Build {
         Seq(
           "-Ddotty.tests.classes.dottyLibraryJS=" + dottyLibraryJSJar,
           "-Ddotty.tests.classes.scalaJSJavalib=" + findArtifactPath(externalJSDeps, "scalajs-javalib"),
+          "-Ddotty.tests.classes.scalaJSScalalib=" + findArtifactPath(externalJSDeps, "scalajs-scalalib_2.13"),
           "-Ddotty.tests.classes.scalaJSLibrary=" + findArtifactPath(externalJSDeps, "scalajs-library_2.13"),
         )
       },
