@@ -927,7 +927,7 @@ class JSCodeGen()(using genCtx: Context) {
           val className = encodeClassName(classSym)
           val body = js.Block(
               js.LoadModule(className),
-              js.SelectStatic(className, fieldIdent)(irTpe))
+              js.SelectStatic(fieldIdent)(irTpe))
           staticGetterDefs += js.MethodDef(
               js.MemberFlags.empty.withNamespace(js.MemberNamespace.PublicStatic),
               encodeStaticMemberSym(f), originalName, Nil, irTpe,
@@ -2243,10 +2243,7 @@ class JSCodeGen()(using genCtx: Context) {
       if (isStaticModule(currentClassSym) && !isModuleInitialized.get.value &&
           currentMethodSym.get.isClassConstructor) {
         isModuleInitialized.get.value = true
-        val className = encodeClassName(currentClassSym)
-        val thisType = jstpe.ClassType(className)
-        val initModule = js.StoreModule(className, js.This()(thisType))
-        js.Block(superCall, initModule)
+        js.Block(superCall, js.StoreModule())
       } else {
         superCall
       }
@@ -4463,13 +4460,12 @@ class JSCodeGen()(using genCtx: Context) {
             js.JSSelect(qual, genPrivateFieldsSymbol()),
             encodeFieldSymAsStringLiteral(sym))
       } else {
-        js.JSPrivateSelect(qual, encodeClassName(sym.owner),
-            encodeFieldSym(sym))
+        js.JSPrivateSelect(qual, encodeFieldSym(sym))
       }
 
       (f, true)
     } else if (sym.hasAnnotation(jsdefn.JSExportTopLevelAnnot)) {
-      val f = js.SelectStatic(encodeClassName(sym.owner), encodeFieldSym(sym))(jstpe.AnyType)
+      val f = js.SelectStatic(encodeFieldSym(sym))(jstpe.AnyType)
       (f, true)
     } else if (sym.hasAnnotation(jsdefn.JSExportStaticAnnot)) {
       val jsName = sym.getAnnotation(jsdefn.JSExportStaticAnnot).get.argumentConstantString(0).getOrElse {
@@ -4495,9 +4491,9 @@ class JSCodeGen()(using genCtx: Context) {
 
       val f =
         if sym.is(JavaStatic) then
-          js.SelectStatic(className, fieldIdent)(irType)
+          js.SelectStatic(fieldIdent)(irType)
         else
-          js.Select(qual, className, fieldIdent)(irType)
+          js.Select(qual, fieldIdent)(irType)
 
       (f, boxed)
     }

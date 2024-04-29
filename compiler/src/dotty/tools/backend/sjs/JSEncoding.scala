@@ -17,7 +17,7 @@ import dotty.tools.dotc.transform.sjs.JSSymUtils.*
 
 import org.scalajs.ir
 import org.scalajs.ir.{Trees => js, Types => jstpe}
-import org.scalajs.ir.Names.{LocalName, LabelName, FieldName, SimpleMethodName, MethodName, ClassName}
+import org.scalajs.ir.Names.{LocalName, LabelName, SimpleFieldName, FieldName, SimpleMethodName, MethodName, ClassName}
 import org.scalajs.ir.OriginalName
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.UTF8String
@@ -173,7 +173,7 @@ object JSEncoding {
   }
 
   def encodeFieldSym(sym: Symbol)(implicit ctx: Context, pos: ir.Position): js.FieldIdent =
-    js.FieldIdent(FieldName(encodeFieldSymAsString(sym)))
+    js.FieldIdent(FieldName(encodeClassName(sym.owner), SimpleFieldName(encodeFieldSymAsString(sym))))
 
   def encodeFieldSymAsStringLiteral(sym: Symbol)(implicit ctx: Context, pos: ir.Position): js.StringLiteral =
     js.StringLiteral(encodeFieldSymAsString(sym))
