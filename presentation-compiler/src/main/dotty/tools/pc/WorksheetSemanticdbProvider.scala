@@ -2,7 +2,7 @@ package dotty.tools.pc
 
 import java.nio.file.Path
 
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 trait WorksheetSemanticdbProvider:
 

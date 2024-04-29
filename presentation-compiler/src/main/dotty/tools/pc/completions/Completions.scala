@@ -33,7 +33,9 @@ import dotty.tools.dotc.util.SrcPos
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
 import dotty.tools.pc.buildinfo.BuildInfo
 import dotty.tools.pc.completions.OverrideCompletions.OverrideExtractor
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.utils.InteractiveEnrichments.*
+import dotty.tools.dotc.core.Denotations.SingleDenotation
+import dotty.tools.dotc.interactive.Interactive
 
 class Completions(
     text: String,

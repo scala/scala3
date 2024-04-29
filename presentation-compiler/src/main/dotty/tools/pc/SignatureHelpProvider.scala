@@ -10,7 +10,7 @@ import dotty.tools.dotc.util.Signatures
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.pc.printer.ShortenedTypePrinter
 import dotty.tools.pc.printer.ShortenedTypePrinter.IncludeDefaultParam
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 import org.eclipse.lsp4j as l
 
 import scala.jdk.CollectionConverters.*

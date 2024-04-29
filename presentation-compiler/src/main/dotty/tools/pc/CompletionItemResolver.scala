@@ -9,7 +9,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.TermRef
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j.CompletionItem
 
@@ -62,7 +62,7 @@ object CompletionItemResolver extends ItemResolver:
     if companion == NoSymbol || gsym.is(JavaDefined) then
       if gsymDoc.isEmpty() then
         if gsym.isAliasType then
-          fullDocstring(gsym.info.metalsDealias.typeSymbol, search)
+          fullDocstring(gsym.info.deepDealias.typeSymbol, search)
         else if gsym.is(Method) then
           gsym.info.finalResultType match
             case tr @ TermRef(_, sym) =>

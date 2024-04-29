@@ -20,8 +20,7 @@ import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.SymDenotations.NoDenotation
 import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.core.Types.AppliedType
-import dotty.tools.dotc.core.Types.Type
+import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourcePosition
@@ -31,7 +30,7 @@ import dotty.tools.pc.SemanticdbSymbols
 
 import org.eclipse.lsp4j as l
 
-object MtagsEnrichments extends CommonMtagsEnrichments:
+object InteractiveEnrichments extends CommonMtagsEnrichments:
 
   extension (driver: InteractiveDriver)
 
@@ -399,11 +398,16 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
   end extension
 
   extension (tpe: Type)
-    def metalsDealias(using Context): Type =
+    def deepDealias(using Context): Type =
       tpe.dealias match
         case app @ AppliedType(tycon, params) =>
-          // we dealias applied type params by hand, because `dealias` doesn't do it
-          AppliedType(tycon, params.map(_.metalsDealias))
+          AppliedType(tycon, params.map(_.deepDealias))
+        case aliasingBounds: AliasingBounds =>
+          aliasingBounds.derivedAlias(aliasingBounds.alias.dealias)
+        case TypeBounds(lo, hi) =>
+          TypeBounds(lo.dealias, hi.dealias)
+        case RefinedType(parent, name, refinedInfo) =>
+          RefinedType(parent.dealias, name, refinedInfo.deepDealias)
         case dealised => dealised
 
-end MtagsEnrichments
+end InteractiveEnrichments

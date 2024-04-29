@@ -653,3 +653,33 @@ class HoverTermSuite extends BaseHoverSuite:
         |```
         |""".stripMargin
     )
+
+  @Test def `dealias-type-members-in-structural-types1`: Unit =
+    check(
+      """object Obj {
+        |  trait A extends Sup { self =>
+        |    type T
+        |    def member : T
+        |  }
+        |  val x: A { type T = Int} = ???
+        |
+        |  <<x.mem@@ber>>
+        |
+        |}""".stripMargin,
+      """def member: Int""".stripMargin.hover
+  )
+
+  @Test def `dealias-type-members-in-structural-types2`: Unit =
+    check(
+      """object Obj:
+        |  trait A extends Sup { self =>
+        |    type T
+        |    def fun(body: A { type T = self.T} => Unit) = ()
+        |  }
+        |  val x: A { type T = Int} = ???
+        |
+        |  x.fun: <<y@@y>> =>
+        |    ()
+        |""".stripMargin,
+      """yy: A{type T = Int}""".stripMargin.hover
+  )

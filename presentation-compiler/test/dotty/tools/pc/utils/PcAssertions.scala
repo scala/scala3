@@ -4,7 +4,7 @@ import scala.language.unsafeNulls
 
 import dotty.tools.pc.completions.CompletionSource
 import dotty.tools.dotc.util.DiffUtil
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.hamcrest
 import org.hamcrest.*

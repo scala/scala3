@@ -240,7 +240,7 @@ object MetalsInteractive:
     end match
   end enclosingSymbolsWithExpressionType
 
-  import dotty.tools.pc.utils.MtagsEnrichments.*
+  import dotty.tools.pc.utils.InteractiveEnrichments.*
 
   private def recoverError(
       tree: Tree,

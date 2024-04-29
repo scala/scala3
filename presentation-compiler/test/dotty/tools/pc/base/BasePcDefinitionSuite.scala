@@ -8,7 +8,7 @@ import scala.language.unsafeNulls
 
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.{SourceFile, SourcePosition}
-import dotty.tools.pc.utils.MtagsEnrichments.toLsp
+import dotty.tools.pc.utils.InteractiveEnrichments.toLsp
 import dotty.tools.pc.utils.TextEdits
 
 import org.eclipse.lsp4j.TextEdit

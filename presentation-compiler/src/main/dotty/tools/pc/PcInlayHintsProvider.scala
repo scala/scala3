@@ -4,7 +4,7 @@ package dotty.tools.pc
 import java.nio.file.Paths
 
 import scala.meta.internal.metals.ReportContext
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 import dotty.tools.pc.printer.ShortenedTypePrinter
 import scala.meta.internal.pc.InlayHints
 import scala.meta.internal.pc.LabelPart
@@ -139,7 +139,7 @@ class PcInlayHintsProvider(
             isInScope(tycon) && args.forall(isInScope)
           case _ => true
       if isInScope(tpe) then tpe
-      else tpe.metalsDealias(using indexedCtx.ctx)
+      else tpe.deepDealias(using indexedCtx.ctx)
 
     val dealiased = optDealias(tpe)
     val tpeStr = printer.tpe(dealiased)
