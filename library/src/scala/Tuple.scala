@@ -176,7 +176,7 @@ object Tuple:
   infix type ++[X <: Tuple, +Y <: Tuple] = Concat[X, Y]
 
   /** The index of `Y` in tuple `X` as a literal constant Int,
-   *  or `Size[X]` if `Y` does not occur in `X`
+   *  or `Size[X]` if `Y` is disjoint from all element types in `X`.
    */
   type IndexOf[X <: Tuple, Y] <: Int = X match
     case Y *: _ => 0
@@ -332,21 +332,22 @@ object Tuple:
     runtime.Tuples.fromProduct(product)
 
   extension [X <: Tuple](inline x: X)
+    // Note the two methods are not equivalent to using `constValue`,
+    // since they also allow cases unknown at compiletime.
+    // Also note it would be unsound to use a type parameter for `y` in the type level
+    // operations, since they are rightfully not covariant in their second parameter.
 
     /** The index (starting at 0) of the first occurrence of y.type in the type `X` of `x`
      *  or Size[X] if no such element exists.
      */
-    transparent inline def indexOf(y: Any): Int = constValue[IndexOf[X, y.type]]
+    inline def indexOf(y: Any): IndexOf[X, y.type] =
+      x.productIterator.indexOf(y).asInstanceOf[IndexOf[X, y.type]]
 
     /** A boolean indicating whether there is an element `y.type` in the type `X` of `x` */
-    // Note this isn't equivalent to `constValue[Contains[X, y.type]]`
-    // since it also accepts cases unknown at compiletime.
-    // Also note it would be unsound to use a type parameter for `y` in the
-    // type level `Contains`, since it is rightfully not covariant in `Y`.
     inline def contains(y: Any): Contains[X, y.type] =
       x.productIterator.contains(y).asInstanceOf[Contains[X, y.type]]
 
-    // TODO containsType ?
+    // TODO indexOfType & containsType ?
 
   end extension
 
