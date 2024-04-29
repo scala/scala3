@@ -31,6 +31,30 @@ sealed trait Tuple extends Product:
   inline def *: [H, This >: this.type <: Tuple](x: H): H *: This =
     runtime.Tuples.cons(x, this).asInstanceOf[H *: This]
 
+  /** Get the i-th element of this tuple.
+   * Equivalent to productElement but with a precise return type.
+   */
+  inline def apply[This >: this.type <: Tuple](n: Int): Elem[This, n.type] =
+    runtime.Tuples.apply(this, n).asInstanceOf[Elem[This, n.type]]
+
+  /** Get the head of this tuple */
+  inline def head[This >: this.type <: Tuple]: Head[This] =
+    runtime.Tuples.apply(this, 0).asInstanceOf[Head[This]]
+
+  /** Get the initial part of the tuple without its last element */
+  inline def init[This >: this.type <: Tuple]: Init[This] =
+    runtime.Tuples.init(this).asInstanceOf[Init[This]]
+
+  /** Get the last of this tuple */
+  inline def last[This >: this.type <: Tuple]: Last[This] =
+    runtime.Tuples.last(this).asInstanceOf[Last[This]]
+
+  /** Get the tail of this tuple.
+   * This operation is O(this.size)
+   */
+  inline def tail[This >: this.type <: Tuple]: Tail[This] =
+    runtime.Tuples.tail(this).asInstanceOf[Tail[This]]
+
   /** Return a new tuple by concatenating `this` tuple with `that` tuple.
    *  This operation is O(this.size + that.size)
    */
@@ -375,33 +399,7 @@ case object EmptyTuple extends Tuple {
 }
 
 /** Tuple of arbitrary non-zero arity */
-sealed trait NonEmptyTuple extends Tuple {
-  import Tuple.*
-
-  /** Get the i-th element of this tuple.
-   *  Equivalent to productElement but with a precise return type.
-   */
-  inline def apply[This >: this.type <: NonEmptyTuple](n: Int): Elem[This, n.type] =
-    runtime.Tuples.apply(this, n).asInstanceOf[Elem[This, n.type]]
-
-  /** Get the head of this tuple */
-  inline def head[This >: this.type <: NonEmptyTuple]: Head[This] =
-    runtime.Tuples.apply(this, 0).asInstanceOf[Head[This]]
-
-  /** Get the initial part of the tuple without its last element */
-  inline def init[This >: this.type <: NonEmptyTuple]: Init[This] =
-    runtime.Tuples.init(this).asInstanceOf[Init[This]]
-
-  /** Get the last of this tuple */
-  inline def last[This >: this.type <: NonEmptyTuple]: Last[This] =
-    runtime.Tuples.last(this).asInstanceOf[Last[This]]
-
-  /** Get the tail of this tuple.
-   *  This operation is O(this.size)
-   */
-  inline def tail[This >: this.type <: NonEmptyTuple]: Tail[This] =
-    runtime.Tuples.tail(this).asInstanceOf[Tail[This]]
-}
+sealed trait NonEmptyTuple extends Tuple
 
 @showAsInfix
 sealed abstract class *:[+H, +T <: Tuple] extends NonEmptyTuple
