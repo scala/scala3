@@ -1,6 +1,8 @@
 
 import language.experimental.erasedDefinitions
 
-val _ = // error
-  println("Hello, world!")
+def test() = ()
+
+val _ =
+  test()
   42

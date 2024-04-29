@@ -843,9 +843,8 @@ object Checking {
               val sym = tree.symbol
               if !sym.isExperimental then
                 sym.addAnnotation(ExperimentalAnnotation(s"Added by $why", sym.span))
-            case tree =>
-              // There is no definition to attach the @experimental annotation
-              report.error(s"Implementation restriction: top-level `val _ = ...` is not supported with $why.", tree.srcPos)
+            case _ =>
+              // statements from a `val _ = ...`
       unitExperimentalLanguageImports match
         case imp :: _ => markTopLevelDefsAsExperimental(i"top level $imp")
         case _ =>

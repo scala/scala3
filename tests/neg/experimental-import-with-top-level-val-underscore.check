@@ -1,6 +1,0 @@
--- Error: tests/neg/experimental-import-with-top-level-val-underscore.scala:4:4 ----------------------------------------
-4 |val _ = // error
-  |    ^
-  |Implementation restriction: top-level `val _ = ...` is not supported with top level import language.experimental.erasedDefinitions.
-5 |  println("Hello, world!")
-6 |  42
