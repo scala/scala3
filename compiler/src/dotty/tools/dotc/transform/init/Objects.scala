@@ -29,6 +29,7 @@ import scala.collection.mutable
 import scala.annotation.tailrec
 import scala.annotation.constructorOnly
 import dotty.tools.dotc.core.Flags.AbstractOrTrait
+import Decorators.*
 
 /** Check initialization safety of static objects
  *
@@ -68,11 +69,21 @@ import dotty.tools.dotc.core.Flags.AbstractOrTrait
  *
  */
 class Objects(using Context @constructorOnly):
-  val immutableHashSetBuider: Symbol = requiredClass("scala.collection.immutable.HashSetBuilder")
+  val immutableHashSetNode: Symbol = requiredClass("scala.collection.immutable.SetNode")
   // TODO: this should really be an annotation on the rhs of the field initializer rather than the field itself.
-  val HashSetBuilder_rootNode: Symbol = immutableHashSetBuider.requiredValue("rootNode")
+  val SetNode_EmptySetNode: Symbol = Denotations.staticRef("scala.collection.immutable.SetNode.EmptySetNode".toTermName).symbol
+  val immutableHashSet: Symbol = requiredModule("scala.collection.immutable.HashSet")
+  val HashSet_EmptySet: Symbol = Denotations.staticRef("scala.collection.immutable.HashSet.EmptySet".toTermName).symbol
+  val immutableVector: Symbol = requiredModule("scala.collection.immutable.Vector")
+  val Vector_EmptyIterator: Symbol = immutableVector.requiredValue("emptyIterator")
+  val immutableMapNode: Symbol = requiredModule("scala.collection.immutable.MapNode")
+  val MapNode_EmptyMapNode: Symbol = immutableMapNode.requiredValue("EmptyMapNode")
+  val immutableHashMap: Symbol = requiredModule("scala.collection.immutable.HashMap")
+  val HashMap_EmptyMap: Symbol = immutableHashMap.requiredValue("EmptyMap")
+  val immutableLazyList: Symbol = requiredModule("scala.collection.immutable.LazyList")
+  val LazyList_empty: Symbol = immutableLazyList.requiredValue("_empty")
 
-  val whiteList = Set(HashSetBuilder_rootNode)
+  val whiteList: Set[Symbol] = Set()
 
   // ----------------------------- abstract domain -----------------------------
 
@@ -162,7 +173,7 @@ class Objects(using Context @constructorOnly):
   extends Ref(valsMap = mutable.Map.empty, varsMap = mutable.Map.empty, outersMap = mutable.Map.empty):
     val owner = klass
 
-    def show(using Context) = "ObjectRef(" + klass.show + ")"
+    def show(using Context) = "ObjectRef(" + klass.show + ")" + "valMap = " + vals + "varMap = " + vars
 
   /**
    * Represents values that are instances of the specified class.
@@ -821,6 +832,7 @@ class Objects(using Context @constructorOnly):
               errorReadOtherStaticObject(State.currentObject, addr)
               Bottom
           else if ref.isObjectRef && ref.klass.hasSource then
+            println(s"Uninitialized field Position 2, ref = $ref, target = $target")
             report.warning("Access uninitialized field " + field.show + ". " + Trace.show, Trace.position)
             Bottom
           else
@@ -829,6 +841,7 @@ class Objects(using Context @constructorOnly):
         else if ref.hasVal(target) then
           ref.valValue(target)
         else if ref.isObjectRef && ref.klass.hasSource then
+          println(s"Uninitialized field Position 2, ref = $ref, target = $target")
           report.warning("Access uninitialized field " + field.show + ". " + Trace.show, Trace.position)
           Bottom
         else
