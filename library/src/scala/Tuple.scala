@@ -22,7 +22,7 @@ sealed trait Tuple extends Product:
     runtime.Tuples.toIArray(this)
 
   /** Return a copy of `this` tuple with an element appended */
-  inline def :* [This >: this.type <: Tuple, L](x: L): Append[This, L] =
+  inline def :* [This >: this.type <: Tuple, L](x: L): This :* L =
     runtime.Tuples.append(x, this).asInstanceOf[Append[This, L]]
 
   /** Return a new tuple by prepending the element to `this` tuple.
@@ -34,7 +34,7 @@ sealed trait Tuple extends Product:
   /** Return a new tuple by concatenating `this` tuple with `that` tuple.
    *  This operation is O(this.size + that.size)
    */
-  inline def ++ [This >: this.type <: Tuple](that: Tuple): Concat[This, that.type] =
+  inline def ++ [This >: this.type <: Tuple](that: Tuple): This ++ that.type =
     runtime.Tuples.concat(this, that).asInstanceOf[Concat[This, that.type]]
 
   /** Return the size (or arity) of the tuple */
@@ -160,6 +160,9 @@ object Tuple:
   type Append[X <: Tuple, Y] <: NonEmptyTuple = X match
     case EmptyTuple => Y *: EmptyTuple
     case x *: xs => x *: Append[xs, Y]
+
+  /** An infix shorthand for `Append[X, Y]` */
+  infix type :*[X <: Tuple, Y] = Append[X, Y]
 
   /** Type of the concatenation of two tuples `X` and `Y` */
   type Concat[X <: Tuple, +Y <: Tuple] <: Tuple = X match
