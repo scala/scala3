@@ -212,13 +212,13 @@ class SettingsTests {
 
       import Settings._
 
-      val creationTime = Files.getLastModifiedTime(file)
+      Files.write(file, "test".getBytes())
+      val fileStateBefore = String(Files.readAllBytes(file))
+
       val args = List(s"-testOutput:${file.toString}")
       val summary = processArguments(args, processAll = true)
 
-      val creationTimeAfterProcessing = Files.getLastModifiedTime(file)
-
-      assert(creationTimeAfterProcessing.toMillis > creationTime.toMillis, "Jar should have been overriden")
+      assertNotEquals(fileStateBefore, String(Files.readAllBytes(file)), "Jar should have been overriden")
 
     }(Files.deleteIfExists(_))
 
@@ -257,13 +257,13 @@ class SettingsTests {
 
       import Settings._
 
-      val creationTime = Files.getLastModifiedTime(file)
+      Files.write(file, "test".getBytes())
+      val fileStateBefore = String(Files.readAllBytes(file))
+
       val args = List(s"-testOutput:${file.toString}")
       val summary = processArguments(args, processAll = true)
 
-      val creationTimeAfterProcessing = Files.getLastModifiedTime(file)
-
-      assertEquals(creationTimeAfterProcessing, creationTime)
+      assertEquals(fileStateBefore, String(Files.readAllBytes(file)))
 
     }(Files.deleteIfExists(_))
 
