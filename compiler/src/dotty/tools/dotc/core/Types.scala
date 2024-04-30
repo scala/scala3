@@ -492,11 +492,6 @@ object Types extends TypeUtils {
     /** Does this application expand to a match type? */
     def isMatchAlias(using Context): Boolean = underlyingNormalizable.isMatch
 
-    def underlyingNormalizable(using Context): Type = stripped.stripLazyRef match
-      case tp: MatchType => tp
-      case tp: AppliedType => tp.underlyingNormalizable
-      case _ => NoType
-
     /** Is this a higher-kinded type lambda with given parameter variances?
      *  These lambdas are used as the RHS of higher-kinded abstract types or
      *  type aliases. The variance info is strictly needed only for abstract types.
@@ -1548,20 +1543,23 @@ object Types extends TypeUtils {
       }
       deskolemizer(this)
 
-    /** The result of normalization using `tryNormalize`, or the type itself if
-     *  tryNormlize yields NoType
-     */
-    final def normalized(using Context): Type = {
-      val normed = tryNormalize
-      if (normed.exists) normed else this
-    }
+    /** The result of normalization, or the type itself if none apply. */
+    final def normalized(using Context): Type = tryNormalize.orElse(this)
 
     /** If this type has an underlying match type or applied compiletime.ops,
      *  then the result after applying all toplevel normalizations, otherwise NoType.
      */
     def tryNormalize(using Context): Type = underlyingNormalizable match
-      case mt: MatchType => mt.tryNormalize
+      case mt: MatchType => mt.reduced.normalized
       case tp: AppliedType => tp.tryCompiletimeConstantFold
+      case _ => NoType
+
+    /** Perform successive strippings, and beta-reductions of applied types until
+     *  a match type or applied compiletime.ops is reached, if any, otherwise NoType.
+     */
+    def underlyingNormalizable(using Context): Type = stripped.stripLazyRef match
+      case tp: MatchType => tp
+      case tp: AppliedType => tp.underlyingNormalizable
       case _ => NoType
 
     private def widenDealias1(keep: AnnotatedType => Context ?=> Boolean)(using Context): Type = {
@@ -4678,9 +4676,10 @@ object Types extends TypeUtils {
         case nil => x
       foldArgs(op(x, tycon), args)
 
-    /** Exists if the tycon is a TypeRef of an alias with an underlying match type.
-     *  Anything else should have already been reduced in `appliedTo` by the TypeAssigner.
-     *  May reduce several HKTypeLambda applications before the underlying MatchType is reached.
+    /** Exists if the tycon is a TypeRef of an alias with an underlying match type,
+     *  or a compiletime applied type. Anything else should have already been
+     *  reduced in `appliedTo` by the TypeAssigner. This may reduce several
+     *  HKTypeLambda applications before the underlying normalizable type is reached.
      */
     override def underlyingNormalizable(using Context): Type =
       if ctx.period != validUnderlyingNormalizable then tycon match
@@ -5157,9 +5156,6 @@ object Types extends TypeUtils {
 
     private var myReduced: Type | Null = null
     private var reductionContext: util.MutableMap[Type, Type] | Null = null
-
-    override def tryNormalize(using Context): Type =
-      reduced.normalized
 
     private def thisMatchType = this
 
