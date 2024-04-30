@@ -1556,11 +1556,13 @@ object Types extends TypeUtils {
       if (normed.exists) normed else this
     }
 
-    /** If this type can be normalized at the top-level by rewriting match types
-     *  of S[n] types, the result after applying all toplevel normalizations,
-     *  otherwise NoType
+    /** If this type has an underlying match type or applied compiletime.ops,
+     *  then the result after applying all toplevel normalizations, otherwise NoType.
      */
-    def tryNormalize(using Context): Type = NoType
+    def tryNormalize(using Context): Type = underlyingNormalizable match
+      case mt: MatchType => mt.tryNormalize
+      case tp: AppliedType => tp.tryCompiletimeConstantFold
+      case _ => NoType
 
     private def widenDealias1(keep: AnnotatedType => Context ?=> Boolean)(using Context): Type = {
       val res = this.widen.dealias1(keep, keepOpaques = false)
@@ -4693,14 +4695,9 @@ object Types extends TypeUtils {
       cachedUnderlyingNormalizable
 
     override def tryNormalize(using Context): Type =
-      def tryMatchAlias =
-        if isMatchAlias then trace(i"normalize $this", typr, show = true):
-          if MatchTypeTrace.isRecording then
-            MatchTypeTrace.recurseWith(this)(superType.tryNormalize)
-          else
-            underlyingNormalizable.tryNormalize
-        else NoType
-      tryCompiletimeConstantFold.orElse(tryMatchAlias)
+      if isMatchAlias && MatchTypeTrace.isRecording then
+        MatchTypeTrace.recurseWith(this)(superType.tryNormalize)
+      else super.tryNormalize
 
     /** Is this an unreducible application to wildcard arguments?
      *  This is the case if tycon is higher-kinded. This means
