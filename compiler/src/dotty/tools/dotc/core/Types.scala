@@ -490,11 +490,11 @@ object Types extends TypeUtils {
       case _ => false
 
     /** Does this application expand to a match type? */
-    def isMatchAlias(using Context): Boolean = underlyingMatchType.exists
+    def isMatchAlias(using Context): Boolean = underlyingNormalizable.isMatch
 
-    def underlyingMatchType(using Context): Type = stripped match
+    def underlyingNormalizable(using Context): Type = stripped match
       case tp: MatchType => tp
-      case tp: AppliedType => tp.underlyingMatchType
+      case tp: AppliedType => tp.underlyingNormalizable
       case _ => NoType
 
     /** Is this a higher-kinded type lambda with given parameter variances?
@@ -4613,8 +4613,8 @@ object Types extends TypeUtils {
     private var myEvalRunId: RunId = NoRunId
     private var myEvalued: Type = uninitialized
 
-    private var validUnderlyingMatch: Period = Nowhere
-    private var cachedUnderlyingMatch: Type = uninitialized
+    private var validUnderlyingNormalizable: Period = Nowhere
+    private var cachedUnderlyingNormalizable: Type = uninitialized
 
     def isGround(acc: TypeAccumulator[Boolean])(using Context): Boolean =
       if myGround == 0 then myGround = if acc.foldOver(true, this) then 1 else -1
@@ -4682,11 +4682,15 @@ object Types extends TypeUtils {
      *  Anything else should have already been reduced in `appliedTo` by the TypeAssigner.
      *  May reduce several HKTypeLambda applications before the underlying MatchType is reached.
      */
-    override def underlyingMatchType(using Context): Type =
-      if ctx.period != validUnderlyingMatch then
-        cachedUnderlyingMatch = superType.underlyingMatchType
-        validUnderlyingMatch = validSuper
-      cachedUnderlyingMatch
+    override def underlyingNormalizable(using Context): Type =
+      if ctx.period != validUnderlyingNormalizable then tycon match
+        case tycon: TypeRef if defn.isCompiletimeAppliedType(tycon.symbol) =>
+          cachedUnderlyingNormalizable = this
+          validUnderlyingNormalizable = ctx.period
+        case _ =>
+          cachedUnderlyingNormalizable = superType.underlyingNormalizable
+          validUnderlyingNormalizable = validSuper
+      cachedUnderlyingNormalizable
 
     override def tryNormalize(using Context): Type =
       def tryMatchAlias =
@@ -4694,7 +4698,7 @@ object Types extends TypeUtils {
           if MatchTypeTrace.isRecording then
             MatchTypeTrace.recurseWith(this)(superType.tryNormalize)
           else
-            underlyingMatchType.tryNormalize
+            underlyingNormalizable.tryNormalize
         else NoType
       tryCompiletimeConstantFold.orElse(tryMatchAlias)
 
@@ -5268,7 +5272,7 @@ object Types extends TypeUtils {
     def apply(bound: Type, scrutinee: Type, cases: List[Type])(using Context): MatchType =
       unique(new CachedMatchType(bound, scrutinee, cases))
 
-    def thatReducesUsingGadt(tp: Type)(using Context): Boolean = tp.underlyingMatchType match
+    def thatReducesUsingGadt(tp: Type)(using Context): Boolean = tp.underlyingNormalizable match
       case mt: MatchType => mt.reducesUsingGadt
       case _ => false
 
