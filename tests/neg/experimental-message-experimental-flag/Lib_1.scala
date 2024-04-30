@@ -1,3 +1,3 @@
-//> using options -Yno-experimental -experimental
+//> using options -experimental
 
 def f() = ???

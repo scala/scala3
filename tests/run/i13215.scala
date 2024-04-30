@@ -1,4 +1,4 @@
-//> using options -experimental -Yno-experimental -Werror -WunstableInlineAccessors
+//> using options -experimental -Werror -WunstableInlineAccessors
 
 import scala.annotation.publicInBinary
 

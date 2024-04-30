@@ -1,4 +1,4 @@
-//> using options -experimental -Yno-experimental
+//> using options -experimental
 
 type F1Inv[A]
 type F1Cov[+A]

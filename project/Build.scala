@@ -1083,7 +1083,6 @@ object Build {
       Compile / doc / scalacOptions += "-Ydocument-synthetic-types",
       scalacOptions += "-Ycompile-scala2-library",
       scalacOptions += "-Yscala2Unpickler:never",
-      scalacOptions += "-Yno-experimental",
       scalacOptions -= "-Xfatal-warnings",
       Compile / compile / logLevel.withRank(KeyRanks.Invisible) := Level.Error,
       ivyConfigurations += SourceDeps.hide,
@@ -2173,9 +2172,6 @@ object Build {
           settings(
             versionScheme := Some("semver-spec"),
             libraryDependencies += "org.scala-lang" % "scala-library" % stdlibVersion,
-            // Make sure we do not refer to experimental features outside an experimental scope.
-            // In other words, disable NIGHTLY/SNAPSHOT experimental scope.
-            scalacOptions += "-Yno-experimental",
           ).
           settings(dottyLibrarySettings)
       if (mode == Bootstrapped) {

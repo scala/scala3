@@ -1,4 +1,4 @@
-//> using options -experimental -Yno-experimental
+//> using options -experimental
 
 @setValue("valDef", "a")
 @setValue("varDef", "b")
