@@ -605,7 +605,7 @@ object projects:
     project           = "AsyncFile",
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
-    dependencies      = List(scissLog, scalatest),
+    dependencies      = List(scissLog, scissModel, scalatest),
   )
 
   lazy val scissSpan = SbtCommunityProject(
