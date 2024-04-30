@@ -1,4 +1,4 @@
-//> using options -Yno-experimental
+
 
 // src-2/MacroImpl.scala
 trait Context {

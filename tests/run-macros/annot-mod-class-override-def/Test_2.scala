@@ -1,4 +1,4 @@
-//> using options -experimental -Yno-experimental
+//> using options -experimental
 
 @genToString("This is Foo")
 class Foo

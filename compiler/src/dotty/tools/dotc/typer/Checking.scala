@@ -42,6 +42,7 @@ import cc.{isCaptureChecking, isRetainsLike}
 
 import collection.mutable
 import reporting.*
+import Annotations.ExperimentalAnnotation
 
 object Checking {
   import tpd.*
@@ -797,50 +798,57 @@ object Checking {
     tree
 
   /** Check that experimental language imports in `trees`
-   *  are done only in experimental scopes, or in a top-level
-   *  scope with only @experimental definitions.
+   *  are done only in experimental scopes. For top-level
+   *  experimental imports, all top-level definitions are transformed
+   *  to @experimental definitions.
+   *
    */
-  def checkExperimentalImports(trees: List[Tree])(using Context): Unit =
+  def checkAndAdaptExperimentalImports(trees: List[Tree])(using Context): Unit =
+    def nonExperimentalTopLevelDefs(pack: Symbol): Iterator[Symbol] =
+      def isNonExperimentalTopLevelDefinition(sym: Symbol) =
+        !sym.isExperimental
+        && sym.source == ctx.compilationUnit.source
+        && !sym.isConstructor // not constructor of package object
+        && !sym.is(Package) && !sym.name.isPackageObjectName
 
-    def nonExperimentalStat(trees: List[Tree]): Tree = trees match
-      case (_: Import | EmptyTree) :: rest =>
-        nonExperimentalStat(rest)
-      case (tree @ TypeDef(_, impl: Template)) :: rest if tree.symbol.isPackageObject =>
-        nonExperimentalStat(impl.body).orElse(nonExperimentalStat(rest))
-      case (tree: PackageDef) :: rest =>
-        nonExperimentalStat(tree.stats).orElse(nonExperimentalStat(rest))
-      case (tree: MemberDef) :: rest =>
-        if tree.symbol.isExperimental || tree.symbol.is(Synthetic) then
-          nonExperimentalStat(rest)
-        else
-          tree
-      case tree :: rest =>
-        tree
-      case Nil =>
-        EmptyTree
+      pack.info.decls.toList.iterator.flatMap: sym =>
+        if sym.isClass && (sym.is(Package) || sym.isPackageObject) then
+          nonExperimentalTopLevelDefs(sym)
+        else if isNonExperimentalTopLevelDefinition(sym) then
+          sym :: Nil
+        else Nil
 
-    for case imp @ Import(qual, selectors) <- trees do
+    def unitExperimentalLanguageImports =
       def isAllowedImport(sel: untpd.ImportSelector) =
         val name = Feature.experimental(sel.name)
         name == Feature.scala2macros
-        || name == Feature.erasedDefinitions
         || name == Feature.captureChecking
+      trees.filter {
+        case Import(qual, selectors) =>
+          languageImport(qual) match
+            case Some(nme.experimental) =>
+              !selectors.forall(isAllowedImport) && !ctx.owner.isInExperimentalScope
+            case _ => false
+        case _ => false
+      }
 
-      languageImport(qual) match
-        case Some(nme.experimental)
-        if !ctx.owner.isInExperimentalScope && !selectors.forall(isAllowedImport) =>
-          def check(stable: => String) =
-            Feature.checkExperimentalFeature("features", imp.srcPos,
-              s"\n\nNote: the scope enclosing the import is not considered experimental because it contains the\nnon-experimental $stable")
-          if ctx.owner.is(Package) then
-            // allow top-level experimental imports if all definitions are @experimental
-            nonExperimentalStat(trees) match
-              case EmptyTree =>
-              case tree: MemberDef => check(i"${tree.symbol}")
-              case tree => check(i"expression ${tree}")
-          else Feature.checkExperimentalFeature("features", imp.srcPos)
+    if ctx.owner.is(Package) || ctx.owner.name.startsWith(str.REPL_SESSION_LINE) then
+      def markTopLevelDefsAsExperimental(why: String): Unit =
+        for sym <- nonExperimentalTopLevelDefs(ctx.owner) do
+          sym.addAnnotation(ExperimentalAnnotation(s"Added by $why", sym.span))
+
+      unitExperimentalLanguageImports match
+        case imp :: _ => markTopLevelDefsAsExperimental(i"top level $imp")
         case _ =>
-  end checkExperimentalImports
+          Feature.experimentalEnabledByLanguageSetting match
+            case Some(sel) => markTopLevelDefsAsExperimental(i"-language:experimental.$sel")
+            case _ if ctx.settings.experimental.value => markTopLevelDefsAsExperimental(i"-experimental")
+            case _ =>
+    else
+      for imp <- unitExperimentalLanguageImports do
+        Feature.checkExperimentalFeature("feature local import", imp.srcPos)
+
+  end checkAndAdaptExperimentalImports
 
   /** Checks that PolyFunction only have valid refinements.
    *

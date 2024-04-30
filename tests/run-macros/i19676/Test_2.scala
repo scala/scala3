@@ -1,4 +1,4 @@
-//> using options -experimental -Yno-experimental
+//> using options -experimental
 
 @companionToString("transformed by class")
 class InPackage

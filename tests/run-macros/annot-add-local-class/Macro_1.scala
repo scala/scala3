@@ -1,4 +1,4 @@
-//> using options -experimental -Yno-experimental
+//> using options -experimental
 
 import scala.annotation.{experimental, MacroAnnotation}
 import scala.quoted._

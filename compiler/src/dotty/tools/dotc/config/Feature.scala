@@ -34,6 +34,11 @@ object Feature:
   val captureChecking = experimental("captureChecking")
   val into = experimental("into")
 
+  def experimentalAutoEnableFeatures(using Context): List[TermName] =
+    defn.languageExperimentalFeatures
+      .map(sym => experimental(sym.name))
+      .filterNot(_ == captureChecking) // TODO is this correct?
+
   /** Is `feature` enabled by by a command-line setting? The enabling setting is
    *
    *       -language:<prefix>feature
@@ -157,18 +162,19 @@ object Feature:
   private def experimentalUseSite(which: String): String =
     s"""Experimental $which may only be used under experimental mode:
        |  1. in a definition marked as @experimental, or
-       |  2. compiling with the -experimental compiler flag, or
-       |  3. with a nightly or snapshot version of the compiler.
+       |  2. an experimental feature is imported at the package level, or
+       |  3. compiling with the -experimental compiler flag.
        |""".stripMargin
 
-  /** Check that experimental compiler options are only set for snapshot or nightly compiler versions. */
-  def checkExperimentalSettings(using Context): Unit =
-    for setting <- ctx.settings.language.value
-        if setting.startsWith("experimental.") && setting != "experimental.macros"
-    do checkExperimentalFeature(s"feature $setting", NoSourcePosition)
-
   def isExperimentalEnabled(using Context): Boolean =
-    (Properties.unstableExperimentalEnabled && !ctx.settings.YnoExperimental.value) || ctx.settings.experimental.value
+    ctx.settings.experimental.value ||
+    experimentalAutoEnableFeatures.exists(enabled)
+
+  def experimentalEnabledByLanguageSetting(using Context): Option[TermName] =
+    experimentalAutoEnableFeatures.find(enabledBySetting)
+
+  def isExperimentalEnabledByImport(using Context): Boolean =
+    experimentalAutoEnableFeatures.exists(enabledByImport)
 
   /** Handle language import `import language.<prefix>.<imported>` if it is one
    *  of the global imports `pureFunctions` or `captureChecking`. In this case

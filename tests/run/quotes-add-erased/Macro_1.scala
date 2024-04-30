@@ -1,4 +1,4 @@
-//> using options -experimental -Yno-experimental
+//> using options -experimental
 
 import scala.annotation.MacroAnnotation
 import scala.annotation.internal.ErasedParam
