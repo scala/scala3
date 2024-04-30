@@ -301,12 +301,9 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
     // during the typer, it is infeasible to correctly infer the capture sets in most
     // cases, resulting ill-formed capture sets that could crash the pickler later on.
     // See #20035.
-    private def cleanupRetainsAnnot(symbol: Symbol, tpt: Tree)(using Context): Tree =
+    private def cleanupRetainsAnnot(tpt: Tree)(using Context): Tree =
       tpt match
-        case tpt: InferredTypeTree
-        if !symbol.allOverriddenSymbols.hasNext =>
-          // if there are overridden symbols, the annotation comes from an explicit type of the overridden symbol
-          // and should be retained.
+        case tpt: InferredTypeTree =>
           val tm = new CleanupRetains
           val tpe1 = tm(tpt.tpe)
           tpt.withType(tpe1)
@@ -421,7 +418,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           registerIfHasMacroAnnotations(tree)
           checkErasedDef(tree)
           Checking.checkPolyFunctionType(tree.tpt)
-          val tree1 = cpy.ValDef(tree)(tpt = cleanupRetainsAnnot(tree.symbol, tree.tpt), rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
+          val tree1 = cpy.ValDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
           if tree1.removeAttachment(desugar.UntupledParam).isDefined then
             checkStableSelection(tree.rhs)
           processValOrDefDef(super.transform(tree1))
@@ -431,7 +428,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           checkErasedDef(tree)
           Checking.checkPolyFunctionType(tree.tpt)
           annotateContextResults(tree)
-          val tree1 = cpy.DefDef(tree)(tpt = cleanupRetainsAnnot(tree.symbol, tree.tpt), rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
+          val tree1 = cpy.DefDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
           processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
         case tree: TypeDef =>
           registerIfHasMacroAnnotations(tree)
@@ -504,8 +501,9 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
               report.error(em"type ${alias.tpe} outside bounds $bounds", tree.srcPos)
           super.transform(tree)
         case tree: TypeTree =>
-          tree.withType(
-            tree.tpe match {
+          val tree1 = cleanupRetainsAnnot(tree)
+          tree1.withType(
+            tree1.tpe match {
               case AnnotatedType(tpe, annot) => AnnotatedType(tpe, transformAnnot(annot))
               case tpe => tpe
             }
