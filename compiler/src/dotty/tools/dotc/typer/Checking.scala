@@ -804,22 +804,24 @@ object Checking {
    *
    */
   def checkAndAdaptExperimentalImports(trees: List[Tree])(using Context): Unit =
-    def nonExperimentalStats(trees: List[Tree]): List[Tree] = trees match
-      case (_: ImportOrExport | EmptyTree) :: rest =>
-        nonExperimentalStats(rest)
-      case (tree @ TypeDef(_, impl: Template)) :: rest if tree.symbol.isPackageObject =>
-        nonExperimentalStats(impl.body) ::: nonExperimentalStats(rest)
-      case (tree: PackageDef) :: rest =>
-        nonExperimentalStats(tree.stats) ::: nonExperimentalStats(rest)
-      case (tree: MemberDef) :: rest =>
-        if tree.symbol.isExperimental || tree.symbol.is(Synthetic) then
-          nonExperimentalStats(rest)
-        else
-          tree :: nonExperimentalStats(rest)
-      case tree :: rest =>
-        tree :: nonExperimentalStats(rest)
-      case Nil =>
-        Nil
+    def nonExperimentalTopLevelDefs(pack: Symbol): Iterator[Symbol] =
+      def isNonExperimentalTopLevelDefinition(sym: Symbol) =
+        !sym.isExperimental
+        && sym.source == ctx.compilationUnit.source
+        && !sym.isConstructor // not constructor of package object
+        && !sym.is(Package) && !sym.isPackageObject && !sym.name.endsWith(str.TOPLEVEL_SUFFIX)
+
+      val packageMembers =
+        pack.info.decls
+          .toList.iterator
+          .filter(isNonExperimentalTopLevelDefinition)
+      val packageObjectMembers =
+        pack.info.decls
+          .toList.iterator
+          .filter(sym => sym.isClass && (sym.is(Package) || sym.isPackageObject))
+          .flatMap(nonExperimentalTopLevelDefs)
+
+      packageMembers ++ packageObjectMembers
 
     def unitExperimentalLanguageImports =
       def isAllowedImport(sel: untpd.ImportSelector) =
@@ -837,14 +839,9 @@ object Checking {
 
     if ctx.owner.is(Package) || ctx.owner.name.startsWith(str.REPL_SESSION_LINE) then
       def markTopLevelDefsAsExperimental(why: String): Unit =
-        for tree <- nonExperimentalStats(trees) do
-          tree match
-            case tree: MemberDef =>
-              val sym = tree.symbol
-              if !sym.isExperimental then
-                sym.addAnnotation(ExperimentalAnnotation(s"Added by $why", sym.span))
-            case _ =>
-              // statements from a `val _ = ...`
+        for sym <- nonExperimentalTopLevelDefs(ctx.owner) do
+          sym.addAnnotation(ExperimentalAnnotation(s"Added by $why", sym.span))
+
       unitExperimentalLanguageImports match
         case imp :: _ => markTopLevelDefsAsExperimental(i"top level $imp")
         case _ =>
