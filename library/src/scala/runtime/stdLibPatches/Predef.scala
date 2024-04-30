@@ -65,5 +65,5 @@ object Predef:
 
   extension (inline opt: Option.type)
     @experimental
-    inline def fromNullable[T](t: T | Null): Option[T] = Option(t).asInstanceOf
+    inline def fromNullable[T](t: T | Null): Option[T] = Option(t).asInstanceOf[Option[T]]
 end Predef
