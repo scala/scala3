@@ -83,7 +83,7 @@ class Objects(using Context @constructorOnly):
   val immutableLazyList: Symbol = requiredModule("scala.collection.immutable.LazyList")
   val LazyList_empty: Symbol = immutableLazyList.requiredValue("_empty")
 
-  val whiteList: Set[Symbol] = Set()
+  val whiteList: Set[Symbol] = Set(SetNode_EmptySetNode, HashSet_EmptySet, Vector_EmptyIterator, MapNode_EmptyMapNode, HashMap_EmptyMap, LazyList_empty)
 
   // ----------------------------- abstract domain -----------------------------
 
@@ -173,7 +173,7 @@ class Objects(using Context @constructorOnly):
   extends Ref(valsMap = mutable.Map.empty, varsMap = mutable.Map.empty, outersMap = mutable.Map.empty):
     val owner = klass
 
-    def show(using Context) = "ObjectRef(" + klass.show + ")" + "valMap = " + vals + "varMap = " + vars
+    def show(using Context) = "ObjectRef(" + klass.show + ")"
 
   /**
    * Represents values that are instances of the specified class.
@@ -832,7 +832,6 @@ class Objects(using Context @constructorOnly):
               errorReadOtherStaticObject(State.currentObject, addr)
               Bottom
           else if ref.isObjectRef && ref.klass.hasSource then
-            println(s"Uninitialized field Position 2, ref = $ref, target = $target")
             report.warning("Access uninitialized field " + field.show + ". " + Trace.show, Trace.position)
             Bottom
           else
@@ -841,7 +840,6 @@ class Objects(using Context @constructorOnly):
         else if ref.hasVal(target) then
           ref.valValue(target)
         else if ref.isObjectRef && ref.klass.hasSource then
-          println(s"Uninitialized field Position 2, ref = $ref, target = $target")
           report.warning("Access uninitialized field " + field.show + ". " + Trace.show, Trace.position)
           Bottom
         else
