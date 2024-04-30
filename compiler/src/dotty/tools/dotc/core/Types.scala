@@ -491,7 +491,7 @@ object Types extends TypeUtils {
     /** Does this application expand to a match type? */
     def isMatchAlias(using Context): Boolean = underlyingNormalizable.isMatch
 
-    def underlyingNormalizable(using Context): Type = stripped match
+    def underlyingNormalizable(using Context): Type = stripped.stripLazyRef match
       case tp: MatchType => tp
       case tp: AppliedType => tp.underlyingNormalizable
       case _ => NoType
@@ -3256,8 +3256,6 @@ object Types extends TypeUtils {
   case class LazyRef(private var refFn: (Context => (Type | Null)) | Null) extends UncachedProxyType with ValueType {
     private var myRef: Type | Null = null
     private var computed = false
-
-    override def tryNormalize(using Context): Type = ref.tryNormalize
 
     def ref(using Context): Type =
       if computed then
