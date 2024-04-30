@@ -1042,8 +1042,7 @@ trait Applications extends Compatibility {
                           case Some(arg) if tree.args.exists(_.span == arg.span) =>
                             val noteText =
                               i"""The required type comes from a parameter of the automatically
-                                  |inserted `apply` method of `${qualifier.tpe}`,
-                                  |which is the type of `${qualifier.show}`.""".stripMargin
+                                  |inserted `apply` method of `${qualifier.tpe}`.""".stripMargin
                             Diagnostic.Error(msg.appendExplanation("\n\n" + noteText), dia.pos)
                           case _ => dia
                       case msg => dia

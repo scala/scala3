@@ -19,6 +19,5 @@
   | The tests were made under the empty constraint
   |
   | The required type comes from a parameter of the automatically
-  | inserted `apply` method of `scala.collection.StringOps`,
-  | which is the type of `augmentString(renderWebsite("/tmp")(x$1))`.
+  | inserted `apply` method of `scala.collection.StringOps`.
    ---------------------------------------------------------------------------------------------------------------------

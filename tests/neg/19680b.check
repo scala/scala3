@@ -20,6 +20,5 @@
   | The tests were made under the empty constraint
   |
   | The required type comes from a parameter of the automatically
-  | inserted `apply` method of `List[Int]`,
-  | which is the type of `List.apply[Int]([1,2 : Int]*)`.
+  | inserted `apply` method of `List[Int]`.
    ---------------------------------------------------------------------------------------------------------------------
