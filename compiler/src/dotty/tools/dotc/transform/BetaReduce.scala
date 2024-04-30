@@ -153,7 +153,8 @@ object BetaReduce:
     val expansion1 = new TreeMap {
       override def transform(tree: Tree)(using Context) = tree.tpe.widenTermRefExpr match
         case ConstantType(const) if isPureExpr(tree) => cpy.Literal(tree)(const)
-        case tpe: TypeRef if tpe.derivesFrom(defn.UnitClass) && isPureExpr(tree) => cpy.Literal(tree)(Constant(()))
+        case tpe: TypeRef if tree.isTerm && tpe.derivesFrom(defn.UnitClass) && isPureExpr(tree) =>
+          cpy.Literal(tree)(Constant(()))
         case _ => super.transform(tree)
     }.transform(expansion)
 
