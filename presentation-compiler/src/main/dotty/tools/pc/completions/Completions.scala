@@ -70,10 +70,7 @@ class Completions(
       case _ :: (_: (Import | Export)) :: _ => false
       case _ => true
 
-  private lazy val isNew: Boolean =
-    path match
-      case _ :: New(selectOrIdent: (Select | Ident)) :: _ => true
-      case _ => false
+  private lazy val isNew: Boolean = Completion.isInNewContext(adjustedPath)
 
   def includeSymbol(sym: Symbol)(using Context): Boolean =
     def hasSyntheticCursorSuffix: Boolean =
@@ -535,7 +532,7 @@ class Completions(
     val query = completionPos.query
     if completionMode.is(Mode.Scope) && query.nonEmpty then
       val visitor = new CompilerSearchVisitor(sym =>
-        if Completion.isValidCompletionSymbol(sym, completionMode) &&
+        if Completion.isValidCompletionSymbol(sym, completionMode, isNew) &&
           !(sym.is(Flags.ExtensionMethod) || (sym.maybeOwner.is(Flags.Implicit) && sym.maybeOwner.isClass))
         then
           indexedContext.lookupSym(sym) match
