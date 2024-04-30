@@ -5,7 +5,7 @@ import scala.quoted.*
 
 class implementAFoo extends MacroAnnotation:
 
-    def transform(using Quotes)(tree: quotes.reflect.Definition): List[quotes.reflect.Definition] =
+    def transform(using Quotes)(tree: quotes.reflect.Definition, companion: Option[quotes.reflect.Definition]): List[quotes.reflect.Definition] =
         import quotes.reflect.*
         tree match
             case ClassDef(name, cstr, parents, self, body) =>

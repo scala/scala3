@@ -20,6 +20,7 @@ import util.SrcPos
 import reporting.*
 import NameKinds.WildcardParamName
 import cc.*
+import dotty.tools.dotc.transform.MacroAnnotations.hasMacroAnnotation
 
 object PostTyper {
   val name: String = "posttyper"
@@ -560,7 +561,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
     /** Check if the definition has macro annotation and sets `compilationUnit.hasMacroAnnotations` if needed. */
     private def registerIfHasMacroAnnotations(tree: DefTree)(using Context) =
-      if !Inlines.inInlineMethod && MacroAnnotations.hasMacroAnnotation(tree.symbol) then
+      if !Inlines.inInlineMethod && tree.symbol.hasMacroAnnotation then
         ctx.compilationUnit.hasMacroAnnotations = true
 
     /** Check macro annotations implementations  */
