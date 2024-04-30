@@ -1194,7 +1194,7 @@ object SymDenotations {
       || is(JavaDefinedVal, butNot = Method)
       || isConstructor
       || !owner.isExtensibleClass && !is(Deferred)
-      	// Deferred symbols can arise through parent refinements.
+      	// Deferred symbols can arise through parent refinements under x.modularity.
       	// For them, the overriding relationship reverses anyway, so
       	// being in a final class does not mean the symbol cannot be
       	// implemented concretely in a superclass.

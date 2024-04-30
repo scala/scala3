@@ -296,13 +296,13 @@ class Namer { typer: Typer =>
         createOrRefine[Symbol](tree, name, flags, ctx.owner, _ => info,
           (fs, _, pwithin) => newSymbol(ctx.owner, name, fs, info, pwithin, tree.nameSpan))
       case tree: Import =>
-        recordSym(newImportSym(tree), tree)
+        recordSym(importSymbol(tree), tree)
       case _ =>
         NoSymbol
     }
   }
 
-  private def newImportSym(imp: Import)(using Context): Symbol =
+  private def importSymbol(imp: Import)(using Context): Symbol =
     newImportSymbol(ctx.owner, Completer(imp)(ctx), imp.span)
 
    /** If `sym` exists, enter it in effective scope. Check that
@@ -719,7 +719,7 @@ class Namer { typer: Typer =>
      */
     def expandTopLevel(stats: List[Tree])(using Context): Unit = stats match
       case (imp @ Import(qual, _)) :: stats1 if untpd.languageImport(qual).isDefined =>
-        expandTopLevel(stats1)(using ctx.importContext(imp, newImportSym(imp)))
+        expandTopLevel(stats1)(using ctx.importContext(imp, importSymbol(imp)))
       case stat :: stats1 =>
         expand(stat)
         expandTopLevel(stats1)
@@ -1624,7 +1624,8 @@ class Namer { typer: Typer =>
       }
 
       /** Enter all parent refinements as public class members, unless a definition
-       *  with the same name already exists in the class.
+       *  with the same name already exists in the class. Remember the refining symbols
+       *  as an attachment on the ClassDef tree.
        */
       def enterParentRefinementSyms(refinements: List[(Name, Type)]) =
         val refinedSyms = mutable.ListBuffer[Symbol]()
@@ -1852,19 +1853,20 @@ class Namer { typer: Typer =>
     // Beware: ddef.name need not match sym.name if sym was freshened!
     val isConstructor = sym.name == nme.CONSTRUCTOR
 
+    // A map from context-bounded type parameters to associated evidence parameter names
     val witnessNamesOfParam = mutable.Map[TypeDef, List[TermName]]()
     if !ddef.name.is(DefaultGetterName) && !sym.is(Synthetic) then
       for params <- ddef.paramss; case tdef: TypeDef <- params do
         for case WitnessNamesAnnot(ws) <- tdef.mods.annotations do
           witnessNamesOfParam(tdef) = ws
 
-    /** Are all names in `wnames` defined by the longest prefix of all `params`
+    /** Is each name in `wnames` defined spmewhere in the longest prefix of all `params`
      *  that have been typed ahead (i.e. that carry the TypedAhead attachment)?
      */
     def allParamsSeen(wnames: List[TermName], params: List[MemberDef]) =
       (wnames.toSet[Name] -- params.takeWhile(_.hasAttachment(TypedAhead)).map(_.name)).isEmpty
 
-    /** Enter and typecheck parameter list, add context companions as.
+    /** Enter and typecheck parameter list.
      *  Once all witness parameters for a context bound are seen, create a
      *  context bound companion for it.
      */
@@ -1909,7 +1911,9 @@ class Namer { typer: Typer =>
     val paramSymss = normalizeIfConstructor(ddef.paramss.nestedMap(symbolOfTree), isConstructor)
     sym.setParamss(paramSymss)
 
-    /** We add `tracked` to context bound witnesses that have abstract type members */
+    /** Under x.modularity, we add `tracked` to context bound witnesses
+     *  that have abstract type members
+     */
     def needsTracked(sym: Symbol, param: ValDef)(using Context) =
       !sym.is(Tracked)
       && param.hasAttachment(ContextBoundParam)

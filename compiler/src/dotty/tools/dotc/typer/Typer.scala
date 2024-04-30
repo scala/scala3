@@ -183,7 +183,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   // Overridden in derived typers
   def newLikeThis(nestingLevel: Int): Typer = new Typer(nestingLevel)
 
-  // Overridden to do nothing in derived typers
+  /** Apply given migration. Overridden to use `disabled` instead in ReTypers. */
   protected def migrate[T](migration: => T, disabled: => T = ()): T = migration
 
   /** Find the type of an identifier with given `name` in given context `ctx`.
@@ -869,7 +869,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     type Alts = List[(/*prev: */Tree, /*prevState: */TyperState, /*prevWitness: */TermRef)]
 
     /** Compare two alternative selections `alt1` and `alt2` from witness types
-     *  `wit1`, `wit2` according to the 3 criteria in the enclosing doc comment. I.e.
+     *  `wit1`, `wit2` according to the 3 criteria in Step 3 of the doc comment
+     *  of annotation.internal.WitnessNames. I.e.
      *
      *      alt1 = qual1.m, alt2 = qual2.m, qual1: wit1, qual2: wit2
      *
@@ -887,13 +888,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case (tp1: TermRef, tp2: TermRef) =>
           if tp1.info.isSingleton && (tp1 frozen_=:= tp2) then 1
           else compare(tp1, tp2, preferGeneral = false)
-        case (tp1: TermRef, _) => 1
+        case (tp1: TermRef, _) => 1 // should not happen, but prefer TermRefs over othersver others
         case (_, tp2: TermRef) => -1
         case _ => 0
 
-    /** Find the set of maximally preferred alternative among `prev` and the
-     *  remaining alternatives generated from `witnesses` with is a union type
-     *  of witness references.
+    /** Find the set of maximally preferred alternatives among `prevs` and
+     *  alternatives referred to by `witnesses`.
+     *  @param prevs      a list of (ref tree, typer state, term ref) tripls that
+     *                    represents previously identified alternatives
+     *  @param witnesses  a type of the form ref_1 | ... | ref_n containing references
+     *                    still to be considered.
      */
     def tryAlts(prevs: Alts, witnesses: Type): Alts = witnesses match
       case OrType(wit1, wit2) =>
@@ -905,10 +909,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         def current = (alt, altCtx.typerState, witness)
         if altCtx.reporter.hasErrors then prevs
         else
-          val cmps = prevs.map: (prevTree, prevState, prevWitness) =>
+          val comparisons = prevs.map: (prevTree, prevState, prevWitness) =>
             compareAlts(prevTree, alt, prevWitness, witness)
-          if cmps.exists(_ == 1) then prevs
-          else current :: prevs.zip(cmps).collect{ case (prev, cmp) if cmp != -1 => prev }
+          if comparisons.exists(_ == 1) then prevs
+          else current :: prevs.zip(comparisons).collect{ case (prev, cmp) if cmp != -1 => prev }
 
     qual.tpe.widen match
       case AppliedType(_, arg :: Nil) =>
@@ -2370,9 +2374,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val tparamSplice = untpd.TypedSplice(typedExpr(tparam))
       typed(untpd.RefinedTypeTree(tyconSplice, List(untpd.TypeDef(tpnme.Self, tparamSplice))))
     else
+      def selfNote =
+        if Feature.enabled(modularity) then
+          " and\ndoes not have an abstract type member named `Self` either"
+        else ""
       errorTree(tree,
-        em"""Illegal context bound: ${tycon.tpe} does not take type parameters and
-            |does not have an abstract type member named `Self` either.""")
+        em"Illegal context bound: ${tycon.tpe} does not take type parameters$selfNote.")
 
   def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(using Context): SingletonTypeTree = {
     val ref1 = typedExpr(tree.ref, SingletonTypeProto)
@@ -2605,7 +2612,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         var name = tree.name
         if (name == nme.WILDCARD && tree.mods.is(Given)) {
           val Typed(_, tpt) = tree.body: @unchecked
-          name = desugar.inventGivenOrExtensionName(tpt)
+          name = desugar.inventGivenName(tpt)
         }
         if (name == nme.WILDCARD) body1
         else {
@@ -2725,6 +2732,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if filters == List(MessageFilter.None) then sup.markUsed()
     ctx.run.nn.suppressions.addSuppression(sup)
 
+  /** Run `typed` on `rhs` except if `rhs` is the right hand side of a deferred given,
+   *  in which case the empty tree is returned.
+   */
+  private inline def excludeDeferredGiven(
+      rhs: untpd.Tree, sym: Symbol)(
+      inline typed: untpd.Tree => Tree)(using Context): Tree =
+    rhs match
+      case rhs: RefTree
+      if rhs.name == nme.deferred && sym.isAllOf(DeferredGivenFlags, butNot = Param) =>
+        EmptyTree
+      case _ =>
+        typed(rhs)
+
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree = {
     val ValDef(name, tpt, _) = vdef
     checkNonRootName(vdef.name, vdef.nameSpan)
@@ -2732,15 +2752,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if sym.is(Implicit) then checkImplicitConversionDefOK(sym)
     if sym.is(Module) then checkNoModuleClash(sym)
     val tpt1 = checkSimpleKinded(typedType(tpt))
-    val rhs1 = vdef.rhs match {
+    val rhs1 = vdef.rhs match
       case rhs @ Ident(nme.WILDCARD) =>
         rhs.withType(tpt1.tpe)
-      case rhs: RefTree
-      if rhs.name == nme.deferred && sym.isAllOf(DeferredGivenFlags, butNot = Param) =>
-        EmptyTree
       case rhs =>
-        typedExpr(rhs, tpt1.tpe.widenExpr)
-    }
+        excludeDeferredGiven(rhs, sym):
+          typedExpr(_, tpt1.tpe.widenExpr)
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
     postProcessInfo(vdef1, sym)
     vdef1.setDefTree
@@ -2800,13 +2817,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     if sym.isInlineMethod then rhsCtx.addMode(Mode.InlineableBody)
     if sym.is(ExtensionMethod) then rhsCtx.addMode(Mode.InExtensionMethod)
-    val rhs1 = ddef.rhs match
-      case Ident(nme.deferred) if sym.isAllOf(DeferredGivenFlags) =>
-        EmptyTree
-      case rhs =>
-        PrepareInlineable.dropInlineIfError(sym,
-          if sym.isScala2Macro then typedScala2MacroBody(ddef.rhs)(using rhsCtx)
-          else typedExpr(ddef.rhs, tpt1.tpe.widenExpr)(using rhsCtx))
+    val rhs1 = excludeDeferredGiven(ddef.rhs, sym): rhs =>
+      PrepareInlineable.dropInlineIfError(sym,
+        if sym.isScala2Macro then typedScala2MacroBody(rhs)(using rhsCtx)
+        else typedExpr(rhs, tpt1.tpe.widenExpr)(using rhsCtx))
 
     if sym.isInlineMethod then
       if StagingLevel.level > 0 then

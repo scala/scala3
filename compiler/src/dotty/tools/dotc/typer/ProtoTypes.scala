@@ -776,6 +776,7 @@ object ProtoTypes {
     TypeComparer.addToConstraint(added, tvars)
     val singletonRefs = preciseConstrainedRefs(added, singletonOnly = true)
     for paramRef <- added.paramRefs do
+      // Constrain all type parameters [T: Singleton] to T <: Singleton
       if singletonRefs.contains(paramRef) then paramRef <:< defn.SingletonType
     (added, tvars)
   end constrained

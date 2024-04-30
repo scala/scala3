@@ -77,6 +77,7 @@ object Predef:
    *
    *  which is what is needed for a context bound `[A: TC]`.
    */
+  @experimental
   infix type is[A <: AnyKind, B <: Any{type Self <: AnyKind}] = B { type Self = A }
 
 end Predef

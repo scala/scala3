@@ -36,7 +36,7 @@ package internal
  *    2. The underlying type (under widen) of ref_i is a true supertype of the
  *       underlying type of ref_j.
  *    3. ref_i.m is a term, the underlying type of ref_j is not a strict subtype
- *       of the underlying type of ref_j, and the underlying type ref_i.m is a
+ *       of the underlying type of ref_i, and the underlying type ref_i.m is a
  *       strict subtype of the underlying type of ref_j.m.
  *
  *  If there is such a selection, map A.m to ref_i.m, otherwise report an error.
@@ -48,6 +48,7 @@ package internal
  *
  *  4. At PostTyper, issue an error when encountering any reference to a CB companion.
  */
+@experimental
 class WitnessNames(names: String*) extends StaticAnnotation
 
 

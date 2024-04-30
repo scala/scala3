@@ -476,9 +476,9 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
                 val relativePath = util.SourceFile.relativePath(ctx.compilationUnit.source, reference)
                 sym.addAnnotation(Annotation(defn.SourceFileAnnot, Literal(Constants.Constant(relativePath)), tree.span))
           else
-            if !sym.is(Param) then
-              if !sym.owner.isOneOf(AbstractOrTrait) then
-                Checking.checkGoodBounds(tree.symbol)
+            if !sym.is(Param) && !sym.owner.isOneOf(AbstractOrTrait) then
+              Checking.checkGoodBounds(tree.symbol)
+            // Delete all context bound companions of this TypeDef
             if sym.owner.isClass && sym.hasAnnotation(defn.WitnessNamesAnnot) then
               val decls = sym.owner.info.decls
               for cbCompanion <- decls.lookupAll(sym.name.toTermName) do

@@ -1,7 +1,7 @@
 package scala
 package compiletime
 
-import annotation.compileTimeOnly
+import annotation.{compileTimeOnly, experimental}
 
 /** Use this method when you have a type, do not have a value for it but want to
  *  pattern match on it. For example, given a type `Tup <: Tuple`, one can
@@ -52,6 +52,7 @@ def uninitialized: Nothing = ???
  *  that implement the enclosing trait and that do not contain an explicit overriding
  *  definition of that given.
  */
+@experimental
 @compileTimeOnly("`deferred` can only be used as the right hand side of a given definition in a trait")
 def deferred: Nothing = ???
 
