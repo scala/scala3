@@ -798,7 +798,7 @@ object Checking {
     tree
 
   /** Check that experimental language imports in `trees`
-   *  are done only in experimental scopes. For for top-level
+   *  are done only in experimental scopes. For top-level
    *  experimental imports, all top-level definitions are transformed
    *  to @experimental definitions.
    *
@@ -809,19 +809,14 @@ object Checking {
         !sym.isExperimental
         && sym.source == ctx.compilationUnit.source
         && !sym.isConstructor // not constructor of package object
-        && !sym.is(Package) && !sym.isPackageObject && !sym.name.endsWith(str.TOPLEVEL_SUFFIX)
+        && !sym.is(Package) && !sym.name.isPackageObjectName
 
-      val packageMembers =
-        pack.info.decls
-          .toList.iterator
-          .filter(isNonExperimentalTopLevelDefinition)
-      val packageObjectMembers =
-        pack.info.decls
-          .toList.iterator
-          .filter(sym => sym.isClass && (sym.is(Package) || sym.isPackageObject))
-          .flatMap(nonExperimentalTopLevelDefs)
-
-      packageMembers ++ packageObjectMembers
+      pack.info.decls.toList.iterator.flatMap: sym =>
+        if sym.isClass && (sym.is(Package) || sym.isPackageObject) then
+          nonExperimentalTopLevelDefs(sym)
+        else if isNonExperimentalTopLevelDefinition(sym) then
+          sym :: Nil
+        else Nil
 
     def unitExperimentalLanguageImports =
       def isAllowedImport(sel: untpd.ImportSelector) =
