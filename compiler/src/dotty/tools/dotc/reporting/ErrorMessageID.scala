@@ -200,7 +200,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case MatchTypeNoCasesID // errorNumber: 184
   case UnimportedAndImportedID // errorNumber: 185
   case ImplausiblePatternWarningID // errorNumber: 186
-  case SynchronizedCallOnBoxedClassID // errorNumber: 187
+  case SynchronizedCallOnValueID // errorNumber: 187
   case VarArgsParamCannotBeGivenID // errorNumber: 188
   case ExtractorNotFoundID // errorNumber: 189
   case PureUnitExpressionID // errorNumber: 190

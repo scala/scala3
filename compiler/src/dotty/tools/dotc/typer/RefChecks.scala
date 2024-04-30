@@ -1155,6 +1155,11 @@ object RefChecks {
       then report.warning(ExtensionNullifiedByMember(sym, target.typeSymbol), sym.srcPos)
   end checkExtensionMethods
 
+  def checkSynchronizedCallOnValue(tree: Tree)(using Context): Unit =
+    if tree.symbol == defn.Object_synchronized
+      && ctx.owner.enclosingClass.isValueClass then
+      report.warning(SynchronizedCallOnValue(tree), tree)
+
   /** Verify that references in the user-defined `@implicitNotFound` message are valid.
    *  (i.e. they refer to a type variable that really occurs in the signature of the annotated symbol.)
    */
@@ -1326,11 +1331,12 @@ class RefChecks extends MiniPhase { thisPhase =>
 
   override def transformIdent(tree: Ident)(using Context): Tree =
     checkAnyRefMethodCall(tree)
+    checkSynchronizedCallOnValue(tree)
     tree
 
   override def transformSelect(tree: tpd.Select)(using Context): tpd.Tree =
     if defn.ScalaBoxedClasses().contains(tree.qualifier.tpe.typeSymbol) && tree.name == nme.synchronized_ then
-      report.warning(SynchronizedCallOnBoxedClass(tree), tree.srcPos)
+      report.warning(SynchronizedCallOnValue(tree), tree.srcPos)
     tree
 }
 

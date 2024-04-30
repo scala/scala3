@@ -2443,13 +2443,13 @@ class UnqualifiedCallToAnyRefMethod(stat: untpd.Tree, method: Symbol)(using Cont
        |you intended.$getClassExtraHint"""
 }
 
-class SynchronizedCallOnBoxedClass(stat: tpd.Tree)(using Context)
-  extends Message(SynchronizedCallOnBoxedClassID) {
+class SynchronizedCallOnValue(stat: tpd.Tree)(using Context)
+  extends Message(SynchronizedCallOnValueID) {
   def kind = MessageKind.PotentialIssue
-  def msg(using Context) = i"Suspicious ${hl("synchronized")} call on boxed class"
+  def msg(using Context) = i"Suspicious ${hl("synchronized")} call on value"
   def explain(using Context) =
-    i"""|You called the ${hl("synchronized")} method on a boxed primitive. This might not be what
-        |you intended."""
+    i"""|You called the ${hl("synchronized")} method on a boxed primitive or on a class extending ${hl("AnyVal")}.
+        |This might not be what you intended."""
 }
 
 class ExtensionNullifiedByMember(method: Symbol, target: Symbol)(using Context)
