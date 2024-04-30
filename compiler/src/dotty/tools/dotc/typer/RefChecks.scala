@@ -552,7 +552,11 @@ object RefChecks {
         overrideError("is an extension method, cannot override a normal method")
       else if (other.is(ExtensionMethod) && !member.is(ExtensionMethod)) // (1.3)
         overrideError("is a normal method, cannot override an extension method")
-      else if (!other.is(Deferred) || other.isAllOf(Given | HasDefault))
+      else if (!other.is(Deferred)
+              || other.isAllOf(Given | HasDefault)
+                // deferred givens have flags Given, HasDefault and Deferred set. These
+                // need to be checked for overriding as if they were concrete members
+              )
             && !member.is(Deferred)
             && !other.name.is(DefaultGetterName)
             && !member.isAnyOverride
@@ -626,7 +630,7 @@ object RefChecks {
       else if intoOccurrences(memberTp(self)) != intoOccurrences(otherTp(self)) then
         overrideError("has different occurrences of `into` modifiers", compareTypes = true)
       else if other.is(ParamAccessor) && !isInheritedAccessor(member, other)
-           && !member.is(Tracked)
+           && !member.is(Tracked) // see remark on tracked members above
       then // (1.12)
         report.errorOrMigrationWarning(
             em"cannot override val parameter ${other.showLocated}",

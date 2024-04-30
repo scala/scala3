@@ -3542,23 +3542,26 @@ object Parsers {
               paramMods()
               if paramOwner.takesOnlyUsingClauses && !impliedMods.is(Given) then
                 syntaxError(em"`using` expected")
-              val (firstParamMod, isParams) =
+              val (firstParamMod, paramsAreNamed) =
                 var mods = EmptyModifiers
                 if in.lookahead.isColon then
                   (mods, true)
                 else
                   if isErased then mods = addModifier(mods)
-                  val isParams =
+                  val paramsAreNamed =
                     !impliedMods.is(Given)
                     || startParamTokens.contains(in.token)
                     || isIdent
-                        && (in.name == nme.inline || in.name == nme.tracked || in.lookahead.isColon)
-                  (mods, isParams)
-              (if isParams then commaSeparated(() => param())
-              else contextTypes(paramOwner, numLeadParams, impliedMods)) match {
+                        && (in.name == nme.inline
+                           || in.name == nme.tracked && in.featureEnabled(Feature.modularity)
+                           || in.lookahead.isColon)
+                  (mods, paramsAreNamed)
+              val params =
+                if paramsAreNamed then commaSeparated(() => param())
+                else contextTypes(paramOwner, numLeadParams, impliedMods)
+              params match
                 case Nil => Nil
                 case (h :: t) => h.withAddedFlags(firstParamMod.flags) :: t
-              }
           checkVarArgsRules(clause)
           clause
       }
@@ -4156,7 +4159,10 @@ object Parsers {
         else // need to be careful with last `with`
           withConstrApps()
 
-      // TODO Change syntax description
+      // Adjust parameter modifiers so that they are now parameters of a method
+      // (originally, we created class parameters)
+      // TODO: syntax.md should be adjusted to reflect the difference that
+      // parameters of an alias given cannot be vals.
       def adjustDefParams(paramss: List[ParamClause]): List[ParamClause] =
         paramss.nestedMap: param =>
           if !param.mods.isAllOf(PrivateLocal) then
@@ -4173,7 +4179,8 @@ object Parsers {
           else Nil
         newLinesOpt()
         val noParams = tparams.isEmpty && vparamss.isEmpty
-        if !(name.isEmpty && noParams) then
+        val hasParamsOrId = !name.isEmpty || !noParams
+        if hasParamsOrId then
           if in.isColon then
             newSyntaxAllowed = false
             in.nextToken()
@@ -4184,7 +4191,7 @@ object Parsers {
             rejectWildcardType(annotType()) :: Nil
           else constrApp() match
             case parent: Apply => parent :: moreConstrApps()
-            case parent if in.isIdent =>
+            case parent if in.isIdent && newSyntaxAllowed =>
               infixTypeRest(parent, _ => annotType1()) :: Nil
             case parent => parent :: moreConstrApps()
         if newSyntaxAllowed && in.isIdent(nme.as) then
@@ -4193,6 +4200,7 @@ object Parsers {
 
         val parentsIsType = parents.length == 1 && parents.head.isType
         if in.token == EQUALS && parentsIsType then
+          // given alias
           accept(EQUALS)
           mods1 |= Final
           if noParams && !mods.is(Inline) then
@@ -4201,10 +4209,12 @@ object Parsers {
           else
             DefDef(name, adjustDefParams(joinParams(tparams, vparamss)), parents.head, subExpr())
         else if (isStatSep || isStatSeqEnd) && parentsIsType && !newSyntaxAllowed then
+          // old-style abstract given
           if name.isEmpty then
             syntaxError(em"anonymous given cannot be abstract")
           DefDef(name, adjustDefParams(joinParams(tparams, vparamss)), parents.head, EmptyTree)
         else
+          // structural instance
           val vparamss1 = vparamss.nestedMap: vparam =>
             if vparam.mods.is(Private)
             then vparam.withMods(vparam.mods &~ PrivateLocal | Protected)

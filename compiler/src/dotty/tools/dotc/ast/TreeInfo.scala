@@ -382,15 +382,15 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case _ =>
       tree.tpe.isInstanceOf[ThisType]
   }
-  
-  /** Extractor for annotation.internal.WitnessNames(name_1, ..., name_n)`
+
+  /** Under x.modularity: Extractor for `annotation.internal.WitnessNames(name_1, ..., name_n)`
    *  represented as an untyped or typed tree.
    */
   object WitnessNamesAnnot:
-    def apply(names0: List[TermName])(using Context): untpd.Tree =
+    def apply(names: List[TermName])(using Context): untpd.Tree =
       untpd.TypedSplice(tpd.New(
           defn.WitnessNamesAnnot.typeRef,
-          tpd.SeqLiteral(names0.map(n => tpd.Literal(Constant(n.toString))), tpd.TypeTree(defn.StringType)) :: Nil
+          tpd.SeqLiteral(names.map(n => tpd.Literal(Constant(n.toString))), tpd.TypeTree(defn.StringType)) :: Nil
         ))
 
     def unapply(tree: Tree)(using Context): Option[List[TermName]] =

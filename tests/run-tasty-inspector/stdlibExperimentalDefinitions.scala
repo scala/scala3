@@ -80,8 +80,11 @@ val experimentalDefinitionInLibrary = Set(
   "scala.NamedTupleDecomposition",
   "scala.NamedTupleDecomposition$",
 
-  // New feature: Precise trait
+  // New feature: modularity
   "scala.Precise",
+  "scala.annotation.internal.WitnessNames",
+  "scala.compiletime.package$package$.deferred",
+  "scala.Predef$.is",
 )
 
 

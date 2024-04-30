@@ -24,9 +24,9 @@ object NamerOps:
         addParamRefinements(ctor.owner.typeRef, paramss)
 
   /** Given a method with tracked term-parameters `p1, ..., pn`, and result type `R`, add the
-   *  refinements R { p1 = p1' } ... { pn = pn' }, where pi' is the term parameter ref
+   *  refinements R { p1 = p1' } ... { pn = pn' }, where pi' is the TermParamRef
    *  of the parameter and pi is its name. This matters only under experimental.modularity,
-   *  since wothout it there are no tracked parameters. Parameter refinements are added for
+   *  since without it there are no tracked parameters. Parameter refinements are added for
    *  constructors and given companion methods.
    */
   def addParamRefinements(resType: Type, paramss: List[List[Symbol]])(using Context): Type =
@@ -261,7 +261,7 @@ object NamerOps:
   /** Create a context-bound companion for type symbol `tsym`, which has a context
    *  bound that defines a set of witnesses with names `witnessNames`.
    *
-   *  @param parans  If `tsym` is a type parameter, a list of parameter symbols
+   *  @param params  If `tsym` is a type parameter, a list of parameter symbols
    *                 that include all witnesses, otherwise the empty list.
    *
    *  The context-bound companion has as name the name of `tsym` translated to
@@ -299,7 +299,7 @@ object NamerOps:
    *  this class. This assumes that these types already have their
    *  WitnessNames annotation set even before they are completed. This is
    *  the case for unpickling but currently not for Namer. So the method
-   *  is only called during unpickling, and is not part of NamerOps.
+   *  is only called during unpickling.
    */
   def addContextBoundCompanions(cls: ClassSymbol)(using Context): Unit =
     for sym <- cls.info.decls do

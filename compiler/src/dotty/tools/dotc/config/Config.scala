@@ -236,7 +236,8 @@ object Config {
   inline val checkLevelsOnConstraints = false
   inline val checkLevelsOnInstantiation = true
 
-  /** If a type parameter `X` has a single context bound `X: C`, should the
+  /** Under x.modularity:
+   *  If a type parameter `X` has a single context bound `X: C`, should the
    *  witness parameter be named `X`? This would prevent the creation of a
    *  context bound companion.
    */
