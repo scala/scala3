@@ -23,12 +23,12 @@
 -- [E187] Potential Issue Warning: tests/warn/i17266.scala:22:4 --------------------------------------------------------
 22 |  1.synchronized { // warn
    |  ^^^^^^^^^^^^^^
-   |  Suspicious synchronized call on boxed class
+   |  Suspicious synchronized call on value
    |--------------------------------------------------------------------------------------------------------------------
    | Explanation (enabled by `-explain`)
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-   | You called the synchronized method on a boxed primitive. This might not be what
-   | you intended.
+   | You called the synchronized method on a boxed primitive or on a class extending AnyVal.
+   | This might not be what you intended.
     --------------------------------------------------------------------------------------------------------------------
 -- [E181] Potential Issue Warning: tests/warn/i17266.scala:108:2 -------------------------------------------------------
 108 |  wait() // warn
