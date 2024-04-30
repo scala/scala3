@@ -1,7 +1,7 @@
 -- [E172] Type Error: tests/neg/given-ambiguous-default-1.scala:18:23 --------------------------------------------------
 18 |def f: Unit = summon[B] // error: Ambiguous given instances
    |                       ^
-   |            No given instance of type B was found for parameter x of method summon in object Predef.
+   |            No best given instance of type B was found for parameter x of method summon in object Predef.
    |            I found:
    |
    |                given_B(a = /* ambiguous: both given instance a1 and given instance a2 match type A */summon[A])

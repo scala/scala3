@@ -1,7 +1,7 @@
 -- [E172] Type Error: tests/neg/19414-desugared.scala:22:34 ------------------------------------------------------------
 22 |  summon[BodySerializer[JsObject]] // error: Ambiguous given instances
    |                                  ^
-   |No given instance of type BodySerializer[JsObject] was found for parameter x of method summon in object Predef.
+   |No best given instance of type BodySerializer[JsObject] was found for parameter x of method summon in object Predef.
    |I found:
    |
    |    given_BodySerializer_B[B](
