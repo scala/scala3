@@ -1,0 +1,11 @@
+-- [E181] Potential Issue Warning: tests/warn/i17493.scala:3:11 --------------------------------------------------------
+3 |   def g = synchronized { println("hello, world") } // warn
+  |           ^^^^^^^^^^^^
+  |           Suspicious top-level unqualified call to synchronized
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | Top-level unqualified calls to AnyRef or Any methods such as synchronized are
+  | resolved to calls on Predef or on imported methods. This might not be what
+  | you intended.
+   ---------------------------------------------------------------------------------------------------------------------
