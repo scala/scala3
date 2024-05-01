@@ -9,6 +9,7 @@ object MiMaFilters {
       // Additions that require a new minor version of the library
       Build.mimaPreviousDottyVersion -> Seq(
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.annotation.experimental.this"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.annotation.experimental"),
       ),
 
       // Additions since last LTS
@@ -56,6 +57,8 @@ object MiMaFilters {
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeModule.apply"),
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeMethods.methodTypeKind"),
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeMethods.isContextual"),
+          // Change `experimental` annotation to a final class
+          ProblemFilters.exclude[FinalClassProblem]("scala.annotation.experimental"),
         ),
 
       // Breaking changes since last LTS
