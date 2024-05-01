@@ -104,10 +104,15 @@ sealed trait Tuple extends Product:
   inline def map[F[_]](f: [t] => t => F[t]): Map[this.type, F] =
     runtime.Tuples.map(this, f).asInstanceOf[Map[this.type, F]]
 
-  /** A tuple consisting of all elements of this tuple that satisfy the predicate `p`. */
-  inline def filter[This >: this.type <: Tuple, P[_ <: Union[This]] <: Boolean]
-                   (p: (x: Union[This]) => P[x.type]): Filter[This, P] =
-    val arr = this.toArray.filter(x => p(x.asInstanceOf[Union[This]]))
+  /** A tuple consisting of all elements of this tuple that have types
+   *  for which the given type level predicate `P` reduces to the literal
+   *  constant `true`.
+   */
+  inline def filter[This >: this.type <: Tuple, P[_ <: Union[This]] <: Boolean]: Filter[This, P] =
+    val toInclude = constValueTuple[IndicesWhere[This, P]].toArray
+    val arr = new Array[Object](toInclude.length)
+    for i <- toInclude.indices do
+      arr(i) = this.productElement(toInclude(i).asInstanceOf[Int]).asInstanceOf[Object]
     Tuple.fromArray(arr).asInstanceOf[Filter[This, P]]
 
   /** Given a tuple `(a1, ..., am)`, returns the reversed tuple `(am, ..., a1)`
@@ -345,23 +350,14 @@ object Tuple:
     runtime.Tuples.fromProduct(product)
 
   extension [X <: Tuple](inline x: X)
-    // Note the two methods are not equivalent to using `constValue`,
-    // since they also allow cases unknown at compiletime.
-    // Also note it would be unsound to use a type parameter for `y` in the type level
-    // operations, since they are rightfully not covariant in their second parameter.
 
-    /** The index (starting at 0) of the first occurrence of `y` in `x`
-     *  or its size if no such element exists.
+    /** The index (starting at 0) of the first occurrence of `y.type` in the type `X` of `x`
+     *  or `Size[X]` if no such element exists.
      */
-    inline def indexOf(y: Any): IndexOf[X, y.type] =
-      val i = x.productIterator.indexOf(y)
-      (if i >= 0 then i else x.size).asInstanceOf[IndexOf[X, y.type]]
+    inline def indexOf(y: Any): IndexOf[X, y.type] = constValue[IndexOf[X, y.type]]
 
-    /** A boolean indicating whether `x` contains the element `y` */
-    inline def contains(y: Any): Contains[X, y.type] =
-      x.productIterator.contains(y).asInstanceOf[Contains[X, y.type]]
-
-    // TODO indexOfType & containsType ?
+    /** A boolean indicating whether there is an element `y.type` in the type `X` of `x` */
+    inline def contains(y: Any): Contains[X, y.type] = constValue[Contains[X, y.type]]
 
   end extension
 
