@@ -1,0 +1,9 @@
+-- [E172] Type Error: tests/neg/given-ambiguous-1.scala:12:23 ----------------------------------------------------------
+12 |def f: Unit = summon[B] // error: Ambiguous given instances
+   |                       ^
+   |                No best given instance of type B was found for parameter x of method summon in object Predef.
+   |                I found:
+   |
+   |                    given_B(/* ambiguous: both given instance a1 and given instance a2 match type A */summon[A])
+   |
+   |                But both given instance a1 and given instance a2 match type A.
