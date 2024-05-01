@@ -350,13 +350,14 @@ object Tuple:
     // Also note it would be unsound to use a type parameter for `y` in the type level
     // operations, since they are rightfully not covariant in their second parameter.
 
-    /** The index (starting at 0) of the first occurrence of y.type in the type `X` of `x`
-     *  or Size[X] if no such element exists.
+    /** The index (starting at 0) of the first occurrence of `y` in `x`
+     *  or its size if no such element exists.
      */
     inline def indexOf(y: Any): IndexOf[X, y.type] =
-      x.productIterator.indexOf(y).asInstanceOf[IndexOf[X, y.type]]
+      val i = x.productIterator.indexOf(y)
+      (if i >= 0 then i else x.size).asInstanceOf[IndexOf[X, y.type]]
 
-    /** A boolean indicating whether there is an element `y.type` in the type `X` of `x` */
+    /** A boolean indicating whether `x` contains the element `y` */
     inline def contains(y: Any): Contains[X, y.type] =
       x.productIterator.contains(y).asInstanceOf[Contains[X, y.type]]
 
