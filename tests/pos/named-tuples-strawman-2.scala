@@ -60,10 +60,7 @@ object TupleOps:
     case EmptyTuple => X
 
   inline def concatDistinct[X <: Tuple, Y <: Tuple](xs: X, ys: Y): ConcatDistinct[X, Y] =
-    // Note the type parameter is needed due to the invariance of compiletime.ops.boolean.!
-    extension [B <: Boolean](self: B) def negated: ![B] = (!self).asInstanceOf
-    val ysDistinct = ys.filter[Y, [y] =>> ![Contains[X, y]]](xs.contains(_).negated)
-    (xs ++ ysDistinct).asInstanceOf[ConcatDistinct[X, Y]]
+    (xs ++ ys.filter[Y, [Elem] =>> ![Contains[X, Elem]]]).asInstanceOf[ConcatDistinct[X, Y]]
 
 object NamedTupleDecomposition:
   import NamedTupleOps.*
