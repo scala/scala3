@@ -45,4 +45,5 @@ t6138-2
 i12656.scala
 trait-static-forwarder
 i17255
+named-tuples-strawman-2.scala
 
