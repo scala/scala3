@@ -109,8 +109,13 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   private var errors: List[Error] = Nil
 
+  private var warnings: List[Warning] = Nil
+
   /** All errors reported by this reporter (ignoring outer reporters) */
   def allErrors: List[Error] = errors
+
+  /** All warnings reported by this reporter (ignoring outer reporters) */
+  def allWarnings: List[Warning] = warnings
 
   /** Were sticky errors reported? Overridden in StoreReporter. */
   def hasStickyErrors: Boolean = false
@@ -157,7 +162,9 @@ abstract class Reporter extends interfaces.ReporterResult {
         markReported(d)
         withMode(Mode.Printing)(doReport(d))
         d match {
-          case _: Warning => _warningCount += 1
+          case w: Warning =>
+            warnings = w :: warnings
+            _warningCount += 1
           case e: Error   =>
             errors = e :: errors
             _errorCount += 1

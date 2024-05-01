@@ -32,8 +32,7 @@ class SemanticdbTextDocumentProvider(
       SourceFile.virtual(filePath.toString, validCode)
     )
     val tree = driver.currentCtx.run.units.head.tpdTree
-    val extract = ExtractSemanticDB()
-    val extractor = extract.Extractor()
+    val extractor = ExtractSemanticDB.Extractor()
     extractor.traverse(tree)(using driver.currentCtx)
     val path = workspace
       .flatMap { workspacePath =>
