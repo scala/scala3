@@ -1015,7 +1015,7 @@ Text => empty
 Language => Scala
 Symbols => 181 entries
 Occurrences => 159 entries
-Diagnostics => 1 entries
+Diagnostics => 2 entries
 Synthetics => 6 entries
 
 Symbols:
@@ -1364,6 +1364,7 @@ Occurrences:
 
 Diagnostics:
 [30:12..30:17): [warning] unused explicit parameter
+[48:13..48:13): [warning] `:` after symbolic operator is deprecated; use backticks around operator instead
 
 Synthetics:
 [52:9..52:13):Refl => *.unapply[Option[B]]
@@ -1652,6 +1653,7 @@ Text => empty
 Language => Scala
 Symbols => 29 entries
 Occurrences => 66 entries
+Diagnostics => 1 entries
 Synthetics => 3 entries
 
 Symbols:
@@ -1752,6 +1754,11 @@ Occurrences:
 [26:50..26:55): empty -> a/b/Givens.Monoid#empty().
 [26:57..26:58): A -> a/b/Givens.foo().(A)
 [26:59..26:64): empty -> a/b/Givens.Monoid#empty().
+
+Diagnostics:
+[24:53..24:63): [warning] An inline given alias with a function value as right-hand side can significantly increase
+generated code size. You should either drop the `inline` or rewrite the given with an
+explicit `apply` method.
 
 Synthetics:
 [12:17..12:25):sayHello => *[Int]
@@ -3736,9 +3743,9 @@ Occurrences:
 [40:10..40:18): rightVar -> local4
 
 Diagnostics:
-[30:11..30:18): [warning] unset local variable, consider using an immutable val instead
-[30:20..30:28): [warning] unset local variable, consider using an immutable val instead
-[31:15..31:25): [warning] unset local variable, consider using an immutable val instead
+[30:11..30:18): [warning] unset local variable
+[30:20..30:28): [warning] unset local variable
+[31:15..31:25): [warning] unset local variable
 
 Synthetics:
 [5:6..5:10):Some => *.unapply[Int]
