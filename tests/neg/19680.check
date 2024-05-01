@@ -1,0 +1,23 @@
+-- [E007] Type Mismatch Error: tests/neg/19680.scala:9:67 --------------------------------------------------------------
+9 |def renderWidget(using Config): Unit = renderWebsite("/tmp")(Config()) // error: found Config, required Int
+  |                                                             ^^^^^^^^
+  |                                                             Found:    Config
+  |                                                             Required: Int
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  |
+  | Tree: new Config()
+  | I tried to show that
+  |   Config
+  | conforms to
+  |   Int
+  | but none of the attempts shown below succeeded:
+  |
+  |   ==> Config  <:  Int  = false
+  |
+  | The tests were made under the empty constraint
+  |
+  | The required type comes from a parameter of the automatically
+  | inserted `apply` method of `scala.collection.StringOps`.
+   ---------------------------------------------------------------------------------------------------------------------

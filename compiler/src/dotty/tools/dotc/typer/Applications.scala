@@ -1037,6 +1037,33 @@ trait Applications extends Compatibility {
             }
           }
 
+       /** If the applied function is an automatically inserted `apply`
+        * method and one of its arguments has a type mismatch , append
+        * a note to the error message that explains where the required
+        * type comes from. See #19680 and associated test case.
+        */
+      def maybeAddInsertedApplyNote(failedState: TyperState, fun1: Tree)(using Context): Unit =
+        if fun1.symbol.name == nme.apply && fun1.span.isSynthetic then
+          fun1 match
+            case Select(qualifier, _) =>
+              def mapMessage(dia: Diagnostic): Diagnostic =
+                dia match
+                  case dia: Diagnostic.Error =>
+                    dia.msg match
+                      case msg: TypeMismatch =>
+                        msg.inTree match
+                          case Some(arg) if tree.args.exists(_.span == arg.span) =>
+                            val noteText =
+                              i"""The required type comes from a parameter of the automatically
+                                  |inserted `apply` method of `${qualifier.tpe}`.""".stripMargin
+                            Diagnostic.Error(msg.appendExplanation("\n\n" + noteText), dia.pos)
+                          case _ => dia
+                      case msg => dia
+                  case dia => dia
+              failedState.reporter.mapBufferedMessages(mapMessage)
+            case _ => ()
+        else ()
+
       fun1.tpe match {
         case err: ErrorType => cpy.Apply(tree)(fun1, proto.typedArgs()).withType(err)
         case TryDynamicCallType =>
@@ -1097,7 +1124,11 @@ trait Applications extends Compatibility {
               simpleApply(fun1, proto)
             } {
               (failedVal, failedState) =>
-                def fail = { failedState.commit(); failedVal }
+                def fail =
+                  maybeAddInsertedApplyNote(failedState, fun1)
+                  failedState.commit()
+                  failedVal
+
                 // Try once with original prototype and once (if different) with tupled one.
                 // The reason we need to try both is that the decision whether to use tupled
                 // or not was already taken but might have to be revised when an implicit
