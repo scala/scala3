@@ -43,13 +43,13 @@ object Test6:
 object Test7:
   import MyLib.*
   def test7 =
-    synchronized { // not an error
+    synchronized { // not an error; resolves to `Test7.synchronized`
       println("hello")
     }
 
 /*
 object Test7b:
-  def test8 =
+  def test7b =
     import MyLib.*
     synchronized { // already an error: Reference to synchronized is ambiguous.
       println("hello")
@@ -62,21 +62,21 @@ class Test8:
   }
 
 class Test9:
-  def test5 =
+  def test9 =
     synchronized { // not an error
       println("hello")
     }
 
 class Test10:
   import MyLib.*
-  synchronized { // not an error
+  synchronized { // not an error; resolves to `this.synchronized`
     println("hello")
   }
 
 class Test11:
   import MyLib.*
-  def test7 =
-    synchronized { // not an error
+  def test11 =
+    synchronized { // not an error; resolves to `this.synchronized`
       println("hello")
     }
 
@@ -86,14 +86,14 @@ trait Test12:
   }
 
 trait Test13:
-  def test5 =
+  def test13 =
     synchronized { // not an error
       println("hello")
     }
 
 trait Test14:
   import MyLib.*
-  synchronized { // not an error
+  synchronized { // not an error; resolves to `this.synchronized`
     println("hello")
   }
 
@@ -142,3 +142,9 @@ def test26 =
 
 def test27 =
   1.hashCode()// not an error (should be? probably not)
+
+def test28 =
+  import MyLib.*
+  synchronized { // warn
+    println("hello")
+  }
