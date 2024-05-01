@@ -63,7 +63,7 @@ object Predef:
     inline def ne(inline y: AnyRef | Null): Boolean =
       !(x eq y)
 
-  extension (inline opt: Option.type)
+  extension (opt: Option.type)
     @experimental
     inline def fromNullable[T](t: T | Null): Option[T] = Option(t).asInstanceOf[Option[T]]
 end Predef
