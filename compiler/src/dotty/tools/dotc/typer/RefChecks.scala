@@ -1157,7 +1157,9 @@ object RefChecks {
   def checkAnyRefMethodCall(tree: Tree)(using Context) =
     if tree.symbol.exists
        && defn.topClasses.contains(tree.symbol.owner)
-       && (!ctx.owner.enclosingClass.exists || ctx.owner.enclosingClass.isPackageObject) then
+       && (!ctx.owner.enclosingClass.exists
+           || ctx.owner.enclosingClass.isPackageObject
+           || ctx.owner.enclosingClass.isValueClass) then
       report.warning(UnqualifiedCallToAnyRefMethod(tree, tree.symbol), tree)
 
 }
