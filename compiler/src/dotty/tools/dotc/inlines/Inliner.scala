@@ -315,7 +315,7 @@ class Inliner(val call: tpd.Tree)(using Context):
               case Super(qual, _) => qual
               case pre => pre
             val preLevel = classNestingLevel(inlinedMethod.owner)
-            if preLevel > level then outerSelect(pre, inlinedMethod.owner, preLevel - level, selfSym.info)
+            if preLevel > level then outerSelect(pre, inlinedMethod.owner.enclosingClass, preLevel - level, selfSym.info)
             else pre
 
       val binding = accountForOpaques(
