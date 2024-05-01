@@ -1,4 +1,4 @@
--- [E187] Potential Issue Warning: tests/neg/i17493.scala:3:10 ---------------------------------------------------------
+-- [E187] Potential Issue Warning: tests/warn/i17493.scala:3:10 --------------------------------------------------------
 3 |  def g = synchronized { println("hello, world") } // warn
   |          ^^^^^^^^^^^^
   |          Suspicious synchronized call on value
@@ -8,4 +8,3 @@
   | You called the synchronized method on a boxed primitive or on a class extending AnyVal.
   | This might not be what you intended.
    ---------------------------------------------------------------------------------------------------------------------
-No warnings can be incurred under -Werror (or -Xfatal-warnings)
