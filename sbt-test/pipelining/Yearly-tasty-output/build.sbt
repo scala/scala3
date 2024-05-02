@@ -1,8 +1,10 @@
+// NOTE: in this test, we are explictly fixing the classpath of project `c` to be `a-early.jar:b-early-out`
+// to manually test pipelining without sbt/zinc managing the classpath.
+
 // early out is a jar
 lazy val a = project.in(file("a"))
   .settings(
     scalacOptions ++= Seq("-Yearly-tasty-output", ((ThisBuild / baseDirectory).value / "a-early.jar").toString),
-    scalacOptions += "-Ystop-after:firstTransform",
     scalacOptions += "-Ycheck:all",
   )
 
@@ -10,7 +12,6 @@ lazy val a = project.in(file("a"))
 lazy val b = project.in(file("b"))
   .settings(
     scalacOptions ++= Seq("-Yearly-tasty-output", ((ThisBuild / baseDirectory).value / "b-early-out").toString),
-    scalacOptions += "-Ystop-after:firstTransform",
     scalacOptions += "-Ycheck:all",
   )
 
