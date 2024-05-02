@@ -77,6 +77,7 @@ object Types extends TypeUtils {
    *        |              +- TypeVar
    *        |              +- HKTypeLambda
    *        |              +- MatchType
+   *        |              +- FlexibleType
    *        |
    *        +- GroundType -+- AndType
    *                       +- OrType
@@ -3468,7 +3469,7 @@ object Types extends TypeUtils {
    * `T | Null .. T`, so that `T | Null <: FlexibleType(T) <: T`.
    * A flexible type will be erased to its original type `T`.
    */
-  case class FlexibleType(lo: Type, hi: Type) extends CachedProxyType with ValueType {
+  case class FlexibleType protected(lo: Type, hi: Type) extends CachedProxyType with ValueType {
 
     override def underlying(using Context): Type = hi
 
@@ -3481,7 +3482,7 @@ object Types extends TypeUtils {
   }
 
   object FlexibleType {
-    def apply(tp: Type)(using Context): Type = tp match {
+    def apply(tp: Type)(using Context): FlexibleType = tp match {
       case ft: FlexibleType => ft
       case _ =>
         // val tp1 = tp.stripNull()

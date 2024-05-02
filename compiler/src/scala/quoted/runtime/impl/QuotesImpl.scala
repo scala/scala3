@@ -2230,7 +2230,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def isErased: Boolean = false
         def isImplicit: Boolean = self.isImplicitMethod
         def isContextual: Boolean = self.isContextualMethod
-        def methodTypeKind: MethodTypeKind = 
+        def methodTypeKind: MethodTypeKind =
           self.companion match
             case Types.ContextualMethodType => MethodTypeKind.Contextual
             case Types.ImplicitMethodType => MethodTypeKind.Implicit
@@ -2342,6 +2342,27 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object NoPrefix extends NoPrefixModule:
       def unapply(x: NoPrefix): true = true
     end NoPrefix
+
+    type FlexibleType = dotc.core.Types.FlexibleType
+
+    object FlexibleTypeTypeTest extends TypeTest[TypeRepr, FlexibleType]:
+      def unapply(x: TypeRepr): Option[FlexibleType & x.type] = x match
+        case x: (Types.FlexibleType & x.type) => Some(x)
+        case _ => None
+    end FlexibleTypeTypeTest
+
+    object FlexibleType extends FlexibleTypeModule:
+      def apply(tp: TypeRepr): FlexibleType = Types.FlexibleType(tp)
+      def unapply(x: FlexibleType): Some[TypeRepr] = Some(x.hi)
+    end FlexibleType
+
+    given FlexibleTypeMethods: FlexibleTypeMethods with
+      extension (self: FlexibleType)
+        def underlying: TypeRepr = self.hi
+        def lo: TypeRepr = self.lo
+        def hi: TypeRepr = self.hi
+      end extension
+    end FlexibleTypeMethods
 
     type Constant = dotc.core.Constants.Constant
 
