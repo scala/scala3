@@ -125,8 +125,7 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
       traverseAnnotations(tree.symbol)
       if !tree.symbol.is(Module) then
         ud.registerDef(tree)
-      if tree.name.mangledString.startsWith(nme.derived.mangledString + "$")
-          && tree.typeOpt != NoType then
+      if tree.name.startsWith("derived$") && tree.typeOpt != NoType then
         ud.registerUsed(tree.typeOpt.typeSymbol, None, true)
       ud.addIgnoredUsage(tree.symbol)
     }
