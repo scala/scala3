@@ -29,6 +29,7 @@ import dotty.tools.dotc.core.Definitions
 import dotty.tools.dotc.core.NameKinds.WildcardParamName
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.StdNames.nme
+import dotty.tools.dotc.util.Spans.Span
 import scala.math.Ordering
 
 
@@ -365,16 +366,16 @@ object CheckUnused:
      * See the `isAccessibleAsIdent` extension method below in the file
      */
     private val usedInScope = MutStack(MutSet[(Symbol,Boolean, Option[Name], Boolean)]())
-    private val usedInPosition = MutSet[(SrcPos, Name)]()
+    private val usedInPosition = MutMap.empty[Name, MutSet[Symbol]]
     /* unused import collected during traversal */
-    private val unusedImport = MutSet[ImportSelector]()
+    private val unusedImport = new java.util.IdentityHashMap[ImportSelector, Unit]
 
     /* LOCAL DEF OR VAL / Private Def or Val / Pattern variables */
-    private val localDefInScope = MutSet[tpd.MemberDef]()
-    private val privateDefInScope = MutSet[tpd.MemberDef]()
-    private val explicitParamInScope = MutSet[tpd.MemberDef]()
-    private val implicitParamInScope = MutSet[tpd.MemberDef]()
-    private val patVarsInScope = MutSet[tpd.Bind]()
+    private val localDefInScope = MutList.empty[tpd.MemberDef]
+    private val privateDefInScope = MutList.empty[tpd.MemberDef]
+    private val explicitParamInScope = MutList.empty[tpd.MemberDef]
+    private val implicitParamInScope = MutList.empty[tpd.MemberDef]
+    private val patVarsInScope = MutList.empty[tpd.Bind]
 
     /** All variables sets*/
     private val setVars = MutSet[Symbol]()
@@ -416,7 +417,8 @@ object CheckUnused:
           usedInScope.top += ((sym.companionModule, sym.isAccessibleAsIdent, name, isDerived))
           usedInScope.top += ((sym.companionClass, sym.isAccessibleAsIdent, name, isDerived))
           if sym.sourcePos.exists then
-            name.map(n => usedInPosition += ((sym.sourcePos, n)))
+            for n <- name do
+              usedInPosition.getOrElseUpdate(n, MutSet.empty) += sym
 
     /** Register a symbol that should be ignored */
     def addIgnoredUsage(sym: Symbol)(using Context): Unit =
@@ -434,9 +436,9 @@ object CheckUnused:
       if !tpd.languageImport(imp.expr).nonEmpty && !imp.isGeneratedByEnum && !isTransparentAndInline(imp) then
         impInScope.top += imp
         if currScopeType.top != ScopeType.ReplWrapper then // #18383 Do not report top-level import's in the repl as unused
-          unusedImport ++= imp.selectors.filter { s =>
-            !shouldSelectorBeReported(imp, s) && !isImportExclusion(s) && !isImportIgnored(imp, s)
-          }
+          for s <- imp.selectors do
+            if !shouldSelectorBeReported(imp, s) && !isImportExclusion(s) && !isImportIgnored(imp, s) then
+              unusedImport.put(s, ())
     end registerImport
 
     /** Register (or not) some `val` or `def` according to the context, scope and flags */
@@ -491,11 +493,11 @@ object CheckUnused:
               // We keep wildcard symbol for the end as they have the least precedence
               false
             case Some(sel) =>
-              unusedImport -= sel
+              unusedImport.remove(sel)
               true
         }
         if !matchedExplicitImport && selWildCard.isDefined then
-          unusedImport -= selWildCard.get
+          unusedImport.remove(selWildCard.get)
           true // a matching import exists so the symbol won't be kept for outer scope
         else
           matchedExplicitImport
@@ -520,56 +522,64 @@ object CheckUnused:
 
     def getUnused(using Context): UnusedResult =
       popScope()
+
+      def isUsedInPosition(name: Name, span: Span): Boolean =
+        usedInPosition.get(name) match
+          case Some(syms) => syms.exists(sym => span.contains(sym.span))
+          case None       => false
+
       val sortedImp =
         if ctx.settings.WunusedHas.imports || ctx.settings.WunusedHas.strictNoImplicitWarn then
-          unusedImport.map(d => UnusedSymbol(d.srcPos, d.name, WarnTypes.Imports)).toList
+          import scala.jdk.CollectionConverters.*
+          unusedImport.keySet().nn.iterator().nn.asScala
+            .map(d => UnusedSymbol(d.srcPos, d.name, WarnTypes.Imports)).toList
         else
           Nil
       // Partition to extract unset local variables from usedLocalDefs
       val (usedLocalDefs, unusedLocalDefs) =
         if ctx.settings.WunusedHas.locals then
-          localDefInScope.partition(d => d.symbol.usedDefContains)
+          localDefInScope.toList.partition(d => d.symbol.usedDefContains)
         else
           (Nil, Nil)
       val sortedLocalDefs =
         unusedLocalDefs
-          .filterNot(d => usedInPosition.exists { case (pos, name) => d.span.contains(pos.span) && name == d.symbol.name})
+          .filterNot(d => isUsedInPosition(d.symbol.name, d.span))
           .filterNot(d => containsSyntheticSuffix(d.symbol))
-          .map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.LocalDefs)).toList
+          .map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.LocalDefs))
       val unsetLocalDefs = usedLocalDefs.filter(isUnsetVarDef).map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.UnsetLocals)).toList
 
       val sortedExplicitParams =
         if ctx.settings.WunusedHas.explicits then
-          explicitParamInScope
+          explicitParamInScope.toList
             .filterNot(d => d.symbol.usedDefContains)
-            .filterNot(d => usedInPosition.exists { case (pos, name) => d.span.contains(pos.span) && name == d.symbol.name})
+            .filterNot(d => isUsedInPosition(d.symbol.name, d.span))
             .filterNot(d => containsSyntheticSuffix(d.symbol))
-            .map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.ExplicitParams)).toList
+            .map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.ExplicitParams))
         else
           Nil
       val sortedImplicitParams =
         if ctx.settings.WunusedHas.implicits then
-          implicitParamInScope
+          implicitParamInScope.toList
             .filterNot(d => d.symbol.usedDefContains)
             .filterNot(d => containsSyntheticSuffix(d.symbol))
-            .map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.ImplicitParams)).toList
+            .map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.ImplicitParams))
         else
           Nil
       // Partition to extract unset private variables from usedPrivates
       val (usedPrivates, unusedPrivates) =
         if ctx.settings.WunusedHas.privates then
-          privateDefInScope.partition(d => d.symbol.usedDefContains)
+          privateDefInScope.toList.partition(d => d.symbol.usedDefContains)
         else
           (Nil, Nil)
-      val sortedPrivateDefs = unusedPrivates.filterNot(d => containsSyntheticSuffix(d.symbol)).map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.PrivateMembers)).toList
-      val unsetPrivateDefs = usedPrivates.filter(isUnsetVarDef).map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.UnsetPrivates)).toList
+      val sortedPrivateDefs = unusedPrivates.filterNot(d => containsSyntheticSuffix(d.symbol)).map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.PrivateMembers))
+      val unsetPrivateDefs = usedPrivates.filter(isUnsetVarDef).map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.UnsetPrivates))
       val sortedPatVars =
         if ctx.settings.WunusedHas.patvars then
-          patVarsInScope
+          patVarsInScope.toList
             .filterNot(d => d.symbol.usedDefContains)
             .filterNot(d => containsSyntheticSuffix(d.symbol))
-            .filterNot(d => usedInPosition.exists { case (pos, name) => d.span.contains(pos.span) && name == d.symbol.name})
-            .map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.PatVars)).toList
+            .filterNot(d => isUsedInPosition(d.symbol.name, d.span))
+            .map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.PatVars))
         else
           Nil
       val warnings =
