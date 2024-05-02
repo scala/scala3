@@ -20,6 +20,7 @@ import dotty.tools.dotc.core.Types.{AnnotatedType, ConstantType, NoType, TermRef
 import dotty.tools.dotc.core.Flags.flagsString
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.Name
+import dotty.tools.dotc.core.NameOps.isReplWrapperName
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.core.Annotations
 import dotty.tools.dotc.core.Definitions
@@ -423,9 +424,11 @@ object CheckUnused:
     def registerImport(imp: tpd.Import)(using Context): Unit =
       if !tpd.languageImport(imp.expr).nonEmpty && !imp.isGeneratedByEnum && !isTransparentAndInline(imp) then
         impInScope.top += imp
-        unusedImport ++= imp.selectors.filter { s =>
-          !shouldSelectorBeReported(imp, s) && !isImportExclusion(s) && !isImportIgnored(imp, s)
-        }
+        if currScopeType.top != ScopeType.ReplWrapper then // #18383 Do not report top-level import's in the repl as unused
+          unusedImport ++= imp.selectors.filter { s =>
+            !shouldSelectorBeReported(imp, s) && !isImportExclusion(s) && !isImportIgnored(imp, s)
+          }
+    end registerImport
 
     /** Register (or not) some `val` or `def` according to the context, scope and flags */
     def registerDef(memDef: tpd.MemberDef)(using Context): Unit =
@@ -794,12 +797,13 @@ object CheckUnused:
       enum ScopeType:
         case Local
         case Template
+        case ReplWrapper
         case Other
 
       object ScopeType:
         /** return the scope corresponding to the enclosing scope of the given tree */
-        def fromTree(tree: tpd.Tree): ScopeType = tree match
-          case _:tpd.Template => Template
+        def fromTree(tree: tpd.Tree)(using Context): ScopeType = tree match
+          case tree: tpd.Template => if tree.symbol.name.isReplWrapperName then ReplWrapper else Template
           case _:tpd.Block => Local
           case _ => Other
 
@@ -810,4 +814,3 @@ object CheckUnused:
         val Empty = UnusedResult(Set.empty)
 
 end CheckUnused
-
