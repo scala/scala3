@@ -49,7 +49,7 @@ object Feature:
     (nme.dynamics, "Allow direct or indirect subclasses of scala.Dynamic"),
     (nme.unsafeNulls, "Enable unsafe nulls for explicit nulls"),
     (nme.postfixOps, "Allow postfix operator notation"),
-    (nme.strictEquality, "Enable strict equality (=== and !==)"),
+    (nme.strictEquality, "Enable strict equality (disable canEqualAny)"),
     (nme.implicitConversions, "Allow implicit conversions without warnings"),
     (nme.adhocExtensions, "Allow ad-hoc extension methods"),
     (namedTypeArguments, "Allow named type arguments"),
@@ -58,10 +58,10 @@ object Feature:
     (dependent, "Allow dependent method types"),
     (erasedDefinitions, "Allow erased definitions"),
     (symbolLiterals, "Allow symbol literals"),
-    (fewerBraces, "Allow fewer braces"),
+    (fewerBraces, "Enable support for using indentation for arguments"),
     (saferExceptions, "Enable safer exceptions"),
     (clauseInterleaving, "Enable clause interleaving"),
-    (pureFunctions, "Enable pure functions"),
+    (pureFunctions, "Enable pure functions for capture checking"),
     (captureChecking, "Enable experimental capture checking"),
     (into, "Allow into clauses in pattern matches")
   )
