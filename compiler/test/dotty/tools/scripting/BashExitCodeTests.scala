@@ -39,15 +39,24 @@ class BashExitCodeTests:
 
   @Test def neg = scalac(f("@main def Test = prin"))(1)
   @Test def run = scalac(f("@main def Test = ???"))(0) & scala("-classpath", tmpDir, "Test")(1)
-  @Test def pos = scalac(f("@main def Test = ()"))(0) & scala("-classpath", tmpDir, "Test")(0)
+  @Test def pos1 = scalac(f("@main def Test = ()"))(0) & scala("-classpath", tmpDir, "Test")(0)
+  @Test def pos2 = scalac(f("@main def test = ()"))(0) & scala("-classpath", tmpDir, "test")(0)
+  @Test def pos3 = scalac(f("object Test { def main(args: Array[String]) = () }"))(0) & scala("-classpath", tmpDir, "Test")(0)
+  @Test def pos4 = scalac(f("object test { def main(args: Array[String]) = () }"))(0) & scala("-classpath", tmpDir, "test")(0)
 
   @Test def runNeg = scala(f("@main def Test = prin", ".sc"))(1)
   @Test def runRun = scala(f("@main def Test = ???", ".sc"))(1)
-  @Test def runPos = scala(f("@main def Test = ()", ".sc"))(0)
+  @Test def runPos1 = scala(f("@main def Test = ()", ".sc"))(0)
+  @Test def runPos2 = scala(f("@main def test = ()", ".sc"))(0)
+  @Test def runPos3 = scala(f("object Test { def main(args: Array[String]) = () }", ".sc"))(0)
+  @Test def runPos4 = scala(f("object test { def main(args: Array[String]) = () }", ".sc"))(0)
 
   @Test def scNeg = scalac("-script", f("@main def Test = prin", ".sc"))(1)
   @Test def scRun = scalac("-script", f("@main def Test = ???", ".sc"))(1)
-  @Test def scPos = scalac("-script", f("@main def Test = ()", ".sc"))(0)
+  @Test def scPos1 = scalac("-script", f("@main def Test = ()", ".sc"))(0)
+  @Test def scPos2 = scalac("-script", f("@main def test = ()", ".sc"))(0)
+  @Test def scPos3 = scalac("-script", f("object Test { def main(args: Array[String]) = () }", ".sc"))(0)
+  @Test def scPos4 = scalac("-script", f("object test { def main(args: Array[String]) = () }", ".sc"))(0)
 
   @Test def evalNeg = scala("-e", "'prinln(10*10)'")(1)
   @Test def evalRun = scala("-e", "'1/0'")(1)
