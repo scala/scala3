@@ -1,5 +1,7 @@
 package dotty.tools.dotc.transform
 
+import scala.annotation.tailrec
+
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.ast.tpd.{Inlined, TreeTraverser}
@@ -88,11 +90,17 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
 
   override def prepareForIdent(tree: tpd.Ident)(using Context): Context =
     if tree.symbol.exists then
-      val prefixes = LazyList.iterate(tree.typeOpt.normalizedPrefix)(_.normalizedPrefix).takeWhile(_ != NoType)
-        .take(10) // Failsafe for the odd case if there was an infinite cycle
-      for prefix <- prefixes do
-        unusedDataApply(_.registerUsed(prefix.classSymbol, None))
-      unusedDataApply(_.registerUsed(tree.symbol, Some(tree.name)))
+      unusedDataApply { ud =>
+        @tailrec
+        def loopOnNormalizedPrefixes(prefix: Type, depth: Int): Unit =
+          // limit to 10 as failsafe for the odd case where there is an infinite cycle
+          if depth < 10 && prefix.exists then
+            ud.registerUsed(prefix.classSymbol, None)
+            loopOnNormalizedPrefixes(prefix.normalizedPrefix, depth + 1)
+
+        loopOnNormalizedPrefixes(tree.typeOpt.normalizedPrefix, depth = 0)
+        ud.registerUsed(tree.symbol, Some(tree.name))
+      }
     else if tree.hasType then
       unusedDataApply(_.registerUsed(tree.tpe.classSymbol, Some(tree.name)))
     else
