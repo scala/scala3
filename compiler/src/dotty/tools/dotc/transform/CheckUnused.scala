@@ -207,9 +207,6 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
     }
     ctx
 
-  private def newCtx(tree: tpd.Tree)(using Context) =
-    if tree.symbol.exists then ctx.withOwner(tree.symbol) else ctx
-
   /**
    * This traverse is the **main** component of this phase
    *
