@@ -40,8 +40,10 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
   import CheckUnused.*
   import UnusedData.*
 
-  private def unusedDataApply[U](f: UnusedData => U)(using Context): Context =
-    ctx.property(_key).foreach(f)
+  private inline def unusedDataApply[U](inline f: UnusedData => U)(using Context): Context =
+    ctx.property(_key) match
+      case Some(ud) => f(ud)
+      case None     => ()
     ctx
 
   override def phaseName: String = CheckUnused.phaseNamePrefix + suffix
