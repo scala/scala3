@@ -1,3 +1,5 @@
+import language.experimental.namedTuples
+
 case class Person(name: String, age: Int)
 
 type PF = NamedTuple.From[Person]
