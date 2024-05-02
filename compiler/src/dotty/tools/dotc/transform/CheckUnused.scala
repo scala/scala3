@@ -290,7 +290,7 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
 
   /** Do the actual reporting given the result of the anaylsis */
   private def reportUnused(res: UnusedData.UnusedResult)(using Context): Unit =
-    res.warnings.toList.sortBy(_.pos.line)(using Ordering[Int]).foreach { s =>
+    res.warnings.toList.sortBy(_.pos.span.point)(using Ordering[Int]).foreach { s =>
       s match
         case UnusedSymbol(t, _, WarnTypes.Imports) =>
           report.warning(s"unused import", t)
@@ -583,19 +583,14 @@ object CheckUnused:
         else
           Nil
       val warnings =
-        val unsorted =
-          sortedImp :::
-          sortedLocalDefs :::
-          sortedExplicitParams :::
-          sortedImplicitParams :::
-          sortedPrivateDefs :::
-          sortedPatVars :::
-          unsetLocalDefs :::
-          unsetPrivateDefs
-        unsorted.sortBy { s =>
-          val pos = s.pos.sourcePos
-          (pos.line, pos.column)
-        }
+        sortedImp :::
+        sortedLocalDefs :::
+        sortedExplicitParams :::
+        sortedImplicitParams :::
+        sortedPrivateDefs :::
+        sortedPatVars :::
+        unsetLocalDefs :::
+        unsetPrivateDefs
       UnusedResult(warnings.toSet)
     end getUnused
     //============================ HELPERS ====================================
