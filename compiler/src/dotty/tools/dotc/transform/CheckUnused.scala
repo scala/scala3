@@ -10,6 +10,7 @@ import dotty.tools.dotc.ast.untpd.ImportSelector
 import dotty.tools.dotc.config.ScalaSettings
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.{em, i}
+import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames
@@ -409,13 +410,18 @@ object CheckUnused:
      * as the same element can be imported with different renaming
      */
     def registerUsed(sym: Symbol, name: Option[Name], isDerived: Boolean = false)(using Context): Unit =
-      if !isConstructorOfSynth(sym) && !doNotRegister(sym) then
-        if sym.isConstructor && sym.exists then
+      if sym.exists && !isConstructorOfSynth(sym) && !doNotRegister(sym) then
+        if sym.isConstructor then
           registerUsed(sym.owner, None) // constructor are "implicitly" imported with the class
         else
-          usedInScope.top += ((sym, sym.isAccessibleAsIdent, name, isDerived))
-          usedInScope.top += ((sym.companionModule, sym.isAccessibleAsIdent, name, isDerived))
-          usedInScope.top += ((sym.companionClass, sym.isAccessibleAsIdent, name, isDerived))
+          val accessibleAsIdent = sym.isAccessibleAsIdent
+          def addIfExists(sym: Symbol): Unit =
+            if sym.exists then
+              usedDef += sym
+              usedInScope.top += ((sym, accessibleAsIdent, name, isDerived))
+          addIfExists(sym)
+          addIfExists(sym.companionModule)
+          addIfExists(sym.companionClass)
           if sym.sourcePos.exists then
             for n <- name do
               usedInPosition.getOrElseUpdate(n, MutSet.empty) += sym
@@ -508,8 +514,6 @@ object CheckUnused:
         // we keep the symbols not referencing an import in this scope
         // as it can be the only reference to an outer import
         usedInScope.top ++= kept
-      // register usage in this scope for other warnings at the end of the phase
-      usedDef ++= used.map(_._1)
       // retrieve previous scope type
       currScopeType.pop
     end popScope
@@ -685,42 +689,54 @@ object CheckUnused:
     extension (sym: Symbol)
       /** is accessible without import in current context */
       private def isAccessibleAsIdent(using Context): Boolean =
-        sym.exists &&
-          ctx.outersIterator.exists{ c =>
-            c.owner == sym.owner
-            || sym.owner.isClass && c.owner.isClass
-                && c.owner.thisType.baseClasses.contains(sym.owner)
-                && c.owner.thisType.member(sym.name).alternatives.contains(sym)
-          }
+        ctx.outersIterator.exists{ c =>
+          c.owner == sym.owner
+          || sym.owner.isClass && c.owner.isClass
+              && c.owner.thisType.baseClasses.contains(sym.owner)
+              && c.owner.thisType.member(sym.name).alternatives.contains(sym)
+        }
 
       /** Given an import and accessibility, return selector that matches import<->symbol */
       private def isInImport(imp: tpd.Import, isAccessible: Boolean, altName: Option[Name], isDerived: Boolean)(using Context): Option[ImportSelector] =
+        assert(sym.exists)
+
         val tpd.Import(qual, sels) = imp
         val qualTpe = qual.tpe
         val dealiasedSym = sym.dealias
-        val simpleSelections = qualTpe.member(sym.name).alternatives
-        val selectionsToDealias = sels.flatMap(sel =>
-          qualTpe.member(sel.name.toTypeName).alternatives
-          ::: qualTpe.member(sel.name.toTermName).alternatives)
-        def qualHasSymbol = simpleSelections.map(_.symbol).contains(sym) || (simpleSelections ::: selectionsToDealias).map(_.symbol).map(_.dealias).contains(dealiasedSym)
-        def selector = sels.find(sel => (sel.name.toTermName == sym.name || sel.name.toTypeName == sym.name) && altName.map(n => n.toTermName == sel.rename).getOrElse(true))
-        def dealiasedSelector =
+
+        val selectionsToDealias: List[SingleDenotation] =
+          val typeSelections = sels.flatMap(n => qualTpe.member(n.name.toTypeName).alternatives)
+          val termSelections = sels.flatMap(n => qualTpe.member(n.name.toTermName).alternatives)
+          typeSelections ::: termSelections
+
+        val qualHasSymbol: Boolean =
+          val simpleSelections = qualTpe.member(sym.name).alternatives
+          simpleSelections.exists(d => d.symbol == sym || d.symbol.dealias == dealiasedSym)
+            || selectionsToDealias.exists(d => d.symbol.dealias == dealiasedSym)
+
+        def selector: Option[ImportSelector] =
+          sels.find(sel => sym.name.toTermName == sel.name && altName.forall(n => n.toTermName == sel.rename))
+
+        def dealiasedSelector: Option[ImportSelector] =
           if isDerived then
-            sels.flatMap(sel => selectionsToDealias.map(m => (sel, m.symbol))).collect {
+            sels.flatMap(sel => selectionsToDealias.map(m => (sel, m.symbol))).collectFirst {
               case (sel, sym) if sym.dealias == dealiasedSym => sel
-            }.headOption
+            }
           else None
-        def givenSelector = if sym.is(Given) || sym.is(Implicit)
-          then sels.filter(sel => sel.isGiven && !sel.bound.isEmpty).find(sel => sel.boundTpe =:= sym.info)
+
+        def givenSelector: Option[ImportSelector] =
+          if sym.is(Given) || sym.is(Implicit) then
+            sels.filter(sel => sel.isGiven && !sel.bound.isEmpty).find(sel => sel.boundTpe =:= sym.info)
           else None
-        def wildcard = sels.find(sel => sel.isWildcard && ((sym.is(Given) == sel.isGiven && sel.bound.isEmpty) || sym.is(Implicit)))
-        if sym.exists && qualHasSymbol && (!isAccessible || sym.isRenamedSymbol(altName)) then
+
+        def wildcard: Option[ImportSelector] =
+          sels.find(sel => sel.isWildcard && ((sym.is(Given) == sel.isGiven && sel.bound.isEmpty) || sym.is(Implicit)))
+
+        if qualHasSymbol && (!isAccessible || altName.exists(_.toSimpleName != sym.name.toSimpleName)) then
           selector.orElse(dealiasedSelector).orElse(givenSelector).orElse(wildcard) // selector with name or wildcard (or given)
         else
           None
-
-      private def isRenamedSymbol(symNameInScope: Option[Name])(using Context) =
-        sym.name != nme.NO_NAME && symNameInScope.exists(_.toSimpleName != sym.name.toSimpleName)
+      end isInImport
 
       private def dealias(using Context): Symbol =
         if sym.isType && sym.asType.denot.isAliasType then
