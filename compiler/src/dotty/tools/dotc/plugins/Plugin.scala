@@ -51,7 +51,8 @@ trait StandardPlugin extends Plugin {
    *  @param options commandline options to the plugin.
    *  @return a list of phases to be added to the phase plan
    */
-  @deprecated("`init` does not allow to access `Context`, use `initialize` instead.", since = "3.5.0")
+  @deprecatedOverriding("Method 'init' does not allow to access 'Context', use 'initialize' instead.", since = "Scala 3.5.0")
+  @deprecated("Use 'initialize' instead.", since = "Scala 3.5.0")
   def init(options: List[String]): List[PluginPhase] = Nil
 
   /** Non-research plugins should override this method to return the phases
