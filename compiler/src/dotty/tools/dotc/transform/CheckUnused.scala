@@ -827,23 +827,24 @@ object CheckUnused:
   end UnusedData
 
   private object UnusedData:
-      enum ScopeType:
-        case Local
-        case Template
-        case ReplWrapper
-        case Other
+    enum ScopeType:
+      case Local
+      case Template
+      case ReplWrapper
+      case Other
 
-      object ScopeType:
-        /** return the scope corresponding to the enclosing scope of the given tree */
-        def fromTree(tree: tpd.Tree)(using Context): ScopeType = tree match
-          case tree: tpd.Template => if tree.symbol.name.isReplWrapperName then ReplWrapper else Template
-          case _:tpd.Block => Local
-          case _ => Other
+    object ScopeType:
+      /** return the scope corresponding to the enclosing scope of the given tree */
+      def fromTree(tree: tpd.Tree)(using Context): ScopeType = tree match
+        case tree: tpd.Template => if tree.symbol.name.isReplWrapperName then ReplWrapper else Template
+        case _:tpd.Block => Local
+        case _ => Other
 
-      case class UnusedSymbol(pos: SrcPos, name: Name, warnType: WarnTypes)
-      /** A container for the results of the used elements analysis */
-      case class UnusedResult(warnings: Set[UnusedSymbol])
-      object UnusedResult:
-        val Empty = UnusedResult(Set.empty)
+    case class UnusedSymbol(pos: SrcPos, name: Name, warnType: WarnTypes)
+    /** A container for the results of the used elements analysis */
+    case class UnusedResult(warnings: Set[UnusedSymbol])
+    object UnusedResult:
+      val Empty = UnusedResult(Set.empty)
+  end UnusedData
 
 end CheckUnused
