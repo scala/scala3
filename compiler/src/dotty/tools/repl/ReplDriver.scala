@@ -545,6 +545,7 @@ class ReplDriver(settings: Array[String],
   private object ReplConsoleReporter extends ConsoleReporter.AbstractConsoleReporter {
     override def posFileStr(pos: SourcePosition) = "" // omit file paths
     override def printMessage(msg: String): Unit = out.println(msg)
+    override def echoMessage(msg: String): Unit  = printMessage(msg)
     override def flush()(using Context): Unit    = out.flush()
   }
 

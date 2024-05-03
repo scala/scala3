@@ -14,7 +14,7 @@ import dotty.tools.dotc.util.NoSourcePosition
 import java.io.{BufferedReader, PrintWriter}
 import scala.annotation.internal.sharable
 import scala.collection.mutable
-import core.Decorators.em
+import core.Decorators.{em, toMessage}
 import core.handleRecursive
 
 object Reporter {
@@ -236,10 +236,9 @@ abstract class Reporter extends interfaces.ReporterResult {
       report(Warning(msg, NoSourcePosition))
 
   /** Print the summary of warnings and errors */
-  def printSummary()(using Context): Unit = {
+  def printSummary()(using Context): Unit =
     val s = summary
-    if (s != "") report(new Info(s, NoSourcePosition))
-  }
+    if (s != "") doReport(Warning(s.toMessage, NoSourcePosition))
 
   /** Returns a string meaning "n elements". */
   protected def countString(n: Int, elements: String): String = n match {

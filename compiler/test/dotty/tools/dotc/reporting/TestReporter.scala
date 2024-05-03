@@ -75,6 +75,8 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
       _diagnosticBuf.append(dia)
     printMessageAndPos(dia, extra)
   }
+
+  override def printSummary()(using Context): Unit = ()
 }
 
 object TestReporter {
