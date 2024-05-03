@@ -48,7 +48,7 @@ object Feature:
     (nme.noAutoTupling, "Disable automatic tupling"),
     (nme.dynamics, "Allow direct or indirect subclasses of scala.Dynamic"),
     (nme.unsafeNulls, "Enable unsafe nulls for explicit nulls"),
-    (nme.postfixOps, "Allow postfix operator notation"),
+    (nme.postfixOps, "Allow postfix operators (not recommended)"),
     (nme.strictEquality, "Enable strict equality (disable canEqualAny)"),
     (nme.implicitConversions, "Allow implicit conversions without warnings"),
     (nme.adhocExtensions, "Allow ad-hoc extension methods"),
