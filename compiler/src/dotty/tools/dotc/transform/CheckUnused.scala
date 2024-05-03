@@ -367,7 +367,7 @@ object CheckUnused:
      *
      * See the `isAccessibleAsIdent` extension method below in the file
      */
-    private val usedInScope = MutStack(MutSet[(Symbol,Boolean, Option[Name], Boolean)]())
+    private val usedInScope = MutStack(MutSet[(Symbol, Option[Name], Boolean)]())
     private val usedInPosition = MutMap.empty[Name, MutSet[Symbol]]
     /* unused import collected during traversal */
     private val unusedImport = MutList.empty[ImportSelectorData]
@@ -415,12 +415,16 @@ object CheckUnused:
         if sym.isConstructor then
           registerUsed(sym.owner, None, includeForImport) // constructor are "implicitly" imported with the class
         else
-          val accessibleAsIdent = sym.isAccessibleAsIdent
+          // If the symbol is accessible in this scope without an import, do not register it for unused import analysis
+          val includeForImport1 =
+            includeForImport
+              && (name.exists(_.toTermName != sym.name.toTermName) || !sym.isAccessibleAsIdent)
+
           def addIfExists(sym: Symbol): Unit =
             if sym.exists then
               usedDef += sym
-              if includeForImport then
-                usedInScope.top += ((sym, accessibleAsIdent, name, isDerived))
+              if includeForImport1 then
+                usedInScope.top += ((sym, name, isDerived))
           addIfExists(sym)
           addIfExists(sym.companionModule)
           addIfExists(sym.companionClass)
@@ -504,9 +508,9 @@ object CheckUnused:
       val selDatas = impInScope.pop()
 
       for usedInfo <- usedInfos do
-        val (sym, isAccessible, optName, isDerived) = usedInfo
+        val (sym, optName, isDerived) = usedInfo
         val usedData = selDatas.find { selData =>
-          sym.isInImport(selData, isAccessible, optName, isDerived)
+          sym.isInImport(selData, optName, isDerived)
         }
         usedData match
           case Some(data) =>
@@ -700,15 +704,12 @@ object CheckUnused:
         }
 
       /** Given an import and accessibility, return selector that matches import<->symbol */
-      private def isInImport(selData: ImportSelectorData, isAccessible: Boolean, altName: Option[Name], isDerived: Boolean)(using Context): Boolean =
+      private def isInImport(selData: ImportSelectorData, altName: Option[Name], isDerived: Boolean)(using Context): Boolean =
         assert(sym.exists)
 
         val selector = selData.selector
 
-        if isAccessible && !altName.exists(_.toTermName != sym.name.toTermName) then
-          // Even if this import matches, it is pointless because the symbol would be accessible anyway
-          false
-        else if !selector.isWildcard then
+        if !selector.isWildcard then
           if altName.exists(explicitName => selector.rename != explicitName.toTermName) then
             // if there is an explicit name, it must match
             false
