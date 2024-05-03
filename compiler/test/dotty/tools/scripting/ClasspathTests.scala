@@ -51,7 +51,7 @@ class ClasspathTests:
       // convert scriptCp to a list of files
       val hashbangJars: List[File] = scriptCp.split(psep).map { _.toFile }.toList
       val hashbangClasspathJars = hashbangJars.map { _.name }.sorted.distinct // get jar basenames, remove duplicates
-      val packlibDir = s"$scriptCwd/$packLibDir" // classpathReport.sc specifies a wildcard classpath in this directory
+      val packlibDir: String = ??? /* ??? was s"$scriptCwd/$packLibDir" */ // classpathReport.sc specifies a wildcard classpath in this directory
       val packlibJars: List[File] = listJars(packlibDir) // classpath entries expected to have been reported by the script
 
       printf("%d jar files in dist/target/pack/lib\n", packlibJars.size)
@@ -84,11 +84,23 @@ class ClasspathTests:
       case Some(file) => file
 
     val relpath = testScript.toPath.relpath.norm
+    val scalaCommand = scalaPath.relpath.norm
     printf("===> unglobClasspathVerifyTest for script [%s]\n", relpath)
     printf("bash is [%s]\n", bashExe)
 
     if packBinScalaExists then
-      val bashCmdline = s"set +x ; SCALA_OPTS= $relpath"
+      val sv = packScalaVersion
+      val tastyDirGlob = s"$packMavenDir/org/scala-lang/tasty-core_3/$sv/*"
+      // ^^^^^^^^^^^^^
+      // the classpath is a glob pattern that should be unglobbed by scala command,
+      // otherwise the script could not compile because it references a class
+      // from tasty-core
+
+      val bashCmdline = Seq(
+        "set +x ;",
+        "SCALA_OPTS=",
+        scalaCommand, "run", "--classpath", s"'$tastyDirGlob'", "--offline", "--server=false", relpath
+      ).mkString(" ")
       val cmd = Array(bashExe, "-c", bashCmdline)
 
       cmd.foreach { printf("[%s]\n", _) }
