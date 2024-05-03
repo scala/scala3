@@ -2,6 +2,7 @@ package dotty.tools.dotc.transform
 
 import scala.annotation.tailrec
 
+import dotty.tools.uncheckedNN
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.ast.tpd.{Inlined, TreeTraverser}
@@ -109,8 +110,8 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
       ctx
 
   override def prepareForSelect(tree: tpd.Select)(using Context): Context =
-    val name = tree.removeAttachment(OriginalName).orElse(Some(tree.name))
-    unusedDataApply(_.registerUsed(tree.symbol, name))
+    val name = tree.removeAttachment(OriginalName)
+    unusedDataApply(_.registerUsed(tree.symbol, name, includeForImport = tree.qualifier.span.isSynthetic))
 
   override def prepareForBlock(tree: tpd.Block)(using Context): Context =
     pushInBlockTemplatePackageDef(tree)
@@ -128,7 +129,7 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
       if !tree.symbol.is(Module) then
         ud.registerDef(tree)
       if tree.name.startsWith("derived$") && tree.typeOpt != NoType then
-        ud.registerUsed(tree.typeOpt.typeSymbol, None, true)
+        ud.registerUsed(tree.typeOpt.typeSymbol, None, isDerived = true)
       ud.addIgnoredUsage(tree.symbol)
     }
 
@@ -359,7 +360,7 @@ object CheckUnused:
     var unusedAggregate: Option[UnusedResult] = None
 
     /* IMPORTS */
-    private val impInScope = MutStack(MutList[tpd.Import]())
+    private val impInScope = MutStack(MutList[ImportSelectorData]())
     /**
      * We store the symbol along with their accessibility without import.
      * Accessibility to their definition in outer context/scope
@@ -369,7 +370,7 @@ object CheckUnused:
     private val usedInScope = MutStack(MutSet[(Symbol,Boolean, Option[Name], Boolean)]())
     private val usedInPosition = MutMap.empty[Name, MutSet[Symbol]]
     /* unused import collected during traversal */
-    private val unusedImport = new java.util.IdentityHashMap[ImportSelector, Unit]
+    private val unusedImport = MutList.empty[ImportSelectorData]
 
     /* LOCAL DEF OR VAL / Private Def or Val / Pattern variables */
     private val localDefInScope = MutList.empty[tpd.MemberDef]
@@ -409,16 +410,17 @@ object CheckUnused:
      * The optional name will be used to target the right import
      * as the same element can be imported with different renaming
      */
-    def registerUsed(sym: Symbol, name: Option[Name], isDerived: Boolean = false)(using Context): Unit =
+    def registerUsed(sym: Symbol, name: Option[Name], includeForImport: Boolean = true, isDerived: Boolean = false)(using Context): Unit =
       if sym.exists && !isConstructorOfSynth(sym) && !doNotRegister(sym) then
         if sym.isConstructor then
-          registerUsed(sym.owner, None) // constructor are "implicitly" imported with the class
+          registerUsed(sym.owner, None, includeForImport) // constructor are "implicitly" imported with the class
         else
           val accessibleAsIdent = sym.isAccessibleAsIdent
           def addIfExists(sym: Symbol): Unit =
             if sym.exists then
               usedDef += sym
-              usedInScope.top += ((sym, accessibleAsIdent, name, isDerived))
+              if includeForImport then
+                usedInScope.top += ((sym, accessibleAsIdent, name, isDerived))
           addIfExists(sym)
           addIfExists(sym.companionModule)
           addIfExists(sym.companionClass)
@@ -439,12 +441,27 @@ object CheckUnused:
 
     /** Register an import */
     def registerImport(imp: tpd.Import)(using Context): Unit =
-      if !tpd.languageImport(imp.expr).nonEmpty && !imp.isGeneratedByEnum && !isTransparentAndInline(imp) then
-        impInScope.top += imp
-        if currScopeType.top != ScopeType.ReplWrapper then // #18383 Do not report top-level import's in the repl as unused
-          for s <- imp.selectors do
-            if !shouldSelectorBeReported(imp, s) && !isImportExclusion(s) && !isImportIgnored(imp, s) then
-              unusedImport.put(s, ())
+      if
+        !tpd.languageImport(imp.expr).nonEmpty
+          && !imp.isGeneratedByEnum
+          && !isTransparentAndInline(imp)
+          && currScopeType.top != ScopeType.ReplWrapper // #18383 Do not report top-level import's in the repl as unused
+      then
+        val qualTpe = imp.expr.tpe
+
+        // Put wildcard imports at the end, because they have lower priority within one Import
+        val reorderdSelectors =
+          val (wildcardSels, nonWildcardSels) = imp.selectors.partition(_.isWildcard)
+          nonWildcardSels ::: wildcardSels
+
+        val newDataInScope =
+          for sel <- reorderdSelectors yield
+            val data = new ImportSelectorData(qualTpe, sel)
+            if shouldSelectorBeReported(imp, sel) || isImportExclusion(sel) || isImportIgnored(imp, sel) then
+              // Immediately mark the selector as used
+              data.markUsed()
+            data
+        impInScope.top.prependAll(newDataInScope)
     end registerImport
 
     /** Register (or not) some `val` or `def` according to the context, scope and flags */
@@ -482,40 +499,27 @@ object CheckUnused:
      * - If there are imports in this scope check for unused ones
      */
     def popScope()(using Context): Unit =
-      // used symbol in this scope
-      val used = usedInScope.pop().toSet
-      // used imports in this scope
-      val imports = impInScope.pop()
-      val kept = used.filterNot { (sym, isAccessible, optName, isDerived) =>
-        // keep the symbol for outer scope, if it matches **no** import
-        // This is the first matching wildcard selector
-        var selWildCard: Option[ImportSelector] = None
+      currScopeType.pop()
+      val usedInfos = usedInScope.pop()
+      val selDatas = impInScope.pop()
 
-        val matchedExplicitImport = imports.exists { imp =>
-          sym.isInImport(imp, isAccessible, optName, isDerived) match
-            case None => false
-            case optSel@Some(sel) if sel.isWildcard =>
-              if selWildCard.isEmpty then selWildCard = optSel
-              // We keep wildcard symbol for the end as they have the least precedence
-              false
-            case Some(sel) =>
-              unusedImport.remove(sel)
-              true
+      for usedInfo <- usedInfos do
+        val (sym, isAccessible, optName, isDerived) = usedInfo
+        val usedData = selDatas.find { selData =>
+          sym.isInImport(selData, isAccessible, optName, isDerived)
         }
-        if !matchedExplicitImport && selWildCard.isDefined then
-          unusedImport.remove(selWildCard.get)
-          true // a matching import exists so the symbol won't be kept for outer scope
-        else
-          matchedExplicitImport
-      }
+        usedData match
+          case Some(data) =>
+            data.markUsed()
+          case None =>
+            // Propagate the symbol one level up
+            if usedInScope.nonEmpty then
+              usedInScope.top += usedInfo
+      end for // each in `used`
 
-      // if there's an outer scope
-      if usedInScope.nonEmpty then
-        // we keep the symbols not referencing an import in this scope
-        // as it can be the only reference to an outer import
-        usedInScope.top ++= kept
-      // retrieve previous scope type
-      currScopeType.pop
+      for selData <- selDatas do
+        if !selData.isUsed then
+          unusedImport += selData
     end popScope
 
     /**
@@ -534,9 +538,8 @@ object CheckUnused:
 
       val sortedImp =
         if ctx.settings.WunusedHas.imports || ctx.settings.WunusedHas.strictNoImplicitWarn then
-          import scala.jdk.CollectionConverters.*
-          unusedImport.keySet().nn.iterator().nn.asScala
-            .map(d => UnusedSymbol(d.srcPos, d.name, WarnTypes.Imports)).toList
+          unusedImport.toList
+            .map(d => UnusedSymbol(d.selector.srcPos, d.selector.name, WarnTypes.Imports))
         else
           Nil
       // Partition to extract unset local variables from usedLocalDefs
@@ -697,51 +700,39 @@ object CheckUnused:
         }
 
       /** Given an import and accessibility, return selector that matches import<->symbol */
-      private def isInImport(imp: tpd.Import, isAccessible: Boolean, altName: Option[Name], isDerived: Boolean)(using Context): Option[ImportSelector] =
+      private def isInImport(selData: ImportSelectorData, isAccessible: Boolean, altName: Option[Name], isDerived: Boolean)(using Context): Boolean =
         assert(sym.exists)
 
-        val tpd.Import(qual, sels) = imp
-        val qualTpe = qual.tpe
-        val dealiasedSym = sym.dealias
+        val selector = selData.selector
 
-        val selectionsToDealias: List[SingleDenotation] =
-          val typeSelections = sels.flatMap(n => qualTpe.member(n.name.toTypeName).alternatives)
-          val termSelections = sels.flatMap(n => qualTpe.member(n.name.toTermName).alternatives)
-          typeSelections ::: termSelections
-
-        val qualHasSymbol: Boolean =
-          val simpleSelections = qualTpe.member(sym.name).alternatives
-          simpleSelections.exists(d => d.symbol == sym || d.symbol.dealias == dealiasedSym)
-            || selectionsToDealias.exists(d => d.symbol.dealias == dealiasedSym)
-
-        def selector: Option[ImportSelector] =
-          sels.find(sel => sym.name.toTermName == sel.name && altName.forall(n => n.toTermName == sel.rename))
-
-        def dealiasedSelector: Option[ImportSelector] =
-          if isDerived then
-            sels.flatMap(sel => selectionsToDealias.map(m => (sel, m.symbol))).collectFirst {
-              case (sel, sym) if sym.dealias == dealiasedSym => sel
-            }
-          else None
-
-        def givenSelector: Option[ImportSelector] =
-          if sym.is(Given) || sym.is(Implicit) then
-            sels.filter(sel => sel.isGiven && !sel.bound.isEmpty).find(sel => sel.boundTpe =:= sym.info)
-          else None
-
-        def wildcard: Option[ImportSelector] =
-          sels.find(sel => sel.isWildcard && ((sym.is(Given) == sel.isGiven && sel.bound.isEmpty) || sym.is(Implicit)))
-
-        if qualHasSymbol && (!isAccessible || altName.exists(_.toSimpleName != sym.name.toSimpleName)) then
-          selector.orElse(dealiasedSelector).orElse(givenSelector).orElse(wildcard) // selector with name or wildcard (or given)
+        if isAccessible && !altName.exists(_.toTermName != sym.name.toTermName) then
+          // Even if this import matches, it is pointless because the symbol would be accessible anyway
+          false
+        else if !selector.isWildcard then
+          if altName.exists(explicitName => selector.rename != explicitName.toTermName) then
+            // if there is an explicit name, it must match
+            false
+          else
+            if isDerived then
+              // See i15503i.scala, grep for "package foo.test.i17156"
+              selData.allSymbolsDealiasedForNamed.contains(dealias(sym))
+            else
+              selData.allSymbolsForNamed.contains(sym)
         else
-          None
+          // Wildcard
+          if !selData.qualTpe.member(sym.name).hasAltWith(_.symbol == sym) then
+            // The qualifier does not have the target symbol as a member
+            false
+          else
+            if selector.isGiven then
+              // Further check that the symbol is a given or implicit and conforms to the bound
+              sym.isOneOf(Given | Implicit)
+                && (selector.bound.isEmpty || sym.info <:< selector.boundTpe)
+            else
+              // Normal wildcard, check that the symbol is not a given (but can be implicit)
+              !sym.is(Given)
+        end if
       end isInImport
-
-      private def dealias(using Context): Symbol =
-        if sym.isType && sym.asType.denot.isAliasType then
-          sym.asType.typeRef.dealias.typeSymbol
-        else sym
 
       /** Annotated with @unused */
       private def isUnusedAnnot(using Context): Boolean =
@@ -840,11 +831,40 @@ object CheckUnused:
         case _:tpd.Block => Local
         case _ => Other
 
+    final class ImportSelectorData(val qualTpe: Type, val selector: ImportSelector):
+      private var myUsed: Boolean = false
+
+      def markUsed(): Unit = myUsed = true
+
+      def isUsed: Boolean = myUsed
+
+      private var myAllSymbols: Set[Symbol] | Null = null
+
+      def allSymbolsForNamed(using Context): Set[Symbol] =
+        if myAllSymbols == null then
+          val allDenots = qualTpe.member(selector.name).alternatives ::: qualTpe.member(selector.name.toTypeName).alternatives
+          myAllSymbols = allDenots.map(_.symbol).toSet
+        myAllSymbols.uncheckedNN
+
+      private var myAllSymbolsDealiased: Set[Symbol] | Null = null
+
+      def allSymbolsDealiasedForNamed(using Context): Set[Symbol] =
+        if myAllSymbolsDealiased == null then
+          myAllSymbolsDealiased = allSymbolsForNamed.map(sym => dealias(sym))
+        myAllSymbolsDealiased.uncheckedNN
+    end ImportSelectorData
+
     case class UnusedSymbol(pos: SrcPos, name: Name, warnType: WarnTypes)
     /** A container for the results of the used elements analysis */
     case class UnusedResult(warnings: Set[UnusedSymbol])
     object UnusedResult:
       val Empty = UnusedResult(Set.empty)
   end UnusedData
+
+  private def dealias(symbol: Symbol)(using Context): Symbol =
+    if symbol.isType && symbol.asType.denot.isAliasType then
+      symbol.asType.typeRef.dealias.typeSymbol
+    else
+      symbol
 
 end CheckUnused
