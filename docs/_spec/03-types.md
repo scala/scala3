@@ -197,7 +197,7 @@ An argument type of the form ´\Rightarrow T´ represents a [call-by-name parame
 
 Function types associate to the right, e.g. ´S \Rightarrow T \Rightarrow R´ is the same as ´S \Rightarrow (T \Rightarrow R)´.
 
-Function types are [covariant](04-basic-definitions.md#variance-annotations) in their result type and [contravariant](04-basic-definitions.md#variance-annotations) in their argument types.
+Function types are [covariant](04-basic-definitions.html#variance-annotations) in their result type and [contravariant](04-basic-definitions.html#variance-annotations) in their argument types.
 
 Function types translate into internal class types that define an `apply` method.
 Specifically, the ´n´-ary function type ´(T_1, ..., T_n) \Rightarrow R´ translates to the internal class type `scala.Function´_n´[´T_1´, ..., ´T_n´, ´R´]`.
@@ -210,7 +210,7 @@ trait Function´_n´[-´T_1´, ..., -´T_n´, +´R´]:
   def apply(´x_1´: ´T_1´, ..., ´x_n´: ´T_n´): ´R´
 ```
 
-Their exact supertype and implementation can be consulted in the [function classes section](./12-the-scala-standard-library.md#the-function-classes) of the standard library page in this document.
+Their exact supertype and implementation can be consulted in the [function classes section](./12-the-scala-standard-library.html#the-function-classes) of the standard library page in this document.
 
 _Dependent function types_ are function types whose parameters are named and can referred to in result types.
 In the concrete type ´(x_1: T_1, ..., x_n: T_n) \Rightarrow R´, ´R´ can refer to the parameters ´x_i´, notably to form path-dependent types.
