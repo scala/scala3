@@ -1733,8 +1733,6 @@ trait Applications extends Compatibility {
   def compare(alt1: TermRef, alt2: TermRef, preferGeneral: Boolean = false)(using Context): Int = trace(i"compare($alt1, $alt2)", overload) {
     record("resolveOverloaded.compare")
 
-    val compareGivens = alt1.symbol.is(Given) && alt2.symbol.is(Given)
-
     /** Is alternative `alt1` with type `tp1` as good as alternative
      *  `alt2` with type `tp2` ?
      *
@@ -1749,7 +1747,7 @@ trait Applications extends Compatibility {
      *       from below by Li and from above by Ui.
      *    3. A member of any other type `tp1` is:
      *       a. always as good as a method or a polymorphic method.
-     *       b. as good as a member of any other type `tp2` is `asGoodValueType(tp1, tp2) = true`
+     *       b. as good as a member of any other type `tp2` if `asGoodValueType(tp1, tp2) = true`
      */
     def isAsGood(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = trace(i"isAsSpecific $tp1 $tp2", overload) {
       tp1 match
@@ -1776,13 +1774,17 @@ trait Applications extends Compatibility {
             isAsGood(alt1, tp1.instantiate(tparams.map(_.typeRef)), alt2, tp2)
           }
         case _ => // (3)
+          def isGiven(alt: TermRef) =
+            alt1.symbol.is(Given) && alt.symbol != defn.NotGivenClass
+          def compareValues(tp1: Type, tp2: Type)(using Context) =
+            isAsGoodValueType(tp1, tp2, isGiven(alt1), isGiven(alt2))
           tp2 match
             case tp2: MethodType => true // (3a)
             case tp2: PolyType if tp2.resultType.isInstanceOf[MethodType] => true // (3a)
             case tp2: PolyType => // (3b)
-              explore(isAsGoodValueType(tp1, instantiateWithTypeVars(tp2)))
+              explore(compareValues(tp1, instantiateWithTypeVars(tp2)))
             case _ => // 3b)
-              isAsGoodValueType(tp1, tp2)
+              compareValues(tp1, tp2)
     }
 
     /** Test whether value type `tp1` is as good as value type `tp2`.
@@ -1812,6 +1814,7 @@ trait Applications extends Compatibility {
      *     for overloading resolution (when `preferGeneral is false), and the opposite relation
      *     `U <: T` or `U convertible to `T` for implicit disambiguation between givens
      *     (when `preferGeneral` is true). For old-style implicit values, the 3.4 behavior is kept.
+     *     If one of the alternatives is a given and the other is an implicit, the given wins.
      *
      *   - In Scala 3.5-migration, use the 3.5 scheme normally, and the 3.4 scheme if
      *     `Mode.OldImplicitResolution` is on. This is used to highlight differences in the
@@ -1820,7 +1823,7 @@ trait Applications extends Compatibility {
      *  Also and only for given resolution: If a compared type refers to a given or its module class, use
      *  the intersection of its parent classes instead.
      */
-    def isAsGoodValueType(tp1: Type, tp2: Type)(using Context) =
+    def isAsGoodValueType(tp1: Type, tp2: Type, alt1isGiven: Boolean, alt2isGiven: Boolean)(using Context): Boolean =
       val oldResolution = ctx.mode.is(Mode.OldImplicitResolution)
       if !preferGeneral || Feature.migrateTo3 && oldResolution then
         // Normal specificity test for overloading resolution (where `preferGeneral` is false)
@@ -1838,7 +1841,7 @@ trait Applications extends Compatibility {
 
         if Feature.sourceVersion.isAtMost(SourceVersion.`3.4`)
             || oldResolution
-            || !compareGivens
+            || !alt1isGiven && !alt2isGiven
         then
           // Intermediate rules: better means specialize, but map all type arguments downwards
           // These are enabled for 3.0-3.4, and for all comparisons between old-style implicits,
@@ -1853,8 +1856,9 @@ trait Applications extends Compatibility {
               case _ => mapOver(t)
           (flip(tp1p) relaxed_<:< flip(tp2p)) || viewExists(tp1, tp2)
         else
-          // New rules: better means generalize
-          (tp2p relaxed_<:< tp1p) || viewExists(tp2, tp1)
+          // New rules: better means generalize, givens always beat implicits
+          if alt1isGiven != alt2isGiven then alt1isGiven
+          else (tp2p relaxed_<:< tp1p) || viewExists(tp2, tp1)
     end isAsGoodValueType
 
     /** Widen the result type of synthetic given methods from the implementation class to the
@@ -1907,8 +1911,8 @@ trait Applications extends Compatibility {
     def comparePrefixes =
       val pre1 = widenPrefix(alt1)
       val pre2 = widenPrefix(alt2)
-      val winsPrefix1 = isAsGoodValueType(pre1, pre2)
-      val winsPrefix2 = isAsGoodValueType(pre2, pre1)
+      val winsPrefix1 = isCompatible(pre1, pre2)
+      val winsPrefix2 = isCompatible(pre2, pre1)
       if winsPrefix1 == winsPrefix2 then 0
       else if winsPrefix1 then 1
       else -1
