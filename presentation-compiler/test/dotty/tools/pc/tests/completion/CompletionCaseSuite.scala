@@ -763,19 +763,52 @@ class CompletionCaseSuite extends BaseCompletionSuite:
         |
         |object O {
         |  val x: Foo | Bar = ???
-        |  val y  = List(x).map{ ca@@ }
+        |  val y  = List(x).map{ca@@ }
         |}""".stripMargin,
       s"""|case class Foo(a: Int)
           |case class Bar(b: Int)
           |
           |object O {
           |  val x: Foo | Bar = ???
-          |  val y  = List(x).map{ 
+          |  val y  = List(x).map{
           |\tcase Foo(a) => $$0
           |\tcase Bar(b) =>
           | }
           |}
           |""".stripMargin,
       filter = _.contains("exhaustive")
+    )
+
+  @Test def summonFrom =
+    check(
+      """
+        |object A {
+        |  import scala.compiletime.summonFrom
+        |  class A
+        |
+        |  inline def f: Any = summonFrom {
+        |    case x@@: A => ???  // error: ambiguous givens
+        |  }
+        |}
+        |""".stripMargin,
+      ""
+    )
+
+  @Test def summonFrom2 =
+    check(
+      """
+        |object A {
+        |  import scala.compiletime.summonFrom
+        |
+        |  class A
+        |  given a1: A = new A
+        |  given a2: A = new A
+        |
+        |  inline def f: Any = summonFrom {
+        |    case x@@: A => ???  // error: ambiguous givens
+        |  }
+        |}
+        |""".stripMargin,
+      ""
     )
 
