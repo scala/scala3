@@ -112,7 +112,7 @@ class ScalaSettingsTests:
       // createTestCase(settings.YearlyTastyOutput     , settings.XearlyTastyOutput, ":./"),
       // createTestCase(settings.YallowOutlineFromTasty, settings.XallowOutlineFromTasty),
       createTestCase(settings.YcheckInit            , settings.WcheckInit),
-      createTestCase(settings.Xlint                 , settings.Wshadow, ":all"),
+      // createTestCase(settings.Xlint                 , settings.Wshadow, ":all"), // this setting is not going to be mapped to replacement. Read more in the commit message
     ).map: (deprecatedArgument, newSetting) =>
       val args = List(deprecatedArgument)
       val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
@@ -171,7 +171,7 @@ class ScalaSettingsTests:
       // createTestCase(settings.YearlyTastyOutput     , settings.XearlyTastyOutput, ":./"),
       // createTestCase(settings.YallowOutlineFromTasty, settings.XallowOutlineFromTasty),
       createTestCase(settings.YcheckInit            , settings.WcheckInit),
-      createTestCase(settings.Xlint                 , settings.Wshadow, ":all"),
+      // createTestCase(settings.Xlint                 , settings.Wshadow, ":all"), // this setting is not going to be mapped to replacement. Read more in the commit message
     ).flatten.map: (deprecatedArgument, newSetting) =>
       val args = List(deprecatedArgument)
       val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)

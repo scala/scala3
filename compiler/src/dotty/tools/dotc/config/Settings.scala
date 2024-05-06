@@ -134,7 +134,9 @@ object Settings:
             if argStringValue.isEmpty then state.deprecated(deprecatedMsg, List(replacedBy))
             else state.deprecated(deprecatedMsg, List(s"$replacedBy:$argStringValue"))
 
-          case Some(Deprecation(msg, _)) => state.deprecated(msg)
+          case Some(Deprecation(msg, _)) =>
+            state.deprecated(s"Option $name is deprecated: $msg")
+
           case None =>
             val value = getValue
             var dangers = warnings
@@ -263,14 +265,16 @@ object Settings:
     * @param msg           deprecation message that will be displayed in following format: s"Option $name is deprecated: $msg"
     * @param replacedBy    option that is substituting current option
     */
-  case class Deprecation private(
+  case class Deprecation(
     msg: String,
     replacedBy: Option[String] = None,
   )
 
   object Deprecation:
     def renamed(replacement: String) = Some(Deprecation(s"Use $replacement instead.", Some(replacement)))
-    def removed(removedVersion: String) = Some(Deprecation(s"Scheduled for removal in s$removedVersion", None))
+    def removed(removedVersion: Option[String] = None) =
+      val msg = removedVersion.map(" in " + _).getOrElse(".")
+      Some(Deprecation(s"Scheduled for removal$msg", None))
 
   object Setting:
     extension [T](setting: Setting[T])

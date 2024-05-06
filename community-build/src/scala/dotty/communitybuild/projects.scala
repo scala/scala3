@@ -362,7 +362,7 @@ object projects:
     project = "shapeless-3",
     sbtTestCommand = "testJVM; testJS",
     sbtDocCommand = forceDoc("typeable", "deriving"),
-    scalacOptions = "-source" :: "3.3" :: SbtCommunityProject.scalacOptions.filter(flag => flag != "-Ysafe-init" && flag != "-Wsafe-init"), // due to -Xfatal-warnings
+    scalacOptions = "-source" :: "3.3" :: SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"), // due to -Xfatal-warnings
   )
 
   lazy val xmlInterpolator = SbtCommunityProject(
@@ -429,7 +429,7 @@ object projects:
     sbtTestCommand   = "unitTests/test",
     // Adds <empty> package
     sbtDocCommand   = "coreJVM/doc",
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(flag => flag != "-Ysafe-init" && flag != "-Wsafe-init"),
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"),
     dependencies = List(munit, scodecBits),
   )
 
@@ -503,14 +503,14 @@ object projects:
     project        = "verify",
     sbtTestCommand = "verifyJVM/test",
     sbtDocCommand = "verifyJVM/doc",
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(flag => flag != "-Xcheck-macros") // TODO enable -Xcheck-macros
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros") // TODO enable -Xcheck-macros
   )
 
   lazy val discipline = SbtCommunityProject(
     project = "discipline",
     sbtTestCommand = "coreJVM/test;coreJS/test",
     sbtPublishCommand = "set every credentials := Nil;coreJVM/publishLocal;coreJS/publishLocal",
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(flag => flag != "-Ysafe-init" && flag != "-Wsafe-init"),
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"),
     dependencies = List(scalacheck)
   )
 
@@ -540,7 +540,7 @@ object projects:
     sbtTestCommand = "set Global/scalaJSStage := FastOptStage;rootJVM/test;rootJS/test",
     sbtPublishCommand = "rootJVM/publishLocal;rootJS/publishLocal",
     dependencies = List(discipline, disciplineMunit, scalacheck, simulacrumScalafixAnnotations),
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(flag => flag != "-Ysafe-init" && flag != "-Wsafe-init") // disable -Ysafe-init or -Wsafe-init, due to -Xfatal-warning
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init") // disable -Ysafe-init or -Wsafe-init, due to -Xfatal-warning
   )
 
   lazy val catsMtl = SbtCommunityProject(
@@ -655,7 +655,7 @@ object projects:
       """set actorTests/Compile/scalacOptions -= "-Xfatal-warnings"""",
       "akka-actor-tests/Test/compile",
     ).mkString("; "),
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(flag => flag != "-Ysafe-init" && flag != "-Wsafe-init"),
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"),
     dependencies = List(scalatest, scalatestplusJunit, scalatestplusScalacheck)
   )
 
@@ -706,7 +706,7 @@ object projects:
     project = "fs2",
     sbtTestCommand = "coreJVM/test; coreJS/test",  // io/test requires JDK9+
     sbtPublishCommand = "coreJVM/publishLocal; coreJS/publishLocal",
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(flag => flag != "-Ysafe-init" && flag != "-Wsafe-init"),
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"),
     dependencies = List(cats, catsEffect3, munitCatsEffect, scalacheckEffect, scodecBits)
   )
 
@@ -743,7 +743,7 @@ object projects:
     project = "http4s",
     sbtTestCommand = """set ThisBuild / tlFatalWarnings := false; rootJVM/test""",
     sbtPublishCommand = "publishLocal",
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(flag => flag != "-Ysafe-init" && flag != "-Wsafe-init"),
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"),
     dependencies = List(cats, catsEffect3, fs2, disciplineMunit, scalacheckEffect)
   )
 
