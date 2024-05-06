@@ -2,10 +2,10 @@ import scala.quoted.*
 
 object Macros {
 
-  implicit inline def printTree[T](inline x: T): Unit =
+  inline def printTree[T](inline x: T): Unit =
     ${ impl('x) }
 
-  def impl[T](x: Expr[T])(using Quotes) : Expr[Unit] = {
+  def impl[T](x: Expr[T])(using Quotes): Expr[Unit] = {
     import quotes.reflect.*
 
     val tree = x.asTerm
@@ -19,9 +19,9 @@ object Macros {
     }
   }
 
-  inline def theTestBlock : Unit = ${ theTestBlockImpl }
+  inline def theTestBlock: Unit = ${ theTestBlockImpl }
 
-  def theTestBlockImpl(using qctx : Quotes) : Expr[Unit] = {
+  def theTestBlockImpl(using Quotes): Expr[Unit] = {
     import quotes.reflect.*
 
     val ft1 = FlexibleType(TypeRepr.of[String])
