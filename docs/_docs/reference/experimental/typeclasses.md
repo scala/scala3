@@ -1,11 +1,8 @@
-
 ---
 layout: doc-page
-title: "Type Classes"
+title: "Better Support for Type Classes"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/typeclasses.html
 ---
-
-# Some Proposed Changes for Better Support of Type Classes
 
 Martin Odersky, 8.1.2024, edited 5.4.2024
 
