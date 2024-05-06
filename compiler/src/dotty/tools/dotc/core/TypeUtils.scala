@@ -8,6 +8,7 @@ import Names.{Name, TermName}
 import Constants.Constant
 
 import Names.Name
+import config.Feature
 
 class TypeUtils:
   /** A decorator that provides methods on types
@@ -22,7 +23,11 @@ class TypeUtils:
       self.classSymbol.isPrimitiveValueClass
 
     def isErasedClass(using Context): Boolean =
-      self.underlyingClassRef(refinementOK = true).typeSymbol.is(Flags.Erased)
+      val cls = self.underlyingClassRef(refinementOK = true).typeSymbol
+      cls.is(Flags.Erased)
+       && (cls != defn.SingletonClass || Feature.enabled(Feature.modularity))
+         // Singleton counts as an erased class only under x.modularity
+
 
     /** Is this type a checked exception? This is the case if the type
      *  derives from Exception but not from RuntimeException. According to
@@ -179,7 +184,7 @@ class TypeUtils:
     def isThisTypeOf(cls: Symbol)(using Context) = self match
       case self: Types.ThisType => self.cls == cls
       case _ => false
-      
+
     /** Strip all outer refinements off this type */
     def stripRefinement: Type = self match
       case self: RefinedOrRecType => self.parent.stripRefinement
