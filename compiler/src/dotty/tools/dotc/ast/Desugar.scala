@@ -889,7 +889,7 @@ object desugar {
         }
       }
       if mods.isAllOf(Given | Inline | Transparent) then
-        report.error("inline given instances cannot be trasparent", cdef)
+        report.error("inline given instances cannot be transparent", cdef)
       val classMods = if mods.is(Given) then mods &~ (Inline | Transparent) | Synthetic else mods
       cpy.TypeDef(cdef: TypeDef)(
         name = className,
