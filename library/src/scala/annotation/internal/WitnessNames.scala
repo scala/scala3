@@ -11,7 +11,7 @@ package internal
  *
  *  2. During Namer or Unpickling, when encountering a type declaration A with
  *  a WitnessNames(n_1, ... , n_k) annotation, create a CB companion `val A` with
- *  rtype `<context-bound-companion>`[ref_1 | ... | ref_k] where ref_i is a TermRef
+ *  type `<context-bound-companion>`[ref_1 | ... | ref_k] where ref_i is a TermRef
  *  with the same prefix as A and name n_i. Except, don't do this if the type in
  *  question is a type parameter and there is already a term parameter with name A
  *  defined for the same method.
@@ -20,7 +20,7 @@ package internal
  *
  *     type `<context-bound-companion>`[-Refs]
  *
- *  The context bound companion's variance is negative, so that unons in the
+ *  The context bound companion's variance is negative, so that unions in the
  *  arguments are joined when encountering multiple definfitions and forming a glb.
  *
  *  3. Add a special case for typing a selection A.m on a value A of type

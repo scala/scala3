@@ -234,7 +234,7 @@ object desugar {
    *                       of the same method.
    *  @param evidenceFlags The flags to use for evidence definitions
    *  @param freshName     A function to generate fresh names for evidence definitions
-   *  @param allParams     If `tdef` is a type paramter, all parameters of the owning method,
+   *  @param allParamss    If `tdef` is a type paramter, all parameters of the owning method,
    *                       otherwise the empty list.
    */
   private def desugarContextBounds(
@@ -246,29 +246,31 @@ object desugar {
 
     val evidenceNames = mutable.ListBuffer[TermName]()
 
-    def desugarRhs(rhs: Tree): Tree = rhs match
-      case ContextBounds(tbounds, cxbounds) =>
+    def desugarRHS(rhs: Tree): Tree = rhs match
+      case ContextBounds(tbounds, ctxbounds) =>
         val isMember = evidenceFlags.isAllOf(DeferredGivenFlags)
-        for bound <- cxbounds do
+        for bound <- ctxbounds do
           val evidenceName = bound match
             case ContextBoundTypeTree(_, _, ownName) if !ownName.isEmpty =>
               ownName // if there is an explicitly given name, use it.
-            case _ if Config.nameSingleContextBounds && !isMember
-                && cxbounds.tail.isEmpty && Feature.enabled(Feature.modularity) =>
-              tdef.name.toTermName
             case _ =>
-              freshName(bound)
+              if Config.nameSingleContextBounds
+                && !isMember
+                && ctxbounds.tail.isEmpty
+                && Feature.enabled(Feature.modularity)
+              then tdef.name.toTermName
+              else freshName(bound)
           evidenceNames += evidenceName
           val evidenceParam = ValDef(evidenceName, bound, EmptyTree).withFlags(evidenceFlags)
           evidenceParam.pushAttachment(ContextBoundParam, ())
           evidenceBuf += evidenceParam
         tbounds
       case LambdaTypeTree(tparams, body) =>
-        cpy.LambdaTypeTree(rhs)(tparams, desugarRhs(body))
+        cpy.LambdaTypeTree(rhs)(tparams, desugarRHS(body))
       case _ =>
         rhs
 
-    val tdef1 = cpy.TypeDef(tdef)(rhs = desugarRhs(tdef.rhs))
+    val tdef1 = cpy.TypeDef(tdef)(rhs = desugarRHS(tdef.rhs))
     // Under x.modularity, if there was a context bound, and `tdef`s name as a term name is
     // neither a name of an existing parameter nor a name of generated evidence for
     // the same method, add a WitnessAnnotation with all generated evidence names to `tdef`.
@@ -695,10 +697,10 @@ object desugar {
       case _ => false
     }
 
-    def isRepeated(tree: Tree): Boolean = stripByNameType(tree) match {
+    /** Is this a repeated argument x* (using a spread operator)? */
+    def isRepeated(tree: Tree): Boolean = stripByNameType(tree) match
       case PostfixOp(_, Ident(tpnme.raw.STAR)) => true
       case _ => false
-    }
 
     def appliedRef(tycon: Tree, tparams: List[TypeDef] = constrTparams, widenHK: Boolean = false) = {
       val targs = for (tparam <- tparams) yield {
@@ -1218,7 +1220,7 @@ object desugar {
 
   /** Extract a synthesized given name from a type tree. This is used for
    *  both anonymous givens and (under x.modularity) deferred givens.
-   *  @param followArgs   If true include argument types in the name
+   *  @param followArgs   if true include argument types in the name
    */
   private class NameExtractor(followArgs: Boolean) extends UntypedTreeAccumulator[String] {
     private def extractArgs(args: List[Tree])(using Context): String =

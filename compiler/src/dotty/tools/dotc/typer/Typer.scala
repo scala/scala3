@@ -888,7 +888,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case (tp1: TermRef, tp2: TermRef) =>
           if tp1.info.isSingleton && (tp1 frozen_=:= tp2) then 1
           else compare(tp1, tp2, preferGeneral = false)
-        case (tp1: TermRef, _) => 1 // should not happen, but prefer TermRefs over othersver others
+        case (tp1: TermRef, _) => 1 // should not happen, but prefer TermRefs over others
         case (_, tp2: TermRef) => -1
         case _ => 0
 
@@ -4588,7 +4588,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           cpy.Ident(qual)(qual.symbol.name.sourceModuleName.toTypeName)
         case _ =>
           errorTree(tree, em"cannot convert from $tree to an instance creation expression")
-      val tycon = ctorResultType.underlyingClassRef(refinementOK = true)
+      val tycon = ctorResultType.underlyingClassRef(refinementOK = Feature.enabled(modularity))
       typed(
         untpd.Select(
           untpd.New(untpd.TypedSplice(tpt.withType(tycon))),

@@ -1655,7 +1655,7 @@ object Types extends TypeUtils {
      *
      *    P { ... type T = / += / -= U ... } # T
      *
-     *  to just U. Analogously, `P { val x: S} # x` is reduced tp `S` if `S`
+     *  to just U. Analogously, `P { val x: S} # x` is reduced to `S` if `S`
      *  is a singleton type.
      *
      *  Does not perform the reduction if the resulting type would contain
@@ -5050,14 +5050,14 @@ object Types extends TypeUtils {
      *  or if it has as an upper bound a precise TypeVar.
      */
     def isPrecise(using Context) =
-      precise
-      || {
-        val constr = ctx.typerState.constraint
-        constr.upper(origin).exists: tparam =>
-          constr.typeVarOfParam(tparam) match
-            case tvar: TypeVar => tvar.precise
-            case _ => false
-      }
+      precise || hasPreciseUpperBound
+
+    private def hasPreciseUpperBound(using Context) =
+      val constr = ctx.typerState.constraint
+      constr.upper(origin).exists: tparam =>
+        constr.typeVarOfParam(tparam) match
+          case tvar: TypeVar => tvar.precise
+          case _ => false
 
     /** The policy used for widening singletons or unions when instantiating
      *  this variable in the current context.

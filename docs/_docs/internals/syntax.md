@@ -191,7 +191,7 @@ MatchType         ::=  InfixType `match` <<< TypeCaseClauses >>>
 InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
 RefinedType       ::=  AnnotType {[nl] Refinement}                              RefinedTypeTree(t, ds)
 AnnotType         ::=  SimpleType {Annotation}                                  Annotated(t, annot)
-AnnotType1         ::=  SimpleType1 {Annotation}                                Annotated(t, annot)
+AnnotType1        ::=  SimpleType1 {Annotation}                                 Annotated(t, annot)
 
 SimpleType        ::=  SimpleLiteral                                            SingletonTypeTree(l)
                     |  ‘?’ TypeBounds
