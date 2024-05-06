@@ -5,6 +5,7 @@ import java.util as ju
 import scala.meta.internal.metals.Report
 import scala.meta.internal.metals.ReportContext
 import scala.meta.internal.pc.ScalaHover
+import scala.meta.pc.ContentType
 import scala.meta.pc.HoverSignature
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.SymbolSearch
@@ -30,7 +31,8 @@ object HoverProvider:
   def hover(
       params: OffsetParams,
       driver: InteractiveDriver,
-      search: SymbolSearch
+      search: SymbolSearch,
+      contentType: ContentType
   )(implicit reportContext: ReportContext): ju.Optional[HoverSignature] =
     val uri = params.uri().nn
     val text = params.text().nn
@@ -101,10 +103,10 @@ object HoverProvider:
         skipCheckOnName
       ) match
         case Nil =>
-          fallbackToDynamics(path, printer)
+          fallbackToDynamics(path, printer, contentType)
         case (symbol, tpe) :: _
             if symbol.name == nme.selectDynamic || symbol.name == nme.applyDynamic =>
-          fallbackToDynamics(path, printer)
+          fallbackToDynamics(path, printer, contentType)
         case symbolTpes @ ((symbol, tpe) :: _) =>
           val exprTpw = tpe.widenTermRefExpr.deepDealias
           val hoverString =
@@ -126,7 +128,7 @@ object HoverProvider:
           end hoverString
 
           val docString = symbolTpes
-            .flatMap(symTpe => search.symbolDocumentation(symTpe._1))
+            .flatMap(symTpe => search.symbolDocumentation(symTpe._1, contentType))
             .map(_.docstring())
             .mkString("\n")
           printer.expressionType(exprTpw) match
@@ -144,7 +146,8 @@ object HoverProvider:
                   symbolSignature = Some(hoverString),
                   docstring = Some(docString),
                   forceExpressionType = forceExpressionType,
-                  contextInfo = printer.getUsedRenamesInfo
+                  contextInfo = printer.getUsedRenamesInfo,
+                  contentType = contentType
                 )
               ).nn
             case _ =>
@@ -159,7 +162,8 @@ object HoverProvider:
 
   private def fallbackToDynamics(
       path: List[Tree],
-      printer: ShortenedTypePrinter
+      printer: ShortenedTypePrinter,
+      contentType: ContentType
   )(using Context): ju.Optional[HoverSignature] = path match
     case SelectDynamicExtractor(sel, n, name) =>
       def findRefinement(tp: Type): Option[HoverSignature] =
@@ -178,7 +182,8 @@ object HoverProvider:
               new ScalaHover(
                 expressionType = Some(tpeString),
                 symbolSignature = Some(s"$valOrDef $name$tpeString"),
-                contextInfo = printer.getUsedRenamesInfo
+                contextInfo = printer.getUsedRenamesInfo,
+                contentType = contentType
               )
             )
           case RefinedType(parent, _, _) =>

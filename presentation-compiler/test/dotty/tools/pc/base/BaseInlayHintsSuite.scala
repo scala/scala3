@@ -18,6 +18,7 @@ class BaseInlayHintsSuite extends BasePCSuite {
       base: String,
       expected: String,
       kind: Option[Int] = None,
+      hintsInPatternMatch: Boolean = false
   ): Unit =
     def pkgWrap(text: String) =
       if (text.contains("package")) text
@@ -35,7 +36,8 @@ class BaseInlayHintsSuite extends BasePCSuite {
       true,
       true,
       true,
-      true
+      true,
+      hintsInPatternMatch
     )
 
     val inlayHints = presentationCompiler
@@ -49,8 +51,8 @@ class BaseInlayHintsSuite extends BasePCSuite {
     val obtained = TestInlayHints.applyInlayHints(withPkg, inlayHints)
 
     assertNoDiff(
+      pkgWrap(expected),
       obtained,
-      pkgWrap(expected)
     )
 
 }

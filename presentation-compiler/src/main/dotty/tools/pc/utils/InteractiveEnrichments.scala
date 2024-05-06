@@ -4,6 +4,7 @@ import scala.annotation.tailrec
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.mtags.CommonMtagsEnrichments
 import scala.meta.internal.mtags.KeywordWrapper
+import scala.meta.pc.ContentType
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.RangeParams
 import scala.meta.pc.SymbolDocumentation
@@ -260,7 +261,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
     }
 
   extension (search: SymbolSearch)
-    def symbolDocumentation(symbol: Symbol)(using
+    def symbolDocumentation(symbol: Symbol, contentType: ContentType = ContentType.MARKDOWN)(using
         Context
     ): Option[SymbolDocumentation] =
       def toSemanticdbSymbol(symbol: Symbol) =
@@ -280,6 +281,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
       val documentation = search.documentation(
         sym,
         () => parentSymbols.iterator.map(toSemanticdbSymbol).toList.asJava,
+        contentType,
       )
       documentation.nn.toScala
     end symbolDocumentation
