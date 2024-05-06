@@ -21,10 +21,12 @@ call :args %*
 
 call :compilerJavaClasspathArgs
 
+call :setScalaVersion
+
 @rem we need to escape % in the java command path, for some reason this doesnt work in common.bat
 set "_JAVACMD=!_JAVACMD:%%=%%%%!"
 
-call "%_JAVACMD%" %_JAVA_ARGS% "-Dscala.home=%_PROG_HOME%" -classpath "%_JVM_CP_ARGS%" dotty.tools.MainGenericRunner -classpath "%_JVM_CP_ARGS%" %_SCALA_ARGS%
+call "%_JAVACMD%" %_JAVA_ARGS% "-Dscala.releaseversion=%_SCALA_VERSION%" "-Dscala.home=%_PROG_HOME%" -classpath "%_JVM_CP_ARGS%" dotty.tools.MainGenericRunner -classpath "%_JVM_CP_ARGS%" %_SCALA_ARGS%
 if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
 
 goto end
@@ -36,6 +38,7 @@ goto end
 set _JAVA_ARGS=
 set _SCALA_ARGS=
 set _SCALA_CPATH=
+set "_SCALA_VERSION="
 
 :args_loop
 if "%~1"=="" goto args_done
@@ -88,6 +91,20 @@ if defined _SCALA_CPATH (
 ) else (
     set "_JVM_CP_ARGS=%__TOOLCHAIN%"
 )
+goto :eof
+
+:setScalaVersion
+
+@rem read for version:=_SCALA_VERSION in VERSION_FILE
+FOR /F "usebackq delims=" %%G IN ("%_PROG_HOME%\VERSION") DO (
+  SET "line=%%G"
+  IF "!line:~0,9!"=="version:=" (
+    SET "_SCALA_VERSION=!line:~9!"
+    GOTO :foundVersion
+  )
+)
+
+:foundVersion
 goto :eof
 
 @rem #########################################################################
