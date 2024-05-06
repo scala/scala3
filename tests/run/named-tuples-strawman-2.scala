@@ -5,6 +5,53 @@ import Tuple.*
 
 object TupleOps:
 
+  private object helpers:
+
+    /** Used to implement IndicesWhere */
+    type IndicesWhereHelper[X <: Tuple, P[_ <: Union[X]] <: Boolean, N <: Int] <: Tuple = X match
+      case EmptyTuple => EmptyTuple
+      case h *: t => P[h] match
+        case true => N *: IndicesWhereHelper[t, P, S[N]]
+        case false => IndicesWhereHelper[t, P, S[N]]
+
+  end helpers
+
+  /** A type level Boolean indicating whether the tuple `X` has an element
+   *  that matches `Y`.
+   *  @pre  The elements of `X` are assumed to be singleton types
+   */
+  type Contains[X <: Tuple, Y] <: Boolean = X match
+    case Y *: _ => true
+    case _ *: xs => Contains[xs, Y]
+    case EmptyTuple => false
+
+  /** The index of `Y` in tuple `X` as a literal constant Int,
+   *  or `Size[X]` if `Y` is disjoint from all element types in `X`.
+   */
+  type IndexOf[X <: Tuple, Y] <: Int = X match
+    case Y *: _ => 0
+    case _ *: xs => S[IndexOf[xs, Y]]
+    case EmptyTuple => 0
+
+  /** A tuple consisting of those indices `N` of tuple `X` where the predicate `P`
+   *  is true for `Elem[X, N]`. Indices are type level values <: Int.
+   */
+  type IndicesWhere[X <: Tuple, P[_ <: Union[X]] <: Boolean] =
+    helpers.IndicesWhereHelper[X, P, 0]
+
+  extension [X <: Tuple](inline x: X)
+
+    /** The index (starting at 0) of the first occurrence of `y.type` in the type `X` of `x`
+     *  or `Size[X]` if no such element exists.
+     */
+    inline def indexOf(y: Any): IndexOf[X, y.type] = constValue[IndexOf[X, y.type]]
+
+    /** A boolean indicating whether there is an element `y.type` in the type `X` of `x` */
+    inline def contains(y: Any): Contains[X, y.type] = constValue[Contains[X, y.type]]
+
+  end extension
+
+
   /** The `X` tuple, with its element at index `N` replaced by `Y`.
    *  If `N` is equal to `Size[X]`, the element `Y` is appended instead
    */
@@ -60,7 +107,18 @@ object TupleOps:
     case EmptyTuple => X
 
   inline def concatDistinct[X <: Tuple, Y <: Tuple](xs: X, ys: Y): ConcatDistinct[X, Y] =
-    (xs ++ ys.filter[Y, [Elem] =>> ![Contains[X, Elem]]]).asInstanceOf[ConcatDistinct[X, Y]]
+    (xs ++ filter[Y, [Elem] =>> ![Contains[X, Elem]]](ys)).asInstanceOf[ConcatDistinct[X, Y]]
+
+  /** A tuple consisting of all elements of this tuple that have types
+   *  for which the given type level predicate `P` reduces to the literal
+   *  constant `true`.
+   */
+  inline def filter[X <: Tuple, P[_] <: Boolean](xs: X): Filter[X, P] =
+    val toInclude = constValueTuple[IndicesWhere[X, P]].toArray
+    val arr = new Array[Object](toInclude.length)
+    for i <- toInclude.indices do
+      arr(i) = xs.productElement(toInclude(i).asInstanceOf[Int]).asInstanceOf[Object]
+    Tuple.fromArray(arr).asInstanceOf[Filter[X, P]]
 
 object NamedTupleDecomposition:
   import NamedTupleOps.*

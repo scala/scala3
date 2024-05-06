@@ -31,7 +31,7 @@
 -- [E172] Type Error: tests/neg/named-tuples.scala:22:41 ---------------------------------------------------------------
 22 |  val _: Person = (name = "") ++ nameOnly // error
    |                                         ^
-   |    Cannot prove that Tuple.Disjoint[Tuple1[("name" : String)], Tuple1[("name" : String)]] =:= (true : Boolean).
+   |Cannot prove that NamedTuple.FutureTupleOps.Disjoint[Tuple1[("name" : String)], Tuple1[("name" : String)]] =:= (true : Boolean).
 -- [E008] Not Found Error: tests/neg/named-tuples.scala:23:9 -----------------------------------------------------------
 23 |  person._1 // error
    |  ^^^^^^^^^
@@ -58,11 +58,11 @@
 -- [E172] Type Error: tests/neg/named-tuples.scala:32:27 ---------------------------------------------------------------
 32 |  val pp = person ++ (1, 2)  // error
    |                           ^
-   |            Cannot prove that Tuple.Disjoint[(("name" : String), ("age" : String)), Tuple] =:= (true : Boolean).
+   |Cannot prove that NamedTuple.FutureTupleOps.Disjoint[(("name" : String), ("age" : String)), Tuple] =:= (true : Boolean).
 -- [E172] Type Error: tests/neg/named-tuples.scala:35:18 ---------------------------------------------------------------
 35 |  person ++ (1, 2) match // error
    |                  ^
-   |            Cannot prove that Tuple.Disjoint[(("name" : String), ("age" : String)), Tuple] =:= (true : Boolean).
+   |Cannot prove that NamedTuple.FutureTupleOps.Disjoint[(("name" : String), ("age" : String)), Tuple] =:= (true : Boolean).
 -- Error: tests/neg/named-tuples.scala:38:17 ---------------------------------------------------------------------------
 38 |  val bad = ("", age = 10) // error
    |                 ^^^^^^^^
@@ -82,11 +82,11 @@
 -- [E172] Type Error: tests/neg/named-tuples.scala:47:27 ---------------------------------------------------------------
 47 |  val p2 = person ++ person // error
    |                           ^
-   |Cannot prove that Tuple.Disjoint[(("name" : String), ("age" : String)), (("name" : String), ("age" : String))] =:= (true : Boolean).
+   |Cannot prove that NamedTuple.FutureTupleOps.Disjoint[(("name" : String), ("age" : String)), (("name" : String), ("age" : String))] =:= (true : Boolean).
 -- [E172] Type Error: tests/neg/named-tuples.scala:48:43 ---------------------------------------------------------------
 48 |  val p3 = person ++ (first = 11, age = 33) // error
    |                                           ^
-   |Cannot prove that Tuple.Disjoint[(("name" : String), ("age" : String)), (("first" : String), ("age" : String))] =:= (true : Boolean).
+   |Cannot prove that NamedTuple.FutureTupleOps.Disjoint[(("name" : String), ("age" : String)), (("first" : String), ("age" : String))] =:= (true : Boolean).
 -- [E007] Type Mismatch Error: tests/neg/named-tuples.scala:50:22 ------------------------------------------------------
 50 |  val p5 = person.zip((first = 11, age = 33)) // error
    |                      ^^^^^^^^^^^^^^^^^^^^^^

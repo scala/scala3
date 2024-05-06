@@ -13,6 +13,6 @@
   |                      and cannot be shown to be disjoint from it either.
   |                      Therefore, reduction cannot advance to the remaining case
   |
-  |                        case x *: xs => x | Tuple.Fold[xs, Nothing, [x, y] =>> x | y]
+  |                        case h *: t => h | Tuple.Fold[t, Nothing, [x, y] =>> x | y]
   |
   | longer explanation available when compiling with `-explain`

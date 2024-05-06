@@ -79,7 +79,7 @@ object NamedTuple:
     /** The tuple consisting of all elements of this tuple followed by all elements
      *  of tuple `that`. The names of the two tuples must be disjoint.
      */
-    inline def ++ [N2 <: Tuple, V2 <: Tuple](that: NamedTuple[N2, V2])(using Tuple.Disjoint[N, N2] =:= true)
+    inline def ++ [N2 <: Tuple, V2 <: Tuple](that: NamedTuple[N2, V2])(using FutureTupleOps.Disjoint[N, N2] =:= true)
       : NamedTuple[Tuple.Concat[N, N2], Tuple.Concat[V, V2]]
       = toTuple ++ that.toTuple
 
@@ -200,6 +200,30 @@ object NamedTuple:
   /** The empty named tuple */
   val Empty: Empty = EmptyTuple.asInstanceOf[Empty]
 
+  @experimental
+  object FutureTupleOps {
+
+    /** A type level Boolean indicating whether the type `Y` contains
+     *  none of the elements of `X`.
+     *  @pre  The elements of `X` and `Y` are assumed to be singleton types
+     */
+    type Disjoint[X <: Tuple, Y <: Tuple] <: Boolean = X match
+      case x *: xs => Contains[Y, x] match
+        case true => false
+        case false => Disjoint[xs, Y]
+      case EmptyTuple =>
+        true
+
+    /** A type level Boolean indicating whether the tuple `X` has an element
+     *  that matches `Y`.
+     *  @pre  The elements of `X` are assumed to be singleton types
+     */
+    type Contains[X <: Tuple, Y] <: Boolean = X match
+      case Y *: _ => true
+      case _ *: xs => Contains[xs, Y]
+      case EmptyTuple => false
+  }
+
 end NamedTuple
 
 /** Separate from NamedTuple object so that we can match on the opaque type NamedTuple. */
@@ -214,4 +238,3 @@ object NamedTupleDecomposition:
   /** The value types of a named tuple represented as a regular tuple. */
   type DropNames[NT <: AnyNamedTuple] <: Tuple = NT match
     case NamedTuple[_, x] => x
-
