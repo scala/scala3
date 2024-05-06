@@ -1877,3 +1877,34 @@ class CompletionSuite extends BaseCompletionSuite:
         |""".stripMargin,
       topLines = Some(2)
     )
+
+  @Test def `no-enum-completions-in-new-context` =
+    check(
+      """enum TestEnum:
+        |  case TestCase
+        |object M:
+        |  new TestEnu@@
+        |""".stripMargin,
+      ""
+    )
+
+  @Test def `no-enum-case-completions-in-new-context` =
+    check(
+      """enum TestEnum:
+        |  case TestCase
+        |object M:
+        |  new TestEnum.TestCas@@
+        |""".stripMargin,
+      ""
+    )
+
+  @Test def `deduplicated-enum-completions` =
+    check(
+      """enum TestEnum:
+        |  case TestCase
+        |object M:
+        |  val x: TestEn@@
+        |""".stripMargin,
+      """TestEnum test
+        |""".stripMargin,
+    )
