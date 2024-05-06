@@ -63,7 +63,7 @@ object Feature:
     (clauseInterleaving, "Enable clause interleaving"),
     (pureFunctions, "Enable pure functions for capture checking"),
     (captureChecking, "Enable experimental capture checking"),
-    (into, "Allow into clauses in pattern matches")
+    (into, "Allow into modifier on parameter types")
   )
 
   private def enabledLanguageFeaturesBySetting(using Context): List[String] =
