@@ -3963,6 +3963,24 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       // Keep: `flags` doc aligned with QuotesImpl's `validBindFlags`
       def newBind(parent: Symbol, name: String, flags: Flags, tpe: TypeRepr): Symbol
 
+      /** Generate a new type symbol with the given parent, name and type
+        * 
+        *  This symbol starts without an accompanying definition.
+        *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
+        *  this symbol to the TypeDef constructor.
+        *
+        *  @param parent The owner of the type
+        *  @param name The name of the type
+        *  @param flags extra flags to with which symbol can be constructed. `Deferred` flag will be added. Can be `Private` | `Protected` | `Override` | `Deferred` | `Final` | `Infix` | `Local`
+        *  @param tpe The rhs or bounds of the type
+        *  @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
+        *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
+        *        direct or indirect children of the reflection context's owner.
+        */
+      @experimental
+      // Keep: `flags` doc aligned with QuotesImpl's `validTypeFlags`
+      def newType(parent: Symbol, name: String, flags: Flags, tpe: TypeRepr, privateWithin: Symbol): Symbol
+
       /** Definition not available */
       def noSymbol: Symbol
 
