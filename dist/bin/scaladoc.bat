@@ -26,6 +26,10 @@ call :classpathArgs
 if defined JAVA_OPTS ( set _JAVA_OPTS=%JAVA_OPTS%
 ) else ( set _JAVA_OPTS=%_DEFAULT_JAVA_OPTS%
 )
+
+@rem we need to escape % in the java command path, for some reason this doesnt work in common.bat
+set "_JAVACMD=!_JAVACMD:%%=%%%%!"
+
 call "%_JAVACMD%" %_JAVA_OPTS% %_JAVA_DEBUG% %_JAVA_ARGS% ^
 -classpath "%_CLASS_PATH%" ^
 -Dscala.usejavacp=true ^
