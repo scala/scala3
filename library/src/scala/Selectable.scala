@@ -22,8 +22,7 @@ package scala
  *  In this case the call will synthesize `Class` arguments for the erasure of
  *  all formal parameter types of the method in the structural type.
  */
-trait Selectable extends Any:
-  type Fields // TODO: add <: NamedTyple.AnyNamedTuple when NamedTuple is no longer experimental
+trait Selectable extends Any
 
 object Selectable:
   /* Scala 2 compat + allowing for cross-compilation:
