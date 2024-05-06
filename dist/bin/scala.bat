@@ -32,8 +32,28 @@ goto end
 
 :setScalaOpts
 
+@REM sfind the index of the first colon in _PROG_HOME
+set "index=0"
+set "char=!_PROG_HOME:~%index%,1!"
+:findColon
+if not "%char%"==":" (
+  set /a "index+=1"
+  set "char=!_PROG_HOME:~%index%,1!"
+  goto :findColon
+)
+
+@REM set _PROG_HOME to the substring from the first colon to the end
+set "_PROG_HOME_SUB=!_PROG_HOME:~%index%!"
+@REM strip initial character
+set "_PROG_HOME_SUB=!_PROG_HOME_SUB:~1!"
+
+@REM set drive to substring from 0 to the first colon
+set "_PROG_HOME_DRIVE=!_PROG_HOME:~0,%index%!"
+
+
+
 set "_SCALA_VERSION="
-set "MVN_REPOSITORY=file://%_PROG_HOME:\=/%/maven2"
+set "MVN_REPOSITORY=file://%_PROG_HOME_DRIVE%\%_PROG_HOME_SUB:\=/%/maven2"
 set "SCALA_CLI_JAR=%_PROG_HOME%\etc\scala-cli.jar"
 
 @rem read for version:=_SCALA_VERSION in VERSION_FILE
