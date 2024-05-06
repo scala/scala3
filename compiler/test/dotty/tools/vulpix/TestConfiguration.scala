@@ -52,6 +52,7 @@ object TestConfiguration {
 
   lazy val scalaJSClasspath = mkClasspath(List(
     Properties.scalaJSJavalib,
+    Properties.scalaJSScalalib,
     Properties.scalaJSLibrary,
     Properties.dottyLibraryJS
   ))
