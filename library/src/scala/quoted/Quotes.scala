@@ -211,7 +211,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *               +- MatchCase
    *               +- TypeBounds
    *               +- NoPrefix
-   * 
+   *               +- FlexibleType
+   *
    *  +- MethodTypeKind -+- Contextual
    *                     +- Implicit
    *                     +- Plain
@@ -3273,7 +3274,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def isImplicit: Boolean
         /** Is this the type of parameter clause like `(using X1, ..., Xn)` or `(using x1: X1, x2: X2, ... )` */
         def isContextual: Boolean
-        /** Returns a MethodTypeKind object representing the implicitness of the MethodType parameter clause. */ 
+        /** Returns a MethodTypeKind object representing the implicitness of the MethodType parameter clause. */
         def methodTypeKind: MethodTypeKind
         /** Is this the type of erased parameter clause `(erased x1: X1, ..., xn: Xn)` */
         @deprecated("Use `hasErasedParams` and `erasedParams`", "3.4")
@@ -3427,6 +3428,35 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait NoPrefixModule { this: NoPrefix.type =>
       def unapply(x: NoPrefix): true
     }
+
+    // ----- Flexible Type --------------------------------------------
+
+    /** Flexible types for explicit nulls */
+    type FlexibleType <: TypeRepr
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `FlexibleType` */
+    given FlexibleTypeTypeTest: TypeTest[TypeRepr, FlexibleType]
+
+    /** Module object of `type FlexibleType`  */
+    val FlexibleType: FlexibleTypeModule
+
+    /** Methods of the module object `val FlexibleType` */
+    trait FlexibleTypeModule { this: FlexibleType.type =>
+      def apply(tp: TypeRepr): FlexibleType
+      def unapply(x: FlexibleType): Option[TypeRepr]
+    }
+
+    /** Makes extension methods on `FlexibleType` available without any imports */
+    given FlexibleTypeMethods: FlexibleTypeMethods
+
+    /** Extension methods of `FlexibleType` */
+    trait FlexibleTypeMethods:
+      extension (self: FlexibleType)
+        def underlying: TypeRepr
+        def lo: TypeRepr
+        def hi: TypeRepr
+      end extension
+    end FlexibleTypeMethods
 
     ///////////////
     // CONSTANTS //
