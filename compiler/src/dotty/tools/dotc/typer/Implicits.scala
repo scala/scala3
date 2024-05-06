@@ -1340,7 +1340,9 @@ trait Implicits:
         case alt1: SearchSuccess =>
           var diff = compareAlternatives(alt1, alt2)
           assert(diff <= 0)   // diff > 0 candidates should already have been eliminated in `rank`
-          if diff == 0 && alt2.isExtension then
+          if diff == 0 && alt1.ref =:= alt2.ref then
+            diff = 1 // See i12951 for a test where this happens
+          else if diff == 0 && alt2.isExtension then
             if alt1.isExtension then
               // Fall back: if both results are extension method applications,
               // compare the extension methods instead of their wrappers.
