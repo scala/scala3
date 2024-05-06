@@ -1860,7 +1860,7 @@ class Namer { typer: Typer =>
         for case WitnessNamesAnnot(ws) <- tdef.mods.annotations do
           witnessNamesOfParam(tdef) = ws
 
-    /** Is each name in `wnames` defined spmewhere in the longest prefix of all `params`
+    /** Is each name in `wnames` defined somewhere in the longest prefix of all `params`
      *  that have been typed ahead (i.e. that carry the TypedAhead attachment)?
      */
     def allParamsSeen(wnames: List[TermName], params: List[MemberDef]) =
@@ -1919,7 +1919,7 @@ class Namer { typer: Typer =>
       && param.hasAttachment(ContextBoundParam)
       && sym.info.memberNames(abstractTypeNameFilter).nonEmpty
 
-    /** Set every context bound evidence parameter of a class to be tracked,
+    /** Under x.modularity, set every context bound evidence parameter of a class to be tracked,
      *  provided it has a type that has an abstract type member. Reset private and local flags
      *  so that the parameter becomes a `val`.
      */

@@ -394,22 +394,16 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
         ))
 
     def unapply(tree: Tree)(using Context): Option[List[TermName]] =
-      def isWitnessNames(tp: Type) = tp match
-        case tp: TypeRef =>
-          tp.name == tpnme.WitnessNames && tp.symbol == defn.WitnessNamesAnnot
-        case _ =>
-          false
       unsplice(tree) match
-        case Apply(
-            Select(New(tpt: tpd.TypeTree), nme.CONSTRUCTOR),
-            SeqLiteral(elems, _) :: Nil
-          ) if isWitnessNames(tpt.tpe) =>
-          Some:
-            elems.map:
-              case Literal(Constant(str: String)) =>
-                ContextBoundParamName.unmangle(str.toTermName.asSimpleName)
-        case _ =>
-          None
+        case Apply(Select(New(tpt: tpd.TypeTree), nme.CONSTRUCTOR), SeqLiteral(elems, _) :: Nil) =>
+          tpt.tpe match
+            case tp: TypeRef if tp.name == tpnme.WitnessNames && tp.symbol == defn.WitnessNamesAnnot =>
+              Some:
+                elems.map:
+                  case Literal(Constant(str: String)) =>
+                    ContextBoundParamName.unmangle(str.toTermName.asSimpleName)
+            case _ => None
+        case _ => None
   end WitnessNamesAnnot
 }
 

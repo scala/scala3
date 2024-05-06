@@ -3552,9 +3552,10 @@ object Parsers {
                     !impliedMods.is(Given)
                     || startParamTokens.contains(in.token)
                     || isIdent
-                        && (in.name == nme.inline
-                           || in.name == nme.tracked && in.featureEnabled(Feature.modularity)
-                           || in.lookahead.isColon)
+                        && (in.name == nme.inline    // inline starts a name binding
+                           || in.name == nme.tracked // tracked starts a name binding under x.modularity
+                              && in.featureEnabled(Feature.modularity)
+                           || in.lookahead.isColon)  // a following `:` starts a name binding
                   (mods, paramsAreNamed)
               val params =
                 if paramsAreNamed then commaSeparated(() => param())

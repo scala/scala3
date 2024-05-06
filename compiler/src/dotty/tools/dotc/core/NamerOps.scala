@@ -262,7 +262,7 @@ object NamerOps:
    *  bound that defines a set of witnesses with names `witnessNames`.
    *
    *  @param params  If `tsym` is a type parameter, a list of parameter symbols
-   *                 that include all witnesses, otherwise the empty list.
+   *                 that includes all witnesses, otherwise the empty list.
    *
    *  The context-bound companion has as name the name of `tsym` translated to
    *  a term name. We create a synthetic val of the form
