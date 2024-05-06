@@ -1,0 +1,10 @@
+-- Warning: tests/warn/bson/Test.scala:5:60 ----------------------------------------------------------------------------
+5 |def typedMapHandler[K, V: BSONHandler] = stringMapHandler[V] // warn
+  |                                                            ^
+  |Given search preference for bson.BSONWriter[Map[String, V]] between alternatives (bson.BSONWriter.mapWriter : [V²](using x$1: bson.BSONWriter[V²]): bson.BSONDocumentWriter[Map[String, V²]]) and (bson.BSONWriter.collectionWriter :
+  |  [T, Repr <: Iterable[T]](using x$1: bson.BSONWriter[T], x$2: Repr ¬ Option[T]): bson.BSONWriter[Repr]) will change
+  |Current choice           : the first alternative
+  |New choice from Scala 3.6: none - it's ambiguous
+  |
+  |where:    V  is a type in method typedMapHandler
+  |          V² is a type variable

@@ -9,5 +9,6 @@ object Foo:
 
 import Foo.TC
 //Adding import Foo.Bar resolves the issue
-val badSummon = summon[TC[Bar]] // error here
+val badSummon = summon[TC[Bar]]
+  // was an ambiguous error, now OK, since the two references are the same
 
