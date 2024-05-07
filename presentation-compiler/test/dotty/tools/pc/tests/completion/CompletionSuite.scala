@@ -648,6 +648,17 @@ class CompletionSuite extends BaseCompletionSuite:
     )
     check(
       s"""|object Main {
+          |  (null: Option[Option[Option[Option[Int]]]]) match
+          |    case Some(Some(Some(Som@@))))
+          |}
+          |""".stripMargin,
+      """|Some(value) scala
+         |Some[A](value: A): Some[A]
+         |Some scala
+         |""".stripMargin
+    )
+    check(
+      s"""|object Main {
           |  Option(Option(1)) match {
           |    case Some(Som@@)
           |}
@@ -655,6 +666,18 @@ class CompletionSuite extends BaseCompletionSuite:
       """|Some(value) scala
          |Some[A](value: A): Some[A]
          |Some scala
+         |""".stripMargin
+    )
+    check(
+      s"""|object Test:
+          |  case class NestedClass(x: Int)
+          |object TestRun:
+          |  Option(Test.NestedClass(5)) match
+          |    case Some(Test.Neste@@)
+          |""".stripMargin,
+      """|NestedClass(x) test.Test
+         |NestedClass(x: Int): NestedClass
+         |NestedClass test.Test
          |""".stripMargin
     )
 
