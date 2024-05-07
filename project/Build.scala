@@ -2267,7 +2267,6 @@ object Build {
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(PackPlugin).
       enablePlugins(RepublishPlugin).
-      bootstrappedEnablePlugins(DottyJSPlugin).
       withCommonSettings.
       settings(commonDistSettings).
       dependsOn(
@@ -2279,9 +2278,6 @@ object Build {
         `scala3-tasty-inspector`,
         scaladoc,
         `scala3-sbt-bridge`, // for scala-cli
-      ).
-      bootstrappedDependsOn(
-        `scala3-library-bootstrappedJS` // for scala-cli
       ).
       bootstrappedSettings(
         target := baseDirectory.value / "target" // override setting in commonBootstrappedSettings
