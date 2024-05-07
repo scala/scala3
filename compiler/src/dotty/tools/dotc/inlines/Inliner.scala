@@ -1065,6 +1065,8 @@ class Inliner(val call: tpd.Tree)(using Context):
     new TreeAccumulator[List[Symbol]] {
       override def apply(syms: List[Symbol], tree: tpd.Tree)(using Context): List[Symbol] =
         tree match {
+          case Closure(env, meth, tpt) if meth.symbol.isAnonymousFunction =>
+            this(syms, tpt :: env)
           case tree: RefTree if tree.isTerm && level == -1 && tree.symbol.isDefinedInCurrentRun && !tree.symbol.isLocal =>
             foldOver(tree.symbol :: syms, tree)
           case _: This if level == -1 && tree.symbol.isDefinedInCurrentRun =>
