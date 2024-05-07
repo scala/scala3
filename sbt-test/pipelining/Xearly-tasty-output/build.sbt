@@ -4,14 +4,14 @@
 // early out is a jar
 lazy val a = project.in(file("a"))
   .settings(
-    scalacOptions ++= Seq("-Yearly-tasty-output", ((ThisBuild / baseDirectory).value / "a-early.jar").toString),
+    scalacOptions ++= Seq("-Xearly-tasty-output", ((ThisBuild / baseDirectory).value / "a-early.jar").toString),
     scalacOptions += "-Ycheck:all",
   )
 
 // early out is a directory
 lazy val b = project.in(file("b"))
   .settings(
-    scalacOptions ++= Seq("-Yearly-tasty-output", ((ThisBuild / baseDirectory).value / "b-early-out").toString),
+    scalacOptions ++= Seq("-Xearly-tasty-output", ((ThisBuild / baseDirectory).value / "b-early-out").toString),
     scalacOptions += "-Ycheck:all",
   )
 

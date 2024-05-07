@@ -349,15 +349,15 @@ object Phases {
     def subPhases: List[Run.SubPhase] = Nil
     final def traversals: Int = if subPhases.isEmpty then 1 else subPhases.length
 
-    /** skip the phase for a Java compilation unit, may depend on -Yjava-tasty */
+    /** skip the phase for a Java compilation unit, may depend on -Xjava-tasty */
     def skipIfJava(using Context): Boolean = true
 
     final def isAfterLastJavaPhase(using Context): Boolean =
-      // With `-Yjava-tasty` nominally the final phase is expected be ExtractAPI,
+      // With `-Xjava-tasty` nominally the final phase is expected be ExtractAPI,
       // otherwise drop Java sources at the end of TyperPhase.
       // Checks if the last Java phase is before this phase,
       // which always fails if the terminal phase is before lastJavaPhase.
-      val lastJavaPhase = if ctx.settings.YjavaTasty.value then sbtExtractAPIPhase else typerPhase
+      val lastJavaPhase = if ctx.settings.XjavaTasty.value then sbtExtractAPIPhase else typerPhase
       lastJavaPhase <= this
 
     /** @pre `isRunnable` returns true */

@@ -1614,7 +1614,7 @@ object Parsers {
               imods &~= Given
               syntaxError(em"context function types require at least one parameter", paramSpan)
             FunctionWithMods(params, resultType, imods, erasedArgs.toList)
-          else if !ctx.settings.YkindProjector.isDefault then
+          else if !ctx.settings.XkindProjector.isDefault then
             val (newParams :+ newResultType, tparams) = replaceKindProjectorPlaceholders(params :+ resultType): @unchecked
             lambdaAbstract(tparams, Function(newParams, newResultType))
           else
@@ -1741,7 +1741,7 @@ object Parsers {
       val isVarianceAnnotated = name.startsWith("+") || name.startsWith("-")
       // We remove the variance marker from the name without passing along the specified variance at all
       // The real variance will be inferred at a later stage but may contradict the variance specified,
-      // This is ok, because `-Ykind-projector` is for cross-compiling existing Scala 2 code, not for writing new code,
+      // This is ok, because `-Xkind-projector` is for cross-compiling existing Scala 2 code, not for writing new code,
       // we may assume that variance annotations have already been checked by the Scala 2 compiler.
       val unannotatedName = if (isVarianceAnnotated) name.mapLast(_.drop(1)) else name
       TypeDef(unannotatedName, WildcardTypeBoundsTree()).withFlags(Param)
@@ -1758,7 +1758,7 @@ object Parsers {
         Ident(name)
       }
 
-      val uscores = ctx.settings.YkindProjector.value == "underscores"
+      val uscores = ctx.settings.XkindProjector.value == "underscores"
       val newParams = params.mapConserve {
         case param @ Ident(tpnme.raw.STAR | tpnme.raw.MINUS_STAR | tpnme.raw.PLUS_STAR) => addParam()
         case param @ Ident(tpnme.USCOREkw | tpnme.raw.MINUS_USCORE | tpnme.raw.PLUS_USCORE) if uscores => addParam()
@@ -1944,7 +1944,7 @@ object Parsers {
       if isSimpleLiteral then
         SingletonTypeTree(simpleLiteral())
       else if in.token == USCORE then
-        if ctx.settings.YkindProjector.value == "underscores" then
+        if ctx.settings.XkindProjector.value == "underscores" then
           val start = in.skipToken()
           Ident(tpnme.USCOREkw).withSpan(Span(start, in.lastOffset, start))
         else
@@ -1960,7 +1960,7 @@ object Parsers {
           typeBounds().withSpan(Span(start, in.lastOffset, start))
       // Allow symbols -_ and +_ through for compatibility with code written using kind-projector in Scala 3 underscore mode.
       // While these signify variant type parameters in Scala 2 + kind-projector, we ignore their variance markers since variance is inferred.
-      else if (isIdent(nme.MINUS) || isIdent(nme.PLUS)) && in.lookahead.token == USCORE && ctx.settings.YkindProjector.value == "underscores" then
+      else if (isIdent(nme.MINUS) || isIdent(nme.PLUS)) && in.lookahead.token == USCORE && ctx.settings.XkindProjector.value == "underscores" then
         val identName = in.name.toTypeName ++ nme.USCOREkw
         val start = in.skipToken()
         in.nextToken()
@@ -2012,7 +2012,7 @@ object Parsers {
         val applied = rejectWildcardType(t)
         val args = typeArgs(namedOK = false, wildOK = true)
 
-        if (!ctx.settings.YkindProjector.isDefault) {
+        if (!ctx.settings.XkindProjector.isDefault) {
           def fail(): Tree = {
             syntaxError(
               em"λ requires a single argument of the form X => ... or (X, Y) => ...",
@@ -2044,7 +2044,7 @@ object Parsers {
         }
       })
       case _ =>
-        if (!ctx.settings.YkindProjector.isDefault) {
+        if (!ctx.settings.XkindProjector.isDefault) {
           t match {
             case Tuple(params) =>
               val (newParams, tparams) = replaceKindProjectorPlaceholders(params)

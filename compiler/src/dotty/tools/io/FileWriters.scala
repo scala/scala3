@@ -150,7 +150,7 @@ object FileWriters {
 
   object ReadOnlyContext:
     def readSettings(using ctx: Context): ReadOnlySettings = new:
-      val jarCompressionLevel = ctx.settings.YjarCompressionLevel.value
+      val jarCompressionLevel = ctx.settings.XjarCompressionLevel.value
       val debug = ctx.settings.Ydebug.value
 
     def readRun(using ctx: Context): ReadOnlyRun = new:

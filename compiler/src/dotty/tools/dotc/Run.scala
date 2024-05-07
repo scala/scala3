@@ -377,7 +377,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     runCtx.withProgressCallback: cb =>
       _progress = Progress(cb, this, fusedPhases.map(_.traversals).sum)
     val cancelAsyncTasty: () => Unit =
-      if !myAsyncTastyWritten && Phases.picklerPhase.exists && !ctx.settings.YearlyTastyOutput.isDefault then
+      if !myAsyncTastyWritten && Phases.picklerPhase.exists && !ctx.settings.XearlyTastyOutput.isDefault then
         initializeAsyncTasty()
       else () => {}
 
