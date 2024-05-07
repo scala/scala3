@@ -624,7 +624,7 @@ object CheckUnused:
       symbol.name.mangledString.contains("$")
 
     /**
-     * Is the the constructor of synthetic package object
+     * Is the constructor of synthetic package object
      * Should be ignored as it is always imported/used in package
      * Trigger false negative on used import
      *
