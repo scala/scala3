@@ -420,6 +420,20 @@ class Completions(
           ),
           false,
         )
+      case Select(_, name) :: (unapp : UnApply) :: _ =>
+        (
+          CaseKeywordCompletion.contribute(
+            EmptyTree, // no selector
+            completionPos,
+            indexedContext,
+            config,
+            search,
+            parent = unapp,
+            autoImports,
+            patternOnly = Some(name.decoded)
+          ),
+          false,
+        )
 
       // class FooImpl extends Foo:
       //   def x|

@@ -90,8 +90,9 @@ object CaseKeywordCompletion:
                 val argPts = UnapplyArgs(fn.tpe.widen.finalResultType, fn, patterns, parent.srcPos).argTypes
                 patterns.zipWithIndex
                   .find:
-                    case (id@Ident(v), tpe) => v.decoded == value
-                    case _ => false
+                    case (Ident(v), tpe) => v.decoded == value
+                    case (Select(_, v), tpe) => v.decoded == value
+                    case t => false
                   .map((_, id) => argPts(id).widen.deepDealias)
           /* Parent is a function expecting a case match expression */
           case TreeApply(fun, _) if !fun.tpe.isErroneous =>
