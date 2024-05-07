@@ -193,7 +193,8 @@ sealed trait GadtState {
                 case i => pt.paramRefs(i)
             case tp => tp
         }
-
+        if !param.info.exists then
+          throw TypeError(em"illegal recursive reference involving $param")
         val tb = param.info.bounds
         tb.derivedTypeBounds(
           lo = substDependentSyms(tb.lo, isUpper = false),
