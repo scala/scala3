@@ -17,6 +17,8 @@ import java.io.InputStream
 object NoAbstractFile extends AbstractFile {
   def absolute: AbstractFile = this
   def container: AbstractFile = this
+  def create(): Unit = ???
+  def delete(): Unit = ???
   def jpath: JPath = null
   def input: InputStream = null
   def isDirectory: Boolean = false

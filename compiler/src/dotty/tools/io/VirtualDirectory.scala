@@ -34,6 +34,12 @@ extends AbstractFile {
   override def input: InputStream = sys.error("directories cannot be read")
   override def output: OutputStream = sys.error("directories cannot be written")
 
+  /** Does this abstract file denote an existing file? */
+  def create(): Unit = { unsupported() }
+
+  /** Delete the underlying file or directory (recursively). */
+  def delete(): Unit = { unsupported() }
+
   /** Returns an abstract file with the given name. It does not
    *  check that it exists.
    */

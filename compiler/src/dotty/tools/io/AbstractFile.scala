@@ -136,6 +136,12 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   /** Does this abstract file represent something which can contain classfiles? */
   def isClassContainer: Boolean = isDirectory || (jpath != null && ext.isJarOrZip)
 
+  /** Create a file on disk, if one does not exist already. */
+  def create(): Unit
+
+  /** Delete the underlying file or directory (recursively). */
+  def delete(): Unit
+
   /** Is this abstract file a directory? */
   def isDirectory: Boolean
 
