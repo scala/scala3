@@ -103,7 +103,7 @@ i13842.scala
 # Position change under captureChecking
 boxmap-paper.scala
 
-# Function types print differnt after unpickling since test mispredicts Feature.preFundsEnabled
+# Function types print different after unpickling since test mispredicts Feature.preFundsEnabled
 caps-universal.scala
 
 # GADT cast applied to singleton type difference
@@ -123,4 +123,15 @@ i15525.scala
 i19955a.scala
 i19955b.scala
 i20053b.scala
+
+# alias types at different levels of dereferencing
+parsercombinators-givens.scala
+parsercombinators-givens-2.scala
+parsercombinators-ctx-bounds.scala
+parsercombinators-this.scala
+parsercombinators-arrow.scala
+parsercombinators-new-syntax.scala
+hylolib-deferred-given
+hylolib-cb
+hylolib
 

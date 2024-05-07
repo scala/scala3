@@ -531,7 +531,7 @@ object Implicits:
          |must be more specific than $target""" :: Nil
 
     override def msg(using Context) =
-      super.msg.append("\nThe expected type $target is not specific enough, so no search was attempted")
+      super.msg.append(i"\nThe expected type $target is not specific enough, so no search was attempted")
 
     override def toString = s"TooUnspecific"
   end TooUnspecific
@@ -924,10 +924,10 @@ trait Implicits:
 
 
   /** Search an implicit argument and report error if not found */
-  def implicitArgTree(formal: Type, span: Span)(using Context): Tree = {
+  def implicitArgTree(formal: Type, span: Span, where: => String = "")(using Context): Tree = {
     val arg = inferImplicitArg(formal, span)
     if (arg.tpe.isInstanceOf[SearchFailureType])
-      report.error(missingArgMsg(arg, formal, ""), ctx.source.atSpan(span))
+      report.error(missingArgMsg(arg, formal, where), ctx.source.atSpan(span))
     arg
   }
 

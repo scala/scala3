@@ -237,6 +237,23 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         EmptyTreeNoError
   end synthesizedValueOf
 
+  val synthesizedSingleton: SpecialHandler = (formal, span) => formal match
+    case PreciseConstrained(tp, true) =>
+      if tp.isSingletonBounded(frozen = false) then
+        withNoErrors:
+          ref(defn.Compiletime_erasedValue).appliedToType(formal).withSpan(span)
+      else
+        withErrors(i"$tp is not a singleton")
+    case _ =>
+      EmptyTreeNoError
+
+  val synthesizedPrecise: SpecialHandler = (formal, span) => formal match
+    case PreciseConstrained(tp, false) =>
+      withNoErrors:
+        ref(defn.Compiletime_erasedValue).appliedToType(formal).withSpan(span)
+    case _ =>
+      EmptyTreeNoError
+
   /** Create an anonymous class `new Object { type MirroredMonoType = ... }`
    *  and mark it with given attachment so that it is made into a mirror at PostTyper.
    */
@@ -536,7 +553,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                   val tparams = poly.paramRefs
                   val variances = childClass.typeParams.map(_.paramVarianceSign)
                   val instanceTypes = tparams.lazyZip(variances).map((tparam, variance) =>
-                    TypeComparer.instanceType(tparam, fromBelow = variance < 0, widenUnions = true)
+                    TypeComparer.instanceType(tparam, fromBelow = variance < 0, Widen.Unions)
                   )
                   val instanceType = resType.substParams(poly, instanceTypes)
                   // this is broken in tests/run/i13332intersection.scala,
@@ -738,6 +755,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     defn.MirrorClass          -> synthesizedMirror,
     defn.ManifestClass        -> synthesizedManifest,
     defn.OptManifestClass     -> synthesizedOptManifest,
+    defn.SingletonClass       -> synthesizedSingleton,
+    defn.PreciseClass         -> synthesizedPrecise,
   )
 
   def tryAll(formal: Type, span: Span)(using Context): TreeWithErrors =

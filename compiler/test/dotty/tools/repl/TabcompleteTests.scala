@@ -122,11 +122,11 @@ class TabcompleteTests extends ReplTest {
   }
 
   @Test def moduleCompletion = initially {
-    assertEquals(List("Predef"), tabComplete("object Foo { type T = Pre"))
+    assertEquals(List("Predef"), tabComplete("object Foo { type T = Pred"))
   }
 
   @Test def i6415 = initially {
-    assertEquals(List("Predef"), tabComplete("object Foo { opaque type T = Pre"))
+    assertEquals(List("Predef"), tabComplete("object Foo { opaque type T = Pred"))
   }
 
   @Test def i6361 = initially {

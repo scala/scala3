@@ -545,7 +545,7 @@ object TypeOps:
           val lo = TypeComparer.instanceType(
             tp.origin,
             fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound,
-            widenUnions = tp.widenUnions)(using mapCtx)
+            tp.widenPolicy)(using mapCtx)
           val lo1 = apply(lo)
           if (lo1 ne lo) lo1 else tp
         case _ =>

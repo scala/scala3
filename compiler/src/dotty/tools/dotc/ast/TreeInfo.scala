@@ -5,6 +5,8 @@ package ast
 import core.*
 import Flags.*, Trees.*, Types.*, Contexts.*
 import Names.*, StdNames.*, NameOps.*, Symbols.*
+import Annotations.Annotation
+import NameKinds.ContextBoundParamName
 import typer.ConstFold
 import reporting.trace
 
@@ -380,6 +382,29 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case _ =>
       tree.tpe.isInstanceOf[ThisType]
   }
+
+  /** Under x.modularity: Extractor for `annotation.internal.WitnessNames(name_1, ..., name_n)`
+   *  represented as an untyped or typed tree.
+   */
+  object WitnessNamesAnnot:
+    def apply(names: List[TermName])(using Context): untpd.Tree =
+      untpd.TypedSplice(tpd.New(
+          defn.WitnessNamesAnnot.typeRef,
+          tpd.SeqLiteral(names.map(n => tpd.Literal(Constant(n.toString))), tpd.TypeTree(defn.StringType)) :: Nil
+        ))
+
+    def unapply(tree: Tree)(using Context): Option[List[TermName]] =
+      unsplice(tree) match
+        case Apply(Select(New(tpt: tpd.TypeTree), nme.CONSTRUCTOR), SeqLiteral(elems, _) :: Nil) =>
+          tpt.tpe match
+            case tp: TypeRef if tp.name == tpnme.WitnessNames && tp.symbol == defn.WitnessNamesAnnot =>
+              Some:
+                elems.map:
+                  case Literal(Constant(str: String)) =>
+                    ContextBoundParamName.unmangle(str.toTermName.asSimpleName)
+            case _ => None
+        case _ => None
+  end WitnessNamesAnnot
 }
 
 trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] =>

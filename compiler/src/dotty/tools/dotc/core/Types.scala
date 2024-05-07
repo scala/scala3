@@ -44,8 +44,6 @@ import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
-
-
 object Types extends TypeUtils {
 
   @sharable private var nextId = 0
@@ -329,6 +327,21 @@ object Types extends TypeUtils {
 
     /** Is this type a (possibly aliased) singleton type? */
     def isSingleton(using Context): Boolean = dealias.isInstanceOf[SingletonType]
+
+    /** Is this upper-bounded by a (possibly aliased) singleton type?
+     *  Overridden in TypeVar
+     */
+    def isSingletonBounded(frozen: Boolean)(using Context): Boolean = this.dealias.normalized match
+      case tp: SingletonType => tp.isStable
+      case tp: TypeRef =>
+        tp.name == tpnme.Singleton && tp.symbol == defn.SingletonClass
+        || tp.superType.isSingletonBounded(frozen)
+      case tp: TypeVar if !tp.isInstantiated =>
+        if frozen then tp frozen_<:< defn.SingletonType else tp <:< defn.SingletonType
+      case tp: HKTypeLambda => false
+      case tp: TypeProxy => tp.superType.isSingletonBounded(frozen)
+      case AndType(tpL, tpR) => tpL.isSingletonBounded(frozen) || tpR.isSingletonBounded(frozen)
+      case _ => false
 
     /** Is this type of kind `AnyKind`? */
     def hasAnyKind(using Context): Boolean = {
@@ -1642,17 +1655,19 @@ object Types extends TypeUtils {
      *
      *    P { ... type T = / += / -= U ... } # T
      *
-     *  to just U. Does not perform the reduction if the resulting type would contain
-     *  a reference to the "this" of the current refined type, except in the following situation
+     *  to just U. Analogously, `P { val x: S} # x` is reduced to `S` if `S`
+     *  is a singleton type.
      *
-     *  (1) The "this" reference can be avoided by following an alias. Example:
+     *  Does not perform the reduction if the resulting type would contain
+     *  a reference to the "this" of the current refined type, except if the "this"
+     *  reference can be avoided by following an alias. Example:
      *
      *      P { type T = String, type R = P{...}.T } # R  -->  String
      *
      *  (*) normalizes means: follow instantiated typevars and aliases.
      */
-    def lookupRefined(name: Name)(using Context): Type = {
-      @tailrec def loop(pre: Type): Type = pre.stripTypeVar match {
+    def lookupRefined(name: Name)(using Context): Type =
+      @tailrec def loop(pre: Type): Type = pre match
         case pre: RefinedType =>
           pre.refinedInfo match {
             case tp: AliasingBounds =>
@@ -1675,12 +1690,13 @@ object Types extends TypeUtils {
             case TypeAlias(alias) => loop(alias)
             case _ => NoType
           }
+        case pre: (TypeVar | AnnotatedType) =>
+          loop(pre.underlying)
         case _ =>
           NoType
-      }
 
       loop(this)
-    }
+    end lookupRefined
 
     /** The type <this . name> , reduced if possible */
     def select(name: Name)(using Context): Type =
@@ -2820,35 +2836,30 @@ object Types extends TypeUtils {
     def derivedSelect(prefix: Type)(using Context): Type =
       if prefix eq this.prefix then this
       else if prefix.isExactlyNothing then prefix
-      else {
-        val res =
-          if (isType && currentValidSymbol.isAllOf(ClassTypeParam)) argForParam(prefix)
+      else
+        val reduced =
+          if isType && currentValidSymbol.isAllOf(ClassTypeParam) then argForParam(prefix)
           else prefix.lookupRefined(name)
-        if (res.exists) return res
-        if (isType) {
-          if (Config.splitProjections)
-            prefix match {
-              case prefix: AndType =>
-                def isMissing(tp: Type) = tp match {
-                  case tp: TypeRef => !tp.info.exists
-                  case _ => false
-                }
-                val derived1 = derivedSelect(prefix.tp1)
-                val derived2 = derivedSelect(prefix.tp2)
-                return (
-                  if (isMissing(derived1)) derived2
-                  else if (isMissing(derived2)) derived1
-                  else prefix.derivedAndType(derived1, derived2))
-              case prefix: OrType =>
-                val derived1 = derivedSelect(prefix.tp1)
-                val derived2 = derivedSelect(prefix.tp2)
-                return prefix.derivedOrType(derived1, derived2)
-              case _ =>
-            }
-        }
-        if (prefix.isInstanceOf[WildcardType]) WildcardType.sameKindAs(this)
+        if reduced.exists then return reduced
+        if Config.splitProjections && isType then
+          prefix match
+            case prefix: AndType =>
+              def isMissing(tp: Type) = tp match
+                case tp: TypeRef => !tp.info.exists
+                case _ => false
+              val derived1 = derivedSelect(prefix.tp1)
+              val derived2 = derivedSelect(prefix.tp2)
+              return
+                if isMissing(derived1) then derived2
+                else if isMissing(derived2) then derived1
+                else prefix.derivedAndType(derived1, derived2)
+            case prefix: OrType =>
+              val derived1 = derivedSelect(prefix.tp1)
+              val derived2 = derivedSelect(prefix.tp2)
+              return prefix.derivedOrType(derived1, derived2)
+            case _ =>
+        if prefix.isInstanceOf[WildcardType] then WildcardType.sameKindAs(this)
         else withPrefix(prefix)
-      }
 
     /** A reference like this one, but with the given symbol, if it exists */
     private def withSym(sym: Symbol)(using Context): ThisType =
@@ -4925,8 +4936,13 @@ object Types extends TypeUtils {
    *  @param  origin           the parameter that's tracked by the type variable.
    *  @param  creatorState     the typer state in which the variable was created.
    *  @param  initNestingLevel the initial nesting level of the type variable. (c.f. nestingLevel)
+   *  @param  precise          whether we should use instantiation without widening for this TypeVar.
    */
-  final class TypeVar private(initOrigin: TypeParamRef, creatorState: TyperState | Null, val initNestingLevel: Int) extends CachedProxyType with ValueType {
+  final class TypeVar private(
+      initOrigin: TypeParamRef,
+      creatorState: TyperState | Null,
+      val initNestingLevel: Int,
+      val precise: Boolean) extends CachedProxyType with ValueType {
     private var currentOrigin = initOrigin
 
     def origin: TypeParamRef = currentOrigin
@@ -5014,7 +5030,7 @@ object Types extends TypeUtils {
     }
 
     def typeToInstantiateWith(fromBelow: Boolean)(using Context): Type =
-      TypeComparer.instanceType(origin, fromBelow, widenUnions, nestingLevel)
+      TypeComparer.instanceType(origin, fromBelow, widenPolicy, nestingLevel)
 
     /** Instantiate variable from the constraints over its `origin`.
      *  If `fromBelow` is true, the variable is instantiated to the lub
@@ -5030,8 +5046,26 @@ object Types extends TypeUtils {
       else
         instantiateWith(tp)
 
-    /** Widen unions when instantiating this variable in the current context? */
-    def widenUnions(using Context): Boolean = !ctx.typerState.constraint.isHard(this)
+    /** Should we suppress widening? True if this TypeVar is precise
+     *  or if it has as an upper bound a precise TypeVar.
+     */
+    def isPrecise(using Context) =
+      precise || hasPreciseUpperBound
+
+    private def hasPreciseUpperBound(using Context) =
+      val constr = ctx.typerState.constraint
+      constr.upper(origin).exists: tparam =>
+        constr.typeVarOfParam(tparam) match
+          case tvar: TypeVar => tvar.precise
+          case _ => false
+
+    /** The policy used for widening singletons or unions when instantiating
+     *  this variable in the current context.
+     */
+    def widenPolicy(using Context): Widen =
+      if isPrecise then Widen.None
+      else if ctx.typerState.constraint.isHard(this) then Widen.Singletons
+      else Widen.Unions
 
     /** For uninstantiated type variables: the entry in the constraint (either bounds or
      *  provisional instance value)
@@ -5072,8 +5106,18 @@ object Types extends TypeUtils {
     }
   }
   object TypeVar:
-    def apply(using Context)(initOrigin: TypeParamRef, creatorState: TyperState | Null, nestingLevel: Int = ctx.nestingLevel) =
-      new TypeVar(initOrigin, creatorState, nestingLevel)
+    def apply(using Context)(
+        initOrigin: TypeParamRef,
+        creatorState: TyperState | Null,
+        nestingLevel: Int = ctx.nestingLevel,
+        precise: Boolean = false) =
+      new TypeVar(initOrigin, creatorState, nestingLevel, precise)
+
+  /** The three possible widening policies */
+  enum Widen:
+    case None        // no widening
+    case Singletons  // widen singletons but not unions
+    case Unions      // widen singletons and unions
 
   type TypeVars = SimpleIdentitySet[TypeVar]
 

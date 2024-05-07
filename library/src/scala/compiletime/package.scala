@@ -1,7 +1,7 @@
 package scala
 package compiletime
 
-import annotation.compileTimeOnly
+import annotation.{compileTimeOnly, experimental}
 
 /** Use this method when you have a type, do not have a value for it but want to
  *  pattern match on it. For example, given a type `Tup <: Tuple`, one can
@@ -41,6 +41,20 @@ def erasedValue[T]: T = erasedValue[T]
  */
 @compileTimeOnly("`uninitialized` can only be used as the right hand side of a mutable field definition")
 def uninitialized: Nothing = ???
+
+/** Used as the right hand side of a given in a trait, like this
+ *
+ *  ```
+ *  given T = deferred
+ *  ```
+ *
+ *  This signifies that the given will get a synthesized definition in all classes
+ *  that implement the enclosing trait and that do not contain an explicit overriding
+ *  definition of that given.
+ */
+@experimental
+@compileTimeOnly("`deferred` can only be used as the right hand side of a given definition in a trait")
+def deferred: Nothing = ???
 
 /** The error method is used to produce user-defined compile errors during inline expansion.
  *  If an inline expansion results in a call error(msgStr) the compiler produces an error message containing the given msgStr.

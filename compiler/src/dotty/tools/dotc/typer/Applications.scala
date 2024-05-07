@@ -1791,7 +1791,7 @@ trait Applications extends Compatibility {
      *       a. always as good as a method or a polymorphic method.
      *       b. as good as a member of any other type `tp2` if `asGoodValueType(tp1, tp2) = true`
      */
-    def isAsGood(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = trace(i"isAsSpecific $tp1 $tp2", overload) {
+    def isAsGood(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = trace(i"isAsGood $tp1 $tp2", overload) {
       tp1 match
         case tp1: MethodType => // (1)
           tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
@@ -1886,7 +1886,7 @@ trait Applications extends Compatibility {
         then
           // Intermediate rules: better means specialize, but map all type arguments downwards
           // These are enabled for 3.0-3.5, and for all comparisons between old-style implicits,
-          // and in 3.5 amd 3.6-migration when we compare with previous rules.
+          // and in 3.5 and 3.6-migration when we compare with previous rules.
           val flip = new TypeMap:
             def apply(t: Type) = t match
               case t @ AppliedType(tycon, args) =>

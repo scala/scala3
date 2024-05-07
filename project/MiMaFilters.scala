@@ -18,6 +18,10 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.fromIArray"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.namedTuples"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$namedTuples$"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.modularity"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$modularity$"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.compiletime.package#package.deferred"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.WitnessNames"),
       ),
 
       // Additions since last LTS
@@ -94,7 +98,8 @@ object MiMaFilters {
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of tasty core
       Build.mimaPreviousDottyVersion -> Seq(
-        ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyFormat.FLEXIBLEtype")
+        ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyFormat.FLEXIBLEtype"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyFormat.TRACKED"),
       ),
 
       // Additions since last LTS

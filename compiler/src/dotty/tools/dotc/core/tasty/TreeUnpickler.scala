@@ -31,7 +31,8 @@ import util.{SourceFile, Property}
 import ast.{Trees, tpd, untpd}
 import Trees.*
 import Decorators.*
-import dotty.tools.dotc.quoted.QuotePatterns
+import config.Feature
+import quoted.QuotePatterns
 
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
 import TastyBuffer.*
@@ -755,6 +756,7 @@ class TreeUnpickler(reader: TastyReader,
           case INVISIBLE => addFlag(Invisible)
           case TRANSPARENT => addFlag(Transparent)
           case INFIX => addFlag(Infix)
+          case TRACKED => addFlag(Tracked)
           case PRIVATEqualified =>
             readByte()
             privateWithin = readWithin
@@ -922,6 +924,8 @@ class TreeUnpickler(reader: TastyReader,
           val resType =
             if name == nme.CONSTRUCTOR then
               effectiveResultType(sym, paramss)
+            else if sym.isAllOf(Given | Method) && Feature.enabled(Feature.modularity) then
+              addParamRefinements(tpt.tpe, paramss)
             else
               tpt.tpe
           sym.info = methodType(paramss, resType)
@@ -1074,7 +1078,7 @@ class TreeUnpickler(reader: TastyReader,
       }
       val parentReader = fork
       val parents = readParents(withArgs = false)(using parentCtx)
-      val parentTypes = parents.map(_.tpe.dealias)
+      val parentTypes = parents.map(_.tpe.dealiasKeepAnnots.separateRefinements(cls, null))
       if cls.is(JavaDefined) && parentTypes.exists(_.derivesFrom(defn.JavaAnnotationClass)) then
         cls.setFlag(JavaAnnotation)
       val self =
@@ -1134,6 +1138,7 @@ class TreeUnpickler(reader: TastyReader,
       })
       defn.patchStdLibClass(cls)
       NamerOps.addConstructorProxies(cls)
+      NamerOps.addContextBoundCompanions(cls)
       setSpan(start,
         untpd.Template(constr, mappedParents, self, lazyStats)
           .withType(localDummy.termRef))
