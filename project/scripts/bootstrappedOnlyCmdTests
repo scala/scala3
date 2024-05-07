@@ -14,7 +14,6 @@ echo "testing scala.quoted.Expr.run from sbt scala"
 "$SBT" ";scala3-compiler-bootstrapped/scalac -with-compiler tests/run-staging/quote-run.scala; scala3-compiler-bootstrapped/scala -with-compiler Test" > "$tmp"
 grep -qe "val a: scala.Int = 3" "$tmp"
 
-
 # setup for `scalac`/`scala` script tests
 "$SBT" dist/pack
 
@@ -37,11 +36,9 @@ test "$EXPECTED_OUTPUT" = "$(cat "$tmp")"
 clear_out "$OUT1"
 
 # check that `scalac` and `scala` works for staging.
-# TODO: scala3-staging should be automatically added by Scala CLI
-#   - see: https://github.com/VirtusLab/scala-cli/issues/2879
 clear_out "$OUT"
 ./bin/scalac tests/run-staging/i4044f.scala -d "$OUT"
-./bin/scala -with-compiler -classpath "$OUT" --dep "org.scala-lang::scala3-staging:$scala_version" -M Test > "$tmp"
+./bin/scala -with-compiler -classpath "$OUT" -M Test > "$tmp"
 
 # check that `scalac -from-tasty` compiles and `scala` runs it
 echo "testing ./bin/scalac -from-tasty and scala -classpath"
@@ -99,12 +96,10 @@ clear_out "$OUT"
 ./bin/scalac -help > "$tmp" 2>&1
 grep -qe "Usage: scalac <options> <source files>" "$tmp"
 
-# TODO: JAVA launcher should be able to override "scala-cli" program name
-#  - see: https://github.com/VirtusLab/scala-cli/issues/2838#issuecomment-2085130815
 ./bin/scala -help > "$tmp" 2>&1
-grep -qe "See 'scala-cli <command> --help' to read about a specific subcommand." "$tmp"
+grep -qe "See 'scala <command> --help' to read about a specific subcommand." "$tmp"
 
-./bin/scala -d hello.jar tests/run/hello.scala --server=false
+./bin/scala -d hello.jar tests/run/hello.scala
 ls hello.jar
 
 echo "testing i12973"

@@ -72,7 +72,7 @@ object BashScriptsTests:
   def callScript(tag: String, script: String, keyPre: String): String =
     val keyArg = s"$keyPre=$tag"
     printf("pass tag [%s] via [%s] to script [%s]\n", tag, keyArg, script)
-    val cmd: String = Seq("SCALA_OPTS= ", scalaPath, "run", keyArg, "--offline", "--server=false", script).mkString(" ")
+    val cmd: String = Seq("SCALA_OPTS= ", scalaPath, "run", keyArg, "--power", "--offline", "--server=false", script).mkString(" ")
     printf("cmd: [%s]\n", cmd)
     val (validTest, exitCode, stdout, stderr) = bashCommand(cmd)
     stderr.filter { !_.contains("Inappropriate ioctl") }.foreach { System.err.printf("stderr [%s]\n", _) }
@@ -131,7 +131,7 @@ class BashScriptsTests:
 
     val tag = "World5"
     val commandline2 = Seq(
-      "SCALA_OPTS= ", scalaPath.relpath, "run", s"-Dkey=$tag", "-classpath", testJar.relpath, "--offline", "--server=false")
+      "SCALA_OPTS= ", scalaPath.relpath, "run", s"-Dkey=$tag", "-classpath", testJar.relpath, "--power", "--offline", "--server=false")
     printf("cmd[%s]\n", commandline2.mkString(" "))
     val (validTest, exitCode, stdout, stderr) = bashCommand(commandline2.mkString(" "))
     assertEquals(s"Hello $tag", stdout.mkString("/n"))
@@ -157,7 +157,7 @@ class BashScriptsTests:
     assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
     val commandline = (
       Seq("SCALA_OPTS= ", scalaPath, showArgsScalaCli)
-      ++ Seq("--offline", "--server=false")
+      ++ Seq("--power", "--offline", "--server=false")
       ++ ("--" +: testScriptArgs)
     ).mkString(" ")
     val (validTest, exitCode, stdout, stderr) = bashCommand(commandline)

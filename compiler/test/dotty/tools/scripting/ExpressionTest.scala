@@ -44,7 +44,7 @@ class ExpressionTest:
     assert(success)
 
   def getResult(expression: String): String =
-    val (_, _, stdout, stderr) = bashCommand(s"$scalaPath -e '$expression' --offline --server=false")
+    val (_, _, stdout, stderr) = bashCommand(s"$scalaPath -e '$expression' --power --offline --server=false")
     printf("stdout: %s\n", stdout.mkString("|"))
     printf("stderr: %s\n", stderr.mkString("\n", "\n", ""))
     stdout.filter(_.nonEmpty).mkString("")

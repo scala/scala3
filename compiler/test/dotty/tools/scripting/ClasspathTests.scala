@@ -99,7 +99,7 @@ class ClasspathTests:
       val bashCmdline = Seq(
         "set +x ;",
         "SCALA_OPTS=",
-        scalaCommand, "run", "--classpath", s"'$tastyDirGlob'", "--offline", "--server=false", relpath
+        scalaCommand, "run", "--classpath", s"'$tastyDirGlob'", "--power", "--offline", "--server=false", relpath
       ).mkString(" ")
       val cmd = Array(bashExe, "-c", bashCmdline)
 

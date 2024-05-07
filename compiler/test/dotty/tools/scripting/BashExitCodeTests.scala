@@ -29,7 +29,7 @@ class BashExitCodeTests:
       }, expectedExitCode, exitCode)
 
   // Helpers for running scala, scalac, and scalac without the the output directory ("raw")
-  def scala(args: String*)     = verifyExit(scalaPath, ("--offline" +: "--server=false" +: args)*)
+  def scala(args: String*)     = verifyExit(scalaPath, ("--power" +: "--offline" +: "--server=false" +: args)*)
   def scalacRaw(args: String*) = verifyExit(scalacPath, args*)
   def scalac(args: String*)    = scalacRaw(("-d" +: tmpDir +: args)*)
 

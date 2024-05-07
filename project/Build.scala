@@ -119,7 +119,7 @@ object Build {
   val mimaPreviousLTSDottyVersion = "3.3.0"
 
   /** Version of Scala CLI to download */
-  val scalaCliLauncherVersion = "1.3.0"
+  val scalaCliLauncherVersion = "1.3.1"
 
   object CompatMode {
     final val BinaryCompatible = 0

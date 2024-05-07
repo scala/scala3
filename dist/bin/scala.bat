@@ -22,7 +22,7 @@ call :setScalaOpts
 @rem we need to escape % in the java command path, for some reason this doesnt work in common.bat
 set "_JAVACMD=!_JAVACMD:%%=%%%%!"
 
-call "%_JAVACMD%" "-jar" "%SCALA_CLI_JAR%" "--cli-default-scala-version" "%_SCALA_VERSION%" "-r" "%MVN_REPOSITORY%" %*
+call "%_JAVACMD%" "-jar" "%SCALA_CLI_JAR%" "--prog-name" "scala" "--cli-default-scala-version" "%_SCALA_VERSION%" "-r" "%MVN_REPOSITORY%" %*
 if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
 
 goto end
