@@ -642,7 +642,6 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|Some(value) scala
-         |Some[A](value: A): Some[A]
          |Some scala
          |""".stripMargin
     )
@@ -653,7 +652,6 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|Some(value) scala
-         |Some[A](value: A): Some[A]
          |Some scala
          |""".stripMargin
     )
@@ -664,7 +662,6 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|Some(value) scala
-         |Some[A](value: A): Some[A]
          |Some scala
          |""".stripMargin
     )
@@ -676,7 +673,6 @@ class CompletionSuite extends BaseCompletionSuite:
           |    case Some(Test.Neste@@)
           |""".stripMargin,
       """|NestedClass(x) test.Test
-         |NestedClass(x: Int): NestedClass
          |NestedClass test.Test
          |""".stripMargin
     )
@@ -690,7 +686,6 @@ class CompletionSuite extends BaseCompletionSuite:
           |""".stripMargin,
       """|Some(value) scala
          |Some scala
-         |Some[A](value: A): Some[A]
          |Some scala
          |""".stripMargin
     )

@@ -70,6 +70,8 @@ class Completions(
         false
       case (_: (Import | Export)) :: _ => false
       case _ :: (_: (Import | Export)) :: _ => false
+      // UnApply has patterns included in MatchCaseCompletions
+      case _ :: (_: UnApply) :: _ => false
       case _ => true
 
   private lazy val isNew: Boolean = Completion.isInNewContext(adjustedPath)
