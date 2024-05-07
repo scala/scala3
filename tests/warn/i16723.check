@@ -1,4 +1,4 @@
--- [E195] Potential Issue Warning: tests/warn/i16723.scala:3:2 ---------------------------------------------------------
+-- [E197] Potential Issue Warning: tests/warn/i16723.scala:3:2 ---------------------------------------------------------
 3 |  new Object {} // warn
   |  ^
   |  New anonymous class definition will be duplicated at each inline site
