@@ -3,8 +3,9 @@ package dotc
 package core
 
 import Symbols.*, Types.*, Contexts.*, Constants.*, Phases.*
-import ast.tpd, tpd.*
-import util.Spans.Span
+import ast.{tpd, untpd, TreeTypeMap}
+import tpd.*
+import util.Spans.{Span, NoSpan}
 import printing.{Showable, Printer}
 import printing.Texts.Text
 
@@ -30,7 +31,7 @@ object Annotations {
     def derivedAnnotation(tree: Tree)(using Context): Annotation =
       if (tree eq this.tree) this else Annotation(tree)
 
-    /** All arguments to this annotation in a single flat list */
+    /** All type and term arguments to this annotation in a single flat list */
     def arguments(using Context): List[Tree] = tpd.allArguments(tree)
 
     def argument(i: Int)(using Context): Option[Tree] = {
@@ -57,15 +58,25 @@ object Annotations {
       val args = arguments
       if args.isEmpty then this
       else
+        // Checks if `tm` would result in any change by applying it to types
+        // inside the annotations' arguments and checking if the resulting types
+        // are different.
         val findDiff = new TreeAccumulator[Type]:
           def apply(x: Type, tree: Tree)(using Context): Type =
             if tm.isRange(x) then x
             else
               val tp1 = tm(tree.tpe)
-              foldOver(if tp1 frozen_=:= tree.tpe then x else tp1, tree)
+              foldOver(if tp1 == tree.tpe then x else tp1, tree)
         val diff = findDiff(NoType, args)
         if tm.isRange(diff) then EmptyAnnotation
-        else if diff.exists then derivedAnnotation(tm.mapOver(tree))
+        else if diff.exists then
+          // In case of changes, the symbol in the annotation's tree should be
+          // copied so that the same symbol is not used for different trees.
+          val ttm =
+            new TreeTypeMap(typeMap = tm):
+              final override def withMappedSyms(syms: List[Symbol]): TreeTypeMap =
+                withMappedSyms(syms, mapSymbols(syms, this, mapAlways = true))
+          derivedAnnotation(ttm.transform(tree))
         else this
 
     /** Does this annotation refer to a parameter of `tl`? */

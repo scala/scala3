@@ -134,10 +134,10 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
       case _ => argss
     loop(tree, Nil)
 
-  /** All term arguments of an application in a single flattened list */
+  /** All type and term arguments of an application in a single flattened list */
   def allArguments(tree: Tree): List[Tree] = unsplice(tree) match {
     case Apply(fn, args) => allArguments(fn) ::: args
-    case TypeApply(fn, _) => allArguments(fn)
+    case TypeApply(fn, args) => allArguments(fn) ::: args
     case Block(_, expr) => allArguments(expr)
     case _ => Nil
   }
