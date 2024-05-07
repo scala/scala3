@@ -13,8 +13,9 @@ object circelike {
     inline final def derived[A](using conf: Configuration)(using
       inline mirror: Mirror.Of[A]
     ): ConfiguredCodec[A] =
-      new ConfiguredCodec[A]:
+      class InlinedConfiguredCodec extends ConfiguredCodec[A]:
         val codec = summonInline[Codec[URI]] // simplification
+      new InlinedConfiguredCodec
 }
 
 object foo {
