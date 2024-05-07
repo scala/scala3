@@ -61,6 +61,8 @@ abstract class ZipArchive(override val jpath: JPath, release: Option[String]) ex
   def isDirectory: Boolean = true
   def lookupName(name: String, directory: Boolean): AbstractFile = unsupported()
   def lookupNameUnchecked(name: String, directory: Boolean): AbstractFile = unsupported()
+  def create(): Unit = unsupported()
+  def delete(): Unit = unsupported()
   def output: OutputStream    = unsupported()
   def container: AbstractFile = unsupported()
   def absolute: AbstractFile  = unsupported()
