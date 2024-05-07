@@ -96,7 +96,7 @@ object language:
      *  @see [[https://dotty.epfl.ch/docs/reference/experimental/into-modifier]]
      */
     @compileTimeOnly("`namedTuples` can only be used at compile time in import statements")
-    object namedTupleas
+    object namedTuples
 
     /** Experimental support for new features for better modularity, including
      *   - better tracking of dependencies through classes
