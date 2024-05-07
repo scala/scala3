@@ -3531,33 +3531,30 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
             class DropSkolemMap(skolem: SkolemType) extends TypeMap:
               var refersToSkolem = false
               def apply(tp: Type): Type =
+                if refersToSkolem then
+                  return tp
                 tp match
                   case `skolem` =>
                     refersToSkolem = true
                     tp
                   case tp: NamedType if betterMatchTypeExtractorsEnabled =>
-                    var savedRefersToSkolem = refersToSkolem
-                    refersToSkolem = false
-                    try
-                      val pre1 = apply(tp.prefix)
-                      if refersToSkolem then
-                        tp match
-                          case tp: TermRef => tp.info.widenExpr.dealias match
-                            case info: SingletonType =>
-                              refersToSkolem = false
-                              apply(info)
-                            case _ =>
-                              tp.derivedSelect(pre1)
-                          case tp: TypeRef => tp.info match
-                            case info: AliasingBounds =>
-                              refersToSkolem = false
-                              apply(info.alias)
-                            case _ =>
-                              tp.derivedSelect(pre1)
-                      else
-                        tp.derivedSelect(pre1)
-                    finally
-                      refersToSkolem |= savedRefersToSkolem
+                    val pre1 = apply(tp.prefix)
+                    if refersToSkolem then
+                      tp match
+                        case tp: TermRef => tp.info.widenExpr.dealias match
+                          case info: SingletonType =>
+                            refersToSkolem = false
+                            apply(info)
+                          case _ =>
+                            tp.derivedSelect(pre1)
+                        case tp: TypeRef => tp.info match
+                          case info: AliasingBounds =>
+                            refersToSkolem = false
+                            apply(info.alias)
+                          case _ =>
+                            tp.derivedSelect(pre1)
+                    else
+                      tp.derivedSelect(pre1)
                   case tp: LazyRef if betterMatchTypeExtractorsEnabled =>
                     // By default, TypeMap maps LazyRefs lazily. We need to
                     // force it for `refersToSkolem` to be correctly set.
