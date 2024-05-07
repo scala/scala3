@@ -526,7 +526,7 @@ object projects:
     sbtTestCommand = "test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
     dependencies = List(discipline),
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(flag => flag != "-Ysafe-init" && flag != "-Wsafe-init")
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init")
   )
 
   lazy val simulacrumScalafixAnnotations = SbtCommunityProject(
