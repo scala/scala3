@@ -898,7 +898,7 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
          |    import quotes.reflect.*
          |    Type.of[T] match
          |      case '[f] =>
-         |        val fr/*: TypeRepr<<scala/quoted/Quotes#reflectModule#TypeRepr#>>*/ = TypeRepr.of[T]/*(using evidence$1<<(3:21)>>)*/
+         |        val fr/*: TypeRepr<<scala/quoted/Quotes#reflectModule#TypeRepr#>>*/ = TypeRepr.of[T]/*(using evidence$1<<(3:23)>>)*/
          |""".stripMargin
    )
 
