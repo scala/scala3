@@ -29,7 +29,7 @@ import config.Printers.{typr, patmatch}
 import NameKinds.DefaultGetterName
 import NameOps.*
 import SymDenotations.{NoCompleter, NoDenotation}
-import Applications.unapplyArgs
+import Applications.UnapplyArgs
 import Inferencing.isFullyDefined
 import transform.patmat.SpaceEngine.{isIrrefutable, isIrrefutableQuotePattern}
 import transform.ValueClasses.underlyingOfValueClass
@@ -966,10 +966,16 @@ trait Checking {
       false
     }
 
-    def check(pat: Tree, pt: Type): Boolean =
+    // Is scrutinee type `pt` a subtype of `pat.tpe`, after stripping named tuples
+    // and accounting for large generic tuples?
+    // Named tuples need to be stripped off, since names are dropped in patterns
+    def conforms(pat: Tree, pt: Type): Boolean =
       pt.isTupleXXLExtract(pat.tpe) // See isTupleXXLExtract, fixes TupleXXL parameter type
-      || pt <:< pat.tpe
-      || fail(pat, pt, Reason.NonConforming)
+      || pt.stripNamedTuple <:< pat.tpe
+      || (pt.widen ne pt) && conforms(pat, pt.widen)
+
+    def check(pat: Tree, pt: Type): Boolean =
+      conforms(pat, pt) || fail(pat, pt, Reason.NonConforming)
 
     def recur(pat: Tree, pt: Type): Boolean =
       !sourceVersion.isAtLeast(`3.2`)
@@ -982,7 +988,7 @@ trait Checking {
           case UnApply(fn, implicits, pats) =>
             check(pat, pt) &&
             (isIrrefutable(fn, pats.length) || fail(pat, pt, Reason.RefutableExtractor)) && {
-              val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.srcPos)
+              val argPts = UnapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.srcPos).argTypes
               pats.corresponds(argPts)(recur)
             }
           case Alternative(pats) =>

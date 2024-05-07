@@ -1,7 +1,5 @@
 package scala.runtime
 
-import scala.annotation.experimental
-
 object Tuples {
 
   inline val MaxSpecialized = 22
@@ -505,7 +503,6 @@ object Tuples {
     }
   }
 
-  @experimental
   def reverse(self: Tuple): Tuple = (self: Any) match {
     case xxl: TupleXXL => xxlReverse(xxl)
     case _ => specialCaseReverse(self)
