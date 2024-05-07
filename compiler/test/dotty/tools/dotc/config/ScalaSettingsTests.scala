@@ -148,6 +148,17 @@ class ScalaSettingsTests:
       val conf = settings.processArguments(argSummary, processAll = true, skipped = Nil)
       assert(newSetting.isDefaultIn(conf.sstate), s"Setting $deprecatedArgument was forwarded to ${newSetting.name}, when it should be ignored because first option was erroreus")
 
+  // -Xlint was handled in a special way when it was added, making in hard to deprecate it.
+  // For now on we will retain old behavior, in next version we will emit deprecation warning.
+  // It is also scheduled for removal in future versions.
+  @Test def `Make Xlint to ignore invalid args`: Unit =
+    val settings = ScalaSettings
+    val args = List("-Xlint:-unused,_")
+    val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
+    val conf = settings.processArguments(argSummary, processAll = true, skipped = Nil)
+    assert(conf.warnings.contains("Option -Xlint is deprecated: Use -Wshadow to enable shadowing lints. Scheduled for removal."))
+    assert(conf.errors.isEmpty)
+
   @nowarn("cat=deprecation")
   @Test def `Deprecated options aliases are correctly mapped to their replacements`: Unit =
     def createTestCase(oldSetting: Setting[_], newSetting: Setting[_], value: String = "") =
