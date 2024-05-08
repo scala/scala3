@@ -1,5 +1,5 @@
 #!/usr/bin/env bin/scala
-
+// This file is a Scala CLI script.
 import java.nio.file.Paths
 
 // def main(args: Array[String]): Unit = // MIGRATION: Scala CLI expects `*.sc` files to be straight-line code

@@ -101,6 +101,13 @@ grep -qe "See 'scala <command> --help' to read about a specific subcommand." "$t
 
 ./bin/scala -d hello.jar tests/run/hello.scala
 ls hello.jar
+clear_cli_dotfiles tests/run
+
+# check that `scala` runs scripts with args
+echo "testing ./bin/scala with arguments"
+./bin/scala run project/scripts/echoArgs.sc -- abc true 123 > "$tmp"
+test "$EXPECTED_OUTPUT_ARGS" = "$(cat "$tmp")"
+clear_cli_dotfiles project/scripts
 
 echo "testing i12973"
 clear_out "$OUT"

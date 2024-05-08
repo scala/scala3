@@ -16,7 +16,11 @@ import ScriptTestEnv.*
 class BashExitCodeTests:
   private var myTmpDir: String | Null = null
   private lazy val tmpDir = { myTmpDir = Files.createTempDirectory("exit-code-tests").toFile.absPath; myTmpDir }
-  @After def cleanup(): Unit = if myTmpDir != null then io.Directory(myTmpDir).deleteRecursively()
+  @After def cleanup(): Unit = {
+    if myTmpDir != null then io.Directory(myTmpDir).deleteRecursively()
+
+    cleanupScalaCLIDirs()
+  }
 
   /** Verify the exit code of running `cmd args*`. */
   def verifyExit(cmd: String, args: String*)(expectedExitCode: Int): Unit =

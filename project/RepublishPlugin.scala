@@ -11,10 +11,46 @@ import sbt.util.CacheImplicits._
 
 import scala.collection.mutable
 import java.nio.file.Files
+import versionhelpers.DottyVersion._
+
+import java.nio.file.attribute.PosixFilePermission
+import java.nio.file.{Files, Path}
+
+import scala.jdk.CollectionConverters._
 
 /** This local plugin provides ways of publishing a project classpath and library dependencies to
  * .a local repository */
 object RepublishPlugin extends AutoPlugin {
+
+  private object FileUtil {
+
+    def tryMakeExecutable(path: Path): Boolean =
+      try {
+        val perms = Files.getPosixFilePermissions(path).asScala.toSet
+
+        var newPerms = perms
+        if (perms(PosixFilePermission.OWNER_READ))
+          newPerms += PosixFilePermission.OWNER_EXECUTE
+        if (perms(PosixFilePermission.GROUP_READ))
+          newPerms += PosixFilePermission.GROUP_EXECUTE
+        if (perms(PosixFilePermission.OTHERS_READ))
+          newPerms += PosixFilePermission.OTHERS_EXECUTE
+
+        if (newPerms != perms)
+          Files.setPosixFilePermissions(
+            path,
+            newPerms.asJava
+          )
+
+        true
+      }
+      catch {
+        case _: UnsupportedOperationException =>
+          false
+      }
+
+  }
+
   override def trigger = allRequirements
   override def requires = super.requires && PublishBinPlugin && PackPlugin
 
@@ -24,9 +60,12 @@ object RepublishPlugin extends AutoPlugin {
     val republishAllResolved = taskKey[Seq[ResolvedArtifacts]]("Resolve the dependencies for the distribution")
     val republishClasspath = taskKey[Set[File]]("cache the dependencies for the distribution")
     val republishFetchLaunchers = taskKey[Set[File]]("cache the launcher deps for the distribution")
+    val republishPrepareBin = taskKey[File]("prepare the bin directory, including launchers and scripts.")
+    val republishBinDir = settingKey[File]("where to find static files for the bin dir.")
+    val republishBinOverrides = settingKey[Seq[File]]("files to override those in bin-dir.")
     val republish = taskKey[File]("cache the dependencies and download launchers for the distribution")
     val republishRepo = settingKey[File]("the location to store the republished artifacts.")
-    val republishLaunchers = settingKey[Seq[(String, String, URL)]]("launchers to download. Sequence of (name, version, URL).")
+    val republishLaunchers = settingKey[Seq[(String, String)]]("launchers to download. Sequence of (name, version, URL).")
   }
 
   import autoImport._
@@ -37,6 +76,8 @@ object RepublishPlugin extends AutoPlugin {
   case class ResolvedArtifacts(id: SimpleModuleId, jar: File, pom: File)
 
   override val projectSettings: Seq[Def.Setting[_]] = Def.settings(
+    republishLaunchers := Seq.empty,
+    republishBinOverrides := Seq.empty,
     republishLocalResolved / republishProjectRefs := {
       val proj = thisProjectRef.value
       val deps = buildDependencies.value
@@ -87,7 +128,9 @@ object RepublishPlugin extends AutoPlugin {
 
       localResolved.foreach({ resolved =>
         val simpleId = resolved.id
-        evicted += simpleId.copy(revision = simpleId.revision + "-nonbootstrapped")
+        if (simpleId.revision == dottyVersion) {
+          evicted += simpleId.copy(revision = dottyNonBootstrappedVersion)
+        }
         found(simpleId) = resolved
       })
 
@@ -147,41 +190,93 @@ object RepublishPlugin extends AutoPlugin {
       val log = s.log
       val repoDir = republishRepo.value
       val launcherVersions = republishLaunchers.value
+      val libexec = republishPrepareBin.value
 
-      val etc = repoDir / "etc"
+      val dlCache = repoDir / "cache"
 
       val store = s.cacheStoreFactory / "versions"
 
-      def work(dest: File, launcher: URL) = {
-        IO.delete(dest)
-        Using.urlInputStream(launcher) { in =>
-          IO.createDirectory(etc)
-          log.info(s"[republish] Downloading $launcher to $dest...")
-          IO.transfer(in, dest)
-          log.info(s"[republish] Downloaded $launcher to $dest...")
+      def work(name: String, dest: File, launcher: String): File = {
+        val (launcherURL, workFile, prefix, subPart) = {
+          if (launcher.startsWith("gz+")) {
+            IO.createDirectory(dlCache)
+            val launcherURL = url(launcher.stripPrefix("gz+"))
+            (launcherURL, dlCache / s"$name.gz", "gz", "")
+          } else if (launcher.startsWith("zip+")) {
+            IO.createDirectory(dlCache)
+            val (urlPart, subPath) = launcher.split("!/") match {
+              case Array(urlPart, subPath) => (urlPart, subPath)
+              case _ =>
+                throw new MessageOnlyException(s"[republish] Invalid zip+ URL, expected ! to mark subpath: $launcher")
+            }
+            val launcherURL = url(urlPart.stripPrefix("zip+"))
+            (launcherURL, dlCache / s"$name.zip", "zip", subPath)
+          } else {
+            IO.createDirectory(libexec)
+            (url(launcher), dest, "", "")
+          }
+        }
+        IO.delete(workFile)
+        Using.urlInputStream(launcherURL) { in =>
+          log.info(s"[republish] Downloading $launcherURL to $workFile...")
+          IO.transfer(in, workFile)
+          log.info(s"[republish] Downloaded $launcherURL to $workFile...")
+        }
+        if (prefix == "gz") {
+          IO.delete(dest)
+          Using.fileInputStream(workFile) { in =>
+            Using.gzipInputStream(in) { gzIn =>
+              IO.transfer(gzIn, dest)
+            }
+          }
+          log.info(s"[republish] uncompressed gz file $workFile to $dest...")
+          FileUtil.tryMakeExecutable(dest.toPath) // TODO: we also need to copy to the bin directory so the archive makes it executable
+          IO.delete(workFile)
+        } else if (prefix == "zip") {
+          IO.delete(dest)
+          val files = IO.unzip(workFile, dlCache, new ExactFilter(subPart))
+          val extracted = files.headOption.getOrElse(throw new MessageOnlyException(s"[republish] No files extracted from $workFile matching $subPart"))
+          log.info(s"[republish] unzipped $workFile to $extracted...")
+          IO.move(extracted, dest)
+          log.info(s"[republish] moved $extracted to $dest...")
+          FileUtil.tryMakeExecutable(dest.toPath) // TODO: we also need to copy to the bin directory so the archive makes it executable
+          IO.delete(workFile)
         }
         dest
       }
 
       val allLaunchers = {
-        for ((name, version, launcher) <- launcherVersions) yield {
-          val dest = etc / name
+        for ((name, launcher) <- launcherVersions) yield {
+          val dest = libexec / name
 
           val id = name.replaceAll("[^a-zA-Z0-9]", "_")
 
-          val fetchAction = Tracked.inputChanged[String, File](store.make(id)) { (inChanged, version) =>
+          val fetchAction = Tracked.inputChanged[String, File](store.make(id)) { (inChanged, launcher) =>
             if (inChanged || !Files.exists(dest.toPath)) {
-              work(dest, launcher)
+              work(name, dest, launcher)
             } else {
               log.info(s"[republish] Using cached $launcher at $dest...")
               dest
             }
           }
 
-          fetchAction(version)
+          fetchAction(launcher)
         }
       }
       allLaunchers.toSet
+    },
+    republishPrepareBin := {
+      val baseDir = baseDirectory.value
+      val srcBin = republishBinDir.value
+      val overrides = republishBinOverrides.value
+      val repoDir = republishRepo.value
+
+      val targetBin = repoDir / "bin"
+      IO.copyDirectory(srcBin, targetBin)
+      overrides.foreach { dir =>
+        IO.copyDirectory(dir, targetBin, overwrite = true)
+      }
+      targetBin
     },
     republish := {
       val cacheDir = republishRepo.value

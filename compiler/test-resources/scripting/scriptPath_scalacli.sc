@@ -4,7 +4,7 @@
 
 args.zipWithIndex.foreach { case (arg,i) => printf("arg %d: [%s]\n",i,arg) }
 
-if !scriptPath.endsWith("scriptPathNu.sc") then
+if !scriptPath.endsWith("scriptPath_scalacli.sc") then
   printf( s"incorrect script.path defined as [$scriptPath]")
 else
   printf("scriptPath: %s\n", scriptPath) // report the value

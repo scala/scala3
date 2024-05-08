@@ -15,7 +15,7 @@ import scala.jdk.CollectionConverters.*
 /**
  * Common Code for supporting scripting tests.
  * To override the path to the bash executable, set TEST_BASH=<path-to-bash.exe>
- * To specify where `dist/target/pack/bin` resides, set TEST_CWD=<working-directory>
+ * To specify where `dist[*]/target/pack/bin` resides, set TEST_CWD=<working-directory>
  * Test scripts run in a bash env, so paths are converted to forward slash via .norm.
  */
 object ScriptTestEnv {
@@ -28,6 +28,32 @@ object ScriptTestEnv {
   def whichJava: String = whichExe("java")
   def whichBash: String = whichExe("bash")
 
+  def cleanupScalaCLIDirs(): Unit = {
+    val scriptingDir = io.Directory(scriptsDir("/scripting").getPath)
+    val dottyDir = io.Directory(workingDirectory)
+
+    val residueDirs = Seq(
+      (scriptingDir / ".bsp"),
+      (scriptingDir / ".scala-build"),
+      (dottyDir / ".scala-build")
+    )
+
+    for f <- residueDirs do
+      f.deleteRecursively()
+
+    val bspDir = dottyDir / ".bsp"
+    (bspDir / "scala.json").delete()
+    if bspDir.isEmpty then bspDir.delete()
+  }
+
+  lazy val packDir: String =
+    if winshell then
+      "dist-win-x64/target/pack"
+    else
+      "dist/target/pack"
+
+  def packBinDir: String = s"$packDir/bin"
+
   lazy val workingDirectory: String = {
     val dirstr = if testCwd.nonEmpty then
       if verbose then printf("TEST_CWD set to [%s]\n", testCwd)
@@ -36,7 +62,7 @@ object ScriptTestEnv {
       userDir // userDir, if TEST_CWD not set
 
     // issue warning if things don't look right
-    val test = Paths.get(s"$dirstr/dist/target/pack/bin").normalize
+    val test = Paths.get(s"$dirstr/$packBinDir").normalize
     if !test.isDirectory then
       printf("warning: not found below working directory: %s\n", test.norm)
 
@@ -46,7 +72,7 @@ object ScriptTestEnv {
 
   def envPath: String = envOrElse("PATH", "")
   // remove duplicate entries in path
-  def supplementedPath: String = s"dist/target/pack/bin$psep$envJavaHome/bin$psep$envScalaHome/bin$psep$envPath".norm
+  def supplementedPath: String = s"$packBinDir$psep$envJavaHome/bin$psep$envScalaHome/bin$psep$envPath".norm
   def adjustedPathEntries: List[String] = supplementedPath.norm.split(psep).toList.distinct
   def adjustedPath: String = adjustedPathEntries.mkString(psep)
   def envPathEntries: List[String] = envPath.split(psep).toList.distinct
@@ -124,10 +150,9 @@ object ScriptTestEnv {
     } yield line
 
 
-  def packBinDir = "dist/target/pack/bin"
-  // def packLibDir = "dist/target/pack/lib" // replaced by packMavenDir
-  def packMavenDir = "dist/target/pack/maven2"
-  def packVersionFile = "dist/target/pack/VERSION"
+  // def packLibDir = s"$packDir/lib" // replaced by packMavenDir
+  def packMavenDir = s"$packDir/maven2"
+  def packVersionFile = s"$packDir/VERSION"
   def packBinScalaExists: Boolean = Files.exists(Paths.get(s"$packBinDir/scala"))
 
   def packScalaVersion: String = {
@@ -248,8 +273,8 @@ object ScriptTestEnv {
   lazy val cwd: Path = Paths.get(".").toAbsolutePath.normalize
 
   lazy val (scalacPath: String, scalaPath: String) = {
-    val scalac = s"$workingDirectory/dist/target/pack/bin/scalac".toPath.normalize
-    val scala = s"$workingDirectory/dist/target/pack/bin/scala".toPath.normalize
+    val scalac = s"$workingDirectory/$packBinDir/scalac".toPath.normalize
+    val scala = s"$workingDirectory/$packBinDir/scala".toPath.normalize
     (scalac.norm, scala.norm)
   }
 
@@ -257,7 +282,7 @@ object ScriptTestEnv {
   // use optional TEST_BASH if defined, otherwise, bash must be in PATH
 
   // envScalaHome is:
-  //    dist/target/pack, if present
+  //    dist[*]/target/pack, if present
   //    else, SCALA_HOME if defined
   //    else, not defined
   lazy val envScalaHome =

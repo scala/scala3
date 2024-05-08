@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+source "$PROG_HOME/bin/common-java"
+
+SCALA_CLI_CMD_BASH=("\"$JAVACMD\"" "-jar \"$PROG_HOME/bin/scala-cli.jar\"")

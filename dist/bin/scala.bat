@@ -19,10 +19,9 @@ if not %_EXITCODE%==0 goto end
 
 call :setScalaOpts
 
-@rem we need to escape % in the java command path, for some reason this doesnt work in common.bat
-set "_JAVACMD=!_JAVACMD:%%=%%%%!"
+@rem SCALA_CLI_CMD_WIN is an array, set in cli-common-platform.bat
+call %SCALA_CLI_CMD_WIN% "--prog-name" "scala" "--cli-default-scala-version" "%_SCALA_VERSION%" "-r" "%MVN_REPOSITORY%" %*
 
-call "%_JAVACMD%" "-jar" "%SCALA_CLI_JAR%" "--prog-name" "scala" "--cli-default-scala-version" "%_SCALA_VERSION%" "-r" "%MVN_REPOSITORY%" %*
 if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
 
 goto end
@@ -54,7 +53,8 @@ set "_PROG_HOME_DRIVE=!_PROG_HOME:~0,%index%!"
 
 set "_SCALA_VERSION="
 set "MVN_REPOSITORY=file://%_PROG_HOME_DRIVE%\%_PROG_HOME_SUB:\=/%/maven2"
-set "SCALA_CLI_JAR=%_PROG_HOME%\etc\scala-cli.jar"
+
+call "%_PROG_HOME%\bin\cli-common-platform.bat"
 
 @rem read for version:=_SCALA_VERSION in VERSION_FILE
 FOR /F "usebackq delims=" %%G IN ("%_PROG_HOME%\VERSION") DO (

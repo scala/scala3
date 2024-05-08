@@ -86,10 +86,7 @@ object DottyJSPlugin extends AutoPlugin {
 
 object Build {
   import ScaladocConfigs._
-
-  val referenceVersion = "3.4.2-RC1"
-
-  val baseVersion = "3.5.1-RC1"
+  import versionhelpers.DottyVersion._
 
   // LTS or Next
   val versionLine = "Next"
@@ -157,24 +154,6 @@ object Build {
   val dottyOrganization = "org.scala-lang"
   val dottyGithubUrl = "https://github.com/scala/scala3"
   val dottyGithubRawUserContentUrl = "https://raw.githubusercontent.com/scala/scala3"
-
-
-  val isRelease = sys.env.get("RELEASEBUILD") == Some("yes")
-
-  val dottyVersion = {
-    def isNightly = sys.env.get("NIGHTLYBUILD") == Some("yes")
-    if (isRelease)
-      baseVersion
-    else if (isNightly)
-      baseVersion + "-bin-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash + "-NIGHTLY"
-    else
-      baseVersion + "-bin-SNAPSHOT"
-  }
-  val dottyNonBootstrappedVersion = {
-    // Make sure sbt always computes the scalaBinaryVersion correctly
-    val bin = if (!dottyVersion.contains("-bin")) "-bin" else ""
-    dottyVersion + bin + "-nonbootstrapped"
-  }
 
   val sbtCommunityBuildVersion = "0.1.0-SNAPSHOT"
 
@@ -627,7 +606,7 @@ object Build {
         val contents =                //2.11.11.v20170413-090219-8a413ba7cc
           s"""version.number=${version.value}
              |maven.version.number=${version.value}
-             |git.hash=${VersionUtil.gitHash}
+             |git.hash=${versionhelpers.VersionUtil.gitHash}
              |copyright.string=Copyright 2002-$currentYear, LAMP/EPFL
            """.stripMargin
 
@@ -667,7 +646,7 @@ object Build {
       // Spawn new JVM in run and test
 
       // Add git-hash used to package the distribution to the manifest to know it in runtime and report it in REPL
-      packageOptions += ManifestAttributes(("Git-Hash", VersionUtil.gitHash)),
+      packageOptions += ManifestAttributes(("Git-Hash", versionhelpers.VersionUtil.gitHash)),
 
       javaOptions ++= {
         val log = streams.value.log
@@ -2121,22 +2100,63 @@ object Build {
     packMain := Map(),
     publishArtifact := false,
     packGenerateMakefile := false,
-    packArchiveName := "scala3-" + dottyVersion,
     republishRepo := target.value / "republish",
-    republishLaunchers := {
-      val cliV = scalaCliLauncherVersion
-      Seq(
-        ("scala-cli.jar", cliV, url(s"https://github.com/VirtusLab/scala-cli/releases/download/v$cliV/scala-cli.jar"))
-      )
-    },
+    packResourceDir += (republishRepo.value / "bin" -> "bin"),
+    packResourceDir += (republishRepo.value / "maven2" -> "maven2"),
     Compile / pack := (Compile / pack).dependsOn(republish).value,
   )
 
   lazy val dist = project.asDist(Bootstrapped)
     .settings(
-      packResourceDir += (baseDirectory.value / "bin" -> "bin"),
-      packResourceDir += (republishRepo.value / "maven2" -> "maven2"),
-      packResourceDir += (republishRepo.value / "etc" -> "etc"),
+      packArchiveName := "scala3-" + dottyVersion,
+      republishBinDir := baseDirectory.value / "bin",
+      republishLaunchers +=
+        ("scala-cli.jar" -> s"https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli.jar")
+    )
+
+  lazy val `dist-mac-x64` = project.in(file("dist/mac-x64")).asDist(Bootstrapped)
+    .settings(
+      republishBinDir := (dist / republishBinDir).value,
+      packArchiveName := (dist / packArchiveName).value + "-x86_64-apple-darwin",
+      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishLaunchers +=
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-apple-darwin.gz")
+    )
+
+  lazy val `dist-mac-aarch64` = project.in(file("dist/mac-aarch64")).asDist(Bootstrapped)
+    .settings(
+      republishBinDir := (dist / republishBinDir).value,
+      packArchiveName := (dist / packArchiveName).value + "-aarch64-apple-darwin",
+      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishLaunchers +=
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-aarch64-apple-darwin.gz")
+    )
+
+  lazy val `dist-win-x64` = project.in(file("dist/win-x64")).asDist(Bootstrapped)
+    .settings(
+      republishBinDir := (dist / republishBinDir).value,
+      packArchiveName := (dist / packArchiveName).value + "-x86_64-pc-win32",
+      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishLaunchers +=
+        ("scala-cli.exe" -> s"zip+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-pc-win32.zip!/scala-cli.exe")
+    )
+
+  lazy val `dist-linux-x64` = project.in(file("dist/linux-x64")).asDist(Bootstrapped)
+    .settings(
+      republishBinDir := (dist / republishBinDir).value,
+      packArchiveName := (dist / packArchiveName).value + "-x86_64-pc-linux",
+      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishLaunchers +=
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-pc-linux.gz")
+    )
+
+  lazy val `dist-linux-aarch64` = project.in(file("dist/linux-aarch64")).asDist(Bootstrapped)
+    .settings(
+      republishBinDir := (dist / republishBinDir).value,
+      packArchiveName := (dist / packArchiveName).value + "-aarch64-pc-linux",
+      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishLaunchers +=
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-aarch64-pc-linux.gz")
     )
 
   private def customMimaReportBinaryIssues(issueFilterLocation: String) = mimaReportBinaryIssues := {
@@ -2297,6 +2317,7 @@ object Build {
 
 object ScaladocConfigs {
   import Build._
+  import versionhelpers.DottyVersion._
   private lazy val currentYear: String = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString
 
   def dottyExternalMapping = ".*scala/.*::scaladoc3::https://dotty.epfl.ch/api/"
@@ -2376,7 +2397,7 @@ object ScaladocConfigs {
       .add(UseJavacp(true))
       .add(ProjectName("scaladoc"))
       .add(OutputDir("scaladoc/output/self"))
-      .add(Revision(VersionUtil.gitHash))
+      .add(Revision(versionhelpers.VersionUtil.gitHash))
       .add(ExternalMappings(List(dottyExternalMapping, javaExternalMapping)))
       .withTargets((Compile / classDirectory).value.getAbsolutePath :: Nil)
   }

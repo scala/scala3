@@ -2,7 +2,7 @@
 setlocal
 
 @rem paths are relative to the root project directory
-set "_PREFIX=dist\target\pack"
+set "_PREFIX=dist\win-x64\target\pack"
 set "_SOURCE=tests\pos\HelloWorld.scala"
 set "_OUT_DIR=out"
 set "_SITE_DIR=_site"

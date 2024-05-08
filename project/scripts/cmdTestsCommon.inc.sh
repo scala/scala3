@@ -9,6 +9,7 @@ SOURCE="tests/pos/HelloWorld.scala"
 MAIN="HelloWorld"
 TASTY="HelloWorld.tasty"
 EXPECTED_OUTPUT="hello world"
+EXPECTED_OUTPUT_ARGS="[0:abc],[1:true],[2:123]"
 
 OUT=$(mktemp -d)
 OUT1=$(mktemp -d)
@@ -23,4 +24,17 @@ clear_out()
 {
   local out="$1"
   rm -rf "$out"/*
+}
+
+clear_cli_dotfiles()
+{
+  local out="$1"
+  rm -rf "$out"/.bsp
+  rm -rf "$out"/.scala-build
+
+  rm -f "$ROOT"/.bsp/scala.json
+  if [ -z "$(ls -A "$ROOT"/.bsp)" ]; then
+    rm -rf "$ROOT"/.bsp
+  fi
+  rm -rf "$ROOT"/.scala-build
 }
