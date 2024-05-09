@@ -13,10 +13,10 @@ trait CmdLineParser:
     println("outer.a = " + outer.a)
 
 object FirstParser extends CmdLineParser:
-  object OptMinSuccess extends IntOpt:
+  object OptMinSuccess extends IntOpt:  // warn
     val default = 100
     val names = Set("bla")
     val help = "bla"
 
-  val opts = List(OptMinSuccess)    // warn
+  val opts = List(OptMinSuccess)
   val a = "FirstParser"
