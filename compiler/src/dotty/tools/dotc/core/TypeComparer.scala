@@ -10,7 +10,7 @@ import TypeOps.refineUsingParent
 import collection.mutable
 import util.{Stats, NoSourcePosition, EqHashMap}
 import config.Config
-import config.Feature.{migrateTo3, sourceVersion}
+import config.Feature.{betterMatchTypeExtractorsEnabled, migrateTo3, sourceVersion}
 import config.Printers.{subtyping, gadts, matchTypes, noPrinter}
 import config.SourceVersion
 import TypeErasure.{erasedLub, erasedGlb}
@@ -3520,6 +3520,11 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
           case MatchTypeCasePattern.TypeMemberExtractor(typeMemberName, capture) =>
             /** Try to remove references to `skolem` from a type in accordance with the spec.
              *
+             *  If `betterMatchTypeExtractorsEnabled` is enabled then references
+             *  to `skolem` occuring are avoided by following aliases and
+             *  singletons, otherwise no attempt made to avoid references to
+             *  `skolem`.
+             *
              *  If any reference to `skolem` remains in the result type,
              *  `refersToSkolem` is set to true.
              */
@@ -3530,7 +3535,7 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
                   case `skolem` =>
                     refersToSkolem = true
                     tp
-                  case tp: NamedType =>
+                  case tp: NamedType if betterMatchTypeExtractorsEnabled =>
                     var savedRefersToSkolem = refersToSkolem
                     refersToSkolem = false
                     try
@@ -3553,7 +3558,7 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
                         tp.derivedSelect(pre1)
                     finally
                       refersToSkolem |= savedRefersToSkolem
-                  case tp: LazyRef =>
+                  case tp: LazyRef if betterMatchTypeExtractorsEnabled =>
                     // By default, TypeMap maps LazyRefs lazily. We need to
                     // force it for `refersToSkolem` to be correctly set.
                     apply(tp.ref)

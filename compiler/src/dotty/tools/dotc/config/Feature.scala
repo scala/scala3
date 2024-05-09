@@ -34,6 +34,7 @@ object Feature:
   val captureChecking = experimental("captureChecking")
   val into = experimental("into")
   val namedTuples = experimental("namedTuples")
+  val betterMatchTypeExtractors = experimental("betterMatchTypeExtractors")
 
   def experimentalAutoEnableFeatures(using Context): List[TermName] =
     defn.languageExperimentalFeatures
@@ -87,6 +88,8 @@ object Feature:
   def genericNumberLiteralsEnabled(using Context) = enabled(genericNumberLiterals)
 
   def scala2ExperimentalMacroEnabled(using Context) = enabled(scala2macros)
+
+  def betterMatchTypeExtractorsEnabled(using Context) = enabled(betterMatchTypeExtractors)
 
   /** Is pureFunctions enabled for this compilation unit? */
   def pureFunsEnabled(using Context) =
