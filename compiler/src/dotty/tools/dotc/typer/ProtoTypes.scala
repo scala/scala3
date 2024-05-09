@@ -11,7 +11,7 @@ import Constants.*
 import util.{Stats, SimpleIdentityMap, SimpleIdentitySet}
 import Decorators.*
 import Uniques.*
-import Flags.Method
+import Flags.{Method, Transparent}
 import inlines.Inlines
 import config.Printers.typr
 import Inferencing.*
@@ -108,7 +108,7 @@ object ProtoTypes {
       res
 
     /** Constrain result with two special cases:
-     *   1. If `meth` is an inlineable method in an inlineable context,
+     *   1. If `meth` is a transparent inlineable method in an inlineable context,
      *      we should always succeed and not constrain type parameters in the expected type,
      *      because the actual return type can be a subtype of the currently known return type.
      *      However, we should constrain parameters of the declared return type. This distinction is
@@ -128,11 +128,12 @@ object ProtoTypes {
         case _ =>
           false
 
-      if Inlines.isInlineable(meth) then
+      if Inlines.isInlineable(meth) && meth.is(Transparent) then
         constrainResult(mt, wildApprox(pt))
         true
       else
         constFoldException(pt) || constrainResult(mt, pt)
+
     end constrainResult
   end Compatibility
 
