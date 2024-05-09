@@ -34,6 +34,7 @@ object Feature:
   val captureChecking = experimental("captureChecking")
   val into = experimental("into")
   val namedTuples = experimental("namedTuples")
+  val modularity = experimental("modularity")
   val betterMatchTypeExtractors = experimental("betterMatchTypeExtractors")
 
   def experimentalAutoEnableFeatures(using Context): List[TermName] =

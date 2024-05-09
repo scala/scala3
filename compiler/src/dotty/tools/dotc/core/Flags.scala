@@ -543,8 +543,6 @@ object Flags {
   /** Flags retained in type export forwarders */
   val RetainedExportTypeFlags = Infix
 
-  val MandatoryExportTypeFlags = Exported | Final
-
   /** Flags that apply only to classes */
   val ClassOnlyFlags = Sealed | Open | Abstract.toTypeFlags
 
