@@ -13,6 +13,7 @@ import Decorators.*
 import Uniques.*
 import Flags.{Method, Transparent}
 import inlines.Inlines
+import config.{Feature, SourceVersion}
 import config.Printers.typr
 import Inferencing.*
 import ErrorReporting.*
@@ -128,11 +129,22 @@ object ProtoTypes {
         case _ =>
           false
 
-      if Inlines.isInlineable(meth) && meth.is(Transparent) then
-        constrainResult(mt, wildApprox(pt))
-        true
-      else
-        constFoldException(pt) || constrainResult(mt, pt)
+      constFoldException(pt) || {
+        if Inlines.isInlineable(meth) then
+          // Stricter behaviour in 3.4+: do not apply `wildApprox` to non-transparent inlines
+          if Feature.sourceVersion.isAtLeast(SourceVersion.`3.4`) then
+            if meth.is(Transparent) then
+              constrainResult(mt, wildApprox(pt))
+              // do not constrain the result type of transparent inline methods
+              true
+            else
+              constrainResult(mt, pt)
+          else
+            // Best-effort to fix https://github.com/scala/scala3/issues/9685 in the 3.3.x series
+            // while preserving source compatibility as much as possible
+            constrainResult(mt, wildApprox(pt)) || meth.is(Transparent)
+        else constrainResult(mt, pt)
+      }
 
     end constrainResult
   end Compatibility
