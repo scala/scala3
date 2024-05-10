@@ -23,4 +23,8 @@ object FileFilter {
   object NoFilter extends FileFilter {
     def accept(file: String) = true
   }
+
+  object ExcludeDotFiles extends FileFilter {
+    def accept(file: String) = !file.startsWith(".")
+  }
 }
