@@ -1274,7 +1274,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       !(sym.is(Method) && sym.info.isInstanceOf[MethodOrPoly]) // if is a method it is parameterless
   }
 
-  /** A tree traverser that generates the the same import contexts as original typer for statements.
+  /** A tree traverser that generates the same import contexts as original typer for statements.
    *  TODO: Should we align TreeMapWithPreciseStatContexts and also keep track of exprOwners?
    */
   abstract class TreeTraverserWithPreciseImportContexts extends TreeTraverser:

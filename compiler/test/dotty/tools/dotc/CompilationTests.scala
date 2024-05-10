@@ -31,8 +31,8 @@ class CompilationTests {
   @Test def pos: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePos")
     var tests = List(
-      compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init", "-Wunused:all", "-Wshadow:private-shadow", "-Wshadow:type-parameter-shadow"), FileFilter.include(TestSources.posLintingAllowlist)),
-      compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init"), FileFilter.exclude(TestSources.posLintingAllowlist)),
+      compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Wunused:all", "-Wshadow:private-shadow", "-Wshadow:type-parameter-shadow"), FileFilter.include(TestSources.posLintingAllowlist)),
+      compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init"), FileFilter.exclude(TestSources.posLintingAllowlist)),
       compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/pos-special/sourcepath/outer", defaultOptions.and("-sourcepath", "tests/pos-special/sourcepath")),
       compileFile("tests/pos-special/sourcepath/outer/nested/Test4.scala", defaultOptions.and("-sourcepath", "tests/pos-special/sourcepath")),
@@ -40,9 +40,9 @@ class CompilationTests {
       compileFilesInDir("tests/pos-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking")),
       compileFile("tests/pos-special/utf8encoded.scala", defaultOptions.and("-encoding", "UTF8")),
       compileFile("tests/pos-special/utf16encoded.scala", defaultOptions.and("-encoding", "UTF16")),
-      compileDir("tests/pos-special/i18589", defaultOptions.and("-Ysafe-init").without("-Ycheck:all")),
+      compileDir("tests/pos-special/i18589", defaultOptions.and("-Wsafe-init").without("-Ycheck:all")),
       // Run tests for legacy lazy vals
-      compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.posLazyValsAllowlist)),
+      compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.posLazyValsAllowlist)),
       compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
     ) ::: (
       // TODO create a folder for capture checking tests with the stdlib, or use tests/pos-custom-args/captures under this mode?
@@ -51,7 +51,7 @@ class CompilationTests {
     )
 
     if scala.util.Properties.isJavaAtLeast("16") then
-      tests ::= compileFilesInDir("tests/pos-java16+", defaultOptions.and("-Ysafe-init"))
+      tests ::= compileFilesInDir("tests/pos-java16+", defaultOptions.and("-Wsafe-init"))
 
     aggregateTests(tests*).checkCompile()
   }
@@ -157,11 +157,11 @@ class CompilationTests {
   @Test def runAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runAll")
     aggregateTests(
-      compileFilesInDir("tests/run", defaultOptions.and("-Ysafe-init")),
+      compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/run-custom-args/captures", allowDeepSubtypes.and("-language:experimental.captureChecking")),
       // Run tests for legacy lazy vals.
-      compileFilesInDir("tests/run", defaultOptions.and("-Ysafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.runLazyValsAllowlist)),
+      compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.runLazyValsAllowlist)),
     ).checkRuns()
   }
 
@@ -225,9 +225,9 @@ class CompilationTests {
   // initialization tests
   @Test def checkInit: Unit = {
     implicit val testGroup: TestGroup = TestGroup("checkInit")
-    val options = defaultOptions.and("-Ysafe-init", "-Xfatal-warnings")
+    val options = defaultOptions.and("-Wsafe-init", "-Xfatal-warnings")
     compileFilesInDir("tests/init/neg", options).checkExpectedErrors()
-    compileFilesInDir("tests/init/warn", defaultOptions.and("-Ysafe-init")).checkWarnings()
+    compileFilesInDir("tests/init/warn", defaultOptions.and("-Wsafe-init")).checkWarnings()
     compileFilesInDir("tests/init/pos", options).checkCompile()
     compileFilesInDir("tests/init/crash", options.without("-Xfatal-warnings")).checkCompile()
     // The regression test for i12128 has some atypical classpath requirements.

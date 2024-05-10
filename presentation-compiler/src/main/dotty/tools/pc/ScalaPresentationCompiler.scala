@@ -360,7 +360,7 @@ case class ScalaPresentationCompiler(
       params.token()
     ) { access =>
       val driver = access.compiler()
-      HoverProvider.hover(params, driver, search)
+      HoverProvider.hover(params, driver, search, config.hoverContentType())
     }
   end hover
 

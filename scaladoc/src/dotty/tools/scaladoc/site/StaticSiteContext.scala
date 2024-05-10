@@ -7,9 +7,8 @@ import java.nio.file.FileVisitOption
 import java.nio.file.Path
 import java.nio.file.Paths
 
-import scala.util.Try
 import scala.jdk.CollectionConverters._
-import scala.annotation.static
+import scala.util.control.NonFatal
 
 class StaticSiteContext(
   val root: File,
@@ -75,10 +74,13 @@ class StaticSiteContext(
       val templateSourceLocation = staticSiteRoot.reverseSiteMappings.get(templateDestLocation)
 
       // Check if link is relative or absolute
-      if link.startsWith("/")
-      then Seq(root.toPath.resolve(link.drop(1)))
-      else Seq(templateDestLocation.getParent.resolve(link).normalize) ++
-        templateSourceLocation.map(_.getParent.resolve(link).normalize)
+      try
+        if link.startsWith("/")
+        then Seq(root.toPath.resolve(link.drop(1)))
+        else Seq(templateDestLocation.getParent.resolve(link).normalize) ++
+          templateSourceLocation.map(_.getParent.resolve(link).normalize)
+      catch
+        case NonFatal(_) => Seq.empty
 
     // Try to strip site extension and create all possible file paths
     val fileNames = if siteExtensions.exists(link.endsWith(_))

@@ -64,7 +64,7 @@ class ExtractDependencies extends Phase {
   // Check no needed. Does not transform trees
   override def isCheckable: Boolean = false
 
-  // when `-Yjava-tasty` is set we actually want to run this phase on Java sources
+  // when `-Xjava-tasty` is set we actually want to run this phase on Java sources
   override def skipIfJava(using Context): Boolean = false
 
   // This phase should be run directly after `Frontend`, if it is run after

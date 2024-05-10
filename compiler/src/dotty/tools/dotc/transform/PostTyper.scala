@@ -279,9 +279,15 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       }
     }
 
-    def checkNoConstructorProxy(tree: Tree)(using Context): Unit =
+    def checkUsableAsValue(tree: Tree)(using Context): Tree =
+      def unusable(msg: Symbol => Message) =
+        errorTree(tree, msg(tree.symbol))
       if tree.symbol.is(ConstructorProxy) then
-        report.error(em"constructor proxy ${tree.symbol} cannot be used as a value", tree.srcPos)
+        unusable(ConstructorProxyNotValue(_))
+      else if tree.symbol.isContextBoundCompanion then
+        unusable(ContextBoundCompanionNotValue(_))
+      else
+        tree
 
     def checkStableSelection(tree: Tree)(using Context): Unit =
       def check(qual: Tree) =
@@ -326,11 +332,11 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           if tree.isType then
             checkNotPackage(tree)
           else
-            checkNoConstructorProxy(tree)
             registerNeedsInlining(tree)
-            tree.tpe match {
+            val tree1 = checkUsableAsValue(tree)
+            tree1.tpe match {
               case tpe: ThisType => This(tpe.cls).withSpan(tree.span)
-              case _ => tree
+              case _ => tree1
             }
         case tree @ Select(qual, name) =>
           registerNeedsInlining(tree)
@@ -338,8 +344,9 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             Checking.checkRealizable(qual.tpe, qual.srcPos)
             withMode(Mode.Type)(super.transform(checkNotPackage(tree)))
           else
-            checkNoConstructorProxy(tree)
-            transformSelect(tree, Nil)
+            checkUsableAsValue(tree) match
+              case tree1: Select => transformSelect(tree1, Nil)
+              case tree1 => tree1
         case tree: Apply =>
           val methType = tree.fun.tpe.widen.asInstanceOf[MethodType]
           val app =
@@ -369,11 +376,15 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             case Select(nu: New, nme.CONSTRUCTOR) if isCheckable(nu) =>
               // need to check instantiability here, because the type of the New itself
               // might be a type constructor.
-              ctx.typer.checkClassType(tree.tpe, tree.srcPos, traitReq = false, stablePrefixReq = true)
+              def checkClassType(tpe: Type, stablePrefixReq: Boolean) =
+                ctx.typer.checkClassType(tpe, tree.srcPos,
+                    traitReq = false, stablePrefixReq = stablePrefixReq,
+                    refinementOK = Feature.enabled(Feature.modularity))
+              checkClassType(tree.tpe, true)
               if !nu.tpe.isLambdaSub then
                 // Check the constructor type as well; it could be an illegal singleton type
                 // which would not be reflected as `tree.tpe`
-                ctx.typer.checkClassType(nu.tpe, tree.srcPos, traitReq = false, stablePrefixReq = false)
+                checkClassType(nu.tpe, false)
               Checking.checkInstantiable(tree.tpe, nu.tpe, nu.srcPos)
               withNoCheckNews(nu :: Nil)(app1)
             case _ =>
@@ -448,8 +459,12 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
                   // Constructor parameters are in scope when typing a parent.
                   // While they can safely appear in a parent tree, to preserve
                   // soundness we need to ensure they don't appear in a parent
-                  // type (#16270).
-                  val illegalRefs = parent.tpe.namedPartsWith(p => p.symbol.is(ParamAccessor) && (p.symbol.owner eq sym))
+                  // type (#16270). We can strip any refinement of a parent type since
+                  // these refinements are split off from the parent type constructor
+                  // application `parent` in Namer and don't show up as parent types
+                  // of the class.
+                  val illegalRefs = parent.tpe.dealias.stripRefinement.namedPartsWith:
+                      p => p.symbol.is(ParamAccessor) && (p.symbol.owner eq sym)
                   if illegalRefs.nonEmpty then
                     report.error(
                       em"The type of a class parent cannot refer to constructor parameters, but ${parent.tpe} refers to ${illegalRefs.map(_.name.show).mkString(",")}", parent.srcPos)
@@ -463,6 +478,12 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           else
             if !sym.is(Param) && !sym.owner.isOneOf(AbstractOrTrait) then
               Checking.checkGoodBounds(tree.symbol)
+            // Delete all context bound companions of this TypeDef
+            if sym.owner.isClass && sym.hasAnnotation(defn.WitnessNamesAnnot) then
+              val decls = sym.owner.info.decls
+              for cbCompanion <- decls.lookupAll(sym.name.toTermName) do
+                if cbCompanion.isContextBoundCompanion then
+                  decls.openForMutations.unlink(cbCompanion)
             (tree.rhs, sym.info) match
               case (rhs: LambdaTypeTree, bounds: TypeBounds) =>
                 VarianceChecker.checkLambda(rhs, bounds)

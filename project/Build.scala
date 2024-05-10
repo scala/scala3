@@ -602,8 +602,8 @@ object Build {
 
   // Settings shared between scala3-compiler and scala3-compiler-bootstrapped
   lazy val commonDottyCompilerSettings = Seq(
-       // Note: bench/profiles/projects.yml should be updated accordingly.
-       Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Ysafe-init"),
+      // Note: bench/profiles/projects.yml should be updated accordingly.
+      Compile / scalacOptions ++= Seq("-Yexplicit-nulls"),
 
       // Use source 3.3 to avoid fatal migration warnings on scalajs-ir
       scalacOptions ++= Seq("-source", "3.3"),
@@ -880,6 +880,8 @@ object Build {
   }
 
   lazy val nonBootstrappedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
+    // FIXME revert this to commonDottyCompilerSettings, when we bump reference version to 3.5.0
+    scalacOptions += "-Ysafe-init",
     // packageAll packages all and then returns a map with the abs location
     packageAll := Def.taskDyn { // Use a dynamic task to avoid loops when loading the settings
       Def.task {
@@ -907,6 +909,8 @@ object Build {
   )
 
   lazy val bootstrappedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
+    // FIXME revert this to commonDottyCompilerSettings, when we bump reference version to 3.5.0
+    scalacOptions += "-Wsafe-init",
     javaOptions ++= {
       val jars = packageAll.value
       Seq(
@@ -1334,8 +1338,8 @@ object Build {
       BuildInfoPlugin.buildInfoScopedSettings(Test) ++
       BuildInfoPlugin.buildInfoDefaultSettings
 
-  lazy val presentationCompilerSettings = {
-    val mtagsVersion = "1.2.2+44-42e0515a-SNAPSHOT"
+  def presentationCompilerSettings(implicit mode: Mode) = {
+    val mtagsVersion = "1.3.0+56-a06a024d-SNAPSHOT"
 
     Seq(
       resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
@@ -1348,7 +1352,11 @@ object Build {
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       scalacOptions ++= Seq("-source", "3.3"), // To avoid fatal migration warnings
-      Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Ysafe-init"),
+      // FIXME change this to just Seq("-Yexplicit-nulls, "-Wsafe-init") when reference is set to 3.5.0
+      Compile / scalacOptions ++= (mode match {
+        case Bootstrapped => Seq("-Yexplicit-nulls", "-Wsafe-init")
+        case NonBootstrapped => Seq("-Yexplicit-nulls", "-Ysafe-init")
+      }),
       Compile / sourceGenerators += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory
@@ -1507,7 +1515,8 @@ object Build {
             "isNoModule" -> (moduleKind == ModuleKind.NoModule),
             "isESModule" -> (moduleKind == ModuleKind.ESModule),
             "isCommonJSModule" -> (moduleKind == ModuleKind.CommonJSModule),
-            "isFullOpt" -> (stage == FullOptStage),
+            "usesClosureCompiler" -> linkerConfig.closureCompiler,
+            "hasMinifiedNames" -> (linkerConfig.closureCompiler || linkerConfig.minify),
             "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
             "compliantArrayIndexOutOfBounds" -> (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant),
             "compliantArrayStores" -> (sems.arrayStores == CheckedBehavior.Compliant),
@@ -1580,6 +1589,7 @@ object Build {
             -- "ReflectiveCallTest.scala" // uses many forms of structural calls that are not allowed in Scala 3 anymore
             -- "UTF16Test.scala" // refutable pattern match
             -- "CharsetTest.scala" // bogus @tailrec that Scala 2 ignores but Scala 3 flags as an error
+            -- "ClassDiffersOnlyInCaseTest.scala" // looks like the Scala 3 compiler itself does not deal with that
             )).get
 
           ++ (dir / "shared/src/test/require-sam" ** "*.scala").get
@@ -1648,6 +1658,7 @@ object Build {
         Seq(
           "-Ddotty.tests.classes.dottyLibraryJS=" + dottyLibraryJSJar,
           "-Ddotty.tests.classes.scalaJSJavalib=" + findArtifactPath(externalJSDeps, "scalajs-javalib"),
+          "-Ddotty.tests.classes.scalaJSScalalib=" + findArtifactPath(externalJSDeps, "scalajs-scalalib_2.13"),
           "-Ddotty.tests.classes.scalaJSLibrary=" + findArtifactPath(externalJSDeps, "scalajs-library_2.13"),
         )
       },
@@ -2126,7 +2137,7 @@ object Build {
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
     def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
       aggregate(`scala3-interfaces`, dottyLibrary, dottyCompiler, tastyCore, `scala3-sbt-bridge`, scala3PresentationCompiler).
-      bootstrappedAggregate(`scala2-library-tasty`, `scala3-language-server`, `scala3-staging`,
+      bootstrappedAggregate(`scala2-library-tasty`, `scala2-library-cc-tasty`, `scala3-language-server`, `scala3-staging`,
         `scala3-tasty-inspector`, `scala3-library-bootstrappedJS`, scaladoc).
       dependsOn(tastyCore).
       dependsOn(dottyCompiler).

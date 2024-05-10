@@ -66,4 +66,18 @@ object Predef:
   extension (opt: Option.type)
     @experimental
     inline def fromNullable[T](t: T | Null): Option[T] = Option(t).asInstanceOf[Option[T]]
+
+  /** A type supporting Self-based type classes.
+   *
+   *    A is TC
+   *
+   *  expands to
+   *
+   *    TC { type Self = A }
+   *
+   *  which is what is needed for a context bound `[A: TC]`.
+   */
+  @experimental
+  infix type is[A <: AnyKind, B <: Any{type Self <: AnyKind}] = B { type Self = A }
+
 end Predef

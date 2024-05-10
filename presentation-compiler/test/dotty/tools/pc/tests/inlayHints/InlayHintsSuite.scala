@@ -170,7 +170,7 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
         |}
         |""".stripMargin,
      """|object O {
-        |  def m/*: List<<scala/collection/immutable/List#>>[Int<<scala/Int#>>]*/ = 1 ::/*[Int<<scala/Int#>>]*/ List/*[Int<<scala/Int#>>]*/(1)
+        |  def m/*: List<<scala/collection/immutable/List#>>[Int<<scala/Int#>>]*/ = 1 :: List/*[Int<<scala/Int#>>]*/(1)
         |}
         |""".stripMargin
     )
@@ -418,13 +418,16 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
   @Test def `tuple-unapply` =
     check(
      """|object Main {
+        |  val (local, _) = ("", 1.0)
         |  val (fst, snd) = (1, 2)
         |}
         |""".stripMargin,
      """|object Main {
+        |  val (local/*: String<<java/lang/String#>>*/, _) = ("", 1.0)
         |  val (fst/*: Int<<scala/Int#>>*/, snd/*: Int<<scala/Int#>>*/) = (1, 2)
         |}
-        |""".stripMargin
+        |""".stripMargin,
+     hintsInPatternMatch = true
     )
 
   @Test def `list-unapply` =
@@ -434,7 +437,7 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
         |}
         |""".stripMargin,
      """|object Main {
-        |  val hd/*: Int<<scala/Int#>>*/ ::/*[Int<<scala/Int#>>]*/ tail/*: List<<scala/collection/immutable/List#>>[Int<<scala/Int#>>]*/ = List/*[Int<<scala/Int#>>]*/(1, 2)
+        |  val hd :: tail = List/*[Int<<scala/Int#>>]*/(1, 2)
         |}
         |""".stripMargin,
     )
@@ -449,7 +452,7 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
         |""".stripMargin,
      """|object Main {
         |  val x/*: Int<<scala/Int#>>*/ = List/*[Int<<scala/Int#>>]*/(1, 2) match {
-        |    case hd/*: Int<<scala/Int#>>*/ ::/*[Int<<scala/Int#>>]*/ tail/*: List<<scala/collection/immutable/List#>>[Int<<scala/Int#>>]*/ => hd
+        |    case hd :: tail => hd
         |  }
         |}
         |""".stripMargin,
@@ -464,9 +467,10 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
         |""".stripMargin,
      """|object Main {
         |case class Foo[A](x: A, y: A)
-        |  val Foo/*[Int<<scala/Int#>>]*/(fst/*: Int<<scala/Int#>>*/, snd/*: Int<<scala/Int#>>*/) = Foo/*[Int<<scala/Int#>>]*/(1, 2)
+        |  val Foo(fst/*: Int<<scala/Int#>>*/, snd/*: Int<<scala/Int#>>*/) = Foo/*[Int<<scala/Int#>>]*/(1, 2)
         |}
         |""".stripMargin,
+     hintsInPatternMatch = true
     )
 
   @Test def `valueOf` =
@@ -517,7 +521,7 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
         |}
         |""".stripMargin,
      """|object Main {
-        |  List/*[Int<<scala/Int#>>]*/(1).collect/*[Int<<scala/Int#>>]*/ { case x/*: Int<<scala/Int#>>*/ => x }
+        |  List/*[Int<<scala/Int#>>]*/(1).collect/*[Int<<scala/Int#>>]*/ { case x => x }
         |  val x: PartialFunction[Int, Int] = {
         |    case 1 => 2
         |  }
@@ -532,7 +536,7 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
         |}
         |""".stripMargin,
      """|object O {
-        |  val tupleBound @ (one/*: String<<java/lang/String#>>*/, two/*: String<<java/lang/String#>>*/) = ("1", "2")
+        |  val tupleBound @ (one, two) = ("1", "2")
         |}
         |""".stripMargin
     )
@@ -546,7 +550,8 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
      """|object O {
         |  val tupleBound /* comment */ @ (one/*: String<<java/lang/String#>>*/, two/*: String<<java/lang/String#>>*/) = ("1", "2")
         |}
-        |""".stripMargin
+        |""".stripMargin,
+     hintsInPatternMatch = true
     )
 
   @Test def `complex` =
@@ -764,4 +769,155 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
         |}
         |""".stripMargin
     )
+
+  @Test def `pattern-match` =
+    check(
+      """|package example
+         |object O {
+         |  val head :: tail = List(1)
+         |  List(1) match {
+         |    case head :: next =>
+         |    case Nil =>
+         |  }
+         |  Option(Option(1)) match {
+         |    case Some(Some(value)) =>
+         |    case None =>
+         |  }
+         |  val (local, _) = ("", 1.0)
+         |  val Some(x) = Option(1)
+         |  for {
+         |    x <- List((1,2))
+         |    (z, y) = x
+         |  } yield {
+         |    x
+         |  }
+         |}
+         |""".stripMargin,
+      """|package example
+         |object O {
+         |  val head :: tail = List/*[Int<<scala/Int#>>]*/(1)
+         |  List/*[Int<<scala/Int#>>]*/(1) match {
+         |    case head :: next =>
+         |    case Nil =>
+         |  }
+         |  Option/*[Option<<scala/Option#>>[Int<<scala/Int#>>]]*/(Option/*[Int<<scala/Int#>>]*/(1)) match {
+         |    case Some(Some(value)) =>
+         |    case None =>
+         |  }
+         |  val (local, _) = ("", 1.0)
+         |  val Some(x) = Option/*[Int<<scala/Int#>>]*/(1)
+         |  for {
+         |    x <- List/*[(Int<<scala/Int#>>, Int<<scala/Int#>>)]*/((1,2))
+         |    (z, y) = x
+         |  } yield {
+         |    x
+         |  }
+         |}
+         |""".stripMargin
+    )
+
+
+  @Test def `pattern-match1` =
+   check(
+      """|package example
+         |object O {
+         |  val head :: tail = List(1)
+         |  List(1) match {
+         |    case head :: next =>
+         |    case Nil =>
+         |  }
+         |  Option(Option(1)) match {
+         |    case Some(Some(value)) =>
+         |    case None =>
+         |  }
+         |  val (local, _) = ("", 1.0)
+         |  val Some(x) = Option(1)
+         |  for {
+         |    x <- List((1,2))
+         |    (z, y) = x
+         |  } yield {
+         |    x
+         |  }
+         |}
+         |""".stripMargin,
+      """|package example
+         |object O {
+         |  val head/*: Int<<scala/Int#>>*/ :: tail/*: List<<scala/collection/immutable/List#>>[Int<<scala/Int#>>]*/ = List/*[Int<<scala/Int#>>]*/(1)
+         |  List/*[Int<<scala/Int#>>]*/(1) match {
+         |    case head/*: Int<<scala/Int#>>*/ :: next/*: List<<scala/collection/immutable/List#>>[Int<<scala/Int#>>]*/ =>
+         |    case Nil =>
+         |  }
+         |  Option/*[Option<<scala/Option#>>[Int<<scala/Int#>>]]*/(Option/*[Int<<scala/Int#>>]*/(1)) match {
+         |    case Some(Some(value/*: Int<<scala/Int#>>*/)) =>
+         |    case None =>
+         |  }
+         |  val (local/*: String<<java/lang/String#>>*/, _) = ("", 1.0)
+         |  val Some(x/*: Int<<scala/Int#>>*/) = Option/*[Int<<scala/Int#>>]*/(1)
+         |  for {
+         |    x/*: (Int<<scala/Int#>>, Int<<scala/Int#>>)*/ <- List/*[(Int<<scala/Int#>>, Int<<scala/Int#>>)]*/((1,2))
+         |    (z/*: Int<<scala/Int#>>*/, y/*: Int<<scala/Int#>>*/) = x
+         |  } yield {
+         |    x
+         |  }
+         |}
+         |""".stripMargin,
+      hintsInPatternMatch = true
+   )
+
+  @Test def quotes =
+    check(
+      """|package example
+         |import scala.quoted.*
+         |object O:
+         |  inline def foo[T]: List[String] = ${fooImpl[T]}
+         |  def fooImpl[T: Type](using Quotes): Expr[List[String]] = ???
+         |""".stripMargin,
+      """|package example
+         |import scala.quoted.*
+         |object O:
+         |  inline def foo[T]: List[String] = ${fooImpl[T]}
+         |  def fooImpl[T: Type](using Quotes): Expr[List[String]] = ???
+         |""".stripMargin
+    )
+
+  @Test def quotes1 =
+   check(
+      """|package example
+         |import scala.quoted.*
+         |object O:
+         |  def matchTypeImpl[T: Type](param1: Expr[T])(using Quotes) =
+         |    import quotes.reflect.*
+         |    Type.of[T] match
+         |      case '[f] =>
+         |        val fr = TypeRepr.of[T]
+         |""".stripMargin,
+      """|package example
+         |import scala.quoted.*
+         |object O:
+         |  def matchTypeImpl[T: Type](param1: Expr[T])(using Quotes)/*: Unit<<scala/Unit#>>*/ =
+         |    import quotes.reflect.*
+         |    Type.of[T] match
+         |      case '[f] =>
+         |        val fr/*: TypeRepr<<scala/quoted/Quotes#reflectModule#TypeRepr#>>*/ = TypeRepr.of[T]/*(using evidence$1<<(3:23)>>)*/
+         |""".stripMargin
+   )
+
+
+  @Test def quotes2 =
+   check(
+      """|package example
+         |import scala.quoted.*
+         |object O:
+         |  def rec[A : Type](using Quotes): List[String] =
+         |    Type.of[A] match
+         |      case '[field *: fields] => ???
+         |""".stripMargin,
+      """|package example
+         |import scala.quoted.*
+         |object O:
+         |  def rec[A : Type](using Quotes): List[String] =
+         |    Type.of[A] match
+         |      case '[field *: fields] => ???
+         |""".stripMargin
+   )
 }

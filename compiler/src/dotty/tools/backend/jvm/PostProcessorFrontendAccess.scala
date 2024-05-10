@@ -121,12 +121,14 @@ object PostProcessorFrontendAccess {
           case (None, None) => "8" // least supported version by default
 
       override val debug: Boolean = ctx.debug
-      override val dumpClassesDirectory: Option[String] = s.Ydumpclasses.valueSetByUser
+      override val dumpClassesDirectory: Option[String] = s.Xdumpclasses.valueSetByUser
       override val outputDirectory: AbstractFile = s.outputDir.value
       override val mainClass: Option[String] = s.XmainClass.valueSetByUser
-      override val jarCompressionLevel: Int = s.YjarCompressionLevel.value
+      override val jarCompressionLevel: Int = s.XjarCompressionLevel.value
       override val backendParallelism: Int = s.YbackendParallelism.value
       override val backendMaxWorkerQueue: Option[Int] = s.YbackendWorkerQueue.valueSetByUser
+
+      @annotation.nowarn("cat=deprecation")
       override val outputOnlyTasty: Boolean = s.YoutputOnlyTasty.value
      }
 

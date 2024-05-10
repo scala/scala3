@@ -59,10 +59,10 @@ class Definitions {
   private def enterCompleteClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, parents: List[TypeRef], decls: Scope) =
     newCompleteClassSymbol(owner, name, flags | Permanent | NoInits | Open, parents, decls).entered
 
-  private def enterTypeField(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope) =
+  private def enterTypeField(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope): TypeSymbol =
     scope.enter(newPermanentSymbol(cls, name, flags, TypeBounds.empty))
 
-  private def enterTypeParam(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope) =
+  private def enterTypeParam(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope): TypeSymbol =
     enterTypeField(cls, name, flags | ClassTypeParamCreationFlags, scope)
 
   private def enterSyntheticTypeParam(cls: ClassSymbol, paramFlags: FlagSet, scope: MutableScope, suffix: String = "T0") =
@@ -240,6 +240,7 @@ class Definitions {
     @tu lazy val Compiletime_codeOf: Symbol = CompiletimePackageClass.requiredMethod("codeOf")
     @tu lazy val Compiletime_erasedValue  : Symbol = CompiletimePackageClass.requiredMethod("erasedValue")
     @tu lazy val Compiletime_uninitialized: Symbol = CompiletimePackageClass.requiredMethod("uninitialized")
+    @tu lazy val Compiletime_deferred     : Symbol = CompiletimePackageClass.requiredMethod("deferred")
     @tu lazy val Compiletime_error        : Symbol = CompiletimePackageClass.requiredMethod(nme.error)
     @tu lazy val Compiletime_requireConst : Symbol = CompiletimePackageClass.requiredMethod("requireConst")
     @tu lazy val Compiletime_constValue   : Symbol = CompiletimePackageClass.requiredMethod("constValue")
@@ -458,6 +459,13 @@ class Definitions {
   @tu lazy val andType: TypeSymbol = enterBinaryAlias(tpnme.AND, AndType(_, _))
   @tu lazy val orType: TypeSymbol = enterBinaryAlias(tpnme.OR, OrType(_, _, soft = false))
 
+  @tu lazy val CBCompanion: TypeSymbol = // type `<context-bound-companion>`[-Refs]
+    enterPermanentSymbol(tpnme.CBCompanion,
+      TypeBounds(NothingType,
+        HKTypeLambda(tpnme.syntheticTypeParamName(0) :: Nil, Contravariant :: Nil)(
+          tl => TypeBounds.empty :: Nil,
+          tl => AnyType))).asType
+
   /** Method representing a throw */
   @tu lazy val throwMethod: TermSymbol = enterMethod(OpsPackageClass, nme.THROWkw,
       MethodType(List(ThrowableType), NothingType))
@@ -527,12 +535,16 @@ class Definitions {
   def ConsType: TypeRef                 = ConsClass.typeRef
   @tu lazy val SeqFactoryClass: Symbol  = requiredClass("scala.collection.SeqFactory")
 
+  @tu lazy val PreciseClass: ClassSymbol = requiredClass("scala.Precise")
+
   @tu lazy val SingletonClass: ClassSymbol =
     // needed as a synthetic class because Scala 2.x refers to it in classfiles
     // but does not define it as an explicit class.
-    enterCompleteClassSymbol(
-      ScalaPackageClass, tpnme.Singleton, PureInterfaceCreationFlags | Final,
-      List(AnyType), EmptyScope)
+    val cls = enterCompleteClassSymbol(
+      ScalaPackageClass, tpnme.Singleton, PureInterfaceCreationFlags | Final | Erased,
+      List(AnyType))
+    enterTypeField(cls, tpnme.Self, Deferred, cls.info.decls.openForMutations)
+    cls
   @tu lazy val SingletonType: TypeRef = SingletonClass.typeRef
 
   @tu lazy val MaybeCapabilityAnnot: ClassSymbol =
@@ -949,6 +961,9 @@ class Definitions {
     def TupleXXL_fromIterator(using Context): Symbol = TupleXXLModule.requiredMethod("fromIterator")
     def TupleXXL_unapplySeq(using Context): Symbol = TupleXXLModule.requiredMethod(nme.unapplySeq)
 
+  @tu lazy val NamedTupleModule = requiredModule("scala.NamedTuple")
+  @tu lazy val NamedTupleTypeRef: TypeRef = NamedTupleModule.termRef.select(tpnme.NamedTuple).asInstanceOf
+
   @tu lazy val RuntimeTupleMirrorTypeRef: TypeRef = requiredClassRef("scala.runtime.TupleMirror")
 
   @tu lazy val RuntimeTuplesModule: Symbol = requiredModule("scala.runtime.Tuples")
@@ -1058,6 +1073,7 @@ class Definitions {
   @tu lazy val RetainsByNameAnnot: ClassSymbol = requiredClass("scala.annotation.retainsByName")
   @tu lazy val RetainsArgAnnot: ClassSymbol = requiredClass("scala.annotation.retainsArg")
   @tu lazy val PublicInBinaryAnnot: ClassSymbol = requiredClass("scala.annotation.publicInBinary")
+  @tu lazy val WitnessNamesAnnot: ClassSymbol = requiredClass("scala.annotation.internal.WitnessNames")
 
   @tu lazy val JavaRepeatableAnnot: ClassSymbol = requiredClass("java.lang.annotation.Repeatable")
 
@@ -1304,8 +1320,19 @@ class Definitions {
     case ByNameFunction(_) => true
     case _ => false
 
+  object NamedTuple:
+    def apply(nmes: Type, vals: Type)(using Context): Type =
+      AppliedType(NamedTupleTypeRef, nmes :: vals :: Nil)
+    def unapply(t: Type)(using Context): Option[(Type, Type)] = t match
+      case AppliedType(tycon, nmes :: vals :: Nil) if tycon.typeSymbol == NamedTupleTypeRef.symbol =>
+        Some((nmes, vals))
+      case _ => None
+
   final def isCompiletime_S(sym: Symbol)(using Context): Boolean =
     sym.name == tpnme.S && sym.owner == CompiletimeOpsIntModuleClass
+
+  final def isNamedTuple_From(sym: Symbol)(using Context): Boolean =
+    sym.name == tpnme.From && sym.owner == NamedTupleModule.moduleClass
 
   private val compiletimePackageAnyTypes: Set[Name] = Set(
     tpnme.Equals, tpnme.NotEquals, tpnme.IsConst, tpnme.ToString
@@ -1335,7 +1362,7 @@ class Definitions {
     tpnme.Plus, tpnme.Length, tpnme.Substring, tpnme.Matches, tpnme.CharAt
   )
   private val compiletimePackageOpTypes: Set[Name] =
-    Set(tpnme.S)
+    Set(tpnme.S, tpnme.From)
     ++ compiletimePackageAnyTypes
     ++ compiletimePackageIntTypes
     ++ compiletimePackageLongTypes
@@ -1348,6 +1375,7 @@ class Definitions {
     compiletimePackageOpTypes.contains(sym.name)
     && (
          isCompiletime_S(sym)
+      || isNamedTuple_From(sym)
       || sym.owner == CompiletimeOpsAnyModuleClass && compiletimePackageAnyTypes.contains(sym.name)
       || sym.owner == CompiletimeOpsIntModuleClass && compiletimePackageIntTypes.contains(sym.name)
       || sym.owner == CompiletimeOpsLongModuleClass && compiletimePackageLongTypes.contains(sym.name)
@@ -2142,6 +2170,7 @@ class Definitions {
       NullClass,
       NothingClass,
       SingletonClass,
+      CBCompanion,
       MaybeCapabilityAnnot)
 
   @tu lazy val syntheticCoreClasses: List[Symbol] = syntheticScalaClasses ++ List(

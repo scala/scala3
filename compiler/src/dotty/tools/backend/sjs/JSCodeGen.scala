@@ -927,7 +927,7 @@ class JSCodeGen()(using genCtx: Context) {
           val className = encodeClassName(classSym)
           val body = js.Block(
               js.LoadModule(className),
-              js.SelectStatic(className, fieldIdent)(irTpe))
+              js.SelectStatic(fieldIdent)(irTpe))
           staticGetterDefs += js.MethodDef(
               js.MemberFlags.empty.withNamespace(js.MemberNamespace.PublicStatic),
               encodeStaticMemberSym(f), originalName, Nil, irTpe,
@@ -1146,42 +1146,72 @@ class JSCodeGen()(using genCtx: Context) {
 
   private def genPrimaryJSClassCtor(dd: DefDef): PrimaryJSCtor = {
     val sym = dd.symbol
-    val Block(stats, _) = dd.rhs: @unchecked
     assert(sym.isPrimaryConstructor, s"called with non-primary ctor: $sym")
 
+    var preSuperStats = List.newBuilder[js.Tree]
     var jsSuperCall: Option[js.JSSuperConstructorCall] = None
-    val jsStats = List.newBuilder[js.Tree]
+    val postSuperStats = List.newBuilder[js.Tree]
 
-    /* Move all statements after the super constructor call since JS
-     * cannot access `this` before the super constructor call.
+    /* Move param accessor initializers after the super constructor call since
+     * JS cannot access `this` before the super constructor call.
      *
      * dotc inserts statements before the super constructor call for param
      * accessor initializers (including val's and var's declared in the
-     * params). We move those after the super constructor call, and are
-     * therefore executed later than for a Scala class.
+     * params). Those statements are assignments whose rhs'es are always simple
+     * Idents (the constructor params).
+     *
+     * There can also be local `val`s before the super constructor call for
+     * default arguments to the super constructor. These must remain before.
+     *
+     * Our strategy is therefore to move only the field assignments after the
+     * super constructor call. They are therefore executed later than for a
+     * Scala class (as specified for non-native JS classes semantics).
+     * However, side effects and evaluation order of all the other
+     * computations remains unchanged.
      */
     withPerMethodBodyState(sym) {
-      stats.foreach {
-        case tree @ Apply(fun @ Select(Super(This(_), _), _), args)
-            if fun.symbol.isClassConstructor =>
-          assert(jsSuperCall.isEmpty, s"Found 2 JS Super calls at ${dd.sourcePos}")
-          implicit val pos: Position = tree.span
-          jsSuperCall = Some(js.JSSuperConstructorCall(genActualJSArgs(fun.symbol, args)))
-
-        case stat =>
-          val jsStat = genStat(stat)
-          assert(jsSuperCall.isDefined || !jsStat.isInstanceOf[js.VarDef],
-              "Trying to move a local VarDef after the super constructor call of a non-native JS class at " +
-              dd.sourcePos)
-          jsStats += jsStat
+      def isThisField(tree: Tree): Boolean = tree match {
+        case Select(ths: This, _) => ths.symbol == currentClassSym.get
+        case tree: Ident          => desugarIdent(tree).exists(isThisField(_))
+        case _                    => false
       }
+
+      def rec(tree: Tree): Unit = {
+        tree match {
+          case Block(stats, expr) =>
+            stats.foreach(rec(_))
+            rec(expr)
+
+          case tree @ Apply(fun @ Select(Super(This(_), _), _), args)
+              if fun.symbol.isClassConstructor =>
+            assert(jsSuperCall.isEmpty, s"Found 2 JS Super calls at ${dd.sourcePos}")
+            implicit val pos: Position = tree.span
+            jsSuperCall = Some(js.JSSuperConstructorCall(genActualJSArgs(fun.symbol, args)))
+
+          case tree if jsSuperCall.isDefined =>
+            // Once we're past the super constructor call, everything goes after.
+            postSuperStats += genStat(tree)
+
+          case Assign(lhs, Ident(_)) if isThisField(lhs) =>
+            /* If that shape appears before the jsSuperCall, it is a param
+             * accessor initializer. We move it.
+             */
+            postSuperStats += genStat(tree)
+
+          case stat =>
+            // Other statements are left before.
+            preSuperStats += genStat(stat)
+        }
+      }
+
+      rec(dd.rhs)
     }
 
     assert(jsSuperCall.isDefined,
         s"Did not find Super call in primary JS construtor at ${dd.sourcePos}")
 
     new PrimaryJSCtor(sym, genParamsAndInfo(sym, dd.paramss),
-        js.JSConstructorBody(Nil, jsSuperCall.get, jsStats.result())(dd.span))
+        js.JSConstructorBody(preSuperStats.result(), jsSuperCall.get, postSuperStats.result())(dd.span))
   }
 
   private def genSecondaryJSClassCtor(dd: DefDef): SplitSecondaryJSCtor = {
@@ -2213,10 +2243,7 @@ class JSCodeGen()(using genCtx: Context) {
       if (isStaticModule(currentClassSym) && !isModuleInitialized.get.value &&
           currentMethodSym.get.isClassConstructor) {
         isModuleInitialized.get.value = true
-        val className = encodeClassName(currentClassSym)
-        val thisType = jstpe.ClassType(className)
-        val initModule = js.StoreModule(className, js.This()(thisType))
-        js.Block(superCall, initModule)
+        js.Block(superCall, js.StoreModule())
       } else {
         superCall
       }
@@ -4433,13 +4460,12 @@ class JSCodeGen()(using genCtx: Context) {
             js.JSSelect(qual, genPrivateFieldsSymbol()),
             encodeFieldSymAsStringLiteral(sym))
       } else {
-        js.JSPrivateSelect(qual, encodeClassName(sym.owner),
-            encodeFieldSym(sym))
+        js.JSPrivateSelect(qual, encodeFieldSym(sym))
       }
 
       (f, true)
     } else if (sym.hasAnnotation(jsdefn.JSExportTopLevelAnnot)) {
-      val f = js.SelectStatic(encodeClassName(sym.owner), encodeFieldSym(sym))(jstpe.AnyType)
+      val f = js.SelectStatic(encodeFieldSym(sym))(jstpe.AnyType)
       (f, true)
     } else if (sym.hasAnnotation(jsdefn.JSExportStaticAnnot)) {
       val jsName = sym.getAnnotation(jsdefn.JSExportStaticAnnot).get.argumentConstantString(0).getOrElse {
@@ -4465,9 +4491,9 @@ class JSCodeGen()(using genCtx: Context) {
 
       val f =
         if sym.is(JavaStatic) then
-          js.SelectStatic(className, fieldIdent)(irType)
+          js.SelectStatic(fieldIdent)(irType)
         else
-          js.Select(qual, className, fieldIdent)(irType)
+          js.Select(qual, fieldIdent)(irType)
 
       (f, boxed)
     }

@@ -647,9 +647,9 @@ trait ConstraintHandling {
    * At this point we also drop the @Repeated annotation to avoid inferring type arguments with it,
    * as those could leak the annotation to users (see run/inferred-repeated-result).
    */
-  def widenInferred(inst: Type, bound: Type, widenUnions: Boolean)(using Context): Type =
+  def widenInferred(inst: Type, bound: Type, widen: Widen)(using Context): Type =
     def widenOr(tp: Type) =
-      if widenUnions then
+      if widen == Widen.Unions then
         val tpw = tp.widenUnion
         if tpw ne tp then
           if tpw.isTransparent() then
@@ -667,14 +667,10 @@ trait ConstraintHandling {
       val tpw = tp.widenSingletons(skipSoftUnions)
       if (tpw ne tp) && (tpw <:< bound) then tpw else tp
 
-    def isSingleton(tp: Type): Boolean = tp match
-      case WildcardType(optBounds) => optBounds.exists && isSingleton(optBounds.bounds.hi)
-      case _ => isSubTypeWhenFrozen(tp, defn.SingletonType)
-
     val wideInst =
-      if isSingleton(bound) then inst
+      if widen == Widen.None || bound.isSingletonBounded(frozen = true) then inst
       else
-        val widenedFromSingle = widenSingle(inst, skipSoftUnions = widenUnions)
+        val widenedFromSingle = widenSingle(inst, skipSoftUnions = widen == Widen.Unions)
         val widenedFromUnion = widenOr(widenedFromSingle)
         val widened = dropTransparentTraits(widenedFromUnion, bound)
         widenIrreducible(widened)
@@ -713,10 +709,10 @@ trait ConstraintHandling {
    *  The instance type is not allowed to contain references to types nested deeper
    *  than `maxLevel`.
    */
-  def instanceType(param: TypeParamRef, fromBelow: Boolean, widenUnions: Boolean, maxLevel: Int)(using Context): Type = {
+  def instanceType(param: TypeParamRef, fromBelow: Boolean, widen: Widen, maxLevel: Int)(using Context): Type = {
     val approx = approximation(param, fromBelow, maxLevel).simplified
     if fromBelow then
-      val widened = widenInferred(approx, param, widenUnions)
+      val widened = widenInferred(approx, param, widen)
       // Widening can add extra constraints, in particular the widened type might
       // be a type variable which is now instantiated to `param`, and therefore
       // cannot be used as an instantiation of `param` without creating a loop.
@@ -724,7 +720,7 @@ trait ConstraintHandling {
       // (we do not check for non-toplevel occurrences: those should never occur
       // since `addOneBound` disallows recursive lower bounds).
       if constraint.occursAtToplevel(param, widened) then
-        instanceType(param, fromBelow, widenUnions, maxLevel)
+        instanceType(param, fromBelow, widen, maxLevel)
       else
         widened
     else

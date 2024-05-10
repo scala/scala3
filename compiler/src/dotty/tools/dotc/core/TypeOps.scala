@@ -385,7 +385,12 @@ object TypeOps:
         (tp.tp1.dealias, tp.tp2.dealias) match
           case (tp1 @ AppliedType(tycon1, args1), tp2 @ AppliedType(tycon2, args2))
           if tycon1.typeSymbol == tycon2.typeSymbol && (tycon1 =:= tycon2) =>
-            mergeRefinedOrApplied(tp1, tp2)
+            mergeRefinedOrApplied(tp1, tp2) match
+              case tp: AppliedType if tp.isUnreducibleWild =>
+                // fall back to or-dominators rather than inferring a type that would
+                // cause an unreducible type error later.
+                approximateOr(tp1, tp2)
+              case tp => tp
           case (tp1, tp2) =>
             approximateOr(tp1, tp2)
       case _ =>
@@ -540,7 +545,7 @@ object TypeOps:
           val lo = TypeComparer.instanceType(
             tp.origin,
             fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound,
-            widenUnions = tp.widenUnions)(using mapCtx)
+            tp.widenPolicy)(using mapCtx)
           val lo1 = apply(lo)
           if (lo1 ne lo) lo1 else tp
         case _ =>

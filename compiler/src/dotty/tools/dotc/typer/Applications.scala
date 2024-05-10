@@ -18,11 +18,12 @@ import Names.*
 import StdNames.*
 import ContextOps.*
 import NameKinds.DefaultGetterName
+import Typer.tryEither
 import ProtoTypes.*
 import Inferencing.*
 import reporting.*
 import Nullables.*, NullOpsDecorator.*
-import config.Feature
+import config.{Feature, SourceVersion}
 
 import collection.mutable
 import config.Printers.{overload, typr, unapp}
@@ -135,14 +136,6 @@ object Applications {
     sels.takeWhile(_.exists).toList
   }
 
-  def getUnapplySelectors(tp: Type, args: List[untpd.Tree], pos: SrcPos)(using Context): List[Type] =
-    if (args.length > 1 && !(tp.derivesFrom(defn.SeqClass))) {
-      val sels = productSelectorTypes(tp, pos)
-      if (sels.length == args.length) sels
-      else tp :: Nil
-    }
-    else tp :: Nil
-
   def productSeqSelectors(tp: Type, argsNum: Int, pos: SrcPos)(using Context): List[Type] = {
     val selTps = productSelectorTypes(tp, pos)
     val arity = selTps.length
@@ -150,61 +143,122 @@ object Applications {
     (0 until argsNum).map(i => if (i < arity - 1) selTps(i) else elemTp).toList
   }
 
-  def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: SrcPos)(using Context): List[Type] = {
-    def getName(fn: Tree): Name =
+  /** A utility class that matches results of unapplys with patterns. Two queriable members:
+   *     val argTypes: List[Type]
+   *     def typedPatterns(qual: untpd.Tree, typer: Typer): List[Tree]
+   *  TODO: Move into Applications trait. No need to keep it outside. But it's a large
+   *        refactor, so do this when the rest is merged.
+   */
+  class UnapplyArgs(unapplyResult: Type, unapplyFn: Tree, unadaptedArgs: List[untpd.Tree], pos: SrcPos)(using Context):
+    private var args = unadaptedArgs
+
+    private def getName(fn: Tree): Name =
       fn match
         case TypeApply(fn, _) => getName(fn)
         case Apply(fn, _) => getName(fn)
         case fn: RefTree => fn.name
-    val unapplyName = getName(unapplyFn) // tolerate structural `unapply`, which does not have a symbol
+    private val unapplyName = getName(unapplyFn) // tolerate structural `unapply`, which does not have a symbol
 
-    def getTp = extractorMemberType(unapplyResult, nme.get, pos)
+    private def getTp = extractorMemberType(unapplyResult, nme.get, pos)
 
-    def fail = {
+    private def fail = {
       report.error(UnapplyInvalidReturnType(unapplyResult, unapplyName), pos)
       Nil
     }
 
-    def unapplySeq(tp: Type)(fallback: => List[Type]): List[Type] = {
+    private def unapplySeq(tp: Type)(fallback: => List[Type]): List[Type] =
       val elemTp = unapplySeqTypeElemTp(tp)
-      if (elemTp.exists) args.map(Function.const(elemTp))
-      else if (isProductSeqMatch(tp, args.length, pos)) productSeqSelectors(tp, args.length, pos)
-      else if tp.derivesFrom(defn.NonEmptyTupleClass) then foldApplyTupleType(tp)
+      if elemTp.exists then
+        args.map(Function.const(elemTp))
+      else if isProductSeqMatch(tp, args.length, pos) then
+        productSeqSelectors(tp, args.length, pos)
+      else if tp.derivesFrom(defn.NonEmptyTupleClass) then
+        tp.tupleElementTypes.getOrElse(Nil)
       else fallback
-    }
 
-    if (unapplyName == nme.unapplySeq)
-      unapplySeq(unapplyResult) {
-        if (isGetMatch(unapplyResult, pos)) unapplySeq(getTp)(fail)
-        else fail
-      }
-    else {
-      assert(unapplyName == nme.unapply)
-      if (isProductMatch(unapplyResult, args.length, pos))
-        productSelectorTypes(unapplyResult, pos)
-      else if (isGetMatch(unapplyResult, pos))
-        getUnapplySelectors(getTp, args, pos)
-      else if (unapplyResult.widenSingleton isRef defn.BooleanClass)
-        Nil
-      else if (defn.isProductSubType(unapplyResult) && productArity(unapplyResult, pos) != 0)
-        productSelectorTypes(unapplyResult, pos)
-          // this will cause a "wrong number of arguments in pattern" error later on,
-          // which is better than the message in `fail`.
-      else if unapplyResult.derivesFrom(defn.NonEmptyTupleClass) then
-        foldApplyTupleType(unapplyResult)
-      else fail
-    }
-  }
+    private def tryAdaptPatternArgs(elems: List[untpd.Tree], pt: Type)(using Context): Option[List[untpd.Tree]] =
+      tryEither[Option[List[untpd.Tree]]]
+        (Some(desugar.adaptPatternArgs(elems, pt)))
+        ((_, _) => None)
 
-  def foldApplyTupleType(tp: Type)(using Context): List[Type] =
-    object tupleFold extends TypeAccumulator[List[Type]]:
-      override def apply(accum: List[Type], t: Type): List[Type] =
-        t match
-          case AppliedType(tycon, x :: x2 :: Nil) if tycon.typeSymbol == defn.PairClass =>
-            apply(x :: accum, x2)
-          case x => foldOver(accum, x)
-    end tupleFold
-    tupleFold(Nil, tp).reverse
+    private def getUnapplySelectors(tp: Type)(using Context): List[Type] =
+      // We treat patterns as product elements if
+      // they are named, or there is more than one pattern
+      val isProduct = args match
+        case x :: xs => x.isInstanceOf[untpd.NamedArg] || xs.nonEmpty
+        case _ => false
+      if isProduct && !tp.derivesFrom(defn.SeqClass) then
+        productUnapplySelectors(tp).getOrElse:
+          // There are unapplys with return types which have `get` and `_1, ..., _n`
+          // as members, but which are not subtypes of Product. So `productUnapplySelectors`
+          // would return None for these, but they are still valid types
+          // for a get match. A test case is pos/extractors.scala.
+          val sels = productSelectorTypes(tp, pos)
+          if (sels.length == args.length) sels
+          else tp :: Nil
+      else tp :: Nil
+
+    private def productUnapplySelectors(tp: Type)(using Context): Option[List[Type]] =
+      if defn.isProductSubType(tp) then
+        tryAdaptPatternArgs(args, tp) match
+          case Some(args1) if isProductMatch(tp, args1.length, pos) =>
+            args = args1
+            Some(productSelectorTypes(tp, pos))
+          case _ => None
+        else tp.widen.normalized.dealias match
+          case tp @ defn.NamedTuple(_, tt) =>
+            tryAdaptPatternArgs(args, tp) match
+              case Some(args1) =>
+                args = args1
+                tt.tupleElementTypes
+              case _ => None
+          case _ => None
+
+    /** The computed argument types which will be the scutinees of the sub-patterns. */
+    val argTypes: List[Type] =
+      if unapplyName == nme.unapplySeq then
+        unapplySeq(unapplyResult):
+          if (isGetMatch(unapplyResult, pos)) unapplySeq(getTp)(fail)
+          else fail
+      else
+        assert(unapplyName == nme.unapply)
+        productUnapplySelectors(unapplyResult).getOrElse:
+          if isGetMatch(unapplyResult, pos) then
+            getUnapplySelectors(getTp)
+          else if unapplyResult.derivesFrom(defn.BooleanClass) then
+            Nil
+          else if unapplyResult.derivesFrom(defn.NonEmptyTupleClass) then
+            unapplyResult.tupleElementTypes.getOrElse(Nil)
+          else if defn.isProductSubType(unapplyResult) && productArity(unapplyResult, pos) != 0 then
+            productSelectorTypes(unapplyResult, pos)
+              // this will cause a "wrong number of arguments in pattern" error later on,
+              // which is better than the message in `fail`.
+          else fail
+
+    /** The typed pattens of this unapply */
+    def typedPatterns(qual: untpd.Tree, typer: Typer): List[Tree] =
+      unapp.println(i"unapplyQual = $qual, unapplyArgs = ${unapplyResult} with $argTypes / $args")
+      for argType <- argTypes do
+        assert(!isBounds(argType), unapplyResult.show)
+      val alignedArgs = argTypes match
+        case argType :: Nil
+        if args.lengthCompare(1) > 0
+            && Feature.autoTuplingEnabled
+            && defn.isTupleNType(argType) =>
+          untpd.Tuple(args) :: Nil
+        case _ =>
+          args
+      val alignedArgTypes =
+        if argTypes.length == alignedArgs.length then
+          argTypes
+        else
+          report.error(UnapplyInvalidNumberOfArguments(qual, argTypes), pos)
+          argTypes.take(args.length) ++
+            List.fill(argTypes.length - args.length)(WildcardType)
+      alignedArgs.lazyZip(alignedArgTypes).map(typer.typed(_, _))
+        .showing(i"unapply patterns = $result", unapp)
+
+  end UnapplyArgs
 
   def wrapDefs(defs: mutable.ListBuffer[Tree] | Null, tree: Tree)(using Context): Tree =
     if (defs != null && defs.nonEmpty) tpd.Block(defs.toList, tree) else tree
@@ -1343,9 +1397,10 @@ trait Applications extends Compatibility {
           case _ => false
       case _ => false
 
-  def typedUnApply(tree: untpd.Apply, selType: Type)(using Context): Tree = {
+  def typedUnApply(tree: untpd.Apply, selType0: Type)(using Context): Tree = {
     record("typedUnApply")
-    val Apply(qual, args) = tree
+    val Apply(qual, unadaptedArgs) = tree
+    val selType = selType0.stripNamedTuple
 
     def notAnExtractor(tree: Tree): Tree =
       // prefer inner errors
@@ -1558,27 +1613,14 @@ trait Applications extends Compatibility {
             typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
           inlinedUnapplyFnAndApp(dummyArg, unapplyAppCall)
 
-        var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.srcPos)
-        for (argType <- argTypes) assert(!isBounds(argType), unapplyApp.tpe.show)
-        val bunchedArgs = argTypes match {
-          case argType :: Nil =>
-            if (args.lengthCompare(1) > 0 && Feature.autoTuplingEnabled && defn.isTupleNType(argType)) untpd.Tuple(args) :: Nil
-            else args
-          case _ => args
-        }
-        if (argTypes.length != bunchedArgs.length) {
-          report.error(UnapplyInvalidNumberOfArguments(qual, argTypes), tree.srcPos)
-          argTypes = argTypes.take(args.length) ++
-            List.fill(argTypes.length - args.length)(WildcardType)
-        }
-        val unapplyPatterns = bunchedArgs.lazyZip(argTypes) map (typed(_, _))
+        val unapplyPatterns = UnapplyArgs(unapplyApp.tpe, unapplyFn, unadaptedArgs, tree.srcPos)
+          .typedPatterns(qual, this)
         val result = assignType(cpy.UnApply(tree)(newUnapplyFn, unapplyImplicits(dummyArg, unapplyApp), unapplyPatterns), ownType)
-        unapp.println(s"unapply patterns = $unapplyPatterns")
         if (ownType.stripped eq selType.stripped) || ownType.isError then result
         else tryWithTypeTest(Typed(result, TypeTree(ownType)), selType)
       case tp =>
         val unapplyErr = if (tp.isError) unapplyFn else notAnExtractor(unapplyFn)
-        val typedArgsErr = args mapconserve (typed(_, defn.AnyType))
+        val typedArgsErr = unadaptedArgs.mapconserve(typed(_, defn.AnyType))
         cpy.UnApply(tree)(unapplyErr, Nil, typedArgsErr) withType unapplyErr.tpe
     }
   }
@@ -1709,6 +1751,12 @@ trait Applications extends Compatibility {
   /** Compare two alternatives of an overloaded call or an implicit search.
    *
    *  @param  alt1, alt2      Non-overloaded references indicating the two choices
+   *  @param  preferGeneral   When comparing two value types, prefer the more general one
+   *                          over the more specific one iff `preferGeneral` is true.
+   *                          `preferGeneral` is set to `true` when we compare two given values, since
+   *                          then we want the most general evidence that matches the target
+   *                          type. It is set to `false` for overloading resolution, when we want the
+   *                          most specific type instead.
    *  @return  1   if 1st alternative is preferred over 2nd
    *          -1   if 2nd alternative is preferred over 1st
    *           0   if neither alternative is preferred over the other
@@ -1724,27 +1772,26 @@ trait Applications extends Compatibility {
    *  an alternative that takes more implicit parameters wins over one
    *  that takes fewer.
    */
-  def compare(alt1: TermRef, alt2: TermRef)(using Context): Int = trace(i"compare($alt1, $alt2)", overload) {
+  def compare(alt1: TermRef, alt2: TermRef, preferGeneral: Boolean = false)(using Context): Int = trace(i"compare($alt1, $alt2)", overload) {
     record("resolveOverloaded.compare")
 
-    /** Is alternative `alt1` with type `tp1` as specific as alternative
+    /** Is alternative `alt1` with type `tp1` as good as alternative
      *  `alt2` with type `tp2` ?
      *
-     *    1. A method `alt1` of type `(p1: T1, ..., pn: Tn)U` is as specific as `alt2`
+     *    1. A method `alt1` of type `(p1: T1, ..., pn: Tn)U` is as good as `alt2`
      *       if `alt1` is nullary or `alt2` is applicable to arguments (p1, ..., pn) of
      *       types T1,...,Tn. If the last parameter `pn` has a vararg type T*, then
      *       `alt1` must be applicable to arbitrary numbers of `T` parameters (which
      *       implies that it must be a varargs method as well).
      *    2. A polymorphic member of type [a1 >: L1 <: U1, ..., an >: Ln <: Un]T is as
-     *       specific as `alt2` of type `tp2` if T is as specific as `tp2` under the
+     *       good as `alt2` of type `tp2` if T is as good as `tp2` under the
      *       assumption that for i = 1,...,n each ai is an abstract type name bounded
      *       from below by Li and from above by Ui.
      *    3. A member of any other type `tp1` is:
-     *       a. always as specific as a method or a polymorphic method.
-     *       b. as specific as a member of any other type `tp2` if `tp1` is compatible
-     *          with `tp2`.
+     *       a. always as good as a method or a polymorphic method.
+     *       b. as good as a member of any other type `tp2` if `asGoodValueType(tp1, tp2) = true`
      */
-    def isAsSpecific(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = trace(i"isAsSpecific $tp1 $tp2", overload) {
+    def isAsGood(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = trace(i"isAsGood $tp1 $tp2", overload) {
       tp1 match
         case tp1: MethodType => // (1)
           tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
@@ -1766,69 +1813,94 @@ trait Applications extends Compatibility {
             fullyDefinedType(tp1Params, "type parameters of alternative", alt1.symbol.srcPos)
 
             val tparams = newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateParamInfos(_))
-            isAsSpecific(alt1, tp1.instantiate(tparams.map(_.typeRef)), alt2, tp2)
+            isAsGood(alt1, tp1.instantiate(tparams.map(_.typeRef)), alt2, tp2)
           }
         case _ => // (3)
+          def isGiven(alt: TermRef) =
+            alt1.symbol.is(Given) && alt.symbol != defn.NotGivenClass
+          def compareValues(tp1: Type, tp2: Type)(using Context) =
+            isAsGoodValueType(tp1, tp2, isGiven(alt1), isGiven(alt2))
           tp2 match
             case tp2: MethodType => true // (3a)
             case tp2: PolyType if tp2.resultType.isInstanceOf[MethodType] => true // (3a)
             case tp2: PolyType => // (3b)
-              explore(isAsSpecificValueType(tp1, instantiateWithTypeVars(tp2)))
+              explore(compareValues(tp1, instantiateWithTypeVars(tp2)))
             case _ => // 3b)
-              isAsSpecificValueType(tp1, tp2)
+              compareValues(tp1, tp2)
     }
 
-    /** Test whether value type `tp1` is as specific as value type `tp2`.
-     *  Let's abbreviate this to `tp1 <:s tp2`.
-     *  Previously, `<:s` was the same as `<:`. This behavior is still
-     *  available under mode `Mode.OldOverloadingResolution`. The new behavior
-     *  is different, however. Here, `T <:s U` iff
+    /** Test whether value type `tp1` is as good as value type `tp2`.
+     *  Let's abbreviate this to `tp1 <:p tp2`. The behavior depends on the Scala version
+     *  and mode.
      *
-     *    flip(T) <: flip(U)
+     *   - In Scala 2, `<:p` was the same as `<:`. This behavior is still
+     *     available in 3.0-migration if mode `Mode.OldImplicitResolution` is turned on as well.
+     *     It is used to highlight differences between Scala 2 and 3 behavior.
      *
-     *  where `flip` changes covariant occurrences of contravariant type parameters to
-     *  covariant ones. Intuitively `<:s` means subtyping `<:`, except that all arguments
-     *  to contravariant parameters are compared as if they were covariant. E.g. given class
+     *   - In Scala 3.0-3.5, the behavior is as follows: `T <:p U` iff there is an impliit conversion
+     *     from `T` to `U`, or
      *
-     *     class Cmp[-X]
+     *        flip(T) <: flip(U)
      *
-     *  `Cmp[T] <:s Cmp[U]` if `T <: U`. On the other hand, non-variant occurrences
-     *  of parameters are not affected. So `T <: U` would imply `Set[Cmp[U]] <:s Set[Cmp[T]]`,
-     *  as usual, because `Set` is non-variant.
+     *     where `flip` changes covariant occurrences of contravariant type parameters to
+     *     covariant ones. Intuitively `<:p` means subtyping `<:`, except that all arguments
+     *     to contravariant parameters are compared as if they were covariant. E.g. given class
      *
-     *  This relation might seem strange, but it models closely what happens for methods.
-     *  Indeed, if we integrate the existing rules for methods into `<:s` we have now that
+     *         class Cmp[-X]
      *
-     *     (T)R  <:s  (U)R
+     *     `Cmp[T] <:p Cmp[U]` if `T <: U`. On the other hand, non-variant occurrences
+     *     of parameters are not affected. So `T <: U` would imply `Set[Cmp[U]] <:p Set[Cmp[T]]`,
+     *     as usual, because `Set` is non-variant.
      *
-     *  iff
+     *   - From Scala 3.6, `T <:p U` means `T <: U` or `T` convertible to `U`
+     *     for overloading resolution (when `preferGeneral is false), and the opposite relation
+     *     `U <: T` or `U convertible to `T` for implicit disambiguation between givens
+     *     (when `preferGeneral` is true). For old-style implicit values, the 3.4 behavior is kept.
+     *     If one of the alternatives is a given and the other is an implicit, the given wins.
      *
-     *     T => R  <:s  U => R
+     *   - In Scala 3.5 and Scala 3.6-migration, we issue a warning if the result under
+     *     Scala 3.6 differ wrt to the old behavior up to 3.5.
      *
-     *  Also: If a compared type refers to a given or its module class, use
+     *  Also and only for given resolution: If a compared type refers to a given or its module class, use
      *  the intersection of its parent classes instead.
      */
-    def isAsSpecificValueType(tp1: Type, tp2: Type)(using Context) =
-      if (ctx.mode.is(Mode.OldOverloadingResolution))
+    def isAsGoodValueType(tp1: Type, tp2: Type, alt1isGiven: Boolean, alt2isGiven: Boolean)(using Context): Boolean =
+      val oldResolution = ctx.mode.is(Mode.OldImplicitResolution)
+      if !preferGeneral || Feature.migrateTo3 && oldResolution then
+        // Normal specificity test for overloading resolution (where `preferGeneral` is false)
+        // and in mode Scala3-migration when we compare with the old Scala 2 rules.
         isCompatible(tp1, tp2)
-      else {
-        val flip = new TypeMap {
-          def apply(t: Type) = t match {
-            case t @ AppliedType(tycon, args) =>
-              def mapArg(arg: Type, tparam: TypeParamInfo) =
-                if (variance > 0 && tparam.paramVarianceSign < 0) defn.FunctionNOf(arg :: Nil, defn.UnitType)
-                else arg
-              mapOver(t.derivedAppliedType(tycon, args.zipWithConserve(tycon.typeParams)(mapArg)))
-            case _ => mapOver(t)
-          }
-        }
-        def prepare(tp: Type) = tp.stripTypeVar match {
+      else
+        def prepare(tp: Type) = tp.stripTypeVar match
           case tp: NamedType if tp.symbol.is(Module) && tp.symbol.sourceModule.is(Given) =>
-            flip(tp.widen.widenToParents)
-          case _ => flip(tp)
-        }
-        (prepare(tp1) relaxed_<:< prepare(tp2)) || viewExists(tp1, tp2)
-      }
+            tp.widen.widenToParents
+          case _ =>
+            tp
+
+        val tp1p = prepare(tp1)
+        val tp2p = prepare(tp2)
+
+        if Feature.sourceVersion.isAtMost(SourceVersion.`3.4`)
+            || oldResolution
+            || !alt1isGiven && !alt2isGiven
+        then
+          // Intermediate rules: better means specialize, but map all type arguments downwards
+          // These are enabled for 3.0-3.5, and for all comparisons between old-style implicits,
+          // and in 3.5 and 3.6-migration when we compare with previous rules.
+          val flip = new TypeMap:
+            def apply(t: Type) = t match
+              case t @ AppliedType(tycon, args) =>
+                def mapArg(arg: Type, tparam: TypeParamInfo) =
+                  if (variance > 0 && tparam.paramVarianceSign < 0) defn.FunctionNOf(arg :: Nil, defn.UnitType)
+                  else arg
+                mapOver(t.derivedAppliedType(tycon, args.zipWithConserve(tycon.typeParams)(mapArg)))
+              case _ => mapOver(t)
+          (flip(tp1p) relaxed_<:< flip(tp2p)) || viewExists(tp1, tp2)
+        else
+          // New rules: better means generalize, givens always beat implicits
+          if alt1isGiven != alt2isGiven then alt1isGiven
+          else (tp2p relaxed_<:< tp1p) || viewExists(tp2, tp1)
+    end isAsGoodValueType
 
     /** Widen the result type of synthetic given methods from the implementation class to the
      *  type that's implemented. Example
@@ -1880,17 +1952,16 @@ trait Applications extends Compatibility {
     def comparePrefixes =
       val pre1 = widenPrefix(alt1)
       val pre2 = widenPrefix(alt2)
-      val winsPrefix1 = isAsSpecificValueType(pre1, pre2)
-      val winsPrefix2 = isAsSpecificValueType(pre2, pre1)
+      val winsPrefix1 = isCompatible(pre1, pre2)
+      val winsPrefix2 = isCompatible(pre2, pre1)
       if winsPrefix1 == winsPrefix2 then 0
       else if winsPrefix1 then 1
       else -1
 
     def compareWithTypes(tp1: Type, tp2: Type) =
       val ownerScore = compareOwner(alt1.symbol.maybeOwner, alt2.symbol.maybeOwner)
-
-      val winsType1 = isAsSpecific(alt1, tp1, alt2, tp2)
-      val winsType2 = isAsSpecific(alt2, tp2, alt1, tp1)
+      val winsType1 = isAsGood(alt1, tp1, alt2, tp2)
+      val winsType2 = isAsGood(alt2, tp2, alt1, tp1)
 
       overload.println(i"compare($alt1, $alt2)? $tp1 $tp2 $ownerScore $winsType1 $winsType2")
       if winsType1 && winsType2

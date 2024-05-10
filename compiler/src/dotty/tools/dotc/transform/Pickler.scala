@@ -131,7 +131,7 @@ object Pickler {
      * that API and Dependency phases are complete.
      */
     def init(using Context, ExecutionContext): AsyncTastyHolder =
-      AsyncTastyHolder(ctx.settings.YearlyTastyOutput.value, ctx.incCallback)
+      AsyncTastyHolder(ctx.settings.XearlyTastyOutput.value, ctx.incCallback)
 
 
   /** Asynchronously writes TASTy files to the destination -Yearly-tasty-output.
@@ -198,7 +198,7 @@ class Pickler extends Phase {
     // we do not want to pickle `.betasty` if do not plan to actually create the
     // betasty file (as signified by the -Ybest-effort option)
 
-  // when `-Yjava-tasty` is set we actually want to run this phase on Java sources
+  // when `-Xjava-tasty` is set we actually want to run this phase on Java sources
   override def skipIfJava(using Context): Boolean = false
 
   private def output(name: String, msg: String) = {
@@ -286,8 +286,8 @@ class Pickler extends Phase {
         util.SourceFile.relativePath(unit.source, reference)
       val isJavaAttr = unit.isJava // we must always set JAVAattr when pickling Java sources
       if isJavaAttr then
-        // assert that Java sources didn't reach Pickler without `-Yjava-tasty`.
-        assert(ctx.settings.YjavaTasty.value, "unexpected Java source file without -Yjava-tasty")
+        // assert that Java sources didn't reach Pickler without `-Xjava-tasty`.
+        assert(ctx.settings.XjavaTasty.value, "unexpected Java source file without -Xjava-tasty")
       val isOutline = isJavaAttr // TODO: later we may want outline for Scala sources too
       val attributes = Attributes(
         sourceFile = sourceRelativePath,
@@ -326,7 +326,7 @@ class Pickler extends Phase {
                 unit.source, tree :: Nil, positionWarnings,
                 scratch.positionBuffer, scratch.pickledIndices)
 
-          if !ctx.settings.YdropComments.value then
+          if !ctx.settings.XdropComments.value then
             CommentPickler.pickleComments(
                 pickler, treePkl.buf.addrOfTree, treePkl.docString, tree,
                 scratch.commentBuffer)
@@ -403,7 +403,7 @@ class Pickler extends Phase {
         runPhase(_())
     if ctx.settings.YtestPickler.value then
       val ctx2 = ctx.fresh
-        .setSetting(ctx.settings.YreadComments, true)
+        .setSetting(ctx.settings.XreadComments, true)
         .setSetting(ctx.settings.YshowPrintErrors, true)
       testUnpickler(
         using ctx2

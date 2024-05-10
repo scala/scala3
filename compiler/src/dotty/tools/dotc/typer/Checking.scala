@@ -29,12 +29,11 @@ import config.Printers.{typr, patmatch}
 import NameKinds.DefaultGetterName
 import NameOps.*
 import SymDenotations.{NoCompleter, NoDenotation}
-import Applications.unapplyArgs
+import Applications.UnapplyArgs
 import Inferencing.isFullyDefined
 import transform.patmat.SpaceEngine.{isIrrefutable, isIrrefutableQuotePattern}
 import transform.ValueClasses.underlyingOfValueClass
-import config.Feature
-import config.Feature.sourceVersion
+import config.Feature, Feature.{sourceVersion, modularity}
 import config.SourceVersion.*
 import config.MigrationVersion
 import printing.Formatting.hlAsKeyword
@@ -198,7 +197,7 @@ object Checking {
    *  and that the instance conforms to the self type of the created class.
    */
   def checkInstantiable(tp: Type, srcTp: Type, pos: SrcPos)(using Context): Unit =
-    tp.underlyingClassRef(refinementOK = false) match
+    tp.underlyingClassRef(refinementOK = Feature.enabled(modularity)) match
       case tref: TypeRef =>
         val cls = tref.symbol
         if (cls.isOneOf(AbstractOrTrait)) {
@@ -601,6 +600,7 @@ object Checking {
     // The issue with `erased inline` is that the erased semantics get lost
     // as the code is inlined and the reference is removed before the erased usage check.
     checkCombination(Erased, Inline)
+    checkNoConflict(Tracked, Mutable, em"mutable variables may not be `tracked`")
     checkNoConflict(Lazy, ParamAccessor, em"parameter may not be `lazy`")
   }
 
@@ -966,10 +966,16 @@ trait Checking {
       false
     }
 
-    def check(pat: Tree, pt: Type): Boolean =
+    // Is scrutinee type `pt` a subtype of `pat.tpe`, after stripping named tuples
+    // and accounting for large generic tuples?
+    // Named tuples need to be stripped off, since names are dropped in patterns
+    def conforms(pat: Tree, pt: Type): Boolean =
       pt.isTupleXXLExtract(pat.tpe) // See isTupleXXLExtract, fixes TupleXXL parameter type
-      || pt <:< pat.tpe
-      || fail(pat, pt, Reason.NonConforming)
+      || pt.stripNamedTuple <:< pat.tpe
+      || (pt.widen ne pt) && conforms(pat, pt.widen)
+
+    def check(pat: Tree, pt: Type): Boolean =
+      conforms(pat, pt) || fail(pat, pt, Reason.NonConforming)
 
     def recur(pat: Tree, pt: Type): Boolean =
       !sourceVersion.isAtLeast(`3.2`)
@@ -982,7 +988,7 @@ trait Checking {
           case UnApply(fn, implicits, pats) =>
             check(pat, pt) &&
             (isIrrefutable(fn, pats.length) || fail(pat, pt, Reason.RefutableExtractor)) && {
-              val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.srcPos)
+              val argPts = UnapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.srcPos).argTypes
               pats.corresponds(argPts)(recur)
             }
           case Alternative(pats) =>
@@ -1061,8 +1067,8 @@ trait Checking {
   *   check that class prefix is stable.
    *  @return  `tp` itself if it is a class or trait ref, ObjectType if not.
    */
-  def checkClassType(tp: Type, pos: SrcPos, traitReq: Boolean, stablePrefixReq: Boolean)(using Context): Type =
-    tp.underlyingClassRef(refinementOK = false) match {
+  def checkClassType(tp: Type, pos: SrcPos, traitReq: Boolean, stablePrefixReq: Boolean, refinementOK: Boolean = false)(using Context): Type =
+    tp.underlyingClassRef(refinementOK) match
       case tref: TypeRef =>
         if (traitReq && !tref.symbol.is(Trait)) report.error(TraitIsExpected(tref.symbol), pos)
         if (stablePrefixReq && ctx.phase <= refchecksPhase) checkStable(tref.prefix, pos, "class prefix")
@@ -1070,7 +1076,6 @@ trait Checking {
       case _ =>
         report.error(NotClassType(tp), pos)
         defn.ObjectType
-    }
 
   /** If `sym` is an old-style implicit conversion, check that implicit conversions are enabled.
    *  @pre  sym.is(GivenOrImplicit)
@@ -1326,20 +1331,20 @@ trait Checking {
   }
 
   /** Check that user-defined (result) type is fully applied */
-  def checkFullyAppliedType(tree: Tree)(using Context): Unit = tree match
+  def checkFullyAppliedType(tree: Tree, prefix: String)(using Context): Unit = tree match
     case TypeBoundsTree(lo, hi, alias) =>
-      checkFullyAppliedType(lo)
-      checkFullyAppliedType(hi)
-      checkFullyAppliedType(alias)
+      checkFullyAppliedType(lo, prefix)
+      checkFullyAppliedType(hi, prefix)
+      checkFullyAppliedType(alias, prefix)
     case Annotated(arg, annot) =>
-      checkFullyAppliedType(arg)
+      checkFullyAppliedType(arg, prefix)
     case LambdaTypeTree(_, body) =>
-      checkFullyAppliedType(body)
+      checkFullyAppliedType(body, prefix)
     case _: TypeTree =>
     case _ =>
       if tree.tpe.typeParams.nonEmpty then
         val what = if tree.symbol.exists then tree.symbol.show else i"type $tree"
-        report.error(em"$what takes type parameters", tree.srcPos)
+        report.error(em"$prefix$what takes type parameters", tree.srcPos)
 
   /** Check that we are in an inline context (inside an inline method or in inline code) */
   def checkInInlineContext(what: String, pos: SrcPos)(using Context): Unit =
@@ -1604,7 +1609,7 @@ trait ReChecking extends Checking {
   override def checkEnumParent(cls: Symbol, firstParent: Symbol)(using Context): Unit = ()
   override def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(using Context): Unit = ()
   override def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(using Context): Unit = ()
-  override def checkFullyAppliedType(tree: Tree)(using Context): Unit = ()
+  override def checkFullyAppliedType(tree: Tree, prefix: String)(using Context): Unit = ()
   override def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(using Context): Unit = ()
   override def checkAnnotApplicable(annot: Tree, sym: Symbol)(using Context): Boolean = true
   override def checkMatchable(tp: Type, pos: SrcPos, pattern: Boolean)(using Context): Unit = ()
@@ -1620,7 +1625,7 @@ trait NoChecking extends ReChecking {
   override def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(using Context): Type = info
   override def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, pos: SrcPos)(using Context): Unit = ()
   override def checkStable(tp: Type, pos: SrcPos, kind: String)(using Context): Unit = ()
-  override def checkClassType(tp: Type, pos: SrcPos, traitReq: Boolean, stablePrefixReq: Boolean)(using Context): Type = tp
+  override def checkClassType(tp: Type, pos: SrcPos, traitReq: Boolean, stablePrefixReq: Boolean, refinementOK: Boolean)(using Context): Type = tp
   override def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit = ()
   override def checkImplicitConversionUseOK(tree: Tree, expected: Type)(using Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: SrcPos, where: => String = "")(using Context): Type = tp

@@ -41,7 +41,7 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
       setCompilerSettings(ctx1.fresh.setSetting(ctx1.settings.outputDir, outDir), settings)
     }
 
-    val compiledExpr = 
+    val compiledExpr =
       try
         new QuoteCompiler().newRun(ctx).compileExpr(exprBuilder)
       catch case ex: dotty.tools.FatalError =>
@@ -50,10 +50,10 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
             |This might be caused by using an incorrect classloader
             |when creating the `staging.Compiler` instance with `staging.Compiler.make`.
             |For details, please refer to the documentation.
-            |For non-enriched exceptions, compile with -Yno-enrich-error-messages.""".stripMargin
-        if ctx.settings.YnoEnrichErrorMessages.value(using ctx) then throw ex
+            |For non-enriched exceptions, compile with -Xno-enrich-error-messages.""".stripMargin
+        if ctx.settings.XnoEnrichErrorMessages.value(using ctx) then throw ex
         else throw new Exception(enrichedMessage, ex)
-    
+
     compiledExpr match
       case Right(value) =>
         value.asInstanceOf[T]

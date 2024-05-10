@@ -1,4 +1,4 @@
-//> using options -Yjava-tasty -Ytest-pickler-check
+//> using options -Xjava-tasty -Ytest-pickler-check
 
 package p
 

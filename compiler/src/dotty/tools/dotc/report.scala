@@ -146,7 +146,7 @@ object report:
 
   // Should only be called from Run#enrichErrorMessage.
   def enrichErrorMessage(errorMessage: String)(using Context): String =
-    if ctx.settings.YnoEnrichErrorMessages.value then errorMessage
+    if ctx.settings.XnoEnrichErrorMessages.value then errorMessage
     else try enrichErrorMessage1(errorMessage)
     catch case _: Throwable => errorMessage // don't introduce new errors trying to report errors, so swallow exceptions
 
@@ -171,7 +171,7 @@ object report:
        |  An unhandled exception was thrown in the compiler.
        |  Please file a crash report here:
        |  https://github.com/scala/scala3/issues/new/choose
-       |  For non-enriched exceptions, compile with -Yno-enrich-error-messages.
+       |  For non-enriched exceptions, compile with -Xno-enrich-error-messages.
        |
        |$info1
        |""".stripMargin

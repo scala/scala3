@@ -59,9 +59,10 @@ idrest           ::=  {letter | digit} [‘_’ op]
 quoteId          ::=  ‘'’ alphaid
 spliceId         ::=  ‘$’ alphaid ;
 
-integerLiteral   ::=  (decimalNumeral | hexNumeral) [‘L’ | ‘l’]
+integerLiteral   ::=  (decimalNumeral | hexNumeral | binaryNumeral) [‘L’ | ‘l’]
 decimalNumeral   ::=  ‘0’ | digit [{digit | ‘_’} digit]
 hexNumeral       ::=  ‘0’ (‘x’ | ‘X’) hexDigit [{hexDigit | ‘_’} hexDigit]
+binaryNumeral    ::=  ‘0’ (‘b’ | ‘B’) binaryDigit [{binaryDigit | ‘_’} binaryDigit]
 
 floatingPointLiteral
                  ::=  [decimalNumeral] ‘.’ digit [{digit | ‘_’} digit] [exponentPart] [floatType]
@@ -191,6 +192,7 @@ MatchType         ::=  InfixType `match` <<< TypeCaseClauses >>>
 InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
 RefinedType       ::=  AnnotType {[nl] Refinement}                              RefinedTypeTree(t, ds)
 AnnotType         ::=  SimpleType {Annotation}                                  Annotated(t, annot)
+AnnotType1        ::=  SimpleType1 {Annotation}                                 Annotated(t, annot)
 
 SimpleType        ::=  SimpleLiteral                                            SingletonTypeTree(l)
                     |  ‘?’ TypeBounds
@@ -198,7 +200,7 @@ SimpleType        ::=  SimpleLiteral                                            
 SimpleType1       ::=  id                                                       Ident(name)
                     |  Singleton ‘.’ id                                         Select(t, name)
                     |  Singleton ‘.’ ‘type’                                     SingletonTypeTree(p)
-                    |  ‘(’ Types ‘)’                                            Tuple(ts)
+                    |  ‘(’ [Types | NamesAndTypes] ‘)’                          Tuple(ts)
                     |  Refinement                                               RefinedTypeTree(EmptyTree, refinement)
                     |  TypeSplice                                               -- deprecated syntax
                     |  SimpleType1 TypeArgs                                     AppliedTypeTree(t, args)
@@ -220,8 +222,12 @@ IntoTargetType    ::=  Type
 TypeArgs          ::=  ‘[’ Types ‘]’                                            ts
 Refinement        ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>                  ds
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]                                  TypeBoundsTree(lo, hi)
-TypeParamBounds   ::=  TypeBounds {‘:’ Type}                                    ContextBounds(typeBounds, tps)
+TypeAndCtxBounds  ::=  TypeBounds [‘:’ ContextBounds]                           ContextBounds(typeBounds, tps)
+ContextBounds     ::=  ContextBound | '{' ContextBound {',' ContextBound} '}'
+ContextBound      ::=  Type ['as' id]
 Types             ::=  Type {‘,’ Type}
+NamesAndTypes     ::=  NameAndType {‘,’ NameAndType}
+NameAndType       ::=  id ':' Type
 ```
 
 ### Expressions
@@ -290,8 +296,10 @@ TypeSplice        ::= spliceId                                                  
                     |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted type pattern -- deprecated syntax
                     |  ‘$’ ‘{’ Pattern ‘}’                                      -- when inside quoted type pattern -- deprecated syntax
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
+                    |  NamedExprInParens {‘,’ NamedExprInParens}
 ExprInParens      ::=  PostfixExpr ‘:’ Type                                     -- normal Expr allows only RefinedType here
                     |  Expr
+NamedExprInParens ::=  id '=' ExprInParens
 ParArgumentExprs  ::=  ‘(’ [ExprsInParens] ‘)’                          exprs
                     |  ‘(’ ‘using’ ExprsInParens ‘)’
                     |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘*’ ‘)’              exprs :+ Typed(expr, Ident(wildcardStar))
@@ -343,6 +351,9 @@ SimplePattern1    ::=  SimpleRef
 PatVar            ::=  varid
                     |  ‘_’
 Patterns          ::=  Pattern {‘,’ Pattern}
+                    |  NamedPattern {‘,’ NamedPattern}
+NamedPattern      ::=  id '=' Pattern
+
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’                                       Apply(fn, pats)
                     |  ‘(’ [Patterns ‘,’] PatVar ‘*’ ‘)’
 ```
@@ -351,7 +362,7 @@ ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’                               
 ```ebnf
 ClsTypeParamClause::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
 ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’]                                 TypeDef(Modifiers, name, tparams, bounds)
-                       id [HkTypeParamClause] TypeParamBounds                   Bound(below, above, context)
+                       id [HkTypeParamClause] TypeAndCtxBounds                  Bound(below, above, context)
 
 TypTypeParamClause::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
 TypTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeBounds
@@ -365,7 +376,7 @@ ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’
                     |  [nl] ‘(’ ‘using’ (ClsParams | FunArgTypes) ‘)’
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
-                       [{Modifier} (‘val’ | ‘var’)] Param
+                       [{Modifier | ‘tracked’} (‘val’ | ‘var’)] Param
 
 DefParamClauses   ::=  DefParamClause { DefParamClause } -- and two DefTypeParamClause cannot be adjacent
 DefParamClause    ::=  DefTypeParamClause
@@ -376,7 +387,7 @@ TypelessClause    ::=  DefTermParamClause
                     |  UsingParamClause
 
 DefTypeParamClause::=  [nl] ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
-DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeParamBounds
+DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeAndCtxBounds
 DefTermParamClause::=  [nl] ‘(’ [DefTermParams] ‘)’
 UsingParamClause  ::=  [nl] ‘(’ ‘using’ (DefTermParams | FunArgTypes) ‘)’
 DefImplicitClause ::=  [nl] ‘(’ ‘implicit’ DefTermParams ‘)’
@@ -447,7 +458,7 @@ PatDef            ::=  ids [‘:’ Type] [‘=’ Expr]
 DefDef            ::=  DefSig [‘:’ Type] [‘=’ Expr]                             DefDef(_, name, paramss, tpe, expr)
                     |  ‘this’ TypelessClauses [DefImplicitClause] ‘=’ ConstrExpr     DefDef(_, <init>, vparamss, EmptyTree, expr | Block)
 DefSig            ::=  id [DefParamClauses] [DefImplicitClause]
-TypeDef           ::=  id [TypeParamClause] {FunParamClause} TypeBounds         TypeDefTree(_, name, tparams, bound
+TypeDef           ::=  id [TypeParamClause] {FunParamClause} TypeAndCtxBounds   TypeDefTree(_, name, tparams, bound
                        [‘=’ Type]
 
 TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
@@ -459,9 +470,13 @@ ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        
 ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody
-GivenDef          ::=  [GivenSig] (AnnotType [‘=’ Expr] | StructuralInstance)
-GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’         -- one of `id`, `DefTypeParamClause`, `UsingParamClause` must be present
-StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} [‘with’ WithTemplateBody]
+
+GivenDef          ::=  [GivenConditional '=>'] GivenSig
+GivenConditional  ::=  [DefTypeParamClause | UsingParamClause] {UsingParamClause}
+GivenSig          ::=  GivenType ['as' id] ([‘=’ Expr] | TemplateBody)
+                    |  ConstrApps ['as' id] TemplateBody
+GivenType         ::=  AnnotType1 {id [nl] AnnotType1}
+
 Extension         ::=  ‘extension’ [DefTypeParamClause] {UsingParamClause}
                        ‘(’ DefTermParam ‘)’ {UsingParamClause} ExtMethods
 ExtMethods        ::=  ExtMethod | [nl] <<< ExtMethod {semi ExtMethod} >>>

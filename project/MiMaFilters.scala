@@ -10,6 +10,18 @@ object MiMaFilters {
       Build.mimaPreviousDottyVersion -> Seq(
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.annotation.experimental.this"),
         ProblemFilters.exclude[FinalClassProblem]("scala.annotation.experimental"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.fromArray"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.fromIArray"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.Tuple.helpers"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.Tuple$helpers$"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.fromArray"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.fromIArray"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.namedTuples"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$namedTuples$"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.modularity"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$modularity$"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.compiletime.package#package.deferred"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.WitnessNames"),
       ),
 
       // Additions since last LTS
@@ -52,6 +64,9 @@ object MiMaFilters {
       Build.mimaPreviousDottyVersion -> // Seq.empty, // We should never break backwards compatibility
         Seq(
           // `ReversedMissingMethodProblem`s are acceptable. See comment in `Breaking changes since last LTS`.
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.FlexibleType"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.FlexibleTypeTypeTest"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.FlexibleTypeMethods"),
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SymbolMethods.isSuperAccessor"),
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.MethodTypeKind"),
           ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeModule.apply"),
@@ -83,7 +98,8 @@ object MiMaFilters {
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of tasty core
       Build.mimaPreviousDottyVersion -> Seq(
-        ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyFormat.FLEXIBLEtype")
+        ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyFormat.FLEXIBLEtype"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyFormat.TRACKED"),
       ),
 
       // Additions since last LTS

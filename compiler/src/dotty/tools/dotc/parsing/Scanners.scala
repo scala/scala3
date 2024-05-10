@@ -174,7 +174,7 @@ object Scanners {
   }
 
   class Scanner(source: SourceFile, override val startFrom: Offset = 0, profile: Profile = NoProfile, allowIndent: Boolean = true)(using Context) extends ScannerCommon(source) {
-    val keepComments = !ctx.settings.YdropComments.value
+    val keepComments = !ctx.settings.XdropComments.value
 
     /** A switch whether operators at the start of lines can be infix operators */
     private[Scanners] var allowLeadingInfixOperators = true
