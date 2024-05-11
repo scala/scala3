@@ -6162,8 +6162,15 @@ object Types extends TypeUtils {
     def inverse: BiTypeMap
 
     /** A restriction of this map to a function on tracked CaptureRefs */
-    def forward(ref: CaptureRef): CaptureRef = this(ref) match
-      case result: CaptureRef if result.isTrackableRef => result
+    def forward(ref: CaptureRef): CaptureRef =
+      val result = this(ref)
+      def ensureTrackable(tp: Type): CaptureRef = tp match
+        case tp: CaptureRef =>
+          if tp.isTrackableRef then tp
+          else ensureTrackable(tp.underlying)
+        case _ =>
+          assert(false, i"not a trackable captureRef ref: $result, ${result.underlyingIterator.toList}")
+      ensureTrackable(result)
 
     /** A restriction of the inverse to a function on tracked CaptureRefs */
     def backward(ref: CaptureRef): CaptureRef = inverse(ref) match

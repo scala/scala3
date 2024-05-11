@@ -196,7 +196,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             case cls: ClassSymbol
             if !defn.isFunctionClass(cls) && cls.is(CaptureChecked) =>
               cls.paramGetters.foldLeft(tp) { (core, getter) =>
-                if atPhase(thisPhase.next)(getter.termRef.isTracked) then
+                if atPhase(thisPhase.next)(getter.termRef.isTracked)
+                    && !getter.is(Tracked)
+                then
                   val getterType =
                     mapInferred(refine = false)(tp.memberInfo(getter)).strippedDealias
                   RefinedType(core, getter.name,
