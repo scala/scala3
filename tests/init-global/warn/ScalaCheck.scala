@@ -18,5 +18,5 @@ object FirstParser extends CmdLineParser:
     val names = Set("bla")
     val help = "bla"
 
-  val opts = List(OptMinSuccess)
+  val opts = Some(OptMinSuccess)
   val a = "FirstParser"
