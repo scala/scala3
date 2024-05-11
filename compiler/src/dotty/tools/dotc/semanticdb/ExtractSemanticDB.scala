@@ -49,7 +49,12 @@ import java.nio.file.Path
  */
 class ExtractSemanticDB private (phaseMode: ExtractSemanticDB.PhaseMode) extends Phase:
 
-  override val phaseName: String = ExtractSemanticDB.phaseNamePrefix + phaseMode.toString()
+  override val phaseName: String = s"""${ExtractSemanticDB.phaseNamePrefix}${
+    import ExtractSemanticDB.PhaseMode.*
+    phaseMode match
+      case ExtractSemanticInfo => "ExtractInfo"
+      case AppendDiagnostics   => "AppendDiag"
+  }"""
 
   override val description: String = ExtractSemanticDB.description
 
@@ -129,7 +134,7 @@ object ExtractSemanticDB:
   import java.nio.file.Files
   import java.nio.file.Paths
 
-  val phaseNamePrefix: String = "extractSemanticDB"
+  val phaseNamePrefix: String = "semanticDB"
   val description: String = "extract info into .semanticdb files"
 
   enum PhaseMode:
