@@ -13,8 +13,6 @@ import annotation.experimental
   /** The universal capture reference */
   val cap: Cap = Cap()
 
-  given Cap = cap
-
   /** Reach capabilities x* which appear as terms in @retains annotations are encoded
    *  as `caps.reachCapability(x)`. When converted to CaptureRef types in capture sets
    *  they are  represented as `x.type @annotation.internal.reachCapability`.

@@ -2259,7 +2259,7 @@ object Types extends TypeUtils {
      *  set of the underlying type is not always empty.
      */
     final def isTracked(using Context): Boolean =
-      isTrackableRef && (isRootCapability || !captureSetOfInfo.isAlwaysEmpty)
+      isTrackableRef && (isMaxCapability || !captureSetOfInfo.isAlwaysEmpty)
 
     /** Is this a reach reference of the form `x*`? */
     def isReach(using Context): Boolean = false // overridden in AnnotatedType
@@ -2272,6 +2272,9 @@ object Types extends TypeUtils {
 
     /** Is this reference the generic root capability `cap` ? */
     def isRootCapability(using Context): Boolean = false
+
+    /** Is this reference capability that does not derive from another capability ? */
+    def isMaxCapability(using Context): Boolean = false
 
     /** Normalize reference so that it can be compared with `eq` for equality */
     def normalizedRef(using Context): CaptureRef = this
@@ -3009,6 +3012,9 @@ object Types extends TypeUtils {
 
     override def isRootCapability(using Context): Boolean =
       name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
+
+    override def isMaxCapability(using Context): Boolean =
+      widen.derivesFrom(defn.Caps_Cap) && symbol.isStableMember
 
     override def normalizedRef(using Context): CaptureRef =
       if isTrackableRef then symbol.termRef else this
@@ -4809,6 +4815,7 @@ object Types extends TypeUtils {
     def kindString: String = "Term"
     def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
     override def isTrackableRef(using Context) = true
+    override def isMaxCapability(using Context) = widen.derivesFrom(defn.Caps_Cap)
   }
 
   private final class TermParamRefImpl(binder: TermLambda, paramNum: Int) extends TermParamRef(binder, paramNum)
