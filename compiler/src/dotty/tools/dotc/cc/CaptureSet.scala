@@ -147,6 +147,7 @@ sealed abstract class CaptureSet extends Showable:
    *   this subsumes this.f
    *   x subsumes y  ==>  x* subsumes y, x subsumes y?
    *   x subsumes y  ==>  x* subsumes y*, x? subsumes y?
+   *   x: x1.type /\ x1 subsumes y  ==>  x subsumes y
    */
   extension (x: CaptureRef)
      private def subsumes(y: CaptureRef)(using Context): Boolean =
@@ -158,6 +159,10 @@ sealed abstract class CaptureSet extends Showable:
           case _ => false
       || x.match
           case ReachCapability(x1) => x1.subsumes(y.stripReach)
+          case x: TermRef =>
+            x.info match
+              case x1: CaptureRef => x1.subsumes(y)
+              case _ => false
           case _ => false
 
   /** {x} <:< this   where <:< is subcapturing, but treating all variables
