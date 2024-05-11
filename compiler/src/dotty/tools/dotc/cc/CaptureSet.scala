@@ -115,7 +115,7 @@ sealed abstract class CaptureSet extends Showable:
    *  capture set.
    */
   protected final def addNewElem(elem: CaptureRef)(using Context, VarState): CompareResult =
-    if elem.isRootCapability || summon[VarState] == FrozenState then
+    if elem.isMaxCapability || summon[VarState] == FrozenState then
       addThisElem(elem)
     else
       addThisElem(elem).orElse:
@@ -167,11 +167,11 @@ sealed abstract class CaptureSet extends Showable:
     if comparer.isInstanceOf[ExplainingTypeComparer] then // !!! DEBUG
       reporting.trace.force(i"$this accountsFor $x, ${x.captureSetOfInfo}?", show = true):
         elems.exists(_.subsumes(x))
-        || !x.isRootCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
+        || !x.isMaxCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
     else
       reporting.trace(i"$this accountsFor $x, ${x.captureSetOfInfo}?", show = true):
         elems.exists(_.subsumes(x))
-        || !x.isRootCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
+        || !x.isMaxCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
 
   /** A more optimistic version of accountsFor, which does not take variable supersets
    *  of the `x` reference into account. A set might account for `x` if it accounts
@@ -183,7 +183,7 @@ sealed abstract class CaptureSet extends Showable:
   def mightAccountFor(x: CaptureRef)(using Context): Boolean =
     reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true) {
       elems.exists(_.subsumes(x))
-      || !x.isRootCapability
+      || !x.isMaxCapability
         && {
           val elems = x.captureSetOfInfo.elems
           !elems.isEmpty && elems.forall(mightAccountFor)
@@ -1032,7 +1032,7 @@ object CaptureSet:
 
   /** The capture set of the type underlying CaptureRef */
   def ofInfo(ref: CaptureRef)(using Context): CaptureSet = ref match
-    case ref: TermRef if ref.isRootCapability => ref.singletonCaptureSet
+    case ref: (TermRef | TermParamRef) if ref.isMaxCapability => ref.singletonCaptureSet
     case ReachCapability(ref1) => deepCaptureSet(ref1.widen)
       .showing(i"Deep capture set of $ref: ${ref1.widen} = $result", capt)
     case _ => ofType(ref.underlying, followResult = true)

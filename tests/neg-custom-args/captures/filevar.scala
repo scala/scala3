@@ -9,7 +9,7 @@ class Service:
   def log = file.write("log")
 
 def withFile[T](op: (l: caps.Cap) ?-> (f: File^{l}) => T): T =
-  op(new File)
+  op(using caps.cap)(new File)
 
 def test =
   withFile: f =>
