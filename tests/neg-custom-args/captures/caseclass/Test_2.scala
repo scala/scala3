@@ -1,4 +1,4 @@
-@annotation.capability class C
+class C extends caps.Capability
 def test(c: C) =
   val pure: () -> Unit = () => ()
   val impure: () => Unit = pure

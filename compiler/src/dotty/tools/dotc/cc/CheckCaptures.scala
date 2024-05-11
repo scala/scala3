@@ -537,8 +537,8 @@ class CheckCaptures extends Recheck, SymTransformer:
          */
         def addParamArgRefinements(core: Type, initCs: CaptureSet): (Type, CaptureSet) =
           var refined: Type = core
-          var allCaptures: CaptureSet = if setup.isCapabilityClassRef(core)
-            then CaptureSet.universal else initCs
+          var allCaptures: CaptureSet =
+            if core.derivesFromCapability then CaptureSet.universal else initCs
           for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
             val getter = cls.info.member(getterName).suchThat(_.is(ParamAccessor)).symbol
             if getter.termRef.isTracked && !getter.is(Private) then
@@ -572,8 +572,10 @@ class CheckCaptures extends Recheck, SymTransformer:
         val TypeApply(fn, args) = tree
         val polyType = atPhase(thisPhase.prev):
           fn.tpe.widen.asInstanceOf[TypeLambda]
+        def isExempt(sym: Symbol) =
+          sym.isTypeTestOrCast || sym == defn.Compiletime_erasedValue
         for case (arg: TypeTree, formal, pname) <- args.lazyZip(polyType.paramRefs).lazyZip((polyType.paramNames)) do
-          if !tree.symbol.isTypeTestOrCast then
+          if !isExempt(tree.symbol) then
             def where = if fn.symbol.exists then i" in an argument of ${fn.symbol}" else ""
             disallowRootCapabilitiesIn(arg.knownType, NoSymbol,
               i"Sealed type variable $pname", "be instantiated to",
@@ -1305,7 +1307,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                 case ref: TermParamRef
                 if !allowed.contains(ref) && !seen.contains(ref) =>
                   seen += ref
-                  if ref.underlying.isRef(defn.Caps_Cap) then
+                  if ref.underlying.isRef(defn.Caps_Capability) then
                     report.error(i"escaping local reference $ref", tree.srcPos)
                   else
                     val widened = ref.captureSetOfInfo

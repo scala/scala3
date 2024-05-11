@@ -1,4 +1,3 @@
-//@annotation.capability
 class CanIO { def use(): Unit = () }
 def use[X](x: X): (op: X -> Unit) -> Unit = op => op(x)
 def test(io: CanIO^): Unit =

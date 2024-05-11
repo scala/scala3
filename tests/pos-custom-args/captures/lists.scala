@@ -18,7 +18,7 @@ object NIL extends LIST[Nothing]:
 def map[A, B](f: A => B)(xs: LIST[A]): LIST[B] =
   xs.map(f)
 
-@annotation.capability class Cap
+class Cap extends caps.Capability
 
 def test(c: Cap, d: Cap, e: Cap) =
   def f(x: Cap): Unit = if c == x then ()
@@ -30,7 +30,7 @@ def test(c: Cap, d: Cap, e: Cap) =
     CONS(z, ys)
   val zsc: LIST[Cap ->{d, y} Unit] = zs
   val z1 = zs.head
-  val z1c: Cap^ ->{y, d} Unit = z1
+  val z1c: Cap ->{y, d} Unit = z1
   val ys1 = zs.tail
   val y1 = ys1.head
 

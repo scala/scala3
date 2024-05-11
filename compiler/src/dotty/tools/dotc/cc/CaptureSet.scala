@@ -1051,7 +1051,8 @@ object CaptureSet:
         case tp: TermParamRef =>
           tp.captureSet
         case tp: TypeRef =>
-          if tp.typeSymbol == defn.Caps_Cap then universal else empty
+          if tp.derivesFromCapability then universal // TODO: maybe return another value that indicates that the underltinf ref is maximal?
+          else empty
         case _: TypeParamRef =>
           empty
         case CapturingType(parent, refs) =>

@@ -1,4 +1,4 @@
-@annotation.capability class Cap
+class Cap extends caps.Capability
 
 def test(cap1: Cap, cap2: Cap) =
   def f() = if cap1 == cap1 then g else g // error

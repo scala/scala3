@@ -1,4 +1,4 @@
-@annotation.capability class Cap
+class Cap extends caps.Capability
 
 class Pair[+A, +B](x: A, y: B):
     def fst: A = x
