@@ -1,4 +1,4 @@
-@annotation.capability class Cap
+class Cap extends caps.Capability
 
 def test(d: Cap) =
   def map2(xs: List[Int])(f: Int => Int): List[Int] = xs.map(f)

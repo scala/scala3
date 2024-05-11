@@ -4,7 +4,7 @@ class CT[E]
 type CanThrow[E] = CT[E]^
 type Top  = Any^
 
-def handle[E <: Exception, T <: Top](op: (lcap: caps.Cap) ?-> CT[E]^{lcap} ?=> T)(handler: E => T): T =
+def handle[E <: Exception, T <: Top](op: (lcap: caps.Capability) ?-> CT[E]^{lcap} ?=> T)(handler: E => T): T =
   val x: CT[E] = ???
   try op(using caps.cap)(using x)
   catch case ex: E => handler(ex)

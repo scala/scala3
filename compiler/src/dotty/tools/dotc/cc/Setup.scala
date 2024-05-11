@@ -77,9 +77,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   def isCapabilityClassRef(tp: Type)(using Context): Boolean = tp.dealiasKeepAnnots match
     case _: TypeRef | _: AppliedType =>
       val sym = tp.classSymbol
-      def checkSym: Boolean =
-        sym.hasAnnotation(defn.CapabilityAnnot)
-        || sym.info.parents.exists(hasUniversalCapability)
+      def checkSym: Boolean = sym.info.parents.exists(hasUniversalCapability)
       sym.isClass && capabilityClassMap.getOrElseUpdate(sym, checkSym)
     case _ => false
 
@@ -594,7 +592,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         if sym.isClass then
           !sym.isPureClass
         else
-          sym != defn.Caps_Cap && instanceCanBeImpure(tp.superType)
+          sym != defn.Caps_Capability && instanceCanBeImpure(tp.superType)
       case tp: (RefinedOrRecType | MatchType) =>
         instanceCanBeImpure(tp.underlying)
       case tp: AndType =>

@@ -1,7 +1,7 @@
 import annotation.capability
 import annotation.constructorOnly
 
-@capability class FileSystem
+class FileSystem extends caps.Capability
 
 class NullLogger(using @constructorOnly fs: FileSystem)
 

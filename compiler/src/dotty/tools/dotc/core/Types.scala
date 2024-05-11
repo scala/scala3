@@ -3014,7 +3014,8 @@ object Types extends TypeUtils {
       name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
 
     override def isMaxCapability(using Context): Boolean =
-      widen.derivesFrom(defn.Caps_Cap) && symbol.isStableMember
+      import cc.*
+      this.derivesFromCapability && symbol.isStableMember
 
     override def normalizedRef(using Context): CaptureRef =
       if isTrackableRef then symbol.termRef else this
@@ -4815,7 +4816,9 @@ object Types extends TypeUtils {
     def kindString: String = "Term"
     def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
     override def isTrackableRef(using Context) = true
-    override def isMaxCapability(using Context) = widen.derivesFrom(defn.Caps_Cap)
+    override def isMaxCapability(using Context) =
+      import cc.*
+      this.derivesFromCapability
   }
 
   private final class TermParamRefImpl(binder: TermLambda, paramNum: Int) extends TermParamRef(binder, paramNum)

@@ -1,7 +1,7 @@
 class C:
   val x: C = this
 
-@annotation.capability class Cap
+class Cap extends caps.Capability
 
 def foo(c: Cap) =
   object D extends C:   // error
@@ -17,5 +17,5 @@ def test(c: Cap) =
 
 def test2(c: Cap) =
   class A:
-    def f = println(c) 
+    def f = println(c)
     val x: A = this // error

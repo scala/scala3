@@ -1,4 +1,4 @@
-@annotation.capability class Cap
+class Cap extends caps.Capability
 
 class LazyRef[T](val elem: () => T):
   val get: () ->{elem} T = elem

@@ -2,12 +2,12 @@ import annotation.capability
 import language.experimental.saferExceptions
 import language.experimental.modularity
 
-class FileSystem // does not work with extends caps.Capability
+class FileSystem extends caps.Capability
 
-class Logger(using fs: FileSystem^):
+class Logger(using tracked val fs: FileSystem):
   def log(s: String): Unit = ???
 
-def test(using fs: FileSystem^) =
+def test(using fs: FileSystem) =
   val l: Logger^{fs} = Logger(using fs)
   l.log("hello world!")
   val xs: LazyList[Int]^{l} =
@@ -50,7 +50,7 @@ class Pair[+A, +B](x: A, y: B):
   def fst: A = x
   def snd: B = y
 
-def test2(ct: CanThrow[Exception], fs: FileSystem^) =
+def test2(ct: CanThrow[Exception], fs: FileSystem) =
   def x: Int ->{ct} String = ???
   def y: Logger^{fs} = ???
   def p = Pair[Int ->{ct} String, Logger^{fs}](x, y)

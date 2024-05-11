@@ -5,7 +5,7 @@ class Pooled
 val stack = mutable.ArrayBuffer[Pooled]()
 var nextFree = 0
 
-def withFreshPooled[T](op: (lcap: caps.Cap) ?-> Pooled^{lcap} => T): T =
+def withFreshPooled[T](op: (lcap: caps.Capability) ?-> Pooled^{lcap} => T): T =
   if nextFree >= stack.size then stack.append(new Pooled)
   val pooled = stack(nextFree)
   nextFree = nextFree + 1

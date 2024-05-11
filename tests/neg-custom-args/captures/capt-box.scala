@@ -1,4 +1,4 @@
-@annotation.capability class Cap
+class Cap extends caps.Capability
 
 def test(x: Cap) =
 

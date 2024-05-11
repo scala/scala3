@@ -2,14 +2,14 @@ import annotation.capability
 
 object boundary:
 
-  final class Label[-T] extends caps.Capability
+  final class Label[-T] // extends caps.Capability
 
   /** Abort current computation and instead return `value` as the value of
    *  the enclosing `boundary` call that created `label`.
    */
-  def break[T](value: T)(using label: Label[T]): Nothing = ???
+  def break[T](value: T)(using label: Label[T]^): Nothing = ???
 
-  def apply[T](body: Label[T] ?=> T): T = ???
+  def apply[T](body: Label[T]^ ?=> T): T = ???
 end boundary
 
 import boundary.{Label, break}
@@ -30,18 +30,18 @@ enum Result[+T, +E]:
 
 
 object Result:
-  extension [T, E](r: Result[T, E]^)(using Label[Err[E]])
+  extension [T, E](r: Result[T, E]^)(using Label[Err[E]]^)
 
     /** `_.ok` propagates Err to current Label */
     def ok: T = r match
       case Ok(value) => value
       case Err(value) => break[Err[E]](Err(value))
 
-  transparent inline def apply[T, E](inline body: Label[Result[T, E]] ?=> T): Result[T, E] =
+  transparent inline def apply[T, E](inline body: Label[Result[T, E]]^ ?=> T): Result[T, E] =
     boundary(Ok(body))
 
   // same as apply, but not an inline method
-  def make[T, E](body: Label[Result[T, E]] ?=> T): Result[T, E] =
+  def make[T, E](body: Label[Result[T, E]]^ ?=> T): Result[T, E] =
     boundary(Ok(body))
 
 end Result
@@ -65,7 +65,7 @@ def test[T, E](using Async) =
           fr.await.ok
 
     def fail4[T, E](fr: Future[Result[T, E]]^) =
-        Result.make: //lbl ?=> // should be error, escaping label from Result but infers Result[Any, Any]
+        Result.make: //lbl ?=> // error, escaping label from Result
           Future: fut ?=>
             fr.await.ok
 
