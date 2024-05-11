@@ -44,6 +44,6 @@ class SetRootTree extends Phase {
 }
 
 object SetRootTree {
-  val name: String = "SetRootTree"
+  val name: String = "setRootTree"
   val description: String = "set the rootTreeOrProvider on class symbols"
 }
