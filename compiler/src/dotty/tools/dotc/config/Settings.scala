@@ -320,6 +320,7 @@ object Settings:
       def userValue(using Context): Option[T] = setting.userValueIn(ctx.settingsState)
       def update(x: T)(using Context): SettingsState = setting.updateIn(ctx.settingsState, x)
       def isDefault(using Context): Boolean = setting.isDefaultIn(ctx.settingsState)
+      def isPresent(using Context): Boolean = setting.isPresentIn(ctx.settingsState)
 
     /**
      * A choice with help description.
