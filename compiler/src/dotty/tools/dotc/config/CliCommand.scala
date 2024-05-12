@@ -163,7 +163,7 @@ trait CliCommand:
       val maxCol = ctx.settings.pageWidth.value
       val field1 = maxField.min(texts.flatten.map(_._1.length).filter(_ < maxField).max) // widest field under maxField
       val field2 = if field1 + separation + maxField < maxCol then maxCol - field1 - separation else 0 // skinny window -> terminal wrap
-      val toMark = ctx.settings.XshowPhases.value.toSet
+      def toMark(name: String) = ctx.settings.Vphases.value.exists(s => name.toLowerCase.contains(s.toLowerCase))
       def separator(name: String) = if toMark(name) then "->" + " " * (separation - 2) else " " * separation
       val EOL = "\n"
       def formatField1(text: String): String = if text.length <= field1 then text.padLeft(field1) else text + EOL + "".padLeft(field1)
