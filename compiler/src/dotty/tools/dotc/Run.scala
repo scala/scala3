@@ -323,7 +323,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     val phasesSettings = List("-Vphases", "-Vprint")
     for phasesSetting <- ctx.settings.allSettings if phasesSettings.contains(phasesSetting.name) do
       for case vs: List[String] <- phasesSetting.userValue; p <- vs do
-        if !phases.exists(_.phaseName == p) then report.warning(s"'$p' specifies no phase")
+        if !phases.exists(List(p).containsPhase) then report.warning(s"'$p' specifies no phase")
 
     if ctx.settings.YnoDoubleBindings.value then
       ctx.base.checkNoDoubleBindings = true
