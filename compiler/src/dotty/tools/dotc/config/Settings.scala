@@ -5,7 +5,6 @@ import core.Contexts.*
 
 import dotty.tools.io.{AbstractFile, Directory, JarArchive, PlainDirectory}
 
-import annotation.tailrec
 import annotation.internal.unshared
 import collection.mutable.ArrayBuffer
 import collection.mutable
@@ -116,7 +115,8 @@ object Settings:
 
     def updateIn(state: SettingsState, x: Any): SettingsState = x match
       case _: T => state.update(idx, x)
-      case _ => throw IllegalArgumentException(s"found: $x of type ${x.getClass.getName}, required: ${classTag[T]}")
+      case null => throw IllegalArgumentException(s"attempt to set null ${classTag[T]}")
+      case _    => throw IllegalArgumentException(s"found: $x of type ${x.getClass.getName}, required: ${classTag[T]}")
 
     def isDefaultIn(state: SettingsState): Boolean = valueIn(state) == default
 
@@ -181,10 +181,10 @@ object Settings:
         if ignoreInvalidArgs then state.warn(s"$msg, the tag was ignored") else state.fail(msg)
 
       def isEmptyDefault = default == null.asInstanceOf[T] || classTag[T].match
-        case ListTag => default.asInstanceOf[List[?]].isEmpty
+        case ListTag   => default.asInstanceOf[List[?]].isEmpty
         case StringTag => default.asInstanceOf[String].isEmpty
         case OptionTag => default.asInstanceOf[Option[?]].isEmpty
-        case _ => false
+        case _         => false
 
       def setBoolean(argValue: String, args: List[String]) =
         if argValue.equalsIgnoreCase("true") || argValue.isEmpty then update(true, argValue, args)
@@ -254,15 +254,17 @@ object Settings:
             else if isEmptyDefault then
               missingArg
             else
-              doSetArg(arg = null, args)
+              doSetArg(arg = null, args) // update with default
 
-      def doSetArg(arg: String, argsLeft: List[String]) =
+      def doSetArg(arg: String | Null, argsLeft: List[String]) =
         classTag[T] match
           case ListTag if arg == null =>
-            update(default, arg, argsLeft)
+            update(default, argStringValue = "", argsLeft)
           case ListTag =>
             val strings = arg.split(",").toList
             appendList(strings, arg, argsLeft)
+          case _ if arg == null =>
+            missingArg
           case StringTag =>
             setString(arg, argsLeft)
           case OutputTag =>
@@ -278,10 +280,10 @@ object Settings:
             missingArg
 
       def matches(argName: String): Boolean =
-        (allFullNames).exists(_ == argName.takeWhile(_ != ':')) || prefix.exists(arg.startsWith)
+        allFullNames.exists(_ == argName.takeWhile(_ != ':')) || prefix.exists(arg.startsWith)
 
       def argValRest: String =
-        if(prefix.isEmpty) arg.dropWhile(_ != ':').drop(1) else arg.drop(prefix.get.length)
+        if prefix.isEmpty then arg.dropWhile(_ != ':').drop(1) else arg.drop(prefix.get.length)
 
       if matches(arg) then
         deprecation match
@@ -370,7 +372,6 @@ object Settings:
      *
      *  to get their arguments.
      */
-    @tailrec
     final def processArguments(state: ArgsSummary, processAll: Boolean, skipped: List[String]): ArgsSummary =
       def stateWithArgs(args: List[String]) = ArgsSummary(state.sstate, args, state.errors, state.warnings)
       state.arguments match
@@ -379,11 +380,11 @@ object Settings:
         case "--" :: args =>
           checkDependencies(stateWithArgs(skipped ++ args))
         case x :: _ if x startsWith "-" =>
-          @tailrec def loop(settings: List[Setting[?]]): ArgsSummary = settings match
-            case setting :: settings1 =>
+          def loop(settings: List[Setting[?]]): ArgsSummary = settings match
+            case setting :: settings =>
               val state1 = setting.tryToSet(state)
               if state1 ne state then state1
-              else loop(settings1)
+              else loop(settings)
             case Nil =>
               state.warn(s"bad option '$x' was ignored")
           processArguments(loop(allSettings.toList), processAll, skipped)
@@ -393,7 +394,7 @@ object Settings:
     end processArguments
 
     def processArguments(arguments: List[String], processAll: Boolean, settingsState: SettingsState = defaultState): ArgsSummary =
-      processArguments(ArgsSummary(settingsState, arguments, Nil, Nil), processAll, Nil)
+      processArguments(ArgsSummary(settingsState, arguments, errors = Nil, warnings = Nil), processAll, skipped = Nil)
 
     def publish[T](settingf: Int => Setting[T]): Setting[T] =
       val setting = settingf(_allSettings.length)
