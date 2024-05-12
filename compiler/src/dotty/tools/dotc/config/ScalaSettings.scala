@@ -145,7 +145,7 @@ private sealed trait VerboseSettings:
   self: SettingGroup =>
   val Vhelp: Setting[Boolean] = BooleanSetting(VerboseSetting, "V", "Print a synopsis of verbose options.")
   val Vprint: Setting[List[String]] = PhasesSetting(VerboseSetting, "Vprint", "Print out program after", default = "typer", aliases = List("-Xprint"))
-  val XshowPhases: Setting[List[String]] = PhasesSetting(VerboseSetting, "Vphases", "List compiler phases.", default = "none", aliases = List("-Xshow-phases"))
+  val Vphases: Setting[List[String]] = PhasesSetting(VerboseSetting, "Vphases", "List compiler phases.", default = "none", aliases = List("-Xshow-phases"))
   val Vprofile: Setting[Boolean] = BooleanSetting(VerboseSetting, "Vprofile", "Show metrics about sources and internal representations to estimate compile-time complexity.")
   val VprofileSortedBy = ChoiceSetting(VerboseSetting, "Vprofile-sorted-by", "key", "Show metrics about sources and internal representations sorted by given column name", List("name", "path", "lines", "tokens", "tasty", "complexity"), "")
   val VprofileDetails = IntSetting(VerboseSetting, "Vprofile-details", "Show metrics about sources and internal representations of the most complex methods", 0)
