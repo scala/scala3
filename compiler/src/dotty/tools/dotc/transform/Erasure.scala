@@ -936,6 +936,8 @@ object Erasure {
                   vparams = vparams :+ param
               if crCount == 1 then meth.rhs.changeOwnerAfter(meth.symbol, sym, erasurePhase)
               else skipContextClosures(meth.rhs, crCount - 1)
+            case inlined: Inlined =>
+              skipContextClosures(Inlines.dropInlined(inlined), crCount)
 
         var rhs1 = skipContextClosures(ddef.rhs.asInstanceOf[Tree], contextResultCount(sym))
 
