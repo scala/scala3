@@ -85,6 +85,8 @@ val experimentalDefinitionInLibrary = Set(
   "scala.annotation.internal.WitnessNames",
   "scala.compiletime.package$package$.deferred",
   "scala.runtime.stdLibPatches.Predef$.is",
+  "scala.runtime.stdLibPatches.Predef$.TypeClass",
+  "scala.runtime.stdLibPatches.Predef$.ValueTypeClass",
 )
 
 
