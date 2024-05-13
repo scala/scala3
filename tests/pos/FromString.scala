@@ -1,7 +1,6 @@
 //> using options -language:experimental.modularity -source future
 
-trait FromString:
-  type Self
+trait FromString extends ValueTypeClass:
   def fromString(s: String): Self
 
 given Int is FromString = _.toInt

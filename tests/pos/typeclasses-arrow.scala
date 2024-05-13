@@ -2,8 +2,7 @@
 
 class Common:
 
-  trait Ord:
-    type Self
+  trait Ord extends ValueTypeClass:
     extension (x: Self)
       def compareTo(y: Self): Int
       def < (y: Self): Boolean = compareTo(y) < 0
@@ -12,18 +11,16 @@ class Common:
       def >= (y: Self): Boolean = compareTo(y) >= 0
       def max(y: Self): Self = if x < y then y else x
 
-  trait Show:
-    type Self
+  trait Show extends ValueTypeClass:
     extension (x: Self) def show: String
 
-  trait SemiGroup:
-    type Self
+  trait SemiGroup extends ValueTypeClass:
     extension (x: Self) def combine(y: Self): Self
 
   trait Monoid extends SemiGroup:
     def unit: Self
 
-  trait Functor:
+  trait Functor extends TypeClass:
     type Self[A]
     extension [A](x: Self[A]) def map[B](f: A => B): Self[B]
 
@@ -101,8 +98,7 @@ object Instances extends Common:
 // wc Scala: 28     105     793
 // wc Rust : 57     193    1466
 
-trait Animal:
-  type Self
+trait Animal extends ValueTypeClass:
   // Associated function signature; `Self` refers to the implementor type.
   def apply(name: String): Self
 

@@ -2,21 +2,19 @@
 
 class Common:
 
-  trait Ord:
-    type Self
+  trait Ord extends ValueTypeClass:
     extension (x: Self)
       def compareTo(y: Self): Int
       def < (y: Self): Boolean = compareTo(y) < 0
       def > (y: Self): Boolean = compareTo(y) > 0
 
-  trait SemiGroup:
-    type Self
+  trait SemiGroup extends ValueTypeClass:
     extension (x: Self) def combine(y: Self): Self
 
   trait Monoid extends SemiGroup:
     def unit: Self
 
-  trait Functor:
+  trait Functor extends TypeClass:
     type Self[A]
     extension [A](x: Self[A]) def map[B](f: A => B): Self[B]
 

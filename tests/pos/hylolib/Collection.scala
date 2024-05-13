@@ -2,8 +2,7 @@
 package hylo
 
 /** A collection of elements accessible by their position. */
-trait Collection:
-  type Self
+trait Collection extends ValueTypeClass:
 
   /** The type of the elements in the collection. */
   type Element: Value

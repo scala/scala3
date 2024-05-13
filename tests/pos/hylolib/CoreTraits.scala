@@ -5,8 +5,7 @@ package hylo
   * The data structure of and algorithms of Hylo's standard library operate "notional values" rather
   * than arbitrary references. This trait defines the basis operations of all values.
   */
-trait Value:
-  type Self
+trait Value extends ValueTypeClass:
 
   extension (self: Self) {
 
