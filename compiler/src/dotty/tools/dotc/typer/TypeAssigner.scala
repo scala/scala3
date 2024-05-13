@@ -255,7 +255,7 @@ trait TypeAssigner {
           else if (ctx.erasedTypes) cls.info.firstParent.typeConstructor
           else {
             val ps = cls.classInfo.parents
-            if (ps.isEmpty) defn.AnyType else ps.reduceLeft((x: Type, y: Type) => x & y)
+            if ps.isEmpty then defn.AnyType else ps.reduceLeft(AndType(_, _))
           }
         SuperType(cls.thisType, owntype)
 
