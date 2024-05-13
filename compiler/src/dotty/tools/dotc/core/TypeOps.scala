@@ -190,6 +190,10 @@ object TypeOps:
         // Mapping over a skolem creates a new skolem which by definition won't
         // be =:= to the original one.
         tp
+      case tp: SuperType =>
+        // Mapping a supertype might re-balance an AndType which is not permitted since
+        // we need the original order of parents for current super resolution.
+        tp
       case _ =>
         mapOver
     }
