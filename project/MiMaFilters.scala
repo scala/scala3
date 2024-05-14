@@ -8,20 +8,7 @@ object MiMaFilters {
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of the library
       Build.mimaPreviousDottyVersion -> Seq(
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.annotation.experimental.this"),
-        ProblemFilters.exclude[FinalClassProblem]("scala.annotation.experimental"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.fromArray"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.fromIArray"),
-        ProblemFilters.exclude[MissingFieldProblem]("scala.Tuple.helpers"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.Tuple$helpers$"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.fromArray"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.fromIArray"),
-        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.namedTuples"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$namedTuples$"),
-        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.modularity"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$modularity$"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.compiletime.package#package.deferred"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.WitnessNames"),
+
       ),
 
       // Additions since last LTS
@@ -53,6 +40,30 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language.3.5"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.clauseInterleaving"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.relaxedExtensionImports"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E6$minusmigration$"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language.3.6-migration"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E6$"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language.3.6"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.annotation.experimental.this"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.compiletime.package#package.deferred"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule.MethodTypeKind"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule.FlexibleTypeTypeTest"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule.FlexibleType"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule.FlexibleTypeMethods"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.quoted.Quotes$reflectModule$FlexibleTypeMethods"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.quoted.Quotes$reflectModule$FlexibleTypeModule"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.quoted.Quotes$reflectModule$MethodTypeKind"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.quoted.Quotes$reflectModule$MethodTypeKind$"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeMethods.isContextual"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeMethods.methodTypeKind"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeModule.apply"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SymbolMethods.isSuperAccessor"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.namedTuples"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.modularity"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.betterMatchTypeExtractors"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$betterMatchTypeExtractors$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$modularity$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$namedTuples$"),
       ),
     )
 
