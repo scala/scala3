@@ -57,7 +57,20 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   private val toBeUpdated = new mutable.HashSet[Symbol]
 
   private def newFlagsFor(symd: SymDenotation)(using Context): FlagSet =
-    if symd.isAllOf(PrivateParamAccessor) && symd.owner.is(CaptureChecked) && !symd.hasAnnotation(defn.ConstructorOnlyAnnot)
+
+    object containsCovarRetains extends TypeAccumulator[Boolean]:
+      def apply(x: Boolean, tp: Type): Boolean =
+        if x then true
+        else if tp.derivesFromCapability && variance >= 0 then true
+        else tp match
+          case AnnotatedType(_, ann) if ann.symbol.isRetains && variance >= 0 => true
+          case _ => foldOver(x, tp)
+      def apply(tp: Type): Boolean = apply(false, tp)
+
+    if symd.isAllOf(PrivateParamAccessor)
+        && symd.owner.is(CaptureChecked)
+        && !symd.hasAnnotation(defn.ConstructorOnlyAnnot)
+        //&& containsCovarRetains(symd.symbol.originDenotation.info)
     then symd.flags &~ Private | Recheck.ResetPrivate
     else symd.flags
 
