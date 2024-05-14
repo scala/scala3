@@ -63,7 +63,10 @@ object Feature:
     (clauseInterleaving, "Enable clause interleaving"),
     (pureFunctions, "Enable pure functions for capture checking"),
     (captureChecking, "Enable experimental capture checking"),
-    (into, "Allow into modifier on parameter types")
+    (into, "Allow into modifier on parameter types"),
+    (namedTuples, "Allow named tuples"),
+    (modularity, "Enable experimental modularity features"),
+    (betterMatchTypeExtractors, "Enable better match type extractors")
   )
 
   private def enabledLanguageFeaturesBySetting(using Context): List[String] =
