@@ -36,6 +36,8 @@ object RepublishPlugin extends AutoPlugin {
   }
   case class ResolvedArtifacts(id: SimpleModuleId, jar: File, pom: File)
 
+  val isRelease = sys.env.get("RELEASEBUILD") == Some("yes")
+
   override val projectSettings: Seq[Def.Setting[_]] = Def.settings(
     republishLocalResolved / republishProjectRefs := {
       val proj = thisProjectRef.value
@@ -87,7 +89,10 @@ object RepublishPlugin extends AutoPlugin {
 
       localResolved.foreach({ resolved =>
         val simpleId = resolved.id
-        evicted += simpleId.copy(revision = simpleId.revision + "-nonbootstrapped")
+        if(isRelease)
+          evicted += simpleId.copy(revision = simpleId.revision + "-bin-nonbootstrapped")
+        else
+          evicted += simpleId.copy(revision = simpleId.revision + "-nonbootstrapped")
         found(simpleId) = resolved
       })
 
