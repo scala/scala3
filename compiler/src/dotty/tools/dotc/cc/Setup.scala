@@ -23,7 +23,6 @@ trait SetupAPI:
   def setupUnit(tree: Tree, recheckDef: DefRecheck)(using Context): Unit
   def isPreCC(sym: Symbol)(using Context): Boolean
   def postCheck()(using Context): Unit
-  def isCapabilityClassRef(tp: Type)(using Context): Boolean
 
 object Setup:
 
@@ -67,29 +66,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     && !sym.is(Module)
     && !sym.owner.is(CaptureChecked)
     && !defn.isFunctionSymbol(sym.owner)
-
-  private val capabilityClassMap = new util.HashMap[Symbol, Boolean]
-
-  /** Check if the class is capability, which means:
-   *  1. the class has a capability annotation,
-   *  2. or at least one of its parent type has universal capability.
-   */
-  def isCapabilityClassRef(tp: Type)(using Context): Boolean = tp.dealiasKeepAnnots match
-    case _: TypeRef | _: AppliedType =>
-      val sym = tp.classSymbol
-      def checkSym: Boolean = sym.info.parents.exists(hasUniversalCapability)
-      sym.isClass && capabilityClassMap.getOrElseUpdate(sym, checkSym)
-    case _ => false
-
-  private def hasUniversalCapability(tp: Type)(using Context): Boolean = tp.dealiasKeepAnnots match
-    case CapturingType(parent, refs) =>
-      refs.isUniversal || hasUniversalCapability(parent)
-    case AnnotatedType(parent, ann) =>
-      if ann.symbol.isRetains then
-        try ann.tree.toCaptureSet.isUniversal || hasUniversalCapability(parent)
-        catch case ex: IllegalCaptureRef => false
-      else hasUniversalCapability(parent)
-    case tp => isCapabilityClassRef(tp)
 
   private def fluidify(using Context) = new TypeMap with IdempotentCaptRefMap:
     def apply(t: Type): Type = t match
@@ -317,10 +293,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case t: TypeVar =>
             this(t.underlying)
           case t =>
-            // Map references to capability classes C to C^
-            if isCapabilityClassRef(t)
-            then CapturingType(t, defn.expandedUniversalSet, boxed = false)
-            else recur(t)
+            recur(t)
     end expandAliases
 
     val tp1 = expandAliases(tp) // TODO: Do we still need to follow aliases?
