@@ -33,7 +33,6 @@ object Recheck:
    *  Scala2ModuleVar cannot be also ParamAccessors.
    */
   val ResetPrivate = Scala2ModuleVar
-  val ResetPrivateParamAccessor = ResetPrivate | ParamAccessor
 
   /** Attachment key for rechecked types of TypeTrees */
   val RecheckedType = Property.Key[Type]
