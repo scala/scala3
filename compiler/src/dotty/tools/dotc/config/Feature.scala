@@ -11,6 +11,7 @@ import SourceVersion.*
 import reporting.Message
 import NameKinds.QualifiedName
 import Annotations.ExperimentalAnnotation
+import Settings.Setting.ChoiceWithHelp
 
 object Feature:
 
@@ -42,6 +43,35 @@ object Feature:
       .map(sym => experimental(sym.name))
       .filterNot(_ == captureChecking) // TODO is this correct?
 
+  val values = List(
+    (nme.help, "Display all available features"),
+    (nme.noAutoTupling, "Disable automatic tupling"),
+    (nme.dynamics, "Allow direct or indirect subclasses of scala.Dynamic"),
+    (nme.unsafeNulls, "Enable unsafe nulls for explicit nulls"),
+    (nme.postfixOps, "Allow postfix operators (not recommended)"),
+    (nme.strictEquality, "Enable strict equality (disable canEqualAny)"),
+    (nme.implicitConversions, "Allow implicit conversions without warnings"),
+    (nme.adhocExtensions, "Allow ad-hoc extension methods"),
+    (namedTypeArguments, "Allow named type arguments"),
+    (genericNumberLiterals, "Allow generic number literals"),
+    (scala2macros, "Allow Scala 2 macros"),
+    (dependent, "Allow dependent method types"),
+    (erasedDefinitions, "Allow erased definitions"),
+    (symbolLiterals, "Allow symbol literals"),
+    (fewerBraces, "Enable support for using indentation for arguments"),
+    (saferExceptions, "Enable safer exceptions"),
+    (clauseInterleaving, "Enable clause interleaving"),
+    (pureFunctions, "Enable pure functions for capture checking"),
+    (captureChecking, "Enable experimental capture checking"),
+    (into, "Allow into modifier on parameter types"),
+    (namedTuples, "Allow named tuples"),
+    (modularity, "Enable experimental modularity features"),
+    (betterMatchTypeExtractors, "Enable better match type extractors")
+  )
+
+  private def enabledLanguageFeaturesBySetting(using Context): List[String] =
+    ctx.settings.language.value.asInstanceOf
+
   /** Is `feature` enabled by by a command-line setting? The enabling setting is
    *
    *       -language:<prefix>feature
@@ -50,7 +80,7 @@ object Feature:
    *  but subtracting the prefix `scala.language.` at the front.
    */
   def enabledBySetting(feature: TermName)(using Context): Boolean =
-    ctx.base.settings.language.value.contains(feature.toString)
+    enabledLanguageFeaturesBySetting.contains(feature.toString)
 
   /** Is `feature` enabled by by an import? This is the case if the feature
    *  is imported by a named import

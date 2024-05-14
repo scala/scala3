@@ -9,7 +9,7 @@ abstract class CompilerCommand extends CliCommand:
 
   final def helpMsg(using settings: ConcreteSettings)(using SettingsState, Context): String =
     settings.allSettings.find(isHelping) match
-      case Some(s) => s.description
+      case Some(s) => availableOptionsMsg(_ == s, showArgFileMsg = false)
       case _ =>
         if (settings.help.value) usageMessage
         else if (settings.Vhelp.value) vusageMessage
