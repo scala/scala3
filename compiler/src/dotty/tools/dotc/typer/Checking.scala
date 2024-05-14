@@ -806,10 +806,11 @@ object Checking {
   def checkAndAdaptExperimentalImports(trees: List[Tree])(using Context): Unit =
     def nonExperimentalTopLevelDefs(pack: Symbol): Iterator[Symbol] =
       def isNonExperimentalTopLevelDefinition(sym: Symbol) =
-        !sym.isExperimental
+        sym.isDefinedInCurrentRun
         && sym.source == ctx.compilationUnit.source
         && !sym.isConstructor // not constructor of package object
         && !sym.is(Package) && !sym.name.isPackageObjectName
+        && !sym.isExperimental
 
       pack.info.decls.toList.iterator.flatMap: sym =>
         if sym.isClass && (sym.is(Package) || sym.isPackageObject) then
