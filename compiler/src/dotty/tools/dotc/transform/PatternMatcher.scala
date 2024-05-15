@@ -868,7 +868,7 @@ object PatternMatcher {
           (Nil, plan) :: Nil
       }
 
-      if (isSwitchableType(scrutinee.tpe.widen)) recur(plan)
+      if (isSwitchableType(scrutinee.tpe.widen.widenSingletons())) recur(plan)
       else Nil
     }
 
@@ -889,8 +889,9 @@ object PatternMatcher {
        */
 
       val (primScrutinee, scrutineeTpe) =
-        if (scrutinee.tpe.widen.isRef(defn.IntClass)) (scrutinee, defn.IntType)
-        else if (scrutinee.tpe.widen.isRef(defn.StringClass)) (scrutinee, defn.StringType)
+        val tpe = scrutinee.tpe.widen.widenSingletons()
+        if (tpe.isRef(defn.IntClass)) (scrutinee, defn.IntType)
+        else if (tpe.isRef(defn.StringClass)) (scrutinee, defn.StringType)
         else (scrutinee.select(nme.toInt), defn.IntType)
 
       def primLiteral(lit: Tree): Tree =

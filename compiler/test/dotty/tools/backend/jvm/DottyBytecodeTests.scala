@@ -158,6 +158,104 @@ class DottyBytecodeTests extends DottyBytecodeTest {
     }
   }
 
+  @Test def switchOnUnionOfInts = {
+    val source =
+      """
+        |object Foo {
+        |  def foo(x: 1 | 2 | 3 | 4 | 5) = x match {
+        |    case 1 => println(3)
+        |    case 2 | 3 => println(2)
+        |    case 4 => println(1)
+        |    case 5 => println(0)
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+      assert(verifySwitch(methodNode))
+    }
+  }
+
+  @Test def switchOnUnionOfStrings = {
+    val source =
+      """
+        |object Foo {
+        |  def foo(s: "one" | "two" | "three" | "four" | "five") = s match {
+        |    case "one" => println(3)
+        |    case "two" | "three" => println(2)
+        |    case "four" | "five" => println(1)
+        |    case _ => println(0)
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+      assert(verifySwitch(methodNode))
+    }
+  }
+
+  @Test def switchOnUnionOfIntSingletons = {
+    val source =
+      """
+        |object Foo {
+        |  final val One = 1
+        |  final val Two = 2
+        |  final val Three = 3
+        |  final val Four = 4
+        |  final val Five = 5
+        |  type Values = One.type | Two.type | Three.type | Four.type | Five.type
+        |
+        |  def foo(s: Values) = s match {
+        |    case One => println(3)
+        |    case Two | Three => println(2)
+        |    case Four => println(1)
+        |    case Five => println(0)
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+      assert(verifySwitch(methodNode))
+    }
+  }
+
+  @Test def switchOnUnionOfStringSingletons = {
+    val source =
+      """
+        |object Foo {
+        |  final val One = "one"
+        |  final val Two = "two"
+        |  final val Three = "three"
+        |  final val Four = "four"
+        |  final val Five = "five"
+        |  type Values = One.type | Two.type | Three.type | Four.type | Five.type
+        |
+        |  def foo(s: Values) = s match {
+        |    case One => println(3)
+        |    case Two | Three => println(2)
+        |    case Four => println(1)
+        |    case Five => println(0)
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+      assert(verifySwitch(methodNode))
+    }
+  }
+
   @Test def matchWithDefaultNoThrowMatchError = {
     val source =
       """class Test {
