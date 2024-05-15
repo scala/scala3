@@ -70,8 +70,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     if symd.isAllOf(PrivateParamAccessor)
         && symd.owner.is(CaptureChecked)
         && !symd.hasAnnotation(defn.ConstructorOnlyAnnot)
-        //&& containsCovarRetains(symd.symbol.originDenotation.info)
-    then symd.flags &~ Private | Recheck.ResetPrivate
+        && containsCovarRetains(symd.symbol.originDenotation.info)
+    then symd.flags &~ Private
     else symd.flags
 
   def isPreCC(sym: Symbol)(using Context): Boolean =
