@@ -27,13 +27,6 @@ import annotation.tailrec
 object Recheck:
   import tpd.*
 
-  /** A flag used to indicate that a ParamAccessor has been temporarily made not-private
-   *  Only used at the start of the Recheck phase, reset at its end.
-   *  The flag repurposes the Scala2ModuleVar flag. No confusion is possible since
-   *  Scala2ModuleVar cannot be also ParamAccessors.
-   */
-  val ResetPrivate = Scala2ModuleVar
-
   /** Attachment key for rechecked types of TypeTrees */
   val RecheckedType = Property.Key[Type]
 
