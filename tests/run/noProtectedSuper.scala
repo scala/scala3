@@ -1,3 +1,5 @@
+//> using options -experimental -Yno-experimental
+
 import scala.annotation.publicInBinary
 
 package p {

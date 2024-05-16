@@ -8,7 +8,9 @@ import core.Contexts.*
 import dotty.tools.io.{AbstractFile, Directory, JarArchive, PlainDirectory}
 
 import annotation.tailrec
+import annotation.internal.unshared
 import collection.mutable.ArrayBuffer
+import collection.mutable
 import reflect.ClassTag
 import scala.util.{Success, Failure}
 import dotty.tools.dotc.config.Settings.Setting.ChoiceWithHelp
@@ -23,8 +25,12 @@ object Settings:
   val OptionTag: ClassTag[Option[?]]     = ClassTag(classOf[Option[?]])
   val OutputTag: ClassTag[AbstractFile]  = ClassTag(classOf[AbstractFile])
 
-  class SettingsState(initialValues: Seq[Any]):
+  trait SettingCategory:
+    def prefixLetter: String
+
+  class SettingsState(initialValues: Seq[Any], initialChanged: Set[Int] = Set.empty):
     private val values = ArrayBuffer(initialValues*)
+    private val changed: mutable.Set[Int] = initialChanged.to(mutable.Set)
     private var _wasRead: Boolean = false
 
     override def toString: String = s"SettingsState(values: ${values.toList})"
@@ -33,10 +39,13 @@ object Settings:
       _wasRead = true
       values(idx)
 
+    def wasChanged(idx: Int): Boolean = changed.contains(idx)
+
     def update(idx: Int, x: Any): SettingsState =
-      if (_wasRead) then SettingsState(values.toSeq).update(idx, x)
+      if (_wasRead) then SettingsState(values.toSeq, changed.toSet).update(idx, x)
       else
         values(idx) = x
+        changed.add(idx)
         this
   end SettingsState
 
@@ -53,19 +62,37 @@ object Settings:
       ArgsSummary(sstate, arguments.tail, errors, warnings :+ msg)
   }
 
+  @unshared
+  val settingCharacters = "[a-zA-Z0-9_\\-]*".r
+  def validateSettingString(name: String): Unit = 
+    assert(settingCharacters.matches(name), s"Setting string $name contains invalid characters")
+
+
   case class Setting[T: ClassTag] private[Settings] (
+    category: SettingCategory,
     name: String,
     description: String,
     default: T,
     helpArg: String = "",
     choices: Option[Seq[?]] = None,
-    prefix: String = "",
+    prefix: Option[String] = None,
     aliases: List[String] = Nil,
     depends: List[(Setting[?], Any)] = Nil,
     ignoreInvalidArgs: Boolean = false,
-    propertyClass: Option[Class[?]] = None)(private[Settings] val idx: Int) {
+    propertyClass: Option[Class[?]] = None,
+    deprecationMsg: Option[String] = None,
+    // kept only for -Ykind-projector option compatibility
+    legacyArgs: Boolean = false)(private[Settings] val idx: Int) {
+  
+    validateSettingString(prefix.getOrElse(name))
+    aliases.foreach(validateSettingString)
+    assert(name.startsWith(s"-${category.prefixLetter}"), s"Setting $name does not start with category -$category")
+    assert(legacyArgs || !choices.exists(_.contains("")), s"Empty string is not supported as a choice for setting $name")
+    // Without the following assertion, it would be easy to mistakenly try to pass a file to a setting that ignores invalid args.
+    // Example: -opt Main.scala would be interpreted as -opt:Main.scala, and the source file would be ignored.
+    assert(!(summon[ClassTag[T]] == ListTag && ignoreInvalidArgs), s"Ignoring invalid args is not supported for multivalue settings: $name")
 
-    private var changed: Boolean = false
+    val allFullNames: List[String] = s"$name" :: s"-$name" :: aliases  
 
     def valueIn(state: SettingsState): T = state.value(idx).asInstanceOf[T]
 
@@ -77,6 +104,8 @@ object Settings:
 
     def isMultivalue: Boolean = summon[ClassTag[T]] == ListTag
 
+    def acceptsNoArg: Boolean = summon[ClassTag[T]] == BooleanTag || summon[ClassTag[T]] == OptionTag || choices.exists(_.contains(""))
+    
     def legalChoices: String =
       choices match {
         case Some(xs) if xs.isEmpty => ""
@@ -89,17 +118,16 @@ object Settings:
       val ArgsSummary(sstate, arg :: args, errors, warnings) = state: @unchecked
       def update(value: Any, args: List[String]): ArgsSummary =
         var dangers = warnings
-        val value1 =
-          if changed && isMultivalue then
-            val value0  = value.asInstanceOf[List[String]]
+        val valueNew =
+          if sstate.wasChanged(idx) && isMultivalue then
+            val valueList = value.asInstanceOf[List[String]]
             val current = valueIn(sstate).asInstanceOf[List[String]]
-            value0.filter(current.contains).foreach(s => dangers :+= s"Setting $name set to $s redundantly")
-            current ++ value0
+            valueList.filter(current.contains).foreach(s => dangers :+= s"Setting $name set to $s redundantly")
+            current ++ valueList
           else
-            if changed then dangers :+= s"Flag $name set repeatedly"
+            if sstate.wasChanged(idx) then dangers :+= s"Flag $name set repeatedly"
             value
-        changed = true
-        ArgsSummary(updateIn(sstate, value1), args, errors, dangers)
+        ArgsSummary(updateIn(sstate, valueNew), args, errors, dangers)
       end update
 
       def fail(msg: String, args: List[String]) =
@@ -140,54 +168,73 @@ object Settings:
               update(x, args)
         catch case _: NumberFormatException =>
           fail(s"$argValue is not an integer argument for $name", args)
+        
+      def setOutput(argValue: String, args: List[String]) = 
+        val path = Directory(argValue)
+        val isJar = path.extension == "jar"
+        if (!isJar && !path.isDirectory)
+          fail(s"'$argValue' does not exist or is not a directory or .jar file", args)
+        else {
+          val output = if (isJar) JarArchive.create(path) else new PlainDirectory(path)
+          update(output, args)
+        }
+      
+      def setVersion(argValue: String, args: List[String]) =
+        ScalaVersion.parse(argValue) match {
+          case Success(v) => update(v, args)
+          case Failure(ex) => fail(ex.getMessage, args)
+        }
 
-      def doSet(argRest: String) = ((summon[ClassTag[T]], args): @unchecked) match {
-        case (BooleanTag, _) =>
-          setBoolean(argRest, args)
-        case (OptionTag, _) =>
-          update(Some(propertyClass.get.getConstructor().newInstance()), args)
-        case (ListTag, _) =>
-          if (argRest.isEmpty) missingArg
-          else
-            val strings = argRest.split(",").toList
-            choices match
-              case Some(valid) => strings.filterNot(valid.contains) match
-                case Nil => update(strings, args)
-                case invalid => invalidChoices(invalid)
-              case _ => update(strings, args)
-        case (StringTag, _) if argRest.nonEmpty || choices.exists(_.contains("")) =>
-          setString(argRest, args)
-        case (StringTag, arg2 :: args2) =>
-          if (arg2 startsWith "-") missingArg
-          else setString(arg2, args2)
-        case (OutputTag, arg :: args) =>
-          val path = Directory(arg)
-          val isJar = path.extension == "jar"
-          if (!isJar && !path.isDirectory)
-            fail(s"'$arg' does not exist or is not a directory or .jar file", args)
-          else {
-            val output = if (isJar) JarArchive.create(path) else new PlainDirectory(path)
-            update(output, args)
-          }
-        case (IntTag, args) if argRest.nonEmpty =>
-          setInt(argRest, args)
-        case (IntTag, arg2 :: args2) =>
-          setInt(arg2, args2)
-        case (VersionTag, _) =>
-          ScalaVersion.parse(argRest) match {
-            case Success(v) => update(v, args)
-            case Failure(ex) => fail(ex.getMessage, args)
-          }
-        case (_, Nil) =>
-          missingArg
-      }
+      def appendList(strings: List[String], args: List[String]) =
+        choices match
+          case Some(valid) => strings.filterNot(valid.contains) match
+            case Nil => update(strings, args)
+            case invalid => invalidChoices(invalid)
+          case _ => update(strings, args)
 
-      def matches(argName: String) = (name :: aliases).exists(_ == argName)
 
-      if (prefix != "" && arg.startsWith(prefix))
-        doSet(arg drop prefix.length)
-      else if (prefix == "" && matches(arg.takeWhile(_ != ':')))
-        doSet(arg.dropWhile(_ != ':').drop(1))
+      def doSet(argRest: String) = 
+        ((summon[ClassTag[T]], args): @unchecked) match {
+          case (BooleanTag, _) =>
+            setBoolean(argRest, args)
+          case (OptionTag, _) =>
+            update(Some(propertyClass.get.getConstructor().newInstance()), args)
+          case (ct, args) =>
+            val argInArgRest = !argRest.isEmpty || legacyArgs
+            val argAfterParam = !argInArgRest && args.nonEmpty && (ct == IntTag || !args.head.startsWith("-"))
+            if argInArgRest then
+              doSetArg(argRest, args)
+            else if argAfterParam then
+              doSetArg(args.head, args.tail)
+            else missingArg
+        }
+
+      def doSetArg(arg: String, argsLeft: List[String]) = summon[ClassTag[T]] match
+          case ListTag =>
+            val strings = arg.split(",").toList
+            appendList(strings, argsLeft)
+          case StringTag =>
+            setString(arg, argsLeft)
+          case OutputTag =>
+            setOutput(arg, argsLeft)
+          case IntTag =>
+            setInt(arg, argsLeft)
+          case VersionTag =>
+            setVersion(arg, argsLeft)
+          case _ =>
+            missingArg
+
+      def matches(argName: String): Boolean = 
+        (allFullNames).exists(_ == argName.takeWhile(_ != ':')) || prefix.exists(arg.startsWith)
+
+      def argValRest: String = 
+        if(prefix.isEmpty) arg.dropWhile(_ != ':').drop(1) else arg.drop(prefix.get.length)
+      
+      if matches(arg) then 
+        if deprecationMsg.isDefined then
+          warn(s"Option $name is deprecated: ${deprecationMsg.get}", args)
+        else 
+          doSet(argValRest)
       else
         state
     }
@@ -214,6 +261,7 @@ object Settings:
 
   class SettingGroup {
 
+    @unshared
     private val _allSettings = new ArrayBuffer[Setting[?]]
     def allSettings: Seq[Setting[?]] = _allSettings.toSeq
 
@@ -281,49 +329,54 @@ object Settings:
       setting
     }
 
-    def BooleanSetting(name: String, descr: String, initialValue: Boolean = false, aliases: List[String] = Nil): Setting[Boolean] =
-      publish(Setting(name, descr, initialValue, aliases = aliases))
+    def prependName(name: String): String =
+      assert(!name.startsWith("-"), s"Setting $name cannot start with -")
+      "-" + name
 
-    def StringSetting(name: String, helpArg: String, descr: String, default: String, aliases: List[String] = Nil): Setting[String] =
-      publish(Setting(name, descr, default, helpArg, aliases = aliases))
+    def BooleanSetting(category: SettingCategory, name: String, descr: String, initialValue: Boolean = false, aliases: List[String] = Nil): Setting[Boolean] =
+      publish(Setting(category, prependName(name), descr, initialValue, aliases = aliases))
 
-    def ChoiceSetting(name: String, helpArg: String, descr: String, choices: List[String], default: String, aliases: List[String] = Nil): Setting[String] =
-      publish(Setting(name, descr, default, helpArg, Some(choices), aliases = aliases))
+    def StringSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: String, aliases: List[String] = Nil): Setting[String] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases))
 
-    def MultiChoiceSetting(name: String, helpArg: String, descr: String, choices: List[String], default: List[String], aliases: List[String] = Nil): Setting[List[String]] =
-      publish(Setting(name, descr, default, helpArg, Some(choices), aliases = aliases))
+    def ChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: String, aliases: List[String] = Nil, legacyArgs: Boolean = false): Setting[String] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases, legacyArgs = legacyArgs))
 
-    def MultiChoiceHelpSetting(name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]], aliases: List[String] = Nil): Setting[List[ChoiceWithHelp[String]]] =
-      publish(Setting(name, descr, default, helpArg, Some(choices), aliases = aliases))
+    def MultiChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: List[String], aliases: List[String] = Nil): Setting[List[String]] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases))
 
-    def UncompleteMultiChoiceHelpSetting(name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]], aliases: List[String] = Nil): Setting[List[ChoiceWithHelp[String]]] =
-      publish(Setting(name, descr, default, helpArg, Some(choices), aliases = aliases, ignoreInvalidArgs = true))
+    def MultiChoiceHelpSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]], aliases: List[String] = Nil): Setting[List[ChoiceWithHelp[String]]] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases))
 
-    def IntSetting(name: String, descr: String, default: Int, aliases: List[String] = Nil): Setting[Int] =
-      publish(Setting(name, descr, default, aliases = aliases))
+    def IntSetting(category: SettingCategory, name: String, descr: String, default: Int, aliases: List[String] = Nil): Setting[Int] =
+      publish(Setting(category, prependName(name), descr, default, aliases = aliases))
 
-    def IntChoiceSetting(name: String, descr: String, choices: Seq[Int], default: Int): Setting[Int] =
-      publish(Setting(name, descr, default, choices = Some(choices)))
+    def IntChoiceSetting(category: SettingCategory, name: String, descr: String, choices: Seq[Int], default: Int): Setting[Int] =
+      publish(Setting(category, prependName(name), descr, default, choices = Some(choices)))
 
-    def MultiStringSetting(name: String, helpArg: String, descr: String, default: List[String] = Nil, aliases: List[String] = Nil): Setting[List[String]] =
-      publish(Setting(name, descr, default, helpArg, aliases = aliases))
+    def MultiStringSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: List[String] = Nil, aliases: List[String] = Nil): Setting[List[String]] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases))
 
-    def OutputSetting(name: String, helpArg: String, descr: String, default: AbstractFile): Setting[AbstractFile] =
-      publish(Setting(name, descr, default, helpArg))
+    def OutputSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: AbstractFile): Setting[AbstractFile] =
+      publish(Setting(category, prependName(name), descr, default, helpArg))
 
-    def PathSetting(name: String, descr: String, default: String, aliases: List[String] = Nil): Setting[String] =
-      publish(Setting(name, descr, default, aliases = aliases))
+    def PathSetting(category: SettingCategory, name: String, descr: String, default: String, aliases: List[String] = Nil): Setting[String] =
+      publish(Setting(category, prependName(name), descr, default, aliases = aliases))
 
-    def PhasesSetting(name: String, descr: String, default: String = "", aliases: List[String] = Nil): Setting[List[String]] =
-      publish(Setting(name, descr, if (default.isEmpty) Nil else List(default), aliases = aliases))
+    def PhasesSetting(category: SettingCategory, name: String, descr: String, default: String = "", aliases: List[String] = Nil): Setting[List[String]] =
+      publish(Setting(category, prependName(name), descr, if (default.isEmpty) Nil else List(default), aliases = aliases))
 
-    def PrefixSetting(name: String, pre: String, descr: String): Setting[List[String]] =
-      publish(Setting(name, descr, Nil, prefix = pre))
+    def PrefixSetting(category: SettingCategory, name: String, descr: String): Setting[List[String]] =
+      val prefix = name.takeWhile(_ != '<')
+      publish(Setting(category, "-" + name, descr, Nil, prefix = Some(prefix)))
 
-    def VersionSetting(name: String, descr: String, default: ScalaVersion = NoScalaVersion): Setting[ScalaVersion] =
-      publish(Setting(name, descr, default))
+    def VersionSetting(category: SettingCategory, name: String, descr: String, default: ScalaVersion = NoScalaVersion, legacyArgs: Boolean = false): Setting[ScalaVersion] =
+      publish(Setting(category, prependName(name), descr, default, legacyArgs = legacyArgs))
 
-    def OptionSetting[T: ClassTag](name: String, descr: String, aliases: List[String] = Nil): Setting[Option[T]] =
-      publish(Setting(name, descr, None, propertyClass = Some(summon[ClassTag[T]].runtimeClass), aliases = aliases))
+    def OptionSetting[T: ClassTag](category: SettingCategory, name: String, descr: String, aliases: List[String] = Nil): Setting[Option[T]] =
+      publish(Setting(category, prependName(name), descr, None, propertyClass = Some(summon[ClassTag[T]].runtimeClass), aliases = aliases))
+    
+    def DeprecatedSetting(category: SettingCategory, name: String, descr: String, deprecationMsg: String): Setting[Boolean] =
+      publish(Setting(category, prependName(name), descr, false, deprecationMsg = Some(deprecationMsg)))
   }
 end Settings

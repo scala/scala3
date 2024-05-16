@@ -51,7 +51,7 @@ class CheckShadowing extends MiniPhase:
 
   override def isRunnable(using Context): Boolean =
     super.isRunnable &&
-    ctx.settings.Xlint.value.nonEmpty &&
+    ctx.settings.Wshadow.value.nonEmpty &&
     !ctx.isJava
 
   // Setup before the traversal
@@ -266,12 +266,12 @@ object CheckShadowing:
     /** Get the shadowing analysis's result */
     def getShadowingResult(using Context): ShadowResult =
       val privateWarnings: List[ShadowWarning] =
-        if ctx.settings.XlintHas.privateShadow then
+        if ctx.settings.WshadowHas.privateShadow then
           privateShadowWarnings.toList
         else
           Nil
       val typeParamWarnings: List[ShadowWarning] =
-        if ctx.settings.XlintHas.typeParameterShadow then
+        if ctx.settings.WshadowHas.typeParameterShadow then
           typeParamShadowWarnings.toList
         else
           Nil

@@ -110,10 +110,10 @@ class CompletionTest {
 
   @Test def importCompleteFromPackage: Unit = {
     withSources(
-      code"""package a
-             abstract class MyClass""",
-      code"""package b
-             import a.My${m1}"""
+      code"""|package a
+             |abstract class MyClass""",
+      code"""|package b
+             |import a.My${m1}"""
     ).completion(("MyClass", Class, "a.MyClass"))
   }
 
@@ -125,11 +125,11 @@ class CompletionTest {
   }
 
   @Test def importCompleteIncludesSynthetic: Unit = {
-    code"""case class MyCaseClass(foobar: Int)
-           object O {
-             val x = MyCaseClass(0)
-             import x.c${m1}
-           }"""
+    code"""|case class MyCaseClass(foobar: Int)
+           |object O {
+           |  val x = MyCaseClass(0)
+           |  import x.c${m1}
+           |}"""
       .completion(
         ("copy", Method, "(foobar: Int): MyCaseClass"),
         ("canEqual", Method, "(that: Any): Boolean"),
@@ -145,11 +145,11 @@ class CompletionTest {
 
   @Test def importCompleteWithClassAndCompanion: Unit = {
     withSources(
-      code"""package pkg0
-             class Foo
-             object Foo""",
-      code"""package pgk1
-             import pkg0.F${m1}"""
+      code"""|package pkg0
+             |class Foo
+             |object Foo""",
+      code"""|package pgk1
+             |import pkg0.F${m1}"""
     ).completion(
         ("Foo", Class, "pkg0.Foo"),
         ("Foo", Module, "pkg0.Foo"),
@@ -158,22 +158,22 @@ class CompletionTest {
 
   @Test def importCompleteIncludePackage: Unit = {
     withSources(
-      code"""package foo.bar
-             abstract classFizz""",
+      code"""|package foo.bar
+             |abstract classFizz""",
       code"""import foo.b${m1}"""
     ).completion(("bar", Module, "foo.bar"))
   }
 
   @Test def importCompleteIncludeMembers: Unit = {
     withSources(
-      code"""object MyObject {
-               val myVal = 0
-               def myDef = 0
-               var myVar = 0
-               object myObject
-               abstract class myClass
-               trait myTrait
-             }""",
+      code"""|object MyObject {
+             |  val myVal = 0
+             |  def myDef = 0
+             |  var myVar = 0
+             |  object myObject
+             |  abstract class myClass
+             |  trait myTrait
+             |}""",
       code"""import MyObject.my${m1}"""
     ).completion(
         ("myVal", Field, "Int"),
@@ -215,9 +215,9 @@ class CompletionTest {
   }
 
   @Test def completeJavaModuleClass: Unit = {
-    code"""object O {
-             val out = java.io.FileDesc${m1}
-           }"""
+    code"""|object O {
+           |  val out = java.io.FileDesc${m1}
+           |}"""
       .completion(("FileDescriptor", Module, "java.io.FileDescriptor"))
   }
 
@@ -227,22 +227,26 @@ class CompletionTest {
         ("FileDescriptor", Class, "java.io.FileDescriptor"),
         ("FileDescriptor", Module, "java.io.FileDescriptor"),
       )
+  }
 
+  @Test def noImportRename: Unit = {
+    code"""import java.io.{FileDescriptor => Fo$m1}"""
+      .noCompletions()
   }
 
   @Test def importGivenByType: Unit = {
-    code"""trait Foo
-           object Bar
-           import Bar.{given Fo$m1}"""
+    code"""|trait Foo
+           |object Bar
+           |import Bar.{given Fo$m1}"""
       .completion(("Foo", Class, "Foo"))
   }
 
   @Test def markDeprecatedSymbols: Unit = {
-    code"""object Foo {
-             @deprecated
-             val bar = 0
-           }
-           import Foo.ba${m1}"""
+    code"""|object Foo {
+           |  @deprecated
+           |  val bar = 0
+           |}
+           |import Foo.ba${m1}"""
       .completion(results => {
         assertEquals(1, results.size)
         val result = results.head
@@ -304,11 +308,11 @@ class CompletionTest {
   }
 
   @Test def completionOnRenamedImport2: Unit = {
-    code"""import java.util.{HashMap => MyImportedSymbol}
-           trait Foo {
-             import java.io.{FileDescriptor => MyImportedSymbol}
-             val x: MyImp${m1}
-           }"""
+    code"""|import java.util.{HashMap => MyImportedSymbol}
+           |trait Foo {
+           |  import java.io.{FileDescriptor => MyImportedSymbol}
+           |  val x: MyImp${m1}
+           |}"""
       .completion(
         ("MyImportedSymbol", Class, "java.io.FileDescriptor"),
         ("MyImportedSymbol", Module, "java.io.FileDescriptor"),
@@ -1693,4 +1697,28 @@ class CompletionTest {
              ("Numeric", Field, "Numeric"),
              ("Numeric", Field, "scala.math.Numeric")
            ))
+
+  @Test def `empty-import-selector`: Unit =
+    code"""|import java.$m1
+           |"""
+      .completion(results => {
+        val interestingResults = results.filter(_.getLabel().startsWith("util"))
+        assertEquals(1, interestingResults.size)
+      })
+
+  @Test def `empty-export-selector`: Unit =
+    code"""|export java.$m1
+           |"""
+    .completion(results => {
+      val interestingResults = results.filter(_.getLabel().startsWith("util"))
+      assertEquals(1, interestingResults.size)
+    })
+
+  @Test def methodsWithInstantiatedTypeVars: Unit =
+    code"""|object M:
+           |  Map.empty[Int, String].getOrEls$m1
+           |"""
+     .completion(m1, Set(
+       ("getOrElse", Method, "[V1 >: String](key: Int, default: => V1): V1"),
+     ))
 }

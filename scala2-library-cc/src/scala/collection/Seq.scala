@@ -81,8 +81,6 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
 
   override def view: SeqView[A] = new SeqView.Id[A](this)
 
-  def iterableFactory: FreeSeqFactory[CC]
-
   /** Get the element at the specified index. This operation is provided for convenience in `Seq`. It should
     * not be assumed to be efficient unless you have an `IndexedSeq`. */
   @throws[IndexOutOfBoundsException]
@@ -120,7 +118,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
     * Note that :-ending operators are right associative (see example).
     * A mnemonic for `+:` vs. `:+` is: the COLon goes on the COLlection side.
     */
-  @`inline` final def +: [B >: A](elem: B): CC[B] = prepended(elem)
+  @`inline` override final def +: [B >: A](elem: B): CC[B] = prepended(elem)
 
   /** A copy of this $coll with an element appended.
     *
@@ -150,7 +148,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
     * Note that :-ending operators are right associative (see example).
     * A mnemonic for `+:` vs. `:+` is: the COLon goes on the COLlection side.
     */
-  @`inline` final def :+ [B >: A](elem: B): CC[B] = appended(elem)
+  @`inline` override final def :+ [B >: A](elem: B): CC[B] = appended(elem)
 
   /** As with `:++`, returns a new collection containing the elements from the left operand followed by the
     *  elements from the right operand.
@@ -167,7 +165,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
   def prependedAll[B >: A](prefix: IterableOnce[B]^): CC[B] = iterableFactory.from(prefix match {
     case prefix: Iterable[B] => new View.Concat(prefix, this)
     case _ => prefix.iterator ++ iterator
-  })
+  }).unsafeAssumePure // assume pure OK since iterableFactory.from is eager for Seq
 
   /** Alias for `prependedAll` */
   @`inline` override final def ++: [B >: A](prefix: IterableOnce[B]^): CC[B] = prependedAll(prefix)
@@ -208,7 +206,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
     *
     * @return a new $coll consisting of all the elements of this $coll without duplicates.
     */
-  def distinct: C = distinctBy(identity)
+  override def distinct: C = distinctBy(identity)
 
   /** Selects all the elements of this $coll ignoring the duplicates as determined by `==` after applying
     * the transforming function `f`.
@@ -217,7 +215,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
     * @tparam B the type of the elements after being transformed by `f`
     * @return a new $coll consisting of all the elements of this $coll without duplicates.
     */
-  def distinctBy[B](f: A -> B): C = fromSpecific(new View.DistinctBy(this, f))
+  override def distinctBy[B](f: A -> B): C = fromSpecific(new View.DistinctBy(this, f))
 
   /** Returns new $coll with elements in reversed order.
    *
@@ -295,7 +293,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
    *          all elements of this $coll followed by the minimal number of occurrences of `elem` so
    *          that the resulting collection has a length of at least `len`.
    */
-  def padTo[B >: A](len: Int, elem: B): CC[B] = iterableFactory.from(new View.PadTo(this, len, elem))
+  override def padTo[B >: A](len: Int, elem: B): CC[B] = iterableFactory.from(new View.PadTo(this, len, elem))
 
   /** Computes the length of the longest segment that starts from the first element
     *  and whose elements all satisfy some predicate.
@@ -532,6 +530,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
 
   @deprecated("Use .reverseIterator.map(f).to(...) instead of .reverseMap(f)", "2.13.0")
   def reverseMap[B](f: A => B): CC[B] = iterableFactory.from(new View.Map(View.fromIteratorProvider(() => reverseIterator), f))
+    .unsafeAssumePure // assume pure OK since iterableFactory.from is eager for Seq
 
   /** Iterates over distinct permutations of elements.
    *
@@ -545,7 +544,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
    *    // List(b, b, a)
    *  }}}
    */
-  def permutations: Iterator[C] =
+  override def permutations: Iterator[C] =
     if (isEmpty) Iterator.single(coll)
     else new PermutationsItr
 
@@ -586,7 +585,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
    *    // List(b, a)
    *  }}}
    */
-  def combinations(n: Int): Iterator[C] =
+  override def combinations(n: Int): Iterator[C] =
     if (n < 0 || n > size) Iterator.empty
     else new CombinationsItr(n)
 
@@ -760,7 +759,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
    *    List("Bobby", "Bob", "John", "Steve", "Tom")
    *  }}}
    */
-  def sortWith(lt: (A, A) => Boolean): C = sorted(Ordering.fromLessThan(lt))
+  override def sortWith(lt: (A, A) => Boolean): C = sorted(Ordering.fromLessThan(lt))
 
   /** Sorts this $coll according to the Ordering which results from transforming
     * an implicitly given Ordering with a transformation function.
@@ -787,7 +786,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
     *    res0: Array[String] = Array(The, dog, fox, the, lazy, over, brown, quick, jumped)
     *  }}}
     */
-  def sortBy[B](f: A => B)(implicit ord: Ordering[B]): C = sorted(ord on f)
+  override def sortBy[B](f: A => B)(implicit ord: Ordering[B]): C = sorted(ord on f)
 
   /** Produces the range of all indices of this sequence.
     * $willForceEvaluation
@@ -945,9 +944,10 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
     *                   except that `replaced` elements starting from `from` are replaced
     *                   by all the elements of `other`.
     */
-  def patch[B >: A](from: Int, other: IterableOnce[B]^, replaced: Int): CC[B] =
+  override def patch[B >: A](from: Int, other: IterableOnce[B]^, replaced: Int): CC[B] =
     iterableFactory.from(new View.Patched(this, from, other, replaced))
-
+      .unsafeAssumePure // assume pure OK since iterableFactory.from is eager for Seq
+      
   /** A copy of this $coll with one single replaced element.
     *  @param  index  the position of the replacement
     *  @param  elem   the replacing element
@@ -957,7 +957,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
     *                                    lazy collection this exception may be thrown at a later time or not at
     *                                    all (if the end of the collection is never evaluated).
     */
-  def updated[B >: A](index: Int, elem: B): CC[B] = {
+  override def updated[B >: A](index: Int, elem: B): CC[B] = {
     if(index < 0) throw new IndexOutOfBoundsException(index.toString)
     val k = knownSize
     if(k >= 0 && index >= k) throw new IndexOutOfBoundsException(index.toString)

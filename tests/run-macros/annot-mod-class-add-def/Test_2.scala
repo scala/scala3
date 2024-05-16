@@ -1,3 +1,5 @@
+//> using options -experimental -Yno-experimental
+
 @addIndirectToString("This is Foo")
 class Foo
   //> private def string$macro$1: String = "This is Foo"

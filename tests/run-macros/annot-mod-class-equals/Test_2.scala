@@ -1,3 +1,5 @@
+//> using options -experimental -Yno-experimental
+
 @equals class Foo(val a: String, val b: Int)
   //> override def equals(that: Any): Boolean =
   //>   that match

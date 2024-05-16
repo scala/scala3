@@ -1,0 +1,20 @@
+-- [E103] Syntax Error: tests/neg/19087.scala:4:2 ----------------------------------------------------------------------
+4 |  Option.when(state.x == 0) body // error: Illegal start of toplevel definition
+  |  ^^^^^^
+  |  Illegal start of toplevel definition
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E040] Syntax Error: tests/neg/19087.scala:15:6 ---------------------------------------------------------------------
+15 |      bar = 2 // error: ',' or ')' expected
+   |      ^^^
+   |      ',' or ')' expected, but identifier found
+-- [E067] Syntax Error: tests/neg/19087.scala:3:4 ----------------------------------------------------------------------
+3 |def foo[T](state: State)(body: => T): Option[T] // error: only classes can have declared but undefined members
+  |    ^
+  |    Declaration of method foo not allowed here: only classes can have declared but undefined members
+-- [E050] Type Error: tests/neg/19087.scala:13:22 ----------------------------------------------------------------------
+13 |        foo(state.copy(x = 5): // Missing ")" // error: method copy in class State does not take more parameters
+   |            ^^^^^^^^^^^^^^^^^
+   |            method copy in class State does not take more parameters
+   |
+   | longer explanation available when compiling with `-explain`

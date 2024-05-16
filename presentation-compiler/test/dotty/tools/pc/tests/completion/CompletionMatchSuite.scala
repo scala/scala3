@@ -19,7 +19,7 @@ class CompletionMatchSuite extends BaseCompletionSuite:
         |  Option(1) match@@
         |}""".stripMargin,
       """|match
-         |match (exhaustive) Option (2 cases)
+         |match (exhaustive) Option[Int] (2 cases)
          |""".stripMargin
     )
 
@@ -31,7 +31,7 @@ class CompletionMatchSuite extends BaseCompletionSuite:
         |  println(1)
         |}""".stripMargin,
       """|match
-         |match (exhaustive) Option (2 cases)
+         |match (exhaustive) Option[Int] (2 cases)
          |""".stripMargin
     )
 
@@ -42,7 +42,7 @@ class CompletionMatchSuite extends BaseCompletionSuite:
         |  Option(1).match@@
         |}""".stripMargin,
       """|match
-         |match (exhaustive) Option (2 cases)
+         |match (exhaustive) Option[Int] (2 cases)
          |""".stripMargin
     )
 
@@ -341,7 +341,7 @@ class CompletionMatchSuite extends BaseCompletionSuite:
         |object A {
         |  List(Option(1)).map{ ca@@ }
         |}""".stripMargin,
-      """|case (exhaustive) Option (2 cases)
+      """|case (exhaustive) Option[Int] (2 cases)
          |""".stripMargin,
       filter = _.contains("exhaustive")
     )
@@ -669,4 +669,43 @@ class CompletionMatchSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       filter = _.contains("exhaustive"),
+    )
+
+  @Test def `union-type` =
+    check(
+      """
+        |case class Foo(a: Int)
+        |case class Bar(b: Int)
+        |
+        |object O {
+        |  val x: Foo | Bar = ???
+        |  val y  = x match@@
+        |}""".stripMargin,
+      """|match
+         |match (exhaustive) Foo | Bar (2 cases)
+         |""".stripMargin
+    )
+
+  @Test def `union-type-edit` =
+    checkEdit(
+      """
+        |case class Foo(a: Int)
+        |case class Bar(b: Int)
+        |
+        |object O {
+        |  val x: Foo | Bar = ???
+        |  val y  = x match@@
+        |}""".stripMargin,
+      s"""|case class Foo(a: Int)
+          |case class Bar(b: Int)
+          |
+          |object O {
+          |  val x: Foo | Bar = ???
+          |  val y  = x match
+          |\tcase Foo(a) => $$0
+          |\tcase Bar(b) =>
+          |
+          |}
+          |""".stripMargin,
+      filter = _.contains("exhaustive")
     )

@@ -651,11 +651,20 @@ trait ConstraintHandling {
     def widenOr(tp: Type) =
       if widenUnions then
         val tpw = tp.widenUnion
-        if (tpw ne tp) && !tpw.isTransparent() && (tpw <:< bound) then tpw else tp
+        if tpw ne tp then
+          if tpw.isTransparent() then
+            // Now also widen singletons of soft unions. Before these were skipped
+            // since widenUnion on soft unions is independent of whether singletons
+            // are widened or not. This avoids an expensive subtype check in widenSingle,
+            // see i19907_*.scala for test cases.
+            widenSingle(tp, skipSoftUnions = false)
+          else if tpw <:< bound then tpw
+          else tp
+        else tp
       else tp.hardenUnions
 
-    def widenSingle(tp: Type) =
-      val tpw = tp.widenSingletons
+    def widenSingle(tp: Type, skipSoftUnions: Boolean) =
+      val tpw = tp.widenSingletons(skipSoftUnions)
       if (tpw ne tp) && (tpw <:< bound) then tpw else tp
 
     def isSingleton(tp: Type): Boolean = tp match
@@ -665,7 +674,7 @@ trait ConstraintHandling {
     val wideInst =
       if isSingleton(bound) then inst
       else
-        val widenedFromSingle = widenSingle(inst)
+        val widenedFromSingle = widenSingle(inst, skipSoftUnions = widenUnions)
         val widenedFromUnion = widenOr(widenedFromSingle)
         val widened = dropTransparentTraits(widenedFromUnion, bound)
         widenIrreducible(widened)

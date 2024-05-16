@@ -419,8 +419,9 @@ object Types extends TypeUtils {
       typeSymbol eq defn.RepeatedParamClass
 
     /** Is this a parameter type that allows implicit argument converson? */
-    def isConvertibleParam(using Context): Boolean =
-      typeSymbol eq defn.IntoType
+    def isInto(using Context): Boolean = this match
+      case AnnotatedType(_, annot) => annot.symbol == defn.IntoParamAnnot
+      case _ => false
 
     /** Is this the type of a method that has a repeated parameter type as
      *  last parameter type?
@@ -1376,15 +1377,15 @@ object Types extends TypeUtils {
      *  and going to the operands of & and |.
      *  Overridden and cached in OrType.
      */
-    def widenSingletons(using Context): Type = dealias match {
+    def widenSingletons(skipSoftUnions: Boolean = false)(using Context): Type = dealias match {
       case tp: SingletonType =>
         tp.widen
       case tp: OrType =>
-        val tp1w = tp.widenSingletons
+        val tp1w = tp.widenSingletons(skipSoftUnions)
         if (tp1w eq tp) this else tp1w
       case tp: AndType =>
-        val tp1w = tp.tp1.widenSingletons
-        val tp2w = tp.tp2.widenSingletons
+        val tp1w = tp.tp1.widenSingletons(skipSoftUnions)
+        val tp2w = tp.tp2.widenSingletons(skipSoftUnions)
         if ((tp.tp1 eq tp1w) && (tp.tp2 eq tp2w)) this else tp1w & tp2w
       case _ =>
         this
@@ -1645,6 +1646,8 @@ object Types extends TypeUtils {
           pre.refinedInfo match {
             case tp: AliasingBounds =>
               if (pre.refinedName ne name) loop(pre.parent) else tp.alias
+            case tp: SingletonType =>
+              if pre.refinedName ne name then loop(pre.parent) else tp
             case _ =>
               loop(pre.parent)
           }
@@ -1925,7 +1928,9 @@ object Types extends TypeUtils {
             case res => res
           }
           defn.FunctionNOf(
-            mt.paramInfos.mapConserve(_.translateFromRepeated(toArray = isJava)),
+            mt.paramInfos.mapConserve:
+              _.translateFromRepeated(toArray = isJava)
+               .mapIntoAnnot(defn.IntoParamAnnot, null),
             result1, isContextual)
         if mt.hasErasedParams then
           defn.PolyFunctionOf(mt)
@@ -1972,6 +1977,38 @@ object Types extends TypeUtils {
         tp.translateParameterized(typeSym, defn.RepeatedParamClass)
       case _ => this
     }
+
+    /** A mapping between mapping one kind of into annotation to another or
+     *  dropping into annotations.
+     *  @param from the into annotation to map
+     *  @param to   either the replacement annotation symbol, or `null`
+     *              in which case the `from` annotations are dropped.
+     */
+    def mapIntoAnnot(from: ClassSymbol, to: ClassSymbol | Null)(using Context): Type = this match
+      case self @ AnnotatedType(tp, annot) =>
+        val tp1 = tp.mapIntoAnnot(from, to)
+        if annot.symbol == from then
+          if to == null then tp1
+          else AnnotatedType(tp1, Annotation(to, annot.tree.span))
+        else self.derivedAnnotatedType(tp1, annot)
+      case AppliedType(tycon, arg :: Nil) if tycon.typeSymbol == defn.RepeatedParamClass =>
+        val arg1 = arg.mapIntoAnnot(from, to)
+        if arg1 eq arg then this
+        else AppliedType(tycon, arg1 :: Nil)
+      case defn.FunctionOf(argTypes, resType, isContextual) =>
+        val resType1 = resType.mapIntoAnnot(from, to)
+        if resType1 eq resType then this
+        else defn.FunctionOf(argTypes, resType1, isContextual)
+      case RefinedType(parent, rname, mt: MethodOrPoly) =>
+        val mt1 = mt.mapIntoAnnot(from, to)
+        if mt1 eq mt then this
+        else RefinedType(parent.mapIntoAnnot(from, to), rname, mt1)
+      case mt: MethodOrPoly =>
+        mt.derivedLambdaType(resType = mt.resType.mapIntoAnnot(from, to))
+      case tp: ExprType =>
+        tp.derivedExprType(tp.resType.mapIntoAnnot(from, to))
+      case _ =>
+        this
 
     /** A type capturing `ref` */
     def capturing(ref: CaptureRef)(using Context): Type =
@@ -2676,11 +2713,8 @@ object Types extends TypeUtils {
      *  refinement type `T { X = U; ... }`
      */
     def reduceProjection(using Context): Type =
-      if (isType) {
-        val reduced = prefix.lookupRefined(name)
-        if (reduced.exists) reduced else this
-      }
-      else this
+      val reduced = prefix.lookupRefined(name)
+      if reduced.exists then reduced else this
 
     /** Guard against cycles that can arise if given `op`
      *  follows info. The problematic cases are a type alias to itself or
@@ -2765,14 +2799,14 @@ object Types extends TypeUtils {
      *     (S | T)#A --> S#A | T#A
      */
     def derivedSelect(prefix: Type)(using Context): Type =
-      if (prefix eq this.prefix) this
-      else if (prefix.isExactlyNothing) prefix
+      if prefix eq this.prefix then this
+      else if prefix.isExactlyNothing then prefix
       else {
+        val res =
+          if (isType && currentValidSymbol.isAllOf(ClassTypeParam)) argForParam(prefix)
+          else prefix.lookupRefined(name)
+        if (res.exists) return res
         if (isType) {
-          val res =
-            if (currentValidSymbol.isAllOf(ClassTypeParam)) argForParam(prefix)
-            else prefix.lookupRefined(name)
-          if (res.exists) return res
           if (Config.splitProjections)
             prefix match {
               case prefix: AndType =>
@@ -3585,8 +3619,8 @@ object Types extends TypeUtils {
       else tp1n.atoms | tp2n.atoms
 
     private def computeWidenSingletons()(using Context): Type =
-      val tp1w = tp1.widenSingletons
-      val tp2w = tp2.widenSingletons
+      val tp1w = tp1.widenSingletons()
+      val tp2w = tp2.widenSingletons()
       if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else TypeComparer.lub(tp1w, tp2w, isSoft = isSoft)
 
     private def ensureAtomsComputed()(using Context): Unit =
@@ -3599,9 +3633,11 @@ object Types extends TypeUtils {
       ensureAtomsComputed()
       myAtoms
 
-    override def widenSingletons(using Context): Type =
-      ensureAtomsComputed()
-      myWidened
+    override def widenSingletons(skipSoftUnions: Boolean)(using Context): Type =
+      if isSoft && skipSoftUnions then this
+      else
+        ensureAtomsComputed()
+        myWidened
 
     def derivedOrType(tp1: Type, tp2: Type, soft: Boolean = isSoft)(using Context): Type =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2) && soft == isSoft) this
@@ -4123,6 +4159,7 @@ object Types extends TypeUtils {
     /** Produce method type from parameter symbols, with special mappings for repeated
      *  and inline parameters:
      *   - replace @repeated annotations on Seq or Array types by <repeated> types
+     *   - map into annotations to $into annotations
      *   - add @inlineParam to inline parameters
      *   - add @erasedParam to erased parameters
      *   - wrap types of parameters that have an @allowConversions annotation with Into[_]
@@ -4132,34 +4169,14 @@ object Types extends TypeUtils {
         case ExprType(resType) => ExprType(addAnnotation(resType, cls, param))
         case _ => AnnotatedType(tp, Annotation(cls, param.span))
 
-      def wrapConvertible(tp: Type) =
-        AppliedType(defn.IntoType.typeRef, tp :: Nil)
-
-      /** Add `Into[..] to the type itself and if it is a function type, to all its
-       *  curried result type(s) as well.
-       */
-      def addInto(tp: Type): Type = tp match
-        case tp @ AppliedType(tycon, args) if tycon.typeSymbol == defn.RepeatedParamClass =>
-          tp.derivedAppliedType(tycon, addInto(args.head) :: Nil)
-        case tp @ AppliedType(tycon, args) if defn.isFunctionNType(tp) =>
-          wrapConvertible(tp.derivedAppliedType(tycon, args.init :+ addInto(args.last)))
-        case tp @ defn.RefinedFunctionOf(rinfo) =>
-          wrapConvertible(tp.derivedRefinedType(refinedInfo = addInto(rinfo)))
-        case tp: MethodOrPoly =>
-          tp.derivedLambdaType(resType = addInto(tp.resType))
-        case ExprType(resType) =>
-          ExprType(addInto(resType))
-        case _ =>
-          wrapConvertible(tp)
-
       def paramInfo(param: Symbol) =
-        var paramType = param.info.annotatedToRepeated
+        var paramType = param.info
+          .annotatedToRepeated
+          .mapIntoAnnot(defn.IntoAnnot, defn.IntoParamAnnot)
         if param.is(Inline) then
           paramType = addAnnotation(paramType, defn.InlineParamAnnot, param)
         if param.is(Erased) then
           paramType = addAnnotation(paramType, defn.ErasedParamAnnot, param)
-        if param.hasAnnotation(defn.AllowConversionsAnnot) then
-          paramType = addInto(paramType)
         paramType
 
       apply(params.map(_.name.asTermName))(
@@ -5009,6 +5026,8 @@ object Types extends TypeUtils {
         case ex: Throwable =>
           handleRecursive("normalizing", s"${scrutinee.show} match ..." , ex)
 
+    private def thisMatchType = this
+
     def reduced(using Context): Type = {
 
       def contextInfo(tp: Type): Type = tp match {
@@ -5023,16 +5042,43 @@ object Types extends TypeUtils {
           tp.underlying
       }
 
-      def updateReductionContext(footprint: collection.Set[Type]): Unit =
-        reductionContext = util.HashMap()
-        for (tp <- footprint)
-          reductionContext(tp) = contextInfo(tp)
-        typr.println(i"footprint for $this $hashCode: ${footprint.toList.map(x => (x, contextInfo(x)))}%, %")
-
       def isUpToDate: Boolean =
-        reductionContext.keysIterator.forall { tp =>
+        reductionContext.keysIterator.forall: tp =>
           reductionContext(tp) `eq` contextInfo(tp)
-        }
+
+      def setReductionContext(): Unit =
+        new TypeTraverser:
+          var footprint: Set[Type] = Set()
+          var deep: Boolean = true
+          val seen = util.HashSet[Type]()
+          def traverse(tp: Type) =
+            if !seen.contains(tp) then
+              seen += tp
+              tp match
+                case tp: NamedType =>
+                  if tp.symbol.is(TypeParam) then footprint += tp
+                  traverseChildren(tp)
+                case _: AppliedType | _: RefinedType =>
+                  if deep then traverseChildren(tp)
+                case TypeBounds(lo, hi) =>
+                  traverse(hi)
+                case tp: TypeVar =>
+                  footprint += tp
+                  traverse(tp.underlying)
+                case tp: TypeParamRef =>
+                  footprint += tp
+                case _ =>
+                  traverseChildren(tp)
+          end traverse
+
+          traverse(scrutinee)
+          deep = false
+          cases.foreach(traverse)
+          reductionContext = util.HashMap()
+          for tp <- footprint do
+            reductionContext(tp) = contextInfo(tp)
+          matchTypes.println(i"footprint for $thisMatchType $hashCode: ${footprint.toList.map(x => (x, contextInfo(x)))}%, %")
+      end setReductionContext
 
       record("MatchType.reduce called")
       if !Config.cacheMatchReduced
@@ -5043,20 +5089,22 @@ object Types extends TypeUtils {
         record("MatchType.reduce computed")
         if (myReduced != null) record("MatchType.reduce cache miss")
         myReduced =
-          trace(i"reduce match type $this $hashCode", matchTypes, show = true)(withMode(Mode.Type) {
-            def matchCases(cmp: TrackingTypeComparer): Type =
-              val saved = ctx.typerState.snapshot()
-              try cmp.matchCases(scrutinee.normalized, cases.map(MatchTypeCaseSpec.analyze(_)))
-              catch case ex: Throwable =>
-                handleRecursive("reduce type ", i"$scrutinee match ...", ex)
-              finally
-                updateReductionContext(cmp.footprint)
-                ctx.typerState.resetTo(saved)
-                  // this drops caseLambdas in constraint and undoes any typevar
-                  // instantiations during matchtype reduction
+          trace(i"reduce match type $this $hashCode", matchTypes, show = true):
+            withMode(Mode.Type):
+              setReductionContext()
+              def matchCases(cmp: MatchReducer): Type =
+                val saved = ctx.typerState.snapshot()
+                try
+                  cmp.matchCases(scrutinee.normalized, cases.map(MatchTypeCaseSpec.analyze(_)))
+                catch case ex: Throwable =>
+                  handleRecursive("reduce type ", i"$scrutinee match ...", ex)
+                finally
+                  ctx.typerState.resetTo(saved)
+                    // this drops caseLambdas in constraint and undoes any typevar
+                    // instantiations during matchtype reduction
+              TypeComparer.reduceMatchWith(matchCases)
 
-            TypeComparer.tracked(matchCases)
-          })
+      //else println(i"no change for $this $hashCode / $myReduced")
       myReduced.nn
     }
 
@@ -6532,7 +6580,7 @@ object Types extends TypeUtils {
       record(s"foldOver $getClass")
       record(s"foldOver total")
       tp match {
-      case tp: TypeRef =>
+      case tp: NamedType =>
         if stopBecauseStaticOrLocal(tp) then x
         else
           val tp1 = tp.prefix.lookupRefined(tp.name)
@@ -6560,9 +6608,6 @@ object Types extends TypeUtils {
         val y = foldOver(x, tp.paramInfos)
         variance = saved
         this(y, restpe)
-
-      case tp: TermRef =>
-        if stopBecauseStaticOrLocal(tp) then x else applyToPrefix(x, tp)
 
       case tp: TypeVar =>
         this(x, tp.underlying)

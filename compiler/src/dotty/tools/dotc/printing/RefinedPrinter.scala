@@ -244,7 +244,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case _ =>
             val tsym = tycon.typeSymbol
             if tycon.isRepeatedParam then toTextLocal(args.head) ~ "*"
-            else if tp.isConvertibleParam then "into " ~ toText(args.head)
             else if defn.isFunctionSymbol(tsym) then toTextFunction(tp)
             else if isInfixType(tp) then
               val l :: r :: Nil = args: @unchecked
@@ -647,6 +646,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             && Feature.ccEnabled && !printDebug
             && Phases.checkCapturesPhase.exists // might be missing on -Ytest-pickler
         then toTextRetainsAnnot
+        else if annot.symbol.enclosingClass == defn.IntoAnnot && !printDebug then
+          atPrec(GlobalPrec):
+            Str("into ") ~ toText(arg)
         else toTextAnnot
       case EmptyTree =>
         "<empty>"
@@ -1008,7 +1010,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         var modsText = modText(constr.mods, constr.symbol, "", isType = false)
         if (!modsText.isEmpty) modsText = " " ~ modsText
         if (constr.mods.hasAnnotations && !constr.mods.hasFlags) modsText = modsText ~~ " this"
-        withEnclosingDef(constr) { addParamssText(tparamsTxt ~~ modsText, constr.trailingParamss) }
+        val ctorParamss =
+          // for fake `(x$1: Unit): Foo` constructor, don't print the param (span is not reconstructed correctly)
+          if constr.symbol.isAllOf(JavaParsers.fakeFlags) then Nil else constr.trailingParamss
+        withEnclosingDef(constr) { addParamssText(tparamsTxt ~~ modsText, ctorParamss) }
       }
     val parentsText = Text(impl.parents.map(constrText), if (ofNew) keywordStr(" with ") else ", ")
     val derivedText = Text(impl.derived.map(toText(_)), ", ")

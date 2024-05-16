@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -Xlint:private-shadow -source:3.3
+//> using options -Xfatal-warnings -Wshadow:private-shadow -source:3.3
 
 object i17612b:
 

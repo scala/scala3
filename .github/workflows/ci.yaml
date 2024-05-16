@@ -47,7 +47,7 @@ jobs:
   test_non_bootstrapped:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -65,8 +65,8 @@ jobs:
            && github.repository == 'scala/scala3'
          )"
     steps:
-      - name: Set JDK 16 as default
-        run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
 
       ## Workaround for https://github.com/actions/runner/issues/2033 (See https://github.com/scala/scala3/pull/19720)
       - name: Reset existing repo
@@ -99,7 +99,7 @@ jobs:
   test:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -119,8 +119,8 @@ jobs:
          )"
 
     steps:
-      - name: Set JDK 16 as default
-        run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
 
       - name: Reset existing repo
         run: |
@@ -141,7 +141,7 @@ jobs:
 
       - name: Cmd Tests
         run: |
-          ./project/scripts/sbt ";dist/pack; scala3-bootstrapped/compile; scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/*; scala2-library-tasty-tests/test; scala3-compiler-bootstrapped/scala3CompilerCoursierTest:test"
+          ./project/scripts/sbt ";dist/pack; scala3-bootstrapped/compile; scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/*; scala3-compiler-bootstrapped/scala3CompilerCoursierTest:test"
           ./project/scripts/cmdTests
           ./project/scripts/bootstrappedOnlyCmdTests
 
@@ -153,12 +153,12 @@ jobs:
         run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryTasty ;scala3-bootstrapped/testCompilation i5; scala3-bootstrapped/testCompilation tests/run/typelevel-peano.scala; scala3-bootstrapped/testOnly dotty.tools.backend.jvm.DottyBytecodeTests" # only test a subset of test to avoid doubling the CI execution time
 
       - name: Test with Scala 2 library with CC TASTy (fast)
-        run: ./project/scripts/sbt "scala2-library-cc/compile; scala2-library-cc-tasty/compile; scala3-bootstrapped/testCompilation i3"
+        run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryCCTasty; scala2-library-cc/compile; scala2-library-cc-tasty/compile; scala3-bootstrapped/testCompilation i3"
 
   test_scala2_library_tasty:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -175,8 +175,8 @@ jobs:
          )"
 
     steps:
-      - name: Set JDK 16 as default
-        run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
 
       - name: Reset existing repo
         run: |
@@ -198,9 +198,8 @@ jobs:
       - name: Test with Scala 2 library TASTy
         run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryTasty ;scala3-bootstrapped/test"
 
-      # TODO test all the test configurations in non-CC library (currently disabled due to bug while loading the library)
-      # - name: Test with Scala 2 library with CC TASTy
-      #   run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryCCTasty ;scala3-bootstrapped/test"
+      - name: Test with Scala 2 library with CC TASTy
+        run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryCCTasty ;scala3-bootstrapped/test"
 
 
   test_windows_fast:
@@ -227,7 +226,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Test
-        run: sbt ";scala3-bootstrapped/compile"
+        run: sbt ";scala3-bootstrapped/compile; scala3-bootstrapped/testCompilation"
         shell: cmd
 
       - name: build binary
@@ -282,7 +281,7 @@ jobs:
     name: MiMa
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -301,6 +300,9 @@ jobs:
            && github.repository == 'scala/scala3'
          )"
     steps:
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
+
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory /__w/scala3/scala3
@@ -330,7 +332,7 @@ jobs:
   community_build_a:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -351,6 +353,11 @@ jobs:
          )"
 
     steps:
+      ######################################################################################
+      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
+      ######################################################################################
+      - name: Set JDK 8 as default
+        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory /__w/scala3/scala3
@@ -382,7 +389,7 @@ jobs:
   community_build_b:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -403,6 +410,11 @@ jobs:
          )"
 
     steps:
+      ######################################################################################
+      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
+      ######################################################################################
+      - name: Set JDK 8 as default
+        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory /__w/scala3/scala3
@@ -434,7 +446,7 @@ jobs:
   community_build_c:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-11-19
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -455,6 +467,11 @@ jobs:
          )"
 
     steps:
+      ######################################################################################
+      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
+      ######################################################################################
+      - name: Set JDK 8 as default
+        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory /__w/scala3/scala3
@@ -486,7 +503,7 @@ jobs:
   test_sbt:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -505,6 +522,9 @@ jobs:
          )"
 
     steps:
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
+
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory /__w/scala3/scala3
@@ -528,7 +548,7 @@ jobs:
   test_java8:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -551,6 +571,9 @@ jobs:
          )"
 
     steps:
+      ####################################################################################
+      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. THIS TEST IS SPECIFIC FOR JAVA 8 ##
+      ####################################################################################
       - name: Set JDK 8 as default
         run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
 
@@ -573,7 +596,7 @@ jobs:
 
       - name: Test
         run: |
-          ./project/scripts/sbt ";dist/pack ;scala3-bootstrapped/compile ;scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/*; scala2-library-tasty-tests/test"
+          ./project/scripts/sbt ";dist/pack ;scala3-bootstrapped/compile ;scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/*"
           ./project/scripts/cmdTests
           ./project/scripts/bootstrappedOnlyCmdTests
 
@@ -584,7 +607,7 @@ jobs:
   publish_nightly:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -600,6 +623,11 @@ jobs:
       SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 
     steps:
+      ######################################################################################
+      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
+      ######################################################################################
+      - name: Set JDK 8 as default
+        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory /__w/scala3/scala3
@@ -637,7 +665,7 @@ jobs:
   nightly_documentation:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -691,7 +719,7 @@ jobs:
       contents: write  # for actions/create-release to create a release
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -709,6 +737,11 @@ jobs:
       SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 
     steps:
+      ######################################################################################
+      ## WARNING: DO NOT CHANGE THE JAVA VERSION HERE. SCALA IS DISTRIBUTED USING JAVA 8. ##
+      ######################################################################################
+      - name: Set JDK 8 as default
+        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory /__w/scala3/scala3
@@ -781,7 +814,7 @@ jobs:
   open_issue_on_failure:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
     needs: [nightly_documentation, test_windows_full]
     # The `failure()` expression is true iff at least one of the dependencies
     # of this job (including transitive dependencies) has failed.

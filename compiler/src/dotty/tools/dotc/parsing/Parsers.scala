@@ -30,7 +30,7 @@ import scala.annotation.tailrec
 import rewrites.Rewrites.{patch, overlapsPatch}
 import reporting.*
 import config.Feature
-import config.Feature.{sourceVersion, migrateTo3, globalOnlyImports}
+import config.Feature.{sourceVersion, migrateTo3}
 import config.SourceVersion.*
 import config.SourceVersion
 import dotty.tools.dotc.config.MigrationVersion
@@ -72,6 +72,9 @@ object Parsers {
 
   enum ParseKind:
     case Expr, Type, Pattern
+
+  enum IntoOK:
+    case Yes, No, Nested
 
   type StageKind = Int
   object StageKind {
@@ -1484,7 +1487,7 @@ object Parsers {
     /** Same as [[typ]], but if this results in a wildcard it emits a syntax error and
      *  returns a tree for type `Any` instead.
      */
-    def toplevelTyp(): Tree = rejectWildcardType(typ())
+    def toplevelTyp(intoOK: IntoOK = IntoOK.No): Tree = rejectWildcardType(typ(intoOK))
 
     private def getFunction(tree: Tree): Option[Function] = tree match {
       case Parens(tree1) => getFunction(tree1)
@@ -1532,13 +1535,24 @@ object Parsers {
      *  PolyFunType    ::=  HKTypeParamClause '=>' Type
      *                   |  HKTypeParamClause ‘->’ [CaptureSet] Type   -- under pureFunctions
      *  FunTypeArgs    ::=  InfixType
-     *                   |  `(' [ [ ‘['erased']  FunArgType {`,' FunArgType } ] `)'
-     *                   |  '(' [ ‘['erased'] TypedFunParam {',' TypedFunParam } ')'
+     *                   |  `(' [ FunArgType {`,' FunArgType } ] `)'
+     *                   |  '(' [ TypedFunParam {',' TypedFunParam } ')'
+     *  MatchType      ::=  InfixType `match` <<< TypeCaseClauses >>>
+     *  IntoType       ::=  [‘into’] IntoTargetType
+     *                   |  ‘( IntoType ‘)’
+     *  IntoTargetType ::=  Type
+     *                   |  FunTypeArgs (‘=>’ | ‘?=>’) IntoType
      */
-    def typ(): Tree =
+    def typ(intoOK: IntoOK = IntoOK.No): Tree =
       val start = in.offset
       var imods = Modifiers()
-      var erasedArgs: ListBuffer[Boolean] = ListBuffer()
+      val erasedArgs: ListBuffer[Boolean] = ListBuffer()
+
+      def nestedIntoOK(token: Int) =
+        if token == TLARROW then IntoOK.No
+        else if intoOK == IntoOK.Nested then IntoOK.Yes
+        else intoOK
+
       def functionRest(params: List[Tree]): Tree =
         val paramSpan = Span(start, in.lastOffset)
         atSpan(start, in.offset) {
@@ -1567,7 +1581,9 @@ object Parsers {
           else
             accept(ARROW)
 
-          val resultType = if isPure then capturesAndResult(typ) else typ()
+          def resType() = typ(nestedIntoOK(token))
+          val resultType =
+            if isPure then capturesAndResult(resType) else resType()
           if token == TLARROW then
             for case ValDef(_, tpt, _) <- params do
               if isByNameType(tpt) then
@@ -1585,98 +1601,120 @@ object Parsers {
             Function(params, resultType)
         }
 
-      var isValParamList = false
+      def typeRest(t: Tree) = in.token match
+        case ARROW | CTXARROW =>
+          erasedArgs.addOne(false)
+          functionRest(t :: Nil)
+        case MATCH =>
+          matchType(t)
+        case FORSOME =>
+          syntaxError(ExistentialTypesNoLongerSupported())
+          t
+        case _ if isPureArrow =>
+          erasedArgs.addOne(false)
+          functionRest(t :: Nil)
+        case _ =>
+          if erasedArgs.contains(true) && !t.isInstanceOf[FunctionWithMods] then
+            syntaxError(ErasedTypesCanOnlyBeFunctionTypes(), implicitKwPos(start))
+          t
 
-      val t =
-        if (in.token == LPAREN) {
+      def isIntoPrefix: Boolean =
+        intoOK == IntoOK.Yes
+        && in.isIdent(nme.into)
+        && in.featureEnabled(Feature.into)
+        && canStartTypeTokens.contains(in.lookahead.token)
+
+      var isValParamList = false
+      if in.token == LPAREN then
+        in.nextToken()
+        if in.token == RPAREN then
           in.nextToken()
-          if (in.token == RPAREN) {
-            in.nextToken()
-            functionRest(Nil)
-          }
-          else {
-            val paramStart = in.offset
-            def addErased() =
-              erasedArgs.addOne(isErasedKw)
-              if isErasedKw then { in.skipToken(); }
-            addErased()
-            val ts = in.currentRegion.withCommasExpected {
+          functionRest(Nil)
+        else
+          val paramStart = in.offset
+          def addErased() =
+            erasedArgs.addOne(isErasedKw)
+            if isErasedKw then in.skipToken()
+          addErased()
+          val args =
+            in.currentRegion.withCommasExpected:
               funArgType() match
                 case Ident(name) if name != tpnme.WILDCARD && in.isColon =>
                   isValParamList = true
-                  def funParam(start: Offset, mods: Modifiers) = {
-                    atSpan(start) {
+                  def funParam(start: Offset, mods: Modifiers) =
+                    atSpan(start):
                       addErased()
                       typedFunParam(in.offset, ident(), imods)
-                    }
-                  }
                   commaSeparatedRest(
                     typedFunParam(paramStart, name.toTermName, imods),
                     () => funParam(in.offset, imods))
                 case t =>
-                  def funParam() = {
-                      addErased()
-                      funArgType()
-                  }
-                  commaSeparatedRest(t, funParam)
-            }
-            accept(RPAREN)
-            if isValParamList || in.isArrow || isPureArrow then
-              functionRest(ts)
-            else {
-              val ts1 = ts.mapConserve { t =>
-                if isByNameType(t) then
-                  syntaxError(ByNameParameterNotSupported(t), t.span)
-                  stripByNameType(t)
-                else
-                  t
-              }
-              val tuple = atSpan(start) { makeTupleOrParens(ts1) }
-              infixTypeRest(
-                refinedTypeRest(
-                  withTypeRest(
-                    annotTypeRest(
-                      simpleTypeRest(tuple)))))
-            }
-          }
-        }
-        else if (in.token == LBRACKET) {
-          val start = in.offset
-          val tparams = typeParamClause(ParamOwner.TypeParam)
-          if (in.token == TLARROW)
-            atSpan(start, in.skipToken())(LambdaTypeTree(tparams, toplevelTyp()))
-          else if (in.token == ARROW || isPureArrow(nme.PUREARROW)) {
-            val arrowOffset = in.skipToken()
-            val body = toplevelTyp()
-            atSpan(start, arrowOffset) {
-              getFunction(body) match {
-                case Some(f) =>
-                  PolyFunction(tparams, body)
-                case None =>
-                  syntaxError(em"Implementation restriction: polymorphic function types must have a value parameter", arrowOffset)
-                  Ident(nme.ERROR.toTypeName)
-              }
-            }
-          }
-          else { accept(TLARROW); typ() }
-        }
-        else if (in.token == INDENT) enclosed(INDENT, typ())
-        else infixType()
+                  def funArg() =
+                    erasedArgs.addOne(false)
+                    funArgType()
+                  commaSeparatedRest(t, funArg)
+          accept(RPAREN)
 
-      in.token match
-        case ARROW | CTXARROW =>
-          erasedArgs.addOne(false)
-          functionRest(t :: Nil)
-        case MATCH => matchType(t)
-        case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
-        case _ =>
-          if isPureArrow then
-            erasedArgs.addOne(false)
-            functionRest(t :: Nil)
+          val intoAllowed =
+            intoOK == IntoOK.Yes
+            && args.lengthCompare(1) == 0
+            && (!canFollowSimpleTypeTokens.contains(in.token) || followingIsVararg())
+          val byNameAllowed = in.isArrow || isPureArrow
+
+          def sanitize(arg: Tree): Tree = arg match
+            case ByNameTypeTree(t) if !byNameAllowed =>
+              syntaxError(ByNameParameterNotSupported(t), t.span)
+              t
+            case PrefixOp(id @ Ident(tpnme.into), t) if !intoAllowed =>
+              syntaxError(em"no `into` modifier allowed here", id.span)
+              t
+            case Parens(t) =>
+              cpy.Parens(arg)(sanitize(t))
+            case arg: FunctionWithMods =>
+              val body1 = sanitize(arg.body)
+              if body1 eq arg.body then arg
+              else FunctionWithMods(arg.args, body1, arg.mods, arg.erasedParams).withSpan(arg.span)
+            case Function(args, res) if !intoAllowed =>
+              cpy.Function(arg)(args, sanitize(res))
+            case arg =>
+              arg
+
+          val args1 = args.mapConserve(sanitize)
+          if isValParamList || in.isArrow || isPureArrow then
+            functionRest(args)
           else
-            if (erasedArgs.contains(true) && !t.isInstanceOf[FunctionWithMods])
-              syntaxError(ErasedTypesCanOnlyBeFunctionTypes(), implicitKwPos(start))
-            t
+            val tuple = atSpan(start)(makeTupleOrParens(args1))
+            typeRest:
+              infixTypeRest:
+                refinedTypeRest:
+                  withTypeRest:
+                    annotTypeRest:
+                      simpleTypeRest(tuple)
+      else if in.token == LBRACKET then
+        val start = in.offset
+        val tparams = typeParamClause(ParamOwner.TypeParam)
+        if in.token == TLARROW then
+          atSpan(start, in.skipToken()):
+            LambdaTypeTree(tparams, toplevelTyp())
+        else if in.token == ARROW || isPureArrow(nme.PUREARROW) then
+          val arrowOffset = in.skipToken()
+          val body = toplevelTyp(nestedIntoOK(in.token))
+          atSpan(start, arrowOffset):
+            getFunction(body) match
+              case Some(f) =>
+                PolyFunction(tparams, body)
+              case None =>
+                syntaxError(em"Implementation restriction: polymorphic function types must have a value parameter", arrowOffset)
+                Ident(nme.ERROR.toTypeName)
+        else
+          accept(TLARROW)
+          typ()
+      else if in.token == INDENT then
+        enclosed(INDENT, typ())
+      else if isIntoPrefix then
+        PrefixOp(typeIdent(), typ(IntoOK.Nested))
+      else
+        typeRest(infixType())
     end typ
 
     private def makeKindProjectorTypeDef(name: TypeName): TypeDef = {
@@ -1713,7 +1751,7 @@ object Parsers {
     private def implicitKwPos(start: Int): Span =
       Span(start, start + nme.IMPLICITkw.asSimpleName.length)
 
-    /** TypedFunParam   ::= id ':' Type */
+    /** TypedFunParam   ::= [`erased`] id ':' Type */
     def typedFunParam(start: Offset, name: TermName, mods: Modifiers = EmptyModifiers): ValDef =
       atSpan(start) {
         acceptColon()
@@ -2049,18 +2087,13 @@ object Parsers {
       else
         core()
 
-    private def maybeInto(tp: () => Tree) =
-      if in.isIdent(nme.into)
-          && in.featureEnabled(Feature.into)
-          && canStartTypeTokens.contains(in.lookahead.token)
-      then atSpan(in.skipToken()) { Into(tp()) }
-      else tp()
-
     /** FunArgType ::=  Type
      *               |  `=>' Type
      *               |  `->' [CaptureSet] Type
      */
-    val funArgType: () => Tree = () => paramTypeOf(typ)
+    val funArgType: () => Tree =
+      () => paramTypeOf(() => typ(IntoOK.Yes))
+        // We allow intoOK and filter out afterwards in typ()
 
     /** ParamType  ::=  ParamValueType
      *               |  `=>' ParamValueType
@@ -2068,16 +2101,22 @@ object Parsers {
      */
     def paramType(): Tree = paramTypeOf(paramValueType)
 
-    /** ParamValueType ::= [`into`] Type [`*']
+    /** ParamValueType ::= Type [`*']
+     *                   | IntoType
+     *                   | ‘(’ IntoType ‘)’ `*'
      */
-    def paramValueType(): Tree = {
-      val t = maybeInto(toplevelTyp)
-      if (isIdent(nme.raw.STAR)) {
+    def paramValueType(): Tree =
+      val t = toplevelTyp(IntoOK.Yes)
+      if isIdent(nme.raw.STAR) then
+        if !t.isInstanceOf[Parens] && isInto(t) then
+          syntaxError(
+            em"""`*` cannot directly follow `into` parameter
+                |the `into` parameter needs to be put in parentheses""",
+            in.offset)
         in.nextToken()
-        atSpan(startOffset(t)) { PostfixOp(t, Ident(tpnme.raw.STAR)) }
-      }
+        atSpan(startOffset(t)):
+          PostfixOp(t, Ident(tpnme.raw.STAR))
       else t
-    }
 
     /** TypeArgs      ::= `[' Type {`,' Type} `]'
      *  NamedTypeArgs ::= `[' NamedTypeArg {`,' NamedTypeArg} `]'
@@ -2153,7 +2192,8 @@ object Parsers {
     def condExpr(altToken: Token): Tree =
       val t: Tree =
         if in.token == LPAREN then
-          var t: Tree = atSpan(in.offset) { Parens(inParens(exprInParens())) }
+          var t: Tree = atSpan(in.offset):
+            makeTupleOrParens(inParensWithCommas(commaSeparated(exprInParens)))
           if in.token != altToken then
             if toBeContinued(altToken) then
               t = inSepRegion(InCond) {
@@ -2425,7 +2465,7 @@ object Parsers {
         Match(t, inBracesOrIndented(caseClauses(() => caseClause())))
       }
 
-    /**    `match' `{' TypeCaseClauses `}'
+    /**    `match' <<< TypeCaseClauses >>>
      */
     def matchType(t: Tree): MatchTypeTree =
       atSpan(startOffset(t), accept(MATCH)) {
@@ -2435,7 +2475,7 @@ object Parsers {
     /** FunParams         ::=  Bindings
      *                     |   id
      *                     |   `_'
-     *  Bindings          ::=  `(' [[‘erased’] Binding {`,' Binding}] `)'
+     *  Bindings          ::=  `(' [Binding {`,' Binding}] `)'
      */
     def funParams(mods: Modifiers, location: Location): List[Tree] =
       if in.token == LPAREN then
@@ -3173,7 +3213,7 @@ object Parsers {
      *                  |  AccessModifier
      *                  |  override
      *                  |  opaque
-     *  LocalModifier  ::= abstract | final | sealed | open | implicit | lazy | erased | inline | transparent
+     *  LocalModifier  ::= abstract | final | sealed | open | implicit | lazy | inline | transparent | infix | erased
      */
     def modifiers(allowed: BitSet = modifierTokens, start: Modifiers = Modifiers()): Modifiers = {
       @tailrec
@@ -3317,7 +3357,7 @@ object Parsers {
     /** ContextTypes   ::=  FunArgType {‘,’ FunArgType}
      */
     def contextTypes(paramOwner: ParamOwner, numLeadParams: Int, impliedMods: Modifiers): List[ValDef] =
-      val tps = commaSeparated(() => paramTypeOf(toplevelTyp))
+      val tps = commaSeparated(() => paramTypeOf(() => toplevelTyp()))
       var counter = numLeadParams
       def nextIdx = { counter += 1; counter }
       val paramFlags = if paramOwner.isClass then LocalParamAccessor else Param
@@ -3326,7 +3366,7 @@ object Parsers {
     /** ClsTermParamClause    ::=  ‘(’ ClsParams ‘)’ | UsingClsTermParamClause
      *  UsingClsTermParamClause::= ‘(’ ‘using’ [‘erased’] (ClsParams | ContextTypes) ‘)’
      *  ClsParams         ::=  ClsParam {‘,’ ClsParam}
-     *  ClsParam          ::=  {Annotation}
+     *  ClsParam          ::=  {Annotation} [{Modifier} (‘val’ | ‘var’)] Param
      *
      *  TypelessClause    ::= DefTermParamClause
      *                      | UsingParamClause
@@ -3958,6 +3998,14 @@ object Parsers {
         if (in.token == COMMA) {
           in.nextToken()
           val ids = commaSeparated(() => termIdent())
+          if ctx.settings.WenumCommentDiscard.value then
+            in.getDocComment(start).foreach: comm =>
+              warning(
+                em"""Ambiguous Scaladoc comment on multiple cases is ignored.
+                     |Remove the comment or make separate cases to add Scaladoc comments to each of them.""",
+                comm.span.start
+              )
+
           PatDef(mods1, id :: ids, TypeTree(), EmptyTree)
         }
         else {
@@ -4014,7 +4062,7 @@ object Parsers {
         val tparams = typeParamClauseOpt(ParamOwner.Given)
         newLineOpt()
         val vparamss =
-          if in.token == LPAREN && in.lookahead.isIdent(nme.using)
+          if in.token == LPAREN && (in.lookahead.isIdent(nme.using) || name != EmptyTermName)
           then termParamClauses(ParamOwner.Given)
           else Nil
         newLinesOpt()

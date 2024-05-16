@@ -20,24 +20,7 @@ class BackendUtils(val postProcessor: PostProcessor) {
   import bTypes.*
   import coreBTypes.jliLambdaMetaFactoryAltMetafactoryHandle
 
-  // Keep synchronized with `minTargetVersion` and `maxTargetVersion` in ScalaSettings
-  lazy val classfileVersion: Int = compilerSettings.target match {
-    case "8"  => asm.Opcodes.V1_8
-    case "9"  => asm.Opcodes.V9
-    case "10" => asm.Opcodes.V10
-    case "11" => asm.Opcodes.V11
-    case "12" => asm.Opcodes.V12
-    case "13" => asm.Opcodes.V13
-    case "14" => asm.Opcodes.V14
-    case "15" => asm.Opcodes.V15
-    case "16" => asm.Opcodes.V16
-    case "17" => asm.Opcodes.V17
-    case "18" => asm.Opcodes.V18
-    case "19" => asm.Opcodes.V19
-    case "20" => asm.Opcodes.V20
-    case "21" => asm.Opcodes.V21
-    case "22" => asm.Opcodes.V22
-  }
+  lazy val classfileVersion: Int = BackendUtils.classfileVersionMap(compilerSettings.target.toInt)
 
   lazy val extraProc: Int = {
     import GenBCodeOps.addFlagIf
@@ -183,4 +166,24 @@ class BackendUtils(val postProcessor: PostProcessor) {
       jclass.visitInnerClass(e.name, e.outerName, e.innerName, e.flags)
     }
   }
+}
+
+object BackendUtils {
+  lazy val classfileVersionMap: Map[Int, Int] = Map(
+    8 -> asm.Opcodes.V1_8,
+    9 -> asm.Opcodes.V9,
+    10 -> asm.Opcodes.V10,
+    11 -> asm.Opcodes.V11,
+    12 -> asm.Opcodes.V12,
+    13 -> asm.Opcodes.V13,
+    14 -> asm.Opcodes.V14,
+    15 -> asm.Opcodes.V15,
+    16 -> asm.Opcodes.V16,
+    17 -> asm.Opcodes.V17,
+    18 -> asm.Opcodes.V18,
+    19 -> asm.Opcodes.V19,
+    20 -> asm.Opcodes.V20,
+    21 -> asm.Opcodes.V21,
+    22 -> asm.Opcodes.V22,
+  )
 }

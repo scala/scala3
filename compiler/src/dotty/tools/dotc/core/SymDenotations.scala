@@ -1208,8 +1208,8 @@ object SymDenotations {
 
     final def isLocalToCompilationUnit(using Context): Boolean =
       is(Private)
-      || owner.ownersIterator.exists(_.isTerm)
-      || accessBoundary(defn.RootClass).isContainedIn(symbol.topLevelClass)
+      || owner.ownersIterator.takeWhile(!_.isStaticOwner).exists(_.isTerm)
+      || accessBoundary(defn.RootClass).isProperlyContainedIn(symbol.topLevelClass)
 
     final def isTransparentClass(using Context): Boolean =
       is(TransparentType)
@@ -1511,6 +1511,13 @@ object SymDenotations {
      */
     def namedType(using Context): NamedType =
       if (isType) typeRef else termRef
+
+    /** Like typeRef, but the prefix is widened.
+     *
+     *  See tests/neg/i19619/Test.scala
+     */
+    def javaTypeRef(using Context) =
+      TypeRef(maybeOwner.reachablePrefix.widen, symbol)
 
     /** Like typeRef, but objects in the prefix are represented by their singleton type,
      *  this means we output `pre.O.member` rather than `pre.O$.this.member`.

@@ -15,7 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
-import cc.{CapturingType, RetainingType, CaptureSet, ReachCapability, MaybeCapability, isBoxed, levelOwner, retainedElems}
+import cc.{CapturingType, RetainingType, CaptureSet, ReachCapability, MaybeCapability, isBoxed, levelOwner, retainedElems, isRetainsLike}
 
 class PlainPrinter(_ctx: Context) extends Printer {
 
@@ -60,7 +60,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         case OrType(tp1, tp2) =>
           homogenize(tp1) | homogenize(tp2)
         case AnnotatedType(parent, annot)
-        if !ctx.mode.is(Mode.Type) && annot.symbol == defn.UncheckedVarianceAnnot =>
+        if !ctx.mode.is(Mode.Type) && annot.symbol == defn.UncheckedVarianceAnnot
+           || annot.symbol.isRetainsLike =>
           homogenize(parent)
         case tp: SkolemType =>
           homogenize(tp.info)
@@ -241,10 +242,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val refsText = if showAsCap then rootSetText else toTextCaptureSet(refs)
         toTextCapturing(parent, refsText, boxText)
       case tp @ RetainingType(parent, refs) =>
-        val refsText = refs match
-          case ref :: Nil if ref.symbol == defn.captureRoot => rootSetText
-          case _ => toTextRetainedElems(refs)
-        toTextCapturing(parent, refsText, "") ~ Str("R").provided(printDebug)
+        if Feature.ccEnabledSomewhere then
+          val refsText = refs match
+            case ref :: Nil if ref.symbol == defn.captureRoot => rootSetText
+            case _ => toTextRetainedElems(refs)
+          toTextCapturing(parent, refsText, "") ~ Str("R").provided(printDebug)
+        else toText(parent)
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely
       case tp: ErrorType =>
@@ -285,7 +288,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
           toTextGlobal(tp.resultType)
         }
       case AnnotatedType(tpe, annot) =>
-        if annot.symbol == defn.InlineParamAnnot || annot.symbol == defn.ErasedParamAnnot then toText(tpe)
+        if annot.symbol == defn.InlineParamAnnot || annot.symbol == defn.ErasedParamAnnot
+        then toText(tpe)
+        else if (annot.symbol == defn.IntoAnnot || annot.symbol == defn.IntoParamAnnot)
+            && !printDebug
+        then atPrec(GlobalPrec)( Str("into ") ~ toText(tpe) )
         else toTextLocal(tpe) ~ " " ~ toText(annot)
       case tp: TypeVar =>
         def toTextCaret(tp: Type) = if printDebug then toTextLocal(tp) ~ Str("^") else toText(tp)

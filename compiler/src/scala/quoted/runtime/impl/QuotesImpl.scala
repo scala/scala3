@@ -24,6 +24,7 @@ import scala.quoted.runtime.impl.printers.*
 
 import scala.reflect.TypeTest
 import dotty.tools.dotc.core.NameKinds.ExceptionBinderName
+import dotty.tools.dotc.transform.TreeChecker
 
 object QuotesImpl {
 
@@ -253,6 +254,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         (cdef.name.toString, cdef.constructor, cdef.parents, cdef.self, rhs.body)
 
       def module(module: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): (ValDef, ClassDef) = {
+        if xCheckMacro then TreeChecker.checkParents(module.moduleClass.asClass, parents)
         val cls = module.moduleClass
         val clsDef = ClassDef(cls, parents, body)
         val newCls = Apply(Select(New(TypeIdent(cls)), cls.primaryConstructor), Nil)
@@ -466,7 +468,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.ref(tp).asInstanceOf[tpd.RefTree])
       def apply(sym: Symbol): Ref =
         assert(sym.isTerm)
-        withDefaultPos(tpd.ref(sym).asInstanceOf[tpd.RefTree])
+        val refTree = tpd.ref(sym) match
+          case t @ tpd.This(ident) => // not a RefTree, so we need to work around this - issue #19732
+            // ident in `This` can be a TypeIdent of sym, so we manually prepare the ref here,
+            // knowing that the owner is actually `This`.
+            val term = Select(This(sym.owner), sym)
+            term.asInstanceOf[tpd.RefTree]
+          case other => other.asInstanceOf[tpd.RefTree]
+        withDefaultPos(refTree)
     end Ref
 
     type Ident = tpd.Ident
@@ -1105,7 +1114,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object TypeTreeTypeTest extends TypeTest[Tree, TypeTree]:
       def unapply(x: Tree): Option[TypeTree & x.type] = x match
-        case x: (tpd.TypeBoundsTree & x.type) => None
+        case TypeBoundsTreeTypeTest(_) => None
         case x: (tpd.Tree & x.type) if x.isType => Some(x)
         case _ => None
     end TypeTreeTypeTest

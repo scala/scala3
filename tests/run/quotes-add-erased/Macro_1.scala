@@ -1,3 +1,5 @@
+//> using options -experimental -Yno-experimental
+
 import scala.annotation.MacroAnnotation
 import scala.annotation.internal.ErasedParam
 import scala.quoted._

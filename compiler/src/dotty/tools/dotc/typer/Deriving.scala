@@ -165,7 +165,7 @@ trait Deriving {
           // case (a) ... see description above
           val derivedParams = clsParams.dropRight(instanceArity)
           val instanceType =
-            if (instanceArity == clsArity) clsType.etaExpand(clsParams)
+            if (instanceArity == clsArity) clsType.etaExpand
             else {
               val derivedParamTypes = derivedParams.map(_.typeRef)
 

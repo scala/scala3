@@ -81,7 +81,14 @@ def toolArgsFor(tool: ToolName, filename: Option[String])(lines: List[String]): 
 // groups are (name, args)
 // note: ideally we would replace everything that requires this to use directive syntax, however scalajs: --skip has no directive equivalent yet.
 private val toolArg = raw"(?://|/\*| \*) ?(?i:(${ToolName.values.mkString("|")})):((?:[^*]|\*(?!/))*)".r.unanchored
+
+// ================================================================================================
+// =================================== VULPIX DIRECTIVES ==========================================
+// ================================================================================================
+
+/** Directive to specify to vulpix the options to pass to Dotty */
 private val directiveOptionsArg = raw"//> using options (.*)".r.unanchored
+private val directiveJavacOptions = raw"//> using javacOpt (.*)".r.unanchored
 
 // Inspect the lines for compiler options of the form
 // `//> using options args`, `// scalajs: args`, `/* scalajs: args`, ` * scalajs: args` etc.
@@ -90,10 +97,15 @@ private val directiveOptionsArg = raw"//> using options (.*)".r.unanchored
 def toolArgsParse(lines: List[String], filename: Option[String]): List[(String,String)] =
   lines.flatMap {
     case toolArg("scalac", _) => sys.error(s"`// scalac: args` not supported. Please use `//> using options args`${filename.fold("")(f => s" in file $f")}")
+    case toolArg("javac", _) => sys.error(s"`// javac: args` not supported. Please use `//> using javacOpt args`${filename.fold("")(f => s" in file $f")}")
     case toolArg(name, args) => List((name, args))
     case _ => Nil
   } ++
-  lines.flatMap { case directiveOptionsArg(args) => List(("scalac", args)) case _ => Nil }
+  lines.flatMap { 
+    case directiveOptionsArg(args) => List(("scalac", args))
+    case directiveJavacOptions(args) => List(("javac", args))
+    case _ => Nil 
+  }
 
 import org.junit.Test
 import org.junit.Assert._
@@ -104,6 +116,6 @@ class ToolArgsTest:
   @Test def `tool is present`: Unit = assertEquals("-hey" :: Nil, toolArgsFor(ToolName.Test, None)("// test: -hey" :: Nil))
   @Test def `missing tool is absent`: Unit = assertEquals(Nil, toolArgsFor(ToolName.Javac, None)("// test: -hey" :: Nil))
   @Test def `multitool is present`: Unit =
-    assertEquals("-hey" :: Nil, toolArgsFor(ToolName.Test, None)("// test: -hey" :: "// javac: -d /tmp" :: Nil))
-    assertEquals("-d" :: "/tmp" :: Nil, toolArgsFor(ToolName.Javac, None)("// test: -hey" :: "// javac: -d /tmp" :: Nil))
+    assertEquals("-hey" :: Nil, toolArgsFor(ToolName.Test, None)("// test: -hey" :: "// java: -d /tmp" :: Nil))
+    assertEquals("-d" :: "/tmp" :: Nil, toolArgsFor(ToolName.Java, None)("// test: -hey" :: "// java: -d /tmp" :: Nil))
 end ToolArgsTest

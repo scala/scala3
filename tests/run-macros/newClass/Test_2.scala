@@ -1,3 +1,5 @@
+//> using options -experimental -Yno-experimental
+
 @main def Test: Unit = {
   val foo = makeClass("foo")
   println(foo.getClass)

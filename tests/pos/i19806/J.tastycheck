@@ -1,0 +1,159 @@
+Header:
+  version: <elided>
+  tooling: <elided>
+     UUID: <elided>
+
+Names (217 bytes, starting from <elided base index>):
+     0: ASTs
+     1: p
+     2: J
+     3: J[ModuleClass]
+     4: Object
+     5: java
+     6: lang
+     7: java[Qualified . lang]
+     8: _
+     9: <init>
+    10: Unit
+    11: scala
+    12: module2
+    13: Module
+    14: Module[ModuleClass]
+    15: module
+    16: innermodule2
+    17: InnerModule
+    18: InnerModule[ModuleClass]
+    19: innermodule
+    20: T
+    21: Nothing
+    22: Positions
+    23: <elided source file name>
+    24: Comments
+    25: Attributes
+
+Trees (145 bytes, starting from <elided base index>):
+     0: PACKAGE(142)
+     3:   TERMREFpkg 1 [p]
+     5:   VALDEF(11) 2 [J]
+     8:     IDENTtpt 3 [J[ModuleClass]]
+    10:       TYPEREFsymbol 18
+    12:         TERMREFpkg 1 [p]
+    14:     ELIDED
+    15:       SHAREDtype 10
+    17:     OBJECT
+    18:   TYPEDEF(86) 3 [J[ModuleClass]]
+    21:     TEMPLATE(82)
+    23:       TYPEREF 4 [Object]
+    25:         TERMREFpkg 7 [java[Qualified . lang]]
+    27:       SELFDEF 8 [_]
+    29:         SINGLETONtpt
+    30:           TERMREFsymbol 5
+    32:             SHAREDtype 12
+    34:       DEFDEF(7) 9 [<init>]
+    37:         EMPTYCLAUSE
+    38:         TYPEREF 10 [Unit]
+    40:           TERMREFpkg 11 [scala]
+    42:         STABLE
+    43:       DEFDEF(12) 12 [module2]
+    46:         EMPTYCLAUSE
+    47:         IDENTtpt 14 [Module[ModuleClass]]
+    49:           TYPEREF 14 [Module[ModuleClass]]
+    51:             SHAREDtype 12
+    53:         ELIDED
+    54:           SHAREDtype 49
+    56:         STATIC
+    57:       DEFDEF(12) 15 [module]
+    60:         EMPTYCLAUSE
+    61:         SELECTtpt 14 [Module[ModuleClass]]
+    63:           SHAREDtype 3
+    65:         ELIDED
+    66:           TYPEREF 14 [Module[ModuleClass]]
+    68:             SHAREDtype 3
+    70:         STATIC
+    71:       DEFDEF(14) 16 [innermodule2]
+    74:         EMPTYCLAUSE
+    75:         SELECTtpt 18 [InnerModule[ModuleClass]]
+    77:           TERMREF 13 [Module]
+    79:             SHAREDtype 12
+    81:         ELIDED
+    82:           TYPEREF 18 [InnerModule[ModuleClass]]
+    84:             SHAREDtype 77
+    86:         STATIC
+    87:       DEFDEF(16) 19 [innermodule]
+    90:         EMPTYCLAUSE
+    91:         SELECTtpt 18 [InnerModule[ModuleClass]]
+    93:           SELECT 13 [Module]
+    95:             SHAREDtype 3
+    97:         ELIDED
+    98:           TYPEREF 18 [InnerModule[ModuleClass]]
+   100:             TERMREF 13 [Module]
+   102:               SHAREDtype 3
+   104:         STATIC
+   105:     OBJECT
+   106:   TYPEDEF(37) 2 [J]
+   109:     TEMPLATE(34)
+   111:       TYPEPARAM(11) 20 [T]
+   114:         TYPEBOUNDS(6)
+   116:           TYPEREF 21 [Nothing]
+   118:             SHAREDtype 40
+   120:           SHAREDtype 23
+   122:         PRIVATE
+   123:         LOCAL
+   124:       SHAREDtype 120
+   126:       SPLITCLAUSE
+   127:       DEFDEF(16) 9 [<init>]
+   130:         TYPEPARAM(7) 20 [T]
+   133:           TYPEBOUNDStpt(4)
+   135:             SHAREDtype 116
+   137:             SHAREDtype 120
+   139:         EMPTYCLAUSE
+   140:         SHAREDtype 38
+   142:         ELIDED
+   143:           SHAREDtype 38
+   145:
+
+Positions (145 bytes, starting from <elided base index>):
+  lines: 23
+  line sizes:
+     10, 0, 19, 0, 15, 0, 35, 29, 3, 0, 36, 29, 3, 0, 52, 41, 3, 0, 53, 41
+     3, 1, 0
+  positions:
+     0: 0 .. 394
+     5: 12 .. 12
+     8: 12 .. 12
+    18: 12 .. 394
+    21: 52 .. 392
+    23: 25 .. 25
+    30: 52 .. 52
+    34: 52 .. 52
+    38: 52 .. 52
+    43: 52 .. 119
+    47: 66 .. 73
+    57: 123 .. 191
+    61: 137 .. 146
+    63: 137 .. 138
+    71: 195 .. 291
+    75: 209 .. 228
+    77: 209 .. 215
+    87: 295 .. 392
+    91: 309 .. 330
+    93: 309 .. 317
+    95: 309 .. 310
+   106: 12 .. 394
+   109: 27 .. 48
+   111: 27 .. 28
+   114: 27 .. 27
+   124: 28 .. 28
+   127: 35 .. 48
+   130: 27 .. 28
+   135: 27 .. 27
+   137: 27 .. 27
+   140: 46 .. 46
+
+  source paths:
+     0: 23 [<elided source file name>]
+
+Attributes (4 bytes, starting from <elided base index>):
+  JAVAattr
+  OUTLINEattr
+  SOURCEFILEattr 23 [<elided source file name>]

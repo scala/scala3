@@ -116,7 +116,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
      *  This info is used in phase ParamForwarding
      */
     private def forwardParamAccessors(impl: Template)(using Context): Unit = impl.parents match
-      case superCall @ Apply(fn, superArgs) :: _ if superArgs.nonEmpty =>
+      case superCall @ Apply(fn, superArgs) :: _
+      if superArgs.nonEmpty && fn.symbol.isPrimaryConstructor =>
         fn.tpe.widen match
           case MethodType(superParamNames) =>
             for case stat: ValDef <- impl.body do
@@ -368,7 +369,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           }
         case tree @ Inlined(call, bindings, expansion) if !tree.inlinedFromOuterScope =>
           val pos = call.sourcePos
-          CrossVersionChecks.checkExperimentalRef(call.symbol, pos)
+          CrossVersionChecks.checkRef(call.symbol, pos)
           withMode(Mode.NoInline)(transform(call))
           val callTrace = Inlines.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(tree)))

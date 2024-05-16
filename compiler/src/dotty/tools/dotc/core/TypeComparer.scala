@@ -487,7 +487,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def widenOK =
           (tp2.widenSingletons eq tp2)
           && (tp1.widenSingletons ne tp1)
-          && inFrozenGadtAndConstraint(recur(tp1.widenSingletons, tp2))
+          && inFrozenGadtAndConstraint(recur(tp1.widenSingletons(), tp2))
 
         def joinOK = tp2.dealiasKeepRefiningAnnots match {
           case tp2: AppliedType if !tp2.tycon.typeSymbol.isClass =>
@@ -594,7 +594,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             if (base.typeSymbol == cls2) return true
           }
           else if tp1.typeParams.nonEmpty && !tp1.isAnyKind then
-            return recur(tp1, EtaExpansion(tp2))
+            return recur(tp1, tp2.etaExpand)
         fourthTry
     }
 
@@ -734,7 +734,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case _ =>
             val tparams1 = tp1.typeParams
             if (tparams1.nonEmpty)
-              return recur(tp1.etaExpand(tparams1), tp2) || fourthTry
+              return recur(tp1.etaExpand, tp2) || fourthTry
             tp2 match {
               case EtaExpansion(tycon2: TypeRef) if tycon2.symbol.isClass && tycon2.symbol.is(JavaDefined) =>
                 recur(tp1, tycon2) || fourthTry
@@ -1683,6 +1683,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  @param  tparams2  The type parameters of the type constructor applied to `args2`
    */
   def isSubArgs(args1: List[Type], args2: List[Type], tp1: Type, tparams2: List[ParamInfo]): Boolean = {
+
     /** The bounds of parameter `tparam`, where all references to type paramneters
      *  are replaced by corresponding arguments (or their approximations in the case of
      *  wildcard arguments).
@@ -1690,11 +1691,34 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     def paramBounds(tparam: Symbol): TypeBounds =
       tparam.info.substApprox(tparams2.asInstanceOf[List[Symbol]], args2).bounds
 
-    def recurArgs(args1: List[Type], args2: List[Type], tparams2: List[ParamInfo]): Boolean =
-      if (args1.isEmpty) args2.isEmpty
+    /** Test all arguments. Incomplete argument tests (according to isIncomplete) are deferred in
+     *  the first run and picked up in the second.
+     */
+    def recurArgs(args1: List[Type], args2: List[Type], tparams2: List[ParamInfo],
+                  canDefer: Boolean,
+                  deferred1: List[Type], deferred2: List[Type], deferredTparams2: List[ParamInfo]): Boolean =
+      if args1.isEmpty then
+        args2.isEmpty
+        && (deferred1.isEmpty
+            || recurArgs(
+                  deferred1.reverse, deferred2.reverse, deferredTparams2.reverse,
+                  canDefer = false, Nil, Nil, Nil))
       else args2.nonEmpty && tparams2.nonEmpty && {
         val tparam = tparams2.head
         val v = tparam.paramVarianceSign
+
+        /** An argument test is incomplete if it implies a comparison A <: B where
+         *  A is an AndType or B is an OrType. In these cases we need to run an
+         *  either, which can lose solutions if there are type variables involved.
+         *  So we defer such tests to run last, on the chance that some other argument
+         *  comparison will instantiate or constrain type variables first.
+         */
+        def isIncomplete(arg1: Type, arg2: Type): Boolean =
+          val arg1d = arg1.strippedDealias
+          val arg2d = arg2.strippedDealias
+          (v >= 0) && (arg1d.isInstanceOf[AndType] || arg2d.isInstanceOf[OrType])
+          ||
+          (v <= 0) && (arg1d.isInstanceOf[OrType] || arg2d.isInstanceOf[AndType])
 
         /** Try a capture conversion:
          *  If the original left-hand type `leftRoot` is a path `p.type`,
@@ -1781,10 +1805,26 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 else if v > 0 then isSubType(arg1, arg2)
                 else isSameType(arg2, arg1)
 
-        isSubArg(args1.head, args2.head)
-      } && recurArgs(args1.tail, args2.tail, tparams2.tail)
+        val arg1 = args1.head
+        val arg2 = args2.head
+        val rest1 = args1.tail
+        if !canDefer
+            || rest1.isEmpty && deferred1.isEmpty
+                // skip the incompleteness test if this is the last argument and no previous argument tests were incomplete
+            || !isIncomplete(arg1, arg2)
+        then
+          isSubArg(arg1, arg2)
+          && recurArgs(
+                rest1, args2.tail, tparams2.tail, canDefer,
+                deferred1, deferred2, deferredTparams2)
+        else
+          recurArgs(
+            rest1, args2.tail, tparams2.tail, canDefer,
+            arg1 :: deferred1, arg2 :: deferred2, tparams2.head :: deferredTparams2)
+      }
 
-    recurArgs(args1, args2, tparams2)
+    recurArgs(args1, args2, tparams2, canDefer = true, Nil, Nil, Nil)
+
   }
 
   /** Test whether `tp1` has a base type of the form `B[T1, ..., Tn]` where
@@ -2820,7 +2860,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         tp.symbol match
           case cls: ClassSymbol =>
             if cls == defn.SingletonClass then defn.AnyType
-            else if cls.typeParams.nonEmpty then EtaExpansion(tp)
+            else if cls.typeParams.nonEmpty then tp.etaExpand
             else tp
           case sym =>
             if !ctx.erasedTypes && sym == defn.FromJavaObjectSymbol then defn.AnyType
@@ -2857,6 +2897,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         tp
       case tp: HKTypeLambda =>
         tp
+      case tp: ParamRef =>
+        val st = tp.superTypeNormalized
+        if st.exists then
+          disjointnessBoundary(st)
+        else
+          // workaround for when ParamRef#underlying returns NoType
+          defn.AnyType
       case tp: TypeProxy =>
         disjointnessBoundary(tp.superTypeNormalized)
       case tp: WildcardType =>
@@ -3054,7 +3101,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   end provablyDisjointTypeArgs
 
   protected def explainingTypeComparer(short: Boolean) = ExplainingTypeComparer(comparerContext, short)
-  protected def trackingTypeComparer = TrackingTypeComparer(comparerContext)
+  protected def matchReducer = MatchReducer(comparerContext)
 
   private def inSubComparer[T, Cmp <: TypeComparer](comparer: Cmp)(op: Cmp => T): T =
     val saved = myInstance
@@ -3068,8 +3115,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     inSubComparer(cmp)(op)
     cmp.lastTrace(header)
 
-  def tracked[T](op: TrackingTypeComparer => T)(using Context): T =
-    inSubComparer(trackingTypeComparer)(op)
+  def reduceMatchWith[T](op: MatchReducer => T)(using Context): T =
+    inSubComparer(matchReducer)(op)
 }
 
 object TypeComparer {
@@ -3236,14 +3283,14 @@ object TypeComparer {
   def explained[T](op: ExplainingTypeComparer => T, header: String = "Subtype trace:", short: Boolean = false)(using Context): String =
     comparing(_.explained(op, header, short))
 
-  def tracked[T](op: TrackingTypeComparer => T)(using Context): T =
-    comparing(_.tracked(op))
+  def reduceMatchWith[T](op: MatchReducer => T)(using Context): T =
+    comparing(_.reduceMatchWith(op))
 
   def subCaptures(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult =
     comparing(_.subCaptures(refs1, refs2, frozen))
 }
 
-object TrackingTypeComparer:
+object MatchReducer:
   import printing.*, Texts.*
   enum MatchResult extends Showable:
     case Reduced(tp: Type)
@@ -3259,38 +3306,16 @@ object TrackingTypeComparer:
       case Stuck              => "Stuck"
       case NoInstance(fails)  => "NoInstance(" ~ Text(fails.map(p.toText(_) ~ p.toText(_)), ", ") ~ ")"
 
-class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
-  import TrackingTypeComparer.*
+/** A type comparer for reducing match types.
+ *  TODO: Not sure this needs to be a type comparer. Can we make it a
+ *  separate class?
+ */
+class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
+  import MatchReducer.*
 
   init(initctx)
 
-  override def trackingTypeComparer = this
-
-  val footprint: mutable.Set[Type] = mutable.Set[Type]()
-
-  override def bounds(param: TypeParamRef)(using Context): TypeBounds = {
-    if (param.binder `ne` caseLambda) footprint += param
-    super.bounds(param)
-  }
-
-  override def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(using Context): Boolean = {
-    if (param.binder `ne` caseLambda) footprint += param
-    super.addOneBound(param, bound, isUpper)
-  }
-
-  override def gadtBounds(sym: Symbol)(using Context): TypeBounds | Null = {
-    if (sym.exists) footprint += sym.typeRef
-    super.gadtBounds(sym)
-  }
-
-  override def gadtAddBound(sym: Symbol, b: Type, isUpper: Boolean): Boolean =
-    if (sym.exists) footprint += sym.typeRef
-    super.gadtAddBound(sym, b, isUpper)
-
-  override def typeVarInstance(tvar: TypeVar)(using Context): Type = {
-    footprint += tvar
-    super.typeVarInstance(tvar)
-  }
+  override def matchReducer = this
 
   def matchCases(scrut: Type, cases: List[MatchTypeCaseSpec])(using Context): Type = {
     // a reference for the type parameters poisoned during matching
@@ -3410,29 +3435,38 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       // Actual matching logic
 
       val instances = Array.fill[Type](spec.captureCount)(NoType)
+      val noInstances = mutable.ListBuffer.empty[(TypeName, TypeBounds)]
 
       def rec(pattern: MatchTypeCasePattern, scrut: Type, variance: Int, scrutIsWidenedAbstract: Boolean): Boolean =
         pattern match
-          case MatchTypeCasePattern.Capture(num, isWildcard) =>
+          case MatchTypeCasePattern.Capture(num, /* isWildcard = */ true) =>
+            // instantiate the wildcard in a way that the subtype test always succeeds
+            instances(num) = variance match
+              case 1  => scrut.hiBound // actually important if we are not in a class type constructor
+              case -1 => scrut.loBound
+              case 0  => scrut
+            !instances(num).isError
+
+          case MatchTypeCasePattern.Capture(num, /* isWildcard = */ false) =>
+            def failNotSpecific(bounds: TypeBounds): TypeBounds =
+              noInstances += spec.origMatchCase.paramNames(num) -> bounds
+              bounds
+
             instances(num) = scrut match
               case scrut: TypeBounds =>
-                if isWildcard then
-                  // anything will do, as long as it conforms to the bounds for the subsequent `scrut <:< instantiatedPat` test
-                  scrut.hi
-                else if scrutIsWidenedAbstract then
-                  // always keep the TypeBounds so that we can report the correct NoInstances
-                  scrut
+                if scrutIsWidenedAbstract then
+                  failNotSpecific(scrut)
                 else
                   variance match
                     case 1  => scrut.hi
                     case -1 => scrut.lo
-                    case 0  => scrut
+                    case 0  => failNotSpecific(scrut)
               case _ =>
-                if !isWildcard && scrutIsWidenedAbstract && variance != 0 then
-                  // force a TypeBounds to report the correct NoInstances
+                if scrutIsWidenedAbstract && variance != 0 then
+                  // fail as not specific
                   // the Nothing and Any bounds are used so that they are not displayed; not for themselves in particular
-                  if variance > 0 then TypeBounds(defn.NothingType, scrut)
-                  else TypeBounds(scrut, defn.AnyType)
+                  if variance > 0 then failNotSpecific(TypeBounds(defn.NothingType, scrut))
+                  else failNotSpecific(TypeBounds(scrut, defn.AnyType))
                 else
                   scrut
             !instances(num).isError
@@ -3508,12 +3542,8 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
           MatchResult.Stuck
 
       if rec(spec.pattern, scrut, variance = 1, scrutIsWidenedAbstract = false) then
-        if instances.exists(_.isInstanceOf[TypeBounds]) then
-          MatchResult.NoInstance {
-            constrainedCaseLambda.paramNames.zip(instances).collect {
-              case (name, bounds: TypeBounds) => (name, bounds)
-            }
-          }
+        if noInstances.nonEmpty then
+          MatchResult.NoInstance(noInstances.toList)
         else
           val defn.MatchCase(instantiatedPat, reduced) =
             instantiateParamsSpec(instances, constrainedCaseLambda)(constrainedCaseLambda.resultType): @unchecked

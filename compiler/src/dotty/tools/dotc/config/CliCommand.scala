@@ -86,7 +86,7 @@ trait CliCommand:
   protected def isVerbose(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =
     s.name.startsWith("-V") && s.name != "-V"
   protected def isWarning(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =
-    s.name.startsWith("-W") && s.name != "-W" || s.name == "-Xlint"
+    s.name.startsWith("-W") && s.name != "-W"
   protected def isAdvanced(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =
     s.name.startsWith("-X") && s.name != "-X"
   protected def isPrivate(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =

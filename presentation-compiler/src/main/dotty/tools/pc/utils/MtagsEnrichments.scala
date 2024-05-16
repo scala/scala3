@@ -316,6 +316,24 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
             .map(source.apply)
             .contains('.')
         case _ => false
+
+    def children(using Context): List[Tree] =
+      val collector = new TreeAccumulator[List[Tree]]:
+        def apply(x: List[Tree], tree: Tree)(using Context): List[Tree] =
+          tree :: x
+      collector
+        .foldOver(Nil, tree)
+        .reverse
+
+    /**
+     * Returns the children of the tree that overlap with the given span.
+     */
+    def enclosedChildren(span: Span)(using Context): List[Tree] =
+      tree.children
+        .filter(tree =>
+          tree.sourcePos.exists && tree.span.start <= span.end && tree.span.end >= span.start
+        )
+    end enclosedChildren
   end extension
 
   extension (imp: Import)

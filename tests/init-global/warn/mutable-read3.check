@@ -7,3 +7,10 @@
   |│   ^
   |└── val x: Int = box.value // warn	[ mutable-read3.scala:9 ]
   |                 ^^^^^^^^^
+  |The mutable state is created through: 
+  |├── object A:	[ mutable-read3.scala:1 ]
+  |│   ^
+  |├── val box: Box = new Box(0)	[ mutable-read3.scala:3 ]
+  |│                  ^^^^^^^^^^
+  |└── class Box(var value: Int)	[ mutable-read3.scala:2 ]
+  |    ^^^^^^^^^^^^^^^^^^^^^^^^^
