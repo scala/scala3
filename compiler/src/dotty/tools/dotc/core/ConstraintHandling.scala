@@ -302,6 +302,9 @@ trait ConstraintHandling {
       false
     else
 
+      // Narrow one of the bounds of type parameter `param`
+      // If `isUpper` is true, ensure that `param <: `bound`,
+      // otherwise ensure that `param >: bound`.
       val narrowedBounds: TypeBounds =
         val bound = legalBound(param, rawBound, isUpper)
         val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
@@ -325,9 +328,6 @@ trait ConstraintHandling {
         canReplace
 
       tryReplace(narrowedBounds) || locally:
-        // Narrow one of the bounds of type parameter `param`
-        // If `isUpper` is true, ensure that `param <: `bound`, otherwise ensure
-        // that `param >: bound`.
         //println(i"narrow bounds for $param from $oldBounds to $narrowedBounds")
         val c1 = constraint.updateEntry(param, narrowedBounds)
         (c1 eq constraint)
