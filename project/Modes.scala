@@ -25,9 +25,5 @@ object Modes {
     def bootstrappedDependsOn(s: sbt.ClasspathDep[ProjectReference]*)(implicit mode: Mode): Project =
       if (mode == NonBootstrapped) project else project.dependsOn(s: _*)
 
-    /** Plugins only if the mode is bootstrapped */
-    def bootstrappedEnablePlugins(ns: Plugins*)(implicit mode: Mode): Project =
-      if (mode == NonBootstrapped) project else project.enablePlugins(ns: _*)
-
   }
 }

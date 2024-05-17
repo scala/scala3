@@ -5,6 +5,7 @@ package scripting
 import scala.language.unsafeNulls
 
 import java.io.File
+import java.util.Locale
 import java.nio.file.{Path, Paths, Files}
 
 import dotty.tools.dotc.config.Properties.*
@@ -46,11 +47,23 @@ object ScriptTestEnv {
     if bspDir.isEmpty then bspDir.delete()
   }
 
-  lazy val packDir: String =
-    if winshell then
-      "dist-win-x64/target/pack"
-    else
-      "dist/target/pack"
+  lazy val nativePackDir: Option[String] = {
+    def nativeDir(os: String, arch: String) = Some(s"dist/$os-$arch/target/pack")
+    def nativeOs(os: String) = archNorm match
+      case arch @ ("aarch64" | "x86_64") => nativeDir(os, arch)
+      case _ => None
+
+    if winshell then nativeDir("win", "x86_64") // assume x86_64 for now
+    else if linux then nativeOs("linux")
+    else if mac then nativeOs("mac")
+    else None
+  }
+
+  def jvmPackDir() =
+    println("warning: unknown OS architecture combination, defaulting to JVM launcher.")
+    "dist/target/pack"
+
+  def packDir: String = nativePackDir.getOrElse(jvmPackDir())
 
   def packBinDir: String = s"$packDir/bin"
 
@@ -81,11 +94,18 @@ object ScriptTestEnv {
 
   def unameExe = which("uname")
   def ostypeFull = if unameExe.nonEmpty then exec(unameExe).mkString else ""
-  def ostype = ostypeFull.toLowerCase.takeWhile{ cc => cc >= 'a' && cc <='z' || cc >= 'A' && cc <= 'Z' }
+  def ostype = ostypeFull.toLowerCase(Locale.ROOT).takeWhile{ cc => cc >= 'a' && cc <='z' || cc >= 'A' && cc <= 'Z' }
+  def archFull = if unameExe.nonEmpty then exec(unameExe, "-m").mkString else ""
+  def archNorm = archFull match
+    case "arm64" => "aarch64"
+    case "amd64" => "x86_64"
+    case id => id
 
   def cygwin = ostype == "cygwin"
   def mingw = ostype == "mingw"
   def msys = ostype == "msys"
+  def linux = ostype == "linux"
+  def mac = ostype == "darwin"
   def winshell: Boolean = cygwin || mingw || msys
 
   def which(str: String) =

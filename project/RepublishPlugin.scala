@@ -11,7 +11,6 @@ import sbt.util.CacheImplicits._
 
 import scala.collection.mutable
 import java.nio.file.Files
-import versionhelpers.DottyVersion._
 
 import java.nio.file.attribute.PosixFilePermission
 import java.nio.file.{Files, Path}
@@ -68,7 +67,8 @@ object RepublishPlugin extends AutoPlugin {
     val republishBinOverrides = settingKey[Seq[File]]("files to override those in bin-dir.")
     val republish = taskKey[File]("cache the dependencies and download launchers for the distribution")
     val republishRepo = settingKey[File]("the location to store the republished artifacts.")
-    val republishLaunchers = settingKey[Seq[(String, String)]]("launchers to download. Sequence of (name, version, URL).")
+    val republishLaunchers = settingKey[Seq[(String, String)]]("launchers to download. Sequence of (name, URL).")
+    val republishCoursier = settingKey[Seq[(String, String)]]("coursier launcher to download. Sequence of (name, URL).")
   }
 
   import autoImport._
@@ -77,16 +77,6 @@ object RepublishPlugin extends AutoPlugin {
     override def toString = s"$org:$name:$revision"
   }
   case class ResolvedArtifacts(id: SimpleModuleId, jar: Option[File], pom: Option[File])
-
-  class NameFilter(kind: String, filter: String => Boolean) {
-    def apply(name: String): Boolean = filter(name)
-    override def toString = kind
-  }
-
-  object NameFilter {
-    final val Coursier = new NameFilter("coursier", _ == "coursier.jar")
-    final val Generic = new NameFilter("generic", _ != "coursier.jar")
-  }
 
   private def republishResolvedArtifacts(resolved: Seq[ResolvedArtifacts], mavenRepo: File, logOpt: Option[Logger]): Set[File] = {
     IO.createDirectory(mavenRepo)
@@ -107,7 +97,7 @@ object RepublishPlugin extends AutoPlugin {
     }.toSet
   }
 
-  private def coursierCmd(jar: File, cache: File, log: Logger, args: Seq[String]): Unit = {
+  private def coursierCmd(jar: File, cache: File, args: Seq[String]): Unit = {
     val jar0 = jar.getAbsolutePath.toString
     val javaHome = sys.props.get("java.home").getOrElse {
       throw new MessageOnlyException("java.home property not set")
@@ -122,7 +112,6 @@ object RepublishPlugin extends AutoPlugin {
     val p = new ProcessBuilder(cmdLine: _*).inheritIO()
     p.environment().putAll(env.asJava)
     val proc = p.start()
-    log.info(s"[republish] Running with env ${env}: coursier.jar with args ${args.mkString(" ")}")
     proc.waitFor()
     if (proc.exitValue() != 0)
       throw new MessageOnlyException(s"Error running coursier.jar with args ${args.mkString(" ")}")
@@ -142,7 +131,7 @@ object RepublishPlugin extends AutoPlugin {
     IO.createDirectory(cacheDir)
     for (lib <- libs) {
       log.info(s"[republish] Fetching $lib with coursier.jar...")
-      coursierCmd(coursierJar, cacheDir, log,
+      coursierCmd(coursierJar, cacheDir,
         Seq(
           "fetch",
           "--repository", localRepoArg,
@@ -196,11 +185,14 @@ object RepublishPlugin extends AutoPlugin {
       .toSeq
   }
 
-  private def fetchFilesTask(libexecT: Def.Initialize[Task[File]], nameFilter: NameFilter) = Def.task[Set[File]] {
+  private def fetchFilesTask(
+      libexecT: Def.Initialize[Task[File]],
+      srcs: SettingKey[Seq[(String, String)]],
+      strict: Boolean) = Def.task[Set[File]] {
     val s = streams.value
     val log = s.log
     val repoDir = republishRepo.value
-    val launcherVersions = republishLaunchers.value
+    val launcherVersions = srcs.value
     val libexec = libexecT.value
 
     val dlCache = s.cacheDirectory / "republish-launchers"
@@ -241,7 +233,6 @@ object RepublishPlugin extends AutoPlugin {
           }
         }
         log.info(s"[republish] uncompressed gz file $workFile to $dest...")
-        FileUtil.tryMakeExecutable(dest.toPath) // TODO: we also need to copy to the bin directory so the archive makes it executable
         IO.delete(workFile)
       } else if (prefix == "zip") {
         IO.delete(dest)
@@ -250,18 +241,17 @@ object RepublishPlugin extends AutoPlugin {
         log.info(s"[republish] unzipped $workFile to $extracted...")
         IO.move(extracted, dest)
         log.info(s"[republish] moved $extracted to $dest...")
-        FileUtil.tryMakeExecutable(dest.toPath) // TODO: we also need to copy to the bin directory so the archive makes it executable
         IO.delete(workFile)
       }
+      FileUtil.tryMakeExecutable(dest.toPath)
       dest
     }
 
     val allLaunchers = {
-      val filtered = launcherVersions.filter { case (name, _) => nameFilter(name) }
-      if (filtered.isEmpty)
-        throw new MessageOnlyException(s"[republish] No $nameFilter launchers to fetch, check the build configuration for ${republishLaunchers.key.label}.")
+      if (strict && launcherVersions.isEmpty)
+        throw new MessageOnlyException(s"[republish] No launchers to fetch, check the build configuration for ${srcs.key.label}.")
 
-      for ((name, launcher) <- filtered) yield {
+      for ((name, launcher) <- launcherVersions) yield {
         val dest = libexec / name
 
         val id = name.replaceAll("[^a-zA-Z0-9]", "_")
@@ -284,6 +274,7 @@ object RepublishPlugin extends AutoPlugin {
   override val projectSettings: Seq[Def.Setting[_]] = Def.settings(
     republishCoursierDir := republishRepo.value / "coursier",
     republishLaunchers := Seq.empty,
+    republishCoursier := Seq.empty,
     republishBinOverrides := Seq.empty,
     republishLocalResolved / republishProjectRefs := {
       val proj = thisProjectRef.value
@@ -357,10 +348,10 @@ object RepublishPlugin extends AutoPlugin {
       republishResolvedArtifacts(resolved, cacheDir / "maven2", logOpt = Some(s.log))
     },
     republishFetchLaunchers := {
-      fetchFilesTask(republishPrepareBin, NameFilter.Generic).value
+      fetchFilesTask(republishPrepareBin, republishLaunchers, strict = true).value
     },
     republishFetchCoursier := {
-      fetchFilesTask(republishCoursierDir.toTask, NameFilter.Coursier).value.head
+      fetchFilesTask(republishCoursierDir.toTask, republishCoursier, strict = true).value.head
     },
     republishPrepareBin := {
       val baseDir = baseDirectory.value

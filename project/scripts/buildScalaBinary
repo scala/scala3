@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+set -e
+
+source $(dirname $0)/cmdTestsCommon.inc.sh
+
+# build the scala/scalac/scaladoc binary, where scala is native for the current platform.
+"$SBT" "$DIST_PROJECT/pack"

@@ -26,7 +26,8 @@ if [ -z "${PROG_HOME-}" ] ; then
   cd "$saveddir"
 fi
 
-source "$PROG_HOME/bin/cli-common"
+source "$PROG_HOME/bin/common-shared"
+source "$PROG_HOME/bin/cli-common-platform"
 
 SCALA_VERSION=""
 # iterate through lines in VERSION_SRC
@@ -44,7 +45,7 @@ if [ -z "$SCALA_VERSION" ]; then
   exit 1
 fi
 
-MVN_REPOSITORY="file://$PROG_HOME/maven2"
+MVN_REPOSITORY="$PROG_HOME_URI/maven2"
 
 # escape all script arguments
 while [[ $# -gt 0 ]]; do
@@ -61,6 +62,7 @@ eval "${SCALA_CLI_CMD_BASH[@]}" \
   "--cli-default-scala-version \"$SCALA_VERSION\"" \
   "-r \"$MVN_REPOSITORY\"" \
   "${scala_args[@]}"
+
 scala_exit_status=$?
 
 onExit

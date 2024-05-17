@@ -15,6 +15,9 @@ OUT=$(mktemp -d)
 OUT1=$(mktemp -d)
 tmp=$(mktemp)
 
+# set the $DIST_PROJECT and $DIST_DIR variables
+source "$ROOT/bin/common-platform"
+
 die () {
     echo >&2 "$@"
     exit 1

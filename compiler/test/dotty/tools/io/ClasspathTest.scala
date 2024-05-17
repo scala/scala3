@@ -25,7 +25,7 @@ class ClasspathTest {
   @Test def testWildcards(): Unit =
     val outDir = Files.createTempDirectory("classpath-test")
     try
-      val compilerLib = s"${if isWindows then "dist-win-x64" else "dist"}/target/pack/lib"
+      val compilerLib = s"${if isWindows then "dist-win-x86_64" else "dist"}/target/pack/lib"
       val libdir = Paths.get(compilerLib).toFile
       if libdir.exists then
         val libjarFiles = libdir.listFiles.toList.take(5)
