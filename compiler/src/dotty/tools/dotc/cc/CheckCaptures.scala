@@ -1006,7 +1006,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             if (ares1 eq ares) && (aargs1 eq aargs) then actual
             else reconstruct(aargs1, ares1)
 
-          (resTp, curEnv.captured)
+          (resTp, CaptureSet(curEnv.captured.elems))
       end adaptFun
 
       /** Adapt type function type `actual` to the expected type.
@@ -1028,7 +1028,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             if ares1 eq ares then actual
             else reconstruct(ares1)
 
-          (resTp, curEnv.captured)
+          (resTp, CaptureSet(curEnv.captured.elems))
       end adaptTypeFun
 
       def adaptInfo(actual: Type, expected: Type, covariant: Boolean): String =
