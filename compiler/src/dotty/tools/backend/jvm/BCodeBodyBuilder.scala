@@ -248,6 +248,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         if hasElse then
           genLoadTo(elsep, expectedType, dest)
         else
+          lineNumber(tree.cond)
           genAdaptAndSendToDest(UNIT, expectedType, dest)
         expectedType
       end if
