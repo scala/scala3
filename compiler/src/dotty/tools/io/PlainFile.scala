@@ -13,9 +13,8 @@ import java.nio.file.{InvalidPathException, Paths}
 
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
 class PlainDirectory(givenPath: Directory) extends PlainFile(givenPath) {
-  override def isDirectory: Boolean = true
+  override val isDirectory: Boolean = true
   override def iterator(): Iterator[PlainFile] = givenPath.list.filter(_.exists).map(new PlainFile(_))
-  override def delete(): Unit = givenPath.deleteRecursively()
 }
 
 /** This class implements an abstract file backed by a File.
@@ -78,7 +77,7 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
   }
 
   /** Is this abstract file a directory? */
-  def isDirectory: Boolean = givenPath.isDirectory
+  val isDirectory: Boolean = givenPath.isDirectory // cached for performance on Windows
 
   /** Returns the time that this abstract file was last modified. */
   def lastModified: Long = givenPath.lastModified.toMillis
@@ -112,14 +111,6 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
     else
       null
   }
-
-  /** Does this abstract file denote an existing file? */
-  def create(): Unit = if (!exists) givenPath.createFile()
-
-  /** Delete the underlying file or directory (recursively). */
-  def delete(): Unit =
-    if (givenPath.isFile) givenPath.delete()
-    else if (givenPath.isDirectory) givenPath.toDirectory.deleteRecursively()
 
   /** Returns a plain file with the given name. It does not
    *  check that it exists.
