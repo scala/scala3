@@ -719,17 +719,20 @@ trait Inferencing { this: Typer =>
             typeVarsIn(tvs0)
           def step(tvs: ToInstantiate): ToInstantiate = tvs match
             case tvs @ (hd @ (tvar, v)) :: tvs1 =>
-              def aboveOK = !constraint.dependsOn(tvar, excluded, co = true)
-              def belowOK = !constraint.dependsOn(tvar, excluded, co = false)
-              if v == 0 && !aboveOK then
-                step((tvar, 1) :: tvs1)
-              else if v == 0 && !belowOK then
-                step((tvar, -1) :: tvs1)
-              else if v == -1 && !aboveOK || v == 1 && !belowOK then
-                typr.println(i"drop $tvar, $v in $tp, $pt, qualifying = ${qualifying.toList}, tvs0 = ${tvs0.toList}%, %, excluded = ${excluded.toList}, $constraint")
-                step(tvs1)
-              else // no conflict, keep the instantiation proposal
+              if tvar.isInstantiated then
                 tvs.derivedCons(hd, step(tvs1))
+              else
+                def aboveOK = !constraint.dependsOn(tvar, excluded, co = true)
+                def belowOK = !constraint.dependsOn(tvar, excluded, co = false)
+                if v == 0 && !aboveOK then
+                  step((tvar, 1) :: tvs1)
+                else if v == 0 && !belowOK then
+                  step((tvar, -1) :: tvs1)
+                else if v == -1 && !aboveOK || v == 1 && !belowOK then
+                  typr.println(i"drop $tvar, $v in $tp, $pt, qualifying = ${qualifying.toList}, tvs0 = ${tvs0.toList}%, %, excluded = ${excluded.toList}, $constraint")
+                  step(tvs1)
+                else // no conflict, keep the instantiation proposal
+                  tvs.derivedCons(hd, step(tvs1))
             case Nil =>
               Nil
           val tvs1 = step(tvs0)
