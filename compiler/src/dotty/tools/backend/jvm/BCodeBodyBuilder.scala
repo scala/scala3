@@ -24,6 +24,7 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Phases.*
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.dotc.report
+import dotty.tools.dotc.ast.Trees.SyntheticUnit
 
 /*
  *
@@ -218,10 +219,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val success = new asm.Label
       val failure = new asm.Label
 
-      val hasElse = !elsep.isEmpty && (elsep match {
-        case Literal(value) if value.tag == UnitTag => false
-        case _ => true
-      })
+      val hasElse = !elsep.hasAttachment(SyntheticUnit)
 
       genCond(condp, success, failure, targetIfNoJump = success)
       markProgramPoint(success)
