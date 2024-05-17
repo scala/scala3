@@ -1080,7 +1080,7 @@ object CaptureSet:
         case _ =>
           empty
     recur(tp)
-      .showing(i"capture set of $tp = $result", captDebug)
+      //.showing(i"capture set of $tp = $result", captDebug)
 
   private def deepCaptureSet(tp: Type)(using Context): CaptureSet =
     val collect = new TypeAccumulator[CaptureSet]:

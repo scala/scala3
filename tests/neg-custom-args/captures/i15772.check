@@ -35,7 +35,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:44:2 ----------------------------------------
 44 |  x: (() -> Unit) // error
    |  ^
-   |  Found:    () ->{x} Unit
+   |  Found:    (x : () ->{filesList, sayHello} Unit)
    |  Required: () -> Unit
    |
    | longer explanation available when compiling with `-explain`

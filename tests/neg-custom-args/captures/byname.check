@@ -6,13 +6,13 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/byname.scala:4:2 -----------------------------------------
  4 |  def f() = if cap1 == cap1 then g else g // error
    |  ^
-   |  Found:    (x$0: Int) ->{cap2} Int
-   |  Required: (x$0: Int) -> Int
+   |  Found:    ((x$0: Int) ->{cap2} Int)^{}
+   |  Required: Int -> Int
    |
    |  Note that the expected type Int ->{} Int
    |  is the previously inferred result type of method test
    |  which is also the type seen in separately compiled sources.
-   |  The new inferred type (x$0: Int) ->{cap2} Int
+   |  The new inferred type ((x$0: Int) ->{cap2} Int)^{}
    |  must conform to this type.
  5 |  def g(x: Int) = if cap2 == cap2 then 1 else x
  6 |  def g2(x: Int) = if cap1 == cap1 then 1 else x
