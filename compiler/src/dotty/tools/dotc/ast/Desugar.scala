@@ -188,7 +188,7 @@ object desugar {
     if isSetterNeeded(vdef) then
       val setterParam = makeSyntheticParameter(tpt = SetterParamTree().watching(vdef))
       // The rhs gets filled in later, when field is generated and getter has parameters (see Memoize miniphase)
-      val setterRhs = if (vdef.rhs.isEmpty) EmptyTree else unitLiteral
+      val setterRhs = if (vdef.rhs.isEmpty) EmptyTree else syntheticUnitLiteral
       val setter = cpy.DefDef(vdef)(
           name    = valName.setterName,
           paramss = (setterParam :: Nil) :: Nil,
@@ -1489,7 +1489,7 @@ object desugar {
   def block(tree: Block)(using Context): Block = tree.expr match {
     case EmptyTree =>
       cpy.Block(tree)(tree.stats,
-        unitLiteral.withSpan(if (tree.stats.isEmpty) tree.span else tree.span.endPos))
+        syntheticUnitLiteral.withSpan(if (tree.stats.isEmpty) tree.span else tree.span.endPos))
     case _ =>
       tree
   }
@@ -2013,7 +2013,7 @@ object desugar {
           case ts: Thicket => ts.trees.tail
           case t => Nil
         } map {
-          case Block(Nil, EmptyTree) => unitLiteral // for s"... ${} ..."
+          case Block(Nil, EmptyTree) => syntheticUnitLiteral // for s"... ${} ..."
           case Block(Nil, expr) => expr // important for interpolated string as patterns, see i1773.scala
           case t => t
         }
@@ -2046,7 +2046,7 @@ object desugar {
         val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
         flatTree(pats1 map (makePatDef(tree, mods, _, rhs)))
       case ext: ExtMethods =>
-        Block(List(ext), unitLiteral.withSpan(ext.span))
+        Block(List(ext), syntheticUnitLiteral.withSpan(ext.span))
       case f: FunctionWithMods if f.hasErasedParams => makeFunctionWithValDefs(f, pt)
     }
     desugared.withSpan(tree.span)

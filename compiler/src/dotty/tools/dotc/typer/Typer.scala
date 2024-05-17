@@ -2221,7 +2221,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                             // because we do not know the internal type params and method params.
                             // Hence no adaptation is possible, and we assume WildcardType as prototype.
         (from, proto)
-    val expr1 = typedExpr(tree.expr orElse untpd.unitLiteral.withSpan(tree.span), proto)
+    val expr1 = typedExpr(tree.expr orElse untpd.syntheticUnitLiteral.withSpan(tree.span), proto)
     assignType(cpy.Return(tree)(expr1, from))
   end typedReturn
 
