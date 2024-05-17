@@ -200,6 +200,28 @@ class DottyBytecodeTests extends DottyBytecodeTest {
     }
   }
 
+  @Test def switchOnUnionOfChars = {
+    val source =
+      """
+        |object Foo {
+        |  def foo(ch: 'a' | 'b' | 'c' | 'd' | 'e'): Int = ch match {
+        |    case 'a' => 1
+        |    case 'b' => 2
+        |    case 'c' => 3
+        |    case 'd' => 4
+        |    case 'e' => 5
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+      assert(verifySwitch(methodNode))
+    }
+  }
+
   @Test def switchOnUnionOfIntSingletons = {
     val source =
       """
