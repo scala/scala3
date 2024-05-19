@@ -17,19 +17,19 @@ object test1:
       o.log
 
 object test2:
-  class IO extends caps.Capability
+  class IO
 
   class File:
     def write(x: String): Unit = ???
 
-  class Service(io: IO):
+  class Service(io: IO^):
     var file: File^{io} = uninitialized
     def log = file.write("log")
 
-  def withFile[T](io2: IO)(op: (f: File^{io2}) => T): T =
+  def withFile[T](io2: IO^)(op: (f: File^{io2}) => T): T =
     op(new File)
 
-  def test(io3: IO) =
+  def test(io3: IO^) =
     withFile(io3): f =>
       val o = Service(io3)
       o.file = f

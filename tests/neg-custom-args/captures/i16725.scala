@@ -10,5 +10,5 @@ def useWrappedIO(wrapper: Wrapper[IO]): () -> Unit =
     wrapper: io =>
       io.brewCoffee()
 def main(): Unit =
-  val escaped = usingIO(io => useWrappedIO(mk(io))) // error // error
+  val escaped = usingIO(io => useWrappedIO(mk(io))) // error
   escaped()  // boom

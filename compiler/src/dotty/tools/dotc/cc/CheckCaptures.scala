@@ -157,15 +157,17 @@ object CheckCaptures:
                 case _ =>
           case AnnotatedType(_, ann) if ann.symbol == defn.UncheckedCapturesAnnot =>
             ()
-          case t =>
+          case CapturingType(parent, refs) =>
             if variance >= 0 then
-              t.captureSet.disallowRootCapability: () =>
+              refs.disallowRootCapability: () =>
                 def part = if t eq tp then "" else i"the part $t of "
                 report.error(
                   em"""$what cannot $have $tp since
                       |${part}that type captures the root capability `cap`.
                       |$addendum""",
                   pos)
+            traverse(parent)
+          case t =>
             traverseChildren(t)
     check.traverse(tp)
   end disallowRootCapabilitiesIn
