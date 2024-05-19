@@ -1718,7 +1718,7 @@ trait Implicits:
           SearchSuccess(tpd.ref(ref).withSpan(span.startPos), ref, 0)(ctx.typerState, ctx.gadt)
         case _ =>
           searchImplicit(ctx.implicits,
-            if sourceVersion.isAtLeast(SourceVersion.future) then SearchMode.New
+            if sourceVersion.isAtLeast(SourceVersion.`3.6`) then SearchMode.New
             else if sourceVersion.isAtLeast(SourceVersion.`3.5`) then SearchMode.CompareErr
             else if sourceVersion.isAtLeast(SourceVersion.`3.4`) then SearchMode.CompareWarn
             else SearchMode.Old)
