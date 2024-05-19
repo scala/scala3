@@ -49,6 +49,6 @@
 34 |  val z3 = h[(() -> Cap) @retains(x)](() => x)(() => C())  // error
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |           Sealed type variable X cannot be instantiated to box () ->{x} Cap since
-   |           the part C^ of that type captures the root capability `cap`.
+   |           the part Cap of that type captures the root capability `cap`.
    |           This is often caused by a local capability in an argument of method h
    |           leaking as part of its result.
