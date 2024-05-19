@@ -388,7 +388,7 @@ object CaptureSet:
 
   def apply(elems: CaptureRef*)(using Context): CaptureSet.Const =
     if elems.isEmpty then empty
-    else Const(SimpleIdentitySet(elems.map(_.normalizedRef)*))
+    else Const(SimpleIdentitySet(elems.map(_.normalizedRef.ensuring(_.isTrackableRef))*))
 
   def apply(elems: Refs)(using Context): CaptureSet.Const =
     if elems.isEmpty then empty else Const(elems)
@@ -496,6 +496,7 @@ object CaptureSet:
         CompareResult.LevelError(this, elem)
       else
         //if id == 34 then assert(!elem.isUniversalRootCapability)
+        assert(elem.isTrackableRef, elem)
         elems += elem
         if elem.isRootCapability then
           rootAddedHandler()
