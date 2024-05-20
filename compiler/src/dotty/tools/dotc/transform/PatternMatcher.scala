@@ -56,6 +56,10 @@ class PatternMatcher extends MiniPhase {
       if !inInlinedCode then
         // check exhaustivity and unreachability
         SpaceEngine.checkMatch(tree)
+      else
+        // only check exhaustivity, as inlining may generate unreachable code 
+        // like in i19157.scala
+        SpaceEngine.checkMatchExhaustivityOnly(tree)
 
       translated.ensureConforms(matchType)
     }
