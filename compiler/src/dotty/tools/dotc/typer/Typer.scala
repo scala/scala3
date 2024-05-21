@@ -1334,12 +1334,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
             val setter = toSetter(lhsCore)
             if setter.isEmpty then reassignmentToVal
-            else tryEither {
+            else
               val assign = untpd.Apply(setter, tree.rhs :: Nil)
               typed(assign, IgnoredProto(pt))
-            } {
-              (_, _) => reassignmentToVal
-            }
           case _ => lhsCore.tpe match {
             case ref: TermRef =>
               val lhsVal = lhsCore.denot.suchThat(!_.is(Method))

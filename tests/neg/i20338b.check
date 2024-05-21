@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/i20338b.scala:10:8 ------------------------------------------------------------
+10 |  f.x = 42 // error
+   |        ^^
+   |        Found:    (42 : Int)
+   |        Required: String
+   |
+   | longer explanation available when compiling with `-explain`
