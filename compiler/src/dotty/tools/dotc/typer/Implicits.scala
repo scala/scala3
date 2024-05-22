@@ -1311,14 +1311,14 @@ trait Implicits:
         else
           var cmp = comp(using searchContext())
           val sv = Feature.sourceVersion
-          if sv == SourceVersion.`3.5` || sv == SourceVersion.`3.6-migration` then
+          if sv.stable == SourceVersion.`3.5` || sv == SourceVersion.`3.6-migration` then
             val prev = comp(using searchContext().addMode(Mode.OldImplicitResolution))
             if cmp != prev then
               def choice(c: Int) = c match
                 case -1 => "the second alternative"
                 case  1 => "the first alternative"
                 case _  => "none - it's ambiguous"
-              if sv == SourceVersion.`3.5` then
+              if sv.stable == SourceVersion.`3.5` then
                 report.warning(
                   em"""Given search preference for $pt between alternatives ${alt1.ref} and ${alt2.ref} will change
                       |Current choice           : ${choice(prev)}
