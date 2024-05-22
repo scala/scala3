@@ -69,6 +69,13 @@ object Feature:
     (betterMatchTypeExtractors, "Enable better match type extractors")
   )
 
+  // legacy language features from Scala 2 that are no longer supported.
+  val legacyFeatures = List(
+    "higherKinds",
+    "existentials",
+    "reflectiveCalls"
+  )
+
   private def enabledLanguageFeaturesBySetting(using Context): List[String] =
     ctx.settings.language.value.asInstanceOf
 

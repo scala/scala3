@@ -30,6 +30,9 @@ object ScalaSettingsProperties:
   def supportedLanguageFeatures: List[ChoiceWithHelp[String]] =
     Feature.values.map((n, d) => ChoiceWithHelp(n.toString, d))
 
+  val legacyLanguageFeatures: List[String] =
+    Feature.legacyFeatures
+
   def defaultClasspath: String = sys.env.getOrElse("CLASSPATH", ".")
 
   def defaultPageWidth: Int = {

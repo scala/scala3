@@ -85,7 +85,9 @@ object Settings:
     propertyClass: Option[Class[?]] = None,
     deprecation: Option[Deprecation] = None,
     // kept only for -Xkind-projector option compatibility
-    legacyArgs: Boolean = false)(private[Settings] val idx: Int):
+    legacyArgs: Boolean = false,
+    // accept legacy choices (for example, valid in Scala 2 but no longer supported)
+    legacyChoices: Option[Seq[?]] = None)(private[Settings] val idx: Int):
 
     validateSettingString(prefix.getOrElse(name))
     aliases.foreach(validateSettingString)
@@ -206,9 +208,14 @@ object Settings:
 
       def appendList(strings: List[String], argValue: String, args: List[String]) =
         choices match
-          case Some(valid) => strings.filterNot(valid.contains) match
-            case Nil => update(strings, argValue, args)
-            case invalid => invalidChoices(invalid)
+          case Some(valid) => strings.partition(valid.contains) match
+            case (_, Nil) => update(strings, argValue, args)
+            case (validStrs, invalidStrs) => legacyChoices match
+              case Some(validBefore) =>
+                invalidStrs.filterNot(validBefore.contains) match
+                  case Nil => update(validStrs, argValue, args)
+                  case realInvalidStrs => invalidChoices(realInvalidStrs)
+              case _ => invalidChoices(invalidStrs)
           case _ => update(strings, argValue, args)
 
       def doSet(argRest: String) =
@@ -380,11 +387,11 @@ object Settings:
     def ChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: String, aliases: List[String] = Nil, legacyArgs: Boolean = false, deprecation: Option[Deprecation] = None): Setting[String] =
       publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases, legacyArgs = legacyArgs, deprecation = deprecation))
 
-    def MultiChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: List[String] = Nil, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None): Setting[List[String]] =
-      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases, deprecation = deprecation))
+    def MultiChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: List[String] = Nil, legacyChoices: List[String] = Nil, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None): Setting[List[String]] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), legacyChoices = Some(legacyChoices), aliases = aliases, deprecation = deprecation))
 
-    def MultiChoiceHelpSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]], aliases: List[String] = Nil, deprecation: Option[Deprecation] = None): Setting[List[ChoiceWithHelp[String]]] =
-      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases, deprecation = deprecation))
+    def MultiChoiceHelpSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]], legacyChoices: List[String] = Nil, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None): Setting[List[ChoiceWithHelp[String]]] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), legacyChoices = Some(legacyChoices), aliases = aliases, deprecation = deprecation))
 
     def IntSetting(category: SettingCategory, name: String, descr: String, default: Int, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None): Setting[Int] =
       publish(Setting(category, prependName(name), descr, default, aliases = aliases, deprecation = deprecation))

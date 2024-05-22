@@ -272,8 +272,8 @@ class SettingsTests {
       val booleanSetting = BooleanSetting(RootSetting, "booleanSetting", "booleanSetting", false)
       val stringSetting  = StringSetting(RootSetting, "stringSetting", "stringSetting", "", "test")
       val choiceSetting =  ChoiceSetting(RootSetting, "choiceSetting", "choiceSetting", "", List("a", "b"), "a")
-      val multiChoiceSetting=  MultiChoiceSetting(RootSetting, "multiChoiceSetting", "multiChoiceSetting", "", List("a", "b"), List())
-      val multiChoiceHelpSetting=  MultiChoiceHelpSetting(RootSetting, "multiChoiceHelpSetting", "multiChoiceHelpSetting", "", List(ChoiceWithHelp("a", "a"), ChoiceWithHelp("b", "b")), List())
+      val multiChoiceSetting=  MultiChoiceSetting(RootSetting, "multiChoiceSetting", "multiChoiceSetting", "", List("a", "b"), List(), legacyChoices = List("c"))
+      val multiChoiceHelpSetting=  MultiChoiceHelpSetting(RootSetting, "multiChoiceHelpSetting", "multiChoiceHelpSetting", "", List(ChoiceWithHelp("a", "a"), ChoiceWithHelp("b", "b")), List(), legacyChoices = List("c"))
       val intSetting = IntSetting(RootSetting, "intSetting", "intSetting", 0)
       val intChoiceSetting = IntChoiceSetting(RootSetting, "intChoiceSetting", "intChoiceSetting", List(1,2,3), 1)
       val multiStringSetting = MultiStringSetting(RootSetting, "multiStringSetting", "multiStringSetting", "", List("a", "b"), List())
@@ -289,8 +289,8 @@ class SettingsTests {
         List("-booleanSetting", "true"),
         List("-stringSetting", "newTest"),
         List("-choiceSetting", "b"),
-        List("-multiChoiceSetting", "a,b"),
-        List("-multiChoiceHelpSetting", "a,b"),
+        List("-multiChoiceSetting", "a,b,c"),
+        List("-multiChoiceHelpSetting", "a,b,c"),
         List("-intSetting", "42"),
         List("-intChoiceSetting", "2"),
         List("-multiStringSetting", "a,b"),
