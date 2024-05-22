@@ -31,8 +31,8 @@ object Annotations {
     def derivedAnnotation(tree: Tree)(using Context): Annotation =
       if (tree eq this.tree) this else Annotation(tree)
 
-    /** All type and term arguments to this annotation in a single flat list */
-    def arguments(using Context): List[Tree] = tpd.allArguments(tree)
+    /** All term arguments of this annotation in a single flat list */
+    def arguments(using Context): List[Tree] = tpd.allTermArguments(tree)
 
     def argument(i: Int)(using Context): Option[Tree] = {
       val args = arguments
@@ -55,7 +55,7 @@ object Annotations {
      *  type, since ranges cannot be types of trees.
      */
     def mapWith(tm: TypeMap)(using Context) =
-      val args = arguments
+      val args = tpd.allArguments(tree)
       if args.isEmpty then this
       else
         // Checks if `tm` would result in any change by applying it to types
