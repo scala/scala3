@@ -66,17 +66,15 @@ object Annotations {
             if tm.isRange(x) then x
             else
               val tp1 = tm(tree.tpe)
-              foldOver(if tp1 == tree.tpe then x else tp1, tree)
+              foldOver(if !tp1.exists || (tp1 frozen_=:= tree.tpe) then x else tp1, tree)
         val diff = findDiff(NoType, args)
         if tm.isRange(diff) then EmptyAnnotation
         else if diff.exists then
-          // In case of changes, the symbol in the annotation's tree should be
-          // copied so that the same symbol is not used for different trees.
-          val ttm =
-            new TreeTypeMap(typeMap = tm):
-              final override def withMappedSyms(syms: List[Symbol]): TreeTypeMap =
-                withMappedSyms(syms, mapSymbols(syms, this, mapAlways = true))
-          derivedAnnotation(ttm.transform(tree))
+          // If the annotation has been transformed, we need to make sure that the
+          // symbol are copied so that we don't end up with the same symbol in different
+          // trees, which would lead to a crash in pickling.
+          val mappedTree = TreeTypeMap(typeMap = tm, alwaysCopySymbols = true).transform(tree)
+          derivedAnnotation(mappedTree)
         else this
 
     /** Does this annotation refer to a parameter of `tl`? */
