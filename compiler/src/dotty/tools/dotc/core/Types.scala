@@ -7022,25 +7022,20 @@ object Types extends TypeUtils {
   }
 
   class TypeSizeAccumulator(using Context) extends TypeAccumulator[Int] {
-    var seen = util.HashSet[Type](initialCapacity = 8)
     def apply(n: Int, tp: Type): Int =
-      if seen.contains(tp) then n
-      else {
-        seen += tp
-        tp match {
-          case tp: AppliedType =>
-            val tpNorm = tp.tryNormalize
-            if tpNorm.exists then apply(n, tpNorm)
-            else foldOver(n + 1, tp)
-          case tp: RefinedType =>
-            foldOver(n + 1, tp)
-          case tp: TypeRef if tp.info.isTypeAlias =>
-            apply(n, tp.superType)
-          case tp: TypeParamRef =>
-            apply(n, TypeComparer.bounds(tp))
-          case _ =>
-            foldOver(n, tp)
-        }
+      tp match {
+        case tp: AppliedType =>
+          val tpNorm = tp.tryNormalize
+          if tpNorm.exists then apply(n, tpNorm)
+          else foldOver(n + 1, tp)
+        case tp: RefinedType =>
+          foldOver(n + 1, tp)
+        case tp: TypeRef if tp.info.isTypeAlias =>
+          apply(n, tp.superType)
+        case tp: TypeParamRef =>
+          apply(n, TypeComparer.bounds(tp))
+        case _ =>
+          foldOver(n, tp)
       }
   }
 
