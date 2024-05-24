@@ -22,6 +22,7 @@ import scala.jdk.CollectionConverters._
  * .a local repository */
 object RepublishPlugin extends AutoPlugin {
 
+  /** copied from github.com/coursier/coursier */
   private object FileUtil {
 
     def tryMakeExecutable(path: Path): Boolean =
@@ -60,8 +61,10 @@ object RepublishPlugin extends AutoPlugin {
     val republishAllResolved = taskKey[Seq[ResolvedArtifacts]]("Resolve the dependencies for the distribution")
     val republishClasspath = taskKey[Set[File]]("cache the dependencies for the distribution")
     val republishFetchLaunchers = taskKey[Set[File]]("cache the launcher deps for the distribution")
+    val republishFetchCoursier = taskKey[File]("cache the coursier.jar for resolving the local maven repo.")
     val republishPrepareBin = taskKey[File]("prepare the bin directory, including launchers and scripts.")
     val republishBinDir = settingKey[File]("where to find static files for the bin dir.")
+    val republishCoursierDir = settingKey[File]("where to download the coursier launcher jar.")
     val republishBinOverrides = settingKey[Seq[File]]("files to override those in bin-dir.")
     val republish = taskKey[File]("cache the dependencies and download launchers for the distribution")
     val republishRepo = settingKey[File]("the location to store the republished artifacts.")
@@ -73,9 +76,213 @@ object RepublishPlugin extends AutoPlugin {
   case class SimpleModuleId(org: String, name: String, revision: String) {
     override def toString = s"$org:$name:$revision"
   }
-  case class ResolvedArtifacts(id: SimpleModuleId, jar: File, pom: File)
+  case class ResolvedArtifacts(id: SimpleModuleId, jar: Option[File], pom: Option[File])
+
+  class NameFilter(kind: String, filter: String => Boolean) {
+    def apply(name: String): Boolean = filter(name)
+    override def toString = kind
+  }
+
+  object NameFilter {
+    final val Coursier = new NameFilter("coursier", _ == "coursier.jar")
+    final val Generic = new NameFilter("generic", _ != "coursier.jar")
+  }
+
+  private def republishResolvedArtifacts(resolved: Seq[ResolvedArtifacts], mavenRepo: File, logOpt: Option[Logger]): Set[File] = {
+    IO.createDirectory(mavenRepo)
+    resolved.map { ra =>
+      for (log <- logOpt)
+        log.info(s"[republish] publishing ${ra.id} to $mavenRepo...")
+      val jarOpt = ra.jar
+      val pomOpt = ra.pom
+
+      assert(jarOpt.nonEmpty || pomOpt.nonEmpty, s"Neither jar nor pom found for ${ra.id}")
+
+      val pathElems = ra.id.org.split('.').toVector :+ ra.id.name :+ ra.id.revision
+      val artifactDir = pathElems.foldLeft(mavenRepo)(_ / _)
+      IO.createDirectory(artifactDir)
+      for (pom <- pomOpt) IO.copyFile(pom, artifactDir / pom.getName)
+      for (jar <- jarOpt) IO.copyFile(jar, artifactDir / jar.getName)
+      artifactDir
+    }.toSet
+  }
+
+  private def coursierCmd(jar: File, cache: File, log: Logger, args: Seq[String]): Unit = {
+    val jar0 = jar.getAbsolutePath.toString
+    val javaHome = sys.props.get("java.home").getOrElse {
+      throw new MessageOnlyException("java.home property not set")
+    }
+    val javaCmd = {
+      val cmd = if (scala.util.Properties.isWin) "java.exe" else "java"
+      (file(javaHome) / "bin" / cmd).getAbsolutePath
+    }
+    val env = Map("COURSIER_CACHE" -> cache.getAbsolutePath.toString)
+    val cmdLine = Seq(javaCmd, "-jar", jar0) ++ args
+    // invoke cmdLine with env
+    val p = new ProcessBuilder(cmdLine: _*).inheritIO()
+    p.environment().putAll(env.asJava)
+    val proc = p.start()
+    log.info(s"[republish] Running with env ${env}: coursier.jar with args ${args.mkString(" ")}")
+    proc.waitFor()
+    if (proc.exitValue() != 0)
+      throw new MessageOnlyException(s"Error running coursier.jar with args ${args.mkString(" ")}")
+  }
+
+  private def coursierFetch(coursierJar: File, log: Logger, cacheDir: File, localRepo: File, libs: Seq[String]): Unit = {
+    val localRepoArg = {
+      val path = localRepo.getAbsolutePath
+      if (scala.util.Properties.isWin) {
+        val path0 = path.replace('\\', '/')
+        s"file:///$path0" // extra root slash for Windows paths
+      }
+      else
+        s"file://$path"
+    }
+
+    IO.createDirectory(cacheDir)
+    for (lib <- libs) {
+      log.info(s"[republish] Fetching $lib with coursier.jar...")
+      coursierCmd(coursierJar, cacheDir, log,
+        Seq(
+          "fetch",
+          "--repository", localRepoArg,
+          lib
+        )
+      )
+    }
+  }
+
+  /**Resolve the transitive library dependencies of `libs` to `csrCacheDir`.
+   */
+  private def resolveLibraryDeps(
+      coursierJar: File,
+      log: Logger,
+      csrCacheDir: File,
+      localRepo: File,
+      resolvedLocal: Seq[ResolvedArtifacts]): Seq[ResolvedArtifacts] = {
+
+    // publish the local artifacts to the local repo, so coursier can resolve them
+    republishResolvedArtifacts(resolvedLocal, localRepo, logOpt = None)
+
+    coursierFetch(coursierJar, log, csrCacheDir, localRepo, resolvedLocal.map(_.id.toString))
+
+    val maven2Root = java.nio.file.Files.walk(csrCacheDir.toPath)
+      .filter(_.getFileName.toString == "maven2")
+      .findFirst()
+      .orElseThrow(() => new MessageOnlyException(s"Could not find maven2 directory in $csrCacheDir"))
+
+    def pathToArtifact(p: Path): ResolvedArtifacts = {
+      // relative path from maven2Root
+      val lastAsString = p.getFileName.toString
+      val relP = maven2Root.relativize(p)
+      val parts = relP.iterator().asScala.map(_.toString).toVector
+      val (orgParts :+ name :+ rev :+ _) = parts
+      val id = SimpleModuleId(orgParts.mkString("."), name, rev)
+      if (lastAsString.endsWith(".jar")) {
+        ResolvedArtifacts(id, Some(p.toFile), None)
+      } else {
+        ResolvedArtifacts(id, None, Some(p.toFile))
+      }
+    }
+
+    java.nio.file.Files.walk(maven2Root)
+      .filter(p => {
+        val lastAsString = p.getFileName.toString
+        lastAsString.endsWith(".pom") || lastAsString.endsWith(".jar")
+      })
+      .map[ResolvedArtifacts](pathToArtifact(_))
+      .iterator()
+      .asScala
+      .toSeq
+  }
+
+  private def fetchFilesTask(libexecT: Def.Initialize[Task[File]], nameFilter: NameFilter) = Def.task[Set[File]] {
+    val s = streams.value
+    val log = s.log
+    val repoDir = republishRepo.value
+    val launcherVersions = republishLaunchers.value
+    val libexec = libexecT.value
+
+    val dlCache = s.cacheDirectory / "republish-launchers"
+
+    val store = s.cacheStoreFactory / "versions"
+
+    def work(name: String, dest: File, launcher: String): File = {
+      val (launcherURL, workFile, prefix, subPart) = {
+        if (launcher.startsWith("gz+")) {
+          IO.createDirectory(dlCache)
+          val launcherURL = url(launcher.stripPrefix("gz+"))
+          (launcherURL, dlCache / s"$name.gz", "gz", "")
+        } else if (launcher.startsWith("zip+")) {
+          IO.createDirectory(dlCache)
+          val (urlPart, subPath) = launcher.split("!/") match {
+            case Array(urlPart, subPath) => (urlPart, subPath)
+            case _ =>
+              throw new MessageOnlyException(s"[republish] Invalid zip+ URL, expected ! to mark subpath: $launcher")
+          }
+          val launcherURL = url(urlPart.stripPrefix("zip+"))
+          (launcherURL, dlCache / s"$name.zip", "zip", subPath)
+        } else {
+          IO.createDirectory(libexec)
+          (url(launcher), dest, "", "")
+        }
+      }
+      IO.delete(workFile)
+      Using.urlInputStream(launcherURL) { in =>
+        log.info(s"[republish] Downloading $launcherURL to $workFile...")
+        IO.transfer(in, workFile)
+        log.info(s"[republish] Downloaded $launcherURL to $workFile...")
+      }
+      if (prefix == "gz") {
+        IO.delete(dest)
+        Using.fileInputStream(workFile) { in =>
+          Using.gzipInputStream(in) { gzIn =>
+            IO.transfer(gzIn, dest)
+          }
+        }
+        log.info(s"[republish] uncompressed gz file $workFile to $dest...")
+        FileUtil.tryMakeExecutable(dest.toPath) // TODO: we also need to copy to the bin directory so the archive makes it executable
+        IO.delete(workFile)
+      } else if (prefix == "zip") {
+        IO.delete(dest)
+        val files = IO.unzip(workFile, dlCache, new ExactFilter(subPart))
+        val extracted = files.headOption.getOrElse(throw new MessageOnlyException(s"[republish] No files extracted from $workFile matching $subPart"))
+        log.info(s"[republish] unzipped $workFile to $extracted...")
+        IO.move(extracted, dest)
+        log.info(s"[republish] moved $extracted to $dest...")
+        FileUtil.tryMakeExecutable(dest.toPath) // TODO: we also need to copy to the bin directory so the archive makes it executable
+        IO.delete(workFile)
+      }
+      dest
+    }
+
+    val allLaunchers = {
+      val filtered = launcherVersions.filter { case (name, _) => nameFilter(name) }
+      if (filtered.isEmpty)
+        throw new MessageOnlyException(s"[republish] No $nameFilter launchers to fetch, check the build configuration for ${republishLaunchers.key.label}.")
+
+      for ((name, launcher) <- filtered) yield {
+        val dest = libexec / name
+
+        val id = name.replaceAll("[^a-zA-Z0-9]", "_")
+
+        val fetchAction = Tracked.inputChanged[String, File](store.make(id)) { (inChanged, launcher) =>
+          if (inChanged || !Files.exists(dest.toPath)) {
+            work(name, dest, launcher)
+          } else {
+            log.info(s"[republish] Using cached $name launcher ($launcher).")
+            dest
+          }
+        }
+
+        fetchAction(launcher)
+      }
+    }
+    allLaunchers.toSet
+  }
 
   override val projectSettings: Seq[Def.Setting[_]] = Def.settings(
+    republishCoursierDir := republishRepo.value / "coursier",
     republishLaunchers := Seq.empty,
     republishBinOverrides := Seq.empty,
     republishLocalResolved / republishProjectRefs := {
@@ -94,7 +301,6 @@ object RepublishPlugin extends AutoPlugin {
 
         ids.zip(published).map({ case (id, as) =>
           val simpleId = {
-            val disabled = CrossVersion.disabled
             val name0 = id.crossVersion match {
               case cv: CrossVersion.Binary =>
                 // projectID does not add binary suffix
@@ -115,155 +321,46 @@ object RepublishPlugin extends AutoPlugin {
           })
           assert(jarOrNull != null, s"Could not find jar for ${id}")
           assert(pomOrNull != null, s"Could not find pom for ${id}")
-          ResolvedArtifacts(simpleId, jarOrNull, pomOrNull)
+          ResolvedArtifacts(simpleId, Some(jarOrNull), Some(pomOrNull))
         })
       }
     }.value,
     republishAllResolved := {
-      val localResolved = republishLocalResolved.value
+      val resolvedLocal = republishLocalResolved.value
+      val coursierJar = republishFetchCoursier.value
       val report = (thisProjectRef / updateFull).value
+      val s = streams.value
+      val lm = (republishAllResolved / dependencyResolution).value
+      val cacheDir = republishRepo.value
 
-      val found = mutable.Map.empty[SimpleModuleId, ResolvedArtifacts]
-      val evicted = mutable.Set.empty[SimpleModuleId]
+      val log = s.log
+      val csrCacheDir = s.cacheDirectory / "csr-cache"
+      val localRepo = s.cacheDirectory / "localRepo" / "maven2"
 
-      localResolved.foreach({ resolved =>
-        val simpleId = resolved.id
-        if (simpleId.revision == dottyVersion) {
-          evicted += simpleId.copy(revision = dottyNonBootstrappedVersion)
-        }
-        found(simpleId) = resolved
-      })
+      // resolve the transitive dependencies of the local artifacts
+      val resolvedLibs = resolveLibraryDeps(coursierJar, log, csrCacheDir, localRepo, resolvedLocal)
 
-      report.allModuleReports.foreach { mr =>
-        val simpleId = {
-          val id = mr.module
-          SimpleModuleId(id.organization, id.name, id.revision)
-        }
+      // the combination of local artifacts and resolved transitive dependencies
+      val merged =
+        (resolvedLocal ++ resolvedLibs).groupBy(_.id).values.map(_.reduce { (ra1, ra2) =>
+          val jar = ra1.jar.orElse(ra2.jar)
+          val pom = ra1.pom.orElse(ra2.pom)
+          ResolvedArtifacts(ra1.id, jar, pom)
+        })
 
-        if (!found.contains(simpleId) && !evicted(simpleId)) {
-          var jarOrNull: File = null
-          var pomOrNull: File = null
-          mr.artifacts.foreach({ case (a, f) =>
-            if (a.`type` == "jar" || a.`type` == "bundle") {
-              jarOrNull = f
-            } else if (a.`type` == "pom") {
-              pomOrNull = f
-            }
-          })
-          assert(jarOrNull != null, s"Could not find jar for ${simpleId}")
-          if (pomOrNull == null) {
-            val jarPath = jarOrNull.toPath
-            // we found the jar, so assume we can resolve a sibling pom file
-            val pomPath = jarPath.resolveSibling(jarPath.getFileName.toString.stripSuffix(".jar") + ".pom")
-            assert(Files.exists(pomPath), s"Could not find pom for ${simpleId}")
-            pomOrNull = pomPath.toFile
-          }
-          found(simpleId) = ResolvedArtifacts(simpleId, jarOrNull, pomOrNull)
-        }
-
-      }
-      found.values.toSeq
+      merged.toSeq
     },
     republishClasspath := {
       val s = streams.value
       val resolved = republishAllResolved.value
       val cacheDir = republishRepo.value
-
-      val log = s.log
-      val mavenRepo = cacheDir / "maven2"
-      IO.createDirectory(mavenRepo)
-      resolved.map { ra =>
-        log.info(s"[republish] publishing ${ra.id} to $mavenRepo...")
-        val jar = ra.jar
-        val pom = ra.pom
-
-        val pathElems = ra.id.org.split('.').toVector :+ ra.id.name :+ ra.id.revision
-        val artifactDir = pathElems.foldLeft(mavenRepo)(_ / _)
-        IO.createDirectory(artifactDir)
-        IO.copyFile(jar, artifactDir / jar.getName)
-        IO.copyFile(pom, artifactDir / pom.getName)
-        artifactDir
-      }.toSet
+      republishResolvedArtifacts(resolved, cacheDir / "maven2", logOpt = Some(s.log))
     },
     republishFetchLaunchers := {
-      val s = streams.value
-      val log = s.log
-      val repoDir = republishRepo.value
-      val launcherVersions = republishLaunchers.value
-      val libexec = republishPrepareBin.value
-
-      val dlCache = repoDir / "cache"
-
-      val store = s.cacheStoreFactory / "versions"
-
-      def work(name: String, dest: File, launcher: String): File = {
-        val (launcherURL, workFile, prefix, subPart) = {
-          if (launcher.startsWith("gz+")) {
-            IO.createDirectory(dlCache)
-            val launcherURL = url(launcher.stripPrefix("gz+"))
-            (launcherURL, dlCache / s"$name.gz", "gz", "")
-          } else if (launcher.startsWith("zip+")) {
-            IO.createDirectory(dlCache)
-            val (urlPart, subPath) = launcher.split("!/") match {
-              case Array(urlPart, subPath) => (urlPart, subPath)
-              case _ =>
-                throw new MessageOnlyException(s"[republish] Invalid zip+ URL, expected ! to mark subpath: $launcher")
-            }
-            val launcherURL = url(urlPart.stripPrefix("zip+"))
-            (launcherURL, dlCache / s"$name.zip", "zip", subPath)
-          } else {
-            IO.createDirectory(libexec)
-            (url(launcher), dest, "", "")
-          }
-        }
-        IO.delete(workFile)
-        Using.urlInputStream(launcherURL) { in =>
-          log.info(s"[republish] Downloading $launcherURL to $workFile...")
-          IO.transfer(in, workFile)
-          log.info(s"[republish] Downloaded $launcherURL to $workFile...")
-        }
-        if (prefix == "gz") {
-          IO.delete(dest)
-          Using.fileInputStream(workFile) { in =>
-            Using.gzipInputStream(in) { gzIn =>
-              IO.transfer(gzIn, dest)
-            }
-          }
-          log.info(s"[republish] uncompressed gz file $workFile to $dest...")
-          FileUtil.tryMakeExecutable(dest.toPath) // TODO: we also need to copy to the bin directory so the archive makes it executable
-          IO.delete(workFile)
-        } else if (prefix == "zip") {
-          IO.delete(dest)
-          val files = IO.unzip(workFile, dlCache, new ExactFilter(subPart))
-          val extracted = files.headOption.getOrElse(throw new MessageOnlyException(s"[republish] No files extracted from $workFile matching $subPart"))
-          log.info(s"[republish] unzipped $workFile to $extracted...")
-          IO.move(extracted, dest)
-          log.info(s"[republish] moved $extracted to $dest...")
-          FileUtil.tryMakeExecutable(dest.toPath) // TODO: we also need to copy to the bin directory so the archive makes it executable
-          IO.delete(workFile)
-        }
-        dest
-      }
-
-      val allLaunchers = {
-        for ((name, launcher) <- launcherVersions) yield {
-          val dest = libexec / name
-
-          val id = name.replaceAll("[^a-zA-Z0-9]", "_")
-
-          val fetchAction = Tracked.inputChanged[String, File](store.make(id)) { (inChanged, launcher) =>
-            if (inChanged || !Files.exists(dest.toPath)) {
-              work(name, dest, launcher)
-            } else {
-              log.info(s"[republish] Using cached $launcher at $dest...")
-              dest
-            }
-          }
-
-          fetchAction(launcher)
-        }
-      }
-      allLaunchers.toSet
+      fetchFilesTask(republishPrepareBin, NameFilter.Generic).value
+    },
+    republishFetchCoursier := {
+      fetchFilesTask(republishCoursierDir.toTask, NameFilter.Coursier).value.head
     },
     republishPrepareBin := {
       val baseDir = baseDirectory.value

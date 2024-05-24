@@ -116,7 +116,8 @@ object Build {
   val mimaPreviousLTSDottyVersion = "3.3.0"
 
   /** Version of Scala CLI to download */
-  val scalaCliLauncherVersion = "1.3.1"
+  val scalaCliLauncherVersion = "1.3.2"
+  val coursierJarVersion = "2.1.10"
 
   object CompatMode {
     final val BinaryCompatible = 0
@@ -2110,8 +2111,10 @@ object Build {
     .settings(
       packArchiveName := "scala3-" + dottyVersion,
       republishBinDir := baseDirectory.value / "bin",
-      republishLaunchers +=
-        ("scala-cli.jar" -> s"https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli.jar")
+      republishLaunchers ++= Seq(
+        ("scala-cli.jar" -> s"https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli.jar"),
+        ("coursier.jar" -> s"https://github.com/coursier/coursier/releases/download/v$coursierJarVersion/coursier.jar")
+      )
     )
 
   lazy val `dist-mac-x64` = project.in(file("dist/mac-x64")).asDist(Bootstrapped)
@@ -2119,6 +2122,7 @@ object Build {
       republishBinDir := (dist / republishBinDir).value,
       packArchiveName := (dist / packArchiveName).value + "-x86_64-apple-darwin",
       republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-apple-darwin.gz")
     )
@@ -2128,6 +2132,7 @@ object Build {
       republishBinDir := (dist / republishBinDir).value,
       packArchiveName := (dist / packArchiveName).value + "-aarch64-apple-darwin",
       republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-aarch64-apple-darwin.gz")
     )
@@ -2137,6 +2142,7 @@ object Build {
       republishBinDir := (dist / republishBinDir).value,
       packArchiveName := (dist / packArchiveName).value + "-x86_64-pc-win32",
       republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli.exe" -> s"zip+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-pc-win32.zip!/scala-cli.exe")
     )
@@ -2146,6 +2152,7 @@ object Build {
       republishBinDir := (dist / republishBinDir).value,
       packArchiveName := (dist / packArchiveName).value + "-x86_64-pc-linux",
       republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-pc-linux.gz")
     )
@@ -2155,6 +2162,7 @@ object Build {
       republishBinDir := (dist / republishBinDir).value,
       packArchiveName := (dist / packArchiveName).value + "-aarch64-pc-linux",
       republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-aarch64-pc-linux.gz")
     )
