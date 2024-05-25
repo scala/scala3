@@ -46,6 +46,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     monitored = false
     GADTused = false
     opaquesUsed = false
+    openedExistentials = Nil
+    assocExistentials = Map.empty
     recCount = 0
     needsGc = false
     if Config.checkTypeComparerReset then checkReset()
@@ -63,6 +65,18 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   /** Indicates whether the subtype check used opaque types */
   private var opaquesUsed: Boolean = false
+
+  /** In capture checking: The existential types that are open because they
+   *  appear in an existential type on the left in an enclosing comparison.
+   */
+  private var openedExistentials: List[RecThis] = Nil
+
+  /** In capture checking: A map from existential types that are appear
+   *  in an existential type on the right in an enclosing comparison.
+   *  Each existential gets mapped to the opened existentials to which it
+   *  may resolve at this point.
+   */
+  private var assocExistentials: Map[RecThis, List[RecThis]] = Map.empty
 
   private var myInstance: TypeComparer = this
   def currentInstance: TypeComparer = myInstance
@@ -325,14 +339,17 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 isSubPrefix(tp1.prefix, tp2.prefix) ||
                 thirdTryNamed(tp2)
               else
-                (  (tp1.name eq tp2.name)
+                (tp1.name eq tp2.name)
                 && !sym1.is(Private)
-                && tp2.isPrefixDependentMemberRef
-                && isSubPrefix(tp1.prefix, tp2.prefix)
-                && tp1.signature == tp2.signature
-                && !(sym1.isClass && sym2.isClass)  // class types don't subtype each other
-                ) ||
-                thirdTryNamed(tp2)
+                && (
+                  tp2.isPrefixDependentMemberRef
+                    && isSubPrefix(tp1.prefix, tp2.prefix)
+                    && tp1.signature == tp2.signature
+                    && !(sym1.isClass && sym2.isClass)  // class types don't subtype each other
+                  || tp1.name == nme.CAPTURE_ROOT
+                    && existentialsConform(tp1, tp2)
+                )
+                || thirdTryNamed(tp2)
             case _ =>
               secondTry
         end compareNamed
@@ -415,6 +432,18 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case _ =>
         secondTry
     }
+
+    def existentialsConform(tp1: NamedType, tp2: NamedType) = (tp1, tp2) match
+      case (TermRef(rt1: RecThis, _), TermRef(rt2: RecThis, _)) =>
+        def link(rt1: RecThis, rt2: RecThis) =
+          assocExistentials.get(rt2).exists(_.contains(rt1))
+          && {
+            assocExistentials = assocExistentials.updated(rt2, rt1 :: Nil)
+            true
+          }
+        link(rt2, rt1) || link(rt1, rt2)
+      case _ =>
+        false
 
     def secondTry: Boolean = tp1 match {
       case tp1: NamedType =>
@@ -546,6 +575,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         if reduced.exists then
           recur(reduced, tp2) && recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp1) }
         else thirdTry
+      case tp1 @ cc.Existential(tp1unpacked) =>
+        val saved = openedExistentials
+        try
+          openedExistentials = tp1.recThis :: openedExistentials
+          recur(tp1unpacked, tp2)
+        finally
+          openedExistentials = saved
       case _: FlexType =>
         true
       case _ =>
@@ -696,6 +732,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         end compareRefined
 
         compareRefined
+      case tp2 @ cc.Existential(tp2unpacked) =>
+        val saved = assocExistentials
+        try
+          assocExistentials = assocExistentials.updated(tp2.recThis, openedExistentials)
+          recur(tp1, tp2unpacked)
+        finally
+          assocExistentials = saved
       case tp2: RecType =>
         def compareRec = tp1.safeDealias match {
           case tp1: RecType =>
