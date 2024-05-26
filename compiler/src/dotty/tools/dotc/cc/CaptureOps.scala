@@ -203,8 +203,8 @@ extension (tp: Type)
     case _ =>
       false
 
-  /** Does type derive from caps.Capability?, which means it references of this
-   *  type are maximal capabilities?
+  /** Tests whether the type derives from `caps.Capability`, which means
+   *  references of this type are maximal capabilities.
    */
   def derivesFromCapability(using Context): Boolean = tp.dealias match
     case tp: (TypeRef | AppliedType) =>

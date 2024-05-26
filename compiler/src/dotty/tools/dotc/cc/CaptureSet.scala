@@ -154,7 +154,11 @@ sealed abstract class CaptureSet extends Showable:
       (x eq y)
       || x.isRootCapability
       || y.match
-          case y: TermRef => y.prefix eq x
+          case y: TermRef =>
+            (y.prefix eq x)
+            || y.info.match
+                case y1: CaptureRef => x.subsumes(y1)
+                case _ => false
           case MaybeCapability(y1) => x.stripMaybe.subsumes(y1)
           case _ => false
       || x.match

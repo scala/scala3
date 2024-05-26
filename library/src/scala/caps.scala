@@ -4,7 +4,7 @@ import annotation.experimental
 
 @experimental object caps:
 
-  trait Capability // should be @erased
+  trait Capability extends Any
 
   /** The universal capture reference */
   val cap: Capability = new Capability() {}

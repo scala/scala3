@@ -1,5 +1,3 @@
-import annotation.capability
-
 object boundary:
 
   final class Label[-T] extends caps.Capability
