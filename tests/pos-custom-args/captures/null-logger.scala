@@ -1,4 +1,3 @@
-import annotation.capability
 import annotation.constructorOnly
 
 class FileSystem extends caps.Capability

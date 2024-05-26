@@ -1,4 +1,3 @@
-import annotation.capability
 import caps.Capability
 
 def f1(c: Capability): () ->{c} c.type = () => c // ok

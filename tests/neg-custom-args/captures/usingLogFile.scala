@@ -1,5 +1,4 @@
 import java.io.*
-import annotation.capability
 
 object Test1:
 

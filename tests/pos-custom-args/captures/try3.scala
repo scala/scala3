@@ -1,5 +1,4 @@
 import language.experimental.erasedDefinitions
-import annotation.capability
 import java.io.IOException
 
 class CanThrow[-E] extends caps.Capability

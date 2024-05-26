@@ -1,4 +1,3 @@
-import annotation.capability
 import language.experimental.saferExceptions
 import language.experimental.modularity
 

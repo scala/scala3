@@ -1,6 +1,5 @@
 import language.experimental.captureChecking
 import language.experimental.modularity
-import annotation.capability
 import compiletime.uninitialized
 
 object test1:

@@ -1037,7 +1037,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         val arrow = if covariant then "~~>" else "<~~"
         i"adapting $actual $arrow $expected"
 
-      def adapt(actual: Type, expected: Type, covariant: Boolean): Type = trace(adaptInfo(actual, expected, covariant), recheckr, show = true) {
+      def adapt(actual: Type, expected: Type, covariant: Boolean): Type = trace(adaptInfo(actual, expected, covariant), recheckr, show = true):
         if expected.isInstanceOf[WildcardType] then actual
         else
           // Decompose the actual type into the inner shape type, the capture set and the box status
@@ -1117,7 +1117,22 @@ class CheckCaptures extends Recheck, SymTransformer:
               adaptedType(!boxed)
           else
             adaptedType(boxed)
-      }
+      end adapt
+
+      /** If result derives from caps.Capability, yet is not a capturing type itself,
+       *  make its capture set explicit.
+       */
+      def makeCaptureSetExplicit(result: Type) = result match
+        case CapturingType(_, _) => result
+        case _ =>
+          if result.derivesFromCapability then
+            val cap: CaptureRef = actual match
+              case ref: CaptureRef if ref.isTracked =>
+                ref
+              case _ =>
+                defn.captureRoot.termRef // TODO: skolemize?
+            CapturingType(result, cap.singletonCaptureSet)
+          else result
 
       if expected == LhsProto || expected.isSingleton && actual.isSingleton then
         actual
@@ -1133,10 +1148,12 @@ class CheckCaptures extends Recheck, SymTransformer:
               case _ =>
           case _ =>
         val adapted = adapt(actualw.withReachCaptures(actual), expected, covariant = true)
-        if adapted ne actualw then
-          capt.println(i"adapt boxed $actual vs $expected ===> $adapted")
-          adapted
-        else actual
+        makeCaptureSetExplicit:
+          if adapted ne actualw then
+            capt.println(i"adapt boxed $actual vs $expected ===> $adapted")
+            adapted
+          else
+            actual
     end adaptBoxed
 
     /** Check overrides again, taking capture sets into account.

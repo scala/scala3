@@ -1,5 +1,4 @@
 import language.experimental.captureChecking
-import annotation.capability
 import caps.cap
 
 trait Ptr[A]
