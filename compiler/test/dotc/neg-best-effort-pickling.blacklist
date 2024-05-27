@@ -14,6 +14,7 @@ i17121.scala
 illegal-match-types.scala
 i13780-1.scala
 i20317a.scala
+i11226.scala
 
 # semantic db generation fails in the first compilation
 i1642.scala
