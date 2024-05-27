@@ -13,7 +13,6 @@
 package scala.collection
 
 import scala.annotation.implicitNotFound
-import language.experimental.captureChecking
 
 /**
   * Trait that overrides sorted map operations to take advantage of strict builders.
@@ -33,7 +32,7 @@ trait StrictOptimizedSortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] with SortedMapOp
   override def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)])(implicit @implicitNotFound(SortedMapOps.ordMsg) ordering: Ordering[K2]): CC[K2, V2] =
     strictOptimizedFlatMap(sortedMapFactory.newBuilder, f)
 
-  override def concat[V2 >: V](xs: IterableOnce[(K, V2)]^): CC[K, V2] =
+  override def concat[V2 >: V](xs: IterableOnce[(K, V2)]): CC[K, V2] =
     strictOptimizedConcat(xs, sortedMapFactory.newBuilder(using ordering))
 
   override def collect[K2, V2](pf: PartialFunction[(K, V), (K2, V2)])(implicit @implicitNotFound(SortedMapOps.ordMsg) ordering: Ordering[K2]): CC[K2, V2] =

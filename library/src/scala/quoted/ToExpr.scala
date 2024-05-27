@@ -97,7 +97,7 @@ object ToExpr {
   /** Default implementation of `ToExpr[Array[T]]` */
   given ArrayToExpr[T: Type: ToExpr: ClassTag]: ToExpr[Array[T]] with {
     def apply(arr: Array[T])(using Quotes): Expr[Array[T]] =
-      '{ Array[T](${Expr(arr.toSeq)}*)(${Expr(summon[ClassTag[T]])}) }
+      '{ Array[T](${Expr(arr.toSeq)}*)(using ${Expr(summon[ClassTag[T]])}) }
   }
 
   /** Default implementation of `ToExpr[Array[Boolean]]` */
