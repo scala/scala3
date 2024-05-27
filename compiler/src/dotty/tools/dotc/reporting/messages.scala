@@ -301,6 +301,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
     // these are usually easier to analyze. We exclude F-bounds since these would
     // lead to a recursive infinite expansion.
     object reported extends TypeMap, IdentityCaptRefMap:
+      var notes: String = ""
       def setVariance(v: Int) = variance = v
       val constraint = mapCtx.typerState.constraint
       var fbounded = false
@@ -318,6 +319,15 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
         case tp: LazyRef =>
           fbounded = true
           tp
+        case tp @ TypeRef(pre, _) =>
+          if pre != NoPrefix && !pre.member(tp.name).exists then
+            notes ++=
+              i"""
+                 |
+                 |Note that I could not resolve reference $tp.
+                 |${MissingType(pre, tp.name).reason}
+                 """
+          mapOver(tp)
         case _ =>
           mapOver(tp)
 
@@ -329,7 +339,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
       else (found1, expected1)
     val (foundStr, expectedStr) = Formatting.typeDiff(found2, expected2)
     i"""|Found:    $foundStr
-        |Required: $expectedStr"""
+        |Required: $expectedStr${reported.notes}"""
   end msg
 
   override def msgPostscript(using Context) =
