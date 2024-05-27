@@ -40,7 +40,7 @@ trait DottyTest extends ContextEscapeDetection {
   protected def initializeCtx(fc: FreshContext): Unit = {
     fc.setSetting(fc.settings.encoding, "UTF8")
     fc.setSetting(fc.settings.classpath, TestConfiguration.basicClasspath)
-    fc.setSetting(fc.settings.language, List("experimental.erasedDefinitions"))
+    fc.setSetting(fc.settings.language, List("experimental.erasedDefinitions").asInstanceOf)
     fc.setProperty(ContextDoc, new ContextDocstrings)
   }
 

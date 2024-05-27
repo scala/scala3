@@ -498,7 +498,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           else
             refineAtPrefix(childPre, childClass, childClass.primaryConstructor.info) match
               case info: PolyType =>
-                // Compute the the full child type by solving the subtype constraint
+                // Compute the full child type by solving the subtype constraint
                 // `C[X1, ..., Xn] <: P`, where
                 //
                 //   - P is the current `mirroredType`

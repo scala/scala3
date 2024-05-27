@@ -117,6 +117,13 @@ object language:
     @compileTimeOnly("`relaxedExtensionImports` can only be used at compile time in import statements")
     @deprecated("The experimental.relaxedExtensionImports language import is no longer needed since the feature is now standard", since = "3.4")
     object relaxedExtensionImports
+
+    /** Enhance match type extractors to follow aliases and singletons.
+     *
+     *  @see [[https://github.com/scala/improvement-proposals/pull/84]]
+     */
+    @compileTimeOnly("`betterMatchTypeExtractors` can only be used at compile time in import statements")
+    object betterMatchTypeExtractors
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.

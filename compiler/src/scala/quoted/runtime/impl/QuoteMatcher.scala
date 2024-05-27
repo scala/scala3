@@ -26,7 +26,7 @@ import dotty.tools.dotc.util.optional
  *   - `isClosedUnder(x1, .., xn)('{e})` returns true if and only if all the references in `e` to names defined in the pattern are contained in the set `{x1, ... xn}`.
  *   - `lift(x1, .., xn)('{e})` returns `(y1, ..., yn) => [xi = $yi]'{e}` where `yi` is an `Expr` of the type of `xi`.
  *   - `withEnv(x1 -> y1, ..., xn -> yn)(matching)` evaluates matching recording that `xi` is equivalent to `yi`.
- *   - `matched` denotes that the the match succeeded and `matched('{e})` denotes that a match succeeded and extracts `'{e}`
+ *   - `matched` denotes that the match succeeded and `matched('{e})` denotes that a match succeeded and extracts `'{e}`
  *   - `&&&` matches if both sides match. Concatenates the extracted expressions of both sides.
  *
  *   Note: that not all quoted terms bellow are valid expressions

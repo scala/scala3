@@ -29,7 +29,6 @@ import scala.collection.mutable
 import scala.annotation.tailrec
 import scala.annotation.constructorOnly
 import dotty.tools.dotc.core.Flags.AbstractOrTrait
-import Decorators.*
 
 /** Check initialization safety of static objects
  *

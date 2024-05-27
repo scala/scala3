@@ -826,7 +826,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if qual.tpe.derivesFrom(defn.SelectableClass) && !isDynamicExpansion(tree)
         && !pt.isInstanceOf[FunOrPolyProto] && pt != LhsProto
     then
-      val fieldsType = qual.tpe.select(tpnme.Fields).dealias.simplified
+      val pre = if !TypeOps.isLegalPrefix(qual.tpe) then SkolemType(qual.tpe) else qual.tpe
+      val fieldsType = pre.select(tpnme.Fields).dealias.simplified
       val fields = fieldsType.namedTupleElementTypes
       typr.println(i"try dyn select $qual, $selName, $fields")
       fields.find(_._1 == selName) match
@@ -1334,12 +1335,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
             val setter = toSetter(lhsCore)
             if setter.isEmpty then reassignmentToVal
-            else tryEither {
+            else
               val assign = untpd.Apply(setter, tree.rhs :: Nil)
               typed(assign, IgnoredProto(pt))
-            } {
-              (_, _) => reassignmentToVal
-            }
           case _ => lhsCore.tpe match {
             case ref: TermRef =>
               val lhsVal = lhsCore.denot.suchThat(!_.is(Method))
@@ -4113,7 +4111,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           * `SearchFailureType`.
           */
         def issueErrors(fun: Tree, args: List[Tree]): Tree =
-          def firstFailure = args.tpes.find(_.isInstanceOf[SearchFailureType]).getOrElse(NoType)
+          // Prefer other errors over ambiguities. If nested in outer searches a missing
+          // implicit can be healed by simply dropping this alternative and trying something
+          // else. But an ambiguity is sticky and propagates outwards. If we have both
+          // a missing implicit on one argument and an ambiguity on another the whole
+          // branch should be classified as a missing implicit.
+          val firstNonAmbiguous = args.tpes.find(tp => tp.isError && !tp.isInstanceOf[AmbiguousImplicits])
+          def firstError = args.tpes.find(_.isInstanceOf[SearchFailureType]).getOrElse(NoType)
+          def firstFailure = firstNonAmbiguous.getOrElse(firstError)
           val errorType =
             firstFailure match
               case tp: AmbiguousImplicits =>

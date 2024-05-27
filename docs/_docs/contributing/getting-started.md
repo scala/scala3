@@ -81,6 +81,12 @@ $ scalac tests/pos/HelloWorld.scala
 $ scala HelloWorld
 ```
 
+Note that the `scalac` and `scala` scripts have slow roundtrip times when working on the compiler codebase: whenever
+any source file changes they invoke `sbt dist/pack` first.
+
+As an alternative, run the `buildQuick` task in sbt. It builds the compiler and writes its classpath to the `bin/.cp`
+file, which enables  the `scalacQ` and `scalaQ` scripts in the `bin/` folder.
+
 ## Starting a REPL
 
 ```bash

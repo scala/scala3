@@ -85,7 +85,7 @@ object Build {
 
   val referenceVersion = "3.4.2-RC1"
 
-  val baseVersion = "3.5.0-RC1"
+  val baseVersion = "3.5.1-RC1"
 
   // LTS or Next
   val versionLine = "Next"
@@ -104,7 +104,7 @@ object Build {
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
    */
-  val mimaPreviousDottyVersion = "3.4.0"
+  val mimaPreviousDottyVersion = "3.5.0-RC1"
 
   /** LTS version against which we check binary compatibility.
    *
@@ -209,6 +209,8 @@ object Build {
   val scala = inputKey[Unit]("run compiled binary using the correct classpath, or the user supplied classpath")
 
   val repl = taskKey[Unit]("spawns a repl with the correct classpath")
+
+  val buildQuick = taskKey[Unit]("builds the compiler and writes the classpath to bin/.cp to enable the bin/scalacQ and bin/scalaQ scripts")
 
   // Compiles the documentation and static site
   val genDocs = inputKey[Unit]("run scaladoc to generate static documentation site")
@@ -1339,10 +1341,8 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   def presentationCompilerSettings(implicit mode: Mode) = {
-    val mtagsVersion = "1.3.0+56-a06a024d-SNAPSHOT"
-
+    val mtagsVersion = "1.3.1"
     Seq(
-      resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
       libraryDependencies ++= Seq(
         "org.lz4" % "lz4-java" % "1.8.0",
         "io.get-coursier" % "interface" % "1.0.18",
@@ -2156,6 +2156,11 @@ object Build {
         // default.
         addCommandAlias("publishLocal", "scala3-bootstrapped/publishLocal"),
         repl := (`scala3-compiler-bootstrapped` / repl).value,
+        buildQuick := {
+          val _ = (`scala3-compiler` / Compile / compile).value
+          val cp = (`scala3-compiler` / Compile / fullClasspath).value.map(_.data.getAbsolutePath).mkString(File.pathSeparator)
+          IO.write(baseDirectory.value / "bin" / ".cp", cp)
+        },
         (Compile / console) := (Compile / console).dependsOn(Def.task {
           import _root_.scala.io.AnsiColor._
           val msg = "`console` uses the reference Scala version. Use `repl` instead."
