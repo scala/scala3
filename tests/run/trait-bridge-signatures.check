@@ -1,0 +1,74 @@
+interface issue15402$Named {
+  public abstract issue15402$Named issue15402$Named.me()
+}
+
+interface issue15402$Foo {
+  public default issue15402$Foo issue15402$Foo.me()
+  public default issue15402$Named issue15402$Foo.me() <bridge> <synthetic>
+}
+
+interface issue15402$Foo2 {
+  public default issue15402$Foo issue15402$Foo.me()
+  public default issue15402$Named issue15402$Foo.me() <bridge> <synthetic>
+}
+
+interface Adapter {
+  public abstract java.lang.Object scala.Function1.apply(java.lang.Object)
+  - generic: public abstract R scala.Function1.apply(T1)
+}
+
+class issue15402b$$anon$1 {
+  public final void issue15402b$$anon$1.apply(java.lang.Number)
+  public java.lang.Object issue15402b$$anon$1.apply(java.lang.Object) <bridge> <synthetic>
+}
+
+interface collections$LinearSeqOps {
+  public abstract java.lang.Object collections$LinearSeqOps.head()
+  - generic: public abstract A collections$LinearSeqOps.head()
+  public abstract collections$LinearSeq collections$LinearSeqOps.tail()
+  - generic: public abstract C collections$LinearSeqOps.tail()
+  public default java.lang.Object collections$IterableOps.tail()
+  - generic: public default C collections$IterableOps.tail()
+}
+
+interface collections$LinearSeq {
+  public abstract java.lang.Object collections$LinearSeqOps.head()
+  - generic: public abstract A collections$LinearSeqOps.head()
+  public abstract collections$LinearSeq collections$LinearSeqOps.tail()
+  - generic: public abstract C collections$LinearSeqOps.tail()
+  public default java.lang.Object collections$IterableOps.tail()
+  - generic: public default C collections$IterableOps.tail()
+}
+
+interface collections$Iterable {
+  public default java.lang.Object collections$IterableOps.head()
+  - generic: public default A collections$IterableOps.head()
+  public default java.lang.Object collections$IterableOps.tail()
+  - generic: public default C collections$IterableOps.tail()
+}
+
+interface collections$IterableOps {
+  public default java.lang.Object collections$IterableOps.head()
+  - generic: public default A collections$IterableOps.head()
+  public default java.lang.Object collections$IterableOps.tail()
+  - generic: public default C collections$IterableOps.tail()
+}
+
+interface collections$Seq {
+  public static collections$Seq collections$Seq.from(collections$IterableOnce)
+  - generic: public static <E> collections$Seq<E> collections$Seq.from(collections$IterableOnce<E>)
+  public static collections$SeqOps collections$Seq.from(collections$IterableOnce) <synthetic>
+  public static java.lang.Object collections$Seq.from(collections$IterableOnce) <synthetic>
+  public default java.lang.Object collections$IterableOps.head()
+  - generic: public default A collections$IterableOps.head()
+  public default java.lang.Object collections$IterableOps.tail()
+  - generic: public default C collections$IterableOps.tail()
+}
+
+class EmptyCollection {
+  public static Func1 EmptyCollection.andThen(Func1) <synthetic>
+  - generic: public static <A> Func1<java.lang.Object, A> EmptyCollection.andThen(Func1<scala.runtime.Nothing$, A>)
+  public static PartialFunc EmptyCollection.andThen(Func1)
+  - generic: public static <C> PartialFunc<java.lang.Object, C> EmptyCollection.andThen(Func1<scala.runtime.Nothing$, C>)
+}
+

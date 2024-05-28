@@ -54,8 +54,11 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
     override lazy val parents: Array[Symbol] =
       root.info.parents.map(_.classSymbol).toArray
 
-    override protected def matches(sym1: Symbol, sym2: Symbol): Boolean =
-      sym1.signature.consistentParams(sym2.signature) && super.matches(sym1, sym2)
+    override protected def matches(sym: Symbol, overriden: Symbol): Boolean =
+      def resultType(sym: Symbol) = sym.info.finalResultType.typeSymbol
+      def consistentParams = sym.signature.consistentParams(overriden.signature)
+      def overridesAbstractResultType = resultType(overriden).isAbstractOrParamType
+      consistentParams && !overridesAbstractResultType && super.matches(sym, overriden)
 
     override def exclude(sym: Symbol) =
       !sym.isPublic || super.exclude(sym)
@@ -102,7 +105,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
                       |clashes with definition of the member itself; both have erased type ${info(member)(using elimErasedCtx)}."""",
                   bridgePosFor(member))
     }
-    else if !inContext(preErasureCtx)(site.memberInfo(member).matches(site.memberInfo(other))) then
+    else if !(inContext(preErasureCtx)(site.memberInfo(member).matches(site.memberInfo(other))) || member.owner.isAnonymousClass) then
       // Neither symbol signatures nor pre-erasure types seen from root match; this means
       // according to Scala 2 semantics there is no override.
       // A bridge might introduce a classcast exception.
