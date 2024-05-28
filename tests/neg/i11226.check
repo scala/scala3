@@ -1,6 +1,6 @@
 -- Error: tests/neg/i11226.scala:13:36 ---------------------------------------------------------------------------------
 13 |  def test(a: ActorRef): Unit = bus.unsubscribe(a) // error
    |                                    ^
-   |               Cannot resolve reference to type (Unsubscriber.this.bus : ManagedActorClassification).Subscriber.
-   |               Subscriber exists as a member of the self type ActorEventBus of trait ManagedActorClassification
-   |               but it cannot be referenced from a scope that does not extend that trait.
+   |              Cannot resolve reference to type (Unsubscriber.this.bus : ManagedActorClassification).Subscriber.
+   |              Subscriber exists as a member of the self type ActorEventBus of trait ManagedActorClassification
+   |              but it cannot be called on a receiver whose type does not extend trait ManagedActorClassification.
