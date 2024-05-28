@@ -1067,7 +1067,7 @@ trait Implicits:
     trace(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
       record("inferImplicit")
       assert(ctx.phase.allowsImplicitSearch,
-        if (argument.isEmpty) i"missing implicit parameter of type $pt after typer at phase ${ctx.phase.phaseName}"
+        if (argument.isEmpty) i"missing implicit parameter of type $pt after typer at phase ${ctx.phase}"
         else i"type error: ${argument.tpe} does not conform to $pt${err.whyNoMatchStr(argument.tpe, pt)}")
 
       val usableForInference = pt.exists && !pt.unusableForInference
