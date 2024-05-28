@@ -1319,12 +1319,10 @@ trait Implicits:
        *  3.6 and higher: compare with preferGeneral = true
        *
        */
-      def compareAlternatives(alt1: RefAndLevel, alt2: RefAndLevel): Int =
+      def compareAlternativesWithWarning(alt1: RefAndLevel, alt2: RefAndLevel): (Int, Option[Message]) =
         def comp(using Context) = explore(compare(alt1.ref, alt2.ref, preferGeneral = true))
-        def warn(msg: Message) =
-          priorityChangeWarnings += (alt1.ref -> msg) += (alt2.ref -> msg)
-        if alt1.ref eq alt2.ref then 0
-        else if alt1.level != alt2.level then alt1.level - alt2.level
+        if alt1.ref eq alt2.ref then (0, None)
+        else if alt1.level != alt2.level then (alt1.level - alt2.level, None)
         else
           var cmp = comp(using searchContext())
           val sv = Feature.sourceVersion
@@ -1335,20 +1333,25 @@ trait Implicits:
                 case -1 => "the second alternative"
                 case  1 => "the first alternative"
                 case _  => "none - it's ambiguous"
+              val sv = Feature.sourceVersion
               if sv.stable == SourceVersion.`3.5` then
-                warn(
-                  em"""Given search preference for $pt between alternatives ${alt1.ref} and ${alt2.ref} will change
+                (prev,
+                  Some(em"""Given search preference for $pt between alternatives ${alt1.ref} and ${alt2.ref} will change
                       |Current choice           : ${choice(prev)}
-                      |New choice from Scala 3.6: ${choice(cmp)}""")
-                prev
+                      |New choice from Scala 3.6: ${choice(cmp)}"""))
               else
-                warn(
-                  em"""Change in given search preference for $pt between alternatives ${alt1.ref} and ${alt2.ref}
+                (cmp,
+                  Some(em"""Change in given search preference for $pt between alternatives ${alt1.ref} and ${alt2.ref}
                       |Previous choice          : ${choice(prev)}
-                      |New choice from Scala 3.6: ${choice(cmp)}""")
-                cmp
-            else cmp
-          else cmp
+                      |New choice from Scala 3.6: ${choice(cmp)}"""))
+              else (cmp, None)
+          else (cmp, None)
+      def compareAlternatives(alt1: RefAndLevel, alt2: RefAndLevel): Int =
+        inline def warn(msg: Message) =
+          priorityChangeWarnings += (alt1.ref -> msg) += (alt2.ref -> msg)
+        val (cmp, warnings) = compareAlternativesWithWarning(alt1, alt2)
+        warnings.foreach(warn(_))
+        cmp
       end compareAlternatives
 
       /** If `alt1` is also a search success, try to disambiguate as follows:
@@ -1449,7 +1452,16 @@ trait Implicits:
                     val newPending =
                       if (retained eq found) || remaining.isEmpty then remaining
                       else remaining.filterConserve(cand =>
-                        compareAlternatives(retained, cand) <= 0)
+                        compareAlternativesWithWarning(retained, cand) match
+                          case (cmp, _) if cmp <= 0 => true
+                          case (cmp, Some(msg)) =>
+                            if negateIfNot(tryImplicit(cand, contextual)).isInstanceOf[SearchSuccess] then
+                              priorityChangeWarnings += (cand.ref -> msg) += (retained.ref -> msg)
+                            false
+                          case _ => false
+
+
+                      )
                     rank(newPending, retained, rfailures)
                   case fail: SearchFailure =>
                     // The ambiguity happened in the current search: to recover we
