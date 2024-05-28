@@ -419,7 +419,9 @@ class ShortenedTypePrinter(
     if gsym.is(Flags.ExtensionMethod) then
       val filteredParams =
         if gsym.name.isRightAssocOperatorName then
-          val (leadingTyParamss, rest1) = paramss.span(isTypeParamClause)
+          val (leadingTyParamss, rest1) = paramss match
+            case fst :: tail if isTypeParamClause(fst) => (List(fst), tail)
+            case other => (List(), other)
           val (leadingUsing, rest2) = rest1.span(isUsingClause)
           val (rightTyParamss, rest3) = rest2.span(isTypeParamClause)
           val (rightParamss, rest4) = rest3.splitAt(1)
