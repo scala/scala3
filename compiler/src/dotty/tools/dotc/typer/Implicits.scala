@@ -419,6 +419,12 @@ object Implicits:
   sealed abstract class SearchResult extends Showable {
     def tree: Tree
     def toText(printer: Printer): Text = printer.toText(this)
+
+    /** The references that were found, there can be two of them in the case
+     *  of an AmbiguousImplicits failure
+     */
+    def found: List[TermRef]
+
     def recoverWith(other: SearchFailure => SearchResult): SearchResult = this match {
       case _: SearchSuccess => this
       case fail: SearchFailure => other(fail)
@@ -434,13 +440,17 @@ object Implicits:
    *  @param tstate The typer state to be committed if this alternative is chosen
    */
   case class SearchSuccess(tree: Tree, ref: TermRef, level: Int, isExtension: Boolean = false)(val tstate: TyperState, val gstate: GadtConstraint)
-  extends SearchResult with RefAndLevel with Showable
+  extends SearchResult with RefAndLevel with Showable:
+    final def found = ref :: Nil
 
   /** A failed search */
   case class SearchFailure(tree: Tree) extends SearchResult {
     require(tree.tpe.isInstanceOf[SearchFailureType], s"unexpected type for ${tree}")
     final def isAmbiguous: Boolean = tree.tpe.isInstanceOf[AmbiguousImplicits | TooUnspecific]
     final def reason: SearchFailureType = tree.tpe.asInstanceOf[SearchFailureType]
+    final def found = tree.tpe match
+      case tpe: AmbiguousImplicits => tpe.alt1.ref :: tpe.alt2.ref :: Nil
+      case _ => Nil
   }
 
   object SearchFailure {
@@ -1290,6 +1300,12 @@ trait Implicits:
     /** Search a list of eligible implicit references */
     private def searchImplicit(eligible: List[Candidate], contextual: Boolean): SearchResult =
 
+      // A map that associates a priority change warning (between -source 3.4 and 3.6)
+      // with the candidate refs mentioned in the warning. We report the associated
+      // message if both candidates qualify in tryImplicit and at least one of the candidates
+      // is part of the result of the implicit search.
+      val priorityChangeWarnings = mutable.ListBuffer[(TermRef, TermRef, Message)]()
+
       /** Compare `alt1` with `alt2` to determine which one should be chosen.
        *
        *  @return  a number > 0   if `alt1` is preferred over `alt2`
@@ -1306,6 +1322,8 @@ trait Implicits:
        */
       def compareAlternatives(alt1: RefAndLevel, alt2: RefAndLevel): Int =
         def comp(using Context) = explore(compare(alt1.ref, alt2.ref, preferGeneral = true))
+        def warn(msg: Message) =
+          priorityChangeWarnings += ((alt1.ref, alt2.ref, msg))
         if alt1.ref eq alt2.ref then 0
         else if alt1.level != alt2.level then alt1.level - alt2.level
         else
@@ -1319,16 +1337,16 @@ trait Implicits:
                 case  1 => "the first alternative"
                 case _  => "none - it's ambiguous"
               if sv.stable == SourceVersion.`3.5` then
-                report.warning(
+                warn(
                   em"""Given search preference for $pt between alternatives ${alt1.ref} and ${alt2.ref} will change
                       |Current choice           : ${choice(prev)}
-                      |New choice from Scala 3.6: ${choice(cmp)}""", srcPos)
+                      |New choice from Scala 3.6: ${choice(cmp)}""")
                 prev
               else
-                report.warning(
+                warn(
                   em"""Change in given search preference for $pt between alternatives ${alt1.ref} and ${alt2.ref}
                       |Previous choice          : ${choice(prev)}
-                      |New choice from Scala 3.6: ${choice(cmp)}""", srcPos)
+                      |New choice from Scala 3.6: ${choice(cmp)}""")
                 cmp
             else cmp
           else cmp
@@ -1423,7 +1441,11 @@ trait Implicits:
                     // need a candidate better than `cand`
                     healAmbiguous(fail, newCand =>
                       compareAlternatives(newCand, cand) > 0)
-                else rank(remaining, found, fail :: rfailures)
+                else
+                  // keep only warnings that don't involve the failed candidate reference
+                  priorityChangeWarnings.filterInPlace: (ref1, ref2, _) =>
+                    ref1 != cand.ref && ref2 != cand.ref
+                  rank(remaining, found, fail :: rfailures)
               case best: SearchSuccess =>
                 if (ctx.mode.is(Mode.ImplicitExploration) || isCoherent)
                   best
@@ -1578,7 +1600,11 @@ trait Implicits:
             validateOrdering(ord)
             throw ex
 
-      rank(sort(eligible), NoMatchingImplicitsFailure, Nil)
+      val result = rank(sort(eligible), NoMatchingImplicitsFailure, Nil)
+      for (ref1, ref2, msg) <- priorityChangeWarnings do
+        if result.found.exists(ref => ref == ref1 || ref == ref2) then
+          report.warning(msg, srcPos)
+      result
     end searchImplicit
 
     def isUnderSpecifiedArgument(tp: Type): Boolean =
