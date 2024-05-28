@@ -477,7 +477,7 @@ object Contexts {
 
     /** Is the flexible types option set? */
     def flexibleTypes: Boolean = base.settings.YexplicitNulls.value && !base.settings.YnoFlexibleTypes.value
-    
+
     /** Is the best-effort option set? */
     def isBestEffort: Boolean = base.settings.YbestEffort.value
 
