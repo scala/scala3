@@ -1301,9 +1301,10 @@ trait Implicits:
     private def searchImplicit(eligible: List[Candidate], contextual: Boolean): SearchResult =
 
       // A map that associates a priority change warning (between -source 3.4 and 3.6)
-      // with a candidate ref mentioned in the warning. We report the associated
-      // message if the candidate ref is part of the result of the implicit search
-      var priorityChangeWarnings = mutable.ListBuffer[(TermRef, Message)]()
+      // with the candidate refs mentioned in the warning. We report the associated
+      // message if both candidates qualify in tryImplicit and at least one of the candidates
+      // is part of the result of the implicit search.
+      val priorityChangeWarnings = mutable.ListBuffer[(TermRef, TermRef, Message)]()
 
       /** Compare `alt1` with `alt2` to determine which one should be chosen.
        *
@@ -1322,7 +1323,7 @@ trait Implicits:
       def compareAlternatives(alt1: RefAndLevel, alt2: RefAndLevel): Int =
         def comp(using Context) = explore(compare(alt1.ref, alt2.ref, preferGeneral = true))
         def warn(msg: Message) =
-          priorityChangeWarnings += (alt1.ref -> msg) += (alt2.ref -> msg)
+          priorityChangeWarnings += ((alt1.ref, alt2.ref, msg))
         if alt1.ref eq alt2.ref then 0
         else if alt1.level != alt2.level then alt1.level - alt2.level
         else
@@ -1440,7 +1441,11 @@ trait Implicits:
                     // need a candidate better than `cand`
                     healAmbiguous(fail, newCand =>
                       compareAlternatives(newCand, cand) > 0)
-                else rank(remaining, found, fail :: rfailures)
+                else
+                  // keep only warnings that don't involve the failed candidate reference
+                  priorityChangeWarnings.filterInPlace: (ref1, ref2, _) =>
+                    ref1 != cand.ref && ref2 != cand.ref
+                  rank(remaining, found, fail :: rfailures)
               case best: SearchSuccess =>
                 if (ctx.mode.is(Mode.ImplicitExploration) || isCoherent)
                   best
@@ -1596,8 +1601,9 @@ trait Implicits:
             throw ex
 
       val result = rank(sort(eligible), NoMatchingImplicitsFailure, Nil)
-      for (ref, msg) <- priorityChangeWarnings do
-        if result.found.contains(ref) then report.warning(msg, srcPos)
+      for (ref1, ref2, msg) <- priorityChangeWarnings do
+        if result.found.exists(ref => ref == ref1 || ref == ref2) then
+          report.warning(msg, srcPos)
       result
     end searchImplicit
 
