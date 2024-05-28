@@ -72,7 +72,7 @@ class MissingType(val pre: Type, val name: Name)(using Context) extends TypeErro
            |or the self type of $pre might not contain all transitive dependencies"""
       case _ if givenSelf.exists && givenSelf.member(name).exists =>
         i"""$name exists as a member of the self type $givenSelf of $cls
-           |but it cannot be referenced from a scope that does not extend that ${ctx.printer.kindString(cls)}"""
+           |but it cannot be called on a receiver whose type does not extend $cls"""
       case _ =>
         missingClassFile
 
