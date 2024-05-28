@@ -69,14 +69,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   /** In capture checking: The existential types that are open because they
    *  appear in an existential type on the left in an enclosing comparison.
    */
-  private var openedExistentials: List[RecThis] = Nil
+  private var openedExistentials: List[TermParamRef] = Nil
 
   /** In capture checking: A map from existential types that are appear
    *  in an existential type on the right in an enclosing comparison.
    *  Each existential gets mapped to the opened existentials to which it
    *  may resolve at this point.
    */
-  private var assocExistentials: Map[RecThis, List[RecThis]] = Map.empty
+  private var assocExistentials: Map[TermParamRef, List[TermParamRef]] = Map.empty
 
   private var myInstance: TypeComparer = this
   def currentInstance: TypeComparer = myInstance
@@ -341,14 +341,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               else
                 (tp1.name eq tp2.name)
                 && !sym1.is(Private)
-                && (
-                  tp2.isPrefixDependentMemberRef
-                    && isSubPrefix(tp1.prefix, tp2.prefix)
-                    && tp1.signature == tp2.signature
-                    && !(sym1.isClass && sym2.isClass)  // class types don't subtype each other
-                  || tp1.name == nme.CAPTURE_ROOT
-                    && existentialsConform(tp1, tp2)
-                )
+                && tp2.isPrefixDependentMemberRef
+                && isSubPrefix(tp1.prefix, tp2.prefix)
+                && tp1.signature == tp2.signature
+                && !(sym1.isClass && sym2.isClass)  // class types don't subtype each other
                 || thirdTryNamed(tp2)
             case _ =>
               secondTry
@@ -361,7 +357,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp2: ProtoType =>
         isMatchedByProto(tp2, tp1)
       case tp2: BoundType =>
-        tp2 == tp1 || secondTry
+        tp2 == tp1
+        || existentialVarsConform(tp1, tp2)
+        || secondTry
       case tp2: TypeVar =>
         recur(tp1, typeVarInstance(tp2))
       case tp2: WildcardType =>
@@ -432,18 +430,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case _ =>
         secondTry
     }
-
-    def existentialsConform(tp1: NamedType, tp2: NamedType) = (tp1, tp2) match
-      case (TermRef(rt1: RecThis, _), TermRef(rt2: RecThis, _)) =>
-        def link(rt1: RecThis, rt2: RecThis) =
-          assocExistentials.get(rt2).exists(_.contains(rt1))
-          && {
-            assocExistentials = assocExistentials.updated(rt2, rt1 :: Nil)
-            true
-          }
-        link(rt2, rt1) || link(rt1, rt2)
-      case _ =>
-        false
 
     def secondTry: Boolean = tp1 match {
       case tp1: NamedType =>
@@ -575,13 +561,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         if reduced.exists then
           recur(reduced, tp2) && recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp1) }
         else thirdTry
-      case tp1 @ cc.Existential(tp1unpacked) =>
-        val saved = openedExistentials
-        try
-          openedExistentials = tp1.recThis :: openedExistentials
-          recur(tp1unpacked, tp2)
-        finally
-          openedExistentials = saved
+      case Existential(boundVar, tp1unpacked) =>
+        compareExistentialLeft(boundVar, tp1unpacked, tp2)
       case _: FlexType =>
         true
       case _ =>
@@ -663,6 +644,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         thirdTryNamed(tp2)
       case tp2: TypeParamRef =>
         compareTypeParamRef(tp2)
+      case Existential(boundVar, tp2unpacked) =>
+        compareExistentialRight(tp1, boundVar, tp2unpacked)
       case tp2: RefinedType =>
         def compareRefinedSlow: Boolean =
           val name2 = tp2.refinedName
@@ -732,13 +715,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         end compareRefined
 
         compareRefined
-      case tp2 @ cc.Existential(tp2unpacked) =>
-        val saved = assocExistentials
-        try
-          assocExistentials = assocExistentials.updated(tp2.recThis, openedExistentials)
-          recur(tp1, tp2unpacked)
-        finally
-          assocExistentials = saved
       case tp2: RecType =>
         def compareRec = tp1.safeDealias match {
           case tp1: RecType =>
@@ -1462,20 +1438,21 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           canConstrain(param2) && canInstantiate(param2) ||
           compareLower(bounds(param2), tyconIsTypeRef = false)
         case tycon2: TypeRef =>
-          isMatchingApply(tp1) ||
-          byGadtBounds ||
-          defn.isCompiletimeAppliedType(tycon2.symbol) && compareCompiletimeAppliedType(tp2, tp1, fromBelow = true) || {
-            tycon2.info match {
-              case info2: TypeBounds =>
-                compareLower(info2, tyconIsTypeRef = true)
-              case info2: ClassInfo =>
-                tycon2.name.startsWith("Tuple") &&
-                  defn.isTupleNType(tp2) && recur(tp1, tp2.toNestedPairs) ||
-                tryBaseType(info2.cls)
-              case _ =>
-                fourthTry
-            }
-          } || tryLiftedToThis2
+          isMatchingApply(tp1)
+          || byGadtBounds
+          || defn.isCompiletimeAppliedType(tycon2.symbol)
+              && compareCompiletimeAppliedType(tp2, tp1, fromBelow = true)
+          || tycon2.info.match
+                case info2: TypeBounds =>
+                  compareLower(info2, tyconIsTypeRef = true)
+                case info2: ClassInfo =>
+                  tycon2.name.startsWith("Tuple")
+                  && defn.isTupleNType(tp2)
+                  && recur(tp1, tp2.toNestedPairs)
+                  || tryBaseType(info2.cls)
+                case _ =>
+                  fourthTry
+          || tryLiftedToThis2
 
         case tv: TypeVar =>
           if tv.isInstantiated then
@@ -1512,12 +1489,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               inFrozenGadt { isSubType(bounds1.hi.applyIfParameterized(args1), tp2, approx.addLow) }
             } && recordGadtUsageIf(true)
 
-
           !sym.isClass && {
             defn.isCompiletimeAppliedType(sym) && compareCompiletimeAppliedType(tp1, tp2, fromBelow = false) ||
             { recur(tp1.superTypeNormalized, tp2) && recordGadtUsageIf(MatchType.thatReducesUsingGadt(tp1)) } ||
             tryLiftedToThis1
-          } || byGadtBounds
+          }
+          || byGadtBounds
         case tycon1: TypeProxy =>
           recur(tp1.superTypeNormalized, tp2)
         case _ =>
@@ -2818,6 +2795,43 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       false
   }
 
+  private def compareExistentialLeft(boundVar: TermParamRef, tp1unpacked: Type, tp2: Type)(using Context): Boolean =
+    val saved = openedExistentials
+    try
+      openedExistentials = boundVar :: openedExistentials
+      recur(tp1unpacked, tp2)
+    finally
+      openedExistentials = saved
+
+  private def compareExistentialRight(tp1: Type, boundVar: TermParamRef, tp2unpacked: Type)(using Context): Boolean =
+    val saved = assocExistentials
+    try
+      //println(i"assoc $boundVar = $openedExistentials")
+      assocExistentials = assocExistentials.updated(boundVar, openedExistentials)
+      recur(tp1, tp2unpacked)
+    finally
+      assocExistentials = saved
+
+  def linkOK(tp1: TermParamRef, tp2: CaptureRef)(using Context): Boolean =
+    assocExistentials.get(tp1).exists(_.contains(tp2))
+    && {
+      assocExistentials = assocExistentials.updated(tp1, tp2.asInstanceOf[TermParamRef] :: Nil)
+      true
+    }
+
+  /** Are tp1, tp2 termRefs that can be linked? This should never be called
+   *  normally, since exietential variables appear only in capture sets
+   *  which are in annotations that are ignored during normal typing. The real
+   *  work is done in CaptureSet#subsumes which calls linkOK directly.
+   */
+  private def existentialVarsConform(tp1: Type, tp2: Type) = tp1 match
+    case tp1: TermParamRef =>
+      tp2 match
+        case tp2: TermParamRef =>
+          linkOK(tp1, tp2) || linkOK(tp2, tp1)
+        case _ => false
+    case _ => false
+
   protected def subCaptures(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult =
     refs1.subCaptures(refs2, frozen)
 
@@ -3282,6 +3296,9 @@ object TypeComparer {
 
   def lub(tp1: Type, tp2: Type, canConstrain: Boolean = false, isSoft: Boolean = true)(using Context): Type =
     comparing(_.lub(tp1, tp2, canConstrain = canConstrain, isSoft = isSoft))
+
+  def linkOK(tp1: TermParamRef, tp2: CaptureRef)(using Context) =
+    comparing(_.linkOK(tp1, tp2))
 
   /** The least upper bound of a list of types */
   final def lub(tps: List[Type])(using Context): Type =

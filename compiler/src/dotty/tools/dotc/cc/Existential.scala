@@ -6,6 +6,9 @@ import core.*
 import Types.*, Symbols.*, Contexts.*, Annotations.*, Flags.*
 import CaptureSet.IdempotentCaptRefMap
 import StdNames.nme
+import ast.tpd.*
+import Decorators.*
+import typer.ErrorReporting.errorType
 
 /**
 
@@ -77,20 +80,29 @@ Subtype rules
 
 Representation:
 
-  EX a.T[a] is  represented as
+  EX a.T[a] is represented as a dependent function type
 
-      r @ RecType(T[TermRef[r.recThis, caps.cap]]
+      (a: Exists) => T[a]]
+
+  where Exists is defined in caps like this:
+
+      sealed trait Exists extends Capability
+
+  The defn.RefinedFunctionOf extractor will exclude existential types from
+  its results, so only normal refined functions match.
+
+  Let `boundvar(ex)` be the TermParamRef defined by the extistential type `ex`.
 
 Subtype checking algorithm, general scheme:
 
   Maintain two structures in TypeComparer:
 
-    openExistentials: List[RecThis]
-    assocExistentials: Map[RecThis, List[RecThis]]
+    openExistentials: List[TermParamRef]
+    assocExistentials: Map[TermParamRef, List[TermParamRef]]
 
   `openExistentials` corresponds to the list of existential variables stored in the environment.
   `assocExistentials` maps existential variables bound by existentials appearing on the right
-  of a subtype judgement to a list of possible associations. Initally this is openExistentials
+  of a subtype judgement to a list of possible associations. Initially this is openExistentials
   at the time when the existential on the right was dropped. It can become a single existential
   when the existentially bound key variable is unified with one of the variables in the
   environment.
@@ -100,38 +112,31 @@ Subtype checking algorithm, steps to add for tp1 <:< tp2:
   If tp1 is an existential EX a.tp1a:
 
       val saved = openExistentials
-      openExistentials = tp1.recThis :: openExistentials
+      openExistentials = boundvar(tp1) :: openExistentials
       try tp1a <:< tp2
       finally openExistentials = saved
 
   If tp2 is an existential EX a.tp2a:
 
       val saved = assocExistentials
-      assocExistentials = assocExistentials + (tp2.recThis -> openExistentials
+      assocExistentials = assocExistentials + (boundvar(tp2) -> openExistentials
       try tp1 <:< tp2a
       finally assocExistentials = saved
 
-  If tp1 and tp2 are existentially bound variables `TermRef(pre1/pre2: RecThis, cap)`:
+  If tp1 and tp2 are existentially bound variables:
 
-      assocExistentials(pre2).contains(pre1) &&
-      { assocExistentials(pre2) = List(pre1); true }
+      assocExistentials(tpi).contains(tpj) &&
+      { assocExistentials(tpi) = List(tpj); true }
 
 Existential source syntax:
 
   Existential types are ususally not written in source, since we still allow the `^`
   syntax that can express most of them more concesely (see below for translation rules).
   But we should also allow to write existential types explicity, even if it ends up mainly
-  for debugging. To express them, we add the following trait definition in the caps object:
+  for debugging. To express them, we use the encoding with `Exists`, so a typical
+  expression of an existential would be
 
-      trait Exists[X]
-
-  A typical expression of an existential is then
-
-      Exists[(x: Capability) => A ->{x} B]
-
-  Existential types are expanded at Typer to the RecType syntax presented above. It is checked
-  that the type argument is a dependent function type with one argument of type `Capability` and
-  that this argument is used only in capture sets of the result type.
+      (x: Exists) => A ->{x} B
 
   Existential types can only appear at the top-level of _legal existential scopes_. These are:
 
@@ -183,6 +188,23 @@ Expansion of ^:
 */
 object Existential:
 
+  def fromDepFun(arg: Tree)(using Context): Type = arg.tpe match
+    case RefinedType(parent, nme.apply, info: MethodType) if defn.isNonRefinedFunction(parent) =>
+      info match
+        case info @ MethodType(_ :: Nil)
+        if info.paramInfos.head.derivesFrom(defn.Caps_Capability) =>
+          apply(ref => info.resultType.substParams(info, ref :: Nil))
+        case _ =>
+          errorType(em"Malformed existential: dependent function must have a singgle parameter of type caps.Capability", arg.srcPos)
+    case _ =>
+      errorType(em"Malformed existential: dependent function type expected", arg.srcPos)
+
+  def apply(fn: TermRef => Type)(using Context): RecType =
+    RecType(rt => fn(exBoundRef(rt)))
+
+  def exBoundRef(rt: RecType)(using Context): TermRef =
+    TermRef(rt.recThis, defn.captureRoot)
+
   private class PackMap(sym: Symbol, rt: RecType)(using Context) extends DeepTypeMap, IdempotentCaptRefMap:
     def apply(tp: Type): Type = tp match
       case ref: TermRef if ref.symbol == sym => TermRef(rt.recThis, defn.captureRoot)
@@ -209,9 +231,14 @@ object Existential:
   def fromSymbol(tp: Type, sym: Symbol)(using Context): RecType =
     RecType(PackMap(sym, _)(tp))
 
-  def unapply(rt: RecType)(using Context): Option[Type] =
-    if isCaptureChecking && rt.parent.existsPart(isExBound(_, rt))
-    then Some(rt.parent)
-    else None
+  def isExistentialMethod(mt: MethodType)(using Context): Boolean = mt.paramInfos match
+    case (info: TypeRef) :: rest => info.symbol == defn.Caps_Exists && rest.isEmpty
+    case _ => false
 
+  def unapply(tp: RefinedType)(using Context): Option[(TermParamRef, Type)] =
+    tp.refinedInfo match
+      case mt: MethodType
+      if isExistentialMethod(mt) && defn.isNonRefinedFunction(tp.parent) =>
+        Some(mt.paramRefs.head, mt.resultType)
+      case _ => None
 end Existential

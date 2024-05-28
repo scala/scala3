@@ -907,8 +907,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case expected @ defn.FunctionOf(args, resultType, isContextual)
         if defn.isNonRefinedFunction(expected) =>
           actual match
-            case RefinedType(parent, nme.apply, rinfo: MethodType)
-            if defn.isFunctionNType(actual) =>
+            case defn.RefinedFunctionOf(rinfo: MethodType) =>
               depFun(args, resultType, isContextual, rinfo.paramNames)
             case _ => expected
         case _ => expected
@@ -999,7 +998,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           val (eargs, eres) = expected.dealias.stripCapturing match
             case defn.FunctionOf(eargs, eres, _) => (eargs, eres)
             case expected: MethodType => (expected.paramInfos, expected.resType)
-            case expected @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionNType(expected) => (rinfo.paramInfos, rinfo.resType)
+            case defn.RefinedFunctionOf(rinfo: MethodType) => (rinfo.paramInfos, rinfo.resType)
             case _ => (aargs.map(_ => WildcardType), WildcardType)
           val aargs1 = aargs.zipWithConserve(eargs) { (aarg, earg) => adapt(aarg, earg, !covariant) }
           val ares1 = adapt(ares, eres, covariant)
