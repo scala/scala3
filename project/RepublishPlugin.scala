@@ -62,6 +62,7 @@ object RepublishPlugin extends AutoPlugin {
     val republishFetchLaunchers = taskKey[Set[File]]("cache the launcher deps for the distribution")
     val republishFetchCoursier = taskKey[File]("cache the coursier.jar for resolving the local maven repo.")
     val republishPrepareBin = taskKey[File]("prepare the bin directory, including launchers and scripts.")
+    val republishWriteExtraProps = taskKey[Option[File]]("write extra properties for the launchers.")
     val republishBinDir = settingKey[File]("where to find static files for the bin dir.")
     val republishCoursierDir = settingKey[File]("where to download the coursier launcher jar.")
     val republishBinOverrides = settingKey[Seq[File]]("files to override those in bin-dir.")
@@ -69,6 +70,7 @@ object RepublishPlugin extends AutoPlugin {
     val republishRepo = settingKey[File]("the location to store the republished artifacts.")
     val republishLaunchers = settingKey[Seq[(String, String)]]("launchers to download. Sequence of (name, URL).")
     val republishCoursier = settingKey[Seq[(String, String)]]("coursier launcher to download. Sequence of (name, URL).")
+    val republishExtraProps = settingKey[Seq[(String, String)]]("extra properties for launchers.")
   }
 
   import autoImport._
@@ -276,6 +278,7 @@ object RepublishPlugin extends AutoPlugin {
     republishLaunchers := Seq.empty,
     republishCoursier := Seq.empty,
     republishBinOverrides := Seq.empty,
+    republishExtraProps := Seq.empty,
     republishLocalResolved / republishProjectRefs := {
       val proj = thisProjectRef.value
       val deps = buildDependencies.value
@@ -366,10 +369,31 @@ object RepublishPlugin extends AutoPlugin {
       }
       targetBin
     },
+    republishWriteExtraProps := {
+      val s = streams.value
+      val log = s.log
+      val extraProps = republishExtraProps.value
+      if (extraProps.isEmpty) {
+        log.info("[republish] No extra properties to write.")
+        None
+      }
+      else {
+        val repoDir = republishRepo.value
+        val propsFile = repoDir / "etc" / "EXTRA_PROPERTIES"
+        log.info(s"[republish] Writing extra properties to $propsFile...")
+        Using.fileWriter()(propsFile) { writer =>
+          extraProps.foreach { case (k, v) =>
+            writer.write(s"$k:=$v\n")
+          }
+        }
+        Some(propsFile)
+      }
+    },
     republish := {
       val cacheDir = republishRepo.value
       val artifacts = republishClasspath.value
       val launchers = republishFetchLaunchers.value
+      val extraProps = republishWriteExtraProps.value
       cacheDir
     }
   )
