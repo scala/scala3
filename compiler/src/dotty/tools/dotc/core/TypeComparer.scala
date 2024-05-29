@@ -2905,6 +2905,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         tp
       case tp: ConstantType =>
         tp
+      case tp: AppliedType if tp.tryCompiletimeConstantFold.exists =>
+        tp.tryCompiletimeConstantFold
       case tp: HKTypeLambda =>
         tp
       case tp: ParamRef =>
