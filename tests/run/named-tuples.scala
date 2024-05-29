@@ -100,6 +100,16 @@ val _: CombinedInfo = bob ++ addr
   val addr4 = addr3.zip("Preverenges", 1028)
   println(addr4)
 
+  val reducer: (map: Person => Int, reduce: (Int, Int) => Int) =
+    (map = _.age, reduce = _ + _)
+
+  extension [T](xs: List[T])
+    def mapReduce[U](reducer: (map: T => U, reduce: (U, U) => U)): U =
+      xs.map(reducer.map).reduce(reducer.reduce)
+
+  val totalAge = persons.mapReduce(reducer)
+  println(totalAge)
+
   // testing conversions
 object Conv:
 
@@ -107,8 +117,3 @@ object Conv:
   def f22(x: (String, Int)) = x._1
   def f22(x: String) = x
   f22(bob)
-
-
-
-
-
