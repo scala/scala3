@@ -235,7 +235,21 @@ object PickledQuotes {
 
   /** Unpickle TASTY bytes into it's tree */
   private def unpickle(pickled: String | List[String], isType: Boolean)(using Context): Tree = {
-    QuotesCache.getTree(pickled) match
+    val unpicklingContext =
+      if ctx.owner.isClass then
+        // When a quote is unpickled with a Quotes context that that has a class `spliceOwner`
+        // we need to use a dummy owner to unpickle it. Otherwise any definitions defined
+        // in the quoted block would be accidentally entered in the class.
+        // When splicing this expression, this owner is replaced with the correct owner (see `quotedExprToTree` and `quotedTypeToTree` above).
+        // On the other hand, if the expression is used as a reflect term, the user must call `changeOwner` (same as with other expressions used within a nested owner).
+        // `-Xcheck-macros` will check for inconsistent owners and provide the users hints on how to improve them.
+        //
+        // Quotes context that that has a class `spliceOwner` can come from a macro annotation
+        // or a user setting it explicitly using `Symbol.asQuotes`.
+        ctx.withOwner(newSymbol(ctx.owner, "$quoteOwnedByClass$".toTermName, Private, defn.AnyType, NoSymbol))
+      else ctx
+
+    QuotesCache.getTree(pickled, unpicklingContext.owner) match
       case Some(tree) =>
         quotePickling.println(s"**** Using cached quote for TASTY\n$tree")
         treeOwner(tree) match
@@ -250,20 +264,6 @@ object PickledQuotes {
           case pickled: String => TastyString.unpickle(pickled)
           case pickled: List[String] => TastyString.unpickle(pickled)
 
-        val unpicklingContext =
-          if ctx.owner.isClass then
-            // When a quote is unpickled with a Quotes context that that has a class `spliceOwner`
-            // we need to use a dummy owner to unpickle it. Otherwise any definitions defined
-            // in the quoted block would be accidentally entered in the class.
-            // When splicing this expression, this owner is replaced with the correct owner (see `quotedExprToTree` and `quotedTypeToTree` above).
-            // On the other hand, if the expression is used as a reflect term, the user must call `changeOwner` (same as with other expressions used within a nested owner).
-            // `-Xcheck-macros` will check for inconsistent owners and provide the users hints on how to improve them.
-            //
-            // Quotes context that that has a class `spliceOwner` can come from a macro annotation
-            // or a user setting it explicitly using `Symbol.asQuotes`.
-            ctx.withOwner(newSymbol(ctx.owner, "$quoteOwnedByClass$".toTermName, Private, defn.AnyType, NoSymbol))
-            else ctx
-
         inContext(unpicklingContext) {
 
           quotePickling.println(s"**** unpickling quote from TASTY\n${TastyPrinter.showContents(bytes, ctx.settings.color.value == "never", isBestEffortTasty = false)}")
@@ -273,10 +273,26 @@ object PickledQuotes {
           unpickler.enter(Set.empty)
 
           val tree = unpickler.tree
-          QuotesCache(pickled) = tree
 
+          var includesSymbolDefinition = false
           // Make sure trees and positions are fully loaded
-          tree.foreachSubTree(identity)
+          new TreeTraverser {
+            def traverse(tree: Tree)(using Context): Unit =
+              tree match
+                case _: DefTree =>
+                  if !tree.symbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot)
+                  && !tree.symbol.hasAnnotation(defn.QuotedRuntimePatterns_patternTypeAnnot)
+                  then
+                    includesSymbolDefinition = true
+                case _ =>
+              traverseChildren(tree)
+          }.traverse(tree)
+
+          // We cache with the context symbol owner only if we need to
+          val symbolOwnerMaybe = 
+            if (includesSymbolDefinition) Some(ctx.owner)
+            else None
+          QuotesCache(pickled, symbolOwnerMaybe) = tree
 
           quotePickling.println(i"**** unpickled quote\n$tree")
 
