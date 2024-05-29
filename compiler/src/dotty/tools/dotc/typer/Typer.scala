@@ -821,10 +821,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     // Otherwise, if the qualifier derives from class Selectable,
     // and the selector name matches one of the element of the `Fields` type member,
-    // and the selector is neither applied nor assigned to,
+    // and the selector is not assigned to,
     // expand to a typed dynamic dispatch using selectDynamic wrapped in a cast
     if qual.tpe.derivesFrom(defn.SelectableClass) && !isDynamicExpansion(tree)
-        && !pt.isInstanceOf[FunOrPolyProto] && pt != LhsProto
+        && pt != LhsProto
     then
       val pre = if !TypeOps.isLegalPrefix(qual.tpe) then SkolemType(qual.tpe) else qual.tpe
       val fieldsType = pre.select(tpnme.Fields).dealias.simplified
