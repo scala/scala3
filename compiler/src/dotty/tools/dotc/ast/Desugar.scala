@@ -1596,9 +1596,13 @@ object desugar {
       if ctx.mode.is(Mode.Type) then
         AppliedTypeTree(ref(defn.NamedTupleTypeRef), namesTuple :: tup :: Nil)
       else
-        TypeApply(
-          Apply(Select(ref(defn.NamedTupleModule), nme.withNames), tup),
-          namesTuple :: Nil)
+        Apply(
+          Apply(
+            TypeApply(
+              Select(ref(defn.NamedTupleModule), nme.build), // NamedTuple.build
+              namesTuple :: Nil), // ++ [(names...)]
+            Nil), // ++ ()
+          tup :: Nil) // .++ ((values...))
 
   /** When desugaring a list pattern arguments `elems` adapt them and the
    *  expected type `pt` to each other. This means:

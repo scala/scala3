@@ -1,4 +1,5 @@
 package scala
+import scala.language.experimental.clauseInterleaving
 import annotation.experimental
 import compiletime.ops.boolean.*
 
@@ -18,6 +19,11 @@ object NamedTuple:
   def apply[N <: Tuple, V <: Tuple](x: V): NamedTuple[N, V] = x
 
   def unapply[N <: Tuple, V <: Tuple](x: NamedTuple[N, V]): Some[V] = Some(x)
+
+  /** A named tuple expression will desugar to a call to `build`. For instance,
+   * `(name = "Lyra", age = 23)` will desugar to `build[("name", "age")]()(("Lyra", 23))`.
+   */
+  inline def build[N <: Tuple]()[V <: Tuple](x: V): NamedTuple[N, V] = x
 
   extension [V <: Tuple](x: V)
     inline def withNames[N <: Tuple]: NamedTuple[N, V] = x
@@ -214,4 +220,3 @@ object NamedTupleDecomposition:
   /** The value types of a named tuple represented as a regular tuple. */
   type DropNames[NT <: AnyNamedTuple] <: Tuple = NT match
     case NamedTuple[_, x] => x
-
