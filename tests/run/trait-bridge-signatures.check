@@ -72,3 +72,14 @@ class EmptyCollection {
   - generic: public static <C> PartialFunc<java.lang.Object, C> EmptyCollection.andThen(Func1<scala.runtime.Nothing$, C>)
 }
 
+interface play$WSRequest {
+  public abstract play$WSRequest play$WSRequest.addCookies(scala.collection.immutable.Seq)
+  - generic: public abstract play$WSRequest play$WSRequest.addCookies(scala.collection.immutable.Seq<play$WSCookie>)
+  public default play$StandaloneWSRequest play$StandaloneWSRequest.addCookies(scala.collection.immutable.Seq)
+  - generic: public default play$StandaloneWSRequest play$StandaloneWSRequest.addCookies(scala.collection.immutable.Seq<play$WSCookie>)
+  public abstract play$StandaloneWSRequest play$StandaloneWSRequest.withCookies(scala.collection.immutable.Seq)
+  - generic: public abstract play$StandaloneWSRequest play$StandaloneWSRequest.withCookies(scala.collection.immutable.Seq<play$WSCookie>)
+  public abstract play$WSRequest play$WSRequest.withCookies(scala.collection.immutable.Seq)
+  - generic: public abstract play$WSRequest play$WSRequest.withCookies(scala.collection.immutable.Seq<play$WSCookie>)
+}
+

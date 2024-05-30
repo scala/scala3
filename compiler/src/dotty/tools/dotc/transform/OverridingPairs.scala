@@ -49,25 +49,35 @@ object OverridingPairs:
     protected def matches(sym1: Symbol, sym2: Symbol): Boolean =
       sym1.isType || sym1.asSeenFrom(self).matches(sym2.asSeenFrom(self))
 
+    /** Should deffered declarations took precedence over the concreate defintions
+     *  In same cases, eg. trait bridges, cursor might lead to incorrect results
+     *  when overriden and overriding methods would be swapped leading to incorrect behaviour
+     */
+    protected def prioritizeDeferred = true
+
     /** The symbols that can take part in an overriding pair */
-    private val decls = {
+    val decls = {
       val decls = newScope
       // fill `decls` with overriding shadowing overridden */
-      def fillDecls(bcs: List[Symbol], deferred: Boolean): Unit = bcs match {
+      def fillDecls(bcs: List[Symbol], include: Symbol => Boolean): Unit = bcs match {
         case bc :: bcs1 =>
-          fillDecls(bcs1, deferred)
+          fillDecls(bcs1, include)
           var e = bc.info.decls.lastEntry
           while (e != null) {
-            if (e.sym.is(Deferred) == deferred && !exclude(e.sym))
+            if (include(e.sym) && !exclude(e.sym))
               decls.enter(e.sym)
             e = e.prev
           }
         case nil =>
       }
-      // first, deferred (this will need to change if we change lookup rules!
-      fillDecls(base.info.baseClasses, deferred = true)
-      // then, concrete.
-      fillDecls(base.info.baseClasses, deferred = false)
+      val baseClasses = base.info.baseClasses
+      if prioritizeDeferred then
+        // first, deferred (this will need to change if we change lookup rules!
+        fillDecls(baseClasses, _.is(Deferred))
+        // then, concrete.
+        fillDecls(baseClasses, !_.is(Deferred))
+      else
+        fillDecls(baseClasses, _ => true)
       decls
     }
 

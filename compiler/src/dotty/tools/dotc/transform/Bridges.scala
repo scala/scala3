@@ -50,6 +50,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
    *  We also ignore non-public methods (see `DottyBackendTests.invocationReceivers` for a test case).
    */
   private class TraitBridgesCursor(using Context) extends BridgesCursor{
+    override protected def prioritizeDeferred: Boolean = false
     // Get full list of parents to deduplicate already defined bridges in the parents
     override lazy val parents: Array[Symbol] =
       root.info.parents.map(_.classSymbol).toArray

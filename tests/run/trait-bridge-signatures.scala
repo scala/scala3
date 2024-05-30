@@ -71,6 +71,20 @@ trait Collection[+A] extends PartialFunc[Int, A] {
 }
 case object EmptyCollection extends Collection[Nothing]
 
+object play {
+  trait WSCookie
+  trait StandaloneWSRequest {
+    type Self <: StandaloneWSRequest { type Self = StandaloneWSRequest.this.Self }
+    def withCookies(cookies: WSCookie*): Self
+    def addCookies(cookies: WSCookie*): Self = ???
+  }
+
+  trait WSRequest extends StandaloneWSRequest {
+    override type Self = WSRequest
+    override def addCookies(cookies: WSCookie*): Self
+    override def withCookies(cookie: WSCookie*): Self
+  }
+}
 
 object Test {
   def flagsString(m: java.lang.reflect.Method) = {
@@ -118,5 +132,7 @@ object Test {
     ).foreach(show(_, m => List("head", "tail", "from").contains(m.getName())))
 
     show(Class.forName("EmptyCollection"), _.getName() == "andThen")
+
+    show(classOf[play.WSRequest])
   }
 }
