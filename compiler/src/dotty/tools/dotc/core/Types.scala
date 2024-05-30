@@ -3318,7 +3318,12 @@ object Types extends TypeUtils {
     private def badInst =
       throw new AssertionError(s"bad instantiation: $this")
 
-    def checkInst(using Context): this.type = this // debug hook
+    def checkInst(using Context): this.type =
+      if refinedName == nme.apply then
+        parent.dealias.stripAnnots match
+          case RefinedType(_, nme.apply, _) => assert(false, this) // debug hook
+          case _ =>
+      this
 
     final def derivedRefinedType
         (parent: Type = this.parent, refinedName: Name = this.refinedName, refinedInfo: Type = this.refinedInfo)

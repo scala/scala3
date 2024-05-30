@@ -249,14 +249,16 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Type =
       val resType = recheck(tree.tpt)
       if tree.rhs.isEmpty then resType
-      else recheck(tree.rhs, resType)
+      else recheckRHS(tree.rhs, resType)
 
     def recheckDefDef(tree: DefDef, sym: Symbol)(using Context): Type =
       inContext(linkConstructorParams(sym).withOwner(sym)):
         val resType = recheck(tree.tpt)
         if tree.rhs.isEmpty || sym.isInlineMethod || sym.isEffectivelyErased
         then resType
-        else recheck(tree.rhs, resType)
+        else recheckRHS(tree.rhs, resType)
+
+    def recheckRHS(rhs: Tree, pt: Type)(using Context): Type = recheck(rhs, pt)
 
     def recheckTypeDef(tree: TypeDef, sym: Symbol)(using Context): Type =
       recheck(tree.rhs)

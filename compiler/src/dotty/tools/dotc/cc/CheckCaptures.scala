@@ -696,6 +696,13 @@ class CheckCaptures extends Recheck, SymTransformer:
             interpolateVarsIn(tree.tpt)
           curEnv = saved
 
+    override def recheckRHS(rhs: Tree, pt: Type)(using Context): Type =
+      def avoidMap = new TypeOps.AvoidMap:
+        def toAvoid(tp: NamedType) =
+          tp.isTerm && tp.symbol.owner == ctx.owner && !tp.symbol.is(Param)
+      val tp = recheck(rhs, pt)
+      if ctx.owner.is(Method) then avoidMap(tp) else tp
+
     /** If val or def definition with inferred (result) type is visible
      *  in other compilation units, check that the actual inferred type
      *  conforms to the expected type where all inferred capture sets are dropped.
@@ -812,7 +819,8 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  Otherwise, if the result type is boxed, simulate an unboxing by
      *  adding all references in the boxed capture set to the current environment.
      */
-    override def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
+    override def recheck(tree: Tree, pt0: Type = WildcardType)(using Context): Type =
+      val pt = Existential.openExpected(pt0)
       val saved = curEnv
       tree match
         case _: RefTree | closureDef(_) if pt.isBoxedCapturing =>
@@ -878,23 +886,24 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  where local capture roots are instantiated to root variables.
      */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda)(using Context): Type =
-      var expected1 = alignDependentFunction(expected, actual.stripCapturing)
-      val actualBoxed = adaptBoxed(actual, expected1, tree.srcPos)
+      val actualUnpacked = Existential.skolemize(actual)
+      var expected1 = alignDependentFunction(expected, actualUnpacked.stripCapturing)
+      val actualBoxed = adaptBoxed(actualUnpacked, expected1, tree.srcPos)
       //println(i"check conforms $actualBoxed <<< $expected1")
 
-      if actualBoxed eq actual then
+      if actualBoxed eq actualUnpacked then
         // Only `addOuterRefs` when there is no box adaptation
-        expected1 = addOuterRefs(expected1, actual)
+        expected1 = addOuterRefs(expected1, actualUnpacked)
       if isCompatible(actualBoxed, expected1) then
         if debugSuccesses then tree match
             case Ident(_) =>
-              println(i"SUCCESS $tree:\n${TypeComparer.explained(_.isSubType(actual, expected))}")
+              println(i"SUCCESS $tree:\n${TypeComparer.explained(_.isSubType(actualUnpacked, expected))}")
             case _ =>
         actualBoxed
       else
         capt.println(i"conforms failed for ${tree}: $actual vs $expected")
         err.typeMismatch(tree.withType(actualBoxed), expected1, addenda ++ CaptureSet.levelErrors)
-        actual
+        actualUnpacked
     end checkConformsExpr
 
     /** Turn `expected` into a dependent function when `actual` is dependent. */
@@ -1121,7 +1130,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       /** If result derives from caps.Capability, yet is not a capturing type itself,
        *  make its capture set explicit.
        */
-      def makeCaptureSetExplicit(result: Type) = result match
+      def makeCaptureSetExplicit(actual: Type, result: Type) = result match
         case CapturingType(_, _) => result
         case _ =>
           if result.derivesFromCapability then
@@ -1147,16 +1156,17 @@ class CheckCaptures extends Recheck, SymTransformer:
               case _ =>
           case _ =>
         val adapted = adapt(actualw.withReachCaptures(actual), expected, covariant = true)
-        makeCaptureSetExplicit:
+        makeCaptureSetExplicit(actual,
           if adapted ne actualw then
             capt.println(i"adapt boxed $actual vs $expected ===> $adapted")
             adapted
           else
-            actual
+            actual)
     end adaptBoxed
 
     /** Check overrides again, taking capture sets into account.
     *  TODO: Can we avoid doing overrides checks twice?
+    *
     *  We need to do them here since only at this phase CaptureTypes are relevant
     *  But maybe we can then elide the check during the RefChecks phase under captureChecking?
     */
@@ -1167,12 +1177,12 @@ class CheckCaptures extends Recheck, SymTransformer:
         *  @param sym  symbol of the field definition that is being checked
         */
         override def checkSubType(actual: Type, expected: Type)(using Context): Boolean =
-          val expected1 = alignDependentFunction(addOuterRefs(expected, actual), actual.stripCapturing)
+          val expected1 = alignDependentFunction(addOuterRefs(Existential.strip(expected), actual), actual.stripCapturing)
           val actual1 =
             val saved = curEnv
             try
               curEnv = Env(clazz, EnvKind.NestedInOwner, capturedVars(clazz), outer0 = curEnv)
-              val adapted = adaptBoxed(actual, expected1, srcPos, alwaysConst = true)
+              val adapted = adaptBoxed(Existential.strip(actual), expected1, srcPos, alwaysConst = true)
               actual match
                 case _: MethodType =>
                   // We remove the capture set resulted from box adaptation for method types,

@@ -9,6 +9,7 @@ import StdNames.nme
 import ast.tpd.*
 import Decorators.*
 import typer.ErrorReporting.errorType
+import NameKinds.exSkolemName
 
 /**
 
@@ -23,7 +24,7 @@ In adapt:
         method as owner, and use its termRef
     Then,
       + If the EX-bound variable appears only at toplevel, replace it with `x`
-      + Otherwise, replace it with a fresh reach capability `x*`.
+      + Otherwise, replace it with `x*`.
 
 In avoidance of a type T:
 
@@ -145,6 +146,21 @@ Existential source syntax:
     - The type of a type ascription in an expression or pattern
     - The argument and result types of a function.
 
+  Restrictions on Existential Types:
+
+    - An existential capture ref must be the only member of its set. This is
+      intended to model the idea that existential variables effectibely range
+      over capture sets, not capture references. But so far out calculus
+      and implementation does not yet acoommodate first-class capture sets.
+    - Existential capture refs must appear co-variantly in their bound type
+
+  So the following would all be illegal:
+
+      EX x.C^{x, io}            // error: multiple members
+      EX x.() => EX y.C^{x, y}  // error: multiple members
+      EX x.C^{x} ->{x} D        // error: contra-variant occurrence
+      EX x.Set[C^{x}]           // error: invariant occurrence
+
 Expansion of ^:
 
   We drop `cap` as a capture reference, but keep the unqualified `^` syntax.
@@ -188,6 +204,55 @@ Expansion of ^:
 */
 object Existential:
 
+  type Carrier = RefinedType
+
+  def openExpected(pt: Type)(using Context): Type = pt.dealias match
+    case Existential(boundVar, unpacked) =>
+      val tm = new IdempotentCaptRefMap:
+        val cvar = CaptureSet.Var(ctx.owner)
+        def apply(t: Type) = mapOver(t) match
+          case t @ CapturingType(parent, refs) if refs.elems.contains(boundVar) =>
+            assert(refs.isConst && refs.elems.size == 1, i"malformed existential $t")
+            t.derivedCapturingType(parent, cvar)
+          case t =>
+            t
+      openExpected(tm(unpacked))
+    case _ => pt
+
+  def strip(tp: Type)(using Context) = tp match
+    case Existential(_, tpunpacked) => tpunpacked
+    case _ => tp
+
+  def skolemize(tp: Type)(using Context) = tp.widenDealias match
+    case Existential(boundVar, unpacked) =>
+      val skolem = tp match
+        case tp: CaptureRef if tp.isTracked => tp
+        case _ => newSkolemSym(boundVar.underlying).termRef
+      val tm = new IdempotentCaptRefMap:
+        var deep = false
+        private inline def deepApply(t: Type): Type =
+          val saved = deep
+          deep = true
+          try apply(t) finally deep = saved
+        def apply(t: Type) =
+          if t eq boundVar then
+            if deep then skolem.reach else skolem
+          else t match
+            case defn.FunctionOf(args, res, contextual) =>
+              val res1 = deepApply(res)
+              if res1 ne res then defn.FunctionOf(args, res1, contextual)
+              else t
+            case defn.RefinedFunctionOf(mt) =>
+              mt.derivedLambdaType(resType = deepApply(mt.resType))
+            case _ =>
+              mapOver(t)
+      tm(unpacked)
+    case _ => tp
+  end skolemize
+
+  def newSkolemSym(tp: Type)(using Context): TermSymbol =
+    newSymbol(ctx.owner.enclosingMethodOrClass, exSkolemName.fresh(), Synthetic, tp)
+/*
   def fromDepFun(arg: Tree)(using Context): Type = arg.tpe match
     case RefinedType(parent, nme.apply, info: MethodType) if defn.isNonRefinedFunction(parent) =>
       info match
@@ -198,13 +263,7 @@ object Existential:
           errorType(em"Malformed existential: dependent function must have a singgle parameter of type caps.Capability", arg.srcPos)
     case _ =>
       errorType(em"Malformed existential: dependent function type expected", arg.srcPos)
-
-  def apply(fn: TermRef => Type)(using Context): RecType =
-    RecType(rt => fn(exBoundRef(rt)))
-
-  def exBoundRef(rt: RecType)(using Context): TermRef =
-    TermRef(rt.recThis, defn.captureRoot)
-
+*/
   private class PackMap(sym: Symbol, rt: RecType)(using Context) extends DeepTypeMap, IdempotentCaptRefMap:
     def apply(tp: Type): Type = tp match
       case ref: TermRef if ref.symbol == sym => TermRef(rt.recThis, defn.captureRoot)
@@ -235,7 +294,7 @@ object Existential:
     case (info: TypeRef) :: rest => info.symbol == defn.Caps_Exists && rest.isEmpty
     case _ => false
 
-  def unapply(tp: RefinedType)(using Context): Option[(TermParamRef, Type)] =
+  def unapply(tp: Carrier)(using Context): Option[(TermParamRef, Type)] =
     tp.refinedInfo match
       case mt: MethodType
       if isExistentialMethod(mt) && defn.isNonRefinedFunction(tp.parent) =>

@@ -237,6 +237,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             val rinfo1 = apply(rinfo)
             if rinfo1 ne rinfo then rinfo1.toFunctionType(alwaysDependent = true)
             else tp
+          case Existential(_, unpacked) =>
+            apply(unpacked)
           case tp: MethodType =>
             tp.derivedLambdaType(
               paramInfos = mapNested(tp.paramInfos),
@@ -252,7 +254,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       end apply
     end mapInferred
 
-    mapInferred(refine = true)(tp)
+    try mapInferred(refine = true)(tp)
+    catch case ex: AssertionError =>
+      println(i"error while maop inferred $tp")
+      throw ex
   end transformInferredType
 
   private def transformExplicitType(tp: Type, tptToCheck: Option[Tree] = None)(using Context): Type =
