@@ -1,3 +1,4 @@
+// scalajs: --skip
 class Names(xs: List[NamedScala | NamedJava]):
   def mkString = xs.map{
     case n: NamedScala => n.self
