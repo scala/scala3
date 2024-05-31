@@ -201,10 +201,10 @@ object NamedTuple:
   type From[T] <: AnyNamedTuple
 
   /** The type of the empty named tuple */
-  type Empty = EmptyTuple.type
+  type Empty = NamedTuple[EmptyTuple, EmptyTuple]
 
   /** The empty named tuple */
-  val Empty: Empty = EmptyTuple.asInstanceOf[Empty]
+  val Empty: Empty = EmptyTuple
 
 end NamedTuple
 
