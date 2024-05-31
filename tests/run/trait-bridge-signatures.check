@@ -27,8 +27,7 @@ interface collections$LinearSeqOps {
   - generic: public abstract A collections$LinearSeqOps.head()
   public abstract collections$LinearSeq collections$LinearSeqOps.tail()
   - generic: public abstract C collections$LinearSeqOps.tail()
-  public default java.lang.Object collections$IterableOps.tail()
-  - generic: public default C collections$IterableOps.tail()
+  public default java.lang.Object collections$LinearSeqOps.tail() <bridge> <synthetic>
 }
 
 interface collections$LinearSeq {
@@ -36,8 +35,7 @@ interface collections$LinearSeq {
   - generic: public abstract A collections$LinearSeqOps.head()
   public abstract collections$LinearSeq collections$LinearSeqOps.tail()
   - generic: public abstract C collections$LinearSeqOps.tail()
-  public default java.lang.Object collections$IterableOps.tail()
-  - generic: public default C collections$IterableOps.tail()
+  public default java.lang.Object collections$LinearSeqOps.tail() <bridge> <synthetic>
 }
 
 interface collections$Iterable {
@@ -75,11 +73,11 @@ class EmptyCollection {
 interface play$WSRequest {
   public abstract play$WSRequest play$WSRequest.addCookies(scala.collection.immutable.Seq)
   - generic: public abstract play$WSRequest play$WSRequest.addCookies(scala.collection.immutable.Seq<play$WSCookie>)
-  public default play$StandaloneWSRequest play$StandaloneWSRequest.addCookies(scala.collection.immutable.Seq)
-  - generic: public default play$StandaloneWSRequest play$StandaloneWSRequest.addCookies(scala.collection.immutable.Seq<play$WSCookie>)
-  public abstract play$StandaloneWSRequest play$StandaloneWSRequest.withCookies(scala.collection.immutable.Seq)
-  - generic: public abstract play$StandaloneWSRequest play$StandaloneWSRequest.withCookies(scala.collection.immutable.Seq<play$WSCookie>)
+  public default play$StandaloneWSRequest play$WSRequest.addCookies(scala.collection.immutable.Seq) <bridge> <synthetic>
+  public static play$StandaloneWSRequest play$WSRequest.addCookies$(play$WSRequest,scala.collection.immutable.Seq)
   public abstract play$WSRequest play$WSRequest.withCookies(scala.collection.immutable.Seq)
   - generic: public abstract play$WSRequest play$WSRequest.withCookies(scala.collection.immutable.Seq<play$WSCookie>)
+  public default play$StandaloneWSRequest play$WSRequest.withCookies(scala.collection.immutable.Seq) <bridge> <synthetic>
+  public static play$StandaloneWSRequest play$WSRequest.withCookies$(play$WSRequest,scala.collection.immutable.Seq)
 }
 

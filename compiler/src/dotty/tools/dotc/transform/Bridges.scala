@@ -51,15 +51,10 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
    */
   private class TraitBridgesCursor(using Context) extends BridgesCursor{
     override protected def prioritizeDeferred: Boolean = false
+
     // Get full list of parents to deduplicate already defined bridges in the parents
     override lazy val parents: Array[Symbol] =
       root.info.parents.map(_.classSymbol).toArray
-
-    override protected def matches(sym: Symbol, overriden: Symbol): Boolean =
-      def resultType(sym: Symbol) = sym.info.finalResultType.typeSymbol
-      def consistentParams = sym.signature.consistentParams(overriden.signature)
-      def overridesAbstractResultType = resultType(overriden).isAbstractOrParamType
-      consistentParams && !overridesAbstractResultType && super.matches(sym, overriden)
 
     override def exclude(sym: Symbol) =
       !sym.isPublic || super.exclude(sym)
@@ -194,12 +189,13 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
    *  time deferred methods in `stats` that are replaced by a bridge with the same signature.
    */
   def add(stats: List[untpd.Tree]): List[untpd.Tree] =
+    val forTrait = root.is(Trait)
     val opc = inContext(preErasureCtx) {
-       if (root.is(Trait)) new TraitBridgesCursor
-       else new BridgesCursor
+       if forTrait then TraitBridgesCursor()
+       else BridgesCursor()
     }
     while opc.hasNext do
-      if !opc.overriding.is(Deferred) then
+      if forTrait || !opc.overriding.is(Deferred) then
         addBridgeIfNeeded(opc.overriding, opc.overridden)
       opc.next()
     if bridges.isEmpty then stats
