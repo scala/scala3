@@ -19,6 +19,7 @@ import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
 import scala.collection.mutable
 import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult}
+import CCState.*
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
 import reporting.trace
@@ -191,7 +192,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     if Feature.ccEnabled then
       super.run
 
-  val ccState = new CCState
+  val ccState1 = new CCState // Dotty problem: Rename to ccState ==> Crash in ExplicitOuter
 
   class CaptureChecker(ictx: Context) extends Rechecker(ictx):
 
@@ -311,7 +312,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def capturedVars(sym: Symbol)(using Context): CaptureSet =
       myCapturedVars.getOrElseUpdate(sym,
         if sym.ownersIterator.exists(_.isTerm)
-        then CaptureSet.Var(sym.owner)
+        then CaptureSet.Var(sym.owner, level = sym.ccLevel)
         else CaptureSet.empty)
 
     /** For all nested environments up to `limit` or a closed environment perform `op`,
@@ -585,6 +586,9 @@ class CheckCaptures extends Recheck, SymTransformer:
               tree.srcPos)
       super.recheckTypeApply(tree, pt)
 
+    override def recheckBlock(tree: Block, pt: Type)(using Context): Type =
+      inNestedLevel(super.recheckBlock(tree, pt))
+
     override def recheckClosure(tree: Closure, pt: Type, forceDependent: Boolean)(using Context): Type =
       val cs = capturedVars(tree.meth.symbol)
       capt.println(i"typing closure $tree with cvs $cs")
@@ -688,13 +692,14 @@ class CheckCaptures extends Recheck, SymTransformer:
         val localSet = capturedVars(sym)
         if !localSet.isAlwaysEmpty then
           curEnv = Env(sym, EnvKind.Regular, localSet, curEnv)
-        try checkInferredResult(super.recheckDefDef(tree, sym), tree)
-        finally
-          if !sym.isAnonymousFunction then
-            // Anonymous functions propagate their type to the enclosing environment
-            // so it is not in general sound to interpolate their types.
-            interpolateVarsIn(tree.tpt)
-          curEnv = saved
+        inNestedLevel:
+          try checkInferredResult(super.recheckDefDef(tree, sym), tree)
+          finally
+            if !sym.isAnonymousFunction then
+              // Anonymous functions propagate their type to the enclosing environment
+              // so it is not in general sound to interpolate their types.
+              interpolateVarsIn(tree.tpt)
+            curEnv = saved
 
     override def recheckRHS(rhs: Tree, pt: Type)(using Context): Type =
       def avoidMap = new TypeOps.AvoidMap:
@@ -771,7 +776,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           checkSubset(thisSet,
             CaptureSet.empty.withDescription(i"of pure base class $pureBase"),
             selfType.srcPos, cs1description = " captured by this self type")
-        super.recheckClassDef(tree, impl, cls)
+        inNestedLevelUnless(cls.is(Module)):
+          super.recheckClassDef(tree, impl, cls)
       finally
         curEnv = saved
 
@@ -824,9 +830,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       val saved = curEnv
       tree match
         case _: RefTree | closureDef(_) if pt.isBoxedCapturing =>
-          curEnv = Env(curEnv.owner, EnvKind.Boxed, CaptureSet.Var(curEnv.owner), curEnv)
+          curEnv = Env(curEnv.owner, EnvKind.Boxed, CaptureSet.Var(curEnv.owner, level = currentLevel), curEnv)
         case _ if tree.hasAttachment(ClosureBodyValue) =>
-          curEnv = Env(curEnv.owner, EnvKind.ClosureResult, CaptureSet.Var(curEnv.owner), curEnv)
+          curEnv = Env(curEnv.owner, EnvKind.ClosureResult, CaptureSet.Var(curEnv.owner, level = currentLevel), curEnv)
         case _ =>
       val res =
         try
@@ -990,7 +996,11 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       inline def inNestedEnv[T](boxed: Boolean)(op: => T): T =
         val saved = curEnv
-        curEnv = Env(curEnv.owner, EnvKind.NestedInOwner, CaptureSet.Var(curEnv.owner), if boxed then null else curEnv)
+        curEnv = Env(
+          curEnv.owner,
+          EnvKind.NestedInOwner,
+          CaptureSet.Var(curEnv.owner, level = currentLevel),
+          if boxed then null else curEnv)
         try op
         finally curEnv = saved
 

@@ -266,7 +266,7 @@ abstract class Recheck extends Phase, SymTransformer:
 
     def recheckClassDef(tree: TypeDef, impl: Template, sym: ClassSymbol)(using Context): Type =
       recheck(impl.constr)
-      impl.parentsOrDerived.foreach(recheck(_))
+      impl.parents.foreach(recheck(_))
       recheck(impl.self)
       recheckStats(impl.body)
       sym.typeRef

@@ -12,7 +12,7 @@
    |       Required: box List[box () ->{xs*} Unit]^?
    |
    |       Note that reference (f : File^), defined in method $anonfun
-   |       cannot be included in outer capture set {xs*} of value cur which is associated with method runAll1
+   |       cannot be included in outer capture set {xs*} of value cur
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/reaches.scala:35:6 ------------------------------------------------------------

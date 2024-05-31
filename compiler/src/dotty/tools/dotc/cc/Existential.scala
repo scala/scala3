@@ -17,7 +17,7 @@ Handling existentials in CC:
 
 In adapt:
 
-  - If an EX is toplevel in expected type, replace with a fresh capture set variable
+  - If an EX is toplevel in expected type, replace with `cap`.
   - If an EX is toplevel in actual type, find a trackable replacement `x` as follows:
       + If actual type is a trackable ref, pick that
       + Otherwise, create a fresh skolem val symbol with currently enclosing
@@ -26,30 +26,31 @@ In adapt:
       + If the EX-bound variable appears only at toplevel, replace it with `x`
       + Otherwise, replace it with `x*`.
 
-In avoidance of a type T:
+Delayed packing:
 
-  - Replace all co-variant occurrences of locals variables in T (including locally
-    created EX-skolems) with single fresh EX-bound variable, which wraps T.
-  - Contravariant occurrences of local variables are approximated by the empty capture set,
-    as was the case before.
-  - Invariant occurrences of local variables produce errors, as was the case before.
-  - Check that no existentially quantified local variable appears under a box.
+ - When typing a `def` (including an anonymoys function), convert all covariant
+   toplevel `cap`s to a fresh existential variable wrapping the result type.
 
-The reason it is done this way is that it produces the smallest existential type
-wrt the existential type ordering shown below. For instance, consider the type
+Level checking and avoidance:
 
-      (A^{x}, B^{y})
+  - Environments, capture refs, and capture set variables carry levels
 
-where `x` and `y` are local. We widen to
+    + levels start at 0
+    + The level of a block or template statement sequence is one higher than the level of
+      its environment
+    + The level of a TermRef is the level of the environment where its symbol is defined.
+    + The level of a ThisType is the level of the statements of the class to which it beloongs.
+    + The level of a TermParamRef is currently -1 (i.e. TermParamRefs are not yet checked using this system)
+    + The level of a capture set variable is the level of the environment where it is created.
 
-      EX a.(A^{a}, B^{a})
+  - Variables also carry info whether they accept `cap` or not. Variables introduced under a box
+    don't, the others do.
 
-rather than
-
-      EX a.EX b.(A^{a}, A^{b})
-
-In the subtype ordering of existentials the first of these types is a subtype of
-the other, but not _vice versa_.
+  - Capture set variables do not accept elements of level higher than the variable's level
+  - We use avoidance to heal such cases: If the level-incorrect ref appears
+    + covariantly: widen to underlying capture set, reject if that is cap and the variable does not allow it
+    + contravariantly: narrow to {}
+    + invarianty: reject with error
 
 In cv-computation (markFree):
 
