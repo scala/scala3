@@ -191,7 +191,7 @@ object NamedTupleDecomposition:
      *  If `x = (n1 = v1, ..., ni = vi)` then `x.map(f) = `(n1 = f(v1), ..., ni = f(vi))`.
      */
     inline def map[F[_]](f: [t] => t => F[t]): NamedTuple[N, Tuple.Map[V, F]] =
-      x.toTuple.map(f)
+      x.toTuple.map(f).asInstanceOf[NamedTuple[N, Tuple.Map[V, F]]]
 
     /** The named tuple consisting of all elements of this tuple in reverse */
     inline def reverse: NamedTuple[Tuple.Reverse[N], Tuple.Reverse[V]] =
@@ -208,7 +208,7 @@ object NamedTupleDecomposition:
       x.toTuple.zip(that.toTuple)
 
     /** A list consisting of all element values */
-    inline def toList: List[Tuple.Union[V]] = x.toTuple.toList
+    inline def toList: List[Tuple.Union[V]] = x.toTuple.toList.asInstanceOf[List[Tuple.Union[V]]]
 
     /** An array consisting of all element values */
     inline def toArray: Array[Object] = x.toTuple.toArray
