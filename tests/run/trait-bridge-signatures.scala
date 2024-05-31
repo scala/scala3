@@ -129,10 +129,19 @@ object Test {
       classOf[collections.Iterable[?]],
       classOf[collections.IterableOps[?, ?, ?]],
       Class.forName("collections$Seq")
-    ).foreach(show(_, m => List("head", "tail", "from").contains(m.getName())))
+    ).foreach: cls =>
+      show(cls, filter = m => List("head", "tail", "from").contains(m.getName()) && {
+          // Divirgence between JVM version
+          // In JDK 8 (CI Windows runner) `java.lang.Object collections$IterableOps.head()` is shown
+          // but it's not shown in JDK 17 (CI Unix runner)
+          // Filter out problematic case to make tests more stable
+          if cls == classOf[collections.LinearSeq[?]] then
+            List(cls, classOf[collections.LinearSeqOps[?, ?, ?]]).contains(m.getDeclaringClass())
+          else true
+        }
+      )
 
     show(Class.forName("EmptyCollection"), _.getName() == "andThen")
-
     show(classOf[play.WSRequest])
   }
 }

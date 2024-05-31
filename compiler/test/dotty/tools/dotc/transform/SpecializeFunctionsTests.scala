@@ -147,6 +147,7 @@ class SpecializeFunctionsTests extends DottyBytecodeTest {
         }
         .map(_.name)
         .toList
+        .distinct // ignore bridge methods
 
       assert(
         apps.length == 1,
