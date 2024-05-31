@@ -756,7 +756,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       return typedSelect(tree, pt, qual)
 
     // Otherwise, try to expand a named tuple selection
-    val namedTupleElems = qual.tpe.widen.namedTupleElementTypes
+    val namedTupleElems = qual.tpe.widenDealias.namedTupleElementTypes
     val nameIdx = namedTupleElems.indexWhere(_._1 == selName)
     if nameIdx >= 0 && Feature.enabled(Feature.namedTuples) then
       return typed(
