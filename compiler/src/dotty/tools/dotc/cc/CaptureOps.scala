@@ -491,4 +491,37 @@ object ReachCapability extends AnnotatedCapability(defn.ReachCapabilityAnnot)
  */
 object MaybeCapability extends AnnotatedCapability(defn.MaybeCapabilityAnnot)
 
+/** An extractor for all kinds of function types as well as method and poly types.
+ *  @return  1st half: The argument types or empty if this is a type function
+ *           2nd half: The result type
+ */
+object FunctionOrMethod:
+  def unapply(tp: Type)(using Context): Option[(List[Type], Type)] = tp match
+    case defn.FunctionOf(args, res, isContextual) => Some((args, res))
+    case mt: MethodType => Some((mt.paramInfos, mt.resType))
+    case mt: PolyType => Some((Nil, mt.resType))
+    case defn.RefinedFunctionOf(rinfo) => unapply(rinfo)
+    case _ => None
+
+/** If `tp` is a function or method, a type of the same kind with the given
+ *  argument and result types.
+ */
+extension (self: Type)
+  def derivedFunctionOrMethod(argTypes: List[Type], resType: Type)(using Context): Type = self match
+    case self @ AppliedType(tycon, args) if defn.isNonRefinedFunction(self) =>
+      val args1 = argTypes :+ resType
+      if args.corresponds(args1)(_ eq _) then self
+      else self.derivedAppliedType(tycon, args1)
+    case self @ defn.RefinedFunctionOf(rinfo) =>
+      val rinfo1 = rinfo.derivedFunctionOrMethod(argTypes, resType)
+      if rinfo1 eq rinfo then self
+      else if rinfo1.isInstanceOf[PolyType] then self.derivedRefinedType(refinedInfo = rinfo1)
+      else rinfo1.toFunctionType(alwaysDependent = true)
+    case self: MethodType =>
+      self.derivedLambdaType(paramInfos = argTypes, resType = resType)
+    case self: PolyType =>
+      assert(argTypes.isEmpty)
+      self.derivedLambdaType(resType = resType)
+    case _ =>
+      self
 

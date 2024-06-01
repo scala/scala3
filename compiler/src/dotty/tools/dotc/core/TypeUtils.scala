@@ -189,6 +189,5 @@ class TypeUtils:
     def stripRefinement: Type = self match
       case self: RefinedOrRecType => self.parent.stripRefinement
       case seld => self
-
 end TypeUtils
 

@@ -886,7 +886,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda)(using Context): Type =
       var expected1 = alignDependentFunction(expected, actual.stripCapturing)
-      val actualBoxed = adaptBoxed(actual, expected1, tree.srcPos)
+      val actualBoxed = adapt(actual, expected1, tree.srcPos)
       //println(i"check conforms $actualBoxed <<< $expected1")
 
       if actualBoxed eq actual then
@@ -985,183 +985,134 @@ class CheckCaptures extends Recheck, SymTransformer:
      *
      *  @param alwaysConst  always make capture set variables constant after adaptation
      */
-    def adaptBoxed(actual: Type, expected: Type, pos: SrcPos, alwaysConst: Boolean = false)(using Context): Type =
+    def adaptBoxed(actual: Type, expected: Type, pos: SrcPos, covariant: Boolean, alwaysConst: Boolean)(using Context): Type =
 
-      inline def inNestedEnv[T](boxed: Boolean)(op: => T): T =
-        val saved = curEnv
-        curEnv = Env(curEnv.owner, EnvKind.NestedInOwner, CaptureSet.Var(curEnv.owner), if boxed then null else curEnv)
-        try op
-        finally curEnv = saved
-
-      /** Adapt function type `actual`, which is `aargs -> ares` (possibly with dependencies)
-       *  to `expected` type.
-       *  It returns the adapted type along with a capture set consisting of the references
-       *  that were additionally captured during adaptation.
-       *   @param reconstruct  how to rebuild the adapted function type
+      /** Adapt the inner shape type: get the adapted shape type, and the capture set leaked during adaptation
+       *  @param boxed   if true we adapt to a boxed expected type
        */
-      def adaptFun(actual: Type, aargs: List[Type], ares: Type, expected: Type,
-          covariant: Boolean, boxed: Boolean,
-          reconstruct: (List[Type], Type) => Type): (Type, CaptureSet) =
-        inNestedEnv(boxed):
-          val (eargs, eres) = expected.dealias.stripCapturing match
-            case defn.FunctionOf(eargs, eres, _) => (eargs, eres)
-            case expected: MethodType => (expected.paramInfos, expected.resType)
-            case expected @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionNType(expected) => (rinfo.paramInfos, rinfo.resType)
-            case _ => (aargs.map(_ => WildcardType), WildcardType)
-          val aargs1 = aargs.zipWithConserve(eargs) { (aarg, earg) => adapt(aarg, earg, !covariant) }
-          val ares1 = adapt(ares, eres, covariant)
-
-          val resTp =
-            if (ares1 eq ares) && (aargs1 eq aargs) then actual
-            else reconstruct(aargs1, ares1)
-
-          (resTp, CaptureSet(curEnv.captured.elems))
-      end adaptFun
-
-      /** Adapt type function type `actual` to the expected type.
-       *  @see [[adaptFun]]
-       */
-      def adaptTypeFun(
-          actual: Type, ares: Type, expected: Type,
-          covariant: Boolean, boxed: Boolean,
-          reconstruct: Type => Type): (Type, CaptureSet) =
-        inNestedEnv(boxed):
-          val eres = expected.dealias.stripCapturing match
-            case defn.PolyFunctionOf(rinfo: PolyType) => rinfo.resType
-            case expected: PolyType => expected.resType
-            case _ => WildcardType
-
-          val ares1 = adapt(ares, eres, covariant)
-
-          val resTp =
-            if ares1 eq ares then actual
-            else reconstruct(ares1)
-
-          (resTp, CaptureSet(curEnv.captured.elems))
-      end adaptTypeFun
-
-      def adaptInfo(actual: Type, expected: Type, covariant: Boolean): String =
-        val arrow = if covariant then "~~>" else "<~~"
-        i"adapting $actual $arrow $expected"
-
-      def adapt(actual: Type, expected: Type, covariant: Boolean): Type = trace(adaptInfo(actual, expected, covariant), recheckr, show = true):
-        if expected.isInstanceOf[WildcardType] then actual
-        else
-          // Decompose the actual type into the inner shape type, the capture set and the box status
-          val styp = if actual.isFromJavaObject then actual else actual.stripCapturing
-          val cs = actual.captureSet
-          val boxed = actual.isBoxedCapturing
-
-          // A box/unbox should be inserted, if the actual box status mismatches with the expectation
-          val needsAdaptation = boxed != expected.isBoxedCapturing
-          // Whether to insert a box or an unbox?
-          val insertBox = needsAdaptation && covariant != boxed
-
-          // Adapt the inner shape type: get the adapted shape type, and the capture set leaked during adaptation
-          val (styp1, leaked) = styp match {
-            case actual @ AppliedType(tycon, args) if defn.isNonRefinedFunction(actual) =>
-              adaptFun(actual, args.init, args.last, expected, covariant, insertBox,
-                  (aargs1, ares1) => actual.derivedAppliedType(tycon, aargs1 :+ ares1))
-            case actual @ defn.RefinedFunctionOf(rinfo: MethodType) =>
-              // TODO Find a way to combine handling of generic and dependent function types (here and elsewhere)
-              adaptFun(actual, rinfo.paramInfos, rinfo.resType, expected, covariant, insertBox,
-                (aargs1, ares1) =>
-                  rinfo.derivedLambdaType(paramInfos = aargs1, resType = ares1)
-                    .toFunctionType(alwaysDependent = true))
-            case actual: MethodType =>
-              adaptFun(actual, actual.paramInfos, actual.resType, expected, covariant, insertBox,
-                (aargs1, ares1) =>
-                  actual.derivedLambdaType(paramInfos = aargs1, resType = ares1))
-            case actual @ defn.RefinedFunctionOf(rinfo: PolyType) =>
-              adaptTypeFun(actual, rinfo.resType, expected, covariant, insertBox,
-                ares1 =>
-                  val rinfo1 = rinfo.derivedLambdaType(rinfo.paramNames, rinfo.paramInfos, ares1)
-                  val actual1 = actual.derivedRefinedType(refinedInfo = rinfo1)
-                  actual1
-              )
-            case _ =>
-              (styp, CaptureSet())
-          }
-
-          // Capture set of the term after adaptation
-          val cs1 =
-            if covariant then cs ++ leaked
-            else
-              if !leaked.subCaptures(cs, frozen = false).isOK then
-                report.error(
-                  em"""$expected cannot be box-converted to $actual
-                      |since the additional capture set $leaked resulted from box conversion is not allowed in $actual""", pos)
-              cs
-
-          // Compute the adapted type
-          def adaptedType(resultBoxed: Boolean) =
-            if (styp1 eq styp) && leaked.isAlwaysEmpty && boxed == resultBoxed then actual
-            else styp1.capturing(if alwaysConst then CaptureSet(cs1.elems) else cs1).forceBoxStatus(resultBoxed)
-
-          if needsAdaptation then
-            val criticalSet =          // the set which is not allowed to have `cap`
-              if covariant then cs1    // can't box with `cap`
-              else expected.captureSet // can't unbox with `cap`
-            if criticalSet.isUniversal && expected.isValueType && !ccConfig.allowUniversalInBoxed then
-              // We can't box/unbox the universal capability. Leave `actual` as it is
-              // so we get an error in checkConforms. This tends to give better error
-              // messages than disallowing the root capability in `criticalSet`.
-              if ctx.settings.YccDebug.value then
-                println(i"cannot box/unbox $actual vs $expected")
-              actual
-            else
-              if !ccConfig.allowUniversalInBoxed then
-                // Disallow future addition of `cap` to `criticalSet`.
-                criticalSet.disallowRootCapability { () =>
-                  report.error(
-                    em"""$actual cannot be box-converted to $expected
-                        |since one of their capture sets contains the root capability `cap`""",
-                  pos)
-                }
-              if !insertBox then  // unboxing
-                //debugShowEnvs()
-                markFree(criticalSet, pos)
-              adaptedType(!boxed)
-          else
-            adaptedType(boxed)
-      end adapt
-
-      /** If result derives from caps.Capability, yet is not a capturing type itself,
-       *  make its capture set explicit.
-       */
-      def makeCaptureSetExplicit(result: Type) = result match
-        case CapturingType(_, _) => result
+      def adaptShape(actualShape: Type, boxed: Boolean): (Type, CaptureSet) = actualShape match
+        case FunctionOrMethod(aargs, ares) =>
+          val saved = curEnv
+          curEnv = Env(
+            curEnv.owner, EnvKind.NestedInOwner,
+            CaptureSet.Var(curEnv.owner),
+            if boxed then null else curEnv)
+          try
+            val (eargs, eres) = expected.dealias.stripCapturing match
+              case FunctionOrMethod(eargs, eres) => (eargs, eres)
+              case _ => (aargs.map(_ => WildcardType), WildcardType)
+            val aargs1 = aargs.zipWithConserve(eargs):
+              adaptBoxed(_, _, pos, !covariant, alwaysConst)
+            val ares1 = adaptBoxed(ares, eres, pos, covariant, alwaysConst)
+            val resTp =
+              if (aargs1 eq aargs) && (ares1 eq ares) then actualShape // optimize to avoid redundant matches
+              else actualShape.derivedFunctionOrMethod(aargs1, ares1)
+            (resTp, CaptureSet(curEnv.captured.elems))
+          finally curEnv = saved
         case _ =>
-          if result.derivesFromCapability then
-            val cap: CaptureRef = actual match
-              case ref: CaptureRef if ref.isTracked =>
-                ref
-              case _ =>
-                defn.captureRoot.termRef // TODO: skolemize?
-            CapturingType(result, cap.singletonCaptureSet)
-          else result
+          (actualShape, CaptureSet())
 
+      def adaptStr = i"adapting $actual ${if covariant then "~~>" else "<~~"} $expected"
+
+      if expected.isInstanceOf[WildcardType] then actual
+      else trace(adaptStr, recheckr, show = true):
+        // Decompose the actual type into the inner shape type, the capture set and the box status
+        val actualShape = if actual.isFromJavaObject then actual else actual.stripCapturing
+        val actualIsBoxed = actual.isBoxedCapturing
+
+        // A box/unbox should be inserted, if the actual box status mismatches with the expectation
+        val needsAdaptation = actualIsBoxed != expected.isBoxedCapturing
+        // Whether to insert a box or an unbox?
+        val insertBox = needsAdaptation && covariant != actualIsBoxed
+
+        // Adapt the inner shape type: get the adapted shape type, and the capture set leaked during adaptation
+        val (adaptedShape, leaked) = adaptShape(actualShape, insertBox)
+
+        // Capture set of the term after adaptation
+        val captures =
+          val cs = actual.captureSet
+          if covariant then cs ++ leaked
+          else
+            if !leaked.subCaptures(cs, frozen = false).isOK then
+              report.error(
+                em"""$expected cannot be box-converted to $actual
+                    |since the additional capture set $leaked resulted from box conversion is not allowed in $actual""", pos)
+            cs
+
+        // Compute the adapted type
+        def adaptedType(resultBoxed: Boolean) =
+          if (adaptedShape eq actualShape) && leaked.isAlwaysEmpty && actualIsBoxed == resultBoxed
+          then actual
+          else adaptedShape
+            .capturing(if alwaysConst then CaptureSet(captures.elems) else captures)
+            .forceBoxStatus(resultBoxed)
+
+        if needsAdaptation then
+          val criticalSet =          // the set which is not allowed to have `cap`
+            if covariant then captures    // can't box with `cap`
+            else expected.captureSet // can't unbox with `cap`
+          if criticalSet.isUniversal && expected.isValueType && !ccConfig.allowUniversalInBoxed then
+            // We can't box/unbox the universal capability. Leave `actual` as it is
+            // so we get an error in checkConforms. This tends to give better error
+            // messages than disallowing the root capability in `criticalSet`.
+            if ctx.settings.YccDebug.value then
+              println(i"cannot box/unbox $actual vs $expected")
+            actual
+          else
+            if !ccConfig.allowUniversalInBoxed then
+              // Disallow future addition of `cap` to `criticalSet`.
+              criticalSet.disallowRootCapability { () =>
+                report.error(
+                  em"""$actual cannot be box-converted to $expected
+                      |since one of their capture sets contains the root capability `cap`""",
+                pos)
+              }
+            if !insertBox then  // unboxing
+              //debugShowEnvs()
+              markFree(criticalSet, pos)
+            adaptedType(!actualIsBoxed)
+        else
+          adaptedType(actualIsBoxed)
+    end adaptBoxed
+
+    /** If actual derives from caps.Capability, yet is not a capturing type itself,
+     *  make its capture set explicit.
+     */
+    private def makeCaptureSetExplicit(actual: Type)(using Context): Type = actual match
+      case CapturingType(_, _) => actual
+      case _ if actual.derivesFromCapability =>
+        val cap: CaptureRef = actual match
+          case ref: CaptureRef if ref.isTracked => ref
+          case _ => defn.captureRoot.termRef // TODO: skolemize?
+        CapturingType(actual, cap.singletonCaptureSet)
+      case _ => actual
+
+    /** If actual is a tracked CaptureRef `a` and widened is a capturing type T^C,
+     *  improve `T^C` to `T^{a}`, following the VAR rule of CC.
+     */
+    private def improveCaptures(widened: Type, actual: Type)(using Context): Type = actual match
+      case ref: CaptureRef if ref.isTracked =>
+        widened match
+          case CapturingType(p, refs) if ref.singletonCaptureSet.mightSubcapture(refs) =>
+            widened.derivedCapturingType(p, ref.singletonCaptureSet)
+              .showing(i"improve $widened to $result", capt)
+          case _ => widened
+      case _ => widened
+
+    /** Adapt `actual` type to `expected` type by inserting boxing and unboxing conversions
+     *
+     *  @param alwaysConst  always make capture set variables constant after adaptation
+     */
+    def adapt(actual: Type, expected: Type, pos: SrcPos)(using Context): Type =
       if expected == LhsProto || expected.isSingleton && actual.isSingleton then
         actual
       else
-        var actualw = actual.widenDealias
-        actual match
-          case ref: CaptureRef if ref.isTracked =>
-            actualw match
-              case CapturingType(p, refs) if ref.singletonCaptureSet.mightSubcapture(refs) =>
-                actualw = actualw.derivedCapturingType(p, ref.singletonCaptureSet)
-                  .showing(i"improve $actualw to $result", capt)
-                  // given `a: T^C`, improve `T^C` to `T^{a}`
-              case _ =>
-          case _ =>
-        val adapted = adapt(actualw.withReachCaptures(actual), expected, covariant = true)
-        makeCaptureSetExplicit:
-          if adapted ne actualw then
-            capt.println(i"adapt boxed $actual vs $expected ===> $adapted")
-            adapted
-          else
-            actual
-    end adaptBoxed
+        val normalized = makeCaptureSetExplicit(actual)
+        val widened = improveCaptures(normalized.widenDealias, actual)
+        val adapted = adaptBoxed(widened.withReachCaptures(actual), expected, pos, covariant = true, alwaysConst = false)
+        if adapted eq widened then normalized
+        else adapted.showing(i"adapt boxed $actual vs $expected ===> $adapted", capt)
+    end adapt
 
     /** Check overrides again, taking capture sets into account.
     *  TODO: Can we avoid doing overrides checks twice?
@@ -1180,7 +1131,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             val saved = curEnv
             try
               curEnv = Env(clazz, EnvKind.NestedInOwner, capturedVars(clazz), outer0 = curEnv)
-              val adapted = adaptBoxed(actual, expected1, srcPos, alwaysConst = true)
+              val adapted = adaptBoxed(actual, expected1, srcPos, covariant = true, alwaysConst = true)
               actual match
                 case _: MethodType =>
                   // We remove the capture set resulted from box adaptation for method types,
