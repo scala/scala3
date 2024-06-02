@@ -117,3 +117,12 @@ object Conv:
   def f22(x: (String, Int)) = x._1
   def f22(x: String) = x
   f22(bob)
+
+object SingletonExpectedTypes:
+  // original code from issue https://github.com/scala/scala3/issues/20267
+  type TripleSingle = ("Lausanne", 1000, 140000)
+  type CitySingle = (name: "Lausanne", zip: 1000, pop: 140000)
+
+  def test =
+    val tripleSingle: TripleSingle = ("Lausanne", 1000, 140000) // OK
+    val citySingle: CitySingle = (name = "Lausanne", zip = 1000, pop = 140000) // error
