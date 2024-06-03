@@ -2,7 +2,7 @@ trait Sel extends Selectable
 
 extension (s: Sel)
   def selectDynamic(name: String) = ???
-  def applyDynamic(name: String)(x: Int) = ???
+  def applyDynamic(name: String)(x: Int*) = ???
   def applyDynamic(name: String)() = ???
 
 val sel = (new Sel {}).asInstanceOf[Sel{ def foo: String; def bar(x: Int): Int; def baz(): Int }]
