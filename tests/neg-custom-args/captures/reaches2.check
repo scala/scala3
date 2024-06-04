@@ -1,0 +1,10 @@
+-- Error: tests/neg-custom-args/captures/reaches2.scala:8:10 -----------------------------------------------------------
+8 |  ps.map((x, y) => compose1(x, y)) // error // error
+  |          ^
+  |reference (ps : List[(box A => A, box A => A)]) @reachCapability is not included in the allowed capture set {}
+  |of an enclosing function literal with expected type ((box A ->{ps*} A, box A ->{ps*} A)) -> box (x$0: A^?) ->? A^?
+-- Error: tests/neg-custom-args/captures/reaches2.scala:8:13 -----------------------------------------------------------
+8 |  ps.map((x, y) => compose1(x, y)) // error // error
+  |             ^
+  |reference (ps : List[(box A => A, box A => A)]) @reachCapability is not included in the allowed capture set {}
+  |of an enclosing function literal with expected type ((box A ->{ps*} A, box A ->{ps*} A)) -> box (x$0: A^?) ->? A^?
