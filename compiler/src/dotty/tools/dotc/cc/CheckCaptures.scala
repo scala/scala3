@@ -369,11 +369,18 @@ class CheckCaptures extends Recheck, SymTransformer:
           inline def isVisibleFromEnv(sym: Symbol) = !isContainedInEnv(sym)
           // Only captured references that are visible from the environment
           // should be included.
-          val included = cs.filter:
-            case ref: TermRef => isVisibleFromEnv(ref.symbol.owner)
-            case ref: ThisType => isVisibleFromEnv(ref.cls)
-            case _ => false
-          capt.println(i"Include call capture $included in ${env.owner}")
+          val included = cs.filter: c =>
+            c.stripReach match
+              case ref: TermRef =>
+                val isVisible = isVisibleFromEnv(ref.symbol.owner)
+                if !isVisible && c.isReach then
+                  // Reach capabilities that go out of scope have to be approximated
+                  // by their underlyiong capture set. See i20503.scala.
+                  checkSubset(CaptureSet.ofInfo(c), env.captured, pos, provenance(env))
+                isVisible
+              case ref: ThisType => isVisibleFromEnv(ref.cls)
+              case _ => false
+          capt.println(i"Include call or box capture $included from $cs in ${env.owner}")
           checkSubset(included, env.captured, pos, provenance(env))
 
     /** Include references captured by the called method in the current environment stack */
