@@ -135,7 +135,7 @@ object language:
 
     /** Experimental support for improvements in `for` comprehensions
      *
-     * @see [[https://dotty.epfl.ch/docs/reference/experimental/better-fors]]
+     * @see [[https://github.com/scala/improvement-proposals/pull/79]]
      */
     @compileTimeOnly("`betterFors` can only be used at compile time in import statements")
     object betterFors
