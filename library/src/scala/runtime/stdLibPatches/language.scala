@@ -124,6 +124,13 @@ object language:
      */
     @compileTimeOnly("`betterMatchTypeExtractors` can only be used at compile time in import statements")
     object betterMatchTypeExtractors
+
+    /** Experimental support for improvements in `for` comprehensions
+     *
+     * @see [[https://dotty.epfl.ch/docs/reference/experimental/better-fors]]
+     */
+    @compileTimeOnly("`betterFors` can only be used at compile time in import statements")
+    object betterFors
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.
