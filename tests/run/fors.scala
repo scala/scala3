@@ -6,6 +6,7 @@
 
 import annotation.tailrec
 
+@scala.annotation.experimental
 object Test extends App {
   val xs = List(1, 2, 3)
   val ys = List(Symbol("a"), Symbol("b"), Symbol("c"))

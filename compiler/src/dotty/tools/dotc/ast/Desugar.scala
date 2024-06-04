@@ -1804,7 +1804,7 @@ object desugar {
     /** Create tree for for-comprehension `<for (enums) do body>` or
      *   `<for (enums) yield body>` where mapName and flatMapName are chosen
      *  corresponding to whether this is a for-do or a for-yield.
-     *  The creation performs the following rewrite rules:
+     *  If betterFors are enabled, the creation performs the following rewrite rules:
      *
      *  1.
      *
@@ -1872,6 +1872,46 @@ object desugar {
      *    (Where empty for-comprehensions are excluded by the parser)
      *
      *   If the aliases are not followed by a guard, otherwise an error.
+     * 
+     * With betterFors disabled, the translation is as follows:
+     * 
+     * 1.
+     *
+     *    for (P <- G) E   ==>   G.foreach (P => E)
+     *
+     *     Here and in the following (P => E) is interpreted as the function (P => E)
+     *     if P is a variable pattern and as the partial function { case P => E } otherwise.
+     *
+     *  2.
+     *
+     *    for (P <- G) yield E  ==>  G.map (P => E)
+     *
+     *  3.
+     *
+     *    for (P_1 <- G_1; P_2 <- G_2; ...) ...
+     *      ==>
+     *    G_1.flatMap (P_1 => for (P_2 <- G_2; ...) ...)
+     *
+     *  4.
+     *
+     *    for (P <- G; E; ...) ...
+     *      =>
+     *    for (P <- G.filter (P => E); ...) ...
+     *
+     *  5. For any N:
+     *
+     *    for (P_1 <- G; P_2 = E_2; val P_N = E_N; ...)
+     *      ==>
+     *    for (TupleN(P_1, P_2, ... P_N) <-
+     *      for (x_1 @ P_1 <- G) yield {
+     *        val x_2 @ P_2 = E_2
+     *        ...
+     *        val x_N & P_N = E_N
+     *        TupleN(x_1, ..., x_N)
+     *      } ...)
+     *
+     *    If any of the P_i are variable patterns, the corresponding `x_i @ P_i` is not generated
+     *    and the variable constituting P_i is used instead of x_i
      *
      *  @param mapName      The name to be used for maps (either map or foreach)
      *  @param flatMapName  The name to be used for flatMaps (either flatMap or foreach)
