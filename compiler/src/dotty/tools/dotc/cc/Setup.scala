@@ -23,7 +23,6 @@ trait SetupAPI:
   def setupUnit(tree: Tree, recheckDef: DefRecheck)(using Context): Unit
   def isPreCC(sym: Symbol)(using Context): Boolean
   def postCheck()(using Context): Unit
-  def isCapabilityClassRef(tp: Type)(using Context): Boolean
 
 object Setup:
 
@@ -58,8 +57,21 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   private val toBeUpdated = new mutable.HashSet[Symbol]
 
   private def newFlagsFor(symd: SymDenotation)(using Context): FlagSet =
-    if symd.isAllOf(PrivateParamAccessor) && symd.owner.is(CaptureChecked) && !symd.hasAnnotation(defn.ConstructorOnlyAnnot)
-    then symd.flags &~ Private | Recheck.ResetPrivate
+
+    object containsCovarRetains extends TypeAccumulator[Boolean]:
+      def apply(x: Boolean, tp: Type): Boolean =
+        if x then true
+        else if tp.derivesFromCapability && variance >= 0 then true
+        else tp match
+          case AnnotatedType(_, ann) if ann.symbol.isRetains && variance >= 0 => true
+          case _ => foldOver(x, tp)
+      def apply(tp: Type): Boolean = apply(false, tp)
+
+    if symd.isAllOf(PrivateParamAccessor)
+        && symd.owner.is(CaptureChecked)
+        && !symd.hasAnnotation(defn.ConstructorOnlyAnnot)
+        && containsCovarRetains(symd.symbol.originDenotation.info)
+    then symd.flags &~ Private
     else symd.flags
 
   def isPreCC(sym: Symbol)(using Context): Boolean =
@@ -67,31 +79,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     && !sym.is(Module)
     && !sym.owner.is(CaptureChecked)
     && !defn.isFunctionSymbol(sym.owner)
-
-  private val capabilityClassMap = new util.HashMap[Symbol, Boolean]
-
-  /** Check if the class is capability, which means:
-   *  1. the class has a capability annotation,
-   *  2. or at least one of its parent type has universal capability.
-   */
-  def isCapabilityClassRef(tp: Type)(using Context): Boolean = tp.dealiasKeepAnnots match
-    case _: TypeRef | _: AppliedType =>
-      val sym = tp.classSymbol
-      def checkSym: Boolean =
-        sym.hasAnnotation(defn.CapabilityAnnot)
-        || sym.info.parents.exists(hasUniversalCapability)
-      sym.isClass && capabilityClassMap.getOrElseUpdate(sym, checkSym)
-    case _ => false
-
-  private def hasUniversalCapability(tp: Type)(using Context): Boolean = tp.dealiasKeepAnnots match
-    case CapturingType(parent, refs) =>
-      refs.isUniversal || hasUniversalCapability(parent)
-    case AnnotatedType(parent, ann) =>
-      if ann.symbol.isRetains then
-        try ann.tree.toCaptureSet.isUniversal || hasUniversalCapability(parent)
-        catch case ex: IllegalCaptureRef => false
-      else hasUniversalCapability(parent)
-    case tp => isCapabilityClassRef(tp)
 
   private def fluidify(using Context) = new TypeMap with IdempotentCaptRefMap:
     def apply(t: Type): Type = t match
@@ -196,7 +183,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             case cls: ClassSymbol
             if !defn.isFunctionClass(cls) && cls.is(CaptureChecked) =>
               cls.paramGetters.foldLeft(tp) { (core, getter) =>
-                if atPhase(thisPhase.next)(getter.termRef.isTracked) then
+                if atPhase(thisPhase.next)(getter.termRef.isTracked)
+                    && !getter.is(Tracked)
+                then
                   val getterType =
                     mapInferred(refine = false)(tp.memberInfo(getter)).strippedDealias
                   RefinedType(core, getter.name,
@@ -317,10 +306,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case t: TypeVar =>
             this(t.underlying)
           case t =>
-            // Map references to capability classes C to C^
-            if isCapabilityClassRef(t)
-            then CapturingType(t, defn.expandedUniversalSet, boxed = false)
-            else recur(t)
+            recur(t)
     end expandAliases
 
     val tp1 = expandAliases(tp) // TODO: Do we still need to follow aliases?
@@ -592,7 +578,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         if sym.isClass then
           !sym.isPureClass
         else
-          sym != defn.Caps_Cap && instanceCanBeImpure(tp.superType)
+          sym != defn.Caps_Capability && instanceCanBeImpure(tp.superType)
       case tp: (RefinedOrRecType | MatchType) =>
         instanceCanBeImpure(tp.underlying)
       case tp: AndType =>

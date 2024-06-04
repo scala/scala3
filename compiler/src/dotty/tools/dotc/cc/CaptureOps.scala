@@ -203,6 +203,23 @@ extension (tp: Type)
     case _ =>
       false
 
+  /** Tests whether the type derives from `caps.Capability`, which means
+   *  references of this type are maximal capabilities.
+   */
+  def derivesFromCapability(using Context): Boolean = tp.dealias match
+    case tp: (TypeRef | AppliedType) =>
+      val sym = tp.typeSymbol
+      if sym.isClass then sym.derivesFrom(defn.Caps_Capability)
+      else tp.superType.derivesFromCapability
+    case tp: TypeProxy =>
+      tp.superType.derivesFromCapability
+    case tp: AndType =>
+      tp.tp1.derivesFromCapability || tp.tp2.derivesFromCapability
+    case tp: OrType =>
+      tp.tp1.derivesFromCapability && tp.tp2.derivesFromCapability
+    case _ =>
+      false
+
   /** Drop @retains annotations everywhere */
   def dropAllRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
     val tm = new TypeMap:
@@ -408,7 +425,7 @@ extension (sym: Symbol)
   /** The owner of the current level. Qualifying owners are
    *   - methods other than constructors and anonymous functions
    *   - anonymous functions, provided they either define a local
-   *     root of type caps.Cap, or they are the rhs of a val definition.
+   *     root of type caps.Capability, or they are the rhs of a val definition.
    *   - classes, if they are not staticOwners
    *   - _root_
    */

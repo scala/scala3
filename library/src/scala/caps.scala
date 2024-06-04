@@ -4,16 +4,17 @@ import annotation.experimental
 
 @experimental object caps:
 
-  class Cap // should be @erased
+  trait Capability extends Any
+
+  /** The universal capture reference */
+  val cap: Capability = new Capability() {}
 
   /** The universal capture reference (deprecated) */
   @deprecated("Use `cap` instead")
-  val `*`: Cap = cap
+  val `*`: Capability = cap
 
-  /** The universal capture reference */
-  val cap: Cap = Cap()
-
-  given Cap = cap
+  @deprecated("Use `Capability` instead")
+  type Cap = Capability
 
   /** Reach capabilities x* which appear as terms in @retains annotations are encoded
    *  as `caps.reachCapability(x)`. When converted to CaptureRef types in capture sets

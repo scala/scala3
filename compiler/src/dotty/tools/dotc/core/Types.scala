@@ -2268,7 +2268,7 @@ object Types extends TypeUtils {
      *  set of the underlying type is not always empty.
      */
     final def isTracked(using Context): Boolean =
-      isTrackableRef && (isRootCapability || !captureSetOfInfo.isAlwaysEmpty)
+      isTrackableRef && (isMaxCapability || !captureSetOfInfo.isAlwaysEmpty)
 
     /** Is this a reach reference of the form `x*`? */
     def isReach(using Context): Boolean = false // overridden in AnnotatedType
@@ -2281,6 +2281,9 @@ object Types extends TypeUtils {
 
     /** Is this reference the generic root capability `cap` ? */
     def isRootCapability(using Context): Boolean = false
+
+    /** Is this reference capability that does not derive from another capability ? */
+    def isMaxCapability(using Context): Boolean = false
 
     /** Normalize reference so that it can be compared with `eq` for equality */
     def normalizedRef(using Context): CaptureRef = this
@@ -3018,6 +3021,10 @@ object Types extends TypeUtils {
 
     override def isRootCapability(using Context): Boolean =
       name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
+
+    override def isMaxCapability(using Context): Boolean =
+      import cc.*
+      this.derivesFromCapability && symbol.isStableMember
 
     override def normalizedRef(using Context): CaptureRef =
       if isTrackableRef then symbol.termRef else this
@@ -4818,6 +4825,9 @@ object Types extends TypeUtils {
     def kindString: String = "Term"
     def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
     override def isTrackableRef(using Context) = true
+    override def isMaxCapability(using Context) =
+      import cc.*
+      this.derivesFromCapability
   }
 
   private final class TermParamRefImpl(binder: TermLambda, paramNum: Int) extends TermParamRef(binder, paramNum)
@@ -6164,8 +6174,15 @@ object Types extends TypeUtils {
     def inverse: BiTypeMap
 
     /** A restriction of this map to a function on tracked CaptureRefs */
-    def forward(ref: CaptureRef): CaptureRef = this(ref) match
-      case result: CaptureRef if result.isTrackableRef => result
+    def forward(ref: CaptureRef): CaptureRef =
+      val result = this(ref)
+      def ensureTrackable(tp: Type): CaptureRef = tp match
+        case tp: CaptureRef =>
+          if tp.isTrackableRef then tp
+          else ensureTrackable(tp.underlying)
+        case _ =>
+          assert(false, i"not a trackable captureRef ref: $result, ${result.underlyingIterator.toList}")
+      ensureTrackable(result)
 
     /** A restriction of the inverse to a function on tracked CaptureRefs */
     def backward(ref: CaptureRef): CaptureRef = inverse(ref) match

@@ -1,4 +1,4 @@
-@annotation.capability class C
+class C extends caps.Capability
 object test1:
   case class Ref(x: String^)
 

@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:11:8 -------------------------------------
 11 |    x = q           // error
    |        ^
-   |        Found:    () ->{q} Unit
+   |        Found:    (q : Proc)
    |        Required: () ->{p, q²} Unit
    |
    |        where:    q  is a parameter in method inner
@@ -28,7 +28,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:14:8 -------------------------------------
 14 |    y = q           // error
    |        ^
-   |        Found:    () ->{q} Unit
+   |        Found:    (q : Proc)
    |        Required: () ->{p} Unit
    |
    |        Note that reference (q : Proc), defined in method inner

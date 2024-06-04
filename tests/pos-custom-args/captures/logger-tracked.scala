@@ -3,7 +3,7 @@ import language.experimental.modularity
 
 class FileSystem extends caps.Capability
 
-class Logger(using fs: FileSystem):
+class Logger(using tracked val fs: FileSystem):
   def log(s: String): Unit = ???
 
 def test(using fs: FileSystem) =

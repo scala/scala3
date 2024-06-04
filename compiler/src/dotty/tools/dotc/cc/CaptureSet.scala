@@ -115,7 +115,7 @@ sealed abstract class CaptureSet extends Showable:
    *  capture set.
    */
   protected final def addNewElem(elem: CaptureRef)(using Context, VarState): CompareResult =
-    if elem.isRootCapability || summon[VarState] == FrozenState then
+    if elem.isMaxCapability || summon[VarState] == FrozenState then
       addThisElem(elem)
     else
       addThisElem(elem).orElse:
@@ -147,17 +147,26 @@ sealed abstract class CaptureSet extends Showable:
    *   this subsumes this.f
    *   x subsumes y  ==>  x* subsumes y, x subsumes y?
    *   x subsumes y  ==>  x* subsumes y*, x? subsumes y?
+   *   x: x1.type /\ x1 subsumes y  ==>  x subsumes y
    */
   extension (x: CaptureRef)
      private def subsumes(y: CaptureRef)(using Context): Boolean =
       (x eq y)
       || x.isRootCapability
       || y.match
-          case y: TermRef => y.prefix eq x
+          case y: TermRef =>
+            (y.prefix eq x)
+            || y.info.match
+                case y1: CaptureRef => x.subsumes(y1)
+                case _ => false
           case MaybeCapability(y1) => x.stripMaybe.subsumes(y1)
           case _ => false
       || x.match
           case ReachCapability(x1) => x1.subsumes(y.stripReach)
+          case x: TermRef =>
+            x.info match
+              case x1: CaptureRef => x1.subsumes(y)
+              case _ => false
           case _ => false
 
   /** {x} <:< this   where <:< is subcapturing, but treating all variables
@@ -167,11 +176,11 @@ sealed abstract class CaptureSet extends Showable:
     if comparer.isInstanceOf[ExplainingTypeComparer] then // !!! DEBUG
       reporting.trace.force(i"$this accountsFor $x, ${x.captureSetOfInfo}?", show = true):
         elems.exists(_.subsumes(x))
-        || !x.isRootCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
+        || !x.isMaxCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
     else
       reporting.trace(i"$this accountsFor $x, ${x.captureSetOfInfo}?", show = true):
         elems.exists(_.subsumes(x))
-        || !x.isRootCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
+        || !x.isMaxCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
 
   /** A more optimistic version of accountsFor, which does not take variable supersets
    *  of the `x` reference into account. A set might account for `x` if it accounts
@@ -183,7 +192,7 @@ sealed abstract class CaptureSet extends Showable:
   def mightAccountFor(x: CaptureRef)(using Context): Boolean =
     reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true) {
       elems.exists(_.subsumes(x))
-      || !x.isRootCapability
+      || !x.isMaxCapability
         && {
           val elems = x.captureSetOfInfo.elems
           !elems.isEmpty && elems.forall(mightAccountFor)
@@ -383,7 +392,7 @@ object CaptureSet:
 
   def apply(elems: CaptureRef*)(using Context): CaptureSet.Const =
     if elems.isEmpty then empty
-    else Const(SimpleIdentitySet(elems.map(_.normalizedRef)*))
+    else Const(SimpleIdentitySet(elems.map(_.normalizedRef.ensuring(_.isTrackableRef))*))
 
   def apply(elems: Refs)(using Context): CaptureSet.Const =
     if elems.isEmpty then empty else Const(elems)
@@ -491,6 +500,7 @@ object CaptureSet:
         CompareResult.LevelError(this, elem)
       else
         //if id == 34 then assert(!elem.isUniversalRootCapability)
+        assert(elem.isTrackableRef, elem)
         elems += elem
         if elem.isRootCapability then
           rootAddedHandler()
@@ -1032,7 +1042,9 @@ object CaptureSet:
 
   /** The capture set of the type underlying CaptureRef */
   def ofInfo(ref: CaptureRef)(using Context): CaptureSet = ref match
-    case ref: TermRef if ref.isRootCapability => ref.singletonCaptureSet
+    case ref: (TermRef | TermParamRef) if ref.isMaxCapability =>
+      if ref.isTrackableRef then ref.singletonCaptureSet
+      else CaptureSet.universal
     case ReachCapability(ref1) => deepCaptureSet(ref1.widen)
       .showing(i"Deep capture set of $ref: ${ref1.widen} = $result", capt)
     case _ => ofType(ref.underlying, followResult = true)
@@ -1046,7 +1058,8 @@ object CaptureSet:
         case tp: TermParamRef =>
           tp.captureSet
         case tp: TypeRef =>
-          if tp.typeSymbol == defn.Caps_Cap then universal else empty
+          if tp.derivesFromCapability then universal // TODO: maybe return another value that indicates that the underltinf ref is maximal?
+          else empty
         case _: TypeParamRef =>
           empty
         case CapturingType(parent, refs) =>
@@ -1074,7 +1087,7 @@ object CaptureSet:
         case _ =>
           empty
     recur(tp)
-      .showing(i"capture set of $tp = $result", captDebug)
+      //.showing(i"capture set of $tp = $result", captDebug)
 
   private def deepCaptureSet(tp: Type)(using Context): CaptureSet =
     val collect = new TypeAccumulator[CaptureSet]:

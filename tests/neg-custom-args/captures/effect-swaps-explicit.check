@@ -1,4 +1,4 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps.scala:62:8 ----------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps-explicit.scala:62:8 -------------------------
 61 |      Result:
 62 |        Future: // error, type mismatch
    |      ^
@@ -8,13 +8,13 @@
    |--------------------------------------------------------------------------------------------------------------------
    |Inline stack trace
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-   |This location contains code that was inlined from effect-swaps.scala:39
+   |This location contains code that was inlined from effect-swaps-explicit.scala:39
 39 |    boundary(Ok(body))
    |             ^^^^^^^^
     --------------------------------------------------------------------------------------------------------------------
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps.scala:72:10 ---------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps-explicit.scala:72:10 ------------------------
 72 |          Future: fut ?=> // error: type mismatch
    |          ^
    |          Found:    Future[box T^?]^{fr, lbl}
@@ -22,3 +22,8 @@
 73 |            fr.await.ok
    |
    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/effect-swaps-explicit.scala:66:15 ---------------------------------------------
+66 |        Result.make: //lbl ?=> // error, escaping label from Result
+   |        ^^^^^^^^^^^
+   |local reference contextual$9 from (using contextual$9: boundary.Label[Result[box Future[box T^?]^{fr, contextual$9}, box E^?]]^):
+   |  box Future[box T^?]^{fr, contextual$9} leaks into outer capture set of type parameter T of method make in object Result

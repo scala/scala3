@@ -1,9 +1,8 @@
 import language.experimental.captureChecking
-import annotation.capability
 import caps.cap
 
 trait Ptr[A]
-@capability trait Scope:
+trait Scope extends caps.Capability:
   def allocate(size: Int): Ptr[Unit]^{this}
 
 

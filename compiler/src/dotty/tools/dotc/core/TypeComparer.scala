@@ -842,13 +842,27 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           val refs1 = tp1.captureSet
           try
             if refs1.isAlwaysEmpty then recur(tp1, parent2)
-            else subCaptures(refs1, refs2, frozenConstraint).isOK
-              && sameBoxed(tp1, tp2, refs1)
-              && (recur(tp1.widen.stripCapturing, parent2)
-                 || tp1.isInstanceOf[SingletonType] && recur(tp1, parent2)
-                    // this alternative is needed in case the right hand side is a
-                    // capturing type that contains the lhs as an alternative of a union type.
-                 )
+            else
+              // The singletonOK branch is because we sometimes have a larger capture set in a singleton
+              // than in its underlying type. An example is `f: () -> () ->{x} T`, which might be
+              // the type of a closure. In that case the capture set of `f.type` is `{x}` but the
+              // capture set of the underlying type is `{}`. So without the `singletonOK` test, a singleton
+              // might not be a subtype of its underlying type. Examples where this arises is
+              // capt-capibility.scala and function-combinators.scala
+              val singletonOK = tp1 match
+                case tp1: SingletonType
+                if subCaptures(tp1.underlying.captureSet, refs2, frozen = true).isOK =>
+                  recur(tp1.widen, tp2)
+                case _ =>
+                  false
+              singletonOK
+              || subCaptures(refs1, refs2, frozenConstraint).isOK
+                  && sameBoxed(tp1, tp2, refs1)
+                  && (recur(tp1.widen.stripCapturing, parent2)
+                     || tp1.isInstanceOf[SingletonType] && recur(tp1, parent2)
+                        // this alternative is needed in case the right hand side is a
+                        // capturing type that contains the lhs as an alternative of a union type.
+                    )
           catch case ex: AssertionError =>
             println(i"assertion failed while compare captured $tp1 <:< $tp2")
             throw ex
