@@ -1297,180 +1297,220 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     assignType(cpy.NamedArg(tree)(tree.name, arg1), arg1)
   }
 
-  def typedAssign(tree: untpd.Assign, pt: Type)(using Context): Tree =
-    tree.lhs match {
-      case lhs @ Apply(fn, args) =>
-        typed(untpd.Apply(untpd.Select(fn, nme.update), args :+ tree.rhs), pt)
-      case untpd.Tuple(lhs) =>
-        val locked = ctx.typerState.ownedVars
-        val rhs = typed(tree.rhs, WildcardType)
-        typedPairwiseAssignments(lhs, rhs)
-      case untpd.TypedSplice(Apply(MaybePoly(Select(fn, app), targs), args)) if app == nme.apply =>
-        val rawUpdate: untpd.Tree = untpd.Select(untpd.TypedSplice(fn), nme.update)
-        val wrappedUpdate =
-          if (targs.isEmpty) rawUpdate
-          else untpd.TypeApply(rawUpdate, targs map (untpd.TypedSplice(_)))
-        val appliedUpdate =
-          untpd.Apply(wrappedUpdate, (args map (untpd.TypedSplice(_))) :+ tree.rhs)
-        typed(appliedUpdate, pt)
-      case lhs =>
-        val locked = ctx.typerState.ownedVars
-        val lhsCore = typedUnadapted(lhs, LhsProto, locked)
-        def lhs1 = adapt(lhsCore, LhsProto, locked)
+  /** Returns `e` if evaluating `e` doesn't cause any side effect. Otherwise, returns a synthethic
+    * val definition binding the result of `e`.
+    */
+  def temporary(e: tpd.Tree)(using Context): tpd.Tree =
+    if exprPurity(e) >= TreeInfo.Pure then
+      e
+    else
+      tpd.SyntheticValDef(TempResultName.fresh(), e)
 
-        def reassignmentToVal =
-          report.error(ReassignmentToVal(lhsCore.symbol.name), tree.srcPos)
-          cpy.Assign(tree)(lhsCore, typed(tree.rhs, lhs1.tpe.widen)).withType(defn.UnitType)
+  /** Returns a builder for computing trees representing assignments to `lhs`. */
+  def formPartialAssignmentTo(lhs: untpd.Tree)(using Context): PartialAssignment[LValue] =
+    lhs match
+      case lhs @ Apply(f, as) =>
+        // LHS is an application `f(a1, ..., an)` that desugars to `f.update(a1, ..., an, rhs)`.
+        val v = SelectLValue(temporary(typed(f)), nme.update, as.map((a) => temporary(typed(a))))
+        PartialAssignment(v) { (l, r) => l.formAssignment(r) }
 
-        def canAssign(sym: Symbol) =
-          sym.is(Mutable, butNot = Accessor) ||
-          ctx.owner.isPrimaryConstructor && !sym.is(Method) && sym.maybeOwner == ctx.owner.owner ||
-            // allow assignments from the primary constructor to class fields
-          ctx.owner.name.is(TraitSetterName) || ctx.owner.isStaticConstructor
+      case untpd.TypedSplice(Apply(MaybePoly(Select(fn, app), tas), as)) if app == nme.apply =>
+        if tas.isEmpty then
+          // No type arguments: fall back to a regular update.
+          val v = SelectLValue(temporary(fn), nme.update, as.map((a) => temporary(typed(a))))
+          PartialAssignment(v) { (l, r) => l.formAssignment(r) }
+        else
+          // Type arguments are present; the LHS requires a type application.
+          val s: untpd.Tree = untpd.Select(untpd.TypedSplice(fn), nme.update)
+          val t = untpd.TypeApply(s, tas.map((ta) => untpd.TypedSplice(ta)))
+          val v = ApplyLValue(temporary(typed(t)), as.map((a) => temporary(typed(a))))
+          PartialAssignment(v) { (l, r) => l.formAssignment(r) }
 
-        /** Mark private variables that are assigned with a prefix other than
-         *  the `this` type of their owner with a `annotation.internal.AssignedNonLocally`
-         *  annotation. The annotation influences the variance check for these
-         *  variables, which is done at PostTyper. It will be removed after the
-         *  variance check.
-         */
-        def rememberNonLocalAssignToPrivate(sym: Symbol) = lhs1 match
-          case Select(qual, _)
-          if sym.is(Private, butNot = Local) && !sym.isAccessPrivilegedThisType(qual.tpe) =>
-            sym.addAnnotation(Annotation(defn.AssignedNonLocallyAnnot, lhs1.span))
-          case _ =>
+      case _ =>
+        formPartialAssignmentToNonApply(lhs)
 
-        lhsCore match
-          case Apply(fn, _) if fn.symbol.is(ExtensionMethod) =>
-            def toSetter(fn: Tree): untpd.Tree = fn match
-              case fn @ Ident(name: TermName) =>
-                // We need to make sure that the prefix of this extension getter is
-                // retained when we transform it into a setter. Otherwise, we could
-                // end up resolving an unrelated setter from another extension. We
-                // transform the `Ident` into a `Select` to ensure that the prefix
-                // is retained with a `TypedSplice` (see `case Select` bellow).
-                // See tests/pos/i18713.scala for an example.
-                fn.tpe match
-                  case TermRef(qual: TermRef, _) =>
-                    toSetter(ref(qual).select(fn.symbol).withSpan(fn.span))
-                  case TermRef(qual: ThisType, _) =>
-                    toSetter(This(qual.cls).select(fn.symbol).withSpan(fn.span))
-                  case TermRef(NoPrefix, _) =>
-                    untpd.cpy.Ident(fn)(name.setterName)
-              case fn @ Select(qual, name: TermName) =>
-                untpd.cpy.Select(fn)(untpd.TypedSplice(qual), name.setterName)
-              case fn @ TypeApply(fn1, targs) =>
-                untpd.cpy.TypeApply(fn)(toSetter(fn1), targs.map(untpd.TypedSplice(_)))
-              case fn @ Apply(fn1, args) =>
-                val result = untpd.cpy.Apply(fn)(
-                  toSetter(fn1),
-                  args.map(untpd.TypedSplice(_, isExtensionReceiver = true)))
-                fn1 match
-                  case Apply(_, _) => // current apply is to implicit arguments
-                    result.setApplyKind(ApplyKind.Using)
-                      // Note that we cannot copy the apply kind of `fn` since `fn` is a typed
-                      // tree and applyKinds are not preserved for those.
-                  case _ => result
-              case _ =>
-                EmptyTree
+  /** Returns a builder for computing trees representing assignments to `lhs`, which isn't a term
+    * or type application.
+    */
+  def formPartialAssignmentToNonApply(lhs: untpd.Tree)(using Context): PartialAssignment[LValue] =
+    val locked = ctx.typerState.ownedVars
+    val core = typedUnadapted(lhs, LhsProto, locked)
+    def adapted = adapt(core, LhsProto, locked)
 
-            val setter = toSetter(lhsCore)
-            if setter.isEmpty then reassignmentToVal
-            else
-              val assign = untpd.Apply(setter, tree.rhs :: Nil)
-              typed(assign, IgnoredProto(pt))
-          case _ => lhsCore.tpe match {
-            case ref: TermRef =>
-              val lhsVal = lhsCore.denot.suchThat(!_.is(Method))
-              val lhsSym = lhsVal.symbol
-              if canAssign(lhsSym) then
-                rememberNonLocalAssignToPrivate(lhsSym)
-                // lhsBounds: (T .. Any) as seen from lhs prefix, where T is the type of lhsSym
-                // This ensures we do the as-seen-from on T with variance -1. Test case neg/i2928.scala
-                val lhsBounds =
-                  TypeBounds.lower(lhsSym.info).asSeenFrom(ref.prefix, lhsSym.owner)
-                assignType(cpy.Assign(tree)(lhs1, typed(tree.rhs, lhsBounds.loBound)))
-                  .computeAssignNullable()
-              else
-                val pre = ref.prefix
-                val setterName = ref.name.setterName
-                val setter = pre.member(setterName)
-                lhsCore match {
-                  case lhsCore: RefTree if setter.exists =>
-                    val setterTypeRaw = pre.select(setterName, setter)
-                    val setterType = ensureAccessible(setterTypeRaw, isSuperSelection(lhsCore), tree.srcPos)
-                    val lhs2 = untpd.rename(lhsCore, setterName).withType(setterType)
-                    typedUnadapted(untpd.Apply(untpd.TypedSplice(lhs2), tree.rhs :: Nil), WildcardType, locked)
-                  case _ =>
-                    reassignmentToVal
+    def reassignmentToVal(): PartialAssignment[SimpleLValue] =
+      PartialAssignment(SimpleLValue(core)) { (l, r) =>
+        val target = l.expression
+        report.error(ReassignmentToVal(target.symbol.name), target.srcPos)
+        untpd.TypedSplice(tpd.Assign(target, typed(r, adapted.tpe.widen)))
+      }
+
+    /** Returns `true` if `s` is assignable. */
+    def canAssign(s: Symbol) =
+      s.is(Mutable, butNot = Accessor) ||
+      ctx.owner.isPrimaryConstructor && !s.is(Method) && s.maybeOwner == ctx.owner.owner ||
+      // allow assignments from the primary constructor to class fields
+      ctx.owner.name.is(TraitSetterName) || ctx.owner.isStaticConstructor
+
+    /** Marks private variables that are assigned with a prefix other than the `this` type of their
+     *  owner with a `annotation.internal.AssignedNonLocally` annotation. The annotation influences
+     *  the variance check for these variables, which is done at PostTyper. It will be removed
+     *  after the variance check.
+     */
+    def rememberNonLocalAssignToPrivate(s: Symbol) = adapted match
+      case Select(q, _) if s.is(Private, butNot = Local) && !s.isAccessPrivilegedThisType(q.tpe) =>
+        s.addAnnotation(Annotation(defn.AssignedNonLocallyAnnot, adapted.span))
+      case _ => ()
+
+    core match
+      case Apply(f, _) if f.symbol.is(ExtensionMethod) =>
+        formPartialAssignmentToExtensionApply(f, reassignmentToVal).getOrElse(reassignmentToVal())
+
+      case _ => core.tpe match
+        case r: TermRef =>
+          val v = core.denot.suchThat(!_.is(Method))
+          if canAssign(v.symbol) then
+            rememberNonLocalAssignToPrivate(v.symbol)
+            // bounds: (T .. Any) as seen from lhs prefix, where T is the type of v.symbol
+            // This ensures we do the as-seen-from on T with variance -1. Test case neg/i2928.scala
+            val bounds = TypeBounds.lower(v.symbol.info).asSeenFrom(r.prefix, v.symbol.owner)
+            PartialAssignment(SimpleLValue(adapted)) { (l, r) =>
+              val s = tpd.Assign(l.expression, typed(r, bounds.loBound))
+              untpd.TypedSplice(s.computeAssignNullable())
+            }
+          else
+            val setterName = r.name.setterName
+            val setter = r.prefix.member(setterName)
+            core match
+              case core: RefTree if setter.exists =>
+                val t = r.prefix.select(setterName, setter)
+                val u = ensureAccessible(t, isSuperSelection(core), lhs.srcPos)
+                val v = untpd.rename(core, setterName).withType(u)
+                PartialAssignment(SimpleLValue(v)) { (l, r) =>
+                  untpd.Apply(untpd.TypedSplice(l.expression), List(r))
+                  // QUESTION: Why do we need the `typedUnadapted(s, WildcardType, locked)`?
+                  // val s = untpd.Apply(untpd.TypedSplice(lvalue.expression), List(rhs))
+                  // typedUnadapted(s, WildcardType, locked)
                 }
-            case TryDynamicCallType =>
-              typedDynamicAssign(tree, pt)
-            case tpe =>
-              reassignmentToVal
+              case _ =>
+                reassignmentToVal()
+
+        case TryDynamicCallType =>
+          formPartialDynamicAssignment(lhs)
+
+        case _ =>
+          reassignmentToVal()
+
+  /** Returns a builder for computing trees representing assignments to `lhs`, which denotes the
+    * use of a setter defined in an extension.
+    */
+  def formPartialAssignmentToExtensionApply(
+      lhs: Tree, reassignmentToVal: () => PartialAssignment[LValue]
+  )(using Context): Option[PartialAssignment[LValue]] =
+    def formAssignment(v: LValue): PartialAssignment[LValue] =
+      PartialAssignment(v) { (l, r) =>
+        // QUESTION: Why do we need `IgnoredProto(pt)`=
+        // typed(l.formAssignment(r), IgnoredProto(e))
+        l.formAssignment(r)
+      }
+
+    lhs match
+      case f @ Ident(name: TermName) =>
+        // We need to make sure that the prefix of this extension getter is retained when we
+        // transform it into a setter. Otherwise, we could end up resolving an unrelated setter
+        // from another extension. See tests/pos/i18713.scala for an example.
+        val v: SelectLValue = f.tpe match
+          case TermRef(q: TermRef, _) =>
+            SelectLValue(temporary(ref(q)), f.symbol.name)
+          case TermRef(q: ThisType, _) =>
+            SelectLValue(temporary(This(q.cls)), f.symbol.name)
+          case TermRef(NoPrefix, _) =>
+            SelectLValue(f, name.setterName)
+        Some(formAssignment(v))
+
+      case f @ Select(q, name: TermName) =>
+        Some(formAssignment(SelectLValue(temporary(q), name.setterName)))
+
+      case f @ TypeApply(f1, tas) =>
+        formPartialAssignmentToExtensionApply(f1, reassignmentToVal).map { (partialAssignment) =>
+          val s = partialAssignment.lhs.toRValue
+          val t = untpd.cpy.TypeApply(f)(s, tas.map((ta) => untpd.TypedSplice(ta)))
+          formAssignment(ApplyLValue(temporary(typed(t)), List()))
         }
-    }
 
-  /** Returns a block assigning to `targets` the corresponding values in `rhs`.
-   *
-   *  @param targets A sequence of untyped trees on the LHS of a multiple assignment.
-   *  @param rhs The RHS of a multuple assignment.
-   */
-  private def typedPairwiseAssignments(
-      targets: List[untpd.Tree], rhs: Tree
-  )(using Context): Tree =
-    val s = mutable.ListBuffer[untpd.Tree]()
-    formPairwiseAssignments(
-      s, targets, untpd.TypedSplice(rhs), rhs.tpe,
-      EmptyTermName)
-    typed(untpd.Block(s.toList, untpd.TypedSplice(unitLiteral)))
+      case f @ Apply(f1, as) =>
+        formPartialAssignmentToExtensionApply(f1, reassignmentToVal).map { (partialAssignment) =>
+          val applyKind = f1 match
+            case _: Apply =>
+              // Current apply is to implicit arguments. Note that we cannot copy the apply kind
+              // of `f` since `f` is a typed tree and apply kinds are not preserved for those.
+              ApplyKind.Using
+            case _ =>
+              ApplyKind.Regular
 
-  /** Appends to `statements` the assignments of `targets` to corresponding values in `rhs`.
-   *
-   *  @param statements A partially constructed sequence representing the desugaring of a
-   *  multiple assignment.
-   *  @param targets A sequence of expression representing variables to assign.
-   *  @param rhs The expression of the values to assign..
-   *  @param rhsType The type of `rhs`.
-   *  @param prefix A prefix for the name of syntactic vals created by the methods.
-   */
-  private def formPairwiseAssignments(
-      statements: mutable.ListBuffer[untpd.Tree],
-      targets: List[untpd.Tree],
-      rhs: untpd.Tree,
-      rhsType: Type,
-      prefix: TermName
-  )(using Context): Unit =
-    val source = UniqueName.fresh(prefix)
-    val d = untpd.ValDef(source, untpd.TypeTree(rhsType), rhs)
-      .withSpan(rhs.span)
-      .withFlags(Synthetic)
-    statements.append(d)
+          val arguments = as.map { (a) =>
+            val x = untpd.TypedSplice(a, isExtensionReceiver = true)
+            temporary(typed(x))
+          }
+          val s = partialAssignment.lhs.toRValue
+          formAssignment(ApplyLValue(temporary(typed(s)), arguments, applyKind))
+        }
 
-    rhsType.tupleElementTypes match {
+      case _ =>
+        None
+
+  def typedAssign(tree: untpd.Assign, pt: Type)(using Context): Tree =
+    tree.lhs match
+      case untpd.Tuple(lhs) =>
+        // Multiple assignment.
+        typedMultipleAssign(lhs, tree.rhs)
+      case _ =>
+        // Simple assignment.
+        val assignmentBuilder = formPartialAssignmentTo(tree.lhs)
+        val locals = assignmentBuilder.lhs.locals.map((d) => untpd.TypedSplice(d))
+        if locals.isEmpty then
+          typed(assignmentBuilder(tree.rhs))
+        else
+          typed(untpd.Block(locals, assignmentBuilder(tree.rhs)))
+
+  def typedMultipleAssign(targets: List[untpd.Tree], source: untpd.Tree)(using Context): Tree =
+    val rhs = typed(source, WildcardType)
+    rhs.tpe.tupleElementTypes match
       case None =>
-        errorTree(rhs, InvalidMultipleAssignmentSource(rhsType))
-
+        errorTree(rhs, InvalidMultipleAssignmentSource(rhs.tpe))
       case Some(e) if targets.length != e.length =>
         errorTree(rhs, MultipleAssignmentShapeMismatch(e.length, targets.length))
+      case _ =>
+        val statements = mutable.ListBuffer[untpd.Tree]()
+        val assignmentBuilders = mutable.ListBuffer[PartialAssignment[LValue]]()
 
-      case Some(sourceTypes) =>
-        /** The value to assign to the `i`-th source. */
-        def rhsElement(i: Int): untpd.Tree =
-          untpd.Select(untpd.Ident(source), nme.productAccessorName(i))
-            .withSpan(rhs.span)
+        // Compute the targets of each assignment, hoisting impure intermediate steps.
+        for l <- targets do
+          l match
+            case _: untpd.Tuple =>
+              val e = errorTree(l, InvalidMultipleAssignmentTarget())
+              val s = PartialAssignment(SimpleLValue(e)) { (l, _) => l.expression }
+              assignmentBuilders.append(s)
+            case _ =>
+              val s = formPartialAssignmentTo(l)
+              statements.appendAll(s.lhs.locals.map((d) => untpd.TypedSplice(d)))
+              assignmentBuilders.append(s)
 
-        /** Forms the assignments of the targets in the range [`i`, `targets.length`). */
-        for i <- 0 until targets.length do {
-          targets(i) match {
-            case untpd.Tuple(lhs) =>
-              formPairwiseAssignments(statements, lhs, rhsElement(i + 1), sourceTypes(i), source)
-            case lhs =>
-              val u = untpd.Assign(lhs, rhsElement(i + 1))
-              statements.append(u)
-          }
-        }
-    }
+        // Compute the right-hand side value.
+        // QUESTION: `withSpan(rhs.span)` is necessary or the pos test will fail pickling; why?
+        // It seems like the symbol gets a different unpickled position if its span is synthetic.
+        val d = tpd.SyntheticValDef(TempResultName.fresh(), rhs).withSpan(rhs.span)
+        statements.append(untpd.TypedSplice(d))
+
+        // Append the assignments.
+        var i = 0
+        for l <- targets do
+          val r = untpd.Select(
+            untpd.TypedSplice(tpd.Ident(d.namedType)),
+            nme.productAccessorName(i + 1)
+          ).withSpan(rhs.span)
+          statements.append(assignmentBuilders(i)(r))
+          i += 1
+        typed(untpd.Block(statements.toList, untpd.TypedSplice(unitLiteral)))
 
   def typedBlockStats(stats: List[untpd.Tree])(using Context): (List[tpd.Tree], Context) =
     index(stats)

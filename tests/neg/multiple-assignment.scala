@@ -6,5 +6,7 @@ def tu(): (Int, Boolean) = (1, true)
   var y = false
   var z = "a"
 
-  ((x, y), z) = 1
-  (x, y) = (1, 1, 1)
+  (x, y) = 1 // error
+  (x, y) = (1, 1, 1) // error
+  (x, y) = (1, 2) // error
+  (x, (y, z)) = (1, (true, "b")) // error
