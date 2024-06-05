@@ -16,6 +16,7 @@ import util.{SimpleIdentitySet, Property}
 import typer.ErrorReporting.Addenda
 import util.common.alwaysTrue
 import scala.collection.mutable
+import CCState.*
 
 /** A class for capture sets. Capture sets can be constants or variables.
  *  Capture sets support inclusion constraints <:< where <:< is subcapturing.
@@ -55,10 +56,14 @@ sealed abstract class CaptureSet extends Showable:
    */
   def isAlwaysEmpty: Boolean
 
-  /** An optional level limit, or NoSymbol if none exists. All elements of the set
-   *  must be in scopes visible from the level limit.
+  /** An optional level limit, or undefinedLevel if none exists. All elements of the set
+   *  must be at levels equal or smaller than the level of the set, if it is defined.
    */
-  def levelLimit: Symbol
+  def level: Level
+
+  /** An optional owner, or NoSymbol if none exists. Used for diagnstics
+   */
+  def owner: Symbol
 
   /** Is this capture set definitely non-empty? */
   final def isNotEmpty: Boolean = !elems.isEmpty
@@ -239,9 +244,7 @@ sealed abstract class CaptureSet extends Showable:
     if this.subCaptures(that, frozen = true).isOK then that
     else if that.subCaptures(this, frozen = true).isOK then this
     else if this.isConst && that.isConst then Const(this.elems ++ that.elems)
-    else Var(
-        this.levelLimit.maxNested(that.levelLimit, onConflict = (sym1, sym2) => sym1),
-        this.elems ++ that.elems)
+    else Var(initialElems = this.elems ++ that.elems)
       .addAsDependentTo(this).addAsDependentTo(that)
 
   /** The smallest superset (via <:<) of this capture set that also contains `ref`.
@@ -411,7 +414,9 @@ object CaptureSet:
 
     def withDescription(description: String): Const = Const(elems, description)
 
-    def levelLimit = NoSymbol
+    def level = undefinedLevel
+
+    def owner = NoSymbol
 
     override def toString = elems.toString
   end Const
@@ -431,7 +436,7 @@ object CaptureSet:
   end Fluid
 
   /** The subclass of captureset variables with given initial elements */
-  class Var(directOwner: Symbol, initialElems: Refs = emptySet)(using @constructorOnly ictx: Context) extends CaptureSet:
+  class Var(override val owner: Symbol = NoSymbol, initialElems: Refs = emptySet, val level: Level = undefinedLevel, underBox: Boolean = false)(using @constructorOnly ictx: Context) extends CaptureSet:
 
     /** A unique identification number for diagnostics */
     val id =
@@ -439,9 +444,6 @@ object CaptureSet:
       varId
 
     //assert(id != 40)
-
-    override val levelLimit =
-      if directOwner.exists then directOwner.levelOwner else NoSymbol
 
     /** A variable is solved if it is aproximated to a from-then-on constant set. */
     private var isSolved: Boolean = false
@@ -516,12 +518,10 @@ object CaptureSet:
     private def levelOK(elem: CaptureRef)(using Context): Boolean =
       if elem.isRootCapability then !noUniversal
       else elem match
-        case elem: TermRef if levelLimit.exists =>
-          var sym = elem.symbol
-          if sym.isLevelOwner then sym = sym.owner
-          levelLimit.isContainedIn(sym.levelOwner)
-        case elem: ThisType if levelLimit.exists =>
-          levelLimit.isContainedIn(elem.cls.levelOwner)
+        case elem: TermRef if level.isDefined =>
+          elem.symbol.ccLevel <= level
+        case elem: ThisType if level.isDefined =>
+          elem.cls.ccLevel.nextInner <= level
         case ReachCapability(elem1) =>
           levelOK(elem1)
         case MaybeCapability(elem1) =>
@@ -599,8 +599,8 @@ object CaptureSet:
       val debugInfo =
         if !isConst && ctx.settings.YccDebug.value then ids else ""
       val limitInfo =
-        if ctx.settings.YprintLevel.value && levelLimit.exists
-        then i"<in $levelLimit>"
+        if ctx.settings.YprintLevel.value && level.isDefined
+        then i"<at level ${level.toString}>"
         else ""
       debugInfo ++ limitInfo
 
@@ -618,13 +618,6 @@ object CaptureSet:
       s"$id$descr$trail"
     override def toString = s"Var$id$elems"
   end Var
-
-  /** Variables that represent refinements of class parameters can have the universal
-   *  capture set, since they represent only what is the result of the constructor.
-   *  Test case: Without that tweak, logger.scala would not compile.
-   */
-  class RefiningVar(directOwner: Symbol)(using Context) extends Var(directOwner):
-    override def disallowRootCapability(handler: () => Context ?=> Unit)(using Context) = this
 
   /** A variable that is derived from some other variable via a map or filter. */
   abstract class DerivedVar(owner: Symbol, initialElems: Refs)(using @constructorOnly ctx: Context)
@@ -654,7 +647,7 @@ object CaptureSet:
    */
   class Mapped private[CaptureSet]
     (val source: Var, tm: TypeMap, variance: Int, initial: CaptureSet)(using @constructorOnly ctx: Context)
-  extends DerivedVar(source.levelLimit, initial.elems):
+  extends DerivedVar(source.owner, initial.elems):
     addAsDependentTo(initial)  // initial mappings could change by propagation
 
     private def mapIsIdempotent = tm.isInstanceOf[IdempotentCaptRefMap]
@@ -751,7 +744,7 @@ object CaptureSet:
    */
   final class BiMapped private[CaptureSet]
     (val source: Var, bimap: BiTypeMap, initialElems: Refs)(using @constructorOnly ctx: Context)
-  extends DerivedVar(source.levelLimit, initialElems):
+  extends DerivedVar(source.owner, initialElems):
 
     override def tryInclude(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult =
       if origin eq source then
@@ -785,7 +778,7 @@ object CaptureSet:
   /** A variable with elements given at any time as { x <- source.elems | p(x) } */
   class Filtered private[CaptureSet]
     (val source: Var, p: Context ?=> CaptureRef => Boolean)(using @constructorOnly ctx: Context)
-  extends DerivedVar(source.levelLimit, source.elems.filter(p)):
+  extends DerivedVar(source.owner, source.elems.filter(p)):
 
     override def tryInclude(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult =
       if accountsFor(elem) then
@@ -815,7 +808,7 @@ object CaptureSet:
   extends Filtered(source, !other.accountsFor(_))
 
   class Intersected(cs1: CaptureSet, cs2: CaptureSet)(using Context)
-  extends Var(cs1.levelLimit.minNested(cs2.levelLimit), elemIntersection(cs1, cs2)):
+  extends Var(initialElems = elemIntersection(cs1, cs2)):
     addAsDependentTo(cs1)
     addAsDependentTo(cs2)
     deps += cs1
@@ -905,7 +898,7 @@ object CaptureSet:
             if ctx.settings.YccDebug.value then printer.toText(trace, ", ")
             else blocking.show
           case LevelError(cs: CaptureSet, elem: CaptureRef) =>
-            Str(i"($elem at wrong level for $cs in ${cs.levelLimit})")
+            Str(i"($elem at wrong level for $cs at level ${cs.level.toString})")
 
     /** The result is OK */
     def isOK: Boolean = this == OK
@@ -1148,6 +1141,6 @@ object CaptureSet:
           i"""
             |
             |Note that reference ${ref}$levelStr
-            |cannot be included in outer capture set $cs which is associated with ${cs.levelLimit}"""
+            |cannot be included in outer capture set $cs"""
 
 end CaptureSet

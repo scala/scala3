@@ -16,6 +16,7 @@ import Synthetics.isExcluded
 import util.Property
 import printing.{Printer, Texts}, Texts.{Text, Str}
 import collection.mutable
+import CCState.*
 
 /** Operations accessed from CheckCaptures */
 trait SetupAPI:
@@ -189,7 +190,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   val getterType =
                     mapInferred(refine = false)(tp.memberInfo(getter)).strippedDealias
                   RefinedType(core, getter.name,
-                      CapturingType(getterType, CaptureSet.RefiningVar(ctx.owner)))
+                      CapturingType(getterType,
+                      new CaptureSet.Var(ctx.owner):
+                        override def disallowRootCapability(handler: () => Context ?=> Unit)(using Context) = this
+                      ))
                     .showing(i"add capture refinement $tp --> $result", capt)
                 else
                   core
@@ -402,14 +406,17 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           if isExcluded(meth) then
             return
 
-          inContext(ctx.withOwner(meth)):
-            paramss.foreach(traverse)
-            transformResultType(tpt, meth)
-            traverse(tree.rhs)
-            //println(i"TYPE of ${tree.symbol.showLocated} = ${tpt.knownType}")
+          meth.recordLevel()
+          inNestedLevel:
+            inContext(ctx.withOwner(meth)):
+              paramss.foreach(traverse)
+              transformResultType(tpt, meth)
+              traverse(tree.rhs)
+              //println(i"TYPE of ${tree.symbol.showLocated} = ${tpt.knownType}")
 
         case tree @ ValDef(_, tpt: TypeTree, _) =>
           val sym = tree.symbol
+          sym.recordLevel()
           val defCtx = if sym.isOneOf(TermParamOrAccessor) then ctx else ctx.withOwner(sym)
           inContext(defCtx):
             transformResultType(tpt, sym)
@@ -426,12 +433,18 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 transformTT(arg, boxed = true, exact = false) // type arguments in type applications are boxed
 
         case tree: TypeDef if tree.symbol.isClass =>
-          inContext(ctx.withOwner(tree.symbol)):
-            traverseChildren(tree)
+          val sym = tree.symbol
+          sym.recordLevel()
+          inNestedLevelUnless(sym.is(Module)):
+            inContext(ctx.withOwner(sym))
+              traverseChildren(tree)
 
         case tree @ SeqLiteral(elems, tpt: TypeTree) =>
           traverse(elems)
           tpt.rememberType(box(transformInferredType(tpt.tpe)))
+
+        case tree: Block =>
+          inNestedLevel(traverseChildren(tree))
 
         case _ =>
           traverseChildren(tree)
@@ -531,36 +544,37 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case tree: TypeDef =>
         tree.symbol match
           case cls: ClassSymbol =>
-            val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
-            def innerModule = cls.is(ModuleClass) && !cls.isStatic
-            val selfInfo1 =
-              if (selfInfo ne NoType) && !innerModule then
-                // if selfInfo is explicitly given then use that one, except if
-                // self info applies to non-static modules, these still need to be inferred
-                selfInfo
-              else if cls.isPureClass then
-                // is cls is known to be pure, nothing needs to be added to self type
-                selfInfo
-              else if !cls.isEffectivelySealed && !cls.baseClassHasExplicitSelfType then
-                // assume {cap} for completely unconstrained self types of publicly extensible classes
-                CapturingType(cinfo.selfType, CaptureSet.universal)
-              else
-                // Infer the self type for the rest, which is all classes without explicit
-                // self types (to which we also add nested module classes), provided they are
-                // neither pure, nor are publicily extensible with an unconstrained self type.
-                CapturingType(cinfo.selfType, CaptureSet.Var(cls))
-            val ps1 = inContext(ctx.withOwner(cls)):
-              ps.mapConserve(transformExplicitType(_))
-            if (selfInfo1 ne selfInfo) || (ps1 ne ps) then
-              val newInfo = ClassInfo(prefix, cls, ps1, decls, selfInfo1)
-              updateInfo(cls, newInfo)
-              capt.println(i"update class info of $cls with parents $ps selfinfo $selfInfo to $newInfo")
-              cls.thisType.asInstanceOf[ThisType].invalidateCaches()
-              if cls.is(ModuleClass) then
-                // if it's a module, the capture set of the module reference is the capture set of the self type
-                val modul = cls.sourceModule
-                updateInfo(modul, CapturingType(modul.info, selfInfo1.asInstanceOf[Type].captureSet))
-                modul.termRef.invalidateCaches()
+            inNestedLevelUnless(cls.is(Module)):
+              val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
+              def innerModule = cls.is(ModuleClass) && !cls.isStatic
+              val selfInfo1 =
+                if (selfInfo ne NoType) && !innerModule then
+                  // if selfInfo is explicitly given then use that one, except if
+                  // self info applies to non-static modules, these still need to be inferred
+                  selfInfo
+                else if cls.isPureClass then
+                  // is cls is known to be pure, nothing needs to be added to self type
+                  selfInfo
+                else if !cls.isEffectivelySealed && !cls.baseClassHasExplicitSelfType then
+                  // assume {cap} for completely unconstrained self types of publicly extensible classes
+                  CapturingType(cinfo.selfType, CaptureSet.universal)
+                else
+                  // Infer the self type for the rest, which is all classes without explicit
+                  // self types (to which we also add nested module classes), provided they are
+                  // neither pure, nor are publicily extensible with an unconstrained self type.
+                  CapturingType(cinfo.selfType, CaptureSet.Var(cls, level = currentLevel))
+              val ps1 = inContext(ctx.withOwner(cls)):
+                ps.mapConserve(transformExplicitType(_))
+              if (selfInfo1 ne selfInfo) || (ps1 ne ps) then
+                val newInfo = ClassInfo(prefix, cls, ps1, decls, selfInfo1)
+                updateInfo(cls, newInfo)
+                capt.println(i"update class info of $cls with parents $ps selfinfo $selfInfo to $newInfo")
+                cls.thisType.asInstanceOf[ThisType].invalidateCaches()
+                if cls.is(ModuleClass) then
+                  // if it's a module, the capture set of the module reference is the capture set of the self type
+                  val modul = cls.sourceModule
+                  updateInfo(modul, CapturingType(modul.info, selfInfo1.asInstanceOf[Type].captureSet))
+                  modul.termRef.invalidateCaches()
           case _ =>
       case _ =>
     end postProcess
@@ -672,11 +686,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   /** Add a capture set variable to `tp` if necessary, or maybe pull out
    *  an embedded capture set variable from a part of `tp`.
    */
-  def addVar(tp: Type, owner: Symbol)(using Context): Type =
+  private def addVar(tp: Type, owner: Symbol)(using Context): Type =
     decorate(tp,
       addedSet = _.dealias.match
-        case CapturingType(_, refs) => CaptureSet.Var(owner, refs.elems)
-        case _ => CaptureSet.Var(owner))
+        case CapturingType(_, refs) => CaptureSet.Var(owner, refs.elems, level = currentLevel)
+        case _ => CaptureSet.Var(owner, level = currentLevel))
 
   def setupUnit(tree: Tree, recheckDef: DefRecheck)(using Context): Unit =
     setupTraverser(recheckDef).traverse(tree)(using ctx.withPhase(thisPhase))

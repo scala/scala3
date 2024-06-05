@@ -14,6 +14,7 @@ import tpd.*
 import StdNames.nme
 import config.Feature
 import collection.mutable
+import CCState.*
 
 private val Captures: Key[CaptureSet] = Key()
 
@@ -64,11 +65,47 @@ class CCState:
    */
   var levelError: Option[CaptureSet.CompareResult.LevelError] = None
 
+  private var curLevel: Level = outermostLevel
+  private val symLevel: mutable.Map[Symbol, Int] = mutable.Map()
+
+object CCState:
+
+  opaque type Level = Int
+
+  val undefinedLevel: Level = -1
+
+  val outermostLevel: Level = 0
+
+  /** The level of the current environment. Levels start at 0 and increase for
+   *  each nested function or class. -1 means the level is undefined.
+   */
+  def currentLevel(using Context): Level = ccState.curLevel
+
+  inline def inNestedLevel[T](inline op: T)(using Context): T =
+    val ccs = ccState
+    val saved = ccs.curLevel
+    ccs.curLevel = ccs.curLevel.nextInner
+    try op finally ccs.curLevel = saved
+
+  inline def inNestedLevelUnless[T](inline p: Boolean)(inline op: T)(using Context): T =
+    val ccs = ccState
+    val saved = ccs.curLevel
+    if !p then ccs.curLevel = ccs.curLevel.nextInner
+    try op finally ccs.curLevel = saved
+
+  extension (x: Level)
+    def isDefined: Boolean = x >= 0
+    def <= (y: Level) = (x: Int) <= y
+    def nextInner: Level = if isDefined then x + 1 else x
+
+  extension (sym: Symbol)(using Context)
+    def ccLevel: Level = ccState.symLevel.getOrElse(sym, -1)
+    def recordLevel() = ccState.symLevel(sym) = currentLevel
 end CCState
 
 /** The currently valid CCState */
 def ccState(using Context) =
-  Phases.checkCapturesPhase.asInstanceOf[CheckCaptures].ccState
+  Phases.checkCapturesPhase.asInstanceOf[CheckCaptures].ccState1
 
 class NoCommonRoot(rs: Symbol*)(using Context) extends Exception(
   i"No common capture root nested in ${rs.mkString(" and ")}"
@@ -339,6 +376,12 @@ extension (tp: Type)
       case _ =>
         tp
 
+  def level(using Context): Level =
+    tp match
+    case tp: TermRef => tp.symbol.ccLevel
+    case tp: ThisType => tp.cls.ccLevel.nextInner
+    case _ => undefinedLevel
+
 extension (cls: ClassSymbol)
 
   def pureBaseClass(using Context): Option[Symbol] =
@@ -423,9 +466,7 @@ extension (sym: Symbol)
     || sym.is(Method, butNot = Accessor)
 
   /** The owner of the current level. Qualifying owners are
-   *   - methods other than constructors and anonymous functions
-   *   - anonymous functions, provided they either define a local
-   *     root of type caps.Capability, or they are the rhs of a val definition.
+   *   - methods, other than accessors
    *   - classes, if they are not staticOwners
    *   - _root_
    */

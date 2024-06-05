@@ -15,7 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
-import cc.{CapturingType, RetainingType, CaptureSet, ReachCapability, MaybeCapability, isBoxed, levelOwner, retainedElems, isRetainsLike}
+import cc.{CapturingType, RetainingType, CaptureSet, ReachCapability, MaybeCapability, isBoxed, retainedElems, isRetainsLike}
 
 class PlainPrinter(_ctx: Context) extends Printer {
 
