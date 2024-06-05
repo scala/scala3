@@ -4643,7 +4643,9 @@ object Types extends TypeUtils {
         cachedSuper = tycon match
           case tycon: HKTypeLambda => defn.AnyType
           case tycon: TypeRef if tycon.symbol.isClass => tycon
-          case tycon: TypeProxy => tycon.superType.applyIfParameterized(args)
+          case tycon: TypeProxy =>
+            if validSuper != Nowhere && args.exists(_.isProvisional) then validSuper = Nowhere
+            tycon.superType.applyIfParameterized(args)
           case _ => defn.AnyType
       cachedSuper
 
