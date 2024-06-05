@@ -5,5 +5,6 @@ def tu(): (Int, Boolean) = (1, true)
   var y = false
   var z = "a"
 
-  ((x, y), z) = (tu(), "b")
-
+  x = 99
+  (x, y) = tu()
+  (x, z) = (2, "b")
