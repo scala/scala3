@@ -1,11 +1,23 @@
--- [E193] Type Error: tests/neg/multiple-assignment.scala:9:16 -----------------
-9 |  ((x, y), z) = 1
-  |                ^
-  |              invalid source of multiple assignment.
-  |              The right hand side must be a tuple but (1 : Int) was found.
--- [E194] Type Error: tests/neg/multiple-assignment.scala:10:11 ----------------
-10 |  (x, y) = (1, 1, 1)
+-- [E201] Type Error: tests/neg/multiple-assignment.scala:9:11 ---------------------------------------------------------
+9 |  (x, y) = 1 // error
+  |           ^
+  |           invalid source of multiple assignment.
+  |           The right hand side must be a tuple but (1 : Int) was found.
+-- [E203] Type Error: tests/neg/multiple-assignment.scala:10:11 --------------------------------------------------------
+10 |  (x, y) = (1, 1, 1) // error
    |           ^^^^^^^^^
-   |          Source and target of multiple assignment have different sizes.
-   |          Source: 3
-   |          Target: 2
+   |           Source and target of multiple assignment have different sizes.
+   |           Source: 3
+   |           Target: 2
+-- [E007] Type Mismatch Error: tests/neg/multiple-assignment.scala:11:11 -----------------------------------------------
+11 |  (x, y) = (1, 2) // error
+   |           ^^^^^^
+   |           Found:    (ev$1._2 : Int)
+   |           Required: Boolean
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E202] Type Error: tests/neg/multiple-assignment.scala:12:6 ---------------------------------------------------------
+12 |  (x, (y, z)) = (1, (true, "b")) // error
+   |      ^^^^^^
+   |      invalid target of multiple assignment.
+   |      Multiple assignments admit only one level of nesting.
