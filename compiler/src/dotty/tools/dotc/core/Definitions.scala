@@ -15,7 +15,7 @@ import Comments.{Comment, docCtx}
 import util.Spans.NoSpan
 import config.Feature
 import Symbols.requiredModuleRef
-import cc.{CaptureSet, RetainingType}
+import cc.{CaptureSet, RetainingType, Existential}
 import ast.tpd.ref
 
 import scala.annotation.tailrec
@@ -993,6 +993,7 @@ class Definitions {
     @tu lazy val captureRoot: TermSymbol = CapsModule.requiredValue("cap")
     @tu lazy val Caps_Capability: ClassSymbol = requiredClass("scala.caps.Capability")
     @tu lazy val Caps_reachCapability: TermSymbol = CapsModule.requiredMethod("reachCapability")
+    @tu lazy val Caps_Exists = requiredClass("scala.caps.Exists")
     @tu lazy val CapsUnsafeModule: Symbol = requiredModule("scala.caps.unsafe")
     @tu lazy val Caps_unsafeAssumePure: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumePure")
     @tu lazy val Caps_unsafeBox: Symbol = CapsUnsafeModule.requiredMethod("unsafeBox")
@@ -1189,11 +1190,17 @@ class Definitions {
 
     /** Matches a refined `PolyFunction`/`FunctionN[...]`/`ContextFunctionN[...]`.
      *  Extracts the method type type and apply info.
+     *  Will NOT math an existential type encoded as a dependent function.
      */
     def unapply(tpe: RefinedType)(using Context): Option[MethodOrPoly] =
       tpe.refinedInfo match
-        case mt: MethodOrPoly
-        if tpe.refinedName == nme.apply && isFunctionType(tpe.parent) => Some(mt)
+        case mt: MethodType
+        if tpe.refinedName == nme.apply
+            && isFunctionType(tpe.parent)
+            && !Existential.isExistentialMethod(mt) => Some(mt)
+        case mt: PolyType
+        if tpe.refinedName == nme.apply
+            && isFunctionType(tpe.parent) => Some(mt)
         case _ => None
 
   end RefinedFunctionOf
