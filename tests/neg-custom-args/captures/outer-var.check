@@ -32,7 +32,7 @@
    |        Required: () ->{p} Unit
    |
    |        Note that reference (q : Proc), defined in method inner
-   |        cannot be included in outer capture set {p} of variable y which is associated with method test
+   |        cannot be included in outer capture set {p} of variable y
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/outer-var.scala:16:53 ---------------------------------------------------------
