@@ -22,6 +22,12 @@ import annotation.experimental
    */
   extension (x: Any) def reachCapability: Any = x
 
+  /** A trait to allow expressing existential types such as
+   *
+   *      (x: Exists) => A ->{x} B
+   */
+  sealed trait Exists extends Capability
+
   object unsafe:
 
     extension [T](x: T)

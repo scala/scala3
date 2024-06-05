@@ -26,6 +26,8 @@ object ccConfig:
    */
   inline val allowUnsoundMaps = false
 
+  val useExistentials = false
+
   /** If true, use `sealed` as encapsulation mechanism instead of the
    *  previous global retriction that `cap` can't be boxed or unboxed.
    */
@@ -531,6 +533,33 @@ object ReachCapability extends AnnotatedCapability(defn.ReachCapabilityAnnot)
  *  the maybe capability `ref?` as a type.
  */
 object MaybeCapability extends AnnotatedCapability(defn.MaybeCapabilityAnnot)
+
+/** Offers utility method to be used for type maps that follow aliases */
+trait ConservativeFollowAliasMap(using Context) extends TypeMap:
+
+  /** If `mapped` is a type alias, apply the map to the alias, while keeping
+   *  annotations. If the result is different, return it, otherwise return `mapped`.
+   *  Furthermore, if `original` is a LazyRef or TypeVar and the mapped result is
+   *  the same as the underlying type, keep `original`. This avoids spurious differences
+   *  which would lead to spurious dealiasing in the result
+   */
+  protected def applyToAlias(original: Type, mapped: Type) =
+    val mapped1 = mapped match
+      case t: (TypeRef | AppliedType) =>
+        val t1 = t.dealiasKeepAnnots
+        if t1 eq t then t
+        else
+          // If we see a type alias, map the alias type and keep it if it's different
+          val t2 = apply(t1)
+          if t2 ne t1 then t2 else t
+      case _ =>
+        mapped
+    original match
+      case original: (LazyRef | TypeVar) if mapped1 eq original.underlying =>
+        original
+      case _ =>
+        mapped1
+end ConservativeFollowAliasMap
 
 /** An extractor for all kinds of function types as well as method and poly types.
  *  @return  1st half: The argument types or empty if this is a type function

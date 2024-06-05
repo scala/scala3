@@ -612,10 +612,10 @@ class CheckCaptures extends Recheck, SymTransformer:
           mdef.rhs.putAttachment(ClosureBodyValue, ())
         case _ =>
 
-      // Constrain closure's parameters and result from the expected type before
-      // rechecking the body.
       openClosures = (mdef.symbol, pt) :: openClosures
       try
+        // Constrain closure's parameters and result from the expected type before
+        // rechecking the body.
         val res = recheckClosure(expr, pt, forceDependent = true)
         if !isEtaExpansion(mdef) then
           // If closure is an eta expanded method reference it's better to not constrain
@@ -699,7 +699,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         val localSet = capturedVars(sym)
         if !localSet.isAlwaysEmpty then
           curEnv = Env(sym, EnvKind.Regular, localSet, curEnv)
-        inNestedLevel:
+        inNestedLevel: // TODO: needed here?
           try checkInferredResult(super.recheckDefDef(tree, sym), tree)
           finally
             if !sym.isAnonymousFunction then
@@ -920,8 +920,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case expected @ defn.FunctionOf(args, resultType, isContextual)
         if defn.isNonRefinedFunction(expected) =>
           actual match
-            case RefinedType(parent, nme.apply, rinfo: MethodType)
-            if defn.isFunctionNType(actual) =>
+            case defn.RefinedFunctionOf(rinfo: MethodType) =>
               depFun(args, resultType, isContextual, rinfo.paramNames)
             case _ => expected
         case _ => expected
@@ -1132,12 +1131,12 @@ class CheckCaptures extends Recheck, SymTransformer:
         *  @param sym  symbol of the field definition that is being checked
         */
         override def checkSubType(actual: Type, expected: Type)(using Context): Boolean =
-          val expected1 = alignDependentFunction(addOuterRefs(expected, actual), actual.stripCapturing)
+          val expected1 = alignDependentFunction(addOuterRefs(/*Existential.strip*/(expected), actual), actual.stripCapturing)
           val actual1 =
             val saved = curEnv
             try
               curEnv = Env(clazz, EnvKind.NestedInOwner, capturedVars(clazz), outer0 = curEnv)
-              val adapted = adaptBoxed(actual, expected1, srcPos, covariant = true, alwaysConst = true)
+              val adapted = adaptBoxed(/*Existential.strip*/(actual), expected1, srcPos, covariant = true, alwaysConst = true)
               actual match
                 case _: MethodType =>
                   // We remove the capture set resulted from box adaptation for method types,

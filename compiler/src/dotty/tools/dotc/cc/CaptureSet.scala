@@ -14,6 +14,7 @@ import printing.{Showable, Printer}
 import printing.Texts.*
 import util.{SimpleIdentitySet, Property}
 import typer.ErrorReporting.Addenda
+import TypeComparer.canSubsumeExistentially
 import util.common.alwaysTrue
 import scala.collection.mutable
 import CCState.*
@@ -172,6 +173,7 @@ sealed abstract class CaptureSet extends Showable:
             x.info match
               case x1: CaptureRef => x1.subsumes(y)
               case _ => false
+          case x: TermParamRef => canSubsumeExistentially(x, y)
           case _ => false
 
   /** {x} <:< this   where <:< is subcapturing, but treating all variables

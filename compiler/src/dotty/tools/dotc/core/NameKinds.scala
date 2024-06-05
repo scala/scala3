@@ -332,6 +332,7 @@ object NameKinds {
   val InlineScrutineeName: UniqueNameKind    = new UniqueNameKind("$scrutinee")
   val InlineBinderName: UniqueNameKind       = new UniqueNameKind("$proxy")
   val MacroNames: UniqueNameKind             = new UniqueNameKind("$macro$")
+  val exSkolemName: UniqueNameKind           = new UniqueNameKind("$exSkolem") // TODO needed?
 
   val UniqueExtMethName: UniqueNameKind = new UniqueNameKindWithUnmangle("$extension")
 

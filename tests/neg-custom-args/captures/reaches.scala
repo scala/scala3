@@ -55,9 +55,10 @@ def test =
 
 def attack2 =
   val id: File^ -> File^ = x => x
+    // val id: File^ -> EX C.File^C
 
   val leaked = usingFile[File^{id*}]: f =>
-    val f1: File^{id*} = id(f) // error
+    val f1: File^{id*} = id(f) // error, since now id(f): File^
     f1
 
 class List[+A]:
@@ -74,6 +75,4 @@ def compose1[A, B, C](f: A => B, g: B => C): A ->{f, g} C =
   z => g(f(z))
 
 def mapCompose[A](ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
-  ps.map((x, y) => compose1(x, y)) // error: cannot mix cap and *
-
-
+  ps.map((x, y) => compose1(x, y)) // error: cannot mix cap and * (should work now)

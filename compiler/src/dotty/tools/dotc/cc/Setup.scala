@@ -14,6 +14,7 @@ import transform.{PreRecheck, Recheck}, Recheck.*
 import CaptureSet.{IdentityCaptRefMap, IdempotentCaptRefMap}
 import Synthetics.isExcluded
 import util.Property
+import reporting.Message
 import printing.{Printer, Texts}, Texts.{Text, Str}
 import collection.mutable
 import CCState.*
@@ -241,6 +242,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             val rinfo1 = apply(rinfo)
             if rinfo1 ne rinfo then rinfo1.toFunctionType(alwaysDependent = true)
             else tp
+          case Existential(_, unpacked) =>
+            // drop the existential, the bound variables will be replaced by capture set variables
+            apply(unpacked)
           case tp: MethodType =>
             tp.derivedLambdaType(
               paramInfos = mapNested(tp.paramInfos),
@@ -256,12 +260,18 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       end apply
     end mapInferred
 
-    mapInferred(refine = true)(tp)
+    try mapInferred(refine = true)(tp)
+    catch case ex: AssertionError =>
+      println(i"error while mapping inferred $tp")
+      throw ex
   end transformInferredType
 
   private def transformExplicitType(tp: Type, tptToCheck: Option[Tree] = None)(using Context): Type =
     val expandAliases = new DeepTypeMap:
       override def toString = "expand aliases"
+
+      def fail(msg: Message) =
+        for tree <- tptToCheck do report.error(msg, tree.srcPos)
 
       /** Expand $throws aliases. This is hard-coded here since $throws aliases in stdlib
         * are defined with `?=>` rather than `?->`.
@@ -288,7 +298,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           CapturingType(fntpe, cs, boxed = false)
         else fntpe
 
-      private def recur(t: Type): Type = normalizeCaptures(mapOver(t))
+      private def recur(t: Type): Type =
+        Existential.mapCapInResult(normalizeCaptures(mapOver(t)), fail)
 
       def apply(t: Type) =
         t match
@@ -383,7 +394,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       try
         transformTT(tpt,
             boxed = !ccConfig.allowUniversalInBoxed && sym.is(Mutable, butNot = Method),
-              // types of mutable variables are boxed in pre 3.3 codee
+              // types of mutable variables are boxed in pre 3.3 code
             exact = sym.allOverriddenSymbols.hasNext,
               // types of symbols that override a parent don't get a capture set TODO drop
           )
@@ -476,11 +487,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           else tree.tpt.knownType
 
         def paramSignatureChanges = tree.match
-          case tree: DefDef => tree.paramss.nestedExists:
-            case param: ValDef => param.tpt.hasRememberedType
-            case param: TypeDef => param.rhs.hasRememberedType
+          case tree: DefDef =>
+            tree.paramss.nestedExists:
+              case param: ValDef => param.tpt.hasRememberedType
+              case param: TypeDef => param.rhs.hasRememberedType
           case _ => false
 
+        // A symbol's signature changes if some of its parameter types or its result type
+        // have a new type installed here (meaning hasRememberedType is true)
         def signatureChanges =
           tree.tpt.hasRememberedType && !sym.isConstructor || paramSignatureChanges
 
@@ -515,7 +529,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               else SubstParams(prevPsymss, prevLambdas)(resType)
 
         if sym.exists && signatureChanges then
-          val newInfo = integrateRT(sym.info, sym.paramSymss, localReturnType, Nil, Nil)
+          val newInfo =
+            Existential.mapCapInResult(
+              integrateRT(sym.info, sym.paramSymss, localReturnType, Nil, Nil),
+              report.error(_, tree.srcPos))
             .showing(i"update info $sym: ${sym.info} = $result", capt)
           if newInfo ne sym.info then
             val updatedInfo =
