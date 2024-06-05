@@ -345,5 +345,5 @@ object functors {
   }
 
   MonadFlatten.flattened(List(List(1, 2, 3), List(4, 5))) // ok, synthesizes (using ListMonad)
-  MonadFlatten.flattened(List(List(1, 2, 3), List(4, 5)))(using ListMonad) // error
+  MonadFlatten.flattened(List(List(1, 2, 3), List(4, 5)))(using ListMonad)
 }
