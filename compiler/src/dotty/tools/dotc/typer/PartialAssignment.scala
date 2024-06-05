@@ -13,7 +13,7 @@ import core.Symbols.defn
   *
   * @param lhs The target of the assignment.
   * @param perform: A closure that accepts `lhs` and an untyped tree `rhs`, and returns a tree
-  *   representing the assignment of `rhs` ro `lhs`.
+  *   representing the assignment of `rhs` to `lhs`.
   */
 private[typer] final class PartialAssignment[+T <: LValue](val lhs: T)(
     perform: (T, untpd.Tree) => untpd.Tree
