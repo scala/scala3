@@ -4677,8 +4677,8 @@ object Types extends TypeUtils {
      */
     override def underlyingMatchType(using Context): Type =
       if ctx.period != validUnderlyingMatch then
-        validUnderlyingMatch = if tycon.isProvisional then Nowhere else ctx.period
         cachedUnderlyingMatch = superType.underlyingMatchType
+        validUnderlyingMatch = validSuper
       cachedUnderlyingMatch
 
     override def tryNormalize(using Context): Type = tycon.stripTypeVar match {
