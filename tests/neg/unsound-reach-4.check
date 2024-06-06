@@ -1,5 +1,7 @@
--- Error: tests/neg/unsound-reach-4.scala:20:19 ------------------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg/unsound-reach-4.scala:20:22 ---------------------------------------------------
 20 |    escaped = boom.use(f)  // error
-   |              ^^^^^^^^
-   |              Reach capability backdoor* and universal capability cap cannot both
-   |              appear in the type (x: F): box File^{backdoor*} of this expression
+   |              ^^^^^^^^^^^
+   |              Found:    File^{f}
+   |              Required: File^{backdoor*}
+   |
+   | longer explanation available when compiling with `-explain`

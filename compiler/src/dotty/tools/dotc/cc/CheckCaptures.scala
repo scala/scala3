@@ -18,7 +18,7 @@ import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
 import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
 import scala.collection.mutable
-import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult}
+import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult, universal}
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
 import reporting.trace
@@ -254,39 +254,50 @@ class CheckCaptures extends Recheck, SymTransformer:
     def showRef(ref: CaptureRef)(using Context): String =
         ctx.printer.toTextCaptureRef(ref).show
 
-    // Uses 4-space indent as a trial
-    def checkReachCapsIsolated(tpe: Type, pos: SrcPos)(using Context): Unit =
+    enum ReachCapsStatus:
+      /** Everything good. No covariant reach caps or reach caps
+        * without the presence of contravariant universal caps. */
+      case Safe
+      /** Covariant reach caps and contravariant root caps co-exist.
+        * But all reach caps occurrences are covariant.
+        * In this case we could undo reach refinement by widening reach caps. */
+      case UnsafeAllCov(reach: CaptureRef)
+      /** Same as the previous case except that invariant occurrence of reach caps exists.
+        * In this case undoing reach refinement is impossible. */
+      case Unsafe(reach: CaptureRef)
 
-        object checker extends TypeTraverser:
-            var refVariances: Map[Boolean, Int] = Map.empty
-            var seenReach: CaptureRef | Null = null
-            def traverse(tp: Type) =
-                tp.dealias match
-                case CapturingType(parent, refs) =>
-                    traverse(parent)
-                    for ref <- refs.elems do
-                        if ref.isReach && !ref.stripReach.isInstanceOf[TermParamRef]
-                            || ref.isRootCapability
-                        then
-                            val isReach = ref.isReach
-                            def register() =
-                                refVariances = refVariances.updated(isReach, variance)
-                                seenReach = ref
-                            refVariances.get(isReach) match
-                                case None => register()
-                                case Some(v) => if v != 0 && variance == 0 then register()
-                case _ =>
-                    traverseChildren(tp)
+    def checkReachCapsIsolated(tpe: Type)(using Context): ReachCapsStatus =
+      object checker extends TypeTraverser:
+        var reachVariance: Int = -1
+        var seenInvReach: Boolean = false
+        var capVariance: Int = 1
+        var seenReach: CaptureRef | Null = null
+        def traverse(tp: Type) =
+          tp.dealias match
+            case CapturingType(parent, refs) =>
+              traverse(parent)
+              for ref <- refs.elems do
+                if ref.isReach && !ref.stripReach.isInstanceOf[TermParamRef]
+                  || ref.isRootCapability
+                then
+                  val isReach = ref.isReach
+                  if isReach then
+                    reachVariance = variance.max(reachVariance)
+                    if variance >= 0 then
+                      seenReach = ref
+                    if variance == 0 then
+                      seenInvReach = true
+                  else
+                    capVariance = variance.min(capVariance)
+            case _ =>
+              traverseChildren(tp)
 
-        checker.traverse(tpe)
-        if checker.refVariances.size == 2
-            && checker.refVariances(true) >= 0
-            && checker.refVariances(false) <= 0
-        then
-            report.error(
-                em"""Reach capability ${showRef(checker.seenReach.nn)} and universal capability cap cannot both
-                    |appear in the type $tpe of this expression""",
-                pos)
+      checker.traverse(tpe)
+      if checker.reachVariance >= 0 && checker.capVariance <= 0 then
+        if checker.seenInvReach then ReachCapsStatus.Unsafe(checker.seenReach.nn)
+        else ReachCapsStatus.UnsafeAllCov(checker.seenReach.nn)
+      else
+        ReachCapsStatus.Safe
     end checkReachCapsIsolated
 
     /** The current environment */
@@ -839,7 +850,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           tree.tpe
         finally curEnv = saved
       if tree.isTerm then
-        checkReachCapsIsolated(res.widen, tree.srcPos)
         if !pt.isBoxedCapturing then
           markFree(res.boxedCaptureSet, tree.srcPos)
       res
@@ -877,6 +887,12 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     private inline val debugSuccesses = false
 
+    private def widenReachCaps(using Context): TypeMap = new TypeMap with IdempotentCaptRefMap:
+      def apply(tp: Type): Type = tp match
+        case CapturingType(parent, refs) if refs.elems.exists(_.isReach) =>
+          tp.derivedCapturingType(mapOver(parent), universal)
+        case _ => mapOver(tp)
+
     /** Massage `actual` and `expected` types before checking conformance.
      *  Massaging is done by the methods following this one:
      *   - align dependent function types and add outer references in the expected type
@@ -886,7 +902,22 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda)(using Context): Type =
       var expected1 = alignDependentFunction(expected, actual.stripCapturing)
-      val actualBoxed = adapt(actual, expected1, tree.srcPos)
+
+      var actual1 = actual
+      var reachWiden: CaptureRef | Null = null
+      checkReachCapsIsolated(actual.widen) match
+        case ReachCapsStatus.Safe =>
+        case ReachCapsStatus.UnsafeAllCov(reach) =>
+          actual1 = widenReachCaps(actual.widen)
+          //println(i"WIDEN $actual --> $actual1")
+          reachWiden = reach
+        case ReachCapsStatus.Unsafe(reach) =>
+          report.error(
+              em"""Reach capability ${showRef(reach)} and universal capability cap cannot both
+                  |appear in the type $actual of this expression""",
+              tree.srcPos)
+
+      val actualBoxed = adapt(actual1, expected1, tree.srcPos)
       //println(i"check conforms $actualBoxed <<< $expected1")
 
       if actualBoxed eq actual then
@@ -900,8 +931,21 @@ class CheckCaptures extends Recheck, SymTransformer:
         actualBoxed
       else
         capt.println(i"conforms failed for ${tree}: $actual vs $expected")
-        err.typeMismatch(tree.withType(actualBoxed), expected1, addenda ++ CaptureSet.levelErrors)
-        actual
+
+        def reachWidenErrors: Addenda = new Addenda:
+          override def toAdd(using Context) =
+            reachWiden match
+              case null => Nil
+              case reach: CaptureRef => List(
+                i"""
+                  |
+                  |Note that the reach capability ${showRef(reach)} and universal capability cap cannot both
+                  |appear in the type $actual of this expression.
+                  |The reach capability therefore needs to be widen to cap."""
+              )
+
+        err.typeMismatch(tree.withType(actualBoxed), expected1, addenda ++ CaptureSet.levelErrors ++ reachWidenErrors)
+        actual1
     end checkConformsExpr
 
     /** Turn `expected` into a dependent function when `actual` is dependent. */
