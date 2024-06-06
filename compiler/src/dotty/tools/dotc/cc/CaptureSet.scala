@@ -459,7 +459,7 @@ object CaptureSet:
     var deps: Deps = emptySet
 
     def isConst = isSolved
-    def isAlwaysEmpty = false
+    def isAlwaysEmpty = isSolved && elems.isEmpty
 
     def isMaybeSet = false // overridden in BiMapped
 

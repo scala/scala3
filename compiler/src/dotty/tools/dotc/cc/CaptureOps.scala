@@ -197,7 +197,15 @@ extension (tp: Type)
     getBoxed(tp)
 
   /** Is the boxedCaptureSet of this type nonempty? */
-  def isBoxedCapturing(using Context) = !tp.boxedCaptureSet.isAlwaysEmpty
+  def isBoxedCapturing(using Context): Boolean =
+    tp match
+      case tp @ CapturingType(parent, refs) =>
+        tp.isBoxed && !refs.isAlwaysEmpty || parent.isBoxedCapturing
+      case tp: TypeRef if tp.symbol.isAbstractOrParamType => false
+      case tp: TypeProxy => tp.superType.isBoxedCapturing
+      case tp: AndType => tp.tp1.isBoxedCapturing && tp.tp2.isBoxedCapturing
+      case tp: OrType => tp.tp1.isBoxedCapturing || tp.tp2.isBoxedCapturing
+      case _ => false
 
   /** If this type is a capturing type, the version with boxed statues as given by `boxed`.
    *  If it is a TermRef of a capturing type, and the box status flips, widen to a capturing
