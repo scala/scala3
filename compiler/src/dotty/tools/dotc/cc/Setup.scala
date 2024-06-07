@@ -394,7 +394,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     def transformResultType(tpt: TypeTree, sym: Symbol)(using Context): Unit =
       try
         transformTT(tpt,
-            boxed = !ccConfig.allowUniversalInBoxed && sym.is(Mutable, butNot = Method),
+            boxed =
+              sym.is(Mutable, butNot = Method)
+                && !ccConfig.allowUniversalInBoxed
+                && !sym.hasAnnotation(defn.UncheckedCapturesAnnot),
               // types of mutable variables are boxed in pre 3.3 code
             exact = sym.allOverriddenSymbols.hasNext,
               // types of symbols that override a parent don't get a capture set TODO drop
@@ -405,7 +408,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       val addDescription = new TypeTraverser:
         def traverse(tp: Type) = tp match
           case tp @ CapturingType(parent, refs) =>
-            if !refs.isConst then refs.withDescription(i"of $sym")
+            if !refs.isConst && refs.description.isEmpty then
+              refs.withDescription(i"of $sym")
             traverse(parent)
           case _ =>
             traverseChildren(tp)
