@@ -211,6 +211,8 @@ object Completion:
     val completer = new Completer(mode, pos, untpdPath, matches0)
 
     val result = adjustedPath match
+      // Ignore `package foo@@` and `package foo.bar@@`
+      case ((_: tpd.Select) | (_: tpd.Ident)):: (_ : tpd.PackageDef) :: _       => Map.empty
       // Ignore synthetic select from `This` because in code it was `Ident`
       // See example in dotty.tools.languageserver.CompletionTest.syntheticThis
       case tpd.Select(qual @ tpd.This(_), _) :: _ if qual.span.isSynthetic      => completer.scopeCompletions

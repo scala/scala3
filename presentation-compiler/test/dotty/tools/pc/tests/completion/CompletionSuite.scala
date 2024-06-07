@@ -1952,3 +1952,17 @@ class CompletionSuite extends BaseCompletionSuite:
       """TestEnum test
         |""".stripMargin,
     )
+
+  @Test def `packageIssueIdent` =
+    check(
+      """package one@@
+        |""".stripMargin,
+      ""
+    )
+  
+  @Test def `packageIssueSelect` =
+    check(
+      """package one.two@@
+        |""".stripMargin,
+      ""
+    )
