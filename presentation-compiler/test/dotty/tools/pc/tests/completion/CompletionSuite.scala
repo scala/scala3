@@ -2223,3 +2223,17 @@ class CompletionSuite extends BaseCompletionSuite:
          |""".stripMargin,
       topLines = Some(3)
     )
+
+  @Test def `packageIssueIdent` =
+    check(
+      """package one@@
+        |""".stripMargin,
+      ""
+    )
+
+  @Test def `packageIssueSelect` =
+    check(
+      """package one.two@@
+        |""".stripMargin,
+      ""
+    )

@@ -90,6 +90,8 @@ object Completion:
    * Otherwise, provide no completion suggestion.
    */
   def completionMode(path: List[untpd.Tree], pos: SourcePosition): Mode = path match
+    // Ignore `package foo@@` and `package foo.bar@@`
+    case ((_: tpd.Select) | (_: tpd.Ident)):: (_ : tpd.PackageDef) :: _  => Mode.None
     case GenericImportSelector(sel) =>
       if sel.imported.span.contains(pos.span) then Mode.ImportOrExport // import scala.@@
       else if sel.isGiven && sel.bound.span.contains(pos.span) then Mode.ImportOrExport
