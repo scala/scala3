@@ -32,7 +32,9 @@ object ccConfig:
    *  previous global retriction that `cap` can't be boxed or unboxed.
    */
   def allowUniversalInBoxed(using Context) =
-    Feature.sourceVersion.isAtLeast(SourceVersion.`3.3`)
+    Feature.sourceVersion.stable == SourceVersion.`3.3`
+    || Feature.sourceVersion.stable == SourceVersion.`3.4`
+    //|| Feature.sourceVersion.stable == SourceVersion.`3.5` // drop `//` if you want to test with the sealed type params strategy
 end ccConfig
 
 

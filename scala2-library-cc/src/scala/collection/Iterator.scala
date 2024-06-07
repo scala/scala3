@@ -1008,7 +1008,7 @@ object Iterator extends IterableFactory[Iterator] {
   def newBuilder[A]: Builder[A, Iterator[A]] =
     new ImmutableBuilder[A, Iterator[A]](empty[A]) {
       override def addOne(elem: A): this.type = { elems = elems ++ single(elem); this }
-    }
+    }.asInstanceOf // !!! CC unsafe op
 
   /** Creates iterator that produces the results of some element computation a number of times.
     *
@@ -1160,7 +1160,7 @@ object Iterator extends IterableFactory[Iterator] {
         @tailrec def merge(): Unit =
           if (current.isInstanceOf[ConcatIterator[_]]) {
             val c = current.asInstanceOf[ConcatIterator[A]]
-            current = c.current
+            current = c.current.asInstanceOf // !!! CC unsafe op
             currentHasNextChecked = c.currentHasNextChecked
             if (c.tail != null) {
               if (last == null) last = c.last

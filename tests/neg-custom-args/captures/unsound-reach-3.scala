@@ -1,15 +1,15 @@
+//> using options -source 3.4
+// (to make sure we use the sealed policy)
 import language.experimental.captureChecking
 trait File:
   def close(): Unit
 
 def withFile[R](path: String)(op: File^ => R): R = ???
 
-type F = File^
-
 trait Foo[+X]:
-  def use(x: F): X
+  def use(x: File^): X
 class Bar extends Foo[File^]:
-  def use(x: F): File^ = x
+  def use(x: File^): File^ = x
 
 def bad(): Unit =
   val backdoor: Foo[File^] = new Bar
@@ -17,4 +17,7 @@ def bad(): Unit =
 
   var escaped: File^{backdoor*} = null
   withFile("hello.txt"): f =>
-    escaped = boom.use(f)  // error
+    escaped = boom.use(f) // error
+      // boom.use: (x: File^) -> File^{backdoor*}, it is a selection so reach capabilities are allowed
+      // f: File^, so there is no reach capabilities
+

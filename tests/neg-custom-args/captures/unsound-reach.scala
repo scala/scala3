@@ -7,7 +7,7 @@ def withFile[R](path: String)(op: File^ => R): R = ???
 trait Foo[+X]:
     def use(x: File^)(op: X => Unit): Unit
 class Bar extends Foo[File^]:
-    def use(x: File^)(op: File^ => Unit): Unit = op(x)
+    def use(x: File^)(op: File^ => Unit): Unit = op(x) // error, was OK using sealed checking
 
 def bad(): Unit =
     val backdoor: Foo[File^] = new Bar

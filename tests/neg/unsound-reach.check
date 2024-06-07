@@ -1,5 +1,0 @@
--- Error: tests/neg/unsound-reach.scala:18:13 --------------------------------------------------------------------------
-18 |        boom.use(f): (f1: File^{backdoor*}) => // error
-   |        ^^^^^^^^
-   |        Reach capability backdoor* and universal capability cap cannot both
-   |        appear in the type (x: File^)(op: box File^{backdoor*} => Unit): Unit of this expression

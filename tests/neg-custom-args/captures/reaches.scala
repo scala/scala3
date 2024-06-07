@@ -1,3 +1,5 @@
+//> using options -source 3.4
+// (to make sure we use the sealed policy)
 class File:
   def write(): Unit = ???
 
