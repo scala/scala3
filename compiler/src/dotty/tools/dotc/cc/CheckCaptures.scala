@@ -12,7 +12,7 @@ import ast.{tpd, untpd, Trees}
 import Trees.*
 import typer.RefChecks.{checkAllOverrides, checkSelfAgainstParents, OverridingPairsChecker}
 import typer.Checking.{checkBounds, checkAppliedTypesIn}
-import typer.ErrorReporting.{Addenda, err}
+import typer.ErrorReporting.{Addenda, NothingToAdd, err}
 import typer.ProtoTypes.{AnySelectionProto, LhsProto}
 import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
 import transform.{Recheck, PreRecheck, CapturedVars}
@@ -22,7 +22,7 @@ import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult
 import CCState.*
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
-import reporting.trace
+import reporting.{trace, Message}
 
 /** The capture checker */
 object CheckCaptures:
@@ -866,7 +866,10 @@ class CheckCaptures extends Recheck, SymTransformer:
           }
           checkNotUniversal(parent)
         case _ =>
-      if !ccConfig.allowUniversalInBoxed && needsUniversalCheck then
+      if !ccConfig.allowUniversalInBoxed
+          && !tpe.hasAnnotation(defn.UncheckedCapturesAnnot)
+          && needsUniversalCheck
+      then
         checkNotUniversal(tpe)
       super.recheckFinish(tpe, tree, pt)
     end recheckFinish
@@ -884,6 +887,17 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     private inline val debugSuccesses = false
 
+    type BoxErrors = mutable.ListBuffer[Message] | Null
+
+    private def boxErrorAddenda(boxErrors: BoxErrors) =
+      if boxErrors == null then NothingToAdd
+      else new Addenda:
+        override def toAdd(using Context): List[String] =
+          boxErrors.toList.map: msg =>
+            i"""
+              |
+              |Note that ${msg.toString}"""
+
     /** Massage `actual` and `expected` types before checking conformance.
      *  Massaging is done by the methods following this one:
      *   - align dependent function types and add outer references in the expected type
@@ -893,7 +907,8 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda)(using Context): Type =
       var expected1 = alignDependentFunction(expected, actual.stripCapturing)
-      val actualBoxed = adapt(actual, expected1, tree.srcPos)
+      val boxErrors = new mutable.ListBuffer[Message]
+      val actualBoxed = adapt(actual, expected1, tree.srcPos, boxErrors)
       //println(i"check conforms $actualBoxed <<< $expected1")
 
       if actualBoxed eq actual then
@@ -907,7 +922,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         actualBoxed
       else
         capt.println(i"conforms failed for ${tree}: $actual vs $expected")
-        err.typeMismatch(tree.withType(actualBoxed), expected1, addenda ++ CaptureSet.levelErrors)
+        err.typeMismatch(tree.withType(actualBoxed), expected1,
+            addenda ++ CaptureSet.levelErrors ++ boxErrorAddenda(boxErrors))
         actual
     end checkConformsExpr
 
@@ -991,7 +1007,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *
      *  @param alwaysConst  always make capture set variables constant after adaptation
      */
-    def adaptBoxed(actual: Type, expected: Type, pos: SrcPos, covariant: Boolean, alwaysConst: Boolean)(using Context): Type =
+    def adaptBoxed(actual: Type, expected: Type, pos: SrcPos, covariant: Boolean, alwaysConst: Boolean, boxErrors: BoxErrors)(using Context): Type =
 
       /** Adapt the inner shape type: get the adapted shape type, and the capture set leaked during adaptation
        *  @param boxed   if true we adapt to a boxed expected type
@@ -1008,8 +1024,8 @@ class CheckCaptures extends Recheck, SymTransformer:
               case FunctionOrMethod(eargs, eres) => (eargs, eres)
               case _ => (aargs.map(_ => WildcardType), WildcardType)
             val aargs1 = aargs.zipWithConserve(eargs):
-              adaptBoxed(_, _, pos, !covariant, alwaysConst)
-            val ares1 = adaptBoxed(ares, eres, pos, covariant, alwaysConst)
+              adaptBoxed(_, _, pos, !covariant, alwaysConst, boxErrors)
+            val ares1 = adaptBoxed(ares, eres, pos, covariant, alwaysConst, boxErrors)
             val resTp =
               if (aargs1 eq aargs) && (ares1 eq ares) then actualShape // optimize to avoid redundant matches
               else actualShape.derivedFunctionOrMethod(aargs1, ares1)
@@ -1057,22 +1073,26 @@ class CheckCaptures extends Recheck, SymTransformer:
           val criticalSet =          // the set which is not allowed to have `cap`
             if covariant then captures    // can't box with `cap`
             else expected.captureSet // can't unbox with `cap`
-          if criticalSet.isUniversal && expected.isValueType && !ccConfig.allowUniversalInBoxed then
+          def msg = em"""$actual cannot be box-converted to $expected
+                        |since at least one of their capture sets contains the root capability `cap`"""
+          def allowUniversalInBoxed =
+            ccConfig.allowUniversalInBoxed
+            || expected.hasAnnotation(defn.UncheckedCapturesAnnot)
+            || actual.widen.hasAnnotation(defn.UncheckedCapturesAnnot)
+          if criticalSet.isUniversal && expected.isValueType && !allowUniversalInBoxed then
             // We can't box/unbox the universal capability. Leave `actual` as it is
-            // so we get an error in checkConforms. This tends to give better error
+            // so we get an error in checkConforms. Add the error message generated
+            // from boxing as an addendum. This tends to give better error
             // messages than disallowing the root capability in `criticalSet`.
+            if boxErrors != null then boxErrors += msg
             if ctx.settings.YccDebug.value then
               println(i"cannot box/unbox $actual vs $expected")
             actual
           else
-            if !ccConfig.allowUniversalInBoxed then
+            if !allowUniversalInBoxed then
               // Disallow future addition of `cap` to `criticalSet`.
-              criticalSet.disallowRootCapability { () =>
-                report.error(
-                  em"""$actual cannot be box-converted to $expected
-                      |since one of their capture sets contains the root capability `cap`""",
-                pos)
-              }
+              criticalSet.disallowRootCapability: () =>
+                report.error(msg, pos)
             if !insertBox then  // unboxing
               //debugShowEnvs()
               markFree(criticalSet, pos)
@@ -1109,13 +1129,15 @@ class CheckCaptures extends Recheck, SymTransformer:
      *
      *  @param alwaysConst  always make capture set variables constant after adaptation
      */
-    def adapt(actual: Type, expected: Type, pos: SrcPos)(using Context): Type =
+    def adapt(actual: Type, expected: Type, pos: SrcPos, boxErrors: BoxErrors)(using Context): Type =
       if expected == LhsProto || expected.isSingleton && actual.isSingleton then
         actual
       else
         val normalized = makeCaptureSetExplicit(actual)
-        val widened = improveCaptures(normalized.widenDealias, actual)
-        val adapted = adaptBoxed(widened.withReachCaptures(actual), expected, pos, covariant = true, alwaysConst = false)
+        val widened = improveCaptures(normalized.widen.dealiasKeepAnnots, actual)
+        val adapted = adaptBoxed(
+            widened.withReachCaptures(actual), expected, pos,
+            covariant = true, alwaysConst = false, boxErrors)
         if adapted eq widened then normalized
         else adapted.showing(i"adapt boxed $actual vs $expected ===> $adapted", capt)
     end adapt
@@ -1137,7 +1159,8 @@ class CheckCaptures extends Recheck, SymTransformer:
             val saved = curEnv
             try
               curEnv = Env(clazz, EnvKind.NestedInOwner, capturedVars(clazz), outer0 = curEnv)
-              val adapted = adaptBoxed(/*Existential.strip*/(actual), expected1, srcPos, covariant = true, alwaysConst = true)
+              val adapted =
+                adaptBoxed(/*Existential.strip*/(actual), expected1, srcPos, covariant = true, alwaysConst = true, null)
               actual match
                 case _: MethodType =>
                   // We remove the capture set resulted from box adaptation for method types,
