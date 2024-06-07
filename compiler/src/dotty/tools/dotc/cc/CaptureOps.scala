@@ -467,41 +467,17 @@ extension (sym: Symbol)
     && !sym.allowsRootCapture
     && sym != defn.Caps_unsafeBox
     && sym != defn.Caps_unsafeUnbox
+    && !defn.isPolymorphicAfterErasure(sym)
 
-  /** Does this symbol define a level where we do not want to let local variables
-   *  escape into outer capture sets?
-   */
-  def isLevelOwner(using Context): Boolean =
-    sym.isClass
-    || sym.is(Method, butNot = Accessor)
-
-  /** The owner of the current level. Qualifying owners are
-   *   - methods, other than accessors
-   *   - classes, if they are not staticOwners
-   *   - _root_
-   */
-  def levelOwner(using Context): Symbol =
-    def recur(sym: Symbol): Symbol =
-      if !sym.exists || sym.isRoot || sym.isStaticOwner then defn.RootClass
-      else if sym.isLevelOwner then sym
-      else recur(sym.owner)
-    recur(sym)
-
-  /** The outermost symbol owned by both `sym` and `other`. if none exists
-   *  since the owning scopes of `sym` and `other` are not nested, invoke
-   *  `onConflict` to return a symbol.
-   */
-  def maxNested(other: Symbol, onConflict: (Symbol, Symbol) => Context ?=> Symbol)(using Context): Symbol =
-    if !sym.exists || other.isContainedIn(sym) then other
-    else if !other.exists || sym.isContainedIn(other) then sym
-    else onConflict(sym, other)
-
-  /** The innermost symbol owning both `sym` and `other`.
-   */
-  def minNested(other: Symbol)(using Context): Symbol =
-    if !other.exists || other.isContainedIn(sym) then sym
-    else if !sym.exists || sym.isContainedIn(other) then other
-    else sym.owner.minNested(other.owner)
+  def isRefiningParamAccessor(using Context): Boolean =
+    sym.is(ParamAccessor)
+    && {
+      val param = sym.owner.primaryConstructor.paramSymss
+        .nestedFind(_.name == sym.name)
+        .getOrElse(NoSymbol)
+      !param.hasAnnotation(defn.ConstructorOnlyAnnot)
+      && !param.hasAnnotation(defn.UntrackedCapturesAnnot)
+    }
 
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */

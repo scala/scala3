@@ -550,8 +550,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           var allCaptures: CaptureSet =
             if core.derivesFromCapability then CaptureSet.universal else initCs
           for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
-            val getter = cls.info.member(getterName).suchThat(_.is(ParamAccessor)).symbol
-            if getter.termRef.isTracked && !getter.is(Private) then
+            val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
+            if !getter.is(Private) && getter.termRef.isTracked then
               refined = RefinedType(refined, getterName, argType)
               allCaptures ++= argType.captureSet
           (refined, allCaptures)
@@ -764,7 +764,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         val thisSet = cls.classInfo.selfType.captureSet.withDescription(i"of the self type of $cls")
         checkSubset(localSet, thisSet, tree.srcPos) // (2)
         for param <- cls.paramGetters do
-          if !param.hasAnnotation(defn.ConstructorOnlyAnnot) then
+          if !param.hasAnnotation(defn.ConstructorOnlyAnnot)
+            && !param.hasAnnotation(defn.UntrackedCapturesAnnot) then
             checkSubset(param.termRef.captureSet, thisSet, param.srcPos) // (3)
         for pureBase <- cls.pureBaseClass do // (4)
           def selfType = impl.body

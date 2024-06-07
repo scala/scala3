@@ -28,6 +28,11 @@ import annotation.experimental
    */
   sealed trait Exists extends Capability
 
+  /** This should go into annotations. For now it is here, so that we
+   *  can experiment with it quickly between minor releases
+   */
+  final class untrackedCaptures extends annotation.StaticAnnotation
+
   object unsafe:
 
     extension [T](x: T)
