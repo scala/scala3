@@ -345,5 +345,12 @@ object functors {
   }
 
   MonadFlatten.flattened(List(List(1, 2, 3), List(4, 5))) // ok, synthesizes (using ListMonad)
-  MonadFlatten.flattened(List(List(1, 2, 3), List(4, 5)))(using ListMonad) // error
+  MonadFlatten.flattened(List(List(1, 2, 3), List(4, 5)))(using ListMonad) // was an error
+  /*
+  Before the changes, when checking `ListMonad <:< functors.Monad.Impl[T]`
+  we eventually got to the comparison `[X] =>> T[X] <:< [+X] =>> List[X]`
+  because the `This` type member of `ListMonad` has a covariance annotation.
+  This failed the variance conformance checks despite the fact that T had been instantiated to List,
+  since it had been substituted into the refinement (and cached) before its instantiation.
+  */
 }

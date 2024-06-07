@@ -4650,7 +4650,13 @@ object Types extends TypeUtils {
         cachedSuper = tycon match
           case tycon: HKTypeLambda => defn.AnyType
           case tycon: TypeRef if tycon.symbol.isClass => tycon
-          case tycon: TypeProxy => tycon.superType.applyIfParameterized(args)
+          case tycon: TypeProxy =>
+            if validSuper != Nowhere && args.exists(_.isProvisional) then
+              // applyIfParameterized may perform eta-reduction leading to different
+              // variance annotations depending on the instantiation of type params
+              // see tests/pos/typeclass-encoding3b.scala:348 for an example
+              validSuper = Nowhere
+            tycon.superType.applyIfParameterized(args)
           case _ => defn.AnyType
       cachedSuper
 
@@ -4678,8 +4684,8 @@ object Types extends TypeUtils {
      */
     override def underlyingMatchType(using Context): Type =
       if ctx.period != validUnderlyingMatch then
-        validUnderlyingMatch = if tycon.isProvisional then Nowhere else ctx.period
         cachedUnderlyingMatch = superType.underlyingMatchType
+        validUnderlyingMatch = validSuper
       cachedUnderlyingMatch
 
     override def tryNormalize(using Context): Type = tycon.stripTypeVar match {
