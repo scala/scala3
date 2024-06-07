@@ -69,9 +69,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case _ => foldOver(x, tp)
       def apply(tp: Type): Boolean = apply(false, tp)
 
-    if symd.isAllOf(PrivateParamAccessor)
+    if symd.symbol.isRefiningParamAccessor
+        && symd.is(Private)
         && symd.owner.is(CaptureChecked)
-        && !symd.hasAnnotation(defn.ConstructorOnlyAnnot)
         && containsCovarRetains(symd.symbol.originDenotation.info)
     then symd.flags &~ Private
     else symd.flags
@@ -186,6 +186,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             if !defn.isFunctionClass(cls) && cls.is(CaptureChecked) =>
               cls.paramGetters.foldLeft(tp) { (core, getter) =>
                 if atPhase(thisPhase.next)(getter.termRef.isTracked)
+                    && getter.isRefiningParamAccessor
                     && !getter.is(Tracked)
                 then
                   val getterType =
