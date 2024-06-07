@@ -1,12 +1,12 @@
--- Error: tests/neg-custom-args/captures/vars.scala:22:14 --------------------------------------------------------------
-22 |    a = x => g(x)      // error
+-- Error: tests/neg-custom-args/captures/vars.scala:24:14 --------------------------------------------------------------
+24 |    a = x => g(x)      // error
    |             ^^^^
    |             reference (cap3 : Cap) is not included in the allowed capture set {cap1} of variable a
    |
    |             Note that reference (cap3 : Cap), defined in method scope
    |             cannot be included in outer capture set {cap1} of variable a
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:23:8 ------------------------------------------
-23 |    a = g      // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:25:8 ------------------------------------------
+25 |    a = g      // error
    |        ^
    |        Found:    (x: String) ->{cap3} String
    |        Required: (x$0: String) ->{cap1} String
@@ -15,14 +15,14 @@
    |        cannot be included in outer capture set {cap1} of variable a
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:25:12 -----------------------------------------
-25 |    b = List(g) // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:27:12 -----------------------------------------
+27 |    b = List(g) // error
    |        ^^^^^^^
    |        Found:    List[box (x$0: String) ->{cap3} String]
    |        Required: List[box String ->{cap1, cap2} String]
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/vars.scala:34:2 ---------------------------------------------------------------
-34 |  local { cap3 => // error
+-- Error: tests/neg-custom-args/captures/vars.scala:36:2 ---------------------------------------------------------------
+36 |  local { cap3 => // error
    |  ^^^^^
    |  local reference cap3 leaks into outer capture set of type parameter T of method local

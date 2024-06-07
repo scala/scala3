@@ -1,3 +1,5 @@
+//> using options -source 3.4
+// (to force sealed encapsulation checking)
 trait Cap { def use(): Int }
 type Id[X] = [T] -> (op: X => T) -> T
 def mkId[X](x: X): Id[X] = [T] => (op: X => T) => op(x)

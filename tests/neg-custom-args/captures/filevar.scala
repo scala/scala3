@@ -6,7 +6,7 @@ class File:
 
 class Service:
   var file: File^ = uninitialized  // error
-  def log = file.write("log")
+  def log = file.write("log") // error, was OK under sealed
 
 def withFile[T](op: (l: caps.Capability) ?-> (f: File^{l}) => T): T =
   op(using caps.cap)(new File)

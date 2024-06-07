@@ -2,14 +2,17 @@
 15 |    a = (g: String => String)      // error
    |         ^^^^^^^^^^^^^^^^^^^
    |         Found:    String => String
-   |         Required: String ->{cap1, cap2} String
+   |         Required: box String ->{cap1, cap2} String
+   |
+   |         Note that String => String cannot be box-converted to box String ->{cap1, cap2} String
+   |         since at least one of their capture sets contains the root capability `cap`
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars-simple.scala:16:8 -----------------------------------
 16 |    a = g  // error
    |        ^
-   |        Found:    (x: String) ->{cap3} String
-   |        Required: (x: String) ->{cap1, cap2} String
+   |        Found:    box (x: String) ->{cap3} String
+   |        Required: box (x: String) ->{cap1, cap2} String
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars-simple.scala:17:12 ----------------------------------

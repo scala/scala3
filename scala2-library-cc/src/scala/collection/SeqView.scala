@@ -186,11 +186,13 @@ object SeqView {
   }
 
   @SerialVersionUID(3L)
-  class Sorted[A, B >: A] private (private[this] var underlying: SomeSeqOps[A]^,
+  class Sorted[A, B >: A] private (underlying: SomeSeqOps[A]^,
                                    private[this] val len: Int,
                                    ord: Ordering[B])
     extends SeqView[A] {
     outer: Sorted[A, B]^ =>
+
+    private var myUnderlying: SomeSeqOps[A]^{underlying} = underlying
 
     // force evaluation immediately by calling `length` so infinite collections
     // hang on `sorted`/`sortWith`/`sortBy` rather than on arbitrary method calls
@@ -221,10 +223,10 @@ object SeqView {
       val res = {
         val len = this.len
         if (len == 0) Nil
-        else if (len == 1) List(underlying.head)
+        else if (len == 1) List(myUnderlying.head)
         else {
           val arr = new Array[Any](len) // Array[Any] =:= Array[AnyRef]
-          underlying.copyToArray(arr)
+          myUnderlying.copyToArray(arr)
           java.util.Arrays.sort(arr.asInstanceOf[Array[AnyRef]], ord.asInstanceOf[Ordering[AnyRef]])
           // casting the Array[AnyRef] to Array[A] and creating an ArraySeq from it
           // is safe because:
@@ -238,12 +240,12 @@ object SeqView {
         }
       }
       evaluated = true
-      underlying = null
+      myUnderlying = null
       res
     }
 
     private[this] def elems: SomeSeqOps[A]^{this} = {
-      val orig = underlying
+      val orig = myUnderlying
       if (evaluated) _sorted else orig
     }
 

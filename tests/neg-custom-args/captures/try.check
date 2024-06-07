@@ -1,10 +1,12 @@
--- Error: tests/neg-custom-args/captures/try.scala:23:16 ---------------------------------------------------------------
-23 |  val a = handle[Exception, CanThrow[Exception]] {  // error
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |          Sealed type variable R cannot be instantiated to box CT[Exception]^ since
-   |          that type captures the root capability `cap`.
-   |          This is often caused by a local capability in an argument of method handle
-   |          leaking as part of its result.
+-- Error: tests/neg-custom-args/captures/try.scala:25:3 ----------------------------------------------------------------
+23 |  val a = handle[Exception, CanThrow[Exception]] {
+24 |    (x: CanThrow[Exception]) => x
+25 |  }{  // error (but could be better)
+   |          ^
+   |          The expression's type box CT[Exception]^ is not allowed to capture the root capability `cap`.
+   |          This usually means that a capability persists longer than its allowed lifetime.
+26 |    (ex: Exception) => ???
+27 |  }
 -- Error: tests/neg-custom-args/captures/try.scala:30:65 ---------------------------------------------------------------
 30 |    (x: CanThrow[Exception]) => () => raise(new Exception)(using x) // error
    |                                                                 ^
