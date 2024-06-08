@@ -2323,8 +2323,7 @@ object Build {
       settings(scala3PresentationCompilerBuildInfo)
 
     def asDist(implicit mode: Mode): Project = project.
-      enablePlugins(PackPlugin).
-      enablePlugins(RepublishPlugin).
+      enablePlugins(PackPlugin, RepublishPlugin).
       withCommonSettings.
       settings(commonDistSettings).
       dependsOn(

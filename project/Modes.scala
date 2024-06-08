@@ -1,4 +1,4 @@
-import sbt.{Project, ProjectReference, SettingsDefinition, Plugins}
+import sbt.{Project, ProjectReference, SettingsDefinition}
 
 object Modes {
 

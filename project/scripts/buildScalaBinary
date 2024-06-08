@@ -2,7 +2,11 @@
 
 set -e
 
-source $(dirname $0)/cmdTestsCommon.inc.sh
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/../.."
+SBT="$ROOT/project/scripts/sbt" # if run on CI
+
+# set the $DIST_PROJECT and $DIST_DIR variables
+source "$ROOT/bin/common-platform"
 
 # build the scala/scalac/scaladoc binary, where scala is native for the current platform.
 "$SBT" "$DIST_PROJECT/pack"
