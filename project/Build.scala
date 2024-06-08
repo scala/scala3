@@ -1776,7 +1776,7 @@ object Build {
         bundleCSS.taskValue
       ),
       libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
-        "nl.big-o" % "liqp" % "0.8.2",
+        "nl.big-o" % "liqp" % "0.9",
         "org.jsoup" % "jsoup" % "1.17.2", // Needed to process .html files for static site
         Dependencies.`jackson-dataformat-yaml`,
 

@@ -14,11 +14,12 @@ import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.formatter.Formatter
 import dotty.tools.scaladoc.site.helpers.DataLoader
 import liqp.Template
-import liqp.ParseSettings
+import liqp.TemplateParser
 import liqp.parser.Flavor
 import liqp.TemplateContext
 import liqp.tags.Tag
 import liqp.nodes.LNode
+import dotty.tools.scaladoc.site.blocks.AltDetails
 
 import scala.jdk.CollectionConverters.*
 import scala.io.Source
@@ -126,11 +127,14 @@ case class TemplateFile(
 
     mutableProperties.put("site",dataMap)
 
-    print(mutableProperties.get("site"))
+    print(mutableProperties.get("site")) 
 
-    val parseSettings = ParseSettings.Builder().withFlavor(Flavor.JEKYLL).build()
+//    val parseSettings = ParseSettings.Builder().withFlavor(Flavor.JEKYLL).build().withBlock(AltDetails())
+    val liqpParser = TemplateParser.Builder()
+      .withFlavor(Flavor.JEKYLL)
+      .build()
 
-    val rendered = Template.parse(this.rawCode, parseSettings).render(mutableProperties)
+    val rendered = liqpParser.parse(this.rawCode).render(mutableProperties)
 
     // We want to render markdown only if next template is html
     val code = if (isHtml || layoutTemplate.exists(!_.isHtml)) rendered else
