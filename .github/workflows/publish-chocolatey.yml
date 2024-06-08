@@ -1,0 +1,42 @@
+###################################################################################################
+###                  THIS IS A REUSABLE WORKFLOW TO PUBLISH SCALA TO CHOCOLATEY                 ###
+### HOW TO USE:                                                                                 ###
+###   - THE RELEASE WORKFLOW SHOULD CALL THIS WORKFLOW                                          ###
+###   - IT WILL PUBLISH TO CHOCOLATEY THE MSI                                                   ###
+###                                                                                             ###
+### NOTE:                                                                                       ###
+###   - WE SHOULD KEEP IN SYNC THE NAME OF THE MSI WITH THE ACTUAL BUILD                        ###
+###   - WE SHOULD KEEP IN SYNC THE URL OF THE RELEASE                                           ###
+###################################################################################################
+
+
+name: Publish Scala to Chocolatey
+run-name: Publish Scala ${{ inputs.version }} to Chocolatey
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+    secrets:
+      # Connect to https://community.chocolatey.org/profiles/scala
+      # Accessible via https://community.chocolatey.org/account
+      API-KEY:
+        required: true
+
+env:
+  RELEASE-URL: 'https://github.com/scala/scala3/releases/download/${{ inputs.version }}'
+  MSI_FILE   : 'scala3-${{ inputs.version }}.msi'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - run: echo hello world # TODO: ACTUALLY BUILD THE .nupkg
+
+  publish:
+    runs-on: windows-latest
+    needs: build
+    steps:
+      - run: echo hello world # TODO: ACTUALLY PUBLISH THE PACKAGE
