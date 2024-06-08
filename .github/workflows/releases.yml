@@ -1,12 +1,31 @@
-name: Releases
+###################################################################################################
+###                                  OFFICIAL RELEASE WORKFLOW                                  ###
+### HOW TO USE:                                                                                 ###
+###   - THIS WORKFLOW WILL NEED TO BE TRIGGERED MANUALLY                                        ###
+###                                                                                             ###
+### NOTE:                                                                                       ###
+###   - THIS WORKFLOW SHOULD ONLY BE RUN ON STABLE RELEASES                                     ###
+###   - IT ASSUMES THAT THE PRE-RELEASE WORKFLOW WAS PREVIOUSLY EXECUTED                        ###
+###                                                                                             ###
+###################################################################################################
+
+name: Official release of Scala
+run-name: Official release of Scala ${{ inputs.version }}
+
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'The version to officially release'
+        required: true
+        type: string
 
 jobs:
+  # TODO: ADD JOB TO SWITCH THE GITHUB RELEASE FROM DRAFT TO LATEST
   publish-sdkman:
-    uses:  ./.github/workflows/release-sdkman.yml
+    uses:  ./.github/workflows/publish-sdkman.yml
     with:
-      version: '???' # TODO: Find a way to extract the version number. Easiest way would be to add it as an input
+      version: ${{ inputs.version }}
     secrets:
       CONSUMER-KEY: ${{ secrets.SDKMAN_KEY }}
       CONSUMER-TOKEN: ${{ secrets.SDKMAN_TOKEN }}

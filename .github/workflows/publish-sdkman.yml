@@ -11,8 +11,8 @@
 ###################################################################################################
 
 
-name: Release Scala to SDKMAN!
-run-name: Release Scala ${{ inputs.version }} to SDKMAN!
+name: Publish Scala to SDKMAN!
+run-name: Publish Scala ${{ inputs.version }} to SDKMAN!
 
 on:
   workflow_call:
