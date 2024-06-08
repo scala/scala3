@@ -2,31 +2,13 @@ name: Releases
 on:
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 jobs:
-  publish_release:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2021-03-22
-      options: --cpu-shares 4096
-
-    env:
-      SDKMAN_KEY: ${{ secrets.SDKMAN_KEY }}
-      SDKMAN_TOKEN: ${{ secrets.SDKMAN_TOKEN }}
-
-    steps:
-      - name: Reset existing repo
-        run: |
-          git config --global --add safe.directory /__w/dotty/dotty
-          git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
-
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
-
-      - name: Git Checkout
-        uses: actions/checkout@v4
-
-      - name: Publish to SDKMAN
-        run: .github/workflows/scripts/publish-sdkman.sh
+  publish-sdkman:
+    uses:  ./.github/workflows/release-sdkman.yml
+    with:
+      version: '???' # TODO: Find a way to extract the version number. Easiest way would be to add it as an input
+    secrets:
+      CONSUMER-KEY: ${{ secrets.SDKMAN_KEY }}
+      CONSUMER-TOKEN: ${{ secrets.SDKMAN_TOKEN }}
+  
+  # TODO: ADD RELEASE WORKFLOW TO CHOCOLATEY AND OTHER PACKAGE MANAGERS HERE
