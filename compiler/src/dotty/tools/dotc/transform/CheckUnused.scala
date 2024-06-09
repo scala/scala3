@@ -135,25 +135,22 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
     }
 
   override def prepareForDefDef(tree: tpd.DefDef)(using Context): Context =
-    unusedDataApply{ ud =>
+    unusedDataApply: ud =>
       if !tree.symbol.is(Private) then
         tree.termParamss.flatten.foreach { p =>
           ud.addIgnoredParam(p.symbol)
         }
-      import ud.registerTrivial
-      tree.registerTrivial
+      ud.registerTrivial(tree)
       traverseAnnotations(tree.symbol)
       ud.registerDef(tree)
       ud.addIgnoredUsage(tree.symbol)
-    }
 
   override def prepareForTypeDef(tree: tpd.TypeDef)(using Context): Context =
-    unusedDataApply{ ud =>
+    unusedDataApply: ud =>
+      traverseAnnotations(tree.symbol)
       if !tree.symbol.is(Param) then // Ignore type parameter (as Scala 2)
-        traverseAnnotations(tree.symbol)
         ud.registerDef(tree)
         ud.addIgnoredUsage(tree.symbol)
-    }
 
   override def prepareForBind(tree: tpd.Bind)(using Context): Context =
     traverseAnnotations(tree.symbol)
