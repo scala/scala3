@@ -15,6 +15,7 @@ import StdNames.nme
 import config.Feature
 import collection.mutable
 import CCState.*
+import reporting.Message
 
 private val Captures: Key[CaptureSet] = Key()
 
@@ -26,7 +27,8 @@ object ccConfig:
    */
   inline val allowUnsoundMaps = false
 
-  val useExistentials = false
+  def useExistentials(using Context) =
+    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.5`)
 
   /** If true, use `sealed` as encapsulation mechanism instead of the
    *  previous global retriction that `cap` can't be boxed or unboxed.
@@ -68,6 +70,11 @@ class CCState:
    *  the reference could not be added to the set due to a level conflict.
    */
   var levelError: Option[CaptureSet.CompareResult.LevelError] = None
+
+  /** Warnings relating to upper approximations of capture sets with
+   *  existentially bound variables.
+   */
+  val approxWarnings: mutable.ListBuffer[Message] = mutable.ListBuffer()
 
   private var curLevel: Level = outermostLevel
   private val symLevel: mutable.Map[Symbol, Int] = mutable.Map()
@@ -356,6 +363,7 @@ extension (tp: Type)
               ok = false
             case _ =>
               traverseChildren(t)
+    end CheckContraCaps
 
     object narrowCaps extends TypeMap:
       /** Has the variance been flipped at this point? */
@@ -368,12 +376,19 @@ extension (tp: Type)
           t.dealias match
             case t1 @ CapturingType(p, cs) if cs.isUniversal && !isFlipped =>
               t1.derivedCapturingType(apply(p), ref.reach.singletonCaptureSet)
+            case t @ FunctionOrMethod(args, res @ Existential(_, _))
+            if args.forall(_.isAlwaysPure) =>
+              // Also map existentials in results to reach capabilities if all
+              // preceding arguments are known to be always pure
+              apply(t.derivedFunctionOrMethod(args, Existential.toCap(res)))
             case _ => t match
               case t @ CapturingType(p, cs) =>
                 t.derivedCapturingType(apply(p), cs) // don't map capture set variables
               case t =>
                 mapOver(t)
         finally isFlipped = saved
+    end narrowCaps
+
     ref match
       case ref: CaptureRef if ref.isTrackableRef =>
         val checker = new CheckContraCaps

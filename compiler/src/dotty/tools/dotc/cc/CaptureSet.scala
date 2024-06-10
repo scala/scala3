@@ -562,7 +562,14 @@ object CaptureSet:
         universal
       else
         computingApprox = true
-        try computeApprox(origin).ensuring(_.isConst)
+        try
+          val approx = computeApprox(origin).ensuring(_.isConst)
+          if approx.elems.exists(Existential.isExistentialVar(_)) then
+            ccState.approxWarnings +=
+                em"""Capture set variable $this gets upper-approximated
+                    |to existential variable from $approx, using {cap} instead."""
+            universal
+          else approx
         finally computingApprox = false
 
     /** The intersection of all upper approximations of dependent sets */
@@ -757,9 +764,8 @@ object CaptureSet:
         CompareResult.OK
       else
         source.tryInclude(bimap.backward(elem), this)
-          .showing(i"propagating new elem $elem backward from $this to $source = $result", capt)
-          .andAlso:
-            addNewElem(elem)
+          .showing(i"propagating new elem $elem backward from $this to $source = $result", captDebug)
+          .andAlso(addNewElem(elem))
 
     /** For a BiTypeMap, supertypes of the mapped type also constrain
      *  the source via the inverse type mapping and vice versa. That is, if

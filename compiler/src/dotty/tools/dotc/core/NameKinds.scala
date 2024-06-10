@@ -325,6 +325,7 @@ object NameKinds {
   val TailLocalName: UniqueNameKind          = new UniqueNameKind("$tailLocal")
   val TailTempName: UniqueNameKind           = new UniqueNameKind("$tmp")
   val ExceptionBinderName: UniqueNameKind    = new UniqueNameKind("ex")
+  val ExistentialBinderName: UniqueNameKind  = new UniqueNameKind("ex$")
   val SkolemName: UniqueNameKind             = new UniqueNameKind("?")
   val SuperArgName: UniqueNameKind           = new UniqueNameKind("$superArg$")
   val DocArtifactName: UniqueNameKind        = new UniqueNameKind("$doc")
@@ -332,7 +333,6 @@ object NameKinds {
   val InlineScrutineeName: UniqueNameKind    = new UniqueNameKind("$scrutinee")
   val InlineBinderName: UniqueNameKind       = new UniqueNameKind("$proxy")
   val MacroNames: UniqueNameKind             = new UniqueNameKind("$macro$")
-  val exSkolemName: UniqueNameKind           = new UniqueNameKind("$exSkolem") // TODO needed?
 
   val UniqueExtMethName: UniqueNameKind = new UniqueNameKindWithUnmangle("$extension")
 

@@ -9,7 +9,7 @@ import StdNames.nme
 import ast.tpd.*
 import Decorators.*
 import typer.ErrorReporting.errorType
-import NameKinds.exSkolemName
+import NameKinds.ExistentialBinderName
 import reporting.Message
 
 /**
@@ -195,22 +195,61 @@ object Existential:
 
   type Carrier = RefinedType
 
-  def openExpected(pt: Type)(using Context): Type = pt.dealias match
-    case Existential(boundVar, unpacked) =>
-      val tm = new IdempotentCaptRefMap:
-        val cvar = CaptureSet.Var(ctx.owner)
-        def apply(t: Type) = mapOver(t) match
-          case t @ CapturingType(parent, refs) if refs.elems.contains(boundVar) =>
-            assert(refs.isConst && refs.elems.size == 1, i"malformed existential $t")
-            t.derivedCapturingType(parent, cvar)
-          case t =>
-            t
-      openExpected(tm(unpacked))
-    case _ => pt
+  def unapply(tp: Carrier)(using Context): Option[(TermParamRef, Type)] =
+    tp.refinedInfo match
+      case mt: MethodType
+      if isExistentialMethod(mt) && defn.isNonRefinedFunction(tp.parent) =>
+        Some(mt.paramRefs.head, mt.resultType)
+      case _ => None
 
-  def toCap(tp: Type)(using Context) = tp.dealias match
+  /** Create method type in the refinement of an existential type */
+  private def exMethodType(mk: TermParamRef => Type)(using Context): MethodType =
+    val boundName = ExistentialBinderName.fresh()
+    MethodType(boundName :: Nil)(
+      mt => defn.Caps_Exists.typeRef :: Nil,
+      mt => mk(mt.paramRefs.head))
+
+  /** Create existential */
+  def apply(mk: TermParamRef => Type)(using Context): Type =
+    exMethodType(mk).toFunctionType(alwaysDependent = true)
+
+  /** Create existential if bound variable appears in result of `mk` */
+  def wrap(mk: TermParamRef => Type)(using Context): Type =
+    val mt = exMethodType(mk)
+    if mt.isResultDependent then mt.toFunctionType() else mt.resType
+
+  extension (tp: Carrier)
+    def derivedExistentialType(core: Type)(using Context): Type = tp match
+      case Existential(boundVar, unpacked) =>
+        if core eq unpacked then tp
+        else apply(bv => core.substParam(boundVar, bv))
+      case _ =>
+        core
+
+  /** Map top-level existentials to `cap`. Do the same for existentials
+   *  in function results if all preceding arguments are known to be always pure.
+   */
+  def toCap(tp: Type)(using Context): Type = tp.dealias match
     case Existential(boundVar, unpacked) =>
-      unpacked.substParam(boundVar, defn.captureRoot.termRef)
+      val transformed = unpacked.substParam(boundVar, defn.captureRoot.termRef)
+      transformed match
+        case FunctionOrMethod(args, res @ Existential(_, _))
+        if args.forall(_.isAlwaysPure) =>
+          transformed.derivedFunctionOrMethod(args, toCap(res))
+        case _ =>
+          transformed
+    case _ => tp
+
+  /** Map existentials at the top-level and in all nested result types to `cap`
+   */
+  def toCapDeeply(tp: Type)(using Context): Type = tp.dealias match
+    case Existential(boundVar, unpacked) =>
+      toCapDeeply(unpacked.substParam(boundVar, defn.captureRoot.termRef))
+    case tp1 @ FunctionOrMethod(args, res) =>
+      val tp2 = tp1.derivedFunctionOrMethod(args, toCapDeeply(res))
+      if tp2 ne tp1 then tp2 else tp
+    case tp1 @ CapturingType(parent, refs) =>
+      tp1.derivedCapturingType(toCapDeeply(parent), refs)
     case _ => tp
 
   /** Replace all occurrences of `cap` in parts of this type by an existentially bound
@@ -229,8 +268,9 @@ object Existential:
               needsWrap = true
               boundVar
             else
-              val varianceStr = if variance < 0 then "contra" else "in"
-              fail(em"cap appears in ${varianceStr}variant position in $tp")
+              if variance == 0 then
+                fail(em"cap appears in invariant position in $tp")
+              // we accept variance < 0, and leave the cap as it is
               t1
           case t1 @ FunctionOrMethod(_, _) =>
             // These have been mapped before
@@ -251,11 +291,16 @@ object Existential:
     end Wrap
 
     if ccConfig.useExistentials then
-      val wrapped = apply(Wrap(_)(tp))
-      if needsWrap then wrapped else tp
+      tp match
+        case Existential(_, _) => tp
+        case _ =>
+          val wrapped = apply(Wrap(_)(tp))
+          if needsWrap then wrapped else tp
     else tp
   end mapCap
 
+  /** Map `cap` to existential in the results of functions or methods.
+   */
   def mapCapInResult(tp: Type, fail: Message => Unit)(using Context): Type =
     def mapCapInFinalResult(tp: Type): Type = tp match
       case tp: MethodOrPoly =>
@@ -263,104 +308,17 @@ object Existential:
       case _ =>
         mapCap(tp, fail)
     tp match
-      case tp: MethodOrPoly =>
-        mapCapInFinalResult(tp)
-      case defn.FunctionNOf(args, res, contextual) =>
-        tp.derivedFunctionOrMethod(args, mapCap(res, fail))
+      case tp: MethodOrPoly => mapCapInFinalResult(tp)
       case _ => tp
 
-  def strip(tp: Type)(using Context) = tp match
-    case Existential(_, tpunpacked) => tpunpacked
-    case _ => tp
-
-  def skolemize(tp: Type)(using Context) = tp.widenDealias match // TODO needed?
-    case Existential(boundVar, unpacked) =>
-      val skolem = tp match
-        case tp: CaptureRef if tp.isTracked => tp
-        case _ => newSkolemSym(boundVar.underlying).termRef
-      val tm = new IdempotentCaptRefMap:
-        var deep = false
-        private inline def deepApply(t: Type): Type =
-          val saved = deep
-          deep = true
-          try apply(t) finally deep = saved
-        def apply(t: Type) =
-          if t eq boundVar then
-            if deep then skolem.reach else skolem
-          else t match
-            case defn.FunctionOf(args, res, contextual) =>
-              val res1 = deepApply(res)
-              if res1 ne res then defn.FunctionOf(args, res1, contextual)
-              else t
-            case defn.RefinedFunctionOf(mt) =>
-              mt.derivedLambdaType(resType = deepApply(mt.resType))
-            case _ =>
-              mapOver(t)
-      tm(unpacked)
-    case _ => tp
-  end skolemize
-
-  def newSkolemSym(tp: Type)(using Context): TermSymbol = // TODO needed?
-    newSymbol(ctx.owner.enclosingMethodOrClass, exSkolemName.fresh(), Synthetic, tp)
-/*
-  def fromDepFun(arg: Tree)(using Context): Type = arg.tpe match
-    case RefinedType(parent, nme.apply, info: MethodType) if defn.isNonRefinedFunction(parent) =>
-      info match
-        case info @ MethodType(_ :: Nil)
-        if info.paramInfos.head.derivesFrom(defn.Caps_Capability) =>
-          apply(ref => info.resultType.substParams(info, ref :: Nil))
-        case _ =>
-          errorType(em"Malformed existential: dependent function must have a singgle parameter of type caps.Capability", arg.srcPos)
-    case _ =>
-      errorType(em"Malformed existential: dependent function type expected", arg.srcPos)
-*/
-  private class PackMap(sym: Symbol, rt: RecType)(using Context) extends DeepTypeMap, IdempotentCaptRefMap:
-    def apply(tp: Type): Type = tp match
-      case ref: TermRef if ref.symbol == sym => TermRef(rt.recThis, defn.captureRoot)
-      case _ => mapOver(tp)
-
-  /** Unpack current type from an existential `rt` so that all references bound by `rt`
-   *  are recplaced by `ref`.
-   */
-  private class OpenMap(rt: RecType, ref: Type)(using Context) extends DeepTypeMap, IdempotentCaptRefMap:
-    def apply(tp: Type): Type =
-      if isExBound(tp, rt) then ref else mapOver(tp)
-
-  /** Is `tp` a reference to the bound variable of `rt`? */
-  private def isExBound(tp: Type, rt: Type)(using Context) = tp match
-    case tp @ TermRef(RecThis(rt1), _) => (rt1 eq rt) && tp.symbol == defn.captureRoot
-    case _ => false
-
-  /** Open existential, replacing the bund variable by `ref` */
-  def open(rt: RecType, ref: Type)(using Context): Type = OpenMap(rt, ref)(rt.parent)
-
-  /** Create an existential type `ex c.<tp>` so that all references to `sym` in `tp`
-   *  become references to the existentially bound variable `c`.
-   */
-  def fromSymbol(tp: Type, sym: Symbol)(using Context): RecType =
-    RecType(PackMap(sym, _)(tp))
-
+  /** Is `mt` a method represnting an existential type when used in a refinement? */
   def isExistentialMethod(mt: TermLambda)(using Context): Boolean = mt.paramInfos match
     case (info: TypeRef) :: rest => info.symbol == defn.Caps_Exists && rest.isEmpty
     case _ => false
 
+  /** Is `ref` this an existentially bound variable? */
   def isExistentialVar(ref: CaptureRef)(using Context) = ref match
     case ref: TermParamRef => isExistentialMethod(ref.binder)
     case _ => false
 
-  def unapply(tp: Carrier)(using Context): Option[(TermParamRef, Type)] =
-    tp.refinedInfo match
-      case mt: MethodType
-      if isExistentialMethod(mt) && defn.isNonRefinedFunction(tp.parent) =>
-        Some(mt.paramRefs.head, mt.resultType)
-      case _ => None
-
-  def apply(mk: TermParamRef => Type)(using Context): MethodType =
-    MethodType(defn.Caps_Exists.typeRef :: Nil): mt =>
-      mk(mt.paramRefs.head)
-
-  /** Create existential if bound variable appear in result */
-  def wrap(mk: TermParamRef => Type)(using Context): Type =
-    val mt = apply(mk)
-    if mt.isResultDependent then mt.toFunctionType() else mt.resType
 end Existential
