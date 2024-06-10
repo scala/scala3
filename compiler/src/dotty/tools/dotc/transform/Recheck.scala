@@ -454,12 +454,16 @@ abstract class Recheck extends Phase, SymTransformer:
         case _ =>
       traverse(stats)
 
+    /** A hook to prevent rechecking a ValDef or DefDef.
+     *  Typycally used when definitions are completed on first use.
+     */
+    def skipRecheck(sym: Symbol)(using Context) = false
+
     def recheckDef(tree: ValOrDefDef, sym: Symbol)(using Context): Type =
-      inContext(ctx.localContext(tree, sym)) {
+      inContext(ctx.localContext(tree, sym)):
         tree match
           case tree: ValDef => recheckValDef(tree, sym)
           case tree: DefDef => recheckDefDef(tree, sym)
-      }
 
     /** Recheck tree without adapting it, returning its new type.
      *  @param tree        the original tree
@@ -476,10 +480,8 @@ abstract class Recheck extends Phase, SymTransformer:
           case tree: ValOrDefDef =>
             if tree.isEmpty then NoType
             else
-              if sym.isUpdatedAfter(preRecheckPhase) then
-                sym.ensureCompleted() // in this case the symbol's completer should recheck the right hand side
-              else
-                recheckDef(tree, sym)
+              sym.ensureCompleted()
+              if !skipRecheck(sym) then recheckDef(tree, sym)
               sym.termRef
           case tree: TypeDef =>
             // TODO: Should we allow for completers as for ValDefs or DefDefs?
