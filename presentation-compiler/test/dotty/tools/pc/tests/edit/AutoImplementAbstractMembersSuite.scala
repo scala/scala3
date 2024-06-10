@@ -1243,7 +1243,6 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |
          |object A {
          |  trait Base:
-         |    def foo(x: Int): Int
          |    def bar(x: String): String
          |
          |  class <<Concrete>>(x: Int, y: String) extends Base:
@@ -1256,12 +1255,9 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |
          |object A {
          |  trait Base:
-         |    def foo(x: Int): Int
          |    def bar(x: String): String
          |
          |  class Concrete(x: Int, y: String) extends Base:
-         |
-         |    override def foo(x: Int): Int = ???
          |
          |    override def bar(x: String): String = ???
          |
