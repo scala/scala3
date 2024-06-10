@@ -1185,6 +1185,11 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ =>
         traverseChildren(t)
 
+    private val completed = new mutable.HashSet[Symbol]
+
+    override def skipRecheck(sym: Symbol)(using Context): Boolean =
+      completed.contains(sym)
+
     /** Check a ValDef or DefDef as an action performed in a completer. Since
      *  these checks can appear out of order, we need to firsty create the correct
      *  environment for checking the definition.
@@ -1205,7 +1210,8 @@ class CheckCaptures extends Recheck, SymTransformer:
             case None => Env(sym, EnvKind.Regular, localSet, restoreEnvFor(sym.owner))
         curEnv = restoreEnvFor(sym.owner)
         capt.println(i"Complete $sym in ${curEnv.outersIterator.toList.map(_.owner)}")
-        recheckDef(tree, sym)
+        try recheckDef(tree, sym)
+        finally completed += sym
       finally
         curEnv = saved
 
