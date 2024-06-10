@@ -3753,6 +3753,11 @@ class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeCompa
   private val b = new StringBuilder
   private var lastForwardGoal: String | Null = null
 
+  private def appendFailure(x: String) =
+    if lastForwardGoal != null then  // last was deepest goal that failed
+      b.append(s"  = $x")
+      lastForwardGoal = null
+
   override def traceIndented[T](str: String)(op: => T): T =
     val str1 = str.replace('\n', ' ')
     if short && str1 == lastForwardGoal then
@@ -3764,12 +3769,13 @@ class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeCompa
       b.append("\n").append(" " * indent).append("==> ").append(str1)
       val res = op
       if short then
-        if res == false then
-          if lastForwardGoal != null then  // last was deepest goal that failed
-            b.append("  = false")
-            lastForwardGoal = null
-        else
-          b.length = curLength // don't show successful subtraces
+        res match
+          case false =>
+            appendFailure("false")
+          case res: CaptureSet.CompareResult if res != CaptureSet.CompareResult.OK =>
+            appendFailure(show(res))
+          case _ =>
+            b.length = curLength // don't show successful subtraces
       else
         b.append("\n").append(" " * indent).append("<== ").append(str1).append(" = ").append(show(res))
       indent -= 2
