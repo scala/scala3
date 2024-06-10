@@ -1952,3 +1952,34 @@ class CompletionSuite extends BaseCompletionSuite:
       """TestEnum test
         |""".stripMargin,
     )
+
+  @Test def `i6477-1` =
+    checkEdit(
+      """|package a
+         |import a.b.SomeClass as SC
+         |
+         |package b {
+         |  class SomeClass
+         |}
+         |package c {
+         |  class SomeClass
+         |}
+         |
+         |val bar: SC = ???
+         |val foo: SomeClass@@
+         |""".stripMargin,
+      """|package a
+         |import a.b.SomeClass as SC
+         |import a.c.SomeClass
+         |
+         |package b {
+         |  class SomeClass
+         |}
+         |package c {
+         |  class SomeClass
+         |}
+         |
+         |val bar: SC = ???
+         |val foo: SomeClass
+         |""".stripMargin,
+    )
