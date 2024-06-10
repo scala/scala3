@@ -506,6 +506,8 @@ object OverrideCompletions:
     defn match
       case td: TypeDef if text.charAt(td.rhs.span.end) == ':' =>
         Some(td.rhs.span.end)
+      case TypeDef(_, temp : Template) =>
+        temp.parentsOrDerived.lastOption.map(_.span.end).filter(text.charAt(_) == ':')
       case _ => None
 
   private def fallbackFromParent(parent: Tree, name: String)(using Context) =
