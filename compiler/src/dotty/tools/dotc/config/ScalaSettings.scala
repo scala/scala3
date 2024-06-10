@@ -158,11 +158,21 @@ private sealed trait WarningSettings:
 
   val Whelp: Setting[Boolean] = BooleanSetting(WarningSetting, "W", "Print a synopsis of warning options.")
   val XfatalWarnings: Setting[Boolean] = BooleanSetting(WarningSetting, "Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
-  val WvalueDiscard: Setting[Boolean] = BooleanSetting(WarningSetting, "Wvalue-discard", "Warn when non-Unit expression results are unused.")
-  val WNonUnitStatement = BooleanSetting(WarningSetting, "Wnonunit-statement", "Warn when block statements are non-Unit expressions.")
-  val WenumCommentDiscard = BooleanSetting(WarningSetting, "Wenum-comment-discard", "Warn when a comment ambiguously assigned to multiple enum cases is discarded.")
-  val WimplausiblePatterns = BooleanSetting(WarningSetting, "Wimplausible-patterns", "Warn if comparison with a pattern value looks like it might always fail.")
-  val WunstableInlineAccessors = BooleanSetting(WarningSetting, "WunstableInlineAccessors", "Warn an inline methods has references to non-stable binary APIs.")
+  val Wall: Setting[Boolean] = BooleanSetting(WarningSetting, "Wall", "Enable all warnings.")
+  private val overrideWithWall: (Setting[Boolean], (Boolean, Any) => Boolean) =
+    (Wall, (a, b) => a || b.asInstanceOf[Boolean])
+  val WvalueDiscard: Setting[Boolean] = BooleanSetting(WarningSetting, "Wvalue-discard", "Warn when non-Unit expression results are unused.", overriddenBy = overrideWithWall)
+  val WNonUnitStatement = BooleanSetting(WarningSetting, "Wnonunit-statement", "Warn when block statements are non-Unit expressions.", overriddenBy = overrideWithWall)
+  val WenumCommentDiscard = BooleanSetting(WarningSetting, "Wenum-comment-discard", "Warn when a comment ambiguously assigned to multiple enum cases is discarded.", overriddenBy = overrideWithWall)
+  val WimplausiblePatterns = BooleanSetting(WarningSetting, "Wimplausible-patterns", "Warn if comparison with a pattern value looks like it might always fail.", overriddenBy = overrideWithWall)
+  val WunstableInlineAccessors = BooleanSetting(WarningSetting, "WunstableInlineAccessors", "Warn an inline methods has references to non-stable binary APIs.", overriddenBy = overrideWithWall)
+  val WunusedAll = ChoiceWithHelp("all", "")
+  private val overrideWunusedWithWall: (Setting[Boolean], (List[ChoiceWithHelp[String]], Any) => List[ChoiceWithHelp[String]]) =
+    def updateValue(fromUser: List[ChoiceWithHelp[String]], fromWall: Any): List[ChoiceWithHelp[String]] =
+      if fromUser.isEmpty && fromWall.asInstanceOf[Boolean] then
+        List(WunusedAll)
+      else fromUser
+    (Wall, updateValue)
   val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     WarningSetting,
     name = "Wunused",
@@ -170,31 +180,32 @@ private sealed trait WarningSettings:
     descr = "Enable or disable specific `unused` warnings",
     choices = List(
       ChoiceWithHelp("nowarn", ""),
-      ChoiceWithHelp("all",""),
+      WunusedAll,
       ChoiceWithHelp(
         name = "imports",
         description = "Warn if an import selector is not referenced.\n" +
         "NOTE : overrided by -Wunused:strict-no-implicit-warn"),
-        ChoiceWithHelp("privates","Warn if a private member is unused"),
-        ChoiceWithHelp("locals","Warn if a local definition is unused"),
-        ChoiceWithHelp("explicits","Warn if an explicit parameter is unused"),
-        ChoiceWithHelp("implicits","Warn if an implicit parameter is unused"),
-        ChoiceWithHelp("params","Enable -Wunused:explicits,implicits"),
-        ChoiceWithHelp("linted","Enable -Wunused:imports,privates,locals,implicits"),
-        ChoiceWithHelp(
-          name = "strict-no-implicit-warn",
-          description = "Same as -Wunused:import, only for imports of explicit named members.\n" +
-          "NOTE : This overrides -Wunused:imports and NOT set by -Wunused:all"
-        ),
-        // ChoiceWithHelp("patvars","Warn if a variable bound in a pattern is unused"),
-        ChoiceWithHelp(
-          name = "unsafe-warn-patvars",
-          description = "(UNSAFE) Warn if a variable bound in a pattern is unused.\n" +
-          "This warning can generate false positive, as warning cannot be\n" +
-          "suppressed yet."
-        )
+      ChoiceWithHelp("privates","Warn if a private member is unused"),
+      ChoiceWithHelp("locals","Warn if a local definition is unused"),
+      ChoiceWithHelp("explicits","Warn if an explicit parameter is unused"),
+      ChoiceWithHelp("implicits","Warn if an implicit parameter is unused"),
+      ChoiceWithHelp("params","Enable -Wunused:explicits,implicits"),
+      ChoiceWithHelp("linted","Enable -Wunused:imports,privates,locals,implicits"),
+      ChoiceWithHelp(
+        name = "strict-no-implicit-warn",
+        description = "Same as -Wunused:import, only for imports of explicit named members.\n" +
+        "NOTE : This overrides -Wunused:imports and NOT set by -Wunused:all"
+      ),
+      // ChoiceWithHelp("patvars","Warn if a variable bound in a pattern is unused"),
+      ChoiceWithHelp(
+        name = "unsafe-warn-patvars",
+        description = "(UNSAFE) Warn if a variable bound in a pattern is unused.\n" +
+        "This warning can generate false positive, as warning cannot be\n" +
+        "suppressed yet."
+      )
     ),
-    default = Nil
+    default = Nil,
+    overriddenBy = overrideWunusedWithWall,
   )
   object WunusedHas:
     def isChoiceSet(s: String)(using Context) = Wunused.value.pipe(us => us.contains(s))
@@ -296,7 +307,7 @@ private sealed trait WarningSettings:
     def typeParameterShadow(using Context) =
       allOr("type-parameter-shadow")
 
-  val WcheckInit: Setting[Boolean] = BooleanSetting(WarningSetting, "Wsafe-init", "Ensure safe initialization of objects.")
+  val WcheckInit: Setting[Boolean] = BooleanSetting(WarningSetting, "Wsafe-init", "Ensure safe initialization of objects.", overriddenBy = overrideWithWall)
 
 /** -X "Extended" or "Advanced" settings */
 private sealed trait XSettings:
