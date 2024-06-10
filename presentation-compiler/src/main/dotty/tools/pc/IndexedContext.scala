@@ -36,8 +36,8 @@ sealed trait IndexedContext:
             Result.InScope
       // when all the conflicting symbols came from an old version of the file
       case Some(symbols) if symbols.nonEmpty && symbols.forall(_.isStale) => Result.Missing
-      case Some(_) => Result.Conflict
-      case None => Result.Missing
+      case Some(symbols) if symbols.exists(rename(_).isEmpty) => Result.Conflict
+      case _ => Result.Missing
   end lookupSym
 
   /**
