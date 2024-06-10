@@ -2535,6 +2535,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   /** If some (&-operand of) `tp` is a supertype of `sub` replace it with `NoType`.
    */
   private def dropIfSuper(tp: Type, sub: Type): Type =
+    // We need to be careful to check branches of AndTypes and OrTypes in correct order,
+    // see discussion in issue #20516.
     tp match
       case tp @ AndType(tp1, tp2) =>
         recombine(dropIfSuper(tp1, sub), dropIfSuper(tp2, sub), tp)
@@ -2546,6 +2548,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   /** If some (|-operand of) `tp` is a subtype of `sup` replace it with `NoType`. */
   private def dropIfSub(tp: Type, sup: Type, canConstrain: Boolean): Type =
+    // We need to be careful to check branches of AndTypes and OrTypes in correct order,
+    // see discussion in issue #20516.
     tp match
       case tp @ OrType(tp1, tp2) =>
         recombine(dropIfSub(tp1, sup, canConstrain), dropIfSub(tp2, sup, canConstrain), tp)
