@@ -75,6 +75,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         && containsCovarRetains(symd.symbol.originDenotation.info)
     then symd.flags &~ Private
     else symd.flags
+  end newFlagsFor
 
   def isPreCC(sym: Symbol)(using Context): Boolean =
     sym.isTerm && sym.maybeOwner.isClass
