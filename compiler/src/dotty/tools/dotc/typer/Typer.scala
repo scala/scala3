@@ -4056,7 +4056,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
       def dummyArg(tp: Type) = untpd.Ident(nme.???).withTypeUnchecked(tp)
 
-      def addImplicitArgs(using Context) = {
+      val origCtx = ctx
+
+      def addImplicitArgs(using Context) =
         def hasDefaultParams = methPart(tree).symbol.hasDefaultParams
         def implicitArgs(formals: List[Type], argIndex: Int, pt: Type): List[Tree] = formals match
           case Nil => Nil
@@ -4179,15 +4181,20 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               case _ => retyped
           else issueErrors(tree, args)
         }
-        else tree match {
-          case tree: Block =>
-            readaptSimplified(tpd.Block(tree.stats, tpd.Apply(tree.expr, args)))
-          case tree: NamedArg =>
-            readaptSimplified(tpd.NamedArg(tree.name, tpd.Apply(tree.arg, args)))
-          case _ =>
-            readaptSimplified(tpd.Apply(tree, args))
-        }
-      }
+        else
+          inContext(origCtx):
+            // Reset context in case it was set to a supercall context before.
+            // otherwise the invariant for taking another this or super call context is not met.
+            // Test case is i20483.scala
+            tree match
+              case tree: Block =>
+                readaptSimplified(tpd.Block(tree.stats, tpd.Apply(tree.expr, args)))
+              case tree: NamedArg =>
+                readaptSimplified(tpd.NamedArg(tree.name, tpd.Apply(tree.arg, args)))
+              case _ =>
+                readaptSimplified(tpd.Apply(tree, args))
+      end addImplicitArgs
+
       pt.revealIgnored match {
         case pt: FunProto if pt.applyKind == ApplyKind.Using =>
           // We can end up here if extension methods are called with explicit given arguments.
