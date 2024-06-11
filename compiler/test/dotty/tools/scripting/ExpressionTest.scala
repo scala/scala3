@@ -55,6 +55,10 @@ class ExpressionTest:
 
 object ExpressionTest:
 
+  @AfterClass def cleanup(): Unit = {
+    cleanupScalaCLIDirs()
+  }
+
   def main(args: Array[String]): Unit =
     val tests = new ExpressionTest
     println("\n=== verifyCommandLineExpression ===")

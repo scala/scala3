@@ -28,7 +28,6 @@ import sbttastymima.TastyMiMaPlugin
 import sbttastymima.TastyMiMaPlugin.autoImport._
 
 import scala.util.Properties.isJavaAtLeast
-import scala.collection.mutable
 
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import org.scalajs.linker.interface.{ModuleInitializer, StandardConfig}
@@ -119,7 +118,11 @@ object Build {
   val mimaPreviousLTSDottyVersion = "3.3.0"
 
   /** Version of Scala CLI to download */
-  val scalaCliLauncherVersion = "1.3.1"
+  val scalaCliLauncherVersion = "1.3.2"
+  /** Version of Scala CLI to download (on Windows - last known validated version) */
+  val scalaCliLauncherVersionWindows = "1.3.2"
+  /** Version of Coursier to download for initializing the local maven repo of Scala command */
+  val coursierJarVersion = "2.1.10"
 
   object CompatMode {
     final val BinaryCompatible = 0
@@ -2121,22 +2124,72 @@ object Build {
     packMain := Map(),
     publishArtifact := false,
     packGenerateMakefile := false,
-    packArchiveName := "scala3-" + dottyVersion,
     republishRepo := target.value / "republish",
-    republishLaunchers := {
-      val cliV = scalaCliLauncherVersion
-      Seq(
-        ("scala-cli.jar", cliV, url(s"https://github.com/VirtusLab/scala-cli/releases/download/v$cliV/scala-cli.jar"))
-      )
-    },
+    packResourceDir += (republishRepo.value / "bin" -> "bin"),
+    packResourceDir += (republishRepo.value / "maven2" -> "maven2"),
     Compile / pack := (Compile / pack).dependsOn(republish).value,
   )
 
   lazy val dist = project.asDist(Bootstrapped)
     .settings(
-      packResourceDir += (baseDirectory.value / "bin" -> "bin"),
-      packResourceDir += (republishRepo.value / "maven2" -> "maven2"),
-      packResourceDir += (republishRepo.value / "etc" -> "etc"),
+      packArchiveName := "scala3-" + dottyVersion,
+      republishBinDir := baseDirectory.value / "bin",
+      republishCoursier +=
+        ("coursier.jar" -> s"https://github.com/coursier/coursier/releases/download/v$coursierJarVersion/coursier.jar"),
+      republishLaunchers +=
+        ("scala-cli.jar" -> s"https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli.jar"),
+    )
+
+  lazy val `dist-mac-x86_64` = project.in(file("dist/mac-x86_64")).asDist(Bootstrapped)
+    .settings(
+      republishBinDir := (dist / republishBinDir).value,
+      packArchiveName := (dist / packArchiveName).value + "-x86_64-apple-darwin",
+      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishFetchCoursier := (dist / republishFetchCoursier).value,
+      republishLaunchers +=
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-apple-darwin.gz")
+    )
+
+  lazy val `dist-mac-aarch64` = project.in(file("dist/mac-aarch64")).asDist(Bootstrapped)
+    .settings(
+      republishBinDir := (dist / republishBinDir).value,
+      packArchiveName := (dist / packArchiveName).value + "-aarch64-apple-darwin",
+      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishFetchCoursier := (dist / republishFetchCoursier).value,
+      republishLaunchers +=
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-aarch64-apple-darwin.gz")
+    )
+
+  lazy val `dist-win-x86_64` = project.in(file("dist/win-x86_64")).asDist(Bootstrapped)
+    .settings(
+      republishBinDir := (dist / republishBinDir).value,
+      packArchiveName := (dist / packArchiveName).value + "-x86_64-pc-win32",
+      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishFetchCoursier := (dist / republishFetchCoursier).value,
+      republishExtraProps += ("cli_version" -> scalaCliLauncherVersion),
+      mappings += (republishRepo.value / "etc" / "EXTRA_PROPERTIES" -> "EXTRA_PROPERTIES"),
+      republishLaunchers +=
+        ("scala-cli.exe" -> s"zip+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersionWindows/scala-cli-x86_64-pc-win32.zip!/scala-cli.exe")
+    )
+
+  lazy val `dist-linux-x86_64` = project.in(file("dist/linux-x86_64")).asDist(Bootstrapped)
+    .settings(
+      republishBinDir := (dist / republishBinDir).value,
+      packArchiveName := (dist / packArchiveName).value + "-x86_64-pc-linux",
+      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishFetchCoursier := (dist / republishFetchCoursier).value,
+      republishLaunchers +=
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-pc-linux.gz")
+    )
+
+  lazy val `dist-linux-aarch64` = project.in(file("dist/linux-aarch64")).asDist(Bootstrapped)
+    .settings(
+      republishBinDir := (dist / republishBinDir).value,
+      packArchiveName := (dist / packArchiveName).value + "-aarch64-pc-linux",
+      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishFetchCoursier := (dist / republishFetchCoursier).value,
+      republishLaunchers +=
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-aarch64-pc-linux.gz")
     )
 
   private def customMimaReportBinaryIssues(issueFilterLocation: String) = mimaReportBinaryIssues := {
@@ -2265,8 +2318,7 @@ object Build {
       settings(scala3PresentationCompilerBuildInfo)
 
     def asDist(implicit mode: Mode): Project = project.
-      enablePlugins(PackPlugin).
-      enablePlugins(RepublishPlugin).
+      enablePlugins(PackPlugin, RepublishPlugin).
       withCommonSettings.
       settings(commonDistSettings).
       dependsOn(

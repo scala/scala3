@@ -20,12 +20,17 @@ import dotc.config.CommandLineParser
 object Dummy
 
 def scripts(path: String): Array[File] = {
-  val dir = new File(Dummy.getClass.getResource(path).getPath)
-  assert(dir.exists && dir.isDirectory, "Couldn't load scripts dir")
+  val dir = scriptsDir(path)
   dir.listFiles.filter { f =>
     val path = if f.isDirectory then f.getPath + "/" else f.getPath
     Properties.testsFilter.isEmpty || Properties.testsFilter.exists(path.contains)
   }
+}
+
+def scriptsDir(path: String): File = {
+  val dir = new File(Dummy.getClass.getResource(path).getPath)
+  assert(dir.exists && dir.isDirectory, "Couldn't load scripts dir")
+  dir
 }
 
 extension (f: File) def absPath =
@@ -101,10 +106,10 @@ def toolArgsParse(lines: List[String], filename: Option[String]): List[(String,S
     case toolArg(name, args) => List((name, args))
     case _ => Nil
   } ++
-  lines.flatMap { 
+  lines.flatMap {
     case directiveOptionsArg(args) => List(("scalac", args))
     case directiveJavacOptions(args) => List(("javac", args))
-    case _ => Nil 
+    case _ => Nil
   }
 
 import org.junit.Test
