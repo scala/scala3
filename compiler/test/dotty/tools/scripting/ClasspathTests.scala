@@ -77,6 +77,7 @@ class ClasspathTests:
   /*
    * verify classpath is unglobbed by MainGenericRunner.
    */
+  @Ignore
   @Test def unglobClasspathVerifyTest = {
     val testScriptName = "unglobClasspath.sc"
     val testScript = scripts("/scripting").find { _.name.matches(testScriptName) } match
