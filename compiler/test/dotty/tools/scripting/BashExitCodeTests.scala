@@ -16,7 +16,11 @@ import ScriptTestEnv.*
 class BashExitCodeTests:
   private var myTmpDir: String | Null = null
   private lazy val tmpDir = { myTmpDir = Files.createTempDirectory("exit-code-tests").toFile.absPath; myTmpDir }
-  @After def cleanup(): Unit = if myTmpDir != null then io.Directory(myTmpDir).deleteRecursively()
+  @After def cleanup(): Unit = {
+    if myTmpDir != null then io.Directory(myTmpDir).deleteRecursively()
+
+    cleanupScalaCLIDirs()
+  }
 
   /** Verify the exit code of running `cmd args*`. */
   def verifyExit(cmd: String, args: String*)(expectedExitCode: Int): Unit =
@@ -29,7 +33,7 @@ class BashExitCodeTests:
       }, expectedExitCode, exitCode)
 
   // Helpers for running scala, scalac, and scalac without the output directory ("raw")
-  def scala(args: String*)     = verifyExit(scalaPath, args*)
+  def scala(args: String*)     = verifyExit(scalaPath, ("--power" +: args :+ "--offline" :+ "--server=false")*)
   def scalacRaw(args: String*) = verifyExit(scalacPath, args*)
   def scalac(args: String*)    = scalacRaw(("-d" +: tmpDir +: args)*)
 
@@ -38,12 +42,16 @@ class BashExitCodeTests:
     Files.write(Files.createTempFile(tmpDir.toPath, getClass.getSimpleName, suffix), body.getBytes(UTF_8)).absPath
 
   @Test def neg = scalac(f("@main def Test = prin"))(1)
-  @Test def run = scalac(f("@main def Test = ???"))(0) & scala("-classpath", tmpDir, "Test")(1)
-  @Test def pos = scalac(f("@main def Test = ()"))(0) & scala("-classpath", tmpDir, "Test")(0)
+  @Test def run = scalac(f("@main def Test = ???"))(0) & scala("-classpath", tmpDir, "-M", "Test")(1)
+  @Test def pos = scalac(f("@main def Test = ()"))(0) & scala("-classpath", tmpDir, "-M", "Test")(0)
 
-  @Test def runNeg = scala(f("@main def Test = prin", ".sc"))(1)
-  @Test def runRun = scala(f("@main def Test = ???", ".sc"))(1)
-  @Test def runPos = scala(f("@main def Test = ()", ".sc"))(0)
+  @Test def runNeg_script = scala(f("prin", ".sc"))(1)
+  @Test def runRun_script = scala(f("???", ".sc"))(1)
+  @Test def runPos_script = scala(f("()", ".sc"))(0)
+
+  @Test def runNeg = scala(f("@main def Test = prin", ".scala"))(1)
+  @Test def runRun = scala(f("@main def Test = ???", ".scala"))(1)
+  @Test def runPos = scala(f("@main def Test = ()", ".scala"))(0)
 
   @Test def scNeg = scalac("-script", f("@main def Test = prin", ".sc"))(1)
   @Test def scRun = scalac("-script", f("@main def Test = ???", ".sc"))(1)

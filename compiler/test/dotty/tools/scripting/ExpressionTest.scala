@@ -44,7 +44,7 @@ class ExpressionTest:
     assert(success)
 
   def getResult(expression: String): String =
-    val (_, _, stdout, stderr) = bashCommand(s"$scalaPath -e '$expression'")
+    val (_, _, stdout, stderr) = bashCommand(s"$scalaPath -e '$expression' --power --offline --server=false")
     printf("stdout: %s\n", stdout.mkString("|"))
     printf("stderr: %s\n", stderr.mkString("\n", "\n", ""))
     stdout.filter(_.nonEmpty).mkString("")
@@ -54,6 +54,10 @@ class ExpressionTest:
     check(result)
 
 object ExpressionTest:
+
+  @AfterClass def cleanup(): Unit = {
+    cleanupScalaCLIDirs()
+  }
 
   def main(args: Array[String]): Unit =
     val tests = new ExpressionTest

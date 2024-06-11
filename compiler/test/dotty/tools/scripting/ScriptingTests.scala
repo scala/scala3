@@ -17,7 +17,11 @@ import org.junit.Assume.assumeFalse
 /** Runs all tests contained in `compiler/test-resources/scripting/` */
 class ScriptingTests:
   // classpath tests managed by scripting.ClasspathTests.scala
-  def testFiles = scripts("/scripting").filter { ! _.getName.toLowerCase.contains("classpath") }
+  def testFiles = scripts("/scripting").filter { sc =>
+    val name = sc.getName.toLowerCase
+    !name.contains("classpath")
+    && !name.contains("_scalacli")
+  }
 
   /*
    * Call .scala scripts without -save option, verify no jar created
