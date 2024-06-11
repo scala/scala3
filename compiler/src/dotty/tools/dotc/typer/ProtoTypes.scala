@@ -131,9 +131,16 @@ object ProtoTypes {
 
       constFoldException(pt) || {
         if Inlines.isInlineable(meth) then
-          // Stricter behaviour in 3.4+: do not apply `wildApprox` to non-transparent inlines
+          // Stricter behavisour in 3.4+: do not apply `wildApprox` to non-transparent inlines
+          // unless their return type is a MatchType. In this case there's no reason
+          // not to constrain type variables in the expected type. For transparent inlines
+          // we do not want to constrain type variables in the expected type since the
+          // actual return type might be smaller after instantiation. For inlines returning
+          // MatchTypes we do not want to constrain because the MatchType might be more
+          // specific after instantiation. TODO: Should we also use Wildcards for non-inline
+          // methods returning MatchTypes?
           if Feature.sourceVersion.isAtLeast(SourceVersion.`3.4`) then
-            if meth.is(Transparent) then
+            if meth.is(Transparent) || mt.resultType.isMatchAlias then
               constrainResult(mt, wildApprox(pt))
               // do not constrain the result type of transparent inline methods
               true
