@@ -4646,18 +4646,18 @@ object Types extends TypeUtils {
 
     override def superType(using Context): Type =
       if ctx.period != validSuper then
-        validSuper = if (tycon.isProvisional) Nowhere else ctx.period
+        var superIsProvisional = tycon.isProvisional
         cachedSuper = tycon match
           case tycon: HKTypeLambda => defn.AnyType
           case tycon: TypeRef if tycon.symbol.isClass => tycon
           case tycon: TypeProxy =>
-            if validSuper != Nowhere && args.exists(_.isProvisional) then
+            superIsProvisional ||= args.exists(_.isProvisional)
               // applyIfParameterized may perform eta-reduction leading to different
               // variance annotations depending on the instantiation of type params
               // see tests/pos/typeclass-encoding3b.scala:348 for an example
-              validSuper = Nowhere
             tycon.superType.applyIfParameterized(args)
           case _ => defn.AnyType
+        validSuper = if superIsProvisional then Nowhere else ctx.period
       cachedSuper
 
     override def translucentSuperType(using Context): Type = tycon match {
