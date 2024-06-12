@@ -19,7 +19,7 @@ import liqp.parser.Flavor
 import liqp.TemplateContext
 import liqp.tags.Tag
 import liqp.nodes.LNode
-import dotty.tools.scaladoc.site.blocks.AltDetails
+import dotty.tools.scaladoc.site.blocks.{AltDetails,TabsBlock,TabBlock}
 
 import scala.jdk.CollectionConverters.*
 import scala.io.Source
@@ -132,6 +132,9 @@ case class TemplateFile(
 //    val parseSettings = ParseSettings.Builder().withFlavor(Flavor.JEKYLL).build().withBlock(AltDetails())
     val liqpParser = TemplateParser.Builder()
       .withFlavor(Flavor.JEKYLL)
+      .withBlock(AltDetails())
+      .withBlock(TabsBlock())
+      .withBlock(TabBlock())
       .build()
 
     val rendered = liqpParser.parse(this.rawCode).render(mutableProperties)

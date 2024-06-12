@@ -1,3 +1,11 @@
+.place-inline {
+    /* Assuming outer-container adds padding and a border */
+    padding: 10px; /* Replace with actual values from outer-container */
+    border: 1px solid #ccc; /* Replace with actual values from outer-container */
+
+    /* Adding vertical margin */
+    margin: 20px 0;
+}
 /* ALT-DETAILS */
 .alt-details.help-info .alt-details-toggle {
     background-color: #007bff; /* Replace $brand-primary with the actual color value */
@@ -68,12 +76,4 @@
         padding-top: 15px;
         margin-top: 15px;
     }
-}
-.place-inline {
-    /* Assuming outer-container adds padding and a border */
-    padding: 10px; /* Replace with actual values from outer-container */
-    border: 1px solid #ccc; /* Replace with actual values from outer-container */
-
-    /* Adding vertical margin */
-    margin: 20px 0;
 }
