@@ -5692,7 +5692,8 @@ object Types extends TypeUtils {
   /** Common supertype of `TypeAlias` and `MatchAlias` */
   abstract class AliasingBounds(val alias: Type) extends TypeBounds(alias, alias) {
 
-    def derivedAlias(alias: Type)(using Context): AliasingBounds
+    def derivedAlias(alias: Type)(using Context): AliasingBounds =
+      if alias eq this.alias then this else AliasingBounds(alias)
 
     override def computeHash(bs: Binders): Int = doHash(bs, alias)
     override def hashIsStable: Boolean = alias.hashIsStable
@@ -5714,10 +5715,7 @@ object Types extends TypeUtils {
 
   /**    = T
    */
-  class TypeAlias(alias: Type) extends AliasingBounds(alias) {
-    def derivedAlias(alias: Type)(using Context): AliasingBounds =
-      if (alias eq this.alias) this else TypeAlias(alias)
-  }
+  class TypeAlias(alias: Type) extends AliasingBounds(alias)
 
   /**    = T     where `T` is a `MatchType`
    *
@@ -5726,10 +5724,7 @@ object Types extends TypeUtils {
    *  If we assumed full substitutivity, we would have to reject all recursive match
    *  aliases (or else take the jump and allow full recursive types).
    */
-  class MatchAlias(alias: Type) extends AliasingBounds(alias) {
-    def derivedAlias(alias: Type)(using Context): AliasingBounds =
-      if (alias eq this.alias) this else MatchAlias(alias)
-  }
+  class MatchAlias(alias: Type) extends AliasingBounds(alias)
 
   object TypeBounds {
     def apply(lo: Type, hi: Type)(using Context): TypeBounds =
