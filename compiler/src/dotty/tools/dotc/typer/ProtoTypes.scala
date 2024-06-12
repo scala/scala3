@@ -11,8 +11,9 @@ import Constants.*
 import util.{Stats, SimpleIdentityMap, SimpleIdentitySet}
 import Decorators.*
 import Uniques.*
-import Flags.Method
+import Flags.{Method, Transparent}
 import inlines.Inlines
+import config.{Feature, SourceVersion}
 import config.Printers.typr
 import Inferencing.*
 import ErrorReporting.*
@@ -108,7 +109,7 @@ object ProtoTypes {
       res
 
     /** Constrain result with two special cases:
-     *   1. If `meth` is an inlineable method in an inlineable context,
+     *   1. If `meth` is a transparent inlineable method in an inlineable context,
      *      we should always succeed and not constrain type parameters in the expected type,
      *      because the actual return type can be a subtype of the currently known return type.
      *      However, we should constrain parameters of the declared return type. This distinction is
@@ -128,11 +129,30 @@ object ProtoTypes {
         case _ =>
           false
 
-      if Inlines.isInlineable(meth) then
-        constrainResult(mt, wildApprox(pt))
-        true
-      else
-        constFoldException(pt) || constrainResult(mt, pt)
+      constFoldException(pt) || {
+        if Inlines.isInlineable(meth) then
+          // Stricter behavisour in 3.4+: do not apply `wildApprox` to non-transparent inlines
+          // unless their return type is a MatchType. In this case there's no reason
+          // not to constrain type variables in the expected type. For transparent inlines
+          // we do not want to constrain type variables in the expected type since the
+          // actual return type might be smaller after instantiation. For inlines returning
+          // MatchTypes we do not want to constrain because the MatchType might be more
+          // specific after instantiation. TODO: Should we also use Wildcards for non-inline
+          // methods returning MatchTypes?
+          if Feature.sourceVersion.isAtLeast(SourceVersion.`3.4`) then
+            if meth.is(Transparent) || mt.resultType.isMatchAlias then
+              constrainResult(mt, wildApprox(pt))
+              // do not constrain the result type of transparent inline methods
+              true
+            else
+              constrainResult(mt, pt)
+          else
+            // Best-effort to fix https://github.com/scala/scala3/issues/9685 in the 3.3.x series
+            // while preserving source compatibility as much as possible
+            constrainResult(mt, wildApprox(pt)) || meth.is(Transparent)
+        else constrainResult(mt, pt)
+      }
+
     end constrainResult
   end Compatibility
 
