@@ -1,3 +1,5 @@
+// scalajs: --skip
+//    Use of Java reflection (getEnclosingMethod)
 abstract class TA { def tb(): TB }
 abstract class TB { def chk(): Unit }
 class A:
