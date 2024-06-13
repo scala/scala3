@@ -325,7 +325,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case t =>
             // Map references to capability classes C to C^
             if ccConfig.expandCapabilityInSetup && t.derivesFromCapability
-            then CapturingType(t, defn.expandedUniversalSet, boxed = false)
+            then CapturingType(t, CaptureSet.universal, boxed = false)
             else recur(t)
     end expandAliases
 
@@ -749,8 +749,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
       if ref.captureSetOfInfo.elems.isEmpty then
         report.error(em"$ref cannot be tracked since its capture set is empty", pos)
-      if parent.captureSet ne defn.expandedUniversalSet then
-        check(parent.captureSet, parent)
+      check(parent.captureSet, parent)
 
       val others =
         for j <- 0 until retained.length if j != i yield retained(j).toCaptureRef
