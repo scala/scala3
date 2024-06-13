@@ -14,10 +14,10 @@
     <projectUrl>https://scala-lang.org/</projectUrl>
     <bugTrackerUrl>https://github.com/scala/scala3/issues</bugTrackerUrl>
     <copyright>© 2002-2024, LAMP/EPFL</copyright>
-    <iconUrl>https://github.com/scala/scala3/tree/main/pkgs/chocolatey/logo.ico</iconUrl>
+    <iconUrl>https://cdn.jsdelivr.net/gh/scala/scala3@version/pkgs/chocolatey/icon.svg</iconUrl>
     <licenseUrl>https://github.com/scala/scala3/blob/main/LICENSE</licenseUrl>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
-    <releaseNotes>https://github.com/scala/scala3/releases</releaseNotes>    
+    <releaseNotes>https://github.com/scala/scala3/releases</releaseNotes>
   </metadata>
   <files>
     <file src="tools\**" target="tools" />
