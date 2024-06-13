@@ -1,12 +1,10 @@
 $ErrorActionPreference = 'Stop';
 $packageArgs = @{
   packageName   = 'scala'
-  fileType      = 'MSI'
+  fileType      = 'msi'
   url64bit      = '@LAUNCHER_URL@'
 
-  softwareName  = 'Scala' 
-  checksum64    = '@LAUNCHER_SHA256@'
-  checksumType64= 'sha256'
+  softwareName  = 'Scala'
 
   silentArgs    = "/qn /norestart"
   validExitCodes= @(0)
