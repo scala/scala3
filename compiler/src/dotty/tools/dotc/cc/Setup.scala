@@ -323,7 +323,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case t: TypeVar =>
             this(t.underlying)
           case t =>
-            recur(t)
+            // Map references to capability classes C to C^
+            if ccConfig.expandCapabilityInSetup && t.derivesFromCapability
+            then CapturingType(t, defn.expandedUniversalSet, boxed = false)
+            else recur(t)
     end expandAliases
 
     val tp1 = expandAliases(tp) // TODO: Do we still need to follow aliases?

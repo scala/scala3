@@ -1132,7 +1132,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  make its capture set explicit.
      */
     private def makeCaptureSetExplicit(actual: Type)(using Context): Type =
-      if false then actual
+      if ccConfig.expandCapabilityInSetup then actual
       else actual match
       case CapturingType(_, _) => actual
       case _ if actual.derivesFromCapability =>
