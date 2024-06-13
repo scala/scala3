@@ -1078,7 +1078,9 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** If actual derives from caps.Capability, yet is not a capturing type itself,
      *  make its capture set explicit.
      */
-    private def makeCaptureSetExplicit(actual: Type)(using Context): Type = actual match
+    private def makeCaptureSetExplicit(actual: Type)(using Context): Type =
+      if false then actual
+      else actual match
       case CapturingType(_, _) => actual
       case _ if actual.derivesFromCapability =>
         val cap: CaptureRef = actual match
@@ -1284,7 +1286,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                 case ref: TermParamRef
                 if !allowed.contains(ref) && !seen.contains(ref) =>
                   seen += ref
-                  if ref.underlying.isRef(defn.Caps_Capability) then
+                  if ref.isMaxCapability then
                     report.error(i"escaping local reference $ref", tree.srcPos)
                   else
                     val widened = ref.captureSetOfInfo
