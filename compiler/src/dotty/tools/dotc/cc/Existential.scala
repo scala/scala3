@@ -229,7 +229,7 @@ object Existential:
   /** Map top-level existentials to `cap`. Do the same for existentials
    *  in function results if all preceding arguments are known to be always pure.
    */
-  def toCap(tp: Type)(using Context): Type = tp.dealias match
+  def toCap(tp: Type)(using Context): Type = tp.dealiasKeepAnnots match
     case Existential(boundVar, unpacked) =>
       val transformed = unpacked.substParam(boundVar, defn.captureRoot.termRef)
       transformed match
@@ -238,11 +238,15 @@ object Existential:
           transformed.derivedFunctionOrMethod(args, toCap(res))
         case _ =>
           transformed
+    case tp1 @ CapturingType(parent, refs) =>
+      tp1.derivedCapturingType(toCap(parent), refs)
+    case tp1 @ AnnotatedType(parent, ann) =>
+      tp1.derivedAnnotatedType(toCap(parent), ann)
     case _ => tp
 
   /** Map existentials at the top-level and in all nested result types to `cap`
    */
-  def toCapDeeply(tp: Type)(using Context): Type = tp.dealias match
+  def toCapDeeply(tp: Type)(using Context): Type = tp.dealiasKeepAnnots match
     case Existential(boundVar, unpacked) =>
       toCapDeeply(unpacked.substParam(boundVar, defn.captureRoot.termRef))
     case tp1 @ FunctionOrMethod(args, res) =>
@@ -250,6 +254,8 @@ object Existential:
       if tp2 ne tp1 then tp2 else tp
     case tp1 @ CapturingType(parent, refs) =>
       tp1.derivedCapturingType(toCapDeeply(parent), refs)
+    case tp1 @ AnnotatedType(parent, ann) =>
+      tp1.derivedAnnotatedType(toCapDeeply(parent), ann)
     case _ => tp
 
   /** Replace all occurrences of `cap` in parts of this type by an existentially bound
