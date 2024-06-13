@@ -35,6 +35,7 @@ object NamedTuple:
 
   extension [N <: Tuple, V <: Tuple](x: NamedTuple[N, V])
 
+    // ALL METHODS DEPENDING ON `toTuple` MUST BE EXPORTED FROM `NamedTupleDecomposition`
     /** The underlying tuple without the names */
     inline def toTuple: V = x
 
