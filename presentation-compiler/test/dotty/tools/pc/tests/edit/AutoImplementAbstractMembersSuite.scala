@@ -345,9 +345,9 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |object Main {
          |  class Baz extends Bar {
          |
-         |    override def foo: Int = ???
-         |
          |    override def bar: Int = ???
+         |
+         |    override def foo: Int = ???
          |
          |  }
          |}
@@ -1288,9 +1288,9 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |
          |case class Concrete() extends Base:
          |
-         |  override def bar(x: String): String = ???
-         |
          |  override def foo(x: Int): Int = ???
+         |
+         |  override def bar(x: String): String = ???
          |
          |  def aaa = "aaa"
          |end Concrete
