@@ -300,9 +300,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           CapturingType(fntpe, cs, boxed = false)
         else fntpe
 
-      private def recur(t: Type): Type =
-        Existential.mapCapInResult(normalizeCaptures(mapOver(t)), fail)
-
       def apply(t: Type) =
         t match
           case t @ CapturingType(parent, refs) =>
@@ -323,10 +320,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case t: TypeVar =>
             this(t.underlying)
           case t =>
-            // Map references to capability classes C to C^
-            if ccConfig.expandCapabilityInSetup && t.derivesFromCapability && t.typeSymbol != defn.Caps_Exists
-            then CapturingType(t, CaptureSet.universal, boxed = false)
-            else recur(t)
+            Existential.mapCapInResult(
+                // Map references to capability classes C to C^
+                if ccConfig.expandCapabilityInSetup && t.derivesFromCapability && t.typeSymbol != defn.Caps_Exists
+                then CapturingType(t, CaptureSet.universal, boxed = false)
+                else normalizeCaptures(mapOver(t)),
+                fail)
     end expandAliases
 
     val tp1 = expandAliases(tp) // TODO: Do we still need to follow aliases?

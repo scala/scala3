@@ -2824,7 +2824,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case _ => false
 
   protected def subCaptures(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult =
-    refs1.subCaptures(refs2, frozen)
+    try refs1.subCaptures(refs2, frozen)
+    catch case ex: AssertionError =>
+      println(i"fail while subCaptures $refs1 <:< $refs2")
+      throw ex
 
   /** Is the boxing status of tp1 and tp2 the same, or alternatively, is
    *  the capture sets `refs1` of `tp1` a subcapture of the empty set?
