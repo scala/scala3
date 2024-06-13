@@ -27,6 +27,11 @@ object ccConfig:
    */
   inline val allowUnsoundMaps = false
 
+  /** If true, expand capability classes in Setup instead of treating them
+   *  in adapt. 
+   */
+  inline val expandCapabilityInSetup = true
+
   def useExistentials(using Context) =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.5`)
 
