@@ -49,5 +49,5 @@ class CollectEntryPoints extends MiniPhase:
   }
 
 object CollectEntryPoints:
-  val name: String = "Collect entry points"
+  val name: String = "collectEntryPoints"
   val description: String = "collect all entry points and save them in the context"

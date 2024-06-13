@@ -320,6 +320,10 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     val phases = ctx.base.fusePhases(pluginPlan,
       ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, stopAfter, ctx.settings.Ycheck.value)
     ctx.base.usePhases(phases, runCtx)
+    val phasesSettings = List("-Vphases", "-Vprint")
+    for phasesSetting <- ctx.settings.allSettings if phasesSettings.contains(phasesSetting.name) do
+      for case vs: List[String] <- phasesSetting.userValue; p <- vs do
+        if !phases.exists(List(p).containsPhase) then report.warning(s"'$p' specifies no phase")
 
     if ctx.settings.YnoDoubleBindings.value then
       ctx.base.checkNoDoubleBindings = true
@@ -343,7 +347,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
             try units = phase.runOn(units)
             catch case _: InterruptedException => cancelInterrupted()
             profiler.afterPhase(phase, profileBefore)
-            if (ctx.settings.Xprint.value.containsPhase(phase))
+            for printAt <- ctx.settings.Vprint.userValue if printAt.containsPhase(phase) do
               for (unit <- units)
                 def printCtx(unit: CompilationUnit) = phase.printingContext(
                   ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
