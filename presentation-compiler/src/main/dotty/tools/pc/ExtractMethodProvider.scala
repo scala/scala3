@@ -13,6 +13,7 @@ import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.DeepFolder
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.MethodType
 import dotty.tools.dotc.core.Types.PolyType
@@ -116,9 +117,15 @@ final class ExtractMethodProvider(
         typeParams.toList.sortBy(_.decodedName),
       )
     end localRefs
+    val optEnclosing =
+      path.dropWhile(src => !src.sourcePos.encloses(range)) match
+        case Nil => None
+        case _ :: (app @ Apply(fun, args)) :: _ if args.exists(ImplicitParameters.isSyntheticArg(_)) => Some(app)
+        case found :: _ => Some(found)
+
     val edits =
       for
-        enclosing <- path.find(src => src.sourcePos.encloses(range))
+        enclosing <- optEnclosing
         extracted = extractFromBlock(enclosing)
         head <- extracted.headOption
         expr <- extracted.lastOption
@@ -131,11 +138,14 @@ final class ExtractMethodProvider(
         val exprType = prettyPrint(expr.typeOpt.widen)
         val name =
           genName(indexedCtx.scopeSymbols.map(_.decodedName).toSet, "newMethod")
-        val (methodParams, typeParams) =
+        val (allMethodParams, typeParams) =
           localRefs(extracted, stat.sourcePos, extractedPos)
-        val methodParamsText = methodParams
-          .map(sym => s"${sym.decodedName}: ${prettyPrint(sym.info)}")
-          .mkString(", ")
+        val (methodParams, implicitParams) = allMethodParams.partition(!_.isOneOf(Flags.GivenOrImplicit))
+          def toParamText(params: List[Symbol]) =
+            params.map(sym => s"${sym.decodedName}: ${prettyPrint(sym.info)}")
+            .mkString(", ")
+        val methodParamsText = toParamText(methodParams)
+        val implicitParamsText = if implicitParams.nonEmpty then s"(given ${toParamText(implicitParams)})" else ""
         val typeParamsText = typeParams
           .map(_.decodedName) match
           case Nil => ""
@@ -155,7 +165,7 @@ final class ExtractMethodProvider(
           if noIndent && extracted.length > 1 then (" {", s"$newIndent}")
           else ("", "")
         val defText =
-          s"def $name$typeParamsText($methodParamsText): $exprType =$obracket\n${toExtract}\n$cbracket\n$newIndent"
+          s"def $name$typeParamsText($methodParamsText)$implicitParamsText: $exprType =$obracket\n${toExtract}\n$cbracket\n$newIndent"
         val replacedText = s"$name($exprParamsText)"
         List(
           new l.TextEdit(

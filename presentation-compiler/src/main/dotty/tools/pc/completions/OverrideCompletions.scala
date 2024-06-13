@@ -279,7 +279,14 @@ object OverrideCompletions:
         else ""
       (indent, indent, lastIndent)
     end calcIndent
-    val abstractMembers = defn.typeOpt.abstractTermMembers.map(_.symbol)
+    val abstractMembers =
+      defn.tpe.abstractTermMembers.map(_.symbol).groupBy(_.owner).map {
+        case (owner, members) => (owner, members.sortWith{ (sym1, sym2) =>
+          if(sym1.sourcePos.exists && sym2.sourcePos.exists)
+            sym1.sourcePos.start <= sym2.sourcePos.start
+          else !sym2.sourcePos.exists
+        })
+      }.toSeq.sortBy(_._1.name.decoded).flatMap(_._2)
 
     val caseClassOwners = Set("Product", "Equals")
     val overridables =
@@ -506,6 +513,8 @@ object OverrideCompletions:
     defn match
       case td: TypeDef if text.charAt(td.rhs.span.end) == ':' =>
         Some(td.rhs.span.end)
+      case TypeDef(_, temp : Template) =>
+        temp.parentsOrDerived.lastOption.map(_.span.end).filter(text.charAt(_) == ':')
       case _ => None
 
   private def fallbackFromParent(parent: Tree, name: String)(using Context) =
