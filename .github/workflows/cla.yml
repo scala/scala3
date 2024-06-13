@@ -1,15 +1,9 @@
-name: Scala CLA
+name: Check Scala CLA
 on:
   pull_request:
+    types: opened
     branches-ignore:
       - 'language-reference-stable'
-  push:
-    branches:
-      - 'language-reference-stable'
-  merge_group:
-permissions:
-  contents: write
-  pull-requests: write
 
 jobs:
   check:
@@ -17,6 +11,5 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - run: ./project/scripts/check-cla.sh
-      if: github.event_name == 'pull_request'
       env:
         AUTHOR: ${{ github.event.pull_request.user.login }}
