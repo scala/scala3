@@ -25,6 +25,11 @@ object ccConfig:
    */
   inline val allowUnsoundMaps = false
 
+  /** If true, expand capability classes in Setup instead of treating them
+   *  in adapt. 
+   */
+  val expandCapabilityInSetup = true
+
   /** If true, use `sealed` as encapsulation mechanism instead of the
    *  previous global retriction that `cap` can't be boxed or unboxed.
    */
