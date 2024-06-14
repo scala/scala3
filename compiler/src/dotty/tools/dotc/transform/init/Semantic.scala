@@ -548,9 +548,23 @@ object Semantic:
       value.promote(msg)
       value
 
+    def filterClass(sym: Symbol)(using Context): Value =
+        if !sym.isClass then value
+        else
+          val klass = sym.asClass
+          value match
+            case Cold => Cold
+            case Hot  => Hot
+            case ref: Ref => if ref.klass.isSubClass(klass) then ref else Hot
+            case RefSet(values) => values.map(v => v.filterClass(klass)).join
+            case fun: Fun =>
+              if klass.isOneOf(Flags.AbstractOrTrait) && klass.baseClasses.exists(defn.isFunctionClass)
+              then fun
+              else Hot
+
     def select(field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] = log("select " + field.show + ", this = " + value, printer, (_: Value).show) {
       if promoted.isCurrentObjectPromoted then Hot
-      else value match
+      else value.filterClass(field.owner) match
         case Hot  =>
           Hot
 
@@ -588,13 +602,8 @@ object Semantic:
               reporter.report(error)
               Hot
           else
-            if ref.klass.isSubClass(receiver.widenSingleton.classSymbol) then
-              report.warning("[Internal error] Unexpected resolution failure: ref.klass = " + ref.klass.show + ", field = " + field.show + Trace.show, Trace.position)
-              Hot
-            else
-              // This is possible due to incorrect type cast.
-              // See tests/init/pos/Type.scala
-              Hot
+            report.warning("[Internal error] Unexpected resolution failure: ref.klass = " + ref.klass.show + ", field = " + field.show + Trace.show, Trace.position)
+            Hot
 
         case fun: Fun =>
           report.warning("[Internal error] unexpected tree in selecting a function, fun = " + fun.expr.show + Trace.show, fun.expr)
@@ -645,11 +654,16 @@ object Semantic:
         }
         (errors, allArgsHot)
 
+      def filterValue(value: Value): Value =
+        // methods of polyfun does not have denotation
+        if !meth.exists then value
+        else value.filterClass(meth.owner)
+
       // fast track if the current object is already initialized
       if promoted.isCurrentObjectPromoted then Hot
       else if isAlwaysSafe(meth) then Hot
       else if meth eq defn.Any_asInstanceOf then value
-      else value match {
+      else filterValue(value) match {
         case Hot  =>
           if isSyntheticApply(meth) && meth.hasSource then
             val klass = meth.owner.companionClass.asClass
@@ -724,13 +738,8 @@ object Semantic:
             else
               value.select(target, receiver, needResolve = false)
           else
-            if ref.klass.isSubClass(receiver.widenSingleton.classSymbol) then
-              report.warning("[Internal error] Unexpected resolution failure: ref.klass = " + ref.klass.show + ", meth = " + meth.show + Trace.show, Trace.position)
-              Hot
-            else
-              // This is possible due to incorrect type cast.
-              // See tests/init/pos/Type.scala
-              Hot
+            report.warning("[Internal error] Unexpected resolution failure: ref.klass = " + ref.klass.show + ", meth = " + meth.show + Trace.show, Trace.position)
+            Hot
 
         case Fun(body, thisV, klass) =>
           // meth == NoSymbol for poly functions
@@ -822,7 +831,7 @@ object Semantic:
           warm
 
       if promoted.isCurrentObjectPromoted then Hot
-      else value match {
+      else value.filterClass(klass.owner) match {
         case Hot  =>
           var allHot = true
           val args2 = args.map { arg =>
