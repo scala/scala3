@@ -93,6 +93,18 @@ object desugar {
       def completeConstructor(sym: Symbol) =
         sym.infoOrCompleter match {
           case completer: Namer#ClassCompleter =>
+            // An example, derived from tests/run/t6385.scala
+            //
+            //     class Test():
+            //       def t1: Foo = Foo(1)
+            //     final case class Foo(value: Int)
+            //
+            // Here's the sequence of events:
+            //  * The symbol for Foo.apply is forced to complete
+            //  * The symbol for the `value` parameter of the apply method is forced to complete
+            //  * Completing that value parameter requires typing its type, which is a DerivedTypeTrees,
+            //    which only types if it has an OriginalSymbol.
+            //  * So if the case class hasn't been completed, we need (at least) its constructor to be completed
             completer.completeConstructor(sym)
           case _ =>
         }
