@@ -13,7 +13,7 @@ class C(x: Int):
 
   val c: A = a.asInstanceOf[A]         // abstraction for c is {A, B}
   val d = c.f                          // treat as c.asInstanceOf[owner of f].f
-  val e = c.m()                        // treat as c.asInstanceOf[owner of f].m()
+  val e = c.m()                        // treat as c.asInstanceOf[owner of m].m()
   val c2: B = a.asInstanceOf[B]
   val g = c2.f                         // no error here
 
