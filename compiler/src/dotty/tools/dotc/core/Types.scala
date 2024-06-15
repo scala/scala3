@@ -6271,6 +6271,15 @@ object Types extends TypeUtils {
       try derivedCapturingType(tp, this(parent), refs.map(this))
       finally variance = saved
 
+    /** Utility method. Maps the supertype of a type proxy. Returns the
+     *  type proxy itself if the mapping leaves the supertype unchanged.
+     *  This avoids needless changes in mapped types.
+     */
+    protected def mapConserveSuper(t: TypeProxy): Type =
+      val t1 = t.superType
+      val t2 = apply(t1)
+      if t2 ne t1 then t2 else t
+
     /** Map this function over given type */
     def mapOver(tp: Type): Type = {
       record(s"TypeMap mapOver ${getClass}")

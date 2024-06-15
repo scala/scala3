@@ -269,11 +269,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   end transformInferredType
 
   private def transformExplicitType(tp: Type, tptToCheck: Option[Tree] = None)(using Context): Type =
-    val expandAliases = new DeepTypeMap:
+    val toCapturing = new DeepTypeMap:
       override def toString = "expand aliases"
-
-      def fail(msg: Message) =
-        for tree <- tptToCheck do report.error(msg, tree.srcPos)
 
       /** Expand $throws aliases. This is hard-coded here since $throws aliases in stdlib
         * are defined with `?=>` rather than `?->`.
@@ -314,23 +311,20 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               t.derivedAnnotatedType(parent1, ann)
           case throwsAlias(res, exc) =>
             this(expandThrowsAlias(res, exc, Nil))
-          case t: LazyRef =>
-            val t1 = this(t.ref)
-            if t1 ne t.ref then t1 else t
-          case t: TypeVar =>
-            this(t.underlying)
           case t =>
-            Existential.mapCapInResult(
-                // Map references to capability classes C to C^
-                if ccConfig.expandCapabilityInSetup && t.derivesFromCapability && t.typeSymbol != defn.Caps_Exists
-                then CapturingType(t, CaptureSet.universal, boxed = false)
-                else normalizeCaptures(mapOver(t)),
-                fail)
-    end expandAliases
+            // Map references to capability classes C to C^
+            if ccConfig.expandCapabilityInSetup && t.derivesFromCapability && t.typeSymbol != defn.Caps_Exists
+            then CapturingType(t, CaptureSet.universal, boxed = false)
+            else normalizeCaptures(mapOver(t))
+    end toCapturing
 
-    val tp1 = expandAliases(tp) // TODO: Do we still need to follow aliases?
-    if tp1 ne tp then capt.println(i"expanded in ${ctx.owner}: $tp  -->  $tp1")
-    tp1
+    def fail(msg: Message) =
+      for tree <- tptToCheck do report.error(msg, tree.srcPos)
+
+    val tp1 = toCapturing(tp)
+    val tp2 = Existential.mapCapInResults(fail)(tp1)
+    if tp2 ne tp then capt.println(i"expanded in ${ctx.owner}: $tp  -->  $tp1  -->  $tp2")
+    tp2
   end transformExplicitType
 
   /** Transform type of type tree, and remember the transformed type as the type the tree */
@@ -538,9 +532,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
         if sym.exists && signatureChanges then
           val newInfo =
-            Existential.mapCapInResult(
-              integrateRT(sym.info, sym.paramSymss, localReturnType, Nil, Nil),
-              report.error(_, tree.srcPos))
+            Existential.mapCapInResults(report.error(_, tree.srcPos)):
+              integrateRT(sym.info, sym.paramSymss, localReturnType, Nil, Nil)
             .showing(i"update info $sym: ${sym.info} = $result", capt)
           if newInfo ne sym.info then
             val updatedInfo =
