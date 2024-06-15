@@ -1,6 +1,7 @@
-//> using options -experimental
+import annotation.experimental
+import language.experimental.captureChecking
 
-object Test:
+@experimental object Test:
   def map2(xs: List[Int])(f: Int => Int): List[Int] = xs.map(f)
   val f1 = map2
   val fc1: List[Int] -> (Int => Int) -> List[Int] = f1

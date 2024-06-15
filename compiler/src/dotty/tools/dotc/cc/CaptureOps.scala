@@ -28,7 +28,7 @@ object ccConfig:
   inline val allowUnsoundMaps = false
 
   /** If true, expand capability classes in Setup instead of treating them
-   *  in adapt. 
+   *  in adapt.
    */
   inline val expandCapabilityInSetup = true
 
@@ -568,6 +568,7 @@ trait ConservativeFollowAliasMap(using Context) extends TypeMap:
 end ConservativeFollowAliasMap
 
 /** An extractor for all kinds of function types as well as method and poly types.
+ *  It includes aliases of function types such as `=>`. TODO: Can we do without?
  *  @return  1st half: The argument types or empty if this is a type function
  *           2nd half: The result type
  */

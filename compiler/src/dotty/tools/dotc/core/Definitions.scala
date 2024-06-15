@@ -1161,6 +1161,8 @@ class Definitions {
       if mt.hasErasedParams then RefinedType(PolyFunctionClass.typeRef, nme.apply, mt)
       else FunctionNOf(args, resultType, isContextual)
 
+    // Unlike PolyFunctionOf and RefinedFunctionOf this extractor follows aliases.
+    // Can we do without? Same for FunctionNOf and isFunctionNType.
     def unapply(ft: Type)(using Context): Option[(List[Type], Type, Boolean)] = {
       ft match
         case PolyFunctionOf(mt: MethodType) =>

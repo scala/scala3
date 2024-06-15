@@ -10,6 +10,7 @@ import ast.tpd.*
 import Decorators.*
 import typer.ErrorReporting.errorType
 import NameKinds.ExistentialBinderName
+import NameOps.isImpureFunction
 import reporting.Message
 
 /**
@@ -258,6 +259,13 @@ object Existential:
       tp1.derivedAnnotatedType(toCapDeeply(parent), ann)
     case _ => tp
 
+  /** Knowing that `tp` is a function type, is an alias to a function other
+   *  than `=>`?
+   */
+  private def isAliasFun(tp: Type)(using Context) = tp match
+    case AppliedType(tycon, _) => !defn.isFunctionSymbol(tycon.typeSymbol)
+    case _ => false
+
   /** Replace all occurrences of `cap` in parts of this type by an existentially bound
    *  variable. If there are such occurrences, or there might be in the future due to embedded
    *  capture set variables, create an existential with the variable wrapping the type.
@@ -266,56 +274,69 @@ object Existential:
   def mapCap(tp: Type, fail: Message => Unit)(using Context): Type =
     var needsWrap = false
 
-    class Wrap(boundVar: TermParamRef) extends BiTypeMap, ConservativeFollowAliasMap:
-      def apply(t: Type) = // go deep first, so that we map parts of alias types before dealiasing
-        mapOver(t) match
-          case t1: TermRef if t1.isRootCapability =>
-            if variance > 0 then
-              needsWrap = true
-              boundVar
-            else
-              if variance == 0 then
-                fail(em"cap appears in invariant position in $tp")
-              // we accept variance < 0, and leave the cap as it is
-              t1
-          case t1 @ FunctionOrMethod(_, _) =>
-            // These have been mapped before
-            t1
-          case t1 @ CapturingType(_, _: CaptureSet.Var) =>
-            if variance > 0 then needsWrap = true // the set might get a cap later.
-            t1
-          case t1 =>
-            applyToAlias(t, t1)
+    abstract class CapMap extends BiTypeMap:
+      override def mapOver(t: Type): Type = t match
+        case t @ FunctionOrMethod(args, res) if variance > 0 && !isAliasFun(t) =>
+          t // `t` should be mapped in this case by a different call to `mapCap`.
+        case Existential(_, _) =>
+          t
+        case t: (LazyRef | TypeVar) =>
+          mapConserveSuper(t)
+        case _ =>
+          super.mapOver(t)
 
-      lazy val inverse = new BiTypeMap with ConservativeFollowAliasMap:
-        def apply(t: Type) = mapOver(t) match
-          case t1: TermParamRef if t1 eq boundVar => defn.captureRoot.termRef
-          case t1 @ FunctionOrMethod(_, _) => t1
-          case t1 => applyToAlias(t, t1)
+    class Wrap(boundVar: TermParamRef) extends CapMap:
+      def apply(t: Type) = t match
+        case t: TermRef if t.isRootCapability =>
+          if variance > 0 then
+            needsWrap = true
+            boundVar
+          else
+            if variance == 0 then
+              fail(em"""$tp captures the root capability `cap` in invariant position""")
+            // we accept variance < 0, and leave the cap as it is
+            super.mapOver(t)
+        case t @ CapturingType(parent, refs: CaptureSet.Var) =>
+          if variance > 0 then needsWrap = true
+          super.mapOver(t)
+        case _ =>
+          mapOver(t)
+        //.showing(i"mapcap $t = $result")
+
+      lazy val inverse = new BiTypeMap:
+        def apply(t: Type) = t match
+          case t: TermParamRef if t eq boundVar => defn.captureRoot.termRef
+          case _ => mapOver(t)
         def inverse = Wrap.this
         override def toString = "Wrap.inverse"
     end Wrap
 
     if ccConfig.useExistentials then
-      tp match
-        case Existential(_, _) => tp
-        case _ =>
-          val wrapped = apply(Wrap(_)(tp))
-          if needsWrap then wrapped else tp
+      val wrapped = apply(Wrap(_)(tp))
+      if needsWrap then wrapped else tp
     else tp
   end mapCap
 
-  /** Map `cap` to existential in the results of functions or methods.
-   */
-  def mapCapInResult(tp: Type, fail: Message => Unit)(using Context): Type =
-    def mapCapInFinalResult(tp: Type): Type = tp match
-      case tp: MethodOrPoly =>
-        tp.derivedLambdaType(resType = mapCapInFinalResult(tp.resultType))
+  def mapCapInResults(fail: Message => Unit)(using Context): TypeMap = new:
+
+    def mapFunOrMethod(tp: Type, args: List[Type], res: Type): Type =
+      val args1 = atVariance(-variance)(args.map(this))
+      val res1 = res match
+        case res: MethodType => mapFunOrMethod(res, res.paramInfos, res.resType)
+        case res: PolyType => mapFunOrMethod(res, Nil, res.resType) // TODO: Also map bounds of PolyTypes
+        case _ => mapCap(apply(res), fail)
+      tp.derivedFunctionOrMethod(args1, res1)
+
+    def apply(t: Type): Type = t match
+      case FunctionOrMethod(args, res) if variance > 0 && !isAliasFun(t) =>
+        mapFunOrMethod(t, args, res)
+      case CapturingType(parent, refs) =>
+        t.derivedCapturingType(this(parent), refs)
+      case t: (LazyRef | TypeVar) =>
+        mapConserveSuper(t)
       case _ =>
-        mapCap(tp, fail)
-    tp match
-      case tp: MethodOrPoly => mapCapInFinalResult(tp)
-      case _ => tp
+        mapOver(t)
+  end mapCapInResults
 
   /** Is `mt` a method represnting an existential type when used in a refinement? */
   def isExistentialMethod(mt: TermLambda)(using Context): Boolean = mt.paramInfos match
