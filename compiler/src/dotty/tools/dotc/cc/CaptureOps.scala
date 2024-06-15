@@ -272,7 +272,7 @@ extension (tp: Type)
       val sym = tp.typeSymbol
       if sym.isClass then sym.derivesFrom(defn.Caps_Capability)
       else tp.superType.derivesFromCapability
-    case tp: TypeProxy =>
+    case tp: (TypeProxy & ValueType) =>
       tp.superType.derivesFromCapability
     case tp: AndType =>
       tp.tp1.derivesFromCapability || tp.tp2.derivesFromCapability
