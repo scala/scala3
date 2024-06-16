@@ -58,7 +58,7 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
 
   override def isRunnable(using Context): Boolean =
     super.isRunnable &&
-    ctx.settings.Wunused.value.nonEmpty &&
+    ctx.settings.WunusedHas.any &&
     !ctx.isJava
 
   // ========== SETUP ============
