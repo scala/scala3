@@ -162,7 +162,8 @@ private sealed trait WarningSettings:
   val WNonUnitStatement = BooleanSetting(WarningSetting, "Wnonunit-statement", "Warn when block statements are non-Unit expressions.")
   val WenumCommentDiscard = BooleanSetting(WarningSetting, "Wenum-comment-discard", "Warn when a comment ambiguously assigned to multiple enum cases is discarded.")
   val WimplausiblePatterns = BooleanSetting(WarningSetting, "Wimplausible-patterns", "Warn if comparison with a pattern value looks like it might always fail.")
-  val WunstableInlineAccessors = BooleanSetting(WarningSetting, "WunstableInlineAccessors", "Warn an inline methods has references to non-stable binary APIs.")
+  val WunstableInlineAccessors = BooleanSetting(WarningSetting, "WunstableInlineAccessors", "Warn an inline method has references to non-stable binary APIs.")
+  val WtoStringInterpolated = BooleanSetting(WarningSetting, "Wtostring-interpolated", "Warn a standard interpolator used toString on a reference type.")
   val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     WarningSetting,
     name = "Wunused",
