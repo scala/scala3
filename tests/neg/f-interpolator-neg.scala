@@ -8,7 +8,7 @@ object Test {
   }
 
   def interpolationMismatches(s : String, f : Double, b : Boolean) = {
-    f"$s%b" // error
+    f"$s%b" // warn only
     f"$s%c" // error
     f"$f%c" // error
     f"$s%x" // error
