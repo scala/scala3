@@ -64,7 +64,7 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
 
   /** For N part strings and N-1 args to interpolate, normalize parts and check arg types.
    *
-   *  Returns normalized part strings and args, where args correcpond to conversions in tail of parts.
+   *  Returns normalized part strings and args, where args correspond to conversions in tail of parts.
    */
   def checked: (List[String], List[Tree]) =
     val amended = ListBuffer.empty[String]
@@ -83,12 +83,15 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
             val cv = Conversion(n)
             cv.accepts(argType(n-1, defn.AnyType))
             convert += cv
+            cv.lintToString(argTypes(n-1))
+
           def errorLeading(op: Conversion) = op.errorAt(Spec)(s"conversions must follow a splice; ${Conversion.literalHelp}")
           def accept(op: Conversion): Unit =
             if !op.isLeading then errorLeading(op)
             op.accepts(argType(n-1, op.acceptableVariants*))
             amended += part
             convert += op
+            op.lintToString(argTypes(n-1))
 
           // after the first part, a leading specifier is required for the interpolated arg; %s is supplied if needed
           if n == 0 then amended += part
@@ -216,6 +219,10 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
           case 'o' | 'x' | 'X' if hasAnyFlag("+ (") => "+ (".filter(hasFlag).foreach(bad => badFlag(bad, s"only use '$bad' for BigInt conversions to o, x, X")); true
         }
         case _ => true
+
+    def lintToString(arg: Type): Unit =
+      if ctx.settings.WtoStringInterpolated.value && kind == StringXn && !(arg =:= defn.StringType) && !isPrimitiveValueType(arg)
+      then warningAt(CC)("interpolation uses toString")
 
     // what arg type if any does the conversion accept
     def acceptableVariants: List[Type] =
