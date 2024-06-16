@@ -219,7 +219,7 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
     def acceptableVariants: List[Type] =
       kind match
         case StringXn        => if hasFlag('#') then FormattableType :: Nil else defn.AnyType :: Nil
-        case BooleanXn       => defn.BooleanType :: defn.NullType :: Nil
+        case BooleanXn       => defn.BooleanType :: defn.NullType :: defn.AnyType :: Nil // warn if not boolean
         case HashXn          => defn.AnyType :: Nil
         case CharacterXn     => defn.CharType :: defn.ByteType :: defn.ShortType :: defn.IntType :: Nil
         case IntegralXn      => defn.IntType :: defn.LongType :: defn.ByteType :: defn.ShortType :: BigIntType :: Nil
