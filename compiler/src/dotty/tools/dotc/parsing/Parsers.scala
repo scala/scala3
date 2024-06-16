@@ -4083,7 +4083,7 @@ object Parsers {
         if (in.token == COMMA) {
           in.nextToken()
           val ids = commaSeparated(() => termIdent())
-          if ctx.settings.WenumCommentDiscard.value then
+          if ctx.settings.Whas.enumCommentDiscard then
             in.getDocComment(start).foreach: comm =>
               warning(
                 em"""Ambiguous Scaladoc comment on multiple cases is ignored.

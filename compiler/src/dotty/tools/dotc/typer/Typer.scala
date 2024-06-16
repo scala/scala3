@@ -4478,7 +4478,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         // so will take the code path that decides on inlining
         val tree1 = adapt(tree, WildcardType, locked)
         checkStatementPurity(tree1)(tree, ctx.owner, isUnitExpr = true)
-        if (!ctx.isAfterTyper && !tree.isInstanceOf[Inlined] && ctx.settings.WvalueDiscard.value && !isThisTypeResult(tree)) {
+        if (!ctx.isAfterTyper && !tree.isInstanceOf[Inlined] && ctx.settings.Whas.valueDiscard && !isThisTypeResult(tree)) {
           report.warning(ValueDiscarding(tree.tpe), tree.srcPos)
         }
         return tpd.Block(tree1 :: Nil, unitLiteral)
