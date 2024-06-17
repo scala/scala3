@@ -381,11 +381,13 @@ extension (tp: Type)
           t.dealias match
             case t1 @ CapturingType(p, cs) if cs.isUniversal && !isFlipped =>
               t1.derivedCapturingType(apply(p), ref.reach.singletonCaptureSet)
-            case t @ FunctionOrMethod(args, res @ Existential(_, _))
+            case t1 @ FunctionOrMethod(args, res @ Existential(_, _))
             if args.forall(_.isAlwaysPure) =>
               // Also map existentials in results to reach capabilities if all
               // preceding arguments are known to be always pure
-              apply(t.derivedFunctionOrMethod(args, Existential.toCap(res)))
+              apply(t1.derivedFunctionOrMethod(args, Existential.toCap(res)))
+            case Existential(_, _) =>
+              t
             case _ => t match
               case t @ CapturingType(p, cs) =>
                 t.derivedCapturingType(apply(p), cs) // don't map capture set variables
@@ -397,7 +399,7 @@ extension (tp: Type)
     ref match
       case ref: CaptureRef if ref.isTrackableRef =>
         val checker = new CheckContraCaps
-        checker.traverse(tp)
+        if !ccConfig.useExistentials then checker.traverse(tp)
         if checker.ok then
           val tp1 = narrowCaps(tp)
           if tp1 ne tp then capt.println(i"narrow $tp of $ref to $tp1")
