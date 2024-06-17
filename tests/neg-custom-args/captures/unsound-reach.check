@@ -1,8 +1,3 @@
--- Error: tests/neg-custom-args/captures/unsound-reach.scala:18:13 -----------------------------------------------------
-18 |        boom.use(f): (f1: File^{backdoor*}) => // error
-   |        ^^^^^^^^
-   |        Reach capability backdoor* and universal capability cap cannot both
-   |        appear in the type (x: File^)(op: box File^{backdoor*} => Unit): Unit of this expression
 -- [E164] Declaration Error: tests/neg-custom-args/captures/unsound-reach.scala:10:8 -----------------------------------
 10 |    def use(x: File^)(op: File^ => Unit): Unit = op(x) // error, was OK using sealed checking
    |        ^
