@@ -15,7 +15,6 @@ package collection
 
 import java.lang.Math.{max, min}
 import java.util.Arrays
-import language.experimental.captureChecking
 
 import scala.Predef.{ // unimport all array-related implicit conversions to avoid triggering them accidentally
   genericArrayOps => _,
@@ -117,7 +116,7 @@ object ArrayOps {
       flatMap[B](x => asIterable(f(x)))
 
     /** Creates a new non-strict filter which combines this filter with the given predicate. */
-    def withFilter(q: A => Boolean): WithFilter[A]^{this, q} = new WithFilter[A](a => p(a) && q(a), xs)
+    def withFilter(q: A => Boolean): WithFilter[A] = new WithFilter[A](a => p(a) && q(a), xs)
   }
 
   @SerialVersionUID(3L)
@@ -367,7 +366,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
   def inits: Iterator[Array[A]] = iterateUntilEmpty(xs => new ArrayOps(xs).init)
 
   // A helper for tails and inits.
-  private[this] def iterateUntilEmpty(f: Array[A] => Array[A]): Iterator[Array[A]]^{f} =
+  private[this] def iterateUntilEmpty(f: Array[A] => Array[A]): Iterator[Array[A]] =
     Iterator.iterate(xs)(f).takeWhile(x => x.length != 0) ++ Iterator.single(Array.empty[A])
 
   /** An array containing the first `n` elements of this array. */
@@ -664,7 +663,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     *             All these operations apply to those elements of this array
     *             which satisfy the predicate `p`.
     */
-  def withFilter(p: A => Boolean): ArrayOps.WithFilter[A]^{p} = new ArrayOps.WithFilter[A](p, xs)
+  def withFilter(p: A => Boolean): ArrayOps.WithFilter[A] = new ArrayOps.WithFilter[A](p, xs)
 
   /** Finds index of first occurrence of some value in this array after or at some start index.
     *
@@ -1346,7 +1345,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     * @tparam B the type of the elements after being transformed by `f`
     * @return a new array consisting of all the elements of this array without duplicates.
     */
-  def distinctBy[B](f: A -> B): Array[A] =
+  def distinctBy[B](f: A => B): Array[A] =
     ArrayBuilder.make[A].addAll(iterator.distinctBy(f)).result()
 
   /** A copy of this array with an element value appended until a given target length is reached.

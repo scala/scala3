@@ -32,7 +32,7 @@ given [T]: Z[T] with
 
 val a = intValue
 val b = given_String
-val c = given_Double
+//val c = given_Double
 val d = given_List_T[Int]
 val e = given_Char
 val f = given_Float

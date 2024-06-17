@@ -32,7 +32,7 @@ given [T/*<-givens::InventedNames$package.given_Z_T#[T]*/]: Z/*->givens::Z#*/[T/
 
 val a/*<-givens::InventedNames$package.a.*/ = intValue/*->givens::InventedNames$package.intValue.*/
 val b/*<-givens::InventedNames$package.b.*/ = given_String/*->givens::InventedNames$package.given_String.*/
-val c/*<-givens::InventedNames$package.c.*/ = given_Double/*->givens::InventedNames$package.given_Double().*/
+//val c = given_Double
 val d/*<-givens::InventedNames$package.d.*/ = given_List_T/*->givens::InventedNames$package.given_List_T().*/[Int/*->scala::Int#*/]
 val e/*<-givens::InventedNames$package.e.*/ = given_Char/*->givens::InventedNames$package.given_Char.*/
 val f/*<-givens::InventedNames$package.f.*/ = given_Float/*->givens::InventedNames$package.given_Float.*/

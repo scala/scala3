@@ -28,8 +28,8 @@ object Test {
   def testCollectionSorted(): Unit = {
     import collection.*
     val order = implicitly[Ordering[Int]].reverse
-    var m1: SortedMap[Int, String] = SortedMap.empty[Int, String](order)
-    var m2: SortedMap[Int, String] = SortedMap.empty[Int, String](order)
+    var m1: SortedMap[Int, String] = SortedMap.empty[Int, String](using order)
+    var m2: SortedMap[Int, String] = SortedMap.empty[Int, String](using order)
 
     m1 ++= List(1 -> "World")
     m1 ++= List(2 -> "Hello")
@@ -49,8 +49,8 @@ object Test {
   def testImmutableSorted(): Unit = {
     import collection.immutable.*
     val order = implicitly[Ordering[Int]].reverse
-    var m1: SortedMap[Int, String] = SortedMap.empty[Int, String](order)
-    var m2: SortedMap[Int, String] = SortedMap.empty[Int, String](order)
+    var m1: SortedMap[Int, String] = SortedMap.empty[Int, String](using order)
+    var m2: SortedMap[Int, String] = SortedMap.empty[Int, String](using order)
 
     m1 += (1 -> "World")
     m1 += (2 -> "Hello")

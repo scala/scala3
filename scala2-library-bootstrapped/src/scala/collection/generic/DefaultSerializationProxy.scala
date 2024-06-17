@@ -16,7 +16,6 @@ import java.io.{ObjectInputStream, ObjectOutputStream}
 
 import scala.collection.{Factory, Iterable}
 import scala.collection.mutable.Builder
-import language.experimental.captureChecking
 
 /** The default serialization proxy for collection implementations.
   *
