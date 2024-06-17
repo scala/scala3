@@ -68,21 +68,21 @@
 -- [E007] Type Mismatch Error: tests/neg/existential-mapping.scala:36:25 -----------------------------------------------
 36 |  val _: A^ => C^ => C = y4 // error
    |                         ^^
-   |                         Found:    (y4 : A^ => C^ => (ex$52: caps.Exists) -> C^{ex$52})
-   |                         Required: A^ => C^ => C
+   |                   Found:    (y4 : A^ => (ex$53: caps.Exists) -> C^ ->{ex$53} (ex$52: caps.Exists) -> C^{ex$52})
+   |                   Required: A^ => (ex$56: caps.Exists) -> C^ ->{ex$56} C
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/existential-mapping.scala:39:30 -----------------------------------------------
 39 |  val _: A^ => (x: C^) -> C = y5 // error
    |                              ^^
-   |                              Found:    (y5 : A^ => (ex$60: caps.Exists) -> Fun[C^{ex$60}])
+   |                              Found:    (y5 : A^ => (ex$58: caps.Exists) -> Fun[C^{ex$58}])
    |                              Required: A^ => (x: C^) -> C
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/existential-mapping.scala:42:30 -----------------------------------------------
 42 |  val _: A^ => (x: C^) => C = y6 // error
    |                              ^^
-   |                              Found:    (y6 : A^ => (ex$66: caps.Exists) -> IFun[C^{ex$66}])
-   |                              Required: A^ => (ex$69: caps.Exists) -> (x: C^) ->{ex$69} C
+   |                              Found:    (y6 : A^ => (ex$64: caps.Exists) -> IFun[C^{ex$64}])
+   |                              Required: A^ => (ex$67: caps.Exists) -> (x: C^) ->{ex$67} C
    |
    | longer explanation available when compiling with `-explain`

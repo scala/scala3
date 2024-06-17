@@ -44,4 +44,3 @@ def Test =
   val z1: A^ => Array[C^] = ??? // error
 
 
-
