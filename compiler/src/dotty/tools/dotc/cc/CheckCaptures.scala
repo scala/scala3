@@ -1114,6 +1114,13 @@ class CheckCaptures extends Recheck, SymTransformer:
         else adapted.showing(i"adapt boxed $actual vs $expected ===> $adapted", capt)
     end adapt
 
+    /** Replace all variable capture sets with constants */
+    class MakeCapturesConstant(using Context) extends TypeMap with IdempotentCaptRefMap:
+      def apply(tp: Type): Type = tp match
+        case CapturingType(parent, refs: CaptureSet.Var) =>
+          tp.derivedCapturingType(mapOver(parent), CaptureSet(refs.elems))
+        case _ => mapOver(tp)
+
     /** Check overrides again, taking capture sets into account.
     *  TODO: Can we avoid doing overrides checks twice?
     *  We need to do them here since only at this phase CaptureTypes are relevant
@@ -1141,7 +1148,13 @@ class CheckCaptures extends Recheck, SymTransformer:
                   adapted.stripCapturing
                 case _ => adapted
             finally curEnv = saved
-          actual1 frozen_<:< expected1
+
+          // Make variable capture sets constant before performing the check
+          val makeConst = new MakeCapturesConstant
+          val actual2 = makeConst(actual1)
+          val expected2 = makeConst(expected1)
+
+          actual2 frozen_<:< expected2
 
         override def needsCheck(overriding: Symbol, overridden: Symbol)(using Context): Boolean =
           !setup.isPreCC(overriding) && !setup.isPreCC(overridden)
