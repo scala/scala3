@@ -3647,7 +3647,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         traverse(xtree :: rest)
       case stat :: rest =>
         val stat1 = typed(stat)(using ctx.exprContext(stat, exprOwner))
-        if !Linter.warnOnInterestingResultInStatement(stat1) then checkStatementPurity(stat1)(stat, exprOwner)
+        if !Linter.warnOnInterestingResultInStatement(stat1)
+        then checkStatementPurity(stat1)(stat, exprOwner, isUnitExpr = false)
         buf += stat1
         traverse(rest)(using stat1.nullableContext)
       case nil =>
@@ -4514,10 +4515,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         // local adaptation makes sure every adapted tree conforms to its pt
         // so will take the code path that decides on inlining
         val tree1 = adapt(tree, WildcardType, locked)
-        checkStatementPurity(tree1)(tree, ctx.owner, isUnitExpr = true)
-        if (!ctx.isAfterTyper && !tree.isInstanceOf[Inlined] && ctx.settings.WvalueDiscard.value && !isThisTypeResult(tree)) {
-          report.warning(ValueDiscarding(tree.tpe), tree.srcPos)
-        }
+        if !Linter.warnOnInterestingResultInStatement(tree1) then
+          if !ctx.isAfterTyper && !tree.isInstanceOf[Inlined] && ctx.settings.WvalueDiscard.value && !isThisTypeResult(tree)
+          then report.warning(ValueDiscarding(tree.tpe), tree.srcPos)
+          else checkStatementPurity(tree1)(tree, ctx.owner, isUnitExpr = true)
         return tpd.Block(tree1 :: Nil, unitLiteral)
       }
 
@@ -4744,7 +4745,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         typedExpr(cmp, defn.BooleanType)
       case _ =>
 
-  private def checkStatementPurity(tree: tpd.Tree)(original: untpd.Tree, exprOwner: Symbol, isUnitExpr: Boolean = false)(using Context): Unit =
+  private def checkStatementPurity(tree: tpd.Tree)(original: untpd.Tree, exprOwner: Symbol, isUnitExpr: Boolean)(using Context): Unit =
     if !tree.tpe.isErroneous
       && !ctx.isAfterTyper
       && !tree.isInstanceOf[Inlined]
