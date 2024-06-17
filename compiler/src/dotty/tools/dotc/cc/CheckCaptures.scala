@@ -1103,7 +1103,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             ccConfig.allowUniversalInBoxed
             || expected.hasAnnotation(defn.UncheckedCapturesAnnot)
             || actual.widen.hasAnnotation(defn.UncheckedCapturesAnnot)
-          if criticalSet.isUniversal && expected.isValueType && !allowUniversalInBoxed then
+          if criticalSet.isUnboxable && expected.isValueType && !allowUniversalInBoxed then
             // We can't box/unbox the universal capability. Leave `actual` as it is
             // so we get an error in checkConforms. Add the error message generated
             // from boxing as an addendum. This tends to give better error

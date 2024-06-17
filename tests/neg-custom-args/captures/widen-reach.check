@@ -12,9 +12,10 @@
    |                           Required: IO^ -> IO^{x*}
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/widen-reach.scala:8:18 --------------------------------------------------------
-8 |trait Bar extends Foo[IO^]: // error
-  |                  ^
-  |                  IO^{ex$3} cannot be box-converted to box IO^
-  |                  since at least one of their capture sets contains the root capability `cap`
-9 |  val foo: IO^ -> IO^ = x => x
+-- [E164] Declaration Error: tests/neg-custom-args/captures/widen-reach.scala:9:6 --------------------------------------
+9 |  val foo: IO^ -> IO^ = x => x // error
+  |      ^
+  |      error overriding value foo in trait Foo of type IO^ -> box IO^;
+  |        value foo of type IO^ -> (ex$3: caps.Exists) -> IO^{ex$3} has incompatible type
+  |
+  | longer explanation available when compiling with `-explain`
