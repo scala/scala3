@@ -170,7 +170,7 @@ object CheckCaptures:
             traverse(parent)
           case t =>
             traverseChildren(t)
-    check.traverse(tp)
+    if ccConfig.allowUniversalInBoxed then check.traverse(tp)
   end disallowRootCapabilitiesIn
 
   /** Attachment key for bodies of closures, provided they are values */
