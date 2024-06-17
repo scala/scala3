@@ -33,9 +33,9 @@ In Setup:
 
  - Conversion is done with a BiTypeMap in `Existential.mapCap`.
 
-In adapt:
+In reckeckApply and recheckTypeApply:
 
-  - If an EX is toplevel in actual type, replace its bound variable
+  - If an EX is toplevel in the result type, replace its bound variable
     occurrences with `cap`.
 
 Level checking and avoidance:
@@ -54,6 +54,7 @@ Level checking and avoidance:
     don't, the others do.
 
   - Capture set variables do not accept elements of level higher than the variable's level
+
   - We use avoidance to heal such cases: If the level-incorrect ref appears
     + covariantly: widen to underlying capture set, reject if that is cap and the variable does not allow it
     + contravariantly: narrow to {}
@@ -65,10 +66,9 @@ In cv-computation (markFree):
     the owning method. They have to be widened to dcs(x), or, where this is not
     possible, it's an error.
 
-In well-formedness checking of explicitly written type T:
+In box adaptation:
 
-  - If T is not the type of a parameter, check that no cap occurrence or EX-bound variable appears
-    under a box.
+  - Check that existential variables are not boxed or unboxed.
 
 Subtype rules
 
@@ -129,6 +129,18 @@ Subtype checking algorithm, steps to add for tp1 <:< tp2:
     assocExistentials(tp2).isDefined
     && (assocExistentials(tp2).contains(tp1) || tp1 is not existentially bound)
 
+Subtype checking algorithm, comparing two capture sets CS1 <:< CS2:
+
+  We need to map the (possibly to-be-added) existentials in CS1 to existentials
+  in CS2 so that we can compare them. We use `assocExistentals` for that:
+  To map an EX-variable V1 in CS1, pick the last (i.e. outermost, leading to the smallest
+  type) EX-variable in `assocExistentials` that has V1 in its possible instances.
+  To go the other way (and therby produce a BiTypeMap), map an EX-variable
+  V2 in CS2 to the first (i.e. innermost) EX-variable it can be instantiated to.
+  If either direction is not defined, we choose a special "bad-existetal" value
+  that represents and out-of-scope existential. This leads to failure
+  of the comparison.
+
 Existential source syntax:
 
   Existential types are ususally not written in source, since we still allow the `^`
@@ -142,7 +154,8 @@ Existential source syntax:
   Existential types can only at the top level of the result type
   of a function or method.
 
-Restrictions on Existential Types:
+Restrictions on Existential Types: (to be implemented if we want to
+keep the source syntax for users).
 
     - An existential capture ref must be the only member of its set. This is
       intended to model the idea that existential variables effectibely range
@@ -353,11 +366,14 @@ object Existential:
     case ref: TermParamRef => isExistentialMethod(ref.binder)
     case _ => false
 
+  /** An value signalling an out-of-scope existential that should
+   *  lead to a compare failure.
+   */
+  def badExistential(using Context): TermParamRef =
+    exMethodType(identity, nme.OOS_EXISTENTIAL).paramRefs.head
+
   def isBadExistential(ref: CaptureRef) = ref match
     case ref: TermParamRef => ref.paramName == nme.OOS_EXISTENTIAL
     case _ => false
-
-  def badExistential(using Context): TermParamRef =
-    exMethodType(identity, nme.OOS_EXISTENTIAL).paramRefs.head
 
 end Existential
