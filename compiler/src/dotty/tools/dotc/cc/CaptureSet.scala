@@ -85,6 +85,9 @@ sealed abstract class CaptureSet extends Showable:
   final def isUniversal(using Context) =
     elems.exists(_.isRootCapability)
 
+  final def isUnboxable(using Context) =
+    elems.exists(elem => elem.isRootCapability || Existential.isExistentialVar(elem))
+
   /** Try to include an element in this capture set.
    *  @param elem    The element to be added
    *  @param origin  The set that originated the request, or `empty` if the request came from outside.
@@ -331,7 +334,7 @@ sealed abstract class CaptureSet extends Showable:
 
   /** Invoke handler if this set has (or later aquires) the root capability `cap` */
   def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
-    if isUniversal then handler()
+    if isUnboxable then handler()
     this
 
   /** Invoke handler on the elements to ensure wellformedness of the capture set.
@@ -521,7 +524,8 @@ object CaptureSet:
           res.addToTrace(this)
 
     private def levelOK(elem: CaptureRef)(using Context): Boolean =
-      if elem.isRootCapability then !noUniversal
+      if elem.isRootCapability || Existential.isExistentialVar(elem) then
+        !noUniversal
       else elem match
         case elem: TermRef if level.isDefined =>
           elem.symbol.ccLevel <= level
