@@ -411,9 +411,10 @@ object Settings:
     def PhasesSetting(category: SettingCategory, name: String, descr: String, default: String = "", aliases: List[String] = Nil, deprecation: Option[Deprecation] = None): Setting[List[String]] =
       publish(Setting(category, prependName(name), descr, if (default.isEmpty) Nil else List(default), aliases = aliases, deprecation = deprecation))
 
-    def PrefixSetting(category: SettingCategory, name: String, descr: String, deprecation: Option[Deprecation] = None): Setting[List[String]] =
+    def PrefixSetting(category: SettingCategory, name0: String, descr: String, deprecation: Option[Deprecation] = None): Setting[List[String]] =
+      val name = prependName(name0)
       val prefix = name.takeWhile(_ != '<')
-      publish(Setting(category, "-" + name, descr, Nil, prefix = Some(prefix), deprecation = deprecation))
+      publish(Setting(category, name, descr, Nil, prefix = Some(prefix), deprecation = deprecation))
 
     def VersionSetting(category: SettingCategory, name: String, descr: String, default: ScalaVersion = NoScalaVersion, legacyArgs: Boolean = false, deprecation: Option[Deprecation] = None): Setting[ScalaVersion] =
       publish(Setting(category, prependName(name), descr, default, legacyArgs = legacyArgs, deprecation = deprecation))
