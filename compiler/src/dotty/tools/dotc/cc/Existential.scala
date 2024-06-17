@@ -9,6 +9,7 @@ import StdNames.nme
 import ast.tpd.*
 import Decorators.*
 import typer.ErrorReporting.errorType
+import Names.TermName
 import NameKinds.ExistentialBinderName
 import NameOps.isImpureFunction
 import reporting.Message
@@ -204,8 +205,10 @@ object Existential:
       case _ => None
 
   /** Create method type in the refinement of an existential type */
-  private def exMethodType(mk: TermParamRef => Type)(using Context): MethodType =
-    val boundName = ExistentialBinderName.fresh()
+  private def exMethodType(using Context)(
+      mk: TermParamRef => Type,
+      boundName: TermName = ExistentialBinderName.fresh()
+    ): MethodType =
     MethodType(boundName :: Nil)(
       mt => defn.Caps_Exists.typeRef :: Nil,
       mt => mk(mt.paramRefs.head))
@@ -332,6 +335,8 @@ object Existential:
         mapFunOrMethod(t, args, res)
       case CapturingType(parent, refs) =>
         t.derivedCapturingType(this(parent), refs)
+      case Existential(_, _) =>
+        t
       case t: (LazyRef | TypeVar) =>
         mapConserveSuper(t)
       case _ =>
@@ -347,5 +352,12 @@ object Existential:
   def isExistentialVar(ref: CaptureRef)(using Context) = ref match
     case ref: TermParamRef => isExistentialMethod(ref.binder)
     case _ => false
+
+  def isBadExistential(ref: CaptureRef) = ref match
+    case ref: TermParamRef => ref.paramName == nme.OOS_EXISTENTIAL
+    case _ => false
+
+  def badExistential(using Context): TermParamRef =
+    exMethodType(identity, nme.OOS_EXISTENTIAL).paramRefs.head
 
 end Existential
