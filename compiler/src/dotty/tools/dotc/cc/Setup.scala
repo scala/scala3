@@ -262,7 +262,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       end apply
     end mapInferred
 
-    try mapInferred(refine = true)(tp)
+    try
+      val tp1 = mapInferred(refine = true)(tp)
+      val tp2 = Existential.mapCapInResults(_ => assert(false))(tp1)
+      if tp2 ne tp then capt.println(i"expanded implicit in ${ctx.owner}: $tp  -->  $tp1  -->  $tp2")
+      tp2
     catch case ex: AssertionError =>
       println(i"error while mapping inferred $tp")
       throw ex
@@ -323,7 +327,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
     val tp1 = toCapturing(tp)
     val tp2 = Existential.mapCapInResults(fail)(tp1)
-    if tp2 ne tp then capt.println(i"expanded in ${ctx.owner}: $tp  -->  $tp1  -->  $tp2")
+    if tp2 ne tp then capt.println(i"expanded explicit in ${ctx.owner}: $tp  -->  $tp1  -->  $tp2")
     tp2
   end transformExplicitType
 

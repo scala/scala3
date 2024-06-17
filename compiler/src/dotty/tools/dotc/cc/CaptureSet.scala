@@ -14,7 +14,7 @@ import printing.{Showable, Printer}
 import printing.Texts.*
 import util.{SimpleIdentitySet, Property}
 import typer.ErrorReporting.Addenda
-import TypeComparer.canSubsumeExistentially
+import TypeComparer.subsumesExistentially
 import util.common.alwaysTrue
 import scala.collection.mutable
 import CCState.*
@@ -173,7 +173,7 @@ sealed abstract class CaptureSet extends Showable:
             x.info match
               case x1: SingletonCaptureRef => x1.subsumes(y)
               case _ => false
-          case x: TermParamRef => canSubsumeExistentially(x, y)
+          case x: TermParamRef => subsumesExistentially(x, y)
           case _ => false
 
   /** {x} <:< this   where <:< is subcapturing, but treating all variables
@@ -498,10 +498,13 @@ object CaptureSet:
       deps = state.deps(this)
 
     final def addThisElem(elem: CaptureRef)(using Context, VarState): CompareResult =
-      if isConst || !recordElemsState() then
-        CompareResult.Fail(this :: Nil) // fail if variable is solved or given VarState is frozen
+      if isConst                                // Fail if variable is solved,
+          || !recordElemsState()                // or given VarState is frozen,
+          || Existential.isBadExistential(elem) // or `elem` is an out-of-scope existential,
+      then
+        CompareResult.Fail(this :: Nil)
       else if !levelOK(elem) then
-        CompareResult.LevelError(this, elem)
+        CompareResult.LevelError(this, elem)    // or `elem` is not visible at the level of the set.
       else
         //if id == 34 then assert(!elem.isUniversalRootCapability)
         assert(elem.isTrackableRef, elem)
@@ -694,18 +697,9 @@ object CaptureSet:
         if cond then propagate else CompareResult.OK
 
       val mapped = extrapolateCaptureRef(elem, tm, variance)
+
       def isFixpoint =
         mapped.isConst && mapped.elems.size == 1 && mapped.elems.contains(elem)
-
-      def addMapped =
-        val added = mapped.elems.filter(!accountsFor(_))
-        addNewElems(added)
-          .andAlso:
-            if mapped.isConst then CompareResult.OK
-            else if mapped.asVar.recordDepsState() then { addAsDependentTo(mapped); CompareResult.OK }
-            else CompareResult.Fail(this :: Nil)
-          .andAlso:
-            propagateIf(!added.isEmpty)
 
       def failNoFixpoint =
         val reason =
@@ -716,11 +710,14 @@ object CaptureSet:
         CompareResult.Fail(this :: Nil)
 
       if origin eq source then // elements have to be mapped
-        addMapped
+        val added = mapped.elems.filter(!accountsFor(_))
+        addNewElems(added)
           .andAlso:
             if mapped.isConst then CompareResult.OK
             else if mapped.asVar.recordDepsState() then { addAsDependentTo(mapped); CompareResult.OK }
             else CompareResult.Fail(this :: Nil)
+          .andAlso:
+            propagateIf(!added.isEmpty)
       else if accountsFor(elem) then
         CompareResult.OK
       else if variance > 0 then

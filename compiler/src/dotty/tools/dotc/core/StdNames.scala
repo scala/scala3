@@ -294,6 +294,7 @@ object StdNames {
     val EVT2U: N                    = "evt2u$"
     val EQEQ_LOCAL_VAR: N           = "eqEqTemp$"
     val LAZY_FIELD_OFFSET: N        = "OFFSET$"
+    val OOS_EXISTENTIAL: N          = "<out-of-scope-existential>"
     val OUTER: N                    = "$outer"
     val REFINE_CLASS: N             = "<refinement>"
     val ROOTPKG: N                  = "_root_"
