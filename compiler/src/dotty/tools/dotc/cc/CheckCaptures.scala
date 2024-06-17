@@ -259,7 +259,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         ctx.printer.toTextCaptureRef(ref).show
 
     // Uses 4-space indent as a trial
-    def checkReachCapsIsolated(tpe: Type, pos: SrcPos)(using Context): Unit =
+    private def checkReachCapsIsolated(tpe: Type, pos: SrcPos)(using Context): Unit =
 
         object checker extends TypeTraverser:
             var refVariances: Map[Boolean, Int] = Map.empty
@@ -854,7 +854,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           tree.tpe
         finally curEnv = saved
       if tree.isTerm then
-        checkReachCapsIsolated(res.widen, tree.srcPos)
+        if !ccConfig.useExistentials then
+          checkReachCapsIsolated(res.widen, tree.srcPos)
         if !pt.isBoxedCapturing then
           markFree(res.boxedCaptureSet, tree.srcPos)
       res
