@@ -315,6 +315,12 @@ object Existential:
         case t @ CapturingType(parent, refs: CaptureSet.Var) =>
           if variance > 0 then needsWrap = true
           super.mapOver(t)
+        case defn.FunctionNOf(args, res, contextual) if t.typeSymbol.name.isImpureFunction =>
+          if variance > 0 then
+            needsWrap = true
+            super.mapOver:
+              defn.FunctionNOf(args, res, contextual).capturing(boundVar.singletonCaptureSet)
+          else mapOver(t)
         case _ =>
           mapOver(t)
         //.showing(i"mapcap $t = $result")
@@ -341,6 +347,7 @@ object Existential:
         case res: MethodType => mapFunOrMethod(res, res.paramInfos, res.resType)
         case res: PolyType => mapFunOrMethod(res, Nil, res.resType) // TODO: Also map bounds of PolyTypes
         case _ => mapCap(apply(res), fail)
+          //.showing(i"map cap res $res / ${apply(res)} of $tp = $result")
       tp.derivedFunctionOrMethod(args1, res1)
 
     def apply(t: Type): Type = t match
