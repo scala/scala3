@@ -177,6 +177,8 @@ object Extractors {
         this += "Alternatives(" ++= patterns += ")"
       case TypedOrTest(tree, tpt) =>
         this += "TypedOrTest(" += tree += ", " += tpt += ")"
+      case tree =>
+        this += s"<$tree does not have a corresponding extractor>"
     }
 
     def visitConstant(x: Constant): this.type = x match {
@@ -241,6 +243,8 @@ object Extractors {
         this += "MatchCase(" += pat += ", " += rhs += ")"
       case FlexibleType(tp) =>
         this += "FlexibleType(" += tp += ")"
+      case tp =>
+        this += s"<$tp does not have a corresponding extractor>"
     }
 
     def visitSignature(sig: Signature): this.type = {
