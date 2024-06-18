@@ -1963,6 +1963,30 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       assertSameCode(instructions, expected)
     }
   }
+
+  /**
+   * Test 'additional' imports are generated in deterministic order
+   * https://github.com/scala/scala3/issues/20496
+   */
+  @Test def deterministicAdditionalImports = {
+    val source =
+    """trait Actor:
+        |  def receive() = ()
+        |trait Timers:
+        |  def timers() = ()
+        |abstract class ShardCoordinator extends Actor with Timers
+        |class PersistentShardCoordinator extends ShardCoordinator:
+        |  def foo =
+        |    super.receive()
+        |    super.timers()""".stripMargin
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("PersistentShardCoordinator.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+
+      val expected = List("Actor", "Timers")
+      assertEquals(expected, clsNode.interfaces.asScala)
+    }
+  }
 }
 
 object invocationReceiversTestCode {
