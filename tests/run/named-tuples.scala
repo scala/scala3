@@ -110,6 +110,14 @@ val _: CombinedInfo = bob ++ addr
   val totalAge = persons.mapReduce(reducer)
   println(totalAge)
 
+  inline def namesOf[T <: AnyNamedTuple](t: T): Names[T] = compiletime.constValueTuple[Names[T]]
+  val namesEmpty = namesOf(NamedTuple.Empty)
+  val namesBob = namesOf(bob)
+  val namesEmpty2: EmptyTuple = namesEmpty
+  val namesBob2: ("name", "age") = namesBob
+  println(namesEmpty)
+  println(namesBob)
+
   // testing conversions
 object Conv:
 
