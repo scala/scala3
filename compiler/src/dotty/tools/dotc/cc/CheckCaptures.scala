@@ -170,7 +170,7 @@ object CheckCaptures:
             traverse(parent)
           case t =>
             traverseChildren(t)
-    if ccConfig.allowUniversalInBoxed then check.traverse(tp)
+    if ccConfig.useSealed then check.traverse(tp)
   end disallowRootCapabilitiesIn
 
   /** Attachment key for bodies of closures, provided they are values */
@@ -581,7 +581,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     end instantiate
 
     override def recheckTypeApply(tree: TypeApply, pt: Type)(using Context): Type =
-      if ccConfig.allowUniversalInBoxed then
+      if ccConfig.useSealed then
         val TypeApply(fn, args) = tree
         val polyType = atPhase(thisPhase.prev):
           fn.tpe.widen.asInstanceOf[TypeLambda]
@@ -806,7 +806,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     override def recheckTry(tree: Try, pt: Type)(using Context): Type =
       val tp = super.recheckTry(tree, pt)
-      if ccConfig.allowUniversalInBoxed && Feature.enabled(Feature.saferExceptions) then
+      if ccConfig.useSealed && Feature.enabled(Feature.saferExceptions) then
         disallowRootCapabilitiesIn(tp, ctx.owner,
           "result of `try`", "have type",
           "This is often caused by a locally generated exception capability leaking as part of its result.",
@@ -875,7 +875,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           }
           checkNotUniversal(parent)
         case _ =>
-      if !ccConfig.allowUniversalInBoxed
+      if !ccConfig.useSealed
           && !tpe.hasAnnotation(defn.UncheckedCapturesAnnot)
           && needsUniversalCheck
       then
@@ -1100,7 +1100,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           def msg = em"""$actual cannot be box-converted to $expected
                         |since at least one of their capture sets contains the root capability `cap`"""
           def allowUniversalInBoxed =
-            ccConfig.allowUniversalInBoxed
+            ccConfig.useSealed
             || expected.hasAnnotation(defn.UncheckedCapturesAnnot)
             || actual.widen.hasAnnotation(defn.UncheckedCapturesAnnot)
           if criticalSet.isUnboxable && expected.isValueType && !allowUniversalInBoxed then
@@ -1129,20 +1129,6 @@ class CheckCaptures extends Recheck, SymTransformer:
       recur(actual, expected, covariant)
     end adaptBoxed
 
-    /** If actual derives from caps.Capability, yet is not a capturing type itself,
-     *  make its capture set explicit.
-     */
-    private def makeCaptureSetExplicit(actual: Type)(using Context): Type =
-      if ccConfig.expandCapabilityInSetup then actual
-      else actual match
-      case CapturingType(_, _) => actual
-      case _ if actual.derivesFromCapability =>
-        val cap: CaptureRef = actual match
-          case ref: CaptureRef if ref.isTracked => ref
-          case _ => defn.captureRoot.termRef // TODO: skolemize?
-        CapturingType(actual, cap.singletonCaptureSet)
-      case _ => actual
-
     /** If actual is a tracked CaptureRef `a` and widened is a capturing type T^C,
      *  improve `T^C` to `T^{a}`, following the VAR rule of CC.
      */
@@ -1163,12 +1149,11 @@ class CheckCaptures extends Recheck, SymTransformer:
       if expected == LhsProto || expected.isSingleton && actual.isSingleton then
         actual
       else
-        val normalized = makeCaptureSetExplicit(actual)
-        val widened = improveCaptures(normalized.widen.dealiasKeepAnnots, actual)
+        val widened = improveCaptures(actual.widen.dealiasKeepAnnots, actual)
         val adapted = adaptBoxed(
             widened.withReachCaptures(actual), expected, pos,
             covariant = true, alwaysConst = false, boxErrors)
-        if adapted eq widened then normalized
+        if adapted eq widened then actual
         else adapted.showing(i"adapt boxed $actual vs $expected = $adapted", capt)
     end adapt
 
