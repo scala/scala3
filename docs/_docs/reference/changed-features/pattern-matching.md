@@ -18,7 +18,7 @@ def unapplySeq(x: T): U
 ```
 
 Where `T` is an arbitrary type, if it is a subtype of the scrutinee's type `Scrut`, a [type test](../other-new-features/type-test.md) is performed before calling the method.
-`U` follows rules described in [Fixed Arity Extractors](#fixed-arity-extractors) and [Variadic Extractors](#variadic-extractors).
+`U` follows rules described in [Fixed Arity Extractors](#fixed-arity-extractors-1) and [Variadic Extractors](#variadic-extractors-1).
 
 **Note:** `U` can be the type of the extractor object.
 
@@ -43,8 +43,8 @@ def unapply(x: T): U
 
 The type `U` conforms to one of the following matches:
 
-- [Boolean match](#boolean-match)
-- [Product match](#product-match)
+- [Boolean match](#boolean-match-1)
+- [Product match](#product-match-1)
 
 Or `U` conforms to the type `R`:
 
@@ -57,8 +57,8 @@ type R = {
 
 and `S` conforms to one of the following matches:
 
-- [single match](#single-match)
-- [name-based match](#name-based-match)
+- [single match](#single-match-1)
+- [name-based match](#name-based-match-1)
 
 The former form of `unapply` has higher precedence, and _single match_ has higher
 precedence over _name-based match_.
@@ -183,8 +183,8 @@ Where `U` has to fullfill the following:
 
 1. Set `V := U`
 2. `V` is valid if `V` conforms to one of the following matches:
-- [sequence match](#sequence-match)
-- [product-sequence match](#product-sequence-match)
+- [sequence match](#sequence-match-1)
+- [product-sequence match](#product-sequence-match-1)
 3. Otherwise `U` has to conform to the type `R`:
 ```scala
 type R = {
