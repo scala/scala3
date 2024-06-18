@@ -1,6 +1,6 @@
 package dotty.tools.backend.jvm
 
-import java.io.{DataOutputStream, IOException, BufferedOutputStream, FileOutputStream}
+import java.io.{DataOutputStream, File, IOException, BufferedOutputStream, FileOutputStream}
 import java.nio.ByteBuffer
 import java.nio.channels.{ClosedByInterruptException, FileChannel}
 import java.nio.charset.StandardCharsets.UTF_8
@@ -12,7 +12,7 @@ import java.util.zip.{CRC32, Deflater, ZipEntry, ZipOutputStream}
 
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.em
-import dotty.tools.io.{AbstractFile, PlainFile}
+import dotty.tools.io.{AbstractFile, PlainFile, VirtualFile}
 import dotty.tools.io.PlainFile.toPlainFile
 import BTypes.InternalName
 import scala.util.chaining.*
@@ -26,7 +26,6 @@ import scala.language.unsafeNulls
  * Until then, any changes to this file should be copied to `dotty.tools.io.FileWriters` as well.
  */
 class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
-  type NullableFile =  AbstractFile | Null
   import frontendAccess.{compilerSettings, backendReporting}
 
   sealed trait TastyWriter {
@@ -46,7 +45,7 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
     /**
      * Write a classfile
      */
-    def writeClass(name: InternalName, bytes: Array[Byte], sourceFile: AbstractFile): NullableFile
+    def writeClass(name: InternalName, bytes: Array[Byte], sourceFile: AbstractFile): AbstractFile
 
 
     /**
@@ -91,7 +90,7 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
     }
 
     private final class SingleClassWriter(underlying: FileWriter) extends ClassfileWriter {
-      override def writeClass(className: InternalName, bytes: Array[Byte], sourceFile: AbstractFile): NullableFile = {
+      override def writeClass(className: InternalName, bytes: Array[Byte], sourceFile: AbstractFile): AbstractFile = {
         underlying.writeFile(classRelativePath(className), bytes)
       }
       override def writeTasty(className: InternalName, bytes: Array[Byte], sourceFile: AbstractFile): Unit = {
@@ -103,7 +102,7 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
     }
 
     private final class DebugClassWriter(basic: ClassfileWriter, dump: FileWriter) extends ClassfileWriter {
-      override def writeClass(className: InternalName, bytes: Array[Byte], sourceFile: AbstractFile): NullableFile = {
+      override def writeClass(className: InternalName, bytes: Array[Byte], sourceFile: AbstractFile): AbstractFile = {
         val outFile = basic.writeClass(className, bytes, sourceFile)
         dump.writeFile(classRelativePath(className), bytes)
         outFile
@@ -121,7 +120,7 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
   }
 
   sealed trait FileWriter {
-    def writeFile(relativePath: String, bytes: Array[Byte]): NullableFile
+    def writeFile(relativePath: String, bytes: Array[Byte]): AbstractFile
     def close(): Unit
   }
 
@@ -165,7 +164,7 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
 
     lazy val crc = new CRC32
 
-    override def writeFile(relativePath: String, bytes: Array[Byte]): NullableFile = this.synchronized {
+    override def writeFile(relativePath: String, bytes: Array[Byte]): AbstractFile = this.synchronized {
       val entry = new ZipEntry(relativePath)
       if (storeOnly) {
         // When using compression method `STORED`, the ZIP spec requires the CRC and compressed/
@@ -182,7 +181,13 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
       jarWriter.putNextEntry(entry)
       try jarWriter.write(bytes, 0, bytes.length)
       finally jarWriter.flush()
-      null
+      // important detail here, even on Windows, Zinc expects the separator within the jar
+      // to be the system default, (even if in the actual jar file the entry always uses '/').
+      // see https://github.com/sbt/zinc/blob/dcddc1f9cfe542d738582c43f4840e17c053ce81/internal/compiler-bridge/src/main/scala/xsbt/JarUtils.scala#L47
+      val pathInJar = 
+        if File.separatorChar == '/' then relativePath
+        else relativePath.replace('/', File.separatorChar)
+      PlainFile.toPlainFile(Paths.get(s"${file.absolutePath}!$pathInJar"))
     }
 
     override def close(): Unit = this.synchronized(jarWriter.close())
@@ -230,7 +235,7 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
     private val fastOpenOptions = util.EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
     private val fallbackOpenOptions = util.EnumSet.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)
 
-    override def writeFile(relativePath: String, bytes: Array[Byte]): NullableFile = {
+    override def writeFile(relativePath: String, bytes: Array[Byte]): AbstractFile = {
       val path = base.resolve(relativePath)
       try {
         ensureDirForPath(base, path)
@@ -279,7 +284,7 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
       finally out.close()
     }
 
-    override def writeFile(relativePath: String, bytes: Array[Byte]):NullableFile = {
+    override def writeFile(relativePath: String, bytes: Array[Byte]): AbstractFile = {
       val outFile = getFile(base, relativePath)
       writeBytes(outFile, bytes)
       outFile
