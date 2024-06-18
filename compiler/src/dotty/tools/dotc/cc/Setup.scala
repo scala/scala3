@@ -317,7 +317,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             this(expandThrowsAlias(res, exc, Nil))
           case t =>
             // Map references to capability classes C to C^
-            if ccConfig.expandCapabilityInSetup && t.derivesFromCapability && t.typeSymbol != defn.Caps_Exists
+            if t.derivesFromCapability && t.typeSymbol != defn.Caps_Exists
             then CapturingType(t, CaptureSet.universal, boxed = false)
             else normalizeCaptures(mapOver(t))
     end toCapturing
@@ -397,7 +397,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         transformTT(tpt,
             boxed =
               sym.is(Mutable, butNot = Method)
-                && !ccConfig.allowUniversalInBoxed
+                && !ccConfig.useSealed
                 && !sym.hasAnnotation(defn.UncheckedCapturesAnnot),
               // types of mutable variables are boxed in pre 3.3 code
             exact = sym.allOverriddenSymbols.hasNext,

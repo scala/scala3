@@ -27,21 +27,19 @@ object ccConfig:
    */
   inline val allowUnsoundMaps = false
 
-  /** If true, expand capability classes in Setup instead of treating them
-   *  in adapt.
-   */
-  inline val expandCapabilityInSetup = true
-
+  /** If true, use existential capture set variables */
   def useExistentials(using Context) =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.5`)
 
-  /** If true, use `sealed` as encapsulation mechanism instead of the
-   *  previous global retriction that `cap` can't be boxed or unboxed.
+  /** If true, use "sealed" as encapsulation mechanism, meaning that we
+   *  check that type variable instantiations don't have `cap` in any of
+   *  their capture sets. This is an alternative of the original restriction
+   *  that `cap` can't be boxed or unboxed. It is used in 3.3 and 3.4 but
+   *  dropped again in 3.5.
    */
-  def allowUniversalInBoxed(using Context) =
+  def useSealed(using Context) =
     Feature.sourceVersion.stable == SourceVersion.`3.3`
     || Feature.sourceVersion.stable == SourceVersion.`3.4`
-    //|| Feature.sourceVersion.stable == SourceVersion.`3.5` // drop `//` if you want to test with the sealed type params strategy
 end ccConfig
 
 

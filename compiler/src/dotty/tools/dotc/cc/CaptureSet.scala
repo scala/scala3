@@ -1059,9 +1059,8 @@ object CaptureSet:
           tp.captureSet
         case tp: TermParamRef =>
           tp.captureSet
-        case tp: TypeRef =>
-          if !ccConfig.expandCapabilityInSetup && tp.derivesFromCapability then universal
-          else empty
+        case _: TypeRef =>
+          empty
         case _: TypeParamRef =>
           empty
         case CapturingType(parent, refs) =>
