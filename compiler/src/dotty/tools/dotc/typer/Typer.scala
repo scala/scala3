@@ -1386,10 +1386,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 val u = ensureAccessible(t, isSuperSelection(core), lhs.srcPos)
                 val v = untpd.rename(core, setterName).withType(u)
                 PartialAssignment(SimpleLValue(v)) { (l, r) =>
-                  untpd.Apply(untpd.TypedSplice(l.expression), List(r))
                   // QUESTION: Why do we need the `typedUnadapted(s, WildcardType, locked)`?
-                  // val s = untpd.Apply(untpd.TypedSplice(lvalue.expression), List(rhs))
-                  // typedUnadapted(s, WildcardType, locked)
+                  val s = untpd.Apply(untpd.TypedSplice(l.expression), List(r))
+                  untpd.TypedSplice(typedUnadapted(s, WildcardType, locked))
                 }
               case _ =>
                 reassignmentToVal()
