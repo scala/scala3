@@ -317,7 +317,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             this(expandThrowsAlias(res, exc, Nil))
           case t =>
             // Map references to capability classes C to C^
-            if t.derivesFromCapability && t.typeSymbol != defn.Caps_Exists
+            if t.derivesFromCapability && !t.isSingleton && t.typeSymbol != defn.Caps_Exists
             then CapturingType(t, CaptureSet.universal, boxed = false)
             else normalizeCaptures(mapOver(t))
     end toCapturing
