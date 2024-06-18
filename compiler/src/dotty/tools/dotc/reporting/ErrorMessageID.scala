@@ -212,6 +212,9 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case ContextBoundCompanionNotValueID // errorNumber: 196
   case InlinedAnonClassWarningID // errorNumber: 197
   case UnusedSymbolID // errorNumber: 198
+  case InvalidMultipleAssignmentSourceID // errorNumber: 199
+  case InvalidMultipleAssignmentTargetID // errorNumber: 200
+  case MultipleAssignmentShapeMismatchID // errorNumber: 201
 
   def errorNumber = ordinal - 1
 
