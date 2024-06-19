@@ -45,8 +45,6 @@ jobs:
             archive : 'scala3-${{ inputs.version }}-aarch64-apple-darwin.tar.gz'
           - platform: WINDOWS_64
             archive : 'scala3-${{ inputs.version }}-x86_64-pc-win32.zip'
-          - platform: UNIVERSAL
-            archive : 'scala3-${{ inputs.version }}.zip'
     steps:
       - uses: hamzaremmal/sdkman-release-action@7e437233a6bd79bc4cb0fa9071b685e94bdfdba6
         with:
