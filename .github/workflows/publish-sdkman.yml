@@ -44,7 +44,7 @@ jobs:
           - platform: MAC_ARM64
             archive : 'scala3-${{ inputs.version }}-aarch64-apple-darwin.tar.gz'
           - platform: WINDOWS_64
-            archive : 'scala3-${{ inputs.version }}-x86_64-pc-win32.tar.gz'
+            archive : 'scala3-${{ inputs.version }}-x86_64-pc-win32.zip'
           - platform: UNIVERSAL
             archive : 'scala3-${{ inputs.version }}.zip'
     steps:
