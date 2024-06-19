@@ -1899,6 +1899,20 @@ class TailrecNotApplicable(symbol: Symbol)(using Context)
   def explain(using Context) = ""
 }
 
+class TailrecNestedCall(definition: Symbol, innerDef: Symbol)(using Context)
+  extends SyntaxMsg(TailrecNestedCallID) {
+  def msg(using Context) = {
+    s"The tail recursive def ${definition.name} contains a recursive call inside the non-inlined inner def ${innerDef.name}"
+  }
+
+  def explain(using Context) =
+    """Tail recursion is only validated and optimised directly in the definition.
+      |Any calls to the recursive method via an inner def cannot be validated as
+      |tail recursive, nor optimised if they are. To enable tail recursion from
+      |inner calls, mark the inner def as inline.
+      |""".stripMargin
+}
+
 class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: List[Symbol], classRoot: Symbol)(using Context)
   extends Message(FailureToEliminateExistentialID) {
   def kind = MessageKind.Compatibility

@@ -427,8 +427,21 @@ class TailRec extends MiniPhase {
           assert(false, "We should never have gotten inside a pattern")
           tree
 
-        case tree: ValOrDefDef =>
+        case tree: ValDef =>
           if (isMandatory) noTailTransform(tree.rhs)
+          tree
+
+        case tree: DefDef =>
+          if (isMandatory)
+            if (tree.symbol.is(Synthetic))
+              noTailTransform(tree.rhs)
+            else
+              // We can't tail recurse through nested definitions, so don't want to propagate to child nodes
+              // We don't want to fail if there is a call that would recurse (as this would be a non self recurse), so don't
+              // want to call noTailTransform
+              // We can however warn in this case, as its likely in this situation that someone would expect a tail
+              // recursion optimization and enabling this to optimise would be a simple case of inlining the inner method
+              new NestedTailRecAlerter(method, tree.symbol).traverse(tree)
           tree
 
         case _: Super | _: This | _: Literal | _: TypeTree | _: TypeDef | EmptyTree =>
@@ -444,13 +457,27 @@ class TailRec extends MiniPhase {
 
         case Return(expr, from) =>
           val fromSym = from.symbol
-          val inTailPosition = !fromSym.is(Label) || tailPositionLabeledSyms.contains(fromSym)
+          val inTailPosition = tailPositionLabeledSyms.contains(fromSym) // Label returns are only tail if the label is in tail position
+             || (fromSym eq method) // Method returns are only tail if we are looking at the original method
           cpy.Return(tree)(transform(expr, inTailPosition), from)
 
         case _ =>
           super.transform(tree)
       }
     }
+  }
+
+  class NestedTailRecAlerter(method: Symbol, inner: Symbol) extends TreeTraverser {
+    override def traverse(tree: tpd.Tree)(using Context): Unit =
+      tree match {
+        case a: Apply =>
+          if (a.fun.symbol eq method) {
+            report.warning(new TailrecNestedCall(method, inner), a.srcPos)
+          }
+          traverseChildren(tree)
+        case _ =>
+          traverseChildren(tree)
+      }
   }
 }
 
