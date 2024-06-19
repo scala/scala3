@@ -313,7 +313,6 @@ private sealed trait XSettings:
     helpArg = "advanced warning",
     descr = "Enable or disable specific `lint` warnings",
     choices = List(
-      ChoiceWithHelp("nowarn", ""),
       ChoiceWithHelp("all", ""),
       ChoiceWithHelp("private-shadow", "Warn if a private field or class parameter shadows a superclass field"),
       ChoiceWithHelp("type-parameter-shadow", "Warn when a type parameter shadows a type already in the scope"),
@@ -322,10 +321,8 @@ private sealed trait XSettings:
   )
 
   object XlintHas:
-    def isChoiceSet(s: String)(using Context) = Xlint.value.pipe(us => us.contains(s))
-    def allOr(s: String)(using Context) = Xlint.value.pipe(us => us.contains("all") || us.contains(s))
-    def nowarn(using Context) = allOr("nowarn")
-
+    def allOr(s: String)(using Context) =
+      Xlint.value.pipe(us => us.contains("all") || us.contains(s))
     def privateShadow(using Context) =
       allOr("private-shadow")
     def typeParameterShadow(using Context) =
