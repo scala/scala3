@@ -2,6 +2,7 @@ package dotty.tools.sbtplugin
 
 import sbt._
 import xerial.sbt.pack.PackPlugin
+import xerial.sbt.pack.PackPlugin.autoImport.{packResourceDir, packDir}
 import sbt.Keys._
 import sbt.AutoPlugin
 import sbt.PublishBinPlugin
@@ -66,7 +67,9 @@ object RepublishPlugin extends AutoPlugin {
     val republishBinDir = settingKey[File]("where to find static files for the bin dir.")
     val republishCoursierDir = settingKey[File]("where to download the coursier launcher jar.")
     val republishBinOverrides = settingKey[Seq[File]]("files to override those in bin-dir.")
+    val republishCommandLibs = settingKey[Seq[(String, List[String])]]("libraries needed for each command.")
     val republish = taskKey[File]("cache the dependencies and download launchers for the distribution")
+    val republishPack = taskKey[File]("do the pack command")
     val republishRepo = settingKey[File]("the location to store the republished artifacts.")
     val republishLaunchers = settingKey[Seq[(String, String)]]("launchers to download. Sequence of (name, URL).")
     val republishCoursier = settingKey[Seq[(String, String)]]("coursier launcher to download. Sequence of (name, URL).")
@@ -99,7 +102,7 @@ object RepublishPlugin extends AutoPlugin {
     }.toSet
   }
 
-  private def coursierCmd(jar: File, cache: File, args: Seq[String]): Unit = {
+  private def coursierCmd(jar: File, cache: File): Seq[String] => List[String] = {
     val jar0 = jar.getAbsolutePath.toString
     val javaHome = sys.props.get("java.home").getOrElse {
       throw new MessageOnlyException("java.home property not set")
@@ -108,38 +111,88 @@ object RepublishPlugin extends AutoPlugin {
       val cmd = if (scala.util.Properties.isWin) "java.exe" else "java"
       (file(javaHome) / "bin" / cmd).getAbsolutePath
     }
-    val env = Map("COURSIER_CACHE" -> cache.getAbsolutePath.toString)
-    val cmdLine = Seq(javaCmd, "-jar", jar0) ++ args
-    // invoke cmdLine with env
-    val p = new ProcessBuilder(cmdLine: _*).inheritIO()
-    p.environment().putAll(env.asJava)
-    val proc = p.start()
-    proc.waitFor()
-    if (proc.exitValue() != 0)
-      throw new MessageOnlyException(s"Error running coursier.jar with args ${args.mkString(" ")}")
+    val env = Map("COURSIER_CACHE" -> cache.getAbsolutePath.toString).asJava
+    val cmdLine0 = Seq(javaCmd, "-jar", jar0)
+    args =>
+      val cmdLine = cmdLine0 ++ args    
+      // invoke cmdLine with env, but also capture the output
+      val p = new ProcessBuilder(cmdLine: _*)
+        .directory(cache)
+        .inheritIO()
+        .redirectOutput(ProcessBuilder.Redirect.PIPE)
+      p.environment().putAll(env)
+
+      val proc = p.start()
+      val in = proc.getInputStream
+      val output = {
+        try {
+          val src = scala.io.Source.fromInputStream(in)
+          try src.getLines().toList
+          finally src.close()
+        } finally {
+          in.close()
+        }
+      }
+
+      proc.waitFor()
+
+      if (proc.exitValue() != 0)
+        throw new MessageOnlyException(s"Error running coursier.jar with args ${args.mkString(" ")}")
+
+      output
   }
 
-  private def coursierFetch(coursierJar: File, log: Logger, cacheDir: File, localRepo: File, libs: Seq[String]): Unit = {
-    val localRepoArg = {
-      val path = localRepo.getAbsolutePath
-      if (scala.util.Properties.isWin) {
-        val path0 = path.replace('\\', '/')
-        s"file:///$path0" // extra root slash for Windows paths
-      }
-      else
-        s"file://$path"
-    }
+  private def resolveMaven2(repo: File): Path = {
+    java.nio.file.Files.walk(repo.toPath)
+      .filter(_.getFileName.toString == "maven2")
+      .findFirst()
+      .orElseThrow(() => new MessageOnlyException(s"Could not find maven2 directory in $repo"))
+      .toAbsolutePath()
+  }
 
+  private def coursierFetch(
+      coursierJar: File, log: Logger, cacheDir: File, localRepo: File, libs: Seq[String]): Map[String, List[String]] = {
+    val localRepoPath = localRepo.getAbsolutePath
+    val localRepoArg = {
+      val uriPart = {
+        if (scala.util.Properties.isWin) {
+          s"/${localRepoPath.replace('\\', '/')}" // extra root slash for Windows paths
+        }
+        else {
+          localRepoPath // no change needed for Unix paths
+        }
+      }
+      s"file://$uriPart"
+    }
     IO.createDirectory(cacheDir)
-    for (lib <- libs) {
+    val cacheDirPath = cacheDir.getAbsolutePath
+    lazy val maven2RootLocal = resolveMaven2(localRepo)
+    lazy val maven2RootCache = resolveMaven2(cacheDir) // lazy because cache dir isn't populated until after fetch
+    val cmd = coursierCmd(coursierJar, cacheDir)
+    val resolved = for (lib <- libs) yield {
       log.info(s"[republish] Fetching $lib with coursier.jar...")
-      coursierCmd(coursierJar, cacheDir,
+      val out = cmd(
         Seq(
           "fetch",
+          "--no-default",
+          "--repository", "central",
           "--repository", localRepoArg,
           lib
         )
       )
+      lib -> out.collect {
+        case s if s.startsWith(localRepoPath) =>
+          maven2RootLocal.relativize(java.nio.file.Paths.get(s)).toString().replace('\\', '/') // format as uri
+        case s if s.startsWith(cacheDirPath) =>
+          maven2RootCache.relativize(java.nio.file.Paths.get(s)).toString().replace('\\', '/') // format as uri
+      }
+    }
+    resolved.toMap
+  }
+
+  private def fuzzyFind[V](map: Map[String, V], key: String): V = {
+    map.collectFirst({ case (k, v) if k.contains(key) => v }).getOrElse {
+      throw new MessageOnlyException(s"Could not find key $key in map $map")
     }
   }
 
@@ -148,28 +201,34 @@ object RepublishPlugin extends AutoPlugin {
   private def resolveLibraryDeps(
       coursierJar: File,
       log: Logger,
+      republishDir: File,
       csrCacheDir: File,
       localRepo: File,
-      resolvedLocal: Seq[ResolvedArtifacts]): Seq[ResolvedArtifacts] = {
+      resolvedLocal: Seq[ResolvedArtifacts],
+      commandLibs: Seq[(String, List[String])]): Seq[ResolvedArtifacts] = {
 
     // publish the local artifacts to the local repo, so coursier can resolve them
     republishResolvedArtifacts(resolvedLocal, localRepo, logOpt = None)
 
-    coursierFetch(coursierJar, log, csrCacheDir, localRepo, resolvedLocal.map(_.id.toString))
+    val classpaths = coursierFetch(coursierJar, log, csrCacheDir, localRepo, resolvedLocal.map(_.id.toString))
 
-    val maven2Root = java.nio.file.Files.walk(csrCacheDir.toPath)
-      .filter(_.getFileName.toString == "maven2")
-      .findFirst()
-      .orElseThrow(() => new MessageOnlyException(s"Could not find maven2 directory in $csrCacheDir"))
+    if (commandLibs.nonEmpty) {
+      IO.createDirectory(republishDir / "etc")
+      for ((command, libs) <- commandLibs) {
+        val entries = libs.map(fuzzyFind(classpaths, _)).reduce(_ ++ _).distinct
+        IO.write(republishDir / "etc" / s"$command.classpath", entries.mkString("\n"))
+      }
+    }
+
+    val maven2Root = resolveMaven2(csrCacheDir)
 
     def pathToArtifact(p: Path): ResolvedArtifacts = {
       // relative path from maven2Root
-      val lastAsString = p.getFileName.toString
       val relP = maven2Root.relativize(p)
       val parts = relP.iterator().asScala.map(_.toString).toVector
-      val (orgParts :+ name :+ rev :+ _) = parts
+      val (orgParts :+ name :+ rev :+ artifact) = parts
       val id = SimpleModuleId(orgParts.mkString("."), name, rev)
-      if (lastAsString.endsWith(".jar")) {
+      if (artifact.endsWith(".jar")) {
         ResolvedArtifacts(id, Some(p.toFile), None)
       } else {
         ResolvedArtifacts(id, None, Some(p.toFile))
@@ -279,6 +338,7 @@ object RepublishPlugin extends AutoPlugin {
     republishCoursier := Seq.empty,
     republishBinOverrides := Seq.empty,
     republishExtraProps := Seq.empty,
+    republishCommandLibs := Seq.empty,
     republishLocalResolved / republishProjectRefs := {
       val proj = thisProjectRef.value
       val deps = buildDependencies.value
@@ -326,13 +386,15 @@ object RepublishPlugin extends AutoPlugin {
       val s = streams.value
       val lm = (republishAllResolved / dependencyResolution).value
       val cacheDir = republishRepo.value
+      val commandLibs = republishCommandLibs.value
 
       val log = s.log
       val csrCacheDir = s.cacheDirectory / "csr-cache"
       val localRepo = s.cacheDirectory / "localRepo" / "maven2"
 
       // resolve the transitive dependencies of the local artifacts
-      val resolvedLibs = resolveLibraryDeps(coursierJar, log, csrCacheDir, localRepo, resolvedLocal)
+      val resolvedLibs = resolveLibraryDeps(
+        coursierJar, log, cacheDir, csrCacheDir, localRepo, resolvedLocal, commandLibs)
 
       // the combination of local artifacts and resolved transitive dependencies
       val merged =
@@ -395,6 +457,77 @@ object RepublishPlugin extends AutoPlugin {
       val launchers = republishFetchLaunchers.value
       val extraProps = republishWriteExtraProps.value
       cacheDir
+    },
+    republishPack := {
+      val cacheDir = republish.value
+      val s = streams.value
+      val log = s.log
+      val distDir = target.value / packDir.value
+      val progVersion = version.value
+
+      IO.createDirectory(distDir)
+      for ((path, dir) <- packResourceDir.value) {
+        val target = distDir / dir
+        IO.copyDirectory(path, target)
+      }
+
+      locally {
+        // everything in this block is copied from sbt-pack plugin
+        import scala.util.Try
+        import java.time.format.DateTimeFormatterBuilder
+        import java.time.format.SignStyle
+        import java.time.temporal.ChronoField.*
+        import java.time.ZoneId
+        import java.time.Instant
+        import java.time.ZonedDateTime
+        import java.time.ZonedDateTime
+        import java.util.Locale
+        import java.util.Date
+        val base: File = new File(".") // Using the working directory as base for readability
+
+        def write(path: String, content: String) {
+          val p = distDir / path
+          IO.write(p, content)
+        }
+
+        val humanReadableTimestampFormatter = new DateTimeFormatterBuilder()
+            .parseCaseInsensitive()
+            .appendValue(YEAR, 4, 10, SignStyle.EXCEEDS_PAD)
+            .appendLiteral('-')
+            .appendValue(MONTH_OF_YEAR, 2)
+            .appendLiteral('-')
+            .appendValue(DAY_OF_MONTH, 2)
+            .appendLiteral(' ')
+            .appendValue(HOUR_OF_DAY, 2)
+            .appendLiteral(':')
+            .appendValue(MINUTE_OF_HOUR, 2)
+            .appendLiteral(':')
+            .appendValue(SECOND_OF_MINUTE, 2)
+            .appendOffset("+HHMM", "Z")
+            .toFormatter(Locale.US)
+
+        // Retrieve build time
+        val systemZone = ZoneId.systemDefault().normalized()
+        val timestamp  = ZonedDateTime.ofInstant(Instant.ofEpochMilli(new Date().getTime), systemZone)
+        val buildTime  = humanReadableTimestampFormatter.format(timestamp)
+
+        // Check the current Git revision
+        val gitRevision: String = Try {
+          if ((base / ".git").exists()) {
+            log.info("[republish] Checking the git revision of the current project")
+            sys.process.Process("git rev-parse HEAD").!!
+          } else {
+            "unknown"
+          }
+        }.getOrElse("unknown").trim
+
+
+        // Output the version number and Git revision
+        write("VERSION", s"version:=${progVersion}\nrevision:=${gitRevision}\nbuildTime:=${buildTime}\n")
+      }
+
+
+      distDir
     }
   )
 }

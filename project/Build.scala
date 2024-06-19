@@ -2127,7 +2127,12 @@ object Build {
     republishRepo := target.value / "republish",
     packResourceDir += (republishRepo.value / "bin" -> "bin"),
     packResourceDir += (republishRepo.value / "maven2" -> "maven2"),
-    Compile / pack := (Compile / pack).dependsOn(republish).value,
+    packResourceDir += (republishRepo.value / "etc" -> "etc"),
+    republishCommandLibs +=
+      ("scala" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "tasty-core", "scala3-staging", "scala3-tasty-inspector")),
+    republishCommandLibs +=
+      ("scaladoc" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "tasty-core", "scala3-tasty-inspector", "scaladoc")),
+    Compile / pack := republishPack.value,
   )
 
   lazy val dist = project.asDist(Bootstrapped)
