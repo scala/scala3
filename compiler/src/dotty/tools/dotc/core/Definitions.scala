@@ -1146,6 +1146,18 @@ class Definitions {
       case _ => None
   }
 
+  object ErasedFunctionOf {
+    /** Matches a refined `ErasedFunction` type and extracts the apply info.
+     *
+     *  Pattern: `ErasedFunction { def apply: $mt }`
+     */
+    def unapply(ft: Type)(using Context): Option[MethodType] = ft.dealias match
+      case RefinedType(parent, nme.apply, mt: MethodType)
+      if parent.derivesFrom(defn.ErasedFunctionClass) =>
+        Some(mt)
+      case _ => None
+  }
+
   object PolyFunctionOf {
     /** Matches a refined `PolyFunction` type and extracts the apply info.
      *
@@ -1157,18 +1169,17 @@ class Definitions {
         if tpe.refinedName == nme.apply && tpe.parent.derivesFrom(defn.PolyFunctionClass) =>
           Some(mt)
         case _ => None
-  }
 
-  object ErasedFunctionOf {
-    /** Matches a refined `ErasedFunction` type and extracts the apply info.
-     *
-     *  Pattern: `ErasedFunction { def apply: $mt }`
-     */
-    def unapply(ft: Type)(using Context): Option[MethodType] = ft.dealias match
-      case RefinedType(parent, nme.apply, mt: MethodType)
-      if parent.derivesFrom(defn.ErasedFunctionClass) =>
-        Some(mt)
-      case _ => None
+    def isValidPolyFunctionInfo(info: Type)(using Context): Boolean =
+      def isValidMethodType(info: Type) = info match
+        case info: MethodType =>
+          !info.resType.isInstanceOf[MethodOrPoly] && // Has only one parameter list
+          !info.isVarArgsMethod &&
+          !info.paramInfos.exists(_.isInstanceOf[ExprType]) // No by-name parameters
+        case _ => false
+      info match
+        case info: PolyType => isValidMethodType(info.resType)
+        case _ => isValidMethodType(info)
   }
 
   object PartialFunctionOf {

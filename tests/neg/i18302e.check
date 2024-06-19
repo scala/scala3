@@ -1,0 +1,8 @@
+-- Error: tests/neg/i18302e.scala:1:13 ---------------------------------------------------------------------------------
+1 |def polyFun: PolyFunction {  } = // error
+  |             ^^^^^^^^^^^^^^^^^
+  |             PolyFunction subtypes must refine the apply method
+-- Error: tests/neg/i18302e.scala:4:15 ---------------------------------------------------------------------------------
+4 |def polyFun(f: PolyFunction {  }) = () // error
+  |               ^^^^^^^^^^^^^^^^^
+  |               PolyFunction subtypes must refine the apply method
