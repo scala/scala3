@@ -6,62 +6,21 @@ source "$PROG_HOME/bin/common-shared"
 # * The code below is for Dotty
 # *-------------------------------------------------*/
 
-find_lib () {
-  for lib in "$PROG_HOME"/lib/$1 ; do
-    if [[ -f "$lib" ]]; then
-      if [ -n "$CYGPATHCMD" ]; then
-        "$CYGPATHCMD" -am "$lib"
-      elif [[ $mingw ||  $msys ]]; then
-        echo "$lib" | sed 's|/|\\\\|g'
-      else
-        echo "$lib"
-      fi
-      return
+load_classpath () {
+  command="$1"
+  psep_pattern="$2"
+  __CLASS_PATH=""
+  while IFS= read -r line; do
+    if ! [[ ( -n ${conemu-} || -n ${msys-}) && "$line" == "*jna-5*" ]]; then
+      # jna-5 only appropriate for some combinations
+      __CLASS_PATH+="$PROG_HOME/maven2/$line$psep_pattern"
     fi
-  done
+  done < "$PROG_HOME/etc/$command.classpath"
+  echo "$__CLASS_PATH"
 }
 
-DOTTY_COMP=$(find_lib "*scala3-compiler*")
-DOTTY_INTF=$(find_lib "*scala3-interfaces*")
-DOTTY_LIB=$(find_lib "*scala3-library*")
-DOTTY_STAGING=$(find_lib "*scala3-staging*")
-DOTTY_TASTY_INSPECTOR=$(find_lib "*scala3-tasty-inspector*")
-TASTY_CORE=$(find_lib "*tasty-core*")
-SCALA_ASM=$(find_lib "*scala-asm*")
-SCALA_LIB=$(find_lib "*scala-library*")
-SBT_INTF=$(find_lib "*compiler-interface*")
-JLINE_READER=$(find_lib "*jline-reader-3*")
-JLINE_TERMINAL=$(find_lib "*jline-terminal-3*")
-JLINE_TERMINAL_JNA=$(find_lib "*jline-terminal-jna-3*")
-
-# jna-5 only appropriate for some combinations
-[[ ${conemu-} && ${msys-} ]] || JNA=$(find_lib "*jna-5*")
-
 compilerJavaClasspathArgs () {
-  # echo "dotty-compiler: $DOTTY_COMP"
-  # echo "dotty-interface: $DOTTY_INTF"
-  # echo "dotty-library: $DOTTY_LIB"
-  # echo "tasty-core: $TASTY_CORE"
-  # echo "scala-asm: $SCALA_ASM"
-  # echo "scala-lib: $SCALA_LIB"
-  # echo "sbt-intface: $SBT_INTF"
-
-  toolchain=""
-  toolchain+="$SCALA_LIB$PSEP"
-  toolchain+="$DOTTY_LIB$PSEP"
-  toolchain+="$SCALA_ASM$PSEP"
-  toolchain+="$SBT_INTF$PSEP"
-  toolchain+="$DOTTY_INTF$PSEP"
-  toolchain+="$DOTTY_COMP$PSEP"
-  toolchain+="$TASTY_CORE$PSEP"
-  toolchain+="$DOTTY_STAGING$PSEP"
-  toolchain+="$DOTTY_TASTY_INSPECTOR$PSEP"
-
-  # jine
-  toolchain+="$JLINE_READER$PSEP"
-  toolchain+="$JLINE_TERMINAL$PSEP"
-  toolchain+="$JLINE_TERMINAL_JNA$PSEP"
-  [ -n "${JNA-}" ] && toolchain+="$JNA$PSEP"
+  toolchain="$(load_classpath "scala" "$PSEP")"
 
   if [ -n "${jvm_cp_args-}" ]; then
     jvm_cp_args="$toolchain$jvm_cp_args"
