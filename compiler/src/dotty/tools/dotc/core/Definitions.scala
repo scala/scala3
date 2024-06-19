@@ -1151,11 +1151,12 @@ class Definitions {
      *
      *  Pattern: `PolyFunction { def apply: $pt }`
      */
-    def unapply(ft: Type)(using Context): Option[PolyType] = ft.dealias match
-      case RefinedType(parent, nme.apply, pt: PolyType)
-      if parent.derivesFrom(defn.PolyFunctionClass) =>
-        Some(pt)
-      case _ => None
+    def unapply(tpe: RefinedType)(using Context): Option[MethodOrPoly] =
+      tpe.refinedInfo match
+        case mt: MethodOrPoly
+        if tpe.refinedName == nme.apply && tpe.parent.derivesFrom(defn.PolyFunctionClass) =>
+          Some(mt)
+        case _ => None
   }
 
   object ErasedFunctionOf {
