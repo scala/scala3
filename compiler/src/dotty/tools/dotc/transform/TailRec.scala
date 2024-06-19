@@ -431,7 +431,10 @@ class TailRec extends MiniPhase {
 
         case tree: ValDef =>
           // This could contain a return statement in a code block, so we do have to go into it.
-          noTailTransform(tree)
+          cpy.ValDef(tree)(
+            tree.name,
+            noTailTransform(tree.rhs)
+          )
 
         case tree: DefDef =>
           if (isMandatory)
