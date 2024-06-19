@@ -2535,36 +2535,28 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   /** If some (&-operand of) `tp` is a supertype of `sub` replace it with `NoType`.
    */
   private def dropIfSuper(tp: Type, sub: Type): Type =
-
-    def isSuperOf(sub: Type): Boolean = sub match
-      case AndType(sub1, sub2) => isSuperOf(sub1) || isSuperOf(sub2)
-      case sub: TypeVar if sub.isInstantiated => isSuperOf(sub.instanceOpt)
-      case _ => isSubTypeWhenFrozen(sub, tp)
-
+    // We need to be careful to check branches of AndTypes and OrTypes in correct order,
+    // see discussion in issue #20516.
     tp match
       case tp @ AndType(tp1, tp2) =>
         recombine(dropIfSuper(tp1, sub), dropIfSuper(tp2, sub), tp)
       case tp: TypeVar if tp.isInstantiated =>
         dropIfSuper(tp.instanceOpt, sub)
       case _ =>
-        if isSuperOf(sub) then NoType else tp
+        if isSubTypeWhenFrozen(sub, tp) then NoType else tp
   end dropIfSuper
 
   /** If some (|-operand of) `tp` is a subtype of `sup` replace it with `NoType`. */
   private def dropIfSub(tp: Type, sup: Type, canConstrain: Boolean): Type =
-
-    def isSubOf(sup: Type): Boolean = sup match
-      case OrType(sup1, sup2) => isSubOf(sup1) || isSubOf(sup2)
-      case sup: TypeVar if sup.isInstantiated => isSubOf(sup.instanceOpt)
-      case _ => isSubType(tp, sup, whenFrozen = !canConstrain)
-
+    // We need to be careful to check branches of AndTypes and OrTypes in correct order,
+    // see discussion in issue #20516.
     tp match
       case tp @ OrType(tp1, tp2) =>
         recombine(dropIfSub(tp1, sup, canConstrain), dropIfSub(tp2, sup, canConstrain), tp)
       case tp: TypeVar if tp.isInstantiated =>
         dropIfSub(tp.instanceOpt, sup, canConstrain)
       case _ =>
-        if isSubOf(sup) then NoType else tp
+        if isSubType(tp, sup, whenFrozen = !canConstrain) then NoType else tp
   end dropIfSub
 
   /** There's a window of vulnerability between ElimByName and Erasure where some
