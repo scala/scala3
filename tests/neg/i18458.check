@@ -1,0 +1,4 @@
+-- Error: tests/neg/i18458.scala:1:4 -----------------------------------------------------------------------------------
+1 |def foo( // error
+  |    ^
+  |    Platform restriction: a parameter list's length cannot exceed 254 (Long and Double count as 2).
