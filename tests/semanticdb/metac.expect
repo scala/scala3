@@ -1450,12 +1450,18 @@ Schema => SemanticDB v4
 Uri => Extension.scala
 Text => empty
 Language => Scala
-Symbols => 26 entries
-Occurrences => 52 entries
+Symbols => 32 entries
+Occurrences => 66 entries
 Synthetics => 1 entries
 
 Symbols:
-ext/Extension$package. => final package object ext extends Object { self: ext.type => +6 decls }
+ext/DeckUsage. => final object DeckUsage extends Object { self: DeckUsage.type => +2 decls }
+ext/DeckUsage.deck. => val method deck Deck
+ext/Extension$package. => final package object ext extends Object { self: ext.type { opaque type Deck  } => +9 decls }
+ext/Extension$package.Deck# => opaque type Deck 
+ext/Extension$package.Deck. => final object Deck extends Object { self: Deck.type => +2 decls }
+ext/Extension$package.Deck.fooSize(). => method fooSize (param data: Deck): Int
+ext/Extension$package.Deck.fooSize().(data) => param data: Deck
 ext/Extension$package.`#*#`(). => method #*# (param s: String)(param i: Int): Tuple2[String, Int]
 ext/Extension$package.`#*#`().(i) => param i: Int
 ext/Extension$package.`#*#`().(s) => param s: String
@@ -1535,6 +1541,20 @@ Occurrences:
 [17:44..17:45): U -> ext/Functor#map().[U]
 [17:48..17:49): F -> ext/Functor#[F]
 [17:50..17:51): U -> ext/Functor#map().[U]
+[19:12..19:16): Deck <- ext/Extension$package.Deck#
+[19:19..19:23): Long -> scala/Long#
+[20:7..20:11): Deck <- ext/Extension$package.Deck.
+[21:13..21:17): data <- ext/Extension$package.Deck.fooSize().(data)
+[21:19..21:23): Deck -> ext/Extension$package.Deck#
+[22:8..22:15): fooSize <- ext/Extension$package.Deck.fooSize().
+[22:17..22:20): Int -> scala/Int#
+[22:23..22:26): ??? -> scala/Predef.`???`().
+[24:7..24:16): DeckUsage <- ext/DeckUsage.
+[25:6..25:10): deck <- ext/DeckUsage.deck.
+[25:12..25:16): Deck -> ext/Extension$package.Deck#
+[25:19..25:22): ??? -> scala/Predef.`???`().
+[26:2..26:6): deck -> ext/DeckUsage.deck.
+[26:7..26:14): fooSize -> ext/Extension$package.Deck.fooSize().
 
 Synthetics:
 [14:46..14:61):summon[Read[T]] => *(x$2)

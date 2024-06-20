@@ -355,3 +355,15 @@ class HoverTypeSuite extends BaseHoverSuite:
       """|val ddd: Int
          |""".stripMargin.hover,
     )
+
+  @Test def `infix-extension` =
+    check(
+      """|class MyIntOut(val value: Int)
+         |object MyIntOut:
+         |  extension (i: MyIntOut) def uneven = i.value % 2 == 1
+         |
+         |val a = MyIntOut(1).un@@even
+         |""".stripMargin,
+      """|extension (i: MyIntOut) def uneven: Boolean
+         |""".stripMargin.hover,
+    )
