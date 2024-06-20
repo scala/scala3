@@ -30,4 +30,16 @@ object Test extends App {
   println("====")
   println(valueOf[TextBlocks.Octal.type])
   println("====")
+  println(hexdump(valueOf[TextBlocks.Octal.type]))
+  println("====")
+  println(hexdump(valueOf[TextBlocks.Zero.type].toString))
+  println("====")
+  println(hexdump(valueOf[TextBlocks.Magic.type].toString))
+  println("====")
+  println(hexdump(valueOf[TextBlocks.Maxie.type].toString))
+  println("====")
 }
+
+def hexdump(s: String) = s.getBytes(io.Codec.UTF8.charSet) // java.nio.charset.StandardCharsets.UTF_8
+                          .map(b => f"${b & 0xff}%02x")
+                          .mkString
