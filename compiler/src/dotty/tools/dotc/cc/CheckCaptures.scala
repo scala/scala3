@@ -630,7 +630,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     private def toDepFun(args: List[Type], resultType: Type, isContextual: Boolean)(using Context): Type =
       MethodType.companion(isContextual = isContextual)(args, resultType)
-        .toFunctionType(isJava = false, alwaysDependent = true)
+        .toFunctionType(alwaysDependent = true)
 
     /** Turn `expected` into a dependent function when `actual` is dependent. */
     private def alignDependentFunction(expected: Type, actual: Type)(using Context): Type =
@@ -774,7 +774,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               adaptFun(actual, rinfo.paramInfos, rinfo.resType, expected, covariant, insertBox,
                 (aargs1, ares1) =>
                   rinfo.derivedLambdaType(paramInfos = aargs1, resType = ares1)
-                    .toFunctionType(isJava = false, alwaysDependent = true))
+                    .toFunctionType(alwaysDependent = true))
             case actual: MethodType =>
               adaptFun(actual, actual.paramInfos, actual.resType, expected, covariant, insertBox,
                 (aargs1, ares1) =>

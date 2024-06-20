@@ -324,7 +324,7 @@ abstract class Recheck extends Phase, SymTransformer:
 
     def recheckClosure(tree: Closure, pt: Type)(using Context): Type =
       if tree.tpt.isEmpty then
-        tree.meth.tpe.widen.toFunctionType(tree.meth.symbol.is(JavaDefined))
+        tree.meth.tpe.widen.toFunctionType(isJava = tree.meth.symbol.is(JavaDefined))
       else
         recheck(tree.tpt)
 

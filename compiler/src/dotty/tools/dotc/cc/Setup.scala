@@ -40,7 +40,7 @@ extends tpd.TreeTraverser:
     MethodType.companion(
         isContextual = defn.isContextFunctionClass(tycon.classSymbol),
       )(argTypes, resType)
-      .toFunctionType(isJava = false, alwaysDependent = true)
+      .toFunctionType(alwaysDependent = true)
 
   /** If `tp` is an unboxed capturing type or a function returning an unboxed capturing type,
    *  convert it to be boxed.
@@ -57,7 +57,7 @@ extends tpd.TreeTraverser:
       case tp1 @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionType(tp1) =>
         val boxedRinfo = recur(rinfo)
         if boxedRinfo eq rinfo then tp
-        else boxedRinfo.toFunctionType(isJava = false, alwaysDependent = true)
+        else boxedRinfo.toFunctionType(alwaysDependent = true)
       case tp1: MethodOrPoly =>
         val res = tp1.resType
         val boxedRes = recur(res)
@@ -233,7 +233,7 @@ extends tpd.TreeTraverser:
             tp.derivedAppliedType(tycon1, args.mapConserve(arg => this(arg)))
         case tp @ RefinedType(core, rname, rinfo: MethodType) if defn.isFunctionType(tp) =>
           val rinfo1 = apply(rinfo)
-          if rinfo1 ne rinfo then rinfo1.toFunctionType(isJava = false, alwaysDependent = true)
+          if rinfo1 ne rinfo then rinfo1.toFunctionType(alwaysDependent = true)
           else tp
         case tp: MethodType =>
           tp.derivedLambdaType(
