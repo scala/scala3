@@ -65,7 +65,7 @@ type ToolArgs = Map[ToolName, List[String]]
  */
 def toolArgsFor(files: List[JPath], charset: Charset = UTF_8): ToolArgs =
   files.foldLeft(Map.empty[ToolName, List[String]]) { (res, path) =>
-    val toolargs = toolArgsParse(resource(Files.lines(path, charset))(_.limit(10).toScala(List)))
+    val toolargs = toolArgsParse(resource(Files.lines(path, charset))(_.limit(10).toScala(List)), Some(path.toString))
     toolargs.foldLeft(res) {
       case (acc, (tool, args)) =>
         val name = ToolName.named(tool)
@@ -74,31 +74,36 @@ def toolArgsFor(files: List[JPath], charset: Charset = UTF_8): ToolArgs =
     }
   }
 
-def toolArgsFor(tool: ToolName)(lines: List[String]): List[String] =
-  toolArgsParse(lines).collectFirst { case (name, args) if tool eq ToolName.named(name) => CommandLineParser.tokenize(args) }.getOrElse(Nil)
+def toolArgsFor(tool: ToolName, filename: Option[String])(lines: List[String]): List[String] =
+  toolArgsParse(lines, filename).collectFirst { case (name, args) if tool eq ToolName.named(name) => CommandLineParser.tokenize(args) }.getOrElse(Nil)
 
-// scalac: arg1 arg2, with alternative opening, optional space, alt names, text that is not */ up to end.
+// scalajs: arg1 arg2, with alternative opening, optional space, alt names, text that is not */ up to end.
 // groups are (name, args)
+// note: ideally we would replace everything that requires this to use directive syntax, however scalajs: --skip has no directive equivalent yet.
 private val toolArg = raw"(?://|/\*| \*) ?(?i:(${ToolName.values.mkString("|")})):((?:[^*]|\*(?!/))*)".r.unanchored
 private val directiveOptionsArg = raw"//> using options (.*)".r.unanchored
 
 // Inspect the lines for compiler options of the form
-// `// scalac: args`, `/* scalac: args`, ` * scalac: args`.
+// `//> using options args`, `// scalajs: args`, `/* scalajs: args`, ` * scalajs: args` etc.
 // If args string ends in close comment, stop at the `*` `/`.
 // Returns all the matches by the regex.
-def toolArgsParse(lines: List[String]): List[(String,String)] =
-  lines.flatMap { case toolArg(name, args) => List((name, args)) case _ => Nil } ++
+def toolArgsParse(lines: List[String], filename: Option[String]): List[(String,String)] =
+  lines.flatMap {
+    case toolArg("scalac", _) => sys.error(s"`// scalac: args` not supported. Please use `//> using options args`${filename.fold("")(f => s" in file $f")}")
+    case toolArg(name, args) => List((name, args))
+    case _ => Nil
+  } ++
   lines.flatMap { case directiveOptionsArg(args) => List(("scalac", args)) case _ => Nil }
 
 import org.junit.Test
 import org.junit.Assert._
 
 class ToolArgsTest:
-  @Test def `missing toolarg is absent`: Unit = assertEquals(Nil, toolArgsParse(List("")))
-  @Test def `toolarg is present`: Unit = assertEquals(("test", " -hey") :: Nil, toolArgsParse("// test: -hey" :: Nil))
-  @Test def `tool is present`: Unit = assertEquals("-hey" :: Nil, toolArgsFor(ToolName.Test)("// test: -hey" :: Nil))
-  @Test def `missing tool is absent`: Unit = assertEquals(Nil, toolArgsFor(ToolName.Javac)("// test: -hey" :: Nil))
+  @Test def `missing toolarg is absent`: Unit = assertEquals(Nil, toolArgsParse(List(""), None))
+  @Test def `toolarg is present`: Unit = assertEquals(("test", " -hey") :: Nil, toolArgsParse("// test: -hey" :: Nil, None))
+  @Test def `tool is present`: Unit = assertEquals("-hey" :: Nil, toolArgsFor(ToolName.Test, None)("// test: -hey" :: Nil))
+  @Test def `missing tool is absent`: Unit = assertEquals(Nil, toolArgsFor(ToolName.Javac, None)("// test: -hey" :: Nil))
   @Test def `multitool is present`: Unit =
-    assertEquals("-hey" :: Nil, toolArgsFor(ToolName.Test)("// test: -hey" :: "// javac: -d /tmp" :: Nil))
-    assertEquals("-d" :: "/tmp" :: Nil, toolArgsFor(ToolName.Javac)("// test: -hey" :: "// javac: -d /tmp" :: Nil))
+    assertEquals("-hey" :: Nil, toolArgsFor(ToolName.Test, None)("// test: -hey" :: "// javac: -d /tmp" :: Nil))
+    assertEquals("-d" :: "/tmp" :: Nil, toolArgsFor(ToolName.Javac, None)("// test: -hey" :: "// javac: -d /tmp" :: Nil))
 end ToolArgsTest
