@@ -537,8 +537,7 @@ object SpaceEngine {
           // force type inference to infer a narrower type: could be singleton
           // see tests/patmat/i4227.scala
           mt.paramInfos(0) <:< scrutineeTp
-          instantiateSelected(mt, tvars)
-          isFullyDefined(mt, ForceDegree.all)
+          maximizeType(mt.paramInfos(0), Spans.NoSpan)
           mt
     }
 
@@ -552,7 +551,7 @@ object SpaceEngine {
     // Case unapplySeq:
     // 1. return the type `List[T]` where `T` is the element type of the unapplySeq return type `Seq[T]`
 
-    val resTp = ctx.typeAssigner.safeSubstMethodParams(mt, scrutineeTp :: Nil).finalResultType
+    val resTp = wildApprox(ctx.typeAssigner.safeSubstMethodParams(mt, scrutineeTp :: Nil).finalResultType)
 
     val sig =
       if (resTp.isRef(defn.BooleanClass))
@@ -573,14 +572,14 @@ object SpaceEngine {
           if (arity > 0)
             productSelectorTypes(resTp, unappSym.srcPos)
           else {
-            val getTp = resTp.select(nme.get).finalResultType.widenTermRefExpr
+            val getTp = extractorMemberType(resTp, nme.get, unappSym.srcPos)
             if (argLen == 1) getTp :: Nil
             else productSelectorTypes(getTp, unappSym.srcPos)
           }
         }
       }
 
-    sig.map(_.annotatedToRepeated)
+    sig.map { case tp: WildcardType => tp.bounds.hi case tp => tp }
   }
 
   /** Whether the extractor covers the given type */
@@ -625,7 +624,21 @@ object SpaceEngine {
         // For instance, from i15029, `decompose((X | Y).Field[T]) = [X.Field[T], Y.Field[T]]`.
         parts.map(tp.derivedAppliedType(_, targs))
 
-      case tp if tp.isDecomposableToChildren =>
+      case tpOriginal if tpOriginal.isDecomposableToChildren =>
+        // isDecomposableToChildren uses .classSymbol.is(Sealed)
+        // But that classSymbol could be from an AppliedType
+        // where the type constructor is a non-class type
+        // E.g. t11620 where `?1.AA[X]` returns as "sealed"
+        // but using that we're not going to infer A1[X] and A2[X]
+        // but end up with A1[<?>] and A2[<?>].
+        // So we widen (like AppliedType superType does) away
+        // non-class type constructors.
+        def getAppliedClass(tp: Type): Type = tp match
+          case tp @ AppliedType(_: HKTypeLambda, _)                        => tp
+          case tp @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass => tp
+          case tp @ AppliedType(tycon: TypeProxy, _)                       => getAppliedClass(tycon.superType.applyIfParameterized(tp.args))
+          case tp                                                          => tp
+        val tp = getAppliedClass(tpOriginal)
         def getChildren(sym: Symbol): List[Symbol] =
           sym.children.flatMap { child =>
             if child eq sym then List(sym) // i3145: sealed trait Baz, val x = new Baz {}, Baz.children returns Baz...
