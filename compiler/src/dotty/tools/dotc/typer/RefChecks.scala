@@ -1252,11 +1252,13 @@ object RefChecks {
   end checkImplicitNotFoundAnnotation
 
   def checkAnyRefMethodCall(tree: Tree)(using Context): Unit =
+    extension (c: Context) def enclosingClass: Symbol =
+      c.outersIterator.find(_.isClassDefContext).map(_.owner).getOrElse(NoSymbol)
     if tree.symbol.exists && defn.topClasses.contains(tree.symbol.owner) then
       tree.tpe match
-        case tp: NamedType if tp.prefix.typeSymbol != ctx.owner.enclosingClass =>
+        case tp: NamedType if tp.prefix.typeSymbol != ctx.enclosingClass =>
           report.warning(UnqualifiedCallToAnyRefMethod(tree, tree.symbol), tree)
-        case _ => ()
+        case _ =>
 }
 import RefChecks.*
 
