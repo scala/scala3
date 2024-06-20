@@ -1882,17 +1882,14 @@ class Definitions {
    */
   object ContextFunctionType:
     def unapply(tp: Type)(using Context): Option[(List[Type], Type, List[Boolean])] =
-      if ctx.erasedTypes then
-        atPhase(erasurePhase)(unapply(tp))
-      else
-        asContextFunctionType(tp) match
-          case ErasedFunctionOf(mt) =>
-            Some((mt.paramInfos, mt.resType, mt.erasedParams))
-          case tp1 if tp1.exists =>
-            val args = tp1.functionArgInfos
-            val erasedParams = erasedFunctionParameters(tp1)
-            Some((args.init, args.last, erasedParams))
-          case _ => None
+      asContextFunctionType(tp) match
+        case PolyFunctionOf(mt: MethodType) =>
+          Some((mt.paramInfos, mt.resType, mt.erasedParams))
+        case tp1 if tp1.exists =>
+          val args = tp1.functionArgInfos
+          val erasedParams = List.fill(functionArity(tp1)) { false }
+          Some((args.init, args.last, erasedParams))
+        case _ => None
 
   /* Returns a list of erased booleans marking whether parameters are erased, for a function type. */
   def erasedFunctionParameters(tp: Type)(using Context): List[Boolean] = tp.dealias match {
