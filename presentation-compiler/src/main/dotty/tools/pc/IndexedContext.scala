@@ -5,6 +5,7 @@ import scala.util.control.NonFatal
 
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags.*
+import dotty.tools.dotc.core.NameOps.moduleClassName
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
@@ -170,7 +171,11 @@ object IndexedContext:
       initial ++ fromPackageObjects
 
     def fromImport(site: Type, name: Name)(using Context): List[Symbol] =
-      List(site.member(name.toTypeName), site.member(name.toTermName))
+      List(
+        site.member(name.toTypeName),
+        site.member(name.toTermName),
+        site.member(name.moduleClassName),
+      )
         .flatMap(_.alternatives)
         .map(_.symbol)
 
