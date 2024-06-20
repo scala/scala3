@@ -1731,7 +1731,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private def fixRecs(anchor: SingletonType, tp: Type): Type = {
     def fix(tp: Type): Type = tp.stripTypeVar match {
       case tp: RecType => fix(tp.parent).substRecThis(tp, anchor)
-      case tp @ RefinedType(parent, rname, rinfo) => tp.derivedRefinedType(fix(parent), rname, rinfo)
+      case tp: RefinedType => tp.derivedRefinedType(parent = fix(tp.parent))
       case tp: TypeParamRef => fixOrElse(bounds(tp).hi, tp)
       case tp: TypeProxy => fixOrElse(tp.superType, tp)
       case tp: AndType => tp.derivedAndType(fix(tp.tp1), fix(tp.tp2))

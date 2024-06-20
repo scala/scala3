@@ -1328,7 +1328,7 @@ object Types {
       case tp: AndType =>
         tp.derivedAndType(tp.tp1.widenUnionWithoutNull, tp.tp2.widenUnionWithoutNull)
       case tp: RefinedType =>
-        tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
+        tp.derivedRefinedType(parent = tp.parent.widenUnion)
       case tp: RecType =>
         tp.rebind(tp.parent.widenUnion)
       case tp: HKTypeLambda =>
@@ -3152,7 +3152,9 @@ object Types {
 
     def checkInst(using Context): this.type = this // debug hook
 
-    def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(using Context): Type =
+    final def derivedRefinedType
+        (parent: Type = this.parent, refinedName: Name = this.refinedName, refinedInfo: Type = this.refinedInfo)
+        (using Context): Type =
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo)) this
       else RefinedType(parent, refinedName, refinedInfo)
 
@@ -4056,7 +4058,7 @@ object Types {
         case tp @ AppliedType(tycon, args) if defn.isFunctionNType(tp) =>
           wrapConvertible(tp.derivedAppliedType(tycon, args.init :+ addInto(args.last)))
         case tp @ defn.RefinedFunctionOf(rinfo) =>
-          wrapConvertible(tp.derivedRefinedType(tp.parent, tp.refinedName, addInto(rinfo)))
+          wrapConvertible(tp.derivedRefinedType(refinedInfo = addInto(rinfo)))
         case tp: MethodOrPoly =>
           tp.derivedLambdaType(resType = addInto(tp.resType))
         case ExprType(resType) =>
