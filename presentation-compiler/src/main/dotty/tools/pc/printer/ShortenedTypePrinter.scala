@@ -234,18 +234,25 @@ class ShortenedTypePrinter(
     end match
   end hoverSymbol
 
+  def isImportedByDefault(sym: Symbol): Boolean =
+    import dotty.tools.dotc.core.Symbols.defn
+    lazy val effectiveOwner = sym.effectiveOwner
+    sym.isType && (effectiveOwner == defn.ScalaPackageClass || effectiveOwner == defn.ScalaPredefModuleClass)
+
   def completionSymbol(sym: Symbol): String =
     val info = sym.info.widenTermRefExpr
     val typeSymbol = info.typeSymbol
 
-    if sym.is(Flags.Package) || sym.isClass then " " + fullNameString(sym.effectiveOwner)
-    else if sym.is(Flags.Module) || typeSymbol.is(Flags.Module) then
+    lazy val typeEffectiveOwner =
       if typeSymbol != NoSymbol then " " + fullNameString(typeSymbol.effectiveOwner)
       else " " + fullNameString(sym.effectiveOwner)
+
+    if isImportedByDefault(sym) then typeEffectiveOwner
+    else if sym.is(Flags.Package) || sym.isClass then " " + fullNameString(sym.effectiveOwner)
+    else if sym.is(Flags.Module) || typeSymbol.is(Flags.Module) then typeEffectiveOwner
     else if sym.is(Flags.Method) then
       defaultMethodSignature(sym, info, onlyMethodParams = true)
-    else if sym.isType
-    then
+    else if sym.isType then
       info match
         case TypeAlias(t) => " = " + tpe(t.resultType)
         case t => tpe(t.resultType)
