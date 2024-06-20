@@ -732,7 +732,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         try
           val eres = expected.dealias.stripCapturing match
-            case RefinedType(_, _, rinfo: PolyType) => rinfo.resType
+            case defn.PolyFunctionOf(rinfo: PolyType) => rinfo.resType
             case expected: PolyType => expected.resType
             case _ => WildcardType
 
