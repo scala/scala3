@@ -66,10 +66,12 @@ Matching filters for @nowarn or -Wconf:
 49 |def t7c = f             // warning (deprecation)
    |          ^
    |          method f is deprecated
--- Unchecked Warning: tests/neg/nowarn.scala:55:7 ----------------------------------------------------------------------
+-- [E092] Pattern Match Unchecked Warning: tests/neg/nowarn.scala:55:7 -------------------------------------------------
 55 |  case _: List[Int] => 0 // warning (patmat, unchecked)
    |       ^
    |the type test for List[Int] cannot be checked at runtime because its type arguments can't be determined from Any
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg/nowarn.scala:33:1 ----------------------------------------------------------------------------------
 33 |@nowarn("id=1") def t4d = try 1 // error and warning (unused nowarn, wrong id)
    |^^^^^^^^^^^^^^^

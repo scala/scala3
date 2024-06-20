@@ -1,5 +1,3 @@
-//> using options -Xfatal-warnings
-
 object Test {
   sealed trait Foo[A, B]
   final case class Bar[X](x: X) extends Foo[X, X]
@@ -13,19 +11,17 @@ object Test {
   }
 
   def err1[A, B](value: Foo[A, B], a: A => Int): B = value match {
-    case b: Bar[A] => // spurious // error
+    case b: Bar[A] => // spurious // warn
       b.x
   }
 
   def err2[A, B](value: Foo[A, B], a: A => Int): B = value match {
-    case b: Bar[B] => // spurious // error
+    case b: Bar[B] => // spurious // warn
       b.x
-    case _ => ??? // avoid fatal inexhaustivity warnings suppressing the uncheckable warning
   }
 
   def fail[A, B](value: Foo[A, B], a: A => Int): B = value match {
-    case b: Bar[Int] => // error
+    case b: Bar[Int] => // warn
       b.x
-    case _ => ??? // avoid fatal inexhaustivity warnings suppressing the uncheckable warning
   }
 }

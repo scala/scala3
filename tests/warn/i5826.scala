@@ -1,14 +1,11 @@
-//> using options -Xfatal-warnings
-
 class Foo {
   def test[A]: (List[Int] | A) => Int = {
-    case ls: List[Int] => ls.head       // error, A = List[String]
+    case ls: List[Int] => ls.head       // warn: unchecked
     case _ => 0
   }
 
   def test2: List[Int] | List[String] => Int = {
-    case ls: List[Int] => ls.head       // error
-    case _ => 0
+    case ls: List[Int] => ls.head       // warn: unchecked
   }
 
   trait A[T]
@@ -16,18 +13,18 @@ class Foo {
 
   // suppose: class C extends A[Int] with B[String]
   def test3[X]: A[X] | B[X] => Int = {
-    case ls: A[X] => 4                 // error
+    case ls: A[X] => 4                 // warn
     case _ => 0
   }
 
   def test4[A](x: List[Int] | (A => Int)) = x match {
-    case ls: List[Int] => ls.head       // error, List extends Int => T
+    case ls: List[Int] => ls.head       // warn, List extends Int => T
     case _ => 0
   }
 
   final class C[T] extends A[T]
 
-  def test5[T](x: A[T] | B[T] | Option[T]): Boolean = x.isInstanceOf[C[String]] // error
+  def test5[T](x: A[T] | B[T] | Option[T]): Boolean = x.isInstanceOf[C[String]] // warn
 
   def test6[T](x: A[T] | B[T] | Option[T]): Boolean = x.isInstanceOf[C[T]]
 
