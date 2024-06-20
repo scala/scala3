@@ -783,7 +783,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               adaptTypeFun(actual, rinfo.resType, expected, covariant, insertBox,
                 ares1 =>
                   val rinfo1 = rinfo.derivedLambdaType(rinfo.paramNames, rinfo.paramInfos, ares1)
-                  val actual1 = actual.derivedRefinedType(actual.parent, actual.refinedName, rinfo1)
+                  val actual1 = actual.derivedRefinedType(refinedInfo = rinfo1)
                   actual1
               )
             case _ =>
