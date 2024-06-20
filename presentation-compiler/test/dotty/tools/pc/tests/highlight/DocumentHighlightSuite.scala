@@ -758,8 +758,8 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
         |  }
         |}""".stripMargin
     )
-  
-  @Test def `for-comp-map` = 
+
+  @Test def `for-comp-map` =
     check(
       """|object Main {
          |  val x = List(1).<<m@@ap>>(_ + 1)
@@ -770,7 +770,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |""".stripMargin,
     )
 
-  @Test def `for-comp-map1` = 
+  @Test def `for-comp-map1` =
     check(
       """|object Main {
          |  val x = List(1).<<m@@ap>>(_ + 1)
@@ -782,7 +782,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |""".stripMargin,
     )
 
-  @Test def `for-comp-foreach` = 
+  @Test def `for-comp-foreach` =
     check(
       """|object Main {
          |  val x = List(1).<<for@@each>>(_ => ())
@@ -793,7 +793,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |""".stripMargin,
     )
 
-  @Test def `for-comp-withFilter` = 
+  @Test def `for-comp-withFilter` =
     check(
       """|object Main {
          |  val x = List(1).<<with@@Filter>>(_ => true)
@@ -805,7 +805,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |""".stripMargin,
     )
 
-  @Test def `for-comp-withFilter1` = 
+  @Test def `for-comp-withFilter1` =
     check(
       """|object Main {
          |  val x = List(1).withFilter(_ => true).<<m@@ap>>(_ + 1)
@@ -817,7 +817,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |""".stripMargin,
     )
 
-  @Test def `for-comp-flatMap1` = 
+  @Test def `for-comp-flatMap1` =
     check(
       """|object Main {
          |  val x = List(1).<<flat@@Map>>(_ => List(1))
@@ -830,7 +830,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |""".stripMargin,
     )
 
-  @Test def `for-comp-flatMap2` = 
+  @Test def `for-comp-flatMap2` =
     check(
       """|object Main {
          |  val x = List(1).withFilter(_ => true).<<flat@@Map>>(_ => List(1))
@@ -1100,5 +1100,46 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |  case MyNone
          |
          |val alpha = MyOption.<<MySome>>(1)
+         |""".stripMargin,
+    )
+
+  @Test def `type-params-in-enum` =
+    check(
+      """|enum MyOption[+<<A@@A>>]:
+         |  case MySome(value: <<AA>>)
+         |  case MyNone
+         |""".stripMargin,
+    )
+
+  @Test def `type-params-in-enum2` =
+    check(
+      """|enum MyOption[+<<AA>>]:
+         |  case MySome(value: <<A@@A>>)
+         |  case MyNone
+         |""".stripMargin,
+    )
+
+  @Test def `type-params-in-enum3` =
+    check(
+      """|enum MyOption[<<AA>>](v: <<AA>>):
+         |  def get: <<A@@A>> = ???
+         |  case MySome[AA](value: AA) extends MyOption[Int](1)
+         |""".stripMargin,
+    )
+
+  @Test def `type-params-in-enum4` =
+    check(
+      """|enum MyOption[+<<AA>>]:
+         |  def get: <<A@@A>> = ???
+         |  case MySome(value: <<AA>>)
+         |  case MyNone
+         |""".stripMargin,
+    )
+
+  @Test def `type-params-in-enum5` =
+    check(
+      """|enum MyOption[AA]:
+         |  def get: AA = ???
+         |  case MySome[<<AA>>](value: <<A@@A>>) extends MyOption[Int]
          |""".stripMargin,
     )
