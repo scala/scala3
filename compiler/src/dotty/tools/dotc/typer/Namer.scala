@@ -1885,7 +1885,7 @@ class Namer { typer: Typer =>
       val originalTp = defaultParamType
       val approxTp = wildApprox(originalTp)
       approxTp.stripPoly match
-        case atp @ defn.ContextFunctionType(_, resType, _)
+        case atp @ defn.ContextFunctionType(_, resType)
         if !defn.isNonRefinedFunction(atp) // in this case `resType` is lying, gives us only the non-dependent upper bound
             || resType.existsPart(_.isInstanceOf[WildcardType], StopAt.Static, forceLazy = false) =>
           originalTp
