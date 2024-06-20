@@ -118,6 +118,11 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
 
     /*
      *  Emitting try-catch is easy, emitting try-catch-finally not quite so.
+     *
+     *  For a try-catch, the only thing we need to care about is to stash the stack away
+     *  in local variables and load them back in afterwards, in case the incoming stack
+     *  is not empty.
+     *
      *  A finally-block (which always has type Unit, thus leaving the operand stack unchanged)
      *  affects control-transfer from protected regions, as follows:
      *
@@ -190,7 +195,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
           }
         }
 
-      // ------ (0) locals used later ------
+      // ------ locals used later ------
 
       /*
        * `postHandlers` is a program point denoting:
@@ -202,6 +207,13 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
        * where "all exception handlers" includes those derived from catch-clauses as well as from finally-blocks.
        */
       val postHandlers = new asm.Label
+
+      // stack stash
+      val needStackStash = !stack.isEmpty && !caseHandlers.isEmpty
+      val acquiredStack = if needStackStash then stack.acquireFullStack() else null
+      val stashLocals =
+        if acquiredStack == null then null
+        else acquiredStack.uncheckedNN.filter(_ != UNIT).map(btpe => locals.makeTempLocal(btpe))
 
       val hasFinally   = (finalizer != tpd.EmptyTree)
 
@@ -221,6 +233,17 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
        * AND hasFinally, a cleanup is needed.
        */
       val finCleanup   = if (hasFinally) new asm.Label else null
+
+      /* ------ (0) Stash the stack into local variables, if necessary.
+       *            From top of the stack down to the bottom.
+       * ------
+       */
+
+      if stashLocals != null then
+        val stashLocalsNN = stashLocals.uncheckedNN // why is this necessary?
+        for i <- (stashLocalsNN.length - 1) to 0 by -1 do
+          val local = stashLocalsNN(i)
+          bc.store(local.idx, local.tk)
 
       /* ------ (1) try-block, protected by:
        *                       (1.a) the EHs due to case-clauses,   emitted in (2),
@@ -366,6 +389,39 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
       if (hasFinally) {
         emitFinalizer(finalizer, tmp, isDuplicate = false) // the only invocation of emitFinalizer with `isDuplicate == false`
       }
+
+      /* ------ (5) Unstash the stack, if it was stashed before.
+       *            From bottom of the stack to the top.
+       *            If there is a non-UNIT result, we need to temporarily store
+       *            that one in a local variable while we unstash.
+       * ------
+       */
+
+      if stashLocals != null then
+        val stashLocalsNN = stashLocals.uncheckedNN // why is this necessary?
+
+        val resultLoc =
+          if kind == UNIT then null
+          else if tmp != null then locals(tmp) // reuse the same local
+          else locals.makeTempLocal(kind)
+        if resultLoc != null then
+          bc.store(resultLoc.idx, kind)
+
+        for i <- 0 until stashLocalsNN.size do
+          val local = stashLocalsNN(i)
+          bc.load(local.idx, local.tk)
+          if local.tk.isRef then
+            bc.emit(asm.Opcodes.ACONST_NULL)
+            bc.store(local.idx, local.tk)
+
+        stack.restoreFullStack(acquiredStack.nn)
+
+        if resultLoc != null then
+          bc.load(resultLoc.idx, kind)
+          if kind.isRef then
+            bc.emit(asm.Opcodes.ACONST_NULL)
+            bc.store(resultLoc.idx, kind)
+      end if // stashLocals != null
 
       kind
     } // end of genLoadTry()
