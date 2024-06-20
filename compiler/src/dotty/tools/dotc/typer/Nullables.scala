@@ -507,7 +507,7 @@ object Nullables:
   def postProcessByNameArgs(fn: TermRef, app: Tree)(using Context): Tree =
     fn.widen match
       case mt: MethodType
-      if mt.paramInfos.exists(_.isInstanceOf[ExprType]) && !fn.symbol.is(Inline) =>
+      if mt.isMethodWithByNameArgs && !fn.symbol.is(Inline) =>
         app match
           case Apply(fn, args) =>
             object dropNotNull extends TreeMap:
