@@ -1132,6 +1132,20 @@ class Definitions {
       case _ => None
   }
 
+  object RefinedFunctionOf {
+    /** Matches a refined `PolyFunction`/`FunctionN[...]`/`ContextFunctionN[...]`.
+     *  Extracts the method type type and apply info.
+     */
+    def unapply(tpe: RefinedType)(using Context): Option[MethodOrPoly] = {
+      tpe.refinedInfo match
+        case mt: MethodOrPoly
+        if tpe.refinedName == nme.apply
+        && (tpe.parent.derivesFrom(defn.PolyFunctionClass) || isFunctionNType(tpe.parent)) =>
+          Some(mt)
+        case _ => None
+    }
+  }
+
   object PolyFunctionOf {
     /** Matches a refined `PolyFunction` type and extracts the apply info.
      *
