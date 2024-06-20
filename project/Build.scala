@@ -1351,9 +1351,8 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   def presentationCompilerSettings(implicit mode: Mode) = {
-    val mtagsVersion = "1.3.1+63-1a8f4659-SNAPSHOT"
+    val mtagsVersion = "1.3.2"
     Seq(
-      resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
       libraryDependencies ++= Seq(
         "org.lz4" % "lz4-java" % "1.8.0",
         "io.get-coursier" % "interface" % "1.0.18",
