@@ -337,7 +337,7 @@ object CheckUnused:
    * - usage
    */
   private class UnusedData:
-    import collection.mutable.{Set => MutSet, Map => MutMap, Stack => MutStack}
+    import collection.mutable.{Set => MutSet, Map => MutMap, Stack => MutStack, ListBuffer => MutList}
     import UnusedData.*
 
     /** The current scope during the tree traversal */
@@ -346,7 +346,7 @@ object CheckUnused:
     var unusedAggregate: Option[UnusedResult] = None
 
     /* IMPORTS */
-    private val impInScope = MutStack(MutSet[tpd.Import]())
+    private val impInScope = MutStack(MutList[tpd.Import]())
     /**
      * We store the symbol along with their accessibility without import.
      * Accessibility to their definition in outer context/scope
@@ -449,7 +449,7 @@ object CheckUnused:
     def pushScope(newScopeType: ScopeType): Unit =
       // unused imports :
       currScopeType.push(newScopeType)
-      impInScope.push(MutSet())
+      impInScope.push(MutList())
       usedInScope.push(MutSet())
 
     def registerSetVar(sym: Symbol): Unit =
