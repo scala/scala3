@@ -64,7 +64,7 @@ object GenericSignatures {
       ps.foreach(boxedSig)
     }
 
-    def boxedSig(tp: Type): Unit = jsig(tp.widenDealias, primitiveOK = false)
+    def boxedSig(tp: Type): Unit = jsig(tp.widenDealias, unboxedVCs = false)
 
     /** The signature of the upper-bound of a type parameter.
      *
@@ -232,7 +232,7 @@ object GenericSignatures {
     }
 
     @noinline
-    def jsig(tp0: Type, toplevel: Boolean = false, primitiveOK: Boolean = true): Unit = {
+    def jsig(tp0: Type, toplevel: Boolean = false, unboxedVCs: Boolean = true): Unit = {
 
       val tp = tp0.dealias
       tp match {
@@ -241,7 +241,7 @@ object GenericSignatures {
           val erasedUnderlying = fullErasure(ref.underlying.bounds.hi)
           // don't emit type param name if the param is upper-bounded by a primitive type (including via a value class)
           if erasedUnderlying.isPrimitiveValueType then
-            jsig(erasedUnderlying, toplevel, primitiveOK)
+            jsig(erasedUnderlying, toplevel, unboxedVCs)
           else typeParamSig(ref.paramName.lastPart)
 
         case defn.ArrayOf(elemtp) =>
@@ -269,15 +269,14 @@ object GenericSignatures {
           else if (sym == defn.NullClass)
             builder.append("Lscala/runtime/Null$;")
           else if (sym.isPrimitiveValueClass)
-            if (!primitiveOK) jsig(defn.ObjectType)
+            if (!unboxedVCs) jsig(defn.ObjectType)
             else if (sym == defn.UnitClass) jsig(defn.BoxedUnitClass.typeRef)
             else builder.append(defn.typeTag(sym.info))
           else if (sym.isDerivedValueClass) {
-            val erasedUnderlying = fullErasure(tp)
-            if (erasedUnderlying.isPrimitiveValueType && !primitiveOK)
-              classSig(sym, pre, args)
-            else
-              jsig(erasedUnderlying, toplevel, primitiveOK)
+            if (unboxedVCs) {
+              val erasedUnderlying = fullErasure(tp)
+              jsig(erasedUnderlying, toplevel)
+            } else classSig(sym, pre, args)
           }
           else if (defn.isSyntheticFunctionClass(sym)) {
             val erasedSym = defn.functionTypeErasure(sym).typeSymbol
@@ -286,7 +285,7 @@ object GenericSignatures {
           else if sym.isClass then
             classSig(sym, pre, args)
           else
-            jsig(erasure(tp), toplevel, primitiveOK)
+            jsig(erasure(tp), toplevel, unboxedVCs)
 
         case ExprType(restpe) if toplevel =>
           builder.append("()")
@@ -339,7 +338,7 @@ object GenericSignatures {
           val (reprParents, _) = splitIntersection(parents)
           val repr =
             reprParents.find(_.typeSymbol.is(TypeParam)).getOrElse(reprParents.head)
-          jsig(repr, primitiveOK = primitiveOK)
+          jsig(repr, unboxedVCs = unboxedVCs)
 
         case ci: ClassInfo =>
           val tParams = tp.typeParams
@@ -347,15 +346,15 @@ object GenericSignatures {
           superSig(ci.typeSymbol, ci.parents)
 
         case AnnotatedType(atp, _) =>
-          jsig(atp, toplevel, primitiveOK)
+          jsig(atp, toplevel, unboxedVCs)
 
         case hktl: HKTypeLambda =>
-          jsig(hktl.finalResultType, toplevel, primitiveOK)
+          jsig(hktl.finalResultType, toplevel, unboxedVCs)
 
         case _ =>
           val etp = erasure(tp)
           if (etp eq tp) throw new UnknownSig
-          else jsig(etp, toplevel, primitiveOK)
+          else jsig(etp, toplevel, unboxedVCs)
       }
     }
     val throwsArgs = sym0.annotations flatMap ThrownException.unapply
