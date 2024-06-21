@@ -951,8 +951,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/linux-aarch64/target/sha256sum-aarch64-pc-linux.txt
-          asset_name: sha256sum.txt
+          asset_path: ./dist/linux-aarch64/target/sha256sum.txt
+          asset_name: sha256sum-aarch64-pc-linux.txt
           asset_content_type: text/plain
 
       - name: Upload SHA256 sum of the release artefacts to GitHub Release (mac x86-64)
