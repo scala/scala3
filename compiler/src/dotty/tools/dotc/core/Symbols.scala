@@ -846,7 +846,8 @@ object Symbols extends SymUtils {
   /** Map given symbols, subjecting their attributes to the mappings
    *  defined in the given TreeTypeMap `ttmap`.
    *  Cross symbol references are brought over from originals to copies.
-   *  Do not copy any symbols if all attributes of all symbols stay the same.
+   *  Do not copy any symbols if all attributes of all symbols stay the same
+   *  and mapAlways is false.
    */
   def mapSymbols(originals: List[Symbol], ttmap: TreeTypeMap, mapAlways: Boolean = false)(using Context): List[Symbol] =
     if (originals.forall(sym =>

@@ -186,7 +186,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             case cls: ClassSymbol
             if !defn.isFunctionClass(cls) && cls.is(CaptureChecked) =>
               cls.paramGetters.foldLeft(tp) { (core, getter) =>
-                if atPhase(thisPhase.next)(getter.termRef.isTracked)
+                if atPhase(thisPhase.next)(getter.hasTrackedParts)
                     && getter.isRefiningParamAccessor
                     && !getter.is(Tracked)
                 then
