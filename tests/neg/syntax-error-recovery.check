@@ -94,45 +94,45 @@
    |          Not found: bam
    |
    | longer explanation available when compiling with `-explain`
--- [E129] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:7:2 -------------------------------------------
+-- [E190] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:7:2 -------------------------------------------
 6 |        2
 7 |  }
   |         ^
-  |         A pure expression does nothing in statement position; you may be omitting necessary parentheses
+  |         Discarded non-Unit value of type Null. You may want to use `()`.
   |
   | longer explanation available when compiling with `-explain`
--- [E129] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:15:2 ------------------------------------------
+-- [E190] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:15:2 ------------------------------------------
 14 |        2
 15 |  println(baz) // error
    |         ^
-   |         A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |         Discarded non-Unit value of type Null. You may want to use `()`.
    |
    | longer explanation available when compiling with `-explain`
--- [E129] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:27:2 ------------------------------------------
+-- [E190] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:27:2 ------------------------------------------
 26 |      2
 27 |  println(bam) // error
    |       ^
-   |       A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |       Discarded non-Unit value of type Null. You may want to use `()`.
    |
    | longer explanation available when compiling with `-explain`
--- [E129] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:36:2 ------------------------------------------
+-- [E190] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:36:2 ------------------------------------------
 35 |        2
 36 |  }
    |         ^
-   |         A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |         Discarded non-Unit value of type Null. You may want to use `()`.
    |
    | longer explanation available when compiling with `-explain`
--- [E129] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:44:2 ------------------------------------------
+-- [E190] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:44:2 ------------------------------------------
 43 |        2
 44 |  println(baz) // error
    |         ^
-   |         A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |         Discarded non-Unit value of type Null. You may want to use `()`.
    |
    | longer explanation available when compiling with `-explain`
--- [E129] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:56:2 ------------------------------------------
+-- [E190] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:56:2 ------------------------------------------
 55 |      2
 56 |  println(bam) // error
    |       ^
-   |       A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |       Discarded non-Unit value of type Null. You may want to use `()`.
    |
    | longer explanation available when compiling with `-explain`
