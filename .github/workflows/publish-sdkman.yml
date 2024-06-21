@@ -36,13 +36,13 @@ jobs:
       matrix:
         include:
           - platform: LINUX_64
-            archive : 'scala3-${{ inputs.version }}-x86_64-pc-linux.tar.gz'
+            archive : 'scala3-${{ inputs.version }}-x86_64-pc-linux.zip'
           - platform: LINUX_ARM64
-            archive : 'scala3-${{ inputs.version }}-aarch64-pc-linux.tar.gz'
+            archive : 'scala3-${{ inputs.version }}-aarch64-pc-linux.zip'
           - platform: MAC_OSX
-            archive : 'scala3-${{ inputs.version }}-x86_64-apple-darwin.tar.gz'
+            archive : 'scala3-${{ inputs.version }}-x86_64-apple-darwin.zip'
           - platform: MAC_ARM64
-            archive : 'scala3-${{ inputs.version }}-aarch64-apple-darwin.tar.gz'
+            archive : 'scala3-${{ inputs.version }}-aarch64-apple-darwin.zip'
           - platform: WINDOWS_64
             archive : 'scala3-${{ inputs.version }}-x86_64-pc-win32.zip'
     steps:
