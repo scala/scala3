@@ -501,6 +501,9 @@ extension (sym: Symbol)
       && !param.hasAnnotation(defn.UntrackedCapturesAnnot)
     }
 
+  def hasTrackedParts(using Context): Boolean =
+    !CaptureSet.deepCaptureSet(sym.info).isAlwaysEmpty
+
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */
   def isBoxed(using Context): Boolean = tp.annot match

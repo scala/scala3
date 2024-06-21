@@ -1090,7 +1090,7 @@ object CaptureSet:
     recur(tp)
       //.showing(i"capture set of $tp = $result", captDebug)
 
-  private def deepCaptureSet(tp: Type)(using Context): CaptureSet =
+  def deepCaptureSet(tp: Type)(using Context): CaptureSet =
     val collect = new TypeAccumulator[CaptureSet]:
       def apply(cs: CaptureSet, t: Type) = t.dealias match
         case t @ CapturingType(p, cs1) =>
