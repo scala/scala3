@@ -1,0 +1,44 @@
+-- [E190] Potential Issue Error: tests/neg/i18722.scala:3:15 -----------------------------------------------------------
+3 |def f1: Unit = null // error
+  |               ^^^^
+  |               Discarded non-Unit value of type Null. You may want to use `()`.
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | As this expression is not of type Unit, it is desugared into `{ null; () }`.
+  | Here the `null` expression is a pure statement that can be discarded.
+  | Therefore the expression is effectively equivalent to `()`.
+   ---------------------------------------------------------------------------------------------------------------------
+-- [E190] Potential Issue Error: tests/neg/i18722.scala:4:15 -----------------------------------------------------------
+4 |def f2: Unit = 1 // error
+  |               ^
+  |               Discarded non-Unit value of type Int. You may want to use `()`.
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | As this expression is not of type Unit, it is desugared into `{ 1; () }`.
+  | Here the `1` expression is a pure statement that can be discarded.
+  | Therefore the expression is effectively equivalent to `()`.
+   ---------------------------------------------------------------------------------------------------------------------
+-- [E190] Potential Issue Error: tests/neg/i18722.scala:5:15 -----------------------------------------------------------
+5 |def f3: Unit = "a" // error
+  |               ^^^
+  |               Discarded non-Unit value of type String. You may want to use `()`.
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | As this expression is not of type Unit, it is desugared into `{ "a"; () }`.
+  | Here the `"a"` expression is a pure statement that can be discarded.
+  | Therefore the expression is effectively equivalent to `()`.
+   ---------------------------------------------------------------------------------------------------------------------
+-- [E190] Potential Issue Error: tests/neg/i18722.scala:7:15 -----------------------------------------------------------
+7 |def f4: Unit = i // error
+  |               ^
+  |               Discarded non-Unit value of type Int. You may want to use `()`.
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | As this expression is not of type Unit, it is desugared into `{ i; () }`.
+  | Here the `i` expression is a pure statement that can be discarded.
+  | Therefore the expression is effectively equivalent to `()`.
+   ---------------------------------------------------------------------------------------------------------------------
