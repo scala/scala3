@@ -114,7 +114,7 @@ object RepublishPlugin extends AutoPlugin {
     val env = Map("COURSIER_CACHE" -> cache.getAbsolutePath.toString).asJava
     val cmdLine0 = Seq(javaCmd, "-jar", jar0)
     args =>
-      val cmdLine = cmdLine0 ++ args    
+      val cmdLine = cmdLine0 ++ args
       // invoke cmdLine with env, but also capture the output
       val p = new ProcessBuilder(cmdLine: _*)
         .directory(cache)
@@ -441,7 +441,7 @@ object RepublishPlugin extends AutoPlugin {
       }
       else {
         val repoDir = republishRepo.value
-        val propsFile = repoDir / "etc" / "EXTRA_PROPERTIES"
+        val propsFile = repoDir / "EXTRA_PROPERTIES"
         log.info(s"[republish] Writing extra properties to $propsFile...")
         Using.fileWriter()(propsFile) { writer =>
           extraProps.foreach { case (k, v) =>
@@ -484,6 +484,16 @@ object RepublishPlugin extends AutoPlugin {
         import java.util.Locale
         import java.util.Date
         val base: File = new File(".") // Using the working directory as base for readability
+
+        // Copy explicitly added dependencies
+        val mapped: Seq[(File, String)] = mappings.value
+        log.info("[republish] Copying explicit dependencies:")
+        val explicitDepsJars = for ((file, path) <- mapped) yield {
+          log.info(file.getPath)
+          val dest = distDir / path
+          IO.copyFile(file, dest, true)
+          dest
+        }
 
         def write(path: String, content: String) {
           val p = distDir / path
