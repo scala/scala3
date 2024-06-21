@@ -2441,7 +2441,7 @@ class PureUnitExpression(stat: untpd.Tree, tpe: Type)(using Context)
 class UnqualifiedCallToAnyRefMethod(stat: untpd.Tree, method: Symbol)(using Context)
   extends Message(UnqualifiedCallToAnyRefMethodID) {
   def kind = MessageKind.PotentialIssue
-  def msg(using Context) = i"Suspicious top-level unqualified call to ${hl(method.name.toString)}"
+  def msg(using Context) = i"Universal method ${hl(method.name.toString)} does not resolve to the enclosing class"
   def explain(using Context) =
     val getClassExtraHint =
       if method.name == nme.getClass_ && ctx.settings.classpath.value.contains("scala3-staging") then
