@@ -19,10 +19,11 @@ if not %_EXITCODE%==0 goto end
 
 call :setScalaOpts
 
-@rem we need to escape % in the java command path, for some reason this doesnt work in common.bat
-set "_JAVACMD=!_JAVACMD:%%=%%%%!"
+call "%_PROG_HOME%\bin\cli-common-platform.bat"
 
-call "%_JAVACMD%" "-jar" "%SCALA_CLI_JAR%" "--prog-name" "scala" "--cli-default-scala-version" "%_SCALA_VERSION%" "-r" "%MVN_REPOSITORY%" %*
+@rem SCALA_CLI_CMD_WIN is an array, set in cli-common-platform.bat
+call %SCALA_CLI_CMD_WIN% "--prog-name" "scala" "--cli-default-scala-version" "%_SCALA_VERSION%" "-r" "%MVN_REPOSITORY%" %*
+
 if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
 
 goto end
@@ -42,19 +43,8 @@ if not "%char%"==":" (
   goto :findColon
 )
 
-@REM set _PROG_HOME to the substring from the first colon to the end
-set "_PROG_HOME_SUB=!_PROG_HOME:~%index%!"
-@REM strip initial character
-set "_PROG_HOME_SUB=!_PROG_HOME_SUB:~1!"
-
-@REM set drive to substring from 0 to the first colon
-set "_PROG_HOME_DRIVE=!_PROG_HOME:~0,%index%!"
-
-
-
 set "_SCALA_VERSION="
-set "MVN_REPOSITORY=file://%_PROG_HOME_DRIVE%\%_PROG_HOME_SUB:\=/%/maven2"
-set "SCALA_CLI_JAR=%_PROG_HOME%\etc\scala-cli.jar"
+set "MVN_REPOSITORY=file:///%_PROG_HOME:\=/%/maven2"
 
 @rem read for version:=_SCALA_VERSION in VERSION_FILE
 FOR /F "usebackq delims=" %%G IN ("%_PROG_HOME%\VERSION") DO (

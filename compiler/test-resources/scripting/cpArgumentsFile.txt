@@ -1,1 +1,0 @@
--classpath dist/target/pack/lib/*

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+if [[ ${cygwin-} || ${mingw-} || ${msys-} ]]; then
+    SCALA_CLI_VERSION=""
+    # iterate through lines in VERSION_SRC
+    while IFS= read -r line; do
+    # if line starts with "version:=" then extract the version
+    if [[ "$line" == cli_version:=* ]]; then
+        SCALA_CLI_VERSION="${line#cli_version:=}"
+        break
+    fi
+    done < "$PROG_HOME/EXTRA_PROPERTIES"
+    SCALA_CLI_CMD_BASH=("\"$PROG_HOME/bin/scala-cli\"" "--cli-version \"$SCALA_CLI_VERSION\"")
+else
+    SCALA_CLI_CMD_BASH=("\"$PROG_HOME/bin/scala-cli\"")
+fi

@@ -270,7 +270,7 @@ object MainGenericRunner {
 
     val ranByCoursierBootstrap =
       sys.props.isDefinedAt("coursier.mainJar")
-      || sys.props.get("bootstrap.mainClass").filter(_ == "dotty.tools.MainGenericRunner").isDefined
+      || sys.props.get("bootstrap.mainClass").contains("dotty.tools.MainGenericRunner")
 
     val silenced = sys.props.get("scala.use_legacy_launcher") == Some("true")
 
