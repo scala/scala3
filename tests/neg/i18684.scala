@@ -9,4 +9,4 @@ object Test:
   object inner:
     val foo() = "33" // error
 
-  val inner(x) = 3 // error // error
+  val inner(x) = 3 // error
