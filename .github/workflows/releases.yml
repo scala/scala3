@@ -29,5 +29,12 @@ jobs:
     secrets:
       CONSUMER-KEY: ${{ secrets.SDKMAN_KEY }}
       CONSUMER-TOKEN: ${{ secrets.SDKMAN_TOKEN }}
-  
-  # TODO: ADD RELEASE WORKFLOW TO CHOCOLATEY AND OTHER PACKAGE MANAGERS HERE
+
+  publish-chocolatey:
+    uses: ./.github/workflows/publish-chocolatey.yml
+    with:
+      version: ${{ inputs.version }}
+    secrets:
+      API-KEY: ${{ secrets.CHOCOLATEY_KEY }}
+
+  # TODO: ADD RELEASE WORKFLOWS TO OTHER PACKAGE MANAGERS HERE
