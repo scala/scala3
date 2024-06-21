@@ -542,7 +542,7 @@ class Definitions {
     // but does not define it as an explicit class.
     val cls = enterCompleteClassSymbol(
       ScalaPackageClass, tpnme.Singleton, PureInterfaceCreationFlags | Final | Erased,
-      List(AnyType))
+      List(ObjectType))
     enterTypeField(cls, tpnme.Self, Deferred, cls.info.decls.openForMutations)
     cls
   @tu lazy val SingletonType: TypeRef = SingletonClass.typeRef
