@@ -215,7 +215,13 @@ object RepublishPlugin extends AutoPlugin {
     if (commandLibs.nonEmpty) {
       IO.createDirectory(republishDir / "etc")
       for ((command, libs) <- commandLibs) {
-        val entries = libs.map(fuzzyFind(classpaths, _)).reduce(_ ++ _).distinct
+        val (negated, actual) = libs.partition(_.startsWith("^!"))
+        val subtractions = negated.map(_.stripPrefix("^!"))
+
+        def compose(libs: List[String]): List[String] =
+          libs.map(fuzzyFind(classpaths, _)).reduceOption(_ ++ _).map(_.distinct).getOrElse(Nil)
+
+        val entries = compose(actual).diff(compose(subtractions))
         IO.write(republishDir / "etc" / s"$command.classpath", entries.mkString("\n"))
       }
     }

@@ -89,9 +89,16 @@ goto :eof
 @rem output parameter: _JVM_CP_ARGS
 :compilerJavaClasspathArgs
 
-call :loadClasspathFromFile
+set "CP_FILE=%_ETC_DIR%\scala.classpath"
+call :loadClasspathFromFile %CP_FILE%
+set "__TOOLCHAIN=%_CLASS_PATH_RESULT%"
 
-set "__TOOLCHAIN=%_CLASS_PATH%"
+set "CP_FILE=%_ETC_DIR%\with_compiler.classpath"
+call :loadClasspathFromFile %CP_FILE%
+
+if defined _CLASS_PATH_RESULT (
+    set "__TOOLCHAIN=%__TOOLCHAIN%%_PSEP%%_CLASS_PATH_RESULT%"
+)
 
 if defined _SCALA_CPATH (
     set "_JVM_CP_ARGS=%__TOOLCHAIN%%_SCALA_CPATH%"
@@ -100,17 +107,19 @@ if defined _SCALA_CPATH (
 )
 goto :eof
 
-@REM concatentate every line in "%_ETC_DIR%\scala.classpath" with _PSEP
+@REM concatentate every line in "%_ARG_FILE%" with _PSEP
+@REM arg 1 - file to read
 :loadClasspathFromFile
-set _CLASS_PATH=
-if exist "%_ETC_DIR%\scala.classpath" (
-    for /f "usebackq delims=" %%i in ("%_ETC_DIR%\scala.classpath") do (
+set _ARG_FILE=%1
+set _CLASS_PATH_RESULT=
+if exist "%_ARG_FILE%" (
+    for /f "usebackq delims=" %%i in ("%_ARG_FILE%") do (
         set "_LIB=%_PROG_HOME%\maven2\%%i"
         set "_LIB=!_LIB:/=\!"
-        if not defined _CLASS_PATH (
-            set "_CLASS_PATH=!_LIB!"
+        if not defined _CLASS_PATH_RESULT (
+            set "_CLASS_PATH_RESULT=!_LIB!"
         ) else (
-            set "_CLASS_PATH=!_CLASS_PATH!%_PSEP%!_LIB!"
+            set "_CLASS_PATH_RESULT=!_CLASS_PATH_RESULT!%_PSEP%!_LIB!"
         )
     )
 )

@@ -2129,7 +2129,9 @@ object Build {
     packResourceDir += (republishRepo.value / "maven2" -> "maven2"),
     packResourceDir += (republishRepo.value / "etc" -> "etc"),
     republishCommandLibs +=
-      ("scala" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "tasty-core", "scala3-staging", "scala3-tasty-inspector")),
+      ("scala" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "tasty-core")),
+    republishCommandLibs +=
+      ("with_compiler" -> List("scala3-staging", "scala3-tasty-inspector", "^!scala3-interfaces", "^!scala3-compiler", "^!scala3-library", "^!tasty-core")),
     republishCommandLibs +=
       ("scaladoc" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "tasty-core", "scala3-tasty-inspector", "scaladoc")),
     Compile / pack := republishPack.value,
