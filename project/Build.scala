@@ -2172,7 +2172,7 @@ object Build {
       republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishExtraProps += ("cli_version" -> scalaCliLauncherVersion),
-      mappings += (republishRepo.value / "etc" / "EXTRA_PROPERTIES" -> "EXTRA_PROPERTIES"),
+      mappings += (republishRepo.value / "EXTRA_PROPERTIES" -> "EXTRA_PROPERTIES"),
       republishLaunchers +=
         ("scala-cli.exe" -> s"zip+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersionWindows/scala-cli-x86_64-pc-win32.zip!/scala-cli.exe")
     )
