@@ -205,7 +205,16 @@ jobs:
 
   test_windows_fast:
     runs-on: [self-hosted, Windows]
-    if: false
+    if: "(
+           github.event_name == 'push'
+           && github.ref != 'refs/heads/main'
+         )
+         || github.event_name == 'merge_group'
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip test_windows_fast]')
+         )"
 
     steps:
       - name: Reset existing repo
@@ -243,7 +252,13 @@ jobs:
 
   test_windows_full:
     runs-on: [self-hosted, Windows]
-    if: false
+    if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
+         || github.event_name == 'push'
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && contains(github.event.pull_request.body, '[test_windows_full]')
+         )"
 
     steps:
       - name: Reset existing repo
