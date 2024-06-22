@@ -36,6 +36,7 @@ class BackendUtils(val postProcessor: PostProcessor) {
     case "19" => asm.Opcodes.V19
     case "20" => asm.Opcodes.V20
     case "21" => asm.Opcodes.V21
+    case "22" => asm.Opcodes.V22
   }
 
   lazy val extraProc: Int = {
