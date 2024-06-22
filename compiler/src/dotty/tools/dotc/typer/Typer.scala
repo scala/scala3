@@ -1104,13 +1104,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 // transform the `Ident` into a `Select` to ensure that the prefix
                 // is retained with a `TypedSplice` (see `case Select` bellow).
                 // See tests/pos/i18713.scala for an example.
-                fn.tpe match
+                (fn.tpe match
                   case TermRef(qual: TermRef, _) =>
                     toSetter(ref(qual).select(fn.symbol).withSpan(fn.span))
                   case TermRef(qual: ThisType, _) =>
                     toSetter(This(qual.cls).select(fn.symbol).withSpan(fn.span))
                   case TermRef(NoPrefix, _) =>
                     untpd.cpy.Ident(fn)(name.setterName)
+                ): @annotation.nowarn // false-positive match exhastivity warning
               case fn @ Select(qual, name: TermName) =>
                 untpd.cpy.Select(fn)(untpd.TypedSplice(qual), name.setterName)
               case fn @ TypeApply(fn1, targs) =>
