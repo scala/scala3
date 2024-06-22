@@ -31,8 +31,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
 
     /** Only use the superclass of `root` as a parent class. This means
      *  overriding pairs that have a common implementation in a trait parent
-     *  are also counted. This is necessary because we generate bridge methods
-     *  only in classes, never in traits.
+     *  are also counted.
      */
     override def parents = Array(root.superClass)
 
@@ -41,6 +40,24 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
 
     override def canBeHandledByParent(sym1: Symbol, sym2: Symbol, parent: Symbol): Boolean =
       OverridingPairs.isOverridingPair(sym1, sym2, parent.thisType)
+  }
+
+  /** Usually, we don't want to create bridges for methods defined in traits, but for some cases it is necessary.
+   *  For example with SAM methods combined with covariant result types (see issue #15402).
+   *  In some cases, creating a bridge inside a trait to an erased generic method leads to incorrect
+   *  interface method lookup and infinite loops at run-time. (e.g., in cats' `WriterTApplicative.map`).
+   *  To avoid that issue, we limit bridges to methods with the same set of parameters and a different, covariant result type.
+   *  We also ignore non-public methods (see `DottyBackendTests.invocationReceivers` for a test case).
+   */
+  private class TraitBridgesCursor(using Context) extends BridgesCursor{
+    override protected def prioritizeDeferred: Boolean = false
+
+    // Get full list of parents to deduplicate already defined bridges in the parents
+    override lazy val parents: Array[Symbol] =
+      root.info.parents.map(_.classSymbol).toArray
+
+    override def exclude(sym: Symbol) =
+      !sym.isPublic || super.exclude(sym)
   }
 
   val site = root.thisType
@@ -84,7 +101,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
                       |clashes with definition of the member itself; both have erased type ${info(member)(using elimErasedCtx)}."""",
                   bridgePosFor(member))
     }
-    else if !inContext(preErasureCtx)(site.memberInfo(member).matches(site.memberInfo(other))) then
+    else if !(inContext(preErasureCtx)(site.memberInfo(member).matches(site.memberInfo(other))) || member.owner.isAnonymousClass) then
       // Neither symbol signatures nor pre-erasure types seen from root match; this means
       // according to Scala 2 semantics there is no override.
       // A bridge might introduce a classcast exception.
@@ -172,9 +189,13 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
    *  time deferred methods in `stats` that are replaced by a bridge with the same signature.
    */
   def add(stats: List[untpd.Tree]): List[untpd.Tree] =
-    val opc = inContext(preErasureCtx) { new BridgesCursor }
+    val forTrait = root.is(Trait)
+    val opc = inContext(preErasureCtx) {
+       if forTrait then TraitBridgesCursor()
+       else BridgesCursor()
+    }
     while opc.hasNext do
-      if !opc.overriding.is(Deferred) then
+      if forTrait || !opc.overriding.is(Deferred) then
         addBridgeIfNeeded(opc.overriding, opc.overridden)
       opc.next()
     if bridges.isEmpty then stats
