@@ -770,7 +770,7 @@ object desugar {
       }
       else if (companionMembers.nonEmpty || companionDerived.nonEmpty || isEnum)
         companionDefs(anyRef, companionMembers)
-      else if (isValueClass)
+      else if isValueClass && !isObject then
         companionDefs(anyRef, Nil)
       else Nil
 
