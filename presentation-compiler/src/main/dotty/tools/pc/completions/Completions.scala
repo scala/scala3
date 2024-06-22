@@ -286,6 +286,15 @@ class Completions(
     path match
       case ScalaCliCompletions(dependency) =>
         (ScalaCliCompletions.contribute(dependency), true)
+
+      case _
+          if MultilineCommentCompletion.isMultilineCommentCompletion(
+            pos,
+            text,
+          ) =>
+        val values = MultilineCommentCompletion.contribute(config)
+        (values, true)
+
       case _ if ScaladocCompletions.isScaladocCompletion(pos, text) =>
         val values = ScaladocCompletions.contribute(pos, text, config)
         (values, true)
