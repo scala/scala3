@@ -12,7 +12,7 @@ object Test:
   val d3 = O.ab          // error, no hint since distance = 3 > 2 = length
   val s1 = O.Abcde       // error
   val s3 = O.AbCde       // error
-  val s3 = O.AbCdE       // error
+  val s3 = O.AbcdE       // error
   val s3 = O.AbCDE       // error, no hint
   val a1 = O.abcde0      // error
   val a2 = O.abcde00     // error
