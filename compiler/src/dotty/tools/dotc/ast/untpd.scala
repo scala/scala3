@@ -137,6 +137,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     val rename: TermName = renamed match
       case Ident(rename: TermName) => rename
       case _ => name
+
+    def isUnimport = rename == nme.WILDCARD
   }
 
   case class Number(digits: String, kind: NumberKind)(implicit @constructorOnly src: SourceFile) extends TermTree
