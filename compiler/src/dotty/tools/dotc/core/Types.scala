@@ -3987,6 +3987,10 @@ object Types {
     override def erasedParams(using Context): List[Boolean] =
       paramInfos.map(p => p.hasAnnotation(defn.ErasedParamAnnot))
 
+    def nonErasedParamCount(using Context): Int =
+      paramInfos.count(p => !p.hasAnnotation(defn.ErasedParamAnnot))
+
+
     protected def prefixString: String = companion.prefixString
   }
 
