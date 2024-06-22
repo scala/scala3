@@ -7,5 +7,5 @@ trait Test {
 
   val b: ImpureFunction1[Int, Int] // now OK
 
-  val a: {z} String // error
-}  // error
+  val a: {z} String // error // error
+}

@@ -4,13 +4,25 @@
   |          expression expected but [31mend of statement[0m found
   |
   | longer explanation available when compiling with `-explain`
--- [E018] Syntax Error: tests/neg/i5498-postfixOps.scala:6:37 ----------------------------------------------------------
-6 |  Seq(1, 2).filter(List(1,2) contains) // error: usage of postfix operator // error
-  |                                     ^
-  |                                     expression expected but [31m')'[0m found
-  |
-  | longer explanation available when compiling with `-explain`
+-- [E040] Syntax Error: tests/neg/i5498-postfixOps.scala:6:29 ----------------------------------------------------------
+6 |  Seq(1, 2).filter(List(1,2) contains) // error: usage of postfix operator // error // error (type error) // error (type error)
+  |                             ^^^^^^^^
+  |                             ')' expected, but identifier found
 -- [E172] Type Error: tests/neg/i5498-postfixOps.scala:6:0 -------------------------------------------------------------
-6 |  Seq(1, 2).filter(List(1,2) contains) // error: usage of postfix operator // error
+6 |  Seq(1, 2).filter(List(1,2) contains) // error: usage of postfix operator // error // error (type error) // error (type error)
   |^
   |No given instance of type scala.concurrent.duration.DurationConversions.Classifier[Null] was found for parameter ev of method second in trait DurationConversions
+-- [E007] Type Mismatch Error: tests/neg/i5498-postfixOps.scala:6:24 ---------------------------------------------------
+6 |  Seq(1, 2).filter(List(1,2) contains) // error: usage of postfix operator // error // error (type error) // error (type error)
+  |                        ^
+  |                        Found:    (1 : Int)
+  |                        Required: Boolean
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i5498-postfixOps.scala:6:26 ---------------------------------------------------
+6 |  Seq(1, 2).filter(List(1,2) contains) // error: usage of postfix operator // error // error (type error) // error (type error)
+  |                          ^
+  |                          Found:    (2 : Int)
+  |                          Required: Boolean
+  |
+  | longer explanation available when compiling with `-explain`

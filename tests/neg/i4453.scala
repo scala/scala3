@@ -1,2 +1,2 @@
-class x0 { var x0 == _ * // error: _* can be used only for last argument // error: == cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method
-// error '=' expected, but eof found
+class x0 { var x0 == _ * // error spread operator `*` not allowed here // error '=' expected
+  // error: == cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method
