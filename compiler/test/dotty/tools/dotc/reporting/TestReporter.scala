@@ -32,9 +32,6 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
   protected final val _consoleReporter = new ConsoleReporter(null, new PrintWriter(_consoleBuf))
   final def consoleOutput: String = _consoleBuf.toString
 
-  private var _didCrash = false
-  final def compilerCrashed: Boolean = _didCrash
-
   private var _skip: Boolean = false
   final def setSkip(): Unit = _skip = true
   final def skipped: Boolean = _skip
@@ -49,14 +46,6 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
 
   def log(msg: String) =
     _messageBuf.append(msg)
-
-  def logStackTrace(thrown: Throwable): Unit = {
-    _didCrash = true
-    val sw = new java.io.StringWriter
-    val pw = new java.io.PrintWriter(sw)
-    thrown.printStackTrace(pw)
-    log(sw.toString)
-  }
 
   /** Prints the message with the given position indication. */
   def printMessageAndPos(dia: Diagnostic, extra: String)(using Context): Unit = {
