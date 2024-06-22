@@ -29,7 +29,7 @@ object Scala3:
 
   private val WILDCARDTypeName = nme.WILDCARD.toTypeName
 
-  def range(span: Span, treeSource: SourceFile)(using Context): Option[Range] =
+  def range(span: Span, treeSource: SourceFile): Option[Range] =
     def lineCol(offset: Int) = (treeSource.offsetToLine(offset), treeSource.column(offset))
     val (startLine, startCol) = lineCol(span.start)
     val (endLine, endCol) = lineCol(span.end)
@@ -485,6 +485,8 @@ object Scala3:
   given Ordering[SymbolOccurrence] = (x, y) => compareRange(x.range, y.range)
 
   given Ordering[SymbolInformation] = Ordering.by[SymbolInformation, String](_.symbol)(IdentifierOrdering())
+
+  given Ordering[Diagnostic] = (x, y) => compareRange(x.range, y.range)
 
   given Ordering[Synthetic] = (x, y) => compareRange(x.range, y.range)
 
