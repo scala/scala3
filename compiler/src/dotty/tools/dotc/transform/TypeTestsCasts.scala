@@ -74,7 +74,7 @@ object TypeTestsCasts {
     }.apply(tp)
 
     /** Returns true if the type arguments of `P` can be determined from `X` */
-    def typeArgsTrivial(X: Type, P: AppliedType)(using Context) = inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds) {
+    def typeArgsDeterminable(X: Type, P: AppliedType)(using Context) = inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds) {
       val AppliedType(tycon, _) = P
 
       def underlyingLambda(tp: Type): TypeLambda = tp.ensureLambdaSub match {
@@ -82,7 +82,7 @@ object TypeTestsCasts {
         case tp: TypeProxy => underlyingLambda(tp.superType)
       }
       val typeLambda = underlyingLambda(tycon)
-      val tvars = constrained(typeLambda, untpd.EmptyTree, alwaysAddTypeVars = true)._2.map(_.tpe)
+      val tvars = constrained(typeLambda)
       val P1 = tycon.appliedTo(tvars)
 
       debug.println("before " + ctx.typerState.constraint.show)
@@ -155,7 +155,7 @@ object TypeTestsCasts {
           case x =>
             // always false test warnings are emitted elsewhere
             TypeComparer.provablyDisjoint(x, tpe.derivedAppliedType(tycon, targs.map(_ => WildcardType)))
-            || typeArgsTrivial(X, tpe)
+            || typeArgsDeterminable(X, tpe)
             ||| i"its type arguments can't be determined from $X"
         }
       case AndType(tp1, tp2)    => recur(X, tp1) && recur(X, tp2)
@@ -285,7 +285,7 @@ object TypeTestsCasts {
             Typed(expr, tree.args.head) // Replace cast by type ascription (which does not generate any bytecode)
           else if (testCls eq defn.BoxedUnitClass)
             // as a special case, casting to Unit always successfully returns Unit
-            Block(expr :: Nil, Literal(Constant(()))).withSpan(expr.span)
+            Block(expr :: Nil, unitLiteral).withSpan(expr.span)
           else if (foundClsSymPrimitive)
             if (testCls.isPrimitiveValueClass) primitiveConversion(expr, testCls)
             else derivedTree(box(expr), defn.Any_asInstanceOf, testType)
@@ -363,7 +363,7 @@ object TypeTestsCasts {
           if !isTrusted && !isUnchecked then
             val whyNot = whyUncheckable(expr.tpe, argType, tree.span)
             if whyNot.nonEmpty then
-              report.uncheckedWarning(em"the type test for $argType cannot be checked at runtime because $whyNot", expr.srcPos)
+              report.uncheckedWarning(UncheckedTypePattern(argType, whyNot), expr.srcPos)
           transformTypeTest(expr, argType,
             flagUnrelated = enclosingInlineds.isEmpty) // if test comes from inlined code, dont't flag it even if it always false
         }

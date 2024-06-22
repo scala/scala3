@@ -293,7 +293,6 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
-  // Ignore for Scala 3, since we don't provide completions for null
   @Test def `match-typed` =
     checkEdit(
       """|object Main {
@@ -305,11 +304,12 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
       """|import java.util.ArrayDeque
          |object Main {
          |  def foo(): Unit = null match {
-         |    case x: ArrayDeque =>
+         |    case x: ArrayDeque[$0] =>
          |  }
          |}
          |""".stripMargin,
-      filter = _.contains("java.util")
+      filter = _.contains("java.util"),
+      assertSingleItem = false,
     )
 
   @Test def `type` =

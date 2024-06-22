@@ -90,7 +90,7 @@ object CaseKeywordCompletion:
             new Parents(NoType, definitions)
       case sel => new Parents(sel.tpe, definitions)
 
-    val selectorSym = parents.selector.typeSymbol
+    val selectorSym = parents.selector.widen.metalsDealias.typeSymbol
 
     // Special handle case when selector is a tuple or `FunctionN`.
     if definitions.isTupleClass(selectorSym) || definitions.isFunctionClass(
@@ -153,7 +153,9 @@ object CaseKeywordCompletion:
           if isValid(ts) then visit(autoImportsGen.inferSymbolImport(ts))
         )
       // Step 2: walk through known subclasses of sealed types.
-      val sealedDescs = subclassesForType(parents.selector.widen.bounds.hi)
+      val sealedDescs = subclassesForType(
+        parents.selector.widen.metalsDealias.bounds.hi
+      )
       sealedDescs.foreach { sym =>
         val symbolImport = autoImportsGen.inferSymbolImport(sym)
         visit(symbolImport)
@@ -241,7 +243,7 @@ object CaseKeywordCompletion:
       completionPos,
       clientSupportsSnippets
     )
-    val tpe = selector.tpe.widen.bounds.hi match
+    val tpe = selector.tpe.widen.metalsDealias.bounds.hi match
       case tr @ TypeRef(_, _) => tr.underlying
       case t => t
 

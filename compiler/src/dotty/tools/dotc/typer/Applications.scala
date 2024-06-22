@@ -333,7 +333,7 @@ object Applications {
       // it's crucial that the type tree is not copied directly as argument to
       // `cpy$default$1`. If it was, the variable `X'` would already be interpolated
       // when typing the default argument, which is too early.
-      spliceMeth(meth, fn).appliedToTypes(targs.tpes)
+      spliceMeth(meth, fn).appliedToTypeTrees(targs.map(targ => TypeTree(targ.tpe).withSpan(targ.span)))
     case _ => meth
   }
 
@@ -959,7 +959,7 @@ trait Applications extends Compatibility {
             val resultType =
               if !originalResultType.isRef(defn.ObjectClass) then originalResultType
               else AvoidWildcardsMap()(proto.resultType.deepenProtoTrans) match
-                case SelectionProto(nme.asInstanceOf_, PolyProto(_, resTp), _, _) => resTp
+                case SelectionProto(nme.asInstanceOf_, PolyProto(_, resTp), _, _, _) => resTp
                 case resTp if isFullyDefined(resTp, ForceDegree.all) => resTp
                 case _ => defn.ObjectType
             val methType = MethodType(proto.typedArgs().map(_.tpe.widen), resultType)
@@ -1278,15 +1278,22 @@ trait Applications extends Compatibility {
 
     /** Report errors buffered in state.
      *  @pre state has errors to report
-     *  If there is a single error stating that "unapply" is not a member, print
-     *  the more informative "notAnExtractor" message instead.
+     *  If the last reported error states that "unapply" is not a member, report
+     *  the more informative `NotAnExtractor` message instead.
+     *  If the last reported error states that the qualifier was not found, report
+     *  the more informative `ExtractorNotFound` message instead.
      */
     def reportErrors(tree: Tree, state: TyperState): Tree =
       assert(state.reporter.hasErrors)
-      if saysNotFound(state, nme.unapply) then notAnExtractor(tree)
-      else
-        state.reporter.flush()
-        tree
+      if saysNotFound(state, nme.unapply) then
+        notAnExtractor(tree)
+      else qual match
+        case qual: Ident if saysNotFound(state, qual.name) =>
+          report.error(ExtractorNotFound(qual.name), tree.srcPos)
+          tree
+        case _ =>
+          state.reporter.flush()
+          tree
 
     /** If this is a term ref tree, try to typecheck with its type name.
      *  If this refers to a type alias, follow the alias, and if

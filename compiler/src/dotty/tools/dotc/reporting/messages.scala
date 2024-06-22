@@ -876,7 +876,7 @@ extends Message(PatternMatchExhaustivityID) {
 
     val pathes = List(
       ActionPatch(
-        srcPos = endPos, 
+        srcPos = endPos,
         replacement = uncoveredCases.map(c => indent(s"case $c => ???", startColumn))
           .mkString("\n", "\n", "")
       ),
@@ -895,9 +895,9 @@ extends Message(PatternMatchExhaustivityID) {
   }
 }
 
-class UncheckedTypePattern(msgFn: => String)(using Context)
+class UncheckedTypePattern(argType: Type, whyNot: String)(using Context)
   extends PatternMatchMsg(UncheckedTypePatternID) {
-  def msg(using Context) = msgFn
+  def msg(using Context) = i"the type test for $argType cannot be checked at runtime because $whyNot"
   def explain(using Context) =
     i"""|Type arguments and type refinements are erased during compile time, thus it's
         |impossible to check them at run-time.
@@ -1670,10 +1670,15 @@ class CannotExtendAnyVal(sym: Symbol)(using Context)
   extends SyntaxMsg(CannotExtendAnyValID) {
   def msg(using Context) = i"""$sym cannot extend ${hl("AnyVal")}"""
   def explain(using Context) =
-    i"""Only classes (not traits) are allowed to extend ${hl("AnyVal")}, but traits may extend
-        |${hl("Any")} to become ${Green("\"universal traits\"")} which may only have ${hl("def")} members.
-        |Universal traits can be mixed into classes that extend ${hl("AnyVal")}.
-        |"""
+    if sym.is(Trait) then
+      i"""Only classes (not traits) are allowed to extend ${hl("AnyVal")}, but traits may extend
+          |${hl("Any")} to become ${Green("\"universal traits\"")} which may only have ${hl("def")} members.
+          |Universal traits can be mixed into classes that extend ${hl("AnyVal")}.
+          |"""
+    else if sym.is(Module) then
+      i"""Only classes (not objects) are allowed to extend ${hl("AnyVal")}.
+          |"""
+    else ""
 }
 
 class CannotExtendJavaEnum(sym: Symbol)(using Context)
@@ -2335,7 +2340,7 @@ class ClassCannotExtendEnum(cls: Symbol, parent: Symbol)(using Context) extends 
   def explain(using Context) = ""
 }
 
-class NotAnExtractor(tree: untpd.Tree)(using Context) extends SyntaxMsg(NotAnExtractorID) {
+class NotAnExtractor(tree: untpd.Tree)(using Context) extends PatternMatchMsg(NotAnExtractorID) {
   def msg(using Context) = i"$tree cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method"
   def explain(using Context) =
     i"""|An ${hl("unapply")} method should be defined in an ${hl("object")} as follow:
@@ -2347,6 +2352,24 @@ class NotAnExtractor(tree: untpd.Tree)(using Context) extends SyntaxMsg(NotAnExt
         |For this reason, you can also define patterns through ${hl("unapplySeq")} which returns ${hl("Option[Seq[T]]")}.
         |This mechanism is used for instance in pattern ${hl("case List(x1, ..., xn)")}"""
 }
+
+class ExtractorNotFound(val name: Name)(using Context) extends NotFoundMsg(ExtractorNotFoundID):
+  def msg(using Context) = i"no pattern match extractor named $name was found"
+  def explain(using Context) =
+    i"""An application $name(...) in a pattern can refer to an extractor
+       |which defines an unapply or unapplySeq method. Example:
+       |
+       |  object split:
+       |    def unapply(x: String) =
+       |      val (leading, trailing) = x.splitAt(x.length / 2)
+       |      Some((leading, trailing))
+       |
+       |  val split(fst, snd) = "HiHo"
+       |
+       |The extractor pattern `split(fst, snd)` defines `fst` as the first half "Hi" and
+       |`snd` as the second half "Ho" of the right hand side "HiHo". Case classes and
+       |enum cases implicitly define extractors with the name of the class or enum case.
+       |Here, no extractor named $name was found, so the pattern could not be typed."""
 
 class MemberWithSameNameAsStatic()(using Context)
   extends SyntaxMsg(MemberWithSameNameAsStaticID) {
@@ -2961,9 +2984,26 @@ extends ReferenceMsg(CannotBeAccessedID):
         i"${if (sym.owner == pre.typeSymbol) sym.show else sym.showLocated} cannot"
       case _ =>
         i"none of the overloaded alternatives named $name can"
-    val where = if (ctx.owner.exists) s" from ${ctx.owner.enclosingClass}" else ""
+    val where = if (ctx.owner.exists) i" from ${ctx.owner.enclosingClass}" else ""
     val whyNot = new StringBuffer
-    alts.foreach(_.isAccessibleFrom(pre, superAccess, whyNot))
+    for alt <- alts do
+      val cls = alt.owner.enclosingSubClass
+      val owner = if cls.exists then cls else alt.owner
+      val location: String =
+        if alt.is(Protected) then
+          if alt.privateWithin.exists && alt.privateWithin != owner then
+            if owner.is(Final) then alt.privateWithin.showLocated
+            else alt.privateWithin.showLocated + ", or " + owner.showLocated + " or one of its subclasses"
+          else
+            if owner.is(Final) then owner.showLocated
+            else owner.showLocated + " or one of its subclasses"
+        else
+          alt.privateWithin.orElse(owner).showLocated
+      val accessMod = if alt.is(Protected) then "protected" else "private"
+      val within = if alt.privateWithin.exists then i"[${alt.privateWithin.name}]"
+        else ""
+      whyNot.append(i"""
+          |  $accessMod$within $alt can only be accessed from $location.""")
     i"$whatCanNot be accessed as a member of $pre$where.$whyNot"
   def explain(using Context) = ""
 

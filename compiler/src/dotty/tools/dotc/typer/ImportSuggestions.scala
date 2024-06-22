@@ -195,7 +195,7 @@ trait ImportSuggestions:
       && {
         val task = new TimerTask:
           def run() =
-            println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
+            implicits.println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
             ctx.run.nn.isCancelled = true
         val span = ctx.owner.srcPos.span
         val (expectedType, argument, kind) = pt match
@@ -237,7 +237,7 @@ trait ImportSuggestions:
           // don't suggest things that are imported by default
 
       def extensionImports = pt match
-        case ViewProto(argType, SelectionProto(name: TermName, _, _, _)) =>
+        case ViewProto(argType, SelectionProto(name: TermName, _, _, _, _)) =>
           roots.flatMap(extensionMethod(_, name, argType))
         case _ =>
           Nil

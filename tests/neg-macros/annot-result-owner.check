@@ -2,7 +2,7 @@
 -- Error: tests/neg-macros/annot-result-owner/Test_2.scala:1:0 ---------------------------------------------------------
 1 |@insertVal // error
   |^^^^^^^^^^
-  |macro annotation @insertVal added value definitionWithWrongOwner$macro$1 with an inconsistent owner. Expected it to be owned by package object Test_2$package but was owned by method foo.
+  |macro annotation @insertVal added value definitionWithWrongOwner$macro$1 with an inconsistent owner. Expected it to be owned by the top-level definitions in package <empty> but was owned by method foo.
 -- Error: tests/neg-macros/annot-result-owner/Test_2.scala:5:2 ---------------------------------------------------------
 5 |  @insertVal // error
   |  ^^^^^^^^^^

@@ -962,16 +962,11 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       !tree.symbol.exists
       && tree.isTerm
       && hasRefinement(tree.qualifier.tpe)
-    def loop(tree: Tree): Boolean = tree match
-      case TypeApply(fun, _) =>
-        loop(fun)
-      case Apply(fun, _) =>
-        loop(fun)
+    funPart(tree) match
       case tree: Select =>
         isStructuralTermSelect(tree)
       case _ =>
         false
-    loop(tree)
   }
 
   /** Return a pair consisting of (supercall, rest)

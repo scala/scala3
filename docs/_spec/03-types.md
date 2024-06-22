@@ -239,13 +239,13 @@ SimpleType1           ::=  ...
                         |  ‘(’ TypesOrWildcards ‘)’
 ```
 
-A _tuple type_ ´(T_1, ..., T_n)´ where ´n \geq 2´ is sugar for the type `´T_1´ *: ... *: ´T_n´ *: scala.EmptyTuple`, which is itself a series of nested infix types which are sugar for `*:[´T_1´, *:[´T_2´, ... *[´T_n´, scala.EmptyTuple]]]`.
+A _tuple type_ ´(T_1, ..., T_n)´ where ´n \geq 2´ is sugar for the type `´T_1´ *: ... *: ´T_n´ *: scala.EmptyTuple`, which is itself a series of nested infix types which are sugar for `*:[´T_1´, *:[´T_2´, ... *:[´T_n´, scala.EmptyTuple]]]`.
 The ´T_i´ can be wildcard type arguments.
 
 Notes:
 
 - `(´T_1´)` is the type ´T_1´, and not `´T_1´ *: scala.EmptyTuple` (´T_1´ cannot be a wildcard type argument in that case).
-- `()` is not a valid type (not even `scala.EmptyTuple`).
+- `()` is not a valid type (i.e. it is not desugared to `scala.EmptyTuple`).
 
 ### Concrete Refined Types
 

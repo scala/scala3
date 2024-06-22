@@ -8,6 +8,7 @@ import Types._, ProtoTypes._, Contexts._, Decorators._, Denotations._, Symbols._
 import Implicits._, Flags._, Constants.Constant
 import Trees._
 import NameOps._
+import util.Spans.NoSpan
 import util.SrcPos
 import config.Feature
 import reporting._
@@ -167,7 +168,7 @@ object ErrorReporting {
       val normPt = normalize(pt, pt)
 
       def contextFunctionCount(tp: Type): Int = tp.stripped match
-        case defn.ContextFunctionType(_, restp, _) => 1 + contextFunctionCount(restp)
+        case defn.ContextFunctionType(_, restp) => 1 + contextFunctionCount(restp)
         case _ => 0
       def strippedTpCount = contextFunctionCount(tree.tpe) - contextFunctionCount(normTp)
       def strippedPtCount = contextFunctionCount(pt) - contextFunctionCount(normPt)
@@ -266,7 +267,7 @@ object ErrorReporting {
       else
         val add = suggestImports(
           ViewProto(qualType.widen,
-            SelectionProto(tree.name, WildcardType, NoViewsAllowed, privateOK = false)))
+            SelectionProto(tree.name, WildcardType, NoViewsAllowed, privateOK = false, NoSpan)))
         if add.isEmpty then ""
         else ", but could be made available as an extension method." ++ add
     end selectErrorAddendum

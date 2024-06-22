@@ -672,6 +672,10 @@ object SymDenotations {
     def isPackageObject(using Context): Boolean =
       name.isPackageObjectName && owner.is(Package) && this.is(Module)
 
+    /** Is this symbol a package object containing top-level definitions? */
+    def isTopLevelDefinitionsObject(using Context): Boolean =
+      name.isTopLevelPackageObjectName && owner.is(Package) && this.is(Module)
+
     /** Is this symbol a toplevel definition in a package object? */
     def isWrappedToplevelDef(using Context): Boolean =
       !isConstructor && owner.isPackageObject
@@ -873,7 +877,7 @@ object SymDenotations {
      *  As a side effect, drop Local flags of members that are not accessed via the ThisType
      *  of their owner.
      */
-    final def isAccessibleFrom(pre: Type, superAccess: Boolean = false, whyNot: StringBuffer | Null = null)(using Context): Boolean = {
+    final def isAccessibleFrom(pre: Type, superAccess: Boolean = false)(using Context): Boolean = {
 
       /** Are we inside definition of `boundary`?
        *  If this symbol is Java defined, package structure is interpreted to be flat.
@@ -902,26 +906,13 @@ object SymDenotations {
 
       /** Is protected access to target symbol permitted? */
       def isProtectedAccessOK: Boolean =
-        inline def fail(str: String): false =
-          if whyNot != null then whyNot.nn.append(str)
-          false
         val cls = owner.enclosingSubClass
         if !cls.exists then
-          if pre.termSymbol.isPackageObject && accessWithin(pre.termSymbol.owner) then
-            true
-          else
-            val encl = if ctx.owner.isConstructor then ctx.owner.enclosingClass.owner.enclosingClass else ctx.owner.enclosingClass
-            fail(i"""
-                 | Access to protected $this not permitted because enclosing ${encl.showLocated}
-                 | is not a subclass of ${owner.showLocated} where target is defined""")
-        else if isType || pre.derivesFrom(cls) || isConstructor || owner.is(ModuleClass) then
+          pre.termSymbol.isPackageObject && accessWithin(pre.termSymbol.owner)
+        else
           // allow accesses to types from arbitrary subclasses fixes #4737
           // don't perform this check for static members
-          true
-        else
-          fail(i"""
-               | Access to protected ${symbol.show} not permitted because prefix type ${pre.widen.show}
-               | does not conform to ${cls.showLocated} where the access takes place""")
+          isType || pre.derivesFrom(cls) || isConstructor || owner.is(ModuleClass)
       end isProtectedAccessOK
 
       if pre eq NoPrefix then true
@@ -1030,7 +1021,7 @@ object SymDenotations {
 
     /** Is this a Scala 2 macro defined */
     final def isScala2MacroInScala3(using Context): Boolean =
-      is(Macro, butNot = Inline) && is(Erased)
+      is(Macro, butNot = Inline) && flagsUNSAFE.is(Erased) // flag is set initially for macros - we check if it's a scala 2 macro before completing the type constructor so do not force the info to check the flag
       // Consider the macros of StringContext as plain Scala 2 macros when
       // compiling the standard library with Dotty.
       // This should be removed on Scala 3.x

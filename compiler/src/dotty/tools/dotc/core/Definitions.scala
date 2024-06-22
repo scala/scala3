@@ -1132,16 +1132,42 @@ class Definitions {
       case _ => None
   }
 
+  object RefinedFunctionOf {
+    /** Matches a refined `PolyFunction`/`FunctionN[...]`/`ContextFunctionN[...]`.
+     *  Extracts the method type type and apply info.
+     */
+    def unapply(tpe: RefinedType)(using Context): Option[MethodOrPoly] = {
+      tpe.refinedInfo match
+        case mt: MethodOrPoly
+        if tpe.refinedName == nme.apply
+        && (tpe.parent.derivesFrom(defn.PolyFunctionClass) || isFunctionNType(tpe.parent)) =>
+          Some(mt)
+        case _ => None
+    }
+  }
+
   object PolyFunctionOf {
     /** Matches a refined `PolyFunction` type and extracts the apply info.
      *
      *  Pattern: `PolyFunction { def apply: $pt }`
      */
-    def unapply(ft: Type)(using Context): Option[PolyType] = ft.dealias match
-      case RefinedType(parent, nme.apply, pt: PolyType)
-      if parent.derivesFrom(defn.PolyFunctionClass) =>
-        Some(pt)
-      case _ => None
+    def unapply(tpe: RefinedType)(using Context): Option[MethodOrPoly] =
+      tpe.refinedInfo match
+        case mt: MethodOrPoly
+        if tpe.refinedName == nme.apply && tpe.parent.derivesFrom(defn.PolyFunctionClass) =>
+          Some(mt)
+        case _ => None
+
+    def isValidPolyFunctionInfo(info: Type)(using Context): Boolean =
+      def isValidMethodType(info: Type) = info match
+        case info: MethodType =>
+          !info.resType.isInstanceOf[MethodOrPoly] && // Has only one parameter list
+          !info.isVarArgsMethod &&
+          !info.isMethodWithByNameArgs // No by-name parameters
+        case _ => false
+      info match
+        case info: PolyType => isValidMethodType(info.resType)
+        case _ => isValidMethodType(info)
   }
 
   object ErasedFunctionOf {
@@ -1866,18 +1892,14 @@ class Definitions {
    *  types `As`, the result type `B` and a whether the type is an erased context function.
    */
   object ContextFunctionType:
-    def unapply(tp: Type)(using Context): Option[(List[Type], Type, List[Boolean])] =
-      if ctx.erasedTypes then
-        atPhase(erasurePhase)(unapply(tp))
-      else
-        asContextFunctionType(tp) match
-          case ErasedFunctionOf(mt) =>
-            Some((mt.paramInfos, mt.resType, mt.erasedParams))
-          case tp1 if tp1.exists =>
-            val args = tp1.functionArgInfos
-            val erasedParams = erasedFunctionParameters(tp1)
-            Some((args.init, args.last, erasedParams))
-          case _ => None
+    def unapply(tp: Type)(using Context): Option[(List[Type], Type)] =
+      asContextFunctionType(tp) match
+        case PolyFunctionOf(mt: MethodType) =>
+          Some((mt.paramInfos, mt.resType))
+        case tp1 if tp1.exists =>
+          val args = tp1.functionArgInfos
+          Some((args.init, args.last))
+        case _ => None
 
   /* Returns a list of erased booleans marking whether parameters are erased, for a function type. */
   def erasedFunctionParameters(tp: Type)(using Context): List[Boolean] = tp.dealias match {
@@ -2119,8 +2141,11 @@ class Definitions {
     this.initCtx = ctx
     if (!isInitialized) {
       // force initialization of every symbol that is synthesized or hijacked by the compiler
-      val forced =
-        syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses() :+ JavaEnumClass
+      syntheticCoreClasses
+      syntheticCoreMethods
+      ScalaValueClasses()
+      JavaEnumClass
+      // end force initialization
       isInitialized = true
     }
     addSyntheticSymbolsComments

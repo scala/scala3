@@ -419,6 +419,12 @@ object Types {
       case _ => false
     }
 
+    /** Is this the type of a method that has a by-name parameters? */
+    def isMethodWithByNameArgs(using Context): Boolean = stripPoly match {
+      case mt: MethodType => mt.paramInfos.exists(_.isInstanceOf[ExprType])
+      case _ => false
+    }
+
     /** Is this the type of a method with a leading empty parameter list?
      */
     def isNullaryMethod(using Context): Boolean = stripPoly match {
@@ -1328,7 +1334,7 @@ object Types {
       case tp: AndType =>
         tp.derivedAndType(tp.tp1.widenUnionWithoutNull, tp.tp2.widenUnionWithoutNull)
       case tp: RefinedType =>
-        tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
+        tp.derivedRefinedType(parent = tp.parent.widenUnion)
       case tp: RecType =>
         tp.rebind(tp.parent.widenUnion)
       case tp: HKTypeLambda =>
@@ -1858,20 +1864,18 @@ object Types {
 
     /** Turn type into a function type.
      *  @pre this is a method type without parameter dependencies.
-     *  @param dropLast        the number of trailing parameters that should be dropped
-     *                         when forming the function type.
+     *  @param isJava          translate repeated params as as java `Array`s?
      *  @param alwaysDependent if true, always create a dependent function type.
      */
-    def toFunctionType(isJava: Boolean, dropLast: Int = 0, alwaysDependent: Boolean = false)(using Context): Type = this match {
+    def toFunctionType(isJava: Boolean = false, alwaysDependent: Boolean = false)(using Context): Type = this match {
       case mt: MethodType if !mt.isParamDependent && !mt.hasErasedParams =>
-        val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
         val isContextual = mt.isContextualMethod && !ctx.erasedTypes
         val result1 = mt.nonDependentResultApprox match {
           case res: MethodType => res.toFunctionType(isJava)
           case res => res
         }
         val funType = defn.FunctionOf(
-          formals1 mapConserve (_.translateFromRepeated(toArray = isJava)),
+           mt.paramInfos.mapConserve(_.translateFromRepeated(toArray = isJava)),
           result1, isContextual)
         if alwaysDependent || mt.isResultDependent then
           RefinedType(funType, nme.apply, mt)
@@ -3154,7 +3158,9 @@ object Types {
 
     def checkInst(using Context): this.type = this // debug hook
 
-    def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(using Context): Type =
+    final def derivedRefinedType
+        (parent: Type = this.parent, refinedName: Name = this.refinedName, refinedInfo: Type = this.refinedInfo)
+        (using Context): Type =
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo)) this
       else RefinedType(parent, refinedName, refinedInfo)
 
@@ -3640,7 +3646,7 @@ object Types {
   trait LambdaType extends BindingType with TermType { self =>
     type ThisName <: Name
     type PInfo <: Type
-    type This <: LambdaType{type PInfo = self.PInfo}
+    type This >: this.type <: LambdaType{type PInfo = self.PInfo}
     type ParamRefType <: ParamRef
 
     def paramNames: List[ThisName]
@@ -3698,7 +3704,7 @@ object Types {
 
     final def derivedLambdaType(paramNames: List[ThisName] = this.paramNames,
                           paramInfos: List[PInfo] = this.paramInfos,
-                          resType: Type = this.resType)(using Context): LambdaType =
+                          resType: Type = this.resType)(using Context): This =
       if ((paramNames eq this.paramNames) && (paramInfos eq this.paramInfos) && (resType eq this.resType)) this
       else newLikeThis(paramNames, paramInfos, resType)
 
@@ -3817,7 +3823,7 @@ object Types {
     import DepStatus._
     type ThisName = TermName
     type PInfo = Type
-    type This <: TermLambda
+    type This >: this.type <: TermLambda
     type ParamRefType = TermParamRef
 
     override def resultType(using Context): Type =
@@ -4057,8 +4063,8 @@ object Types {
           tp.derivedAppliedType(tycon, addInto(args.head) :: Nil)
         case tp @ AppliedType(tycon, args) if defn.isFunctionNType(tp) =>
           wrapConvertible(tp.derivedAppliedType(tycon, args.init :+ addInto(args.last)))
-        case tp @ RefinedType(parent, rname, rinfo) if defn.isFunctionType(tp) =>
-          wrapConvertible(tp.derivedRefinedType(parent, rname, addInto(rinfo)))
+        case tp @ defn.RefinedFunctionOf(rinfo) =>
+          wrapConvertible(tp.derivedRefinedType(refinedInfo = addInto(rinfo)))
         case tp: MethodOrPoly =>
           tp.derivedLambdaType(resType = addInto(tp.resType))
         case ExprType(resType) =>
@@ -4114,7 +4120,7 @@ object Types {
   trait TypeLambda extends LambdaType {
     type ThisName = TypeName
     type PInfo = TypeBounds
-    type This <: TypeLambda
+    type This >: this.type <: TypeLambda
     type ParamRefType = TypeParamRef
 
     def isResultDependent(using Context): Boolean = true
@@ -4878,6 +4884,9 @@ object Types {
       val inst = instanceOpt
       if (inst.exists) inst else origin
     }
+
+    def wrapInTypeTree(owningTree: Tree)(using Context): InferredTypeTree =
+      new InferredTypeTree().withSpan(owningTree.span).withType(this)
 
     override def computeHash(bs: Binders): Int = identityHash(bs)
     override def equals(that: Any): Boolean = this.eq(that.asInstanceOf[AnyRef])
@@ -6399,7 +6408,9 @@ object Types {
         seen += tp
         tp match {
           case tp: AppliedType =>
-            foldOver(n + 1, tp)
+            val tpNorm = tp.tryNormalize
+            if tpNorm.exists then apply(n, tpNorm)
+            else foldOver(n + 1, tp)
           case tp: RefinedType =>
             foldOver(n + 1, tp)
           case tp: TypeRef if tp.info.isTypeAlias =>

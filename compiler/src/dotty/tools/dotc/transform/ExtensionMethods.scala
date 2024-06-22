@@ -215,8 +215,8 @@ object ExtensionMethods {
           |
           | ${candidates.map(c => s"${c.name}:${c.info.signature}:${FullParameterization.memberSignature(c.info)}").mkString("\n")}""")
       if matching.tail.nonEmpty then
-        // this case will report a "have the same erasure" error later at erasure pahse
-        report.log(i"mutiple extension methods match $imeth: ${candidates.map(c => i"${c.name}:${c.info}")}")
+        // this case will report a "have the same erasure" error later at erasure phase
+        report.log(i"multiple extension methods match $imeth: ${candidates.map(c => i"${c.name}:${c.info}")}")
       matching.head.symbol.asTerm
     }
 }

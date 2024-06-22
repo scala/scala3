@@ -1137,11 +1137,16 @@ class Namer { typer: Typer =>
 
       def foreachDefaultGetterOf(sym: TermSymbol, op: TermSymbol => Unit): Unit =
         var n = 0
+        val methodName =
+          if sym.name == nme.apply && sym.is(Synthetic) && sym.owner.companionClass.is(Case) then
+            // The synthesized `apply` methods of case classes use the constructor's default getters
+            nme.CONSTRUCTOR
+          else sym.name
         for params <- sym.paramSymss; param <- params do
           if param.isTerm then
             if param.is(HasDefault) then
-              val getterName = DefaultGetterName(sym.name, n)
-              val getter = pathType.member(DefaultGetterName(sym.name, n)).symbol
+              val getterName = DefaultGetterName(methodName, n)
+              val getter = pathType.member(getterName).symbol
               assert(getter.exists, i"$path does not have a default getter named $getterName")
               op(getter.asTerm)
             n += 1
@@ -1885,7 +1890,7 @@ class Namer { typer: Typer =>
       val originalTp = defaultParamType
       val approxTp = wildApprox(originalTp)
       approxTp.stripPoly match
-        case atp @ defn.ContextFunctionType(_, resType, _)
+        case atp @ defn.ContextFunctionType(_, resType)
         if !defn.isNonRefinedFunction(atp) // in this case `resType` is lying, gives us only the non-dependent upper bound
             || resType.existsPart(_.isInstanceOf[WildcardType], StopAt.Static, forceLazy = false) =>
           originalTp

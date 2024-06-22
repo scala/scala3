@@ -317,7 +317,7 @@ object Inferencing {
   def inferTypeParams(tree: Tree, pt: Type)(using Context): Tree = tree.tpe match
     case tl: TypeLambda =>
       val (tl1, tvars) = constrained(tl, tree)
-      var tree1 = AppliedTypeTree(tree.withType(tl1), tvars)
+      val tree1 = AppliedTypeTree(tree.withType(tl1), tvars.map(_.wrapInTypeTree(tree)))
       tree1.tpe <:< pt
       if isFullyDefined(tree1.tpe, force = ForceDegree.failBottom) then
         tree1
@@ -537,7 +537,7 @@ object Inferencing {
       }
       if tparams.isEmpty then tp else tp.derivedAppliedType(tycon, args1)
     case tp: AndOrType => tp.derivedAndOrType(captureWildcards(tp.tp1), captureWildcards(tp.tp2))
-    case tp: RefinedType => tp.derivedRefinedType(captureWildcards(tp.parent), tp.refinedName, tp.refinedInfo)
+    case tp: RefinedType => tp.derivedRefinedType(parent = captureWildcards(tp.parent))
     case tp: RecType => tp.derivedRecType(captureWildcards(tp.parent))
     case tp: LazyRef => captureWildcards(tp.ref)
     case tp: AnnotatedType => tp.derivedAnnotatedType(captureWildcards(tp.parent), tp.annot)

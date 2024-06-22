@@ -394,7 +394,7 @@ object SpaceEngine {
       project(pat)
 
     case Typed(_, tpt) =>
-      Typ(erase(tpt.tpe.stripAnnots, isValue = true), decomposed = false)
+      Typ(erase(tpt.tpe.stripAnnots, isValue = true, isTyped = true), decomposed = false)
 
     case This(_) =>
       Typ(pat.tpe.stripAnnots, decomposed = false)
@@ -458,32 +458,35 @@ object SpaceEngine {
    *
    *  @param inArray whether `tp` is a type argument to `Array`
    *  @param isValue whether `tp` is the type which match against values
+   *  @param isTyped whether `tp` is the type from a `Typed` tree
    *
    *  If `isValue` is true, then pattern-bound symbols are erased to its upper bound.
    *  This is needed to avoid spurious unreachable warnings. See tests/patmat/i6197.scala.
    */
-  private def erase(tp: Type, inArray: Boolean = false, isValue: Boolean = false)(using Context): Type =
-    trace(i"erase($tp${if inArray then " inArray" else ""}${if isValue then " isValue" else ""})", debug)(tp match {
+  private def erase(tp: Type, inArray: Boolean = false, isValue: Boolean = false, isTyped: Boolean = false)(using Context): Type =
+    trace(i"erase($tp${if inArray then " inArray" else ""}${if isValue then " isValue" else ""}${if isTyped then " isTyped" else ""})", debug)(tp match {
       case tp @ AppliedType(tycon, args) if tycon.typeSymbol.isPatternBound =>
         WildcardType
 
       case tp @ AppliedType(tycon, args) =>
-        val inArray = tycon.isRef(defn.ArrayClass)
-        val args2 = args.map(arg => erase(arg, inArray = inArray, isValue = false))
+        val inArray = tycon.isRef(defn.ArrayClass) || tp.translucentSuperType.isRef(defn.ArrayClass)
+        val args2 =
+          if isTyped && !inArray then args.map(_ => WildcardType)
+          else args.map(arg => erase(arg, inArray = inArray, isValue = false))
         tp.derivedAppliedType(erase(tycon, inArray, isValue = false), args2)
 
       case tp @ OrType(tp1, tp2) =>
-        OrType(erase(tp1, inArray, isValue), erase(tp2, inArray, isValue), tp.isSoft)
+        OrType(erase(tp1, inArray, isValue, isTyped), erase(tp2, inArray, isValue, isTyped), tp.isSoft)
 
       case AndType(tp1, tp2) =>
-        AndType(erase(tp1, inArray, isValue), erase(tp2, inArray, isValue))
+        AndType(erase(tp1, inArray, isValue, isTyped), erase(tp2, inArray, isValue, isTyped))
 
       case tp @ RefinedType(parent, _, _) =>
-        erase(parent, inArray, isValue)
+        erase(parent, inArray, isValue, isTyped)
 
       case tref: TypeRef if tref.symbol.isPatternBound =>
-        if inArray then tref.underlying
-        else if isValue then tref.superType
+        if inArray then erase(tref.underlying, inArray, isValue, isTyped)
+        else if isValue then erase(tref.superType, inArray, isValue, isTyped)
         else WildcardType
 
       case _ => tp
@@ -522,10 +525,14 @@ object SpaceEngine {
    *  We assume that unapply methods are pure, but the same method may
    *  be called with different prefixes, thus behaving differently.
    */
-  def isSameUnapply(tp1: TermRef, tp2: TermRef)(using Context): Boolean =
+  def isSameUnapply(tp1: TermRef, tp2: TermRef)(using Context): Boolean = trace(i"isSameUnapply($tp1, $tp2)") {
+    def isStable(tp: TermRef) =
+      !tp.symbol.is(ExtensionMethod) // The "prefix" of an extension method may be, but the receiver isn't, so exclude
+      && tp.prefix.isStable
     // always assume two TypeTest[S, T].unapply are the same if they are equal in types
-    (tp1.prefix.isStable && tp2.prefix.isStable || tp1.symbol == defn.TypeTest_unapply)
+    (isStable(tp1) && isStable(tp2) || tp1.symbol == defn.TypeTest_unapply)
     && tp1 =:= tp2
+  }
 
   /** Return term parameter types of the extractor `unapp`.
    *  Parameter types of the case class type `tp`. Adapted from `unapplyPlan` in patternMatcher  */
@@ -537,7 +544,7 @@ object SpaceEngine {
     val mt: MethodType = unapp.widen match {
       case mt: MethodType => mt
       case pt: PolyType   =>
-          val tvars = pt.paramInfos.map(newTypeVar(_))
+          val tvars = constrained(pt)
           val mt = pt.instantiate(tvars).asInstanceOf[MethodType]
           scrutineeTp <:< mt.paramInfos(0)
           // force type inference to infer a narrower type: could be singleton

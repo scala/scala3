@@ -1,4 +1,4 @@
-// scalac: -source:future-migration -deprecation -Werror
+//> using options -source:future-migration -deprecation -Werror
 scala> import scala.util._
 -- Error: ----------------------------------------------------------------------
 1 | import scala.util._

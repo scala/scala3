@@ -84,7 +84,7 @@ class SemanticSymbolBuilder:
         else
           decls0
       end decls
-      val alts = decls.filter(_.isOneOf(Method | Mutable)).toList.reverse
+      val alts = decls.filter(_.isOneOf(Method | Mutable)).toList.reverse.partition(!_.is(Synthetic)).toList.flatten
       def find(filter: Symbol => Boolean) = alts match
         case notSym :: rest if !filter(notSym) =>
           val idx = rest.indexWhere(filter).ensuring(_ >= 0)

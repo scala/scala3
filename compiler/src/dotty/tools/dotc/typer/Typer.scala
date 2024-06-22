@@ -752,7 +752,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     record("typedSelect")
 
     def typeSelectOnTerm(using Context): Tree =
-      val qual = typedExpr(tree.qualifier, shallowSelectionProto(tree.name, pt, this))
+      val qual = typedExpr(tree.qualifier, shallowSelectionProto(tree.name, pt, this, tree.nameSpan))
       typedSelect(tree, pt, qual).withSpan(tree.span).computeNullable()
 
     def javaSelectOnType(qual: Tree)(using Context) =
@@ -782,7 +782,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       tryAlternatively(typeSelectOnTerm)(fallBack)
 
     if (tree.qualifier.isType) {
-      val qual1 = typedType(tree.qualifier, shallowSelectionProto(tree.name, pt, this))
+      val qual1 = typedType(tree.qualifier, shallowSelectionProto(tree.name, pt, this, tree.nameSpan))
       assignType(cpy.Select(tree)(qual1, tree.name), qual1)
     }
     else if (ctx.isJava && tree.name.isTypeName)
@@ -3098,6 +3098,22 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case _ => typedUnadapted(desugar(tree, pt), pt, locked)
         }
 
+        def handleTypeError(ex: TypeError): Tree = ex match
+          case ex: CyclicReference
+          if ctx.reporter.errorsReported
+              && xtree.span.isZeroExtent
+              && ex.isVal =>
+            // Don't report a "recursive val ... needs type" if errors were reported
+            // previously and the span of the offending tree is empty. In this case,
+            // it's most likely that this is desugared code, and the error message would
+            // be redundant and confusing.
+            xtree.withType(ErrorType(ex.toMessage))
+          case _ =>
+            // Use focussed sourcePos since tree might be a large definition
+            // and a large error span would hide all errors in interior.
+            // TODO: Not clear that hiding is what we want, actually
+            errorTree(xtree, ex, xtree.srcPos.focus)
+
         try
           val ifpt = defn.asContextFunctionType(pt)
           val result =
@@ -3115,10 +3131,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               case xtree => typedUnnamed(xtree)
 
           simplify(result, pt, locked)
-        catch case ex: TypeError => errorTree(xtree, ex, xtree.srcPos.focus)
-          // use focussed sourcePos since tree might be a large definition
-          // and a large error span would hide all errors in interior.
-          // TODO: Not clear that hiding is what we want, actually
+        catch case ex: TypeError =>
+          handleTypeError(ex)
     }
   }
 
@@ -3160,7 +3174,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val paramTypes = {
       val hasWildcard = formals.exists(_.existsPart(_.isInstanceOf[WildcardType], StopAt.Static))
       if hasWildcard then formals.map(_ => untpd.TypeTree())
-      else formals.map(untpd.TypeTree)
+      else formals.map(formal => untpd.TypeTree(formal.loBound)) // about loBound, see tests/pos/i18649.scala
     }
 
     val erasedParams = pt match {
@@ -3442,7 +3456,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         then
           Some(adapt(tree, pt, locked))
         else
-          val selProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false)
+          val selProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false, tree.nameSpan)
           if selProto.isMatchedBy(qual.tpe) || tree.hasAttachment(InsertedImplicitOnQualifier) then
             None
           else
@@ -3467,7 +3481,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       (tree: untpd.Select, pt: Type, mbrProto: Type, qual: Tree, locked: TypeVars, compat: Compatibility, inSelect: Boolean)
       (using Context): Tree =
 
-    def selectionProto = SelectionProto(tree.name, mbrProto, compat, privateOK = inSelect)
+    def selectionProto = SelectionProto(tree.name, mbrProto, compat, privateOK = inSelect, tree.nameSpan)
 
     def tryExtension(using Context): Tree =
       val altImports = new mutable.ListBuffer[TermRef]()
@@ -3897,7 +3911,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
        *  function prototype `(...)R`. Otherwise `pt`.
        */
       def ptWithoutRedundantApply: Type = pt.revealIgnored match
-        case SelectionProto(nme.apply, mpt, _, _) =>
+        case SelectionProto(nme.apply, mpt, _, _, _) =>
           mpt.revealIgnored match
             case fpt: FunProto => fpt
             case _ => pt
@@ -4117,7 +4131,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         if (!ctx.isAfterTyper && !tree.isInstanceOf[Inlined] && ctx.settings.WvalueDiscard.value && !isThisTypeResult(tree)) {
           report.warning(ValueDiscarding(tree.tpe), tree.srcPos)
         }
-        return tpd.Block(tree1 :: Nil, Literal(Constant(())))
+        return tpd.Block(tree1 :: Nil, unitLiteral)
       }
 
       // convert function literal to SAM closure
@@ -4260,7 +4274,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             var typeArgs = tree match
               case Select(qual, nme.CONSTRUCTOR) => qual.tpe.widenDealias.argTypesLo.map(TypeTree(_))
               case _ => Nil
-            if typeArgs.isEmpty then typeArgs = constrained(poly, tree)._2
+            if typeArgs.isEmpty then typeArgs = constrained(poly, tree)._2.map(_.wrapInTypeTree(tree))
             convertNewGenericArray(readapt(tree.appliedToTypeTrees(typeArgs)))
         case wtp =>
           val isStructuralCall = wtp.isValueType && isStructuralTermSelectOrApply(tree)
