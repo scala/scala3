@@ -31,6 +31,6 @@
 -- [E006] Not Found Error: tests/neg-macros/i15009a.scala:12:2 ---------------------------------------------------------
 12 |  $int // error: Not found: $int
    |  ^^^^
-   |  Not found: $int
+   |  Not found: $int - did you mean int?
    |
    | longer explanation available when compiling with `-explain`

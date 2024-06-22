@@ -31,9 +31,9 @@
    |           ^^^^^^^
    |           value AbCde is not a member of object O - did you mean O.abcde?
 -- [E008] Not Found Error: tests/neg/name-hints.scala:15:13 ------------------------------------------------------------
-15 |  val s3 = O.AbCdE       // error
+15 |  val s3 = O.AbcdE       // error
    |           ^^^^^^^
-   |           value AbCdE is not a member of object O - did you mean O.abcde?
+   |           value AbcdE is not a member of object O - did you mean O.abcde?
 -- [E008] Not Found Error: tests/neg/name-hints.scala:16:13 ------------------------------------------------------------
 16 |  val s3 = O.AbCDE       // error, no hint
    |           ^^^^^^^
