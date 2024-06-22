@@ -1,5 +1,5 @@
--- [E190] Potential Issue Warning: tests/neg-custom-args/captures/real-try.scala:36:4 ----------------------------------
-36 |  b.x
+-- [E190] Potential Issue Warning: tests/neg-custom-args/captures/real-try.scala:30:4 ----------------------------------
+30 |  b.x
    |  ^^^
    |  Discarded non-Unit value of type () -> Unit. You may want to use `()`.
    |
