@@ -195,7 +195,7 @@ trait ImportSuggestions:
       && {
         val task = new TimerTask:
           def run() =
-            println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
+            implicits.println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
             ctx.run.nn.isCancelled = true
         val span = ctx.owner.srcPos.span
         val (expectedType, argument, kind) = pt match
