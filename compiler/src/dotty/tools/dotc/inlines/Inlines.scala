@@ -408,7 +408,7 @@ object Inlines:
             arg match
               case ConstantValue(_) | Inlined(_, Nil, Typed(ConstantValue(_), _)) => // ok
               case _ => report.error(em"expected a constant value but found: $arg", arg.srcPos)
-            return Literal(Constant(())).withSpan(call.span)
+            return unitLiteral.withSpan(call.span)
           else if inlinedMethod == defn.Compiletime_codeOf then
             return Intrinsics.codeOf(arg, call.srcPos)
         case _ =>
