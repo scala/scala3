@@ -1,0 +1,30 @@
+-- [E173] Reference Error: tests/neg/i18686.scala:13:16 ----------------------------------------------------------------
+13 |    println(Foo.Bar1) // error
+   |            ^^^^^^^^
+   |            value Bar1 cannot be accessed as a member of Foo.type from object Main.
+   |              private value Bar1 can only be accessed from object Foo.
+-- [E173] Reference Error: tests/neg/i18686.scala:14:16 ----------------------------------------------------------------
+14 |    println(Foo.Bar2) // error
+   |            ^^^^^^^^
+   |            value Bar2 cannot be accessed as a member of Foo.type from object Main.
+   |              private[Foo] value Bar2 can only be accessed from object Foo.
+-- [E173] Reference Error: tests/neg/i18686.scala:15:16 ----------------------------------------------------------------
+15 |    println(Foo.Bar3) // error
+   |            ^^^^^^^^
+   |            value Bar3 cannot be accessed as a member of Foo.type from object Main.
+   |              protected value Bar3 can only be accessed from object Foo.
+-- [E173] Reference Error: tests/neg/i18686.scala:16:16 ----------------------------------------------------------------
+16 |    println(Foo.Bar4) // error
+   |            ^^^^^^^^
+   |            value Bar4 cannot be accessed as a member of Foo.type from object Main.
+   |              protected[Foo] value Bar4 can only be accessed from object Foo.
+-- [E173] Reference Error: tests/neg/i18686.scala:17:20 ----------------------------------------------------------------
+17 |    println(Foo.Baz.Bar5) // error
+   |            ^^^^^^^^^^^^
+   |            value Bar5 cannot be accessed as a member of Foo.Baz.type from object Main.
+   |              private[Foo] value Bar5 can only be accessed from object Foo.
+-- [E173] Reference Error: tests/neg/i18686.scala:18:20 ----------------------------------------------------------------
+18 |    println(Foo.Baz.Bar6) // error
+   |            ^^^^^^^^^^^^
+   |            value Bar6 cannot be accessed as a member of Foo.Baz.type from object Main.
+   |              protected[Foo] value Bar6 can only be accessed from object Foo.

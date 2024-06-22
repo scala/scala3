@@ -5,4 +5,4 @@
    |Extension methods were tried, but the search failed with:
    |
    |    method getDFType cannot be accessed as a member of DFType.type from the top-level definitions in package <empty>.
-   |     Protected method getDFType can only be accessed from object DFType.
+   |      protected method getDFType can only be accessed from object DFType.
