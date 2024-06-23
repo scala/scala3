@@ -29,10 +29,9 @@ case class CompletionPos(
 ):
 
   def sourcePos: SourcePosition = cursorPos.withSpan(Spans.Span(start, end))
+  def stripSuffixEditRange: l.Range = new l.Range(cursorPos.offsetToPos(start), cursorPos.offsetToPos(end))
+  def toEditRange: l.Range = cursorPos.withStart(start).withEnd(cursorPos.point).toLsp
 
-  def toEditRange: l.Range =
-    new l.Range(cursorPos.offsetToPos(start), cursorPos.offsetToPos(end))
-  end toEditRange
 end CompletionPos
 
 object CompletionPos:
