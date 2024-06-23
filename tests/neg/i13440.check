@@ -2,11 +2,14 @@
 5 |def given = 42 // error
   |    ^
   |    given is now a keyword, write `given` instead of given to keep it as an identifier
+  |    This can be rewritten automatically under -rewrite -source 3.0-migration.
 -- Error: tests/neg/i13440.scala:7:13 ----------------------------------------------------------------------------------
 7 |case class C(enum: List[Int] = Nil) { // error
   |             ^
   |             enum is now a keyword, write `enum` instead of enum to keep it as an identifier
+  |             This can be rewritten automatically under -rewrite -source 3.0-migration.
 -- Error: tests/neg/i13440.scala:8:11 ----------------------------------------------------------------------------------
 8 |  val s = s"$enum" // error
   |           ^
   |           enum is now a keyword, write `enum` instead of enum to keep it as an identifier
+  |           This can be rewritten automatically under -rewrite -source 3.0-migration.
