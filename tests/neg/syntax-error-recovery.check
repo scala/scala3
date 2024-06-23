@@ -9,7 +9,7 @@
 -- [E040] Syntax Error: tests/neg/syntax-error-recovery.scala:19:4 -----------------------------------------------------
 19 |    if x == 0 then println(bar) // error
    |    ^^
-   |    ')' expected, but 'if' found
+   |    ',' or ')' expected, but 'if' found
 -- [E040] Syntax Error: tests/neg/syntax-error-recovery.scala:23:12 ----------------------------------------------------
 23 |    if x < 0) then // error
    |            ^
@@ -25,7 +25,7 @@
 -- [E040] Syntax Error: tests/neg/syntax-error-recovery.scala:48:4 -----------------------------------------------------
 48 |    if x == 0 then println(bar) // error
    |    ^^
-   |    ')' expected, but 'if' found
+   |    ',' or ')' expected, but 'if' found
 -- [E040] Syntax Error: tests/neg/syntax-error-recovery.scala:52:12 ----------------------------------------------------
 52 |    if x < 0) then // error
    |            ^
