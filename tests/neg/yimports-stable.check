@@ -3,12 +3,12 @@ error: bad preamble import hello.world.potions
 -- [E006] Not Found Error: tests/neg/yimports-stable/C_2.scala:4:9 -----------------------------------------------------
 4 |  val v: Numb = magic // error // error
   |         ^^^^
-  |         Not found: type Numb
+  |         Not found: type Numb - did you mean Null?
   |
   | longer explanation available when compiling with `-explain`
 -- [E006] Not Found Error: tests/neg/yimports-stable/C_2.scala:4:16 ----------------------------------------------------
 4 |  val v: Numb = magic // error // error
   |                ^^^^^
-  |                Not found: magic
+  |                Not found: magic - did you mean main?
   |
   | longer explanation available when compiling with `-explain`
