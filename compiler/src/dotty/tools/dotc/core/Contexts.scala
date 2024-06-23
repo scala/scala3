@@ -34,7 +34,7 @@ import scala.annotation.internal.sharable
 
 import DenotTransformers.DenotTransformer
 import dotty.tools.dotc.profile.Profiler
-import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
+import dotty.tools.dotc.sbt.interfaces.{IncrementalCallback, ProgressCallback}
 import util.Property.Key
 import util.Store
 import plugins._
@@ -53,8 +53,9 @@ object Contexts {
   private val (notNullInfosLoc,      store8) = store7.newLocation[List[NotNullInfo]]()
   private val (importInfoLoc,        store9) = store8.newLocation[ImportInfo | Null]()
   private val (typeAssignerLoc,     store10) = store9.newLocation[TypeAssigner](TypeAssigner)
+  private val (progressCallbackLoc, store11) = store10.newLocation[ProgressCallback | Null]()
 
-  private val initialStore = store10
+  private val initialStore = store11
 
   /** The current context */
   inline def ctx(using ctx: Context): Context = ctx
@@ -176,6 +177,14 @@ object Contexts {
       def forceRun = settings.YdumpSbtInc.value || settings.YforceSbtPhases.value
       val local = incCallback
       local != null && local.enabled || forceRun
+
+    /** The Zinc compile progress callback implementation if we are run from Zinc, null otherwise */
+    def progressCallback: ProgressCallback | Null = store(progressCallbackLoc)
+
+    /** Run `op` if there exists a Zinc progress callback */
+    inline def withProgressCallback(inline op: ProgressCallback => Unit): Unit =
+      val local = progressCallback
+      if local != null then op(local)
 
     /** The current plain printer */
     def printerFn: Context => Printer = store(printerFnLoc)
@@ -675,6 +684,7 @@ object Contexts {
 
     def setCompilerCallback(callback: CompilerCallback): this.type = updateStore(compilerCallbackLoc, callback)
     def setIncCallback(callback: IncrementalCallback): this.type = updateStore(incCallbackLoc, callback)
+    def setProgressCallback(callback: ProgressCallback): this.type = updateStore(progressCallbackLoc, callback)
     def setPrinterFn(printer: Context => Printer): this.type = updateStore(printerFnLoc, printer)
     def setSettings(settingsState: SettingsState): this.type = updateStore(settingsStateLoc, settingsState)
     def setRun(run: Run | Null): this.type = updateStore(runLoc, run)

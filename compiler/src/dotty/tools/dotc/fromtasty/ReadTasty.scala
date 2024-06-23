@@ -12,7 +12,6 @@ import NameOps._
 import ast.Trees.Tree
 import Phases.Phase
 
-
 /** Load trees from TASTY files */
 class ReadTasty extends Phase {
 
@@ -22,7 +21,15 @@ class ReadTasty extends Phase {
     ctx.settings.fromTasty.value
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
-    withMode(Mode.ReadPositions)(units.flatMap(readTASTY(_)))
+    withMode(Mode.ReadPositions) {
+      val nextUnits = collection.mutable.ListBuffer.empty[CompilationUnit]
+      val unitContexts = units.view.map(ctx.fresh.setCompilationUnit)
+      for unitContext <- unitContexts if addTasty(nextUnits += _)(using unitContext) do ()
+      nextUnits.toList
+    }
+
+  def addTasty(fn: CompilationUnit => Unit)(using Context): Boolean = monitor(phaseName):
+    readTASTY(ctx.compilationUnit).foreach(fn)
 
   def readTASTY(unit: CompilationUnit)(using Context): Option[CompilationUnit] = unit match {
     case unit: TASTYCompilationUnit =>
@@ -77,7 +84,7 @@ class ReadTasty extends Phase {
           }
       }
     case unit =>
-     Some(unit)
+      Some(unit)
   }
 
   def run(using Context): Unit = unsupported("run")

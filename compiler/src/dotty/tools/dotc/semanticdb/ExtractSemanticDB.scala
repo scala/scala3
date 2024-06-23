@@ -25,10 +25,12 @@ import scala.jdk.CollectionConverters._
 import scala.PartialFunction.condOpt
 import typer.ImportInfo.withRootImports
 
+import dotty.tools.dotc.reporting.Diagnostic.Warning
 import dotty.tools.dotc.{semanticdb => s}
 import dotty.tools.io.{AbstractFile, JarArchive}
 import dotty.tools.dotc.semanticdb.DiagnosticOps.*
 import scala.util.{Using, Failure, Success}
+import java.nio.file.Path
 
 
 /** Extract symbol references and uses to semanticdb files.
@@ -60,48 +62,64 @@ class ExtractSemanticDB private (phaseMode: ExtractSemanticDB.PhaseMode) extends
   // Check not needed since it does not transform trees
   override def isCheckable: Boolean = false
 
+  private def computeDiagnostics(
+      sourceRoot: String,
+      warnings: Map[SourceFile, List[Warning]],
+      append: ((Path, List[Diagnostic])) => Unit)(using Context): Boolean = monitor(phaseName) {
+    val unit = ctx.compilationUnit
+    warnings.get(unit.source).foreach { ws =>
+      val outputDir =
+        ExtractSemanticDB.semanticdbPath(
+          unit.source,
+          ExtractSemanticDB.semanticdbOutDir,
+          sourceRoot
+        )
+      append((outputDir, ws.map(_.toSemanticDiagnostic)))
+    }
+  }
+
+  private def extractSemanticDB(sourceRoot: String, writeSemanticdbText: Boolean)(using Context): Boolean =
+    monitor(phaseName) {
+      val unit = ctx.compilationUnit
+      val outputDir =
+        ExtractSemanticDB.semanticdbPath(
+          unit.source,
+          ExtractSemanticDB.semanticdbOutDir,
+          sourceRoot
+        )
+      val extractor = ExtractSemanticDB.Extractor()
+      extractor.extract(unit.tpdTree)
+      ExtractSemanticDB.write(
+        unit.source,
+        extractor.occurrences.toList,
+        extractor.symbolInfos.toList,
+        extractor.synthetics.toList,
+        outputDir,
+        sourceRoot,
+        writeSemanticdbText
+      )
+    }
+
   override def runOn(units: List[CompilationUnit])(using ctx: Context): List[CompilationUnit] = {
     val sourceRoot = ctx.settings.sourceroot.value
     val appendDiagnostics = phaseMode == ExtractSemanticDB.PhaseMode.AppendDiagnostics
+    val unitContexts = units.map(ctx.fresh.setCompilationUnit(_).withRootImports)
     if (appendDiagnostics)
       val warnings = ctx.reporter.allWarnings.groupBy(w => w.pos.source)
-      units.flatMap { unit =>
-        warnings.get(unit.source).map { ws =>
-          val unitCtx = ctx.fresh.setCompilationUnit(unit).withRootImports
-          val outputDir =
-            ExtractSemanticDB.semanticdbPath(
-              unit.source,
-              ExtractSemanticDB.semanticdbOutDir(using unitCtx),
-              sourceRoot
-            )
-          (outputDir, ws.map(_.toSemanticDiagnostic))
+      val buf = mutable.ListBuffer.empty[(Path, Seq[Diagnostic])]
+      val units0 =
+        for unitCtx <- unitContexts if computeDiagnostics(sourceRoot, warnings, buf += _)(using unitCtx)
+        yield unitCtx.compilationUnit
+      cancellable {
+        buf.toList.asJava.parallelStream().forEach { case (out, warnings) =>
+          ExtractSemanticDB.appendDiagnostics(warnings, out)
         }
-      }.asJava.parallelStream().forEach { case (out, warnings) =>
-        ExtractSemanticDB.appendDiagnostics(warnings, out)
       }
+      units0
     else
       val writeSemanticdbText = ctx.settings.semanticdbText.value
-      units.foreach { unit =>
-        val unitCtx = ctx.fresh.setCompilationUnit(unit).withRootImports
-        val outputDir =
-          ExtractSemanticDB.semanticdbPath(
-            unit.source,
-            ExtractSemanticDB.semanticdbOutDir(using unitCtx),
-            sourceRoot
-          )
-        val extractor = ExtractSemanticDB.Extractor()
-        extractor.extract(unit.tpdTree)(using unitCtx)
-        ExtractSemanticDB.write(
-          unit.source,
-          extractor.occurrences.toList,
-          extractor.symbolInfos.toList,
-          extractor.synthetics.toList,
-          outputDir,
-          sourceRoot,
-          writeSemanticdbText
-        )
-      }
-    units
+      for unitCtx <- unitContexts if extractSemanticDB(sourceRoot, writeSemanticdbText)(using unitCtx)
+      yield unitCtx.compilationUnit
   }
 
   def run(using Context): Unit = unsupported("run")
