@@ -15,7 +15,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: ./project/scripts/check-cla.sh
       if: github.event_name == 'pull_request'
       env:
