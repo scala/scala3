@@ -1,7 +1,7 @@
--- [E129] Potential Issue Warning: tests/neg-custom-args/captures/real-try.scala:30:4 ----------------------------------
+-- [E190] Potential Issue Warning: tests/neg-custom-args/captures/real-try.scala:30:4 ----------------------------------
 30 |  b.x
    |  ^^^
-   |  A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |  Discarded non-Unit value of type () -> Unit. You may want to use `()`.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/real-try.scala:12:2 -----------------------------------------------------------
