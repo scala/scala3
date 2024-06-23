@@ -698,3 +698,27 @@ class CompletionCaseSuite extends BaseCompletionSuite:
          |case Dog => test.O.Animal
          |""".stripMargin,
     )
+  @Test def `for-comp` =
+    check(
+      """|object A {
+         |  val a = for {
+         |    foo <- List("a", "b", "c")
+         |    abc = println("Print!")
+         |  } yield bar@@
+         |
+         |}
+         |""".stripMargin,
+      "",
+    )
+
+  @Test def `lambda-case-tuple` =
+    check(
+      """|object A {
+         |  val a = List((1,2)).foreach {
+         |    case (a,b) => println(a)
+         |    case@@
+         |  }
+         |}
+         |""".stripMargin,
+      "case (Int, Int) => scala",
+    )
