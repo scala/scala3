@@ -9,6 +9,6 @@ Cons(hd = Cons(hd = 11, tl = Cons(hd = 22, tl = Cons(hd = 33, tl = Nil))), tl = 
 Cons(hd = Left(x = 1), tl = Cons(hd = Right(x = Pair(x = 2, y = 3)), tl = Nil))
 Cons(hd = Left(x = 1), tl = Cons(hd = Right(x = Pair(x = 2, y = 3)), tl = Nil))
 true
-::(head = 1, next$access$1 = ::(head = 2, next$access$1 = ::(head = 3, next$access$1 = Nil())))
-::(head = ::(head = 1, next$access$1 = Nil()), next$access$1 = ::(head = ::(head = 2, next$access$1 = ::(head = 3, next$access$1 = Nil())), next$access$1 = Nil()))
-::(head = Nil(), next$access$1 = ::(head = ::(head = 1, next$access$1 = Nil()), next$access$1 = ::(head = ::(head = 2, next$access$1 = ::(head = 3, next$access$1 = Nil())), next$access$1 = Nil())))
+::(head = 1, next = ::(head = 2, next = ::(head = 3, next = Nil())))
+::(head = ::(head = 1, next = Nil()), next = ::(head = ::(head = 2, next = ::(head = 3, next = Nil())), next = Nil()))
+::(head = Nil(), next = ::(head = ::(head = 1, next = Nil()), next = ::(head = ::(head = 2, next = ::(head = 3, next = Nil())), next = Nil())))

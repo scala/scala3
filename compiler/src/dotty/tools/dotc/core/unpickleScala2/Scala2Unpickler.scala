@@ -451,6 +451,14 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       // skip this member
       return NoSymbol
 
+    // Skip case accessor `<xyz>$access$<idx>` and keep track of their name to make `<xyz>` the case accessor
+    if flags.is(CaseAccessor) && name.toString().contains("$access$") then
+      val accessorName = name.toString().split('$').head.toTermName // <xyz>
+      symScope(owner) // we assume that the `<xyz>` is listed before the accessor and hence is already entered in the scope
+        .find(decl => decl.isAllOf(ParamAccessor) && decl.name == accessorName)
+        .setFlag(CaseAccessor)
+      return NoSymbol // skip this member
+
     name = name.adjustIfModuleClass(flags)
     if (flags.is(Method))
       name =
