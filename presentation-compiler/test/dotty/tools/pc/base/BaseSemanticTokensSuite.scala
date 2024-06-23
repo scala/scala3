@@ -4,6 +4,7 @@ import java.net.URI
 
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.CompilerVirtualFileParams
+import scala.language.unsafeNulls
 
 import dotty.tools.pc.utils.TestSemanticTokens
 

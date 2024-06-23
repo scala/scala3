@@ -62,14 +62,14 @@ final class InferredTypeProvider(
       adjustOpt: Option[AdjustTypeOpts] = None
   ): List[TextEdit] =
     val retryType = adjustOpt.isEmpty
-    val uri = params.uri
-    val filePath = Paths.get(uri)
+    val uri = params.uri().nn
+    val filePath = Paths.get(uri).nn
 
-    val sourceText = adjustOpt.map(_.text).getOrElse(params.text)
+    val sourceText = adjustOpt.map(_.text).getOrElse(params.text().nn)
     val source =
-      SourceFile.virtual(filePath.toString, sourceText)
+      SourceFile.virtual(filePath.toString(), sourceText)
     driver.run(uri, source)
-    val unit = driver.currentCtx.run.units.head
+    val unit = driver.currentCtx.run.nn.units.head
     val pos = driver.sourcePosition(params)
     val path =
       Interactive.pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx)
@@ -78,7 +78,7 @@ final class InferredTypeProvider(
     val indexedCtx = IndexedContext(locatedCtx)
     val autoImportsGen = AutoImports.generator(
       pos,
-      params.text,
+      sourceText,
       unit.tpdTree,
       unit.comments,
       indexedCtx,
@@ -86,7 +86,7 @@ final class InferredTypeProvider(
     )
 
     def removeType(nameEnd: Int, tptEnd: Int) =
-      sourceText.substring(0, nameEnd) +
+      sourceText.substring(0, nameEnd).nn +
         sourceText.substring(tptEnd + 1, sourceText.length())
 
     def optDealias(tpe: Type): Type =
@@ -134,7 +134,7 @@ final class InferredTypeProvider(
         def baseEdit(withParens: Boolean): TextEdit =
           val keywordOffset = if isParam then 0 else 4
           val endPos =
-            findNamePos(params.text, vl, keywordOffset).endPos.toLsp
+            findNamePos(sourceText, vl, keywordOffset).endPos.toLsp
           adjustOpt.foreach(adjust => endPos.setEnd(adjust.adjustedEndPos))
           new TextEdit(
             endPos,
@@ -148,11 +148,10 @@ final class InferredTypeProvider(
             toCheckFor: Char,
             blockStartPos: SourcePosition
         ) =
-          val text = params.text
-          val isParensFunction: Boolean = text(applyEndingPos) == toCheckFor
+          val isParensFunction: Boolean = sourceText(applyEndingPos) == toCheckFor
 
           val alreadyHasParens =
-            text(blockStartPos.start) == '('
+            sourceText(blockStartPos.start) == '('
 
           if isParensFunction && !alreadyHasParens then
             new TextEdit(blockStartPos.toLsp, "(") :: baseEdit(withParens =
@@ -188,7 +187,7 @@ final class InferredTypeProvider(
               Some(
                 AdjustTypeOpts(
                   removeType(vl.namePos.end, tpt.sourcePos.end - 1),
-                  tpt.sourcePos.toLsp.getEnd()
+                  tpt.sourcePos.toLsp.getEnd().nn
                 )
               )
             )
@@ -227,7 +226,7 @@ final class InferredTypeProvider(
               Some(
                 AdjustTypeOpts(
                   removeType(lastColon, tpt.sourcePos.end - 1),
-                  tpt.sourcePos.toLsp.getEnd()
+                  tpt.sourcePos.toLsp.getEnd().nn
                 )
               )
             )
@@ -256,8 +255,8 @@ final class InferredTypeProvider(
             val firstEnd = patterns(0).endPos.end
             val secondStart = patterns(1).startPos.start
             val hasDot = params
-              .text()
-              .substring(firstEnd, secondStart)
+              .text().nn
+              .substring(firstEnd, secondStart).nn
               .exists(_ == ',')
             if !hasDot then
               val leftParen = new TextEdit(body.startPos.toLsp, "(")
@@ -309,7 +308,7 @@ final class InferredTypeProvider(
           val end = if withBacktick then idx + 1 else idx
           val pos = tree.source.atSpan(Span(start, end, start))
           Some(pos)
-        case None if idx < text.length =>
+        case None if idx < text.length() =>
           val ch = text.charAt(idx)
           if ch == realName.head then
             lookup(idx + 1, Some((idx, realName.tail)), withBacktick)

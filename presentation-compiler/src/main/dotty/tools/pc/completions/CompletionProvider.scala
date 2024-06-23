@@ -41,10 +41,11 @@ class CompletionProvider(
     folderPath: Option[Path]
 )(using reports: ReportContext):
   def completions(): CompletionList =
-    val uri = params.uri
+    val uri = params.uri().nn
+    val text = params.text().nn
 
     val code = applyCompletionCursor(params)
-    val sourceFile = SourceFile.virtual(params.uri, code)
+    val sourceFile = SourceFile.virtual(uri, code)
     driver.run(uri, sourceFile)
 
     val ctx = driver.currentCtx
@@ -66,7 +67,7 @@ class CompletionProvider(
           CompletionPos.infer(pos, params, path)(using newctx)
         val autoImportsGen = AutoImports.generator(
           completionPos.sourcePos,
-          params.text,
+          text,
           unit.tpdTree,
           unit.comments,
           indexedCtx,
@@ -75,7 +76,7 @@ class CompletionProvider(
         val (completions, searchResult) =
           new Completions(
             pos,
-            params.text,
+            text,
             ctx.fresh.setCompilationUnit(unit),
             search,
             buildTargetIdentifier,
@@ -124,22 +125,22 @@ class CompletionProvider(
    * because scala parser trim end position to the last statement pos.
    */
   private def applyCompletionCursor(params: OffsetParams): String =
-    import params.*
+    val text = params.text().nn
+    val offset = params.offset().nn
+
     val isStartMultilineComment =
       val i = params.offset()
-      i >= 3 && (params.text().charAt(i - 1) match
+      i >= 3 && (text.charAt(i - 1) match
         case '*' =>
-          params.text().charAt(i - 2) == '*' &&
-          params.text().charAt(i - 3) == '/'
+          text.charAt(i - 2) == '*' &&
+          text.charAt(i - 3) == '/'
         case _ => false
       )
     if isStartMultilineComment then
       // Insert potentially missing `*/` to avoid comment out all codes after the "/**".
-      text.substring(0, offset) + Cursor.value + "*/" + text.substring(offset)
+      text.substring(0, offset).nn + Cursor.value + "*/" + text.substring(offset)
     else
-      text.substring(0, offset) + Cursor.value + text.substring(
-        offset
-      )
+      text.substring(0, offset).nn + Cursor.value + text.substring(offset)
   end applyCompletionCursor
 
   private def completionItems(
@@ -166,7 +167,7 @@ class CompletionProvider(
         additionalEdits: List[TextEdit] = Nil,
         range: Option[LspRange] = None
     ): CompletionItem =
-      val oldText = params.text.substring(completionPos.start, completionPos.end)
+      val oldText = params.text().nn.substring(completionPos.start, completionPos.end)
       val editRange = if newText.startsWith(oldText) then completionPos.stripSuffixEditRange
         else completionPos.toEditRange
 
@@ -186,7 +187,7 @@ class CompletionProvider(
 
       item.setTags(completion.lspTags.asJava)
 
-      if config.isCompletionSnippetsEnabled then
+      if config.isCompletionSnippetsEnabled() then
         item.setInsertTextFormat(InsertTextFormat.Snippet)
 
       completion.command.foreach { command =>
@@ -230,18 +231,10 @@ class CompletionProvider(
             case Some(edits) =>
               edits match
                 case AutoImportEdits(Some(nameEdit), other) =>
-                  mkItem(
-                    nameEdit.getNewText(),
-                    other.toList,
-                    range = Some(nameEdit.getRange())
-                  )
+                  mkItem(nameEdit.getNewText().nn, other.toList, range = Some(nameEdit.getRange().nn))
                 case _ =>
                   mkItem(
-                    v.insertText.getOrElse(
-                      ident.backticked(
-                        backtickSoftKeyword
-                      ) + completionTextSuffix
-                    ),
+                    v.insertText.getOrElse( ident.backticked(backtickSoftKeyword) + completionTextSuffix),
                     edits.edits,
                     range = v.range
                   )

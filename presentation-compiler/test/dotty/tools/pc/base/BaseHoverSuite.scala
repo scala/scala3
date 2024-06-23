@@ -3,6 +3,7 @@ package dotty.tools.pc.base
 import java.nio.file.Paths
 
 import scala.meta.internal.metals.{CompilerOffsetParams, CompilerRangeParams}
+import scala.language.unsafeNulls
 
 import dotty.tools.pc.utils.MtagsEnrichments.*
 import dotty.tools.pc.utils.{RangeReplace, TestHovers}

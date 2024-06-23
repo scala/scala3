@@ -1,5 +1,7 @@
 package dotty.tools.pc.utils
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.util.DiffUtil
 import dotty.tools.pc.utils.MtagsEnrichments.*
 

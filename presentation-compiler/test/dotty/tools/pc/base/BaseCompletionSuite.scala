@@ -6,6 +6,7 @@ import java.util.Collections
 import scala.jdk.CollectionConverters.*
 import scala.meta.internal.metals.{CompilerOffsetParams, EmptyCancelToken}
 import scala.meta.pc.CancelToken
+import scala.language.unsafeNulls
 
 import dotty.tools.pc.utils.MtagsEnrichments.*
 import dotty.tools.pc.utils.{TestCompletions, TextEdits}

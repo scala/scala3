@@ -32,8 +32,9 @@ object HoverProvider:
       driver: InteractiveDriver,
       search: SymbolSearch
   )(implicit reportContext: ReportContext): ju.Optional[HoverSignature] =
-    val uri = params.uri
-    val sourceFile = SourceFile.virtual(params.uri, params.text)
+    val uri = params.uri().nn
+    val text = params.text().nn
+    val sourceFile = SourceFile.virtual(uri, text)
     driver.run(uri, sourceFile)
 
     given ctx: Context = driver.currentCtx
@@ -54,7 +55,7 @@ object HoverProvider:
     then
       def report =
         val posId =
-          if path.isEmpty || path.head.sourcePos == null || !path.head.sourcePos.exists
+          if path.isEmpty || !path.head.sourcePos.exists
           then pos.start
           else path.head.sourcePos.start
         Report(
@@ -77,7 +78,7 @@ object HoverProvider:
         )
       end report
       reportContext.unsanitized.create(report, ifVerbose = true)
-      ju.Optional.empty()
+      ju.Optional.empty().nn
     else
       val skipCheckOnName =
         !pos.isPoint // don't check isHoveringOnName for RangeHover
@@ -125,7 +126,7 @@ object HoverProvider:
 
           val docString = symbolTpes
             .flatMap(symTpe => search.symbolDocumentation(symTpe._1))
-            .map(_.docstring)
+            .map(_.docstring())
             .mkString("\n")
           printer.expressionType(exprTpw) match
             case Some(expressionType) =>
@@ -143,9 +144,9 @@ object HoverProvider:
                   docstring = Some(docString),
                   forceExpressionType = forceExpressionType
                 )
-              )
+              ).nn
             case _ =>
-              ju.Optional.empty
+              ju.Optional.empty().nn
           end match
       end match
     end if
@@ -188,7 +189,7 @@ object HoverProvider:
 
       refTpe.flatMap(findRefinement).asJava
     case _ =>
-      ju.Optional.empty()
+      ju.Optional.empty().nn
 
 end HoverProvider
 

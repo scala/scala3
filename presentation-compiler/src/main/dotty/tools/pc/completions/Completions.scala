@@ -87,7 +87,7 @@ class Completions(
     def hasSyntheticCursorSuffix: Boolean =
       if !sym.name.endsWith(Cursor.value) then false
       else
-        val realNameLength = sym.decodedName.length - Cursor.value.length
+        val realNameLength = sym.decodedName.length() - Cursor.value.length()
         sym.source == pos.source &&
         sym.span.start + realNameLength == pos.span.end
 
@@ -201,7 +201,7 @@ class Completions(
           paramss match
             case Nil => suffix
             case List(Nil) => suffix.withNewSuffix(SuffixKind.Brace)
-            case _ if config.isCompletionSnippetsEnabled =>
+            case _ if config.isCompletionSnippetsEnabled() =>
               val onlyParameterless = paramss.forall(_.isEmpty)
               lazy val onlyImplicitOrTypeParams = paramss.forall(
                 _.exists { sym =>
@@ -273,7 +273,7 @@ class Completions(
       completionPos: CompletionPos
   ): (List[CompletionValue], Boolean) =
     lazy val rawPath = Paths
-      .get(pos.source.path)
+      .get(pos.source.path).nn
     lazy val rawFileName = rawPath
       .getFileName()
       .toString()
@@ -391,7 +391,7 @@ class Completions(
       // class Fo@@
       case (td: TypeDef) :: _
           if Fuzzy.matches(
-            td.symbol.name.decoded.replace(Cursor.value, ""),
+            td.symbol.name.decoded.replace(Cursor.value, "").nn,
             filename
           ) =>
         val values = FilenameCompletions.contribute(filename, td)
@@ -452,7 +452,7 @@ class Completions(
           pos,
           path,
           indexedContext,
-          config.isCompletionSnippetsEnabled
+          config.isCompletionSnippetsEnabled()
         )
         (args, false)
     end match
@@ -517,7 +517,7 @@ class Completions(
                 CompletionValue.Workspace(_, _, _, sym)
               ).map(visit).forall(_ == true),
         )
-        Some(search.search(query, buildTargetIdentifier, visitor))
+        Some(search.search(query, buildTargetIdentifier, visitor).nn)
       case CompletionKind.Members =>
         val visitor = new CompilerSearchVisitor(sym =>
           if sym.is(ExtensionMethod) &&
@@ -530,7 +530,7 @@ class Completions(
             ).map(visit).forall(_ == true)
           else false,
         )
-        Some(search.searchMethods(query, buildTargetIdentifier, visitor))
+        Some(search.searchMethods(query, buildTargetIdentifier, visitor).nn)
     end match
   end enrichWithSymbolSearch
 
@@ -571,7 +571,7 @@ class Completions(
               val nameId =
                 if sym.isClass || sym.is(Module) then
                   // drop #|. at the end to avoid duplication
-                  name.substring(0, name.length - 1)
+                  name.substring(0, name.length() - 1).nn
                 else name
               val suffix =
                 if symOnly.snippetSuffix.addLabelSnippet then "[]" else ""
@@ -693,7 +693,7 @@ class Completions(
         if !ov.symbol.is(Deferred) then penalty |= MemberOrdering.IsNotAbstract
         penalty
       case CompletionValue.Workspace(_, sym, _, _) =>
-        symbolRelevance(sym) | (IsWorkspaceSymbol + sym.name.show.length)
+        symbolRelevance(sym) | (IsWorkspaceSymbol + sym.name.show.length())
       case sym: CompletionValue.Symbolic =>
         symbolRelevance(sym.symbol)
       case _ =>
@@ -782,9 +782,9 @@ class Completions(
       def fuzzyScore(o: CompletionValue.Symbolic): Int =
         fuzzyCache.getOrElseUpdate(
           o, {
-            val name = o.label.toLowerCase()
+            val name = o.label.toLowerCase().nn
             if name.startsWith(queryLower) then 0
-            else if name.toLowerCase().contains(queryLower) then 1
+            else if name.contains(queryLower) then 1
             else 2
           }
         )

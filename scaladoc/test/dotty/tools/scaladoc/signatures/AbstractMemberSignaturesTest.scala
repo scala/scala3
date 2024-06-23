@@ -1,11 +1,14 @@
 package dotty.tools.scaladoc
 package signatures
 
+import java.nio.file.Path;
+
 import scala.io.Source
 import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
+import scala.language.unsafeNulls
+
 import dotty.tools.scaladoc.test.BuildInfo
-import java.nio.file.Path;
 import org.jsoup.Jsoup
 import util.IO
 import org.junit.Assert.assertTrue

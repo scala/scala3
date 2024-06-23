@@ -10,6 +10,7 @@ import scala.meta.internal.metals.{
   WorkspaceSymbolQuery
 }
 import scala.meta.pc.SymbolSearchVisitor
+import scala.language.unsafeNulls
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Symbols.*
