@@ -19,13 +19,9 @@ class CommentUnpickler(reader: TastyReader) {
     val comments = new HashMap[Addr, Comment]
     while (!isAtEnd) {
       val addr = readAddr()
-      val length = readNat()
-      if (length > 0) {
-        val bytes = readBytes(length)
-        val position = new Span(readLongInt())
-        val rawComment = new String(bytes, StandardCharsets.UTF_8)
-        comments(addr) = Comment(position, rawComment)
-      }
+      val rawComment = readUtf8()
+      val position = new Span(readLongInt())
+      comments(addr) = Comment(position, rawComment)
     }
     comments
   }
