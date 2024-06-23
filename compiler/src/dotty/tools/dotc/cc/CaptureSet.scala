@@ -249,8 +249,7 @@ sealed abstract class CaptureSet extends Showable:
     if this.subCaptures(that, frozen = true).isOK then that
     else if that.subCaptures(this, frozen = true).isOK then this
     else if this.isConst && that.isConst then Const(this.elems ++ that.elems)
-    else Var(initialElems = this.elems ++ that.elems)
-      .addAsDependentTo(this).addAsDependentTo(that)
+    else Union(this, that)
 
   /** The smallest superset (via <:<) of this capture set that also contains `ref`.
    */
@@ -263,7 +262,7 @@ sealed abstract class CaptureSet extends Showable:
     if this.subCaptures(that, frozen = true).isOK then this
     else if that.subCaptures(this, frozen = true).isOK then that
     else if this.isConst && that.isConst then Const(elemIntersection(this, that))
-    else Intersected(this, that)
+    else Intersection(this, that)
 
   /** The largest subset (via <:<) of this capture set that does not account for
    *  any of the elements in the constant capture set `that`
@@ -816,7 +815,29 @@ object CaptureSet:
   class Diff(source: Var, other: Const)(using Context)
   extends Filtered(source, !other.accountsFor(_))
 
-  class Intersected(cs1: CaptureSet, cs2: CaptureSet)(using Context)
+  class Union(cs1: CaptureSet, cs2: CaptureSet)(using Context)
+  extends Var(initialElems = cs1.elems ++ cs2.elems):
+    addAsDependentTo(cs1)
+    addAsDependentTo(cs2)
+
+    override def tryInclude(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult =
+      if accountsFor(elem) then CompareResult.OK
+      else
+        val res = super.tryInclude(elem, origin)
+        // If this is the union of a constant and a variable,
+        // propagate `elem` to the variable part to avoid slack
+        // between the operands and the union.
+        if res.isOK && (origin ne cs1) && (origin ne cs2) then
+          if cs1.isConst then cs2.tryInclude(elem, origin)
+          else if cs2.isConst then cs1.tryInclude(elem, origin)
+          else res
+        else res
+
+    override def propagateSolved()(using Context) =
+      if cs1.isConst && cs2.isConst && !isConst then markSolved()
+  end Union
+
+  class Intersection(cs1: CaptureSet, cs2: CaptureSet)(using Context)
   extends Var(initialElems = elemIntersection(cs1, cs2)):
     addAsDependentTo(cs1)
     addAsDependentTo(cs2)
@@ -841,7 +862,7 @@ object CaptureSet:
 
     override def propagateSolved()(using Context) =
       if cs1.isConst && cs2.isConst && !isConst then markSolved()
-  end Intersected
+  end Intersection
 
   def elemIntersection(cs1: CaptureSet, cs2: CaptureSet)(using Context): Refs =
     cs1.elems.filter(cs2.mightAccountFor) ++ cs2.elems.filter(cs1.mightAccountFor)
