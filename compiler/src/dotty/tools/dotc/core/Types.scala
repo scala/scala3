@@ -1874,7 +1874,7 @@ object Types {
           case res: MethodType => res.toFunctionType(isJava)
           case res => res
         }
-        val funType = defn.FunctionOf(
+        val funType = defn.FunctionNOf(
            mt.paramInfos.mapConserve(_.translateFromRepeated(toArray = isJava)),
           result1, isContextual)
         if alwaysDependent || mt.isResultDependent then
