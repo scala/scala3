@@ -15,7 +15,6 @@ import SymDenotations.*, Symbols.*, StdNames.*, Denotations.*
 import TypeErasure.{ valueErasure, ErasedValueType }
 import NameKinds.{ExtMethName, BodyRetainerName}
 import Decorators.*
-import TypeUtils.*
 
 /**
  * Perform Step 1 in the inline classes SIP: Creates extension methods for all

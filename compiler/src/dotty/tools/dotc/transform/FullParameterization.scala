@@ -6,7 +6,6 @@ import Types.*
 import Contexts.*
 import Symbols.*
 import Decorators.*
-import TypeUtils.*
 import StdNames.nme
 import ast.*
 

@@ -16,7 +16,6 @@ import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications.*
 import Variances.{Variance, variancesConform}
 import Constants.Constant
-import transform.TypeUtils.*
 import transform.SymUtils.*
 import scala.util.control.NonFatal
 import typer.ProtoTypes.constrained

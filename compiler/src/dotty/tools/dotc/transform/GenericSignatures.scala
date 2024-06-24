@@ -15,7 +15,6 @@ import core.TypeErasure.{erasedGlb, erasure, fullErasure, isGenericArrayElement,
 import core.Types.*
 import core.classfile.ClassfileConstants
 import SymUtils.*
-import TypeUtils.*
 import config.Printers.transforms
 import reporting.trace
 import java.lang.StringBuilder

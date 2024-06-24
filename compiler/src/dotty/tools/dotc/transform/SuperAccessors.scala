@@ -7,7 +7,7 @@ import scala.collection.mutable
 import ValueClasses.isMethodWithExtension
 import core.*
 import Contexts.*, Flags.*, Symbols.*, Names.*, StdNames.*, NameOps.*, Trees.*
-import TypeUtils.*, SymUtils.*
+import SymUtils.*
 import DenotTransformers.DenotTransformer
 import Symbols.*
 import util.Spans.*
