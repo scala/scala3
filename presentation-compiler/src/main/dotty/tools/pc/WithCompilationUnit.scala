@@ -31,7 +31,8 @@ class WithCompilationUnit(
   driver.run(uri, source)
   given ctx: Context = driver.currentCtx
 
-  val unit = driver.currentCtx.run.units.head
+  private val run = driver.currentCtx.run
+  val unit = run.units.head
   val compilatonUnitContext = ctx.fresh.setCompilationUnit(unit)
   val offset = params match
     case op: OffsetParams => op.offset()
