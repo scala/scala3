@@ -7,7 +7,7 @@ import classpath.AggregateClassPath
 import core.*
 import Symbols.*, Types.*, Contexts.*, StdNames.*
 import Flags.*
-import transform.ExplicitOuter, transform.SymUtils.*
+import transform.ExplicitOuter
 
 class JavaPlatform extends Platform {
 

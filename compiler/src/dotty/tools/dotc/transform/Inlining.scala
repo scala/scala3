@@ -5,7 +5,7 @@ import core.*
 import Flags.*
 import Contexts.*
 import Symbols.*
-import SymUtils.*
+
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.quoted.*

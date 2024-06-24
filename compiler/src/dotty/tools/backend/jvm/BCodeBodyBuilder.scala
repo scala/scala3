@@ -19,7 +19,6 @@ import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.StdNames.{nme, str}
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.transform.Erasure
-import dotty.tools.dotc.transform.SymUtils.*
 import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Phases.*

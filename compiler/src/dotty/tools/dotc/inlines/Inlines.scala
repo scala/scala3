@@ -5,7 +5,6 @@ package inlines
 import ast.*, core.*
 import Flags.*, Symbols.*, Types.*, Decorators.*, Constants.*, Contexts.*
 import StdNames.{tpnme, nme}
-import transform.SymUtils.*
 import typer.*
 import NameKinds.BodyRetainerName
 import SymDenotations.SymDenotation

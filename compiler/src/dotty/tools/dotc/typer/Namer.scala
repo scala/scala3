@@ -23,7 +23,6 @@ import parsing.Parsers.Parser
 import Annotations.*
 import Inferencing.*
 import transform.ValueClasses.*
-import transform.SymUtils.*
 import TypeErasure.erasure
 import reporting.*
 import config.Feature.sourceVersion

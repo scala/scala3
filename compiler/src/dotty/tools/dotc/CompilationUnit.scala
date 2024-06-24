@@ -12,7 +12,6 @@ import ast.{tpd, untpd}
 import tpd.{Tree, TreeTraverser}
 import ast.Trees.{Import, Ident}
 import typer.Nullables
-import transform.SymUtils.*
 import core.Decorators.*
 import config.{SourceVersion, Feature}
 import StdNames.nme

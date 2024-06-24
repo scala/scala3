@@ -8,7 +8,7 @@ import Symbols.*, Contexts.*, Types.*, StdNames.*, NameOps.*
 import patmat.SpaceEngine
 import util.Spans.*
 import typer.Applications.*
-import SymUtils.*
+
 import Annotations.*
 import Flags.*, Constants.*
 import Decorators.*
@@ -1022,7 +1022,7 @@ object PatternMatcher {
           case Block((_: ValDef) :: Block(_, Match(_, cases)) :: Nil, _) => cases
           case _ => Nil
         val caseThreshold =
-          if ValueClasses.isDerivedValueClass(tpt.tpe.typeSymbol) then 1
+          if tpt.tpe.typeSymbol.isDerivedValueClass then 1
           else MinSwitchCases
         def typesInPattern(pat: Tree): List[Type] = pat match
           case Alternative(pats) => pats.flatMap(typesInPattern)

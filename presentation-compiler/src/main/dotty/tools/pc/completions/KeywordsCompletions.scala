@@ -11,7 +11,6 @@ import dotty.tools.dotc.ast.untpd.UntypedTreeTraverser
 import dotty.tools.dotc.core.Comments
 import dotty.tools.dotc.core.Comments.Comment
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans.Span
 

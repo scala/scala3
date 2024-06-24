@@ -8,7 +8,7 @@ import Phases.*
 import SymDenotations.SymDenotation
 import Denotations.*
 import Symbols.*
-import SymUtils.*
+
 import Constants.*
 import MegaPhase.*
 import NameOps.*

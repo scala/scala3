@@ -13,7 +13,6 @@ import ast.tpd.*
 import reporting.trace
 import config.Printers.typr
 import config.Feature
-import transform.SymUtils.*
 import typer.ProtoTypes.*
 import typer.ForceDegree
 import typer.Inferencing.*

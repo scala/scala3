@@ -18,7 +18,6 @@ import util.Spans.*
 import DenotTransformers.*
 import StdNames.*
 import NameOps.*
-import transform.SymUtils.*
 import NameKinds.LazyImplicitName
 import ast.tpd
 import tpd.{Tree, TreeProvider, TreeOps}
@@ -32,7 +31,7 @@ import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap}
 import scala.annotation.internal.sharable
 import config.Printers.typr
 
-object Symbols {
+object Symbols extends SymUtils {
 
   implicit def eqSymbol: CanEqual[Symbol, Symbol] = CanEqual.derived
 

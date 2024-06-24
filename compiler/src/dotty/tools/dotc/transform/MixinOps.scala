@@ -4,7 +4,7 @@ package transform
 import core.*
 import Symbols.*, Types.*, Contexts.*, DenotTransformers.*, Flags.*
 import util.Spans.*
-import SymUtils.*
+
 import StdNames.*, NameOps.*
 import typer.Nullables
 

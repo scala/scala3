@@ -45,7 +45,6 @@ import config.Feature.{sourceVersion, migrateTo3}
 import config.SourceVersion.*
 import rewrites.Rewrites.patch
 import staging.StagingLevel
-import transform.SymUtils.*
 import reporting.*
 import Nullables.*
 import NullOpsDecorator.*

@@ -7,7 +7,7 @@ import Flags.*, Trees.*, Types.*, Contexts.*
 import Names.*, StdNames.*, NameOps.*, Symbols.*
 import typer.ConstFold
 import reporting.trace
-import dotty.tools.dotc.transform.SymUtils.*
+
 import Decorators.*
 import Constants.Constant
 import scala.collection.mutable

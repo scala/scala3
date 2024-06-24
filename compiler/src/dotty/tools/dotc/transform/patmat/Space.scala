@@ -17,7 +17,6 @@ import typer.*
 import Applications.*
 import Inferencing.*
 import ProtoTypes.*
-import transform.SymUtils.*
 import reporting.*
 import config.Printers.{exhaustivity => debug}
 import util.{SrcPos, NoSourcePosition}

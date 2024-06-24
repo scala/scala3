@@ -25,7 +25,6 @@ import printing.Formatting.hl
 import ast.Trees.*
 import ast.untpd
 import ast.tpd
-import transform.SymUtils.*
 import scala.util.matching.Regex
 import java.util.regex.Matcher.quoteReplacement
 import cc.CaptureSet.IdentityCaptRefMap
