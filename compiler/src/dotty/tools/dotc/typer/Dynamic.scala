@@ -216,7 +216,16 @@ trait Dynamic {
       // We type the application of `applyDynamic` without inlining (arguments are already typed and inlined),
       // to be able to add the add the Class arguments before we inline the method.
       val call = addClassOfs(withMode(Mode.NoInline)(typed(scall)))
-      if Inlines.needsInlining(call) then Inlines.inlineCall(call)
+      if Inlines.needsInlining(call) then 
+        val inlined = Inlines.inlineCall(call)
+        val callTpe = fun.tpe.widenExpr
+        if selectorName == nme.selectDynamic && !(inlined.tpe <:< callTpe) && !(callTpe <:< inlined.tpe) then
+          report.error(em"""Type Mismatch:
+            |${inlined.tpe.widen}
+            |  obtained after inlining the call is divergent from
+            |${callTpe}
+            |  which is the structural refinement type.""", tree.srcPos)
+        inlined
       else call
     }
 
