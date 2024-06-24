@@ -16,7 +16,7 @@ final class PcRenameProvider(
     driver: InteractiveDriver,
     params: OffsetParams,
     name: Option[String]
-) extends PcCollector[l.TextEdit](driver, params):
+) extends WithSymbolSearchCollector[l.TextEdit](driver, params):
   private val forbiddenMethods =
     Set("equals", "hashCode", "unapply", "unary_!", "!")
   def canRenameSymbol(sym: Symbol)(using Context): Boolean =
@@ -25,7 +25,7 @@ final class PcRenameProvider(
         || sym.source.path.isWorksheet)
 
   def prepareRename(): Option[l.Range] =
-    soughtSymbols(path).flatMap((symbols, pos) =>
+    soughtSymbols.flatMap((symbols, pos) =>
       if symbols.forall(canRenameSymbol) then Some(pos.toLsp)
       else None
     )
@@ -42,13 +42,10 @@ final class PcRenameProvider(
     )
   end collect
 
-  def rename(
-  ): List[l.TextEdit] =
-    val (symbols, _) = soughtSymbols(path).getOrElse(Set.empty, pos)
+  def rename(): List[l.TextEdit] =
+    val (symbols, _) = soughtSymbols.getOrElse(Set.empty, pos)
     if symbols.nonEmpty && symbols.forall(canRenameSymbol(_))
-    then
-      val res = result()
-      res
+    then result()
     else Nil
   end rename
 end PcRenameProvider
