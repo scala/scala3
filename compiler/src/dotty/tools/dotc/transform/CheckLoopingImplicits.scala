@@ -30,7 +30,7 @@ object CheckLoopingImplicits:
  */
 class CheckLoopingImplicits extends MiniPhase:
   thisPhase =>
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = CheckLoopingImplicits.name
 

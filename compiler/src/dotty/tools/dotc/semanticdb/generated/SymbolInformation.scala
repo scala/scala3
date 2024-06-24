@@ -5,7 +5,7 @@
 // Protofile syntax: PROTO3
 
 package dotty.tools.dotc.semanticdb
-import dotty.tools.dotc.semanticdb.internal._
+import dotty.tools.dotc.semanticdb.internal.*
 import scala.annotation.internal.sharable
 
 @SerialVersionUID(0L)
@@ -25,42 +25,42 @@ final case class SymbolInformation(
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
     private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
-      
+
       {
         val __value = symbol
         if (!__value.isEmpty) {
           __size += SemanticdbOutputStream.computeStringSize(1, __value)
         }
       };
-      
+
       {
         val __value = language.value
         if (__value != 0) {
           __size += SemanticdbOutputStream.computeEnumSize(16, __value)
         }
       };
-      
+
       {
         val __value = kind.value
         if (__value != 0) {
           __size += SemanticdbOutputStream.computeEnumSize(3, __value)
         }
       };
-      
+
       {
         val __value = properties
         if (__value != 0) {
           __size += SemanticdbOutputStream.computeInt32Size(4, __value)
         }
       };
-      
+
       {
         val __value = displayName
         if (!__value.isEmpty) {
           __size += SemanticdbOutputStream.computeStringSize(5, __value)
         }
       };
-      
+
       {
         val __value = dotty.tools.dotc.semanticdb.SymbolInformation._typemapper_signature.toBase(signature)
         if (__value.serializedSize != 0) {
@@ -71,7 +71,7 @@ final case class SymbolInformation(
         val __value = __item
         __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
       }
-      
+
       {
         val __value = dotty.tools.dotc.semanticdb.SymbolInformation._typemapper_access.toBase(access)
         if (__value.serializedSize != 0) {
@@ -95,7 +95,7 @@ final case class SymbolInformation(
         __serializedSizeMemoized = __size
       }
       __size - 1
-      
+
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
@@ -179,10 +179,10 @@ final case class SymbolInformation(
     def getDocumentation: dotty.tools.dotc.semanticdb.Documentation = documentation.getOrElse(dotty.tools.dotc.semanticdb.Documentation.defaultInstance)
     def clearDocumentation: SymbolInformation = copy(documentation = _root_.scala.None)
     def withDocumentation(__v: dotty.tools.dotc.semanticdb.Documentation): SymbolInformation = copy(documentation = Option(__v))
-    
-    
-    
-    
+
+
+
+
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.SymbolInformation])
 }
 
@@ -240,12 +240,12 @@ object SymbolInformation  extends SemanticdbGeneratedMessageCompanion[dotty.tool
         documentation = __documentation
     )
   }
-  
-  
-  
-  
-  
-  
+
+
+
+
+
+
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.SymbolInformation(
     symbol = "",
     language = dotty.tools.dotc.semanticdb.Language.UNKNOWN_LANGUAGE,
@@ -276,126 +276,126 @@ object SymbolInformation  extends SemanticdbGeneratedMessageCompanion[dotty.tool
     def isClass: _root_.scala.Boolean = false
     def isTrait: _root_.scala.Boolean = false
     def isInterface: _root_.scala.Boolean = false
-    
+
     final def asRecognized: _root_.scala.Option[dotty.tools.dotc.semanticdb.SymbolInformation.Kind.Recognized] = if (isUnrecognized) _root_.scala.None else _root_.scala.Some(this.asInstanceOf[dotty.tools.dotc.semanticdb.SymbolInformation.Kind.Recognized])
   }
-  
+
   object Kind  {
     sealed trait Recognized extends Kind
-    
-    
+
+
     @SerialVersionUID(0L)
     case object UNKNOWN_KIND extends Kind(0) with Kind.Recognized {
       val index = 0
       val name = "UNKNOWN_KIND"
       override def isUnknownKind: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object LOCAL extends Kind(19) with Kind.Recognized {
       val index = 1
       val name = "LOCAL"
       override def isLocal: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object FIELD extends Kind(20) with Kind.Recognized {
       val index = 2
       val name = "FIELD"
       override def isField: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object METHOD extends Kind(3) with Kind.Recognized {
       val index = 3
       val name = "METHOD"
       override def isMethod: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object CONSTRUCTOR extends Kind(21) with Kind.Recognized {
       val index = 4
       val name = "CONSTRUCTOR"
       override def isConstructor: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object MACRO extends Kind(6) with Kind.Recognized {
       val index = 5
       val name = "MACRO"
       override def isMacro: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object TYPE extends Kind(7) with Kind.Recognized {
       val index = 6
       val name = "TYPE"
       override def isType: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object PARAMETER extends Kind(8) with Kind.Recognized {
       val index = 7
       val name = "PARAMETER"
       override def isParameter: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object SELF_PARAMETER extends Kind(17) with Kind.Recognized {
       val index = 8
       val name = "SELF_PARAMETER"
       override def isSelfParameter: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object TYPE_PARAMETER extends Kind(9) with Kind.Recognized {
       val index = 9
       val name = "TYPE_PARAMETER"
       override def isTypeParameter: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object OBJECT extends Kind(10) with Kind.Recognized {
       val index = 10
       val name = "OBJECT"
       override def isObject: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object PACKAGE extends Kind(11) with Kind.Recognized {
       val index = 11
       val name = "PACKAGE"
       override def isPackage: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object PACKAGE_OBJECT extends Kind(12) with Kind.Recognized {
       val index = 12
       val name = "PACKAGE_OBJECT"
       override def isPackageObject: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object CLASS extends Kind(13) with Kind.Recognized {
       val index = 13
       val name = "CLASS"
       override def isClass: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object TRAIT extends Kind(14) with Kind.Recognized {
       val index = 14
       val name = "TRAIT"
       override def isTrait: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object INTERFACE extends Kind(18) with Kind.Recognized {
       val index = 15
       val name = "INTERFACE"
       override def isInterface: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     final case class Unrecognized(unrecognizedValue: _root_.scala.Int)  extends Kind(unrecognizedValue) with SemanticdbUnrecognizedEnum
     lazy val values = scala.collection.immutable.Seq(UNKNOWN_KIND, LOCAL, FIELD, METHOD, CONSTRUCTOR, MACRO, TYPE, PARAMETER, SELF_PARAMETER, TYPE_PARAMETER, OBJECT, PACKAGE, PACKAGE_OBJECT, CLASS, TRAIT, INTERFACE)
@@ -418,8 +418,8 @@ object SymbolInformation  extends SemanticdbGeneratedMessageCompanion[dotty.tool
       case 21 => CONSTRUCTOR
       case __other => Unrecognized(__other)
     }
-    
-    
+
+
   }
   sealed abstract class Property(val value: _root_.scala.Int)  extends SemanticdbGeneratedEnum  derives CanEqual {
     type EnumType = Property
@@ -444,161 +444,161 @@ object SymbolInformation  extends SemanticdbGeneratedMessageCompanion[dotty.tool
     def isTransparent: _root_.scala.Boolean = false
     def isInfix: _root_.scala.Boolean = false
     def isOpaque: _root_.scala.Boolean = false
-    
+
     final def asRecognized: _root_.scala.Option[dotty.tools.dotc.semanticdb.SymbolInformation.Property.Recognized] = if (isUnrecognized) _root_.scala.None else _root_.scala.Some(this.asInstanceOf[dotty.tools.dotc.semanticdb.SymbolInformation.Property.Recognized])
   }
-  
+
   object Property  {
     sealed trait Recognized extends Property
-    
-    
+
+
     @SerialVersionUID(0L)
     case object UNKNOWN_PROPERTY extends Property(0) with Property.Recognized {
       val index = 0
       val name = "UNKNOWN_PROPERTY"
       override def isUnknownProperty: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object ABSTRACT extends Property(4) with Property.Recognized {
       val index = 1
       val name = "ABSTRACT"
       override def isAbstract: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object FINAL extends Property(8) with Property.Recognized {
       val index = 2
       val name = "FINAL"
       override def isFinal: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object SEALED extends Property(16) with Property.Recognized {
       val index = 3
       val name = "SEALED"
       override def isSealed: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object IMPLICIT extends Property(32) with Property.Recognized {
       val index = 4
       val name = "IMPLICIT"
       override def isImplicit: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object LAZY extends Property(64) with Property.Recognized {
       val index = 5
       val name = "LAZY"
       override def isLazy: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object CASE extends Property(128) with Property.Recognized {
       val index = 6
       val name = "CASE"
       override def isCase: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object COVARIANT extends Property(256) with Property.Recognized {
       val index = 7
       val name = "COVARIANT"
       override def isCovariant: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object CONTRAVARIANT extends Property(512) with Property.Recognized {
       val index = 8
       val name = "CONTRAVARIANT"
       override def isContravariant: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object VAL extends Property(1024) with Property.Recognized {
       val index = 9
       val name = "VAL"
       override def isVal: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object VAR extends Property(2048) with Property.Recognized {
       val index = 10
       val name = "VAR"
       override def isVar: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object STATIC extends Property(4096) with Property.Recognized {
       val index = 11
       val name = "STATIC"
       override def isStatic: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object PRIMARY extends Property(8192) with Property.Recognized {
       val index = 12
       val name = "PRIMARY"
       override def isPrimary: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object ENUM extends Property(16384) with Property.Recognized {
       val index = 13
       val name = "ENUM"
       override def isEnum: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object DEFAULT extends Property(32768) with Property.Recognized {
       val index = 14
       val name = "DEFAULT"
       override def isDefault: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object GIVEN extends Property(65536) with Property.Recognized {
       val index = 15
       val name = "GIVEN"
       override def isGiven: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object INLINE extends Property(131072) with Property.Recognized {
       val index = 16
       val name = "INLINE"
       override def isInline: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object OPEN extends Property(262144) with Property.Recognized {
       val index = 17
       val name = "OPEN"
       override def isOpen: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object TRANSPARENT extends Property(524288) with Property.Recognized {
       val index = 18
       val name = "TRANSPARENT"
       override def isTransparent: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object INFIX extends Property(1048576) with Property.Recognized {
       val index = 19
       val name = "INFIX"
       override def isInfix: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object OPAQUE extends Property(2097152) with Property.Recognized {
       val index = 20
       val name = "OPAQUE"
       override def isOpaque: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     final case class Unrecognized(unrecognizedValue: _root_.scala.Int)  extends Property(unrecognizedValue) with SemanticdbUnrecognizedEnum
     lazy val values = scala.collection.immutable.Seq(UNKNOWN_PROPERTY, ABSTRACT, FINAL, SEALED, IMPLICIT, LAZY, CASE, COVARIANT, CONTRAVARIANT, VAL, VAR, STATIC, PRIMARY, ENUM, DEFAULT, GIVEN, INLINE, OPEN, TRANSPARENT, INFIX, OPAQUE)
@@ -626,8 +626,8 @@ object SymbolInformation  extends SemanticdbGeneratedMessageCompanion[dotty.tool
       case 2097152 => OPAQUE
       case __other => Unrecognized(__other)
     }
-    
-    
+
+
   }
   final val SYMBOL_FIELD_NUMBER = 1
   final val LANGUAGE_FIELD_NUMBER = 16

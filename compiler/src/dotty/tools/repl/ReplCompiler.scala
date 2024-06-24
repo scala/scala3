@@ -1,23 +1,23 @@
 package dotty.tools.repl
 
-import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.ast.{tpd, untpd}
 import dotty.tools.dotc.ast.tpd.TreeOps
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.Names._
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.*
+import dotty.tools.dotc.core.Flags.*
+import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.StdNames.*
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.dotc.transform.PostTyper
 import dotty.tools.dotc.typer.ImportInfo.{withRootImports, RootRef}
 import dotty.tools.dotc.typer.TyperPhase
-import dotty.tools.dotc.util.Spans._
+import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.util.{ParsedComment, Property, SourceFile}
 import dotty.tools.dotc.{CompilationUnit, Compiler, Run}
-import dotty.tools.repl.results._
+import dotty.tools.repl.results.*
 
 import scala.collection.mutable
 import scala.util.chaining.given
@@ -156,7 +156,7 @@ class ReplCompiler extends Compiler:
 
     def wrapped(expr: String, sourceFile: SourceFile, state: State)(using Context): Result[untpd.PackageDef] = {
       def wrap(trees: List[untpd.Tree]): untpd.PackageDef = {
-        import untpd._
+        import untpd.*
 
         val valdef = ValDef("expr".toTermName, TypeTree(), Block(trees, unitLiteral).withSpan(Span(0, expr.length)))
         val tmpl = Template(emptyConstructor, Nil, Nil, EmptyValDef, List(valdef))
@@ -186,7 +186,7 @@ class ReplCompiler extends Compiler:
         sourceFile.atSpan(Span(0, sourceFile.content.length)))).errors
 
     def unwrappedTypeTree(tree: tpd.Tree, sourceFile0: SourceFile)(using Context): Result[tpd.ValDef] = {
-      import tpd._
+      import tpd.*
       tree match {
         case PackageDef(_, List(TypeDef(_, tmpl: Template))) =>
           tmpl.body
@@ -198,7 +198,7 @@ class ReplCompiler extends Compiler:
     }
 
     def unwrappedUntypedTree(tree: untpd.Tree, sourceFile0: SourceFile)(using Context): Result[untpd.ValDef] =
-      import untpd._
+      import untpd.*
       tree match {
         case PackageDef(_, List(TypeDef(_, tmpl: Template))) =>
           tmpl.body

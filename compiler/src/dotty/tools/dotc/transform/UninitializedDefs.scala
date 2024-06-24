@@ -1,10 +1,10 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import Contexts._
-import Flags._
-import Symbols._
+import core.*
+import Contexts.*
+import Flags.*
+import Symbols.*
 import MegaPhase.MiniPhase
 import StdNames.nme
 import ast.tpd
@@ -19,7 +19,7 @@ import ast.tpd
  *  @syntax markdown
  */
 class UninitializedDefs extends MiniPhase:
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = UninitializedDefs.name
 

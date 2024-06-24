@@ -13,7 +13,7 @@ import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.MacroClassLoader
 import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.quoted.*
 import dotty.tools.dotc.util.SrcPos
 import scala.quoted.runtime.impl.{QuotesImpl, SpliceScope}

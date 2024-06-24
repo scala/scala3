@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package transform
 
-import core.Contexts._
+import core.Contexts.*
 
 /** Utility class for lazy values whose evaluation depends on a context.
  *  This should be used whenever the evaluation of a lazy expression

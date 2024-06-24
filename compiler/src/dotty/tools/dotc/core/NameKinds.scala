@@ -2,12 +2,12 @@ package dotty.tools
 package dotc
 package core
 
-import Names._
-import NameOps._
-import StdNames._
-import NameTags._
-import Contexts._
-import Decorators._
+import Names.*
+import NameOps.*
+import StdNames.*
+import NameTags.*
+import Contexts.*
+import Decorators.*
 
 import scala.annotation.internal.sharable
 

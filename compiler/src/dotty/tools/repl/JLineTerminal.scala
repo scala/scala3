@@ -2,15 +2,15 @@ package dotty.tools.repl
 
 import scala.language.unsafeNulls
 
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.parsing.Scanners.Scanner
-import dotty.tools.dotc.parsing.Tokens._
+import dotty.tools.dotc.parsing.Tokens.*
 import dotty.tools.dotc.printing.SyntaxHighlighting
 import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.util.SourceFile
 import org.jline.reader
 import org.jline.reader.Parser.ParseContext
-import org.jline.reader._
+import org.jline.reader.*
 import org.jline.reader.impl.LineReaderImpl
 import org.jline.reader.impl.history.DefaultHistory
 import org.jline.terminal.TerminalBuilder
@@ -50,8 +50,8 @@ class JLineTerminal extends java.io.Closeable {
   def readLine(
     completer: Completer // provide auto-completions
   )(using Context): String = {
-    import LineReader.Option._
-    import LineReader._
+    import LineReader.Option.*
+    import LineReader.*
     val userHome = System.getProperty("user.home")
     val lineReader = LineReaderBuilder
       .builder()

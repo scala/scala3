@@ -8,7 +8,7 @@
 
 package scala.annotation
 
-import scala.annotation.meta._
+import scala.annotation.meta.*
 
 /** An annotation that goes on parameters of classes or traits. It asserts
  *  that the parameter is used only for initialization and is not kept in

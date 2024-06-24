@@ -1,9 +1,9 @@
 package dotty.tools.dotc
 package transform
 
-import MegaPhase._
-import core.DenotTransformers._
-import core.Contexts._
+import MegaPhase.*
+import core.DenotTransformers.*
+import core.Contexts.*
 import ast.tpd
 
 /** This phase transforms wildcards in valdefs with their default value.
@@ -12,7 +12,7 @@ import ast.tpd
   *
   */
 class TransformWildcards extends MiniPhase with IdentityDenotTransformer {
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = TransformWildcards.name
 

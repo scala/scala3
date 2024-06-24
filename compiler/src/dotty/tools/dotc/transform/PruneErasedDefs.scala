@@ -1,16 +1,16 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import Contexts._
+import core.*
+import Contexts.*
 import DenotTransformers.SymTransformer
-import Flags._
-import SymDenotations._
-import Symbols._
+import Flags.*
+import SymDenotations.*
+import Symbols.*
 import typer.RefChecks
 import MegaPhase.MiniPhase
 import ast.tpd
-import SymUtils._
+import SymUtils.*
 import config.Feature
 import Decorators.*
 import dotty.tools.dotc.core.Types.MethodType
@@ -23,8 +23,8 @@ import dotty.tools.dotc.core.Types.MethodType
  *  as IsInstanceOfChecker don't give false negatives.
  */
 class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
-  import tpd._
-  import PruneErasedDefs._
+  import tpd.*
+  import PruneErasedDefs.*
 
   override def phaseName: String = PruneErasedDefs.name
 
@@ -66,7 +66,7 @@ class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
 }
 
 object PruneErasedDefs {
-  import tpd._
+  import tpd.*
 
   val name: String = "pruneErasedDefs"
   val description: String = "drop erased definitions and simplify erased expressions"

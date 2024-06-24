@@ -89,7 +89,7 @@ case class SpecificScalaVersion(major: Int, minor: Int, rev: Int, build: ScalaBu
 
     def isInt(s: String) = Try(toInt(s)).isSuccess
 
-    import ScalaBuild._
+    import ScalaBuild.*
 
     def toBuild(s: String) = s match {
       case null | "FINAL" => Final

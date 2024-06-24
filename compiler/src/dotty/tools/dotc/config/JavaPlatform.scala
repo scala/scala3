@@ -2,12 +2,12 @@ package dotty.tools
 package dotc
 package config
 
-import io._
+import io.*
 import classpath.AggregateClassPath
-import core._
-import Symbols._, Types._, Contexts._, StdNames._
-import Flags._
-import transform.ExplicitOuter, transform.SymUtils._
+import core.*
+import Symbols.*, Types.*, Contexts.*, StdNames.*
+import Flags.*
+import transform.ExplicitOuter, transform.SymUtils.*
 
 class JavaPlatform extends Platform {
 
@@ -52,7 +52,7 @@ class JavaPlatform extends Platform {
    */
   def isMaybeBoxed(sym: ClassSymbol)(using Context): Boolean = {
     val d = defn
-    import d._
+    import d.*
     (sym == ObjectClass) ||
     (sym == JavaSerializableClass) ||
     (sym == ComparableClass) ||

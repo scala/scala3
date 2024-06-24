@@ -2,17 +2,17 @@ package dotty.tools
 package dotc
 package core
 
-import Periods._
-import Contexts._
+import Periods.*
+import Contexts.*
 import dotty.tools.backend.jvm.GenBCode
-import DenotTransformers._
-import Denotations._
-import Decorators._
+import DenotTransformers.*
+import Denotations.*
+import Decorators.*
 import config.Printers.config
 import scala.collection.mutable.ListBuffer
-import dotty.tools.dotc.transform.MegaPhase._
-import dotty.tools.dotc.transform._
-import Periods._
+import dotty.tools.dotc.transform.MegaPhase.*
+import dotty.tools.dotc.transform.*
+import Periods.*
 import parsing.Parser
 import printing.XprintMode
 import typer.{TyperPhase, RefChecks}

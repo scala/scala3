@@ -1,9 +1,9 @@
 package dotty.tools.dotc
 package ast
 
-import core.Contexts._
-import core.Decorators._
-import util.Spans._
+import core.Contexts.*
+import core.Decorators.*
+import util.Spans.*
 import Trees.{MemberDef, DefTree, WithLazyFields}
 import dotty.tools.dotc.core.Types.AnnotatedType
 import dotty.tools.dotc.core.Types.ImportType

@@ -1,14 +1,14 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import Types._
-import Contexts._
-import Symbols._
-import Decorators._
-import TypeUtils._
+import core.*
+import Types.*
+import Contexts.*
+import Symbols.*
+import Decorators.*
+import TypeUtils.*
 import StdNames.nme
-import ast._
+import ast.*
 
 /** Provides methods to produce fully parameterized versions of instance methods,
  *  where the `this` of the enclosing class is abstracted out in an extra leading
@@ -49,7 +49,7 @@ import ast._
  */
 trait FullParameterization {
 
-  import tpd._
+  import tpd.*
 
   /** If references to original symbol `referenced` from within fully parameterized method
    *  `derived` should be rewired to some fully parameterized method, the rewiring target symbol,

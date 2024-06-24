@@ -3,11 +3,11 @@ package reflect
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.untpd
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Flags.*
+import dotty.tools.dotc.core.StdNames.*
+import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.Types.*
 
 object FromSymbol {
 

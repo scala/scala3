@@ -5,7 +5,7 @@
 // Protofile syntax: PROTO3
 
 package dotty.tools.dotc.semanticdb
-import dotty.tools.dotc.semanticdb.internal._
+import dotty.tools.dotc.semanticdb.internal.*
 import scala.annotation.internal.sharable
 
 @SerialVersionUID(0L)
@@ -17,7 +17,7 @@ final case class Location(
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
     private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
-      
+
       {
         val __value = uri
         if (!__value.isEmpty) {
@@ -37,7 +37,7 @@ final case class Location(
         __serializedSizeMemoized = __size
       }
       __size - 1
-      
+
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
@@ -57,10 +57,10 @@ final case class Location(
     def getRange: dotty.tools.dotc.semanticdb.Range = range.getOrElse(dotty.tools.dotc.semanticdb.Range.defaultInstance)
     def clearRange: Location = copy(range = _root_.scala.None)
     def withRange(__v: dotty.tools.dotc.semanticdb.Range): Location = copy(range = Option(__v))
-    
-    
-    
-    
+
+
+
+
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.Location])
 }
 
@@ -86,12 +86,12 @@ object Location  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.se
         range = __range
     )
   }
-  
-  
-  
-  
-  
-  
+
+
+
+
+
+
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.Location(
     uri = "",
     range = _root_.scala.None

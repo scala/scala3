@@ -5,7 +5,7 @@
 // Protofile syntax: PROTO3
 
 package dotty.tools.dotc.semanticdb
-import dotty.tools.dotc.semanticdb.internal._
+import dotty.tools.dotc.semanticdb.internal.*
 import scala.annotation.internal.sharable
 
 @SerialVersionUID(0L)
@@ -29,7 +29,7 @@ final case class TextDocuments(
         __serializedSizeMemoized = __size
       }
       __size - 1
-      
+
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       documents.foreach { __v =>
@@ -43,10 +43,10 @@ final case class TextDocuments(
     def addDocuments(__vs: dotty.tools.dotc.semanticdb.TextDocument *): TextDocuments = addAllDocuments(__vs)
     def addAllDocuments(__vs: Iterable[dotty.tools.dotc.semanticdb.TextDocument]): TextDocuments = copy(documents = documents ++ __vs)
     def withDocuments(__v: _root_.scala.Seq[dotty.tools.dotc.semanticdb.TextDocument]): TextDocuments = copy(documents = __v)
-    
-    
-    
-    
+
+
+
+
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.TextDocuments])
 }
 
@@ -68,12 +68,12 @@ object TextDocuments  extends SemanticdbGeneratedMessageCompanion[dotty.tools.do
         documents = __documents.result()
     )
   }
-  
-  
-  
-  
-  
-  
+
+
+
+
+
+
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.TextDocuments(
     documents = _root_.scala.Seq.empty
   )

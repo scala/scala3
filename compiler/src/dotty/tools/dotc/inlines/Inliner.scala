@@ -28,7 +28,7 @@ import scala.annotation.constructorOnly
 
 /** General support for inlining */
 object Inliner:
-  import tpd._
+  import tpd.*
 
   private[inlines] type DefBuffer = mutable.ListBuffer[ValOrDefDef]
 
@@ -143,8 +143,8 @@ end Inliner
  *  @param  rhsToInline  the body of the inlineable method that replaces the call.
  */
 class Inliner(val call: tpd.Tree)(using Context):
-  import tpd._
-  import Inliner._
+  import tpd.*
+  import Inliner.*
 
   private val methPart = funPart(call)
   protected val callTypeArgs = typeArgss(call).flatten
@@ -734,7 +734,7 @@ class Inliner(val call: tpd.Tree)(using Context):
    */
   class InlineTyper(initialErrorCount: Int, @constructorOnly nestingLevel: Int = ctx.nestingLevel + 1)
   extends ReTyper(nestingLevel):
-    import reducer._
+    import reducer.*
 
     override def ensureAccessible(tpe: Type, superAccess: Boolean, pos: SrcPos)(using Context): Type = {
       tpe match {

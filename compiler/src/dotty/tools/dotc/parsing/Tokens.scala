@@ -5,7 +5,7 @@ package parsing
 import scala.language.unsafeNulls
 
 import collection.immutable.BitSet
-import core.Decorators._
+import core.Decorators.*
 import core.StdNames.nme
 
 abstract class TokensCommon {

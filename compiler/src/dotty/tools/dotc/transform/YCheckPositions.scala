@@ -2,16 +2,16 @@ package dotty.tools.dotc
 package transform
 
 import dotty.tools.dotc.ast.{tpd, untpd}
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.*
+import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Phases.{Phase, postTyperPhase}
-import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.util.SourceFile
 
 /** Ycheck inlined positions */
 class YCheckPositions extends Phase {
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = YCheckPositions.name
 

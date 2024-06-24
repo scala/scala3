@@ -2,15 +2,15 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
-import Contexts._
-import Symbols._
-import Flags._
-import Names._
-import NameOps._
-import Decorators._
-import TypeUtils._
-import Types._
+import core.*
+import Contexts.*
+import Symbols.*
+import Flags.*
+import Names.*
+import NameOps.*
+import Decorators.*
+import TypeUtils.*
+import Types.*
 import util.Spans.Span
 import config.Printers.transforms
 
@@ -18,8 +18,8 @@ import config.Printers.transforms
  *  inline accessors and protected accessors.
  */
 abstract class AccessProxies {
-  import ast.tpd._
-  import AccessProxies._
+  import ast.tpd.*
+  import AccessProxies.*
 
   /** accessor -> accessed */
   private val accessedBy = MutableSymbolMap[Symbol]()
@@ -64,7 +64,7 @@ abstract class AccessProxies {
   }
 
   trait Insert {
-    import ast.tpd._
+    import ast.tpd.*
 
     /** The name of the accessor for definition with given `name` in given `site` */
     def accessorNameOf(name: TermName, site: Symbol)(using Context): TermName

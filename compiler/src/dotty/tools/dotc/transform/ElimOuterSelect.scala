@@ -1,17 +1,17 @@
 package dotty.tools.dotc
 package transform
 
-import core._
+import core.*
 import MegaPhase.MiniPhase
-import Contexts._
-import Types._
+import Contexts.*
+import Types.*
 import NameKinds.OuterSelectName
 
 /** This phase rewrites outer selects `E.n_<outer>` which were introduced by
  *  inlining to outer paths.
  */
 class ElimOuterSelect extends MiniPhase {
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = ElimOuterSelect.name
 

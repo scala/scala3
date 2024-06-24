@@ -4,9 +4,9 @@ package core
 import scala.collection.mutable
 import scala.annotation.switch
 import scala.annotation.internal.sharable
-import Names._
-import Symbols._
-import Contexts._
+import Names.*
+import Symbols.*
+import Contexts.*
 
 object StdNames {
 

@@ -3,29 +3,29 @@ package transform
 package sjs
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core._
-import Contexts._
-import Decorators._
-import Denotations._
-import Flags._
+import dotty.tools.dotc.core.*
+import Contexts.*
+import Decorators.*
+import Denotations.*
+import Flags.*
 import NameKinds.DefaultGetterName
-import StdNames._
-import Symbols._
-import SymUtils._
-import Types._
+import StdNames.*
+import Symbols.*
+import SymUtils.*
+import Types.*
 
 import util.Spans.Span
 import util.SrcPos
 
 import dotty.tools.backend.sjs.JSDefinitions.jsdefn
-import JSExportUtils._
-import JSSymUtils._
+import JSExportUtils.*
+import JSSymUtils.*
 
 import org.scalajs.ir.Names.DefaultModuleID
 import org.scalajs.ir.Trees.TopLevelExportDef.isValidTopLevelExportName
 
 object PrepJSExports {
-  import tpd._
+  import tpd.*
   import PrepJSInterop.{checkSetterSignature, isJSAny, isPrivateMaybeWithin}
 
   private sealed abstract class ExportDestination

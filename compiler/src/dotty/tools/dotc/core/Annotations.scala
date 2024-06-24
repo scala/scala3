@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import Symbols._, Types._, Contexts._, Constants._, Phases.*
+import Symbols.*, Types.*, Contexts.*, Constants.*, Phases.*
 import ast.tpd, tpd.*
 import util.Spans.Span
 import printing.{Showable, Printer}

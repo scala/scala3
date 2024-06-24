@@ -1,10 +1,10 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import Decorators._, Flags._, Types._, Contexts._, Symbols._
-import ast.tpd._
-import Flags._
+import core.*
+import Decorators.*, Flags.*, Types.*, Contexts.*, Symbols.*
+import ast.tpd.*
+import Flags.*
 import MegaPhase.MiniPhase
 
 /** Eliminates syntactic references to package terms as prefixes of classes, so that there's no chance

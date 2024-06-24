@@ -1,7 +1,7 @@
 package scala.quoted
 package runtime.impl
 
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.util.SourcePosition
 

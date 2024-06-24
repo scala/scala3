@@ -1,22 +1,22 @@
 package dotty.tools
 package dotc
 
-import core._
-import Contexts._
-import Periods._
-import Symbols._
-import Scopes._
+import core.*
+import Contexts.*
+import Periods.*
+import Symbols.*
+import Scopes.*
 import Names.Name
 import Denotations.Denotation
 import typer.Typer
 import typer.ImportInfo.withRootImports
-import Decorators._
+import Decorators.*
 import io.AbstractFile
 import Phases.{unfusedPhases, Phase}
 
 import sbt.interfaces.ProgressCallback
 
-import util._
+import util.*
 import reporting.{Suppression, Action, Profile, ActiveProfile, NoProfile}
 import reporting.Diagnostic
 import reporting.Diagnostic.Warning

@@ -1,17 +1,17 @@
 package dotty.tools.dotc
 package transform
 
-import core._
+import core.*
 import DenotTransformers.SymTransformer
 import Phases.Phase
-import Contexts._
-import Flags._
-import Symbols._
+import Contexts.*
+import Flags.*
+import Symbols.*
 import SymDenotations.SymDenotation
-import ast.Trees._
+import ast.Trees.*
 import collection.mutable
-import Decorators._
-import NameOps._
+import Decorators.*
+import NameOps.*
 import MegaPhase.MiniPhase
 import dotty.tools.dotc.transform.MegaPhase.TransformerInfo
 
@@ -29,7 +29,7 @@ import dotty.tools.dotc.transform.MegaPhase.TransformerInfo
  *  at their destination.
  */
 class DropEmptyCompanions extends MiniPhase { thisTransform =>
-  import ast.tpd._
+  import ast.tpd.*
   override def phaseName = "dropEmptyCompanions"
   override def runsAfter = Set(Flatten.name)
 

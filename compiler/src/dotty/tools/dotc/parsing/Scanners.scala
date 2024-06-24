@@ -4,14 +4,14 @@ package parsing
 
 import scala.language.unsafeNulls
 
-import core.Names._, core.Contexts._, core.Decorators._, util.Spans._
-import core.StdNames._, core.Comments._
+import core.Names.*, core.Contexts.*, core.Decorators.*, util.Spans.*
+import core.StdNames.*, core.Comments.*
 import util.SourceFile
-import util.Chars._
+import util.Chars.*
 import util.{SourcePosition, CharBuffer}
 import util.Spans.Span
 import config.Config
-import Tokens._
+import Tokens.*
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 import scala.collection.immutable.SortedMap

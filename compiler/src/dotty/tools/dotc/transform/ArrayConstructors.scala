@@ -1,12 +1,12 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import MegaPhase._
-import Contexts._
-import Symbols._
-import Types._
-import StdNames._
+import core.*
+import MegaPhase.*
+import Contexts.*
+import Symbols.*
+import Types.*
+import StdNames.*
 import dotty.tools.dotc.ast.tpd
 
 
@@ -19,7 +19,7 @@ import scala.collection.immutable.::
  * Additionally it optimizes calls to scala.Array.ofDim functions by replacing them with calls to newArray with specific dimensions
  */
 class ArrayConstructors extends MiniPhase {
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = ArrayConstructors.name
 

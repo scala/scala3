@@ -3,12 +3,12 @@ package dotty.tools.dotc
 import dotty.tools.FatalError
 import config.CompilerCommand
 import core.Comments.{ContextDoc, ContextDocstrings}
-import core.Contexts._
+import core.Contexts.*
 import core.{MacroClassLoader, TypeError}
 import dotty.tools.dotc.ast.Positioned
 import dotty.tools.io.AbstractFile
-import reporting._
-import core.Decorators._
+import reporting.*
+import core.Decorators.*
 import config.Feature
 
 import scala.util.control.NonFatal

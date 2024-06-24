@@ -9,7 +9,7 @@ import java.io.File
 import java.net.URL
 
 import dotty.tools.io.{ AbstractFile, FileZipArchive }
-import FileUtils._
+import FileUtils.*
 import dotty.tools.io.{EfficientClassPath, ClassRepresentation}
 
 /**

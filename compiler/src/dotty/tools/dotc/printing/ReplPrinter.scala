@@ -2,13 +2,13 @@ package dotty.tools.dotc.printing
 
 import dotty.tools.dotc.core.Constants
 import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.NameOps._
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Flags.*
+import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.Name
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.printing.Texts._
+import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.printing.Texts.*
 
 
 class ReplPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {

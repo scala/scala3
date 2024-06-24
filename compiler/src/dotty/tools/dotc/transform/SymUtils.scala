@@ -1,21 +1,21 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import Types._
-import Contexts._
-import Symbols._
-import SymDenotations._
-import Names._
-import NameOps._
-import StdNames._
-import NameKinds._
-import Flags._
+import core.*
+import Types.*
+import Contexts.*
+import Symbols.*
+import SymDenotations.*
+import Names.*
+import NameOps.*
+import StdNames.*
+import NameKinds.*
+import Flags.*
 import ValueClasses.isDerivedValueClass
-import Decorators._
+import Decorators.*
 import Constants.Constant
 import Annotations.Annotation
-import Phases._
+import Phases.*
 import ast.tpd.Literal
 
 import dotty.tools.dotc.transform.sjs.JSSymUtils.sjsNeedsField

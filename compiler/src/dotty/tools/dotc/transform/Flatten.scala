@@ -1,10 +1,10 @@
 package dotty.tools.dotc
 package transform
 
-import core._
+import core.*
 import DenotTransformers.SymTransformer
-import Contexts._
-import Flags._
+import Contexts.*
+import Flags.*
 import SymDenotations.SymDenotation
 import collection.mutable
 import MegaPhase.MiniPhase
@@ -12,7 +12,7 @@ import util.Store
 
 /** Lift nested classes to toplevel */
 class Flatten extends MiniPhase with SymTransformer {
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = Flatten.name
 

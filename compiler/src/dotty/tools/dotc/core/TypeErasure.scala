@@ -2,17 +2,17 @@ package dotty.tools
 package dotc
 package core
 
-import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Phases._
+import Symbols.*, Types.*, Contexts.*, Flags.*, Names.*, StdNames.*, Phases.*
 import Flags.JavaDefined
 import Uniques.unique
 import TypeOps.makePackageObjPrefixExplicit
 import backend.sjs.JSDefinitions
-import transform.ExplicitOuter._
-import transform.ValueClasses._
-import transform.TypeUtils._
-import transform.ContextFunctionResults._
+import transform.ExplicitOuter.*
+import transform.ValueClasses.*
+import transform.TypeUtils.*
+import transform.ContextFunctionResults.*
 import unpickleScala2.Scala2Erasure
-import Decorators._
+import Decorators.*
 import Definitions.MaxImplementedFunctionArity
 import scala.annotation.tailrec
 
@@ -404,7 +404,7 @@ object TypeErasure {
       tp1 // After erasure, T | Nothing is just T and C | Null is just C, if C is a reference type.
     else tp1 match {
       case JavaArrayType(elem1) =>
-        import dotty.tools.dotc.transform.TypeUtils._
+        import dotty.tools.dotc.transform.TypeUtils.*
         tp2 match {
           case JavaArrayType(elem2) =>
             if (elem1.isPrimitiveValueType || elem2.isPrimitiveValueType)
@@ -571,7 +571,7 @@ object TypeErasure {
     erasure(functionType(applyInfo))
 }
 
-import TypeErasure._
+import TypeErasure.*
 
 /**
  *  @param sourceLanguage Adapt our erasure rules to mimic what the given language

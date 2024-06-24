@@ -2,11 +2,11 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
-import Contexts._
-import Symbols._
-import Types._
-import Flags._
+import core.*
+import Contexts.*
+import Symbols.*
+import Types.*
+import Flags.*
 import SymDenotations.*
 import DenotTransformers.InfoTransformer
 import NameKinds.SuperArgName
@@ -53,7 +53,7 @@ import dotty.tools.dotc.core.Names.Name
 class ElimByName extends MiniPhase, InfoTransformer:
   thisPhase =>
 
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = ElimByName.name
 

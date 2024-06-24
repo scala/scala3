@@ -3,10 +3,10 @@ package plugins
 
 import scala.language.unsafeNulls
 
-import core._
-import Contexts._
-import Phases._
-import dotty.tools.io._
+import core.*
+import Contexts.*
+import Phases.*
+import dotty.tools.io.*
 import transform.MegaPhase.MiniPhase
 
 import java.io.InputStream

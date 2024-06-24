@@ -1,12 +1,12 @@
 package dotty.tools.dotc
 
-import reporting._
-import Diagnostic._
+import reporting.*
+import Diagnostic.*
 import util.{SourcePosition, NoSourcePosition, SrcPos}
-import core._
-import Contexts._, Flags.*, Symbols._, Decorators._
+import core.*
+import Contexts.*, Flags.*, Symbols.*, Decorators.*
 import config.SourceVersion
-import ast._
+import ast.*
 import config.Feature.sourceVersion
 import java.lang.System.currentTimeMillis
 

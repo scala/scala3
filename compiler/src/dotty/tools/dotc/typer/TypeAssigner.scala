@@ -2,14 +2,14 @@ package dotty.tools
 package dotc
 package typer
 
-import core._
-import ast._
-import Contexts._, ContextOps._, Constants._, Types._, Symbols._, Names._, Flags._, Decorators._
-import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._
+import core.*
+import ast.*
+import Contexts.*, ContextOps.*, Constants.*, Types.*, Symbols.*, Names.*, Flags.*, Decorators.*
+import ErrorReporting.*, Annotations.*, Denotations.*, SymDenotations.*, StdNames.*
 import util.SrcPos
-import NameOps._
+import NameOps.*
 import collection.mutable
-import reporting._
+import reporting.*
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 import cc.CaptureSet
 

@@ -3,7 +3,7 @@ package rewrites
 
 import util.{SourceFile, Spans}
 import Spans.Span
-import core.Contexts._
+import core.Contexts.*
 import collection.mutable
 import scala.annotation.tailrec
 import dotty.tools.dotc.reporting.Reporter
@@ -114,6 +114,6 @@ object Rewrites {
  *  as an optional setting.
  */
 class Rewrites {
-  import Rewrites._
+  import Rewrites.*
   private val patched = new PatchedFiles
 }

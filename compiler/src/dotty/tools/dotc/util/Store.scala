@@ -8,7 +8,7 @@ object Store {
 }
 
 class Store(private val elems: Array[AnyRef | Null]) extends AnyVal {
-  import Store._
+  import Store.*
 
   def newLocation[T](): (Location[T], Store) = {
     val elems1 = new Array[AnyRef | Null](elems.length + 1)

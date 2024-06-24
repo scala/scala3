@@ -1,11 +1,11 @@
 package dotty.tools.dotc
 package core
 
-import Contexts._
+import Contexts.*
 import Flags.JavaDefined
 import StdNames.nme
-import Symbols._
-import Types._
+import Symbols.*
+import Types.*
 
 /** This module defines methods to interpret types of Java symbols, which are implicitly nullable in Java,
  *  as Scala types, which are explicitly nullable.

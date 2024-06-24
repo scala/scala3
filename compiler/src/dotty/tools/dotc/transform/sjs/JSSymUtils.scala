@@ -2,18 +2,18 @@ package dotty.tools.dotc
 package transform
 package sjs
 
-import core._
-import Constants._
-import Contexts._
-import Flags._
-import NameOps._
-import Names._
-import Phases._
-import StdNames._
-import Symbols._
-import SymUtils._
-import ast.Trees._
-import Types._
+import core.*
+import Constants.*
+import Contexts.*
+import Flags.*
+import NameOps.*
+import Names.*
+import Phases.*
+import StdNames.*
+import Symbols.*
+import SymUtils.*
+import ast.Trees.*
+import Types.*
 
 import dotty.tools.backend.sjs.JSDefinitions.jsdefn
 

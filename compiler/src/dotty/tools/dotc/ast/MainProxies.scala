@@ -1,10 +1,10 @@
 package dotty.tools.dotc
 package ast
 
-import core._
-import Symbols._, Types._, Contexts._, Decorators._, util.Spans._, Flags._, Constants._
+import core.*
+import Symbols.*, Types.*, Contexts.*, Decorators.*, util.Spans.*, Flags.*, Constants.*
 import StdNames.{nme, tpnme}
-import ast.Trees._
+import ast.Trees.*
 import Names.Name
 import Comments.Comment
 import NameKinds.DefaultGetterName
@@ -24,7 +24,7 @@ object MainProxies {
    *
    *  would be translated to something like
    *
-   *     import CommandLineParser._
+   *     import CommandLineParser.*
    *     class f {
    *       @static def main(args: Array[String]): Unit =
    *         try
@@ -36,7 +36,7 @@ object MainProxies {
    *       }
    */
   private def mainProxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
-    import tpd._
+    import tpd.*
     def mainMethods(stats: List[Tree]): List[Symbol] = stats.flatMap {
       case stat: DefDef if stat.symbol.hasAnnotation(defn.MainAnnot) =>
         stat.symbol :: Nil
@@ -48,7 +48,7 @@ object MainProxies {
     mainMethods(stats).flatMap(mainProxy)
   }
 
-  import untpd._
+  import untpd.*
   private def mainProxy(mainFun: Symbol)(using Context): List[TypeDef] = {
     val mainAnnotSpan = mainFun.getAnnotation(defn.MainAnnot).get.tree.span
     def pos = mainFun.sourcePos
@@ -172,7 +172,7 @@ object MainProxies {
    *     }
    */
   private def mainAnnotationProxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
-    import tpd._
+    import tpd.*
 
     /**
       * Computes the symbols of the default values of the function. Since they cannot be inferred anymore at this
@@ -405,7 +405,7 @@ object MainProxies {
 
   /** A class responsible for extracting the docstrings of a method. */
   private class Documentation(docComment: Option[Comment]):
-    import util.CommentParsing._
+    import util.CommentParsing.*
 
     /** The main part of the documentation. */
     lazy val mainDoc: String = _mainDoc

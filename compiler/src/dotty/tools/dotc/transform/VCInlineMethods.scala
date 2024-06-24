@@ -3,10 +3,10 @@ package dotc
 package transform
 
 import ast.{Trees, tpd}
-import core._
-import Contexts._, Trees._, Types._
-import DenotTransformers._, MegaPhase._
-import ExtensionMethods._, ValueClasses._
+import core.*
+import Contexts.*, Trees.*, Types.*
+import DenotTransformers.*, MegaPhase.*
+import ExtensionMethods.*, ValueClasses.*
 
 
 /** This phase inlines calls to methods of value classes.
@@ -40,7 +40,7 @@ import ExtensionMethods._, ValueClasses._
  *  need to have any knowledge of the name mangling done by other phases.
  */
 class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = VCInlineMethods.name
 

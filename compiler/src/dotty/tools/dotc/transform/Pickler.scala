@@ -2,15 +2,15 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
-import Contexts._
-import Decorators._
-import tasty._
+import core.*
+import Contexts.*
+import Decorators.*
+import tasty.*
 import config.Printers.{noPrinter, pickling}
 import java.io.PrintStream
-import Periods._
-import Phases._
-import Symbols._
+import Periods.*
+import Phases.*
+import Symbols.*
 import Flags.Module
 import reporting.{ThrowingReporter, Profile, Message}
 import collection.mutable
@@ -30,7 +30,7 @@ object Pickler {
 
 /** This phase pickles trees */
 class Pickler extends Phase {
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = Pickler.name
 

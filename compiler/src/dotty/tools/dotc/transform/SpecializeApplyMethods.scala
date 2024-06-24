@@ -1,9 +1,9 @@
 package dotty.tools.dotc
 package transform
 
-import ast.Trees._, ast.tpd, core._
-import Contexts._, Types._, Decorators._, Symbols._, DenotTransformers._
-import SymDenotations._, Scopes._, StdNames._, NameOps._, Names._
+import ast.Trees.*, ast.tpd, core.*
+import Contexts.*, Types.*, Decorators.*, Symbols.*, DenotTransformers.*
+import SymDenotations.*, Scopes.*, StdNames.*, NameOps.*, Names.*
 import MegaPhase.MiniPhase
 
 import scala.collection.mutable
@@ -18,7 +18,7 @@ import scala.collection.mutable
  *  different standard library.
  */
 class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = SpecializeApplyMethods.name
 
