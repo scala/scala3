@@ -82,7 +82,7 @@ def macroImpl()(quotes: Quotes): Expr[Unit] =
   import quotes.reflect.*
   val pos = Position.ofMacroExpansion
 
-  val path = pos.sourceFile.jpath.toString
+  val path = pos.sourceFile.path
   val start = pos.start
   val end = pos.end
   val startLine = pos.startLine
