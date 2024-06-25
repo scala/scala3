@@ -208,6 +208,7 @@ class CompilationTests {
     implicit val testGroup: TestGroup = TestGroup("checkInit")
     val options = defaultOptions.and("-Ysafe-init", "-Xfatal-warnings")
     compileFilesInDir("tests/init/neg", options).checkExpectedErrors()
+    compileFilesInDir("tests/init/warn", defaultOptions.and("-Ysafe-init")).checkWarnings()
     compileFilesInDir("tests/init/pos", options).checkCompile()
     compileFilesInDir("tests/init/crash", options.without("-Xfatal-warnings")).checkCompile()
 
