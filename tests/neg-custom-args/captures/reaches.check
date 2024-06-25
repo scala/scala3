@@ -41,8 +41,13 @@
    |                         Required: File^{id*}
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/reaches.scala:77:5 ------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:77:8 ---------------------------------------
 77 |  ps.map((x, y) => compose1(x, y)) // error: cannot mix cap and *
-   |  ^^^^^^
-   |  Reach capability cap and universal capability cap cannot both
-   |  appear in the type [B](f: ((box A ->{ps*} A, box A ->{ps*} A)) => B): List[B] of this expression
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Found:    List[box (x$0: A^?) ->{x$1*, x$1²*} A^?]
+   |  Required: List[box A ->{ps*} A]
+   |
+   |  where:    x$1  is a reference to a value parameter
+   |            x$1² is a reference to a value parameter
+   |
+   | longer explanation available when compiling with `-explain`
