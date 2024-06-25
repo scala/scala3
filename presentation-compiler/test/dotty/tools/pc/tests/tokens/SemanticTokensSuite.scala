@@ -278,11 +278,35 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
     check(
       """
         |object <<Main>>/*class*/ {
-        |  val <<a>>/*variable,definition,readonly*/ = <<List>>/*class*/(1,2,3)
-        |  val <<y>>/*variable,definition,readonly*/ = <<Vector>>/*class*/(1,2)
-        |  val <<z>>/*variable,definition,readonly*/ = <<Set>>/*class*/(1,2,3)
-        |  val <<w>>/*variable,definition,readonly*/ = <<Right>>/*class*/(1)
+        |val <<a>>/*variable,definition,readonly*/ = <<List>>/*class*/(1,2,3)
+        |val <<y>>/*variable,definition,readonly*/ = <<Vector>>/*class*/(1,2)
+        |val <<z>>/*variable,definition,readonly*/ = <<Set>>/*class*/(1,2,3)
+        |val <<w>>/*variable,definition,readonly*/ = <<Right>>/*class*/(1)
         |}""".stripMargin
+    )
+
+  @Test def `predef1` =
+    check(
+      """
+        |object <<Main>>/*class*/ {
+        |  val <<a>>/*variable,definition,readonly*/ = <<List>>/*class*/(1,2,3)
+        |  val <<y>>/*class,definition*/ = <<List>>/*class*/
+        |  val <<z>>/*class,definition*/ = <<scala>>/*namespace*/.<<collection>>/*namespace*/.<<immutable>>/*namespace*/.<<List>>/*class*/
+        |}
+        |""".stripMargin
+    )
+
+  @Test def `val-object` =
+    check(
+      """
+        |case class <<X>>/*class*/(<<a>>/*variable,declaration,readonly*/: <<Int>>/*class,abstract*/)
+        |object <<X>>/*class*/
+        |
+        |object <<Main>>/*class*/ {
+        |  val <<x>>/*class,definition*/ = <<X>>/*class*/
+        |  val <<y>>/*variable,definition,readonly*/ = <<X>>/*class*/(1)
+        |}
+        |""".stripMargin
     )
 
   @Test def `case-class` =
