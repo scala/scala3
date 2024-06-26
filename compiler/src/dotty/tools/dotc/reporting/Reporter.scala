@@ -155,8 +155,6 @@ abstract class Reporter extends interfaces.ReporterResult {
       addUnreported(key, 1)
     case _                                                  =>
       if !isHidden(dia) then // avoid isHidden test for summarized warnings so that message is not forced
-        markReported(dia)
-        withMode(Mode.Printing)(doReport(dia))
         dia match {
           case w: Warning =>
             warnings = w :: warnings
@@ -169,6 +167,8 @@ abstract class Reporter extends interfaces.ReporterResult {
           case _: Info    => // nothing to do here
           // match error if d is something else
         }
+        markReported(dia)
+        withMode(Mode.Printing)(doReport(dia))
   end issueUnconfigured
 
   def issueIfNotSuppressed(dia: Diagnostic)(using Context): Unit =
