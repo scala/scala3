@@ -102,7 +102,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       case AppliedType(_, funArgs @ fun :: tupled :: Nil) =>
         def functionTypeEqual(baseFun: Type, actualArgs: List[Type],
             actualRet: Type, expected: Type) =
-          expected =:= defn.FunctionOf(actualArgs, actualRet,
+          expected =:= defn.FunctionNOf(actualArgs, actualRet,
             defn.isContextFunctionType(baseFun))
         val arity: Int =
           if fun.derivesFrom(defn.ErasedFunctionClass) then -1 // TODO support?
