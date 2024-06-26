@@ -11,7 +11,7 @@ import dotty.tools.tasty.TastyBuffer.*
 import ast.Trees.*
 import ast.{untpd, tpd}
 import Contexts.*, Symbols.*, Types.*, Names.*, Constants.*, Decorators.*, Annotations.*, Flags.*
-import Comments.{Comment, CommentsContext}
+import Comments.{Comment, docCtx}
 import NameKinds.*
 import StdNames.nme
 import config.Config
