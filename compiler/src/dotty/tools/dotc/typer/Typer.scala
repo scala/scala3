@@ -2328,7 +2328,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val res = Throw(expr1).withSpan(tree.span)
     if Feature.ccEnabled && !cap.isEmpty && !ctx.isAfterTyper then
       // Record access to the CanThrow capabulity recovered in `cap` by wrapping
-      // the type of the `throw` (i.e. Nothing) in a `@requiresCapability` annotatoon.
+      // the type of the `throw` (i.e. Nothing) in a `@requiresCapability` annotation.
       Typed(res,
         TypeTree(
           AnnotatedType(res.tpe,

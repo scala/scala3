@@ -131,6 +131,8 @@ extension (tree: Tree)
   def toCaptureRef(using Context): CaptureRef = tree match
     case ReachCapabilityApply(arg) =>
       arg.toCaptureRef.reach
+    case CapsOfApply(arg) =>
+      arg.toCaptureRef
     case _ => tree.tpe match
       case ref: CaptureRef if ref.isTrackableRef =>
         ref
@@ -145,7 +147,7 @@ extension (tree: Tree)
       case Some(refs) => refs
       case None =>
         val refs = CaptureSet(tree.retainedElems.map(_.toCaptureRef)*)
-          .showing(i"toCaptureSet $tree --> $result", capt)
+          //.showing(i"toCaptureSet $tree --> $result", capt)
         tree.putAttachment(Captures, refs)
         refs
 
@@ -524,6 +526,14 @@ class CleanupRetains(using Context) extends TypeMap:
 object ReachCapabilityApply:
   def unapply(tree: Apply)(using Context): Option[Tree] = tree match
     case Apply(reach, arg :: Nil) if reach.symbol == defn.Caps_reachCapability => Some(arg)
+    case _ => None
+
+/** An extractor for `caps.capsOf[X]`, which is used to express a generic capture set
+ *  as a tree in a @retains annotation.
+ */
+object CapsOfApply:
+  def unapply(tree: TypeApply)(using Context): Option[Tree] = tree match
+    case TypeApply(capsOf, arg :: Nil) if capsOf.symbol == defn.Caps_capsOf => Some(arg)
     case _ => None
 
 class AnnotatedCapability(annot: Context ?=> ClassSymbol):

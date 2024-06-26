@@ -521,11 +521,16 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def captureRoot(using Context): Select =
     Select(scalaDot(nme.caps), nme.CAPTURE_ROOT)
 
-  def captureRootIn(using Context): Select =
-    Select(scalaDot(nme.caps), nme.capIn)
-
   def makeRetaining(parent: Tree, refs: List[Tree], annotName: TypeName)(using Context): Annotated =
     Annotated(parent, New(scalaAnnotationDot(annotName), List(refs)))
+
+  def makeCapsOf(id: Ident)(using Context): Tree =
+    TypeApply(Select(scalaDot(nme.caps), nme.capsOf), id :: Nil)
+
+  def makeCapsBound()(using Context): Tree =
+    makeRetaining(
+      Select(scalaDot(nme.caps), tpnme.CapSet),
+      Nil, tpnme.retainsCap)
 
   def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(using Context): DefDef =
     DefDef(nme.CONSTRUCTOR, joinParams(tparams, vparamss), TypeTree(), rhs)

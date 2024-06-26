@@ -384,7 +384,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     sym.updateInfo(thisPhase, info, newFlagsFor(sym))
     toBeUpdated -= sym
     sym.namedType match
-      case ref: CaptureRef => ref.invalidateCaches() // TODO: needed?
+      case ref: CaptureRef if ref.isTrackableRef => ref.invalidateCaches() // TODO: needed?
       case _ =>
 
   extension (sym: Symbol) def nextInfo(using Context): Type =

@@ -1541,7 +1541,7 @@ object Parsers {
       case _ => None
     }
 
-    /** CaptureRef  ::=  ident | `this` | `cap` [`[` ident `]`]
+    /** CaptureRef  ::=  ident [`*` | `^`] | `this`
      */
     def captureRef(): Tree =
       if in.token == THIS then simpleRef()
@@ -1551,6 +1551,10 @@ object Parsers {
           in.nextToken()
           atSpan(startOffset(id)):
             PostfixOp(id, Ident(nme.CC_REACH))
+        else if isIdent(nme.UPARROW) then
+          in.nextToken()
+          atSpan(startOffset(id)):
+            makeCapsOf(cpy.Ident(id)(id.name.toTypeName))
         else id
 
     /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking
@@ -1968,7 +1972,7 @@ object Parsers {
       }
 
     /**  SimpleType      ::=  SimpleLiteral
-     *                     |  ‘?’ SubtypeBounds
+     *                     |  ‘?’ TypeBounds
      *                     |  SimpleType1
      *                     |  SimpleType ‘(’ Singletons ‘)’  -- under language.experimental.dependent, checked in Typer
      *   Singletons      ::=  Singleton {‘,’ Singleton}
@@ -2188,9 +2192,15 @@ object Parsers {
         inBraces(refineStatSeq())
 
     /** TypeBounds ::= [`>:' Type] [`<:' Type]
+     *              |  `^`                     -- under captureChecking
      */
     def typeBounds(): TypeBoundsTree =
-      atSpan(in.offset) { TypeBoundsTree(bound(SUPERTYPE), bound(SUBTYPE)) }
+      atSpan(in.offset):
+        if in.isIdent(nme.UPARROW) && Feature.ccEnabled then
+          in.nextToken()
+          TypeBoundsTree(EmptyTree, makeCapsBound())
+        else
+          TypeBoundsTree(bound(SUPERTYPE), bound(SUBTYPE))
 
     private def bound(tok: Int): Tree =
       if (in.token == tok) { in.nextToken(); toplevelTyp() }
@@ -3384,7 +3394,6 @@ object Parsers {
      *
      *  DefTypeParamClause::=  ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
      *  DefTypeParam      ::=  {Annotation}
-     *                         [`sealed`]                                    -- under captureChecking
      *                         id [HkTypeParamClause] TypeParamBounds
      *
      *  TypTypeParamClause::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’

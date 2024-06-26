@@ -879,7 +879,9 @@ object CaptureSet:
     val r1 = tm(r)
     val upper = r1.captureSet
     def isExact =
-      upper.isAlwaysEmpty || upper.isConst && upper.elems.size == 1 && upper.elems.contains(r1)
+      upper.isAlwaysEmpty
+      || upper.isConst && upper.elems.size == 1 && upper.elems.contains(r1)
+      || r.derivesFrom(defn.Caps_CapSet)
     if variance > 0 || isExact then upper
     else if variance < 0 then CaptureSet.empty
     else upper.maybe

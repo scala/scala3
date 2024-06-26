@@ -2313,7 +2313,11 @@ object Types extends TypeUtils {
 
     override def captureSet(using Context): CaptureSet =
       val cs = captureSetOfInfo
-      if isTrackableRef && !cs.isAlwaysEmpty then singletonCaptureSet else cs
+      if isTrackableRef then
+        if cs.isAlwaysEmpty then cs else singletonCaptureSet
+      else dealias match
+        case _: (TypeRef | TypeParamRef) => CaptureSet.empty
+        case _ => cs
 
   end CaptureRef
 
@@ -3032,7 +3036,7 @@ object Types extends TypeUtils {
 
   abstract case class TypeRef(override val prefix: Type,
                               private var myDesignator: Designator)
-    extends NamedType {
+    extends NamedType, CaptureRef {
 
     type ThisType = TypeRef
     type ThisName = TypeName
@@ -3081,6 +3085,9 @@ object Types extends TypeUtils {
     /** Hook that can be called from creation methods in TermRef and TypeRef */
     def validated(using Context): this.type =
       this
+
+    override def isTrackableRef(using Context) =
+      symbol.isAbstractOrParamType && derivesFrom(defn.Caps_CapSet)
   }
 
   final class CachedTermRef(prefix: Type, designator: Designator, hc: Int) extends TermRef(prefix, designator) {
@@ -4841,7 +4848,8 @@ object Types extends TypeUtils {
   /** Only created in `binder.paramRefs`. Use `binder.paramRefs(paramNum)` to
    *  refer to `TypeParamRef(binder, paramNum)`.
    */
-  abstract case class TypeParamRef(binder: TypeLambda, paramNum: Int) extends ParamRef {
+  abstract case class TypeParamRef(binder: TypeLambda, paramNum: Int)
+  extends ParamRef, CaptureRef {
     type BT = TypeLambda
     def kindString: String = "Type"
     def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
@@ -4861,6 +4869,8 @@ object Types extends TypeUtils {
       case bound: OrType   => occursIn(bound.tp1, fromBelow) || occursIn(bound.tp2, fromBelow)
       case _ => false
     }
+
+    override def isTrackableRef(using Context) = derivesFrom(defn.Caps_CapSet)
   }
 
   private final class TypeParamRefImpl(binder: TypeLambda, paramNum: Int) extends TypeParamRef(binder, paramNum)
