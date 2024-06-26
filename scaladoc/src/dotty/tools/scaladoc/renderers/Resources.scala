@@ -142,7 +142,6 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     "scripts/staticsite/alt-details.js",
     "scripts/staticsite/tabs-block.js"
 
-
   ).map(dottyRes)
 
   val searchDataPath = "scripts/searchData.js"

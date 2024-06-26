@@ -6,8 +6,19 @@ import liqp.nodes.LNode
 import liqp.blocks.Block
 import scala.collection.mutable.ListBuffer
 
+
+
 class TabsBlock extends Block("tabs") {
   override def render(context: TemplateContext, nodes: LNode*): AnyRef = {
+    val inputString = nodes.head.render(context).toString
+
+    val pattern = """(.*?)(class=.*)""".r
+
+    val (forValue, classValue) = inputString match {
+      case pattern(forPart, classPart) => (forPart, classPart.stripPrefix("class="))
+      case _ => ("", "")
+    }
+
     // Render the content of the tabs block
     nodes.foreach(_.render(context))
 
@@ -19,7 +30,7 @@ class TabsBlock extends Block("tabs") {
     val builder = new StringBuilder
     builder.append(
       s"""
-         |<div class="tabs">
+         |<div class="tabs $classValue" data-for="$forValue">
          |  <div class="tab-headers">
          |    $tabHeaders
          |  </div>
@@ -36,14 +47,22 @@ class TabsBlock extends Block("tabs") {
 
 class TabBlock extends Block("tab") {
   override def render(context: TemplateContext, nodes: LNode*): AnyRef = {
-    val tabName = nodes.head.render(context).toString
-    val tabId = tabName.toLowerCase.replaceAll("\\s", "-")
+    val inputString = nodes.head.render(context).toString
+
+    val pattern = """(.*)for=(.*)""".r
+
+    val (tabName, forValue) = inputString match {
+      case pattern(tab, forPart) => (tab, forPart)
+      case _ => ("", "")
+    }
+    println(s"Rendering tab $tabName  $forValue")
+
     val content = nodes.tail.map(_.render(context).toString).mkString
 
-    val header = s"""<button class="tab-link" data-tab="$tabId">$tabName</button>"""
+    val header = s"""<button class="tab-link" data-tab="$tabName">$tabName</button>"""
     val tabContent =
       s"""
-         |<div class="tab-content" id="$tabId">
+         |<div class="tab-content" id="$tabName">
          |  $content
          |</div>
          |""".stripMargin
@@ -58,7 +77,6 @@ class TabBlock extends Block("tab") {
       newHeaders += header
       context.put("tab-headers", newHeaders)
     }
-
     val contents = context.get("tab-contents")
     if (contents.isInstanceOf[ListBuffer[?]]) {
       val contentsList = contents.asInstanceOf[ListBuffer[String]]
@@ -68,7 +86,6 @@ class TabBlock extends Block("tab") {
       newContents += tabContent
       context.put("tab-contents", newContents)
     }
-
-    ""
+    "" // Return empty string
   }
 }
