@@ -64,6 +64,7 @@ object CompletionValue:
     def symbol: Symbol
     def isFromWorkspace: Boolean = false
     override def completionItemDataKind = CompletionItemData.None
+    def isExtensionMethod: Boolean = false
 
     override def completionData(
         buildTargetIdentifier: String
@@ -153,6 +154,7 @@ object CompletionValue:
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Method
     override def completionItemDataKind: Integer = CompletionSource.ExtensionKind.ordinal
+    override def isExtensionMethod: Boolean = true
     override def description(printer: ShortenedTypePrinter)(using Context): String =
       s"${printer.completionSymbol(symbol)} (extension)"
 
