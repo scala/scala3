@@ -375,3 +375,40 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
            |end <<foo>>/*method,definition*/
            |""".stripMargin,
     )
+
+  @Test def `constructor` =
+    check(
+      """
+        |object <<Bar>>/*class*/ {
+        |  class <<Abc>>/*class*/[<<T>>/*typeParameter,definition,abstract*/](<<a>>/*variable,declaration,readonly*/: <<T>>/*typeParameter,abstract*/)
+        |}
+        |
+        |object <<O>>/*class*/ {
+        |  val <<x>>/*variable,definition,readonly*/ = new <<Bar>>/*class*/.<<Abc>>/*class*/(2)
+        |  val <<y>>/*variable,definition,readonly*/ = new <<Bar>>/*class*/.<<Abc>>/*class*/[<<Int>>/*class,abstract*/](2)
+        |  val <<z>>/*variable,definition,readonly*/ = <<Bar>>/*class*/.<<Abc>>/*class*/(2)
+        |  val <<w>>/*variable,definition,readonly*/ = <<Bar>>/*class*/.<<Abc>>/*class*/[<<Int>>/*class,abstract*/](2)
+        |}""".stripMargin
+    )
+
+  @Test def `constructor1` =
+    check(
+      """
+        |object <<Main>>/*class*/ {
+        |  class <<Abc>>/*class*/[<<T>>/*typeParameter,definition,abstract*/](<<abc>>/*variable,declaration,readonly*/: <<T>>/*typeParameter,abstract*/)
+        |  object <<Abc>>/*class*/
+        |  val <<x>>/*variable,definition,readonly*/ = new <<Abc>>/*class*/(123)
+        |}""".stripMargin
+    )
+
+  @Test def `constructor2` =
+    check(
+      """
+        |object <<Main>>/*class*/ {
+        |  class <<Abc>>/*class*/[<<T>>/*typeParameter,definition,abstract*/](<<abc>>/*variable,declaration,readonly*/: <<T>>/*typeParameter,abstract*/)
+        |  object <<Abc>>/*class*/ {
+        |    def <<apply>>/*method,definition*/[<<T>>/*typeParameter,definition,abstract*/](<<abc>>/*parameter,declaration,readonly*/: <<T>>/*typeParameter,abstract*/, <<bde>>/*parameter,declaration,readonly*/: <<T>>/*typeParameter,abstract*/) = new <<Abc>>/*class*/(<<abc>>/*parameter,readonly*/)
+        |  }
+        |  val <<x>>/*variable,definition,readonly*/ = <<Abc>>/*class*/(123, 456)
+        |}""".stripMargin
+    )
