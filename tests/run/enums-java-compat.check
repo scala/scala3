@@ -6,4 +6,4 @@ TUESDAY : 1
 SATURDAY : 2
 Stuff : 3
 By-name value: MONDAY
-Correctly failed to retrieve illegal name, message: enum case not found: stuff
+Correctly failed to retrieve illegal name, message: enum A has no case with name: stuff
