@@ -44,11 +44,11 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
           backendReporting.error(em"Error while emitting $internalName\n${ex.getMessage}")
           null
 
-     if bytes != null then
-        if (AsmUtils.traceSerializedClassEnabled && internalName.contains(AsmUtils.traceSerializedClassPattern))
-          AsmUtils.traceClass(bytes)
-        val clsFile = classfileWriter.writeClass(internalName, bytes, sourceFile)
-        if clsFile != null then clazz.onFileCreated(clsFile)
+    if bytes != null then
+      if AsmUtils.traceSerializedClassEnabled && internalName.contains(AsmUtils.traceSerializedClassPattern) then
+        AsmUtils.traceClass(bytes)
+      val clsFile = classfileWriter.writeClass(internalName, bytes, sourceFile)
+      clazz.onFileCreated(clsFile)
   }
 
   def sendToDisk(tasty: GeneratedTasty, sourceFile: AbstractFile): Unit = {
