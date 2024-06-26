@@ -991,8 +991,10 @@ class Definitions {
 
   @tu lazy val CapsModule: Symbol = requiredModule("scala.caps")
     @tu lazy val captureRoot: TermSymbol = CapsModule.requiredValue("cap")
-    @tu lazy val Caps_Capability: ClassSymbol = requiredClass("scala.caps.Capability")
+    @tu lazy val Caps_Capability: TypeSymbol = CapsModule.requiredType("Capability")
+    @tu lazy val Caps_CapSet = requiredClass("scala.caps.CapSet")
     @tu lazy val Caps_reachCapability: TermSymbol = CapsModule.requiredMethod("reachCapability")
+    @tu lazy val Caps_capsOf: TermSymbol = CapsModule.requiredMethod("capsOf")
     @tu lazy val Caps_Exists = requiredClass("scala.caps.Exists")
     @tu lazy val CapsUnsafeModule: Symbol = requiredModule("scala.caps.unsafe")
     @tu lazy val Caps_unsafeAssumePure: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumePure")

@@ -1,6 +1,6 @@
 package scala
 
-import annotation.experimental
+import annotation.{experimental, compileTimeOnly}
 
 @experimental object caps:
 
@@ -15,6 +15,12 @@ import annotation.experimental
 
   @deprecated("Use `Capability` instead")
   type Cap = Capability
+
+  /** Carrier trait for capture set type parameters */
+  trait CapSet extends Any
+
+  @compileTimeOnly("Should be be used only internally by the Scala compiler")
+  def capsOf[CS]: Any = ???
 
   /** Reach capabilities x* which appear as terms in @retains annotations are encoded
    *  as `caps.reachCapability(x)`. When converted to CaptureRef types in capture sets

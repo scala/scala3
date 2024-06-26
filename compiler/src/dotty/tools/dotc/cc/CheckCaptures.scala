@@ -123,16 +123,24 @@ object CheckCaptures:
       case _: SingletonType =>
         report.error(em"Singleton type $parent cannot have capture set", parent.srcPos)
       case _ =>
+    def check(elem: Tree, pos: SrcPos): Unit = elem.tpe match
+      case ref: CaptureRef =>
+        if !ref.isTrackableRef then
+          report.error(em"$elem cannot be tracked since it is not a parameter or local value", pos)
+      case tpe =>
+        report.error(em"$elem: $tpe is not a legal element of a capture set", pos)
     for elem <- ann.retainedElems do
-      val elem1 = elem match
-        case ReachCapabilityApply(arg) => arg
-        case _ => elem
-      elem1.tpe match
-        case ref: CaptureRef =>
-          if !ref.isTrackableRef then
-            report.error(em"$elem cannot be tracked since it is not a parameter or local value", elem.srcPos)
-        case tpe =>
-          report.error(em"$elem: $tpe is not a legal element of a capture set", elem.srcPos)
+      elem match
+        case CapsOfApply(arg) =>
+          def isLegalCapsOfArg =
+            arg.symbol.isAbstractOrParamType && arg.symbol.info.derivesFrom(defn.Caps_CapSet)
+          if !isLegalCapsOfArg then
+            report.error(
+              em"""$arg is not a legal prefix for `^` here,
+                  |is must be a type parameter or abstract type with a caps.CapSet upper bound.""",
+              elem.srcPos)
+        case ReachCapabilityApply(arg) => check(arg, elem.srcPos)
+        case _ => check(elem, elem.srcPos)
 
   /** Report an error if some part of `tp` contains the root capability in its capture set
    *  or if it refers to an unsealed type parameter that could possibly be instantiated with

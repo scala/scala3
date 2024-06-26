@@ -2841,7 +2841,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private def existentialVarsConform(tp1: Type, tp2: Type) =
     tp2 match
       case tp2: TermParamRef => tp1 match
-        case tp1: CaptureRef => subsumesExistentially(tp2, tp1)
+        case tp1: CaptureRef if tp1.isTrackableRef => subsumesExistentially(tp2, tp1)
         case _ => false
       case _ => false
 
