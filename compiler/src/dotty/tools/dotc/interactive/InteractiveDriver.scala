@@ -47,14 +47,10 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
 
   private val compiler: Compiler = new InteractiveCompiler
 
-  private val myOpenedFiles = new mutable.LinkedHashMap[URI, SourceFile] {
-    override def default(key: URI) = NoSource
-  }
+  private val myOpenedFiles = new mutable.LinkedHashMap[URI, SourceFile].withDefaultValue(NoSource)
   def openedFiles: Map[URI, SourceFile] = myOpenedFiles
 
-  private val myOpenedTrees = new mutable.LinkedHashMap[URI, List[SourceTree]] {
-    override def default(key: URI) = Nil
-  }
+  private val myOpenedTrees = new mutable.LinkedHashMap[URI, List[SourceTree]].withDefaultValue(Nil)
   def openedTrees: Map[URI, List[SourceTree]] = myOpenedTrees
 
   private val myCompilationUnits = new mutable.LinkedHashMap[URI, CompilationUnit]
