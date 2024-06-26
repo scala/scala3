@@ -9,8 +9,7 @@ import Contexts.*, Symbols.*, Types.*, Constants.*, StdNames.*, Decorators.*
 import ast.untpd
 import Erasure.Boxing.*
 import TypeErasure.*
-import ValueClasses.*
-import SymUtils.*
+
 import core.Flags.*
 import util.Spans.*
 import reporting.*
@@ -218,7 +217,7 @@ object TypeTestsCasts {
             !(!testCls.isPrimitiveValueClass && foundCls.isPrimitiveValueClass) &&
                // foundCls can be `Boolean`, while testCls is `Integer`
                // it can happen in `(3: Boolean | Int).isInstanceOf[Int]`
-            !isDerivedValueClass(foundCls) && !isDerivedValueClass(testCls)
+            !foundCls.isDerivedValueClass && !testCls.isDerivedValueClass
                // we don't have the logic to handle derived value classes
 
           /** Check whether a runtime test that a value of `foundCls` can be a `testCls`

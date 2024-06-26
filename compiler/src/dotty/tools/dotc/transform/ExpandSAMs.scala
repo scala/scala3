@@ -6,7 +6,6 @@ import core.*
 import Scopes.newScope
 import Contexts.*, Symbols.*, Types.*, Flags.*, Decorators.*, StdNames.*, Constants.*
 import MegaPhase.*
-import SymUtils.*
 import NullOpsDecorator.*
 import ast.untpd
 

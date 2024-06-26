@@ -21,8 +21,6 @@ import NameKinds.DefaultGetterName
 import ProtoTypes.*
 import Inferencing.*
 import reporting.*
-import transform.TypeUtils.*
-import transform.SymUtils.*
 import Nullables.*, NullOpsDecorator.*
 import config.Feature
 

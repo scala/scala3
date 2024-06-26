@@ -16,7 +16,6 @@ import DenotTransformers.*
 import NameOps.*
 import NameKinds.OuterSelectName
 import StdNames.*
-import TypeUtils.isErasedValueType
 import config.Feature
 import inlines.Inlines.inInlineMethod
 

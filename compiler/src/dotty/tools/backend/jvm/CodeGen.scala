@@ -9,7 +9,7 @@ import dotty.tools.dotc.core.Phases.Phase
 
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
-import dotty.tools.dotc.transform.SymUtils.*
+
 import dotty.tools.dotc.interfaces
 import dotty.tools.dotc.report
 

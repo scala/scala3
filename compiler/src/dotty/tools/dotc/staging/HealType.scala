@@ -9,7 +9,7 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.staging.QuoteTypeTags.*
-import dotty.tools.dotc.transform.SymUtils.*
+
 import dotty.tools.dotc.typer.Implicits.SearchFailureType
 import dotty.tools.dotc.util.SrcPos
 

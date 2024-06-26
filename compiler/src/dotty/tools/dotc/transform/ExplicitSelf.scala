@@ -3,7 +3,7 @@ package transform
 
 import core.*
 import Contexts.*, Types.*, MegaPhase.*, ast.Trees.*, Symbols.*, Decorators.*, Flags.*
-import SymUtils.*
+
 
 /** Transform references of the form
  *

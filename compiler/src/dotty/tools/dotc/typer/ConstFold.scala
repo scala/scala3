@@ -11,7 +11,6 @@ import Constants.*
 import Names.*
 import StdNames.*
 import Contexts.*
-import transform.TypeUtils.*
 
 object ConstFold:
 

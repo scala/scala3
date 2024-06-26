@@ -13,7 +13,6 @@ import StdNames.nme
 import Flags.{Module, Provisional}
 import dotty.tools.dotc.config.Config
 import cc.boxedUnlessFun
-import dotty.tools.dotc.transform.TypeUtils.isErasedValueType
 
 object TypeApplications {
 

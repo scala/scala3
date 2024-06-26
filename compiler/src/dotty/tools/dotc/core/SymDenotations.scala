@@ -23,7 +23,6 @@ import scala.util.control.NonFatal
 import config.Config
 import reporting.*
 import collection.mutable
-import transform.TypeUtils.*
 import cc.{CapturingType, derivedCapturingType, Setup, EventuallyCapturingType, isEventuallyCapturingType}
 
 import scala.annotation.internal.sharable

@@ -14,7 +14,7 @@ import core.StdNames.nme
 import core.Names.*
 import core.NameOps.*
 import core.NameKinds.SuperArgName
-import SymUtils.*
+
 import dotty.tools.dotc.ast.tpd
 
 import collection.mutable

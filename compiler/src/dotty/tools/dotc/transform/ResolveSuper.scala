@@ -5,7 +5,7 @@ import core.*
 import MegaPhase.*
 import Contexts.*
 import Flags.*
-import SymUtils.*
+
 import Symbols.*
 import Decorators.*
 import DenotTransformers.*

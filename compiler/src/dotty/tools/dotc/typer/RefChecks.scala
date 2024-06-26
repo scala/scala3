@@ -5,7 +5,7 @@ package typer
 import transform.*
 import core.*
 import Symbols.*, Types.*, Contexts.*, Flags.*, Names.*, NameOps.*, NameKinds.*
-import StdNames.*, Denotations.*, SymUtils.*, Phases.*, SymDenotations.*
+import StdNames.*, Denotations.*, Phases.*, SymDenotations.*
 import NameKinds.DefaultGetterName
 import util.Spans.*
 import scala.collection.mutable

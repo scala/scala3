@@ -23,7 +23,6 @@ import util.common.*
 import util.NoSourcePosition
 import typer.Checking.checkNonCyclic
 import typer.Nullables.*
-import transform.SymUtils.*
 import PickleBuffer.*
 import PickleFormat.*
 import Decorators.*

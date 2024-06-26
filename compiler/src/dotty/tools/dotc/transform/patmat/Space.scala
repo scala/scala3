@@ -5,7 +5,6 @@ package patmat
 
 import core.*
 import Types.*
-import TypeUtils.*
 import Contexts.*
 import Flags.*
 import ast.*
@@ -18,7 +17,6 @@ import typer.*
 import Applications.*
 import Inferencing.*
 import ProtoTypes.*
-import transform.SymUtils.*
 import reporting.*
 import config.Printers.{exhaustivity => debug}
 import util.{SrcPos, NoSourcePosition}

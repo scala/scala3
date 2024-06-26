@@ -5,7 +5,7 @@ package ast
 import core.*
 import util.Spans.*, Types.*, Contexts.*, Constants.*, Names.*, NameOps.*, Flags.*
 import Symbols.*, StdNames.*, Trees.*, ContextOps.*
-import Decorators.*, transform.SymUtils.*
+import Decorators.*
 import Annotations.Annotation
 import NameKinds.{UniqueName, ContextBoundParamName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
 import typer.{Namer, Checking}

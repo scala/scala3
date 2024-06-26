@@ -42,10 +42,9 @@ import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
-import dotty.tools.dotc.transform.SymUtils.*
-import dotty.tools.dotc.transform.TypeUtils.isErasedClass
 
-object Types {
+
+object Types extends TypeUtils {
 
   @sharable private var nextId = 0
 

@@ -23,7 +23,6 @@ import ProtoTypes.*
 import ErrorReporting.*
 import Inferencing.{fullyDefinedType, isFullyDefined}
 import Scopes.newScope
-import transform.TypeUtils.*
 import Hashable.*
 import util.{EqHashMap, Stats}
 import config.{Config, Feature}

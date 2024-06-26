@@ -19,7 +19,6 @@ import NameOps.*
 import Annotations.*
 import transform.{AccessProxies, Splicer}
 import staging.CrossStageSafety
-import transform.SymUtils.*
 import config.Printers.inlining
 import util.Property
 import staging.StagingLevel

@@ -13,7 +13,7 @@ import core.StdNames.nme
 import core.Names.*
 import core.NameOps.*
 import core.NameKinds.ExpandPrefixName
-import SymUtils.*
+
 import ExplicitOuter.outer
 import util.Store
 import collection.mutable.{HashMap, LinkedHashMap, ListBuffer}

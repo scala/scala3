@@ -16,7 +16,7 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.inlines.PrepareInlineable
 import dotty.tools.dotc.staging.StagingLevel.*
-import dotty.tools.dotc.transform.SymUtils.*
+
 import dotty.tools.dotc.typer.ErrorReporting.errorTree
 import dotty.tools.dotc.typer.Implicits.*
 import dotty.tools.dotc.typer.Inferencing.*
