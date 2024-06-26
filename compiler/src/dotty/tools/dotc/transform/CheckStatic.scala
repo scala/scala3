@@ -30,6 +30,9 @@ class CheckStatic extends MiniPhase {
 
   override def description: String = CheckStatic.description
 
+  override def runsAfter: Set[String] = Set(UncacheGivenAliases.name)
+    // UncachedGivenAliases eliminates static lazy vals, which are flagged as errors here
+
   override def transformTemplate(tree: tpd.Template)(using Context): tpd.Tree = {
     val defns = tree.body.collect{case t: ValOrDefDef => t}
     var hadNonStaticField = false
