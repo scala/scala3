@@ -11,6 +11,8 @@ import TastyBuffer.NameRef
 import scala.collection.mutable
 import Names.{TermName, termName, EmptyTermName}
 import NameKinds.*
+import dotty.tools.tasty.TastyHeader
+import dotty.tools.tasty.TastyBuffer.Addr
 
 object TastyUnpickler {
 
@@ -28,7 +30,7 @@ object TastyUnpickler {
 
 import TastyUnpickler.*
 
-class TastyUnpickler(reader: TastyReader) {
+class TastyUnpickler(protected val reader: TastyReader) {
   import reader.*
 
   def this(bytes: Array[Byte]) = this(new TastyReader(bytes))
@@ -88,10 +90,12 @@ class TastyUnpickler(reader: TastyReader) {
     result
   }
 
-  new TastyHeaderUnpickler(reader).readHeader()
+  val header: TastyHeader = new TastyHeaderUnpickler(reader).readFullHeader()
 
-  locally {
+  def readNames(): Unit =
     until(readEnd()) { nameAtRef.add(readNameContents()) }
+
+  def loadSections(): Unit = {
     while (!isAtEnd) {
       val secName = readString()
       val secEnd = readEnd()
@@ -99,6 +103,8 @@ class TastyUnpickler(reader: TastyReader) {
       goto(secEnd)
     }
   }
+  readNames()
+  loadSections()
 
   def unpickle[R](sec: SectionUnpickler[R]): Option[R] =
     for (reader <- sectionReader.get(sec.name)) yield

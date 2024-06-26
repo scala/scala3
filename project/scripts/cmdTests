@@ -27,7 +27,7 @@ echo "testing sbt scalac -print-tasty"
 clear_out "$OUT"
 "$SBT" ";scalac $SOURCE -d $OUT ;scalac -print-tasty -color:never $TASTY" > "$tmp"
 grep -qe "0: ASTs" "$tmp"
-grep -qe "0: tests/pos/HelloWorld.scala" "$tmp"
+grep -qe "0: 41 \[tests/pos/HelloWorld.scala\]" "$tmp"
 
 echo "testing that paths SourceFile annotations are relativized"
 clear_out "$OUT"
