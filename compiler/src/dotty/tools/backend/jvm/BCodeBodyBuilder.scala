@@ -250,6 +250,10 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         if hasElse then
           genLoadTo(elsep, expectedType, dest)
         else
+          /* #18238 Re-emit a line number attached to the If, so that the adaptation
+           * and jump are not associated to the last instruction of the then branch.
+           */
+          lineNumber(tree)
           genAdaptAndSendToDest(UNIT, expectedType, dest)
         expectedType
       end if

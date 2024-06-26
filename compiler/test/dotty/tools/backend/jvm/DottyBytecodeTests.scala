@@ -1963,6 +1963,94 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       assertSameCode(instructions, expected)
     }
   }
+
+  @Test def i18238a = {
+    // Test that `LineNumber`s are correct -- variant with an infinite loop
+    val source =
+      """object Main {
+        |  def method(): Int = {
+        |    var x = 3
+        |    var y = 2
+        |
+        |    while (true) {
+        |      if (x < y) {
+        |        if (x >= y)
+        |          x += 1
+        |        else
+        |          y -= 1
+        |      } // the GOTO in the implicit else branch was still attached to the previous line
+        |    }
+        |
+        |    5
+        |  }
+        |}
+        """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("Main$.class", directory = false).input
+      val clsNode = loadClassNode(clsIn, skipDebugInfo = false)
+      val method  = getMethod(clsNode, "method")
+      val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
+
+      val expected = List(
+        LineNumber(3, Label(0)),
+        LineNumber(4, Label(4)),
+        LineNumber(6, Label(8)),
+        LineNumber(7, Label(14)),
+        LineNumber(8, Label(19)),
+        LineNumber(9, Label(24)),
+        LineNumber(11, Label(28)),
+        LineNumber(7, Label(33)), // this line number was missing
+        LineNumber(15, Label(37)),
+      )
+
+      assertSameCode(instructions, expected)
+    }
+  }
+
+  @Test def i18238b = {
+    // Test that `LineNumber`s are correct -- variant with a finite loop
+    val source =
+      """object Main {
+        |  def method(): Int = {
+        |    var x = 3
+        |    var y = 2
+        |
+        |    while (x > y) {
+        |      if (x < y) {
+        |        if (x >= y)
+        |          x += 1
+        |        else
+        |          y -= 1
+        |      } // the GOTO in the implicit else branch was still attached to the previous line
+        |    }
+        |
+        |    5
+        |  }
+        |}
+        """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("Main$.class", directory = false).input
+      val clsNode = loadClassNode(clsIn, skipDebugInfo = false)
+      val method  = getMethod(clsNode, "method")
+      val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
+
+      val expected = List(
+        LineNumber(3, Label(0)),
+        LineNumber(4, Label(4)),
+        LineNumber(6, Label(8)),
+        LineNumber(7, Label(14)),
+        LineNumber(8, Label(19)),
+        LineNumber(9, Label(24)),
+        LineNumber(11, Label(28)),
+        LineNumber(7, Label(33)), // this line number was missing
+        LineNumber(15, Label(37)),
+      )
+
+      assertSameCode(instructions, expected)
+    }
+  }
 }
 
 object invocationReceiversTestCode {
