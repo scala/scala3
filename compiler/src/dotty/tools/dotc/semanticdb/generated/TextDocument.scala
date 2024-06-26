@@ -5,7 +5,7 @@
 // Protofile syntax: PROTO3
 
 package dotty.tools.dotc.semanticdb
-import dotty.tools.dotc.semanticdb.internal._
+import dotty.tools.dotc.semanticdb.internal.*
 import scala.annotation.internal.sharable
 
 @SerialVersionUID(0L)
@@ -24,35 +24,35 @@ final case class TextDocument(
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
     private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
-      
+
       {
         val __value = schema.value
         if (__value != 0) {
           __size += SemanticdbOutputStream.computeEnumSize(1, __value)
         }
       };
-      
+
       {
         val __value = uri
         if (!__value.isEmpty) {
           __size += SemanticdbOutputStream.computeStringSize(2, __value)
         }
       };
-      
+
       {
         val __value = text
         if (!__value.isEmpty) {
           __size += SemanticdbOutputStream.computeStringSize(3, __value)
         }
       };
-      
+
       {
         val __value = md5
         if (!__value.isEmpty) {
           __size += SemanticdbOutputStream.computeStringSize(11, __value)
         }
       };
-      
+
       {
         val __value = language.value
         if (__value != 0) {
@@ -84,7 +84,7 @@ final case class TextDocument(
         __serializedSizeMemoized = __size
       }
       __size - 1
-      
+
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
@@ -163,10 +163,10 @@ final case class TextDocument(
     def addSynthetics(__vs: dotty.tools.dotc.semanticdb.Synthetic *): TextDocument = addAllSynthetics(__vs)
     def addAllSynthetics(__vs: Iterable[dotty.tools.dotc.semanticdb.Synthetic]): TextDocument = copy(synthetics = synthetics ++ __vs)
     def withSynthetics(__v: _root_.scala.Seq[dotty.tools.dotc.semanticdb.Synthetic]): TextDocument = copy(synthetics = __v)
-    
-    
-    
-    
+
+
+
+
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.TextDocument])
 }
 
@@ -220,12 +220,12 @@ object TextDocument  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dot
         synthetics = __synthetics.result()
     )
   }
-  
-  
-  
-  
-  
-  
+
+
+
+
+
+
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.TextDocument(
     schema = dotty.tools.dotc.semanticdb.Schema.LEGACY,
     uri = "",

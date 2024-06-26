@@ -3,7 +3,7 @@ package dotc
 package config
 
 import io.{ClassPath, AbstractFile}
-import core.Contexts._, core.Symbols._
+import core.Contexts.*, core.Symbols.*
 import core.SymbolLoader
 import core.StdNames.nme
 import core.Flags.Module

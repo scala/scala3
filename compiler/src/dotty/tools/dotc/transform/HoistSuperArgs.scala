@@ -1,18 +1,18 @@
 package dotty.tools.dotc
 package transform
 
-import MegaPhase._
-import core.DenotTransformers._
-import core.Symbols._
-import core.Contexts._
+import MegaPhase.*
+import core.DenotTransformers.*
+import core.Symbols.*
+import core.Contexts.*
 import ast.TreeTypeMap
-import core.Types._
-import core.Flags._
-import core.Decorators._
+import core.Types.*
+import core.Flags.*
+import core.Decorators.*
 import collection.mutable
-import ast.Trees._
+import ast.Trees.*
 import core.NameKinds.SuperArgName
-import SymUtils._
+import SymUtils.*
 import core.Decorators.*
 
 object HoistSuperArgs {
@@ -43,7 +43,7 @@ object HoistSuperArgs {
  *  or, if that is a package, it is made a static method of the class itself.
  */
 class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase =>
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = HoistSuperArgs.name
 

@@ -1,16 +1,16 @@
 package dotty.tools.dotc
 package transform
 
-import MegaPhase._
-import core.DenotTransformers._
-import core.Symbols._
-import core.Contexts._
-import core.Flags._
-import core.Decorators._
+import MegaPhase.*
+import core.DenotTransformers.*
+import core.Symbols.*
+import core.Contexts.*
+import core.Flags.*
+import core.Decorators.*
 import core.StdNames.nme
-import core.Names._
+import core.Names.*
 import core.NameKinds.TempResultName
-import core.Constants._
+import core.Constants.*
 import util.Store
 import dotty.tools.uncheckedNN
 
@@ -19,7 +19,7 @@ import dotty.tools.uncheckedNN
  */
 class CapturedVars extends MiniPhase with IdentityDenotTransformer:
   thisPhase =>
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = CapturedVars.name
 

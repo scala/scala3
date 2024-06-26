@@ -3,11 +3,11 @@ package sbt
 
 import scala.language.unsafeNulls
 
-import core._
-import Contexts._
-import Flags._
-import Symbols._
-import NameOps._
+import core.*
+import Contexts.*
+import Flags.*
+import Symbols.*
+import NameOps.*
 
 import xsbti.api
 import xsbti.api.SafeLazy.strict
@@ -24,7 +24,7 @@ object APIUtils {
     val EmptyType = api.EmptyType.of()
   }
 
-  import Constants._
+  import Constants.*
 
   /** Registers a dummy class for sbt's incremental compilation.
    *

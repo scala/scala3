@@ -5,10 +5,10 @@ package tasty
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
 import TastyBuffer.NameRef
 
-import Contexts._, Decorators._
+import Contexts.*, Decorators.*
 import Names.TermName
 import StdNames.nme
-import TastyUnpickler._
+import TastyUnpickler.*
 import dotty.tools.tasty.TastyFormat.ASTsSection
 
 /** Reads the package and class name of the class contained in this TASTy */
@@ -21,9 +21,9 @@ class TastyClassName(bytes: Array[Byte]) {
   def readName(): Option[(TermName, TermName)] = unpickle(new TreeSectionUnpickler)
 
   class TreeSectionUnpickler extends SectionUnpickler[(TermName, TermName)](ASTsSection) {
-    import dotty.tools.tasty.TastyFormat._
+    import dotty.tools.tasty.TastyFormat.*
     def unpickle(reader: TastyReader, tastyName: NameTable): (TermName, TermName) = {
-      import reader._
+      import reader.*
       def readNames(packageName: TermName): (TermName, TermName) = {
         val tag = readByte()
         if (tag >= firstLengthTreeTag) {

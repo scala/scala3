@@ -5,7 +5,7 @@ package fromtasty
 import scala.language.unsafeNulls
 
 import io.{JarArchive, AbstractFile, Path}
-import core.Contexts._
+import core.Contexts.*
 import core.Decorators.em
 import java.io.File
 

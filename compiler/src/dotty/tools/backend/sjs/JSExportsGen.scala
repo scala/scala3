@@ -5,18 +5,18 @@ import scala.language.unsafeNulls
 import scala.annotation.tailrec
 import scala.collection.mutable
 
-import dotty.tools.dotc.core._
+import dotty.tools.dotc.core.*
 
-import Contexts._
-import Decorators._
-import Denotations._
-import Flags._
-import Names._
+import Contexts.*
+import Decorators.*
+import Denotations.*
+import Flags.*
+import Names.*
 import NameKinds.DefaultGetterName
-import NameOps._
-import Phases._
-import Symbols._
-import Types._
+import NameOps.*
+import Phases.*
+import Symbols.*
+import Types.*
 import TypeErasure.ErasedValueType
 
 import dotty.tools.dotc.util.{SourcePosition, SrcPos}
@@ -28,14 +28,14 @@ import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Position.NoPosition
 import org.scalajs.ir.Trees.OptimizerHints
 
-import dotty.tools.dotc.transform.sjs.JSExportUtils._
-import dotty.tools.dotc.transform.sjs.JSSymUtils._
+import dotty.tools.dotc.transform.sjs.JSExportUtils.*
+import dotty.tools.dotc.transform.sjs.JSSymUtils.*
 
-import JSEncoding._
+import JSEncoding.*
 
 final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
-  import jsCodeGen._
-  import positionConversions._
+  import jsCodeGen.*
+  import positionConversions.*
 
   /** Info for a non-member export. */
   sealed trait ExportInfo {
@@ -154,7 +154,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       (info, tups) <- exports.groupBy(_._1)
       kind <- checkSameKind(tups)
     } yield {
-      import ExportKind._
+      import ExportKind.*
 
       implicit val pos = info.pos
 
@@ -201,7 +201,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
       implicit val pos = info.pos
 
-      import ExportKind._
+      import ExportKind.*
 
       kind match {
         case Method =>

@@ -3,7 +3,7 @@ package config
 
 import scala.language.unsafeNulls
 
-import core.Contexts._
+import core.Contexts.*
 
 import dotty.tools.io.{AbstractFile, Directory, JarArchive, PlainDirectory}
 

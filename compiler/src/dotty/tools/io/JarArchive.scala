@@ -4,7 +4,7 @@ import scala.language.unsafeNulls
 
 import java.nio.file.{FileSystemAlreadyExistsException, FileSystems}
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 /**
  * This class implements an [[AbstractFile]] backed by a jar

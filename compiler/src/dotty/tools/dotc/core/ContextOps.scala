@@ -1,8 +1,8 @@
 package dotty.tools.dotc
 package core
 
-import Contexts._, Symbols._, Types._, Flags._
-import Denotations._, SymDenotations._
+import Contexts.*, Symbols.*, Types.*, Flags.*
+import Denotations.*, SymDenotations.*
 import Names.Name, StdNames.nme
 import ast.untpd
 

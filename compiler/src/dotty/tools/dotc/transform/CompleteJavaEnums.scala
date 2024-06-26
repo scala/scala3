@@ -2,18 +2,18 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
-import Names._
+import core.*
+import Names.*
 import StdNames.nme
-import Types._
-import dotty.tools.dotc.transform.MegaPhase._
-import Flags._
-import Contexts._
-import Symbols._
-import Constants._
-import Decorators._
-import DenotTransformers._
-import SymUtils._
+import Types.*
+import dotty.tools.dotc.transform.MegaPhase.*
+import Flags.*
+import Contexts.*
+import Symbols.*
+import Constants.*
+import Decorators.*
+import DenotTransformers.*
+import SymUtils.*
 
 
 object CompleteJavaEnums {
@@ -29,8 +29,8 @@ object CompleteJavaEnums {
  *  case to the java.lang.Enum class.
  */
 class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
-  import CompleteJavaEnums._
-  import ast.tpd._
+  import CompleteJavaEnums.*
+  import ast.tpd.*
 
   override def phaseName: String = CompleteJavaEnums.name
 

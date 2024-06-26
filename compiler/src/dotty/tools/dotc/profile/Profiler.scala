@@ -11,7 +11,7 @@ import javax.management.openmbean.CompositeData
 import javax.management.{Notification, NotificationEmitter, NotificationListener}
 
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.io.AbstractFile
 import annotation.internal.sharable
 
@@ -83,7 +83,7 @@ private [profile] object NoOpProfiler extends Profiler {
   override def finished(): Unit = ()
 }
 private [profile] object RealProfiler {
-  import scala.jdk.CollectionConverters._
+  import scala.jdk.CollectionConverters.*
   val runtimeMx: RuntimeMXBean = ManagementFactory.getRuntimeMXBean
   val memoryMx: MemoryMXBean = ManagementFactory.getMemoryMXBean
   val gcMx: List[GarbageCollectorMXBean] = ManagementFactory.getGarbageCollectorMXBeans.asScala.toList
@@ -106,7 +106,7 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
 
   @nowarn("cat=deprecation")
   private[profile] def snapThread(idleTimeNanos: Long): ProfileSnap = {
-    import RealProfiler._
+    import RealProfiler.*
     val current = Thread.currentThread()
 
     ProfileSnap(

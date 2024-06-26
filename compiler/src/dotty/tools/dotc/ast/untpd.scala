@@ -2,15 +2,15 @@ package dotty.tools
 package dotc
 package ast
 
-import core._
-import Types._, Contexts._, Constants._, Names._, Flags._
+import core.*
+import Types.*, Contexts.*, Constants.*, Names.*, Flags.*
 import dotty.tools.dotc.typer.ProtoTypes
-import Symbols._, StdNames._, Trees._
+import Symbols.*, StdNames.*, Trees.*
 import util.{Property, SourceFile, NoSource}
 import util.Spans.Span
 import annotation.constructorOnly
 import annotation.internal.sharable
-import Decorators._
+import Decorators.*
 
 object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 

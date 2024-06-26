@@ -67,8 +67,8 @@ object DynamicUnapply {
 trait Dynamic {
   self: Typer & Applications =>
 
-  import Dynamic._
-  import tpd._
+  import Dynamic.*
+  import tpd.*
 
   /** Translate selection that does not typecheck according to the normal rules into a applyDynamic/applyDynamicNamed.
    *    foo.bar(baz0, baz1, ...)                       ~~> foo.applyDynamic(bar)(baz0, baz1, ...)

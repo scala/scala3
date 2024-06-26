@@ -2,8 +2,8 @@ package dotty.tools
 package dotc
 package typer
 
-import core._
-import Contexts._, Symbols._, Decorators._, Comments.{_, given}
+import core.*
+import Contexts.*, Symbols.*, Decorators.*, Comments.{_, given}
 import ast.tpd
 
 object Docstrings {

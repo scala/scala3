@@ -2,18 +2,18 @@ package dotty.tools.dotc
 package staging
 
 import dotty.tools.dotc.ast.{tpd, untpd}
-import dotty.tools.dotc.core.Annotations._
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.NameKinds._
-import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.Annotations.*
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.*
+import dotty.tools.dotc.core.Flags.*
+import dotty.tools.dotc.core.NameKinds.*
+import dotty.tools.dotc.core.StdNames.*
+import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.staging.QuoteTypeTags.*
 import dotty.tools.dotc.util.Property
-import dotty.tools.dotc.util.Spans._
+import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.util.SrcPos
 
 /** Checks that staging level consistency holds and heals staged types.
@@ -51,7 +51,7 @@ import dotty.tools.dotc.util.SrcPos
  *
  */
 class CrossStageSafety extends TreeMapWithStages {
-  import tpd._
+  import tpd.*
 
   private val InAnnotation = Property.Key[Unit]()
 

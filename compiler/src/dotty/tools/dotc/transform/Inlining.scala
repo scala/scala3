@@ -1,14 +1,14 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import Flags._
-import Contexts._
-import Symbols._
-import SymUtils._
+import core.*
+import Flags.*
+import Contexts.*
+import Symbols.*
+import SymUtils.*
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.ast.Trees._
-import dotty.tools.dotc.quoted._
+import dotty.tools.dotc.ast.Trees.*
+import dotty.tools.dotc.quoted.*
 import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.ast.TreeMapWithImplicits
 import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
@@ -19,7 +19,7 @@ import scala.collection.mutable.ListBuffer
 /** Inlines all calls to inline methods that are not in an inline method or a quote */
 class Inlining extends MacroTransform {
 
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = Inlining.name
 

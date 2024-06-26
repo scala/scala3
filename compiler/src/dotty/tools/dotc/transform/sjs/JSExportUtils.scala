@@ -4,9 +4,9 @@ package sjs
 
 import scala.language.unsafeNulls
 
-import core._
+import core.*
 import NameKinds.DefaultGetterName
-import Names._
+import Names.*
 
 
 /** Utilities for JS exports handling. */

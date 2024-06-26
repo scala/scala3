@@ -3,7 +3,7 @@ package dotty.tools.dotc.decompiler
 import java.nio.file.Files
 
 import dotty.tools.dotc
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.io.AbstractFile
 
 /** Main class of the `dotc -decompiler` decompiler.

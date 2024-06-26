@@ -1,17 +1,17 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import Phases._
-import ast.Trees._
-import Contexts._
+import core.*
+import Phases.*
+import ast.Trees.*
+import Contexts.*
 
 /** A base class for transforms.
  *  A transform contains a compiler phase which applies a tree transformer.
  */
 abstract class MacroTransform extends Phase {
 
-  import ast.tpd._
+  import ast.tpd.*
 
   override def run(using Context): Unit = {
     val unit = ctx.compilationUnit

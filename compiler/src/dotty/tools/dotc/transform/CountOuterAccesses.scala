@@ -1,12 +1,12 @@
 package dotty.tools.dotc
 package transform
 
-import core._
+import core.*
 import MegaPhase.MiniPhase
-import dotty.tools.dotc.core.Contexts._
-import ast._
-import Flags._
-import Symbols._
+import dotty.tools.dotc.core.Contexts.*
+import ast.*
+import Flags.*
+import Symbols.*
 import ExplicitOuter.isOuterParamAccessor
 
 import collection.mutable
@@ -33,7 +33,7 @@ object CountOuterAccesses:
  */
 class CountOuterAccesses extends MiniPhase:
   thisPhase =>
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = CountOuterAccesses.name
 

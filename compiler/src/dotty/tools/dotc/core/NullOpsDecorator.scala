@@ -1,8 +1,8 @@
 package dotty.tools.dotc
 package core
 
-import Contexts._
-import Types._
+import Contexts.*
+import Types.*
 
 /** Defines operations on nullable types and tree. */
 object NullOpsDecorator:
@@ -49,7 +49,7 @@ object NullOpsDecorator:
     }
   end extension
 
-  import ast.tpd._
+  import ast.tpd.*
 
   extension (self: Tree)
     // cast the type of the tree to a non-nullable type

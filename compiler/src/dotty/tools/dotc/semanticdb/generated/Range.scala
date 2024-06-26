@@ -5,7 +5,7 @@
 // Protofile syntax: PROTO3
 
 package dotty.tools.dotc.semanticdb
-import dotty.tools.dotc.semanticdb.internal._
+import dotty.tools.dotc.semanticdb.internal.*
 import scala.annotation.internal.sharable
 
 @SerialVersionUID(0L)
@@ -19,28 +19,28 @@ final case class Range(
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
     private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
-      
+
       {
         val __value = startLine
         if (__value != 0) {
           __size += SemanticdbOutputStream.computeInt32Size(1, __value)
         }
       };
-      
+
       {
         val __value = startCharacter
         if (__value != 0) {
           __size += SemanticdbOutputStream.computeInt32Size(2, __value)
         }
       };
-      
+
       {
         val __value = endLine
         if (__value != 0) {
           __size += SemanticdbOutputStream.computeInt32Size(3, __value)
         }
       };
-      
+
       {
         val __value = endCharacter
         if (__value != 0) {
@@ -56,7 +56,7 @@ final case class Range(
         __serializedSizeMemoized = __size
       }
       __size - 1
-      
+
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
@@ -88,10 +88,10 @@ final case class Range(
     def withStartCharacter(__v: _root_.scala.Int): Range = copy(startCharacter = __v)
     def withEndLine(__v: _root_.scala.Int): Range = copy(endLine = __v)
     def withEndCharacter(__v: _root_.scala.Int): Range = copy(endCharacter = __v)
-    
-    
-    
-    
+
+
+
+
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.Range])
 }
 
@@ -125,12 +125,12 @@ object Range  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.seman
         endCharacter = __endCharacter
     )
   }
-  
-  
-  
-  
-  
-  
+
+
+
+
+
+
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.Range(
     startLine = 0,
     startCharacter = 0,

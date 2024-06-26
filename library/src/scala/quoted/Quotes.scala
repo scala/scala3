@@ -8,9 +8,9 @@ import scala.reflect.TypeTest
  *
  *  Usage:
  *  ```scala
- *  import scala.quoted._
+ *  import scala.quoted.*
  *  def myExpr[T](using Quotes): Expr[T] = {
- *     import quotes.reflect._
+ *     import quotes.reflect.*
  *     ???
  *  }
  *  ```
@@ -24,7 +24,7 @@ transparent inline def quotes(using q: Quotes): q.type = q
  *  This API does not have the static type guarantees that `Expr` and `Type` provide.
  *  `Quotes` are generated from an enclosing `${ ... }` or `scala.staging.run`. For example:
  *  ```scala sc:nocompile
- *  import scala.quoted._
+ *  import scala.quoted.*
  *  inline def myMacro: Expr[T] =
  *    ${ /* (quotes: Quotes) ?=> */ myExpr }
  *  def myExpr(using Quotes): Expr[T] =
@@ -105,9 +105,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *
    *  Usage:
    *  ```scala
-   *  import scala.quoted._
+   *  import scala.quoted.*
    *  def f(expr: Expr[Int])(using Quotes) =
-   *    import quotes.reflect._
+   *    import quotes.reflect.*
    *    val ast: Term = expr.asTerm
    *    ???
    *  ```
@@ -2331,10 +2331,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  `ParamClause` encodes the following enumeration
      *  ```scala
      *  //{
-     *  import scala.quoted._
+     *  import scala.quoted.*
      *  def inQuotes(using Quotes) = {
      *    val q: Quotes = summon[Quotes]
-     *    import q.reflect._
+     *    import q.reflect.*
      *  //}
      *    enum ParamClause:
      *      case TypeParamClause(params: List[TypeDef])
@@ -2583,10 +2583,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         *  Usage:
         *  ```scala
         *  //{
-        *  import scala.quoted._
+        *  import scala.quoted.*
         *  def f(using Quotes) = {
         *    val q: Quotes = summon[Quotes]
-        *    import q.reflect._
+        *    import q.reflect.*
         *    val typeRepr: TypeRepr = ???
         *  //}
         *    typeRepr.asType match
@@ -3711,7 +3711,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  ```scala
        *  //{
        *  given Quotes = ???
-       *  import quotes.reflect._
+       *  import quotes.reflect.*
        *  //}
        *  val moduleName: String = Symbol.freshName("MyModule")
        *  val parents = List(TypeTree.of[Object])
@@ -3733,7 +3733,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  ```scala
        *  //{
        *  given Quotes = ???
-       *  import quotes.reflect._
+       *  import quotes.reflect.*
        *  //}
        *  '{
        *    object MyModule$macro$1 extends Object:
@@ -4079,10 +4079,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  Usages:
          *  ```scala
          *  def rhsExpr(using q: Quotes): Expr[Unit] =
-         *    import q.reflect._
+         *    import q.reflect.*
          *    '{ val y = ???; (y, y) }
          *  def aValDef(using q: Quotes)(owner: q.reflect.Symbol) =
-         *    import q.reflect._
+         *    import q.reflect.*
          *    val sym = Symbol.newVal(owner, "x", TypeRepr.of[Unit], Flags.EmptyFlags, Symbol.noSymbol)
          *    val rhs = rhsExpr(using sym.asQuotes).asTerm
          *    ValDef(sym, Some(rhs))
@@ -4091,7 +4091,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  ```scala
          *  //{
          *  def inQuotes(using q: Quotes) = {
-         *    import q.reflect._
+         *    import q.reflect.*
          *  //}
          *    new TreeMap:
          *      override def transformTerm(tree: Term)(owner: Symbol): Term =
@@ -4691,7 +4691,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *  ```scala
     *  //{
     *  def inQuotes(using q: Quotes) = {
-    *    import q.reflect._
+    *    import q.reflect.*
     *  //}
     *    class MyTreeAccumulator[X] extends TreeAccumulator[X] {
     *      def foldTree(x: X, tree: Tree)(owner: Symbol): X = ???
@@ -4804,7 +4804,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *  ```scala
     *  //{
     *  def inQuotes(using q: Quotes) = {
-    *    import q.reflect._
+    *    import q.reflect.*
     *  //}
     *    class MyTraverser extends TreeTraverser {
     *      override def traverseTree(tree: Tree)(owner: Symbol): Unit = ???
@@ -4830,7 +4830,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *  ```scala
     *  //{
     *  def inQuotes(using q: Quotes) = {
-    *    import q.reflect._
+    *    import q.reflect.*
     *  //}
     *    class MyTreeMap extends TreeMap {
     *      override def transformTree(tree: Tree)(owner: Symbol): Tree = ???

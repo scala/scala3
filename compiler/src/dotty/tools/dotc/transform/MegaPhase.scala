@@ -2,8 +2,8 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
-import Contexts._, Phases._, Symbols._, Decorators._
+import core.*
+import Contexts.*, Phases.*, Symbols.*, Decorators.*
 import Flags.PackageVal
 import staging.StagingLevel.*
 
@@ -14,7 +14,7 @@ import staging.StagingLevel.*
  *  is described in his thesis.
  */
 object MegaPhase {
-  import ast.tpd._
+  import ast.tpd.*
 
   /** The base class of tree transforms. For each kind of tree K, there are
    *  two methods which can be overridden:
@@ -136,10 +136,10 @@ object MegaPhase {
       singletonGroup.run
   }
 }
-import MegaPhase._
+import MegaPhase.*
 
 class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
-  import ast.tpd._
+  import ast.tpd.*
 
   override val phaseName: String =
     if (miniPhases.length == 1) miniPhases(0).phaseName

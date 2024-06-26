@@ -1,10 +1,10 @@
 package dotty.tools
 package dotc
 
-import core._
-import Contexts._
+import core.*
+import Contexts.*
 import SymDenotations.ClassDenotation
-import Symbols._
+import Symbols.*
 import Comments.Comment
 import util.{FreshNameCreator, SourceFile, NoSource}
 import util.Spans.Span
@@ -12,8 +12,8 @@ import ast.{tpd, untpd}
 import tpd.{Tree, TreeTraverser}
 import ast.Trees.{Import, Ident}
 import typer.Nullables
-import transform.SymUtils._
-import core.Decorators._
+import transform.SymUtils.*
+import core.Decorators.*
 import config.{SourceVersion, Feature}
 import StdNames.nme
 import scala.annotation.internal.sharable

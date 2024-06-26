@@ -1,21 +1,21 @@
 package dotty.tools.dotc
 package util
 
-import ast.Trees._
+import ast.Trees.*
 import ast.tpd
 import core.Constants.Constant
-import core.Contexts._
+import core.Contexts.*
 import core.Denotations.{SingleDenotation, Denotation}
 import core.Flags
 import core.NameOps.isUnapplyName
-import core.Names._
+import core.Names.*
 import core.NameKinds
-import core.Types._
+import core.Types.*
 import core.Symbols.NoSymbol
 import interactive.Interactive
 import transform.SymUtils.isLocalToBlock
 import util.Spans.Span
-import reporting._
+import reporting.*
 
 
 object Signatures {

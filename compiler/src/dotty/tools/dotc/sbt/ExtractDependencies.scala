@@ -8,22 +8,22 @@ import java.nio.file.Path
 import java.util.{Arrays, EnumSet}
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.NameOps._
-import dotty.tools.dotc.core.Names._
-import dotty.tools.dotc.core.Phases._
-import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.*
+import dotty.tools.dotc.core.Flags.*
+import dotty.tools.dotc.core.NameOps.*
+import dotty.tools.dotc.core.Names.*
+import dotty.tools.dotc.core.Phases.*
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Denotations.StaleSymbol
-import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.transform.SymUtils.*
 import dotty.tools.dotc.util.{SrcPos, NoSourcePosition}
 import dotty.tools.io
 import dotty.tools.io.{AbstractFile, PlainFile, ZipArchive}
 import xsbti.UseScope
 import xsbti.api.DependencyContext
-import xsbti.api.DependencyContext._
+import xsbti.api.DependencyContext.*
 
 import scala.collection.{Set, mutable}
 
@@ -48,7 +48,7 @@ import scala.collection.{Set, mutable}
  *  @see ExtractAPI
  */
 class ExtractDependencies extends Phase {
-  import ExtractDependencies._
+  import ExtractDependencies.*
 
   override def phaseName: String = ExtractDependencies.name
 
@@ -191,7 +191,7 @@ private final class UsedNamesInClass {
  *  inheritance" in the "Name hashing algorithm" section.
  */
 private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeTraverser =>
-  import tpd._
+  import tpd.*
 
   private val _usedNames = new mutable.HashMap[Symbol, UsedNamesInClass]
   private val _dependencies = new mutable.HashSet[ClassDependency]

@@ -2,13 +2,13 @@ package dotty.tools
 package dotc
 package fromtasty
 
-import core._
-import Decorators._
-import Contexts._
+import core.*
+import Decorators.*
+import Contexts.*
 import Symbols.{Symbol, ClassSymbol}
 import SymDenotations.ClassDenotation
 import Denotations.staticRef
-import NameOps._
+import NameOps.*
 import ast.Trees.Tree
 import Phases.Phase
 

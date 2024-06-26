@@ -5,19 +5,19 @@ package tasty
 
 import dotty.tools.tasty.TastyFormat.{SOURCE, PositionsSection}
 import dotty.tools.tasty.TastyBuffer
-import TastyBuffer._
+import TastyBuffer.*
 
-import ast._
+import ast.*
 import Trees.WithLazyFields
 import util.{SourceFile, NoSource}
-import core._
-import Annotations._, Decorators._
+import core.*
+import Annotations.*, Decorators.*
 import collection.mutable
-import util.Spans._
+import util.Spans.*
 import reporting.Message
 
 object PositionPickler:
-  import ast.tpd._
+  import ast.tpd.*
 
   // Note: This could be just TreeToAddr => Addr if functions are specialized to value classes.
   // We use a SAM type to avoid boxing of Addr

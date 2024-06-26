@@ -1,11 +1,11 @@
 package dotty.tools.dotc
 package transform
 
-import dotty.tools.dotc.util.Positions._
+import dotty.tools.dotc.util.Positions.*
 import MegaPhase.MiniPhase
-import core._
-import Contexts._, Types._, Constants._, Decorators._, Symbols._
-import TypeUtils._, TypeErasure._, Flags._
+import core.*
+import Contexts.*, Types.*, Constants.*, Decorators.*, Symbols.*
+import TypeUtils.*, TypeErasure.*, Flags.*
 
 /** Implements partial evaluation of `sc.isInstanceOf[Sel]` according to:
  *
@@ -31,7 +31,7 @@ import TypeUtils._, TypeErasure._, Flags._
  */
 class IsInstanceOfEvaluator extends MiniPhase {
 
-  import dotty.tools.dotc.ast.tpd._
+  import dotty.tools.dotc.ast.tpd.*
 
   val phaseName = "isInstanceOfEvaluator"
 

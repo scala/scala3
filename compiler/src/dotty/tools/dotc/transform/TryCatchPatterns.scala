@@ -1,12 +1,12 @@
 package dotty.tools.dotc
 package transform
 
-import core.Symbols._
-import core.StdNames._
-import core.Types._
+import core.Symbols.*
+import core.StdNames.*
+import core.Types.*
 import core.NameKinds.ExceptionBinderName
 import dotty.tools.dotc.core.Flags
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.util.Spans.Span
 
@@ -39,7 +39,7 @@ import dotty.tools.dotc.util.Spans.Span
  *
  */
 class TryCatchPatterns extends MiniPhase {
-  import dotty.tools.dotc.ast.tpd._
+  import dotty.tools.dotc.ast.tpd.*
 
   override def phaseName: String = TryCatchPatterns.name
 

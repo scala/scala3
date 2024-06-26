@@ -7,7 +7,7 @@ import java.io.InputStream
 import java.util.Arrays
 import java.nio.charset.StandardCharsets
 
-import SemanticdbInputStream._
+import SemanticdbInputStream.*
 
 import scala.collection.mutable
 

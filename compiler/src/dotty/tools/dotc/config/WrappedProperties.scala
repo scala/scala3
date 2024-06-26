@@ -22,7 +22,7 @@ trait WrappedProperties extends PropertiesTrait {
   override def envOrNone(name: String): Option[String]       = wrap(super.envOrNone(name)).flatten
 
   def systemProperties: Iterator[(String, String)] = {
-    import scala.jdk.CollectionConverters._
+    import scala.jdk.CollectionConverters.*
     wrap(System.getProperties.asScala.iterator) getOrElse Iterator.empty
   }
 }

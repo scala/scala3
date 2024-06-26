@@ -7,14 +7,14 @@ package dotty.tools
 package dotc
 package core
 
-import Symbols._
+import Symbols.*
 import Types.{TermRef, NoPrefix}
-import Flags._
-import Names._
-import Contexts._
-import Phases._
-import Denotations._
-import printing.Texts._
+import Flags.*
+import Names.*
+import Contexts.*
+import Phases.*
+import Denotations.*
+import printing.Texts.*
 import printing.Printer
 import SymDenotations.NoDenotation
 

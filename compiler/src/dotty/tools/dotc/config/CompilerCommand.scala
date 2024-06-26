@@ -1,8 +1,8 @@
 package dotty.tools.dotc
 package config
 
-import Settings._
-import core.Contexts._
+import Settings.*
+import core.Contexts.*
 
 abstract class CompilerCommand extends CliCommand:
   type ConcreteSettings = ScalaSettings
@@ -21,6 +21,6 @@ abstract class CompilerCommand extends CliCommand:
         else ""
 
   final def isHelpFlag(using settings: ScalaSettings)(using SettingsState): Boolean =
-    import settings._
+    import settings.*
     val flags = Set(help, Vhelp,  Whelp, Xhelp, Yhelp, showPlugins, XshowPhases)
     flags.exists(_.value) || allSettings.exists(isHelping)

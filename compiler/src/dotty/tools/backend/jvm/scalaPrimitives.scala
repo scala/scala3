@@ -2,10 +2,10 @@ package dotty.tools
 package backend.jvm
 
 import dotc.ast.Trees.Select
-import dotc.ast.tpd._
-import dotc.core._
-import Contexts._
-import Names.TermName, StdNames._
+import dotc.ast.tpd.*
+import dotc.core.*
+import Contexts.*
+import Names.TermName, StdNames.*
 import Types.{JavaArrayType, UnspecifiedErrorType, Type}
 import Symbols.{Symbol, NoSymbol}
 import Decorators.em
@@ -32,7 +32,7 @@ import scala.annotation.threadUnsafe
  * Inspired from the `scalac` compiler.
  */
 class DottyPrimitives(ictx: Context) {
-  import dotty.tools.backend.ScalaPrimitivesOps._
+  import dotty.tools.backend.ScalaPrimitivesOps.*
 
   @threadUnsafe private lazy val primitives: ReadOnlyMap[Symbol, Int] = init
 

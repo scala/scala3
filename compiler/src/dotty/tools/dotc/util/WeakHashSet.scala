@@ -6,7 +6,7 @@ import java.lang.ref.{ReferenceQueue, WeakReference}
 
 import scala.annotation.{ constructorOnly, tailrec }
 
-import dotty.tools._
+import dotty.tools.*
 
 /**
  * A HashSet where the elements are stored weakly. Elements in this set are eligible for GC if no other
@@ -20,7 +20,7 @@ import dotty.tools._
  */
 abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Double = 0.5) extends MutableSet[A] {
 
-  import WeakHashSet._
+  import WeakHashSet.*
 
   type This = WeakHashSet[A]
 

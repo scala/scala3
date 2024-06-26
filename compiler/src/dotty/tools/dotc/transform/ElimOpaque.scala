@@ -2,16 +2,16 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
-import dotty.tools.dotc.transform.MegaPhase._
-import Flags._
-import Types._
-import Contexts._
-import Symbols._
+import core.*
+import dotty.tools.dotc.transform.MegaPhase.*
+import Flags.*
+import Types.*
+import Contexts.*
+import Symbols.*
 import Denotations.{SingleDenotation, NonSymSingleDenotation}
 import SymDenotations.SymDenotation
-import DenotTransformers._
-import Names._
+import DenotTransformers.*
+import Names.*
 
 object ElimOpaque {
   val name: String = "elimOpaque"
@@ -21,7 +21,7 @@ object ElimOpaque {
 /** Rewrites opaque type aliases to normal alias types */
 class ElimOpaque extends MiniPhase with DenotTransformer {
   thisPhase =>
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = ElimOpaque.name
 

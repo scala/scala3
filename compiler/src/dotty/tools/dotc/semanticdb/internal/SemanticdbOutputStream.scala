@@ -7,7 +7,7 @@ import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
-import SemanticdbOutputStream._
+import SemanticdbOutputStream.*
 
 object SemanticdbOutputStream {
 

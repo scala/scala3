@@ -5,9 +5,9 @@ package tasty
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
 import TastyBuffer.NameRef
 
-import Contexts._, Decorators._
+import Contexts.*, Decorators.*
 import Names.Name
-import TastyUnpickler._
+import TastyUnpickler.*
 import util.Spans.offsetToInt
 import dotty.tools.tasty.TastyFormat.{ASTsSection, PositionsSection, CommentsSection}
 import java.nio.file.{Files, Paths}
@@ -98,12 +98,12 @@ class TastyPrinter(bytes: Array[Byte]) {
   }
 
   class TreeSectionUnpickler extends SectionUnpickler[String](ASTsSection) {
-    import dotty.tools.tasty.TastyFormat._
+    import dotty.tools.tasty.TastyFormat.*
 
     private val sb: StringBuilder = new StringBuilder
 
     def unpickle(reader: TastyReader, tastyName: NameTable): String = {
-      import reader._
+      import reader.*
       var indent = 0
       def newLine() = {
         val length = treeStr("%5d".format(index(currentAddr) - index(startAddr)))

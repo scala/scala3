@@ -2,11 +2,11 @@ package dotty.tools.dotc.semanticdb
 
 import dotty.tools.dotc.core
 import core.Symbols.{ Symbol , defn, NoSymbol }
-import core.Contexts._
+import core.Contexts.*
 import core.Names
 import core.Names.Name
 import core.Types.{Type, TypeBounds}
-import core.Flags._
+import core.Flags.*
 import core.NameKinds
 import core.StdNames.nme
 import SymbolInformation.{Kind => k}
@@ -20,8 +20,8 @@ import scala.annotation.internal.sharable
 import scala.annotation.switch
 
 object Scala3:
-  import Symbols._
-  import core.NameOps._
+  import Symbols.*
+  import core.NameOps.*
 
   @sharable private val unicodeEscape = raw"\$$u(\p{XDigit}{4})".r
   @sharable private val locals        = raw"local(\d+)".r

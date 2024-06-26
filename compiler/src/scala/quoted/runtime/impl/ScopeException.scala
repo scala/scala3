@@ -1,7 +1,7 @@
 package scala.quoted.runtime.impl
 
 import dotty.tools.dotc.ast.tpd.Tree
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts.*
 
 class ScopeException(msg: String) extends Exception(msg)
 

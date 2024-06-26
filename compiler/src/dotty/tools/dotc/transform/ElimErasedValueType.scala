@@ -3,12 +3,12 @@ package dotc
 package transform
 
 import ast.{Trees, tpd}
-import core._, core.Decorators._
-import MegaPhase._
-import Types._, Contexts._, Flags._, DenotTransformers._, Phases._
-import Symbols._, StdNames._, Trees._
-import TypeErasure.ErasedValueType, ValueClasses._
-import reporting._
+import core.*, core.Decorators.*
+import MegaPhase.*
+import Types.*, Contexts.*, Flags.*, DenotTransformers.*, Phases.*
+import Symbols.*, StdNames.*, Trees.*
+import TypeErasure.ErasedValueType, ValueClasses.*
+import reporting.*
 import NameKinds.SuperAccessorName
 
 object ElimErasedValueType {
@@ -36,7 +36,7 @@ object ElimErasedValueType {
  */
 class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
 
-  import tpd._
+  import tpd.*
   import ElimErasedValueType.elimEVT
 
   override def phaseName: String = ElimErasedValueType.name

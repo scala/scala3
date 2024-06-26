@@ -4,24 +4,24 @@ package semanticdb
 
 import scala.language.unsafeNulls
 
-import core._
-import Phases._
-import ast.tpd._
+import core.*
+import Phases.*
+import ast.tpd.*
 import ast.Trees.{mods, WithEndMarker}
-import Contexts._
-import Symbols._
-import Flags._
+import Contexts.*
+import Symbols.*
+import Flags.*
 import Names.Name
 import StdNames.nme
-import NameOps._
+import NameOps.*
 import Denotations.StaleSymbol
 import util.Spans.Span
 import util.SourceFile
-import transform.SymUtils._
+import transform.SymUtils.*
 
 import scala.collection.mutable
 import scala.annotation.{ threadUnsafe => tu, tailrec }
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.PartialFunction.condOpt
 import typer.ImportInfo.withRootImports
 

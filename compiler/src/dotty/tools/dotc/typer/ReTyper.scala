@@ -1,17 +1,17 @@
 package dotty.tools.dotc
 package typer
 
-import core._
-import Contexts._
-import Types._
-import Symbols._
-import StdNames._
-import Decorators._
-import typer.ProtoTypes._
+import core.*
+import Contexts.*
+import Types.*
+import Symbols.*
+import StdNames.*
+import Decorators.*
+import typer.ProtoTypes.*
 import ast.{tpd, untpd}
 import scala.util.control.NonFatal
 import util.Spans.Span
-import Nullables._
+import Nullables.*
 import staging.StagingLevel.*
 
 /** A version of Typer that keeps all symbols defined and referenced in a
@@ -23,7 +23,7 @@ import staging.StagingLevel.*
  *  Otherwise, everything is as in Typer.
  */
 class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking {
-  import tpd._
+  import tpd.*
 
   private def assertTyped(tree: untpd.Tree)(using Context): Unit =
     assert(tree.hasType, i"$tree ${tree.getClass} ${tree.uniqueId}")

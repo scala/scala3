@@ -3,23 +3,23 @@ package dotty.tools.backend.jvm
 import scala.language.unsafeNulls
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.core.Flags.*
+import dotty.tools.dotc.transform.SymUtils.*
 import java.io.{File => _}
 
 import scala.reflect.ClassTag
 import dotty.tools.io.AbstractFile
-import dotty.tools.dotc.core._
-import Contexts._
-import Types._
-import Symbols._
-import Phases._
+import dotty.tools.dotc.core.*
+import Contexts.*
+import Types.*
+import Symbols.*
+import Phases.*
 import Decorators.em
 
 import dotty.tools.dotc.util.ReadOnlyMap
 import dotty.tools.dotc.report
 
-import tpd._
+import tpd.*
 
 import StdNames.nme
 import NameKinds.{LazyBitMapName, LazyLocalName}

@@ -2,13 +2,13 @@ package dotty.tools
 package dotc
 package typer
 
-import core._
-import ast._
-import ast.Trees._
-import StdNames._
-import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
-import ProtoTypes._, ContextOps._
-import util.Spans._
+import core.*
+import ast.*
+import ast.Trees.*
+import StdNames.*
+import Contexts.*, Symbols.*, Types.*, SymDenotations.*, Names.*, NameOps.*, Flags.*, Decorators.*
+import ProtoTypes.*, ContextOps.*
+import util.Spans.*
 import util.SrcPos
 import collection.mutable
 import ErrorReporting.errorTree
@@ -266,7 +266,7 @@ trait Deriving {
 
     /** The synthesized type class instance definitions */
     def syntheticDefs: List[tpd.Tree] = {
-      import tpd._
+      import tpd.*
 
       /** The type class instance definition with symbol `sym` */
       def typeclassInstance(sym: Symbol)(using Context): List[List[tpd.Tree]] => tpd.Tree =

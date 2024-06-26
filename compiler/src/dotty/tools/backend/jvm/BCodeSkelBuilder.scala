@@ -31,10 +31,10 @@ import dotty.tools.dotc.transform.SymUtils.*
 trait BCodeSkelBuilder extends BCodeHelpers {
   import int.{_, given}
   import DottyBackendInterface.{symExtensions, _}
-  import tpd._
-  import bTypes._
-  import coreBTypes._
-  import bCodeAsmCommon._
+  import tpd.*
+  import bTypes.*
+  import coreBTypes.*
+  import bCodeAsmCommon.*
 
   lazy val NativeAttr: Symbol = requiredClass[scala.native]
 

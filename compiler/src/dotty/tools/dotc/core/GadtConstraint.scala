@@ -6,7 +6,7 @@ import Contexts.*, Decorators.*, Symbols.*, Types.*
 import NameKinds.UniqueName
 import config.Printers.{gadts, gadtsConstr}
 import util.{SimpleIdentitySet, SimpleIdentityMap}
-import printing._
+import printing.*
 
 import scala.annotation.tailrec
 import scala.annotation.internal.sharable

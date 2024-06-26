@@ -1,7 +1,7 @@
 package dotty.tools
 package dotc
 
-import core.Contexts._
+import core.Contexts.*
 import reporting.Reporter
 import java.io.EOFException
 import scala.annotation.tailrec

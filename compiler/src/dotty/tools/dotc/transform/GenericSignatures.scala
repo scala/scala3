@@ -2,20 +2,20 @@ package dotty.tools
 package dotc
 package transform
 
-import core.Annotations._
-import core.Contexts._
-import core.Phases._
+import core.Annotations.*
+import core.Contexts.*
+import core.Phases.*
 import core.Decorators.*
 import core.Definitions
-import core.Flags._
+import core.Flags.*
 import core.Names.Name
-import core.Symbols._
+import core.Symbols.*
 import core.TypeApplications.{EtaExpansion, TypeParamInfo}
 import core.TypeErasure.{erasedGlb, erasure, fullErasure, isGenericArrayElement, tupleArity}
-import core.Types._
+import core.Types.*
 import core.classfile.ClassfileConstants
-import SymUtils._
-import TypeUtils._
+import SymUtils.*
+import TypeUtils.*
 import config.Printers.transforms
 import reporting.trace
 import java.lang.StringBuilder

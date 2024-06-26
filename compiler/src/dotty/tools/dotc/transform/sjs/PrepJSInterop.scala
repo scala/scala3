@@ -5,23 +5,23 @@ package sjs
 import scala.collection.mutable
 
 import ast.tpd
-import core._
+import core.*
 import typer.Checking
 import util.SrcPos
-import Annotations._
-import Constants._
-import Contexts._
-import Decorators._
-import DenotTransformers._
-import Flags._
+import Annotations.*
+import Constants.*
+import Contexts.*
+import Decorators.*
+import DenotTransformers.*
+import Flags.*
 import NameKinds.{DefaultGetterName, ModuleClassName}
-import NameOps._
-import StdNames._
-import Symbols._
-import SymUtils._
-import Types._
+import NameOps.*
+import StdNames.*
+import Symbols.*
+import SymUtils.*
+import Types.*
 
-import JSSymUtils._
+import JSSymUtils.*
 
 import org.scalajs.ir.Trees.JSGlobalRef
 
@@ -52,8 +52,8 @@ import dotty.tools.backend.sjs.JSDefinitions.jsdefn
  *  pickling.
  */
 class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisPhase =>
-  import PrepJSInterop._
-  import tpd._
+  import PrepJSInterop.*
+  import tpd.*
 
   override def phaseName: String = PrepJSInterop.name
 
@@ -68,7 +68,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
     new ScalaJSPrepJSInteropTransformer
 
   class ScalaJSPrepJSInteropTransformer extends Transformer with Checking {
-    import PrepJSExports._
+    import PrepJSExports.*
 
     /** Kind of the directly enclosing (most nested) owner. */
     private var enclosingOwner: OwnerKind = OwnerKind.None
