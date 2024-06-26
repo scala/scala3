@@ -22,7 +22,11 @@ abstract class TypeError(using creationContext: Context) extends Exception(""):
    *  This is expensive and only useful for debugging purposes.
    */
   def computeStackTrace: Boolean =
-    ctx.debug || (cyclicErrors != noPrinter && this.isInstanceOf[CyclicReference] && !(ctx.mode is Mode.CheckCyclic))
+    ctx.debug
+    || (cyclicErrors != noPrinter && this.isInstanceOf[CyclicReference] && !(ctx.mode is Mode.CheckCyclic))
+    || ctx.settings.YdebugTypeError.value
+    || ctx.settings.YdebugError.value
+    || ctx.settings.YdebugUnpickling.value
 
   override def fillInStackTrace(): Throwable =
     if computeStackTrace then super.fillInStackTrace().nn
@@ -188,3 +192,14 @@ object CyclicReference:
     ex
 end CyclicReference
 
+class UnpicklingError(denot: Denotation, where: String, cause: Throwable)(using Context) extends TypeError:
+  override def toMessage(using Context): Message =
+    val debugUnpickling = cause match
+      case cause: UnpicklingError => ""
+      case _ =>
+        if ctx.settings.YdebugUnpickling.value then
+          cause.getStackTrace().nn.mkString("\n    ", "\n    ", "")
+        else "\n\nRun with -Ydebug-unpickling to see full stack trace."
+    em"""Could not read definition $denot$where. Caused by the following exception:
+        |$cause$debugUnpickling"""
+end UnpicklingError
