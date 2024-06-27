@@ -1599,7 +1599,31 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end ReturnMethods
 
-    /** Tree representing a variable argument list in the source code */
+    /** Tree representing a variable argument list in the source code.
+     *
+     *  This tree is used to encode varargs terms. The Repeated encapsulates
+     *  the sequence of the elements but needs to be wrapped in a
+     *  `scala.<repeated>[T]` (see `defn.RepeatedParamClass`). For example the
+     *   arguments `1, 2` of `List.apply(1, 2)` can be represented as follows:
+     *
+     *
+     *  ```scala
+     *  //{
+     *  import scala.quoted._
+     *  def inQuotes(using Quotes) = {
+     *    val q: Quotes = summon[Quotes]
+     *    import q.reflect._
+     *  //}
+     *    val intArgs = List(Literal(IntConstant(1)), Literal(IntConstant(2)))
+     *    Typed(
+     *      Repeated(intArgs, TypeTree.of[Int]),
+     *      Inferred(defn.RepeatedParamClass.typeRef.appliedTo(TypeRepr.of[Int]))
+     *    )
+     *  //{
+     *  }
+     *  //}
+     *  ```
+     */
     type Repeated <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Repeated` */

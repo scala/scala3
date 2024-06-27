@@ -15,14 +15,16 @@ import scala.annotation.implicitNotFound
  *      be rewritten to jumps.
  *
  * Example usage:
+ * 
+ * ```scala
+ * import scala.util.boundary, boundary.break
  *
- *      import scala.util.boundary, boundary.break
- *
- *      def firstIndex[T](xs: List[T], elem: T): Int =
- *        boundary:
- *          for (x, i) <- xs.zipWithIndex do
- *            if x == elem then break(i)
- *          -1
+ * def firstIndex[T](xs: List[T], elem: T): Int =
+ *   boundary:
+ *     for (x, i) <- xs.zipWithIndex do
+ *       if x == elem then break(i)
+ *     -1
+ * ```
  */
 object boundary:
 

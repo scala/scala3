@@ -2134,7 +2134,10 @@ object ScaladocConfigs {
       .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))
       .add(DocumentSyntheticTypes(true))
       .add(SnippetCompiler(List(
-        s"${dottyLibRoot}/scala=compile",
+        s"$dottyLibRoot/scala=compile",
+        s"$dottyLibRoot/scala/compiletime=compile",
+        s"$dottyLibRoot/scala/util=compile",
+        s"$dottyLibRoot/scala/util/control=compile"
       )))
       .add(SiteRoot("docs"))
       .add(ApiSubdirectory(true))
@@ -2142,21 +2145,25 @@ object ScaladocConfigs {
   }
 
   def stableScala3(version: String) = Def.task {
+    val scalaLibrarySrc = s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/scala-library-src"
+    val dottyLibrarySrc = s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/dotty-library-src"
     Scala3.value
       .add(defaultSourceLinks(version + "-bin-SNAPSHOT-nonbootstrapped", version).value)
       .add(ProjectVersion(version))
       .add(SnippetCompiler(
         List(
-          s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/dotty-library-src/scala/quoted=compile",
-          s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/dotty-library-src/scala/compiletime=compile"
+          s"$dottyLibrarySrc/scala/quoted=compile",
+          s"$dottyLibrarySrc/scala/compiletime=compile",
+          s"$dottyLibrarySrc/scala/util=compile",
+          s"$dottyLibrarySrc/scala/util/control=compile"
         )
       ))
       .add(CommentSyntax(List(
-        s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/dotty-library-src=markdown",
-        s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/scala-library-src=wiki",
+        s"$dottyLibrarySrc=markdown",
+        s"$scalaLibrarySrc=wiki",
         "wiki"
       )))
-      .add(DocRootContent(s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/scala-library-src/rootdoc.txt"))
+      .add(DocRootContent(s"$scalaLibrarySrc/rootdoc.txt"))
       .withTargets(
         Seq(
           s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes",
