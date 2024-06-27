@@ -1,0 +1,5 @@
+-- Error: tests/neg/i11225b.scala:6:26 ---------------------------------------------------------------------------------
+6 |  private var cached: A = _ // error
+  |                          ^
+  |                          `= _` has been deprecated; use `= uninitialized` instead.
+  |                          `uninitialized` can be imported with `scala.compiletime.uninitialized`.
