@@ -1,4 +1,3 @@
-
 import scala.compiletime.{summonAll, summonInline}
 import deriving.Mirror
 
@@ -38,5 +37,13 @@ object Minimization:
 
   val a: A = ???
   a.bar
+
+
+  inline def baz() = (x: GivesString) =>
+    import x.aString
+    summon[String] // ok
+    summonInline[String] // was error
+
+  baz()
 
 end Minimization

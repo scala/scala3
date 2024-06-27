@@ -5797,6 +5797,12 @@ object Types extends TypeUtils {
       val ctx = this.mapCtx // optimization for performance
       given Context = ctx
       tp match {
+        case tp: TermRef if tp.symbol.isImport =>
+          // see tests/pos/i19493.scala for examples requiring mapping over imports
+          val ImportType(e) = tp.info: @unchecked
+          val e1 = singleton(apply(e.tpe))
+          newImportSymbol(tp.symbol.owner, e1).termRef
+
         case tp: NamedType =>
           if stopBecauseStaticOrLocal(tp) then tp
           else
