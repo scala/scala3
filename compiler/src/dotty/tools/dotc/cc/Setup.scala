@@ -729,25 +729,28 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     var retained = ann.retainedElems.toArray
     for i <- 0 until retained.length do
       val refTree = retained(i)
-      val ref = refTree.toCaptureRef
+      for ref <- refTree.toCaptureRefs do
+        def pos =
+          if refTree.span.exists then refTree.srcPos
+          else if ann.span.exists then ann.srcPos
+          else tpt.srcPos
 
-      def pos =
-        if refTree.span.exists then refTree.srcPos
-        else if ann.span.exists then ann.srcPos
-        else tpt.srcPos
+        def check(others: CaptureSet, dom: Type | CaptureSet): Unit =
+          if others.accountsFor(ref) then
+            report.warning(em"redundant capture: $dom already accounts for $ref", pos)
 
-      def check(others: CaptureSet, dom: Type | CaptureSet): Unit =
-        if others.accountsFor(ref) then
-          report.warning(em"redundant capture: $dom already accounts for $ref", pos)
+        if ref.captureSetOfInfo.elems.isEmpty && !ref.derivesFrom(defn.Caps_Capability) then
+          report.error(em"$ref cannot be tracked since its capture set is empty", pos)
+        check(parent.captureSet, parent)
 
-      if ref.captureSetOfInfo.elems.isEmpty && !ref.derivesFrom(defn.Caps_Capability) then
-        report.error(em"$ref cannot be tracked since its capture set is empty", pos)
-      check(parent.captureSet, parent)
-
-      val others =
-        for j <- 0 until retained.length if j != i yield retained(j).toCaptureRef
-      val remaining = CaptureSet(others*)
-      check(remaining, remaining)
+        val others =
+          for
+            j <- 0 until retained.length if j != i
+            r <- retained(j).toCaptureRefs
+          yield r
+        val remaining = CaptureSet(others*)
+        check(remaining, remaining)
+      end for
     end for
   end checkWellformedPost
 

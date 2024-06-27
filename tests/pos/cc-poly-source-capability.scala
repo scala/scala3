@@ -4,7 +4,9 @@ import caps.{CapSet, Capability}
 
 @experimental object Test:
 
-  class Label extends Capability
+  class Async extends Capability
+
+  def listener(async: Async): Listener^{async} = ???
 
   class Listener
 
@@ -15,22 +17,16 @@ import caps.{CapSet, Capability}
 
     def allListeners: Set[Listener^{X^}] = listeners
 
-  def test1(lbl1: Label, lbl2: Label) =
-    val src = Source[CapSet^{lbl1, lbl2}]
-    def l1: Listener^{lbl1} = ???
-    val l2: Listener^{lbl2} = ???
-    src.register{l1}
-    src.register{l2}
+  def test1(async1: Async, others: List[Async]) =
+    val src = Source[CapSet^{async1, others*}]
+    val lst1 = listener(async1)
+    val lsts = others.map(listener)
+    val _: List[Listener^{others*}] = lsts
+    src.register{lst1}
+    src.register(listener(async1))
+    lsts.foreach(src.register)
+    others.map(listener).foreach(src.register)
     val ls = src.allListeners
-    val _: Set[Listener^{lbl1, lbl2}] = ls
-
-  def test2(lbls: List[Label]) =
-    def makeListener(lbl: Label): Listener^{lbl} = ???
-    val listeners = lbls.map(makeListener)
-    val src = Source[CapSet^{lbls*}]
-    for l <- listeners do
-      src.register(l)
-    val ls = src.allListeners
-    val _: Set[Listener^{lbls*}] = ls
+    val _: Set[Listener^{async1, others*}] = ls
 
 
