@@ -743,7 +743,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         if others.accountsFor(ref) then
           report.warning(em"redundant capture: $dom already accounts for $ref", pos)
 
-      if ref.captureSetOfInfo.elems.isEmpty then
+      if ref.captureSetOfInfo.elems.isEmpty && !ref.derivesFrom(defn.Caps_Capability) then
         report.error(em"$ref cannot be tracked since its capture set is empty", pos)
       check(parent.captureSet, parent)
 
