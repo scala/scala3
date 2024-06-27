@@ -64,7 +64,7 @@ def depFun(args: List[Type], resultType: Type, isContextual: Boolean, paramNames
   mt.toFunctionType(alwaysDependent = true)
 
 /** An exception thrown if a @retains argument is not syntactically a CaptureRef */
-class IllegalCaptureRef(tpe: Type) extends Exception(tpe.toString)
+class IllegalCaptureRef(tpe: Type)(using Context) extends Exception(tpe.show)
 
 /** Capture checking state, which is known to other capture checking components */
 class CCState:
@@ -127,15 +127,21 @@ class NoCommonRoot(rs: Symbol*)(using Context) extends Exception(
 
 extension (tree: Tree)
 
-  /** Map tree with CaptureRef type to its type, throw IllegalCaptureRef otherwise */
-  def toCaptureRef(using Context): CaptureRef = tree match
+  /** Map tree with CaptureRef type to its type,
+   *  map CapSet^{refs} to the `refs` references,
+   *  throw IllegalCaptureRef otherwise
+   */
+  def toCaptureRefs(using Context): List[CaptureRef] = tree match
     case ReachCapabilityApply(arg) =>
-      arg.toCaptureRef.reach
+      arg.toCaptureRefs.map(_.reach)
     case CapsOfApply(arg) =>
-      arg.toCaptureRef
-    case _ => tree.tpe match
+      arg.toCaptureRefs
+    case _ => tree.tpe.dealiasKeepAnnots match
       case ref: CaptureRef if ref.isTrackableRef =>
-        ref
+        ref :: Nil
+      case AnnotatedType(parent, ann)
+      if ann.symbol.isRetains && parent.derivesFrom(defn.Caps_CapSet) =>
+        ann.tree.toCaptureSet.elems.toList
       case tpe =>
         throw IllegalCaptureRef(tpe) // if this was compiled from cc syntax, problem should have been reported at Typer
 
@@ -146,7 +152,7 @@ extension (tree: Tree)
     tree.getAttachment(Captures) match
       case Some(refs) => refs
       case None =>
-        val refs = CaptureSet(tree.retainedElems.map(_.toCaptureRef)*)
+        val refs = CaptureSet(tree.retainedElems.flatMap(_.toCaptureRefs)*)
           //.showing(i"toCaptureSet $tree --> $result", capt)
         tree.putAttachment(Captures, refs)
         refs
