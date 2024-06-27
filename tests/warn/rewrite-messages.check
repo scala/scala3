@@ -1,0 +1,11 @@
+-- Migration Warning: tests/warn/rewrite-messages.scala:3:18 -----------------------------------------------------------
+3 |import scala.util._  // warn
+  |                  ^
+  |                  `_` is no longer supported for a wildcard import; use `*` instead
+  |                  This construct can be rewritten automatically under -rewrite -source future-migration.
+-- Deprecation Warning: tests/warn/rewrite-messages.scala:7:4 ----------------------------------------------------------
+7 |  2 foo 4  // warn
+  |    ^^^
+  |    Alphanumeric method foo is not declared infix; it should not be used as infix operator.
+  |    Instead, use method syntax .foo(...) or backticked identifier `foo`.
+  |    The latter can be rewritten automatically under -rewrite -deprecation.
