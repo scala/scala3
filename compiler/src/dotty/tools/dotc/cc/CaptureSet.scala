@@ -634,6 +634,13 @@ object CaptureSet:
     override def toString = s"Var$id$elems"
   end Var
 
+  /** Variables that represent refinements of class parameters can have the universal
+   *  capture set, since they represent only what is the result of the constructor.
+   *  Test case: Without that tweak, logger.scala would not compile.
+   */
+  class RefiningVar(owner: Symbol)(using Context) extends Var(owner):
+    override def disallowRootCapability(handler: () => Context ?=> Unit)(using Context) = this
+
   /** A variable that is derived from some other variable via a map or filter. */
   abstract class DerivedVar(owner: Symbol, initialElems: Refs)(using @constructorOnly ctx: Context)
   extends Var(owner, initialElems):
