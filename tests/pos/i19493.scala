@@ -22,8 +22,21 @@ object Minimization:
 
   inline def foo(x: GivesString): Unit =
     import x.aString
-    summon[String]
+    summon[String] // ok
     summonInline[String] // was error
 
   foo(???)
+
+
+  trait A:
+    val x: GivesString
+
+    inline def bar: Unit =
+      import this.x.aString
+      summon[String] // ok
+      summonInline[String] // was error
+
+  val a: A = ???
+  a.bar
+
 end Minimization
