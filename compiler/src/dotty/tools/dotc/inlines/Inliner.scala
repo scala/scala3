@@ -565,10 +565,6 @@ class Inliner(val call: tpd.Tree)(using Context):
           def apply(t: Type) = t match {
             case t: ThisType => thisProxy.getOrElse(t.cls, t)
             case t: TypeRef => paramProxy.getOrElse(t, mapOver(t))
-            case t: TermRef if t.symbol.isImport =>
-              val ImportType(e) = t.widenTermRefExpr: @unchecked
-              val e1 = singleton(apply(e.tpe))
-              newImportSymbol(ctx.owner, e1).termRef
             case t: SingletonType =>
               if t.termSymbol.isAllOf(InlineParam) then apply(t.widenTermRefExpr)
               else paramProxy.getOrElse(t, mapOver(t))

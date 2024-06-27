@@ -68,8 +68,13 @@ class TreeTypeMap(
     }
   }
 
-  def mapType(tp: Type): Type =
-    mapOwnerThis(typeMap(tp).substSym(substFrom, substTo))
+  val mapType: Type => Type =
+    val substMap = new TypeMap():
+      def apply(tp: Type): Type = tp match
+        case tp: TermRef if tp.symbol.isImport => mapOver(tp)
+        case tp => tp.substSym(substFrom, substTo)
+    typeMap.andThen(substMap).andThen(mapOwnerThis)
+  end mapType
 
   private def updateDecls(prevStats: List[Tree], newStats: List[Tree]): Unit =
     if (prevStats.isEmpty) assert(newStats.isEmpty)
