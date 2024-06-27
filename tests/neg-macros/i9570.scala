@@ -12,7 +12,7 @@ object Macros {
     private def sizeImpl(e: Expr[HList], n:Int)(using qctx:Quotes): Expr[Int] = {
       import quotes.reflect.*
       e match {
-        case '{HCons(_,$t)} => // error if run with fatal warinings in BootstrappedOnlyCompilationTests
+        case '{HCons(_,$t)} => // error
           sizeImpl(t,n+1)
         case '{HNil} => Expr(n)
       }

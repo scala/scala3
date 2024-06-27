@@ -1,0 +1,4 @@
+-- Error: tests/neg-macros/i9570.scala:15:21 ---------------------------------------------------------------------------
+15 |        case '{HCons(_,$t)} => // error
+   |                     ^
+   |             Use of `_` for lambda in quoted pattern. Use explicit lambda instead or use `$_` to match any term.
