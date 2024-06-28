@@ -934,7 +934,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      *                   (x: T) to (x @ (w: T)). This is either `_` or `_*`.
      */
     def cases(ifPat: => Tree, ifExpr: => Tree, wildName: TermName) = tree.expr match {
-      case id: untpd.Ident if (ctx.mode is Mode.Pattern) && untpd.isVarPattern(id) =>
+      case id: untpd.Ident if (ctx.mode is Mode.Pattern) =>
         if (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) ifPat
         else {
           import untpd.*
