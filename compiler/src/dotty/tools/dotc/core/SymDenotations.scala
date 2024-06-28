@@ -166,12 +166,17 @@ object SymDenotations {
             println(i"${"  " * indent}completed $name in $owner")
           }
         }
-        else {
-          if (myFlags.is(Touched))
-            throw CyclicReference(this)(using ctx.withOwner(symbol))
-          myFlags |= Touched
-          atPhase(validFor.firstPhaseId)(completer.complete(this))
-        }
+        else
+          val traceCycles = CyclicReference.isTraced
+          try
+            if traceCycles then
+              CyclicReference.pushTrace("compute the signature of ", symbol, "")
+            if myFlags.is(Touched) then
+              throw CyclicReference(this)(using ctx.withOwner(symbol))
+            myFlags |= Touched
+            atPhase(validFor.firstPhaseId)(completer.complete(this))
+          finally
+            if traceCycles then CyclicReference.popTrace()
 
     protected[dotc] def info_=(tp: Type): Unit = {
       /* // DEBUG
@@ -2965,7 +2970,10 @@ object SymDenotations {
     def apply(clsd: ClassDenotation)(implicit onBehalf: BaseData, ctx: Context)
         : (List[ClassSymbol], BaseClassSet) = {
       assert(isValid)
+      val traceCycles = CyclicReference.isTraced
       try
+        if traceCycles then
+          CyclicReference.pushTrace("compute the base classes of ", clsd.symbol, "")
         if (cache != null) cache.uncheckedNN
         else {
           if (locked) throw CyclicReference(clsd)
@@ -2978,7 +2986,9 @@ object SymDenotations {
           else onBehalf.signalProvisional()
           computed
         }
-      finally addDependent(onBehalf)
+      finally
+        if traceCycles then CyclicReference.popTrace()
+        addDependent(onBehalf)
     }
 
     def sameGroup(p1: Phase, p2: Phase) = p1.sameParentsStartId == p2.sameParentsStartId

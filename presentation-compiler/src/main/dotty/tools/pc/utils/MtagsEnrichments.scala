@@ -36,7 +36,8 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
   extension (driver: InteractiveDriver)
 
     def sourcePosition(
-        params: OffsetParams
+        params: OffsetParams,
+        isZeroExtent: Boolean = true
     ): SourcePosition =
       val uri = params.uri()
       val source = driver.openedFiles(uri.nn)
@@ -50,6 +51,7 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
             case offset =>
               Spans.Span(p.offset(), p.offset())
           }
+        case _ if !isZeroExtent => Spans.Span(params.offset(), params.offset() + 1)
         case _ => Spans.Span(params.offset())
 
       new SourcePosition(source, span)
@@ -230,6 +232,34 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
 
     def stripBackticks: String = s.stripPrefix("`").stripSuffix("`")
 
+  extension (text: Array[Char])
+    def indexAfterSpacesAndComments: Int = {
+      var isInComment = false
+      var startedStateChange = false
+      val index = text.indexWhere {
+        case '/' if !isInComment && !startedStateChange =>
+          startedStateChange = true
+          false
+        case '*' if !isInComment && startedStateChange =>
+          startedStateChange = false
+          isInComment = true
+          false
+        case '/' if isInComment && startedStateChange =>
+          startedStateChange = false
+          isInComment = false
+          false
+        case '*' if isInComment && !startedStateChange =>
+          startedStateChange = true
+          false
+        case c if isInComment || c.isSpaceChar || c == '\t' =>
+          startedStateChange = false
+          false
+        case _ => true
+      }
+      if (startedStateChange) index - 1
+      else index
+    }
+
   extension (search: SymbolSearch)
     def symbolDocumentation(symbol: Symbol)(using
         Context
@@ -270,10 +300,10 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
     def seenFrom(sym: Symbol)(using Context): (Type, Symbol) =
       try
         val pre = tree.qual
-        val denot = sym.denot.asSeenFrom(pre.tpe.widenTermRefExpr)
+        val denot = sym.denot.asSeenFrom(pre.typeOpt.widenTermRefExpr)
         (denot.info, sym.withUpdatedTpe(denot.info))
       catch case NonFatal(e) => (sym.info, sym)
-    
+
     def isInfix(using ctx: Context) =
       tree match
         case Select(New(_), _) => false
@@ -327,7 +357,7 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
               case t: GenericApply
                   if t.fun.srcPos.span.contains(
                     pos.span
-                  ) && !t.tpe.isErroneous =>
+                  ) && !t.typeOpt.isErroneous =>
                 tryTail(tail).orElse(Some(enclosing))
               case in: Inlined =>
                 tryTail(tail).orElse(Some(enclosing))

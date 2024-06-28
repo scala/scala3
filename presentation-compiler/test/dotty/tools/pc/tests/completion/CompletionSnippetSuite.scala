@@ -77,31 +77,62 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
   // Dotty does not currently support fuzzy completions. Please take a look at
   // https://github.com/lampepfl/dotty-feature-requests/issues/314
   @Test def `type-empty` =
-    checkSnippet(
-      """
-        |object Main {
-        |  type MyType = List[Int]
-        |  def list : MT@@
-        |}
-        |""".stripMargin,
-      """|MyType
-         |""".stripMargin
-    )
+    if (scala.util.Properties.isJavaAtLeast("9")) {
+      checkSnippet(
+        """
+          |object Main {
+          |  type MyType = List[Int]
+          |  def list : MT@@
+          |}
+          |""".stripMargin,
+        """|MyType
+           |""".stripMargin
+      )
+    } else {
+      checkSnippet(
+        """
+          |object Main {
+          |  type MyType = List[Int]
+          |  def list : MT@@
+          |}
+          |""".stripMargin,
+        """|MyType
+           |MTOM
+           |MTOMFeature
+           |""".stripMargin
+      )
+    }
 
     // Dotty does not currently support fuzzy completions. Please take a look at
     // https://github.com/lampepfl/dotty-feature-requests/issues/314
   @Test def `type-new-empty` =
-    checkSnippet(
-      """
-        |object Main {
-        |  class Gen[T]
-        |  type MyType = Gen[Int]
-        |  new MT@@
-        |}
-        |""".stripMargin,
-      """|MyType
-         |""".stripMargin
-    )
+    if (scala.util.Properties.isJavaAtLeast("9")) {
+      checkSnippet(
+        """
+          |object Main {
+          |  class Gen[T]
+          |  type MyType = Gen[Int]
+          |  new MT@@
+          |}
+          |""".stripMargin,
+        """|MyType
+           |""".stripMargin
+      )
+    } else {
+      checkSnippet(
+        """
+          |object Main {
+          |  class Gen[T]
+          |  type MyType = Gen[Int]
+          |  new MT@@
+          |}
+          |""".stripMargin,
+        """|MyType
+           |MTOM
+           |MTOMFeature
+           |""".stripMargin
+      )
+    }
 
   @Test def `type` =
     checkSnippet(
@@ -323,7 +354,8 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
          |Widget($0) - (age: Int): Widget
          |Widget($0) - (name: String, age: Int): Widget
          |""".stripMargin,
-      includeDetail = true
+      includeDetail = true,
+      topLines = Some(4)
     )
 
   @Test def `no-apply` =
@@ -335,8 +367,13 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |  Wi@@
           |}
           |""".stripMargin,
-      "Widget -  example",
-      includeDetail = true
+      """|Widget -  example
+         |Window -  java.awt
+         |WindowPeer -  java.awt.peer
+         |WithFilter -  scala.collection
+         |""".stripMargin,
+      includeDetail = true,
+      topLines = Some(4)
     )
 
   // https://github.com/scalameta/metals/issues/4004

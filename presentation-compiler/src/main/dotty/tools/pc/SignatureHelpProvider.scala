@@ -1,25 +1,29 @@
 package dotty.tools.pc
 
-import scala.jdk.CollectionConverters._
-import scala.meta.pc.OffsetParams
-import scala.meta.pc.SymbolDocumentation
-import scala.meta.pc.SymbolSearch
-
-import dotty.tools.dotc.ast.Trees.AppliedTypeTree
-import dotty.tools.dotc.ast.Trees.TypeApply
-import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
+import dotty.tools.dotc.parsing.Tokens.closingRegionTokens
+import dotty.tools.dotc.reporting.ErrorMessageID
+import dotty.tools.dotc.reporting.ExpectedTokenButFound
 import dotty.tools.dotc.util.Signatures
-import dotty.tools.dotc.util.Signatures.Signature
 import dotty.tools.dotc.util.SourceFile
-import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.util.Spans
+import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.pc.printer.ShortenedTypePrinter
+import dotty.tools.pc.printer.ShortenedTypePrinter.IncludeDefaultParam
 import dotty.tools.pc.utils.MtagsEnrichments.*
-
 import org.eclipse.lsp4j as l
+
+import scala.jdk.CollectionConverters.*
+import scala.jdk.OptionConverters.*
+import scala.meta.internal.metals.ReportContext
+import scala.meta.pc.OffsetParams
+import scala.meta.pc.SymbolDocumentation
+import scala.meta.pc.SymbolSearch
 
 object SignatureHelpProvider:
 
@@ -27,108 +31,119 @@ object SignatureHelpProvider:
       driver: InteractiveDriver,
       params: OffsetParams,
       search: SymbolSearch
-  ) =
-    val uri = params.uri()
-    val sourceFile = SourceFile.virtual(params.uri().nn, params.text().nn)
+  )(using ReportContext): l.SignatureHelp =
+    val uri = params.uri().nn
+    val text = params.text().nn
+    val sourceFile = SourceFile.virtual(uri, text)
     driver.run(uri.nn, sourceFile)
 
-    given ctx: Context = driver.currentCtx
+    driver.compilationUnits.get(uri) match
+      case Some(unit) =>
 
-    val pos = driver.sourcePosition(params)
-    val trees = driver.openedTrees(uri.nn)
+        val pos = driver.sourcePosition(params, isZeroExtent = false)
+        val path = Interactive.pathTo(unit.tpdTree, pos.span)(using driver.currentCtx)
 
-    val path = Interactive.pathTo(trees, pos)
+        val localizedContext = Interactive.contextOfPath(path)(using driver.currentCtx)
+        val indexedContext = IndexedContext(driver.currentCtx)
 
-    val (paramN, callableN, alternatives) =
-      Signatures.signatureHelp(path, pos.span)
-    val infos = alternatives.flatMap { signature =>
-      signature.denot.map {
-        (signature, _)
-      }
-    }
+        given Context = localizedContext.fresh
+          .setCompilationUnit(unit)
+          .setPrinterFn(_ => ShortenedTypePrinter(search, IncludeDefaultParam.Never)(using indexedContext))
 
-    val signatureInfos = infos.map { case (signature, denot) =>
-      search.symbolDocumentation(denot.symbol) match
-        case Some(doc) =>
-          withDocumentation(
-            doc,
-            signature,
-            denot.symbol.is(Flags.JavaDefined)
-          ).getOrElse(signature)
-        case _ => signature
+        val (paramN, callableN, alternatives) = Signatures.signatureHelp(path, pos.span)
 
-    }
+        val infos = alternatives.flatMap: signature =>
+          signature.denot.map(signature -> _)
 
-    /* Versions prior to 3.2.1 did not support type parameters
-     * so we need to skip them.
-     */
-    new l.SignatureHelp(
-      signatureInfos.map(signatureToSignatureInformation).asJava,
-      callableN,
-      paramN
-    )
+        val signatureInfos = infos.map { case (signature, denot) =>
+          search.symbolDocumentation(denot.symbol) match
+            case Some(doc) =>
+              withDocumentation(
+                doc,
+                signature,
+                denot.symbol.is(Flags.JavaDefined)
+              ).getOrElse(signature)
+            case _ => signature
+
+        }
+
+        new l.SignatureHelp(
+          signatureInfos.map(signatureToSignatureInformation).asJava,
+          callableN,
+          paramN
+        )
+      case _ => new l.SignatureHelp()
   end signatureHelp
 
   private def withDocumentation(
       info: SymbolDocumentation,
       signature: Signatures.Signature,
       isJavaSymbol: Boolean
-  ): Option[Signature] =
-    val allParams = info.parameters().nn.asScala
-    def updateParams(
-        params: List[Signatures.Param],
-        index: Int
-    ): List[Signatures.Param] =
+  ): Option[Signatures.Signature] =
+    val methodParams = info.parameters().nn.asScala
+    val typeParams = info.typeParameters().nn.asScala
+
+    def updateParams(params: List[Signatures.Param], typeParamIndex: Int, methodParamIndex: Int): List[Signatures.Param] =
       params match
-        case Nil => Nil
-        case head :: tail =>
-          val rest = updateParams(tail, index + 1)
-          allParams.lift(index) match
+        case (head: Signatures.MethodParam) :: tail =>
+          val rest = updateParams(tail, typeParamIndex, methodParamIndex + 1)
+          methodParams.lift(methodParamIndex) match
             case Some(paramDoc) =>
               val newName =
                 if isJavaSymbol && head.name.startsWith("x$") then
                   paramDoc.nn.displayName()
                 else head.name
-              head.copy(
-                doc = Some(paramDoc.docstring.nn),
-                name = newName.nn
-              ) :: rest
+              head.copy(name = newName.nn, doc = Some(paramDoc.docstring.nn)) :: rest
             case _ => head :: rest
+        case (head: Signatures.TypeParam) :: tail =>
+          val rest = updateParams(tail, typeParamIndex + 1, methodParamIndex)
+          typeParams.lift(typeParamIndex) match
+            case Some(paramDoc) =>
+              head.copy(doc = Some(paramDoc.docstring.nn)) :: rest
+            case _ => head :: rest
+        case _ => Nil
 
     def updateParamss(
         params: List[List[Signatures.Param]],
-        index: Int
+        typeParamIndex: Int,
+        methodParamIndex: Int
     ): List[List[Signatures.Param]] =
       params match
         case Nil => Nil
         case head :: tail =>
-          val updated = updateParams(head, index)
-          updated :: updateParamss(tail, index + head.size)
-    val updatedParams = updateParamss(signature.paramss, 0)
+          val updated = updateParams(head, typeParamIndex, methodParamIndex)
+          val (nextTypeParamIndex, nextMethodParamIndex) = head match
+            case (_: Signatures.MethodParam) :: _ => (typeParamIndex, methodParamIndex + head.size)
+            case (_: Signatures.TypeParam) :: _ => (typeParamIndex + head.size, methodParamIndex)
+            case _ => (typeParamIndex, methodParamIndex)
+          updated :: updateParamss(tail, nextTypeParamIndex, nextMethodParamIndex)
+    val updatedParams = updateParamss(signature.paramss, 0, 0)
     Some(signature.copy(doc = Some(info.docstring().nn), paramss = updatedParams))
   end withDocumentation
 
   private def signatureToSignatureInformation(
       signature: Signatures.Signature
   ): l.SignatureInformation =
-    val tparams = signature.tparams.map(Signatures.Param("", _))
-    val paramInfoss =
-      (tparams ::: signature.paramss.flatten).map(paramToParameterInformation)
+    val paramInfoss = (signature.paramss.flatten).map(paramToParameterInformation)
     val paramLists =
-      if signature.paramss.forall(_.isEmpty) && tparams.nonEmpty then ""
-      else
-        signature.paramss
-          .map { paramList =>
-            val labels = paramList.map(_.show)
-            val prefix = if paramList.exists(_.isImplicit) then "using " else ""
-            labels.mkString(prefix, ", ", "")
-          }
-          .mkString("(", ")(", ")")
-    val tparamsLabel =
-      if signature.tparams.isEmpty then ""
-      else signature.tparams.mkString("[", ", ", "]")
+      signature.paramss
+        .map { paramList =>
+          val labels = paramList.map(_.show)
+          val isImplicit = paramList.exists:
+            case p: Signatures.MethodParam => p.isImplicit
+            case _ => false
+          val prefix = if isImplicit then "using " else ""
+          val isTypeParams = paramList.forall(_.isInstanceOf[Signatures.TypeParam]) && paramList.nonEmpty
+          val wrap: String => String = label => if isTypeParams then
+            s"[$label]"
+          else
+            s"($label)"
+          wrap(labels.mkString(prefix, ", ", ""))
+        }.mkString
+
+
     val returnTypeLabel = signature.returnType.map(t => s": $t").getOrElse("")
-    val label = s"${signature.name}$tparamsLabel$paramLists$returnTypeLabel"
+    val label = s"${signature.name}$paramLists$returnTypeLabel"
     val documentation = signature.doc.map(markupContent)
     val sig = new l.SignatureInformation(label)
     sig.setParameters(paramInfoss.asJava)

@@ -1,0 +1,6 @@
+-- [E003] Syntax Deprecation Warning: tests/warn/with-type-operator-future-migration.scala:5:13 ------------------------
+5 |def foo: Int with String = ??? // warn
+  |             ^
+  |             with as a type operator has been deprecated; use & instead
+  |
+  | longer explanation available when compiling with `-explain`

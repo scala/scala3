@@ -28,6 +28,7 @@ abstract class MockEntries:
     def apply(
         symbol: String,
         displayName: String,
+        typeParams: List[MockParam] = Nil,
         params: List[MockParam] = Nil
     ): SymbolDocumentation =
       ScalaSymbolDocumentation(
@@ -35,7 +36,14 @@ abstract class MockEntries:
         displayName,
         s"Found documentation for $symbol",
         "",
-        Nil.asJava,
+        typeParams
+          .map: param =>
+            ScalaSymbolDocumentation(
+              param.name,
+              param.name,
+              s"Found documentation for type param ${param.name}\n",
+            )
+          .asJava,
         params
           .map(param =>
             ScalaSymbolDocumentation(
@@ -43,8 +51,6 @@ abstract class MockEntries:
               param.name,
               s"Found documentation for param ${param.name}\n",
               param.defaultValue,
-              Nil.asJava,
-              Nil.asJava
             )
           )
           .asJava

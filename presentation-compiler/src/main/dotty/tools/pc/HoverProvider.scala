@@ -36,16 +36,20 @@ object HoverProvider:
     val text = params.text().nn
     val sourceFile = SourceFile.virtual(uri, text)
     driver.run(uri, sourceFile)
+    val unit = driver.compilationUnits.get(uri)
 
-    given ctx: Context = driver.currentCtx
+    given ctx: Context =
+      val ctx = driver.currentCtx
+      unit.map(ctx.fresh.setCompilationUnit).getOrElse(ctx)
     val pos = driver.sourcePosition(params)
-    val trees = driver.openedTrees(uri)
+    val path = unit
+      .map(unit => Interactive.pathTo(unit.tpdTree, pos.span))
+      .getOrElse(Interactive.pathTo(driver.openedTrees(uri), pos))
     val indexedContext = IndexedContext(ctx)
 
     def typeFromPath(path: List[Tree]) =
-      if path.isEmpty then NoType else path.head.tpe
+      if path.isEmpty then NoType else path.head.typeOpt
 
-    val path = Interactive.pathTo(trees, pos)
     val tp = typeFromPath(path)
     val tpw = tp.widenTermRefExpr
     // For expression we need to find all enclosing applies to get the exact generic type
@@ -72,7 +76,10 @@ object HoverProvider:
               |path:
               |- ${path.map(_.toString()).mkString("\n- ")}
               |trees:
-              |- ${trees.map(_.toString()).mkString("\n- ")}
+              |- ${unit
+               .map(u => List(u.tpdTree))
+               .getOrElse(driver.openedTrees(uri).map(_.tree))
+               .map(_.toString()).mkString("\n- ")}
               |""".stripMargin,
           s"$uri::$posId"
         )
@@ -83,15 +90,9 @@ object HoverProvider:
       val skipCheckOnName =
         !pos.isPoint // don't check isHoveringOnName for RangeHover
 
-      val printerContext =
-        driver.compilationUnits.get(uri) match
-          case Some(unit) =>
-            val newctx =
-              ctx.fresh.setCompilationUnit(unit)
-            Interactive.contextOfPath(enclosing)(using newctx)
-          case None => ctx
+      val printerCtx = Interactive.contextOfPath(path)
       val printer = ShortenedTypePrinter(search, IncludeDefaultParam.Include)(
-        using IndexedContext(printerContext)
+        using IndexedContext(printerCtx)
       )
       MetalsInteractive.enclosingSymbolsWithExpressionType(
         enclosing,
@@ -142,7 +143,8 @@ object HoverProvider:
                   expressionType = Some(expressionType),
                   symbolSignature = Some(hoverString),
                   docstring = Some(docString),
-                  forceExpressionType = forceExpressionType
+                  forceExpressionType = forceExpressionType,
+                  contextInfo = printer.getUsedRenamesInfo
                 )
               ).nn
             case _ =>
@@ -176,13 +178,14 @@ object HoverProvider:
               new ScalaHover(
                 expressionType = Some(tpeString),
                 symbolSignature = Some(s"$valOrDef $name$tpeString"),
+                contextInfo = printer.getUsedRenamesInfo
               )
             )
           case RefinedType(parent, _, _) =>
             findRefinement(parent)
           case _ => None
 
-      val refTpe = sel.tpe.widen.metalsDealias match
+      val refTpe = sel.typeOpt.widen.metalsDealias match
         case r: RefinedType => Some(r)
         case t: (TermRef | TypeProxy) => Some(t.termSymbol.info.metalsDealias)
         case _ => None

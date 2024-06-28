@@ -118,6 +118,7 @@ trait CommonScalaSettings:
   // -explain-types setting is necessary for cross compilation, since it is mentioned in sbt-tpolecat, for instance
   // it is otherwise subsumed by -explain, and should be dropped as soon as we can.
   val explainTypes: Setting[Boolean] = BooleanSetting("-explain-types", "Explain type errors in more detail (deprecated, use -explain instead).", aliases = List("--explain-types", "-explaintypes"))
+  val explainCyclic: Setting[Boolean] = BooleanSetting("-explain-cyclic", "Explain cyclic reference errors in more detail.", aliases = List("--explain-cyclic"))
   val unchecked: Setting[Boolean] = BooleanSetting("-unchecked", "Enable additional warnings where generated code depends on assumptions.", initialValue = true, aliases = List("--unchecked"))
   val language: Setting[List[String]] = MultiStringSetting("-language", "feature", "Enable one or more language features.", aliases = List("--language"))
 
@@ -347,6 +348,7 @@ private sealed trait YSettings:
   val YdebugTypeError: Setting[Boolean] = BooleanSetting("-Ydebug-type-error", "Print the stack trace when a TypeError is caught", false)
   val YdebugError: Setting[Boolean] = BooleanSetting("-Ydebug-error", "Print the stack trace when any error is caught.", false)
   val YdebugUnpickling: Setting[Boolean] = BooleanSetting("-Ydebug-unpickling", "Print the stack trace when an error occurs when reading Tasty.", false)
+  val YdebugCyclic: Setting[Boolean] = BooleanSetting("-Ydebug-cyclic", "Print the stack trace when a cyclic reference error occurs.", false)
   val YtermConflict: Setting[String] = ChoiceSetting("-Yresolve-term-conflict", "strategy", "Resolve term conflicts", List("package", "object", "error"), "error")
   val Ylog: Setting[List[String]] = PhasesSetting("-Ylog", "Log operations during")
   val YlogClasspath: Setting[Boolean] = BooleanSetting("-Ylog-classpath", "Output information about what classpath is being applied.")

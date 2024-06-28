@@ -12,7 +12,6 @@ import scala.meta.internal.pc.{IdentifierComparator, MemberOrdering}
 import scala.meta.pc.*
 
 import dotty.tools.dotc.ast.tpd.*
-import dotty.tools.dotc.ast.NavigateAST
 import dotty.tools.dotc.core.Comments.Comment
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
@@ -27,8 +26,6 @@ import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.interactive.Completion.Mode
 import dotty.tools.dotc.util.SourcePosition
-import dotty.tools.dotc.util.Spans
-import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
 import dotty.tools.pc.completions.OverrideCompletions.OverrideExtractor
@@ -72,8 +69,8 @@ class Completions(
       case _ :: (withcursor @ Select(fun, name)) :: (appl: GenericApply) :: _
           if appl.fun == withcursor && name.decoded == Cursor.value =>
         false
-      case (_: Import) :: _ => false
-      case _ :: (_: Import) :: _ => false
+      case (_: (Import | Export)) :: _ => false
+      case _ :: (_: (Import | Export)) :: _ => false
       case (_: Ident) :: (_: SeqLiteral) :: _ => false
       case _ => true
 
@@ -122,7 +119,7 @@ class Completions(
           // should not show completions for toplevel
           case Nil if pos.source.file.extension != "sc" =>
             (allAdvanced, SymbolSearch.Result.COMPLETE)
-          case Select(qual, _) :: _ if qual.tpe.isErroneous =>
+          case Select(qual, _) :: _ if qual.typeOpt.isErroneous =>
             (allAdvanced, SymbolSearch.Result.COMPLETE)
           case Select(qual, _) :: _ =>
             val (_, compilerCompletions) = Completion.completions(pos)
@@ -140,7 +137,8 @@ class Completions(
 
     val application = CompletionApplication.fromPath(path)
     val ordering = completionOrdering(application)
-    val values = application.postProcess(all.sorted(ordering))
+    val sorted = all.sorted(ordering)
+    val values = application.postProcess(sorted)
     (values, result)
   end completions
 
@@ -440,6 +438,10 @@ class Completions(
           ),
           true,
         )
+
+      case (tree: (Import | Export)) :: _
+          if tree.selectors.exists(_.renamed.sourcePos.contains(pos)) =>
+        (List.empty, true)
 
       // From Scala 3.1.3-RC3 (as far as I know), path contains
       // `Literal(Constant(null))` on head for an incomplete program, in this case, just ignore the head.
@@ -747,7 +749,7 @@ class Completions(
         items
 
     def forSelect(sel: Select): CompletionApplication =
-      val tpe = sel.qualifier.tpe
+      val tpe = sel.qualifier.typeOpt
       val members = tpe.allMembers.map(_.symbol).toSet
 
       new CompletionApplication:
@@ -791,7 +793,8 @@ class Completions(
       val fuzzyCache = mutable.Map.empty[CompletionValue, Int]
 
       def compareLocalSymbols(s1: Symbol, s2: Symbol): Int =
-        if s1.isLocal && s2.isLocal then
+        if s1.isLocal && s2.isLocal && s1.sourcePos.exists && s2.sourcePos.exists
+        then
           val firstIsAfter = s1.srcPos.isAfter(s2.srcPos)
           if firstIsAfter then -1 else 1
         else 0
@@ -833,6 +836,16 @@ class Completions(
         priority(o1) - priority(o2)
       end compareInApplyParams
 
+      def prioritizeKeywords(o1: CompletionValue, o2: CompletionValue): Int =
+        def priority(v: CompletionValue): Int =
+          v match
+            case _: CompletionValue.CaseKeyword => 0
+            case _: CompletionValue.NamedArg => 1
+            case _: CompletionValue.Keyword => 2
+            case _ => 3
+
+        priority(o1) - priority(o2)
+      end prioritizeKeywords
       /**
        * Some completion values should be shown first such as CaseKeyword and
        * NamedArg
@@ -909,7 +922,10 @@ class Completions(
           case _ =>
             val byApplyParams = compareInApplyParams(o1, o2)
             if byApplyParams != 0 then byApplyParams
-            else compareByRelevance(o1, o2)
+            else
+              val keywords = prioritizeKeywords(o1, o2)
+              if keywords != 0 then keywords
+              else compareByRelevance(o1, o2)
       end compare
 
 end Completions

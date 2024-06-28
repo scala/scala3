@@ -133,5 +133,8 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
       "List of quick links that is displayed in the header of documentation."
     )
 
-  def scaladocSpecificSettings: Set[Setting[_]] =
-    Set(sourceLinks, legacySourceLink, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, generateInkuire, defaultTemplate, scastieConfiguration, quickLinks)
+  val dynamicSideMenu: Setting[Boolean] =
+    BooleanSetting("-dynamic-side-menu", "Generate side menu via JS instead of embedding it in every html file", false)
+
+  def scaladocSpecificSettings: Set[Setting[?]] =
+    Set(sourceLinks, legacySourceLink, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, generateInkuire, defaultTemplate, scastieConfiguration, quickLinks, dynamicSideMenu)

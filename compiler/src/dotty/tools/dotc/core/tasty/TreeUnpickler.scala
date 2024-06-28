@@ -124,20 +124,25 @@ class TreeUnpickler(reader: TastyReader,
     val mode = ctx.mode
     val source = ctx.source
     def complete(denot: SymDenotation)(using Context): Unit =
-      def fail(ex: Throwable) =
-        def where =
-          val f = denot.symbol.associatedFile
-          if f == null then "" else s" in $f"
-        throw UnpicklingError(denot, where, ex)
+      def where =
+        val f = denot.symbol.associatedFile
+        if f == null then "" else s" in $f"
+      def fail(ex: Throwable) = throw UnpicklingError(denot, where, ex)
       treeAtAddr(currentAddr) =
+        val traceCycles = CyclicReference.isTraced
         try
+          if traceCycles then
+            CyclicReference.pushTrace("read the definition of ", denot.symbol, where)
           atPhaseBeforeTransforms {
             new TreeReader(reader).readIndexedDef()(
               using ctx.withOwner(owner).withModeBits(mode).withSource(source))
           }
         catch
+          case ex: CyclicReference => throw ex
           case ex: AssertionError => fail(ex)
           case ex: Exception => fail(ex)
+        finally
+          if traceCycles then CyclicReference.popTrace()
   }
 
   class TreeReader(val reader: TastyReader) {

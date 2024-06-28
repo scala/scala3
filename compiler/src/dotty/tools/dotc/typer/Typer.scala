@@ -1664,8 +1664,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                     // Replace the underspecified expected type by one based on the closure method type
                     defn.PartialFunctionOf(mt.firstParamTypes.head, mt.resultType)
                   else
-                    report.error(em"result type of lambda is an underspecified SAM type $samParent", tree.srcPos)
-                    samParent
+                    errorType(em"result type of lambda is an underspecified SAM type $samParent", tree.srcPos)
                 TypeTree(targetTpe)
               case _ =>
                 if (mt.isParamDependent)
@@ -3298,12 +3297,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     mdef.getAttachment(SymOfTree) match {
       case Some(sym) => sym.infoOrCompleter match {
         case completer: Namer#Completer =>
-          if (completer.creationContext.notNullInfos ne ctx.notNullInfos)
+          if completer.creationContext.notNullInfos ne ctx.notNullInfos then
             // The RHS of a val def should know about not null facts established
             // in preceding statements (unless the DefTree is completed ahead of time,
             // then it is impossible).
-            sym.info = Completer(completer.original)(
-              completer.creationContext.withNotNullInfos(ctx.notNullInfos))
+            completer.setNotNullInfos(ctx.notNullInfos)
           true
         case _ =>
           // If it has been completed, then it must be because there is a forward reference
