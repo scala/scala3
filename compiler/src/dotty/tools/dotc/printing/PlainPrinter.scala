@@ -165,6 +165,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
   private def toTextRetainedElem[T <: Untyped](ref: Tree[T]): Text = ref match
     case ref: RefTree[?] if ref.typeOpt.exists =>
       toTextCaptureRef(ref.typeOpt)
+    case TypeApply(fn, arg :: Nil) if fn.symbol == defn.Caps_capsOf =>
+      toTextRetainedElem(arg)
     case _ =>
       toText(ref)
 
@@ -416,6 +418,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: SingletonType => toTextRef(tp)
       case ReachCapability(tp1) => toTextRef(tp1) ~ "*"
       case MaybeCapability(tp1) => toTextRef(tp1) ~ "?"
+      case tp: (TypeRef | TypeParamRef) => toText(tp) ~ "^"
       case _ => toText(tp)
 
   protected def isOmittablePrefix(sym: Symbol): Boolean =
