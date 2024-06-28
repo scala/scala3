@@ -2406,9 +2406,14 @@ class UnqualifiedCallToAnyRefMethod(stat: untpd.Tree, method: Symbol)(using Cont
   def kind = MessageKind.PotentialIssue
   def msg(using Context) = i"Suspicious top-level unqualified call to ${hl(method.name.toString)}"
   def explain(using Context) =
+    val getClassExtraHint =
+      if method.name == nme.getClass_ && ctx.settings.classpath.value.contains("scala3-staging") then
+        i"""\n\n
+           |This class should not be used to get the classloader for `scala.quoted.staging.Compile.make`."""
+      else ""
     i"""Top-level unqualified calls to ${hl("AnyRef")} or ${hl("Any")} methods such as ${hl(method.name.toString)} are
        |resolved to calls on ${hl("Predef")} or on imported methods. This might not be what
-       |you intended."""
+       |you intended.$getClassExtraHint"""
 }
 
 class SynchronizedCallOnBoxedClass(stat: tpd.Tree)(using Context)
