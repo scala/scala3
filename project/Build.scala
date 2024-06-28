@@ -1128,7 +1128,7 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   lazy val presentationCompilerSettings = {
-    val mtagsVersion = "1.2.0+54-1a664e80-SNAPSHOT"
+    val mtagsVersion = "1.2.0+67-30f8ab53-SNAPSHOT"
 
     Seq(
       resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
