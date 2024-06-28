@@ -9,6 +9,7 @@ import caps.{CapSet, Capability}
 
   def f[X^](x: D^{X^}): D^{X^} = x
   def g[X^](x: D^{X^}, y: D^{X^}): D^{X^} = x
+  def h[X^](): D^{X^} = ???
 
   def test(c1: C, c2: C) =
     val d: D^{c1, c2} = D()
@@ -19,5 +20,7 @@ import caps.{CapSet, Capability}
     val y = g(d1, d2)
     val _: D^{d1, d2} = y
     val _: D^{c1, c2} = y
+    val z = h()
+
 
 
