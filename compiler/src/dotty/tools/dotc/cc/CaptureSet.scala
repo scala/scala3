@@ -157,7 +157,7 @@ sealed abstract class CaptureSet extends Showable:
           case y: TermRef =>
             (y.prefix eq x)
             || y.info.match
-                case y1: CaptureRef => x.subsumes(y1)
+                case y1: SingletonCaptureRef => x.subsumes(y1)
                 case _ => false
           case MaybeCapability(y1) => x.stripMaybe.subsumes(y1)
           case _ => false
@@ -165,7 +165,7 @@ sealed abstract class CaptureSet extends Showable:
           case ReachCapability(x1) => x1.subsumes(y.stripReach)
           case x: TermRef =>
             x.info match
-              case x1: CaptureRef => x1.subsumes(y)
+              case x1: SingletonCaptureRef => x1.subsumes(y)
               case _ => false
           case _ => false
 
@@ -1058,7 +1058,7 @@ object CaptureSet:
         case tp: TermParamRef =>
           tp.captureSet
         case tp: TypeRef =>
-          if tp.derivesFromCapability then universal // TODO: maybe return another value that indicates that the underltinf ref is maximal?
+          if !ccConfig.expandCapabilityInSetup && tp.derivesFromCapability then universal
           else empty
         case _: TypeParamRef =>
           empty

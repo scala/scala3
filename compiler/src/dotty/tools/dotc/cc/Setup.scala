@@ -306,7 +306,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case t: TypeVar =>
             this(t.underlying)
           case t =>
-            recur(t)
+            // Map references to capability classes C to C^
+            if ccConfig.expandCapabilityInSetup && t.derivesFromCapability
+            then CapturingType(t, CaptureSet.universal, boxed = false)
+            else recur(t)
     end expandAliases
 
     val tp1 = expandAliases(tp) // TODO: Do we still need to follow aliases?
@@ -575,10 +578,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         !refs.isEmpty
       case tp: (TypeRef | AppliedType) =>
         val sym = tp.typeSymbol
-        if sym.isClass then
-          !sym.isPureClass
-        else
-          sym != defn.Caps_Capability && instanceCanBeImpure(tp.superType)
+        if sym.isClass then !sym.isPureClass
+        else instanceCanBeImpure(tp.superType)
       case tp: (RefinedOrRecType | MatchType) =>
         instanceCanBeImpure(tp.underlying)
       case tp: AndType =>
@@ -711,8 +712,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
       if ref.captureSetOfInfo.elems.isEmpty then
         report.error(em"$ref cannot be tracked since its capture set is empty", pos)
-      if parent.captureSet ne defn.expandedUniversalSet then
-        check(parent.captureSet, parent)
+      check(parent.captureSet, parent)
 
       val others =
         for j <- 0 until retained.length if j != i yield retained(j).toCaptureRef
