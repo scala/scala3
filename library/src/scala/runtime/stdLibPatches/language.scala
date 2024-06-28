@@ -93,7 +93,7 @@ object language:
 
     /** Experimental support for named tuples.
      *
-     *  @see [[https://github.com/scala/improvement-proposals/pull/72]]
+     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/named-tuples]]
      */
     @compileTimeOnly("`namedTuples` can only be used at compile time in import statements")
     object namedTuples
