@@ -1,0 +1,6 @@
+-- [E092] Pattern Match Unchecked Warning: tests/warn/i16728.scala:18:11 -----------------------------------------------
+18 |      case tx : C[Int]#X => // warn
+   |           ^
+   |     the type test for C[Int] cannot be checked at runtime because its type arguments can't be determined from A
+   |
+   | longer explanation available when compiling with `-explain`

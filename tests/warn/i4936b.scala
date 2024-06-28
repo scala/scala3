@@ -1,0 +1,3 @@
+
+
+final object Foo // warn

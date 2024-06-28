@@ -1,0 +1,8 @@
+-- Warning: tests/warn/i16649-refutable.scala:6:6 ----------------------------------------------------------------------
+6 |  val '{ ($y: Int) + ($z: Int) } = x // warn
+  |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |      pattern binding uses refutable extractor `'{...}`
+  |
+  |      If this usage is intentional, this can be communicated by adding `: @unchecked` after the expression,
+  |      which may result in a MatchError at runtime.
+  |      This patch can be rewritten automatically under -rewrite -source 3.2-migration.

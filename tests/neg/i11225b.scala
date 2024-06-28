@@ -10,3 +10,4 @@ class Memo[A](x: => A):
       known = true
       cached = x
     cached
+

@@ -1,0 +1,13 @@
+-- [E092] Pattern Match Unchecked Warning: tests/warn/i12253.scala:13:10 -----------------------------------------------
+13 |     case extractors.InlinedLambda(_, Select(_, name)) => Expr(name) // warn // warn
+   |          ^
+   |the type test for extractors.q2.reflect.Term cannot be checked at runtime because it refers to an abstract type member or type parameter
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E092] Pattern Match Unchecked Warning: tests/warn/i12253.scala:13:38 -----------------------------------------------
+13 |     case extractors.InlinedLambda(_, Select(_, name)) => Expr(name) // warn // warn
+   |                                      ^
+   |the type test for q1.reflect.Select cannot be checked at runtime because it refers to an abstract type member or type parameter
+   |
+   | longer explanation available when compiling with `-explain`
+there was 1 deprecation warning; re-run with -deprecation for details
