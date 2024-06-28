@@ -190,7 +190,7 @@ object MetalsInteractive:
        */
       case (tpt: TypeTree) :: parent :: _
           if tpt.span != parent.span && !tpt.symbol.is(Synthetic) =>
-        List((tpt.symbol, tpt.tpe))
+        List((tpt.symbol, tpt.typeOpt))
 
       /* TypeTest class https://dotty.epfl.ch/docs/reference/other-new-features/type-test.html
        * compiler automatically adds unapply if possible, we need to find the type symbol

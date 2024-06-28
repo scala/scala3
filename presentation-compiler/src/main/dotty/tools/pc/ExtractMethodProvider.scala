@@ -128,7 +128,7 @@ final class ExtractMethodProvider(
       yield
         val defnPos = stat.sourcePos
         val extractedPos = head.sourcePos.withEnd(expr.sourcePos.end)
-        val exprType = prettyPrint(expr.tpe.widen)
+        val exprType = prettyPrint(expr.typeOpt.widen)
         val name =
           genName(indexedCtx.scopeSymbols.map(_.decodedName).toSet, "newMethod")
         val (methodParams, typeParams) =
