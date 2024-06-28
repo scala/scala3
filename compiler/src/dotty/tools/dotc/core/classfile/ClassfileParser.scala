@@ -25,6 +25,8 @@ import io.{AbstractFile, ZipArchive}
 import scala.util.control.NonFatal
 
 object ClassfileParser {
+  import ClassfileConstants.*
+
   /** Marker trait for unpicklers that can be embedded in classfiles. */
   trait Embedded
 
@@ -50,6 +52,23 @@ object ClassfileParser {
         mapOver(tp)
     }
   }
+
+  private[classfile] def parseHeader(classfile: AbstractFile)(using in: DataReader): Unit = {
+    val magic = in.nextInt
+    if (magic != JAVA_MAGIC)
+      throw new IOException(s"class file '${classfile}' has wrong magic number 0x${toHexString(magic)}, should be 0x${toHexString(JAVA_MAGIC)}")
+    val minorVersion = in.nextChar.toInt
+    val majorVersion = in.nextChar.toInt
+    if ((majorVersion < JAVA_MAJOR_VERSION) ||
+        ((majorVersion == JAVA_MAJOR_VERSION) &&
+         (minorVersion < JAVA_MINOR_VERSION)))
+      throw new IOException(
+        s"class file '${classfile}' has unknown version $majorVersion.$minorVersion, should be at least $JAVA_MAJOR_VERSION.$JAVA_MINOR_VERSION")
+    if majorVersion > JAVA_LATEST_MAJOR_VERSION then
+      throw new IOException(
+        s"class file '${classfile}' has unknown version $majorVersion.$minorVersion, and was compiled by a newer JDK than supported by this Scala version, please update to a newer Scala version.")
+  }
+
 }
 
 class ClassfileParser(
@@ -82,7 +101,7 @@ class ClassfileParser(
   def run()(using Context): Option[Embedded] = try ctx.base.reusableDataReader.withInstance { reader =>
     implicit val reader2 = reader.reset(classfile)
     report.debuglog("[class] >> " + classRoot.fullName)
-    parseHeader()
+    parseHeader(classfile)
     this.pool = new ConstantPool
     val res = parseClass()
     this.pool =  null
@@ -94,19 +113,6 @@ class ClassfileParser(
       throw new IOException(
         i"""class file ${classfile.canonicalPath} is broken, reading aborted with ${e.getClass}
            |${Option(e.getMessage).getOrElse("")}""")
-  }
-
-  private def parseHeader()(using in: DataReader): Unit = {
-    val magic = in.nextInt
-    if (magic != JAVA_MAGIC)
-      throw new IOException(s"class file '${classfile}' has wrong magic number 0x${toHexString(magic)}, should be 0x${toHexString(JAVA_MAGIC)}")
-    val minorVersion = in.nextChar.toInt
-    val majorVersion = in.nextChar.toInt
-    if ((majorVersion < JAVA_MAJOR_VERSION) ||
-        ((majorVersion == JAVA_MAJOR_VERSION) &&
-         (minorVersion < JAVA_MINOR_VERSION)))
-      throw new IOException(
-        s"class file '${classfile}' has unknown version $majorVersion.$minorVersion, should be at least $JAVA_MAJOR_VERSION.$JAVA_MINOR_VERSION")
   }
 
   /** Return the class symbol of the given name. */
