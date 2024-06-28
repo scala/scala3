@@ -77,31 +77,62 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
   // Dotty does not currently support fuzzy completions. Please take a look at
   // https://github.com/lampepfl/dotty-feature-requests/issues/314
   @Test def `type-empty` =
-    checkSnippet(
-      """
-        |object Main {
-        |  type MyType = List[Int]
-        |  def list : MT@@
-        |}
-        |""".stripMargin,
-      """|MyType
-         |""".stripMargin
-    )
+    if (scala.util.Properties.isJavaAtLeast("9")) {
+      checkSnippet(
+        """
+          |object Main {
+          |  type MyType = List[Int]
+          |  def list : MT@@
+          |}
+          |""".stripMargin,
+        """|MyType
+           |""".stripMargin
+      )
+    } else {
+      checkSnippet(
+        """
+          |object Main {
+          |  type MyType = List[Int]
+          |  def list : MT@@
+          |}
+          |""".stripMargin,
+        """|MyType
+           |MTOM
+           |MTOMFeature
+           |""".stripMargin
+      )
+    }
 
     // Dotty does not currently support fuzzy completions. Please take a look at
     // https://github.com/lampepfl/dotty-feature-requests/issues/314
   @Test def `type-new-empty` =
-    checkSnippet(
-      """
-        |object Main {
-        |  class Gen[T]
-        |  type MyType = Gen[Int]
-        |  new MT@@
-        |}
-        |""".stripMargin,
-      """|MyType
-         |""".stripMargin
-    )
+    if (scala.util.Properties.isJavaAtLeast("9")) {
+      checkSnippet(
+        """
+          |object Main {
+          |  class Gen[T]
+          |  type MyType = Gen[Int]
+          |  new MT@@
+          |}
+          |""".stripMargin,
+        """|MyType
+           |""".stripMargin
+      )
+    } else {
+      checkSnippet(
+        """
+          |object Main {
+          |  class Gen[T]
+          |  type MyType = Gen[Int]
+          |  new MT@@
+          |}
+          |""".stripMargin,
+        """|MyType
+           |MTOM
+           |MTOMFeature
+           |""".stripMargin
+      )
+    }
 
   @Test def `type` =
     checkSnippet(
