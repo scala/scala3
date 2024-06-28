@@ -1,6 +1,0 @@
--- [E092] Pattern Match Error: tests/neg/15981.scala:4:45 --------------------------------------------------------------
-4 |    override def equals(any: Any): Boolean = any.isInstanceOf[PosInt] // error
-  |                                             ^^^
-  |                                  the type test for PosInt cannot be checked at runtime because it's a local class
-  |
-  | longer explanation available when compiling with `-explain`
