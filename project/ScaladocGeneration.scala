@@ -137,6 +137,10 @@ object ScaladocGeneration {
     def key: String = "-quick-links"
   }
 
+  case class DynamicSideMenu(value: Boolean) extends Arg[Boolean] {
+    def key: String = "-dynamic-side-menu"
+  }
+
   import _root_.scala.reflect._
 
   trait GenerationConfig {
