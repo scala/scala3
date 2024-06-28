@@ -1,3 +1,4 @@
+//> using options -explain-cyclic
 object TestNested:
   type _NestedSet1[X] = Set[_NestedSet1[?]] // error
   type _NestedSet2[X] <: Set[_NestedSet2[?]] // error
