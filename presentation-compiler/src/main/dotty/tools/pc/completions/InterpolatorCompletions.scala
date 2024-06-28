@@ -83,14 +83,13 @@ object InterpolatorCompletions:
           case _: Select => true
           case _ => false
         } =>
-      val allLiterals = parent match
-        case SeqLiteral(elems, _) =>
-          elems
-        case _ => Nil
-      expr.elems.zip(allLiterals.tail).collectFirst {
-        case (i: (Ident | Select), literal) if literal == lit =>
-          i
-      }
+      parent match
+        case SeqLiteral(elems, _) if elems.size > 0 =>
+          expr.elems.zip(elems.tail).collectFirst {
+            case (i: (Ident | Select), literal) if literal == lit =>
+              i
+          }
+        case _ => None
   end interpolatorMemberArg
 
   /**

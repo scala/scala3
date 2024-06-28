@@ -38,7 +38,8 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  // tr@@
         |}
         |""".stripMargin,
-      "",
+      """|transient scala (commit: '')
+         |transparentTrait - scala.annotation (commit: '')""".stripMargin,
       includeCommitCharacter = true
     )
 
@@ -57,7 +58,8 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  **/
         |}
         |""".stripMargin,
-      "",
+     """|transient scala (commit: '')
+        |transparentTrait - scala.annotation (commit: '')""".stripMargin,
       includeCommitCharacter = true
     )
 
@@ -151,6 +153,8 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
       """|value: Int
          |val
          |var
+         |varargs(): varargs
+         |varargs - scala.annotation
          |""".stripMargin
     )
 
@@ -167,6 +171,8 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |""".stripMargin,
       """|val
          |var
+         |varargs(): varargs
+         |varargs - scala.annotation
          |""".stripMargin
     )
 
@@ -181,9 +187,10 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  }
         |}
         |""".stripMargin,
-      """|given (commit: '')
-         |""".stripMargin,
-      includeCommitCharacter = true
+      """given (commit: '')
+        |""".stripMargin,
+      includeCommitCharacter = true,
+      topLines = Some(5)
     )
 
   @Test def `val-arg` =
@@ -198,8 +205,8 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |}
         |""".stripMargin,
       """|value: Int
-         |""".stripMargin,
-      topLines = Some(1)
+         |varargs(): varargs
+         |varargs - scala.annotation""".stripMargin
     )
 
   @Test def `val-trailing-space` =
@@ -406,7 +413,13 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  protected de@@
         |}
       """.stripMargin,
-      "def"
+      """|def
+         |deprecated scala
+         |deprecatedInheritance scala
+         |deprecatedName scala
+         |deprecatedOverriding scala
+         |""".stripMargin,
+      topLines = Some(5)
     )
 
   @Test def `protected-val` =
@@ -418,9 +431,10 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  protected va@@
         |}
       """.stripMargin,
-      """val
-        |var
-        |""".stripMargin
+      """|val
+         |var
+         |varargs - scala.annotation
+         |""".stripMargin
     )
 
   @Test def `topLevel` =
@@ -458,8 +472,13 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
          |  def hello(u@@)
          |}""".stripMargin,
       """|using (commit: '')
+         |unsafeExceptions scala (commit: '')
+         |unchecked scala (commit: '')
+         |unsafe - scala.caps (commit: '')
+         |unsafeNulls - scala.runtime.stdLibPatches.language (commit: '')
          |""".stripMargin,
-      includeCommitCharacter = true
+      includeCommitCharacter = true,
+      topLines = Some(5)
     )
 
   @Test def `not-using` =
@@ -467,7 +486,12 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
       """|object A{
          |  def hello(a: String, u@@)
          |}""".stripMargin,
-      ""
+      """|unsafeExceptions scala
+         |unchecked scala
+         |unsafe - scala.caps
+         |unsafeNulls - scala.runtime.stdLibPatches.language
+         |unused - scala.annotation """.stripMargin,
+      topLines = Some(5)
     )
 
   @Test def `extends-class` =
