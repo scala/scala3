@@ -1373,3 +1373,129 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |  test(@@""".stripMargin,
       ""
     )
+
+  @Test def `type-var-position` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[A@@, C]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |     ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-1` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[@@A, C]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |     ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-2` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[A@@
+         |  , C]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |     ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-3` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[A, C@@]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |        ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-4` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[A,@@ C]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |        ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-5` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[A, @@C]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |        ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-6` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[
+         |    A@@,
+         |    C
+         |  ]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |     ^
+         |""".stripMargin
+    )
+
+  @Test def `type-var-position-7` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[
+         |    A,
+         |    C@@
+         |  ]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |        ^
+         |""".stripMargin
+     )
+
+  @Test def `type-var-position-8` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[
+         |    A,
+         |    @@C
+         |  ]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |        ^
+         |""".stripMargin
+     )
+
+  @Test def `type-var-position-9` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[
+         |    A,
+         |    C
+         |  @@]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |        ^
+         |""".stripMargin
+     )
+
+  @Test def `type-var-position-10` =
+    check(
+      """|trait Test[A, B]:
+         |  def doThing[C](f: B => Test[@@
+         |    A,
+         |    C
+         |  ]) = ???
+         |""".stripMargin,
+      """|Test[A, B]: Test
+         |     ^
+         |""".stripMargin
+     )
