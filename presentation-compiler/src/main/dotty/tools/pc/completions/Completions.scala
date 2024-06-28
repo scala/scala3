@@ -55,8 +55,8 @@ class Completions(
 
   val coursierComplete = new CoursierComplete(BuildInfo.scalaVersion)
 
+  private lazy val adjustedPath = Completion.resolveTypedOrUntypedPath(path, pos)
   private lazy val completionMode =
-    val adjustedPath = Completion.resolveTypedOrUntypedPath(path, pos)
     val mode = Completion.completionMode(adjustedPath, pos)
     path match
       case Literal(Constant(_: String)) :: _ => Mode.Term // literal completions
@@ -450,6 +450,7 @@ class Completions(
         val args = NamedArgCompletions.contribute(
           pos,
           path,
+          adjustedPath,
           indexedContext,
           config.isCompletionSnippetsEnabled()
         )

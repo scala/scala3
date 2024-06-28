@@ -1038,3 +1038,71 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       topLines = Some(1),
     )
+
+  @Test def `second-first` =
+    check(
+      """|object Main {
+         |  def foo(aaa: Int, bbb: Int, ccc: Int) = aaa + bbb + ccc
+         |  val k = foo (
+         |    bbb = 123,
+         |    aa@@
+         |  )
+         |} 
+         |""".stripMargin,
+      """|aaa = : Int
+         |""".stripMargin,
+      topLines = Some(1),
+    )
+
+  @Test def `second-first2` =
+    check(
+      """|object Main {
+         |  def foo(aaa: Int, bbb: Int, ccc: Int) = aaa + bbb + ccc
+         |  val k = foo (
+         |    bbb = 123,
+         |    ccc = 123,
+         |    aa@@
+         |  )
+         |} 
+         |""".stripMargin,
+      """|aaa = : Int
+         |""".stripMargin,
+      topLines = Some(1),
+    )
+
+  @Test def `second-first3` =
+    check(
+      """|object Main {
+         |  def foo(ddd: Int)(aaa: Int, bbb: Int, ccc: Int) = aaa + bbb + ccc
+         |  val k = foo(123)(
+         |    bbb = 123,
+         |    ccc = 123,
+         |    aa@@
+         |  )
+         |} 
+         |""".stripMargin,
+      """|aaa = : Int
+         |""".stripMargin,
+      topLines = Some(1),
+    )
+
+  @Test def `second-first4` =
+    check(
+      """|object O:
+         |  val hello: (x: Int, y: Int) => Unit = (x, _) => println(x)
+         |val k = O.hello(y = 1, @@)
+         |""".stripMargin,
+      """|x = : Int
+         |""".stripMargin,
+      topLines = Some(1),
+    )
+
+  @Test def `second-first5` =
+    check(
+      """|val hello: (x: Int) => Int => (str: String, ccc: String) => Unit = x => j => (str, _) => println(str)
+         |val k = hello(x = 1)(2)(ccc = "abc", @@)
+         |""".stripMargin,
+      """|str = : String
+         | """.stripMargin,
+      topLines = Some(1),
+    )
