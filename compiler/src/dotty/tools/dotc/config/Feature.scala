@@ -121,7 +121,8 @@ object Feature:
 
   def namedTypeArgsEnabled(using Context) = enabled(namedTypeArguments)
 
-  def clauseInterleavingEnabled(using Context) = enabled(clauseInterleaving)
+  def clauseInterleavingEnabled(using Context) =
+    sourceVersion.isAtLeast(`3.6`) || enabled(clauseInterleaving)
 
   def genericNumberLiteralsEnabled(using Context) = enabled(genericNumberLiterals)
 

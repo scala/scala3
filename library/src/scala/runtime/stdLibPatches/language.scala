@@ -67,6 +67,7 @@ object language:
       * @see [[https://github.com/scala/improvement-proposals/blob/main/content/clause-interleaving.md]]
       */
     @compileTimeOnly("`clauseInterleaving` can only be used at compile time in import statements")
+    @deprecated("`clauseInterleaving` is now standard, no language import is needed", since = "3.6")
     object clauseInterleaving
 
     /** Experimental support for pure function type syntax

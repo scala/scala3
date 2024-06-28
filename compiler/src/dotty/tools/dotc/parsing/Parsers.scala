@@ -3836,9 +3836,6 @@ object Parsers {
 
     /** DefDef  ::=  DefSig [‘:’ Type] [‘=’ Expr]
      *            |  this TypelessClauses [DefImplicitClause] `=' ConstrExpr
-     *  DefSig  ::=  id [DefTypeParamClause] DefTermParamClauses
-     *
-     * if clauseInterleaving is enabled:
      *  DefSig  ::=  id [DefParamClauses] [DefImplicitClause]
      */
     def defDefOrDcl(start: Offset, mods: Modifiers, numLeadParams: Int = 0): DefDef = atSpan(start, nameStart) {
@@ -3878,13 +3875,11 @@ object Parsers {
         val ident = termIdent()
         var name = ident.name.asTermName
         val paramss =
-          if in.featureEnabled(Feature.clauseInterleaving) then
-            // If you are making interleaving stable manually, please refer to the PR introducing it instead, section "How to make non-experimental"
+          if Feature.clauseInterleavingEnabled(using in.languageImportContext) then
             typeOrTermParamClauses(ParamOwner.Def, numLeadParams)
           else
             val tparams = typeParamClauseOpt(ParamOwner.Def)
             val vparamss = termParamClauses(ParamOwner.Def, numLeadParams)
-
             joinParams(tparams, vparamss)
 
         var tpt = fromWithinReturnType { typedOpt() }
