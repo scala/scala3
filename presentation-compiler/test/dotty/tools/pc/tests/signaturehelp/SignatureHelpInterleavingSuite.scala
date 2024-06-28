@@ -8,9 +8,6 @@ import java.nio.file.Path
 
 class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
 
-  override protected def scalacOptions(classpath: Seq[Path]): Seq[String] =
-    List("-language:experimental.clauseInterleaving")
-
   @Test def `proper-position-1` =
     check(
       """

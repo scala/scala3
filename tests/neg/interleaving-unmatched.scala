@@ -1,4 +1,3 @@
-import scala.language.experimental.clauseInterleaving
 
 object unmatched:
     def f1[T (x: T)] = ??? // error

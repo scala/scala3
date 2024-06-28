@@ -1,4 +1,3 @@
-import scala.language.experimental.clauseInterleaving
 
 object functorInterleaving:
   //taken from https://dotty.epfl.ch/docs/reference/contextual/type-classes.html

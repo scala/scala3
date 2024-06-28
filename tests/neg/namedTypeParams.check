@@ -92,11 +92,11 @@
    |  illegal repeated type application
    |  You might have meant something like:
    |  Test.f[Y = String, Int]
--- [E102] Syntax Error: tests/neg/namedTypeParams.scala:33:9 -----------------------------------------------------------
-33 |  f2[Y = String][X = Int](1, "") // error: Y is undefined
+-- [E102] Syntax Error: tests/neg/namedTypeParams.scala:32:9 -----------------------------------------------------------
+32 |  f2[Y = String][X = Int](1, "") // error: Y is undefined
    |         ^^^^^^
    |         Type parameter Y is undefined. Expected one of X.
--- [E102] Syntax Error: tests/neg/namedTypeParams.scala:34:9 -----------------------------------------------------------
-34 |  f2[Y = String](1, "") // error: Y is undefined
+-- [E102] Syntax Error: tests/neg/namedTypeParams.scala:33:9 -----------------------------------------------------------
+33 |  f2[Y = String](1, "") // error: Y is undefined
    |         ^^^^^^
    |         Type parameter Y is undefined. Expected one of X.
