@@ -2831,18 +2831,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         false
     Existential.isExistentialVar(tp1) && canInstantiateWith(assocExistentials)
 
-  /** Are tp1, tp2 termRefs that can be linked? This should never be called
-   *  normally, since exietential variables appear only in capture sets
-   *  which are in annotations that are ignored during normal typing. The real
-   *  work is done in CaptureSet#subsumes which calls linkOK directly.
-   */
-  private def existentialVarsConform(tp1: Type, tp2: Type) =
-    tp2 match
-      case tp2: TermParamRef => tp1 match
-        case tp1: CaptureRef if tp1.isTrackableRef => subsumesExistentially(tp2, tp1)
-        case _ => false
-      case _ => false
-
   /** bi-map taking existentials to the left of a comparison to matching
    *  existentials on the right. This is not a bijection. However
    *  we have `forwards(backwards(bv)) == bv` for an existentially bound `bv`.
