@@ -2130,7 +2130,14 @@ object Build {
     republishRepo := target.value / "republish",
     packResourceDir += (republishRepo.value / "bin" -> "bin"),
     packResourceDir += (republishRepo.value / "maven2" -> "maven2"),
-    Compile / pack := (Compile / pack).dependsOn(republish).value,
+    packResourceDir += (republishRepo.value / "etc" -> "etc"),
+    republishCommandLibs +=
+      ("scala" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "tasty-core")),
+    republishCommandLibs +=
+      ("with_compiler" -> List("scala3-staging", "scala3-tasty-inspector", "^!scala3-interfaces", "^!scala3-compiler", "^!scala3-library", "^!tasty-core")),
+    republishCommandLibs +=
+      ("scaladoc" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "tasty-core", "scala3-tasty-inspector", "scaladoc")),
+    Compile / pack := republishPack.value,
   )
 
   lazy val dist = project.asDist(Bootstrapped)
@@ -2170,7 +2177,7 @@ object Build {
       republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishExtraProps += ("cli_version" -> scalaCliLauncherVersion),
-      mappings += (republishRepo.value / "etc" / "EXTRA_PROPERTIES" -> "EXTRA_PROPERTIES"),
+      mappings += (republishRepo.value / "EXTRA_PROPERTIES" -> "EXTRA_PROPERTIES"),
       republishLaunchers +=
         ("scala-cli.exe" -> s"zip+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersionWindows/scala-cli-x86_64-pc-win32.zip!/scala-cli.exe")
     )
