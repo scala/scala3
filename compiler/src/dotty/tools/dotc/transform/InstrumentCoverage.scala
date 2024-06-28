@@ -101,7 +101,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         // the internal line number is 0-base https://github.com/lampepfl/dotty/blob/18ada516a85532524a39a962b2ddecb243c65376/compiler/src/dotty/tools/dotc/util/SourceFile.scala#L173-L176
         line = pos.line + 1,
         desc = sourceFile.content.slice(pos.start, pos.end).mkString,
-        symbolName = tree.symbol.name.toSimpleName.toString,
+        symbolName = tree.symbol.name.toSimpleName.show,
         treeName = tree.getClass.getSimpleName.nn,
         branch
       )

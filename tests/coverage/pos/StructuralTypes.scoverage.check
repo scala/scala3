@@ -106,9 +106,9 @@ def selectDynamic
 5
 StructuralTypes.scala
 covtest
-StructuralTypes$
+StructuralTypes
 Object
-covtest.StructuralTypes$
+covtest.StructuralTypes
 test
 277
 293
@@ -123,9 +123,9 @@ false
 6
 StructuralTypes.scala
 covtest
-StructuralTypes$
+StructuralTypes
 Object
-covtest.StructuralTypes$
+covtest.StructuralTypes
 test
 295
 306
@@ -140,9 +140,9 @@ false
 7
 StructuralTypes.scala
 covtest
-StructuralTypes$
+StructuralTypes
 Object
-covtest.StructuralTypes$
+covtest.StructuralTypes
 test
 333
 344
@@ -157,9 +157,9 @@ person.name
 8
 StructuralTypes.scala
 covtest
-StructuralTypes$
+StructuralTypes
 Object
-covtest.StructuralTypes$
+covtest.StructuralTypes
 test
 234
 242
