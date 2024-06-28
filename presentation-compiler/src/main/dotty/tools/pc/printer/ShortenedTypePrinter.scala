@@ -503,7 +503,7 @@ class ShortenedTypePrinter(
         case head :: Nil => s": $head"
         case many => many.mkString(": ", ": ", "")
       s"$keywordName$paramTypeString$bounds"
-    else if param.is(Flags.Given) && param.name.toString.contains('$') then
+    else if param.isAllOf(Given | Param) && param.name.startsWith("x$") then
       // For Anonymous Context Parameters
       // print only type string
       // e.g. "using Ord[T]" instead of "using x$0: Ord[T]"

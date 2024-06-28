@@ -277,7 +277,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
         if (t.symbol.exists && t.hasType) {
           if (!t.symbol.isCompleted) t.symbol.info = UnspecifiedErrorType
           t.symbol.annotations.foreach { annot =>
-            /* In some cases annotations are are used on themself (possibly larger cycles).
+            /* In some cases annotations are used on themself (possibly larger cycles).
             *  This is the case with the java.lang.annotation.Target annotation, would end
             *  in an infinite loop while cleaning. The `seen` is added to ensure that those
             *  trees are not cleand twice.

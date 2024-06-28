@@ -551,13 +551,18 @@ class DottyLanguageServer extends LanguageServer
   override def signatureHelp(params: TextDocumentPositionParams) = computeAsync { canceltoken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
-    implicit def ctx: Context = driver.currentCtx
 
-    val pos = sourcePosition(driver, uri, params.getPosition)
-    val trees = driver.openedTrees(uri)
-    val path = Interactive.pathTo(trees, pos)
-    val (paramN, callableN, signatures) = Signatures.signatureHelp(path, pos.span)
-    new SignatureHelp(signatures.map(signatureToSignatureInformation).asJava, callableN, paramN)
+    driver.compilationUnits.get(uri) match
+      case Some(unit) =>
+        given newCtx: Context = driver.currentCtx.fresh.setCompilationUnit(unit)
+        val pos = sourcePosition(driver, uri, params.getPosition)
+        val adjustedSpan = pos.span.withEnd(pos.span.end + 1)
+        val path = Interactive.pathTo(ctx.compilationUnit.tpdTree, adjustedSpan)
+        val (paramN, callableN, signatures) = Signatures.signatureHelp(path, adjustedSpan)
+
+        new SignatureHelp(signatures.map(signatureToSignatureInformation).asJava, callableN, paramN)
+
+      case _ => new SignatureHelp()
 
   }
 
@@ -929,23 +934,25 @@ object DottyLanguageServer {
 
   /** Convert `signature` to a `SignatureInformation` */
   def signatureToSignatureInformation(signature: Signatures.Signature): lsp4j.SignatureInformation = {
-    val tparams = signature.tparams.map(Signatures.Param("", _))
     val paramInfoss =
-      (tparams ::: signature.paramss.flatten).map(paramToParameterInformation)
+      (signature.paramss.flatten).map(paramToParameterInformation)
     val paramLists =
-      if signature.paramss.forall(_.isEmpty) && tparams.nonEmpty then
-        ""
-      else
-        signature.paramss
-          .map { paramList =>
-            val labels = paramList.map(_.show)
-            val prefix = if paramList.exists(_.isImplicit) then "using " else ""
-            labels.mkString(prefix, ", ", "")
-          }
-          .mkString("(", ")(", ")")
-    val tparamsLabel = if (signature.tparams.isEmpty) "" else signature.tparams.mkString("[", ", ", "]")
+      signature.paramss
+        .map { paramList =>
+          val labels = paramList.map(_.show)
+          val isImplicit = paramList.exists:
+            case p: Signatures.MethodParam => p.isImplicit
+            case _ => false
+          val prefix = if isImplicit then "using " else ""
+          val isTypeParams = paramList.forall(_.isInstanceOf[Signatures.TypeParam]) && paramList.nonEmpty
+          val wrap: String => String = label => if isTypeParams then
+            s"[$label]"
+          else
+            s"($label)"
+          wrap(labels.mkString(prefix, ", ", ""))
+        }.mkString
     val returnTypeLabel = signature.returnType.map(t => s": $t").getOrElse("")
-    val label = s"${signature.name}$tparamsLabel$paramLists$returnTypeLabel"
+    val label = s"${signature.name}$paramLists$returnTypeLabel"
     val documentation = signature.doc.map(DottyLanguageServer.markupContent)
     val sig = new lsp4j.SignatureInformation(label)
     sig.setParameters(paramInfoss.asJava)
