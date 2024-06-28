@@ -25,6 +25,28 @@ import io.{AbstractFile, ZipArchive}
 import scala.util.control.NonFatal
 
 object ClassfileParser {
+  object Header:
+    opaque type Version = Long
+
+    object Version:
+      val Unknown: Version = -1L
+
+      def brokenVersionAddendum(classfileVersion: Version)(using Context): String =
+        if classfileVersion.exists then
+          val (maj, min) = (classfileVersion.majorVersion, classfileVersion.minorVersion)
+          val scalaVersion = config.Properties.versionNumberString
+          i""" (version $maj.$min),
+            |  please check the JDK compatibility of your Scala version ($scalaVersion)"""
+        else
+          ""
+
+      def apply(major: Int, minor: Int): Version =
+        (major.toLong << 32) | (minor.toLong & 0xFFFFFFFFL)
+      extension (version: Version)
+        def exists: Boolean = version != Unknown
+        def majorVersion: Int = (version >> 32).toInt
+        def minorVersion: Int = (version & 0xFFFFFFFFL).toInt
+
   import ClassfileConstants.*
 
   /** Marker trait for unpicklers that can be embedded in classfiles. */
@@ -53,7 +75,7 @@ object ClassfileParser {
     }
   }
 
-  private[classfile] def parseHeader(classfile: AbstractFile)(using in: DataReader): Unit = {
+  private[classfile] def parseHeader(classfile: AbstractFile)(using in: DataReader): Header.Version = {
     val magic = in.nextInt
     if (magic != JAVA_MAGIC)
       throw new IOException(s"class file '${classfile}' has wrong magic number 0x${toHexString(magic)}, should be 0x${toHexString(JAVA_MAGIC)}")
@@ -64,9 +86,7 @@ object ClassfileParser {
          (minorVersion < JAVA_MINOR_VERSION)))
       throw new IOException(
         s"class file '${classfile}' has unknown version $majorVersion.$minorVersion, should be at least $JAVA_MAJOR_VERSION.$JAVA_MINOR_VERSION")
-    if majorVersion > JAVA_LATEST_MAJOR_VERSION then
-      throw new IOException(
-        s"class file '${classfile}' has unknown version $majorVersion.$minorVersion, and was compiled by a newer JDK than supported by this Scala version, please update to a newer Scala version.")
+    Header.Version(majorVersion, minorVersion)
   }
 
 }
@@ -89,6 +109,7 @@ class ClassfileParser(
   protected var classTParams: Map[Name, Symbol] = Map()
 
   private var Scala2UnpicklingMode = Mode.Scala2Unpickling
+  private var classfileVersion: Header.Version = Header.Version.Unknown
 
   classRoot.info = NoLoader().withDecls(instanceScope)
   moduleRoot.info = NoLoader().withDecls(staticScope).withSourceModule(staticModule)
@@ -101,7 +122,7 @@ class ClassfileParser(
   def run()(using Context): Option[Embedded] = try ctx.base.reusableDataReader.withInstance { reader =>
     implicit val reader2 = reader.reset(classfile)
     report.debuglog("[class] >> " + classRoot.fullName)
-    parseHeader(classfile)
+    classfileVersion = parseHeader(classfile)
     this.pool = new ConstantPool
     val res = parseClass()
     this.pool =  null
@@ -110,9 +131,11 @@ class ClassfileParser(
   catch {
     case e: RuntimeException =>
       if (ctx.debug) e.printStackTrace()
+      val addendum = Header.Version.brokenVersionAddendum(classfileVersion)
       throw new IOException(
-        i"""class file ${classfile.canonicalPath} is broken, reading aborted with ${e.getClass}
-           |${Option(e.getMessage).getOrElse("")}""")
+        i"""  class file ${classfile.canonicalPath} is broken$addendum,
+          |  reading aborted with ${e.getClass}:
+          |  ${Option(e.getMessage).getOrElse("")}""")
   }
 
   /** Return the class symbol of the given name. */
