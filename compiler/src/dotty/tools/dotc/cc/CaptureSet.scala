@@ -152,33 +152,6 @@ sealed abstract class CaptureSet extends Showable:
     cs.addDependent(this)(using ctx, UnrecordedState)
     this
 
-  /** x subsumes x
-   *   this subsumes this.f
-   *   x subsumes y  ==>  x* subsumes y, x subsumes y?
-   *   x subsumes y  ==>  x* subsumes y*, x? subsumes y?
-   *   x: x1.type /\ x1 subsumes y  ==>  x subsumes y
-   */
-  extension (x: CaptureRef)
-     private def subsumes(y: CaptureRef)(using Context): Boolean =
-      (x eq y)
-      || x.isRootCapability
-      || y.match
-          case y: TermRef =>
-            (y.prefix eq x)
-            || y.info.match
-                case y1: SingletonCaptureRef => x.subsumes(y1)
-                case _ => false
-          case MaybeCapability(y1) => x.stripMaybe.subsumes(y1)
-          case _ => false
-      || x.match
-          case ReachCapability(x1) => x1.subsumes(y.stripReach)
-          case x: TermRef =>
-            x.info match
-              case x1: SingletonCaptureRef => x1.subsumes(y)
-              case _ => false
-          case x: TermParamRef => subsumesExistentially(x, y)
-          case _ => false
-
   /** {x} <:< this   where <:< is subcapturing, but treating all variables
    *                 as frozen.
    */

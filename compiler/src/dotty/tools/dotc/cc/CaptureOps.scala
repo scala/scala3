@@ -168,6 +168,60 @@ extension (tree: Tree)
 
 extension (tp: Type)
 
+  /** Is this type a CaptureRef that can be tracked?
+   *  This is true for
+   *    - all ThisTypes and all TermParamRef,
+   *    - stable TermRefs with NoPrefix or ThisTypes as prefixes,
+   *    - the root capability `caps.cap`
+   *    - abstract or parameter TypeRefs that derive from caps.CapSet
+   *    - annotated types that represent reach or maybe capabilities
+   */
+  final def isTrackableRef(using Context): Boolean = tp match
+    case _: (ThisType | TermParamRef) =>
+      true
+    case tp: TermRef =>
+      ((tp.prefix eq NoPrefix)
+      || tp.symbol.is(ParamAccessor) && tp.prefix.isThisTypeOf(tp.symbol.owner)
+      || tp.isRootCapability
+      ) && !tp.symbol.isOneOf(UnstableValueFlags)
+    case tp: TypeRef =>
+      tp.symbol.isAbstractOrParamType && tp.derivesFrom(defn.Caps_CapSet)
+    case tp: TypeParamRef =>
+      tp.derivesFrom(defn.Caps_CapSet)
+    case AnnotatedType(parent, annot) =>
+      annot.symbol == defn.ReachCapabilityAnnot
+      || annot.symbol == defn.MaybeCapabilityAnnot
+    case _ =>
+      false
+
+  /** The capture set of a type. This is:
+    *   - For trackable capture references: The singleton capture set consisting of
+    *     just the reference, provided the underlying capture set of their info is not empty.
+    *   - For other capture references: The capture set of their info
+    *   - For all other types: The result of CaptureSet.ofType
+    */
+  final def captureSet(using Context): CaptureSet = tp match
+    case tp: CaptureRef if tp.isTrackableRef =>
+      val cs = tp.captureSetOfInfo
+      if cs.isAlwaysEmpty then cs else tp.singletonCaptureSet
+    case tp: SingletonCaptureRef => tp.captureSetOfInfo
+    case _ => CaptureSet.ofType(tp, followResult = false)
+
+  /** A type capturing `ref` */
+  def capturing(ref: CaptureRef)(using Context): Type =
+    if tp.captureSet.accountsFor(ref) then tp
+    else CapturingType(tp, ref.singletonCaptureSet)
+
+  /** A type capturing the capture set `cs`. If this type is already a capturing type
+   *  the two capture sets are combined.
+   */
+  def capturing(cs: CaptureSet)(using Context): Type =
+    if cs.isAlwaysEmpty || cs.isConst && cs.subCaptures(tp.captureSet, frozen = true).isOK
+    then tp
+    else tp match
+      case CapturingType(parent, cs1) => parent.capturing(cs1 ++ cs)
+      case _ => CapturingType(tp, cs)
+
   /** @pre `tp` is a CapturingType */
   def derivedCapturingType(parent: Type, refs: CaptureSet)(using Context): Type = tp match
     case tp @ CapturingType(p, r) =>
