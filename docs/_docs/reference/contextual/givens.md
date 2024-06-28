@@ -88,6 +88,45 @@ given (using config: Config): Factory = MemoizingFactory(config)
 An alias given can have type parameters and context parameters just like any other given,
 but it can only implement a single type.
 
+## Abstract Givens
+
+A given may be an abstract member, with the restriction that it must have an explicit name.
+
+```scala
+trait HasOrd[T]:
+  given ord: Ord[T]
+```
+
+## More Structural Givens
+
+If an alias given instance is analogous to a lazy val,
+and a structural given instance is analogous to an object,
+albeit an object with an explicit type,
+then a structural given may also be specified without an explicit type:
+
+```scala
+class IntOrd extends Ord[Int]:
+  def compare(x: Int, y: Int) =
+    if x < y then -1 else if x > y then +1 else 0
+
+given IntOrd()
+```
+
+Compare this syntax to:
+
+```scala
+object intOrd extends IntOrd()
+```
+
+The empty parentheses are optional in the extends clause when defining a class,
+but are required when defining a given.
+
+Further mixins are allowed as usual:
+
+```scala
+given IntOrd() with OrdOps[Int]
+```
+
 ## Given Macros
 
 Given aliases can have the `inline` and `transparent` modifiers.
@@ -191,4 +230,4 @@ of given instances:
 - A _structural instance_ contains one or more types or constructor applications,
   followed by `with` and a template body that contains member definitions of the instance.
 - An _alias instance_ contains a type, followed by `=` and a right-hand side expression.
-- An _abstract instance_ contains just the type, which is not followed by anything.
+- An _abstract instance_ contains just the name and type, which is not followed by anything.
