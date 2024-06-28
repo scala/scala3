@@ -21,9 +21,9 @@
 0
 i16502.scala
 <empty>
-i16502$package$
+i16502$package
 Object
-<empty>.i16502$package$
+<empty>.i16502$package
 $anonfun
 76
 85
@@ -38,9 +38,9 @@ Future(1)
 1
 i16502.scala
 <empty>
-i16502$package$
+i16502$package
 Object
-<empty>.i16502$package$
+<empty>.i16502$package
 asyncSum
 27
 39
@@ -55,9 +55,9 @@ def asyncSum
 2
 i16502.scala
 <empty>
-i16502$package$
+i16502$package
 Object
-<empty>.i16502$package$
+<empty>.i16502$package
 Test
 174
 182
@@ -72,9 +72,9 @@ asyncSum
 3
 i16502.scala
 <empty>
-i16502$package$
+i16502$package
 Object
-<empty>.i16502$package$
+<empty>.i16502$package
 Test
 87
 101

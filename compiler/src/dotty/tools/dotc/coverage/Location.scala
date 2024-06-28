@@ -31,9 +31,9 @@ object Location:
 
     val ownerDenot = ctx.owner.denot
     val enclosingClass = ownerDenot.enclosingClass
-    val packageName = ownerDenot.enclosingPackageClass.fullName.toSimpleName.toString
-    val className = enclosingClass.name.toSimpleName.toString
-    val methodName = ownerDenot.enclosingMethod.name.toSimpleName.toString
+    val packageName = ownerDenot.enclosingPackageClass.fullName.toSimpleName.show
+    val className = enclosingClass.name.toSimpleName.show
+    val methodName = ownerDenot.enclosingMethod.name.toSimpleName.show
 
     val classType: String =
       if enclosingClass.is(Trait) then "Trait"
