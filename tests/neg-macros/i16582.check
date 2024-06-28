@@ -1,9 +1,15 @@
 
--- Error: tests/neg-macros/i16582/Test_2.scala:5:27 --------------------------------------------------------------------
-5 |  val o2 = ownerDoesNotWork(2) // error
+-- Error: tests/neg-macros/i16582/Test_2.scala:6:27 --------------------------------------------------------------------
+6 |  val o2 = ownerDoesNotWork(2) // error
   |           ^^^^^^^^^^^^^^^^^^^
   |           Exception occurred while executing macro expansion.
   |           dotty.tools.dotc.core.CyclicReference: Recursive value o2 needs type
+  |
+  |           The error occurred while trying to compute the signature of method test
+  |             which required to compute the signature of value o2
+  |             which required to compute the signature of value o2
+  |
+  |            Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace.
   |
   |           See full stack trace using -Ydebug
   |---------------------------------------------------------------------------------------------------------------------
