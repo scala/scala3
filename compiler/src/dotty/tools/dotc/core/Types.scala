@@ -518,9 +518,43 @@ object Types extends TypeUtils {
     def isDeclaredVarianceLambda: Boolean = false
 
     /** Is this type a CaptureRef that can be tracked?
-     *  This is true for all ThisTypes or ParamRefs but only for some NamedTypes.
+     *  This is true for
+     *    - all ThisTypes and all TermParamRef,
+     *    - stable TermRefs with NoPrefix or ThisTypes as prefixes,
+     *    - the root capability `caps.cap`
+     *    - abstract or parameter TypeRefs that derive from caps.CapSet
+     *    - annotated types that represent reach or maybe capabilities
      */
-    def isTrackableRef(using Context): Boolean = false
+    final def isTrackableRef(using Context): Boolean = this match
+      case _: (ThisType | TermParamRef) =>
+        true
+      case tp: TermRef =>
+        ((tp.prefix eq NoPrefix)
+        || tp.symbol.is(ParamAccessor) && tp.prefix.isThisTypeOf(tp.symbol.owner)
+        || tp.isRootCapability
+        ) && !tp.symbol.isOneOf(UnstableValueFlags)
+      case tp: TypeRef =>
+        tp.symbol.isAbstractOrParamType && tp.derivesFrom(defn.Caps_CapSet)
+      case tp: TypeParamRef =>
+        tp.derivesFrom(defn.Caps_CapSet)
+      case AnnotatedType(parent, annot) =>
+        annot.symbol == defn.ReachCapabilityAnnot
+        || annot.symbol == defn.MaybeCapabilityAnnot
+      case _ =>
+        false
+
+    /** The capture set of a type. This is:
+     *   - For trackable capture references: The singleton capture set consisting of
+     *     just the reference, provided the underlying capture set of their info is not empty.
+     *   - For other capture references: The capture set of their info
+     *   - For all other types: The result of CaptureSet.ofType
+     */
+    final def captureSet(using Context): CaptureSet = this match
+      case tp: CaptureRef if tp.isTrackableRef =>
+        val cs = tp.captureSetOfInfo
+        if cs.isAlwaysEmpty then cs else tp.singletonCaptureSet
+      case tp: SingletonCaptureRef => tp.captureSetOfInfo
+      case _ => CaptureSet.ofType(this, followResult = false)
 
     /** Does this type contain wildcard types? */
     final def containsWildcardTypes(using Context) =
@@ -1657,9 +1691,6 @@ object Types extends TypeUtils {
       case _                  => if (isRepeatedParam) this.argTypesHi.head else this
     }
 
-    /** The capture set of this type. Overridden and cached in CaptureRef */
-    def captureSet(using Context): CaptureSet = CaptureSet.ofType(this, followResult = false)
-
     // ----- Normalizing typerefs over refined types ----------------------------
 
     /** If this normalizes* to a refinement type that has a refinement for `name` (which might be followed
@@ -2275,31 +2306,54 @@ object Types extends TypeUtils {
       isTrackableRef && (isMaxCapability || !captureSetOfInfo.isAlwaysEmpty)
 
     /** Is this a reach reference of the form `x*`? */
-    def isReach(using Context): Boolean = false // overridden in AnnotatedType
+    final def isReach(using Context): Boolean = this match
+      case AnnotatedType(_, annot) => annot.symbol == defn.ReachCapabilityAnnot
+      case _ => false
 
     /** Is this a maybe reference of the form `x?`? */
-    def isMaybe(using Context): Boolean = false // overridden in AnnotatedType
+    final def isMaybe(using Context): Boolean = this match
+      case AnnotatedType(_, annot) => annot.symbol == defn.MaybeCapabilityAnnot
+      case _ => false
 
-    def stripReach(using Context): CaptureRef = this // overridden in AnnotatedType
-    def stripMaybe(using Context): CaptureRef = this // overridden in AnnotatedType
+    final def stripReach(using Context): CaptureRef =
+      if isReach then
+        val AnnotatedType(parent: CaptureRef, _) = this: @unchecked
+        parent
+      else this
+
+    final def stripMaybe(using Context): CaptureRef =
+      if isMaybe then
+        val AnnotatedType(parent: CaptureRef, _) = this: @unchecked
+        parent
+      else this
 
     /** Is this reference the generic root capability `cap` ? */
-    def isRootCapability(using Context): Boolean = false
+    final def isRootCapability(using Context): Boolean = this match
+      case tp: TermRef => tp.name == nme.CAPTURE_ROOT && tp.symbol == defn.captureRoot
+      case _ => false
 
     /** Is this reference capability that does not derive from another capability ? */
-    def isMaxCapability(using Context): Boolean = false
+    final def isMaxCapability(using Context): Boolean = this match
+      case tp: TermRef => tp.isRootCapability || tp.info.derivesFrom(defn.Caps_Exists)
+      case tp: TermParamRef => tp.underlying.derivesFrom(defn.Caps_Exists)
+      case _ => false
 
     /** Normalize reference so that it can be compared with `eq` for equality */
-    def normalizedRef(using Context): CaptureRef = this
+    final def normalizedRef(using Context): CaptureRef = this match
+      case tp @ AnnotatedType(parent: CaptureRef, annot) if isTrackableRef =>
+        tp.derivedAnnotatedType(parent.normalizedRef, annot)
+      case tp: TermRef if isTrackableRef =>
+        tp.symbol.termRef
+      case _ => this
 
     /** The capture set consisting of exactly this reference */
-    def singletonCaptureSet(using Context): CaptureSet.Const =
+    final def singletonCaptureSet(using Context): CaptureSet.Const =
       if mySingletonCaptureSet == null then
         mySingletonCaptureSet = CaptureSet(this.normalizedRef)
       mySingletonCaptureSet.uncheckedNN
 
     /** The capture set of the type underlying this reference */
-    def captureSetOfInfo(using Context): CaptureSet =
+    final def captureSetOfInfo(using Context): CaptureSet =
       if ctx.runId == myCaptureSetRunId then myCaptureSet.nn
       else if myCaptureSet.asInstanceOf[AnyRef] eq CaptureSet.Pending then CaptureSet.empty
       else
@@ -2312,16 +2366,8 @@ object Types extends TypeUtils {
           myCaptureSetRunId = ctx.runId
         computed
 
-    def invalidateCaches() =
+    final def invalidateCaches() =
       myCaptureSetRunId = NoRunId
-
-    override def captureSet(using Context): CaptureSet =
-      val cs = captureSetOfInfo
-      if isTrackableRef then
-        if cs.isAlwaysEmpty then cs else singletonCaptureSet
-      else dealias match
-        case _: (TypeRef | TypeParamRef) => CaptureSet.empty
-        case _ => cs
 
   end CaptureRef
 
@@ -3015,26 +3061,6 @@ object Types extends TypeUtils {
     def implicitName(using Context): TermName = name
     def underlyingRef: TermRef = this
 
-    /** A term reference can be tracked if it is a local term ref to a value
-     *  or a method term parameter. References to term parameters of classes
-     *  cannot be tracked individually.
-     *  They are subsumed in the capture sets of the enclosing class.
-     *  TODO: ^^^ What about call-by-name?
-     */
-    override def isTrackableRef(using Context) =
-      ((prefix eq NoPrefix)
-      || symbol.is(ParamAccessor) && prefix.isThisTypeOf(symbol.owner)
-      || isRootCapability
-      ) && !symbol.isOneOf(UnstableValueFlags)
-
-    override def isRootCapability(using Context): Boolean =
-      name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
-
-    override def isMaxCapability(using Context): Boolean =
-      symbol == defn.captureRoot || info.derivesFrom(defn.Caps_Exists)
-
-    override def normalizedRef(using Context): CaptureRef =
-      if isTrackableRef then symbol.termRef else this
   }
 
   abstract case class TypeRef(override val prefix: Type,
@@ -3089,8 +3115,6 @@ object Types extends TypeUtils {
     def validated(using Context): this.type =
       this
 
-    override def isTrackableRef(using Context) =
-      symbol.isAbstractOrParamType && derivesFrom(defn.Caps_CapSet)
   }
 
   final class CachedTermRef(prefix: Type, designator: Designator, hc: Int) extends TermRef(prefix, designator) {
@@ -3191,8 +3215,6 @@ object Types extends TypeUtils {
           if ctx.mode.is(Mode.Interactive) || ctx.tolerateErrorsForBestEffort => cls.info
           // can happen in IDE if `cls` is stale
       }
-
-    override def isTrackableRef(using Context) = true
 
     override def computeHash(bs: Binders): Int = doHash(bs, tref)
 
@@ -4836,9 +4858,6 @@ object Types extends TypeUtils {
     type BT = TermLambda
     def kindString: String = "Term"
     def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
-    override def isTrackableRef(using Context) = true
-    override def isMaxCapability(using Context) =
-      underlying.derivesFrom(defn.Caps_Exists)
   }
 
   private final class TermParamRefImpl(binder: TermLambda, paramNum: Int) extends TermParamRef(binder, paramNum)
@@ -4867,8 +4886,6 @@ object Types extends TypeUtils {
       case bound: OrType   => occursIn(bound.tp1, fromBelow) || occursIn(bound.tp2, fromBelow)
       case _ => false
     }
-
-    override def isTrackableRef(using Context) = derivesFrom(defn.Caps_CapSet)
   }
 
   private final class TypeParamRefImpl(binder: TypeLambda, paramNum: Int) extends TypeParamRef(binder, paramNum)
@@ -5833,30 +5850,6 @@ object Types extends TypeUtils {
       }
       isRefiningCache
     }
-
-    override def isTrackableRef(using Context) =
-      (isReach || isMaybe) && parent.isTrackableRef
-
-    /** Is this a reach reference of the form `x*`? */
-    override def isReach(using Context): Boolean =
-      annot.symbol == defn.ReachCapabilityAnnot
-
-    /** Is this a reach reference of the form `x*`? */
-    override def isMaybe(using Context): Boolean =
-      annot.symbol == defn.MaybeCapabilityAnnot
-
-    override def stripReach(using Context): CaptureRef =
-      if isReach then parent.asInstanceOf[CaptureRef] else this
-
-    override def stripMaybe(using Context): CaptureRef =
-      if isMaybe then parent.asInstanceOf[CaptureRef] else this
-
-    override def normalizedRef(using Context): CaptureRef =
-      if isReach then AnnotatedType(stripReach.normalizedRef, annot) else this
-
-    override def captureSet(using Context): CaptureSet =
-      if isReach then super.captureSet
-      else CaptureSet.ofType(this, followResult = false)
 
     // equals comes from case class; no matching override is needed
 
