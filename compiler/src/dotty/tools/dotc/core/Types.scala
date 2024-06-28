@@ -38,7 +38,8 @@ import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
-import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, isCaptureChecking, isRetains, isRetainsLike}
+import cc.{CapturingType, CaptureRef, CaptureSet, SingletonCaptureRef, isTrackableRef,
+           derivedCapturingType, isBoxedCapturing, isCaptureChecking, isRetains, isRetainsLike}
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
@@ -516,45 +517,6 @@ object Types extends TypeUtils {
      *  but not others in the symbol's types.
      */
     def isDeclaredVarianceLambda: Boolean = false
-
-    /** Is this type a CaptureRef that can be tracked?
-     *  This is true for
-     *    - all ThisTypes and all TermParamRef,
-     *    - stable TermRefs with NoPrefix or ThisTypes as prefixes,
-     *    - the root capability `caps.cap`
-     *    - abstract or parameter TypeRefs that derive from caps.CapSet
-     *    - annotated types that represent reach or maybe capabilities
-     */
-    final def isTrackableRef(using Context): Boolean = this match
-      case _: (ThisType | TermParamRef) =>
-        true
-      case tp: TermRef =>
-        ((tp.prefix eq NoPrefix)
-        || tp.symbol.is(ParamAccessor) && tp.prefix.isThisTypeOf(tp.symbol.owner)
-        || tp.isRootCapability
-        ) && !tp.symbol.isOneOf(UnstableValueFlags)
-      case tp: TypeRef =>
-        tp.symbol.isAbstractOrParamType && tp.derivesFrom(defn.Caps_CapSet)
-      case tp: TypeParamRef =>
-        tp.derivesFrom(defn.Caps_CapSet)
-      case AnnotatedType(parent, annot) =>
-        annot.symbol == defn.ReachCapabilityAnnot
-        || annot.symbol == defn.MaybeCapabilityAnnot
-      case _ =>
-        false
-
-    /** The capture set of a type. This is:
-     *   - For trackable capture references: The singleton capture set consisting of
-     *     just the reference, provided the underlying capture set of their info is not empty.
-     *   - For other capture references: The capture set of their info
-     *   - For all other types: The result of CaptureSet.ofType
-     */
-    final def captureSet(using Context): CaptureSet = this match
-      case tp: CaptureRef if tp.isTrackableRef =>
-        val cs = tp.captureSetOfInfo
-        if cs.isAlwaysEmpty then cs else tp.singletonCaptureSet
-      case tp: SingletonCaptureRef => tp.captureSetOfInfo
-      case _ => CaptureSet.ofType(this, followResult = false)
 
     /** Does this type contain wildcard types? */
     final def containsWildcardTypes(using Context) =
@@ -2081,20 +2043,6 @@ object Types extends TypeUtils {
       case _ =>
         this
 
-    /** A type capturing `ref` */
-    def capturing(ref: CaptureRef)(using Context): Type =
-      if captureSet.accountsFor(ref) then this
-      else CapturingType(this, ref.singletonCaptureSet)
-
-    /** A type capturing the capture set `cs`. If this type is already a capturing type
-     *  the two capture sets are combined.
-     */
-    def capturing(cs: CaptureSet)(using Context): Type =
-      if cs.isAlwaysEmpty || cs.isConst && cs.subCaptures(captureSet, frozen = true).isOK then this
-      else this match
-        case CapturingType(parent, cs1) => parent.capturing(cs1 ++ cs)
-        case _ => CapturingType(this, cs)
-
     /** The set of distinct symbols referred to by this type, after all aliases are expanded */
     def coveringSet(using Context): Set[Symbol] =
       (new CoveringSetAccumulator).apply(Set.empty[Symbol], this)
@@ -2292,86 +2240,6 @@ object Types extends TypeUtils {
   trait SingletonType extends TypeProxy with ValueType {
     def isOverloaded(using Context): Boolean = false
   }
-
-  /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs */
-  trait CaptureRef extends TypeProxy, ValueType:
-    private var myCaptureSet: CaptureSet | Null = uninitialized
-    private var myCaptureSetRunId: Int = NoRunId
-    private var mySingletonCaptureSet: CaptureSet.Const | Null = null
-
-    /** Is the reference tracked? This is true if it can be tracked and the capture
-     *  set of the underlying type is not always empty.
-     */
-    final def isTracked(using Context): Boolean =
-      isTrackableRef && (isMaxCapability || !captureSetOfInfo.isAlwaysEmpty)
-
-    /** Is this a reach reference of the form `x*`? */
-    final def isReach(using Context): Boolean = this match
-      case AnnotatedType(_, annot) => annot.symbol == defn.ReachCapabilityAnnot
-      case _ => false
-
-    /** Is this a maybe reference of the form `x?`? */
-    final def isMaybe(using Context): Boolean = this match
-      case AnnotatedType(_, annot) => annot.symbol == defn.MaybeCapabilityAnnot
-      case _ => false
-
-    final def stripReach(using Context): CaptureRef =
-      if isReach then
-        val AnnotatedType(parent: CaptureRef, _) = this: @unchecked
-        parent
-      else this
-
-    final def stripMaybe(using Context): CaptureRef =
-      if isMaybe then
-        val AnnotatedType(parent: CaptureRef, _) = this: @unchecked
-        parent
-      else this
-
-    /** Is this reference the generic root capability `cap` ? */
-    final def isRootCapability(using Context): Boolean = this match
-      case tp: TermRef => tp.name == nme.CAPTURE_ROOT && tp.symbol == defn.captureRoot
-      case _ => false
-
-    /** Is this reference capability that does not derive from another capability ? */
-    final def isMaxCapability(using Context): Boolean = this match
-      case tp: TermRef => tp.isRootCapability || tp.info.derivesFrom(defn.Caps_Exists)
-      case tp: TermParamRef => tp.underlying.derivesFrom(defn.Caps_Exists)
-      case _ => false
-
-    /** Normalize reference so that it can be compared with `eq` for equality */
-    final def normalizedRef(using Context): CaptureRef = this match
-      case tp @ AnnotatedType(parent: CaptureRef, annot) if isTrackableRef =>
-        tp.derivedAnnotatedType(parent.normalizedRef, annot)
-      case tp: TermRef if isTrackableRef =>
-        tp.symbol.termRef
-      case _ => this
-
-    /** The capture set consisting of exactly this reference */
-    final def singletonCaptureSet(using Context): CaptureSet.Const =
-      if mySingletonCaptureSet == null then
-        mySingletonCaptureSet = CaptureSet(this.normalizedRef)
-      mySingletonCaptureSet.uncheckedNN
-
-    /** The capture set of the type underlying this reference */
-    final def captureSetOfInfo(using Context): CaptureSet =
-      if ctx.runId == myCaptureSetRunId then myCaptureSet.nn
-      else if myCaptureSet.asInstanceOf[AnyRef] eq CaptureSet.Pending then CaptureSet.empty
-      else
-        myCaptureSet = CaptureSet.Pending
-        val computed = CaptureSet.ofInfo(this)
-        if !isCaptureChecking || underlying.isProvisional then
-          myCaptureSet = null
-        else
-          myCaptureSet = computed
-          myCaptureSetRunId = ctx.runId
-        computed
-
-    final def invalidateCaches() =
-      myCaptureSetRunId = NoRunId
-
-  end CaptureRef
-
-  trait SingletonCaptureRef extends SingletonType, CaptureRef
 
   /** A trait for types that bind other types that refer to them.
    *  Instances are: LambdaType, RecType.
