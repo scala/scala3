@@ -1,1 +1,1 @@
-12: Pattern Match Exhaustivity: (_, FancyFoo(_))
+12: Pattern Match Exhaustivity: (_, NonExhaustive#FancyFoo(_))

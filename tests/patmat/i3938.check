@@ -1,1 +1,1 @@
-34: Pattern Match Exhaustivity: bar.C()
+34: Pattern Match Exhaustivity: foo.bar.C()
