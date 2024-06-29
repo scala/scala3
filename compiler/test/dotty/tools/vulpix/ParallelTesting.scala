@@ -746,13 +746,14 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       diffCheckfile(testSource, reporters, logger)
 
     override def maybeFailureMessage(testSource: TestSource, reporters: Seq[TestReporter]): Option[String] =
-      lazy val (map, expCount) = getWarnMapAndExpectedCount(testSource.sourceFiles.toIndexedSeq)
+      lazy val (expected, expCount) = getWarnMapAndExpectedCount(testSource.sourceFiles.toIndexedSeq)
       lazy val obtCount = reporters.foldLeft(0)(_ + _.warningCount)
-      lazy val (expected, unexpected) = getMissingExpectedWarnings(map, reporters.iterator.flatMap(_.diagnostics))
-      lazy val diagnostics = reporters.flatMap(_.diagnostics.toSeq.sortBy(_.pos.line).map(e => s" at ${e.pos.line + 1}: ${e.message}"))
-      def showLines(title: String, lines: Seq[String]) = if lines.isEmpty then "" else title + lines.mkString("\n", "\n", "")
-      def hasMissingAnnotations = expected.nonEmpty || unexpected.nonEmpty
-      def showDiagnostics = showLines("-> following the diagnostics:", diagnostics)
+      lazy val (unfulfilled, unexpected) = getMissingExpectedWarnings(expected, diagnostics.iterator)
+      lazy val diagnostics = reporters.flatMap(_.diagnostics.toSeq.sortBy(_.pos.line))
+      lazy val messages = diagnostics.map(d => s" at ${d.pos.line + 1}: ${d.message}")
+      def showLines(title: String, lines: Seq[String]) = if lines.isEmpty then "" else lines.mkString(s"$title\n", "\n", "")
+      def hasMissingAnnotations = unfulfilled.nonEmpty || unexpected.nonEmpty
+      def showDiagnostics = showLines("-> following the diagnostics:", messages)
       Option:
         if reporters.exists(_.errorCount > 0) then
           s"""Compilation failed for: ${testSource.title}
@@ -761,58 +762,63 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         else if expCount != obtCount then
           s"""|Wrong number of warnings encountered when compiling $testSource
               |expected: $expCount, actual: $obtCount
-              |${showLines("Unfulfilled expectations:", expected)}
+              |${showLines("Unfulfilled expectations:", unfulfilled)}
               |${showLines("Unexpected warnings:", unexpected)}
               |$showDiagnostics
               |""".stripMargin.trim.linesIterator.mkString("\n", "\n", "")
-        else if hasMissingAnnotations then s"\nWarnings found on incorrect row numbers when compiling $testSource\n$showDiagnostics"
-        else if !map.isEmpty then s"\nExpected warnings(s) have {<warning position>=<unreported warning>}: $map"
+        else if hasMissingAnnotations then
+          s"""|Warnings found on incorrect row numbers when compiling $testSource
+              |${showLines("Unfulfilled expectations:", unfulfilled)}
+              |${showLines("Unexpected warnings:", unexpected)}
+              |$showDiagnostics
+              |""".stripMargin.trim.linesIterator.mkString("\n", "\n", "")
+        else if !expected.isEmpty then s"\nExpected warnings(s) have {<warning position>=<unreported warning>}: $expected"
         else null
     end maybeFailureMessage
 
     def getWarnMapAndExpectedCount(files: Seq[JFile]): (HashMap[String, Integer], Int) =
-      val comment = raw"//( *)(nopos-)?warn".r
-      val map = new HashMap[String, Integer]()
+      val comment = raw"//(?: *)(nopos-)?warn".r
+      val map = HashMap[String, Integer]()
       var count = 0
       def bump(key: String): Unit =
         map.get(key) match
           case null => map.put(key, 1)
           case n    => map.put(key, n+1)
         count += 1
-      files.filter(isSourceFile).foreach { file =>
-        Using(Source.fromFile(file, StandardCharsets.UTF_8.name)) { source =>
-          source.getLines.zipWithIndex.foreach { case (line, lineNbr) =>
-            comment.findAllMatchIn(line).foreach { m =>
-              m.group(2) match
-                case "nopos-" =>
-                  bump("nopos")
-                case _ => bump(s"${file.getPath}:${lineNbr+1}")
-            }
-          }
-        }.get
-      }
+      for file <- files if isSourceFile(file) do
+        Using.resource(Source.fromFile(file, StandardCharsets.UTF_8.name)) { source =>
+          source.getLines.zipWithIndex.foreach: (line, lineNbr) =>
+            comment.findAllMatchIn(line).foreach:
+              case comment("nopos-") => bump("nopos")
+              case _                 => bump(s"${file.getPath}:${lineNbr+1}")
+        }
+      end for
       (map, count)
 
-    def getMissingExpectedWarnings(map: HashMap[String, Integer], reporterWarnings: Iterator[Diagnostic]): (List[String], List[String]) =
-      val unexpected, unpositioned = ListBuffer.empty[String]
+    // return unfulfilled expected warnings and unexpected diagnostics
+    def getMissingExpectedWarnings(expected: HashMap[String, Integer], reporterWarnings: Iterator[Diagnostic]): (List[String], List[String]) =
+      val unexpected = ListBuffer.empty[String]
       def relativize(path: String): String = path.split(JFile.separatorChar).dropWhile(_ != "tests").mkString(JFile.separator)
       def seenAt(key: String): Boolean =
-        map.get(key) match
+        expected.get(key) match
           case null => false
-          case 1 => map.remove(key) ; true
-          case n => map.put(key, n - 1) ; true
+          case 1 => expected.remove(key); true
+          case n => expected.put(key, n - 1); true
       def sawDiagnostic(d: Diagnostic): Unit =
         val srcpos = d.pos.nonInlined
         if srcpos.exists then
           val key = s"${relativize(srcpos.source.file.toString())}:${srcpos.line + 1}"
           if !seenAt(key) then unexpected += key
         else
-          if(!seenAt("nopos")) unpositioned += relativize(srcpos.source.file.toString())
+          if !seenAt("nopos") then unexpected += relativize(srcpos.source.file.toString)
 
       reporterWarnings.foreach(sawDiagnostic)
 
-      (map.asScala.keys.toList, (unexpected ++ unpositioned).toList)
+      val splitter = raw"(?:[^:]*):(\d+)".r
+      val unfulfilled = expected.asScala.keys.toList.sortBy { case splitter(n) => n.toInt case _ => -1 }
+      (unfulfilled, unexpected.toList)
     end getMissingExpectedWarnings
+  end WarnTest
 
   private final class RewriteTest(testSources: List[TestSource], checkFiles: Map[JFile, JFile], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
@@ -947,8 +953,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       def seenAt(key: String): Boolean =
         errorMap.get(key) match
           case null => false
-          case 1 => errorMap.remove(key) ; true
-          case n => errorMap.put(key, n - 1) ; true
+          case 1 => errorMap.remove(key); true
+          case n => errorMap.put(key, n - 1); true
       def sawDiagnostic(d: Diagnostic): Unit =
         d.pos.nonInlined match
           case srcpos if srcpos.exists =>

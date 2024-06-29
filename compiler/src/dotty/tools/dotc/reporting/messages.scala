@@ -3155,22 +3155,25 @@ extends SyntaxMsg(VolatileOnValID):
   protected def msg(using Context): String = "values cannot be volatile"
   protected def explain(using Context): String = ""
 
-class UnusedSymbol(errorText: String)(using Context)
+
+class UnusedSymbol(errorText: String, val actions: List[CodeAction] = Nil)(using Context)
 extends Message(UnusedSymbolID) {
   def kind = MessageKind.UnusedSymbol
 
   override def msg(using Context) = errorText
   override def explain(using Context) = ""
+  override def actions(using Context) = this.actions
 }
 
-object UnusedSymbol {
-    def imports(using Context): UnusedSymbol = new UnusedSymbol(i"unused import")
-    def localDefs(using Context): UnusedSymbol = new UnusedSymbol(i"unused local definition")
-    def explicitParams(using Context): UnusedSymbol = new UnusedSymbol(i"unused explicit parameter")
-    def implicitParams(using Context): UnusedSymbol = new UnusedSymbol(i"unused implicit parameter")
-    def privateMembers(using Context): UnusedSymbol = new UnusedSymbol(i"unused private member")
-    def patVars(using Context): UnusedSymbol = new UnusedSymbol(i"unused pattern variable")
-}
+object UnusedSymbol:
+  def imports(actions: List[CodeAction])(using Context): UnusedSymbol = UnusedSymbol(i"unused import", actions)
+  def localDefs(using Context): UnusedSymbol = UnusedSymbol(i"unused local definition")
+  def explicitParams(using Context): UnusedSymbol = UnusedSymbol(i"unused explicit parameter")
+  def implicitParams(using Context): UnusedSymbol = UnusedSymbol(i"unused implicit parameter")
+  def privateMembers(using Context): UnusedSymbol = UnusedSymbol(i"unused private member")
+  def patVars(using Context): UnusedSymbol = UnusedSymbol(i"unused pattern variable")
+  def unsetLocals(using Context): UnusedSymbol = UnusedSymbol(i"unset local variable, consider using an immutable val instead")
+  def unsetPrivates(using Context): UnusedSymbol = UnusedSymbol(i"unset private variable, consider using an immutable val instead")
 
 final class QuotedTypeMissing(tpe: Type)(using Context) extends StagingMessage(QuotedTypeMissingID):
 
