@@ -860,6 +860,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
       (map.asScala.keys.toList, (unexpected ++ unpositioned).toList)
     end getMissingExpectedWarnings
+  end WarnTest
 
   private final class RewriteTest(testSources: List[TestSource], checkFiles: Map[JFile, JFile], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
