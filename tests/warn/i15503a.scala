@@ -1,5 +1,4 @@
-//> using options  -Wunused:imports
-
+//> using options -Wunused:imports -Wconf:origin=Suppressed.*:s
 
 object FooUnused:
   import collection.mutable.Set // warn
@@ -68,7 +67,7 @@ object InlineChecks:
     inline def getSet = Set(1)
 
   object InlinedBar:
-    import collection.mutable.Set // ok
+    import collection.mutable.Set // warn (don't be fooled by inline expansion)
     import collection.mutable.Map // warn
     val a = InlineFoo.getSet
 
@@ -100,20 +99,28 @@ object SomeGivenImports:
   given String = "foo"
 
 /* BEGIN : Check on packages*/
-package testsamepackageimport:
-  package p {
+package nestedpackageimport:
+  package p:
     class C
-  }
-
-  package p {
-    import p._ // warn
-    package q {
-      class U {
+  package p:
+    package q:
+      import p.* // warn
+      class U:
         def f = new C
-      }
-    }
-  }
-// -----------------------
+package unnestedpackageimport:
+  package p:
+    class C
+  package p.q:
+    import p.* // nowarn
+    class U:
+      def f = new C
+
+package redundancy:
+  object redundant:
+    def f = 42
+  import redundancy.* // warn superseded by def in scope
+  class R:
+    def g = redundant.f
 
 package testpackageimport:
   package a:
@@ -213,7 +220,8 @@ package testImportsInImports:
   package c:
     import a.b // OK
     import b.x // OK
-    val y = x
+    import b.x as z // OK
+    val y = x + z
 
 //-------------------------------------
 package testOnOverloadedMethodsImports:
@@ -266,3 +274,50 @@ package foo.test.typeapply.hklamdba.i16680:
 
     def f[F[_]]: String = "hello"
     def go = f[IO]
+
+object Selections:
+  def f(list: List[Int]): Int =
+    import list.{head => first} // OK
+    first
+
+  def f2(list: List[Int]): Int =
+    import list.head // OK
+    head
+
+  def f3(list: List[Int]): Int =
+    import list.head // warn
+    list.head
+
+  object N:
+    val ns: List[Int] = Nil
+
+  def g(): Int =
+    import N.ns // OK
+    ns.head
+end Selections
+
+object `more nestings`:
+  object Outer:
+    object Inner:
+      val thing = 42
+      def j() =
+        import Inner.thing // warn
+        thing
+      def k() =
+        import Inner.thing // warn
+        Inner.thing
+
+  object Thing:
+    object Inner:
+      val thing = 42
+      import Inner.thing // warn
+      def j() =
+        thing
+      def k() =
+        Inner.thing
+
+object Suppressed:
+  val suppressed = 42
+object Suppressing:
+  import Suppressed.* // no warn, see options
+  def f = 42

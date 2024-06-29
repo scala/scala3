@@ -12,7 +12,7 @@ import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.reporting.Diagnostic
-import dotty.tools.dotc.transform.PostTyper
+import dotty.tools.dotc.transform.{CheckUnused, CheckShadowing, PostTyper}
 import dotty.tools.dotc.typer.ImportInfo.{withRootImports, RootRef}
 import dotty.tools.dotc.typer.TyperPhase
 import dotty.tools.dotc.util.Spans.*
@@ -37,6 +37,7 @@ class ReplCompiler extends Compiler:
     List(Parser()),
     List(ReplPhase()),
     List(TyperPhase(addRootImports = false)),
+    List(CheckUnused.PostTyper(), CheckShadowing()),
     List(CollectTopLevelImports()),
     List(PostTyper()),
   )

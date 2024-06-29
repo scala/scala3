@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -Wunused:all -deprecation -feature
+//> using options -Wunused:all -deprecation -feature
 
 import java.net.URI
 
@@ -10,9 +10,7 @@ object circelike {
   type Configuration
   trait ConfiguredCodec[T]
   object ConfiguredCodec:
-    inline final def derived[A](using conf: Configuration)(using
-      inline mirror: Mirror.Of[A]
-    ): ConfiguredCodec[A] =
+    inline final def derived[A](using conf: Configuration)(using inline mirror: Mirror.Of[A]): ConfiguredCodec[A] = // warn // warn
       class InlinedConfiguredCodec extends ConfiguredCodec[A]:
         val codec = summonInline[Codec[URI]] // simplification
       new InlinedConfiguredCodec

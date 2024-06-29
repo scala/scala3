@@ -8,7 +8,7 @@ Text => empty
 Language => Scala
 Symbols => 9 entries
 Occurrences => 19 entries
-Diagnostics => 4 entries
+Diagnostics => 2 entries
 
 Symbols:
 example/Access# => class Access extends Object { self: Access => +8 decls }
@@ -43,12 +43,10 @@ Occurrences:
 [9:11..9:14): ??? -> scala/Predef.`???`().
 
 Diagnostics:
-[3:14..3:16): [warning] unused private member
 [4:16..4:16): [warning] Ignoring [this] qualifier.
 This syntax will be deprecated in the future; it should be dropped.
 See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
-[4:20..4:22): [warning] unused private member
 [7:18..7:18): [warning] Ignoring [this] qualifier.
 This syntax will be deprecated in the future; it should be dropped.
 See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
@@ -575,7 +573,7 @@ Text => empty
 Language => Scala
 Symbols => 108 entries
 Occurrences => 127 entries
-Diagnostics => 6 entries
+Diagnostics => 11 entries
 Synthetics => 2 entries
 
 Symbols:
@@ -818,6 +816,7 @@ Occurrences:
 [53:10..53:11): + -> scala/Int#`+`(+4).
 
 Diagnostics:
+[13:20..13:21): [warning] unused explicit parameter
 [18:9..18:10): [warning] unused explicit parameter
 [20:23..20:23): [warning] Ignoring [this] qualifier.
 This syntax will be deprecated in the future; it should be dropped.
@@ -830,6 +829,10 @@ See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifie
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [22:27..22:28): [warning] unused explicit parameter
 [24:10..24:11): [warning] unused explicit parameter
+[36:11..36:12): [warning] unused explicit parameter
+[39:11..39:12): [warning] unused explicit parameter
+[39:19..39:20): [warning] unused explicit parameter
+[51:30..51:31): [warning] unused explicit parameter
 
 Synthetics:
 [51:16..51:27):List(1).map => *[Int]
@@ -2095,6 +2098,7 @@ Text => empty
 Language => Scala
 Symbols => 45 entries
 Occurrences => 66 entries
+Diagnostics => 1 entries
 Synthetics => 3 entries
 
 Symbols:
@@ -2211,6 +2215,9 @@ Occurrences:
 [41:4..41:5): z <- givens/InventedNames$package.z.
 [41:8..41:17): given_Z_T -> givens/InventedNames$package.given_Z_T().
 [41:18..41:24): String -> scala/Predef.String#
+
+Diagnostics:
+[24:13..24:13): [warning] unused implicit parameter
 
 Synthetics:
 [24:0..24:0): => *(x$1)
@@ -3533,6 +3540,7 @@ Text => empty
 Language => Scala
 Symbols => 62 entries
 Occurrences => 165 entries
+Diagnostics => 3 entries
 Synthetics => 39 entries
 
 Symbols:
@@ -3765,6 +3773,11 @@ Occurrences:
 [68:14..68:15): t -> local17
 [68:18..68:24): impure -> local20
 [68:30..68:31): s -> local16
+
+Diagnostics:
+[19:21..19:22): [warning] unused pattern variable
+[41:4..41:5): [warning] unused pattern variable
+[63:10..63:11): [warning] unused explicit parameter
 
 Synthetics:
 [5:2..5:13):List(1).map => *[Int]
@@ -4267,7 +4280,6 @@ Text => empty
 Language => Scala
 Symbols => 8 entries
 Occurrences => 18 entries
-Diagnostics => 1 entries
 
 Symbols:
 _empty_/Test_depmatch. => final object Test_depmatch extends Object { self: Test_depmatch.type => +4 decls }
@@ -4298,9 +4310,6 @@ Occurrences:
 [6:15..6:18): foo -> _empty_/Test_depmatch.baz().(foo)
 [6:19..6:20): U -> local0
 [6:24..6:27): ??? -> scala/Predef.`???`().
-
-Diagnostics:
-[6:8..6:9): [warning] unused local definition
 
 expect/example-dir/FileInDir.scala
 ----------------------------------
@@ -4620,6 +4629,7 @@ Text => empty
 Language => Scala
 Symbols => 24 entries
 Occurrences => 63 entries
+Diagnostics => 2 entries
 
 Symbols:
 _empty_/Copy# => trait Copy [typeparam In  <: Txn[In], typeparam Out  <: Txn[Out]] extends Object { self: Copy[In, Out] => +5 decls }
@@ -4711,6 +4721,10 @@ Occurrences:
 [13:40..13:43): Out -> _empty_/Copy#[Out]
 [14:8..14:15): println -> scala/Predef.println(+1).
 [17:4..17:7): out -> local0
+
+Diagnostics:
+[13:12..13:17): [warning] unused pattern variable
+[13:28..13:34): [warning] unused pattern variable
 
 expect/inlineconsume.scala
 --------------------------
@@ -5006,7 +5020,7 @@ Text => empty
 Language => Scala
 Symbols => 50 entries
 Occurrences => 78 entries
-Diagnostics => 4 entries
+Diagnostics => 6 entries
 Synthetics => 2 entries
 
 Symbols:
@@ -5146,6 +5160,8 @@ Diagnostics:
 [9:36..9:37): [warning] unused explicit parameter
 [9:42..9:43): [warning] unused explicit parameter
 [21:11..21:12): [warning] unused explicit parameter
+[24:24..24:27): [warning] unused pattern variable
+[25:27..25:28): [warning] unused pattern variable
 
 Synthetics:
 [23:6..23:10):List => *.unapplySeq[Nothing]
@@ -5558,13 +5574,13 @@ Occurrences:
 [119:39..119:42): Int -> scala/Int#
 
 Diagnostics:
-[5:13..5:14): [warning] unused explicit parameter
 [62:25..62:29): [warning] with as a type operator has been deprecated; use & instead
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [63:25..63:29): [warning] with as a type operator has been deprecated; use & instead
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [71:31..71:31): [warning] `_` is deprecated for wildcard arguments of types: use `?` instead
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+[96:13..96:14): [warning] unused explicit parameter
 
 Synthetics:
 [68:20..68:24):@ann => *[Int]

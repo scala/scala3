@@ -494,6 +494,8 @@ class Definitions {
     @tu lazy val Predef_undefined: Symbol = ScalaPredefModule.requiredMethod(nme.???)
   @tu lazy val ScalaPredefModuleClass: ClassSymbol = ScalaPredefModule.moduleClass.asClass
 
+  @tu lazy val SameTypeClass: ClassSymbol = requiredClass("scala.=:=")
+  @tu lazy val SameType_refl: Symbol = SameTypeClass.companionModule.requiredMethod(nme.refl)
   @tu lazy val SubTypeClass: ClassSymbol = requiredClass("scala.<:<")
   @tu lazy val SubType_refl: Symbol = SubTypeClass.companionModule.requiredMethod(nme.refl)
 
@@ -834,6 +836,7 @@ class Definitions {
   @tu lazy val QuotedExprClass: ClassSymbol = requiredClass("scala.quoted.Expr")
 
   @tu lazy val QuotesClass: ClassSymbol = requiredClass("scala.quoted.Quotes")
+    @tu lazy val Quotes_reflectModule: Symbol = QuotesClass.requiredClass("reflectModule")
     @tu lazy val Quotes_reflect: Symbol = QuotesClass.requiredValue("reflect")
       @tu lazy val Quotes_reflect_asTerm: Symbol = Quotes_reflect.requiredMethod("asTerm")
       @tu lazy val Quotes_reflect_Apply: Symbol = Quotes_reflect.requiredValue("Apply")
@@ -955,6 +958,7 @@ class Definitions {
   def NonEmptyTupleClass(using Context): ClassSymbol = NonEmptyTupleTypeRef.symbol.asClass
     lazy val NonEmptyTuple_tail: Symbol = NonEmptyTupleClass.requiredMethod("tail")
   @tu lazy val PairClass: ClassSymbol = requiredClass("scala.*:")
+    @tu lazy val PairClass_unapply: Symbol = PairClass.companionModule.requiredMethod("unapply")
 
   @tu lazy val TupleXXLClass: ClassSymbol = requiredClass("scala.runtime.TupleXXL")
   def TupleXXLModule(using Context): Symbol = TupleXXLClass.companionModule
@@ -1062,6 +1066,7 @@ class Definitions {
   @tu lazy val UntrackedCapturesAnnot: ClassSymbol = requiredClass("scala.caps.untrackedCaptures")
   @tu lazy val UseAnnot:  ClassSymbol = requiredClass("scala.caps.use")
   @tu lazy val VolatileAnnot: ClassSymbol = requiredClass("scala.volatile")
+  @tu lazy val LanguageFeatureMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.languageFeature")
   @tu lazy val BeanGetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanGetter")
   @tu lazy val BeanSetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanSetter")
   @tu lazy val FieldMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.field")

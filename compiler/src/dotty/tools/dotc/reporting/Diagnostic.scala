@@ -36,6 +36,18 @@ object Diagnostic:
     pos: SourcePosition
   ) extends Error(msg, pos)
 
+  /** A Warning with an origin. The semantics of `origin` depend on the warning.
+   *  For example, an unused import warning has an origin that specifies the unused selector.
+   *  The origin of a deprecation is the deprecated element.
+   */
+  trait OriginWarning(val origin: String):
+    self: Warning =>
+
+  /** Lints are likely to be filtered. Provide extra axes for filtering by `-Wconf`.
+   */
+  class LintWarning(msg: Message, pos: SourcePosition, origin: String)
+  extends Warning(msg, pos), OriginWarning(origin)
+
   class Warning(
     msg: Message,
     pos: SourcePosition
@@ -73,13 +85,9 @@ object Diagnostic:
     def enablingOption(using Context): Setting[Boolean] = ctx.settings.unchecked
   }
 
-  class DeprecationWarning(
-    msg: Message,
-    pos: SourcePosition,
-    val origin: String
-  ) extends ConditionalWarning(msg, pos) {
+  class DeprecationWarning(msg: Message, pos: SourcePosition, origin: String)
+  extends ConditionalWarning(msg, pos), OriginWarning(origin):
     def enablingOption(using Context): Setting[Boolean] = ctx.settings.deprecation
-  }
 
   class MigrationWarning(
     msg: Message,
@@ -104,5 +112,5 @@ class Diagnostic(
   override def diagnosticRelatedInformation: JList[interfaces.DiagnosticRelatedInformation] =
     Collections.emptyList()
 
-  override def toString: String = s"$getClass at $pos: $message"
+  override def toString: String = s"$getClass at $pos L${pos.line+1}: $message"
 end Diagnostic

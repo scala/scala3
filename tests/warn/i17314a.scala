@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -Wunused:all -deprecation -feature
+//> using options -Werror -Wunused:all -deprecation -feature
 
 package foo:
   class Foo[T]
