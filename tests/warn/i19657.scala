@@ -30,3 +30,7 @@ def `i19657 check prefix to pick specific selector`: Unit =
   import FooCodec.given_Schema_A
   import BarCodec.given_Schema_A
   summonSchemas
+
+def `i20860 use result to check selector bound`: Unit =
+  import Ordering.Implicits.given Ordering[?]
+  summon[Ordering[Seq[Int]]]
