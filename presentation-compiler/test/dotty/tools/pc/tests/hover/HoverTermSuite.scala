@@ -269,9 +269,9 @@ class HoverTermSuite extends BaseHoverSuite:
         |  } yield x
         |}
         |""".stripMargin,
-      """|Option[Int]
-         |override def headOption: Option[A]
-         |""".stripMargin.hover
+      """|```scala
+         |override def headOption: Option[Int]
+         |```""".stripMargin.hover
     )
 
   @Test def `object` =

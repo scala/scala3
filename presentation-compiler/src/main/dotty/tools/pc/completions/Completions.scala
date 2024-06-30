@@ -67,22 +67,18 @@ class Completions(
       case _ :: (_: UnApply) :: _ => false
       case _ => true
 
-  private lazy val shouldAddSuffix = shouldAddSnippet && 
+  private lazy val shouldAddSuffix = shouldAddSnippet &&
     (path match
       /* In case of `method@@()` we should not add snippets and the path
        * will contain apply as the parent of the current tree.
        */
-      case (fun) :: (appl: GenericApply) :: _ if appl.fun == fun =>
-        false
+      case (fun) :: (appl: GenericApply) :: _ if appl.fun == fun => false
       /* In case of `T@@[]` we should not add snippets.
        */
-      case tpe :: (appl: AppliedTypeTree) :: _ if appl.tpt == tpe =>
-        false
-      case _ :: (withcursor @ Select(fun, name)) :: (appl: GenericApply) :: _
-          if appl.fun == withcursor && name.decoded == Cursor.value =>
-        false
+      case tpe :: (appl: AppliedTypeTree) :: _ if appl.tpt == tpe => false
+      case sel  :: (funSel @ Select(fun, name)) :: (appl: GenericApply) :: _
+        if appl.fun == funSel && sel == fun => false
       case _ => true)
-
 
   private lazy val isNew: Boolean = Completion.isInNewContext(adjustedPath)
 
@@ -523,14 +519,8 @@ class Completions(
           if tree.selectors.exists(_.renamed.sourcePos.contains(pos)) =>
         (List.empty, true)
 
-      // From Scala 3.1.3-RC3 (as far as I know), path contains
-      // `Literal(Constant(null))` on head for an incomplete program, in this case, just ignore the head.
-      case Literal(Constant(null)) :: tl =>
-        advancedCompletions(tl, completionPos)
-
       case _ =>
         val args = NamedArgCompletions.contribute(
-          pos,
           path,
           adjustedPath,
           indexedContext,

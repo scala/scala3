@@ -35,9 +35,8 @@ import scala.annotation.tailrec
 object NamedArgCompletions:
 
   def contribute(
-      pos: SourcePosition,
       path: List[Tree],
-      untypedPath: => List[untpd.Tree],
+      untypedPath: List[untpd.Tree],
       indexedContext: IndexedContext,
       clientSupportsSnippets: Boolean,
   )(using ctx: Context): List[CompletionValue] =
@@ -64,12 +63,13 @@ object NamedArgCompletions:
           for
             app <- getApplyForContextFunctionParam(rest)
             if !app.fun.isInfix
-          yield contribute(
-            Some(ident),
-            app,
-            indexedContext,
-            clientSupportsSnippets,
-          )
+          yield
+            contribute(
+              Some(ident),
+              app,
+              indexedContext,
+              clientSupportsSnippets,
+            )
         contribution.getOrElse(Nil)
       case (app: Apply) :: _ =>
         /**
@@ -156,10 +156,11 @@ object NamedArgCompletions:
           case _ => None
       val matchingMethods =
         for
-          (name, indxContext) <- maybeNameAndIndexedContext(method)
-          potentialMatches <- indxContext.findSymbol(name)
-        yield potentialMatches.collect {
-          case m
+          (name, indexedContext) <- maybeNameAndIndexedContext(method)
+          potentialMatches <- indexedContext.findSymbol(name)
+        yield
+          potentialMatches.collect {
+            case m
               if m.is(Flags.Method) &&
                 m.vparamss.length >= argss.length &&
                 Try(m.isAccessibleFrom(apply.symbol.info)).toOption
@@ -179,8 +180,7 @@ object NamedArgCompletions:
     end fallbackFindMatchingMethods
 
     val matchingMethods: List[Symbols.Symbol] =
-      if method.symbol.paramSymss.nonEmpty
-      then
+      if method.symbol.paramSymss.nonEmpty then
         val allArgsAreSupplied =
           val vparamss = method.symbol.vparamss
           vparamss.length == argss.length && vparamss
@@ -295,6 +295,7 @@ object NamedArgCompletions:
       )
     }
 
+    // FIXME pass query here
     val prefix = ident
       .map(_.name.toString)
       .getOrElse("")
@@ -391,7 +392,7 @@ class FuzzyArgMatcher(tparams: List[Symbols.Symbol])(using Context):
     (expectedArgs.length == actualArgs.length ||
       (!allArgsProvided && expectedArgs.length >= actualArgs.length)) &&
       actualArgs.zipWithIndex.forall {
-        case (Ident(name), _) if name.endsWith(Cursor.value) => true
+        case (Ident(name), _) => true
         case (NamedArg(name, arg), _) =>
           expectedArgs.exists { expected =>
             expected.name == name && (!arg.hasType || arg.typeOpt.unfold
