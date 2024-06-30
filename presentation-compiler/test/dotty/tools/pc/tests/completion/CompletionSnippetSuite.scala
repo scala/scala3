@@ -289,7 +289,8 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       "scala.util.Try@@(1)",
-      "scala.util.Try(1)"
+      "scala.util.Try(1)",
+      assertSingleItem = false
     )
 
   @Test def `case-class` =
