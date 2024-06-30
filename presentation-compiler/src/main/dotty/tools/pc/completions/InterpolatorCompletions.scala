@@ -224,7 +224,7 @@ object InterpolatorCompletions:
       buildTargetIdentifier: String
   )(using ctx: Context, reportsContext: ReportContext): List[CompletionValue] =
     val litStartPos = lit.span.start
-    val litEndPos = lit.span.end - Cursor.value.length()
+    val litEndPos = lit.span.end - (if completionPos.withCURSOR then Cursor.value.length else 0)
     val position = completionPos.originalCursorPosition
     val span = position.span
     val nameStart =
