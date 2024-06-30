@@ -233,9 +233,11 @@ class Completions(
   ): List[CompletionValue] =
     val sym = denot.symbol
     // find the apply completion that would need a snippet
+    // <accessor> handling is LTS specific: It's a workaround to mittigate lack of https://github.com/scala/scala3/pull/18874 backport
+    // which was required in backport of https://github.com/scala/scala3/pull/18914 to achive the improved completions semantics.
     val methodDenots: List[SingleDenotation] =
       if shouldAddSnippet && completionMode.is(Mode.Term) &&
-        (sym.is(Flags.Module) || sym.isField || sym.isClass && !sym.is(Flags.Trait)) && !sym.is(Flags.JavaDefined)
+        (sym.isOneOf(Flags.Module | Flags.Accessor) || sym.isField || sym.isClass && !sym.is(Flags.Trait)) && !sym.is(Flags.JavaDefined)
       then
         val info =
           /* Companion will be added even for normal classes now,

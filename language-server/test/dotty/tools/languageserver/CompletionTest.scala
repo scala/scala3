@@ -1659,7 +1659,7 @@ class CompletionTest {
            |""".completion(m1, Set(
              ("Number", Field, "scala.util.matching.Regex"),
              ("NumberFormatException", Module, "NumberFormatException"),
-             ("Numeric", Field, "scala.math.Numeric")
+             ("Numeric", Method, "=> scala.math.Numeric.type")
            ))
 
   @Test def shadowedImportType: Unit =
@@ -1677,6 +1677,6 @@ class CompletionTest {
              ("NumberFormatException", Module, "NumberFormatException"),
              ("NumberFormatException", Field, "NumberFormatException"),
              ("Numeric", Field, "Numeric"),
-             ("Numeric", Field, "scala.math.Numeric")
+             ("Numeric", Method, "=> scala.math.Numeric.type")
            ))
 }
