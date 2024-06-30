@@ -121,16 +121,17 @@ object Completion:
       case _ =>
         ""
 
+  def naiveCompletionPrefix(text: String, offset: Int): String =
+    var i = offset - 1
+    while i >= 0 && text(i).isUnicodeIdentifierPart do i -= 1
+    i += 1 // move to first character
+    text.slice(i, offset)
+
   /**
    * Inspect `path` to determine the completion prefix. Only symbols whose name start with the
    * returned prefix should be considered.
    */
   def completionPrefix(path: List[untpd.Tree], pos: SourcePosition)(using Context): String =
-    def fallback: Int =
-      var i = pos.point - 1
-      while i >= 0 && Character.isUnicodeIdentifierPart(pos.source.content()(i)) do i -= 1
-      i + 1
-
     path match
       case GenericImportSelector(sel) =>
         if sel.isGiven then completionPrefix(sel.bound :: Nil, pos)
@@ -148,7 +149,7 @@ object Completion:
       case (tree: untpd.RefTree) :: _ if tree.name != nme.ERROR =>
         tree.name.toString.take(pos.span.point - tree.span.point)
 
-      case _ => pos.source.content.slice(fallback, pos.point).mkString
+      case _ => naiveCompletionPrefix(pos.source.content().mkString, pos.point)
 
 
   end completionPrefix

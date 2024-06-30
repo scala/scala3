@@ -14,9 +14,12 @@ import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Phases
-import dotty.tools.dotc.core.StdNames
+import dotty.tools.dotc.core.StdNames.nme
+import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.interactive.Interactive
+import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.interactive.InteractiveDriver
+import dotty.tools.dotc.parsing.Tokens
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.pc.AutoImports.AutoImportEdits
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
@@ -47,23 +50,31 @@ class CompletionProvider(
     val uri = params.uri().nn
     val text = params.text().nn
 
-    val code = applyCompletionCursor(params)
+    val (wasCursorApplied, code) = applyCompletionCursor(params)
     val sourceFile = SourceFile.virtual(uri, code)
     driver.run(uri, sourceFile)
 
-    val ctx = driver.currentCtx
+    given ctx: Context = driver.currentCtx
     val pos = driver.sourcePosition(params)
     val (items, isIncomplete) = driver.compilationUnits.get(uri) match
       case Some(unit) =>
-
         val newctx = ctx.fresh.setCompilationUnit(unit).withPhase(Phases.typerPhase(using ctx))
-        val tpdPath = Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using newctx)
-        val adjustedPath = Interactive.resolveTypedOrUntypedPath(tpdPath, pos)(using newctx)
+        val tpdPath0 = Interactive.pathTo(unit.tpdTree, pos.span)(using newctx)
+        val adjustedPath = Interactive.resolveTypedOrUntypedPath(tpdPath0, pos)(using newctx)
+
+        val tpdPath = tpdPath0 match
+          // $1$ // FIXME add check for a $1$ name to make sure we only do the below in lifting case
+          case Select(qual, name) :: tail if qual.symbol.is(Flags.Synthetic) =>
+            qual.symbol.defTree match
+              case valdef: ValDef => Select(valdef.rhs, name) :: tail
+              case _ => tpdPath0
+          case _ => tpdPath0
+
 
         val locatedCtx = Interactive.contextOfPath(tpdPath)(using newctx)
         val indexedCtx = IndexedContext(locatedCtx)
 
-        val completionPos = CompletionPos.infer(pos, params, adjustedPath)(using locatedCtx)
+        val completionPos = CompletionPos.infer(pos, params, adjustedPath, wasCursorApplied)(using locatedCtx)
 
         val autoImportsGen = AutoImports.generator(
           completionPos.toSourcePosition,
@@ -114,6 +125,10 @@ class CompletionProvider(
     )
   end completions
 
+  val allKeywords =
+    val softKeywords = Tokens.softModifierNames + nme.as + nme.derives + nme.extension + nme.throws + nme.using
+    Tokens.keywords.toList.map(Tokens.tokenString) ++ softKeywords.map(_.toString)
+
   /**
    * In case if completion comes from empty line like:
    * {{{
@@ -126,23 +141,30 @@ class CompletionProvider(
    * Otherwise, completion poisition doesn't point at any tree
    * because scala parser trim end position to the last statement pos.
    */
-  private def applyCompletionCursor(params: OffsetParams): String =
+  private def applyCompletionCursor(params: OffsetParams): (Boolean, String) =
     val text = params.text().nn
     val offset = params.offset().nn
+    val query = Completion.naiveCompletionPrefix(text, offset)
 
-    val isStartMultilineComment =
-      val i = params.offset()
-      i >= 3 && (text.charAt(i - 1) match
-        case '*' =>
-          text.charAt(i - 2) == '*' &&
-          text.charAt(i - 3) == '/'
-        case _ => false
-      )
-    if isStartMultilineComment then
-      // Insert potentially missing `*/` to avoid comment out all codes after the "/**".
-      text.substring(0, offset).nn + Cursor.value + "*/" + text.substring(offset)
+    if offset > 0 && text.charAt(offset - 1).isUnicodeIdentifierPart && !allKeywords.contains(query) then
+      false -> text
     else
-      text.substring(0, offset).nn + Cursor.value + text.substring(offset)
+      val isStartMultilineComment =
+
+        val i = params.offset()
+        i >= 3 && (text.charAt(i - 1) match
+          case '*' =>
+            text.charAt(i - 2) == '*' &&
+            text.charAt(i - 3) == '/'
+          case _ => false
+        )
+      true -> (
+        if isStartMultilineComment then
+          // Insert potentially missing `*/` to avoid comment out all codes after the "/**".
+          text.substring(0, offset).nn + Cursor.value + "*/" + text.substring(offset)
+        else
+          text.substring(0, offset).nn + Cursor.value + text.substring(offset)
+      )
   end applyCompletionCursor
 
   private def completionItems(
@@ -175,7 +197,7 @@ class CompletionProvider(
               Select(Apply(Select(Select(_, name), _), _), _),
               _
             ) :: _ =>
-          name == StdNames.nme.StringContext
+          name == nme.StringContext
         // "My name is $name"
         case Literal(Constant(_: String)) :: _ =>
           true

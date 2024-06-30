@@ -28,7 +28,7 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
       MockLocation("scala/Predef.Ensuring#ensuring(+2).", "Predef.scala"),
       MockLocation("scala/Predef.Ensuring#ensuring(+3).", "Predef.scala"),
       MockLocation("scala/collection/immutable/List#`::`().", "List.scala"),
-      MockLocation("scala/collection/IterableFactory#apply().", "Factory.scala")
+      MockLocation("scala/package.List.", "List.scala")
     )
 
   override def definitions(offsetParams: OffsetParams): List[Location] =
@@ -123,7 +123,7 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
     check(
       """|
          |object Main {
-         |  /*scala/collection/IterableFactory#apply(). Factory.scala*/@@List(1)
+         |  /*scala/package.List. List.scala*/@@List(1)
          |}
          |""".stripMargin
     )

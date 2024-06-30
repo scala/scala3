@@ -3,6 +3,7 @@ package ast
 
 import core.Contexts.*
 import core.Decorators.*
+import core.StdNames
 import util.Spans.*
 import Trees.{Closure, MemberDef, DefTree, WithLazyFields}
 import dotty.tools.dotc.core.Types.AnnotatedType
@@ -76,6 +77,8 @@ object NavigateAST {
       var bestFit: List[Positioned] = path
       while (it.hasNext) {
         val path1 = it.next() match {
+          // FIXME this has to be changed to deterministicaly find recoveed tree
+          case untpd.Select(qual, name) if name == StdNames.nme.??? => path
           case p: Positioned if !p.isInstanceOf[Closure[?]] => singlePath(p, path)
           case m: untpd.Modifiers => childPath(m.productIterator, path)
           case xs: List[?] => childPath(xs.iterator, path)
@@ -84,11 +87,17 @@ object NavigateAST {
         if ((path1 ne path) &&
             ((bestFit eq path) ||
              bestFit.head.span != path1.head.span &&
-             bestFit.head.span.contains(path1.head.span)))
+             envelops(bestFit.head.span, path1.head.span)))
           bestFit = path1
       }
       bestFit
     }
+
+    def envelops(a: Span, b: Span): Boolean =
+      !b.exists || a.exists && (
+        (a.start < b.start && a.end >= b.end ) || (a.start <= b.start && a.end > b.end)
+      )
+
     /*
      * Annotations trees are located in the Type
      */
