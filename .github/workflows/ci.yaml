@@ -47,7 +47,7 @@ jobs:
   test_non_bootstrapped:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -65,8 +65,8 @@ jobs:
            && github.repository == 'scala/scala3'
          )"
     steps:
-      - name: Set JDK 16 as default
-        run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
 
       ## Workaround for https://github.com/actions/runner/issues/2033 (See https://github.com/scala/scala3/pull/19720)
       - name: Reset existing repo
@@ -99,7 +99,7 @@ jobs:
   test:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -119,8 +119,8 @@ jobs:
          )"
 
     steps:
-      - name: Set JDK 16 as default
-        run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
 
       - name: Reset existing repo
         run: |
@@ -229,7 +229,7 @@ jobs:
     name: MiMa
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -248,6 +248,9 @@ jobs:
            && github.repository == 'scala/scala3'
          )"
     steps:
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
+
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory /__w/scala3/scala3
@@ -272,7 +275,7 @@ jobs:
   community_build_a:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -293,6 +296,8 @@ jobs:
          )"
 
     steps:
+      - name: Set JDK 8 as default
+        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory /__w/scala3/scala3
@@ -324,7 +329,7 @@ jobs:
   community_build_b:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -345,6 +350,8 @@ jobs:
          )"
 
     steps:
+      - name: Set JDK 8 as default
+        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory /__w/scala3/scala3
@@ -376,7 +383,7 @@ jobs:
   community_build_c:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-11-19
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -397,6 +404,8 @@ jobs:
          )"
 
     steps:
+      - name: Set JDK 8 as default
+        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory /__w/scala3/scala3
@@ -428,7 +437,7 @@ jobs:
   test_sbt:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -447,6 +456,9 @@ jobs:
          )"
 
     steps:
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
+
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory /__w/scala3/scala3
@@ -470,7 +482,7 @@ jobs:
   test_java8:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -526,7 +538,7 @@ jobs:
   publish_nightly:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -542,6 +554,8 @@ jobs:
       SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 
     steps:
+      - name: Set JDK 17 as default
+        run: echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> $GITHUB_PATH
       - name: Reset existing repo
         run: |
           git config --global --add safe.directory /__w/scala3/scala3
@@ -579,7 +593,7 @@ jobs:
   nightly_documentation:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -633,7 +647,7 @@ jobs:
       contents: write  # for actions/create-release to create a release
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -723,7 +737,7 @@ jobs:
   open_issue_on_failure:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
     needs: [nightly_documentation, test_windows_full]
     # The `failure()` expression is true iff at least one of the dependencies
     # of this job (including transitive dependencies) has failed.
