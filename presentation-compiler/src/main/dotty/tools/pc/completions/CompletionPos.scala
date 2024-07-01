@@ -22,7 +22,8 @@ case class CompletionPos(
   identEnd: Int,
   query: String,
   originalCursorPosition: SourcePosition,
-  sourceUri: URI
+  sourceUri: URI,
+  withCURSOR: Boolean
 ):
   def queryEnd: Int = originalCursorPosition.point
   def stripSuffixEditRange: l.Range = new l.Range(originalCursorPosition.offsetToPos(queryStart), originalCursorPosition.offsetToPos(identEnd))
@@ -34,17 +35,19 @@ object CompletionPos:
   def infer(
       sourcePos: SourcePosition,
       offsetParams: OffsetParams,
-      adjustedPath: List[Tree]
+      adjustedPath: List[Tree],
+      wasCursorApplied: Boolean
   )(using Context): CompletionPos =
     val identEnd = adjustedPath match
       case (refTree: RefTree) :: _ if refTree.name.toString.contains(Cursor.value) =>
         refTree.span.end - Cursor.value.length
+      case (refTree: RefTree) :: _  => refTree.span.end
       case _ => sourcePos.end
 
     val query = Completion.completionPrefix(adjustedPath, sourcePos)
     val start = sourcePos.end - query.length()
 
-    CompletionPos(start, identEnd, query.nn, sourcePos, offsetParams.uri.nn)
+    CompletionPos(start, identEnd, query.nn, sourcePos, offsetParams.uri.nn, wasCursorApplied)
 
   /**
    * Infer the indentation by counting the number of spaces in the given line.

@@ -582,7 +582,7 @@ object OverrideCompletions:
             )
           )
         // class Main extends Val:
-        //    he@@
+        //   he@@
         case (id: Ident) :: (t: Template) :: (td: TypeDef) :: _
             if t.parents.nonEmpty =>
           Some(
@@ -592,6 +592,20 @@ object OverrideCompletions:
               id.sourcePos.start,
               false,
               Some(id.name.show),
+            )
+          )
+
+        // class Main extends Val:
+        //   hello@ // this transforms into this.hello, thus is a Select
+        case (sel @ Select(th: This, name)) :: (t: Template) :: (td: TypeDef) :: _
+            if t.parents.nonEmpty && th.qual.name == td.name =>
+          Some(
+            (
+              td,
+              None,
+              sel.sourcePos.start,
+              false,
+              Some(name.show),
             )
           )
 
