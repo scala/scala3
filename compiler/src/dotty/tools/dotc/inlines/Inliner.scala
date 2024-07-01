@@ -364,9 +364,9 @@ class Inliner(val call: tpd.Tree)(using Context):
               case _ =>
                 Nil
             val refinements = openOpaqueAliases(cls.givenSelfType)
-            val refinedType = refinements.foldLeft(ref: Type) ((parent, refinement) =>
-              RefinedType(parent, refinement._1, TypeAlias(refinement._2))
-            )
+            val refinedType = refinements.foldLeft(ref: Type):
+              case (parent, (rname, ralias)) =>
+                RefinedType(parent, rname, RealTypeBounds(ralias, ralias))
             val refiningSym = newSym(InlineBinderName.fresh(), Synthetic, refinedType).asTerm
             val refiningDef = ValDef(refiningSym, tpd.ref(ref).cast(refinedType), inferred = true).withSpan(span)
             inlining.println(i"add opaque alias proxy $refiningDef for $ref in $tp")
