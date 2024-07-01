@@ -2044,7 +2044,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               case _ => false
             }
 
-        val result = pt.underlyingMatchType match {
+        val result = pt.underlyingNormalizable match {
           case mt: MatchType if isMatchTypeShaped(mt) =>
             typedDependentMatchFinish(tree, sel1, selType, tree.cases, mt)
           case _ =>

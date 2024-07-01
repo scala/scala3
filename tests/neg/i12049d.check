@@ -1,0 +1,14 @@
+-- [E007] Type Mismatch Error: tests/neg/i12049d.scala:14:52 -----------------------------------------------------------
+14 |val x: M[NotRelevant[Nothing], Relevant[Nothing]] = 2 // error
+   |                                                    ^
+   |                                                  Found:    (2 : Int)
+   |                                                  Required: M[NotRelevant[Nothing], Relevant[Nothing]]
+   |
+   |                                                  Note: a match type could not be fully reduced:
+   |
+   |                                                    trying to reduce  M[NotRelevant[Nothing], Relevant[Nothing]]
+   |                                                    trying to reduce  Relevant[Nothing]
+   |                                                    failed since selector Nothing
+   |                                                    is uninhabited (there are no values of that type).
+   |
+   | longer explanation available when compiling with `-explain`
