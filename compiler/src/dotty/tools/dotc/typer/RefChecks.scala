@@ -901,20 +901,26 @@ object RefChecks {
         }
       }
 
-      /** Check that inheriting a case class does not constitute a variant refinement
+      /** Check that inheriting a case class or a sealed trait (or a sealed class) does not constitute a variant refinement
        *  of a base type of the case class. It is because of this restriction that we
-       *  can assume invariant refinement for case classes in `constrainPatternType`.
+       *  can assume invariant refinement for these classes in `constrainSimplePatternType`.
        */
-      def checkCaseClassInheritanceInvariant() =
+      def checkVariantInheritanceProblems() =
         for
-          caseCls <- clazz.info.baseClasses.tail.find(_.is(Case))
-          baseCls <- caseCls.info.baseClasses.tail
+          middle <- clazz.info.baseClasses.tail
+          if middle.isOneOf(CaseOrSealed)
+          baseCls <- middle.info.baseClasses.tail
           if baseCls.typeParams.exists(_.paramVarianceSign != 0)
-          problem <- variantInheritanceProblems(baseCls, caseCls, i"base $baseCls", "case ")
-          withExplain = problem.appendExplanation:
-            """Refining a basetype of a case class is not allowed.
-              |This is a limitation that enables better GADT constraints in case class patterns""".stripMargin
-        do report.errorOrMigrationWarning(withExplain, clazz.srcPos, MigrationVersion.Scala2to3)
+          problem <- {
+            val middleStr = if middle.is(Case) then "case " else if middle.is(Sealed) then "sealed " else ""
+            variantInheritanceProblems(baseCls, middle, "", middleStr)
+          }
+        do
+          val withExplain = problem.appendExplanation:
+            """Refining a basetype of a case class or a sealed trait (or a sealed class) is not allowed.
+              |This is a limitation that enables better GADT constraints in case class and sealed hierarchy patterns""".stripMargin
+          report.errorOrMigrationWarning(withExplain, clazz.srcPos, MigrationVersion.Scala2to3)
+
       checkNoAbstractMembers()
       if (abstractErrors.isEmpty)
         checkNoAbstractDecls(clazz)
@@ -923,7 +929,7 @@ object RefChecks {
         report.error(abstractErrorMessage, clazz.srcPos)
 
       checkMemberTypesOK()
-      checkCaseClassInheritanceInvariant()
+      checkVariantInheritanceProblems()
     }
 
     if (!clazz.is(Trait) && checker.checkInheritedTraitParameters) {
@@ -943,7 +949,7 @@ object RefChecks {
         for {
           cls <- clazz.info.baseClasses.tail
           if cls.paramAccessors.nonEmpty && !mixins.contains(cls)
-          problem <- variantInheritanceProblems(cls, clazz.asClass.superClass, i"parameterized base $cls", "super")
+          problem <- variantInheritanceProblems(cls, clazz.asClass.superClass, "parameterized ", "super")
         }
         report.error(problem, clazz.srcPos)
       }
@@ -966,7 +972,7 @@ object RefChecks {
       if (combinedBT =:= thisBT) None // ok
       else
         Some(
-          em"""illegal inheritance: $clazz inherits conflicting instances of $baseStr.
+          em"""illegal inheritance: $clazz inherits conflicting instances of ${baseStr}base $baseCls.
               |
               |  Direct basetype: $thisBT
               |  Basetype via $middleStr$middle: $combinedBT""")
