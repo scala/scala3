@@ -172,6 +172,10 @@ object Scala2LibraryBootstrappedMiMaFilters {
         "scala.collection.mutable.LinkedHashSet.defaultLoadFactor", // private[collection] final def
         "scala.collection.mutable.LinkedHashSet.defaultinitialSize", // private[collection] final def
         "scala.collection.mutable.OpenHashMap.nextPositivePowerOfTwo", // private[mutable] def
+        // New in 2.13.13
+        "scala.collection.mutable.ArrayBuffer.resizeUp", // private[mutable] def
+        // New in 2.13.14
+        "scala.util.Properties.consoleIsTerminal", // private[scala] lazy val
       ).map(ProblemFilters.exclude[DirectMissingMethodProblem]) ++
       Seq( // MissingFieldProblem: static field ... in object ... does not have a correspondent in other version
         "scala.Array.UnapplySeqWrapper",

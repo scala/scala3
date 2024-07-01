@@ -144,8 +144,8 @@ object Build {
    *  scala-library.
    */
   def stdlibVersion(implicit mode: Mode): String = mode match {
-    case NonBootstrapped => "2.13.13"
-    case Bootstrapped => "2.13.13"
+    case NonBootstrapped => "2.13.14"
+    case Bootstrapped => "2.13.14"
   }
 
   /** Version of the scala-library for which we will generate TASTy.
@@ -155,7 +155,7 @@ object Build {
    *  We can use nightly versions to tests the future compatibility in development.
    *  Nightly versions: https://scala-ci.typesafe.com/ui/native/scala-integration/org/scala-lang
    */
-  val stdlibBootstrappedVersion = "2.13.13"
+  val stdlibBootstrappedVersion = "2.13.14"
 
   val dottyOrganization = "org.scala-lang"
   val dottyGithubUrl = "https://github.com/scala/scala3"
@@ -1358,7 +1358,7 @@ object Build {
         "io.get-coursier" % "interface" % "1.0.18",
         "org.scalameta" % "mtags-interfaces" % mtagsVersion,
       ),
-      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.13" % mtagsVersion % SourceDeps),
+      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.14" % mtagsVersion % SourceDeps),
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       scalacOptions ++= Seq("-source", "3.3"), // To avoid fatal migration warnings
