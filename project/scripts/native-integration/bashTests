@@ -19,7 +19,7 @@ die () {
     exit 1
 }
 
-PROG_HOME="$DIST_DIR/target/pack"
+PROG_HOME="$DIST_DIR/target/universal/stage"
 
 SOURCE="$ROOT/tests/pos/HelloWorld.scala"
 SOURCE_VERSION="$ROOT/project/scripts/native-integration/reportScalaVersion.scala"
@@ -42,7 +42,7 @@ clear_cli_dotfiles()
 # *---------------*/
 
 # build the distribution
-"$SBT" "$DIST_PROJECT/pack"
+"$SBT" "$DIST_PROJECT/Universal/stage"
 
 SCALA_VERSION=""
 # iterate through lines in VERSION_SRC
