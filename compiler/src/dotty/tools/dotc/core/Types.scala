@@ -5307,10 +5307,25 @@ object Types extends TypeUtils {
       case _                      => true
   end MatchTypeCasePattern
 
+  enum MatchTypeCaseError:
+    case Alias(sym: Symbol)
+    case RefiningBounds(name: TypeName)
+    case StructuralType(name: TypeName)
+    case UnaccountedTypeParam(name: TypeName)
+
+    def explanation(using Context) = this match
+      case Alias(sym) => i"a type alias `${sym.name}`"
+      case RefiningBounds(name) => i"an abstract type member `$name` with bounds that need verification"
+      case StructuralType(name) => i"an abstract type member `$name` that does not refine a member in its parent"
+      case UnaccountedTypeParam(name) => i"an unaccounted type parameter `$name`"
+  end MatchTypeCaseError
+
+  type MatchTypeCaseResult = MatchTypeCasePattern | MatchTypeCaseError
+
   enum MatchTypeCaseSpec:
     case SubTypeTest(origMatchCase: Type, pattern: Type, body: Type)
     case SpeccedPatMat(origMatchCase: HKTypeLambda, captureCount: Int, pattern: MatchTypeCasePattern, body: Type)
-    case LegacyPatMat(origMatchCase: HKTypeLambda)
+    case LegacyPatMat(origMatchCase: HKTypeLambda, err: MatchTypeCaseError | Null)
     case MissingCaptures(origMatchCase: HKTypeLambda, missing: collection.BitSet)
 
     def origMatchCase: Type
@@ -5321,18 +5336,18 @@ object Types extends TypeUtils {
       cas match
         case cas: HKTypeLambda if !sourceVersion.isAtLeast(SourceVersion.`3.4`) =>
           // Always apply the legacy algorithm under -source:3.3 and below
-          LegacyPatMat(cas)
+          LegacyPatMat(cas, null)
         case cas: HKTypeLambda =>
           val defn.MatchCase(pat, body) = cas.resultType: @unchecked
           val missing = checkCapturesPresent(cas, pat)
           if !missing.isEmpty then
             MissingCaptures(cas, missing)
           else
-            val specPattern = tryConvertToSpecPattern(cas, pat)
-            if specPattern != null then
-              SpeccedPatMat(cas, cas.paramNames.size, specPattern, body)
-            else
-              LegacyPatMat(cas)
+            tryConvertToSpecPattern(cas, pat) match
+              case specPattern: MatchTypeCasePattern =>
+                SpeccedPatMat(cas, cas.paramNames.size, specPattern, body)
+              case err: MatchTypeCaseError =>
+                LegacyPatMat(cas, err)
         case _ =>
           val defn.MatchCase(pat, body) = cas: @unchecked
           SubTypeTest(cas, pat, body)
@@ -5370,15 +5385,15 @@ object Types extends TypeUtils {
      *  It must adhere to the specification of legal patterns defined at
      *  https://docs.scala-lang.org/sips/match-types-spec.html#legal-patterns
      *
-     *  Returns `null` if the pattern in `caseLambda` is a not a legal pattern.
+     *  Returns a MatchTypeCaseError if the pattern in `caseLambda` is a not a legal pattern.
      */
-    private def tryConvertToSpecPattern(caseLambda: HKTypeLambda, pat: Type)(using Context): MatchTypeCasePattern | Null =
-      var typeParamRefsAccountedFor: Int = 0
+    private def tryConvertToSpecPattern(caseLambda: HKTypeLambda, pat: Type)(using Context): MatchTypeCaseResult =
+      var typeParamRefsUnaccountedFor = (0 until caseLambda.paramNames.length).to(mutable.BitSet)
 
-      def rec(pat: Type, variance: Int): MatchTypeCasePattern | Null =
+      def rec(pat: Type, variance: Int): MatchTypeCaseResult =
         pat match
           case pat @ TypeParamRef(binder, num) if binder eq caseLambda =>
-            typeParamRefsAccountedFor += 1
+            typeParamRefsUnaccountedFor -= num
             MatchTypeCasePattern.Capture(num, isWildcard = pat.paramName.is(WildcardParamName))
 
           case pat @ AppliedType(tycon: TypeRef, args) if variance == 1 =>
@@ -5394,13 +5409,13 @@ object Types extends TypeUtils {
                   MatchTypeCasePattern.BaseTypeTest(tycon, argPatterns, needsConcreteScrut)
                 }
             else if defn.isCompiletime_S(tyconSym) && args.sizeIs == 1 then
-              val argPattern = rec(args.head, variance)
-              if argPattern == null then
-                null
-              else if argPattern.isTypeTest then
-                MatchTypeCasePattern.TypeTest(pat)
-              else
-                MatchTypeCasePattern.CompileTimeS(argPattern)
+              rec(args.head, variance) match
+                case err: MatchTypeCaseError =>
+                  err
+                case argPattern: MatchTypeCasePattern =>
+                  if argPattern.isTypeTest
+                  then MatchTypeCasePattern.TypeTest(pat)
+                  else MatchTypeCasePattern.CompileTimeS(argPattern)
             else
               tycon.info match
                 case _: RealTypeBounds =>
@@ -5416,7 +5431,7 @@ object Types extends TypeUtils {
                    */
                   rec(pat.superType, variance)
                 case _ =>
-                  null
+                  MatchTypeCaseError.Alias(tyconSym)
 
           case pat @ AppliedType(tycon: TypeParamRef, _) if variance == 1 =>
             recAbstractTypeConstructor(pat)
@@ -5437,40 +5452,40 @@ object Types extends TypeUtils {
                   MatchTypeCasePattern.TypeMemberExtractor(refinedName, capture)
                 else
                   // Otherwise, a type-test + capture combo might be necessary, and we are out of spec
-                  null
+                  MatchTypeCaseError.RefiningBounds(refinedName)
               case _ =>
                 // If the member does not refine a member of the `parent`, we are out of spec
-                null
+                MatchTypeCaseError.StructuralType(refinedName)
 
           case _ =>
             MatchTypeCasePattern.TypeTest(pat)
       end rec
 
-      def recAbstractTypeConstructor(pat: AppliedType): MatchTypeCasePattern | Null =
+      def recAbstractTypeConstructor(pat: AppliedType): MatchTypeCaseResult =
         recArgPatterns(pat) { argPatterns =>
           MatchTypeCasePattern.AbstractTypeConstructor(pat.tycon, argPatterns)
         }
       end recAbstractTypeConstructor
 
-      def recArgPatterns(pat: AppliedType)(whenNotTypeTest: List[MatchTypeCasePattern] => MatchTypeCasePattern | Null): MatchTypeCasePattern | Null =
+      def recArgPatterns(pat: AppliedType)(whenNotTypeTest: List[MatchTypeCasePattern] => MatchTypeCaseResult): MatchTypeCaseResult =
         val AppliedType(tycon, args) = pat
         val tparams = tycon.typeParams
         val argPatterns = args.zip(tparams).map { (arg, tparam) =>
           rec(arg, tparam.paramVarianceSign)
         }
-        if argPatterns.exists(_ == null) then
-          null
-        else
-          val argPatterns1 = argPatterns.asInstanceOf[List[MatchTypeCasePattern]] // they are not null
+        argPatterns.find(_.isInstanceOf[MatchTypeCaseError]).getOrElse:
+          val argPatterns1 = argPatterns.asInstanceOf[List[MatchTypeCasePattern]] // they are not errors
           if argPatterns1.forall(_.isTypeTest) then
             MatchTypeCasePattern.TypeTest(pat)
           else
             whenNotTypeTest(argPatterns1)
       end recArgPatterns
 
-      val result = rec(pat, variance = 1)
-      if typeParamRefsAccountedFor == caseLambda.paramNames.size then result
-      else null
+      rec(pat, variance = 1) match
+        case err: MatchTypeCaseError => err
+        case ok if typeParamRefsUnaccountedFor.isEmpty => ok
+        case _ =>
+          MatchTypeCaseError.UnaccountedTypeParam(caseLambda.paramNames(typeParamRefsUnaccountedFor.head))
     end tryConvertToSpecPattern
   end MatchTypeCaseSpec
 
