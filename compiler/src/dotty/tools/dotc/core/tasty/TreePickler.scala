@@ -466,7 +466,10 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
               }
             case _ =>
               if passesConditionForErroringBestEffortCode(tree.hasType) then
-                val sig = tree.tpe.signature
+                // #19951 The signature of a constructor of a Java annotation is irrelevant
+                val sig =
+                  if name == nme.CONSTRUCTOR && tree.symbol.exists && tree.symbol.owner.is(JavaAnnotation) then Signature.NotAMethod
+                  else tree.tpe.signature
                 var ename = tree.symbol.targetName
                 val selectFromQualifier =
                   name.isTypeName
@@ -507,7 +510,14 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
             writeByte(APPLY)
             withLength {
               pickleTree(fun)
-              args.foreach(pickleTree)
+              // #19951 Do not pickle default arguments to Java annotation constructors
+              if fun.symbol.isClassConstructor && fun.symbol.owner.is(JavaAnnotation) then
+                for arg <- args do
+                  arg match
+                    case NamedArg(_, Ident(nme.WILDCARD)) => ()
+                    case _                                => pickleTree(arg)
+              else
+                args.foreach(pickleTree)
             }
           }
         case TypeApply(fun, args) =>
