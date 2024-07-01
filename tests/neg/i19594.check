@@ -1,0 +1,8 @@
+-- [E172] Type Error: tests/neg/i19594.scala:12:14 ---------------------------------------------------------------------
+12 |  assertEquals(true, 1, "values are not the same") // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Can you see me?!
+-- [E172] Type Error: tests/neg/i19594.scala:13:14 ---------------------------------------------------------------------
+13 |  assertEquals(true, 1) // error
+   |  ^^^^^^^^^^^^^^^^^^^^^
+   |  Can you see me?!
