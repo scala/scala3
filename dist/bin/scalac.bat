@@ -88,34 +88,40 @@ goto :eof
 
 @rem output parameter: _JVM_CP_ARGS
 :compilerJavaClasspathArgs
-@rem echo scala3-compiler: %_SCALA3_COMP%
-@rem echo scala3-interface: %_SCALA3_INTF%
-@rem echo scala3-library: %_SCALA3_LIB%
-@rem echo tasty-core: %_TASTY_CORE%
-@rem echo scala-asm: %_SCALA_ASM%
-@rem echo scala-lib: %_SCALA_LIB%
-@rem echo sbt-intface: %_SBT_INTF%
 
-set "__TOOLCHAIN=%_SCALA_LIB%%_PSEP%"
-set "__TOOLCHAIN=%__TOOLCHAIN%%_SCALA3_LIB%%_PSEP%"
-set "__TOOLCHAIN=%__TOOLCHAIN%%_SCALA_ASM%%_PSEP%"
-set "__TOOLCHAIN=%__TOOLCHAIN%%_SBT_INTF%%_PSEP%"
-set "__TOOLCHAIN=%__TOOLCHAIN%%_SCALA3_INTF%%_PSEP%"
-set "__TOOLCHAIN=%__TOOLCHAIN%%_SCALA3_COMP%%_PSEP%"
-set "__TOOLCHAIN=%__TOOLCHAIN%%_TASTY_CORE%%_PSEP%"
-set "__TOOLCHAIN=%__TOOLCHAIN%%_SCALA3_STAGING%%_PSEP%"
-set "__TOOLCHAIN=%__TOOLCHAIN%%_SCALA3_TASTY_INSPECTOR%%_PSEP%"
+set "CP_FILE=%_ETC_DIR%\scala.classpath"
+call :loadClasspathFromFile %CP_FILE%
+set "__TOOLCHAIN=%_CLASS_PATH_RESULT%"
 
-@rem # jline
-set "__TOOLCHAIN=%__TOOLCHAIN%%_JLINE_READER%%_PSEP%"
-set "__TOOLCHAIN=%__TOOLCHAIN%%_JLINE_TERMINAL%%_PSEP%"
-set "__TOOLCHAIN=%__TOOLCHAIN%%_JLINE_TERMINAL_JNA%%_PSEP%"
-set "__TOOLCHAIN=%__TOOLCHAIN%%_JNA%%_PSEP%"
+set "CP_FILE=%_ETC_DIR%\with_compiler.classpath"
+call :loadClasspathFromFile %CP_FILE%
+
+if defined _CLASS_PATH_RESULT (
+    set "__TOOLCHAIN=%__TOOLCHAIN%%_PSEP%%_CLASS_PATH_RESULT%"
+)
 
 if defined _SCALA_CPATH (
     set "_JVM_CP_ARGS=%__TOOLCHAIN%%_SCALA_CPATH%"
 ) else (
     set "_JVM_CP_ARGS=%__TOOLCHAIN%"
+)
+goto :eof
+
+@REM concatentate every line in "%_ARG_FILE%" with _PSEP
+@REM arg 1 - file to read
+:loadClasspathFromFile
+set _ARG_FILE=%1
+set _CLASS_PATH_RESULT=
+if exist "%_ARG_FILE%" (
+    for /f "usebackq delims=" %%i in ("%_ARG_FILE%") do (
+        set "_LIB=%_PROG_HOME%\maven2\%%i"
+        set "_LIB=!_LIB:/=\!"
+        if not defined _CLASS_PATH_RESULT (
+            set "_CLASS_PATH_RESULT=!_LIB!"
+        ) else (
+            set "_CLASS_PATH_RESULT=!_CLASS_PATH_RESULT!%_PSEP%!_LIB!"
+        )
+    )
 )
 goto :eof
 

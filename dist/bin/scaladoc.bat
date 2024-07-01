@@ -105,60 +105,24 @@ goto :eof
 
 @rem output parameter: _CLASS_PATH
 :classpathArgs
-set "_LIB_DIR=%_PROG_HOME%\lib"
-set _CLASS_PATH=
+set "_ETC_DIR=%_PROG_HOME%\etc"
 @rem keep list in sync with bash script `bin\scaladoc` !
-call :updateClasspath "scaladoc"
-call :updateClasspath "scala3-compiler"
-call :updateClasspath "scala3-interfaces"
-call :updateClasspath "scala3-library"
-call :updateClasspath "tasty-core"
-call :updateClasspath "scala3-tasty-inspector"
-call :updateClasspath "flexmark-0"
-call :updateClasspath "flexmark-html-parser"
-call :updateClasspath "flexmark-ext-anchorlink"
-call :updateClasspath "flexmark-ext-autolink"
-call :updateClasspath "flexmark-ext-emoji"
-call :updateClasspath "flexmark-ext-gfm-strikethrough"
-call :updateClasspath "flexmark-ext-gfm-tables"
-call :updateClasspath "flexmark-ext-gfm-tasklist"
-call :updateClasspath "flexmark-ext-wikilink"
-call :updateClasspath "flexmark-ext-yaml-front-matter"
-call :updateClasspath "liqp"
-call :updateClasspath "jsoup"
-call :updateClasspath "jackson-dataformat-yaml"
-call :updateClasspath "jackson-datatype-jsr310"
-call :updateClasspath "strftime4j"
-call :updateClasspath "scala-asm"
-call :updateClasspath "compiler-interface"
-call :updateClasspath "jline-reader"
-call :updateClasspath "jline-terminal-3"
-call :updateClasspath "jline-terminal-jna"
-call :updateClasspath "flexmark-util"
-call :updateClasspath "flexmark-formatter"
-call :updateClasspath "autolink-0.6"
-call :updateClasspath "flexmark-jira-converter"
-call :updateClasspath "antlr4"
-call :updateClasspath "jackson-annotations"
-call :updateClasspath "jackson-core"
-call :updateClasspath "jackson-databind"
-call :updateClasspath "snakeyaml"
-call :updateClasspath "scala-library"
-call :updateClasspath "protobuf-java"
-call :updateClasspath "util-interface"
-call :updateClasspath "jna-5"
-call :updateClasspath "flexmark-ext-tables"
-call :updateClasspath "flexmark-ext-ins"
-call :updateClasspath "flexmark-ext-superscript"
-call :updateClasspath "antlr4-runtime"
+call :loadClasspathFromFile
 goto :eof
 
-@rem input parameter: %1=pattern for library file
-@rem output parameter: _CLASS_PATH
-:updateClasspath
-set "__PATTERN=%~1"
-for /f "delims=" %%f in ('dir /a-d /b "%_LIB_DIR%\*%__PATTERN%*" 2^>NUL') do (
-    set "_CLASS_PATH=!_CLASS_PATH!%_LIB_DIR%\%%f%_PSEP%"
+@REM concatentate every line in "%_ETC_DIR%\scaladoc.classpath" with _PSEP
+:loadClasspathFromFile
+set _CLASS_PATH=
+if exist "%_ETC_DIR%\scaladoc.classpath" (
+    for /f "usebackq delims=" %%i in ("%_ETC_DIR%\scaladoc.classpath") do (
+        set "_LIB=%_PROG_HOME%\maven2\%%i"
+        set "_LIB=!_LIB:/=\!"
+        if not defined _CLASS_PATH (
+            set "_CLASS_PATH=!_LIB!"
+        ) else (
+            set "_CLASS_PATH=!_CLASS_PATH!%_PSEP%!_LIB!"
+        )
+    )
 )
 goto :eof
 

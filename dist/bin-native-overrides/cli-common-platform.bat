@@ -12,6 +12,10 @@ FOR /F "usebackq delims=" %%G IN ("%_PROG_HOME%\EXTRA_PROPERTIES") DO (
   )
 )
 
+@REM we didn't find it, so we should fail
+echo "ERROR: cli_version not found in EXTRA_PROPERTIES file"
+exit /b 1
+
 :foundCliVersion
 endlocal & set "SCALA_CLI_VERSION=%_SCALA_CLI_VERSION%"
 
