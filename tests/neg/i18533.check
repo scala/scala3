@@ -1,0 +1,8 @@
+-- Error: tests/neg/i18533/Pet_SCALA_ONLY.java:3:10 --------------------------------------------------------------------
+3 |class Pet permits Cat { // error
+  |          ^^^^^^^
+  |          A type declaration that has a permits clause should have a sealed modifier
+-- Error: tests/neg/i18533/non-SCALA_ONLY.java:4:7 ---------------------------------------------------------------------
+4 |public non class Test { // error
+  |       ^^^
+  |       Identifier 'non' is not allowed here
