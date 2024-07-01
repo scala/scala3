@@ -43,7 +43,7 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
   def typeCheck(using Context)(using subphase: SubPhase): Boolean = monitor(subphase.name) {
     val unit = ctx.compilationUnit
     try
-      if !unit.suspended then
+      if !unit.suspended then ctx.profiler.onUnit(ctx.phase, unit):
         unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
         typr.println("typed: " + unit.source)
         record("retained untyped trees", unit.untpdTree.treeSize)
