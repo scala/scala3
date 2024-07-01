@@ -38,7 +38,8 @@ import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
-import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, isCaptureChecking, isRetains, isRetainsLike}
+import cc.{CapturingType, CaptureRef, CaptureSet, SingletonCaptureRef, isTrackableRef,
+           derivedCapturingType, isBoxedCapturing, isCaptureChecking, isRetains, isRetainsLike}
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
@@ -521,11 +522,6 @@ object Types extends TypeUtils {
      *  but not others in the symbol's types.
      */
     def isDeclaredVarianceLambda: Boolean = false
-
-    /** Is this type a CaptureRef that can be tracked?
-     *  This is true for all ThisTypes or ParamRefs but only for some NamedTypes.
-     */
-    def isTrackableRef(using Context): Boolean = false
 
     /** Does this type contain wildcard types? */
     final def containsWildcardTypes(using Context) =
@@ -1653,9 +1649,6 @@ object Types extends TypeUtils {
       case _                  => if (isRepeatedParam) this.argTypesHi.head else this
     }
 
-    /** The capture set of this type. Overridden and cached in CaptureRef */
-    def captureSet(using Context): CaptureSet = CaptureSet.ofType(this, followResult = false)
-
     // ----- Normalizing typerefs over refined types ----------------------------
 
     /** If this normalizes* to a refinement type that has a refinement for `name` (which might be followed
@@ -2046,20 +2039,6 @@ object Types extends TypeUtils {
       case _ =>
         this
 
-    /** A type capturing `ref` */
-    def capturing(ref: CaptureRef)(using Context): Type =
-      if captureSet.accountsFor(ref) then this
-      else CapturingType(this, ref.singletonCaptureSet)
-
-    /** A type capturing the capture set `cs`. If this type is already a capturing type
-     *  the two capture sets are combined.
-     */
-    def capturing(cs: CaptureSet)(using Context): Type =
-      if cs.isAlwaysEmpty || cs.isConst && cs.subCaptures(captureSet, frozen = true).isOK then this
-      else this match
-        case CapturingType(parent, cs1) => parent.capturing(cs1 ++ cs)
-        case _ => CapturingType(this, cs)
-
     /** The set of distinct symbols referred to by this type, after all aliases are expanded */
     def coveringSet(using Context): Set[Symbol] =
       (new CoveringSetAccumulator).apply(Set.empty[Symbol], this)
@@ -2257,67 +2236,6 @@ object Types extends TypeUtils {
   trait SingletonType extends TypeProxy with ValueType {
     def isOverloaded(using Context): Boolean = false
   }
-
-  /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs */
-  trait CaptureRef extends TypeProxy, ValueType:
-    private var myCaptureSet: CaptureSet | Null = uninitialized
-    private var myCaptureSetRunId: Int = NoRunId
-    private var mySingletonCaptureSet: CaptureSet.Const | Null = null
-
-    /** Is the reference tracked? This is true if it can be tracked and the capture
-     *  set of the underlying type is not always empty.
-     */
-    final def isTracked(using Context): Boolean =
-      isTrackableRef && (isMaxCapability || !captureSetOfInfo.isAlwaysEmpty)
-
-    /** Is this a reach reference of the form `x*`? */
-    def isReach(using Context): Boolean = false // overridden in AnnotatedType
-
-    /** Is this a maybe reference of the form `x?`? */
-    def isMaybe(using Context): Boolean = false // overridden in AnnotatedType
-
-    def stripReach(using Context): CaptureRef = this // overridden in AnnotatedType
-    def stripMaybe(using Context): CaptureRef = this // overridden in AnnotatedType
-
-    /** Is this reference the generic root capability `cap` ? */
-    def isRootCapability(using Context): Boolean = false
-
-    /** Is this reference capability that does not derive from another capability ? */
-    def isMaxCapability(using Context): Boolean = false
-
-    /** Normalize reference so that it can be compared with `eq` for equality */
-    def normalizedRef(using Context): CaptureRef = this
-
-    /** The capture set consisting of exactly this reference */
-    def singletonCaptureSet(using Context): CaptureSet.Const =
-      if mySingletonCaptureSet == null then
-        mySingletonCaptureSet = CaptureSet(this.normalizedRef)
-      mySingletonCaptureSet.uncheckedNN
-
-    /** The capture set of the type underlying this reference */
-    def captureSetOfInfo(using Context): CaptureSet =
-      if ctx.runId == myCaptureSetRunId then myCaptureSet.nn
-      else if myCaptureSet.asInstanceOf[AnyRef] eq CaptureSet.Pending then CaptureSet.empty
-      else
-        myCaptureSet = CaptureSet.Pending
-        val computed = CaptureSet.ofInfo(this)
-        if !isCaptureChecking || underlying.isProvisional then
-          myCaptureSet = null
-        else
-          myCaptureSet = computed
-          myCaptureSetRunId = ctx.runId
-        computed
-
-    def invalidateCaches() =
-      myCaptureSetRunId = NoRunId
-
-    override def captureSet(using Context): CaptureSet =
-      val cs = captureSetOfInfo
-      if isTrackableRef && !cs.isAlwaysEmpty then singletonCaptureSet else cs
-
-  end CaptureRef
-
-  trait SingletonCaptureRef extends SingletonType, CaptureRef
 
   /** A trait for types that bind other types that refer to them.
    *  Instances are: LambdaType, RecType.
@@ -3007,32 +2925,11 @@ object Types extends TypeUtils {
     def implicitName(using Context): TermName = name
     def underlyingRef: TermRef = this
 
-    /** A term reference can be tracked if it is a local term ref to a value
-     *  or a method term parameter. References to term parameters of classes
-     *  cannot be tracked individually.
-     *  They are subsumed in the capture sets of the enclosing class.
-     *  TODO: ^^^ What about call-by-name?
-     */
-    override def isTrackableRef(using Context) =
-      ((prefix eq NoPrefix)
-      || symbol.is(ParamAccessor) && prefix.isThisTypeOf(symbol.owner)
-      || isRootCapability
-      ) && !symbol.isOneOf(UnstableValueFlags)
-
-    override def isRootCapability(using Context): Boolean =
-      name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
-
-    override def isMaxCapability(using Context): Boolean =
-      import cc.*
-      this.derivesFromCapability && symbol.isStableMember
-
-    override def normalizedRef(using Context): CaptureRef =
-      if isTrackableRef then symbol.termRef else this
   }
 
   abstract case class TypeRef(override val prefix: Type,
                               private var myDesignator: Designator)
-    extends NamedType {
+    extends NamedType, CaptureRef {
 
     type ThisType = TypeRef
     type ThisName = TypeName
@@ -3081,6 +2978,7 @@ object Types extends TypeUtils {
     /** Hook that can be called from creation methods in TermRef and TypeRef */
     def validated(using Context): this.type =
       this
+
   }
 
   final class CachedTermRef(prefix: Type, designator: Designator, hc: Int) extends TermRef(prefix, designator) {
@@ -3181,8 +3079,6 @@ object Types extends TypeUtils {
           if ctx.mode.is(Mode.Interactive) || ctx.tolerateErrorsForBestEffort => cls.info
           // can happen in IDE if `cls` is stale
       }
-
-    override def isTrackableRef(using Context) = true
 
     override def computeHash(bs: Binders): Int = doHash(bs, tref)
 
@@ -4830,10 +4726,6 @@ object Types extends TypeUtils {
     type BT = TermLambda
     def kindString: String = "Term"
     def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
-    override def isTrackableRef(using Context) = true
-    override def isMaxCapability(using Context) =
-      import cc.*
-      this.derivesFromCapability
   }
 
   private final class TermParamRefImpl(binder: TermLambda, paramNum: Int) extends TermParamRef(binder, paramNum)
@@ -4841,7 +4733,8 @@ object Types extends TypeUtils {
   /** Only created in `binder.paramRefs`. Use `binder.paramRefs(paramNum)` to
    *  refer to `TypeParamRef(binder, paramNum)`.
    */
-  abstract case class TypeParamRef(binder: TypeLambda, paramNum: Int) extends ParamRef {
+  abstract case class TypeParamRef(binder: TypeLambda, paramNum: Int)
+  extends ParamRef, CaptureRef {
     type BT = TypeLambda
     def kindString: String = "Type"
     def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
@@ -5838,30 +5731,6 @@ object Types extends TypeUtils {
       isRefiningCache
     }
 
-    override def isTrackableRef(using Context) =
-      (isReach || isMaybe) && parent.isTrackableRef
-
-    /** Is this a reach reference of the form `x*`? */
-    override def isReach(using Context): Boolean =
-      annot.symbol == defn.ReachCapabilityAnnot
-
-    /** Is this a reach reference of the form `x*`? */
-    override def isMaybe(using Context): Boolean =
-      annot.symbol == defn.MaybeCapabilityAnnot
-
-    override def stripReach(using Context): CaptureRef =
-      if isReach then parent.asInstanceOf[CaptureRef] else this
-
-    override def stripMaybe(using Context): CaptureRef =
-      if isMaybe then parent.asInstanceOf[CaptureRef] else this
-
-    override def normalizedRef(using Context): CaptureRef =
-      if isReach then AnnotatedType(stripReach.normalizedRef, annot) else this
-
-    override def captureSet(using Context): CaptureSet =
-      if isReach then super.captureSet
-      else CaptureSet.ofType(this, followResult = false)
-
     // equals comes from case class; no matching override is needed
 
     override def computeHash(bs: Binders): Int =
@@ -6287,6 +6156,15 @@ object Types extends TypeUtils {
       variance = v
       try derivedCapturingType(tp, this(parent), refs.map(this))
       finally variance = saved
+
+    /** Utility method. Maps the supertype of a type proxy. Returns the
+     *  type proxy itself if the mapping leaves the supertype unchanged.
+     *  This avoids needless changes in mapped types.
+     */
+    protected def mapConserveSuper(t: TypeProxy): Type =
+      val t1 = t.superType
+      val t2 = apply(t1)
+      if t2 ne t1 then t2 else t
 
     /** Map this function over given type */
     def mapOver(tp: Type): Type = {

@@ -18,7 +18,7 @@ import typer.ForceDegree
 import typer.Inferencing.*
 import typer.IfBottom
 import reporting.TestingReporter
-import cc.{CapturingType, derivedCapturingType, CaptureSet, isBoxed, isBoxedCapturing}
+import cc.{CapturingType, derivedCapturingType, CaptureSet, captureSet, isBoxed, isBoxedCapturing}
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable

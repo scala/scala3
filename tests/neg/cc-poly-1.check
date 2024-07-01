@@ -1,0 +1,12 @@
+-- [E057] Type Mismatch Error: tests/neg/cc-poly-1.scala:12:6 ----------------------------------------------------------
+12 |    f[Any](D()) // error
+   |      ^
+   |      Type argument Any does not conform to upper bound caps.CapSet^
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E057] Type Mismatch Error: tests/neg/cc-poly-1.scala:13:6 ----------------------------------------------------------
+13 |    f[String](D()) // error
+   |      ^
+   |      Type argument String does not conform to upper bound caps.CapSet^
+   |
+   | longer explanation available when compiling with `-explain`
