@@ -13,6 +13,7 @@ curried-dependent-ift.scala
 i17121.scala
 illegal-match-types.scala
 i13780-1.scala
+opaque-matches.scala
 
 i20317a.scala # recursion limit exceeded
 i11226.scala # missing type
