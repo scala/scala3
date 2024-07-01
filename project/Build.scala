@@ -118,9 +118,9 @@ object Build {
   val mimaPreviousLTSDottyVersion = "3.3.0"
 
   /** Version of Scala CLI to download */
-  val scalaCliLauncherVersion = "1.3.2"
+  val scalaCliLauncherVersion = "1.4.0"
   /** Version of Scala CLI to download (on Windows - last known validated version) */
-  val scalaCliLauncherVersionWindows = "1.3.2"
+  val scalaCliLauncherVersionWindows = "1.4.0"
   /** Version of Coursier to download for initializing the local maven repo of Scala command */
   val coursierJarVersion = "2.1.10"
 
