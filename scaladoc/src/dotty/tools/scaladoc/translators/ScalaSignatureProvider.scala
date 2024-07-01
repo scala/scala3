@@ -75,7 +75,7 @@ class ScalaSignatureProvider:
 
     MemberSignature(
       builder.modifiersAndVisibility(entry),
-      builder.kind(entry.kind),
+      List(),
       builder.name(entry.name, entry.dri),
       builder.keyword(" extends ").signature(modifiedType)
     )
