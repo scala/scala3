@@ -2588,7 +2588,7 @@ Uri => Methods.scala
 Text => empty
 Language => Scala
 Symbols => 82 entries
-Occurrences => 156 entries
+Occurrences => 157 entries
 
 Symbols:
 example/Methods# => class Methods [typeparam T ] extends Object { self: Methods[T] => +44 decls }
@@ -2732,6 +2732,7 @@ Occurrences:
 [16:29..16:32): ??? -> scala/Predef.`???`().
 [17:6..17:8): m7 <- example/Methods#m7().
 [17:9..17:10): U <- example/Methods#m7().[U]
+[17:12..17:20): Ordering -> scala/math/Ordering#
 [17:12..17:20): Ordering -> example/Methods#m7().[U]
 [17:12..17:12): <- example/Methods#m7().(evidence$1)
 [17:22..17:23): c <- example/Methods#m7().(c)

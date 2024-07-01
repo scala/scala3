@@ -2401,13 +2401,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   def typedContextBoundTypeTree(tree: untpd.ContextBoundTypeTree)(using Context): Tree =
     val tycon = typedType(tree.tycon)
-    val tyconSplice = untpd.TypedSplice(tycon)
+    def spliced(tree: Tree) = untpd.TypedSplice(tree)
     val tparam = untpd.Ident(tree.paramName).withSpan(tree.span)
     if tycon.tpe.typeParams.nonEmpty then
-      typed(untpd.AppliedTypeTree(tyconSplice, tparam :: Nil))
+      val tycon0 = tycon.withType(tycon.tpe.etaCollapse)
+      typed(untpd.AppliedTypeTree(spliced(tycon0), tparam :: Nil))
     else if Feature.enabled(modularity) && tycon.tpe.member(tpnme.Self).symbol.isAbstractOrParamType then
       val tparamSplice = untpd.TypedSplice(typedExpr(tparam))
-      typed(untpd.RefinedTypeTree(tyconSplice, List(untpd.TypeDef(tpnme.Self, tparamSplice))))
+      typed(untpd.RefinedTypeTree(spliced(tycon), List(untpd.TypeDef(tpnme.Self, tparamSplice))))
     else
       def selfNote =
         if Feature.enabled(modularity) then
