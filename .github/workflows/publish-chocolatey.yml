@@ -1,0 +1,78 @@
+###################################################################################################
+###                  THIS IS A REUSABLE WORKFLOW TO PUBLISH SCALA TO CHOCOLATEY                 ###
+### HOW TO USE:                                                                                 ###
+###   - THE RELEASE WORKFLOW SHOULD CALL THIS WORKFLOW                                          ###
+###   - IT WILL PUBLISH TO CHOCOLATEY THE MSI                                                   ###
+###                                                                                             ###
+### NOTE:                                                                                       ###
+###   - WE SHOULD KEEP IN SYNC THE NAME OF THE MSI WITH THE ACTUAL BUILD                        ###
+###   - WE SHOULD KEEP IN SYNC THE URL OF THE RELEASE                                           ###
+###################################################################################################
+
+name: Publish Scala to Chocolatey
+run-name: Publish Scala ${{ inputs.version }} to Chocolatey
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+    secrets:
+      # Connect to https://community.chocolatey.org/profiles/scala
+      # Accessible via https://community.chocolatey.org/account
+      API-KEY:
+        required: true
+
+env:
+  RELEASE-URL: 'https://github.com/scala/scala3/releases/download/${{ inputs.version }}'
+  MSI_FILE   : 'scala3-${{ inputs.version }}.msi'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Check the version of Chocolatey
+        run : choco --version
+      - name: Replace the version placeholder
+        uses: richardrigutins/replace-in-files@v2
+        with:
+          files: ./pkgs/chocolatey/scala.nuspec
+          search-text: '@LAUNCHER_VERSION@'
+          replacement-text: ${{ inputs.version }}
+      - name: Replace the URL placeholder
+        uses: richardrigutins/replace-in-files@v2
+        with:
+          files: ./pkgs/chocolatey/tools/chocolateyinstall.ps1
+          search-text: '@LAUNCHER_URL@'
+          replacement-text: ${{ env.RELEASE-URL }}/${{ env.MSI_FILE }}
+      - name: Build the Chocolatey package (.nupkg)
+        run : choco --pack ./pkgs/chocolatey/scala.nuspec --outputdirectory ./pkgs/chocolatey
+      - name: Upload the Chocolatey package to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: scala.nupkg
+          path: ./pkgs/chocolatey/scala.nupkg
+          if-no-files-found: error
+
+  test:
+    runs-on: windows-latest
+    needs: build
+    steps:
+      - name: Fetch the Chocolatey package from GitHub
+        uses: actions/download-artifact@v4
+        with:
+          name: scala.nupkg
+      - name: Try to install the package locally
+        run: choco install scala --debug --verbose --source .
+
+  publish:
+    runs-on: windows-latest
+    needs: [build, test]
+    steps:
+      - name: Fetch the Chocolatey package from GitHub
+        uses: actions/download-artifact@v4
+        with:
+          name: scala.nupkg
+      - name: Publish the package to Chocolatey
+        run: choco push scala.nupkg --source https://push.chocolatey.org/ --api-key ${{ secrets.API-KEY }}
