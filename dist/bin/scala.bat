@@ -21,8 +21,9 @@ call :setScalaOpts
 
 call "%_PROG_HOME%\bin\cli-common-platform.bat"
 
-@rem SCALA_CLI_CMD_WIN is an array, set in cli-common-platform.bat
-call %SCALA_CLI_CMD_WIN% "--prog-name" "scala" "--cli-default-scala-version" "%_SCALA_VERSION%" "-r" "%MVN_REPOSITORY%" %*
+@rem SCALA_CLI_CMD_WIN is an array, set in cli-common-platform.bat.
+@rem WE NEED TO PASS '--skip-cli-updates' for JVM launchers but we actually don't need it for native launchers
+call %SCALA_CLI_CMD_WIN% "--prog-name" "scala" "--skip-cli-updates" "--cli-default-scala-version" "%_SCALA_VERSION%" "-r" "%MVN_REPOSITORY%" %*
 
 if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
 
