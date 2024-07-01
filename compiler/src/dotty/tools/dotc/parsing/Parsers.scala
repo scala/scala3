@@ -1619,7 +1619,7 @@ object Parsers {
                     () => funParam(in.offset, imods))
                 case t =>
                   def funArg() =
-                    addErased()
+                    erasedArgs.addOne(false)
                     funArgType()
                   commaSeparatedRest(t, funArg)
           accept(RPAREN)
