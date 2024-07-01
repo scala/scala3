@@ -889,6 +889,7 @@ object Parsers {
       var braces = 0
       while (true) {
         val token = lookahead.token
+        if (query != LARROW && token == XMLSTART) return false
         if (braces == 0) {
           if (token == query) return true
           if (stopScanTokens.contains(token) || lookahead.isNestedEnd) return false
@@ -910,6 +911,7 @@ object Parsers {
       lookahead.nextToken()
       while (parens != 0 && lookahead.token != EOF) {
         val token = lookahead.token
+        if (token == XMLSTART) return true
         if (token == LPAREN) parens += 1
         else if (token == RPAREN) parens -= 1
         lookahead.nextToken()
