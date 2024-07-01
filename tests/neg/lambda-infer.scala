@@ -1,6 +1,6 @@
 //> using options -language:experimental.erasedDefinitions
 
-type F = (Int, erased Int) => Int
+type F = (x: Int, erased y: Int) => Int
 
 erased class A
 
@@ -14,7 +14,7 @@ erased class A
 
   use { (x, y) => x } // error: Expected F got (Int, Int) => Int
 
-  def singleParam(f: (erased Int) => Int) = f(5)
+  def singleParam(f: (erased x: Int) => Int) = f(5)
 
   singleParam(x => 5) // error: Expected (erased Int) => Int got Int => Int
   singleParam((erased x) => 5) // ok

@@ -9,13 +9,12 @@ import ast.*
 import Names.Name
 import Phases.Phase
 import DenotTransformers.{DenotTransformer, IdentityDenotTransformer, SymTransformer}
-import NamerOps.{methodType, linkConstructorParams}
+import NamerOps.linkConstructorParams
 import NullOpsDecorator.stripNull
 import typer.ErrorReporting.err
 import typer.ProtoTypes.*
 import typer.TypeAssigner.seqLitType
 import typer.ConstFold
-import NamerOps.methodType
 import config.Printers.recheckr
 import util.Property
 import StdNames.nme
