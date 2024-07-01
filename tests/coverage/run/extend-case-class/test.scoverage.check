@@ -21,9 +21,9 @@
 0
 extend-case-class/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 282
 303
@@ -38,9 +38,9 @@ println(c.scaleLimit)
 1
 extend-case-class/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 306
 337
@@ -55,9 +55,9 @@ println(DecimalConf.scaleLimit)
 2
 extend-case-class/test.scala
 <empty>
-test$package$
+test$package
 Object
-<empty>.test$package$
+<empty>.test$package
 Test
 206
 220
