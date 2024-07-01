@@ -300,7 +300,7 @@ private sealed trait WarningSettings:
     def typeParameterShadow(using Context) =
       allOr("type-parameter-shadow")
 
-  private val WcheckInit: Setting[Boolean] = BooleanSetting(WarningSetting, "Wsafe-init", "Ensure safe initialization of objects.")
+  val WcheckInit: Setting[Boolean] = BooleanSetting(WarningSetting, "Wsafe-init", "Ensure safe initialization of objects.")
 
   object Whas:
     def allOr(s: Setting[Boolean])(using Context): Boolean =
