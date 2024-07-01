@@ -150,7 +150,10 @@ trait TypeAssigner {
         val pre = maybeSkolemizePrefix(qualType, name)
         val mbr =
           if ctx.isJava then
-            ctx.javaFindMember(name, pre)
+            // don't look in the companion class here if qual is a module,
+            // we use backtracking to instead change the qual to the companion class
+            // if this fails.
+            ctx.javaFindMember(name, pre, lookInCompanion = false)
           else
             qualType.findMember(name, pre)
 
