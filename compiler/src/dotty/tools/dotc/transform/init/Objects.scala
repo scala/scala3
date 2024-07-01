@@ -270,6 +270,8 @@ class Objects(using Context @constructorOnly):
         given Env.Data = Env.emptyEnv(tpl.constr.symbol)
         given Heap.MutableData = Heap.empty()
         given returns: Returns.Data = Returns.empty()
+        given handlers: Exceptions.Handlers = Exceptions.emptyHandlers()
+        given throws: Exceptions.Throws = Exceptions.emptyThrows()
         given regions: Regions.Data = Regions.empty // explicit name to avoid naming conflict
 
         val obj = ObjectRef(classSym)
@@ -580,8 +582,44 @@ class Objects(using Context @constructorOnly):
 
         case None =>
           report.warning("[Internal error] Unhandled return for method " + meth + " in " + meth.owner.show + ". Trace:\n" + Trace.show, Trace.position)
+  end Returns
 
-  type Contextual[T] = (Context, State.Data, Env.Data, Cache.Data, Heap.MutableData, Regions.Data, Returns.Data, Trace) ?=> T
+  /**
+    * Global data recording exception handlers and values in throw statement
+    */
+
+  object Exceptions:
+    opaque type Handlers = mutable.ArrayBuffer[mutable.ArrayBuffer[Type]]
+    opaque type Throws = mutable.ArrayBuffer[Value]
+
+    extension (throws: Throws)
+      def combineThrows(additionalThrows: Throws): Unit = throws ++= additionalThrows
+
+    def emptyHandlers(): Handlers = mutable.ArrayBuffer()
+    def emptyThrows(): Throws = mutable.ArrayBuffer()
+
+    def installHandlers(exceptionTypes: mutable.ArrayBuffer[Type])(using handlers: Handlers): Unit =
+      handlers.addOne(exceptionTypes)
+
+    def popHandlers(exceptionTypes: mutable.ArrayBuffer[Type])(using handlers: Handlers): Unit =
+      val poppedHandlers = handlers.remove(handlers.size - 1)
+      assert(poppedHandlers.equals(exceptionTypes), "Exception types mismatch in exception handlers, expect = " + exceptionTypes + ", found = " + poppedHandlers)
+
+    def addThrow(value: Value)(using throws: Throws): Unit = throws.addOne(value)
+
+    def filterThrow(throws: Throws, exceptionType: Type, caseDef: CaseDef)(using Context): Value =
+      val filteredValues = mutable.ArrayBuffer[Value]()
+      val removedValues = mutable.ArrayBuffer[Value]()
+      throws.foreach(value => {
+        val res = value.filterType(exceptionType)
+        filteredValues.addOne(res)
+        if res.equals(value) && caseDef.guard.isEmpty then removedValues.addOne(value)
+      })
+      throws --= removedValues
+      filteredValues.join
+  end Exceptions
+
+  type Contextual[T] = (Context, State.Data, Env.Data, Cache.Data, Heap.MutableData, Regions.Data, Returns.Data, Exceptions.Handlers, Exceptions.Throws, Trace) ?=> T
 
   // --------------------------- domain operations -----------------------------
 
@@ -1180,6 +1218,10 @@ class Objects(using Context @constructorOnly):
             val receiver = withTrace(trace2) { evalType(prefix, thisV, klass) }
             if id.symbol.isConstructor then
               withTrace(trace2) { callConstructor(receiver, id.symbol, args) }
+            else if id.symbol.equals(defn.throwMethod) then
+              assert(args.length == 1)
+              Exceptions.addThrow(args.head.value)
+              Bottom
             else
               withTrace(trace2) { call(receiver, id.symbol, args, receiver = prefix, superType = NoType) }
 
@@ -1266,10 +1308,7 @@ class Objects(using Context @constructorOnly):
         eval(expr, thisV, klass)
 
       case Try(block, cases, finalizer) =>
-        val res = evalExprs(block :: cases.map(_.body), thisV, klass).join
-        if !finalizer.isEmpty then
-          eval(finalizer, thisV, klass)
-        res
+        exceptionHandling(block, cases, finalizer, thisV, klass)
 
       case SeqLiteral(elems, elemtpt) =>
         evalExprs(elems, thisV, klass).join
@@ -1308,6 +1347,47 @@ class Objects(using Context @constructorOnly):
         report.warning("[Internal error] unexpected tree: " + expr + "\n" + Trace.show, expr)
         Bottom
   }
+
+  /** Models exception handling with try-catch-finally block. It uses `patternMatch` to
+   *  handle matching patterns in catch blocks
+   *
+   *  @param block       The try block to evaluate.
+   *  @param cases       The cases to match.
+   *  @param finalizer   An optional tree for finalizer.
+   *  @param thisV       The value for `C.this` where `C` is represented by `klass`.
+   *  @param klass       The enclosing class where the type `tp` is located.
+   */
+
+  def exceptionHandling(block: Tree, cases: List[CaseDef], finalizer: Tree, thisV: ThisValue, klass: ClassSymbol): Contextual[Value] =
+    def matchPatternType(pat: Tree): Type = pat match
+      case Alternative(pats) =>
+        val types = pats.map(matchPatternType)
+        types.fold(defn.NothingType)(OrType(_, _, true))
+      case bind @ Bind(_, pat) => matchPatternType(pat)
+      case UnApply(fun, implicits, pats) =>
+        val fun1 = funPart(fun)
+        val funRef = fun1.tpe.asInstanceOf[TermRef]
+        funRef.widen.finalResultType
+      case Ident(nme.WILDCARD) | Ident(nme.WILDCARD_STAR) => defn.AnyType
+      case Typed(_, typeTree) => typeTree.tpe
+      case _ => defn.AnyType
+    end matchPatternType
+
+    val handlerTypes = mutable.ArrayBuffer.from(cases.map(c => matchPatternType(c.pat)))
+    val handlers = Exceptions.installHandlers(handlerTypes)
+    val throwValuesInBlock = Exceptions.emptyThrows()
+    val blockResult = {
+      given Exceptions.Throws = throwValuesInBlock
+      eval(block, thisV, klass)
+    }
+    Exceptions.popHandlers(handlerTypes)
+    val caseResults = handlerTypes.zip(cases).map((tpe, cse) =>
+      patternMatch(Exceptions.filterThrow(throwValuesInBlock, tpe, cse), List(cse), thisV, klass))
+    summon[Exceptions.Throws].combineThrows(throwValuesInBlock)
+    if !finalizer.isEmpty then
+      eval(finalizer, thisV, klass)
+    blockResult.join(caseResults.join)
+  end exceptionHandling
 
   /** Evaluate the cases against the scrutinee value.
    *
