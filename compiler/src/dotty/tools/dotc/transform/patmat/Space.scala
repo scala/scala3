@@ -775,7 +775,7 @@ object SpaceEngine {
   }
 
   private def exhaustivityCheckable(sel: Tree)(using Context): Boolean = {
-    val seen = collection.mutable.Set.empty[Type]
+    val seen = collection.mutable.Set.empty[Symbol]
 
     // Possible to check everything, but be compatible with scalac by default
     def isCheckable(tp: Type): Boolean =
@@ -791,7 +791,7 @@ object SpaceEngine {
       tpw.isRef(defn.BooleanClass) ||
       classSym.isAllOf(JavaEnumTrait) ||
       classSym.is(Case) && {
-        if seen.add(tpw) then productSelectorTypes(tpw, sel.srcPos).exists(isCheckable(_))
+        if seen.add(classSym) then productSelectorTypes(tpw, sel.srcPos).exists(isCheckable(_))
         else true // recursive case class: return true and other members can still fail the check
       }
 
