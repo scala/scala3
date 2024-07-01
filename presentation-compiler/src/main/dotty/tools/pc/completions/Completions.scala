@@ -232,6 +232,7 @@ class Completions(
   ): List[CompletionValue] =
     // workaround for earlier versions that force correctly detecting Java flags
 
+
     def companionSynthetic = sym.companion.exists && sym.companion.is(Synthetic)
     // find the apply completion that would need a snippet
     val methodSymbols =
