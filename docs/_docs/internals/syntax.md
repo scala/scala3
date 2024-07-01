@@ -186,7 +186,7 @@ FunTypeArgs       ::=  InfixType
                     |  ‘(’ [ FunArgTypes ] ‘)’
                     |  FunParamClause
 FunParamClause    ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
-TypedFunParam     ::=  [`erased`] id ‘:’ IntoType
+TypedFunParam     ::=  [`erased`] id ‘:’ Type
 MatchType         ::=  InfixType `match` <<< TypeCaseClauses >>>
 InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
 RefinedType       ::=  AnnotType {[nl] Refinement}                              RefinedTypeTree(t, ds)
@@ -206,15 +206,11 @@ SimpleType1       ::=  id                                                       
 Singleton         ::=  SimpleRef
                     |  SimpleLiteral
                     |  Singleton ‘.’ id
-FunArgType        ::=  IntoType
-                    |  ‘=>’ IntoType                                            PrefixOp(=>, t)
+FunArgType        ::=  Type
+                    |  ‘=>’ Type                                                PrefixOp(=>, t)
 FunArgTypes       ::=  FunArgType { ‘,’ FunArgType }
 ParamType         ::=  [‘=>’] ParamValueType
 ParamValueType    ::=  IntoType [‘*’]                                           PostfixOp(t, "*")
-IntoType          ::=  [‘into’] IntoTargetType                                  Into(t)
-                    |  ‘(’ ‘into’ IntoTargetType ‘)’
-IntoTargetType    ::=  Type
-                    |  FunTypeArgs (‘=>’ | ‘?=>’) IntoType
 TypeArgs          ::=  ‘[’ Types ‘]’                                            ts
 Refinement        ::=  :<<< [RefineDef] {semi [RefineDcl]} >>>                  ds
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]                                  TypeBoundsTree(lo, hi)
