@@ -1,19 +1,28 @@
+###################################################################################################
+###                       THIS IS A REUSABLE WORKFLOW TO BUILD SCALA MSI                        ###
+### HOW TO USE:                                                                                 ###
+###   - THE RELEASE WORKFLOW SHOULD CALL THIS WORKFLOW                                          ###
+###   - IT WILL UPLOAD TO GITHUB THE MSI FILE FOR SCALA UNDER THE 'scala.msi' NAME              ###
+###                                                                                             ###
+### NOTE:                                                                                       ###
+###   - WE SHOULD BUILD SCALA USING JAVA 8                                                      ###
+###################################################################################################
 
 name: Build the MSI Package
 
 on:
-  pull_request:
+  workflow_call:
+
+env:
+  # NECESSARY FLAG TO CORRECTLY CONFIGURE THE VERSION FOR SCALA
+  RELEASEBUILD: yes
 
 jobs:
   build:
     runs-on: windows-latest
-    env:
-      RELEASEBUILD: yes
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - uses: actions/setup-java@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: 'adopt'
           java-version: '8'

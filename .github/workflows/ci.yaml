@@ -1008,3 +1008,8 @@ jobs:
           WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
           filename: .github/workflows/issue_nightly_failed.md
+
+  build-msi-package:
+    uses: ./.github/workflows/build-msi.yml
+    if  : github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_msi]')
+    # TODO: ADD A JOB THAT DEPENDS ON THIS TO TEST THE MSI
