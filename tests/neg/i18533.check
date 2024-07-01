@@ -1,0 +1,4 @@
+-- Error: tests/neg/i18533/Pet_SCALA_ONLY.java:3:10 --------------------------------------------------------------------
+3 |class Pet permits Cat { // error
+  |          ^^^^^^^
+  |          A type declaration that has a permits clause should have a sealed modifier

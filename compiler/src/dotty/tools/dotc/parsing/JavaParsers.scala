@@ -483,6 +483,9 @@ object JavaParsers {
             addAnnot(scalaDot(jtpnme.VOLATILEkw))
           case SYNCHRONIZED | STRICTFP =>
             in.nextToken()
+          case SEALED =>
+            flags |= Flags.Sealed
+            in.nextToken()
           case _ =>
             val privateWithin: TypeName =
               if (isPackageAccess && !inInterface) thisPackageName
@@ -806,6 +809,17 @@ object JavaParsers {
       else
         List()
 
+
+    def permittedSubclassesOpt(isSealed: Boolean) : List[Tree] =
+      if in.token == PERMITS && !isSealed then
+        syntaxError(em"A type declaration that has a permits clause should have a sealed modifier")
+      if in.token == PERMITS then
+        in.nextToken()
+        repsep(() => typ(), COMMA)
+      else
+        // JEP-409: Class/Interface may omit the permits clause
+        Nil
+
     def classDecl(start: Offset, mods: Modifiers): List[Tree] = {
       accept(CLASS)
       val nameOffset = in.offset
@@ -820,6 +834,7 @@ object JavaParsers {
           javaLangObject()
       val interfaces = interfacesOpt()
       val (statics, body) = typeBody(CLASS, name, tparams)
+      val permittedSubclasses = permittedSubclassesOpt(mods.is(Flags.Sealed))
       val cls = atSpan(start, nameOffset) {
         TypeDef(name, makeTemplate(superclass :: interfaces, body, tparams, true)).withMods(mods)
       }
@@ -883,6 +898,7 @@ object JavaParsers {
         }
         else
           List(javaLangObject())
+      val permittedSubclasses = permittedSubclassesOpt(mods is Flags.Sealed)
       val (statics, body) = typeBody(INTERFACE, name, tparams)
       val iface = atSpan(start, nameOffset) {
         TypeDef(
