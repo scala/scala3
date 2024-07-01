@@ -3,8 +3,9 @@ package dotc
 package core
 
 import Symbols.*, Types.*, Contexts.*, Constants.*, Phases.*
-import ast.tpd, tpd.*
-import util.Spans.Span
+import ast.{tpd, untpd, TreeTypeMap}
+import tpd.*
+import util.Spans.{Span, NoSpan}
 import printing.{Showable, Printer}
 import printing.Texts.Text
 
@@ -30,8 +31,8 @@ object Annotations {
     def derivedAnnotation(tree: Tree)(using Context): Annotation =
       if (tree eq this.tree) this else Annotation(tree)
 
-    /** All arguments to this annotation in a single flat list */
-    def arguments(using Context): List[Tree] = tpd.allArguments(tree)
+    /** All term arguments of this annotation in a single flat list */
+    def arguments(using Context): List[Tree] = tpd.allTermArguments(tree)
 
     def argument(i: Int)(using Context): Option[Tree] = {
       val args = arguments
@@ -54,18 +55,26 @@ object Annotations {
      *  type, since ranges cannot be types of trees.
      */
     def mapWith(tm: TypeMap)(using Context) =
-      val args = arguments
+      val args = tpd.allArguments(tree)
       if args.isEmpty then this
       else
+        // Checks if `tm` would result in any change by applying it to types
+        // inside the annotations' arguments and checking if the resulting types
+        // are different.
         val findDiff = new TreeAccumulator[Type]:
           def apply(x: Type, tree: Tree)(using Context): Type =
             if tm.isRange(x) then x
             else
               val tp1 = tm(tree.tpe)
-              foldOver(if tp1 frozen_=:= tree.tpe then x else tp1, tree)
+              foldOver(if !tp1.exists || (tp1 frozen_=:= tree.tpe) then x else tp1, tree)
         val diff = findDiff(NoType, args)
         if tm.isRange(diff) then EmptyAnnotation
-        else if diff.exists then derivedAnnotation(tm.mapOver(tree))
+        else if diff.exists then
+          // If the annotation has been transformed, we need to make sure that the
+          // symbol are copied so that we don't end up with the same symbol in different
+          // trees, which would lead to a crash in pickling.
+          val mappedTree = TreeTypeMap(typeMap = tm, alwaysCopySymbols = true).transform(tree)
+          derivedAnnotation(mappedTree)
         else this
 
     /** Does this annotation refer to a parameter of `tl`? */
