@@ -2841,7 +2841,7 @@ Uri => NamedApplyBlock.scala
 Text => empty
 Language => Scala
 Symbols => 43 entries
-Occurrences => 41 entries
+Occurrences => 42 entries
 
 Symbols:
 example/NamedApplyBlockCaseClassConstruction. => final object NamedApplyBlockCaseClassConstruction extends Object { self: NamedApplyBlockCaseClassConstruction.type => +6 decls }
@@ -2911,6 +2911,7 @@ Occurrences:
 [5:28..5:29): c -> example/NamedApplyBlockMethods.foo().(c)
 [6:6..6:15): recursive <- example/NamedApplyBlockMethods.recursive().
 [6:18..6:21): foo -> example/NamedApplyBlockMethods.foo().
+[6:18..6:21): foo -> local1
 [6:22..6:27): local -> example/NamedApplyBlockMethods.local.
 [6:29..6:30): c -> example/NamedApplyBlockMethods.foo().(c)
 [6:33..6:36): foo -> example/NamedApplyBlockMethods.foo().
