@@ -99,11 +99,12 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
         def loopOnNormalizedPrefixes(prefix: Type, depth: Int): Unit =
           // limit to 10 as failsafe for the odd case where there is an infinite cycle
           if depth < 10 && prefix.exists then
-            ud.registerUsed(prefix.classSymbol, None)
+            ud.registerUsed(prefix.classSymbol, None, prefix)
             loopOnNormalizedPrefixes(prefix.normalizedPrefix, depth + 1)
 
-        loopOnNormalizedPrefixes(tree.typeOpt.normalizedPrefix, depth = 0)
-        ud.registerUsed(tree.symbol, Some(tree.name))
+        val prefix = tree.typeOpt.normalizedPrefix
+        loopOnNormalizedPrefixes(prefix, depth = 0)
+        ud.registerUsed(tree.symbol, Some(tree.name), prefix)
       }
     else if tree.hasType then
       unusedDataApply(_.registerUsed(tree.tpe.classSymbol, Some(tree.name)))
@@ -112,7 +113,7 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
 
   override def prepareForSelect(tree: tpd.Select)(using Context): Context =
     val name = tree.removeAttachment(OriginalName)
-    unusedDataApply(_.registerUsed(tree.symbol, name, includeForImport = tree.qualifier.span.isSynthetic))
+    unusedDataApply(_.registerUsed(tree.symbol, name, tree.qualifier.tpe, includeForImport = tree.qualifier.span.isSynthetic))
 
   override def prepareForBlock(tree: tpd.Block)(using Context): Context =
     pushInBlockTemplatePackageDef(tree)
@@ -352,46 +353,46 @@ object CheckUnused:
    * - usage
    */
   private class UnusedData:
-    import collection.mutable.{Set => MutSet, Map => MutMap, Stack => MutStack, ListBuffer => MutList}
+    import collection.mutable as mut, mut.Stack, mut.ListBuffer
     import UnusedData.*
 
     /** The current scope during the tree traversal */
-    val currScopeType: MutStack[ScopeType] = MutStack(ScopeType.Other)
+    val currScopeType: Stack[ScopeType] = Stack(ScopeType.Other)
 
     var unusedAggregate: Option[UnusedResult] = None
 
     /* IMPORTS */
-    private val impInScope = MutStack(MutList[ImportSelectorData]())
+    private val impInScope = Stack(ListBuffer.empty[ImportSelectorData])
     /**
      * We store the symbol along with their accessibility without import.
      * Accessibility to their definition in outer context/scope
      *
      * See the `isAccessibleAsIdent` extension method below in the file
      */
-    private val usedInScope = MutStack(MutSet[(Symbol, Option[Name], Boolean)]())
-    private val usedInPosition = MutMap.empty[Name, MutSet[Symbol]]
+    private val usedInScope = Stack(mut.Set.empty[(Symbol, Option[Name], Type, Boolean)])
+    private val usedInPosition = mut.Map.empty[Name, mut.Set[Symbol]]
     /* unused import collected during traversal */
-    private val unusedImport = MutList.empty[ImportSelectorData]
+    private val unusedImport = ListBuffer.empty[ImportSelectorData]
 
     /* LOCAL DEF OR VAL / Private Def or Val / Pattern variables */
-    private val localDefInScope = MutList.empty[tpd.MemberDef]
-    private val privateDefInScope = MutList.empty[tpd.MemberDef]
-    private val explicitParamInScope = MutList.empty[tpd.MemberDef]
-    private val implicitParamInScope = MutList.empty[tpd.MemberDef]
-    private val patVarsInScope = MutList.empty[tpd.Bind]
+    private val localDefInScope = ListBuffer.empty[tpd.MemberDef]
+    private val privateDefInScope = ListBuffer.empty[tpd.MemberDef]
+    private val explicitParamInScope = ListBuffer.empty[tpd.MemberDef]
+    private val implicitParamInScope = ListBuffer.empty[tpd.MemberDef]
+    private val patVarsInScope = ListBuffer.empty[tpd.Bind]
 
     /** All variables sets*/
-    private val setVars = MutSet[Symbol]()
+    private val setVars = mut.Set.empty[Symbol]
 
     /** All used symbols */
-    private val usedDef = MutSet[Symbol]()
+    private val usedDef = mut.Set.empty[Symbol]
     /** Do not register as used */
-    private val doNotRegister = MutSet[Symbol]()
+    private val doNotRegister = mut.Set.empty[Symbol]
 
     /** Trivial definitions, avoid registering params */
-    private val trivialDefs = MutSet[Symbol]()
+    private val trivialDefs = mut.Set.empty[Symbol]
 
-    private val paramsToSkip = MutSet[Symbol]()
+    private val paramsToSkip = mut.Set.empty[Symbol]
 
 
     def finishAggregation(using Context)(): Unit =
@@ -411,10 +412,10 @@ object CheckUnused:
      * The optional name will be used to target the right import
      * as the same element can be imported with different renaming
      */
-    def registerUsed(sym: Symbol, name: Option[Name], includeForImport: Boolean = true, isDerived: Boolean = false)(using Context): Unit =
+    def registerUsed(sym: Symbol, name: Option[Name], prefix: Type = NoType, includeForImport: Boolean = true, isDerived: Boolean = false)(using Context): Unit =
       if sym.exists && !isConstructorOfSynth(sym) && !doNotRegister(sym) then
         if sym.isConstructor then
-          registerUsed(sym.owner, None, includeForImport) // constructor are "implicitly" imported with the class
+          registerUsed(sym.owner, None, prefix, includeForImport) // constructor are "implicitly" imported with the class
         else
           // If the symbol is accessible in this scope without an import, do not register it for unused import analysis
           val includeForImport1 =
@@ -425,13 +426,13 @@ object CheckUnused:
             if sym.exists then
               usedDef += sym
               if includeForImport1 then
-                usedInScope.top += ((sym, name, isDerived))
+                usedInScope.top += ((sym, name, prefix, isDerived))
           addIfExists(sym)
           addIfExists(sym.companionModule)
           addIfExists(sym.companionClass)
           if sym.sourcePos.exists then
             for n <- name do
-              usedInPosition.getOrElseUpdate(n, MutSet.empty) += sym
+              usedInPosition.getOrElseUpdate(n, mut.Set.empty) += sym
 
     /** Register a symbol that should be ignored */
     def addIgnoredUsage(sym: Symbol)(using Context): Unit =
@@ -455,12 +456,12 @@ object CheckUnused:
         val qualTpe = imp.expr.tpe
 
         // Put wildcard imports at the end, because they have lower priority within one Import
-        val reorderdSelectors =
+        val reorderedSelectors =
           val (wildcardSels, nonWildcardSels) = imp.selectors.partition(_.isWildcard)
           nonWildcardSels ::: wildcardSels
 
         val newDataInScope =
-          for sel <- reorderdSelectors yield
+          for sel <- reorderedSelectors yield
             val data = new ImportSelectorData(qualTpe, sel)
             if shouldSelectorBeReported(imp, sel) || isImportExclusion(sel) || isImportIgnored(imp, sel) then
               // Immediately mark the selector as used
@@ -492,8 +493,8 @@ object CheckUnused:
     def pushScope(newScopeType: ScopeType): Unit =
       // unused imports :
       currScopeType.push(newScopeType)
-      impInScope.push(MutList())
-      usedInScope.push(MutSet())
+      impInScope.push(ListBuffer.empty)
+      usedInScope.push(mut.Set.empty)
 
     def registerSetVar(sym: Symbol): Unit =
       setVars += sym
@@ -509,10 +510,8 @@ object CheckUnused:
       val selDatas = impInScope.pop()
 
       for usedInfo <- usedInfos do
-        val (sym, optName, isDerived) = usedInfo
-        val usedData = selDatas.find { selData =>
-          sym.isInImport(selData, optName, isDerived)
-        }
+        val (sym, optName, prefix, isDerived) = usedInfo
+        val usedData = selDatas.find(sym.isInImport(_, optName, prefix, isDerived))
         usedData match
           case Some(data) =>
             data.markUsed()
@@ -520,7 +519,7 @@ object CheckUnused:
             // Propagate the symbol one level up
             if usedInScope.nonEmpty then
               usedInScope.top += usedInfo
-      end for // each in `used`
+      end for // each in usedInfos
 
       for selData <- selDatas do
         if !selData.isUsed then
@@ -705,7 +704,7 @@ object CheckUnused:
         }
 
       /** Given an import and accessibility, return selector that matches import<->symbol */
-      private def isInImport(selData: ImportSelectorData, altName: Option[Name], isDerived: Boolean)(using Context): Boolean =
+      private def isInImport(selData: ImportSelectorData, altName: Option[Name], prefix: Type, isDerived: Boolean)(using Context): Boolean =
         assert(sym.exists)
 
         val selector = selData.selector
@@ -714,12 +713,13 @@ object CheckUnused:
           if altName.exists(explicitName => selector.rename != explicitName.toTermName) then
             // if there is an explicit name, it must match
             false
-          else
+          else selData.qualTpe =:= prefix && (
             if isDerived then
               // See i15503i.scala, grep for "package foo.test.i17156"
               selData.allSymbolsDealiasedForNamed.contains(dealias(sym))
             else
               selData.allSymbolsForNamed.contains(sym)
+          )
         else
           // Wildcard
           if !selData.qualTpe.member(sym.name).hasAltWith(_.symbol == sym) then
@@ -729,7 +729,8 @@ object CheckUnused:
             if selector.isGiven then
               // Further check that the symbol is a given or implicit and conforms to the bound
               sym.isOneOf(Given | Implicit)
-                && (selector.bound.isEmpty || sym.info <:< selector.boundTpe)
+                && (selector.bound.isEmpty || sym.info.finalResultType <:< selector.boundTpe)
+                && selData.qualTpe =:= prefix
             else
               // Normal wildcard, check that the symbol is not a given (but can be implicit)
               !sym.is(Given)
@@ -833,7 +834,7 @@ object CheckUnused:
         case _:tpd.Block => Local
         case _ => Other
 
-    final class ImportSelectorData(val qualTpe: Type, val selector: ImportSelector):
+    final case class ImportSelectorData(val qualTpe: Type, val selector: ImportSelector):
       private var myUsed: Boolean = false
 
       def markUsed(): Unit = myUsed = true
