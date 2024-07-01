@@ -1831,6 +1831,12 @@ class ExpectedStartOfTopLevelDefinition()(using Context)
     i"You have to provide either ${hl("class")}, ${hl("trait")}, ${hl("object")}, or ${hl("enum")} definitions after modifiers"
 }
 
+class FinalLocalDef()(using Context)
+  extends SyntaxMsg(FinalLocalDefID) {
+  def msg(using Context) = i"The ${hl("final")} modifier is not allowed on local definitions"
+  def explain(using Context) = ""
+}
+
 class NoReturnFromInlineable(owner: Symbol)(using Context)
   extends SyntaxMsg(NoReturnFromInlineableID) {
   def msg(using Context) = i"No explicit ${hl("return")} allowed from inlineable $owner"

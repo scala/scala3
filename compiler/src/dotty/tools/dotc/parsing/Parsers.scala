@@ -4350,6 +4350,12 @@ object Parsers {
       for (imod <- implicitMods.mods) mods = addMod(mods, imod)
       if (mods.is(Final))
         // A final modifier means the local definition is "class-like".  // FIXME: Deal with modifiers separately
+
+        // See test 17579. We allow `final` on `given` because these can be
+        // translated to class definitions, for which `final` is allowed but
+        // redundant--there is a seperate warning for this.
+        if isDclIntro && in.token != GIVEN then syntaxError(FinalLocalDef())
+
         tmplDef(start, mods)
       else
         defOrDcl(start, mods)
