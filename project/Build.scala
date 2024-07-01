@@ -879,7 +879,11 @@ object Build {
       "-sourcepath", (Compile / sourceDirectories).value.map(_.getAbsolutePath).distinct.mkString(File.pathSeparator),
       "-Yexplicit-nulls",
     ),
-    (Compile / doc / scalacOptions) ++= ScaladocConfigs.DefaultGenerationSettings.value.settings
+    (Compile / doc / scalacOptions) ++= ScaladocConfigs.DefaultGenerationSettings.value.settings,
+    (Compile / packageSrc / mappings) ++= {
+      val auxBase = (ThisBuild / baseDirectory).value / "library-aux/src"
+      auxBase ** "*.scala" pair io.Path.relativeTo(auxBase)
+    },
   )
 
   lazy val `scala3-library` = project.in(file("library")).asDottyLibrary(NonBootstrapped)
