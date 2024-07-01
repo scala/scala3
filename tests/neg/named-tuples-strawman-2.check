@@ -1,0 +1,7 @@
+-- [E191] Type Error: tests/neg/named-tuples-strawman-2.scala:28:24 ----------------------------------------------------
+28 |    inline def toTuple: DropNames[NT] = x.asInstanceOf // error
+   |                        ^^^^^^^^^^^^^
+   |                   The match type contains an illegal case:
+   |                       case NamedTupleOps.NamedTuple[_, x] => x
+   |                   The pattern contains an opaque type alias `NamedTuple` in the scope where its alias is known.
+   |                   (this error can be ignored for now with `-source:3.3`)

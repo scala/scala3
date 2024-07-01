@@ -5211,12 +5211,14 @@ object Types extends TypeUtils {
 
   enum MatchTypeCaseError:
     case Alias(sym: Symbol)
+    case OpaqueAlias(sym: Symbol)
     case RefiningBounds(name: TypeName)
     case StructuralType(name: TypeName)
     case UnaccountedTypeParam(name: TypeName)
 
     def explanation(using Context) = this match
       case Alias(sym) => i"a type alias `${sym.name}`"
+      case OpaqueAlias(sym) => i"an opaque type alias `${sym.name}` in the scope where its alias is known"
       case RefiningBounds(name) => i"an abstract type member `$name` with bounds that need verification"
       case StructuralType(name) => i"an abstract type member `$name` that does not refine a member in its parent"
       case UnaccountedTypeParam(name) => i"an unaccounted type parameter `$name`"
@@ -5321,7 +5323,17 @@ object Types extends TypeUtils {
             else
               tycon.info match
                 case _: RealTypeBounds =>
-                  recAbstractTypeConstructor(pat)
+                  val tsym = tycon.typeSymbol
+                  if tsym.isOpaqueAlias
+                    && ctx.owner.isContainedIn(tsym.owner) // (1) opaque alias is known here, and
+                    && !ctx.owner.isAbstractOrAliasType    // (2) we are not in an embedded type
+                       // without (2), one cannot define a match type referring to an opaque type in the
+                       // scope of that opaque type. But that should be OK, we should simply not be
+                       // able to normalize such types in terms in the same scope.
+                  then
+                    MatchTypeCaseError.OpaqueAlias(tsym)
+                  else
+                    recAbstractTypeConstructor(pat)
                 case TypeAlias(tl @ HKTypeLambda(onlyParam :: Nil, resType: RefinedType)) =>
                   /* Unlike for eta-expanded classes, the typer does not automatically
                    * dealias poly type aliases to refined types. So we have to give them
