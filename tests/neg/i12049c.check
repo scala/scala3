@@ -1,0 +1,34 @@
+-- [E007] Type Mismatch Error: tests/neg/i12049c.scala:9:16 ------------------------------------------------------------
+9 |val x: String = ??? : M[B] // error
+  |                ^^^^^^^^^^
+  |                Found:    M[B]
+  |                Required: String
+  |
+  |                Note: a match type could not be fully reduced:
+  |
+  |                  trying to reduce  M[B]
+  |                  failed since selector B
+  |                  does not match  case A => Int
+  |                  and cannot be shown to be disjoint from it either.
+  |                  Therefore, reduction cannot advance to the remaining case
+  |
+  |                    case B => String
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i12049c.scala:12:17 -----------------------------------------------------------
+12 |val x2: String = ??? : MB // error
+   |                 ^^^^^^^^
+   |                 Found:    MB
+   |                 Required: String
+   |
+   |                 Note: a match type could not be fully reduced:
+   |
+   |                   trying to reduce  M[B]
+   |                   failed since selector B
+   |                   does not match  case A => Int
+   |                   and cannot be shown to be disjoint from it either.
+   |                   Therefore, reduction cannot advance to the remaining case
+   |
+   |                     case B => String
+   |
+   | longer explanation available when compiling with `-explain`
