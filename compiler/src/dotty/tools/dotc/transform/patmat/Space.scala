@@ -616,7 +616,7 @@ object SpaceEngine {
       case tp if tp.classSymbol.isAllOf(JavaEnum)      => tp.classSymbol.children.map(_.termRef)
         // the class of a java enum value is the enum class, so this must follow SingletonType to not loop infinitely
 
-      case tp @ AppliedType(Parts(parts), targs) if tp.classSymbol.children.isEmpty =>
+      case Childless(tp @ AppliedType(Parts(parts), targs)) =>
         // It might not obvious that it's OK to apply the type arguments of a parent type to child types.
         // But this is guarded by `tp.classSymbol.children.isEmpty`,
         // meaning we'll decompose to the same class, just not the same type.
@@ -675,6 +675,12 @@ object SpaceEngine {
 
   final class PartsExtractor(val get: List[Type]) extends AnyVal:
     def isEmpty: Boolean = get == ListOfNoType
+
+  object Childless:
+    def unapply(tp: Type)(using Context): Result =
+      Result(if tp.classSymbol.children.isEmpty then tp else NoType)
+    class Result(val get: Type) extends AnyVal:
+      def isEmpty: Boolean = !get.exists
 
   /** Show friendly type name with current scope in mind
    *
