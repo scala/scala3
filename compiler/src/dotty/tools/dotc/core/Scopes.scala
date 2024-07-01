@@ -158,19 +158,28 @@ object Scopes {
     }
 
     /** The scope that keeps only those symbols from this scope that match the
-     *  given predicates. If all symbols match, returns the scope itself, otherwise
-     *  a copy with the matching symbols.
+     *  given predicates, renamed with the given rename function.
+     *  If renaming is not needed for a symbol, the rename function should return `null`.
+     *  If all symbols match and none are renamed, returns the scope itself, otherwise
+     *  a copy with the matching and renamed symbols.
      */
-    final def filteredScope(p: Symbol => Boolean)(using Context): Scope = {
+    final def filteredScope(
+        keep: Symbol => Boolean,
+        rename: Symbol => Name | Null = _ => null)(using Context): Scope =
       var result: MutableScope | Null = null
-      for (sym <- iterator)
-        if (!p(sym)) {
-          if (result == null) result = cloneScope
+      for sym <- iterator do
+        def drop() =
+          if result == null then result = cloneScope
           result.nn.unlink(sym)
-        }
+        if keep(sym) then
+          val newName = rename(sym)
+          if newName != null then
+            drop()
+            result.nn.enter(newName, sym)
+        else
+          drop()
       // TODO: improve flow typing to handle this case
-      if (result == null) this else result.uncheckedNN
-    }
+      if result == null then this else result.uncheckedNN
 
     def implicitDecls(using Context): List[TermRef] = Nil
 
