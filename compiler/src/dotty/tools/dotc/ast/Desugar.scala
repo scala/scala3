@@ -11,6 +11,7 @@ import NameKinds.{UniqueName, ContextBoundParamName, ContextFunctionParamName, D
 import typer.{Namer, Checking}
 import util.{Property, SourceFile, SourcePosition, SrcPos, Chars}
 import config.{Feature, Config}
+import config.Feature.{sourceVersion, migrateTo3, enabled, betterForsEnabled}
 import config.SourceVersion.*
 import collection.mutable
 import reporting.*
@@ -1803,9 +1804,78 @@ object desugar {
     /** Create tree for for-comprehension `<for (enums) do body>` or
      *   `<for (enums) yield body>` where mapName and flatMapName are chosen
      *  corresponding to whether this is a for-do or a for-yield.
-     *  The creation performs the following rewrite rules:
+     *  If betterFors are enabled, the creation performs the following rewrite rules:
      *
      *  1.
+     *
+     *      for (P <- G) do E   ==>   G.foreach (P => E)
+     *
+     *    Here and in the following (P => E) is interpreted as the function (P => E)
+     *    if P is a variable pattern and as the partial function { case P => E } otherwise.
+     *
+     *  2.
+     *
+     *      for (P <- G) yield P  ==>  G
+     *
+     *    If P is a variable or a tuple of variables and G is not a withFilter.
+     *
+     *      for (P <- G) yield E  ==>  G.map (P => E)
+     *
+     *    Otherwise
+     *
+     *  3.
+     *
+     *      for (P_1 <- G_1; P_2 <- G_2; ...) ...
+     *        ==>
+     *      G_1.flatMap (P_1 => for (P_2 <- G_2; ...) ...)
+     *
+     *  4.
+     *
+     *      for (P <- G; if E; ...) ...
+     *        ==>
+     *      for (P <- G.withFilter (P => E); ...) ...
+     *
+     *  5. For any N:
+     *
+     *      for (P <- G; P_1 = E_1; ... P_N = E_N; rest)
+     *        ==>
+     *      G.flatMap (P => for (P_1 = E_1; ... P_N = E_N; ...))   if rest contains (<-)
+     *      G.map (P => for (P_1 = E_1; ... P_N = E_N; ...))       otherwise
+     *
+     *  6. For any N:
+     *
+     *      for (P <- G; P_1 = E_1; ... P_N = E_N; if E; ...)
+     *        ==>
+     *      for (TupleN(P, P_1, ... P_N) <-
+     *        for (x @ P <- G) yield {
+     *          val x_1 @ P_1 = E_2
+     *          ...
+     *          val x_N @ P_N = E_N
+     *          TupleN(x, x_1, ..., x_N)
+     *        }; if E; ...)
+     *
+     *    If any of the P_i are variable patterns, the corresponding `x_i @ P_i` is not generated
+     *    and the variable constituting P_i is used instead of x_i
+     *
+     *  7. For any N:
+     *
+     *      for (P_1 = E_1; ... P_N = E_N; ...)
+     *        ==>
+     *      {
+     *        val x_N @ P_N = E_N
+     *        for (...)
+     *      }
+     *
+     *  8.
+     *      for () yield E  ==>  E
+     *
+     *    (Where empty for-comprehensions are excluded by the parser)
+     *
+     *   If the aliases are not followed by a guard, otherwise an error.
+     * 
+     * With betterFors disabled, the translation is as follows:
+     * 
+     * 1.
      *
      *    for (P <- G) E   ==>   G.foreach (P => E)
      *
@@ -1951,7 +2021,7 @@ object desugar {
         case GenCheckMode.FilterAlways => false  // pattern was prefixed by `case`
         case GenCheckMode.FilterNow | GenCheckMode.CheckAndFilter => isVarBinding(gen.pat) || isIrrefutable(gen.pat, gen.expr)
         case GenCheckMode.Check => true
-        case GenCheckMode.Ignore => true
+        case GenCheckMode.Ignore | GenCheckMode.Filtered => true
 
       /** rhs.name with a pattern filter on rhs unless `pat` is irrefutable when
        *  matched against `rhs`.
@@ -1961,34 +2031,92 @@ object desugar {
         Select(rhs, name)
       }
 
-      enums match {
-        case (gen: GenFrom) :: Nil =>
-          Apply(rhsSelect(gen, mapName), makeLambda(gen, body))
-        case (gen: GenFrom) :: (rest @ (GenFrom(_, _, _) :: _)) =>
-          val cont = makeFor(mapName, flatMapName, rest, body)
-          Apply(rhsSelect(gen, flatMapName), makeLambda(gen, cont))
-        case (gen: GenFrom) :: (rest @ GenAlias(_, _) :: _) =>
-          val (valeqs, rest1) = rest.span(_.isInstanceOf[GenAlias])
-          val pats = valeqs map { case GenAlias(pat, _) => pat }
-          val rhss = valeqs map { case GenAlias(_, rhs) => rhs }
-          val (defpat0, id0) = makeIdPat(gen.pat)
-          val (defpats, ids) = (pats map makeIdPat).unzip
-          val pdefs = valeqs.lazyZip(defpats).lazyZip(rhss).map { (valeq, defpat, rhs) =>
-            val mods = defpat match
-              case defTree: DefTree => defTree.mods
-              case _ => Modifiers()
-            makePatDef(valeq, mods, defpat, rhs)
-          }
-          val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil, Block(pdefs, makeTuple(id0 :: ids)))
-          val allpats = gen.pat :: pats
-          val vfrom1 = GenFrom(makeTuple(allpats), rhs1, GenCheckMode.Ignore)
-          makeFor(mapName, flatMapName, vfrom1 :: rest1, body)
-        case (gen: GenFrom) :: test :: rest =>
-          val filtered = Apply(rhsSelect(gen, nme.withFilter), makeLambda(gen, test))
-          val genFrom = GenFrom(gen.pat, filtered, GenCheckMode.Ignore)
-          makeFor(mapName, flatMapName, genFrom :: rest, body)
-        case _ =>
-          EmptyTree //may happen for erroneous input
+      def deepEquals(t1: Tree, t2: Tree): Boolean =
+        (unsplice(t1), unsplice(t2)) match
+          case (Ident(n1), Ident(n2)) => n1 == n2
+          case (Tuple(ts1), Tuple(ts2)) => ts1.corresponds(ts2)(deepEquals)
+          case _ => false
+
+      if betterForsEnabled then
+        enums match {
+          case Nil => body
+          case (gen: GenFrom) :: Nil =>
+            if gen.checkMode != GenCheckMode.Filtered // results of withFilter have the wrong type
+              && deepEquals(gen.pat, body)
+            then gen.expr  // avoid a redundant map with identity
+            else Apply(rhsSelect(gen, mapName), makeLambda(gen, body))
+          case (gen: GenFrom) :: rest
+          if rest.dropWhile(_.isInstanceOf[GenAlias]).headOption.forall(e => e.isInstanceOf[GenFrom]) =>
+            val cont = makeFor(mapName, flatMapName, rest, body)
+            val selectName =
+              if rest.exists(_.isInstanceOf[GenFrom]) then flatMapName
+              else mapName
+            Apply(rhsSelect(gen, selectName), makeLambda(gen, cont))
+          case (gen: GenFrom) :: (rest @ GenAlias(_, _) :: _) =>
+            val (valeqs, rest1) = rest.span(_.isInstanceOf[GenAlias])
+            val pats = valeqs map { case GenAlias(pat, _) => pat }
+            val rhss = valeqs map { case GenAlias(_, rhs) => rhs }
+            val (defpat0, id0) = makeIdPat(gen.pat)
+            val (defpats, ids) = (pats map makeIdPat).unzip
+            val pdefs = valeqs.lazyZip(defpats).lazyZip(rhss).map { (valeq, defpat, rhs) =>
+              val mods = defpat match
+                case defTree: DefTree => defTree.mods
+                case _ => Modifiers()
+              makePatDef(valeq, mods, defpat, rhs)
+            }
+            val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil, Block(pdefs, makeTuple(id0 :: ids)))
+            val allpats = gen.pat :: pats
+            val vfrom1 = GenFrom(makeTuple(allpats), rhs1, GenCheckMode.Ignore)
+            makeFor(mapName, flatMapName, vfrom1 :: rest1, body)
+          case (gen: GenFrom) :: test :: rest =>
+            val filtered = Apply(rhsSelect(gen, nme.withFilter), makeLambda(gen, test))
+            val genFrom = GenFrom(gen.pat, filtered, GenCheckMode.Filtered)
+            makeFor(mapName, flatMapName, genFrom :: rest, body)
+          case GenAlias(_, _) :: _ =>
+            val (valeqs, rest) = enums.span(_.isInstanceOf[GenAlias])
+            val pats = valeqs.map { case GenAlias(pat, _) => pat }
+            val rhss = valeqs.map { case GenAlias(_, rhs) => rhs }
+            val (defpats, ids) = pats.map(makeIdPat).unzip
+            val pdefs = valeqs.lazyZip(defpats).lazyZip(rhss).map { (valeq, defpat, rhs) =>
+              val mods = defpat match
+                case defTree: DefTree => defTree.mods
+                case _ => Modifiers()
+              makePatDef(valeq, mods, defpat, rhs)
+            }
+            Block(pdefs, makeFor(mapName, flatMapName, rest, body))
+          case _ =>
+            EmptyTree //may happen for erroneous input
+        }
+      else {
+        enums match {
+          case (gen: GenFrom) :: Nil =>
+            Apply(rhsSelect(gen, mapName), makeLambda(gen, body))
+          case (gen: GenFrom) :: (rest @ (GenFrom(_, _, _) :: _)) =>
+            val cont = makeFor(mapName, flatMapName, rest, body)
+            Apply(rhsSelect(gen, flatMapName), makeLambda(gen, cont))
+          case (gen: GenFrom) :: (rest @ GenAlias(_, _) :: _) =>
+            val (valeqs, rest1) = rest.span(_.isInstanceOf[GenAlias])
+            val pats = valeqs map { case GenAlias(pat, _) => pat }
+            val rhss = valeqs map { case GenAlias(_, rhs) => rhs }
+            val (defpat0, id0) = makeIdPat(gen.pat)
+            val (defpats, ids) = (pats map makeIdPat).unzip
+            val pdefs = valeqs.lazyZip(defpats).lazyZip(rhss).map { (valeq, defpat, rhs) =>
+              val mods = defpat match
+                case defTree: DefTree => defTree.mods
+                case _ => Modifiers()
+              makePatDef(valeq, mods, defpat, rhs)
+            }
+            val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil, Block(pdefs, makeTuple(id0 :: ids)))
+            val allpats = gen.pat :: pats
+            val vfrom1 = GenFrom(makeTuple(allpats), rhs1, GenCheckMode.Ignore)
+            makeFor(mapName, flatMapName, vfrom1 :: rest1, body)
+          case (gen: GenFrom) :: test :: rest =>
+            val filtered = Apply(rhsSelect(gen, nme.withFilter), makeLambda(gen, test))
+            val genFrom = GenFrom(gen.pat, filtered, GenCheckMode.Ignore)
+            makeFor(mapName, flatMapName, genFrom :: rest, body)
+          case _ =>
+            EmptyTree //may happen for erroneous input
+        }
       }
     }
 
