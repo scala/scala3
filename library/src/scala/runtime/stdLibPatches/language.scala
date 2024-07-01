@@ -13,7 +13,7 @@ object language:
    *  code should not rely on them.
    *
    *  Programmers are encouraged to try out experimental features and
-   *  [[http://issues.scala-lang.org report any bugs or API inconsistencies]]
+   *  [[https://github.com/lampepfl/dotty/issues report any bugs or API inconsistencies]]
    *  they encounter so they can be improved in future releases.
    *
    *  @group experimental
