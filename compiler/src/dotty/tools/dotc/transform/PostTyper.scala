@@ -112,7 +112,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
      *  This info is used in phase ParamForwarding
      */
     private def forwardParamAccessors(impl: Template)(using Context): Unit = impl.parents match
-      case superCall @ Apply(fn, superArgs) :: _ if superArgs.nonEmpty =>
+      case superCall @ Apply(fn, superArgs) :: _
+      if superArgs.nonEmpty && fn.symbol.isPrimaryConstructor =>
         fn.tpe.widen match
           case MethodType(superParamNames) =>
             for case stat: ValDef <- impl.body do
