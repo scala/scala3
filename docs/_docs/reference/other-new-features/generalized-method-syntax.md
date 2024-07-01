@@ -1,14 +1,8 @@
 ---
 layout: doc-page
 title: "Generalized Method Syntax"
-nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/generalized-method-syntax.html
+nightlyOf: https://docs.scala-lang.org/scala3/reference/other-new-features/generalized-method-syntax.html
 ---
-
-This feature is not yet part of the Scala 3 language definition. It can be made available by a language import:
-
-```scala
-import scala.language.experimental.clauseInterleaving
-```
 
 The inclusion of using clauses is not the only way in which methods have been updated, type parameter clauses are now allowed in any number and at any position.
 
@@ -51,7 +45,7 @@ trait DB {
 }
 ```
 
-Note that simply replacing `V` by `k.Value` would not be equivalent. For example, if `k.Value` is `Some[Int]`, only the above allows: 
+Note that simply replacing `V` by `k.Value` would not be equivalent. For example, if `k.Value` is `Some[Int]`, only the above allows:
 `getOrElse(k)[Option[Int]](None)`, which returns a `Number`.
 
 ## Details

@@ -1,7 +1,5 @@
 package tests.methodsAndConstructors
 
-import scala.language.experimental.clauseInterleaving
-
 class A
 class B extends A
 class C
