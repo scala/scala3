@@ -348,8 +348,12 @@ ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams
 ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’
                     |  [nl] ‘(’ ‘using’ (ClsParams | FunArgTypes) ‘)’
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
-ClsParam          ::=  {Annotation} [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
+ClsParam          ::=  {Annotation} [{Modifier} (‘val’ | ‘var’)] Param
 
+DefParamClauses   ::=  DefParamClause { DefParamClause } -- and two DefTypeParamClause cannot be adjacent
+DefParamClause    ::=  DefTypeParamClause
+                    |  DefTermParamClause
+                    |  UsingParamClause
 TypelessClauses   ::=  TypelessClause {TypelessClause}
 TypelessClause    ::=  DefTermParamClause
                     |  UsingParamClause
@@ -416,7 +420,7 @@ DefDcl            ::=  DefSig ‘:’ Type
 Def               ::=  ‘val’ PatDef
                     |  ‘var’ PatDef
                     |  ‘def’ DefDef
-                    |  ‘type’ {nl} TypeDcl
+                    |  ‘type’ {nl} TypeDef
                     |  TmplDef
 PatDef            ::=  ids [‘:’ Type] [‘=’ Expr]
                     |  Pattern2 [‘:’ Type] [‘=’ Expr]                           PatDef(_, pats, tpe?, expr)
@@ -456,7 +460,6 @@ TemplateBody      ::=  :<<< [SelfType] TemplateStat {semi TemplateStat} >>>
 TemplateStat      ::=  Import
                     |  Export
                     |  {Annotation [nl]} {Modifier} Def
-                    |  {Annotation [nl]} {Modifier} Dcl
                     |  Extension
                     |  Expr1
                     |  EndMarker

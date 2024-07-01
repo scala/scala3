@@ -1528,7 +1528,7 @@ object Parsers {
     def typ(): Tree =
       val start = in.offset
       var imods = Modifiers()
-      var erasedArgs: ListBuffer[Boolean] = ListBuffer()
+      val erasedArgs: ListBuffer[Boolean] = ListBuffer()
 
       def functionRest(params: List[Tree]): Tree =
         val paramSpan = Span(start, in.lastOffset)
@@ -3281,7 +3281,7 @@ object Parsers {
     /** ClsTermParamClause    ::=  ‘(’ ClsParams ‘)’ | UsingClsTermParamClause
      *  UsingClsTermParamClause::= ‘(’ ‘using’ [‘erased’] (ClsParams | ContextTypes) ‘)’
      *  ClsParams         ::=  ClsParam {‘,’ ClsParam}
-     *  ClsParam          ::=  {Annotation}
+     *  ClsParam          ::=  {Annotation} [{Modifier} (‘val’ | ‘var’)] Param
      *
      *  TypelessClause    ::= DefTermParamClause
      *                      | UsingParamClause

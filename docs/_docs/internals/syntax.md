@@ -210,9 +210,9 @@ FunArgType        ::=  Type
                     |  ‘=>’ Type                                                PrefixOp(=>, t)
 FunArgTypes       ::=  FunArgType { ‘,’ FunArgType }
 ParamType         ::=  [‘=>’] ParamValueType
-ParamValueType    ::=  IntoType [‘*’]                                           PostfixOp(t, "*")
+ParamValueType    ::=  Type [‘*’]                                               PostfixOp(t, "*")
 TypeArgs          ::=  ‘[’ Types ‘]’                                            ts
-Refinement        ::=  :<<< [RefineDef] {semi [RefineDcl]} >>>                  ds
+Refinement        ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>                  ds
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]                                  TypeBoundsTree(lo, hi)
 TypeParamBounds   ::=  TypeBounds {‘:’ Type}                                    ContextBounds(typeBounds, tps)
 Types             ::=  Type {‘,’ Type}
@@ -299,7 +299,7 @@ BlockStat         ::=  Import
                     |  Expr1
                     |  EndMarker
 TypeBlock         ::=  {TypeBlockStat semi} Type
-TypeBlockStat     ::=  ‘type’ {nl} TypeDcl
+TypeBlockStat     ::=  ‘type’ {nl} TypeDef
 
 ForExpr           ::=  ‘for’ ‘(’ Enumerators0 ‘)’ {nl} [‘do‘ | ‘yield’] Expr     ForYield(enums, expr) / ForDo(enums, expr)
                     |  ‘for’ ‘{’ Enumerators0 ‘}’ {nl} [‘do‘ | ‘yield’] Expr
@@ -359,7 +359,7 @@ ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’
                     |  [nl] ‘(’ ‘using’ (ClsParams | FunArgTypes) ‘)’
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
-                       [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
+                       [{Modifier} (‘val’ | ‘var’)] Param
 
 DefParamClauses   ::=  DefParamClause { DefParamClause } -- and two DefTypeParamClause cannot be adjacent
 DefParamClause    ::=  DefTypeParamClause
@@ -473,7 +473,6 @@ TemplateBody      ::=  :<<< [SelfType] TemplateStat {semi TemplateStat} >>>
 TemplateStat      ::=  Import
                     |  Export
                     |  {Annotation [nl]} {Modifier} Def
-                    |  {Annotation [nl]} {Modifier} Dcl
                     |  Extension
                     |  Expr1
                     |  EndMarker
