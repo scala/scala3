@@ -2179,7 +2179,7 @@ object SymDenotations {
           Stats.record("basetype cache entries")
           if (!baseTp.exists) Stats.record("basetype cache NoTypes")
         }
-        if (!tp.isProvisional && !CapturingType.isUncachable(tp))
+        if !(tp.isProvisional || CapturingType.isUncachable(tp) || ctx.gadt.isNarrowing) then
           btrCache(tp) = baseTp
         else
           btrCache.remove(tp) // Remove any potential sentinel value
