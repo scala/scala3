@@ -353,11 +353,16 @@ object Interpreter:
       if !ctx.compilationUnit.isSuspendable then None
       else targetException match
         case _: NoClassDefFoundError | _: ClassNotFoundException =>
-          val className = targetException.getMessage
-          if className eq null then None
+          val message = targetException.getMessage
+          if message eq null then None
           else
-            val sym = staticRef(className.toTypeName).symbol
-            if (sym.isDefinedInCurrentRun) Some(sym) else None
+            val className = message.replace('/', '.')
+            val sym =
+              if className.endsWith(str.MODULE_SUFFIX) then staticRef(className.toTermName).symbol.moduleClass
+              else staticRef(className.toTypeName).symbol
+            // If the symbol does not a a position we assume that it came from the current run and it has an error
+            if sym.isDefinedInCurrentRun || (sym.exists && !sym.srcPos.span.exists) then Some(sym)
+            else None
         case _ => None
     }
   }
