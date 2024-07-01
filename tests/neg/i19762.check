@@ -1,0 +1,6 @@
+-- [E019] Syntax Error: tests/neg/i19762.scala:8:31 --------------------------------------------------------------------
+8 |    def combine(x: Int, y: Int)) = x + y // error
+  |                               ^
+  |                               Missing return type
+  |
+  | longer explanation available when compiling with `-explain`
