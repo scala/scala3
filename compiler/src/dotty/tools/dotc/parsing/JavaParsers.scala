@@ -842,8 +842,8 @@ object JavaParsers {
         else
           javaLangObject()
       val interfaces = interfacesOpt()
-      val (statics, body) = typeBody(CLASS, name, tparams)
       val permittedSubclasses = permittedSubclassesOpt(mods.is(Flags.Sealed))
+      val (statics, body) = typeBody(CLASS, name, tparams)
       val cls = atSpan(start, nameOffset) {
         TypeDef(name, makeTemplate(superclass :: interfaces, body, tparams, true)).withMods(mods)
       }
