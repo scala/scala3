@@ -199,6 +199,81 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
          |""".stripMargin
     )
 
+  @Test def exportType0 =
+    check(
+      """object Foo:
+        |  trait <<Cat>>
+        |object Bar:
+        |  export Foo.*
+        |class Test:
+        |  import Bar.*
+        |  def test = new Ca@@t {}
+        |""".stripMargin
+    )
+
+  @Test def exportType1 =
+    check(
+      """object Foo:
+        |  trait <<Cat>>[A]
+        |object Bar:
+        |  export Foo.*
+        |class Test:
+        |  import Bar.*
+        |  def test = new Ca@@t[Int] {}
+        |""".stripMargin
+    )
+
+  @Test def exportTerm0Nullary =
+    check(
+      """trait Foo:
+        |  def <<meth>>: Int
+        |class Bar(val foo: Foo):
+        |  export foo.*
+        |  def test(bar: Bar) = bar.me@@th
+        |""".stripMargin
+    )
+
+  @Test def exportTerm0 =
+    check(
+      """trait Foo:
+        |  def <<meth>>(): Int
+        |class Bar(val foo: Foo):
+        |  export foo.*
+        |  def test(bar: Bar) = bar.me@@th()
+        |""".stripMargin
+    )
+
+  @Test def exportTerm1 =
+    check(
+      """trait Foo:
+        |  def <<meth>>(x: Int): Int
+        |class Bar(val foo: Foo):
+        |  export foo.*
+        |  def test(bar: Bar) = bar.me@@th(0)
+        |""".stripMargin
+    )
+
+  @Test def exportTerm1Poly =
+    check(
+      """trait Foo:
+        |  def <<meth>>[A](x: A): A
+        |class Bar(val foo: Foo):
+        |  export foo.*
+        |  def test(bar: Bar) = bar.me@@th(0)
+        |""".stripMargin
+    )
+
+  @Test def exportTerm1Overload =
+    check(
+      """trait Foo:
+        |  def <<meth>>(x: Int): Int
+        |  def meth(x: String): String
+        |class Bar(val foo: Foo):
+        |  export foo.*
+        |  def test(bar: Bar) = bar.me@@th(0)
+        |""".stripMargin
+    )
+
   @Test def `named-arg-local` =
     check(
       """|
