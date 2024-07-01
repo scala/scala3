@@ -13,12 +13,15 @@ import core.Constants.Constant
 import core.NameOps.isContextFunction
 import core.StdNames.nme
 import core.Types.*
+import core.Decorators.*
 import coverage.*
 import typer.LiftCoverage
 import util.{SourcePosition, SourceFile}
 import util.Spans.Span
 import localopt.StringInterpolatorOpt
 import inlines.Inlines
+import scala.util.matching.Regex
+import java.util.regex.Pattern
 
 /** Implements code coverage by inserting calls to scala.runtime.coverage.Invoker
   * ("instruments" the source code).
@@ -41,6 +44,9 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
   // stores all instrumented statements
   private val coverage = Coverage()
 
+  private var coverageExcludeClasslikePatterns: List[Pattern] = Nil
+  private var coverageExcludeFilePatterns: List[Pattern] = Nil
+
   override def run(using ctx: Context): Unit =
     val outputPath = ctx.settings.coverageOutputDir.value
 
@@ -54,9 +60,25 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         .filter(_.nn.getName.nn.startsWith("scoverage"))
         .foreach(_.nn.delete())
     end if
+
+    coverageExcludeClasslikePatterns = ctx.settings.coverageExcludeClasslikes.value.map(_.r.pattern)
+    coverageExcludeFilePatterns = ctx.settings.coverageExcludeFiles.value.map(_.r.pattern)
+
     super.run
 
     Serializer.serialize(coverage, outputPath, ctx.settings.sourceroot.value)
+
+  private def isClassIncluded(sym: Symbol)(using Context): Boolean =
+    val fqn = sym.fullName.toText(ctx.printerFn(ctx)).show
+    coverageExcludeClasslikePatterns.isEmpty || !coverageExcludeClasslikePatterns.exists(
+      _.matcher(fqn).nn.matches
+    )
+
+  private def isFileIncluded(file: SourceFile)(using Context): Boolean =
+    val normalizedPath = file.path.replace(".scala", "")
+    coverageExcludeFilePatterns.isEmpty || !coverageExcludeFilePatterns.exists(
+      _.matcher(normalizedPath).nn.matches
+    )
 
   override protected def newTransformer(using Context) =
     CoverageTransformer(ctx.settings.coverageOutputDir.value)
@@ -269,8 +291,17 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
             transformDefDef(tree)
 
           case tree: PackageDef =>
-            // only transform the statements of the package
-            cpy.PackageDef(tree)(tree.pid, transform(tree.stats))
+            if isFileIncluded(tree.srcPos.sourcePos.source) && isClassIncluded(tree.symbol) then
+              // only transform the statements of the package
+              cpy.PackageDef(tree)(tree.pid, transform(tree.stats))
+            else
+              tree
+
+          case tree: TypeDef =>
+            if isFileIncluded(tree.srcPos.sourcePos.source) && isClassIncluded(tree.symbol) then
+              super.transform(tree)
+            else
+              tree
 
           case tree: Assign =>
             // only transform the rhs
