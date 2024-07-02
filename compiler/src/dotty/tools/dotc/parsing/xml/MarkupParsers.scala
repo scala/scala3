@@ -372,7 +372,7 @@ object MarkupParsers {
           while {
             xSpaceOpt()
             nextch()
-            ts.append(element)
+            content_LT(ts)
             charComingAfter(xSpaceOpt()) == '<'
           } do ()
           handle.makeXMLseq(Span(start, curOffset, start), ts)
