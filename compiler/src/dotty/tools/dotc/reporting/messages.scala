@@ -1838,7 +1838,7 @@ class WrongNumberOfParameters(tree: untpd.Tree, foundCount: Int, pt: Type, expec
 
 class DuplicatePrivateProtectedQualifier()(using Context)
   extends SyntaxMsg(DuplicatePrivateProtectedQualifierID) {
-  def msg(using Context) = "Duplicate private/protected qualifier"
+  def msg(using Context) = "Duplicate private/protected modifier"
   def explain(using Context) =
     i"It is not allowed to combine `private` and `protected` modifiers even if they are qualified to different scopes"
 }
@@ -1847,7 +1847,13 @@ class ExpectedStartOfTopLevelDefinition()(using Context)
   extends SyntaxMsg(ExpectedStartOfTopLevelDefinitionID) {
   def msg(using Context) = "Expected start of definition"
   def explain(using Context) =
-    i"You have to provide either ${hl("class")}, ${hl("trait")}, ${hl("object")}, or ${hl("enum")} definitions after qualifiers"
+    i"You have to provide either ${hl("class")}, ${hl("trait")}, ${hl("object")}, or ${hl("enum")} definitions after modifiers"
+}
+
+class FinalLocalDef()(using Context)
+  extends SyntaxMsg(FinalLocalDefID) {
+  def msg(using Context) = i"The ${hl("final")} modifier is not allowed on local definitions"
+  def explain(using Context) = ""
 }
 
 class NoReturnFromInlineable(owner: Symbol)(using Context)
