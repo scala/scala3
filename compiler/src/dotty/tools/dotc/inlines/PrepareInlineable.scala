@@ -91,7 +91,7 @@ object PrepareInlineable {
         postTransform(super.transform(preTransform(tree)))
 
       protected def checkUnstableAccessor(accessedTree: Tree, accessor: Symbol)(using Context): Unit =
-        if ctx.settings.WunstableInlineAccessors.value then
+        if ctx.settings.Whas.unstableInlineAccessors then
           val accessorTree = accessorDef(accessor, accessedTree.symbol)
           report.warning(reporting.UnstableInlineAccessor(accessedTree.symbol, accessorTree), accessedTree)
     }

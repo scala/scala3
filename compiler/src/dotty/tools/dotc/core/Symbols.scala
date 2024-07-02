@@ -84,7 +84,7 @@ object Symbols extends SymUtils {
       ctx.settings.YretainTrees.value ||
       denot.owner.isTerm ||                // no risk of leaking memory after a run for these
       denot.isOneOf(InlineOrProxy) ||      // need to keep inline info
-      ctx.settings.WcheckInit.value ||     // initialization check
+      ctx.settings.Whas.checkInit ||       // initialization check
       ctx.settings.YcheckInitGlobal.value
 
     /** The last denotation of this symbol */
