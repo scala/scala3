@@ -116,15 +116,7 @@ class CheckRealizable(using Context) {
     case _: SingletonType | NoPrefix =>
       Realizable
     case tp =>
-      def isConcrete(tp: Type): Boolean = tp.dealias match {
-        case tp: TypeRef => tp.symbol.isClass
-        case tp: TypeParamRef => false
-        case tp: TypeProxy => isConcrete(tp.underlying)
-        case tp: AndType => isConcrete(tp.tp1) && isConcrete(tp.tp2)
-        case tp: OrType  => isConcrete(tp.tp1) && isConcrete(tp.tp2)
-        case _ => false
-      }
-      if (!isConcrete(tp)) NotConcrete
+      if !MatchTypes.isConcrete(tp) then NotConcrete
       else boundsRealizability(tp).andAlso(memberRealizability(tp))
   }
 
