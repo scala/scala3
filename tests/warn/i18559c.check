@@ -1,4 +1,12 @@
+-- [E198] Unused Symbol Warning: tests/warn/i18559c.scala:4:28 ---------------------------------------------------------
+4 |  import collection.mutable.Set // warn
+  |                            ^^^
+  |                            unused import
 -- [E198] Unused Symbol Warning: tests/warn/i18559c.scala:8:8 ----------------------------------------------------------
 8 |    val x = 1  // warn
   |        ^
   |        unused local definition
+-- [E198] Unused Symbol Warning: tests/warn/i18559c.scala:11:26 --------------------------------------------------------
+11 |  import SomeGivenImports.given // warn
+   |                          ^^^^^
+   |                          unused import

@@ -203,7 +203,7 @@ private sealed trait WarningSettings:
     def nowarn(using Context) = allOr("nowarn")
 
     // Is any choice set for -Wunused?
-    def any(using Context): Boolean = Wunused.value.nonEmpty
+    def any(using Context): Boolean = Wall.value || Wunused.value.nonEmpty
 
     // overrided by strict-no-implicit-warn
     def imports(using Context) =
