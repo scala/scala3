@@ -24,6 +24,17 @@ object Formatting {
     object Shown:
       given [A: Show]: Conversion[A, Shown] = Show[A].show(_)
 
+      extension (s: Shown)
+        def runCtxShow(using Context): Shown = s match
+          case cs: CtxShow => cs.run
+          case _           => s
+
+      def toStr(x: Shown)(using Context): String = x match
+        case seq: Seq[?] => seq.map(toStr).mkString("[", ", ", "]")
+        case res         => res.tryToShow
+
+    import Shown.runCtxShow
+
     sealed abstract class Show[-T]:
       /** Show a value T by returning a "shown" result. */
       def show(x: T): Shown
@@ -31,10 +42,9 @@ object Formatting {
     trait CtxShow:
       def run(using Context): Shown
 
-    extension (s: Shown)
-      def ctxShow(using Context): Shown = s match
-        case cs: CtxShow => cs.run
-        case _           => s
+    private inline def CtxShow(inline x: Context ?=> Shown) = new CtxShow { def run(using Context) = x(using ctx) }
+    private def toStr[A: Show](x: A)(using Context): String = Shown.toStr(toShown(x))
+    private def toShown[A: Show](x: A)(using Context): Shown = Show[A].show(x).runCtxShow
 
     /** The base implementation, passing the argument to StringFormatter which will try to `.show` it. */
     object ShowAny extends Show[Any]:
@@ -54,16 +64,26 @@ object Formatting {
     object Show extends ShowImplicits1:
       inline def apply[A](using inline z: Show[A]): Show[A] = z
 
+      given [X: Show]: Show[Option[X]] with
+        def show(x: Option[X]) =
+          CtxShow(x.map(toStr))
+      end given
+
       given [X: Show]: Show[Seq[X]] with
-        def show(x: Seq[X]) = new CtxShow:
-          def run(using Context) = x.map(show1)
+        def show(x: Seq[X]) = CtxShow(x.map(toStr))
+
+      given [K: Show, V: Show]: Show[Map[K, V]] with
+        def show(x: Map[K, V]) =
+          CtxShow(x.map((k, v) => s"${toStr(k)} => ${toStr(v)}"))
+      end given
 
       given [H: Show, T <: Tuple: Show]: Show[H *: T] with
-        def show(x: H *: T) = new CtxShow:
-          def run(using Context) = show1(x.head) *: Show[T].show(x.tail).ctxShow.asInstanceOf[Tuple]
+        def show(x: H *: T) =
+          CtxShow(toStr(x.head) *: toShown(x.tail).asInstanceOf[Tuple])
+      end given
 
       given [X: Show]: Show[X | Null] with
-        def show(x: X | Null) = if x == null then "null" else Show[X].show(x.nn)
+        def show(x: X | Null) = if x == null then "null" else CtxShow(toStr(x.nn))
 
       given Show[FlagSet] with
         def show(x: FlagSet) = x.flagsString
@@ -79,7 +99,13 @@ object Formatting {
           case ast.TreeInfo.Impure         => "PurityLevel.Impure"
           case ast.TreeInfo.PurePath       => "PurityLevel.PurePath"
           case ast.TreeInfo.IdempotentPath => "PurityLevel.IdempotentPath"
-          case _                           => s"PurityLevel(${x.x})"
+          case _                           => s"PurityLevel(${x.x.toBinaryString})"
+
+      given Show[Atoms] with
+        def show(x: Atoms) = x match
+          case Atoms.Unknown       => "Unknown"
+          case Atoms.Range(lo, hi) => CtxShow(s"Range(${toStr(lo.toList)}, ${toStr(hi.toList)})")
+      end given
 
       given Show[Showable]                            = ShowAny
       given Show[Shown]                               = ShowAny
@@ -101,11 +127,6 @@ object Formatting {
       given Show[util.Spans.Span]                     = ShowAny
       given Show[tasty.TreeUnpickler#OwnerTree]       = ShowAny
       given Show[typer.ForceDegree.Value]             = ShowAny
-
-      private def show1[A: Show](x: A)(using Context) = show2(Show[A].show(x).ctxShow)
-      private def show2(x: Shown)(using Context): String = x match
-        case seq: Seq[?] => seq.map(show2).mkString("[", ", ", "]")
-        case res         => res.tryToShow
     end Show
   end ShownDef
   export ShownDef.{ Show, Shown }
@@ -122,7 +143,7 @@ object Formatting {
   class StringFormatter(protected val sc: StringContext) {
     protected def showArg(arg: Any)(using Context): String = arg.tryToShow
 
-    private def treatArg(arg: Shown, suffix: String)(using Context): (String, String) = arg.ctxShow match {
+    private def treatArg(arg: Shown, suffix: String)(using Context): (String, String) = arg.runCtxShow match {
       case arg: Seq[?] if suffix.indexOf('%') == 0 && suffix.indexOf('%', 1) != -1 =>
         val end = suffix.indexOf('%', 1)
         val sep = StringContext.processEscapes(suffix.substring(1, end))
