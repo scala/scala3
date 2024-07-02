@@ -978,6 +978,17 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         if (tp1 ne tp1norm) recur(tp1norm, tp2)
         else either(recur(tp11, tp2), recur(tp12, tp2))
       case tp1: MatchType =>
+        def compareUpper =
+          val lub1 = tp1.cases.foldLeft(defn.NothingType: Type): (acc, case1) =>
+            if acc.exists then
+              val rhs = case1.resultType match { case defn.MatchCase(_, body) => body }
+              val isRecursive = rhs.existsPart(_.isInstanceOf[LazyRef])
+              if isRecursive then NoType else lub(acc, rhs)
+            else acc
+          if lub1.exists then
+            recur(lub1, tp2)
+          else
+            recur(tp1.underlying, tp2)
         def compareMatch = tp2 match {
           case tp2: MatchType =>
             isSameType(tp1.scrutinee, tp2.scrutinee) &&
