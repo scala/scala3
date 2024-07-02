@@ -84,6 +84,8 @@ class Objects(using Context @constructorOnly):
 
   val whiteList: Set[Symbol] = Set(SetNode_EmptySetNode, HashSet_EmptySet, Vector_EmptyIterator, MapNode_EmptyMapNode, HashMap_EmptyMap, LazyList_empty)
 
+  val ignoreMethodsWhitelist: Set[Symbol] = Set(defn.Predef_classOf)
+
   // ----------------------------- abstract domain -----------------------------
 
   /** Syntax for the data structure abstraction used in abstract domain:
@@ -1162,11 +1164,14 @@ class Objects(using Context @constructorOnly):
           withTrace(trace2) { call(thisValue2, ref.symbol, args, thisTp, superTp) }
 
         case Select(qual, _) =>
-          val receiver = eval(qual, thisV, klass)
-          if ref.symbol.isConstructor then
-            withTrace(trace2) { callConstructor(receiver, ref.symbol, args) }
+          if ignoreMethodsWhitelist.contains(ref.symbol) then
+            Bottom
           else
-            withTrace(trace2) { call(receiver, ref.symbol, args, receiver = qual.tpe, superType = NoType) }
+            val receiver = eval(qual, thisV, klass)
+            if ref.symbol.isConstructor then
+              withTrace(trace2) { callConstructor(receiver, ref.symbol, args) }
+            else
+              withTrace(trace2) { call(receiver, ref.symbol, args, receiver = qual.tpe, superType = NoType) }
 
         case id: Ident =>
           id.tpe match
@@ -1177,11 +1182,14 @@ class Objects(using Context @constructorOnly):
             // local methods are not a member, but we can reuse the method `call`
             withTrace(trace2) { call(thisValue2, id.symbol, args, receiver = NoType, superType = NoType, needResolve = false) }
           case TermRef(prefix, _) =>
-            val receiver = withTrace(trace2) { evalType(prefix, thisV, klass) }
-            if id.symbol.isConstructor then
-              withTrace(trace2) { callConstructor(receiver, id.symbol, args) }
+            if ignoreMethodsWhitelist.contains(ref.symbol) then
+              Bottom
             else
-              withTrace(trace2) { call(receiver, id.symbol, args, receiver = prefix, superType = NoType) }
+              val receiver = withTrace(trace2) { evalType(prefix, thisV, klass) }
+              if id.symbol.isConstructor then
+                withTrace(trace2) { callConstructor(receiver, id.symbol, args) }
+              else
+                withTrace(trace2) { call(receiver, id.symbol, args, receiver = prefix, superType = NoType) }
 
       case Select(qualifier, name) =>
         val qual = eval(qualifier, thisV, klass)
