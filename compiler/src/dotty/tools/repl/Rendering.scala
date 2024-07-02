@@ -70,13 +70,16 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
           // In order to figure out if it did get truncated, we invoke it twice - once with the `maxElements` that we
           // want to print, and once without a limit. If the first is shorter, truncation did occur.
           val notTruncated = stringOfMaybeTruncated(value, Int.MaxValue)
-          val maybeTruncatedByElementCount = stringOfMaybeTruncated(value, maxElements)
-          val maybeTruncated = truncate(maybeTruncatedByElementCount, maxCharacters)
+          if notTruncated == null then null else
+            val maybeTruncated =
+              val maybeTruncatedByElementCount = stringOfMaybeTruncated(value, maxElements)
+              truncate(maybeTruncatedByElementCount, maxCharacters)
 
-          // our string representation may have been truncated by element and/or character count
-          // if so, append an info string - but only once
-          if (notTruncated.length == maybeTruncated.length) maybeTruncated
-          else s"$maybeTruncated ... large output truncated, print value to show all"
+            // our string representation may have been truncated by element and/or character count
+            // if so, append an info string - but only once
+            if notTruncated.length == maybeTruncated.length then maybeTruncated
+            else s"$maybeTruncated ... large output truncated, print value to show all"
+          end if
         }
 
       }
@@ -94,8 +97,9 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       "replStringOf should only be called on values creating using `classLoader()`, but `classLoader()` has not been called so far")
     val maxPrintElements = ctx.settings.VreplMaxPrintElements.valueIn(ctx.settingsState)
     val maxPrintCharacters = ctx.settings.VreplMaxPrintCharacters.valueIn(ctx.settingsState)
-    val res = myReplStringOf(value, maxPrintElements, maxPrintCharacters)
-    if res == null then "null // non-null reference has null-valued toString" else res
+    Option(value)
+      .flatMap(v => Option(myReplStringOf(v, maxPrintElements, maxPrintCharacters)))
+      .getOrElse("null // non-null reference has null-valued toString")
 
   /** Load the value of the symbol using reflection.
    *
