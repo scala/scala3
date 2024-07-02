@@ -9,8 +9,8 @@ class List[+A]:
 
 def runOps(ops: List[() => Unit]): Unit =
   // See i20156, due to limitation in expressiveness of current system,
-  // we cannot map over the list of impure elements.
-  ops.foreach(op => op()) // error
+  // we could map over the list of impure elements. OK with existentials.
+  ops.foreach(op => op())
 
 def main(): Unit =
   val f: List[() => Unit] -> Unit = runOps  // error

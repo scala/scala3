@@ -229,7 +229,7 @@ object Config {
   inline val reuseSymDenotations = true
 
   /** If `checkLevelsOnConstraints` is true, check levels of type variables
-   *  and create fresh ones as needed when bounds are first entered intot he constraint.
+   *  and create fresh ones as needed when bounds are first entered into the constraint.
    *  If `checkLevelsOnInstantiation` is true, allow level-incorrect constraints but
    *  fix levels on type variable instantiation.
    */

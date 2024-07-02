@@ -216,13 +216,13 @@ This widening is called _avoidance_; it is not specific to capture checking but 
 
 ## Capability Classes
 
-Classes like `CanThrow` or `FileSystem` have the property that their values are always intended to be capabilities. We can make this intention explicit and save boilerplate by declaring these classes with a `@capability` annotation.
+Classes like `CanThrow` or `FileSystem` have the property that their values are always intended to be capabilities. We can make this intention explicit and save boilerplate by letting these classes extend the  `Capability` class defined in object `cap`.
 
-The capture set of a capability class type is always `{cap}`. This means we could equivalently express the `FileSystem` and `Logger` classes as follows:
+The capture set of a `Capability` subclass type is always `{cap}`. This means we could equivalently express the `FileSystem` and `Logger` classes as follows:
 ```scala
-import annotation.capability
+import caps.Capability
 
-@capability class FileSystem
+class FileSystem extends Capability
 
 class Logger(using FileSystem):
   def log(s: String): Unit = ???
@@ -290,7 +290,7 @@ The captured references of a class include _local capabilities_ and _argument ca
 the local capabilities of a superclass are also local capabilities of its subclasses. Example:
 
 ```scala
-@capability class Cap
+class Cap extends caps.Capability
 
 def test(a: Cap, b: Cap, c: Cap) =
   class Super(y: Cap):
@@ -317,7 +317,7 @@ The inference observes the following constraints:
 
 For instance, in
 ```scala
-@capability class Cap
+class Cap extends caps.Capability
 def test(c: Cap) =
   class A:
     val x: A = this
@@ -502,7 +502,7 @@ Under the language import `language.experimental.captureChecking`, the code is i
 ```
 To integrate exception and capture checking, only two changes are needed:
 
- - `CanThrow` is declared as a `@capability` class, so all references to `CanThrow` instances are tracked.
+ - `CanThrow` is declared as a class extending `Capability`, so all references to `CanThrow` instances are tracked.
  - Escape checking is extended to `try` expressions. The result type of a `try` is not allowed to
    capture the universal capability.
 
@@ -635,9 +635,132 @@ To summarize, there are two "sweet spots" of data structure design: strict lists
 side-effecting or resource-aware code and lazy lists in purely functional code.
 Both are already correctly capture-typed without requiring any explicit annotations. Capture annotations only come into play where the semantics gets more complicated because we deal with delayed effects such as in impure lazy lists or side-effecting iterators over strict lists. This property is probably one of the greatest plus points of our approach to capture checking compared to previous techniques which tend to be more noisy.
 
-## Function Type Shorthands
+## Existential Capabilities
 
-TBD
+In fact, what is written as the top type `cap` can mean different capabilities, depending on scope. For instance, consider the function type
+`() -> Iterator[T]^`. This is taken to mean
+```scala
+  () -> Exists x. Iterator[T]^x
+```
+In other words, it means an unknown type bound `x` by an "existential" in the scope of the function result. A `cap` in a function result is therefore different from a `cap` at the top-level or in a function parameter.
+
+Internally, an existential type is represented as a kind of dependent function type. The type above would be modelled as
+```scala
+  () -> (x: Exists) -> Iterator[T]^x
+```
+Here, `Exists` is a sealed trait in the `caps` object that serves to mark
+dependent functions as representations of existentials. It should be noted
+that this is strictly an internal representation. It is explained here because it can show up in error messages. It is generally not recommended to use this syntax in source code. Instead one should rely on the automatic expansion of `^` and `cap` to existentials, which can be
+influenced by introducing the right alias types. The rules for this expansion are as follows:
+
+  - If a function result type contains covariant occurrences of `cap`,
+    we replace these occurrences with a fresh existential variable which
+    is bound by a quantifier scoping over the result type.
+  - We might want to do the same expansion in function arguments, but right now this is not done.
+  - Occurrences of `cap` elsewhere are not translated. They can be seen as representing an existential at the top-level scope.
+
+**Examples:**
+
+ - `A => B` is an alias type that expands to `(A -> B)^`, therefore
+   `() -> A => B` expands to `() -> Exists c. A ->{c} B`.
+
+ - `() -> Iterator[A => B]` expands to `() -> Exists c. Iterator[A ->{c} B]`
+
+ - `A -> B^` expands to `A -> Exists c.B^{c}`.
+
+ - If we define `type Fun[T] = A -> T`, then `() -> Fun[B^]` expands to `() -> Exists c.Fun[B^{c}]`, which dealiases to `() -> Exists c.A -> B^{c}`. This demonstrates how aliases can be used to force existential binders to be in some specific outer scope.
+
+ - If we define
+   ```scala
+      type F = A -> Fun[B^]
+   ```
+   then the type alias expands to
+   ```scala
+      type F = A -> Exists c.A -> B^{c}
+   ```
+
+**Typing Rules:**
+
+ - When we typecheck the body of a function or method, any covariant occurrences of `cap` in the result type are bound with a fresh existential.
+ - Conversely, when we typecheck the application of a function or method,
+  with an existential result type `Exists ex.T`, the result of the application is `T` where every occurrence of the existentially bound
+  variable `ex` is replaced by `cap`.
+
+## Reach Capabilities
+
+Say you have a method `f` that takes an impure function argument which gets stored in a `var`:
+```scala
+def f(op: A => B)
+  var x: A ->{op} B = op
+  ...
+```
+This is legal even though `var`s cannot have types with `cap` or existential capabilities. The trick is that the type of the variable `x`
+is not `A => B` (this would be rejected), but is the "narrowed" type
+`A ->{op} B`. In other words, all capabilities retained by values of `x`
+are all also referred to by `op`, which justifies the replacement of `cap` by `op`.
+
+A more complicated situation is if we want to store successive values
+held in a list. Example:
+```scala
+def f(ops: List[A => B])
+  var xs = ops
+  var x: ??? = xs.head
+  while xs.nonEmpty do
+    xs = xs.tail
+    x = xs.head
+  ...
+```
+Here, `x` cannot be given a type with an `ops` capability. In fact, `ops` is pure, i.e. it's capture set is empty, so it cannot be used as the name of a capability. What we would like to express is that `x` refers to
+any operation "reachable" through `ops`. This can be expressed using a
+_reach capability_ `ops*`.
+```scala
+def f(ops: List[A => B])
+  var xs = ops
+  var x: A ->{ops*} B = xs.head
+  ...
+```
+Reach capabilities take the form `x*` where `x` is syntactically a regular capability. If `x: T` then `x*` stands for any capability that appears covariantly in `T` and that is accessed through `x`. The least supertype of this capability is the set of all capabilities appearing covariantly in `T`.
+
+## Capability Polymorphism
+
+It is sometimes convenient to write operations that are parameterized with a capture set of capabilities. For instance consider a type of event sources
+`Source` on which `Listener`s can be registered. Listeners can hold certain capabilities, which show up as a parameter to `Source`:
+```scala
+  class Source[X^]:
+    private var listeners: Set[Listener^{X^}] = Set.empty
+    def register(x: Listener^{X^}): Unit =
+      listeners += x
+
+    def allListeners: Set[Listener^{X^}] = listeners
+```
+The type variable `X^` can be instantiated with a set of capabilities. It can occur in capture sets in its scope. For instance, in the example above
+we see a variable `listeners` that has as type a `Set` of `Listeners` capturing `X^`. The `register` method takes a listener of this type
+and assigns it to the variable.
+
+Capture set variables `X^` are represented as regular type variables with a
+special upper bound `CapSet`. For instance, `Source` could be equivalently
+defined as follows:
+```scala
+  class Source[X <: CapSet^]:
+    ...
+```
+`CapSet` is a sealed trait in the `caps` object. It cannot be instantiated or inherited, so its only purpose is to identify capture set type variables and types. Capture set variables can be inferred like regular type variables. When they should be instantiated explicitly one uses a capturing
+type `CapSet`. For instance:
+```scala
+  class Async extends caps.Capability
+
+  def listener(async: Async): Listener^{async} = ???
+
+  def test1(async1: Async, others: List[Async]) =
+    val src = Source[CapSet^{async1, others*}]
+    ...
+```
+Here, `src` is created as a `Source` on which listeners can be registered that refer to the `async` capability or to any of the capabilities in list `others`. So we can continue the example code above as follows:
+```scala
+  src.register(listener(async1))
+  others.map(listener).foreach(src.register)
+  val ls: Set[Listener^{async, others*}] = src.allListeners
+```
 
 ## Compilation Options
 

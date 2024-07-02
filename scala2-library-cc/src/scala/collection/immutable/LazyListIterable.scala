@@ -24,6 +24,7 @@ import scala.language.implicitConversions
 import scala.runtime.Statics
 import language.experimental.captureChecking
 import annotation.unchecked.uncheckedCaptures
+import caps.untrackedCaptures
 
 /**  This class implements an immutable linked list. We call it "lazy"
   *  because it computes its elements only when they are needed.
@@ -245,13 +246,15 @@ import annotation.unchecked.uncheckedCaptures
   *  @define evaluatesAllElements This method evaluates all elements of the collection.
   */
 @SerialVersionUID(3L)
-final class LazyListIterable[+A] private(private[this] var lazyState: () => LazyListIterable.State[A]^)
+final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => LazyListIterable.State[A]^)
   extends AbstractIterable[A]
     with Iterable[A]
     with IterableOps[A, LazyListIterable, LazyListIterable[A]]
     with IterableFactoryDefaults[A, LazyListIterable]
     with Serializable {
   import LazyListIterable._
+
+  private var myLazyState = lazyState
 
   @volatile private[this] var stateEvaluated: Boolean = false
   @inline private def stateDefined: Boolean = stateEvaluated
@@ -264,11 +267,11 @@ final class LazyListIterable[+A] private(private[this] var lazyState: () => Lazy
       throw new RuntimeException("self-referential LazyListIterable or a derivation thereof has no more elements")
     }
     midEvaluation = true
-    val res = try lazyState() finally midEvaluation = false
+    val res = try myLazyState() finally midEvaluation = false
     // if we set it to `true` before evaluating, we may infinite loop
     // if something expects `state` to already be evaluated
     stateEvaluated = true
-    lazyState = null // allow GC
+    myLazyState = null // allow GC
     res
   }
 
@@ -755,7 +758,7 @@ final class LazyListIterable[+A] private(private[this] var lazyState: () => Lazy
     * The iterator returned by this method mostly preserves laziness;
     * a single element ahead of the iterator is evaluated.
     */
-  override def grouped(size: Int): Iterator[LazyListIterable[A]] = {
+  override def grouped(size: Int): Iterator[LazyListIterable[A]]^{this} = {
     require(size > 0, "size must be positive, but was " + size)
     slidingImpl(size = size, step = size)
   }
@@ -765,12 +768,12 @@ final class LazyListIterable[+A] private(private[this] var lazyState: () => Lazy
     * The iterator returned by this method mostly preserves laziness;
     * `size - step max 1` elements ahead of the iterator are evaluated.
     */
-  override def sliding(size: Int, step: Int): Iterator[LazyListIterable[A]] = {
+  override def sliding(size: Int, step: Int): Iterator[LazyListIterable[A]]^{this} = {
     require(size > 0 && step > 0, s"size=$size and step=$step, but both must be positive")
     slidingImpl(size = size, step = step)
   }
 
-  @inline private def slidingImpl(size: Int, step: Int): Iterator[LazyListIterable[A]] =
+  @inline private def slidingImpl(size: Int, step: Int): Iterator[LazyListIterable[A]]^{this} =
     if (knownIsEmpty) Iterator.empty
     else new SlidingIterator[A](this, size = size, step = step)
 
@@ -996,7 +999,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
 
   private def filterImpl[A](ll: LazyListIterable[A]^, p: A => Boolean, isFlipped: Boolean): LazyListIterable[A]^{ll, p} = {
     // DO NOT REFERENCE `ll` ANYWHERE ELSE, OR IT WILL LEAK THE HEAD
-    var restRef: LazyListIterable[A]^{ll*} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
+    var restRef: LazyListIterable[A]^{ll} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
     newLL {
       var elem: A = null.asInstanceOf[A]
       var found   = false
@@ -1013,7 +1016,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
 
   private def collectImpl[A, B](ll: LazyListIterable[A]^, pf: PartialFunction[A, B]^): LazyListIterable[B]^{ll, pf} = {
     // DO NOT REFERENCE `ll` ANYWHERE ELSE, OR IT WILL LEAK THE HEAD
-    var restRef: LazyListIterable[A]^{ll*} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
+    var restRef: LazyListIterable[A]^{ll} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
     newLL {
       val marker = Statics.pfMarker
       val toMarker = anyToMarker.asInstanceOf[A => B] // safe because Function1 is erased
@@ -1032,7 +1035,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
 
   private def flatMapImpl[A, B](ll: LazyListIterable[A]^, f: A => IterableOnce[B]^): LazyListIterable[B]^{ll, f} = {
     // DO NOT REFERENCE `ll` ANYWHERE ELSE, OR IT WILL LEAK THE HEAD
-    var restRef: LazyListIterable[A]^{ll*} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
+    var restRef: LazyListIterable[A]^{ll} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
     newLL {
       var it: Iterator[B]^{ll, f} = null
       var itHasNext       = false
@@ -1056,7 +1059,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
 
   private def dropImpl[A](ll: LazyListIterable[A]^, n: Int): LazyListIterable[A]^{ll} = {
     // DO NOT REFERENCE `ll` ANYWHERE ELSE, OR IT WILL LEAK THE HEAD
-    var restRef: LazyListIterable[A]^{ll*} = ll    // restRef is captured by closure arg to newLL, so A is not recognized as parametric
+    var restRef: LazyListIterable[A]^{ll} = ll    // restRef is captured by closure arg to newLL, so A is not recognized as parametric
     var iRef    = n                      // val iRef    = new IntRef(n)
     newLL {
       var rest = restRef                 // var rest = restRef.elem
@@ -1073,7 +1076,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
 
   private def dropWhileImpl[A](ll: LazyListIterable[A]^, p: A => Boolean): LazyListIterable[A]^{ll, p} = {
     // DO NOT REFERENCE `ll` ANYWHERE ELSE, OR IT WILL LEAK THE HEAD
-    var restRef: LazyListIterable[A]^{ll*} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
+    var restRef: LazyListIterable[A]^{ll} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
     newLL {
       var rest = restRef                        // var rest = restRef.elem
       while (!rest.isEmpty && p(rest.head)) {
@@ -1086,8 +1089,8 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
 
   private def takeRightImpl[A](ll: LazyListIterable[A]^, n: Int): LazyListIterable[A]^{ll} = {
     // DO NOT REFERENCE `ll` ANYWHERE ELSE, OR IT WILL LEAK THE HEAD
-    var restRef: LazyListIterable[A]^{ll*} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
-    var scoutRef: LazyListIterable[A]^{ll*} = ll  // same situation
+    var restRef: LazyListIterable[A]^{ll} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
+    var scoutRef: LazyListIterable[A]^{ll} = ll  // same situation
     var remainingRef = n                          // val remainingRef = new IntRef(n)
     newLL {
       var scout     = scoutRef                    // var scout     = scoutRef.elem
@@ -1236,33 +1239,35 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     */
   def newBuilder[A]: Builder[A, LazyListIterable[A]] = new LazyBuilder[A]
 
-  private class LazyIterator[+A](private[this] var lazyList: LazyListIterable[A]^) extends AbstractIterator[A] {
-    override def hasNext: Boolean = !lazyList.isEmpty
+  private class LazyIterator[+A](lazyList: LazyListIterable[A]^) extends AbstractIterator[A] {
+    private var myLazyList = lazyList
+    override def hasNext: Boolean = !myLazyList.isEmpty
 
     override def next(): A =
-      if (lazyList.isEmpty) Iterator.empty.next()
+      if (myLazyList.isEmpty) Iterator.empty.next()
       else {
-        val res = lazyList.head
-        lazyList = lazyList.tail
+        val res = myLazyList.head
+        myLazyList = myLazyList.tail
         res
       }
   }
 
-  private class SlidingIterator[A](private[this] var lazyList: LazyListIterable[A]^, size: Int, step: Int)
+  private class SlidingIterator[A](lazyList: LazyListIterable[A]^, size: Int, step: Int)
     extends AbstractIterator[LazyListIterable[A]] {
+    private var myLazyList = lazyList
     private val minLen = size - step max 0
     private var first = true
 
     def hasNext: Boolean =
-      if (first) !lazyList.isEmpty
-      else lazyList.lengthGt(minLen)
+      if (first) !myLazyList.isEmpty
+      else myLazyList.lengthGt(minLen)
 
     def next(): LazyListIterable[A] = {
       if (!hasNext) Iterator.empty.next()
       else {
         first = false
-        val list = lazyList
-        lazyList = list.drop(step)
+        val list = myLazyList
+        myLazyList = list.drop(step)
         list.take(size)
       }
     }
@@ -1281,7 +1286,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     import LazyBuilder._
 
     private[this] var next: DeferredState[A] = _
-    private[this] var list: LazyListIterable[A] = _
+    @uncheckedCaptures private[this] var list: LazyListIterable[A]^ = _
 
     clear()
 

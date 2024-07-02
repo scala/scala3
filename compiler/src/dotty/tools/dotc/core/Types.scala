@@ -2313,7 +2313,11 @@ object Types extends TypeUtils {
 
     override def captureSet(using Context): CaptureSet =
       val cs = captureSetOfInfo
-      if isTrackableRef && !cs.isAlwaysEmpty then singletonCaptureSet else cs
+      if isTrackableRef then
+        if cs.isAlwaysEmpty then cs else singletonCaptureSet
+      else dealias match
+        case _: (TypeRef | TypeParamRef) => CaptureSet.empty
+        case _ => cs
 
   end CaptureRef
 
@@ -3023,8 +3027,7 @@ object Types extends TypeUtils {
       name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
 
     override def isMaxCapability(using Context): Boolean =
-      import cc.*
-      this.derivesFromCapability && symbol.isStableMember
+      symbol == defn.captureRoot || info.derivesFrom(defn.Caps_Exists)
 
     override def normalizedRef(using Context): CaptureRef =
       if isTrackableRef then symbol.termRef else this
@@ -3032,7 +3035,7 @@ object Types extends TypeUtils {
 
   abstract case class TypeRef(override val prefix: Type,
                               private var myDesignator: Designator)
-    extends NamedType {
+    extends NamedType, CaptureRef {
 
     type ThisType = TypeRef
     type ThisName = TypeName
@@ -3081,6 +3084,9 @@ object Types extends TypeUtils {
     /** Hook that can be called from creation methods in TermRef and TypeRef */
     def validated(using Context): this.type =
       this
+
+    override def isTrackableRef(using Context) =
+      symbol.isAbstractOrParamType && derivesFrom(defn.Caps_CapSet)
   }
 
   final class CachedTermRef(prefix: Type, designator: Designator, hc: Int) extends TermRef(prefix, designator) {
@@ -4832,8 +4838,7 @@ object Types extends TypeUtils {
     def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
     override def isTrackableRef(using Context) = true
     override def isMaxCapability(using Context) =
-      import cc.*
-      this.derivesFromCapability
+      underlying.derivesFrom(defn.Caps_Exists)
   }
 
   private final class TermParamRefImpl(binder: TermLambda, paramNum: Int) extends TermParamRef(binder, paramNum)
@@ -4841,7 +4846,8 @@ object Types extends TypeUtils {
   /** Only created in `binder.paramRefs`. Use `binder.paramRefs(paramNum)` to
    *  refer to `TypeParamRef(binder, paramNum)`.
    */
-  abstract case class TypeParamRef(binder: TypeLambda, paramNum: Int) extends ParamRef {
+  abstract case class TypeParamRef(binder: TypeLambda, paramNum: Int)
+  extends ParamRef, CaptureRef {
     type BT = TypeLambda
     def kindString: String = "Type"
     def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
@@ -4861,6 +4867,8 @@ object Types extends TypeUtils {
       case bound: OrType   => occursIn(bound.tp1, fromBelow) || occursIn(bound.tp2, fromBelow)
       case _ => false
     }
+
+    override def isTrackableRef(using Context) = derivesFrom(defn.Caps_CapSet)
   }
 
   private final class TypeParamRefImpl(binder: TypeLambda, paramNum: Int) extends TypeParamRef(binder, paramNum)
@@ -6287,6 +6295,15 @@ object Types extends TypeUtils {
       variance = v
       try derivedCapturingType(tp, this(parent), refs.map(this))
       finally variance = saved
+
+    /** Utility method. Maps the supertype of a type proxy. Returns the
+     *  type proxy itself if the mapping leaves the supertype unchanged.
+     *  This avoids needless changes in mapped types.
+     */
+    protected def mapConserveSuper(t: TypeProxy): Type =
+      val t1 = t.superType
+      val t2 = apply(t1)
+      if t2 ne t1 then t2 else t
 
     /** Map this function over given type */
     def mapOver(tp: Type): Type = {
