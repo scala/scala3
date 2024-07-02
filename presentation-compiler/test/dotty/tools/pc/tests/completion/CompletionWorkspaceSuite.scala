@@ -887,3 +887,52 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
       """|method - demo.O(i: Int): Int
          |""".stripMargin
     )
+
+  @Test def `implicit-class-val` =
+    check(
+      """|package demo
+         |
+         |object O {
+         |  implicit class CursorOps(val bar: Int)
+         |}
+         |
+         |object Main {
+         |  val x = bar@@
+         |}
+         |""".stripMargin,
+      ""
+    )
+
+  @Test def `implicit-class-def` =
+    check(
+      """|package demo
+         |
+         |object O {
+         |  implicit class CursorOps(val bar: Int) {
+         |    def fooBar = 42
+         |  }
+         |}
+         |
+         |object Main {
+         |  val x = fooB@@
+         |}
+         |""".stripMargin,
+      ""
+    )
+
+  @Test def `extension-method` =
+    check(
+      """|package demo
+         |
+         |object O {
+         |  extension (bar: Int) {
+         |    def fooBar = 42
+         |  }
+         |}
+         |
+         |object Main {
+         |  val x = fooB@@
+         |}
+         |""".stripMargin,
+      ""
+    )
