@@ -99,9 +99,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
     val maxPrintElements = ctx.settings.VreplMaxPrintElements.valueIn(ctx.settingsState)
     val maxPrintCharacters = ctx.settings.VreplMaxPrintCharacters.valueIn(ctx.settingsState)
     // stringOf returns null if value.toString returns null. Show some text as a fallback.
-    def toIdentityString(value: Object): String =
-      s"${value.getClass.getName}@${System.identityHashCode(value).toHexString}"
-    def fallback = s"""${toIdentityString(value)} // return value of "${sym.name}.toString" is null"""
+    def fallback = s"""null // result of "${sym.name}.toString" is null"""
     if value == null then "null" else
       myReplStringOf(value, maxPrintElements, maxPrintCharacters) match
         case null => fallback
