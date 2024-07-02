@@ -76,6 +76,7 @@ object Types extends TypeUtils {
    *        |              +- HKTypeLambda
    *        |              +- MatchType
    *        |              +- FlexibleType
+   *        |              +- LazyRef
    *        |
    *        +- GroundType -+- AndType
    *                       +- OrType
