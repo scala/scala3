@@ -1,0 +1,5 @@
+-- [E030] Match case Unreachable Warning: tests/neg/runtimeChecked-2.scala:10:11 ---------------------------------------
+10 |      case is: Some[t] => ??? // unreachable
+   |           ^^^^^^^^^^^
+   |           Unreachable case
+No warnings can be incurred under -Werror (or -Xfatal-warnings)
