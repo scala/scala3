@@ -11,7 +11,7 @@ To try it in your project see also the [Getting Started User Guide](https://docs
 
 Building a Local Distribution
 =============================
-1. `sbt dist/packArchive`
+1. `sbt dist/Universal/packageBin`
 2. Find the newly-built distributions in `dist/target/`
 
 Code of Conduct
