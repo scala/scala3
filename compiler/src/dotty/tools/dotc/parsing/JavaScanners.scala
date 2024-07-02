@@ -393,7 +393,6 @@ object JavaScanners {
                '5' | '6' | '7' | '8' | '9' =>
             putChar(ch)
             nextChar()
-
           case '_' =>
             putChar(ch)
             nextChar()
