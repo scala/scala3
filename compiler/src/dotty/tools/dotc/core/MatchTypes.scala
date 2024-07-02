@@ -34,24 +34,12 @@ object MatchTypes:
         true
       case tp1: TermRef =>
         !tp1.symbol.is(Param) && isConcrete(tp1.underlying)
-      case tp1: TermParamRef =>
+      case _: (ParamRef | MatchType) =>
         false
-      case tp1: SingletonType =>
-        isConcrete(tp1.underlying)
-      case tp1: ExprType =>
-        isConcrete(tp1.underlying)
-      case tp1: AnnotatedType =>
-        isConcrete(tp1.parent)
-      case tp1: RefinedOrRecType =>
+      case tp1: TypeProxy =>
         isConcrete(tp1.underlying)
       case tp1: AndOrType =>
         isConcrete(tp1.tp1) && isConcrete(tp1.tp2)
-      case tp1: TypeVar =>
-        isConcrete(tp1.underlying)
-      case tp1: LazyRef =>
-        isConcrete(tp1.ref)
-      case tp1: FlexibleType =>
-        isConcrete(tp1.hi)
       case _ =>
         false
   end isConcrete
