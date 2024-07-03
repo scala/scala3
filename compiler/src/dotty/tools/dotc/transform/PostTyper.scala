@@ -361,7 +361,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree @ Inlined(call, bindings, expansion) if !tree.inlinedFromOuterScope =>
           val pos = call.sourcePos
           CrossVersionChecks.checkExperimentalRef(call.symbol, pos)
-          withMode(Mode.InlinedCall)(transform(call))
+          withMode(Mode.NoInline)(transform(call))
           val callTrace = Inlines.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(tree)))
         case templ: Template =>
@@ -512,7 +512,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       if (sym.isEffectivelyErased) dropInlines.transform(rhs) else rhs
 
     private def registerNeedsInlining(tree: Tree)(using Context): Unit =
-      if tree.symbol.is(Inline) && !Inlines.inInlineMethod && !ctx.mode.is(Mode.InlinedCall) then
+      if tree.symbol.is(Inline) && !Inlines.inInlineMethod && !ctx.mode.is(Mode.NoInline) then
         ctx.compilationUnit.needsInlining = true
 
     /** Check if the definition has macro annotation and sets `compilationUnit.hasMacroAnnotations` if needed. */

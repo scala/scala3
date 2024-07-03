@@ -147,6 +147,6 @@ object Mode {
    */
   val RelaxedOverriding: Mode = newMode(30, "RelaxedOverriding")
 
-  /** We are checking the original call of an Inlined node */
-  val InlinedCall: Mode = newMode(31, "InlinedCall")
+  /** Skip inlining of methods. */
+  val NoInline: Mode = newMode(31, "NoInline")
 }
