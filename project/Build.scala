@@ -144,8 +144,8 @@ object Build {
    *  scala-library.
    */
   def stdlibVersion(implicit mode: Mode): String = mode match {
-    case NonBootstrapped => "2.13.12"
-    case Bootstrapped => "2.13.12"
+    case NonBootstrapped => "2.13.14"
+    case Bootstrapped => "2.13.14"
   }
 
   /** Version of the scala-library for which we will generate TASTy.
@@ -155,7 +155,7 @@ object Build {
    *  We can use nightly versions to tests the future compatibility in development.
    *  Nightly versions: https://scala-ci.typesafe.com/ui/native/scala-integration/org/scala-lang
    */
-  val stdlibBootstrappedVersion = "2.13.12"
+  val stdlibBootstrappedVersion = "2.13.14"
 
   val dottyOrganization = "org.scala-lang"
   val dottyGithubUrl = "https://github.com/scala/scala3"
@@ -1124,19 +1124,23 @@ object Build {
           IO.createDirectory(trgDir)
           IO.unzip(scalaLibrarySourcesJar, trgDir)
 
-          ((trgDir ** "*.scala") +++ (trgDir ** "*.java")).get.toSet
+          val (ignoredSources, sources) =
+            ((trgDir ** "*.scala") +++ (trgDir ** "*.java")).get.toSet
+              .partition{file =>
+                // sources from https://github.com/scala/scala/tree/2.13.x/src/library-aux
+                val path = file.getPath.replace('\\', '/')
+                path.endsWith("scala-library-src/scala/Any.scala") ||
+                path.endsWith("scala-library-src/scala/AnyVal.scala") ||
+                path.endsWith("scala-library-src/scala/AnyRef.scala") ||
+                path.endsWith("scala-library-src/scala/Nothing.scala") ||
+                path.endsWith("scala-library-src/scala/Null.scala") ||
+                path.endsWith("scala-library-src/scala/Singleton.scala")
+              }
+          // These sources should be never compiled, filtering them out was not working correctly sometimes
+          ignoredSources.foreach(_.delete())
+          sources
         } (Set(scalaLibrarySourcesJar)).toSeq
       }.taskValue,
-      (Compile / sources) ~= (_.filterNot { file =>
-        // sources from https://github.com/scala/scala/tree/2.13.x/src/library-aux
-        val path = file.getPath.replace('\\', '/')
-        path.endsWith("scala-library-src/scala/Any.scala") ||
-        path.endsWith("scala-library-src/scala/AnyVal.scala") ||
-        path.endsWith("scala-library-src/scala/AnyRef.scala") ||
-        path.endsWith("scala-library-src/scala/Nothing.scala") ||
-        path.endsWith("scala-library-src/scala/Null.scala") ||
-        path.endsWith("scala-library-src/scala/Singleton.scala")
-      }),
       (Compile / sources) := {
         val files = (Compile / sources).value
         val overwrittenSourcesDir = (Compile / scalaSource).value
@@ -1358,7 +1362,7 @@ object Build {
         "io.get-coursier" % "interface" % "1.0.18",
         "org.scalameta" % "mtags-interfaces" % mtagsVersion,
       ),
-      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.12" % mtagsVersion % SourceDeps),
+      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.14" % mtagsVersion % SourceDeps),
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       scalacOptions ++= Seq("-source", "3.3"), // To avoid fatal migration warnings
