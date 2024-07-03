@@ -3,4 +3,4 @@
 import reflect.ClassTag
 
 class Foo:
-  def mkArray[T: ClassTag] = ???
+  def mkArray[T: ClassTag]: Nothing = ???
