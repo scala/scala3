@@ -2093,15 +2093,16 @@ Schema => SemanticDB v4
 Uri => InventedNames.scala
 Text => empty
 Language => Scala
-Symbols => 44 entries
-Occurrences => 64 entries
-Synthetics => 2 entries
+Symbols => 45 entries
+Occurrences => 66 entries
+Synthetics => 3 entries
 
 Symbols:
-givens/InventedNames$package. => final package object givens extends Object { self: givens.type => +23 decls }
+givens/InventedNames$package. => final package object givens extends Object { self: givens.type => +24 decls }
 givens/InventedNames$package.`* *`. => final implicit lazy val given method * * Long
 givens/InventedNames$package.a. => val method a Int
 givens/InventedNames$package.b. => val method b String
+givens/InventedNames$package.c. => val method c Double
 givens/InventedNames$package.d. => val method d List[Int]
 givens/InventedNames$package.e. => val method e Char
 givens/InventedNames$package.f. => val method f Float
@@ -2192,6 +2193,8 @@ Occurrences:
 [32:8..32:16): intValue -> givens/InventedNames$package.intValue.
 [33:4..33:5): b <- givens/InventedNames$package.b.
 [33:8..33:20): given_String -> givens/InventedNames$package.given_String.
+[34:4..34:5): c <- givens/InventedNames$package.c.
+[34:8..34:20): given_Double -> givens/InventedNames$package.given_Double().
 [35:4..35:5): d <- givens/InventedNames$package.d.
 [35:8..35:20): given_List_T -> givens/InventedNames$package.given_List_T().
 [35:21..35:24): Int -> scala/Int#
@@ -2211,6 +2214,7 @@ Occurrences:
 
 Synthetics:
 [24:0..24:0): => *(x$1)
+[34:8..34:20):given_Double => *(intValue)
 [40:8..40:15):given_Y => *(given_X)
 
 expect/Issue1749.scala
