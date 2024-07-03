@@ -66,7 +66,8 @@ class ShortenedTypePrinter(
 
   private val foundRenames = collection.mutable.LinkedHashMap.empty[Symbol, String]
 
-  def getUsedRenames: Map[Symbol, String] = foundRenames.toMap
+  def getUsedRenames: Map[Symbol, String] =
+    foundRenames.toMap.filter { case (k, v) => k.showName != v }
 
   def getUsedRenamesInfo(using Context): List[String] =
     foundRenames.map { (from, to) =>
