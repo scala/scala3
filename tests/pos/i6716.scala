@@ -1,14 +1,16 @@
-//> using options -Xfatal-warnings -source 3.4
-
+trait Monad[T]:
+  def id: String
 class Foo
-
-object Bar {
-  given Foo with {}
-  given List[Foo] = List(summon[Foo]) // ok
+object Foo {
+  given Monad[Foo] with { def id = "Foo" }
 }
 
-object Baz {
-  @annotation.nowarn
-  given List[Foo] = List(summon[Foo]) // gives a warning, which is suppressed
-  given Foo with {}
+opaque type Bar = Foo
+object Bar {
+  given Monad[Bar] = summon[Monad[Foo]]
+}
+
+object Test extends App {
+  println(summon[Monad[Foo]].id)
+  println(summon[Monad[Bar]].id)
 }
