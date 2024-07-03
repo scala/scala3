@@ -91,7 +91,8 @@ class SemanticSymbolBuilder:
         case _ =>
       end find
       val sig = sym.signature
-      find(_.signature == sig)
+      val targetName = sym.targetName
+      find(sym => sym.signature == sig && sym.targetName == targetName)
 
     def addDescriptor(sym: Symbol): Unit =
       if sym.is(ModuleClass) then
