@@ -59,6 +59,7 @@ done
 # SCALA_CLI_CMD_BASH is an array, set by cli-common-platform
 eval "${SCALA_CLI_CMD_BASH[@]}" \
   "--prog-name scala" \
+  "--skip-cli-updates" \
   "--cli-default-scala-version \"$SCALA_VERSION\"" \
   "-r \"$MVN_REPOSITORY\"" \
   "${scala_args[@]}"
