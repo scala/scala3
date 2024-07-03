@@ -297,14 +297,14 @@ object Interactive {
           else
             outer
         case tree @ Block(stats, expr) =>
-          val localCtx = outer.fresh.setNewScope
+          val localCtx = outer.localContext(tree, outer.owner).setNewScope
           stats.foreach {
             case stat: MemberDef => localCtx.enter(stat.symbol)
             case _ =>
           }
-          contextOfStat(stats, nested, ctx.owner, localCtx)
+          contextOfStat(stats, nested, localCtx.owner, localCtx)
         case tree @ CaseDef(pat, _, _) =>
-          val localCtx = outer.fresh.setNewScope
+          val localCtx = outer.localContext(tree, outer.owner).setNewScope
           pat.foreachSubTree {
             case bind: Bind => localCtx.enter(bind.symbol)
             case _ =>
