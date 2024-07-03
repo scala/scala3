@@ -412,4 +412,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
           RefinedType(parent.dealias, name, refinedInfo.deepDealias)
         case dealised => dealised
 
+  extension[T] (list: List[T])
+    def get(n: Int): Option[T] = if 0 <= n && n < list.size then Some(list(n)) else None
+
 end InteractiveEnrichments
