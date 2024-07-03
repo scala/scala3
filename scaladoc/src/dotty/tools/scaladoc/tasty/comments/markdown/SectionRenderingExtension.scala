@@ -35,7 +35,14 @@ object SectionRenderingExtension extends HtmlRenderer.HtmlRendererExtension:
       val idSuffix = repeatedIds.getOrElseUpdate((c, headerText), 0)
       val ifSuffixStr = if(idSuffix == 0) then "" else idSuffix.toString
       repeatedIds.update((c, headerText), idSuffix + 1)
-      val id = idGenerator.getId(headerText + ifSuffixStr)
+
+      /* #19524 flexmark's `HeaderIdGenerator` does not appear to be thread-safe,
+       * so we protect its usage with a full `synchronize`.
+       */
+      val id = idGenerator.synchronized {
+        idGenerator.getId(headerText + ifSuffixStr)
+      }
+
       val anchor = AnchorLink(s"#$id")
       val headerClass: String = header.getLevel match
         case 1 => "h500"
