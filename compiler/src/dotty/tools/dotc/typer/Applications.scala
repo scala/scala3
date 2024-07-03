@@ -945,12 +945,17 @@ trait Applications extends Compatibility {
       val app1 =
         if (!success || typedArgs.exists(_.tpe.isError)) app0.withType(UnspecifiedErrorType)
         else {
-          if !sameSeq(args, orderedArgs)
-             && !isJavaAnnotConstr(methRef.symbol)
-             && !typedArgs.forall(isSafeArg)
-          then
+          if isJavaAnnotConstr(methRef.symbol) then
+            // #19951 Make sure all arguments are NamedArgs for Java annotations
+            if typedArgs.exists(!_.isInstanceOf[NamedArg]) then
+              typedArgs = typedArgs.lazyZip(methType.asInstanceOf[MethodType].paramNames).map {
+                case (arg: NamedArg, _) => arg
+                case (arg, name)        => NamedArg(name, arg)
+              }
+          else if !sameSeq(args, orderedArgs) && !typedArgs.forall(isSafeArg) then
             // need to lift arguments to maintain evaluation order in the
             // presence of argument reorderings.
+            // (never do this for Java annotation constructors, hence the 'else if')
 
             liftFun()
 
