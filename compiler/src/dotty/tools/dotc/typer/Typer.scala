@@ -1439,14 +1439,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           if isErasedClass then arg.withAddedFlags(Erased) else arg
         }
         return typedDependent(newParams)
-      val resTpt = TypeTree(mt.nonDependentResultApprox).withSpan(body.span)
-      val typeArgs = appDef.termParamss.head.map(_.tpt) :+ resTpt
       val core =
         if mt.hasErasedParams then TypeTree(defn.ErasedFunctionClass.typeRef)
         else
+          val resTpt = TypeTree(mt.nonDependentResultApprox).withSpan(body.span)
+          val paramTpts = appDef.termParamss.head.map(p => TypeTree(p.tpt.tpe).withSpan(p.tpt.span))
           val funSym = defn.FunctionSymbol(numArgs, isContextual, isImpure)
           val tycon = TypeTree(funSym.typeRef)
-          AppliedTypeTree(tycon, typeArgs)
+          AppliedTypeTree(tycon, paramTpts :+ resTpt)
       RefinedTypeTree(core, List(appDef), ctx.owner.asClass)
     end typedDependent
 
