@@ -65,10 +65,11 @@ object ErrorReporting {
     val collectMatchTrace = new TypeAccumulator[String]:
       def apply(s: String, tp: Type): String =
         if s.nonEmpty then s
-        else tp match
-          case tp: AppliedType if tp.isMatchAlias => MatchTypeTrace.record(tp.tryNormalize)
-          case tp: MatchType => MatchTypeTrace.record(tp.tryNormalize)
-          case _ => foldOver(s, tp)
+        else
+          val normed = tp.normalized
+          val toTrace = if normed.isMatchAlias then normed else normed.dealias
+          val r = MatchTypeTrace.record(toTrace.tryNormalize)
+          if r.nonEmpty then r else foldOver(s, tp)
     tps.foldLeft("")(collectMatchTrace)
 
   /** A mixin trait that can produce added elements for an error message */

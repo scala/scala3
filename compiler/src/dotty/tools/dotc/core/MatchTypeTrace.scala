@@ -23,7 +23,7 @@ object MatchTypeTrace:
 
   private val MatchTrace = new Property.Key[MatchTrace]
 
-  /** Execute `op` and if it involves a failed match type reduction
+  /** Execute `op` and if it is a failed match type reduction
    *  return the trace of that reduction. Otherwise return the empty string.
    */
   def record(op: Context ?=> Any)(using Context): String =

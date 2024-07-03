@@ -1559,7 +1559,8 @@ object Types extends TypeUtils {
 
     /** If this type can be normalized at the top-level by rewriting match types
      *  of S[n] types, the result after applying all toplevel normalizations,
-     *  otherwise NoType
+     *  otherwise NoType. Note applied match aliases are not beta reduced
+     *  if the underlying MatchType is stuck.
      */
     def tryNormalize(using Context): Type = NoType
 

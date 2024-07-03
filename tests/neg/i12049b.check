@@ -1,0 +1,17 @@
+
+-- [E007] Type Mismatch Error: tests/neg/i12049b/B_2.scala:2:17 --------------------------------------------------------
+2 |val y1: String = foo  // error
+  |                 ^^^
+  |                 Found:    Last[(Int, Int, Boolean, String)]
+  |                 Required: String
+  |
+  |                 Note: a match type could not be fully reduced:
+  |
+  |                   trying to reduce  Last[EmptyTuple]
+  |                   failed since selector EmptyTuple
+  |                   matches none of the cases
+  |
+  |                     case _ *: _ *: t => Last[t]
+  |                     case t *: EmptyTuple => t
+  |
+  | longer explanation available when compiling with `-explain`
