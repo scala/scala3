@@ -374,3 +374,44 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
         |}
         |""".stripMargin
     )
+
+  @Test def `implicit-val-var` =
+    check(
+      """|package example
+         |
+         |object Test:
+         |  implicit class TestOps(val testArg: Int):
+         |    var testVar: Int = 42
+         |    val testVal: Int = 42
+         |    def testOps(b: Int): String = ???
+         |
+         |def main = 100.test@@
+         |""".stripMargin,
+      """|testArg: Int (implicit)
+         |testVal: Int (implicit)
+         |testVar: Int (implicit)
+         |testOps(b: Int): String (implicit)
+         |""".stripMargin
+    )
+
+  @Test def `implicit-val-edit` =
+    checkEdit(
+      """|package example
+         |
+         |object Test:
+         |  implicit class TestOps(a: Int):
+         |    val testVal: Int = 42
+         |
+         |def main = 100.test@@
+         |""".stripMargin,
+      """|package example
+         |
+         |import example.Test.TestOps
+         |
+         |object Test:
+         |  implicit class TestOps(a: Int):
+         |    val testVal: Int = 42
+         |
+         |def main = 100.testVal
+         |""".stripMargin
+    )

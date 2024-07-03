@@ -499,14 +499,18 @@ class Completions(
     val query = completionPos.query
     if completionMode.is(Mode.Scope) && query.nonEmpty then
       val visitor = new CompilerSearchVisitor(sym =>
-        indexedContext.lookupSym(sym) match
-          case IndexedContext.Result.InScope => false
-          case _ =>
-            completionsWithSuffix(
-              sym,
-              sym.decodedName,
-              CompletionValue.Workspace(_, _, _, sym)
-            ).map(visit).forall(_ == true),
+        if !(sym.is(Flags.ExtensionMethod) ||
+          (sym.maybeOwner.is(Flags.Implicit) && sym.maybeOwner.isClass))
+        then
+          indexedContext.lookupSym(sym) match
+            case IndexedContext.Result.InScope => false
+            case _ =>
+              completionsWithSuffix(
+                sym,
+                sym.decodedName,
+                CompletionValue.Workspace(_, _, _, sym)
+              ).map(visit).forall(_ == true)
+        else false,
       )
       Some(search.search(query, buildTargetIdentifier, visitor).nn)
     else if completionMode.is(Mode.Member) then
@@ -528,8 +532,10 @@ class Completions(
           )
         end isImplicitClass
 
-        def isImplicitClassMethod = sym.is(Flags.Method) && !sym.isConstructor &&
-          isImplicitClass(sym.maybeOwner)
+        def isDefaultVariableSetter = sym.is(Flags.Accessor) && sym.is(Flags.Method)
+        def isImplicitClassMember =
+          isImplicitClass(sym.maybeOwner) && !sym.is(Flags.Synthetic) && sym.isPublic
+          && !sym.isConstructor && !isDefaultVariableSetter
 
         if isExtensionMethod then
           completionsWithSuffix(
@@ -537,7 +543,7 @@ class Completions(
             sym.decodedName,
             CompletionValue.Extension(_, _, _)
           ).map(visit).forall(_ == true)
-        else if isImplicitClassMethod then
+        else if isImplicitClassMember then
           completionsWithSuffix(
             sym,
             sym.decodedName,
