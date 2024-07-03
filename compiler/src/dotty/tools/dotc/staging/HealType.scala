@@ -47,7 +47,10 @@ class HealType(pos: SrcPos)(using Context) extends TypeMap {
         checkNotWildcardSplice(tp)
         if level == 0 then tp else getTagRef(prefix)
       case _: TermRef | _: ThisType | NoPrefix =>
-        if levelInconsistentRootOfPath(tp).exists then
+        val inconsistentRoot = levelInconsistentRootOfPath(tp)
+        if inconsistentRoot.isClass && inconsistentRoot.isLocal then
+          levelError(inconsistentRoot, tp, pos)
+        else if inconsistentRoot.exists then
           tryHeal(tp)
         else
           tp
