@@ -2456,6 +2456,7 @@ object ScaladocConfigs {
   }
 
   lazy val DefaultGenerationConfig = Def.task {
+    def distLocation = (dist / Universal / stage).value
     DefaultGenerationSettings.value
   }
 

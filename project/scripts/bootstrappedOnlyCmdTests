@@ -15,7 +15,7 @@ echo "testing scala.quoted.Expr.run from sbt scala"
 grep -qe "val a: scala.Int = 3" "$tmp"
 
 # setup for `scalac`/`scala` script tests
-"$SBT" "$DIST_PROJECT/universal/stage"
+"$SBT" "$DIST_PROJECT/Universal/stage"
 
 echo "capturing scala version from $DIST_DIR/target/universal/stage/VERSION"
 IFS=':=' read -ra versionProps < "$ROOT/$DIST_DIR/target/universal/stage/VERSION" # temporarily set IFS to ':=' to split versionProps
