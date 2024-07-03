@@ -10,7 +10,7 @@ class TabcompleteTests extends ReplTest {
 
   /** Returns the `(<instance completions>, <companion completions>)`*/
   private def tabComplete(src: String)(implicit state: State): List[String] =
-    completions(src.length, src, state).map(_.value).sorted
+    completionsWithSignatures(src.length, src, state).map(_.label).sorted.distinct
 
   @Test def tabCompleteList = initially {
     val comp = tabComplete("List.r")
