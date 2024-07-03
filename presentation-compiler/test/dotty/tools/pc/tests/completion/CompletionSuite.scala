@@ -1608,7 +1608,7 @@ class CompletionSuite extends BaseCompletionSuite:
       assertSingleItem = false
     )
 
-  @Test def `prepend-instead-of-replace-duplicate-word` =
+  @Test def `prepend-duplicate-word` =
     checkEdit(
       """|object O:
          |  println@@println()
@@ -1622,10 +1622,10 @@ class CompletionSuite extends BaseCompletionSuite:
   @Test def `replace-when-inside` =
     checkEdit(
       """|object O:
-         |  print@@ln()
+         |  pri@@nt()
          |""".stripMargin,
       """|object O:
-         |  println()
+         |  print()
          |""".stripMargin,
       assertSingleItem = false
     )
@@ -1732,5 +1732,132 @@ class CompletionSuite extends BaseCompletionSuite:
          |ListMap[K, V](elems: (K, V)*): ListMap[K, V]
          |""".stripMargin,
       filter = _.contains("[")
+    )
+
+  @Test def `empty-import` =
+    check(
+      """|import @@
+         |""".stripMargin,
+      """|java <root>
+         |javax <root>
+         |""".stripMargin,
+      filter = _.startsWith("java")
+    )
+
+  @Test def `empty-import-selector` =
+    check(
+      """|import java.@@
+         |""".stripMargin,
+      """|util java
+         |""".stripMargin,
+      filter = _.startsWith("util")
+    )
+
+  @Test def `empty-export` =
+    check(
+      """|export @@
+         |""".stripMargin,
+      """|java <root>
+         |javax <root>
+         |""".stripMargin,
+      filter = _.startsWith("java")
+    )
+
+  @Test def `empty-export-selector` =
+    check(
+      """|export java.@@
+         |""".stripMargin,
+      """|util java
+         |""".stripMargin,
+      filter = _.startsWith("util")
+    )
+
+  @Test def `annotation` =
+    check(
+      """|@Over@@
+         |object M {}
+         |""".stripMargin,
+      """|Override java.lang
+         |""".stripMargin,
+      filter = _ == "Override java.lang"
+    )
+
+  @Test def `no-annotation` =
+    check(
+      """|
+         |object M {
+         |  Overr@@
+         |}
+         |""".stripMargin,
+      """|Override java.lang
+         |""".stripMargin,
+      filter = _ == "Override java.lang"
+    )
+
+  @Test def `no-annotation-param-first-pos` =
+    check(
+      """|
+         |object M {
+         |  def hello(Overr@@)
+         |}
+         |""".stripMargin,
+      ""
+    )
+
+  @Test def `no-annotation-param-second-pos` =
+    check(
+      """|
+         |object M {
+         |  def hello(x: Int, Overr@@)
+         |}
+         |""".stripMargin,
+      ""
+    )
+
+  @Test def `no-annotation-param-second-list` =
+    check(
+      """|
+         |object M {
+         |  def hello(x: Int)(Overr@@)
+         |}
+         |""".stripMargin,
+      ""
+    )
+
+
+  @Test def `annotation-param-first-pos` =
+    check(
+      """|
+         |object M {
+         |  def hello(@Overr@@)
+         |}
+         |""".stripMargin,
+      """|Override java.lang
+         |""".stripMargin,
+      filter = _ == "Override java.lang"
+    )
+
+  @Test def `annotation-param-second-pos` =
+    check(
+      """|
+         |object M {
+         |  def hello(x: Int, @Overr@@)
+         |}
+         |""".stripMargin,
+      """|Override java.lang
+         |""".stripMargin,
+      filter = _ == "Override java.lang"
+    )
+
+  @Test def `annotation-param-second-list` =
+    check(
+      """|
+         |object M {
+         |  def hello(x: Int)( @Overr@@)
+         |}
+         |""".stripMargin,
+      """|Override java.lang
+         |""".stripMargin,
+      filter = _ == "Override java.lang"
     )
 
