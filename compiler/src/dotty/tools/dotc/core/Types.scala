@@ -3749,7 +3749,7 @@ object Types extends TypeUtils {
     }
 
     override protected def iso(that: Any, bs: BinderPairs) = that match
-      case that: OrType => tp1.equals(that.tp1, bs) && tp2.equals(that.tp2, bs)
+      case that: OrType => tp1.equals(that.tp1, bs) && tp2.equals(that.tp2, bs) && isSoft == that.isSoft
       case _ => false
   }
 
