@@ -29,5 +29,12 @@ jobs:
     secrets:
       CONSUMER-KEY: ${{ secrets.SDKMAN_KEY }}
       CONSUMER-TOKEN: ${{ secrets.SDKMAN_TOKEN }}
-  
+
+  publish-winget:
+    uses: ./.github/workflows/publish-winget.yml
+    with:
+      version: ${{ inputs.version }}
+    secrets:
+      DOTTYBOT-TOKEN: ${{ secrets.DOTTYBOT_WINGET_TOKEN }}
+
   # TODO: ADD RELEASE WORKFLOW TO CHOCOLATEY AND OTHER PACKAGE MANAGERS HERE
