@@ -22,4 +22,8 @@ if not %ERRORLEVEL%==0 endlocal& exit /b 1
 
 if not exist "%_SITE_DIR%" mkdir "%_SITE_DIR%"
 call "%_PREFIX%\bin\scaladoc.bat" -d "%_SITE_DIR%" -project Hello "%_SOURCE%"
+@rem call the test twice to test the caching logic
+rd /s /q "%_SITE_DIR%"
+mkdir "%_SITE_DIR%"
+call "%_PREFIX%\bin\scaladoc.bat" -d "%_SITE_DIR%" -project Hello "%_SOURCE%"
 endlocal
