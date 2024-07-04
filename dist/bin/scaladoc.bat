@@ -31,7 +31,7 @@ if defined JAVA_OPTS ( set _JAVA_OPTS=%JAVA_OPTS%
 set "_JAVACMD=!_JAVACMD:%%=%%%%!"
 
 call "%_JAVACMD%" %_JAVA_OPTS% %_JAVA_DEBUG% %_JAVA_ARGS% ^
--classpath "%_CLASS_PATH%" ^
+-classpath "@%_CLASS_PATH_FILE%" ^
 -Dscala.usejavacp=true ^
 dotty.tools.scaladoc.Main %_SCALA_ARGS% %_RESIDUAL_ARGS%
 if not %ERRORLEVEL%==0 (
@@ -79,9 +79,8 @@ if "%__ARG%"=="--" (
 ) else if "%__ARG:~0,2%"=="-D" ( call :addJava "%__ARG%"
 ) else if "%__ARG:~0,2%"=="-J" ( call :addJava "%__ARG:~2%"
 ) else (
-    if defined _IN_SCRIPTING_ARGS ( call :addScripting "%__ARG%"
-    ) else ( call :addResidual "%__ARG%"
-    )
+    if defined _IN_SCRIPTING_ARGS ( call :addScripting "%__ARG%")
+    else ( call :addResidual "%__ARG%" )
 )
 shift
 goto args_loop
@@ -103,25 +102,33 @@ goto :eof
 set _RESIDUAL_ARGS=%_RESIDUAL_ARGS% %~1
 goto :eof
 
-@rem output parameter: _CLASS_PATH
+@rem output parameter: _CLASS_PATH_FILE.
+@rem It contains the path th the absolute classpaths
 :classpathArgs
-set "_ETC_DIR=%_PROG_HOME%\etc"
-@rem keep list in sync with bash script `bin\scaladoc` !
-call :loadClasspathFromFile
+
+set _ETC_DIR="%_PROG_HOME%\etc"
+set _TMP_DIR="%_PROG_HOME%\tmp"
+set _INPUT_CLASSPATH_FILE="%_ETC_DIR%\scaladoc.classpath"
+set _OUTPUT_CLASSPATH_FILE="%_TMP_DIR%\scaladoc.classpath"
+
+@rem Check if the _TMP_DIR exists. If not, create it (first time we run the command)
+if not exist "%TMP_DIR%" ( mkdir "%TMP_DIR%" )
+
+@rem If the file doesn't exist, create it (first time we run the command)
+if not exist "%_OUTPUT_CLASSPATH_FILE%" ( call :loadClasspathFromFile )
+set _CLASS_PATH_FILE="%_OUTPUT_CLASSPATH_FILE%"
 goto :eof
 
-@REM concatentate every line in "%_ETC_DIR%\scaladoc.classpath" with _PSEP
+@REM concatentate every line in _INPUT_CLASSPATH_FILE and dump it in the with _PSEP
 :loadClasspathFromFile
 set _CLASS_PATH=
-if exist "%_ETC_DIR%\scaladoc.classpath" (
-    for /f "usebackq delims=" %%i in ("%_ETC_DIR%\scaladoc.classpath") do (
-        set "_LIB=%_PROG_HOME%\maven2\%%i"
+if exist "%_INPUT_CLASSPATH_FILE%" (
+    for /f "usebackq delims=" %%i in "%_INPUT_CLASSPATH_FILE%" do (
+        set _LIB="%_PROG_HOME%\maven2\%%i"
+        @rem Adapt the paths from Unix style to MS-DOS style
         set "_LIB=!_LIB:/=\!"
-        if not defined _CLASS_PATH (
-            set "_CLASS_PATH=!_LIB!"
-        ) else (
-            set "_CLASS_PATH=!_CLASS_PATH!%_PSEP%!_LIB!"
-        )
+        @rem Append the processed line to the output file, ensuring a new line
+        echo !_LIB! >> "%_OUTPUT_CLASSPATH_FILE%"
     )
 )
 goto :eof
