@@ -88,7 +88,9 @@ object Build {
 
   val referenceVersion = "3.4.2-RC1"
 
-  val baseVersion = "3.6.0-RC1"
+  val baseVersion = "3.6.0"
+  // Will be required by some automation later
+  val prereleaseVersion = s"$baseVersion-RC1"
 
   // LTS or Next
   val versionLine = "Next"
@@ -169,9 +171,9 @@ object Build {
     if (isRelease)
       baseVersion
     else if (isNightly)
-      baseVersion + "-bin-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash + "-NIGHTLY"
+      baseVersion + "-RC1-bin-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash + "-NIGHTLY"
     else
-      baseVersion + "-bin-SNAPSHOT"
+      baseVersion + "-RC1-bin-SNAPSHOT"
   }
   val dottyNonBootstrappedVersion = {
     // Make sure sbt always computes the scalaBinaryVersion correctly
