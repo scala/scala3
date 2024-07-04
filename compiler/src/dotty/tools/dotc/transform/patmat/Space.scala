@@ -3,7 +3,9 @@ package dotc
 package transform
 package patmat
 
-import core.*, Constants.*, Contexts.*, Decorators.*, Flags.*, Names.*, NameOps.*, StdNames.*, Symbols.*, Types.*
+import core.*
+import Constants.*, Contexts.*, Decorators.*, Flags.*, NullOpsDecorator.*, Symbols.*, Types.*
+import Names.*, NameOps.*, StdNames.*
 import ast.*, tpd.*
 import config.Printers.*
 import printing.{ Printer, * }, Texts.*
@@ -793,12 +795,12 @@ object SpaceEngine {
     doShow(s)
   }
 
-  private def exhaustivityCheckable(sel: Tree)(using Context): Boolean = {
+  private def exhaustivityCheckable(sel: Tree)(using Context): Boolean = trace(i"exhaustivityCheckable($sel ${sel.className})") {
     val seen = collection.mutable.Set.empty[Symbol]
 
     // Possible to check everything, but be compatible with scalac by default
-    def isCheckable(tp: Type): Boolean =
-      val tpw = tp.widen.dealias
+    def isCheckable(tp: Type): Boolean = trace(i"isCheckable($tp ${tp.className})"):
+      val tpw = tp.widen.dealias.stripNull()
       val classSym = tpw.classSymbol
       classSym.is(Sealed) && !tpw.isLargeGenericTuple || // exclude large generic tuples from exhaustivity
                                                          // requires an unknown number of changes to make work
