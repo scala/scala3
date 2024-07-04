@@ -107,30 +107,44 @@ goto :eof
 @rem It contains the path th the absolute classpaths
 :classpathArgs
 
-set _ETC_DIR="%_PROG_HOME%\etc"
-set _TMP_DIR="%_PROG_HOME%\tmp"
-set _INPUT_CLASSPATH_FILE="%_ETC_DIR%\scaladoc.classpath"
-set _OUTPUT_CLASSPATH_FILE="%_TMP_DIR%\scaladoc.classpath"
+@rem fetch the version of scala
+call :fetchScalaVersion
+
+set "_ETC_DIR=%_PROG_HOME%\etc"
+set "_TMP_DIR=%_PROG_HOME%\tmp-%_SCALA_VERSION%"
+set "_INPUT_CLASSPATH_FILE=%_ETC_DIR%\scaladoc.classpath"
+set "_OUTPUT_CLASSPATH_FILE=%_TMP_DIR%\scaladoc.classpath"
 
 @rem Check if the _TMP_DIR exists. If not, create it (first time we run the command)
-if not exist "%TMP_DIR%" ( mkdir "%TMP_DIR%" )
+if not exist "%_TMP_DIR%" ( mkdir "%_TMP_DIR%" )
 
 @rem If the file doesn't exist, create it (first time we run the command)
 if not exist "%_OUTPUT_CLASSPATH_FILE%" ( call :loadClasspathFromFile )
-set _CLASS_PATH_FILE="%_OUTPUT_CLASSPATH_FILE%"
+set "_CLASS_PATH_FILE=%_OUTPUT_CLASSPATH_FILE%"
 goto :eof
 
-@REM concatentate every line in _INPUT_CLASSPATH_FILE and dump it in the with _PSEP
+@REM concatentate every line in %1 and dump it in %2
 :loadClasspathFromFile
-set _CLASS_PATH=
 if exist "%_INPUT_CLASSPATH_FILE%" (
-    for /f "usebackq delims=" %%i in "%_INPUT_CLASSPATH_FILE%" do (
-        set _LIB="%_PROG_HOME%\maven2\%%i"
+    for /f "usebackq delims=" %%i in ( "%_INPUT_CLASSPATH_FILE%" ) do (
+        set "_LIB=%_PROG_HOME%\maven2\%%i"
         @rem Adapt the paths from Unix style to MS-DOS style
         set "_LIB=!_LIB:/=\!"
-        @rem Append the processed line to the output file, ensuring a new line
-        echo !_LIB! >> "%_OUTPUT_CLASSPATH_FILE%"
+        set "_LIB=!_LIB:\=\\!"
+        @rem Append the processed line to the output file, in the same line
+        (echo | set /p=""!_LIB!"") >> "%_OUTPUT_CLASSPATH_FILE%"
+        (echo | set /p=!_PSEP!) >> "%_OUTPUT_CLASSPATH_FILE%"
     )
+)
+goto :eof
+
+@rem read for version:=_SCALA_VERSION in VERSION_FILE
+@rem output parameter: _SCALA_VERSION.
+@rem It contains the path th the absolute classpaths
+:fetchScalaVersion
+for /f "usebackq delims=" %%G IN ("%_PROG_HOME%\VERSION") do (
+  set "line=%%G"
+  if "!line:~0,9!"=="version:=" ( set "_SCALA_VERSION=!line:~9!" )
 )
 goto :eof
 
