@@ -625,6 +625,14 @@ object SpaceEngine {
         // but end up with A1[<?>] and A2[<?>].
         // So we widen (like AppliedType superType does) away
         // non-class type constructors.
+        //
+        // Can't use `tpOriginal.baseType(cls)` because it causes
+        // i15893 to return exhaustivity warnings, because instead of:
+        //    <== refineUsingParent(N, class Succ, []) = Succ[<? <: NatT>]
+        //    <== isSub(Succ[<? <: NatT>] <:< Succ[Succ[<?>]]) = true
+        // we get
+        //    <== refineUsingParent(NatT, class Succ, []) = Succ[NatT]
+        //    <== isSub(Succ[NatT] <:< Succ[Succ[<?>]]) = false
         def getAppliedClass(tp: Type): Type = tp match
           case tp @ AppliedType(_: HKTypeLambda, _)                        => tp
           case tp @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass => tp
