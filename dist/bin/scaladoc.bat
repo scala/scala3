@@ -79,8 +79,9 @@ if "%__ARG%"=="--" (
 ) else if "%__ARG:~0,2%"=="-D" ( call :addJava "%__ARG%"
 ) else if "%__ARG:~0,2%"=="-J" ( call :addJava "%__ARG:~2%"
 ) else (
-    if defined _IN_SCRIPTING_ARGS ( call :addScripting "%__ARG%")
-    else ( call :addResidual "%__ARG%" )
+    if defined _IN_SCRIPTING_ARGS ( call :addScripting "%__ARG%"
+    ) else ( call :addResidual "%__ARG%"
+    )
 )
 shift
 goto args_loop
