@@ -27,7 +27,6 @@ import dotty.tools.dotc.core.Types.TermRef
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.core.Types.TypeBounds
 import dotty.tools.dotc.core.Types.WildcardType
-import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.IndexedContext
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 import scala.annotation.tailrec
@@ -295,7 +294,6 @@ object NamedArgCompletions:
       )
     }
 
-    // FIXME pass query here
     val prefix = ident
       .map(_.name.toString)
       .getOrElse("")

@@ -1,14 +1,10 @@
 package dotty.tools.pc.tests.completion
 
-import scala.meta.pc.SymbolDocumentation
 import scala.language.unsafeNulls
 
 import dotty.tools.pc.base.BaseCompletionSuite
-import dotty.tools.pc.utils.MockEntries
 
 import org.junit.Test
-import org.junit.Ignore
-import scala.collection.immutable.ListMapBuilder
 
 class CompletionExtraConstructorSuite extends BaseCompletionSuite:
 

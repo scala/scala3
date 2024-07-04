@@ -1,6 +1,5 @@
 package dotty.tools.pc
 
-import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Symbols.*

@@ -227,7 +227,7 @@ class HoverTest {
   @Test def enums: Unit = {
     code"""|package example
            |enum TestEnum3:
-           | case ${m1}A${m2} // no tooltip
+           |  case ${m1}A${m2} // no tooltip
            |
            |"""
       .hover(m1 to m2, hoverContent("example.TestEnum3"))
