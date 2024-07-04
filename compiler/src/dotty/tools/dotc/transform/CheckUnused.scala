@@ -728,7 +728,7 @@ object CheckUnused:
             if selector.isGiven then
               // Further check that the symbol is a given or implicit and conforms to the bound
               sym.isOneOf(Given | Implicit)
-                && (selector.bound.isEmpty || sym.info <:< selector.boundTpe)
+                && (selector.bound.isEmpty || sym.info.finalResultType <:< selector.boundTpe)
             else
               // Normal wildcard, check that the symbol is not a given (but can be implicit)
               !sym.is(Given)
