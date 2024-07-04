@@ -1706,15 +1706,6 @@ class CompletionTest {
        ("getOrElse", Method, "[V1 >: String](key: Int, default: => V1): V1"),
      ))
 
-  @Test def testtest: Unit =
-    code"""|object M {
-           |  def sel$m1
-           |}
-           |"""
-     .completion(m1, Set(
-       ("getOrElse", Method, "[V1 >: String](key: Int, default: => V1): V1"),
-     ))
-
   @Test def noEnumCompletionInNewContext: Unit =
     code"""|enum TestEnum:
            |  case TestCase

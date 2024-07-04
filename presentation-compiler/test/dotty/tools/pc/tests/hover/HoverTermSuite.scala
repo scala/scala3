@@ -694,3 +694,11 @@ class HoverTermSuite extends BaseHoverSuite:
         |""".stripMargin,
       "extension [T](a: T) def *:[U <: Tuple](b: Wrap[U]): Wrap[T *: U]".hover
     )
+
+  @Test def `dont-ignore-???-in-path`: Unit =
+    check(
+      """object Obj:
+        |  val x = ?@@??
+        |""".stripMargin,
+      """def ???: Nothing""".stripMargin.hover
+  )
