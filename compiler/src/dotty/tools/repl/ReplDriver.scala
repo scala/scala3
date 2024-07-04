@@ -31,6 +31,7 @@ import dotty.tools.dotc.util.{SourceFile, SourcePosition}
 import dotty.tools.dotc.{CompilationUnit, Driver}
 import dotty.tools.dotc.config.CompilerCommand
 import dotty.tools.io.*
+import dotty.tools.repl.Rendering.showUser
 import dotty.tools.runner.ScalaClassLoader.*
 import org.jline.reader.*
 
@@ -148,11 +149,36 @@ class ReplDriver(settings: Array[String],
 
     /** Blockingly read a line, getting back a parse result */
     def readLine()(using state: State): ParseResult = {
-      val completer: Completer = { (_, line, candidates) =>
-        val comps = completions(line.cursor, line.line, state)
-        candidates.addAll(comps.asJava)
-      }
       given Context = state.context
+      val completer: Completer = { (lineReader, line, candidates) =>
+        def makeCandidate(label: String) = {
+          new Candidate(
+            /* value    = */ label,
+            /* displ    = */ stripBackTicks(label), // displayed value
+            /* group    = */ null,  // can be used to group completions together
+            /* descr    = */ null,  // TODO use for documentation?
+            /* suffix   = */ null,
+            /* key      = */ null,
+            /* complete = */ false  // if true adds space when completing
+          )
+        }
+        val comps = completionsWithSignatures(line.cursor, line.line, state)
+        candidates.addAll(comps.map(_.label).distinct.map(makeCandidate).asJava)
+        val lineWord = line.word()
+        comps.filter(c => c.label == lineWord && c.symbols.nonEmpty) match
+          case Nil =>
+          case exachMatches =>
+            val terminal = lineReader.nn.getTerminal
+            lineReader.callWidget(LineReader.CLEAR)
+            terminal.writer.println()
+            exachMatches.foreach: exact =>
+              exact.symbols.foreach: sym =>
+                terminal.writer.println(SyntaxHighlighting.highlight(sym.showUser))
+            lineReader.callWidget(LineReader.REDRAW_LINE)
+            lineReader.callWidget(LineReader.REDISPLAY)
+            terminal.flush()
+      }
+
       try {
         val line = terminal.readLine(completer)
         ParseResult(line)
@@ -228,24 +254,26 @@ class ReplDriver(settings: Array[String],
     else
       label
 
-  /** Extract possible completions at the index of `cursor` in `expr` */
+  @deprecated("Use completionsWithSignatures instead", "3.3.4")
   protected final def completions(cursor: Int, expr: String, state0: State): List[Candidate] =
-    def makeCandidate(label: String) = {
-
+    completionsWithSignatures(cursor, expr, state0).map: c =>
       new Candidate(
-        /* value    = */ label,
-        /* displ    = */ stripBackTicks(label), // displayed value
+        /* value    = */ c.label,
+        /* displ    = */ stripBackTicks(c.label), // displayed value
         /* group    = */ null,  // can be used to group completions together
         /* descr    = */ null,  // TODO use for documentation?
         /* suffix   = */ null,
         /* key      = */ null,
         /* complete = */ false  // if true adds space when completing
       )
-    }
+  end completions
 
+
+  /** Extract possible completions at the index of `cursor` in `expr` */
+  protected final def completionsWithSignatures(cursor: Int, expr: String, state0: State): List[Completion] =
     if expr.startsWith(":") then
       ParseResult.commands.collect {
-        case command if command._1.startsWith(expr) => makeCandidate(command._1)
+        case command if command._1.startsWith(expr) => Completion(command._1, "", List())
       }
     else
       given state: State = newRun(state0)
@@ -258,11 +286,10 @@ class ReplDriver(settings: Array[String],
           unit.tpdTree = tpdTree
           given Context = state.context.fresh.setCompilationUnit(unit)
           val srcPos = SourcePosition(file, Span(cursor))
-          val completions = try Completion.completions(srcPos)._2 catch case NonFatal(_) => Nil
-          completions.map(_.label).distinct.map(makeCandidate)
+          try Completion.completions(srcPos)._2 catch case NonFatal(_) => Nil
         }
         .getOrElse(Nil)
-  end completions
+  end completionsWithSignatures
 
   protected def interpret(res: ParseResult, quiet: Boolean = false)(using state: State): State = {
     res match {
