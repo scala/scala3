@@ -1200,6 +1200,11 @@ object SymDenotations {
     final def isEffectivelySealed(using Context): Boolean =
       isOneOf(FinalOrSealed) || isClass && !isOneOf(EffectivelyOpenFlags)
 
+    final def isLocalToCompilationUnit(using Context): Boolean =
+      is(Private)
+      || owner.ownersIterator.takeWhile(!_.isStaticOwner).exists(_.isTerm)
+      || accessBoundary(defn.RootClass).isProperlyContainedIn(symbol.topLevelClass)
+
     final def isTransparentClass(using Context): Boolean =
       is(TransparentType)
       || defn.isAssumedTransparent(symbol)

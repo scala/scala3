@@ -218,18 +218,17 @@ object ExplicitOuter {
    */
   private def needsOuterAlways(cls: ClassSymbol)(using Context): Boolean =
     needsOuterIfReferenced(cls) &&
-    (!hasLocalInstantiation(cls) || // needs outer because we might not know whether outer is referenced or not
+    (!hasOnlyLocalInstantiation(cls) || // needs outer because we might not know whether outer is referenced or not
      cls.mixins.exists(needsOuterIfReferenced) || // needs outer for parent traits
      cls.info.parents.exists(parent => // needs outer to potentially pass along to parent
        needsOuterIfReferenced(parent.classSymbol.asClass)))
 
   /** Class is only instantiated in the compilation unit where it is defined */
-  private def hasLocalInstantiation(cls: ClassSymbol)(using Context): Boolean =
+  private def hasOnlyLocalInstantiation(cls: ClassSymbol)(using Context): Boolean =
     // Modules are normally locally instantiated, except if they are declared in a trait,
     // in which case they will be instantiated in the classes that mix in the trait.
-    cls.owner.ownersIterator.takeWhile(!_.isStaticOwner).exists(_.isTerm)
-    || cls.is(Private, butNot = Module)
-    || cls.is(Module) && !cls.owner.is(Trait)
+    if cls.is(Module) then !cls.owner.is(Trait)
+    else cls.isLocalToCompilationUnit
 
   /** The outer parameter accessor of cass `cls` */
   private def outerParamAccessor(cls: ClassSymbol)(using Context): TermSymbol =
