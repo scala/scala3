@@ -27,7 +27,6 @@ object Test:
 
 object TestInterleaving:
   import language.experimental.namedTypeArguments
-  import language.experimental.clauseInterleaving
   def f2[X](using DummyImplicit)[Y](x: X, y: Y): Int = ???
 
   f2[Y = String][X = Int](1, "") // error: Y is undefined

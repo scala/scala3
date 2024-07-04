@@ -1,4 +1,3 @@
-import scala.language.experimental.clauseInterleaving
 
 class A{
 
