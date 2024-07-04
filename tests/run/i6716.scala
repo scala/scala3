@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -source future
+//> using options -Xfatal-warnings
 
 trait Monad[T]:
   def id: String
