@@ -2,7 +2,7 @@
 ###                   THIS IS A REUSABLE WORKFLOW TO PUBLISH SCALA TO WINGET                    ###
 ### HOW TO USE:                                                                                 ###
 ###   - THE RELEASE WORKFLOW SHOULD CALL THIS WORKFLOW                                          ###
-###   - IT WILL PUBLISH TO WINGET THE MSI                                                       ###
+###   - IT WILL PUBLISH THE MSI TO WINGET                                                       ###
 ###                                                                                             ###
 ### NOTE:                                                                                       ###
 ###   - WE SHOULD KEEP IN SYNC THE https://github.com/dottybot/winget-pkgs REPOSITORY           ###
