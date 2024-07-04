@@ -26,8 +26,8 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
 
     override def isSubParent(parent: Symbol, bc: Symbol)(using Context) =
       true
-      	// Never consider a bridge if there is a superclass that would contain it
-      	// See run/t2857.scala for a test that would break with a VerifyError otherwise.
+      // Never consider a bridge if there is a superclass that would contain it
+      // See run/t2857.scala for a test that would break with a VerifyError otherwise.
 
     /** Only use the superclass of `root` as a parent class. This means
      *  overriding pairs that have a common implementation in a trait parent
