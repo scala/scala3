@@ -1630,8 +1630,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
          *  comparison will instantiate or constrain type variables first.
          */
         def isIncomplete(arg1: Type, arg2: Type): Boolean =
-          val arg1d = arg1.strippedDealias
-          val arg2d = arg2.strippedDealias
+          val arg1d = arg1.stripped
+          val arg2d = arg2.stripped
           (v >= 0) && (arg1d.isInstanceOf[AndType] || arg2d.isInstanceOf[OrType])
           ||
           (v <= 0) && (arg1d.isInstanceOf[OrType] || arg2d.isInstanceOf[AndType])
