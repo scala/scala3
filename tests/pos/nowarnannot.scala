@@ -1,3 +1,5 @@
+//> using options -Xfatal-warnings -Wvalue-discard
+
 case class F(i: Int)
 
 object Main {

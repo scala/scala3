@@ -1,4 +1,4 @@
-// scalac: -Wvalue-discard
+//> using options -Xfatal-warnings -Wvalue-discard
 
 import scala.collection.mutable
 import scala.annotation.nowarn
