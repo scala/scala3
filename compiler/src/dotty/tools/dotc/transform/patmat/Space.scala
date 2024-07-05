@@ -361,7 +361,7 @@ object SpaceEngine {
       val funRef = fun1.tpe.asInstanceOf[TermRef]
       if (fun.symbol.name == nme.unapplySeq)
         val (arity, elemTp, resultTp) = unapplySeqInfo(fun.tpe.widen.finalResultType, fun.srcPos)
-        if (fun.symbol.owner == defn.SeqFactoryClass && defn.ListType.appliedTo(elemTp) <:< pat.tpe)
+        if fun.symbol.owner == defn.SeqFactoryClass && pat.tpe.hasClassSymbol(defn.ListClass) then
           // The exhaustivity and reachability logic already handles decomposing sum types (into its subclasses)
           // and product types (into its components).  To get better counter-examples for patterns that are of type
           // List (or a super-type of list, like LinearSeq) we project them into spaces that use `::` and Nil.
