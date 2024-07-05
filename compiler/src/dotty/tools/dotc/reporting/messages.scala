@@ -3068,3 +3068,8 @@ class MatchTypeScrutineeCannotBeHigherKinded(tp: Type)(using Context)
   extends TypeMsg(MatchTypeScrutineeCannotBeHigherKindedID) :
     def msg(using Context) = i"the scrutinee of a match type cannot be higher-kinded"
     def explain(using Context) = ""
+
+class VolatileOnVal()(using Context)
+extends SyntaxMsg(VolatileOnValID):
+  protected def msg(using Context): String = "values cannot be volatile"
+  protected def explain(using Context): String = ""
