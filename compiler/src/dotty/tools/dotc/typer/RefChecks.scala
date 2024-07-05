@@ -811,11 +811,16 @@ object RefChecks {
        *  can assume invariant refinement for case classes in `constrainPatternType`.
        */
       def checkCaseClassInheritanceInvariant() =
-        for (caseCls <- clazz.info.baseClasses.tail.find(_.is(Case)))
-          for (baseCls <- caseCls.info.baseClasses.tail)
-            if (baseCls.typeParams.exists(_.paramVarianceSign != 0))
-              for (problem <- variantInheritanceProblems(baseCls, caseCls, "non-variant", "case "))
-                report.errorOrMigrationWarning(problem, clazz.srcPos, from = `3.0`)
+        for
+          caseCls <- clazz.info.baseClasses.tail.find(_.is(Case))
+          baseCls <- caseCls.info.baseClasses.tail
+          if baseCls.typeParams.exists(_.paramVarianceSign != 0)
+          problem <- variantInheritanceProblems(baseCls, caseCls, i"base $baseCls", "case ")
+          withExplain = problem.appendExplanation:
+            """Refining a basetype of a case class is not allowed.
+              |This is a limitation that enables better GADT constraints in case class patterns""".stripMargin
+        do report.errorOrMigrationWarning(withExplain, clazz.srcPos, from = `3.0`)
+
       checkNoAbstractMembers()
       if (abstractErrors.isEmpty)
         checkNoAbstractDecls(clazz)
@@ -844,7 +849,7 @@ object RefChecks {
         for {
           cls <- clazz.info.baseClasses.tail
           if cls.paramAccessors.nonEmpty && !mixins.contains(cls)
-          problem <- variantInheritanceProblems(cls, clazz.asClass.superClass, "parameterized", "super")
+          problem <- variantInheritanceProblems(cls, clazz.asClass.superClass, i"parameterized base $cls", "super")
         }
         report.error(problem, clazz.srcPos)
       }
@@ -867,7 +872,7 @@ object RefChecks {
       if (combinedBT =:= thisBT) None // ok
       else
         Some(
-          em"""illegal inheritance: $clazz inherits conflicting instances of $baseStr base $baseCls.
+          em"""illegal inheritance: $clazz inherits conflicting instances of $baseStr.
               |
               |  Direct basetype: $thisBT
               |  Basetype via $middleStr$middle: $combinedBT""")
@@ -966,9 +971,9 @@ object RefChecks {
   end checkNoPrivateOverrides
 
   def checkVolatile(sym: Symbol)(using Context): Unit =
-    if sym.isVolatile && !sym.is(Mutable) then 
+    if sym.isVolatile && !sym.is(Mutable) then
       report.warning(VolatileOnVal(), sym.srcPos)
-  
+
   /** Check that unary method definition do not receive parameters.
    *  They can only receive inferred parameters such as type parameters and implicit parameters.
    */
