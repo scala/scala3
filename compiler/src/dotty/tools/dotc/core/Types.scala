@@ -4936,7 +4936,7 @@ object Types extends TypeUtils {
         case ex: Throwable =>
           handleRecursive("normalizing", s"${scrutinee.show} match ..." , ex)
 
-    def reduced(using Context): Type = {
+    def reduced(using Context): Type = atPhaseNoLater(elimOpaquePhase) {
 
       def contextInfo(tp: Type): Type = tp match {
         case tp: TypeParamRef =>
