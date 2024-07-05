@@ -1106,12 +1106,13 @@ trait Applications extends Compatibility {
         }
         app
       }
-    app1 match {
+    val app2 = app1 match {
       case Apply(Block(stats, fn), args) =>
         tpd.cpy.Block(app1)(stats, tpd.cpy.Apply(app1)(fn, args))
       case _ =>
         app1
     }
+    ConstFold(app2)
   }
 
   /** Typecheck an Apply node with a typed function and possibly-typed arguments coming from `proto` */
