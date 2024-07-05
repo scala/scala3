@@ -71,10 +71,11 @@ object Completion:
     mode: Mode,
     rawPrefix: String,
     tpdPath: List[tpd.Tree],
-    untpdPath: List[untpd.Tree]
+    untpdPath: List[untpd.Tree],
+    customMatcher: Option[Name => Boolean] = None
   )(using Context): CompletionMap =
     val adjustedPath = typeCheckExtensionConstructPath(untpdPath, tpdPath, pos)
-    computeCompletions(pos, mode, rawPrefix, adjustedPath)
+    computeCompletions(pos, mode, rawPrefix, adjustedPath, customMatcher)
 
   /**
    * Inspect `path` to determine what kinds of symbols should be considered.
@@ -193,11 +194,12 @@ object Completion:
     .flatten.getOrElse(tpdPath)
 
   private def computeCompletions(
-    pos: SourcePosition, mode: Mode, rawPrefix: String, adjustedPath: List[tpd.Tree]
+    pos: SourcePosition, mode: Mode, rawPrefix: String, adjustedPath: List[tpd.Tree], matches: Option[Name => Boolean]
   )(using Context): CompletionMap =
     val hasBackTick = rawPrefix.headOption.contains('`')
     val prefix = if hasBackTick then rawPrefix.drop(1) else rawPrefix
-    val completer = new Completer(mode, prefix, pos)
+    val matches0 = matches.getOrElse(_.startsWith(prefix))
+    val completer = new Completer(mode, pos, matches0)
 
     val result = adjustedPath match
       // Ignore synthetic select from `This` because in code it was `Ident`
@@ -209,7 +211,6 @@ object Completion:
       case _                                                                    => completer.scopeCompletions
 
     interactiv.println(i"""completion info with pos    = $pos,
-                          |                     prefix = ${completer.prefix},
                           |                     term   = ${completer.mode.is(Mode.Term)},
                           |                     type   = ${completer.mode.is(Mode.Type)},
                           |                     scope  = ${completer.mode.is(Mode.Scope)},
@@ -311,13 +312,13 @@ object Completion:
 
   /** Computes code completions depending on the context in which completion is requested
    *  @param mode    Should complete names of terms, types or both
-   *  @param prefix  The prefix that all suggested completions should start with
    *  @param pos     Cursor position where completion was requested
+   *  @param matches Function taking name used to filter completions
    *
    *  For the results of all `xyzCompletions` methods term names and type names are always treated as different keys in the same map
    *  and they never conflict with each other.
    */
-  class Completer(val mode: Mode, val prefix: String, pos: SourcePosition):
+  class Completer(val mode: Mode, pos: SourcePosition, matches: Name => Boolean):
     /** Completions for terms and types that are currently in scope:
      *  the members of the current class, local definitions and the symbols that have been imported,
      *  recursively adding completions from outer scopes.
@@ -524,7 +525,7 @@ object Completion:
       // There are four possible ways for an extension method to be applicable
 
       // 1. The extension method is visible under a simple name, by being defined or inherited or imported in a scope enclosing the reference.
-      val termCompleter = new Completer(Mode.Term, prefix, pos)
+      val termCompleter = new Completer(Mode.Term, pos, matches)
       val extMethodsInScope = termCompleter.scopeCompletions.toList.flatMap:
         case (name, denots) => denots.collect:
           case d: SymDenotation if d.isTerm && d.termRef.symbol.is(Extension) => (d.termRef, name.asTermName)
@@ -556,7 +557,7 @@ object Completion:
      *   2. satisfy [[Completion.isValidCompletionSymbol]]
      */
     private def include(denot: SingleDenotation, nameInScope: Name)(using Context): Boolean =
-      nameInScope.startsWith(prefix) &&
+      matches(nameInScope) &&
       completionsFilter(NoType, nameInScope) &&
       isValidCompletionSymbol(denot.symbol, mode)
 
@@ -605,7 +606,6 @@ object Completion:
     private def implicitConversionTargets(qual: tpd.Tree)(using Context): Set[SearchSuccess] = {
       val typer = ctx.typer
       val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.span).allImplicits
-      conversions.map(_.tree.typeOpt)
 
       interactiv.println(i"implicit conversion targets considered: ${conversions.toList}%, %")
       conversions
