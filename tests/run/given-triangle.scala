@@ -1,4 +1,4 @@
-import language.future
+import language.`3.6`
 
 class A
 class B extends A
