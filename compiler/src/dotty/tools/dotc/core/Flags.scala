@@ -535,6 +535,9 @@ object Flags {
   /** Flags retained in term export forwarders */
   val RetainedExportTermFlags = Infix | Given | Implicit | Inline | Transparent | Erased | HasDefaultParams | NoDefaultParams | ExtensionMethod
 
+  /** Flags retained in parameters of term export forwarders */
+  val RetainedExportTermParamFlags = Given | Implicit | Erased | HasDefault | Inline
+
   val MandatoryExportTermFlags = Exported | Method | Final
 
   /** Flags retained in type export forwarders */
