@@ -835,7 +835,7 @@ object SpaceEngine {
   /** Return the underlying type of non-module, non-constant, non-enum case singleton types.
    *  Also widen ExprType to its result type, and rewrap any annotation wrappers.
    *  For example, with `val opt = None`, widen `opt.type` to `None.type`. */
-  def toUnderlying(tp: Type)(using Context): Type = trace(i"toUnderlying($tp)")(tp match {
+  def toUnderlying(tp: Type)(using Context): Type = trace(i"toUnderlying($tp ${tp.className})")(tp match {
     case _: ConstantType                            => tp
     case tp: TermRef if tp.symbol.is(Module)        => tp
     case tp: TermRef if tp.symbol.isAllOf(EnumCase) => tp
@@ -846,7 +846,7 @@ object SpaceEngine {
   })
 
   def checkExhaustivity(m: Match)(using Context): Unit = trace(i"checkExhaustivity($m)") {
-    val selTyp = toUnderlying(m.selector.tpe).dealias
+    val selTyp = toUnderlying(m.selector.tpe.stripNull()).dealias
     val targetSpace = trace(i"targetSpace($selTyp)")(project(selTyp))
 
     val patternSpace = Or(m.cases.foldLeft(List.empty[Space]) { (acc, x) =>
