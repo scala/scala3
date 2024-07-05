@@ -1,0 +1,4 @@
+-- [E172] Type Error: tests/neg/given-triangle.scala:14:18 -------------------------------------------------------------
+14 |@main def Test = f  // error
+   |                  ^
+   |Ambiguous given instances: both given instance given_B and given instance given_C match type A of parameter a of method f
