@@ -92,3 +92,47 @@
     padding-top: 15px;
     margin-top: 15px;
 }
+
+
+
+.tabs {
+    display: flex;
+    flex-direction: column;
+    background: #e2e2e2;
+}
+
+.tab-headers {
+    display: flex;
+    border: 1px solid #ccc;
+    border-top: none;
+
+}
+
+.tab-link {
+    padding: 10px 20px;
+    cursor: pointer;
+    border: none;
+    background: none;
+    outline: none;
+    transition: background-color 0.3s ease;
+}
+
+.tab-link:hover {
+    background-color: rgb(132, 132, 132);
+}
+
+.tab-link.active {
+    color: #1e2dff;
+    font-weight: bold;
+    border-bottom: #1e2dff 3px solid;
+}
+
+.tab-contents {
+    display: flex;
+    flex-direction: column;
+}
+
+.tab-content {
+    display: none;
+    padding: 20px;
+}

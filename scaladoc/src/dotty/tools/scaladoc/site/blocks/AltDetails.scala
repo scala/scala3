@@ -28,8 +28,17 @@ class AltDetails extends liqp.blocks.Block("altDetails") {
     // Build the HTML string using StringBuilder
     val builder = new StringBuilder
     builder.append(
-    s"""<div class="place-inline"><div id="$id" class="alt-details $cssClass"><input class="alt-details-control" type="checkbox" id="${id}__control" hidden aria-hidden="true"><label class="alt-details-toggle" for="${id}__control">$title</label><div class="alt-details-detail"><div class="wrap-tab">$blockContent</div></div></div></div>"""
-    )
+          s"""
+             |<div class="place-inline">
+             |  <div id="$id" class="alt-details $cssClass">
+             |    <input class="alt-details-control" type="checkbox" id="${id}__control" hidden aria-hidden="true">
+             |    <label class="alt-details-toggle" for="${id}__control">$title</label>
+             |    <div class="alt-details-detail">
+             |      <div class="wrap-tab">
+             |        $blockContent</div></div>
+             |    </div>
+             |  </div>
+             """.stripMargin)
 
     // Return the final rendered string
     builder.toString
@@ -40,7 +49,7 @@ class AltDetails extends liqp.blocks.Block("altDetails") {
 
     val matchResult = pattern.findFirstMatchIn(inputString)
     if (matchResult.isEmpty) {
-      return ("", "", "") // Or return default values
+      return ("", "", "")
     }
 
     val id = matchResult.get.group(1)
