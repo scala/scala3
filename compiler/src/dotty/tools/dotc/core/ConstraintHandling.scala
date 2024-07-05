@@ -240,18 +240,7 @@ trait ConstraintHandling {
     override def apply(tp: Type): Type = tp match
       case tp: TypeVar if !tp.isInstantiated && !levelOK(tp.nestingLevel, maxLevel) =>
         legalVar(tp)
-        // TypeParamRef can occur in tl bounds
-      case tp: TypeVar if tp.isInstantiated =>
-        /* `TypeMap` always strips instantiated type variables in `mapOver`.
-         * We can keep the original type var if its instance is not transformed
-         * by the LevelAvoidMap. This allows for simpler bounds and for
-         * derived skolems (see ApproximatingTypeMap#derivedSkolemType) to
-         * remain the same by keeping their info unchanged. Loosing skolems
-         * in the legalBound computation prevented type vars from being
-         * instantiated with theses skolems, even if they were within the bounds.
-         */
-        val res = apply(tp.instanceOpt)
-        if res eq tp.instanceOpt then tp else res
+      // TypeParamRef can occur in tl bounds
       case tp: TypeParamRef =>
         constraint.typeVarOfParam(tp) match
           case tvar: TypeVar =>
