@@ -1,11 +1,19 @@
-/* ALT-DETAILS */
+.place-inline {
+    padding: 10px;
+    margin: 20px 0;
+}
+
+
 .alt-details.help-info .alt-details-toggle {
-    background-color: #007bff; /* Replace $brand-primary with the actual color value */
+    width: 100%;
+    background-color: #007bff;
+
     color: white;
 }
 
 .alt-details.help-info .alt-details-toggle:hover {
-    background-color: #0056b3; /* Replace with darkened $brand-primary value */
+    background-color: #0056b3;
+
 }
 
 .alt-details.help-info .alt-details-detail {
@@ -13,67 +21,74 @@
 }
 
 .alt-details {
-    width: 100%; /* Assuming span-columns(12) means full width */
-
-    .alt-details-toggle {
-        width: 100%; /* Assuming span-columns(12) means full width */
-        font-family: Arial, sans-serif; /* Replace $base-font-family with the actual font-family */
-        line-height: normal;
-        text-align: center;
-        border: none;
-        background-color: #6c757d; /* Replace $brand-tertiary with the actual color value */
-        padding: 5px 10px;
-        border-radius: 0.3rem; /* Replace $border-radius-large with the actual value */
-        font-size: 1rem; /* Replace $font-size-medium with the actual value */
-        cursor: pointer;
-        font-weight: 500;
-        color: #343a40; /* Replace $gray-dark with the actual color value */
-    }
-
-    .alt-details-toggle:hover {
-        background-color: #545b62; /* Replace with darkened $brand-tertiary value */
-    }
-
-    .alt-details-toggle:after {
-        content: "\f138"; /* <i class="fa-solid fa-circle-chevron-right"></i> */
-        font-family: "Font Awesome 5 Free";
-        font-weight: 900;
-        font-size: 15px;
-        float: right;
-        margin-top: 2px;
-    }
-
-    .alt-details-control {
-        margin: 0;
-    }
-
-    .alt-details-control + .alt-details-toggle + .alt-details-detail {
-        position: absolute;
-        top: -999em;
-        left: -999em;
-    }
-
-    .alt-details-control:checked + .alt-details-toggle + .alt-details-detail {
-        position: static;
-    }
-
-    .alt-details-control:checked + .alt-details-toggle:after {
-        content: "\f13a"; /* <i class="fa-solid fa-circle-chevron-down"></i> */
-    }
-
-    .alt-details-detail {
-        border-bottom: 1px solid #ddd; /* Replace $base-border-gray with the actual border value */
-        border-left: 1px solid #ddd; /* Replace $base-border-gray with the actual border value */
-        border-right: 1px solid #ddd; /* Replace $base-border-gray with the actual border value */
-        padding-top: 15px;
-        margin-top: 15px;
-    }
+    width: 100%;
+    display: flex;
+    justify-items: center;
+    align-items: center;
+    flex-direction: column;
 }
-.place-inline {
-    /* Assuming outer-container adds padding and a border */
-    padding: 10px; /* Replace with actual values from outer-container */
-    border: 1px solid #ccc; /* Replace with actual values from outer-container */
 
-    /* Adding vertical margin */
-    margin: 20px 0;
+
+.alt-details-toggle {
+    width: 100%;
+
+    font-family: Arial, sans-serif;
+
+    line-height: normal;
+    text-align: center;
+    border: none;
+    background-color: #6c757d;
+
+    padding: 5px 10px;
+    border-radius: 0.3rem;
+
+    font-size: 1rem;
+
+    cursor: pointer;
+    font-weight: 500;
+    color: #343a40;
+}
+
+.alt-details-toggle:hover {
+    background-color: #545b62;
+
+}
+
+.alt-details-toggle:after {
+    content: "\f138";
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    font-size: 15px;
+    float: right;
+    margin-top: 2px;
+}
+
+.alt-details-control {
+    margin: 0;
+}
+
+.alt-details-control+.alt-details-toggle+.alt-details-detail {
+    position: absolute;
+    top: -999em;
+    left: -999em;
+}
+
+.alt-details-control:checked+.alt-details-toggle+.alt-details-detail {
+    position: static;
+}
+
+.alt-details-control:checked+.alt-details-toggle:after {
+    content: "\f13a";
+
+}
+
+.alt-details-detail {
+    border-bottom: 1px solid #ddd;
+
+    border-left: 1px solid #ddd;
+
+    border-right: 1px solid #ddd;
+
+    padding-top: 15px;
+    margin-top: 15px;
 }

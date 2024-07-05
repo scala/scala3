@@ -23,24 +23,13 @@ class AltDetails extends liqp.blocks.Block("altDetails") {
 
 
     // Render the block content
-    val blockContent = super.asString(block.render(context), context)
+    val blockContent = block.render(context).toString
 
     // Build the HTML string using StringBuilder
     val builder = new StringBuilder
     builder.append(
-      s"""
-         |<div class="place-inline">
-         |  <div id="$id" class="alt-details $cssClass">
-         |    <input class="alt-details-control" type="checkbox" id="${id}__control" hidden aria-hidden="true">
-         |    <label class="alt-details-toggle" for="${id}__control">$title</label>
-         |    <div class="alt-details-detail">
-         |      <div class="wrap-tab">
-         |        $blockContent
-         |      </div>
-         |    </div>
-         |  </div>
-         |</div>
-       """.stripMargin)
+    s"""<div class="place-inline"><div id="$id" class="alt-details $cssClass"><input class="alt-details-control" type="checkbox" id="${id}__control" hidden aria-hidden="true"><label class="alt-details-toggle" for="${id}__control">$title</label><div class="alt-details-detail"><div class="wrap-tab">$blockContent</div></div></div></div>"""
+    )
 
     // Return the final rendered string
     builder.toString
@@ -61,4 +50,3 @@ class AltDetails extends liqp.blocks.Block("altDetails") {
     (id, title, cssClass)
   }
 }
-

@@ -20,6 +20,7 @@ import liqp.TemplateContext
 import liqp.tags.Tag
 import liqp.nodes.LNode
 import dotty.tools.scaladoc.site.blocks.{AltDetails,TabsBlock,TabBlock}
+import dotty.tools.scaladoc.site.tags.{IncludeTag}
 
 import scala.jdk.CollectionConverters.*
 import scala.io.Source
@@ -127,7 +128,14 @@ case class TemplateFile(
 
     mutableProperties.put("site",dataMap)
 
-    print(mutableProperties.get("site")) 
+    print(mutableProperties.get("site"))
+
+    // assign the the path for Include Tag
+    val includePath =  ssctx.root.toPath.resolve("_includes")
+    IncludeTag.setDocsFolder(includePath.toString)
+
+
+
 
 //    val parseSettings = ParseSettings.Builder().withFlavor(Flavor.JEKYLL).build().withBlock(AltDetails())
     val liqpParser = TemplateParser.Builder()
@@ -135,6 +143,7 @@ case class TemplateFile(
       .withBlock(AltDetails())
       .withBlock(TabsBlock())
       .withBlock(TabBlock())
+      .withTag(IncludeTag())
       .build()
 
     val rendered = liqpParser.parse(this.rawCode).render(mutableProperties)
