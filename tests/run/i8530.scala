@@ -13,6 +13,12 @@ object MySeqUnapply:
 object MyWhiteboxUnapply:
   transparent inline def unapply(x: Int): Option[Any] = Some(x)
 
+object MyWhiteboxUnapply1:
+  transparent inline def unapply(using DummyImplicit)(x: Int)(using DummyImplicit): Option[Any] = Some(x)
+
+object MyWhiteboxUnapply2:
+  transparent inline def unapply(using DummyImplicit)(using DummyImplicit)(x: Int)(using DummyImplicit)(using DummyImplicit): Option[Any] = Some(x)
+
 
 @main def Test =
   1 match
@@ -29,5 +35,11 @@ object MyWhiteboxUnapply:
 
   5 match
     case MyWhiteboxUnapply(x) => println(x: Int)
+
+  6 match
+    case MyWhiteboxUnapply1(x) => println(x: Int)
+
+  7 match
+    case MyWhiteboxUnapply2(x) => println(x: Int)
 
 end Test

@@ -172,10 +172,10 @@ object Inlines:
   /** Try to inline a pattern with an inline unapply method. Fail with error if the maximal
    *  inline depth is exceeded.
    *
-   *  @param unapp   The tree of the pattern to inline
+   *  @param fun The function of an Unapply node
    *  @return   An `Unapply` with a `fun` containing the inlined call to the unapply
    */
-  def inlinedUnapply(unapp: tpd.UnApply)(using Context): Tree =
+  def inlinedUnapplyFun(fun: tpd.Tree)(using Context): Tree =
     // We cannot inline the unapply directly, since the pattern matcher relies on unapply applications
     // as signposts what to do. On the other hand, we can do the inlining only in typer, not afterwards.
     // So the trick is to create a "wrapper" unapply in an anonymous class that has the inlined unapply
@@ -189,7 +189,6 @@ object Inlines:
     // transforms the patterns into terms, the `inlinePatterns` phase removes this anonymous class by β-reducing
     // the call to the `unapply`.
 
-    val fun = unapp.fun
     val sym = fun.symbol
 
     val newUnapply = AnonClass(ctx.owner, List(defn.ObjectType), sym.coord) { cls =>
@@ -199,7 +198,7 @@ object Inlines:
       val unapplyInfo = fun.tpe.widen
       val unapplySym = newSymbol(cls, sym.name.toTermName, Synthetic | Method, unapplyInfo, coord = sym.coord).entered
 
-      val unapply = DefDef(unapplySym.asTerm, argss => fun.appliedToArgss(argss).withSpan(unapp.span))
+      val unapply = DefDef(unapplySym.asTerm, argss => fun.appliedToArgss(argss).withSpan(fun.span))
 
       if sym.is(Transparent) then
         // Inline the body and refine the type of the unapply method
@@ -214,9 +213,8 @@ object Inlines:
         List(unapply)
     }
 
-    val newFun = newUnapply.select(sym.name).withSpan(unapp.span)
-    cpy.UnApply(unapp)(fun = newFun)
-  end inlinedUnapply
+    newUnapply.select(sym.name).withSpan(fun.span)
+  end inlinedUnapplyFun
 
   /** For a retained inline method, another method that keeps track of
    *  the body that is kept at runtime. For instance, an inline method
