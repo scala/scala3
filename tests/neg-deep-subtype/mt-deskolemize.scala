@@ -1,3 +1,4 @@
+// LTS specific change: -Yno-deep-subtypes makes it crash, in Next is placed in neg/
 trait Expr:
   type Value
 object Expr:
