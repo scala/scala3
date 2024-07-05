@@ -470,9 +470,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           if isWildcardStarArg(tree) then
             expr match
               case Ident(nme.WILDCARD_STAR) =>
-              	// `_*` is used as a wildcard name to indicate a vararg splice pattern;
-              	// avoid the double `*` in this case.
-              	toText(expr)
+                // `_*` is used as a wildcard name to indicate a vararg splice pattern;
+                // avoid the double `*` in this case.
+                toText(expr)
               case _ =>
                 toText(expr) ~ "*"
           else

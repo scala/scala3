@@ -137,7 +137,7 @@ object Flags {
     def flagStrings(privateWithin: String = ""): Seq[String] = {
       var rawStrings = (2 to MaxFlag).flatMap(x.flagString(_)) // DOTTY problem: cannot drop with (_)
       if (!privateWithin.isEmpty && !x.is(Protected))
-      	rawStrings = rawStrings :+ "private"
+        rawStrings :+= "private"
       val scopeStr = if (x.is(Local)) "this" else privateWithin
       if (scopeStr != "")
         rawStrings.filter(_ != "<local>").map {
