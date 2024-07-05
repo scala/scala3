@@ -149,13 +149,6 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
   override def addCanThrowCapabilities(expr: untpd.Tree, cases: List[CaseDef])(using Context): untpd.Tree =
     expr
 
-  override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
-    try super.typedUnadapted(tree, pt, locked)
-    catch case NonFatal(ex) if ctx.phase != Phases.typerPhase && ctx.phase != Phases.inliningPhase && !ctx.run.enrichedErrorMessage =>
-      val treeStr = tree.show(using ctx.withPhase(ctx.phase.prev.megaPhase))
-      println(ctx.run.enrichErrorMessage(s"exception while retyping $treeStr of class ${tree.className} # ${tree.uniqueId}"))
-      throw ex
-
   override def inlineExpansion(mdef: DefDef)(using Context): List[Tree] = mdef :: Nil
 
   override def inferView(from: Tree, to: Type)(using Context): Implicits.SearchResult =
