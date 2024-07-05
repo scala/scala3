@@ -1320,14 +1320,14 @@ trait Implicits:
        *  3.6 and higher: compare with preferGeneral = true
        *
        */
-      def compareAlternatives(alt1: RefAndLevel, alt2: RefAndLevel): Int =
+      def compareAlternatives(alt1: RefAndLevel, alt2: RefAndLevel, reportChanges: Boolean = false): Int =
         def comp(using Context) = explore(compare(alt1.ref, alt2.ref, preferGeneral = true))
         def warn(msg: Message) =
-          priorityChangeWarnings += ((alt1.ref, alt2.ref, msg))
+          if reportChanges then priorityChangeWarnings += ((alt1.ref, alt2.ref, msg))
         if alt1.ref eq alt2.ref then 0
         else if alt1.level != alt2.level then alt1.level - alt2.level
         else
-          var cmp = comp(using searchContext())
+          val cmp = comp(using searchContext())
           val sv = Feature.sourceVersion
           if sv.stable == SourceVersion.`3.5` || sv == SourceVersion.`3.6-migration` then
             val prev = comp(using searchContext().addMode(Mode.OldImplicitResolution))
@@ -1358,7 +1358,7 @@ trait Implicits:
        */
       def disambiguate(alt1: SearchResult, alt2: SearchSuccess) = alt1 match
         case alt1: SearchSuccess =>
-          var diff = compareAlternatives(alt1, alt2)
+          var diff = compareAlternatives(alt1, alt2, reportChanges = true)
           assert(diff <= 0)   // diff > 0 candidates should already have been eliminated in `rank`
           if diff == 0 && alt1.ref =:= alt2.ref then
             diff = 1 // See i12951 for a test where this happens
