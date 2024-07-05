@@ -40,7 +40,7 @@ enum CompletionSource:
 sealed trait CompletionValue:
   def label: String
   def insertText: Option[String] = None
-  def snippetSuffix: CompletionSuffix = CompletionSuffix.empty
+  def snippetAffix: CompletionAffix = CompletionAffix.empty
   def additionalEdits: List[TextEdit] = Nil
   def range: Option[Range] = None
   def filterText: Option[String] = None
@@ -66,7 +66,6 @@ object CompletionValue:
   sealed trait Symbolic extends CompletionValue:
     def denotation: Denotation
     val symbol = denotation.symbol
-    def isFromWorkspace: Boolean = false
     override def completionItemDataKind = CompletionItemData.None
     def isExtensionMethod: Boolean = false
 
@@ -79,6 +78,9 @@ object CompletionValue:
         kind = completionItemDataKind
       )
     def importSymbol: Symbol = symbol
+
+    override def range: Option[Range] =
+      snippetAffix.toInsertRange
 
     def completionItemKind(using Context): CompletionItemKind =
       val symbol = this.symbol
@@ -97,20 +99,18 @@ object CompletionValue:
     override def labelWithDescription(
         printer: ShortenedTypePrinter
     )(using Context): String =
-      if symbol.is(Method) then s"${label}${description(printer)}"
-      else if symbol.isConstructor then label
+      if symbol.isConstructor then s"${snippetAffix.toPrefix}${label}${description(printer)}"
+      else if symbol.is(Method) then s"${label}${description(printer)}"
       else if symbol.is(Mutable) then s"$label: ${description(printer)}"
       else if symbol.is(Package) || symbol.is(Module) || symbol.isClass then
-        if isFromWorkspace then
-          s"${labelWithSuffix(printer)} -${description(printer)}"
-        else s"${labelWithSuffix(printer)}${description(printer)}"
+        s"${labelWithSuffix(printer)}${description(printer)}"
       else if symbol.isType then labelWithSuffix(printer)
       else if symbol.isTerm && symbol.info.typeSymbol.is(Module) then
         s"${label}${description(printer)}"
       else s"$label: ${description(printer)}"
 
     protected def labelWithSuffix(printer: ShortenedTypePrinter)(using Context): String =
-      if snippetSuffix.addLabelSnippet
+      if snippetAffix.addLabelSnippet
       then
         val printedParams = symbol.info.typeParams.map(p =>
           p.paramName.decoded ++ printer.tpe(p.paramInfo)
@@ -126,29 +126,64 @@ object CompletionValue:
   case class Compiler(
       label: String,
       denotation: Denotation,
-      override val snippetSuffix: CompletionSuffix
+      override val snippetAffix: CompletionAffix
   ) extends Symbolic:
     override def completionItemDataKind: Integer = CompletionSource.CompilerKind.ordinal
+
+  /**
+    *  We need to access original completion in sorting phase.
+    *  This class is only a wrapper to hold both new completion and original completion.
+    *
+    *  All methods are proxied to @param extraMethod
+    *
+    *  FIXME Refactor this file to different architercture. At least to somethhing that is easier to modifiy and scale.
+    *  One solution may be a migration to flag based solution.
+    */
+  case class ExtraMethod(
+      owner: Denotation,
+      extraMethod: Symbolic,
+  ) extends Symbolic:
+    override def additionalEdits: List[TextEdit] = extraMethod.additionalEdits
+    override def command: Option[String] = extraMethod.command
+    override def completionData(buildTargetIdentifier: String)(using Context): CompletionItemData = extraMethod.completionData((buildTargetIdentifier))
+    override def completionItemKind(using Context): CompletionItemKind = extraMethod.completionItemKind
+    override def description(printer: ShortenedTypePrinter)(using Context): String = extraMethod.description(printer)
+    override def labelWithDescription(printer: ShortenedTypePrinter)(using Context): String = extraMethod.labelWithDescription(printer)
+    override def range: Option[Range] = extraMethod.range
+    override def denotation: Denotation = extraMethod.denotation
+    override def label: String = extraMethod.label
+    override def filterText: Option[String] = extraMethod.filterText
+    override def importSymbol: Symbol = extraMethod.importSymbol
+    override def lspTags(using Context): List[CompletionItemTag] = extraMethod.lspTags
+    override def insertText: Option[String] = extraMethod.insertText
+    override def isExtensionMethod: Boolean = extraMethod.isExtensionMethod
+    override def snippetAffix: CompletionAffix = extraMethod.snippetAffix
+    override def insertMode: Option[InsertTextMode] = extraMethod.insertMode
+    override val symbol: Symbol = extraMethod.symbol
+    override def completionItemDataKind: Integer = extraMethod.completionItemDataKind
 
   case class Scope(
       label: String,
       denotation: Denotation,
-      override val snippetSuffix: CompletionSuffix,
+      override val snippetAffix: CompletionAffix,
   ) extends Symbolic:
     override def completionItemDataKind: Integer = CompletionSource.ScopeKind.ordinal
 
   case class Workspace(
       label: String,
       denotation: Denotation,
-      override val snippetSuffix: CompletionSuffix,
+      override val snippetAffix: CompletionAffix,
       override val importSymbol: Symbol
   ) extends Symbolic:
-    override def isFromWorkspace: Boolean = true
     override def completionItemDataKind: Integer = CompletionSource.WorkspaceKind.ordinal
 
     override def labelWithDescription(printer: ShortenedTypePrinter)(using Context): String =
-      if symbol.is(Method) && symbol.name != nme.apply then
+      if symbol.isConstructor || symbol.name == nme.apply then
+        s"${snippetAffix.toPrefix}${label}${description(printer)} - ${printer.fullNameString(importSymbol.effectiveOwner)}"
+      else if symbol.is(Method) then
         s"${labelWithSuffix(printer)} - ${printer.fullNameString(symbol.effectiveOwner)}"
+      else if symbol.is(Package) || symbol.is(Module) || symbol.isClass then
+        s"${labelWithSuffix(printer)} -${description(printer)}"
       else super.labelWithDescription(printer)
 
   /**
@@ -157,7 +192,7 @@ object CompletionValue:
   case class ImplicitClass(
       label: String,
       denotation: Denotation,
-      override val snippetSuffix: CompletionSuffix,
+      override val snippetAffix: CompletionAffix,
       override val importSymbol: Symbol,
   ) extends Symbolic:
     override def completionItemKind(using Context): CompletionItemKind =
@@ -172,7 +207,7 @@ object CompletionValue:
   case class Extension(
       label: String,
       denotation: Denotation,
-      override val snippetSuffix: CompletionSuffix
+      override val snippetAffix: CompletionAffix
   ) extends Symbolic:
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Method
@@ -257,6 +292,7 @@ object CompletionValue:
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Folder
 
+  // TODO remove this type and return `Compiler`, `Workspace` instead
   case class Interpolator(
       denotation: Denotation,
       label: String,

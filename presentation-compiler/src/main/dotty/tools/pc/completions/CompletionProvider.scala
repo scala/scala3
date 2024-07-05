@@ -153,50 +153,17 @@ class CompletionProvider(
     val printer =
       ShortenedTypePrinter(search, IncludeDefaultParam.ResolveLater)(using indexedContext)
 
+    val underlyingCompletion = completion match
+      case CompletionValue.ExtraMethod(_, underlying) => underlying
+      case other => other
+
     // For overloaded signatures we get multiple symbols, so we need
     // to recalculate the description
-    // related issue https://github.com/lampepfl/dotty/issues/11941
-    lazy val kind: CompletionItemKind = completion.completionItemKind
-    val description = completion.description(printer)
-    val label = completion.labelWithDescription(printer)
-    val ident = completion.insertText.getOrElse(completion.label)
-
-    def mkItem(
-        newText: String,
-        additionalEdits: List[TextEdit] = Nil,
-        range: Option[LspRange] = None
-    ): CompletionItem =
-      val oldText = params.text().nn.substring(completionPos.queryStart, completionPos.identEnd)
-      val editRange = if newText.startsWith(oldText) then completionPos.stripSuffixEditRange
-        else completionPos.toEditRange
-
-      val textEdit = new TextEdit(range.getOrElse(editRange), newText)
-
-      val item = new CompletionItem(label)
-      item.setSortText(f"${idx}%05d")
-      item.setDetail(description)
-      item.setFilterText(completion.filterText.getOrElse(completion.label))
-      item.setTextEdit(textEdit)
-      item.setAdditionalTextEdits((completion.additionalEdits ++ additionalEdits).asJava)
-      completion.insertMode.foreach(item.setInsertTextMode)
-
-      val data = completion.completionData(buildTargetIdentifier)
-      item.setData(data.toJson)
-
-      item.setTags(completion.lspTags.asJava)
-
-      if config.isCompletionSnippetsEnabled() then
-        item.setInsertTextFormat(InsertTextFormat.Snippet)
-
-      completion.command.foreach { command =>
-        item.setCommand(new Command("", command))
-      }
-
-      item.setKind(kind)
-      item
-    end mkItem
-
-    val completionTextSuffix = completion.snippetSuffix.toEdit
+    // related issue https://github.com/lampepfl/scala3/issues/11941
+    lazy val kind: CompletionItemKind = underlyingCompletion.completionItemKind
+    val description = underlyingCompletion.description(printer)
+    val label = underlyingCompletion.labelWithDescription(printer)
+    val ident = underlyingCompletion.insertText.getOrElse(underlyingCompletion.label)
 
     lazy val isInStringInterpolation =
       path match
@@ -211,6 +178,49 @@ class CompletionProvider(
           true
         case _ =>
           false
+
+    def wrapInBracketsIfRequired(newText: String): String =
+      if underlyingCompletion.snippetAffix.nonEmpty && isInStringInterpolation then
+        "{" + newText + "}"
+      else newText
+
+    def mkItem(
+        newText: String,
+        additionalEdits: List[TextEdit] = Nil,
+        range: Option[LspRange] = None
+    ): CompletionItem =
+      val oldText = params.text().nn.substring(completionPos.queryStart, completionPos.identEnd)
+      val editRange = if newText.startsWith(oldText) then completionPos.stripSuffixEditRange
+        else completionPos.toEditRange
+
+      val textEdit = new TextEdit(range.getOrElse(editRange), wrapInBracketsIfRequired(newText))
+
+      val item = new CompletionItem(label)
+      item.setSortText(f"${idx}%05d")
+      item.setDetail(description)
+      item.setFilterText(underlyingCompletion.filterText.getOrElse(underlyingCompletion.label))
+      item.setTextEdit(textEdit)
+      item.setAdditionalTextEdits((underlyingCompletion.additionalEdits ++ additionalEdits).asJava)
+      underlyingCompletion.insertMode.foreach(item.setInsertTextMode)
+
+      val data = underlyingCompletion.completionData(buildTargetIdentifier)
+      item.setData(data.toJson)
+
+      item.setTags(underlyingCompletion.lspTags.asJava)
+
+      if config.isCompletionSnippetsEnabled() then
+        item.setInsertTextFormat(InsertTextFormat.Snippet)
+
+      underlyingCompletion.command.foreach { command =>
+        item.setCommand(new Command("", command))
+      }
+
+      item.setKind(kind)
+      item
+    end mkItem
+
+    val completionTextSuffix = underlyingCompletion.snippetAffix.toSuffix
+    val completionTextPrefix = underlyingCompletion.snippetAffix.toInsertPrefix
 
     lazy val backtickSoftKeyword = path match
       case (_: Select) :: _ => false
@@ -232,7 +242,7 @@ class CompletionProvider(
                   mkItem(nameEdit.getNewText().nn, other.toList, range = Some(nameEdit.getRange().nn))
                 case _ =>
                   mkItem(
-                    v.insertText.getOrElse( ident.backticked(backtickSoftKeyword) + completionTextSuffix),
+                    v.insertText.getOrElse(completionTextPrefix + ident.backticked(backtickSoftKeyword) + completionTextSuffix),
                     edits.edits,
                     range = v.range
                   )
@@ -242,25 +252,25 @@ class CompletionProvider(
                 case IndexedContext.Result.InScope =>
                   mkItem(
                     v.insertText.getOrElse(
-                      ident.backticked(
-                        backtickSoftKeyword
-                      ) + completionTextSuffix
+                      completionTextPrefix + ident.backticked(backtickSoftKeyword) + completionTextSuffix
                     ),
                     range = v.range,
                   )
+                // Special case when symbol is out of scope, and there is no auto import.
+                // It means that it will use fully qualified path
                 case _ if isInStringInterpolation =>
                   mkItem(
-                    "{" + sym.fullNameBackticked + completionTextSuffix + "}",
+                    "{" + completionTextPrefix + sym.fullNameBackticked + completionTextSuffix + "}",
                     range = v.range
                   )
                 case _ if v.isExtensionMethod =>
                   mkItem(
-                    ident.backticked(backtickSoftKeyword) + completionTextSuffix,
+                    completionTextPrefix + ident.backticked(backtickSoftKeyword) + completionTextSuffix,
                     range = v.range
                   )
                 case _ =>
                   mkItem(
-                    sym.fullNameBackticked(
+                    completionTextPrefix + sym.fullNameBackticked(
                       backtickSoftKeyword
                     ) + completionTextSuffix,
                     range = v.range
@@ -270,18 +280,16 @@ class CompletionProvider(
       end match
     end mkItemWithImports
 
-    completion match
+    underlyingCompletion match
       case v: (CompletionValue.Workspace | CompletionValue.Extension | CompletionValue.ImplicitClass) =>
         mkItemWithImports(v)
       case v: CompletionValue.Interpolator if v.isWorkspace || v.isExtension =>
         mkItemWithImports(v)
       case _ =>
-        val insert =
-          completion.insertText.getOrElse(ident.backticked(backtickSoftKeyword))
-        mkItem(
-          insert + completionTextSuffix,
-          range = completion.range
-        )
+        val nameText = underlyingCompletion.insertText.getOrElse(ident.backticked(backtickSoftKeyword))
+        val nameWithAffixes = completionTextPrefix + nameText + completionTextSuffix
+        mkItem(nameWithAffixes, range = underlyingCompletion.range)
+
     end match
   end completionItems
 end CompletionProvider
