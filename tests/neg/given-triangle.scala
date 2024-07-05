@@ -1,4 +1,4 @@
-//> using -source 3.5
+//> using options -source 3.5
 class A
 class B extends A
 class C extends A
