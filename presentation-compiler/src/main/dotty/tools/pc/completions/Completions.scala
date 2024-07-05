@@ -16,6 +16,7 @@ import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Comments.Comment
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameOps.*
@@ -26,14 +27,13 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.interactive.Completion.Mode
+import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
-import dotty.tools.pc.completions.OverrideCompletions.OverrideExtractor
 import dotty.tools.pc.buildinfo.BuildInfo
+import dotty.tools.pc.completions.OverrideCompletions.OverrideExtractor
 import dotty.tools.pc.utils.MtagsEnrichments.*
-import dotty.tools.dotc.core.Denotations.SingleDenotation
-
 
 class Completions(
     text: String,
@@ -102,9 +102,13 @@ class Completions(
     end if
   end includeSymbol
 
+  lazy val fuzzyMatcher: Name => Boolean = name =>
+    if completionMode.is(Mode.Member) then CompletionFuzzy.matchesSubCharacters(completionPos.query, name.toString)
+    else CompletionFuzzy.matches(completionPos.query, name.toString)
+
   def enrichedCompilerCompletions(qualType: Type): (List[CompletionValue], SymbolSearch.Result) =
     val compilerCompletions = Completion
-      .rawCompletions(completionPos.originalCursorPosition, completionMode, completionPos.query, path, adjustedPath)
+      .rawCompletions(completionPos.originalCursorPosition, completionMode, completionPos.query, path, adjustedPath, Some(fuzzyMatcher))
 
     compilerCompletions
       .toList
@@ -423,7 +427,7 @@ class Completions(
 
       // class Fo@@
       case (td: TypeDef) :: _
-          if Fuzzy.matches(
+          if CompletionFuzzy.matches(
             td.symbol.name.decoded.replace(Cursor.value, "").nn,
             filename
           ) =>

@@ -404,6 +404,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |Function20 scala
          |Function21 scala
          |Function22 scala
+         |PartialFunction scala
          |""".stripMargin,
       topLines = Some(25)
     )
@@ -531,7 +532,6 @@ class CompletionSuite extends BaseCompletionSuite:
          |until(end: Long): Exclusive[Long]
          |until(end: Long, step: Long): Exclusive[Long]
          |""".stripMargin,
-      postProcessObtained = _.replace("Float", "Double"),
       stableOrder = false
     )
 
@@ -795,6 +795,10 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|intNumber: Int
+         |toInt: Int
+         |instance: Int
+         |asInstanceOf[X0]: X0
+         |isInstanceOf[X0]: Boolean
          |""".stripMargin
     )
 
@@ -1105,7 +1109,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|first: java.util.List[Int]
-         |""".stripMargin
+         |""".stripMargin,
+      topLines = Some(1)
     )
 
   @Test def `object-at-type-pos` =
@@ -1329,14 +1334,7 @@ class CompletionSuite extends BaseCompletionSuite:
   val extensionResult =
     """|Foo test
        |Found - scala.collection.Searching
-       |Font - java.awt
-       |Form - java.text.Normalizer
-       |Format - java.text
-       |FontPeer - java.awt.peer
-       |FormView - javax.swing.text.html
-       |Formatter - java.util
-       |Formatter - java.util.logging
-       |FocusEvent - java.awt.event""".stripMargin
+       """.stripMargin
 
   @Test def `extension-definition-scope` =
     check(
@@ -1344,7 +1342,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension (x: Fo@@)
          |""".stripMargin,
-      extensionResult
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-symbol-search` =
@@ -1363,7 +1362,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension [A <: Fo@@]
          |""".stripMargin,
-      extensionResult
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-type-parameter-symbol-search` =
@@ -1382,7 +1382,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension (using Fo@@)
          |""".stripMargin,
-      extensionResult
+      extensionResult,
+      topLines = Some(2)
     )
 
 
@@ -1392,7 +1393,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension (x: Int)(using Fo@@)
          |""".stripMargin,
-      extensionResult
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-mix-2` =
@@ -1401,7 +1403,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension (using Fo@@)(x: Int)(using Foo)
          |""".stripMargin,
-      extensionResult
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-mix-3` =
@@ -1410,7 +1413,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension (using Foo)(x: Int)(using Fo@@)
          |""".stripMargin,
-      extensionResult
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-mix-4` =
@@ -1419,7 +1423,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension [A](x: Fo@@)
          |""".stripMargin,
-      extensionResult
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-mix-5` =
@@ -1428,7 +1433,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension [A](using Fo@@)(x: Int)
          |""".stripMargin,
-      extensionResult
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-mix-6` =
@@ -1437,7 +1443,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension [A](using Foo)(x: Fo@@)
          |""".stripMargin,
-      extensionResult
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-mix-7` =
@@ -1446,7 +1453,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |object T:
          |  extension [A](using Foo)(x: Fo@@)(using Foo)
          |""".stripMargin,
-      extensionResult
+      extensionResult,
+      topLines = Some(2)
     )
 
   @Test def `extension-definition-select` =
@@ -1490,6 +1498,7 @@ class CompletionSuite extends BaseCompletionSuite:
       """|object O:
          |  val a = List.apply($0)
          |""".stripMargin,
+      assertSingleItem = false
     )
 
   @Test def `multiline-comment` =
@@ -1550,13 +1559,21 @@ class CompletionSuite extends BaseCompletionSuite:
       assertSingleItem = false
     )
 
-
   @Test def `multi-export` =
     check(
       """export scala.collection.{AbstractMap, Set@@}
         |""".stripMargin,
       """Set scala.collection
         |SetOps scala.collection
+        |AbstractSet scala.collection
+        |BitSet scala.collection
+        |BitSetOps scala.collection
+        |SortedSet scala.collection
+        |SortedSetFactoryDefaults scala.collection
+        |SortedSetOps scala.collection
+        |StrictOptimizedSetOps scala.collection
+        |StrictOptimizedSortedSetOps scala.collection
+        |GenSet = scala.collection.Set[X]
         |""".stripMargin
     )
 
@@ -1566,6 +1583,15 @@ class CompletionSuite extends BaseCompletionSuite:
         |""".stripMargin,
       """Set scala.collection
         |SetOps scala.collection
+        |AbstractSet scala.collection
+        |BitSet scala.collection
+        |BitSetOps scala.collection
+        |SortedSet scala.collection
+        |SortedSetFactoryDefaults scala.collection
+        |SortedSetOps scala.collection
+        |StrictOptimizedSetOps scala.collection
+        |StrictOptimizedSortedSetOps scala.collection
+        |GenSet = scala.collection.Set[X]
         |""".stripMargin,
     )
 
@@ -1606,7 +1632,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |  List(1,2,3).tes@@
          |""".stripMargin,
       """|test(p: Int => Boolean): List[Int]
-         |""".stripMargin
+         |""".stripMargin,
+      topLines = Some(1)
     )
 
   @Test def `old-style-extension-type-variable-inference` =
@@ -1618,7 +1645,8 @@ class CompletionSuite extends BaseCompletionSuite:
          |  List(1,2,3).tes@@
          |""".stripMargin,
       """|test(p: Int => Boolean): List[Int]
-         |""".stripMargin
+         |""".stripMargin,
+      topLines = Some(1)
     )
 
   @Test def `instantiate-type-vars-in-extra-apply-completions` =
@@ -1643,6 +1671,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |new ListSet[A]: ListSet[A] - scala.collection.immutable
          |ListMap[K, V](elems: (K, V)*): ListMap[K, V] - scala.collection.mutable
          |new ListMap[K, V]: ListMap[K, V] - scala.collection.mutable
+         |LazyList[A](elems: A*): LazyList[A]
          |""".stripMargin,
       filter = _.contains("[")
     )
@@ -1774,3 +1803,38 @@ class CompletionSuite extends BaseCompletionSuite:
       filter = _ == "Override java.lang"
     )
 
+  @Test def `fuzzy-search-test` =
+    check(
+      """|
+         |object MyInterface {
+         |  def someMethod(x: Int): Int = ???
+         |}
+         |object Test {
+         |  MyInterface.m@@
+         |}
+         |""".stripMargin,
+      """|someMethod(x: Int): Int
+         |""".stripMargin,
+      topLines = Some(1)
+    )
+
+  @Test def `fuzzy-search-test-multiple` =
+    check(
+      """|
+         |trait MyInterface {
+         |  def someMethod(x: Int): Int = ???
+         |}
+         |object Test {
+         |  extension (interface: MyInterface) def someExtMethod(x: Int): Int = ???
+         |  implicit class MyInterfaceExtension(interface: MyInterface):
+         |    def someOldExtMethod(x: Int): Int = ???
+         |  val x: MyInterface = ???
+         |  x.m@@
+         |}
+         |""".stripMargin,
+      """|someMethod(x: Int): Int
+         |someExtMethod(x: Int): Int
+         |someOldExtMethod(x: Int): Int
+         |""".stripMargin,
+      topLines = Some(3)
+    )
