@@ -1302,9 +1302,8 @@ trait Implicits:
 
       // A map that associates a priority change warning (between -source 3.4 and 3.6)
       // with the candidate refs mentioned in the warning. We report the associated
-      // message if both candidates qualify in tryImplicit and at least one of the candidates
-      // is part of the result of the implicit search.
-      val priorityChangeWarnings = mutable.ListBuffer[(TermRef, TermRef, Message)]()
+      // message if one of the critical candidates is part of the result of the implicit search.
+      val priorityChangeWarnings = mutable.ListBuffer[(/*critical:*/ List[TermRef], Message)]()
 
       /** Compare `alt1` with `alt2` to determine which one should be chosen.
        *
@@ -1319,11 +1318,16 @@ trait Implicits:
        *                  return new result with preferGeneral = true
        *  3.6 and higher: compare with preferGeneral = true
        *
+       *  @param only2ndCritical   If true only the second alternative is critical in case
+       *                           of a priority change.
        */
-      def compareAlternatives(alt1: RefAndLevel, alt2: RefAndLevel): Int =
+      def compareAlternatives(alt1: RefAndLevel, alt2: RefAndLevel, only2ndCritical: Boolean = false): Int =
         def comp(using Context) = explore(compare(alt1.ref, alt2.ref, preferGeneral = true))
         def warn(msg: Message) =
-          priorityChangeWarnings += ((alt1.ref, alt2.ref, msg))
+          val critical =
+            if only2ndCritical then alt2.ref :: Nil
+            else alt1.ref :: alt2.ref :: Nil
+          priorityChangeWarnings += ((critical, msg))
         if alt1.ref eq alt2.ref then 0
         else if alt1.level != alt2.level then alt1.level - alt2.level
         else
@@ -1443,8 +1447,8 @@ trait Implicits:
                       compareAlternatives(newCand, cand) > 0)
                 else
                   // keep only warnings that don't involve the failed candidate reference
-                  priorityChangeWarnings.filterInPlace: (ref1, ref2, _) =>
-                    ref1 != cand.ref && ref2 != cand.ref
+                  priorityChangeWarnings.filterInPlace: (critical, _) =>
+                    !critical.contains(cand.ref)
                   rank(remaining, found, fail :: rfailures)
               case best: SearchSuccess =>
                 if (ctx.mode.is(Mode.ImplicitExploration) || isCoherent)
@@ -1454,7 +1458,15 @@ trait Implicits:
                     val newPending =
                       if (retained eq found) || remaining.isEmpty then remaining
                       else remaining.filterConserve(cand =>
-                        compareAlternatives(retained, cand) <= 0)
+                        compareAlternatives(retained, cand, only2ndCritical = true) <= 0)
+                          // Here we drop some pending alternatives but retain in each case
+                          // `retained`. Therefore, it's a priorty change only if the
+                          // second alternative appears in the final search result. Otherwise
+                          // we have the following scenario:
+                          //  - 1st alternative, bit not snd appears in final result
+                          //  - Hence, snd was eliminated either here, or otherwise by a direct
+                          //    comparison later.
+                          //  - Hence, no change in resolution.
                     rank(newPending, retained, rfailures)
                   case fail: SearchFailure =>
                     // The ambiguity happened in the current search: to recover we
@@ -1601,8 +1613,8 @@ trait Implicits:
             throw ex
 
       val result = rank(sort(eligible), NoMatchingImplicitsFailure, Nil)
-      for (ref1, ref2, msg) <- priorityChangeWarnings do
-        if result.found.exists(ref => ref == ref1 || ref == ref2) then
+      for (critical, msg) <- priorityChangeWarnings do
+        if result.found.exists(critical.contains(_)) then
           report.warning(msg, srcPos)
       result
     end searchImplicit
