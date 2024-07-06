@@ -1,6 +1,7 @@
 package dotty.tools.dotc
 package transform
 
+import config.Printers.checks as printer
 import core.Names.Name
 import core.DenotTransformers.*
 import core.SymDenotations.*
@@ -415,7 +416,7 @@ object TreeChecker {
         res
       catch case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
         val treeStr = tree.show(using ctx.withPhase(ctx.phase.prev.megaPhase))
-        println(ctx.run.enrichErrorMessage(s"exception while retyping $treeStr of class ${tree.className} # ${tree.uniqueId}"))
+        printer.println(ctx.run.enrichErrorMessage(s"exception while retyping $treeStr of class ${tree.className} # ${tree.uniqueId}"))
         throw ex
     }
 
@@ -782,7 +783,7 @@ object TreeChecker {
       // We want make sure that transparent inline macros are checked in the same way that
       // non transparent macros are, so we try to prepare a context which would make
       // the checks behave the same way for both types of macros.
-      // 
+      //
       // E.g. Different instances of skolem types are by definition not able to be a subtype of
       // one another, however in practice this is only upheld during typer phase, and we do not want
       // it to be upheld during this check.
