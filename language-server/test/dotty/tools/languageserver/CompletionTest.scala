@@ -1704,4 +1704,23 @@ class CompletionTest {
      .completion(m1, Set(
        ("getOrElse", Method, "[V1 >: String](key: Int, default: => V1): V1"),
      ))
+
+  @Test def noEnumCompletionInNewContext: Unit =
+    code"""|enum TestEnum:
+           |  case TestCase
+           |object M:
+           |  TestEnu$m1
+           |  TestEnum.TestCa$m2
+           |  val x: TestEnu$m3
+           |  val y: TestEnum.Tes$m4
+           |  new TestEnu$m5
+           |  new TestEnum.TestCas$m6
+           |"""
+     .completion(m1, Set(("TestEnum", Module, "TestEnum")))
+     .completion(m2, Set(("TestCase", Field, "TestEnum")))
+     .completion(m3, Set(("TestEnum", Module, "TestEnum"), ("TestEnum", Class, "TestEnum")))
+     .completion(m4, Set(("TestCase", Field, "TestEnum")))
+     .completion(m5, Set())
+     .completion(m6, Set())
+
 }
