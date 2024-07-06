@@ -2403,7 +2403,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     else
       def mergedGlb(tp1: Type, tp2: Type): Type =
         val tp1a = dropIfSuper(tp1, tp2)
-        if tp1a ne tp1 then glb(tp1a, tp2)
+        if tp1a ne tp1 then
+          glb(tp1a, tp2)
         else
           val tp2a = dropIfSuper(tp2, tp1)
           if tp2a ne tp2 then glb(tp1, tp2a)
@@ -2721,11 +2722,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     case tp1: TypeVar if tp1.isInstantiated =>
       tp1.underlying & tp2
     case CapturingType(parent1, refs1) =>
-      val refs2 = tp2.captureSet
-      if subCaptures(refs2, refs1, frozen = true).isOK
-        && tp1.isBoxedCapturing == tp2.isBoxedCapturing
-      then (parent1 & tp2).capturing(refs2)
-      else tp1.derivedCapturingType(parent1 & tp2, refs1)
+      val jointRefs = refs1 ** tp2.captureSet
+      if jointRefs.isAlwaysEmpty then parent1 & tp2
+      else if tp1.isBoxCompatibleWith(tp2) then
+        tp1.derivedCapturingType(parent1 & tp2, jointRefs)
+      else NoType
     case tp1: AnnotatedType if !tp1.isRefining =>
       tp1.underlying & tp2
     case _ =>

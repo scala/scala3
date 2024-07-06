@@ -227,6 +227,14 @@ extension (tp: Type)
       case tp: OrType => tp.tp1.isBoxedCapturing || tp.tp2.isBoxedCapturing
       case _ => false
 
+  /** Is the box status of `tp` and `tp2` compatible? I.ee  they are
+   *  box boxed, or both unboxed, or one of them has an empty capture set.
+   */
+  def isBoxCompatibleWith(tp2: Type)(using Context): Boolean =
+    isBoxedCapturing == tp2.isBoxedCapturing
+    || tp.captureSet.isAlwaysEmpty
+    || tp2.captureSet.isAlwaysEmpty
+
   /** If this type is a capturing type, the version with boxed statues as given by `boxed`.
    *  If it is a TermRef of a capturing type, and the box status flips, widen to a capturing
    *  type that captures the TermRef.
