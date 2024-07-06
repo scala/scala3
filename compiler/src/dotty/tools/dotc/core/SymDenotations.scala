@@ -684,11 +684,9 @@ object SymDenotations {
     def isWrappedToplevelDef(using Context): Boolean =
       !isConstructor && owner.isPackageObject
 
-    /** Is this symbol an abstract type? */
-    final def isAbstractType(using Context): Boolean = this.is(DeferredType)
-
     /** Is this symbol an alias type? */
-    final def isAliasType(using Context): Boolean = isAbstractOrAliasType && !this.is(Deferred)
+    final def isAliasType(using Context): Boolean =
+      isAbstractOrAliasType && !isAbstractOrParamType
 
     /** Is this symbol an abstract or alias type? */
     final def isAbstractOrAliasType: Boolean = isType & !isClass

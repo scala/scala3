@@ -2649,7 +2649,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def isAliasType: Boolean = self.denot.isAliasType
         def isAnonymousClass: Boolean = self.denot.isAnonymousClass
         def isAnonymousFunction: Boolean = self.denot.isAnonymousFunction
-        def isAbstractType: Boolean = self.denot.isAbstractType
+        def isAbstractType: Boolean = self.denot.isAbstractOrParamType
         def isClassConstructor: Boolean = self.denot.isClassConstructor
         def isType: Boolean = self.isType
         def isTerm: Boolean = self.isTerm

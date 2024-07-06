@@ -445,7 +445,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
     if (sym.isAliasType)
       api.TypeAlias.of(name, access, modifiers, as.toArray, typeParams, apiType(tpe.bounds.hi))
     else {
-      assert(sym.isAbstractType)
+      assert(sym.isAbstractOrParamType)
       api.TypeDeclaration.of(name, access, modifiers, as.toArray, typeParams, apiType(tpe.bounds.lo), apiType(tpe.bounds.hi))
     }
   }
