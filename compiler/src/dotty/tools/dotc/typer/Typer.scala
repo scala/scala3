@@ -50,6 +50,7 @@ import Nullables.*
 import NullOpsDecorator.*
 import cc.CheckCaptures
 import config.Config
+import transform.CheckUnused.OriginalName
 
 import scala.annotation.constructorOnly
 import dotty.tools.dotc.rewrites.Rewrites
@@ -646,7 +647,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val selection = untpd.cpy.Select(tree)(qualifier, name)
       typed(selection, pt)
     else if rawType.exists then
-      setType(ensureAccessible(rawType, superAccess = false, tree.srcPos))
+      val ref = setType(ensureAccessible(rawType, superAccess = false, tree.srcPos))
+      if ref.symbol.name != name then
+        ref.withAttachment(OriginalName, name)
+      else ref
     else if name == nme._scope then
       // gross hack to support current xml literals.
       // awaiting a better implicits based solution for library-supported xml
