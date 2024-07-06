@@ -186,7 +186,12 @@ object Completion:
   )(using Context): List[tpd.Tree] =
     untpdPath.collectFirst:
       case untpd.ExtMethods(paramss, _) =>
-        val enclosingParam = paramss.flatten.find(_.span.contains(pos.span))
+        val enclosingParam = paramss.flatten
+          .find(_.span.contains(pos.span))
+          .flatMap:
+            case untpd.TypeDef(_, bounds: untpd.ContextBounds) => bounds.cxBounds.find(_.span.contains(pos.span))
+            case other => Some(other)
+
         enclosingParam.map: param =>
           ctx.typer.index(paramss.flatten)
           val typedEnclosingParam = ctx.typer.typed(param)
