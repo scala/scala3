@@ -7,6 +7,7 @@ import java.util as ju
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 import scala.meta.internal.metals.{ClasspathSearch, WorkspaceSymbolQuery}
+import scala.meta.pc.ContentType
 import scala.meta.pc.SymbolSearch.Result
 import scala.meta.pc.{
   ParentSymbols,
@@ -66,6 +67,12 @@ class MockSymbolSearch(
   override def documentation(
       symbol: String,
       parents: ParentSymbols
+  ) = documentation(symbol, parents, ContentType.MARKDOWN)
+
+  override def documentation(
+      symbol: String,
+      parents: ParentSymbols,
+      contentType: ContentType
   ): Optional[SymbolDocumentation] =
     (symbol +: parents.parents().asScala).iterator
       .map(symbol => mockEntries.documentations.find(_.symbol == symbol))
