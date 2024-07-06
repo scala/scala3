@@ -1,7 +1,12 @@
 -- [E172] Type Error: tests/neg/i8827b.scala:16:28 ---------------------------------------------------------------------
 16 |  summon[Order[Option[Foo]]] // error
    |                            ^
-   |No given instance of type pkg.Order[pkg.Foo] was found for parameter orderA of given instance given_Order_Option in object Order
+   |No given instance of type pkg.Order[Option[pkg.Foo]] was found for parameter x of method summon in object Predef.
+   |I found:
+   |
+   |    pkg.Order.given_Order_Option[pkg.Foo](/* missing */summon[pkg.Order[pkg.Foo]])
+   |
+   |But no implicit values were found that match type pkg.Order[pkg.Foo].
    |
    |The following import might fix the problem:
    |

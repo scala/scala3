@@ -3803,38 +3803,36 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         end implicitArgs
 
         /** Reports errors for arguments of `appTree` that have a
-          * `SearchFailureType`, recursively traversing arguments that are
-          * themselves applications. `mt` must be the type of `appTree.fun`.
+          * `SearchFailureType`.
           */
-        def reportErrors(appTree: Apply, mt: MethodType): Unit =
-          val Apply(fun, args) = appTree
-          for (paramName, formal, arg) <- mt.paramNames.lazyZip(mt.paramInfos).lazyZip(args) do
+        def issueErrors(fun: Tree, args: List[Tree]): Tree =
+          def firstFailure = args.tpes.find(_.isInstanceOf[SearchFailureType]).getOrElse(NoType)
+          val errorType =
+            firstFailure match
+              case tp: AmbiguousImplicits =>
+                AmbiguousImplicits(tp.alt1, tp.alt2, tp.expectedType, tp.argument, nested = true)
+              case tp =>
+                tp
+          val res = untpd.Apply(fun, args).withType(errorType)
+
+          wtp.paramNames.lazyZip(wtp.paramInfos).lazyZip(args).foreach { (paramName, formal, arg) =>
             arg.tpe match
               case failure: SearchFailureType =>
-                arg match
-                  case childAppTree: Apply =>
-                    childAppTree.fun.tpe.widen match
-                      case childMt: MethodType => reportErrors(childAppTree, childMt)
-                      case _ => ()
-                  case _ => ()
-
                 val methodStr = err.refStr(methPart(fun).tpe)
                 val paramStr = implicitParamString(paramName, methodStr, fun)
-                val paramSymWithMethodCallTree =
-                  fun.symbol.paramSymss.flatten
-                    .find(_.name == paramName)
-                    .map((_, appTree))
-                val message = missingArgMsg(arg, formal, paramStr, paramSymWithMethodCallTree)
-                // Note: if the same error type appears on several trees, we
-                // might report it several times, but this is not a problem
-                // because only the first one will be displayed. We traverse in
-                // post-order, so that the most detailed message gets displayed.
-                report.error(message, fun.srcPos.endPos)
-              case _ => ()
+                val paramSym = fun.symbol.paramSymss.flatten.find(_.name == paramName)
+                val paramSymWithMethodCallTree = paramSym.map((_, res))
+                report.error(
+                   missingArgMsg(arg, formal, paramStr, paramSymWithMethodCallTree),
+                   tree.srcPos.endPos
+                 )
+              case _ =>
+          }
+
+          res
 
         val args = implicitArgs(wtp.paramInfos, 0, pt)
-        val firstFailure = args.tpes.find(_.isInstanceOf[SearchFailureType])
-        if (firstFailure.isDefined) {
+        if (args.tpes.exists(_.isInstanceOf[SearchFailureType])) {
           // If there are several arguments, some arguments might already
           // have influenced the context, binding variables, but later ones
           // might fail. In that case the constraint and instantiated variables
@@ -3862,14 +3860,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             // node, we can report the errors for each argument nicely.
             // Otherwise, we don't report anything here.
             retyped match
-              case retyped: Apply if retyped.tpe.isError => reportErrors(retyped, wtp)
-              case _ => ()
-
-            retyped
-          else
-            val res = untpd.Apply(tree, args).withType(firstFailure.get)
-            reportErrors(res, wtp)
-            res
+              case Apply(tree, args) if retyped.tpe.isError => issueErrors(tree, args)
+              case _ => retyped
+          else issueErrors(tree, args)
         }
         else tree match {
           case tree: Block =>
