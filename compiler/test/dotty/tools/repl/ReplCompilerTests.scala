@@ -20,6 +20,14 @@ class ReplCompilerTests extends ReplTest:
     assertEquals("def foo: 1", storedOutput().trim)
   }
 
+  @Test def i18383NoWarnOnUnusedImport: Unit = {
+    initially {
+      run("import scala.collection.*")
+    } andThen {
+      println(lines().mkString("* ", "\n  * ", ""))
+    }
+  }
+
   @Test def compileTwo =
     initially {
       run("def foo: 1 = 1")
@@ -425,4 +433,3 @@ class ReplHighlightTests extends ReplTest(ReplTest.defaultOptions.filterNot(_.st
       case class Tree(left: Tree, right: Tree)
       def deepTree(depth: Int): Tree
       deepTree(300)""")
-
