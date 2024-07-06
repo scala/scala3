@@ -1058,10 +1058,15 @@ trait Implicits:
             (searchCtx.scope eq ctx.scope) && (searchCtx.owner eq ctx.owner.owner)
           do ()
 
-        try ImplicitSearch(pt, argument, span)(using searchCtx).bestImplicit
-        catch case ce: CyclicReference =>
-          ce.inImplicitSearch = true
-          throw ce
+        def searchStr =
+          if argument.isEmpty then i"argument of type $pt"
+          else i"conversion from ${argument.tpe} to $pt"
+
+        CyclicReference.trace(i"searching for an implicit $searchStr"):
+          try ImplicitSearch(pt, argument, span)(using searchCtx).bestImplicit
+          catch case ce: CyclicReference =>
+            ce.inImplicitSearch = true
+            throw ce
       else NoMatchingImplicitsFailure
 
       val result =
