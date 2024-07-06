@@ -15,6 +15,7 @@ import transform.SyntheticMembers.*
 import util.Property
 import ast.Trees.genericEmptyTree
 import annotation.{tailrec, constructorOnly}
+import ast.tpd
 import ast.tpd.*
 import Synthesizer.*
 
@@ -264,10 +265,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       .refinedWith(tpnme.MirroredType, TypeAlias(mirroredType))
       .refinedWith(tpnme.MirroredLabel, TypeAlias(ConstantType(Constant(label.toString))))
 
-  /** A path referencing the companion of class type `clsType` */
-  private def companionPath(clsType: Type, span: Span)(using Context) =
-    val ref = pathFor(clsType.mirrorCompanionRef)
-    assert(ref.symbol.is(Module) && (clsType.classSymbol.is(ModuleClass) || (ref.symbol.companionClass == clsType.classSymbol)))
+  /** A path referencing the companion of `cls` with prefix `pre` */
+  private def companionPath(pre: Type, cls: Symbol, span: Span)(using Context) =
+    val ref = tpd.ref(TermRef(pre, cls.companionModule))
+    assert(ref.symbol.is(Module) && (cls.is(ModuleClass) || ref.symbol.companionClass == cls))
     ref.withSpan(span)
 
   private def checkFormal(formal: Type)(using Context): Boolean =
@@ -427,7 +428,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           .refinedWith(tpnme.MirroredElemLabels, TypeAlias(elemsLabels))
       }
       val mirrorRef =
-        if cls.useCompanionAsProductMirror then companionPath(mirroredType, span)
+        if cls.useCompanionAsProductMirror then companionPath(pre, cls, span)
         else if defn.isTupleClass(cls) then newTupleMirror(typeElems.size) // TODO: cls == defn.PairClass when > 22
         else anonymousMirror(monoType, MirrorImpl.OfProduct(pre), span)
       withNoErrors(mirrorRef.cast(mirrorType).withSpan(span))
@@ -437,7 +438,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       case Right(msrc) => msrc match
         case MirrorSource.Singleton(_, tref) =>
           val singleton = tref.termSymbol // prefer alias name over the orignal name
-          val singletonPath = pathFor(tref).withSpan(span)
+          val singletonPath = tpd.singleton(tref).withSpan(span)
           if tref.classSymbol.is(Scala2x) then // could be Scala 3 alias of Scala 2 case object.
             val mirrorType = formal.constrained_& {
               mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, singleton.name)
@@ -556,7 +557,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             .refinedWith(tpnme.MirroredElemLabels, TypeAlias(labels))
         }
       val mirrorRef =
-        if cls.useCompanionAsSumMirror then companionPath(mirroredType, span)
+        if cls.useCompanionAsSumMirror then companionPath(pre, cls, span)
         else anonymousMirror(monoType, MirrorImpl.OfSum(childPres), span)
       withNoErrors(mirrorRef.cast(mirrorType))
     else if acceptableMsg.nonEmpty then
