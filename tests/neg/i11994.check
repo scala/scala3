@@ -8,6 +8,7 @@
   |                          
   |                          The error occurred while trying to compute the signature of method foo
   |                            which required to compute the signature of type T
+  |                            which required to searching for an implicit conversion from Tuple.type to ?{ meow: ? }
   |                            which required to compute the signature of method foo
   |                          
   |                           Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace.
@@ -21,6 +22,7 @@
   |                
   |                The error occurred while trying to compute the signature of given instance given_Unit
   |                  which required to compute the signature of type T
+  |                  which required to searching for an implicit conversion from Tuple.type to ?{ meow: ? }
   |                  which required to compute the signature of given instance given_Unit
   |                
   |                 Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace.
