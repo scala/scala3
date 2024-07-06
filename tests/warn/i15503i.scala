@@ -270,7 +270,7 @@ package foo.test.i16679b:
     given x: myPackage.CaseClassName[secondPackage.CoolClass] = null
 
   object secondPackage:
-    import myPackage.CaseClassName // OK
+    import myPackage.CaseClassName // warn
     import Foo.x
     case class CoolClass(i: Int)
     println(summon[myPackage.CaseClassName[CoolClass]])
