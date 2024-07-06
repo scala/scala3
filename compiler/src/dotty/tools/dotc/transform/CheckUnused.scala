@@ -97,7 +97,8 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
       ctx
 
   override def prepareForSelect(tree: tpd.Select)(using Context): Context =
-    unusedDataApply(_.registerUsed(tree.symbol, Some(tree.name)))
+    val name = tree.getAttachment(OriginalName).orElse(Some(tree.name))
+    unusedDataApply(_.registerUsed(tree.symbol, name))
 
   override def prepareForBlock(tree: tpd.Block)(using Context): Context =
     pushInBlockTemplatePackageDef(tree)
@@ -327,6 +328,8 @@ object CheckUnused:
    * from the compilation `Context`
    */
   private val _key = Property.StickyKey[UnusedData]
+
+  val OriginalName = Property.StickyKey[Name]
 
   class PostTyper extends CheckUnused(PhaseMode.Aggregate, "PostTyper", _key)
 
