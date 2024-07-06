@@ -4,7 +4,7 @@ import scala.meta.internal.mtags.CoursierComplete
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.util.SourcePosition
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 class ScalaCliCompletions(
     coursierComplete: CoursierComplete,

@@ -9,7 +9,7 @@ import scala.meta.pc.CancelToken
 import scala.language.unsafeNulls
 
 import dotty.tools.pc.completions.CompletionSource
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 import dotty.tools.pc.utils.{TestCompletions, TextEdits}
 
 import org.eclipse.lsp4j.{CompletionItem, CompletionList}

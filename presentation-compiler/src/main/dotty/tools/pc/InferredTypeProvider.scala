@@ -24,7 +24,7 @@ import dotty.tools.dotc.util.Spans
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.pc.printer.ShortenedTypePrinter
 import dotty.tools.pc.printer.ShortenedTypePrinter.IncludeDefaultParam
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j.TextEdit
 import org.eclipse.lsp4j as l
@@ -101,7 +101,7 @@ final class InferredTypeProvider(
           case _ => true
       if isInScope(tpe)
       then tpe
-      else tpe.metalsDealias
+      else tpe.deepDealias
 
     val printer = ShortenedTypePrinter(
       symbolSearch,
