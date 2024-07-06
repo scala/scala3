@@ -18,6 +18,9 @@ class ExploringReporter extends StoreReporter(null, fromTyperState = false):
   override def removeBufferedMessages(using Context): List[Diagnostic] =
     try infos.toList finally reset()
 
+  override def mapBufferedMessages(f: Diagnostic => Diagnostic)(using Context): Unit =
+    infos.mapInPlace(f)
+
   def reset(): Unit = infos.clear()
 
 end ExploringReporter
