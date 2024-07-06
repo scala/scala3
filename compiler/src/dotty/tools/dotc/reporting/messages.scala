@@ -2913,11 +2913,20 @@ class MissingImplicitArgument(
 
     def location(preposition: String) = if (where.isEmpty) "" else s" $preposition $where"
 
+    /** Default error message for non-nested ambiguous implicits. */
     def defaultAmbiguousImplicitMsg(ambi: AmbiguousImplicits) =
       s"Ambiguous given instances: ${ambi.explanation}${location("of")}"
 
+    /** Default error messages for non-ambiguous implicits, or nested ambiguous
+     *  implicits.
+     *
+     *  The default message is shown for ambiguous implicits only if they have
+     *  the `nested` flag set. In this case, we output "no best given instance"
+     *  instead of "no given instance".
+     */
     def defaultImplicitNotFoundMessage =
-      i"No given instance of type $pt was found${location("for")}"
+      val bestStr = if arg.tpe.isInstanceOf[AmbiguousImplicits] then " best" else ""
+      i"No$bestStr given instance of type $pt was found${location("for")}"
 
     /** Construct a custom error message given an ambiguous implicit
      *  candidate `alt` and a user defined message `raw`.
@@ -2955,7 +2964,7 @@ class MissingImplicitArgument(
      *  def foo(implicit foo: Foo): Any = ???
      */
     arg.tpe match
-      case ambi: AmbiguousImplicits =>
+      case ambi: AmbiguousImplicits if !ambi.nested =>
         (ambi.alt1, ambi.alt2) match
           case (alt @ AmbiguousImplicitMsg(msg), _) =>
             userDefinedAmbiguousImplicitMsg(alt, msg)
