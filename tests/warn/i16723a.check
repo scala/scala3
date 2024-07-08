@@ -1,4 +1,4 @@
--- [E195] Potential Issue Warning: tests/warn/i16723a.scala:5:38 -------------------------------------------------------
+-- [E197] Potential Issue Warning: tests/warn/i16723a.scala:5:38 -------------------------------------------------------
 5 |inline given Converter[Int, String] = new Converter { // warn
   |                                      ^
   |                                      New anonymous class definition will be duplicated at each inline site
