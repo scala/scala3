@@ -6,25 +6,9 @@ source "$PROG_HOME/bin/common-shared"
 # * The code below is for Dotty
 # *-------------------------------------------------*/
 
-load_classpath () {
-  command="$1"
-  psep_pattern="$2"
-  __CLASS_PATH=""
-  while IFS= read -r line || [ -n "$line" ]; do
-    # jna-5 only appropriate for some combinations
-    if ! [[ ( -n ${conemu-} || -n ${msys-}) && "$line" == "*jna-5*" ]]; then
-      if [ -n "$__CLASS_PATH" ]; then
-        __CLASS_PATH+="$psep_pattern"
-      fi
-      __CLASS_PATH+="$PROG_HOME/maven2/$line"
-    fi
-  done < "$PROG_HOME/etc/$command.classpath"
-  echo "$__CLASS_PATH"
-}
-
 compilerJavaClasspathArgs () {
-  toolchain="$(load_classpath "scala" "$PSEP")"
-  toolchain_extra="$(load_classpath "with_compiler" "$PSEP")"
+  toolchain="$PROG_HOME/lib/scala.jar"
+  toolchain_extra="$PROG_HOME/lib/with_compiler.jar"
 
   if [ -n "$toolchain_extra" ]; then
     toolchain+="$PSEP$toolchain_extra"

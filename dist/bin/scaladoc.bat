@@ -21,8 +21,6 @@ call :args %*
 @rem #########################################################################
 @rem ## Main
 
-call :classpathArgs
-
 if defined JAVA_OPTS ( set _JAVA_OPTS=%JAVA_OPTS%
 ) else ( set _JAVA_OPTS=%_DEFAULT_JAVA_OPTS%
 )
@@ -31,7 +29,7 @@ if defined JAVA_OPTS ( set _JAVA_OPTS=%JAVA_OPTS%
 set "_JAVACMD=!_JAVACMD:%%=%%%%!"
 
 call "%_JAVACMD%" %_JAVA_OPTS% %_JAVA_DEBUG% %_JAVA_ARGS% ^
--classpath "%_CLASS_PATH%" ^
+-classpath "%_LIB_DIR%\scaladoc.jar" ^
 -Dscala.usejavacp=true ^
 dotty.tools.scaladoc.Main %_SCALA_ARGS% %_RESIDUAL_ARGS%
 if not %ERRORLEVEL%==0 (
@@ -101,29 +99,6 @@ goto :eof
 @rem output parameter: _RESIDUAL_ARGS
 :addResidual
 set _RESIDUAL_ARGS=%_RESIDUAL_ARGS% %~1
-goto :eof
-
-@rem output parameter: _CLASS_PATH
-:classpathArgs
-set "_ETC_DIR=%_PROG_HOME%\etc"
-@rem keep list in sync with bash script `bin\scaladoc` !
-call :loadClasspathFromFile
-goto :eof
-
-@REM concatentate every line in "%_ETC_DIR%\scaladoc.classpath" with _PSEP
-:loadClasspathFromFile
-set _CLASS_PATH=
-if exist "%_ETC_DIR%\scaladoc.classpath" (
-    for /f "usebackq delims=" %%i in ("%_ETC_DIR%\scaladoc.classpath") do (
-        set "_LIB=%_PROG_HOME%\maven2\%%i"
-        set "_LIB=!_LIB:/=\!"
-        if not defined _CLASS_PATH (
-            set "_CLASS_PATH=!_LIB!"
-        ) else (
-            set "_CLASS_PATH=!_CLASS_PATH!%_PSEP%!_LIB!"
-        )
-    )
-)
 goto :eof
 
 @rem #########################################################################

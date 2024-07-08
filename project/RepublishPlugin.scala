@@ -213,16 +213,24 @@ object RepublishPlugin extends AutoPlugin {
     val classpaths = coursierFetch(coursierJar, log, csrCacheDir, localRepo, resolvedLocal.map(_.id.toString))
 
     if (commandLibs.nonEmpty) {
-      IO.createDirectory(republishDir / "etc")
+      IO.createDirectory(republishDir / "lib")
       for ((command, libs) <- commandLibs) {
         val (negated, actual) = libs.partition(_.startsWith("^!"))
         val subtractions = negated.map(_.stripPrefix("^!"))
 
         def compose(libs: List[String]): List[String] =
           libs.map(fuzzyFind(classpaths, _)).reduceOption(_ ++ _).map(_.distinct).getOrElse(Nil)
-
+        
+        // Compute the classpath entries
         val entries = compose(actual).diff(compose(subtractions))
-        IO.write(republishDir / "etc" / s"$command.classpath", entries.mkString("\n"))
+        // Generate the MANIFEST for the pathing jar
+        val manifest = new java.util.jar.Manifest();
+        manifest.getMainAttributes().put(java.util.jar.Attributes.Name.MANIFEST_VERSION, "1.0");
+        manifest.getMainAttributes().put(java.util.jar.Attributes.Name.CLASS_PATH, entries.map(e => s"../maven2/$e").mkString(" "))
+        // Write the pathing jar to the Disk
+        val file = republishDir / "lib" / s"$command.jar"
+        val jar = new java.util.jar.JarOutputStream(new java.io.FileOutputStream(file), manifest)
+        jar.close()
       }
     }
 
