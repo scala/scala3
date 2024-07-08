@@ -805,11 +805,11 @@ object PatternMatcher {
      */
     private def collectSwitchCases(scrutinee: Tree, plan: SeqPlan): List[(List[Tree], Plan)] = {
       def isSwitchableType(tpe: Type): Boolean =
-        (tpe isRef defn.IntClass) ||
-        (tpe isRef defn.ByteClass) ||
-        (tpe isRef defn.ShortClass) ||
-        (tpe isRef defn.CharClass) ||
-        (tpe isRef defn.StringClass)
+        (tpe <:< defn.IntType) ||
+        (tpe <:< defn.ByteType) ||
+        (tpe <:< defn.ShortType) ||
+        (tpe <:< defn.CharType) ||
+        (tpe <:< defn.StringType)
 
       val seen = mutable.Set[Any]()
 
@@ -859,7 +859,7 @@ object PatternMatcher {
           (Nil, plan) :: Nil
       }
 
-      if (isSwitchableType(scrutinee.tpe.widen)) recur(plan)
+      if (isSwitchableType(scrutinee.tpe)) recur(plan)
       else Nil
     }
 
@@ -880,8 +880,8 @@ object PatternMatcher {
        */
 
       val (primScrutinee, scrutineeTpe) =
-        if (scrutinee.tpe.widen.isRef(defn.IntClass)) (scrutinee, defn.IntType)
-        else if (scrutinee.tpe.widen.isRef(defn.StringClass)) (scrutinee, defn.StringType)
+        if (scrutinee.tpe <:< defn.IntType) (scrutinee, defn.IntType)
+        else if (scrutinee.tpe <:< defn.StringType) (scrutinee, defn.StringType)
         else (scrutinee.select(nme.toInt), defn.IntType)
 
       def primLiteral(lit: Tree): Tree =
