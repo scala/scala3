@@ -1305,6 +1305,9 @@ trait Implicits:
       // message if one of the critical candidates is part of the result of the implicit search.
       val priorityChangeWarnings = mutable.ListBuffer[(/*critical:*/ List[TermRef], Message)]()
 
+      def isWarnPriorityChangeVersion(sv: SourceVersion): Boolean =
+        sv.stable == SourceVersion.`3.5` || sv == SourceVersion.`3.6-migration`
+
       /** Compare `alt1` with `alt2` to determine which one should be chosen.
        *
        *  @return  a number > 0   if `alt1` is preferred over `alt2`
@@ -1321,25 +1324,21 @@ trait Implicits:
        *  @param disambiguate      The call is used to disambiguate two successes, not for ranking.
        *                           When ranking, we are always filtering out either > 0 or <= 0 results.
        *                           In each case a priority change from 0 to -1 or vice versa makes no difference.
-       *  @param only2ndCritical   If true only the second alternative is critical in case
-       *                           of a priority change.
        */
-      def compareAlternatives(alt1: RefAndLevel, alt2: RefAndLevel, disambiguate: Boolean = false, only2ndCritical: Boolean = false): Int =
+      def compareAlternatives(alt1: RefAndLevel, alt2: RefAndLevel, disambiguate: Boolean = false): Int =
         def comp(using Context) = explore(compare(alt1.ref, alt2.ref, preferGeneral = true))
         if alt1.ref eq alt2.ref then 0
         else if alt1.level != alt2.level then alt1.level - alt2.level
         else
           var cmp = comp(using searchContext())
           val sv = Feature.sourceVersion
-          if sv.stable == SourceVersion.`3.5` || sv == SourceVersion.`3.6-migration` then
+          if isWarnPriorityChangeVersion(sv) then
             val prev = comp(using searchContext().addMode(Mode.OldImplicitResolution))
-            if cmp != prev then
+            if disambiguate && cmp != prev then
               def warn(msg: Message) =
-                if disambiguate || cmp > 0 || prev > 0 then
-                  val critical =
-                    if only2ndCritical then alt2.ref :: Nil
-                    else alt1.ref :: alt2.ref :: Nil
-                  priorityChangeWarnings += ((critical, msg))
+                val critical = alt1.ref :: alt2.ref :: Nil
+                priorityChangeWarnings += ((critical, msg))
+                implicits.println(i"PRIORITY CHANGE ${alt1.ref}, ${alt2.ref}, $disambiguate")
               def choice(c: Int) = c match
                 case -1 => "the second alternative"
                 case  1 => "the first alternative"
@@ -1356,7 +1355,9 @@ trait Implicits:
                       |Previous choice          : ${choice(prev)}
                       |New choice from Scala 3.6: ${choice(cmp)}""")
                 cmp
-            else cmp
+            else cmp max prev
+              // When ranking, we keep the better of cmp and prev, which ends up retaining a candidate
+              // if it is retained in either version.
           else cmp
       end compareAlternatives
 
@@ -1367,7 +1368,8 @@ trait Implicits:
       def disambiguate(alt1: SearchResult, alt2: SearchSuccess) = alt1 match
         case alt1: SearchSuccess =>
           var diff = compareAlternatives(alt1, alt2, disambiguate = true)
-          assert(diff <= 0)   // diff > 0 candidates should already have been eliminated in `rank`
+          assert(diff <= 0 || isWarnPriorityChangeVersion(Feature.sourceVersion))
+            // diff > 0 candidates should already have been eliminated in `rank`
           if diff == 0 && alt1.ref =:= alt2.ref then
             diff = 1 // See i12951 for a test where this happens
           else if diff == 0 && alt2.isExtension then
@@ -1461,16 +1463,7 @@ trait Implicits:
                   case retained: SearchSuccess =>
                     val newPending =
                       if (retained eq found) || remaining.isEmpty then remaining
-                      else remaining.filterConserve(cand =>
-                        compareAlternatives(retained, cand, only2ndCritical = true) <= 0)
-                          // Here we drop some pending alternatives but retain in each case
-                          // `retained`. Therefore, it's a priorty change only if the
-                          // second alternative appears in the final search result. Otherwise
-                          // we have the following scenario:
-                          //  - 1st alternative, but not snd appears in final result
-                          //  - Hence, snd was eliminated either here, or otherwise by a direct
-                          //    comparison later.
-                          //  - Hence, no change in resolution.
+                      else remaining.filterConserve(newCand => compareAlternatives(newCand, retained) >= 0)
                     rank(newPending, retained, rfailures)
                   case fail: SearchFailure =>
                     // The ambiguity happened in the current search: to recover we
