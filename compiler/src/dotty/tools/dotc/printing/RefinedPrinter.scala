@@ -936,7 +936,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
                 //   - trailingUsing = List(`(using D)`)
                 //   - rest = List(`(g: G)`, `(using H)`)
                 // we need to swap (rightTyParams ++ rightParam) with (leftParam ++ trailingUsing)
-                val (leftTyParams, rest1) = tree.paramss.span(isTypeParamClause)
+                val (leftTyParams, rest1) = tree.paramss match
+                  case fst :: tail if isTypeParamClause(fst) => (List(fst), tail)
+                  case other => (List(), other)
                 val (leadingUsing, rest2) = rest1.span(isUsingClause)
                 val (rightTyParams, rest3) = rest2.span(isTypeParamClause)
                 val (rightParam, rest4) = rest3.splitAt(1)

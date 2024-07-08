@@ -683,3 +683,14 @@ class HoverTermSuite extends BaseHoverSuite:
         |""".stripMargin,
       """yy: A{type T = Int}""".stripMargin.hover
   )
+
+  @Test def `right-assoc-extension`: Unit =
+    check(
+      """
+        |case class Wrap[+T](x: T)
+        |
+        |extension [T](a: T)
+        |  def <<*@@:>>[U <: Tuple](b: Wrap[U]): Wrap[T *: U] = Wrap(a *: b.x)
+        |""".stripMargin,
+      "extension [T](a: T) def *:[U <: Tuple](b: Wrap[U]): Wrap[T *: U]".hover
+    )
