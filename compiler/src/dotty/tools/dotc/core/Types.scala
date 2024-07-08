@@ -326,6 +326,16 @@ object Types extends TypeUtils {
     /** Is this type a (possibly aliased) singleton type? */
     def isSingleton(using Context): Boolean = dealias.isInstanceOf[SingletonType]
 
+    /** Is this type a (possibly aliased) singleton type or a type proxy
+     *  or Or/And type known to be a singleton type?
+     */
+    def isEffectivelySingleton(using Context): Boolean = dealias match
+      case tp: SingletonType => true
+      case tp: TypeProxy => tp.superType.isEffectivelySingleton
+      case AndType(tpL, tpR) => tpL.isEffectivelySingleton || tpR.isEffectivelySingleton
+      case OrType(tpL, tpR) => tpL.isEffectivelySingleton && tpR.isEffectivelySingleton
+      case _ => false
+
     /** Is this type of kind `AnyKind`? */
     def hasAnyKind(using Context): Boolean = {
       @tailrec def loop(tp: Type): Boolean = tp match {
