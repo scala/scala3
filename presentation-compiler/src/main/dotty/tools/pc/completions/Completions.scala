@@ -70,6 +70,8 @@ class Completions(
         false
       case (_: (Import | Export)) :: _ => false
       case _ :: (_: (Import | Export)) :: _ => false
+      // UnApply has patterns included in MatchCaseCompletions
+      case _ :: (_: UnApply) :: _ => false
       case _ => true
 
   private lazy val isNew: Boolean = Completion.isInNewContext(adjustedPath)
@@ -405,6 +407,36 @@ class Completions(
             includeExhaustive = includeExhaustive
           ),
           true,
+        )
+
+      // unapply pattern
+      case Ident(name) :: (unapp : UnApply) :: _ =>
+        (
+          CaseKeywordCompletion.contribute(
+            EmptyTree, // no selector
+            completionPos,
+            indexedContext,
+            config,
+            search,
+            parent = unapp,
+            autoImports,
+            patternOnly = Some(name.decoded)
+          ),
+          false,
+        )
+      case Select(_, name) :: (unapp : UnApply) :: _ =>
+        (
+          CaseKeywordCompletion.contribute(
+            EmptyTree, // no selector
+            completionPos,
+            indexedContext,
+            config,
+            search,
+            parent = unapp,
+            autoImports,
+            patternOnly = Some(name.decoded)
+          ),
+          false,
         )
 
       // class FooImpl extends Foo:

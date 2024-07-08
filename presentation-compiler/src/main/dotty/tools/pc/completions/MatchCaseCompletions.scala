@@ -27,6 +27,8 @@ import dotty.tools.dotc.core.Types.NoType
 import dotty.tools.dotc.core.Types.OrType
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.core.Types.TypeRef
+import dotty.tools.dotc.core.Types.AppliedType
+import dotty.tools.dotc.typer.Applications.unapplyArgs
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
 import dotty.tools.pc.AutoImports.SymbolImport
@@ -75,10 +77,24 @@ object CaseKeywordCompletion:
       patternOnly,
       hasBind
     )
+
     val printer = ShortenedTypePrinter(search, IncludeDefaultParam.Never)(using indexedContext)
     val selTpe = selector match
       case EmptyTree =>
         parent match
+          /* Parent is an unapply pattern */
+          case UnApply(fn, implicits, patterns) if !fn.tpe.isErroneous =>
+            patternOnly match
+              case None => None
+              case Some(value) =>
+                val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, patterns, parent.srcPos)
+                patterns.zipWithIndex
+                  .find:
+                    case (Ident(v), tpe) => v.decoded == value
+                    case (Select(_, v), tpe) => v.decoded == value
+                    case t => false
+                  .map((_, id) => argPts(id).widen.deepDealias)
+          /* Parent is a function expecting a case match expression */
           case TreeApply(fun, _) if !fun.tpe.isErroneous =>
             fun.tpe.paramInfoss match
               case (head :: Nil) :: _
@@ -105,7 +121,8 @@ object CaseKeywordCompletion:
           if patternOnly.isEmpty then
             val selectorTpe = selTpe.show
             val tpeLabel =
-              if !selectorTpe.contains("x$1") then selectorTpe
+              if !selectorTpe.contains("x$1") /* selector of a function type? */ then
+                selectorTpe
               else selector.symbol.info.show
             val label = s"case ${tpeLabel} =>"
             List(
