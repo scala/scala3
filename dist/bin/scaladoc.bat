@@ -30,6 +30,7 @@ set "_JAVACMD=!_JAVACMD:%%=%%%%!"
 
 call "%_JAVACMD%" %_JAVA_OPTS% %_JAVA_DEBUG% %_JAVA_ARGS% ^
 -classpath "%_LIB_DIR%\scaladoc.jar" ^
+-Dscala.expandjavacp=true ^
 -Dscala.usejavacp=true ^
 dotty.tools.scaladoc.Main %_SCALA_ARGS% %_RESIDUAL_ARGS%
 if not %ERRORLEVEL%==0 (
