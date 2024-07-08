@@ -697,12 +697,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         ConstFold(select)
       else EmptyTree
 
+    // Otherwise, simplify `m.apply(...)` to `m(...)`
     def trySimplifyApply() =
       if selName == nme.apply && qual.tpe.widen.isInstanceOf[MethodType] then
-        // Simplify `m.apply(...)` to `m(...)`
         qual
       else EmptyTree
 
+    // Otherwise, if there's a simply visible type variable in the result, try again
+    // with a more defined qualifier type. There's a second trial where we try to instantiate
+    // all type variables in `qual.tpe.widen`, but that is done only after we search for
+    // extension methods or conversions.
     def tryInstantiateTypeVar() =
       if couldInstantiateTypeVar(qual.tpe.widen) then
         // there's a simply visible type variable in the result; try again with a more defined qualifier type
@@ -711,6 +715,20 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         typedSelectWithAdapt(tree, pt, qual)
       else EmptyTree
 
+    // Otherwise, heal member selection on an opaque reference,
+    // reusing the logic in TypeComparer.
+    def tryLiftToThis() =
+      val wtp = qual.tpe.widen
+      val liftedTp = comparing(_.liftToThis(wtp))
+      if liftedTp ne wtp then
+        val qual1 = qual.cast(liftedTp)
+        val tree1 = cpy.Select(tree0)(qual1, selName)
+        val rawType1 = selectionType(tree1, qual1)
+        tryType(tree1, qual1, rawType1)
+      else EmptyTree
+
+    // Otherwise, map combinations of A *: B *: .... EmptyTuple with nesting levels <= 22
+    // to the Tuple class of the right arity and select from that one
     def trySmallGenericTuple(qual: Tree, withCast: Boolean) =
       if qual.tpe.isSmallGenericTuple then
         if withCast then
@@ -720,14 +738,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           typedSelectWithAdapt(tree, pt, qual)
       else EmptyTree
 
+    // Otherwise try an extension or conversion
     def tryExt(tree: untpd.Select, qual: Tree) =
       tryExtensionOrConversion(
         tree, pt, IgnoredProto(pt), qual, ctx.typerState.ownedVars, this, inSelect = true
       )
 
+    // Otherwise, try a GADT approximation if we're trying to select a member
     def tryGadt() =
       if ctx.gadt.isNarrowing then
-        // try GADT approximation if we're trying to select a member
         // Member lookup cannot take GADTs into account b/c of cache, so we
         // approximate types based on GADT constraints instead. For an example,
         // see MemberHealing in gadt-approximation-interaction.scala.
@@ -742,6 +761,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           .orElse(tryExt(tree1, qual1))
       else EmptyTree
 
+    // Otherwise, if there are uninstantiated type variables in the qualifier type,
+    // instantiate them and try again
     def tryDefineFurther() =
       if canDefineFurther(qual.tpe.widen) then
         typedSelectWithAdapt(tree, pt, qual)
@@ -754,6 +775,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         else
           typedDynamicSelect(tree2, Nil, pt)
 
+    // Otherwise, if the qualifier derives from class Dynamic, expand to a
+    // dynamic dispatch using selectDynamic or applyDynamic
     def tryDynamic() =
       if qual.tpe.derivesFrom(defn.DynamicClass) && selName.isTermName && !isDynamicExpansion(tree) then
         dynamicSelect(pt)
@@ -770,6 +793,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     tryType(tree, qual, rawType)
       .orElse(trySimplifyApply())
       .orElse(tryInstantiateTypeVar())
+      .orElse(tryLiftToThis())
       .orElse(trySmallGenericTuple(qual, withCast = true))
       .orElse(tryExt(tree, qual))
       .orElse(tryGadt())
