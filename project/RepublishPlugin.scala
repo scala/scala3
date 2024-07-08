@@ -220,7 +220,7 @@ object RepublishPlugin extends AutoPlugin {
 
         def compose(libs: List[String]): List[String] =
           libs.map(fuzzyFind(classpaths, _)).reduceOption(_ ++ _).map(_.distinct).getOrElse(Nil)
-        
+
         // Compute the classpath entries
         val entries = compose(actual).diff(compose(subtractions))
         // Generate the MANIFEST for the pathing jar

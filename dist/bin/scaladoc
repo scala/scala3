@@ -78,6 +78,7 @@ eval "\"$JAVACMD\"" \
      ${JAVA_OPTS:-$default_java_opts} \
      "${java_args[@]}" \
      -classpath "${JVM_CP_ARGS}" \
+      -Dscala.expandjavacp=true \
       -Dscala.usejavacp=true \
      "dotty.tools.scaladoc.Main"  \
      "${scala_args[@]}" \
