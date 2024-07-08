@@ -2131,7 +2131,7 @@ object Build {
     republishRepo := target.value / "republish",
     packResourceDir += (republishRepo.value / "bin" -> "bin"),
     packResourceDir += (republishRepo.value / "maven2" -> "maven2"),
-    packResourceDir += (republishRepo.value / "etc" -> "etc"),
+    packResourceDir += (republishRepo.value / "lib" -> "lib"),
     republishCommandLibs +=
       ("scala" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "tasty-core")),
     republishCommandLibs +=
