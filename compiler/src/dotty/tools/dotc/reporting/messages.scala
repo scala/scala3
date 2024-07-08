@@ -3103,3 +3103,20 @@ class VolatileOnVal()(using Context)
 extends SyntaxMsg(VolatileOnValID):
   protected def msg(using Context): String = "values cannot be volatile"
   protected def explain(using Context): String = ""
+
+class UnusedSymbol(errorText: String)(using Context)
+extends Message(UnusedSymbolID) {
+  def kind = MessageKind.UnusedSymbol
+
+  override def msg(using Context) = errorText
+  override def explain(using Context) = ""
+}
+
+object UnusedSymbol {
+    def imports(using Context): UnusedSymbol = new UnusedSymbol(i"unused import")
+    def localDefs(using Context): UnusedSymbol = new UnusedSymbol(i"unused local definition")
+    def explicitParams(using Context): UnusedSymbol = new UnusedSymbol(i"unused explicit parameter")
+    def implicitParams(using Context): UnusedSymbol = new UnusedSymbol(i"unused implicit parameter")
+    def privateMembers(using Context): UnusedSymbol = new UnusedSymbol(i"unused private member")
+    def patVars(using Context): UnusedSymbol = new UnusedSymbol(i"unused pattern variable")
+}

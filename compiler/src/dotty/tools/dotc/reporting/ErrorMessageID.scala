@@ -208,7 +208,10 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case UnstableInlineAccessorID // errorNumber: 192 - unused in LTS
   case VolatileOnValID // errorNumber: 193
   case ExtensionNullifiedByMemberID // errorNumber: 194
-  case InlinedAnonClassWarningID // errorNumber: 195
+  case ConstructorProxyNotValueID // errorNumber: 195 - unused in LTS
+  case ContextBoundCompanionNotValueID // errorNumber: 196 - unused in LTS
+  case InlinedAnonClassWarningID // errorNumber: 197
+  case UnusedSymbolID // errorNumber: 198
 
   def errorNumber = ordinal - 1
 
