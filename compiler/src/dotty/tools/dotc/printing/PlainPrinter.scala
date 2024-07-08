@@ -416,10 +416,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     homogenize(tp) match
       case tp: TermRef if tp.symbol == defn.captureRoot => Str("cap")
       case tp: SingletonType => toTextRef(tp)
-      case ReachCapability(tp1) => toTextRef(tp1) ~ "*"
-      case MaybeCapability(tp1) => toTextRef(tp1) ~ "?"
       case tp: (TypeRef | TypeParamRef) => toText(tp) ~ "^"
-      case _ => toText(tp)
+      case ReachCapability(tp1) => toTextCaptureRef(tp1) ~ "*"
+      case MaybeCapability(tp1) => toTextCaptureRef(tp1) ~ "?"
+      case tp => toText(tp)
 
   protected def isOmittablePrefix(sym: Symbol): Boolean =
     defn.unqualifiedOwnerTypes.exists(_.symbol == sym) || isEmptyPrefix(sym)
