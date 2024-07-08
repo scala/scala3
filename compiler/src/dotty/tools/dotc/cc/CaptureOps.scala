@@ -27,6 +27,12 @@ object ccConfig:
    */
   inline val allowUnsoundMaps = false
 
+  /** If true, when computing the memberinfo of a refined type created
+   *  by addCaptureRefinements take the refineInfo directly without intersecting
+   *  with the parent info.
+   */
+  inline val optimizedRefinements = false
+
   /** If true, use existential capture set variables */
   def useExistentials(using Context) =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.5`)

@@ -43,6 +43,7 @@ import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
+import dotty.tools.dotc.cc.ccConfig
 
 object Types extends TypeUtils {
 
@@ -865,19 +866,23 @@ object Types extends TypeUtils {
         }
         else
           val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
-          val joint = pdenot.meet(
-            new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
-            pre,
-            safeIntersection = ctx.base.pendingMemberSearches.contains(name))
-          joint match
-            case joint: SingleDenotation
-            if isRefinedMethod
-              && (rinfo <:< joint.info
-                 || name == nme.apply && defn.isFunctionType(tp.parent)) =>
-              // use `rinfo` to keep the right parameter names for named args. See i8516.scala.
-              joint.derivedSingleDenotation(joint.symbol, rinfo, pre, isRefinedMethod)
+          rinfo match
+            case CapturingType(_, refs: CaptureSet.RefiningVar) if ccConfig.optimizedRefinements =>
+              pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, rinfo)
             case _ =>
-              joint
+              val joint = pdenot.meet(
+                new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
+                pre,
+                safeIntersection = ctx.base.pendingMemberSearches.contains(name))
+              joint match
+                case joint: SingleDenotation
+                if isRefinedMethod
+                  && (rinfo <:< joint.info
+                    || name == nme.apply && defn.isFunctionType(tp.parent)) =>
+                  // use `rinfo` to keep the right parameter names for named args. See i8516.scala.
+                  joint.derivedSingleDenotation(joint.symbol, rinfo, pre, isRefinedMethod)
+                case _ =>
+                  joint
       }
 
       def goApplied(tp: AppliedType, tycon: HKTypeLambda) =
