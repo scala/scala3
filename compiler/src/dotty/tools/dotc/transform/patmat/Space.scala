@@ -524,6 +524,7 @@ object SpaceEngine {
     val mt: MethodType = unapp.widen match {
       case mt: MethodType => mt
       case pt: PolyType   =>
+          val locked = ctx.typerState.ownedVars
           val tvars = constrained(pt)
           val mt = pt.instantiate(tvars).asInstanceOf[MethodType]
           scrutineeTp <:< mt.paramInfos(0)
@@ -531,6 +532,14 @@ object SpaceEngine {
           // see tests/patmat/i4227.scala
           mt.paramInfos(0) <:< scrutineeTp
           maximizeType(mt.paramInfos(0), Spans.NoSpan)
+          if !(ctx.typerState.ownedVars -- locked).isEmpty then
+            // constraining can create type vars out of wildcard types
+            // (in legalBound, by using a LevelAvoidMap)
+            // maximise will only do one pass at maximising the type vars in the target type
+            // which means we can maximise to types that include other type vars
+            // this fails TreeChecker's "non-empty constraint at end of $fusedPhase" check
+            // e.g. run-macros/string-context-implicits
+            maximizeType(mt.paramInfos(0), Spans.NoSpan)
           mt
     }
 
