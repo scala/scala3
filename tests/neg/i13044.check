@@ -1,5 +1,5 @@
--- Error: tests/neg/i13044.scala:50:40 ---------------------------------------------------------------------------------
-50 |   implicit def typeSchema: Schema[A] = Schema.gen // error // error
+-- Error: tests/neg/i13044.scala:46:40 ---------------------------------------------------------------------------------
+46 |   implicit def typeSchema: Schema[A] = Schema.gen // error // error
    |                                        ^^^^^^^^^^
    |                                        given instance gen is declared as `inline`, but was not inlined
    |
@@ -12,11 +12,11 @@
    |                                   ^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:17
-31 |        lazy val fields = recurse[m.MirroredElemTypes]
+29 |        lazy val fields = recurse[m.MirroredElemTypes]
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:17
-37 |  inline given gen[A]: Schema[A] = derived
+33 |  inline given gen[A]: Schema[A] = derived
    |                                   ^^^^^^^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:17
@@ -24,11 +24,11 @@
    |                                   ^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:17
-31 |        lazy val fields = recurse[m.MirroredElemTypes]
+29 |        lazy val fields = recurse[m.MirroredElemTypes]
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:17
-37 |  inline given gen[A]: Schema[A] = derived
+33 |  inline given gen[A]: Schema[A] = derived
    |                                   ^^^^^^^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:17
@@ -36,11 +36,11 @@
    |                                   ^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:17
-31 |        lazy val fields = recurse[m.MirroredElemTypes]
+29 |        lazy val fields = recurse[m.MirroredElemTypes]
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:17
-37 |  inline given gen[A]: Schema[A] = derived
+33 |  inline given gen[A]: Schema[A] = derived
    |                                   ^^^^^^^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:17
@@ -48,11 +48,11 @@
    |                                   ^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:17
-31 |        lazy val fields = recurse[m.MirroredElemTypes]
+29 |        lazy val fields = recurse[m.MirroredElemTypes]
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:17
-37 |  inline given gen[A]: Schema[A] = derived
+33 |  inline given gen[A]: Schema[A] = derived
    |                                   ^^^^^^^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:17
@@ -64,15 +64,15 @@
    |                   ^^^^^^^^^^^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:17
-31 |        lazy val fields = recurse[m.MirroredElemTypes]
+29 |        lazy val fields = recurse[m.MirroredElemTypes]
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:17
-37 |  inline given gen[A]: Schema[A] = derived
+33 |  inline given gen[A]: Schema[A] = derived
    |                                   ^^^^^^^
     --------------------------------------------------------------------------------------------------------------------
--- Error: tests/neg/i13044.scala:50:40 ---------------------------------------------------------------------------------
-50 |   implicit def typeSchema: Schema[A] = Schema.gen // error // error
+-- Error: tests/neg/i13044.scala:46:40 ---------------------------------------------------------------------------------
+46 |   implicit def typeSchema: Schema[A] = Schema.gen // error // error
    |                                        ^^^^^^^^^^
    |                                        method recurse is declared as `inline`, but was not inlined
    |
@@ -85,11 +85,11 @@
    |                   ^^^^^^^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:18
-31 |        lazy val fields = recurse[m.MirroredElemTypes]
+29 |        lazy val fields = recurse[m.MirroredElemTypes]
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:18
-37 |  inline given gen[A]: Schema[A] = derived
+33 |  inline given gen[A]: Schema[A] = derived
    |                                   ^^^^^^^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:18
@@ -97,11 +97,11 @@
    |                                   ^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:18
-31 |        lazy val fields = recurse[m.MirroredElemTypes]
+29 |        lazy val fields = recurse[m.MirroredElemTypes]
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:18
-37 |  inline given gen[A]: Schema[A] = derived
+33 |  inline given gen[A]: Schema[A] = derived
    |                                   ^^^^^^^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:18
@@ -109,11 +109,11 @@
    |                                   ^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:18
-31 |        lazy val fields = recurse[m.MirroredElemTypes]
+29 |        lazy val fields = recurse[m.MirroredElemTypes]
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:18
-37 |  inline given gen[A]: Schema[A] = derived
+33 |  inline given gen[A]: Schema[A] = derived
    |                                   ^^^^^^^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:18
@@ -121,11 +121,11 @@
    |                                   ^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:18
-31 |        lazy val fields = recurse[m.MirroredElemTypes]
+29 |        lazy val fields = recurse[m.MirroredElemTypes]
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:18
-37 |  inline given gen[A]: Schema[A] = derived
+33 |  inline given gen[A]: Schema[A] = derived
    |                                   ^^^^^^^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:18
@@ -137,10 +137,10 @@
    |                   ^^^^^^^^^^^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:18
-31 |        lazy val fields = recurse[m.MirroredElemTypes]
+29 |        lazy val fields = recurse[m.MirroredElemTypes]
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from i13044.scala:18
-37 |  inline given gen[A]: Schema[A] = derived
+33 |  inline given gen[A]: Schema[A] = derived
    |                                   ^^^^^^^
     --------------------------------------------------------------------------------------------------------------------
