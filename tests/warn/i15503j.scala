@@ -49,11 +49,11 @@ package foo.unused.summon.inlines:
 
     transparent inline given conflictInside: C =
       summonInline[A]
-      new {}
+      ???
 
     transparent inline given potentialConflict: C =
       summonInline[B]
-      new {}
+      ???
 
     val b: B = summon[B]
     val c: C = summon[C]

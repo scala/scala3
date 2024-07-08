@@ -368,7 +368,10 @@ object projects:
 
   lazy val shapeless3 = SbtCommunityProject(
     project = "shapeless-3",
-    sbtTestCommand = "testJVM; testJS",
+    sbtTestCommand = List(
+      """set derivingJVM/scalacOptions += "-Wconf:msg=New anonymous class definition will be duplicated at each inline site:s" """,
+      """set derivingJS/scalacOptions += "-Wconf:msg=New anonymous class definition will be duplicated at each inline site:s" """,
+      "testJVM", "testJS").mkString("; "),
     sbtDocCommand = forceDoc("typeable", "deriving"),
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"), // due to -Xfatal-warnings
   )

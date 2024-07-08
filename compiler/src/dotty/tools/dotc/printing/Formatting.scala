@@ -42,7 +42,9 @@ object Formatting {
     trait CtxShow:
       def run(using Context): Shown
 
-    private inline def CtxShow(inline x: Context ?=> Shown) = new CtxShow { def run(using Context) = x(using ctx) }
+    private inline def CtxShow(inline x: Context ?=> Shown) =
+      class InlinedCtxShow extends CtxShow { def run(using Context) = x(using ctx) }
+      new InlinedCtxShow
     private def toStr[A: Show](x: A)(using Context): String = Shown.toStr(toShown(x))
     private def toShown[A: Show](x: A)(using Context): Shown = Show[A].show(x).runCtxShow
 

@@ -3073,6 +3073,15 @@ extends SyntaxMsg(InlineGivenShouldNotBeFunctionID):
        |      inline def apply(x: A) = x.toB
      """
 
+class InlinedAnonClassWarning()(using Context)
+  extends Message(InlinedAnonClassWarningID):
+    def kind = MessageKind.PotentialIssue
+    def msg(using Context) = "New anonymous class definition will be duplicated at each inline site"
+    def explain(using Context) =
+      i"""Anonymous class will be defined at each use site, which may lead to a larger number of classfiles.
+      |
+      |To inline class definitions, you may provide an explicit class name to avoid this warning."""
+
 class ValueDiscarding(tp: Type)(using Context)
   extends Message(ValueDiscardingID):
     def kind = MessageKind.PotentialIssue

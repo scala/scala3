@@ -113,12 +113,14 @@ object Show:
 
   inline def show[T](x: T): String = summonInline[Show[T]].show(x)
 
-  transparent inline def derived[T](implicit ev: Mirror.Of[T]): Show[T] = new {
-    def show(x: T): String = inline ev match {
-      case m: Mirror.ProductOf[T] => showProduct(x.asInstanceOf[Product], m)
-      case m: Mirror.SumOf[T]     => showCases[m.MirroredElemTypes](0)(x, m.ordinal(x))
+  transparent inline def derived[T](implicit ev: Mirror.Of[T]): Show[T] =
+    class InlinedShow extends Show[T] { // provide name to anonymous class
+      def show(x: T): String = inline ev match {
+        case m: Mirror.ProductOf[T] => showProduct(x.asInstanceOf[Product], m)
+        case m: Mirror.SumOf[T]     => showCases[m.MirroredElemTypes](0)(x, m.ordinal(x))
+      }
     }
-  }
+    new InlinedShow
 
   transparent inline def showProduct[T](x: Product, m: Mirror.ProductOf[T]): String =
     constValue[m.MirroredLabel] + showElems[m.MirroredElemTypes, m.MirroredElemLabels](0, Nil)(x)
