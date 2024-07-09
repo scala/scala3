@@ -920,12 +920,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         compareAppliedType1(tp1, tycon1, args1)
       case tp1: SingletonType =>
         def comparePaths = tp2 match
-          case tp2: TermRef =>
+          case tp2: (TermRef | ThisType) =>
             compareAtoms(tp1, tp2, knownSingletons = true).getOrElse(false)
-            || { // needed to make from-tasty work. test cases: pos/i1753.scala, pos/t839.scala
-              tp2.info.widenExpr.dealias match
-                case tp2i: SingletonType => recur(tp1, tp2i)
-                case _ => false
+            || {
+              // If tp2's underlying type tp2super is also effectively a singleton, compare
+              // against that. The idea is that if tp1 <: tp2super and tp2 <: tp2super and
+              // tp2super is also singleton, then tp1 and tp2 must be the same singleton.
+              // Needed to make from-tasty work. test cases: pos/i1753.scala, pos/t839.scala
+              val tp2super = tp2.superType.widenExpr
+              tp2super.isEffectivelySingleton && recur(tp1, tp2super)
             }
           case _ => false
 
