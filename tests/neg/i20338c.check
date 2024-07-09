@@ -1,0 +1,6 @@
+-- [E052] Type Error: tests/neg/i20338c.scala:9:6 ----------------------------------------------------------------------
+9 |  f.x = 42 // error
+  |  ^^^^^^^^
+  |  Reassignment to val x
+  |
+  | longer explanation available when compiling with `-explain`
