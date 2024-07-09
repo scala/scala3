@@ -1596,7 +1596,7 @@ object SymDenotations {
       case tp: RefinedType => hasSkolems(tp.parent) || hasSkolems(tp.refinedInfo)
       case tp: RecType => hasSkolems(tp.parent)
       case tp: TypeBounds => hasSkolems(tp.lo) || hasSkolems(tp.hi)
-      case tp: TypeVar => hasSkolems(tp.inst)
+      case tp: TypeVar => hasSkolems(tp.permanentInst)
       case tp: ExprType => hasSkolems(tp.resType)
       case tp: AppliedType => hasSkolems(tp.tycon) || tp.args.exists(hasSkolems)
       case tp: LambdaType => tp.paramInfos.exists(hasSkolems) || hasSkolems(tp.resType)
