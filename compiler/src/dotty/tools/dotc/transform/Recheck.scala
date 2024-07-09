@@ -289,6 +289,9 @@ abstract class Recheck extends Phase, SymTransformer:
     /** A hook to massage the type of an applied method; currently not overridden */
     protected def prepareFunction(funtpe: MethodType, meth: Symbol)(using Context): MethodType = funtpe
 
+    protected def recheckArg(arg: Tree, formal: Type)(using Context): Type =
+      recheck(arg, formal)
+
     def recheckApply(tree: Apply, pt: Type)(using Context): Type =
       val funtpe0 = recheck(tree.fun)
       // reuse the tree's type on signature polymorphic methods, instead of using the (wrong) rechecked one
@@ -303,7 +306,7 @@ abstract class Recheck extends Phase, SymTransformer:
             else fntpe.paramInfos
           def recheckArgs(args: List[Tree], formals: List[Type], prefs: List[ParamRef]): List[Type] = args match
             case arg :: args1 =>
-              val argType = recheck(arg, normalizeByName(formals.head))
+              val argType = recheckArg(arg, normalizeByName(formals.head))
               val formals1 =
                 if fntpe.isParamDependent
                 then formals.tail.map(_.substParam(prefs.head, argType))

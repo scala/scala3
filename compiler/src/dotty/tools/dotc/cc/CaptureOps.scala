@@ -40,6 +40,8 @@ object ccConfig:
    */
   inline val handleEtaExpansionsSpecially = false
 
+  val useUnboxedParams = true
+
   /** If true, use existential capture set variables */
   def useExistentials(using Context) =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.5`)

@@ -62,6 +62,9 @@ object CheckCaptures:
         val res = cur
         cur = cur.outer
         res
+
+    def ownerString(using Context): String =
+      if owner.isAnonymousFunction then "enclosing function" else owner.show
   end Env
 
   /** Similar normal substParams, but this is an approximating type map that
@@ -386,20 +389,67 @@ class CheckCaptures extends Recheck, SymTransformer:
           val included = cs.filter: c =>
             c.stripReach match
               case ref: TermRef =>
-                val isVisible = isVisibleFromEnv(ref.symbol.owner)
-                if !isVisible && c.isReach then
+                //if c.isReach then println(i"REACH $c in ${env.owner}")
+                //assert(!env.owner.isAnonymousFunction)
+                val refSym = ref.symbol
+                val refOwner = refSym.owner
+                val isVisible = isVisibleFromEnv(refOwner)
+                if !isVisible && c.isReach && refSym.is(Param) && refOwner == env.owner then
+                if refSym.hasAnnotation(defn.UnboxedAnnot) then
+                  capt.println(i"exempt: $ref in $refOwner")
+                else
                   // Reach capabilities that go out of scope have to be approximated
-                  // by their underlyiong capture set. See i20503.scala.
-                  checkSubset(CaptureSet.ofInfo(c), env.captured, pos, provenance(env))
+                  // by their underlying capture set, which cannot be universal.
+                  // Reach capabilities of @unboxed parameters are exempted.
+                  val cs = CaptureSet.ofInfo(c)
+                  if ccConfig.useUnboxedParams then
+                    cs.disallowRootCapability: () =>
+                      report.error(em"Local reach capability $c leaks into capture scope of ${env.ownerString}", pos)
+                  checkSubset(cs, env.captured, pos, provenance(env))
                 isVisible
               case ref: ThisType => isVisibleFromEnv(ref.cls)
               case _ => false
-          capt.println(i"Include call or box capture $included from $cs in ${env.owner}")
           checkSubset(included, env.captured, pos, provenance(env))
+          capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
+    end markFree
 
     /** Include references captured by the called method in the current environment stack */
     def includeCallCaptures(sym: Symbol, pos: SrcPos)(using Context): Unit =
       if sym.exists && curEnv.isOpen then markFree(capturedVars(sym), pos)
+
+    private val prefixCalls = util.EqHashSet[GenericApply]()
+    private val unboxedArgs = util.EqHashSet[Tree]()
+
+    def handleCall(meth: Symbol, call: GenericApply, eval: () => Type)(using Context): Type =
+      if prefixCalls.remove(call) then return eval()
+
+      val unboxedParamNames =
+        meth.rawParamss.flatMap: params =>
+          params.collect:
+            case param if param.hasAnnotation(defn.UnboxedAnnot) =>
+              param.name
+        .toSet
+
+      def markUnboxedArgs(call: GenericApply): Unit = call.fun.tpe.widen match
+        case MethodType(pnames) =>
+          for (pname, arg) <- pnames.lazyZip(call.args) do
+            if unboxedParamNames.contains(pname) then
+              unboxedArgs.add(arg)
+        case _ =>
+
+      def markPrefixCalls(tree: Tree): Unit = tree match
+        case tree: GenericApply =>
+          prefixCalls.add(tree)
+          markUnboxedArgs(tree)
+          markPrefixCalls(tree.fun)
+        case _ =>
+
+      markUnboxedArgs(call)
+      markPrefixCalls(call.fun)
+      val res = eval()
+      includeCallCaptures(meth, call.srcPos)
+      res
+    end handleCall
 
     override def recheckIdent(tree: Ident, pt: Type)(using Context): Type =
       if tree.symbol.is(Method) then
@@ -470,7 +520,6 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     override def recheckApply(tree: Apply, pt: Type)(using Context): Type =
       val meth = tree.fun.symbol
-      includeCallCaptures(meth, tree.srcPos)
 
       // Unsafe box/unbox handlng, only for versions < 3.3
       def mapArgUsing(f: Type => Type) =
@@ -503,7 +552,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             tp.derivedCapturingType(forceBox(parent), refs)
         mapArgUsing(forceBox)
       else
-        Existential.toCap(super.recheckApply(tree, pt)) match
+        handleCall(meth, tree, () => Existential.toCap(super.recheckApply(tree, pt))) match
           case appType @ CapturingType(appType1, refs) =>
             tree.fun match
               case Select(qual, _)
@@ -520,6 +569,13 @@ class CheckCaptures extends Recheck, SymTransformer:
               case _ => appType
           case appType => appType
     end recheckApply
+
+    override def recheckArg(arg: Tree, formal: Type)(using Context): Type =
+      val argType = recheck(arg, formal)
+      if unboxedArgs.remove(arg) && ccConfig.useUnboxedParams then
+        capt.println(i"charging deep capture set of $arg: ${argType} = ${CaptureSet.deepCaptureSet(argType)}")
+        markFree(CaptureSet.deepCaptureSet(argType), arg.srcPos)
+      argType
 
     private def isDistinct(xs: List[Type]): Boolean = xs match
       case x :: xs1 => xs1.isEmpty || !xs1.contains(x) && isDistinct(xs1)
@@ -589,6 +645,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     end instantiate
 
     override def recheckTypeApply(tree: TypeApply, pt: Type)(using Context): Type =
+      val meth = tree.symbol
       if ccConfig.useSealed then
         val TypeApply(fn, args) = tree
         val polyType = atPhase(thisPhase.prev):
@@ -596,13 +653,13 @@ class CheckCaptures extends Recheck, SymTransformer:
         def isExempt(sym: Symbol) =
           sym.isTypeTestOrCast || sym == defn.Compiletime_erasedValue
         for case (arg: TypeTree, formal, pname) <- args.lazyZip(polyType.paramRefs).lazyZip((polyType.paramNames)) do
-          if !isExempt(tree.symbol) then
-            def where = if fn.symbol.exists then i" in an argument of ${fn.symbol}" else ""
+          if !isExempt(meth) then
+            def where = if meth.exists then i" in an argument of $meth" else ""
             disallowRootCapabilitiesIn(arg.knownType, NoSymbol,
               i"Sealed type variable $pname", "be instantiated to",
               i"This is often caused by a local capability$where\nleaking as part of its result.",
               tree.srcPos)
-      Existential.toCap(super.recheckTypeApply(tree, pt))
+      handleCall(meth, tree, () => Existential.toCap(super.recheckTypeApply(tree, pt)))
 
     override def recheckBlock(tree: Block, pt: Type)(using Context): Type =
       inNestedLevel(super.recheckBlock(tree, pt))
