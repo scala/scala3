@@ -39,6 +39,8 @@ import annotation.{experimental, compileTimeOnly}
    */
   final class untrackedCaptures extends annotation.StaticAnnotation
 
+  final class unboxed extends annotation.StaticAnnotation
+
   object unsafe:
 
     extension [T](x: T)
