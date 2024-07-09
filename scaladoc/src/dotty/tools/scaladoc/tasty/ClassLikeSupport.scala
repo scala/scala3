@@ -359,7 +359,9 @@ trait ClassLikeSupport:
       if methodSymbol.isExtensionMethod && methodSymbol.isRightAssoc then
         // Taken from RefinedPrinter.scala
         // If you change the names of the clauses below, also change them in right-associative-extension-methods.md
-        val (leftTyParams, rest1) = memberInfo.paramLists.span(_.isType)
+        val (leftTyParams, rest1) = memberInfo.paramLists match
+          case fst :: tail if fst.isType => (List(fst), tail)
+          case other => (List(), other)
         val (leadingUsing, rest2) = rest1.span(_.isUsing)
         val (rightTyParams, rest3) = rest2.span(_.isType)
         val (rightParam, rest4) = rest3.splitAt(1)
