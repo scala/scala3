@@ -628,7 +628,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         // Constrain closure's parameters and result from the expected type before
         // rechecking the body.
         val res = recheckClosure(expr, pt, forceDependent = true)
-        if !isEtaExpansion(mdef) then
+        if !(isEtaExpansion(mdef) && ccConfig.handleEtaExpansionsSpecially) then
           // If closure is an eta expanded method reference it's better to not constrain
           // its internals early since that would give error messages in generated code
           // which are less intelligible.

@@ -5,16 +5,13 @@
    |
    |             Note that reference (cap3 : Cap), defined in method scope
    |             cannot be included in outer capture set {cap1} of variable a
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:25:8 ------------------------------------------
+-- Error: tests/neg-custom-args/captures/vars.scala:25:8 ---------------------------------------------------------------
 25 |    a = g      // error
    |        ^
-   |        Found:    (x: String) ->{cap3} String
-   |        Required: (x$0: String) ->{cap1} String
+   |        reference (cap3 : Cap) is not included in the allowed capture set {cap1} of variable a
    |
    |        Note that reference (cap3 : Cap), defined in method scope
    |        cannot be included in outer capture set {cap1} of variable a
-   |
-   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:27:12 -----------------------------------------
 27 |    b = List(g) // error
    |        ^^^^^^^

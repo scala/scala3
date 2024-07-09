@@ -33,6 +33,13 @@ object ccConfig:
    */
   inline val optimizedRefinements = false
 
+  /** If enabled, use a special path in recheckClosure for closures
+   *  that are eta expansions. This can improve some error messages but
+   *  currently leads to unsoundess for handlng reach capabilities.
+   *  TODO: The unsoundness needs followin up.
+   */
+  inline val handleEtaExpansionsSpecially = false
+
   /** If true, use existential capture set variables */
   def useExistentials(using Context) =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.5`)
