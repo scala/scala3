@@ -15,7 +15,7 @@ package mutable
 
 import scala.annotation.nowarn
 import language.experimental.captureChecking
-
+import caps.unboxed
 
 /** A `Buffer` is a growable and shrinkable `Seq`. */
 trait Buffer[A]
@@ -180,7 +180,7 @@ trait IndexedBuffer[A] extends IndexedSeq[A]
 
   override def iterableFactory: SeqFactory[IndexedBuffer] = IndexedBuffer
 
-  def flatMapInPlace(f: A => IterableOnce[A]^): this.type = {
+  def flatMapInPlace(@unboxed f: A => IterableOnce[A]^): this.type = {
     // There's scope for a better implementation which copies elements in place.
     var i = 0
     val s = size
