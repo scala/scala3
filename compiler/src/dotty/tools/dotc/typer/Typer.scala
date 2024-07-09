@@ -681,85 +681,133 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     then
       report.error(StableIdentPattern(tree, pt), tree.srcPos)
 
-  def typedSelect(tree0: untpd.Select, pt: Type, qual: Tree)(using Context): Tree =
+  def typedSelectWithAdapt(tree0: untpd.Select, pt: Type, qual: Tree)(using Context): Tree =
     val selName = tree0.name
     val tree = cpy.Select(tree0)(qual, selName)
     val superAccess = qual.isInstanceOf[Super]
     val rawType = selectionType(tree, qual)
-    val checkedType = accessibleType(rawType, superAccess)
 
-    def finish(tree: untpd.Select, qual: Tree, checkedType: Type): Tree =
-      val select = toNotNullTermRef(assignType(tree, checkedType), pt)
-      if selName.isTypeName then checkStable(qual.tpe, qual.srcPos, "type prefix")
-      checkLegalValue(select, pt)
-      ConstFold(select)
+    def tryType(tree: untpd.Select, qual: Tree, rawType: Type) =
+      val checkedType = accessibleType(rawType, superAccess)
+      // If regular selection is typeable, we are done
+      if checkedType.exists then
+        val select = toNotNullTermRef(assignType(tree, checkedType), pt)
+        if selName.isTypeName then checkStable(qual.tpe, qual.srcPos, "type prefix")
+        checkLegalValue(select, pt)
+        ConstFold(select)
+      else EmptyTree
 
-    if checkedType.exists then
-      finish(tree, qual, checkedType)
-    else if selName == nme.apply && qual.tpe.widen.isInstanceOf[MethodType] then
-      // Simplify `m.apply(...)` to `m(...)`
-      qual
-    else if couldInstantiateTypeVar(qual.tpe.widen) then
-       // there's a simply visible type variable in the result; try again with a more defined qualifier type
-       // There's a second trial where we try to instantiate all type variables in `qual.tpe.widen`,
-       // but that is done only after we search for extension methods or conversions.
-      typedSelect(tree, pt, qual)
-    else if qual.tpe.isSmallGenericTuple then
-      val elems = qual.tpe.widenTermRefExpr.tupleElementTypes.getOrElse(Nil)
-      typedSelect(tree, pt, qual.cast(defn.tupleType(elems)))
-    else
-      val tree1 = tryExtensionOrConversion(
-          tree, pt, IgnoredProto(pt), qual, ctx.typerState.ownedVars, this, inSelect = true)
-        .orElse {
-          if ctx.gadt.isNarrowing then
-            // try GADT approximation if we're trying to select a member
-            // Member lookup cannot take GADTs into account b/c of cache, so we
-            // approximate types based on GADT constraints instead. For an example,
-            // see MemberHealing in gadt-approximation-interaction.scala.
-            val wtp = qual.tpe.widen
-            gadts.println(i"Trying to heal member selection by GADT-approximating $wtp")
-            val gadtApprox = Inferencing.approximateGADT(wtp)
-            gadts.println(i"GADT-approximated $wtp ~~ $gadtApprox")
-            val qual1 = qual.cast(gadtApprox)
-            val tree1 = cpy.Select(tree0)(qual1, selName)
-            val checkedType1 = accessibleType(selectionType(tree1, qual1), superAccess = false)
-            if checkedType1.exists then
-              gadts.println(i"Member selection healed by GADT approximation")
-              finish(tree1, qual1, checkedType1)
-            else if qual1.tpe.isSmallGenericTuple then
-              gadts.println(i"Tuple member selection healed by GADT approximation")
-              typedSelect(tree, pt, qual1)
-            else
-              tryExtensionOrConversion(tree1, pt, IgnoredProto(pt), qual1, ctx.typerState.ownedVars, this, inSelect = true)
-          else EmptyTree
-        }
-      if !tree1.isEmpty then
-        tree1
-      else if canDefineFurther(qual.tpe.widen) then
-        typedSelect(tree, pt, qual)
-      else if qual.tpe.derivesFrom(defn.DynamicClass)
-        && selName.isTermName && !isDynamicExpansion(tree)
-      then
+    // Otherwise, simplify `m.apply(...)` to `m(...)`
+    def trySimplifyApply() =
+      if selName == nme.apply && qual.tpe.widen.isInstanceOf[MethodType] then
+        qual
+      else EmptyTree
+
+    // Otherwise, if there's a simply visible type variable in the result, try again
+    // with a more defined qualifier type. There's a second trial where we try to instantiate
+    // all type variables in `qual.tpe.widen`, but that is done only after we search for
+    // extension methods or conversions.
+    def tryInstantiateTypeVar() =
+      if couldInstantiateTypeVar(qual.tpe.widen) then
+        // there's a simply visible type variable in the result; try again with a more defined qualifier type
+        // There's a second trial where we try to instantiate all type variables in `qual.tpe.widen`,
+        // but that is done only after we search for extension methods or conversions.
+        typedSelectWithAdapt(tree, pt, qual)
+      else EmptyTree
+
+    // Otherwise, heal member selection on an opaque reference,
+    // reusing the logic in TypeComparer.
+    def tryLiftToThis() =
+      val wtp = qual.tpe.widen
+      val liftedTp = comparing(_.liftToThis(wtp))
+      if liftedTp ne wtp then
+        val qual1 = qual.cast(liftedTp)
+        val tree1 = cpy.Select(tree0)(qual1, selName)
+        val rawType1 = selectionType(tree1, qual1)
+        tryType(tree1, qual1, rawType1)
+      else EmptyTree
+
+    // Otherwise, map combinations of A *: B *: .... EmptyTuple with nesting levels <= 22
+    // to the Tuple class of the right arity and select from that one
+    def trySmallGenericTuple(qual: Tree, withCast: Boolean) =
+      if qual.tpe.isSmallGenericTuple then
+        if withCast then
+          val elems = qual.tpe.widenTermRefExpr.tupleElementTypes.getOrElse(Nil)
+          typedSelectWithAdapt(tree, pt, qual.cast(defn.tupleType(elems)))
+        else
+          typedSelectWithAdapt(tree, pt, qual)
+      else EmptyTree
+
+    // Otherwise try an extension or conversion
+    def tryExt(tree: untpd.Select, qual: Tree) =
+      tryExtensionOrConversion(
+        tree, pt, IgnoredProto(pt), qual, ctx.typerState.ownedVars, this, inSelect = true
+      )
+
+    // Otherwise, try a GADT approximation if we're trying to select a member
+    def tryGadt() =
+      if ctx.gadt.isNarrowing then
+        // Member lookup cannot take GADTs into account b/c of cache, so we
+        // approximate types based on GADT constraints instead. For an example,
+        // see MemberHealing in gadt-approximation-interaction.scala.
+        val wtp = qual.tpe.widen
+        gadts.println(i"Trying to heal member selection by GADT-approximating $wtp")
+        val gadtApprox = Inferencing.approximateGADT(wtp)
+        gadts.println(i"GADT-approximated $wtp ~~ $gadtApprox")
+        val qual1 = qual.cast(gadtApprox)
+        val tree1 = cpy.Select(tree0)(qual1, selName)
+        tryType(tree1, qual1, selectionType(tree1, qual1))
+          .orElse(trySmallGenericTuple(qual1, withCast = false))
+          .orElse(tryExt(tree1, qual1))
+      else EmptyTree
+
+    // Otherwise, if there are uninstantiated type variables in the qualifier type,
+    // instantiate them and try again
+    def tryDefineFurther() =
+      if canDefineFurther(qual.tpe.widen) then
+        typedSelectWithAdapt(tree, pt, qual)
+      else EmptyTree
+
+    def dynamicSelect(pt: Type) =
         val tree2 = cpy.Select(tree0)(untpd.TypedSplice(qual), selName)
         if pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto then
           assignType(tree2, TryDynamicCallType)
         else
           typedDynamicSelect(tree2, Nil, pt)
-      else
-        assignType(tree,
-          rawType match
-            case rawType: NamedType =>
-              inaccessibleErrorType(rawType, superAccess, tree.srcPos)
-            case _ =>
-              notAMemberErrorType(tree, qual, pt))
-  end typedSelect
+
+    // Otherwise, if the qualifier derives from class Dynamic, expand to a
+    // dynamic dispatch using selectDynamic or applyDynamic
+    def tryDynamic() =
+      if qual.tpe.derivesFrom(defn.DynamicClass) && selName.isTermName && !isDynamicExpansion(tree) then
+        dynamicSelect(pt)
+      else EmptyTree
+
+    def reportAnError() =
+      assignType(tree,
+        rawType match
+          case rawType: NamedType =>
+            inaccessibleErrorType(rawType, superAccess, tree.srcPos)
+          case _ =>
+            notAMemberErrorType(tree, qual, pt))
+
+    tryType(tree, qual, rawType)
+      .orElse(trySimplifyApply())
+      .orElse(tryInstantiateTypeVar())
+      .orElse(tryLiftToThis())
+      .orElse(trySmallGenericTuple(qual, withCast = true))
+      .orElse(tryExt(tree, qual))
+      .orElse(tryGadt())
+      .orElse(tryDefineFurther())
+      .orElse(tryDynamic())
+      .orElse(reportAnError())
+  end typedSelectWithAdapt
 
   def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
     record("typedSelect")
 
     def typeSelectOnTerm(using Context): Tree =
       val qual = typedExpr(tree.qualifier, shallowSelectionProto(tree.name, pt, this, tree.nameSpan))
-      typedSelect(tree, pt, qual).withSpan(tree.span).computeNullable()
+      typedSelectWithAdapt(tree, pt, qual).withSpan(tree.span).computeNullable()
 
     def javaSelectOnType(qual: Tree)(using Context) =
       // semantic name conversion for `O$` in java code
@@ -3563,7 +3611,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             if isExtension then return found
             else
               checkImplicitConversionUseOK(found, selProto)
-              return withoutMode(Mode.ImplicitsEnabled)(typedSelect(tree, pt, found))
+              return withoutMode(Mode.ImplicitsEnabled)(typedSelectWithAdapt(tree, pt, found))
           case failure: SearchFailure =>
             if failure.isAmbiguous then
               return
