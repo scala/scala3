@@ -24,7 +24,7 @@ call :compilerJavaClasspathArgs
 @rem we need to escape % in the java command path, for some reason this doesnt work in common.bat
 set "_JAVACMD=!_JAVACMD:%%=%%%%!"
 
-call "%_JAVACMD%" %_JAVA_ARGS% -classpath "%_JVM_CP_ARGS%" "-Dscala.usejavacp=true" "-Dscala.home=%_PROG_HOME%" dotty.tools.MainGenericCompiler %_SCALA_ARGS%
+call "%_JAVACMD%" %_JAVA_ARGS% -classpath "%_JVM_CP_ARGS%" "-Dscala.usejavacp=true" "-Dscala.expandjavacp=true" "-Dscala.home=%_PROG_HOME%" dotty.tools.MainGenericCompiler %_SCALA_ARGS%
 if not %ERRORLEVEL%==0 (
     set _EXITCODE=1
     goto end
@@ -88,40 +88,13 @@ goto :eof
 
 @rem output parameter: _JVM_CP_ARGS
 :compilerJavaClasspathArgs
-
-set "CP_FILE=%_ETC_DIR%\scala.classpath"
-call :loadClasspathFromFile %CP_FILE%
-set "__TOOLCHAIN=%_CLASS_PATH_RESULT%"
-
-set "CP_FILE=%_ETC_DIR%\with_compiler.classpath"
-call :loadClasspathFromFile %CP_FILE%
-
-if defined _CLASS_PATH_RESULT (
-    set "__TOOLCHAIN=%__TOOLCHAIN%%_PSEP%%_CLASS_PATH_RESULT%"
-)
+set "__TOOLCHAIN=%_LIB_DIR%\scala.jar"
+set "__TOOLCHAIN=%__TOOLCHAIN%%_PSEP%%_LIB_DIR%\with_compiler.jar%"
 
 if defined _SCALA_CPATH (
     set "_JVM_CP_ARGS=%__TOOLCHAIN%%_SCALA_CPATH%"
 ) else (
     set "_JVM_CP_ARGS=%__TOOLCHAIN%"
-)
-goto :eof
-
-@REM concatentate every line in "%_ARG_FILE%" with _PSEP
-@REM arg 1 - file to read
-:loadClasspathFromFile
-set _ARG_FILE=%1
-set _CLASS_PATH_RESULT=
-if exist "%_ARG_FILE%" (
-    for /f "usebackq delims=" %%i in ("%_ARG_FILE%") do (
-        set "_LIB=%_PROG_HOME%\maven2\%%i"
-        set "_LIB=!_LIB:/=\!"
-        if not defined _CLASS_PATH_RESULT (
-            set "_CLASS_PATH_RESULT=!_LIB!"
-        ) else (
-            set "_CLASS_PATH_RESULT=!_CLASS_PATH_RESULT!%_PSEP%!_LIB!"
-        )
-    )
 )
 goto :eof
 

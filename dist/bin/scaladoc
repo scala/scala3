@@ -36,6 +36,7 @@ CompilerMain=dotty.tools.dotc.Main
 DecompilerMain=dotty.tools.dotc.decompiler.Main
 ReplMain=dotty.tools.repl.Main
 ScriptingMain=dotty.tools.scripting.Main
+JVM_CP_ARGS="$PROG_HOME/lib/scaladoc.jar"
 
 PROG_NAME=$CompilerMain
 
@@ -50,12 +51,6 @@ addResidual () {
 }
 addScrip() {
   script_args+=("'$1'")
-}
-
-classpathArgs () {
-  CLASS_PATH="$(load_classpath "scaladoc" "$PSEP")"
-
-  jvm_cp_args="-classpath \"$CLASS_PATH\""
 }
 
 #for A in "$@" ; do echo "A[$A]" ; done ; exit 2
@@ -79,12 +74,11 @@ case "$1" in
   esac
 done
 
-classpathArgs
-
 eval "\"$JAVACMD\"" \
      ${JAVA_OPTS:-$default_java_opts} \
      "${java_args[@]}" \
-     "${jvm_cp_args-}" \
+     -classpath "${JVM_CP_ARGS}" \
+      -Dscala.expandjavacp=true \
       -Dscala.usejavacp=true \
      "dotty.tools.scaladoc.Main"  \
      "${scala_args[@]}" \
