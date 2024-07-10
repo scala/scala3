@@ -124,8 +124,8 @@ object Build {
    *  scala-library.
    */
   def stdlibVersion(implicit mode: Mode): String = mode match {
-    case NonBootstrapped => "2.13.12"
-    case Bootstrapped => "2.13.12"
+    case NonBootstrapped => "2.13.14"
+    case Bootstrapped => "2.13.14"
   }
 
   val dottyOrganization = "org.scala-lang"
@@ -1002,7 +1002,21 @@ object Build {
           IO.createDirectory(trgDir)
           IO.unzip(scalaLibrarySourcesJar, trgDir)
 
-          ((trgDir ** "*.scala") +++ (trgDir ** "*.java")).get.toSet
+          val (ignoredSources, sources) =
+            ((trgDir ** "*.scala") +++ (trgDir ** "*.java")).get.toSet
+              .partition{file =>
+                // sources from https://github.com/scala/scala/tree/2.13.x/src/library-aux
+                val path = file.getPath.replace('\\', '/')
+                path.endsWith("scala-library-src/scala/Any.scala") ||
+                path.endsWith("scala-library-src/scala/AnyVal.scala") ||
+                path.endsWith("scala-library-src/scala/AnyRef.scala") ||
+                path.endsWith("scala-library-src/scala/Nothing.scala") ||
+                path.endsWith("scala-library-src/scala/Null.scala") ||
+                path.endsWith("scala-library-src/scala/Singleton.scala")
+              }
+          // These sources should be never compiled, filtering them out was not working correctly sometimes
+          ignoredSources.foreach(_.delete())
+          sources
         } (Set(scalaLibrarySourcesJar)).toSeq
       }.taskValue,
       (Compile / sourceGenerators) += Def.task {
@@ -1141,7 +1155,7 @@ object Build {
           .exclude("org.eclipse.lsp4j","org.eclipse.lsp4j.jsonrpc"),
         "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.20.1",
       ),
-      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.12" % mtagsVersion % SourceDeps),
+      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.14" % mtagsVersion % SourceDeps),
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Ysafe-init"),
@@ -1694,6 +1708,8 @@ object Build {
         "-Dplugin.version=" + version.value,
         "-Dplugin.scalaVersion=" + dottyVersion,
         "-Dplugin.scala2Version=" + stdlibVersion(Bootstrapped),
+        // The last version of Scala 2 that's cross-published for Scala.js 1.12 (version used by LTS)
+        "-Dplugin.scala2ForJSVersion=2.13.13",
         "-Dplugin.scalaJSVersion=" + scalaJSVersion,
         "-Dsbt.boot.directory=" + ((ThisBuild / baseDirectory).value / ".sbt-scripted").getAbsolutePath // Workaround sbt/sbt#3469
       ),

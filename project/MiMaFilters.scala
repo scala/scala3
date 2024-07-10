@@ -14,10 +14,6 @@ object MiMaFilters {
     ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.relaxedExtensionImports"),
     ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$relaxedExtensionImports$"),
     // end of New experimental features in 3.3.X
-
-    // New in 2.13.12 -- can be removed once scala/scala#10549 lands in 2.13.13
-    // and we take the upgrade here
-    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.immutable.MapNodeRemoveAllSetNodeIterator.next"),
   )
   val TastyCore: Seq[ProblemFilter] = Seq(
   )
