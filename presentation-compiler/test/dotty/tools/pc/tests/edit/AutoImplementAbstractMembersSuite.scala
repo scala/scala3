@@ -345,9 +345,9 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |object Main {
          |  class Baz extends Bar {
          |
-         |    override def foo: Int = ???
-         |
          |    override def bar: Int = ???
+         |
+         |    override def foo: Int = ???
          |
          |  }
          |}
@@ -1243,7 +1243,6 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |
          |object A {
          |  trait Base:
-         |    def foo(x: Int): Int
          |    def bar(x: String): String
          |
          |  class <<Concrete>>(x: Int, y: String) extends Base:
@@ -1256,12 +1255,9 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |
          |object A {
          |  trait Base:
-         |    def foo(x: Int): Int
          |    def bar(x: String): String
          |
          |  class Concrete(x: Int, y: String) extends Base:
-         |
-         |    override def foo(x: Int): Int = ???
          |
          |    override def bar(x: String): String = ???
          |
@@ -1270,6 +1266,35 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |
          |}
          |""".stripMargin,
+    )
+
+  @Test def `braceless-case-class` =
+    checkEdit(
+      """|package a
+         |
+         |trait Base:
+         |  def foo(x: Int): Int
+         |  def bar(x: String): String
+         |
+         |case class <<Concrete>>() extends Base:
+         |  def aaa = "aaa"
+         |end Concrete
+         |""".stripMargin,
+      """|package a
+         |
+         |trait Base:
+         |  def foo(x: Int): Int
+         |  def bar(x: String): String
+         |
+         |case class Concrete() extends Base:
+         |
+         |  override def foo(x: Int): Int = ???
+         |
+         |  override def bar(x: String): String = ???
+         |
+         |  def aaa = "aaa"
+         |end Concrete
+         |""".stripMargin
     )
 
   def checkEdit(
