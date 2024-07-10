@@ -128,8 +128,6 @@ case class TemplateFile(
 
     mutableProperties.put("site",dataMap)
 
-    print(mutableProperties.get("site"))
-
     // assign the the path for Include Tag
     val includePath =  ssctx.root.toPath.resolve("_includes")
     IncludeTag.setDocsFolder(includePath.toString)
