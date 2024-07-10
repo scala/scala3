@@ -1708,6 +1708,8 @@ object Build {
         "-Dplugin.version=" + version.value,
         "-Dplugin.scalaVersion=" + dottyVersion,
         "-Dplugin.scala2Version=" + stdlibVersion(Bootstrapped),
+        // The last version of Scala 2 that's cross-published for Scala.js 1.12 (version used by LTS)
+        "-Dplugin.scala2ForJSVersion=2.13.13",
         "-Dplugin.scalaJSVersion=" + scalaJSVersion,
         "-Dsbt.boot.directory=" + ((ThisBuild / baseDirectory).value / ".sbt-scripted").getAbsolutePath // Workaround sbt/sbt#3469
       ),
