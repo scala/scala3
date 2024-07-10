@@ -274,8 +274,8 @@ extension (tp: Type)
     case _ =>
       tp
 
-  /** Is type known to be always pure by its class structure,
-   *  so that adding a capture set to it would not make sense?
+  /** Is type known to be always pure by its class structure?
+   *  In that case, adding a capture set to it would not make sense.
    */
   def isAlwaysPure(using Context): Boolean = tp.dealias match
     case tp: (TypeRef | AppliedType) =>

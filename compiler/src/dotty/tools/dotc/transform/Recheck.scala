@@ -202,11 +202,13 @@ abstract class Recheck extends Phase, SymTransformer:
       tree.tpe
 
     def recheckSelect(tree: Select, pt: Type)(using Context): Type =
-      val Select(qual, name) = tree
+      recheckSelection(tree, recheckSelectQualifier(tree), tree.name, pt)
+
+    def recheckSelectQualifier(tree: Select)(using Context): Type =
       val proto =
         if tree.symbol == defn.Any_asInstanceOf then WildcardType
         else AnySelectionProto
-      recheckSelection(tree, recheck(qual, proto).widenIfUnstable, name, pt)
+      recheck(tree.qualifier, proto).widenIfUnstable
 
     def recheckSelection(tree: Select, qualType: Type, name: Name,
         sharpen: Denotation => Denotation)(using Context): Type =
@@ -292,8 +294,23 @@ abstract class Recheck extends Phase, SymTransformer:
     protected def recheckArg(arg: Tree, formal: Type)(using Context): Type =
       recheck(arg, formal)
 
+    /** A hook to check all the parts of an application:
+     *   @param  tree      the application `fn(args)`
+     *   @param  qualType  if the `fn` is a select `q.m`, the type of the qualifier `q`,
+     *                     otherwise NoType
+     *   @param  funType   the method type of `fn`
+     *   @param  argTypes  the types of the arguments
+     */
+    protected def recheckApplication(tree: Apply, qualType: Type, funType: MethodType, argTypes: List[Type])(using Context): Type =
+      constFold(tree, instantiate(funType, argTypes, tree.fun.symbol))
+
     def recheckApply(tree: Apply, pt: Type)(using Context): Type =
-      val funtpe0 = recheck(tree.fun)
+      val (funtpe0, qualType) = tree.fun match
+        case fun: Select =>
+          val qualType = recheckSelectQualifier(fun)
+          (recheckSelection(fun, qualType, fun.name, WildcardType), qualType)
+        case _ =>
+          (recheck(tree.fun), NoType)
       // reuse the tree's type on signature polymorphic methods, instead of using the (wrong) rechecked one
       val funtpe1 = if tree.fun.symbol.originalSignaturePolymorphic.exists then tree.fun.tpe else funtpe0
       funtpe1.widen match
@@ -316,7 +333,7 @@ abstract class Recheck extends Phase, SymTransformer:
               assert(formals.isEmpty)
               Nil
           val argTypes = recheckArgs(tree.args, formals, fntpe.paramRefs)
-          constFold(tree, instantiate(fntpe, argTypes, tree.fun.symbol))
+          recheckApplication(tree, qualType, fntpe1, argTypes)
             //.showing(i"typed app $tree : $fntpe with ${tree.args}%, % : $argTypes%, % = $result")
         case tp =>
           assert(false, i"unexpected type of ${tree.fun}: $tp")

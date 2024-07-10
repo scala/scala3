@@ -34,6 +34,16 @@
    |                               that type captures the root capability `cap`.
    |                               This is often caused by a local capability in an argument of constructor Id
    |                               leaking as part of its result.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:57:6 ---------------------------------------
+57 |    id(() => f.write())  // error
+   |    ^^^^^^^^^^^^^^^^^^^
+   |    Found:    () => Unit
+   |    Required: () ->? Unit
+   |
+   |    Note that the universal capability `cap`
+   |    cannot be included in capture set ?
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:64:27 --------------------------------------
 64 |    val f1: File^{id*} = id(f) // error, since now id(f): File^
    |                         ^^^^^

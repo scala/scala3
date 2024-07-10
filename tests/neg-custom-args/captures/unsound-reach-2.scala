@@ -20,7 +20,7 @@ def bad(): Unit =
 
   var escaped: File^{backdoor*} = null
   withFile("hello.txt"): f =>
-    boom.use(f): // error
+    boom.use(f):
       new Consumer[File^{backdoor*}]: // error
         def apply(f1: File^{backdoor*}) =
           escaped = f1

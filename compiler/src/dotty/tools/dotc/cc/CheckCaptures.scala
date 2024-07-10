@@ -463,8 +463,8 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** A specialized implementation of the selection rule.
      *
-     *  E |- f: f{ m: Cr R }^Cf
-     *  -----------------------
+     *  E |- f: T{ m: R^Cr }^{f}
+     *  ------------------------
      *  E |- f.m: R^C
      *
      *  The implementation picks as `C` one of `{f}` or `Cr`, depending on the
@@ -507,17 +507,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           selType
     }//.showing(i"recheck sel $tree, $qualType = $result")
 
-    /** A specialized implementation of the apply rule.
-     *
-     *  E |- f: Ra ->Cf Rr^Cr
-     *  E |- a: Ra^Ca
-     *  ---------------------
-     *  E |- f a: Rr^C
-     *
-     *  The implementation picks as `C` one of `{f, a}` or `Cr`, depending on the
-     *  outcome of a `mightSubcapture` test. It picks `{f, a}` if this might subcapture Cr
-     *  and Cr otherwise.
-     */
     override def recheckApply(tree: Apply, pt: Type)(using Context): Type =
       val meth = tree.fun.symbol
 
@@ -552,30 +541,46 @@ class CheckCaptures extends Recheck, SymTransformer:
             tp.derivedCapturingType(forceBox(parent), refs)
         mapArgUsing(forceBox)
       else
-        handleCall(meth, tree, () => Existential.toCap(super.recheckApply(tree, pt))) match
-          case appType @ CapturingType(appType1, refs) =>
-            tree.fun match
-              case Select(qual, _)
-              if !tree.fun.symbol.isConstructor
-                  && !qual.tpe.isBoxedCapturing
-                  && !tree.args.exists(_.tpe.isBoxedCapturing)
-                  && qual.tpe.captureSet.mightSubcapture(refs)
-                  && tree.args.forall(_.tpe.captureSet.mightSubcapture(refs))
-              =>
-                val callCaptures = tree.args.foldLeft(qual.tpe.captureSet): (cs, arg) =>
-                  cs ++ arg.tpe.captureSet
-                appType.derivedCapturingType(appType1, callCaptures)
-                  .showing(i"narrow $tree: $appType, refs = $refs, qual-cs = ${qual.tpe.captureSet} = $result", capt)
-              case _ => appType
-          case appType => appType
+        handleCall(meth, tree, () => super.recheckApply(tree, pt))
     end recheckApply
 
-    override def recheckArg(arg: Tree, formal: Type)(using Context): Type =
+    protected override
+    def recheckArg(arg: Tree, formal: Type)(using Context): Type =
       val argType = recheck(arg, formal)
       if unboxedArgs.remove(arg) && ccConfig.useUnboxedParams then
         capt.println(i"charging deep capture set of $arg: ${argType} = ${CaptureSet.deepCaptureSet(argType)}")
         markFree(CaptureSet.deepCaptureSet(argType), arg.srcPos)
       argType
+
+    /** A specialized implementation of the apply rule.
+     *
+     *  E |- f: Ra ->Cf Rr^Cr
+     *  E |- a: Ra^Ca
+     *  ---------------------
+     *  E |- f a: Rr^C
+     *
+     *  The implementation picks as `C` one of `{f, a}` or `Cr`, depending on the
+     *  outcome of a `mightSubcapture` test. It picks `{f, a}` if this might subcapture Cr
+     *  and Cr otherwise.
+     */
+    protected override
+    def recheckApplication(tree: Apply, qualType: Type, funType: MethodType, argTypes: List[Type])(using Context): Type =
+      Existential.toCap(super.recheckApplication(tree, qualType, funType, argTypes)) match
+        case appType @ CapturingType(appType1, refs)
+        if qualType.exists
+            && !tree.fun.symbol.isConstructor
+            && !qualType.isBoxedCapturing // TODO: This is not strng enough, we also have
+                 // to exclude existentials in function results
+            && !argTypes.exists(_.isBoxedCapturing)
+            && qualType.captureSet.mightSubcapture(refs)
+            && argTypes.forall(_.captureSet.mightSubcapture(refs))
+        =>
+          val callCaptures = tree.args.foldLeft(qualType.captureSet): (cs, arg) =>
+              cs ++ arg.tpe.captureSet
+          appType.derivedCapturingType(appType1, callCaptures)
+            .showing(i"narrow $tree: $appType, refs = $refs, qual-cs = ${qualType.captureSet} = $result", capt)
+        case appType =>
+          appType
 
     private def isDistinct(xs: List[Type]): Boolean = xs match
       case x :: xs1 => xs1.isEmpty || !xs1.contains(x) && isDistinct(xs1)
