@@ -16,10 +16,11 @@ class GenBCode extends Phase { self =>
 
   override def description: String = GenBCode.description
 
-  private val superCallsMap = new MutableSymbolMap[Set[ClassSymbol]]
+  private val superCallsMap = new MutableSymbolMap[List[ClassSymbol]]
   def registerSuperCall(sym: Symbol, calls: ClassSymbol): Unit = {
-    val old = superCallsMap.getOrElse(sym, Set.empty)
-    superCallsMap.update(sym, old + calls)
+    val old = superCallsMap.getOrElse(sym, List.empty)
+    if (!old.contains(calls))
+      superCallsMap.update(sym, old :+ calls)
   }
 
   private val entryPoints = new mutable.HashSet[String]()
