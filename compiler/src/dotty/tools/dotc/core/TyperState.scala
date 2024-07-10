@@ -230,7 +230,7 @@ class TyperState() {
           val tvars = tl.paramRefs.map(other.typeVarOfParam(_)).collect { case tv: TypeVar => tv }
           if this.isCommittable then
             tvars.foreach(tvar =>
-              if !tvar.inst.exists && !isOwnedAnywhere(this, tvar) then includeVar(tvar))
+              if !tvar.isPermanentlyInstantiated && !isOwnedAnywhere(this, tvar) then includeVar(tvar))
           typeComparer.addToConstraint(tl, tvars)
         }) &&
         // Integrate the additional constraints on type variables from `other`
@@ -286,10 +286,10 @@ class TyperState() {
       for tvar <- ownedVars do
         val tvarState = tvar.owningState.nn.get
         assert(tvarState eqn this, s"Inconsistent state in $this: it owns $tvar whose owningState is ${tvarState}")
-        assert(!tvar.inst.exists, s"Inconsistent state in $this: it owns $tvar which is already instantiated")
+        assert(!tvar.isPermanentlyInstantiated, s"Inconsistent state in $this: it owns $tvar which is already instantiated")
         val inst = constraint.instType(tvar)
         if inst.exists then
-          tvar.setInst(inst)
+          tvar.setPermanentInst(inst)
           val tl = tvar.origin.binder
           if constraint.isRemovable(tl) then toCollect += tl
       for tl <- toCollect do

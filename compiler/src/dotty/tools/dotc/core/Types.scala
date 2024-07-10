@@ -137,7 +137,7 @@ object Types extends TypeUtils {
             case t: AppliedType =>
               t.fold(false, (x, tp) => x || test(tp, theAcc))
             case t: TypeVar =>
-              !t.inst.exists || test(t.inst, theAcc)
+              !t.isPermanentlyInstantiated || test(t.permanentInst, theAcc)
             case t: LazyRef =>
               !t.completed || test(t.ref, theAcc)
             case _ =>
@@ -4792,11 +4792,15 @@ object Types extends TypeUtils {
     def setOrigin(p: TypeParamRef) = currentOrigin = p
 
     /** The permanent instance type of the variable, or NoType is none is given yet */
-    private var myInst: Type = NoType
+    private var inst: Type = NoType
 
-    private[core] def inst: Type = myInst
-    private[core] def setInst(tp: Type): Unit =
-      myInst = tp
+    /** The permanent instance type that's stored in the type variable, so it cannot be retracted
+     *  anymore, or NoType if the variable can still be further constrained or a provisional
+     *  instance type in the constraint can be retracted.
+     */
+    private[core] def permanentInst = inst
+    private[core] def setPermanentInst(tp: Type): Unit =
+      inst = tp
       if tp.exists && owningState != null then
         val owningState1 = owningState.uncheckedNN.get
         if owningState1 != null then
@@ -4804,8 +4808,8 @@ object Types extends TypeUtils {
           owningState = null // no longer needed; null out to avoid a memory leak
 
     private[core] def resetInst(ts: TyperState): Unit =
-      assert(myInst.exists)
-      myInst = NoType
+      assert(inst.exists)
+      inst = NoType
       owningState = new WeakReference(ts)
 
     /** The state owning the variable. This is at first `creatorState`, but it can
@@ -4843,10 +4847,15 @@ object Types extends TypeUtils {
     /** Is the variable already instantiated? */
     def isInstantiated(using Context): Boolean = instanceOpt.exists
 
+    /** Is the variable already instantiated so that the instance cannot be
+     *  retracted anymore?
+     */
+    def isPermanentlyInstantiated: Boolean = inst.exists
+
     /** Instantiate variable with given type */
     def instantiateWith(tp: Type)(using Context): Type = {
       assert(tp ne this, i"self instantiation of $origin, constraint = ${ctx.typerState.constraint}")
-      assert(!myInst.exists, i"$origin is already instantiated to $myInst but we attempted to instantiate it to $tp")
+      assert(!inst.exists, i"$origin is already instantiated to $inst but we attempted to instantiate it to $tp")
       typr.println(i"instantiating $this with $tp")
 
       if Config.checkConstraintsSatisfiable then
@@ -4854,7 +4863,7 @@ object Types extends TypeUtils {
           i"$origin is constrained to be $currentEntry but attempted to instantiate it to $tp")
 
       if ((ctx.typerState eq owningState.nn.get.uncheckedNN) && !TypeComparer.subtypeCheckInProgress)
-        setInst(tp)
+        setPermanentInst(tp)
       ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp)
       tp
     }
@@ -4868,8 +4877,8 @@ object Types extends TypeUtils {
      */
     def instantiate(fromBelow: Boolean)(using Context): Type =
       val tp = TypeComparer.instanceType(origin, fromBelow, widenUnions, nestingLevel)
-      if myInst.exists then // The line above might have triggered instantiation of the current type variable
-        myInst
+      if inst.exists then // The line above might have triggered instantiation of the current type variable
+        inst
       else
         instantiateWith(tp)
 
