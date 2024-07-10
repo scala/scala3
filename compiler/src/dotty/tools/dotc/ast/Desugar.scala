@@ -64,6 +64,11 @@ object desugar {
    */
   val PolyFunctionApply: Property.Key[Unit] = Property.StickyKey()
 
+  /** An attachment key to indicate that an Apply is created as a last `map`
+   *  scall in a for-comprehension.
+   */
+  val TrailingForMap: Property.Key[Unit] = Property.StickyKey()
+
   /** What static check should be applied to a Match? */
   enum MatchCheck {
     case None, Exhaustive, IrrefutablePatDef, IrrefutableGenFrom
@@ -2149,11 +2154,13 @@ object desugar {
       enums match {
         case Nil if betterForsEnabled => body
         case (gen: GenFrom) :: Nil =>
+          val aply = Apply(rhsSelect(gen, mapName), makeLambda(gen, body))
           if betterForsEnabled
-            && gen.checkMode != GenCheckMode.Filtered // results of withFilter have the wrong type
-            && deepEquals(gen.pat, body)
-          then gen.expr  // avoid a redundant map with identity
-          else Apply(rhsSelect(gen, mapName), makeLambda(gen, body))
+          && gen.checkMode != GenCheckMode.Filtered // results of withFilter have the wrong type
+          // && deepEquals(gen.pat, body)
+          then
+            aply.putAttachment(TrailingForMap, ())
+          aply
         case (gen: GenFrom) :: (rest @ (GenFrom(_, _, _) :: _)) =>
           val cont = makeFor(mapName, flatMapName, rest, body)
           Apply(rhsSelect(gen, flatMapName), makeLambda(gen, cont))
@@ -2164,7 +2171,10 @@ object desugar {
           val selectName =
             if rest.exists(_.isInstanceOf[GenFrom]) then flatMapName
             else mapName
-          Apply(rhsSelect(gen, selectName), makeLambda(gen, cont))
+          val aply = Apply(rhsSelect(gen, selectName), makeLambda(gen, cont))
+          if selectName == mapName then
+            aply.pushAttachment(TrailingForMap, ())
+          aply
         case (gen: GenFrom) :: (rest @ GenAlias(_, _) :: _) =>
           val (valeqs, rest1) = rest.span(_.isInstanceOf[GenAlias])
           val pats = valeqs map { case GenAlias(pat, _) => pat }
