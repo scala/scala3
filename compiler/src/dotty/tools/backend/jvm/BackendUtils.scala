@@ -104,12 +104,10 @@ class BackendUtils(val postProcessor: PostProcessor) {
     // stack map frames and invokes the `getCommonSuperClass` method. This method expects all
     // ClassBTypes mentioned in the source code to exist in the map.
 
-    val serlamObjDesc = MethodBType(jliSerializedLambdaRef :: Nil, ObjectRef).descriptor
-
-    val mv = cw.visitMethod(ACC_PRIVATE + ACC_STATIC + ACC_SYNTHETIC, "$deserializeLambda$", serlamObjDesc, null, null)
+    val mv = cw.visitMethod(ACC_PRIVATE + ACC_STATIC + ACC_SYNTHETIC, "$deserializeLambda$", serializedLamdaObjDesc, null, null)
     def emitLambdaDeserializeIndy(targetMethods: Seq[Handle]): Unit = {
       mv.visitVarInsn(ALOAD, 0)
-      mv.visitInvokeDynamicInsn("lambdaDeserialize", serlamObjDesc, jliLambdaDeserializeBootstrapHandle, targetMethods: _*)
+      mv.visitInvokeDynamicInsn("lambdaDeserialize", serializedLamdaObjDesc, jliLambdaDeserializeBootstrapHandle, targetMethods: _*)
     }
 
     val targetMethodGroupLimit = 255 - 1 - 3 // JVM limit. See See MAX_MH_ARITY in CallSite.java
@@ -132,6 +130,11 @@ class BackendUtils(val postProcessor: PostProcessor) {
     mv.visitLabel(terminalLabel)
     emitLambdaDeserializeIndy(groups(numGroups - 1).toIndexedSeq)
     mv.visitInsn(ARETURN)
+  }
+
+  private lazy val serializedLamdaObjDesc = {
+    import coreBTypes.{ObjectRef, jliSerializedLambdaRef}
+    MethodBType(jliSerializedLambdaRef :: Nil, ObjectRef).descriptor
   }
 
   /**
