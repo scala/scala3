@@ -47,7 +47,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:64:27 --------------------------------------
 64 |    val f1: File^{id*} = id(f) // error, since now id(f): File^
    |                         ^^^^^
-   |                         Found:    File^{id, f}
+   |                         Found:    File^
    |                         Required: File^{id*}
    |
    | longer explanation available when compiling with `-explain`

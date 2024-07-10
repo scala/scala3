@@ -554,14 +554,15 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** A specialized implementation of the apply rule.
      *
-     *  E |- f: Ra ->Cf Rr^Cr
-     *  E |- a: Ra^Ca
+     *  E |- q: Tq^Cq
+     *  E |- q.f: Ta ->Cf Tr^Cr
+     *  E |- a: Ta
      *  ---------------------
-     *  E |- f a: Rr^C
+     *  E |- f(a): Tr^C
      *
-     *  The implementation picks as `C` one of `{f, a}` or `Cr`, depending on the
-     *  outcome of a `mightSubcapture` test. It picks `{f, a}` if this might subcapture Cr
-     *  and Cr otherwise.
+     *  The implementation picks `C` as `Cq` instead of `Cr`, if
+     *   1. The argument(s) Ta are always pure
+     *   2. `Cq` might subcapture `Cr`.
      */
     protected override
     def recheckApplication(tree: Apply, qualType: Type, funType: MethodType, argTypes: List[Type])(using Context): Type =
@@ -569,15 +570,10 @@ class CheckCaptures extends Recheck, SymTransformer:
         case appType @ CapturingType(appType1, refs)
         if qualType.exists
             && !tree.fun.symbol.isConstructor
-            && !qualType.isBoxedCapturing // TODO: This is not strng enough, we also have
-                 // to exclude existentials in function results
-            && !argTypes.exists(_.isBoxedCapturing)
+            && argTypes.forall(_.isAlwaysPure)
             && qualType.captureSet.mightSubcapture(refs)
-            && argTypes.forall(_.captureSet.mightSubcapture(refs))
         =>
-          val callCaptures = tree.args.foldLeft(qualType.captureSet): (cs, arg) =>
-              cs ++ arg.tpe.captureSet
-          appType.derivedCapturingType(appType1, callCaptures)
+          appType.derivedCapturingType(appType1, qualType.captureSet)
             .showing(i"narrow $tree: $appType, refs = $refs, qual-cs = ${qualType.captureSet} = $result", capt)
         case appType =>
           appType

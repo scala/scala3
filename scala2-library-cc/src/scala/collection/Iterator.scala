@@ -17,7 +17,7 @@ import scala.annotation.tailrec
 import scala.annotation.unchecked.uncheckedVariance
 import scala.runtime.Statics
 import language.experimental.captureChecking
-
+import caps.unsafe.unsafeAssumePure
 
 /** Iterators are data structures that allow to iterate over a sequence
   * of elements. They have a `hasNext` method for checking
@@ -595,7 +595,8 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
 
     private[this] def nextCur(): Unit = {
       cur = null
-      cur = f(self.next()).iterator
+      cur = f(self.next()).iterator.unsafeAssumePure
+        // !!! see explanation in colltest5.CollectionStrawManCC5_1.flatMap why the unsafeAssumePure is needed
       _hasNext = -1
     }
 
