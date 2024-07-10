@@ -1131,13 +1131,13 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   lazy val presentationCompilerSettings = {
-    val mtagsVersion = "1.3.1"
-
+    val mtagsVersion = "1.3.2"
     Seq(
       libraryDependencies ++= Seq(
         "org.lz4" % "lz4-java" % "1.8.0",
         "io.get-coursier" % "interface" % "1.0.18",
         "org.scalameta" % "mtags-interfaces" % mtagsVersion,
+        "com.google.guava" % "guava" % "33.2.1-jre"
       ),
       libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.12" % mtagsVersion % SourceDeps),
       ivyConfigurations += SourceDeps.hide,

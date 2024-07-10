@@ -60,7 +60,7 @@ final class PcSemanticTokensProvider(
         case _ => !df.rhs.isEmpty
     case _ => false
 
-  object Collector extends PcCollector[Option[Node]](driver, params):
+  object Collector extends SimpleCollector[Option[Node]](driver, params):
     override def collect(
         parent: Option[Tree]
     )(tree: Tree | EndMarker, pos: SourcePosition, symbol: Option[Symbol]): Option[Node] =

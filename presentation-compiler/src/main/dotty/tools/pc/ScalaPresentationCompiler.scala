@@ -36,7 +36,7 @@ import dotty.tools.pc.buildinfo.BuildInfo
 import org.eclipse.lsp4j.DocumentHighlight
 import org.eclipse.lsp4j.TextEdit
 import org.eclipse.lsp4j as l
-import scala.meta.internal.pc.SymbolInformationProvider
+import dotty.tools.pc.SymbolInformationProvider
 
 case class ScalaPresentationCompiler(
     buildTargetIdentifier: String = "",
@@ -176,6 +176,19 @@ case class ScalaPresentationCompiler(
     ) { access =>
       val driver = access.compiler()
       PcDocumentHighlightProvider(driver, params).highlights.asJava
+    }
+
+  override def references(
+      params: ReferencesRequest
+  ): CompletableFuture[ju.List[ReferencesResult]] =
+    compilerAccess.withNonInterruptableCompiler(Some(params.file()))(
+      List.empty[ReferencesResult].asJava,
+      params.file().token,
+    ) { access =>
+      val driver = access.compiler()
+      PcReferencesProvider(driver, params)
+        .references()
+        .asJava
     }
 
   def shutdown(): Unit =
