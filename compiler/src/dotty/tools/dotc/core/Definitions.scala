@@ -1768,6 +1768,12 @@ class Definitions {
   def isPolymorphicAfterErasure(sym: Symbol): Boolean =
      (sym eq Any_isInstanceOf) || (sym eq Any_asInstanceOf) || (sym eq Object_synchronized)
 
+  def isTypeTestOrCast(sym: Symbol): Boolean =
+       (sym eq Any_isInstanceOf)
+    || (sym eq Any_asInstanceOf)
+    || (sym eq Any_typeTest)
+    || (sym eq Any_typeCast)
+
   /** Is this type a `TupleN` type?
    *
    * @return true if the dealiased type of `tp` is `TupleN[T1, T2, ..., Tn]`

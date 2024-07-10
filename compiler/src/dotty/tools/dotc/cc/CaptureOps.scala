@@ -573,6 +573,7 @@ extension (sym: Symbol)
     && sym != defn.Caps_unsafeBox
     && sym != defn.Caps_unsafeUnbox
     && !defn.isPolymorphicAfterErasure(sym)
+    && !defn.isTypeTestOrCast(sym)
 
   def isRefiningParamAccessor(using Context): Boolean =
     sym.is(ParamAccessor)
