@@ -2284,7 +2284,7 @@ object Parsers {
               in.nextToken();
               val expr = subExpr()
               if expr.span.exists then expr
-              else unitLiteral // finally without an expression
+              else syntheticUnitLiteral // finally without an expression
             }
             else {
               if handler.isEmpty then
@@ -3768,10 +3768,10 @@ object Parsers {
             val stats = selfInvocation() :: (
               if (isStatSep) { in.nextToken(); blockStatSeq() }
               else Nil)
-            Block(stats, unitLiteral)
+            Block(stats, syntheticUnitLiteral)
           }
         }
-      else Block(selfInvocation() :: Nil, unitLiteral)
+      else Block(selfInvocation() :: Nil, syntheticUnitLiteral)
 
     /** SelfInvocation  ::= this ArgumentExprs {ArgumentExprs}
      */
