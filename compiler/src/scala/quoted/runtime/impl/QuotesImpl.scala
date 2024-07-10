@@ -1781,7 +1781,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def =:=(that: TypeRepr): Boolean = self =:= that
         def <:<(that: TypeRepr): Boolean = self <:< that
         def widen: TypeRepr = self.widen
-        def widenTermRefByName: TypeRepr = self.widenTermRefExpr
+        def widenTermRefByName: TypeRepr =
+          self.widenTermRefExpr match
+            case dotc.core.Types.ClassInfo(prefix, sym, _, _, _) => prefix.select(sym)
+            case other => other
         def widenByName: TypeRepr = self.widenExpr
         def dealias: TypeRepr = self.dealias
         def simplified: TypeRepr = self.simplified
