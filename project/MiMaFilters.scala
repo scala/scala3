@@ -14,6 +14,12 @@ object MiMaFilters {
     ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.relaxedExtensionImports"),
     ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$relaxedExtensionImports$"),
     // end of New experimental features in 3.3.X
+
+    // New in 2.13.13
+    "scala.collection.mutable.ArrayBuffer.resizeUp", // private[mutable] def
+    // New in 2.13.14
+    "scala.util.Properties.consoleIsTerminal", // private[scala] lazy val
+    // end of new in Scala 2
   )
   val TastyCore: Seq[ProblemFilter] = Seq(
   )

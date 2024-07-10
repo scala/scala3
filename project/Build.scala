@@ -124,8 +124,8 @@ object Build {
    *  scala-library.
    */
   def stdlibVersion(implicit mode: Mode): String = mode match {
-    case NonBootstrapped => "2.13.13"
-    case Bootstrapped => "2.13.13"
+    case NonBootstrapped => "2.13.14"
+    case Bootstrapped => "2.13.14"
   }
 
   val dottyOrganization = "org.scala-lang"
@@ -1141,7 +1141,7 @@ object Build {
           .exclude("org.eclipse.lsp4j","org.eclipse.lsp4j.jsonrpc"),
         "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.20.1",
       ),
-      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.13" % mtagsVersion % SourceDeps),
+      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.14" % mtagsVersion % SourceDeps),
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Ysafe-init"),
