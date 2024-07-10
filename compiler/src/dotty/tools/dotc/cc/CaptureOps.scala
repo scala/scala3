@@ -282,8 +282,6 @@ extension (tp: Type)
       val sym = tp.typeSymbol
       if sym.isClass then sym.isPureClass
       else tp.superType.isAlwaysPure
-    case CapturingType(parent, refs) =>
-      parent.isAlwaysPure || refs.isAlwaysEmpty
     case tp: TypeProxy =>
       tp.superType.isAlwaysPure
     case tp: AndType =>
