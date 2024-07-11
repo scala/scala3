@@ -1073,7 +1073,7 @@ object CaptureSet:
             case parent: SingletonCaptureRef if parent.isTrackableRef =>
               tp.singletonCaptureSet
             case _ =>
-              CaptureSet.deepCaptureSet(parent)
+              CaptureSet.ofTypeDeeply(parent)
         case tpd @ defn.RefinedFunctionOf(rinfo: MethodType) if followResult =>
           ofType(tpd.parent, followResult = false)             // pick up capture set from parent type
           ++ (recur(rinfo.resType)                             // add capture set of result
@@ -1099,12 +1099,17 @@ object CaptureSet:
     recur(tp)
       //.showing(i"capture set of $tp = $result", captDebug)
 
-  def deepCaptureSet(tp: Type)(using Context): CaptureSet =
+  /** The deep capture set of a type is the union of all covariant occurrences of
+   *  capture sets. Nested existential sets are approximated with `cap`.
+   */
+  def ofTypeDeeply(tp: Type)(using Context): CaptureSet =
     val collect = new TypeAccumulator[CaptureSet]:
       def apply(cs: CaptureSet, t: Type) = t.dealias match
         case t @ CapturingType(p, cs1) =>
           val cs2 = apply(cs, p)
           if variance > 0 then cs2 ++ cs1 else cs2
+        case t @ Existential(_, _) =>
+          apply(cs, Existential.toCap(t))
         case _ =>
           foldOver(cs, t)
     collect(CaptureSet.empty, tp)

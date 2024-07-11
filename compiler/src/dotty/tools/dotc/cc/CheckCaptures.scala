@@ -548,8 +548,8 @@ class CheckCaptures extends Recheck, SymTransformer:
     def recheckArg(arg: Tree, formal: Type)(using Context): Type =
       val argType = recheck(arg, formal)
       if unboxedArgs.contains(arg) && ccConfig.useUnboxedParams then
-        capt.println(i"charging deep capture set of $arg: ${argType} = ${CaptureSet.deepCaptureSet(argType)}")
-        markFree(CaptureSet.deepCaptureSet(argType), arg.srcPos)
+        capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
+        markFree(argType.deepCaptureSet, arg.srcPos)
       argType
 
     /** A specialized implementation of the apply rule.
@@ -579,7 +579,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val argCaptures =
         for (arg, argType) <- tree.args.lazyZip(argTypes) yield
           if unboxedArgs.remove(arg) // need to ensure the remove happens, that's why argCaptures is computed even if not needed.
-          then CaptureSet.deepCaptureSet(argType)
+          then argType.deepCaptureSet
           else argType.captureSet
       appType match
         case appType @ CapturingType(appType1, refs)

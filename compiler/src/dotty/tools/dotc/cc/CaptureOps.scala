@@ -223,6 +223,20 @@ extension (tp: Type)
     case tp: SingletonCaptureRef => tp.captureSetOfInfo
     case _ => CaptureSet.ofType(tp, followResult = false)
 
+  /** The deep capture set of a type.
+   *  For singleton capabilities `x` and reach capabilities `x*`, this is `{x*}`, provided
+   *  the underlying capture set resulting from traversing the type is non-empty.
+   *  For other types this is the union of all covariant capture sets embedded
+   *  in the type, as computed by `CaptureSet.ofTypeDeeply`.
+   */
+  def deepCaptureSet(using Context): CaptureSet =
+    val dcs = CaptureSet.ofTypeDeeply(tp)
+    if dcs.isAlwaysEmpty then dcs
+    else tp match
+      case tp @ ReachCapability(_) => tp.singletonCaptureSet
+      case tp: SingletonCaptureRef => tp.reach.singletonCaptureSet
+      case _ => dcs
+
   /** A type capturing `ref` */
   def capturing(ref: CaptureRef)(using Context): Type =
     if tp.captureSet.accountsFor(ref) then tp
@@ -587,7 +601,7 @@ extension (sym: Symbol)
     }
 
   def hasTrackedParts(using Context): Boolean =
-    !CaptureSet.deepCaptureSet(sym.info).isAlwaysEmpty
+    !CaptureSet.ofTypeDeeply(sym.info).isAlwaysEmpty
 
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */
