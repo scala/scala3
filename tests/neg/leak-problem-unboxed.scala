@@ -1,5 +1,5 @@
 import language.experimental.captureChecking
-import caps.unboxed
+import caps.unbox
 
 // Some capabilities that should be used locally
 trait Async:
@@ -9,12 +9,12 @@ def usingAsync[X](op: Async^ => X): X = ???
 
 case class Box[+T](get: T)
 
-def useBoxedAsync(@unboxed x: Box[Async^]): Unit =
+def useBoxedAsync(@unbox x: Box[Async^]): Unit =
   val t0 = x
   val t1 = t0.get // ok
   t1.read()
 
-def useBoxedAsync1(@unboxed x: Box[Async^]): Unit = x.get.read() // ok
+def useBoxedAsync1(@unbox x: Box[Async^]): Unit = x.get.read() // ok
 
 def test(): Unit =
 

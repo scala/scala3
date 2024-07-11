@@ -395,7 +395,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                 val refOwner = refSym.owner
                 val isVisible = isVisibleFromEnv(refOwner)
                 if !isVisible && c.isReach && refSym.is(Param) && refOwner == env.owner then
-                if refSym.hasAnnotation(defn.UnboxedAnnot) then
+                if refSym.hasAnnotation(defn.UnboxAnnot) then
                   capt.println(i"exempt: $ref in $refOwner")
                 else
                   // Reach capabilities that go out of scope have to be approximated
@@ -425,7 +425,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val unboxedParamNames =
         meth.rawParamss.flatMap: params =>
           params.collect:
-            case param if param.hasAnnotation(defn.UnboxedAnnot) =>
+            case param if param.hasAnnotation(defn.UnboxAnnot) =>
               param.name
         .toSet
 

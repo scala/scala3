@@ -1,5 +1,5 @@
 import language.experimental.captureChecking
-import caps.unboxed
+import caps.unbox
 
 class List[+A]:
   def head: A = ???
@@ -8,7 +8,7 @@ class List[+A]:
   def foreach[U](f: A => U): Unit = ???
   def nonEmpty: Boolean = ???
 
-def runOps(@unboxed ops: List[() => Unit]): Unit =
+def runOps(@unbox ops: List[() => Unit]): Unit =
   // See i20156, due to limitation in expressiveness of current system,
   // we could map over the list of impure elements. OK with existentials.
   ops.foreach(op => op())
