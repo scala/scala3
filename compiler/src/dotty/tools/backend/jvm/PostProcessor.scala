@@ -48,7 +48,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
       if AsmUtils.traceSerializedClassEnabled && internalName.contains(AsmUtils.traceSerializedClassPattern) then
         AsmUtils.traceClass(bytes)
       val clsFile = classfileWriter.writeClass(internalName, bytes, sourceFile)
-      if clsFile != null then clazz.onFileCreated(clsFile)
+      clazz.onFileCreated(clsFile)
   }
 
   def sendToDisk(tasty: GeneratedTasty, sourceFile: AbstractFile): Unit = {
