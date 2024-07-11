@@ -1725,7 +1725,7 @@ object Parsers {
             case arg =>
               arg
           val args1 = args.mapConserve(sanitize)
-          
+
           if in.isArrow || isPureArrow || erasedArgs.contains(true) then
             functionRest(args)
           else
