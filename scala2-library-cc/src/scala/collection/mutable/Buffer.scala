@@ -16,7 +16,6 @@ package mutable
 import scala.annotation.nowarn
 import language.experimental.captureChecking
 import caps.unboxed
-import caps.unsafe.unsafeAssumePure
 
 /** A `Buffer` is a growable and shrinkable `Seq`. */
 trait Buffer[A]
@@ -186,10 +185,7 @@ trait IndexedBuffer[A] extends IndexedSeq[A]
     var i = 0
     val s = size
     val newElems = new Array[(IterableOnce[A]^{f*})](s)
-    while i < s do
-      newElems(i) = f(this(i)).unsafeAssumePure
-        // !!! see explanation in colltest5.CollectionStrawManCC5_1.flatMap why the unsafeAssumePure is needed
-      i += 1
+    while (i < s) { newElems(i) = f(this(i)); i += 1 }
     clear()
     i = 0
     while (i < s) { ++=(newElems(i)); i += 1 }

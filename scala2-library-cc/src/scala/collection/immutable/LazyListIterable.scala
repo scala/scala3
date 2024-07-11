@@ -25,7 +25,6 @@ import scala.runtime.Statics
 import language.experimental.captureChecking
 import annotation.unchecked.uncheckedCaptures
 import caps.untrackedCaptures
-import caps.unsafe.unsafeAssumePure
 
 /**  This class implements an immutable linked list. We call it "lazy"
   *  because it computes its elements only when they are needed.
@@ -1042,8 +1041,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
       var itHasNext       = false
       var rest            = restRef           // var rest = restRef.elem
       while (!itHasNext && !rest.isEmpty) {
-        it        = f(rest.head).iterator.unsafeAssumePure
-          // !!! see explanation in colltest5.CollectionStrawManCC5_1.flatMap why the unsafeAssumePure is needed
+        it        = f(rest.head).iterator
         itHasNext = it.hasNext
         if (!itHasNext) {                     // wait to advance `rest` because `it.next()` can throw
           rest    = rest.tail

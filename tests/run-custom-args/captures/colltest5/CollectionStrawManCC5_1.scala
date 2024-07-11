@@ -5,7 +5,6 @@ import Predef.{augmentString as _, wrapString as _, *}
 import scala.reflect.ClassTag
 import annotation.unchecked.{uncheckedVariance, uncheckedCaptures}
 import annotation.tailrec
-import caps.unsafe.unsafeAssumePure
 
 /** A strawman architecture for new collections. It contains some
  *  example collection classes and methods with the intent to expose
@@ -556,16 +555,7 @@ object CollectionStrawMan5 {
       private var myCurrent: Iterator[B]^{this, f} = Iterator.empty
       private def current = {
         while (!myCurrent.hasNext && self.hasNext)
-          myCurrent = f(self.next()).iterator.unsafeAssumePure
-            // !!! This is unsafe since the iterator's result could return a capability
-            // depending on the argument self.next() of type A. To exclude that we'd have
-            // to define f to be of type EX c. A ->{c} IterableOnce[B]^{c}, i.e. `c` may
-            // not depend on A. But to get there we have to
-            //  - improve the way we express existentials using `^`
-            //  - rework the recheckApplication code to cater for this. Right now
-            //    we cannot do anything since `A` is not always pure. But if we took
-            //    the existential scope of the result into account, this could provide
-            //    a solution.
+          myCurrent = f(self.next()).iterator
         myCurrent
       }
       def hasNext = current.hasNext

@@ -554,26 +554,14 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** A specialized implementation of the apply rule.
      *
-     *  E |- q: Tq^Cq
-     *  E |- q.f: Ta ->Cf Tr^Cr
-     *  E |- a: Ta
+     *  E |- f: Ra ->Cf Rr^Cr
+     *  E |- a: Ra^Ca
      *  ---------------------
-     *  E |- f(a): Tr^C
+     *  E |- f a: Rr^C
      *
-     *  The implementation picks `C` as `Cq` instead of `Cr`, if
-     *   1. The argument(s) Ta are always pure
-     *   2. `Cq` might subcapture `Cr`.
-     *  TODO: We could generalize this as follows:
-     *
-     *  If the function `f` does not have an `@unboxed` parameter, then
-     *  any unboxing it does would be charged to the environment of the function
-     *  so they have to appear in Cq. So another approximation of the
-     *  result capability set is `Cq u Ca` where `Ca` is the capture set of the
-     *  argument.
-     *  If the function `f` does have an `@unboxed` parameter, then it could in addition
-     *  unbox reach capabilities over its formal parameter. Therefore, the approximation
-     *  would be `Cq u dcs(Ca)` instead.
-     *  If the approximation is known to subcapture the declared result Cr, we pick it.
+     *  The implementation picks as `C` one of `{f, a}` or `Cr`, depending on the
+     *  outcome of a `mightSubcapture` test. It picks `{f, a}` if this might subcapture Cr
+     *  and Cr otherwise.
      */
     protected override
     def recheckApplication(tree: Apply, qualType: Type, funType: MethodType, argTypes: List[Type])(using Context): Type =
@@ -581,10 +569,15 @@ class CheckCaptures extends Recheck, SymTransformer:
         case appType @ CapturingType(appType1, refs)
         if qualType.exists
             && !tree.fun.symbol.isConstructor
-            && argTypes.forall(_.isAlwaysPure)
+            && !qualType.isBoxedCapturing // TODO: This is not strng enough, we also have
+                 // to exclude existentials in function results
+            && !argTypes.exists(_.isBoxedCapturing)
             && qualType.captureSet.mightSubcapture(refs)
+            && argTypes.forall(_.captureSet.mightSubcapture(refs))
         =>
-          appType.derivedCapturingType(appType1, qualType.captureSet)
+          val callCaptures = tree.args.foldLeft(qualType.captureSet): (cs, arg) =>
+              cs ++ arg.tpe.captureSet
+          appType.derivedCapturingType(appType1, callCaptures)
             .showing(i"narrow $tree: $appType, refs = $refs, qual-cs = ${qualType.captureSet} = $result", capt)
         case appType =>
           appType
