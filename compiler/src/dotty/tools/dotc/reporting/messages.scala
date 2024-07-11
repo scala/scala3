@@ -15,6 +15,8 @@ import printing.Formatting
 import ErrorMessageID.*
 import ast.Trees
 import config.{Feature, ScalaVersion}
+import transform.patmat.Space
+import transform.patmat.SpaceEngine
 import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbolsInScope}
 import typer.ProtoTypes.{ViewProto, SelectionProto, FunProto}
 import typer.Implicits.*
@@ -856,12 +858,13 @@ extends Message(LossyWideningConstantConversionID):
                 |Write `.to$targetType` instead."""
   def explain(using Context) = ""
 
-class PatternMatchExhaustivity(uncoveredCases: Seq[String], tree: untpd.Match)(using Context)
+class PatternMatchExhaustivity(uncoveredCases: Seq[Space], tree: untpd.Match)(using Context)
 extends Message(PatternMatchExhaustivityID) {
   def kind = MessageKind.PatternMatchExhaustivity
 
   private val hasMore = uncoveredCases.lengthCompare(6) > 0
-  val uncovered = uncoveredCases.take(6).mkString(", ")
+  val uncovered = uncoveredCases.take(6).map(SpaceEngine.display).mkString(", ")
+  private val casesWithoutColor = inContext(ctx.withoutColors)(uncoveredCases.map(SpaceEngine.display))
 
   def msg(using Context) =
     val addendum = if hasMore then "(More unmatched cases are elided)" else ""
@@ -889,12 +892,12 @@ extends Message(PatternMatchExhaustivityID) {
     val pathes = List(
       ActionPatch(
         srcPos = endPos,
-        replacement = uncoveredCases.map(c => indent(s"case $c => ???", startColumn))
+        replacement = casesWithoutColor.map(c => indent(s"case $c => ???", startColumn))
           .mkString("\n", "\n", "")
       ),
     )
     List(
-      CodeAction(title = s"Insert missing cases (${uncoveredCases.size})",
+      CodeAction(title = s"Insert missing cases (${casesWithoutColor.size})",
         description = None,
         patches = pathes
       )
