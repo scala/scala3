@@ -1,5 +1,3 @@
-//> using options -source 3.4
-// (to make sure we use the sealed policy)
 import caps.unboxed
 class File:
   def write(): Unit = ???
@@ -14,14 +12,14 @@ class Ref[T](init: T):
   def set(y: T) = { x = y }
 
 def runAll0(@unboxed xs: List[Proc]): Unit =
-  var cur: List[() ->{xs*} Unit] = xs  // OK, by revised VAR
+  var cur: List[() ->{xs*} Unit] = xs
   while cur.nonEmpty do
     val next: () ->{xs*} Unit = cur.head
     next()
     cur = cur.tail: List[() ->{xs*} Unit]
 
   usingFile: f =>
-    cur = (() => f.write()) :: Nil // error since {f*} !<: {xs*}
+    cur = (() => f.write()) :: Nil // error
 
 def runAll1(@unboxed xs: List[Proc]): Unit =
   val cur = Ref[List[() ->{xs*} Unit]](xs)  // OK, by revised VAR
@@ -32,19 +30,19 @@ def runAll1(@unboxed xs: List[Proc]): Unit =
 
   usingFile: f =>
     cur.set:
-      (() => f.write()) :: Nil // error since {f*} !<: {xs*}
+      (() => f.write()) :: Nil // error
 
 def runAll2(xs: List[Proc]): Unit =
-  var cur: List[Proc] = xs // error: Illegal type for var
+  var cur: List[Proc] = xs
   while cur.nonEmpty do
-    val next: () => Unit = cur.head
+    val next: () => Unit = cur.head // error
     next()
     cur = cur.tail
 
 def runAll3(xs: List[Proc]): Unit =
-  val cur = Ref[List[Proc]](xs) // error: illegal type for type argument to Ref
+  val cur = Ref[List[Proc]](xs)
   while cur.get.nonEmpty do
-    val next: () => Unit = cur.get.head
+    val next: () => Unit = cur.get.head // error
     next()
     cur.set(cur.get.tail: List[Proc])
 
@@ -54,7 +52,7 @@ class Id[-A,  +B >: A]():
 def test =
   val id: Id[Proc, Proc] = new Id[Proc, () -> Unit] // error
   usingFile: f =>
-    id(() => f.write())  // error
+    id(() => f.write())
 
 def attack2 =
   val id: File^ -> File^ = x => x
@@ -78,4 +76,7 @@ def compose1[A, B, C](f: A => B, g: B => C): A ->{f, g} C =
   z => g(f(z))
 
 def mapCompose[A](ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
-  ps.map((x, y) => compose1(x, y)) // error: cannot mix cap and * (should work now) // error // error
+  ps.map((x, y) => compose1(x, y)) // error // error
+
+def mapCompose2[A](@unboxed ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
+  ps.map((x, y) => compose1(x, y))
