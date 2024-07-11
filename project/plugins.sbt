@@ -20,4 +20,4 @@ addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "1.1.2")
 
 addSbtPlugin("ch.epfl.scala" % "sbt-tasty-mima" % "1.0.0")
 
-addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.7.6")
+addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.10.0")
