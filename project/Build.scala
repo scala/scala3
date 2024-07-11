@@ -1,27 +1,31 @@
 import java.io.File
 import java.nio.file._
-
 import Process._
 import Modes._
 import ScaladocGeneration._
 import com.jsuereth.sbtpgp.PgpKeys
-import sbt.Keys._
-import sbt._
+import sbt.Keys.*
+import sbt.*
 import complete.DefaultParsers._
 import pl.project13.scala.sbt.JmhPlugin
 import pl.project13.scala.sbt.JmhPlugin.JmhKeys.Jmh
+import com.typesafe.sbt.packager.Keys._
+import com.typesafe.sbt.packager.MappingsHelper.directory
+import com.typesafe.sbt.packager.universal.UniversalPlugin
+import com.typesafe.sbt.packager.universal.UniversalPlugin.autoImport.Universal
+import com.typesafe.sbt.packager.windows.WindowsPlugin
+import com.typesafe.sbt.packager.windows.WindowsPlugin.autoImport.Windows
 import sbt.Package.ManifestAttributes
 import sbt.PublishBinPlugin.autoImport._
 import dotty.tools.sbtplugin.RepublishPlugin
 import dotty.tools.sbtplugin.RepublishPlugin.autoImport._
 import sbt.plugins.SbtPlugin
 import sbt.ScriptedPlugin.autoImport._
-import xerial.sbt.pack.PackPlugin
-import xerial.sbt.pack.PackPlugin.autoImport._
 import xerial.sbt.Sonatype.autoImport._
 import com.typesafe.tools.mima.plugin.MimaPlugin.autoImport._
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
+
 import sbtbuildinfo.BuildInfoPlugin
 import sbtbuildinfo.BuildInfoPlugin.autoImport._
 import sbttastymima.TastyMiMaPlugin
@@ -2130,25 +2134,27 @@ object Build {
   )
 
   lazy val commonDistSettings = Seq(
-    packMain := Map(),
     publishArtifact := false,
-    packGenerateMakefile := false,
     republishRepo := target.value / "republish",
-    packResourceDir += (republishRepo.value / "bin" -> "bin"),
-    packResourceDir += (republishRepo.value / "maven2" -> "maven2"),
-    packResourceDir += (republishRepo.value / "lib" -> "lib"),
-    republishCommandLibs +=
-      ("scala" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "tasty-core")),
-    republishCommandLibs +=
-      ("with_compiler" -> List("scala3-staging", "scala3-tasty-inspector", "^!scala3-interfaces", "^!scala3-compiler", "^!scala3-library", "^!tasty-core")),
-    republishCommandLibs +=
-      ("scaladoc" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "tasty-core", "scala3-tasty-inspector", "scaladoc")),
-    Compile / pack := republishPack.value,
+    Universal / packageName := packageName.value,
+    // ========
+    Universal / stage := (Universal / stage).dependsOn(republish).value,
+    Universal / packageBin := (Universal / packageBin).dependsOn(republish).value,
+    Universal / packageZipTarball := (Universal / packageZipTarball).dependsOn(republish).value,
+    // ========
+    Universal / mappings ++= directory(republishRepo.value / "bin"),
+    Universal / mappings ++= directory(republishRepo.value / "maven2"),
+    Universal / mappings ++= directory(republishRepo.value / "lib"),
+    Universal / mappings +=  (republishRepo.value / "VERSION") -> "VERSION",
+    // ========
+    republishCommandLibs += ("scala" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "tasty-core")),
+    republishCommandLibs += ("with_compiler" -> List("scala3-staging", "scala3-tasty-inspector", "^!scala3-interfaces", "^!scala3-compiler", "^!scala3-library", "^!tasty-core")),
+    republishCommandLibs += ("scaladoc" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "tasty-core", "scala3-tasty-inspector", "scaladoc")),
   )
 
   lazy val dist = project.asDist(Bootstrapped)
+    .settings(packageName := "scala3-" + dottyVersion)
     .settings(
-      packArchiveName := "scala3-" + dottyVersion,
       republishBinDir := baseDirectory.value / "bin",
       republishCoursier +=
         ("coursier.jar" -> s"https://github.com/coursier/coursier/releases/download/v$coursierJarVersion/coursier.jar"),
@@ -2157,9 +2163,9 @@ object Build {
     )
 
   lazy val `dist-mac-x86_64` = project.in(file("dist/mac-x86_64")).asDist(Bootstrapped)
+    .settings(packageName := (dist / packageName).value + "-x86_64-apple-darwin")
     .settings(
       republishBinDir := (dist / republishBinDir).value,
-      packArchiveName := (dist / packArchiveName).value + "-x86_64-apple-darwin",
       republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
@@ -2167,9 +2173,9 @@ object Build {
     )
 
   lazy val `dist-mac-aarch64` = project.in(file("dist/mac-aarch64")).asDist(Bootstrapped)
+    .settings(packageName := (dist / packageName).value + "-aarch64-apple-darwin")
     .settings(
       republishBinDir := (dist / republishBinDir).value,
-      packArchiveName := (dist / packArchiveName).value + "-aarch64-apple-darwin",
       republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
@@ -2177,21 +2183,36 @@ object Build {
     )
 
   lazy val `dist-win-x86_64` = project.in(file("dist/win-x86_64")).asDist(Bootstrapped)
+    .enablePlugins(WindowsPlugin) // TO GENERATE THE `.msi` installer
+    .settings(packageName := (dist / packageName).value + "-x86_64-pc-win32")
     .settings(
       republishBinDir := (dist / republishBinDir).value,
-      packArchiveName := (dist / packArchiveName).value + "-x86_64-pc-win32",
       republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishExtraProps += ("cli_version" -> scalaCliLauncherVersion),
-      mappings += (republishRepo.value / "EXTRA_PROPERTIES" -> "EXTRA_PROPERTIES"),
       republishLaunchers +=
         ("scala-cli.exe" -> s"zip+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersionWindows/scala-cli-x86_64-pc-win32.zip!/scala-cli.exe")
     )
+    .settings(
+      Universal / mappings += (republishRepo.value / "EXTRA_PROPERTIES" -> "EXTRA_PROPERTIES"),
+    )
+    .settings(
+      Windows / name := "scala",
+      Windows / mappings   := (Universal / mappings).value,
+      Windows / packageBin := (Windows / packageBin).dependsOn(republish).value,
+      Windows / wixFiles   := (Windows / wixFiles).dependsOn(republish).value,
+      maintainer := "The Scala Programming Language",
+      packageSummary := s"Scala $dottyVersion",
+      packageDescription := """Installer for the Scala Programming Language""",
+      wixProductId := "74ED19C3-74FE-4ABA-AF30-55A06B6322A9",
+      wixProductUpgradeId := "3E5A1A82-CA67-4353-94FE-5BDD400AF66B",
+      wixProductLicense := Some(dist.base / "LICENSE.rtf")
+    )
 
   lazy val `dist-linux-x86_64` = project.in(file("dist/linux-x86_64")).asDist(Bootstrapped)
+    .settings(packageName := (dist / packageName).value + "-x86_64-pc-linux")
     .settings(
       republishBinDir := (dist / republishBinDir).value,
-      packArchiveName := (dist / packArchiveName).value + "-x86_64-pc-linux",
       republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
@@ -2199,9 +2220,9 @@ object Build {
     )
 
   lazy val `dist-linux-aarch64` = project.in(file("dist/linux-aarch64")).asDist(Bootstrapped)
+    .settings(packageName := (dist / packageName).value + "-aarch64-pc-linux")
     .settings(
       republishBinDir := (dist / republishBinDir).value,
-      packArchiveName := (dist / packArchiveName).value + "-aarch64-pc-linux",
       republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
@@ -2339,7 +2360,7 @@ object Build {
       settings(scala3PresentationCompilerBuildInfo)
 
     def asDist(implicit mode: Mode): Project = project.
-      enablePlugins(PackPlugin, RepublishPlugin).
+      enablePlugins(UniversalPlugin, RepublishPlugin).
       withCommonSettings.
       settings(commonDistSettings).
       dependsOn(
@@ -2435,7 +2456,6 @@ object ScaladocConfigs {
   }
 
   lazy val DefaultGenerationConfig = Def.task {
-    def distLocation = (dist / Compile / pack).value
     DefaultGenerationSettings.value
   }
 
