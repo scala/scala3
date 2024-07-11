@@ -1,5 +1,7 @@
 package dotty.tools.backend.jvm
 
+import java.util.concurrent.ConcurrentHashMap
+
 import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.util.{SourcePosition, NoSourcePosition}
 import dotty.tools.io.AbstractFile
@@ -14,41 +16,69 @@ import scala.tools.asm.tree.ClassNode
  */
 class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes: BTypes) {
   self =>
-  import bTypes.*
+  import bTypes.{classBTypeFromInternalName}
   import frontendAccess.{backendReporting, compilerSettings}
-  import int.given
 
   val backendUtils = new BackendUtils(this)
-  val classfileWriter  = ClassfileWriter(frontendAccess)
+  val classfileWriters = new ClassfileWriters(frontendAccess)
+  val classfileWriter  = classfileWriters.ClassfileWriter()
 
-  def postProcessAndSendToDisk(generatedDefs: GeneratedDefs): Unit = {
-    val GeneratedDefs(classes, tasty) = generatedDefs
-    for (GeneratedClass(classNode, sourceFile, isArtifact, onFileCreated) <- classes) {
-      val bytes =
-        try
-          if !isArtifact then setSerializableLambdas(classNode)
-          setInnerClasses(classNode)
-          serializeClass(classNode)
-        catch
-          case e: java.lang.RuntimeException if e.getMessage != null && e.getMessage.nn.contains("too large!") =>
-            backendReporting.error(em"Could not write class ${classNode.name} because it exceeds JVM code size limits. ${e.getMessage}")
-            null
-          case ex: Throwable =>
-            ex.printStackTrace()
-            backendReporting.error(em"Error while emitting ${classNode.name}\n${ex.getMessage}")
-            null
+  type ClassnamePosition = (String, SourcePosition)
+  private val caseInsensitively = new ConcurrentHashMap[String, ClassnamePosition]
 
-      if (bytes != null) {
-        if (AsmUtils.traceSerializedClassEnabled && classNode.name.nn.contains(AsmUtils.traceSerializedClassPattern))
-          AsmUtils.traceClass(bytes)
+  def sendToDisk(clazz: GeneratedClass, sourceFile: AbstractFile): Unit = {
+    val classNode = clazz.classNode
+    val internalName = classNode.name.nn
+    val bytes =
+      try
+        if !clazz.isArtifact then setSerializableLambdas(classNode)
+        warnCaseInsensitiveOverwrite(clazz)
+        setInnerClasses(classNode)
+        serializeClass(classNode)
+      catch
+        case e: java.lang.RuntimeException if e.getMessage != null && e.getMessage.nn.contains("too large!") =>
+          backendReporting.error(em"Could not write class $internalName because it exceeds JVM code size limits. ${e.getMessage}")
+          null
+        case ex: Throwable =>
+          if compilerSettings.debug then ex.printStackTrace()
+          backendReporting.error(em"Error while emitting $internalName\n${ex.getMessage}")
+          null
 
-        val clsFile = classfileWriter.writeClass(classNode.name.nn, bytes, sourceFile)
-        if clsFile != null then onFileCreated(clsFile)
-      }
-    }
+    if bytes != null then
+      if AsmUtils.traceSerializedClassEnabled && internalName.contains(AsmUtils.traceSerializedClassPattern) then
+        AsmUtils.traceClass(bytes)
+      val clsFile = classfileWriter.writeClass(internalName, bytes, sourceFile)
+      if clsFile != null then clazz.onFileCreated(clsFile)
+  }
 
-    for (GeneratedTasty(classNode, binaryGen) <- tasty){
-      classfileWriter.writeTasty(classNode.name.nn, binaryGen())
+  def sendToDisk(tasty: GeneratedTasty, sourceFile: AbstractFile): Unit = {
+    val GeneratedTasty(classNode, tastyGenerator) = tasty
+    val internalName = classNode.name.nn
+    classfileWriter.writeTasty(classNode.name.nn, tastyGenerator(), sourceFile)
+  }
+
+  private def warnCaseInsensitiveOverwrite(clazz: GeneratedClass) = {
+    val name = clazz.classNode.name.nn
+    val lowerCaseJavaName = name.nn.toLowerCase
+    val clsPos = clazz.position
+    caseInsensitively.putIfAbsent(lowerCaseJavaName, (name, clsPos)) match {
+      case null => ()
+      case (dupName, dupPos) =>
+        // Order is not deterministic so we enforce lexicographic order between the duplicates for error-reporting
+        val ((pos1, pos2), (name1, name2)) =
+          if (name < dupName) ((clsPos, dupPos), (name, dupName))
+          else ((dupPos, clsPos), (dupName, name))
+        val locationAddendum =
+          if pos1.source.path == pos2.source.path then ""
+          else s" (defined in ${pos2.source.file.name})"
+        def nicify(name: String): String = name.replace('/', '.').nn
+        if name1 == name2 then
+          backendReporting.warning(
+            em"${nicify(name1)} and ${nicify(name2)} produce classes that overwrite one another", pos1)
+        else
+          backendReporting.warning(
+            em"""Generated class ${nicify(name1)} differs only in case from ${nicify(name2)}$locationAddendum.
+                |  Such classes will overwrite one another on case-insensitive filesystems.""", pos1)
     }
   }
 
@@ -106,12 +136,12 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
 /**
  * The result of code generation. [[isArtifact]] is `true` for mirror.
  */
-case class GeneratedClass(classNode: ClassNode, sourceFile: AbstractFile, isArtifact: Boolean, onFileCreated: AbstractFile => Unit)
+case class GeneratedClass(
+  classNode: ClassNode,
+  sourceClassName: String,
+  position: SourcePosition,
+  isArtifact: Boolean,
+  onFileCreated: AbstractFile => Unit)
 case class GeneratedTasty(classNode: ClassNode, tastyGen: () => Array[Byte])
-case class GeneratedDefs(classes: List[GeneratedClass], tasty: List[GeneratedTasty])
+case class GeneratedCompilationUnit(sourceFile: AbstractFile, classes: List[GeneratedClass], tasty: List[GeneratedTasty])(using val ctx: Context)
 
-// Temporary class, will be refactored in a future commit
-trait ClassWriterForPostProcessor {
-  type InternalName = String
-  def write(bytes: Array[Byte], className: InternalName, sourceFile: AbstractFile): Unit
-}

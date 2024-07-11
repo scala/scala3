@@ -58,6 +58,7 @@ abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTy
   import bTypes.*
   import int.given
   import DottyBackendInterface.*
+  import frontendAccess.frontendSynch
   import dotty.tools.dotc.core.Contexts.Context
 
   /**
@@ -80,7 +81,7 @@ abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTy
    * Map from primitive types to their boxed class type. Useful when pushing class literals onto the
    * operand stack (ldc instruction taking a class literal), see genConstant.
    */
-  lazy val boxedClassOfPrimitive: Map[PrimitiveBType, ClassBType] = Map(
+  lazy val boxedClassOfPrimitive: Map[PrimitiveBType, ClassBType] = frontendSynch(Map(
       UNIT   -> classBTypeFromSymbol(requiredClass[java.lang.Void]),
       BOOL   -> classBTypeFromSymbol(requiredClass[java.lang.Boolean]),
       BYTE   -> classBTypeFromSymbol(requiredClass[java.lang.Byte]),
@@ -90,7 +91,7 @@ abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTy
       LONG   -> classBTypeFromSymbol(requiredClass[java.lang.Long]),
       FLOAT  -> classBTypeFromSymbol(requiredClass[java.lang.Float]),
       DOUBLE -> classBTypeFromSymbol(requiredClass[java.lang.Double])
-    )
+    ))
 
   lazy val boxedClasses: Set[ClassBType] = boxedClassOfPrimitive.values.toSet
 
@@ -116,6 +117,10 @@ abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTy
     yield unboxMethodSym -> primitiveTypeMap(valueClassSym)
   }
 
+  // Used to synchronize initialization of Context dependent ClassBTypes which can be accessed from multiple-threads
+  // Unsychronized initialization might lead errors in either CodeGen or PostProcessor
+  inline private def synchClassBTypeFromSymbol(inline sym: Symbol) = frontendSynch(classBTypeFromSymbol(sym))
+
   /*
    * srNothingRef and srNullRef exist at run-time only. They are the bytecode-level manifestation (in
    * method signatures only) of what shows up as NothingClass (scala.Nothing) resp. NullClass (scala.Null) in Scala ASTs.
@@ -124,35 +129,35 @@ abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTy
    * names of NothingClass and NullClass can't be emitted as-is.
    * TODO @lry Once there's a 2.11.3 starr, use the commented argument list. The current starr crashes on the type literal `scala.runtime.Nothing$`
    */
-  lazy val srNothingRef : ClassBType = classBTypeFromSymbol(requiredClass("scala.runtime.Nothing$"))
-  lazy val srNullRef    : ClassBType = classBTypeFromSymbol(requiredClass("scala.runtime.Null$"))
+  lazy val srNothingRef : ClassBType = synchClassBTypeFromSymbol(requiredClass("scala.runtime.Nothing$"))
+  lazy val srNullRef    : ClassBType = synchClassBTypeFromSymbol(requiredClass("scala.runtime.Null$"))
 
-  lazy val ObjectRef : ClassBType = classBTypeFromSymbol(defn.ObjectClass)
-  lazy val StringRef : ClassBType = classBTypeFromSymbol(defn.StringClass)
+  lazy val ObjectRef : ClassBType = synchClassBTypeFromSymbol(defn.ObjectClass)
+  lazy val StringRef : ClassBType = synchClassBTypeFromSymbol(defn.StringClass)
 
-  lazy val jlStringBuilderRef       : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.StringBuilder])
-  lazy val jlStringBufferRef        : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.StringBuffer])
-  lazy val jlCharSequenceRef        : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.CharSequence])
-  lazy val jlClassRef               : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Class[_]])
-  lazy val jlThrowableRef           : ClassBType = classBTypeFromSymbol(defn.ThrowableClass)
-  lazy val jlCloneableRef           : ClassBType = classBTypeFromSymbol(defn.JavaCloneableClass)
-  lazy val jiSerializableRef        : ClassBType = classBTypeFromSymbol(requiredClass[java.io.Serializable])
-  lazy val jlClassCastExceptionRef  : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.ClassCastException])
-  lazy val jlIllegalArgExceptionRef : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.IllegalArgumentException])
-  lazy val jliSerializedLambdaRef   : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.SerializedLambda])
+  lazy val jlStringBuilderRef       : ClassBType = synchClassBTypeFromSymbol(requiredClass[java.lang.StringBuilder])
+  lazy val jlStringBufferRef        : ClassBType = synchClassBTypeFromSymbol(requiredClass[java.lang.StringBuffer])
+  lazy val jlCharSequenceRef        : ClassBType = synchClassBTypeFromSymbol(requiredClass[java.lang.CharSequence])
+  lazy val jlClassRef               : ClassBType = synchClassBTypeFromSymbol(requiredClass[java.lang.Class[_]])
+  lazy val jlThrowableRef           : ClassBType = synchClassBTypeFromSymbol(defn.ThrowableClass)
+  lazy val jlCloneableRef           : ClassBType = synchClassBTypeFromSymbol(defn.JavaCloneableClass)
+  lazy val jiSerializableRef        : ClassBType = synchClassBTypeFromSymbol(requiredClass[java.io.Serializable])
+  lazy val jlClassCastExceptionRef  : ClassBType = synchClassBTypeFromSymbol(requiredClass[java.lang.ClassCastException])
+  lazy val jlIllegalArgExceptionRef : ClassBType = synchClassBTypeFromSymbol(requiredClass[java.lang.IllegalArgumentException])
+  lazy val jliSerializedLambdaRef   : ClassBType = synchClassBTypeFromSymbol(requiredClass[java.lang.invoke.SerializedLambda])
 
-  lazy val srBoxesRuntimeRef: ClassBType = classBTypeFromSymbol(requiredClass[scala.runtime.BoxesRunTime])
+  lazy val srBoxesRuntimeRef: ClassBType = synchClassBTypeFromSymbol(requiredClass[scala.runtime.BoxesRunTime])
 
-  private lazy val jliCallSiteRef            : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.CallSite])
-  private lazy val jliLambdaMetafactoryRef   : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.LambdaMetafactory])
-  private lazy val jliMethodHandleRef        : ClassBType = classBTypeFromSymbol(defn.MethodHandleClass)
-  private lazy val jliMethodHandlesLookupRef : ClassBType = classBTypeFromSymbol(defn.MethodHandlesLookupClass)
-  private lazy val jliMethodTypeRef          : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.invoke.MethodType])
-  private lazy val jliStringConcatFactoryRef : ClassBType = classBTypeFromSymbol(requiredClass("java.lang.invoke.StringConcatFactory")) // since JDK 9
+  private lazy val jliCallSiteRef            : ClassBType = synchClassBTypeFromSymbol(requiredClass[java.lang.invoke.CallSite])
+  private lazy val jliLambdaMetafactoryRef   : ClassBType = synchClassBTypeFromSymbol(requiredClass[java.lang.invoke.LambdaMetafactory])
+  private lazy val jliMethodHandleRef        : ClassBType = synchClassBTypeFromSymbol(defn.MethodHandleClass)
+  private lazy val jliMethodHandlesLookupRef : ClassBType = synchClassBTypeFromSymbol(defn.MethodHandlesLookupClass)
+  private lazy val jliMethodTypeRef          : ClassBType = synchClassBTypeFromSymbol(requiredClass[java.lang.invoke.MethodType])
+  private lazy val jliStringConcatFactoryRef : ClassBType = synchClassBTypeFromSymbol(requiredClass("java.lang.invoke.StringConcatFactory")) // since JDK 9
 
-  lazy val srLambdaDeserialize               : ClassBType = classBTypeFromSymbol(requiredClass[scala.runtime.LambdaDeserialize])
+  lazy val srLambdaDeserialize               : ClassBType = synchClassBTypeFromSymbol(requiredClass[scala.runtime.LambdaDeserialize])
 
-  lazy val jliLambdaMetaFactoryMetafactoryHandle = new Handle(
+  lazy val jliLambdaMetaFactoryMetafactoryHandle = frontendSynch{ new Handle(
     Opcodes.H_INVOKESTATIC,
     jliLambdaMetafactoryRef.internalName,
     "metafactory",
@@ -160,9 +165,9 @@ abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTy
       List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, jliMethodTypeRef, jliMethodHandleRef, jliMethodTypeRef),
       jliCallSiteRef
     ).descriptor,
-    /* itf = */ false)
+    /* itf = */ false)}
 
-  lazy val jliLambdaMetaFactoryAltMetafactoryHandle = new Handle(
+  lazy val jliLambdaMetaFactoryAltMetafactoryHandle = frontendSynch{ new Handle(
     Opcodes.H_INVOKESTATIC,
     jliLambdaMetafactoryRef.internalName,
     "altMetafactory",
@@ -170,9 +175,9 @@ abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTy
       List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(ObjectRef)),
       jliCallSiteRef
     ).descriptor,
-    /* itf = */ false)
+    /* itf = */ false)}
 
-  lazy val jliLambdaDeserializeBootstrapHandle: Handle = new Handle(
+  lazy val jliLambdaDeserializeBootstrapHandle: Handle = frontendSynch{ new Handle(
     Opcodes.H_INVOKESTATIC,
     srLambdaDeserialize.internalName,
     "bootstrap",
@@ -180,9 +185,9 @@ abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTy
       List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(jliMethodHandleRef)),
       jliCallSiteRef
     ).descriptor,
-    /* itf = */ false)
+    /* itf = */ false)}
 
-  lazy val jliStringConcatFactoryMakeConcatWithConstantsHandle = new Handle(
+  lazy val jliStringConcatFactoryMakeConcatWithConstantsHandle = frontendSynch{ new Handle(
     Opcodes.H_INVOKESTATIC,
     jliStringConcatFactoryRef.internalName,
     "makeConcatWithConstants",
@@ -190,7 +195,7 @@ abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTy
       List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, StringRef, ArrayBType(ObjectRef)),
       jliCallSiteRef
     ).descriptor,
-    /* itf = */ false)
+    /* itf = */ false)}
 
   /**
    * Methods in scala.runtime.BoxesRuntime

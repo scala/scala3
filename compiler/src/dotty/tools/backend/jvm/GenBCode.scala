@@ -67,25 +67,30 @@ class GenBCode extends Phase { self =>
     _postProcessor.nn
   }
 
-  override def run(using ctx: Context): Unit =
-    // CompilationUnit is the only component that will differ between each run invocation
-    // We need to update it to have correct source positions.
-    // FreshContext is always enforced when creating backend interface
-    backendInterface.ctx
+  private var _generatedClassHandler: GeneratedClassHandler | Null = _
+  def generatedClassHandler(using Context): GeneratedClassHandler = {
+    if _generatedClassHandler eq null then
+      _generatedClassHandler = GeneratedClassHandler(postProcessor)
+    _generatedClassHandler.nn
+  }
+
+  override def run(using Context): Unit =
+    frontendAccess.frontendSynch {
+      backendInterface.ctx
       .asInstanceOf[FreshContext]
       .setCompilationUnit(ctx.compilationUnit)
-    val generated = codeGen.genUnit(ctx.compilationUnit)
-    // In Scala 2, the backend might use global optimizations which might delay post-processing to build the call graph.
-    // In Scala 3, we don't perform backend optimizations and always perform post-processing immediately.
-    // https://github.com/scala/scala/pull/6057
-    postProcessor.postProcessAndSendToDisk(generated)
+    }
+    codeGen.genUnit(ctx.compilationUnit)
     (ctx.compilerCallback: CompilerCallback | Null) match {
       case cb: CompilerCallback => cb.onSourceCompiled(ctx.source)
       case null => ()
     }
 
   override def runOn(units: List[CompilationUnit])(using ctx:Context): List[CompilationUnit] = {
-    try super.runOn(units)
+    try
+      val result = super.runOn(units)
+      generatedClassHandler.complete()
+      result
     finally
       // frontendAccess and postProcessor are created lazilly, clean them up only if they were initialized
       if _frontendAccess ne null then
@@ -101,6 +106,7 @@ class GenBCode extends Phase { self =>
         }
       if _postProcessor ne null then
         postProcessor.classfileWriter.close()
+      generatedClassHandler.close()
   }
 }
 
