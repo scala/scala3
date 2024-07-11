@@ -38,6 +38,6 @@ if not defined _PROG_HOME (
    set _EXITCODE=1
    goto :eof
 )
-set "_ETC_DIR=%_PROG_HOME%\etc"
+set "_LIB_DIR=%_PROG_HOME%\lib"
 
 set _PSEP=;

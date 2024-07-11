@@ -152,13 +152,18 @@ object ClassPath {
 
     val baseDir = file.parent
     new Jar(file).classPathElements map (elem =>
-      specToURL(elem) getOrElse (baseDir / elem).toURL
+      specToURL(elem, baseDir) getOrElse (baseDir / elem).toURL
     )
   }
 
-  def specToURL(spec: String): Option[URL] =
-    try Some(new URI(spec).toURL)
-    catch case _: MalformedURLException | _: URISyntaxException => None
+  def specToURL(spec: String, basedir: Directory): Option[URL] =
+    try
+      val uri = new URI(spec)
+      if uri.isAbsolute() then Some(uri.toURL())
+      else
+        Some(basedir.resolve(Path(spec)).toURL)
+    catch
+      case _: MalformedURLException | _: URISyntaxException => None
 
   def manifests: List[java.net.URL] = {
     import scala.jdk.CollectionConverters.EnumerationHasAsScala
