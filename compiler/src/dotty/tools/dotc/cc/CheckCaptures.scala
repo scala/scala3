@@ -402,9 +402,8 @@ class CheckCaptures extends Recheck, SymTransformer:
                   // by their underlying capture set, which cannot be universal.
                   // Reach capabilities of @unboxed parameters are exempted.
                   val cs = CaptureSet.ofInfo(c)
-                  if ccConfig.useUnboxedParams then
-                    cs.disallowRootCapability: () =>
-                      report.error(em"Local reach capability $c leaks into capture scope of ${env.ownerString}", pos)
+                  cs.disallowRootCapability: () =>
+                    report.error(em"Local reach capability $c leaks into capture scope of ${env.ownerString}", pos)
                   checkSubset(cs, env.captured, pos, provenance(env))
                 isVisible
               case ref: ThisType => isVisibleFromEnv(ref.cls)
@@ -547,7 +546,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     protected override
     def recheckArg(arg: Tree, formal: Type)(using Context): Type =
       val argType = recheck(arg, formal)
-      if unboxedArgs.contains(arg) && ccConfig.useUnboxedParams then
+      if unboxedArgs.contains(arg) then
         capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
         markFree(argType.deepCaptureSet, arg.srcPos)
       argType
