@@ -27,7 +27,7 @@ import config.{Config, Feature}
 
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
-import cc.{CaptureSet, CapturingType, toCaptureSet, IllegalCaptureRef, isRetains}
+import cc.{CaptureSet, CapturingType, toCaptureSet, IllegalCaptureRef, isRetains, ReachCapability, MaybeCapability}
 import dotty.tools.dotc.parsing.JavaParsers
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
@@ -330,7 +330,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "?" ~ (("(ignored: " ~ toText(ignored) ~ ")") provided printDebug)
       case tp @ PolyProto(targs, resType) =>
         "[applied to [" ~ toTextGlobal(targs, ", ") ~ "] returning " ~ toText(resType)
-      case tp: AnnotatedType if tp.isReach || tp.isMaybe =>
+      case ReachCapability(_) | MaybeCapability(_) =>
         toTextCaptureRef(tp)
       case _ =>
         super.toText(tp)

@@ -25,6 +25,18 @@
    |                           ^^^^^^^^^^^^
    |                       The expression's type box () => Unit is not allowed to capture the root capability `cap`.
    |                       This usually means that a capability persists longer than its allowed lifetime.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:53:2 ---------------------------------------
+53 |  val id: Id[Proc, Proc] = new Id[Proc, () -> Unit] // error
+   |  ^
+   |  Found:    box () => Unit
+   |  Required: () => Unit
+   |
+   |  Note that box () => Unit cannot be box-converted to () => Unit
+   |  since at least one of their capture sets contains the root capability `cap`
+54 |  usingFile: f =>
+55 |    id(() => f.write())
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:62:27 --------------------------------------
 62 |    val f1: File^{id*} = id(f) // error, since now id(f): File^
    |                         ^^^^^
@@ -40,9 +52,3 @@
 79 |  ps.map((x, y) => compose1(x, y)) // error // error
    |             ^
    |             Local reach capability ps* leaks into capture scope of method mapCompose
--- [E057] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:53:51 --------------------------------------
-53 |  val id: Id[Proc, Proc] = new Id[Proc, () -> Unit] // error
-   |                                                   ^
-   |                                             Type argument () -> Unit does not conform to lower bound () => Unit
-   |
-   | longer explanation available when compiling with `-explain`

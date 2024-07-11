@@ -1057,7 +1057,7 @@ object CaptureSet:
   /** Capture set of a type */
   def ofType(tp: Type, followResult: Boolean)(using Context): CaptureSet =
     def recur(tp: Type): CaptureSet = trace(i"ofType $tp, ${tp.getClass} $followResult", show = true):
-      tp.dealias match
+      tp.dealiasKeepAnnots match
         case tp: TermRef =>
           tp.captureSet
         case tp: TermParamRef =>
@@ -1068,6 +1068,12 @@ object CaptureSet:
           empty
         case CapturingType(parent, refs) =>
           recur(parent) ++ refs
+        case tp @ AnnotatedType(parent, ann) if ann.hasSymbol(defn.ReachCapabilityAnnot) =>
+          parent match
+            case parent: SingletonCaptureRef if parent.isTrackableRef =>
+              tp.singletonCaptureSet
+            case _ =>
+              CaptureSet.deepCaptureSet(parent)
         case tpd @ defn.RefinedFunctionOf(rinfo: MethodType) if followResult =>
           ofType(tpd.parent, followResult = false)             // pick up capture set from parent type
           ++ (recur(rinfo.resType)                             // add capture set of result
@@ -1083,7 +1089,7 @@ object CaptureSet:
               case tparams @ (LambdaParam(tl, _) :: _) => cs.substParams(tl, args)
               case _ => cs
         case tp: TypeProxy =>
-          recur(tp.underlying)
+          recur(tp.superType)
         case AndType(tp1, tp2) =>
           recur(tp1) ** recur(tp2)
         case OrType(tp1, tp2) =>

@@ -204,8 +204,9 @@ extension (tp: Type)
     case tp: TypeParamRef =>
       tp.derivesFrom(defn.Caps_CapSet)
     case AnnotatedType(parent, annot) =>
-      annot.symbol == defn.ReachCapabilityAnnot
+      (annot.symbol == defn.ReachCapabilityAnnot
       || annot.symbol == defn.MaybeCapabilityAnnot
+      ) && parent.isTrackableRef
     case _ =>
       false
 
