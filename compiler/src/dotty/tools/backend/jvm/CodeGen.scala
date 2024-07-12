@@ -133,8 +133,15 @@ class CodeGen(val int: DottyBackendInterface, val primitives: DottyPrimitives)( 
       if (ctx.compilerCallback != null)
         ctx.compilerCallback.onClassGenerated(sourceFile, convertAbstractFile(clsFile), className)
 
-      if isLocal then
-        ctx.withIncCallback(_.generatedLocalClass(sourceFile, clsFile.jpath))
+      ctx.withIncCallback: cb =>
+        if isLocal then
+          cb.generatedLocalClass(sourceFile, clsFile.jpath)
+        else if !cb.enabled() then
+          // callback is not enabled, so nonLocalClasses were not reported in ExtractAPI
+          val fullClassName = atPhase(sbtExtractDependenciesPhase) {
+            ExtractDependencies.classNameAsString(claszSymbol)
+          }
+          cb.generatedNonLocalClass(sourceFile, clsFile.jpath, className, fullClassName)
     }
   }
 
