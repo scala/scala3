@@ -67,6 +67,22 @@ object Predef:
     @experimental
     inline def fromNullable[T](t: T | Null): Option[T] = Option(t).asInstanceOf[Option[T]]
 
+  /** A type with a `Self` type member, that is possibly higher kinded.
+   *
+   *  `Self` is meant to be:
+   *  - the type for which the type class is implemented,
+   *  - used for the type of the receiver of extension methods defined within the type class.
+   *
+   *  @example {{{
+   *  trait Showable extends TypeClass:
+   *    extension (self: Self) def show: String
+   *  }}}
+   */
+  @experimental type TypeClass = { type Self <: AnyKind }
+
+  /** A [[TypeClass]] where `Self` is a type of value. */
+  @experimental type ValueTypeClass = { type Self <: Any }
+
   /** A type supporting Self-based type classes.
    *
    *    A is TC
@@ -78,6 +94,6 @@ object Predef:
    *  which is what is needed for a context bound `[A: TC]`.
    */
   @experimental
-  infix type is[A <: AnyKind, B <: Any{type Self <: AnyKind}] = B { type Self = A }
+  infix type is[A <: AnyKind, B <: TypeClass] = B { type Self = A }
 
 end Predef

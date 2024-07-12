@@ -1,13 +1,11 @@
 import language.experimental.modularity
 import language.future
 
-trait M:
-  type Self
+trait M extends ValueTypeClass:
   extension (x: Self) def combine (y: Self): String
   def unit: Self
 
-trait Num:
-  type Self
+trait Num extends ValueTypeClass:
   def zero: Self
 
 trait A extends M
