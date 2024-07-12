@@ -131,6 +131,14 @@ object CompilationUnit {
     unit1
   }
 
+  /** Create a compilation unit corresponding to an in-memory String. 
+   *  Used for `compiletime.testing.typeChecks`.
+   */
+  def apply(name: String, source: String)(using Context): CompilationUnit = {
+    val src = SourceFile.virtual(name = name, content = source, maybeIncomplete = false)
+    new CompilationUnit(src, null)
+  }
+
   /** Create a compilation unit corresponding to `source`.
    *  If `mustExist` is true, this will fail if `source` does not exist.
    */

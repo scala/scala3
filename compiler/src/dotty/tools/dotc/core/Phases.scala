@@ -210,6 +210,7 @@ object Phases {
     private var myPostTyperPhase: Phase = _
     private var mySbtExtractDependenciesPhase: Phase = _
     private var myPicklerPhase: Phase = _
+    private var mySetRootTreePhase: Phase = uninitialized
     private var myInliningPhase: Phase = _
     private var myStagingPhase: Phase = _
     private var mySplicingPhase: Phase = _
@@ -236,6 +237,7 @@ object Phases {
     final def postTyperPhase: Phase = myPostTyperPhase
     final def sbtExtractDependenciesPhase: Phase = mySbtExtractDependenciesPhase
     final def picklerPhase: Phase = myPicklerPhase
+    final def setRootTreePhase: Phase = mySetRootTreePhase
     final def inliningPhase: Phase = myInliningPhase
     final def stagingPhase: Phase = myStagingPhase
     final def splicingPhase: Phase = mySplicingPhase
@@ -264,6 +266,7 @@ object Phases {
       myTyperPhase = phaseOfClass(classOf[TyperPhase])
       myPostTyperPhase = phaseOfClass(classOf[PostTyper])
       mySbtExtractDependenciesPhase = phaseOfClass(classOf[sbt.ExtractDependencies])
+      mySetRootTreePhase = phaseOfClass(classOf[SetRootTree])
       myPicklerPhase = phaseOfClass(classOf[Pickler])
       myInliningPhase = phaseOfClass(classOf[Inlining])
       myStagingPhase = phaseOfClass(classOf[Staging])
