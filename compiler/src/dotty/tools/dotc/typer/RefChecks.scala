@@ -250,12 +250,15 @@ object RefChecks {
      */
     def needsCheck(overriding: Symbol, overridden: Symbol)(using Context): Boolean = true
 
+    protected def additionalChecks(overriding: Symbol, overridden: Symbol)(using Context): Unit = ()
+
     private val subtypeChecker: (Type, Type) => Context ?=> Boolean = this.checkSubType
 
     def checkAll(checkOverride: ((Type, Type) => Context ?=> Boolean, Symbol, Symbol) => Unit) =
       while hasNext do
         if needsCheck(overriding, overridden) then
           checkOverride(subtypeChecker, overriding, overridden)
+          additionalChecks(overriding, overridden)
         next()
 
       // The OverridingPairs cursor does assume that concrete overrides abstract

@@ -22,7 +22,7 @@ import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult
 import CCState.*
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
-import reporting.{trace, Message}
+import reporting.{trace, Message, OverrideError}
 
 /** The capture checker */
 object CheckCaptures:
@@ -1271,6 +1271,21 @@ class CheckCaptures extends Recheck, SymTransformer:
           !setup.isPreCC(overriding) && !setup.isPreCC(overridden)
 
         override def checkInheritedTraitParameters: Boolean = false
+
+        /** Check that overrides don't change the @unbox status of their parameters */
+        override def additionalChecks(member: Symbol, other: Symbol)(using Context): Unit =
+          for
+            (params1, params2) <- member.rawParamss.lazyZip(other.rawParamss)
+            (param1, param2) <- params1.lazyZip(params2)
+          do
+            if param1.hasAnnotation(defn.UnboxAnnot) != param2.hasAnnotation(defn.UnboxAnnot) then
+              report.error(
+                OverrideError(
+                    i"has a parameter ${param1.name} with different @unbox status than the corresponding parameter in the overridden definition",
+                    self, member, other, self.memberInfo(member), self.memberInfo(other)
+                  ),
+                if member.owner == clazz then member.srcPos else clazz.srcPos
+              )
       end OverridingPairsCheckerCC
 
       def traverse(t: Tree)(using Context) =
