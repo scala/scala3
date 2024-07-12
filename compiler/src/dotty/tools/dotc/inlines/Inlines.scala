@@ -12,6 +12,9 @@ import SymDenotations.SymDenotation
 import config.Printers.inlining
 import ErrorReporting.errorTree
 import dotty.tools.dotc.util.{SourceFile, SourcePosition, SrcPos}
+import dotty.tools.dotc.transform.*
+import dotty.tools.dotc.transform.MegaPhase
+import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import parsing.Parsers.Parser
 import transform.{PostTyper, Inlining, CrossVersionChecks}
 import staging.StagingLevel
@@ -19,6 +22,7 @@ import staging.StagingLevel
 import collection.mutable
 import reporting.{NotConstant, trace}
 import util.Spans.Span
+import dotty.tools.dotc.core.Periods.PhaseId
 
 /** Support for querying inlineable methods and for inlining calls to such methods */
 object Inlines:
@@ -342,10 +346,48 @@ object Inlines:
         if Inlines.isInlineable(codeArg1.symbol) then stripTyped(Inlines.inlineCall(codeArg1))
         else codeArg1
 
+      class MegaPhaseWithCustomPhaseId(miniPhases: Array[MiniPhase], startId: PhaseId, endId: PhaseId) 
+        extends MegaPhase(miniPhases) {
+        override def start: Int = startId
+        override def end: Int = endId
+      }
+
       ConstFold(underlyingCodeArg).tpe.widenTermRefExpr match {
         case ConstantType(Constant(code: String)) =>
-          val source2 = SourceFile.virtual("tasty-reflect", code)
+          val unitName = "tasty-reflect"
+          val source2 = SourceFile.virtual(unitName, code)
           inContext(ctx.fresh.setNewTyperState().setTyper(new Typer(ctx.nestingLevel + 1)).setSource(source2)) {
+
+            // Let's reconstruct necessary transform MegaPhases, without anything
+            // that could cause problems here (like `CrossVersionChecks`).
+            // The individiual lists here should line up with Compiler.scala, i.e
+            // separate chunks there should also be kept separate here.
+            // For now we create a single MegaPhase, since there does not seem to
+            // be any important checks later (e.g. ForwardDepChecks could be applicable here,
+            // but the equivalent is also not run in the scala 2's `ctx.typechecks`,
+            // so let's leave it out for now).
+            val transformPhases: List[List[(Class[?], () => MiniPhase)]] = List(
+              List(
+                (classOf[InlineVals], () => new InlineVals),
+                (classOf[ElimRepeated], () => new ElimRepeated),
+                (classOf[RefChecks], () => new RefChecks),
+              ),
+            )
+          
+            val mergedTransformPhases =
+              transformPhases.flatMap( (megaPhaseList: List[(Class[?], () => MiniPhase)]) =>
+                val (newMegaPhasePhases, phaseIds) = 
+                  megaPhaseList
+                    .flatMap { filteredPhase => 
+                      ctx.base.phases.find(phase => filteredPhase._1.isInstance(phase)).map { a =>
+                        (filteredPhase._2(), a.id)
+                      }
+                    }
+                    .unzip
+                if newMegaPhasePhases.isEmpty then None
+                else Some(MegaPhaseWithCustomPhaseId(newMegaPhasePhases.toArray, phaseIds.head, phaseIds.last))
+              )
+
             val tree2 = new Parser(source2).block()
             if ctx.reporter.allErrors.nonEmpty then
               ctx.reporter.allErrors.map((ErrorKind.Parser, _))
@@ -354,10 +396,27 @@ object Inlines:
               ctx.base.postTyperPhase match
                 case postTyper: PostTyper if ctx.reporter.allErrors.isEmpty =>
                   val tree4 = atPhase(postTyper) { postTyper.newTransformer.transform(tree3) }
-                  ctx.base.inliningPhase match
-                    case inlining: Inlining if ctx.reporter.allErrors.isEmpty =>
-                      atPhase(inlining) { inlining.newTransformer.transform(tree4) }
-                    case _ =>
+                  ctx.base.setRootTreePhase match
+                    case setRootTree =>
+                      val tree5 =
+                        val compilationUnit = CompilationUnit(unitName, code)
+                        compilationUnit.tpdTree = tree4
+                        compilationUnit.untpdTree = tree2
+                        var units = List(compilationUnit)
+                        atPhase(setRootTree)(setRootTree.runOn(units).head.tpdTree)
+                      
+                      ctx.base.inliningPhase match
+                        case inlining: Inlining if ctx.reporter.allErrors.isEmpty =>
+                          val tree6 = atPhase(inlining) { inlining.newTransformer.transform(tree5) }
+                          if mergedTransformPhases.nonEmpty then
+                            var transformTree = tree6
+                            for (phase <- mergedTransformPhases if ctx.reporter.allErrors.isEmpty) {
+                              // We use different set of phases than those defined in ctx.base, so calls to
+                              // atPhase(phase)(...) may actually set a NoPhase with outdated SymbolDenotations.
+                              // Same thing may happen in underlying miniphases
+                              transformTree = atPhase(phase.end + 1)(phase.transformUnit(transformTree))
+                            }
+                        case _ =>
                 case _ =>
               ctx.reporter.allErrors.map((ErrorKind.Typer, _))
           }
