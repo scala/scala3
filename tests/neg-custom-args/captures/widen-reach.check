@@ -1,0 +1,11 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/widen-reach.scala:14:30 ----------------------------------
+14 |  val y3: IO^ -> IO^{x*} = y1.foo  // error
+   |                           ^^^^^^
+   |                           Found:    IO^ ->? IO^
+   |                           Required: IO^ -> IO^{x*}
+   |
+   |                           Note that the reach capability x* and universal capability cap cannot both
+   |                           appear in the type (y1.foo : IO^ -> box IO^{x*}) of this expression.
+   |                           The reach capability therefore needs to be widen to cap.
+   |
+   | longer explanation available when compiling with `-explain`
