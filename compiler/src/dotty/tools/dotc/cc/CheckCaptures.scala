@@ -719,6 +719,9 @@ class CheckCaptures extends Recheck, SymTransformer:
         openClosures = openClosures.tail
     end recheckClosureBlock
 
+    override def seqLiteralElemProto(tree: SeqLiteral, pt: Type, declared: Type)(using Context) =
+      super.seqLiteralElemProto(tree, pt, declared).boxed
+
     /** Maps mutable variables to the symbols that capture them (in the
      *  CheckCaptures sense, i.e. symbol is referred to from a different method
      *  than the one it is defined in).

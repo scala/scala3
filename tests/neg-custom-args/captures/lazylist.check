@@ -26,11 +26,11 @@
    |                                    Required: lazylists.LazyList[Int]^{cap2}
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylist.scala:41:48 -------------------------------------
-41 |  val ref4c: LazyList[Int]^{cap1, ref3, cap3} = ref4 // error
-   |                                                ^^^^
-   |                                                Found:    (ref4 : lazylists.LazyList[Int]^{cap3, cap2, ref1})
-   |                                                Required: lazylists.LazyList[Int]^{cap1, ref3, cap3}
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylist.scala:41:42 -------------------------------------
+41 |  val ref4c: LazyList[Int]^{cap1, ref3} = ref4 // error
+   |                                          ^^^^
+   |                                          Found:    (ref4 : lazylists.LazyList[Int]^{cap3, ref2, ref1})
+   |                                          Required: lazylists.LazyList[Int]^{cap1, ref3}
    |
    | longer explanation available when compiling with `-explain`
 -- [E164] Declaration Error: tests/neg-custom-args/captures/lazylist.scala:22:6 ----------------------------------------

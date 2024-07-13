@@ -23,6 +23,7 @@ import reporting.trace
 import annotation.constructorOnly
 import cc.CaptureSet.IdempotentCaptRefMap
 import annotation.tailrec
+import dotty.tools.dotc.cc.boxed
 
 object Recheck:
   import tpd.*
@@ -438,12 +439,16 @@ abstract class Recheck extends Phase, SymTransformer:
       val finalizerType = recheck(tree.finalizer, defn.UnitType)
       TypeComparer.lub(bodyType :: casesTypes)
 
+    def seqLiteralElemProto(tree: SeqLiteral, pt: Type, declared: Type)(using Context): Type =
+      declared.orElse:
+        pt.stripNull().elemType match
+          case NoType => WildcardType
+          case bounds: TypeBounds => WildcardType(bounds)
+          case elemtp => elemtp
+
     def recheckSeqLiteral(tree: SeqLiteral, pt: Type)(using Context): Type =
-      val elemProto = pt.stripNull().elemType match
-        case NoType => WildcardType
-        case bounds: TypeBounds => WildcardType(bounds)
-        case elemtp => elemtp
       val declaredElemType = recheck(tree.elemtpt)
+      val elemProto = seqLiteralElemProto(tree, pt, declaredElemType)
       val elemTypes = tree.elems.map(recheck(_, elemProto))
       seqLitType(tree, TypeComparer.lub(declaredElemType :: elemTypes))
 

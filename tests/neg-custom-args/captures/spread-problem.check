@@ -1,0 +1,14 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/spread-problem.scala:8:6 ---------------------------------
+8 |  race(Seq(src1, src2)*) // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^
+  |  Found:    Source[box T^?]^{src1, src2}
+  |  Required: Source[T]
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/spread-problem.scala:11:6 --------------------------------
+11 |  race(src1, src2) // error
+   |  ^^^^^^^^^^^^^^^^
+   |  Found:    Source[box T^?]^{src1, src2}
+   |  Required: Source[T]
+   |
+   | longer explanation available when compiling with `-explain`

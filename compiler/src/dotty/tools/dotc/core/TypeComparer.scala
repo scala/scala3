@@ -2751,6 +2751,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       }
     case tp1: TypeVar if tp1.isInstantiated =>
       lub(tp1.underlying, tp2, isSoft = isSoft)
+    case CapturingType(parent1, refs1) =>
+      if tp1.isBoxCompatibleWith(tp2) then
+        tp1.derivedCapturingType(lub(parent1, tp2, isSoft = isSoft), refs1)
+      else // TODO: Analyze cases where they are not box compatible
+        NoType
     case tp1: AnnotatedType if !tp1.isRefining =>
       lub(tp1.underlying, tp2, isSoft = isSoft)
     case _ =>
