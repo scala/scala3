@@ -86,7 +86,7 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.4.2-RC1"
+  val referenceVersion = "3.5.0-RC4"
 
   val baseVersion = "3.5.1-RC1"
 
@@ -615,7 +615,7 @@ object Build {
   // Settings shared between scala3-compiler and scala3-compiler-bootstrapped
   lazy val commonDottyCompilerSettings = Seq(
       // Note: bench/profiles/projects.yml should be updated accordingly.
-      Compile / scalacOptions ++= Seq("-Yexplicit-nulls"),
+      Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
 
       // Use source 3.3 to avoid fatal migration warnings on scalajs-ir
       scalacOptions ++= Seq("-source", "3.3"),
@@ -892,8 +892,6 @@ object Build {
   }
 
   lazy val nonBootstrappedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
-    // FIXME revert this to commonDottyCompilerSettings, when we bump reference version to 3.5.0
-    scalacOptions += "-Ysafe-init",
     // packageAll packages all and then returns a map with the abs location
     packageAll := Def.taskDyn { // Use a dynamic task to avoid loops when loading the settings
       Def.task {
@@ -921,8 +919,6 @@ object Build {
   )
 
   lazy val bootstrappedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
-    // FIXME revert this to commonDottyCompilerSettings, when we bump reference version to 3.5.0
-    scalacOptions += "-Wsafe-init",
     javaOptions ++= {
       val jars = packageAll.value
       Seq(
@@ -1358,7 +1354,7 @@ object Build {
       BuildInfoPlugin.buildInfoScopedSettings(Test) ++
       BuildInfoPlugin.buildInfoDefaultSettings
 
-  def presentationCompilerSettings(implicit mode: Mode) = {
+  lazy val presentationCompilerSettings = {
     val mtagsVersion = "1.3.2"
     Seq(
       libraryDependencies ++= Seq(
@@ -1373,11 +1369,7 @@ object Build {
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       scalacOptions ++= Seq("-source", "3.3"), // To avoid fatal migration warnings
-      // FIXME change this to just Seq("-Yexplicit-nulls, "-Wsafe-init") when reference is set to 3.5.0
-      Compile / scalacOptions ++= (mode match {
-        case Bootstrapped => Seq("-Yexplicit-nulls", "-Wsafe-init")
-        case NonBootstrapped => Seq("-Yexplicit-nulls", "-Ysafe-init")
-      }),
+      Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Wsafe-init"),
       Compile / sourceGenerators += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory
