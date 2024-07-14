@@ -1,0 +1,6 @@
+-- Warning: tests/warn/i21036b.scala:7:17 ------------------------------------------------------------------------------
+7 |val y = summon[A] // warn
+  |                 ^
+  |                 Change in given search preference for A between alternatives (b : B) and (a : A)
+  |                 Previous choice          : the first alternative
+  |                 New choice from Scala 3.6: the second alternative
