@@ -753,7 +753,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
   /** Check well formed at post check time */
   private def checkWellformedLater(parent: Type, ann: Tree, tpt: Tree)(using Context): Unit =
-    if !tpt.span.isZeroExtent then
+    if !tpt.span.isZeroExtent && enclosingInlineds.isEmpty then
       todoAtPostCheck += (ctx1 =>
         checkWellformedPost(parent, ann, tpt)(using ctx1.withOwner(ctx.owner)))
 
