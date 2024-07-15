@@ -436,6 +436,19 @@ class AutoImportsSuite extends BaseAutoImportsSuite:
          |""".stripMargin
     )
 
+  @Test def `use-packages-in-scope` =
+    checkEdit(
+      """|import scala.collection.mutable as mut
+         |
+         |val l = <<ListBuffer>>(2)
+         |""".stripMargin,
+      """|import scala.collection.mutable as mut
+         |import mut.ListBuffer
+         |
+         |val l = ListBuffer(2)
+         |""".stripMargin
+    )
+
   private def ammoniteWrapper(code: String): String =
     // Vaguely looks like a scala file that Ammonite generates
     // from a sc file.
