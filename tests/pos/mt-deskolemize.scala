@@ -1,5 +1,3 @@
-//> using options -language:experimental.betterMatchTypeExtractors
-
 trait Expr:
   type Value
 
