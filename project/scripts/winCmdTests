@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set -e
-PREFIX="dist/win-x86_64/target/pack"
+PREFIX="dist/win-x86_64/target/universal/stage"
 SOURCE="tests/pos/HelloWorld.scala"
 $PREFIX/bin/scalac @project/scripts/options "$SOURCE"
 $PREFIX/bin/scalac -d out "$SOURCE"

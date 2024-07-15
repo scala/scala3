@@ -87,8 +87,8 @@ jobs:
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Test
-        # DON'T add dist/pack!
-        # Adding dist/pack bootstraps the compiler
+        # DON'T add dist/Universal/stage!
+        # Adding dist/Universal/stage bootstraps the compiler
         # which undermines the point of these tests:
         # to quickly run the tests without the cost of bootstrapping
         # and also to run tests when the compiler doesn't bootstrap
@@ -231,7 +231,7 @@ jobs:
         shell: cmd
 
       - name: build binary
-        run: sbt "dist-win-x86_64/pack" & bash -version
+        run: sbt "dist-win-x86_64/Universal/stage" & bash -version
         shell: cmd
 
       - name: cygwin tests
@@ -271,7 +271,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: build binary
-        run: sbt "dist-win-x86_64/pack"
+        run: sbt "dist-win-x86_64/Universal/stage"
         shell: cmd
 
       - name: Test
@@ -1008,3 +1008,8 @@ jobs:
           WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
           filename: .github/workflows/issue_nightly_failed.md
+
+  build-msi-package:
+    uses: ./.github/workflows/build-msi.yml
+    if  : github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_msi]')
+    # TODO: ADD A JOB THAT DEPENDS ON THIS TO TEST THE MSI

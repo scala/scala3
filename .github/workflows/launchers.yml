@@ -90,7 +90,7 @@ jobs:
           distribution: 'temurin'
           cache: 'sbt'
       - name: Build the launcher command
-        run: sbt "dist-win-x86_64/pack"
+        run: sbt "dist-win-x86_64/Universal/stage"
       - name: Run the launcher command tests
         run: './project/scripts/native-integration/winTests.bat'
         shell: cmd
