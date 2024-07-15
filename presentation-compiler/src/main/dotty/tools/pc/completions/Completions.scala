@@ -319,7 +319,7 @@ class Completions(
     val ScalaCliCompletions =
       new ScalaCliCompletions(coursierComplete, pos, text)
 
-    path match
+    val (advanced, exclusive) = path match
       case ScalaCliCompletions(dependency) =>
         (ScalaCliCompletions.contribute(dependency), true)
 
@@ -525,7 +525,10 @@ class Completions(
           config.isCompletionSnippetsEnabled()
         )
         (args, false)
-    end match
+    val singletonCompletions = InterCompletionType.inferType(path).map(
+      SingletonCompletions.contribute(path, _, completionPos)
+    ).getOrElse(Nil)
+    (singletonCompletions ++ advanced, exclusive)
   end advancedCompletions
 
   private def isAmmoniteCompletionPosition(
@@ -704,6 +707,7 @@ class Completions(
             case fileSysMember: CompletionValue.FileSystemMember =>
               (fileSysMember.label, true)
             case ii: CompletionValue.IvyImport => (ii.label, true)
+            case sv: CompletionValue.SingletonValue => (sv.label, true)
 
         if !alreadySeen(id) && include then
           alreadySeen += id
@@ -911,38 +915,18 @@ class Completions(
             else 2
           }
         )
-
-      /**
-       * This one is used for the following case:
-       * ```scala
-       * def foo(argument: Int): Int = ???
-       * val argument = 42
-       * foo(arg@@) // completions should be ordered as :
-       *            // - argument       (local val) - actual value comes first
-       *            // - argument = ... (named arg) - named arg after
-       *            // - ... all other options
-       * ```
-       */
-      def compareInApplyParams(o1: CompletionValue, o2: CompletionValue): Int =
+      def prioritizeByClass(o1: CompletionValue, o2: CompletionValue): Int =
         def priority(v: CompletionValue): Int =
           v match
-            case _: CompletionValue.Compiler => 0
-            case CompletionValue.ExtraMethod(_, _: CompletionValue.Compiler) => 0
-            case _ => 1
+            case _: CompletionValue.SingletonValue => 0
+            case _: CompletionValue.Compiler => 1
+            case _: CompletionValue.CaseKeyword => 2
+            case _: CompletionValue.NamedArg => 3
+            case _: CompletionValue.Keyword => 4
+            case _ => 5
 
         priority(o1) - priority(o2)
-      end compareInApplyParams
-
-      def prioritizeKeywords(o1: CompletionValue, o2: CompletionValue): Int =
-        def priority(v: CompletionValue): Int =
-          v match
-            case _: CompletionValue.CaseKeyword => 0
-            case _: CompletionValue.NamedArg => 1
-            case _: CompletionValue.Keyword => 2
-            case _ => 3
-
-        priority(o1) - priority(o2)
-      end prioritizeKeywords
+      end prioritizeByClass
       /**
        * Some completion values should be shown first such as CaseKeyword and
        * NamedArg
@@ -1041,12 +1025,9 @@ class Completions(
               end if
             end if
           case _ =>
-            val byApplyParams = compareInApplyParams(o1, o2)
-            if byApplyParams != 0 then byApplyParams
-            else
-              val keywords = prioritizeKeywords(o1, o2)
-              if keywords != 0 then keywords
-              else compareByRelevance(o1, o2)
+            val byClass = prioritizeByClass(o1, o2)
+            if byClass != 0 then byClass
+            else compareByRelevance(o1, o2)
       end compare
 
 end Completions
