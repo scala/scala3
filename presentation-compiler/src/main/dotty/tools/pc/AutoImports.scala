@@ -269,7 +269,14 @@ object AutoImports:
     private def importName(sym: Symbol): String =
       if indexedContext.importContext.toplevelClashes(sym) then
         s"_root_.${sym.fullNameBackticked(false)}"
-      else sym.fullNameBackticked(false)
+      else
+        sym.ownersIterator.zipWithIndex.foldLeft((List.empty[String], false)) { case ((acc, isDone), (sym, idx)) =>
+          if(isDone || sym.isEmptyPackage || sym.isRoot) (acc, true)
+          else indexedContext.rename(sym) match
+            case Some(renamed) => (renamed :: acc, true)
+            case None if !sym.isPackageObject => (sym.nameBackticked(false) :: acc, false)
+            case None => (acc, false)
+        }._1.mkString(".")
   end AutoImportsGenerator
 
   private def autoImportPosition(
