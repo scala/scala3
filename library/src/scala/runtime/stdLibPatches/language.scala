@@ -124,6 +124,7 @@ object language:
      *  @see [[https://github.com/scala/improvement-proposals/pull/84]]
      */
     @compileTimeOnly("`betterMatchTypeExtractors` can only be used at compile time in import statements")
+    @deprecated("The experimental.betterMatchTypeExtractors language import is no longer needed since the feature is now standard. It now has no effect, including when setting an older source version.", since = "3.6")
     object betterMatchTypeExtractors
 
     /** Experimental support for quote pattern matching with polymorphic functions
