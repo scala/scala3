@@ -2201,12 +2201,13 @@ object Build {
       Windows / mappings   := (Universal / mappings).value,
       Windows / packageBin := (Windows / packageBin).dependsOn(republish).value,
       Windows / wixFiles   := (Windows / wixFiles).dependsOn(republish).value,
-      maintainer := "The Scala Programming Language",
-      packageSummary := s"Scala $dottyVersion",
-      packageDescription := """Installer for the Scala Programming Language""",
-      wixProductId := "74ED19C3-74FE-4ABA-AF30-55A06B6322A9",
-      wixProductUpgradeId := "3E5A1A82-CA67-4353-94FE-5BDD400AF66B",
-      wixProductLicense := Some(dist.base / "LICENSE.rtf")
+      // Additional information: https://wixtoolset.org/docs/schema/wxs/package/
+      maintainer := "The Scala Programming Language",                             // The displayed maintainer of the package
+      packageSummary := s"Scala $dottyVersion",                                   // The displayed name of the package
+      packageDescription := """Installer for the Scala Programming Language""",   // The displayed description of the package
+      wixProductId := "*",                                                        // Unique ID for each generated MSI; will change for each generated msi
+      wixProductUpgradeId := "3E5A1A82-CA67-4353-94FE-5BDD400AF66B",              // Unique ID to identify the package; used to manage the upgrades
+      wixProductLicense := Some(dist.base / "LICENSE.rtf")                        // Link to the LICENSE to show during the installation (keep in sync with ../LICENSE)
     )
 
   lazy val `dist-linux-x86_64` = project.in(file("dist/linux-x86_64")).asDist(Bootstrapped)
