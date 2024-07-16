@@ -32,6 +32,8 @@ import dotty.tools.dotc.core.Names
 import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.core.Symbols
 import dotty.tools.dotc.core.Constants
+import dotty.tools.dotc.core.TypeOps
+import dotty.tools.dotc.core.StdNames
 
 /**
  * One of the results of a completion query.
@@ -200,7 +202,8 @@ object Completion:
 
   private def computeCompletions(
     pos: SourcePosition,
-    mode: Mode, rawPrefix: String,
+    mode: Mode,
+    rawPrefix: String,
     adjustedPath: List[tpd.Tree],
     untpdPath: List[untpd.Tree],
     matches: Option[Name => Boolean]
@@ -442,9 +445,17 @@ object Completion:
     def selectionCompletions(qual: tpd.Tree)(using Context): CompletionMap =
       val adjustedQual = widenQualifier(qual)
 
-      implicitConversionMemberCompletions(adjustedQual) ++
-        extensionCompletions(adjustedQual) ++
-        directMemberCompletions(adjustedQual)
+      val implicitConversionMembers = implicitConversionMemberCompletions(adjustedQual)
+      val extensionMembers = extensionCompletions(adjustedQual)
+      val directMembers = directMemberCompletions(adjustedQual)
+      val namedTupleMembers = namedTupleCompletions(adjustedQual)
+
+      List(
+        implicitConversionMembers,
+        extensionMembers,
+        directMembers,
+        namedTupleMembers
+      ).reduce(_ ++ _)
 
     /** Completions for members of `qual`'s type.
      *  These include inherited definitions but not members added by extensions or implicit conversions
@@ -515,6 +526,27 @@ object Completion:
           .flatMap { conversionTarget => accessibleMembers(tryToInstantiateTypeVars(conversionTarget)) }
           .toSeq
           .groupByName
+
+    /** Completions for named tuples */
+    private def namedTupleCompletions(qual: tpd.Tree)(using Context): CompletionMap =
+      def namedTupleCompleionsFromType(tpe: Type): CompletionMap =
+        tpe.namedTupleElementTypes
+          .map { (name, tpe) =>
+            val symbol = newSymbol(owner = NoSymbol, name, EmptyFlags, tpe)
+            val denot = SymDenotation(symbol, NoSymbol, name, EmptyFlags, tpe)
+            name -> denot
+          }
+          .toSeq
+          .groupByName
+
+      val qualTpe = qual.typeOpt
+      if qualTpe.isNamedTupleType then
+        namedTupleCompleionsFromType(qualTpe)
+      else if qualTpe.derivesFrom(defn.SelectableClass) then
+        val pre = if !TypeOps.isLegalPrefix(qualTpe) then Types.SkolemType(qualTpe) else qualTpe
+        val fieldsType = pre.select(StdNames.tpnme.Fields).dealias.simplified
+        namedTupleCompleionsFromType(fieldsType)
+      else Map.empty
 
     /** Completions from extension methods */
     private def extensionCompletions(qual: tpd.Tree)(using Context): CompletionMap =
