@@ -1,0 +1,4 @@
+-- Error: tests/neg/i18446/Test.scala:1:17 -----------------------------------------------------------------------------
+1 |val _ = foo.Task.poll() // error
+  |        ^^^^^^^^^^^^^
+  |protected <java> <static> method poll which is defined in package foo is inaccessible at runtime from package <empty>
