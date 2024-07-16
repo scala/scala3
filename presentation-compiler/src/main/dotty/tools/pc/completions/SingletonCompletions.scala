@@ -32,7 +32,7 @@ object SingletonCompletions:
           case (i @ Ident(name)) :: _ => List(name.toString() -> i.span)
           case (l @ Literal(const)) :: _ => List(const.show -> l.span)
           case _ => Nil
-      query = name.replace(Cursor.value, "")
+      query = name.replace(Cursor.value, "").nn
       tpe = tpe0 match
         // for Tuple 2 we want to suggest first arg completion
         case AppliedType(t: TypeRef, args) if t.classSymbol == Symbols.defn.Tuple2 && args.nonEmpty =>
