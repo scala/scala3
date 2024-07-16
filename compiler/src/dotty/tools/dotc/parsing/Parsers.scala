@@ -972,18 +972,16 @@ object Parsers {
         followedByToken(LARROW) // `<-` comes before possible statement starts
     }
 
-    /** Are the next token the "GivenSig" part of a given definition,
-     *  i.e. an identifier followed by type and value parameters, followed by `:`?
+    /** Are the next tokens a valid continuation of a named given def?
+     *  i.e. an identifier, possibly followed by type and value parameters, followed by `:`?
      *  @pre  The current token is an identifier
      */
-    def followingIsOldStyleGivenSig() =
+    def followingIsGivenDefWithColon() =
       val lookahead = in.LookaheadScanner()
       if lookahead.isIdent then
         lookahead.nextToken()
-      var paramsSeen = false
       def skipParams(): Unit =
         if lookahead.token == LPAREN || lookahead.token == LBRACKET then
-          paramsSeen = true
           lookahead.skipParens()
           skipParams()
         else if lookahead.isNewLine then
@@ -1001,6 +999,11 @@ object Parsers {
           !lookahead.isAfterLineEnd
         }
       }
+
+    def followingIsArrow() =
+      val lookahead = in.LookaheadScanner()
+      lookahead.skipParens()
+      lookahead.token == ARROW
 
     def followingIsExtension() =
       val next = in.lookahead.token
@@ -3441,7 +3444,11 @@ object Parsers {
     /** ContextTypes   ::=  FunArgType {‘,’ FunArgType}
      */
     def contextTypes(paramOwner: ParamOwner, numLeadParams: Int, impliedMods: Modifiers): List[ValDef] =
-      val tps = commaSeparated(() => paramTypeOf(() => toplevelTyp()))
+      typesToParams(
+        commaSeparated(() => paramTypeOf(() => toplevelTyp())),
+        paramOwner, numLeadParams, impliedMods)
+
+    def typesToParams(tps: List[Tree], paramOwner: ParamOwner, numLeadParams: Int, impliedMods: Modifiers): List[ValDef] =
       var counter = numLeadParams
       def nextIdx = { counter += 1; counter }
       val paramFlags = if paramOwner.isClass then LocalParamAccessor else Param
@@ -3468,18 +3475,20 @@ object Parsers {
     def termParamClause(
       paramOwner: ParamOwner,
       numLeadParams: Int,                      // number of parameters preceding this clause
-      firstClause: Boolean = false             // clause is the first in regular list of clauses
+      firstClause: Boolean = false,            // clause is the first in regular list of clauses
+      initialMods: Modifiers = EmptyModifiers
     ): List[ValDef] = {
-      var impliedMods: Modifiers = EmptyModifiers
+      var impliedMods: Modifiers = initialMods
 
       def addParamMod(mod: () => Mod) = impliedMods = addMod(impliedMods, atSpan(in.skipToken()) { mod() })
 
       def paramMods() =
         if in.token == IMPLICIT then
           addParamMod(() => Mod.Implicit())
-        else
-          if isIdent(nme.using) then
-            addParamMod(() => Mod.Given())
+        else if isIdent(nme.using) then
+          if initialMods.is(Given) then
+            syntaxError(em"`using` is already implied here, should not be given explicitly", in.offset)
+          addParamMod(() => Mod.Given())
 
       def param(): ValDef = {
         val start = in.offset
@@ -4144,18 +4153,67 @@ object Parsers {
      *  OldGivenSig        ::=  [id] [DefTypeParamClause] {UsingParamClauses} ‘:’
      *  StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} [‘with’ WithTemplateBody]
      *
-     *  NewGivenDef        ::=  [GivenConditional '=>'] NewGivenSig
-     *  GivenConditional   ::=  [DefTypeParamClause | UsingParamClause] {UsingParamClause}
-     *  NewGivenSig        ::=  GivenType ['as' id] ([‘=’ Expr] | TemplateBody)
-     *                      |   ConstrApps ['as' id] TemplateBody
-     *
+     *  NewGivenDef        ::=  [id ':'] GivenSig
+     *  GivenSig           ::=  GivenImpl
+     *                      |   '(' ')' '=>' GivenImpl
+     *                      |   GivenConditional '=>' GivenSig
+     *  GivenImpl          ::=  GivenType ([‘=’ Expr] | TemplateBody)
+     *                      |   ConstrApps TemplateBody
+     *  GivenConditional   ::=  DefTypeParamClause
+     *                      |   DefTermParamClause
+     *                      |   '(' FunArgTypes ')'
+     *                      |   GivenType
      *  GivenType          ::=  AnnotType1 {id [nl] AnnotType1}
      */
     def givenDef(start: Offset, mods: Modifiers, givenMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, givenMod)
       val nameStart = in.offset
-      var name = if isIdent && followingIsOldStyleGivenSig() then ident() else EmptyTermName
       var newSyntaxAllowed = in.featureEnabled(Feature.modularity)
+      val hasEmbeddedColon = !in.isColon && followingIsGivenDefWithColon()
+      val name = if isIdent && hasEmbeddedColon then ident() else EmptyTermName
+
+      def implemented(): List[Tree] =
+        if isSimpleLiteral then
+          rejectWildcardType(annotType()) :: Nil
+        else constrApp() match
+          case parent: Apply => parent :: moreConstrApps()
+          case parent if in.isIdent && newSyntaxAllowed =>
+            infixTypeRest(parent, _ => annotType1()) :: Nil
+          case parent => parent :: moreConstrApps()
+
+      // The term parameters and parent references */
+      def newTermParamssAndParents(numLeadParams: Int): (List[List[ValDef]], List[Tree]) =
+        if in.token == LPAREN && followingIsArrow() then
+          val params =
+            if in.lookahead.token == RPAREN && numLeadParams == 0 then
+              in.nextToken()
+              in.nextToken()
+              Nil
+            else
+              termParamClause(
+                ParamOwner.Given, numLeadParams, firstClause = true, initialMods = Modifiers(Given))
+          accept(ARROW)
+          if params.isEmpty then (params :: Nil, implemented())
+          else
+            val (paramss, parents) = newTermParamssAndParents(numLeadParams + params.length)
+            (params :: paramss, parents)
+        else
+          val parents = implemented()
+          if in.token == ARROW && parents.length == 1 && parents.head.isType then
+            in.nextToken()
+            val (paramss, parents1) = newTermParamssAndParents(numLeadParams + parents.length)
+            (typesToParams(parents, ParamOwner.Given, numLeadParams, Modifiers(Given)) :: paramss, parents1)
+          else
+            (Nil, parents)
+
+      /** Type parameters, term parameters and parent clauses */
+      def newSignature(): (List[TypeDef], (List[List[ValDef]], List[Tree])) =
+        val tparams =
+          if in.token == LBRACKET then
+            try typeParamClause(ParamOwner.Given)
+            finally accept(ARROW)
+          else Nil
+        (tparams, newTermParamssAndParents(numLeadParams = 0))
 
       def moreConstrApps() =
         if newSyntaxAllowed && in.token == COMMA then
@@ -4176,47 +4234,49 @@ object Parsers {
         .asInstanceOf[List[ParamClause]]
 
       val gdef =
-        val tparams = typeParamClauseOpt(ParamOwner.Given)
-        newLineOpt()
-        val vparamss =
-          if in.token == LPAREN && (in.lookahead.isIdent(nme.using) || name != EmptyTermName)
-          then termParamClauses(ParamOwner.Given)
-          else Nil
-        newLinesOpt()
-        val noParams = tparams.isEmpty && vparamss.isEmpty
-        val hasParamsOrId = !name.isEmpty || !noParams
-        if hasParamsOrId then
-          if in.isColon then
-            newSyntaxAllowed = false
+        val (tparams, (vparamss0, parents)) =
+          if in.isColon && !name.isEmpty then
             in.nextToken()
-          else if newSyntaxAllowed then accept(ARROW)
-          else acceptColon()
-        val parents =
-          if isSimpleLiteral then
-            rejectWildcardType(annotType()) :: Nil
-          else constrApp() match
-            case parent: Apply => parent :: moreConstrApps()
-            case parent if in.isIdent && newSyntaxAllowed =>
-              infixTypeRest(parent, _ => annotType1()) :: Nil
-            case parent => parent :: moreConstrApps()
-        if newSyntaxAllowed && in.isIdent(nme.as) then
-          in.nextToken()
-          name = ident()
-
+            newSignature()
+          else if hasEmbeddedColon then
+            newSyntaxAllowed = false
+            val tparamsOld = typeParamClauseOpt(ParamOwner.Given)
+            newLineOpt()
+            val vparamssOld =
+              if in.token == LPAREN && (in.lookahead.isIdent(nme.using) || name != EmptyTermName)
+              then termParamClauses(ParamOwner.Given)
+              else Nil
+            acceptColon()
+            (tparamsOld, (vparamssOld, implemented()))
+          else
+            newSignature()
+        val hasParams = tparams.nonEmpty || vparamss0.nonEmpty
+        val vparamss = vparamss0 match
+          case Nil :: Nil => Nil
+          case _ => vparamss0
         val parentsIsType = parents.length == 1 && parents.head.isType
         if in.token == EQUALS && parentsIsType then
           // given alias
           accept(EQUALS)
           mods1 |= Final
-          if noParams && !mods.is(Inline) then
+          if !hasParams && !mods.is(Inline) then
             mods1 |= Lazy
             ValDef(name, parents.head, subExpr())
           else
             DefDef(name, adjustDefParams(joinParams(tparams, vparamss)), parents.head, subExpr())
-        else if (isStatSep || isStatSeqEnd) && parentsIsType && !newSyntaxAllowed then
+        else if (isStatSep || isStatSeqEnd) && parentsIsType
+            && !(name.isEmpty && newSyntaxAllowed)
+              // under new syntax, anonymous givens are translated to concrete classes,
+              // so it's treated as a structural instance.
+        then
           // old-style abstract given
           if name.isEmpty then
-            syntaxError(em"anonymous given cannot be abstract")
+            syntaxError(em"Anonymous given cannot be abstract, or maybe you want to define a concrete given and are missing a `()` argument?", in.lastOffset)
+          if newSyntaxAllowed then
+            warning(
+              em"""This defines an abstract given, which is deprecated. Use a `deferred` given instead.
+                  |Or, if you intend to define a concrete given, follow the type with `()` arguments.""",
+              in.lastOffset)
           DefDef(name, adjustDefParams(joinParams(tparams, vparamss)), parents.head, EmptyTree)
         else
           // structural instance
@@ -4228,12 +4288,16 @@ object Parsers {
           val templ =
             if isStatSep || isStatSeqEnd then
               Template(constr, parents, Nil, EmptyValDef, Nil)
-            else if !newSyntaxAllowed || in.token == WITH then
+            else if !newSyntaxAllowed
+                || in.token == WITH && tparams.isEmpty && vparamss.isEmpty
+                // if new syntax is still allowed and there are parameters, they mist be new style conditions,
+                // so old with-style syntax would not be allowed.
+            then
               withTemplate(constr, parents)
             else
               possibleTemplateStart()
               templateBodyOpt(constr, parents, Nil)
-          if noParams && !mods.is(Inline) then ModuleDef(name, templ)
+          if !hasParams && !mods.is(Inline) then ModuleDef(name, templ)
           else TypeDef(name.toTypeName, templ)
       end gdef
       finalizeDef(gdef, mods1, start)
