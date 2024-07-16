@@ -920,6 +920,7 @@ class Completions(
           v match
             case _: CompletionValue.SingletonValue => 0
             case _: CompletionValue.Compiler => 1
+            case CompletionValue.ExtraMethod(_, _: CompletionValue.Compiler) => 1
             case _: CompletionValue.CaseKeyword => 2
             case _: CompletionValue.NamedArg => 3
             case _: CompletionValue.Keyword => 4
