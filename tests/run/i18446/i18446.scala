@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 package foo
 
 def run = {

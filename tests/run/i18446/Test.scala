@@ -1,3 +1,4 @@
+// scalajs: --skip
 
 @main def Test =
     foo.run

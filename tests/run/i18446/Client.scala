@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 package bar;
 
 object Client extends foo.Task {
