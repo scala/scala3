@@ -21,7 +21,7 @@ import dotty.tools.dotc.core.NameOps.isReplWrapperName
 import dotty.tools.dotc.core.Annotations
 import dotty.tools.dotc.core.Definitions
 import dotty.tools.dotc.core.NameKinds.WildcardParamName
-import dotty.tools.dotc.core.Symbols.Symbol
+import dotty.tools.dotc.core.Symbols.{Symbol, isDeprecated}
 import dotty.tools.dotc.report
 import dotty.tools.dotc.reporting.{Message, UnusedSymbol as UnusedSymbolMessage}
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
@@ -30,19 +30,21 @@ import dotty.tools.dotc.util.{Property, SrcPos}
 import dotty.tools.dotc.util.Spans.Span
 import scala.util.chaining.given
 
+import CheckUnused.*
+
 /** A compiler phase that checks for unused imports or definitions.
  *
  *  Every construct that introduces a name must have at least one corresponding reference.
  *  The analysis is restricted to definitions of limited scope, i.e., private and local definitions.
  */
-class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _key: Property.Key[CheckUnused.UnusedData]) extends MiniPhase:
-  import CheckUnused.*
+class CheckUnused private (phaseMode: PhaseMode, suffix: String)(using Key) extends MiniPhase:
+
   import UnusedData.*
 
   private inline def ud(using ud: UnusedData): UnusedData = ud
 
   private inline def go[U](inline op: UnusedData ?=> U)(using ctx: Context): ctx.type =
-    ctx.property(_key) match
+    ctx.property(summon[Key]) match
       case Some(ud) => op(using ud)
       case None     =>
     ctx
@@ -59,11 +61,12 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
   // ========== SETUP ============
 
   override def prepareForUnit(tree: tpd.Tree)(using Context): Context =
+    val key = summon[Key]
     val data = UnusedData()
-    tree.getAttachment(_key).foreach(oldData =>
+    tree.getAttachment(key).foreach(oldData =>
       data.unusedAggregate = oldData.unusedAggregate
     )
-    ctx.fresh.setProperty(_key, data).tap(_ => tree.putAttachment(_key, data))
+    ctx.fresh.setProperty(key, data).tap(_ => tree.putAttachment(key, data))
 
   // ========== END + REPORTING ==========
 
@@ -75,14 +78,11 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
     tree
 
   // ========== MiniPhase Prepare ==========
-  override def prepareForOther(tree: tpd.Tree)(using Context): Context =
-    // A standard tree traverser covers cases not handled by the Mega/MiniPhase
+  override def prepareForOther(tree: tpd.Tree)(using Context): Context = go:
     traverser.traverse(tree)
-    ctx
 
-  override def prepareForInlined(tree: tpd.Inlined)(using Context): Context =
+  override def prepareForInlined(tree: tpd.Inlined)(using Context): Context = go:
     traverser.traverse(tree.call)
-    ctx
 
   override def prepareForIdent(tree: tpd.Ident)(using Context): Context = go:
     if tree.symbol.exists then
@@ -102,13 +102,13 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
     ud.registerUsed(tree.symbol, name, tree.qualifier.tpe, includeForImport = tree.qualifier.span.isSynthetic)
 
   override def prepareForBlock(tree: tpd.Block)(using Context): Context =
-    pushInBlockTemplatePackageDef(tree)
+    pushScope(tree)
 
   override def prepareForTemplate(tree: tpd.Template)(using Context): Context =
-    pushInBlockTemplatePackageDef(tree)
+    pushScope(tree)
 
   override def prepareForPackageDef(tree: tpd.PackageDef)(using Context): Context =
-    pushInBlockTemplatePackageDef(tree)
+    pushScope(tree)
 
   override def prepareForValDef(tree: tpd.ValDef)(using Context): Context = go:
     traverseAnnotations(tree.symbol)
@@ -137,9 +137,8 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
     traverseAnnotations(tree.symbol)
     ud.registerPatVar(tree)
 
-  override def prepareForTypeTree(tree: tpd.TypeTree)(using Context): Context =
+  override def prepareForTypeTree(tree: tpd.TypeTree)(using Context): Context = go:
     if !tree.isInstanceOf[tpd.InferredTypeTree] then typeTraverser.traverse(tree.tpe)
-    ctx
 
   override def prepareForAssign(tree: tpd.Assign)(using Context): Context = go:
     val sym = tree.lhs.symbol
@@ -149,47 +148,47 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
   // ========== MiniPhase Transform ==========
 
   override def transformBlock(tree: tpd.Block)(using Context): tpd.Tree =
-    popOutBlockTemplatePackageDef()
+    popScope(tree)
     tree
 
   override def transformTemplate(tree: tpd.Template)(using Context): tpd.Tree =
-    popOutBlockTemplatePackageDef()
+    popScope(tree)
     tree
 
   override def transformPackageDef(tree: tpd.PackageDef)(using Context): tpd.Tree =
-    popOutBlockTemplatePackageDef()
+    popScope(tree)
     tree
 
   override def transformValDef(tree: tpd.ValDef)(using Context): tpd.Tree =
-    go(ud.removeIgnoredUsage(tree.symbol))
+    go:
+      ud.removeIgnoredUsage(tree.symbol)
     tree
 
   override def transformDefDef(tree: tpd.DefDef)(using Context): tpd.Tree =
-    go(ud.removeIgnoredUsage(tree.symbol))
+    go:
+      ud.removeIgnoredUsage(tree.symbol)
     tree
 
   override def transformTypeDef(tree: tpd.TypeDef)(using Context): tpd.Tree =
-    go(ud.removeIgnoredUsage(tree.symbol))
+    go:
+      ud.removeIgnoredUsage(tree.symbol)
     tree
 
+  private def pushScope(tree: tpd.Block | tpd.Template | tpd.PackageDef)(using Context): Context = go:
+    ud.pushScope(ScopeType.fromTree(tree))
 
-  // ---------- MiniPhase HELPERS -----------
-
-  private def pushInBlockTemplatePackageDef(tree: tpd.Block | tpd.Template | tpd.PackageDef)(using Context): Context = go:
-    ud.pushScope(UnusedData.ScopeType.fromTree(tree))
-
-  private def popOutBlockTemplatePackageDef()(using Context): Context = go:
-    ud.popScope()
+  private def popScope(tree: tpd.Block | tpd.Template | tpd.PackageDef)(using Context): Context = go:
+    ud.popScope(ScopeType.fromTree(tree))
 
   /**
    * This traverse is the **main** component of this phase
    *
    * It traverse the tree the tree and gather the data in the
    * corresponding context property
+   *
+   * A standard tree traverser covers cases not handled by the Mega/MiniPhase
    */
   private def traverser = new TreeTraverser:
-    import tpd.*
-    import UnusedData.ScopeType
 
     // Register every import, definition and usage
     override def traverse(tree: tpd.Tree)(using Context): Unit =
@@ -201,17 +200,17 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
             case untpd.TypedSplice(tree1) => tree1
           }.foreach(traverse(_)(using newCtx))
           traverseChildren(tree)(using newCtx)
-        case ident: Ident =>
+        case ident: tpd.Ident =>
           prepareForIdent(ident)
           traverseChildren(tree)(using newCtx)
-        case sel: Select =>
+        case sel: tpd.Select =>
           prepareForSelect(sel)
           traverseChildren(tree)(using newCtx)
         case tree: (tpd.Block | tpd.Template | tpd.PackageDef) =>
           //! DIFFERS FROM MINIPHASE
-          pushInBlockTemplatePackageDef(tree)
+          pushScope(tree)
           traverseChildren(tree)(using newCtx)
-          popOutBlockTemplatePackageDef()
+          popScope(tree)
         case t: tpd.ValDef =>
           prepareForValDef(t)
           traverseChildren(tree)(using newCtx)
@@ -301,13 +300,14 @@ object CheckUnused:
    * The key used to retrieve the "unused entity" analysis metadata,
    * from the compilation `Context`
    */
-  private val _key = Property.StickyKey[UnusedData]
+  private type Key = Property.StickyKey[UnusedData]
+  private given Key = Property.StickyKey[UnusedData]
 
   val OriginalName = Property.StickyKey[Name]
 
-  class PostTyper extends CheckUnused(PhaseMode.Aggregate, "PostTyper", _key)
+  class PostTyper extends CheckUnused(PhaseMode.Aggregate, "PostTyper")
 
-  class PostInlining extends CheckUnused(PhaseMode.Report, "PostInlining", _key)
+  class PostInlining extends CheckUnused(PhaseMode.Report, "PostInlining")
 
   /** Track usages at a Context.
    *
@@ -321,12 +321,13 @@ object CheckUnused:
 
     /** The current scope during the tree traversal */
     val currScopeType: Stack[ScopeType] = Stack(ScopeType.Other)
+    inline def peekScopeType = currScopeType.top
 
     var unusedAggregate: Option[UnusedResult] = None
 
     /* IMPORTS */
     private val impInScope = Stack(ListBuffer.empty[ImportSelectorData])
-    private val usedInScope = Stack(mut.Set.empty[Usage])
+    private val usedInScope = Stack(mut.Map.empty[Symbol, ListBuffer[Usage]])
     private val usedInPosition = mut.Map.empty[Name, mut.Set[Symbol]]
     /* unused import collected during traversal */
     private val unusedImport = ListBuffer.empty[ImportSelectorData]
@@ -382,13 +383,18 @@ object CheckUnused:
             if sym.exists then
               usedDef += sym
               if includeForImport1 then
-                usedInScope.top += Usage(sym, name, prefix, isDerived)
+                addUsage(Usage(sym, name, prefix, isDerived))
           addIfExists(sym)
           addIfExists(sym.companionModule)
           addIfExists(sym.companionClass)
           if sym.sourcePos.exists then
             for n <- name do
               usedInPosition.getOrElseUpdate(n, mut.Set.empty) += sym
+
+    def addUsage(usage: Usage)(using Context): Unit =
+      val usages = usedInScope.top.getOrElseUpdate(usage.symbol, ListBuffer.empty)
+      if !usages.exists(cur => cur.name == usage.name && cur.isDerived == usage.isDerived && cur.prefix =:= usage.prefix)
+      then usages += usage
 
     /** Register a symbol that should be ignored */
     def addIgnoredUsage(sym: Symbol)(using Context): Unit =
@@ -407,7 +413,7 @@ object CheckUnused:
         !tpd.languageImport(imp.expr).nonEmpty
           && !imp.isGeneratedByEnum
           && !isTransparentAndInline(imp)
-          && currScopeType.top != ScopeType.ReplWrapper // #18383 Do not report top-level import's in the repl as unused
+          && peekScopeType != ScopeType.ReplWrapper // #18383 Do not report top-level import's in the repl as unused
       then
         val qualTpe = imp.expr.tpe
 
@@ -435,7 +441,7 @@ object CheckUnused:
               implicitParamInScope += memDef
           else if !paramsToSkip.contains(memDef.symbol) then
             explicitParamInScope += memDef
-        else if currScopeType.top == ScopeType.Local then
+        else if peekScopeType == ScopeType.Local then
           localDefInScope += memDef
         else if memDef.shouldReportPrivateDef then
           privateDefInScope += memDef
@@ -447,10 +453,9 @@ object CheckUnused:
 
     /** enter a new scope */
     def pushScope(newScopeType: ScopeType): Unit =
-      // unused imports :
       currScopeType.push(newScopeType)
       impInScope.push(ListBuffer.empty)
-      usedInScope.push(mut.Set.empty)
+      usedInScope.push(mut.Map.empty)
 
     def registerSetVar(sym: Symbol): Unit =
       setVars += sym
@@ -460,20 +465,19 @@ object CheckUnused:
      *
      * - If there are imports in this scope check for unused ones
      */
-    def popScope()(using Context): Unit =
-      currScopeType.pop()
-      val usedInfos = usedInScope.pop()
+    def popScope(scopeType: ScopeType)(using Context): Unit =
+      assert(currScopeType.pop() == scopeType)
       val selDatas = impInScope.pop()
 
-      for usedInfo <- usedInfos do
-        val Usage(sym, optName, prefix, isDerived) = usedInfo
-        selDatas.find(sym.isInImport(_, optName, prefix, isDerived)) match
+      for usedInfos <- usedInScope.pop().valuesIterator; usedInfo <- usedInfos do
+        import usedInfo.*
+        selDatas.find(symbol.isInImport(_, name, prefix, isDerived)) match
           case Some(sel) =>
             sel.markUsed()
           case None =>
             // Propagate the symbol one level up
             if usedInScope.nonEmpty then
-              usedInScope.top += usedInfo
+              addUsage(usedInfo)
       end for // each in usedInfos
 
       for selData <- selDatas do
@@ -484,7 +488,7 @@ object CheckUnused:
     /** Leave the scope and return a result set of warnings.
      */
     def getUnused(using Context): UnusedResult =
-      popScope()
+      popScope(ScopeType.Other) // sentinel
 
       def isUsedInPosition(name: Name, span: Span): Boolean =
         usedInPosition.get(name) match
@@ -533,8 +537,6 @@ object CheckUnused:
 
       UnusedResult(warnings.result)
     end getUnused
-    //============================ HELPERS ====================================
-
 
     /**
      * Checks if import selects a def that is transparent and inline
@@ -634,14 +636,11 @@ object CheckUnused:
           if altName.exists(explicitName => selector.rename != explicitName.toTermName) then
             // if there is an explicit name, it must match
             false
-          else
-            (isDerived || prefix.typeSymbol.isPackageObject || selData.qualTpe =:= prefix) && (
-              if isDerived then
-                // See i15503i.scala, grep for "package foo.test.i17156"
-                selData.allSymbolsDealiasedForNamed.contains(sym.dealiasAsType)
-              else
-                selData.allSymbolsForNamed.contains(sym)
-            )
+          else if isDerived then
+            // See i15503i.scala, grep for "package foo.test.i17156"
+            selData.allSymbolsDealiasedForNamed.contains(sym.dealiasAsType)
+          else (prefix.typeSymbol.isPackageObject || selData.qualTpe =:= prefix) &&
+            selData.allSymbolsForNamed.contains(sym)
         else
           // Wildcard
           if !selData.qualTpe.member(sym.name).hasAltWith(_.symbol == sym) then
@@ -668,9 +667,10 @@ object CheckUnused:
           val owner = sym.owner
           trivialDefs(owner) || // is a trivial def
           owner.isPrimaryConstructor ||
-          owner.annotations.exists ( // @depreacated
-            _.symbol == ctx.definitions.DeprecatedAnnot
-          ) ||
+          owner.isDeprecated ||
+          //owner.annotations.exists ( // @depreacated
+          //  _.symbol == ctx.definitions.DeprecatedAnnot
+          //) ||
           owner.isAllOf(Synthetic | PrivateLocal) ||
           owner.is(Accessor) ||
           owner.isOverridden
@@ -724,7 +724,7 @@ object CheckUnused:
         !sym.shouldNotReportParamOwner
 
       private def shouldReportPrivateDef(using Context): Boolean =
-        currScopeType.top == ScopeType.Template && !memDef.symbol.isConstructor && memDef.symbol.is(Private, butNot = SelfName | Synthetic | CaseAccessor)
+        peekScopeType == ScopeType.Template && !memDef.symbol.isConstructor && memDef.symbol.is(Private, butNot = SelfName | Synthetic | CaseAccessor)
 
       private def isUnsetVarDef(using Context): Boolean =
         val sym = memDef.symbol
@@ -751,11 +751,11 @@ object CheckUnused:
     object ScopeType:
       /** return the scope corresponding to the enclosing scope of the given tree */
       def fromTree(tree: tpd.Tree)(using Context): ScopeType = tree match
-        case tree: tpd.Template => if tree.symbol.name.isReplWrapperName then ReplWrapper else Template
-        case _:tpd.Block => Local
+        case _: tpd.Template => if tree.symbol.name.isReplWrapperName then ReplWrapper else Template
+        case _: tpd.Block => Local
         case _ => Other
 
-    final case class ImportSelectorData(val qualTpe: Type, val selector: ImportSelector):
+    final class ImportSelectorData(val qualTpe: Type, val selector: ImportSelector):
       private var myUsed: Boolean = false
 
       def markUsed(): Unit = myUsed = true
@@ -787,7 +787,7 @@ object CheckUnused:
     /** A symbol usage includes the name under which it was observed,
      *  the prefix from which it was selected, and whether it is in a derived element.
      */
-    case class Usage(symbol: Symbol, name: Option[Name], prefix: Type, isDerived: Boolean)
+    class Usage(val symbol: Symbol, val name: Option[Name], val prefix: Type, val isDerived: Boolean)
   end UnusedData
   extension (sym: Symbol)
     /** is accessible without import in current context */
@@ -808,5 +808,5 @@ object CheckUnused:
       case tp: NamedType => tp.prefix
       case tp: ClassInfo => tp.prefix
       case tp: TypeProxy => tp.superType.normalizedPrefix
-      case _ => tp
+      case _ => NoType
 end CheckUnused

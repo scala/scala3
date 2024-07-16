@@ -1,4 +1,4 @@
-//> using options -Wunused:imports
+//> using options -Wunused:imports -Ystop-after:checkUnusedPostInlining
 
 trait Schema[A]
 
@@ -37,3 +37,18 @@ def `same symbol different names`: Unit =
   summonSchema(using given_Schema_A)
   summonSchema(using AThing)
 
+package i17156:
+  package a:
+    trait Foo[A]
+    object Foo:
+      class Food[A] extends Foo[A]
+      inline def derived[T]: Foo[T] = Food()
+
+  package b:
+    import a.Foo
+    type Xd[A] = Foo[A]
+
+  package c:
+    import b.Xd
+    trait Z derives Xd // checks if dealiased import is prefix a.Foo
+    class Bar extends Xd[Int] // checks if import qual b is prefix of b.Xd
