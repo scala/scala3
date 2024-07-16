@@ -1,12 +1,16 @@
 package dotty.tools.pc.tests
+
+import scala.language.unsafeNulls
+
 import dotty.tools.pc.base.BasePCSuite
 import dotty.tools.pc.utils.RangeReplace
-import scala.meta.internal.pc.PcReferencesRequest
-import scala.meta.internal.metals.CompilerVirtualFileParams
+
 import java.net.URI
-import scala.meta.internal.metals.EmptyCancelToken
 import org.eclipse.lsp4j.jsonrpc.messages.{Either => JEither}
 import scala.meta.internal.jdk.CollectionConverters.*
+import scala.meta.internal.metals.CompilerVirtualFileParams
+import scala.meta.internal.metals.EmptyCancelToken
+import scala.meta.internal.pc.PcReferencesRequest
 
 import org.junit.Test
 
