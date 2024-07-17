@@ -529,7 +529,7 @@ object Completion:
 
     /** Completions for named tuples */
     private def namedTupleCompletions(qual: tpd.Tree)(using Context): CompletionMap =
-      def namedTupleCompleionsFromType(tpe: Type): CompletionMap =
+      def namedTupleCompletionsFromType(tpe: Type): CompletionMap =
         tpe.namedTupleElementTypes
           .map { (name, tpe) =>
             val symbol = newSymbol(owner = NoSymbol, name, EmptyFlags, tpe)
