@@ -1013,3 +1013,23 @@ jobs:
     uses: ./.github/workflows/build-msi.yml
     if  : github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_msi]')
     # TODO: ADD A JOB THAT DEPENDS ON THIS TO TEST THE MSI
+    
+  build-sdk-package:
+    uses: ./.github/workflows/build-sdk.yml
+    with:
+      java-version: 8
+
+  build-chocolatey-package:
+    uses: ./.github/workflows/build-chocolatey.yml
+    needs: [ build-sdk-package ]
+    with:
+      version: 3.6.0-local # TODO: FIX THIS
+      url    : https://api.github.com/repos/scala/scala3/actions/artifacts/${{ needs.build-sdk-package.outputs.win-x86_64-id }}/zip
+
+  test-chocolatey-package:
+    uses: ./.github/workflows/test-chocolatey.yml
+    with:
+      version     : 3.6.0-local # TODO: FIX THIS
+      java-version: 8
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_chocolatey]')
+    needs: [ build-chocolatey-package ]

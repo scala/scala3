@@ -37,4 +37,23 @@ jobs:
     secrets:
       DOTTYBOT-TOKEN: ${{ secrets.DOTTYBOT_WINGET_TOKEN }}
 
+  build-chocolatey:
+    uses: ./.github/workflows/build-chocolatey.yml
+    with:
+      version: ${{ inputs.version }}
+      url    : 'https://github.com/scala/scala3/releases/download/${{ inputs.version }}/scala3-${{ inputs.version }}-x86_64-pc-win32.zip'
+  test-chocolatey:
+    uses: ./.github/workflows/test-chocolatey.yml
+    needs: build-chocolatey
+    with:
+      version     : ${{ inputs.version }}
+      java-version: 8
+  publish-chocolatey:
+    uses: ./.github/workflows/publish-chocolatey.yml
+    needs: [ build-chocolatey, test-chocolatey ]
+    with:
+      version: ${{ inputs.version }}
+    secrets:
+      API-KEY: ${{ secrets.CHOCOLATEY_KEY }}
+
   # TODO: ADD RELEASE WORKFLOW TO CHOCOLATEY AND OTHER PACKAGE MANAGERS HERE

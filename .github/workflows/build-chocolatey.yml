@@ -1,0 +1,48 @@
+###################################################################################################
+###                  THIS IS A REUSABLE WORKFLOW TO BUILD SCALA WITH CHOCOLATEY                 ###
+### HOW TO USE:                                                                                 ###
+###                                                                                             ###
+### NOTE:                                                                                       ###
+###                                                                                             ###
+###################################################################################################
+
+
+name: Build 'scala' Chocolatey Package
+run-name: Build 'scala' (${{ inputs.version }}) Chocolatey Package
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      url:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace the version placeholder
+        uses: richardrigutins/replace-in-files@v2
+        with:
+          files: ./pkgs/chocolatey/scala.nuspec
+          search-text: '@LAUNCHER_VERSION@'
+          replacement-text: ${{ inputs.version }}
+      - name: Replace the URL placeholder
+        uses: richardrigutins/replace-in-files@v2
+        with:
+          files: ./pkgs/chocolatey/tools/chocolateyInstall.ps1
+          search-text: '@LAUNCHER_URL@'
+          replacement-text: ${{ inputs.url }}
+      - name: Build the Chocolatey package (.nupkg)
+        run: choco pack ./pkgs/chocolatey/scala.nuspec --out ./pkgs/chocolatey
+      - name: Upload the Chocolatey package to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: scala.nupkg
+          path: ./pkgs/chocolatey/scala.${{ inputs.version }}.nupkg
+          if-no-files-found: error
+          
