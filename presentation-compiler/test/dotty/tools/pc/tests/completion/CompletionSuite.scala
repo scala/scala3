@@ -1983,3 +1983,50 @@ class CompletionSuite extends BaseCompletionSuite:
          |val foo: SomeClass
          |""".stripMargin,
     )
+
+  @Test def `namedTuple completions` =
+    check(
+      """|import scala.language.experimental.namedTuples
+         |import scala.NamedTuple.*
+         |
+         |val person = (name = "Jamie", city = "Lausanne")
+         |
+         |val n = person.na@@""".stripMargin,
+      "name: String",
+      filter = _.contains("name")
+    )
+
+  @Test def `Selectable with namedTuple Fields member` =
+    check(
+      """|import scala.language.experimental.namedTuples
+         |import scala.NamedTuple.*
+         |
+         |class NamedTupleSelectable extends Selectable {
+         |  type Fields <: AnyNamedTuple
+         |  def selectDynamic(name: String): Any = ???
+         |}
+         |
+         |val person2 = new NamedTupleSelectable {
+         |  type Fields = (name: String, city: String)
+         |}
+         |
+         |val n = person2.na@@""".stripMargin,
+      """|name: String
+         |selectDynamic(name: String): Any
+      """.stripMargin,
+      filter = _.contains("name")
+    )
+
+  @Test def `Selectable without namedTuple Fields mamber` =
+    check(
+      """|class NonNamedTupleSelectable extends Selectable {
+         |  def selectDynamic(name: String): Any = ???
+         |}
+         |
+         |val person2 = new NonNamedTupleSelectable {}
+         |
+         |val n = person2.na@@""".stripMargin,
+      """|selectDynamic(name: String): Any
+      """.stripMargin,
+      filter = _.contains("name")
+    )
