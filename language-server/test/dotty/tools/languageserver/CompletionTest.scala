@@ -1723,4 +1723,14 @@ class CompletionTest {
      .completion(m5, Set())
      .completion(m6, Set())
 
+  @Test def namedTupleCompletion: Unit =
+    code"""|import scala.language.experimental.namedTuples
+           |
+           |val person: (name: String, city: String) =
+           |  (name = "Jamie", city = "Lausanne")
+           |
+           |val n = person.na$m1
+           |"""
+      .completion(m1, Set(("name", Field, "String")))
+
 }

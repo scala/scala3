@@ -530,22 +530,25 @@ object Completion:
     /** Completions for named tuples */
     private def namedTupleCompletions(qual: tpd.Tree)(using Context): CompletionMap =
       def namedTupleCompletionsFromType(tpe: Type): CompletionMap =
-        tpe.namedTupleElementTypes
-          .map { (name, tpe) =>
-            val symbol = newSymbol(owner = NoSymbol, name, EmptyFlags, tpe)
-            val denot = SymDenotation(symbol, NoSymbol, name, EmptyFlags, tpe)
-            name -> denot
-          }
-          .toSeq
-          .groupByName
+        val freshCtx = ctx.fresh.setExploreTyperState()
+        inContext(freshCtx):
+          tpe.namedTupleElementTypes
+            .map { (name, tpe) =>
+              val symbol = newSymbol(owner = NoSymbol, name, EmptyFlags, tpe)
+              val denot = SymDenotation(symbol, NoSymbol, name, EmptyFlags, tpe)
+              name -> denot
+            }
+            .toSeq
+            .filter((name, denot) => include(denot, name))
+            .groupByName
 
       val qualTpe = qual.typeOpt
       if qualTpe.isNamedTupleType then
-        namedTupleCompleionsFromType(qualTpe)
+        namedTupleCompletionsFromType(qualTpe)
       else if qualTpe.derivesFrom(defn.SelectableClass) then
         val pre = if !TypeOps.isLegalPrefix(qualTpe) then Types.SkolemType(qualTpe) else qualTpe
         val fieldsType = pre.select(StdNames.tpnme.Fields).dealias.simplified
-        namedTupleCompleionsFromType(fieldsType)
+        namedTupleCompletionsFromType(fieldsType)
       else Map.empty
 
     /** Completions from extension methods */
