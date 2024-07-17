@@ -6,9 +6,11 @@ $unzipLocation = Join-Path $unzipLocation "$($env:chocolateyPackageVersion)"  # 
 
 # Configure the installation arguments
 $packageArgs = @{
-  packageName   = 'scala'
-  Url64         = '@LAUNCHER_URL@'
-  UnzipLocation = $unzipLocation
+  packageName    = 'scala'
+  Url64          = '@LAUNCHER_URL@'
+  UnzipLocation  = $unzipLocation
+  Checksum64     = '@LAUNCHER_SHA256@'
+  ChecksumType64 = 'SHA256'
 }
 
 ## In case we are running in the CI, add the authorisation header to fetch the zip

@@ -36,18 +36,22 @@ on:
       win-x86_64-id:
         description: ID of the `win x86-64` package from GitHub Artifacts (Authentication Required)
         value      : ${{ jobs.build.outputs.win-x86_64-id }}
+      win-x86_64-digest:
+        description: The SHA256 of the uploaded artifact (`win x86-64`)
+        value      : ${{ jobs.build.outputs.win-x86_64-digest }}
 
 
 jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      universal-id    : ${{ steps.universal.outputs.artifact-id }}
-      linux-x86_64-id : ${{ steps.linux-x86_64.outputs.artifact-id }}
-      linux-aarch64-id: ${{ steps.linux-aarch64.outputs.artifact-id }}
-      mac-x86_64-id   : ${{ steps.mac-x86_64.outputs.artifact-id }}
-      mac-aarch64-id  : ${{ steps.mac-aarch64.outputs.artifact-id }}
-      win-x86_64-id   : ${{ steps.win-x86_64.outputs.artifact-id }}
+      universal-id     : ${{ steps.universal.outputs.artifact-id }}
+      linux-x86_64-id  : ${{ steps.linux-x86_64.outputs.artifact-id }}
+      linux-aarch64-id : ${{ steps.linux-aarch64.outputs.artifact-id }}
+      mac-x86_64-id    : ${{ steps.mac-x86_64.outputs.artifact-id }}
+      mac-aarch64-id   : ${{ steps.mac-aarch64.outputs.artifact-id }}
+      win-x86_64-id    : ${{ steps.win-x86_64.outputs.artifact-id }}
+      win-x86_64-digest: ${{ steps.win-x86_64-digest.outputs.digest }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -103,4 +107,10 @@ jobs:
         with:
           path: ./dist/win-x86_64/target/universal/stage
           name: scala3-x86_64-pc-win32
+      - name: Compute SHA256 of the uploaded artifact (win x86-64)
+        id  : win-x86_64-digest
+        run : |
+          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -o artifact.zip -L https://api.github.com/repos/scala/scala3/actions/artifacts/${{ steps.win-x86_64.outputs.artifact-id }}/zip
+          echo "digest=$(sha256sum artifact.zip | cut -d " " -f 1)" >> "$GITHUB_OUTPUT"
+
           

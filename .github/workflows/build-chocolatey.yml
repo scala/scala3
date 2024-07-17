@@ -15,10 +15,13 @@ on:
     inputs:
       version:
         required: true
-        type: string
+        type    : string
       url:
         required: true
-        type: string
+        type    : string
+      digest:
+        required: true
+        type    : string
 
 jobs:
   build:
@@ -37,6 +40,12 @@ jobs:
           files: ./pkgs/chocolatey/tools/chocolateyInstall.ps1
           search-text: '@LAUNCHER_URL@'
           replacement-text: ${{ inputs.url }}
+      - name: Replace the CHECKSUM placeholder
+        uses: richardrigutins/replace-in-files@v2
+        with:
+          files: ./pkgs/chocolatey/tools/chocolateyInstall.ps1
+          search-text: '@LAUNCHER_SHA256@'
+          replacement-text: ${{ inputs.digest }}
       - name: Build the Chocolatey package (.nupkg)
         run: choco pack ./pkgs/chocolatey/scala.nuspec --out ./pkgs/chocolatey
       - name: Upload the Chocolatey package to GitHub

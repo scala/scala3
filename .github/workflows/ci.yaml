@@ -1025,6 +1025,7 @@ jobs:
     with:
       version: 3.6.0-local # TODO: FIX THIS
       url    : https://api.github.com/repos/scala/scala3/actions/artifacts/${{ needs.build-sdk-package.outputs.win-x86_64-id }}/zip
+      digest : ${{ needs.build-sdk-package.outputs.win-x86_64-digest }}
 
   test-chocolatey-package:
     uses: ./.github/workflows/test-chocolatey.yml
