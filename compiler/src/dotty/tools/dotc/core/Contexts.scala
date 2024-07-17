@@ -387,12 +387,12 @@ object Contexts {
 
     /** The next outer context whose tree is a template or package definition
      *  Note: Currently unused
-    def enclTemplate: Context = {
+    def enclTemplate: Context =
       var c = this
-      while (c != NoContext && !c.tree.isInstanceOf[Template[?]] && !c.tree.isInstanceOf[PackageDef[?]])
-        c = c.outer
+      while c != NoContext && !c.tree.isInstanceOf[Template[?]] && !c.tree.isInstanceOf[PackageDef[?]]
+      do c = c.outer
       c
-    }*/
+     */
 
     /** The context for a supercall. This context is used for elaborating
      *  the parents of a class and their arguments.
