@@ -594,7 +594,9 @@ object CaptureSet:
     override def optionalInfo(using Context): String =
       for vars <- ctx.property(ShownVars) do vars += this
       val debugInfo =
-        if !isConst && ctx.settings.YccDebug.value then ids else ""
+        if !ctx.settings.YccDebug.value then ""
+        else if isConst then ids ++ "(solved)"
+        else ids
       val limitInfo =
         if ctx.settings.YprintLevel.value && level.isDefined
         then i"<at level ${level.toString}>"

@@ -1363,8 +1363,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       withCaptureSetsExplained:
         super.checkUnit(unit)
         checkOverrides.traverse(unit.tpdTree)
-        checkSelfTypes(unit.tpdTree)
         postCheck(unit.tpdTree)
+        checkSelfTypes(unit.tpdTree)
+        postCheckWF(unit.tpdTree)
         if ctx.settings.YccDebug.value then
           show(unit.tpdTree) // this does not print tree, but makes its variables visible for dependency printing
 
@@ -1514,7 +1515,6 @@ class CheckCaptures extends Recheck, SymTransformer:
       check.traverse(tp)
 
     /** Perform the following kinds of checks
-     *   - Check all explicitly written capturing types for well-formedness using `checkWellFormedPost`.
      *   - Check that arguments of TypeApplys and AppliedTypes conform to their bounds.
      *   - Heal ill-formed capture sets of type parameters. See `healTypeParam`.
      */
@@ -1542,10 +1542,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ =>
         end check
       end checker
-      checker.traverse(unit)(using ctx.withOwner(defn.RootClass))
-      for chk <- todoAtPostCheck do chk()
-      setup.postCheck()
 
+      checker.traverse(unit)(using ctx.withOwner(defn.RootClass))
       if !ctx.reporter.errorsReported then
         // We dont report errors here if previous errors were reported, because other
         // errors often result in bad applied types, but flagging these bad types gives
@@ -1557,5 +1555,15 @@ class CheckCaptures extends Recheck, SymTransformer:
             case tree: TypeTree => checkAppliedTypesIn(tree.withKnownType)
             case _ => traverseChildren(t)
         checkApplied.traverse(unit)
+    end postCheck
+
+    /** Perform the following kinds of checks:
+     *   - Check all explicitly written capturing types for well-formedness using `checkWellFormedPost`.
+     *   - Check that publicly visible inferred types correspond to the type
+     *     they have without capture checking.
+     */
+    def postCheckWF(unit: tpd.Tree)(using Context): Unit =
+      for chk <- todoAtPostCheck do chk()
+      setup.postCheck()
   end CaptureChecker
 end CheckCaptures
