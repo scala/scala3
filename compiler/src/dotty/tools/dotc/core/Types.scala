@@ -3695,6 +3695,7 @@ object Types extends TypeUtils {
       myUnion
 
     private var atomsRunId: RunId = NoRunId
+    private var widenedRunId: RunId = NoRunId
     private var myAtoms: Atoms = uninitialized
     private var myWidened: Type = uninitialized
 
@@ -3710,20 +3711,18 @@ object Types extends TypeUtils {
       val tp2w = tp2.widenSingletons()
       if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else TypeComparer.lub(tp1w, tp2w, isSoft = isSoft)
 
-    private def ensureAtomsComputed()(using Context): Unit =
+    override def atoms(using Context): Atoms =
       if atomsRunId != ctx.runId then
         myAtoms = computeAtoms()
-        myWidened = computeWidenSingletons()
         if !isProvisional then atomsRunId = ctx.runId
-
-    override def atoms(using Context): Atoms =
-      ensureAtomsComputed()
       myAtoms
 
     override def widenSingletons(skipSoftUnions: Boolean)(using Context): Type =
       if isSoft && skipSoftUnions then this
       else
-        ensureAtomsComputed()
+        if widenedRunId != ctx.runId then
+          myWidened = computeWidenSingletons()
+          if !isProvisional then widenedRunId = ctx.runId
         myWidened
 
     def derivedOrType(tp1: Type, tp2: Type, soft: Boolean = isSoft)(using Context): Type =
