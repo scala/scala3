@@ -244,7 +244,8 @@ extension (tp: Type)
    *  the two capture sets are combined.
    */
   def capturing(cs: CaptureSet)(using Context): Type =
-    if cs.isAlwaysEmpty || cs.isConst && cs.subCaptures(tp.captureSet, frozen = true).isOK
+    if (cs.isAlwaysEmpty || cs.isConst && cs.subCaptures(tp.captureSet, frozen = true).isOK)
+        && !cs.keepAlways
     then tp
     else tp match
       case CapturingType(parent, cs1) => parent.capturing(cs1 ++ cs)

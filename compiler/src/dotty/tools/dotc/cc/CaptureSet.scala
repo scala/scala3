@@ -88,6 +88,8 @@ sealed abstract class CaptureSet extends Showable:
   final def isUnboxable(using Context) =
     elems.exists(elem => elem.isRootCapability || Existential.isExistentialVar(elem))
 
+  final def keepAlways: Boolean = this.isInstanceOf[EmptyWithProvenance]
+
   /** Try to include an element in this capture set.
    *  @param elem    The element to be added
    *  @param origin  The set that originated the request, or `empty` if the request came from outside.
@@ -219,7 +221,8 @@ sealed abstract class CaptureSet extends Showable:
    *  `this` and `that`
    */
   def ++ (that: CaptureSet)(using Context): CaptureSet =
-    if this.subCaptures(that, frozen = true).isOK then that
+    if this.subCaptures(that, frozen = true).isOK then
+      if that.isAlwaysEmpty && this.keepAlways then this else that
     else if that.subCaptures(this, frozen = true).isOK then this
     else if this.isConst && that.isConst then Const(this.elems ++ that.elems)
     else Union(this, that)
@@ -294,7 +297,7 @@ sealed abstract class CaptureSet extends Showable:
     case _ =>
       val mapped = mapRefs(elems, tm, tm.variance)
       if isConst then
-        if mapped.isConst && mapped.elems == elems then this
+        if mapped.isConst && mapped.elems == elems && !mapped.keepAlways then this
         else mapped
       else Mapped(asVar, tm, tm.variance, mapped)
 
@@ -397,6 +400,12 @@ object CaptureSet:
 
     override def toString = elems.toString
   end Const
+
+  case class EmptyWithProvenance(ref: CaptureRef, mapped: Type) extends Const(SimpleIdentitySet.empty):
+    override def optionalInfo(using Context): String =
+      if ctx.settings.YccDebug.value
+      then i" under-approximating the result of mapping $ref to $mapped"
+      else ""
 
   /** A special capture set that gets added to the types of symbols that were not
    *  themselves capture checked, in order to admit arbitrary corresponding capture
@@ -863,7 +872,7 @@ object CaptureSet:
       || upper.isConst && upper.elems.size == 1 && upper.elems.contains(r1)
       || r.derivesFrom(defn.Caps_CapSet)
     if variance > 0 || isExact then upper
-    else if variance < 0 then CaptureSet.empty
+    else if variance < 0 then CaptureSet.EmptyWithProvenance(r, r1)
     else upper.maybe
 
   /** Apply `f` to each element in `xs`, and join result sets with `++` */

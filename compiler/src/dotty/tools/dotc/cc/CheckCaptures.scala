@@ -990,6 +990,25 @@ class CheckCaptures extends Recheck, SymTransformer:
               |
               |Note that ${msg.toString}"""
 
+    private def addApproxAddenda(using Context) =
+      new TypeAccumulator[Addenda]:
+        def apply(add: Addenda, t: Type) = t match
+          case CapturingType(t, CaptureSet.EmptyWithProvenance(ref, mapped)) =>
+            /* val (origCore, kind) = original match
+              case tp @ AnnotatedType(parent, ann) if ann.hasSymbol(defn.ReachCapabilityAnnot) =>
+                (parent, " deep")
+              case _ =>
+                (original, "")*/
+            add ++ new Addenda:
+              override def toAdd(using Context): List[String] =
+                i"""
+                   |
+                   |Note that a capability $ref in a capture set appearing in contravariant position
+                   |was mapped to $mapped which is not a capability. Therefore, it was under-approximated to the empty set."""
+                :: Nil
+          case _ =>
+            foldOver(add, t)
+
     /** Massage `actual` and `expected` types before checking conformance.
      *  Massaging is done by the methods following this one:
      *   - align dependent function types and add outer references in the expected type
@@ -1015,7 +1034,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       else
         capt.println(i"conforms failed for ${tree}: $actual vs $expected")
         err.typeMismatch(tree.withType(actualBoxed), expected1,
-            addenda ++ CaptureSet.levelErrors ++ boxErrorAddenda(boxErrors))
+            addApproxAddenda(
+              addenda ++ CaptureSet.levelErrors ++ boxErrorAddenda(boxErrors),
+              expected1))
         actual
     end checkConformsExpr
 
