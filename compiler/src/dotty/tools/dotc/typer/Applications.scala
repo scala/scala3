@@ -1822,7 +1822,7 @@ trait Applications extends Compatibility {
           }
         case _ => // (3)
           def isGiven(alt: TermRef) =
-            alt1.symbol.is(Given) && alt.symbol != defn.NotGivenClass
+            alt.symbol.is(Given) && alt.symbol != defn.NotGivenClass
           def compareValues(tp1: Type, tp2: Type)(using Context) =
             isAsGoodValueType(tp1, tp2, isGiven(alt1), isGiven(alt2))
           tp2 match
@@ -1842,7 +1842,7 @@ trait Applications extends Compatibility {
      *     available in 3.0-migration if mode `Mode.OldImplicitResolution` is turned on as well.
      *     It is used to highlight differences between Scala 2 and 3 behavior.
      *
-     *   - In Scala 3.0-3.5, the behavior is as follows: `T <:p U` iff there is an impliit conversion
+     *   - In Scala 3.0-3.5, the behavior is as follows: `T <:p U` iff there is an implicit conversion
      *     from `T` to `U`, or
      *
      *        flip(T) <: flip(U)
