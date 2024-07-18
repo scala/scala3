@@ -1073,7 +1073,7 @@ object CaptureSet:
             case parent: SingletonCaptureRef if parent.isTrackableRef =>
               tp.singletonCaptureSet
             case _ =>
-              CaptureSet.ofTypeDeeply(parent)
+              CaptureSet.ofTypeDeeply(parent.widen)
         case tpd @ defn.RefinedFunctionOf(rinfo: MethodType) if followResult =>
           ofType(tpd.parent, followResult = false)             // pick up capture set from parent type
           ++ (recur(rinfo.resType)                             // add capture set of result
