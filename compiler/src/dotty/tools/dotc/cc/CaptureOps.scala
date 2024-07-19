@@ -14,6 +14,8 @@ import tpd.*
 import StdNames.nme
 import config.Feature
 import collection.mutable
+import CCState.*
+import reporting.Message
 
 private val Captures: Key[CaptureSet] = Key()
 
@@ -25,11 +27,32 @@ object ccConfig:
    */
   inline val allowUnsoundMaps = false
 
-  /** If true, use `sealed` as encapsulation mechanism instead of the
-   *  previous global retriction that `cap` can't be boxed or unboxed.
+  /** If true, when computing the memberinfo of a refined type created
+   *  by addCaptureRefinements take the refineInfo directly without intersecting
+   *  with the parent info.
    */
-  def allowUniversalInBoxed(using Context) =
-    Feature.sourceVersion.isAtLeast(SourceVersion.`3.3`)
+  inline val optimizedRefinements = false
+
+  /** If enabled, use a special path in recheckClosure for closures
+   *  that are eta expansions. This can improve some error messages but
+   *  currently leads to unsoundess for handlng reach capabilities.
+   *  TODO: The unsoundness needs followin up.
+   */
+  inline val handleEtaExpansionsSpecially = false
+
+  /** If true, use existential capture set variables */
+  def useExistentials(using Context) =
+    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.5`)
+
+  /** If true, use "sealed" as encapsulation mechanism, meaning that we
+   *  check that type variable instantiations don't have `cap` in any of
+   *  their capture sets. This is an alternative of the original restriction
+   *  that `cap` can't be boxed or unboxed. It is used in 3.3 and 3.4 but
+   *  dropped again in 3.5.
+   */
+  def useSealed(using Context) =
+    Feature.sourceVersion.stable == SourceVersion.`3.3`
+    || Feature.sourceVersion.stable == SourceVersion.`3.4`
 end ccConfig
 
 
@@ -54,7 +77,7 @@ def depFun(args: List[Type], resultType: Type, isContextual: Boolean, paramNames
   mt.toFunctionType(alwaysDependent = true)
 
 /** An exception thrown if a @retains argument is not syntactically a CaptureRef */
-class IllegalCaptureRef(tpe: Type) extends Exception(tpe.toString)
+class IllegalCaptureRef(tpe: Type)(using Context) extends Exception(tpe.show)
 
 /** Capture checking state, which is known to other capture checking components */
 class CCState:
@@ -64,11 +87,52 @@ class CCState:
    */
   var levelError: Option[CaptureSet.CompareResult.LevelError] = None
 
+  /** Warnings relating to upper approximations of capture sets with
+   *  existentially bound variables.
+   */
+  val approxWarnings: mutable.ListBuffer[Message] = mutable.ListBuffer()
+
+  private var curLevel: Level = outermostLevel
+  private val symLevel: mutable.Map[Symbol, Int] = mutable.Map()
+
+object CCState:
+
+  opaque type Level = Int
+
+  val undefinedLevel: Level = -1
+
+  val outermostLevel: Level = 0
+
+  /** The level of the current environment. Levels start at 0 and increase for
+   *  each nested function or class. -1 means the level is undefined.
+   */
+  def currentLevel(using Context): Level = ccState.curLevel
+
+  inline def inNestedLevel[T](inline op: T)(using Context): T =
+    val ccs = ccState
+    val saved = ccs.curLevel
+    ccs.curLevel = ccs.curLevel.nextInner
+    try op finally ccs.curLevel = saved
+
+  inline def inNestedLevelUnless[T](inline p: Boolean)(inline op: T)(using Context): T =
+    val ccs = ccState
+    val saved = ccs.curLevel
+    if !p then ccs.curLevel = ccs.curLevel.nextInner
+    try op finally ccs.curLevel = saved
+
+  extension (x: Level)
+    def isDefined: Boolean = x >= 0
+    def <= (y: Level) = (x: Int) <= y
+    def nextInner: Level = if isDefined then x + 1 else x
+
+  extension (sym: Symbol)(using Context)
+    def ccLevel: Level = ccState.symLevel.getOrElse(sym, -1)
+    def recordLevel() = ccState.symLevel(sym) = currentLevel
 end CCState
 
 /** The currently valid CCState */
 def ccState(using Context) =
-  Phases.checkCapturesPhase.asInstanceOf[CheckCaptures].ccState
+  Phases.checkCapturesPhase.asInstanceOf[CheckCaptures].ccState1
 
 class NoCommonRoot(rs: Symbol*)(using Context) extends Exception(
   i"No common capture root nested in ${rs.mkString(" and ")}"
@@ -76,13 +140,21 @@ class NoCommonRoot(rs: Symbol*)(using Context) extends Exception(
 
 extension (tree: Tree)
 
-  /** Map tree with CaptureRef type to its type, throw IllegalCaptureRef otherwise */
-  def toCaptureRef(using Context): CaptureRef = tree match
+  /** Map tree with CaptureRef type to its type,
+   *  map CapSet^{refs} to the `refs` references,
+   *  throw IllegalCaptureRef otherwise
+   */
+  def toCaptureRefs(using Context): List[CaptureRef] = tree match
     case ReachCapabilityApply(arg) =>
-      arg.toCaptureRef.reach
-    case _ => tree.tpe match
+      arg.toCaptureRefs.map(_.reach)
+    case CapsOfApply(arg) =>
+      arg.toCaptureRefs
+    case _ => tree.tpe.dealiasKeepAnnots match
       case ref: CaptureRef if ref.isTrackableRef =>
-        ref
+        ref :: Nil
+      case AnnotatedType(parent, ann)
+      if ann.symbol.isRetains && parent.derivesFrom(defn.Caps_CapSet) =>
+        ann.tree.toCaptureSet.elems.toList
       case tpe =>
         throw IllegalCaptureRef(tpe) // if this was compiled from cc syntax, problem should have been reported at Typer
 
@@ -93,8 +165,8 @@ extension (tree: Tree)
     tree.getAttachment(Captures) match
       case Some(refs) => refs
       case None =>
-        val refs = CaptureSet(tree.retainedElems.map(_.toCaptureRef)*)
-          .showing(i"toCaptureSet $tree --> $result", capt)
+        val refs = CaptureSet(tree.retainedElems.flatMap(_.toCaptureRefs)*)
+          //.showing(i"toCaptureSet $tree --> $result", capt)
         tree.putAttachment(Captures, refs)
         refs
 
@@ -108,6 +180,76 @@ extension (tree: Tree)
       else Nil
 
 extension (tp: Type)
+
+  /** Is this type a CaptureRef that can be tracked?
+   *  This is true for
+   *    - all ThisTypes and all TermParamRef,
+   *    - stable TermRefs with NoPrefix or ThisTypes as prefixes,
+   *    - the root capability `caps.cap`
+   *    - abstract or parameter TypeRefs that derive from caps.CapSet
+   *    - annotated types that represent reach or maybe capabilities
+   */
+  final def isTrackableRef(using Context): Boolean = tp match
+    case _: (ThisType | TermParamRef) =>
+      true
+    case tp: TermRef =>
+      ((tp.prefix eq NoPrefix)
+      || tp.symbol.is(ParamAccessor) && tp.prefix.isThisTypeOf(tp.symbol.owner)
+      || tp.isRootCapability
+      ) && !tp.symbol.isOneOf(UnstableValueFlags)
+    case tp: TypeRef =>
+      tp.symbol.isAbstractOrParamType && tp.derivesFrom(defn.Caps_CapSet)
+    case tp: TypeParamRef =>
+      tp.derivesFrom(defn.Caps_CapSet)
+    case AnnotatedType(parent, annot) =>
+      (annot.symbol == defn.ReachCapabilityAnnot
+      || annot.symbol == defn.MaybeCapabilityAnnot
+      ) && parent.isTrackableRef
+    case _ =>
+      false
+
+  /** The capture set of a type. This is:
+    *   - For trackable capture references: The singleton capture set consisting of
+    *     just the reference, provided the underlying capture set of their info is not empty.
+    *   - For other capture references: The capture set of their info
+    *   - For all other types: The result of CaptureSet.ofType
+    */
+  final def captureSet(using Context): CaptureSet = tp match
+    case tp: CaptureRef if tp.isTrackableRef =>
+      val cs = tp.captureSetOfInfo
+      if cs.isAlwaysEmpty then cs else tp.singletonCaptureSet
+    case tp: SingletonCaptureRef => tp.captureSetOfInfo
+    case _ => CaptureSet.ofType(tp, followResult = false)
+
+  /** The deep capture set of a type.
+   *  For singleton capabilities `x` and reach capabilities `x*`, this is `{x*}`, provided
+   *  the underlying capture set resulting from traversing the type is non-empty.
+   *  For other types this is the union of all covariant capture sets embedded
+   *  in the type, as computed by `CaptureSet.ofTypeDeeply`.
+   */
+  def deepCaptureSet(using Context): CaptureSet =
+    val dcs = CaptureSet.ofTypeDeeply(tp)
+    if dcs.isAlwaysEmpty then dcs
+    else tp match
+      case tp @ ReachCapability(_) => tp.singletonCaptureSet
+      case tp: SingletonCaptureRef => tp.reach.singletonCaptureSet
+      case _ => dcs
+
+  /** A type capturing `ref` */
+  def capturing(ref: CaptureRef)(using Context): Type =
+    if tp.captureSet.accountsFor(ref) then tp
+    else CapturingType(tp, ref.singletonCaptureSet)
+
+  /** A type capturing the capture set `cs`. If this type is already a capturing type
+   *  the two capture sets are combined.
+   */
+  def capturing(cs: CaptureSet)(using Context): Type =
+    if (cs.isAlwaysEmpty || cs.isConst && cs.subCaptures(tp.captureSet, frozen = true).isOK)
+        && !cs.keepAlways
+    then tp
+    else tp match
+      case CapturingType(parent, cs1) => parent.capturing(cs1 ++ cs)
+      case _ => CapturingType(tp, cs)
 
   /** @pre `tp` is a CapturingType */
   def derivedCapturingType(parent: Type, refs: CaptureSet)(using Context): Type = tp match
@@ -158,7 +300,23 @@ extension (tp: Type)
     getBoxed(tp)
 
   /** Is the boxedCaptureSet of this type nonempty? */
-  def isBoxedCapturing(using Context) = !tp.boxedCaptureSet.isAlwaysEmpty
+  def isBoxedCapturing(using Context): Boolean =
+    tp match
+      case tp @ CapturingType(parent, refs) =>
+        tp.isBoxed && !refs.isAlwaysEmpty || parent.isBoxedCapturing
+      case tp: TypeRef if tp.symbol.isAbstractOrParamType => false
+      case tp: TypeProxy => tp.superType.isBoxedCapturing
+      case tp: AndType => tp.tp1.isBoxedCapturing && tp.tp2.isBoxedCapturing
+      case tp: OrType => tp.tp1.isBoxedCapturing || tp.tp2.isBoxedCapturing
+      case _ => false
+
+  /** Is the box status of `tp` and `tp2` compatible? I.ee  they are
+   *  box boxed, or both unboxed, or one of them has an empty capture set.
+   */
+  def isBoxCompatibleWith(tp2: Type)(using Context): Boolean =
+    isBoxedCapturing == tp2.isBoxedCapturing
+    || tp.captureSet.isAlwaysEmpty
+    || tp2.captureSet.isAlwaysEmpty
 
   /** If this type is a capturing type, the version with boxed statues as given by `boxed`.
    *  If it is a TermRef of a capturing type, and the box status flips, widen to a capturing
@@ -184,16 +342,14 @@ extension (tp: Type)
     case _ =>
       tp
 
-  /** Is type known to be always pure by its class structure,
-   *  so that adding a capture set to it would not make sense?
+  /** Is type known to be always pure by its class structure?
+   *  In that case, adding a capture set to it would not make sense.
    */
   def isAlwaysPure(using Context): Boolean = tp.dealias match
     case tp: (TypeRef | AppliedType) =>
       val sym = tp.typeSymbol
       if sym.isClass then sym.isPureClass
       else tp.superType.isAlwaysPure
-    case CapturingType(parent, refs) =>
-      parent.isAlwaysPure || refs.isAlwaysEmpty
     case tp: TypeProxy =>
       tp.superType.isAlwaysPure
     case tp: AndType =>
@@ -211,7 +367,7 @@ extension (tp: Type)
       val sym = tp.typeSymbol
       if sym.isClass then sym.derivesFrom(defn.Caps_Capability)
       else tp.superType.derivesFromCapability
-    case tp: TypeProxy =>
+    case tp: (TypeProxy & ValueType) =>
       tp.superType.derivesFromCapability
     case tp: AndType =>
       tp.tp1.derivesFromCapability || tp.tp2.derivesFromCapability
@@ -307,6 +463,7 @@ extension (tp: Type)
               ok = false
             case _ =>
               traverseChildren(t)
+    end CheckContraCaps
 
     object narrowCaps extends TypeMap:
       /** Has the variance been flipped at this point? */
@@ -319,16 +476,25 @@ extension (tp: Type)
           t.dealias match
             case t1 @ CapturingType(p, cs) if cs.isUniversal && !isFlipped =>
               t1.derivedCapturingType(apply(p), ref.reach.singletonCaptureSet)
+            case t1 @ FunctionOrMethod(args, res @ Existential(_, _))
+            if args.forall(_.isAlwaysPure) =>
+              // Also map existentials in results to reach capabilities if all
+              // preceding arguments are known to be always pure
+              apply(t1.derivedFunctionOrMethod(args, Existential.toCap(res)))
+            case Existential(_, _) =>
+              t
             case _ => t match
               case t @ CapturingType(p, cs) =>
                 t.derivedCapturingType(apply(p), cs) // don't map capture set variables
               case t =>
                 mapOver(t)
         finally isFlipped = saved
+    end narrowCaps
+
     ref match
       case ref: CaptureRef if ref.isTrackableRef =>
         val checker = new CheckContraCaps
-        checker.traverse(tp)
+        if !ccConfig.useExistentials then checker.traverse(tp)
         if checker.ok then
           val tp1 = narrowCaps(tp)
           if tp1 ne tp then capt.println(i"narrow $tp of $ref to $tp1")
@@ -338,6 +504,12 @@ extension (tp: Type)
           tp
       case _ =>
         tp
+
+  def level(using Context): Level =
+    tp match
+    case tp: TermRef => tp.symbol.ccLevel
+    case tp: ThisType => tp.cls.ccLevel.nextInner
+    case _ => undefinedLevel
 
 extension (cls: ClassSymbol)
 
@@ -414,43 +586,21 @@ extension (sym: Symbol)
     && !sym.allowsRootCapture
     && sym != defn.Caps_unsafeBox
     && sym != defn.Caps_unsafeUnbox
+    && !defn.isPolymorphicAfterErasure(sym)
+    && !defn.isTypeTestOrCast(sym)
 
-  /** Does this symbol define a level where we do not want to let local variables
-   *  escape into outer capture sets?
-   */
-  def isLevelOwner(using Context): Boolean =
-    sym.isClass
-    || sym.is(Method, butNot = Accessor)
+  def isRefiningParamAccessor(using Context): Boolean =
+    sym.is(ParamAccessor)
+    && {
+      val param = sym.owner.primaryConstructor.paramSymss
+        .nestedFind(_.name == sym.name)
+        .getOrElse(NoSymbol)
+      !param.hasAnnotation(defn.ConstructorOnlyAnnot)
+      && !param.hasAnnotation(defn.UntrackedCapturesAnnot)
+    }
 
-  /** The owner of the current level. Qualifying owners are
-   *   - methods other than constructors and anonymous functions
-   *   - anonymous functions, provided they either define a local
-   *     root of type caps.Capability, or they are the rhs of a val definition.
-   *   - classes, if they are not staticOwners
-   *   - _root_
-   */
-  def levelOwner(using Context): Symbol =
-    def recur(sym: Symbol): Symbol =
-      if !sym.exists || sym.isRoot || sym.isStaticOwner then defn.RootClass
-      else if sym.isLevelOwner then sym
-      else recur(sym.owner)
-    recur(sym)
-
-  /** The outermost symbol owned by both `sym` and `other`. if none exists
-   *  since the owning scopes of `sym` and `other` are not nested, invoke
-   *  `onConflict` to return a symbol.
-   */
-  def maxNested(other: Symbol, onConflict: (Symbol, Symbol) => Context ?=> Symbol)(using Context): Symbol =
-    if !sym.exists || other.isContainedIn(sym) then other
-    else if !other.exists || sym.isContainedIn(other) then sym
-    else onConflict(sym, other)
-
-  /** The innermost symbol owning both `sym` and `other`.
-   */
-  def minNested(other: Symbol)(using Context): Symbol =
-    if !other.exists || other.isContainedIn(sym) then sym
-    else if !sym.exists || sym.isContainedIn(other) then other
-    else sym.owner.minNested(other.owner)
+  def hasTrackedParts(using Context): Boolean =
+    !CaptureSet.ofTypeDeeply(sym.info).isAlwaysEmpty
 
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */
@@ -474,6 +624,14 @@ object ReachCapabilityApply:
     case Apply(reach, arg :: Nil) if reach.symbol == defn.Caps_reachCapability => Some(arg)
     case _ => None
 
+/** An extractor for `caps.capsOf[X]`, which is used to express a generic capture set
+ *  as a tree in a @retains annotation.
+ */
+object CapsOfApply:
+  def unapply(tree: TypeApply)(using Context): Option[Tree] = tree match
+    case TypeApply(capsOf, arg :: Nil) if capsOf.symbol == defn.Caps_capsOf => Some(arg)
+    case _ => None
+
 class AnnotatedCapability(annot: Context ?=> ClassSymbol):
   def apply(tp: Type)(using Context) =
     AnnotatedType(tp, Annotation(annot, util.Spans.NoSpan))
@@ -491,7 +649,35 @@ object ReachCapability extends AnnotatedCapability(defn.ReachCapabilityAnnot)
  */
 object MaybeCapability extends AnnotatedCapability(defn.MaybeCapabilityAnnot)
 
+/** Offers utility method to be used for type maps that follow aliases */
+trait ConservativeFollowAliasMap(using Context) extends TypeMap:
+
+  /** If `mapped` is a type alias, apply the map to the alias, while keeping
+   *  annotations. If the result is different, return it, otherwise return `mapped`.
+   *  Furthermore, if `original` is a LazyRef or TypeVar and the mapped result is
+   *  the same as the underlying type, keep `original`. This avoids spurious differences
+   *  which would lead to spurious dealiasing in the result
+   */
+  protected def applyToAlias(original: Type, mapped: Type) =
+    val mapped1 = mapped match
+      case t: (TypeRef | AppliedType) =>
+        val t1 = t.dealiasKeepAnnots
+        if t1 eq t then t
+        else
+          // If we see a type alias, map the alias type and keep it if it's different
+          val t2 = apply(t1)
+          if t2 ne t1 then t2 else t
+      case _ =>
+        mapped
+    original match
+      case original: (LazyRef | TypeVar) if mapped1 eq original.underlying =>
+        original
+      case _ =>
+        mapped1
+end ConservativeFollowAliasMap
+
 /** An extractor for all kinds of function types as well as method and poly types.
+ *  It includes aliases of function types such as `=>`. TODO: Can we do without?
  *  @return  1st half: The argument types or empty if this is a type function
  *           2nd half: The result type
  */

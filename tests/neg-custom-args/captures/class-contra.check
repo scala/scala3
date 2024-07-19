@@ -1,7 +1,10 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/class-contra.scala:12:39 ---------------------------------
 12 |  def fun(x: K{val f: T^{a}}) = x.setf(a) // error
    |                                       ^
-   |                                       Found:    (a : T^{x, y})
-   |                                       Required: T
+   |   Found:    (a : T^{x, y})
+   |   Required: T^{}
+   |
+   |   Note that a capability (K.this.f : T^) in a capture set appearing in contravariant position
+   |   was mapped to (x.f : T^{a}) which is not a capability. Therefore, it was under-approximated to the empty set.
    |
    | longer explanation available when compiling with `-explain`

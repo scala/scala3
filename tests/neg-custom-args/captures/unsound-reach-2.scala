@@ -1,3 +1,5 @@
+//> using options -source 3.4
+// (to make sure we use the sealed policy)
 import language.experimental.captureChecking
 trait Consumer[-T]:
   def apply(x: T): Unit
@@ -18,7 +20,7 @@ def bad(): Unit =
 
   var escaped: File^{backdoor*} = null
   withFile("hello.txt"): f =>
-    boom.use(f): // error
+    boom.use(f):
       new Consumer[File^{backdoor*}]: // error
         def apply(f1: File^{backdoor*}) =
           escaped = f1

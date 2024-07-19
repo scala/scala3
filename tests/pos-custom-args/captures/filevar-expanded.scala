@@ -32,5 +32,6 @@ object test2:
   def test(io3: IO^) =
     withFile(io3): f =>
       val o = Service(io3)
-      o.file = f
+      o.file = f  // this is a bit dubious. It's legal since we treat class refinements
+                  // as capture set variables that can be made to include refs coming from outside.
       o.log

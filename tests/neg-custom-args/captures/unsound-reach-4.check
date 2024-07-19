@@ -1,0 +1,6 @@
+-- Error: tests/neg-custom-args/captures/unsound-reach-4.scala:21:25 ---------------------------------------------------
+21 |  withFile("hello.txt"): f =>  // error
+   |                         ^
+   |                         Reach capability backdoor* and universal capability cap cannot both
+   |                         appear in the type (f: File^) ->{backdoor*} Unit of this expression
+22 |    escaped = boom.use(f)

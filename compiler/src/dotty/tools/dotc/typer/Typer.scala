@@ -1683,10 +1683,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         else
           val resTpt = TypeTree(mt.nonDependentResultApprox).withSpan(body.span)
           val paramTpts = appDef.termParamss.head.map(p => TypeTree(p.tpt.tpe).withSpan(p.tpt.span))
-          val funSym = defn.FunctionSymbol(numArgs, isContextual, isImpure)
+          val funSym = defn.FunctionSymbol(numArgs, isContextual)
           val tycon = TypeTree(funSym.typeRef)
           AppliedTypeTree(tycon, paramTpts :+ resTpt)
-      RefinedTypeTree(core, List(appDef), ctx.owner.asClass)
+      val res = RefinedTypeTree(core, List(appDef), ctx.owner.asClass)
+      if isImpure then
+        typed(untpd.makeRetaining(untpd.TypedSplice(res), Nil, tpnme.retainsCap), pt)
+      else
+        res
     end typedDependent
 
     args match {
@@ -2324,7 +2328,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val res = Throw(expr1).withSpan(tree.span)
     if Feature.ccEnabled && !cap.isEmpty && !ctx.isAfterTyper then
       // Record access to the CanThrow capabulity recovered in `cap` by wrapping
-      // the type of the `throw` (i.e. Nothing) in a `@requiresCapability` annotatoon.
+      // the type of the `throw` (i.e. Nothing) in a `@requiresCapability` annotation.
       Typed(res,
         TypeTree(
           AnnotatedType(res.tpe,

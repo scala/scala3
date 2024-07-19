@@ -170,23 +170,15 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckIdent(tree: Ident)(using Context): Type =
       tree.tpe
 
-    def recheckSelect(tree: Select, pt: Type)(using Context): Type =
+    def recheckSelectQualifier(tree: Select)(using Conext): Type =
       val Select(qual, name) = tree
       val proto =
         if tree.symbol == defn.Any_asInstanceOf then WildcardType
         else AnySelectionProto
-      recheckSelection(tree, recheck(qual, proto).widenIfUnstable, name, pt)
+      recheck(qual, proto).widenIfUnstable
 
-    /** When we select the `apply` of a function with type such as `(=> A) => B`,
-     *  we need to convert the parameter type `=> A` to `() ?=> A`. See doc comment
-     *  of `mapExprType`.
-     */
-    def normalizeByName(mbr: SingleDenotation)(using Context): SingleDenotation = mbr.info match
-      case mt: MethodType if mt.paramInfos.exists(_.isInstanceOf[ExprType]) =>
-        mbr.derivedSingleDenotation(mbr.symbol,
-          mt.derivedLambdaType(paramInfos = mt.paramInfos.map(_.mapExprType)))
-      case _ =>
-        mbr
+    def recheckSelect(tree: Select, pt: Type)(using Context): Type =
+      recheckSelection(tree, recheckSelectQualifier(tree), name, pt)
 
     def recheckSelection(tree: Select, qualType: Type, name: Name,
         sharpen: Denotation => Denotation)(using Context): Type =
@@ -210,10 +202,20 @@ abstract class Recheck extends Phase, SymTransformer:
         constFold(tree, newType)
           //.showing(i"recheck select $qualType . $name : ${mbr.info} = $result")
 
-
     /** Keep the symbol of the `select` but re-infer its type */
     def recheckSelection(tree: Select, qualType: Type, name: Name, pt: Type)(using Context): Type =
       recheckSelection(tree, qualType, name, sharpen = identity[Denotation])
+
+    /** When we select the `apply` of a function with type such as `(=> A) => B`,
+     *  we need to convert the parameter type `=> A` to `() ?=> A`. See doc comment
+     *  of `mapExprType`.
+     */
+    def normalizeByName(mbr: SingleDenotation)(using Context): SingleDenotation = mbr.info match
+      case mt: MethodType if mt.paramInfos.exists(_.isInstanceOf[ExprType]) =>
+        mbr.derivedSingleDenotation(mbr.symbol,
+          mt.derivedLambdaType(paramInfos = mt.paramInfos.map(_.mapExprType)))
+      case _ =>
+        mbr
 
     def recheckBind(tree: Bind, pt: Type)(using Context): Type = tree match
       case Bind(name, body) =>
@@ -260,7 +262,11 @@ abstract class Recheck extends Phase, SymTransformer:
     protected def instantiate(mt: MethodType, argTypes: List[Type], sym: Symbol)(using Context): Type =
       mt.instantiate(argTypes)
 
+    def recheckApplication(tree: Tree, qualType: Type, argTypes: List[Type])(using Context): Type =
+      constFold(tree, instantiate(fntpe, argTypes, tree.fun.symbol))
+
     def recheckApply(tree: Apply, pt: Type)(using Context): Type =
+      fun
       val funTp = recheck(tree.fun)
       // reuse the tree's type on signature polymorphic methods, instead of using the (wrong) rechecked one
       val funtpe = if tree.fun.symbol.originalSignaturePolymorphic.exists then tree.fun.tpe else funTp

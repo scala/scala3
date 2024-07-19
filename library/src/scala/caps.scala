@@ -1,6 +1,6 @@
 package scala
 
-import annotation.experimental
+import annotation.{experimental, compileTimeOnly}
 
 @experimental object caps:
 
@@ -16,11 +16,33 @@ import annotation.experimental
   @deprecated("Use `Capability` instead")
   type Cap = Capability
 
+  /** Carrier trait for capture set type parameters */
+  trait CapSet extends Any
+
+  @compileTimeOnly("Should be be used only internally by the Scala compiler")
+  def capsOf[CS]: Any = ???
+
   /** Reach capabilities x* which appear as terms in @retains annotations are encoded
    *  as `caps.reachCapability(x)`. When converted to CaptureRef types in capture sets
    *  they are  represented as `x.type @annotation.internal.reachCapability`.
    */
   extension (x: Any) def reachCapability: Any = x
+
+  /** A trait to allow expressing existential types such as
+   *
+   *      (x: Exists) => A ->{x} B
+   */
+  sealed trait Exists extends Capability
+
+  /** This should go into annotations. For now it is here, so that we
+   *  can experiment with it quickly between minor releases
+   */
+  final class untrackedCaptures extends annotation.StaticAnnotation
+
+  /** This should go into annotations. For now it is here, so that we
+   *  can experiment with it quickly between minor releases
+   */
+  final class unbox extends annotation.StaticAnnotation
 
   object unsafe:
 
@@ -32,22 +54,19 @@ import annotation.experimental
       def unsafeAssumePure: T = x
 
       /** If argument is of type `cs T`, converts to type `box cs T`. This
-      *  avoids the error that would be raised when boxing `*`.
+      *  avoids the error that would be raised when boxing `cap`.
       */
-      @deprecated(since = "3.3")
       def unsafeBox: T = x
 
       /** If argument is of type `box cs T`, converts to type `cs T`. This
-       *  avoids the error that would be raised when unboxing `*`.
+       *  avoids the error that would be raised when unboxing `cap`.
        */
-      @deprecated(since = "3.3")
       def unsafeUnbox: T = x
 
     extension [T, U](f: T => U)
       /** If argument is of type `box cs T`, converts to type `cs T`. This
-       *  avoids the error that would be raised when unboxing `*`.
+       *  avoids the error that would be raised when unboxing `cap`.
        */
-      @deprecated(since = "3.3")
       def unsafeBoxFunArg: T => U = f
 
   end unsafe

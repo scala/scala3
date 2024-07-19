@@ -23,6 +23,7 @@ import reporting.trace
 import annotation.constructorOnly
 import cc.CaptureSet.IdempotentCaptRefMap
 import annotation.tailrec
+import dotty.tools.dotc.cc.boxed
 
 object Recheck:
   import tpd.*
@@ -202,11 +203,13 @@ abstract class Recheck extends Phase, SymTransformer:
       tree.tpe
 
     def recheckSelect(tree: Select, pt: Type)(using Context): Type =
-      val Select(qual, name) = tree
+      recheckSelection(tree, recheckSelectQualifier(tree), tree.name, pt)
+
+    def recheckSelectQualifier(tree: Select)(using Context): Type =
       val proto =
         if tree.symbol == defn.Any_asInstanceOf then WildcardType
         else AnySelectionProto
-      recheckSelection(tree, recheck(qual, proto).widenIfUnstable, name, pt)
+      recheck(tree.qualifier, proto).widenIfUnstable
 
     def recheckSelection(tree: Select, qualType: Type, name: Name,
         sharpen: Denotation => Denotation)(using Context): Type =
@@ -264,7 +267,7 @@ abstract class Recheck extends Phase, SymTransformer:
 
     def recheckClassDef(tree: TypeDef, impl: Template, sym: ClassSymbol)(using Context): Type =
       recheck(impl.constr)
-      impl.parentsOrDerived.foreach(recheck(_))
+      impl.parents.foreach(recheck(_))
       recheck(impl.self)
       recheckStats(impl.body)
       sym.typeRef
@@ -289,8 +292,26 @@ abstract class Recheck extends Phase, SymTransformer:
     /** A hook to massage the type of an applied method; currently not overridden */
     protected def prepareFunction(funtpe: MethodType, meth: Symbol)(using Context): MethodType = funtpe
 
+    protected def recheckArg(arg: Tree, formal: Type)(using Context): Type =
+      recheck(arg, formal)
+
+    /** A hook to check all the parts of an application:
+     *   @param  tree      the application `fn(args)`
+     *   @param  qualType  if the `fn` is a select `q.m`, the type of the qualifier `q`,
+     *                     otherwise NoType
+     *   @param  funType   the method type of `fn`
+     *   @param  argTypes  the types of the arguments
+     */
+    protected def recheckApplication(tree: Apply, qualType: Type, funType: MethodType, argTypes: List[Type])(using Context): Type =
+      constFold(tree, instantiate(funType, argTypes, tree.fun.symbol))
+
     def recheckApply(tree: Apply, pt: Type)(using Context): Type =
-      val funtpe0 = recheck(tree.fun)
+      val (funtpe0, qualType) = tree.fun match
+        case fun: Select =>
+          val qualType = recheckSelectQualifier(fun)
+          (recheckSelection(fun, qualType, fun.name, WildcardType), qualType)
+        case _ =>
+          (recheck(tree.fun), NoType)
       // reuse the tree's type on signature polymorphic methods, instead of using the (wrong) rechecked one
       val funtpe1 = if tree.fun.symbol.originalSignaturePolymorphic.exists then tree.fun.tpe else funtpe0
       funtpe1.widen match
@@ -303,7 +324,7 @@ abstract class Recheck extends Phase, SymTransformer:
             else fntpe.paramInfos
           def recheckArgs(args: List[Tree], formals: List[Type], prefs: List[ParamRef]): List[Type] = args match
             case arg :: args1 =>
-              val argType = recheck(arg, normalizeByName(formals.head))
+              val argType = recheckArg(arg, normalizeByName(formals.head))
               val formals1 =
                 if fntpe.isParamDependent
                 then formals.tail.map(_.substParam(prefs.head, argType))
@@ -313,7 +334,7 @@ abstract class Recheck extends Phase, SymTransformer:
               assert(formals.isEmpty)
               Nil
           val argTypes = recheckArgs(tree.args, formals, fntpe.paramRefs)
-          constFold(tree, instantiate(fntpe, argTypes, tree.fun.symbol))
+          recheckApplication(tree, qualType, fntpe1, argTypes)
             //.showing(i"typed app $tree : $fntpe with ${tree.args}%, % : $argTypes%, % = $result")
         case tp =>
           assert(false, i"unexpected type of ${tree.fun}: $tp")
@@ -418,12 +439,16 @@ abstract class Recheck extends Phase, SymTransformer:
       val finalizerType = recheck(tree.finalizer, defn.UnitType)
       TypeComparer.lub(bodyType :: casesTypes)
 
+    def seqLiteralElemProto(tree: SeqLiteral, pt: Type, declared: Type)(using Context): Type =
+      declared.orElse:
+        pt.stripNull().elemType match
+          case NoType => WildcardType
+          case bounds: TypeBounds => WildcardType(bounds)
+          case elemtp => elemtp
+
     def recheckSeqLiteral(tree: SeqLiteral, pt: Type)(using Context): Type =
-      val elemProto = pt.stripNull().elemType match
-        case NoType => WildcardType
-        case bounds: TypeBounds => WildcardType(bounds)
-        case elemtp => elemtp
       val declaredElemType = recheck(tree.elemtpt)
+      val elemProto = seqLiteralElemProto(tree, pt, declaredElemType)
       val elemTypes = tree.elems.map(recheck(_, elemProto))
       seqLitType(tree, TypeComparer.lub(declaredElemType :: elemTypes))
 
@@ -454,12 +479,16 @@ abstract class Recheck extends Phase, SymTransformer:
         case _ =>
       traverse(stats)
 
+    /** A hook to prevent rechecking a ValDef or DefDef.
+     *  Typycally used when definitions are completed on first use.
+     */
+    def skipRecheck(sym: Symbol)(using Context) = false
+
     def recheckDef(tree: ValOrDefDef, sym: Symbol)(using Context): Type =
-      inContext(ctx.localContext(tree, sym)) {
+      inContext(ctx.localContext(tree, sym)):
         tree match
           case tree: ValDef => recheckValDef(tree, sym)
           case tree: DefDef => recheckDefDef(tree, sym)
-      }
 
     /** Recheck tree without adapting it, returning its new type.
      *  @param tree        the original tree
@@ -476,10 +505,8 @@ abstract class Recheck extends Phase, SymTransformer:
           case tree: ValOrDefDef =>
             if tree.isEmpty then NoType
             else
-              if sym.isUpdatedAfter(preRecheckPhase) then
-                sym.ensureCompleted() // in this case the symbol's completer should recheck the right hand side
-              else
-                recheckDef(tree, sym)
+              sym.ensureCompleted()
+              if !skipRecheck(sym) then recheckDef(tree, sym)
               sym.termRef
           case tree: TypeDef =>
             // TODO: Should we allow for completers as for ValDefs or DefDefs?
