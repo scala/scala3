@@ -329,79 +329,11 @@ The using clause in class `SortedSet` provides an implementation for the deferre
 **Alternative:** It was suggested that we use a modifier for a deferred given instead of a `= deferred`. Something like `deferred given C[T]`. But a modifier does not suggest the concept that a deferred given will be implemented automatically in subclasses unless an explicit definition is written. In a sense, we can see `= deferred` as the invocation of a magic macro that is provided by the compiler. So from a user's point of view a given with `deferred` right hand side is not abstract.
 It is a concrete definition where the compiler will provide the correct implementation.
 
-## New Given Syntax
-
-A good language syntax is like a Bach fugue: A small set of motifs is combined in a multitude of harmonic ways. Dissonances and irregularities should be avoided.
-
-When designing Scala 3, I believe that, by and large, we achieved that goal, except in one area, which is the syntax of givens. There _are_ some glaring dissonances, as seen in this code for defining an ordering on lists:
-```scala
-given [A](using Ord[A]): Ord[List[A]] with
-  def compare(x: List[A], y: List[A]) = ...
-```
-The `:` feels utterly foreign in this position. It's definitely not a type ascription, so what is its role? Just as bad is the trailing `with`. Everywhere else we use braces or trailing `:` to start a scope of nested definitions, so the need of `with` sticks out like a sore thumb.
-
-We arrived at that syntax not because of a flight of fancy but because even after trying for about a year to find other solutions it seemed like the least bad alternative. The awkwardness of the given syntax arose because we insisted that givens could be named or anonymous, with the default on anonymous, that we would not use underscore for an anonymous given, and that the name, if present, had to come first, and have the form `name [parameters] :`. In retrospect, that last requirement showed a lack of creativity on our part.
-
-Sometimes unconventional syntax grows on you and becomes natural after a while. But here it was unfortunately the opposite. The longer I used given definitions in this style the more awkward they felt, in particular since the rest of the language seemed so much better put together by comparison. And I believe many others agree with me on this. Since the current syntax is unnatural and esoteric, this means it's difficult to discover and very foreign even after that. This makes it much harder to learn and apply givens than it need be.
-
-Things become much simpler if we introduce the optional name instead with an `as name` clause at the end, just like we did for context bounds. We can then use a more intuitive syntax for givens like this:
-```scala
-given String is Ord:
-  def compare(x: String, y: String) = ...
-
-given [A : Ord] => List[A] is Ord:
-  def compare(x: List[A], y: List[A]) = ...
-
-given Int is Monoid:
-  extension (x: Int) def combine(y: Int) = x + y
-  def unit = 0
-```
-Here, the second given can be read as if `A` is an `Ord` then `List[A]` is also an`Ord`. Or: for all `A: Ord`, `List[A]` is `Ord`. The arrow can be seen as an implication, note also the analogy to pattern matching syntax.
-
-If explicit names are desired, we add them with `as` clauses:
-```scala
-given String is Ord as intOrd:
-  def compare(x: String, y: String) = ...
-
-given [A : Ord] => List[A] is Ord as listOrd:
-  def compare(x: List[A], y: List[A]) = ...
-
-given Int is Monoid as intMonoid:
-  extension (x: Int) def combine(y: Int) = x + y
-  def unit = 0
-```
-
-The underlying principles are:
-
- - A `given` clause consists of the following elements:
-
-    - An optional _precondition_, which introduces type parameters and/or using clauses and which ends in `=>`,
-    - the implemented _type_,
-    - an optional name binding using `as`,
-    - an implementation which consists of either an `=` and an expression,
-      or a template body.
-
- - Since there is no longer a middle `:` separating name and parameters from the implemented type, we can use a `:` to start the class body without looking unnatural, as is done everywhere else. That eliminates the special case where `with` was used before.
-
-This will be a fairly significant change to the given syntax. I believe there's still a possibility to do this. Not so much code has migrated to new style givens yet, and code that was written can be changed fairly easily. Specifically, there are about a 900K definitions of `implicit def`s
-in Scala code on Github and about 10K definitions of `given ... with`. So about 1% of all code uses the Scala 3 syntax, which would have to be changed again.
-
-Changing something introduced just recently in Scala 3 is not fun,
-but I believe these adjustments are preferable to let bad syntax
-sit there and fester. The cost of changing should be amortized by improved developer experience over time, and better syntax would also help in migrating Scala 2 style implicits to Scala 3. But we should do it quickly before a lot more code
-starts migrating.
-
-Migration to the new syntax is straightforward, and can be supported by automatic rewrites. For a transition period we can support both the old and the new syntax. It would be a good idea to backport the new given syntax to the LTS version of Scala so that code written in this version can already use it. The current LTS would then support old and new-style givens indefinitely, whereas new Scala 3.x versions would phase out the old syntax over time.
-
-
 ### Abolish Abstract Givens
 
-Another simplification is possible. So far we have special syntax for abstract givens:
-```scala
-given x: T
-```
-The problem is that this syntax clashes with the quite common case where we want to establish a given without any nested definitions. For instance
-consider a given that constructs a type tag:
+With `deferred` givens there is no need anymore to also define abstract givens. The two mechanisms are very similar, but the user experience for
+deferred givens is generally more ergonomic. Abstract givens also are uncomfortably close to concrete class instances. Their syntax clashes
+with the quite common case where we want to establish a given without any nested definitions. For instance, consider a given that constructs a type tag:
 ```scala
 class Tag[T]
 ```
@@ -420,26 +352,208 @@ The last line gives a rather cryptic error:
   |                 ^
   |                 anonymous given cannot be abstract
 ```
-The problem is that the compiler thinks that the last given is intended to be abstract, and complains since abstract givens need to be named. This is another annoying dissonance. Nowhere else in Scala's syntax does adding a
-`()` argument to a class cause a drastic change in meaning. And it's also a violation of the principle that it should be possible to define all givens without providing names for them.
+The underlying problem is that abstract givens are very rare (and should become completely unnecessary once deferred givens are introduced), yet occupy a syntax that looks very close to the more common case of concrete
+typeclasses without nested definitions.
 
-Fortunately, abstract givens are no longer necessary since they are superseded by the new `deferred` scheme. So we can deprecate that syntax over time. Abstract givens are a highly specialized mechanism with a so far non-obvious syntax. We have seen that this syntax clashes with reasonable expectations of Scala programmers. My estimate is that maybe a dozen people world-wide have used abstract givens in anger so far.
-
-**Proposal** In the future, let the `= deferred` mechanism be the only way to deliver the functionality of abstract givens.
-
-This is less of a disruption than it might appear at first:
-
- - `given T` was illegal before since abstract givens could not be anonymous.
-   It now means a concrete given of class `T` with no member definitions.
- - `given x: T` is legacy syntax for an abstract given.
- - `given T as x = deferred` is the analogous new syntax, which is more powerful since
-    it allows for automatic instantiation.
- - `given T = deferred` is the anonymous version in the new syntax, which was not expressible before.
+**Proposal:** In the future, let the `= deferred` mechanism be the only way to deliver the functionality of abstract givens. Deprecate the current version of abstract givens, and remove them in a future Scala version.
 
 **Benefits:**
 
  - Simplification of the language since a feature is dropped
  - Eliminate non-obvious and misleading syntax.
+
+The only downside is that deferred givens are restricted to be used in traits, whereas abstract givens are also allowed in abstract classes. But I would be surprised if actual code relied on that difference, and such code could in any case be easily rewritten to accommodate the restriction.
+
+## New Given Syntax
+
+A good language syntax is like a Bach fugue: A small set of motifs is combined in a multitude of harmonic ways. Dissonances and irregularities should be avoided.
+
+When designing Scala 3, I believe that, by and large, we achieved that goal, except in one area, which is the syntax of givens. There _are_ some glaring dissonances, as seen in this code for defining an ordering on lists:
+```scala
+given [A](using Ord[A]): Ord[List[A]] with
+  def compare(x: List[A], y: List[A]) = ...
+```
+The `:` feels utterly foreign in this position. It's definitely not a type ascription, so what is its role? Just as bad is the trailing `with`. Everywhere else we use braces or trailing `:` to start a scope of nested definitions, so the need of `with` sticks out like a sore thumb.
+
+Sometimes unconventional syntax grows on you and becomes natural after a while. But here it was unfortunately the opposite. The longer I used given definitions in this style the more awkward they felt, in particular since the rest of the language seemed so much better put together by comparison. And I believe many others agree with me on this. Since the current syntax is unnatural and esoteric, this means it's difficult to discover and very foreign even after that. This makes it much harder to learn and apply givens than it need be.
+
+The previous conditional given syntax was inspired from method definitions. If we add the optional name to the previous example, we obtain something akin to an implicit method in Scala 2:
+```scala
+given listOrd[A](using Ord[A]): Ord[List[A]] with
+  def compare(x: List[A], y: List[A]) = ...
+```
+The anonymous syntax was then obtained by simply dropping the name.
+But without a name, the syntax looks weird and inconsistent.
+
+This is a problem since at least for typeclasses, anonymous givens should be the norm.
+Givens are like extends clauses. We state a _fact_, that a
+type implements a type class, or that a value can be used implicitly. We don't need a name for that fact. It's analogous to extends clauses, where we state that a class is a subclass of some other class or trait. We would not think it useful to name an extends clause, it's simply a fact that is stated.
+It's also telling that every other language that defines type classes uses anonymous syntax. Somehow, nobody ever found it necessary to name these instances.
+
+A more intuitive and in my opinion cleaner alternative is to decree that a given should always look like it _implements a type_. Conditional givens should look like they implement function types. The `Ord` typeclass instances for `Int` and `List` would then look like this:
+```scala
+given Ord[String]:
+  def compare(x: String, y: String) = ...
+
+given [A : Ord] => Ord[List[A]]:
+  def compare(x: List[A], y: List[A]) = ...
+```
+The second, conditional instance looks like it implements the function type
+```scala
+[A : Ord] => Ord[List[A]]
+```
+Another way to see this is as an implication:
+If `A` is a type that is `Ord`, then `List[A]` is `Ord` (and the rest of the given clause gives the implementation that makes it so).
+Equivalently, `A` is `Ord` _implies_ `List[A]` is `Ord`, hence the `=>`.
+
+Yet another related meaning is that the given clause establishes a _context function_ of type `[A: Ord] ?=> Ord[List[A]]` that is automatically applied to evidence arguments of type `Ord[A]` and that yields instances of type `Ord[List[A]]`. Since givens are in any case applied automatically to all their arguments, we don't need to specify that separately with `?=>`, a simple `=>` arrow is sufficiently clear and is easier to read.
+
+All these viewpoints are equivalent, in a deep sense. This is exactly the Curry Howard isomorphism, which equates function types and implications.
+
+In the new syntax, a `given` clause consists of the following elements:
+
+ - An optional name binding `id :`
+ - Zero or more _conditions_, which introduce type or value parameters. Each precondition ends in a `=>`.
+ - the implemented _type_,
+ - an implementation which consists of either an `=` and an expression,
+   or a template body.
+
+**Examples:**
+
+Here is an enumeration of common forms of given definitions in the new syntax. We show the following use cases:
+
+ 1. A simple typeclass instance, such as `Ord[Int]`.
+ 2. A parameterized type class instance, such as `Ord` for lists.
+ 3. A type class instance with an explicit context parameter.
+ 4. A type class instance with a named eexplicit context parameter.
+ 4. A simple given alias.
+ 5. A parameterized given alias
+ 6. A given alias with an explicit context parameter.
+ 8. An abstract or deferred given
+ 9. A by-name given, e.g. if we have a given alias of a mutable variable, and we
+    want to make sure that it gets re-evaluated on each access.
+```scala
+  // Simple typeclass
+  given Ord[Int]:
+    def compare(x: Int, y: Int) = ...
+
+  // Parameterized typeclass with context bound
+  given [A: Ord] => Ord[List[A]]:
+    def compare(x: List[A], y: List[A]) = ...
+
+  // Parameterized typeclass with context parameter
+  given [A] => Ord[A] => Ord[List[A]]:
+    def compare(x: List[A], y: List[A]) = ...
+
+  // Parameterized typeclass with named context parameter
+  given [A] => (ord: Ord[A]) => Ord[List[A]]:
+    def compare(x: List[A], y: List[A]) = ...
+
+  // Simple alias
+  given Ord[Int] = IntOrd()
+
+  // Parameterized alias with context bound
+  given [A: Ord] => Ord[List[A]] =
+    ListOrd[A]
+
+  // Parameterized alias with context parameter
+  given [A] => Ord[A] => Ord[List[A]] =
+    ListOrd[A]
+
+  // Abstract or deferred given
+  given Context = deferred
+
+  // By-name given
+  given () => Context = curCtx
+```
+Here are the same examples, with optional names provided:
+```scala
+  // Simple typeclass
+  given intOrd: Ord[Int]:
+    def compare(x: Int, y: Int) = ...
+
+  // Parameterized typeclass with context bound
+  given listOrd: [A: Ord] => Ord[List[A]]:
+    def compare(x: List[A], y: List[A]) = ...
+
+  // Parameterized typeclass with context parameter
+  given listOrd: [A] => Ord[A] => Ord[List[A]]:
+    def compare(x: List[A], y: List[A]) = ...
+
+  // Parameterized typeclass with named context parameter
+  given listOrd: [A] => (ord: Ord[A]) => Ord[List[A]]:
+    def compare(x: List[A], y: List[A]) = ...
+
+  // Simple alias
+  given intOrd: Ord[Int] = IntOrd()
+
+  // Parameterized alias with context bound
+  given listOrd: [A: Ord] => Ord[List[A]] =
+    ListOrd[A]
+
+  // Parameterized alias with context parameter
+  given listOrd: [A] => Ord[A] => Ord[List[A]] =
+    ListOrd[A]
+
+  // Abstract or deferred given
+  given context: Context = deferred
+
+  // By-name given
+  given context: () => Context = curCtx
+```
+
+**By Name Givens**
+
+We sometimes find it necessary that a given alias is re-evaluated each time it is called. For instance, say we have a mutable variable `curCtx` and we want to define a given that returns the current value of that variable. A normal given alias will not do since by default given aliases are mapped to
+lazy vals.
+
+In general, we want to avoid re-evaluation of the given. But there are situations like the one above where we want to specify _by-name_ evaluation instead. The proposed new syntax for this is shown in the last clause above. This is arguably the a natural way to express by-name givens. We want to use a conditional given, since these map to methods, but the set of preconditions is empty, hence the `()` parameter. Equivalently, under the context function viewpoint, we are defining a context function of the form `() ?=> T`, and these are equivalent to by-name parameters.
+
+Compare with the current best way to do achieve this, which is to use a dummy type parameter.
+```scala
+  given [DummySoThatItsByName]: Context = curCtx
+```
+This has the same effect, but feels more like a hack than a clean solution.
+
+**Dropping `with`**
+
+In the new syntax, all typeclass instances introduce definitions like normal
+class bodies, enclosed in braces `{...}` or following a `:`. The irregular
+requirement to use `with` is dropped. In retrospect, the main reason to introduce `with` was since a definition like
+
+```scala
+given [A](using Ord[A]): Ord[List[A]]:
+  def compare(x: List[A], y: List[A]) = ...
+```
+was deemed to be too cryptic, with the double meaning of colons. But since that syntax is gone, we don't need `with` anymore. There's still a double meaning of colons, e.g. in
+```scala
+given intOrd: Ord[Int]:
+  ...
+```
+but since now both uses of `:` are very familiar (type ascription _vs_ start of nested definitions), it's manageable. Besides, the problem occurs only for named typeclass instances, which should be the exceptional case anyway.
+
+
+**Possible ambiguities**
+
+If one wants to define a given for an a actual function type (which is probably not advisable in practice), one needs to enclose the function type in parentheses, i.e. `given ([A] => F[A])`. This is true in the currently implemented syntax and stays true for all discussed change proposals.
+
+The double meaning of : with optional prefix names is resolved as usual. A : at the end of a line starts a nested definition block. If for some obscure reason one wants to define a named given on multiple lines, one has to format it as follows:
+```scala
+  given intOrd
+    : Ord = ...
+```
+
+**Summary**
+
+This will be a fairly significant change to the given syntax. I believe there's still a possibility to do this. Not so much code has migrated to new style givens yet, and code that was written can be changed fairly easily. Specifically, there are about a 900K definitions of `implicit def`s
+in Scala code on Github and about 10K definitions of `given ... with`. So about 1% of all code uses the Scala 3 syntax, which would have to be changed again.
+
+Changing something introduced just recently in Scala 3 is not fun,
+but I believe these adjustments are preferable to let bad syntax
+sit there and fester. The cost of changing should be amortized by improved developer experience over time, and better syntax would also help in migrating Scala 2 style implicits to Scala 3. But we should do it quickly before a lot more code
+starts migrating.
+
+Migration to the new syntax is straightforward, and can be supported by automatic rewrites. For a transition period we can support both the old and the new syntax. It would be a good idea to backport the new given syntax to the LTS version of Scala so that code written in this version can already use it. The current LTS would then support old and new-style givens indefinitely, whereas new Scala 3.x versions would phase out the old syntax over time.
 
 
 ### Bonus: Fixing Singleton
@@ -586,7 +700,7 @@ Here are some standard type classes, which were mostly already introduced at the
   def maximum[T: Ord](xs: List[T]): T =
     xs.reduce(_ `max` _)
 
-  given [T: Ord] => T is Ord as descending:
+  given descending: [T: Ord] => T is Ord:
     extension (x: T) def compareTo(y: T) = T.compareTo(y)(x)
 
   def minimum[T: Ord](xs: List[T]) =
