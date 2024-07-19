@@ -119,8 +119,6 @@ object Build {
 
   /** Version of Scala CLI to download */
   val scalaCliLauncherVersion = "1.4.0"
-  /** Version of Scala CLI to download (on Windows - last known validated version) */
-  val scalaCliLauncherVersionWindows = "1.4.0"
   /** Version of Coursier to download for initializing the local maven repo of Scala command */
   val coursierJarVersion = "2.1.10"
 
@@ -2176,10 +2174,8 @@ object Build {
       packArchiveName := (dist / packArchiveName).value + "-x86_64-pc-win32",
       republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
-      republishExtraProps += ("cli_version" -> scalaCliLauncherVersion),
-      mappings += (republishRepo.value / "EXTRA_PROPERTIES" -> "EXTRA_PROPERTIES"),
       republishLaunchers +=
-        ("scala-cli.exe" -> s"zip+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersionWindows/scala-cli-x86_64-pc-win32.zip!/scala-cli.exe")
+        ("scala-cli.exe" -> s"zip+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-pc-win32.zip!/scala-cli.exe")
     )
 
   lazy val `dist-linux-x86_64` = project.in(file("dist/linux-x86_64")).asDist(Bootstrapped)
