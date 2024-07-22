@@ -8,13 +8,14 @@ import scala.meta.internal.pc.CompilerAccess
 import scala.meta.pc.PresentationCompilerConfig
 
 import dotty.tools.dotc.reporting.StoreReporter
+import dotty.tools.dotc.interactive.InteractiveDriver
 
 class Scala3CompilerAccess(
     config: PresentationCompilerConfig,
     sh: Option[ScheduledExecutorService],
     newCompiler: () => Scala3CompilerWrapper
 )(using ec: ExecutionContextExecutor, rc: ReportContext)
-    extends CompilerAccess[StoreReporter, MetalsDriver](
+    extends CompilerAccess[StoreReporter, InteractiveDriver](
       config,
       sh,
       newCompiler,

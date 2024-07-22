@@ -14,7 +14,6 @@ import scala.meta.internal.pc.LabelPart.*
 import scala.meta.pc.InlayHintsParams
 import scala.meta.pc.SymbolSearch
 
-import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags

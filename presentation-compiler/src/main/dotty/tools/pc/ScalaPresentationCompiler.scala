@@ -32,11 +32,13 @@ import dotty.tools.dotc.reporting.StoreReporter
 import dotty.tools.pc.completions.CompletionProvider
 import dotty.tools.pc.completions.OverrideCompletions
 import dotty.tools.pc.buildinfo.BuildInfo
+import dotty.tools.pc.SymbolInformationProvider
+import dotty.tools.dotc.interactive.InteractiveDriver
 
 import org.eclipse.lsp4j.DocumentHighlight
 import org.eclipse.lsp4j.TextEdit
 import org.eclipse.lsp4j as l
-import dotty.tools.pc.SymbolInformationProvider
+
 
 case class ScalaPresentationCompiler(
     buildTargetIdentifier: String = "",
@@ -69,14 +71,20 @@ case class ScalaPresentationCompiler(
   override def withReportsLoggerLevel(level: String): PresentationCompiler =
     copy(reportsLevel = ReportLevel.fromString(level))
 
-  val compilerAccess: CompilerAccess[StoreReporter, MetalsDriver] =
+  val compilerAccess: CompilerAccess[StoreReporter, InteractiveDriver] =
     Scala3CompilerAccess(
       config,
       sh,
-      () => new Scala3CompilerWrapper(newDriver)
-    )(using
-      ec
-    )
+      () => new Scala3CompilerWrapper(CachingDriver(driverSettings))
+    )(using ec)
+
+  val driverSettings =
+    val implicitSuggestionTimeout = List("-Ximport-suggestion-timeout", "0")
+    val defaultFlags = List("-color:never")
+    val filteredOptions = removeDoubleOptions(options.filterNot(forbiddenOptions))
+
+    filteredOptions ::: defaultFlags ::: implicitSuggestionTimeout ::: "-classpath" :: classpath
+      .mkString(File.pathSeparator) :: Nil
 
   private def removeDoubleOptions(options: List[String]): List[String] =
     options match
@@ -84,19 +92,6 @@ case class ScalaPresentationCompiler(
         removeDoubleOptions(tail)
       case head :: tail => head :: removeDoubleOptions(tail)
       case Nil => options
-
-  def newDriver: MetalsDriver =
-    val implicitSuggestionTimeout = List("-Ximport-suggestion-timeout", "0")
-    val defaultFlags = List("-color:never")
-    val filteredOptions = removeDoubleOptions(
-      options.filterNot(forbiddenOptions)
-    )
-    val settings =
-      filteredOptions ::: defaultFlags ::: implicitSuggestionTimeout ::: "-classpath" :: classpath
-        .mkString(
-          File.pathSeparator
-        ) :: Nil
-    new MetalsDriver(settings)
 
   override def semanticTokens(
       params: VirtualFileParams
@@ -139,6 +134,7 @@ case class ScalaPresentationCompiler(
       new CompletionProvider(
         search,
         driver,
+        () => InteractiveDriver(driverSettings),
         params,
         config,
         buildTargetIdentifier,

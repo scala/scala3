@@ -24,8 +24,6 @@ import dotty.tools.dotc.printing.RefinedPrinter
 import dotty.tools.dotc.printing.Texts.Text
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
 import dotty.tools.pc.AutoImports.ImportSel
-import dotty.tools.pc.AutoImports.ImportSel.Direct
-import dotty.tools.pc.AutoImports.ImportSel.Rename
 import dotty.tools.pc.IndexedContext
 import dotty.tools.pc.IndexedContext.Result
 import dotty.tools.pc.Params

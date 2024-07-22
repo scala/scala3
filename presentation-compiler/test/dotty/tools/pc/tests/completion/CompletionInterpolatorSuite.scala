@@ -112,7 +112,7 @@ class CompletionInterpolatorSuite extends BaseCompletionSuite:
          |""".stripMargin.triplequoted,
       """|object Main {
          |  val myName = ""
-         |  s"$myName $$"
+         |  s"$myName$0 $$"
          |}
          |""".stripMargin.triplequoted,
       filterText = "myName"
