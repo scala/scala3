@@ -52,13 +52,29 @@ object LazyVals {
    * Used to indicate the state of a lazy val that is being
    * evaluated and of which other threads await the result.
    */
-  final class Waiting extends CountDownLatch(1) with LazyValControlState
+  final class Waiting extends CountDownLatch(1) with LazyValControlState {
+    /* #20856 If not fully evaluated yet, serialize as if not-evaluat*ing* yet.
+     * This strategy ensures the "serializability" condition of parallel
+     * programs--not to be confused with the data being `java.io.Serializable`.
+     * Indeed, if thread A is evaluating the lazy val while thread B attempts
+     * to serialize its owner object, there is also an alternative schedule
+     * where thread B serializes the owner object *before* A starts evaluating
+     * the lazy val. Therefore, forcing B to see the non-evaluating state is
+     * correct.
+     */
+    private def writeReplace(): Any = null
+  }
 
   /**
    * Used to indicate the state of a lazy val that is currently being
    * evaluated with no other thread awaiting its result.
    */
-  object Evaluating extends LazyValControlState
+  object Evaluating extends LazyValControlState {
+    /* #20856 If not fully evaluated yet, serialize as if not-evaluat*ing* yet.
+     * See longer comment in `Waiting.writeReplace()`.
+     */
+    private def writeReplace(): Any = null
+  }
 
   /**
    * Used to indicate the state of a lazy val that has been evaluated to
