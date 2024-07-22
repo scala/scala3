@@ -43,8 +43,9 @@ Views are applied in three situations:
    `v` which is applicable to `e` and whose result contains a method
    `m` which is applicable to `args` is searched. The search proceeds
    as in the case of implicit parameters, where the implicit scope is
-   the one of `T`. If such a view is found, the application
-   `e.m(args)` is converted to `v(e).m(args)`.
+   the one of `T => pt`, with `pt` being the structural type
+   `{ def m(args: T_1 , ... , T_n): U }`. If such a view is found,
+   the application `e.m(args)` is converted to `v(e).m(args)`.
 
 # Differences with Scala 2 implicit conversions
 
