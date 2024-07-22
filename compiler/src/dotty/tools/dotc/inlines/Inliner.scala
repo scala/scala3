@@ -381,6 +381,13 @@ class Inliner(val call: tpd.Tree)(using Context):
   private val mapOpaques = TreeTypeMap(
       typeMap = new TypeMap:
           override def stopAt = StopAt.Package
+          override protected def derivedAppliedType(tp: AppliedType, tycon: Type, args: List[Type]): Type =
+            if (args ne tp.args) && tp.isMatchAlias && tp.tryNormalize.exists then
+              // #20427: A match type with mapped arguments might fail to reduce
+              // (narrowing doesn't hold for match types), so prefer reducing
+              // them if possible.
+              apply(tp.normalized)
+            else super.derivedAppliedType(tp, tycon, args)
           def apply(t: Type) = mapOver {
             t match
               case ref: TermRef => mapRef(ref).getOrElse(ref)
