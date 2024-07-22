@@ -181,8 +181,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Splice(expr: Tree)(using Context): Splice =
     ta.assignType(untpd.Splice(expr), expr)
 
-  def SplicePattern(pat: Tree, args: List[Tree], tpe: Type)(using Context): SplicePattern =
-    untpd.SplicePattern(pat, args).withType(tpe)
+  def SplicePattern(pat: Tree, targs: List[Tree], args: List[Tree], tpe: Type)(using Context): SplicePattern =
+    untpd.SplicePattern(pat, targs, args).withType(tpe)
 
   def Hole(isTerm: Boolean, idx: Int, args: List[Tree], content: Tree, tpe: Type)(using Context): Hole =
     untpd.Hole(isTerm, idx, args, content).withType(tpe)

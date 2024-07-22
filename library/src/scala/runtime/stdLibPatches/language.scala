@@ -125,6 +125,14 @@ object language:
      */
     @compileTimeOnly("`betterMatchTypeExtractors` can only be used at compile time in import statements")
     object betterMatchTypeExtractors
+
+    /** Experimental support for quote pattern matching with polymorphic functions
+     *
+     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/quoted-patterns-with-polymorphic-functions]]
+     */
+    @compileTimeOnly("`quotedPatternsWithPolymorphicFunctions` can only be used at compile time in import statements")
+    object quotedPatternsWithPolymorphicFunctions
+
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.
