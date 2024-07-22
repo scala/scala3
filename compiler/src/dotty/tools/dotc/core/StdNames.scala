@@ -435,7 +435,6 @@ object StdNames {
     val asInstanceOfPM: N       = "$asInstanceOf$"
     val assert_ : N             = "assert"
     val assume_ : N             = "assume"
-    val betterFors: N           = "betterFors"
     val box: N                  = "box"
     val break: N                = "break"
     val build : N               = "build"
