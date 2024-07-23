@@ -67,6 +67,7 @@ mt-redux-norm.perspective.scala
 i18211.scala
 10867.scala
 named-tuples1.scala
+i20897.scala
 
 # Opaque type
 i5720.scala
@@ -134,4 +135,3 @@ parsercombinators-new-syntax.scala
 hylolib-deferred-given
 hylolib-cb
 hylolib
-

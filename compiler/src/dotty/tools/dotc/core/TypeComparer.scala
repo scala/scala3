@@ -3064,6 +3064,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case pair if pending != null && pending.contains(pair) =>
         false
 
+      /* Nothing is not a class type in the spec but dotc represents it as if it were one.
+       * Get it out of the way early to avoid mistakes (see for example #20897).
+       * Nothing ⋔ T and T ⋔ Nothing for all T.
+       */
+      case (tp1, tp2) if tp1.isExactlyNothing || tp2.isExactlyNothing =>
+        true
+
       // Cases where there is an intersection or union on the right
       case (tp1, tp2: OrType) =>
         provablyDisjoint(tp1, tp2.tp1, pending) && provablyDisjoint(tp1, tp2.tp2, pending)
@@ -3076,14 +3083,21 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case (tp1: AndType, tp2) =>
         provablyDisjoint(tp1.tp1, tp2, pending) || provablyDisjoint(tp1.tp2, tp2, pending)
 
+      /* Handle AnyKind now for the same reason as Nothing above: it is not a real class type.
+       * Other than the rules with Nothing, unions and intersections, there is structurally
+       * no rule such that AnyKind ⋔ T or T ⋔ AnyKind for any T.
+       */
+      case (tp1, tp2) if tp1.isDirectRef(AnyKindClass) || tp2.isDirectRef(AnyKindClass) =>
+        false
+
       // Cases involving type lambdas
       case (tp1: HKTypeLambda, tp2: HKTypeLambda) =>
         tp1.paramNames.sizeCompare(tp2.paramNames) != 0
           || provablyDisjoint(tp1.resultType, tp2.resultType, pending)
       case (tp1: HKTypeLambda, tp2) =>
-        !tp2.isDirectRef(defn.AnyKindClass)
+        true
       case (tp1, tp2: HKTypeLambda) =>
-        !tp1.isDirectRef(defn.AnyKindClass)
+        true
 
       /* Cases where both are unique values (enum cases or constant types)
        *
@@ -3187,17 +3201,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         else child
       }.filter(child => child.exists && child != cls)
 
-    // TODO? Special-case for Nothing and Null? We probably need Nothing/Null disjoint from Nothing/Null
     def eitherDerivesFromOther(cls1: Symbol, cls2: Symbol): Boolean =
       cls1.derivesFrom(cls2) || cls2.derivesFrom(cls1)
 
     def smallestNonTraitBase(cls: Symbol): Symbol =
       cls.asClass.baseClasses.find(!_.is(Trait)).get
 
-    if cls1 == defn.AnyKindClass || cls2 == defn.AnyKindClass then
-      // For some reason, A.derivesFrom(AnyKind) returns false, so we have to handle it specially
-      false
-    else if (eitherDerivesFromOther(cls1, cls2))
+    if (eitherDerivesFromOther(cls1, cls2))
       false
     else
       if (cls1.is(Final) || cls2.is(Final))
