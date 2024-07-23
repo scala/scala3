@@ -394,14 +394,16 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
 
   def mapMsg(f: String => String): Message = new Message(errorId):
     val kind = self.kind
-    def msg(using Context) = f(self.msg)
-    def explain(using Context) = self.explain
+    protected def msg(using Context) = f(self.msg)
+    override protected def msgPostscript(using Context) = self.msgPostscript
+    protected def explain(using Context) = self.explain
     override def canExplain = self.canExplain
 
   def appendExplanation(suffix: => String): Message = new Message(errorId):
     val kind = self.kind
-    def msg(using Context) = self.msg
-    def explain(using Context) = self.explain ++ suffix
+    protected def msg(using Context) = self.msg
+    override protected def msgPostscript(using Context) = self.msgPostscript
+    protected def explain(using Context) = self.explain ++ suffix
     override def canExplain = true
 
   /** Override with `true` for messages that should always be shown even if their

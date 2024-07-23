@@ -3,7 +3,7 @@ package dotc
 package reporting
 
 import core.Contexts.*
-import collection.mutable
+import collection.mutable.ListBuffer
 import config.Printers.typr
 import Diagnostic.*
 
@@ -19,11 +19,11 @@ import Diagnostic.*
   */
 class StoreReporter(outer: Reporter | Null = Reporter.NoReporter, fromTyperState: Boolean = false) extends Reporter {
 
-  protected var infos: mutable.ListBuffer[Diagnostic] | Null = null
+  protected var infos: ListBuffer[Diagnostic] | Null = null
 
   override def doReport(dia: Diagnostic)(using Context): Unit = {
     typr.println(s">>>> StoredError: ${dia.message}") // !!! DEBUG
-    if (infos == null) infos = new mutable.ListBuffer
+    if (infos == null) infos = ListBuffer.empty
     infos.uncheckedNN += dia
   }
 

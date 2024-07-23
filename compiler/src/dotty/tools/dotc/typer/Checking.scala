@@ -917,7 +917,7 @@ trait Checking {
     enum Reason:
       case NonConforming, RefutableExtractor
 
-    def fail(pat: Tree, pt: Type, reason: Reason): Boolean = {
+    def fail(pat: Tree, pt: Type, reason: Reason): Boolean = !pat.tpe.isErroneous && !pt.isErroneous && {
       import Reason.*
       val message = reason match
         case NonConforming =>

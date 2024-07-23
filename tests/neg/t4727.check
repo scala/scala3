@@ -1,0 +1,25 @@
+-- [E007] Type Mismatch Error: tests/neg/t4727.scala:7:8 ---------------------------------------------------------------
+7 |    new C[Int] // error
+  |        ^^^^^^
+  |        Found:    Null
+  |        Required: Int
+  |        Error occurred in an application involving default arguments.
+  |        Note that implicit conversions were not tried because the result of an implicit conversion
+  |        must be more specific than Int
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  |
+  | Tree: C.$lessinit$greater$default$1[Int]
+  | I tried to show that
+  |   Null
+  | conforms to
+  |   Int
+  | but none of the attempts shown below succeeded:
+  |
+  |   ==> Null  <:  Int  = false
+  |
+  | The tests were made under the empty constraint
+  |
+  | Expanded application: new C[Int](C.$lessinit$greater$default$1[Int])
+   ---------------------------------------------------------------------------------------------------------------------

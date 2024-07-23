@@ -25,8 +25,10 @@ import reporting.*
 import Nullables.*, NullOpsDecorator.*
 import config.{Feature, SourceVersion}
 
-import collection.mutable
+import collection.mutable.ListBuffer
 import config.Printers.{overload, typr, unapp}
+import inlines.Inlines
+import interfaces.Diagnostic.ERROR
 import TypeApplications.*
 import Annotations.Annotation
 
@@ -34,8 +36,7 @@ import Constants.{Constant, IntTag}
 import Denotations.SingleDenotation
 import annotation.threadUnsafe
 
-import scala.util.control.NonFatal
-import dotty.tools.dotc.inlines.Inlines
+import scala.util.chaining.given
 
 object Applications {
   import tpd.*
@@ -260,7 +261,7 @@ object Applications {
 
   end UnapplyArgs
 
-  def wrapDefs(defs: mutable.ListBuffer[Tree] | Null, tree: Tree)(using Context): Tree =
+  def wrapDefs(defs: ListBuffer[Tree] | Null, tree: Tree)(using Context): Tree =
     if (defs != null && defs.nonEmpty) tpd.Block(defs.toList, tree) else tree
 
   /** Optionally, if `sym` is a symbol created by `resolveMapped`, i.e. representing
@@ -872,8 +873,8 @@ trait Applications extends Compatibility {
   extends Application(methRef, fun.tpe, args, resultType) {
     type TypedArg = Tree
     def isVarArg(arg: Trees.Tree[T]): Boolean = untpd.isWildcardStarArg(arg)
-    private var typedArgBuf = new mutable.ListBuffer[Tree]
-    private var liftedDefs: mutable.ListBuffer[Tree] | Null = null
+    private var typedArgBuf = ListBuffer.empty[Tree]
+    private var liftedDefs: ListBuffer[Tree] | Null = null
     private var myNormalizedFun: Tree = fun
     init()
 
@@ -911,11 +912,11 @@ trait Applications extends Compatibility {
 
     override def liftFun(): Unit =
       if (liftedDefs == null) {
-        liftedDefs = new mutable.ListBuffer[Tree]
+        liftedDefs = ListBuffer.empty[Tree]
         myNormalizedFun = lifter.liftApp(liftedDefs.uncheckedNN, myNormalizedFun)
       }
 
-    /** The index of the first difference between lists of trees `xs` and `ys`
+    /** The index of the first difference between lists of trees `xs` and `ys`.
      *  -1 if there are no differences.
      */
     private def firstDiff[T <: Trees.Tree[?]](xs: List[T], ys: List[T], n: Int = 0): Int = xs match {
@@ -939,11 +940,25 @@ trait Applications extends Compatibility {
       isPureExpr(arg)
       || arg.isInstanceOf[RefTree | Apply | TypeApply] && arg.symbol.name.is(DefaultGetterName)
 
-    val result:   Tree = {
+    def defaultsAddendum(args: List[Tree]): Unit =
+      def check(arg: Tree): Boolean = arg match
+        case TypeApply(Select(_, name), _) => name.is(DefaultGetterName)
+        case Apply(Select(_, name), _) => name.is(DefaultGetterName)
+        case _ => false
+      val faulties = args.filter(check)
+      ctx.reporter.mapBufferedMessages:
+        case Diagnostic(msg: TypeMismatch, pos, ERROR)
+        if msg.inTree.exists(t => faulties.exists(_.span == t.span)) =>
+          val noteText = i"Error occurred in an application involving default arguments."
+          val explained = i"Expanded application: ${cpy.Apply(app)(normalizedFun, args)}"
+          Diagnostic.Error(msg.append(s"\n$noteText").appendExplanation(s"\n\n$explained"), pos)
+        case dia => dia
+
+    val result: Tree = {
       var typedArgs = typedArgBuf.toList
       def app0 = cpy.Apply(app)(normalizedFun, typedArgs) // needs to be a `def` because typedArgs can change later
       val app1 =
-        if (!success || typedArgs.exists(_.tpe.isError)) app0.withType(UnspecifiedErrorType)
+        if !success || typedArgs.exists(_.tpe.isError).tap(if (_) then defaultsAddendum(typedArgs)) then app0.withType(UnspecifiedErrorType)
         else {
           if isJavaAnnotConstr(methRef.symbol) then
             // #19951 Make sure all arguments are NamedArgs for Java annotations
@@ -960,7 +975,7 @@ trait Applications extends Compatibility {
             liftFun()
 
             // lift arguments in the definition order
-            val argDefBuf = mutable.ListBuffer.empty[Tree]
+            val argDefBuf = ListBuffer.empty[Tree]
             typedArgs = lifter.liftArgs(argDefBuf, methType, typedArgs)
             // Lifted arguments ordered based on the original order of typedArgBuf and
             // with all non-explicit default parameters at the end in declaration order.
@@ -1105,23 +1120,15 @@ trait Applications extends Compatibility {
         if fun1.symbol.name == nme.apply && fun1.span.isSynthetic then
           fun1 match
             case Select(qualifier, _) =>
-              def mapMessage(dia: Diagnostic): Diagnostic =
-                dia match
-                  case dia: Diagnostic.Error =>
-                    dia.msg match
-                      case msg: TypeMismatch =>
-                        msg.inTree match
-                          case Some(arg) if tree.args.exists(_.span == arg.span) =>
-                            val noteText =
-                              i"""The required type comes from a parameter of the automatically
-                                  |inserted `apply` method of `${qualifier.tpe}`.""".stripMargin
-                            Diagnostic.Error(msg.appendExplanation("\n\n" + noteText), dia.pos)
-                          case _ => dia
-                      case msg => dia
-                  case dia => dia
-              failedState.reporter.mapBufferedMessages(mapMessage)
-            case _ => ()
-        else ()
+              failedState.reporter.mapBufferedMessages:
+                case Diagnostic(msg: TypeMismatch, pos, ERROR)
+                if msg.inTree.exists(t => tree.args.exists(_.span == t.span)) =>
+                  val noteText =
+                    i"""The required type comes from a parameter of the automatically
+                        |inserted `apply` method of `${qualifier.tpe}`.""".stripMargin
+                  Diagnostic.Error(msg.appendExplanation("\n\n" + noteText), pos)
+                case dia => dia
+            case _ =>
 
       fun1.tpe match {
         case err: ErrorType => cpy.Apply(tree)(fun1, proto.typedArgs()).withType(err)
@@ -1211,7 +1218,7 @@ trait Applications extends Compatibility {
       val (lhs1, name, rhss) = (tree: @unchecked) match
         case Apply(Select(lhs, name), rhss) => (typedExpr(lhs), name, rhss)
         case Apply(untpd.TypedSplice(Select(lhs1, name)), rhss) => (lhs1, name, rhss)
-      val liftedDefs = new mutable.ListBuffer[Tree]
+      val liftedDefs = ListBuffer.empty[Tree]
       val lhs2 = untpd.TypedSplice(LiftComplex.liftAssigned(liftedDefs, lhs1))
       val assign = untpd.Assign(lhs2,
           untpd.Apply(untpd.Select(lhs2, name.asSimpleName.dropRight(1)), rhss))
