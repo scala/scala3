@@ -280,9 +280,9 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
   def repack(): Unit = {
     var m = mask
     if (_size + _vacant >= 0.5*mask && !(_vacant > 0.2*mask)) m = ((m << 1) + 1) & IndexMask
-    while (m > 8 && 8*_size < m) m = m >>> 1
+    while (m > 8 && 8*_size < m && ((m >> 1) & MAX_MASK) >= _size) m = m >>> 1
     repack(m)
-  }
+  } //ensuring (res => _size <= res + 1)
 
   override def put(key: Long, value: V): Option[V] = {
     if (key == -key) {
