@@ -1080,7 +1080,34 @@ object Denotations {
 
     type AsSeenFromResult = SingleDenotation
 
-    protected def computeAsSeenFrom(pre: Type)(using Context): SingleDenotation = {
+    private var seenFromPre: Type | Null = null
+    private var seenFromIntermediateResult: SingleDenotation | Null = null
+
+    private inline def breakSeenFromCycles(pre: Type)(inline body: SingleDenotation)(using Context) =
+      if (seenFromPre eq pre) && symbol.isAbstractType then
+        if seenFromIntermediateResult == null then
+          seenFromIntermediateResult = newLikeThis(symbol, info, pre, isRefinedMethod)
+        seenFromIntermediateResult.nn
+      else
+        val previousPre = seenFromPre
+        val previousIntermediateResult = seenFromIntermediateResult
+
+        seenFromPre = pre
+        seenFromIntermediateResult = null
+
+        try
+          val result = body
+          if seenFromIntermediateResult != null then
+            seenFromIntermediateResult.nn.myInfo = result.info
+            seenFromIntermediateResult.nn
+          else
+            result
+        finally
+          seenFromIntermediateResult = previousIntermediateResult
+          seenFromPre = previousPre
+    end breakSeenFromCycles
+
+    protected def computeAsSeenFrom(pre: Type)(using Context): SingleDenotation = breakSeenFromCycles(pre) {
       val symbol = this.symbol
       val owner = this match {
         case thisd: SymDenotation => thisd.owner
