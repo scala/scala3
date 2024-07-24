@@ -300,7 +300,7 @@ object desugar {
       // implicit resolution in Scala 3.
 
     val paramssNoContextBounds =
-      val iflag = if Feature.sourceVersion.isAtLeast(`future`) then Given else Implicit
+      val iflag = if Feature.sourceVersion.isAtLeast(`3.6`) then Given else Implicit
       val flags = if isPrimaryConstructor then iflag | LocalParamAccessor else iflag | Param
       mapParamss(paramss) {
         tparam => desugarContextBounds(tparam, evidenceParamBuf, flags, freshName, paramss)
