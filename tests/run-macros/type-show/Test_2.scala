@@ -23,7 +23,7 @@ object Test {
         """TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Nothing"), """+
         """TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Any"))), """+
         """MatchType("""+
-        """TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int"), """+ // match type bound
+        """TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Any"), """+ // match type bound
         """ParamRef(binder, 0), """+
         """List("""+
         """MatchCase("""+
