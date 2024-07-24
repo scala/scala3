@@ -451,3 +451,34 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
       """.stripMargin,
       filter = _.contains("bar: Int")
     )
+
+  @Test def `brackets-already-present` =
+    check(
+      """|package a
+         |case class AAA[T]()
+         |object O {
+         |  val l: AA@@[Int] = ???
+         |}
+         |""".stripMargin,
+      """|AAA a
+         |ArrowAssoc scala.Predef
+         |""".stripMargin,
+    )
+
+  @Test def `brackets-already-present-edit` =
+    checkEdit(
+      """|package a
+         |case class AAA[T]()
+         |object O {
+         |  val l: AA@@[Int] = ???
+         |}
+         |""".stripMargin,
+      """|package a
+         |case class AAA[T]()
+         |object O {
+         |  val l: AAA[Int] = ???
+         |}
+         |""".stripMargin,
+      assertSingleItem = false,
+    )
+
