@@ -835,8 +835,9 @@ object Checking {
 
     if ctx.owner.is(Package) || ctx.owner.name.startsWith(str.REPL_SESSION_LINE) then
       def markTopLevelDefsAsExperimental(why: String): Unit =
-        for sym <- nonExperimentalTopLevelDefs(ctx.owner) do
-          sym.addAnnotation(ExperimentalAnnotation(s"Added by $why", sym.span))
+        if !ctx.owner.isEmptyPackage then
+          for sym <- nonExperimentalTopLevelDefs(ctx.owner) do
+            sym.addAnnotation(ExperimentalAnnotation(s"Added by $why", sym.span))
 
       unitExperimentalLanguageImports match
         case imp :: _ => markTopLevelDefsAsExperimental(i"top level $imp")
