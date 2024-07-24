@@ -2904,13 +2904,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         tp
       case tp: HKTypeLambda =>
         tp
-      case tp: ParamRef =>
-        val st = tp.superTypeNormalized
-        if st.exists then
-          disjointnessBoundary(st)
-        else
-          // workaround for when ParamRef#underlying returns NoType
-          defn.AnyType
       case tp: TypeProxy =>
         disjointnessBoundary(tp.superTypeNormalized)
       case tp: WildcardType =>
