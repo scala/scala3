@@ -164,7 +164,9 @@ trait RunnerOrchestration {
      */
     private def createProcess: Process = {
       val url = classOf[ChildJVMMain].getProtectionDomain.getCodeSource.getLocation
-      val cp = Paths.get(url.toURI).toString + JFile.pathSeparator + Properties.scalaLibrary
+      val cp = Paths.get(url.toURI).toString +
+        JFile.pathSeparator + Properties.scalaLibrary +
+        JFile.pathSeparator + Properties.dottyLibrary
       val javaBin = Paths.get(sys.props("java.home"), "bin", "java").toString
       new ProcessBuilder(javaBin, "-Dfile.encoding=UTF-8", "-Duser.language=en", "-Duser.country=US", "-Xmx1g", "-cp", cp, "dotty.tools.vulpix.ChildJVMMain")
         .redirectErrorStream(true)
