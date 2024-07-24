@@ -117,6 +117,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |fromSpecific(from: Any)(it: IterableOnce[Nothing]): List[Nothing]
          |fromSpecific(it: IterableOnce[Nothing]): List[Nothing]
          |nn: List.type & List.type
+         |runtimeChecked scala.collection.immutable
          |toFactory(from: Any): Factory[Nothing, List[Nothing]]
          |formatted(fmtstr: String): String
          |→[B](y: B): (List.type, B)

@@ -1028,6 +1028,7 @@ class CompletionTest {
         ("ensuring", Method, "(cond: Boolean): Foo.Bar.type"),
         ("##", Method, "=> Int"),
         ("nn", Method, "=> Foo.Bar.type"),
+        ("runtimeChecked", Method, "=> Foo.Bar.type"),
         ("==", Method, "(x$0: Any): Boolean"),
         ("ensuring", Method, "(cond: Boolean, msg: => Any): Foo.Bar.type"),
         ("ne", Method, "(x$0: Object): Boolean"),

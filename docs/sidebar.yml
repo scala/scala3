@@ -157,6 +157,7 @@ subsection:
           - page: reference/experimental/named-tuples.md
           - page: reference/experimental/modularity.md
           - page: reference/experimental/typeclasses.md
+          - page: reference/experimental/runtimeChecked.md
       - page: reference/syntax.md
       - title: Language Versions
         index: reference/language-versions/language-versions.md

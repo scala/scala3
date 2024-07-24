@@ -88,7 +88,10 @@ val experimentalDefinitionInLibrary = Set(
 
   // New feature: functions with erased parameters.
   // Need quotedPatternsWithPolymorphicFunctions enabled.
-  "scala.quoted.runtime.Patterns$.higherOrderHoleWithTypes"
+  "scala.quoted.runtime.Patterns$.higherOrderHoleWithTypes",
+
+  // New feature: SIP 57 - runtimeChecked replacement of @unchecked
+  "scala.Predef$.runtimeChecked", "scala.annotation.internal.RuntimeChecked"
 )
 
 

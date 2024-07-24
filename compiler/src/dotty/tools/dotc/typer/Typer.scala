@@ -2073,7 +2073,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         result match {
           case result @ Match(sel, CaseDef(pat, _, _) :: _) =>
             tree.selector.removeAttachment(desugar.CheckIrrefutable) match {
-              case Some(checkMode) if !sel.tpe.hasAnnotation(defn.UncheckedAnnot) =>
+              case Some(checkMode) if !(sel.tpe.hasAnnotation(defn.UncheckedAnnot) || sel.tpe.hasAnnotation(defn.RuntimeCheckedAnnot)) =>
                 val isPatDef = checkMode == desugar.MatchCheck.IrrefutablePatDef
                 if !checkIrrefutable(sel, pat, isPatDef)
                   && sourceVersion.isAtLeast(`3.2`)

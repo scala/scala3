@@ -458,14 +458,15 @@ object ExtractSemanticDB:
       def unapply(tree: ValDef)(using Context): Option[(Tree, Tree)] = tree.rhs match
 
         case Match(Typed(selected: Tree, tpt: TypeTree), CaseDef(pat: Tree, _, _) :: Nil)
-        if tpt.span.exists && !tpt.span.hasLength && tpt.tpe.isAnnotatedByUnchecked =>
+        if tpt.span.exists && !tpt.span.hasLength && tpt.tpe.isAnnotatedByUncheckedOrRuntimeChecked =>
           Some((pat, selected))
 
         case _ => None
 
       extension (tpe: Types.Type)
-        private inline def isAnnotatedByUnchecked(using Context) = tpe match
-          case Types.AnnotatedType(_, annot) => annot.symbol == defn.UncheckedAnnot
+        private inline def isAnnotatedByUncheckedOrRuntimeChecked(using Context) = tpe match
+          case Types.AnnotatedType(_, annot) =>
+            annot.symbol == defn.UncheckedAnnot || annot.symbol == defn.RuntimeCheckedAnnot
           case _                             => false
 
       def collectPats(pat: Tree): List[Tree] =

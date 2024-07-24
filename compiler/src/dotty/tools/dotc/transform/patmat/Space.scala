@@ -794,6 +794,7 @@ object SpaceEngine {
       }
 
     !sel.tpe.hasAnnotation(defn.UncheckedAnnot)
+    && !sel.tpe.hasAnnotation(defn.RuntimeCheckedAnnot)
     && {
       ctx.settings.YcheckAllPatmat.value
       || isCheckable(sel.tpe)
