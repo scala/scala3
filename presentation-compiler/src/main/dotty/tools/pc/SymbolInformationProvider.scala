@@ -1,5 +1,6 @@
 package dotty.tools.pc
 
+import scala.collection.mutable
 import scala.util.control.NonFatal
 
 import scala.meta.pc.PcSymbolKind
@@ -37,11 +38,25 @@ class SymbolInformationProvider(using Context):
           if classSym.isClass
           then classSym.asClass.parentSyms.map(SemanticdbSymbols.symbolName)
           else Nil
+        val allParents =
+          val visited = mutable.Set[Symbol]()
+          def collect(sym: Symbol): Unit = {
+            visited += sym
+            if sym.isClass
+            then sym.asClass.parentSyms.foreach {
+              case parent if !visited(parent) =>
+                  collect(parent)
+              case _ =>
+            }
+          }
+          collect(classSym)
+          visited.toList.map(SemanticdbSymbols.symbolName)
         val dealisedSymbol =
           if sym.isAliasType then sym.info.deepDealias.typeSymbol else sym
         val classOwner =
           sym.ownersIterator.drop(1).find(s => s.isClass || s.is(Flags.Module))
         val overridden = sym.denot.allOverriddenSymbols.toList
+        val memberDefAnnots = sym.info.membersBasedOnFlags(Flags.Method, Flags.EmptyFlags).flatMap(_.allSymbols).flatMap(_.denot.annotations)
 
         val pcSymbolInformation =
           PcSymbolInformation(
@@ -56,6 +71,9 @@ class SymbolInformationProvider(using Context):
             properties =
               if sym.is(Flags.Abstract) then List(PcSymbolProperty.ABSTRACT)
               else Nil,
+            recursiveParents = allParents,
+            annotations = sym.denot.annotations.map(_.symbol.showFullName),
+            memberDefsAnnotations = memberDefAnnots.map(_.symbol.showFullName).toList
           )
 
         Some(pcSymbolInformation)
