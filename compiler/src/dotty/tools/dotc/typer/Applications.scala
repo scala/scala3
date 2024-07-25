@@ -1831,7 +1831,8 @@ trait Applications extends Compatibility {
           }
         case _ => // (3)
           def compareValues(tp1: Type, tp2: Type)(using Context) =
-            isAsGoodValueType(tp1, tp2, alt1.symbol.is(Implicit), alt2.symbol.is(Implicit))
+            extension (alt: TermRef) def isNotGivenClass: Boolean = alt.symbol == defn.NotGivenClass
+            isAsGoodValueType(tp1, tp2, alt1.isNotGivenClass, alt2.isNotGivenClass)
           tp2 match
             case tp2: MethodType => true // (3a)
             case tp2: PolyType if tp2.resultType.isInstanceOf[MethodType] => true // (3a)
@@ -1868,7 +1869,7 @@ trait Applications extends Compatibility {
      *     for overloading resolution (when `preferGeneral is false), and the opposite relation
      *     `U <: T` or `U convertible to `T` for implicit disambiguation between givens
      *     (when `preferGeneral` is true). For old-style implicit values, the 3.4 behavior is kept.
-     *     If one of the alternatives is an implicit and the other is a given (or an extension), the implicit loses.
+     *     If one of the alternatives is a NotGivenClass, and the other is not, then the NotGivenClass loses.
      *
      *   - In Scala 3.5 and Scala 3.6-migration, we issue a warning if the result under
      *     Scala 3.6 differ wrt to the old behavior up to 3.5.
@@ -1876,7 +1877,7 @@ trait Applications extends Compatibility {
      *  Also and only for given resolution: If a compared type refers to a given or its module class, use
      *  the intersection of its parent classes instead.
      */
-    def isAsGoodValueType(tp1: Type, tp2: Type, alt1IsImplicit: Boolean, alt2IsImplicit: Boolean)(using Context): Boolean =
+    def isAsGoodValueType(tp1: Type, tp2: Type, alt1IsNotGivenClass: Boolean, alt2IsNotGivenClass: Boolean)(using Context): Boolean =
       val oldResolution = ctx.mode.is(Mode.OldImplicitResolution)
       if !preferGeneral || Feature.migrateTo3 && oldResolution then
         // Normal specificity test for overloading resolution (where `preferGeneral` is false)
@@ -1892,10 +1893,7 @@ trait Applications extends Compatibility {
         val tp1p = prepare(tp1)
         val tp2p = prepare(tp2)
 
-        if Feature.sourceVersion.isAtMost(SourceVersion.`3.4`)
-            || oldResolution
-            || alt1IsImplicit && alt2IsImplicit
-        then
+        if Feature.sourceVersion.isAtMost(SourceVersion.`3.4`) || oldResolution then
           // Intermediate rules: better means specialize, but map all type arguments downwards
           // These are enabled for 3.0-3.5, and for all comparisons between old-style implicits,
           // and in 3.5 and 3.6-migration when we compare with previous rules.
@@ -1909,8 +1907,8 @@ trait Applications extends Compatibility {
               case _ => mapOver(t)
           (flip(tp1p) relaxed_<:< flip(tp2p)) || viewExists(tp1, tp2)
         else
-          // New rules: better means generalize, givens (and extensions) always beat implicits
-          if alt1IsImplicit != alt2IsImplicit then alt2IsImplicit
+          // New rules: better means generalize, except `NotGivenClass` which is given lower priority
+          if alt1IsNotGivenClass != alt2IsNotGivenClass then alt2IsNotGivenClass
           else (tp2p relaxed_<:< tp1p) || viewExists(tp2, tp1)
     end isAsGoodValueType
 
