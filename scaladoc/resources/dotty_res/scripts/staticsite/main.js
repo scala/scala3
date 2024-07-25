@@ -17,31 +17,30 @@ altDetailsControls.forEach(control => {
   });
 });
 
-
-// JavaScript for Tab Functionality
 document.addEventListener("DOMContentLoaded", function () {
-  const tabLinks = document.querySelectorAll(".tab-link");
-  const tabContents = document.querySelectorAll(".tab-content");
+  const tabContainers = document.querySelectorAll('.tabs');
+  tabContainers.forEach(container => {
+    const radios = container.querySelectorAll('.tab-radio');
+    const labels = container.querySelectorAll('.tab-label');
+    const contents = container.querySelectorAll('.tab-content');
 
-  tabLinks.forEach(link => {
-    link.addEventListener("click", function () {
-      const targetId = this.getAttribute("data-tab");
+    // Hide all tab contents except the first
+    contents.forEach((content, index) => {
+      if (index !== 0) content.style.display = 'none';
+    });
 
-      tabLinks.forEach(l => l.classList.remove("active"));
-      this.classList.add("active");
+    // Check the first radio button
+    if (radios.length > 0) radios[0].checked = true;
+    contents[0].style.display = 'block'; // Ensure the first tab content is displayed
 
-      tabContents.forEach(content => {
-        if (content.id === targetId) {
-          content.style.display = "block";
-        } else {
-          content.style.display = "none";
-        }
+    labels.forEach((label, index) => {
+      label.addEventListener('click', () => {
+        // Hide all tab contents
+        contents.forEach(content => content.style.display = 'none');
+
+        // Show the clicked tab's content
+        contents[index].style.display = 'block';
       });
     });
   });
-
-  // Activate the first tab by default
-  if (tabLinks.length > 0) {
-    tabLinks[0].click();
-  }
 });

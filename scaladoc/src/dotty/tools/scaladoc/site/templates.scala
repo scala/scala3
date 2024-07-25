@@ -119,14 +119,17 @@ case class TemplateFile(
       ctx.properties.transform((_, v) => asJavaElement(v)).asJava
     )
 
-    val dataPath =  ssctx.root.toPath.resolve("_data")
 
+    val dataPath =  ssctx.root.toPath.resolve("_data")
 
     // Load the data from yaml file in _data folder
     val dataMap = DataLoader().loadDataDirectory(dataPath.toString)
 
 
-    mutableProperties.put("site",dataMap)
+    val siteData = new JHashMap[String, Any]()
+    siteData.put("data",dataMap)
+    mutableProperties.put("site",siteData)
+
 
     // assign the the path for Include Tag
     val includePath =  ssctx.root.toPath.resolve("_includes")
