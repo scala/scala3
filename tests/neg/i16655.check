@@ -1,6 +1,13 @@
--- [E052] Type Error: tests/neg/i16655.scala:3:4 -----------------------------------------------------------------------
-3 |  x = 5 // error
-  |  ^^^^^
+-- [E052] Type Error: tests/neg/i16655.scala:3:2 -----------------------------------------------------------------------
+3 |  x = 5 // error // error
+  |  ^
   |  Reassignment to val x
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i16655.scala:3:6 --------------------------------------------------------------
+3 |  x = 5 // error // error
+  |      ^
+  |      Found:    (5 : Int)
+  |      Required: String
   |
   | longer explanation available when compiling with `-explain`

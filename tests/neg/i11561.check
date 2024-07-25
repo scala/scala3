@@ -1,5 +1,5 @@
 -- [E081] Type Error: tests/neg/i11561.scala:2:32 ----------------------------------------------------------------------
-2 |  val updateText1 = copy(text = _) // error
+2 |  val updateText1 = copy(text = _) // error // error
   |                                ^
   |                                Missing parameter type
   |
@@ -8,9 +8,15 @@
   |                                  _$1 => State.this.text = _$1
   |                                Expected type for the whole anonymous function:
   |                                  String
--- [E052] Type Error: tests/neg/i11561.scala:3:30 ----------------------------------------------------------------------
+-- [E052] Type Error: tests/neg/i11561.scala:2:25 ----------------------------------------------------------------------
+2 |  val updateText1 = copy(text = _) // error // error
+  |                         ^^^^
+  |                         Reassignment to val text
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E052] Type Error: tests/neg/i11561.scala:3:25 ----------------------------------------------------------------------
 3 |  val updateText2 = copy(text = (_: String)) // error
-  |                         ^^^^^^^^^^^^^^^^^^
+  |                         ^^^^
   |                         Reassignment to val text
   |
   | longer explanation available when compiling with `-explain`

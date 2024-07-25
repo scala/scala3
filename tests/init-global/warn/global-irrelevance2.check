@@ -1,4 +1,4 @@
--- Warning: tests/init-global/warn/global-irrelevance2.scala:5:6 -------------------------------------------------------
+-- Warning: tests/init-global/warn/global-irrelevance2.scala:5:2 -------------------------------------------------------
 5 |  A.x =  b * 2 // warn
   |  ^^^^^^^^^^^^
   |  Mutating object A during initialization of object B.
