@@ -1,0 +1,20 @@
+11
+hi
+List(1, 2, 3)
+hi
+
+Direct:
+You've just been subscribed to RockTheJVM. Welcome, Daniel
+Acquired connection
+Executing query: insert into subscribers(name, email) values Daniel daniel@RocktheJVM.com
+You've just been subscribed to RockTheJVM. Welcome, Martin
+Acquired connection
+Executing query: insert into subscribers(name, email) values Martin odersky@gmail.com
+
+Injected
+You've just been subscribed to RockTheJVM. Welcome, Daniel
+Acquired connection
+Executing query: insert into subscribers(name, email) values Daniel daniel@RocktheJVM.com
+You've just been subscribed to RockTheJVM. Welcome, Martin
+Acquired connection
+Executing query: insert into subscribers(name, email) values Martin odersky@gmail.com

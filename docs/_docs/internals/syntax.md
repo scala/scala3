@@ -471,10 +471,16 @@ ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody
 
-GivenDef          ::=  [GivenConditional '=>'] GivenSig
-GivenConditional  ::=  [DefTypeParamClause | UsingParamClause] {UsingParamClause}
-GivenSig          ::=  GivenType ['as' id] ([‘=’ Expr] | TemplateBody)
-                    |  ConstrApps ['as' id] TemplateBody
+GivenDef          ::=  [id ':'] GivenSig
+GivenSig          ::=  GivenImpl
+                    |  '(' ')' '=>' GivenImpl
+                    |  GivenConditional '=>' GivenSig
+GivenImpl         ::=  GivenType ([‘=’ Expr] | TemplateBody)
+                    |  ConstrApps TemplateBody
+GivenConditional  ::=  DefTypeParamClause
+                    |  DefTermParamClause
+                    |  '(' FunArgTypes ')'
+                    |  GivenType
 GivenType         ::=  AnnotType1 {id [nl] AnnotType1}
 
 Extension         ::=  ‘extension’ [DefTypeParamClause] {UsingParamClause}
