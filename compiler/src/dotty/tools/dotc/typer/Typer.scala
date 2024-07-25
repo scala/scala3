@@ -1306,6 +1306,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     else
       tpd.SyntheticValDef(TempResultName.fresh(), e)
 
+  /** Returns `(n, Some(d))` where `n` is the name of a synthetic val `d` that binds the result of
+   *  `e` if evaluating `e` is impure. Otherwise, returns `(e, None)`.
+   */
+  def hoisted(e: tpd.Tree)(using Context): (tpd.Tree, Option[tpd.ValDef]) =
+    if exprPurity(e) >= TreeInfo.Pure then
+      (e, None)
+    else
+      val d = tpd.SyntheticValDef(TempResultName.fresh(), e)
+      (tpd.Ident(d.namedType), Some(d))
+
   /** Returns a builder for computing trees representing assignments to `lhs`. */
   def formPartialAssignmentTo(lhs: untpd.Tree)(using Context): PartialAssignment[LValue] =
     lhs match
@@ -1363,7 +1373,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     core match
       case Apply(f, _) if f.symbol.is(ExtensionMethod) =>
-        formPartialAssignmentToExtensionApply(f, reassignmentToVal).getOrElse(reassignmentToVal())
+        formPartialAssignmentToExtensionApply(core).getOrElse(reassignmentToVal())
 
       case _ => core.tpe match
         case r: TermRef =>
@@ -1399,63 +1409,60 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case _ =>
           reassignmentToVal()
 
-  /** Returns a builder for computing trees representing assignments to `lhs`, which denotes the
-    * use of a setter defined in an extension.
-    */
+  /** Returns a builder for making trees representing assignments to `lhs`, which denotes a setter
+   *  defined in an extension.
+   */
   def formPartialAssignmentToExtensionApply(
-      lhs: Tree, reassignmentToVal: () => PartialAssignment[LValue]
+      lhs: Tree
   )(using Context): Option[PartialAssignment[LValue]] =
-    def formAssignment(v: LValue): PartialAssignment[LValue] =
-      PartialAssignment(v) { (l, r) =>
-        // QUESTION: Why do we need `IgnoredProto(pt)`=
-        // typed(l.formAssignment(r), IgnoredProto(e))
-        l.formAssignment(r)
-      }
+    /** Returns the setter corresponding to `lhs`, which is a getter, along hoisted definitions. */
+    def formSetter(lhs: Tree, captures: List[Tree]): (untpd.Tree, List[Tree]) =
+      lhs match
+        case f @ Ident(name: TermName) =>
+          // We need to make sure that the prefix of this extension getter is retained when we
+          // transform it into a setter. Otherwise, we could end up resolving an unrelated setter
+          // from another extension. See tests/pos/i18713.scala for an example.
+          f.tpe match
+            case TermRef(q: TermRef, _) =>
+              formSetter(ref(q).select(f.symbol).withSpan(f.span), captures)
+            case TermRef(q: ThisType, _) =>
+              formSetter(This(q.cls).select(f.symbol).withSpan(f.span), captures)
+            case TermRef(NoPrefix, _) =>
+              (untpd.cpy.Ident(f)(name.setterName), captures)
 
-    lhs match
-      case f @ Ident(name: TermName) =>
-        // We need to make sure that the prefix of this extension getter is retained when we
-        // transform it into a setter. Otherwise, we could end up resolving an unrelated setter
-        // from another extension. See tests/pos/i18713.scala for an example.
-        val v: SelectLValue = f.tpe match
-          case TermRef(q: TermRef, _) =>
-            SelectLValue(temporary(ref(q)), f.symbol.name)
-          case TermRef(q: ThisType, _) =>
-            SelectLValue(temporary(This(q.cls)), f.symbol.name)
-          case TermRef(NoPrefix, _) =>
-            SelectLValue(f, name.setterName)
-        Some(formAssignment(v))
+        case f @ Select(q, name: TermName) =>
+          val (v, d) = hoisted(q)
+          (untpd.cpy.Select(f)(untpd.TypedSplice(v), name.setterName), captures ++ d)
 
-      case f @ Select(q, name: TermName) =>
-        Some(formAssignment(SelectLValue(temporary(q), name.setterName)))
+        case f @ TypeApply(g, ts) =>
+          val (s, cs) = formSetter(g, captures)
+          (untpd.cpy.TypeApply(f)(s, ts.map((t) => untpd.TypedSplice(t))), cs)
 
-      case f @ TypeApply(f1, tas) =>
-        formPartialAssignmentToExtensionApply(f1, reassignmentToVal).map { (partialAssignment) =>
-          val s = partialAssignment.lhs.toRValue
-          val t = untpd.cpy.TypeApply(f)(s, tas.map((ta) => untpd.TypedSplice(ta)))
-          formAssignment(ApplyLValue(temporary(typed(t)), List()))
-        }
+        case f @ Apply(g, as) =>
+          var (s, newCaptures) = formSetter(g, captures)
+          var arguments = List[untpd.Tree]()
+          for a <- as do
+            val (v, d) = hoisted(a)
+            arguments = untpd.TypedSplice(v, isExtensionReceiver = true) +: arguments
+            newCaptures = newCaptures ++ d
 
-      case f @ Apply(f1, as) =>
-        formPartialAssignmentToExtensionApply(f1, reassignmentToVal).map { (partialAssignment) =>
-          val applyKind = f1 match
+          val setter = untpd.cpy.Apply(f)(s, arguments)
+
+          g match
             case _: Apply =>
               // Current apply is to implicit arguments. Note that we cannot copy the apply kind
               // of `f` since `f` is a typed tree and apply kinds are not preserved for those.
-              ApplyKind.Using
+              (setter.setApplyKind(ApplyKind.Using), newCaptures)
             case _ =>
-              ApplyKind.Regular
+              (setter, newCaptures)
 
-          val arguments = as.map { (a) =>
-            val x = untpd.TypedSplice(a, isExtensionReceiver = true)
-            temporary(typed(x))
-          }
-          val s = partialAssignment.lhs.toRValue
-          formAssignment(ApplyLValue(temporary(typed(s)), arguments, applyKind))
-        }
+        case _ =>
+          (EmptyTree, List())
 
-      case _ =>
-        None
+    val (setter, captures) = formSetter(lhs, List())
+    if setter.isEmpty then None else
+      val cs = captures.collect { case d: tpd.ValDef => d }
+      Some(PartialAssignment(UnappliedSetter(setter, cs)) { (l, r) => l.formAssignment(r) })
 
   def typedAssign(tree: untpd.Assign, pt: Type)(using Context): Tree =
     tree.lhs match
