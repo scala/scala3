@@ -122,7 +122,7 @@ object Symbols extends SymUtils {
     protected def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = {
       util.Stats.record("Symbol.recomputeDenot")
       val newd = lastd.current.asInstanceOf[SymDenotation]
-      if newd.exists || lastd.initial.validFor.firstPhaseId <= ctx.phaseId then
+      if newd.exists || lastd.initial.validFor.firstPhaseId <= ctx.phaseId || lastd.initial.validFor.runId <= ctx.runId then
         lastDenot = newd
       else
         // We are trying to bring forward a symbol that is defined only at a later phase

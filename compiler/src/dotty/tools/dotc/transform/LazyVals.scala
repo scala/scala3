@@ -614,7 +614,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
         if (ord != 0) // there are unused bits in already existing flag
           offsetSymbol = claz.info.decl(offsetById)
             .suchThat(sym => sym.is(Synthetic) && sym.isTerm)
-             .symbol.asTerm
+            .symbol.asTerm
         else { // need to create a new flag
           offsetSymbol = newSymbol(claz, offsetById, Synthetic, defn.LongType).enteredAfter(this)
           offsetSymbol.nn.addAnnotation(Annotation(defn.ScalaStaticAnnot, offsetSymbol.nn.span))
