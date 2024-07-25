@@ -1297,50 +1297,34 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     assignType(cpy.NamedArg(tree)(tree.name, arg1), arg1)
   }
 
-  /** Returns `e` if evaluating `e` doesn't cause any side effect. Otherwise, returns a synthethic
-    * val definition binding the result of `e`.
-    */
-  def temporary(e: tpd.Tree)(using Context): tpd.Tree =
-    if exprPurity(e) >= TreeInfo.Pure then
-      e
-    else
-      tpd.SyntheticValDef(TempResultName.fresh(), e)
-
-  /** Returns `(n, Some(d))` where `n` is the name of a synthetic val `d` that binds the result of
-   *  `e` if evaluating `e` is impure. Otherwise, returns `(e, None)`.
-   */
-  def hoisted(e: tpd.Tree)(using Context): (tpd.Tree, Option[tpd.ValDef]) =
-    if exprPurity(e) >= TreeInfo.Pure then
-      (e, None)
-    else
-      val d = tpd.SyntheticValDef(TempResultName.fresh(), e)
-      (tpd.Ident(d.namedType), Some(d))
-
-  /** Returns a builder for computing trees representing assignments to `lhs`. */
+  /** Returns a builder for making trees representing assignments to `lhs`. */
   def formPartialAssignmentTo(lhs: untpd.Tree)(using Context): PartialAssignment[LValue] =
     lhs match
       case lhs @ Apply(f, as) =>
         // LHS is an application `f(a1, ..., an)` that desugars to `f.update(a1, ..., an, rhs)`.
-        val v = SelectLValue(temporary(typed(f)), nme.update, as.map((a) => temporary(typed(a))))
-        PartialAssignment(v) { (l, r) => l.formAssignment(r) }
+        val arguments = as.map((a) => PossiblyHoistedValue(typed(a)))
+        val lvalue = ApplyLValue(ApplyLValue.Callee(typed(f), nme.update), arguments)
+        PartialAssignment(lvalue) { (l, r) => l.formAssignment(r) }
 
       case untpd.TypedSplice(Apply(MaybePoly(Select(fn, app), tas), as)) if app == nme.apply =>
         if tas.isEmpty then
           // No type arguments: fall back to a regular update.
-          val v = SelectLValue(temporary(fn), nme.update, as.map((a) => temporary(typed(a))))
-          PartialAssignment(v) { (l, r) => l.formAssignment(r) }
+          val arguments = as.map(PossiblyHoistedValue.apply)
+          val lvalue = ApplyLValue(ApplyLValue.Callee(fn, nme.update), arguments)
+          PartialAssignment(lvalue) { (l, r) => l.formAssignment(r) }
         else
           // Type arguments are present; the LHS requires a type application.
           val s: untpd.Tree = untpd.Select(untpd.TypedSplice(fn), nme.update)
           val t = untpd.TypeApply(s, tas.map((ta) => untpd.TypedSplice(ta)))
-          val v = ApplyLValue(temporary(typed(t)), as.map((a) => temporary(typed(a))))
-          PartialAssignment(v) { (l, r) => l.formAssignment(r) }
+          val arguments = as.map(PossiblyHoistedValue.apply)
+          val lvalue = ApplyLValue(ApplyLValue.Callee(typed(t)), arguments)
+          PartialAssignment(lvalue) { (l, r) => l.formAssignment(r) }
 
       case _ =>
         formPartialAssignmentToNonApply(lhs)
 
-  /** Returns a builder for computing trees representing assignments to `lhs`, which isn't a term
-    * or type application.
+  /** Returns a builder for making trees representing assignments to `lhs`, which isn't a term or
+    * type application.
     */
   def formPartialAssignmentToNonApply(lhs: untpd.Tree)(using Context): PartialAssignment[LValue] =
     val locked = ctx.typerState.ownedVars
@@ -1431,7 +1415,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               (untpd.cpy.Ident(f)(name.setterName), captures)
 
         case f @ Select(q, name: TermName) =>
-          val (v, d) = hoisted(q)
+          val (v, d) = PossiblyHoistedValue(q).valueAndDefinition
           (untpd.cpy.Select(f)(untpd.TypedSplice(v), name.setterName), captures ++ d)
 
         case f @ TypeApply(g, ts) =>
@@ -1442,7 +1426,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           var (s, newCaptures) = formSetter(g, captures)
           var arguments = List[untpd.Tree]()
           for a <- as do
-            val (v, d) = hoisted(a)
+            val (v, d) = PossiblyHoistedValue(a).valueAndDefinition
             arguments = untpd.TypedSplice(v, isExtensionReceiver = true) +: arguments
             newCaptures = newCaptures ++ d
 

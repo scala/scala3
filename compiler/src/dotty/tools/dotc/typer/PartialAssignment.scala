@@ -5,8 +5,11 @@ package typer
 import dotty.tools.dotc.ast.Trees.ApplyKind
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.untpd
+import dotty.tools.dotc.ast.TreeInfo
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Names.Name
+import dotty.tools.dotc.core.NameKinds.TempResultName
+
 import core.Symbols.defn
 
 /** A function computing the assignment of a lvalue.
@@ -25,6 +28,39 @@ private[typer] final class PartialAssignment[+T <: LValue](val lhs: T)(
 
 end PartialAssignment
 
+/** The expression of a pure value or a synthetic val definition binding a value whose evaluation
+ *  must be hoisted.
+ *
+ *  Use this type to represent a part of a lvalue that must be evaluated before the lvalue gets
+ *  used for updating a value.
+ */
+private[typer] opaque type PossiblyHoistedValue = tpd.Tree
+
+extension (self: PossiblyHoistedValue)
+
+  /** Returns a tree representing the value of `self`. */
+  def value(using Context): tpd.Tree =
+    self.definition.map((d) => tpd.Ident(d.namedType)).getOrElse(self)
+
+  /** Returns the synthetic val defining `self` if it is hoisted. */
+  def definition: Option[tpd.ValDef] =
+    self match
+      case d: tpd.ValDef => Some(d)
+      case _ => None
+
+  /** Returns a tree representing the value of `self` along with its hoisted definition, if any. */
+  def valueAndDefinition(using Context): (tpd.Tree, Option[tpd.ValDef]) =
+    self.definition
+      .map((d) => (tpd.Ident(d.namedType), Some(d)))
+      .getOrElse((self, None))
+
+object PossiblyHoistedValue:
+
+  /** Creates a value representing the `e`'s evaluation. */
+  def apply(e: tpd.Tree)(using Context): PossiblyHoistedValue =
+    if tpd.exprPurity(e) >= TreeInfo.Pure then e else
+      tpd.SyntheticValDef(TempResultName.fresh(), e)
+
 /** The left-hand side of an assignment. */
 private[typer] sealed abstract class LValue:
 
@@ -34,22 +70,7 @@ private[typer] sealed abstract class LValue:
   /** Returns a tree computing the assignment of `rhs` to this lvalue. */
   def formAssignment(rhs: untpd.Tree)(using Context): untpd.Tree
 
-  /** Returns the value of `t`, which may be an expression or a local `val` definition. */
-  protected final def read(t: tpd.Tree)(using Context): tpd.Tree =
-    t match
-      case d: tpd.ValDef => tpd.Ident(d.namedType)
-      case e => e
-
 end LValue
-
-private[typer] final case class UnappliedSetter(
-    expression: untpd.Tree, locals: List[tpd.ValDef]
-) extends LValue:
-
-  def formAssignment(rhs: untpd.Tree)(using Context): untpd.Tree =
-    untpd.Apply(expression, List(rhs))
-
-end UnappliedSetter
 
 /** A simple expression, typically valid on left-hand side of an `Assign` tree.
   *
@@ -75,43 +96,52 @@ end SimpleLValue
   * @param arguments The arguments of the partial application.
   */
 private[typer] final case class ApplyLValue(
-    function: tpd.Tree,
-    arguments: List[tpd.Tree]
+    function: ApplyLValue.Callee,
+    arguments: List[PossiblyHoistedValue]
 ) extends LValue:
 
   val locals: List[tpd.ValDef] =
-    (function +: arguments).collect { case d: tpd.ValDef => d }
+    function.locals ++ (arguments.collect { case d: tpd.ValDef => d })
 
   def formAssignment(rhs: untpd.Tree)(using Context): untpd.Tree =
-    val s = untpd.TypedSplice(read(function))
-    val t = arguments.map((a) => untpd.TypedSplice(read(a))) :+ rhs
+    val s = function.expanded
+    val t = arguments.map((a) => untpd.TypedSplice(a.value)) :+ rhs
     untpd.Apply(s, t)
+
+object ApplyLValue:
+
+  /** The callee of a lvalue represented by a partial application. */
+  sealed abstract class Callee:
+
+    def expanded(using Context): untpd.Tree
+
+    /** Returns the local `val` definitions composing this lvalue. */
+    def locals: List[tpd.ValDef]
+
+  object Callee:
+
+    def apply(receiver: tpd.Tree)(using Context): Typed =
+      Typed(PossiblyHoistedValue(receiver), None)
+
+    def apply(receiver: tpd.Tree, member: Name)(using Context): Typed =
+      Typed(PossiblyHoistedValue(receiver), Some(member))
+
+    /** A function representing a lvalue. */
+    final case class Typed(receiver: PossiblyHoistedValue, member: Option[Name]) extends Callee:
+
+      def expanded(using Context): untpd.Tree =
+        val s = untpd.TypedSplice(receiver.value)
+        member.map((m) => untpd.Select(s, m)).getOrElse(s)
+
+      def locals: List[tpd.ValDef] =
+        receiver.definition.toList
+
+    /** The untyped expression of a function representing a lvalue along with its captures. */
+    final case class Untyped(value: untpd.Tree, locals: List[tpd.ValDef]) extends Callee:
+
+      def expanded(using Context): untpd.Tree =
+        value
+
+  end Callee
 
 end ApplyLValue
-
-/** A lvalue represeted by the application of a partially applied method.
-  *
-  * @param receiver The receiver of the partially applied method.
-  * @param member The name of the partially applied method.
-  * @param arguments The arguments of the partial application.
-  */
-private[typer] final case class SelectLValue(
-    receiver: tpd.Tree,
-    member: Name,
-    arguments: List[tpd.Tree] = List()
-) extends LValue:
-
-  def expandReceiver()(using Context): tpd.Tree =
-    receiver match
-      case d: tpd.ValDef => d.rhs
-      case r => r
-
-  val locals: List[tpd.ValDef] =
-    (receiver +: arguments).collect { case d: tpd.ValDef => d }
-
-  def formAssignment(rhs: untpd.Tree)(using Context): untpd.Tree =
-    val s = untpd.Select(untpd.TypedSplice(read(receiver)), member)
-    val t = arguments.map((a) => untpd.TypedSplice(read(a))) :+ rhs
-    untpd.Apply(s, t)
-
-end SelectLValue
