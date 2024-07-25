@@ -1400,7 +1400,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       lhs: Tree
   )(using Context): Option[PartialAssignment[LValue]] =
     /** Returns the setter corresponding to `lhs`, which is a getter, along hoisted definitions. */
-    def formSetter(lhs: Tree, captures: List[Tree]): (untpd.Tree, List[Tree]) =
+    def formSetter(lhs: Tree, locals: List[ValDef]): (untpd.Tree, List[ValDef]) =
       lhs match
         case f @ Ident(name: TermName) =>
           // We need to make sure that the prefix of this extension getter is retained when we
@@ -1408,27 +1408,27 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           // from another extension. See tests/pos/i18713.scala for an example.
           f.tpe match
             case TermRef(q: TermRef, _) =>
-              formSetter(ref(q).select(f.symbol).withSpan(f.span), captures)
+              formSetter(ref(q).select(f.symbol).withSpan(f.span), locals)
             case TermRef(q: ThisType, _) =>
-              formSetter(This(q.cls).select(f.symbol).withSpan(f.span), captures)
+              formSetter(This(q.cls).select(f.symbol).withSpan(f.span), locals)
             case TermRef(NoPrefix, _) =>
-              (untpd.cpy.Ident(f)(name.setterName), captures)
+              (untpd.cpy.Ident(f)(name.setterName), locals)
 
         case f @ Select(q, name: TermName) =>
           val (v, d) = PossiblyHoistedValue(q).valueAndDefinition
-          (untpd.cpy.Select(f)(untpd.TypedSplice(v), name.setterName), captures ++ d)
+          (untpd.cpy.Select(f)(untpd.TypedSplice(v), name.setterName), locals ++ d)
 
         case f @ TypeApply(g, ts) =>
-          val (s, cs) = formSetter(g, captures)
+          val (s, cs) = formSetter(g, locals)
           (untpd.cpy.TypeApply(f)(s, ts.map((t) => untpd.TypedSplice(t))), cs)
 
         case f @ Apply(g, as) =>
-          var (s, newCaptures) = formSetter(g, captures)
+          var (s, newLocals) = formSetter(g, locals)
           var arguments = List[untpd.Tree]()
           for a <- as do
             val (v, d) = PossiblyHoistedValue(a).valueAndDefinition
             arguments = untpd.TypedSplice(v, isExtensionReceiver = true) +: arguments
-            newCaptures = newCaptures ++ d
+            newLocals = newLocals ++ d
 
           val setter = untpd.cpy.Apply(f)(s, arguments)
 
@@ -1436,17 +1436,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             case _: Apply =>
               // Current apply is to implicit arguments. Note that we cannot copy the apply kind
               // of `f` since `f` is a typed tree and apply kinds are not preserved for those.
-              (setter.setApplyKind(ApplyKind.Using), newCaptures)
+              (setter.setApplyKind(ApplyKind.Using), newLocals)
             case _ =>
-              (setter, newCaptures)
+              (setter, newLocals)
 
         case _ =>
           (EmptyTree, List())
 
-    val (setter, captures) = formSetter(lhs, List())
+    val (setter, locals) = formSetter(lhs, List())
     if setter.isEmpty then None else
-      val cs = captures.collect { case d: tpd.ValDef => d }
-      Some(PartialAssignment(UnappliedSetter(setter, cs)) { (l, r) => l.formAssignment(r) })
+      val lvalue = ApplyLValue(ApplyLValue.Callee.Untyped(setter, locals), List())
+      Some(PartialAssignment(lvalue) { (l, r) => l.formAssignment(r) })
 
   def typedAssign(tree: untpd.Assign, pt: Type)(using Context): Tree =
     tree.lhs match
