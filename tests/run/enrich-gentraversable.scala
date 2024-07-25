@@ -47,7 +47,8 @@ object Test extends App {
 
     val tm = TreeMap(1 -> "foo", 2 -> "bar")
     val tmm = tm.filterMap { case (k, v) => if (k % 2 == 0) Some(v -> k) else None }
-    typed[TreeMap[String, Int]](tmm)
+    typed[Map[String, Int]](tmm) // was TreeMap, now Map,
+    // since `BuildFrom` is covariant in `That` and `TreeMap[String, Int] <:< Map[String, Int]`
     println(tmm)
 
     val mv = m.view
