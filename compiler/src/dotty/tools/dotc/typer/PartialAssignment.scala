@@ -31,9 +31,6 @@ private[typer] sealed abstract class LValue:
   /** Returns the local `val` definitions composing this lvalue. */
   def locals: List[tpd.ValDef]
 
-  /** Returns this lvalue converted to a rvalue. */
-  def toRValue(using Context): untpd.Tree
-
   /** Returns a tree computing the assignment of `rhs` to this lvalue. */
   def formAssignment(rhs: untpd.Tree)(using Context): untpd.Tree
 
@@ -44,6 +41,15 @@ private[typer] sealed abstract class LValue:
       case e => e
 
 end LValue
+
+private[typer] final case class UnappliedSetter(
+    expression: untpd.Tree, locals: List[tpd.ValDef]
+) extends LValue:
+
+  def formAssignment(rhs: untpd.Tree)(using Context): untpd.Tree =
+    untpd.Apply(expression, List(rhs))
+
+end UnappliedSetter
 
 /** A simple expression, typically valid on left-hand side of an `Assign` tree.
   *
@@ -56,9 +62,6 @@ private[typer] final case class SimpleLValue(expression: tpd.Tree) extends LValu
 
   def locals: List[tpd.ValDef] =
     List()
-
-  def toRValue(using Context): untpd.Tree =
-    untpd.TypedSplice(expression)
 
   def formAssignment(rhs: untpd.Tree)(using Context): untpd.Tree =
     val s = untpd.Assign(untpd.TypedSplice(expression), rhs)
@@ -80,9 +83,6 @@ private[typer] final case class ApplyLValue(
 
   val locals: List[tpd.ValDef] =
     (function +: arguments).collect { case d: tpd.ValDef => d }
-
-  def toRValue(using Context): untpd.Tree =
-    untpd.Apply(function, arguments)
 
   def formAssignment(rhs: untpd.Tree)(using Context): untpd.Tree =
     val s = untpd.TypedSplice(read(function))
@@ -110,10 +110,6 @@ private[typer] final case class SelectLValue(
 
   val locals: List[tpd.ValDef] =
     (receiver +: arguments).collect { case d: tpd.ValDef => d }
-
-  def toRValue(using Context): untpd.Tree =
-    require(arguments.isEmpty)
-    untpd.Select(untpd.TypedSplice(expandReceiver()), member)
 
   def formAssignment(rhs: untpd.Tree)(using Context): untpd.Tree =
     val s = untpd.Select(untpd.TypedSplice(read(receiver)), member)
