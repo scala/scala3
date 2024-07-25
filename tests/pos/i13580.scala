@@ -1,12 +1,12 @@
 //> using options -language:experimental.modularity -source future
 trait IntWidth:
   type Out
-given IntWidth with
+given IntWidth:
   type Out = 155
 
 trait IntCandidate:
   type Out
-given (using tracked val w: IntWidth): IntCandidate with
+given (tracked val w: IntWidth) => IntCandidate:
   type Out = w.Out
 
 val x = summon[IntCandidate]
