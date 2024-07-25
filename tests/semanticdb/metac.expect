@@ -2621,9 +2621,9 @@ example/Methods#m6(+1). => method m6 (param x: List[T]): Nothing
 example/Methods#m6(+1).(x) => param x: List[T]
 example/Methods#m6(+2). => method m6 (param x: List[T]): Nothing
 example/Methods#m6(+2).(x) => param x: List[T]
-example/Methods#m7(). => method m7 [typeparam U ](param c: Methods[T], param l: List[U])(implicit param evidence$1: Ordering[U]): Nothing
+example/Methods#m7(). => method m7 [typeparam U ](param c: Methods[T], param l: List[U])(implicit given param evidence$1: Ordering[U]): Nothing
 example/Methods#m7().(c) => param c: Methods[T]
-example/Methods#m7().(evidence$1) => implicit param evidence$1: Ordering[U]
+example/Methods#m7().(evidence$1) => implicit given param evidence$1: Ordering[U]
 example/Methods#m7().(l) => param l: List[U]
 example/Methods#m7().[U] => typeparam U 
 example/Methods#m9(). => method m9 (param x: m9().): Nothing
@@ -3553,10 +3553,10 @@ example/Synthetic#F# => class F extends Object { self: F => +1 decls }
 example/Synthetic#F#`<init>`(). => primary ctor <init> (): F
 example/Synthetic#J# => class J [typeparam T ] extends Object { self: J[T] => +4 decls }
 example/Synthetic#J#[T] => typeparam T 
-example/Synthetic#J#`<init>`(). => primary ctor <init> [typeparam T ]()(implicit param evidence$1: Manifest[T]): J[T]
-example/Synthetic#J#`<init>`().(evidence$1) => implicit param evidence$1: Manifest[T]
+example/Synthetic#J#`<init>`(). => primary ctor <init> [typeparam T ](implicit given param evidence$1: Manifest[T])(): J[T]
+example/Synthetic#J#`<init>`().(evidence$1) => implicit given param evidence$1: Manifest[T]
 example/Synthetic#J#arr. => val method arr Array[T]
-example/Synthetic#J#evidence$1. => private[this] implicit val method evidence$1 Manifest[T]
+example/Synthetic#J#evidence$1. => private[this] implicit val given method evidence$1 Manifest[T]
 example/Synthetic#Name. => val method Name Regex
 example/Synthetic#`<init>`(). => primary ctor <init> (): Synthetic
 example/Synthetic#a1. => val method a1 Int

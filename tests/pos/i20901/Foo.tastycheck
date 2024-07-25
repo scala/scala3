@@ -74,7 +74,7 @@ Trees (98 bytes, starting from <elided base index>):
     61:                 SHAREDtype 6
     63:             IDENTtpt 16 [T]
     65:               TYPEREFdirect 39
-    67:           IMPLICIT
+    67:           GIVEN
     68:         IDENTtpt 17 [Nothing]
     70:           TYPEREF 17 [Nothing]
     72:             TERMREFpkg 2 [scala]

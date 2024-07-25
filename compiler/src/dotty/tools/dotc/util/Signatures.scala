@@ -499,7 +499,7 @@ object Signatures {
 
     def isSyntheticEvidence(name: String) =
       name.startsWith(NameKinds.ContextBoundParamName.separator)
-      && symbol.paramSymss.flatten.find(_.name.show == name).exists(_.flags.is(Flags.Implicit))
+      && symbol.paramSymss.flatten.find(_.name.show == name).exists(_.flags.isOneOf(Flags.GivenOrImplicit))
 
     def toTypeParam(tpe: PolyType): List[Param] =
       val evidenceParams = (tpe.paramNamess.flatten zip tpe.paramInfoss.flatten).flatMap:

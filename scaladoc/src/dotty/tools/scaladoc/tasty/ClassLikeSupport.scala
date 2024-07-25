@@ -588,7 +588,8 @@ trait ClassLikeSupport:
         // `def foo[A: ClassTag] = 1`.
         // Scala spec states that `$` should not be used in names and behaviour may be undefiend in such case.
         // Documenting method slightly different then its definition is withing the 'undefiend behaviour'.
-        symbol.paramSymss.flatten.find(_.name == name).exists(_.flags.is(Flags.Implicit))
+        symbol.paramSymss.flatten.find(_.name == name).exists(p =>
+          p.flags.is(Flags.Given) || p.flags.is(Flags.Implicit))
 
     def handlePolyType(memberInfo: MemberInfo, polyType: PolyType): MemberInfo =
       val typeParamList = MemberInfo.TypeParameterList(polyType.paramNames.zip(polyType.paramBounds).toMap)

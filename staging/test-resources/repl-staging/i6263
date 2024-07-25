@@ -3,7 +3,7 @@ scala> import quoted.staging.{Compiler => StagingCompiler, _}
 scala> implicit def compiler: StagingCompiler = StagingCompiler.make(getClass.getClassLoader)
 def compiler: scala.quoted.staging.Compiler
 scala> def fn[T : Type](v : T) = println("ok")
-def fn[T](v: T)(implicit evidence$1: scala.quoted.Type[T]): Unit
+def fn[T](v: T)(using evidence$1: scala.quoted.Type[T]): Unit
 scala> withQuotes { fn("foo") }
 ok
 scala> withQuotes { fn((1,2)) }
