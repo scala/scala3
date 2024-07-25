@@ -73,12 +73,10 @@ end SimpleLValue
   *
   * @param function The partially applied function.
   * @param arguments The arguments of the partial application.
-  * @param kind The way in which the function is applied.
   */
 private[typer] final case class ApplyLValue(
     function: tpd.Tree,
-    arguments: List[tpd.Tree],
-    kind: ApplyKind = ApplyKind.Regular
+    arguments: List[tpd.Tree]
 ) extends LValue:
 
   val locals: List[tpd.ValDef] =
