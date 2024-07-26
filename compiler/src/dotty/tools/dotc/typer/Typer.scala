@@ -1369,7 +1369,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           .getOrElse(reassignmentToVal())
 
       case _ => core.tpe match
-        case r: TermRef if !mustFormSetter(adapted, isSingleAssignment) =>
+        case r: TermRef if isSingleAssignment || !mustFormSetter(adapted) =>
           val v = core.denot.suchThat(!_.is(Method))
           if canAssign(v.symbol) then
             rememberNonLocalAssignToPrivate(v.symbol)
@@ -1468,17 +1468,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     recurse(lhs, List())
 
   /** Returns whether `t` should be desugared as a setter to form a partial assignment. */
-  def mustFormSetter(t: tpd.Tree, isSingleAssignment: Boolean)(using Context) =
-    !isSingleAssignment && (
-      t match
-        case f @ Ident(_) => f.tpe match
-          case TermRef(NoPrefix, _) => false
-          case _ => true
-        case f @ Select(q, _) =>
-          !(exprPurity(q) >= TreeInfo.Pure)
-        case _ =>
-          true
-    )
+  def mustFormSetter(t: tpd.Tree)(using Context) =
+    t match
+      case f @ Ident(_) => f.tpe match
+        case TermRef(NoPrefix, _) => false
+        case _ => true
+      case f @ Select(q, _) =>
+        !(exprPurity(q) >= TreeInfo.Pure)
+      case _ =>
+        true
 
   def typedAssign(tree: untpd.Assign, pt: Type)(using Context): Tree =
     tree.lhs match
