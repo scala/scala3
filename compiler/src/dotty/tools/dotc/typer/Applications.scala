@@ -1970,23 +1970,29 @@ trait Applications extends Compatibility {
 
     def compareWithTypes(tp1: Type, tp2: Type) =
       val ownerScore = compareOwner(alt1.symbol.maybeOwner, alt2.symbol.maybeOwner)
-      val winsType1 = isAsGood(alt1, tp1, alt2, tp2)
-      val winsType2 = isAsGood(alt2, tp2, alt1, tp1)
+      if preferGeneral && ownerScore != 0 then
+      	// For implicit resolution, take ownerscre as more significat than type resoltion
+      	// Reason: People use owner hierarchies to explicitly prioritize, we should not
+      	// break that by changing implicit priority of types.
+      	ownerScore
+      else
+        val winsType1 = isAsGood(alt1, tp1, alt2, tp2)
+        val winsType2 = isAsGood(alt2, tp2, alt1, tp1)
 
-      overload.println(i"compare($alt1, $alt2)? $tp1 $tp2 $ownerScore $winsType1 $winsType2")
-      if winsType1 && winsType2
-          && alt1.widenExpr.isStable && (alt1.widenExpr frozen_=:= alt2.widenExpr)
-      then
-        // alternatives are the same after following ExprTypes, pick one of them
-        // (prefer the one that is not a method, but that's arbitrary).
-        if alt1.widenExpr =:= alt2 then -1 else 1
-      else ownerScore match
-        case  1 => if winsType1 || !winsType2 then  1 else 0
-        case -1 => if winsType2 || !winsType1 then -1 else 0
-        case  0 =>
-          if winsType1 != winsType2 then if winsType1 then 1 else -1
-          else if alt1.symbol == alt2.symbol then comparePrefixes
-          else 0
+        overload.println(i"compare($alt1, $alt2)? $tp1 $tp2 $ownerScore $winsType1 $winsType2")
+        if winsType1 && winsType2
+            && alt1.widenExpr.isStable && (alt1.widenExpr frozen_=:= alt2.widenExpr)
+        then
+          // alternatives are the same after following ExprTypes, pick one of them
+          // (prefer the one that is not a method, but that's arbitrary).
+          if alt1.widenExpr =:= alt2 then -1 else 1
+        else ownerScore match
+          case  1 => if winsType1 || !winsType2 then  1 else 0
+          case -1 => if winsType2 || !winsType1 then -1 else 0
+          case  0 =>
+            if winsType1 != winsType2 then if winsType1 then 1 else -1
+            else if alt1.symbol == alt2.symbol then comparePrefixes
+            else 0
     end compareWithTypes
 
     if alt1.symbol.is(ConstructorProxy) && !alt2.symbol.is(ConstructorProxy) then -1
