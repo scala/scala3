@@ -115,6 +115,7 @@ object ApplyLValue:
   /** The callee of a lvalue represented by a partial application. */
   sealed abstract class Callee:
 
+    /** Returns the tree representing this callee. */
     def expanded(using Context): untpd.Tree
 
     /** Returns the local `val` definitions composing this lvalue. */
