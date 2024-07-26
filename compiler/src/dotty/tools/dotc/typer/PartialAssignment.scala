@@ -34,32 +34,34 @@ end PartialAssignment
  *  Use this type to represent a part of a lvalue that must be evaluated before the lvalue gets
  *  used for updating a value.
  */
-private[typer] opaque type PossiblyHoistedValue = tpd.Tree
-
-extension (self: PossiblyHoistedValue)
+private[typer] final class PossiblyHoistedValue private (representation: tpd.Tree):
 
   /** Returns a tree representing the value of `self`. */
   def value(using Context): tpd.Tree =
-    self.definition.map((d) => tpd.Ident(d.namedType)).getOrElse(self)
+    definition match
+      case Some(d) => tpd.Ident(d.namedType).withSpan(representation.span)
+      case _ => representation
 
   /** Returns the synthetic val defining `self` if it is hoisted. */
   def definition: Option[tpd.ValDef] =
-    self match
+    representation match
       case d: tpd.ValDef => Some(d)
       case _ => None
 
   /** Returns a tree representing the value of `self` along with its hoisted definition, if any. */
   def valueAndDefinition(using Context): (tpd.Tree, Option[tpd.ValDef]) =
-    self.definition
+    definition
       .map((d) => (tpd.Ident(d.namedType), Some(d)))
-      .getOrElse((self, None))
+      .getOrElse((representation, None))
 
 object PossiblyHoistedValue:
 
   /** Creates a value representing the `e`'s evaluation. */
   def apply(e: tpd.Tree)(using Context): PossiblyHoistedValue =
-    if tpd.exprPurity(e) >= TreeInfo.Pure then e else
-      tpd.SyntheticValDef(TempResultName.fresh(), e)
+    if tpd.exprPurity(e) >= TreeInfo.Pure then
+      new PossiblyHoistedValue(e)
+    else
+      new PossiblyHoistedValue(tpd.SyntheticValDef(TempResultName.fresh(), e))
 
 /** The left-hand side of an assignment. */
 private[typer] sealed abstract class LValue:
@@ -101,7 +103,7 @@ private[typer] final case class ApplyLValue(
 ) extends LValue:
 
   val locals: List[tpd.ValDef] =
-    function.locals ++ (arguments.collect { case d: tpd.ValDef => d })
+    function.locals ++ (arguments.flatMap { (v) => v.definition })
 
   def formAssignment(rhs: untpd.Tree)(using Context): untpd.Tree =
     val s = function.expanded
