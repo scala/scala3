@@ -50,9 +50,9 @@ private[typer] final class PossiblyHoistedValue private (representation: tpd.Tre
 
   /** Returns a tree representing the value of `self` along with its hoisted definition, if any. */
   def valueAndDefinition(using Context): (tpd.Tree, Option[tpd.ValDef]) =
-    definition
-      .map((d) => (tpd.Ident(d.namedType), Some(d)))
-      .getOrElse((representation, None))
+    definition match
+      case Some(d) => (tpd.Ident(d.namedType).withSpan(representation.span), Some(d))
+      case _ => (representation, None)
 
 object PossiblyHoistedValue:
 
@@ -61,7 +61,7 @@ object PossiblyHoistedValue:
     if isSingleAssignment || (tpd.exprPurity(e) >= TreeInfo.Pure) then
       new PossiblyHoistedValue(e)
     else
-      new PossiblyHoistedValue(tpd.SyntheticValDef(TempResultName.fresh(), e))
+      new PossiblyHoistedValue(tpd.SyntheticValDef(TempResultName.fresh(), e).withSpan(e.span))
 
 /** The left-hand side of an assignment. */
 private[typer] sealed abstract class LValue:
