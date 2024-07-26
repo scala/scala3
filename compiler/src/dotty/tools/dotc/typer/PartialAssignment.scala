@@ -57,8 +57,8 @@ private[typer] final class PossiblyHoistedValue private (representation: tpd.Tre
 object PossiblyHoistedValue:
 
   /** Creates a value representing the `e`'s evaluation. */
-  def apply(e: tpd.Tree)(using Context): PossiblyHoistedValue =
-    if tpd.exprPurity(e) >= TreeInfo.Pure then
+  def apply(e: tpd.Tree, isSingleAssignment: Boolean)(using Context): PossiblyHoistedValue =
+    if isSingleAssignment || (tpd.exprPurity(e) >= TreeInfo.Pure) then
       new PossiblyHoistedValue(e)
     else
       new PossiblyHoistedValue(tpd.SyntheticValDef(TempResultName.fresh(), e))
@@ -122,11 +122,17 @@ object ApplyLValue:
 
   object Callee:
 
-    def apply(receiver: tpd.Tree)(using Context): Typed =
-      Typed(PossiblyHoistedValue(receiver), None)
+    /** Creates an instance from a function represented as a typed tree. */
+    def apply(
+        receiver: tpd.Tree, isSingleAssignment: Boolean
+    )(using Context): Typed =
+      Typed(PossiblyHoistedValue(receiver, isSingleAssignment), None)
 
-    def apply(receiver: tpd.Tree, member: Name)(using Context): Typed =
-      Typed(PossiblyHoistedValue(receiver), Some(member))
+    /** Creates an instance denoting a selection on a receiver represented as a typed tree. */
+    def apply(
+        receiver: tpd.Tree, member: Name, isSingleAssignment: Boolean
+    )(using Context): Typed =
+      Typed(PossiblyHoistedValue(receiver, isSingleAssignment), Some(member))
 
     /** A function representing a lvalue. */
     final case class Typed(receiver: PossiblyHoistedValue, member: Option[Name]) extends Callee:
