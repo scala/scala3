@@ -1331,6 +1331,9 @@ trait Implicits:
         else if alt1.level != alt2.level then alt1.level - alt2.level
         else
           var cmp = comp(using searchContext())
+          if cmp == 0 && alt1.ref.symbol.is(Implicit) && alt2.ref.symbol.is(Implicit) then
+            // if we get an ambiguity with new rules for a pair of old-style implicits, fall back to old rules
+            cmp = comp(using searchContext().addMode(Mode.OldImplicitResolution))
           val sv = Feature.sourceVersion
           if isWarnPriorityChangeVersion(sv) then
             val prev = comp(using searchContext().addMode(Mode.OldImplicitResolution))
