@@ -1981,12 +1981,6 @@ trait Applications extends Compatibility {
         case  0 =>
           if winsType1 != winsType2 then if winsType1 then 1 else -1
           else if alt1.symbol == alt2.symbol then comparePrefixes
-          else if preferGeneral then
-            // For implicit resolution, take ownerscore as more significat than type resoltion
-            // Reason: People use owner hierarchies to explicitly prioritize, we should not
-            // break that by changing implicit priority of types. On the other hand we do want
-            // to comparePrefixes if there is a draw; StringFormaterTest breaks if we don't do that.
-            ownerScore
           else 0
     end compareWithTypes
 
