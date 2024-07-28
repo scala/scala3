@@ -1151,6 +1151,9 @@ object RefChecks {
         def strippedResultType = Applications.stripImplicit(tp.stripPoly, wildcardOnly = true).resultType
         def firstExplicitParamTypes = Applications.stripImplicit(tp.stripPoly, wildcardOnly = true).firstParamTypes
         def hasImplicitParams = tp.stripPoly match { case mt: MethodType => mt.isImplicitMethod case _ => false }
+        def isAnyAlias =
+          val denot = tp.typeSymbol.denot
+          denot.isAliasType || denot.isOpaqueAlias
       val target = sym.info.firstExplicitParamTypes.head // required for extension method, the putative receiver
       val methTp = sym.info.strippedResultType // skip leading implicits and the "receiver" parameter
       def hidden =
@@ -1162,14 +1165,14 @@ object RefChecks {
             if memberIsImplicit then methTp.stripPoly.firstParamTypes
             else methTp.firstExplicitParamTypes
 
-          paramTps.isEmpty || memberIsImplicit && !methTp.hasImplicitParams || {
+          paramTps.isEmpty || memberIsImplicit && !methTp.hasImplicitParams || !paramTps.exists(_.typeSymbol.denot.isOpaqueAlias) && {
             val memberParamTps = member.info.stripPoly.firstParamTypes
             !memberParamTps.isEmpty
             && memberParamTps.lengthCompare(paramTps) == 0
             && memberParamTps.lazyZip(paramTps).forall((m, x) => x frozen_<:< m)
           }
         .exists
-      if !target.typeSymbol.denot.isAliasType && !target.typeSymbol.denot.isOpaqueAlias && hidden
+      if !target.isAnyAlias && hidden
       then report.warning(ExtensionNullifiedByMember(sym, target.typeSymbol), sym.srcPos)
   end checkExtensionMethods
 
