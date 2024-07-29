@@ -30,7 +30,7 @@ object NamedTuple:
 
   export NamedTupleDecomposition.{
     Names, DropNames,
-    apply, size, init, last, tail, take, drop, splitAt, ++, map, reverse, zip, toList, toArray, toIArray
+    apply, size, init, head, last, tail, take, drop, splitAt, ++, map, reverse, zip, toList, toArray, toIArray
   }
 
   extension [N <: Tuple, V <: Tuple](x: NamedTuple[N, V])
@@ -42,9 +42,6 @@ object NamedTuple:
     // This intentionally works for empty named tuples as well. I think NonEmptyTuple is a dead end
     // and should be reverted, just like NonEmptyList is also appealing at first, but a bad idea
     // in the end.
-
-    /** The first element value of this tuple */
-    inline def head: Tuple.Elem[V, 0] = x.apply(0)
 
     // inline def :* [L] (x: L): NamedTuple[Append[N, ???], Append[V, L] = ???
     // inline def *: [H] (x: H): NamedTuple[??? *: N], H *: V] = ???
@@ -148,6 +145,9 @@ object NamedTupleDecomposition:
 
     /** The number of elements in this tuple */
     inline def size: Tuple.Size[V] = x.toTuple.size
+
+    /** The first element value of this tuple */
+    inline def head: Tuple.Elem[V, 0] = apply(0)
 
     /** The last element value of this tuple */
     inline def last: Tuple.Last[V] = apply(size - 1).asInstanceOf[Tuple.Last[V]]
