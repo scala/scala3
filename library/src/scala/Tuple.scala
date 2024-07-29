@@ -34,8 +34,8 @@ sealed trait Tuple extends Product {
   /** Return a new tuple by concatenating `this` tuple with `that` tuple.
    *  This operation is O(this.size + that.size)
    */
-  inline def ++ [This >: this.type <: Tuple](that: Tuple): Concat[This, that.type] =
-    runtime.Tuples.concat(this, that).asInstanceOf[Concat[This, that.type]]
+  inline def ++ [This >: this.type <: Tuple](that: Tuple): This ++ that.type =
+    runtime.Tuples.concat(this, that).asInstanceOf[This ++ that.type]
 
   /** Return the size (or arity) of the tuple */
   inline def size[This >: this.type <: Tuple]: Size[This] =
@@ -125,6 +125,9 @@ object Tuple {
     case EmptyTuple => Y
     case x1 *: xs1 => x1 *: Concat[xs1, Y]
   }
+
+  /** An infix shorthand for `Concat[X, Y]` */
+  infix type ++[X <: Tuple, +Y <: Tuple] = Concat[X, Y]
 
   /** Type of the element at position N in the tuple X */
   type Elem[X <: Tuple, N <: Int] = X match {
