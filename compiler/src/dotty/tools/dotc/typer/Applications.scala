@@ -1975,13 +1975,19 @@ trait Applications extends Compatibility {
         // alternatives are the same after following ExprTypes, pick one of them
         // (prefer the one that is not a method, but that's arbitrary).
         if alt1.widenExpr =:= alt2 then -1 else 1
-      else ownerScore match
-        case  1 => if winsType1 || !winsType2 then  1 else 0
-        case -1 => if winsType2 || !winsType1 then -1 else 0
-        case  0 =>
-          if winsType1 != winsType2 then if winsType1 then 1 else -1
-          else if alt1.symbol == alt2.symbol then comparePrefixes
-          else 0
+      else
+        // For implicit resolution, take ownerscore as more significant than type resolution
+        // Reason: People use owner hierarchies to explicitly prioritize, we should not
+        // break that by changing implicit priority of types. On the other hand we do want
+        // to comparePrefixes if there is a draw; StringFormaterTest breaks if we don't do that.
+        def drawOrOwner = if preferGeneral then ownerScore else 0
+        ownerScore match
+          case  1 => if winsType1 || !winsType2 then  1 else drawOrOwner
+          case -1 => if winsType2 || !winsType1 then -1 else drawOrOwner
+          case  0 =>
+            if winsType1 != winsType2 then if winsType1 then 1 else -1
+            else if alt1.symbol == alt2.symbol then comparePrefixes
+            else 0
     end compareWithTypes
 
     if alt1.symbol.is(ConstructorProxy) && !alt2.symbol.is(ConstructorProxy) then -1
