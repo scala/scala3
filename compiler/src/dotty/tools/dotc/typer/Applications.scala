@@ -1980,7 +1980,9 @@ trait Applications extends Compatibility {
         // Reason: People use owner hierarchies to explicitly prioritize, we should not
         // break that by changing implicit priority of types. On the other hand we do want
         // to comparePrefixes if there is a draw; StringFormaterTest breaks if we don't do that.
-        def drawOrOwner = if preferGeneral then ownerScore else 0
+        def drawOrOwner =
+          if preferGeneral && !ctx.mode.is(Mode.OldImplicitResolution) then ownerScore
+          else 0
         ownerScore match
           case  1 => if winsType1 || !winsType2 then  1 else drawOrOwner
           case -1 => if winsType2 || !winsType1 then -1 else drawOrOwner
