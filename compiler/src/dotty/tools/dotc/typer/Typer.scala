@@ -2569,15 +2569,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       report.error(MatchTypeScrutineeCannotBeHigherKinded(sel1Tpe), sel1.srcPos)
     val pt1 = if (bound1.isEmpty) pt else bound1.tpe
     val cases1 = tree.cases.mapconserve(typedTypeCase(_, sel1Tpe, pt1))
-    val bound2 = if tree.bound.isEmpty then
-      val lub = cases1.foldLeft(defn.NothingType: Type): (acc, case1) =>
-        if !acc.exists then NoType
-        else if case1.body.tpe.isProvisional then NoType
-        else acc | case1.body.tpe
-      if lub.exists then TypeTree(lub, inferred = true)
-      else bound1
-    else bound1
-    assignType(cpy.MatchTypeTree(tree)(bound2, sel1, cases1), bound2, sel1, cases1)
+    assignType(cpy.MatchTypeTree(tree)(bound1, sel1, cases1), bound1, sel1, cases1)
   }
 
   def typedByNameTypeTree(tree: untpd.ByNameTypeTree)(using Context): ByNameTypeTree = tree.result match
