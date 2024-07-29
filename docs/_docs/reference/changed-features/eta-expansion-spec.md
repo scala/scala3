@@ -48,7 +48,7 @@ Methods with implicit parameter lists will always get applied to implicit argume
 def foo(x: Int)(implicit p: Double): Float = ???
 implicit val bla: Double = 1.0
 
-val bar = foo // val bar: Int => Float = ...
+val bar: Int => Float = foo // val bar: Int => Float = ...
 ```
 
 ## Automatic Eta-Expansion and context types
