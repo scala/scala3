@@ -99,7 +99,7 @@ object report:
 
   def errorOrMigrationWarning(msg: Message, pos: SrcPos, migrationVersion: MigrationVersion)(using Context): Unit =
     if sourceVersion.isAtLeast(migrationVersion.errorFrom) then
-      if !sourceVersion.isMigrating then error(msg, pos)
+      if sourceVersion != migrationVersion.errorFrom.prevMigrating then error(msg, pos)
       else if ctx.settings.rewrite.value.isEmpty then migrationWarning(msg, pos)
     else if sourceVersion.isAtLeast(migrationVersion.warnFrom) then warning(msg, pos)
 
