@@ -134,9 +134,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   private def box(tp: Type)(using Context): Type =
     def recur(tp: Type): Type = tp.dealiasKeepAnnotsAndOpaques match
       case tp @ CapturingType(parent, refs) =>
-        if tp.isBoxed then tp else tp.boxed
+        if tp.isBoxed || parent.derivesFrom(defn.Caps_CapSet) then tp
+        else tp.boxed
       case tp @ AnnotatedType(parent, ann) =>
-        if ann.symbol.isRetains
+        if ann.symbol.isRetains && !parent.derivesFrom(defn.Caps_CapSet)
         then CapturingType(parent, ann.tree.toCaptureSet, boxed = true)
         else tp.derivedAnnotatedType(box(parent), ann)
       case tp1 @ AppliedType(tycon, args) if defn.isNonRefinedFunction(tp1) =>
@@ -605,8 +606,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         !refs.isEmpty
       case tp: (TypeRef | AppliedType) =>
         val sym = tp.typeSymbol
-        if sym.isClass then !sym.isPureClass
-        else instanceCanBeImpure(tp.superType)
+        if sym.isClass
+        then !sym.isPureClass
+        else !tp.derivesFrom(defn.Caps_CapSet) // CapSet arguments don't get other capture set variables added
+          && instanceCanBeImpure(tp.superType)
       case tp: (RefinedOrRecType | MatchType) =>
         instanceCanBeImpure(tp.underlying)
       case tp: AndType =>
