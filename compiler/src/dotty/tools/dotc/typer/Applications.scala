@@ -1865,7 +1865,7 @@ trait Applications extends Compatibility {
      *   - From Scala 3.6, `T <:p U` means `T <: U` or `T` convertible to `U`
      *     for overloading resolution (when `preferGeneral is false), and the opposite relation
      *     `U <: T` or `U convertible to `T` for implicit disambiguation between givens
-     *     (when `preferGeneral` is true). 
+     *     (when `preferGeneral` is true).
      *
      *   - In Scala 3.5 and Scala 3.6-migration, we issue a warning if the result under
      *     Scala 3.6 differ wrt to the old behavior up to 3.5.
@@ -1963,9 +1963,8 @@ trait Applications extends Compatibility {
       else if winsPrefix1 then 1
       else -1
 
-    val ownerScore = compareOwner(alt1.symbol.maybeOwner, alt2.symbol.maybeOwner)
-
     def compareWithTypes(tp1: Type, tp2: Type) =
+      val ownerScore = compareOwner(alt1.symbol.maybeOwner, alt2.symbol.maybeOwner)
       val winsType1 = isAsGood(alt1, tp1, alt2, tp2)
       val winsType2 = isAsGood(alt2, tp2, alt1, tp1)
 
@@ -1977,24 +1976,21 @@ trait Applications extends Compatibility {
         // (prefer the one that is not a method, but that's arbitrary).
         if alt1.widenExpr =:= alt2 then -1 else 1
       else
+        // For implicit resolution, take ownerscore as more significant than type resolution
+        // Reason: People use owner hierarchies to explicitly prioritize, we should not
+        // break that by changing implicit priority of types.
+        def drawOrOwner =
+          if preferGeneral && !ctx.mode.is(Mode.OldImplicitResolution)
+          then ownerScore
+          else 0
         ownerScore match
-          case  1 => if winsType1 || !winsType2 then  1 else 0
-          case -1 => if winsType2 || !winsType1 then -1 else 0
+          case  1 => if winsType1 || !winsType2 then  1 else drawOrOwner
+          case -1 => if winsType2 || !winsType1 then -1 else drawOrOwner
           case  0 =>
             if winsType1 != winsType2 then if winsType1 then 1 else -1
             else if alt1.symbol == alt2.symbol then comparePrefixes
             else 0
     end compareWithTypes
-
-    // For implicit resolution, take ownerscore as more significant than type resolution
-    // Reason: People use owner hierarchies to explicitly prioritize, we should not
-    // break that by changing implicit priority of types. On the other hand, we do
-    // want to exhaust all other possibilities before using owner score as a tie breaker.
-    // For instance, pos/scala-uri.scala depends on that.
-    def disambiguateWithOwner(result: Int) =
-      if result == 0 && preferGeneral && !ctx.mode.is(Mode.OldImplicitResolution)
-      then ownerScore
-      else result
 
     if alt1.symbol.is(ConstructorProxy) && !alt2.symbol.is(ConstructorProxy) then -1
     else if alt2.symbol.is(ConstructorProxy) && !alt1.symbol.is(ConstructorProxy) then 1
@@ -2005,14 +2001,12 @@ trait Applications extends Compatibility {
       val strippedType2 = stripImplicit(fullType2)
 
       var result = compareWithTypes(strippedType1, strippedType2)
-      if result != 0 then return result
-      if strippedType1 eq fullType1 then
-        if strippedType2 eq fullType2
-        then disambiguateWithOwner(0)             // no implicits either side: its' a draw
+      if result != 0 then result
+      else if strippedType1 eq fullType1 then
+        if strippedType2 eq fullType2 then 0      // no implicits either side: its' a draw
         else 1                                    // prefer 1st alternative with no implicits
       else if strippedType2 eq fullType2 then -1  // prefer 2nd alternative with no implicits
-      else disambiguateWithOwner(
-        compareWithTypes(fullType1, fullType2))   // continue by comparing implicit parameters
+      else compareWithTypes(fullType1, fullType2) // continue by comparing implicit parameters
   }
   end compare
 

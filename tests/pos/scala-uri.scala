@@ -9,10 +9,10 @@ trait QueryValue[-A]
 object QueryValue extends QueryValueInstances
 sealed trait QueryValueInstances1:
   implicit final val stringQueryValue: QueryValue[String] = ???
-  implicit final val noneQueryValue: QueryValue[None.type] = ???
 
 sealed trait QueryValueInstances extends QueryValueInstances1:
   implicit final def optionQueryValue[A: QueryValue]: QueryValue[Option[A]] = ???
+  implicit final val noneQueryValue: QueryValue[None.type] = ???
 
 trait QueryKeyValue[A]
 object QueryKeyValue:
@@ -20,10 +20,3 @@ object QueryKeyValue:
 
 
 @main def Test = summon[QueryKeyValue[(String, None.type)]]
-
-/*(using
-  QueryKeyValue.tuple2QueryKeyValue[String, None.type](
-    QueryKey.stringQueryKey,
-    QueryValue.optionQueryValue[A]))*/
-
- // error

@@ -50,7 +50,11 @@ object Formatting {
     object ShowAny extends Show[Any]:
       def show(x: Any): Shown = x
 
-    class ShowImplicits3:
+    class ShowImplicits4:
+      given [X: Show]: Show[X | Null] with
+        def show(x: X | Null) = if x == null then "null" else CtxShow(toStr(x.nn))
+
+    class ShowImplicits3 extends ShowImplicits4:
       given Show[Product] = ShowAny
 
     class ShowImplicits2 extends ShowImplicits3:
@@ -79,9 +83,6 @@ object Formatting {
       given [H: Show, T <: Tuple: Show]: Show[H *: T] with
         def show(x: H *: T) =
           CtxShow(toStr(x.head) *: toShown(x.tail).asInstanceOf[Tuple])
-
-      given [X: Show]: Show[X | Null] with
-        def show(x: X | Null) = if x == null then "null" else CtxShow(toStr(x.nn))
 
       given Show[FlagSet] with
         def show(x: FlagSet) = x.flagsString
