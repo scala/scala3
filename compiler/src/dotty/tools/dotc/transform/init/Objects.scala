@@ -1485,7 +1485,7 @@ class Objects(using Context @constructorOnly):
       if isWildcardStarArgList(pats) then
         if pats.size == 1 then
           // call .toSeq
-          val toSeqDenot = getMemberMethod(scrutineeType, nme.toSeq, toSeqType(elemType)) //scrutineeType.member(nme.toSeq).suchThat(_.info.isParameterless)
+          val toSeqDenot = getMemberMethod(scrutineeType, nme.toSeq, toSeqType(elemType))
           val toSeqRes = call(scrutinee, toSeqDenot.symbol, Nil, scrutineeType, superType = NoType, needResolve = true)
           evalPattern(toSeqRes, pats.head)
         else
