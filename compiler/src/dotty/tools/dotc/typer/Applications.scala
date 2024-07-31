@@ -1865,7 +1865,7 @@ trait Applications extends Compatibility {
      *   - From Scala 3.6, `T <:p U` means `T <: U` or `T` convertible to `U`
      *     for overloading resolution (when `preferGeneral is false), and the opposite relation
      *     `U <: T` or `U convertible to `T` for implicit disambiguation between givens
-     *     (when `preferGeneral` is true). For old-style implicit values, the 3.4 behavior is kept.
+     *     (when `preferGeneral` is true). 
      *
      *   - In Scala 3.5 and Scala 3.6-migration, we issue a warning if the result under
      *     Scala 3.6 differ wrt to the old behavior up to 3.5.
@@ -2011,7 +2011,7 @@ trait Applications extends Compatibility {
         if strippedType2 eq fullType2
         then drawOrOwner                          // no implicits either side: its' a draw
         else 1                                    // prefer 1st alternative with no implicits
-      else if strippedType2 eq fullType2 then -1     // prefer 2nd alternative with no implicits
+      else if strippedType2 eq fullType2 then -1  // prefer 2nd alternative with no implicits
       else compareWithTypes(fullType1, fullType2) // continue by comparing implicits parameters
   }
   end compare
