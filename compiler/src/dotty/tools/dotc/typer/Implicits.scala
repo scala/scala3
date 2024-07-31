@@ -549,6 +549,12 @@ object Implicits:
   /** An ambiguous implicits failure */
   class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree, val nested: Boolean = false) extends SearchFailureType:
 
+    private[Implicits] var priorityChangeWarning: Message | Null = null
+
+    def priorityChangeWarningNote(using Context): String =
+      if priorityChangeWarning != null then s"\n\nNote: $priorityChangeWarning"
+      else ""
+
     def msg(using Context): Message =
       var str1 = err.refStr(alt1.ref)
       var str2 = err.refStr(alt2.ref)
@@ -1348,13 +1354,21 @@ trait Implicits:
                 case _  => "none - it's ambiguous"
               if sv.stable == SourceVersion.`3.5` then
                 warn(
-                  em"""Given search preference for $pt between alternatives ${alt1.ref} and ${alt2.ref} will change
+                  em"""Given search preference for $pt between alternatives
+                      |  ${alt1.ref}
+                      |and
+                      |  ${alt2.ref}
+                      |will change.
                       |Current choice           : ${choice(prev)}
                       |New choice from Scala 3.6: ${choice(cmp)}""")
                 prev
               else
                 warn(
-                  em"""Change in given search preference for $pt between alternatives ${alt1.ref} and ${alt2.ref}
+                  em"""Given search preference for $pt between alternatives
+                      |  ${alt1.ref}
+                      |and
+                      |  ${alt2.ref}
+                      |has changed.
                       |Previous choice          : ${choice(prev)}
                       |New choice from Scala 3.6: ${choice(cmp)}""")
                 cmp
@@ -1615,6 +1629,12 @@ trait Implicits:
       val result = rank(sort(eligible), NoMatchingImplicitsFailure, Nil)
       for (critical, msg) <- priorityChangeWarnings do
         if result.found.exists(critical.contains(_)) then
+          result match
+            case result: SearchFailure =>
+              result.reason match
+                case ambi: AmbiguousImplicits => ambi.priorityChangeWarning = msg
+                case _ =>
+            case _ =>
           report.warning(msg, srcPos)
       result
     end searchImplicit
