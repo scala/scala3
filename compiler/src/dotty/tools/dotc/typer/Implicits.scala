@@ -549,11 +549,10 @@ object Implicits:
   /** An ambiguous implicits failure */
   class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree, val nested: Boolean = false) extends SearchFailureType:
 
-    private[Implicits] var priorityChangeWarning: Message | Null = null
+    private[Implicits] var priorityChangeWarnings: List[Message] = Nil
 
     def priorityChangeWarningNote(using Context): String =
-      if priorityChangeWarning != null then s"\n\nNote: $priorityChangeWarning"
-      else ""
+      priorityChangeWarnings.map(msg => s"\n\nNote: $msg").mkString
 
     def msg(using Context): Message =
       var str1 = err.refStr(alt1.ref)
@@ -1627,15 +1626,23 @@ trait Implicits:
             throw ex
 
       val result = rank(sort(eligible), NoMatchingImplicitsFailure, Nil)
-      for (critical, msg) <- priorityChangeWarnings do
-        if result.found.exists(critical.contains(_)) then
-          result match
-            case result: SearchFailure =>
-              result.reason match
-                case ambi: AmbiguousImplicits => ambi.priorityChangeWarning = msg
-                case _ =>
+
+      // Issue all priority change warnings that can affect the result
+      val shownWarnings = priorityChangeWarnings.toList.collect:
+        case (critical, msg) if result.found.exists(critical.contains(_)) =>
+          msg
+      result match
+        case result: SearchFailure =>
+          result.reason match
+            case ambi: AmbiguousImplicits =>
+              // Make warnings part of error message because otherwise they are suppressed when
+              // the error is emitted.
+              ambi.priorityChangeWarnings = shownWarnings
             case _ =>
-          report.warning(msg, srcPos)
+        case _ =>
+      for msg <- shownWarnings do
+        report.warning(msg, srcPos)
+
       result
     end searchImplicit
 

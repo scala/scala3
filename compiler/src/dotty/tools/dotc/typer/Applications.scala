@@ -1991,11 +1991,10 @@ trait Applications extends Compatibility {
     // break that by changing implicit priority of types. On the other hand, we do
     // want to exhaust all other possibilities before using owner score as a tie breaker.
     // For instance, pos/scala-uri.scala depends on that.
-    def drawOrOwner =
-      if preferGeneral && !ctx.mode.is(Mode.OldImplicitResolution) then
-        //println(i"disambi compare($alt1, $alt2)? $ownerScore")
-        ownerScore
-      else 0
+    def disambiguateWithOwner(result: Int) =
+      if result == 0 && preferGeneral && !ctx.mode.is(Mode.OldImplicitResolution)
+      then ownerScore
+      else result
 
     if alt1.symbol.is(ConstructorProxy) && !alt2.symbol.is(ConstructorProxy) then -1
     else if alt2.symbol.is(ConstructorProxy) && !alt1.symbol.is(ConstructorProxy) then 1
@@ -2005,14 +2004,15 @@ trait Applications extends Compatibility {
       val strippedType1 = stripImplicit(fullType1)
       val strippedType2 = stripImplicit(fullType2)
 
-      val result = compareWithTypes(strippedType1, strippedType2)
-      if result != 0 then result
-      else if strippedType1 eq fullType1 then
+      var result = compareWithTypes(strippedType1, strippedType2)
+      if result != 0 then return result
+      if strippedType1 eq fullType1 then
         if strippedType2 eq fullType2
-        then drawOrOwner                          // no implicits either side: its' a draw
+        then disambiguateWithOwner(0)             // no implicits either side: its' a draw
         else 1                                    // prefer 1st alternative with no implicits
       else if strippedType2 eq fullType2 then -1  // prefer 2nd alternative with no implicits
-      else compareWithTypes(fullType1, fullType2) // continue by comparing implicits parameters
+      else disambiguateWithOwner(
+        compareWithTypes(fullType1, fullType2))   // continue by comparing implicit parameters
   }
   end compare
 
