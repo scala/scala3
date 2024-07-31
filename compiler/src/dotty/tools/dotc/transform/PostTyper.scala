@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package transform
 
-import dotty.tools.dotc.ast.{Trees, tpd, untpd, desugar}
+import dotty.tools.dotc.ast.{Trees, TreeTypeMap, tpd, untpd, desugar}
 import scala.collection.mutable
 import core.*
 import dotty.tools.dotc.typer.Checking
@@ -158,7 +158,14 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       val saved = inJavaAnnot
       inJavaAnnot = annot.symbol.is(JavaDefined)
       if (inJavaAnnot) checkValidJavaAnnotation(annot)
-      try transform(annot)
+      try
+        val res = transform(annot)
+        if res ne annot then
+          // If the annotation has been transformed, we need to make sure that the
+          // symbol are copied so that we don't end up with the same symbol in different
+          // trees, which would lead to a crash in pickling.
+          TreeTypeMap(alwaysCopySymbols = true)(res)
+        else res
       finally inJavaAnnot = saved
     }
 

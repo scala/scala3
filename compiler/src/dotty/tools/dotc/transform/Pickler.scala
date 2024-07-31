@@ -322,7 +322,7 @@ class Pickler extends Phase {
           if tree.span.exists then
             val reference = ctx.settings.sourceroot.value
             PositionPickler.picklePositions(
-                pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, reference,
+                pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, treePkl.typeAnnots, reference,
                 unit.source, tree :: Nil, positionWarnings,
                 scratch.positionBuffer, scratch.pickledIndices)
 
