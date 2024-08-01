@@ -2894,7 +2894,11 @@ object Parsers {
 
     /** Enumerators ::= Generator {semi Enumerator | Guard}
      */
-    def enumerators(): List[Tree] = generator() :: enumeratorsRest()
+    def enumerators(): List[Tree] =
+      if in.featureEnabled(Feature.betterFors) then
+        aliasesUntilGenerator() ++ enumeratorsRest()
+      else
+        generator() :: enumeratorsRest()
 
     def enumeratorsRest(): List[Tree] =
       if (isStatSep) {
@@ -2934,6 +2938,18 @@ object Parsers {
           else if sourceVersion.isAtLeast(`3.2`) then GenCheckMode.CheckAndFilter
           else GenCheckMode.FilterNow  // filter on source version < 3.2, for backward compat
         GenFrom(pat, subExpr(), checkMode)
+      }
+
+    def aliasesUntilGenerator(): List[Tree] =
+      if in.token == CASE then generator() :: Nil
+      else {
+        val pat = pattern1()
+        if in.token == EQUALS then
+          atSpan(startOffset(pat), in.skipToken()) { GenAlias(pat, subExpr()) } :: {
+            if (isStatSep) in.nextToken()
+            aliasesUntilGenerator()
+          }
+        else generatorRest(pat, casePat = false) :: Nil
       }
 
     /** ForExpr  ::=  ‘for’ ‘(’ Enumerators ‘)’ {nl} [‘do‘ | ‘yield’] Expr

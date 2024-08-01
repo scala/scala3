@@ -183,7 +183,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   /** An enum to control checking or filtering of patterns in GenFrom trees */
   enum GenCheckMode {
-    case Ignore       // neither filter nor check since filtering was done before
+    case Ignore       // neither filter nor check since pattern is trivially irrefutable
+    case Filtered     // neither filter nor check since filtering was done before
     case Check        // check that pattern is irrefutable
     case CheckAndFilter // both check and filter (transitional period starting with 3.2)
     case FilterNow    // filter out non-matching elements if we are not in 3.2 or later
