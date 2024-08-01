@@ -186,7 +186,7 @@ object Inferencing {
                   // This foils the `isExactlyNothing` test in `hasLowerBound` and
                   // therefore makes the new type variable have a lower bound. That way,
                   // we favor in `apply` below instantiating from below to `Nothing` instead
-                  // of from above to `Any`. That avoids a spurious flip of the roginal `Nothing`
+                  // of from above to `Any`. That avoids a spurious flip of the original `Nothing`
                   // instance to `Any`. See i21275 for a test case.
                 newTypeVar(bounds, nestingLevel = tvar.nestingLevel)
               else if t.symbol.is(ModuleClass) then
