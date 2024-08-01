@@ -2031,3 +2031,14 @@ class CompletionSuite extends BaseCompletionSuite:
       """.stripMargin,
       filter = _.contains("name")
     )
+
+  @Test def `with-parenthesis` =
+    check(
+      """|package a
+         |class MyClass
+         |val i = MyClass@@()
+         |""".stripMargin,
+         """|MyClass(): MyClass (Constructor)
+            |""".stripMargin,
+         includeCompletionKind = true
+    )
