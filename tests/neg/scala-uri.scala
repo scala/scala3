@@ -3,13 +3,13 @@ import scala.language.implicitConversions
 trait QueryKey[A]
 object QueryKey extends QueryKeyInstances
 sealed trait QueryKeyInstances:
-  implicit val stringQueryKey: QueryKey[String] = ???
+  given stringQueryKey: QueryKey[String] = ???
 
 trait QueryValue[-A]
 object QueryValue extends QueryValueInstances
 sealed trait QueryValueInstances1:
-  implicit final val stringQueryValue: QueryValue[String] = ???
-  implicit final val noneQueryValue: QueryValue[None.type] = ???
+  given stringQueryValue: QueryValue[String] = ???
+  given noneQueryValue: QueryValue[None.type] = ???
     // The noneQueryValue makes no sense at this priority. Since QueryValue
     // is contravariant, QueryValue[None.type] is always better than QueryValue[Option[A]]
     // no matter whether it's old or new resolution. So taking both owner and type
@@ -20,11 +20,11 @@ sealed trait QueryValueInstances1:
     // same trait as QueryValue[Option[A]], as is shown in pos/scala-uri.scala.
 
 sealed trait QueryValueInstances extends QueryValueInstances1:
-  implicit final def optionQueryValue[A: QueryValue]: QueryValue[Option[A]] = ???
+  given optionQueryValue[A: QueryValue]: QueryValue[Option[A]] = ???
 
 trait QueryKeyValue[A]
 object QueryKeyValue:
-  implicit def tuple2QueryKeyValue[K: QueryKey, V: QueryValue]: QueryKeyValue[(K, V)] = ???
+  given tuple2QueryKeyValue[K: QueryKey, V: QueryValue]: QueryKeyValue[(K, V)] = ???
 
 
 @main def Test = summon[QueryKeyValue[(String, None.type)]]  // error

@@ -1963,8 +1963,11 @@ trait Applications extends Compatibility {
       else if winsPrefix1 then 1
       else -1
 
+    val ownerScore = compareOwner(alt1.symbol.maybeOwner, alt2.symbol.maybeOwner)
+    val implicitPair = alt1.symbol.is(Implicit) && alt2.symbol.is(Implicit)
+    val newGivenRules = preferGeneral && !ctx.mode.is(Mode.OldImplicitResolution)
+
     def compareWithTypes(tp1: Type, tp2: Type) =
-      val ownerScore = compareOwner(alt1.symbol.maybeOwner, alt2.symbol.maybeOwner)
       val winsType1 = isAsGood(alt1, tp1, alt2, tp2)
       val winsType2 = isAsGood(alt2, tp2, alt1, tp1)
 
@@ -1976,13 +1979,14 @@ trait Applications extends Compatibility {
         // (prefer the one that is not a method, but that's arbitrary).
         if alt1.widenExpr =:= alt2 then -1 else 1
       else
-        // For implicit resolution, take ownerscore as more significant than type resolution
+        // For new implicit resolution, take ownerscore as more significant than type resolution
         // Reason: People use owner hierarchies to explicitly prioritize, we should not
         // break that by changing implicit priority of types.
+        // But don't do that for implicit/implicit pairs. It's better to leave
+        // them ambiguous so that the logic in Implicits/compareAlternatives kicks in
+        // which resolves them with the old rules.
         def drawOrOwner =
-          if preferGeneral && !ctx.mode.is(Mode.OldImplicitResolution)
-          then ownerScore
-          else 0
+          if newGivenRules && !implicitPair then ownerScore else 0
         ownerScore match
           case  1 => if winsType1 || !winsType2 then  1 else drawOrOwner
           case -1 => if winsType2 || !winsType1 then -1 else drawOrOwner
@@ -2002,6 +2006,13 @@ trait Applications extends Compatibility {
 
       var result = compareWithTypes(strippedType1, strippedType2)
       if result != 0 then result
+      else if ownerScore != 0 && newGivenRules && implicitPair then
+        0                                         // for implicit/implicit pairs fail fast
+                                                  // so that we retry in compareAlternatives with old rules.
+                                                  // Note: This is problematic since it fails the transitity
+                                                  // requirement, i.e compareAlternatives is not a partial order
+                                                  // anymore. But it might be needed to keep the number of failing
+                                                  // projects smaller
       else if strippedType1 eq fullType1 then
         if strippedType2 eq fullType2 then 0      // no implicits either side: its' a draw
         else 1                                    // prefer 1st alternative with no implicits
