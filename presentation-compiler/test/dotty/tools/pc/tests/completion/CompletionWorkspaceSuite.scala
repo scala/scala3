@@ -937,3 +937,13 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |""".stripMargin,
       ""
     )
+
+  @Test def `metals-i6593` =
+    check(
+      """|package a:
+         |  class UniqueObject
+         |package b:
+         |  val i = Uniq@@
+         |""".stripMargin,
+         "UniqueObject(): UniqueObject - a"
+    )
