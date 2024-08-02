@@ -180,7 +180,15 @@ object Inferencing {
           t match
             case t: TypeRef =>
               if t.symbol == defn.NothingClass then
-                newTypeVar(TypeBounds.empty, nestingLevel = tvar.nestingLevel)
+                val notExactlyNothing = LazyRef(_ => defn.NothingType)
+                val bounds = TypeBounds(notExactlyNothing, defn.AnyType)
+                  // The new type variale has a slightly disguised lower bound Nothing.
+                  // This foils the `isExactlyNothing` test in `hasLowerBound` and
+                  // therefore makes the new type variable have a lower bound. That way,
+                  // we favor in `apply` below instantiating from below to `Nothing` instead
+                  // of from above to `Any`. That avoids a spurious flip of the original `Nothing`
+                  // instance to `Any`. See i21275 for a test case.
+                newTypeVar(bounds, nestingLevel = tvar.nestingLevel)
               else if t.symbol.is(ModuleClass) then
                 tryWidened(t.parents.filter(!_.isTransparent())
                   .foldLeft(defn.AnyType: Type)(TypeComparer.andType(_, _)))
