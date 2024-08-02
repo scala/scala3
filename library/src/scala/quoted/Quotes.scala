@@ -996,6 +996,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       def copy(original: Tree)(qualifier: Term, name: String): Select
 
+      def copy(original: Tree)(qualifier: Term, sym: Symbol): Select
+
       /** Matches `<qualifier: Term>.<name: String>` */
       def unapply(x: Select): (Term, String)
     }
@@ -5119,7 +5121,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           case Ident(name) =>
             tree
           case Select(qualifier, name) =>
-            Select.copy(tree)(transformTerm(qualifier)(owner), name)
+            Select.copy(tree)(transformTerm(qualifier)(owner), tree.symbol)
           case This(qual) =>
             tree
           case Super(qual, mix) =>
