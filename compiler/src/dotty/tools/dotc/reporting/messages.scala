@@ -3280,11 +3280,10 @@ extends Message(UnusedSymbolID) {
   override def explain(using Context) = ""
 }
 
-object UnusedSymbol {
-    def imports(using Context): UnusedSymbol = new UnusedSymbol(i"unused import")
-    def localDefs(using Context): UnusedSymbol = new UnusedSymbol(i"unused local definition")
-    def explicitParams(using Context): UnusedSymbol = new UnusedSymbol(i"unused explicit parameter")
-    def implicitParams(using Context): UnusedSymbol = new UnusedSymbol(i"unused implicit parameter")
-    def privateMembers(using Context): UnusedSymbol = new UnusedSymbol(i"unused private member")
-    def patVars(using Context): UnusedSymbol = new UnusedSymbol(i"unused pattern variable")
-}
+object UnusedSymbol:
+  def imports(using Context): UnusedSymbol = UnusedSymbol(i"unused import")
+  def localDefs(using Context): UnusedSymbol = UnusedSymbol(i"unused local definition")
+  def explicitParams(using Context): UnusedSymbol = UnusedSymbol(i"unused explicit parameter")
+  def implicitParams(using Context): UnusedSymbol = UnusedSymbol(i"unused implicit parameter")
+  def privateMembers(using Context): UnusedSymbol = UnusedSymbol(i"unused private member")
+  def patVars(using Context): UnusedSymbol = UnusedSymbol(i"unused pattern variable")

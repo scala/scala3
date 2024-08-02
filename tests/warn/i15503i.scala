@@ -1,4 +1,4 @@
-//> using options  -Wunused:all
+//> using options -Wunused:all -Ystop-after:checkUnusedPostInlining
 
 import collection.mutable.{Map => MutMap} // warn
 import collection.mutable.Set // warn
@@ -247,7 +247,7 @@ package foo.test.i16679a:
       import scala.deriving.Mirror
       object CaseClassByStringName:
         inline final def derived[A](using inline A: Mirror.Of[A]): CaseClassByStringName[A] =
-          new CaseClassByStringName[A]: // warn
+          new CaseClassByStringName[A]:
             def name: String = A.toString
 
   object secondPackage:
@@ -263,7 +263,7 @@ package foo.test.i16679b:
     object CaseClassName:
       import scala.deriving.Mirror
       inline final def derived[A](using inline A: Mirror.Of[A]): CaseClassName[A] =
-        new CaseClassName[A]: // warn
+        new CaseClassName[A]:
           def name: String = A.toString
 
   object Foo:
@@ -279,7 +279,7 @@ package foo.test.i17156:
   package a:
     trait Foo[A]
     object Foo:
-      inline def derived[T]: Foo[T] = new Foo{} // warn
+      inline def derived[T]: Foo[T] = new Foo {}
 
   package b:
     import a.Foo
