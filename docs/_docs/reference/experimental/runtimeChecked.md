@@ -124,7 +124,7 @@ As an escape hatch in 3.2 we recommended to use a type ascription of `: @uncheck
   |which may result in a MatchError at runtime.
 ```
 
-However, `: @unchecked` is syntactically awkward, and is also a misnomer - in fact in this case the the pattern _is_ fully checked, but the necessary checks occur at runtime. The `runtimeChecked` method is intended to replace `@unchecked` for this purpose. 
+However, `: @unchecked` is syntactically awkward, and is also a misnomer - in fact in this case the pattern _is_ fully checked, but the necessary checks occur at runtime. The `runtimeChecked` method is intended to replace `@unchecked` for this purpose. 
 
 The `@unchecked` annotation is still retained for silencing warnings on unsound type tests.
 

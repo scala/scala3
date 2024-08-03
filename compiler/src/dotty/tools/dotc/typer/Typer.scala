@@ -1282,7 +1282,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      * For example, both `@Annot(5)` and `@Annot({5, 6}) are viable calls of the constructor
      * of annotation defined as `@interface Annot { int[] value() }`
      * We assume that calling `typedNamedArg` in context of Java implies that we are dealing
-     * with annotation contructor, as named arguments are not allowed anywhere else in Java.
+     * with annotation constructor, as named arguments are not allowed anywhere else in Java.
      * Under explicit nulls, the pt could be nullable. We need to strip `Null` type first.
      */
     val arg1 = pt.stripNull() match {

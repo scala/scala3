@@ -21,7 +21,7 @@ private val Captures: Key[CaptureSet] = Key()
 
 object ccConfig:
 
-  /** If true, allow mappping capture set variables under captureChecking with maps that are neither
+  /** If true, allow mapping capture set variables under captureChecking with maps that are neither
    *  bijective nor idempotent. We currently do now know how to do this correctly in all
    *  cases, though.
    */
@@ -35,7 +35,7 @@ object ccConfig:
 
   /** If enabled, use a special path in recheckClosure for closures
    *  that are eta expansions. This can improve some error messages but
-   *  currently leads to unsoundess for handlng reach capabilities.
+   *  currently leads to unsoundess for handling reach capabilities.
    *  TODO: The unsoundness needs followin up.
    */
   inline val handleEtaExpansionsSpecially = false

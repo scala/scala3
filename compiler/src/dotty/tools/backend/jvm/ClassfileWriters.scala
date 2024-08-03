@@ -129,7 +129,7 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
       if (file.isInstanceOf[JarArchive]) {
         val jarCompressionLevel = compilerSettings.jarCompressionLevel
         // Writing to non-empty JAR might be an undefined behaviour, e.g. in case if other files where
-        // created using `AbstractFile.bufferedOutputStream`instead of JarWritter
+        // created using `AbstractFile.bufferedOutputStream`instead of JarWriter
         val jarFile = file.underlyingSource.getOrElse{
           throw new IllegalStateException("No underlying source for jar")
         }
