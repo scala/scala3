@@ -1762,6 +1762,17 @@ trait Applications extends Compatibility {
       else if sym2.is(Module) then compareOwner(sym1, cls2)
       else 0
 
+  enum CompareScheme:
+    case Old          // Normal specificity test for overloading resolution (where `preferGeneral` is false)
+                      // and in mode Scala3-migration when we compare with the old Scala 2 rules.
+
+    case Intermediate // Intermediate rules: better means specialize, but map all type arguments downwards
+                      // These are enabled for 3.0-3.4, or if OldImplicitResolution
+                      // is specified, and also for all comparisons between old-style implicits,
+
+    case New          // New rules: better means generalize, givens (and extensions) always beat implicits
+  end CompareScheme
+
   /** Compare two alternatives of an overloaded call or an implicit search.
    *
    *  @param  alt1, alt2      Non-overloaded references indicating the two choices
@@ -1788,6 +1799,15 @@ trait Applications extends Compatibility {
    */
   def compare(alt1: TermRef, alt2: TermRef, preferGeneral: Boolean = false)(using Context): Int = trace(i"compare($alt1, $alt2)", overload) {
     record("resolveOverloaded.compare")
+    val scheme =
+      val oldResolution = ctx.mode.is(Mode.OldImplicitResolution)
+      if !preferGeneral || Feature.migrateTo3 && oldResolution then
+        CompareScheme.Old
+      else if Feature.sourceVersion.isAtMost(SourceVersion.`3.4`)
+        || oldResolution
+        || alt1.symbol.is(Implicit) && alt2.symbol.is(Implicit)
+      then CompareScheme.Intermediate
+      else CompareScheme.New
 
     /** Is alternative `alt1` with type `tp1` as good as alternative
      *  `alt2` with type `tp2` ?
@@ -1877,8 +1897,7 @@ trait Applications extends Compatibility {
      *  the intersection of its parent classes instead.
      */
     def isAsGoodValueType(tp1: Type, tp2: Type, alt1IsImplicit: Boolean, alt2IsImplicit: Boolean)(using Context): Boolean =
-      val oldResolution = ctx.mode.is(Mode.OldImplicitResolution)
-      if !preferGeneral || Feature.migrateTo3 && oldResolution then
+      if scheme == CompareScheme.Old then
         // Normal specificity test for overloading resolution (where `preferGeneral` is false)
         // and in mode Scala3-migration when we compare with the old Scala 2 rules.
         isCompatible(tp1, tp2)
@@ -1892,13 +1911,7 @@ trait Applications extends Compatibility {
         val tp1p = prepare(tp1)
         val tp2p = prepare(tp2)
 
-        if Feature.sourceVersion.isAtMost(SourceVersion.`3.4`)
-            || oldResolution
-            || alt1IsImplicit && alt2IsImplicit
-        then
-          // Intermediate rules: better means specialize, but map all type arguments downwards
-          // These are enabled for 3.0-3.5, and for all comparisons between old-style implicits,
-          // and in 3.5 and 3.6-migration when we compare with previous rules.
+        if scheme == CompareScheme.Intermediate then
           val flip = new TypeMap:
             def apply(t: Type) = t match
               case t @ AppliedType(tycon, args) =>
@@ -1909,7 +1922,6 @@ trait Applications extends Compatibility {
               case _ => mapOver(t)
           (flip(tp1p) relaxed_<:< flip(tp2p)) || viewExists(tp1, tp2)
         else
-          // New rules: better means generalize, givens (and extensions) always beat implicits
           if alt1IsImplicit != alt2IsImplicit then alt2IsImplicit
           else (tp2p relaxed_<:< tp1p) || viewExists(tp2, tp1)
     end isAsGoodValueType
@@ -1982,13 +1994,19 @@ trait Applications extends Compatibility {
         // alternatives are the same after following ExprTypes, pick one of them
         // (prefer the one that is not a method, but that's arbitrary).
         if alt1.widenExpr =:= alt2 then -1 else 1
-      else ownerScore match
-        case  1 => if winsType1 || !winsType2 then  1 else 0
-        case -1 => if winsType2 || !winsType1 then -1 else 0
-        case  0 =>
-          if winsType1 != winsType2 then if winsType1 then 1 else -1
-          else if alt1.symbol == alt2.symbol then comparePrefixes
-          else 0
+      else
+        // For new implicit resolution, take ownerscore as more significant than type resolution
+        // Reason: People use owner hierarchies to explicitly prioritize, we should not
+        // break that by changing implicit priority of types.
+        def drawOrOwner =
+          if scheme == CompareScheme.New then ownerScore else 0
+        ownerScore match
+          case  1 => if winsType1 || !winsType2 then  1 else drawOrOwner
+          case -1 => if winsType2 || !winsType1 then -1 else drawOrOwner
+          case  0 =>
+            if winsType1 != winsType2 then if winsType1 then 1 else -1
+            else if alt1.symbol == alt2.symbol then comparePrefixes
+            else 0
     end compareWithTypes
 
     if alt1.symbol.is(ConstructorProxy) && !alt2.symbol.is(ConstructorProxy) then -1
