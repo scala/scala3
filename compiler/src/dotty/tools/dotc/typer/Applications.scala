@@ -1922,7 +1922,7 @@ trait Applications extends Compatibility {
               case _ => mapOver(t)
           (flip(tp1p) relaxed_<:< flip(tp2p)) || viewExists(tp1, tp2)
         else
-          if alt1IsImplicit != alt2IsImplicit then alt2IsImplicit
+          if alt1IsImplicit != alt2IsImplicit then false // don't know how to compare these
           else (tp2p relaxed_<:< tp1p) || viewExists(tp2, tp1)
     end isAsGoodValueType
 
