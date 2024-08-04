@@ -292,9 +292,20 @@ trait Deriving {
           val companion = companionRef(resultType)
           val module = untpd.ref(companion).withSpan(sym.span)
           val rhs = untpd.Select(module, nme.derived)
-          if companion.termSymbol.exists then typed(rhs, resultType)
-          else errorTree(rhs, em"$resultType cannot be derived since ${resultType.typeSymbol} has no companion object")
+          val derivedMember = companion.member(nme.derived)
+
+          if !companion.termSymbol.exists then 
+            errorTree(rhs, em"$resultType cannot be derived since ${resultType.typeSymbol} has no companion object")
+          else if hasExplicitParams(derivedMember.symbol) then 
+            errorTree(rhs, em"""derived instance $resultType failed to generate:
+            |method `derived` from object ${module} takes explicit term parameters""")
+          else 
+            typed(rhs, resultType)
       end typeclassInstance
+
+      // checks whether any of the params of 'sym' is explicit
+      def hasExplicitParams(sym: Symbol) = 
+        !sym.paramSymss.flatten.forall(sym => sym.isType || sym.is(Flags.Given) || sym.is(Flags.Implicit))
 
       def syntheticDef(sym: Symbol): Tree = inContext(ctx.fresh.setOwner(sym).setNewScope) {
         if sym.is(Method) then tpd.DefDef(sym.asTerm, typeclassInstance(sym))

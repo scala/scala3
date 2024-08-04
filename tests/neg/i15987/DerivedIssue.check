@@ -1,0 +1,4 @@
+-- Error: tests/neg/7722.scala:2:40 ------------------------------------------------------------------------------------
+2 |  @scala.annotation.targetName("E") def this() = this(3) // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  @targetName annotation may not be used on a constructor
