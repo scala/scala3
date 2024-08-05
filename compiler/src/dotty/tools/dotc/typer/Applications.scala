@@ -1767,7 +1767,7 @@ trait Applications extends Compatibility {
                       // and in mode Scala3-migration when we compare with the old Scala 2 rules.
 
     case Intermediate // Intermediate rules: better means specialize, but map all type arguments downwards
-                      // These are enabled for 3.0-3.4, or if OldImplicitResolution
+                      // These are enabled for 3.0-3.5, or if OldImplicitResolution
                       // is specified, and also for all comparisons between old-style implicits,
 
     case New          // New rules: better means generalize, givens (and extensions) always beat implicits
@@ -1803,7 +1803,7 @@ trait Applications extends Compatibility {
       val oldResolution = ctx.mode.is(Mode.OldImplicitResolution)
       if !preferGeneral || Feature.migrateTo3 && oldResolution then
         CompareScheme.Old
-      else if Feature.sourceVersion.isAtMost(SourceVersion.`3.4`)
+      else if Feature.sourceVersion.isAtMost(SourceVersion.`3.5`)
         || oldResolution
         || alt1.symbol.is(Implicit) && alt2.symbol.is(Implicit)
       then CompareScheme.Intermediate
@@ -1869,7 +1869,7 @@ trait Applications extends Compatibility {
      *     available in 3.0-migration if mode `Mode.OldImplicitResolution` is turned on as well.
      *     It is used to highlight differences between Scala 2 and 3 behavior.
      *
-     *   - In Scala 3.0-3.5, the behavior is as follows: `T <:p U` iff there is an implicit conversion
+     *   - In Scala 3.0-3.6, the behavior is as follows: `T <:p U` iff there is an implicit conversion
      *     from `T` to `U`, or
      *
      *        flip(T) <: flip(U)
@@ -1884,14 +1884,14 @@ trait Applications extends Compatibility {
      *     of parameters are not affected. So `T <: U` would imply `Set[Cmp[U]] <:p Set[Cmp[T]]`,
      *     as usual, because `Set` is non-variant.
      *
-     *   - From Scala 3.6, `T <:p U` means `T <: U` or `T` convertible to `U`
+     *   - From Scala 3.7, `T <:p U` means `T <: U` or `T` convertible to `U`
      *     for overloading resolution (when `preferGeneral is false), and the opposite relation
      *     `U <: T` or `U convertible to `T` for implicit disambiguation between givens
-     *     (when `preferGeneral` is true). For old-style implicit values, the 3.4 behavior is kept.
+     *     (when `preferGeneral` is true). For old-style implicit values, the 3.5 behavior is kept.
      *     If one of the alternatives is an implicit and the other is a given (or an extension), the implicit loses.
      *
-     *   - In Scala 3.5 and Scala 3.6-migration, we issue a warning if the result under
-     *     Scala 3.6 differ wrt to the old behavior up to 3.5.
+     *   - In Scala 3.6 and Scala 3.7-migration, we issue a warning if the result under
+     *     Scala 3.7 differs wrt to the old behavior up to 3.6.
      *
      *  Also and only for given resolution: If a compared type refers to a given or its module class, use
      *  the intersection of its parent classes instead.
