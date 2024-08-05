@@ -129,7 +129,7 @@ class TypeUtils:
     def namedTupleElementTypesUpTo(bound: Int, normalize: Boolean = true)(using Context): List[(TermName, Type)] =
       (if normalize then self.normalized else self).dealias match
         case defn.NamedTuple(nmes, vals) =>
-          val names = nmes.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil).map:
+          val names = nmes.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil).map(_.dealias).map:
             case ConstantType(Constant(str: String)) => str.toTermName
             case t => throw TypeError(em"Malformed NamedTuple: names must be string types, but $t was found.")
           val values = vals.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil)
