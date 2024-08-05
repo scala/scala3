@@ -539,6 +539,10 @@ object SpaceEngine {
             // which means we can maximise to types that include other type vars
             // this fails TreeChecker's "non-empty constraint at end of $fusedPhase" check
             // e.g. run-macros/string-context-implicits
+            // I can't prove that a second call won't also create type vars,
+            // but I'd rather have an unassigned new-new type var, than an infinite loop.
+            // After all, there's nothing strictly "wrong" with unassigned type vars,
+            // it just fails TreeChecker's linting.
             maximizeType(mt.paramInfos(0), Spans.NoSpan)
           mt
     }
