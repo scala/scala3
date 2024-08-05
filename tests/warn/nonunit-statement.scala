@@ -158,8 +158,8 @@ class J {
 class Variant {
   var bs = ListBuffer.empty[Int]
   val xs = ListBuffer.empty[Int]
-  private[this] val ys = ListBuffer.empty[Int]
-  private[this] var zs = ListBuffer.empty[Int]
+  private val ys = ListBuffer.empty[Int]
+  private var zs = ListBuffer.empty[Int]
   def f(i: Int): Unit = {
     bs.addOne(i)
     xs.addOne(i)
@@ -175,7 +175,7 @@ final class ArrayOops[A](private val xs: Array[A]) extends AnyVal {
     val bb = new ArrayBuilder.ofRef[Array[B]]()(ClassTag[Array[B]](aClass))
     if (xs.length == 0) bb.result()
     else {
-      def mkRowBuilder() = ArrayBuilder.make[B](ClassTag[B](aClass.getComponentType))
+      def mkRowBuilder() = ArrayBuilder.make[B](using ClassTag[B](aClass.getComponentType))
       val bs = new ArrayOps(asArray(xs(0))).map((x: B) => mkRowBuilder())
       for (xs <- other) {
         var i = 0
