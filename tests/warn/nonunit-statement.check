@@ -1,0 +1,89 @@
+-- [E176] Potential Issue Warning: tests/warn/nonunit-statement.scala:13:4 ---------------------------------------------
+13 |    improved              // warn
+   |    ^^^^^^^^
+   |    unused value of type (improved : => scala.concurrent.Future[Int])
+-- [E176] Potential Issue Warning: tests/warn/nonunit-statement.scala:20:4 ---------------------------------------------
+20 |    new E().toString      // warn
+   |    ^^^^^^^^^^^^^^^^
+   |    unused value of type String
+-- [E176] Potential Issue Warning: tests/warn/nonunit-statement.scala:26:2 ---------------------------------------------
+26 |  Future(42)              // warn
+   |  ^^^^^^^^^^
+   |  unused value of type scala.concurrent.Future[Int]
+-- [E176] Potential Issue Warning: tests/warn/nonunit-statement.scala:30:6 ---------------------------------------------
+30 |  copy()                  // warn
+   |  ^^^^^^
+   |  unused value of type K
+-- [E176] Potential Issue Warning: tests/warn/nonunit-statement.scala:37:2 ---------------------------------------------
+37 |  27 +: xs                // warn
+   |  ^^^^^^^^
+   |  unused value of type List[Int]
+-- [E129] Potential Issue Warning: tests/warn/nonunit-statement.scala:44:2 ---------------------------------------------
+44 |  null                    // warn for purity
+   |  ^^^^
+   |  A pure expression does nothing in statement position
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:58:19 --------------------------------------------
+58 |    if (!isEmpty) f(a)      // warn (if)
+   |                  ^^^^
+   |                  discarded non-Unit value of type U
+-- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:62:7 ---------------------------------------------
+62 |      f(a)                  // warn (if)
+   |      ^^^^
+   |      discarded non-Unit value of type Boolean
+-- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:73:25 --------------------------------------------
+73 |    if (!fellback) action(z)  // warn (if)
+   |                   ^^^^^^^^^
+   |                   discarded non-Unit value of type U
+-- [E176] Potential Issue Warning: tests/warn/nonunit-statement.scala:79:6 ---------------------------------------------
+79 |      g   // warn block statement
+   |      ^
+   |      unused value of type (g : => Int)
+-- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:81:6 ---------------------------------------------
+81 |      g   // warn (if)
+   |      ^
+   |      discarded non-Unit value of type (g : => Int)
+-- [E176] Potential Issue Warning: tests/warn/nonunit-statement.scala:84:6 ---------------------------------------------
+84 |      g   // warn
+   |      ^
+   |      unused value of type (g : => Int)
+-- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:86:6 ---------------------------------------------
+86 |      g   // warn
+   |      ^
+   |      discarded non-Unit value of type (g : => Int)
+-- [E176] Potential Issue Warning: tests/warn/nonunit-statement.scala:96:4 ---------------------------------------------
+ 96 |    if (b) {          // warn, at least one branch looks interesting
+    |    ^
+    |    unused value of type Int
+ 97 |      println("true")
+ 98 |      i
+ 99 |    }
+100 |    else {
+101 |      println("false")
+102 |      j
+103 |    }
+-- [E176] Potential Issue Warning: tests/warn/nonunit-statement.scala:116:4 --------------------------------------------
+116 |    set += a     // warn because cannot know whether the `set` was supposed to be consumed or assigned
+    |    ^^^^^^^^
+    |    unused value of type scala.collection.mutable.LinkedHashSet[A]
+-- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:126:37 -------------------------------------------
+126 |    if (start.length != 0) jsb.append(start) // warn (value-discard)
+    |                           ^^^^^^^^^^^^^^^^^
+    |                           discarded non-Unit value of type StringBuilder
+-- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:132:18 -------------------------------------------
+132 |        jsb.append(it.next()) // warn (value-discard)
+    |        ^^^^^^^^^^^^^^^^^^^^^
+    |        discarded non-Unit value of type StringBuilder
+-- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:135:35 -------------------------------------------
+135 |    if (end.length != 0) jsb.append(end) // warn (value-discard)
+    |                         ^^^^^^^^^^^^^^^
+    |                         discarded non-Unit value of type StringBuilder
+-- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:141:14 -------------------------------------------
+141 |      b.append(it.next()) // warn (value-discard)
+    |      ^^^^^^^^^^^^^^^^^^^
+    |      discarded non-Unit value of type StringBuilder
+-- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:146:30 -------------------------------------------
+146 |    while (it.hasNext) it.next()  // warn
+    |                       ^^^^^^^^^
+    |                       discarded non-Unit value of type String
