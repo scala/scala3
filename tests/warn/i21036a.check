@@ -7,4 +7,4 @@
   |                   (a : A)
   |                 will change.
   |                 Current choice           : the first alternative
-  |                 New choice from Scala 3.6: the second alternative
+  |                 New choice from Scala 3.7: the second alternative

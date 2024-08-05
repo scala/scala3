@@ -1,4 +1,4 @@
-//> using options -source 3.6-migration
+//> using options -source 3.7-migration
 import scala.deriving.Mirror
 import scala.compiletime.*
 import scala.reflect.ClassTag

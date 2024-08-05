@@ -12,6 +12,7 @@ enum SourceVersion:
   case `3.4-migration`, `3.4`
   case `3.5-migration`, `3.5`
   case `3.6-migration`, `3.6`
+  case `3.7-migration`, `3.7`
   // !!! Keep in sync with scala.runtime.stdlibPatches.language !!!
   case `future-migration`, `future`
 

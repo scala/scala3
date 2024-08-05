@@ -1,4 +1,4 @@
-//> using options -source 3.6-migration
+//> using options -source 3.7-migration
 trait A
 trait B extends A
 given b: B = ???

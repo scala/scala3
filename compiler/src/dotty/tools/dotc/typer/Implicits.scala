@@ -1305,13 +1305,13 @@ trait Implicits:
     /** Search a list of eligible implicit references */
     private def searchImplicit(eligible: List[Candidate], contextual: Boolean): SearchResult =
 
-      // A map that associates a priority change warning (between -source 3.4 and 3.6)
+      // A map that associates a priority change warning (between -source 3.6 and 3.7)
       // with the candidate refs mentioned in the warning. We report the associated
       // message if one of the critical candidates is part of the result of the implicit search.
       val priorityChangeWarnings = mutable.ListBuffer[(/*critical:*/ List[TermRef], Message)]()
 
       def isWarnPriorityChangeVersion(sv: SourceVersion): Boolean =
-        sv.stable == SourceVersion.`3.5` || sv == SourceVersion.`3.6-migration`
+        sv.stable == SourceVersion.`3.6` || sv == SourceVersion.`3.7-migration`
 
       /** Compare `alt1` with `alt2` to determine which one should be chosen.
        *
@@ -1319,12 +1319,12 @@ trait Implicits:
        *           a number < 0   if `alt2` is preferred over `alt1`
        *           0              if neither alternative is preferred over the other
        *  The behavior depends on the source version
-       *      before 3.5: compare with preferGeneral = false
-       *             3.5: compare twice with preferGeneral = false and true, warning if result is different,
+       *      before 3.6: compare with preferGeneral = false
+       *             3.6: compare twice with preferGeneral = false and true, warning if result is different,
        *                  return old result with preferGeneral = false
-       *   3.6-migration: compare twice with preferGeneral = false and true, warning if result is different,
+       *   3.7-migration: compare twice with preferGeneral = false and true, warning if result is different,
        *                  return new result with preferGeneral = true
-       *  3.6 and higher: compare with preferGeneral = true
+       *  3.7 and higher: compare with preferGeneral = true
        *
        *  @param disambiguate      The call is used to disambiguate two successes, not for ranking.
        *                           When ranking, we are always filtering out either > 0 or <= 0 results.
@@ -1348,7 +1348,7 @@ trait Implicits:
                 case -1 => "the second alternative"
                 case  1 => "the first alternative"
                 case _  => "none - it's ambiguous"
-              if sv.stable == SourceVersion.`3.5` then
+              if sv.stable == SourceVersion.`3.6` then
                 warn(
                   em"""Given search preference for $pt between alternatives
                       |  ${alt1.ref}
@@ -1356,7 +1356,7 @@ trait Implicits:
                       |  ${alt2.ref}
                       |will change.
                       |Current choice           : ${choice(prev)}
-                      |New choice from Scala 3.6: ${choice(cmp)}""")
+                      |New choice from Scala 3.7: ${choice(cmp)}""")
                 prev
               else
                 warn(
@@ -1366,7 +1366,7 @@ trait Implicits:
                       |  ${alt2.ref}
                       |has changed.
                       |Previous choice          : ${choice(prev)}
-                      |New choice from Scala 3.6: ${choice(cmp)}""")
+                      |New choice from Scala 3.7: ${choice(cmp)}""")
                 cmp
             else cmp max prev
               // When ranking, we keep the better of cmp and prev, which ends up retaining a candidate
