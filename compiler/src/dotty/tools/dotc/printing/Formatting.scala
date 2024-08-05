@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package printing
 
-import scala.language.unsafeNulls
-
 import scala.collection.mutable
 
 import core.*
@@ -52,7 +50,11 @@ object Formatting {
     object ShowAny extends Show[Any]:
       def show(x: Any): Shown = x
 
-    class ShowImplicits3:
+    class ShowImplicits4:
+      given [X: Show]: Show[X | Null] with
+        def show(x: X | Null) = if x == null then "null" else CtxShow(toStr(x.nn))
+
+    class ShowImplicits3 extends ShowImplicits4:
       given Show[Product] = ShowAny
 
     class ShowImplicits2 extends ShowImplicits3:
@@ -77,15 +79,10 @@ object Formatting {
       given [K: Show, V: Show]: Show[Map[K, V]] with
         def show(x: Map[K, V]) =
           CtxShow(x.map((k, v) => s"${toStr(k)} => ${toStr(v)}"))
-      end given
 
       given [H: Show, T <: Tuple: Show]: Show[H *: T] with
         def show(x: H *: T) =
           CtxShow(toStr(x.head) *: toShown(x.tail).asInstanceOf[Tuple])
-      end given
-
-      given [X: Show]: Show[X | Null] with
-        def show(x: X | Null) = if x == null then "null" else CtxShow(toStr(x.nn))
 
       given Show[FlagSet] with
         def show(x: FlagSet) = x.flagsString
@@ -148,8 +145,8 @@ object Formatting {
     private def treatArg(arg: Shown, suffix: String)(using Context): (String, String) = arg.runCtxShow match {
       case arg: Seq[?] if suffix.indexOf('%') == 0 && suffix.indexOf('%', 1) != -1 =>
         val end = suffix.indexOf('%', 1)
-        val sep = StringContext.processEscapes(suffix.substring(1, end))
-        (arg.mkString(sep), suffix.substring(end + 1))
+        val sep = StringContext.processEscapes(suffix.substring(1, end).nn)
+        (arg.mkString(sep), suffix.substring(end + 1).nn)
       case arg: Seq[?] =>
         (arg.map(showArg).mkString("[", ", ", "]"), suffix)
       case arg =>
