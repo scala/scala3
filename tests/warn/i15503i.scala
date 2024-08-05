@@ -44,7 +44,7 @@ package foo.test.scala.annotation:
   val default_int = 12
 
   def a1(a: Int) = a // OK
-  def a2(a: Int) = default_int // ok
+  def a2(a: Int) = default_int // warn
 
   def a3(@unused a: Int) = default_int //OK
 

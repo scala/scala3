@@ -88,13 +88,13 @@ trait Proofs {
 }
 
 trait Anonymous {
-  def f = (i: Int) => answer      // ok
+  def f = (i: Int) => answer      // warn
 
   def f1 = (_: Int) => answer     // OK
 
   def f2: Int => Int = _ + 1  // OK
 
-  def g = for (i <- List(1)) yield answer    // ok
+  def g = for (i <- List(1)) yield answer    // warn
 }
 trait Context[A]
 trait Implicits {

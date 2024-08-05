@@ -1,0 +1,12 @@
+-- [E198] Unused Symbol Warning: tests/warn/i20951.scala:5:9 -----------------------------------------------------------
+5 |def test(x: Int): Int = dummy // warn
+  |         ^
+  |         unused explicit parameter
+-- [E198] Unused Symbol Warning: tests/warn/i20951.scala:8:32 ----------------------------------------------------------
+8 |  def f(): Unit = Option(1).map(x => dummy) // warn
+  |                                ^
+  |                                unused explicit parameter
+-- [E198] Unused Symbol Warning: tests/warn/i20951.scala:10:16 ---------------------------------------------------------
+10 |  private def h(x: Int): Int = dummy // warn
+   |                ^
+   |                unused explicit parameter

@@ -575,7 +575,7 @@ Text => empty
 Language => Scala
 Symbols => 108 entries
 Occurrences => 127 entries
-Diagnostics => 6 entries
+Diagnostics => 7 entries
 Synthetics => 2 entries
 
 Symbols:
@@ -830,6 +830,7 @@ See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifie
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [22:27..22:28): [warning] unused explicit parameter
 [24:10..24:11): [warning] unused explicit parameter
+[51:30..51:31): [warning] unused explicit parameter
 
 Synthetics:
 [51:16..51:27):List(1).map => *[Int]
@@ -3535,6 +3536,7 @@ Text => empty
 Language => Scala
 Symbols => 52 entries
 Occurrences => 137 entries
+Diagnostics => 2 entries
 Synthetics => 39 entries
 
 Symbols:
@@ -3729,6 +3731,10 @@ Occurrences:
 [56:8..56:10): m4 <- example/Synthetic#Contexts.m4().
 [57:12..57:15): Int -> scala/Int#
 [58:6..58:9): foo -> example/Synthetic#Contexts.foo().
+
+Diagnostics:
+[19:21..19:22): [warning] unused explicit parameter
+[41:4..41:5): [warning] unused explicit parameter
 
 Synthetics:
 [5:2..5:13):List(1).map => *[Int]
