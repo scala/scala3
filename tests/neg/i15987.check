@@ -1,0 +1,5 @@
+-- Error: tests/neg/i15987.scala:26:40 ---------------------------------------------------------------------------------
+26 |case class Person(name: String) derives ShowWithExplicit, // error
+   |                                        ^
+   |                                    derived instance ShowWithExplicit[Person] failed to generate:
+   |                                    method `derived` from object ShowWithExplicit takes explicit term parameters
