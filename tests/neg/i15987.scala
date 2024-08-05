@@ -1,5 +1,3 @@
-import scala.language.experimental.clauseInterleaving
-
 trait ShowWithExplicit[A]
 
 object ShowWithExplicit:
