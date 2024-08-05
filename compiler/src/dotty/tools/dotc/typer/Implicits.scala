@@ -549,6 +549,11 @@ object Implicits:
   /** An ambiguous implicits failure */
   class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree, val nested: Boolean = false) extends SearchFailureType:
 
+    private[Implicits] var priorityChangeWarnings: List[Message] = Nil
+
+    def priorityChangeWarningNote(using Context): String =
+      priorityChangeWarnings.map(msg => s"\n\nNote: $msg").mkString
+
     def msg(using Context): Message =
       var str1 = err.refStr(alt1.ref)
       var str2 = err.refStr(alt2.ref)
@@ -1330,7 +1335,7 @@ trait Implicits:
         if alt1.ref eq alt2.ref then 0
         else if alt1.level != alt2.level then alt1.level - alt2.level
         else
-          var cmp = comp(using searchContext())
+          val cmp = comp(using searchContext())
           val sv = Feature.sourceVersion
           if isWarnPriorityChangeVersion(sv) then
             val prev = comp(using searchContext().addMode(Mode.OldImplicitResolution))
@@ -1345,13 +1350,21 @@ trait Implicits:
                 case _  => "none - it's ambiguous"
               if sv.stable == SourceVersion.`3.5` then
                 warn(
-                  em"""Given search preference for $pt between alternatives ${alt1.ref} and ${alt2.ref} will change
+                  em"""Given search preference for $pt between alternatives
+                      |  ${alt1.ref}
+                      |and
+                      |  ${alt2.ref}
+                      |will change.
                       |Current choice           : ${choice(prev)}
                       |New choice from Scala 3.6: ${choice(cmp)}""")
                 prev
               else
                 warn(
-                  em"""Change in given search preference for $pt between alternatives ${alt1.ref} and ${alt2.ref}
+                  em"""Given search preference for $pt between alternatives
+                      |  ${alt1.ref}
+                      |and
+                      |  ${alt2.ref}
+                      |has changed.
                       |Previous choice          : ${choice(prev)}
                       |New choice from Scala 3.6: ${choice(cmp)}""")
                 cmp
@@ -1610,9 +1623,23 @@ trait Implicits:
             throw ex
 
       val result = rank(sort(eligible), NoMatchingImplicitsFailure, Nil)
-      for (critical, msg) <- priorityChangeWarnings do
-        if result.found.exists(critical.contains(_)) then
-          report.warning(msg, srcPos)
+
+      // Issue all priority change warnings that can affect the result
+      val shownWarnings = priorityChangeWarnings.toList.collect:
+        case (critical, msg) if result.found.exists(critical.contains(_)) =>
+          msg
+      result match
+        case result: SearchFailure =>
+          result.reason match
+            case ambi: AmbiguousImplicits =>
+              // Make warnings part of error message because otherwise they are suppressed when
+              // the error is emitted.
+              ambi.priorityChangeWarnings = shownWarnings
+            case _ =>
+        case _ =>
+      for msg <- shownWarnings do
+        report.warning(msg, srcPos)
+
       result
     end searchImplicit
 
