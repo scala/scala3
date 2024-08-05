@@ -808,12 +808,15 @@ object SpaceEngine {
     doShow(s)
   }
 
+  extension (self: Type) private def stripUnsafeNulls()(using Context): Type =
+    if Nullables.unsafeNullsEnabled then self.stripNull() else self
+
   private def exhaustivityCheckable(sel: Tree)(using Context): Boolean = trace(i"exhaustivityCheckable($sel ${sel.className})") {
     val seen = collection.mutable.Set.empty[Symbol]
 
     // Possible to check everything, but be compatible with scalac by default
     def isCheckable(tp: Type): Boolean = trace(i"isCheckable($tp ${tp.className})"):
-      val tpw = tp.widen.dealias.stripNull()
+      val tpw = tp.widen.dealias.stripUnsafeNulls()
       val classSym = tpw.classSymbol
       classSym.is(Sealed) && !tpw.isLargeGenericTuple || // exclude large generic tuples from exhaustivity
                                                          // requires an unknown number of changes to make work
@@ -859,7 +862,7 @@ object SpaceEngine {
   })
 
   def checkExhaustivity(m: Match)(using Context): Unit = trace(i"checkExhaustivity($m)") {
-    val selTyp = toUnderlying(m.selector.tpe.stripNull()).dealias
+    val selTyp = toUnderlying(m.selector.tpe.stripUnsafeNulls()).dealias
     val targetSpace = trace(i"targetSpace($selTyp)")(project(selTyp))
 
     val patternSpace = Or(m.cases.foldLeft(List.empty[Space]) { (acc, x) =>
