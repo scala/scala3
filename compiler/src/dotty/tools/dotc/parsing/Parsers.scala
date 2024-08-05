@@ -54,9 +54,9 @@ object Parsers {
   enum ParamOwner:
     case Class           // class or trait or enum
     case CaseClass       // case class or enum case
-    case Type            // type alias or abstract type
-    case TypeParam       // type parameter
     case Def             // method
+    case Type            // type alias or abstract type or polyfunction type/expr
+    case Hk              // type parameter (i.e. current parameter is higher-kinded)
     case Given           // given definition
     case ExtensionPrefix // extension clause, up to and including extension parameter
     case ExtensionFollow // extension clause, following extension parameter
@@ -66,7 +66,11 @@ object Parsers {
     def takesOnlyUsingClauses = // only using clauses allowed for this owner
       this == Given || this == ExtensionFollow
     def acceptsVariance =
-      this == Class || this == CaseClass || this == Type
+      this == Class || this == CaseClass || this == Hk
+    def acceptsCtxBounds =
+      !(this == Type || this == Hk)
+    def acceptsWildcard =
+      this == Type || this == Hk
 
   end ParamOwner
 
@@ -1572,15 +1576,15 @@ object Parsers {
       else core()
 
     /** Type           ::=  FunType
-     *                   |  HkTypeParamClause ‘=>>’ Type
+     *                   |  TypTypeParamClause ‘=>>’ Type
      *                   |  FunParamClause ‘=>>’ Type
      *                   |  MatchType
      *                   |  InfixType
      *  FunType        ::=  (MonoFunType | PolyFunType)
      *  MonoFunType    ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
-     *                   |  (‘->’ | ‘?->’ ) [CaptureSet] Type          -- under pureFunctions
-     *  PolyFunType    ::=  HKTypeParamClause '=>' Type
-     *                   |  HKTypeParamClause ‘->’ [CaptureSet] Type   -- under pureFunctions
+     *                   |  (‘->’ | ‘?->’ ) [CaptureSet] Type           -- under pureFunctions
+     *  PolyFunType    ::=  TypTypeParamClause '=>' Type
+     *                   |  TypTypeParamClause ‘->’ [CaptureSet] Type   -- under pureFunctions
      *  FunTypeArgs    ::=  InfixType
      *                   |  `(' [ FunArgType {`,' FunArgType } ] `)'
      *                   |  '(' [ TypedFunParam {',' TypedFunParam } ')'
@@ -1746,7 +1750,7 @@ object Parsers {
                       simpleTypeRest(tuple)
       else if in.token == LBRACKET then
         val start = in.offset
-        val tparams = typeParamClause(ParamOwner.TypeParam)
+        val tparams = typeParamClause(ParamOwner.Type)
         if in.token == TLARROW then
           atSpan(start, in.skipToken()):
             LambdaTypeTree(tparams, toplevelTyp())
@@ -2299,7 +2303,7 @@ object Parsers {
       t
 
     /** Expr              ::=  [`implicit'] FunParams (‘=>’ | ‘?=>’) Expr
-     *                      |  HkTypeParamClause ‘=>’ Expr
+     *                      |  TypTypeParamClause ‘=>’ Expr
      *                      |  Expr1
      *  FunParams         ::=  Bindings
      *                      |  id
@@ -2307,7 +2311,7 @@ object Parsers {
      *  ExprInParens      ::=  PostfixExpr `:' Type
      *                      |  Expr
      *  BlockResult       ::=  [‘implicit’] FunParams (‘=>’ | ‘?=>’) Block
-     *                      |  HkTypeParamClause ‘=>’ Block
+     *                      |  TypTypeParamClause ‘=>’ Block
      *                      |  Expr1
      *  Expr1             ::=  [‘inline’] `if' `(' Expr `)' {nl} Expr [[semi] else Expr]
      *                      |  [‘inline’] `if' Expr `then' Expr [[semi] else Expr]
@@ -2343,7 +2347,7 @@ object Parsers {
           closure(start, location, modifiers(BitSet(IMPLICIT)))
         case LBRACKET =>
           val start = in.offset
-          val tparams = typeParamClause(ParamOwner.TypeParam)
+          val tparams = typeParamClause(ParamOwner.Type)
           val arrowOffset = accept(ARROW)
           val body = expr(location)
           atSpan(start, arrowOffset) {
@@ -2676,7 +2680,7 @@ object Parsers {
      *  ColonArgument ::= colon [LambdaStart]
      *                    indent (CaseClauses | Block) outdent
      *  LambdaStart   ::= FunParams (‘=>’ | ‘?=>’)
-     *                 |  HkTypeParamClause ‘=>’
+     *                 |  TypTypeParamClause ‘=>’
      *  ColonArgBody  ::= indent (CaseClauses | Block) outdent
      *  Quoted        ::= ‘'’ ‘{’ Block ‘}’
      *                 |  ‘'’ ‘[’ Type ‘]’
@@ -3409,17 +3413,19 @@ object Parsers {
 
     /** ClsTypeParamClause::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
      *  ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’]
-     *                         id [HkTypeParamClause] TypeParamBounds
+     *                         id [HkTypeParamClause] TypeAndCtxBounds
      *
      *  DefTypeParamClause::=  ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
      *  DefTypeParam      ::=  {Annotation}
-     *                         id [HkTypeParamClause] TypeParamBounds
+     *                         id [HkTypeParamClause] TypeAndCtxBounds
      *
      *  TypTypeParamClause::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
-     *  TypTypeParam      ::=  {Annotation} id [HkTypePamClause] TypeBounds
+     *  TypTypeParam      ::=  {Annotation}
+     *                         (id | ‘_’) [HkTypeParamClause] TypeBounds
      *
      *  HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
-     *  HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (id [HkTypePamClause] | ‘_’) TypeBounds
+     *  HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’]
+     *                         (id | ‘_’) [HkTypePamClause] TypeBounds
      */
     def typeParamClause(paramOwner: ParamOwner): List[TypeDef] = inBracketsWithCommas {
 
@@ -3430,7 +3436,6 @@ object Parsers {
         ok
 
       def typeParam(): TypeDef = {
-        val isAbstractOwner = paramOwner == ParamOwner.Type || paramOwner == ParamOwner.TypeParam
         val start = in.offset
         var mods = annotsAsMods() | Param
         if paramOwner.isClass then
@@ -3441,13 +3446,13 @@ object Parsers {
           mods |= Contravariant
         atSpan(start, nameStart) {
           val name =
-            if (isAbstractOwner && in.token == USCORE) {
+            if paramOwner.acceptsWildcard && in.token == USCORE then
               in.nextToken()
               WildcardParamName.fresh().toTypeName
-            }
             else ident().toTypeName
-          val hkparams = typeParamClauseOpt(ParamOwner.Type)
-          val bounds = if (isAbstractOwner) typeBounds() else typeAndCtxBounds(name)
+          val hkparams = typeParamClauseOpt(ParamOwner.Hk)
+          val bounds =
+            if paramOwner.acceptsCtxBounds then typeAndCtxBounds(name) else typeBounds()
           TypeDef(name, lambdaAbstract(hkparams, bounds)).withMods(mods)
         }
       }
@@ -3963,14 +3968,14 @@ object Parsers {
         argumentExprss(mkApply(Ident(nme.CONSTRUCTOR), argumentExprs()))
       }
 
-    /** TypeDef ::=  id [TypeParamClause] {FunParamClause} TypeAndCtxBounds [‘=’ Type]
+    /** TypeDef ::=  id [HkTypeParamClause] {FunParamClause} TypeAndCtxBounds [‘=’ Type]
      */
     def typeDefOrDcl(start: Offset, mods: Modifiers): Tree = {
       newLinesOpt()
       atSpan(start, nameStart) {
         val nameIdent = typeIdent()
         val tname = nameIdent.name.asTypeName
-        val tparams = typeParamClauseOpt(ParamOwner.Type)
+        val tparams = typeParamClauseOpt(ParamOwner.Hk)
         val vparamss = funParamClauses()
 
         def makeTypeDef(rhs: Tree): Tree = {
