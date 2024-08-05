@@ -1,4 +1,5 @@
-//> using options -source:3.6
+//> using options -source 3.7
+
 object Minimization:
 
   trait A

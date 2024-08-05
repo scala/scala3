@@ -1,4 +1,4 @@
--- [E172] Type Error: tests/neg/i21212.scala:8:52 ----------------------------------------------------------------------
-8 |  def test2(using a2: A)(implicit b2: B) = summon[A] // error: ambiguous
+-- [E172] Type Error: tests/neg/i21212.scala:9:52 ----------------------------------------------------------------------
+9 |  def test2(using a2: A)(implicit b2: B) = summon[A] // error: ambiguous
   |                                                    ^
   |Ambiguous given instances: both parameter b2 and parameter a2 match type Minimization.A of parameter x of method summon in object Predef
