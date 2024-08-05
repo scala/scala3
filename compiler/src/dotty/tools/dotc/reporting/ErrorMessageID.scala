@@ -214,6 +214,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case UnusedSymbolID // errorNumber: 198
   case TailrecNestedCallID //errorNumber: 199
   case FinalLocalDefID // errorNumber: 200
+  case NonNamedArgumentInJavaAnnotationID // errorNumber: 201
 
   def errorNumber = ordinal - 1
 

@@ -883,6 +883,26 @@ object Checking {
     templ.parents.find(_.tpe.derivesFrom(defn.PolyFunctionClass)) match
       case Some(parent) => report.error(s"`PolyFunction` marker trait is reserved for compiler generated refinements", parent.srcPos)
       case None =>
+
+  /** check that parameters of a java defined annotations are all named arguments if we have more than one parameter */
+  def checkNamedArgumentForJavaAnnotation(annot: untpd.Tree, sym: ClassSymbol)(using Context): untpd.Tree =
+    assert(sym.is(JavaDefined))
+
+    def annotationHasValueField: Boolean =
+      sym.info.decls.exists(_.name == nme.value)
+
+    annot match
+      case untpd.Apply(fun, List(param)) if !param.isInstanceOf[untpd.NamedArg] && annotationHasValueField =>
+        untpd.cpy.Apply(annot)(fun, List(untpd.cpy.NamedArg(param)(nme.value, param)))
+      case untpd.Apply(_, params) =>
+        for
+          param <- params
+          if !param.isInstanceOf[untpd.NamedArg]
+        do report.error(NonNamedArgumentInJavaAnnotation(), param)
+        annot
+      case _ => annot
+  end checkNamedArgumentForJavaAnnotation
+
 }
 
 trait Checking {

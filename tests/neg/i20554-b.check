@@ -1,0 +1,21 @@
+-- [E201] Syntax Error: tests/neg/i20554-b/Test.scala:3:18 -------------------------------------------------------------
+3 |@SimpleAnnotation(1) // error: the parameters is not named 'value'
+  |                  ^
+  |                  Named arguments are required for Java defined annotations
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | Starting from Scala 3.6.0, named arguments are required for Java defined annotations.
+  | Java defined annotations don't have an exact constructor representation 
+  | and we previously relied on the order of the fields to create one. 
+  | One possible issue with this representation is the reordering of the fields.
+  | Lets take the following example:
+  |
+  |   public @interface Annotation {
+  |     int a() default 41;
+  |     int b() default 42;
+  |   }
+  |
+  | Reordering the fields is binary-compatible but it might affect the meaning of @Annotation(1)
+  |         
+   ---------------------------------------------------------------------------------------------------------------------

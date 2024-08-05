@@ -3288,3 +3288,25 @@ object UnusedSymbol {
     def privateMembers(using Context): UnusedSymbol = new UnusedSymbol(i"unused private member")
     def patVars(using Context): UnusedSymbol = new UnusedSymbol(i"unused pattern variable")
 }
+
+class NonNamedArgumentInJavaAnnotation(using Context) extends SyntaxMsg(NonNamedArgumentInJavaAnnotationID):
+
+  override protected def msg(using Context): String = 
+    "Named arguments are required for Java defined annotations"
+
+  override protected def explain(using Context): String = 
+    i"""Starting from Scala 3.6.0, named arguments are required for Java defined annotations.
+        |Java defined annotations don't have an exact constructor representation 
+        |and we previously relied on the order of the fields to create one. 
+        |One possible issue with this representation is the reordering of the fields.
+        |Lets take the following example:
+        |
+        |  public @interface Annotation {
+        |    int a() default 41;
+        |    int b() default 42;
+        |  }
+        |
+        |Reordering the fields is binary-compatible but it might affect the meaning of @Annotation(1)
+        """
+
+end NonNamedArgumentInJavaAnnotation
