@@ -1485,12 +1485,12 @@ class Objects(using Context @constructorOnly):
       if isWildcardStarArgList(pats) then
         if pats.size == 1 then
           // call .toSeq
-          val toSeqDenot = scrutineeType.member(nme.toSeq).suchThat(_.info.isParameterless)
+          val toSeqDenot = getMemberMethod(scrutineeType, nme.toSeq, toSeqType(elemType))
           val toSeqRes = call(scrutinee, toSeqDenot.symbol, Nil, scrutineeType, superType = NoType, needResolve = true)
           evalPattern(toSeqRes, pats.head)
         else
           // call .drop
-          val dropDenot = getMemberMethod(scrutineeType, nme.drop, applyType(elemType))
+          val dropDenot = getMemberMethod(scrutineeType, nme.drop, dropType(elemType))
           val dropRes = call(scrutinee, dropDenot.symbol, ArgInfo(Bottom, summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
           for pat <- pats.init do evalPattern(applyRes, pat)
           evalPattern(dropRes, pats.last)
