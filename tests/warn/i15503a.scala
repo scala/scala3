@@ -149,8 +149,8 @@ object GivenImportOrderAtoB:
   object A { implicit val x: X = new X }
   object B { implicit val y: Y = new Y }
   class C {
-    import A._ // warn
-    import B._ // OK
+    import A._ // OK
+    import B._ // warn
     def t = implicitly[X]
   }
 
@@ -160,8 +160,8 @@ object GivenImportOrderBtoA:
   object A { implicit val x: X = new X }
   object B { implicit val y: Y = new Y }
   class C {
-    import B._ // OK
-    import A._ // warn
+    import B._ // warn
+    import A._ // OK
     def t = implicitly[X]
   }
 /* END : tests on given import order */
