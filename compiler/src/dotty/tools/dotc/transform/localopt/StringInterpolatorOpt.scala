@@ -96,16 +96,22 @@ class StringInterpolatorOpt extends MiniPhase:
     def mkConcat(strs: List[Literal], elems: List[Tree]): Tree =
       val stri = strs.iterator
       val elemi = elems.iterator
-      var result: Tree = stri.next
+      var result: Tree = stri.next()
       def concat(tree: Tree): Unit =
         result = result.select(defn.String_+).appliedTo(tree).withSpan(tree.span)
       while elemi.hasNext
       do
-        concat(elemi.next)
-        val str = stri.next
+        val elem = elemi.next()
+        lintToString(elem)
+        concat(elem)
+        val str = stri.next()
         if !str.const.stringValue.isEmpty then concat(str)
       result
     end mkConcat
+    def lintToString(t: Tree): Unit =
+      val arg: Type = t.tpe
+      if ctx.settings.WtoStringInterpolated.value && !(arg.widen =:= defn.StringType) && !arg.isPrimitiveValueType
+      then report.warning("interpolation uses toString", t.srcPos)
     val sym = tree.symbol
     // Test names first to avoid loading scala.StringContext if not used, and common names first
     val isInterpolatedMethod =
