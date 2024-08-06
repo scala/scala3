@@ -1310,9 +1310,6 @@ trait Implicits:
       // message if one of the critical candidates is part of the result of the implicit search.
       val priorityChangeWarnings = mutable.ListBuffer[(/*critical:*/ List[TermRef], Message)]()
 
-      def isWarnPriorityChangeVersion(sv: SourceVersion): Boolean =
-        sv.stable == SourceVersion.`3.6` || sv == SourceVersion.`3.7-migration`
-
       /** Compare `alt1` with `alt2` to determine which one should be chosen.
        *
        *  @return  a number > 0   if `alt1` is preferred over `alt2`
@@ -1337,37 +1334,38 @@ trait Implicits:
         else
           val cmp = comp(using searchContext())
           val sv = Feature.sourceVersion
-          if isWarnPriorityChangeVersion(sv) then
+          val isLastOldVersion = sv.stable == SourceVersion.`3.6`
+          val isMigratingVersion = sv == SourceVersion.`3.7-migration`
+          if isLastOldVersion || isMigratingVersion then
             val prev = comp(using searchContext().addMode(Mode.OldImplicitResolution))
             if disambiguate && cmp != prev then
-              def warn(msg: Message) =
-                val critical = alt1.ref :: alt2.ref :: Nil
-                priorityChangeWarnings += ((critical, msg))
-                implicits.println(i"PRIORITY CHANGE ${alt1.ref}, ${alt2.ref}, $disambiguate")
-              def choice(c: Int) = c match
-                case -1 => "the second alternative"
-                case  1 => "the first alternative"
-                case _  => "none - it's ambiguous"
-              if sv.stable == SourceVersion.`3.6` then
-                warn(
-                  em"""Given search preference for $pt between alternatives
-                      |  ${alt1.ref}
-                      |and
-                      |  ${alt2.ref}
-                      |will change.
-                      |Current choice           : ${choice(prev)}
-                      |New choice from Scala 3.7: ${choice(cmp)}""")
-                prev
-              else
-                warn(
-                  em"""Given search preference for $pt between alternatives
-                      |  ${alt1.ref}
-                      |and
-                      |  ${alt2.ref}
-                      |has changed.
-                      |Previous choice          : ${choice(prev)}
-                      |New choice from Scala 3.7: ${choice(cmp)}""")
-                cmp
+              implicits.println(i"PRIORITY CHANGE ${alt1.ref}, ${alt2.ref}")
+              val (loser, winner) =
+                prev match
+                  case 1 => (alt1, alt2)
+                  case -1 => (alt2, alt1)
+                  case 0 =>
+                    cmp match
+                      case 1 => (alt2, alt1)
+                      case -1 => (alt1, alt2)
+              def choice(nth: String, c: Int) =
+                if c == 0 then  "none - it's ambiguous"
+                else s"the $nth alternative"
+              val (change, whichChoice) =
+                if isLastOldVersion
+                then ("will change", "Current choice ")
+                else ("has changed", "Previous choice")
+              val msg =
+                em"""Given search preference for $pt between alternatives
+                    |  ${loser.ref}
+                    |and
+                    |  ${winner.ref}
+                    |$change.
+                    |$whichChoice          : ${choice("first", prev)}
+                    |New choice from Scala 3.7: ${choice("second", cmp)}"""
+              val critical = alt1.ref :: alt2.ref :: Nil
+              priorityChangeWarnings += ((critical, msg))
+              if isLastOldVersion then prev else cmp
             else cmp max prev
               // When ranking, alt1 is always the new candidate and alt2 is the
               // solution found previously. We keep the candidate if the outcome is 0
@@ -1424,8 +1422,8 @@ trait Implicits:
         case fail: SearchFailure =>
           fail.reason match
             case ambi: AmbiguousImplicits =>
-              if compareAlternatives(ambi.alt1, alt2) < 0 &&
-                compareAlternatives(ambi.alt2, alt2) < 0
+              if compareAlternatives(ambi.alt1, alt2, disambiguate = true) < 0
+                && compareAlternatives(ambi.alt2, alt2, disambiguate = true) < 0
               then alt2
               else alt1
             case _ =>
