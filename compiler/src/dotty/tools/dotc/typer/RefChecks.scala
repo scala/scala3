@@ -698,6 +698,15 @@ object RefChecks {
               && withMode(Mode.IgnoreCaptures)(mbrDenot.matchesLoosely(impl, alwaysCompareTypes = true)))
           .exists
 
+      /** Filter out symbols from `syms` that are overridden by a symbol appearing later in the list.
+       *  Symbols that are not overridden are kept. */
+      def lastOverrides(syms: List[Symbol]): List[Symbol] =
+        val deduplicated =
+          syms.foldLeft(List.empty[Symbol]):
+            case (acc, sym) if acc.exists(s => isOverridingPair(s, sym, clazz.thisType)) => acc
+            case (acc, sym) => sym :: acc
+        deduplicated.reverse
+
       /** The term symbols in this class and its baseclasses that are
        *  abstract in this class. We can't use memberNames for that since
        *  a concrete member might have the same signature as an abstract
@@ -720,7 +729,8 @@ object RefChecks {
 
         val missingMethods = grouped.toList flatMap {
           case (name, syms) =>
-            syms.filterConserve(!_.isSetter)
+            lastOverrides(syms)
+              .filterConserve(!_.isSetter)
               .distinctBy(_.signature) // Avoid duplication for similar definitions (#19731)
         }
 
