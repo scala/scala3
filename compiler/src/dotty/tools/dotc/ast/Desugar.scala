@@ -483,7 +483,7 @@ object desugar {
             params.map: param =>
               val normFlags = param.mods.flags &~ GivenOrImplicit | (mparam.mods.flags & (GivenOrImplicit))
               param.withMods(param.mods.withFlags(normFlags))
-                .showing(i"ADAPTED PARAM $result ${result.mods.flags} for ${meth.name}")
+                .showing(i"adapted param $result ${result.mods.flags} for ${meth.name}", Printers.desugar)
           else params
         (normParams ++ mparams) :: Nil
       case mparams :: mparamss1 =>
