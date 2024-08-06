@@ -4,9 +4,9 @@
    |Ambiguous given instances: both given instance given_B and given instance given_C match type A of parameter a of method f
    |
    |Note: Given search preference for A between alternatives
-   |  (given_A : A)
-   |and
    |  (given_B : B)
+   |and
+   |  (given_A : A)
    |will change.
-   |Current choice           : the second alternative
-   |New choice from Scala 3.7: the first alternative
+   |Current choice           : the first alternative
+   |New choice from Scala 3.7: the second alternative
