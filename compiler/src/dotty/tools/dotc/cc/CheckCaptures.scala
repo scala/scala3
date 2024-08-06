@@ -39,7 +39,7 @@ object CheckCaptures:
   /** A class describing environments.
    *  @param owner     the current owner
    *  @param kind      the environment's kind
-   *  @param captured  the caputure set containing all references to tracked free variables outside of boxes
+   *  @param captured  the capture set containing all references to tracked free variables outside of boxes
    *  @param outer0    the next enclosing environment
    */
   case class Env(
@@ -509,7 +509,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def recheckApply(tree: Apply, pt: Type)(using Context): Type =
       val meth = tree.fun.symbol
 
-      // Unsafe box/unbox handlng, only for versions < 3.3
+      // Unsafe box/unbox handling, only for versions < 3.3
       def mapArgUsing(f: Type => Type) =
         val arg :: Nil = tree.args: @unchecked
         val argType0 = f(recheckStart(arg, pt))

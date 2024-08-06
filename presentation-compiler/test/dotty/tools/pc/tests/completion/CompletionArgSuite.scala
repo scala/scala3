@@ -583,7 +583,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
-  @Test def `contructor-param` =
+  @Test def `constructor-param` =
     check(
       """|class Foo (xxx: Int)
          |
@@ -595,7 +595,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
-  @Test def `contructor-param2` =
+  @Test def `constructor-param2` =
     check(
       """|class Foo ()
          |
