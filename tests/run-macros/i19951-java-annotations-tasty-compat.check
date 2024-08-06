@@ -1,6 +1,5 @@
 ScalaUser:
 new JavaAnnot(c = _, a = 5, d = _, b = _)
-new JavaAnnot(c = _, a = 5, d = _, b = _)
 new JavaAnnot(c = _, a = 5, d = _, b = "foo")
 new JavaAnnot(c = 3, a = 5, d = _, b = "foo")
 new JavaAnnot(c = 3, a = 5, d = _, b = _)
