@@ -1369,8 +1369,13 @@ trait Implicits:
                       |New choice from Scala 3.7: ${choice(cmp)}""")
                 cmp
             else cmp max prev
-              // When ranking, we keep the better of cmp and prev, which ends up retaining a candidate
-              // if it is retained in either version.
+              // When ranking, alt1 is always the new candidate and alt2 is the
+              // solution found previously. We keep the candidate if the outcome is 0
+              // (ambiguous) or 1 (first wins). Or, when ranking in healImplicit we keep the
+              // candidate only if the outcome is 1. In both cases, keeping the better
+              // of `cmp` and `prev` means we keep candidates that could match
+              // in either scheme. This means that subsequent disambiguation
+              // comparisons will record a warning if cmp != prev.
           else cmp
       end compareAlternatives
 
@@ -1416,7 +1421,15 @@ trait Implicits:
           if diff < 0 then alt2
           else if diff > 0 then alt1
           else SearchFailure(new AmbiguousImplicits(alt1, alt2, pt, argument), span)
-        case _: SearchFailure => alt2
+        case fail: SearchFailure =>
+          fail.reason match
+            case ambi: AmbiguousImplicits =>
+              if compareAlternatives(ambi.alt1, alt2) < 0 &&
+                compareAlternatives(ambi.alt2, alt2) < 0
+              then alt2
+              else alt1
+            case _ =>
+              alt2
 
       /** Try to find a best matching implicit term among all the candidates in `pending`.
        *  @param pending   The list of candidates that remain to be tested
@@ -1621,7 +1634,7 @@ trait Implicits:
             throw ex
 
       val sorted = sort(eligible)
-      val result = sorted match
+      val res = sorted match
         case first :: rest =>
           val firstIsImplicit = first.ref.symbol.is(Implicit)
           if rest.exists(_.ref.symbol.is(Implicit) != firstIsImplicit) then
@@ -1638,11 +1651,11 @@ trait Implicits:
 
       // Issue all priority change warnings that can affect the result
       val shownWarnings = priorityChangeWarnings.toList.collect:
-        case (critical, msg) if result.found.exists(critical.contains(_)) =>
+        case (critical, msg) if res.found.exists(critical.contains(_)) =>
           msg
-      result match
-        case result: SearchFailure =>
-          result.reason match
+      res match
+        case res: SearchFailure =>
+          res.reason match
             case ambi: AmbiguousImplicits =>
               // Make warnings part of error message because otherwise they are suppressed when
               // the error is emitted.
@@ -1652,7 +1665,7 @@ trait Implicits:
       for msg <- shownWarnings do
         report.warning(msg, srcPos)
 
-      result
+      res
     end searchImplicit
 
     def isUnderSpecifiedArgument(tp: Type): Boolean =
