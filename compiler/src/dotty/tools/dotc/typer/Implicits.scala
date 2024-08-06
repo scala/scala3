@@ -1310,6 +1310,10 @@ trait Implicits:
       // message if one of the critical candidates is part of the result of the implicit search.
       val priorityChangeWarnings = mutable.ListBuffer[(/*critical:*/ List[TermRef], Message)]()
 
+      val sv = Feature.sourceVersion
+      val isLastOldVersion = sv.stable == SourceVersion.`3.6`
+      val isWarnPriorityChangeVersion = isLastOldVersion || sv == SourceVersion.`3.7-migration`
+
       /** Compare `alt1` with `alt2` to determine which one should be chosen.
        *
        *  @return  a number > 0   if `alt1` is preferred over `alt2`
@@ -1333,10 +1337,7 @@ trait Implicits:
         else if alt1.level != alt2.level then alt1.level - alt2.level
         else
           val cmp = comp(using searchContext())
-          val sv = Feature.sourceVersion
-          val isLastOldVersion = sv.stable == SourceVersion.`3.6`
-          val isMigratingVersion = sv == SourceVersion.`3.7-migration`
-          if isLastOldVersion || isMigratingVersion then
+          if isWarnPriorityChangeVersion then
             val prev = comp(using searchContext().addMode(Mode.OldImplicitResolution))
             if disambiguate && cmp != prev then
               implicits.println(i"PRIORITY CHANGE ${alt1.ref}, ${alt2.ref}")
@@ -1419,15 +1420,7 @@ trait Implicits:
           if diff < 0 then alt2
           else if diff > 0 then alt1
           else SearchFailure(new AmbiguousImplicits(alt1, alt2, pt, argument), span)
-        case fail: SearchFailure =>
-          fail.reason match
-            case ambi: AmbiguousImplicits =>
-              if compareAlternatives(ambi.alt1, alt2, disambiguate = true) < 0
-                && compareAlternatives(ambi.alt2, alt2, disambiguate = true) < 0
-              then alt2
-              else alt1
-            case _ =>
-              alt2
+        case _: SearchFailure => alt2
 
       /** Try to find a best matching implicit term among all the candidates in `pending`.
        *  @param pending   The list of candidates that remain to be tested
@@ -1451,12 +1444,27 @@ trait Implicits:
         pending match {
           case cand :: remaining =>
             /** To recover from an ambiguous implicit failure, we need to find a pending
-             *  candidate that is strictly better than the failed candidate(s).
+             *  candidate that is strictly better than the failed `ambiguous` candidate(s).
              *  If no such candidate is found, we propagate the ambiguity.
              */
-            def healAmbiguous(fail: SearchFailure, betterThanFailed: Candidate => Boolean) =
-              val newPending = remaining.filter(betterThanFailed)
-              rank(newPending, fail, Nil).recoverWith(_ => fail)
+            def healAmbiguous(fail: SearchFailure, ambiguous: List[RefAndLevel]) =
+              def betterThanAmbiguous(newCand: RefAndLevel, disambiguate: Boolean): Boolean =
+                ambiguous.forall(compareAlternatives(newCand, _, disambiguate) > 0)
+
+              inline def betterByCurrentScheme(newCand: RefAndLevel): Boolean =
+                if isWarnPriorityChangeVersion then
+                  // newCand may have only been kept in pending because it was better in the other priotization scheme.
+                  // If that candidate produces a SearchSuccess, disambiguate will return it as the found SearchResult.
+                  // We must now recheck it was really better than the ambigous candidates we are recovering from,
+                  // under the rules of the current scheme, which are applied when disambiguate = true.
+                  betterThanAmbiguous(newCand, disambiguate = true)
+                else true
+
+              val newPending = remaining.filter(betterThanAmbiguous(_, disambiguate = false))
+              rank(newPending, fail, Nil) match
+                case found: SearchSuccess if betterByCurrentScheme(found) => found
+                case _ => fail
+            end healAmbiguous
 
             negateIfNot(tryImplicit(cand, contextual)) match {
               case fail: SearchFailure =>
@@ -1471,8 +1479,7 @@ trait Implicits:
                   else
                     // The ambiguity happened in a nested search: to recover we
                     // need a candidate better than `cand`
-                    healAmbiguous(fail, newCand =>
-                      compareAlternatives(newCand, cand) > 0)
+                    healAmbiguous(fail, cand :: Nil)
                 else
                   // keep only warnings that don't involve the failed candidate reference
                   priorityChangeWarnings.filterInPlace: (critical, _) =>
@@ -1491,9 +1498,7 @@ trait Implicits:
                     // The ambiguity happened in the current search: to recover we
                     // need a candidate better than the two ambiguous alternatives.
                     val ambi = fail.reason.asInstanceOf[AmbiguousImplicits]
-                    healAmbiguous(fail, newCand =>
-                      compareAlternatives(newCand, ambi.alt1) > 0 &&
-                      compareAlternatives(newCand, ambi.alt2) > 0)
+                    healAmbiguous(fail, ambi.alt1 :: ambi.alt2 :: Nil)
                 }
             }
           case nil =>
