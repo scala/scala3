@@ -33,6 +33,6 @@ trait UniqueMessagePositions extends Reporter {
       for offset <- dia.pos.start to dia.pos.end do
         positions.get((ctx.source, offset)) match
           case Some(dia1) if dia1.hides(dia) =>
-          case _ => positions((ctx.source, offset)) = dia
+          case _ => positions((ctx.source, Integer.valueOf(offset).nn)) = dia
     super.markReported(dia)
 }
