@@ -1,4 +1,4 @@
-//> using options -source 3.6
+//> using options -source 3.7
 trait Eq[A]
 trait Order[A] extends Eq[A]:
   def toOrdering: Ordering[A]
