@@ -2008,3 +2008,16 @@ class CompletionSuite extends BaseCompletionSuite:
             |""".stripMargin,
          includeCompletionKind = true
     )
+
+  @Test def `def-arg` =
+    check(
+     """|package a
+        |object W {
+        |  val aaaaaa = 1
+        |}
+        |object O {
+        |  def foo(aa@@)
+        |}
+        |""".stripMargin,
+     ""
+   )
