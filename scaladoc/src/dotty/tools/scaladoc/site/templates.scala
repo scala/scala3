@@ -20,7 +20,9 @@ import liqp.TemplateContext
 import liqp.tags.Tag
 import liqp.nodes.LNode
 import dotty.tools.scaladoc.site.blocks.{AltDetails,TabsBlock,TabBlock}
-import dotty.tools.scaladoc.site.tags.{IncludeTag}
+import dotty.tools.scaladoc.site.tags.{IncludeTag,LanguagePickerTag}
+
+
 
 import scala.jdk.CollectionConverters.*
 import scala.io.Source
@@ -135,6 +137,8 @@ case class TemplateFile(
     val includePath =  ssctx.root.toPath.resolve("_includes")
     IncludeTag.setDocsFolder(includePath.toString)
 
+    LanguagePickerTag.setConfigFolder(ssctx.root.toPath.resolve("/").toString)
+
 
 
 
@@ -145,6 +149,7 @@ case class TemplateFile(
       .withBlock(TabsBlock())
       .withBlock(TabBlock())
       .withTag(IncludeTag())
+      .withTag(LanguagePickerTag())
       .build()
 
     val rendered = liqpParser.parse(this.rawCode).render(mutableProperties)
