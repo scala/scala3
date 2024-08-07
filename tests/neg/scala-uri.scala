@@ -1,3 +1,4 @@
+//> using options -source:3.6
 import scala.language.implicitConversions
 
 trait QueryKey[A]
