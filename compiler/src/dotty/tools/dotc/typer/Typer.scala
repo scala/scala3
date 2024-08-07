@@ -715,18 +715,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         typedSelectWithAdapt(tree, pt, qual)
       else EmptyTree
 
-    // Otherwise, heal member selection on an opaque reference,
-    // reusing the logic in TypeComparer.
-    def tryLiftToThis() =
-      val wtp = qual.tpe.widen
-      val liftedTp = comparing(_.liftToThis(wtp))
-      if liftedTp ne wtp then
-        val qual1 = qual.cast(liftedTp)
-        val tree1 = cpy.Select(tree0)(qual1, selName)
-        val rawType1 = selectionType(tree1, qual1)
-        tryType(tree1, qual1, rawType1)
-      else EmptyTree
-
     // Otherwise, map combinations of A *: B *: .... EmptyTuple with nesting levels <= 22
     // to the Tuple class of the right arity and select from that one
     def trySmallGenericTuple(qual: Tree, withCast: Boolean) =
@@ -793,7 +781,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     tryType(tree, qual, rawType)
       .orElse(trySimplifyApply())
       .orElse(tryInstantiateTypeVar())
-      .orElse(tryLiftToThis())
       .orElse(trySmallGenericTuple(qual, withCast = true))
       .orElse(tryExt(tree, qual))
       .orElse(tryGadt())
