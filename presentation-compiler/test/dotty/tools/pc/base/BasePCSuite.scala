@@ -22,6 +22,7 @@ import dotty.tools.pc.utils._
 import org.eclipse.lsp4j.MarkupContent
 import org.eclipse.lsp4j.jsonrpc.messages.Either as JEither
 import org.junit.runner.RunWith
+import scala.meta.pc.CompletionItemPriority
 
 object TestResources:
   val scalaLibrary = BuildInfo.ideTestsDependencyClasspath.map(_.toPath).toSeq
@@ -30,6 +31,7 @@ object TestResources:
 
 @RunWith(classOf[ReusableClassRunner])
 abstract class BasePCSuite extends PcAssertions:
+  val completionItemPriority: CompletionItemPriority = (_: String) => 0
   private val isDebug = ManagementFactory.getRuntimeMXBean.getInputArguments.toString.contains("-agentlib:jdwp")
 
   val tmp = Files.createTempDirectory("stable-pc-tests")
@@ -53,6 +55,7 @@ abstract class BasePCSuite extends PcAssertions:
       .withExecutorService(executorService)
       .withScheduledExecutorService(executorService)
       .withSearch(search)
+      .withCompletionItemPriority(completionItemPriority)
       .newInstance("", myclasspath.asJava, scalacOpts.asJava)
 
   protected def config: PresentationCompilerConfig =
