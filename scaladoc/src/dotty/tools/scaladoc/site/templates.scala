@@ -137,7 +137,7 @@ case class TemplateFile(
     val includePath =  ssctx.root.toPath.resolve("_includes")
     IncludeTag.setDocsFolder(includePath.toString)
 
-    LanguagePickerTag.setConfigFolder(ssctx.root.toPath.resolve("/").toString)
+    LanguagePickerTag.setConfigFolder(ssctx.root.toPath.resolve().toString)
 
 
 
