@@ -914,7 +914,7 @@ class Completions(
         completionItemPriority
           .workspaceMemberPriority(
             SemanticdbSymbols.symbolName(symbol),
-          )
+          ).nn
 
       def compareFrequency(o1: CompletionValue, o2: CompletionValue): Int =
         (o1, o2) match

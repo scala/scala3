@@ -2055,3 +2055,84 @@ class CompletionSuite extends BaseCompletionSuite:
         |""".stripMargin,
      ""
    )
+
+  @Test def conflict =
+    check(
+      """|package a
+         |object O {
+         |  val foofoo: Int = 123
+         |  def method = {
+         |    val foofoo: String = "abc"
+         |    foofoo@@
+         |  }
+         |}
+         |""".stripMargin,
+      """|foofoo: String
+         |foofoo - a.O: Int
+         |""".stripMargin
+    )
+
+  @Test def `conflict-2` =
+    check(
+      """|package a
+         |object A {
+         |  val foo = 1
+         |}
+         |object B {
+         |  val foo = 1
+         |}
+         |object O {
+         |  val x: Int = foo@@
+         |}
+         |""".stripMargin,
+      """|foo - a.A: Int
+         |foo - a.B: Int
+         |""".stripMargin
+    )
+
+  @Test def `conflict-3` = 
+   check(
+     """|package a
+        |object A {
+        |  var foo = 1
+        |}
+        |object B {
+        |  var foo = 1
+        |}
+        |object O {
+        |  val x: Int = foo@@
+        |}
+        |""".stripMargin,
+     """|foo - a.A: Int
+        |foo - a.B: Int
+        |""".stripMargin
+   )
+
+  @Test def `conflict-edit-2` =
+    checkEdit(
+      """|package a
+         |object A {
+         |  val foo = 1
+         |}
+         |object B {
+         |  val foo = 1
+         |}
+         |object O {
+         |  val x: Int = foo@@
+         |}
+         |""".stripMargin,
+      """|package a
+         |
+         |import a.A.foo
+         |object A {
+         |  val foo = 1
+         |}
+         |object B {
+         |  val foo = 1
+         |}
+         |object O {
+         |  val x: Int = foo
+         |}
+         |""".stripMargin,
+      assertSingleItem = false
+    )
