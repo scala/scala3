@@ -778,6 +778,7 @@ object Trees {
     override def isEmpty: Boolean = !hasType
     override def toString: String =
       s"TypeTree${if (hasType) s"[$typeOpt]" else ""}"
+    def isInferred = false
   }
 
   /** Tree that replaces a level 1 splices in pickled (level 0) quotes.
@@ -800,6 +801,7 @@ object Trees {
    */
   class InferredTypeTree[+T <: Untyped](implicit @constructorOnly src: SourceFile) extends TypeTree[T]:
     type ThisTree[+T <: Untyped] <: InferredTypeTree[T]
+    override def isInferred = true
 
   /** ref.type */
   case class SingletonTypeTree[+T <: Untyped] private[ast] (ref: Tree[T])(implicit @constructorOnly src: SourceFile)

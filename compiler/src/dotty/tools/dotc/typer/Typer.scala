@@ -1457,7 +1457,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         cpy.Block(block)(stats, expr1) withType expr1.tpe // no assignType here because avoid is redundant
       case _ =>
         val target = pt.simplified
-        val targetTpt = InferredTypeTree().withType(target)
+        val targetTpt = TypeTree(target, inferred = true)
         if tree.tpe <:< target then Typed(tree, targetTpt)
         else
           // This case should not normally arise. It currently does arise in test cases
@@ -2092,7 +2092,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 // TODO: move the check above to patternMatcher phase
                 val uncheckedTpe = AnnotatedType(sel.tpe.widen, Annotation(defn.UncheckedAnnot, tree.selector.span))
                 tpd.cpy.Match(result)(
-                  selector = tpd.Typed(sel, new tpd.InferredTypeTree().withType(uncheckedTpe)),
+                  selector = tpd.Typed(sel, tpd.TypeTree(uncheckedTpe, inferred = true)),
                   cases = result.cases
                 )
               case _ =>
