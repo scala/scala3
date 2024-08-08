@@ -1,0 +1,12 @@
+-- Warning: tests/warn/i18559b.scala:8:6 -------------------------------------------------------------------------------
+8 |  val localFile: String = s"${url.##}.tmp"  // warn
+  |      ^
+  |      Access non-initialized value localFile. Calling trace:
+  |      ├── class RemoteFile(url: String) extends AbstractFile:	[ i18559b.scala:7 ]
+  |      │   ^
+  |      ├── abstract class AbstractFile:	[ i18559b.scala:3 ]
+  |      │   ^
+  |      ├── val extension: String = name.substring(4)	[ i18559b.scala:5 ]
+  |      │                           ^^^^
+  |      └── def name: String = localFile	[ i18559b.scala:9 ]
+  |                             ^^^^^^^^^
