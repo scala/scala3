@@ -549,6 +549,11 @@ object Implicits:
   /** An ambiguous implicits failure */
   class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree, val nested: Boolean = false) extends SearchFailureType:
 
+    private[Implicits] var priorityChangeWarnings: List[Message] = Nil
+
+    def priorityChangeWarningNote(using Context): String =
+      priorityChangeWarnings.map(msg => s"\n\nNote: $msg").mkString
+
     def msg(using Context): Message =
       var str1 = err.refStr(alt1.ref)
       var str2 = err.refStr(alt2.ref)
@@ -1300,13 +1305,14 @@ trait Implicits:
     /** Search a list of eligible implicit references */
     private def searchImplicit(eligible: List[Candidate], contextual: Boolean): SearchResult =
 
-      // A map that associates a priority change warning (between -source 3.4 and 3.6)
+      // A map that associates a priority change warning (between -source 3.6 and 3.7)
       // with the candidate refs mentioned in the warning. We report the associated
       // message if one of the critical candidates is part of the result of the implicit search.
       val priorityChangeWarnings = mutable.ListBuffer[(/*critical:*/ List[TermRef], Message)]()
 
-      def isWarnPriorityChangeVersion(sv: SourceVersion): Boolean =
-        sv.stable == SourceVersion.`3.5` || sv == SourceVersion.`3.6-migration`
+      val sv = Feature.sourceVersion
+      val isLastOldVersion = sv.stable == SourceVersion.`3.6`
+      val isWarnPriorityChangeVersion = isLastOldVersion || sv == SourceVersion.`3.7-migration`
 
       /** Compare `alt1` with `alt2` to determine which one should be chosen.
        *
@@ -1314,12 +1320,12 @@ trait Implicits:
        *           a number < 0   if `alt2` is preferred over `alt1`
        *           0              if neither alternative is preferred over the other
        *  The behavior depends on the source version
-       *      before 3.5: compare with preferGeneral = false
-       *             3.5: compare twice with preferGeneral = false and true, warning if result is different,
+       *      before 3.6: compare with preferGeneral = false
+       *             3.6: compare twice with preferGeneral = false and true, warning if result is different,
        *                  return old result with preferGeneral = false
-       *   3.6-migration: compare twice with preferGeneral = false and true, warning if result is different,
+       *   3.7-migration: compare twice with preferGeneral = false and true, warning if result is different,
        *                  return new result with preferGeneral = true
-       *  3.6 and higher: compare with preferGeneral = true
+       *  3.7 and higher: compare with preferGeneral = true
        *
        *  @param disambiguate      The call is used to disambiguate two successes, not for ranking.
        *                           When ranking, we are always filtering out either > 0 or <= 0 results.
@@ -1330,34 +1336,45 @@ trait Implicits:
         if alt1.ref eq alt2.ref then 0
         else if alt1.level != alt2.level then alt1.level - alt2.level
         else
-          var cmp = comp(using searchContext())
-          val sv = Feature.sourceVersion
-          if isWarnPriorityChangeVersion(sv) then
+          val cmp = comp(using searchContext())
+          if isWarnPriorityChangeVersion then
             val prev = comp(using searchContext().addMode(Mode.OldImplicitResolution))
             if disambiguate && cmp != prev then
-              def warn(msg: Message) =
-                val critical = alt1.ref :: alt2.ref :: Nil
-                priorityChangeWarnings += ((critical, msg))
-                implicits.println(i"PRIORITY CHANGE ${alt1.ref}, ${alt2.ref}, $disambiguate")
-              def choice(c: Int) = c match
-                case -1 => "the second alternative"
-                case  1 => "the first alternative"
-                case _  => "none - it's ambiguous"
-              if sv.stable == SourceVersion.`3.5` then
-                warn(
-                  em"""Given search preference for $pt between alternatives ${alt1.ref} and ${alt2.ref} will change
-                      |Current choice           : ${choice(prev)}
-                      |New choice from Scala 3.6: ${choice(cmp)}""")
-                prev
-              else
-                warn(
-                  em"""Change in given search preference for $pt between alternatives ${alt1.ref} and ${alt2.ref}
-                      |Previous choice          : ${choice(prev)}
-                      |New choice from Scala 3.6: ${choice(cmp)}""")
-                cmp
+              implicits.println(i"PRIORITY CHANGE ${alt1.ref}, ${alt2.ref}")
+              val (loser, winner) =
+                prev match
+                  case 1 => (alt1, alt2)
+                  case -1 => (alt2, alt1)
+                  case 0 =>
+                    cmp match
+                      case 1 => (alt2, alt1)
+                      case -1 => (alt1, alt2)
+              def choice(nth: String, c: Int) =
+                if c == 0 then  "none - it's ambiguous"
+                else s"the $nth alternative"
+              val (change, whichChoice) =
+                if isLastOldVersion
+                then ("will change", "Current choice ")
+                else ("has changed", "Previous choice")
+              val msg =
+                em"""Given search preference for $pt between alternatives
+                    |  ${loser.ref}
+                    |and
+                    |  ${winner.ref}
+                    |$change.
+                    |$whichChoice          : ${choice("first", prev)}
+                    |New choice from Scala 3.7: ${choice("second", cmp)}"""
+              val critical = alt1.ref :: alt2.ref :: Nil
+              priorityChangeWarnings += ((critical, msg))
+              if isLastOldVersion then prev else cmp
             else cmp max prev
-              // When ranking, we keep the better of cmp and prev, which ends up retaining a candidate
-              // if it is retained in either version.
+              // When ranking, alt1 is always the new candidate and alt2 is the
+              // solution found previously. We keep the candidate if the outcome is 0
+              // (ambiguous) or 1 (first wins). Or, when ranking in healImplicit we keep the
+              // candidate only if the outcome is 1. In both cases, keeping the better
+              // of `cmp` and `prev` means we keep candidates that could match
+              // in either scheme. This means that subsequent disambiguation
+              // comparisons will record a warning if cmp != prev.
           else cmp
       end compareAlternatives
 
@@ -1368,7 +1385,6 @@ trait Implicits:
       def disambiguate(alt1: SearchResult, alt2: SearchSuccess) = alt1 match
         case alt1: SearchSuccess =>
           var diff = compareAlternatives(alt1, alt2, disambiguate = true)
-          assert(diff <= 0 || isWarnPriorityChangeVersion(Feature.sourceVersion))
             // diff > 0 candidates should already have been eliminated in `rank`
           if diff == 0 && alt1.ref =:= alt2.ref then
             diff = 1 // See i12951 for a test where this happens
@@ -1429,12 +1445,27 @@ trait Implicits:
         pending match {
           case cand :: remaining =>
             /** To recover from an ambiguous implicit failure, we need to find a pending
-             *  candidate that is strictly better than the failed candidate(s).
+             *  candidate that is strictly better than the failed `ambiguous` candidate(s).
              *  If no such candidate is found, we propagate the ambiguity.
              */
-            def healAmbiguous(fail: SearchFailure, betterThanFailed: Candidate => Boolean) =
-              val newPending = remaining.filter(betterThanFailed)
-              rank(newPending, fail, Nil).recoverWith(_ => fail)
+            def healAmbiguous(fail: SearchFailure, ambiguous: List[RefAndLevel]) =
+              def betterThanAmbiguous(newCand: RefAndLevel, disambiguate: Boolean): Boolean =
+                ambiguous.forall(compareAlternatives(newCand, _, disambiguate) > 0)
+
+              inline def betterByCurrentScheme(newCand: RefAndLevel): Boolean =
+                if isWarnPriorityChangeVersion then
+                  // newCand may have only been kept in pending because it was better in the other priotization scheme.
+                  // If that candidate produces a SearchSuccess, disambiguate will return it as the found SearchResult.
+                  // We must now recheck it was really better than the ambigous candidates we are recovering from,
+                  // under the rules of the current scheme, which are applied when disambiguate = true.
+                  betterThanAmbiguous(newCand, disambiguate = true)
+                else true
+
+              val newPending = remaining.filter(betterThanAmbiguous(_, disambiguate = false))
+              rank(newPending, fail, Nil) match
+                case found: SearchSuccess if betterByCurrentScheme(found) => found
+                case _ => fail
+            end healAmbiguous
 
             negateIfNot(tryImplicit(cand, contextual)) match {
               case fail: SearchFailure =>
@@ -1449,8 +1480,7 @@ trait Implicits:
                   else
                     // The ambiguity happened in a nested search: to recover we
                     // need a candidate better than `cand`
-                    healAmbiguous(fail, newCand =>
-                      compareAlternatives(newCand, cand) > 0)
+                    healAmbiguous(fail, cand :: Nil)
                 else
                   // keep only warnings that don't involve the failed candidate reference
                   priorityChangeWarnings.filterInPlace: (critical, _) =>
@@ -1469,9 +1499,7 @@ trait Implicits:
                     // The ambiguity happened in the current search: to recover we
                     // need a candidate better than the two ambiguous alternatives.
                     val ambi = fail.reason.asInstanceOf[AmbiguousImplicits]
-                    healAmbiguous(fail, newCand =>
-                      compareAlternatives(newCand, ambi.alt1) > 0 &&
-                      compareAlternatives(newCand, ambi.alt2) > 0)
+                    healAmbiguous(fail, ambi.alt1 :: ambi.alt2 :: Nil)
                 }
             }
           case nil =>
@@ -1609,11 +1637,25 @@ trait Implicits:
             validateOrdering(ord)
             throw ex
 
-      val result = rank(sort(eligible), NoMatchingImplicitsFailure, Nil)
-      for (critical, msg) <- priorityChangeWarnings do
-        if result.found.exists(critical.contains(_)) then
-          report.warning(msg, srcPos)
-      result
+      val res = rank(sort(eligible), NoMatchingImplicitsFailure, Nil)
+
+      // Issue all priority change warnings that can affect the result
+      val shownWarnings = priorityChangeWarnings.toList.collect:
+        case (critical, msg) if res.found.exists(critical.contains(_)) =>
+          msg
+      res match
+        case res: SearchFailure =>
+          res.reason match
+            case ambi: AmbiguousImplicits =>
+              // Make warnings part of error message because otherwise they are suppressed when
+              // the error is emitted.
+              ambi.priorityChangeWarnings = shownWarnings
+            case _ =>
+        case _ =>
+      for msg <- shownWarnings do
+        report.warning(msg, srcPos)
+
+      res
     end searchImplicit
 
     def isUnderSpecifiedArgument(tp: Type): Boolean =

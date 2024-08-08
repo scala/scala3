@@ -23,6 +23,7 @@ class StringFormatterTest extends AbstractStringFormatterTest:
   @Test def flagsTup   = check("(<static>,final)", i"${(JavaStatic, Final)}")
   @Test def seqOfTup2  = check("(final,given), (private,lazy)", i"${Seq((Final, Given), (Private, Lazy))}%, %")
   @Test def seqOfTup3  = check("(Foo,given, (right is approximated))", i"${Seq((Foo, Given, TypeComparer.ApproxState.None.addHigh))}%, %")
+  @Test def tupleNull   = check("(1,null)", i"${(1, null: String | Null)}")
 
   class StorePrinter extends Printer:
     var string: String = "<never set>"

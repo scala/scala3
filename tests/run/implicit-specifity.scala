@@ -1,4 +1,4 @@
-import language.`3.6`
+import language.`3.7`
 
 case class Show[T](val i: Int)
 object Show {

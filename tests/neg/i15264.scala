@@ -1,4 +1,4 @@
-import language.`3.6`
+import language.`3.7`
 object priority:
     // lower number = higher priority
     class Prio0 extends Prio1

@@ -1,4 +1,4 @@
-//> using options -source 3.5-migration
+//> using options -source 3.6-migration
 
 final class StrictEqual[V]
 final class Less[V]
