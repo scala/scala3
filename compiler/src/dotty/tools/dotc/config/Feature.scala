@@ -36,7 +36,7 @@ object Feature:
   val into = experimental("into")
   val namedTuples = experimental("namedTuples")
   val modularity = experimental("modularity")
-  val betterMatchTypeExtractors = experimental("betterMatchTypeExtractors")
+  val betterMatchTypeExtractors = deprecated("betterMatchTypeExtractors")
   val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
   val betterFors = experimental("betterFors")
 
@@ -132,8 +132,6 @@ object Feature:
   def genericNumberLiteralsEnabled(using Context) = enabled(genericNumberLiterals)
 
   def scala2ExperimentalMacroEnabled(using Context) = enabled(scala2macros)
-
-  def betterMatchTypeExtractorsEnabled(using Context) = enabled(betterMatchTypeExtractors)
 
   def quotedPatternsWithPolymorphicFunctionsEnabled(using Context) =
     enabled(quotedPatternsWithPolymorphicFunctions)
