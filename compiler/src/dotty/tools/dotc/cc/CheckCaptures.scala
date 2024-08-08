@@ -388,23 +388,25 @@ class CheckCaptures extends Recheck, SymTransformer:
           // should be included.
           val included = cs.filter: c =>
             c.stripReach match
-              case ref: TermRef =>
-                //if c.isReach then println(i"REACH $c in ${env.owner}")
-                //assert(!env.owner.isAnonymousFunction)
+              case ref: NamedType =>
                 val refSym = ref.symbol
                 val refOwner = refSym.owner
                 val isVisible = isVisibleFromEnv(refOwner)
-                if !isVisible && c.isReach && refSym.is(Param) && refOwner == env.owner then
-                if refSym.hasAnnotation(defn.UnboxAnnot) then
-                  capt.println(i"exempt: $ref in $refOwner")
-                else
-                  // Reach capabilities that go out of scope have to be approximated
-                  // by their underlying capture set, which cannot be universal.
-                  // Reach capabilities of @unboxed parameters are exempted.
-                  val cs = CaptureSet.ofInfo(c)
-                  cs.disallowRootCapability: () =>
-                    report.error(em"Local reach capability $c leaks into capture scope of ${env.ownerString}", pos)
-                  checkSubset(cs, env.captured, pos, provenance(env))
+                if !isVisible
+                    && (c.isReach || ref.isType)
+                    && refSym.is(Param)
+                    && refOwner == env.owner
+                then
+                  if refSym.hasAnnotation(defn.UnboxAnnot) then
+                    capt.println(i"exempt: $ref in $refOwner")
+                  else
+                    // Reach capabilities that go out of scope have to be approximated
+                    // by their underlying capture set, which cannot be universal.
+                    // Reach capabilities of @unboxed parameters are exempted.
+                    val cs = CaptureSet.ofInfo(c)
+                    cs.disallowRootCapability: () =>
+                      report.error(em"Local reach capability $c leaks into capture scope of ${env.ownerString}", pos)
+                    checkSubset(cs, env.captured, pos, provenance(env))
                 isVisible
               case ref: ThisType => isVisibleFromEnv(ref.cls)
               case _ => false
@@ -674,7 +676,29 @@ class CheckCaptures extends Recheck, SymTransformer:
               i"Sealed type variable $pname", "be instantiated to",
               i"This is often caused by a local capability$where\nleaking as part of its result.",
               tree.srcPos)
-      handleCall(meth, tree, () => Existential.toCap(super.recheckTypeApply(tree, pt)))
+      val res = handleCall(meth, tree, () => Existential.toCap(super.recheckTypeApply(tree, pt)))
+      if meth == defn.Caps_containsImpl then checkContains(tree)
+      res
+    end recheckTypeApply
+
+    /** Faced with a tree of form `caps.contansImpl[CS, r.type]`, check that `R` is a tracked
+     *  capability and assert that `{r} <:CS`.
+     */
+    def checkContains(tree: TypeApply)(using Context): Unit =
+      tree.fun.knownType.widen match
+        case fntpe: PolyType =>
+          tree.args match
+            case csArg :: refArg :: Nil =>
+              val cs = csArg.knownType.captureSet
+              val ref = refArg.knownType
+              capt.println(i"check contains $cs , $ref")
+              ref match
+                case ref: CaptureRef if ref.isTracked =>
+                  checkElem(ref, cs, tree.srcPos)
+                case _ =>
+                  report.error(em"$refArg is not a tracked capability", refArg.srcPos)
+            case _ =>
+        case _ =>
 
     override def recheckBlock(tree: Block, pt: Type)(using Context): Type =
       inNestedLevel(super.recheckBlock(tree, pt))

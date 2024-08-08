@@ -1,6 +1,6 @@
 package scala
 
-import annotation.{experimental, compileTimeOnly}
+import annotation.{experimental, compileTimeOnly, retainsCap}
 
 @experimental object caps:
 
@@ -18,6 +18,16 @@ import annotation.{experimental, compileTimeOnly}
 
   /** Carrier trait for capture set type parameters */
   trait CapSet extends Any
+
+  /** A type constraint expressing that the capture set `C` needs to contain
+   *  the capability `R`
+   */
+  sealed trait Contains[C <: CapSet @retainsCap, R <: Singleton]
+
+  /** The only implementation of `Contains`. The constraint that `{R} <: C` is
+   *  added separately by the capture checker.
+   */
+  given containsImpl[C <: CapSet @retainsCap, R <: Singleton]: Contains[C, R]()
 
   @compileTimeOnly("Should be be used only internally by the Scala compiler")
   def capsOf[CS]: Any = ???
