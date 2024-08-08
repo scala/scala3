@@ -1,0 +1,61 @@
+-- Warning: tests/init-global/warn/match-exception.scala:69:27 ---------------------------------------------------------
+69 |        MyException.writeX(y) // warn
+   |                           ^
+   |                           Access uninitialized field value y. Calling trace:
+   |                           ├── object O3 {	[ match-exception.scala:55 ]
+   |                           │   ^
+   |                           └── MyException.writeX(y) // warn	[ match-exception.scala:69 ]
+   |                                                  ^
+-- Warning: tests/init-global/warn/match-exception.scala:9:28 ----------------------------------------------------------
+9 |  def writeX(newx: Int) = x = newx // warn
+  |                          ^^^^^^^^
+  |         Mutating object MyException during initialization of object O3.
+  |         Mutating other static objects during the initialization of one static object is forbidden. Calling trace:
+  |         ├── object O3 {	[ match-exception.scala:55 ]
+  |         │   ^
+  |         ├── MyException.writeX(y) // warn	[ match-exception.scala:69 ]
+  |         │   ^^^^^^^^^^^^^^^^^^^^^
+  |         └── def writeX(newx: Int) = x = newx // warn	[ match-exception.scala:9 ]
+  |                                     ^^^^^^^^
+-- Warning: tests/init-global/warn/match-exception.scala:28:27 ---------------------------------------------------------
+28 |        MyException.writeX(x) // warn
+   |                           ^
+   |                           Access uninitialized field value x. Calling trace:
+   |                           ├── object O1 {	[ match-exception.scala:21 ]
+   |                           │   ^
+   |                           ├── val x = f()	[ match-exception.scala:34 ]
+   |                           │           ^^^
+   |                           ├── def f(): Int = {	[ match-exception.scala:22 ]
+   |                           │   ^
+   |                           └── MyException.writeX(x) // warn	[ match-exception.scala:28 ]
+   |                                                  ^
+-- Warning: tests/init-global/warn/match-exception.scala:47:27 ---------------------------------------------------------
+47 |        MyException.writeX(x) // warn
+   |                           ^
+   |                           Access uninitialized field value x. Calling trace:
+   |                           ├── object O2 {	[ match-exception.scala:37 ]
+   |                           │   ^
+   |                           ├── val x = f(2)	[ match-exception.scala:52 ]
+   |                           │           ^^^^
+   |                           ├── def f(i: Int): Int = {	[ match-exception.scala:40 ]
+   |                           │   ^
+   |                           └── MyException.writeX(x) // warn	[ match-exception.scala:47 ]
+   |                                                  ^
+-- Warning: tests/init-global/warn/match-exception.scala:80:39 ---------------------------------------------------------
+80 |    case e: Foo if e.bar() => e.writeX(y) // warn
+   |                                       ^
+   |                                  Access uninitialized field value y. Calling trace:
+   |                                  ├── object O4 {	[ match-exception.scala:75 ]
+   |                                  │   ^
+   |                                  └── case e: Foo if e.bar() => e.writeX(y) // warn	[ match-exception.scala:80 ]
+   |                                                                         ^
+-- Warning: tests/init-global/warn/match-exception.scala:18:33 ---------------------------------------------------------
+18 |  def writeX(newx: Int) = x = O4.y // warn
+   |                              ^^^^
+   |                              Access uninitialized field value y. Calling trace:
+   |                              ├── object O4 {	[ match-exception.scala:75 ]
+   |                              │   ^
+   |                              ├── case e: Foo if e.bar() => e.writeX(y) // warn	[ match-exception.scala:80 ]
+   |                              │                             ^^^^^^^^^^^
+   |                              └── def writeX(newx: Int) = x = O4.y // warn	[ match-exception.scala:18 ]
+   |                                                              ^^^^
