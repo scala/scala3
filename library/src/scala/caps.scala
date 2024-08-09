@@ -29,6 +29,9 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
    */
   given containsImpl[C <: CapSet @retainsCap, R <: Singleton]: Contains[C, R]()
 
+  /** A wrapper indicating a type variable in a capture argument list of a
+   *  @retains annotation. E.g. `^{x, Y^}` is represented as `@retains(x, capsOf[Y])`.
+   */
   @compileTimeOnly("Should be be used only internally by the Scala compiler")
   def capsOf[CS]: Any = ???
 
