@@ -1385,6 +1385,8 @@ trait Implicits:
       def disambiguate(alt1: SearchResult, alt2: SearchSuccess) = alt1 match
         case alt1: SearchSuccess =>
           var diff = compareAlternatives(alt1, alt2, disambiguate = true)
+          assert(diff <= 0 || isWarnPriorityChangeVersion)
+            // diff > 0 candidates should already have been eliminated in `rank`
           if diff == 0 && alt1.ref =:= alt2.ref then
             diff = 1 // See i12951 for a test where this happens
           else if diff == 0 && alt2.isExtension then
@@ -1636,21 +1638,7 @@ trait Implicits:
             validateOrdering(ord)
             throw ex
 
-      val sorted = sort(eligible)
-      val res = sorted match
-        case first :: rest =>
-          val firstIsImplicit = first.ref.symbol.is(Implicit)
-          if rest.exists(_.ref.symbol.is(Implicit) != firstIsImplicit) then
-            // Mixture of implicits and givens
-            // Rank implicits first, then, if there is a given that it better than the best implicit(s)
-            // switch over to givens.
-            val (sortedImplicits, sortedGivens) = sorted.partition(_.ref.symbol.is(Implicit))
-            val implicitResult = rank(sortedImplicits, NoMatchingImplicitsFailure, Nil)
-            rank(sortedGivens, implicitResult, Nil)
-          else
-            rank(sorted, NoMatchingImplicitsFailure, Nil)
-        case _ =>
-          NoMatchingImplicitsFailure
+      val res = rank(sort(eligible), NoMatchingImplicitsFailure, Nil)
 
       // Issue all priority change warnings that can affect the result
       val shownWarnings = priorityChangeWarnings.toList.collect:
