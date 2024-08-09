@@ -1,0 +1,4 @@
+-- [E198] Unused Symbol Warning: tests/warn/i18559c.scala:8:8 ----------------------------------------------------------
+8 |    val x = 1  // warn
+  |        ^
+  |        unused local definition

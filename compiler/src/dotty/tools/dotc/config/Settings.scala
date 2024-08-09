@@ -87,7 +87,9 @@ object Settings:
     // kept only for -Xkind-projector option compatibility
     legacyArgs: Boolean = false,
     // accept legacy choices (for example, valid in Scala 2 but no longer supported)
-    legacyChoices: Option[Seq[?]] = None)(private[Settings] val idx: Int):
+    legacyChoices: Option[Seq[?]] = None,
+    // override the value of this setting based on the value of another one
+    overriddenBy: (Setting[?], (T, Any) => T) | Null = null)(private[Settings] val idx: Int):
 
     validateSettingString(prefix.getOrElse(name))
     aliases.foreach(validateSettingString)
@@ -99,7 +101,14 @@ object Settings:
 
     val allFullNames: List[String] = s"$name" :: s"-$name" :: aliases
 
-    def valueIn(state: SettingsState): T = state.value(idx).asInstanceOf[T]
+    def valueIn(state: SettingsState): T =
+      val thisVal = state.value(idx).asInstanceOf[T]
+      if overriddenBy == null then
+        thisVal
+      else
+        val (that, f) = overriddenBy.nn
+        val thatVal = that.valueIn(state)
+        f(thisVal, thatVal)
 
     def updateIn(state: SettingsState, x: Any): SettingsState = x match
       case _: T => state.update(idx, x)
@@ -378,8 +387,8 @@ object Settings:
       assert(!name.startsWith("-"), s"Setting $name cannot start with -")
       "-" + name
 
-    def BooleanSetting(category: SettingCategory, name: String, descr: String, initialValue: Boolean = false, aliases: List[String] = Nil, preferPrevious: Boolean = false, deprecation: Option[Deprecation] = None, ignoreInvalidArgs: Boolean = false): Setting[Boolean] =
-      publish(Setting(category, prependName(name), descr, initialValue, aliases = aliases, preferPrevious = preferPrevious, deprecation = deprecation, ignoreInvalidArgs = ignoreInvalidArgs))
+    def BooleanSetting(category: SettingCategory, name: String, descr: String, initialValue: Boolean = false, aliases: List[String] = Nil, preferPrevious: Boolean = false, deprecation: Option[Deprecation] = None, ignoreInvalidArgs: Boolean = false, overriddenBy: (Setting[?], (Boolean, Any) => Boolean) | Null = null): Setting[Boolean] =
+      publish(Setting(category, prependName(name), descr, initialValue, aliases = aliases, preferPrevious = preferPrevious, deprecation = deprecation, ignoreInvalidArgs = ignoreInvalidArgs, overriddenBy = overriddenBy))
 
     def StringSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: String, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None): Setting[String] =
       publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases, deprecation = deprecation))
@@ -390,8 +399,8 @@ object Settings:
     def MultiChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: List[String] = Nil, legacyChoices: List[String] = Nil, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None): Setting[List[String]] =
       publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), legacyChoices = Some(legacyChoices), aliases = aliases, deprecation = deprecation))
 
-    def MultiChoiceHelpSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]], legacyChoices: List[String] = Nil, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None): Setting[List[ChoiceWithHelp[String]]] =
-      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), legacyChoices = Some(legacyChoices), aliases = aliases, deprecation = deprecation))
+    def MultiChoiceHelpSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[ChoiceWithHelp[String]], default: List[ChoiceWithHelp[String]], legacyChoices: List[String] = Nil, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None, overriddenBy: (Setting[?], (List[ChoiceWithHelp[String]], Any) => List[ChoiceWithHelp[String]]) | Null = null): Setting[List[ChoiceWithHelp[String]]] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), legacyChoices = Some(legacyChoices), aliases = aliases, deprecation = deprecation, overriddenBy = overriddenBy))
 
     def IntSetting(category: SettingCategory, name: String, descr: String, default: Int, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None): Setting[Int] =
       publish(Setting(category, prependName(name), descr, default, aliases = aliases, deprecation = deprecation))
