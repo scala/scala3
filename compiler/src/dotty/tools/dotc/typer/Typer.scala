@@ -40,7 +40,7 @@ import annotation.tailrec
 import Implicits.*
 import util.Stats.record
 import config.Printers.{gadts, typr}
-import config.Feature, Feature.{sourceVersion, migrateTo3, modularity}
+import config.Feature, Feature.{migrateTo3, modularity, sourceVersion, warnOnMigration}
 import config.SourceVersion.*
 import rewrites.Rewrites, Rewrites.patch
 import staging.StagingLevel
@@ -2615,7 +2615,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         if !acc.exists then NoType
         else if case1.body.tpe.isProvisional then NoType
         else acc | case1.body.tpe
-      if lub.exists then TypeTree(lub, inferred = true)
+      if lub.exists then
+        if !lub.isAny then
+          val msg = em"Match type upper bound inferred as $lub, where previously it was defaulted to Any"
+          warnOnMigration(msg, tree, `3.6`)
+        TypeTree(lub, inferred = true)
       else bound1
     else bound1
     assignType(cpy.MatchTypeTree(tree)(bound2, sel1, cases1), bound2, sel1, cases1)
