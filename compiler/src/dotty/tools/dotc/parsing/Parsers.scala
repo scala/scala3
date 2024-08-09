@@ -213,7 +213,7 @@ object Parsers {
     def isIdent(name: Name) = in.isIdent(name)
     def isPureArrow(name: Name): Boolean = isIdent(name) && Feature.pureFunsEnabled
     def isPureArrow: Boolean = isPureArrow(nme.PUREARROW) || isPureArrow(nme.PURECTXARROW)
-    def isErased = isIdent(nme.erased) && in.erasedEnabled
+    def isErased = in.isErased
     // Are we seeing an `erased` soft keyword that will not be an identifier?
     def isErasedKw = isErased && in.isSoftModifierInParamModifierPosition
     def isSimpleLiteral =
@@ -3503,6 +3503,8 @@ object Parsers {
 
       def addParamMod(mod: () => Mod) = impliedMods = addMod(impliedMods, atSpan(in.skipToken()) { mod() })
 
+      def paramModAdvice = "It is a keyword only at the beginning of a parameter clause."
+
       def paramMods() =
         if in.token == IMPLICIT then
           addParamMod(() => Mod.Implicit())
@@ -3510,8 +3512,10 @@ object Parsers {
           if initialMods.is(Given) then
             syntaxError(em"`using` is already implied here, should not be given explicitly", in.offset)
           addParamMod(() => Mod.Given())
+          if in.isColon then
+            syntaxErrorOrIncomplete(ExpectedTokenButFoundSoftKeyword(IDENTIFIER, COLONop, nme.using, paramModAdvice))
 
-      def param(): ValDef = {
+      def param(): ValDef =
         val start = in.offset
         var mods = impliedMods.withAnnotations(annotations())
         if isErasedKw then
@@ -3538,9 +3542,21 @@ object Parsers {
           mods |= Param
         }
         atSpan(start, nameStart) {
-          val name = ident()
-          acceptColon()
-          if (in.token == ARROW && paramOwner.isClass && !mods.is(Local))
+          val name = ident() match
+            case nme.using if !in.isColon =>
+              val msg = ExpectedTokenButFoundSoftKeyword(expected = COLONop, found = in.token, nme.using, paramModAdvice)
+              val span = Span(in.offset, in.offset + (if in.name != null then in.name.show.length else 0))
+              val pickOne =
+                if in.token == IDENTIFIER then
+                  while in.isSoftModifierInParamModifierPosition do ident() // skip to intended name, discard mods
+                  ident()
+                else nme.using
+              syntaxErrorOrIncomplete(msg, span)
+              pickOne
+            case name =>
+              acceptColon()
+              name
+          if in.token == ARROW && paramOwner.isClass && !mods.is(Local) then
             syntaxError(VarValParametersMayNotBeCallByName(name, mods.is(Mutable)))
               // needed?, it's checked later anyway
           val tpt = paramType()
@@ -3551,7 +3567,7 @@ object Parsers {
             impliedMods = impliedMods.withMods(Nil) // keep only flags, so that parameter positions don't overlap
           ValDef(name, tpt, default).withMods(mods)
         }
-      }
+      end param
 
       def checkVarArgsRules(vparams: List[ValDef]): Unit = vparams match {
         case Nil =>
@@ -3601,11 +3617,13 @@ object Parsers {
                 else contextTypes(paramOwner, numLeadParams, impliedMods)
               params match
                 case Nil => Nil
-                case (h :: t) => h.withAddedFlags(firstParamMod.flags) :: t
+                case h :: t => h.withAddedFlags(firstParamMod.flags) :: t
+          end clause
           checkVarArgsRules(clause)
           clause
       }
     }
+    end termParamClause
 
     /** ClsTermParamClauses   ::=  {ClsTermParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
      *  TypelessClauses       ::=  TypelessClause {TypelessClause}
