@@ -48,7 +48,8 @@ case class ScalaPresentationCompiler(
     sh: Option[ScheduledExecutorService] = None,
     config: PresentationCompilerConfig = PresentationCompilerConfigImpl(),
     folderPath: Option[Path] = None,
-    reportsLevel: ReportLevel = ReportLevel.Info
+    reportsLevel: ReportLevel = ReportLevel.Info,
+    completionItemPriority: CompletionItemPriority = (_: String) => 0,
 ) extends PresentationCompiler:
 
   def this() = this("", None, Nil, Nil)
@@ -62,6 +63,11 @@ case class ScalaPresentationCompiler(
     folderPath
       .map(StdReportContext(_, _ => buildTargetName, reportsLevel))
       .getOrElse(EmptyReportContext)
+
+  override def withCompletionItemPriority(
+    priority: CompletionItemPriority
+  ): PresentationCompiler =
+    copy(completionItemPriority = priority)
 
   override def withBuildTargetName(buildTargetName: String) =
     copy(buildTargetName = Some(buildTargetName))
@@ -142,7 +148,8 @@ case class ScalaPresentationCompiler(
         params,
         config,
         buildTargetIdentifier,
-        folderPath
+        folderPath,
+        completionItemPriority
       ).completions()
 
     }

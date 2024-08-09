@@ -32,6 +32,7 @@ import org.eclipse.lsp4j.InsertTextFormat
 import org.eclipse.lsp4j.InsertTextMode
 import org.eclipse.lsp4j.Range as LspRange
 import org.eclipse.lsp4j.TextEdit
+import scala.meta.pc.CompletionItemPriority
 
 class CompletionProvider(
     search: SymbolSearch,
@@ -39,7 +40,8 @@ class CompletionProvider(
     params: OffsetParams,
     config: PresentationCompilerConfig,
     buildTargetIdentifier: String,
-    folderPath: Option[Path]
+    folderPath: Option[Path],
+    referenceCounter: CompletionItemPriority
 )(using reports: ReportContext):
   def completions(): CompletionList =
     val uri = params.uri().nn
@@ -86,7 +88,8 @@ class CompletionProvider(
             folderPath,
             autoImportsGen,
             unit.comments,
-            driver.settings
+            driver.settings,
+            referenceCounter
           ).completions()
 
         val items = completions.zipWithIndex.map { case (item, idx) =>
