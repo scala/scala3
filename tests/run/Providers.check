@@ -18,3 +18,11 @@ Executing query: insert into subscribers(name, email) values Daniel daniel@Rockt
 You've just been subscribed to RockTheJVM. Welcome, Martin
 Acquired connection
 Executing query: insert into subscribers(name, email) values Martin odersky@gmail.com
+
+Injected2
+You've just been subscribed to RockTheJVM. Welcome, Daniel
+Acquired connection
+Executing query: insert into subscribers(name, email) values Daniel daniel@RocktheJVM.com
+You've just been subscribed to RockTheJVM. Welcome, Martin
+Acquired connection
+Executing query: insert into subscribers(name, email) values Martin odersky@gmail.com
