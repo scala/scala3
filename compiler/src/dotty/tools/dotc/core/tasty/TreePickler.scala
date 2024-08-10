@@ -806,10 +806,10 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
           report.error(ex.toMessage, tree.srcPos.focus)
           pickleErrorType()
         case ex: AssertionError =>
-          println(i"error when pickling tree $tree")
+          println(i"error when pickling tree $tree of class ${tree.getClass}")
           throw ex
         case ex: MatchError =>
-          println(i"error when pickling tree $tree")
+          println(i"error when pickling tree $tree of class ${tree.getClass}")
           throw ex
       }
   }

@@ -330,10 +330,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   end transformExplicitType
 
   /** Transform type of type tree, and remember the transformed type as the type the tree */
-  private def transformTT(tree: TypeTree, boxed: Boolean, exact: Boolean)(using Context): Unit =
+  private def transformTT(tree: TypeTree, boxed: Boolean)(using Context): Unit =
     if !tree.hasRememberedType then
       val transformed =
-        if tree.isInstanceOf[InferredTypeTree] && !exact
+        if tree.isInferred
         then transformInferredType(tree.tpe)
         else transformExplicitType(tree.tpe, tptToCheck = Some(tree))
       tree.rememberType(if boxed then box(transformed) else transformed)
@@ -398,8 +398,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 && !ccConfig.useSealed
                 && !sym.hasAnnotation(defn.UncheckedCapturesAnnot),
               // types of mutable variables are boxed in pre 3.3 code
-            exact = sym.allOverriddenSymbols.hasNext,
-              // types of symbols that override a parent don't get a capture set TODO drop
           )
       catch case ex: IllegalCaptureRef =>
         capt.println(i"fail while transforming result type $tpt of $sym")
@@ -442,7 +440,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           traverse(fn)
           if !defn.isTypeTestOrCast(fn.symbol) then
             for case arg: TypeTree <- args do
-              transformTT(arg, boxed = true, exact = false) // type arguments in type applications are boxed
+              transformTT(arg, boxed = true) // type arguments in type applications are boxed
 
         case tree: TypeDef if tree.symbol.isClass =>
           val sym = tree.symbol
@@ -465,7 +463,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
     def postProcess(tree: Tree)(using Context): Unit = tree match
       case tree: TypeTree =>
-        transformTT(tree, boxed = false, exact = false)
+        transformTT(tree, boxed = false)
       case tree: ValOrDefDef =>
         val sym = tree.symbol
 

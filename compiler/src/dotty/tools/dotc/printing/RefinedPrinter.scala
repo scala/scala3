@@ -560,9 +560,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         else keywordText("{{") ~ keywordText("/* inlined from ") ~ toText(call) ~ keywordText(" */") ~ bodyText ~ keywordText("}}")
       case tpt: untpd.DerivedTypeTree =>
         "<derived typetree watching " ~ tpt.watched.showSummary() ~ ">"
-      case TypeTree() =>
+      case tree: TypeTree =>
         typeText(toText(tree.typeOpt))
-        ~ Str("(inf)").provided(tree.isInstanceOf[InferredTypeTree] && printDebug)
+        ~ Str("(inf)").provided(tree.isInferred && printDebug)
       case SingletonTypeTree(ref) =>
         toTextLocal(ref) ~ "." ~ keywordStr("type")
       case RefinedTypeTree(tpt, refines) =>
