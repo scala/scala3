@@ -36,6 +36,7 @@ class Config(private val data: mutable.LinkedHashMap[String, Any]) extends Dynam
 
 }
 
+
 class ConfigLoader {
   def loadConfig(basePath: String): Config = {
     val configMap = mutable.LinkedHashMap[String, Any]()
@@ -55,12 +56,32 @@ class ConfigLoader {
           val inputStream: InputStream = Files.newInputStream(path)
           val data = yaml.load[java.util.Map[String, Any]](inputStream)
           configMap ++= data.asScala.toMap
+
+          // Check for language folders
+          val languagesOpt = configMap.get("languages").collect {
+            case list: java.util.List[java.util.Map[String, String]] => list.asScala.toList.map(_.asScala.toMap)
+          }
+
+          languagesOpt match {
+            case Some(languages) =>
+              for (language <- languages) {
+                val languageCode = language("code")
+                val languageFolderPath = Paths.get(baseDir, languageCode)
+                if (!Files.exists(languageFolderPath) || !Files.isDirectory(languageFolderPath)) {
+                  throw new IllegalArgumentException(s"Language folder for '$languageCode' does not exist at path: $languageFolderPath")
+                }
+              }
+            case None =>
+              println(s"Warning: No languages found in configuration.")
+          }
+
         case None =>
           println(s"Warning: No config file found in path: $baseDir")
       }
     } catch {
       case e: Exception =>
         println(s"Error loading config file: ${e.getMessage}")
+        throw e
     }
 
     new Config(configMap)
