@@ -2516,12 +2516,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               (arg, tparamBounds)
             else
               (arg, WildcardType)
-          if (tpt1.symbol.isClass)
-            tparam match {
-              case tparam: Symbol =>
-                tparam.ensureCompleted() // This is needed to get the test `compileParSetSubset` to work
-              case _ =>
-            }
           if (desugaredArg.isType)
             arg match {
               case untpd.WildcardTypeBoundsTree()
