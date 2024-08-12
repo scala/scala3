@@ -113,7 +113,7 @@ object Build {
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
    */
-  val mimaPreviousDottyVersion = "3.5.0-RC1"
+  val mimaPreviousDottyVersion = "3.5.0"
 
   /** LTS version against which we check binary compatibility.
    *
