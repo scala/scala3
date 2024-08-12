@@ -528,9 +528,11 @@ extension (cls: ClassSymbol)
                                  // and err on the side of impure.
               && selfType.exists && selfType.captureSet.isAlwaysEmpty
 
-  def baseClassHasExplicitSelfType(using Context): Boolean =
+  def baseClassHasExplicitNonUniversalSelfType(using Context): Boolean =
     cls.baseClasses.exists: bc =>
-      bc.is(CaptureChecked) && bc.givenSelfType.exists
+      bc.is(CaptureChecked)
+      && bc.givenSelfType.exists
+      && !bc.givenSelfType.captureSet.isUniversal
 
   def matchesExplicitRefsInBaseClass(refs: CaptureSet)(using Context): Boolean =
     cls.baseClasses.tail.exists: bc =>
