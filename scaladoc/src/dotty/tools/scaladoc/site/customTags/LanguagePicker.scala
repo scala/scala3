@@ -81,7 +81,7 @@ class LanguagePickerTag extends Tag("language_picker") {
   }
 }
 
-}
+
 
 object LanguagePickerTag {
   @volatile private var configFolder: String = "_docs"
