@@ -1005,6 +1005,9 @@ class Definitions {
     @tu lazy val Caps_ContainsTrait: TypeSymbol = CapsModule.requiredType("Contains")
     @tu lazy val Caps_containsImpl: TermSymbol = CapsModule.requiredMethod("containsImpl")
 
+  /** The same as CaptureSet.universal but generated implicitly for references of Capability subtypes */
+  @tu lazy val universalCSImpliedByCapability = CaptureSet(captureRoot.termRef)
+
   @tu lazy val PureClass: Symbol = requiredClass("scala.Pure")
 
   // Annotation base classes
