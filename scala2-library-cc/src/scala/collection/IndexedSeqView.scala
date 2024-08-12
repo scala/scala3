@@ -16,13 +16,10 @@ package collection
 import scala.annotation.nowarn
 import language.experimental.captureChecking
 
-trait IndexedSeqViewOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] {
-  self: IndexedSeqViewOps[A, CC, C]^ =>
-}
+trait IndexedSeqViewOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C]
 
 /** View defined in terms of indexing a range */
 trait IndexedSeqView[+A] extends IndexedSeqViewOps[A, View, View[A]] with SeqView[A] {
-  self: IndexedSeqView[A]^ =>
 
   override def view: IndexedSeqView[A]^{this} = this
 
