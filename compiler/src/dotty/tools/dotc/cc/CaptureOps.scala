@@ -713,3 +713,21 @@ extension (self: Type)
     case _ =>
       self
 
+/** An extractor for a contains argument */
+object ContainsImpl:
+  def unapply(tree: TypeApply)(using Context): Option[(Tree, Tree)] =
+    tree.fun.tpe.widen match
+      case fntpe: PolyType if tree.fun.symbol == defn.Caps_containsImpl =>
+        tree.args match
+          case csArg :: refArg :: Nil => Some((csArg, refArg))
+          case _ => None
+      case _ => None
+
+/** An extractor for a contains parameter */
+object ContainsParam:
+  def unapply(sym: Symbol)(using Context): Option[(TypeRef, CaptureRef)] =
+    sym.info.dealias match
+      case AppliedType(tycon, (cs: TypeRef) :: (ref: CaptureRef) :: Nil)
+      if tycon.typeSymbol == defn.Caps_ContainsTrait
+          && cs.typeSymbol.isAbstractOrParamType => Some((cs, ref))
+      case _ => None

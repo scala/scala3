@@ -116,7 +116,11 @@ trait CaptureRef extends TypeProxy, ValueType:
             case x1: SingletonCaptureRef => x1.subsumes(y)
             case _ => false
         case x: TermParamRef => subsumesExistentially(x, y)
+        case x: TypeRef => assumedContainsOf(x).contains(y)
         case _ => false
+
+  def assumedContainsOf(x: TypeRef)(using Context): SimpleIdentitySet[CaptureRef] =
+    CaptureSet.assumedContains.getOrElse(x, SimpleIdentitySet.empty)
 
 end CaptureRef
 

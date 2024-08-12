@@ -16,7 +16,7 @@ import util.{SimpleIdentitySet, Property}
 import typer.ErrorReporting.Addenda
 import TypeComparer.subsumesExistentially
 import util.common.alwaysTrue
-import scala.collection.mutable
+import scala.collection.{mutable, immutable}
 import CCState.*
 
 /** A class for capture sets. Capture sets can be constants or variables.
@@ -1124,6 +1124,12 @@ object CaptureSet:
         case _ =>
           foldOver(cs, t)
     collect(CaptureSet.empty, tp)
+
+  type AssumedContains = immutable.Map[TypeRef, SimpleIdentitySet[CaptureRef]]
+  val AssumedContains: Property.Key[AssumedContains] = Property.Key()
+
+  def assumedContains(using Context): AssumedContains =
+    ctx.property(AssumedContains).getOrElse(immutable.Map.empty)
 
   private val ShownVars: Property.Key[mutable.Set[Var]] = Property.Key()
 

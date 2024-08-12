@@ -676,29 +676,24 @@ class CheckCaptures extends Recheck, SymTransformer:
               i"Sealed type variable $pname", "be instantiated to",
               i"This is often caused by a local capability$where\nleaking as part of its result.",
               tree.srcPos)
-      val res = handleCall(meth, tree, () => Existential.toCap(super.recheckTypeApply(tree, pt)))
-      if meth == defn.Caps_containsImpl then checkContains(tree)
-      res
+      try handleCall(meth, tree, () => Existential.toCap(super.recheckTypeApply(tree, pt)))
+      finally checkContains(tree)
     end recheckTypeApply
 
     /** Faced with a tree of form `caps.contansImpl[CS, r.type]`, check that `R` is a tracked
      *  capability and assert that `{r} <:CS`.
      */
-    def checkContains(tree: TypeApply)(using Context): Unit =
-      tree.fun.knownType.widen match
-        case fntpe: PolyType =>
-          tree.args match
-            case csArg :: refArg :: Nil =>
-              val cs = csArg.knownType.captureSet
-              val ref = refArg.knownType
-              capt.println(i"check contains $cs , $ref")
-              ref match
-                case ref: CaptureRef if ref.isTracked =>
-                  checkElem(ref, cs, tree.srcPos)
-                case _ =>
-                  report.error(em"$refArg is not a tracked capability", refArg.srcPos)
-            case _ =>
-        case _ =>
+    def checkContains(tree: TypeApply)(using Context): Unit = tree match
+      case ContainsImpl(csArg, refArg) =>
+        val cs = csArg.knownType.captureSet
+        val ref = refArg.knownType
+        capt.println(i"check contains $cs , $ref")
+        ref match
+          case ref: CaptureRef if ref.isTracked =>
+            checkElem(ref, cs, tree.srcPos)
+          case _ =>
+            report.error(em"$refArg is not a tracked capability", refArg.srcPos)
+      case _ =>
 
     override def recheckBlock(tree: Block, pt: Type)(using Context): Type =
       inNestedLevel(super.recheckBlock(tree, pt))
@@ -814,15 +809,26 @@ class CheckCaptures extends Recheck, SymTransformer:
         val localSet = capturedVars(sym)
         if !localSet.isAlwaysEmpty then
           curEnv = Env(sym, EnvKind.Regular, localSet, curEnv)
+          
+        // ctx with AssumedContains entries for each Contains parameter
+        val bodyCtx =
+          var ac = CaptureSet.assumedContains
+          for paramSyms <- sym.paramSymss do
+            for case ContainsParam(cs, ref) <- paramSyms do
+              ac = ac.updated(cs, ac.getOrElse(cs, SimpleIdentitySet.empty) + ref)
+          if ac.isEmpty then ctx
+          else ctx.withProperty(CaptureSet.AssumedContains, Some(ac))
+
         inNestedLevel: // TODO: needed here?
-          try checkInferredResult(super.recheckDefDef(tree, sym), tree)
+          try checkInferredResult(super.recheckDefDef(tree, sym)(using bodyCtx), tree)
           finally
             if !sym.isAnonymousFunction then
               // Anonymous functions propagate their type to the enclosing environment
               // so it is not in general sound to interpolate their types.
               interpolateVarsIn(tree.tpt)
             curEnv = saved
-
+    end recheckDefDef
+    
     /** If val or def definition with inferred (result) type is visible
      *  in other compilation units, check that the actual inferred type
      *  conforms to the expected type where all inferred capture sets are dropped.
