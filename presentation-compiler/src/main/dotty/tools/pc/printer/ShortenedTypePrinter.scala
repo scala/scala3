@@ -32,6 +32,7 @@ import dotty.tools.pc.Params
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j.TextEdit
+import scala.meta.internal.mtags.KeywordWrapper
 
 /**
  * A type printer that shortens types by replacing fully qualified names with shortened versions.
@@ -48,7 +49,9 @@ class ShortenedTypePrinter(
 )(using indexedCtx: IndexedContext, reportCtx: ReportContext) extends RefinedPrinter(indexedCtx.ctx):
   private val missingImports: mutable.Set[ImportSel] = mutable.LinkedHashSet.empty
   private val defaultWidth = 1000
-
+  private val keywordWrapper = new KeywordWrapper {
+    override def keywords: Set[String] = KeywordWrapper.Scala3HardKeywords
+  }
   private val methodFlags =
     Flags.commonFlags(
       Private,
@@ -204,6 +207,12 @@ class ShortenedTypePrinter(
       case c: ConstantType => toText(c.value)
       case tp if tp.isError => super.toText(indexedCtx.ctx.definitions.AnyType)
       case _ => super.toText(tp)
+
+  override def nameString(name: Name): String =
+    val nameStr = super.nameString(name)
+    if nameStr.nonEmpty then
+      keywordWrapper.backtickWrap(nameStr)
+    else nameStr
 
   override def toTextSingleton(tp: SingletonType): Text =
     tp match
