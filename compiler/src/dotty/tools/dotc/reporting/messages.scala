@@ -2985,7 +2985,7 @@ class MissingImplicitArgument(
 
     /** Default error message for non-nested ambiguous implicits. */
     def defaultAmbiguousImplicitMsg(ambi: AmbiguousImplicits) =
-      s"Ambiguous given instances: ${ambi.explanation}${location("of")}"
+      s"Ambiguous given instances: ${ambi.explanation}${location("of")}${ambi.priorityChangeWarningNote}"
 
     /** Default error messages for non-ambiguous implicits, or nested ambiguous
      *  implicits.

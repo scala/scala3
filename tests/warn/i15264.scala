@@ -1,4 +1,5 @@
-import language.`3.7`
+// Note: No check file for this test since the precise warning messages are non-deterministic
+import language.`3.7-migration`
 object priority:
     // lower number = higher priority
     class Prio0 extends Prio1
@@ -45,11 +46,11 @@ object test1:
     import repro.exports.given
 
     // these will work
-    val a = summon[A[Int]]
+    val a = summon[A[Int]] // warn
 
 
 object test2:
     import repro.*
     import repro.qcontext.given
 
-    val a = summon[A[Q[Int]]]
+    val a = summon[A[Q[Int]]] // warn
