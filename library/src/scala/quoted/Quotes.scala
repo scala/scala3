@@ -2640,7 +2640,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     // ----- Types ----------------------------------------------------
 
     /** A type, type constructors, type bounds or NoPrefix */
-    type TypeRepr
+    type TypeRepr <: Matchable
 
     /** Module object of `type TypeRepr`  */
     val TypeRepr: TypeReprModule
