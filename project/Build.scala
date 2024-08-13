@@ -134,7 +134,7 @@ object Build {
   }
 
   val compatMode = {
-    val VersionRE = """^\d+\.(\d+).(\d+).*""".r
+    val VersionRE = """^\d+\.(\d+)\.(\d+)""".r
     baseVersion match {
       case VersionRE(_, "0")   => CompatMode.BinaryCompatible
       case _                   => CompatMode.SourceAndBinaryCompatible
