@@ -9,6 +9,7 @@ import sbt.*
 import complete.DefaultParsers._
 import pl.project13.scala.sbt.JmhPlugin
 import pl.project13.scala.sbt.JmhPlugin.JmhKeys.Jmh
+import com.gradle.develocity.agent.sbt.DevelocityPlugin.autoImport._
 import com.typesafe.sbt.packager.Keys._
 import com.typesafe.sbt.packager.MappingsHelper.directory
 import com.typesafe.sbt.packager.universal.UniversalPlugin
@@ -268,6 +269,25 @@ object Build {
 
     // enable verbose exception messages for JUnit
     (Test / testOptions) += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "-s"),
+
+    // Configuration to publish build scans to develocity.scala-lang.org
+    develocityConfiguration := {
+      val isInsideCI = insideCI.value
+      val previousConfig = develocityConfiguration.value
+      val previousBuildScan = previousConfig.buildScan
+      previousConfig
+        .withProjectId(ProjectId("scala3"))
+        .withServer(previousConfig.server.withUrl(Some(url("https://develocity.scala-lang.org"))))
+        .withBuildScan(
+          previousBuildScan
+            .withPublishing(Publishing.onlyIf(_.authenticated))
+            .withBackgroundUpload(!isInsideCI)
+            .tag(if (isInsideCI) "CI" else "Local")
+            .withLinks(previousBuildScan.links ++ GithubEnv.develocityLinks)
+            .withValues(previousBuildScan.values ++ GithubEnv.develocityValues)
+            .withObfuscation(previousBuildScan.obfuscation.withIpAddresses(_.map(_ => "0.0.0.0")))
+        )
+    }
   )
 
   // Settings shared globally (scoped in Global). Used in build.sbt
