@@ -2135,14 +2135,18 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case1
       }
       .asInstanceOf[List[CaseDef]]
-    assignType(cpy.Match(tree)(sel, cases1), sel, cases1).cast(pt)
+    var nni = sel.notNullInfo
+    if(cases1.nonEmpty) nni = nni.seq(cases1.map(_.notNullInfo).reduce(_.alt(_)))
+    assignType(cpy.Match(tree)(sel, cases1), sel, cases1).cast(pt).withNotNullInfo(nni)
   }
 
   // Overridden in InlineTyper for inline matches
   def typedMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: List[untpd.CaseDef], pt: Type)(using Context): Tree = {
     val cases1 = harmonic(harmonize, pt)(typedCases(cases, sel, wideSelType, pt.dropIfProto))
       .asInstanceOf[List[CaseDef]]
-    assignType(cpy.Match(tree)(sel, cases1), sel, cases1)
+    var nni = sel.notNullInfo
+    if(cases1.nonEmpty) nni = nni.seq(cases1.map(_.notNullInfo).reduce(_.alt(_)))
+    assignType(cpy.Match(tree)(sel, cases1), sel, cases1).withNotNullInfo(nni)
   }
 
   def typedCases(cases: List[untpd.CaseDef], sel: Tree, wideSelType0: Type, pt: Type)(using Context): List[CaseDef] =
@@ -2216,7 +2220,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         pat1.putAttachment(InferredGadtConstraints, ctx.gadt)
       if (pt1.isValueType) // insert a cast if body does not conform to expected type if we disregard gadt bounds
         body1 = body1.ensureConforms(pt1)(using originalCtx)
-      assignType(cpy.CaseDef(tree)(pat1, guard1, body1), pat1, body1)
+      val nni = pat1.notNullInfo.seq(
+        guard1.notNullInfoIf(false).alt(
+          guard1.notNullInfoIf(true).seq(body1.notNullInfo)
+        )
+      )
+      assignType(cpy.CaseDef(tree)(pat1, guard1, body1), pat1, body1).withNotNullInfo(nni)
     }
 
     val pat1 = typedPattern(tree.pat, wideSelType)(using gadtCtx)
@@ -2327,7 +2336,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }: @unchecked
     val finalizer1 = typed(tree.finalizer, defn.UnitType)
     val cases2 = cases2x.asInstanceOf[List[CaseDef]]
-    assignType(cpy.Try(tree)(expr2, cases2, finalizer1), expr2, cases2)
+    val nni = expr2.notNullInfo.retractedInfo.seq(
+      cases2.map(_.notNullInfo.retractedInfo).fold(NotNullInfo.empty)(_.alt(_))
+    ).seq(finalizer1.notNullInfo)
+    assignType(cpy.Try(tree)(expr2, cases2, finalizer1), expr2, cases2).withNotNullInfo(nni)
   }
 
   def typedTry(tree: untpd.ParsedTry, pt: Type)(using Context): Try =
