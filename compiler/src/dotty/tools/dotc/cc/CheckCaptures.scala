@@ -632,7 +632,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         def addParamArgRefinements(core: Type, initCs: CaptureSet): (Type, CaptureSet) =
           var refined: Type = core
           var allCaptures: CaptureSet =
-            if core.derivesFromCapability then CaptureSet.universal else initCs
+            if core.derivesFromCapability then defn.universalCSImpliedByCapability else initCs
           for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
             val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
             if !getter.is(Private) && getter.hasTrackedParts then
@@ -809,7 +809,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         val localSet = capturedVars(sym)
         if !localSet.isAlwaysEmpty then
           curEnv = Env(sym, EnvKind.Regular, localSet, curEnv)
-          
+
         // ctx with AssumedContains entries for each Contains parameter
         val bodyCtx =
           var ac = CaptureSet.assumedContains
@@ -828,7 +828,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               interpolateVarsIn(tree.tpt)
             curEnv = saved
     end recheckDefDef
-    
+
     /** If val or def definition with inferred (result) type is visible
      *  in other compilation units, check that the actual inferred type
      *  conforms to the expected type where all inferred capture sets are dropped.

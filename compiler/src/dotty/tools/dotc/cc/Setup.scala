@@ -299,16 +299,24 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           CapturingType(fntpe, cs, boxed = false)
         else fntpe
 
+      def stripImpliedCaptureSet(tp: Type): Type = tp match
+        case tp @ CapturingType(parent, refs)
+        if (refs eq defn.universalCSImpliedByCapability) && !tp.isBoxedCapturing =>
+          parent
+        case tp @ CapturingType(parent, refs) => tp
+        case _ => tp
+
       def apply(t: Type) =
         t match
           case t @ CapturingType(parent, refs) =>
-            t.derivedCapturingType(this(parent), refs)
+            t.derivedCapturingType(stripImpliedCaptureSet(this(parent)), refs)
           case t @ AnnotatedType(parent, ann) =>
             val parent1 = this(parent)
             if ann.symbol.isRetains then
+              val parent2 = stripImpliedCaptureSet(parent1)
               for tpt <- tptToCheck do
-                checkWellformedLater(parent1, ann.tree, tpt)
-              CapturingType(parent1, ann.tree.toCaptureSet)
+                checkWellformedLater(parent2, ann.tree, tpt)
+              CapturingType(parent2, ann.tree.toCaptureSet)
             else
               t.derivedAnnotatedType(parent1, ann)
           case throwsAlias(res, exc) =>
@@ -316,7 +324,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case t =>
             // Map references to capability classes C to C^
             if t.derivesFromCapability && !t.isSingleton && t.typeSymbol != defn.Caps_Exists
-            then CapturingType(t, CaptureSet.universal, boxed = false)
+            then CapturingType(t, defn.universalCSImpliedByCapability, boxed = false)
             else normalizeCaptures(mapOver(t))
     end toCapturing
 
