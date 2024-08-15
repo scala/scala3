@@ -1857,7 +1857,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       }
       .asInstanceOf[List[CaseDef]]
     var nni = sel.notNullInfo
-    if(cases1.nonEmpty) nni = nni.seq(cases1.map(_.notNullInfo).reduce(_.alt(_)))
+    if cases1.nonEmpty then nni = nni.seq(cases1.map(_.notNullInfo).reduce(_.alt(_)))
     assignType(cpy.Match(tree)(sel, cases1), sel, cases1).cast(pt).withNotNullInfo(nni)
   }
 
@@ -1866,7 +1866,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val cases1 = harmonic(harmonize, pt)(typedCases(cases, sel, wideSelType, pt.dropIfProto))
       .asInstanceOf[List[CaseDef]]
     var nni = sel.notNullInfo
-    if(cases1.nonEmpty) nni = nni.seq(cases1.map(_.notNullInfo).reduce(_.alt(_)))
+    if cases1.nonEmpty then nni = nni.seq(cases1.map(_.notNullInfo).reduce(_.alt(_)))
     assignType(cpy.Match(tree)(sel, cases1), sel, cases1).withNotNullInfo(nni)
   }
 
@@ -1937,13 +1937,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         // will end up taking too much memory. If it does, we should just limit
         // how much GADT constraints we infer - it's always sound to infer less.
         pat1.putAttachment(InferredGadtConstraints, ctx.gadt)
-      if (pt1.isValueType) // insert a cast if body does not conform to expected type if we disregard gadt bounds
+      if pt1.isValueType then // insert a cast if body does not conform to expected type if we disregard gadt bounds
         body1 = body1.ensureConforms(pt1)(using originalCtx)
-      val nni = pat1.notNullInfo.seq(
-        guard1.notNullInfoIf(false).alt(
-          guard1.notNullInfoIf(true).seq(body1.notNullInfo)
-        )
-      )
+      val nni = pat1.notNullInfo
+        .seq(guard1.notNullInfoIf(false).alt(guard1.notNullInfoIf(true)))
+        .seq(body1.notNullInfo)
       assignType(cpy.CaseDef(tree)(pat1, guard1, body1), pat1, body1).withNotNullInfo(nni)
     }
 
@@ -2048,16 +2046,25 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       untpd.Block(makeCanThrow(capabilityProof), expr)
 
   def typedTry(tree: untpd.Try, pt: Type)(using Context): Try = {
+    // We want to type check tree.expr first to comput NotNullInfo, but `addCanThrowCapabilities`
+    // uses the types of patterns in `tree.cases` to determine the capabilities.
+    // Hence, we create a copy of cases with empty body and type check that first, then type check
+    // the rest of the tree in order.
+    val casesEmptyBody1 = tree.cases.mapconserve(cpy.CaseDef(_)(body = EmptyTree))
+    val casesEmptyBody2 = typedCases(casesEmptyBody1, EmptyTree, defn.ThrowableType, WildcardType)
+
     val expr2 :: cases2x = harmonic(harmonize, pt) {
-      val cases1 = typedCases(tree.cases, EmptyTree, defn.ThrowableType, pt.dropIfProto)
-      val expr1 = typed(addCanThrowCapabilities(tree.expr, cases1), pt.dropIfProto)
+      val expr1 = typed(addCanThrowCapabilities(tree.expr, casesEmptyBody2), pt.dropIfProto)
+      val casesCtx = ctx.addNotNullInfo(expr1.notNullInfo.retractedInfo)
+      val cases1 = typedCases(tree.cases, EmptyTree, defn.ThrowableType, pt.dropIfProto)(using casesCtx)
       expr1 :: cases1
     }: @unchecked
-    val finalizer1 = typed(tree.finalizer, defn.UnitType)
     val cases2 = cases2x.asInstanceOf[List[CaseDef]]
-    val nni = expr2.notNullInfo.retractedInfo.seq(
-      cases2.map(_.notNullInfo.retractedInfo).fold(NotNullInfo.empty)(_.alt(_))
-    ).seq(finalizer1.notNullInfo)
+
+    var nni = expr2.notNullInfo.retractedInfo
+    if cases2.nonEmpty then nni = nni.seq(cases2.map(_.notNullInfo).reduce(_.alt(_)))
+    val finalizer1 = typed(tree.finalizer, defn.UnitType)(using ctx.addNotNullInfo(nni))
+    nni = nni.seq(finalizer1.notNullInfo)
     assignType(cpy.Try(tree)(expr2, cases2, finalizer1), expr2, cases2).withNotNullInfo(nni)
   }
 
