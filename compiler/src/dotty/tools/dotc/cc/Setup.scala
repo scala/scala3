@@ -570,7 +570,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 else if cls.isPureClass then
                   // is cls is known to be pure, nothing needs to be added to self type
                   selfInfo
-                else if !cls.isEffectivelySealed && !cls.baseClassHasExplicitSelfType then
+                else if !cls.isEffectivelySealed && !cls.baseClassHasExplicitNonUniversalSelfType then
                   // assume {cap} for completely unconstrained self types of publicly extensible classes
                   CapturingType(cinfo.selfType, CaptureSet.universal)
                 else
