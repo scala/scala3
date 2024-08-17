@@ -193,7 +193,6 @@ class InferExpectedTypeSuite extends BasePCSuite:
          |""".stripMargin
     )
 
-  @Ignore("Unapply is not handled correctly.")
   @Test def unapply =
     check(
       """|val _ =
