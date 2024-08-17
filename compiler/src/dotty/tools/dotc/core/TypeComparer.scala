@@ -3133,9 +3133,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   /** The trace of comparison operations when performing `op` */
   def explained[T](op: ExplainingTypeComparer => T, header: String = "Subtype trace:", short: Boolean)(using Context): String =
-    val cmp = explainingTypeComparer(short)
-    inSubComparer(cmp)(op)
-    cmp.lastTrace(header)
+    explaining(cmp => { op(cmp); cmp.lastTrace(header) }, short)
+
+  def explaining[T](op: ExplainingTypeComparer => T, short: Boolean)(using Context): T =
+    inSubComparer(explainingTypeComparer(short))(op)
 
   def reduceMatchWith[T](op: MatchReducer => T)(using Context): T =
     inSubComparer(matchReducer)(op)
@@ -3304,6 +3305,9 @@ object TypeComparer {
 
   def explained[T](op: ExplainingTypeComparer => T, header: String = "Subtype trace:", short: Boolean = false)(using Context): String =
     comparing(_.explained(op, header, short))
+
+  def explaining[T](op: ExplainingTypeComparer => T, short: Boolean = false)(using Context): T =
+    comparing(_.explaining(op, short))
 
   def reduceMatchWith[T](op: MatchReducer => T)(using Context): T =
     comparing(_.reduceMatchWith(op))
@@ -3729,7 +3733,7 @@ class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeCompa
   override def recur(tp1: Type, tp2: Type): Boolean =
     def moreInfo =
       if Config.verboseExplainSubtype || ctx.settings.verbose.value
-      then s" ${tp1.getClass} ${tp2.getClass}"
+      then s" ${tp1.className} ${tp2.className}"
       else ""
     val approx = approxState
     def approxStr = if short then "" else approx.show
