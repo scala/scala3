@@ -55,7 +55,6 @@ class InferExpectedTypeSuite extends BasePCSuite:
          |""".stripMargin
     )
 
-  @Ignore("Not handled correctly.")
   @Test def list =
     check(
       """|val i: List[Int] = List(@@)
