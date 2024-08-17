@@ -26,7 +26,7 @@ class InferExpectedTypeSuite extends BasePCSuite:
       EmptyCancelToken
     )
     presentationCompiler.asInstanceOf[ScalaPresentationCompiler].inferExpectedType(offsetParams).get().asScala match {
-      case Some(value) => assertNoDiff(value, expectedType)
+      case Some(value) => assertNoDiff(expectedType, value)
       case None => fail("Empty result.")
     }
 
@@ -233,6 +233,15 @@ class InferExpectedTypeSuite extends BasePCSuite:
     )
 
   @Ignore("Generic functions are not handled correctly.")
+  @Test def map =
+    check(
+      """|val _ : List[Int] = List().map(_ => @@)
+         |""".stripMargin,
+      """|Int
+         |""".stripMargin
+    )
+
+  @Ignore("Generic functions are not handled correctly.")
   @Test def `for-comprehension` =
     check(
       """|val _ : List[Int] =
@@ -260,7 +269,7 @@ class InferExpectedTypeSuite extends BasePCSuite:
   @Test def `bounds-1` =
     check(
       """|trait Foo
-         |def foo[T <: Foo](a: Foo): Boolean = ???
+         |def foo[T <: Foo](a: T): Boolean = ???
          |val _ = foo(@@)
          |""".stripMargin,
       """|<: Foo
@@ -271,7 +280,7 @@ class InferExpectedTypeSuite extends BasePCSuite:
   @Test def `bounds-2` =
     check(
       """|trait Foo
-         |def foo[T :> Foo](a: Foo): Boolean = ???
+         |def foo[T >: Foo](a: T): Boolean = ???
          |val _ = foo(@@)
          |""".stripMargin,
       """|:> Foo
