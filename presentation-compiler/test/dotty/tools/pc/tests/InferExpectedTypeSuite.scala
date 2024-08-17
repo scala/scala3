@@ -252,40 +252,36 @@ class InferExpectedTypeSuite extends BasePCSuite:
     )
 
 // bounds
-  @Ignore("Bounds are not handled correctly.")
   @Test def any =
     check(
       """|trait Foo
          |def foo[T](a: T): Boolean = ???
          |val _ = foo(@@)
          |""".stripMargin,
-      """|<: Any
+      """|Any
          |""".stripMargin
     )
 
-  @Ignore("Bounds are not handled correctly.")
   @Test def `bounds-1` =
     check(
       """|trait Foo
          |def foo[T <: Foo](a: T): Boolean = ???
          |val _ = foo(@@)
          |""".stripMargin,
-      """|<: Foo
+      """|Foo
          |""".stripMargin
     )
 
-  @Ignore("Bounds are not handled correctly.")
   @Test def `bounds-2` =
     check(
       """|trait Foo
          |def foo[T >: Foo](a: T): Boolean = ???
          |val _ = foo(@@)
          |""".stripMargin,
-      """|:> Foo
-         |""".stripMargin
+      """|Foo
+         |""".stripMargin // ideally Any (maybe?)
     )
 
-  @Ignore("Bounds are not handled correctly.")
   @Test def `bounds-3` =
     check(
       """|trait A
@@ -294,6 +290,6 @@ class InferExpectedTypeSuite extends BasePCSuite:
          |def roo[F >: C <: A](f: F) = ???
          |val kjk = roo(@@)
          |""".stripMargin,
-      """|>: C <: A
-         |""".stripMargin
+      """|C
+         |""".stripMargin // ideally A
     )
