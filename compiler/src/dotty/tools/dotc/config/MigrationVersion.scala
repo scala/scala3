@@ -6,46 +6,35 @@ import SourceVersion.*
 import Feature.*
 import core.Contexts.Context
 
-class MigrationVersion(
-    val warnFrom: SourceVersion,
-    val errorFrom: SourceVersion):
+enum MigrationVersion(val warnFrom: SourceVersion, val errorFrom: SourceVersion):
+  case Scala2to3 extends MigrationVersion(`3.0`, `3.0`)
+  case OverrideValParameter extends MigrationVersion(`3.0`, future)
+  // we tighten for-comprehension without `case` to error in 3.4,
+  // but we keep pat-defs as warnings for now ("@unchecked"),
+  // until we propose an alternative way to assert exhaustivity to the typechecker.
+  case ForComprehensionPatternWithoutCase extends MigrationVersion(`3.2`,  `3.4`)
+  case ForComprehensionUncheckedPathDefs extends MigrationVersion(`3.2`,  future)
+
+  case NonLocalReturns extends MigrationVersion(`3.2`, future)
+  case AscriptionAfterPattern extends MigrationVersion(`3.3`, future)
+  case ExplicitContextBoundArgument extends MigrationVersion(`3.4`, `3.5`)
+  case AlphanumericInfix extends MigrationVersion(`3.4`, future)
+  case RemoveThisQualifier extends MigrationVersion(`3.4`, future)
+  case UninitializedVars extends MigrationVersion(`3.4`, future)
+  case VarargSpliceAscription extends MigrationVersion(`3.4`, future)
+  case WildcardType extends MigrationVersion(`3.4`, future)
+  case WithOperator extends MigrationVersion(`3.4`, future)
+  case FunctionUnderscore extends MigrationVersion(`3.4`, future)
+  case ImportWildcard extends MigrationVersion(future, future)
+  case ImportRename extends MigrationVersion(future, future)
+  case ParameterEnclosedByParenthesis extends MigrationVersion(future, future)
+  case XmlLiteral extends MigrationVersion(future, future)
+
   require(warnFrom.ordinal <= errorFrom.ordinal)
 
   def needsPatch(using Context): Boolean =
     sourceVersion.isMigrating && sourceVersion.isAtLeast(warnFrom)
 
-  def patchFrom: SourceVersion =
-    warnFrom.prevMigrating
-
-object MigrationVersion:
-
-  val Scala2to3 = MigrationVersion(`3.0`, `3.0`)
-
-  val OverrideValParameter = MigrationVersion(`3.0`, future)
-
-  // we tighten for-comprehension without `case` to error in 3.4,
-  // but we keep pat-defs as warnings for now ("@unchecked"),
-  // until we propose an alternative way to assert exhaustivity to the typechecker.
-  val ForComprehensionPatternWithoutCase = MigrationVersion(`3.2`,  `3.4`)
-  val ForComprehensionUncheckedPathDefs = MigrationVersion(`3.2`,  future)
-
-  val NonLocalReturns = MigrationVersion(`3.2`, future)
-
-  val AscriptionAfterPattern = MigrationVersion(`3.3`, future)
-
-  val ExplicitContextBoundArgument = MigrationVersion(`3.4`, `3.5`)
-
-  val AlphanumericInfix = MigrationVersion(`3.4`, future)
-  val RemoveThisQualifier = MigrationVersion(`3.4`, future)
-  val UninitializedVars = MigrationVersion(`3.4`, future)
-  val VarargSpliceAscription = MigrationVersion(`3.4`, future)
-  val WildcardType = MigrationVersion(`3.4`, future)
-  val WithOperator = MigrationVersion(`3.4`, future)
-  val FunctionUnderscore = MigrationVersion(`3.4`, future)
-
-  val ImportWildcard = MigrationVersion(future, future)
-  val ImportRename = MigrationVersion(future, future)
-  val ParameterEnclosedByParenthesis = MigrationVersion(future, future)
-  val XmlLiteral = MigrationVersion(future, future)
+  def patchFrom: SourceVersion = warnFrom.prevMigrating
 
 end MigrationVersion
