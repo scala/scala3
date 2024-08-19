@@ -12,7 +12,6 @@ import liqp.tags.Tag
 import scala.language.dynamics
 import dotty.tools.scaladoc.site.helpers.{ConfigLoader}
 import org.yaml.snakeyaml.Yaml
-
 class LanguagePickerTag extends Tag("language_picker") {
 
   override def render(
@@ -31,12 +30,12 @@ class LanguagePickerTag extends Tag("language_picker") {
     println(s"Raw languages argument: $rawArgument")
 
     // Determine if the argument is a variable reference or a literal string
-    val languagesArgString = if (rawArgument.startsWith("page.")) {
+    val languagesArgString = if (rawArgument.startsWith("site.")) {
       // Extract the variable name and fetch its value from the context
-      val variableName = rawArgument.stripPrefix("page.")
+      val variableName = rawArgument.stripPrefix("site.")
       val siteData = context
         .getVariables()
-        .get("page")
+        .get("site")
         .asInstanceOf[java.util.Map[String, Any]]
       val variableValue = siteData.get(variableName) match {
         case value: String => value
@@ -49,6 +48,12 @@ class LanguagePickerTag extends Tag("language_picker") {
     } else {
       // Treat the argument as a literal string
       rawArgument
+    }
+
+    // Early return if the languages argument is empty
+    if (languagesArgString.isEmpty) {
+      println("Languages argument is empty, not rendering anything.")
+      return ""
     }
 
     println(s"Language argument string: $languagesArgString")
