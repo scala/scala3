@@ -4,12 +4,12 @@ import java.io.File
 import org.yaml.snakeyaml.Yaml
 import scala.io.Source
 import scala.jdk.CollectionConverters._
-import scala.collection.mutable
+import java.util.{LinkedHashMap, List, Map}
 
 class DataLoader {
 
-  def loadDataDirectory(directoryPath: String): mutable.LinkedHashMap[String, Any] = {
-    val dataMap = mutable.LinkedHashMap[String, Any]()
+  def loadDataDirectory(directoryPath: String): LinkedHashMap[String, Object] = {
+    val dataMap = new LinkedHashMap[String, Object]()
     try {
       loadDirectory(new File(directoryPath), dataMap)
     } catch {
@@ -19,7 +19,7 @@ class DataLoader {
     dataMap
   }
 
-  private def loadDirectory(directory: File, dataMap: mutable.LinkedHashMap[String, Any]): Unit = {
+  private def loadDirectory(directory: File, dataMap: LinkedHashMap[String, Object]): Unit = {
     if (directory.exists() && directory.isDirectory) {
       for (file <- directory.listFiles()) {
         if (file.isDirectory) {
@@ -33,28 +33,31 @@ class DataLoader {
     }
   }
 
-  private def readYamlFile(file: File, dataMap: mutable.LinkedHashMap[String, Any]): Unit = {
+  private def readYamlFile(file: File, dataMap: LinkedHashMap[String, Object]): Unit = {
     try {
       val yaml = new Yaml()
-      val yamlContents: Any = yaml.load(Source.fromFile(file).mkString)
+      val yamlContents: Object = convertToJava(yaml.load(Source.fromFile(file).mkString))
       val fileName = file.getName.stripSuffix(".yaml").stripSuffix(".yml")
 
-      val parsedContents = yamlContents match {
-        case map: java.util.Map[_, _] =>
-          println(s"Parsed ${file.getName} as Map")
-          map.asScala.toMap
-        case list: java.util.List[_] =>
-          println(s"Parsed ${file.getName} as List")
-          list.asScala.toList
-        case other =>
-          println(s"Parsed ${file.getName} as ${other.getClass}")
-          other
-      }
-
-      dataMap.put(fileName, parsedContents)
+      dataMap.put(fileName, yamlContents)
     } catch {
       case e: Exception =>
         println(s"Error reading YAML file '${file.getName}': ${e.getMessage}")
+    }
+  }
+
+  private def convertToJava(value: Any): Object = {
+    value match {
+      case map: java.util.Map[_, _] =>
+        val javaMap = new LinkedHashMap[String, Object]()
+        map.asScala.foreach { case (k, v) => javaMap.put(k.toString, convertToJava(v)) }
+        javaMap.asInstanceOf[Object]
+      case list: java.util.List[_] =>
+        val javaList = new java.util.ArrayList[Object]()
+        list.asScala.foreach(v => javaList.add(convertToJava(v)))
+        javaList.asInstanceOf[Object]
+      case other =>
+        other.asInstanceOf[Object]
     }
   }
 }
