@@ -891,14 +891,26 @@ object Checking {
     def annotationHasValueField: Boolean =
       sym.info.decls.exists(_.name == nme.value)
 
+    lazy val annotationFieldNamesByIdx: Map[Int, TermName] =
+      sym.info.decls.filter: decl =>
+        decl.is(Method) && decl.name != nme.CONSTRUCTOR
+      .map(_.name.toTermName)
+      .zipWithIndex
+      .map(_.swap)
+      .toMap
+
     annot match
       case untpd.Apply(fun, List(param)) if !param.isInstanceOf[untpd.NamedArg] && annotationHasValueField =>
         untpd.cpy.Apply(annot)(fun, List(untpd.cpy.NamedArg(param)(nme.value, param)))
       case untpd.Apply(_, params) =>
         for
-          param <- params
+          (param, paramIdx) <- params.zipWithIndex
           if !param.isInstanceOf[untpd.NamedArg]
-        do report.error(NonNamedArgumentInJavaAnnotation(), param)
+        do
+          report.errorOrMigrationWarning(NonNamedArgumentInJavaAnnotation(), param, MigrationVersion.NonNamedArgumentInJavaAnnotation)
+          if MigrationVersion.NonNamedArgumentInJavaAnnotation.needsPatch then
+            annotationFieldNamesByIdx.get(paramIdx).foreach: paramName =>
+              patch(param.span, untpd.cpy.NamedArg(param)(paramName, param).show)
         annot
       case _ => annot
   end checkNamedArgumentForJavaAnnotation
