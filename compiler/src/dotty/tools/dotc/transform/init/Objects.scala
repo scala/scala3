@@ -263,12 +263,11 @@ class Objects(using Context @constructorOnly):
       given Cache.Data = new Cache.Data
 
       @tailrec
-      def iterate()(using Context): ObjectRef =
+      def iterate()(using Context, Heap.MutableData): ObjectRef =
         count += 1
 
         given Trace = Trace.empty.add(classSym.defTree)
         given Env.Data = Env.emptyEnv(tpl.constr.symbol)
-        given Heap.MutableData = Heap.empty()
         given returns: Returns.Data = Returns.empty()
         given regions: Regions.Data = Regions.empty // explicit name to avoid naming conflict
 
@@ -281,8 +280,9 @@ class Objects(using Context @constructorOnly):
         }
 
         val hasError = ctx.reporter.pendingMessages.nonEmpty
-        if cache.hasChanged && !hasError then
+        if (cache.hasChanged || Heap.hasChanged()) && !hasError then
           cache.prepareForNextIteration()
+          Heap.prepareForNextIteration()
           iterate()
         else
           data.checkedObjects += obj
@@ -290,7 +290,7 @@ class Objects(using Context @constructorOnly):
       end iterate
 
       val reporter = new StoreReporter(ctx.reporter)
-      val obj = iterate()(using ctx.fresh.setReporter(reporter))
+      val obj = iterate()(using ctx.fresh.setReporter(reporter), Heap.empty())
       for warning <- reporter.pendingMessages do
         ctx.reporter.report(warning)
 
@@ -490,15 +490,19 @@ class Objects(using Context @constructorOnly):
 
     /** Store the heap as a mutable field to avoid threading it through the program. */
     class MutableData(private[Heap] var heap: Data):
+      private[Heap] var hasChanged: Boolean = false
       private[Heap] def writeJoin(addr: Addr, value: Value): Unit =
         heap.get(addr) match
         case None =>
           heap = heap.updated(addr, value)
+          hasChanged = true
 
         case Some(current) =>
-          val value2 = value.join(current)
-          if value2 != current then
-            heap = heap.updated(addr, value2)
+          if !value.equals(current) then
+            val value2 = value.join(current)
+            if value2 != current then
+              heap = heap.updated(addr, value2)
+              hasChanged = true
     end MutableData
 
     def empty(): MutableData = new MutableData(Map.empty)
@@ -523,20 +527,25 @@ class Objects(using Context @constructorOnly):
 
     def getHeapData()(using mutable: MutableData): Data = mutable.heap
 
+    def hasChanged()(using mutable: MutableData): Boolean = mutable.hasChanged
+
+    def prepareForNextIteration()(using mutable: MutableData): Unit =
+      mutable.hasChanged = false
+
   /** Cache used to terminate the check  */
   object Cache:
-    case class Config(thisV: Value, env: Env.Data, heap: Heap.Data)
-    case class Res(value: Value, heap: Heap.Data)
+    case class Config(thisV: Value, env: Env.Data)
+    case class Res(value: Value)
 
     class Data extends Cache[Config, Res]:
       def get(thisV: Value, expr: Tree)(using Heap.MutableData, Env.Data): Option[Value] =
-        val config = Config(thisV, summon[Env.Data], Heap.getHeapData())
+        val config = Config(thisV, summon[Env.Data])
         super.get(config, expr).map(_.value)
 
       def cachedEval(thisV: ThisValue, expr: Tree, cacheResult: Boolean)(fun: Tree => Value)(using Heap.MutableData, Env.Data): Value =
-        val config = Config(thisV, summon[Env.Data], Heap.getHeapData())
-        val result = super.cachedEval(config, expr, cacheResult, default = Res(Bottom, Heap.getHeapData())) { expr =>
-          Res(fun(expr), Heap.getHeapData())
+        val config = Config(thisV, summon[Env.Data])
+        val result = super.cachedEval(config, expr, cacheResult, default = Res(Bottom)) { expr =>
+          Res(fun(expr))
         }
         result.value
   end Cache
