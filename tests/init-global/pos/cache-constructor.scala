@@ -6,4 +6,3 @@ object A:
     val b2 = new Bar()
     val b3 = new Bar()
     b3.f = 1
-    
