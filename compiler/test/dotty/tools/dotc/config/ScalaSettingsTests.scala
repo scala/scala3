@@ -81,7 +81,7 @@ class ScalaSettingsTests:
     val conf = sets.Wconf.valueIn(proc.sstate)
     val sut  = reporting.WConf.fromSettings(conf).getOrElse(???)
     val msg  = "There was a problem!".toMessage
-    val depr = new Diagnostic.DeprecationWarning(msg, util.NoSourcePosition)
+    val depr = new Diagnostic.DeprecationWarning(msg, util.NoSourcePosition, origin="")
     assertEquals(Action.Silent, sut.action(depr))
     val feat = new Diagnostic.FeatureWarning(msg, util.NoSourcePosition)
     assertEquals(Action.Error, sut.action(feat))
@@ -197,7 +197,7 @@ class ScalaSettingsTests:
     val proc = sets.processArguments(sumy, processAll = true, skipped = Nil)
     val conf = sets.Wconf.valueIn(proc.sstate)
     val msg  = "Don't use that!".toMessage
-    val depr = new Diagnostic.DeprecationWarning(msg, util.NoSourcePosition)
+    val depr = new Diagnostic.DeprecationWarning(msg, util.NoSourcePosition, origin="")
     val sut  = reporting.WConf.fromSettings(conf).getOrElse(???)
     assertEquals(Action.Silent, sut.action(depr))
 
@@ -293,7 +293,8 @@ class ScalaSettingsTests:
         util.SourcePosition(
           source = util.SourceFile.virtual(new URI("file:///some/path/file.scala"), ""),
           span = util.Spans.Span(1L)
-        )
+        ),
+        origin="",
       )
     )
     assertEquals(result, Right(reporting.Action.Error))

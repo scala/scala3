@@ -484,7 +484,9 @@ object RefChecks {
       def overrideDeprecation(what: String, member: Symbol, other: Symbol, fix: String): Unit =
         report.deprecationWarning(
           em"overriding $what${infoStringWithLocation(other)} is deprecated;\n  ${infoString(member)} should be $fix.",
-          if member.owner == clazz then member.srcPos else clazz.srcPos)
+          if member.owner == clazz then member.srcPos else clazz.srcPos,
+          origin = other.showFullName
+        )
 
       def autoOverride(sym: Symbol) =
         sym.is(Synthetic) && (
