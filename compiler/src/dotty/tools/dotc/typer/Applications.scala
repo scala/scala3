@@ -2116,7 +2116,7 @@ trait Applications extends Compatibility {
    *  Two trials: First, without implicits or SAM conversions enabled. Then,
    *  if the first finds no eligible candidates, with implicits and SAM conversions enabled.
    */
-  def resolveOverloaded(alts: List[TermRef], pt: Type)(using Context): List[TermRef] =
+  def resolveOverloaded(alts: List[TermRef], pt: Type, srcPos: SrcPos)(using Context): List[TermRef] =
     record("resolveOverloaded")
 
     /** Is `alt` a method or polytype whose result type after the first value parameter
@@ -2154,7 +2154,7 @@ trait Applications extends Compatibility {
           case Nil => chosen
           case alt2 :: Nil => alt2
           case alts2 =>
-            resolveOverloaded(alts2, pt) match {
+            resolveOverloaded(alts2, pt, srcPos) match {
               case alt2 :: Nil => alt2
               case _ => chosen
             }
@@ -2169,12 +2169,12 @@ trait Applications extends Compatibility {
             val alts0 = alts.filterConserve(_.widen.stripPoly.isImplicitMethod)
             if alts0 ne alts then return resolve(alts0)
           else if alts.exists(_.widen.stripPoly.isContextualMethod) then
-            return resolveMapped(alts, alt => stripImplicit(alt.widen), pt)
+            return resolveMapped(alts, alt => stripImplicit(alt.widen), pt, srcPos)
         case _ =>
 
-      var found = withoutMode(Mode.ImplicitsEnabled)(resolveOverloaded1(alts, pt))
+      var found = withoutMode(Mode.ImplicitsEnabled)(resolveOverloaded1(alts, pt, srcPos))
       if found.isEmpty && ctx.mode.is(Mode.ImplicitsEnabled) then
-        found = resolveOverloaded1(alts, pt)
+        found = resolveOverloaded1(alts, pt, srcPos)
       found match
         case alt :: Nil => adaptByResult(alt, alts) :: Nil
         case _ => found
@@ -2221,9 +2221,43 @@ trait Applications extends Compatibility {
    *  It might be called twice from the public `resolveOverloaded` method, once with
    *  implicits and SAM conversions enabled, and once without.
    */
-  private def resolveOverloaded1(alts: List[TermRef], pt: Type)(using Context): List[TermRef] =
+  private def resolveOverloaded1(alts: List[TermRef], pt: Type, srcPos: SrcPos)(using Context): List[TermRef] =
     trace(i"resolve over $alts%, %, pt = $pt", typr, show = true) {
     record(s"resolveOverloaded1", alts.length)
+
+    val sv = Feature.sourceVersion
+    val isOldPriorityVersion: Boolean = sv.isAtMost(SourceVersion.`3.6`)
+    val isWarnPriorityChangeVersion = sv == SourceVersion.`3.6` || sv == SourceVersion.`3.7-migration`
+
+    inline def warnOnPriorityChange(oldCands: List[TermRef], newCands: List[TermRef])(f: List[TermRef] => List[TermRef]): List[TermRef] =
+
+      def doWarn(oldChoice: String, newChoice: String): Unit =
+        val (change, whichChoice) =
+          if isOldPriorityVersion
+          then ("will change", "Current choice ")
+          else ("has changed", "Previous choice")
+
+        val msg = // uses oldCands as the list of alternatives since they should be a superset of newCands
+          em"""Overloading resolution for ${err.expectedTypeStr(pt)} between alternatives
+              | ${oldCands map (_.info)}%\n %
+              |$change.
+              |$whichChoice          : $oldChoice
+              |New choice from Scala 3.7: $newChoice"""
+
+        report.warning(msg, srcPos)
+      end doWarn
+
+      lazy val oldRes = f(oldCands)
+      val newRes = f(newCands)
+
+      if isWarnPriorityChangeVersion then (oldRes, newRes) match
+        case (oldAlt :: Nil, newAlt :: Nil) if oldAlt != newAlt => doWarn(oldAlt.info.show, newAlt.info.show)
+        case (oldAlt :: Nil, Nil) => doWarn(oldAlt.info.show, "none")
+        case (Nil, newAlt :: Nil) => doWarn("none", newAlt.info.show)
+        case _ => // neither scheme has determined an alternative
+
+      if isOldPriorityVersion then oldRes else newRes
+    end warnOnPriorityChange
 
     def isDetermined(alts: List[TermRef]) = alts.isEmpty || alts.tail.isEmpty
 
@@ -2372,7 +2406,7 @@ trait Applications extends Compatibility {
               TypeOps.boundsViolations(targs1, tp.paramInfos, _.substParams(tp, _), NoType).isEmpty
           val alts2 = alts1.filter(withinBounds)
           if isDetermined(alts2) then alts2
-          else resolveMapped(alts1, _.widen.appliedTo(targs1.tpes), pt1)
+          else resolveMapped(alts1, _.widen.appliedTo(targs1.tpes), pt1, srcPos)
 
       case pt =>
         val compat = alts.filterConserve(normalizedCompatible(_, pt, keepConstraint = false))
@@ -2430,18 +2464,18 @@ trait Applications extends Compatibility {
       candidates
     else
       val found = narrowMostSpecific(candidates)
-      if found.length <= 1 then found
+      if isDetermined(found) then found
       else
         val deepPt = pt.deepenProto
         deepPt match
           case pt @ FunProto(_, PolyProto(targs, resType)) =>
             // try to narrow further with snd argument list and following type params
-            resolveMapped(found,
-              skipParamClause(pt.typedArgs().tpes, targs.tpes), resType)
+            warnOnPriorityChange(candidates, found):
+              resolveMapped(_, skipParamClause(pt.typedArgs().tpes, targs.tpes), resType, srcPos)
           case pt @ FunProto(_, resType: FunOrPolyProto) =>
             // try to narrow further with snd argument list
-            resolveMapped(found,
-              skipParamClause(pt.typedArgs().tpes, Nil), resType)
+            warnOnPriorityChange(candidates, found):
+              resolveMapped(_, skipParamClause(pt.typedArgs().tpes, Nil), resType, srcPos)
           case _ =>
             // prefer alternatives that need no eta expansion
             val noCurried = alts.filterConserve(!resultIsMethod(_))
@@ -2449,7 +2483,7 @@ trait Applications extends Compatibility {
             if noCurriedCount == 1 then
               noCurried
             else if noCurriedCount > 1 && noCurriedCount < alts.length then
-              resolveOverloaded1(noCurried, pt)
+              resolveOverloaded1(noCurried, pt, srcPos)
             else
               // prefer alternatves that match without default parameters
               val noDefaults = alts.filterConserve(!_.symbol.hasDefaultParams)
@@ -2457,10 +2491,10 @@ trait Applications extends Compatibility {
               if noDefaultsCount == 1 then
                 noDefaults
               else if noDefaultsCount > 1 && noDefaultsCount < alts.length then
-                resolveOverloaded1(noDefaults, pt)
+                resolveOverloaded1(noDefaults, pt, srcPos)
               else if deepPt ne pt then
                 // try again with a deeper known expected type
-                resolveOverloaded1(alts, deepPt)
+                resolveOverloaded1(alts, deepPt, srcPos)
               else
                 candidates
     }
@@ -2494,7 +2528,7 @@ trait Applications extends Compatibility {
    *  type is mapped with `f`, alternatives with non-existing types or symbols are dropped, and the
    *  expected type is `pt`. Map the results back to the original alternatives.
    */
-  def resolveMapped(alts: List[TermRef], f: TermRef => Type, pt: Type)(using Context): List[TermRef] =
+  def resolveMapped(alts: List[TermRef], f: TermRef => Type, pt: Type, srcPos: SrcPos)(using Context): List[TermRef] =
     val reverseMapping = alts.flatMap { alt =>
       val t = f(alt)
       if t.exists && alt.symbol.exists then
@@ -2517,7 +2551,7 @@ trait Applications extends Compatibility {
     }
     val mapped = reverseMapping.map(_._1)
     overload.println(i"resolve mapped: ${mapped.map(_.widen)}%, % with $pt")
-    resolveOverloaded(mapped, pt)(using ctx.retractMode(Mode.SynthesizeExtMethodReceiver))
+    resolveOverloaded(mapped, pt, srcPos)(using ctx.retractMode(Mode.SynthesizeExtMethodReceiver))
       .map(reverseMapping.toMap)
 
   /** Try to typecheck any arguments in `pt` that are function values missing a
