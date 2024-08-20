@@ -950,7 +950,6 @@ class Objects(using Context @constructorOnly):
 
         val instance = OfClass(klass, outerWidened, ctor, args.map(_.value), envWidened)
         callConstructor(instance, ctor, args)
-        instance
 
     case ValueSet(values) =>
       values.map(ref => instantiate(ref, klass, ctor, args)).join
