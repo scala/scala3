@@ -1583,17 +1583,17 @@ class Objects(using Context @constructorOnly):
   def widenEscapedValue(value: Value, annotatedTree: Tree): Contextual[Value] =
     def parseAnnotation: Option[Int] =
       annotatedTree.tpe.getAnnotation(defn.InitWidenAnnot).flatMap: annot =>
-          annot.argument(0).get match
-            case arg @ Literal(c: Constants.Constant) =>
-              val height = c.intValue
-              if height < 0 then
-                report.warning("The argument should be positive", arg)
-                None
-              else
-                Some(height)
-            case arg =>
-              report.warning("The argument should be a constant integer value", arg)
+        annot.argument(0).get match
+          case arg @ Literal(c: Constants.Constant) =>
+            val height = c.intValue
+            if height < 0 then
+              report.warning("The argument should be positive", arg)
               None
+            else
+              Some(height)
+          case arg =>
+            report.warning("The argument should be a constant integer value", arg)
+            None
     end parseAnnotation
 
     parseAnnotation match
