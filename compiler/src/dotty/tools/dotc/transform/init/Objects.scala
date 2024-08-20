@@ -908,7 +908,10 @@ class Objects(using Context @constructorOnly):
     Bottom
   }
 
-  /** Handle new expression `new p.C(args)`.
+  /**
+   * Handle new expression `new p.C(args)`.
+   * The actual instance might be cached without running the constructor. 
+   * See tests/init-global/pos/cache-constructor.scala
    *
    * @param outer       The value for `p`.
    * @param klass       The symbol of the class `C`.
