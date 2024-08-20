@@ -910,7 +910,7 @@ object Checking {
           report.errorOrMigrationWarning(NonNamedArgumentInJavaAnnotation(), param, MigrationVersion.NonNamedArgumentInJavaAnnotation)
           if MigrationVersion.NonNamedArgumentInJavaAnnotation.needsPatch then
             annotationFieldNamesByIdx.get(paramIdx).foreach: paramName =>
-              patch(param.span, untpd.cpy.NamedArg(param)(paramName, param).show)
+              patch(param.span.startPos, s"$paramName = ")
         annot
       case _ => annot
   end checkNamedArgumentForJavaAnnotation
