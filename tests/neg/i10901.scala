@@ -42,10 +42,10 @@ object BugExp4Point2D {
     val x = IntT
     val y = DoubleT
 
-    val pos1: Point2D[Int,Double] = x º y       // ok
+    val pos1: Point2D[Int,Double] = x º y       // error
     val pos2: Point2D[Int,Double] = 100 º 200.1 // ok
     val pos3: Point2D[Int,Double] = 101 º y     // ok
-    val pos4: Point2D[Int,Double] = x º 201.1   // ok
+    val pos4: Point2D[Int,Double] = x º 201.1   // error
 
   }
 }
