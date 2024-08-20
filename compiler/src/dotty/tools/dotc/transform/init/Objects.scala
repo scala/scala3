@@ -116,7 +116,16 @@ class Objects(using Context @constructorOnly):
    * regions ::= List(sourcePosition)
    */
 
+  import Heap.Addr
+
   sealed abstract class Value:
+    /** Flatten component values or addresses (non-recursive)
+     *
+     *  If the value does not contain a component, return an empty collection.
+     */
+    def flatten: Iterable[Value | Addr]
+
+    /** Display the value  */
     def show(using Context): String
 
   /** ValueElement are elements that can be contained in a RefSet */
@@ -166,6 +175,8 @@ class Objects(using Context @constructorOnly):
       assert(!outers.contains(cls), "Outer already set: " + cls)
       outers(cls) = value
     }
+
+    def flatten: Iterable[Value | Addr] = vals.values ++ vars.values ++ outers.values
 
   /** A reference to a static object */
   case class ObjectRef(klass: ClassSymbol)
@@ -218,12 +229,16 @@ class Objects(using Context @constructorOnly):
     val addr: Heap.Addr = Heap.arrayAddr(regions, owner)
     def show(using Context) = "OfArray(owner = " + owner.show + ")"
 
+    def flatten: Iterable[Value | Addr] = Vector(addr)
+
   /**
    * Represents a lambda expression
    * @param klass The enclosing class of the anonymous function's creation site
    */
   case class Fun(code: Tree, thisV: ThisValue, klass: ClassSymbol, env: Env.Data) extends ValueElement:
     def show(using Context) = "Fun(" + code.show + ", " + thisV.show + ", " + klass.show + ")"
+
+    def flatten: Iterable[Value | Addr] = env.flatten ++ Vector(thisV)
 
   /**
    * Represents a set of values
@@ -233,12 +248,16 @@ class Objects(using Context @constructorOnly):
   case class ValueSet(values: ListSet[ValueElement]) extends Value:
     def show(using Context) = values.map(_.show).mkString("[", ",", "]")
 
+    def flatten: Iterable[Value | Addr] = values
+
   /** A cold alias which should not be used during initialization.
    *
    *  Cold is not ValueElement since RefSet containing Cold is equivalent to Cold
    */
   case object Cold extends Value:
     def show(using Context) = "Cold"
+
+    def flatten: Iterable[Value | Addr] = Vector()
 
   val Bottom = ValueSet(ListSet.empty)
 
@@ -335,6 +354,8 @@ class Objects(using Context @constructorOnly):
 
       def show(using Context): String
 
+      def flatten: Iterable[Value | Addr]
+
     /** Local environments can be deeply nested, therefore we need `outer`.
      *
      *  For local variables in rhs of class field definitions, the `meth` is the primary constructor.
@@ -362,6 +383,9 @@ class Objects(using Context @constructorOnly):
       def widen(height: Int)(using Context): Data =
         new LocalEnv(params.map(_ -> _.widen(height)), meth, outer.widen(height))(this.vals, this.vars)
 
+      def flatten: Iterable[Value | Addr] =
+        params.values ++ outer.flatten ++ valsMap.values ++ varsMap.values
+
       def show(using Context) =
         "owner: " + meth.show + "\n" +
         "params: " + params.map(_.show + " ->" + _.show).mkString("{", ", ", "}") + "\n" +
@@ -381,6 +405,8 @@ class Objects(using Context @constructorOnly):
         throw new RuntimeException("Invalid usage of non-existent env")
 
       def widen(height: Int)(using Context): Data = this
+
+      def flatten: Iterable[Value | Addr] = Vector()
 
       def show(using Context): String = "NoEnv"
     end NoEnv
@@ -489,7 +515,7 @@ class Objects(using Context @constructorOnly):
     opaque type Data = Map[Addr, Value]
 
     /** Store the heap as a mutable field to avoid threading it through the program. */
-    class MutableData(private[Heap] var heap: Data):
+    class MutableData(private[Heap] var heap: Data, private[Heap] var changeSet: Set[Addr]):
       private[Heap] def writeJoin(addr: Addr, value: Value): Unit =
         heap.get(addr) match
         case None =>
@@ -499,9 +525,10 @@ class Objects(using Context @constructorOnly):
           val value2 = value.join(current)
           if value2 != current then
             heap = heap.updated(addr, value2)
+            changeSet = changeSet + addr
     end MutableData
 
-    def empty(): MutableData = new MutableData(Map.empty)
+    def empty(): MutableData = new MutableData(Map.empty, Set.empty)
 
     def contains(addr: Addr)(using mutable: MutableData): Boolean =
       mutable.heap.contains(addr)
@@ -523,7 +550,54 @@ class Objects(using Context @constructorOnly):
 
     def getHeapData()(using mutable: MutableData): Data = mutable.heap
 
-    def setHeap(newHeap: Data)(using mutable: MutableData): Unit = mutable.heap = newHeap
+    def getChangeSet()(using mutable: MutableData): Set[Addr] = mutable.changeSet
+
+    def update(heap: Data, changeSet: Set[Addr])(using mutable: MutableData): Unit =
+      mutable.heap = heap
+      mutable.changeSet = changeSet
+
+    /** Perform garbage collection on the abstract heap.
+     *
+     *  A heap address created after evaluating an expression can be reclaimed
+     *  if it is not reachable from the resulting value of the expression and
+     *  not reachable from the values of `heapAfter` for keys of `heapBefore`.
+     *
+     *  This optimization can help avoid populating the heap with local mutable
+     *  variables that do not leak.
+     *
+     *  GC may only be performed from method call contexts --- otherwise, we need
+     *  to consider values of the current local environment as well.
+     */
+    def gc(value: Value, heapBefore: Data, heapAfter: Data, changeSet: Set[Addr]): Data =
+      /** Is the address reachable from the given value */
+      def isReachable(value: Value, addr: Addr): Boolean =
+        val visited = mutable.Set.empty[Value]
+        def recur(value: Value): Boolean =
+          value.flatten.exists:
+            case addr1: Addr =>
+              // Do not check the content of the address --- that is handled by the change set.
+              addr1 == addr
+
+            case value2: Value =>
+              if visited.contains(value2) then false
+              else
+                visited += value2
+                recur(value2)
+        end recur
+        recur(value)
+
+      def doesNotLeakToPreviousHeap(addrToCheck: Addr) = changeSet.forall: addr =>
+        !heapBefore.contains(addr) || !isReachable(heapAfter(addr), addrToCheck)
+
+      val unreachableKeys = heapAfter.keys.filter: addr =>
+        // println("checking " + addr)
+        !heapBefore.contains(addr)
+        && !isReachable(value, addr)
+        && doesNotLeakToPreviousHeap(addr)
+
+      // println("collected keys = " + unreachableKeys)
+
+      heapAfter -- unreachableKeys
 
   /** Cache used to terminate the check  */
   object Cache:
@@ -536,9 +610,21 @@ class Objects(using Context @constructorOnly):
         super.get(config, expr).map(_.value)
 
       def cachedEval(thisV: ThisValue, expr: Tree, cacheResult: Boolean)(fun: Tree => Value)(using Heap.MutableData, Env.Data): Value =
-        val config = Config(thisV, summon[Env.Data], Heap.getHeapData())
-        val result = super.cachedEval(config, expr, cacheResult, default = Res(Bottom, Heap.getHeapData())) { expr =>
-          Res(fun(expr), Heap.getHeapData())
+        val env = summon[Env.Data]
+        val config = Config(thisV, env, Heap.getHeapData())
+        val heapBefore = Heap.getHeapData()
+        val changeSetBefore = Heap.getChangeSet()
+        val result = super.cachedEval(config, expr, cacheResult, default = Res(Bottom, heapBefore)) { expr =>
+          Heap.update(heapBefore, changeSet = Set.empty)
+          val value = fun(expr)
+          val heapAfter = Heap.getHeapData()
+          val changeSetNew = Heap.getChangeSet()
+          // Perform garbage collection
+          val heapGC =
+            if cacheResult then Heap.gc(value, heapBefore, heapAfter, changeSetNew)
+            else heapAfter
+          Heap.update(heapGC, changeSetNew ++ changeSetBefore)
+          Res(value, heapAfter)
         }
         Heap.setHeap(result.heap)
         result.value
