@@ -43,6 +43,8 @@ object MigrationVersion:
   val WithOperator = MigrationVersion(`3.4`, future)
   val FunctionUnderscore = MigrationVersion(`3.4`, future)
 
+  val NonNamedArgumentInJavaAnnotation = MigrationVersion(`3.6`, `3.6`)
+
   val ImportWildcard = MigrationVersion(future, future)
   val ImportRename = MigrationVersion(future, future)
   val ParameterEnclosedByParenthesis = MigrationVersion(future, future)
