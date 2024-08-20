@@ -76,6 +76,7 @@ class CompilationTests {
       compileFile("tests/rewrites/i17187.scala", unindentOptions.and("-rewrite")),
       compileFile("tests/rewrites/i17399.scala", unindentOptions.and("-rewrite")),
       compileFile("tests/rewrites/i20002.scala", defaultOptions.and("-indent", "-rewrite")),
+      compileDir("tests/rewrites/annotation-named-pararamters", defaultOptions.and("-rewrite", "-source:3.6-migration")),
     ).checkRewrites()
   }
 

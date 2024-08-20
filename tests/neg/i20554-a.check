@@ -2,6 +2,7 @@
 3 |@Annotation(3, 4) // error // error : Java defined annotation should be called with named arguments
   |            ^
   |            Named arguments are required for Java defined annotations
+  |            This can be rewritten automatically under -rewrite -source 3.6-migration.
   |---------------------------------------------------------------------------------------------------------------------
   | Explanation (enabled by `-explain`)
   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -23,6 +24,7 @@
 3 |@Annotation(3, 4) // error // error : Java defined annotation should be called with named arguments
   |               ^
   |               Named arguments are required for Java defined annotations
+  |               This can be rewritten automatically under -rewrite -source 3.6-migration.
   |---------------------------------------------------------------------------------------------------------------------
   | Explanation (enabled by `-explain`)
   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

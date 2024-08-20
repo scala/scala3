@@ -35,6 +35,7 @@ import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourcePosition
 import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.util.SourceFile
+import dotty.tools.dotc.config.SourceVersion
 import DidYouMean.*
 
 /**  Messages
@@ -3293,6 +3294,7 @@ class NonNamedArgumentInJavaAnnotation(using Context) extends SyntaxMsg(NonNamed
 
   override protected def msg(using Context): String = 
     "Named arguments are required for Java defined annotations"
+    + Message.rewriteNotice("This", version = SourceVersion.`3.6-migration`)
 
   override protected def explain(using Context): String = 
     i"""Starting from Scala 3.6.0, named arguments are required for Java defined annotations.

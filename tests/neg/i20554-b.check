@@ -2,6 +2,7 @@
 3 |@SimpleAnnotation(1) // error: the parameters is not named 'value'
   |                  ^
   |                  Named arguments are required for Java defined annotations
+  |                  This can be rewritten automatically under -rewrite -source 3.6-migration.
   |---------------------------------------------------------------------------------------------------------------------
   | Explanation (enabled by `-explain`)
   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
