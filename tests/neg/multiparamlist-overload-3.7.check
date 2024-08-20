@@ -1,0 +1,25 @@
+-- [E007] Type Mismatch Error: tests/neg/multiparamlist-overload-3.7.scala:33:21 ---------------------------------------
+33 |    val r = f(new B)(new A) // error since resolves to R2 in 3.7 (and 3.6), as expected
+   |                     ^^^^^
+   |                     Found:    A
+   |                     Required: B
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E134] Type Error: tests/neg/multiparamlist-overload-3.7.scala:40:12 ------------------------------------------------
+40 |    val r = f(new B)(new A) // error since resolves to R2 in 3.7, as in Part1
+   |            ^
+   |            None of the overloaded alternatives of method f in object Part2 with types
+   |             (x: B)(y: C): R3
+   |             (x: B)(y: B): R2
+   |             (x: A)(y: A): R1
+   |            match arguments (B)(A)
+-- Warning: tests/neg/multiparamlist-overload-3.7.scala:20:10 ----------------------------------------------------------
+20 |  val r = f(new B)(new C) // resolves to R3 in 3.7
+   |          ^
+   |          Overloading resolution for arguments (B)(C) between alternatives
+   |           (x: B)(y: B): R3
+   |           (x: B)(y: A): R2
+   |           (x: A)(y: C): R1
+   |          has changed.
+   |          Previous choice          : (x: A)(y: C): R1
+   |          New choice from Scala 3.7: (x: B)(y: B): R3
