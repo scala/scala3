@@ -908,7 +908,10 @@ class Objects(using Context @constructorOnly):
     Bottom
   }
 
-  /** Handle new expression `new p.C(args)`.
+  /**
+   * Handle new expression `new p.C(args)`.
+   * The actual instance might be cached without running the constructor. 
+   * See tests/init-global/pos/cache-constructor.scala
    *
    * @param outer       The value for `p`.
    * @param klass       The symbol of the class `C`.
@@ -950,7 +953,6 @@ class Objects(using Context @constructorOnly):
 
         val instance = OfClass(klass, outerWidened, ctor, args.map(_.value), envWidened)
         callConstructor(instance, ctor, args)
-        instance
 
     case ValueSet(values) =>
       values.map(ref => instantiate(ref, klass, ctor, args)).join
