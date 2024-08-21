@@ -1,4 +1,4 @@
-import scala.language.`3.7-migration`
+import scala.language.`3.8-migration`
 
 class A
 class B extends A
@@ -17,7 +17,7 @@ object Test1:
   def f(x: B)(y: A) = new R2
   def f(x: B)(y: B) = new R3
 
-  val r = f(new B)(new C) // resolves to R3 in 3.7
+  val r = f(new B)(new C) // resolves to: R1 in 3.7, R3 in 3.8
   val _: R3 = r
 end Test1
 
@@ -30,13 +30,13 @@ object Test2:
     def f(x: A)(y: A) = new R1
     def f(x: B)(y: B) = new R2
 
-    val r = f(new B)(new A) // error since resolves to R2 in 3.7 (and 3.6), as expected
+    val r = f(new B)(new A) // error, since resolves to R2 in both 3.7 and 3.8, as expected
 
   object Part2:
     def f(x: A)(y: A) = new R1
     def f(x: B)(y: B) = new R2
     def f(x: B)(y: C) = new R3
 
-    val r = f(new B)(new A) // error since resolves to R2 in 3.7, as in Part1
+    val r = f(new B)(new A) // error since resolves to R2 in 3.8 as in Part1 (was R1 in 3.7)
 
 end Test2

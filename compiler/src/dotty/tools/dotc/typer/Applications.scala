@@ -2226,10 +2226,12 @@ trait Applications extends Compatibility {
     record(s"resolveOverloaded1", alts.length)
 
     val sv = Feature.sourceVersion
-    val isOldPriorityVersion: Boolean = sv.isAtMost(SourceVersion.`3.6`)
-    val isWarnPriorityChangeVersion = sv == SourceVersion.`3.6` || sv == SourceVersion.`3.7-migration`
+    val isOldPriorityVersion: Boolean = sv.isAtMost(SourceVersion.`3.7`)
+    val isWarnPriorityChangeVersion = sv == SourceVersion.`3.7` || sv == SourceVersion.`3.8-migration`
 
-    inline def warnOnPriorityChange(oldCands: List[TermRef], newCands: List[TermRef])(f: List[TermRef] => List[TermRef]): List[TermRef] =
+    def warnOnPriorityChange(oldCands: List[TermRef], newCands: List[TermRef])(f: List[TermRef] => List[TermRef]): List[TermRef] =
+      lazy val oldRes = f(oldCands)
+      val newRes = f(newCands)
 
       def doWarn(oldChoice: String, newChoice: String): Unit =
         val (change, whichChoice) =
@@ -2237,7 +2239,7 @@ trait Applications extends Compatibility {
           then ("will change", "Current choice ")
           else ("has changed", "Previous choice")
 
-        val msg = // uses oldCands as the list of alternatives since they should be a superset of newCands
+        val msg = // using oldCands to list the alternatives as they should be a superset of newCands
           em"""Overloading resolution for ${err.expectedTypeStr(pt)} between alternatives
               | ${oldCands map (_.info)}%\n %
               |$change.
@@ -2246,9 +2248,6 @@ trait Applications extends Compatibility {
 
         report.warning(msg, srcPos)
       end doWarn
-
-      lazy val oldRes = f(oldCands)
-      val newRes = f(newCands)
 
       if isWarnPriorityChangeVersion then (oldRes, newRes) match
         case (oldAlt :: Nil, newAlt :: Nil) if oldAlt != newAlt => doWarn(oldAlt.info.show, newAlt.info.show)

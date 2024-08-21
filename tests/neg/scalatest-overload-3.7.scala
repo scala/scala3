@@ -1,4 +1,4 @@
-import scala.language.`3.7`
+import scala.language.`3.8`
 
 class TestBody1
 class TestBody2
