@@ -18,10 +18,11 @@ import config.Printers.typr
 import Inferencing.*
 import ErrorReporting.*
 import util.SourceFile
+import util.Spans.{NoSpan, Span}
 import TypeComparer.necessarySubType
+import reporting.*
 
 import scala.annotation.internal.sharable
-import dotty.tools.dotc.util.Spans.{NoSpan, Span}
 
 object ProtoTypes {
 
@@ -83,6 +84,7 @@ object ProtoTypes {
      *  fits the given expected result type.
      */
     def constrainResult(mt: Type, pt: Type)(using Context): Boolean =
+    trace(i"constrainResult($mt, $pt)", typr):
       val savedConstraint = ctx.typerState.constraint
       val res = pt.widenExpr match {
         case pt: FunProto =>
