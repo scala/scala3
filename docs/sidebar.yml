@@ -81,6 +81,7 @@ subsection:
           - page: reference/other-new-features/safe-initialization.md
           - page: reference/other-new-features/type-test.md
           - page: reference/other-new-features/experimental-defs.md
+          - page: reference/other-new-features/binary-literals.md
       - title: Other Changed Features
         directory: changed-features
         index: reference/changed-features/changed-features.md
@@ -153,6 +154,9 @@ subsection:
           - page: reference/experimental/cc.md
           - page: reference/experimental/purefuns.md
           - page: reference/experimental/tupled-function.md
+          - page: reference/experimental/named-tuples.md
+          - page: reference/experimental/modularity.md
+          - page: reference/experimental/typeclasses.md
       - page: reference/syntax.md
       - title: Language Versions
         index: reference/language-versions/language-versions.md
@@ -216,5 +220,6 @@ subsection:
       - page: internals/debug-macros.md
       - page: internals/gadts.md
       - page: internals/coverage.md
+      - page: internals/best-effort-compilation.md
   - page: release-notes-0.1.2.md
     hidden: true

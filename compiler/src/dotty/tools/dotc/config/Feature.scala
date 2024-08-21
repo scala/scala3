@@ -10,6 +10,7 @@ import util.{SrcPos, NoSourcePosition}
 import SourceVersion.*
 import reporting.Message
 import NameKinds.QualifiedName
+import Annotations.ExperimentalAnnotation
 
 object Feature:
 
@@ -32,6 +33,14 @@ object Feature:
   val pureFunctions = experimental("pureFunctions")
   val captureChecking = experimental("captureChecking")
   val into = experimental("into")
+  val namedTuples = experimental("namedTuples")
+  val modularity = experimental("modularity")
+  val betterMatchTypeExtractors = experimental("betterMatchTypeExtractors")
+
+  def experimentalAutoEnableFeatures(using Context): List[TermName] =
+    defn.languageExperimentalFeatures
+      .map(sym => experimental(sym.name))
+      .filterNot(_ == captureChecking) // TODO is this correct?
 
   /** Is `feature` enabled by by a command-line setting? The enabling setting is
    *
@@ -80,6 +89,8 @@ object Feature:
   def genericNumberLiteralsEnabled(using Context) = enabled(genericNumberLiterals)
 
   def scala2ExperimentalMacroEnabled(using Context) = enabled(scala2macros)
+
+  def betterMatchTypeExtractorsEnabled(using Context) = enabled(betterMatchTypeExtractors)
 
   /** Is pureFunctions enabled for this compilation unit? */
   def pureFunsEnabled(using Context) =
@@ -131,12 +142,7 @@ object Feature:
 
   def checkExperimentalFeature(which: String, srcPos: SrcPos, note: => String = "")(using Context) =
     if !isExperimentalEnabled then
-      report.error(
-        em"""Experimental $which may only be used under experimental mode:
-            |  1. in a definition marked as @experimental, or
-            |  2. compiling with the -experimental compiler flag, or
-            |  3. with a nightly or snapshot version of the compiler.$note
-          """, srcPos)
+      report.error(experimentalUseSite(which) + note, srcPos)
 
   private def ccException(sym: Symbol)(using Context): Boolean =
     ccEnabled && defn.ccExperimental.contains(sym)
@@ -146,21 +152,34 @@ object Feature:
       if sym.hasAnnotation(defn.ExperimentalAnnot) then sym
       else if sym.owner.hasAnnotation(defn.ExperimentalAnnot) then sym.owner
       else NoSymbol
-    if !ccException(experimentalSym) then
-      val note =
+    if !isExperimentalEnabled && !ccException(experimentalSym) then
+      val msg =
+        experimentalSym.getAnnotation(defn.ExperimentalAnnot).map {
+          case ExperimentalAnnotation(msg) if msg.nonEmpty => s": $msg"
+          case _ => ""
+        }.getOrElse("")
+      val markedExperimental =
         if experimentalSym.exists
-        then i"$experimentalSym is marked @experimental"
-        else i"$sym inherits @experimental"
-      checkExperimentalFeature("definition", srcPos, s"\n\n$note")
+        then i"$experimentalSym is marked @experimental$msg"
+        else i"$sym inherits @experimental$msg"
+      report.error(markedExperimental + "\n\n" + experimentalUseSite("definition"), srcPos)
 
-  /** Check that experimental compiler options are only set for snapshot or nightly compiler versions. */
-  def checkExperimentalSettings(using Context): Unit =
-    for setting <- ctx.settings.language.value
-        if setting.startsWith("experimental.") && setting != "experimental.macros"
-    do checkExperimentalFeature(s"feature $setting", NoSourcePosition)
+  private def experimentalUseSite(which: String): String =
+    s"""Experimental $which may only be used under experimental mode:
+       |  1. in a definition marked as @experimental, or
+       |  2. an experimental feature is imported at the package level, or
+       |  3. compiling with the -experimental compiler flag.
+       |""".stripMargin
 
   def isExperimentalEnabled(using Context): Boolean =
-    (Properties.unstableExperimentalEnabled && !ctx.settings.YnoExperimental.value) || ctx.settings.experimental.value
+    ctx.settings.experimental.value ||
+    experimentalAutoEnableFeatures.exists(enabled)
+
+  def experimentalEnabledByLanguageSetting(using Context): Option[TermName] =
+    experimentalAutoEnableFeatures.find(enabledBySetting)
+
+  def isExperimentalEnabledByImport(using Context): Boolean =
+    experimentalAutoEnableFeatures.exists(enabledByImport)
 
   /** Handle language import `import language.<prefix>.<imported>` if it is one
    *  of the global imports `pureFunctions` or `captureChecking`. In this case

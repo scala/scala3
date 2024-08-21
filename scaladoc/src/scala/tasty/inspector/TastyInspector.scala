@@ -52,7 +52,7 @@ object TastyInspector:
   def inspectAllTastyFiles(tastyFiles: List[String], jars: List[String], dependenciesClasspath: List[String])(inspector: Inspector): Boolean =
     def checkFile(fileName: String, ext: String): Unit =
       val file = dotty.tools.io.Path(fileName)
-      if file.extension != ext then
+      if !file.ext.toLowerCase.equalsIgnoreCase(ext) then
         throw new IllegalArgumentException(s"File extension is not `.$ext`: $file")
       else if !file.exists then
         throw new IllegalArgumentException(s"File not found: ${file.toAbsolute}")
@@ -103,7 +103,7 @@ object TastyInspector:
         reset()
         val ctx2 = ctx.fresh
             .addMode(Mode.ReadPositions)
-            .setSetting(ctx.settings.YreadComments, true)
+            .setSetting(ctx.settings.XreadComments, true)
         new TASTYRun(this, ctx2)
 
     new InspectorDriver

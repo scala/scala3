@@ -266,7 +266,7 @@ object TypeErasure {
         tp.paramNames, tp.paramNames map (Function.const(TypeBounds.upper(defn.ObjectType))), tp.resultType)
 
     if (defn.isPolymorphicAfterErasure(sym)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
-    else if (sym.isAbstractType) TypeAlias(WildcardType)
+    else if (sym.isAbstractOrParamType) TypeAlias(WildcardType)
     else if sym.is(ConstructorProxy) then NoType
     else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(using preErasureCtx))
     else if (sym.is(Label)) erase.eraseResult(sym.info)(using preErasureCtx)
@@ -747,16 +747,19 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     assert(!etp.isInstanceOf[WildcardType] || inSigName, i"Unexpected WildcardType erasure for $tp")
     etp
 
-  /** Like translucentSuperType, but issue a fatal error if it does not exist. */
+  /** Like translucentSuperType, but issue a fatal error if it does not exist.
+   *  If using the best-effort option, the fatal error will not be issued.
+  */
   private def checkedSuperType(tp: TypeProxy)(using Context): Type =
     val tp1 = tp.translucentSuperType
     if !tp1.exists then
-      val msg = tp.typeConstructor match
+      val typeErr = tp.typeConstructor match
         case tycon: TypeRef =>
-          MissingType(tycon.prefix, tycon.name).toMessage.message
+          MissingType(tycon.prefix, tycon.name)
         case _ =>
-          i"Cannot resolve reference to $tp"
-      throw FatalError(msg)
+          TypeError(em"Cannot resolve reference to $tp")
+      if ctx.isBestEffort then report.error(typeErr.toMessage)
+      else throw typeErr
     tp1
 
   /** Widen term ref, skipping any `()` parameter of an eventual getter. Used to erase a TermRef.

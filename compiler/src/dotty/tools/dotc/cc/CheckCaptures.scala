@@ -20,7 +20,7 @@ import Recheck.*
 import scala.collection.mutable
 import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult}
 import StdNames.nme
-import NameKinds.{DefaultGetterName, WildcardParamName}
+import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
 import reporting.trace
 
 /** The capture checker */
@@ -249,6 +249,44 @@ class CheckCaptures extends Recheck, SymTransformer:
           else i"references $cs1$cs1description are not all",
           pos, provenance)
 
+    def showRef(ref: CaptureRef)(using Context): String =
+        ctx.printer.toTextCaptureRef(ref).show
+
+    // Uses 4-space indent as a trial
+    def checkReachCapsIsolated(tpe: Type, pos: SrcPos)(using Context): Unit =
+
+        object checker extends TypeTraverser:
+            var refVariances: Map[Boolean, Int] = Map.empty
+            var seenReach: CaptureRef | Null = null
+            def traverse(tp: Type) =
+                tp.dealias match
+                case CapturingType(parent, refs) =>
+                    traverse(parent)
+                    for ref <- refs.elems do
+                        if ref.isReach && !ref.stripReach.isInstanceOf[TermParamRef]
+                            || ref.isRootCapability
+                        then
+                            val isReach = ref.isReach
+                            def register() =
+                                refVariances = refVariances.updated(isReach, variance)
+                                seenReach = ref
+                            refVariances.get(isReach) match
+                                case None => register()
+                                case Some(v) => if v != 0 && variance == 0 then register()
+                case _ =>
+                    traverseChildren(tp)
+
+        checker.traverse(tpe)
+        if checker.refVariances.size == 2
+            && checker.refVariances(true) >= 0
+            && checker.refVariances(false) <= 0
+        then
+            report.error(
+                em"""Reach capability ${showRef(checker.seenReach.nn)} and universal capability cap cannot both
+                    |appear in the type $tpe of this expression""",
+                pos)
+    end checkReachCapsIsolated
+
     /** The current environment */
     private val rootEnv: Env = inContext(ictx):
       Env(defn.RootClass, EnvKind.Regular, CaptureSet.empty, null)
@@ -320,9 +358,17 @@ class CheckCaptures extends Recheck, SymTransformer:
     def markFree(cs: CaptureSet, pos: SrcPos)(using Context): Unit =
       if !cs.isAlwaysEmpty then
         forallOuterEnvsUpTo(ctx.owner.topLevelClass): env =>
-          def isVisibleFromEnv(sym: Symbol) =
-            (env.kind == EnvKind.NestedInOwner || env.owner != sym)
-            && env.owner.isContainedIn(sym)
+          // Whether a symbol is defined inside the owner of the environment?
+          inline def isContainedInEnv(sym: Symbol) =
+            if env.kind == EnvKind.NestedInOwner then
+              sym.isProperlyContainedIn(env.owner)
+            else
+              sym.isContainedIn(env.owner)
+          // A captured reference with the symbol `sym` is visible from the environment
+          // if `sym` is not defined inside the owner of the environment
+          inline def isVisibleFromEnv(sym: Symbol) = !isContainedInEnv(sym)
+          // Only captured references that are visible from the environment
+          // should be included.
           val included = cs.filter:
             case ref: TermRef => isVisibleFromEnv(ref.symbol.owner)
             case ref: ThisType => isVisibleFromEnv(ref.cls)
@@ -340,6 +386,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           // there won't be an apply; need to include call captures now
           includeCallCaptures(tree.symbol, tree.srcPos)
       else
+        //debugShowEnvs()
         markFree(tree.symbol, tree.srcPos)
       super.recheckIdent(tree, pt)
 
@@ -490,7 +537,8 @@ class CheckCaptures extends Recheck, SymTransformer:
          */
         def addParamArgRefinements(core: Type, initCs: CaptureSet): (Type, CaptureSet) =
           var refined: Type = core
-          var allCaptures: CaptureSet = initCs
+          var allCaptures: CaptureSet = if setup.isCapabilityClassRef(core)
+            then CaptureSet.universal else initCs
           for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
             val getter = cls.info.member(getterName).suchThat(_.is(ParamAccessor)).symbol
             if getter.termRef.isTracked && !getter.is(Private) then
@@ -779,8 +827,10 @@ class CheckCaptures extends Recheck, SymTransformer:
           report.error(ex.getMessage.nn)
           tree.tpe
         finally curEnv = saved
-      if tree.isTerm && !pt.isBoxedCapturing then
-        markFree(res.boxedCaptureSet, tree.srcPos)
+      if tree.isTerm then
+        checkReachCapsIsolated(res.widen, tree.srcPos)
+        if !pt.isBoxedCapturing then
+          markFree(res.boxedCaptureSet, tree.srcPos)
       res
 
     override def recheckFinish(tpe: Type, tree: Tree, pt: Type)(using Context): Type =
@@ -906,6 +956,19 @@ class CheckCaptures extends Recheck, SymTransformer:
           expected
     end addOuterRefs
 
+    /** A debugging method for showing the envrionments during capture checking. */
+    private def debugShowEnvs()(using Context): Unit =
+      def showEnv(env: Env): String = i"Env(${env.owner}, ${env.kind}, ${env.captured})"
+      val sb = StringBuilder()
+      @annotation.tailrec def walk(env: Env | Null): Unit =
+        if env != null then
+          sb ++= showEnv(env)
+          sb ++= "\n"
+          walk(env.outer0)
+      sb ++= "===== Current Envs ======\n"
+      walk(curEnv)
+      sb ++= "===== End          ======\n"
+      println(sb.result())
 
     /** Adapt `actual` type to `expected` type by inserting boxing and unboxing conversions
      *
@@ -1045,6 +1108,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                   pos)
                 }
               if !insertBox then  // unboxing
+                //debugShowEnvs()
                 markFree(criticalSet, pos)
               adaptedType(!boxed)
           else
@@ -1248,10 +1312,14 @@ class CheckCaptures extends Recheck, SymTransformer:
                     val added = widened.filter(isAllowed(_))
                     capt.println(i"heal $ref in $cs by widening to $added")
                     if !added.subCaptures(cs, frozen = false).isOK then
-                      val location = if meth.exists then i" of $meth" else ""
+                      val location = if meth.exists then i" of ${meth.showLocated}" else ""
+                      val paramInfo =
+                        if ref.paramName.info.kind.isInstanceOf[UniqueNameKind]
+                        then i"${ref.paramName} from ${ref.binder}"
+                        else i"${ref.paramName}"
                       val debugSetInfo = if ctx.settings.YccDebug.value then i" $cs" else ""
                       report.error(
-                        i"local reference ${ref.paramName} leaks into outer capture set$debugSetInfo of type parameter $paramName$location",
+                        i"local reference $paramInfo leaks into outer capture set$debugSetInfo of type parameter $paramName$location",
                         tree.srcPos)
                     else
                       widened.elems.foreach(recur)

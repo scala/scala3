@@ -2020,7 +2020,7 @@ Symbols:
 example/InstrumentTyper# => class InstrumentTyper extends Object { self: AnyRef & InstrumentTyper => +5 decls }
 example/InstrumentTyper#AnnotatedType# => type AnnotatedType  = Int @param
 example/InstrumentTyper#`<init>`(). => primary ctor <init> (): InstrumentTyper
-example/InstrumentTyper#all(). => method all => List[Float | Double | List[Nothing] | Boolean | Unit | Char | String | LinkOption | Int | Long | Class[Option[Int]]]
+example/InstrumentTyper#all(). => method all => List[Char | String | LinkOption | Int | Long | Class[Option[Int]] | Float | Double | Boolean | Unit | List[Nothing]]
 example/InstrumentTyper#clazzOf. => final val method clazzOf Option[Int]
 example/InstrumentTyper#singletonType(). => method singletonType (param x: Predef.type): Nothing
 example/InstrumentTyper#singletonType().(x) => param x: Predef.type
@@ -2082,7 +2082,7 @@ Occurrences:
 [24:37..24:40): Int -> scala/Int#
 
 Synthetics:
-[8:12..8:16):List => *.apply[Float | Double | List[Nothing] | Boolean | Unit | Char | String | LinkOption | Int | Long | Class[Option[Int]]]
+[8:12..8:16):List => *.apply[Char | String | LinkOption | Int | Long | Class[Option[Int]] | Float | Double | Boolean | Unit | List[Nothing]]
 [20:4..20:8):List => *.apply[Nothing]
 
 expect/InventedNames.scala
@@ -2588,7 +2588,7 @@ Uri => Methods.scala
 Text => empty
 Language => Scala
 Symbols => 82 entries
-Occurrences => 156 entries
+Occurrences => 157 entries
 
 Symbols:
 example/Methods# => class Methods [typeparam T ] extends Object { self: Methods[T] => +44 decls }
@@ -2732,8 +2732,9 @@ Occurrences:
 [16:29..16:32): ??? -> scala/Predef.`???`().
 [17:6..17:8): m7 <- example/Methods#m7().
 [17:9..17:10): U <- example/Methods#m7().[U]
-[17:10..17:10): <- example/Methods#m7().(evidence$1)
 [17:12..17:20): Ordering -> scala/math/Ordering#
+[17:12..17:20): Ordering -> example/Methods#m7().[U]
+[17:12..17:12): <- example/Methods#m7().(evidence$1)
 [17:22..17:23): c <- example/Methods#m7().(c)
 [17:25..17:32): Methods -> example/Methods#
 [17:33..17:34): T -> example/Methods#[T]
@@ -3533,7 +3534,7 @@ Uri => Synthetic.scala
 Text => empty
 Language => Scala
 Symbols => 52 entries
-Occurrences => 136 entries
+Occurrences => 137 entries
 Synthetics => 39 entries
 
 Symbols:
@@ -3659,8 +3660,9 @@ Occurrences:
 [32:8..32:9): J <- example/Synthetic#J#
 [32:9..32:9): <- example/Synthetic#J#`<init>`().
 [32:10..32:11): T <- example/Synthetic#J#[T]
-[32:11..32:11): <- example/Synthetic#J#evidence$1.
+[32:13..32:13): <- example/Synthetic#J#evidence$1.
 [32:13..32:21): Manifest -> scala/Predef.Manifest#
+[32:13..32:21): Manifest -> example/Synthetic#J#[T]
 [32:29..32:32): arr <- example/Synthetic#J#arr.
 [32:35..32:40): Array -> scala/Array.
 [32:41..32:46): empty -> scala/Array.empty().

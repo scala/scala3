@@ -46,7 +46,8 @@ abstract class TypeError(using creationContext: Context) extends Exception(""):
   def toMessage(using Context): Message
 
   /** Uses creationContext to produce the message */
-  override def getMessage: String = toMessage.message
+  override def getMessage: String =
+    try toMessage.message catch case ex: Throwable => "TypeError"
 
 object TypeError:
   def apply(msg: Message)(using Context) = new TypeError:
@@ -101,7 +102,7 @@ extends TypeError:
     em"""Recursion limit exceeded.
         |Maybe there is an illegal cyclic reference?
         |If that's not the case, you could also try to increase the stacksize using the -Xss JVM option.
-        |For the unprocessed stack trace, compile with -Yno-decode-stacktraces.
+        |For the unprocessed stack trace, compile with -Xno-decode-stacktraces.
         |A recurring operation is (inner to outer):
         |${opsString(mostCommon).stripMargin}"""
 
@@ -121,7 +122,7 @@ object handleRecursive:
     e
 
   def apply(op: String, details: => String, exc: Throwable, weight: Int = 1)(using Context): Nothing =
-    if ctx.settings.YnoDecodeStacktraces.value then
+    if ctx.settings.XnoDecodeStacktraces.value then
       throw exc
     else exc match
       case _: RecursionOverflow =>
@@ -197,20 +198,31 @@ object CyclicReference:
         cyclicErrors.println(elem.toString)
     ex
 
-  type TraceElement = (/*prefix:*/ String, Symbol, /*suffix:*/ String)
+  type TraceElement = Context ?=> String
   type Trace = mutable.ArrayBuffer[TraceElement]
   val Trace = Property.Key[Trace]
 
-  def isTraced(using Context) =
+  private def isTraced(using Context) =
     ctx.property(CyclicReference.Trace).isDefined
 
-  def pushTrace(info: TraceElement)(using Context): Unit =
+  private def pushTrace(info: TraceElement)(using Context): Unit =
     for buf <- ctx.property(CyclicReference.Trace) do
       buf += info
 
-  def popTrace()(using Context): Unit =
+  private def popTrace()(using Context): Unit =
     for buf <- ctx.property(CyclicReference.Trace) do
       buf.dropRightInPlace(1)
+
+  inline def trace[T](info: TraceElement)(inline op: => T)(using Context): T =
+    val traceCycles = isTraced
+    try
+      if traceCycles then pushTrace(info)
+      op
+    finally
+      if traceCycles then popTrace()
+
+  inline def trace[T](prefix: String, sym: Symbol)(inline op: => T)(using Context): T =
+    trace((ctx: Context) ?=> i"$prefix$sym")(op)
 end CyclicReference
 
 class UnpicklingError(denot: Denotation, where: String, cause: Throwable)(using Context) extends TypeError:

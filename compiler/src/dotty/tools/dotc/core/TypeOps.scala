@@ -143,7 +143,7 @@ object TypeOps:
         defn.MatchCase(simplify(pat, theMap), body)
       case tp: AppliedType =>
         tp.tycon match
-          case tycon: TypeRef if tycon.info.isInstanceOf[MatchAlias] =>
+          case tycon: TypeRef if tp.isMatchAlias =>
             isFullyDefined(tp, ForceDegree.all)
           case _ =>
         val normed = tp.tryNormalize
@@ -157,15 +157,8 @@ object TypeOps:
         tp.derivedAlias(simplify(tp.alias, theMap))
       case AndType(l, r) if !ctx.mode.is(Mode.Type) =>
         simplify(l, theMap) & simplify(r, theMap)
-      case tp @ OrType(l, r)
-      if !ctx.mode.is(Mode.Type)
-         && (tp.isSoft || l.isBottomType || r.isBottomType) =>
-        // Normalize A | Null and Null | A to A even if the union is hard (i.e.
-        // explicitly declared), but not if -Yexplicit-nulls is set. The reason is
-        // that in this case the normal asSeenFrom machinery is not prepared to deal
-        // with Nulls (which have no base classes). Under -Yexplicit-nulls, we take
-        // corrective steps, so no widening is wanted.
-        simplify(l, theMap) | simplify(r, theMap)
+      case tp @ OrType(l, r) if !ctx.mode.is(Mode.Type) =>
+        TypeComparer.lub(simplify(l, theMap), simplify(r, theMap), isSoft = tp.isSoft)
       case tp @ CapturingType(parent, refs) =>
         if !ctx.mode.is(Mode.Type)
             && refs.subCaptures(parent.captureSet, frozen = true).isOK
@@ -256,7 +249,8 @@ object TypeOps:
           mergeRefinedOrApplied(tp1, tp21) & mergeRefinedOrApplied(tp1, tp22)
         case _ =>
           fail
-      tp1 match {
+      if tp1 eq tp2 then tp1
+      else tp1 match {
         case tp1 @ RefinedType(parent1, name1, rinfo1) =>
           tp2 match {
             case RefinedType(parent2, `name1`, rinfo2) =>
@@ -280,6 +274,7 @@ object TypeOps:
           }
         case AndType(tp11, tp12) =>
           mergeRefinedOrApplied(tp11, tp2) & mergeRefinedOrApplied(tp12, tp2)
+        case tp1: TypeParamRef if tp1 == tp2 => tp1
         case _ => fail
       }
     }
@@ -390,7 +385,12 @@ object TypeOps:
         (tp.tp1.dealias, tp.tp2.dealias) match
           case (tp1 @ AppliedType(tycon1, args1), tp2 @ AppliedType(tycon2, args2))
           if tycon1.typeSymbol == tycon2.typeSymbol && (tycon1 =:= tycon2) =>
-            mergeRefinedOrApplied(tp1, tp2)
+            mergeRefinedOrApplied(tp1, tp2) match
+              case tp: AppliedType if tp.isUnreducibleWild =>
+                // fall back to or-dominators rather than inferring a type that would
+                // cause an unreducible type error later.
+                approximateOr(tp1, tp2)
+              case tp => tp
           case (tp1, tp2) =>
             approximateOr(tp1, tp2)
       case _ =>
@@ -545,7 +545,7 @@ object TypeOps:
           val lo = TypeComparer.instanceType(
             tp.origin,
             fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound,
-            widenUnions = tp.widenUnions)(using mapCtx)
+            tp.widenPolicy)(using mapCtx)
           val lo1 = apply(lo)
           if (lo1 ne lo) lo1 else tp
         case _ =>

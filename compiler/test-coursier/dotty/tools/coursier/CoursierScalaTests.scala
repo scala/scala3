@@ -166,7 +166,7 @@ object CoursierScalaTests:
       case Nil => args
       case _ => "--" +: args
     val newJOpts = jOpts.map(s => s"--java-opt ${s.stripPrefix("-J")}").mkString(" ")
-    execCmd("./cs", (s"""launch "org.scala-lang:scala3-compiler_3:${sys.env("DOTTY_BOOTSTRAPPED_VERSION")}" $newJOpts --main-class "$entry" --property "scala.usejavacp=true"""" +: newOptions)*)._2
+    execCmd("./cs", (s"""launch "org.scala-lang:scala3-compiler_3:${sys.env("DOTTY_BOOTSTRAPPED_VERSION")}" $newJOpts --main-class "$entry" --property "scala.usejavacp=true" --property "scala.use_legacy_launcher=true"""" +: newOptions)*)._2
 
   /** Get coursier script */
   @BeforeClass def setup(): Unit =

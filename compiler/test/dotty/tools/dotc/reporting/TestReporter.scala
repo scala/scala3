@@ -71,10 +71,12 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
     }
 
     if dia.level >= WARNING then
-      _diagnosticBuf.append(dia)
       _consoleReporter.doReport(dia)
+      _diagnosticBuf.append(dia)
     printMessageAndPos(dia, extra)
   }
+
+  override def printSummary()(using Context): Unit = ()
 }
 
 object TestReporter {

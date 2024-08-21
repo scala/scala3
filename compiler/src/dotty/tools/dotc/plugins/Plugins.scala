@@ -125,7 +125,7 @@ trait Plugins {
     }
 
     // schedule plugins according to ordering constraints
-    val pluginPhases = plugins.collect { case p: StandardPlugin => p }.flatMap { plug => plug.init(options(plug)) }
+    val pluginPhases = plugins.collect { case p: StandardPlugin => p }.flatMap { plug => plug.initialize(options(plug)) }
     val updatedPlan = Plugins.schedule(plan, pluginPhases)
 
     // add research plugins

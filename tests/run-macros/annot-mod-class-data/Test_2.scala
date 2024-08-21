@@ -1,4 +1,4 @@
-//> using options -experimental -Yno-experimental
+//> using options -experimental
 
 @data class Foo(val a: String, val b: Int)
   //> override def toString(): String = Seq(this.a, this.b).mkString("Foo(", ", ", ")")

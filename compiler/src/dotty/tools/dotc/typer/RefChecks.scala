@@ -52,7 +52,7 @@ object RefChecks {
       }}
 
       for (name <- defaultMethodNames) {
-        val methods = clazz.info.member(name).alternatives.map(_.symbol)
+        val methods = clazz.thisType.member(name).alternatives.map(_.symbol)
         val haveDefaults = methods.filter(_.hasDefaultParams)
         if (haveDefaults.length > 1) {
           val owners = haveDefaults map (_.owner)
@@ -552,7 +552,11 @@ object RefChecks {
         overrideError("is an extension method, cannot override a normal method")
       else if (other.is(ExtensionMethod) && !member.is(ExtensionMethod)) // (1.3)
         overrideError("is a normal method, cannot override an extension method")
-      else if !other.is(Deferred)
+      else if (!other.is(Deferred)
+              || other.isAllOf(Given | HasDefault)
+                // deferred givens have flags Given, HasDefault and Deferred set. These
+                // need to be checked for overriding as if they were concrete members
+              )
             && !member.is(Deferred)
             && !other.name.is(DefaultGetterName)
             && !member.isAnyOverride
@@ -610,8 +614,13 @@ object RefChecks {
         overrideError("is not inline, cannot implement an inline method")
       else if (other.isScala2Macro && !member.isScala2Macro) // (1.11)
         overrideError("cannot be used here - only Scala-2 macros can override Scala-2 macros")
-      else if (!compatTypes(memberTp(self), otherTp(self)) &&
-                 !compatTypes(memberTp(upwardsSelf), otherTp(upwardsSelf)))
+      else if !compatTypes(memberTp(self), otherTp(self))
+           && !compatTypes(memberTp(upwardsSelf), otherTp(upwardsSelf))
+           && !member.is(Tracked)
+           	// Tracked members need to be excluded since they are abstract type members with
+           	// singleton types. Concrete overrides usually have a wider type.
+           	// TODO: Should we exclude all refinements inherited from parents?
+      then
         overrideError("has incompatible type", compareTypes = true)
       else if (member.targetName != other.targetName)
         if (other.targetName != other.name)
@@ -620,7 +629,9 @@ object RefChecks {
           overrideError("cannot have a @targetName annotation since external names would be different")
       else if intoOccurrences(memberTp(self)) != intoOccurrences(otherTp(self)) then
         overrideError("has different occurrences of `into` modifiers", compareTypes = true)
-      else if other.is(ParamAccessor) && !isInheritedAccessor(member, other) then // (1.12)
+      else if other.is(ParamAccessor) && !isInheritedAccessor(member, other)
+           && !member.is(Tracked) // see remark on tracked members above
+      then // (1.12)
         report.errorOrMigrationWarning(
             em"cannot override val parameter ${other.showLocated}",
             member.srcPos,
@@ -670,6 +681,10 @@ object RefChecks {
         mbr.isType
         || mbr.isSuperAccessor // not yet synthesized
         || mbr.is(JavaDefined) && hasJavaErasedOverriding(mbr)
+        || mbr.is(Tracked)
+          // Tracked members correspond to existing val parameters, so they don't
+          // count as deferred. The val parameter could not implement the tracked
+          // refinement since it usually has a wider type.
 
       def isImplemented(mbr: Symbol) =
         val mbrDenot = mbr.asSeenFrom(clazz.thisType)
@@ -891,11 +906,15 @@ object RefChecks {
        *  can assume invariant refinement for case classes in `constrainPatternType`.
        */
       def checkCaseClassInheritanceInvariant() =
-        for (caseCls <- clazz.info.baseClasses.tail.find(_.is(Case)))
-          for (baseCls <- caseCls.info.baseClasses.tail)
-            if (baseCls.typeParams.exists(_.paramVarianceSign != 0))
-              for (problem <- variantInheritanceProblems(baseCls, caseCls, "non-variant", "case "))
-                report.errorOrMigrationWarning(problem, clazz.srcPos, MigrationVersion.Scala2to3)
+        for
+          caseCls <- clazz.info.baseClasses.tail.find(_.is(Case))
+          baseCls <- caseCls.info.baseClasses.tail
+          if baseCls.typeParams.exists(_.paramVarianceSign != 0)
+          problem <- variantInheritanceProblems(baseCls, caseCls, i"base $baseCls", "case ")
+          withExplain = problem.appendExplanation:
+            """Refining a basetype of a case class is not allowed.
+              |This is a limitation that enables better GADT constraints in case class patterns""".stripMargin
+        do report.errorOrMigrationWarning(withExplain, clazz.srcPos, MigrationVersion.Scala2to3)
       checkNoAbstractMembers()
       if (abstractErrors.isEmpty)
         checkNoAbstractDecls(clazz)
@@ -924,7 +943,7 @@ object RefChecks {
         for {
           cls <- clazz.info.baseClasses.tail
           if cls.paramAccessors.nonEmpty && !mixins.contains(cls)
-          problem <- variantInheritanceProblems(cls, clazz.asClass.superClass, "parameterized", "super")
+          problem <- variantInheritanceProblems(cls, clazz.asClass.superClass, i"parameterized base $cls", "super")
         }
         report.error(problem, clazz.srcPos)
       }
@@ -947,7 +966,7 @@ object RefChecks {
       if (combinedBT =:= thisBT) None // ok
       else
         Some(
-          em"""illegal inheritance: $clazz inherits conflicting instances of $baseStr base $baseCls.
+          em"""illegal inheritance: $clazz inherits conflicting instances of $baseStr.
               |
               |  Direct basetype: $thisBT
               |  Basetype via $middleStr$middle: $combinedBT""")
@@ -1033,8 +1052,7 @@ object RefChecks {
    *  surprising names at runtime. E.g. in neg/i4564a.scala, a private
    *  case class `apply` method would have to be renamed to something else.
    */
-  def checkNoPrivateOverrides(tree: Tree)(using Context): Unit =
-    val sym = tree.symbol
+  def checkNoPrivateOverrides(sym: Symbol)(using Context): Unit =
     if sym.maybeOwner.isClass
        && sym.is(Private)
        && (sym.isOneOf(MethodOrLazyOrMutable) || !sym.is(Local)) // in these cases we'll produce a getter later
@@ -1099,6 +1117,58 @@ object RefChecks {
         checkParameters(sym.info)
 
   end checkUnaryMethods
+
+  /** Check that an extension method is not hidden, i.e., that it is callable as an extension method.
+   *
+   *  An extension method is hidden if it does not offer a parameter that is not subsumed
+   *  by the corresponding parameter of the member with the same name (or of all alternatives of an overload).
+   *
+   *  This check is suppressed if this method is an override.
+   *
+   *  For example, it is not possible to define a type-safe extension `contains` for `Set`,
+   *  since for any parameter type, the existing `contains` method will compile and would be used.
+   *
+   *  If the member has a leading implicit parameter list, then the extension method must also have
+   *  a leading implicit parameter list. The reason is that if the implicit arguments are inferred,
+   *  either the member method is used or typechecking fails. If the implicit arguments are supplied
+   *  explicitly and the member method is not applicable, the extension is checked, and its parameters
+   *  must be implicit in order to be applicable.
+   *
+   *  If the member does not have a leading implicit parameter list, then the argument cannot be explicitly
+   *  supplied with `using`, as typechecking would fail. But the extension method may have leading implicit
+   *  parameters, which are necessarily supplied implicitly in the application. The first non-implicit
+   *  parameters of the extension method must be distinguishable from the member parameters, as described.
+   *
+   *  If the extension method is nullary, it is always hidden by a member of the same name.
+   *  (Either the member is nullary, or the reference is taken as the eta-expansion of the member.)
+   */
+  def checkExtensionMethods(sym: Symbol)(using Context): Unit =
+    if sym.is(Extension) && !sym.nextOverriddenSymbol.exists then
+      extension (tp: Type)
+        def strippedResultType = Applications.stripImplicit(tp.stripPoly, wildcardOnly = true).resultType
+        def firstExplicitParamTypes = Applications.stripImplicit(tp.stripPoly, wildcardOnly = true).firstParamTypes
+        def hasImplicitParams = tp.stripPoly match { case mt: MethodType => mt.isImplicitMethod case _ => false }
+      val target = sym.info.firstExplicitParamTypes.head // required for extension method, the putative receiver
+      val methTp = sym.info.strippedResultType // skip leading implicits and the "receiver" parameter
+      def hidden =
+        target.nonPrivateMember(sym.name)
+        .filterWithPredicate:
+          member =>
+          val memberIsImplicit = member.info.hasImplicitParams
+          val paramTps =
+            if memberIsImplicit then methTp.stripPoly.firstParamTypes
+            else methTp.firstExplicitParamTypes
+
+          paramTps.isEmpty || memberIsImplicit && !methTp.hasImplicitParams || {
+            val memberParamTps = member.info.stripPoly.firstParamTypes
+            !memberParamTps.isEmpty
+            && memberParamTps.lengthCompare(paramTps) == 0
+            && memberParamTps.lazyZip(paramTps).forall((m, x) => x frozen_<:< m)
+          }
+        .exists
+      if !target.typeSymbol.denot.isAliasType && !target.typeSymbol.denot.isOpaqueAlias && hidden
+      then report.warning(ExtensionNullifiedByMember(sym, target.typeSymbol), sym.srcPos)
+  end checkExtensionMethods
 
   /** Verify that references in the user-defined `@implicitNotFound` message are valid.
    *  (i.e. they refer to a type variable that really occurs in the signature of the annotated symbol.)
@@ -1181,12 +1251,12 @@ object RefChecks {
 
   end checkImplicitNotFoundAnnotation
 
-  def checkAnyRefMethodCall(tree: Tree)(using Context) =
-    if tree.symbol.exists
-       && defn.topClasses.contains(tree.symbol.owner)
-       && (!ctx.owner.enclosingClass.exists || ctx.owner.enclosingClass.isPackageObject) then
-      report.warning(UnqualifiedCallToAnyRefMethod(tree, tree.symbol), tree)
-
+  def checkAnyRefMethodCall(tree: Tree)(using Context): Unit =
+    if tree.symbol.exists && defn.topClasses.contains(tree.symbol.owner) then
+      tree.tpe match
+        case tp: NamedType if tp.prefix.typeSymbol != ctx.owner.enclosingClass =>
+          report.warning(UnqualifiedCallToAnyRefMethod(tree, tree.symbol), tree)
+        case _ => ()
 }
 import RefChecks.*
 
@@ -1233,8 +1303,8 @@ class RefChecks extends MiniPhase { thisPhase =>
 
   override def transformValDef(tree: ValDef)(using Context): ValDef = {
     if tree.symbol.exists then
-      checkNoPrivateOverrides(tree)
       val sym = tree.symbol
+      checkNoPrivateOverrides(sym)
       checkVolatile(sym)
       if (sym.exists && sym.owner.isTerm) {
         tree.rhs match {
@@ -1246,9 +1316,11 @@ class RefChecks extends MiniPhase { thisPhase =>
   }
 
   override def transformDefDef(tree: DefDef)(using Context): DefDef = {
-    checkNoPrivateOverrides(tree)
-    checkImplicitNotFoundAnnotation.defDef(tree.symbol.denot)
-    checkUnaryMethods(tree.symbol)
+    val sym = tree.symbol
+    checkNoPrivateOverrides(sym)
+    checkImplicitNotFoundAnnotation.defDef(sym.denot)
+    checkUnaryMethods(sym)
+    checkExtensionMethods(sym)
     tree
   }
 

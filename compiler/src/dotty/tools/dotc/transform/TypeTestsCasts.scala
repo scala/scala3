@@ -135,6 +135,7 @@ object TypeTestsCasts {
     def recur(X: Type, P: Type): String = trace(s"recur(${X.show}, ${P.show})") {
       (X <:< P) ||| P.dealias.match
       case _: SingletonType     => ""
+      case MatchType.Normalizing(tp) => recur(X, tp)
       case _: TypeProxy
       if isAbstract(P)          => i"it refers to an abstract type member or type parameter"
       case defn.ArrayOf(tpT)    =>
@@ -151,7 +152,8 @@ object TypeTestsCasts {
             //   - T1 & T2 <:< T3
             // See TypeComparer#either
             recur(tp1, P) && recur(tp2, P)
-
+          case tpX: FlexibleType =>
+            recur(tpX.underlying, P)
           case x =>
             // always false test warnings are emitted elsewhere
             // provablyDisjoint wants fully applied types as input; because we're in the middle of erasure, we sometimes get raw types here

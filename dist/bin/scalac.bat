@@ -21,7 +21,10 @@ call :args %*
 
 call :compilerJavaClasspathArgs
 
-call "%_JAVACMD%" %_JAVA_ARGS% -classpath "%_JVM_CP_ARGS%" "-Dscala.usejavacp=true" "-Dscala.home=%_PROG_HOME%" dotty.tools.MainGenericCompiler %_SCALA_ARGS%
+@rem we need to escape % in the java command path, for some reason this doesnt work in common.bat
+set "_JAVACMD=!_JAVACMD:%%=%%%%!"
+
+call "%_JAVACMD%" %_JAVA_ARGS% -classpath "%_JVM_CP_ARGS%" "-Dscala.usejavacp=true" "-Dscala.expandjavacp=true" "-Dscala.home=%_PROG_HOME%" dotty.tools.MainGenericCompiler %_SCALA_ARGS%
 if not %ERRORLEVEL%==0 (
     set _EXITCODE=1
     goto end
@@ -85,29 +88,8 @@ goto :eof
 
 @rem output parameter: _JVM_CP_ARGS
 :compilerJavaClasspathArgs
-@rem echo scala3-compiler: %_SCALA3_COMP%
-@rem echo scala3-interface: %_SCALA3_INTF%
-@rem echo scala3-library: %_SCALA3_LIB%
-@rem echo tasty-core: %_TASTY_CORE%
-@rem echo scala-asm: %_SCALA_ASM%
-@rem echo scala-lib: %_SCALA_LIB%
-@rem echo sbt-intface: %_SBT_INTF%
-
-set "__TOOLCHAIN=%_SCALA_LIB%%_PSEP%"
-set "__TOOLCHAIN=%__TOOLCHAIN%%_SCALA3_LIB%%_PSEP%"
-set "__TOOLCHAIN=%__TOOLCHAIN%%_SCALA_ASM%%_PSEP%"
-set "__TOOLCHAIN=%__TOOLCHAIN%%_SBT_INTF%%_PSEP%"
-set "__TOOLCHAIN=%__TOOLCHAIN%%_SCALA3_INTF%%_PSEP%"
-set "__TOOLCHAIN=%__TOOLCHAIN%%_SCALA3_COMP%%_PSEP%"
-set "__TOOLCHAIN=%__TOOLCHAIN%%_TASTY_CORE%%_PSEP%"
-set "__TOOLCHAIN=%__TOOLCHAIN%%_SCALA3_STAGING%%_PSEP%"
-set "__TOOLCHAIN=%__TOOLCHAIN%%_SCALA3_TASTY_INSPECTOR%%_PSEP%"
-
-@rem # jline
-set "__TOOLCHAIN=%__TOOLCHAIN%%_JLINE_READER%%_PSEP%"
-set "__TOOLCHAIN=%__TOOLCHAIN%%_JLINE_TERMINAL%%_PSEP%"
-set "__TOOLCHAIN=%__TOOLCHAIN%%_JLINE_TERMINAL_JNA%%_PSEP%"
-set "__TOOLCHAIN=%__TOOLCHAIN%%_JNA%%_PSEP%"
+set "__TOOLCHAIN=%_LIB_DIR%\scala.jar"
+set "__TOOLCHAIN=%__TOOLCHAIN%%_PSEP%%_LIB_DIR%\with_compiler.jar%"
 
 if defined _SCALA_CPATH (
     set "_JVM_CP_ARGS=%__TOOLCHAIN%%_SCALA_CPATH%"

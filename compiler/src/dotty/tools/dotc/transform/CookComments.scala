@@ -12,7 +12,7 @@ class CookComments extends MegaPhase.MiniPhase {
   override def description: String = CookComments.description
 
   override def transformTypeDef(tree: tpd.TypeDef)(using Context): tpd.Tree = {
-    if (ctx.settings.YcookComments.value && tree.isClassDef) {
+    if (ctx.settings.XcookComments.value && tree.isClassDef) {
       val cls = tree.symbol
       val cookingCtx = ctx.localContext(tree, cls).setNewScope
       val template = tree.rhs.asInstanceOf[tpd.Template]

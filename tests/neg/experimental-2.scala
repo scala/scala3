@@ -1,4 +1,4 @@
-//> using options -Yno-experimental
+
 
 class Test7 {
   import scala.language.experimental

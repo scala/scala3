@@ -150,7 +150,7 @@ extension (tp: Type)
       case tp @ CapturingType(parent, refs) =>
         val pcs = getBoxed(parent)
         if tp.isBoxed then refs ++ pcs else pcs
-      case tp: TypeRef if tp.symbol.isAbstractType => CaptureSet.empty
+      case tp: TypeRef if tp.symbol.isAbstractOrParamType => CaptureSet.empty
       case tp: TypeProxy => getBoxed(tp.superType)
       case tp: AndType => getBoxed(tp.tp1) ** getBoxed(tp.tp2)
       case tp: OrType => getBoxed(tp.tp1) ++ getBoxed(tp.tp2)
@@ -202,10 +202,6 @@ extension (tp: Type)
       tp.tp1.isAlwaysPure && tp.tp2.isAlwaysPure
     case _ =>
       false
-
-  def isCapabilityClassRef(using Context) = tp.dealiasKeepAnnots match
-    case _: TypeRef | _: AppliedType => tp.typeSymbol.hasAnnotation(defn.CapabilityAnnot)
-    case _ => false
 
   /** Drop @retains annotations everywhere */
   def dropAllRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
@@ -289,7 +285,7 @@ extension (tp: Type)
       var ok = true
       def traverse(t: Type): Unit =
         if ok then
-          t match
+          t.dealias match
             case CapturingType(_, cs) if cs.isUniversal && variance <= 0 =>
               ok = false
             case _ =>
@@ -444,6 +440,14 @@ extension (tp: AnnotatedType)
   def isBoxed(using Context): Boolean = tp.annot match
     case ann: CaptureAnnotation => ann.boxed
     case _ => false
+
+/** Drop retains annotations in the type. */
+class CleanupRetains(using Context) extends TypeMap:
+  def apply(tp: Type): Type =
+    tp match
+      case AnnotatedType(tp, annot) if annot.symbol == defn.RetainsAnnot || annot.symbol == defn.RetainsByNameAnnot =>
+        RetainingType(tp, Nil, byName = annot.symbol == defn.RetainsByNameAnnot)
+      case _ => mapOver(tp)
 
 /** An extractor for `caps.reachCapability(ref)`, which is used to express a reach
  *  capability as a tree in a @retains annotation.

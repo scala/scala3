@@ -13,7 +13,7 @@ import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.typer.ImportInfo
 import dotty.tools.pc.IndexedContext.Result
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 sealed trait IndexedContext:
   given ctx: Context
@@ -75,7 +75,7 @@ sealed trait IndexedContext:
     )
 
   private def isTypeAliasOf(alias: Symbol, queriedSym: Symbol): Boolean =
-    alias.isAliasType && alias.info.metalsDealias.typeSymbol  == queriedSym
+    alias.isAliasType && alias.info.deepDealias.typeSymbol  == queriedSym
 
   final def isEmpty: Boolean = this match
     case IndexedContext.Empty => true

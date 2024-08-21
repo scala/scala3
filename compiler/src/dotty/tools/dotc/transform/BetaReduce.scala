@@ -8,6 +8,7 @@ import MegaPhase.*
 import Symbols.*, Contexts.*, Types.*, Decorators.*
 import StdNames.nme
 import ast.TreeTypeMap
+import Constants.Constant
 
 import scala.collection.mutable.ListBuffer
 
@@ -127,15 +128,20 @@ object BetaReduce:
           case ref @ TermRef(NoPrefix, _) if isPurePath(arg) =>
             ref.symbol
           case _ =>
-            val flags = Synthetic | (param.symbol.flags & Erased)
-            val tpe =
+            val isByNameArg = param.tpt.tpe.isInstanceOf[ExprType]
+            val flags =
+              if isByNameArg then Synthetic | Method | (param.symbol.flags & Erased)
+              else Synthetic | (param.symbol.flags & Erased)
+            val tpe0 =
               if arg.tpe.isBottomType then param.tpe.widenTermRefExpr
               else if arg.tpe.dealias.isInstanceOf[ConstantType] then arg.tpe.dealias
               else arg.tpe.widen
-            val binding = ValDef(newSymbol(ctx.owner, param.name, flags, tpe, coord = arg.span), arg).withSpan(arg.span)
-            if !(tpe.isInstanceOf[ConstantType] && isPureExpr(arg)) then
-              bindings += binding
-            binding.symbol
+            val tpe = if isByNameArg then ExprType(tpe0) else tpe0
+            val bindingSymbol = newSymbol(ctx.owner, param.name, flags, tpe, coord = arg.span)
+            val binding = if isByNameArg then DefDef(bindingSymbol, arg) else ValDef(bindingSymbol, arg)
+            if isByNameArg || !((tpe.isInstanceOf[ConstantType] || tpe.derivesFrom(defn.UnitClass)) && isPureExpr(arg)) then
+              bindings += binding.withSpan(arg.span)
+            bindingSymbol
 
     val expansion = TreeTypeMap(
       oldOwners = ddef.symbol :: Nil,
@@ -147,6 +153,8 @@ object BetaReduce:
     val expansion1 = new TreeMap {
       override def transform(tree: Tree)(using Context) = tree.tpe.widenTermRefExpr match
         case ConstantType(const) if isPureExpr(tree) => cpy.Literal(tree)(const)
+        case tpe: TypeRef if tree.isTerm && tpe.derivesFrom(defn.UnitClass) && isPureExpr(tree) =>
+          cpy.Literal(tree)(Constant(()))
         case _ => super.transform(tree)
     }.transform(expansion)
 

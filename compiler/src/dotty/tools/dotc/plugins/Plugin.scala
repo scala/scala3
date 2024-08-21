@@ -13,6 +13,7 @@ import java.io.InputStream
 import java.util.Properties
 
 import scala.util.{ Try, Success, Failure }
+import scala.annotation.nowarn
 
 trait PluginPhase extends MiniPhase {
   def runsBefore: Set[String] = Set.empty
@@ -50,7 +51,20 @@ trait StandardPlugin extends Plugin {
    *  @param options commandline options to the plugin.
    *  @return a list of phases to be added to the phase plan
    */
-  def init(options: List[String]): List[PluginPhase]
+  @deprecatedOverriding("Method 'init' does not allow to access 'Context', use 'initialize' instead.", since = "Scala 3.5.0")
+  @deprecated("Use 'initialize' instead.", since = "Scala 3.5.0")
+  def init(options: List[String]): List[PluginPhase] = Nil
+
+  /** Non-research plugins should override this method to return the phases
+   *
+   *  The phases returned must be freshly constructed (not reused
+   *  and returned again on subsequent calls).
+   *
+   *  @param options commandline options to the plugin.
+   *  @return a list of phases to be added to the phase plan
+   */
+  @nowarn("cat=deprecation")
+  def initialize(options: List[String])(using Context): List[PluginPhase] = init(options)
 }
 
 /** A research plugin may customize the compilation pipeline freely

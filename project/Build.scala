@@ -12,6 +12,8 @@ import pl.project13.scala.sbt.JmhPlugin
 import pl.project13.scala.sbt.JmhPlugin.JmhKeys.Jmh
 import sbt.Package.ManifestAttributes
 import sbt.PublishBinPlugin.autoImport._
+import dotty.tools.sbtplugin.RepublishPlugin
+import dotty.tools.sbtplugin.RepublishPlugin.autoImport._
 import sbt.plugins.SbtPlugin
 import sbt.ScriptedPlugin.autoImport._
 import xerial.sbt.pack.PackPlugin
@@ -26,6 +28,7 @@ import sbttastymima.TastyMiMaPlugin
 import sbttastymima.TastyMiMaPlugin.autoImport._
 
 import scala.util.Properties.isJavaAtLeast
+
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import org.scalajs.linker.interface.{ModuleInitializer, StandardConfig}
 
@@ -83,9 +86,9 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.4.1"
+  val referenceVersion = "3.4.2"
 
-  val baseVersion = "3.4.2"
+  val baseVersion = "3.5.0"
 
   // LTS or Next
   val versionLine = "Next"
@@ -97,17 +100,29 @@ object Build {
   val publishedDottyVersion = referenceVersion
   val sbtDottyVersion = "0.5.5"
 
-  /** Version against which we check binary compatibility.
+  /** Minor version against which we check binary compatibility.
    *
-   *  This must be the latest published release in the same versioning line.
-   *  For example, if the next version is going to be 3.1.4, then this must be
-   *  set to 3.1.3. If it is going to be 3.1.0, it must be set to the latest
-   *  3.0.x release.
+   *  This must be the earliest published release in the same versioning line.
+   *  For a baseVersion `3.M.P` the mimaPreviousDottyVersion should be set to:
+   *   - `3.M.0`     if `P > 0`
+   *   - `3.(M-1).0` if `P = 0`
    */
-  val previousDottyVersion = "3.4.1"
+  val mimaPreviousDottyVersion = "3.4.0"
 
-  /** Version against which we check binary compatibility. */
-  val ltsDottyVersion = "3.3.0"
+  /** LTS version against which we check binary compatibility.
+   *
+   *  This must be the earliest published release in the LTS versioning line.
+   *  For example, if the latest LTS release is be 3.3.4, then this must be
+   *  set to 3.3.0.
+   */
+  val mimaPreviousLTSDottyVersion = "3.3.0"
+
+  /** Version of Scala CLI to download */
+  val scalaCliLauncherVersion = "1.4.0"
+  /** Version of Scala CLI to download (on Windows - last known validated version) */
+  val scalaCliLauncherVersionWindows = "1.4.0"
+  /** Version of Coursier to download for initializing the local maven repo of Scala command */
+  val coursierJarVersion = "2.1.10"
 
   object CompatMode {
     final val BinaryCompatible = 0
@@ -129,8 +144,8 @@ object Build {
    *  scala-library.
    */
   def stdlibVersion(implicit mode: Mode): String = mode match {
-    case NonBootstrapped => "2.13.12"
-    case Bootstrapped => "2.13.12"
+    case NonBootstrapped => "2.13.14"
+    case Bootstrapped => "2.13.14"
   }
 
   /** Version of the scala-library for which we will generate TASTy.
@@ -140,7 +155,7 @@ object Build {
    *  We can use nightly versions to tests the future compatibility in development.
    *  Nightly versions: https://scala-ci.typesafe.com/ui/native/scala-integration/org/scala-lang
    */
-  val stdlibBootstrappedVersion = "2.13.12"
+  val stdlibBootstrappedVersion = "2.13.14"
 
   val dottyOrganization = "org.scala-lang"
   val dottyGithubUrl = "https://github.com/scala/scala3"
@@ -394,6 +409,7 @@ object Build {
       "-skip-by-id:scala.runtime.MatchCase",
       "-skip-by-id:dotty.tools.tasty",
       "-skip-by-id:dotty.tools.tasty.util",
+      "-skip-by-id:dotty.tools.tasty.besteffort",
       "-project-footer", s"Copyright (c) 2002-$currentYear, LAMP/EPFL",
       "-author",
       "-groups",
@@ -500,7 +516,7 @@ object Build {
         case cv: Disabled => thisProjectID.name
         case cv: Binary => s"${thisProjectID.name}_${cv.prefix}3${cv.suffix}"
       }
-      (thisProjectID.organization % crossedName % previousDottyVersion)
+      (thisProjectID.organization % crossedName % mimaPreviousDottyVersion)
     },
 
     mimaCheckDirection := (compatMode match {
@@ -596,8 +612,8 @@ object Build {
 
   // Settings shared between scala3-compiler and scala3-compiler-bootstrapped
   lazy val commonDottyCompilerSettings = Seq(
-       // Note: bench/profiles/projects.yml should be updated accordingly.
-       Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Ysafe-init"),
+      // Note: bench/profiles/projects.yml should be updated accordingly.
+      Compile / scalacOptions ++= Seq("-Yexplicit-nulls"),
 
       // Use source 3.3 to avoid fatal migration warnings on scalajs-ir
       scalacOptions ++= Seq("-source", "3.3"),
@@ -874,6 +890,8 @@ object Build {
   }
 
   lazy val nonBootstrappedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
+    // FIXME revert this to commonDottyCompilerSettings, when we bump reference version to 3.5.0
+    scalacOptions += "-Ysafe-init",
     // packageAll packages all and then returns a map with the abs location
     packageAll := Def.taskDyn { // Use a dynamic task to avoid loops when loading the settings
       Def.task {
@@ -901,6 +919,8 @@ object Build {
   )
 
   lazy val bootstrappedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
+    // FIXME revert this to commonDottyCompilerSettings, when we bump reference version to 3.5.0
+    scalacOptions += "-Wsafe-init",
     javaOptions ++= {
       val jars = packageAll.value
       Seq(
@@ -908,6 +928,13 @@ object Build {
         "-Ddotty.tests.classes.dottyTastyInspector=" + jars("scala3-tasty-inspector"),
       )
     },
+    // For compatibility at this moment, both the bootstrapped and the non-bootstrapped
+    // compilers are compiled without flexible types.
+    // We should move the flag to commonDottyCompilerSettings once the reference
+    // compiler is updated.
+    // Then, the next step is to enable flexible types by default and reduce the use of
+    // `unsafeNulls`.
+    scalacOptions ++= Seq("-Yno-flexible-types"),
     packageAll := {
       (`scala3-compiler` / packageAll).value ++ Seq(
         "scala3-compiler" -> (Compile / packageBin).value.getAbsolutePath,
@@ -1046,6 +1073,7 @@ object Build {
     settings(commonBootstrappedSettings).
     settings(scala2LibraryBootstrappedSettings).
     settings(moduleName := "scala2-library")
+    // -Ycheck:all is set in project/scripts/scala2-library-tasty-mima.sh
 
   /** Scala 2 library compiled by dotty using the latest published sources of the library.
    *
@@ -1069,9 +1097,8 @@ object Build {
       Compile / doc / scalacOptions += "-Ydocument-synthetic-types",
       scalacOptions += "-Ycompile-scala2-library",
       scalacOptions += "-Yscala2Unpickler:never",
-      scalacOptions += "-Yno-experimental",
       scalacOptions -= "-Xfatal-warnings",
-      Compile / compile / logLevel := Level.Error,
+      Compile / compile / logLevel.withRank(KeyRanks.Invisible) := Level.Error,
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       libraryDependencies +=
@@ -1097,19 +1124,23 @@ object Build {
           IO.createDirectory(trgDir)
           IO.unzip(scalaLibrarySourcesJar, trgDir)
 
-          ((trgDir ** "*.scala") +++ (trgDir ** "*.java")).get.toSet
+          val (ignoredSources, sources) =
+            ((trgDir ** "*.scala") +++ (trgDir ** "*.java")).get.toSet
+              .partition{file =>
+                // sources from https://github.com/scala/scala/tree/2.13.x/src/library-aux
+                val path = file.getPath.replace('\\', '/')
+                path.endsWith("scala-library-src/scala/Any.scala") ||
+                path.endsWith("scala-library-src/scala/AnyVal.scala") ||
+                path.endsWith("scala-library-src/scala/AnyRef.scala") ||
+                path.endsWith("scala-library-src/scala/Nothing.scala") ||
+                path.endsWith("scala-library-src/scala/Null.scala") ||
+                path.endsWith("scala-library-src/scala/Singleton.scala")
+              }
+          // These sources should be never compiled, filtering them out was not working correctly sometimes
+          ignoredSources.foreach(_.delete())
+          sources
         } (Set(scalaLibrarySourcesJar)).toSeq
       }.taskValue,
-      (Compile / sources) ~= (_.filterNot { file =>
-        // sources from https://github.com/scala/scala/tree/2.13.x/src/library-aux
-        val path = file.getPath.replace('\\', '/')
-        path.endsWith("scala-library-src/scala/Any.scala") ||
-        path.endsWith("scala-library-src/scala/AnyVal.scala") ||
-        path.endsWith("scala-library-src/scala/AnyRef.scala") ||
-        path.endsWith("scala-library-src/scala/Nothing.scala") ||
-        path.endsWith("scala-library-src/scala/Null.scala") ||
-        path.endsWith("scala-library-src/scala/Singleton.scala")
-      }),
       (Compile / sources) := {
         val files = (Compile / sources).value
         val overwrittenSourcesDir = (Compile / scalaSource).value
@@ -1141,7 +1172,7 @@ object Build {
       },
       tastyMiMaConfig ~= { _.withMoreProblemFilters(TastyMiMaFilters.StdlibBootstrapped) },
       tastyMiMaReportIssues := tastyMiMaReportIssues.dependsOn(Def.task {
-        val minorVersion = previousDottyVersion.split('.')(1)
+        val minorVersion = mimaPreviousDottyVersion.split('.')(1)
         // TODO find a way around this and test in the CI
         streams.value.log.warn(
           s"""To allow TASTy-MiMa to read TASTy files generated by this version of the compile you must:
@@ -1290,6 +1321,10 @@ object Build {
     .asScala3PresentationCompiler(NonBootstrapped)
   lazy val `scala3-presentation-compiler-bootstrapped` = project.in(file("presentation-compiler"))
     .asScala3PresentationCompiler(Bootstrapped)
+    .settings(
+      // Add `-Yno-flexible-types` flag for bootstrap, see comments for `bootstrappedDottyCompilerSettings`
+      Compile / scalacOptions +=  "-Yno-flexible-types"
+    )
 
   def scala3PresentationCompiler(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `scala3-presentation-compiler`
@@ -1317,8 +1352,8 @@ object Build {
       BuildInfoPlugin.buildInfoScopedSettings(Test) ++
       BuildInfoPlugin.buildInfoDefaultSettings
 
-  lazy val presentationCompilerSettings = {
-    val mtagsVersion = "1.2.2+44-42e0515a-SNAPSHOT"
+  def presentationCompilerSettings(implicit mode: Mode) = {
+    val mtagsVersion = "1.3.0+56-a06a024d-SNAPSHOT"
 
     Seq(
       resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
@@ -1327,11 +1362,15 @@ object Build {
         "io.get-coursier" % "interface" % "1.0.18",
         "org.scalameta" % "mtags-interfaces" % mtagsVersion,
       ),
-      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.12" % mtagsVersion % SourceDeps),
+      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.14" % mtagsVersion % SourceDeps),
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       scalacOptions ++= Seq("-source", "3.3"), // To avoid fatal migration warnings
-      Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Ysafe-init"),
+      // FIXME change this to just Seq("-Yexplicit-nulls, "-Wsafe-init") when reference is set to 3.5.0
+      Compile / scalacOptions ++= (mode match {
+        case Bootstrapped => Seq("-Yexplicit-nulls", "-Wsafe-init")
+        case NonBootstrapped => Seq("-Yexplicit-nulls", "-Ysafe-init")
+      }),
       Compile / sourceGenerators += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory
@@ -1490,11 +1529,13 @@ object Build {
             "isNoModule" -> (moduleKind == ModuleKind.NoModule),
             "isESModule" -> (moduleKind == ModuleKind.ESModule),
             "isCommonJSModule" -> (moduleKind == ModuleKind.CommonJSModule),
-            "isFullOpt" -> (stage == FullOptStage),
+            "usesClosureCompiler" -> linkerConfig.closureCompiler,
+            "hasMinifiedNames" -> (linkerConfig.closureCompiler || linkerConfig.minify),
             "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
             "compliantArrayIndexOutOfBounds" -> (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant),
             "compliantArrayStores" -> (sems.arrayStores == CheckedBehavior.Compliant),
             "compliantNegativeArraySizes" -> (sems.negativeArraySizes == CheckedBehavior.Compliant),
+            "compliantNullPointers" -> (sems.nullPointers == CheckedBehavior.Compliant),
             "compliantStringIndexOutOfBounds" -> (sems.stringIndexOutOfBounds == CheckedBehavior.Compliant),
             "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
             "strictFloats" -> sems.strictFloats,
@@ -1561,6 +1602,8 @@ object Build {
           (dir / "shared/src/test/scala" ** (("*.scala": FileFilter)
             -- "ReflectiveCallTest.scala" // uses many forms of structural calls that are not allowed in Scala 3 anymore
             -- "UTF16Test.scala" // refutable pattern match
+            -- "CharsetTest.scala" // bogus @tailrec that Scala 2 ignores but Scala 3 flags as an error
+            -- "ClassDiffersOnlyInCaseTest.scala" // looks like the Scala 3 compiler itself does not deal with that
             )).get
 
           ++ (dir / "shared/src/test/require-sam" ** "*.scala").get
@@ -1629,6 +1672,7 @@ object Build {
         Seq(
           "-Ddotty.tests.classes.dottyLibraryJS=" + dottyLibraryJSJar,
           "-Ddotty.tests.classes.scalaJSJavalib=" + findArtifactPath(externalJSDeps, "scalajs-javalib"),
+          "-Ddotty.tests.classes.scalaJSScalalib=" + findArtifactPath(externalJSDeps, "scalajs-scalalib_2.13"),
           "-Ddotty.tests.classes.scalaJSLibrary=" + findArtifactPath(externalJSDeps, "scalajs-library_2.13"),
         )
       },
@@ -1736,6 +1780,9 @@ object Build {
     settings(
       SourceLinksIntegrationTest / scalaSource := baseDirectory.value / "test-source-links",
       SourceLinksIntegrationTest / test:= ((SourceLinksIntegrationTest / test) dependsOn generateScalaDocumentation.toTask("")).value,
+    ).
+    settings(
+      scalacOptions += "-experimental" // workaround use of experimental .info in Scaladoc2AnchorCreator
     ).
     settings(
       Compile / resourceGenerators ++= Seq(
@@ -2081,13 +2128,79 @@ object Build {
     packMain := Map(),
     publishArtifact := false,
     packGenerateMakefile := false,
-    packExpandedClasspath := true,
-    packArchiveName := "scala3-" + dottyVersion
+    republishRepo := target.value / "republish",
+    packResourceDir += (republishRepo.value / "bin" -> "bin"),
+    packResourceDir += (republishRepo.value / "maven2" -> "maven2"),
+    packResourceDir += (republishRepo.value / "lib" -> "lib"),
+    republishCommandLibs +=
+      ("scala" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "tasty-core")),
+    republishCommandLibs +=
+      ("with_compiler" -> List("scala3-staging", "scala3-tasty-inspector", "^!scala3-interfaces", "^!scala3-compiler", "^!scala3-library", "^!tasty-core")),
+    republishCommandLibs +=
+      ("scaladoc" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "tasty-core", "scala3-tasty-inspector", "scaladoc")),
+    Compile / pack := republishPack.value,
   )
 
   lazy val dist = project.asDist(Bootstrapped)
     .settings(
-      packResourceDir += (baseDirectory.value / "bin" -> "bin"),
+      packArchiveName := "scala3-" + dottyVersion,
+      republishBinDir := baseDirectory.value / "bin",
+      republishCoursier +=
+        ("coursier.jar" -> s"https://github.com/coursier/coursier/releases/download/v$coursierJarVersion/coursier.jar"),
+      republishLaunchers +=
+        ("scala-cli.jar" -> s"https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli.jar"),
+    )
+
+  lazy val `dist-mac-x86_64` = project.in(file("dist/mac-x86_64")).asDist(Bootstrapped)
+    .settings(
+      republishBinDir := (dist / republishBinDir).value,
+      packArchiveName := (dist / packArchiveName).value + "-x86_64-apple-darwin",
+      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishFetchCoursier := (dist / republishFetchCoursier).value,
+      republishLaunchers +=
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-apple-darwin.gz")
+    )
+
+  lazy val `dist-mac-aarch64` = project.in(file("dist/mac-aarch64")).asDist(Bootstrapped)
+    .settings(
+      republishBinDir := (dist / republishBinDir).value,
+      packArchiveName := (dist / packArchiveName).value + "-aarch64-apple-darwin",
+      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishFetchCoursier := (dist / republishFetchCoursier).value,
+      republishLaunchers +=
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-aarch64-apple-darwin.gz")
+    )
+
+  lazy val `dist-win-x86_64` = project.in(file("dist/win-x86_64")).asDist(Bootstrapped)
+    .settings(
+      republishBinDir := (dist / republishBinDir).value,
+      packArchiveName := (dist / packArchiveName).value + "-x86_64-pc-win32",
+      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishFetchCoursier := (dist / republishFetchCoursier).value,
+      republishExtraProps += ("cli_version" -> scalaCliLauncherVersion),
+      mappings += (republishRepo.value / "EXTRA_PROPERTIES" -> "EXTRA_PROPERTIES"),
+      republishLaunchers +=
+        ("scala-cli.exe" -> s"zip+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersionWindows/scala-cli-x86_64-pc-win32.zip!/scala-cli.exe")
+    )
+
+  lazy val `dist-linux-x86_64` = project.in(file("dist/linux-x86_64")).asDist(Bootstrapped)
+    .settings(
+      republishBinDir := (dist / republishBinDir).value,
+      packArchiveName := (dist / packArchiveName).value + "-x86_64-pc-linux",
+      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishFetchCoursier := (dist / republishFetchCoursier).value,
+      republishLaunchers +=
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-pc-linux.gz")
+    )
+
+  lazy val `dist-linux-aarch64` = project.in(file("dist/linux-aarch64")).asDist(Bootstrapped)
+    .settings(
+      republishBinDir := (dist / republishBinDir).value,
+      packArchiveName := (dist / packArchiveName).value + "-aarch64-pc-linux",
+      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishFetchCoursier := (dist / republishFetchCoursier).value,
+      republishLaunchers +=
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-aarch64-pc-linux.gz")
     )
 
   private def customMimaReportBinaryIssues(issueFilterLocation: String) = mimaReportBinaryIssues := {
@@ -2104,7 +2217,7 @@ object Build {
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
     def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
       aggregate(`scala3-interfaces`, dottyLibrary, dottyCompiler, tastyCore, `scala3-sbt-bridge`, scala3PresentationCompiler).
-      bootstrappedAggregate(`scala2-library-tasty`, `scala3-language-server`, `scala3-staging`,
+      bootstrappedAggregate(`scala2-library-tasty`, `scala2-library-cc-tasty`, `scala3-language-server`, `scala3-staging`,
         `scala3-tasty-inspector`, `scala3-library-bootstrappedJS`, scaladoc).
       dependsOn(tastyCore).
       dependsOn(dottyCompiler).
@@ -2150,9 +2263,6 @@ object Build {
           settings(
             versionScheme := Some("semver-spec"),
             libraryDependencies += "org.scala-lang" % "scala-library" % stdlibVersion,
-            // Make sure we do not refer to experimental features outside an experimental scope.
-            // In other words, disable NIGHTLY/SNAPSHOT experimental scope.
-            scalacOptions += "-Yno-experimental",
           ).
           settings(dottyLibrarySettings)
       if (mode == Bootstrapped) {
@@ -2171,7 +2281,7 @@ object Build {
               case cv: Disabled => thisProjectID.name
               case cv: Binary => s"${thisProjectID.name}_${cv.prefix}3${cv.suffix}"
             }
-            (thisProjectID.organization % crossedName % ltsDottyVersion)
+            (thisProjectID.organization % crossedName % mimaPreviousLTSDottyVersion)
           },
           mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
           mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
@@ -2219,10 +2329,19 @@ object Build {
       settings(scala3PresentationCompilerBuildInfo)
 
     def asDist(implicit mode: Mode): Project = project.
-      enablePlugins(PackPlugin).
+      enablePlugins(PackPlugin, RepublishPlugin).
       withCommonSettings.
-      dependsOn(`scala3-interfaces`, dottyCompiler, dottyLibrary, tastyCore, `scala3-staging`, `scala3-tasty-inspector`, scaladoc).
       settings(commonDistSettings).
+      dependsOn(
+        `scala3-interfaces`,
+        dottyCompiler,
+        dottyLibrary,
+        tastyCore,
+        `scala3-staging`,
+        `scala3-tasty-inspector`,
+        scaladoc,
+        `scala3-sbt-bridge`, // for scala-cli
+      ).
       bootstrappedSettings(
         target := baseDirectory.value / "target" // override setting in commonBootstrappedSettings
       )
@@ -2275,6 +2394,7 @@ object ScaladocConfigs {
       "scala.runtime.MatchCase",
       "dotty.tools.tasty",
       "dotty.tools.tasty.util",
+      "dotty.tools.tasty.besteffort"
     ))
     def projectFooter = ProjectFooter(s"Copyright (c) 2002-$currentYear, LAMP/EPFL")
     def defaultTemplate = DefaultTemplate("static-site-main")

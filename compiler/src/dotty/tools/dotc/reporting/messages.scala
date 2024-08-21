@@ -95,7 +95,8 @@ abstract class CyclicMsg(errorId: ErrorMessageID)(using Context) extends Message
   protected def context: String = ex.optTrace match
     case Some(trace) =>
       s"\n\nThe error occurred while trying to ${
-        trace.map((prefix, sym, suffix) => i"$prefix$sym$suffix").mkString("\n  which required to ")
+        trace.map(identity) // map with identity will turn Context ?=> String elements to String elements
+          .mkString("\n  which required to ")
       }$debugInfo"
     case None =>
       "\n\n Run with -explain-cyclic for more details."
@@ -289,7 +290,7 @@ extends NotFoundMsg(MissingIdentID) {
   }
 }
 
-class TypeMismatch(val found: Type, expected: Type, inTree: Option[untpd.Tree], addenda: => String*)(using Context)
+class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tree], addenda: => String*)(using Context)
   extends TypeMismatchMsg(found, expected)(TypeMismatchID):
 
   def msg(using Context) =
@@ -924,7 +925,7 @@ class MatchableWarning(tp: Type, pattern: Boolean)(using Context)
 extends TypeMsg(MatchableWarningID) {
   def msg(using Context) =
     val kind = if pattern then "pattern selector" else "value"
-    i"""${kind} should be an instance of Matchable,,
+    i"""${kind} should be an instance of Matchable,
        |but it has unmatchable type $tp instead"""
 
   def explain(using Context) =
@@ -2451,6 +2452,17 @@ class SynchronizedCallOnBoxedClass(stat: tpd.Tree)(using Context)
         |you intended."""
 }
 
+class ExtensionNullifiedByMember(method: Symbol, target: Symbol)(using Context)
+  extends Message(ExtensionNullifiedByMemberID):
+  def kind = MessageKind.PotentialIssue
+  def msg(using Context) =
+    i"""Extension method ${hl(method.name.toString)} will never be selected
+       |because ${hl(target.name.toString)} already has a member with the same name and compatible parameter types."""
+  def explain(using Context) =
+    i"""An extension method can be invoked as a regular method, but if that is intended,
+       |it should not be defined as an extension.
+       |Although extensions can be overloaded, they do not overload existing member methods."""
+
 class TraitCompanionWithMutableStatic()(using Context)
   extends SyntaxMsg(TraitCompanionWithMutableStaticID) {
   def msg(using Context) = i"Companion of traits cannot define mutable @static fields"
@@ -2810,19 +2822,27 @@ class MissingImplicitArgument(
       val idx = paramNames.indexOf(name)
       if (idx >= 0) Some(i"${args(idx)}") else None
     """\$\{\s*([^}\s]+)\s*\}""".r.replaceAllIn(raw, (_: Regex.Match) match
-      case Regex.Groups(v) => quoteReplacement(translate(v).getOrElse("")).nn
+      case Regex.Groups(v) => quoteReplacement(translate(v).getOrElse("?" + v)).nn
     )
 
   /** @param rawMsg           Message template with variables, e.g. "Variable A is ${A}"
    *  @param sym              Symbol of the annotated type or of the method whose parameter was annotated
+   *  @param paramNames       Names of type parameters to substitute with `args` in the message template
+   *  @param args             Resolved type arguments to substitute for `paramNames` in the message template
    *  @param substituteType   Function substituting specific types for abstract types associated with variables, e.g A -> Int
    */
-  def formatAnnotationMessage(rawMsg: String, sym: Symbol, substituteType: Type => Type)(using Context): String =
+  def formatAnnotationMessage(
+    rawMsg: String,
+    sym: Symbol,
+    paramNames: List[Name],
+    args: List[Type],
+    substituteType: Type => Type,
+  )(using Context): String =
     val substitutableTypesSymbols = substitutableTypeSymbolsInScope(sym)
     userDefinedErrorString(
       rawMsg,
-      paramNames = substitutableTypesSymbols.map(_.name.unexpandedName.toString),
-      args = substitutableTypesSymbols.map(_.typeRef).map(substituteType)
+      paramNames = (paramNames ::: substitutableTypesSymbols.map(_.name)).map(_.unexpandedName.toString),
+      args = args ::: substitutableTypesSymbols.map(_.typeRef).map(substituteType)
     )
 
   /** Extract a user defined error message from a symbol `sym`
@@ -2834,14 +2854,17 @@ class MissingImplicitArgument(
       msg <- ann.argumentConstantString(0)
     yield msg
 
-  def userDefinedImplicitNotFoundTypeMessageFor(sym: Symbol)(using Context): Option[String] =
-    for
-      rawMsg <- userDefinedMsg(sym, defn.ImplicitNotFoundAnnot)
-      if Feature.migrateTo3 || sym != defn.Function1
-        // Don't inherit "No implicit view available..." message if subtypes of Function1 are not treated as implicit conversions anymore
-    yield
-      val substituteType = (_: Type).asSeenFrom(pt, sym)
-      formatAnnotationMessage(rawMsg, sym, substituteType)
+  def userDefinedImplicitNotFoundTypeMessageFor(
+    sym: Symbol,
+    params: List[ParamInfo] = Nil,
+    args: List[Type] = Nil
+  )(using Context): Option[String] = for
+    rawMsg <- userDefinedMsg(sym, defn.ImplicitNotFoundAnnot)
+    if Feature.migrateTo3 || sym != defn.Function1
+    // Don't inherit "No implicit view available..." message if subtypes of Function1 are not treated as implicit conversions anymore
+  yield
+    val paramNames = params.map(_.paramName)
+    formatAnnotationMessage(rawMsg, sym, paramNames, args, _.asSeenFrom(pt, sym))
 
   /** Extracting the message from a method parameter, e.g. in
    *
@@ -2856,19 +2879,22 @@ class MissingImplicitArgument(
         val targs = tpd.typeArgss(applTree).flatten
         val methodOwner = fn.symbol.owner
         val methodOwnerType = tpd.qualifier(fn).tpe
-        val methodTypeParams = fn.symbol.paramSymss.flatten.filter(_.isType)
+        val methodTypeParams = fn.symbol.paramSymss.flatten.withFilter(_.isType).map(_.name)
         val methodTypeArgs = targs.map(_.tpe)
-        val substituteType = (_: Type).asSeenFrom(methodOwnerType, methodOwner).subst(methodTypeParams, methodTypeArgs)
-        formatAnnotationMessage(rawMsg, sym.owner, substituteType)
+        formatAnnotationMessage(rawMsg, sym.owner, methodTypeParams, methodTypeArgs, _.asSeenFrom(methodOwnerType, methodOwner))
 
   def userDefinedImplicitNotFoundTypeMessage(using Context): Option[String] =
-    def recur(tp: Type): Option[String] = tp match
+    def recur(tp: Type, params: List[ParamInfo] = Nil, args: List[Type] = Nil): Option[String] = tp match
+      case tp: AppliedType =>
+        val tycon = tp.typeConstructor
+        val typeParams = if tycon.isLambdaSub then tycon.hkTypeParams else tycon.typeParams
+        recur(tycon, typeParams ::: params, tp.args ::: args)
       case tp: TypeRef =>
-        val sym = tp.symbol
-        userDefinedImplicitNotFoundTypeMessageFor(sym).orElse(recur(tp.info))
+        userDefinedImplicitNotFoundTypeMessageFor(tp.symbol, params, args)
+          .orElse(recur(tp.info))
       case tp: ClassInfo =>
         tp.baseClasses.iterator
-          .map(userDefinedImplicitNotFoundTypeMessageFor)
+          .map(userDefinedImplicitNotFoundTypeMessageFor(_))
           .find(_.isDefined).flatten
       case tp: TypeProxy =>
         recur(tp.superType)
@@ -2927,11 +2953,20 @@ class MissingImplicitArgument(
 
     def location(preposition: String) = if (where.isEmpty) "" else s" $preposition $where"
 
+    /** Default error message for non-nested ambiguous implicits. */
     def defaultAmbiguousImplicitMsg(ambi: AmbiguousImplicits) =
-      s"Ambiguous given instances: ${ambi.explanation}${location("of")}"
+      s"Ambiguous given instances: ${ambi.explanation}${location("of")}${ambi.priorityChangeWarningNote}"
 
+    /** Default error messages for non-ambiguous implicits, or nested ambiguous
+     *  implicits.
+     *
+     *  The default message is shown for ambiguous implicits only if they have
+     *  the `nested` flag set. In this case, we output "no best given instance"
+     *  instead of "no given instance".
+     */
     def defaultImplicitNotFoundMessage =
-      i"No given instance of type $pt was found${location("for")}"
+      val bestStr = if arg.tpe.isInstanceOf[AmbiguousImplicits] then " best" else ""
+      i"No$bestStr given instance of type $pt was found${location("for")}"
 
     /** Construct a custom error message given an ambiguous implicit
      *  candidate `alt` and a user defined message `raw`.
@@ -2969,7 +3004,7 @@ class MissingImplicitArgument(
      *  def foo(implicit foo: Foo): Any = ???
      */
     arg.tpe match
-      case ambi: AmbiguousImplicits =>
+      case ambi: AmbiguousImplicits if !ambi.nested =>
         (ambi.alt1, ambi.alt2) match
           case (alt @ AmbiguousImplicitMsg(msg), _) =>
             userDefinedAmbiguousImplicitMsg(alt, msg)
@@ -3078,6 +3113,15 @@ extends SyntaxMsg(InlineGivenShouldNotBeFunctionID):
        |      inline def apply(x: A) = x.toB
      """
 
+class InlinedAnonClassWarning()(using Context)
+  extends Message(InlinedAnonClassWarningID):
+    def kind = MessageKind.PotentialIssue
+    def msg(using Context) = "New anonymous class definition will be duplicated at each inline site"
+    def explain(using Context) =
+      i"""Anonymous class will be defined at each use site, which may lead to a larger number of classfiles.
+      |
+      |To inline class definitions, you may provide an explicit class name to avoid this warning."""
+
 class ValueDiscarding(tp: Type)(using Context)
   extends Message(ValueDiscardingID):
     def kind = MessageKind.PotentialIssue
@@ -3159,3 +3203,39 @@ class VolatileOnVal()(using Context)
 extends SyntaxMsg(VolatileOnValID):
   protected def msg(using Context): String = "values cannot be volatile"
   protected def explain(using Context): String = ""
+
+class ConstructorProxyNotValue(sym: Symbol)(using Context)
+extends TypeMsg(ConstructorProxyNotValueID):
+  protected def msg(using Context): String =
+    i"constructor proxy $sym cannot be used as a value"
+  protected def explain(using Context): String =
+    i"""A constructor proxy is a symbol made up by the compiler to represent a non-existent
+       |factory method of a class. For instance, in
+       |
+       |   class C(x: Int)
+       |
+       |C does not have an apply method since it is not a case class. Yet one can
+       |still create instances with applications like `C(3)` which expand to `new C(3)`.
+       |The `C` in this call is a constructor proxy. It can only be used as applications
+       |but not as a stand-alone value."""
+
+class ContextBoundCompanionNotValue(sym: Symbol)(using Context)
+extends TypeMsg(ConstructorProxyNotValueID):
+  protected def msg(using Context): String =
+    i"context bound companion $sym cannot be used as a value"
+  protected def explain(using Context): String =
+    i"""A context bound companion is a symbol made up by the compiler to represent the
+       |witness or witnesses generated for the context bound(s) of a type parameter or type.
+       |For instance, in
+       |
+       |   class Monoid extends SemiGroup:
+       |     type Self
+       |     def unit: Self
+       |
+       |   type A: Monoid
+       |
+       |there is just a type `A` declared but not a value `A`. Nevertheless, one can write
+       |the selection `A.unit`, which works because the compiler created a context bound
+       |companion value with the (term-)name `A`. However, these context bound companions
+       |are not values themselves, they can only be referred to in selections."""
+

@@ -30,6 +30,7 @@ strict-pattern-bindings-3.0-migration.scala
 i17186b.scala
 i11982a.scala
 i17255
+i17735.scala
 
 # Tree is huge and blows stack for printing Text
 i7034.scala
@@ -64,6 +65,8 @@ i17149.scala
 tuple-fold.scala
 mt-redux-norm.perspective.scala
 i18211.scala
+10867.scala
+named-tuples1.scala
 
 # Opaque type
 i5720.scala
@@ -100,7 +103,7 @@ i13842.scala
 # Position change under captureChecking
 boxmap-paper.scala
 
-# Function types print differnt after unpickling since test mispredicts Feature.preFundsEnabled
+# Function types print different after unpickling since test mispredicts Feature.preFundsEnabled
 caps-universal.scala
 
 # GADT cast applied to singleton type difference
@@ -114,3 +117,21 @@ java-inherited-type1
 
 # recursion limit exceeded
 i7445b.scala
+
+# more aggresive reduce projection makes a difference
+i15525.scala
+i19955a.scala
+i19955b.scala
+i20053b.scala
+
+# alias types at different levels of dereferencing
+parsercombinators-givens.scala
+parsercombinators-givens-2.scala
+parsercombinators-ctx-bounds.scala
+parsercombinators-this.scala
+parsercombinators-arrow.scala
+parsercombinators-new-syntax.scala
+hylolib-deferred-given
+hylolib-cb
+hylolib
+

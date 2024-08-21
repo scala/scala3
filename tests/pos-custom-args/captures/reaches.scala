@@ -10,6 +10,16 @@ class Ref[T](init: T):
   def get: T = x
   def set(y: T) = { x = y }
 
+class List[+A]:
+  def head: A = ???
+  def tail: List[A] = ???
+  def map[B](f: A -> B): List[B] = ???
+  def nonEmpty: Boolean = ???
+
+extension [A](x: A) def :: (xs: List[A]): List[A] = ???
+
+object Nil extends List[Nothing]
+
 def runAll(xs: List[Proc]): Unit =
   var cur: List[() ->{xs*} Unit] = xs  // OK, by revised VAR
   while cur.nonEmpty do
@@ -36,7 +46,7 @@ def compose2[A, B, C](f: A => B, g: B => C): A => C =
   z => g(f(z))
 
 def mapCompose[A](ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
-  ps.map((x, y) => compose1(x, y))
+  ps.map((x, y) => compose1(x, y)) // Does not work if map takes an impure function, see reaches in neg
 
 @annotation.capability class IO
 

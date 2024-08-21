@@ -266,6 +266,22 @@ object MainGenericRunner {
           run(settings.withExecuteMode(ExecuteMode.Run))
         else
           run(settings.withExecuteMode(ExecuteMode.Repl))
+    end run
+
+    val ranByCoursierBootstrap =
+      sys.props.isDefinedAt("coursier.mainJar")
+      || sys.props.get("bootstrap.mainClass").contains("dotty.tools.MainGenericRunner")
+
+    val silenced = sys.props.get("scala.use_legacy_launcher") == Some("true")
+
+    if !silenced then
+      Console.err.println(s"[warning] MainGenericRunner class is deprecated since Scala 3.5.0, and Scala CLI features will not work.")
+      Console.err.println(s"[warning] Please be sure to update to the Scala CLI launcher to use the new features.")
+      if ranByCoursierBootstrap then
+        Console.err.println(s"[warning] It appears that your Coursier-based Scala installation is misconfigured.")
+        Console.err.println(s"[warning] To update to the new Scala CLI runner, please update (coursier, cs) commands first before re-installing scala.")
+      Console.err.println(s"[warning] Check the Scala 3.5.0 release notes to troubleshoot your installation.")
+
 
     run(settings) match
       case Some(ex: (StringDriverException | ScriptingException)) => errorFn(ex.getMessage)

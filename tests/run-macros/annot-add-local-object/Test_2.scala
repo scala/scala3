@@ -1,4 +1,4 @@
-//> using options -experimental -Yno-experimental
+//> using options -experimental
 
 @main def Test(): Unit =
   @addClass def foo(): Unit =

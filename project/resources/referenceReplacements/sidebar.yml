@@ -77,6 +77,7 @@ subsection:
       - page: reference/other-new-features/safe-initialization.md
       - page: reference/other-new-features/type-test.md
       - page: reference/other-new-features/experimental-defs.md
+      - page: reference/other-new-features/binary-literals.md
   - title: Other Changed Features
     directory: changed-features
     index: reference/changed-features/changed-features.md

@@ -9,15 +9,18 @@ target="$1"
 
 shift # Mutates $@ by deleting the first element ($1)
 
+# set the $DIST_PROJECT and $DIST_DIR variables
+source "$ROOT/bin/common-platform"
+
 # Marker file used to obtain the date of latest call to sbt-back
-version="$ROOT/dist/target/pack/VERSION"
+version="$ROOT/$DIST_DIR/target/pack/VERSION"
 
 # Create the target if absent or if file changed in ROOT/compiler
 new_files="$(find "$ROOT/compiler" \( -iname "*.scala" -o -iname "*.java" \) -newer "$version" 2> /dev/null)"
 
 if [ ! -f "$version" ] || [ ! -z "$new_files" ]; then
   echo "Building Dotty..."
-  (cd $ROOT && sbt "dist/pack")
+  (cd $ROOT && sbt "$DIST_PROJECT/pack")
 fi
 
-"$target" "$@"
+"$ROOT/$DIST_DIR/target/pack/bin/$target" "$@"

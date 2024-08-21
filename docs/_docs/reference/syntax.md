@@ -198,10 +198,10 @@ SimpleType        ::=  SimpleLiteral
                     |  id
                     |  Singleton ‘.’ id
                     |  Singleton ‘.’ ‘type’
-                    |  ‘(’ Types ‘)’
+                    |  ‘(’ [Types] ‘)’
                     |  Refinement
-                    |  SimpleType1 TypeArgs
-                    |  SimpleType1 ‘#’ id
+                    |  SimpleType TypeArgs
+                    |  SimpleType ‘#’ id
 Singleton         ::=  SimpleRef
                     |  SimpleLiteral
                     |  Singleton ‘.’ id
@@ -263,7 +263,7 @@ SimpleExpr        ::=  SimpleRef
                     |  quoteId                                                  -- only inside splices
                     |  ‘new’ ConstrApp {‘with’ ConstrApp} [TemplateBody]
                     |  ‘new’ TemplateBody
-                    |  ‘(’ ExprsInParens ‘)’
+                    |  ‘(’ [ExprsInParens] ‘)’
                     |  SimpleExpr ‘.’ id
                     |  SimpleExpr ‘.’ MatchClause
                     |  SimpleExpr TypeArgs
@@ -279,8 +279,7 @@ ExprSplice        ::= spliceId                                                  
                     |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted pattern
                     |  ‘$’ ‘{’ Pattern ‘}’                                      -- when inside quoted pattern
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
-ExprInParens      ::=  PostfixExpr ‘:’ Type
-                    |  Expr
+ExprInParens      ::=  PostfixExpr ‘:’ Type |  Expr
 ParArgumentExprs  ::=  ‘(’ [ExprsInParens] ‘)’
                     |  ‘(’ ‘using’ ExprsInParens ‘)’
                     |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘*’ ‘)’
@@ -331,6 +330,7 @@ SimplePattern1    ::=  SimpleRef
 PatVar            ::=  varid
                     |  ‘_’
 Patterns          ::=  Pattern {‘,’ Pattern}
+
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
                     |  ‘(’ [Patterns ‘,’] PatVar ‘*’ ‘)’
 ```
@@ -392,7 +392,7 @@ LocalModifier     ::=  ‘abstract’
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
 AccessQualifier   ::=  ‘[’ id ‘]’
 
-Annotation        ::=  ‘@’ SimpleType1 {ParArgumentExprs}
+Annotation        ::=  ‘@’ SimpleType {ParArgumentExprs}
 
 Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
 Export            ::=  ‘export’ ImportExpr {‘,’ ImportExpr}
@@ -415,6 +415,7 @@ EndMarkerTag      ::=  id | ‘if’ | ‘while’ | ‘for’ | ‘match’ | �
 ```
 RefineDcl         ::=  ‘val’ ValDcl
                     |  ‘def’ DefDcl
+                    |  ‘var’ ValDcl
                     |  ‘type’ {nl} TypeDef
 ValDcl            ::=  ids ‘:’ Type
 DefDcl            ::=  DefSig ‘:’ Type
@@ -443,6 +444,7 @@ ObjectDef         ::=  id [Template]
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody
 GivenDef          ::=  [GivenSig] (AnnotType [‘=’ Expr] | StructuralInstance)
 GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’         -- one of `id`, `DefTypeParamClause`, `UsingParamClause` must be present
+GivenType         ::=  AnnotType {id [nl] AnnotType}
 StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} [‘with’ WithTemplateBody]
 Extension         ::=  ‘extension’ [DefTypeParamClause] {UsingParamClause}
                        ‘(’ DefTermParam ‘)’ {UsingParamClause} ExtMethods
@@ -452,7 +454,7 @@ ExtMethod         ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef
 Template          ::=  InheritClauses [TemplateBody]
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
 ConstrApps        ::=  ConstrApp ({‘,’ ConstrApp} | {‘with’ ConstrApp})
-ConstrApp         ::=  SimpleType1 {Annotation} {ParArgumentExprs}
+ConstrApp         ::=  SimpleType {Annotation} {ParArgumentExprs}
 ConstrExpr        ::=  SelfInvocation
                     |  <<< SelfInvocation {semi BlockStat} >>>
 SelfInvocation    ::=  ‘this’ ArgumentExprs {ArgumentExprs}

@@ -823,7 +823,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
     // without it.  This is particularly bad because the availability of
     // generic information could disappear as a consequence of a seemingly
     // unrelated change.
-      ctx.base.settings.YnoGenericSig.value
+      ctx.base.settings.XnoGenericSig.value
     || sym.is(Artifact)
     || sym.isAllOf(LiftedMethod)
     || sym.is(Bridge)

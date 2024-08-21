@@ -31,7 +31,8 @@ import util.{SourceFile, Property}
 import ast.{Trees, tpd, untpd}
 import Trees.*
 import Decorators.*
-import dotty.tools.dotc.quoted.QuotePatterns
+import config.Feature
+import quoted.QuotePatterns
 
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
 import TastyBuffer.*
@@ -42,6 +43,7 @@ import scala.collection.mutable
 import config.Printers.pickling
 
 import dotty.tools.tasty.TastyFormat.*
+import dotty.tools.tasty.besteffort.BestEffortTastyFormat.ERRORtype
 
 import scala.annotation.constructorOnly
 import scala.annotation.internal.sharable
@@ -53,12 +55,14 @@ import scala.compiletime.uninitialized
  *  @param posUnpicklerOpt     the unpickler for positions, if it exists
  *  @param commentUnpicklerOpt the unpickler for comments, if it exists
  *  @param attributeUnpicklerOpt the unpickler for attributes, if it exists
+ *  @param isBestEffortTasty   decides whether to unpickle as a Best Effort TASTy
  */
 class TreeUnpickler(reader: TastyReader,
                     nameAtRef: NameTable,
                     compilationUnitInfo: CompilationUnitInfo,
                     posUnpicklerOpt: Option[PositionUnpickler],
-                    commentUnpicklerOpt: Option[CommentUnpickler]) {
+                    commentUnpicklerOpt: Option[CommentUnpickler],
+                    isBestEffortTasty: Boolean = false) {
   import TreeUnpickler.*
   import tpd.*
 
@@ -155,20 +159,15 @@ class TreeUnpickler(reader: TastyReader,
         if f == null then "" else s" in $f"
       def fail(ex: Throwable) = throw UnpicklingError(denot, where, ex)
       treeAtAddr(currentAddr) =
-        val traceCycles = CyclicReference.isTraced
-        try
-          if traceCycles then
-            CyclicReference.pushTrace("read the definition of ", denot.symbol, where)
-          atPhaseBeforeTransforms {
-            new TreeReader(reader).readIndexedDef()(
-              using ctx.withOwner(owner).withModeBits(mode).withSource(source))
-          }
-        catch
-          case ex: CyclicReference => throw ex
-          case ex: AssertionError => fail(ex)
-          case ex: Exception => fail(ex)
-        finally
-          if traceCycles then CyclicReference.popTrace()
+        CyclicReference.trace(i"read the definition of ${denot.symbol}$where"):
+          try
+            atPhaseBeforeTransforms:
+              new TreeReader(reader).readIndexedDef()(
+                using ctx.withOwner(owner).withModeBits(mode).withSource(source))
+          catch
+            case ex: CyclicReference => throw ex
+            case ex: AssertionError => fail(ex)
+            case ex: Exception => fail(ex)
   }
 
   class TreeReader(val reader: TastyReader) {
@@ -412,9 +411,7 @@ class TreeUnpickler(reader: TastyReader,
               readType().appliedTo(until(end)(readType()))
             case TYPEBOUNDS =>
               val lo = readType()
-              if nothingButMods(end) then
-                if lo.isMatch then MatchAlias(readVariances(lo))
-                else TypeAlias(readVariances(lo))
+              if nothingButMods(end) then AliasingBounds(readVariances(lo))
               else
                 val hi = readVariances(readType())
                 createNullableTypeBounds(lo, hi)
@@ -444,6 +441,11 @@ class TreeUnpickler(reader: TastyReader,
               readTypeRef() match {
                 case binder: LambdaType => binder.paramRefs(readNat())
               }
+            case FLEXIBLEtype =>
+              FlexibleType(readType())
+            case _ if isBestEffortTasty =>
+              goto(end)
+              new PreviousErrorType
           }
         assert(currentAddr == end, s"$start $currentAddr $end ${astTagToString(tag)}")
         result
@@ -491,6 +493,9 @@ class TreeUnpickler(reader: TastyReader,
           typeAtAddr.getOrElseUpdate(ref, forkAt(ref).readType())
         case BYNAMEtype =>
           ExprType(readType())
+        case ERRORtype =>
+          if isBestEffortTasty then new PreviousErrorType
+          else throw new Error(s"Illegal ERRORtype in non Best Effort TASTy file")
         case _ =>
           ConstantType(readConstant(tag))
       }
@@ -751,6 +756,7 @@ class TreeUnpickler(reader: TastyReader,
           case INVISIBLE => addFlag(Invisible)
           case TRANSPARENT => addFlag(Transparent)
           case INFIX => addFlag(Infix)
+          case TRACKED => addFlag(Tracked)
           case PRIVATEqualified =>
             readByte()
             privateWithin = readWithin
@@ -918,6 +924,8 @@ class TreeUnpickler(reader: TastyReader,
           val resType =
             if name == nme.CONSTRUCTOR then
               effectiveResultType(sym, paramss)
+            else if sym.isAllOf(Given | Method) && Feature.enabled(Feature.modularity) then
+              addParamRefinements(tpt.tpe, paramss)
             else
               tpt.tpe
           sym.info = methodType(paramss, resType)
@@ -946,6 +954,7 @@ class TreeUnpickler(reader: TastyReader,
             val rhs = readTpt()(using localCtx)
 
             sym.info = new NoCompleter:
+              override def complete(denot: SymDenotation)(using Context): Unit = if !isBestEffortTasty then unsupported("complete")
               override def completerTypeParams(sym: Symbol)(using Context) =
                 rhs.tpe.typeParams
 
@@ -981,8 +990,8 @@ class TreeUnpickler(reader: TastyReader,
       if !sym.isType && !sym.is(ParamAccessor) then
         sym.info = ta.avoidPrivateLeaks(sym)
 
-      if (ctx.settings.YreadComments.value) {
-        assert(ctx.docCtx.isDefined, "`-Yread-docs` enabled, but no `docCtx` is set.")
+      if (ctx.settings.XreadComments.value) {
+        assert(ctx.docCtx.isDefined, "`-Xread-docs` enabled, but no `docCtx` is set.")
         commentUnpicklerOpt.foreach { commentUnpickler =>
           val comment = commentUnpickler.commentAt(start)
           ctx.docCtx.get.addDocstring(tree.symbol, comment)
@@ -1021,8 +1030,14 @@ class TreeUnpickler(reader: TastyReader,
             case nu: New =>
               try nu.tpe
               finally goto(end)
+            case other if isBestEffortTasty =>
+              try other.tpe
+              finally goto(end)
         case SHAREDterm =>
           forkAt(readAddr()).readParentType()
+        case SELECT if isBestEffortTasty =>
+          goto(readEnd())
+          new PreviousErrorType
 
     /** Read template parents
      *  @param  withArgs if false, only read enough of parent trees to determine their type
@@ -1063,7 +1078,7 @@ class TreeUnpickler(reader: TastyReader,
       }
       val parentReader = fork
       val parents = readParents(withArgs = false)(using parentCtx)
-      val parentTypes = parents.map(_.tpe.dealias)
+      val parentTypes = parents.map(_.tpe.dealiasKeepAnnots.separateRefinements(cls, null))
       if cls.is(JavaDefined) && parentTypes.exists(_.derivesFrom(defn.JavaAnnotationClass)) then
         cls.setFlag(JavaAnnotation)
       val self =
@@ -1123,6 +1138,7 @@ class TreeUnpickler(reader: TastyReader,
       })
       defn.patchStdLibClass(cls)
       NamerOps.addConstructorProxies(cls)
+      NamerOps.addContextBoundCompanions(cls)
       setSpan(start,
         untpd.Template(constr, mappedParents, self, lazyStats)
           .withType(localDummy.termRef))
@@ -1246,6 +1262,7 @@ class TreeUnpickler(reader: TastyReader,
           case path: TermRef => ref(path)
           case path: ThisType => untpd.This(untpd.EmptyTypeIdent).withType(path)
           case path: ConstantType => Literal(path.value)
+          case path: ErrorType if isBestEffortTasty => TypeTree(path)
         }
       }
 
@@ -1379,9 +1396,9 @@ class TreeUnpickler(reader: TastyReader,
               val fn = readTree()
               val args = until(end)(readTree())
               if fn.symbol.isConstructor then constructorApply(fn, args)
-              else if fn.symbol == defn.QuotedRuntime_exprQuote then quotedExpr(fn, args)
-              else if fn.symbol == defn.QuotedRuntime_exprSplice then splicedExpr(fn, args)
-              else if fn.symbol == defn.QuotedRuntime_exprNestedSplice then nestedSpliceExpr(fn, args)
+              else if fn.symbol == defn.QuotedRuntime_exprQuote then quotedExpr(fn, args) // decode pre 3.5.0 encoding
+              else if fn.symbol == defn.QuotedRuntime_exprSplice then splicedExpr(fn, args) // decode pre 3.5.0 encoding
+              else if fn.symbol == defn.QuotedRuntime_exprNestedSplice then nestedSpliceExpr(fn, args) // decode pre 3.5.0 encoding
               else tpd.Apply(fn, args)
             case TYPEAPPLY =>
               tpd.TypeApply(readTree(), until(end)(readTpt()))
@@ -1503,7 +1520,7 @@ class TreeUnpickler(reader: TastyReader,
               val unapply = UnApply(fn, implicitArgs, argPats, patType)
               if fn.symbol == defn.QuoteMatching_ExprMatch_unapply
                  || fn.symbol == defn.QuoteMatching_TypeMatch_unapply
-              then QuotePatterns.decode(unapply)
+              then QuotePatterns.decode(unapply) // decode pre 3.5.0 encoding
               else unapply
             case REFINEDtpt =>
               val refineCls = symAtAddr.getOrElse(start,
@@ -1544,8 +1561,6 @@ class TreeUnpickler(reader: TastyReader,
               // as the reduction of the match type definition!
               //
               // We also override the type, as that's what Typer does.
-              // The difference here is that a match type that reduces to a non-match type
-              // makes the TypeRef for that definition will have a TypeAlias info instead of a MatchAlias.
               tpt.overwriteType(tpt.tpe.normalized)
               tpt
             case TYPEBOUNDStpt =>
@@ -1553,6 +1568,24 @@ class TreeUnpickler(reader: TastyReader,
               val hi = if currentAddr == end then lo else readTpt()
               val alias = if currentAddr == end then EmptyTree else readTpt()
               createNullableTypeBoundsTree(lo, hi, alias)
+            case QUOTE =>
+              Quote(readTree(), Nil).withBodyType(readType())
+            case SPLICE =>
+              Splice(readTree()).withType(readType())
+            case QUOTEPATTERN =>
+              val bodyReader = fork
+              skipTree()
+              val quotes = readTree()
+              val patType = readType()
+              val bindings = readStats(ctx.owner, end)
+              val body = bodyReader.readTree() // need bindings in scope, so needs to be read before
+              QuotePattern(bindings, body, quotes, patType)
+            case SPLICEPATTERN =>
+              val pat = readTree()
+              val patType = readType()
+              val (targs, args) = until(end)(readTree()).span(_.isType)
+              assert(targs.isEmpty, "unexpected type arguments in SPLICEPATTERN") // `targs` will be needed for #18271. Until this fearure is added they should be empty.
+              SplicePattern(pat, args, patType)
             case HOLE =>
               readHole(end, isTerm = true)
             case _ =>

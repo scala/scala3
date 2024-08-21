@@ -1,0 +1,3 @@
+
+
+def g() = f() // error

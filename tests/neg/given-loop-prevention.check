@@ -1,0 +1,14 @@
+-- Error: tests/neg/given-loop-prevention.scala:10:36 ------------------------------------------------------------------
+10 |  given List[Foo] = List(summon[Foo]) // error
+   |                                    ^
+   |                             Result of implicit search for Foo will change.
+   |                             Current result Baz.given_Foo will be no longer eligible
+   |                               because it is not defined before the search position.
+   |                             Result with new rules: No Matching Implicit.
+   |                             To opt into the new rules, compile with `-source future` or use
+   |                             the `scala.language.future` language import.
+   |
+   |                             To fix the problem without the language import, you could try one of the following:
+   |                               - use a `given ... with` clause as the enclosing given,
+   |                               - rearrange definitions so that Baz.given_Foo comes earlier,
+   |                               - use an explicit argument.

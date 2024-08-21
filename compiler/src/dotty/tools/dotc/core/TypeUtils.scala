@@ -4,13 +4,17 @@ package core
 
 import TypeErasure.ErasedValueType
 import Types.*, Contexts.*, Symbols.*, Flags.*, Decorators.*
-import Names.Name
+import Names.{Name, TermName}
+import Constants.Constant
 
-class TypeUtils {
+import Names.Name
+import config.Feature
+
+class TypeUtils:
   /** A decorator that provides methods on types
    *  that are needed in the transformer pipeline.
    */
-  extension (self: Type) {
+  extension (self: Type)
 
     def isErasedValueType(using Context): Boolean =
       self.isInstanceOf[ErasedValueType]
@@ -19,7 +23,11 @@ class TypeUtils {
       self.classSymbol.isPrimitiveValueClass
 
     def isErasedClass(using Context): Boolean =
-      self.underlyingClassRef(refinementOK = true).typeSymbol.is(Flags.Erased)
+      val cls = self.underlyingClassRef(refinementOK = true).typeSymbol
+      cls.is(Flags.Erased)
+       && (cls != defn.SingletonClass || Feature.enabled(Feature.modularity))
+         // Singleton counts as an erased class only under x.modularity
+
 
     /** Is this type a checked exception? This is the case if the type
      *  derives from Exception but not from RuntimeException. According to
@@ -65,8 +73,12 @@ class TypeUtils {
           case tp: AppliedType if defn.isTupleNType(tp) && normalize =>
             Some(tp.args)  // if normalize is set, use the dealiased tuple
                            // otherwise rely on the default case below to print unaliased tuples.
+          case tp: SkolemType =>
+            recur(tp.underlying, bound)
           case tp: SingletonType =>
-            if tp.termSymbol == defn.EmptyTupleModule then Some(Nil) else None
+            if tp.termSymbol == defn.EmptyTupleModule then Some(Nil)
+            else if normalize then recur(tp.widen, bound)
+            else None
           case _ =>
             if defn.isTupleClass(tp.typeSymbol) && !normalize then Some(tp.dealias.argInfos)
             else None
@@ -114,22 +126,35 @@ class TypeUtils {
         case Some(types) => TypeOps.nestedPairs(types)
         case None => throw new AssertionError("not a tuple")
 
-    def refinedWith(name: Name, info: Type)(using Context) = RefinedType(self, name, info)
+    def namedTupleElementTypesUpTo(bound: Int, normalize: Boolean = true)(using Context): List[(TermName, Type)] =
+      (if normalize then self.normalized else self).dealias match
+        case defn.NamedTuple(nmes, vals) =>
+          val names = nmes.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil).map:
+            case ConstantType(Constant(str: String)) => str.toTermName
+            case t => throw TypeError(em"Malformed NamedTuple: names must be string types, but $t was found.")
+          val values = vals.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil)
+          names.zip(values)
+        case t =>
+          Nil
 
-    /** The TermRef referring to the companion of the underlying class reference
-     *  of this type, while keeping the same prefix.
-     */
-    def mirrorCompanionRef(using Context): TermRef = self match {
-      case AndType(tp1, tp2) =>
-        val c1 = tp1.classSymbol
-        val c2 = tp2.classSymbol
-        if c1.isSubClass(c2) then tp1.mirrorCompanionRef
-        else tp2.mirrorCompanionRef // precondition: the parts of the AndType have already been checked to be non-overlapping
-      case self @ TypeRef(prefix, _) if self.symbol.isClass =>
-        prefix.select(self.symbol.companionModule).asInstanceOf[TermRef]
-      case self: TypeProxy =>
-        self.superType.mirrorCompanionRef
-    }
+    def namedTupleElementTypes(using Context): List[(TermName, Type)] =
+      namedTupleElementTypesUpTo(Int.MaxValue)
+
+    def isNamedTupleType(using Context): Boolean = self match
+      case defn.NamedTuple(_, _) => true
+      case _ => false
+
+    /** Drop all named elements in tuple type */
+    def stripNamedTuple(using Context): Type = self.normalized.dealias match
+      case defn.NamedTuple(_, vals) =>
+        vals
+      case self @ AnnotatedType(tp, annot) =>
+        val tp1 = tp.stripNamedTuple
+        if tp1 ne tp then AnnotatedType(tp1, annot) else self
+      case _ =>
+        self
+
+    def refinedWith(name: Name, info: Type)(using Context) = RefinedType(self, name, info)
 
     /** Is this type a methodic type that takes at least one parameter? */
     def takesParams(using Context): Boolean = self.stripPoly match
@@ -150,5 +175,20 @@ class TypeUtils {
       case _ =>
         val cls = self.underlyingClassRef(refinementOK = false).typeSymbol
         cls.isTransparentClass && (!traitOnly || cls.is(Trait))
-  }
-}
+
+    /** Is this type the ThisType of class `cls?`. Note we can't use `self eq cls.thisType` for this,
+     *  since ThisTypes take TermRef parameters and semantically equal TermRefs could have different
+     *  forms (for instance one could use as a prefix the ThisType of an enclosing static module or package,
+     *  and the other could select it from something further out)
+     */
+    def isThisTypeOf(cls: Symbol)(using Context) = self match
+      case self: Types.ThisType => self.cls == cls
+      case _ => false
+
+    /** Strip all outer refinements off this type */
+    def stripRefinement: Type = self match
+      case self: RefinedOrRecType => self.parent.stripRefinement
+      case seld => self
+
+end TypeUtils
+

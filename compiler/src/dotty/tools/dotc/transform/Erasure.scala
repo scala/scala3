@@ -13,6 +13,7 @@ import core.Types.*
 import core.Names.*
 import core.StdNames.*
 import core.NameOps.*
+import core.Periods.currentStablePeriod
 import core.NameKinds.{AdaptedClosureName, BodyRetainerName, DirectMethName}
 import core.Scopes.newScopeWith
 import core.Decorators.*
@@ -132,7 +133,7 @@ class Erasure extends Phase with DenotTransformer {
       }
     case ref: JointRefDenotation =>
       new UniqueRefDenotation(
-        ref.symbol, transformInfo(ref.symbol, ref.symbol.info), ref.validFor, ref.prefix)
+        ref.symbol, transformInfo(ref.symbol, ref.symbol.info), currentStablePeriod, ref.prefix)
     case _ =>
       ref.derivedSingleDenotation(ref.symbol, transformInfo(ref.symbol, ref.symbol.info))
   }
@@ -566,7 +567,13 @@ object Erasure {
           case Some(annot) =>
             val message = annot.argumentConstant(0) match
               case Some(c) =>
-                c.stringValue.toMessage
+                val addendum = tree match
+                  case tree: RefTree
+                  if tree.symbol == defn.Compiletime_deferred && tree.name != nme.deferred =>
+                    i".\nNote that `deferred` can only be used under its own name when implementing a given in a trait; `${tree.name}` is not accepted."
+                  case _ =>
+                    ""
+                (c.stringValue ++ addendum).toMessage
               case _ =>
                 em"""Reference to ${tree.symbol.showLocated} should not have survived,
                     |it should have been processed and eliminated during expansion of an enclosing macro or term erasure."""
@@ -593,9 +600,9 @@ object Erasure {
 
     def erasedDef(sym: Symbol)(using Context): Tree =
       if sym.isClass then
-      	// We cannot simply drop erased classes, since then they would not generate classfiles
-      	// and would not be visible under separate compilation. So we transform them to
-      	// empty interfaces instead.
+        // We cannot simply drop erased classes, since then they would not generate classfiles
+        // and would not be visible under separate compilation. So we transform them to
+        // empty interfaces instead.
         tpd.ClassDef(sym.asClass, DefDef(sym.primaryConstructor.asTerm), Nil)
       else
         if sym.owner.isClass then sym.dropAfter(erasurePhase)
@@ -666,7 +673,7 @@ object Erasure {
      */
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
       if tree.name == nme.apply && integrateSelect(tree) then
-      	return typed(tree.qualifier, pt)
+        return typed(tree.qualifier, pt)
 
       val qual1 = typed(tree.qualifier, AnySelectionProto)
 

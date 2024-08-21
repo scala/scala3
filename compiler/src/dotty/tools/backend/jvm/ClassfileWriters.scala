@@ -20,7 +20,11 @@ import dotty.tools.io.JarArchive
 
 import scala.language.unsafeNulls
 
-
+/** !!! This file is now copied in `dotty.tools.io.FileWriters` in a more general way that does not rely upon
+ * `PostProcessorFrontendAccess`, this should probably be changed to wrap that class instead.
+ *
+ * Until then, any changes to this file should be copied to `dotty.tools.io.FileWriters` as well.
+ */
 class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
   type NullableFile =  AbstractFile | Null
   import frontendAccess.{compilerSettings, backendReporting}

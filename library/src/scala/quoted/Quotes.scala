@@ -211,6 +211,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *               +- MatchCase
    *               +- TypeBounds
    *               +- NoPrefix
+   *               +- FlexibleType
+   *
+   *  +- MethodTypeKind -+- Contextual
+   *                     +- Implicit
+   *                     +- Plain
    *
    *  +- Selector -+- SimpleSelector
    *               +- RenameSelector
@@ -589,8 +594,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait DefDefModule { this: DefDef.type =>
       /** Create a method definition `def f[..](...)` with the signature defined in the symbol.
        *
-       *  The `rhsFn` is a function that receives references to its parameters and should return
-       *  `Some` containing the implementation of the method. Returns `None` the method has no implementation.
+       *  The `rhsFn` is a function that receives references to its parameters, and should return
+       *  `Some` containing the implementation of the method, or `None` if the method has no implementation.
        *  Any definition directly inside the implementation should have `symbol` as owner.
        *
        *  Use `Symbol.asQuotes` to create the rhs using quoted code.
@@ -666,8 +671,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait ValDefModule { this: ValDef.type =>
       /** Create a value definition `val x`, `var x` or `lazy val x` with the signature defined in the symbol.
        *
-       *  The `rhs` should return be `Some` containing the implementation of the method.
-       *  Returns `None` the method has no implementation.
+       *  The `rhs` should return `Some` containing the implementation of the method,
+       *  or `None` if the method has no implementation.
        *  Any definition directly inside the implementation should have `symbol` as owner.
        *
        *  Use `Symbol.asQuotes` to create the rhs using quoted code.
@@ -774,14 +779,47 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val Term` */
     trait TermModule { this: Term.type =>
 
-      /** Returns a term that is functionally equivalent to `t`,
+     /** Returns a term that is functionally equivalent to `t`,
       *  however if `t` is of the form `((y1, ..., yn) => e2)(e1, ..., en)`
-      *  then it optimizes this the top most call by returning the `Some`
-      *  with the result of beta-reducing the application.
+      *  then it optimizes the top most call by returning `Some`
+      *  with the result of beta-reducing the function application.
+      *  Similarly, all outermost curried function applications will be beta-reduced, if possible.
       *  Otherwise returns `None`.
       *
-      *   To retain semantics the argument `ei` is bound as `val yi = ei` and by-name arguments to `def yi = ei`.
-      *   Some bindings may be elided as an early optimization.
+      *  To retain semantics the argument `ei` is bound as `val yi = ei` and by-name arguments to `def yi = ei`.
+      *  Some bindings may be elided as an early optimization.
+      *
+      *  Example:
+      *  ```scala sc:nocompile
+      *  ((a: Int, b: Int) => a + b).apply(x, y)
+      *  ```
+      *  will be reduced to
+      *  ```scala sc:nocompile
+      *  val a = x
+      *  val b = y
+      *  a + b
+      *  ```
+      *
+      *  Generally:
+      *  ```scala sc:nocompile
+      *  ([X1, Y1, ...] => (x1, y1, ...) => ... => [Xn, Yn, ...] => (xn, yn, ...) => f[X1, Y1, ..., Xn, Yn, ...](x1, y1, ..., xn, yn, ...))).apply[Tx1, Ty1, ...](myX1, myY1, ...)....apply[Txn, Tyn, ...](myXn, myYn, ...)
+      *  ```
+      *  will be reduced to
+      *  ```scala sc:nocompile
+      *  type X1 = Tx1
+      *  type Y1 = Ty1
+      *  ...
+      *  val x1 = myX1
+      *  val y1 = myY1
+      *  ...
+      *  type Xn = Txn
+      *  type Yn = Tyn
+      *  ...
+      *  val xn = myXn
+      *  val yn = myYn
+      *  ...
+      *  f[X1, Y1, ..., Xn, Yn, ...](x1, y1, ..., xn, yn, ...)
+      *  ```
       */
       def betaReduce(term: Term): Option[Term]
 
@@ -3201,6 +3239,15 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `MethodOrPoly` */
     given MethodOrPolyTypeTest: TypeTest[TypeRepr, MethodOrPoly]
 
+    /** Type which decides on the kind of parameter list represented by `MethodType`. */
+    enum MethodTypeKind:
+      /** Represents a parameter list without any implicitness of parameters, like (x1: X1, x2: X2, ...) */
+      case Plain
+      /** Represents a parameter list with implicit parameters, like `(implicit X1, ..., Xn)`, `(using X1, ..., Xn)`, `(using x1: X1, ..., xn: Xn)` */
+      case Implicit
+      /** Represents a parameter list of a contextual method, like `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
+      case Contextual
+
     /** Type of the definition of a method taking a single list of parameters. It's return type may be a MethodType. */
     type MethodType <: MethodOrPoly
 
@@ -3213,6 +3260,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val MethodType` */
     trait MethodTypeModule { this: MethodType.type =>
       def apply(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType
+      def apply(kind: MethodTypeKind)(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType
       def unapply(x: MethodType): (List[String], List[TypeRepr], TypeRepr)
     }
 
@@ -3222,8 +3270,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `MethodType` */
     trait MethodTypeMethods:
       extension (self: MethodType)
-        /** Is this the type of using parameter clause `(implicit X1, ..., Xn)`, `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
+        /** Is this the type of parameter clause like `(implicit X1, ..., Xn)`, `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
         def isImplicit: Boolean
+        /** Is this the type of parameter clause like `(using X1, ..., Xn)` or `(using x1: X1, x2: X2, ... )` */
+        def isContextual: Boolean
+        /** Returns a MethodTypeKind object representing the implicitness of the MethodType parameter clause. */
+        def methodTypeKind: MethodTypeKind
         /** Is this the type of erased parameter clause `(erased x1: X1, ..., xn: Xn)` */
         @deprecated("Use `hasErasedParams` and `erasedParams`", "3.4")
         def isErased: Boolean
@@ -3376,6 +3428,35 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait NoPrefixModule { this: NoPrefix.type =>
       def unapply(x: NoPrefix): true
     }
+
+    // ----- Flexible Type --------------------------------------------
+
+    /** Flexible types for explicit nulls */
+    type FlexibleType <: TypeRepr
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `FlexibleType` */
+    given FlexibleTypeTypeTest: TypeTest[TypeRepr, FlexibleType]
+
+    /** Module object of `type FlexibleType`  */
+    val FlexibleType: FlexibleTypeModule
+
+    /** Methods of the module object `val FlexibleType` */
+    trait FlexibleTypeModule { this: FlexibleType.type =>
+      def apply(tp: TypeRepr): FlexibleType
+      def unapply(x: FlexibleType): Option[TypeRepr]
+    }
+
+    /** Makes extension methods on `FlexibleType` available without any imports */
+    given FlexibleTypeMethods: FlexibleTypeMethods
+
+    /** Extension methods of `FlexibleType` */
+    trait FlexibleTypeMethods:
+      extension (self: FlexibleType)
+        def underlying: TypeRepr
+        def lo: TypeRepr
+        def hi: TypeRepr
+      end extension
+    end FlexibleTypeMethods
 
     ///////////////
     // CONSTANTS //
@@ -3992,11 +4073,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Is this symbol an anonymous function? */
         def isAnonymousFunction: Boolean
 
-        /** Is this symbol an abstract type? */
+        /** Is this symbol an abstract type or a type parameter? */
         def isAbstractType: Boolean
 
         /** Is this the constructor of a class? */
         def isClassConstructor: Boolean
+
+        /** Is this the super accessor? */
+        def isSuperAccessor: Boolean
 
         /** Is this the definition of a type? */
         def isType: Boolean

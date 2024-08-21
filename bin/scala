@@ -2,4 +2,37 @@
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/.."
 
-"$ROOT/bin/common" "$ROOT/dist/target/pack/bin/scala" "$@"
+scala_args() {
+
+  declare -a CLI_ARGS
+  declare -a SCRIPT_ARGS
+  declare DISABLE_BLOOP=1
+
+  while (( "$#" )); do
+    case "$1" in
+      "--")
+        shift
+        SCRIPT_ARGS+=("--")
+        SCRIPT_ARGS+=("$@")
+        break
+        ;;
+      "clean" | "version" | "--version" | "-version" | "help" | "--help" | "-help")
+        CLI_ARGS+=("$1")
+        DISABLE_BLOOP=0 # clean command should not add --offline --server=false
+        shift
+        ;;
+      *)
+        CLI_ARGS+=("$1")
+        shift
+        ;;
+    esac
+  done
+
+  if [ $DISABLE_BLOOP -eq 1 ]; then
+    CLI_ARGS+=("--offline" "--server=false")
+  fi
+
+  echo "--power ${CLI_ARGS[@]} ${SCRIPT_ARGS[@]}"
+}
+
+"$ROOT/bin/common" "scala" $(scala_args "$@")

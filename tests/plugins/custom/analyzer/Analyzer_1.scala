@@ -52,7 +52,7 @@ class InitChecker extends PluginPhase with StandardPlugin {
   override val runsAfter = Set(SetDefTree.name)
   override val runsBefore = Set(FirstTransform.name)
 
-  def init(options: List[String]): List[PluginPhase] = this :: (new SetDefTree) :: Nil
+  override def initialize(options: List[String])(using Context): List[PluginPhase] = this :: (new SetDefTree) :: Nil
 
   private def checkDef(tree: Tree)(implicit ctx: Context): Tree = {
     if (tree.symbol.defTree.isEmpty)

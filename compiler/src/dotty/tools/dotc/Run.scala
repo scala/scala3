@@ -37,6 +37,7 @@ import scala.io.Codec
 import Run.Progress
 import scala.compiletime.uninitialized
 import dotty.tools.dotc.transform.MegaPhase
+import dotty.tools.dotc.transform.Pickler.AsyncTastyHolder
 
 /** A compiler run. Exports various methods to compile source files */
 class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with ConstraintRunInfo {
@@ -130,6 +131,10 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     myUnits = us
 
   var suspendedUnits: mutable.ListBuffer[CompilationUnit] = mutable.ListBuffer()
+  var suspendedHints: mutable.Map[CompilationUnit, (String, Boolean)] = mutable.HashMap()
+
+  /** Were any units suspended in the typer phase? if so then pipeline tasty can not complete. */
+  var suspendedAtTyperPhase: Boolean = false
 
   def checkSuspendedUnits(newUnits: List[CompilationUnit])(using Context): Unit =
     if newUnits.isEmpty && suspendedUnits.nonEmpty && !ctx.reporter.errorsReported then
@@ -230,6 +235,22 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
         if !progress.isCancelled() then
           progress.tickSubphase()
 
+  /** if true, then we are done writing pipelined TASTy files (i.e. finished in a previous run.) */
+  private var myAsyncTastyWritten = false
+
+  private var _asyncTasty: Option[AsyncTastyHolder] = None
+
+  /** populated when this run needs to write pipeline TASTy files. */
+  def asyncTasty: Option[AsyncTastyHolder] = _asyncTasty
+
+  private def initializeAsyncTasty()(using Context): () => Unit =
+    // should we provide a custom ExecutionContext?
+    // currently it is just used to call the `apiPhaseCompleted` and `dependencyPhaseCompleted` callbacks in Zinc
+    import scala.concurrent.ExecutionContext.Implicits.global
+    val async = AsyncTastyHolder.init
+    _asyncTasty = Some(async)
+    () => async.cancel()
+
   /** Will be set to true if any of the compiled compilation units contains
    *  a pureFunctions language import.
    */
@@ -292,10 +313,13 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       if (ctx.settings.YtestPickler.value) List("pickler")
       else ctx.settings.YstopAfter.value
 
+    val runCtx = ctx.fresh
+    runCtx.setProfiler(Profiler())
+
     val pluginPlan = ctx.base.addPluginPhases(ctx.base.phasePlan)
     val phases = ctx.base.fusePhases(pluginPlan,
       ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, stopAfter, ctx.settings.Ycheck.value)
-    ctx.base.usePhases(phases)
+    ctx.base.usePhases(phases, runCtx)
 
     if ctx.settings.YnoDoubleBindings.value then
       ctx.base.checkNoDoubleBindings = true
@@ -305,9 +329,13 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       val profiler = ctx.profiler
       var phasesWereAdjusted = false
 
+      var forceReachPhaseMaybe =
+        if (ctx.isBestEffort && phases.exists(_.phaseName == "typer")) Some("typer")
+        else None
+
       for phase <- allPhases do
         doEnterPhase(phase)
-        val phaseWillRun = phase.isRunnable
+        val phaseWillRun = phase.isRunnable || forceReachPhaseMaybe.nonEmpty
         if phaseWillRun then
           Stats.trackTime(s"phase time ms/$phase") {
             val start = System.currentTimeMillis
@@ -320,6 +348,10 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
                 def printCtx(unit: CompilationUnit) = phase.printingContext(
                   ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
                 lastPrintedTree = printTree(lastPrintedTree)(using printCtx(unit))
+
+            if forceReachPhaseMaybe.contains(phase.phaseName) then
+              forceReachPhaseMaybe = None
+
             report.informTime(s"$phase ", start)
             Stats.record(s"total trees at end of $phase", ast.Trees.ntrees)
             for (unit <- units)
@@ -339,15 +371,19 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       profiler.finished()
     }
 
-    val runCtx = ctx.fresh
-    runCtx.setProfiler(Profiler())
-    unfusedPhases.foreach(_.initContext(runCtx))
     val fusedPhases = runCtx.base.allPhases
     if ctx.settings.explainCyclic.value then
       runCtx.setProperty(CyclicReference.Trace, new CyclicReference.Trace())
     runCtx.withProgressCallback: cb =>
       _progress = Progress(cb, this, fusedPhases.map(_.traversals).sum)
+    val cancelAsyncTasty: () => Unit =
+      if !myAsyncTastyWritten && Phases.picklerPhase.exists && !ctx.settings.XearlyTastyOutput.isDefault then
+        initializeAsyncTasty()
+      else () => {}
+
     runPhases(allPhases = fusedPhases)(using runCtx)
+    cancelAsyncTasty()
+
     ctx.reporter.finalizeReporting()
     if (!ctx.reporter.hasErrors)
       Rewrites.writeBack()
@@ -364,9 +400,12 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   /** Is this run started via a compilingSuspended? */
   def isCompilingSuspended: Boolean = myCompilingSuspended
 
-  /** Compile units `us` which were suspended in a previous run */
-  def compileSuspendedUnits(us: List[CompilationUnit]): Unit =
+  /** Compile units `us` which were suspended in a previous run,
+   *  also signal if all necessary async tasty files were written in a previous run.
+   */
+  def compileSuspendedUnits(us: List[CompilationUnit], asyncTastyWritten: Boolean): Unit =
     myCompilingSuspended = true
+    myAsyncTastyWritten = asyncTastyWritten
     for unit <- us do unit.suspended = false
     compileUnits(us)
 
@@ -622,4 +661,6 @@ object Run {
         report.enrichErrorMessage(errorMessage)
       else
         errorMessage
+    def doNotEnrichErrorMessage: Unit =
+      if run != null then run.myEnrichedErrorMessage = true
 }

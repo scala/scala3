@@ -21,7 +21,7 @@ object Sums extends App:
 
   type Reverse[A] = ReverseLoop[A, EmptyTuple]
 
-  type PlusTri[A, B, C] <: Tuple                    = (A, B, C) match
+  type PlusTri[A, B, C]                             = (A, B, C) match
     case (false, false, false)                                              => (false, false)
     case (true, false, false) | (false, true, false) | (false, false, true) => (false, true)
     case (true, true, false) | (true, false, true) | (false, true, true)    => (true, false)

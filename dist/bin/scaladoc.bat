@@ -21,13 +21,16 @@ call :args %*
 @rem #########################################################################
 @rem ## Main
 
-call :classpathArgs
-
 if defined JAVA_OPTS ( set _JAVA_OPTS=%JAVA_OPTS%
 ) else ( set _JAVA_OPTS=%_DEFAULT_JAVA_OPTS%
 )
+
+@rem we need to escape % in the java command path, for some reason this doesnt work in common.bat
+set "_JAVACMD=!_JAVACMD:%%=%%%%!"
+
 call "%_JAVACMD%" %_JAVA_OPTS% %_JAVA_DEBUG% %_JAVA_ARGS% ^
--classpath "%_CLASS_PATH%" ^
+-classpath "%_LIB_DIR%\scaladoc.jar" ^
+-Dscala.expandjavacp=true ^
 -Dscala.usejavacp=true ^
 dotty.tools.scaladoc.Main %_SCALA_ARGS% %_RESIDUAL_ARGS%
 if not %ERRORLEVEL%==0 (
@@ -97,65 +100,6 @@ goto :eof
 @rem output parameter: _RESIDUAL_ARGS
 :addResidual
 set _RESIDUAL_ARGS=%_RESIDUAL_ARGS% %~1
-goto :eof
-
-@rem output parameter: _CLASS_PATH
-:classpathArgs
-set "_LIB_DIR=%_PROG_HOME%\lib"
-set _CLASS_PATH=
-@rem keep list in sync with bash script `bin\scaladoc` !
-call :updateClasspath "scaladoc"
-call :updateClasspath "scala3-compiler"
-call :updateClasspath "scala3-interfaces"
-call :updateClasspath "scala3-library"
-call :updateClasspath "tasty-core"
-call :updateClasspath "scala3-tasty-inspector"
-call :updateClasspath "flexmark-0"
-call :updateClasspath "flexmark-html-parser"
-call :updateClasspath "flexmark-ext-anchorlink"
-call :updateClasspath "flexmark-ext-autolink"
-call :updateClasspath "flexmark-ext-emoji"
-call :updateClasspath "flexmark-ext-gfm-strikethrough"
-call :updateClasspath "flexmark-ext-gfm-tables"
-call :updateClasspath "flexmark-ext-gfm-tasklist"
-call :updateClasspath "flexmark-ext-wikilink"
-call :updateClasspath "flexmark-ext-yaml-front-matter"
-call :updateClasspath "liqp"
-call :updateClasspath "jsoup"
-call :updateClasspath "jackson-dataformat-yaml"
-call :updateClasspath "jackson-datatype-jsr310"
-call :updateClasspath "strftime4j"
-call :updateClasspath "scala-asm"
-call :updateClasspath "compiler-interface"
-call :updateClasspath "jline-reader"
-call :updateClasspath "jline-terminal-3"
-call :updateClasspath "jline-terminal-jna"
-call :updateClasspath "flexmark-util"
-call :updateClasspath "flexmark-formatter"
-call :updateClasspath "autolink-0.6"
-call :updateClasspath "flexmark-jira-converter"
-call :updateClasspath "antlr4"
-call :updateClasspath "jackson-annotations"
-call :updateClasspath "jackson-core"
-call :updateClasspath "jackson-databind"
-call :updateClasspath "snakeyaml"
-call :updateClasspath "scala-library"
-call :updateClasspath "protobuf-java"
-call :updateClasspath "util-interface"
-call :updateClasspath "jna-5"
-call :updateClasspath "flexmark-ext-tables"
-call :updateClasspath "flexmark-ext-ins"
-call :updateClasspath "flexmark-ext-superscript"
-call :updateClasspath "antlr4-runtime"
-goto :eof
-
-@rem input parameter: %1=pattern for library file
-@rem output parameter: _CLASS_PATH
-:updateClasspath
-set "__PATTERN=%~1"
-for /f "delims=" %%f in ('dir /a-d /b "%_LIB_DIR%\*%__PATTERN%*" 2^>NUL') do (
-    set "_CLASS_PATH=!_CLASS_PATH!%_LIB_DIR%\%%f%_PSEP%"
-)
 goto :eof
 
 @rem #########################################################################

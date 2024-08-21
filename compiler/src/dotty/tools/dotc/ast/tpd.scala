@@ -47,7 +47,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     case _: RefTree | _: GenericApply | _: Inlined | _: Hole =>
       ta.assignType(untpd.Apply(fn, args), fn, args)
     case _ =>
-      assert(ctx.reporter.errorsReported)
+      assert(ctx.reporter.errorsReported || ctx.tolerateErrorsForBestEffort)
       ta.assignType(untpd.Apply(fn, args), fn, args)
 
   def TypeApply(fn: Tree, args: List[Tree])(using Context): TypeApply = fn match
@@ -56,7 +56,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     case _: RefTree | _: GenericApply =>
       ta.assignType(untpd.TypeApply(fn, args), fn, args)
     case _ =>
-      assert(ctx.reporter.errorsReported, s"unexpected tree for type application: $fn")
+      assert(ctx.reporter.errorsReported || ctx.tolerateErrorsForBestEffort, s"unexpected tree for type application: $fn")
       ta.assignType(untpd.TypeApply(fn, args), fn, args)
 
   def Literal(const: Constant)(using Context): Literal =
@@ -177,6 +177,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def Splice(expr: Tree, tpe: Type)(using Context): Splice =
     untpd.Splice(expr).withType(tpe)
+
+  def Splice(expr: Tree)(using Context): Splice =
+    ta.assignType(untpd.Splice(expr), expr)
+
+  def SplicePattern(pat: Tree, args: List[Tree], tpe: Type)(using Context): SplicePattern =
+    untpd.SplicePattern(pat, args).withType(tpe)
 
   def Hole(isTerm: Boolean, idx: Int, args: List[Tree], content: Tree, tpe: Type)(using Context): Hole =
     untpd.Hole(isTerm, idx, args, content).withType(tpe)
@@ -469,26 +475,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     case tp: SkolemType => singleton(tp.narrow, needLoad)
     case SuperType(qual, _) => singleton(qual, needLoad)
     case ConstantType(value) => Literal(value)
-  }
-
-  /** A path that corresponds to the given type `tp`. Error if `tp` is not a refinement
-   *  of an addressable singleton type.
-   */
-  def pathFor(tp: Type)(using Context): Tree = {
-    def recur(tp: Type): Tree = tp match {
-      case tp: NamedType =>
-        tp.info match {
-          case TypeAlias(alias) => recur(alias)
-          case _: TypeBounds => EmptyTree
-          case _ => singleton(tp)
-        }
-      case tp: TypeProxy => recur(tp.superType)
-      case _ => EmptyTree
-    }
-    recur(tp).orElse {
-      report.error(em"$tp is not an addressable singleton type")
-      TypeTree(tp)
-    }
   }
 
   /** A tree representing a `newXYZArray` operation of the right

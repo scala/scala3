@@ -235,7 +235,7 @@ trait ClassLikeSupport:
   extension (c: ClassDef)
     def extractMembers: Seq[Member] = {
       val inherited = c.getNonTrivialInheritedMemberTrees.collect {
-        case dd: DefDef if !dd.symbol.isClassConstructor && !(dd.symbol.isSuperBridgeMethod || dd.symbol.isDefaultHelperMethod) => dd
+        case dd: DefDef if !dd.symbol.isClassConstructor && !(dd.symbol.isSuperAccessor || dd.symbol.isDefaultHelperMethod) => dd
         case other => other
       }
       c.membersToDocument.flatMap(parseMember(c)) ++

@@ -1,0 +1,12 @@
+-- [E172] Type Error: tests/neg/given-triangle.scala:15:18 -------------------------------------------------------------
+15 |@main def Test = f  // error
+   |                  ^
+   |Ambiguous given instances: both given instance given_B and given instance given_C match type A of parameter a of method f
+   |
+   |Note: Given search preference for A between alternatives
+   |  (given_B : B)
+   |and
+   |  (given_A : A)
+   |will change.
+   |Current choice           : the first alternative
+   |New choice from Scala 3.7: the second alternative

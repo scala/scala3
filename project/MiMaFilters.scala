@@ -7,11 +7,25 @@ object MiMaFilters {
 
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of the library
-      Build.previousDottyVersion -> Seq(
+      Build.mimaPreviousDottyVersion -> Seq(
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.annotation.experimental.this"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.annotation.experimental"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.fromArray"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.fromIArray"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.Tuple.helpers"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.Tuple$helpers$"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.fromArray"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.fromIArray"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.namedTuples"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$namedTuples$"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.modularity"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$modularity$"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.compiletime.package#package.deferred"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.WitnessNames"),
       ),
 
       // Additions since last LTS
-      Build.ltsDottyVersion -> Seq(
+      Build.mimaPreviousLTSDottyVersion -> Seq(
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule.ValOrDefDefMethods"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule.ValOrDefDefTypeTest"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#defnModule.FunctionClass"),
@@ -47,10 +61,23 @@ object MiMaFilters {
       // Only exceptional cases should be added here.
 
       // Breaking changes since last reference version
-      Build.previousDottyVersion -> Seq.empty, // We should never break backwards compatibility
+      Build.mimaPreviousDottyVersion -> // Seq.empty, // We should never break backwards compatibility
+        Seq(
+          // `ReversedMissingMethodProblem`s are acceptable. See comment in `Breaking changes since last LTS`.
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.FlexibleType"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.FlexibleTypeTypeTest"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.FlexibleTypeMethods"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SymbolMethods.isSuperAccessor"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.MethodTypeKind"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeModule.apply"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeMethods.methodTypeKind"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#MethodTypeMethods.isContextual"),
+          // Change `experimental` annotation to a final class
+          ProblemFilters.exclude[FinalClassProblem]("scala.annotation.experimental"),
+        ),
 
       // Breaking changes since last LTS
-      Build.ltsDottyVersion -> Seq(
+      Build.mimaPreviousLTSDottyVersion -> Seq(
         // Quotes is assumed to only be implemented by the compiler and on the same version of the library.
         // It is exceptionally OK to break this compatibility. In these cases, there add new abstract methods that would
         // potentially not be implemented by others. If some other library decides to implement these,
@@ -70,34 +97,36 @@ object MiMaFilters {
   object TastyCore {
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of tasty core
-      Build.previousDottyVersion -> Seq(
+      Build.mimaPreviousDottyVersion -> Seq(
+        ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyFormat.FLEXIBLEtype"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyFormat.TRACKED"),
       ),
 
       // Additions since last LTS
-      Build.ltsDottyVersion -> Seq(
+      Build.mimaPreviousLTSDottyVersion -> Seq(
       )
     )
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Breaking changes since last LTS
-      Build.ltsDottyVersion -> Seq.empty // We should never break backwards compatibility
+      Build.mimaPreviousLTSDottyVersion -> Seq.empty // We should never break backwards compatibility
     )
   }
 
   object Interfaces {
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of interfaces
-      Build.previousDottyVersion -> Seq(
+      Build.mimaPreviousDottyVersion -> Seq(
       ),
 
       // Additions since last LTS
-      Build.ltsDottyVersion -> Seq(
+      Build.mimaPreviousLTSDottyVersion -> Seq(
       )
     )
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Breaking changes since last LTS
-      Build.ltsDottyVersion -> Seq.empty // We should never break backwards compatibility
+      Build.mimaPreviousLTSDottyVersion -> Seq.empty // We should never break backwards compatibility
     )
   }
 

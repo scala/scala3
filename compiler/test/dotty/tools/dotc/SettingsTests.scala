@@ -7,14 +7,19 @@ import reporting.StoreReporter
 import vulpix.TestConfiguration
 
 import core.Contexts.{Context, ContextBase}
-import dotty.tools.dotc.config.Settings._
-import dotty.tools.dotc.config.ScalaSettingCategories._
+import dotty.tools.dotc.config.Settings.*
+import dotty.tools.dotc.config.Settings.Setting.ChoiceWithHelp
+import dotty.tools.dotc.config.ScalaSettingCategories.*
 import dotty.tools.vulpix.TestConfiguration.mkClasspath
+import dotty.tools.io.PlainDirectory
+import dotty.tools.io.Directory
+import dotty.tools.dotc.config.ScalaVersion
 
 import java.nio.file._
 
 import org.junit.Test
 import org.junit.Assert._
+import scala.util.Using
 
 class SettingsTests {
 
@@ -198,6 +203,125 @@ class SettingsTests {
       assertEquals(false, qux.value)
       assertEquals(List("Flag -qux set repeatedly"), summary.warnings)
     }
+
+  @Test def `Output setting is overriding existing jar`: Unit =
+    val result = Using.resource(Files.createTempFile("myfile", ".jar").nn){ file =>
+      object Settings extends SettingGroup:
+        val defaultDir = new PlainDirectory(Directory("."))
+        val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir)
+
+      import Settings._
+
+      Files.write(file, "test".getBytes())
+      val fileStateBefore = String(Files.readAllBytes(file))
+
+      val args = List(s"-testOutput:${file.toString}")
+      val summary = processArguments(args, processAll = true)
+
+      assertNotEquals(fileStateBefore, String(Files.readAllBytes(file)), "Jar should have been overriden")
+
+    }(Files.deleteIfExists(_))
+
+  @Test def `Output setting is respecting previous setting`: Unit =
+    val result = Using.resources(
+      Files.createTempFile("myfile", ".jar").nn, Files.createTempFile("myfile2", ".jar").nn
+    ){ (file1, file2) =>
+      object Settings extends SettingGroup:
+        val defaultDir = new PlainDirectory(Directory("."))
+        val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true)
+
+      import Settings._
+
+      Files.write(file1, "test1".getBytes())
+      Files.write(file2, "test2".getBytes())
+
+      val file1StateBefore = String(Files.readAllBytes(file1))
+      val file2StateBefore = String(Files.readAllBytes(file2))
+
+      val creationTime = Files.getLastModifiedTime(file1)
+      val args = List(s"-testOutput:${file1.toString}", s"-testOutput:${file2.toString}")
+      val summary = processArguments(args, processAll = true)
+
+      // The output is a new filesystem without information of original path
+      // We can't check the `testOutput.value` as in other tests.
+      assertNotEquals(file1StateBefore, String(Files.readAllBytes(file1)))
+      assertEquals(file2StateBefore, String(Files.readAllBytes(file2)))
+
+    }(Files.deleteIfExists(_), Files.deleteIfExists(_))
+
+  @Test def `Output side effect is not present when setting is deprecated`: Unit =
+    val result = Using.resource(Files.createTempFile("myfile", ".jar").nn){ file =>
+      object Settings extends SettingGroup:
+        val defaultDir = new PlainDirectory(Directory("."))
+        val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true, deprecation = Deprecation.renamed("XtestOutput"))
+
+      import Settings._
+
+      Files.write(file, "test".getBytes())
+      val fileStateBefore = String(Files.readAllBytes(file))
+
+      val args = List(s"-testOutput:${file.toString}")
+      val summary = processArguments(args, processAll = true)
+
+      assertEquals(fileStateBefore, String(Files.readAllBytes(file)))
+
+    }(Files.deleteIfExists(_))
+
+  @Test def `Arguments of flags are correctly parsed with both ":" and " " separating`: Unit =
+    object Settings extends SettingGroup:
+      val booleanSetting = BooleanSetting(RootSetting, "booleanSetting", "booleanSetting", false)
+      val stringSetting  = StringSetting(RootSetting, "stringSetting", "stringSetting", "", "test")
+      val choiceSetting =  ChoiceSetting(RootSetting, "choiceSetting", "choiceSetting", "", List("a", "b"), "a")
+      val multiChoiceSetting=  MultiChoiceSetting(RootSetting, "multiChoiceSetting", "multiChoiceSetting", "", List("a", "b"), List())
+      val multiChoiceHelpSetting=  MultiChoiceHelpSetting(RootSetting, "multiChoiceHelpSetting", "multiChoiceHelpSetting", "", List(ChoiceWithHelp("a", "a"), ChoiceWithHelp("b", "b")), List())
+      val intSetting = IntSetting(RootSetting, "intSetting", "intSetting", 0)
+      val intChoiceSetting = IntChoiceSetting(RootSetting, "intChoiceSetting", "intChoiceSetting", List(1,2,3), 1)
+      val multiStringSetting = MultiStringSetting(RootSetting, "multiStringSetting", "multiStringSetting", "", List("a", "b"), List())
+      val outputSetting = OutputSetting(RootSetting, "outputSetting", "outputSetting", "", new PlainDirectory(Directory(".")))
+      val pathSetting = PathSetting(RootSetting, "pathSetting", "pathSetting", ".")
+      val phasesSetting = PhasesSetting(RootSetting, "phasesSetting", "phasesSetting", "all")
+      val versionSetting= VersionSetting(RootSetting, "versionSetting", "versionSetting")
+
+    import Settings._
+    Using.resource(Files.createTempDirectory("testDir")) { dir =>
+
+      val args = List(
+        List("-booleanSetting", "true"),
+        List("-stringSetting", "newTest"),
+        List("-choiceSetting", "b"),
+        List("-multiChoiceSetting", "a,b"),
+        List("-multiChoiceHelpSetting", "a,b"),
+        List("-intSetting", "42"),
+        List("-intChoiceSetting", "2"),
+        List("-multiStringSetting", "a,b"),
+        List("-outputSetting", dir.toString),
+        List("-pathSetting", dir.toString),
+        List("-phasesSetting", "parser,typer"),
+        List("-versionSetting", "1.0.0"),
+      )
+
+      def testValues(summary: ArgsSummary) =
+        withProcessedArgs(summary) {
+          assertEquals(true, booleanSetting.value)
+          assertEquals("newTest", stringSetting.value)
+          assertEquals("b", choiceSetting.value)
+          assertEquals(List("a", "b"), multiChoiceSetting.value)
+          assertEquals(List("a", "b"), multiChoiceHelpSetting.value)
+          assertEquals(42, intSetting.value)
+          assertEquals(2, intChoiceSetting.value)
+          assertEquals(List("a", "b"), multiStringSetting.value)
+          assertEquals(dir.toString, outputSetting.value.path)
+          assertEquals(dir.toString, pathSetting.value)
+          assertEquals(List("parser", "typer"), phasesSetting.value)
+          assertEquals(ScalaVersion.parse("1.0.0").get, versionSetting.value)
+        }
+
+      val summaryColon = processArguments(args.map(_.mkString(":")), processAll = true)
+      val summaryWhitespace = processArguments(args.flatten, processAll = true)
+      testValues(summary = summaryColon)
+      testValues(summary = summaryWhitespace)
+
+    }(Files.deleteIfExists(_))
 
   private def withProcessedArgs(summary: ArgsSummary)(f: SettingsState ?=> Unit) = f(using summary.sstate)
 

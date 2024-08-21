@@ -1,4 +1,4 @@
-//> using options -experimental -Yno-experimental
+//> using options -experimental
 
 @addCountToString("This is Foo: ")
 class Foo:

@@ -48,7 +48,9 @@ private class QuoteCompiler extends Compiler:
 
   override def newRun(implicit ctx: Context): ExprRun =
     reset()
-    new ExprRun(this, ctx.addMode(Mode.ReadPositions))
+    val run = new ExprRun(this, ctx.addMode(Mode.ReadPositions))
+    run.doNotEnrichErrorMessage
+    run
 
   def outputClassName: TypeName = "Generated$Code$From$Quoted".toTypeName
 

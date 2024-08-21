@@ -4,6 +4,7 @@ package transform
 
 import core.*
 import Contexts.*, Symbols.*, Types.*, Annotations.*, Constants.*, Phases.*
+import Decorators.*
 import StdNames.nme
 import ast.untpd
 import ast.tpd.*
@@ -115,10 +116,8 @@ object ContextFunctionResults:
     else tree match
       case Select(qual, name) =>
         if name == nme.apply then
-          qual.tpe.nn.dealias match
+          qual.tpe.nn.widenDealias match
             case defn.FunctionTypeOfMethod(mt) if mt.isContextualMethod =>
-              integrateSelect(qual, n + 1)
-            case _ if defn.isContextFunctionClass(tree.symbol.maybeOwner) => // for TermRefs
               integrateSelect(qual, n + 1)
             case _ =>
               n > 0 && contextResultCount(tree.symbol) >= n

@@ -151,8 +151,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
       """|value: Int
          |val
          |var
-         |varargs(): varargs
-         |varargs - scala.annotation
+         |varargs(): varargs - scala.annotation
          |""".stripMargin
     )
 
@@ -169,8 +168,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |""".stripMargin,
       """|val
          |var
-         |varargs(): varargs
-         |varargs - scala.annotation
+         |varargs(): varargs - scala.annotation
          |""".stripMargin
     )
 
@@ -203,8 +201,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |}
         |""".stripMargin,
       """|value: Int
-         |varargs(): varargs
-         |varargs - scala.annotation""".stripMargin
+         |varargs(): varargs - scala.annotation""".stripMargin
     )
 
   @Test def `val-trailing-space` =
@@ -364,9 +361,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  val x: Map[Int, new@@]
         |}
       """.stripMargin,
-      "",
-      // to avoid newMain annotation
-      filter = str => !str.contains("newMain")
+      ""
     )
   // TODO: Should provide empty completions
   // The issue is that the tree looks the same as for `case @@` (it doesn't see `new`)
@@ -382,9 +377,7 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
         |  }
         |}
       """.stripMargin,
-      "",
-      // to avoid newMain annotation
-      filter = str => !str.contains("newMain")
+      ""
     )
 
   @Test def `super-typeapply` =
@@ -698,28 +691,26 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
 
   @Test def `derives-with-extends` =
     check(
-      """
-        |package foo
-        |
-        |trait Bar {}
-        |trait Baz {}
-        |
-        |class Foo(x: Int) extends Bar with Baz der@@
-                """.stripMargin,
+      """|package foo
+         |
+         |trait Bar {}
+         |trait Baz {}
+         |
+         |class Foo(x: Int) extends Bar with Baz der@@
+         |""".stripMargin,
       """|derives
          |""".stripMargin
     )
 
   @Test def `derives-with-constructor-extends` =
     check(
-      """
-        |package foo
-        |
-        |trait Bar {}
-        |class Baz(b: Int) {}
-        |
-        |class Foo(x: Int) extends Bar with Baz(1) der@@
-                  """.stripMargin,
+      """|package foo
+         |
+         |trait Bar {}
+         |class Baz(b: Int) {}
+         |
+         |class Foo(x: Int) extends Bar with Baz(1) der@@
+         |""".stripMargin,
       """|derives
          |""".stripMargin
     )

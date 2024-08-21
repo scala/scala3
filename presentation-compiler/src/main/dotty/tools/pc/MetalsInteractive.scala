@@ -5,7 +5,7 @@ import scala.annotation.tailrec
 
 import dotc.*
 import ast.*, tpd.*
-import core.*, Contexts.*, Decorators.*, Flags.*, Names.*, Symbols.*, Types.*
+import core.*, Contexts.*, Flags.*, Names.*, Symbols.*, Types.*
 import interactive.*
 import util.*
 import util.SourcePosition
@@ -240,7 +240,7 @@ object MetalsInteractive:
     end match
   end enclosingSymbolsWithExpressionType
 
-  import dotty.tools.pc.utils.MtagsEnrichments.*
+  import dotty.tools.pc.utils.InteractiveEnrichments.*
 
   private def recoverError(
       tree: Tree,

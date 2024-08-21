@@ -985,9 +985,9 @@ trait SortedSetFactoryDefaults[+A,
     +WithFilterCC[x] <: IterableOps[x, WithFilterCC, WithFilterCC[x]] with Set[x]] extends SortedSetOps[A @uncheckedVariance, CC, CC[A @uncheckedVariance]] {
   self: IterableOps[A, WithFilterCC, _] =>
 
-  override protected def fromSpecific(coll: IterableOnce[A @uncheckedVariance]^): CC[A @uncheckedVariance]^{coll}    = sortedIterableFactory.from(coll)(ordering)
-  override protected def newSpecificBuilder: mutable.Builder[A @uncheckedVariance, CC[A @uncheckedVariance]] = sortedIterableFactory.newBuilder[A](ordering)
-  override def empty: CC[A @uncheckedVariance] = sortedIterableFactory.empty(ordering)
+  override protected def fromSpecific(coll: IterableOnce[A @uncheckedVariance]^): CC[A @uncheckedVariance]^{coll}    = sortedIterableFactory.from(coll)(using ordering)
+  override protected def newSpecificBuilder: mutable.Builder[A @uncheckedVariance, CC[A @uncheckedVariance]] = sortedIterableFactory.newBuilder[A](using ordering)
+  override def empty: CC[A @uncheckedVariance] = sortedIterableFactory.empty(using ordering)
 
   override def withFilter(p: A => Boolean): SortedSetOps.WithFilter[A, WithFilterCC, CC]^{p} =
     new SortedSetOps.WithFilter[A, WithFilterCC, CC](this, p)
@@ -1040,9 +1040,9 @@ trait SortedMapFactoryDefaults[K, +V,
     +UnsortedCC[x, y] <: Map[x, y]] extends SortedMapOps[K, V, CC, CC[K, V @uncheckedVariance]] with MapOps[K, V, UnsortedCC, CC[K, V @uncheckedVariance]] {
   self: IterableOps[(K, V), WithFilterCC, _] =>
 
-  override def empty: CC[K, V @uncheckedVariance] = sortedMapFactory.empty(ordering)
-  override protected def fromSpecific(coll: IterableOnce[(K, V @uncheckedVariance)]^): CC[K, V @uncheckedVariance]^{coll} = sortedMapFactory.from(coll)(ordering)
-  override protected def newSpecificBuilder: mutable.Builder[(K, V @uncheckedVariance), CC[K, V @uncheckedVariance]] = sortedMapFactory.newBuilder[K, V](ordering)
+  override def empty: CC[K, V @uncheckedVariance] = sortedMapFactory.empty(using ordering)
+  override protected def fromSpecific(coll: IterableOnce[(K, V @uncheckedVariance)]^): CC[K, V @uncheckedVariance]^{coll} = sortedMapFactory.from(coll)(using ordering)
+  override protected def newSpecificBuilder: mutable.Builder[(K, V @uncheckedVariance), CC[K, V @uncheckedVariance]] = sortedMapFactory.newBuilder[K, V](using ordering)
 
   override def withFilter(p: ((K, V)) => Boolean): collection.SortedMapOps.WithFilter[K, V, WithFilterCC, UnsortedCC, CC]^{p} =
     new collection.SortedMapOps.WithFilter[K, V, WithFilterCC, UnsortedCC, CC](this, p)

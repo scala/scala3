@@ -1,6 +1,6 @@
 package scala
 
-import annotation.{experimental, showAsInfix}
+import annotation.showAsInfix
 import compiletime.*
 import compiletime.ops.int.*
 
@@ -82,7 +82,6 @@ sealed trait Tuple extends Product {
   /** Given a tuple `(a1, ..., am)`, returns the reversed tuple `(am, ..., a1)`
    *  consisting all its elements.
    */
-  @experimental
   inline def reverse[This >: this.type <: Tuple]: Reverse[This] =
     runtime.Tuples.reverse(this).asInstanceOf[Reverse[This]]
 }
@@ -201,11 +200,9 @@ object Tuple {
   type IsMappedBy[F[_]] = [X <: Tuple] =>> X =:= Map[InverseMap[X, F], F]
 
   /** Type of the reversed tuple */
-  @experimental
   type Reverse[X <: Tuple] = ReverseOnto[X, EmptyTuple]
 
   /** Prepends all elements of a tuple in reverse order onto the other tuple */
-  @experimental
   type ReverseOnto[From <: Tuple, +To <: Tuple] <: Tuple = From match
     case x *: xs => ReverseOnto[xs, x *: To]
     case EmptyTuple => To
@@ -237,6 +234,25 @@ object Tuple {
    *  member types: `T1 | ... | Tn`. Returns `Nothing` if the tuple is empty.
    */
   type Union[T <: Tuple] = Fold[T, Nothing, [x, y] =>> x | y]
+
+  /** A type level Boolean indicating whether the tuple `X` has an element
+   *  that matches `Y`.
+   *  @pre  The elements of `X` are assumed to be singleton types
+   */
+  type Contains[X <: Tuple, Y] <: Boolean = X match
+    case Y *: _ => true
+    case _ *: xs => Contains[xs, Y]
+    case EmptyTuple => false
+
+  /** A type level Boolean indicating whether the type `Y` contains
+   *  none of the elements of `X`.
+   *  @pre  The elements of `X` and `Y` are assumed to be singleton types
+   */
+  type Disjoint[X <: Tuple, Y <: Tuple] <: Boolean = X match
+    case x *: xs => Contains[Y, x] match
+      case true => false
+      case false => Disjoint[xs, Y]
+    case EmptyTuple => true
 
   /** Empty tuple */
   def apply(): EmptyTuple = EmptyTuple

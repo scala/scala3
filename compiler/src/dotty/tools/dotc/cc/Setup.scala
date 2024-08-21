@@ -23,6 +23,7 @@ trait SetupAPI:
   def setupUnit(tree: Tree, recheckDef: DefRecheck)(using Context): Unit
   def isPreCC(sym: Symbol)(using Context): Boolean
   def postCheck()(using Context): Unit
+  def isCapabilityClassRef(tp: Type)(using Context): Boolean
 
 object Setup:
 
@@ -66,6 +67,31 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     && !sym.is(Module)
     && !sym.owner.is(CaptureChecked)
     && !defn.isFunctionSymbol(sym.owner)
+
+  private val capabilityClassMap = new util.HashMap[Symbol, Boolean]
+
+  /** Check if the class is capability, which means:
+   *  1. the class has a capability annotation,
+   *  2. or at least one of its parent type has universal capability.
+   */
+  def isCapabilityClassRef(tp: Type)(using Context): Boolean = tp.dealiasKeepAnnots match
+    case _: TypeRef | _: AppliedType =>
+      val sym = tp.classSymbol
+      def checkSym: Boolean =
+        sym.hasAnnotation(defn.CapabilityAnnot)
+        || sym.info.parents.exists(hasUniversalCapability)
+      sym.isClass && capabilityClassMap.getOrElseUpdate(sym, checkSym)
+    case _ => false
+
+  private def hasUniversalCapability(tp: Type)(using Context): Boolean = tp.dealiasKeepAnnots match
+    case CapturingType(parent, refs) =>
+      refs.isUniversal || hasUniversalCapability(parent)
+    case AnnotatedType(parent, ann) =>
+      if ann.symbol.isRetains then
+        try ann.tree.toCaptureSet.isUniversal || hasUniversalCapability(parent)
+        catch case ex: IllegalCaptureRef => false
+      else hasUniversalCapability(parent)
+    case tp => isCapabilityClassRef(tp)
 
   private def fluidify(using Context) = new TypeMap with IdempotentCaptRefMap:
     def apply(t: Type): Type = t match
@@ -269,12 +295,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           CapturingType(fntpe, cs, boxed = false)
         else fntpe
 
-      /** Map references to capability classes C to C^ */
-      private def expandCapabilityClass(tp: Type): Type =
-        if tp.isCapabilityClassRef
-        then CapturingType(tp, defn.expandedUniversalSet, boxed = false)
-        else tp
-
       private def recur(t: Type): Type = normalizeCaptures(mapOver(t))
 
       def apply(t: Type) =
@@ -297,7 +317,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case t: TypeVar =>
             this(t.underlying)
           case t =>
-            if t.isCapabilityClassRef
+            // Map references to capability classes C to C^
+            if isCapabilityClassRef(t)
             then CapturingType(t, defn.expandedUniversalSet, boxed = false)
             else recur(t)
     end expandAliases
@@ -369,12 +390,16 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   def setupTraverser(recheckDef: DefRecheck) = new TreeTraverserWithPreciseImportContexts:
 
     def transformResultType(tpt: TypeTree, sym: Symbol)(using Context): Unit =
-      transformTT(tpt,
-          boxed = !ccConfig.allowUniversalInBoxed && sym.is(Mutable, butNot = Method),
-            // types of mutable variables are boxed in pre 3.3 codee
-          exact = sym.allOverriddenSymbols.hasNext,
-            // types of symbols that override a parent don't get a capture set TODO drop
-        )
+      try
+        transformTT(tpt,
+            boxed = !ccConfig.allowUniversalInBoxed && sym.is(Mutable, butNot = Method),
+              // types of mutable variables are boxed in pre 3.3 codee
+            exact = sym.allOverriddenSymbols.hasNext,
+              // types of symbols that override a parent don't get a capture set TODO drop
+          )
+      catch case ex: IllegalCaptureRef =>
+        capt.println(i"fail while transforming result type $tpt of $sym")
+        throw ex
       val addDescription = new TypeTraverser:
         def traverse(tp: Type) = tp match
           case tp @ CapturingType(parent, refs) =>
@@ -407,8 +432,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
         case tree @ TypeApply(fn, args) =>
           traverse(fn)
-          for case arg: TypeTree <- args do
-            transformTT(arg, boxed = true, exact = false) // type arguments in type applications are boxed
+          fn match
+            case Select(qual, nme.asInstanceOf_) =>
+              // No need to box type arguments of an asInstanceOf call. See #20224.
+            case _ =>
+              for case arg: TypeTree <- args do
+                transformTT(arg, boxed = true, exact = false) // type arguments in type applications are boxed
 
         case tree: TypeDef if tree.symbol.isClass =>
           inContext(ctx.withOwner(tree.symbol)):

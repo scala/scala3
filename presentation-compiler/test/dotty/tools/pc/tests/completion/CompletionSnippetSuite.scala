@@ -15,6 +15,7 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
         |}
         |""".stripMargin,
       """|apply($0)
+         |unapplySeq($0)
          |""".stripMargin
     )
 
@@ -172,7 +173,6 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
          |ArrayDequeOps[$0]
          |ArrayDeque
          |ArrayDeque
-         |ArrayDequeOps
          |""".stripMargin
     )
 
@@ -305,13 +305,33 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
 
   @Test def `case-class2` =
     checkSnippet(
-      s"""|object Main {
-          |  scala.util.Tr@@
+      s"""|object wrapper:
+          |  case class Test2(x: Int)
+          |  object Test2:
+          |    def apply(x: Int): Test2 = ???
+          |object Main {
+          |  wrapper.Test@@
           |}
           |""".stripMargin,
-      """|Try
-         |Try($0)
+      """|Test2($0)
+         |new wrapper.Test2
+         |Test2
          |""".stripMargin
+    )
+
+  @Test def `case-class2-edit` =
+    checkEditLine(
+      s"""|object wrapper:
+          |  case class Test2(x: Int)
+          |  object Test2:
+          |    def apply(x: Int): Test2 = ???
+          |object Main {
+          |  ___
+          |}
+          |""".stripMargin,
+      "wrapper.Test@@",
+      "new wrapper.Test2",
+      filter = _.contains("new Test2")
     )
 
   @Test def `case-class3` =
@@ -322,9 +342,10 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |""".stripMargin,
       // Note: the class and trait items in here are invalid. So
       // they are filtered out.
-      """|Try
-         |Try($0)
-         |""".stripMargin
+      """|Try($0) - [T](r: => T): Try[T]
+         |Try -  scala.util
+         |""".stripMargin,
+      includeDetail = true
     )
 
   @Test def `symbol` =
@@ -352,10 +373,10 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |  Wi@@
           |}
           |""".stripMargin,
-      """|Widget -  example
-         |Widget($0) - (name: String): Widget
+      """|Widget($0) - (name: String): Widget
          |Widget($0) - (age: Int): Widget
          |Widget($0) - (name: String, age: Int): Widget
+         |Widget -  example
          |""".stripMargin,
       includeDetail = true,
       topLines = Some(4)
@@ -365,18 +386,34 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
     checkSnippet(
       s"""|package example
           |
-          |object Widget{}
+          |object TestObject {}
           |object Main {
-          |  Wi@@
+          |  TestObjec@@
           |}
           |""".stripMargin,
-      """|Widget -  example
-         |Window -  java.awt
-         |WindowPeer -  java.awt.peer
-         |WithFilter -  scala.collection
+      """|TestObject -  example
          |""".stripMargin,
       includeDetail = true,
-      topLines = Some(4)
+    )
+
+  @Test def `dont-enter-empty-paramlist` =
+    checkSnippet(
+      s"""|package example
+          |
+          |object Main {
+          |  ListMa@@
+          |}
+          |""".stripMargin,
+      """|ListMap($0) - [K, V](elems: (K, V)*): ListMap[K, V]
+         |new ListMap - [K, V]: ListMap[K, V]
+         |ListMap -  scala.collection.immutable
+         |ListMap($0) - [K, V](elems: (K, V)*): ListMap[K, V]
+         |new ListMap - [K, V]: ListMap[K, V]
+         |ListMap -  scala.collection.mutable
+         |ListMapBuilder - [K, V]: ListMapBuilder[K, V]
+         |ConcurrentSkipListMap -  java.util.concurrent
+         |""".stripMargin,
+      includeDetail = true,
     )
 
   // https://github.com/scalameta/metals/issues/4004
@@ -393,7 +430,8 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |  extension (s: String)
           |    def bar = 0
           |  val bar = "abc".bar
-      """.stripMargin
+      """.stripMargin,
+      filter = _.contains("bar: Int")
     )
 
   // https://github.com/scalameta/metals/issues/4004
@@ -410,5 +448,6 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |  extension (s: String)
           |    def bar() = 0
           |  val bar = "abc".bar()
-      """.stripMargin
+      """.stripMargin,
+      filter = _.contains("bar: Int")
     )

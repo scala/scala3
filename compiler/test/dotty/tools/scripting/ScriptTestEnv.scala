@@ -5,6 +5,7 @@ package scripting
 import scala.language.unsafeNulls
 
 import java.io.File
+import java.util.Locale
 import java.nio.file.{Path, Paths, Files}
 
 import dotty.tools.dotc.config.Properties.*
@@ -15,7 +16,7 @@ import scala.jdk.CollectionConverters.*
 /**
  * Common Code for supporting scripting tests.
  * To override the path to the bash executable, set TEST_BASH=<path-to-bash.exe>
- * To specify where `dist/target/pack/bin` resides, set TEST_CWD=<working-directory>
+ * To specify where `dist[*]/target/pack/bin` resides, set TEST_CWD=<working-directory>
  * Test scripts run in a bash env, so paths are converted to forward slash via .norm.
  */
 object ScriptTestEnv {
@@ -28,6 +29,44 @@ object ScriptTestEnv {
   def whichJava: String = whichExe("java")
   def whichBash: String = whichExe("bash")
 
+  def cleanupScalaCLIDirs(): Unit = {
+    val scriptingDir = io.Directory(scriptsDir("/scripting").getPath)
+    val dottyDir = io.Directory(workingDirectory)
+
+    val residueDirs = Seq(
+      (scriptingDir / ".bsp"),
+      (scriptingDir / ".scala-build"),
+      (dottyDir / ".scala-build")
+    )
+
+    for f <- residueDirs do
+      f.deleteRecursively()
+
+    val bspDir = dottyDir / ".bsp"
+    (bspDir / "scala.json").delete()
+    if bspDir.isEmpty then bspDir.delete()
+  }
+
+  lazy val nativePackDir: Option[String] = {
+    def nativeDir(os: String, arch: String) = Some(s"dist/$os-$arch/target/pack")
+    def nativeOs(os: String) = archNorm match
+      case arch @ ("aarch64" | "x86_64") => nativeDir(os, arch)
+      case _ => None
+
+    if winshell then nativeDir("win", "x86_64") // assume x86_64 for now
+    else if linux then nativeOs("linux")
+    else if mac then nativeOs("mac")
+    else None
+  }
+
+  def jvmPackDir() =
+    println("warning: unknown OS architecture combination, defaulting to JVM launcher.")
+    "dist/target/pack"
+
+  def packDir: String = nativePackDir.getOrElse(jvmPackDir())
+
+  def packBinDir: String = s"$packDir/bin"
+
   lazy val workingDirectory: String = {
     val dirstr = if testCwd.nonEmpty then
       if verbose then printf("TEST_CWD set to [%s]\n", testCwd)
@@ -36,7 +75,7 @@ object ScriptTestEnv {
       userDir // userDir, if TEST_CWD not set
 
     // issue warning if things don't look right
-    val test = Paths.get(s"$dirstr/dist/target/pack/bin").normalize
+    val test = Paths.get(s"$dirstr/$packBinDir").normalize
     if !test.isDirectory then
       printf("warning: not found below working directory: %s\n", test.norm)
 
@@ -46,7 +85,7 @@ object ScriptTestEnv {
 
   def envPath: String = envOrElse("PATH", "")
   // remove duplicate entries in path
-  def supplementedPath: String = s"dist/target/pack/bin$psep$envJavaHome/bin$psep$envScalaHome/bin$psep$envPath".norm
+  def supplementedPath: String = s"$packBinDir$psep$envJavaHome/bin$psep$envScalaHome/bin$psep$envPath".norm
   def adjustedPathEntries: List[String] = supplementedPath.norm.split(psep).toList.distinct
   def adjustedPath: String = adjustedPathEntries.mkString(psep)
   def envPathEntries: List[String] = envPath.split(psep).toList.distinct
@@ -55,11 +94,18 @@ object ScriptTestEnv {
 
   def unameExe = which("uname")
   def ostypeFull = if unameExe.nonEmpty then exec(unameExe).mkString else ""
-  def ostype = ostypeFull.toLowerCase.takeWhile{ cc => cc >= 'a' && cc <='z' || cc >= 'A' && cc <= 'Z' }
+  def ostype = ostypeFull.toLowerCase(Locale.ROOT).takeWhile{ cc => cc >= 'a' && cc <='z' || cc >= 'A' && cc <= 'Z' }
+  def archFull = if unameExe.nonEmpty then exec(unameExe, "-m").mkString else ""
+  def archNorm = archFull match
+    case "arm64" => "aarch64"
+    case "amd64" => "x86_64"
+    case id => id
 
   def cygwin = ostype == "cygwin"
   def mingw = ostype == "mingw"
   def msys = ostype == "msys"
+  def linux = ostype == "linux"
+  def mac = ostype == "darwin"
   def winshell: Boolean = cygwin || mingw || msys
 
   def which(str: String) =
@@ -124,9 +170,21 @@ object ScriptTestEnv {
     } yield line
 
 
-  def packBinDir = "dist/target/pack/bin"
-  def packLibDir = "dist/target/pack/lib"
+  // def packLibDir = s"$packDir/lib" // replaced by packMavenDir
+  def packMavenDir = s"$packDir/maven2"
+  def packVersionFile = s"$packDir/VERSION"
   def packBinScalaExists: Boolean = Files.exists(Paths.get(s"$packBinDir/scala"))
+
+  def packScalaVersion: String = {
+    val versionFile = Paths.get(packVersionFile)
+    if Files.exists(versionFile) then
+      val lines = Files.readAllLines(versionFile).asScala
+      lines.find { _.startsWith("version:=") } match
+        case Some(line) => line.drop(9)
+        case None => sys.error(s"no version:= found in $packVersionFile")
+    else
+      sys.error(s"no $packVersionFile found")
+  }
 
   def listJars(dir: String): List[File] =
     val packlibDir = Paths.get(dir).toFile
@@ -217,8 +275,10 @@ object ScriptTestEnv {
 
     def toUrl: String = Paths.get(absPath).toUri.toURL.toString
 
+    // Used to be an extension on String
     // Treat norm paths with a leading '/' as absolute (Windows java.io.File#isAbsolute treats them as relative)
-    def isAbsolute = p.norm.startsWith("/") || (isWin && p.norm.secondChar == ":")
+    //@annotation.nowarn // hidden by Path#isAbsolute
+    //def isAbsolute = p.norm.startsWith("/") || (isWin && p.norm.secondChar == ":")
   }
 
   extension(f: File) {
@@ -233,8 +293,8 @@ object ScriptTestEnv {
   lazy val cwd: Path = Paths.get(".").toAbsolutePath.normalize
 
   lazy val (scalacPath: String, scalaPath: String) = {
-    val scalac = s"$workingDirectory/dist/target/pack/bin/scalac".toPath.normalize
-    val scala = s"$workingDirectory/dist/target/pack/bin/scala".toPath.normalize
+    val scalac = s"$workingDirectory/$packBinDir/scalac".toPath.normalize
+    val scala = s"$workingDirectory/$packBinDir/scala".toPath.normalize
     (scalac.norm, scala.norm)
   }
 
@@ -242,7 +302,7 @@ object ScriptTestEnv {
   // use optional TEST_BASH if defined, otherwise, bash must be in PATH
 
   // envScalaHome is:
-  //    dist/target/pack, if present
+  //    dist[*]/target/pack, if present
   //    else, SCALA_HOME if defined
   //    else, not defined
   lazy val envScalaHome =

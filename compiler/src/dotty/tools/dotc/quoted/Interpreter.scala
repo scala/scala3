@@ -166,8 +166,8 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
     val inst =
       try loadModule(moduleClass)
       catch
-        case MissingClassDefinedInCurrentRun(sym) =>
-          suspendOnMissing(sym, pos)
+        case MissingClassValidInCurrentRun(sym, origin) =>
+          suspendOnMissing(sym, origin, pos)
     val clazz = inst.getClass
     val name = fn.name.asTermName
     val method = getMethod(clazz, name, paramsSig(fn))
@@ -213,8 +213,8 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
   private def loadClass(name: String): Class[?] =
     try classLoader.loadClass(name)
     catch
-      case MissingClassDefinedInCurrentRun(sym) =>
-        suspendOnMissing(sym, pos)
+      case MissingClassValidInCurrentRun(sym, origin) =>
+        suspendOnMissing(sym, origin, pos)
 
 
   private def getMethod(clazz: Class[?], name: Name, paramClasses: List[Class[?]]): JLRMethod =
@@ -223,8 +223,8 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
       case _: NoSuchMethodException =>
         val msg = em"Could not find method ${clazz.getCanonicalName}.$name with parameters ($paramClasses%, %)"
         throw new StopInterpretation(msg, pos)
-      case MissingClassDefinedInCurrentRun(sym) =>
-        suspendOnMissing(sym, pos)
+      case MissingClassValidInCurrentRun(sym, origin) =>
+        suspendOnMissing(sym, origin, pos)
     }
 
   private def stopIfRuntimeException[T](thunk: => T, method: JLRMethod): T =
@@ -242,8 +242,8 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
         ex.getTargetException match {
           case ex: scala.quoted.runtime.StopMacroExpansion =>
             throw ex
-          case MissingClassDefinedInCurrentRun(sym) =>
-            suspendOnMissing(sym, pos)
+          case MissingClassValidInCurrentRun(sym, origin) =>
+            suspendOnMissing(sym, origin, pos)
           case targetException =>
             val sw = new StringWriter()
             sw.write("Exception occurred while executing macro expansion.\n")
@@ -348,8 +348,11 @@ object Interpreter:
     }
   end Call
 
-  object MissingClassDefinedInCurrentRun {
-    def unapply(targetException: Throwable)(using Context): Option[Symbol] = {
+  enum ClassOrigin:
+    case Classpath, Source
+
+  object MissingClassValidInCurrentRun {
+    def unapply(targetException: Throwable)(using Context): Option[(Symbol, ClassOrigin)] = {
       if !ctx.compilationUnit.isSuspendable then None
       else targetException match
         case _: NoClassDefFoundError | _: ClassNotFoundException =>
@@ -358,16 +361,34 @@ object Interpreter:
           else
             val className = message.replace('/', '.')
             val sym =
-              if className.endsWith(str.MODULE_SUFFIX) then staticRef(className.toTermName).symbol.moduleClass
-              else staticRef(className.toTypeName).symbol
-            // If the symbol does not a a position we assume that it came from the current run and it has an error
-            if sym.isDefinedInCurrentRun || (sym.exists && !sym.srcPos.span.exists) then Some(sym)
-            else None
+              if className.endsWith(str.MODULE_SUFFIX) then
+                staticRef(className.stripSuffix(str.MODULE_SUFFIX).toTermName).symbol.moduleClass
+              else
+                staticRef(className.toTypeName).symbol
+            if sym.isDefinedInBinary then
+              // i.e. the associated file is `.tasty`, if the macro classloader is not able to find the class,
+              // possibly it indicates that it comes from a pipeline-compiled dependency.
+              Some((sym, ClassOrigin.Classpath))
+            else if sym.isDefinedInCurrentRun || (sym.exists && !sym.srcPos.span.exists) then
+              // If the symbol does not a a position we assume that it came from the current run and it has an error
+              Some((sym, ClassOrigin.Source))
+            else
+              None
         case _ => None
     }
   }
 
-  def suspendOnMissing(sym: Symbol, pos: SrcPos)(using Context): Nothing =
-    if ctx.settings.XprintSuspension.value then
-      report.echo(i"suspension triggered by a dependency on $sym", pos)
-    ctx.compilationUnit.suspend() // this throws a SuspendException
+  def suspendOnMissing(sym: Symbol, origin: ClassOrigin, pos: SrcPos)(using Context): Nothing =
+    if origin == ClassOrigin.Classpath then
+      throw StopInterpretation(
+          em"""Macro code depends on ${sym.showLocated} found on the classpath, but could not be loaded while evaluating the macro.
+              |  This is likely because class files could not be found in the classpath entry for the symbol.
+              |
+              |  A possible cause is if the origin of this symbol was built with pipelined compilation;
+              |  in which case, this problem may go away by disabling pipelining for that origin.
+              |
+              |  $sym is defined in file ${sym.associatedFile}""", pos)
+    else if ctx.settings.YnoSuspendedUnits.value then
+      throw StopInterpretation(em"suspension triggered by a dependency on missing ${sym.showLocated} not allowed with -Yno-suspended-units", pos)
+    else
+      ctx.compilationUnit.suspend(i"suspension triggered by a dependency on missing ${sym.showLocated}") // this throws a SuspendException

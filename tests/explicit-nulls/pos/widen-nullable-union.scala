@@ -39,4 +39,16 @@ class Test {
     val y = x
     val _: (A & B) | Null = y
   }
+
+  def test1(s: String): String =
+    val ss = if !s.isEmpty() then s.trim() else s
+    ss + "!"
+
+  def test2(s: String): String =
+    val ss = if !s.isEmpty() then s.trim().nn else s
+    ss + "!"
+
+  def test3(s: String): String =
+    val ss: String = if !s.isEmpty() then s.trim().nn else s
+    ss + "!"
 }

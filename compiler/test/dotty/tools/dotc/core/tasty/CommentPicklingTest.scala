@@ -98,7 +98,7 @@ class CommentPicklingTest {
       Main.process(options.all, reporter)
       assertFalse("Compilation failed.", reporter.hasErrors)
 
-      val tastyFiles = Path.onlyFiles(out.walkFilter(_.extension == "tasty")).toList
+      val tastyFiles = Path.onlyFiles(out.walkFilter(_.ext.isTasty)).toList
       val unpicklingOptions = unpickleOptions
         .withClasspath(out.toAbsolute.toString)
         .and("dummy") // Need to pass a dummy source file name
@@ -110,14 +110,14 @@ class CommentPicklingTest {
   private class UnpicklingDriver extends Driver {
     override def initCtx =
       val ctx = super.initCtx.fresh
-      ctx.setSetting(ctx.settings.YreadComments, true)
+      ctx.setSetting(ctx.settings.XreadComments, true)
       ctx
 
     def unpickle[T](args: Array[String], files: List[File])(fn: (List[tpd.Tree], Context) => T): T = {
       implicit val ctx: Context = setup(args, initCtx).map(_._2).getOrElse(initCtx)
       ctx.initialize()
       val trees = files.flatMap { f =>
-        val unpickler = new DottyUnpickler(AbstractFile.getFile(f.jpath), f.toByteArray())
+        val unpickler = new DottyUnpickler(AbstractFile.getFile(f.jpath), f.toByteArray(), isBestEffortTasty = false)
         unpickler.enter(roots = Set.empty)
         unpickler.rootTrees(using ctx)
       }

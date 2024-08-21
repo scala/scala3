@@ -17,6 +17,6 @@
   |
   |Error:
   |assertion failed: bad owner; method toString has owner class String, expected was class Foo
-  |owner chain = method toString, class String, package java.lang, package java, package <root>, ctxOwners = class Foo, class Foo, package <empty>, package <empty>, package <empty>, package <root>, package <root>, package <root>, package <root>, package <root>, package <root>, <none>, <none>, <none>, <none>, <none>
+  |owner chain = method toString, class String, package java.lang, package java, package <root>, ctxOwners = class Foo, class Foo, package <empty>, package <empty>, package <empty>, package <root>, package <root>, package <root>, package <root>, package <root>, package <root>, package <root>, <none>, <none>, <none>, <none>, <none>
   |
   |stacktrace available when compiling with `-Ydebug`

@@ -27,6 +27,7 @@ import org.scalajs.ir.Names.DefaultModuleID
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Position.NoPosition
 import org.scalajs.ir.Trees.OptimizerHints
+import org.scalajs.ir.Version.Unversioned
 
 import dotty.tools.dotc.transform.sjs.JSExportUtils.*
 import dotty.tools.dotc.transform.sjs.JSSymUtils.*
@@ -185,7 +186,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     }).toList
   }
 
-  def genStaticExports(classSym: Symbol): List[js.MemberDef] = {
+  def genStaticExports(classSym: Symbol): (List[js.JSFieldDef], List[js.JSMethodPropDef]) = {
     val exports = for {
       sym <- classSym.info.decls.toList
       info <- staticExportsOf(sym)
@@ -193,10 +194,13 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       (info, sym)
     }
 
-    (for {
+    val fields = List.newBuilder[js.JSFieldDef]
+    val methodProps = List.newBuilder[js.JSMethodPropDef]
+
+    for {
       (info, tups) <- exports.groupBy(_._1)
       kind <- checkSameKind(tups)
-    } yield {
+    } {
       def alts = tups.map(_._2)
 
       implicit val pos = info.pos
@@ -205,10 +209,12 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
       kind match {
         case Method =>
-          genMemberExportOrDispatcher(JSName.Literal(info.jsName), isProp = false, alts, static = true)
+          methodProps +=
+            genMemberExportOrDispatcher(JSName.Literal(info.jsName), isProp = false, alts, static = true)
 
         case Property =>
-          genMemberExportOrDispatcher(JSName.Literal(info.jsName), isProp = true, alts, static = true)
+          methodProps +=
+            genMemberExportOrDispatcher(JSName.Literal(info.jsName), isProp = true, alts, static = true)
 
         case Field =>
           val sym = checkSingleField(tups)
@@ -219,19 +225,21 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
             .withMutable(true)
           val name = js.StringLiteral(info.jsName)
           val irTpe = genExposedFieldIRType(sym)
-          js.JSFieldDef(flags, name, irTpe)
+          fields += js.JSFieldDef(flags, name, irTpe)
 
         case kind =>
           throw new AssertionError(s"unexpected static export kind: $kind")
       }
-    }).toList
+    }
+
+    (fields.result(), methodProps.result())
   }
 
   /** Generates exported methods and properties for a class.
    *
    *  @param classSym symbol of the class we export for
    */
-  def genMemberExports(classSym: ClassSymbol): List[js.MemberDef] = {
+  def genMemberExports(classSym: ClassSymbol): List[js.JSMethodPropDef] = {
     val classInfo = classSym.info
     val allExports = classInfo.memberDenots(takeAllFilter, { (name, buf) =>
       if (isExportName(name))
@@ -251,7 +259,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     newlyDeclaredExportNames.map(genMemberExport(classSym, _))
   }
 
-  private def genMemberExport(classSym: ClassSymbol, name: TermName): js.MemberDef = {
+  private def genMemberExport(classSym: ClassSymbol, name: TermName): js.JSMethodPropDef = {
     /* This used to be `.member(name)`, but it caused #3538, since we were
      * sometimes selecting mixin forwarders, whose type history does not go
      * far enough back in time to see varargs. We now explicitly exclude
@@ -284,11 +292,11 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     genMemberExportOrDispatcher(JSName.Literal(jsName), isProp, alts.map(_.symbol), static = false)
   }
 
-  def genJSClassDispatchers(classSym: Symbol, dispatchMethodsNames: List[JSName]): List[js.MemberDef] = {
+  def genJSClassDispatchers(classSym: Symbol, dispatchMethodsNames: List[JSName]): List[js.JSMethodPropDef] = {
     dispatchMethodsNames.map(genJSClassDispatcher(classSym, _))
   }
 
-  private def genJSClassDispatcher(classSym: Symbol, name: JSName): js.MemberDef = {
+  private def genJSClassDispatcher(classSym: Symbol, name: JSName): js.JSMethodPropDef = {
     val alts = classSym.info.membersBasedOnFlags(required = Method, excluded = Bridge)
       .map(_.symbol)
       .filter { sym =>
@@ -311,14 +319,14 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
           em"Conflicting properties and methods for ${classSym.fullName}::$name.",
           firstAlt.srcPos)
       implicit val pos = firstAlt.span
-      js.JSPropertyDef(js.MemberFlags.empty, genExpr(name)(firstAlt.sourcePos), None, None)
+      js.JSPropertyDef(js.MemberFlags.empty, genExpr(name)(firstAlt.sourcePos), None, None)(Unversioned)
     } else {
       genMemberExportOrDispatcher(name, isProp, alts, static = false)
     }
   }
 
   private def genMemberExportOrDispatcher(jsName: JSName, isProp: Boolean,
-      alts: List[Symbol], static: Boolean): js.MemberDef = {
+      alts: List[Symbol], static: Boolean): js.JSMethodPropDef = {
     withNewLocalNameScope {
       if (isProp)
         genExportProperty(alts, jsName, static)
@@ -362,7 +370,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       }
     }
 
-    js.JSPropertyDef(flags, genExpr(jsName)(alts.head.sourcePos), getterBody, setterArgAndBody)
+    js.JSPropertyDef(flags, genExpr(jsName)(alts.head.sourcePos), getterBody, setterArgAndBody)(Unversioned)
   }
 
   private def genExportMethod(alts0: List[Symbol], jsName: JSName, static: Boolean)(using Context): js.JSMethodDef = {
@@ -389,7 +397,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       genOverloadDispatch(jsName, overloads, jstpe.AnyType)
 
     js.JSMethodDef(flags, genExpr(jsName), formalArgs, restParam, body)(
-        OptimizerHints.empty, None)
+        OptimizerHints.empty, Unversioned)
   }
 
   def genOverloadDispatch(jsName: JSName, alts: List[Exported], tpe: jstpe.Type)(

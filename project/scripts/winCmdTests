@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
 set -e
-PREFIX="dist/target/pack"
+PREFIX="dist/win-x86_64/target/pack"
 SOURCE="tests/pos/HelloWorld.scala"
 $PREFIX/bin/scalac @project/scripts/options "$SOURCE"
 $PREFIX/bin/scalac -d out "$SOURCE"
-$PREFIX/bin/scala -classpath out HelloWorld
-$PREFIX/bin/scala -classpath out -J-Xmx512m HelloWorld
+$PREFIX/bin/scala --power -classpath out -M HelloWorld --offline '--server=false'
+$PREFIX/bin/scala --power -classpath out -J -Xmx512m -M HelloWorld --offline '--server=false'
 mkdir -p _site && $PREFIX/bin/scaladoc -d _site -project Hello "$SOURCE"

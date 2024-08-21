@@ -247,7 +247,7 @@ package foo.test.i16679a:
       import scala.deriving.Mirror
       object CaseClassByStringName:
         inline final def derived[A](using inline A: Mirror.Of[A]): CaseClassByStringName[A] =
-          new CaseClassByStringName[A]:
+          new CaseClassByStringName[A]: // warn
             def name: String = A.toString
 
   object secondPackage:
@@ -263,14 +263,14 @@ package foo.test.i16679b:
     object CaseClassName:
       import scala.deriving.Mirror
       inline final def derived[A](using inline A: Mirror.Of[A]): CaseClassName[A] =
-        new CaseClassName[A]:
+        new CaseClassName[A]: // warn
           def name: String = A.toString
 
   object Foo:
     given x: myPackage.CaseClassName[secondPackage.CoolClass] = null
 
   object secondPackage:
-    import myPackage.CaseClassName // OK
+    import myPackage.CaseClassName // warn
     import Foo.x
     case class CoolClass(i: Int)
     println(summon[myPackage.CaseClassName[CoolClass]])
@@ -279,7 +279,7 @@ package foo.test.i17156:
   package a:
     trait Foo[A]
     object Foo:
-      inline def derived[T]: Foo[T] = new Foo{}
+      inline def derived[T]: Foo[T] = new Foo{} // warn
 
   package b:
     import a.Foo

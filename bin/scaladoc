@@ -2,4 +2,4 @@
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/.."
 
-"$ROOT/bin/common" "$ROOT/dist/target/pack/bin/scaladoc" "$@"
+"$ROOT/bin/common" "scaladoc" "$@"

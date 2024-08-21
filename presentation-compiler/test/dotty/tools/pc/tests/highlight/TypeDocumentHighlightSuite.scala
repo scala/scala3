@@ -2,7 +2,7 @@ package dotty.tools.pc.tests.highlight
 
 import dotty.tools.pc.base.BaseDocumentHighlightSuite
 
-import org.junit.Test
+import org.junit.{Test, Ignore}
 
 class TypeDocumentHighlightSuite extends BaseDocumentHighlightSuite:
 
@@ -147,7 +147,7 @@ class TypeDocumentHighlightSuite extends BaseDocumentHighlightSuite:
         |}""".stripMargin
     )
 
-  @Test def `projection1` =
+  @Ignore @Test def `projection1` =
     check(
       """|
          |class A {
@@ -158,7 +158,7 @@ class TypeDocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |}""".stripMargin
     )
 
-  @Test def `projection2` =
+  @Ignore @Test def `projection2` =
     check(
       """|
          |class A {

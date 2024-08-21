@@ -103,6 +103,9 @@ object Properties {
   /** scalajs-javalib jar */
   def scalaJSJavalib: String = sys.props("dotty.tests.classes.scalaJSJavalib")
 
+  /** scalajs-scalalib jar */
+  def scalaJSScalalib: String = sys.props("dotty.tests.classes.scalaJSScalalib")
+
   /** scalajs-library jar */
   def scalaJSLibrary: String = sys.props("dotty.tests.classes.scalaJSLibrary")
 }

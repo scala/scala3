@@ -71,10 +71,11 @@ object Completion:
     mode: Mode,
     rawPrefix: String,
     tpdPath: List[tpd.Tree],
-    untpdPath: List[untpd.Tree]
+    untpdPath: List[untpd.Tree],
+    customMatcher: Option[Name => Boolean] = None
   )(using Context): CompletionMap =
     val adjustedPath = typeCheckExtensionConstructPath(untpdPath, tpdPath, pos)
-    computeCompletions(pos, mode, rawPrefix, adjustedPath)
+    computeCompletions(pos, mode, rawPrefix, adjustedPath, untpdPath, customMatcher)
 
   /**
    * Inspect `path` to determine what kinds of symbols should be considered.
@@ -86,26 +87,21 @@ object Completion:
    *
    * Otherwise, provide no completion suggestion.
    */
-  def completionMode(path: List[untpd.Tree], pos: SourcePosition): Mode =
+  def completionMode(path: List[untpd.Tree], pos: SourcePosition): Mode = path match
+    case GenericImportSelector(sel) =>
+      if sel.imported.span.contains(pos.span) then Mode.ImportOrExport // import scala.@@
+      else if sel.isGiven && sel.bound.span.contains(pos.span) then Mode.ImportOrExport
+      else Mode.None // import scala.{util => u@@}
+    case GenericImportOrExport(_) => Mode.ImportOrExport | Mode.Scope // import TrieMa@@
+    case untpd.Literal(Constants.Constant(_: String)) :: _ => Mode.Term | Mode.Scope // literal completions
+    case (ref: untpd.RefTree) :: _ =>
+      val maybeSelectMembers = if ref.isInstanceOf[untpd.Select] then Mode.Member else Mode.Scope
 
-    val completionSymbolKind: Mode =
-      path match
-        case GenericImportSelector(sel) =>
-          if sel.imported.span.contains(pos.span) then Mode.ImportOrExport // import scala.@@
-          else if sel.isGiven && sel.bound.span.contains(pos.span) then Mode.ImportOrExport
-          else Mode.None // import scala.{util => u@@}
-        case GenericImportOrExport(_) => Mode.ImportOrExport | Mode.Scope // import TrieMa@@
-        case untpd.Literal(Constants.Constant(_: String)) :: _ => Mode.Term | Mode.Scope // literal completions
-        case (ref: untpd.RefTree) :: _ =>
-          val maybeSelectMembers = if ref.isInstanceOf[untpd.Select] then Mode.Member else Mode.Scope
+      if (ref.name.isTermName) Mode.Term | maybeSelectMembers
+      else if (ref.name.isTypeName) Mode.Type | maybeSelectMembers
+      else Mode.None
 
-          if (ref.name.isTermName) Mode.Term | maybeSelectMembers
-          else if (ref.name.isTypeName) Mode.Type | maybeSelectMembers
-          else Mode.None
-
-        case _ => Mode.None
-
-    completionSymbolKind
+    case _ => Mode.None
 
   /** When dealing with <errors> in varios palces we check to see if they are
    *  due to incomplete backticks. If so, we ensure we get the full prefix
@@ -130,7 +126,7 @@ object Completion:
   def completionPrefix(path: List[untpd.Tree], pos: SourcePosition)(using Context): String =
     def fallback: Int =
       var i = pos.point - 1
-      while i >= 0 && Chars.isIdentifierPart(pos.source.content()(i)) do i -= 1
+      while i >= 0 && Character.isUnicodeIdentifierPart(pos.source.content()(i)) do i -= 1
       i + 1
 
     path match
@@ -190,7 +186,12 @@ object Completion:
   )(using Context): List[tpd.Tree] =
     untpdPath.collectFirst:
       case untpd.ExtMethods(paramss, _) =>
-        val enclosingParam = paramss.flatten.find(_.span.contains(pos.span))
+        val enclosingParam = paramss.flatten
+          .find(_.span.contains(pos.span))
+          .flatMap:
+            case untpd.TypeDef(_, bounds: untpd.ContextBounds) => bounds.cxBounds.find(_.span.contains(pos.span))
+            case other => Some(other)
+
         enclosingParam.map: param =>
           ctx.typer.index(paramss.flatten)
           val typedEnclosingParam = ctx.typer.typed(param)
@@ -198,11 +199,16 @@ object Completion:
     .flatten.getOrElse(tpdPath)
 
   private def computeCompletions(
-    pos: SourcePosition, mode: Mode, rawPrefix: String, adjustedPath: List[tpd.Tree]
+    pos: SourcePosition,
+    mode: Mode, rawPrefix: String,
+    adjustedPath: List[tpd.Tree],
+    untpdPath: List[untpd.Tree],
+    matches: Option[Name => Boolean]
   )(using Context): CompletionMap =
     val hasBackTick = rawPrefix.headOption.contains('`')
     val prefix = if hasBackTick then rawPrefix.drop(1) else rawPrefix
-    val completer = new Completer(mode, prefix, pos)
+    val matches0 = matches.getOrElse(_.startsWith(prefix))
+    val completer = new Completer(mode, pos, untpdPath, matches0)
 
     val result = adjustedPath match
       // Ignore synthetic select from `This` because in code it was `Ident`
@@ -214,7 +220,6 @@ object Completion:
       case _                                                                    => completer.scopeCompletions
 
     interactiv.println(i"""completion info with pos    = $pos,
-                          |                     prefix = ${completer.prefix},
                           |                     term   = ${completer.mode.is(Mode.Term)},
                           |                     type   = ${completer.mode.is(Mode.Type)},
                           |                     scope  = ${completer.mode.is(Mode.Scope)},
@@ -278,6 +283,43 @@ object Completion:
     if denot.isType then denot.symbol.showFullName
     else denot.info.widenTermRefExpr.show
 
+
+  def isInNewContext(untpdPath: List[untpd.Tree]): Boolean =
+    untpdPath match
+      case _ :: untpd.New(selectOrIdent: (untpd.Select | untpd.Ident)) :: _ => true
+      case _ => false
+
+  /** Include in completion sets only symbols that
+   *   1. is not absent (info is not NoType)
+   *   2. are not a primary constructor,
+   *   3. have an existing source symbol,
+   *   4. are the module class in case of packages,
+   *   5. are mutable accessors, to exclude setters for `var`,
+   *   6. symbol is not a package object
+   *   7. symbol is not an artifact of the compiler
+   *   8. symbol is not a constructor proxy module when in type completion mode
+   *   9. have same term/type kind as name prefix given so far
+   */
+  def isValidCompletionSymbol(sym: Symbol, completionMode: Mode, isNew: Boolean)(using Context): Boolean =
+
+    lazy val isEnum = sym.is(Enum) ||
+      (sym.companionClass.exists && sym.companionClass.is(Enum))
+
+    sym.exists &&
+    !sym.isAbsent() &&
+    !sym.isPrimaryConstructor &&
+    sym.sourceSymbol.exists &&
+    (!sym.is(Package) || sym.is(ModuleClass)) &&
+    !sym.isAllOf(Mutable | Accessor) &&
+    !sym.isPackageObject &&
+    !sym.is(Artifact) &&
+    !(completionMode.is(Mode.Type) && sym.isAllOf(ConstructorProxyModule)) &&
+    !(isNew && isEnum) &&
+    (
+         (completionMode.is(Mode.Term) && (sym.isTerm || sym.is(ModuleClass))
+      || (completionMode.is(Mode.Type) && (sym.isType || sym.isStableMember)))
+    )
+
   given ScopeOrdering(using Context): Ordering[Seq[SingleDenotation]] with
     val order =
       List(defn.ScalaPredefModuleClass, defn.ScalaPackageClass, defn.JavaLangPackageClass)
@@ -290,13 +332,13 @@ object Completion:
 
   /** Computes code completions depending on the context in which completion is requested
    *  @param mode    Should complete names of terms, types or both
-   *  @param prefix  The prefix that all suggested completions should start with
    *  @param pos     Cursor position where completion was requested
+   *  @param matches Function taking name used to filter completions
    *
    *  For the results of all `xyzCompletions` methods term names and type names are always treated as different keys in the same map
    *  and they never conflict with each other.
    */
-  class Completer(val mode: Mode, val prefix: String, pos: SourcePosition):
+  class Completer(val mode: Mode, pos: SourcePosition, untpdPath: List[untpd.Tree], matches: Name => Boolean):
     /** Completions for terms and types that are currently in scope:
      *  the members of the current class, local definitions and the symbols that have been imported,
      *  recursively adding completions from outer scopes.
@@ -503,7 +545,7 @@ object Completion:
       // There are four possible ways for an extension method to be applicable
 
       // 1. The extension method is visible under a simple name, by being defined or inherited or imported in a scope enclosing the reference.
-      val termCompleter = new Completer(Mode.Term, prefix, pos)
+      val termCompleter = new Completer(Mode.Term, pos, untpdPath, matches)
       val extMethodsInScope = termCompleter.scopeCompletions.toList.flatMap:
         case (name, denots) => denots.collect:
           case d: SymDenotation if d.isTerm && d.termRef.symbol.is(Extension) => (d.termRef, name.asTermName)
@@ -530,35 +572,16 @@ object Completion:
       }
       extMethodsWithAppliedReceiver.groupByName
 
+    lazy val isNew: Boolean = isInNewContext(untpdPath)
+
     /** Include in completion sets only symbols that
-     *   1. start with given name prefix, and
-     *   2. is not absent (info is not NoType)
-     *   3. are not a primary constructor,
-     *   4. have an existing source symbol,
-     *   5. are the module class in case of packages,
-     *   6. are mutable accessors, to exclude setters for `var`,
-     *   7. symbol is not a package object
-     *   8. symbol is not an artifact of the compiler
-     *   9. have same term/type kind as name prefix given so far
+     *   1. match the filter method,
+     *   2. satisfy [[Completion.isValidCompletionSymbol]]
      */
     private def include(denot: SingleDenotation, nameInScope: Name)(using Context): Boolean =
-      val sym = denot.symbol
-
-
-      nameInScope.startsWith(prefix) &&
-      sym.exists &&
+      matches(nameInScope) &&
       completionsFilter(NoType, nameInScope) &&
-      !sym.isAbsent() &&
-      !sym.isPrimaryConstructor &&
-      sym.sourceSymbol.exists &&
-      (!sym.is(Package) || sym.is(ModuleClass)) &&
-      !sym.isAllOf(Mutable | Accessor) &&
-      !sym.isPackageObject &&
-      !sym.is(Artifact) &&
-      (
-           (mode.is(Mode.Term) && (sym.isTerm || sym.is(ModuleClass))
-        || (mode.is(Mode.Type) && (sym.isType || sym.isStableMember)))
-      )
+      isValidCompletionSymbol(denot.symbol, mode, isNew)
 
     private def extractRefinements(site: Type)(using Context): Seq[SingleDenotation] =
       site match
@@ -605,7 +628,6 @@ object Completion:
     private def implicitConversionTargets(qual: tpd.Tree)(using Context): Set[SearchSuccess] = {
       val typer = ctx.typer
       val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.span).allImplicits
-      conversions.map(_.tree.typeOpt)
 
       interactiv.println(i"implicit conversion targets considered: ${conversions.toList}%, %")
       conversions

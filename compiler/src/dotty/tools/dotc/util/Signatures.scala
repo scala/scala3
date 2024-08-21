@@ -196,7 +196,8 @@ object Signatures {
     fun: tpd.Tree,
     isTypeApply: Boolean = false
   )(using Context): (Int, Int, List[Signature]) =
-    def treeQualifier(tree: tpd.Tree): tpd.Tree = tree match
+    def treeQualifier(tree: tpd.Tree): tpd.Tree =
+      tree match
         case Apply(qual, _) => treeQualifier(qual)
         case TypeApply(qual, _) => treeQualifier(qual)
         case AppliedTypeTree(qual, _) => treeQualifier(qual)
@@ -247,7 +248,9 @@ object Signatures {
       val alternativeSignatures = alternativesWithTypes
         .flatMap(toApplySignature(_, findOutermostCurriedApply(untpdPath), safeParamssListIndex))
 
-      val finalParamIndex = currentParamsIndex + previousArgs
+      val finalParamIndex =
+        if currentParamsIndex == -1 then -1
+        else previousArgs + currentParamsIndex
       (finalParamIndex, alternativeIndex, alternativeSignatures)
     else
       (0, 0, Nil)
@@ -495,8 +498,8 @@ object Signatures {
         case res => List(tpe)
 
     def isSyntheticEvidence(name: String) =
-      if !name.startsWith(NameKinds.ContextBoundParamName.separator) then false else
-        symbol.paramSymss.flatten.find(_.name.show == name).exists(_.flags.is(Flags.Implicit))
+      name.startsWith(NameKinds.ContextBoundParamName.separator)
+      && symbol.paramSymss.flatten.find(_.name.show == name).exists(_.flags.is(Flags.Implicit))
 
     def toTypeParam(tpe: PolyType): List[Param] =
       val evidenceParams = (tpe.paramNamess.flatten zip tpe.paramInfoss.flatten).flatMap:

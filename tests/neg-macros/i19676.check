@@ -1,0 +1,5 @@
+
+-- Error: tests/neg-macros/i19676/Test_2.scala:3:0 ---------------------------------------------------------------------
+3 |@buggy // error
+  |^^^^^^
+  |Transformed companion for class Foo was returned more than once by `(new buggy()).transform(..)` during macro expansion

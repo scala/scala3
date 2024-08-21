@@ -13,6 +13,7 @@ import java.nio.file.Path
 import java.nio.file.Files
 import java.io.File
 import scala.util.chaining._
+import dotty.tools.scaladoc.util.Escape.escapeFilename
 
 case class ResolvedTemplate(template: LoadedTemplate, ctx: StaticSiteContext):
   val resolved = template.resolveToHtml(ctx)
@@ -55,11 +56,16 @@ trait SiteRenderer(using DocContext) extends Locations:
       val staticSiteRootPath = content.ctx.root.toPath.toAbsolutePath
       def asValidURL: Option[String] = Try(URI(str).toURL).toOption.map(_ => str)
       def asAsset: Option[String] = Option.when(
-        Files.exists(staticSiteRootPath.resolve("_assets").resolve(str.stripPrefix("/")))
+        Try(
+          Files.exists(staticSiteRootPath.resolve("_assets").resolve(str.stripPrefix("/")))
+        ).getOrElse(false)
       )(
         resolveLink(pageDri, str.stripPrefix("/"))
       )
-      def asStaticSite: Option[String] = tryAsDriPlain(str).orElse(tryAsDri(str))
+      def asStaticSite: Option[String] =
+        tryAsDriPlain(str)
+          .orElse(tryAsDri(str))
+          .orElse(tryAsDriPlain(escapeFilename(str)))
 
       /* Link resolving checks performs multiple strategies with following priority:
         1. We check if the link is a valid URL e.g. http://dotty.epfl.ch

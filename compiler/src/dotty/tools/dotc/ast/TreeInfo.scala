@@ -5,6 +5,8 @@ package ast
 import core.*
 import Flags.*, Trees.*, Types.*, Contexts.*
 import Names.*, StdNames.*, NameOps.*, Symbols.*
+import Annotations.Annotation
+import NameKinds.ContextBoundParamName
 import typer.ConstFold
 import reporting.trace
 
@@ -107,6 +109,10 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
       stripTyped(expr)
     case _ =>
       tree
+
+  def stripNamedArg(tree: Tree) = tree match
+    case NamedArg(_, arg) => arg
+    case _ => tree
 
   /** The number of arguments in an application */
   def numArgs(tree: Tree): Int = unsplice(tree) match {
@@ -376,6 +382,29 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case _ =>
       tree.tpe.isInstanceOf[ThisType]
   }
+
+  /** Under x.modularity: Extractor for `annotation.internal.WitnessNames(name_1, ..., name_n)`
+   *  represented as an untyped or typed tree.
+   */
+  object WitnessNamesAnnot:
+    def apply(names: List[TermName])(using Context): untpd.Tree =
+      untpd.TypedSplice(tpd.New(
+          defn.WitnessNamesAnnot.typeRef,
+          tpd.SeqLiteral(names.map(n => tpd.Literal(Constant(n.toString))), tpd.TypeTree(defn.StringType)) :: Nil
+        ))
+
+    def unapply(tree: Tree)(using Context): Option[List[TermName]] =
+      unsplice(tree) match
+        case Apply(Select(New(tpt: tpd.TypeTree), nme.CONSTRUCTOR), SeqLiteral(elems, _) :: Nil) =>
+          tpt.tpe match
+            case tp: TypeRef if tp.name == tpnme.WitnessNames && tp.symbol == defn.WitnessNamesAnnot =>
+              Some:
+                elems.map:
+                  case Literal(Constant(str: String)) =>
+                    ContextBoundParamName.unmangle(str.toTermName.asSimpleName)
+            case _ => None
+        case _ => None
+  end WitnessNamesAnnot
 }
 
 trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] =>
@@ -919,12 +948,12 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       else cpy.PackageDef(tree)(pid, slicedStats) :: Nil
     case tdef: TypeDef =>
       val sym = tdef.symbol
-      assert(sym.isClass)
+      assert(sym.isClass || ctx.tolerateErrorsForBestEffort)
       if (cls == sym || cls == sym.linkedClass) tdef :: Nil
       else Nil
     case vdef: ValDef =>
       val sym = vdef.symbol
-      assert(sym.is(Module))
+      assert(sym.is(Module) || ctx.tolerateErrorsForBestEffort)
       if (cls == sym.companionClass || cls == sym.moduleClass) vdef :: Nil
       else Nil
     case tree =>
@@ -1105,7 +1134,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           case AndType(ref, nn1) if qual.tpe eq ref =>
             qual.tpe.widen match
               case OrNull(nn2) if nn1 eq nn2 =>
-              	Some(qual)
+                Some(qual)
               case _ => None
           case _ => None
       case _ => None

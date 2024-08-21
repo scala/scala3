@@ -17,7 +17,11 @@ import org.junit.Assume.assumeFalse
 /** Runs all tests contained in `compiler/test-resources/scripting/` */
 class ScriptingTests:
   // classpath tests managed by scripting.ClasspathTests.scala
-  def testFiles = scripts("/scripting").filter { ! _.getName.toLowerCase.contains("classpath") }
+  def testFiles = scripts("/scripting").filter { sc =>
+    val name = sc.getName.toLowerCase
+    !name.contains("classpath")
+    && !name.contains("_scalacli")
+  }
 
   /*
    * Call .scala scripts without -save option, verify no jar created
@@ -47,7 +51,10 @@ class ScriptingTests:
    */
   @Test def scriptingMainTests =
     assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
-    for (scriptFile, scriptArgs) <- scalaFilesWithArgs(".sc") do
+    for
+      (scriptFile, scriptArgs) <- scalaFilesWithArgs(".sc")
+      if !scriptFile.getName().endsWith("Nu.sc")
+    do
       showScriptUnderTest(scriptFile)
       val unexpectedJar = script2jar(scriptFile)
       unexpectedJar.delete
@@ -66,7 +73,10 @@ class ScriptingTests:
    */
   @Test def scriptingJarTest =
     assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
-    for (scriptFile, scriptArgs) <- scalaFilesWithArgs(".sc") do
+    for
+      (scriptFile, scriptArgs) <- scalaFilesWithArgs(".sc")
+      if !scriptFile.getName().endsWith("Nu.sc")
+    do
       showScriptUnderTest(scriptFile)
       val expectedJar = script2jar(scriptFile)
       expectedJar.delete

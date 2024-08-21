@@ -18,12 +18,10 @@ object Test {
   def err2[A, B](value: Foo[A, B], a: A => Int): B = value match {
     case b: Bar[B] => // spurious // warn
       b.x
-    case _ => ??? // avoid fatal inexhaustivity warnings suppressing the uncheckable warning
   }
 
   def fail[A, B](value: Foo[A, B], a: A => Int): B = value match {
     case b: Bar[Int] => // warn
       b.x
-    case _ => ??? // avoid fatal inexhaustivity warnings suppressing the uncheckable warning
   }
 }

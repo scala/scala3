@@ -4,7 +4,7 @@ title: "Safe Initialization"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/other-new-features/safe-initialization.html
 ---
 
-Scala 3 implements experimental safe initialization check, which can be enabled by the compiler option `-Ysafe-init`.
+Scala 3 implements experimental safe initialization check, which can be enabled by the compiler option `-Wsafe-init`.
 
 The design and implementation of the initialization checker is described in the
 paper _Safe object initialization, abstractly_ [3].

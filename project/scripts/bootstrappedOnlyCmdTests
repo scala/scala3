@@ -14,32 +14,38 @@ echo "testing scala.quoted.Expr.run from sbt scala"
 "$SBT" ";scala3-compiler-bootstrapped/scalac -with-compiler tests/run-staging/quote-run.scala; scala3-compiler-bootstrapped/scala -with-compiler Test" > "$tmp"
 grep -qe "val a: scala.Int = 3" "$tmp"
 
-
 # setup for `scalac`/`scala` script tests
-"$SBT" dist/pack
+"$SBT" "$DIST_PROJECT/pack"
+
+echo "capturing scala version from $DIST_DIR/target/pack/VERSION"
+IFS=':=' read -ra versionProps < "$ROOT/$DIST_DIR/target/pack/VERSION" # temporarily set IFS to ':=' to split versionProps
+[ ${#versionProps[@]} -eq 3 ] && \
+  [ ${versionProps[0]} = "version" ] && \
+  [ -n ${versionProps[2]} ] || die "Expected non-empty 'version' property in $ROOT/$DIST_DIR/target/pack/VERSION"
+scala_version=${versionProps[2]}
 
 # check that `scalac` compiles and `scala` runs it
 echo "testing ./bin/scalac and ./bin/scala"
 clear_out "$OUT"
 ./bin/scalac "$SOURCE" -d "$OUT"
-./bin/scala -classpath "$OUT" "$MAIN" > "$tmp"
+./bin/scala -classpath "$OUT" -M "$MAIN" > "$tmp"
 test "$EXPECTED_OUTPUT" = "$(cat "$tmp")"
 
 # Test scaladoc based on compiled classes
 ./bin/scaladoc -project Staging -d "$OUT1" "$OUT"
 clear_out "$OUT1"
 
-# check that `scalac` and `scala` works for staging
+# check that `scalac` and `scala` works for staging.
 clear_out "$OUT"
 ./bin/scalac tests/run-staging/i4044f.scala -d "$OUT"
-./bin/scala -with-compiler -classpath "$OUT" Test > "$tmp"
+./bin/scala -with-compiler -classpath "$OUT" -M Test > "$tmp"
 
 # check that `scalac -from-tasty` compiles and `scala` runs it
 echo "testing ./bin/scalac -from-tasty and scala -classpath"
 clear_out "$OUT1"
 ./bin/scalac "$SOURCE" -d "$OUT"
 ./bin/scalac -from-tasty -d "$OUT1" "$OUT/$TASTY"
-./bin/scala -classpath "$OUT1" "$MAIN" > "$tmp"
+./bin/scala -classpath "$OUT1" -M "$MAIN" > "$tmp"
 test "$EXPECTED_OUTPUT" = "$(cat "$tmp")"
 
 # check that `sbt scalac -decompile` runs
@@ -71,7 +77,7 @@ echo "testing sbt scalac with suspension"
 clear_out "$OUT"
 "$SBT" "scala3-compiler-bootstrapped/scalac -d $OUT tests/pos-macros/macros-in-same-project-1/Bar.scala tests/pos-macros/macros-in-same-project-1/Foo.scala"  > "$tmp"
 
-# echo ":quit" | ./dist/target/pack/bin/scala  # not supported by CI
+# echo ":quit" | ./$DIST_DIR/target/pack/bin/scala  # not supported by CI
 
 echo "testing ./bin/scaladoc"
 clear_out "$OUT1"
@@ -91,24 +97,23 @@ clear_out "$OUT"
 grep -qe "Usage: scalac <options> <source files>" "$tmp"
 
 ./bin/scala -help > "$tmp" 2>&1
-grep -qe "Usage: scala <options> <source files>" "$tmp"
+grep -qe "See 'scala <command> --help' to read about a specific subcommand." "$tmp"
 
 ./bin/scala -d hello.jar tests/run/hello.scala
 ls hello.jar
+clear_cli_dotfiles tests/run
+
+# check that `scala` runs scripts with args
+echo "testing ./bin/scala with arguments"
+./bin/scala run project/scripts/echoArgs.sc -- abc true 123 > "$tmp"
+test "$EXPECTED_OUTPUT_ARGS" = "$(cat "$tmp")"
+clear_cli_dotfiles project/scripts
 
 echo "testing i12973"
 clear_out "$OUT"
 ./bin/scalac -d "$OUT/out.jar" tests/pos/i12973.scala
 echo "Bug12973().check" | TERM=dumb ./bin/scala -cp "$OUT/out.jar" > "$tmp" 2>&1
 grep -qe "Bug12973 is fixed" "$tmp"
-
-echo "capturing scala version from dist/target/pack/VERSION"
-cwd=$(pwd)
-IFS=':=' read -ra versionProps < "$cwd/dist/target/pack/VERSION" # temporarily set IFS to ':=' to split versionProps
-[ ${#versionProps[@]} -eq 3 ] && \
-  [ ${versionProps[0]} = "version" ] && \
-  [ -n ${versionProps[2]} ] || die "Expected non-empty 'version' property in $cwd/dist/target/pack/VERSION"
-scala_version=${versionProps[2]}
 
 echo "testing -sourcepath with incremental compile: inlining changed inline def into a def"
 # Here we will test that a changed inline method symbol loaded from the sourcepath (-sourcepath compiler option)

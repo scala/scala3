@@ -1,4 +1,4 @@
-//> using options -Yno-experimental
+
 
 import language.experimental.erasedDefinitions
 import annotation.experimental

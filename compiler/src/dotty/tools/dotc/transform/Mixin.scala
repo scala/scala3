@@ -18,6 +18,8 @@ import NameKinds.*
 import NameOps.*
 import ast.Trees.*
 
+import dotty.tools.dotc.transform.sjs.JSSymUtils.isJSType
+
 object Mixin {
   val name: String = "mixin"
   val description: String = "expand trait fields and trait initializers"
@@ -273,7 +275,15 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
             else if (getter.is(Lazy, butNot = Module))
               transformFollowing(superRef(getter).appliedToNone)
             else if (getter.is(Module))
-              New(getter.info.resultType, List(This(cls)))
+              if ctx.settings.scalajs.value && getter.moduleClass.isJSType then
+                if getter.is(Scala2x) then
+                  report.error(
+                      em"""Implementation restriction: cannot extend the Scala 2 trait $mixin
+                          |containing the object $getter that extends js.Any""",
+                      cls.srcPos)
+                transformFollowing(superRef(getter).appliedToNone)
+              else
+                New(getter.info.resultType, List(This(cls)))
             else
               Underscore(getter.info.resultType)
           // transformFollowing call is needed to make memoize & lazy vals run

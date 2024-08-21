@@ -1,0 +1,13 @@
+-- Error: tests/neg/i18552.scala:9:6 -----------------------------------------------------------------------------------
+9 |class MB(id:Int) extends MA(id) with M[B] // error
+  |      ^
+  |      illegal inheritance: class MB inherits conflicting instances of base trait M.
+  |
+  |        Direct basetype: M[B]
+  |        Basetype via case class MA: M[A]
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | Refining a basetype of a case class is not allowed.
+  | This is a limitation that enables better GADT constraints in case class patterns
+   ---------------------------------------------------------------------------------------------------------------------

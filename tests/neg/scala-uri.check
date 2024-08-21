@@ -1,0 +1,14 @@
+-- [E172] Type Error: tests/neg/scala-uri.scala:31:59 ------------------------------------------------------------------
+31 |@main def Test = summon[QueryKeyValue[(String, None.type)]]  // error
+   |                                                           ^
+   |No best given instance of type QueryKeyValue[(String, None.type)] was found for parameter x of method summon in object Predef.
+   |I found:
+   |
+   |    QueryKeyValue.tuple2QueryKeyValue[String, None.type](QueryKey.stringQueryKey,
+   |      QueryValue.optionQueryValue[A](
+   |        /* ambiguous: both given instance stringQueryValue in trait QueryValueInstances1 and given instance noneQueryValue in trait QueryValueInstances1 match type QueryValue[A] */
+   |          summon[QueryValue[A]]
+   |      )
+   |    )
+   |
+   |But both given instance stringQueryValue in trait QueryValueInstances1 and given instance noneQueryValue in trait QueryValueInstances1 match type QueryValue[A].

@@ -2,7 +2,3 @@
 2 |  given inline x: Int = 0 // error
   |               ^
   |               'with' expected, but identifier found
--- [E040] Syntax Error: tests/neg/i12348.scala:3:10 --------------------------------------------------------------------
-3 |} // error
-  |          ^
-  |          '}' expected, but eof found

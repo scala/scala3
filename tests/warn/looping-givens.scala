@@ -1,3 +1,5 @@
+//> using options -source 3.4
+
 class A
 class B
 

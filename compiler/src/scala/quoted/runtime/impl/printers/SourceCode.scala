@@ -1247,6 +1247,11 @@ object SourceCode {
         this += " => "
         printType(rhs)
 
+      case FlexibleType(tp) =>
+        this += "("
+        printType(tp)
+        this += ")?"
+
       case _ =>
         cannotBeShownAsSource(tpe.show(using Printer.TypeReprStructure))
     }

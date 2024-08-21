@@ -873,7 +873,7 @@ class MatchableWarning(tp: Type, pattern: Boolean)(using DetachedContext)
 extends TypeMsg(MatchableWarningID) {
   def msg(using Context) =
     val kind = if pattern then "pattern selector" else "value"
-    i"""${kind} should be an instance of Matchable,,
+    i"""${kind} should be an instance of Matchable,
        |but it has unmatchable type $tp instead"""
 
   def explain(using Context) =

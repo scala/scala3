@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+
+set -eux
+
+#/*---------------*\
+# *  SETUP VARS   *#
+# *---------------*/
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/../../.."
+
+SBT="$ROOT/project/scripts/sbt" # if run on CI
+# SBT="sbt" # if run locally
+
+# set the $DIST_PROJECT and $DIST_DIR variables
+source "$ROOT/bin/common-platform"
+
+die () {
+    echo >&2 "$@"
+    exit 1
+}
+
+PROG_HOME="$DIST_DIR/target/pack"
+
+SOURCE="$ROOT/tests/pos/HelloWorld.scala"
+SOURCE_VERSION="$ROOT/project/scripts/native-integration/reportScalaVersion.scala"
+
+clear_cli_dotfiles()
+{
+  local out="$1"
+  rm -rf "$out"/.bsp
+  rm -rf "$out"/.scala-build
+
+  rm -f "$ROOT"/.bsp/scala.json
+  if [ -z "$(ls -A "$ROOT"/.bsp)" ]; then
+    rm -rf "$ROOT"/.bsp
+  fi
+  rm -rf "$ROOT"/.scala-build
+}
+
+#/*---------------*\
+# *  INITIALIZE   *#
+# *---------------*/
+
+# build the distribution
+"$SBT" "$DIST_PROJECT/pack"
+
+SCALA_VERSION=""
+# iterate through lines in VERSION_SRC
+while IFS= read -r line; do
+  # if line starts with "version:=" then extract the version
+  if [[ "$line" == version:=* ]]; then
+    SCALA_VERSION="${line#version:=}"
+    break
+  fi
+done < "$PROG_HOME/VERSION"
+
+if [ -z "$SCALA_VERSION" ]; then
+  die "Could not find scala version in $PROG_HOME/VERSION"
+fi
+
+#/*-------------------*\
+# *  TESTING BEGINS   *#
+# *-------------------*/
+
+echo "assert native launcher matches expected version"
+if [ -z "$LAUNCHER_EXPECTED_PROJECT" ]; then
+  die "LAUNCHER_EXPECTED_PROJECT is not set in the environment"
+fi
+test "$LAUNCHER_EXPECTED_PROJECT" = "$DIST_PROJECT"
+
+echo "testing version output (default)"
+std_output=$("$PROG_HOME/bin/scala" version --scala-version)
+test "$SCALA_VERSION" = "$std_output"
+
+echo "testing run command"
+std_output=$("$PROG_HOME/bin/scala" run "$SOURCE" --power --offline --server=false)
+test "hello world" = "$std_output"
+clear_cli_dotfiles "$ROOT/tests/pos"
+
+echo "testing run command (-with-compiler)"
+std_output=$("$PROG_HOME/bin/scala" run "$SOURCE_VERSION" -with-compiler --power --offline --server=false)
+test "$SCALA_VERSION" = "$std_output"
+clear_cli_dotfiles "$ROOT/project/scripts/native-integration"
+

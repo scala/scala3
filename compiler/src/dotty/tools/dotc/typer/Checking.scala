@@ -29,12 +29,11 @@ import config.Printers.{typr, patmatch}
 import NameKinds.DefaultGetterName
 import NameOps.*
 import SymDenotations.{NoCompleter, NoDenotation}
-import Applications.unapplyArgs
+import Applications.UnapplyArgs
 import Inferencing.isFullyDefined
 import transform.patmat.SpaceEngine.{isIrrefutable, isIrrefutableQuotePattern}
 import transform.ValueClasses.underlyingOfValueClass
-import config.Feature
-import config.Feature.sourceVersion
+import config.Feature, Feature.{sourceVersion, modularity}
 import config.SourceVersion.*
 import config.MigrationVersion
 import printing.Formatting.hlAsKeyword
@@ -42,6 +41,7 @@ import cc.{isCaptureChecking, isRetainsLike}
 
 import collection.mutable
 import reporting.*
+import Annotations.ExperimentalAnnotation
 
 object Checking {
   import tpd.*
@@ -197,7 +197,7 @@ object Checking {
    *  and that the instance conforms to the self type of the created class.
    */
   def checkInstantiable(tp: Type, srcTp: Type, pos: SrcPos)(using Context): Unit =
-    tp.underlyingClassRef(refinementOK = false) match
+    tp.underlyingClassRef(refinementOK = Feature.enabled(modularity)) match
       case tref: TypeRef =>
         val cls = tref.symbol
         if (cls.isOneOf(AbstractOrTrait)) {
@@ -349,10 +349,7 @@ object Checking {
           }
 
           if isInteresting(pre) then
-            val traceCycles = CyclicReference.isTraced
-            try
-              if traceCycles then
-                CyclicReference.pushTrace("explore ", tp.symbol, " for cyclic references")
+            CyclicReference.trace(i"explore ${tp.symbol} for cyclic references"):
               val pre1 = this(pre, false, false)
               if locked.contains(tp)
                   || tp.symbol.infoOrCompleter.isInstanceOf[NoCompleter]
@@ -367,8 +364,6 @@ object Checking {
               finally
                 locked -= tp
               tp.withPrefix(pre1)
-            finally
-              if traceCycles then CyclicReference.popTrace()
           else tp
         }
         catch {
@@ -605,6 +600,7 @@ object Checking {
     // The issue with `erased inline` is that the erased semantics get lost
     // as the code is inlined and the reference is removed before the erased usage check.
     checkCombination(Erased, Inline)
+    checkNoConflict(Tracked, Mutable, em"mutable variables may not be `tracked`")
     checkNoConflict(Lazy, ParamAccessor, em"parameter may not be `lazy`")
   }
 
@@ -802,50 +798,58 @@ object Checking {
     tree
 
   /** Check that experimental language imports in `trees`
-   *  are done only in experimental scopes, or in a top-level
-   *  scope with only @experimental definitions.
+   *  are done only in experimental scopes. For top-level
+   *  experimental imports, all top-level definitions are transformed
+   *  to @experimental definitions.
+   *
    */
-  def checkExperimentalImports(trees: List[Tree])(using Context): Unit =
+  def checkAndAdaptExperimentalImports(trees: List[Tree])(using Context): Unit =
+    def nonExperimentalTopLevelDefs(pack: Symbol): Iterator[Symbol] =
+      def isNonExperimentalTopLevelDefinition(sym: Symbol) =
+        sym.isDefinedInCurrentRun
+        && sym.source == ctx.compilationUnit.source
+        && !sym.isConstructor // not constructor of package object
+        && !sym.is(Package) && !sym.name.isPackageObjectName
+        && !sym.isExperimental
 
-    def nonExperimentalStat(trees: List[Tree]): Tree = trees match
-      case (_: Import | EmptyTree) :: rest =>
-        nonExperimentalStat(rest)
-      case (tree @ TypeDef(_, impl: Template)) :: rest if tree.symbol.isPackageObject =>
-        nonExperimentalStat(impl.body).orElse(nonExperimentalStat(rest))
-      case (tree: PackageDef) :: rest =>
-        nonExperimentalStat(tree.stats).orElse(nonExperimentalStat(rest))
-      case (tree: MemberDef) :: rest =>
-        if tree.symbol.isExperimental || tree.symbol.is(Synthetic) then
-          nonExperimentalStat(rest)
-        else
-          tree
-      case tree :: rest =>
-        tree
-      case Nil =>
-        EmptyTree
+      pack.info.decls.toList.iterator.flatMap: sym =>
+        if sym.isClass && (sym.is(Package) || sym.isPackageObject) then
+          nonExperimentalTopLevelDefs(sym)
+        else if isNonExperimentalTopLevelDefinition(sym) then
+          sym :: Nil
+        else Nil
 
-    for case imp @ Import(qual, selectors) <- trees do
+    def unitExperimentalLanguageImports =
       def isAllowedImport(sel: untpd.ImportSelector) =
         val name = Feature.experimental(sel.name)
         name == Feature.scala2macros
-        || name == Feature.erasedDefinitions
         || name == Feature.captureChecking
+      trees.filter {
+        case Import(qual, selectors) =>
+          languageImport(qual) match
+            case Some(nme.experimental) =>
+              !selectors.forall(isAllowedImport) && !ctx.owner.isInExperimentalScope
+            case _ => false
+        case _ => false
+      }
 
-      languageImport(qual) match
-        case Some(nme.experimental)
-        if !ctx.owner.isInExperimentalScope && !selectors.forall(isAllowedImport) =>
-          def check(stable: => String) =
-            Feature.checkExperimentalFeature("features", imp.srcPos,
-              s"\n\nNote: the scope enclosing the import is not considered experimental because it contains the\nnon-experimental $stable")
-          if ctx.owner.is(Package) then
-            // allow top-level experimental imports if all definitions are @experimental
-            nonExperimentalStat(trees) match
-              case EmptyTree =>
-              case tree: MemberDef => check(i"${tree.symbol}")
-              case tree => check(i"expression ${tree}")
-          else Feature.checkExperimentalFeature("features", imp.srcPos)
+    if ctx.owner.is(Package) || ctx.owner.name.startsWith(str.REPL_SESSION_LINE) then
+      def markTopLevelDefsAsExperimental(why: String): Unit =
+        for sym <- nonExperimentalTopLevelDefs(ctx.owner) do
+          sym.addAnnotation(ExperimentalAnnotation(s"Added by $why", sym.span))
+
+      unitExperimentalLanguageImports match
+        case imp :: _ => markTopLevelDefsAsExperimental(i"top level $imp")
         case _ =>
-  end checkExperimentalImports
+          Feature.experimentalEnabledByLanguageSetting match
+            case Some(sel) => markTopLevelDefsAsExperimental(i"-language:experimental.$sel")
+            case _ if ctx.settings.experimental.value => markTopLevelDefsAsExperimental(i"-experimental")
+            case _ =>
+    else
+      for imp <- unitExperimentalLanguageImports do
+        Feature.checkExperimentalFeature("feature local import", imp.srcPos)
+
+  end checkAndAdaptExperimentalImports
 
   /** Checks that PolyFunction only have valid refinements.
    *
@@ -963,10 +967,16 @@ trait Checking {
       false
     }
 
-    def check(pat: Tree, pt: Type): Boolean =
+    // Is scrutinee type `pt` a subtype of `pat.tpe`, after stripping named tuples
+    // and accounting for large generic tuples?
+    // Named tuples need to be stripped off, since names are dropped in patterns
+    def conforms(pat: Tree, pt: Type): Boolean =
       pt.isTupleXXLExtract(pat.tpe) // See isTupleXXLExtract, fixes TupleXXL parameter type
-      || pt <:< pat.tpe
-      || fail(pat, pt, Reason.NonConforming)
+      || pt.stripNamedTuple <:< pat.tpe
+      || (pt.widen ne pt) && conforms(pat, pt.widen)
+
+    def check(pat: Tree, pt: Type): Boolean =
+      conforms(pat, pt) || fail(pat, pt, Reason.NonConforming)
 
     def recur(pat: Tree, pt: Type): Boolean =
       !sourceVersion.isAtLeast(`3.2`)
@@ -979,7 +989,7 @@ trait Checking {
           case UnApply(fn, implicits, pats) =>
             check(pat, pt) &&
             (isIrrefutable(fn, pats.length) || fail(pat, pt, Reason.RefutableExtractor)) && {
-              val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.srcPos)
+              val argPts = UnapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.srcPos).argTypes
               pats.corresponds(argPts)(recur)
             }
           case Alternative(pats) =>
@@ -1058,8 +1068,8 @@ trait Checking {
   *   check that class prefix is stable.
    *  @return  `tp` itself if it is a class or trait ref, ObjectType if not.
    */
-  def checkClassType(tp: Type, pos: SrcPos, traitReq: Boolean, stablePrefixReq: Boolean)(using Context): Type =
-    tp.underlyingClassRef(refinementOK = false) match {
+  def checkClassType(tp: Type, pos: SrcPos, traitReq: Boolean, stablePrefixReq: Boolean, refinementOK: Boolean = false)(using Context): Type =
+    tp.underlyingClassRef(refinementOK) match
       case tref: TypeRef =>
         if (traitReq && !tref.symbol.is(Trait)) report.error(TraitIsExpected(tref.symbol), pos)
         if (stablePrefixReq && ctx.phase <= refchecksPhase) checkStable(tref.prefix, pos, "class prefix")
@@ -1067,7 +1077,6 @@ trait Checking {
       case _ =>
         report.error(NotClassType(tp), pos)
         defn.ObjectType
-    }
 
   /** If `sym` is an old-style implicit conversion, check that implicit conversions are enabled.
    *  @pre  sym.is(GivenOrImplicit)
@@ -1323,20 +1332,20 @@ trait Checking {
   }
 
   /** Check that user-defined (result) type is fully applied */
-  def checkFullyAppliedType(tree: Tree)(using Context): Unit = tree match
+  def checkFullyAppliedType(tree: Tree, prefix: String)(using Context): Unit = tree match
     case TypeBoundsTree(lo, hi, alias) =>
-      checkFullyAppliedType(lo)
-      checkFullyAppliedType(hi)
-      checkFullyAppliedType(alias)
+      checkFullyAppliedType(lo, prefix)
+      checkFullyAppliedType(hi, prefix)
+      checkFullyAppliedType(alias, prefix)
     case Annotated(arg, annot) =>
-      checkFullyAppliedType(arg)
+      checkFullyAppliedType(arg, prefix)
     case LambdaTypeTree(_, body) =>
-      checkFullyAppliedType(body)
+      checkFullyAppliedType(body, prefix)
     case _: TypeTree =>
     case _ =>
       if tree.tpe.typeParams.nonEmpty then
         val what = if tree.symbol.exists then tree.symbol.show else i"type $tree"
-        report.error(em"$what takes type parameters", tree.srcPos)
+        report.error(em"$prefix$what takes type parameters", tree.srcPos)
 
   /** Check that we are in an inline context (inside an inline method or in inline code) */
   def checkInInlineContext(what: String, pos: SrcPos)(using Context): Unit =
@@ -1508,7 +1517,7 @@ trait Checking {
       val annotCls = Annotations.annotClass(annot)
       val concreteAnnot = Annotations.ConcreteAnnotation(annot)
       val pos = annot.srcPos
-      if (annotCls == defn.MainAnnot || concreteAnnot.matches(defn.MainAnnotationClass)) {
+      if (annotCls == defn.MainAnnot) {
         if (!sym.isRealMethod)
           report.error(em"main annotation cannot be applied to $sym", pos)
         if (!sym.owner.is(Module) || !sym.owner.isStatic)
@@ -1601,7 +1610,7 @@ trait ReChecking extends Checking {
   override def checkEnumParent(cls: Symbol, firstParent: Symbol)(using Context): Unit = ()
   override def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(using Context): Unit = ()
   override def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(using Context): Unit = ()
-  override def checkFullyAppliedType(tree: Tree)(using Context): Unit = ()
+  override def checkFullyAppliedType(tree: Tree, prefix: String)(using Context): Unit = ()
   override def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(using Context): Unit = ()
   override def checkAnnotApplicable(annot: Tree, sym: Symbol)(using Context): Boolean = true
   override def checkMatchable(tp: Type, pos: SrcPos, pattern: Boolean)(using Context): Unit = ()
@@ -1617,7 +1626,7 @@ trait NoChecking extends ReChecking {
   override def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(using Context): Type = info
   override def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, pos: SrcPos)(using Context): Unit = ()
   override def checkStable(tp: Type, pos: SrcPos, kind: String)(using Context): Unit = ()
-  override def checkClassType(tp: Type, pos: SrcPos, traitReq: Boolean, stablePrefixReq: Boolean)(using Context): Type = tp
+  override def checkClassType(tp: Type, pos: SrcPos, traitReq: Boolean, stablePrefixReq: Boolean, refinementOK: Boolean)(using Context): Type = tp
   override def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit = ()
   override def checkImplicitConversionUseOK(tree: Tree, expected: Type)(using Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: SrcPos, where: => String = "")(using Context): Type = tp

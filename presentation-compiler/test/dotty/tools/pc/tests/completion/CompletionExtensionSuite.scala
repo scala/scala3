@@ -17,12 +17,14 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |def main = 100.inc@@
          |""".stripMargin,
       """|incr: Int (extension)
+         |asInstanceOf[X0]: X0
+         |isInstanceOf[X0]: Boolean
          |""".stripMargin
     )
 
   @Test def `simple-old-syntax` =
     check(
-      """|package example
+      """package example
         |
         |object Test:
         |  implicit class TestOps(a: Int):
@@ -30,8 +32,9 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
         |
         |def main = 100.test@@
         |""".stripMargin,
-      """|testOps(b: Int): String (implicit)
-        |""".stripMargin
+      """testOps(b: Int): String (implicit)
+        |""".stripMargin,
+      topLines = Some(1)
     )
 
   @Test def `simple2` =
@@ -93,8 +96,10 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
         |
         |def main = "foo".iden@@
         |""".stripMargin,
-      """|identity: String (implicit)
-        |""".stripMargin // identity2 won't be available
+     """|identity: String (implicit)
+        |""".stripMargin, // identity2 won't be available
+      filter = _.contains("(implicit)")
+
     )
 
   @Test def `filter-by-type-subtype` =
@@ -152,7 +157,8 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |    def incr: Int = num + 1
          |
          |def main = 100.incr
-         |""".stripMargin
+         |""".stripMargin,
+      assertSingleItem = false
     )
 
   @Test def `simple-edit-old` =
@@ -174,7 +180,8 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |    def incr: Int = num + 1
          |
          |def main = 100.incr
-         |""".stripMargin
+         |""".stripMargin,
+      assertSingleItem = false
     )
 
   @Test def `simple-edit-suffix` =
@@ -262,6 +269,8 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |  def main = 100.inc@@
          |""".stripMargin,
       """|incr: Int (extension)
+         |asInstanceOf[X0]: X0
+         |isInstanceOf[X0]: Boolean
          |""".stripMargin
     )
 
@@ -276,6 +285,8 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |  def main = 100.inc@@
          |""".stripMargin,
       """|incr: Int (implicit)
+         |asInstanceOf[X0]: X0
+         |isInstanceOf[X0]: Boolean
          |""".stripMargin
     )
 
@@ -290,6 +301,8 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |  def main = 100.inc@@
          |""".stripMargin,
       """|incr: Int (extension)
+         |asInstanceOf[X0]: X0
+         |isInstanceOf[X0]: Boolean
          |""".stripMargin
     )
 
@@ -304,6 +317,8 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |  def main = 100.inc@@
          |""".stripMargin,
       """|incr: Int (implicit)
+         |asInstanceOf[X0]: X0
+         |isInstanceOf[X0]: Boolean
          |""".stripMargin
     )
 
@@ -391,7 +406,8 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |testVal: Int (implicit)
          |testVar: Int (implicit)
          |testOps(b: Int): String (implicit)
-         |""".stripMargin
+         |""".stripMargin,
+      topLines = Some(4)
     )
 
   @Test def `implicit-val-edit` =
@@ -413,5 +429,6 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |    val testVal: Int = 42
          |
          |def main = 100.testVal
-         |""".stripMargin
+         |""".stripMargin,
+      assertSingleItem = false
     )

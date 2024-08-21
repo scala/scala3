@@ -52,6 +52,7 @@ object TestConfiguration {
 
   lazy val scalaJSClasspath = mkClasspath(List(
     Properties.scalaJSJavalib,
+    Properties.scalaJSScalalib,
     Properties.scalaJSLibrary,
     Properties.dottyLibraryJS
   ))
@@ -69,6 +70,7 @@ object TestConfiguration {
   val noYcheckCommonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions
   val defaultOptions = TestFlags(basicClasspath, commonOptions)
   val noYcheckOptions = TestFlags(basicClasspath, noYcheckCommonOptions)
+  val bestEffortBaselineOptions = TestFlags(basicClasspath, noCheckOptions)
   val unindentOptions = TestFlags(basicClasspath, Array("-no-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions)
   val withCompilerOptions =
     defaultOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
@@ -88,6 +90,8 @@ object TestConfiguration {
   )
   val picklingWithCompilerOptions =
     picklingOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
+
+  val explicitNullsOptions = defaultOptions and "-Yexplicit-nulls"
 
   /** Default target of the generated class files */
   private def defaultTarget: String = {

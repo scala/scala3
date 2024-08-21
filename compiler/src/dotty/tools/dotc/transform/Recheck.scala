@@ -427,7 +427,7 @@ abstract class Recheck extends Phase, SymTransformer:
       TypeComparer.lub(bodyType :: casesTypes)
 
     def recheckSeqLiteral(tree: SeqLiteral, pt: Type)(using Context): Type =
-      val elemProto = pt.stripNull.elemType match
+      val elemProto = pt.stripNull().elemType match
         case NoType => WildcardType
         case bounds: TypeBounds => WildcardType(bounds)
         case elemtp => elemtp

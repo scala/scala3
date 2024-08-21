@@ -1,4 +1,4 @@
-//> using options -Ykind-projector:underscores
+//> using options -Xkind-projector:underscores
 
 sealed abstract class Free[+S[_, _], +E, +A] {
   @inline final def flatMap[S1[e, a] >: S[e, a], B, E1 >: E](fun: A => Free[S1, E1, B]): Free[S1, E1, B] = Free.FlatMapped[S1, E, E1, A, B](this, fun)

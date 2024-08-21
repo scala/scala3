@@ -23,7 +23,7 @@ import scala.util.control.NonFatal
 import config.Config
 import reporting.*
 import collection.mutable
-import cc.{CapturingType, derivedCapturingType}
+import cc.{CapturingType, derivedCapturingType, stripCapturing}
 
 import scala.annotation.internal.sharable
 import scala.compiletime.uninitialized
@@ -168,16 +168,11 @@ object SymDenotations {
           }
         }
         else
-          val traceCycles = CyclicReference.isTraced
-          try
-            if traceCycles then
-              CyclicReference.pushTrace("compute the signature of ", symbol, "")
+          CyclicReference.trace("compute the signature of ", symbol):
             if myFlags.is(Touched) then
               throw CyclicReference(this)(using ctx.withOwner(symbol))
             myFlags |= Touched
             atPhase(validFor.firstPhaseId)(completer.complete(this))
-          finally
-            if traceCycles then CyclicReference.popTrace()
 
     protected[dotc] def info_=(tp: Type): Unit = {
       /* // DEBUG
@@ -685,11 +680,9 @@ object SymDenotations {
     def isWrappedToplevelDef(using Context): Boolean =
       !isConstructor && owner.isPackageObject
 
-    /** Is this symbol an abstract type? */
-    final def isAbstractType(using Context): Boolean = this.is(DeferredType)
-
     /** Is this symbol an alias type? */
-    final def isAliasType(using Context): Boolean = isAbstractOrAliasType && !this.is(Deferred)
+    final def isAliasType(using Context): Boolean =
+      isAbstractOrAliasType && !isAbstractOrParamType
 
     /** Is this symbol an abstract or alias type? */
     final def isAbstractOrAliasType: Boolean = isType & !isClass
@@ -720,12 +713,16 @@ object SymDenotations {
      *  TODO: Find a more robust way to characterize self symbols, maybe by
      *       spending a Flag on them?
      */
-    final def isSelfSym(using Context): Boolean = owner.infoOrCompleter match {
-      case ClassInfo(_, _, _, _, selfInfo) =>
-        selfInfo == symbol ||
-          selfInfo.isInstanceOf[Type] && name == nme.WILDCARD
-      case _ => false
-    }
+    final def isSelfSym(using Context): Boolean =
+      if !ctx.isBestEffort || exists then
+        owner.infoOrCompleter match {
+          case ClassInfo(_, _, _, _, selfInfo) =>
+            selfInfo == symbol ||
+              selfInfo.isInstanceOf[Type] && name == nme.WILDCARD
+          case _ => false
+        }
+      else false
+
 
     /** Is this definition contained in `boundary`?
      *  Same as `ownersIterator contains boundary` but more efficient.
@@ -772,7 +769,7 @@ object SymDenotations {
      *  This can mean one of two things:
      *   - the method and class are defined in a structural given instance, or
      *   - the class is an implicit class and the method is its implicit conversion.
-	 */
+     */
     final def isCoDefinedGiven(cls: Symbol)(using Context): Boolean =
       is(Method) && isOneOf(GivenOrImplicit)
       && ( is(Synthetic)                 // previous scheme used in 3.0
@@ -1071,8 +1068,8 @@ object SymDenotations {
      */
     final def moduleClass(using Context): Symbol = {
       def notFound = {
-      	if (Config.showCompletions) println(s"missing module class for $name: $myInfo")
-      	NoSymbol
+        if (Config.showCompletions) println(s"missing module class for $name: $myInfo")
+        NoSymbol
       }
       if (this.is(ModuleVal))
         myInfo match {
@@ -1190,21 +1187,25 @@ object SymDenotations {
     final def isExtensibleClass(using Context): Boolean =
       isClass && !isOneOf(FinalOrModuleClass) && !isAnonymousClass
 
-    /** A symbol is effectively final if it cannot be overridden in a subclass */
+    /** A symbol is effectively final if it cannot be overridden */
     final def isEffectivelyFinal(using Context): Boolean =
       isOneOf(EffectivelyFinalFlags)
       || is(Inline, butNot = Deferred)
       || is(JavaDefinedVal, butNot = Method)
       || isConstructor
-      || !owner.isExtensibleClass
+      || !owner.isExtensibleClass && !is(Deferred)
+      	// Deferred symbols can arise through parent refinements under x.modularity.
+      	// For them, the overriding relationship reverses anyway, so
+      	// being in a final class does not mean the symbol cannot be
+      	// implemented concretely in a superclass.
 
     /** A class is effectively sealed if has the `final` or `sealed` modifier, or it
      *  is defined in Scala 3 and is neither abstract nor open.
      */
     final def isEffectivelySealed(using Context): Boolean =
       isOneOf(FinalOrSealed)
-      || isClass && (!isOneOf(EffectivelyOpenFlags)
-      || isLocalToCompilationUnit)
+      || isClass
+        && (!isOneOf(EffectivelyOpenFlags) || isLocalToCompilationUnit)
 
     final def isLocalToCompilationUnit(using Context): Boolean =
       is(Private)
@@ -1355,7 +1356,7 @@ object SymDenotations {
      *  @param inClass   The class containing the result symbol's definition
      *  @param site      The base type from which member types are computed
      *
-     *  inClass <-- find denot.symbol      class C { <-- symbol is here
+     *  inClass <-- find denot.symbol      class C { <-- symbol is here }
      *
      *                   site: Subtype of both inClass and C
      */
@@ -1609,7 +1610,7 @@ object SymDenotations {
       case tp: RefinedType => hasSkolems(tp.parent) || hasSkolems(tp.refinedInfo)
       case tp: RecType => hasSkolems(tp.parent)
       case tp: TypeBounds => hasSkolems(tp.lo) || hasSkolems(tp.hi)
-      case tp: TypeVar => hasSkolems(tp.inst)
+      case tp: TypeVar => hasSkolems(tp.permanentInst)
       case tp: ExprType => hasSkolems(tp.resType)
       case tp: AppliedType => hasSkolems(tp.tycon) || tp.args.exists(hasSkolems)
       case tp: LambdaType => tp.paramInfos.exists(hasSkolems) || hasSkolems(tp.resType)
@@ -1624,11 +1625,11 @@ object SymDenotations {
 
     // ----- copies and transforms  ----------------------------------------
 
-    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean)(using Context): SingleDenotation =
       if isRefinedMethod then
-        new JointRefDenotation(s, i, validFor, pre, isRefinedMethod)
+        new JointRefDenotation(s, i, currentStablePeriod, pre, isRefinedMethod)
       else
-        new UniqueRefDenotation(s, i, validFor, pre)
+        new UniqueRefDenotation(s, i, currentStablePeriod, pre)
 
     /** Copy this denotation, overriding selective fields */
     final def copySymDenotation(
@@ -2003,7 +2004,7 @@ object SymDenotations {
         case p :: parents1 =>
           p.classSymbol match {
             case pcls: ClassSymbol => builder.addAll(pcls.baseClasses)
-            case _ => assert(isRefinementClass || p.isError || ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
+            case _ => assert(isRefinementClass || p.isError || ctx.mode.is(Mode.Interactive) || ctx.tolerateErrorsForBestEffort, s"$this has non-class parent: $p")
           }
           traverse(parents1)
         case nil =>
@@ -2228,7 +2229,7 @@ object SymDenotations {
         tp match {
           case tp @ TypeRef(prefix, _) =>
             def foldGlb(bt: Type, ps: List[Type]): Type = ps match {
-              case p :: ps1 => foldGlb(bt & recur(p), ps1)
+              case p :: ps1 => foldGlb(bt & recur(p.stripCapturing), ps1)
               case _ => bt
             }
 
@@ -2990,12 +2991,9 @@ object SymDenotations {
     def apply(clsd: ClassDenotation)(implicit onBehalf: BaseData, ctx: Context)
         : (List[ClassSymbol], BaseClassSet) = {
       assert(isValid)
-      val traceCycles = CyclicReference.isTraced
-      try
-        if traceCycles then
-          CyclicReference.pushTrace("compute the base classes of ", clsd.symbol, "")
-        if (cache != null) cache.uncheckedNN
-        else {
+      CyclicReference.trace("compute the base classes of ", clsd.symbol):
+        if cache != null then cache.uncheckedNN
+        else
           if (locked) throw CyclicReference(clsd)
           locked = true
           provisional = false
@@ -3005,10 +3003,6 @@ object SymDenotations {
           if (!provisional) cache = computed
           else onBehalf.signalProvisional()
           computed
-        }
-      finally
-        if traceCycles then CyclicReference.popTrace()
-        addDependent(onBehalf)
     }
 
     def sameGroup(p1: Phase, p2: Phase) = p1.sameParentsStartId == p2.sameParentsStartId

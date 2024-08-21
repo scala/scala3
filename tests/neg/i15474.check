@@ -13,7 +13,6 @@
   |                                 - rearrange definitions so that Test2.c comes earlier,
   |                                 - use an explicit conversion,
   |                                 - use an import to get extension method into scope.
-  |                               This will be an error in Scala 3.5 and later.
 -- Error: tests/neg/i15474.scala:12:56 ---------------------------------------------------------------------------------
 12 |    given Ordering[Price] = summon[Ordering[BigDecimal]] // error
    |                                                        ^
@@ -28,4 +27,3 @@
    |                               - use a `given ... with` clause as the enclosing given,
    |                               - rearrange definitions so that Prices.Price.given_Ordering_Price comes earlier,
    |                               - use an explicit argument.
-   |                             This will be an error in Scala 3.5 and later.

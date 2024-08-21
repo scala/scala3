@@ -11,7 +11,7 @@ import scala.jdk.CollectionConverters.*
  * that be can used as the compiler's output directory.
  */
 class JarArchive private (root: Directory) extends PlainDirectory(root) {
-  def close(): Unit = jpath.getFileSystem().close()
+  def close(): Unit = this.synchronized(jpath.getFileSystem().close())
   override def exists: Boolean = jpath.getFileSystem().isOpen() && super.exists
   def allFileNames(): Iterator[String] =
     java.nio.file.Files.walk(jpath).iterator().asScala.map(_.toString)
@@ -20,14 +20,14 @@ class JarArchive private (root: Directory) extends PlainDirectory(root) {
 object JarArchive {
   /** Create a new jar file. Overwrite if file already exists */
   def create(path: Path): JarArchive = {
-    require(path.extension == "jar")
+    require(path.ext.isJar)
     path.delete()
     open(path, create = true)
   }
 
   /** Create a jar file. */
   def open(path: Path, create: Boolean = false): JarArchive = {
-    require(path.extension == "jar")
+    require(path.ext.isJar)
 
     // creating a new zip file system by using the JAR URL syntax:
     // https://docs.oracle.com/javase/7/docs/technotes/guides/io/fsp/zipfilesystemprovider.html

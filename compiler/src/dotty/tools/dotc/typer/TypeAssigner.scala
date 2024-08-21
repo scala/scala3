@@ -519,9 +519,7 @@ trait TypeAssigner {
   def assignType(tree: untpd.TypeBoundsTree, lo: Tree, hi: Tree, alias: Tree)(using Context): TypeBoundsTree =
     tree.withType(
       if !alias.isEmpty then alias.tpe
-      else if lo eq hi then
-        if lo.tpe.isMatch then MatchAlias(lo.tpe)
-        else TypeAlias(lo.tpe)
+      else if lo eq hi then AliasingBounds(lo.tpe)
       else TypeBounds(lo.tpe, hi.tpe))
 
   def assignType(tree: untpd.Bind, sym: Symbol)(using Context): Bind =
@@ -532,6 +530,12 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.UnApply, proto: Type)(using Context): UnApply =
     tree.withType(proto)
+
+  def assignType(tree: untpd.Splice, expr: Tree)(using Context): Splice =
+    val tpe = expr.tpe // Quotes ?=> Expr[T]
+      .baseType(defn.FunctionSymbol(1, isContextual = true)).argTypes.last // Expr[T]
+      .baseType(defn.QuotedExprClass).argTypes.head // T
+    tree.withType(tpe)
 
   def assignType(tree: untpd.QuotePattern, proto: Type)(using Context): QuotePattern =
     tree.withType(proto)

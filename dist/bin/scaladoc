@@ -36,6 +36,7 @@ CompilerMain=dotty.tools.dotc.Main
 DecompilerMain=dotty.tools.dotc.decompiler.Main
 ReplMain=dotty.tools.repl.Main
 ScriptingMain=dotty.tools.scripting.Main
+JVM_CP_ARGS="$PROG_HOME/lib/scaladoc.jar"
 
 PROG_NAME=$CompilerMain
 
@@ -50,67 +51,6 @@ addResidual () {
 }
 addScrip() {
   script_args+=("'$1'")
-}
-
-classpathArgs () {
-  CLASS_PATH=""
-  CLASS_PATH+="$(find_lib "*scaladoc*")$PSEP"
-  CLASS_PATH+="$(find_lib "*scala3-compiler*")$PSEP"
-  CLASS_PATH+="$(find_lib "*scala3-interfaces*")$PSEP"
-  CLASS_PATH+="$(find_lib "*scala3-library*")$PSEP"
-  CLASS_PATH+="$(find_lib "*tasty-core*")$PSEP"
-  CLASS_PATH+="$(find_lib "*scala3-tasty-inspector*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-0*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-ext-anchorlink*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-ext-autolink*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-ext-emoji*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-ext-gfm-strikethrough*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-ext-gfm-tasklist*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-ext-wikilink*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-ext-yaml-front-matter*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-ext-tables*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-ext-ins*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-ext-superscript*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-util*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-util-ast*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-util-data*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-util-dependency*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-util-misc*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-util-format*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-util-sequence*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-util-builder*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-util-collection*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-util-visitor*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-util-options*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-util-html*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-formatter*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-ast*")$PSEP"
-  CLASS_PATH+="$(find_lib "*liqp*")$PSEP"
-  CLASS_PATH+="$(find_lib "*jsoup*")$PSEP"
-  CLASS_PATH+="$(find_lib "*jackson-dataformat-yaml*")$PSEP"
-  CLASS_PATH+="$(find_lib "*jackson-datatype-jsr310*")$PSEP"
-  CLASS_PATH+="$(find_lib "*strftime4j*")$PSEP"
-  CLASS_PATH+="$(find_lib "*scala-asm*")$PSEP"
-  CLASS_PATH+="$(find_lib "*compiler-interface*")$PSEP"
-  CLASS_PATH+="$(find_lib "*jline-reader*")$PSEP"
-  CLASS_PATH+="$(find_lib "*jline-terminal-3*")$PSEP"
-  CLASS_PATH+="$(find_lib "*jline-terminal-jna*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-formatter*")$PSEP"
-  CLASS_PATH+="$(find_lib "*autolink-0.6*")$PSEP"
-  CLASS_PATH+="$(find_lib "*flexmark-jira-converter*")$PSEP"
-  CLASS_PATH+="$(find_lib "*antlr4*")$PSEP"
-  CLASS_PATH+="$(find_lib "*jackson-annotations*")$PSEP"
-  CLASS_PATH+="$(find_lib "*jackson-core*")$PSEP"
-  CLASS_PATH+="$(find_lib "*jackson-databind*")$PSEP"
-  CLASS_PATH+="$(find_lib "*snakeyaml*")$PSEP"
-  CLASS_PATH+="$(find_lib "*scala-library*")$PSEP"
-  CLASS_PATH+="$(find_lib "*protobuf-java*")$PSEP"
-  CLASS_PATH+="$(find_lib "*util-interface*")$PSEP"
-  CLASS_PATH+="$(find_lib "*jna-5*")$PSEP"
-  CLASS_PATH+="$(find_lib "*antlr4-runtime*")$PSEP"
-
-  jvm_cp_args="-classpath \"$CLASS_PATH\""
 }
 
 #for A in "$@" ; do echo "A[$A]" ; done ; exit 2
@@ -134,12 +74,11 @@ case "$1" in
   esac
 done
 
-classpathArgs
-
 eval "\"$JAVACMD\"" \
      ${JAVA_OPTS:-$default_java_opts} \
      "${java_args[@]}" \
-     "${jvm_cp_args-}" \
+     -classpath "${JVM_CP_ARGS}" \
+      -Dscala.expandjavacp=true \
       -Dscala.usejavacp=true \
      "dotty.tools.scaladoc.Main"  \
      "${scala_args[@]}" \

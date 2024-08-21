@@ -14,7 +14,8 @@ import dotty.tools.dotc.util.NoSourcePosition
 import java.io.{BufferedReader, PrintWriter}
 import scala.annotation.internal.sharable
 import scala.collection.mutable
-import core.Decorators.em
+import core.Decorators.{em, toMessage}
+import core.handleRecursive
 
 object Reporter {
   /** Convert a SimpleReporter into a real Reporter */
@@ -155,6 +156,12 @@ abstract class Reporter extends interfaces.ReporterResult {
       addUnreported(key, 1)
     case _                                                  =>
       if !isHidden(dia) then // avoid isHidden test for summarized warnings so that message is not forced
+        try
+          withMode(Mode.Printing)(doReport(dia))
+        catch case ex: Throwable =>
+          // #20158: Don't increment the error count, otherwise we might suppress
+          // the RecursiveOverflow error and not print any error at all.
+          handleRecursive("error reporting", dia.message, ex)
         dia match {
           case w: Warning =>
             warnings = w :: warnings
@@ -168,7 +175,6 @@ abstract class Reporter extends interfaces.ReporterResult {
           // match error if d is something else
         }
         markReported(dia)
-        withMode(Mode.Printing)(doReport(dia))
   end issueUnconfigured
 
   def issueIfNotSuppressed(dia: Diagnostic)(using Context): Unit =
@@ -230,10 +236,9 @@ abstract class Reporter extends interfaces.ReporterResult {
       report(Warning(msg, NoSourcePosition))
 
   /** Print the summary of warnings and errors */
-  def printSummary()(using Context): Unit = {
+  def printSummary()(using Context): Unit =
     val s = summary
-    if (s != "") report(new Info(s, NoSourcePosition))
-  }
+    if (s != "") doReport(Warning(s.toMessage, NoSourcePosition))
 
   /** Returns a string meaning "n elements". */
   protected def countString(n: Int, elements: String): String = n match {
@@ -262,6 +267,9 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   /** If this reporter buffers messages, remove and return all buffered messages. */
   def removeBufferedMessages(using Context): List[Diagnostic] = Nil
+
+  /** If this reporter buffers messages, apply `f` to all buffered messages. */
+  def mapBufferedMessages(f: Diagnostic => Diagnostic)(using Context): Unit = ()
 
   /** Issue all messages in this reporter to next outer one, or make sure they are written. */
   def flush()(using Context): Unit =

@@ -12,12 +12,10 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Symbols.Symbol
-import dotty.tools.dotc.util.Spans
 import dotty.tools.dotc.core.Types.Type
-import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.CompilerSearchVisitor
 import dotty.tools.pc.IndexedContext
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j as l
 
@@ -112,18 +110,17 @@ object InterpolatorCompletions:
       buildTargetIdentifier: String
   )(using Context, ReportContext): List[CompletionValue] =
     def newText(
-        name: String,
-        suffix: Option[String],
+        label: String,
+        affix: CompletionAffix ,
         identOrSelect: Ident | Select
     ): String =
-      val snippetCursor = suffixEnding(suffix, areSnippetsSupported)
+      val snippetCursor = suffixEnding(affix.toSuffixOpt, areSnippetsSupported)
       new StringBuilder()
         .append('{')
-        .append(
-          text.substring(identOrSelect.span.start, identOrSelect.span.end)
-        )
+        .append(affix.toPrefix) // we use toPrefix here, because previous prefix is added in the next step
+        .append(text.substring(identOrSelect.span.start, identOrSelect.span.end))
         .append('.')
-        .append(name.backticked)
+        .append(label.backticked)
         .append(snippetCursor)
         .append('}')
         .toString
@@ -155,14 +152,14 @@ object InterpolatorCompletions:
               sym.name.toString()
             ) =>
           val label = sym.name.decoded
-          completions.completionsWithSuffix(
+          completions.completionsWithAffix(
             sym,
             label,
-            (name, denot, suffix) =>
+            (name, denot, affix) =>
               CompletionValue.Interpolator(
                 denot.symbol,
                 label,
-                Some(newText(name, suffix.toEditOpt, identOrSelect)),
+                Some(newText(name, affix, identOrSelect)),
                 Nil,
                 Some(completionPos.originalCursorPosition.withStart(identOrSelect.span.start).toLsp),
                 // Needed for VS Code which will not show the completion otherwise
@@ -252,16 +249,18 @@ object InterpolatorCompletions:
       interpolatorEdit ++ dollarEdits
     end additionalEdits
 
-    def newText(symbolName: String, suffix: Option[String]): String =
+    def newText(symbolName: String, affix: CompletionAffix): String =
       val out = new StringBuilder()
       val identifier = symbolName.backticked
       val symbolNeedsBraces =
         interpolator.needsBraces ||
           identifier.startsWith("`") ||
-          suffix.isDefined
+          affix.toSuffixOpt.isDefined ||
+          affix.toPrefix.nonEmpty
       if symbolNeedsBraces && !hasOpeningBrace then out.append('{')
+      out.append(affix.toInsertPrefix)
       out.append(identifier)
-      out.append(suffixEnding(suffix, areSnippetsSupported))
+      out.append(suffixEnding(affix.toSuffixOpt, areSnippetsSupported))
       if symbolNeedsBraces && !hasClosingBrace then out.append('}')
       out.toString
     end newText
@@ -286,14 +285,14 @@ object InterpolatorCompletions:
             sym.name.decoded
           ) && !sym.isType =>
         val label = sym.name.decoded
-        completions.completionsWithSuffix(
+        completions.completionsWithAffix(
           sym,
           label,
-          (name, denot, suffix) =>
+          (name, denot, affix) =>
             CompletionValue.Interpolator(
               denot.symbol,
               label,
-              Some(newText(name, suffix.toEditOpt)),
+              Some(newText(name, affix)),
               additionalEdits(),
               Some(nameRange),
               None,

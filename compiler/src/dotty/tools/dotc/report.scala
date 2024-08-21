@@ -81,6 +81,22 @@ object report:
     if ctx.settings.YdebugError.value then Thread.dumpStack()
     if ctx.settings.YdebugTypeError.value then ex.printStackTrace()
 
+  def bestEffortError(ex: Throwable, msg: String)(using Context): Unit =
+    val stackTrace =
+      Option(ex.getStackTrace()).map { st =>
+        if st.nn.isEmpty then ""
+        else s"Stack trace: \n ${st.nn.mkString("\n ")}".stripMargin
+      }.getOrElse("")
+    // Build tools and dotty's test framework may check precisely for
+    // "Unsuccessful best-effort compilation." error text.
+    val fullMsg =
+      em"""Unsuccessful best-effort compilation.
+          |${msg}
+          |Cause:
+          | ${ex.toString.replace("\n", "\n ")}
+          |${stackTrace}"""
+    ctx.reporter.report(new Error(fullMsg, NoSourcePosition))
+
   def errorOrMigrationWarning(msg: Message, pos: SrcPos, migrationVersion: MigrationVersion)(using Context): Unit =
     if sourceVersion.isAtLeast(migrationVersion.errorFrom) then
       if !sourceVersion.isMigrating then error(msg, pos)
@@ -130,7 +146,7 @@ object report:
 
   // Should only be called from Run#enrichErrorMessage.
   def enrichErrorMessage(errorMessage: String)(using Context): String =
-    if ctx.settings.YnoEnrichErrorMessages.value then errorMessage
+    if ctx.settings.XnoEnrichErrorMessages.value then errorMessage
     else try enrichErrorMessage1(errorMessage)
     catch case _: Throwable => errorMessage // don't introduce new errors trying to report errors, so swallow exceptions
 
@@ -155,7 +171,7 @@ object report:
        |  An unhandled exception was thrown in the compiler.
        |  Please file a crash report here:
        |  https://github.com/scala/scala3/issues/new/choose
-       |  For non-enriched exceptions, compile with -Yno-enrich-error-messages.
+       |  For non-enriched exceptions, compile with -Xno-enrich-error-messages.
        |
        |$info1
        |""".stripMargin
