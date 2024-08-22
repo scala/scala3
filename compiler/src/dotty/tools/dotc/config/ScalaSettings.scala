@@ -158,48 +158,52 @@ private sealed trait WarningSettings:
 
   val Whelp: Setting[Boolean] = BooleanSetting(WarningSetting, "W", "Print a synopsis of warning options.")
   val XfatalWarnings: Setting[Boolean] = BooleanSetting(WarningSetting, "Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
-  val WvalueDiscard: Setting[Boolean] = BooleanSetting(WarningSetting, "Wvalue-discard", "Warn when non-Unit expression results are unused.")
-  val WNonUnitStatement = BooleanSetting(WarningSetting, "Wnonunit-statement", "Warn when block statements are non-Unit expressions.")
-  val WenumCommentDiscard = BooleanSetting(WarningSetting, "Wenum-comment-discard", "Warn when a comment ambiguously assigned to multiple enum cases is discarded.")
-  val WimplausiblePatterns = BooleanSetting(WarningSetting, "Wimplausible-patterns", "Warn if comparison with a pattern value looks like it might always fail.")
-  val WunstableInlineAccessors = BooleanSetting(WarningSetting, "WunstableInlineAccessors", "Warn an inline methods has references to non-stable binary APIs.")
-  val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
+  val Wall: Setting[Boolean] = BooleanSetting(WarningSetting, "Wall", "Enable all warning settings.")
+  private val WvalueDiscard: Setting[Boolean] = BooleanSetting(WarningSetting, "Wvalue-discard", "Warn when non-Unit expression results are unused.")
+  private val WNonUnitStatement = BooleanSetting(WarningSetting, "Wnonunit-statement", "Warn when block statements are non-Unit expressions.")
+  private val WenumCommentDiscard = BooleanSetting(WarningSetting, "Wenum-comment-discard", "Warn when a comment ambiguously assigned to multiple enum cases is discarded.")
+  private val WimplausiblePatterns = BooleanSetting(WarningSetting, "Wimplausible-patterns", "Warn if comparison with a pattern value looks like it might always fail.")
+  private val WunstableInlineAccessors = BooleanSetting(WarningSetting, "WunstableInlineAccessors", "Warn an inline methods has references to non-stable binary APIs.")
+  private val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     WarningSetting,
     name = "Wunused",
     helpArg = "warning",
     descr = "Enable or disable specific `unused` warnings",
     choices = List(
       ChoiceWithHelp("nowarn", ""),
-      ChoiceWithHelp("all",""),
+      ChoiceWithHelp("all", ""),
       ChoiceWithHelp(
         name = "imports",
         description = "Warn if an import selector is not referenced.\n" +
         "NOTE : overrided by -Wunused:strict-no-implicit-warn"),
-        ChoiceWithHelp("privates","Warn if a private member is unused"),
-        ChoiceWithHelp("locals","Warn if a local definition is unused"),
-        ChoiceWithHelp("explicits","Warn if an explicit parameter is unused"),
-        ChoiceWithHelp("implicits","Warn if an implicit parameter is unused"),
-        ChoiceWithHelp("params","Enable -Wunused:explicits,implicits"),
-        ChoiceWithHelp("linted","Enable -Wunused:imports,privates,locals,implicits"),
-        ChoiceWithHelp(
-          name = "strict-no-implicit-warn",
-          description = "Same as -Wunused:import, only for imports of explicit named members.\n" +
-          "NOTE : This overrides -Wunused:imports and NOT set by -Wunused:all"
-        ),
-        // ChoiceWithHelp("patvars","Warn if a variable bound in a pattern is unused"),
-        ChoiceWithHelp(
-          name = "unsafe-warn-patvars",
-          description = "(UNSAFE) Warn if a variable bound in a pattern is unused.\n" +
-          "This warning can generate false positive, as warning cannot be\n" +
-          "suppressed yet."
-        )
+      ChoiceWithHelp("privates", "Warn if a private member is unused"),
+      ChoiceWithHelp("locals", "Warn if a local definition is unused"),
+      ChoiceWithHelp("explicits", "Warn if an explicit parameter is unused"),
+      ChoiceWithHelp("implicits", "Warn if an implicit parameter is unused"),
+      ChoiceWithHelp("params", "Enable -Wunused:explicits,implicits"),
+      ChoiceWithHelp("linted", "Enable -Wunused:imports,privates,locals,implicits"),
+      ChoiceWithHelp(
+        name = "strict-no-implicit-warn",
+        description = "Same as -Wunused:import, only for imports of explicit named members.\n" +
+        "NOTE : This overrides -Wunused:imports and NOT set by -Wunused:all"
+      ),
+      // ChoiceWithHelp("patvars","Warn if a variable bound in a pattern is unused"),
+      ChoiceWithHelp(
+        name = "unsafe-warn-patvars",
+        description = "(UNSAFE) Warn if a variable bound in a pattern is unused.\n" +
+        "This warning can generate false positive, as warning cannot be\n" +
+        "suppressed yet."
+      )
     ),
     default = Nil
   )
   object WunusedHas:
     def isChoiceSet(s: String)(using Context) = Wunused.value.pipe(us => us.contains(s))
-    def allOr(s: String)(using Context) = Wunused.value.pipe(us => us.contains("all") || us.contains(s))
+    def allOr(s: String)(using Context) = Wall.value || Wunused.value.pipe(us => us.contains("all") || us.contains(s))
     def nowarn(using Context) = allOr("nowarn")
+
+    // Is any choice set for -Wunused?
+    def any(using Context): Boolean = Wall.value || Wunused.value.nonEmpty
 
     // overrided by strict-no-implicit-warn
     def imports(using Context) =
@@ -297,6 +301,16 @@ private sealed trait WarningSettings:
       allOr("type-parameter-shadow")
 
   val WcheckInit: Setting[Boolean] = BooleanSetting(WarningSetting, "Wsafe-init", "Ensure safe initialization of objects.")
+
+  object Whas:
+    def allOr(s: Setting[Boolean])(using Context): Boolean =
+      Wall.value || s.value
+    def valueDiscard(using Context): Boolean = allOr(WvalueDiscard)
+    def nonUnitStatement(using Context): Boolean = allOr(WNonUnitStatement)
+    def enumCommentDiscard(using Context): Boolean = allOr(WenumCommentDiscard)
+    def implausiblePatterns(using Context): Boolean = allOr(WimplausiblePatterns)
+    def unstableInlineAccessors(using Context): Boolean = allOr(WunstableInlineAccessors)
+    def checkInit(using Context): Boolean = allOr(WcheckInit)
 
 /** -X "Extended" or "Advanced" settings */
 private sealed trait XSettings:
