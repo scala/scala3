@@ -767,7 +767,22 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val qual1 = qual.cast(liftedTp)
         val tree1 = cpy.Select(tree0)(qual1, selName)
         val rawType1 = selectionType(tree1, qual1)
-        tryType(tree1, qual1, rawType1)
+        val adapted = tryType(tree1, qual1, rawType1)
+        if !adapted.isEmpty && sourceVersion == `3.6-migration` then
+          val adaptedOld = tryExt(tree, qual)
+          if !adaptedOld.isEmpty then
+            val symOld = adaptedOld.symbol
+            val underlying = liftedTp match
+              case tp: TypeProxy => i" ${tp.translucentSuperType}"
+              case _ => ""
+            report.migrationWarning(
+              em"""Previously this selected the extension ${symOld}${symOld.showExtendedLocation}
+                  |Now it selects $selName on the opaque type's underlying type$underlying
+                  |
+                  |You can change this back by selecting $adaptedOld
+                  |Or by defining the extension method outside of the opaque type's scope.
+                  |""", tree0)
+        adapted
       else EmptyTree
 
     // Otherwise, try to expand a named tuple selection
