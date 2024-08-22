@@ -3,6 +3,7 @@ package site
 
 import java.io.File
 import java.nio.file.{Files, Paths}
+import java.util.{HashMap => JavaHashMap}
 import com.vladsch.flexmark.ext.autolink.AutolinkExtension
 import com.vladsch.flexmark.ext.emoji.EmojiExtension
 import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
@@ -21,6 +22,8 @@ import liqp.tags.Tag
 import liqp.nodes.LNode
 import dotty.tools.scaladoc.site.blocks.{AltDetails,TabsBlock,TabBlock}
 import dotty.tools.scaladoc.site.tags.{IncludeTag,LanguagePickerTag}
+import dotty.tools.scaladoc.site.helpers.ConfigLoader
+
 
 
 
@@ -130,17 +133,23 @@ case class TemplateFile(
 
     val siteData = new JHashMap[String, Any]()
     siteData.put("data",dataMap)
-    mutableProperties.put("site",siteData)
 
 
     // assign the the path for Include Tag
     val includePath =  ssctx.root.toPath.resolve("_includes")
     IncludeTag.setDocsFolder(includePath.toString)
 
-    LanguagePickerTag.setConfigFolder(ssctx.root.toPath.toString)
+    val configLoader = new ConfigLoader()
+    val configMap = configLoader.loadConfig(ssctx.root.toPath.toString)
+
+
+    LanguagePickerTag.setConfigValue(configMap)
 
 
 
+    siteData.put("config",configMap)
+
+    mutableProperties.put("site",siteData)
 
 //    val parseSettings = ParseSettings.Builder().withFlavor(Flavor.JEKYLL).build().withBlock(AltDetails())
     val liqpParser = TemplateParser.Builder()
@@ -151,6 +160,7 @@ case class TemplateFile(
       .withTag(IncludeTag())
       .withTag(LanguagePickerTag())
       .build()
+
 
     val rendered = liqpParser.parse(this.rawCode).render(mutableProperties)
 

@@ -12,8 +12,9 @@ object ScaladocGeneration {
     def serialize: String =
       value match {
         case s: String => s"$key ${escape(s)}"
-        case true => s"$key"
-        case list: List[_] => s"$key:${list.map(x => escape(x.toString)).mkString(",")}"
+        case true      => s"$key"
+        case list: List[_] =>
+          s"$key:${list.map(x => escape(x.toString)).mkString(",")}"
         case _ =>
           println(s"Unsupported setting: $key -> $value")
           ""
@@ -141,10 +142,14 @@ object ScaladocGeneration {
     def key: String = "-dynamic-side-menu"
   }
 
+  case class ExperimentalFeatures(value: Boolean) extends Arg[Boolean] {
+    def key: String = "-experimental-features"
+  }
+
   import _root_.scala.reflect._
 
   trait GenerationConfig {
-    def get[T <: Arg[_] : ClassTag]: Option[T]
+    def get[T <: Arg[_]: ClassTag]: Option[T]
     def add[T <: Arg[_]](arg: T): GenerationConfig
     def remove[T <: Arg[_]: ClassTag]: GenerationConfig
     def withTargets(targets: Seq[String]): GenerationConfig
@@ -154,43 +159,50 @@ object ScaladocGeneration {
 
   object GenerationConfig {
     def apply(): GenerationConfig = GenerationConfigImpl(Seq.empty, Seq.empty)
-    def apply(targets: List[String], args: Arg[_]*): GenerationConfig = args.foldLeft(GenerationConfig()) { (config, elem) =>
-      config.add(elem)
-    }
-    private case class GenerationConfigImpl(targets: Seq[String], args: Seq[Arg[_]]) extends GenerationConfig {
+    def apply(targets: List[String], args: Arg[_]*): GenerationConfig =
+      args.foldLeft(GenerationConfig()) { (config, elem) =>
+        config.add(elem)
+      }
+    private case class GenerationConfigImpl(
+        targets: Seq[String],
+        args: Seq[Arg[_]]
+    ) extends GenerationConfig {
       override def add[T <: Arg[_]](arg: T): GenerationConfig = {
         implicit val tag: ClassTag[T] = ClassTag(arg.getClass)
         val (removedElem, argsWithoutElem) = argsWithout[T](tag)
-        removedElem.foreach(elem => println(s"$elem has been overwritten by $arg"))
+        removedElem.foreach(elem =>
+          println(s"$elem has been overwritten by $arg")
+        )
         GenerationConfigImpl(targets, argsWithoutElem :+ arg)
       }
-      override def remove[T <: Arg[_] : ClassTag]: GenerationConfig = {
+      override def remove[T <: Arg[_]: ClassTag]: GenerationConfig = {
         GenerationConfigImpl(targets, argsWithout[T]._2)
       }
 
-      override def get[T <: Arg[_] : ClassTag]: Option[T] = {
+      override def get[T <: Arg[_]: ClassTag]: Option[T] = {
         val tag = implicitly[ClassTag[T]]
-        args.collect {
-          case tag(t) => t
+        args.collect { case tag(t) =>
+          t
         }.headOption
       }
 
       override def withTargets(targets: Seq[String]) = copy(targets = targets)
       override def serialize: String = (
         args
-        .map(_.serialize)
-         ++ targets
+          .map(_.serialize)
+          ++ targets
       ).mkString(" ")
 
       override def settings: Seq[String] =
         args.map(_.serialize) ++ targets
 
-      private def argsWithout[T <: Arg[_]](
-        implicit tag: ClassTag[T]
-      ): (Option[T], Seq[Arg[_]]) = args.foldLeft[(Option[T], Seq[Arg[_]])]((None, Seq.empty)) {
-        case ((removedElem, rest), tag(t)) => (Some(t), rest)
-        case ((removedElem, rest), elem) => (removedElem, rest :+ elem)
-      }
+      private def argsWithout[T <: Arg[_]](implicit
+          tag: ClassTag[T]
+      ): (Option[T], Seq[Arg[_]]) =
+        args.foldLeft[(Option[T], Seq[Arg[_]])]((None, Seq.empty)) {
+          case ((removedElem, rest), tag(t)) => (Some(t), rest)
+          case ((removedElem, rest), elem)   => (removedElem, rest :+ elem)
+        }
     }
   }
 

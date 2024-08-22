@@ -27,38 +27,40 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 
-
 function handleLanguageChange(selectElement) {
-  console.log("This Function Works")
+  console.log("This Function Works");
+
   var selectedLanguage = selectElement.value;
   var currentUrl = window.location.href;
   var urlParts = currentUrl.split('/');
   var baseUrl = urlParts.slice(0, 3).join('/');
   var pathParts = urlParts.slice(3);
 
-  // Regex to match a language code at the start of the path
-  var languagePattern = /^[a-z]{2}(-[a-z]{2})?/;
-  var currentLangCode = pathParts.length > 0 ? pathParts[0].match(languagePattern) : null;
+  // Identify the index of the 'docs' path
+  var docsIndex = pathParts.indexOf('docs');
 
+  // Regex to match a language code right after the 'docs' path
+  var languagePattern = new RegExp('^(' + availableLanguages.join('|') + ')(-[a-z]{2})?');
+  var currentLangCode = docsIndex >= 0 && pathParts.length > docsIndex + 1 ? pathParts[docsIndex + 1].match(languagePattern) : null;
 
   if (selectedLanguage) {
     var updatedPath;
 
     if (selectedLanguage == 'en') {
-      // If 'en' is selected, remove the language code if it exists
-      if (currentLangCode) {
-        updatedPath = pathParts.length > 1 ? pathParts.slice(1) : [];
+      // If 'en' is selected, remove the language code if it exists after 'docs'
+      if (currentLangCode && availableLanguages.includes(currentLangCode[0])) {
+        updatedPath = pathParts.slice(0, docsIndex + 1).concat(pathParts.slice(docsIndex + 2)); // Remove the language code after 'docs'
       } else {
         updatedPath = pathParts;
       }
     } else {
       // If any other language is selected
-      if (currentLangCode) {
-        // Replace the existing language code with the new one
-        updatedPath = [selectedLanguage].concat(pathParts.slice(1));
+      if (currentLangCode && availableLanguages.includes(currentLangCode[0])) {
+        // Replace the existing language code with the new one after 'docs'
+        updatedPath = pathParts.slice(0, docsIndex + 1).concat([selectedLanguage]).concat(pathParts.slice(docsIndex + 2));
       } else {
-        // Add the new language code at the start
-        updatedPath = [selectedLanguage].concat(pathParts);
+        // Add the new language code after the 'docs' path
+        updatedPath = pathParts.slice(0, docsIndex + 1).concat([selectedLanguage]).concat(pathParts.slice(docsIndex + 1));
       }
     }
 

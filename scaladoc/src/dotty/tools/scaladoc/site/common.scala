@@ -86,12 +86,9 @@ def loadTemplateFile(file: File, defaultTitle: Option[TemplateName] = None)(usin
   val cleanedYamlString = yamlString
       .stripPrefix(ConfigSeparator)
       .stripSuffix(ConfigSeparator)
-
-  println(s"Cleaned YAML String: $cleanedYamlString") // Debug statement
   val yaml = new Yaml()
   val parsedYaml: java.util.LinkedHashMap[String, Object]= if (cleanedYamlString.trim.isEmpty) null else yaml.load(cleanedYamlString).asInstanceOf[java.util.LinkedHashMap[String, Object]]
 
-  println(s"Parsed YAML: $parsedYaml") // Debug statement
 
 
 

@@ -47,7 +47,7 @@ object Scaladoc:
     defaultTemplate: Option[String] = None,
     quickLinks: List[QuickLink] = List.empty,
     dynamicSideMenu: Boolean = false,
-    staticSiteOnly: Boolean = false,
+    experimentalFeatures: Boolean = false,
   )
 
   def run(args: Array[String], rootContext: CompilerContext): Reporter =
@@ -204,7 +204,7 @@ object Scaladoc:
 
       if deprecatedSkipPackages.get.nonEmpty then report.warning(deprecatedSkipPackages.description)
 
-      val staticSiteOnly = args.contains("-staticSiteOnly")
+      val experimentalFeatures = args.contains("-experimental-features")
 
 
       val docArgs = Args(
@@ -241,18 +241,10 @@ object Scaladoc:
         defaultTemplate.nonDefault,
         quickLinksParsed,
         dynamicSideMenu.get,
-        staticSiteOnly
+        experimentalFeatures
       )
       (Some(docArgs), newContext)
     }
-
-  private def generateStaticSite(args: Args)(using ctx: CompilerContext): Unit =
-    given docContext: DocContext = new DocContext(args, ctx)
-    val module = ScalaModuleProvider.mkModule()
-    new dotty.tools.scaladoc.renderers.HtmlRenderer(module.rootPackage, module.members).render()
-    docContext.reportPathCompatIssues()
-    report.inform("Static site generation completed successfully")
-    docContext
 
   private [scaladoc] def run(args: Args)(using ctx: CompilerContext): DocContext =
     given docContext: DocContext = new DocContext(args, ctx)

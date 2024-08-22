@@ -143,6 +143,8 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
 
   val dynamicSideMenu: Setting[Boolean] =
     BooleanSetting(RootSetting, "dynamic-side-menu", "Generate side menu via JS instead of embedding it in every html file", false)
+  val experimentalFeatures: Setting[Boolean] =
+      BooleanSetting(RootSetting, "experimental-features", "Activate Experimental Features for scaladoc", false)
 
   def scaladocSpecificSettings: Set[Setting[?]] =
     Set(sourceLinks, legacySourceLink, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, generateInkuire, defaultTemplate, scastieConfiguration, quickLinks, dynamicSideMenu)
