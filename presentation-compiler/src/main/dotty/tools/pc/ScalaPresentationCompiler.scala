@@ -30,6 +30,7 @@ import scala.meta.pc.{PcSymbolInformation as IPcSymbolInformation}
 
 import dotty.tools.dotc.reporting.StoreReporter
 import dotty.tools.pc.completions.CompletionProvider
+import dotty.tools.pc.InferExpectedType
 import dotty.tools.pc.completions.OverrideCompletions
 import dotty.tools.pc.buildinfo.BuildInfo
 
@@ -196,6 +197,15 @@ case class ScalaPresentationCompiler(
       PcReferencesProvider(driver, params)
         .references()
         .asJava
+    }
+
+  def inferExpectedType(params: OffsetParams): CompletableFuture[ju.Optional[String]] =
+    compilerAccess.withInterruptableCompiler(Some(params))(
+      Optional.empty(),
+      params.token,
+    ) { access =>
+      val driver = access.compiler()
+      new InferExpectedType(search, driver, params).infer().asJava
     }
 
   def shutdown(): Unit =
