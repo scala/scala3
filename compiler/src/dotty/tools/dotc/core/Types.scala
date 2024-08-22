@@ -2491,7 +2491,10 @@ object Types extends TypeUtils {
     }
 
     private def disambiguate(d: Denotation)(using Context): Denotation =
-      disambiguate(d, currentSignature, currentSymbol.targetName)
+      // this method might be triggered while the denotation is already being recomputed
+      // in NamedType, so it's better to use lastKnownDenotation instead, as targetName
+      // should not change between phases/runs
+      disambiguate(d, currentSignature, currentSymbol.lastKnownDenotation.targetName)
 
     private def disambiguate(d: Denotation, sig: Signature | Null, target: Name)(using Context): Denotation =
       if (sig != null)
