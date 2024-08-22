@@ -309,6 +309,7 @@ private sealed trait WarningSettings:
     def enumCommentDiscard(using Context): Boolean = allOr(WenumCommentDiscard)
     def implausiblePatterns(using Context): Boolean = allOr(WimplausiblePatterns)
     def unstableInlineAccessors(using Context): Boolean = allOr(WunstableInlineAccessors)
+    def toStringInterpolated(using Context): Boolean = allOr(WtoStringInterpolated)
     def checkInit(using Context): Boolean = allOr(WcheckInit)
 
 /** -X "Extended" or "Advanced" settings */
