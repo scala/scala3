@@ -613,7 +613,7 @@ class Objects(using Context @constructorOnly):
               if !visited.contains(value) then
                 toVisit += value
 
-          case objRef: ObjectRef =>
+          case objRef: ObjectRef if objRef != currentObj =>
             // Thanks to initialization-time irrelevance, there is no need to
             // visit the heap regions owned by other global objects.
             //
@@ -707,7 +707,7 @@ class Objects(using Context @constructorOnly):
           val heapGC =
             if cacheResult then Heap.gc(value, footprint, heapAfter, changeSetNew)
             else heapAfter
-          Res(value, heapAfter, changeSetNew)
+          Res(value, heapGC, changeSetNew)
         }
         Heap.update(heapBefore ++ result.heap, changeSetBefore ++ result.changeSet)
 
