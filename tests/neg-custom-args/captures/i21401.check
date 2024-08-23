@@ -1,0 +1,10 @@
+-- Error: tests/neg-custom-args/captures/i21401.scala:15:22 ------------------------------------------------------------
+15 |  val a = usingIO[IO^](x => x) // error: The expression's type IO^ is not allowed to capture the root capability `cap`
+   |          ^^^^^^^^^^^^^^^^^^^^
+   |          The expression's type box IO^ is not allowed to capture the root capability `cap`.
+   |          This usually means that a capability persists longer than its allowed lifetime.
+-- Error: tests/neg-custom-args/captures/i21401.scala:16:70 ------------------------------------------------------------
+16 |  val leaked: [R, X <: Boxed[IO^] -> R] -> (op: X) -> R = usingIO[Res](mkRes) // error: The expression's type Res is not allowed to capture the root capability `cap` in its part box IO^
+   |                                                          ^^^^^^^^^^^^^^^^^^^
+   |              The expression's type Res is not allowed to capture the root capability `cap` in its part box IO^.
+   |              This usually means that a capability persists longer than its allowed lifetime.
