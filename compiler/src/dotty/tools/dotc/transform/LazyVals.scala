@@ -477,6 +477,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
         newSymbol(claz, offsetName(info.defs.size), Synthetic, defn.LongType).enteredAfter(this)
       case None =>
         newSymbol(claz, offsetName(0), Synthetic, defn.LongType).enteredAfter(this)
+    offsetSymbol.installAfter(this)
     offsetSymbol.nn.addAnnotation(Annotation(defn.ScalaStaticAnnot, offsetSymbol.nn.span))
     val fieldTree = thizClass.select(lazyNme.RLazyVals.getDeclaredField).appliedTo(Literal(Constant(containerName.mangledString)))
     val offsetTree = ValDef(offsetSymbol.nn, getOffset.appliedTo(fieldTree))
