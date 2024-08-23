@@ -249,7 +249,8 @@ class Objects(using Context @constructorOnly):
           tree match
             case ident: Ident =>
               val sym = ident.symbol
-              if sym.isTerm && sym.isLocal then refs += sym
+              if sym.isTerm && sym.isLocal && !sym.is(Flags.Method)
+              then refs += sym
 
             case vdef: ValDef =>
               val sym = vdef.symbol
@@ -693,17 +694,20 @@ class Objects(using Context @constructorOnly):
 
       def cachedEval(thisV: ThisValue, expr: Tree, cacheResult: Boolean)(fun: Tree => Value)(using Heap.MutableData, Env.Data, State.Data): Value =
         val env = summon[Env.Data]
-        val footprint = Heap.footprint(Heap.getHeapData(), thisV, env, State.currentObjectRef)
-        val config = Config(thisV, env, footprint)
         val heapBefore = Heap.getHeapData()
         val changeSetBefore = Heap.getChangeSet()
+        // Only perform footprint optimization when cacheResult is true
+        val footprint =
+          if cacheResult then Heap.footprint(Heap.getHeapData(), thisV, env, State.currentObjectRef)
+          else heapBefore
+        val config = Config(thisV, env, footprint)
 
         Heap.update(footprint, changeSet = Set.empty)
         val result = super.cachedEval(config, expr, cacheResult, default = Res(Bottom, footprint, Set.empty)) { expr =>
           val value = fun(expr)
           val heapAfter = Heap.getHeapData()
           val changeSetNew = Heap.getChangeSet()
-          // Perform garbage collection
+          // Only perform garbage collection when cacheResult is true
           val heapGC =
             if cacheResult then Heap.gc(value, footprint, heapAfter, changeSetNew)
             else heapAfter
