@@ -605,14 +605,21 @@ class Objects(using Context @constructorOnly):
       def visit(item: Value | Addr): Unit =
         item match
           case addr: Addr =>
-            reachalbeKeys += addr
-            val value = heap(addr)
-            if !visited.contains(value) then
-              toVisit += value
+            // Thanks to initialization-time irrelevance, there is no need to
+            // visit the heap regions owned by other global objects.
+            if addr.owner == currentObj.klass then
+              reachalbeKeys += addr
+              val value = heap(addr)
+              if !visited.contains(value) then
+                toVisit += value
 
           case objRef: ObjectRef =>
             // Thanks to initialization-time irrelevance, there is no need to
             // visit the heap regions owned by other global objects.
+            //
+            // Other objects may also refer to memory regions of the current
+            // global object. However, they must do so by referring to fields
+            // of the current global objects --- which are already visited.
 
           case value: Value =>
             recur(value)
