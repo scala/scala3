@@ -25,6 +25,8 @@ import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.printer.ShortenedTypePrinter
 import dotty.tools.pc.printer.ShortenedTypePrinter.IncludeDefaultParam
 import dotty.tools.pc.utils.InteractiveEnrichments.*
+import dotty.tools.dotc.ast.untpd.InferredTypeTree
+import dotty.tools.dotc.core.StdNames
 
 object HoverProvider:
 
@@ -131,7 +133,12 @@ object HoverProvider:
             .flatMap(symTpe => search.symbolDocumentation(symTpe._1, contentType))
             .map(_.docstring())
             .mkString("\n")
-          printer.expressionType(exprTpw) match
+
+          val expresionTypeOpt = 
+            if symbol.name == StdNames.nme.??? then
+              InferExpectedType(search, driver, params).infer()
+            else printer.expressionType(exprTpw)
+          expresionTypeOpt match
             case Some(expressionType) =>
               val forceExpressionType =
                 !pos.span.isZeroExtent || (
