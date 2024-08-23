@@ -11,7 +11,7 @@ for %%f in ("%~dp0.") do (
     @rem get rid of the trailing slash
     set "_PROG_HOME=!_PROG_HOME:~0,-1!"
 )
-call "%_PROG_HOME%\bin\common.bat"
+call "%_PROG_HOME%\libexec\common.bat"
 if not %_EXITCODE%==0 goto end
 
 set _DEFAULT_JAVA_OPTS=-Xmx768m -Xms768m

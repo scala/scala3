@@ -26,7 +26,7 @@ if [ -z "${PROG_HOME-}" ] ; then
   cd "$saveddir"
 fi
 
-source "$PROG_HOME/bin/common"
+source "$PROG_HOME/libexec/common"
 
 [ -z "$PROG_NAME" ] && PROG_NAME=$CompilerMain
 

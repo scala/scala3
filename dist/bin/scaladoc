@@ -28,7 +28,7 @@ if [ -z "${PROG_HOME-}" ] ; then
   cd "$saveddir"
 fi
 
-source "$PROG_HOME/bin/common"
+source "$PROG_HOME/libexec/common"
 default_java_opts="-Xmx768m -Xms768m"
 withCompiler=true
 
