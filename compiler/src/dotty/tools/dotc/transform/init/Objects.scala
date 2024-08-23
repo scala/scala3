@@ -600,7 +600,7 @@ class Objects(using Context @constructorOnly):
     def footprint(heap: Data, thisV: Value, env: Env.Data, currentObj: ObjectRef): Data =
       val toVisit = mutable.Queue.empty[Value]
       val visited = mutable.Set.empty[Value]
-      val reachalbeKeys = mutable.Set.empty[Addr]
+      val reachableKeys = mutable.Set.empty[Addr]
 
       def visit(item: Value | Addr): Unit =
         item match
@@ -608,7 +608,7 @@ class Objects(using Context @constructorOnly):
             // Thanks to initialization-time irrelevance, there is no need to
             // visit the heap regions owned by other global objects.
             if addr.owner == currentObj.klass then
-              reachalbeKeys += addr
+              reachableKeys += addr
               val value = heap(addr)
               if !visited.contains(value) then
                 toVisit += value
@@ -636,7 +636,7 @@ class Objects(using Context @constructorOnly):
       while toVisit.nonEmpty do
         visit(toVisit.dequeue())
 
-      heap.filter((k, v) => reachalbeKeys.contains(k))
+      heap.filter((k, v) => reachableKeys.contains(k))
 
     /** Perform garbage collection on the abstract heap.
      *
@@ -1086,8 +1086,6 @@ class Objects(using Context @constructorOnly):
 
   /**
    * Handle new expression `new p.C(args)`.
-   * The actual instance might be cached without running the constructor.
-   * See tests/init-global/pos/cache-constructor.scala
    *
    * @param outer       The value for `p`.
    * @param klass       The symbol of the class `C`.
@@ -1127,6 +1125,8 @@ class Objects(using Context @constructorOnly):
                 // klass.enclosingMethod returns its primary constructor
                 Env.resolveEnv(klass.owner.enclosingMethod, thisV, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
 
+        // The actual instance might be cached without running the constructor.
+        // See tests/init-global/pos/cache-constructor.scala
         val instance = OfClass(klass, outerWidened, ctor, args.map(_.value), envWidened)
         callConstructor(instance, ctor, args)
 
