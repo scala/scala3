@@ -610,6 +610,10 @@ class Objects(using Context @constructorOnly):
             if !visited.contains(value) then
               toVisit += value
 
+          case objRef: ObjectRef =>
+            // Thanks to initialization-time irrelevance, there is no need to
+            // visit the heap regions owned by other global objects.
+
           case value: Value =>
             recur(value)
 
