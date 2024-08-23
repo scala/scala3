@@ -11,7 +11,7 @@ for %%f in ("%~dp0.") do (
     @rem get rid of the trailing slash
     set "_PROG_HOME=!_PROG_HOME:~0,-1!"
 )
-call "%_PROG_HOME%\bin\common.bat"
+call "%_PROG_HOME%\libexec\common.bat"
 if not %_EXITCODE%==0 goto end
 
 @rem #########################################################################
@@ -19,7 +19,7 @@ if not %_EXITCODE%==0 goto end
 
 call :setScalaOpts
 
-call "%_PROG_HOME%\bin\cli-common-platform.bat"
+call "%_PROG_HOME%\libexec\cli-common-platform.bat"
 
 @rem SCALA_CLI_CMD_WIN is an array, set in cli-common-platform.bat.
 @rem WE NEED TO PASS '--skip-cli-updates' for JVM launchers but we actually don't need it for native launchers

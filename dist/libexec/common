@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source "$PROG_HOME/bin/common-shared"
+source "$PROG_HOME/libexec/common-shared"
 
 #/*--------------------------------------------------
 # * The code below is for Dotty

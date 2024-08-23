@@ -2137,9 +2137,10 @@ object Build {
     Universal / packageBin := (Universal / packageBin).dependsOn(republish).value,
     Universal / packageZipTarball := (Universal / packageZipTarball).dependsOn(republish).value,
     // ========
-    Universal / mappings ++= directory(republishRepo.value / "bin"),
+    Universal / mappings ++= directory(dist.base / "bin"),
     Universal / mappings ++= directory(republishRepo.value / "maven2"),
     Universal / mappings ++= directory(republishRepo.value / "lib"),
+    Universal / mappings ++= directory(republishRepo.value / "libexec"),
     Universal / mappings +=  (republishRepo.value / "VERSION") -> "VERSION",
     // ========
     republishCommandLibs += ("scala" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "tasty-core")),
@@ -2150,7 +2151,7 @@ object Build {
   lazy val dist = project.asDist(Bootstrapped)
     .settings(packageName := "scala3-" + dottyVersion)
     .settings(
-      republishBinDir := baseDirectory.value / "bin",
+      republishLibexecDir := baseDirectory.value / "libexec",
       republishCoursier +=
         ("coursier.jar" -> s"https://github.com/coursier/coursier/releases/download/v$coursierJarVersion/coursier.jar"),
       republishLaunchers +=
@@ -2160,8 +2161,8 @@ object Build {
   lazy val `dist-mac-x86_64` = project.in(file("dist/mac-x86_64")).asDist(Bootstrapped)
     .settings(packageName := (dist / packageName).value + "-x86_64-apple-darwin")
     .settings(
-      republishBinDir := (dist / republishBinDir).value,
-      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishLibexecDir := (dist / republishLibexecDir).value,
+      republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-apple-darwin.gz")
@@ -2170,8 +2171,8 @@ object Build {
   lazy val `dist-mac-aarch64` = project.in(file("dist/mac-aarch64")).asDist(Bootstrapped)
     .settings(packageName := (dist / packageName).value + "-aarch64-apple-darwin")
     .settings(
-      republishBinDir := (dist / republishBinDir).value,
-      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishLibexecDir := (dist / republishLibexecDir).value,
+      republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-aarch64-apple-darwin.gz")
@@ -2181,8 +2182,8 @@ object Build {
     .enablePlugins(WindowsPlugin) // TO GENERATE THE `.msi` installer
     .settings(packageName := (dist / packageName).value + "-x86_64-pc-win32")
     .settings(
-      republishBinDir := (dist / republishBinDir).value,
-      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishLibexecDir := (dist / republishLibexecDir).value,
+      republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli.exe" -> s"zip+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-pc-win32.zip!/scala-cli.exe")
@@ -2204,8 +2205,8 @@ object Build {
   lazy val `dist-linux-x86_64` = project.in(file("dist/linux-x86_64")).asDist(Bootstrapped)
     .settings(packageName := (dist / packageName).value + "-x86_64-pc-linux")
     .settings(
-      republishBinDir := (dist / republishBinDir).value,
-      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishLibexecDir := (dist / republishLibexecDir).value,
+      republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-pc-linux.gz")
@@ -2214,8 +2215,8 @@ object Build {
   lazy val `dist-linux-aarch64` = project.in(file("dist/linux-aarch64")).asDist(Bootstrapped)
     .settings(packageName := (dist / packageName).value + "-aarch64-pc-linux")
     .settings(
-      republishBinDir := (dist / republishBinDir).value,
-      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishLibexecDir := (dist / republishLibexecDir).value,
+      republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-aarch64-pc-linux.gz")
