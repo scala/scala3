@@ -22,7 +22,7 @@ import liqp.tags.Tag
 import liqp.nodes.LNode
 import dotty.tools.scaladoc.site.blocks.{AltDetails,TabsBlock,TabBlock}
 import dotty.tools.scaladoc.site.tags.{IncludeTag,LanguagePickerTag}
-import dotty.tools.scaladoc.site.helpers.ConfigLoader
+import dotty.tools.scaladoc.site.helpers.{ConfigLoader=>SiteConfigLoader}
 
 
 
@@ -139,7 +139,7 @@ case class TemplateFile(
     val includePath =  ssctx.root.toPath.resolve("_includes")
     IncludeTag.setDocsFolder(includePath.toString)
 
-    val configLoader = new ConfigLoader()
+    val configLoader = new SiteConfigLoader()
     val configMap = configLoader.loadConfig(ssctx.root.toPath.toString)
 
 
