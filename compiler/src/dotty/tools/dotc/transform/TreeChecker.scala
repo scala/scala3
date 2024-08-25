@@ -432,19 +432,8 @@ object TreeChecker {
             promote(tree)
           case _ =>
             val tree1 = super.typedUnadapted(tree, pt, locked)
-            def isSubType(tp1: Type, tp2: Type) =
-              (tp1 eq tp2) || // accept NoType / NoType
-              (tp1 <:< tp2)
-            def divergenceMsg(tp1: Type, tp2: Type) =
-              s"""Types differ
-                |Original type : ${tree.typeOpt.show}
-                |After checking: ${tree1.tpe.show}
-                |Original tree : ${tree.show}
-                |After checking: ${tree1.show}
-                |Why different :
-              """.stripMargin + core.TypeComparer.explained(_.isSubType(tp1, tp2))
-            if (tree.hasType) // it might not be typed because Typer sometimes constructs new untyped trees and resubmits them to typedUnadapted
-              assert(isSubType(tree1.tpe, tree.typeOpt), divergenceMsg(tree1.tpe, tree.typeOpt))
+            if tree.hasType then // it might not be typed because Typer sometimes constructs new untyped trees and resubmits them to typedUnadapted
+              checkType(tree1.tpe, tree.typeOpt, tree, "typedUnadapted")
             tree1
         checkNoOrphans(res.tpe)
         phasesToCheck.foreach(_.checkPostCondition(res))
@@ -824,16 +813,20 @@ object TreeChecker {
         && !isPrimaryConstructorReturn
         && !pt.isInstanceOf[FunOrPolyProto]
       then
-        assert(tree.tpe <:< pt, {
-          val mismatch = TypeMismatch(tree.tpe, pt, Some(tree))
-          i"""|Type Mismatch:
-              |${mismatch.message}
-              |tree = $tree ${tree.className}""".stripMargin
-        })
+        checkType(tree.tpe, pt, tree, "adapt")
       tree
     }
 
     override def simplify(tree: Tree, pt: Type, locked: TypeVars)(using Context): tree.type = tree
+
+    private def checkType(tp1: Type, tp2: Type, tree: untpd.Tree, step: String)(using Context) =
+      // Accept NoType <:< NoType as true
+      assert((tp1 eq tp2) || (tp1 <:< tp2), {
+        val mismatch = TypeMismatch(tp1, tp2, None)
+        i"""|Type Mismatch (while checking $step):
+            |${mismatch.message}${mismatch.explanation}
+            |tree = $tree ${tree.className}""".stripMargin
+      })
   }
 
   /** Tree checker that can be applied to a local tree. */
