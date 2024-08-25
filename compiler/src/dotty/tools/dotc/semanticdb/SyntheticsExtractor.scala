@@ -13,7 +13,8 @@ class SyntheticsExtractor:
 
   val visited = collection.mutable.HashSet[Tree]()
 
-  def tryFindSynthetic(tree: Tree)(using Context, SemanticSymbolBuilder, TypeOps): Option[s.Synthetic] =
+  /** Attempt to format the given tree as a Synthetic apply, if applicable. */
+  def tryFindSynthetic(tree: Apply | TypeApply)(using Context, SemanticSymbolBuilder, TypeOps): Option[s.Synthetic] =
     extension (synth: s.Synthetic)
       def toOpt: Some[s.Synthetic] = Some(synth)
 
