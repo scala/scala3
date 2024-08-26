@@ -908,6 +908,10 @@ object Build {
           sjsSources
         } (Set(scalaJSIRSourcesJar)).toSeq
       }.taskValue,
+
+      // Develocity's Build Cache does not work with our compilation tests
+      // at the moment.
+      Test / develocityBuildCacheClient := None,
   )
 
   def insertClasspathInArgs(args: List[String], cp: String): List[String] = {
