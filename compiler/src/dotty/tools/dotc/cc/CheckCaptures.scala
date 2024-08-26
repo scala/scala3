@@ -394,7 +394,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                 val isVisible = isVisibleFromEnv(refOwner)
                 if !isVisible
                     && (c.isReach || ref.isType)
-                    && refSym.is(Param)
+                    && (!ccConfig.useSealed || refSym.is(Param))
                     && refOwner == env.owner
                 then
                   if refSym.hasAnnotation(defn.UnboxAnnot) then

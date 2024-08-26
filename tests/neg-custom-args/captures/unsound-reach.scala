@@ -15,6 +15,6 @@ def bad(): Unit =
 
     var escaped: File^{backdoor*} = null
     withFile("hello.txt"): f =>
-        boom.use(f): (f1: File^{backdoor*}) => // was error before existentials
+        boom.use(f): (f1: File^{backdoor*}) => // error
             escaped = f1
 

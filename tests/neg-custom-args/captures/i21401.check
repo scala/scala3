@@ -8,3 +8,7 @@
    |                                                          ^^^^^^^^^^^^^^^^^^^
    |              The expression's type Res is not allowed to capture the root capability `cap` in its part box IO^.
    |              This usually means that a capability persists longer than its allowed lifetime.
+-- Error: tests/neg-custom-args/captures/i21401.scala:18:21 ------------------------------------------------------------
+18 |  val y: IO^{x*} = x.unbox // error
+   |                   ^^^^^^^
+   |                   Local reach capability x* leaks into capture scope of method test2
