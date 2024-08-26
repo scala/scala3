@@ -23,8 +23,8 @@ object report:
   private def issueWarning(warning: Warning)(using Context): Unit =
     ctx.reporter.report(warning)
 
-  def deprecationWarning(msg: Message, pos: SrcPos)(using Context): Unit =
-    issueWarning(new DeprecationWarning(msg, pos.sourcePos))
+  def deprecationWarning(msg: Message, pos: SrcPos, origin: String = "")(using Context): Unit =
+    issueWarning(new DeprecationWarning(msg, pos.sourcePos, origin))
 
   def migrationWarning(msg: Message, pos: SrcPos)(using Context): Unit =
     issueWarning(new MigrationWarning(msg, pos.sourcePos))
