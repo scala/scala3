@@ -3165,7 +3165,7 @@ object Parsers {
         else {
           val start = in.lastOffset
           syntaxErrorOrIncomplete(IllegalStartOfSimplePattern(), expectedOffset)
-          errorTermTree(start)
+          atSpan(Span(start, in.offset)) { Ident(nme.WILDCARD) }
         }
     }
 
