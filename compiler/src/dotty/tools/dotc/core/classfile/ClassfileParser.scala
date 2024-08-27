@@ -1163,7 +1163,10 @@ class ClassfileParser(
         // attribute isn't, this classfile is a compilation artifact.
         return Some(NoEmbedded)
 
-      if (scan(tpnme.ScalaSignatureATTR) && scan(tpnme.RuntimeVisibleAnnotationATTR)) {
+      if (scan(tpnme.ScalaSignatureATTR)) {
+        if !scan(tpnme.RuntimeVisibleAnnotationATTR) then
+          report.error(em"No RuntimeVisibleAnnotations in classfile with ScalaSignature attribute: ${classRoot.fullName}")
+          return None
         val attrLen = in.nextInt
         val nAnnots = in.nextChar
         var i = 0
