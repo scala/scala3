@@ -65,6 +65,10 @@ class Completions(
        */
       case (fun) :: (appl: GenericApply) :: _ if appl.fun == fun =>
         false
+      /* In case of `T@@[]` we should not add snippets.
+       */
+      case tpe :: (appl: AppliedTypeTree) :: _ if appl.tpt == tpe =>
+        false
       case _ :: (withcursor @ Select(fun, name)) :: (appl: GenericApply) :: _
           if appl.fun == withcursor && name.decoded == Cursor.value =>
         false
