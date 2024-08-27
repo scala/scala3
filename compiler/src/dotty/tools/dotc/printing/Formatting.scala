@@ -185,7 +185,7 @@ object Formatting {
     * The idea is to do this for known cases that are useful and then fall back
     * on regular syntax highlighting for the cases which are unhandled.
     *
-    * Please not that if used in combination with `disambiguateTypes` the
+    * Please note that if used in combination with `disambiguateTypes` the
     * correct `Context` for printing should also be passed when calling the
     * method.
     *
