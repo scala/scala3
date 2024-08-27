@@ -14,12 +14,12 @@ object GithubEnv {
     for {
       (_, repository) <- repositoryVar
       (_, runId) <- runIdVar
-    } yield "GITHUB_RUN" -> url(s"https://github.com/$repository/actions/runs/$runId")
+    } yield "GitHub Run" -> url(s"https://github.com/$repository/actions/runs/$runId")
   lazy val treeUrl: Option[(String, URL)] =
     for {
       (_, repository) <- repositoryVar
       (_, sha) <- shaVar
-    } yield "GITHUB_TREE" -> url(s"https://github.com/$repository/tree/$sha")
+    } yield "GitHub Commit" -> url(s"https://github.com/$repository/tree/$sha")
 
 
   def develocityValues: Seq[(String, String)] = repositoryVar.toSeq ++ shaVar ++ workflowVar
