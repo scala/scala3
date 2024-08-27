@@ -490,14 +490,7 @@ object Types extends TypeUtils {
       case _ => false
 
     /** Does this application expand to a match type? */
-    def isMatchAlias(using Context): Boolean = underlyingMatchType.exists
-
-    def underlyingMatchType(using Context): Type = stripped match {
-      case tp: MatchType => tp
-      case tp: HKTypeLambda => tp.resType.underlyingMatchType
-      case tp: AppliedType => tp.underlyingMatchType
-      case _ => NoType
-    }
+    def isMatchAlias(using Context): Boolean = underlyingNormalizable.isMatch
 
     /** Is this a higher-kinded type lambda with given parameter variances?
      *  These lambdas are used as the RHS of higher-kinded abstract types or
@@ -1550,19 +1543,24 @@ object Types extends TypeUtils {
       }
       deskolemizer(this)
 
-    /** The result of normalization using `tryNormalize`, or the type itself if
-     *  tryNormlize yields NoType
-     */
-    final def normalized(using Context): Type = {
-      val normed = tryNormalize
-      if (normed.exists) normed else this
-    }
+    /** The result of normalization, or the type itself if none apply. */
+    final def normalized(using Context): Type = tryNormalize.orElse(this)
 
-    /** If this type can be normalized at the top-level by rewriting match types
-     *  of S[n] types, the result after applying all toplevel normalizations,
-     *  otherwise NoType
+    /** If this type has an underlying match type or applied compiletime.ops,
+     *  then the result after applying all toplevel normalizations, otherwise NoType.
      */
-    def tryNormalize(using Context): Type = NoType
+    def tryNormalize(using Context): Type = underlyingNormalizable match
+      case mt: MatchType => mt.reduced.normalized
+      case tp: AppliedType => tp.tryCompiletimeConstantFold
+      case _ => NoType
+
+    /** Perform successive strippings, and beta-reductions of applied types until
+     *  a match type or applied compiletime.ops is reached, if any, otherwise NoType.
+     */
+    def underlyingNormalizable(using Context): Type = stripped.stripLazyRef match
+      case tp: MatchType => tp
+      case tp: AppliedType => tp.underlyingNormalizable
+      case _ => NoType
 
     private def widenDealias1(keep: AnnotatedType => Context ?=> Boolean)(using Context): Type = {
       val res = this.widen.dealias1(keep, keepOpaques = false)
@@ -3258,8 +3256,6 @@ object Types extends TypeUtils {
     private var myRef: Type | Null = null
     private var computed = false
 
-    override def tryNormalize(using Context): Type = ref.tryNormalize
-
     def ref(using Context): Type =
       if computed then
         if myRef == null then
@@ -4615,8 +4611,8 @@ object Types extends TypeUtils {
     private var myEvalRunId: RunId = NoRunId
     private var myEvalued: Type = uninitialized
 
-    private var validUnderlyingMatch: Period = Nowhere
-    private var cachedUnderlyingMatch: Type = uninitialized
+    private var validUnderlyingNormalizable: Period = Nowhere
+    private var cachedUnderlyingNormalizable: Type = uninitialized
 
     def isGround(acc: TypeAccumulator[Boolean])(using Context): Boolean =
       if myGround == 0 then myGround = if acc.foldOver(true, this) then 1 else -1
@@ -4680,37 +4676,25 @@ object Types extends TypeUtils {
         case nil => x
       foldArgs(op(x, tycon), args)
 
-    /** Exists if the tycon is a TypeRef of an alias with an underlying match type.
-     *  Anything else should have already been reduced in `appliedTo` by the TypeAssigner.
+    /** Exists if the tycon is a TypeRef of an alias with an underlying match type,
+     *  or a compiletime applied type. Anything else should have already been
+     *  reduced in `appliedTo` by the TypeAssigner. This may reduce several
+     *  HKTypeLambda applications before the underlying normalizable type is reached.
      */
-    override def underlyingMatchType(using Context): Type =
-      if ctx.period != validUnderlyingMatch then
-        cachedUnderlyingMatch = superType.underlyingMatchType
-        validUnderlyingMatch = validSuper
-      cachedUnderlyingMatch
+    override def underlyingNormalizable(using Context): Type =
+      if ctx.period != validUnderlyingNormalizable then tycon match
+        case tycon: TypeRef if defn.isCompiletimeAppliedType(tycon.symbol) =>
+          cachedUnderlyingNormalizable = this
+          validUnderlyingNormalizable = ctx.period
+        case _ =>
+          cachedUnderlyingNormalizable = superType.underlyingNormalizable
+          validUnderlyingNormalizable = validSuper
+      cachedUnderlyingNormalizable
 
-    override def tryNormalize(using Context): Type = tycon.stripTypeVar match {
-      case tycon: TypeRef =>
-        def tryMatchAlias = tycon.info match
-          case AliasingBounds(alias) if isMatchAlias =>
-            trace(i"normalize $this", typr, show = true) {
-              MatchTypeTrace.recurseWith(this) {
-                alias.applyIfParameterized(args.map(_.normalized)).tryNormalize
-                /* `applyIfParameterized` may reduce several HKTypeLambda applications
-                 * before the underlying MatchType is reached.
-                 * Even if they do not involve any match type normalizations yet,
-                 * we still want to record these reductions in the MatchTypeTrace.
-                 * They should however only be attempted if they eventually expand
-                 * to a match type, which is ensured by the `isMatchAlias` guard.
-                 */
-              }
-            }
-          case _ =>
-            NoType
-        tryCompiletimeConstantFold.orElse(tryMatchAlias)
-      case _ =>
-        NoType
-    }
+    override def tryNormalize(using Context): Type =
+      if isMatchAlias && MatchTypeTrace.isRecording then
+        MatchTypeTrace.recurseWith(this)(superType.tryNormalize)
+      else super.tryNormalize
 
     /** Is this an unreducible application to wildcard arguments?
      *  This is the case if tycon is higher-kinded. This means
@@ -5173,13 +5157,6 @@ object Types extends TypeUtils {
     private var myReduced: Type | Null = null
     private var reductionContext: util.MutableMap[Type, Type] | Null = null
 
-    override def tryNormalize(using Context): Type =
-      try
-        reduced.normalized
-      catch
-        case ex: Throwable =>
-          handleRecursive("normalizing", s"${scrutinee.show} match ..." , ex)
-
     private def thisMatchType = this
 
     def reduced(using Context): Type = atPhaseNoLater(elimOpaquePhase) {
@@ -5282,7 +5259,7 @@ object Types extends TypeUtils {
     def apply(bound: Type, scrutinee: Type, cases: List[Type])(using Context): MatchType =
       unique(new CachedMatchType(bound, scrutinee, cases))
 
-    def thatReducesUsingGadt(tp: Type)(using Context): Boolean = tp.underlyingMatchType match
+    def thatReducesUsingGadt(tp: Type)(using Context): Boolean = tp.underlyingNormalizable match
       case mt: MatchType => mt.reducesUsingGadt
       case _ => false
 
@@ -5731,7 +5708,8 @@ object Types extends TypeUtils {
   /** Common supertype of `TypeAlias` and `MatchAlias` */
   abstract class AliasingBounds(val alias: Type) extends TypeBounds(alias, alias) {
 
-    def derivedAlias(alias: Type)(using Context): AliasingBounds
+    def derivedAlias(alias: Type)(using Context): AliasingBounds =
+      if alias eq this.alias then this else AliasingBounds(alias)
 
     override def computeHash(bs: Binders): Int = doHash(bs, alias)
     override def hashIsStable: Boolean = alias.hashIsStable
@@ -5753,10 +5731,7 @@ object Types extends TypeUtils {
 
   /**    = T
    */
-  class TypeAlias(alias: Type) extends AliasingBounds(alias) {
-    def derivedAlias(alias: Type)(using Context): AliasingBounds =
-      if (alias eq this.alias) this else TypeAlias(alias)
-  }
+  class TypeAlias(alias: Type) extends AliasingBounds(alias)
 
   /**    = T     where `T` is a `MatchType`
    *
@@ -5765,10 +5740,7 @@ object Types extends TypeUtils {
    *  If we assumed full substitutivity, we would have to reject all recursive match
    *  aliases (or else take the jump and allow full recursive types).
    */
-  class MatchAlias(alias: Type) extends AliasingBounds(alias) {
-    def derivedAlias(alias: Type)(using Context): AliasingBounds =
-      if (alias eq this.alias) this else MatchAlias(alias)
-  }
+  class MatchAlias(alias: Type) extends AliasingBounds(alias)
 
   object TypeBounds {
     def apply(lo: Type, hi: Type)(using Context): TypeBounds =
