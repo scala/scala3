@@ -4879,7 +4879,7 @@ object Types extends TypeUtils {
     def origin: TypeParamRef = currentOrigin
 
     /** Set origin to new parameter. Called if we merge two conflicting constraints.
-     *  See OrderingConstraint#merge, OrderingConstraint#rename
+     *  See OrderingConstraint#merge
      */
     def setOrigin(p: TypeParamRef) = currentOrigin = p
 
