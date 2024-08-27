@@ -18,6 +18,7 @@ import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.transform.Flatten
 import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.report
 
@@ -169,6 +170,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     /* ---------------- helper utils for generating classes and fields ---------------- */
 
+    private val isNesting = scala.util.Try(ctx.settings.XuncheckedJavaOutputVersion.value.toInt).toOption.map(_ >= 11).getOrElse(false)
+
     def genPlainClass(cd0: TypeDef) = cd0 match {
       case TypeDef(_, impl: Template) =>
       assert(cnode == null, "GenBCode detected nested methods.")
@@ -180,7 +183,15 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       cnode = new ClassNode1()
 
-      initJClass(cnode)
+      initJClass()
+
+      if isNesting then
+        cd0.getAttachment(Flatten.NestHost) match
+          case Some(host) => cnode.visitNestHost(internalName(host))
+          case None =>
+            cd0.getAttachment(Flatten.NestMembers) match
+              case Some(members) => for (m <- members) cnode.visitNestMember(internalName(m))
+              case None =>
 
       val cd = if (isCZStaticModule) {
         // Move statements from the primary constructor following the superclass constructor call to
@@ -303,7 +314,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     /*
      * must-single-thread
      */
-    private def initJClass(jclass: asm.ClassVisitor): Unit = {
+    private def initJClass(): Unit = {
 
       val ps = claszSymbol.info.parents
       val superClass: String = if (ps.isEmpty) ObjectRef.internalName else internalName(ps.head.typeSymbol)

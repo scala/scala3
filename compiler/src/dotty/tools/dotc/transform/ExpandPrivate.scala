@@ -85,8 +85,15 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
       assert(d.symbol.source.exists &&
              ctx.owner.source.exists &&
              isSimilar(d.symbol.source.path, ctx.owner.source.path),
-          s"private ${d.symbol.showLocated} in ${d.symbol.source} accessed from ${ctx.owner.showLocated} in ${ctx.owner.source}")
-      d.ensureNotPrivate.installAfter(thisPhase)
+        s"private ${d.symbol.showLocated} in ${d.symbol.source} accessed from ${ctx.owner.showLocated} in ${ctx.owner.source}")
+      def nestable(sym0: Symbol, sym1: Symbol): Boolean =
+        import Flatten.initialTopLevelClass
+        val top0 = sym0.initialTopLevelClass
+        val top1 = sym1.initialTopLevelClass
+        top0 == top1 || top0.scalacLinkedClass == top1
+      val isNesting = scala.util.Try(ctx.settings.XuncheckedJavaOutputVersion.value.toInt).toOption.map(_ >= 11).getOrElse(false)
+      if (!isNesting || !nestable(ctx.owner, d.symbol))
+        d.ensureNotPrivate.installAfter(thisPhase)
     }
 
   override def transformIdent(tree: Ident)(using Context): Ident = {
