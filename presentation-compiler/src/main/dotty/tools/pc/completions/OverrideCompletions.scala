@@ -530,8 +530,11 @@ object OverrideCompletions:
   object OverrideExtractor:
     def unapply(path: List[Tree])(using Context) =
       path match
-        // class FooImpl extends Foo:
-        //   def x|
+        // abstract class Val:
+        //   def hello: Int = 2
+        //
+        // class Main extends Val:
+        //   def h|
         case (dd: (DefDef | ValDef)) :: (t: Template) :: (td: TypeDef) :: _
             if t.parents.nonEmpty =>
           val completing =
@@ -547,12 +550,13 @@ object OverrideCompletions:
             )
           )
 
-        // class FooImpl extends Foo:
+        // abstract class Val:
+        //   def hello: Int = 2
+        //
+        // class Main extends Val:
         //   ov|
         case (ident: Ident) :: (t: Template) :: (td: TypeDef) :: _
-            if t.parents.nonEmpty && "override".startsWith(
-              ident.name.show.replace(Cursor.value, "")
-            ) =>
+            if t.parents.nonEmpty && "override".startsWith(ident.name.show.replace(Cursor.value, "")) =>
           Some(
             (
               td,
@@ -563,15 +567,13 @@ object OverrideCompletions:
             )
           )
 
+        // abstract class Val:
+        //   def hello: Int = 2
+        //
         // class Main extends Val:
         //    def@@
         case (id: Ident) :: (t: Template) :: (td: TypeDef) :: _
-            if t.parents.nonEmpty && "def".startsWith(
-              id.name.decoded.replace(
-                Cursor.value,
-                "",
-              )
-            ) =>
+            if t.parents.nonEmpty && "def".startsWith(id.name.decoded.replace(Cursor.value, "")) =>
           Some(
             (
               td,
@@ -581,6 +583,10 @@ object OverrideCompletions:
               None,
             )
           )
+
+        // abstract class Val:
+        //   def hello: Int = 2
+        //
         // class Main extends Val:
         //   he@@
         case (id: Ident) :: (t: Template) :: (td: TypeDef) :: _
@@ -595,6 +601,9 @@ object OverrideCompletions:
             )
           )
 
+        // abstract class Val:
+        //   def hello: Int = 2
+        //
         // class Main extends Val:
         //   hello@ // this transforms into this.hello, thus is a Select
         case (sel @ Select(th: This, name)) :: (t: Template) :: (td: TypeDef) :: _

@@ -23,19 +23,19 @@ class CompilerCachingSuite extends BasePCSuite:
 
   val timeout = 5.seconds
 
-  private def checkCompilationCount(params: VirtualFileParams, expected: Int): Unit =
+  private def checkCompilationCount(expected: Int): Unit =
     presentationCompiler match
       case pc: ScalaPresentationCompiler =>
-        val compilations= pc.compilerAccess.withNonInterruptableCompiler(Some(params))(-1, EmptyCancelToken) { driver =>
+        val compilations = pc.compilerAccess.withNonInterruptableCompiler(None)(-1, EmptyCancelToken) { driver =>
           driver.compiler().currentCtx.runId
         }.get(timeout.length, timeout.unit)
         assertEquals(expected, compilations, s"Expected $expected compilations but got $compilations")
       case _ => throw IllegalStateException("Presentation compiler should always be of type of ScalaPresentationCompiler")
 
-  private def getContext(params: VirtualFileParams): Context =
+  private def getContext(): Context =
     presentationCompiler match
       case pc: ScalaPresentationCompiler =>
-        pc.compilerAccess.withNonInterruptableCompiler(Some(params))(null, EmptyCancelToken) { driver =>
+        pc.compilerAccess.withNonInterruptableCompiler(None)(null, EmptyCancelToken) { driver =>
           driver.compiler().currentCtx
         }.get(timeout.length, timeout.unit)
       case _ => throw IllegalStateException("Presentation compiler should always be of type of ScalaPresentationCompiler")
@@ -44,76 +44,73 @@ class CompilerCachingSuite extends BasePCSuite:
   def beforeEach: Unit =
     presentationCompiler.restart()
 
-    // We want to run art least one compilation, so runId points at 3.
+    // We want to run at least one compilation, so runId points at 3.
     // This will ensure that we use the same driver, not recreate fresh one on each call
     val dryRunParams = CompilerOffsetParams(Paths.get("Test.scala").toUri(), "dryRun", 1, EmptyCancelToken)
-    checkCompilationCount(dryRunParams, 2)
-    val freshContext = getContext(dryRunParams)
+    checkCompilationCount(2)
+    val freshContext = getContext()
     presentationCompiler.complete(dryRunParams).get(timeout.length, timeout.unit)
-    checkCompilationCount(dryRunParams, 3)
-    val dryRunContext = getContext(dryRunParams)
+    checkCompilationCount(3)
+    val dryRunContext = getContext()
     assert(freshContext != dryRunContext)
 
 
   @Test
   def `cursor-compilation-does-not-corrupt-cache`: Unit =
+    val contextPreCompilation = getContext()
+
+    val fakeParams = CompilerOffsetParams(Paths.get("Test.scala").toUri(), "def hello = ne", 14, EmptyCancelToken)
+    presentationCompiler.complete(fakeParams).get(timeout.length, timeout.unit)
+    val contextPostFirst = getContext()
+    assert(contextPreCompilation != contextPostFirst)
+    checkCompilationCount(4)
 
     val fakeParamsCursor = CompilerOffsetParams(Paths.get("Test.scala").toUri(), "def hello = new", 15, EmptyCancelToken)
-    val fakeParams = CompilerOffsetParams(Paths.get("Test.scala").toUri(), "def hello = ne", 14, EmptyCancelToken)
-
-    val contextPreCompilation = getContext(fakeParams)
-
-    presentationCompiler.complete(fakeParams).get(timeout.length, timeout.unit)
-    val contextPostFirst = getContext(fakeParams)
-    assert(contextPreCompilation != contextPostFirst)
-    checkCompilationCount(fakeParams, 4)
-
     presentationCompiler.complete(fakeParamsCursor).get(timeout.length, timeout.unit)
-    val contextPostCursor = getContext(fakeParamsCursor)
+    val contextPostCursor = getContext()
     assert(contextPreCompilation != contextPostCursor)
     assert(contextPostFirst == contextPostCursor)
-    checkCompilationCount(fakeParamsCursor, 4)
+    checkCompilationCount(4)
 
     presentationCompiler.complete(fakeParams).get(timeout.length, timeout.unit)
-    val contextPostSecond = getContext(fakeParams)
+    val contextPostSecond = getContext()
     assert(contextPreCompilation != contextPostSecond)
     assert(contextPostFirst == contextPostCursor)
     assert(contextPostCursor == contextPostSecond)
-    checkCompilationCount(fakeParamsCursor, 4)
+    checkCompilationCount(4)
 
   @Test
   def `compilation-for-same-snippet-is-cached`: Unit =
+    val contextPreCompilation = getContext()
+
     val fakeParams = CompilerOffsetParams(Paths.get("Test.scala").toUri(), "def hello = ne", 14, EmptyCancelToken)
-
-    val contextPreCompilation = getContext(fakeParams)
-
     presentationCompiler.complete(fakeParams).get(timeout.length, timeout.unit)
-    val contextPostFirst = getContext(fakeParams)
+    val contextPostFirst = getContext()
     assert(contextPreCompilation != contextPostFirst)
-    checkCompilationCount(fakeParams, 4)
+    checkCompilationCount(4)
 
     presentationCompiler.complete(fakeParams).get(timeout.length, timeout.unit)
-    val contextPostSecond = getContext(fakeParams)
+    val contextPostSecond = getContext()
     assert(contextPreCompilation != contextPostFirst)
     assert(contextPostSecond == contextPostFirst)
-    checkCompilationCount(fakeParams, 4)
+    checkCompilationCount(4)
 
   @Test
   def `compilation-for-different-snippet-is-not-cached`: Unit =
 
+
+    checkCompilationCount(3)
     val fakeParams = CompilerOffsetParams(Paths.get("Test.scala").toUri(), "def hello = prin", 16, EmptyCancelToken)
-    val fakeParams2 = CompilerOffsetParams(Paths.get("Test2.scala").toUri(), "def hello = prin", 16, EmptyCancelToken)
-    val fakeParams3 = CompilerOffsetParams(Paths.get("Test2.scala").toUri(), "def hello = print", 17, EmptyCancelToken)
-
-    checkCompilationCount(fakeParams, 3)
     presentationCompiler.complete(fakeParams).get(timeout.length, timeout.unit)
-    checkCompilationCount(fakeParams, 4)
+    checkCompilationCount(4)
 
+    val fakeParams2 = CompilerOffsetParams(Paths.get("Test2.scala").toUri(), "def hello = prin", 16, EmptyCancelToken)
     presentationCompiler.complete(fakeParams2).get(timeout.length, timeout.unit)
-    checkCompilationCount(fakeParams2, 5)
+    checkCompilationCount(5)
 
+    val fakeParams3 = CompilerOffsetParams(Paths.get("Test2.scala").toUri(), "def hello = print", 17, EmptyCancelToken)
     presentationCompiler.complete(fakeParams3).get(timeout.length, timeout.unit)
-    checkCompilationCount(fakeParams3, 6)
+    checkCompilationCount(6)
 
 
   private val testFunctions: List[OffsetParams => CompletableFuture[_]] = List(
@@ -137,14 +134,14 @@ class CompilerCachingSuite extends BasePCSuite:
   @Test
   def `different-api-calls-reuse-cache`: Unit =
     val fakeParams = CompilerOffsetParams(Paths.get("Test.scala").toUri(), "def hello = ne", 13, EmptyCancelToken)
-
     presentationCompiler.complete(fakeParams).get(timeout.length, timeout.unit)
-    val contextBefore = getContext(fakeParams)
+
+    val contextBefore = getContext()
 
     val differentContexts = testFunctions.map: f =>
       f(fakeParams).get(timeout.length, timeout.unit)
-      checkCompilationCount(fakeParams, 4)
-      getContext(fakeParams)
+      checkCompilationCount(4)
+      getContext()
     .toSet
 
     assert(differentContexts == Set(contextBefore))
@@ -155,12 +152,12 @@ class CompilerCachingSuite extends BasePCSuite:
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val fakeParams = CompilerOffsetParams(Paths.get("Test.scala").toUri(), "def hello = ne", 13, EmptyCancelToken)
-
     presentationCompiler.complete(fakeParams).get(timeout.length, timeout.unit)
-    val contextBefore = getContext(fakeParams)
+
+    val contextBefore = getContext()
 
     val futures = testFunctions.map: f =>
-      f(fakeParams).asScala.map(_ => getContext(fakeParams))
+      f(fakeParams).asScala.map(_ => getContext())
 
     val res = Await.result(Future.sequence(futures), timeout).toSet
     assert(res == Set(contextBefore))

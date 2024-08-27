@@ -170,7 +170,7 @@ object NamedArgCompletions:
                   .zipWithIndex
                   .forall { case (pair, index) =>
                     FuzzyArgMatcher(m.tparams)
-                      .doMatch(allArgsProvided = index != 0)
+                      .doMatch(allArgsProvided = index != 0, ident)
                       .tupled(pair)
                   } =>
             m
@@ -385,12 +385,13 @@ class FuzzyArgMatcher(tparams: List[Symbols.Symbol])(using Context):
    * We check the args types not the result type.
    */
   def doMatch(
-      allArgsProvided: Boolean
+      allArgsProvided: Boolean,
+      ident: Option[Ident]
   )(expectedArgs: List[Symbols.Symbol], actualArgs: List[Tree]) =
     (expectedArgs.length == actualArgs.length ||
       (!allArgsProvided && expectedArgs.length >= actualArgs.length)) &&
       actualArgs.zipWithIndex.forall {
-        case (Ident(name), _) => true
+        case (arg: Ident, _) if ident.contains(arg) => true
         case (NamedArg(name, arg), _) =>
           expectedArgs.exists { expected =>
             expected.name == name && (!arg.hasType || arg.typeOpt.unfold

@@ -38,6 +38,11 @@ import org.eclipse.lsp4j.Range as LspRange
 import org.eclipse.lsp4j.TextEdit
 import scala.meta.pc.CompletionItemPriority
 
+object CompletionProvider:
+  val allKeywords =
+    val softKeywords = Tokens.softModifierNames + nme.as + nme.derives + nme.extension + nme.throws + nme.using
+    Tokens.keywords.toList.map(Tokens.tokenString) ++ softKeywords.map(_.toString)
+
 class CompletionProvider(
     search: SymbolSearch,
     cachingDriver: InteractiveDriver,
@@ -76,7 +81,20 @@ class CompletionProvider(
 
         val tpdPath = tpdPath0 match
           case Select(qual, name) :: tail
-            // If for any reason we end up in param after lifting, we want to inline the synthetic val
+            /** If for any reason we end up in param after lifting, we want to inline the synthetic val:
+             *  List(1).iterator.sliding@@ will be transformed into:
+             *
+             *  1| val $1$: Iterator[Int] = List.apply[Int]([1 : Int]*).iterator
+             *  2| {
+             *  3|   def $anonfun(size: Int, step: Int): $1$.GroupedIterator[Int] =
+             *  4|     $1$.sliding[Int](size, step)
+             *  5|   closure($anonfun)
+             *  6| }:((Int, Int) => Iterator[Int]#GroupedIterator[Int])
+             *
+             *  With completion being run at line 4 at @@:
+             *  4|     $1$.sliding@@[Int](size, step)
+             *
+             */
             if qual.symbol.is(Flags.Synthetic) && qual.symbol.name.isInstanceOf[DerivedName] =>
               qual.symbol.defTree match
                 case valdef: ValDef => Select(valdef.rhs, name) :: tail
@@ -138,10 +156,6 @@ class CompletionProvider(
     )
   end completions
 
-  val allKeywords =
-    val softKeywords = Tokens.softModifierNames + nme.as + nme.derives + nme.extension + nme.throws + nme.using
-    Tokens.keywords.toList.map(Tokens.tokenString) ++ softKeywords.map(_.toString)
-
   /**
    * In case if completion comes from empty line like:
    * {{{
@@ -159,8 +173,8 @@ class CompletionProvider(
     val offset = params.offset().nn
     val query = Completion.naiveCompletionPrefix(text, offset)
 
-    if offset > 0 && text.charAt(offset - 1).isUnicodeIdentifierPart && !allKeywords.contains(query) then
-      false -> text
+    if offset > 0 && text.charAt(offset - 1).isUnicodeIdentifierPart
+      && !CompletionProvider.allKeywords.contains(query) then false -> text
     else
       val isStartMultilineComment =
 

@@ -66,7 +66,8 @@ final class AutoImportsProvider(
     val results = symbols.result.filter(isExactMatch(_, name))
 
     if results.nonEmpty then
-      val correctedPos = CompletionPos.infer(pos, params, path, false).toSourcePosition
+      val correctedPos =
+        CompletionPos.infer(pos, params, path, wasCursorApplied = false).toSourcePosition
       val mkEdit =
         path match
           // if we are in import section just specify full name
