@@ -41,14 +41,14 @@ Names (276 bytes, starting from <elided base index>):
     34: Comments
     35: Attributes
 
-Trees (94 bytes, starting from <elided base index>):
-     0: PACKAGE(92)
+Trees (98 bytes, starting from <elided base index>):
+     0: PACKAGE(96)
      2:   TERMREFpkg 1 [<empty>]
      4:   IMPORT(4)
      6:     TERMREFpkg 4 [scala[Qualified . reflect]]
      8:     IMPORTED 5 [ClassTag]
-    10:   TYPEDEF(82) 6 [Foo]
-    13:     TEMPLATE(61)
+    10:   TYPEDEF(86) 6 [Foo]
+    13:     TEMPLATE(65)
     15:       APPLY(10)
     17:         SELECTin(8) 13 [<init>[Signed Signature(List(),java.lang.Object) @<init>]]
     20:           NEW
@@ -60,7 +60,7 @@ Trees (94 bytes, starting from <elided base index>):
     31:         TYPEREF 14 [Unit]
     33:           TERMREFpkg 2 [scala]
     35:         STABLE
-    36:       DEFDEF(38) 15 [mkArray]
+    36:       DEFDEF(42) 15 [mkArray]
     39:         TYPEPARAM(11) 16 [T]
     42:           TYPEBOUNDStpt(8)
     44:             TYPEREF 17 [Nothing]
@@ -75,47 +75,49 @@ Trees (94 bytes, starting from <elided base index>):
     63:             IDENTtpt 16 [T]
     65:               TYPEREFdirect 39
     67:           IMPLICIT
-    68:         SHAREDtype 44
-    70:         TERMREF 21 [???]
-    72:           TERMREF 22 [Predef]
-    74:             SHAREDtype 33
-    76:     ANNOTATION(16)
-    78:       TYPEREF 23 [SourceFile]
-    80:         TERMREFpkg 27 [scala[Qualified . annotation][Qualified . internal]]
-    82:       APPLY(10)
-    84:         SELECTin(6) 31 [<init>[Signed Signature(List(java.lang.String),scala.annotation.internal.SourceFile) @<init>]]
-    87:           NEW
-    88:             SHAREDtype 78
-    90:           SHAREDtype 78
-    92:         STRINGconst 32 [<elided source file name>]
-    94:
+    68:         IDENTtpt 17 [Nothing]
+    70:           TYPEREF 17 [Nothing]
+    72:             TERMREFpkg 2 [scala]
+    74:         TERMREF 21 [???]
+    76:           TERMREF 22 [Predef]
+    78:             SHAREDtype 33
+    80:     ANNOTATION(16)
+    82:       TYPEREF 23 [SourceFile]
+    84:         TERMREFpkg 27 [scala[Qualified . annotation][Qualified . internal]]
+    86:       APPLY(10)
+    88:         SELECTin(6) 31 [<init>[Signed Signature(List(java.lang.String),scala.annotation.internal.SourceFile) @<init>]]
+    91:           NEW
+    92:             SHAREDtype 82
+    94:           SHAREDtype 82
+    96:         STRINGconst 32 [<elided source file name>]
+    98:
 
-Positions (72 bytes, starting from <elided base index>):
+Positions (73 bytes, starting from <elided base index>):
   lines: 7
   line sizes:
-     38, 0, 23, 0, 10, 32, 0
+     38, 0, 23, 0, 10, 41, 0
   positions:
-     0: 40 .. 108
+     0: 40 .. 117
      4: 40 .. 63
      6: 47 .. 54
      8: 55 .. 63
-    10: 65 .. 108
-    13: 78 .. 108
+    10: 65 .. 117
+    13: 78 .. 117
     21: 71 .. 71
     27: 78 .. 78
     31: 78 .. 78
-    36: 78 .. 108
+    36: 78 .. 117
     39: 90 .. 101
     44: 93 .. 93
     48: 93 .. 93
     52: 93 .. 101
     57: 93 .. 101
     63: 93 .. 101
-    68: 102 .. 102
-    70: 105 .. 108
-    82: 65 .. 108
-    88: 65 .. 65
+    68: 104 .. 111
+    74: 114 .. 117
+    86: 65 .. 117
     92: 65 .. 65
+    96: 65 .. 65
 
   source paths:
      0: 32 [<elided source file name>]
