@@ -354,6 +354,15 @@ object CompletionValue:
       description
     override def insertMode: Option[InsertTextMode] = Some(InsertTextMode.AsIs)
 
+  case class SingletonValue(label: String, info: Type, override val range: Option[Range])
+    extends CompletionValue:
+      override def insertText: Option[String] = Some(label)
+      override def labelWithDescription(printer: ShortenedTypePrinter)(using Context): String =
+        s"$label: ${printer.tpe(info)}"
+
+      override def completionItemKind(using Context): CompletionItemKind =
+        CompletionItemKind.Constant
+
   def namedArg(label: String, sym: ParamSymbol)(using
       Context
   ): CompletionValue =
