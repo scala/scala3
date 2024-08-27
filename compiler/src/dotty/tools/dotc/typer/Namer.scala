@@ -848,7 +848,7 @@ class Namer { typer: Typer =>
       else
         try
           completeInCreationContext(denot)
-          if (denot.isCompleted) registerIfChild(denot)
+          if (denot.isCompleted) registerIfChildInCreationContext(denot)
         catch
           case ex: CompilationUnit.SuspendException =>
             val completer = SuspendCompleter()
@@ -937,10 +937,12 @@ class Namer { typer: Typer =>
         denot.markAbsent()
     end invalidateIfClashingSynthetic
 
-    /** If completed symbol is an enum value or a named class, register it as a child
+    /** Intentionally left without `using Context` parameter.
+     *  This action should be performed in the context of where the completer was created.
+     *  If completed symbol is an enum value or a named class, register it as a child
      *  in all direct parent classes which are sealed.
      */
-    def registerIfChild(denot: SymDenotation)(using Context): Unit = {
+    def registerIfChildInCreationContext(denot: SymDenotation): Unit = {
       val sym = denot.symbol
 
       def register(child: Symbol, parentCls: ClassSymbol) = {
@@ -964,7 +966,7 @@ class Namer { typer: Typer =>
       end if
     }
 
-    /** Intentionally left without `implicit ctx` parameter. We need
+    /** Intentionally left without `using Context` parameter. We need
      *  to pick up the context at the point where the completer was created.
      */
     def completeInCreationContext(denot: SymDenotation): Unit = {
