@@ -840,7 +840,7 @@ object SpaceEngine {
 
     if uncovered.nonEmpty then
       val deduped = dedup(uncovered)
-      report.warning(PatternMatchExhaustivity(deduped.map(display), m), m.selector)
+      report.warning(PatternMatchExhaustivity(deduped, m), m.selector)
   }
 
   private def reachabilityCheckable(sel: Tree)(using Context): Boolean =
@@ -903,7 +903,7 @@ object SpaceEngine {
   def checkMatch(m: Match)(using Context): Unit =
     checkMatchExhaustivityOnly(m)
     if reachabilityCheckable(m.selector) then checkReachability(m)
-  
+
   def checkMatchExhaustivityOnly(m: Match)(using Context): Unit =
     if exhaustivityCheckable(m.selector) then checkExhaustivity(m)
 }
