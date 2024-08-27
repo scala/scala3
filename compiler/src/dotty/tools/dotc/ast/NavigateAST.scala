@@ -98,7 +98,7 @@ object NavigateAST {
     def isBetterFit(currentBest: List[Positioned], candidate: List[Positioned]): Boolean =
       if currentBest.isEmpty && candidate.nonEmpty then true
       else if currentBest.nonEmpty && candidate.nonEmpty then
-        val bestSpan= currentBest.head.span
+        val bestSpan = currentBest.head.span
         val candidateSpan = candidate.head.span
 
         bestSpan != candidateSpan &&
