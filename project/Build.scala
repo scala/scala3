@@ -9,6 +9,7 @@ import sbt.*
 import complete.DefaultParsers._
 import pl.project13.scala.sbt.JmhPlugin
 import pl.project13.scala.sbt.JmhPlugin.JmhKeys.Jmh
+import com.gradle.develocity.agent.sbt.DevelocityPlugin.autoImport._
 import com.typesafe.sbt.packager.Keys._
 import com.typesafe.sbt.packager.MappingsHelper.directory
 import com.typesafe.sbt.packager.universal.UniversalPlugin
@@ -268,6 +269,31 @@ object Build {
 
     // enable verbose exception messages for JUnit
     (Test / testOptions) += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "-s"),
+
+    // Configuration to publish build scans to develocity.scala-lang.org
+    develocityConfiguration := {
+      val isInsideCI = insideCI.value
+      val config = develocityConfiguration.value
+      val buildScan = config.buildScan
+      val buildCache = config.buildCache
+      config
+        .withProjectId(ProjectId("scala3"))
+        .withServer(config.server.withUrl(Some(url("https://develocity.scala-lang.org"))))
+        .withBuildScan(
+          buildScan
+            .withPublishing(Publishing.onlyIf(_.authenticated))
+            .withBackgroundUpload(!isInsideCI)
+            .tag(if (isInsideCI) "CI" else "Local")
+            .withLinks(buildScan.links ++ GithubEnv.develocityLinks)
+            .withValues(buildScan.values ++ GithubEnv.develocityValues)
+            .withObfuscation(buildScan.obfuscation.withIpAddresses(_.map(_ => "0.0.0.0")))
+        )
+        .withBuildCache(
+          buildCache
+            .withLocal(buildCache.local.withEnabled(false))
+            .withRemote(buildCache.remote.withEnabled(false))
+        )
+    }
   )
 
   // Settings shared globally (scoped in Global). Used in build.sbt
@@ -888,6 +914,10 @@ object Build {
           sjsSources
         } (Set(scalaJSIRSourcesJar)).toSeq
       }.taskValue,
+
+      // Develocity's Build Cache does not work with our compilation tests
+      // at the moment: it does not take compilation files as inputs.
+      Test / develocityBuildCacheClient := None,
   )
 
   def insertClasspathInArgs(args: List[String], cp: String): List[String] = {
