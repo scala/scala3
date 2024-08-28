@@ -1017,6 +1017,12 @@ jobs:
 
   build-sdk-package:
     uses: ./.github/workflows/build-sdk.yml
+    if:
+      (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]')) ||
+      (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3') ||
+      (github.event_name == 'schedule' && github.repository == 'scala/scala3') ||
+      github.event_name == 'push' ||
+      github.event_name == 'merge_group'
     with:
       java-version: 8
 
