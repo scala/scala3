@@ -822,8 +822,11 @@ class Namer { typer: Typer =>
         if (sym.is(Module)) moduleValSig(sym)
         else valOrDefDefSig(original, sym, Nil, identity)(using localContext(sym).setNewScope)
       case original: DefDef =>
-        val typer1 = ctx.typer.newLikeThis(ctx.nestingLevel + 1)
-        nestedTyper(sym) = typer1
+        // For the primary constructor DefDef, it is:
+        // * indexed as a part of completing the class, with indexConstructor; and
+        // * typed ahead when completing the constructor
+        // So we need to make sure to reuse the same local/nested typer.
+        val typer1 = nestedTyper.getOrElseUpdate(sym, ctx.typer.newLikeThis(ctx.nestingLevel + 1))
         typer1.defDefSig(original, sym, this)(using localContext(sym).setTyper(typer1))
       case imp: Import =>
         try
@@ -832,6 +835,12 @@ class Namer { typer: Typer =>
         catch case ex: CyclicReference =>
           typr.println(s"error while completing ${imp.expr}")
           throw ex
+
+    /** Context setup for indexing the constructor. */
+    def indexConstructor(constr: DefDef, sym: Symbol): Unit =
+      val typer1 = ctx.typer.newLikeThis(ctx.nestingLevel + 1)
+      nestedTyper(sym) = typer1
+      typer1.indexConstructor(constr, sym)(using localContext(sym).setTyper(typer1))
 
     final override def complete(denot: SymDenotation)(using Context): Unit = {
       if (Config.showCompletions && ctx.typerState != creationContext.typerState) {
@@ -988,7 +997,7 @@ class Namer { typer: Typer =>
 
     /** If completion of the owner of the to be completed symbol has not yet started,
      *  complete the owner first and check again. This prevents cyclic references
-     *  where we need to copmplete a type parameter that has an owner that is not
+     *  where we need to complete a type parameter that has an owner that is not
      *  yet completed. Test case is pos/i10967.scala.
      */
     override def needsCompletion(symd: SymDenotation)(using Context): Boolean =
@@ -996,7 +1005,11 @@ class Namer { typer: Typer =>
       !owner.exists
       || owner.is(Touched)
       || {
-        owner.ensureCompleted()
+        // Only complete the owner if it's a type (eg. the class that owns a type parameter)
+        // This avoids completing primary constructor methods while completing the type of one of its type parameters
+        // See i15177.scala.
+        if owner.isType then
+          owner.ensureCompleted()
         !symd.isCompleted
       }
 
@@ -1521,12 +1534,9 @@ class Namer { typer: Typer =>
       index(constr)
       index(rest)(using localCtx)
 
-      symbolOfTree(constr).info.stripPoly match // Completes constr symbol as a side effect
-        case mt: MethodType if cls.is(Case) && mt.isParamDependent =>
-          // See issue #8073 for background
-          report.error(
-              em"""Implementation restriction: case classes cannot have dependencies between parameters""",
-              cls.srcPos)
+      val constrSym = symbolOfTree(constr)
+      constrSym.infoOrCompleter match
+        case completer: Completer => completer.indexConstructor(constr, constrSym)
         case _ =>
 
       tempInfo = denot.asClass.classInfo.integrateOpaqueMembers.asInstanceOf[TempClassInfo]
@@ -1757,6 +1767,17 @@ class Namer { typer: Typer =>
       val sym = tree.symbol
       if sym.isConstructor then sym.owner else sym
 
+  /** Index the primary constructor of a class, as a part of completing that class.
+   *  This allows the rest of the constructor completion to be deferred,
+   *  which avoids non-cyclic classes failing, e.g. pos/i15177.
+   */
+  def indexConstructor(constr: DefDef, sym: Symbol)(using Context): Unit =
+    index(constr.leadingTypeParams)
+    sym.owner.typeParams.foreach(_.ensureCompleted())
+    completeTrailingParamss(constr, sym, indexingCtor = true)
+    if Feature.enabled(modularity) then
+      constr.termParamss.foreach(_.foreach(setTracked))
+
   /** The signature of a module valdef.
    *  This will compute the corresponding module class TypeRef immediately
    *  without going through the defined type of the ValDef. This is necessary
@@ -1855,31 +1876,6 @@ class Namer { typer: Typer =>
     // Beware: ddef.name need not match sym.name if sym was freshened!
     val isConstructor = sym.name == nme.CONSTRUCTOR
 
-    // A map from context-bounded type parameters to associated evidence parameter names
-    val witnessNamesOfParam = mutable.Map[TypeDef, List[TermName]]()
-    if !ddef.name.is(DefaultGetterName) && !sym.is(Synthetic) then
-      for params <- ddef.paramss; case tdef: TypeDef <- params do
-        for case WitnessNamesAnnot(ws) <- tdef.mods.annotations do
-          witnessNamesOfParam(tdef) = ws
-
-    /** Is each name in `wnames` defined somewhere in the longest prefix of all `params`
-     *  that have been typed ahead (i.e. that carry the TypedAhead attachment)?
-     */
-    def allParamsSeen(wnames: List[TermName], params: List[MemberDef]) =
-      (wnames.toSet[Name] -- params.takeWhile(_.hasAttachment(TypedAhead)).map(_.name)).isEmpty
-
-    /** Enter and typecheck parameter list.
-     *  Once all witness parameters for a context bound are seen, create a
-     *  context bound companion for it.
-     */
-    def completeParams(params: List[MemberDef])(using Context): Unit =
-      index(params)
-      for param <- params do
-        typedAheadExpr(param)
-        for (tdef, wnames) <- witnessNamesOfParam do
-          if wnames.contains(param.name) && allParamsSeen(wnames, params) then
-            addContextBoundCompanionFor(symbolOfTree(tdef), wnames, params.map(symbolOfTree))
-
     // The following 3 lines replace what was previously just completeParams(tparams).
     // But that can cause bad bounds being computed, as witnessed by
     // tests/pos/paramcycle.scala. The problematic sequence is this:
@@ -1903,38 +1899,15 @@ class Namer { typer: Typer =>
     //   3. Info of CP is computed (to be copied to DP).
     //   4. CP is completed.
     //   5. Info of CP is copied to DP and DP is completed.
-    index(ddef.leadingTypeParams)
-    if (isConstructor) sym.owner.typeParams.foreach(_.ensureCompleted())
+    if !sym.isPrimaryConstructor then
+      index(ddef.leadingTypeParams)
     val completedTypeParams =
       for tparam <- ddef.leadingTypeParams yield typedAheadExpr(tparam).symbol
     if completedTypeParams.forall(_.isType) then
       completer.setCompletedTypeParams(completedTypeParams.asInstanceOf[List[TypeSymbol]])
-    ddef.trailingParamss.foreach(completeParams)
+    completeTrailingParamss(ddef, sym, indexingCtor = false)
     val paramSymss = normalizeIfConstructor(ddef.paramss.nestedMap(symbolOfTree), isConstructor)
     sym.setParamss(paramSymss)
-
-    /** Under x.modularity, we add `tracked` to context bound witnesses
-     *  that have abstract type members
-     */
-    def needsTracked(sym: Symbol, param: ValDef)(using Context) =
-      !sym.is(Tracked)
-      && param.hasAttachment(ContextBoundParam)
-      && sym.info.memberNames(abstractTypeNameFilter).nonEmpty
-
-    /** Under x.modularity, set every context bound evidence parameter of a class to be tracked,
-     *  provided it has a type that has an abstract type member. Reset private and local flags
-     *  so that the parameter becomes a `val`.
-     */
-    def setTracked(param: ValDef): Unit =
-      val sym = symbolOfTree(param)
-      sym.maybeOwner.maybeOwner.infoOrCompleter match
-        case info: TempClassInfo if needsTracked(sym, param) =>
-          typr.println(i"set tracked $param, $sym: ${sym.info} containing ${sym.info.memberNames(abstractTypeNameFilter).toList}")
-          for acc <- info.decls.lookupAll(sym.name) if acc.is(ParamAccessor) do
-            acc.resetFlag(PrivateLocal)
-            acc.setFlag(Tracked)
-            sym.setFlag(Tracked)
-        case _ =>
 
     def wrapMethType(restpe: Type): Type =
       instantiateDependent(restpe, paramSymss)
@@ -1944,11 +1917,11 @@ class Namer { typer: Typer =>
       wrapMethType(addParamRefinements(restpe, paramSymss))
 
     if isConstructor then
-      if sym.isPrimaryConstructor && Feature.enabled(modularity) then
-        ddef.termParamss.foreach(_.foreach(setTracked))
       // set result type tree to unit, but take the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)
-      wrapMethType(effectiveResultType(sym, paramSymss))
+      val mt = wrapMethType(effectiveResultType(sym, paramSymss))
+      if sym.isPrimaryConstructor then checkCaseClassParamDependencies(mt, sym.owner)
+      mt
     else if sym.isAllOf(Given | Method) && Feature.enabled(modularity) then
       // set every context bound evidence parameter of a given companion method
       // to be tracked, provided it has a type that has an abstract type member.
@@ -1960,6 +1933,75 @@ class Namer { typer: Typer =>
     else
       valOrDefDefSig(ddef, sym, paramSymss, wrapMethType)
   end defDefSig
+
+  /** Complete the trailing parameters of a DefDef,
+   *  as a part of indexing the primary constructor or
+   *  as a part of completing a DefDef, including the primary constructor.
+   */
+  def completeTrailingParamss(ddef: DefDef, sym: Symbol, indexingCtor: Boolean)(using Context): Unit =
+    // A map from context-bounded type parameters to associated evidence parameter names
+    val witnessNamesOfParam = mutable.Map[TypeDef, List[TermName]]()
+    if !ddef.name.is(DefaultGetterName) && !sym.is(Synthetic) && (indexingCtor || !sym.isPrimaryConstructor) then
+      for params <- ddef.paramss; case tdef: TypeDef <- params do
+        for case WitnessNamesAnnot(ws) <- tdef.mods.annotations do
+          witnessNamesOfParam(tdef) = ws
+
+    /** Is each name in `wnames` defined somewhere in the previous parameters? */
+    def allParamsSeen(wnames: List[TermName], prevParams: Set[Name]) =
+      (wnames.toSet[Name] -- prevParams).isEmpty
+
+    /** Enter and typecheck parameter list.
+     *  Once all witness parameters for a context bound are seen, create a
+     *  context bound companion for it.
+     */
+    def completeParams(params: List[MemberDef])(using Context): Unit =
+      if indexingCtor || !sym.isPrimaryConstructor then
+        index(params)
+      var prevParams = Set.empty[Name]
+      for param <- params do
+        if !indexingCtor then
+          typedAheadExpr(param)
+
+        prevParams += param.name
+        for (tdef, wnames) <- witnessNamesOfParam do
+          if wnames.contains(param.name) && allParamsSeen(wnames, prevParams) then
+            addContextBoundCompanionFor(symbolOfTree(tdef), wnames, params.map(symbolOfTree))
+
+    ddef.trailingParamss.foreach(completeParams)
+  end completeTrailingParamss
+
+  /** Checks an implementation restriction on case classes. */
+  def checkCaseClassParamDependencies(mt: Type, cls: Symbol)(using Context): Unit =
+    mt.stripPoly match
+      case mt: MethodType if cls.is(Case) && mt.isParamDependent =>
+        // See issue #8073 for background
+        report.error(
+            em"""Implementation restriction: case classes cannot have dependencies between parameters""",
+            cls.srcPos)
+      case _ =>
+
+  /** Under x.modularity, we add `tracked` to context bound witnesses
+   *  that have abstract type members
+   */
+  def needsTracked(sym: Symbol, param: ValDef)(using Context) =
+    !sym.is(Tracked)
+    && param.hasAttachment(ContextBoundParam)
+    && sym.info.memberNames(abstractTypeNameFilter).nonEmpty
+
+  /** Under x.modularity, set every context bound evidence parameter of a class to be tracked,
+   *  provided it has a type that has an abstract type member. Reset private and local flags
+   *  so that the parameter becomes a `val`.
+   */
+  def setTracked(param: ValDef)(using Context): Unit =
+    val sym = symbolOfTree(param)
+    sym.maybeOwner.maybeOwner.infoOrCompleter match
+      case info: ClassInfo if needsTracked(sym, param) =>
+        typr.println(i"set tracked $param, $sym: ${sym.info} containing ${sym.info.memberNames(abstractTypeNameFilter).toList}")
+        for acc <- info.decls.lookupAll(sym.name) if acc.is(ParamAccessor) do
+          acc.resetFlag(PrivateLocal)
+          acc.setFlag(Tracked)
+          sym.setFlag(Tracked)
+      case _ =>
 
   def inferredResultType(
       mdef: ValOrDefDef,
