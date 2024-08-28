@@ -78,7 +78,7 @@ class CrossVersionChecks extends MiniPhase:
     do
       val msg = annot.argumentConstantString(0).map(msg => s": $msg").getOrElse("")
       val since = annot.argumentConstantString(1).map(version => s" (since: $version)").getOrElse("")
-      report.deprecationWarning(em"inheritance from $psym is deprecated$since$msg", parent.srcPos)
+      report.deprecationWarning(em"inheritance from $psym is deprecated$since$msg", parent.srcPos, origin=psym.showFullName)
   }
 
   override def transformValDef(tree: ValDef)(using Context): ValDef =
@@ -171,7 +171,7 @@ object CrossVersionChecks:
     def maybeWarn(annotee: Symbol, annot: Annotation) = if !skipWarning(sym) then
       val message = annot.argumentConstantString(0).filter(!_.isEmpty).map(": " + _).getOrElse("")
       val since = annot.argumentConstantString(1).filter(!_.isEmpty).map(" since " + _).getOrElse("")
-      report.deprecationWarning(em"${annotee.showLocated} is deprecated${since}${message}", pos)
+      report.deprecationWarning(em"${annotee.showLocated} is deprecated${since}${message}", pos, origin=annotee.showFullName)
     sym.getAnnotation(defn.DeprecatedAnnot) match
       case Some(annot) => maybeWarn(sym, annot)
       case _ =>

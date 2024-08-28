@@ -233,7 +233,7 @@ private sealed trait WarningSettings:
     "patterns",
     default = List(),
     descr =
-      s"""Configure compiler warnings.
+    raw"""Configure compiler warnings.
          |Syntax: -Wconf:<filters>:<action>,<filters>:<action>,...
          |multiple <filters> are combined with &, i.e., <filter>&...&<filter>
          |
@@ -254,6 +254,9 @@ private sealed trait WarningSettings:
          |  - Source location: src=regex
          |    The regex is evaluated against the full source path.
          |
+         |  - Origin of warning: origin=regex
+         |    The regex must match the full name (`package.Class.method`) of the deprecated entity.
+         |
          |In verbose warning mode the compiler prints matching filters for warnings.
          |Verbose mode can be enabled globally using `-Wconf:any:verbose`, or locally
          |using the @nowarn annotation (example: `@nowarn("v") def test = try 1`).
@@ -273,6 +276,7 @@ private sealed trait WarningSettings:
          |Examples:
          |  - change every warning into an error: -Wconf:any:error
          |  - silence deprecations: -Wconf:cat=deprecation:s
+         |  - silence a deprecation: -Wconf:origin=java\.lang\.Thread\.getId:s
          |  - silence warnings in src_managed directory: -Wconf:src=src_managed/.*:s
          |
          |Note: on the command-line you might need to quote configurations containing `*` or `&`
