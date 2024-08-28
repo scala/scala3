@@ -31,4 +31,15 @@ def test4: Int =
   catch
     case npe: NullPointerException => x = ""
     case _ => x = ""
-  x.length // ok
+  x.length // error
+  // Although the catch block here is exhaustive,
+  // it is possible that the exception is thrown and not caught.
+  // Therefore, the code after the try block can only rely on the retracted info.
+
+def test5: Int =
+  var x: String | Null = null
+  try
+    x = ""
+    throw new Exception()
+  catch
+    case npe: NullPointerException => val i: Int = x.length // error
