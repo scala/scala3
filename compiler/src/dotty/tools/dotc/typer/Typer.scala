@@ -2210,7 +2210,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       }
       val pat1 = indexPattern(tree).transform(pat)
       val guard1 = typedExpr(tree.guard, defn.BooleanType)
-      var body1 = ensureNoLocalRefs(typedExpr(tree.body, pt1), pt1, ctx.scope.toList)
+      var body1 = ensureNoLocalRefs(
+        typedExpr(tree.body, pt1)(using ctx.addNotNullInfo(guard1.notNullInfoIf(true))),
+        pt1, ctx.scope.toList)
       if ctx.gadt.isNarrowing then
         // Store GADT constraint to later retrieve it (in PostTyper, for now).
         // GADT constraints are necessary to correctly check bounds of type app,
@@ -2221,7 +2223,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if pt1.isValueType then // insert a cast if body does not conform to expected type if we disregard gadt bounds
         body1 = body1.ensureConforms(pt1)(using originalCtx)
       val nni = pat1.notNullInfo
-        .seq(guard1.notNullInfoIf(false).alt(guard1.notNullInfoIf(true)))
+        .seq(guard1.notNullInfoIf(true))
         .seq(body1.notNullInfo)
       assignType(cpy.CaseDef(tree)(pat1, guard1, body1), pat1, body1).withNotNullInfo(nni)
     }
@@ -2343,7 +2345,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val cases2 = cases2x.asInstanceOf[List[CaseDef]]
 
     var nni = expr2.notNullInfo.retractedInfo
-    if cases2.nonEmpty then nni = nni.seq(cases2.map(_.notNullInfo).reduce(_.alt(_)))
+    if cases2.nonEmpty then nni = nni.seq(cases2.map(_.notNullInfo.retractedInfo).reduce(_.alt(_)))
     val finalizer1 = typed(tree.finalizer, defn.UnitType)(using ctx.addNotNullInfo(nni))
     nni = nni.seq(finalizer1.notNullInfo)
     assignType(cpy.Try(tree)(expr2, cases2, finalizer1), expr2, cases2).withNotNullInfo(nni)
