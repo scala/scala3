@@ -276,6 +276,18 @@ object Build {
       val config = develocityConfiguration.value
       val buildScan = config.buildScan
       val buildCache = config.buildCache
+      // disable test retry on compilation test classes
+      val noRetryTestClasses = Set(
+        "dotty.tools.dotc.BestEffortOptionsTests",
+        "dotty.tools.dotc.CompilationTests",
+        "dotty.tools.dotc.FromTastyTests",
+        "dotty.tools.dotc.IdempotencyTests",
+        "dotty.tools.dotc.ScalaJSCompilationTests",
+        "dotty.tools.dotc.TastyBootstrapTests",
+        "dotty.tools.dotc.coverage.CoverageTests",
+        "dotty.tools.dotc.transform.PatmatExhaustivityTest",
+        "dotty.tools.repl.ScriptedTests"
+      )
       config
         .withProjectId(ProjectId("scala3"))
         .withServer(config.server.withUrl(Some(url("https://develocity.scala-lang.org"))))
@@ -292,6 +304,13 @@ object Build {
           buildCache
             .withLocal(buildCache.local.withEnabled(false))
             .withRemote(buildCache.remote.withEnabled(false))
+        )
+        .withTestRetryConfiguration(
+          config.testRetryConfiguration
+            .withFlakyTestPolicy(FlakyTestPolicy.Fail)
+            .withMaxRetries(1)
+            .withMaxFailures(10)
+            .withClassesFilter((className, _) => !noRetryTestClasses.contains(className))
         )
     }
   )
