@@ -3540,6 +3540,8 @@ object Types extends TypeUtils {
       else this match
         case tp: OrType => OrType.make(tp1, tp2, tp.isSoft)
         case tp: AndType => AndType.make(tp1, tp2, checkValid = true)
+
+    override def hashIsStable: Boolean = tp1.hashIsStable && tp2.hashIsStable
   }
 
   abstract case class AndType(tp1: Type, tp2: Type) extends AndOrType {
@@ -3585,6 +3587,10 @@ object Types extends TypeUtils {
       case that: AndType => tp1.eq(that.tp1) && tp2.eq(that.tp2)
       case _ => false
     }
+
+    override protected def iso(that: Any, bs: BinderPairs) = that match
+      case that: AndType => tp1.equals(that.tp1, bs) && tp2.equals(that.tp2, bs)
+      case _ => false
   }
 
   final class CachedAndType(tp1: Type, tp2: Type) extends AndType(tp1, tp2)
@@ -3736,6 +3742,10 @@ object Types extends TypeUtils {
       case that: OrType => tp1.eq(that.tp1) && tp2.eq(that.tp2) && isSoft == that.isSoft
       case _ => false
     }
+
+    override protected def iso(that: Any, bs: BinderPairs) = that match
+      case that: OrType => tp1.equals(that.tp1, bs) && tp2.equals(that.tp2, bs) && isSoft == that.isSoft
+      case _ => false
   }
 
   final class CachedOrType(tp1: Type, tp2: Type, override val isSoft: Boolean) extends OrType(tp1, tp2)
