@@ -1385,6 +1385,7 @@ trait Implicits:
       def disambiguate(alt1: SearchResult, alt2: SearchSuccess) = alt1 match
         case alt1: SearchSuccess =>
           var diff = compareAlternatives(alt1, alt2, disambiguate = true)
+          assert(diff <= 0 || isWarnPriorityChangeVersion)
             // diff > 0 candidates should already have been eliminated in `rank`
           if diff == 0 && alt1.ref =:= alt2.ref then
             diff = 1 // See i12951 for a test where this happens
