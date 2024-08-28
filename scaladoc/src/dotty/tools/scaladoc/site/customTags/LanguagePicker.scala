@@ -23,7 +23,6 @@ class LanguagePickerTag extends Tag("language_picker") {
     // Raw argument value
     val rawArgument =
       args(0).render(context).toString.trim.stripPrefix("languages=")
-    println(s"Raw languages argument: $rawArgument")
 
     // Determine if the argument is a variable reference or a literal string
     val (languagesArg, valueType) = if (rawArgument.startsWith("page.")) {
@@ -33,22 +32,14 @@ class LanguagePickerTag extends Tag("language_picker") {
         .getVariables()
         .get("page")
         .asInstanceOf[java.util.Map[String, Any]]
-      println(siteData)
 
       // Handle both String and List cases
       siteData.get(variableName) match {
         case value: String =>
-          println(s"Resolved variable value (string): $value")
           (List(value), "String")
         case value: java.util.List[_] =>
-          println(
-            s"Resolved variable value (list): ${value.asScala.mkString(", ")}"
-          )
           (value.asScala.toList.collect { case s: String => s }, "List")
         case value =>
-          println(
-            s"Variable '$variableName' found but not a valid string/list. Type: ${if (value != null) value.getClass.getSimpleName else "null"}"
-          )
           (
             List.empty[String],
             if (value != null) value.getClass.getSimpleName else "null"
@@ -58,9 +49,6 @@ class LanguagePickerTag extends Tag("language_picker") {
       // Treat the argument as a literal string and split it by comma if necessary
       (rawArgument.split(",").map(_.trim).toList, "Literal String")
     }
-
-    // Log the type of the resolved argument
-    println(s"Resolved argument type: $valueType")
 
     // Ensure "en" is the first element in the list
     val languagesWithEnFirst = {
@@ -72,9 +60,6 @@ class LanguagePickerTag extends Tag("language_picker") {
         "en" :: languagesArg
       }
     }
-    println(
-      s"Languages after ensuring 'en' is first: ${languagesWithEnFirst.mkString(", ")}"
-    )
 
     // Early return if the languages argument is empty
     if (languagesWithEnFirst.isEmpty) {
@@ -82,11 +67,9 @@ class LanguagePickerTag extends Tag("language_picker") {
       return ""
     }
 
-    println(s"Language argument string: ${languagesWithEnFirst.mkString(", ")}")
     // Extract language codes from the list
     val extractedLanguageCodes =
       languagesWithEnFirst.flatMap(extractLanguageCodes)
-    println(s"Parsed languages: ${extractedLanguageCodes.mkString(", ")}")
 
     // Load the config using ConfigLoader
     val config = LanguagePickerTag.getConfigValue
@@ -104,7 +87,6 @@ class LanguagePickerTag extends Tag("language_picker") {
 
     // Extract the list of codes from the config
     val configLanguageCodes = languagesFromConfig.map(_("code"))
-    println(s"Languages from config: ${configLanguageCodes.mkString(", ")}")
 
     // Validate that all languages in extractedLanguageCodes exist in the config
     val missingLanguages =
@@ -149,7 +131,6 @@ class LanguagePickerTag extends Tag("language_picker") {
 
     // Find all matches in the string
     val matches = pattern.findAllIn(languagesArg).toList
-    println(s"Extracted language codes: ${matches.mkString(", ")}")
 
     // Ensure that each part is valid and non-empty
     matches.map(_.trim).filter(_.nonEmpty)
