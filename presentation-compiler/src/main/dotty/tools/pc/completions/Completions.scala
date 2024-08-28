@@ -50,7 +50,8 @@ class Completions(
     workspace: Option[Path],
     autoImports: AutoImportsGenerator,
     comments: List[Comment],
-    options: List[String]
+    options: List[String],
+    completionItemPriority: CompletionItemPriority
 )(using ReportContext):
 
   given context: Context = ctx
@@ -909,6 +910,20 @@ class Completions(
         else 0
       end compareLocalSymbols
 
+      private def workspaceMemberPriority(symbol: Symbol): Int =
+        completionItemPriority
+          .workspaceMemberPriority(
+            SemanticdbSymbols.symbolName(symbol),
+          ).nn
+
+      def compareFrequency(o1: CompletionValue, o2: CompletionValue): Int =
+        (o1, o2) match
+          case (w1: CompletionValue.Workspace, w2: CompletionValue.Workspace) =>
+            workspaceMemberPriority(w1.symbol)
+              .compareTo(workspaceMemberPriority(w2.symbol))
+          case _ => 0
+      end compareFrequency
+
       def compareByRelevance(o1: CompletionValue, o2: CompletionValue): Int =
         Integer.compare(
           computeRelevancePenalty(o1, application),
@@ -1018,17 +1033,20 @@ class Completions(
                       )
                       if byIdentifier != 0 then byIdentifier
                       else
-                        val byOwner =
-                          s1.owner.fullName.toString
-                            .compareTo(s2.owner.fullName.toString)
-                        if byOwner != 0 then byOwner
+                        val byFrequency = compareFrequency(o1, o2)
+                        if byFrequency != 0 then byFrequency
                         else
-                          val byParamCount = Integer.compare(
-                            s1.paramSymss.flatten.size,
-                            s2.paramSymss.flatten.size
-                          )
-                          if byParamCount != 0 then byParamCount
-                          else s1.detailString.compareTo(s2.detailString)
+                          val byOwner =
+                            s1.owner.fullName.toString
+                              .compareTo(s2.owner.fullName.toString)
+                          if byOwner != 0 then byOwner
+                          else
+                            val byParamCount = Integer.compare(
+                              s1.paramSymss.flatten.size,
+                              s2.paramSymss.flatten.size
+                            )
+                            if byParamCount != 0 then byParamCount
+                            else s1.detailString.compareTo(s2.detailString)
                     end if
                   end if
                 end if
