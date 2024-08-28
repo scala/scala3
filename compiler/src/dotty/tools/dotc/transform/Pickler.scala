@@ -44,7 +44,7 @@ object Pickler {
    */
   inline val ParallelPickling = true
 
-  /**A holder for syncronization points and reports when writing TASTy asynchronously.
+  /**A holder for synchronization points and reports when writing TASTy asynchronously.
    * The callbacks should only be called once.
    */
   class AsyncTastyHolder private (

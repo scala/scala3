@@ -100,7 +100,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
           val parentCls = parent.tpe.classSymbol.asClass
           parent match
             // if we are in a regular class and first parent is also a regular class,
-            // make sure we have a contructor
+            // make sure we have a constructor
             case parent: TypeTree
             if !cls.is(Trait) && !parentCls.is(Trait) && !defn.NotRuntimeClasses.contains(parentCls) =>
               New(parent.tpe, Nil).withSpan(impl.span)
@@ -459,7 +459,7 @@ object ExplicitOuter {
             val enclClass = ctx.owner.lexicallyEnclosingClass.asClass
             val outerAcc = atPhaseNoLater(lambdaLiftPhase) {
               // lambdalift mangles local class names, which means we cannot
-              // reliably find outer acessors anymore
+              // reliably find outer accessors anymore
               tree match
                 case tree: This if tree.symbol == enclClass && !enclClass.is(Trait) =>
                   outerParamAccessor(enclClass)

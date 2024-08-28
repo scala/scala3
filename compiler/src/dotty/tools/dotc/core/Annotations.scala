@@ -43,7 +43,7 @@ object Annotations {
     def argumentConstantString(i: Int)(using Context): Option[String] =
       for (case Constant(s: String) <- argumentConstant(i)) yield s
 
-    /** The tree evaluaton is in progress. */
+    /** The tree evaluation is in progress. */
     def isEvaluating: Boolean = false
 
     /** The tree evaluation has finished. */

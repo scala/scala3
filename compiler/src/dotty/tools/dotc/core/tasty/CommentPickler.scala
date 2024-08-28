@@ -29,7 +29,7 @@ object CommentPickler:
     def traverse(x: Any): Unit = x match
       case x: untpd.Tree @unchecked =>
         x match
-          case x: tpd.MemberDef @unchecked => // at this point all MembderDefs are t(y)p(e)d.
+          case x: tpd.MemberDef @unchecked => // at this point all MemberDefs are t(y)p(e)d.
             for comment <- docString(x) do pickleComment(addrOfTree(x), comment)
           case _ =>
         val limit = x.productArity
