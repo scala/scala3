@@ -77,7 +77,8 @@ object NavigateAST {
       var bestFit: List[Positioned] = path
       while (it.hasNext) do
         val path1 = it.next() match
-          case sel: untpd.Select if isTreeFromRecovery(sel) => path
+          case sel: untpd.Select if isRecoveryTree(sel) => path
+          case sel: untpd.Ident  if isPatternRecoveryTree(sel) => path
           case p: Positioned if !p.isInstanceOf[Closure[?]] => singlePath(p, path)
           case m: untpd.Modifiers => childPath(m.productIterator, path)
           case xs: List[?] => childPath(xs.iterator, path)
@@ -106,9 +107,12 @@ object NavigateAST {
           bestSpan.contains(candidateSpan) && bestSpan.isSynthetic && !candidateSpan.isSynthetic
       else false
 
+    def isRecoveryTree(sel: untpd.Select): Boolean =
+      sel.span.isSynthetic
+        && (sel.name == StdNames.nme.??? && sel.qualifier.symbol.name == StdNames.nme.Predef)
 
-    def isTreeFromRecovery(p: untpd.Select): Boolean =
-      p.name == StdNames.nme.??? && p.qualifier.symbol.name == StdNames.nme.Predef && p.span.isSynthetic
+    def isPatternRecoveryTree(ident: untpd.Ident): Boolean =
+      ident.span.isSynthetic && StdNames.nme.WILDCARD == ident.name
 
     def envelops(a: Span, b: Span): Boolean =
       !b.exists || a.exists && (
