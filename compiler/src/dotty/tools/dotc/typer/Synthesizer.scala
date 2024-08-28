@@ -186,7 +186,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         // val x: String = null.asInstanceOf[String]
         // if (x == null) {} // error: x is non-nullable
         // if (x.asInstanceOf[String|Null] == null) {} // ok
-        cls1 == defn.NullClass && cls1 == cls2
+        if cls1 == defn.NullClass || cls2 == defn.NullClass then cls1 == cls2
+        else cls1 == defn.NothingClass || cls2 == defn.NothingClass
       else if cls1 == defn.NullClass then
         cls1 == cls2 || cls2.derivesFrom(defn.ObjectClass)
       else if cls2 == defn.NullClass then
