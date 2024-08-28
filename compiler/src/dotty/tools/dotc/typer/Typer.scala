@@ -3019,7 +3019,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           body
 
     /** Implement givens that were declared with a `deferred` rhs.
-     *  The a given value matching the declared type is searched in a
+     *  The given value matching the declared type is searched in a
      *  context directly enclosing the current class, in which all given
      *  parameters of the current class are also defined.
      */
@@ -3035,6 +3035,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               cdef.srcPos)
             false
           else true
+
+        def willBeimplementedInParentClass(m: TermRef) =
+          val superCls = cls.superClass
+          superCls.exists && superCls.asClass.baseClasses.contains(m.symbol.owner)
 
         def givenImpl(mbr: TermRef): ValDef =
           val dcl = mbr.symbol
@@ -3065,6 +3069,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           cls.thisType.implicitMembers
             //.showing(i"impl def givens for $cls/$result")
             .filter(_.symbol.isAllOf(DeferredGivenFlags, butNot = Param))
+            .filter(!willBeimplementedInParentClass(_)) // only implement the given in the topmost class
             //.showing(i"impl def filtered givens for $cls/$result")
             .filter(isGivenValue)
             .map(givenImpl)
