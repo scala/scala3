@@ -87,7 +87,7 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
    */
   val depRecorder: sbt.DependencyRecorder = sbt.DependencyRecorder()
 
-  /** Suspends the compilation unit by thowing a SuspendException
+  /** Suspends the compilation unit by throwing a SuspendException
    *  and recording the suspended compilation unit
    */
   def suspend(hint: => String)(using Context): Nothing =

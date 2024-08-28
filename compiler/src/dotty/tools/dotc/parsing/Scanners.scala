@@ -684,7 +684,7 @@ object Scanners {
       if !r.isOutermost
          && closingRegionTokens.contains(token)
          && !(token == CASE && r.prefix == MATCH)
-         && next.token == EMPTY  // can be violated for ill-formed programs, e.g. neg/i12605.sala
+         && next.token == EMPTY  // can be violated for ill-formed programs, e.g. neg/i12605.scala
       =>
         insert(OUTDENT, offset)
       case _ =>

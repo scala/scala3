@@ -66,7 +66,7 @@ class CompilationUnit protected (val source: SourceFile) {
   /** Can this compilation unit be suspended */
   def isSuspendable: Boolean = true
 
-  /** Suspends the compilation unit by thowing a SuspendException
+  /** Suspends the compilation unit by throwing a SuspendException
    *  and recording the suspended compilation unit
    */
   def suspend()(using Context): Nothing =

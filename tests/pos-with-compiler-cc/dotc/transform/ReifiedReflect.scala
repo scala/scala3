@@ -52,7 +52,7 @@ trait ReifiedReflect:
       .select(defn.Quotes_reflect_TypeApply_apply)
       .appliedTo(fn, argTrees)
 
-  /** Create tree for `quotes.reflect.Assing(<lhs>, <rhs>)` */
+  /** Create tree for `quotes.reflect.Assign(<lhs>, <rhs>)` */
   def Assign(lhs: Tree, rhs: Tree)(using Context) =
     self.select(defn.Quotes_reflect_Assign)
       .select(defn.Quotes_reflect_Assign_apply)

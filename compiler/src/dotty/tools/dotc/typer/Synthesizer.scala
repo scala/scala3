@@ -455,7 +455,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     MirrorSource.reduce(mirroredType) match
       case Right(msrc) => msrc match
         case MirrorSource.Singleton(_, tref) =>
-          val singleton = tref.termSymbol // prefer alias name over the orignal name
+          val singleton = tref.termSymbol // prefer alias name over the original name
           val singletonPath = tpd.singleton(tref).withSpan(span)
           if tref.classSymbol.is(Scala2x) then // could be Scala 3 alias of Scala 2 case object.
             val mirrorType = formal.constrained_& {
