@@ -745,20 +745,17 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
 
-    private def genApply(app: Apply, expectedType: BType): BType = {
-      var generatedType = expectedType
+    private def genApply(app: Apply, expectedType: BType): BType =
       lineNumber(app)
-      app match {
+      app match
         case Apply(_, args) if app.symbol eq defn.newArrayMethod =>
           val List(elemClaz, Literal(c: Constant), ArrayValue(_, dims)) = args: @unchecked
-
-          generatedType = toTypeKind(c.typeValue)
+          val generatedType = toTypeKind(c.typeValue)
           mkArrayConstructorCall(generatedType.asArrayBType, app, dims)
-        case Apply(t :TypeApply, _) =>
-          generatedType =
-            if (t.symbol ne defn.Object_synchronized) genTypeApply(t)
-            else genSynchronized(app, expectedType)
-
+          generatedType
+        case Apply(t: TypeApply, _) =>
+          if t.symbol ne defn.Object_synchronized then genTypeApply(t)
+          else genSynchronized(app, expectedType)
         case Apply(fun @ DesugaredSelect(Super(superQual, _), _), args) =>
           // 'super' call: Note: since constructors are supposed to
           // return an instance of what they construct, we have to take
@@ -772,7 +769,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           stack.push(superQualTK)
           genLoadArguments(args, paramTKs(app))
           stack.pop()
-          generatedType = genCallMethod(fun.symbol, InvokeStyle.Super, app.span)
+          genCallMethod(fun.symbol, InvokeStyle.Super, app.span)
 
         // 'new' constructor call: Note: since constructors are
         // thought to return an instance of what they construct,
@@ -782,10 +779,10 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           val ctor = fun.symbol
           assert(ctor.isClassConstructor, s"'new' call to non-constructor: ${ctor.name}")
 
-          generatedType = toTypeKind(tpt.tpe)
+          val generatedType = toTypeKind(tpt.tpe)
           assert(generatedType.isRef, s"Non reference type cannot be instantiated: $generatedType")
 
-          generatedType match {
+          generatedType match
             case arr: ArrayBType =>
               mkArrayConstructorCall(arr, app, args)
 
@@ -801,81 +798,77 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
             case _ =>
               abort(s"Cannot instantiate $tpt of kind: $generatedType")
-          }
+          generatedType
 
         case Apply(fun, List(expr)) if Erasure.Boxing.isBox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
           val nativeKind = tpeTK(expr)
           genLoad(expr, nativeKind)
           val MethodNameAndType(mname, methodType) = asmBoxTo(nativeKind)
           bc.invokestatic(srBoxesRuntimeRef.internalName, mname, methodType.descriptor, itf = false)
-          generatedType = boxResultType(fun.symbol) // was toTypeKind(fun.symbol.tpe.resultType)
+          boxResultType(fun.symbol) // was toTypeKind(fun.symbol.tpe.resultType)
 
         case Apply(fun, List(expr)) if Erasure.Boxing.isUnbox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
           genLoad(expr)
           val boxType = unboxResultType(fun.symbol) // was toTypeKind(fun.symbol.owner.linkedClassOfClass.tpe)
-          generatedType = boxType
           val MethodNameAndType(mname, methodType) = asmUnboxTo(boxType)
           bc.invokestatic(srBoxesRuntimeRef.internalName, mname, methodType.descriptor, itf = false)
+          boxType
 
-        case app @ Apply(fun, args) =>
+        case Apply(fun, _) if isPrimitive(fun) => // primitive method call
+          genPrimitiveOp(app, expectedType)
+
+        case Apply(fun, args) => // normal method call
           val sym = fun.symbol
+          val invokeStyle =
+            if sym.isStaticMember then InvokeStyle.Static
+            else if sym.is(Private) && (claszSymbol.info <:< sym.owner.info)
+              || sym.isClassConstructor
+              || app.hasAttachment(BCodeHelpers.UseInvokeSpecial)
+            then InvokeStyle.Special
+            else InvokeStyle.Virtual
 
-          if (isPrimitive(fun)) { // primitive method call
-            generatedType = genPrimitiveOp(app, expectedType)
-          } else { // normal method call
-            val invokeStyle =
-              if (sym.isStaticMember) InvokeStyle.Static
-              else if (sym.is(Private) || sym.isClassConstructor) InvokeStyle.Special
-              else if (app.hasAttachment(BCodeHelpers.UseInvokeSpecial)) InvokeStyle.Special
-              else InvokeStyle.Virtual
+          val savedStackSize = stack.recordSize()
+          if invokeStyle.hasInstance then
+            stack.push(genLoadQualifier(fun))
+          genLoadArguments(args, paramTKs(app))
+          stack.restoreSize(savedStackSize)
 
-            val savedStackSize = stack.recordSize()
-            if invokeStyle.hasInstance then
-              stack.push(genLoadQualifier(fun))
-            genLoadArguments(args, paramTKs(app))
-            stack.restoreSize(savedStackSize)
-
-            val DesugaredSelect(qual, name) = fun: @unchecked // fun is a Select, also checked in genLoadQualifier
-            val isArrayClone = name == nme.clone_ && qual.tpe.widen.isInstanceOf[JavaArrayType]
-            if (isArrayClone) {
-              // Special-case Array.clone, introduced in 36ef60e. The goal is to generate this call
-              // as "[I.clone" instead of "java/lang/Object.clone". This is consistent with javac.
-              // Arrays have a public method `clone` (jls 10.7).
-              //
-              // The JVMS is not explicit about this, but that receiver type can be an array type
-              // descriptor (instead of a class internal name):
-              //   invokevirtual  #2; //Method "[I".clone:()Ljava/lang/Object
-              //
-              // Note that using `Object.clone()` would work as well, but only because the JVM
-              // relaxes protected access specifically if the receiver is an array:
-              //   http://hg.openjdk.java.net/jdk8/jdk8/hotspot/file/87ee5ee27509/src/share/vm/interpreter/linkResolver.cpp#l439
-              // Example: `class C { override def clone(): Object = "hi" }`
-              // Emitting `def f(c: C) = c.clone()` as `Object.clone()` gives a VerifyError.
-              val target: String = tpeTK(qual).asRefBType.classOrArrayType
-              val methodBType = asmMethodType(sym)
-              bc.invokevirtual(target, sym.javaSimpleName, methodBType.descriptor)
-              generatedType = methodBType.returnType
-            } else {
-              val receiverClass = if (!invokeStyle.isVirtual) null else {
-                // receiverClass is used in the bytecode to as the method receiver. using sym.owner
-                // may lead to IllegalAccessErrors, see 9954eaf / aladdin bug 455.
-                val qualSym = qual.tpe.typeSymbol
-                if (qualSym == defn.ArrayClass) {
-                  // For invocations like `Array(1).hashCode` or `.wait()`, use Object as receiver
-                  // in the bytecode. Using the array descriptor (like we do for clone above) seems
-                  // to work as well, but it seems safer not to change this. Javac also uses Object.
-                  // Note that array apply/update/length are handled by isPrimitive (above).
-                  assert(sym.owner == defn.ObjectClass, s"unexpected array call: $app")
-                  defn.ObjectClass
-                } else qualSym
-              }
-              generatedType = genCallMethod(sym, invokeStyle, app.span, receiverClass)
-            }
-          }
-      }
-
-      generatedType
-    } // end of genApply()
+          val DesugaredSelect(qual, name) = fun: @unchecked // fun is a Select, also checked in genLoadQualifier
+          val isArrayClone = name == nme.clone_ && qual.tpe.widen.isInstanceOf[JavaArrayType]
+          if isArrayClone then
+            // Special-case Array.clone, introduced in 36ef60e. The goal is to generate this call
+            // as "[I.clone" instead of "java/lang/Object.clone". This is consistent with javac.
+            // Arrays have a public method `clone` (jls 10.7).
+            //
+            // The JVMS is not explicit about this, but that receiver type can be an array type
+            // descriptor (instead of a class internal name):
+            //   invokevirtual  #2; //Method "[I".clone:()Ljava/lang/Object
+            //
+            // Note that using `Object.clone()` would work as well, but only because the JVM
+            // relaxes protected access specifically if the receiver is an array:
+            //   http://hg.openjdk.java.net/jdk8/jdk8/hotspot/file/87ee5ee27509/src/share/vm/interpreter/linkResolver.cpp#l439
+            // Example: `class C { override def clone(): Object = "hi" }`
+            // Emitting `def f(c: C) = c.clone()` as `Object.clone()` gives a VerifyError.
+            val target: String = tpeTK(qual).asRefBType.classOrArrayType
+            val methodBType = asmMethodType(sym)
+            bc.invokevirtual(target, sym.javaSimpleName, methodBType.descriptor)
+            methodBType.returnType
+          else
+            val receiverClass = if !invokeStyle.isVirtual then null else
+              // receiverClass is used in the bytecode to as the method receiver. using sym.owner
+              // may lead to IllegalAccessErrors, see 9954eaf / aladdin bug 455.
+              qual.tpe.typeSymbol match
+              case x if x == defn.ArrayClass =>
+                // For invocations like `Array(1).hashCode` or `.wait()`, use Object as receiver
+                // in the bytecode. Using the array descriptor (like we do for clone above) seems
+                // to work as well, but it seems safer not to change this. Javac also uses Object.
+                // Note that array apply/update/length are handled by isPrimitive (above).
+                assert(sym.owner == defn.ObjectClass, s"unexpected array call: $app")
+                defn.ObjectClass
+              case qualSym => qualSym
+            genCallMethod(sym, invokeStyle, app.span, receiverClass)
+        //case _ => expectedType
+    end genApply
 
     private def genArrayValue(av: tpd.JavaSeqLiteral): BType = {
       val ArrayValue(tpt, elems) = av: @unchecked
