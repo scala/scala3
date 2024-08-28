@@ -273,19 +273,25 @@ object Build {
     // Configuration to publish build scans to develocity.scala-lang.org
     develocityConfiguration := {
       val isInsideCI = insideCI.value
-      val previousConfig = develocityConfiguration.value
-      val previousBuildScan = previousConfig.buildScan
-      previousConfig
+      val config = develocityConfiguration.value
+      val buildScan = config.buildScan
+      val buildCache = config.buildCache
+      config
         .withProjectId(ProjectId("scala3"))
-        .withServer(previousConfig.server.withUrl(Some(url("https://develocity.scala-lang.org"))))
+        .withServer(config.server.withUrl(Some(url("https://develocity.scala-lang.org"))))
         .withBuildScan(
-          previousBuildScan
+          buildScan
             .withPublishing(Publishing.onlyIf(_.authenticated))
             .withBackgroundUpload(!isInsideCI)
             .tag(if (isInsideCI) "CI" else "Local")
-            .withLinks(previousBuildScan.links ++ GithubEnv.develocityLinks)
-            .withValues(previousBuildScan.values ++ GithubEnv.develocityValues)
-            .withObfuscation(previousBuildScan.obfuscation.withIpAddresses(_.map(_ => "0.0.0.0")))
+            .withLinks(buildScan.links ++ GithubEnv.develocityLinks)
+            .withValues(buildScan.values ++ GithubEnv.develocityValues)
+            .withObfuscation(buildScan.obfuscation.withIpAddresses(_.map(_ => "0.0.0.0")))
+        )
+        .withBuildCache(
+          buildCache
+            .withLocal(buildCache.local.withEnabled(false))
+            .withRemote(buildCache.remote.withEnabled(false))
         )
     }
   )
@@ -910,7 +916,7 @@ object Build {
       }.taskValue,
 
       // Develocity's Build Cache does not work with our compilation tests
-      // at the moment.
+      // at the moment: it does not take compilation files as inputs.
       Test / develocityBuildCacheClient := None,
   )
 
