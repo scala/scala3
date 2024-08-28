@@ -20,6 +20,7 @@ import liqp.parser.Flavor
 import liqp.TemplateContext
 import liqp.tags.Tag
 import liqp.nodes.LNode
+import scala.collection.mutable
 import dotty.tools.scaladoc.site.blocks.{AltDetails,TabsBlock,TabBlock}
 import dotty.tools.scaladoc.site.tags.{IncludeTag,LanguagePickerTag}
 import dotty.tools.scaladoc.site.helpers.{ConfigLoader=>SiteConfigLoader}
@@ -141,13 +142,15 @@ case class TemplateFile(
 
     val configLoader = new SiteConfigLoader()
     val configMap = configLoader.loadConfig(ssctx.root.toPath.toString)
+    val siteConfig: java.util.Map[String, Any] = configMap.convertToJava
+
 
 
     LanguagePickerTag.setConfigValue(configMap)
 
 
 
-    siteData.put("config",configMap)
+    siteData.put("config",siteConfig)
 
     mutableProperties.put("site",siteData)
 

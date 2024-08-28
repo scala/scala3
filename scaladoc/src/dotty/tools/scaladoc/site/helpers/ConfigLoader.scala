@@ -14,6 +14,7 @@ import org.yaml.snakeyaml.Yaml
 
 class Config(private val data: mutable.LinkedHashMap[String, Any])
     extends Dynamic {
+
   def selectDynamic(field: String): Any = {
     data.get(field) match {
       case Some(value: mutable.LinkedHashMap[_, _]) =>
@@ -38,6 +39,15 @@ class Config(private val data: mutable.LinkedHashMap[String, Any])
     data.get(key).map(_.asInstanceOf[T])
   }
 
+  //  method to convert the internal map to a Java map
+  def convertToJava: java.util.Map[String, Any] = {
+    data.map {
+      case (key, value: Config) => key -> value.convertToJava
+      case (key, value: mutable.LinkedHashMap[_, _]) =>
+        key -> value.asInstanceOf[mutable.LinkedHashMap[String, Any]].asJava
+      case (key, value) => key -> value
+    }.asJava
+  }
 }
 
 class ConfigLoader {
