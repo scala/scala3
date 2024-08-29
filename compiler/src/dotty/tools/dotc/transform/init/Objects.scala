@@ -653,8 +653,8 @@ class Objects(using Context @constructorOnly):
      *  GC may only be performed from method call contexts --- otherwise, we need
      *  to consider values of the current local environment as well.
      */
-    def gc(returnValue: Value, heapBefore: Data, heapAfter: Data, changeSet: Set[Addr], currentObj: ObjectRef): Data =
-      val roots: Iterable[Addr | Value] = changeSet.toSeq :+ returnValue
+    def gc(returnValues: List[Value], heapBefore: Data, heapAfter: Data, changeSet: Set[Addr], currentObj: ObjectRef): Data =
+      val roots: Iterable[Addr | Value] = changeSet.toSeq ++ returnValues
       // reachable locations from the return value and change set
       val reachableKeys = reachableAddresses(roots, heapAfter, currentObj)
 
@@ -674,24 +674,25 @@ class Objects(using Context @constructorOnly):
         val config = Config(thisV, summon[Env.Data], Heap.getHeapData())
         super.get(config, expr).map(_.value)
 
-      def cachedEval(thisV: ThisValue, expr: Tree, cacheResult: Boolean)(fun: Tree => Value)(using Heap.MutableData, Env.Data, State.Data): Value =
+      def cachedEval(thisV: ThisValue, expr: Tree, ctx: EvalContext)(fun: Tree => Value)(using Heap.MutableData, Env.Data, State.Data, Returns.Data): Value =
         val env = summon[Env.Data]
         val heapBefore = Heap.getHeapData()
         val changeSetBefore = Heap.getChangeSet()
-        // Only perform footprint optimization when cacheResult is true
+        // Only perform footprint optimization for method context
         val footprint =
-          if cacheResult then Heap.footprint(Heap.getHeapData(), thisV, env, State.currentObjectRef)
+          if ctx == EvalContext.Method then Heap.footprint(Heap.getHeapData(), thisV, env, State.currentObjectRef)
           else heapBefore
         val config = Config(thisV, env, footprint)
 
         Heap.update(footprint, changeSet = Set.empty)
+        val cacheResult = ctx == EvalContext.Method || ctx == EvalContext.Function || ctx == EvalContext.LazyVal
         val result = super.cachedEval(config, expr, cacheResult, default = Res(Bottom, footprint, Set.empty)) { expr =>
           val value = fun(expr)
           val heapAfter = Heap.getHeapData()
           val changeSetNew = Heap.getChangeSet()
-          // Only perform garbage collection when cacheResult is true
+          // Only perform garbage collection for method context
           val heapGC =
-            if cacheResult then Heap.gc(value, footprint, heapAfter, changeSetNew, State.currentObjectRef)
+            if ctx == EvalContext then Heap.gc(value :: Returns.currentReturns, footprint, heapAfter, changeSetNew, State.currentObjectRef)
             else heapAfter
           Res(value, heapGC, changeSetNew)
         }
@@ -739,6 +740,17 @@ class Objects(using Context @constructorOnly):
 
         case None =>
           report.warning("[Internal error] Unhandled return for method " + meth + " in " + meth.owner.show + ". Trace:\n" + Trace.show, Trace.position)
+
+    /**
+     * Return the current return values in a method context.
+     *
+     * Warning: only use this method if it is certain that a method body has just
+     * finished before any other code is executed.
+     *
+     * Calling this method from lazy val or function context is problematic.
+     */
+    def currentReturns(using data: Data): List[Value] =
+      data.last.values.toList
 
   type Contextual[T] = (Context, State.Data, Env.Data, Cache.Data, Heap.MutableData, Regions.Data, Returns.Data, Trace) ?=> T
 
@@ -878,7 +890,7 @@ class Objects(using Context @constructorOnly):
           val env2 = Env.of(ddef, args.map(_.value), outerEnv)
           extendTrace(ddef) {
             given Env.Data = env2
-            cache.cachedEval(ref, ddef.rhs, cacheResult = true) { expr =>
+            cache.cachedEval(ref, ddef.rhs, EvalContext.Method) { expr =>
               Returns.installHandler(meth)
               val res = cases(expr, thisV, cls)
               val returns = Returns.popHandler(meth)
@@ -907,7 +919,7 @@ class Objects(using Context @constructorOnly):
         case ddef: DefDef =>
           if meth.name == nme.apply then
             given Env.Data = Env.of(ddef, args.map(_.value), env)
-            extendTrace(code) { eval(ddef.rhs, thisV, klass, cacheResult = true) }
+            extendTrace(code) { eval(ddef.rhs, thisV, klass, EvalContext.Function) }
           else
             // The methods defined in `Any` and `AnyRef` are trivial and don't affect initialization.
             if meth.owner == defn.AnyClass || meth.owner == defn.ObjectClass then
@@ -922,7 +934,7 @@ class Objects(using Context @constructorOnly):
         case _ =>
           // by-name closure
           given Env.Data = env
-          extendTrace(code) { eval(code, thisV, klass, cacheResult = true) }
+          extendTrace(code) { eval(code, thisV, klass, EvalContext.Function) }
 
     case ValueSet(vs) =>
       vs.map(v => call(v, meth, args, receiver, superType)).join
@@ -945,11 +957,11 @@ class Objects(using Context @constructorOnly):
         given Env.Data = Env.of(ddef, argValues, Env.NoEnv)
         if ctor.isPrimaryConstructor then
           val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-          extendTrace(cls.defTree) { eval(tpl, ref, cls, cacheResult = true) }
+          extendTrace(cls.defTree) { eval(tpl, ref, cls, EvalContext.Method) }
         else
           extendTrace(ddef) { // The return values for secondary constructors can be ignored
             Returns.installHandler(ctor)
-            eval(ddef.rhs, ref, cls, cacheResult = true)
+            eval(ddef.rhs, ref, cls, EvalContext.Method)
             Returns.popHandler(ctor)
           }
       else
@@ -980,7 +992,7 @@ class Objects(using Context @constructorOnly):
         given Env.Data = Env.emptyEnv(target.owner.asInstanceOf[ClassSymbol].primaryConstructor)
         if target.hasSource then
           val rhs = target.defTree.asInstanceOf[ValDef].rhs
-          eval(rhs, ref, target.owner.asClass, cacheResult = true)
+          eval(rhs, ref, target.owner.asClass, EvalContext.LazyVal)
         else
           Bottom
       else if target.exists then
@@ -1162,7 +1174,7 @@ class Objects(using Context @constructorOnly):
         given Env.Data = env
         if sym.is(Flags.Lazy) then
           val rhs = sym.defTree.asInstanceOf[ValDef].rhs
-          eval(rhs, thisV, sym.enclosingClass.asClass, cacheResult = true)
+          eval(rhs, thisV, sym.enclosingClass.asClass, EvalContext.LazyVal)
         else
           // Assume forward reference check is doing a good job
           val value = Env.valValue(sym)
@@ -1235,6 +1247,9 @@ class Objects(using Context @constructorOnly):
     do
       accessObject(classSym)
 
+  enum EvalContext:
+    case Method, Function, LazyVal, Other
+
   /** Evaluate an expression with the given value for `this` in a given class `klass`
    *
    *  Note that `klass` might be a super class of the object referred by `thisV`.
@@ -1253,10 +1268,10 @@ class Objects(using Context @constructorOnly):
    * @param expr        The expression to be evaluated.
    * @param thisV       The value for `C.this` where `C` is represented by the parameter `klass`.
    * @param klass       The enclosing class where the expression is located.
-   * @param cacheResult It is used to reduce the size of the cache.
+   * @param ctx         The context where `eval` is called.
    */
-  def eval(expr: Tree, thisV: ThisValue, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Value] = log("evaluating " + expr.show + ", this = " + thisV.show + ", regions = " + Regions.show + " in " + klass.show, printer, (_: Value).show) {
-    cache.cachedEval(thisV, expr, cacheResult) { expr => cases(expr, thisV, klass) }
+  def eval(expr: Tree, thisV: ThisValue, klass: ClassSymbol, ctx: EvalContext = EvalContext.Other): Contextual[Value] = log("evaluating " + expr.show + ", this = " + thisV.show + ", regions = " + Regions.show + " in " + klass.show, printer, (_: Value).show) {
+    cache.cachedEval(thisV, expr, ctx) { expr => cases(expr, thisV, klass) }
   }
 
 
@@ -1396,9 +1411,11 @@ class Objects(using Context @constructorOnly):
           withTrace(trace2) { assign(receiver, lhs.symbol, widened, rhs.tpe) }
 
       case closureDef(ddef) =>
+        // TODO: trim the environment and `thisV` to only captured locals
         Fun(ddef, thisV, klass, summon[Env.Data])
 
       case PolyFun(ddef) =>
+        // TODO: trim the environment and `thisV` to only captured locals
         Fun(ddef, thisV, klass, summon[Env.Data])
 
       case Block(stats, expr) =>
