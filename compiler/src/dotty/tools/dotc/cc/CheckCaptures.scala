@@ -969,7 +969,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       if tree.isTerm then
         if !ccConfig.useExistentials then
           checkReachCapsIsolated(res.widen, tree.srcPos)
-        if !pt.isBoxedCapturing then
+        if !pt.isBoxedCapturing && pt != LhsProto then
           markFree(res.boxedCaptureSet, tree.srcPos)
       res
 
