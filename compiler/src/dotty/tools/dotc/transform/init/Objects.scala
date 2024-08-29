@@ -591,14 +591,7 @@ class Objects(using Context @constructorOnly):
       mutable.heap = heap
       mutable.changeSet = changeSet
 
-    /** Compute the footprint of the heap for evaluating an expression
-     *
-     *  The regions of the heap not in the footprint do not matter for
-     *  evaluating the underlying expression.
-     *
-     *  The reasoning above is similar to the frame rule in separation logic.
-     */
-    def footprint(heap: Data, thisV: Value, env: Env.Data, currentObj: ObjectRef): Data =
+    def reachableAddresses(roots: Iterable[Value | Addr], heap: Data, currentObj: ObjectRef): Set[Addr] =
       val toVisit = mutable.Queue.empty[Value]
       val visited = mutable.Set.empty[Value]
       val reachableKeys = mutable.Set.empty[Addr]
@@ -630,13 +623,22 @@ class Objects(using Context @constructorOnly):
           visited += value
           for item <- value.flatten do visit(item)
 
-      toVisit += currentObj
-      toVisit += thisV
-      for item <- env.flatten do visit(item)
-
+      for item <- roots do visit(item)
       while toVisit.nonEmpty do
         visit(toVisit.dequeue())
 
+      reachableKeys.toSet
+
+    /** Compute the footprint of the heap for evaluating an expression
+     *
+     *  The regions of the heap not in the footprint do not matter for
+     *  evaluating the underlying expression.
+     *
+     *  The reasoning above is similar to the frame rule in separation logic.
+     */
+    def footprint(heap: Data, thisV: Value, env: Env.Data, currentObj: ObjectRef): Data =
+      val roots = env.flatten.toSeq :+ thisV :+ currentObj
+      val reachableKeys = reachableAddresses(roots, heap, currentObj)
       heap.filter((k, v) => reachableKeys.contains(k))
 
     /** Perform garbage collection on the abstract heap.
@@ -651,35 +653,15 @@ class Objects(using Context @constructorOnly):
      *  GC may only be performed from method call contexts --- otherwise, we need
      *  to consider values of the current local environment as well.
      */
-    def gc(value: Value, heapBefore: Data, heapAfter: Data, changeSet: Set[Addr]): Data =
-      /** Is the address reachable from the given value */
-      def isReachable(value: Value, addr: Addr): Boolean =
-        val visited = mutable.Set.empty[Value]
-        def recur(value: Value): Boolean =
-          value.flatten.exists:
-            case addr1: Addr =>
-              // Do not check the content of the address --- that is handled by the change set.
-              addr1 == addr
-
-            case value2: Value =>
-              if visited.contains(value2) then false
-              else
-                visited += value2
-                recur(value2)
-        end recur
-        recur(value)
-
-      def doesNotLeakToPreviousHeap(addrToCheck: Addr) = changeSet.forall: addr =>
-        !heapBefore.contains(addr) || !isReachable(heapAfter(addr), addrToCheck)
+    def gc(returnValue: Value, heapBefore: Data, heapAfter: Data, changeSet: Set[Addr], currentObj: ObjectRef): Data =
+      val roots: Iterable[Addr | Value] = changeSet.toSeq :+ returnValue
+      // reachable locations from the return value and change set
+      val reachableKeys = reachableAddresses(roots, heapAfter, currentObj)
 
       val unreachableKeys = heapAfter.keys.filter: addr =>
-        // println("checking " + addr)
-        !heapBefore.contains(addr)
-        && !isReachable(value, addr)
-        && doesNotLeakToPreviousHeap(addr)
+        !heapBefore.contains(addr) && !reachableKeys.contains(addr)
 
       // println("collected keys = " + unreachableKeys)
-
       heapAfter -- unreachableKeys
 
   /** Cache used to terminate the check  */
@@ -709,7 +691,7 @@ class Objects(using Context @constructorOnly):
           val changeSetNew = Heap.getChangeSet()
           // Only perform garbage collection when cacheResult is true
           val heapGC =
-            if cacheResult then Heap.gc(value, footprint, heapAfter, changeSetNew)
+            if cacheResult then Heap.gc(value, footprint, heapAfter, changeSetNew, State.currentObjectRef)
             else heapAfter
           Res(value, heapGC, changeSetNew)
         }
