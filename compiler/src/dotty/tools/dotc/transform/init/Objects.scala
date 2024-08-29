@@ -255,6 +255,7 @@ class Objects(using Context @constructorOnly):
             case vdef: ValDef =>
               val sym = vdef.symbol
               if sym.isLocal then defs += sym
+              traverseChildren(vdef.rhs)
 
             case _ =>
               traverseChildren(tree)
@@ -680,8 +681,10 @@ class Objects(using Context @constructorOnly):
         val changeSetBefore = Heap.getChangeSet()
         // Only perform footprint optimization for method context
         val footprint =
-          if ctx == EvalContext.Method then Heap.footprint(Heap.getHeapData(), thisV, env, State.currentObjectRef)
-          else heapBefore
+          if ctx == EvalContext.Method then
+            Heap.footprint(Heap.getHeapData(), thisV, env, State.currentObjectRef)
+          else
+            heapBefore
         val config = Config(thisV, env, footprint)
 
         Heap.update(footprint, changeSet = Set.empty)
@@ -1270,7 +1273,7 @@ class Objects(using Context @constructorOnly):
    * @param klass       The enclosing class where the expression is located.
    * @param ctx         The context where `eval` is called.
    */
-  def eval(expr: Tree, thisV: ThisValue, klass: ClassSymbol, ctx: EvalContext = EvalContext.Other): Contextual[Value] = log("evaluating " + expr.show + ", this = " + thisV.show + ", regions = " + Regions.show + " in " + klass.show, printer, (_: Value).show) {
+  def eval(expr: Tree, thisV: ThisValue, klass: ClassSymbol, ctx: EvalContext = EvalContext.Other): Contextual[Value] = log("evaluating " + expr.show + ", this = " + thisV.show + ", heap size = " + Heap.getHeapData().size + " in " + klass.show, printer, (_: Value).show) {
     cache.cachedEval(thisV, expr, ctx) { expr => cases(expr, thisV, klass) }
   }
 
