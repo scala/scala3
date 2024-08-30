@@ -1452,10 +1452,11 @@ class Namer { typer: Typer =>
           forwarders.derivedCons(forwarder2, avoidClashes(forwarders2))
         case Nil => forwarders
 
-      addForwarders(selectors, Nil)
-      val forwarders = avoidClashes(buf.toList)
-      exp.pushAttachment(ExportForwarders, forwarders)
-      forwarders
+      exp.getAttachment(ExportForwarders).getOrElse:
+        addForwarders(selectors, Nil)
+        val forwarders = avoidClashes(buf.toList)
+        exp.pushAttachment(ExportForwarders, forwarders)
+        forwarders
     end exportForwarders
 
     /** Add forwarders as required by the export statements in this class */
