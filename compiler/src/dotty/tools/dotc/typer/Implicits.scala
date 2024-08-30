@@ -688,6 +688,7 @@ trait ImplicitRunInfo:
     end collectParts
 
     val seen = util.HashSet[Type]()
+    val normalize = TypeComparer.eliminateLazyRefs
     val incomplete = util.HashSet[Type]()
 
     def collectCompanions(tp: Type, parts: collection.Set[Type]): TermRefSet =
@@ -698,11 +699,13 @@ trait ImplicitRunInfo:
           case is: OfTypeImplicits =>
             is.companionRefs
           case null =>
-            if seen.contains(t) then
+            // Eliminate LazyRefs before checking whether we have seen a type before
+            val nt = normalize(t)
+            if seen.contains(nt) then
               incomplete += tp // all references for `t` will be accounted for in `seen` so we return `EmptySet`.
               TermRefSet.empty        // on the other hand, the refs of `tp` are now inaccurate, so `tp` is marked incomplete.
             else
-              seen += t
+              seen += nt
               val is = recur(t)
               if !implicitScopeCache.contains(t) then incomplete += tp
               is.companionRefs

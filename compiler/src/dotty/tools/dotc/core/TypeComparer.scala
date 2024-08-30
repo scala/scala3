@@ -270,23 +270,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           report.log(explained(_.isSubType(tp1, tp2, approx), short = false))
       }
       // Eliminate LazyRefs before checking whether we have seen a type before
-      val normalize = new TypeMap with CaptureSet.IdempotentCaptRefMap {
-        val DerefLimit = 10
-        var derefCount = 0
-        def apply(t: Type) = t match {
-          case t: LazyRef =>
-            // Dereference a lazyref to detect underlying matching types, but
-            // be careful not to get into an infinite recursion. If recursion count
-            // exceeds `DerefLimit`, approximate with `t` instead.
-            derefCount += 1
-            if t.evaluating || derefCount >= DerefLimit then t
-            else try mapOver(t.ref) finally derefCount -= 1
-          case tp: TypeVar =>
-            tp
-          case _ =>
-            mapOver(t)
-        }
-      }
+      val normalize = eliminateLazyRefs
       val p = (normalize(tp1), normalize(tp2))
       !pendingSubTypes.nn.contains(p) && {
         try {
@@ -3337,6 +3321,24 @@ object TypeComparer {
     val Covered:       Repr = 3   // The type is covered and free from OrTypes
   end CoveredStatus
   type CoveredStatus = CoveredStatus.Repr
+
+  def eliminateLazyRefs(using Context) = new TypeMap with CaptureSet.IdempotentCaptRefMap {
+    val DerefLimit = 10
+    var derefCount = 0
+    def apply(t: Type) = t match {
+      case t: LazyRef =>
+        // Dereference a lazyref to detect underlying matching types, but
+        // be careful not to get into an infinite recursion. If recursion count
+        // exceeds `DerefLimit`, approximate with `t` instead.
+        derefCount += 1
+        if t.evaluating || derefCount >= DerefLimit then t
+        else try mapOver(t.ref) finally derefCount -= 1
+      case tp: TypeVar =>
+        tp
+      case _ =>
+        mapOver(t)
+    }
+  }
 
   def topLevelSubType(tp1: Type, tp2: Type)(using Context): Boolean =
     comparing(_.topLevelSubType(tp1, tp2))
