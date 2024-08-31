@@ -702,6 +702,9 @@ class Objects(using Context @constructorOnly):
           val arr = OfArray(State.currentObject, summon[Regions.Data])
           Heap.writeJoin(arr.addr, args.map(_.value).join)
           arr
+        else if target.equals(defn.Predef_classOf) then
+          // Predef.classOf is a stub method in tasty and is replaced in backend
+          Bottom
         else if target.hasSource then
           val cls = target.owner.enclosingClass.asClass
           val ddef = target.defTree.asInstanceOf[DefDef]
@@ -1707,6 +1710,7 @@ class Objects(using Context @constructorOnly):
     tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
         val sym = vdef.symbol
+        if klass.name.toString.contains("BitVector$") || klass.name.toString.contains("ByteVector$") then println("Begin initializing field " + sym + " in " + klass)
         val res = if (whiteList.contains(sym)) Bottom else eval(vdef.rhs, thisV, klass)
         if sym.is(Flags.Mutable) then
           val addr = Heap.fieldVarAddr(summon[Regions.Data], sym, State.currentObject)
@@ -1714,6 +1718,7 @@ class Objects(using Context @constructorOnly):
           Heap.writeJoin(addr, res)
         else
           thisV.initVal(sym, res)
+        if klass.name.toString.contains("BitVector$") || klass.name.toString.contains("ByteVector$") then println("Finished initializing field " + sym + " in " + klass)
 
       case _: MemberDef =>
 
