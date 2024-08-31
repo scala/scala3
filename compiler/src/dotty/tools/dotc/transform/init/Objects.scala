@@ -1710,7 +1710,6 @@ class Objects(using Context @constructorOnly):
     tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
         val sym = vdef.symbol
-        if klass.name.toString.contains("BitVector$") || klass.name.toString.contains("ByteVector$") then println("Begin initializing field " + sym + " in " + klass)
         val res = if (whiteList.contains(sym)) Bottom else eval(vdef.rhs, thisV, klass)
         if sym.is(Flags.Mutable) then
           val addr = Heap.fieldVarAddr(summon[Regions.Data], sym, State.currentObject)
@@ -1718,7 +1717,6 @@ class Objects(using Context @constructorOnly):
           Heap.writeJoin(addr, res)
         else
           thisV.initVal(sym, res)
-        if klass.name.toString.contains("BitVector$") || klass.name.toString.contains("ByteVector$") then println("Finished initializing field " + sym + " in " + klass)
 
       case _: MemberDef =>
 
