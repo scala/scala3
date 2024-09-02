@@ -66,14 +66,13 @@ class TabBlock extends Block("tab") {
          |""".stripMargin
 
     // Add the header and content to the context
-    val headers = context.get(s"tab-headers-$uniqueId")
-    if (headers.isInstanceOf[ListBuffer[?]]) {
-      val headersList = headers.asInstanceOf[ListBuffer[String]]
-      headersList += header
-    } else {
-      val newHeaders = ListBuffer[String]()
-      newHeaders += header
-      context.put(s"tab-headers-$uniqueId", newHeaders)
+    context.get(s"tab-headers-$uniqueId") match {
+      case headers: ListBuffer[String] @unchecked =>
+        headers += header
+      case null =>
+        val newHeaders = ListBuffer[String]()
+        newHeaders += header
+        context.put(s"tab-headers-$uniqueId", newHeaders)
     }
     val contents = context.get(s"tab-contents-$uniqueId")
     if (contents.isInstanceOf[ListBuffer[?]]) {
