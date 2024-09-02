@@ -910,7 +910,7 @@ class Objects(using Context @constructorOnly):
 
   /**
    * Handle new expression `new p.C(args)`.
-   * The actual instance might be cached without running the constructor. 
+   * The actual instance might be cached without running the constructor.
    * See tests/init-global/pos/cache-constructor.scala
    *
    * @param outer       The value for `p`.
@@ -1574,22 +1574,30 @@ class Objects(using Context @constructorOnly):
    *  The default widening is 1 for most values, 2 for function values.
    *  User-specified widening annotations are repected.
    */
-  def widenEscapedValue(value: Value, expr: Tree): Contextual[Value] =
-    expr.tpe.getAnnotation(defn.InitWidenAnnot) match
-      case Some(annot) =>
-        annot.argument(0).get match
-          case arg @ Literal(c: Constants.Constant) =>
-            val height = c.intValue
-            if height < 0 then
-              report.warning("The argument should be positive", arg)
-              value.widen(1)
-            else
-              value.widen(c.intValue)
-          case arg =>
-            report.warning("The argument should be a constant integer value", arg)
-            value.widen(1)
-      case _ =>
-        if value.isInstanceOf[Fun] then value.widen(2) else value.widen(1)
+  def widenEscapedValue(value: Value, annotatedTree: Tree): Contextual[Value] =
+    def parseAnnotation: Option[Int] =
+      annotatedTree.tpe.getAnnotation(defn.InitWidenAnnot).flatMap: annot =>
+          annot.argument(0).get match
+            case arg @ Literal(c: Constants.Constant) =>
+              val height = c.intValue
+              if height < 0 then
+                report.warning("The argument should be positive", arg)
+                None
+              else
+                Some(height)
+            case arg =>
+              report.warning("The argument should be a constant integer value", arg)
+              None
+    end parseAnnotation
+
+    parseAnnotation match
+      case Some(i) =>
+        value.widen(i)
+
+      case None =>
+        if value.isInstanceOf[Fun]
+        then value.widen(2)
+        else value.widen(1)
 
   /** Evaluate arguments of methods and constructors */
   def evalArgs(args: List[Arg], thisV: ThisValue, klass: ClassSymbol): Contextual[List[ArgInfo]] =
