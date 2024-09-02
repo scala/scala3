@@ -1620,6 +1620,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     def findEnclosingThis(moduleClass: Symbol, from: Symbol): Type =
       if ((from.owner eq moduleClass) && from.isPackageObject && from.is(Opaque)) from.thisType
+      else if (from eq moduleClass.owner) && moduleClass.isTopLevelDefinitionsObject && moduleClass.is(Opaque) then moduleClass.thisType
       else if (from.is(Package)) tp
       else if ((from eq moduleClass) && from.is(Opaque)) from.thisType
       else if (from eq NoSymbol) tp
