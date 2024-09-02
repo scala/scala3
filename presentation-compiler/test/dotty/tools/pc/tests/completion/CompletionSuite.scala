@@ -530,8 +530,6 @@ class CompletionSuite extends BaseCompletionSuite:
       """.stripMargin,
       """|until(end: Int): Range
          |until(end: Int, step: Int): Range
-         |until(end: Long): Exclusive[Long]
-         |until(end: Long, step: Long): Exclusive[Long]
          |""".stripMargin,
       stableOrder = false
     )
@@ -1606,7 +1604,7 @@ class CompletionSuite extends BaseCompletionSuite:
 
   @Test def `multi-export` =
     check(
-      """export scala.collection.{AbstractMap, Set@@}
+      """export scala.collection.{AbstractMap, Se@@}
         |""".stripMargin,
       """Set scala.collection
         |SetOps scala.collection
@@ -1619,7 +1617,9 @@ class CompletionSuite extends BaseCompletionSuite:
         |StrictOptimizedSetOps scala.collection
         |StrictOptimizedSortedSetOps scala.collection
         |GenSet = scala.collection.Set[X]
-        |""".stripMargin
+        |""".stripMargin,
+      filter = _.contains("Set")
+
     )
 
   @Test def `multi-imports` =
@@ -1638,6 +1638,7 @@ class CompletionSuite extends BaseCompletionSuite:
         |StrictOptimizedSortedSetOps scala.collection
         |GenSet = scala.collection.Set[X]
         |""".stripMargin,
+      filter = _.contains("Set")
     )
 
 

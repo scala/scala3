@@ -13,7 +13,6 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourceFile
-import dotty.tools.pc.AutoImports.*
 import dotty.tools.pc.completions.CompletionPos
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 
@@ -67,7 +66,8 @@ final class AutoImportsProvider(
     val results = symbols.result.filter(isExactMatch(_, name))
 
     if results.nonEmpty then
-      val correctedPos = CompletionPos.infer(pos, params, path).toSourcePosition
+      val correctedPos =
+        CompletionPos.infer(pos, params, path, wasCursorApplied = false).toSourcePosition
       val mkEdit =
         path match
           // if we are in import section just specify full name

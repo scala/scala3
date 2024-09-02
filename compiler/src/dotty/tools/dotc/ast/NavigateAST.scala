@@ -3,6 +3,7 @@ package ast
 
 import core.Contexts.*
 import core.Decorators.*
+import core.StdNames
 import util.Spans.*
 import Trees.{Closure, MemberDef, DefTree, WithLazyFields}
 import dotty.tools.dotc.core.Types.AnnotatedType
@@ -74,21 +75,50 @@ object NavigateAST {
   def pathTo(span: Span, from: List[Positioned], skipZeroExtent: Boolean = false)(using Context): List[Positioned] = {
     def childPath(it: Iterator[Any], path: List[Positioned]): List[Positioned] = {
       var bestFit: List[Positioned] = path
-      while (it.hasNext) {
-        val path1 = it.next() match {
+      while (it.hasNext) do
+        val path1 = it.next() match
+          case sel: untpd.Select if isRecoveryTree(sel) => path
+          case sel: untpd.Ident  if isPatternRecoveryTree(sel) => path
           case p: Positioned if !p.isInstanceOf[Closure[?]] => singlePath(p, path)
           case m: untpd.Modifiers => childPath(m.productIterator, path)
           case xs: List[?] => childPath(xs.iterator, path)
           case _ => path
-        }
-        if ((path1 ne path) &&
-            ((bestFit eq path) ||
-             bestFit.head.span != path1.head.span &&
-             bestFit.head.span.contains(path1.head.span)))
+
+        if (path1 ne path) && ((bestFit eq path) || isBetterFit(bestFit, path1)) then
           bestFit = path1
-      }
+
       bestFit
     }
+
+    /**
+      * When choosing better fit we compare spans. If candidate span has starting or ending point inside (exclusive)
+      * current best fit it is selected as new best fit. This means that same spans are failing the first predicate.
+      *
+      * In case when spans start and end at same offsets we prefer non synthethic one.
+      */
+    def isBetterFit(currentBest: List[Positioned], candidate: List[Positioned]): Boolean =
+      if currentBest.isEmpty && candidate.nonEmpty then true
+      else if currentBest.nonEmpty && candidate.nonEmpty then
+        val bestSpan = currentBest.head.span
+        val candidateSpan = candidate.head.span
+
+        bestSpan != candidateSpan &&
+          envelops(bestSpan, candidateSpan) ||
+          bestSpan.contains(candidateSpan) && bestSpan.isSynthetic && !candidateSpan.isSynthetic
+      else false
+
+    def isRecoveryTree(sel: untpd.Select): Boolean =
+      sel.span.isSynthetic
+        && (sel.name == StdNames.nme.??? && sel.qualifier.symbol.name == StdNames.nme.Predef)
+
+    def isPatternRecoveryTree(ident: untpd.Ident): Boolean =
+      ident.span.isSynthetic && StdNames.nme.WILDCARD == ident.name
+
+    def envelops(a: Span, b: Span): Boolean =
+      !b.exists || a.exists && (
+        (a.start < b.start && a.end >= b.end ) || (a.start <= b.start && a.end > b.end)
+      )
+
     /*
      * Annotations trees are located in the Type
      */
