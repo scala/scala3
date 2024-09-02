@@ -106,7 +106,6 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "styles/fontawesome.css",
       "styles/staticsitestyles.css",
       "scripts/staticsite/alt-details.js",
-      "scripts/staticsite/tabs-block.js",
       "hljs/highlight.pack.js",
       "hljs/LICENSE",
       "scripts/hljs-scala3.js",
