@@ -252,7 +252,7 @@ object Completion:
   // https://github.com/scalameta/metals/blob/main/mtags/src/main/scala/scala/meta/internal/mtags/KeywordWrapper.scala
   // https://github.com/com-lihaoyi/Ammonite/blob/73a874173cd337f953a3edc9fb8cb96556638fdd/amm/util/src/main/scala/ammonite/util/Model.scala
   private def needsBacktick(s: String) =
-    val chunks = s.split("_", -1).nn
+    val chunks = s.split("_", -1)
 
     val validChunks = chunks.zipWithIndex.forall { case (chunk, index) =>
       chunk.nn.forall(Chars.isIdentifierPart) ||
@@ -285,7 +285,6 @@ object Completion:
   def description(denot: SingleDenotation)(using Context): String =
     if denot.isType then denot.symbol.showFullName
     else denot.info.widenTermRefExpr.show
-
 
   def isInNewContext(untpdPath: List[untpd.Tree]): Boolean =
     untpdPath match
