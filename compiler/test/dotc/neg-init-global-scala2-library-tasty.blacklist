@@ -5,3 +5,16 @@ unapplySeq-implicit-arg.scala
 unapplySeq-implicit-arg2.scala
 unapplySeq-implicit-arg3.scala
 ScalaCheck.scala
+mutable-read8.scala
+TypeCast.scala
+global-cycle8.scala
+global-cycle6.scala
+i12544b.scala
+t9360.scala
+mutable-array.scala
+patmat-unapplySeq2.scala
+line-spacing.scala
+global-list.scala
+t5366.scala
+mutable-read7.scala
+t9115.scala

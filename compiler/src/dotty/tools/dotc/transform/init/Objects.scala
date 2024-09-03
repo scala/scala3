@@ -867,7 +867,7 @@ class Objects(using Context @constructorOnly):
       Bottom
 
     case Bottom =>
-      if field.isStaticObject then ObjectRef(field.moduleClass.asClass)
+      if field.isStaticObject then accessObject(field.moduleClass.asClass)
       else Bottom
 
     case ValueSet(values) =>
