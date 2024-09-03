@@ -618,6 +618,7 @@ class Objects(using Context @constructorOnly):
 
           case value: Value =>
             recur(value)
+      end visit
 
       def recur(value: Value): Unit =
         if !visited.contains(value) then
@@ -625,10 +626,12 @@ class Objects(using Context @constructorOnly):
           for item <- value.flatten do visit(item)
 
       for item <- roots do visit(item)
+
       while toVisit.nonEmpty do
         visit(toVisit.dequeue())
 
       reachableKeys.toSet
+    end reachableAddresses
 
     /** Compute the footprint of the heap for evaluating an expression
      *
@@ -832,7 +835,10 @@ class Objects(using Context @constructorOnly):
    * @param superType    The type of the super in a super call. NoType for non-super calls.
    * @param needResolve  Whether the target of the call needs resolution?
    */
-  def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show) + ", heap size = " + Heap.getHeapData().size, printer, (_: Value).show) {
+  def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log.force(
+      "call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show) + ", heap.size = " + Heap.getHeapData().size,
+      printer, (_: Value).show) {
+
     value.filterClass(meth.owner) match
     case Cold =>
       report.warning("Using cold alias. " + Trace.show, Trace.position)
@@ -951,7 +957,7 @@ class Objects(using Context @constructorOnly):
    * @param ctor         The symbol of the target method.
    * @param args         Arguments of the constructor call (all parameter blocks flatten to a list).
    */
-  def callConstructor(value: Value, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+  def callConstructor(value: Value, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args.map(_.value.show)  + ", heap.size = " + Heap.getHeapData().size, printer, (_: Value).show) {
     value match
     case ref: Ref =>
       if ctor.hasSource then
@@ -959,16 +965,20 @@ class Objects(using Context @constructorOnly):
         val ddef = ctor.defTree.asInstanceOf[DefDef]
         val argValues = args.map(_.value)
 
-        given Env.Data = Env.of(ddef, argValues, Env.NoEnv)
+        def doEval(tree: Tree)(using Trace): Value =
+          given Env.Data = Env.of(ddef, argValues, Env.NoEnv)
+          // No usage of `return` is possible in constructors --- still install
+          // return handler for uniform handling of method context.
+          Returns.installHandler(ctor)
+          val res = eval(ddef.rhs, ref, cls, EvalContext.Method)
+          Returns.popHandler(ctor)
+          res
+
         if ctor.isPrimaryConstructor then
           val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-          extendTrace(cls.defTree) { eval(tpl, ref, cls, EvalContext.Method) }
+          extendTrace(cls.defTree) { doEval(tpl) }
         else
-          extendTrace(ddef) { // The return values for secondary constructors can be ignored
-            Returns.installHandler(ctor)
-            eval(ddef.rhs, ref, cls, EvalContext.Method)
-            Returns.popHandler(ctor)
-          }
+          extendTrace(ddef) { doEval(ddef.rhs) }
       else
         // no source code available
         Bottom
@@ -1275,7 +1285,7 @@ class Objects(using Context @constructorOnly):
    * @param klass       The enclosing class where the expression is located.
    * @param ctx         The context where `eval` is called.
    */
-  def eval(expr: Tree, thisV: ThisValue, klass: ClassSymbol, ctx: EvalContext = EvalContext.Other): Contextual[Value] = log("evaluating " + expr.show + ", this = " + thisV.show + ", heap size = " + Heap.getHeapData().size + " in " + klass.show, printer, (_: Value).show) {
+  def eval(expr: Tree, thisV: ThisValue, klass: ClassSymbol, ctx: EvalContext = EvalContext.Other): Contextual[Value] = log("evaluating " + expr.show + ", this = " + thisV.show + ", heap.size = " + Heap.getHeapData().size + " in " + klass.show, printer, (_: Value).show) {
     cache.cachedEval(thisV, expr, ctx) { expr => cases(expr, thisV, klass) }
   }
 
@@ -1728,7 +1738,7 @@ class Objects(using Context @constructorOnly):
         val sym = tmref.symbol
         if sym.isStaticObject then
           if elideObjectAccess then
-            ObjectRef(sym.moduleClass.asClass)
+            Bottom
           else
             accessObject(sym.moduleClass.asClass)
         else
@@ -1742,7 +1752,7 @@ class Objects(using Context @constructorOnly):
         else if sym.isStaticObject && sym != klass then
           // The typer may use ThisType to refer to an object outside its definition.
           if elideObjectAccess then
-            ObjectRef(sym.moduleClass.asClass)
+            Bottom
           else
             accessObject(sym.moduleClass.asClass)
 
@@ -1804,7 +1814,7 @@ class Objects(using Context @constructorOnly):
    * @param thisV     The value of the current object to be initialized.
    * @param klass     The class to which the template belongs.
    */
-  def init(tpl: Template, thisV: Ref, klass: ClassSymbol): Contextual[Ref] = log("init " + klass.show, printer, (_: Value).show) {
+  def init(tpl: Template, thisV: Ref, klass: ClassSymbol): Contextual[Ref] = log("init " + klass.show + ", heap.size = " + Heap.getHeapData().size, printer, (_: Value).show) {
     val paramsMap = tpl.constr.termParamss.flatten.map { vdef =>
       vdef.name -> Env.valValue(vdef.symbol)
     }.toMap
@@ -1940,8 +1950,7 @@ class Objects(using Context @constructorOnly):
     else if target.is(Flags.Package) then
       Bottom
     else if target.isStaticObject then
-      val res = ObjectRef(target.moduleClass.asClass)
-      if elideObjectAccess then res
+      if elideObjectAccess then Bottom
       else accessObject(target)
     else
       thisV match
