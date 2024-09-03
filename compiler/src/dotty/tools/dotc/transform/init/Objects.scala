@@ -695,8 +695,10 @@ class Objects(using Context @constructorOnly):
           val changeSetNew = Heap.getChangeSet()
           // Only perform garbage collection for method context
           val heapGC =
-            if ctx == EvalContext then Heap.gc(value :: Returns.currentReturns, footprint, heapAfter, changeSetNew, State.currentObjectRef)
-            else heapAfter
+            if ctx == EvalContext.Method then
+              Heap.gc(value :: Returns.currentReturns, footprint, heapAfter, changeSetNew, State.currentObjectRef)
+            else
+              heapAfter
           Res(value, heapGC, changeSetNew)
         }
         Heap.update(heapBefore ++ result.heap, changeSetBefore ++ result.changeSet)
