@@ -699,7 +699,7 @@ class Objects(using Context @constructorOnly):
           // Only perform garbage collection for method context
           val heapGC =
             if ctx == EvalContext.Method then
-              Heap.gc(value :: Returns.currentReturns, footprint, heapAfter, changeSetNew, State.currentObjectRef)
+              Heap.gc(value :: Nil, footprint, heapAfter, changeSetNew, State.currentObjectRef)
             else
               heapAfter
           Res(value, heapGC, changeSetNew)
@@ -748,17 +748,6 @@ class Objects(using Context @constructorOnly):
 
         case None =>
           report.warning("[Internal error] Unhandled return for method " + meth + " in " + meth.owner.show + ". Trace:\n" + Trace.show, Trace.position)
-
-    /**
-     * Return the current return values in a method context.
-     *
-     * Warning: only use this method if it is certain that a method body has just
-     * finished before any other code is executed.
-     *
-     * Calling this method from lazy val or function context is problematic.
-     */
-    def currentReturns(using data: Data): List[Value] =
-      data.last.values.toList
 
   type Contextual[T] = (Context, State.Data, Env.Data, Cache.Data, Heap.MutableData, Regions.Data, Returns.Data, Trace) ?=> T
 
@@ -835,9 +824,8 @@ class Objects(using Context @constructorOnly):
    * @param superType    The type of the super in a super call. NoType for non-super calls.
    * @param needResolve  Whether the target of the call needs resolution?
    */
-  def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log.force(
-      "call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show) + ", heap.size = " + Heap.getHeapData().size,
-      printer, (_: Value).show) {
+  def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log(
+      "call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show) + ", heap.size = " + Heap.getHeapData().size, printer, (_: Value).show) {
 
     value.filterClass(meth.owner) match
     case Cold =>
@@ -970,7 +958,7 @@ class Objects(using Context @constructorOnly):
           // No usage of `return` is possible in constructors --- still install
           // return handler for uniform handling of method context.
           Returns.installHandler(ctor)
-          val res = eval(ddef.rhs, ref, cls, EvalContext.Method)
+          val res = eval(tree, ref, cls, EvalContext.Method)
           Returns.popHandler(ctor)
           res
 
