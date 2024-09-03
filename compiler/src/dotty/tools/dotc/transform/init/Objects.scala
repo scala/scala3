@@ -913,7 +913,7 @@ class Objects(using Context @constructorOnly):
 
   /**
    * Handle new expression `new p.C(args)`.
-   * The actual instance might be cached without running the constructor. 
+   * The actual instance might be cached without running the constructor.
    * See tests/init-global/pos/cache-constructor.scala
    *
    * @param outer       The value for `p`.
@@ -1229,11 +1229,12 @@ class Objects(using Context @constructorOnly):
               extendTrace(id) { evalType(prefix, thisV, klass) }
 
         val value = eval(rhs, thisV, klass)
+        val widened = widenEscapedValue(value, rhs)
 
         if isLocal then
-          writeLocal(thisV, lhs.symbol, value)
+          writeLocal(thisV, lhs.symbol, widened)
         else
-          withTrace(trace2) { assign(receiver, lhs.symbol, value, rhs.tpe) }
+          withTrace(trace2) { assign(receiver, lhs.symbol, widened, rhs.tpe) }
 
       case closureDef(ddef) =>
         Fun(ddef, thisV, klass, summon[Env.Data])
@@ -1571,6 +1572,36 @@ class Objects(using Context @constructorOnly):
         throw new Exception("unexpected type: " + tp + ", Trace:\n" + Trace.show)
   }
 
+  /** Widen the escaped value (a method argument or rhs of an assignment)
+   *
+   *  The default widening is 1 for most values, 2 for function values.
+   *  User-specified widening annotations are repected.
+   */
+  def widenEscapedValue(value: Value, annotatedTree: Tree): Contextual[Value] =
+    def parseAnnotation: Option[Int] =
+      annotatedTree.tpe.getAnnotation(defn.InitWidenAnnot).flatMap: annot =>
+          annot.argument(0).get match
+            case arg @ Literal(c: Constants.Constant) =>
+              val height = c.intValue
+              if height < 0 then
+                report.warning("The argument should be positive", arg)
+                None
+              else
+                Some(height)
+            case arg =>
+              report.warning("The argument should be a constant integer value", arg)
+              None
+    end parseAnnotation
+
+    parseAnnotation match
+      case Some(i) =>
+        value.widen(i)
+
+      case None =>
+        if value.isInstanceOf[Fun]
+        then value.widen(2)
+        else value.widen(1)
+
   /** Evaluate arguments of methods and constructors */
   def evalArgs(args: List[Arg], thisV: ThisValue, klass: ClassSymbol): Contextual[List[ArgInfo]] =
     val argInfos = new mutable.ArrayBuffer[ArgInfo]
@@ -1581,23 +1612,7 @@ class Objects(using Context @constructorOnly):
         else
           eval(arg.tree, thisV, klass)
 
-      val widened =
-        arg.tree.tpe.getAnnotation(defn.InitWidenAnnot) match
-        case Some(annot) =>
-          annot.argument(0).get match
-          case arg @ Literal(c: Constants.Constant) =>
-            val height = c.intValue
-            if height < 0 then
-              report.warning("The argument should be positive", arg)
-              res.widen(1)
-            else
-              res.widen(c.intValue)
-          case arg =>
-            report.warning("The argument should be a constant integer value", arg)
-            res.widen(1)
-        case _ =>
-          if res.isInstanceOf[Fun] then res.widen(2) else res.widen(1)
-
+      val widened = widenEscapedValue(res, arg.tree)
       argInfos += ArgInfo(widened, trace.add(arg.tree), arg.tree)
     }
     argInfos.toList
