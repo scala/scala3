@@ -159,7 +159,7 @@ sealed abstract class CaptureSet extends Showable:
    */
   def accountsFor(x: CaptureRef)(using Context): Boolean =
     if comparer.isInstanceOf[ExplainingTypeComparer] then // !!! DEBUG
-      reporting.trace.force(i"$this accountsFor $x, ${x.captureSetOfInfo}?", show = true):
+      reporting.trace(i"$this accountsFor $x, ${x.captureSetOfInfo}?", show = true):
         elems.exists(_.subsumes(x))
         || !x.isMaxCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
     else
