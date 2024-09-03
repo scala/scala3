@@ -113,6 +113,12 @@ trait Migrations:
         em"""Context bounds will map to context parameters.
             |A `using` clause is needed to pass explicit arguments to them.$rewriteMsg""",
         tree.srcPos, mversion)
+      tree match
+        case Apply(ta @ TypeApply(Select(New(_), _), _), Nil) =>
+          // Remove empty arguments for calls to new that may precede the context bound.
+          // They are no longer necessary.
+          patch(Span(ta.span.end, pt.args.head.span.start - 1), "")
+        case _ => ()
       if mversion.needsPatch && pt.args.nonEmpty then
         patch(Span(pt.args.head.span.start), "using ")
   end contextBoundParams
