@@ -11,6 +11,9 @@ It is composed of two experimental compiler options:
 * `-Ywith-best-effort-tasty` allows to read Best Effort TASTy files, and if such file is read from the classpath then
 limits compilation to the frontend phases
 
+IMPORTANT: These options are meant to by used by an IDE and should never be used on the user side, in the project definition.
+This is why they are hidden behind a private `-Y` option specifier.
+
 This feature aims to force through to the typer phase regardless of errors, and then serialize tasty-like files
 obtained from the error trees into the best effort directory (`META-INF/best-effort`) and also serialize semanticdb as normal.
 
