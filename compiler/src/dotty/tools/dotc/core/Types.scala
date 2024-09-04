@@ -118,14 +118,20 @@ object Types extends TypeUtils {
      *         a call to `resetInst`. This means all caches that rely on `isProvisional`
      *         can likely end up returning stale results.
      */
-    // def isProvisional(using Context): Boolean = mightBeProvisional && testProvisional
-    def isProvisional(using Context): Boolean = mightBeProvisional && !currentProvisionalState.isEmpty
+    def isProvisional(using Context): Boolean = mightBeProvisional && currentProvisionalState != null
 
-    type ProvisionalState = util.HashMap[Type, Type]
+    // The provisonal state of a type stores the parts which might be changed and their
+    // info at a given point.
+    // For example, a `TypeVar` is provisional until it is permently instantiated,
+    // and its info is the current instantiation.
+    type ProvisionalState = util.HashMap[Type, Type] | Null
 
     def currentProvisionalState(using Context): ProvisionalState =
-      val state: ProvisionalState = util.HashMap()
-      // Compared to `testProvisional`, we don't use short-circuiting or,
+      var state: ProvisionalState = null
+      inline def record(tp: Type, info: Type): Unit =
+        if state == null then state = util.HashMap()
+        state.uncheckedNN(tp) = info
+      // Compared to previous `testProvisional`, we don't use short-circuiting or (`||`),
       // because we want to collect all provisional types.
       class ProAcc extends TypeAccumulator[Boolean]:
         override def apply(x: Boolean, t: Type) = x | test(t, this)
@@ -137,7 +143,7 @@ object Types extends TypeUtils {
                 // When t is a TypeRef and its symbol is provisional,
                 // t will be considered provisional and its state is always updating.
                 // We store itself as info.
-                state(t) = t
+                record(t, t)
                 true
               else if !t.currentSymbol.isStatic then
                 (t: Type).mightBeProvisional = false // break cycles
@@ -147,7 +153,7 @@ object Types extends TypeUtils {
                   true
                 else t.denot.infoOrCompleter.match
                   case info: LazyType =>
-                    state(t) = info
+                    record(t, info)
                     true
                   case info: AliasingBounds =>
                     test(info.alias, theAcc)
@@ -170,18 +176,18 @@ object Types extends TypeUtils {
                 if inst.exists then
                   // We want to store the temporary instance to the state
                   // in order to reuse the cache when possible.
-                  state(t) = inst
+                  record(t, inst)
                   test(inst, theAcc)
                 else
-                  // When t is a TypeVar and does not have an instancication,
+                  // When t is a TypeVar and does not have an instantiation,
                   // we store itself as info.
-                  state(t) = t
+                  record(t, t)
                 true
             case t: LazyRef =>
               if !t.completed then
                 // When t is a LazyRef and is not completed,
                 // we store itself as info.
-                state(t) = t
+                record(t, t)
                 true
               else
                 test(t.ref, theAcc)
@@ -196,48 +202,17 @@ object Types extends TypeUtils {
 
     def isStateUpToDate(
         currentState: ProvisionalState,
-        lastState: ProvisionalState | Null)
+        lastState: ProvisionalState)
         (using Context): Boolean =
-      lastState != null
-      && currentState.size == lastState.size
-      && currentState.iterator.forall: (tp, info) =>
-        lastState.contains(tp) && {
-          tp match
-            case tp: TypeRef => (info ne tp) && (info eq lastState(tp))
-            case _=> info eq lastState(tp)
-        }
-
-    // private def testProvisional(using Context): Boolean =
-    //   class ProAcc extends TypeAccumulator[Boolean]:
-    //     override def apply(x: Boolean, t: Type) = x || test(t, this)
-    //   def test(t: Type, theAcc: TypeAccumulator[Boolean] | Null): Boolean =
-    //     if t.mightBeProvisional then
-    //       t.mightBeProvisional = t match
-    //         case t: TypeRef =>
-    //           t.currentSymbol.isProvisional || !t.currentSymbol.isStatic && {
-    //             (t: Type).mightBeProvisional = false // break cycles
-    //             test(t.prefix, theAcc)
-    //             || t.denot.infoOrCompleter.match
-    //                 case info: LazyType => true
-    //                 case info: AliasingBounds => test(info.alias, theAcc)
-    //                 case TypeBounds(lo, hi) => test(lo, theAcc) || test(hi, theAcc)
-    //                 case _ => false
-    //           }
-    //         case t: TermRef =>
-    //           !t.currentSymbol.isStatic && test(t.prefix, theAcc)
-    //         case t: AppliedType =>
-    //           t.fold(false, (x, tp) => x || test(tp, theAcc))
-    //         case t: TypeVar =>
-    //           !t.isPermanentlyInstantiated || test(t.permanentInst, theAcc)
-    //         case t: LazyRef =>
-    //           !t.completed || test(t.ref, theAcc)
-    //         case _ =>
-    //           (if theAcc != null then theAcc else ProAcc()).foldOver(false, t)
-    //     end if
-    //     t.mightBeProvisional
-    //   end test
-    //   test(this, null)
-    // end testProvisional
+      (currentState eq lastState)
+      || currentState != null && lastState != null
+        && currentState.size == lastState.size
+        && currentState.iterator.forall: (tp, info) =>
+          lastState.contains(tp) && {
+            tp match
+              case tp: TypeRef => (info ne tp) && (info eq lastState(tp))
+              case _ => info eq lastState(tp)
+          }
 
     /** Is this type different from NoType? */
     final def exists: Boolean = this.ne(NoType)
@@ -1398,8 +1373,6 @@ object Types extends TypeUtils {
     final def widen(using Context): Type = this match
       case _: TypeRef | _: MethodOrPoly => this // fast path for most frequent cases
       case tp: TermRef => // fast path for next most frequent case
-        // Don't call `isOverloaded` and `underlying` on `tp` directly,
-        // to avoid computing provisional state twice.
         val denot = tp.denot
         if denot.isOverloaded then tp else denot.info.widen
       case tp: SingletonType => tp.underlying.widen
@@ -1414,10 +1387,12 @@ object Types extends TypeUtils {
     /** Widen from singleton type to its underlying non-singleton
      *  base type by applying one or more `underlying` dereferences.
      */
-    final def widenSingleton(using Context): Type = stripped match {
-      case tp: SingletonType if !tp.isOverloaded => tp.underlying.widenSingleton
+    final def widenSingleton(using Context): Type = stripped match
+      case tp: TermRef =>
+        val denot = tp.denot
+        if denot.isOverloaded then this else denot.info.widenSingleton
+      case tp: SingletonType => tp.underlying.widenSingleton
       case _ => this
-    }
 
     /** Widen from TermRef to its underlying non-termref
      *  base type, while also skipping Expr types.
@@ -2395,12 +2370,12 @@ object Types extends TypeUtils {
 
     private var myName: Name | Null = null
     private var lastDenotation: Denotation | Null = null
-    private var lastDenotationProvState: ProvisionalState | Null = null
+    private var lastDenotationProvState: ProvisionalState = null
     private var lastSymbol: Symbol | Null = null
     private var checkedPeriod: Period = Nowhere
     private var myStableHash: Byte = 0
     private var mySignature: Signature = uninitialized
-    private var mySignatureProvState: ProvisionalState | Null = null
+    private var mySignatureProvState: ProvisionalState = null
     private var mySignatureRunId: Int = NoRunId
 
     // Invariants:
@@ -2473,7 +2448,9 @@ object Types extends TypeUtils {
     final def symbol(using Context): Symbol =
       // We can rely on checkedPeriod (unlike in the definition of `denot` below)
       // because SymDenotation#installAfter never changes the symbol
-      if (checkedPeriod.code == ctx.period.code) lastSymbol.asInstanceOf[Symbol]
+      if checkedPeriod.code == ctx.period.code
+        && isStateUpToDate(prefix.currentProvisionalState, lastDenotationProvState) then
+        lastSymbol.asInstanceOf[Symbol]
       else computeSymbol
 
     private def computeSymbol(using Context): Symbol =
@@ -2482,7 +2459,6 @@ object Types extends TypeUtils {
           if (sym.isValidInCurrentRun) sym else denot.symbol
         case name =>
           (if (denotationIsCurrent) lastDenotation.asInstanceOf[Denotation] else denot).symbol
-      if checkedPeriod.code != NowhereCode then checkedPeriod = ctx.period
       result
 
     /** There is a denotation computed which is valid (somewhere in) the
@@ -2532,8 +2508,8 @@ object Types extends TypeUtils {
       // Even if checkedPeriod == now we still need to recheck lastDenotation.validFor
       // as it may have been mutated by SymDenotation#installAfter
       if checkedPeriod.code != NowhereCode
-        && isStateUpToDate(prefix.currentProvisionalState, lastDenotationProvState)
         && lastd.validFor.contains(ctx.period)
+        && isStateUpToDate(prefix.currentProvisionalState, lastDenotationProvState)
       then lastd
       else computeDenot
 
@@ -3959,13 +3935,13 @@ object Types extends TypeUtils {
     // (3) myScala2SignatureRunId != NoRunId =>  myScala2Signature != null
 
     private var mySignature: Signature = uninitialized
-    private var mySignatureProvState: ProvisionalState | Null = null
+    private var mySignatureProvState: ProvisionalState = null
     private var mySignatureRunId: Int = NoRunId
     private var myJavaSignature: Signature = uninitialized
-    private var myJavaSignatureProvState: ProvisionalState | Null = null
+    private var myJavaSignatureProvState: ProvisionalState = null
     private var myJavaSignatureRunId: Int = NoRunId
     private var myScala2Signature: Signature = uninitialized
-    private var myScala2SignatureProvState: ProvisionalState | Null = null
+    private var myScala2SignatureProvState: ProvisionalState = null
     private var myScala2SignatureRunId: Int = NoRunId
 
     /** If `isJava` is false, the Scala signature of this method. Otherwise, its Java signature.
