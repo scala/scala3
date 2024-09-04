@@ -87,8 +87,21 @@ class ReplDriver(settings: Array[String],
     setupRootCtx(this.settings ++ settings, rootCtx)
   }
 
+  private val incompatibleOptions: Seq[String] = Seq(
+    initCtx.settings.YbestEffort.name,
+    initCtx.settings.YwithBestEffortTasty.name
+  )
+
   private def setupRootCtx(settings: Array[String], rootCtx: Context) = {
-    setup(settings, rootCtx) match
+    val incompatible = settings.intersect(incompatibleOptions)
+    val filteredSettings =
+      if !incompatible.isEmpty then
+        inContext(rootCtx) {
+          out.println(i"Options incompatible with repl will be ignored: ${incompatible.mkString(", ")}")
+        }
+        settings.filter(!incompatible.contains(_))
+      else settings
+    setup(filteredSettings, rootCtx) match
       case Some((files, ictx)) => inContext(ictx) {
         shouldStart = true
         if files.nonEmpty then out.println(i"Ignoring spurious arguments: $files%, %")
