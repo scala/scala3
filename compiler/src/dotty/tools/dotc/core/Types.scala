@@ -2459,6 +2459,7 @@ object Types extends TypeUtils {
           if (sym.isValidInCurrentRun) sym else denot.symbol
         case name =>
           (if (denotationIsCurrent) lastDenotation.asInstanceOf[Denotation] else denot).symbol
+      if checkedPeriod.code != NowhereCode then checkedPeriod = ctx.period
       result
 
     /** There is a denotation computed which is valid (somewhere in) the
