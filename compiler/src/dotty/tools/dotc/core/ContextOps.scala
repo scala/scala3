@@ -135,7 +135,7 @@ object ContextOps:
     }
 
     def packageContext(tree: untpd.PackageDef, pkg: Symbol): Context = inContext(ctx) {
-      if (pkg.is(Package)) ctx.fresh.setOwner(pkg.moduleClass).setTree(tree)
+      if (pkg.is(Package)) ctx.fresh.setOwner(pkg.moduleClass).setTree(tree).setNewScope
       else ctx
     }
 end ContextOps
