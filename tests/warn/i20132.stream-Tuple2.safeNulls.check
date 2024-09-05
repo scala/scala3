@@ -1,8 +1,0 @@
--- [E029] Pattern Match Exhaustivity Warning: tests/warn/i20132.stream-Tuple2.safeNulls.scala:8:24 ---------------------
-8 |    xs.asJava.forEach { case (a, b) => // warn
-  |                        ^
-  |                        match may not be exhaustive.
-  |
-  |                        It would fail on pattern case: _: Null
-  |
-  | longer explanation available when compiling with `-explain`

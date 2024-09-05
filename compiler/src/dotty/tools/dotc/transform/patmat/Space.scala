@@ -817,7 +817,7 @@ object SpaceEngine {
   }
 
   extension (self: Type) private def stripUnsafeNulls()(using Context): Type =
-    if Nullables.unsafeNullsEnabled then self.stripNull() else self
+    if Nullables.unsafeNullsEnabled then self.stripNull else self
 
   private def exhaustivityCheckable(sel: Tree)(using Context): Boolean = trace(i"exhaustivityCheckable($sel ${sel.className})") {
     val seen = collection.mutable.Set.empty[Symbol]
