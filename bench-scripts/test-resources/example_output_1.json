@@ -1,0 +1,75 @@
+{
+  "commitTime": "2021-08-31T23:00:01Z",
+  "commit": "abc123",
+  "merged": true,
+  "pr": 2,
+  "benchTime": "2021-09-01T02:05:00Z",
+  "run": 0,
+  "benchResults": [
+    {
+      "benchmark": "implicitCacheBootstrapped",
+      "warmup": [
+        562.817,
+        386.297,
+        365.383
+      ],
+      "measures": [
+        366.542,
+        390.866,
+        352.338
+      ]
+    },
+    {
+      "benchmark": "implicitCacheTasty",
+      "warmup": [
+        899.944,
+        687.595,
+        625.322
+      ],
+      "measures": [
+        616.428,
+        551.615,
+        552.089
+      ]
+    },
+    {
+      "benchmark": "implicitNumsBootstrapped",
+      "warmup": [
+        1934.992,
+        1389.856,
+        1440.386
+      ],
+      "measures": [
+        1731.511,
+        1083.199,
+        886.713
+      ]
+    },
+    {
+      "benchmark": "implicitNumsTasty",
+      "warmup": [
+        986.655,
+        755.808,
+        695.625
+      ],
+      "measures": [
+        599.294,
+        566.847,
+        468.301
+      ]
+    },
+    {
+      "benchmark": "implicitScopeLoop",
+      "warmup": [
+        397.422,
+        398.656,
+        333.208
+      ],
+      "measures": [
+        332.119,
+        328.872,
+        339.061
+      ]
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 1rem;
+  padding: 1rem;
+}
+
+h1 {
+  font-size: 2.5rem;
+}
+
+h2 {
+  font-size: 2rem;
+}
+
+label {
+  cursor: pointer;
+}
+
+form {
+  max-width: 28rem;
+}
+
+.checkbox-group {
+  margin: 1rem 0;
+}
+
+.checkbox-group p {
+  margin: 0.15rem 0;
+}
+
+.checkbox-group .description {
+  color: #666;
+  font-size: 0.85rem;
+}
+
+#compare {
+  height: 80vh;
+}

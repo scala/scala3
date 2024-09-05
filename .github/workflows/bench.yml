@@ -1,0 +1,168 @@
+name: Benchmarks
+
+on:
+  push:
+    branches:
+      - main
+      - mb/benchmarks # TODO(mbovel): remove this line
+  schedule:
+    - cron: "11 1 * * *" # Every night at 01:11 UTC
+  workflow_call:
+    inputs:
+      commit:
+        description: "Commit to benchmark."
+        required: true
+        type: string
+      repo:
+        description: "GitHub repository containing the commit to benchmark."
+        required: true
+        type: string
+      run:
+        description: "Index of the run. This is used to distinguish between multiple benchmark runs on the same commit."
+        required: true
+        type: number
+      profile:
+        description: "Profile: `nightly` or `merge`."
+        required: true
+        type: string
+
+env:
+  # Commit to benchmark.
+  COMMIT: ${{inputs.commit || github.sha}}
+
+  # Whether the commit was merged.
+  MERGED: ${{github.event_name == 'push' || github.event_name == 'schedule'}}
+
+  # PR number associated with the benchmarked commit.
+  # If this is 0 the step "Find PR" will try to find the PR associated with
+  # the commit.
+  PR: ${{github.event.issue.number || 0}}
+
+  # Repository name. This is always  `scala/scala3` for `push` and
+  # `schedule` events, but can be different for `workflow_call` events.
+  REPO: ${{inputs.repo || github.repository}}
+
+  # Index of the run.
+  RUN: ${{inputs.run || 0}}
+
+  # Whether to run the "merge" benchmarks or the "nightly" benchmarks.
+  PROFILE: ${{inputs.profile || ((github.event_name == 'schedule' && 'nightly') || 'merge')}}
+
+  # Path where to store the standard output of JMH.
+  JMH_OUTPUT_PATH: jmh-output.txt
+
+  # Shared options to pass to JMH.
+  # - `-foe true` means "fail on error".
+  # - `-gc true` launches the garbage collector between each iterations,
+  #   which significantly reduces noise.
+  JMH_ARGS: -foe true -gc true -wi 0 -i 1
+
+  # Fully qualified path of the `@main def importResults` method.
+  IMPORT_RESULTS_MAIN: dotty.tools.benchmarks.scripts.importResults
+
+  # Fully qualified path of the `@main def aggregateData` method.
+  AGGREGATE_DATA_MAIN: dotty.tools.benchmarks.scripts.aggregateData
+
+  # Path to the directory where the benchmark data is stored on the runner.
+  # Keep in sync with the value in .github/workflows/bench_matrix.yml.
+  DATA_DIR: /home/scalabenchs/bench-data-v3
+
+  # Destination of the benchmarks data.
+  DATA_DEST: w3dtbenc@tresorvm02:htdocs/v3/data
+
+  # Path to the directory that contains the bench visualizer app.
+  VISUALIZER_DIR: bench-visualizer
+
+  # Destination of the visualizer app.
+  VISUALIZER_DEST: w3dtbenc@tresorvm02:htdocs/v3
+
+jobs:
+  run_benchmarks:
+    name: Run Benchmarks
+    runs-on: ["self-hosted", "benchmarks"]
+    steps:
+      # Checks if the benchmarks have already been run for this configuration.
+      # If so, skip the rest of the workflow.
+      - name: Check if file exists
+        id: check_file
+        run: |
+          DATA_JSON_PATH="$DATA_DIR/raw/$COMMIT/$PROFILE-$RUN.json"
+          echo "DATA_JSON_PATH=$DATA_JSON_PATH" >> $GITHUB_ENV
+          if [ -f "$DATA_JSON_PATH" ]; then
+            echo "File already exists: the benchmarks have already been run for this commit."
+            echo "FILE_EXISTS=true" >> $GITHUB_ENV
+          else
+            echo "FILE_EXISTS=false" >> $GITHUB_ENV
+          fi
+      - name: Find PR
+        if: steps.check_file.outputs.FILE_EXISTS == 'false' && env.PR == '0'
+        uses: actions/github-script@v7
+        with:
+          script: | #js
+            const prs = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha
+            });
+            if (prs.data.length === 1) {
+              const pr = prs.data[0].number;
+              core.info(`PR associated with commit ${context.sha}: ${pr}.`);
+              core.exportVariable('PR', prs.data[0].number);
+            } else if (prs.data.length === 0) {
+              core.warning(`Cannot find any PR associated with commit ${context.sha}.`);
+            } else {
+              core.warning(`Found multiple PRs associated with commit ${context.sha}: ${prs.data.map(pr => pr.number).join(', ')}.`);
+            }
+
+      - name: Check out repository
+        if: steps.check_file.outputs.FILE_EXISTS == 'false'
+        uses: actions/checkout@v4
+        with:
+          submodules: "true"
+          ref: ${{env.COMMIT}}
+          repository: ${{env.REPO}}
+
+      # This is a workaround to make the binaries installed by `coursier` on the
+      # runner's VM available in the PATH.
+      - name: Set path
+        if: steps.check_file.outputs.FILE_EXISTS == 'false'
+        run: echo '/home/scalabenchs/.local/share/coursier/bin' >> $GITHUB_PATH
+
+      # Compilation is done as a separate step from running the benchmarks
+      # to make the logs easier to read and to time it separately.
+      - name: Compile
+        if: steps.check_file.outputs.FILE_EXISTS == 'false'
+        run: sbt -no-colors "scala3-bench-bootstrapped / Jmh / compile"
+
+      - name: Run benchmarks (non-bootstrapped)
+        if: steps.check_file.outputs.FILE_EXISTS == 'false'
+        env:
+          # JMH filters selecting non-bootstrapped benchmarks to run.
+          # `-e` means "exclude".
+          JMH_FILTERS: ${{(env.PROFILE == 'nightly' && '-e Bootstrapped Nightly') || '-e Bootstrapped -e Nightly'}}
+        run: sbt -no-colors "scala3-bench / Jmh / run $JMH_ARGS $JMH_FILTERS" | tee $JMH_OUTPUT_PATH
+
+      - name: Run benchmarks (bootstrapped)
+        if: steps.check_file.outputs.FILE_EXISTS == 'false'
+        env:
+          # JMH filters selecting bootstrapped benchmarks to run.
+          JMH_BOOTSTRAPPED_FILTERS: ${{(env.PROFILE == 'nightly' && 'BootstrappedNightly') || 'Bootstrapped -e Nightly'}}
+        run: sbt -no-colors "scala3-bench-bootstrapped / Jmh / run $JMH_ARGS $JMH_BOOTSTRAPPED_FILTERS" | tee -a $JMH_OUTPUT_PATH
+
+      - name: Import results
+        if: steps.check_file.outputs.FILE_EXISTS == 'false'
+        run: sbt -no-colors "scala3-bench-scripts / runMain $IMPORT_RESULTS_MAIN $PR $COMMIT $MERGED $RUN $JMH_OUTPUT_PATH $DATA_JSON_PATH"
+
+      - name: Aggregate data
+        if: steps.check_file.outputs.FILE_EXISTS == 'false' && inputs
+        run: sbt -no-colors "scala3-bench-scripts / runMain $AGGREGATE_DATA_MAIN $DATA_DIR"
+
+      - name: Sync data
+        if: steps.check_file.outputs.FILE_EXISTS == 'false'
+        run: rsync -av --delete $DATA_DIR/ $DATA_DEST/
+
+      # When a pull request is merged, also update the visualizer itself.
+      # This must not be skipped if the benchmarks have already been run.
+      - name: Sync visualizer
+        if: github.event_name == 'push'
+        run: rsync -av $VISUALIZER_DIR/ $VISUALIZER_DEST/

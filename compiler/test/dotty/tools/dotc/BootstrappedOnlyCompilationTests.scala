@@ -27,8 +27,14 @@ class BootstrappedOnlyCompilationTests {
   @Test def posMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePosMacros")
     aggregateTests(
-      compileFilesInDir("tests/bench", defaultOptions.without("-Yno-deep-subtypes")),
       compileFilesInDir("tests/pos-macros", defaultOptions.and("-Xcheck-macros")),
+    ).checkCompile()
+  }
+  
+  @Test def posBenchs: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("compilePosBenchs")
+    aggregateTests(
+      compileFilesInDir("tests/bench", defaultOptions.without("-Yno-deep-subtypes")),
     ).checkCompile()
   }
 

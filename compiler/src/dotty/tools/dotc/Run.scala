@@ -337,7 +337,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
         doEnterPhase(phase)
         val phaseWillRun = phase.isRunnable || forceReachPhaseMaybe.nonEmpty
         if phaseWillRun then
-          Stats.trackTime(s"phase time ms/$phase") {
+          Stats.trackTime(s"phase time μs/$phase") {
             val start = System.currentTimeMillis
             profiler.onPhase(phase):
               try units = phase.runOn(units)

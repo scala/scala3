@@ -367,7 +367,7 @@ object Test {
   implicitly[Succ[Succ[Succ[Zero]]]]
   implicitly[Succ[Succ[Succ[Succ[Zero]]]]]
 
-implicitly[Zero]
+  implicitly[Zero]
   implicitly[Succ[Zero]]
   implicitly[Succ[Succ[Zero]]]
   implicitly[Succ[Succ[Succ[Zero]]]]

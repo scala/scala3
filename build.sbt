@@ -14,6 +14,7 @@ val `scala3-language-server` = Build.`scala3-language-server`
 val `scala3-bench` = Build.`scala3-bench`
 val `scala3-bench-bootstrapped` = Build.`scala3-bench-bootstrapped`
 val `scala3-bench-micro` = Build.`scala3-bench-micro`
+val `scala3-bench-scripts` = Build.`scala3-bench-scripts`
 val `scala2-library-bootstrapped` = Build.`scala2-library-bootstrapped`
 val `scala2-library-tasty` = Build.`scala2-library-tasty`
 val `scala2-library-cc` = Build.`scala2-library-cc`

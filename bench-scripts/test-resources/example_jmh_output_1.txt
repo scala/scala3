@@ -1,0 +1,314 @@
+[info] welcome to sbt 1.9.9 (GraalVM Community Java 17.0.8)
+[info] loading global plugins from /Users/mbovel/.sbt/1.0/plugins
+[info] loading settings for project dotty-build-build-build-build from metals.sbt ...
+[info] loading project definition from /Users/mbovel/dotty/project/project/project/project
+[info] loading settings for project dotty-build-build-build from metals.sbt ...
+[info] loading project definition from /Users/mbovel/dotty/project/project/project
+[success] Generated .bloop/dotty-build-build-build.json
+[success] Total time: 1 s, completed Oct 9, 2024, 12:11:56 PM
+[info] loading settings for project dotty-build-build from build.sbt,metals.sbt ...
+[info] loading project definition from /Users/mbovel/dotty/project/project
+[success] Generated .bloop/dotty-build-build.json
+[success] Total time: 1 s, completed Oct 9, 2024, 12:11:57 PM
+[info] loading settings for project dotty-build from build.sbt,metals.sbt,plugins.sbt ...
+[info] loading project definition from /Users/mbovel/dotty/project
+[success] Generated .bloop/dotty-build.json
+[success] Total time: 1 s, completed Oct 9, 2024, 12:11:58 PM
+[info] loading settings for project scala3 from build.sbt ...
+[info] resolving key references (46599 settings) ...
+[info] set current project to scala3 (in build file:/Users/mbovel/dotty/)
+[info] compiling 4 Java sources to /Users/mbovel/dotty/bench/target/scala-3.5.2-RC1/classes ...
+[info] done compiling
+[info] running (fork) org.openjdk.jmh.Main impli -wi 3 -i 3
+# JMH version: 1.37
+# VM version: JDK 17.0.8, OpenJDK 64-Bit Server VM, 17.0.8+7-jvmci-22.3-b22
+# VM invoker: /Users/mbovel/Library/Caches/Coursier/arc/https/github.com/graalvm/graalvm-ce-builds/releases/download/vm-22.3.3/graalvm-ce-java17-darwin-amd64-22.3.3.tar.gz/graalvm-ce-java17-22.3.3/Contents/Home/bin/java
+# VM options: -XX:ThreadPriorityPolicy=1 -XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:JVMCIThreadsPerNativeLibraryRuntime=1 -XX:-UnlockExperimentalVMOptions -XX:MaxJavaStackTraceDepth=1000000 -DBENCH_COMPILER_CLASS_PATH=/Users/mbovel/dotty/out/bootstrap/scala3-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/dotty/out/bootstrap/tasty-core-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/dotty/out/bootstrap/scala3-library-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/dotty/out/bootstrap/scala3-compiler-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/dotty/interfaces/target/classes:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/modules/scala-asm/9.7.0-scala-2/scala-asm-9.7.0-scala-2.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-sbt/compiler-interface/1.9.6/compiler-interface-1.9.6.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/jline/jline-reader/3.25.1/jline-reader-3.25.1.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/jline/jline-terminal/3.25.1/jline-terminal-3.25.1.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/jline/jline-terminal-jna/3.25.1/jline-terminal-jna-3.25.1.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.14/scala-library-2.13.14.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-sbt/util-interface/1.9.8/util-interface-1.9.8.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/jline/jline-native/3.25.1/jline-native-3.25.1.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/net/java/dev/jna/jna/5.14.0/jna-5.14.0.jar -DBENCH_CLASS_PATH=/Users/mbovel/dotty/out/bootstrap/scala3-library-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.14/scala-library-2.13.14.jar -Xms2G -Xmx2G
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, single-shot each
+# Measurement: 3 iterations, single-shot each
+# Timeout: 10 min per iteration
+# Threads: 1 thread
+# Benchmark mode: Single shot invocation time
+# Benchmark: dotty.tools.benchmarks.CompilationBenchmarks.implicitCacheBootstrapped
+
+# Run progress: 0.00% complete, ETA 00:00:00
+# Fork: 1 of 1
+OpenJDK 64-Bit Server VM warning: -XX:ThreadPriorityPolicy=1 may require system level permission, e.g., being the root user. If the necessary permission is not possessed, changes to priority will be silently ignored.
+# Warmup Iteration   1: 562.817 ms/op
+# Warmup Iteration   2: 386.297 ms/op
+# Warmup Iteration   3: 365.383 ms/op
+Iteration   1: 366.542 ms/op
+Iteration   2: 390.866 ms/op
+Iteration   3: 352.338 ms/op
+
+
+Result "dotty.tools.benchmarks.CompilationBenchmarks.implicitCacheBootstrapped":
+  N = 3
+  mean =    369.915 ±(99.9%) 355.473 ms/op
+
+  Histogram, ms/op:
+    [350.000, 355.000) = 1 
+    [355.000, 360.000) = 0 
+    [360.000, 365.000) = 0 
+    [365.000, 370.000) = 1 
+    [370.000, 375.000) = 0 
+    [375.000, 380.000) = 0 
+    [380.000, 385.000) = 0 
+    [385.000, 390.000) = 0 
+    [390.000, 395.000) = 1 
+
+  Percentiles, ms/op:
+      p(0.0000) =    352.338 ms/op
+     p(50.0000) =    366.542 ms/op
+     p(90.0000) =    390.866 ms/op
+     p(95.0000) =    390.866 ms/op
+     p(99.0000) =    390.866 ms/op
+     p(99.9000) =    390.866 ms/op
+     p(99.9900) =    390.866 ms/op
+     p(99.9990) =    390.866 ms/op
+     p(99.9999) =    390.866 ms/op
+    p(100.0000) =    390.866 ms/op
+
+
+# JMH version: 1.37
+# VM version: JDK 17.0.8, OpenJDK 64-Bit Server VM, 17.0.8+7-jvmci-22.3-b22
+# VM invoker: /Users/mbovel/Library/Caches/Coursier/arc/https/github.com/graalvm/graalvm-ce-builds/releases/download/vm-22.3.3/graalvm-ce-java17-darwin-amd64-22.3.3.tar.gz/graalvm-ce-java17-22.3.3/Contents/Home/bin/java
+# VM options: -XX:ThreadPriorityPolicy=1 -XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:JVMCIThreadsPerNativeLibraryRuntime=1 -XX:-UnlockExperimentalVMOptions -XX:MaxJavaStackTraceDepth=1000000 -DBENCH_COMPILER_CLASS_PATH=/Users/mbovel/dotty/out/bootstrap/scala3-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/dotty/out/bootstrap/tasty-core-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/dotty/out/bootstrap/scala3-library-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/dotty/out/bootstrap/scala3-compiler-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/dotty/interfaces/target/classes:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/modules/scala-asm/9.7.0-scala-2/scala-asm-9.7.0-scala-2.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-sbt/compiler-interface/1.9.6/compiler-interface-1.9.6.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/jline/jline-reader/3.25.1/jline-reader-3.25.1.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/jline/jline-terminal/3.25.1/jline-terminal-3.25.1.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/jline/jline-terminal-jna/3.25.1/jline-terminal-jna-3.25.1.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.14/scala-library-2.13.14.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-sbt/util-interface/1.9.8/util-interface-1.9.8.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/jline/jline-native/3.25.1/jline-native-3.25.1.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/net/java/dev/jna/jna/5.14.0/jna-5.14.0.jar -DBENCH_CLASS_PATH=/Users/mbovel/dotty/out/bootstrap/scala3-library-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.14/scala-library-2.13.14.jar -Xms2G -Xmx2G
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, single-shot each
+# Measurement: 3 iterations, single-shot each
+# Timeout: 10 min per iteration
+# Threads: 1 thread
+# Benchmark mode: Single shot invocation time
+# Benchmark: dotty.tools.benchmarks.CompilationBenchmarks.implicitCacheTasty
+
+# Run progress: 20.00% complete, ETA 00:00:31
+# Fork: 1 of 1
+OpenJDK 64-Bit Server VM warning: -XX:ThreadPriorityPolicy=1 may require system level permission, e.g., being the root user. If the necessary permission is not possessed, changes to priority will be silently ignored.
+# Warmup Iteration   1: 899.944 ms/op
+# Warmup Iteration   2: 687.595 ms/op
+# Warmup Iteration   3: 625.322 ms/op
+Iteration   1: 616.428 ms/op
+Iteration   2: 551.615 ms/op
+Iteration   3: 552.089 ms/op
+
+
+Result "dotty.tools.benchmarks.CompilationBenchmarks.implicitCacheTasty":
+  N = 3
+  mean =    573.377 ±(99.9%) 680.188 ms/op
+
+  Histogram, ms/op:
+    [550.000, 555.000) = 2 
+    [555.000, 560.000) = 0 
+    [560.000, 565.000) = 0 
+    [565.000, 570.000) = 0 
+    [570.000, 575.000) = 0 
+    [575.000, 580.000) = 0 
+    [580.000, 585.000) = 0 
+    [585.000, 590.000) = 0 
+    [590.000, 595.000) = 0 
+    [595.000, 600.000) = 0 
+    [600.000, 605.000) = 0 
+    [605.000, 610.000) = 0 
+    [610.000, 615.000) = 0 
+
+  Percentiles, ms/op:
+      p(0.0000) =    551.615 ms/op
+     p(50.0000) =    552.089 ms/op
+     p(90.0000) =    616.428 ms/op
+     p(95.0000) =    616.428 ms/op
+     p(99.0000) =    616.428 ms/op
+     p(99.9000) =    616.428 ms/op
+     p(99.9900) =    616.428 ms/op
+     p(99.9990) =    616.428 ms/op
+     p(99.9999) =    616.428 ms/op
+    p(100.0000) =    616.428 ms/op
+
+
+# JMH version: 1.37
+# VM version: JDK 17.0.8, OpenJDK 64-Bit Server VM, 17.0.8+7-jvmci-22.3-b22
+# VM invoker: /Users/mbovel/Library/Caches/Coursier/arc/https/github.com/graalvm/graalvm-ce-builds/releases/download/vm-22.3.3/graalvm-ce-java17-darwin-amd64-22.3.3.tar.gz/graalvm-ce-java17-22.3.3/Contents/Home/bin/java
+# VM options: -XX:ThreadPriorityPolicy=1 -XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:JVMCIThreadsPerNativeLibraryRuntime=1 -XX:-UnlockExperimentalVMOptions -XX:MaxJavaStackTraceDepth=1000000 -DBENCH_COMPILER_CLASS_PATH=/Users/mbovel/dotty/out/bootstrap/scala3-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/dotty/out/bootstrap/tasty-core-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/dotty/out/bootstrap/scala3-library-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/dotty/out/bootstrap/scala3-compiler-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/dotty/interfaces/target/classes:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/modules/scala-asm/9.7.0-scala-2/scala-asm-9.7.0-scala-2.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-sbt/compiler-interface/1.9.6/compiler-interface-1.9.6.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/jline/jline-reader/3.25.1/jline-reader-3.25.1.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/jline/jline-terminal/3.25.1/jline-terminal-3.25.1.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/jline/jline-terminal-jna/3.25.1/jline-terminal-jna-3.25.1.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.14/scala-library-2.13.14.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-sbt/util-interface/1.9.8/util-interface-1.9.8.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/jline/jline-native/3.25.1/jline-native-3.25.1.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/net/java/dev/jna/jna/5.14.0/jna-5.14.0.jar -DBENCH_CLASS_PATH=/Users/mbovel/dotty/out/bootstrap/scala3-library-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.14/scala-library-2.13.14.jar -Xms2G -Xmx2G
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, single-shot each
+# Measurement: 3 iterations, single-shot each
+# Timeout: 10 min per iteration
+# Threads: 1 thread
+# Benchmark mode: Single shot invocation time
+# Benchmark: dotty.tools.benchmarks.CompilationBenchmarks.implicitNumsBootstrapped
+
+# Run progress: 40.00% complete, ETA 00:00:26
+# Fork: 1 of 1
+OpenJDK 64-Bit Server VM warning: -XX:ThreadPriorityPolicy=1 may require system level permission, e.g., being the root user. If the necessary permission is not possessed, changes to priority will be silently ignored.
+# Warmup Iteration   1: 1934.992 ms/op
+# Warmup Iteration   2: 1389.856 ms/op
+# Warmup Iteration   3: 1440.386 ms/op
+Iteration   1: 1731.511 ms/op
+Iteration   2: 1083.199 ms/op
+Iteration   3: 886.713 ms/op
+
+
+Result "dotty.tools.benchmarks.CompilationBenchmarks.implicitNumsBootstrapped":
+  N = 3
+  mean =   1233.808 ±(99.9%) 8065.150 ms/op
+
+  Histogram, ms/op:
+    [ 800.000,  900.000) = 1 
+    [ 900.000, 1000.000) = 0 
+    [1000.000, 1100.000) = 1 
+    [1100.000, 1200.000) = 0 
+    [1200.000, 1300.000) = 0 
+    [1300.000, 1400.000) = 0 
+    [1400.000, 1500.000) = 0 
+    [1500.000, 1600.000) = 0 
+    [1600.000, 1700.000) = 0 
+
+  Percentiles, ms/op:
+      p(0.0000) =    886.713 ms/op
+     p(50.0000) =   1083.199 ms/op
+     p(90.0000) =   1731.511 ms/op
+     p(95.0000) =   1731.511 ms/op
+     p(99.0000) =   1731.511 ms/op
+     p(99.9000) =   1731.511 ms/op
+     p(99.9900) =   1731.511 ms/op
+     p(99.9990) =   1731.511 ms/op
+     p(99.9999) =   1731.511 ms/op
+    p(100.0000) =   1731.511 ms/op
+
+
+# JMH version: 1.37
+# VM version: JDK 17.0.8, OpenJDK 64-Bit Server VM, 17.0.8+7-jvmci-22.3-b22
+# VM invoker: /Users/mbovel/Library/Caches/Coursier/arc/https/github.com/graalvm/graalvm-ce-builds/releases/download/vm-22.3.3/graalvm-ce-java17-darwin-amd64-22.3.3.tar.gz/graalvm-ce-java17-22.3.3/Contents/Home/bin/java
+# VM options: -XX:ThreadPriorityPolicy=1 -XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:JVMCIThreadsPerNativeLibraryRuntime=1 -XX:-UnlockExperimentalVMOptions -XX:MaxJavaStackTraceDepth=1000000 -DBENCH_COMPILER_CLASS_PATH=/Users/mbovel/dotty/out/bootstrap/scala3-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/dotty/out/bootstrap/tasty-core-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/dotty/out/bootstrap/scala3-library-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/dotty/out/bootstrap/scala3-compiler-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/dotty/interfaces/target/classes:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/modules/scala-asm/9.7.0-scala-2/scala-asm-9.7.0-scala-2.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-sbt/compiler-interface/1.9.6/compiler-interface-1.9.6.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/jline/jline-reader/3.25.1/jline-reader-3.25.1.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/jline/jline-terminal/3.25.1/jline-terminal-3.25.1.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/jline/jline-terminal-jna/3.25.1/jline-terminal-jna-3.25.1.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.14/scala-library-2.13.14.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-sbt/util-interface/1.9.8/util-interface-1.9.8.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/jline/jline-native/3.25.1/jline-native-3.25.1.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/net/java/dev/jna/jna/5.14.0/jna-5.14.0.jar -DBENCH_CLASS_PATH=/Users/mbovel/dotty/out/bootstrap/scala3-library-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.14/scala-library-2.13.14.jar -Xms2G -Xmx2G
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, single-shot each
+# Measurement: 3 iterations, single-shot each
+# Timeout: 10 min per iteration
+# Threads: 1 thread
+# Benchmark mode: Single shot invocation time
+# Benchmark: dotty.tools.benchmarks.CompilationBenchmarks.implicitNumsTasty
+
+# Run progress: 60.00% complete, ETA 00:00:20
+# Fork: 1 of 1
+OpenJDK 64-Bit Server VM warning: -XX:ThreadPriorityPolicy=1 may require system level permission, e.g., being the root user. If the necessary permission is not possessed, changes to priority will be silently ignored.
+# Warmup Iteration   1: 986.655 ms/op
+# Warmup Iteration   2: 755.808 ms/op
+# Warmup Iteration   3: 695.625 ms/op
+Iteration   1: 599.294 ms/op
+Iteration   2: 566.847 ms/op
+Iteration   3: 468.301 ms/op
+
+
+Result "dotty.tools.benchmarks.CompilationBenchmarks.implicitNumsTasty":
+  N = 3
+  mean =    544.814 ±(99.9%) 1244.581 ms/op
+
+  Histogram, ms/op:
+    [400.000, 412.500) = 0 
+    [412.500, 425.000) = 0 
+    [425.000, 437.500) = 0 
+    [437.500, 450.000) = 0 
+    [450.000, 462.500) = 0 
+    [462.500, 475.000) = 1 
+    [475.000, 487.500) = 0 
+    [487.500, 500.000) = 0 
+    [500.000, 512.500) = 0 
+    [512.500, 525.000) = 0 
+    [525.000, 537.500) = 0 
+    [537.500, 550.000) = 0 
+    [550.000, 562.500) = 0 
+    [562.500, 575.000) = 1 
+    [575.000, 587.500) = 0 
+
+  Percentiles, ms/op:
+      p(0.0000) =    468.301 ms/op
+     p(50.0000) =    566.847 ms/op
+     p(90.0000) =    599.294 ms/op
+     p(95.0000) =    599.294 ms/op
+     p(99.0000) =    599.294 ms/op
+     p(99.9000) =    599.294 ms/op
+     p(99.9900) =    599.294 ms/op
+     p(99.9990) =    599.294 ms/op
+     p(99.9999) =    599.294 ms/op
+    p(100.0000) =    599.294 ms/op
+
+
+# JMH version: 1.37
+# VM version: JDK 17.0.8, OpenJDK 64-Bit Server VM, 17.0.8+7-jvmci-22.3-b22
+# VM invoker: /Users/mbovel/Library/Caches/Coursier/arc/https/github.com/graalvm/graalvm-ce-builds/releases/download/vm-22.3.3/graalvm-ce-java17-darwin-amd64-22.3.3.tar.gz/graalvm-ce-java17-22.3.3/Contents/Home/bin/java
+# VM options: -XX:ThreadPriorityPolicy=1 -XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:JVMCIThreadsPerNativeLibraryRuntime=1 -XX:-UnlockExperimentalVMOptions -XX:MaxJavaStackTraceDepth=1000000 -DBENCH_COMPILER_CLASS_PATH=/Users/mbovel/dotty/out/bootstrap/scala3-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/dotty/out/bootstrap/tasty-core-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/dotty/out/bootstrap/scala3-library-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/dotty/out/bootstrap/scala3-compiler-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/dotty/interfaces/target/classes:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/modules/scala-asm/9.7.0-scala-2/scala-asm-9.7.0-scala-2.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-sbt/compiler-interface/1.9.6/compiler-interface-1.9.6.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/jline/jline-reader/3.25.1/jline-reader-3.25.1.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/jline/jline-terminal/3.25.1/jline-terminal-3.25.1.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/jline/jline-terminal-jna/3.25.1/jline-terminal-jna-3.25.1.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.14/scala-library-2.13.14.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-sbt/util-interface/1.9.8/util-interface-1.9.8.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/jline/jline-native/3.25.1/jline-native-3.25.1.jar:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/net/java/dev/jna/jna/5.14.0/jna-5.14.0.jar -DBENCH_CLASS_PATH=/Users/mbovel/dotty/out/bootstrap/scala3-library-bootstrapped/scala-3.6.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes:/Users/mbovel/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.14/scala-library-2.13.14.jar -Xms2G -Xmx2G
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, single-shot each
+# Measurement: 3 iterations, single-shot each
+# Timeout: 10 min per iteration
+# Threads: 1 thread
+# Benchmark mode: Single shot invocation time
+# Benchmark: dotty.tools.benchmarks.CompilationBenchmarks.implicitScopeLoop
+
+# Run progress: 80.00% complete, ETA 00:00:09
+# Fork: 1 of 1
+OpenJDK 64-Bit Server VM warning: -XX:ThreadPriorityPolicy=1 may require system level permission, e.g., being the root user. If the necessary permission is not possessed, changes to priority will be silently ignored.
+# Warmup Iteration   1: 397.422 ms/op
+# Warmup Iteration   2: 398.656 ms/op
+# Warmup Iteration   3: 333.208 ms/op
+Iteration   1: 332.119 ms/op
+Iteration   2: 328.872 ms/op
+Iteration   3: 339.061 ms/op
+
+
+Result "dotty.tools.benchmarks.CompilationBenchmarks.implicitScopeLoop":
+  N = 3
+  mean =    333.351 ±(99.9%) 94.962 ms/op
+
+  Histogram, ms/op:
+    [320.000, 321.250) = 0 
+    [321.250, 322.500) = 0 
+    [322.500, 323.750) = 0 
+    [323.750, 325.000) = 0 
+    [325.000, 326.250) = 0 
+    [326.250, 327.500) = 0 
+    [327.500, 328.750) = 0 
+    [328.750, 330.000) = 1 
+    [330.000, 331.250) = 0 
+    [331.250, 332.500) = 1 
+    [332.500, 333.750) = 0 
+    [333.750, 335.000) = 0 
+    [335.000, 336.250) = 0 
+    [336.250, 337.500) = 0 
+    [337.500, 338.750) = 0 
+
+  Percentiles, ms/op:
+      p(0.0000) =    328.872 ms/op
+     p(50.0000) =    332.119 ms/op
+     p(90.0000) =    339.061 ms/op
+     p(95.0000) =    339.061 ms/op
+     p(99.0000) =    339.061 ms/op
+     p(99.9000) =    339.061 ms/op
+     p(99.9900) =    339.061 ms/op
+     p(99.9990) =    339.061 ms/op
+     p(99.9999) =    339.061 ms/op
+    p(100.0000) =    339.061 ms/op
+
+
+# Run complete. Total time: 00:00:47
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                        Mode  Cnt     Score      Error  Units
+CompilationBenchmarks.implicitCacheBootstrapped    ss    3   369.915 ±  355.473  ms/op
+CompilationBenchmarks.implicitCacheTasty           ss    3   573.377 ±  680.188  ms/op
+CompilationBenchmarks.implicitNumsBootstrapped     ss    3  1233.808 ± 8065.150  ms/op
+CompilationBenchmarks.implicitNumsTasty            ss    3   544.814 ± 1244.581  ms/op
+CompilationBenchmarks.implicitScopeLoop            ss    3   333.351 ±   94.962  ms/op
+[success] Total time: 55 s, completed Oct 9, 2024, 12:12:58 PM
