@@ -119,7 +119,7 @@ object NamedTuple:
         NamedTuple[Names[X], Tuple.Zip[DropNames[X], DropNames[Y]]]
 
   /** A type specially treated by the compiler to represent all fields of a
-   *  class argument `T` as a named tuple. Or, if `T` is already a named tyuple,
+   *  class argument `T` as a named tuple. Or, if `T` is already a named tuple,
    *  `From[T]` is the same as `T`.
    */
   type From[T] <: AnyNamedTuple
