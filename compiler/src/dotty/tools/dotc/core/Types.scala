@@ -5579,7 +5579,7 @@ object Types extends TypeUtils {
       def withRefinements(toType: Type, fromTp: Type): Type = fromTp.dealias match
         case RefinedType(fromParent, name, info: AliasingBounds) if tp0.member(name).exists =>
           val parent1 = withRefinements(toType, fromParent)
-          RefinedType(toType, name, info)
+          RefinedType(parent1, name, info)
         case _ => toType
       val tp = withRefinements(tp0, origTp)
 
