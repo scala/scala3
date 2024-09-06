@@ -344,24 +344,27 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   /** An anonymous class
    *
-   *      new parents { forwarders }
+   *      new parents { termForwarders; typeAliases }
    *
-   *  where `forwarders` contains forwarders for all functions in `fns`.
-   *  @param parents    a non-empty list of class types
-   *  @param fns        a non-empty of functions for which forwarders should be defined in the class.
-   *  The class has the same owner as the first function in `fns`.
-   *  Its position is the union of all functions in `fns`.
+   *  @param parents        a non-empty list of class types
+   *  @param termForwarders a non-empty list of forwarding definitions specified by their name and the definition they forward to.
+   *  @param typeMembers    a possibly-empty list of type members specified by their name and their right hand side.
+   *
+   *  The class has the same owner as the first function in `termForwarders`.
+   *  Its position is the union of all symbols in `termForwarders`.
    */
-  def AnonClass(parents: List[Type], fns: List[TermSymbol], methNames: List[TermName])(using Context): Block = {
-    AnonClass(fns.head.owner, parents, fns.map(_.span).reduceLeft(_ union _)) { cls =>
-      def forwarder(fn: TermSymbol, name: TermName) = {
+  def AnonClass(parents: List[Type], termForwarders: List[(TermName, TermSymbol)],
+      typeMembers: List[(TypeName, TypeBounds)] = Nil)(using Context): Block = {
+    AnonClass(termForwarders.head._2.owner, parents, termForwarders.map(_._2.span).reduceLeft(_ union _)) { cls =>
+      def forwarder(name: TermName, fn: TermSymbol) = {
         val fwdMeth = fn.copy(cls, name, Synthetic | Method | Final).entered.asTerm
         for overridden <- fwdMeth.allOverriddenSymbols do
           if overridden.is(Extension) then fwdMeth.setFlag(Extension)
           if !overridden.is(Deferred) then fwdMeth.setFlag(Override)
         DefDef(fwdMeth, ref(fn).appliedToArgss(_))
       }
-      fns.lazyZip(methNames).map(forwarder)
+      termForwarders.map((name, sym) => forwarder(name, sym)) ++
+      typeMembers.map((name, info) => TypeDef(newSymbol(cls, name, Synthetic, info).entered))
     }
   }
 
