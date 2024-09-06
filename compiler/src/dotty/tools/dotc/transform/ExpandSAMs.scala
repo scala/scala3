@@ -7,7 +7,7 @@ import Scopes.newScope
 import Contexts.*, Symbols.*, Types.*, Flags.*, Decorators.*, StdNames.*, Constants.*
 import MegaPhase.*
 import Names.TypeName
-import SymUtils.*
+import Symbols.*
 import NullOpsDecorator.*
 import ast.untpd
 
