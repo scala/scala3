@@ -158,14 +158,9 @@ sealed abstract class CaptureSet extends Showable:
    *                 as frozen.
    */
   def accountsFor(x: CaptureRef)(using Context): Boolean =
-    if comparer.isInstanceOf[ExplainingTypeComparer] then // !!! DEBUG
-      reporting.trace(i"$this accountsFor $x, ${x.captureSetOfInfo}?", show = true):
-        elems.exists(_.subsumes(x))
-        || !x.isMaxCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
-    else
-      reporting.trace(i"$this accountsFor $x, ${x.captureSetOfInfo}?", show = true):
-        elems.exists(_.subsumes(x))
-        || !x.isMaxCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
+    reporting.trace(i"$this accountsFor $x, ${x.captureSetOfInfo}?", show = true):
+      elems.exists(_.subsumes(x))
+      || !x.isMaxCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
 
   /** A more optimistic version of accountsFor, which does not take variable supersets
    *  of the `x` reference into account. A set might account for `x` if it accounts
