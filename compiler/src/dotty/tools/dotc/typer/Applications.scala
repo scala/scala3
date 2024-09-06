@@ -2214,19 +2214,26 @@ trait Applications extends Compatibility {
       case untpd.Function(args: List[untpd.ValDef] @unchecked, body) =>
 
         // If ref refers to a method whose parameter at index `idx` is a function type,
-        // the arity of that function, otherise -1.
-        def paramCount(ref: TermRef) =
+        // the parameters of that function, otherwise Nil.
+        // We return Nil for both nilary functions and non-functions,
+        // because we won't be making tupled functions for nilary functions anyways,
+        // seeing as there is no Tuple0.
+        def params(ref: TermRef) =
           val formals = ref.widen.firstParamTypes
           if formals.length > idx then
             formals(idx).dealias match
-              case defn.FunctionNOf(args, _, _) => args.length
-              case _ => -1
-          else -1
+              case defn.FunctionNOf(args, _, _) => args
+              case _ => Nil
+          else Nil
+
+        def isCorrectUnaryFunction(alt: TermRef): Boolean =
+          val formals = params(alt)
+          formals.length == 1 && ptIsCorrectProduct(formals.head, args)
 
         val numArgs = args.length
-        if numArgs != 1
-           && !alts.exists(paramCount(_) == numArgs)
-           && alts.exists(paramCount(_) == 1)
+        if numArgs > 1
+           && !alts.exists(params(_).lengthIs == numArgs)
+           && alts.exists(isCorrectUnaryFunction)
         then
           desugar.makeTupledFunction(args, body, isGenericTuple = true)
             // `isGenericTuple = true` is the safe choice here. It means the i'th tuple
@@ -2394,6 +2401,13 @@ trait Applications extends Compatibility {
                 candidates
     }
   end resolveOverloaded1
+
+  /** Is `formal` a product type which is elementwise compatible with `params`? */
+  def ptIsCorrectProduct(formal: Type, params: List[untpd.ValDef])(using Context): Boolean =
+    isFullyDefined(formal, ForceDegree.flipBottom)
+    && defn.isProductSubType(formal)
+    && tupleComponentTypes(formal).corresponds(params): (argType, param) =>
+         param.tpt.isEmpty || argType.widenExpr <:< typedAheadType(param.tpt).tpe
 
   /** The largest suffix of `paramss` that has the same first parameter name as `t`,
    *  plus the number of term parameters in `paramss` that come before that suffix.
