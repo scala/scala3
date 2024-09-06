@@ -195,7 +195,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
          * Otherwise, we need to go through an accessor,
          * which the implementing class will provide an implementation for.
          */
-        if ctx.owner.enclosingClass.derivesFrom(sym.owner) then
+        if ProtectedAccessors.needsAccessorIsSubclass(sym) then
           if sym.is(JavaDefined) then
             report.error(em"${ctx.owner} accesses protected $sym inside a concrete trait method: use super.${sel.name} instead", sel.srcPos)
           sel
