@@ -59,19 +59,19 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
 
   @Test def `version` =
     check(
-      """|//> using lib "io.circe::circe-core_sjs1:0.14.1@@"
+      """|//> using lib "io.circe::circe-core_sjs1:0.14.10@@"
          |package A
          |""".stripMargin,
-      "0.14.1"
+      "0.14.10"
     )
 
   // We don't to add `::` before version if `sjs1` is specified
   @Test def `version-edit` =
     checkEdit(
-      """|//> using lib "io.circe::circe-core_sjs1:0.14.1@@"
+      """|//> using lib "io.circe::circe-core_sjs1:0.14.10@@"
          |package A
          |""".stripMargin,
-      """|//> using lib "io.circe::circe-core_sjs1:0.14.1"
+      """|//> using lib "io.circe::circe-core_sjs1:0.14.10"
          |package A
          |""".stripMargin,
     )
