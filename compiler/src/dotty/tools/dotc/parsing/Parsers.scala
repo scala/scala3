@@ -1120,9 +1120,14 @@ object Parsers {
           if (prec < opPrec || leftAssoc && prec == opPrec) {
             opStack = opStack.tail
             recur {
-              atSpan(opInfo.operator.span union opInfo.operand.span union top.span) {
+              atSpan(opInfo.operator.span union opInfo.operand.span union top.span):
+                def deprecateInfixNamedArg(t: Tree): Unit = t match
+                  case Tuple(ts) => ts.foreach(deprecateInfixNamedArg)
+                  case Parens(t) => deprecateInfixNamedArg(t)
+                  case t: Assign => report.deprecationWarning(em"named argument is deprecated for infix syntax", t.srcPos)
+                  case _ =>
+                deprecateInfixNamedArg(top)
                 InfixOp(opInfo.operand, opInfo.operator, top)
-              }
             }
           }
           else top
