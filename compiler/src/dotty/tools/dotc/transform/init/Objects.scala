@@ -324,7 +324,7 @@ class Objects(using Context @constructorOnly):
         given regions: Regions.Data = Regions.empty // explicit name to avoid naming conflict
 
         val obj = ObjectRef(classSym)
-        log("Iteration " + count) {
+        log("Iteration " + count + " for " + classSym) {
           data.checkingObjects += obj
           init(tpl, obj, classSym)
           assert(data.checkingObjects.last.klass == classSym, "Expect = " + classSym.show + ", found = " + data.checkingObjects.last.klass)
@@ -699,7 +699,7 @@ class Objects(using Context @constructorOnly):
         val config = Config(thisV, env, footprint)
 
         Heap.update(footprint, changeSet = Set.empty)
-        val cacheResult = ctx == EvalContext.Method || ctx == EvalContext.Function || ctx == EvalContext.LazyVal
+        val cacheResult = ctx != EvalContext.Other
         val result = super.cachedEval(config, expr, cacheResult, default = Res(Bottom, footprint, Set.empty)) { expr =>
           val value = fun(expr)
           val heapAfter = Heap.getHeapData()
@@ -966,7 +966,7 @@ class Objects(using Context @constructorOnly):
           // No usage of `return` is possible in constructors --- still install
           // return handler for uniform handling of method context.
           Returns.installHandler(ctor)
-          val res = eval(tree, ref, cls, EvalContext.Method)
+          val res = eval(tree, ref, cls, EvalContext.Construtor)
           Returns.popHandler(ctor)
           res
 
@@ -1259,7 +1259,7 @@ class Objects(using Context @constructorOnly):
       accessObject(classSym)
 
   enum EvalContext:
-    case Method, Function, LazyVal, Other
+    case Method, Construtor, Function, LazyVal, Other
 
   /** Evaluate an expression with the given value for `this` in a given class `klass`
    *
