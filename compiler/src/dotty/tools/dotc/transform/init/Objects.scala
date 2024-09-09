@@ -608,9 +608,13 @@ class Objects(using Context @constructorOnly):
             // visit the heap regions owned by other global objects.
             if addr.owner == currentObj.klass then
               reachableKeys += addr
-              val value = heap(addr)
-              if !visited.contains(value) then
-                toVisit += value
+              heap.get(addr) match
+                case Some(value) =>
+                  if !visited.contains(value) then
+                    toVisit += value
+
+                case None =>
+                  println("[Internal error] Not found addr " + addr)
 
           case objRef: ObjectRef if objRef != currentObj =>
             // Thanks to initialization-time irrelevance, there is no need to
