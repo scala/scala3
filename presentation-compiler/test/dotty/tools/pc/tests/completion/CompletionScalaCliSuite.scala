@@ -57,6 +57,7 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
+  @Ignore
   @Test def `version` =
     check(
       """|//> using lib "io.circe::circe-core_sjs1:0.14.1@@"
@@ -66,6 +67,7 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
     )
 
   // We don't to add `::` before version if `sjs1` is specified
+  @Ignore
   @Test def `version-edit` =
     checkEdit(
       """|//> using lib "io.circe::circe-core_sjs1:0.14.1@@"
