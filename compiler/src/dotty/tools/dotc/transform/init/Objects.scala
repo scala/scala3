@@ -569,8 +569,12 @@ class Objects(using Context @constructorOnly):
     def contains(addr: Addr)(using mutable: MutableData): Boolean =
       mutable.heap.contains(addr)
 
-    def read(addr: Addr)(using mutable: MutableData): Value =
-      mutable.heap(addr)
+    def read(addr: Addr)(using mutable: MutableData, trace: Trace, ctx: Context): Value =
+      if mutable.heap.contains(addr) then
+        mutable.heap(addr)
+      else
+        report.warning("[Internal error] Address not found " + addr + ". Trace:\n" + Trace.show, Trace.position)
+        Bottom
 
     def writeJoin(addr: Addr, value: Value)(using mutable: MutableData): Unit =
       mutable.writeJoin(addr, value)
