@@ -456,7 +456,7 @@ class Objects(using Context @constructorOnly):
       case Some(theValue) =>
         theValue
       case _ =>
-        report.warning("[Internal error] Value not found " + x.show + "\nenv = " + data.show + ". " + Trace.show, Trace.position)
+        report.warning("[Internal error] Value not found " + x.show + ". " + Trace.show, Trace.position)
         Bottom
 
     def getVal(x: Symbol)(using data: Data): Option[Value] = data.getVal(x)
@@ -1179,7 +1179,7 @@ class Objects(using Context @constructorOnly):
           end if
         case _ =>
           // Only vals can be lazy
-          report.warning("[Internal error] Variable not found " + sym.show + "\nenv = " + env.show + ". " + Trace.show, Trace.position)
+          report.warning("[Internal error] Variable not found " + sym.show + ". " + Trace.show, Trace.position)
           Bottom
       else
         given Env.Data = env
@@ -1230,7 +1230,7 @@ class Objects(using Context @constructorOnly):
         else
           Heap.writeJoin(addr, value)
       case _ =>
-        report.warning("[Internal error] Variable not found " + sym.show + "\nenv = " + env.show + ". " + Trace.show, Trace.position)
+        report.warning("[Internal error] Variable not found " + sym.show + ". " + Trace.show, Trace.position)
 
     case _ =>
       report.warning("Assigning to variables in outer scope. " + Trace.show, Trace.position)
