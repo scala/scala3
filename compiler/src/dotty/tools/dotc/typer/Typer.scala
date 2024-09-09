@@ -2329,14 +2329,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       untpd.Block(makeCanThrow(capabilityProof), expr)
 
   def typedTry(tree: untpd.Try, pt: Type)(using Context): Try = {
-    // We want to type check tree.expr first to comput NotNullInfo, but `addCanThrowCapabilities`
-    // uses the types of patterns in `tree.cases` to determine the capabilities.
-    // Hence, we create a copy of cases with empty body and type check that first, then type check
-    // the rest of the tree in order.
-    val casesEmptyBody1 = tree.cases.mapconserve(cpy.CaseDef(_)(body = EmptyTree))
-    val casesEmptyBody2 = typedCases(casesEmptyBody1, EmptyTree, defn.ThrowableType, WildcardType)
-
     val expr2 :: cases2x = harmonic(harmonize, pt) {
+      // We want to type check tree.expr first to comput NotNullInfo, but `addCanThrowCapabilities`
+      // uses the types of patterns in `tree.cases` to determine the capabilities.
+      // Hence, we create a copy of cases with empty body and type check that first, then type check
+      // the rest of the tree in order.
+      // It may seem that invalid references can be created if the type of the pattern contains
+      // type binds, but this is not a valid `CanThrow` capability (checked by `addCanThrowCapabilities`),
+      // so it is not a problem.
+      val casesEmptyBody1 = tree.cases.mapconserve(cpy.CaseDef(_)(body = EmptyTree))
+      val casesEmptyBody2 = typedCases(casesEmptyBody1, EmptyTree, defn.ThrowableType, WildcardType)
       val expr1 = typed(addCanThrowCapabilities(tree.expr, casesEmptyBody2), pt.dropIfProto)
       val casesCtx = ctx.addNotNullInfo(expr1.notNullInfo.retractedInfo)
       val cases1 = typedCases(tree.cases, EmptyTree, defn.ThrowableType, pt.dropIfProto)(using casesCtx)
