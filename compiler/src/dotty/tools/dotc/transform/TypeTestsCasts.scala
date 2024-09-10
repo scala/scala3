@@ -74,7 +74,7 @@ object TypeTestsCasts {
     }.apply(tp)
 
     /** Returns true if the type arguments of `P` can be determined from `X` */
-    def typeArgsDeterminable(X: Type, P: AppliedType)(using Context) = inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds) {
+    def typeArgsTrivial(X: Type, P: AppliedType)(using Context) = inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds) {
       val AppliedType(tycon, _) = P
 
       def underlyingLambda(tp: Type): TypeLambda = tp.ensureLambdaSub match {
@@ -155,7 +155,7 @@ object TypeTestsCasts {
           case x =>
             // always false test warnings are emitted elsewhere
             TypeComparer.provablyDisjoint(x, tpe.derivedAppliedType(tycon, targs.map(_ => WildcardType)))
-            || typeArgsDeterminable(X, tpe)
+            || typeArgsTrivial(X, tpe)
             ||| i"its type arguments can't be determined from $X"
         }
       case AndType(tp1, tp2)    => recur(X, tp1) && recur(X, tp2)

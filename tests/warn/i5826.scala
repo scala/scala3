@@ -6,6 +6,7 @@ class Foo {
 
   def test2: List[Int] | List[String] => Int = {
     case ls: List[Int] => ls.head       // warn: unchecked
+    case _ => 0
   }
 
   trait A[T]
