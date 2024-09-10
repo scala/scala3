@@ -374,7 +374,7 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
     override def canExplain = true
 
   /** Override with `true` for messages that should always be shown even if their
-   *  position overlaps another message of a different class. On the other hand
+   *  position overlaps another messsage of a different class. On the other hand
    *  multiple messages of the same class with overlapping positions will lead
    *  to only a single message of that class to be issued.
    */

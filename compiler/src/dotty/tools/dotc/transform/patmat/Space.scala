@@ -379,7 +379,7 @@ object SpaceEngine {
       project(pat)
 
     case Typed(_, tpt) =>
-      Typ(erase(tpt.tpe.stripAnnots, isValue = true, isTyped = true), decomposed = false)
+      Typ(erase(tpt.tpe.stripAnnots, isValue = true), decomposed = false)
 
     case This(_) =>
       Typ(pat.tpe.stripAnnots, decomposed = false)
@@ -464,13 +464,13 @@ object SpaceEngine {
         tp.derivedAppliedType(erase(tycon, inArray, isValue = false), args2)
 
       case tp @ OrType(tp1, tp2) =>
-        OrType(erase(tp1, inArray, isValue, isTyped), erase(tp2, inArray, isValue, isTyped), tp.isSoft)
+        OrType(erase(tp1, inArray, isValue), erase(tp2, inArray, isValue), tp.isSoft)
 
       case AndType(tp1, tp2) =>
-        AndType(erase(tp1, inArray, isValue, isTyped), erase(tp2, inArray, isValue, isTyped))
+        AndType(erase(tp1, inArray, isValue), erase(tp2, inArray, isValue))
 
       case tp @ RefinedType(parent, _, _) =>
-        erase(parent, inArray, isValue, isTyped)
+        erase(parent, inArray, isValue)
 
       case tref: TypeRef if tref.symbol.isPatternBound =>
         if inArray then erase(tref.underlying, inArray, isValue, isTyped)
@@ -905,7 +905,7 @@ object SpaceEngine {
   def checkMatch(m: Match)(using Context): Unit =
     checkMatchExhaustivityOnly(m)
     if reachabilityCheckable(m.selector) then checkReachability(m)
-  
+
   def checkMatchExhaustivityOnly(m: Match)(using Context): Unit =
     if exhaustivityCheckable(m.selector) then checkExhaustivity(m)
 }
