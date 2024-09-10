@@ -60,15 +60,16 @@ private[hashing] class MurmurHash3 {
     finalizeHash(h, 2)
   }
 
-  /** Compute the hash of a product */
+  // @deprecated("use `caseClassHash` instead", "2.13.17")
+  // The deprecation is commented because this method is called by the synthetic case class hashCode.
+  // In this case, the `seed` already has the case class name mixed in and `ignorePrefix` is set to true.
+  // Case classes compiled before 2.13.17 call this method with `productSeed` and `ignorePrefix = false`.
+  // See `productHashCode` in `SyntheticMethods` for details.
   final def productHash(x: Product, seed: Int, ignorePrefix: Boolean = false): Int = {
     val arr = x.productArity
-    // Case objects have the hashCode inlined directly into the
-    // synthetic hashCode method, but this method should still give
-    // a correct result if passed a case object.
-    if (arr == 0) {
-      x.productPrefix.hashCode
-    } else {
+    if (arr == 0)
+      if (!ignorePrefix) x.productPrefix.hashCode else seed
+    else {
       var h = seed
       if (!ignorePrefix) h = mix(h, x.productPrefix.hashCode)
       var i = 0
@@ -79,6 +80,24 @@ private[hashing] class MurmurHash3 {
       finalizeHash(h, arr)
     }
   }
+
+  /** See the [[MurmurHash3.caseClassHash(x:Product,caseClassName:String)]] overload */
+  final def caseClassHash(x: Product, seed: Int, caseClassName: String): Int = {
+    val arr = x.productArity
+    val aye = (if (caseClassName != null) caseClassName else x.productPrefix).hashCode
+    if (arr == 0) aye
+    else {
+      var h = seed
+      h = mix(h, aye)
+      var i = 0
+      while (i < arr) {
+        h = mix(h, x.productElement(i).##)
+        i += 1
+      }
+      finalizeHash(h, arr)
+    }
+  }
+
 
   /** Compute the hash of a string */
   final def stringHash(str: String, seed: Int): Int = {
@@ -337,13 +356,45 @@ object MurmurHash3 extends MurmurHash3 {
   final val mapSeed         = "Map".hashCode
   final val setSeed         = "Set".hashCode
 
-  def arrayHash[@specialized T](a: Array[T]): Int = arrayHash(a, arraySeed)
-  def bytesHash(data: Array[Byte]): Int           = bytesHash(data, arraySeed)
-  def orderedHash(xs: IterableOnce[Any]): Int     = orderedHash(xs, symmetricSeed)
-  def productHash(x: Product): Int                = productHash(x, productSeed)
-  def stringHash(x: String): Int                  = stringHash(x, stringSeed)
-  def unorderedHash(xs: IterableOnce[Any]): Int   = unorderedHash(xs, traversableSeed)
+  def arrayHash[@specialized T](a: Array[T]): Int      = arrayHash(a, arraySeed)
+  def bytesHash(data: Array[Byte]): Int                = bytesHash(data, arraySeed)
+  def orderedHash(xs: IterableOnce[Any]): Int          = orderedHash(xs, symmetricSeed)
+  def stringHash(x: String): Int                       = stringHash(x, stringSeed)
+  def unorderedHash(xs: IterableOnce[Any]): Int        = unorderedHash(xs, traversableSeed)
   def rangeHash(start: Int, step: Int, last: Int): Int = rangeHash(start, step, last, seqSeed)
+
+  @deprecated("use `caseClassHash` instead", "2.13.17")
+  def productHash(x: Product): Int = caseClassHash(x, productSeed, null)
+
+  /**
+   * Compute the `hashCode` of a case class instance. This method returns the same value as `x.hashCode`
+   * if `x` is an instance of a case class with the default, synthetic `hashCode`.
+   *
+   * This method can be used to implement case classes with a cached `hashCode`:
+   * {{{
+   * case class C(data: Data) {
+   *   override lazy val hashCode: Int = MurmurHash3.caseClassHash(this)
+   * }
+   * }}}
+   *
+   * '''NOTE''': For case classes (or subclasses) that override `productPrefix`, the `caseClassName` parameter
+   * needs to be specified in order to obtain the same result as the synthetic `hashCode`. Otherwise, the value
+   * is not in sync with the case class `equals` method (scala/bug#13033).
+   *
+   * {{{
+   * scala> case class C(x: Int) { override def productPrefix = "Y" }
+   *
+   * scala> C(1).hashCode
+   * val res0: Int = -668012062
+   *
+   * scala> MurmurHash3.caseClassHash(C(1))
+   * val res1: Int = 1015658380
+   *
+   * scala> MurmurHash3.caseClassHash(C(1), "C")
+   * val res2: Int = -668012062
+   * }}}
+   */
+  def caseClassHash(x: Product, caseClassName: String = null): Int = caseClassHash(x, productSeed, caseClassName)
 
   private[scala] def arraySeqHash[@specialized T](a: Array[T]): Int = arrayHash(a, seqSeed)
   private[scala] def tuple2Hash(x: Any, y: Any): Int = tuple2Hash(x.##, y.##, productSeed)
@@ -397,8 +448,13 @@ object MurmurHash3 extends MurmurHash3 {
     def hash(xs: IterableOnce[Any]) = orderedHash(xs)
   }
 
+  @deprecated("use `caseClassHashing` instead", "2.13.17")
   def productHashing = new Hashing[Product] {
-    def hash(x: Product) = productHash(x)
+    def hash(x: Product) = caseClassHash(x)
+  }
+
+  def caseClassHashing = new Hashing[Product] {
+    def hash(x: Product) = caseClassHash(x)
   }
 
   def stringHashing = new Hashing[String] {
