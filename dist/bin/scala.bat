@@ -45,7 +45,7 @@ if "%__ARG:~0,2%"=="-D" (
 ) else if "%__ARG:~0,2%"=="-J" (
     @rem as with -D, pass to scala even though it will almost
     @rem never be used.
-    set _JAVA_ARGS=!_JAVA_ARGS! %__ARG:~2%
+    set _JAVA_ARGS=!_JAVA_ARGS! "%__ARG:~2%"
     set _SCALA_ARGS=!_SCALA_ARGS! "%__ARG%"
 ) else if "%__ARG%"=="-classpath" (
     set "_SCALA_CPATH=%~2"
