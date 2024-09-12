@@ -442,13 +442,9 @@ private sealed trait YSettings:
   val YcompileScala2Library: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycompile-scala2-library", "Used when compiling the Scala 2 standard library.")
   val YprofileEnabled: Setting[Boolean] = BooleanSetting(ForkSetting, "Yprofile-enabled", "Enable profiling.")
   val YprofileDestination: Setting[String] = StringSetting(ForkSetting, "Yprofile-destination", "file", "Where to send profiling output - specify a file, default is to the console.", "", depends = List(YprofileEnabled -> true))
-      //.withPostSetHook( _ => YprofileEnabled.value = true )
   val YprofileExternalTool: Setting[List[String]] = PhasesSetting(ForkSetting, "Yprofile-external-tool", "Enable profiling for a phase using an external tool hook. Generally only useful for a single phase.", "typer", depends = List(YprofileEnabled -> true))
-      //.withPostSetHook( _ => YprofileEnabled.value = true )
   val YprofileRunGcBetweenPhases: Setting[List[String]] = PhasesSetting(ForkSetting, "Yprofile-run-gc", "Run a GC between phases - this allows heap size to be accurate at the expense of more time. Specify a list of phases, or *", "_", depends = List(YprofileEnabled -> true))
-      //.withPostSetHook( _ => YprofileEnabled.value = true )
   val YprofileTrace: Setting[String]  = StringSetting(ForkSetting, "Yprofile-trace", "file", s"Capture trace of compilation in Chrome Trace format, requires ${YprofileEnabled.name}", "", depends = List(YprofileEnabled -> true))
-      //.withPostSetHook( _ => YprofileEnabled.value = true )
 
   val YbestEffort: Setting[Boolean] = BooleanSetting(ForkSetting, "Ybest-effort", "Enable best-effort compilation attempting to produce betasty to the META-INF/best-effort directory, regardless of errors, as part of the pickler phase.")
   val YwithBestEffortTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Ywith-best-effort-tasty", "Allow to compile using best-effort tasty files. If such file is used, the compiler will stop after the pickler phase.")
