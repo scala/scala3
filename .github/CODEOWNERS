@@ -1,0 +1,8 @@
+.github/workflows/ @scala/infrastructure
+.github/CODEOWNERS @scala/admins
+CONTRIBUTING       @scala/admins
+LICENSE            @scala/admins
+MAINTENANCE.md     @scala/admins
+NOTICE.md          @scala/admins
+README.md          @scala/admins
+SECURITY.md        @scala/admins
