@@ -429,6 +429,7 @@ object Inlines:
           val constVal = tryConstValue(tpe)
           if constVal.isEmpty then
             val msg = NotConstant("cannot take constValue", tpe)
+            report.error(msg, callTypeArgs.head.srcPos)
             ref(defn.Predef_undefined).withSpan(callTypeArgs.head.span).withType(ErrorType(msg))
           else
             constVal
