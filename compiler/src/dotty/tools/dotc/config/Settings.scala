@@ -73,6 +73,10 @@ object Settings:
   def validateSettingString(name: String): Unit =
     assert(settingCharacters.matches(name), s"Setting string $name contains invalid characters")
 
+  /** List of setting-value pairs that are required for another setting to be valid.
+    * For example, `s = Setting(..., depends = List(YprofileEnabled -> true))`
+    * means that `s` requires `YprofileEnabled` to be set to `true`.
+    */
   type SettingDependencies = List[(Setting[?], Any)]
 
   case class Setting[T: ClassTag] private[Settings] (
