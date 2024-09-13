@@ -287,7 +287,6 @@ object Completion:
     if denot.isType then denot.symbol.showFullName
     else denot.info.widenTermRefExpr.show
 
-
   def isInNewContext(untpdPath: List[untpd.Tree]): Boolean =
     untpdPath match
       case _ :: untpd.New(selectOrIdent: (untpd.Select | untpd.Ident)) :: _ => true
