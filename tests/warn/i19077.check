@@ -1,0 +1,24 @@
+-- Deprecation Warning: tests/warn/i19077.scala:8:6 --------------------------------------------------------------------
+8 |  f(x = 1, 2, 3) // warn
+  |    ^^^^^
+  |    naming parameter x is deprecated
+-- Deprecation Warning: tests/warn/i19077.scala:9:9 --------------------------------------------------------------------
+9 |  f(1, y = 2, 3) // warn
+  |       ^^^^^
+  |       naming parameter y is deprecated
+-- Deprecation Warning: tests/warn/i19077.scala:10:12 ------------------------------------------------------------------
+10 |  f(1, 2, w = 3) // warn
+   |          ^^^^^
+   |          the parameter name w is deprecated: use z instead
+-- Deprecation Warning: tests/warn/i19077.scala:11:13 ------------------------------------------------------------------
+11 |  f(w = 3, x = 1, y = 2) // warn // warn // warn
+   |           ^^^^^
+   |           naming parameter x is deprecated
+-- Deprecation Warning: tests/warn/i19077.scala:11:20 ------------------------------------------------------------------
+11 |  f(w = 3, x = 1, y = 2) // warn // warn // warn
+   |                  ^^^^^
+   |                  naming parameter y is deprecated
+-- Deprecation Warning: tests/warn/i19077.scala:11:6 -------------------------------------------------------------------
+11 |  f(w = 3, x = 1, y = 2) // warn // warn // warn
+   |    ^^^^^
+   |    the parameter name w is deprecated: use z instead
