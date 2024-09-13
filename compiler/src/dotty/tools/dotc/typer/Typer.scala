@@ -1903,9 +1903,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                   if knownFormal then formal0
                   else errorType(AnonymousFunctionMissingParamType(param, tree, inferredType = formal, expectedType = pt), param.srcPos)
                 )
+            val untpdTpt = formal match
+              case _: WildcardType =>
+                // In this case we have a situation like f(_), where we expand in the end to
+                // (x: T) => f(x) and `T` is taken from `f`'s declared parameters. In this case
+                // we treat the type as declared instead of inferred. InferredType is used for
+                // types that are inferred from the context.
+                untpd.TypeTree()
+              case _ => InferredTypeTree()
             val paramTpt = untpd.TypedSplice(
-                (if knownFormal then InferredTypeTree() else untpd.TypeTree())
-                  .withType(paramType.translateFromRepeated(toArray = false))
+                untpdTpt.withType(paramType.translateFromRepeated(toArray = false))
                   .withSpan(param.span.endPos)
               )
             val param0 = cpy.ValDef(param)(tpt = paramTpt)
