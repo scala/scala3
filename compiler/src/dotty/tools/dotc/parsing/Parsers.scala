@@ -445,6 +445,13 @@ object Parsers {
       finally inMatchPattern = saved
     }
 
+    private var inQualifiedType = false
+    private def fromWithinQualifiedType[T](body: => T): T =
+      val saved = inQualifiedType
+      inQualifiedType = true
+      try body
+      finally inQualifiedType = saved
+
     private var staged = StageKind.None
     def withinStaged[T](kind: StageKind)(op: => T): T = {
       val saved = staged
@@ -1084,6 +1091,25 @@ object Parsers {
       || in.lookahead.token == COLONop
       || in.lookahead.token == EOF     // important for REPL completions
       || ctx.mode.is(Mode.Interactive) // in interactive mode the next tokens might be missing
+
+    /** Under `qualifiedTypes` language import: is the token sequence following
+     *  the current `{` classified as a qualified type? This is the case if the
+     *  next token is an `IDENT`, followed by `:`.
+     */
+    def followingIsQualifiedType(): Boolean =
+      in.featureEnabled(Feature.qualifiedTypes) && {
+        val lookahead = in.LookaheadScanner(allowIndent = true)
+
+        if in.token == INDENT then
+          () // The LookaheadScanner doesn't see previous indents, so no need to skip it
+        else
+          lookahead.nextToken() // skips the opening brace
+
+        lookahead.token == IDENTIFIER && {
+          lookahead.nextToken()
+          lookahead.token == COLONfollow
+        }
+      }
 
   /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
@@ -1872,12 +1898,22 @@ object Parsers {
         t
     }
 
-    /** WithType ::= AnnotType {`with' AnnotType}    (deprecated)
-     */
+    /** With qualifiedTypes enabled:
+      * WithType ::= AnnotType [`with' PostfixExpr]
+      *
+      * Otherwise:
+      * WithType ::= AnnotType {`with' AnnotType}    (deprecated)
+      */
     def withType(): Tree = withTypeRest(annotType())
 
     def withTypeRest(t: Tree): Tree =
-      if in.token == WITH then
+      if Feature.qualifiedTypesEnabled && in.token == WITH then
+        if inQualifiedType then t
+        else
+          in.nextToken()
+          val qualifier = postfixExpr()
+          QualifiedTypeTree(t, None, qualifier).withSpan(Span(t.span.start, qualifier.span.end))
+      else if in.token == WITH then
         val withOffset = in.offset
         in.nextToken()
         if in.token == LBRACE || in.token == INDENT then
@@ -2025,6 +2061,7 @@ object Parsers {
      *                     |  ‘(’ ArgTypes ‘)’
      *                     |  ‘(’ NamesAndTypes ‘)’
      *                     |  Refinement
+     *                     |  QualifiedType             -- under qualifiedTypes
      *                     |  TypeSplice                -- deprecated syntax (since 3.0.0)
      *                     |  SimpleType1 TypeArgs
      *                     |  SimpleType1 `#' id
@@ -2034,6 +2071,8 @@ object Parsers {
         atSpan(in.offset) {
           makeTupleOrParens(inParensWithCommas(argTypes(namedOK = false, wildOK = true, tupleOK = true)))
         }
+      else if in.token == LBRACE && followingIsQualifiedType() then
+        qualifiedType()
       else if in.token == LBRACE then
         atSpan(in.offset) { RefinedTypeTree(EmptyTree, refinement(indentOK = false)) }
       else if (isSplice)
@@ -2197,6 +2236,19 @@ object Parsers {
         inBracesOrIndented(refineStatSeq(), rewriteWithColon = true)
       else
         inBraces(refineStatSeq())
+
+    /** QualifiedType ::= `{` Ident `:` Type `with` Block `}`
+     */
+    def qualifiedType(): Tree =
+      val startOffset = in.offset
+      accept(LBRACE)
+      val id = ident()
+      accept(COLONfollow)
+      val tp = fromWithinQualifiedType(typ())
+      accept(WITH)
+      val qualifier = block(simplify = true)
+      accept(RBRACE)
+      QualifiedTypeTree(tp, Some(id), qualifier).withSpan(Span(startOffset, qualifier.span.end))
 
     /** TypeBounds ::= [`>:' Type] [`<:' Type]
      *              |  `^`                     -- under captureChecking

@@ -1,0 +1,152 @@
+[[syntax trees at end of                     typer]] // tests/printing/qualifiers.scala
+package example {
+  class Foo() extends Object() {
+    val x:
+      Int @qualified[Int](
+        {
+          def $anonfun(x: Int): Boolean = x.>(0)
+          closure($anonfun)
+        }
+      )
+     = 1
+  }
+  trait A() extends Object {}
+  final lazy module val qualifiers$package: example.qualifiers$package =
+    new example.qualifiers$package()
+  final module class qualifiers$package() extends Object() {
+    this: example.qualifiers$package.type =>
+    type Useless =
+      Int @qualified[Int](
+        {
+          def $anonfun(x: Int): Boolean = true
+          closure($anonfun)
+        }
+      )
+    type Pos =
+      Int @qualified[Int](
+        {
+          def $anonfun(x: Int): Boolean = x.>(0)
+          closure($anonfun)
+        }
+      )
+    type Neg =
+      Int @qualified[Int](
+        {
+          def $anonfun(x: Int): Boolean = x.<(0)
+          closure($anonfun)
+        }
+      )
+    type Nesting =
+      Int @qualified[Int](
+        {
+          def $anonfun(x: Int): Boolean =
+            {
+              val y:
+                Int @qualified[Int](
+                  {
+                    def $anonfun(z: Int): Boolean = z.>(0)
+                    closure($anonfun)
+                  }
+                )
+               = ???
+              x.>(y)
+            }
+          closure($anonfun)
+        }
+      )
+    type Pos2 =
+      Int &
+        Int @qualified[Int](
+          {
+            def $anonfun(x: Int): Boolean = x.>(0)
+            closure($anonfun)
+          }
+        )
+    type ValRefinement =
+      Object
+        {
+          val x:
+            Int @qualified[Int](
+              {
+                def $anonfun(x: Int): Boolean = x.>(0)
+                closure($anonfun)
+              }
+            )
+        }
+    def id[T >: Nothing <: Any](x: T): T = x
+    def test(): Unit =
+      {
+        val x1: example.Pos = 1
+        val x2:
+          Int @qualified[Int](
+            {
+              def $anonfun(x: Int): Boolean = x.>(0)
+              closure($anonfun)
+            }
+          )
+         = 1
+        val x3:
+          Int @qualified[Int](
+            {
+              def $anonfun(x3: Int): Boolean = x3.>(0)
+              closure($anonfun)
+            }
+          )
+         = 1
+        val x4: Int =
+          example.id[
+            Int @qualified[Int](
+              {
+                def $anonfun(x: Int): Boolean = x.<(0)
+                closure($anonfun)
+              }
+            )
+          ](1).+(example.id[example.Neg](-1))
+        ()
+      }
+    def bar(
+      x:
+        Int @qualified[Int](
+          {
+            def $anonfun(x: Int): Boolean = x.>(0)
+            closure($anonfun)
+          }
+        )
+    ): Nothing = ???
+    def secondGreater1(x: Int, y: Int)(
+      z:
+        Int @qualified[Int](
+          {
+            def $anonfun(w: Int): Boolean = x.>(y)
+            closure($anonfun)
+          }
+        )
+    ): Nothing = ???
+    def secondGreater2(x: Int, y: Int)(
+      z:
+        Int @qualified[Int](
+          {
+            def $anonfun(z: Int): Boolean = x.>(y)
+            closure($anonfun)
+          }
+        )
+    ): Nothing = ???
+    final lazy module given val given_A: example.given_A = new example.given_A()
+    final module class given_A() extends Object(), example.A {
+      this: example.given_A.type =>
+      val b: Boolean = false
+      example.id[Boolean](true)
+    }
+    type B =
+      Object
+        {
+          val x: Int
+        }
+    type C =
+      Object
+        {
+          val x: Int
+        }
+  }
+}
+

@@ -84,6 +84,10 @@ object language:
     @compileTimeOnly("`captureChecking` can only be used at compile time in import statements")
     object captureChecking
 
+    /** Experimental support for qualified types */
+    @compileTimeOnly("`qualifiedTypes` can only be used at compile time in import statements")
+    object qualifiedTypes
+
     /** Experimental support for automatic conversions of arguments, without requiring
      *  a language import `import scala.language.implicitConversions`.
      *
