@@ -30,18 +30,18 @@
 23 |    bar1(ys = 1) // error: missing arg
    |    ^^^^^^^^^^^^
    |    missing argument for parameter x of method bar1 in object Test: (x: Int, ys: Int*): Unit
--- Error: tests/neg/i18122.scala:43:16 ---------------------------------------------------------------------------------
-43 |    bar1(x = 1, 2, ys = 3)  // error: positional after named
-   |                ^
-   |                positional after named argument
+-- Error: tests/neg/i18122.scala:43:22 ---------------------------------------------------------------------------------
+43 |    bar1(x = 1, 2, ys = 3)  // error: parameter ys is already instantiated
+   |                   ^^^^^^
+   |                   parameter ys of method bar1 in object Test: (x: Int, ys: Int*): Unit is already instantiated
 -- Error: tests/neg/i18122.scala:44:18 ---------------------------------------------------------------------------------
 44 |    bar1(1, 2, ys = 3)      // error: parameter ys is already instantiated
    |               ^^^^^^
    |               parameter ys of method bar1 in object Test: (x: Int, ys: Int*): Unit is already instantiated
--- Error: tests/neg/i18122.scala:45:16 ---------------------------------------------------------------------------------
-45 |    bar2(x = 1, 2, ys = 3)  // error: positional after named
-   |                ^
-   |                positional after named argument
+-- Error: tests/neg/i18122.scala:45:22 ---------------------------------------------------------------------------------
+45 |    bar2(x = 1, 2, ys = 3)  // error: parameter ys is already instantiated
+   |                   ^^^^^^
+   |                   parameter ys of method bar2 in object Test: (x: Int, ys: Int*): Unit is already instantiated
 -- Error: tests/neg/i18122.scala:46:17 ---------------------------------------------------------------------------------
 46 |    bar1(ys = 1, 2, x = 3)  // error: positional after named
    |                 ^

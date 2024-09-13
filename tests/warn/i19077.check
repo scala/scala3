@@ -1,0 +1,44 @@
+-- Deprecation Warning: tests/warn/i19077.scala:26:14 ------------------------------------------------------------------
+26 |  def g = f(y = 42) // warn but omit empty since
+   |            ^^^^^^
+   |            the parameter name y is deprecated: use x instead
+-- Deprecation Warning: tests/warn/i19077.scala:12:6 -------------------------------------------------------------------
+12 |  f(x = 1, 2, 3) // warn
+   |    ^^^^^
+   |    naming parameter x is deprecated
+-- Deprecation Warning: tests/warn/i19077.scala:13:9 -------------------------------------------------------------------
+13 |  f(1, y = 2, 3) // warn
+   |       ^^^^^
+   |       naming parameter y is deprecated
+-- Deprecation Warning: tests/warn/i19077.scala:14:12 ------------------------------------------------------------------
+14 |  f(1, 2, w = 3) // warn
+   |          ^^^^^
+   |          the parameter name w is deprecated: use z instead
+-- Deprecation Warning: tests/warn/i19077.scala:15:6 -------------------------------------------------------------------
+15 |  f(x = 1, w = 3, y = 2) // warn // warn // warn
+   |    ^^^^^
+   |    naming parameter x is deprecated
+-- Deprecation Warning: tests/warn/i19077.scala:15:20 ------------------------------------------------------------------
+15 |  f(x = 1, w = 3, y = 2) // warn // warn // warn
+   |                  ^^^^^
+   |                  naming parameter y is deprecated
+-- Deprecation Warning: tests/warn/i19077.scala:15:13 ------------------------------------------------------------------
+15 |  f(x = 1, w = 3, y = 2) // warn // warn // warn
+   |           ^^^^^
+   |           the parameter name w is deprecated: use z instead
+-- Deprecation Warning: tests/warn/i19077.scala:16:13 ------------------------------------------------------------------
+16 |  f(w = 3, x = 1, y = 2) // warn // warn // warn
+   |           ^^^^^
+   |           naming parameter x is deprecated
+-- Deprecation Warning: tests/warn/i19077.scala:16:20 ------------------------------------------------------------------
+16 |  f(w = 3, x = 1, y = 2) // warn // warn // warn
+   |                  ^^^^^
+   |                  naming parameter y is deprecated
+-- Deprecation Warning: tests/warn/i19077.scala:16:6 -------------------------------------------------------------------
+16 |  f(w = 3, x = 1, y = 2) // warn // warn // warn
+   |    ^^^^^
+   |    the parameter name w is deprecated: use z instead
+-- Deprecation Warning: tests/warn/i19077.scala:20:8 -------------------------------------------------------------------
+20 |  X.f(v = 42) // warn
+   |      ^^^^^^
+   |      the parameter name v is deprecated (since 3.3): use x instead

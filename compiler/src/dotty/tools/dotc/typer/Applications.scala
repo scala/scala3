@@ -641,6 +641,8 @@ trait Applications extends Compatibility {
       def infoStr = if methType.isErroneous then "" else i": $methType"
       i"${err.refStr(methRef)}$infoStr"
 
+    private type TreeList[T <: Untyped] = List[Trees.Tree[T]]
+
     /** Re-order arguments to correctly align named arguments
      *  Issue errors in the following situations:
      *
@@ -652,67 +654,118 @@ trait Applications extends Compatibility {
      *          (either named or positional), or
      *        - The formal parameter at the argument position is also mentioned
      *          in a subsequent named parameter.
-     *    - "parameter already instantiated" if a two named arguments have the same name.
+     *    - "parameter already instantiated" if two named arguments have the same name or deprecated alias.
      *    - "does not have parameter" if a named parameter does not mention a formal
      *      parameter name.
      */
-    def reorder[T <: Untyped](args: List[Trees.Tree[T]]): List[Trees.Tree[T]] = {
+    def reorder[T <: Untyped](args: TreeList[T]): TreeList[T] =
 
-      /** @param pnames    The list of parameter names that are missing arguments
+      extension [A](list: List[A]) inline def dropOne = if list.isEmpty then list else list.tail // aka list.drop(1)
+
+      extension (dna: Annotation)
+        def deprecatedName: Name =
+          dna.argumentConstantString(0).map(_.toTermName).getOrElse(nme.NO_NAME)
+        def since: String =
+          val version = dna.argumentConstantString(1).filter(!_.isEmpty)
+          version.map(v => s" (since $v)").getOrElse("")
+
+      val deprecatedNames: Map[Name, Annotation] =
+        val sym = methRef.symbol
+        val paramss =
+          if sym.hasAnnotation(defn.MappedAlternativeAnnot) then sym.rawParamss
+          else sym.paramSymss
+        paramss.find(_.exists(_.isTerm)) match
+        case Some(ps) if ps.exists(_.hasAnnotation(defn.DeprecatedNameAnnot)) =>
+          ps.flatMap: p =>
+            p.getAnnotation(defn.DeprecatedNameAnnot).map(p.name -> _)
+          .toMap
+        case _ => Map.empty
+
+      extension (name: Name)
+        def isMatchedBy(usage: Name): Boolean =
+          name == usage
+          || deprecatedNames.get(name).exists(_.deprecatedName == usage)
+        def checkDeprecationOf(usage: Name, pos: SrcPos): Unit = if !ctx.isAfterTyper then
+          for dna <- deprecatedNames.get(name) do
+            dna.deprecatedName match
+            case `name` | nme.NO_NAME if name == usage =>
+              report.deprecationWarning(em"naming parameter $usage is deprecated${dna.since}", pos)
+            case `usage` =>
+              report.deprecationWarning(em"the parameter name $usage is deprecated${dna.since}: use $name instead", pos)
+            case _ =>
+        def alternative: Name =
+          deprecatedNames.get(name).map(_.deprecatedName).getOrElse(nme.NO_NAME)
+
+      /** Reorder the suffix of named args per a list of required names.
+       *
+       *  @param pnames    The list of parameter names that are missing arguments
        *  @param args      The list of arguments that are not yet passed, or that are waiting to be dropped
        *  @param nameToArg A map from as yet unseen names to named arguments
-       *  @param toDrop    A set of names that have already be passed as named arguments
+       *  @param toDrop    A set of names that have already been passed as named arguments
+       *  @param missingArgs true if args were already missing, so error on positional
        *
        *  For a well-typed application we have the invariants
        *
        *  1. `(args diff toDrop)` can be reordered to match `pnames`
        *  2. For every `(name -> arg)` in `nameToArg`, `arg` is an element of `args`
+       *
+       *  Recurse over the parameter names looking for named args to use.
+       *  If there are no more parameters or no args fit, process the next arg:
+       *  a named arg may be previously used, or not yet used, or badly named.
        */
-      def handleNamed(pnames: List[Name], args: List[Trees.Tree[T]],
+      def handleNamed(pnames: List[Name], args: TreeList[T],
                       nameToArg: Map[Name, Trees.NamedArg[T]], toDrop: Set[Name],
-                      missingArgs: Boolean): List[Trees.Tree[T]] = pnames match {
-        case pname :: pnames1 if nameToArg contains pname =>
-          // there is a named argument for this parameter; pick it
-          nameToArg(pname) :: handleNamed(pnames1, args, nameToArg - pname, toDrop + pname, missingArgs)
+                      missingArgs: Boolean): TreeList[T] =
+        pnames match
+        case pname :: pnames if nameToArg.contains(pname) =>
+          val arg = nameToArg(pname) // use the named argument for this parameter
+          pname.checkDeprecationOf(pname, arg.srcPos)
+          arg :: handleNamed(pnames, args, nameToArg - pname, toDrop + pname, missingArgs)
+        case pname :: pnames if nameToArg.contains(pname.alternative) =>
+          val alt = pname.alternative
+          val arg = nameToArg(alt) // use the named argument for this parameter
+          pname.checkDeprecationOf(alt, arg.srcPos)
+          arg :: handleNamed(pnames, args, nameToArg - alt, toDrop + alt, missingArgs)
         case _ =>
-          def pnamesRest = if (pnames.isEmpty) pnames else pnames.tail
-          args match {
-            case (arg @ NamedArg(aname, _)) :: args1 =>
-              if (toDrop contains aname) // argument is already passed
-                handleNamed(pnames, args1, nameToArg, toDrop - aname, missingArgs)
-              else if ((nameToArg contains aname) && pnames.nonEmpty) // argument is missing, pass an empty tree
-                genericEmptyTree :: handleNamed(pnames.tail, args, nameToArg, toDrop, missingArgs = true)
-              else { // name not (or no longer) available for named arg
-                def msg =
-                  if (methodType.paramNames contains aname)
-                    em"parameter $aname of $methString is already instantiated"
-                  else
-                    em"$methString does not have a parameter $aname"
-                fail(msg, arg.asInstanceOf[Arg])
-                arg :: handleNamed(pnamesRest, args1, nameToArg, toDrop, missingArgs)
-              }
-            case arg :: args1 =>
-              if toDrop.nonEmpty || missingArgs then
-                report.error(i"positional after named argument", arg.srcPos)
-              arg :: handleNamed(pnamesRest, args1, nameToArg, toDrop, missingArgs) // unnamed argument; pick it
-            case Nil => // no more args, continue to pick up any preceding named args
-              if (pnames.isEmpty) Nil
-              else handleNamed(pnamesRest, args, nameToArg, toDrop, missingArgs)
-          }
-      }
+          args match
+          case allArgs @ (arg @ NamedArg(aname, _)) :: args =>
+            if toDrop.contains(aname) then
+              // named argument was already picked (using aname), skip it
+              handleNamed(pnames, args, nameToArg, toDrop - aname, missingArgs)
+            else if pnames.nonEmpty && nameToArg.contains(aname) then
+              // argument for pname is missing, pass an empty tree; arg may be used later, so keep it
+              genericEmptyTree :: handleNamed(pnames.tail, allArgs, nameToArg, toDrop, missingArgs = true)
+            else // name not (or no longer) available for named arg
+              def msg =
+                if methodType.paramNames.exists(nm => nm == aname || nm.alternative == aname) then
+                  em"parameter $aname of $methString is already instantiated"
+                else
+                  em"$methString does not have a parameter $aname"
+              fail(msg, arg.asInstanceOf[Arg])
+              arg :: handleNamed(pnames.dropOne, args, nameToArg, toDrop, missingArgs)
+          case arg :: args =>
+            if toDrop.nonEmpty || missingArgs then
+              report.error(i"positional after named argument", arg.srcPos)
+            arg :: handleNamed(pnames.dropOne, args, nameToArg, toDrop, missingArgs) // unnamed argument; pick it
+          case nil => // no more args, continue to pick up any preceding named args
+            if pnames.isEmpty then nil
+            else handleNamed(pnames.dropOne, args = nil, nameToArg, toDrop, missingArgs)
 
-      def handlePositional(pnames: List[Name], args: List[Trees.Tree[T]]): List[Trees.Tree[T]] =
-        args match {
-          case (arg: NamedArg @unchecked) :: _ =>
-            val nameAssocs = for (case arg @ NamedArg(name, _) <- args) yield (name, arg)
-            handleNamed(pnames, args, nameAssocs.toMap, toDrop = Set(), missingArgs = false)
-          case arg :: args1 =>
-            arg :: handlePositional(if (pnames.isEmpty) Nil else pnames.tail, args1)
-          case Nil => Nil
-        }
+      // Skip prefix of positional args, then handleNamed
+      def handlePositional(pnames: List[Name], args: TreeList[T]): TreeList[T] =
+        args match
+        case (arg @ NamedArg(name, _)) :: args if !pnames.isEmpty && pnames.head.isMatchedBy(name) =>
+          pnames.head.checkDeprecationOf(name, arg.srcPos)
+          arg :: handlePositional(pnames.tail, args)
+        case (_: NamedArg) :: _ =>
+          val nameAssocs = args.collect { case arg @ NamedArg(name, _) => name -> arg }
+          handleNamed(pnames, args, nameAssocs.toMap, toDrop = Set.empty, missingArgs = false)
+        case arg :: args =>
+          arg :: handlePositional(pnames.dropOne, args)
+        case nil => nil
 
       handlePositional(methodType.paramNames, args)
-    }
+    end reorder
 
     /** Is `sym` a constructor of a Java-defined annotation? */
     def isJavaAnnotConstr(sym: Symbol): Boolean =
