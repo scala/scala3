@@ -390,8 +390,8 @@ object Settings:
     def BooleanSetting(category: SettingCategory, name: String, descr: String, initialValue: Boolean = false, aliases: List[String] = Nil, preferPrevious: Boolean = false, deprecation: Option[Deprecation] = None, ignoreInvalidArgs: Boolean = false): Setting[Boolean] =
       publish(Setting(category, prependName(name), descr, initialValue, aliases = aliases, preferPrevious = preferPrevious, deprecation = deprecation, ignoreInvalidArgs = ignoreInvalidArgs))
 
-    def StringSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: String, aliases: List[String] = Nil): Setting[String] =
-      publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases))
+    def StringSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: String, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None, depends: SettingDependencies = Nil): Setting[String] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases, deprecation = deprecation, depends = depends))
 
     def ChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: List[String], default: String, aliases: List[String] = Nil, legacyArgs: Boolean = false, deprecation: Option[Deprecation] = None): Setting[String] =
       publish(Setting(category, prependName(name), descr, default, helpArg, Some(choices), aliases = aliases, legacyArgs = legacyArgs, deprecation = deprecation))
@@ -417,8 +417,8 @@ object Settings:
     def PathSetting(category: SettingCategory, name: String, descr: String, default: String, aliases: List[String] = Nil, deprecation: Option[Deprecation] = None): Setting[String] =
       publish(Setting(category, prependName(name), descr, default, aliases = aliases, deprecation = deprecation))
 
-    def PhasesSetting(category: SettingCategory, name: String, descr: String, default: String = "", aliases: List[String] = Nil): Setting[List[String]] =
-      publish(Setting(category, prependName(name), descr, if (default.isEmpty) Nil else List(default), aliases = aliases))
+    def PhasesSetting(category: SettingCategory, name: String, descr: String, default: String = "", aliases: List[String] = Nil, deprecation: Option[Deprecation] = None, depends: SettingDependencies = Nil): Setting[List[String]] =
+      publish(Setting(category, prependName(name), descr, if (default.isEmpty) Nil else List(default), aliases = aliases, deprecation = deprecation, depends = depends))
 
     def PrefixSetting(category: SettingCategory, name0: String, descr: String, deprecation: Option[Deprecation] = None): Setting[List[String]] =
       val name = prependName(name0)

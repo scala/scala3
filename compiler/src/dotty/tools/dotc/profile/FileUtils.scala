@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Promise}
 import scala.util.{Failure, Success}
+import scala.annotation.internal.sharable
 
 object FileUtils {
   def newAsyncBufferedWriter(path: Path, charset: Charset = StandardCharsets.UTF_8.nn, options: Array[OpenOption] = NO_OPTIONS, threadsafe: Boolean = false): LineWriter = {
@@ -72,8 +73,8 @@ object FileUtils {
   }
 
   private object AsyncBufferedWriter {
-    private val Close = CharBuffer.allocate(0)
-    private val Flush = CharBuffer.allocate(0)
+    @sharable private val Close = CharBuffer.allocate(0)
+    @sharable private val Flush = CharBuffer.allocate(0)
   }
   private class AsyncBufferedWriter(val underlying: Writer, bufferSize : Int = 4096) extends LineWriter {
     private var current: CharBuffer = allocate

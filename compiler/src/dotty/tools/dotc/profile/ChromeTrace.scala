@@ -38,8 +38,8 @@ object ChromeTrace {
   }
 }
 
-/** Allows writing a subset of https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview#
-  * for use in Chrome's about://tracing or the tooling in https://www.google.com.au/search?q=catapult+tracing&oq=catapult+tracing+&aqs=chrome..69i57.3974j0j4&sourceid=chrome&ie=UTF-8 */
+/** Allows writing a subset of captrue traces based on https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview#
+  * Can be visualized using https://ui.perfetto.dev/, Chrome's about://tracing (outdated) or the tooling in https://www.google.com.au/search?q=catapult+tracing&oq=catapult+tracing+&aqs=chrome..69i57.3974j0j4&sourceid=chrome&ie=UTF-8 */
 final class ChromeTrace(f: Path) extends Closeable {
   import ChromeTrace.EventType
   private val traceWriter = FileUtils.newAsyncBufferedWriter(f)
@@ -125,11 +125,11 @@ final class ChromeTrace(f: Path) extends Closeable {
 
   private def microTime(): Long = nanosToMicros(System.nanoTime())
 
-  sealed abstract class JsonContext
-  case class ArrayContext(var first: Boolean) extends JsonContext
-  case class ObjectContext(var first: Boolean) extends JsonContext
-  case object ValueContext extends JsonContext
-  case object TopContext extends JsonContext
+  private sealed abstract class JsonContext
+  private case class ArrayContext(var first: Boolean) extends JsonContext
+  private case class ObjectContext(var first: Boolean) extends JsonContext
+  private case object ValueContext extends JsonContext
+  private case object TopContext extends JsonContext
 
   private def str(name: String, value: String): Unit = {
     fld(name)
