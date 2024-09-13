@@ -33,6 +33,7 @@ object PositionPickler:
       pickler: TastyPickler,
       addrOfTree: TreeToAddr,
       treeAnnots: untpd.MemberDef => List[tpd.Tree],
+      typeAnnots: List[tpd.Tree],
       relativePathReference: String,
       source: SourceFile,
       roots: List[Tree],
@@ -136,6 +137,9 @@ object PositionPickler:
     }
     for (root <- roots)
       traverse(root, NoSource)
+
+    for annotTree <- typeAnnots do
+      traverse(annotTree, NoSource)
   end picklePositions
 end PositionPickler
 

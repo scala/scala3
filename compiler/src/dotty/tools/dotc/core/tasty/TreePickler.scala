@@ -41,6 +41,10 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
    */
   private val annotTrees = util.EqHashMap[untpd.MemberDef, mutable.ListBuffer[Tree]]()
 
+  /** A set of annotation trees appearing in annotated types.
+   */
+  private val annotatedTypeTrees = mutable.ListBuffer[Tree]()
+
   /** A map from member definitions to their doc comments, so that later
    *  parallel comment pickling does not need to access symbols of trees (which
    *  would involve accessing symbols of named types and possibly changing phases
@@ -56,6 +60,8 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
   def treeAnnots(tree: untpd.MemberDef): List[Tree] =
     val ts = annotTrees.lookup(tree)
     if ts == null then Nil else ts.toList
+
+  def typeAnnots: List[Tree] = annotatedTypeTrees.toList
 
   def docString(tree: untpd.MemberDef): Option[Comment] =
     Option(docStrings.lookup(tree))
@@ -278,6 +284,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
     case tpe: AnnotatedType =>
       writeByte(ANNOTATEDtype)
       withLength { pickleType(tpe.parent, richTypes); pickleTree(tpe.annot.tree) }
+      annotatedTypeTrees += tpe.annot.tree
     case tpe: AndType =>
       writeByte(ANDtype)
       withLength { pickleType(tpe.tp1, richTypes); pickleType(tpe.tp2, richTypes) }
