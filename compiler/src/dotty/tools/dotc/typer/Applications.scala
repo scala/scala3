@@ -635,6 +635,21 @@ trait Applications extends Compatibility {
 
       inline def tailOf[A](list: List[A]): List[A] = if list.isEmpty then list else list.tail // list.drop(1)
 
+      def hasDeprecatedName(pname: Name, other: Name, t: Trees.Tree[T]): Boolean = !ctx.isAfterTyper &&
+        methRef.symbol.paramSymss.flatten.find(_.name == pname).flatMap(_.getAnnotation(defn.DeprecatedNameAnnot)).match
+        case Some(annot) =>
+          val name    = annot.argumentConstantString(0)
+          val version = annot.argumentConstantString(1).filter(!_.isEmpty)
+          val since   = version.map(v => s" (since $v)").getOrElse("")
+          name.map(_.toTermName) match
+          case Some(`other`) =>
+            report.deprecationWarning(em"the parameter name $other is deprecated$since: use $pname instead", t.srcPos)
+          case Some(`pname`) | None =>
+            report.deprecationWarning(em"naming parameter $pname is deprecated$since", t.srcPos)
+          case _ =>
+          true
+        case _ => false
+
       /** Reorder the suffix of named args per a list of required names.
        *
        *  @param pnames    The list of parameter names that are missing arguments
@@ -650,17 +665,24 @@ trait Applications extends Compatibility {
        */
       def handleNamed(pnames: List[Name], args: List[Trees.Tree[T]],
                       nameToArg: Map[Name, Trees.NamedArg[T]], toDrop: Set[Name],
-                      missingArgs: Boolean): List[Trees.Tree[T]] = pnames match
-        case pname :: pnames if nameToArg.contains(pname) =>
-          // there is a named argument for this parameter; pick it
-          nameToArg(pname) :: handleNamed(pnames, args, nameToArg - pname, toDrop + pname, missingArgs)
+                      missingArgs: Boolean): List[Trees.Tree[T]] =
+        pnames match
+        case pname :: pnames if nameToArg.contains(pname) => // use the named argument for this parameter
+          val arg = nameToArg(pname)
+          hasDeprecatedName(pname, nme.NO_NAME, arg)
+          arg :: handleNamed(pnames, args, nameToArg - pname, toDrop + pname, missingArgs)
         case _ =>
           args match
-            case (arg @ NamedArg(aname, _)) :: args1 =>
-              if toDrop.contains(aname) // named argument is already passed
-              then handleNamed(pnames, args1, nameToArg, toDrop - aname, missingArgs)
-              else if nameToArg.contains(aname) && pnames.nonEmpty // argument is missing, pass an empty tree
-              then genericEmptyTree :: handleNamed(pnames.tail, args, nameToArg, toDrop, missingArgs = true)
+            case allArgs @ (arg @ NamedArg(aname, _)) :: args =>
+              if toDrop.contains(aname) then // named argument was already picked
+                handleNamed(pnames, args, nameToArg, toDrop - aname, missingArgs)
+              else if pnames.nonEmpty && nameToArg.contains(aname) then
+                val pname = pnames.head
+                if hasDeprecatedName(pname, aname, arg) then // name was deprecated alt, so try again with canonical name
+                  val parg = cpy.NamedArg(arg)(pname, arg.arg).asInstanceOf[Trees.NamedArg[T]]
+                  handleNamed(pnames, parg :: args, nameToArg.removed(aname).updated(pname, parg), toDrop, missingArgs)
+                else // argument for pname is missing, pass an empty tree
+                  genericEmptyTree :: handleNamed(pnames.tail, allArgs, nameToArg, toDrop, missingArgs = true)
               else // name not (or no longer) available for named arg
                 def msg =
                   if methodType.paramNames.contains(aname) then
@@ -668,7 +690,7 @@ trait Applications extends Compatibility {
                   else
                     em"$methString does not have a parameter $aname"
                 fail(msg, arg.asInstanceOf[Arg])
-                arg :: handleNamed(tailOf(pnames), args1, nameToArg, toDrop, missingArgs)
+                arg :: handleNamed(tailOf(pnames), args, nameToArg, toDrop, missingArgs)
             case arg :: args =>
               if toDrop.nonEmpty || missingArgs then
                 report.error(i"positional after named argument", arg.srcPos)
@@ -680,8 +702,10 @@ trait Applications extends Compatibility {
       /** Skip prefix of positional args, then handleNamed */
       def handlePositional(pnames: List[Name], args: List[Trees.Tree[T]]): List[Trees.Tree[T]] =
         args match
+          case (arg @ NamedArg(name, _)) :: args if !pnames.isEmpty && pnames.head == name =>
+            hasDeprecatedName(name, nme.NO_NAME, arg)
+            arg :: handlePositional(pnames.tail, args)
           case (_: NamedArg) :: _ =>
-            //val nameAssocs = for case arg @ NamedArg(name, _) <- args yield (name, arg)
             val nameAssocs = args.collect { case arg @ NamedArg(name, _) => name -> arg }
             handleNamed(pnames, args, nameAssocs.toMap, toDrop = Set.empty, missingArgs = false)
           case arg :: args =>
