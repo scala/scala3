@@ -47,6 +47,10 @@ object Settings:
         values(idx) = x
         changed.add(idx)
         this
+
+    def reinitializedCopy(): SettingsState =
+      SettingsState(values.toSeq, changed.toSet)
+
   end SettingsState
 
   case class ArgsSummary(

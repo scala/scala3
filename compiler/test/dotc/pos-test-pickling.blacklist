@@ -135,3 +135,6 @@ parsercombinators-new-syntax.scala
 hylolib-deferred-given
 hylolib-cb
 hylolib
+
+# typecheckErrors method unpickling
+i21415.scala
