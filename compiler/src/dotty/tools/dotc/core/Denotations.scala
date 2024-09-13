@@ -621,6 +621,30 @@ object Denotations {
             throw ex
         case _ => Signature.NotAMethod
 
+    private var myCurrentJavaSig: Signature = uninitialized
+    private var myCurrentJavaSigRunId: RunId = NoRunId
+    private var myCurrentScala2Sig: Signature = uninitialized
+    private var myCurrentScala2SigRunId: RunId = NoRunId
+    private var myCurrentSig: Signature = uninitialized
+    private var myCurrentSigRunId: RunId = NoRunId
+
+    def currentSignature(sourceLanguage: SourceLanguage)(using Context): Signature = sourceLanguage match
+      case SourceLanguage.Java =>
+        if myCurrentJavaSigRunId != ctx.runId then
+          myCurrentJavaSig = signature(sourceLanguage)
+          myCurrentJavaSigRunId = ctx.runId
+        myCurrentJavaSig
+      case SourceLanguage.Scala2 =>
+        if myCurrentScala2SigRunId != ctx.runId then
+          myCurrentScala2Sig = signature(sourceLanguage)
+          myCurrentScala2SigRunId = ctx.runId
+        myCurrentScala2Sig
+      case SourceLanguage.Scala3 =>
+        if myCurrentSigRunId != ctx.runId then
+          myCurrentSig = signature(sourceLanguage)
+          myCurrentSigRunId = ctx.runId
+        myCurrentSig
+
     def derivedSingleDenotation(symbol: Symbol, info: Type, pre: Type = this.prefix, isRefinedMethod: Boolean = this.isRefinedMethod)(using Context): SingleDenotation =
       if ((symbol eq this.symbol) && (info eq this.info) && (pre eq this.prefix) && (isRefinedMethod == this.isRefinedMethod)) this
       else newLikeThis(symbol, info, pre, isRefinedMethod)
@@ -1023,8 +1047,8 @@ object Denotations {
         val thisLanguage = SourceLanguage(symbol)
         val otherLanguage = SourceLanguage(other.symbol)
         val commonLanguage = SourceLanguage.commonLanguage(thisLanguage, otherLanguage)
-        val sig = signature(commonLanguage)
-        val otherSig = other.signature(commonLanguage)
+        val sig = currentSignature(commonLanguage)
+        val otherSig = other.currentSignature(commonLanguage)
         sig.matchDegree(otherSig) match
           case FullMatch =>
             !alwaysCompareTypes || info.matches(other.info)
