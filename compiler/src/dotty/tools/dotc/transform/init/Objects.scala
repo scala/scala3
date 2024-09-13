@@ -523,6 +523,8 @@ class Objects(using Context @constructorOnly):
 
     def getHeapData()(using mutable: MutableData): Data = mutable.heap
 
+    def setHeap(newHeap: Data)(using mutable: MutableData): Unit = mutable.heap = newHeap
+
   /** Cache used to terminate the check  */
   object Cache:
     case class Config(thisV: Value, env: Env.Data, heap: Heap.Data)
@@ -538,6 +540,7 @@ class Objects(using Context @constructorOnly):
         val result = super.cachedEval(config, expr, cacheResult, default = Res(Bottom, Heap.getHeapData())) { expr =>
           Res(fun(expr), Heap.getHeapData())
         }
+        Heap.setHeap(result.heap)
         result.value
   end Cache
 
