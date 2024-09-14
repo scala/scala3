@@ -320,13 +320,14 @@ object AutoImports:
         case _ => None
 
 
-    def skipUsingDirectivesOffset(
-      firstObjectPos: Int = firstMemberDefinitionStart(tree).getOrElse(0)
-    ): Int =
+    def skipUsingDirectivesOffset(firstObjectPos: Int = firstMemberDefinitionStart(tree).getOrElse(0)): Int =
       val firstObjectLine = pos.source.offsetToLine(firstObjectPos)
+
       comments
         .takeWhile(comment =>
-          !comment.isDocComment && pos.source.offsetToLine(comment.span.end) + 1 < firstObjectLine
+          val commentLine = pos.source.offsetToLine(comment.span.end)
+          val isFirstObjectComment = commentLine + 1 == firstObjectLine && !comment.raw.startsWith("//>")
+          commentLine < firstObjectLine && !isFirstObjectComment
         )
         .lastOption
         .fold(0)(_.span.end + 1)
