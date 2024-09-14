@@ -16,7 +16,10 @@ class ChromeTraceTest:
     try generator(tracer)
     finally tracer.close()
     val contentLines = scala.io.Source.fromFile(outfile.toFile().nn).getLines().toList
-    checkContent.applyOrElse(contentLines, content => fail(s"Invalid output lines: ${content.mkString(System.lineSeparator())}"))
+    checkContent.applyOrElse(
+      contentLines,
+      content => fail(s"Invalid output lines: ${content.mkString(System.lineSeparator().nn)}")
+    )
   }
 
   @Test def traceCounterEvent(): Unit = testTraceOutputs{ tracer =>
