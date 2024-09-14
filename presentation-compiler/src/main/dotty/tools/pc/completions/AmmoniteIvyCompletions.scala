@@ -34,7 +34,7 @@ object AmmoniteIvyCompletions:
         val completions = coursierComplete.complete(dependency.nn)
         completions
           .map(insertText =>
-            CompletionValue.IvyImport(
+            CompletionValue.Coursier(
               insertText.stripPrefix(":"),
               Some(insertText),
               Some(ivyEditRange)

@@ -701,7 +701,7 @@ class Completions(
               (autofill.label, true)
             case fileSysMember: CompletionValue.FileSystemMember =>
               (fileSysMember.label, true)
-            case ii: CompletionValue.IvyImport => (ii.label, true)
+            case ii: CompletionValue.Coursier => (ii.label, true)
             case sv: CompletionValue.SingletonValue => (sv.label, true)
 
         if !alreadySeen(id) && include then
@@ -985,10 +985,7 @@ class Completions(
               o1.label,
               o2.label
             )
-          case (
-                sym1: CompletionValue.Symbolic,
-                sym2: CompletionValue.Symbolic,
-              ) =>
+          case (sym1: CompletionValue.Symbolic, sym2: CompletionValue.Symbolic) =>
             if compareCompletionValue(sym1, sym2) then 0
             else if compareCompletionValue(sym2, sym1) then 1
             else
@@ -1037,6 +1034,8 @@ class Completions(
                 end if
               end if
             end if
+          case (sym1: CompletionValue.Coursier, sym2: CompletionValue.Coursier) =>
+            sym1.label.compareTo(sym2.label)
           case _ =>
             val byClass = prioritizeByClass(o1, o2)
             if byClass != 0 then byClass
