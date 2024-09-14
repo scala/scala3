@@ -227,7 +227,10 @@ abstract class BaseCompletionSuite extends BasePCSuite:
       case Some(top) => baseItems.take(top)
       case None => baseItems
     val filteredItems = items.filter(item => filter(item.getLabel))
-    filteredItems.foreach { item =>
+    val nonEmptyExpected = filteredItems.isEmpty && expected.linesIterator.exists(_.trim.nonEmpty)
+    val result = if nonEmptyExpected then items else filteredItems
+
+    result.foreach { item =>
       val label = TestCompletions.getFullyQualifiedLabel(item)
       val commitCharacter =
         if includeCommitCharacter then
@@ -254,6 +257,7 @@ abstract class BaseCompletionSuite extends BasePCSuite:
         })
         .append(commitCharacter)
         .append(completionKind)
+        .append(if nonEmptyExpected then " [FILTERED OUT]" else "")
         .append("\n")
     }
     val completionSources = filteredItems
