@@ -14,6 +14,7 @@ import Decorators.*
 import scala.collection.mutable
 import DenotTransformers.*
 import NameOps.*
+import SymDenotations.SymDenotation
 import NameKinds.OuterSelectName
 import StdNames.*
 import config.Feature
@@ -35,22 +36,26 @@ object FirstTransform {
  *          if (true) A else B    ==> A
  *          if (false) A else B   ==> B
  */
-class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
+class FirstTransform extends MiniPhase with SymTransformer { thisPhase =>
   import ast.tpd.*
 
   override def phaseName: String = FirstTransform.name
 
   override def description: String = FirstTransform.description
 
-  /** eliminate self symbol in ClassInfo */
-  override def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match {
-    case tp @ ClassInfo(_, _, _, _, self: Symbol) =>
-      tp.derivedClassInfo(selfInfo = self.info)
-    case _ =>
-      tp
-  }
-
-  override protected def infoMayChange(sym: Symbol)(using Context): Boolean = sym.isClass
+  /** eliminate self symbol in ClassInfo, reset Deferred for @native methods */
+  override def transformSym(sym: SymDenotation)(using Context): SymDenotation =
+    if sym.isClass then
+      sym.info match
+        case tp @ ClassInfo(_, _, _, _, self: Symbol) =>
+          val info1 = tp.derivedClassInfo(selfInfo = self.info)
+          sym.copySymDenotation(info = info1).copyCaches(sym, ctx.phase.next)
+        case _ =>
+          sym
+    else if sym.isAllOf(DeferredMethod) && sym.hasAnnotation(defn.NativeAnnot) then
+      sym.copySymDenotation(initFlags = sym.flags &~ Deferred)
+    else
+      sym
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     tree match {
@@ -121,7 +126,6 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   override def transformDefDef(ddef: DefDef)(using Context): Tree =
     val meth = ddef.symbol.asTerm
     if meth.hasAnnotation(defn.NativeAnnot) then
-      meth.resetFlag(Deferred)
       DefDef(meth, _ =>
         ref(defn.Sys_error.termRef).withSpan(ddef.span)
           .appliedTo(Literal(Constant(s"native method stub"))))
