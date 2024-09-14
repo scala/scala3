@@ -636,7 +636,7 @@ trait ImplicitRunInfo:
   private def isAnchor(sym: Symbol) =
     sym.isClass && !isExcluded(sym)
     || sym.isOpaqueAlias
-    || sym.is(Deferred)
+    || sym.is(Deferred, butNot = Param)
     || sym.info.isMatchAlias
 
   private def computeIScope(rootTp: Type): OfTypeImplicits =
