@@ -7,7 +7,7 @@ object CompilerCrash {
 
   new Scope {
     val commands = List(
-      Cmd(List("1", "2"))
+      Cmd(List("1", "2")) // error // error
     )
   }
 }
