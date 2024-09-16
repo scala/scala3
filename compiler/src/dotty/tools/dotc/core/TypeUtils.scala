@@ -8,6 +8,7 @@ import Names.{Name, TermName}
 import Constants.Constant
 
 import Names.Name
+import StdNames.nme
 import config.Feature
 
 class TypeUtils:
@@ -189,5 +190,30 @@ class TypeUtils:
     def stripRefinement: Type = self match
       case self: RefinedOrRecType => self.parent.stripRefinement
       case seld => self
+
+    /** The constructors of this tyoe that that are applicable to `argTypes`, without needing
+     *  an implicit conversion.
+     *  @param adaptVarargs   if true, allow a constructor with just a varargs argument to
+     *                        match an empty argument list.
+     */
+    def applicableConstructors(argTypes: List[Type], adaptVarargs: Boolean)(using Context): List[Symbol] =
+      def isApplicable(constr: Symbol): Boolean =
+        def recur(ctpe: Type): Boolean = ctpe match
+          case ctpe: PolyType =>
+            if argTypes.isEmpty then recur(ctpe.resultType) // no need to know instances
+            else recur(ctpe.instantiate(self.argTypes))
+          case ctpe: MethodType =>
+            var paramInfos = ctpe.paramInfos
+            if adaptVarargs && paramInfos.length == argTypes.length + 1
+              && atPhaseNoLater(Phases.elimRepeatedPhase)(constr.info.isVarArgsMethod)
+            then // accept missing argument for varargs parameter
+              paramInfos = paramInfos.init
+            argTypes.corresponds(paramInfos)(_ <:< _)
+          case _ =>
+            false
+        recur(constr.info)
+
+      self.decl(nme.CONSTRUCTOR).altsWith(isApplicable).map(_.symbol)
+
 end TypeUtils
 

@@ -328,21 +328,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       superArgs: List[Tree] = Nil, adaptVarargs: Boolean = false)(using Context): TypeDef =
     val firstParent :: otherParents = cls.info.parents: @unchecked
 
-    def isApplicable(constr: Symbol): Boolean =
-      def recur(ctpe: Type): Boolean = ctpe match
-        case ctpe: PolyType =>
-          recur(ctpe.instantiate(firstParent.argTypes))
-        case ctpe: MethodType =>
-          var paramInfos = ctpe.paramInfos
-          if adaptVarargs && paramInfos.length == superArgs.length + 1
-            && atPhaseNoLater(Phases.elimRepeatedPhase)(constr.info.isVarArgsMethod)
-          then // accept missing argument for varargs parameter
-            paramInfos = paramInfos.init
-          superArgs.corresponds(paramInfos)(_.tpe <:< _)
-        case _ =>
-          false
-      recur(constr.info)
-
     def adaptedSuperArgs(ctpe: Type): List[Tree] = ctpe match
       case ctpe: PolyType =>
         adaptedSuperArgs(ctpe.instantiate(firstParent.argTypes))
@@ -357,8 +342,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val superRef =
       if cls.is(Trait) then TypeTree(firstParent)
       else
-        val constr = firstParent.decl(nme.CONSTRUCTOR).suchThat(isApplicable)
-        New(firstParent, constr.symbol.asTerm, adaptedSuperArgs(constr.info))
+        val parentConstr = firstParent.applicableConstructors(superArgs.tpes, adaptVarargs) match
+          case Nil => assert(false, i"no applicable parent constructor of $firstParent for supercall arguments $superArgs")
+          case constr :: Nil => constr
+          case _ => assert(false, i"multiple applicable parent constructors of $firstParent for supercall arguments $superArgs")
+        New(firstParent, parentConstr.asTerm, adaptedSuperArgs(parentConstr.info))
 
     ClassDefWithParents(cls, constr, superRef :: otherParents.map(TypeTree(_)), body)
   end ClassDef
