@@ -696,6 +696,10 @@ trait Applications extends Compatibility {
             fail(MissingArgument(methodType.paramNames(n), methString))
 
           def tryDefault(n: Int, args1: List[Arg]): Unit = {
+            if !success then
+              missingArg(n) // fail fast before forcing the default arg tpe, to avoid cyclic errors
+              return
+
             val sym = methRef.symbol
             val testOnly = this.isInstanceOf[TestApplication[?]]
 
