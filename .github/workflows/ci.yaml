@@ -687,14 +687,6 @@ jobs:
     if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'scala/scala3'"
     env:
       NIGHTLYBUILD: yes
-      DOTTY_WEBSITE_BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # If you need to change this:
-                                          # Generate one at https://github.com/settings/tokens
-                                          # Make sure you have the write permissions to the repo: https://github.com/lampepfl/dotty-website
-      # Currently unused token, no need to deploy anything to docs.scala-lang
-      # DOCS_SCALALANG_BOT_TOKEN: ${{ secrets.DOCS_SCALALANG_BOT_TOKEN }}  # If you need to change this:
-                                          # Generate one at https://github.com/settings/tokens
-                                          # Make sure you have the write permissions to the repo: https://github.com/scala/docs.scala-lang
-
     steps:
       - name: Reset existing repo
         run: |
@@ -721,10 +713,10 @@ jobs:
       - name: Deploy Website to dotty-website
         uses: peaceiris/actions-gh-pages@v4
         with:
-          personal_token: ${{ env.DOTTY_WEBSITE_BOT_TOKEN }}
+          personal_token: ${{ secrets.DOTTYBOT_TOKEN }}
           publish_dir: docs/_site
-          external_repository: lampepfl/dotty-website
-          publish_branch: gh-pages
+          external_repository: scala/dotty.epfl.ch
+          publish_branch: main
 
   publish_release:
     permissions:
