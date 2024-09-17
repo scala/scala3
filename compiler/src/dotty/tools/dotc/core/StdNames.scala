@@ -42,7 +42,7 @@ object StdNames {
 
     @sharable
     private val disallowed = java.util.regex.Pattern.compile("""[<>]""").nn
-    def sanitize(str: String): String = disallowed.matcher(str).nn.replaceAll("""\$""").nn
+    def sanitize(str: String): String = disallowed.matcher(str).replaceAll("""\$""").nn
   }
 
   abstract class DefinedNames[N <: Name] {

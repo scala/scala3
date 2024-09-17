@@ -393,7 +393,7 @@ object Names {
             // because asserts are caught in exception handlers which might
             // cause other failures. In that case the first, important failure
             // is lost.
-            System.err.nn.println("Backend should not call Name#toString, Name#mangledString should be used instead.")
+            System.err.println("Backend should not call Name#toString, Name#mangledString should be used instead.")
             Thread.dumpStack()
             assert(false)
           }

@@ -211,7 +211,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     try
       trackProgress(_.cancel())
     finally
-      Thread.currentThread().nn.interrupt()
+      Thread.currentThread().interrupt()
 
   private def doAdvancePhase(currentPhase: Phase, wasRan: Boolean)(using Context): Unit =
     trackProgress: progress =>
