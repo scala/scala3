@@ -986,7 +986,7 @@ object Build {
     // compiler is updated.
     // Then, the next step is to enable flexible types by default and reduce the use of
     // `unsafeNulls`.
-    scalacOptions ++= Seq("-Yno-flexible-types"),
+    // scalacOptions ++= Seq("-Yno-flexible-types"),
     packageAll := {
       (`scala3-compiler` / packageAll).value ++ Seq(
         "scala3-compiler" -> (Compile / packageBin).value.getAbsolutePath,
@@ -1377,10 +1377,10 @@ object Build {
     .asScala3PresentationCompiler(NonBootstrapped)
   lazy val `scala3-presentation-compiler-bootstrapped` = project.in(file("presentation-compiler"))
     .asScala3PresentationCompiler(Bootstrapped)
-    .settings(
-      // Add `-Yno-flexible-types` flag for bootstrap, see comments for `bootstrappedDottyCompilerSettings`
-      Compile / scalacOptions +=  "-Yno-flexible-types"
-    )
+    // .settings(
+    //   // Add `-Yno-flexible-types` flag for bootstrap, see comments for `bootstrappedDottyCompilerSettings`
+    //   Compile / scalacOptions +=  "-Yno-flexible-types"
+    // )
 
   def scala3PresentationCompiler(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `scala3-presentation-compiler`

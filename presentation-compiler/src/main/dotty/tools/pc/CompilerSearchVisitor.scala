@@ -105,6 +105,6 @@ class CompilerSearchVisitor(
   override def isCancelled: Boolean = false
 
   private def normalizePackage(pkg: String): String =
-    pkg.replace("/", ".").nn.stripSuffix(".")
+    pkg.replace("/", ".").stripSuffix(".")
 
 end CompilerSearchVisitor

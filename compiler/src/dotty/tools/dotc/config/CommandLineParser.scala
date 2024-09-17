@@ -114,7 +114,7 @@ object CommandLineParser:
   def expandArg(arg: String): List[String] =
     val path = Paths.get(arg.stripPrefix("@"))
     if !Files.exists(path) then
-      System.err.nn.println(s"Argument file ${path.nn.getFileName} could not be found")
+      System.err.println(s"Argument file ${path.getFileName} could not be found")
       Nil
     else
       def stripComment(s: String) = s.indexOf('#') match { case -1 => s case i => s.substring(0, i) }

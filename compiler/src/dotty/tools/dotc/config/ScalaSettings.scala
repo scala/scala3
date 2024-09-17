@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 package config
 
-import scala.language.unsafeNulls
 import dotty.tools.dotc.config.PathResolver.Defaults
 import dotty.tools.dotc.config.Settings.{Setting, SettingGroup, SettingCategory, Deprecation}
 import dotty.tools.dotc.config.SourceVersion

@@ -246,7 +246,7 @@ class UnpicklingError(denot: Denotation, where: String, cause: Throwable)(using 
       case cause: UnpicklingError => ""
       case _ =>
         if ctx.settings.YdebugUnpickling.value then
-          cause.getStackTrace().nn.mkString("\n    ", "\n    ", "")
+          cause.getStackTrace().mkString("\n    ", "\n    ", "")
         else "\n\nRun with -Ydebug-unpickling to see full stack trace."
     em"""Could not read definition $denot$where. Caused by the following exception:
         |$cause$debugUnpickling"""
