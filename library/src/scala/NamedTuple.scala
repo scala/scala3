@@ -138,7 +138,7 @@ object NamedTupleDecomposition:
   import NamedTuple.*
   extension [N <: Tuple, V <: Tuple](x: NamedTuple[N, V])
       /** The value (without the name) at index `n` of this tuple */
-    inline def apply(n: Int): Tuple.Elem[V, n.type] =
+    transparent inline def apply(n: Int): Tuple.Elem[V, n.type] =
       inline x.toTuple match
         case tup: NonEmptyTuple => tup(n).asInstanceOf[Tuple.Elem[V, n.type]]
         case tup => tup.productElement(n).asInstanceOf[Tuple.Elem[V, n.type]]
