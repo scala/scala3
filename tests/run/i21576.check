@@ -1,0 +1,3 @@
+public SubFlow(SubFlowDef<Flow1<In>>,SubFlowDef<Flow2<java.lang.Object>>)
+public SubFlowDef<Flow1<In>> SubFlow.delegate1()
+public SubFlowDef<Flow2<java.lang.Object>> SubFlow.delegate2()
