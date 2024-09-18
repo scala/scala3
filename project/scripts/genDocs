@@ -5,7 +5,7 @@ shopt -s extglob # needed for rm everything but x
 echo "Working directory: $PWD"
 
 GENDOC_EXTRA_ARGS=$@
-GIT_HEAD=$(git rev-parse HEAD) # save current head for commit message in gh-pages
+GIT_HEAD=$(git rev-parse HEAD) # save current head for commit message in scala/dotty.epfl.ch
 PREVIOUS_SNAPSHOTS_DIR="$PWD/../prev_snapshots"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)"
 SITE_OUT_DIR="$PWD/docs/_site"
@@ -16,9 +16,9 @@ if [ -d "$PREVIOUS_SNAPSHOTS_DIR" ]; then
 fi
 
 mkdir -pv "$PREVIOUS_SNAPSHOTS_DIR"
-git remote add doc-remote "https://github.com/lampepfl/dotty-website.git"
-git fetch doc-remote gh-pages
-git checkout gh-pages
+git remote add doc-remote "https://github.com/scala/dotty.epfl.ch.git"
+git fetch doc-remote main
+git checkout doc-remote/main
 (cp -vr [03].*/ "$PREVIOUS_SNAPSHOTS_DIR"; true)  # Don't fail if no `3.*` found to copy
 git checkout "$GIT_HEAD"
 
