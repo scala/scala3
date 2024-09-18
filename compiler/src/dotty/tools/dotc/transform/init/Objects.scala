@@ -604,10 +604,39 @@ class Objects(using Context @constructorOnly):
       mutable.heap = heap
       mutable.changeSet = changeSet
 
-    def reachableAddresses(roots: Iterable[Value | Addr], heap: Data, currentObj: ObjectRef): Set[Addr] =
-      val toVisit = mutable.Queue.empty[Value]
+    def reachableAddresses(roots: Iterable[Value | Addr], heap: Data, currentObj: ObjectRef, ctx: String)(using Trace): Set[Addr] =
       val visited = mutable.Set.empty[Value]
       val reachableKeys = mutable.Set.empty[Addr]
+
+      def indent(height: Int, startHeight: Int): String =
+        (Trace.CONNECTING_INDENT + "  ") * (startHeight - height)
+
+      def debug(items: Iterable[Value | Addr], height: Int): Unit =
+        printItems(items, height, height)
+
+      def printItems(items: Iterable[Value | Addr], height: Int, startHeight: Int): Unit =
+        for item <- items do printItem(item, height, startHeight)
+
+      def printItem(item: Value | Addr, height: Int, startHeight: Int): Unit =
+        if height == 0 then
+          println(indent(height, startHeight) + Trace.CHILD + " ... ")
+        else item match
+            case ValueSet(values) =>
+              printItems(values, height, startHeight)
+
+            case value: Value =>
+              val children = value.flatten
+              println(indent(height, startHeight) + Trace.CHILD + value.show)
+              printItems(children, height - 1, startHeight)
+
+            case addr: Addr =>
+              heap.get(addr) match
+                case Some(value) =>
+                  println(indent(height, startHeight) + Trace.CHILD + addr)
+                  printItem(value, height - 1, startHeight)
+
+                case None =>
+                  println(indent(height, startHeight) + Trace.CHILD + addr + " not found ")
 
       def visit(item: Value | Addr): Unit =
         item match
@@ -618,8 +647,7 @@ class Objects(using Context @constructorOnly):
               reachableKeys += addr
               heap.get(addr) match
                 case Some(value) =>
-                  if !visited.contains(value) then
-                    toVisit += value
+                  recur(value)
 
                 case None =>
                   println("[Internal error] Not found addr " + addr)
@@ -643,9 +671,6 @@ class Objects(using Context @constructorOnly):
 
       for item <- roots do visit(item)
 
-      while toVisit.nonEmpty do
-        visit(toVisit.dequeue())
-
       reachableKeys.toSet
     end reachableAddresses
 
@@ -656,9 +681,9 @@ class Objects(using Context @constructorOnly):
      *
      *  The reasoning above is similar to the frame rule in separation logic.
      */
-    def footprint(heap: Data, thisV: Value, env: Env.Data, currentObj: ObjectRef): Data =
+    def footprint(heap: Data, thisV: Value, env: Env.Data, currentObj: ObjectRef)(using Trace): Data =
       val roots = env.flatten.toSeq :+ thisV :+ currentObj
-      val reachableKeys = reachableAddresses(roots, heap, currentObj)
+      val reachableKeys = reachableAddresses(roots, heap, currentObj, "footprint")
       heap.filter((k, v) => reachableKeys.contains(k))
 
     /** Perform garbage collection on the abstract heap.
@@ -673,10 +698,10 @@ class Objects(using Context @constructorOnly):
      *  GC may only be performed from method call contexts --- otherwise, we need
      *  to consider values of the current local environment as well.
      */
-    def gc(returnValues: List[Value], heapBefore: Data, heapAfter: Data, changeSet: Set[Addr], currentObj: ObjectRef): Data =
+    def gc(returnValues: List[Value], heapBefore: Data, heapAfter: Data, changeSet: Set[Addr], currentObj: ObjectRef)(using Trace): Data =
       val roots: Iterable[Addr | Value] = changeSet.toSeq ++ returnValues
       // reachable locations from the return value and change set
-      val reachableKeys = reachableAddresses(roots, heapAfter, currentObj)
+      val reachableKeys = reachableAddresses(roots, heapAfter, currentObj, "gc")
 
       val unreachableKeys = heapAfter.keys.filter: addr =>
         !heapBefore.contains(addr) && !reachableKeys.contains(addr)
@@ -694,7 +719,7 @@ class Objects(using Context @constructorOnly):
         val config = Config(thisV, summon[Env.Data], Heap.getHeapData())
         super.get(config, expr).map(_.value)
 
-      def cachedEval(thisV: ThisValue, expr: Tree, ctx: EvalContext)(fun: Tree => Value)(using Heap.MutableData, Env.Data, State.Data, Returns.Data): Value =
+      def cachedEval(thisV: ThisValue, expr: Tree, ctx: EvalContext)(fun: Tree => Value)(using Heap.MutableData, Env.Data, State.Data, Returns.Data, Trace): Value =
         val env = summon[Env.Data]
         val heapBefore = Heap.getHeapData()
         val changeSetBefore = Heap.getChangeSet()
