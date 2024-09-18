@@ -710,7 +710,7 @@ jobs:
           git config --global --add safe.directory /__w/scala3/scala3
           ./project/scripts/genDocs -doc-snapshot
 
-      - name: Deploy Website to dotty-website
+      - name: Deploy Website to https://dotty.epfl.ch
         uses: peaceiris/actions-gh-pages@v4
         with:
           personal_token: ${{ secrets.DOTTYBOT_TOKEN }}
