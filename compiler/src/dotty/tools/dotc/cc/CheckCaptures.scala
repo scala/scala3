@@ -122,10 +122,6 @@ object CheckCaptures:
    *  This check is performed at Typer.
    */
   def checkWellformed(parent: Tree, ann: Tree)(using Context): Unit =
-    parent.tpe match
-      case _: SingletonType =>
-        report.error(em"Singleton type $parent cannot have capture set", parent.srcPos)
-      case _ =>
     def check(elem: Tree, pos: SrcPos): Unit = elem.tpe match
       case ref: CaptureRef =>
         if !ref.isTrackableRef then
@@ -373,45 +369,54 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  the environment's owner
      */
     def markFree(cs: CaptureSet, pos: SrcPos)(using Context): Unit =
+      // A captured reference with the symbol `sym` is visible from the environment
+      // if `sym` is not defined inside the owner of the environment.
+      inline def isVisibleFromEnv(sym: Symbol, env: Env) =
+        if env.kind == EnvKind.NestedInOwner then
+          !sym.isProperlyContainedIn(env.owner)
+        else
+          !sym.isContainedIn(env.owner)
+
+      def checkSubsetEnv(cs: CaptureSet, env: Env)(using Context): Unit =
+        // Only captured references that are visible from the environment
+        // should be included.
+        val included = cs.filter: c =>
+          c.stripReach match
+            case ref: NamedType =>
+              val refSym = ref.symbol
+              val refOwner = refSym.owner
+              val isVisible = isVisibleFromEnv(refOwner, env)
+              if isVisible && !ref.isRootCapability then
+                ref match
+                  case ref: TermRef if ref.prefix `ne` NoPrefix =>
+                    // If c is a path of a class defined outside the environment,
+                    // we check the capture set of its info.
+                    checkSubsetEnv(ref.captureSetOfInfo, env)
+                  case _ =>
+              if !isVisible
+                  && (c.isReach || ref.isType)
+                  && (!ccConfig.useSealed || refSym.is(Param))
+                  && refOwner == env.owner
+              then
+                if refSym.hasAnnotation(defn.UnboxAnnot) then
+                  capt.println(i"exempt: $ref in $refOwner")
+                else
+                  // Reach capabilities that go out of scope have to be approximated
+                  // by their underlying capture set, which cannot be universal.
+                  // Reach capabilities of @unboxed parameters are exempted.
+                  val cs = CaptureSet.ofInfo(c)
+                  cs.disallowRootCapability: () =>
+                    report.error(em"Local reach capability $c leaks into capture scope of ${env.ownerString}", pos)
+                  checkSubset(cs, env.captured, pos, provenance(env))
+              isVisible
+            case ref: ThisType => isVisibleFromEnv(ref.cls, env)
+            case _ => false
+        checkSubset(included, env.captured, pos, provenance(env))
+        capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
+
       if !cs.isAlwaysEmpty then
         forallOuterEnvsUpTo(ctx.owner.topLevelClass): env =>
-          // Whether a symbol is defined inside the owner of the environment?
-          inline def isContainedInEnv(sym: Symbol) =
-            if env.kind == EnvKind.NestedInOwner then
-              sym.isProperlyContainedIn(env.owner)
-            else
-              sym.isContainedIn(env.owner)
-          // A captured reference with the symbol `sym` is visible from the environment
-          // if `sym` is not defined inside the owner of the environment
-          inline def isVisibleFromEnv(sym: Symbol) = !isContainedInEnv(sym)
-          // Only captured references that are visible from the environment
-          // should be included.
-          val included = cs.filter: c =>
-            c.stripReach match
-              case ref: NamedType =>
-                val refSym = ref.symbol
-                val refOwner = refSym.owner
-                val isVisible = isVisibleFromEnv(refOwner)
-                if !isVisible
-                    && (c.isReach || ref.isType)
-                    && (!ccConfig.useSealed || refSym.is(Param))
-                    && refOwner == env.owner
-                then
-                  if refSym.hasAnnotation(defn.UnboxAnnot) then
-                    capt.println(i"exempt: $ref in $refOwner")
-                  else
-                    // Reach capabilities that go out of scope have to be approximated
-                    // by their underlying capture set, which cannot be universal.
-                    // Reach capabilities of @unboxed parameters are exempted.
-                    val cs = CaptureSet.ofInfo(c)
-                    cs.disallowRootCapability: () =>
-                      report.error(em"Local reach capability $c leaks into capture scope of ${env.ownerString}", pos)
-                    checkSubset(cs, env.captured, pos, provenance(env))
-                isVisible
-              case ref: ThisType => isVisibleFromEnv(ref.cls)
-              case _ => false
-          checkSubset(included, env.captured, pos, provenance(env))
-          capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
+          checkSubsetEnv(cs, env)
     end markFree
 
     /** Include references captured by the called method in the current environment stack */
@@ -488,21 +493,28 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ => denot
 
       val selType = recheckSelection(tree, qualType, name, disambiguate)
-      val selCs = selType.widen.captureSet
-      if selCs.isAlwaysEmpty
-          || selType.widen.isBoxedCapturing
+      val selWiden = selType.widen
+      def isStableSel = selType match
+        case selType: NamedType => selType.symbol.isStableMember
+        case _ => false
+        
+      if pt == LhsProto
           || qualType.isBoxedCapturing
-          || pt == LhsProto
+          || selType.isTrackableRef
+          || selWiden.isBoxedCapturing
+          || selWiden.captureSet.isAlwaysEmpty
       then
         selType
       else
         val qualCs = qualType.captureSet
-        capt.println(i"pick one of $qualType, ${selType.widen}, $qualCs, $selCs in $tree")
+        val selCs = selType.captureSet
+        capt.println(i"pick one of $qualType, ${selType.widen}, $qualCs, $selCs ${selWiden.captureSet} in $tree")
+
         if qualCs.mightSubcapture(selCs)
             && !selCs.mightSubcapture(qualCs)
             && !pt.stripCapturing.isInstanceOf[SingletonType]
         then
-          selType.widen.stripCapturing.capturing(qualCs)
+          selWiden.stripCapturing.capturing(qualCs)
             .showing(i"alternate type for select $tree: $selType --> $result, $qualCs / $selCs", capt)
         else
           selType
