@@ -1545,6 +1545,8 @@ class Namer { typer: Typer =>
         case completer: Completer => completer.indexConstructor(constr, constrSym)
         case _ =>
 
+      // constrSym.info = typeSig(constrSym)
+
       tempInfo = denot.asClass.classInfo.integrateOpaqueMembers.asInstanceOf[TempClassInfo]
       denot.info = savedInfo
     }
@@ -1646,6 +1648,7 @@ class Namer { typer: Typer =>
        *  as an attachment on the ClassDef tree.
        */
       def enterParentRefinementSyms(refinements: List[(Name, Type)]) =
+        println(s"For class $cls, entering parent refinements: $refinements")
         val refinedSyms = mutable.ListBuffer[Symbol]()
         for (name, tp) <- refinements do
           if decls.lookupEntry(name) == null then
@@ -1653,7 +1656,9 @@ class Namer { typer: Typer =>
               case tp: MethodOrPoly => Method | Synthetic | Deferred | Tracked
               case _ if name.isTermName => Synthetic | Deferred | Tracked
               case _ => Synthetic | Deferred
-            refinedSyms += newSymbol(cls, name, flags, tp, coord = original.rhs.span.startPos).entered
+            val s = newSymbol(cls, name, flags, tp, coord = original.rhs.span.startPos).entered
+            refinedSyms += s
+            println(s"  entered $s")
         if refinedSyms.nonEmpty then
           typr.println(i"parent refinement symbols: ${refinedSyms.toList}")
           original.pushAttachment(ParentRefinements, refinedSyms.toList)
@@ -1695,6 +1700,7 @@ class Namer { typer: Typer =>
       end addUsingTraits
 
       completeConstructor(denot)
+      val constrSym = symbolOfTree(constr)
       denot.info = tempInfo.nn
 
       val parentTypes = defn.adjustForTuple(cls, cls.typeParams,
@@ -1928,7 +1934,7 @@ class Namer { typer: Typer =>
       val mt = wrapMethType(effectiveResultType(sym, paramSymss))
       if sym.isPrimaryConstructor then checkCaseClassParamDependencies(mt, sym.owner)
       mt
-    else if sym.isAllOf(Given | Method) && Feature.enabled(modularity) then
+    else if Feature.enabled(modularity) then
       // set every context bound evidence parameter of a given companion method
       // to be tracked, provided it has a type that has an abstract type member.
       // Add refinements for all tracked parameters to the result type.
@@ -1986,13 +1992,59 @@ class Namer { typer: Typer =>
             cls.srcPos)
       case _ =>
 
-  /** Under x.modularity, we add `tracked` to context bound witnesses
-   *  that have abstract type members
+  /** Try to infer if the parameter needs a `tracked` modifier
    */
   def needsTracked(sym: Symbol, param: ValDef)(using Context) =
     !sym.is(Tracked)
-    && param.hasAttachment(ContextBoundParam)
+    && (
+      isContextBoundWitnessWithAbstractMembers(sym, param)
+      || isReferencedInPublicSignatures(sym)
+      // || isPassedToTrackedParentParameter(sym, param)
+    )
+
+  /** Under x.modularity, we add `tracked` to context bound witnesses
+   *  that have abstract type members
+   */
+  def isContextBoundWitnessWithAbstractMembers(sym: Symbol, param: ValDef)(using Context): Boolean =
+    param.hasAttachment(ContextBoundParam)
     && sym.info.memberNames(abstractTypeNameFilter).nonEmpty
+
+  /** Under x.modularity, we add `tracked` to term parameters whose types are referenced
+   *  in public signatures of the defining class
+   */
+  def isReferencedInPublicSignatures(sym: Symbol)(using Context): Boolean =
+    val owner = sym.maybeOwner.maybeOwner
+    val accessorSyms = maybeParamAccessors(owner, sym)
+    def checkOwnerMemberSignatures(owner: Symbol): Boolean =
+      owner.infoOrCompleter match
+        case info: ClassInfo =>
+          info.decls.filter(d => !d.isConstructor).exists(d => tpeContainsSymbolRef(d.info, accessorSyms))
+        case _ => false
+    checkOwnerMemberSignatures(owner)
+
+  def isPassedToTrackedParentParameter(sym: Symbol, param: ValDef)(using Context): Boolean =
+    val owner = sym.maybeOwner.maybeOwner
+    val accessorSyms = maybeParamAccessors(owner, sym)
+    owner.infoOrCompleter match
+      // case info: ClassInfo =>
+      //   info.parents.foreach(println)
+      //   info.parents.exists(tpeContainsSymbolRef(_, accessorSyms))
+      case _ => false
+
+  private def namedTypeWithPrefixContainsSymbolRef(tpe: Type, syms: List[Symbol])(using Context): Boolean = tpe match
+    case tpe: NamedType => tpe.prefix.exists && tpeContainsSymbolRef(tpe.prefix, syms)
+    case _ => false
+
+  private def tpeContainsSymbolRef(tpe: Type, syms: List[Symbol])(using Context): Boolean =
+    tpe.termSymbol.exists && syms.contains(tpe.termSymbol)
+      || tpe.argInfos.exists(tpeContainsSymbolRef(_, syms))
+      || namedTypeWithPrefixContainsSymbolRef(tpe, syms)
+
+  private def maybeParamAccessors(owner: Symbol, sym: Symbol)(using Context): List[Symbol] =
+    owner.infoOrCompleter match
+      case info: ClassInfo =>
+        info.decls.lookupAll(sym.name).filter(d => d.is(ParamAccessor)).toList
+      case _ => List.empty
 
   /** Under x.modularity, set every context bound evidence parameter of a class to be tracked,
    *  provided it has a type that has an abstract type member. Reset private and local flags
