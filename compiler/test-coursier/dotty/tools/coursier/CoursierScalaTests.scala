@@ -159,7 +159,7 @@ object CoursierScalaTests:
 
   def csScalaCmd(options: String*): List[String] =
     csScalaCmdWithStdin(options, None)
-  
+
   def csScalaCmdWithStdin(options: Seq[String], stdin: Option[String]): List[String] =
     csCmd("dotty.tools.MainGenericRunner", options, stdin)
 

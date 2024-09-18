@@ -66,7 +66,7 @@ object FileWriters {
     def warning(message: Context ?=> Message): Unit = warning(message, NoSourcePosition)
     final def exception(reason: Context ?=> Message, throwable: Throwable): Unit =
       error({
-        val trace = throwable.getStackTrace().nn.mkString("\n  ")
+        val trace = throwable.getStackTrace().mkString("\n  ")
         em"An unhandled exception was thrown in the compiler while\n  ${reason.message}.\n${throwable}\n  $trace"
       }, NoSourcePosition)
   }
