@@ -404,8 +404,8 @@ object Names {
      *  from GenBCode or it also contains one of the whitelisted methods below.
      */
     private def toStringOK = {
-      val trace: Array[StackTraceElement] = Thread.currentThread.nn.getStackTrace.asInstanceOf[Array[StackTraceElement]]
-      !trace.exists(_.getClassName.nn.endsWith("GenBCode")) ||
+      val trace: Array[StackTraceElement] = Thread.currentThread.getStackTrace.asInstanceOf[Array[StackTraceElement]]
+      !trace.exists(_.getClassName.endsWith("GenBCode")) ||
       trace.exists(elem =>
           List(
               "mangledString",

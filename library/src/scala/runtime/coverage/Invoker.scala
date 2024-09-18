@@ -51,6 +51,6 @@ object Invoker {
   @nowarn("cat=deprecation")
   def measurementFile(dataDir: String): File = new File(
     dataDir,
-    MeasurementsPrefix + runtimeUUID + "." + Thread.currentThread.nn.getId
+    MeasurementsPrefix + runtimeUUID + "." + Thread.currentThread.getId
   )
 }

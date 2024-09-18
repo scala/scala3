@@ -56,9 +56,9 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
     if !newlyCreated then
       // If the directory existed before, let's clean it up.
-      dataDir.listFiles.nn
-        .filter(_.nn.getName.nn.startsWith("scoverage"))
-        .foreach(_.nn.delete())
+      dataDir.listFiles
+        .filter(_.getName.startsWith("scoverage"))
+        .foreach(_.delete())
     end if
 
     coverageExcludeClasslikePatterns = ctx.settings.coverageExcludeClasslikes.value.map(_.r.pattern)
@@ -71,13 +71,13 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
   private def isClassIncluded(sym: Symbol)(using Context): Boolean =
     val fqn = sym.fullName.toText(ctx.printerFn(ctx)).show
     coverageExcludeClasslikePatterns.isEmpty || !coverageExcludeClasslikePatterns.exists(
-      _.matcher(fqn).nn.matches
+      _.matcher(fqn).matches
     )
 
   private def isFileIncluded(file: SourceFile)(using Context): Boolean =
     val normalizedPath = file.path.replace(".scala", "")
     coverageExcludeFilePatterns.isEmpty || !coverageExcludeFilePatterns.exists(
-      _.matcher(normalizedPath).nn.matches
+      _.matcher(normalizedPath).matches
     )
 
   override protected def newTransformer(using Context) =

@@ -45,7 +45,7 @@ object NameOps {
         val cs = s.toArray
         val bytes = Codec.toUTF8(CharBuffer.wrap(cs).nn)
         md5.update(bytes)
-        val md5chars = md5.digest().nn.map(b => (b & 0xFF).toHexString).mkString
+        val md5chars = md5.digest().map(b => (b & 0xFF).toHexString).mkString
 
         prefix + marker + md5chars + marker + suffix
       }

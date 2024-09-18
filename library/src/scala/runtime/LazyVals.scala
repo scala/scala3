@@ -26,7 +26,7 @@ object LazyVals {
   }
 
   private val base: Int = {
-    val processors = java.lang.Runtime.getRuntime.nn.availableProcessors()
+    val processors = java.lang.Runtime.getRuntime.availableProcessors()
     8 * processors * processors
   }
 
