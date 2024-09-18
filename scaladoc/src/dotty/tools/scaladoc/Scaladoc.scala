@@ -204,7 +204,7 @@ object Scaladoc:
 
       if deprecatedSkipPackages.get.nonEmpty then report.warning(deprecatedSkipPackages.description)
 
-      val experimentalFeatures = args.contains("-experimental-features")
+      val experimentalFeatures = args.contains("-use-experimental-features")
 
 
       val docArgs = Args(

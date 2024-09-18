@@ -143,7 +143,7 @@ object ScaladocGeneration {
   }
 
   case class ExperimentalFeatures(value: Boolean) extends Arg[Boolean] {
-    def key: String = "-experimental-features"
+    def key: String = "-use-experimental-features"
   }
 
   import _root_.scala.reflect._

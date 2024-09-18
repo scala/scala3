@@ -124,48 +124,49 @@ case class TemplateFile(
     val mutableProperties = new JHashMap[String, Any](
       ctx.properties.transform((_, v) => asJavaElement(v)).asJava
     )
+    // Initialize liqpParser with a default value
+    var liqpParser: TemplateParser = TemplateParser.Builder().withFlavor(Flavor.JEKYLL).build()
 
+    // Activate additional features based on the experimental features flag
+    if (ssctx.args.experimentalFeatures) {
+      // report.warning("This project has experimental features turned on!!")
 
-    val dataPath =  ssctx.root.toPath.resolve("_data")
+      // Load the data from the YAML file in the _data folder
+      val dataPath = ssctx.root.toPath.resolve("_data")
+      val dataMap = DataLoader().loadDataDirectory(dataPath.toString)
+      val siteData = new JHashMap[String, Any]()
+      siteData.put("data", dataMap)
 
-    // Load the data from yaml file in _data folder
-    val dataMap = DataLoader().loadDataDirectory(dataPath.toString)
+      // Assign the path for Include Tag
+      val includePath = ssctx.root.toPath.resolve("_includes")
+      IncludeTag.setDocsFolder(includePath.toString)
 
+      // load the config data
+      val configLoader = new SiteConfigLoader()
+      val configMap = configLoader.loadConfig(ssctx.root.toPath.toString)
+      val siteConfig: java.util.Map[String, Any] = configMap.convertToJava
 
-    val siteData = new JHashMap[String, Any]()
-    siteData.put("data",dataMap)
+      // Set the configuration value for LanguagePickerTag
+      LanguagePickerTag.setConfigValue(configMap)
+      siteData.put("config", siteConfig)
 
+      mutableProperties.put("site", siteData)
 
-    // assign the the path for Include Tag
-    val includePath =  ssctx.root.toPath.resolve("_includes")
-    IncludeTag.setDocsFolder(includePath.toString)
+      // Rebuild liqpParser with all the tags and blocks
+      liqpParser = TemplateParser.Builder()
+        .withFlavor(Flavor.JEKYLL)
+        .withBlock(AltDetails())
+        .withBlock(TabsBlock())
+        .withBlock(TabBlock())
+        .withTag(IncludeTag())
+        .withTag(LanguagePickerTag())
+        .build()
+    }
 
-    val configLoader = new SiteConfigLoader()
-    val configMap = configLoader.loadConfig(ssctx.root.toPath.toString)
-    val siteConfig: java.util.Map[String, Any] = configMap.convertToJava
-
-
-
-    LanguagePickerTag.setConfigValue(configMap)
-
-
-
-    siteData.put("config",siteConfig)
-
-    mutableProperties.put("site",siteData)
-
-//    val parseSettings = ParseSettings.Builder().withFlavor(Flavor.JEKYLL).build().withBlock(AltDetails())
-    val liqpParser = TemplateParser.Builder()
-      .withFlavor(Flavor.JEKYLL)
-      .withBlock(AltDetails())
-      .withBlock(TabsBlock())
-      .withBlock(TabBlock())
-      .withTag(IncludeTag())
-      .withTag(LanguagePickerTag())
-      .build()
-
-
+    // Parse and render the template
     val rendered = liqpParser.parse(this.rawCode).render(mutableProperties)
+
+
 
     // We want to render markdown only if next template is html
     val code = if (isHtml || layoutTemplate.exists(!_.isHtml)) rendered else

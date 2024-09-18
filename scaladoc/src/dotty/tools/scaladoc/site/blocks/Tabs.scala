@@ -41,12 +41,13 @@ class TabBlock extends Block("tab") {
   override def render(context: TemplateContext, nodes: LNode*): AnyRef = {
     val inputString = nodes.head.render(context).toString
 
-    val pattern = """(.*)for=(.*)""".r
+    val pattern = """(.*?)(?:for=(.*))?""".r
 
     val (tabName, forValue) = inputString match {
-      case pattern(tab, forPart) => (tab, forPart)
+      case pattern(tab, forPart) => (tab, Option(forPart).getOrElse(""))
       case _ => ("", "")
     }
+
 
     val content = nodes.tail.map(_.render(context).toString).mkString
 
