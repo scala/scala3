@@ -19,6 +19,8 @@ class ReaderProxy(tracked val r: Reader^) extends Reader:
 class SenderProxy(tracked val s: Sender^) extends Sender:
   def send(msg: String) = s.send("(Proxy) " + msg)
 
+// TODO: We have to put `c` in the different argument list to make it work.
+// See the comments in `integrateRT`.
 def testConnection(c: Connection^)(
     handle1: Reader^{c.readOnly} => String,
     handle2: Sender^{c} => Unit,
