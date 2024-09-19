@@ -1,0 +1,17 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:9:33 ----------------------------------------
+9 |  files.map((f: F) => new Logger(f)) // error, Q: can we make this pass (see #19076)?
+  |                                 ^
+  |                                 Found:    (f : F^)
+  |                                 Required: File^
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:12:12 ---------------------------------------
+12 |  files.map(new Logger(_)) // error, Q: can we improve the error message?
+   |            ^^^^^^^^^^^^^
+   |            Found:    Logger{val f: (_$1 : File^{files*})}^
+   |            Required: Logger{val f: File^?}^?
+   |
+   |            Note that the universal capability `cap`
+   |            cannot be included in capture set ?
+   |
+   | longer explanation available when compiling with `-explain`
