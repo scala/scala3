@@ -494,10 +494,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       val selType = recheckSelection(tree, qualType, name, disambiguate)
       val selWiden = selType.widen
-      def isStableSel = selType match
-        case selType: NamedType => selType.symbol.isStableMember
-        case _ => false
-        
+
       if pt == LhsProto
           || qualType.isBoxedCapturing
           || selType.isTrackableRef
