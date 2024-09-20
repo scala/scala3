@@ -1,0 +1,13 @@
+-- [E129] Potential Issue Warning: tests/neg-custom-args/captures/i21620.scala:5:6 -------------------------------------
+5 |      x
+  |      ^
+  |      A pure expression does nothing in statement position
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21620.scala:9:31 ----------------------------------------
+9 |  val _: () -> () ->{x} Unit = f // error
+  |                               ^
+  |                               Found:    () ->{f} () ->{x} Unit
+  |                               Required: () -> () ->{x} Unit
+  |
+  | longer explanation available when compiling with `-explain`
