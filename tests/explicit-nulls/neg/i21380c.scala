@@ -32,9 +32,9 @@ def test4: Int =
     case npe: NullPointerException => x = ""
     case _ => x = ""
   x.length // error
-  // Although the catch block here is exhaustive,
-  // it is possible that the exception is thrown and not caught.
-  // Therefore, the code after the try block can only rely on the retracted info.
+  // Although the catch block here is exhaustive, it is possible to have non-exhaustive cases,
+  // and some exceptions are thrown and not caught. Therefore, the code in the finallizer and
+  // after the try block can only rely on the retracted info from the cases' body.
 
 def test5: Int =
   var x: String | Null = null

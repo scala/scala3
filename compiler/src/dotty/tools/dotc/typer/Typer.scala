@@ -1552,8 +1552,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def thenPathInfo = cond1.notNullInfoIf(true).seq(result.thenp.notNullInfo)
     def elsePathInfo = cond1.notNullInfoIf(false).seq(result.elsep.notNullInfo)
     result.withNotNullInfo(
-      if result.thenp.tpe.isRef(defn.NothingClass) then elsePathInfo
-      else if result.elsep.tpe.isRef(defn.NothingClass) then thenPathInfo
+      if result.thenp.tpe.isRef(defn.NothingClass) then
+        elsePathInfo.withOnceRetracted(thenPathInfo)
+      else if result.elsep.tpe.isRef(defn.NothingClass) then
+        thenPathInfo.withOnceRetracted(elsePathInfo)
       else thenPathInfo.alt(elsePathInfo)
     )
   end typedIf
@@ -2350,10 +2352,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }: @unchecked
     val cases2 = cases2x.asInstanceOf[List[CaseDef]]
 
-    var nni = expr2.notNullInfo.retractedInfo
+    // Since we don't know at which point the the exception is thrown in the body,
+    // we have to collect any reference that is once retracted.
+    var nni = expr2.notNullInfo.onceRetractedInfo
+    // It is possible to have non-exhaustive cases, and some exceptions are thrown and not caught.
+    // Therefore, the code in the finallizer and after the try block can only rely on the retracted
+    // info from the cases' body.
     if cases2.nonEmpty then nni = nni.seq(cases2.map(_.notNullInfo.retractedInfo).reduce(_.alt(_)))
+
     val finalizer1 = typed(tree.finalizer, defn.UnitType)(using ctx.addNotNullInfo(nni))
     nni = nni.seq(finalizer1.notNullInfo)
+
     assignType(cpy.Try(tree)(expr2, cases2, finalizer1), expr2, cases2).withNotNullInfo(nni)
   }
 

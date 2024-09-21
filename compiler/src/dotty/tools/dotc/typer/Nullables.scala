@@ -52,15 +52,19 @@ object Nullables:
     val hiTree = if(hiTpe eq hi.typeOpt) hi else TypeTree(hiTpe)
     TypeBoundsTree(lo, hiTree, alias)
 
-  /** A set of val or var references that are known to be not null, plus a set of
-   *  variable references that are not known (anymore) to be not null
+  /** A set of val or var references that are known to be not null,
+   *  a set of variable references that are not known (anymore) to be not null,
+   *  plus a set of variables that are known to be not null at any point.
    */
-  case class NotNullInfo(asserted: Set[TermRef], retracted: Set[TermRef]):
+  case class NotNullInfo(asserted: Set[TermRef], retracted: Set[TermRef], onceRetracted: Set[TermRef]):
     assert((asserted & retracted).isEmpty)
+    assert(retracted.subsetOf(onceRetracted))
 
     def isEmpty = this eq NotNullInfo.empty
 
-    def retractedInfo = NotNullInfo(Set(), retracted)
+    def retractedInfo = NotNullInfo(Set(), retracted, onceRetracted)
+
+    def onceRetractedInfo = NotNullInfo(Set(), onceRetracted, onceRetracted)
 
     /** The sequential combination with another not-null info */
     def seq(that: NotNullInfo): NotNullInfo =
@@ -68,19 +72,29 @@ object Nullables:
       else if that.isEmpty then this
       else NotNullInfo(
         this.asserted.union(that.asserted).diff(that.retracted),
-        this.retracted.union(that.retracted).diff(that.asserted))
+        this.retracted.union(that.retracted).diff(that.asserted),
+        this.onceRetracted.union(that.onceRetracted))
 
     /** The alternative path combination with another not-null info. Used to merge
      *  the nullability info of the two branches of an if.
      */
     def alt(that: NotNullInfo): NotNullInfo =
-      NotNullInfo(this.asserted.intersect(that.asserted), this.retracted.union(that.retracted))
+      NotNullInfo(
+        this.asserted.intersect(that.asserted),
+        this.retracted.union(that.retracted),
+        this.onceRetracted.union(that.onceRetracted))
+
+    def withOnceRetracted(that: NotNullInfo): NotNullInfo =
+      if that.isEmpty then this
+      else NotNullInfo(this.asserted, this.retracted, this.onceRetracted.union(that.onceRetracted))
 
   object NotNullInfo:
-    val empty = new NotNullInfo(Set(), Set())
+    val empty = new NotNullInfo(Set(), Set(), Set())
     def apply(asserted: Set[TermRef], retracted: Set[TermRef]): NotNullInfo =
-      if asserted.isEmpty && retracted.isEmpty then empty
-      else new NotNullInfo(asserted, retracted)
+      apply(asserted, retracted, retracted)
+    def apply(asserted: Set[TermRef], retracted: Set[TermRef], onceRetracted: Set[TermRef]): NotNullInfo =
+      if asserted.isEmpty && onceRetracted.isEmpty then empty
+      else new NotNullInfo(asserted, retracted, onceRetracted)
   end NotNullInfo
 
   /** A pair of not-null sets, depending on whether a condition is `true` or `false` */
