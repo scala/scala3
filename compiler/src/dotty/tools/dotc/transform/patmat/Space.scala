@@ -920,7 +920,7 @@ object SpaceEngine {
       then project(OrType(selTyp, ConstantType(Constant(null)), soft = false))
       else project(selTyp)
     )
-
+    
     var i        = 0
     val len      = cases.length
     var prevs    = List.empty[Space]
@@ -942,11 +942,17 @@ object SpaceEngine {
           report.warning(MatchCaseUnreachable(), pat.srcPos)
         if pat != EmptyTree // rethrow case of catch uses EmptyTree
             && !pat.symbol.isAllOf(SyntheticCase, butNot=Method) // ExpandSAMs default cases use SyntheticCase
-            && isSubspace(covered, prev)
+            && isSubspace(covered, Or(List(prev, Typ(defn.NullType)))) // for when Null is not subtype of AnyRef under explicit nulls
         then {
-          val nullOnly = isNullable && i == len - 1 && isWildcardArg(pat)
-          val msg = if nullOnly then MatchCaseOnlyNullWarning() else MatchCaseUnreachable()
-          report.warning(msg, pat.srcPos)
+          val nullOnly = 
+            (isNullable || (defn.NullType <:< selTyp)) 
+            && i == len - 1 
+            && isWildcardArg(pat)
+          if nullOnly then {
+            report.warning(MatchCaseOnlyNullWarning(), pat.srcPos)
+          } else if isSubspace(covered, prev) then {
+            report.warning(MatchCaseUnreachable(), pat.srcPos)
+          }
         }
         deferred = Nil
       }

@@ -1,0 +1,12 @@
+-- [E121] Pattern Match Warning: tests/explicit-nulls/warn/i21577.scala:5:9 --------------------------------------------
+5 |    case _ => println(2) // warn
+  |         ^
+  |         Unreachable case except for null (if this is intentional, consider writing case null => instead).
+-- [E121] Pattern Match Warning: tests/explicit-nulls/warn/i21577.scala:12:11 ------------------------------------------
+12 |      case _ => println(2) // warn
+   |           ^
+   |           Unreachable case except for null (if this is intentional, consider writing case null => instead).
+-- [E121] Pattern Match Warning: tests/explicit-nulls/warn/i21577.scala:18:11 ------------------------------------------
+18 |      case _ => println(2) // warn
+   |           ^
+   |           Unreachable case except for null (if this is intentional, consider writing case null => instead).
