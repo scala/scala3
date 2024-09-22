@@ -556,7 +556,7 @@ class Objects(using Context @constructorOnly):
      *
      *  TODO: speed up equality check for heap.
      */
-    type Data = Map[Addr, Value]
+    opaque type Data = Map[Addr, Value]
 
     /** Store the heap as a mutable field to avoid threading it through the program. */
     class MutableData(private[Heap] var heap: Data, private[Heap] var changeSet: Set[Addr]):
@@ -571,6 +571,9 @@ class Objects(using Context @constructorOnly):
             heap = heap.updated(addr, value2)
             changeSet = changeSet + addr
     end MutableData
+
+    def show(using mutable: MutableData): String =
+      "(size = " + mutable.heap.size + ")"
 
     def empty(): MutableData = new MutableData(Map.empty, Set.empty)
 
@@ -603,6 +606,12 @@ class Objects(using Context @constructorOnly):
     def update(heap: Data, changeSet: Set[Addr])(using mutable: MutableData): Unit =
       mutable.heap = heap
       mutable.changeSet = changeSet
+
+    def join(heap1: Data, heap2: Data): Data =
+      heap1.foldLeft(heap2):
+        case (heap2, (k1, v1)) =>
+          val v2 = heap2.getOrElse(k1, Bottom)
+          heap2.updated(k1, v1.join(v2))
 
     def reachableAddresses(roots: Iterable[Value | Addr], heap: Data, currentObj: ObjectRef, ctx: String)(using Trace): Set[Addr] =
       val visited = mutable.Set.empty[Value]
@@ -745,7 +754,7 @@ class Objects(using Context @constructorOnly):
               heapAfter
           Res(value, heapGC, changeSetNew)
         }
-        Heap.update(heapBefore ++ result.heap, changeSetBefore ++ result.changeSet)
+        Heap.update(Heap.join(heapBefore, result.heap), changeSetBefore ++ result.changeSet)
 
         result.value
   end Cache
@@ -866,7 +875,7 @@ class Objects(using Context @constructorOnly):
    * @param needResolve  Whether the target of the call needs resolution?
    */
   def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log(
-      "call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show) + ", heap = " + Heap.getHeapData().size, printer, (_: Value).show) {
+      "call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show) + ", heap = " + Heap.show, printer, (v: Value) => v.show) {
 
     value.filterClass(meth.owner) match
     case Cold =>
@@ -986,7 +995,7 @@ class Objects(using Context @constructorOnly):
    * @param ctor         The symbol of the target method.
    * @param args         Arguments of the constructor call (all parameter blocks flatten to a list).
    */
-  def callConstructor(value: Value, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args.map(_.value.show)  + ", heap.size = " + Heap.getHeapData().size, printer, (_: Value).show) {
+  def callConstructor(value: Value, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args.map(_.value.show)  + ", heap = " + Heap.show, printer, (_: Value).show) {
     value match
     case ref: Ref =>
       if ctor.hasSource then
@@ -1315,7 +1324,7 @@ class Objects(using Context @constructorOnly):
    * @param ctx         The context where `eval` is called.
    */
   def eval(expr: Tree, thisV: ThisValue, klass: ClassSymbol, ctx: EvalContext = EvalContext.Other): Contextual[Value] =
-    log("evaluating " + expr.show + ", this = " + thisV.show + ", heap = " + Heap.getHeapData().size + " in " + klass.show, printer, (_: Value).show) {
+    log("evaluating " + expr.show + ", this = " + thisV.show + ", heap = " + Heap.show + " in " + klass.show, printer, (_: Value).show) {
       cache.cachedEval(thisV, expr, ctx) { expr => cases(expr, thisV, klass) }
     }
 
@@ -1333,7 +1342,7 @@ class Objects(using Context @constructorOnly):
    * @param klass  The enclosing class where the expression `expr` is located.
    */
   def cases(expr: Tree, thisV: ThisValue, klass: ClassSymbol): Contextual[Value] = log(
-    "evaluating " + expr.show + ", this = " + thisV.show + ", heap = " + Heap.getHeapData().size + " in " + klass.show, printer, (_: Value).show) {
+    "evaluating " + expr.show + ", this = " + thisV.show + ", heap = " + Heap.show + " in " + klass.show, printer, (_: Value).show) {
 
     val trace2 = trace.add(expr)
 
@@ -1846,7 +1855,7 @@ class Objects(using Context @constructorOnly):
    * @param thisV     The value of the current object to be initialized.
    * @param klass     The class to which the template belongs.
    */
-  def init(tpl: Template, thisV: Ref, klass: ClassSymbol): Contextual[Ref] = log("init " + klass.show + ", heap.size = " + Heap.getHeapData().size, printer, (_: Value).show) {
+  def init(tpl: Template, thisV: Ref, klass: ClassSymbol): Contextual[Ref] = log("init " + klass.show + ", heap = " + Heap.show, printer, (_: Value).show) {
     val paramsMap = tpl.constr.termParamss.flatten.map { vdef =>
       vdef.name -> Env.valValue(vdef.symbol)
     }.toMap
