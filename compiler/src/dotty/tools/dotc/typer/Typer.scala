@@ -1335,9 +1335,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def elsePathInfo = cond1.notNullInfoIf(false).seq(result.elsep.notNullInfo)
     result.withNotNullInfo(
       if result.thenp.tpe.isRef(defn.NothingClass) then
-        elsePathInfo.withOnceRetracted(thenPathInfo)
+        elsePathInfo.withRetracted(thenPathInfo)
       else if result.elsep.tpe.isRef(defn.NothingClass) then
-        thenPathInfo.withOnceRetracted(elsePathInfo)
+        thenPathInfo.withRetracted(elsePathInfo)
       else thenPathInfo.alt(elsePathInfo)
     )
   end typedIf
@@ -1871,9 +1871,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: List[untpd.CaseDef], pt: Type)(using Context): Tree = {
     val cases1 = harmonic(harmonize, pt)(typedCases(cases, sel, wideSelType, pt.dropIfProto))
       .asInstanceOf[List[CaseDef]]
-    var nni = sel.notNullInfo
-    if cases1.nonEmpty then nni = nni.seq(cases1.map(_.notNullInfo).reduce(_.alt(_)))
-    assignType(cpy.Match(tree)(sel, cases1), sel, cases1).withNotNullInfo(nni)
+    var nnInfo = sel.notNullInfo
+    if cases1.nonEmpty then nnInfo = nnInfo.seq(cases1.map(_.notNullInfo).reduce(_.alt(_)))
+    assignType(cpy.Match(tree)(sel, cases1), sel, cases1).withNotNullInfo(nnInfo)
   }
 
   def typedCases(cases: List[untpd.CaseDef], sel: Tree, wideSelType: Type, pt: Type)(using Context): List[CaseDef] =
@@ -2053,7 +2053,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val capabilityProof = caughtExceptions.reduce(OrType(_, _, true))
       untpd.Block(makeCanThrow(capabilityProof), expr)
 
-  def typedTry(tree: untpd.Try, pt: Type)(using Context): Try = {
+  def typedTry(tree: untpd.Try, pt: Type)(using Context): Try =
+    var nnInfo = NotNullInfo.empty
     val expr2 :: cases2x = harmonic(harmonize, pt) {
       // We want to type check tree.expr first to comput NotNullInfo, but `addCanThrowCapabilities`
       // uses the types of patterns in `tree.cases` to determine the capabilities.
@@ -2065,25 +2066,26 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val casesEmptyBody1 = tree.cases.mapconserve(cpy.CaseDef(_)(body = EmptyTree))
       val casesEmptyBody2 = typedCases(casesEmptyBody1, EmptyTree, defn.ThrowableType, WildcardType)
       val expr1 = typed(addCanThrowCapabilities(tree.expr, casesEmptyBody2), pt.dropIfProto)
-      val casesCtx = ctx.addNotNullInfo(expr1.notNullInfo.retractedInfo)
+
+      // Since we don't know at which point the the exception is thrown in the body,
+      // we have to collect any reference that is once retracted.
+      nnInfo = expr1.notNullInfo.retractedInfo
+
+      val casesCtx = ctx.addNotNullInfo(nnInfo)
       val cases1 = typedCases(tree.cases, EmptyTree, defn.ThrowableType, pt.dropIfProto)(using casesCtx)
       expr1 :: cases1
     }: @unchecked
     val cases2 = cases2x.asInstanceOf[List[CaseDef]]
 
-    // Since we don't know at which point the the exception is thrown in the body,
-    // we have to collect any reference that is once retracted.
-    var nni = expr2.notNullInfo.onceRetractedInfo
     // It is possible to have non-exhaustive cases, and some exceptions are thrown and not caught.
     // Therefore, the code in the finallizer and after the try block can only rely on the retracted
     // info from the cases' body.
-    if cases2.nonEmpty then nni = nni.seq(cases2.map(_.notNullInfo.retractedInfo).reduce(_.alt(_)))
+    if cases2.nonEmpty then
+      nnInfo = nnInfo.seq(cases2.map(_.notNullInfo.retractedInfo).reduce(_.alt(_)))
 
-    val finalizer1 = typed(tree.finalizer, defn.UnitType)(using ctx.addNotNullInfo(nni))
-    nni = nni.seq(finalizer1.notNullInfo)
-
-    assignType(cpy.Try(tree)(expr2, cases2, finalizer1), expr2, cases2).withNotNullInfo(nni)
-  }
+    val finalizer1 = typed(tree.finalizer, defn.UnitType)(using ctx.addNotNullInfo(nnInfo))
+    nnInfo = nnInfo.seq(finalizer1.notNullInfo)
+    assignType(cpy.Try(tree)(expr2, cases2, finalizer1), expr2, cases2).withNotNullInfo(nnInfo)
 
   def typedTry(tree: untpd.ParsedTry, pt: Type)(using Context): Try =
     val cases: List[untpd.CaseDef] = tree.handler match

@@ -60,3 +60,20 @@ def test4: String =
   catch
     case _ =>
   x.replace("", "") // error
+
+def test5: Unit =
+  var x: String | Null = null
+  var y: String | Null = null
+  x = ""
+  y = ""
+  var i: Int = 1
+  try
+    i match
+      case _ =>
+        x = null
+        throw new Exception()
+    x = ""
+  catch
+    case _ =>
+  val z1: String = x.replace("", "") // error
+  val z2: String = y.replace("", "")
