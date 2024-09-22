@@ -815,7 +815,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     }
 
   /** An extractor for closures, possibly typed, and possibly including the
-   *  definition of the ananonymous def.
+   *  definition of the anonymous def.
    */
   object closure {
     def unapply(tree: Tree)(using Context): Option[(List[Tree], Tree, Tree)] = tree match {
