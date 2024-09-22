@@ -57,7 +57,7 @@ trait Migrations:
     val nestedCtx = ctx.fresh.setNewTyperState()
     val res = typed(qual, pt1)(using nestedCtx)
     res match {
-      case closure(_, _, _) =>
+      case blockEndingInClosure(_, _, _) =>
       case _ =>
         val recovered = typed(qual)(using ctx.fresh.setExploreTyperState())
         val msg = OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen, tree)

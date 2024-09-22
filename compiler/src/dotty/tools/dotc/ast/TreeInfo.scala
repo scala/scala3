@@ -814,16 +814,30 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       case _ => false
     }
 
-  /** An extractor for closures, either contained in a block or standalone.
+  /** An extractor for closures, possibly typed, and possibly including the
+   *  definition of the anonymous def.
    */
   object closure {
-    def unapply(tree: Tree): Option[(List[Tree], Tree, Tree)] = tree match {
-      case Block(_, expr) => unapply(expr)
-      case Closure(env, meth, tpt) => Some(env, meth, tpt)
-      case Typed(expr, _)  => unapply(expr)
+    def unapply(tree: Tree)(using Context): Option[(List[Tree], Tree, Tree)] = tree match {
+      case Block((meth : DefDef) :: Nil, closure: Closure) if meth.symbol == closure.meth.symbol =>
+        unapply(closure)
+      case Block(Nil, expr) =>
+        unapply(expr)
+      case Closure(env, meth, tpt) =>
+        Some(env, meth, tpt)
+      case Typed(expr, _)  =>
+        unapply(expr)
       case _ => None
     }
   }
+
+  /** An extractor for a closure or a block ending in one. This was
+   *  previously `closure` before that one was tightened.
+   */
+  object blockEndingInClosure:
+    def unapply(tree: Tree)(using Context): Option[(List[Tree], Tree, Tree)] = tree match
+      case Block(_, expr) => unapply(expr)
+      case _ => closure.unapply(tree)
 
   /** An extractor for def of a closure contained the block of the closure. */
   object closureDef {
