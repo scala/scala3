@@ -30,6 +30,7 @@ import config.Feature.{sourceVersion, modularity}
 import config.SourceVersion.*
 
 import scala.compiletime.uninitialized
+import dotty.tools.dotc.transform.init.Util.tree
 
 /** This class creates symbols from definitions and imports and gives them
  *  lazy types.
@@ -1648,7 +1649,6 @@ class Namer { typer: Typer =>
        *  as an attachment on the ClassDef tree.
        */
       def enterParentRefinementSyms(refinements: List[(Name, Type)]) =
-        println(s"For class $cls, entering parent refinements: $refinements")
         val refinedSyms = mutable.ListBuffer[Symbol]()
         for (name, tp) <- refinements do
           if decls.lookupEntry(name) == null then
@@ -1658,7 +1658,6 @@ class Namer { typer: Typer =>
               case _ => Synthetic | Deferred
             val s = newSymbol(cls, name, flags, tp, coord = original.rhs.span.startPos).entered
             refinedSyms += s
-            println(s"  entered $s")
         if refinedSyms.nonEmpty then
           typr.println(i"parent refinement symbols: ${refinedSyms.toList}")
           original.pushAttachment(ParentRefinements, refinedSyms.toList)
@@ -1996,10 +1995,11 @@ class Namer { typer: Typer =>
    */
   def needsTracked(sym: Symbol, param: ValDef)(using Context) =
     !sym.is(Tracked)
+    && sym.maybeOwner.isConstructor
     && (
       isContextBoundWitnessWithAbstractMembers(sym, param)
       || isReferencedInPublicSignatures(sym)
-      // || isPassedToTrackedParentParameter(sym, param)
+      || isPassedToTrackedParentParameter(sym, param)
     )
 
   /** Under x.modularity, we add `tracked` to context bound witnesses
@@ -2018,11 +2018,14 @@ class Namer { typer: Typer =>
     def checkOwnerMemberSignatures(owner: Symbol): Boolean =
       owner.infoOrCompleter match
         case info: ClassInfo =>
-          info.decls.filter(d => !d.isConstructor).exists(d => tpeContainsSymbolRef(d.info, accessorSyms))
+          info.decls.filter(_.isTerm)
+            .filter(_ != sym.maybeOwner)
+            .exists(d => tpeContainsSymbolRef(d.info, accessorSyms))
         case _ => false
     checkOwnerMemberSignatures(owner)
 
   def isPassedToTrackedParentParameter(sym: Symbol, param: ValDef)(using Context): Boolean =
+    // TODO(kπ) Add tracked if the param is passed as a tracked arg in parent. Can we touch the inheritance terms?
     val owner = sym.maybeOwner.maybeOwner
     val accessorSyms = maybeParamAccessors(owner, sym)
     owner.infoOrCompleter match
@@ -2035,10 +2038,18 @@ class Namer { typer: Typer =>
     case tpe: NamedType => tpe.prefix.exists && tpeContainsSymbolRef(tpe.prefix, syms)
     case _ => false
 
-  private def tpeContainsSymbolRef(tpe: Type, syms: List[Symbol])(using Context): Boolean =
-    tpe.termSymbol.exists && syms.contains(tpe.termSymbol)
-      || tpe.argInfos.exists(tpeContainsSymbolRef(_, syms))
-      || namedTypeWithPrefixContainsSymbolRef(tpe, syms)
+  private def tpeContainsSymbolRef(tpe0: Type, syms: List[Symbol])(using Context): Boolean =
+    val tpe = tpe0.dropAlias.widenExpr.dealias
+    tpe match
+      case m : MethodOrPoly =>
+        m.paramInfos.exists(tpeContainsSymbolRef(_, syms))
+          || tpeContainsSymbolRef(m.resultType, syms)
+      case r @ RefinedType(parent, _, refinedInfo) => tpeContainsSymbolRef(parent, syms) || tpeContainsSymbolRef(refinedInfo, syms)
+      case TypeBounds(lo, hi) => tpeContainsSymbolRef(lo, syms) || tpeContainsSymbolRef(hi, syms)
+      case t: Type =>
+        tpe.termSymbol.exists && syms.contains(tpe.termSymbol)
+          || tpe.argInfos.exists(tpeContainsSymbolRef(_, syms))
+          || namedTypeWithPrefixContainsSymbolRef(tpe, syms)
 
   private def maybeParamAccessors(owner: Symbol, sym: Symbol)(using Context): List[Symbol] =
     owner.infoOrCompleter match
