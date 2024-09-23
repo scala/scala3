@@ -2680,6 +2680,10 @@ object SymDenotations {
         stillValidInOwner(denot)
     }
 
+  def movedToCompanionClass(denot: SymDenotation)(using Context): Boolean =
+    val ownerCompanion = denot.maybeOwner.companionClass
+    stillValid(ownerCompanion) && ownerCompanion.unforcedDecls.contains(denot.name, denot.symbol)
+
   private[SymDenotations] def stillValidInOwner(denot: SymDenotation)(using Context): Boolean = try
     val owner = denot.maybeOwner.denot
     stillValid(owner)
