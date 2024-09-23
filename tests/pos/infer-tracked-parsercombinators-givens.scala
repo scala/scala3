@@ -27,9 +27,10 @@ given apply[C, E]: Combinator[Apply[C, E]] with {
   }
 }
 
+// TODO(kπ) infer tracked correctly here
 given combine[A, B](using
-    val f: Combinator[A],
-    val s: Combinator[B] { type Context = f.Context }
+    tracked val f: Combinator[A],
+    tracked val s: Combinator[B] { type Context = f.Context }
 ): Combinator[Combine[A, B]] with {
   type Context = f.Context
   type Element = (f.Element, s.Element)
