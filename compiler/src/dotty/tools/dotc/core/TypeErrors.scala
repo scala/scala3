@@ -32,7 +32,7 @@ abstract class TypeError(using creationContext: Context) extends Exception(""):
     || ctx.settings.YdebugCyclic.value
 
   override def fillInStackTrace(): Throwable =
-    if computeStackTrace then super.fillInStackTrace().nn
+    if computeStackTrace then super.fillInStackTrace()
     else this
 
   /** Convert to message. This takes an additional Context, so that we

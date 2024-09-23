@@ -5,7 +5,7 @@ import scala.annotation.internal.sharable
 object Texts {
 
   @sharable
-  private val ansi = java.util.regex.Pattern.compile("\u001b\\[\\d+m").nn
+  private val ansi = java.util.regex.Pattern.compile("\u001b\\[\\d+m")
 
   sealed abstract class Text {
 

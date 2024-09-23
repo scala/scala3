@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 package core.tasty
 
-import scala.language.unsafeNulls
 import scala.collection.immutable.BitSet
 import scala.collection.immutable.TreeMap
 
