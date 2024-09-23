@@ -1837,19 +1837,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if (protoFormals.length == params.length) (protoFormals(i), isDefinedErased(i))
       else (errorType(WrongNumberOfParameters(tree, params.length, pt, protoFormals.length), tree.srcPos), false)
 
-    /** Is `formal` a product type which is elementwise compatible with `params`? */
-    def ptIsCorrectProduct(formal: Type) =
-      isFullyDefined(formal, ForceDegree.flipBottom) &&
-      defn.isProductSubType(formal) &&
-      tupleComponentTypes(formal).corresponds(params) {
-        (argType, param) =>
-          param.tpt.isEmpty || argType.widenExpr <:< typedAheadType(param.tpt).tpe
-      }
-
     var desugared: untpd.Tree = EmptyTree
     if protoFormals.length == 1 && params.length != 1 then
       val firstFormal = protoFormals.head.loBound
-      if ptIsCorrectProduct(firstFormal) then
+      if ptIsCorrectProduct(firstFormal, params) then
         val isGenericTuple =
           firstFormal.derivesFrom(defn.TupleClass)
           && !defn.isTupleClass(firstFormal.typeSymbol)
