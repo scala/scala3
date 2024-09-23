@@ -38,7 +38,7 @@ class Driver {
         finish(compiler, run)
       catch
         case ex: FatalError =>
-          report.error(ex.getMessage.nn) // signals that we should fail compilation.
+          report.error(ex.getMessage) // signals that we should fail compilation.
         case ex: Throwable if ctx.usedBestEffortTasty =>
           report.bestEffortError(ex, "Some best-effort tasty files were not able to be read.")
           throw ex
@@ -117,7 +117,7 @@ class Driver {
         .distinct
       val ctx1 = ctx.fresh
       val fullClassPath =
-        (newEntries :+ ctx.settings.classpath.value).mkString(java.io.File.pathSeparator.nn)
+        (newEntries :+ ctx.settings.classpath.value).mkString(java.io.File.pathSeparator)
       ctx1.setSetting(ctx1.settings.classpath, fullClassPath)
     else ctx
 

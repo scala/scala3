@@ -1,8 +1,6 @@
 package dotty.tools
 package dotc
 
-import scala.language.unsafeNulls
-
 import reporting.StoreReporter
 import vulpix.TestConfiguration
 
@@ -205,7 +203,7 @@ class SettingsTests {
     }
 
   @Test def `Output setting is overriding existing jar`: Unit =
-    val result = Using.resource(Files.createTempFile("myfile", ".jar").nn){ file =>
+    val result = Using.resource(Files.createTempFile("myfile", ".jar")){ file =>
       object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
         val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir)
@@ -224,7 +222,7 @@ class SettingsTests {
 
   @Test def `Output setting is respecting previous setting`: Unit =
     val result = Using.resources(
-      Files.createTempFile("myfile", ".jar").nn, Files.createTempFile("myfile2", ".jar").nn
+      Files.createTempFile("myfile", ".jar"), Files.createTempFile("myfile2", ".jar")
     ){ (file1, file2) =>
       object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
@@ -250,7 +248,7 @@ class SettingsTests {
     }(Files.deleteIfExists(_), Files.deleteIfExists(_))
 
   @Test def `Output side effect is not present when setting is deprecated`: Unit =
-    val result = Using.resource(Files.createTempFile("myfile", ".jar").nn){ file =>
+    val result = Using.resource(Files.createTempFile("myfile", ".jar")){ file =>
       object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
         val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true, deprecation = Deprecation.renamed("XtestOutput"))

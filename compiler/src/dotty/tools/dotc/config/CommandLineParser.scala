@@ -118,8 +118,8 @@ object CommandLineParser:
       Nil
     else
       def stripComment(s: String) = s.indexOf('#') match { case -1 => s case i => s.substring(0, i) }
-      val lines = Files.readAllLines(path).nn
-      val params = lines.asScala.map(stripComment).filter(!_.nn.isEmpty).mkString(" ")
+      val lines = Files.readAllLines(path)
+      val params = lines.asScala.map(stripComment).filter(!_.isEmpty).mkString(" ")
       tokenize(params)
 
   class ParseException(msg: String) extends RuntimeException(msg)

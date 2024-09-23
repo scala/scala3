@@ -651,7 +651,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           val dotIndex = pathName.indexOf('.')
           val globalRef =
             if (dotIndex < 0) pathName
-            else pathName.substring(0, dotIndex).nn
+            else pathName.substring(0, dotIndex)
           checkGlobalRefName(globalRef)
         }
 

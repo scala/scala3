@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package core
 
-import scala.language.unsafeNulls
-
 import ast.{ untpd, tpd }
 import Symbols.*, Contexts.*
 import util.{SourceFile, ReadOnlyMap}

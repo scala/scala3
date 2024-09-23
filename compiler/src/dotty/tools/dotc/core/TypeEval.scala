@@ -94,7 +94,7 @@ object TypeEval:
         val result =
           try op
           catch case e: Throwable =>
-            throw TypeError(em"${e.getMessage.nn}")
+            throw TypeError(em"${e.getMessage}")
         ConstantType(Constant(result))
 
       def fieldsOf: Option[Type] =

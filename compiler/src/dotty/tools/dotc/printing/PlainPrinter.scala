@@ -394,7 +394,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: ThisType =>
         nameString(tp.cls) + ".this"
       case SuperType(thistpe: SingletonType, _) =>
-        toTextRef(thistpe).map(_.replaceAll("""\bthis$""", "super").nn)
+        toTextRef(thistpe).map(_.replaceAll("""\bthis$""", "super"))
       case SuperType(thistpe, _) =>
         "Super(" ~ toTextGlobal(thistpe) ~ ")"
       case tp @ ConstantType(value) =>
@@ -628,7 +628,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case '"' => "\\\""
     case '\'' => "\\\'"
     case '\\' => "\\\\"
-    case _ => if ch.isControl then f"${"\\"}u${ch.toInt}%04x" else String.valueOf(ch).nn
+    case _ => if ch.isControl then f"${"\\"}u${ch.toInt}%04x" else String.valueOf(ch)
   }
 
   def toText(const: Constant): Text = const.tag match {
@@ -638,7 +638,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case LongTag => literalText(const.longValue.toString + "L")
     case DoubleTag => literalText(const.doubleValue.toString + "d")
     case FloatTag => literalText(const.floatValue.toString + "f")
-    case _ => literalText(String.valueOf(const.value).nn)
+    case _ => literalText(String.valueOf(const.value))
   }
 
   /** Usual target for `Annotation#toText`, overridden in RefinedPrinter */
