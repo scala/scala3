@@ -30,7 +30,6 @@ import config.Feature.{sourceVersion, modularity}
 import config.SourceVersion.*
 
 import scala.compiletime.uninitialized
-import dotty.tools.dotc.transform.init.Util.tree
 
 /** This class creates symbols from definitions and imports and gives them
  *  lazy types.
@@ -1699,7 +1698,6 @@ class Namer { typer: Typer =>
       end addUsingTraits
 
       completeConstructor(denot)
-      val constrSym = symbolOfTree(constr)
       denot.info = tempInfo.nn
 
       val parentTypes = defn.adjustForTuple(cls, cls.typeParams,
@@ -1995,7 +1993,11 @@ class Namer { typer: Typer =>
    */
   def needsTracked(sym: Symbol, param: ValDef)(using Context) =
     !sym.is(Tracked)
-    && sym.maybeOwner.isConstructor
+    && sym.isTerm
+    && sym.maybeOwner.isPrimaryConstructor
+    // && !sym.flags.is(Synthetic)
+    // && !sym.maybeOwner.flags.is(Synthetic)
+    && !sym.maybeOwner.maybeOwner.flags.is(Synthetic)
     && (
       isContextBoundWitnessWithAbstractMembers(sym, param)
       || isReferencedInPublicSignatures(sym)
@@ -2018,7 +2020,7 @@ class Namer { typer: Typer =>
     def checkOwnerMemberSignatures(owner: Symbol): Boolean =
       owner.infoOrCompleter match
         case info: ClassInfo =>
-          info.decls.filter(_.isTerm)
+          info.decls.filter(_.isTerm).filter(_.isPublic)
             .filter(_ != sym.maybeOwner)
             .exists(d => tpeContainsSymbolRef(d.info, accessorSyms))
         case _ => false
@@ -2039,8 +2041,9 @@ class Namer { typer: Typer =>
     case _ => false
 
   private def tpeContainsSymbolRef(tpe0: Type, syms: List[Symbol])(using Context): Boolean =
-    val tpe = tpe0.dropAlias.widenExpr.dealias
+    val tpe = tpe0.dropAlias.safeDealias
     tpe match
+      case ExprType(resType) => tpeContainsSymbolRef(resType, syms)
       case m : MethodOrPoly =>
         m.paramInfos.exists(tpeContainsSymbolRef(_, syms))
           || tpeContainsSymbolRef(m.resultType, syms)
