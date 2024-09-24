@@ -934,8 +934,8 @@ object desugar {
           paramss match
             case rightParam :: paramss1 => // `rightParam` must have a single parameter and without `given` flag
 
-              def badRightAssoc(problem: String) =
-                report.error(em"right-associative extension method $problem", mdef.srcPos)
+              def badRightAssoc(problem: String, pos: SrcPos) =
+                report.error(em"right-associative extension method $problem", pos)
                 extParamss ++ mdef.paramss
 
               rightParam match
@@ -951,11 +951,23 @@ object desugar {
                     //
                     // If you change the names of the clauses below, also change them in right-associative-extension-methods.md
                     val (leftTyParamsAndLeadingUsing, leftParamAndTrailingUsing) = extParamss.span(isUsingOrTypeParamClause)
+
+                    val names = (for ps <- mdef.paramss; p <- ps yield p.name).toSet[Name]
+
+                    val tt = new untpd.UntypedTreeTraverser:
+                      def traverse(tree: Tree)(using Context): Unit = tree match
+                        case tree: Ident if names.contains(tree.name) =>
+                          badRightAssoc(s"cannot have a forward reference to ${tree.name}", tree.srcPos)
+                        case _ => traverseChildren(tree)
+
+                    for ts <- leftParamAndTrailingUsing; t <- ts do
+                      tt.traverse(t)
+
                     leftTyParamsAndLeadingUsing ::: rightTyParams ::: rightParam :: leftParamAndTrailingUsing ::: paramss1
                   else
-                    badRightAssoc("cannot start with using clause")
+                    badRightAssoc("cannot start with using clause", mdef.srcPos)
                 case _ =>
-                  badRightAssoc("must start with a single parameter")
+                  badRightAssoc("must start with a single parameter", mdef.srcPos)
             case _ =>
               // no value parameters, so not an infix operator.
               extParamss ++ mdef.paramss
