@@ -1230,7 +1230,7 @@ object desugar {
       case td @ TypeDef(name, cb @ ContextBounds(bounds, ctxBounds)) =>
         TypeDef(name, ContextBounds(bounds, List.empty))
     }
-    var idx = -1
+    var idx = 0
     val collecedContextBounds = tparams.collect {
       case td @ TypeDef(name, cb @ ContextBounds(bounds, ctxBounds)) if ctxBounds.nonEmpty =>
         // TOOD(kπ) Should we handle non empty normal bounds here?
@@ -1238,7 +1238,11 @@ object desugar {
     }.flatMap { case (name, ctxBounds) =>
       ctxBounds.map { ctxBound =>
         idx = idx + 1
-        makeSyntheticParameter(idx, ctxBound).withAddedFlags(Given)
+        ctxBound match
+          case ContextBoundTypeTree(_, _, ownName) =>
+            ValDef(ownName, ctxBound, EmptyTree).withFlags(TermParam | Given)
+          case _ =>
+            makeSyntheticParameter(idx, ctxBound).withAddedFlags(Given)
       }
     }
     val contextFunctionResult =
