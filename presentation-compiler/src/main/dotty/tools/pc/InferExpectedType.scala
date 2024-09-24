@@ -7,6 +7,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.Symbols
+import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.interactive.Interactive
@@ -61,7 +62,7 @@ class InferExpectedType(
 object InterCompletionType:
   def inferType(path: List[Tree])(using Context): Option[Type] =
     path match
-      case (lit: Literal) :: Select(Literal(_), _) :: Apply(Select(Literal(_), _), List(Literal(Constant(null)))) :: rest => inferType(rest, lit.span)
+      case (lit: Literal) :: Select(Literal(_), _) :: Apply(Select(Literal(_), _), List(s: Select)) :: rest if s.symbol == defn.Predef_undefined => inferType(rest, lit.span)
       case ident :: rest => inferType(rest, ident.span)
       case _ => None
 
