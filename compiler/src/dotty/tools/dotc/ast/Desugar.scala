@@ -1221,6 +1221,33 @@ object desugar {
       case _ => body
     cpy.PolyFunction(tree)(tree.targs, stripped(tree.body)).asInstanceOf[PolyFunction]
 
+  /** Desugar [T_1 : B_1, ..., T_N : B_N] => (P_1, ..., P_M) => R
+   *  Into    [T_1, ..., T_N] => (P_1, ..., P_M) => (B_1, ..., B_N) ?=> R
+   */
+  def expandPolyFunctionContextBounds(tree: PolyFunction)(using Context): PolyFunction =
+    val PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun @ Function(vparamTypes, res)) = tree: @unchecked
+    val newTParams = tparams.map {
+      case td @ TypeDef(name, cb @ ContextBounds(bounds, ctxBounds)) =>
+        TypeDef(name, ContextBounds(bounds, List.empty))
+    }
+    var idx = -1
+    val collecedContextBounds = tparams.collect {
+      case td @ TypeDef(name, cb @ ContextBounds(bounds, ctxBounds)) if ctxBounds.nonEmpty =>
+        // TOOD(kπ) Should we handle non empty normal bounds here?
+        name -> ctxBounds
+    }.flatMap { case (name, ctxBounds) =>
+      ctxBounds.map { ctxBound =>
+        idx = idx + 1
+        makeSyntheticParameter(idx, ctxBound).withAddedFlags(Given)
+      }
+    }
+    val contextFunctionResult =
+      if collecedContextBounds.isEmpty then
+        fun
+      else
+        Function(vparamTypes, Function(collecedContextBounds, res)).withSpan(fun.span)
+    PolyFunction(newTParams, contextFunctionResult).withSpan(tree.span)
+
   /** Desugar [T_1, ..., T_M] => (P_1, ..., P_N) => R
    *  Into    scala.PolyFunction { def apply[T_1, ..., T_M](x$1: P_1, ..., x$N: P_N): R }
    */

@@ -68,7 +68,7 @@ object Parsers {
     def acceptsVariance =
       this == Class || this == CaseClass || this == Hk
     def acceptsCtxBounds =
-      !(this == Type || this == Hk)
+      !(this == Hk)
     def acceptsWildcard =
       this == Type || this == Hk
 
@@ -3460,7 +3460,7 @@ object Parsers {
      *
      *  TypTypeParamClause::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
      *  TypTypeParam      ::=  {Annotation}
-     *                         (id | ‘_’) [HkTypeParamClause] TypeBounds
+     *                         (id | ‘_’) [HkTypeParamClause] TypeAndCtxBounds
      *
      *  HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
      *  HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’]
