@@ -1,7 +1,6 @@
 import scala.language.experimental.modularity
 import scala.language.future
 
-
 trait Ord[X]:
   def compare(x: X, y: X): Int
 
