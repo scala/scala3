@@ -166,7 +166,7 @@ object Tuple {
    *  ```
    *  @syntax markdown
    */
-  type Filter[Tup <: Tuple, P[_] <: Boolean] <: Tuple = Tup match {
+  type Filter[Tup <: Tuple, P[_ <: Union[Tup]] <: Boolean] <: Tuple = Tup match {
     case EmptyTuple => EmptyTuple
     case h *: t => P[h] match {
       case true => h *: Filter[t, P]
