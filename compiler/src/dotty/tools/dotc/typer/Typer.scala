@@ -40,7 +40,7 @@ import annotation.tailrec
 import Implicits.*
 import util.Stats.record
 import config.Printers.{gadts, typr}
-import config.Feature, Feature.{migrateTo3, modularity, sourceVersion, warnOnMigration}
+import config.Feature, Feature.{migrateTo3, sourceVersion, warnOnMigration}
 import config.SourceVersion.*
 import rewrites.Rewrites, Rewrites.patch
 import staging.StagingLevel
@@ -1142,7 +1142,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         if templ1.parents.isEmpty
             && isFullyDefined(pt, ForceDegree.flipBottom)
             && isSkolemFree(pt)
-            && isEligible(pt.underlyingClassRef(refinementOK = Feature.enabled(modularity)))
+            && isEligible(pt.underlyingClassRef(refinementOK = Feature.enabled(Feature.modularity)))
         then
           templ1 = cpy.Template(templ)(parents = untpd.TypeTree(pt) :: Nil)
         for case parent: RefTree <- templ1.parents do
@@ -1717,7 +1717,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           typedFunctionType(desugar.makeFunctionWithValDefs(tree, pt), pt)
         else
           val funSym = defn.FunctionSymbol(numArgs, isContextual, isImpure)
-          val result = typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funSym.typeRef), args :+ body), pt)
+          val args1 = args.mapConserve {
+            case cb: untpd.ContextBoundTypeTree => typed(cb)
+            case t => t
+          }
+          val result = typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funSym.typeRef), args1 :+ body), pt)
           // if there are any erased classes, we need to re-do the typecheck.
           result match
             case r: AppliedTypeTree if r.args.exists(_.tpe.isErasedClass) =>
@@ -2448,12 +2452,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if tycon.tpe.typeParams.nonEmpty then
       val tycon0 = tycon.withType(tycon.tpe.etaCollapse)
       typed(untpd.AppliedTypeTree(spliced(tycon0), tparam :: Nil))
-    else if Feature.enabled(modularity) && tycon.tpe.member(tpnme.Self).symbol.isAbstractOrParamType then
+    else if Feature.enabled(Feature.modularity) && tycon.tpe.member(tpnme.Self).symbol.isAbstractOrParamType then
       val tparamSplice = untpd.TypedSplice(typedExpr(tparam))
       typed(untpd.RefinedTypeTree(spliced(tycon), List(untpd.TypeDef(tpnme.Self, tparamSplice))))
     else
       def selfNote =
-        if Feature.enabled(modularity) then
+        if Feature.enabled(Feature.modularity) then
           " and\ndoes not have an abstract type member named `Self` either"
         else ""
       errorTree(tree,
@@ -2472,7 +2476,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val TypeDef(_, impl: Template) = typed(refineClsDef): @unchecked
     val refinements1 = impl.body
     val seen = mutable.Set[Symbol]()
-    for (refinement <- refinements1) { // TODO: get clarity whether we want to enforce these conditions
+    for refinement <- refinements1 do // TODO: get clarity whether we want to enforce these conditions
       typr.println(s"adding refinement $refinement")
       checkRefinementNonCyclic(refinement, refineCls, seen)
       val rsym = refinement.symbol
@@ -2486,7 +2490,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val member = refineCls.info.member(rsym.name)
       if (member.isOverloaded)
         report.error(OverloadInRefinement(rsym), refinement.srcPos)
-    }
     assignType(cpy.RefinedTypeTree(tree)(tpt1, refinements1), tpt1, refinements1, refineCls)
   }
 
@@ -4701,7 +4704,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           cpy.Ident(qual)(qual.symbol.name.sourceModuleName.toTypeName)
         case _ =>
           errorTree(tree, em"cannot convert from $tree to an instance creation expression")
-      val tycon = ctorResultType.underlyingClassRef(refinementOK = Feature.enabled(modularity))
+      val tycon = ctorResultType.underlyingClassRef(refinementOK = Feature.enabled(Feature.modularity))
       typed(
         untpd.Select(
           untpd.New(untpd.TypedSplice(tpt.withType(tycon))),
