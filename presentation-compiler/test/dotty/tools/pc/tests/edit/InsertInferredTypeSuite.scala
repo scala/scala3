@@ -597,6 +597,76 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
          |""".stripMargin
     )
 
+  @Test def `backticks-4` =
+    checkEdit(
+      """|case class `Foo-Foo`(i: Int)
+         |object O{
+         |  val <<foo>> = `Foo-Foo`(1)
+         |}""".stripMargin,
+      """|case class `Foo-Foo`(i: Int)
+         |object O{
+         |  val foo: `Foo-Foo` = `Foo-Foo`(1)
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `backticks-5` =
+    checkEdit(
+      """|object A{
+         |  case class `Foo-Foo`(i: Int)
+         |}
+         |object O{
+         |  val <<foo>> = A.`Foo-Foo`(1)
+         |}""".stripMargin,
+      """|import A.`Foo-Foo`
+         |object A{
+         |  case class `Foo-Foo`(i: Int)
+         |}
+         |object O{
+         |  val foo: `Foo-Foo` = A.`Foo-Foo`(1)
+         |}
+         |""".stripMargin
+  )
+
+  @Test def `backticks-6` =
+    checkEdit(
+    """|object A{
+       |  case class `Foo-Foo`[A](i: A)
+       |}
+       |object O{
+       |  val <<foo>> = A.`Foo-Foo`(1)
+       |}""".stripMargin,
+    """|import A.`Foo-Foo`
+       |object A{
+       |  case class `Foo-Foo`[A](i: A)
+       |}
+       |object O{
+       |  val foo: `Foo-Foo`[Int] = A.`Foo-Foo`(1)
+       |}
+       |""".stripMargin
+  )
+
+  @Test def `backticks-7` =
+    checkEdit(
+    """|object A{
+       |  class `x-x`
+       |  case class Foo[A](i: A)
+       |}
+       |object O{
+       |  val <<foo>> = A.Foo(new A.`x-x`)
+       |}""".stripMargin,
+    """|import A.Foo
+       |import A.`x-x`
+       |object A{
+       |  class `x-x`
+       |  case class Foo[A](i: A)
+       |}
+       |object O{
+       |  val foo: Foo[`x-x`] = A.Foo(new A.`x-x`)
+       |}
+       |""".stripMargin
+  )
+
   @Test def `literal-types1` =
     checkEdit(
       """|object O {
