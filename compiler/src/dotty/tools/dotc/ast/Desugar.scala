@@ -1216,7 +1216,7 @@ object desugar {
     val PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun @ Function(vparamTypes, res)) = tree: @unchecked
     val newTParams = tparams.mapConserve {
       case td @ TypeDef(name, cb @ ContextBounds(bounds, ctxBounds)) =>
-        TypeDef(name, ContextBounds(bounds, List.empty))
+        cpy.TypeDef(td)(name, bounds)
       case t => t
     }
     var idx = 0
