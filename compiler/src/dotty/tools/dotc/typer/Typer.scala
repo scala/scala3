@@ -1923,7 +1923,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   def typedPolyFunction(tree: untpd.PolyFunction, pt: Type)(using Context): Tree =
     val tree1 = desugar.normalizePolyFunction(tree)
-    val tree2 = desugar.expandPolyFunctionContextBounds(tree1)
+    val tree2 = if Feature.enabled(Feature.modularity) then desugar.expandPolyFunctionContextBounds(tree1)
+                else tree1
     if (ctx.mode is Mode.Type) typed(desugar.makePolyFunctionType(tree2), pt)
     else typedPolyFunctionValue(tree2, pt)
 

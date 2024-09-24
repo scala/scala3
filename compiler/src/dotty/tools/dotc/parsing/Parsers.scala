@@ -68,7 +68,7 @@ object Parsers {
     def acceptsVariance =
       this == Class || this == CaseClass || this == Hk
     def acceptsCtxBounds =
-      !(this == Hk)
+      !(this == Type || this == Hk)
     def acceptsWildcard =
       this == Type || this == Hk
 
@@ -3460,7 +3460,9 @@ object Parsers {
             else ident().toTypeName
           val hkparams = typeParamClauseOpt(ParamOwner.Hk)
           val bounds =
-            if paramOwner.acceptsCtxBounds then typeAndCtxBounds(name) else typeBounds()
+            if paramOwner.acceptsCtxBounds then typeAndCtxBounds(name)
+            else if in.featureEnabled(Feature.modularity) && paramOwner == ParamOwner.Type then typeAndCtxBounds(name)
+            else typeBounds()
           TypeDef(name, lambdaAbstract(hkparams, bounds)).withMods(mods)
         }
       }
