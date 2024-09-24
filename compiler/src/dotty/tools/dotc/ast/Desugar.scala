@@ -1226,31 +1226,36 @@ object desugar {
    */
   def expandPolyFunctionContextBounds(tree: PolyFunction)(using Context): PolyFunction =
     val PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun @ Function(vparamTypes, res)) = tree: @unchecked
-    val newTParams = tparams.map {
+    val newTParams = tparams.mapConserve {
       case td @ TypeDef(name, cb @ ContextBounds(bounds, ctxBounds)) =>
         TypeDef(name, ContextBounds(bounds, List.empty))
+      case t => t
     }
     var idx = 0
-    val collecedContextBounds = tparams.collect {
+    val collectedContextBounds = tparams.collect {
       case td @ TypeDef(name, cb @ ContextBounds(bounds, ctxBounds)) if ctxBounds.nonEmpty =>
-        // TOOD(kπ) Should we handle non empty normal bounds here?
         name -> ctxBounds
     }.flatMap { case (name, ctxBounds) =>
       ctxBounds.map { ctxBound =>
         idx = idx + 1
         ctxBound match
-          case ContextBoundTypeTree(_, _, ownName) =>
-            ValDef(ownName, ctxBound, EmptyTree).withFlags(TermParam | Given)
+          case ctxBound @ ContextBoundTypeTree(tycon, paramName, ownName) =>
+            if tree.isTerm then
+              ValDef(ownName, ctxBound, EmptyTree).withFlags(TermParam | Given)
+            else
+              ContextBoundTypeTree(tycon, paramName, EmptyTermName) // this has to be handled in Typer#typedFunctionType
           case _ =>
             makeSyntheticParameter(idx, ctxBound).withAddedFlags(Given)
       }
     }
     val contextFunctionResult =
-      if collecedContextBounds.isEmpty then
-        fun
+      if collectedContextBounds.isEmpty then fun
       else
-        Function(vparamTypes, Function(collecedContextBounds, res)).withSpan(fun.span)
-    PolyFunction(newTParams, contextFunctionResult).withSpan(tree.span)
+        val mods = EmptyModifiers.withFlags(Given)
+        val erasedParams = collectedContextBounds.map(_ => false)
+        Function(vparamTypes, FunctionWithMods(collectedContextBounds, res, mods, erasedParams)).withSpan(fun.span)
+    if collectedContextBounds.isEmpty then tree
+    else PolyFunction(newTParams, contextFunctionResult).withSpan(tree.span)
 
   /** Desugar [T_1, ..., T_M] => (P_1, ..., P_N) => R
    *  Into    scala.PolyFunction { def apply[T_1, ..., T_M](x$1: P_1, ..., x$N: P_N): R }
