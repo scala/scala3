@@ -1237,15 +1237,11 @@ object desugar {
         name -> ctxBounds
     }.flatMap { case (name, ctxBounds) =>
       ctxBounds.map { ctxBound =>
-        idx = idx + 1
-        ctxBound match
-          case ctxBound @ ContextBoundTypeTree(tycon, paramName, ownName) =>
-            if tree.isTerm then
-              ValDef(ownName, ctxBound, EmptyTree).withFlags(TermParam | Given)
-            else
-              ContextBoundTypeTree(tycon, paramName, EmptyTermName) // this has to be handled in Typer#typedFunctionType
-          case _ =>
-            makeSyntheticParameter(idx, ctxBound).withAddedFlags(Given)
+        val ContextBoundTypeTree(tycon, paramName, ownName) = ctxBound: @unchecked
+        if tree.isTerm then
+          ValDef(ownName, ctxBound, EmptyTree).withFlags(TermParam | Given)
+        else
+          ContextBoundTypeTree(tycon, paramName, EmptyTermName) // this has to be handled in Typer#typedFunctionType
       }
     }
     val contextFunctionResult =
