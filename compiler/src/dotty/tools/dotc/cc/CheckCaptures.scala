@@ -13,7 +13,7 @@ import Trees.*
 import typer.RefChecks.{checkAllOverrides, checkSelfAgainstParents, OverridingPairsChecker}
 import typer.Checking.{checkBounds, checkAppliedTypesIn}
 import typer.ErrorReporting.{Addenda, NothingToAdd, err}
-import typer.ProtoTypes.{AnySelectionProto, LhsProto}
+import typer.ProtoTypes.{LhsProto, WildcardSelectionProto}
 import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
 import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
@@ -182,6 +182,9 @@ object CheckCaptures:
 
   /** Attachment key for bodies of closures, provided they are values */
   val ClosureBodyValue = Property.Key[Unit]
+
+  /** A prototype that indicates selection with an immutable value */
+  class PathSelectionProto(val sym: Symbol, val pt: Type)(using Context) extends WildcardSelectionProto
 
 class CheckCaptures extends Recheck, SymTransformer:
   thisPhase =>
@@ -357,12 +360,13 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  the environment in which `sym` is defined.
      */
     def markFree(sym: Symbol, pos: SrcPos)(using Context): Unit =
-      if sym.exists then
-        val ref = sym.termRef
-        if ref.isTracked then
-          forallOuterEnvsUpTo(sym.enclosure): env =>
-            capt.println(i"Mark $sym with cs ${ref.captureSet} free in ${env.owner}")
-            checkElem(ref, env.captured, pos, provenance(env))
+      markFree(sym, sym.termRef, pos)
+
+    def markFree(sym: Symbol, ref: TermRef, pos: SrcPos)(using Context): Unit =
+      if sym.exists && ref.isTracked then
+        forallOuterEnvsUpTo(sym.enclosure): env =>
+          capt.println(i"Mark $sym with cs ${ref.captureSet} free in ${env.owner}")
+          checkElem(ref, env.captured, pos, provenance(env))
 
     /** Make sure (projected) `cs` is a subset of the capture sets of all enclosing
      *  environments. At each stage, only include references from `cs` that are outside
@@ -464,8 +468,15 @@ class CheckCaptures extends Recheck, SymTransformer:
           includeCallCaptures(tree.symbol, tree.srcPos)
       else
         //debugShowEnvs()
-        markFree(tree.symbol, tree.srcPos)
+        def addSelects(ref: TermRef, pt: Type): TermRef = pt match
+          case pt: PathSelectionProto => addSelects(ref.select(pt.sym).asInstanceOf[TermRef], pt.pt)
+          case _ => ref
+        markFree(tree.symbol, addSelects(tree.symbol.termRef, pt), tree.srcPos)
       super.recheckIdent(tree, pt)
+
+    override def selectionProto(tree: Select, pt: Type)(using Context): Type =
+      if !tree.symbol.isOneOf(UnstableValueFlags) then PathSelectionProto(tree.symbol, pt)
+      else super.selectionProto(tree, pt)
 
     /** A specialized implementation of the selection rule.
      *
