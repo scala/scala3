@@ -352,7 +352,11 @@ object TypeTestsCasts {
                 report.error(em"$untestable cannot be used in runtime type tests", tree.srcPos)
                 constant(expr, Literal(Constant(false)))
               case _ =>
-                val erasedTestType = erasure(testType)
+                val erasedTestType =
+                  if testType.isAny && expr.tpe.isPrimitiveValueType then
+                    defn.AnyValType
+                  else
+                    erasure(testType)
                 transformIsInstanceOf(expr, erasedTestType, erasedTestType, flagUnrelated)
         }
 
