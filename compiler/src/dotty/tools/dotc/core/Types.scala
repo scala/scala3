@@ -2598,22 +2598,14 @@ object Types extends TypeUtils {
       case _ => true
     }
 
-    /** Reduce a type ref P # X, where X is a type alias and P is a refined type or
-     *  a class type. If P is a refined type `T { X = U; ... }`, reduce P to U,
-     *  provided U does not refer with a RecThis to the same refined type. If P is a
-     *  class type, reduce it to the dealiasd version of P # X. This means that at typer
-     *  we create projections only for inner classes with class prefixes, since projections
-     *  of P # X where X is an abstract type are handled by skolemization. At later phases
-     *  these projections might arise, though.
+    /** Reduce a type-ref `T { X = U; ... } # X`  to   `U`
+     *  provided `U` does not refer with a RecThis to the
+     *  refinement type `T { X = U; ... }`
      */
     def reduceProjection(using Context): Type =
       if (isType) {
         val reduced = prefix.lookupRefined(name)
-        if reduced.exists then reduced
-        else prefix.stripTypeVar match
-          case pre: (AppliedType | TypeRef)
-          if prefix.dealias.typeSymbol.isClass && this.symbol.isAliasType => dealias
-          case _ => this
+        if reduced.exists then reduced else this
       }
       else this
 
@@ -5534,13 +5526,16 @@ object Types extends TypeUtils {
    *     and PolyType not allowed!) according to `possibleSamMethods`.
    *   - can be instantiated without arguments or with just () as argument.
    *
+   *  Additionally, a SAM type may contain type aliases refinements if they refine
+   *  an existing type member.
+   *
    *  The pattern `SAMType(samMethod, samParent)` matches a SAM type, where `samMethod` is the
    *  type of the single abstract method and `samParent` is a subtype of the matched
    *  SAM type which has been stripped of wildcards to turn it into a valid parent
    *  type.
    */
   object SAMType {
-    /** If possible, return a type which is both a subtype of `origTp` and a type
+    /** If possible, return a type which is both a subtype of `origTp` and a (possibly refined) type
      *  application of `samClass` where none of the type arguments are
      *  wildcards (thus making it a valid parent type), otherwise return
      *  NoType.
@@ -5570,27 +5565,41 @@ object Types extends TypeUtils {
      *  we arbitrarily pick the upper-bound.
      */
     def samParent(origTp: Type, samClass: Symbol, samMeth: Symbol)(using Context): Type =
-      val tp = origTp.baseType(samClass)
+      val tp0 = origTp.baseType(samClass)
+
+      /** Copy type aliases refinements to `toTp` from `fromTp` */
+      def withRefinements(toType: Type, fromTp: Type): Type = fromTp.dealias match
+        case RefinedType(fromParent, name, info: AliasingBounds) if tp0.member(name).exists =>
+          val parent1 = withRefinements(toType, fromParent)
+          RefinedType(parent1, name, info)
+        case _ => toType
+      val tp = withRefinements(tp0, origTp)
+
       if !(tp <:< origTp) then NoType
-      else tp match
-        case tp @ AppliedType(tycon, args) if tp.hasWildcardArg =>
-          val accu = new TypeAccumulator[VarianceMap[Symbol]]:
-            def apply(vmap: VarianceMap[Symbol], t: Type): VarianceMap[Symbol] = t match
-              case tp: TypeRef if tp.symbol.isAllOf(ClassTypeParam) =>
-                vmap.recordLocalVariance(tp.symbol, variance)
-              case _ =>
-                foldOver(vmap, t)
-          val vmap = accu(VarianceMap.empty, samMeth.info)
-          val tparams = tycon.typeParamSymbols
-          val args1 = args.zipWithConserve(tparams):
-            case (arg @ TypeBounds(lo, hi), tparam) =>
-              val v = vmap.computedVariance(tparam)
-              if v.uncheckedNN < 0 then lo
-              else hi
-            case (arg, _) => arg
-          tp.derivedAppliedType(tycon, args1)
-        case _ =>
-          tp
+      else
+        def approxWildcardArgs(tp: Type): Type = tp match
+          case tp @ AppliedType(tycon, args) if tp.hasWildcardArg =>
+            val accu = new TypeAccumulator[VarianceMap[Symbol]]:
+              def apply(vmap: VarianceMap[Symbol], t: Type): VarianceMap[Symbol] = t match
+                case tp: TypeRef if tp.symbol.isAllOf(ClassTypeParam) =>
+                  vmap.recordLocalVariance(tp.symbol, variance)
+                case _ =>
+                  foldOver(vmap, t)
+            val vmap = accu(VarianceMap.empty, samMeth.info)
+            val tparams = tycon.typeParamSymbols
+            val args1 = args.zipWithConserve(tparams):
+              case (arg @ TypeBounds(lo, hi), tparam) =>
+                val v = vmap.computedVariance(tparam)
+                if v.uncheckedNN < 0 then lo
+                else hi
+              case (arg, _) => arg
+            tp.derivedAppliedType(tycon, args1)
+          case tp @ RefinedType(parent, name, info) =>
+            tp.derivedRefinedType(approxWildcardArgs(parent), name, info)
+          case _ =>
+            tp
+        approxWildcardArgs(tp)
+    end samParent
 
     def samClass(tp: Type)(using Context): Symbol = tp match
       case tp: ClassInfo =>
