@@ -101,6 +101,19 @@ trait CaptureRef extends TypeProxy, ValueType:
    *   TODO: Document path cases
    */
   final def subsumes(y: CaptureRef)(using Context): Boolean =
+
+    def subsumingRefs(x: Type, y: Type): Boolean = x match
+      case x: CaptureRef => y match
+        case y: CaptureRef => x.subsumes(y)
+        case _ => false
+      case _ => false
+
+    def viaInfo(info: Type)(test: Type => Boolean): Boolean = info.match
+      case info: SingletonCaptureRef => test(info)
+      case info: AndType => test(info.tp1) || test(info.tp2)
+      case info: OrType => test(info.tp1) && test(info.tp2)
+      case _ => false
+
     (this eq y)
     || this.isRootCapability
     || y.match
@@ -109,25 +122,21 @@ trait CaptureRef extends TypeProxy, ValueType:
               case ypre: CaptureRef =>
                 this.subsumes(ypre)
                 || this.match
-                    case x @ TermRef(xpre: CaptureRef, _) =>
-                      x.symbol == y.symbol && xpre =:= ypre
+                    case x @ TermRef(xpre: CaptureRef, _) if x.symbol == y.symbol =>
+                      subsumingRefs(xpre, ypre) && subsumingRefs(ypre, xpre)
                     case _ =>
                       false
               case _ => false
-          || y.info.match
-              case y1: SingletonCaptureRef => this.subsumes(y1)
-              case _ => false
+          || viaInfo(y.info)(subsumingRefs(this, _))
         case MaybeCapability(y1) => this.stripMaybe.subsumes(y1)
         case _ => false
     || this.match
         case ReachCapability(x1) => x1.subsumes(y.stripReach)
-        case x: TermRef =>
-          x.info match
-            case x1: SingletonCaptureRef => x1.subsumes(y)
-            case _ => false
+        case x: TermRef => viaInfo(x.info)(subsumingRefs(_, y))
         case x: TermParamRef => subsumesExistentially(x, y)
         case x: TypeRef => assumedContainsOf(x).contains(y)
         case _ => false
+  end subsumes
 
   def assumedContainsOf(x: TypeRef)(using Context): SimpleIdentitySet[CaptureRef] =
     CaptureSet.assumedContains.getOrElse(x, SimpleIdentitySet.empty)

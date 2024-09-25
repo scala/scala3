@@ -466,16 +466,24 @@ class CheckCaptures extends Recheck, SymTransformer:
         if tree.symbol.info.isParameterless then
           // there won't be an apply; need to include call captures now
           includeCallCaptures(tree.symbol, tree.srcPos)
-      else
+      else if !tree.symbol.isStatic then
         //debugShowEnvs()
         def addSelects(ref: TermRef, pt: Type): TermRef = pt match
-          case pt: PathSelectionProto => addSelects(ref.select(pt.sym).asInstanceOf[TermRef], pt.pt)
+          case pt: PathSelectionProto if ref.isTracked =>
+            // if `ref` is not tracked then the selection could not give anything new
+            // class SerializationProxy in stdlib-cc/../LazyListIterable.scala has an example where this matters.
+            addSelects(ref.select(pt.sym).asInstanceOf[TermRef], pt.pt)
           case _ => ref
-        markFree(tree.symbol, addSelects(tree.symbol.termRef, pt), tree.srcPos)
+        val ref = tree.symbol.termRef
+        val pathRef = addSelects(ref, pt)
+        //if pathRef ne ref then
+        //  println(i"add selects $ref --> $pathRef")
+        markFree(tree.symbol, if false then ref else pathRef, tree.srcPos)
       super.recheckIdent(tree, pt)
 
     override def selectionProto(tree: Select, pt: Type)(using Context): Type =
-      if !tree.symbol.isOneOf(UnstableValueFlags) then PathSelectionProto(tree.symbol, pt)
+      val sym = tree.symbol
+      if !sym.isOneOf(UnstableValueFlags) && !sym.isStatic then PathSelectionProto(sym, pt)
       else super.selectionProto(tree, pt)
 
     /** A specialized implementation of the selection rule.
@@ -1141,11 +1149,14 @@ class CheckCaptures extends Recheck, SymTransformer:
         (erefs /: erefs.elems): (erefs, eref) =>
           eref match
             case eref: ThisType if isPureContext(ctx.owner, eref.cls) =>
-              erefs ++ arefs.filter {
-                case aref: TermRef => eref.cls.isProperlyContainedIn(aref.symbol.owner)
+              def isOuterRef(aref: Type): Boolean = aref match
+                case aref: TermRef =>
+                  val owner = aref.symbol.owner
+                  if owner.isClass then isOuterRef(aref.prefix)
+                  else eref.cls.isProperlyContainedIn(owner)
                 case aref: ThisType => eref.cls.isProperlyContainedIn(aref.cls)
                 case _ => false
-              }
+              erefs ++ arefs.filter(isOuterRef)
             case _ =>
               erefs
 
