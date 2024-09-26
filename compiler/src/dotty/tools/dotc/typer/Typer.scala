@@ -78,6 +78,9 @@ object Typer {
   /** An attachment for GADT constraints that were inferred for a pattern. */
   val InferredGadtConstraints = new Property.StickyKey[core.GadtConstraint]
 
+  /** Inducates that a definition was copied over from the parent refinements */
+  val RefinementFromParent = new Property.StickyKey[Unit]
+
   /** An attachment on a Select node with an `apply` field indicating that the `apply`
    *  was inserted by the Typer.
    */
@@ -3081,7 +3084,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             ( if sym.isType then TypeDef(sym.asType)
               else if sym.is(Method) then DefDef(sym.asTerm)
               else ValDef(sym.asTerm)
-            ).withSpan(impl.span.startPos)
+            ).withSpan(impl.span.startPos).withAttachment(RefinementFromParent, ())
           body ++ refinements
         case None =>
           body
