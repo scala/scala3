@@ -1,6 +1,11 @@
 name: Releases
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'The version to officially release'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -29,4 +34,4 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Publish to SDKMAN
-        run: .github/workflows/scripts/publish-sdkman.sh
+        run: .github/workflows/scripts/publish-sdkman.sh ${{ inputs.version }}

@@ -10,7 +10,7 @@
 set -u
 
 # latest stable dotty version
-DOTTY_VERSION=$(curl -s https://api.github.com/repos/lampepfl/dotty/releases/latest  | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+DOTTY_VERSION=$1
 DOTTY_URL="https://github.com/lampepfl/dotty/releases/download/$DOTTY_VERSION/scala3-$DOTTY_VERSION.zip"
 
 # checking if dotty version is available
@@ -34,17 +34,18 @@ if [[ $? -ne 0 ]]; then
   exit 1
 fi
 
+# We don't set LTS versions as default candidates, we prefer Next instead
 # Set DOTTY_VERSION as Default for Candidate
-curl --silent --show-error --fail \
-    -X PUT \
-    -H "Consumer-Key: $SDKMAN_KEY" \
-    -H "Consumer-Token: $SDKMAN_TOKEN" \
-    -H "Content-Type: application/json" \
-    -H "Accept: application/json" \
-    -d '{"candidate": "scala", "version": "'"$DOTTY_VERSION"'"}' \
-    https://vendors.sdkman.io/default
+# curl --silent --show-error --fail \
+#     -X PUT \
+#     -H "Consumer-Key: $SDKMAN_KEY" \
+#     -H "Consumer-Token: $SDKMAN_TOKEN" \
+#     -H "Content-Type: application/json" \
+#     -H "Accept: application/json" \
+#     -d '{"candidate": "scala", "version": "'"$DOTTY_VERSION"'"}' \
+#     https://vendors.sdkman.io/default
 
-if [[ $? -ne 0 ]]; then
-  echo "Fail sending PUT request to announcing the release of scala on SDKMAN."
-  exit 1
-fi
+# if [[ $? -ne 0 ]]; then
+#   echo "Fail sending PUT request to announcing the release of scala on SDKMAN."
+#   exit 1
+# fi
