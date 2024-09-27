@@ -369,8 +369,8 @@ object JavaParsers {
     def annotation(): Option[Tree] = {
       def classOrId(): Tree =
         val id = qualId()
-        if in.lookaheadToken == CLASS then
-          in.nextToken()
+        if in.token == DOT && in.lookaheadToken == CLASS then
+          accept(DOT)
           accept(CLASS)
           TypeApply(
             Select(
