@@ -1089,7 +1089,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       if actualBoxed eq actual then
         // Only `addOuterRefs` when there is no box adaptation
-        expected1 = addOuterRefs(expected1, actual)
+        expected1 = addOuterRefs(expected1, actual, tree.srcPos)
       if isCompatible(actualBoxed, expected1) then
         if debugSuccesses then tree match
             case Ident(_) =>
@@ -1130,8 +1130,12 @@ class CheckCaptures extends Recheck, SymTransformer:
      *     that are outside `Cls`. These are all accessed through `Cls.this`,
      *     so we can assume they are already accounted for by `Ce` and adding
      *     them explicitly to `Ce` changes nothing.
+     *   - To make up for this, we also add these variables to the capture set of `Cls`,
+     *     so that all instances of `Cls` will capture these outer references.
+     *  So in a sense we use `{Cls.this}` as a placeholder for certain outer captures.
+     *  that we needed to be subsumed by `Cls.this`.
      */
-    private def addOuterRefs(expected: Type, actual: Type)(using Context): Type =
+    private def addOuterRefs(expected: Type, actual: Type, pos: SrcPos)(using Context): Type =
 
       def isPure(info: Type): Boolean = info match
         case info: PolyType => isPure(info.resType)
@@ -1144,19 +1148,40 @@ class CheckCaptures extends Recheck, SymTransformer:
         else isPure(owner.info) && isPureContext(owner.owner, limit)
 
       // Augment expeced capture set `erefs` by all references in actual capture
-      // set `arefs` that are outside some `this.type` reference in `erefs`
+      // set `arefs` that are outside some `C.this.type` reference in `erefs` for an enclosing
+      // class `C`. If an added reference is not a ThisType itself, add it to the capture set
+      // (i.e. use set) of the `C`. This makes sure that any outer reference implicitly subsumed
+      // by `C.this` becomes a capture reference of every instance of `C`.
       def augment(erefs: CaptureSet, arefs: CaptureSet): CaptureSet =
         (erefs /: erefs.elems): (erefs, eref) =>
           eref match
             case eref: ThisType if isPureContext(ctx.owner, eref.cls) =>
-              def isOuterRef(aref: Type): Boolean = aref match
-                case aref: TermRef =>
-                  val owner = aref.symbol.owner
-                  if owner.isClass then isOuterRef(aref.prefix)
-                  else eref.cls.isProperlyContainedIn(owner)
+
+              def pathRoot(aref: Type): Type = aref match
+                case aref: NamedType if aref.symbol.owner.isClass => pathRoot(aref.prefix)
+                case _ => aref
+
+              def isOuterRef(aref: Type): Boolean = pathRoot(aref) match
+                case aref: NamedType => eref.cls.isProperlyContainedIn(aref.symbol.owner)
                 case aref: ThisType => eref.cls.isProperlyContainedIn(aref.cls)
                 case _ => false
-              erefs ++ arefs.filter(isOuterRef)
+
+              val outerRefs = arefs.filter(isOuterRef)
+
+              // Include implicitly added outer references in the capture set of the class of `eref`.
+              for outerRef <- outerRefs.elems do
+                if !erefs.elems.contains(outerRef)
+                    && !pathRoot(outerRef).isInstanceOf[ThisType]
+                    // we don't need to add outer ThisTypes as these are anyway added as path
+                    // prefixes at the use site. And this exemption is required since capture sets
+                    // of non-local classes are always empty, so we can't add an outer this to them.
+                then
+                  def provenance =
+                    i""" of the enclosing class ${eref.cls}.
+                       |The reference was included since we tried to establish that $arefs <: $erefs"""
+                  checkElem(outerRef, capturedVars(eref.cls), pos, provenance)
+
+              erefs ++ outerRefs
             case _ =>
               erefs
 
@@ -1341,7 +1366,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         *  @param sym  symbol of the field definition that is being checked
         */
         override def checkSubType(actual: Type, expected: Type)(using Context): Boolean =
-          val expected1 = alignDependentFunction(addOuterRefs(expected, actual), actual.stripCapturing)
+          val expected1 = alignDependentFunction(addOuterRefs(expected, actual, srcPos), actual.stripCapturing)
           val actual1 =
             val saved = curEnv
             try
