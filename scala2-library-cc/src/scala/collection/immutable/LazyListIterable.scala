@@ -1041,7 +1041,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
       var itHasNext       = false
       var rest            = restRef           // var rest = restRef.elem
       while (!itHasNext && !rest.isEmpty) {
-        it        = f(rest.head).iterator
+        it        = f(rest.head).iterator.asInstanceOf // CC TODO asInstanceOf needed once we drop special handling of apply
         itHasNext = it.hasNext
         if (!itHasNext) {                     // wait to advance `rest` because `it.next()` can throw
           rest    = rest.tail
@@ -1155,7 +1155,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
   /** Creates a State from an Iterator, with another State appended after the Iterator
     * is empty.
     */
-  private def stateFromIteratorConcatSuffix[A](it: Iterator[A]^)(suffix: => State[A]^): State[A]^{it, suffix} =
+  private def stateFromIteratorConcatSuffix[A, C^](it: Iterator[A]^)(suffix: => State[A]^{C^}): State[A]^{it, suffix, C^} =
     if (it.hasNext) sCons(it.next(), newLL(stateFromIteratorConcatSuffix(it)(suffix)))
     else suffix
 

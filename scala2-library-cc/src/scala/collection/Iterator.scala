@@ -588,6 +588,8 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     def next() = f(self.next())
   }
 
+  // CC TODO This is unsafe. We will need to use a capture set variable:
+  //    def flatMap[B][C^](f: A => IterableOnce[B]^{C^}): Iterator[B]^{this, f, C^}
   def flatMap[B](f: A => IterableOnce[B]^): Iterator[B]^{this, f} = new AbstractIterator[B] {
     private[this] var cur: Iterator[B]^{f} = Iterator.empty
     /** Trillium logic boolean: -1 = unknown, 0 = false, 1 = true */
@@ -595,7 +597,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
 
     private[this] def nextCur(): Unit = {
       cur = null
-      cur = f(self.next()).iterator
+      cur = f(self.next()).iterator.asInstanceOf // CC cast needed once apply special handling is dropped
       _hasNext = -1
     }
 
@@ -1215,7 +1217,7 @@ object Iterator extends IterableFactory[Iterator] {
   }
 
   private[this] final class ConcatIteratorCell[A](head: => IterableOnce[A]^, var tail: ConcatIteratorCell[A]) {
-    def headIterator: Iterator[A]^{this} = head.iterator // CC todo: can't use {head} as capture set, gives "cannot establish a reference"
+    def headIterator: Iterator[A]^{this.head*} = head.iterator // CC todo: can't use {head} as capture set, gives "cannot establish a reference"
   }
 
   /** Creates a delegating iterator capped by a limit count. Negative limit means unbounded.

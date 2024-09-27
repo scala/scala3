@@ -581,7 +581,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         markFree(argType.deepCaptureSet, arg.srcPos)
       argType
 
-    /** A specialized implementation of the apply rule.
+    /** CURRENTLY DISABLED:
+     *  A specialized implementation of the apply rule.
      *
      *  E |- q: Tq^Cq
      *  E |- q.f: Ta^Ca ->Cf Tr^Cr
@@ -604,6 +605,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     protected override
     def recheckApplication(tree: Apply, qualType: Type, funType: MethodType, argTypes: List[Type])(using Context): Type =
       val appType = Existential.toCap(super.recheckApplication(tree, qualType, funType, argTypes))
+      return appType
       val qualCaptures = qualType.captureSet
       val argCaptures =
         for (arg, argType) <- tree.args.lazyZip(argTypes) yield
@@ -1150,10 +1152,11 @@ class CheckCaptures extends Recheck, SymTransformer:
           eref match
             case eref: ThisType if isPureContext(ctx.owner, eref.cls) =>
               def isOuterRef(aref: Type): Boolean = aref match
-                case aref: TermRef =>
+                case aref: NamedType =>
                   val owner = aref.symbol.owner
                   if owner.isClass then isOuterRef(aref.prefix)
-                  else eref.cls.isProperlyContainedIn(owner)
+                  else
+                    eref.cls.isProperlyContainedIn(owner)
                 case aref: ThisType => eref.cls.isProperlyContainedIn(aref.cls)
                 case _ => false
               erefs ++ arefs.filter(isOuterRef)

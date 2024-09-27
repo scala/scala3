@@ -13,8 +13,8 @@ abstract class Iterator[T]:
     def next = f(thisIterator.next)
 end Iterator
 
-private[this] final class ConcatIteratorCell[A](head: => IterableOnce[A]^):
-  def headIterator: Iterator[A]^{this} = head.iterator
+private[this] final class ConcatIteratorCell[A, C^](head: => IterableOnce[A]^{C^}):
+  def headIterator: Iterator[A]^{this, C^} = head.iterator
 
 class C
 type Cap = C^

@@ -36,8 +36,8 @@ trait Iterator[+A] extends IterableOnce[A]:
   def ++[B >: A](xs: IterableOnce[B]^): Iterator[B]^{this, xs}
 end Iterator
 
-private final class ConcatIteratorCell[A](head: => IterableOnce[A]^):
-  def headIterator: Iterator[A]^{this} = head.iterator
+private final class ConcatIteratorCell[A, C^](head: => IterableOnce[A]^{C^}):
+  def headIterator: Iterator[A]^{this, C^} = head.iterator
 
 def usingLogFile[R](op: FileOutputStream^ => R): R =
   val logFile = FileOutputStream("log")

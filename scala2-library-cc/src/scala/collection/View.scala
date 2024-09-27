@@ -57,7 +57,7 @@ object View extends IterableFactory[View] {
     * @tparam A View element type
     */
   def fromIteratorProvider[A](it: () => Iterator[A]^): View[A]^{it} = new AbstractView[A] {
-    def iterator: Iterator[A]^{it} = it()
+    def iterator: Iterator[A]^{it} = it().asInstanceOf // CC TODO asInstanceOf needed once we drop special handling of apply
   }
 
   /**

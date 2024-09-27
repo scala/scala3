@@ -14,7 +14,7 @@ object LazyNil extends LazyList[Nothing]:
   def tail = ???
   def concat[B](other: LazyList[B]^): LazyList[B]^{other} = other
 
-final class LazyCons[+A](x: A)(xs: () => LazyList[A]^) extends LazyList[A]:
+def LazyCons[A, C^](x: A)(xs: () => LazyList[A]^{C^}): LazyList[A]^{xs, C^} = new LazyList[A]:
   def isEmpty = false
   def head = x
   def tail: LazyList[A]^{this} = xs()
@@ -30,10 +30,10 @@ def test(cap1: Cap, cap2: Cap) =
   def f(x: String): String = if cap1 == cap1 then "" else "a"
   def g(x: String): String = if cap2 == cap2 then "" else "a"
 
-  val xs = new LazyCons("")(() => if f("") == f("") then LazyNil else LazyNil)
+  val xs = LazyCons("")(() => if f("") == f("") then LazyNil else LazyNil)
   val xsc: LazyList[String]^{cap1} = xs
   val ys = xs.map(g)
   val ysc: LazyList[String]^{cap1, cap2} = ys
-  val zs = new LazyCons("")(() => if g("") == g("") then LazyNil else LazyNil)
+  val zs = LazyCons("")(() => if g("") == g("") then LazyNil else LazyNil)
   val as = xs.concat(zs)
   val asc: LazyList[String]^{xs, zs} = as

@@ -433,8 +433,8 @@ object CollectionStrawMan5 {
   }
 
   object View {
-    def fromIterator[A](it: => Iterator[A]^): View[A]^{it} = new View[A]:
-        def iterator: Iterator[A]^{this} = it
+    def fromIterator[A, CI^](it: => Iterator[A]^{CI^}): View[A]^{it, CI^} = new View[A]:
+        def iterator: Iterator[A]^{this, CI^} = it
 
     case object Empty extends View[Nothing] {
       def iterator: Iterator[Nothing] = Iterator.empty
@@ -555,7 +555,15 @@ object CollectionStrawMan5 {
       private var myCurrent: Iterator[B]^{this, f} = Iterator.empty
       private def current = {
         while (!myCurrent.hasNext && self.hasNext)
-          myCurrent = f(self.next()).iterator
+          myCurrent = f(self.next()).iterator.asInstanceOf
+            // TODO: This is actually unsafe, we need to use a capture set variable for `flatMap`, like this:
+            //   def flatMap[B, C^](f: A => IterableOnce[B]^{C^}): Iterator[B]^{this, f, C^}
+            // but if we do this we get:
+            //   Local reach capability C leaks into capture scope of method flatMap
+            // The problem is we can do this only if we upgrade use reasoning. The C capability
+            // is not used at the call of flatMap. It's used later in the iterator.
+            // So the correct type of `flatMap` that expresses this should be:
+            //   def flatMap[B, C^](deferred f: A => IterableOnce[B]^{C^}): Iterator[B]^{this, f, C^}
         myCurrent
       }
       def hasNext = current.hasNext
