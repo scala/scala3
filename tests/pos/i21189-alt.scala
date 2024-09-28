@@ -1,5 +1,3 @@
-//> using options -source:future -language:experimental.modularity
-
 class MySortedSet[T : Ord] extends SortedSet[T]
 
 trait Ord[T]
