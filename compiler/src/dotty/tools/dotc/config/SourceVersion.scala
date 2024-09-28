@@ -16,6 +16,8 @@ enum SourceVersion:
   // !!! Keep in sync with scala.runtime.stdlibPatches.language !!!
   case `future-migration`, `future`
 
+  case `never`    // needed for MigrationVersion.errorFrom if we never want to issue an error
+
   val isMigrating: Boolean = toString.endsWith("-migration")
 
   def stable: SourceVersion =

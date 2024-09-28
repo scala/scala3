@@ -2240,7 +2240,16 @@ object Parsers {
         in.nextToken()
         if in.token == LBRACE && sourceVersion.isAtLeast(`3.6`)
         then inBraces(commaSeparated(() => contextBound(pname)))
-        else contextBound(pname) :: contextBounds(pname)
+        else
+          val bound = contextBound(pname)
+          val rest =
+            if in.isColon then
+              report.errorOrMigrationWarning(
+                em"Multiple context bounds should be enclosed in `{ ... }`",
+                in.sourcePos(), MigrationVersion.GivenSyntax)
+              contextBounds(pname)
+            else Nil
+          bound :: rest
       else if in.token == VIEWBOUND then
         report.errorOrMigrationWarning(
           em"view bounds `<%' are no longer supported, use a context bound `:' instead",
@@ -4261,6 +4270,9 @@ object Parsers {
             in.nextToken()
             newSignature()
           else if hasEmbeddedColon then
+            report.errorOrMigrationWarning(
+              em"This old given syntax is no longer supported; use `=>` instead of `:`",
+              in.sourcePos(), MigrationVersion.GivenSyntax)
             newSyntaxAllowed = false
             val tparamsOld = typeParamClauseOpt(ParamOwner.Given)
             newLineOpt()
@@ -4294,6 +4306,11 @@ object Parsers {
           // old-style abstract given
           if name.isEmpty then
             syntaxError(em"Anonymous given cannot be abstract, or maybe you want to define a concrete given and are missing a `()` argument?", in.lastOffset)
+          if newSyntaxAllowed then
+            report.errorOrMigrationWarning(
+              em"""This defines an abstract given, which is no longer supported. Use a `deferred` given instead.
+                  |Or, if you intend to define a concrete given, follow the type with `()` arguments.""",
+              in.sourcePos(in.lastOffset), MigrationVersion.GivenSyntax)
           DefDef(name, adjustDefParams(joinParams(tparams, vparamss)), parents.head, EmptyTree)
         else
           // structural instance
@@ -4483,6 +4500,9 @@ object Parsers {
 
     /** with Template, with EOL <indent> interpreted */
     def withTemplate(constr: DefDef, parents: List[Tree]): Template =
+      report.errorOrMigrationWarning(
+          em"Given member definitions starting with `with` are no longer supported; use `{...}` or `:` followed by newline instead",
+          in.sourcePos(), MigrationVersion.GivenSyntax)
       accept(WITH)
       val (self, stats) = templateBody(parents, rewriteWithColon = false)
       Template(constr, parents, Nil, self, stats)
