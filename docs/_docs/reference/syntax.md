@@ -214,7 +214,11 @@ ParamValueType    ::=  Type [‘*’]
 TypeArgs          ::=  ‘[’ Types ‘]’
 Refinement        ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]
-TypeAndCtxBounds  ::=  TypeBounds {‘:’ Type}
+TypeAndCtxBounds  ::=  TypeBounds [‘:’ ContextBounds]
+ContextBounds     ::=  ContextBound
+                    |  ContextBound `:` ContextBounds         -- to be deprecated
+                    |  '{' ContextBound {',' ContextBound} '}'
+ContextBound      ::=  Type ['as' id]
 Types             ::=  Type {‘,’ Type}
 ```
 
@@ -437,16 +441,29 @@ TypeDef           ::=  id [HkTypeParamClause] {FunParamClause}TypeBounds        
 TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef
                     |  ‘enum’ EnumDef
-                    |  ‘given’ GivenDef
+                    |  ‘given’ (GivenDef | OldGivenDef)
 ClassDef          ::=  id ClassConstr [Template]
 ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses
 ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody
-GivenDef          ::=  [GivenSig] (AnnotType [‘=’ Expr] | StructuralInstance)
-GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’         -- one of `id`, `DefTypeParamClause`, `UsingParamClause` must be present
-GivenType         ::=  AnnotType {id [nl] AnnotType}
+
+GivenDef          ::=  [id ':'] GivenSig
+GivenSig          ::=  GivenImpl
+                    |  '(' ')' '=>' GivenImpl
+                    |  GivenConditional '=>' GivenSig
+GivenImpl         ::=  GivenType ([‘=’ Expr] | TemplateBody)
+                    |  ConstrApps TemplateBody
+GivenConditional  ::=  DefTypeParamClause
+                    |  DefTermParamClause
+                    |  '(' FunArgTypes ')'
+                    |  GivenType
+GivenType         ::=  AnnotType1 {id [nl] AnnotType1}
+
+OldGivenDef       ::=  [OldGivenSig] (AnnotType [‘=’ Expr] | StructuralInstance) -- syntax up to Scala 3.5, to be deprecated in the future
+OldGivenSig       ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’         -- one of `id`, `DefTypeParamClause`, `UsingParamClause` must be present
 StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} [‘with’ WithTemplateBody]
+
 Extension         ::=  ‘extension’ [DefTypeParamClause] {UsingParamClause}
                        ‘(’ DefTermParam ‘)’ {UsingParamClause} ExtMethods
 ExtMethods        ::=  ExtMethod | [nl] <<< ExtMethod {semi ExtMethod} >>>

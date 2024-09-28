@@ -994,8 +994,8 @@ object Parsers {
       skipParams()
       lookahead.isColon
       && {
-        !in.featureEnabled(Feature.modularity)
-        || { // with modularity language import, a `:` at EOL after an identifier represents a single identifier given
+        !sourceVersion.isAtLeast(`3.6`)
+        || { // in the new given syntax, a `:` at EOL after an identifier represents a single identifier given
              // Example:
              //    given C:
              //      def f = ...
@@ -1833,7 +1833,7 @@ object Parsers {
       infixOps(t, canStartInfixTypeTokens, operand, Location.ElseWhere, ParseKind.Type,
         isOperator = !followingIsVararg()
                      && !isPureArrow
-                     && !(isIdent(nme.as) && in.featureEnabled(Feature.modularity))
+                     && !(isIdent(nme.as) && sourceVersion.isAtLeast(`3.6`))
                      && nextCanFollowOperator(canStartInfixTypeTokens))
 
     /** RefinedType   ::=  WithType {[nl] Refinement} [`^` CaptureSet]
@@ -2226,18 +2226,19 @@ object Parsers {
     def contextBound(pname: TypeName): Tree =
       val t = toplevelTyp()
       val ownName =
-        if isIdent(nme.as) && in.featureEnabled(Feature.modularity) then
+        if isIdent(nme.as) && sourceVersion.isAtLeast(`3.6`) then
           in.nextToken()
           ident()
         else EmptyTermName
       ContextBoundTypeTree(t, pname, ownName)
 
-    /** ContextBounds     ::= ContextBound | `{` ContextBound {`,` ContextBound} `}`
+    /** ContextBounds     ::= ContextBound [`:` ContextBounds]
+     *                      | `{` ContextBound {`,` ContextBound} `}`
      */
     def contextBounds(pname: TypeName): List[Tree] =
       if in.isColon then
         in.nextToken()
-        if in.token == LBRACE && in.featureEnabled(Feature.modularity)
+        if in.token == LBRACE && sourceVersion.isAtLeast(`3.6`)
         then inBraces(commaSeparated(() => contextBound(pname)))
         else contextBound(pname) :: contextBounds(pname)
       else if in.token == VIEWBOUND then
@@ -4189,7 +4190,7 @@ object Parsers {
     def givenDef(start: Offset, mods: Modifiers, givenMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, givenMod)
       val nameStart = in.offset
-      var newSyntaxAllowed = in.featureEnabled(Feature.modularity)
+      var newSyntaxAllowed = sourceVersion.isAtLeast(`3.6`)
       val hasEmbeddedColon = !in.isColon && followingIsGivenDefWithColon()
       val name = if isIdent && hasEmbeddedColon then ident() else EmptyTermName
 
@@ -4293,11 +4294,6 @@ object Parsers {
           // old-style abstract given
           if name.isEmpty then
             syntaxError(em"Anonymous given cannot be abstract, or maybe you want to define a concrete given and are missing a `()` argument?", in.lastOffset)
-          if newSyntaxAllowed then
-            warning(
-              em"""This defines an abstract given, which is deprecated. Use a `deferred` given instead.
-                  |Or, if you intend to define a concrete given, follow the type with `()` arguments.""",
-              in.lastOffset)
           DefDef(name, adjustDefParams(joinParams(tparams, vparamss)), parents.head, EmptyTree)
         else
           // structural instance
