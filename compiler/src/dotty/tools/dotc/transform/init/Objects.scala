@@ -755,10 +755,10 @@ class Objects(using Context @constructorOnly):
           instance
 
       def cachedEval(thisV: ThisValue, expr: Tree, klass: ClassSymbol, ctx: EvalContext): Contextual[Value] =
+        val env = summon[Env.Data]
         ctx match
           case EvalContext.Method(meth) =>
             // Only perform footprint optimization for method context
-            val env = summon[Env.Data]
             val roots = env.flatten.toSeq :+ thisV :+ State.currentObjectRef
             val footprint = Heap.footprint(Heap.getHeapData(), roots, State.currentObjectRef)
             val config = Config.Call(thisV, env, footprint)
@@ -768,7 +768,16 @@ class Objects(using Context @constructorOnly):
               val returns = Returns.popHandler(meth)
               res.join(returns)
 
-          case _ =>
+          case EvalContext.LazyVal | EvalContext.Function =>
+            val config = Config.Call(thisV, env, Heap.getHeapData())
+            val result = super.cachedEval(config, expr, default = Res(Bottom, config.heap, Set.empty)) {
+              val resValue = cases(expr, thisV, klass)
+              Res(resValue, Heap.getHeapData(), Heap.getChangeSet())
+            }
+            Heap.update(result.heap, result.changeSet)
+            result.value
+
+          case EvalContext.Other =>
             cases(expr, thisV, klass)
 
       def cachedWithMemoryOptimization(config: Config, tree: Tree, default: Value)(doEval: => Value)(using Heap.MutableData, State.Data, Trace): Value =
