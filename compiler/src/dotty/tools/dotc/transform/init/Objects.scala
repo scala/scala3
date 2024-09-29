@@ -690,8 +690,7 @@ class Objects(using Context @constructorOnly):
      *
      *  The reasoning above is similar to the frame rule in separation logic.
      */
-    def footprint(heap: Data, thisV: Value, env: Env.Data, currentObj: ObjectRef)(using Trace): Data =
-      val roots = env.flatten.toSeq :+ thisV :+ currentObj
+    def footprint(heap: Data, roots: Iterable[Value | Addr], currentObj: ObjectRef)(using Trace): Data =
       val reachableKeys = reachableAddresses(roots, heap, currentObj, "footprint")
       heap.filter((k, v) => reachableKeys.contains(k))
 
@@ -720,38 +719,57 @@ class Objects(using Context @constructorOnly):
 
   /** Cache used to terminate the check  */
   object Cache:
-    case class Config(thisV: Value, env: Env.Data, heap: Heap.Data)
+    enum Config:
+      val heap: Heap.Data
+
+      /** The cache key for instantiation does not contain the value for `this` */
+      case Instantiation(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], env: Env.Data, heap: Heap.Data)
+
+      /** The cache key for method calls contain the value for `this` */
+      case Call(thisV: Value, env: Env.Data, heap: Heap.Data)
+
     case class Res(value: Value, heap: Heap.Data, changeSet: Set[Addr])
 
     class Data extends Cache[Config, Res]:
-      def get(thisV: Value, expr: Tree)(using Heap.MutableData, Env.Data): Option[Value] =
-        val config = Config(thisV, summon[Env.Data], Heap.getHeapData())
-        super.get(config, expr).map(_.value)
+      def cachedInstantiate(klass: ClassSymbol, outer: Value, ctor: Symbol, argInfos: List[ArgInfo], envOuter: Env.Data): Contextual[Value] =
+        val args = argInfos.map(_.value)
+        val instance = OfClass(klass, outer, ctor, args, envOuter)
+        val roots = envOuter.flatten.toSeq ++ args :+ State.currentObjectRef
+        val footprint = Heap.footprint(Heap.getHeapData(), roots, State.currentObjectRef)
+        val config = Config.Instantiation(klass, outer, ctor, args, envOuter, footprint)
+        cachedWithMemoryOptimization(config, klass.defTree, default = instance):
+          given Env.Data = Env.NoEnv
+          callConstructor(instance, ctor, argInfos)
+          instance
 
-      def cachedEval(thisV: ThisValue, expr: Tree, ctx: EvalContext)(fun: Tree => Value)(using Heap.MutableData, Env.Data, State.Data, Returns.Data, Trace): Value =
-        val env = summon[Env.Data]
+      def cachedEval(thisV: ThisValue, expr: Tree, klass: ClassSymbol, ctx: EvalContext): Contextual[Value] =
+        ctx match
+          case EvalContext.Method(meth) =>
+            // Only perform footprint optimization for method context
+            val env = summon[Env.Data]
+            val roots = env.flatten.toSeq :+ thisV :+ State.currentObjectRef
+            val footprint = Heap.footprint(Heap.getHeapData(), roots, State.currentObjectRef)
+            val config = Config.Call(thisV, env, footprint)
+            cachedWithMemoryOptimization(config, expr, default = Bottom):
+              Returns.installHandler(meth)
+              val res = cases(expr, thisV, klass)
+              val returns = Returns.popHandler(meth)
+              res.join(returns)
+
+          case _ =>
+            cases(expr, thisV, klass)
+
+      def cachedWithMemoryOptimization(config: Config, tree: Tree, default: Value)(doEval: => Value)(using Heap.MutableData, State.Data, Trace): Value =
         val heapBefore = Heap.getHeapData()
         val changeSetBefore = Heap.getChangeSet()
-        // Only perform footprint optimization for method context
-        val footprint =
-          if ctx == EvalContext.Method then
-            Heap.footprint(Heap.getHeapData(), thisV, env, State.currentObjectRef)
-          else
-            heapBefore
-        val config = Config(thisV, env, footprint)
 
-        Heap.update(footprint, changeSet = Set.empty)
-        val cacheResult = ctx != EvalContext.Other
-        val result = super.cachedEval(config, expr, cacheResult, default = Res(Bottom, footprint, Set.empty)) { expr =>
-          val value = fun(expr)
+        Heap.update(config.heap, changeSet = Set.empty)
+        val result = super.cachedEval(config, tree, default = Res(default, config.heap, Set.empty)) {
+          val value = doEval
           val heapAfter = Heap.getHeapData()
           val changeSetNew = Heap.getChangeSet()
           // Only perform garbage collection for method context
-          val heapGC =
-            if ctx == EvalContext.Method then
-              Heap.gc(value :: Nil, footprint, heapAfter, changeSetNew, State.currentObjectRef)
-            else
-              heapAfter
+          val heapGC = Heap.gc(value :: Nil, config.heap, heapAfter, changeSetNew, State.currentObjectRef)
           Res(value, heapGC, changeSetNew)
         }
         Heap.update(Heap.join(heapBefore, result.heap), changeSetBefore ++ result.changeSet)
@@ -939,12 +957,7 @@ class Objects(using Context @constructorOnly):
           val env2 = Env.of(ddef, args.map(_.value), outerEnv)
           extendTrace(ddef) {
             given Env.Data = env2
-            cache.cachedEval(ref, ddef.rhs, EvalContext.Method) { expr =>
-              Returns.installHandler(meth)
-              val res = cases(expr, thisV, cls)
-              val returns = Returns.popHandler(meth)
-              res.join(returns)
-            }
+            eval(ddef.rhs, thisV, cls, EvalContext.Method(meth))
           }
         else
           Bottom
@@ -995,7 +1008,7 @@ class Objects(using Context @constructorOnly):
    * @param ctor         The symbol of the target method.
    * @param args         Arguments of the constructor call (all parameter blocks flatten to a list).
    */
-  def callConstructor(value: Value, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args.map(_.value.show)  + ", heap = " + Heap.show, printer, (_: Value).show) {
+  def callConstructor(value: Value, ctor: Symbol, args: List[ArgInfo]): Contextual[Unit] = log("call " + ctor.show + ", args = " + args.map(_.value.show)  + ", heap = " + Heap.show, printer, (_: Value).show) {
     value match
     case ref: Ref =>
       if ctor.hasSource then
@@ -1003,20 +1016,14 @@ class Objects(using Context @constructorOnly):
         val ddef = ctor.defTree.asInstanceOf[DefDef]
         val argValues = args.map(_.value)
 
-        def doEval(tree: Tree)(using Trace): Value =
-          given Env.Data = Env.of(ddef, argValues, Env.NoEnv)
-          // No usage of `return` is possible in constructors --- still install
-          // return handler for uniform handling of method context.
-          Returns.installHandler(ctor)
-          val res = eval(tree, ref, cls, EvalContext.Construtor)
-          Returns.popHandler(ctor)
-          res
-
+        given Env.Data = Env.of(ddef, argValues, Env.NoEnv)
         if ctor.isPrimaryConstructor then
           val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-          extendTrace(cls.defTree) { doEval(tpl) }
+          extendTrace(cls.defTree):
+            init(tpl, ref, cls)
         else
-          extendTrace(ddef) { doEval(ddef.rhs) }
+          extendTrace(ddef):
+            eval(ddef.rhs, ref, cls, EvalContext.Other)
       else
         // no source code available
         Bottom
@@ -1176,10 +1183,7 @@ class Objects(using Context @constructorOnly):
                 // klass.enclosingMethod returns its primary constructor
                 Env.resolveEnv(klass.owner.enclosingMethod, thisV, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
 
-        // The actual instance might be cached without running the constructor.
-        // See tests/init-global/pos/cache-constructor.scala
-        val instance = OfClass(klass, outerWidened, ctor, args.map(_.value), envWidened)
-        callConstructor(instance, ctor, args)
+        cache.cachedInstantiate(klass, outerWidened, ctor, args, envWidened)
 
     case ValueSet(values) =>
       values.map(ref => instantiate(ref, klass, ctor, args)).join
@@ -1301,7 +1305,10 @@ class Objects(using Context @constructorOnly):
       accessObject(classSym)
 
   enum EvalContext:
-    case Method, Construtor, Function, LazyVal, Other
+    case Method(sym: Symbol)
+    case Function
+    case LazyVal
+    case Other
 
   /** Evaluate an expression with the given value for `this` in a given class `klass`
    *
@@ -1325,7 +1332,7 @@ class Objects(using Context @constructorOnly):
    */
   def eval(expr: Tree, thisV: ThisValue, klass: ClassSymbol, ctx: EvalContext = EvalContext.Other): Contextual[Value] =
     log("evaluating " + expr.show + ", this = " + thisV.show + ", heap = " + Heap.show + " in " + klass.show, printer, (_: Value).show) {
-      cache.cachedEval(thisV, expr, ctx) { expr => cases(expr, thisV, klass) }
+      cache.cachedEval(thisV, expr, klass, ctx)
     }
 
 
@@ -1400,6 +1407,7 @@ class Objects(using Context @constructorOnly):
           val receiver = eval(qual, thisV, klass)
           if ref.symbol.isConstructor then
             withTrace(trace2) { callConstructor(receiver, ref.symbol, args) }
+            Bottom
           else
             withTrace(trace2) { call(receiver, ref.symbol, args, receiver = qual.tpe, superType = NoType) }
 
@@ -1415,6 +1423,7 @@ class Objects(using Context @constructorOnly):
             val receiver = withTrace(trace2) { evalType(prefix, thisV, klass) }
             if id.symbol.isConstructor then
               withTrace(trace2) { callConstructor(receiver, id.symbol, args) }
+              Bottom
             else
               withTrace(trace2) { call(receiver, id.symbol, args, receiver = prefix, superType = NoType) }
 
@@ -1538,9 +1547,6 @@ class Objects(using Context @constructorOnly):
 
       case _: Import | _: Export =>
         Bottom
-
-      case tpl: Template =>
-        init(tpl, thisV.asInstanceOf[Ref], klass)
 
       case _ =>
         report.warning("[Internal error] unexpected tree: " + expr + "\n" + Trace.show, expr)
@@ -1886,7 +1892,6 @@ class Objects(using Context @constructorOnly):
         tasks.append { () =>
           printer.println("init super class " + cls.show)
           callConstructor(thisV, ctor, args)
-          ()
         }
 
     // parents

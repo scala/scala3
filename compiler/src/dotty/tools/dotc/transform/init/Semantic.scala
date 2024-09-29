@@ -1181,7 +1181,10 @@ object Semantic:
    * @param cacheResult It is used to reduce the size of the cache.
    */
   def eval(expr: Tree, thisV: Ref, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Value] = log("evaluating " + expr.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Value).show) {
-    cache.cachedEval(thisV, expr, cacheResult, default = Hot) { expr => cases(expr, thisV, klass) }
+    if cacheResult then
+      cache.cachedEval(thisV, expr, default = Hot) { cases(expr, thisV, klass) }
+    else
+      cases(expr, thisV, klass)
   }
 
   /** Evaluate a list of expressions */
