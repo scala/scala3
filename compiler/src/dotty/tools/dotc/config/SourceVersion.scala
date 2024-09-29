@@ -34,7 +34,7 @@ object SourceVersion extends Property.Key[SourceVersion]:
   def defaultSourceVersion = `3.6`
 
   /** language versions that may appear in a language import, are deprecated, but not removed from the standard library. */
-  val illegalSourceVersionNames = List("3.1-migration").map(_.toTermName)
+  val illegalSourceVersionNames = List("3.1-migration", "never").map(_.toTermName)
 
   /** language versions that the compiler recognises. */
   val validSourceVersionNames = values.toList.map(_.toString.toTermName)
