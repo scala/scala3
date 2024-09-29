@@ -1035,7 +1035,10 @@ class Objects(using Context @constructorOnly):
             init(tpl, ref, cls)
         else
           extendTrace(ddef):
+            // `return` is possible in secondary constructors
+            Returns.installHandler(ctor)
             eval(ddef.rhs, ref, cls, EvalContext.Other)
+            Returns.popHandler(ctor)
       else
         // no source code available
         Bottom
