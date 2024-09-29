@@ -731,6 +731,33 @@ class Objects(using Context @constructorOnly):
 
   /** Cache used to terminate the check  */
   object Cache:
+    /**
+     * TODO: heap optimization with memory side-effect analysis
+     *
+     * Observation:
+     *
+     * 1. Most methods will not read/mutate the heap (it may create more heap
+     *    cells), despite the fact that portions of the heap is reachable from
+     *    the method arugments and global objects.
+     *
+     * 2. If a particular execution of a method does not read any memory
+     *    addresses of the initial heap, then execution of the method with the
+     *    same arguments but a different heap cannot read memory addresses of
+     *    the initial heap.
+     *
+     * The above implies that in analyzing most methods, it suffices to use the
+     * empty heap which will be a better version of the footprint optimization.
+     *
+     * To figure out the memory effects of a method, we need to perform an
+     * analysis of the method. This effect analysis result can be computed as
+     * part of the analysis as part of the fixed-point computation:
+     *
+     *     Method x Env => HeapSensitive | HeapInsensitive
+     *
+     * Initially, we can assume a method to be heap-insensitive. If it is
+     * discovered to be heap-sensitive, another round of computation can be
+     * performed.
+     */
     enum Config:
       val heap: Heap.Data
 
