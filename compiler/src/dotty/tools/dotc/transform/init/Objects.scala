@@ -194,8 +194,20 @@ class Objects(using Context @constructorOnly):
     klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], env: Env.Data)(
     valsMap: mutable.Map[Symbol, Value], varsMap: mutable.Map[Symbol, Heap.Addr], outersMap: mutable.Map[ClassSymbol, Value])
   extends Ref(valsMap, varsMap, outersMap):
-    def widenedCopy(outer: Value, args: List[Value], env: Env.Data): OfClass =
-      new OfClass(klass, outer, ctor, args, env)(this.valsMap, this.varsMap, this.outersMap)
+    override def equals(that: Any): Boolean =
+      that match
+        case ref: OfClass =>
+          this.klass == ref.klass
+          && this.vals == ref.vals
+          && this.vars == ref.vars
+          && this.outers == ref.outers
+
+        case _ => false
+
+    def widenedCopy(outer: Value, args: List[Value], env: Env.Data, height: Int): OfClass =
+      val vals2 = vals.map { (k, v) => k -> v.widen(height) }
+      val outers2 = outers.map { (k, v) => k -> v.widen(height) }
+      new OfClass(klass, outer, ctor, args, env)(vals2, this.varsMap, outers2)
 
     def show(using Context) =
       val valFields = vals.map(_.show +  " -> " +  _.show)
@@ -851,7 +863,7 @@ class Objects(using Context @constructorOnly):
             val outer2 = outer.widen(height - 1)
             val args2 = args.map(_.widen(height - 1))
             val env2 = env.widen(height - 1)
-            ref.widenedCopy(outer2, args2, env2)
+            ref.widenedCopy(outer2, args2, env2, height - 1)
 
           case _ => a
 
