@@ -1,0 +1,37 @@
+=== Unrolled Test V1 ===
+Assertion passed: found "cow1" + "true0"
+Assertion passed: found "cow2" + "true0"
+Assertion passed: found "cow1" + "true0"
+Assertion passed: found "cow2" + "true0"
+Assertion passed: found "cow1" + "true0"
+Assertion passed: found "cow2" + "true0"
+Assertion passed: found "hello31337" + "true0"
+=== Unrolled Test V2 ===
+Assertion passed: found "cow1true" + "0"
+Assertion passed: found "cow2true" + "0"
+Assertion passed: found "cow2false" + "0"
+Assertion passed: found "cow1true" + "0"
+Assertion passed: found "cow2true" + "0"
+Assertion passed: found "cow2false" + "0"
+Assertion passed: found "cow1true" + "0"
+Assertion passed: found "cow2true" + "0"
+Assertion passed: found "cow2false" + "0"
+Assertion passed: found "hello31337false" + "0"
+=== Unrolled Test V3 ===
+Assertion passed: found "hello31337false12345"
+as expected, no constructor for Unrolled(s: String)
+public example.Unrolled(java.lang.String,int,boolean,long)
+public example.Unrolled(java.lang.String,int)
+public example.Unrolled(java.lang.String,int,boolean)
+Assertion passed: found "cow1true0"
+Assertion passed: found "cow2true0"
+Assertion passed: found "cow2false0"
+Assertion passed: found "cow2false9"
+Assertion passed: found "cow1true0"
+Assertion passed: found "cow2true0"
+Assertion passed: found "cow2false0"
+Assertion passed: found "cow2false9"
+Assertion passed: found "cow1true0"
+Assertion passed: found "cow2true0"
+Assertion passed: found "cow2false0"
+Assertion passed: found "cow2false9"
