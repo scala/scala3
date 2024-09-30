@@ -4,7 +4,7 @@ title: "Better Support for Type Classes"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/typeclasses.html
 ---
 
-Martin Odersky, 8.1.2024, edited 5.4.2024
+Martin Odersky, 8.1.2024, edited 5.4.2024 and 30.9.2024
 
 A type class in Scala is a pattern where we define
 
@@ -18,13 +18,14 @@ a bit cumbersome and limiting for standard generic programming patterns. Much ha
 This note shows that with some fairly small and reasonable tweaks to Scala's syntax and typing rules we can obtain a much better scheme for working with type classes, or do generic programming in general.
 
 The bulk of the suggested improvements has been implemented and is available
-under source version `future` if the additional experimental language import `modularity` is present. For instance, using the following command:
+in under source version `future` if the additional experimental language import `modularity` is present. For instance, using the following command:
 
 ```
   scala compile -source:future -language:experimental.modularity
 ```
 
-It is intended to turn features described here into proposals under the Scala improvement process. A first installment is SIP 64, which covers some syntactic changes, names for context bounds, multiple context bounds and deferred givens. The order of exposition described in this note is different from the planned proposals of SIPs. This doc is not a guide on how to sequence details, but instead wants to present a vision of what is possible. For instance, we start here with a feature (Self types and `is` syntax) that has turned out to be controversial and that will probably be proposed only late in the sequence of SIPs.
+It is intended to turn features described here into proposals under the Scala improvement process. A first installment is SIP 64, which covers some syntactic changes, names for context bounds, multiple context bounds and deferred givens. This SIP has been accepted for inclusion in the language and will be released in Scala 3.6. The remaining elements
+that concern type classes are described in the following. There is also a separate [page on modularity improvements](../modularity.md) that describes proposed additions not directly related to type classes.
 
 ## Generalizing Context Bounds
 
@@ -145,70 +146,6 @@ This makes writing instance definitions and using clauses quite pleasant. Exampl
 
 (more examples will follow below)
 
-
-
-## Naming Context Bounds
-
-Context bounds are a convenient and legible abbreviation. A problem so far is that they are always anonymous,
-one cannot name the using parameter to which a context bound expands.
-
-For instance, consider a `reduce` method over `Monoid`s defined like this:
-
-```scala
-def reduce[A : Monoid](xs: List[A]): A = ???
-```
-Since we don't have a name for the `Monoid` instance of `A`, we need to resort to `summon` in the body of `reduce`:
-```scala
-def reduce[A : Monoid](xs: List[A]): A =
-  xs.foldLeft(summon Monoid[A])(_ `combine` _)
-```
-That's generally considered too painful to write and read, hence people usually adopt one of two alternatives. Either, eschew context bounds and switch to using clauses:
-```scala
-def reduce[A](xs: List[A])(using m: Monoid[A]): A =
-  xs.foldLeft(m)(_ `combine` _)
-```
-Or, plan ahead and define a "trampoline" method in `Monoid`'s companion object:
-```scala
-  trait Monoid[A] extends SemiGroup[A]:
-    def unit: A
-  object Monoid:
-    def unit[A](using m: Monoid[A]): A = m.unit
-  ...
-  def reduce[A : Monoid](xs: List[A]): A =
-    xs.foldLeft(Monoid.unit)(_ `combine` _)
-```
-This is all accidental complexity which can be avoided by the following proposal.
-
-**Proposal:** Allow to name a context bound, like this:
-```scala
-  def reduce[A : Monoid as m](xs: List[A]): A =
-    xs.foldLeft(m.unit)(_ `combine` _)
-```
-
-We use `as x` after the type to bind the instance to `x`. This is analogous to import renaming, which also introduces a new name for something that comes before.
-
-**Benefits:** The new syntax is simple and clear.
-It avoids the awkward choice between concise context bounds that can't be named and verbose using clauses that can.
-
-### New Syntax for Aggregate Context Bounds
-
-Aggregate context bounds like `A : X : Y` are not obvious to read, and it becomes worse when we add names, e.g. `A : X as x : Y as y`.
-
-**Proposal:** Allow to combine several context bounds inside `{...}`, analogous
-to import clauses. Example:
-
-```scala
-  trait:
-    def showMax[X : {Ordering, Show}](x: X, y: X): String
-  class B extends A:
-    def showMax[X : {Ordering as ordering, Show as show}](x: X, y: X): String =
-      show.asString(ordering.max(x, y))
-```
-
-The old syntax with multiple `:` should be phased out over time.
-
-**Benefits:** The new syntax is much clearer than the old one, in particular for newcomers that don't know context bounds well.
-
 ### Better Default Names for Context Bounds
 
 So far, an unnamed context bound for a type parameter gets a synthesized fresh name. It would be much more useful if it got the name of the constrained type parameter instead, translated to be a term name. This means our `reduce` method over monoids would not even need an `as` binding. We could simply formulate it as follows:
@@ -233,330 +170,7 @@ The default naming convention reduces the need for named context bounds. But nam
  - They give an explanation what a single unnamed context bound expands to.
 
 
-### Expansion of Context Bounds
-
-Context bounds are currently translated to implicit parameters in the last parameter list of a method or class. This is a problem if a context bound is mentioned in one of the preceding parameter types. For example, consider a type class of parsers with associated type members `Input` and `Result` describing the input type on which the parsers operate and the type of results they produce:
-```scala
-trait Parser[P]:
-  type Input
-  type Result
-```
-Here is a method `run` that runs a parser on an input of the required type:
-
-```scala
-def run[P : Parser](in: P.Input): P.Result
-```
-Or, making clearer what happens by using an explicit name for the context bound:
-```scala
-def run[P : Parser as p](in: p.Input): p.Result
-```
-With the current translation this does not work since it would be expanded to:
-```scala
-  def run[P](x: p.Input)(using p: Parser[P]): p.Result
-```
-Note that the `p` in `p.Input` refers to the `p` introduced in the using clause, which comes later. So this is ill-formed.
-
-This problem would be fixed by changing the translation of context bounds so that they expand to using clauses immediately after the type parameter. But such a change is infeasible, for two reasons:
-
- 1. It would be a binary-incompatible change.
- 2. Putting using clauses earlier can impair type inference. A type in
-    a using clause can be constrained by term arguments coming before that
-    clause. Moving the using clause first would miss those constraints, which could cause ambiguities in implicit search.
-
-But there is an alternative which is feasible:
-
-**Proposal:** Map the context bounds of a method or class as follows:
-
- 1. If one of the bounds is referred to by its term name in a subsequent parameter clause, the context bounds are mapped to a using clause immediately preceding the first such parameter clause.
- 2. Otherwise, if the last parameter clause is a using (or implicit) clause, merge all parameters arising from context bounds in front of that clause, creating a single using clause.
- 3. Otherwise, let the parameters arising from context bounds form a new using clause at the end.
-
-Rules (2) and (3) are the status quo, and match Scala 2's rules. Rule (1) is new but since context bounds so far could not be referred to, it does not apply to legacy code. Therefore, binary compatibility is maintained.
-
-**Discussion** More refined rules could be envisaged where context bounds are spread over different using clauses so that each comes as late as possible. But it would make matters more complicated and the gain in expressiveness is not clear to me.
-
-Named (either explicitly, or by default) context bounds in givens that produce classes are mapped to tracked val's of these classes (see #18958). This allows
-references to these parameters to be precise, so that information about dependent type members is preserved.
-
-
-## Context Bounds for Type Members
-
-It's not very orthogonal to allow subtype bounds for both type parameters and abstract type members, but context bounds only for type parameters. What's more, we don't even have the fallback of an explicit using clause for type members. The only alternative is to also introduce a set of abstract givens that get implemented in each subclass. This is extremely heavyweight and opaque to newcomers.
-
-**Proposal**: Allow context bounds for type members. Example:
-
-```scala
-  class Collection:
-    type Element : Ord
-```
-
-The question is how these bounds are expanded. Context bounds on type parameters
-are expanded into using clauses. But for type members this does not work, since we cannot refer to a member type of a class in a parameter type of that class. What we are after is an equivalent of using parameter clauses but represented as class members.
-
-**Proposal:** Introduce a new way to implement a given definition in a trait like this:
-```scala
-given T = deferred
-```
-`deferred` is a new method in the `scala.compiletime` package, which can appear only as the right hand side of a given defined in a trait. Any class implementing that trait will provide an implementation of this given. If a definition is not provided explicitly, it will be synthesized by searching for a given of type `T` in the scope of the inheriting class. Specifically, the scope in which this given will be searched is the environment of that class augmented by its parameters but not containing its members (since that would lead to recursive resolutions). If an implementation _is_ provided explicitly, it counts as an override of a concrete definition and needs an `override` modifier.
-
-Deferred givens allow a clean implementation of context bounds in traits,
-as in the following example:
-```scala
-trait Sorted:
-  type Element : Ord
-
-class SortedSet[A : Ord] extends Sorted:
-  type Element = A
-```
-The compiler expands this to the following implementation:
-```scala
-trait Sorted:
-  type Element
-  given Ord[Element] = compiletime.deferred
-
-class SortedSet[A](using A: Ord[A]) extends Sorted:
-  type Element = A
-  override given Ord[Element] = A // i.e. the A defined by the using clause
-```
-
-The using clause in class `SortedSet` provides an implementation for the deferred given in trait `Sorted`.
-
-**Benefits:**
-
- - Better orthogonality, type parameters and abstract type members now accept the same kinds of bounds.
- - Better ergonomics, since deferred givens get naturally implemented in inheriting classes, no need for boilerplate to fill in definitions of abstract givens.
-
-**Alternative:** It was suggested that we use a modifier for a deferred given instead of a `= deferred`. Something like `deferred given C[T]`. But a modifier does not suggest the concept that a deferred given will be implemented automatically in subclasses unless an explicit definition is written. In a sense, we can see `= deferred` as the invocation of a magic macro that is provided by the compiler. So from a user's point of view a given with `deferred` right hand side is not abstract.
-It is a concrete definition where the compiler will provide the correct implementation.
-
-### Abolish Abstract Givens
-
-With `deferred` givens there is no need anymore to also define abstract givens. The two mechanisms are very similar, but the user experience for
-deferred givens is generally more ergonomic. Abstract givens also are uncomfortably close to concrete class instances. Their syntax clashes
-with the quite common case where we want to establish a given without any nested definitions. For instance, consider a given that constructs a type tag:
-```scala
-class Tag[T]
-```
-Then this works:
-```scala
-given Tag[String]()
-given Tag[String] with {}
-```
-But the following more natural syntax fails:
-```scala
-given Tag[String]
-```
-The last line gives a rather cryptic error:
-```
-1 |given Tag[String]
-  |                 ^
-  |                 anonymous given cannot be abstract
-```
-The underlying problem is that abstract givens are very rare (and should become completely unnecessary once deferred givens are introduced), yet occupy a syntax that looks very close to the more common case of concrete
-typeclasses without nested definitions.
-
-**Proposal:** In the future, let the `= deferred` mechanism be the only way to deliver the functionality of abstract givens. Deprecate the current version of abstract givens, and remove them in a future Scala version.
-
-**Benefits:**
-
- - Simplification of the language since a feature is dropped
- - Eliminate non-obvious and misleading syntax.
-
-The only downside is that deferred givens are restricted to be used in traits, whereas abstract givens are also allowed in abstract classes. But I would be surprised if actual code relied on that difference, and such code could in any case be easily rewritten to accommodate the restriction.
-
-## New Given Syntax
-
-A good language syntax is like a Bach fugue: A small set of motifs is combined in a multitude of harmonic ways. Dissonances and irregularities should be avoided.
-
-When designing Scala 3, I believe that, by and large, we achieved that goal, except in one area, which is the syntax of givens. There _are_ some glaring dissonances, as seen in this code for defining an ordering on lists:
-```scala
-given [A](using Ord[A]): Ord[List[A]] with
-  def compare(x: List[A], y: List[A]) = ...
-```
-The `:` feels utterly foreign in this position. It's definitely not a type ascription, so what is its role? Just as bad is the trailing `with`. Everywhere else we use braces or trailing `:` to start a scope of nested definitions, so the need of `with` sticks out like a sore thumb.
-
-Sometimes unconventional syntax grows on you and becomes natural after a while. But here it was unfortunately the opposite. The longer I used given definitions in this style the more awkward they felt, in particular since the rest of the language seemed so much better put together by comparison. And I believe many others agree with me on this. Since the current syntax is unnatural and esoteric, this means it's difficult to discover and very foreign even after that. This makes it much harder to learn and apply givens than it need be.
-
-The previous conditional given syntax was inspired from method definitions. If we add the optional name to the previous example, we obtain something akin to an implicit method in Scala 2:
-```scala
-given listOrd[A](using Ord[A]): Ord[List[A]] with
-  def compare(x: List[A], y: List[A]) = ...
-```
-The anonymous syntax was then obtained by simply dropping the name.
-But without a name, the syntax looks weird and inconsistent.
-
-This is a problem since at least for typeclasses, anonymous givens should be the norm.
-Givens are like extends clauses. We state a _fact_, that a
-type implements a type class, or that a value can be used implicitly. We don't need a name for that fact. It's analogous to extends clauses, where we state that a class is a subclass of some other class or trait. We would not think it useful to name an extends clause, it's simply a fact that is stated.
-It's also telling that every other language that defines type classes uses anonymous syntax. Somehow, nobody ever found it necessary to name these instances.
-
-A more intuitive and in my opinion cleaner alternative is to decree that a given should always look like it _implements a type_. Conditional givens should look like they implement function types. The `Ord` typeclass instances for `Int` and `List` would then look like this:
-```scala
-given Ord[String]:
-  def compare(x: String, y: String) = ...
-
-given [A : Ord] => Ord[List[A]]:
-  def compare(x: List[A], y: List[A]) = ...
-```
-The second, conditional instance looks like it implements the function type
-```scala
-[A : Ord] => Ord[List[A]]
-```
-Another way to see this is as an implication:
-If `A` is a type that is `Ord`, then `List[A]` is `Ord` (and the rest of the given clause gives the implementation that makes it so).
-Equivalently, `A` is `Ord` _implies_ `List[A]` is `Ord`, hence the `=>`.
-
-Yet another related meaning is that the given clause establishes a _context function_ of type `[A: Ord] ?=> Ord[List[A]]` that is automatically applied to evidence arguments of type `Ord[A]` and that yields instances of type `Ord[List[A]]`. Since givens are in any case applied automatically to all their arguments, we don't need to specify that separately with `?=>`, a simple `=>` arrow is sufficiently clear and is easier to read.
-
-All these viewpoints are equivalent, in a deep sense. This is exactly the Curry Howard isomorphism, which equates function types and implications.
-
-In the new syntax, a `given` clause consists of the following elements:
-
- - An optional name binding `id :`
- - Zero or more _conditions_, which introduce type or value parameters. Each precondition ends in a `=>`.
- - the implemented _type_,
- - an implementation which consists of either an `=` and an expression,
-   or a template body.
-
-**Examples:**
-
-Here is an enumeration of common forms of given definitions in the new syntax. We show the following use cases:
-
- 1. A simple typeclass instance, such as `Ord[Int]`.
- 2. A parameterized type class instance, such as `Ord` for lists.
- 3. A type class instance with an explicit context parameter.
- 4. A type class instance with a named eexplicit context parameter.
- 4. A simple given alias.
- 5. A parameterized given alias
- 6. A given alias with an explicit context parameter.
- 8. An abstract or deferred given
- 9. A by-name given, e.g. if we have a given alias of a mutable variable, and we
-    want to make sure that it gets re-evaluated on each access.
-```scala
-  // Simple typeclass
-  given Ord[Int]:
-    def compare(x: Int, y: Int) = ...
-
-  // Parameterized typeclass with context bound
-  given [A: Ord] => Ord[List[A]]:
-    def compare(x: List[A], y: List[A]) = ...
-
-  // Parameterized typeclass with context parameter
-  given [A] => Ord[A] => Ord[List[A]]:
-    def compare(x: List[A], y: List[A]) = ...
-
-  // Parameterized typeclass with named context parameter
-  given [A] => (ord: Ord[A]) => Ord[List[A]]:
-    def compare(x: List[A], y: List[A]) = ...
-
-  // Simple alias
-  given Ord[Int] = IntOrd()
-
-  // Parameterized alias with context bound
-  given [A: Ord] => Ord[List[A]] =
-    ListOrd[A]
-
-  // Parameterized alias with context parameter
-  given [A] => Ord[A] => Ord[List[A]] =
-    ListOrd[A]
-
-  // Abstract or deferred given
-  given Context = deferred
-
-  // By-name given
-  given () => Context = curCtx
-```
-Here are the same examples, with optional names provided:
-```scala
-  // Simple typeclass
-  given intOrd: Ord[Int]:
-    def compare(x: Int, y: Int) = ...
-
-  // Parameterized typeclass with context bound
-  given listOrd: [A: Ord] => Ord[List[A]]:
-    def compare(x: List[A], y: List[A]) = ...
-
-  // Parameterized typeclass with context parameter
-  given listOrd: [A] => Ord[A] => Ord[List[A]]:
-    def compare(x: List[A], y: List[A]) = ...
-
-  // Parameterized typeclass with named context parameter
-  given listOrd: [A] => (ord: Ord[A]) => Ord[List[A]]:
-    def compare(x: List[A], y: List[A]) = ...
-
-  // Simple alias
-  given intOrd: Ord[Int] = IntOrd()
-
-  // Parameterized alias with context bound
-  given listOrd: [A: Ord] => Ord[List[A]] =
-    ListOrd[A]
-
-  // Parameterized alias with context parameter
-  given listOrd: [A] => Ord[A] => Ord[List[A]] =
-    ListOrd[A]
-
-  // Abstract or deferred given
-  given context: Context = deferred
-
-  // By-name given
-  given context: () => Context = curCtx
-```
-
-**By Name Givens**
-
-We sometimes find it necessary that a given alias is re-evaluated each time it is called. For instance, say we have a mutable variable `curCtx` and we want to define a given that returns the current value of that variable. A normal given alias will not do since by default given aliases are mapped to
-lazy vals.
-
-In general, we want to avoid re-evaluation of the given. But there are situations like the one above where we want to specify _by-name_ evaluation instead. The proposed new syntax for this is shown in the last clause above. This is arguably the a natural way to express by-name givens. We want to use a conditional given, since these map to methods, but the set of preconditions is empty, hence the `()` parameter. Equivalently, under the context function viewpoint, we are defining a context function of the form `() ?=> T`, and these are equivalent to by-name parameters.
-
-Compare with the current best way to do achieve this, which is to use a dummy type parameter.
-```scala
-  given [DummySoThatItsByName]: Context = curCtx
-```
-This has the same effect, but feels more like a hack than a clean solution.
-
-**Dropping `with`**
-
-In the new syntax, all typeclass instances introduce definitions like normal
-class bodies, enclosed in braces `{...}` or following a `:`. The irregular
-requirement to use `with` is dropped. In retrospect, the main reason to introduce `with` was since a definition like
-
-```scala
-given [A](using Ord[A]): Ord[List[A]]:
-  def compare(x: List[A], y: List[A]) = ...
-```
-was deemed to be too cryptic, with the double meaning of colons. But since that syntax is gone, we don't need `with` anymore. There's still a double meaning of colons, e.g. in
-```scala
-given intOrd: Ord[Int]:
-  ...
-```
-but since now both uses of `:` are very familiar (type ascription _vs_ start of nested definitions), it's manageable. Besides, the problem occurs only for named typeclass instances, which should be the exceptional case anyway.
-
-
-**Possible ambiguities**
-
-If one wants to define a given for an a actual function type (which is probably not advisable in practice), one needs to enclose the function type in parentheses, i.e. `given ([A] => F[A])`. This is true in the currently implemented syntax and stays true for all discussed change proposals.
-
-The double meaning of : with optional prefix names is resolved as usual. A : at the end of a line starts a nested definition block. If for some obscure reason one wants to define a named given on multiple lines, one has to format it as follows:
-```scala
-  given intOrd
-    : Ord = ...
-```
-
-**Summary**
-
-This will be a fairly significant change to the given syntax. I believe there's still a possibility to do this. Not so much code has migrated to new style givens yet, and code that was written can be changed fairly easily. Specifically, there are about a 900K definitions of `implicit def`s
-in Scala code on Github and about 10K definitions of `given ... with`. So about 1% of all code uses the Scala 3 syntax, which would have to be changed again.
-
-Changing something introduced just recently in Scala 3 is not fun,
-but I believe these adjustments are preferable to let bad syntax
-sit there and fester. The cost of changing should be amortized by improved developer experience over time, and better syntax would also help in migrating Scala 2 style implicits to Scala 3. But we should do it quickly before a lot more code
-starts migrating.
-
-Migration to the new syntax is straightforward, and can be supported by automatic rewrites. For a transition period we can support both the old and the new syntax. It would be a good idea to backport the new given syntax to the LTS version of Scala so that code written in this version can already use it. The current LTS would then support old and new-style givens indefinitely, whereas new Scala 3.x versions would phase out the old syntax over time.
-
-
-### Bonus: Fixing Singleton
+## Fixing Singleton
 
 We know the current treatment of `Singleton` as a type bound is broken since
 `x.type | y.type <: Singleton` holds by the subtyping rules for union types, even though `x.type | y.type` is clearly not a singleton.
@@ -578,7 +192,7 @@ def f[X: Singleton](x: X) = ...
 
 The context bound is treated specially by the compiler so that no using clause is generated at runtime (this is straightforward, using the erased definitions mechanism).
 
-### Bonus: Precise Typing
+##: Precise Typing
 
 This approach also presents a solution to the problem how to express precise type variables. We can introduce another special type class `Precise` and use it like this:
 
@@ -586,28 +200,6 @@ This approach also presents a solution to the problem how to express precise typ
 def f[X: Precise](x: X) = ...
 ```
 Like a `Singleton` bound, a `Precise` bound disables automatic widening of singleton types or union types in inferred instances of type variable `X`. But there is no requirement that the type argument _must_ be a singleton.
-
-
-## Summary of Syntax Changes
-
-Here is the complete context-free syntax for all proposed features.
-Overall the syntax for givens becomes a lot simpler than what it was before.
-
-```
-TmplDef           ::=  'given' GivenDef
-GivenDef          ::=  [GivenConditional '=>'] GivenSig
-GivenConditional  ::=  [DefTypeParamClause | UsingParamClause] {UsingParamClause}
-GivenSig          ::=  GivenType ['as' id] ([‘=’ Expr] | TemplateBody)
-                   |   ConstrApps ['as' id] TemplateBody
-GivenType         ::=  AnnotType {id [nl] AnnotType}
-
-TypeDef           ::=  id [TypeParamClause] TypeAndCtxBounds
-TypeParamBounds   ::=  TypeAndCtxBounds
-TypeAndCtxBounds  ::=  TypeBounds [‘:’ ContextBounds]
-ContextBounds     ::=  ContextBound | '{' ContextBound {',' ContextBound} '}'
-ContextBound      ::=  Type ['as' id]
-```
-
 
 
 ## Examples
@@ -880,17 +472,12 @@ Pattern2          ::=  InfixPattern ['as' id]
 
 ## Summary
 
-I have proposed some tweaks to Scala 3, which would greatly increase its usability for modular, type class based, generic programming. The proposed changes are:
+I have proposed some tweaks to Scala 3, which would increase its usability for modular, type class based, generic programming. The proposed changes are:
 
  1. Allow context bounds over classes that define a `Self` member type.
- 1. Allow context bounds to be named with `as`. Use the bound parameter name as a default name for the generated context bound evidence.
- 1. Add a new `{...}` syntax for multiple context bounds.
- 1. Make context bounds also available for type members, which expand into a new form of deferred given. Phase out the previous abstract givens in favor of the new form.
  1. Add a predefined type alias `is`.
- 1. Introduce a new cleaner syntax of given clauses.
-
-It's interesting that givens, which are a very general concept in Scala, were "almost there" when it comes to full support of concepts and generic programming. We only needed to add a few usability tweaks to context bounds,
-alongside two syntactic changes that supersede the previous forms of `given .. with` clauses and abstract givens. Also interesting is that the superseded syntax constructs were the two areas where we collectively felt that the previous solutions were a bit awkward, but we could not think of better ones at the time. It's very nice that more satisfactory solutions are now emerging.
+ 1. If a type parameter or member `T` has context bound `CB`, use `T` as the default name for the witness of `CB`.
+ 1. Cleanup `Singleton` and add a new trait `Precise` for non-widening instantiation of type variables.,
 
 ## Conclusion
 
