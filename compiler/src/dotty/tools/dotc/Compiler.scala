@@ -61,6 +61,7 @@ class Compiler {
     List(new InstrumentCoverage) ::  // Perform instrumentation for code coverage (if -coverage-out is set)
     List(new CrossVersionChecks,     // Check issues related to deprecated and experimental
          new FirstTransform,         // Some transformations to put trees into a canonical form
+         new UnrollDefs,             // Unroll annotated methods
          new CheckReentrant,         // Internal use only: Check that compiled program has no data races involving global vars
          new ElimPackagePrefixes,    // Eliminate references to package prefixes in Select nodes
          new CookComments,           // Cook the comments: expand variables, doc, etc.
