@@ -30,7 +30,7 @@ object Schema {
         ???
     }
 
-  inline given gen[A]: Schema[A] = derived[A]
+  inline given gen: [A] => Schema[A] = derived[A]
 }
 
 sealed trait InputValue

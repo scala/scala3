@@ -11,7 +11,7 @@ object Schema extends SchemaCompanionMacros:
     ???
 
 trait SchemaCompanionMacros extends SchemaDerivation:
-  given derivedStringBasedUnionEnumeration[S](using IsUnionOf[String, S]): Schema[S] =
+  given derivedStringBasedUnionEnumeration: [S] => IsUnionOf[String, S] => Schema[S] =
     val x: Schema[S] = ???
     x.name(None)
 

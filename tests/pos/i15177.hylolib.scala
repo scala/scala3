@@ -6,6 +6,6 @@ trait Coll[Self]:
   extension (self: Self) def pos: Pos
 extension [Self: Coll](self: Self) def trigger = self.pos
 class Slice[Base]
-given SliceIsColl[T: Coll as c]: Coll[Slice[T]] with
+given SliceIsColl: [T: Coll as c] => Coll[Slice[T]]:
   type Pos = c.Pos
   extension (self: Slice[T]) def pos: Pos = ???

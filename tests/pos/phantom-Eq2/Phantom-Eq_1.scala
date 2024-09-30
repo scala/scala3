@@ -14,6 +14,6 @@ object EqUtil {
   erased given eqDouble: PhantomEqEq[Double] = new PhantomEq[Double, Double]
   erased given eqByteNum: PhantomEq[Byte, Number] = new PhantomEq[Byte, Number]
   erased given eqNumByte: PhantomEq[Number, Byte] = new PhantomEq[Number, Byte]
-  erased given eqSeq[T, U] (using erased eq: PhantomEq[T, U]): PhantomEq[Seq[T], Seq[U]] =
+  erased given eqSeq: [T, U] => (erased eq: PhantomEq[T, U]) => PhantomEq[Seq[T], Seq[U]] =
     new PhantomEq[Seq[T], Seq[U]]
 }

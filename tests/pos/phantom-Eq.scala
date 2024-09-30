@@ -29,5 +29,5 @@ object EqUtil {
   erased given eqByteNum: PhantomEq[Byte, Number] = compiletime.erasedValue
   erased given eqNumByte: PhantomEq[Number, Byte] = compiletime.erasedValue
 
-  erased given eqSeq[T, U](using erased PhantomEq[T, U]): PhantomEq[Seq[T], Seq[U]] = compiletime.erasedValue
+  erased given eqSeq: [T, U] => (erased PhantomEq[T, U]) => PhantomEq[Seq[T], Seq[U]] = compiletime.erasedValue
 }

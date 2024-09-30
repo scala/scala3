@@ -6,7 +6,7 @@ trait T:
 object Test extends T, App:
   given x: Int = 22
   override given y(using Int): String = summon[Int].toString
-  given z[T](using T): Seq[T] with
+  given z: [T] => T => Seq[T]:
     override def apply(x: Int) = ???
     override def length = ???
     override def iterator = ???

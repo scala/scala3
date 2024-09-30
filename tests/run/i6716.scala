@@ -4,7 +4,7 @@ trait Monad[T]:
   def id: String
 class Foo
 object Foo {
-  given Monad[Foo] with { def id = "Foo" }
+  given Monad[Foo] { def id = "Foo" }
 }
 
 opaque type Bar = Foo

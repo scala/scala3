@@ -5,8 +5,8 @@ trait Read[T]
 trait Codec[T] extends Read[T]
 trait CodecTypeProjection[C[_]]
 object JsonTransform  {
-  given SetCodec[T, C[_]: CodecTypeProjection]: scala.Conversion[C[T], C[Set[T]]] = ???
-  given SetCodecExp[T, C[_]: CodecTypeProjection](using codec: C[T]): C[Set[T]] = codec
+  given SetCodec: [T, C[_]: CodecTypeProjection] => scala.Conversion[C[T], C[Set[T]]] = ???
+  given SetCodecExp: [T, C[_]: CodecTypeProjection] => (codec: C[T]) => C[Set[T]] = codec
   given Codec[String] = ???
   given CodecTypeProjection[Read] = ???
 }

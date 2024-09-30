@@ -9,7 +9,7 @@ trait CpsMonad[F[_]] {
 
 object CpsMonad {
   type Aux[F[_],C] = CpsMonad[F] { type Context = C }
-  given CpsMonad[Future] with {}
+  given CpsMonad[Future]()
 }
 
 @experimental

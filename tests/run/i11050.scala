@@ -107,9 +107,9 @@ trait Show[-T]:
   def show(x: T): String
 
 object Show:
-  given Show[Int]    with { def show(x: Int)    = s"$x"     }
-  given Show[Char]   with { def show(x: Char)   = s"'$x'"   }
-  given Show[String] with { def show(x: String) = s"$"$x$"" }
+  given Show[Int]    { def show(x: Int)    = s"$x"     }
+  given Show[Char]   { def show(x: Char)   = s"'$x'"   }
+  given Show[String] { def show(x: String) = s"$"$x$"" }
 
   inline def show[T](x: T): String = summonInline[Show[T]].show(x)
 

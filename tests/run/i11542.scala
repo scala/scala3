@@ -14,7 +14,7 @@ object demo {
     childReaders: List[Reader[_]]
   ) extends Reader[A]
 
-  inline given rdr[A <: Tuple](using m: deriving.Mirror.ProductOf[A]): Reader[A] = {
+  inline given rdr: [A <: Tuple] => (m: deriving.Mirror.ProductOf[A]) => Reader[A] = {
     new CombinedReader(m, summonReader[m.MirroredElemTypes])
   }
 
