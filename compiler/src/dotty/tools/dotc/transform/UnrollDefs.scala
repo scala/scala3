@@ -86,6 +86,7 @@ class UnrollDefs extends MiniPhase {
         else ps.map(p => copyParam(p.asInstanceOf[ValDef], forwarderDefSymbol))
       }
     }
+    forwarderDefSymbol.setParamssFromDefs(newParamLists)
 
     val defaultOffset = paramLists
       .iterator
