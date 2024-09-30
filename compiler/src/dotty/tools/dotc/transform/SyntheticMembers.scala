@@ -504,53 +504,64 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
   /** The class
    *
    *  ```
-   *  case class C[T <: U](x: T, y: String*)
+   *  trait U:
+   *    type Elem
+   *
+   *  case class C[T <: U](a: T, b: a.Elem, c: String*)
    *  ```
    *
    *  gets the `fromProduct` method:
    *
    *  ```
    *  def fromProduct(x$0: Product): MirroredMonoType =
-   *    new C[U](
-   *      x$0.productElement(0).asInstanceOf[U],
-   *      x$0.productElement(1).asInstanceOf[Seq[String]]: _*)
+   *    val a$1 = x$0.productElement(0).asInstanceOf[U]
+   *    val b$1 = x$0.productElement(1).asInstanceOf[a$1.Elem]
+   *    val c$1 = x$0.productElement(2).asInstanceOf[Seq[String]]
+   *    new C[U](a$1, b$1, c$1*)
    *  ```
    *  where
    *  ```
    *  type MirroredMonoType = C[?]
    *  ```
    */
-  def fromProductBody(caseClass: Symbol, param: Tree, optInfo: Option[MirrorImpl.OfProduct])(using Context): Tree =
-    def extractParams(tpe: Type): List[Type] =
-      tpe.asInstanceOf[MethodType].paramInfos
-
-    def computeFromCaseClass: (Type, List[Type]) =
-      val (baseRef, baseInfo) =
-        val rawRef = caseClass.typeRef
-        val rawInfo = caseClass.primaryConstructor.info
-        optInfo match
-          case Some(info) =>
-            (rawRef.asSeenFrom(info.pre, caseClass.owner), rawInfo.asSeenFrom(info.pre, caseClass.owner))
-          case _ =>
-            (rawRef, rawInfo)
-      baseInfo match
+  def fromProductBody(caseClass: Symbol, productParam: Tree, optInfo: Option[MirrorImpl.OfProduct])(using Context): Tree =
+    val classRef = optInfo match
+      case Some(info) => TypeRef(info.pre, caseClass)
+      case _ => caseClass.typeRef
+    val (newPrefix, constrMeth) =
+      val constr = TermRef(classRef, caseClass.primaryConstructor)
+      (constr.info: @unchecked) match
         case tl: PolyType =>
           val tvars = constrained(tl)
           val targs = for tvar <- tvars yield
             tvar.instantiate(fromBelow = false)
-          (baseRef.appliedTo(targs), extractParams(tl.instantiate(targs)))
-        case methTpe =>
-          (baseRef, extractParams(methTpe))
-    end computeFromCaseClass
+          (AppliedType(classRef, targs), tl.instantiate(targs).asInstanceOf[MethodType])
+        case mt: MethodType =>
+          (classRef, mt)
 
-    val (classRefApplied, paramInfos) = computeFromCaseClass
-    val elems =
-      for ((formal, idx) <- paramInfos.zipWithIndex) yield
-        val elem =
-          param.select(defn.Product_productElement).appliedTo(Literal(Constant(idx)))
-            .ensureConforms(formal.translateFromRepeated(toArray = false))
-        if (formal.isRepeatedParam) ctx.typer.seqToRepeated(elem) else elem
-    New(classRefApplied, elems)
+    // Create symbols for the vals corresponding to each parameter
+    // If there are dependent parameters, the infos won't be correct yet.
+    val bindingSyms = constrMeth.paramRefs.map: pref =>
+      newSymbol(ctx.owner, pref.paramName.freshened, Synthetic,
+        pref.underlying.translateFromRepeated(toArray = false), coord = ctx.owner.span.focus)
+    val bindingRefs = bindingSyms.map(TermRef(NoPrefix, _))
+    // Fix the infos for dependent parameters
+    if constrMeth.isParamDependent then
+      bindingSyms.foreach: bindingSym =>
+        bindingSym.info = bindingSym.info.substParams(constrMeth, bindingRefs)
+
+    val bindingDefs = bindingSyms.zipWithIndex.map: (bindingSym, idx) =>
+      ValDef(bindingSym,
+        productParam.select(defn.Product_productElement).appliedTo(Literal(Constant(idx)))
+          .ensureConforms(bindingSym.info))
+
+    val newArgs = bindingRefs.lazyZip(constrMeth.paramInfos).map: (bindingRef, paramInfo) =>
+      val refTree = ref(bindingRef)
+      if paramInfo.isRepeatedParam then ctx.typer.seqToRepeated(refTree) else refTree
+    Block(
+      bindingDefs,
+      New(newPrefix, newArgs)
+    )
   end fromProductBody
 
   /** For an enum T:
