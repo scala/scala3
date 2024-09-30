@@ -1,0 +1,4 @@
+-- Error: tests/neg/i21652.scala:1:15 ----------------------------------------------------------------------------------
+1 |def k: [A] => (=> A) => A = // error
+  |               ^^^^
+  |               By-name parameters are not supported in Polymorphic Functions

@@ -1914,11 +1914,26 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       .showing(i"desugared fun $tree --> $desugared with pt = $pt", typr)
   }
 
+  /** Check that the PolyFunction doesn't have by-name parameters.
+   *  Return the unchanged tree if it's valid, or EmptyTree otherwise.
+   */
+  private def checkPolyTypeTree(tree: untpd.Tree)(using Context): untpd.Tree =
+    val untpd.PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun @ untpd.Function(vparamTypes, res)) = tree: @unchecked
+    var tree1 = tree
+    vparamTypes.foreach:
+      case t: ByNameTypeTree =>
+        report.error("By-name parameters are not supported in Polymorphic Functions", t.srcPos)
+        tree1 = untpd.EmptyTree
+      case _ =>
+    tree1
 
   def typedPolyFunction(tree: untpd.PolyFunction, pt: Type)(using Context): Tree =
     val tree1 = desugar.normalizePolyFunction(tree)
-    if (ctx.mode is Mode.Type) typed(desugar.makePolyFunctionType(tree1), pt)
-    else typedPolyFunctionValue(tree1, pt)
+    checkPolyTypeTree(tree1) match
+      case tree2: untpd.PolyFunction =>
+        if (ctx.mode is Mode.Type) typed(desugar.makePolyFunctionType(tree2), pt)
+        else typedPolyFunctionValue(tree2, pt)
+      case untpd.EmptyTree => TypeTree(NoType)
 
   def typedPolyFunctionValue(tree: untpd.PolyFunction, pt: Type)(using Context): Tree =
     val untpd.PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun) = tree: @unchecked
