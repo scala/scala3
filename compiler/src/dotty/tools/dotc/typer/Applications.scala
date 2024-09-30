@@ -1962,7 +1962,9 @@ trait Applications extends Compatibility {
 
     def widenPrefix(alt: TermRef): Type = alt.prefix.widen match
       case pre: (TypeRef | ThisType) if pre.typeSymbol.is(Module) =>
-        pre.parents.reduceLeft(TypeComparer.andType(_, _))
+        val ps = pre.parents
+        if ps.isEmpty then pre
+        else ps.reduceLeft(TypeComparer.andType(_, _))
       case wpre => wpre
 
     /** If two alternatives have the same symbol, we pick the one with the most
