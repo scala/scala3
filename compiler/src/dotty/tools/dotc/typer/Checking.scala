@@ -727,7 +727,7 @@ object Checking {
         report.error(ValueClassesMayNotDefineNonParameterField(clazz, stat.symbol), stat.srcPos)
       case _: DefDef if stat.symbol.isConstructor =>
         report.error(ValueClassesMayNotDefineASecondaryConstructor(clazz, stat.symbol), stat.srcPos)
-      case _: MemberDef | _: Import | EmptyTree =>
+      case _: MemberDef | _: Import | _: Export | EmptyTree =>
       // ok
       case _ =>
         report.error(ValueClassesMayNotContainInitalization(clazz), stat.srcPos)
