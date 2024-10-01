@@ -1,0 +1,6 @@
+-- Error: tests/neg/unroll-clash.scala:7:6 -----------------------------------------------------------------------------
+7 |  def foo(x: Int) = { // error
+  |      ^
+  |      Unrolled method foo clashes with existing declaration.
+  |      Please remove the clashing definition, or the @unroll annotation.
+  |      Unrolled from def foo(x: Int, y: Int): Int in class Foo at line 6
