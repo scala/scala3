@@ -14,7 +14,7 @@ import StdNames.nme
 import Names.*
 import Constants.Constant
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
-import dotty.tools.dotc.core.Types.{MethodType, NamedType, PolyType, Type}
+import dotty.tools.dotc.core.Types.{MethodType, NamedType, PolyType, Type, NoPrefix}
 import dotty.tools.dotc.core.Symbols
 import dotty.tools.dotc.printing.Formatting.hl
 
@@ -30,6 +30,14 @@ class UnrollDefs extends MiniPhase {
 
   def copyParamSym(sym: Symbol, parent: Symbol)(using Context): (Symbol, Symbol) =
     sym -> sym.copy(owner = parent)
+
+  def symLocation(sym: Symbol)(using Context) = {
+    val lineDesc =
+      if (sym.span.exists && sym.span != sym.owner.span)
+        s" at line ${sym.srcPos.line + 1}"
+      else ""
+    i"in ${sym.owner}${lineDesc}"
+  }
 
   def findUnrollAnnotations(params: List[Symbol])(using Context): List[Int] = {
     params
@@ -87,33 +95,44 @@ class UnrollDefs extends MiniPhase {
         .sum
 
       val defaultCalls = Range(paramIndex, nextParamIndex).map(n =>
+
+        def makeSelect(ref: Tree, name: TermName): Tree =
+          val sym = ref.symbol
+          if !sym.findMember(name, NoPrefix, EmptyFlags, EmptyFlags).exists then
+            val param = defdef.paramss(annotatedParamListIndex)(n)
+            val methodStr = s"method ${defdef.name} ${symLocation(defdef.symbol)}"
+            val paramStr = s"parameter ${param.name}"
+            report.error(i"Cannot unroll $methodStr because $paramStr needs a default value", param.srcPos)
+            EmptyTree
+          else
+            ref.select(name)
+
         val inner = if (defdef.symbol.isConstructor) {
-          ref(defdef.symbol.owner.companionModule)
-            .select(DefaultGetterName(defdef.name, n + defaultOffset))
+          makeSelect(ref(defdef.symbol.owner.companionModule),
+            DefaultGetterName(defdef.name, n + defaultOffset))
         } else if (isCaseApply) {
-          ref(defdef.symbol.owner.companionModule)
-            .select(DefaultGetterName(termName("<init>"), n + defaultOffset))
+          makeSelect(ref(defdef.symbol.owner.companionModule),
+            DefaultGetterName(termName("<init>"), n + defaultOffset))
         } else {
-          This(defdef.symbol.owner.asClass)
-            .select(DefaultGetterName(defdef.name, n + defaultOffset))
+          makeSelect(This(defdef.symbol.owner.asClass),
+            DefaultGetterName(defdef.name, n + defaultOffset))
         }
 
-        newParamSymLists
+        if inner.isEmpty then EmptyTree
+        else newParamSymLists
           .take(annotatedParamListIndex)
-          .map(_.map(p => ref(p)))
-          .foldLeft[Tree](inner){
-            case (lhs: Tree, newParams) =>
-              if (newParams.headOption.exists(_.isInstanceOf[TypeTree])) TypeApply(lhs, newParams)
-              else Apply(lhs, newParams)
-          }
+          .map(_.map(ref))
+          .foldLeft(inner): (lhs, newParams) =>
+            if (newParams.headOption.exists(_.isInstanceOf[TypeTree])) TypeApply(lhs, newParams)
+            else Apply(lhs, newParams)
       )
 
       val forwarderInner: Tree = This(defdef.symbol.owner.asClass).select(nextSymbol)
 
       val forwarderCallArgs =
         newParamSymLists.zipWithIndex.map{case (ps, i) =>
-          if (i == annotatedParamListIndex) ps.map(p => ref(p)).take(nextParamIndex) ++ defaultCalls
-          else ps.map(p => ref(p))
+          if (i == annotatedParamListIndex) ps.map(ref).take(nextParamIndex) ++ defaultCalls
+          else ps.map(ref)
         }
 
       val forwarderCall0 = forwarderCallArgs.foldLeft[Tree](forwarderInner){
@@ -281,13 +300,6 @@ class UnrollDefs extends MiniPhase {
       val byName = otherDecls.groupMap(_.symbol.name.toString)(_.symbol)
       for case (src, dcl: NamedDefTree) <- generatedDefOrigins do
         val replaced = dcl.symbol
-        def symLocation(sym: Symbol) = {
-          val lineDesc =
-            if (sym.span.exists && sym.span != sym.owner.span)
-              s" at line ${sym.srcPos.line + 1}"
-            else ""
-          i"in ${sym.owner}${lineDesc}"
-        }
         byName.get(dcl.name.toString).foreach { syms =>
           val clashes = syms.filter(checkClash(replaced, _))
           for existing <- clashes do
