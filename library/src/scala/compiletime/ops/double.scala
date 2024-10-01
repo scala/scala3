@@ -11,7 +11,7 @@ object double:
    *  ```
    *  @syntax markdown
    */
-  type +[X <: Double, Y <: Double] <: Double
+  infix type +[X <: Double, Y <: Double] <: Double
 
   /** Subtraction of two `Double` singleton types.
    *  ```scala
@@ -22,7 +22,7 @@ object double:
    *  ```
    *  @syntax markdown
    */
-  type -[X <: Double, Y <: Double] <: Double
+  infix type -[X <: Double, Y <: Double] <: Double
 
   /** Multiplication of two `Double` singleton types.
    *  ```scala
@@ -33,7 +33,7 @@ object double:
    *  ```
    *  @syntax markdown
    */
-  type *[X <: Double, Y <: Double] <: Double
+  infix type *[X <: Double, Y <: Double] <: Double
 
   /** Integer division of two `Double` singleton types.
    *  ```scala
@@ -44,7 +44,7 @@ object double:
    *  ```
    *  @syntax markdown
    */
-  type /[X <: Double, Y <: Double] <: Double
+  infix type /[X <: Double, Y <: Double] <: Double
 
   /** Remainder of the division of `X` by `Y`.
    *  ```scala
@@ -55,7 +55,7 @@ object double:
    *  ```
    *  @syntax markdown
    */
-  type %[X <: Double, Y <: Double] <: Double
+  infix type %[X <: Double, Y <: Double] <: Double
 
   /** Less-than comparison of two `Double` singleton types.
    *  ```scala
@@ -67,7 +67,7 @@ object double:
    *  ```
    *  @syntax markdown
    */
-  type <[X <: Double, Y <: Double] <: Boolean
+  infix type <[X <: Double, Y <: Double] <: Boolean
 
   /** Greater-than comparison of two `Double` singleton types.
    *  ```scala
@@ -79,7 +79,7 @@ object double:
    *  ```
    *  @syntax markdown
    */
-  type >[X <: Double, Y <: Double] <: Boolean
+  infix type >[X <: Double, Y <: Double] <: Boolean
 
   /** Greater-or-equal comparison of two `Double` singleton types.
    *  ```scala
@@ -91,7 +91,7 @@ object double:
    *  ```
    *  @syntax markdown
    */
-  type >=[X <: Double, Y <: Double] <: Boolean
+  infix type >=[X <: Double, Y <: Double] <: Boolean
 
   /** Less-or-equal comparison of two `Double` singleton types.
    *  ```scala
@@ -103,7 +103,7 @@ object double:
    *  ```
    *  @syntax markdown
    */
-  type <=[X <: Double, Y <: Double] <: Boolean
+  infix type <=[X <: Double, Y <: Double] <: Boolean
 
   /** Absolute value of an `Double` singleton type.
    *  ```scala
@@ -114,7 +114,7 @@ object double:
    *  ```
    *  @syntax markdown
    */
-  type Abs[X <: Double] <: Double
+  infix type Abs[X <: Double] <: Double
 
   /** Negation of an `Double` singleton type.
    *  ```scala
