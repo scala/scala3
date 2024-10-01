@@ -33,10 +33,13 @@ object Recheck:
 
   val addRecheckedTypes = new TreeMap:
     override def transform(tree: Tree)(using Context): Tree =
-      val tree1 = super.transform(tree)
-      tree.getAttachment(RecheckedType) match
-        case Some(tpe) => tree1.withType(tpe)
-        case None => tree1
+      try
+        val tree1 = super.transform(tree)
+        tree.getAttachment(RecheckedType) match
+          case Some(tpe) => tree1.withType(tpe)
+          case None => tree1
+      catch
+        case _:TypeError => tree
 
   extension (sym: Symbol)(using Context)
 
