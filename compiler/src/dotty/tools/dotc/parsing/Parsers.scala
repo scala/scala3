@@ -885,7 +885,7 @@ object Parsers {
         }
       })
       canRewrite &= (in.isAfterLineEnd || statCtdTokens.contains(in.token)) // test (5)
-      if canRewrite && (!underColonSyntax || Feature.fewerBracesEnabled) then
+      if canRewrite && (!underColonSyntax || sourceVersion.enablesFewerBraces) then
         val openingPatchStr =
           if !colonRequired then ""
           else if testChar(startOpening - 1, Chars.isOperatorPart(_)) then " :"
@@ -1165,7 +1165,7 @@ object Parsers {
      *      body
      */
     def isColonLambda =
-      Feature.fewerBracesEnabled && in.token == COLONfollow && followingIsLambdaAfterColon()
+      sourceVersion.enablesFewerBraces && in.token == COLONfollow && followingIsLambdaAfterColon()
 
     /**   operand { infixop operand | MatchClause } [postfixop],
      *
@@ -3969,7 +3969,7 @@ object Parsers {
         val ident = termIdent()
         var name = ident.name.asTermName
         val paramss =
-          if Feature.clauseInterleavingEnabled(using in.languageImportContext) then
+          if sourceVersion.enablesClauseInterleaving then
             typeOrTermParamClauses(ParamOwner.Def, numLeadParams)
           else
             val tparams = typeParamClauseOpt(ParamOwner.Def)

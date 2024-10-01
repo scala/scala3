@@ -28,7 +28,6 @@ object Feature:
   val dependent = experimental("dependent")
   val erasedDefinitions = experimental("erasedDefinitions")
   val symbolLiterals = deprecated("symbolLiterals")
-  val fewerBraces = experimental("fewerBraces")
   val saferExceptions = experimental("saferExceptions")
   val clauseInterleaving = experimental("clauseInterleaving")
   val pureFunctions = experimental("pureFunctions")
@@ -60,9 +59,7 @@ object Feature:
     (dependent, "Allow dependent method types"),
     (erasedDefinitions, "Allow erased definitions"),
     (symbolLiterals, "Allow symbol literals"),
-    (fewerBraces, "Enable support for using indentation for arguments"),
     (saferExceptions, "Enable safer exceptions"),
-    (clauseInterleaving, "Enable clause interleaving"),
     (pureFunctions, "Enable pure functions for capture checking"),
     (captureChecking, "Enable experimental capture checking"),
     (into, "Allow into modifier on parameter types"),
@@ -124,9 +121,6 @@ object Feature:
 
   def namedTypeArgsEnabled(using Context) = enabled(namedTypeArguments)
 
-  def clauseInterleavingEnabled(using Context) =
-    sourceVersion.isAtLeast(`3.6`) || enabled(clauseInterleaving)
-
   def betterForsEnabled(using Context) = enabled(betterFors)
 
   def genericNumberLiteralsEnabled(using Context) = enabled(genericNumberLiterals)
@@ -168,9 +162,6 @@ object Feature:
 
   def migrateTo3(using Context): Boolean =
     sourceVersion == `3.0-migration`
-
-  def fewerBracesEnabled(using Context) =
-    sourceVersion.isAtLeast(`3.3`) || enabled(fewerBraces)
 
   /** If current source migrates to `version`, issue given warning message
    *  and return `true`, otherwise return `false`.
