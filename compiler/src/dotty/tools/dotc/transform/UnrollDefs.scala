@@ -14,7 +14,7 @@ import StdNames.nme
 import Names.*
 import Constants.Constant
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
-import dotty.tools.dotc.core.Types.{MethodType, NamedType, PolyType, Type, NoPrefix}
+import dotty.tools.dotc.core.Types.{MethodType, NamedType, PolyType, Type, NoPrefix, NoType}
 import dotty.tools.dotc.core.Symbols
 import dotty.tools.dotc.printing.Formatting.hl
 
@@ -178,7 +178,7 @@ class UnrollDefs extends MiniPhase {
           )
         } ++ Seq(
           CaseDef(
-            EmptyTree,
+            Underscore(defn.IntType),
             EmptyTree,
             defdef.rhs
           )
@@ -205,15 +205,14 @@ class UnrollDefs extends MiniPhase {
         else if (isCaseFromProduct) defdef.symbol.owner.companionClass.primaryConstructor
         else defdef.symbol
 
-
       annotated
         .paramSymss
         .zipWithIndex
-        .flatMap{case (paramClause, paramClauseIndex) =>
+        .flatMap { (paramClause, paramClauseIndex) =>
           val annotationIndices = findUnrollAnnotations(paramClause)
           if (annotationIndices.isEmpty) None
           else Some((paramClauseIndex, annotationIndices))
-        }  match{
+        } match {
         case Nil => (None, Nil)
         case Seq((paramClauseIndex, annotationIndices)) =>
           val paramCount = annotated.paramSymss(paramClauseIndex).size
