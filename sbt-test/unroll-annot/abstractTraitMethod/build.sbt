@@ -13,6 +13,11 @@ lazy val v1_downstream = project.in(file("v1_downstream")).dependsOn(v1)
 lazy val v1_app = project.in(file("v1_app")).dependsOn(utils)
   .settings(sharedSettings)
   .settings(
+    fork := true,
+    Runtime / unmanagedClasspath := Seq(
+      Attributed.blank((v1 / Runtime / classDirectory).value),
+      Attributed.blank((v1_downstream / Runtime / classDirectory).value),
+    ),
     Compile / unmanagedClasspath := Seq(
       Attributed.blank((v1 / Compile / classDirectory).value),
       Attributed.blank((v1_downstream / Compile / classDirectory).value),
@@ -30,7 +35,9 @@ lazy val v2_app = project.in(file("v2_app")).dependsOn(utils)
   .settings(
     Runtime / unmanagedClasspath := Seq(
       // add v1_app, compiled against v1, to the classpath
-      Attributed.blank((v1_app / Runtime / classDirectory).value)
+      Attributed.blank((v1_app / Runtime / classDirectory).value),
+      Attributed.blank((v2 / Runtime / classDirectory).value),
+      Attributed.blank((v2_downstream / Runtime / classDirectory).value),
     ),
     Compile / unmanagedClasspath := Seq(
       Attributed.blank((v2 / Compile / classDirectory).value),
@@ -52,6 +59,8 @@ lazy val v3_app = project.in(file("v3_app")).dependsOn(utils)
       Attributed.blank((v1_app / Runtime / classDirectory).value),
       // add v2_app, compiled against v2, to the classpath
       Attributed.blank((v2_app / Runtime / classDirectory).value),
+      Attributed.blank((v3 / Runtime / classDirectory).value),
+      Attributed.blank((v3_downstream / Runtime / classDirectory).value)
     ),
     Compile / unmanagedClasspath := Seq(
       Attributed.blank((v3 / Compile / classDirectory).value),
