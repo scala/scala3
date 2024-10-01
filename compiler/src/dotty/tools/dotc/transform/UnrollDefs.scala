@@ -17,7 +17,7 @@ import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 import dotty.tools.dotc.core.Types.{MethodType, NamedType, PolyType, Type}
 import dotty.tools.dotc.core.Symbols
 
-import scala.language.implicitConversions
+import dotty.tools.dotc.core.Types.NoType
 
 class UnrollDefs extends MiniPhase {
   import tpd._
@@ -26,19 +26,8 @@ class UnrollDefs extends MiniPhase {
 
   override val runsAfter = Set(FirstTransform.name)
 
-  def copyParam(p: ValDef, parent: Symbol)(using Context) = {
-    implicitly[Context].typeAssigner.assignType(
-      cpy.ValDef(p)(p.name, p.tpt, p.rhs),
-      Symbols.newSymbol(parent, p.name, p.symbol.flags, p.symbol.info)
-    )
-  }
-
-  def copyParam2(p: TypeDef, parent: Symbol)(using Context) = {
-    implicitly[Context].typeAssigner.assignType(
-      cpy.TypeDef(p)(p.name, p.rhs),
-      Symbols.newSymbol(parent, p.name, p.symbol.flags, p.symbol.info)
-    )
-  }
+  def copyParamSym(sym: Symbol, parent: Symbol)(using Context): (Symbol, Symbol) =
+    sym -> sym.copy(owner = parent)
 
   def findUnrollAnnotations(params: List[Symbol])(using Context): List[Int] = {
     params
@@ -49,26 +38,21 @@ class UnrollDefs extends MiniPhase {
       }
   }
   def isTypeClause(p: ParamClause) = p.headOption.exists(_.isInstanceOf[TypeDef])
+
   def generateSingleForwarder(defdef: DefDef,
                               prevMethodType: Type,
                               paramIndex: Int,
                               nextParamIndex: Int,
                               nextSymbol: Symbol,
                               annotatedParamListIndex: Int,
-                              paramLists: List[ParamClause],
-                              isCaseApply: Boolean)
-                             (using Context) = {
+                              isCaseApply: Boolean)(using Context) = {
 
-    def truncateMethodType0(tpe: Type, n: Int): Type = {
-      tpe match{
-        case pt: PolyType => PolyType(pt.paramNames, pt.paramInfos, truncateMethodType0(pt.resType, n + 1))
-        case mt: MethodType =>
-          if (n == annotatedParamListIndex) MethodType(mt.paramInfos.take(paramIndex), mt.resType)
-          else MethodType(mt.paramInfos, truncateMethodType0(mt.resType, n + 1))
+    def extractParamSymss(parent: Symbol)(using Context): List[List[(Symbol, Symbol)]] =
+      defdef.paramss.zipWithIndex.map{ case (ps, i) =>
+        if (i == annotatedParamListIndex) ps.take(paramIndex).map(p => copyParamSym(p.symbol, parent))
+        else ps.map(p => copyParamSym(p.symbol, parent))
       }
-    }
 
-    val truncatedMethodType = truncateMethodType0(prevMethodType, 0)
     val forwarderDefSymbol = Symbols.newSymbol(
       defdef.symbol.owner,
       defdef.name,
@@ -76,74 +60,76 @@ class UnrollDefs extends MiniPhase {
       HasDefaultParams &~
       (if (nextParamIndex == -1) Flags.EmptyFlags else Deferred) |
       Invisible,
-      truncatedMethodType
+      NoType, // fill in later
     )
 
-    val newParamLists: List[ParamClause] = paramLists.zipWithIndex.map{ case (ps, i) =>
-      if (i == annotatedParamListIndex) ps.take(paramIndex).map(p => copyParam(p.asInstanceOf[ValDef], forwarderDefSymbol))
-      else {
-        if (isTypeClause(ps)) ps.map(p => copyParam2(p.asInstanceOf[TypeDef], forwarderDefSymbol))
-        else ps.map(p => copyParam(p.asInstanceOf[ValDef], forwarderDefSymbol))
-      }
-    }
-    forwarderDefSymbol.setParamssFromDefs(newParamLists)
+    val newParamSymMappings = extractParamSymss(forwarderDefSymbol)
+    val (oldParams, newParams) = newParamSymMappings.flatten.unzip
 
-    val defaultOffset = paramLists
-      .iterator
-      .take(annotatedParamListIndex)
-      .filter(!isTypeClause(_))
-      .map(_.size)
-      .sum
+    val newParamSymLists =
+      newParamSymMappings.map: pairss =>
+        pairss.map: (oldSym, newSym) =>
+          newSym.info = oldSym.info.substSym(oldParams, newParams)
+          newSym
 
-    val defaultCalls = Range(paramIndex, nextParamIndex).map(n =>
-      val inner = if (defdef.symbol.isConstructor) {
-        ref(defdef.symbol.owner.companionModule)
-          .select(DefaultGetterName(defdef.name, n + defaultOffset))
-      } else if (isCaseApply) {
-        ref(defdef.symbol.owner.companionModule)
-          .select(DefaultGetterName(termName("<init>"), n + defaultOffset))
-      } else {
-        This(defdef.symbol.owner.asClass)
-          .select(DefaultGetterName(defdef.name, n + defaultOffset))
-      }
+    val newResType = defdef.tpt.tpe.substSym(oldParams, newParams)
+    forwarderDefSymbol.info = NamerOps.methodType(newParamSymLists, newResType)
+    forwarderDefSymbol.setParamss(newParamSymLists)
 
-      newParamLists
+    def forwarderRhs(): tpd.Tree = {
+      val defaultOffset = defdef.paramss
+        .iterator
         .take(annotatedParamListIndex)
-        .map(_.map(p => ref(p.symbol)))
-        .foldLeft[Tree](inner){
-          case (lhs: Tree, newParams) =>
-            if (newParams.headOption.exists(_.isInstanceOf[TypeTree])) TypeApply(lhs, newParams)
-            else Apply(lhs, newParams)
+        .filter(!isTypeClause(_))
+        .map(_.size)
+        .sum
+
+      val defaultCalls = Range(paramIndex, nextParamIndex).map(n =>
+        val inner = if (defdef.symbol.isConstructor) {
+          ref(defdef.symbol.owner.companionModule)
+            .select(DefaultGetterName(defdef.name, n + defaultOffset))
+        } else if (isCaseApply) {
+          ref(defdef.symbol.owner.companionModule)
+            .select(DefaultGetterName(termName("<init>"), n + defaultOffset))
+        } else {
+          This(defdef.symbol.owner.asClass)
+            .select(DefaultGetterName(defdef.name, n + defaultOffset))
         }
-    )
 
-    val forwarderInner: Tree = This(defdef.symbol.owner.asClass).select(nextSymbol)
+        newParamSymLists
+          .take(annotatedParamListIndex)
+          .map(_.map(p => ref(p)))
+          .foldLeft[Tree](inner){
+            case (lhs: Tree, newParams) =>
+              if (newParams.headOption.exists(_.isInstanceOf[TypeTree])) TypeApply(lhs, newParams)
+              else Apply(lhs, newParams)
+          }
+      )
 
-    val forwarderCallArgs =
-      newParamLists.zipWithIndex.map{case (ps, i) =>
-        if (i == annotatedParamListIndex) ps.map(p => ref(p.symbol)).take(nextParamIndex) ++ defaultCalls
-        else ps.map(p => ref(p.symbol))
+      val forwarderInner: Tree = This(defdef.symbol.owner.asClass).select(nextSymbol)
+
+      val forwarderCallArgs =
+        newParamSymLists.zipWithIndex.map{case (ps, i) =>
+          if (i == annotatedParamListIndex) ps.map(p => ref(p)).take(nextParamIndex) ++ defaultCalls
+          else ps.map(p => ref(p))
+        }
+
+      val forwarderCall0 = forwarderCallArgs.foldLeft[Tree](forwarderInner){
+        case (lhs: Tree, newParams) =>
+          if (newParams.headOption.exists(_.isInstanceOf[TypeTree])) TypeApply(lhs, newParams)
+          else Apply(lhs, newParams)
       }
 
-    lazy val forwarderCall0 = forwarderCallArgs.foldLeft[Tree](forwarderInner){
-      case (lhs: Tree, newParams) =>
-        if (newParams.headOption.exists(_.isInstanceOf[TypeTree])) TypeApply(lhs, newParams)
-        else Apply(lhs, newParams)
+      val forwarderCall =
+        if (!defdef.symbol.isConstructor) forwarderCall0
+        else Block(List(forwarderCall0), Literal(Constant(())))
+
+      forwarderCall
     }
 
-    lazy val forwarderCall =
-      if (!defdef.symbol.isConstructor) forwarderCall0
-      else Block(List(forwarderCall0), Literal(Constant(())))
-
-    val forwarderDef = implicitly[Context].typeAssigner.assignType(
-      cpy.DefDef(defdef)(
-        name = forwarderDefSymbol.name,
-        paramss = newParamLists,
-        tpt = defdef.tpt,
-        rhs = if (nextParamIndex == -1) EmptyTree else forwarderCall
-      ),
-      forwarderDefSymbol
-    )
+    val forwarderDef =
+      tpd.DefDef(forwarderDefSymbol,
+        rhs = if (nextParamIndex == -1) EmptyTree else forwarderRhs())
 
     forwarderDef
   }
@@ -225,7 +211,6 @@ class UnrollDefs extends MiniPhase {
                       paramIndex,
                       nextSymbol,
                       paramClauseIndex,
-                      defdef.paramss,
                       isCaseApply
                     )
                     (forwarder +: defdefs, forwarder.symbol)
@@ -245,7 +230,6 @@ class UnrollDefs extends MiniPhase {
                       nextParamIndex,
                       nextSymbol,
                       paramClauseIndex,
-                      defdef.paramss,
                       isCaseApply
                     )
                     (forwarder +: defdefs, forwarder.symbol)
