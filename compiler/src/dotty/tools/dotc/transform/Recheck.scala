@@ -33,10 +33,13 @@ object Recheck:
 
   val addRecheckedTypes = new TreeMap:
     override def transform(tree: Tree)(using Context): Tree =
-      val tree1 = super.transform(tree)
-      tree.getAttachment(RecheckedType) match
-        case Some(tpe) => tree1.withType(tpe)
-        case None => tree1
+      try
+        val tree1 = super.transform(tree)
+        tree.getAttachment(RecheckedType) match
+          case Some(tpe) => tree1.withType(tpe)
+          case None => tree1
+      catch
+        case _:TypeError => tree
 
   extension (sym: Symbol)(using Context)
 
@@ -618,13 +621,7 @@ abstract class Recheck extends Phase, SymTransformer:
   override def show(tree: untpd.Tree)(using Context): String =
     atPhase(thisPhase):
       withMode(Mode.Printing):
-        val ttree0 = tree.asInstanceOf[tpd.Tree]
-        val ttree1 =
-          try
-              addRecheckedTypes.transform(ttree0)
-          catch
-              case _:TypeError => ttree0
-        super.show(ttree1)
+        super.show(addRecheckedTypes.transform(tree.asInstanceOf[tpd.Tree]))
 end Recheck
 
 /** A class that can be used to test basic rechecking without any customaization */
