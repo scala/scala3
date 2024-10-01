@@ -1,35 +1,58 @@
-package dotty.tools.dotc.transform
+package dotty.tools.dotc
+package transform
 
-import dotty.tools.dotc.*
+import ast.tpd
+import ast.Trees.*
 import core.*
-import MegaPhase.MiniPhase
+import Flags.*
+import Decorators.*
 import Contexts.*
 import Symbols.*
-import Flags.*
-import SymDenotations.*
-import Decorators.*
-import ast.Trees.*
-import ast.tpd
-import StdNames.nme
-import Names.*
 import Constants.Constant
+import Decorators.*
+import DenotTransformers.IdentityDenotTransformer
+import Names.*
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
+
 import dotty.tools.dotc.core.Types.{MethodType, NamedType, PolyType, Type, NoPrefix, NoType}
-import dotty.tools.dotc.core.Symbols
+
 import dotty.tools.dotc.printing.Formatting.hl
 
-import dotty.tools.dotc.core.Types.NoType
-import dotty.tools.dotc.typer.Checking
+import scala.collection.mutable
+import scala.util.boundary, boundary.break
+import dotty.tools.dotc.core.StdNames.nme
 
-class UnrollDefs extends MiniPhase {
-  import tpd._
+/**Implementation of SIP-61.
+ * Runs when `@unroll` annotations are found in a compilation unit, installing new definitions
+ */
+class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
+  self =>
 
-  val phaseName = "unroll"
+  import tpd.*
 
-  override val runsAfter = Set(FirstTransform.name)
+  override def phaseName: String = UnrollDefinitions.name
+
+  override def description: String = UnrollDefinitions.description
+
+  override def changesMembers: Boolean = true
+
+  override def run(using Context): Unit =
+    if ctx.compilationUnit.hasUnrollDefs then
+      super.run
+
+  def newTransformer(using Context): Transformer =
+    UnrollingTransformer(ctx.compilationUnit.unrolledClasses.nn)
+
+  private class UnrollingTransformer(classes: Set[Symbol]) extends Transformer {
+    override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match
+      case tree @ TypeDef(_, impl: Template) if classes(tree.symbol) =>
+        super.transform(cpy.TypeDef(tree)(rhs = unrollTemplate(impl)))
+      case tree =>
+        super.transform(tree)
+  }
 
   def copyParamSym(sym: Symbol, parent: Symbol)(using Context): (Symbol, Symbol) =
-    sym -> sym.copy(owner = parent)
+    sym -> sym.copy(owner = parent, flags = (sym.flags &~ HasDefault))
 
   def symLocation(sym: Symbol)(using Context) = {
     val lineDesc =
@@ -47,6 +70,7 @@ class UnrollDefs extends MiniPhase {
           i
       }
   }
+
   def isTypeClause(p: ParamClause) = p.headOption.exists(_.isInstanceOf[TypeDef])
 
   def generateSingleForwarder(defdef: DefDef,
@@ -63,15 +87,25 @@ class UnrollDefs extends MiniPhase {
         else ps.map(p => copyParamSym(p.symbol, parent))
       }
 
+    val isOverride = {
+      val candidate = defdef.symbol.nextOverriddenSymbol
+      candidate.exists && !candidate.is(Deferred)
+    }
+
     val forwarderDefSymbol = Symbols.newSymbol(
       defdef.symbol.owner,
       defdef.name,
       defdef.symbol.flags &~
       HasDefaultParams &~
       (if (nextParamIndex == -1) Flags.EmptyFlags else Deferred) |
-      Invisible,
+      Invisible | (if (isOverride) Override else EmptyFlags),
       NoType, // fill in later
-    )
+    ).entered
+
+    if nextParamIndex == -1 then
+      defdef.symbol.owner.asClass.info.decls.openForMutations.unlink(defdef.symbol)
+    else if isOverride then
+      defdef.symbol.flags_=(defdef.symbol.flags | Override)
 
     val newParamSymMappings = extractParamSymss(forwarderDefSymbol)
     val (oldParams, newParams) = newParamSymMappings.flatten.unzip
@@ -96,16 +130,18 @@ class UnrollDefs extends MiniPhase {
 
       val defaultCalls = Range(paramIndex, nextParamIndex).map(n =>
 
-        def makeSelect(ref: Tree, name: TermName): Tree =
-          val sym = ref.symbol
+        def makeSelect(refTree: Tree, name: TermName): Tree =
+          val sym = refTree.symbol
           if !sym.findMember(name, NoPrefix, EmptyFlags, EmptyFlags).exists then
             val param = defdef.paramss(annotatedParamListIndex)(n)
             val methodStr = s"method ${defdef.name} ${symLocation(defdef.symbol)}"
             val paramStr = s"parameter ${param.name}"
-            report.error(i"Cannot unroll $methodStr because $paramStr needs a default value", param.srcPos)
-            EmptyTree
+            val errorMessage =
+              i"Cannot unroll $methodStr because $paramStr needs a default value"
+            report.error(errorMessage, param.srcPos)
+            ref(newErrorSymbol(sym, nme.ERROR, errorMessage.toMessage))
           else
-            ref.select(name)
+            refTree.select(name)
 
         val inner = if (defdef.symbol.isConstructor) {
           makeSelect(ref(defdef.symbol.owner.companionModule),
@@ -118,8 +154,7 @@ class UnrollDefs extends MiniPhase {
             DefaultGetterName(defdef.name, n + defaultOffset))
         }
 
-        if inner.isEmpty then EmptyTree
-        else newParamSymLists
+        newParamSymLists
           .take(annotatedParamListIndex)
           .map(_.map(ref))
           .foldLeft(inner): (lhs, newParams) =>
@@ -187,7 +222,7 @@ class UnrollDefs extends MiniPhase {
     ).setDefTree
   }
 
-  def generateSyntheticDefs(tree: Tree)(using Context): (Option[(Symbol, Seq[Symbol])], Seq[(Symbol, Tree)]) = tree match{
+  def generateSyntheticDefs(tree: Tree)(using Context): (Option[(Symbol, Seq[Symbol])], Seq[(Symbol, Tree)]) = tree match {
     case defdef: DefDef if defdef.paramss.nonEmpty =>
       import dotty.tools.dotc.core.NameOps.isConstructorName
 
@@ -269,7 +304,7 @@ class UnrollDefs extends MiniPhase {
     case _ => (None, Nil)
   }
 
-  override def transformTemplate(tmpl: tpd.Template)(using Context): tpd.Tree = {
+  def unrollTemplate(tmpl: tpd.Template)(using Context): tpd.Tree = {
 
     val (removed0, generatedDefs0) = tmpl.body.map(generateSyntheticDefs).unzip
     val (removedCtor, generatedConstr0) = generateSyntheticDefs(tmpl.constr)
@@ -308,14 +343,17 @@ class UnrollDefs extends MiniPhase {
         }
     end if
 
-    super.transformTemplate(
-      cpy.Template(tmpl)(
-        tmpl.constr,
-        tmpl.parents,
-        tmpl.derived,
-        tmpl.self,
-        otherDecls ++ generatedDefs ++ generatedConstr
-      )
+    cpy.Template(tmpl)(
+      tmpl.constr,
+      tmpl.parents,
+      tmpl.derived,
+      tmpl.self,
+      otherDecls ++ generatedDefs ++ generatedConstr
     )
   }
+
 }
+
+object UnrollDefinitions:
+  val name: String = "unrollDefs"
+  val description: String = "generates forwarders for methods annotated with @unroll"
