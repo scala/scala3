@@ -16,8 +16,10 @@ import Constants.Constant
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 import dotty.tools.dotc.core.Types.{MethodType, NamedType, PolyType, Type}
 import dotty.tools.dotc.core.Symbols
+import dotty.tools.dotc.printing.Formatting.hl
 
 import dotty.tools.dotc.core.Types.NoType
+import dotty.tools.dotc.typer.Checking
 
 class UnrollDefs extends MiniPhase {
   import tpd._
@@ -166,7 +168,7 @@ class UnrollDefs extends MiniPhase {
     ).setDefTree
   }
 
-  def generateSyntheticDefs(tree: Tree)(using Context): (Option[(Symbol, Seq[Symbol])], Seq[Tree]) = tree match{
+  def generateSyntheticDefs(tree: Tree)(using Context): (Option[(Symbol, Seq[Symbol])], Seq[(Symbol, Tree)]) = tree match{
     case defdef: DefDef if defdef.paramss.nonEmpty =>
       import dotty.tools.dotc.core.NameOps.isConstructorName
 
@@ -198,12 +200,12 @@ class UnrollDefs extends MiniPhase {
           val paramCount = annotated.paramSymss(paramClauseIndex).size
           if (isCaseFromProduct) {
             val newDef = generateFromProduct(annotationIndices, paramCount, defdef)
-            (Some(defdef.symbol, Seq(newDef.symbol)), Seq(newDef))
+            (Some(defdef.symbol, Seq(newDef.symbol)), Seq(defdef.symbol -> newDef))
           } else {
             if (defdef.symbol.is(Deferred)){
               val replacements = Seq.newBuilder[Symbol]
               val newDefs =
-                (-1 +: annotationIndices :+ paramCount).sliding(2).toList.foldLeft((Seq.empty[DefDef], defdef.symbol))((m, v) => ((m, v): @unchecked) match {
+                (-1 +: annotationIndices :+ paramCount).sliding(2).toList.foldLeft((Seq.empty[(Symbol, DefDef)], defdef.symbol))((m, v) => ((m, v): @unchecked) match {
                   case ((defdefs, nextSymbol), Seq(paramIndex, nextParamIndex)) =>
                     val forwarder = generateSingleForwarder(
                       defdef,
@@ -215,7 +217,7 @@ class UnrollDefs extends MiniPhase {
                       isCaseApply
                     )
                     replacements += forwarder.symbol
-                    (forwarder +: defdefs, forwarder.symbol)
+                    ((defdef.symbol -> forwarder) +: defdefs, forwarder.symbol)
                 })._1
               (
                 Some(defdef.symbol, replacements.result()),
@@ -226,7 +228,7 @@ class UnrollDefs extends MiniPhase {
 
               (
                 None,
-                (annotationIndices :+ paramCount).sliding(2).toList.reverse.foldLeft((Seq.empty[DefDef], defdef.symbol))((m, v) => ((m, v): @unchecked) match {
+                (annotationIndices :+ paramCount).sliding(2).toList.reverse.foldLeft((Seq.empty[(Symbol, DefDef)], defdef.symbol))((m, v) => ((m, v): @unchecked) match {
                   case ((defdefs, nextSymbol), Seq(paramIndex, nextParamIndex)) =>
                     val forwarder = generateSingleForwarder(
                       defdef,
@@ -237,7 +239,7 @@ class UnrollDefs extends MiniPhase {
                       paramClauseIndex,
                       isCaseApply
                     )
-                    (forwarder +: defdefs, forwarder.symbol)
+                    ((defdef.symbol -> forwarder) +: defdefs, forwarder.symbol)
                 })._1
               )
             }
@@ -251,16 +253,49 @@ class UnrollDefs extends MiniPhase {
 
   override def transformTemplate(tmpl: tpd.Template)(using Context): tpd.Tree = {
 
-    val (removed0, generatedDefs) = tmpl.body.map(generateSyntheticDefs).unzip
-    val (removedCtor, generatedConstr) = generateSyntheticDefs(tmpl.constr)
+    val (removed0, generatedDefs0) = tmpl.body.map(generateSyntheticDefs).unzip
+    val (removedCtor, generatedConstr0) = generateSyntheticDefs(tmpl.constr)
     val removedFlat = removed0.flatten
     val removedSymsBody = removedFlat.map(_(0))
     val allRemoved = removedFlat ++ removedCtor
+
+    val generatedDefOrigins = generatedDefs0.flatten
+    val generatedDefs = generatedDefOrigins.map(_(1))
+    val generatedConstr = generatedConstr0.map(_(1))
+
+    val otherDecls = tmpl.body.filter(t => !removedSymsBody.contains(t.symbol))
+
     for (sym, replacements) <- allRemoved do
+      val cls = sym.owner.asClass
       def totalParamCount(sym: Symbol): Int = sym.paramSymss.view.map(_.size).sum
       val symParamCount = totalParamCount(sym)
       val replaced = replacements.find(totalParamCount(_) == symParamCount).get
-      sym.owner.asClass.replace(sym, replaced)
+      cls.replace(sym, replaced)
+
+    /** inlined from compiler/src/dotty/tools/dotc/typer/Checking.scala */
+    def checkClash(decl: Symbol, other: Symbol) =
+      def staticNonStaticPair = decl.isScalaStatic != other.isScalaStatic
+      decl.matches(other) && !staticNonStaticPair
+
+    if generatedDefOrigins.nonEmpty then
+      val byName = otherDecls.groupMap(_.symbol.name.toString)(_.symbol)
+      for case (src, dcl: NamedDefTree) <- generatedDefOrigins do
+        val replaced = dcl.symbol
+        def symLocation(sym: Symbol) = {
+          val lineDesc =
+            if (sym.span.exists && sym.span != sym.owner.span)
+              s" at line ${sym.srcPos.line + 1}"
+            else ""
+          i"in ${sym.owner}${lineDesc}"
+        }
+        byName.get(dcl.name.toString).foreach { syms =>
+          val clashes = syms.filter(checkClash(replaced, _))
+          for existing <- clashes do
+            report.error(i"""Unrolled $replaced clashes with existing declaration.
+              |Please remove the clashing definition, or the @unroll annotation.
+              |Unrolled from ${hl(src.showDcl)} ${symLocation(src)}""".stripMargin, existing.srcPos)
+        }
+    end if
 
     super.transformTemplate(
       cpy.Template(tmpl)(
@@ -268,7 +303,7 @@ class UnrollDefs extends MiniPhase {
         tmpl.parents,
         tmpl.derived,
         tmpl.self,
-        tmpl.body.filter(t => !removedSymsBody.contains(t.symbol)) ++ generatedDefs.flatten ++ generatedConstr
+        otherDecls ++ generatedDefs ++ generatedConstr
       )
     )
   }
