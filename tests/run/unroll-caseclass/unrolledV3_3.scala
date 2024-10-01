@@ -1,4 +1,5 @@
 //> using options -experimental
+// scalajs: --skip
 package example
 // !! IMPORTANT: If you remove this test, also remove unroll-caseclass.check
 
@@ -90,6 +91,6 @@ object UnrollTestPlatformSpecificV3 extends TestUtil {
         "hello2false3"
     )
 
-    cls.getConstructors.foreach(println)
+    cls.getConstructors.sortBy(_.getParameterCount()).foreach(println)
   }
 }

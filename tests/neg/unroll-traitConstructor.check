@@ -1,0 +1,4 @@
+-- [E207] Declaration Error: tests/neg/unroll-traitConstructor.scala:5:32 ----------------------------------------------
+5 |trait Unroll(a: String, @unroll b: Boolean = true): // error
+  |                                ^
+  |                                implementation restriction: Can not unroll parameters of a trait constructor

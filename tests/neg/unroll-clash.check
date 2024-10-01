@@ -1,0 +1,12 @@
+-- Error: tests/neg/unroll-clash.scala:7:6 -----------------------------------------------------------------------------
+7 |  def foo(x: Int) = { // error
+  |      ^
+  |      Unrolled method foo clashes with existing declaration.
+  |      Please remove the clashing definition, or the @unroll annotation.
+  |      Unrolled from final def foo(x: Int, y: Int): Int in class Foo at line 6
+-- Error: tests/neg/unroll-clash.scala:13:20 ---------------------------------------------------------------------------
+13 |class UnrolledClass2(s: String) { // error
+   |                    ^
+   |              Unrolled constructor UnrolledClass2 clashes with existing declaration.
+   |              Please remove the clashing definition, or the @unroll annotation.
+   |              Unrolled from def <init>(s: String, y: Boolean): UnrolledClass2 in class UnrolledClass2 at line 15

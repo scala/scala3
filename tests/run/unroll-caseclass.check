@@ -20,9 +20,9 @@ Assertion passed: found "hello31337false" + "0"
 === Unrolled Test V3 ===
 Assertion passed: found "hello31337false12345"
 as expected, no constructor for Unrolled(s: String)
-public example.Unrolled(java.lang.String,int,boolean,long)
 public example.Unrolled(java.lang.String,int)
 public example.Unrolled(java.lang.String,int,boolean)
+public example.Unrolled(java.lang.String,int,boolean,long)
 Assertion passed: found "cow1true0"
 Assertion passed: found "cow2true0"
 Assertion passed: found "cow2false0"

@@ -1,4 +1,5 @@
 //> using options -experimental
+// scalajs: --skip
 package example
 // !! IMPORTANT: If you remove this test, also remove unroll-caseclass.check
 

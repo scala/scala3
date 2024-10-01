@@ -3334,14 +3334,14 @@ final class QuotedTypeMissing(tpe: Type)(using Context) extends StagingMessage(Q
 
   private def witness = defn.QuotedTypeClass.typeRef.appliedTo(tpe)
 
-  override protected def msg(using Context): String = 
+  override protected def msg(using Context): String =
     i"Reference to $tpe within quotes requires a given ${witness} in scope"
 
   override protected def explain(using Context): String =
-    i"""Referencing `$tpe` inside a quoted expression requires a `${witness}` to be in scope. 
+    i"""Referencing `$tpe` inside a quoted expression requires a `${witness}` to be in scope.
         |Since Scala is subject to erasure at runtime, the type information will be missing during the execution of the code.
-        |`${witness}` is therefore needed to carry `$tpe`'s type information into the quoted code. 
-        |Without an implicit `${witness}`, the type `$tpe` cannot be properly referenced within the expression. 
+        |`${witness}` is therefore needed to carry `$tpe`'s type information into the quoted code.
+        |Without an implicit `${witness}`, the type `$tpe` cannot be properly referenced within the expression.
         |To resolve this, ensure that a `${witness}` is available, either through a context-bound or explicitly.
         |"""
 
@@ -3408,3 +3408,26 @@ final class EnumMayNotBeValueClasses(sym: Symbol)(using Context) extends SyntaxM
 
     def explain(using Context) = ""
 end EnumMayNotBeValueClasses
+
+class IllegalUnrollPlacement(origin: Option[Symbol])(using Context)
+extends DeclarationMsg(IllegalUnrollPlacementID):
+  def msg(using Context) = origin match
+    case None => "@unroll is only allowed on a method parameter"
+    case Some(method) =>
+      val isCtor = method.isConstructor
+      def what = if isCtor then i"a ${if method.owner.is(Trait) then "trait" else "class"} constructor" else i"method ${method.name}"
+      val prefix = s"Can not unroll parameters of $what"
+      if method.is(Deferred) then
+        i"$prefix: it must not be abstract"
+      else if isCtor && method.owner.is(Trait) then
+        i"implementation restriction: $prefix"
+      else if !(isCtor || method.is(Final) || method.owner.is(ModuleClass)) then
+        i"$prefix: it is not final"
+      else if method.owner.companionClass.is(CaseClass) then
+        i"$prefix of a case class companion object: please annotate the class constructor instead"
+      else
+        assert(method.owner.is(CaseClass))
+        i"$prefix of a case class: please annotate the class constructor instead"
+
+  def explain(using Context) = ""
+end IllegalUnrollPlacement

@@ -59,6 +59,9 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
 
   var hasMacroAnnotations: Boolean = false
 
+  def hasUnrollDefs: Boolean = unrolledClasses != null
+  var unrolledClasses: Set[Symbol] | Null = null
+
   /** Set to `true` if inliner added anonymous mirrors that need to be completed */
   var needsMirrorSupport: Boolean = false
 

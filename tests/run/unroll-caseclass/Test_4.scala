@@ -1,4 +1,6 @@
 //> using options -experimental
+// scalajs: --skip
+
 import example.*
 // !! IMPORTANT: If you remove this test, also remove unroll-caseclass.check
 @main def Test(): Unit = {
