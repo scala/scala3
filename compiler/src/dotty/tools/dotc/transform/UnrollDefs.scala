@@ -166,7 +166,7 @@ class UnrollDefs extends MiniPhase {
     ).setDefTree
   }
 
-  def generateSyntheticDefs(tree: Tree)(using Context): (Option[Symbol], Seq[Tree]) = tree match{
+  def generateSyntheticDefs(tree: Tree)(using Context): (Option[(Symbol, Seq[Symbol])], Seq[Tree]) = tree match{
     case defdef: DefDef if defdef.paramss.nonEmpty =>
       import dotty.tools.dotc.core.NameOps.isConstructorName
 
@@ -197,11 +197,12 @@ class UnrollDefs extends MiniPhase {
         case Seq((paramClauseIndex, annotationIndices)) =>
           val paramCount = annotated.paramSymss(paramClauseIndex).size
           if (isCaseFromProduct) {
-            (Some(defdef.symbol), Seq(generateFromProduct(annotationIndices, paramCount, defdef)))
+            val newDef = generateFromProduct(annotationIndices, paramCount, defdef)
+            (Some(defdef.symbol, Seq(newDef.symbol)), Seq(newDef))
           } else {
             if (defdef.symbol.is(Deferred)){
-              (
-                Some(defdef.symbol),
+              val replacements = Seq.newBuilder[Symbol]
+              val newDefs =
                 (-1 +: annotationIndices :+ paramCount).sliding(2).toList.foldLeft((Seq.empty[DefDef], defdef.symbol))((m, v) => ((m, v): @unchecked) match {
                   case ((defdefs, nextSymbol), Seq(paramIndex, nextParamIndex)) =>
                     val forwarder = generateSingleForwarder(
@@ -213,8 +214,12 @@ class UnrollDefs extends MiniPhase {
                       paramClauseIndex,
                       isCaseApply
                     )
+                    replacements += forwarder.symbol
                     (forwarder +: defdefs, forwarder.symbol)
                 })._1
+              (
+                Some(defdef.symbol, replacements.result()),
+                newDefs
               )
 
             }else{
@@ -247,8 +252,15 @@ class UnrollDefs extends MiniPhase {
   override def transformTemplate(tmpl: tpd.Template)(using Context): tpd.Tree = {
 
     val (removed0, generatedDefs) = tmpl.body.map(generateSyntheticDefs).unzip
-    val (_, generatedConstr) = generateSyntheticDefs(tmpl.constr)
-    val removed = removed0.flatten
+    val (removedCtor, generatedConstr) = generateSyntheticDefs(tmpl.constr)
+    val removedFlat = removed0.flatten
+    val removedSymsBody = removedFlat.map(_(0))
+    val allRemoved = removedFlat ++ removedCtor
+    for (sym, replacements) <- allRemoved do
+      def totalParamCount(sym: Symbol): Int = sym.paramSymss.view.map(_.size).sum
+      val symParamCount = totalParamCount(sym)
+      val replaced = replacements.find(totalParamCount(_) == symParamCount).get
+      sym.owner.asClass.replace(sym, replaced)
 
     super.transformTemplate(
       cpy.Template(tmpl)(
@@ -256,7 +268,7 @@ class UnrollDefs extends MiniPhase {
         tmpl.parents,
         tmpl.derived,
         tmpl.self,
-        tmpl.body.filter(t => !removed.contains(t.symbol)) ++ generatedDefs.flatten ++ generatedConstr
+        tmpl.body.filter(t => !removedSymsBody.contains(t.symbol)) ++ generatedDefs.flatten ++ generatedConstr
       )
     )
   }
