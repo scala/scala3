@@ -20,6 +20,7 @@ import collection.mutable
 import reporting.{Profile, NoProfile}
 import dotty.tools.tasty.TastyFormat.ASTsSection
 import quoted.QuotePatterns
+import dotty.tools.dotc.config.Feature
 
 object TreePickler:
   class StackSizeExceeded(val mdef: tpd.MemberDef) extends Exception
@@ -474,26 +475,30 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
             case _ =>
               if passesConditionForErroringBestEffortCode(tree.hasType) then
                 // #19951 The signature of a constructor of a Java annotation is irrelevant
+                val sym = tree.symbol
                 val sig =
-                  if name == nme.CONSTRUCTOR && tree.symbol.exists && tree.symbol.owner.is(JavaAnnotation) then Signature.NotAMethod
+                  if name == nme.CONSTRUCTOR && sym.exists && sym.owner.is(JavaAnnotation) then Signature.NotAMethod
                   else tree.tpe.signature
-                var ename = tree.symbol.targetName
+                var ename = sym.targetName
                 val selectFromQualifier =
                   name.isTypeName
                   || qual.isInstanceOf[Hole] // holes have no symbol
                   || sig == Signature.NotAMethod // no overload resolution necessary
-                  || !tree.denot.symbol.exists // polymorphic function type
+                  || !sym.exists // polymorphic function type
                   || tree.denot.asSingleDenotation.isRefinedMethod // refined methods have no defining class symbol
                 if selectFromQualifier then
                   writeByte(if name.isTypeName then SELECTtpt else SELECT)
                   pickleNameAndSig(name, sig, ename)
                   pickleTree(qual)
+                else if sym.is(Invisible) && qual.isInstanceOf[This] && sym.hasAnnotation(defn.UnrollForwarderAnnot) then
+                  writeByte(TERMREFdirect)
+                  pickleSymRef(sym) // SIP-61 HACK: resolution from Signature filters out Invisible symbols
                 else // select from owner
                   writeByte(SELECTin)
                   withLength {
-                    pickleNameAndSig(name, tree.symbol.signature, ename)
+                    pickleNameAndSig(name, sym.signature, ename)
                     pickleTree(qual)
-                    pickleType(tree.symbol.owner.typeRef)
+                    pickleType(sym.owner.typeRef)
                   }
               else
                 writeByte(if name.isTypeName then SELECTtpt else SELECT)
