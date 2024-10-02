@@ -4,10 +4,6 @@ lazy val sharedSettings = Seq(
   scalacOptions ++= Seq("-Ycheck:all", "-experimental")
 )
 
-lazy val printSettings = Seq(
-  scalacOptions ++= Seq("-Xprint:unrollDefs", "-Ydebug-flags")
-)
-
 lazy val v1 = project.in(file("v1"))
   .settings(sharedSettings)
 
@@ -30,11 +26,9 @@ lazy val v1_app = project.in(file("v1_app")).dependsOn(utils)
 
 lazy val v2 = project.in(file("v2"))
   .settings(sharedSettings)
-  .settings(printSettings)
 
 lazy val v2_downstream = project.in(file("v2_downstream")).dependsOn(v2)
   .settings(sharedSettings)
-  .settings(printSettings)
 
 lazy val v2_app = project.in(file("v2_app")).dependsOn(utils)
   .settings(sharedSettings)
