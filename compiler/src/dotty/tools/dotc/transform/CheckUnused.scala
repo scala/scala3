@@ -21,7 +21,7 @@ import dotty.tools.dotc.core.NameOps.isReplWrapperName
 import dotty.tools.dotc.core.Annotations
 import dotty.tools.dotc.core.Definitions
 import dotty.tools.dotc.core.NameKinds.WildcardParamName
-import dotty.tools.dotc.core.Symbols.Symbol
+import dotty.tools.dotc.core.Symbols.{Symbol, isDeprecated}
 import dotty.tools.dotc.report
 import dotty.tools.dotc.reporting.{Message, UnusedSymbol as UnusedSymbolMessage}
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
@@ -76,7 +76,6 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
 
   // ========== MiniPhase Prepare ==========
   override def prepareForOther(tree: tpd.Tree)(using Context): Context =
-    // A standard tree traverser covers cases not handled by the Mega/MiniPhase
     traverser.traverse(tree)
     ctx
 
@@ -104,13 +103,13 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
       ud.registerUsed(tree.symbol, name, tree.qualifier.tpe, includeForImport = tree.qualifier.span.isSynthetic)
 
   override def prepareForBlock(tree: tpd.Block)(using Context): Context =
-    pushInBlockTemplatePackageDef(tree)
+    pushScope(tree)
 
   override def prepareForTemplate(tree: tpd.Template)(using Context): Context =
-    pushInBlockTemplatePackageDef(tree)
+    pushScope(tree)
 
   override def prepareForPackageDef(tree: tpd.PackageDef)(using Context): Context =
-    pushInBlockTemplatePackageDef(tree)
+    pushScope(tree)
 
   override def prepareForValDef(tree: tpd.ValDef)(using Context): Context =
     preparing:
@@ -156,15 +155,15 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
   // ========== MiniPhase Transform ==========
 
   override def transformBlock(tree: tpd.Block)(using Context): tpd.Tree =
-    popOutBlockTemplatePackageDef(tree)
+    popScope(tree)
     tree
 
   override def transformTemplate(tree: tpd.Template)(using Context): tpd.Tree =
-    popOutBlockTemplatePackageDef(tree)
+    popScope(tree)
     tree
 
   override def transformPackageDef(tree: tpd.PackageDef)(using Context): tpd.Tree =
-    popOutBlockTemplatePackageDef(tree)
+    popScope(tree)
     tree
 
   override def transformValDef(tree: tpd.ValDef)(using Context): tpd.Tree =
@@ -185,11 +184,11 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
 
   // ---------- MiniPhase HELPERS -----------
 
-  private def pushInBlockTemplatePackageDef(tree: tpd.Block | tpd.Template | tpd.PackageDef)(using Context): Context =
+  private def pushScope(tree: tpd.Block | tpd.Template | tpd.PackageDef)(using Context): Context =
     preparing:
       ud.pushScope(UnusedData.ScopeType.fromTree(tree))
 
-  private def popOutBlockTemplatePackageDef(tree: tpd.Block | tpd.Template | tpd.PackageDef)(using Context): Context =
+  private def popScope(tree: tpd.Block | tpd.Template | tpd.PackageDef)(using Context): Context =
     preparing:
       ud.popScope(UnusedData.ScopeType.fromTree(tree))
 
@@ -198,6 +197,8 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
    *
    * It traverse the tree the tree and gather the data in the
    * corresponding context property
+   *
+   * A standard tree traverser covers cases not handled by the Mega/MiniPhase
    */
   private def traverser = new TreeTraverser:
 
@@ -220,9 +221,9 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
           traverseChildren(tree)(using newCtx)
         case tree: (tpd.Block | tpd.Template | tpd.PackageDef) =>
           //! DIFFERS FROM MINIPHASE
-          pushInBlockTemplatePackageDef(tree)
+          pushScope(tree)
           traverseChildren(tree)(using newCtx)
-          popOutBlockTemplatePackageDef(tree)
+          popScope(tree)
         case t: tpd.ValDef =>
           prepareForValDef(t)
           traverseChildren(tree)(using newCtx)
@@ -335,6 +336,7 @@ object CheckUnused:
 
     /** The current scope during the tree traversal */
     val currScopeType: Stack[ScopeType] = Stack(ScopeType.Other)
+    inline def peekScopeType = currScopeType.top
 
     var unusedAggregate: Option[UnusedResult] = None
 
@@ -427,7 +429,7 @@ object CheckUnused:
         !tpd.languageImport(imp.expr).nonEmpty
           && !imp.isGeneratedByEnum
           && !isTransparentAndInline(imp)
-          && currScopeType.top != ScopeType.ReplWrapper // #18383 Do not report top-level import's in the repl as unused
+          && peekScopeType != ScopeType.ReplWrapper // #18383 Do not report top-level import's in the repl as unused
       then
         val qualTpe = imp.expr.tpe
 
@@ -455,7 +457,7 @@ object CheckUnused:
               implicitParamInScope += memDef
           else if !paramsToSkip.contains(memDef.symbol) then
             explicitParamInScope += memDef
-        else if currScopeType.top == ScopeType.Local then
+        else if peekScopeType == ScopeType.Local then
           localDefInScope += memDef
         else if memDef.shouldReportPrivateDef then
           privateDefInScope += memDef
@@ -653,14 +655,11 @@ object CheckUnused:
           if altName.exists(explicitName => selector.rename != explicitName.toTermName) then
             // if there is an explicit name, it must match
             false
-          else
-            (isDerived || prefix.typeSymbol.isPackageObject || selData.qualTpe =:= prefix) && (
-              if isDerived then
-                // See i15503i.scala, grep for "package foo.test.i17156"
-                selData.allSymbolsDealiasedForNamed.contains(sym.dealiasAsType)
-              else
-                selData.allSymbolsForNamed.contains(sym)
-            )
+          else if isDerived then
+            // See i15503i.scala, grep for "package foo.test.i17156"
+            selData.allSymbolsDealiasedForNamed.contains(sym.dealiasAsType)
+          else (prefix.typeSymbol.isPackageObject || selData.qualTpe =:= prefix) &&
+            selData.allSymbolsForNamed.contains(sym)
         else
           // Wildcard
           if !selData.qualTpe.member(sym.name).hasAltWith(_.symbol == sym) then
@@ -687,9 +686,7 @@ object CheckUnused:
           val owner = sym.owner
           trivialDefs(owner) || // is a trivial def
           owner.isPrimaryConstructor ||
-          owner.annotations.exists ( // @depreacated
-            _.symbol == ctx.definitions.DeprecatedAnnot
-          ) ||
+          owner.isDeprecated ||
           owner.isAllOf(Synthetic | PrivateLocal) ||
           owner.is(Accessor) ||
           owner.isOverridden
@@ -743,7 +740,7 @@ object CheckUnused:
         !sym.shouldNotReportParamOwner
 
       private def shouldReportPrivateDef(using Context): Boolean =
-        currScopeType.top == ScopeType.Template && !memDef.symbol.isConstructor && memDef.symbol.is(Private, butNot = SelfName | Synthetic | CaseAccessor)
+        peekScopeType == ScopeType.Template && !memDef.symbol.isConstructor && memDef.symbol.is(Private, butNot = SelfName | Synthetic | CaseAccessor)
 
       private def isUnsetVarDef(using Context): Boolean =
         val sym = memDef.symbol
@@ -770,7 +767,7 @@ object CheckUnused:
     object ScopeType:
       /** return the scope corresponding to the enclosing scope of the given tree */
       def fromTree(tree: tpd.Tree)(using Context): ScopeType = tree match
-        case tree: tpd.Template => if tree.symbol.name.isReplWrapperName then ReplWrapper else Template
+        case _: tpd.Template => if tree.symbol.name.isReplWrapperName then ReplWrapper else Template
         case _: tpd.Block => Local
         case _ => Other
 
@@ -827,5 +824,5 @@ object CheckUnused:
       case tp: NamedType => tp.prefix
       case tp: ClassInfo => tp.prefix
       case tp: TypeProxy => tp.superType.normalizedPrefix
-      case _ => tp
+      case _ => NoType
 end CheckUnused
