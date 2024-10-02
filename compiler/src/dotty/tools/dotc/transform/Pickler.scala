@@ -457,6 +457,9 @@ class Pickler extends Phase {
         case None =>
           ()
 
+      if ctx.settings.YtestPicklerCheck.value then
+        sys.error(printedTasty(cls))
+
       inContext(printerContext(testJava)(using rootCtx.fresh.setCompilationUnit(freshUnit))):
         testSame(i"$unpickled%\n%", beforePickling(cls), cls)
 
