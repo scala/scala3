@@ -156,15 +156,15 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
   // ========== MiniPhase Transform ==========
 
   override def transformBlock(tree: tpd.Block)(using Context): tpd.Tree =
-    popOutBlockTemplatePackageDef()
+    popOutBlockTemplatePackageDef(tree)
     tree
 
   override def transformTemplate(tree: tpd.Template)(using Context): tpd.Tree =
-    popOutBlockTemplatePackageDef()
+    popOutBlockTemplatePackageDef(tree)
     tree
 
   override def transformPackageDef(tree: tpd.PackageDef)(using Context): tpd.Tree =
-    popOutBlockTemplatePackageDef()
+    popOutBlockTemplatePackageDef(tree)
     tree
 
   override def transformValDef(tree: tpd.ValDef)(using Context): tpd.Tree =
@@ -189,9 +189,9 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
     preparing:
       ud.pushScope(UnusedData.ScopeType.fromTree(tree))
 
-  private def popOutBlockTemplatePackageDef()(using Context): Context =
+  private def popOutBlockTemplatePackageDef(tree: tpd.Block | tpd.Template | tpd.PackageDef)(using Context): Context =
     preparing:
-      ud.popScope()
+      ud.popScope(UnusedData.ScopeType.fromTree(tree))
 
   /**
    * This traverse is the **main** component of this phase
@@ -200,8 +200,6 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
    * corresponding context property
    */
   private def traverser = new TreeTraverser:
-    import tpd.*
-    import UnusedData.ScopeType
 
     // Register every import, definition and usage
     override def traverse(tree: tpd.Tree)(using Context): Unit =
@@ -214,17 +212,17 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
             case untpd.TypedSplice(tree1) => tree1
           }.foreach(traverse(_)(using newCtx))
           traverseChildren(tree)(using newCtx)
-        case ident: Ident =>
+        case ident: tpd.Ident =>
           prepareForIdent(ident)
           traverseChildren(tree)(using newCtx)
-        case sel: Select =>
+        case sel: tpd.Select =>
           prepareForSelect(sel)
           traverseChildren(tree)(using newCtx)
         case tree: (tpd.Block | tpd.Template | tpd.PackageDef) =>
           //! DIFFERS FROM MINIPHASE
           pushInBlockTemplatePackageDef(tree)
           traverseChildren(tree)(using newCtx)
-          popOutBlockTemplatePackageDef()
+          popOutBlockTemplatePackageDef(tree)
         case t: tpd.ValDef =>
           prepareForValDef(t)
           traverseChildren(tree)(using newCtx)
@@ -477,8 +475,8 @@ object CheckUnused:
      *
      * - If there are imports in this scope check for unused ones
      */
-    def popScope()(using Context): Unit =
-      currScopeType.pop()
+    def popScope(scopeType: ScopeType)(using Context): Unit =
+      assert(currScopeType.pop() == scopeType)
       val usedInfos = usedInScope.pop()
       val selDatas = impInScope.pop()
 
@@ -501,7 +499,7 @@ object CheckUnused:
     /** Leave the scope and return a result set of warnings.
      */
     def getUnused(using Context): UnusedResult =
-      popScope()
+      popScope(ScopeType.Other) // sentinel
 
       def isUsedInPosition(name: Name, span: Span): Boolean =
         usedInPosition.get(name) match
