@@ -40,7 +40,7 @@ import annotation.tailrec
 import Implicits.*
 import util.Stats.record
 import config.Printers.{gadts, typr}
-import config.Feature, Feature.{migrateTo3, sourceVersion, warnOnMigration}
+import config.Feature, Feature.{migrateTo3, modularity, sourceVersion, warnOnMigration}
 import config.SourceVersion.*
 import rewrites.Rewrites, Rewrites.patch
 import staging.StagingLevel
@@ -53,6 +53,7 @@ import config.MigrationVersion
 import transform.CheckUnused.OriginalName
 
 import scala.annotation.constructorOnly
+import dotty.tools.dotc.ast.desugar.PolyFunctionApply
 
 object Typer {
 
@@ -1142,7 +1143,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         if templ1.parents.isEmpty
             && isFullyDefined(pt, ForceDegree.flipBottom)
             && isSkolemFree(pt)
-            && isEligible(pt.underlyingClassRef(refinementOK = Feature.enabled(Feature.modularity)))
+            && isEligible(pt.underlyingClassRef(refinementOK = Feature.enabled(modularity)))
         then
           templ1 = cpy.Template(templ)(parents = untpd.TypeTree(pt) :: Nil)
         for case parent: RefTree <- templ1.parents do
@@ -1717,11 +1718,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           typedFunctionType(desugar.makeFunctionWithValDefs(tree, pt), pt)
         else
           val funSym = defn.FunctionSymbol(numArgs, isContextual, isImpure)
-          val args1 = args.mapConserve {
-            case cb: untpd.ContextBoundTypeTree => typed(cb)
-            case t => t
-          }
-          val result = typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funSym.typeRef), args1 :+ body), pt)
+          // val args1 = args.mapConserve {
+          //   case cb: untpd.ContextBoundTypeTree => typed(cb)
+          //   case t => t
+          // }
+          val result = typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funSym.typeRef), args :+ body), pt)
           // if there are any erased classes, we need to re-do the typecheck.
           result match
             case r: AppliedTypeTree if r.args.exists(_.tpe.isErasedClass) =>
@@ -1920,10 +1921,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   def typedPolyFunction(tree: untpd.PolyFunction, pt: Type)(using Context): Tree =
     val tree1 = desugar.normalizePolyFunction(tree)
-    val tree2 = if Feature.enabled(Feature.modularity) then desugar.expandPolyFunctionContextBounds(tree1)
-                else tree1
-    if (ctx.mode is Mode.Type) typed(desugar.makePolyFunctionType(tree2), pt)
-    else typedPolyFunctionValue(tree2, pt)
+    if (ctx.mode is Mode.Type) typed(desugar.makePolyFunctionType(tree1), pt)
+    else typedPolyFunctionValue(tree1, pt)
 
   def typedPolyFunctionValue(tree: untpd.PolyFunction, pt: Type)(using Context): Tree =
     val untpd.PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun) = tree: @unchecked
@@ -1948,7 +1947,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val resultTpt =
             untpd.InLambdaTypeTree(isResult = true, (tsyms, vsyms) =>
               mt.resultType.substParams(mt, vsyms.map(_.termRef)).substParams(poly, tsyms.map(_.typeRef)))
-          val desugared = desugar.makeClosure(tparams, inferredVParams, body, resultTpt, tree.span)
+          val desugared @ Block(List(defdef), _) = desugar.makeClosure(tparams, inferredVParams, body, resultTpt, tree.span)
+          defdef.putAttachment(PolyFunctionApply, ())
           typed(desugared, pt)
         else
           val msg =
@@ -1956,7 +1956,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                  |Expected type should be a polymorphic function with the same number of type and value parameters."""
           errorTree(EmptyTree, msg, tree.srcPos)
       case _ =>
-        val desugared = desugar.makeClosure(tparams, vparams, body, untpd.TypeTree(), tree.span)
+        val desugared @ Block(List(defdef), _) = desugar.makeClosure(tparams, vparams, body, untpd.TypeTree(), tree.span)
+        defdef.putAttachment(PolyFunctionApply, ())
         typed(desugared, pt)
   end typedPolyFunctionValue
 
@@ -2453,12 +2454,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if tycon.tpe.typeParams.nonEmpty then
       val tycon0 = tycon.withType(tycon.tpe.etaCollapse)
       typed(untpd.AppliedTypeTree(spliced(tycon0), tparam :: Nil))
-    else if Feature.enabled(Feature.modularity) && tycon.tpe.member(tpnme.Self).symbol.isAbstractOrParamType then
+    else if Feature.enabled(modularity) && tycon.tpe.member(tpnme.Self).symbol.isAbstractOrParamType then
       val tparamSplice = untpd.TypedSplice(typedExpr(tparam))
       typed(untpd.RefinedTypeTree(spliced(tycon), List(untpd.TypeDef(tpnme.Self, tparamSplice))))
     else
       def selfNote =
-        if Feature.enabled(Feature.modularity) then
+        if Feature.enabled(modularity) then
           " and\ndoes not have an abstract type member named `Self` either"
         else ""
       errorTree(tree,
@@ -3607,6 +3608,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   protected def makeContextualFunction(tree: untpd.Tree, pt: Type)(using Context): Tree = {
     val defn.FunctionOf(formals, _, true) = pt.dropDependentRefinement: @unchecked
+    println(i"make contextual function $tree / $pt")
     val paramNamesOrNil = pt match
       case RefinedType(_, _, rinfo: MethodType) => rinfo.paramNames
       case _ => Nil
@@ -4705,7 +4707,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           cpy.Ident(qual)(qual.symbol.name.sourceModuleName.toTypeName)
         case _ =>
           errorTree(tree, em"cannot convert from $tree to an instance creation expression")
-      val tycon = ctorResultType.underlyingClassRef(refinementOK = Feature.enabled(Feature.modularity))
+      val tycon = ctorResultType.underlyingClassRef(refinementOK = Feature.enabled(modularity))
       typed(
         untpd.Select(
           untpd.New(untpd.TypedSplice(tpt.withType(tycon))),
