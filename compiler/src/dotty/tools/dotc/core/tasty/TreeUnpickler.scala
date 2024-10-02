@@ -1259,7 +1259,12 @@ class TreeUnpickler(reader: TastyReader,
         goto(start)
         readType() match {
           case path: TypeRef => TypeTree(path)
-          case path: TermRef => ref(path)
+          case path: TermRef =>
+            val sym = path.symbol
+            if sym.is(Invisible) && sym.hasAnnotation(defn.UnrollForwarderAnnot) then
+              This(sym.owner.asClass).select(sym)
+            else
+              ref(path)
           case path: ThisType => untpd.This(untpd.EmptyTypeIdent).withType(path)
           case path: ConstantType => Literal(path.value)
           case path: ErrorType if isBestEffortTasty => TypeTree(path)

@@ -1040,6 +1040,8 @@ class Definitions {
   @tu lazy val NowarnAnnot: ClassSymbol = requiredClass("scala.annotation.nowarn")
   @tu lazy val UnusedAnnot: ClassSymbol = requiredClass("scala.annotation.unused")
   @tu lazy val UnrollAnnot: ClassSymbol = requiredClass("scala.annotation.unroll")
+  @tu lazy val AbstractUnrollAnnot: ClassSymbol = requiredClass("scala.annotation.internal.AbstractUnroll")
+  @tu lazy val UnrollForwarderAnnot: ClassSymbol = requiredClass("scala.annotation.internal.UnrollForwarder")
   @tu lazy val TransparentTraitAnnot: ClassSymbol = requiredClass("scala.annotation.transparentTrait")
   @tu lazy val NativeAnnot: ClassSymbol = requiredClass("scala.native")
   @tu lazy val RepeatedAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Repeated")
