@@ -340,7 +340,7 @@ object CheckUnused:
 
     /* IMPORTS */
     private val impInScope = Stack(ListBuffer.empty[ImportSelectorData])
-    private val usedInScope = Stack(mut.Set.empty[Usage])
+    private val usedInScope = Stack(mut.Map.empty[Symbol, ListBuffer[Usage]])
     private val usedInPosition = mut.Map.empty[Name, mut.Set[Symbol]]
     /* unused import collected during traversal */
     private val unusedImport = ListBuffer.empty[ImportSelectorData]
@@ -397,13 +397,18 @@ object CheckUnused:
             if sym.exists then
               usedDef += sym
               if includeForImport1 then
-                usedInScope.top += Usage(sym, name, prefix, isDerived)
+                addUsage(Usage(sym, name, prefix, isDerived))
           addIfExists(sym)
           addIfExists(sym.companionModule)
           addIfExists(sym.companionClass)
           if sym.sourcePos.exists then
             for n <- name do
               usedInPosition.getOrElseUpdate(n, mut.Set.empty) += sym
+
+    def addUsage(usage: Usage)(using Context): Unit =
+      val usages = usedInScope.top.getOrElseUpdate(usage.symbol, ListBuffer.empty)
+      if !usages.exists(x => x.name == usage.name && x.isDerived == usage.isDerived && x.prefix =:= usage.prefix)
+      then usages += usage
 
     /** Register a symbol that should be ignored */
     def addIgnoredUsage(sym: Symbol)(using Context): Unit =
@@ -465,7 +470,7 @@ object CheckUnused:
       // unused imports :
       currScopeType.push(newScopeType)
       impInScope.push(ListBuffer.empty)
-      usedInScope.push(mut.Set.empty)
+      usedInScope.push(mut.Map.empty)
 
     def registerSetVar(sym: Symbol): Unit =
       setVars += sym
@@ -477,18 +482,17 @@ object CheckUnused:
      */
     def popScope(scopeType: ScopeType)(using Context): Unit =
       assert(currScopeType.pop() == scopeType)
-      val usedInfos = usedInScope.pop()
       val selDatas = impInScope.pop()
 
-      for usedInfo <- usedInfos do
-        val Usage(sym, optName, prefix, isDerived) = usedInfo
-        selDatas.find(sym.isInImport(_, optName, prefix, isDerived)) match
+      for usedInfos <- usedInScope.pop().valuesIterator; usedInfo <- usedInfos do
+        import usedInfo.*
+        selDatas.find(symbol.isInImport(_, name, prefix, isDerived)) match
           case Some(sel) =>
             sel.markUsed()
           case None =>
             // Propagate the symbol one level up
             if usedInScope.nonEmpty then
-              usedInScope.top += usedInfo
+              addUsage(usedInfo)
       end for // each in usedInfos
 
       for selData <- selDatas do
@@ -802,7 +806,7 @@ object CheckUnused:
     /** A symbol usage includes the name under which it was observed,
      *  the prefix from which it was selected, and whether it is in a derived element.
      */
-    case class Usage(symbol: Symbol, name: Option[Name], prefix: Type, isDerived: Boolean)
+    class Usage(val symbol: Symbol, val name: Option[Name], val prefix: Type, val isDerived: Boolean)
   end UnusedData
   extension (sym: Symbol)
     /** is accessible without import in current context */
