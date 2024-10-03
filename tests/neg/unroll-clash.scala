@@ -9,3 +9,10 @@ class Foo {
     -1
   }
 }
+
+class UnrolledClass2(s: String) { // error
+
+  def this(s: String, @unroll y: Boolean = true) = this(s + y)
+
+  override def toString = s"UnrolledClass2($s)"
+}

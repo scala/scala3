@@ -25,6 +25,8 @@ import dotty.tools.unreachable
 
 /**Implementation of SIP-61.
  * Runs when `@unroll` annotations are found in a compilation unit, installing new definitions
+ *
+ * Note that it only generates `Invisible` methods, so no interactions with Zinc/SemanticDB
  */
 class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
   self =>
@@ -63,17 +65,18 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
 
     def computeIndices(annotated: Symbol)(using Context): ComputedIndicies =
       unrolledDefs.getOrElseUpdate(annotated, {
-        annotated
+        val indices = annotated
           .paramSymss
           .zipWithIndex
-          .flatMap { (paramClause, paramClauseIndex) =>
+          .flatMap: (paramClause, paramClauseIndex) =>
             val annotationIndices = findUnrollAnnotations(paramClause)
             if (annotationIndices.isEmpty) None
-            else
-              require(annotated.is(Final, butNot = Deferred) || annotated.isConstructor,
-                i"${annotated} is not final&concrete, or a constructor")
-              Some((paramClauseIndex, annotationIndices))
-          }
+            else Some((paramClauseIndex, annotationIndices))
+        if indices.nonEmpty then
+          // pre-validation should have occurred in posttyper
+          assert(annotated.is(Final, butNot = Deferred) || annotated.isConstructor || annotated.owner.is(ModuleClass),
+            i"$annotated is not final&concrete, or a constructor")
+        indices
       })
     end computeIndices
 
@@ -320,7 +323,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
       decl.matches(other) && !staticNonStaticPair
 
     if allGenerated.nonEmpty then
-      val byName = otherDecls.groupMap(_.symbol.name.toString)(_.symbol)
+      val byName = (tmpl.constr :: otherDecls).groupMap(_.symbol.name.toString)(_.symbol)
       for
         (src, _, dcls) <- allGenerated
         dcl <- dcls
