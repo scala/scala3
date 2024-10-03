@@ -21,6 +21,7 @@ import reporting.*
 import NameKinds.WildcardParamName
 import cc.*
 import dotty.tools.dotc.transform.MacroAnnotations.hasMacroAnnotation
+import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 
 object PostTyper {
   val name: String = "posttyper"
@@ -133,18 +134,21 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         else
           local
       seenMethods.getOrElseUpdate(method, {
-        var res = true
-        if method.is(Deferred) then
-          report.error("Unrolled method must be final and concrete", method.srcPos)
-          res = false
-        val isCtor = method.isConstructor
-        if isCtor && method.owner.is(Trait) then
-          report.error("implementation restriction: Unrolled method cannot be a trait constructor", method.srcPos)
-          res = false
-        if !(isCtor || method.is(Final) || method.owner.is(ModuleClass)) then
-          report.error("Unrolled method must be final", method.srcPos)
-          res = false
-        res
+        if method.name.is(DefaultGetterName) then
+          false // not an error, but not an expandable unrolled method
+        else
+          var res = true
+          if method.is(Deferred) then
+            report.error("Unrolled method must be final and concrete", method.srcPos)
+            res = false
+          val isCtor = method.isConstructor
+          if isCtor && method.owner.is(Trait) then
+            report.error("implementation restriction: Unrolled method cannot be a trait constructor", method.srcPos)
+            res = false
+          if !(isCtor || method.is(Final) || method.owner.is(ModuleClass)) then
+            report.error(s"Unrolled method ${method} must be final", method.srcPos)
+            res = false
+          res
       })
 
     def withNoCheckNews[T](ts: List[New])(op: => T): T = {

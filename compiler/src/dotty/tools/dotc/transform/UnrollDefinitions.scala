@@ -65,18 +65,21 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
 
     def computeIndices(annotated: Symbol)(using Context): ComputedIndicies =
       unrolledDefs.getOrElseUpdate(annotated, {
-        val indices = annotated
-          .paramSymss
-          .zipWithIndex
-          .flatMap: (paramClause, paramClauseIndex) =>
-            val annotationIndices = findUnrollAnnotations(paramClause)
-            if (annotationIndices.isEmpty) None
-            else Some((paramClauseIndex, annotationIndices))
-        if indices.nonEmpty then
-          // pre-validation should have occurred in posttyper
-          assert(annotated.is(Final, butNot = Deferred) || annotated.isConstructor || annotated.owner.is(ModuleClass),
-            i"$annotated is not final&concrete, or a constructor")
-        indices
+        if annotated.name.is(DefaultGetterName) then
+          Nil // happens in curried methods where more than one parameter list has @unroll
+        else
+          val indices = annotated
+            .paramSymss
+            .zipWithIndex
+            .flatMap: (paramClause, paramClauseIndex) =>
+              val annotationIndices = findUnrollAnnotations(paramClause)
+              if (annotationIndices.isEmpty) None
+              else Some((paramClauseIndex, annotationIndices))
+          if indices.nonEmpty then
+            // pre-validation should have occurred in posttyper
+            assert(annotated.is(Final, butNot = Deferred) || annotated.isConstructor || annotated.owner.is(ModuleClass) || annotated.name.is(DefaultGetterName),
+              i"$annotated is not final&concrete, or a constructor")
+          indices
       })
     end computeIndices
 
@@ -103,7 +106,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
     params
       .zipWithIndex
       .collect {
-        case (v, i) if v.annotations.exists(_.symbol.fullName.toString == "scala.annotation.unroll") =>
+        case (v, i) if v.hasAnnotation(defn.UnrollAnnot) =>
           i
       }
   }
@@ -303,7 +306,9 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
                 case _ => unreachable("sliding with at least 2 elements")
             Some((defdef.symbol, None, generatedDefs))
 
-        case multiple => sys.error("Cannot have multiple parameter lists containing `@unroll` annotation")
+        case multiple =>
+          report.error("Cannot have multiple parameter lists containing `@unroll` annotation", defdef.srcPos)
+          None
       }
 
     case _ => None
