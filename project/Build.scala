@@ -127,7 +127,7 @@ object Build {
   /** Version of Scala CLI to download */
   val scalaCliLauncherVersion = "1.5.1"
   /** Version of Coursier to download for initializing the local maven repo of Scala command */
-  val coursierJarVersion = "2.1.10"
+  val coursierJarVersion = "2.1.13"
 
   object CompatMode {
     final val BinaryCompatible = 0
