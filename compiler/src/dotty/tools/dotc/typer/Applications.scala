@@ -1963,7 +1963,10 @@ trait Applications extends Compatibility {
     def widenPrefix(alt: TermRef): Type = alt.prefix.widen match
       case pre: (TypeRef | ThisType) if pre.typeSymbol.is(Module) =>
         val ps = pre.parents
-        if ps.isEmpty then pre
+        if ps.isEmpty then
+          // The parents of a module class are non-empty, unless the module is a package.
+          assert(pre.typeSymbol.is(Package), pre)
+          pre
         else ps.reduceLeft(TypeComparer.andType(_, _))
       case wpre => wpre
 
