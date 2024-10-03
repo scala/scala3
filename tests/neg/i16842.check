@@ -1,4 +1,16 @@
--- Error: tests/neg/i16842.scala:24:7 ----------------------------------------------------------------------------------
-24 |  Liter(SemanticArray[SemanticInt.type], x) // error
-   |       ^
-   |       invalid new prefix (dim: Int): SemanticArray[SemanticInt.type] cannot replace ty.type in type ty.T
+-- [E007] Type Mismatch Error: tests/neg/i16842.scala:24:8 -------------------------------------------------------------
+24 |  Liter(SemanticArray[SemanticInt.type], x) // error // error
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        Found:    Int => SemanticArray[SemanticInt.type]
+   |        Required: SemanticArray[SemanticType]
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i16842.scala:24:41 ------------------------------------------------------------
+24 |  Liter(SemanticArray[SemanticInt.type], x) // error // error
+   |                                         ^
+   |                      Found:    (x : List[Expr2[SemanticInt.type]])
+   |                      Required: ty.T
+   |                      Note that implicit conversions were not tried because the result of an implicit conversion
+   |                      must be more specific than ty.T
+   |
+   | longer explanation available when compiling with `-explain`
