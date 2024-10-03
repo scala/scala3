@@ -82,8 +82,8 @@ package foo.test.i16678:
   def run =
     println(foo(number => number.toString, value = 5)) // OK
     println(foo(number => "<number>", value = 5)) // warn
-    println(foo(func = number => "<number>", value = 5)) // warn
     println(foo(func = number => number.toString, value = 5)) // OK
+    println(foo(func = number => "<number>", value = 5)) // warn
     println(foo(func = _.toString, value = 5)) // OK
 
 package foo.test.possibleclasses:
