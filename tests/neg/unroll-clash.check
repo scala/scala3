@@ -3,4 +3,4 @@
   |      ^
   |      Unrolled method foo clashes with existing declaration.
   |      Please remove the clashing definition, or the @unroll annotation.
-  |      Unrolled from def foo(x: Int, y: Int): Int in class Foo at line 6
+  |      Unrolled from final def foo(x: Int, y: Int): Int in class Foo at line 6
