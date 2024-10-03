@@ -3196,7 +3196,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         .withType(dummy.termRef)
       if (!cls.isOneOf(AbstractOrTrait) && !ctx.isAfterTyper)
         checkRealizableBounds(cls, cdef.sourcePos.withSpan(cdef.nameSpan))
-      if cls.isEnum || firstParentTpe.classSymbol.isEnum then
+      if cls.isEnum || !cls.isRefinementClass && firstParentTpe.classSymbol.isEnum then
         checkEnum(cdef, cls, firstParent)
       val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
 
