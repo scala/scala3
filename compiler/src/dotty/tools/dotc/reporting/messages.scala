@@ -1829,12 +1829,11 @@ class NotAPath(tp: Type, usage: String)(using Context) extends TypeMsg(NotAPathI
     if sym.isAllOf(Flags.InlineParam) then
       i"""
          |Inline parameters are not considered immutable paths and cannot be used as
-         |singleton types. 
-         | 
+         |singleton types.
+         |
          |Hint: Removing the `inline` qualifier from the `${sym.name}` parameter
          |may help resolve this issue."""
     else ""
-    
 
 class WrongNumberOfParameters(tree: untpd.Tree, foundCount: Int, pt: Type, expectedCount: Int)(using Context)
   extends SyntaxMsg(WrongNumberOfParametersID) {

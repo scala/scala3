@@ -1914,7 +1914,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       .showing(i"desugared fun $tree --> $desugared with pt = $pt", typr)
   }
 
-
   def typedPolyFunction(tree: untpd.PolyFunction, pt: Type)(using Context): Tree =
     val tree1 = desugar.normalizePolyFunction(tree)
     if (ctx.mode is Mode.Type) typed(desugar.makePolyFunctionType(tree1), pt)

@@ -1221,7 +1221,6 @@ class Definitions {
 
     /** Creates a refined `PolyFunction` with an `apply` method with the given info. */
     def apply(mt: MethodOrPoly)(using Context): Type =
-      assert(isValidPolyFunctionInfo(mt), s"Not a valid PolyFunction refinement: $mt")
       RefinedType(PolyFunctionClass.typeRef, nme.apply, mt)
 
     /** Matches a refined `PolyFunction` type and extracts the apply info.
