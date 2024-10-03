@@ -55,7 +55,7 @@ object desugar {
   /** An attachment key to indicate that a DefDef is a poly function apply
    * method definition.
    */
-  val PolyFunctionApply: Property.Key[Unit] = Property.StickyKey()
+  val PolyFunctionApply: Property.Key[List[ValDef]] = Property.StickyKey()
 
   /** What static check should be applied to a Match? */
   enum MatchCheck {
@@ -514,17 +514,25 @@ object desugar {
       case Nil =>
         params :: Nil
 
+    // TODO(kπ) is this enough? SHould this be a TreeTraverse-thing?
+    def pushDownEvidenceParams(tree: Tree): Tree = tree match
+      case Function(params, body) =>
+        cpy.Function(tree)(params, pushDownEvidenceParams(body))
+      case Block(stats, expr) =>
+        cpy.Block(tree)(stats, pushDownEvidenceParams(expr))
+      case tree =>
+        val paramTpts = params.map(_.tpt)
+        val paramNames = params.map(_.name)
+        val paramsErased = params.map(_.mods.flags.is(Erased))
+        makeContextualFunction(paramTpts, paramNames, tree, paramsErased).withSpan(tree.span)
+
     if meth.hasAttachment(PolyFunctionApply) then
       meth.removeAttachment(PolyFunctionApply)
-      val paramTpts = params.map(_.tpt)
-      val paramNames = params.map(_.name)
-      val paramsErased = params.map(_.mods.flags.is(Erased))
+      // (kπ): deffer this until we can type the result?
       if ctx.mode.is(Mode.Type) then
-        val ctxFunction = makeContextualFunction(paramTpts, paramNames, meth.tpt, paramsErased)
-        cpy.DefDef(meth)(tpt = ctxFunction)
+        cpy.DefDef(meth)(tpt = meth.tpt.withAttachment(PolyFunctionApply, params))
       else
-        val ctxFunction = makeContextualFunction(paramTpts, paramNames, meth.rhs, paramsErased)
-        cpy.DefDef(meth)(rhs = ctxFunction)
+        cpy.DefDef(meth)(rhs = pushDownEvidenceParams(meth.rhs))
     else
       cpy.DefDef(meth)(paramss = recur(meth.paramss))
   end addEvidenceParams
@@ -1263,7 +1271,7 @@ object desugar {
     RefinedTypeTree(ref(defn.PolyFunctionType), List(
       DefDef(nme.apply, tparams :: vparams :: Nil, res, EmptyTree)
         .withFlags(Synthetic)
-        .withAttachment(PolyFunctionApply, ())
+        .withAttachment(PolyFunctionApply, List.empty)
     )).withSpan(tree.span)
   end makePolyFunctionType
 
