@@ -812,7 +812,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
               |${showLines("Unexpected warnings:", unexpected)}
               |$showDiagnostics
               |""".stripMargin.trim.linesIterator.mkString("\n", "\n", "")
-        else if hasMissingAnnotations then s"\nWarnings found on incorrect row numbers when compiling $testSource\n$showDiagnostics"
+        else if hasMissingAnnotations then
+          s"""|Warnings found on incorrect row numbers when compiling $testSource
+              |${showLines("Unfulfilled expectations:", expected)}
+              |${showLines("Unexpected warnings:", unexpected)}
+              |$showDiagnostics
+              |""".stripMargin.trim.linesIterator.mkString("\n", "\n", "")
         else if !map.isEmpty then s"\nExpected warnings(s) have {<warning position>=<unreported warning>}: $map"
         else null
     end maybeFailureMessage
