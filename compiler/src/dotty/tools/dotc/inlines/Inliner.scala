@@ -957,6 +957,12 @@ class Inliner(val call: tpd.Tree)(using Context):
             case None => tree
         case _ =>
           tree
+
+    /** For inlining only: Given `(x: T)` with expected type `x.type`, replace the tree with `x`.
+     */
+    override def healAdapt(tree: Tree, pt: Type)(using Context): Tree = (tree, pt) match
+      case (Typed(tree1, _), pt: SingletonType) if tree1.tpe <:< pt => tree1
+      case _ => tree
   end InlineTyper
 
   /** Drop any side-effect-free bindings that are unused in expansion or other reachable bindings.
