@@ -1,0 +1,4 @@
+-- Error: tests/neg/unroll-traitConstructor.scala:5:12 -----------------------------------------------------------------
+5 |trait Unroll(a: String, @unroll b: Boolean = true): // error
+  |            ^
+  |            implementation restriction: Unrolled method cannot be a trait constructor
