@@ -21,6 +21,7 @@ import config.MigrationVersion
 import config.Printers.refcheck
 import reporting.*
 import Constants.Constant
+import dotty.tools.dotc.printing.Formatting.hl
 
 object RefChecks {
   import tpd.*
@@ -1272,6 +1273,18 @@ object RefChecks {
         case tp: NamedType if tp.prefix.typeSymbol != ctx.owner.enclosingClass =>
           report.warning(UnqualifiedCallToAnyRefMethod(tree, tree.symbol), tree)
         case _ => ()
+
+  def checkJavaStaticProtected(tree: tpd.Apply | tpd.Select | tpd.Assign)(using Context): Unit =
+    val sym = tree.symbol
+    if sym.isAllOf(StaticProtected) then
+        val definedPackage = sym.enclosingPackageClass
+        val definedClass = sym.owner.companionClass //it's _not_ sym.enclosingClass because it's static, therefore enclosed in a companion object, not a class
+        val enclosingPackage = ctx.owner.enclosingPackageClass
+
+        if definedPackage != enclosingPackage && !ctx.owner.ownersIterator.exists(_.derivesFrom(definedClass)) then
+          report.error(em"${StaticProtected} $sym which is defined in $definedPackage is inaccessible at runtime from $enclosingPackage", tree.srcPos)
+  end checkJavaStaticProtected
+
 }
 import RefChecks.*
 
@@ -1361,6 +1374,15 @@ class RefChecks extends MiniPhase { thisPhase =>
   override def transformSelect(tree: tpd.Select)(using Context): tpd.Tree =
     if defn.ScalaBoxedClasses().contains(tree.qualifier.tpe.typeSymbol) && tree.name == nme.synchronized_ then
       report.warning(SynchronizedCallOnBoxedClass(tree), tree.srcPos)
+    checkJavaStaticProtected(tree)
+    tree
+
+  override def transformApply(tree: tpd.Apply)(using Context): tpd.Apply =
+    checkJavaStaticProtected(tree)
+    tree
+
+  override def transformAssign(tree: tpd.Assign)(using Context): tpd.Assign =
+    checkJavaStaticProtected(tree)
     tree
 }
 
