@@ -91,6 +91,6 @@ object UnrollTestPlatformSpecificV3 extends TestUtil {
         "hello2false3"
     )
 
-    cls.getConstructors.foreach(println)
+    cls.getConstructors.sortBy(_.getParameterCount()).foreach(println)
   }
 }
