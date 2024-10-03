@@ -15,7 +15,7 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.{AnnotatedType, ClassInfo, ConstantType, NamedType, NoType, TermRef, Type, TypeProxy, TypeTraverser}
 import dotty.tools.dotc.core.Flags
-import dotty.tools.dotc.core.Names.Name
+import dotty.tools.dotc.core.Names.{Name, TermName, termName}
 import dotty.tools.dotc.core.NameOps.isReplWrapperName
 import dotty.tools.dotc.core.Annotations
 import dotty.tools.dotc.core.Definitions
@@ -733,7 +733,10 @@ object CheckUnused:
         !sym.shouldNotReportParamOwner
 
       private def shouldReportPrivateDef(using Context): Boolean =
-        peekScopeType == ScopeType.Template && !memDef.symbol.isConstructor && memDef.symbol.is(Private, butNot = SelfName | Synthetic | CaseAccessor)
+        peekScopeType == ScopeType.Template
+        && !memDef.symbol.isConstructor
+        && memDef.symbol.is(Private, butNot = SelfName | Synthetic | CaseAccessor)
+        && !ignoredNames(memDef.symbol.name.toTermName)
 
       private def isUnsetVarDef(using Context): Boolean =
         val sym = memDef.symbol
@@ -763,6 +766,8 @@ object CheckUnused:
         case _: tpd.Template => if tree.symbol.name.isReplWrapperName then ReplWrapper else Template
         case _: tpd.Block => Local
         case _ => Other
+
+    val ignoredNames: Set[TermName] = Set("readResolve", "readObject", "writeObject", "writeReplace").map(termName(_))
 
     final class ImportSelectorData(val qualTpe: Type, val selector: ImportSelector):
       private var myUsed: Boolean = false
