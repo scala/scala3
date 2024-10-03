@@ -137,7 +137,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         if method.is(Deferred) then
           report.error("Unrolled method must be final and concrete", method.srcPos)
           res = false
-        if !method.isConstructor && !method.is(Final) then
+        if !(method.isConstructor || method.is(Final) || method.owner.is(ModuleClass)) then
           report.error("Unrolled method must be final", method.srcPos)
           res = false
         res
