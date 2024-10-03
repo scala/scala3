@@ -119,7 +119,29 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
     private var inJavaAnnot: Boolean = false
 
+    private var seenUnrolledMethods: util.EqHashMap[Symbol, Boolean] | Null = null
+
     private var noCheckNews: Set[New] = Set()
+
+    def isValidUnrolledMethod(method: Symbol)(using Context): Boolean =
+      val seenMethods =
+        val local = seenUnrolledMethods
+        if local == null then
+          val map = new util.EqHashMap[Symbol, Boolean]
+          seenUnrolledMethods = map
+          map
+        else
+          local
+      seenMethods.getOrElseUpdate(method, {
+        var res = true
+        if method.is(Deferred) then
+          report.error("Unrolled method must be final and concrete", method.srcPos)
+          res = false
+        if !method.isConstructor && !method.is(Final) then
+          report.error("Unrolled method must be final", method.srcPos)
+          res = false
+        res
+      })
 
     def withNoCheckNews[T](ts: List[New])(op: => T): T = {
       val saved = noCheckNews
@@ -174,7 +196,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
     }
 
     private def registerIfUnrolledParam(sym: Symbol)(using Context): Unit =
-      if sym.getAnnotation(defn.UnrollAnnot).isDefined then
+      if sym.hasAnnotation(defn.UnrollAnnot) && isValidUnrolledMethod(sym.owner) then
         val cls = sym.enclosingClass
         val classes = ctx.compilationUnit.unrolledClasses
         val additions = Array(cls, cls.linkedClass).filter(_ != NoSymbol)
