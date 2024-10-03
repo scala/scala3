@@ -3,8 +3,7 @@ package dotty.tools.dotc.transform
 import scala.annotation.tailrec
 
 import dotty.tools.uncheckedNN
-import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.ast.tpd.{Inlined, TreeTraverser}
+import dotty.tools.dotc.ast.tpd, tpd.{Ident, Inlined, Select, Tree, TreeTraverser}
 import dotty.tools.dotc.ast.untpd, untpd.ImportSelector
 import dotty.tools.dotc.config.ScalaSettings
 import dotty.tools.dotc.core.Contexts.*
@@ -113,13 +112,26 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
 
   override def prepareForValDef(tree: tpd.ValDef)(using Context): Context =
     preparing:
+      ud.addIgnoredUsage(tree.symbol)
+
+  override def transformValDef(tree: tpd.ValDef)(using Context): tpd.Tree =
+    preparing:
       traverseAnnotations(tree.symbol)
-      // do not register the ValDef generated for `object`
-      if !tree.symbol.is(Module) then
+      if !tree.symbol.is(Module) then // do not register the ValDef generated for `object`
         ud.registerDef(tree)
       if tree.name.startsWith("derived$") && tree.hasType then
-        ud.registerUsed(tree.tpe.typeSymbol, name = None, tree.tpe.importPrefix, isDerived = true)
-      ud.addIgnoredUsage(tree.symbol)
+        def core(t: Tree): (Symbol, Option[Name], Type) = t match
+          case Ident(name)  => (t.tpe.typeSymbol, Some(name), t.tpe.underlyingPrefix)
+          case Select(t, _) => core(t)
+          case _            => (NoSymbol, None, NoType)
+        tree.getAttachment(OriginalTypeClass) match
+        case Some(orig) =>
+          val (typsym, name, prefix) = core(orig)
+          ud.registerUsed(typsym, name, prefix.skipPackageObject)
+        case _ =>
+      ud.removeIgnoredUsage(tree.symbol)
+    tree
+
 
   override def prepareForDefDef(tree: tpd.DefDef)(using Context): Context =
     preparing:
@@ -164,11 +176,6 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
 
   override def transformPackageDef(tree: tpd.PackageDef)(using Context): tpd.Tree =
     popScope(tree)
-    tree
-
-  override def transformValDef(tree: tpd.ValDef)(using Context): tpd.Tree =
-    preparing:
-      ud.removeIgnoredUsage(tree.symbol)
     tree
 
   override def transformDefDef(tree: tpd.DefDef)(using Context): tpd.Tree =
@@ -312,13 +319,14 @@ object CheckUnused:
     case UnsetLocals
     case UnsetPrivates
 
-  /**
-   * The key used to retrieve the "unused entity" analysis metadata,
-   * from the compilation `Context`
-   */
+  /** The key used to retrieve the "unused entity" analysis metadata from the compilation `Context` */
   private val _key = Property.StickyKey[UnusedData]
 
+  /** Attachment holding the name of an Ident as written by the user. */
   val OriginalName = Property.StickyKey[Name]
+
+  /** Attachment holding the name of a type class as written by the user. */
+  val OriginalTypeClass = Property.StickyKey[tpd.Tree]
 
   class PostTyper extends CheckUnused(PhaseMode.Aggregate, "PostTyper", _key)
 
@@ -384,7 +392,7 @@ object CheckUnused:
      * The optional name will be used to target the right import
      * as the same element can be imported with different renaming
      */
-    def registerUsed(sym: Symbol, name: Option[Name], prefix: Type = NoType, includeForImport: Boolean = true, isDerived: Boolean = false)(using Context): Unit =
+    def registerUsed(sym: Symbol, name: Option[Name], prefix: Type = NoType, includeForImport: Boolean = true)(using Context): Unit =
       if sym.exists && !isConstructorOfSynth(sym) && !doNotRegister(sym) then
         if sym.isConstructor then
           // constructors are "implicitly" imported with the class
@@ -399,7 +407,7 @@ object CheckUnused:
             if sym.exists then
               usedDef += sym
               if includeForImport1 then
-                addUsage(Usage(sym, name, prefix, isDerived))
+                addUsage(Usage(sym, name, prefix))
           addIfExists(sym)
           addIfExists(sym.companionModule)
           addIfExists(sym.companionClass)
@@ -409,7 +417,7 @@ object CheckUnused:
 
     def addUsage(usage: Usage)(using Context): Unit =
       val usages = usedInScope.top.getOrElseUpdate(usage.symbol, ListBuffer.empty)
-      if !usages.exists(x => x.name == usage.name && x.isDerived == usage.isDerived && x.prefix =:= usage.prefix)
+      if !usages.exists(x => x.name == usage.name && x.prefix =:= usage.prefix)
       then usages += usage
 
     /** Register a symbol that should be ignored */
@@ -477,10 +485,7 @@ object CheckUnused:
     def registerSetVar(sym: Symbol): Unit =
       setVars += sym
 
-    /**
-     * leave the current scope and do :
-     *
-     * - If there are imports in this scope check for unused ones
+    /** Leave current scope and mark any used imports; collect unused imports.
      */
     def popScope(scopeType: ScopeType)(using Context): Unit =
       assert(currScopeType.pop() == scopeType)
@@ -488,7 +493,7 @@ object CheckUnused:
 
       for usedInfos <- usedInScope.pop().valuesIterator; usedInfo <- usedInfos do
         import usedInfo.*
-        selDatas.find(symbol.isInImport(_, name, prefix, isDerived)) match
+        selDatas.find(symbol.isInImport(_, name, prefix)) match
           case Some(sel) =>
             sel.markUsed()
           case None =>
@@ -646,35 +651,23 @@ object CheckUnused:
       /** Given an import selector, is the symbol imported from the given prefix, optionally with a specific name?
        *  If isDerived, then it may be an aliased type in source but we only witness it dealiased.
        */
-      private def isInImport(selData: ImportSelectorData, altName: Option[Name], prefix: Type, isDerived: Boolean)(using Context): Boolean =
+      private def isInImport(selData: ImportSelectorData, altName: Option[Name], prefix: Type)(using Context): Boolean =
         assert(sym.exists)
 
         val selector = selData.selector
 
-        if !selector.isWildcard then
-          if altName.exists(explicitName => selector.rename != explicitName.toTermName) then
-            // if there is an explicit name, it must match
-            false
-          else if isDerived then
-            // See i15503i.scala, grep for "package foo.test.i17156"
-            selData.allSymbolsDealiasedForNamed.contains(sym.dealiasAsType)
-          else (prefix.typeSymbol.isPackageObject || selData.qualTpe =:= prefix) &&
-            selData.allSymbolsForNamed.contains(sym)
-        else
-          // Wildcard
-          if !selData.qualTpe.member(sym.name).hasAltWith(_.symbol == sym) then
-            // The qualifier does not have the target symbol as a member
-            false
-          else
-            if selector.isGiven then
-              // Further check that the symbol is a given or implicit and conforms to the bound
+        if selector.isWildcard then
+          selData.qualTpe.member(sym.name).hasAltWith(_.symbol == sym) && { // The qualifier must have the target symbol as a member
+            if selector.isGiven then // Further check that the symbol is a given or implicit and conforms to the bound
               sym.isOneOf(Given | Implicit)
                 && (selector.bound.isEmpty || sym.info.finalResultType <:< selector.boundTpe)
                 && selData.qualTpe =:= prefix
             else
-              // Normal wildcard, check that the symbol is not a given (but can be implicit)
-              !sym.is(Given)
-        end if
+              !sym.is(Given) // Normal wildcard, check that the symbol is not a given (but can be implicit)
+          }
+        else
+          !altName.exists(_.toTermName != selector.rename) && // if there is an explicit name, it must match
+            selData.qualTpe =:= prefix && selData.allSymbolsForNamed.contains(sym)
       end isInImport
 
       /** Annotated with @unused */
@@ -786,12 +779,6 @@ object CheckUnused:
           myAllSymbols = allDenots.map(_.symbol).toSet
         myAllSymbols.uncheckedNN
 
-      private var myAllSymbolsDealiased: Set[Symbol] | Null = null
-
-      def allSymbolsDealiasedForNamed(using Context): Set[Symbol] =
-        if myAllSymbolsDealiased == null then
-          myAllSymbolsDealiased = allSymbolsForNamed.map(_.dealiasAsType)
-        myAllSymbolsDealiased.uncheckedNN
     end ImportSelectorData
 
     case class UnusedSymbol(pos: SrcPos, name: Name, warnType: WarnTypes)
@@ -801,9 +788,9 @@ object CheckUnused:
       val Empty = UnusedResult(Set.empty)
 
     /** A symbol usage includes the name under which it was observed,
-     *  the prefix from which it was selected, and whether it is in a derived element.
+     *  and the prefix from which it was selected.
      */
-    class Usage(val symbol: Symbol, val name: Option[Name], val prefix: Type, val isDerived: Boolean)
+    class Usage(val symbol: Symbol, val name: Option[Name], val prefix: Type)
   end UnusedData
   extension (sym: Symbol)
     /** is accessible without import in current context */
@@ -814,15 +801,20 @@ object CheckUnused:
             && c.owner.thisType.baseClasses.contains(sym.owner)
             && c.owner.thisType.member(sym.name).alternatives.contains(sym)
 
-    def dealiasAsType(using Context): Symbol =
-      if sym.isType && sym.asType.denot.isAliasType then
-        sym.asType.typeRef.dealias.typeSymbol
-      else
-        sym
   extension (tp: Type)
     def importPrefix(using Context): Type = tp match
       case tp: NamedType => tp.prefix
       case tp: ClassInfo => tp.prefix
       case tp: TypeProxy => tp.superType.normalizedPrefix
       case _ => NoType
+    def underlyingPrefix(using Context): Type = tp match
+      case tp: NamedType => tp.prefix
+      case tp: ClassInfo => tp.prefix
+      case tp: TypeProxy => tp.underlying.underlyingPrefix
+      case _ => NoType
+    def skipPackageObject(using Context): Type =
+      if tp.typeSymbol.isPackageObject then tp.underlyingPrefix else tp
+    def underlying(using Context): Type = tp match
+      case tp: TypeProxy => tp.underlying
+      case _ => tp
 end CheckUnused
