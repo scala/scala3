@@ -127,7 +127,7 @@ NamedTuple[("name", "age"), (String, Int)]
 
 A `NamedTuple[N, V]` type is publicly known to be a supertype (but not a subtype) of its value paramater `V`, which means that regular tuples can be assigned to named tuples but not _vice versa_.
 
-The `NamedTuple` object contains a number of extension methods for named tuples hat mirror the same functions in `Tuple`. Examples are
+The `NamedTuple` object contains a number of extension methods for named tuples that mirror the same functions in `Tuple`. Examples are
 `apply`, `head`, `tail`, `take`, `drop`, `++`, `map`, or `zip`.
 Similar to `Tuple`, the `NamedTuple` object also contains types such as `Elem`, `Head`, `Concat`
 that describe the results of these extension methods.
@@ -154,7 +154,7 @@ that `c: C`, and that `n` is not otherwise legal as a name of a selection on `c`
 Then `c.n` is a legal selection, which expands to `c.selectDynamic("n").asInstanceOf[T]`.
 
 It is the task of the implementation of `selectDynamic` in `C` to ensure that its
-computed result conforms to the predicted type `T`
+computed result conforms to the predicted type `T`.
 
 As an example, assume we have a query type `Q[T]` defined as follows:
 
