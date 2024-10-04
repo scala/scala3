@@ -1,0 +1,28 @@
+-- [E172] Type Error: tests/neg/i20265.scala:22:95 ---------------------------------------------------------------------
+22 |  println(summon[((String --> Unit) * (String --> Unit)) =:= Hinze[(String + String) --> Unit]]) // error
+   |                                                                                               ^
+   |                    Cannot prove that (String --> Unit) * (String --> Unit) =:= Hinze[String + String --> Unit].
+   |
+   |                    Note: a match type could not be fully reduced:
+   |
+   |                      trying to reduce  Hinze[String + String --> Unit]
+   |                      failed since selector (String + String --> Unit)#unfix
+   |                      does not match  case k1 + k2 --> v => Hinze[k1 --> v] * Hinze[k2 --> v]
+   |                      and cannot be shown to be disjoint from it either.
+   |                      Therefore, reduction cannot advance to the remaining case
+   |
+   |                        case k1 * k2 --> v => k1 --> Hinze[k2 --> v]
+-- [E172] Type Error: tests/neg/i20265.scala:23:66 ---------------------------------------------------------------------
+23 |  println(summon[String =:= Hinze[Fix[Lambda[String]#L] --> Unit]]) // error
+   |                                                                  ^
+   |                          Cannot prove that String =:= Hinze[Fix[[X] =>> String + String * X + X * X] --> Unit].
+   |
+   |                          Note: a match type could not be fully reduced:
+   |
+   |                            trying to reduce  Hinze[Fix[[X] =>> String + String * X + X * X] --> Unit]
+   |                            failed since selector (Fix[[X] =>> String + String * X + X * X] --> Unit)#unfix
+   |                            does not match  case k1 + k2 --> v => Hinze[k1 --> v] * Hinze[k2 --> v]
+   |                            and cannot be shown to be disjoint from it either.
+   |                            Therefore, reduction cannot advance to the remaining case
+   |
+   |                              case k1 * k2 --> v => k1 --> Hinze[k2 --> v]
