@@ -88,7 +88,6 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
     tree
 
   override def transformApply(tree: Apply)(using Context): Tree =
-    //println(s"APPLY ${tree.show}")
     tree
 
   override def transformTyped(tree: Typed)(using Context): Tree =
@@ -117,7 +116,6 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
   override def prepareForTypeTree(tree: TypeTree)(using Context): Context = ctx
 
   override def transformTypeTree(tree: TypeTree)(using Context): tree.type =
-    //println(s"TYPETREE ${tree.getClass} ${tree.show} or $tree")
     tree.tpe match
     case AnnotatedType(_, annot) => transformAllDeep(annot.tree)
     case _ =>
@@ -134,7 +132,6 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
       ud.addIgnoredUsage(tree.symbol)
 
   override def transformValDef(tree: ValDef)(using Context): tree.type =
-    //println(s"VAL ${tree.name} ${tree.show} tpt ${tree.tpt.show} is a ${tree.tpt.getClass}")
     preparing:
       traverseAnnotations(tree.symbol)
       if !tree.symbol.is(Module) then // do not register the ValDef generated for `object`
@@ -209,8 +206,6 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
             selector.bound match
             case untpd.TypedSplice(bound) => transformAllDeep(bound)
             case _ =>
-      case _: InferredTypeTree =>
-        //println(s"INF ${tree.getClass} ${tree.show}")
       case AppliedTypeTree(tpt, args) =>
         transformAllDeep(tpt)
         args.foreach(transformAllDeep)
@@ -227,6 +222,7 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
         transformAllDeep(hi)
         transformAllDeep(alias)
       case tree: NamedArg => transformAllDeep(tree.arg)
+      case _: InferredTypeTree =>
       case _ if tree.isType =>
         //println(s"OTHER TYPE ${tree.getClass} ${tree.show}")
       case _ =>
