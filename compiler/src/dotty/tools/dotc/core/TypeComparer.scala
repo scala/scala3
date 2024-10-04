@@ -3681,19 +3681,37 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
 
             stableScrut.member(typeMemberName) match
               case denot: SingleDenotation if denot.exists =>
-                val info = denot.info match
-                  case alias: AliasingBounds           => alias.alias        // Extract the alias
-                  case ClassInfo(prefix, cls, _, _, _) => prefix.select(cls) // Re-select the class from the prefix
-                  case info => info // Notably, RealTypeBounds, which will eventually give a MatchResult.NoInstances
-                val info1 = stableScrut match
+                val info = stableScrut match
                   case skolem: SkolemType =>
-                    dropSkolem(info, skolem).orElse:
-                      info match
-                        case info: TypeBounds  => info                       // Will already trigger a MatchResult.NoInstances
-                        case _                 => RealTypeBounds(info, info) // Explicitly trigger a MatchResult.NoInstances
-                  case _ => info
-                rec(capture, info1, variance = 0, scrutIsWidenedAbstract)
+                    /* If it is a skolem type, we cannot have class selections nor
+                     * abstract type selections. If it is an alias, we try to remove
+                     * any reference to the skolem from the right-hand-side. If that
+                     * succeeds, we take the result, otherwise we fail as not-specific.
+                     */
+
+                    def adaptToTriggerNotSpecific(info: Type): Type = info match
+                      case info: TypeBounds => info
+                      case _                => RealTypeBounds(info, info)
+
+                    denot.info match
+                      case denotInfo: AliasingBounds =>
+                        val alias = denotInfo.alias
+                        dropSkolem(alias, skolem).orElse(adaptToTriggerNotSpecific(alias))
+                      case ClassInfo(prefix, cls, _, _, _) =>
+                        // for clean error messages
+                        adaptToTriggerNotSpecific(prefix.select(cls))
+                      case denotInfo =>
+                        adaptToTriggerNotSpecific(denotInfo)
+
+                  case _ =>
+                    // The scrutinee type is truly stable. We select the type member directly on it.
+                    stableScrut.select(typeMemberName)
+                end info
+
+                rec(capture, info, variance = 0, scrutIsWidenedAbstract)
+
               case _ =>
+                // The type member was not found; no match
                 false
       end rec
 
