@@ -52,3 +52,64 @@ package i17156:
     import b.Xd
     trait Z derives Xd // checks if dealiased import is prefix a.Foo
     class Bar extends Xd[Int] // checks if import qual b is prefix of b.Xd
+
+object Coll:
+  class C:
+    type HM[K, V] = scala.collection.mutable.HashMap[K, V]
+object CC extends Coll.C
+import CC.*
+
+def `param type is imported`(map: HM[String, String]): Unit = println(map("hello, world"))
+
+object Constants:
+  final val i = 42
+def `old-style constants are usages`: Unit =
+  object Local:
+    final val j = 27
+  import Constants.i
+  println(i + Local.j)
+
+object Constantinople:
+  val k = 42
+class `scope of super`:
+  import Constants.i // was bad warn
+  class C(x: Int):
+    def y = x
+  class D(j: Int) extends C(i + j):
+    import Constants.* // does not resolve i in C(i)
+    def m = i
+    def f =
+      import Constantinople.*
+      class E(e: Int) extends C(i + k):
+        def g = e + y + k + 1
+      E(0).g
+
+import scala.annotation.meta.*
+object Alias {
+  type A = Deprecated @param
+}
+
+// avoid reporting on runtime (nothing to do with transparent inline)
+import scala.runtime.EnumValue
+
+trait Lime
+
+enum Color(val rgb: Int):
+  case Red   extends Color(0xFF0000) with EnumValue
+  case Green extends Color(0x00FF00) with Lime
+  case Blue  extends Color(0x0000FF)
+
+object prefixes:
+  class C:
+    object N:
+      type U
+  object Test:
+    val c: C = ???
+    def k2: c.N.U = ???
+    import c.N.*
+    def k3: U = ??? // TypeTree if not a select
+  object Alt:
+    val c: C = ???
+    import c.N
+    def k4: N.U = ???
+end prefixes

@@ -1,4 +1,4 @@
-//> using options  -Wunused:all
+//> using options -Wunused:all
 
 package foo:
   class Foo[T]

@@ -95,7 +95,7 @@ trait Locals {
 }
 
 object Types {
-  private object Dongo { def f = this } // NO warn
+  private object Dongo { def f = this } // warn
   private class Bar1 // warn
   private class Bar2 // no warn
   private type Alias1 = String // warn
@@ -105,7 +105,7 @@ object Types {
   def f(x: Alias2) = x.length
 
   def l1() = {
-    object HiObject { def f = this } // NO warn
+    object HiObject { def f = this } // warn
     class Hi { // warn
       def f1: Hi = new Hi
       def f2(x: Hi) = x
@@ -187,7 +187,7 @@ trait Forever {
 }
 
 trait Ignorance {
-  private val readResolve = 42      // no warn special members
+  private val readResolve = 42      // warn wrong signatured for special members
 }
 
 trait CaseyKasem {
@@ -257,3 +257,50 @@ class `recursive reference is not a usage` {
     def f() = new P()
   }
 }
+
+class `absolve serial framework` extends Serializable:
+  import java.io.{IOException, ObjectInputStream, ObjectOutputStream, ObjectStreamException}
+  @throws(classOf[IOException])
+  private def writeObject(stream: ObjectOutputStream): Unit = ()
+  @throws(classOf[ObjectStreamException])
+  private def writeReplace(): Object = ???
+  @throws(classOf[ClassNotFoundException])
+  @throws(classOf[IOException])
+  private def readObject(stream: ObjectInputStream): Unit = ()
+  @throws(classOf[ObjectStreamException])
+  private def readObjectNoData(): Unit = ()
+  @throws(classOf[ObjectStreamException])
+  private def readResolve(): Object = ???
+
+class `absolve ONLY serial framework`:
+  import java.io.{IOException, ObjectInputStream, ObjectOutputStream, ObjectStreamException}
+  @throws(classOf[IOException])
+  private def writeObject(stream: ObjectOutputStream): Unit = () // warn
+  @throws(classOf[ObjectStreamException])
+  private def writeReplace(): Object = ??? // warn
+  @throws(classOf[ClassNotFoundException])
+  @throws(classOf[IOException])
+  private def readObject(stream: ObjectInputStream): Unit = () // warn
+  @throws(classOf[ObjectStreamException])
+  private def readObjectNoData(): Unit = () // warn
+  @throws(classOf[ObjectStreamException])
+  private def readResolve(): Object = ??? // warn
+
+@throws(classOf[java.io.ObjectStreamException])
+private def readResolve(): Object = ??? // warn
+private def print() = println() // warn
+private val printed = false // warn
+
+package locked:
+  private[locked] def locker(): Unit = () // warn as we cannot distinguish unqualified private at top level
+  package basement:
+    private[locked] def shackle(): Unit = () // no warn as it is not top level at boundary
+
+object `i19998 refinement`:
+  trait Foo {
+    type X[a]
+  }
+  trait Bar[X[_]] {
+    private final type SelfX[a] = X[a] // was false positive
+    val foo: Foo { type X[a] = SelfX[a] }
+  }
