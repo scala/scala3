@@ -32,7 +32,7 @@ abstract class TypeError(using creationContext: Context) extends Exception(""):
     || ctx.settings.YdebugCyclic.value
 
   override def fillInStackTrace(): Throwable =
-    if computeStackTrace then super.fillInStackTrace().nn
+    if computeStackTrace then super.fillInStackTrace()
     else this
 
   /** Convert to message. This takes an additional Context, so that we
@@ -246,7 +246,7 @@ class UnpicklingError(denot: Denotation, where: String, cause: Throwable)(using 
       case cause: UnpicklingError => ""
       case _ =>
         if ctx.settings.YdebugUnpickling.value then
-          cause.getStackTrace().nn.mkString("\n    ", "\n    ", "")
+          cause.getStackTrace().mkString("\n    ", "\n    ", "")
         else "\n\nRun with -Ydebug-unpickling to see full stack trace."
     em"""Could not read definition $denot$where. Caused by the following exception:
         |$cause$debugUnpickling"""

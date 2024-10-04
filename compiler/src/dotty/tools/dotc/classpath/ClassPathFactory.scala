@@ -67,7 +67,7 @@ class ClassPathFactory {
         for
           file <- files
           a <- ClassPath.expandManifestPath(file.absolutePath)
-          path = java.nio.file.Paths.get(a.toURI()).nn
+          path = java.nio.file.Paths.get(a.toURI())
           if Files.exists(path)
         yield
           newClassPath(AbstractFile.getFile(path))
