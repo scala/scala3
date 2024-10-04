@@ -147,15 +147,14 @@ object NamedTupleDecomposition:
     inline def head: Head[NamedTuple[N, V]] = apply(0)
 
     /** The last element value of this tuple */
-    inline def last: Last[NamedTuple[N, V]] = apply(size - 1).asInstanceOf[Tuple.Last[V]]
+    inline def last: Last[NamedTuple[N, V]] = apply(size - 1).asInstanceOf[Last[NamedTuple[N, V]]]
 
     /** The tuple consisting of all elements of this tuple except the last one */
     inline def init: Init[NamedTuple[N, V]] =
-      x.toTuple.take(size - 1).asInstanceOf[Init[NamedTuple[N, V]]]
+      x.take(size - 1).asInstanceOf[Init[NamedTuple[N, V]]]
 
     /** The tuple consisting of all elements of this tuple except the first one */
-    inline def tail: Tail[NamedTuple[N, V]] =
-      x.toTuple.drop(1).asInstanceOf[Tail[NamedTuple[N, V]]]
+    inline def tail: Tail[NamedTuple[N, V]] = x.toTuple.drop(1)
 
     /** The tuple consisting of the first `n` elements of this tuple, or all
      *  elements if `n` exceeds `size`.
@@ -182,7 +181,7 @@ object NamedTupleDecomposition:
      *  If `x = (n1 = v1, ..., ni = vi)` then `x.map(f) = `(n1 = f(v1), ..., ni = f(vi))`.
      */
     inline def map[F[_]](f: [t] => t => F[t]): Map[NamedTuple[N, V], F] =
-      x.toTuple.map(f).asInstanceOf[NamedTuple[N, Tuple.Map[V, F]]]
+      x.toTuple.map(f)
 
     /** The named tuple consisting of all elements of this tuple in reverse */
     inline def reverse: Reverse[NamedTuple[N, V]] = x.toTuple.reverse
@@ -198,7 +197,7 @@ object NamedTupleDecomposition:
       x.toTuple.zip(that.toTuple)
 
     /** A list consisting of all element values */
-    inline def toList: List[Tuple.Union[V]] = x.toTuple.toList.asInstanceOf[List[Tuple.Union[V]]]
+    inline def toList: List[Tuple.Union[V]] = x.toTuple.toList
 
     /** An array consisting of all element values */
     inline def toArray: Array[Object] = x.toTuple.toArray
