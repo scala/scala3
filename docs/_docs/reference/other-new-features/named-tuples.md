@@ -99,7 +99,7 @@ Bob match
 We allow named patterns not just for named tuples but also for case classes. For instance:
 ```scala
 city match
-  case c @ City(name = "London") => println(p.population)
+  case c @ City(name = "London") => println(c.population)
   case City(name = n, zip = 1026, population = pop) => println(pop)
 ```
 

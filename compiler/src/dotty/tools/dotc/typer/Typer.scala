@@ -4755,7 +4755,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   /** Hook for inheriting Typers to do a last-effort adaptation. If a different
-   *  tree is returned, we will readpat that one, ptherwise we issue a type error afterwards.
+   *  tree is returned, we will re-adapt that one, otherwise we issue a type error afterwards.
+``
    */
   protected def healAdapt(tree: Tree, pt: Type)(using Context): Tree = tree
 
