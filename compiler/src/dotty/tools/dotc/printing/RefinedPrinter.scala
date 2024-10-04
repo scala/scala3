@@ -165,7 +165,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     changePrec(GlobalPrec) {
       val argStr: Text =
         if args.length == 2
-            && !defn.isTupleNType(args.head)
+            && !defn.isDirectTupleNType(args.head)
             && !isGiven
         then
           atPrec(InfixPrec) { argText(args.head) }
