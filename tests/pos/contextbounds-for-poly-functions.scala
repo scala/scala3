@@ -32,7 +32,7 @@ type CmpWeak[X] = X => Boolean
 type Comparer2Weak = [X: Ord] => X => CmpWeak[X]
 val less4_0: [X: Ord] => X => X => Boolean =
   [X: Ord] => (x: X) => (y: X) => summon[Ord[X]].compare(x, y) < 0
-val less4: Comparer2Weak =
+val less4_1: Comparer2Weak =
   [X: Ord] => (x: X) => (y: X) => summon[Ord[X]].compare(x, y) < 0
 
 val less5 = [X: [X] =>> Ord[X]] => (x: X, y: X) => summon[Ord[X]].compare(x, y) < 0
