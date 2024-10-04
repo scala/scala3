@@ -18,7 +18,7 @@ a bit cumbersome and limiting for standard generic programming patterns. Much ha
 This note shows that with some fairly small and reasonable tweaks to Scala's syntax and typing rules we can obtain a much better scheme for working with type classes, or do generic programming in general.
 
 The bulk of the suggested improvements has been implemented and is available
-in under source version `future` if the additional experimental language import `modularity` is present. For instance, using the following command:
+in source version `future` if the additional experimental language import `modularity` is present. For instance, using the following command:
 
 ```
   scala compile -source:future -language:experimental.modularity

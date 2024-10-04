@@ -40,7 +40,7 @@ class SortedString[A] extends Sorted:
   override given Ord[String] = ...
 ```
 
-Note that the implementing given needs an `override` modifier since the `deferred` given in class `Sorted` counts as a concrete (i.e. not abstract) definition. In a sense, the `deferred` right hand side in `Sorted` is like a (magic, compiler-supported) macro, with the peculiarity that the macro's implementation also affects subclasses.
+Note that the implementing given needs an `override` modifier since the `deferred` given in class `Sorted` counts as a concrete (i.e. not abstract) definition. In a sense, `deferred` on the right-hand side in `Sorted` is like a (magic, compiler-supported) macro, with the peculiarity that the macro's implementation also affects subclasses.
 
 ## Abstract Givens
 
@@ -52,6 +52,6 @@ trait HasOrd[T]:
 ```
 An abstract given has the form `given name: Type` without a right-hand side or arguments to the type.
 
-Since Scala 3.6, abstract givens are made redundant by deferred givens. Deferred givens can replace abstract givens. They have better ergonomics, since deferred givens get naturally implemented in inheriting classes, so there is no longer any need for boilerplate to fill in definitions of abstract givens.
+Since Scala 3.6, abstract givens are made redundant by deferred givens. Deferred givens have better ergonomics, since they get naturally implemented in inheriting classes, so there is no longer any need for boilerplate to fill in definitions of abstract givens.
 
 It is therefore recommended that software architectures relying on  abstract givens be migrated to use deferred givens instead. Abstract givens are still supported in Scala 3.6, but will likely be deprecated and phased out over time.

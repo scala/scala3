@@ -83,11 +83,11 @@ given Position = enclosingTree.position
 ## Given Instance Initialization
 
 An unconditional given instance without parameters is initialized on-demand, the first
-time it is accessed. If the given is a simple alias to some immutable value, the given is implemented as a simple forwarder, without incurring the cost of a field to hold a cached value. If a given is conditional, a fresh instance is created for each reference.
+time it is accessed. If the given is a mere alias to some immutable value, the given is implemented as a simple forwarder, without incurring the cost of a field to hold a cached value. If a given is conditional, a fresh instance is created for each reference.
 
 ## Syntax
 
-Here is the full syntax for given instances. Some of these forms of givens are explained on a separate page on [Other Forms of Givens](../more-givens.md).
+Here is the full syntax for given instances. Some of these forms of givens are explained in a separate page: [Other Forms of Givens](../more-givens.md).
 
 ```ebnf
 Here is the complete context-free syntax for all proposed features.
@@ -106,7 +106,7 @@ GivenConditional  ::=  DefTypeParamClause
 GivenType         ::=  AnnotType1 {id [nl] AnnotType1}
 ```
 
-A given instance starts with the reserved word `given`, which is followed by
+A given instance starts with the reserved keyword `given`, which is followed by
 
  - An optional name and a colon
  - An optional list of conditions.

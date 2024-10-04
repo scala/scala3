@@ -43,14 +43,12 @@ given listOrd: [T] => (ord: Ord[T]) => Ord[List[T]]:
 
 ## By Name Givens
 
-We sometimes find it necessary that a given alias is re-evaluated each time it is called. For instance, say we have a mutable variable `curCtx` and we want to define a given that returns the current value of that variable. A normal given alias will not do since by default given aliases are mapped to lazy vals.
-
-In general, we want to avoid re-evaluation of givens. But there are situations like the one above where we want to specify _by-name_ evaluation instead. This is achieved by writing a conditional given with an empty parameter list:
+Though in general we want to avoid re-evaluating a given, there are situations where such a re-evaluation may be necessary. For instance, say we have a mutable variable `curCtx` and we want to define a given that returns the current value of that variable. A normal given alias will not do since by default given aliases are mapped to lazy vals. In this case, we can specify a _by-name_ evaluation insteadby writing a conditional given with an empty parameter list:
 ```scala
   val curCtx: Context
   given context: () => Context = curCtx
 ```
-With this definition, each time a `Context` is summoned we evaluate `context` function, which produces the current value of `curCtx`.
+With this definition, each time a `Context` is summoned we evaluate the `context` function, which produces the current value of `curCtx`.
 
 ## Given Macros
 

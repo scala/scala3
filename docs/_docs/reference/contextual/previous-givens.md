@@ -161,7 +161,6 @@ Note that the inline methods within the given instances may be `transparent`.
 The inlining of given instances will not inline/duplicate the implementation of the given, it will just inline the instantiation of that instance.
 This is used to help dead code elimination of the given instances that are not used after inlining.
 
-
 ## Pattern-Bound Given Instances
 
 Given instances can also appear in patterns. Example:
@@ -215,12 +214,12 @@ Here is the syntax for given instances:
 
 ```ebnf
 TmplDef             ::=  ...
-                     |   ‘given’ GivenDef
+                     |   'given' GivenDef
 GivenDef            ::=  [GivenSig] StructuralInstance
                      |   [GivenSig] AnnotType ‘=’ Expr
                      |   [GivenSig] AnnotType
-GivenSig            ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’
-StructuralInstance  ::=  ConstrApp {‘with’ ConstrApp} [‘with’ TemplateBody]
+GivenSig            ::=  [id] [DefTypeParamClause] {UsingParamClause} ':'
+StructuralInstance  ::=  ConstrApp {'with' ConstrApp} [‘with’ TemplateBody]
 ```
 
 A given instance starts with the reserved word `given` and an optional _signature_. The signature

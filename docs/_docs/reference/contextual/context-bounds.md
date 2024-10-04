@@ -199,10 +199,10 @@ The syntax of function types and function literals
 is generalized as follows to allow context bounds for generic type parameters.
 
 ```ebnf
-FunType           ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
+FunType           ::=  FunTypeArgs ('=>' | '?=>') Type
                     |  DefTypeParamClause '=>' Type
-FunExpr           ::=  FunParams (‘=>’ | ‘?=>’) Expr
-                    |  DefTypeParamClause ‘=>’ Expr
+FunExpr           ::=  FunParams ('=>' | '?=>') Expr
+                    |  DefTypeParamClause '=>' Expr
 ```
 The syntax for abstract type members is generalized as follows to allow context bounds:
 

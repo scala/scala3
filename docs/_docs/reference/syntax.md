@@ -214,9 +214,9 @@ ParamValueType    ::=  Type [‘*’]
 TypeArgs          ::=  ‘[’ Types ‘]’
 Refinement        ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]
-TypeAndCtxBounds  ::=  TypeBounds [‘:’ ContextBounds]
+TypeAndCtxBounds  ::=  TypeBounds [':' ContextBounds]
 ContextBounds     ::=  ContextBound
-                    |  ContextBound `:` ContextBounds         -- to be deprecated
+                    |  ContextBound ':' ContextBounds         -- to be deprecated
                     |  '{' ContextBound {',' ContextBound} '}'
 ContextBound      ::=  Type ['as' id]
 Types             ::=  Type {‘,’ Type}
@@ -441,7 +441,7 @@ TypeDef           ::=  id [HkTypeParamClause] {FunParamClause}TypeBounds        
 TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef
                     |  ‘enum’ EnumDef
-                    |  ‘given’ (GivenDef | OldGivenDef)
+                    |  'given' (GivenDef | OldGivenDef)
 ClassDef          ::=  id ClassConstr [Template]
 ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses
 ConstrMods        ::=  {Annotation} [AccessModifier]
