@@ -6,11 +6,11 @@ object Catch22:
 object Hodor:
   object TC:
     import Catch22.TC
-    given fromString[V <: String]: TC[V] = ???
-    transparent inline given fromDouble[V <: Double]: TC[V] =
+    given fromString: [V <: String] => TC[V] = ???
+    transparent inline given fromDouble: [V <: Double] => TC[V] =
       new TC[V]:
         type Out = Double
-    given fromInt[V <: Int]: TC[V] with
+    given fromInt: [V <: Int] => TC[V]:
       type Out = Int
 
 object Test:

@@ -2,7 +2,7 @@
 trait Summon[R, T <: R]:
   type Out
 object Summon:
-  given [R, T <: R]: Summon[R, T] with
+  given [R, T <: R] => Summon[R, T]:
     type Out = R
 
 trait DFTypeAny
@@ -14,7 +14,7 @@ trait Candidate[R]:
   type OutW <: Int
 object Candidate:
   type Aux[R, O <: Int] = Candidate[R] { type OutW = O }
-  given [W <: Int, R <: DFValOf[DFBits[W]]]: Candidate[R] with
+  given [W <: Int, R <: DFValOf[DFBits[W]]] => Candidate[R]:
     type OutW = W
 
 extension [L](lhs: L) def foo(using es: Summon[L, lhs.type]): Unit = ???

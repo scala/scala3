@@ -1,6 +1,6 @@
 object NOTHING
 
-inline given [A]: Conversion[NOTHING.type, Option[A]] = _ => None
+inline given [A] => Conversion[NOTHING.type, Option[A]] = _ => None
 
 def apply[A](p: Vector[A], o: Option[A] = NOTHING): Unit = ???
 

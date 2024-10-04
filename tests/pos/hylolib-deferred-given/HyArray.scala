@@ -162,7 +162,7 @@ object HyArray {
 
 }
 
-given hyArrayIsValue[T](using tIsValue: Value[T]): Value[HyArray[T]] with {
+given hyArrayIsValue: [T] => (tIsValue: Value[T]) => Value[HyArray[T]] {
 
   extension (self: HyArray[T]) {
 
@@ -179,7 +179,7 @@ given hyArrayIsValue[T](using tIsValue: Value[T]): Value[HyArray[T]] with {
 
 }
 
-given hyArrayIsCollection[T](using tIsValue: Value[T]): Collection[HyArray[T]] with {
+given hyArrayIsCollection: [T] => (tIsValue: Value[T]) => Collection[HyArray[T]] {
 
   type Element = T
   //given elementIsValue: Value[T] = tIsValue

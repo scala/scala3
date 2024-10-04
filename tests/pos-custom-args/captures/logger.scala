@@ -1,5 +1,4 @@
 import language.experimental.saferExceptions
-import language.experimental.modularity
 
 class FileSystem extends caps.Capability
 

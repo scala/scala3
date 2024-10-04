@@ -4,3 +4,7 @@
   |  method foo does not take more parameters
   |
   | longer explanation available when compiling with `-explain`
+-- Warning: tests/neg/context-bounds-migration-future.scala:6:6 --------------------------------------------------------
+6 |given [T]: C[T] = C[T]()
+  |      ^
+  |      This old given syntax is no longer supported; use `=>` instead of `:`

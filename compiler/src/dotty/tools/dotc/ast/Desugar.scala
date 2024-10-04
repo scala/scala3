@@ -1261,7 +1261,7 @@ object desugar {
     str.toTermName.asSimpleName
 
   /** Extract a synthesized given name from a type tree. This is used for
-   *  both anonymous givens and (under x.modularity) deferred givens.
+   *  both anonymous givens and deferred givens.
    *  @param followArgs   if true include argument types in the name
    */
   private class NameExtractor(followArgs: Boolean) extends UntypedTreeAccumulator[String] {

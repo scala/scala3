@@ -1,3 +1,3 @@
-given Conversion[Int, String] with
+given Conversion[Int, String]:
   def apply(x: Int) = ""
 end given

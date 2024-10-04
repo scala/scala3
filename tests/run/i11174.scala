@@ -38,7 +38,7 @@ class MainClass {
     case Square(width: Int, height: Int) extends Shape
     case Circle(radius: Int) extends Shape
 
-  given EnumerateNames[Int] with {
+  given EnumerateNames[Int] {
     def apply: String = "int"
   }
   inline given auto[T]:EnumerateNames[T] = EnumerateNames.derived

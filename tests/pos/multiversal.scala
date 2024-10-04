@@ -1,7 +1,7 @@
 object Test {
   import scala.CanEqual
 
-  given [X, Y](using CanEqual[X, Y]): CanEqual[List[X], List[Y]] = CanEqual.derived
+  given [X, Y] => CanEqual[X, Y] => CanEqual[List[X], List[Y]] = CanEqual.derived
 
   val b: Byte = 1
   val c: Char = 2

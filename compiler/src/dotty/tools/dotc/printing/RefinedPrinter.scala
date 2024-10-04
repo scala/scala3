@@ -24,6 +24,8 @@ import TypeApplications.*
 import NameKinds.{WildcardParamName, DefaultGetterName}
 import util.Chars.isOperatorPart
 import config.{Config, Feature}
+import config.Feature.sourceVersion
+import config.SourceVersion.*
 
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
@@ -751,7 +753,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case GenAlias(pat, expr) =>
         toText(pat) ~ " = " ~ toText(expr)
       case ContextBounds(bounds, cxBounds) =>
-        if Feature.enabled(Feature.modularity) then
+        if sourceVersion.isAtLeast(`3.6`) then
           def boundsText(bounds: Tree) = bounds match
             case ContextBoundTypeTree(tpt, _, ownName) =>
               toText(tpt) ~ (" as " ~ toText(ownName) `provided` !ownName.isEmpty)

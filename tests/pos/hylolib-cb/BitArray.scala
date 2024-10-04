@@ -318,7 +318,7 @@ object BitArray {
 
 }
 
-given bitArrayPositionIsValue: Value[BitArray.Position] with {
+given bitArrayPositionIsValue: Value[BitArray.Position] {
 
   extension (self: BitArray.Position) {
 
@@ -335,7 +335,7 @@ given bitArrayPositionIsValue: Value[BitArray.Position] with {
 
 }
 
-given bitArrayIsCollection: Collection[BitArray] with {
+given bitArrayIsCollection: Collection[BitArray] {
 
   type Element = Boolean
   type Position = BitArray.Position
@@ -361,7 +361,7 @@ given bitArrayIsCollection: Collection[BitArray] with {
 
 }
 
-given bitArrayIsStringConvertible: StringConvertible[BitArray] with {
+given bitArrayIsStringConvertible: StringConvertible[BitArray] {
 
   extension (self: BitArray)
     override def description: String =

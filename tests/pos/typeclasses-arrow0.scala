@@ -1,5 +1,3 @@
-//> using options -language:experimental.modularity -source future
-
 class Common:
 
   trait Ord[A]:

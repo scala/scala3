@@ -77,7 +77,6 @@ val experimentalDefinitionInLibrary = Set(
   // New feature: modularity
   "scala.Precise",
   "scala.annotation.internal.WitnessNames",
-  "scala.compiletime.package$package$.deferred",
   "scala.runtime.stdLibPatches.Predef$.is",
 
   // New feature: functions with erased parameters.

@@ -17,4 +17,4 @@ object D:
   tracked type T = Int // error // error
 
 object E:
-  given g2(using tracked val x: Int): C = C(x) // error
+  given g2: (tracked val x: Int) => C = C(x) // error

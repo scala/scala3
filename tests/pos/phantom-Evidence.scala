@@ -26,5 +26,5 @@ object WithNormalState {
 
 object Utils {
   type =::=[From, To]
-  erased given tpEquals[A]: (A =::= A) = compiletime.erasedValue
+  erased given tpEquals: [A] => (A =::= A) = compiletime.erasedValue
 }

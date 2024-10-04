@@ -22,7 +22,7 @@ object GetConstValue {
         }
     }
 
-    given empty : GetConstValue[EmptyTuple] with {
+    given empty : GetConstValue[EmptyTuple] {
         type Out = EmptyTuple
         def get : Out = EmptyTuple
     }

@@ -1089,11 +1089,13 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |  def foo(x: Int): Int
          |  def bar(x: String): String
          |
-         |given Foo with
+         |given Foo {
          |
          |  override def foo(x: Int): Int = ???
          |
          |  override def bar(x: String): String = ???
+         |
+         |}
          |""".stripMargin
     )
 

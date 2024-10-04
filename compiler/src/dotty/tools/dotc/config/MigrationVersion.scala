@@ -30,6 +30,7 @@ enum MigrationVersion(val warnFrom: SourceVersion, val errorFrom: SourceVersion)
   case ImportRename extends MigrationVersion(future, future)
   case ParameterEnclosedByParenthesis extends MigrationVersion(future, future)
   case XmlLiteral extends MigrationVersion(future, future)
+  case GivenSyntax extends MigrationVersion(future, never)
 
   require(warnFrom.ordinal <= errorFrom.ordinal)
 

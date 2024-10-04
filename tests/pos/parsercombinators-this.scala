@@ -19,7 +19,7 @@ end Combinator
 final case class Apply[C, E](action: C => Option[E])
 final case class Combine[A, B](first: A, second: B)
 
-given apply[C, E]: Combinator with {
+given apply: [C, E] => Combinator {
   type Self = Apply[C, E]
   type Context = C
   type Element = E

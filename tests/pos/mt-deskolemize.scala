@@ -37,7 +37,7 @@ class MyExpr3 extends ProdExprAlt[(Prim, VecExpr[Prim], Prim)]
 trait Constable[E <: Expr]:
   def lit(v: ExtractValue[E]): E
 object Constable:
-  given [E <: Expr]: Constable[E] = ???
+  given [E <: Expr] => Constable[E] = ???
 
 object Test:
   def fromLiteral[E <: Expr : Constable](v: ExtractValue[E]): E =

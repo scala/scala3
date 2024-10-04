@@ -4,13 +4,13 @@ trait Arbitrary[T]
 trait Gen[+T]
 
 object ArbitraryDerivation:
-  given deriveArb[A](using gen: DerivedGen[A]): Arbitrary[A] = ???
+  given deriveArb: [A] => (gen: DerivedGen[A]) => Arbitrary[A] = ???
 
 opaque type DerivedGen[A] = Gen[A]
 object DerivedGen extends DerivedGenInstances
 
 sealed abstract class DerivedGenInstances:
-  inline given derived[A](using gen: K0.Generic[A]): DerivedGen[A] =
+  inline given derived: [A] => (gen: K0.Generic[A]) => DerivedGen[A] =
     val dummy: DerivedGen[A] = ???
     gen.derive(dummy, dummy)
 

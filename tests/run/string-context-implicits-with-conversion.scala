@@ -4,7 +4,7 @@ object Lib {
 
   opaque type Showed = String
 
-  given [T](using show: Show[T]): Conversion[T, Showed] = x => show(x)
+  given [T] => (show: Show[T]) => Conversion[T, Showed] = x => show(x)
 
   trait Show[T] {
     def apply(x: T): String

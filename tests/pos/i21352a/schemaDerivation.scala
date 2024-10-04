@@ -15,7 +15,7 @@ object CaseClass:
 
 sealed trait IsUnionOf[T, A]
 object IsUnionOf:
-  transparent inline given derived[T, A]: IsUnionOf[T, A] = ${ deriveImpl[T, A] }
+  transparent inline given derived: [T, A] => IsUnionOf[T, A] = ${ deriveImpl[T, A] }
   private def deriveImpl[T, A](using quotes: Quotes): Expr[IsUnionOf[T, A]] = ???
 
 trait SchemaDerivation:
