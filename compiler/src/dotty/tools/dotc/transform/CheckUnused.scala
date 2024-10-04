@@ -1,6 +1,6 @@
 package dotty.tools.dotc.transform
 
-import scala.annotation.tailrec
+import scala.annotation.*
 
 import dotty.tools.uncheckedNN
 import dotty.tools.dotc.ast.tpd.*
@@ -301,7 +301,7 @@ object CheckUnused:
    *
    *  For other contexts, which symbols defined here have been referenced?
    */
-  private class UnusedData:
+  private class UnusedData(using Context @constructorOnly):
     import collection.mutable as mut, mut.Stack, mut.ListBuffer
     import UnusedData.*
 
@@ -330,8 +330,13 @@ object CheckUnused:
 
     /** All used symbols */
     private val usedDef = mut.Set.empty[Symbol]
-    /** Do not register as used */
-    private val doNotRegister = mut.Set.empty[Symbol]
+
+    /** Do not register as used.
+     *
+     *  Seed with common symbols that are never warnable, as an optimization.
+     */
+    private val doNotRegister = mut.Set[Symbol](defn.SourceFileAnnot, defn.ModuleSerializationProxyClass)
+    private val doNotRegisterPrefix = mut.Set[Symbol](defn.ScalaRuntimePackageClass)
 
     /** Trivial definitions, avoid registering params */
     private val trivialDefs = mut.Set.empty[Symbol]
@@ -355,7 +360,7 @@ object CheckUnused:
      *  as the same element can be imported with different renaming.
      */
     def registerUsed(sym: Symbol, name: Option[Name], prefix: Type = NoType, includeForImport: Boolean = true)(using Context): Unit =
-      if sym.exists && !isConstructorOfSynth(sym) && !doNotRegister(sym) then
+      if sym.exists && !isConstructorOfSynth(sym) && !doNotRegister(sym) && !doNotRegisterPrefix(prefix.typeSymbol) then
         if sym.isConstructor then
           // constructors are "implicitly" imported with the class
           registerUsed(sym.owner, name = None, prefix, includeForImport = includeForImport)
