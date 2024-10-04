@@ -1,5 +1,3 @@
-import scala.language.experimental.namedTuples
-
 class FromFields extends Selectable:
   type Fields = (i: Int)
   def selectDynamic(key: String) =

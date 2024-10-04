@@ -1,5 +1,3 @@
-import language.experimental.namedTuples
-
 type Person = (name: String, age: Int)
 
 trait A:
