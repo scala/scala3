@@ -3595,14 +3595,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   private def pushDownDeferredEvidenceParams(tpe: Type, params: List[untpd.ValDef], span: Span)(using Context): Type = tpe.dealias match {
     case tpe: MethodType =>
-      MethodType(tpe.paramNames)(paramNames => tpe.paramInfos, _ => pushDownDeferredEvidenceParams(tpe.resultType, params, span))
+      tpe.derivedLambdaType(tpe.paramNames, tpe.paramInfos, pushDownDeferredEvidenceParams(tpe.resultType, params, span))
     case tpe: PolyType =>
-      PolyType(tpe.paramNames)(paramNames => tpe.paramInfos, _ => pushDownDeferredEvidenceParams(tpe.resultType, params, span))
+      tpe.derivedLambdaType(tpe.paramNames, tpe.paramInfos, pushDownDeferredEvidenceParams(tpe.resultType, params, span))
     case tpe: RefinedType =>
-      // TODO(kπ): Doesn't seem right, but the PolyFunction ends up being a refinement
-      RefinedType(pushDownDeferredEvidenceParams(tpe.parent, params, span), tpe.refinedName, pushDownDeferredEvidenceParams(tpe.refinedInfo, params, span))
+      tpe.derivedRefinedType(
+        pushDownDeferredEvidenceParams(tpe.parent, params, span),
+        tpe.refinedName,
+        pushDownDeferredEvidenceParams(tpe.refinedInfo, params, span)
+      )
     case tpe @ AppliedType(tycon, args) if defn.isFunctionType(tpe) && args.size > 1 =>
-      AppliedType(tpe.tycon, args.init :+ pushDownDeferredEvidenceParams(args.last, params, span))
+      tpe.derivedAppliedType(tycon, args.init :+ pushDownDeferredEvidenceParams(args.last, params, span))
     case tpe =>
       val paramNames = params.map(_.name)
       val paramTpts = params.map(_.tpt)
@@ -3611,18 +3614,52 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       typed(ctxFunction).tpe
   }
 
-  private def addDownDeferredEvidenceParams(tree: Tree, pt: Type)(using Context): (Tree, Type) = {
+  private def extractTopMethodTermParams(tpe: Type)(using Context): (List[TermName], List[Type]) = tpe match {
+    case tpe: MethodType =>
+      tpe.paramNames -> tpe.paramInfos
+    case tpe: RefinedType if defn.isFunctionType(tpe.parent) =>
+      extractTopMethodTermParams(tpe.refinedInfo)
+    case _ =>
+      Nil -> Nil
+  }
+
+  private def removeTopMethodTermParams(tpe: Type)(using Context): Type = tpe match {
+    case tpe: MethodType =>
+      tpe.resultType
+    case tpe: RefinedType if defn.isFunctionType(tpe.parent) =>
+      tpe.derivedRefinedType(tpe.parent, tpe.refinedName, removeTopMethodTermParams(tpe.refinedInfo))
+    case tpe: AppliedType if defn.isFunctionType(tpe) =>
+      tpe.args.last
+    case _ =>
+      tpe
+  }
+
+  private def healToPolyFunctionType(tree: Tree)(using Context): Tree = tree match {
+    case defdef: DefDef if defdef.name == nme.apply && defdef.paramss.forall(_.forall(_.symbol.flags.is(TypeParam))) && defdef.paramss.size == 1 =>
+      val (names, types) = extractTopMethodTermParams(defdef.tpt.tpe)
+      val newTpe = removeTopMethodTermParams(defdef.tpt.tpe)
+      val newParams = names.lazyZip(types).map((name, tpe) => SyntheticValDef(name, TypeTree(tpe), flags = SyntheticTermParam))
+      val newDefDef = cpy.DefDef(defdef)(paramss = defdef.paramss ++ List(newParams), tpt = untpd.TypeTree(newTpe))
+      val nestedCtx = ctx.fresh.setNewTyperState()
+      typed(newDefDef)(using nestedCtx)
+    case _ => tree
+  }
+
+  private def addDeferredEvidenceParams(tree: Tree, pt: Type)(using Context): (Tree, Type) = {
     tree.getAttachment(desugar.PolyFunctionApply) match
       case Some(params) if params.nonEmpty =>
         tree.removeAttachment(desugar.PolyFunctionApply)
         val tpe = pushDownDeferredEvidenceParams(tree.tpe, params, tree.span)
         TypeTree(tpe).withSpan(tree.span) -> tpe
+      // case Some(params) if params.isEmpty =>
+      //   println(s"tree: $tree")
+      //   healToPolyFunctionType(tree) -> pt
       case _ => tree -> pt
   }
 
   /** Interpolate and simplify the type of the given tree. */
   protected def simplify(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree =
-    val (tree1, pt1) = addDownDeferredEvidenceParams(tree, pt)
+    val (tree1, pt1) = addDeferredEvidenceParams(tree, pt)
     if !tree1.denot.isOverloaded then // for overloaded trees: resolve overloading before simplifying
       if !tree1.tpe.widen.isInstanceOf[MethodOrPoly] // wait with simplifying until method is fully applied
          || tree1.isDef                              // ... unless tree is a definition

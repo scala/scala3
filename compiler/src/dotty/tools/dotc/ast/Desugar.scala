@@ -527,8 +527,7 @@ object desugar {
         makeContextualFunction(paramTpts, paramNames, tree, paramsErased).withSpan(tree.span)
 
     if meth.hasAttachment(PolyFunctionApply) then
-      meth.removeAttachment(PolyFunctionApply)
-      // (kπ): deffer this until we can type the result?
+      // meth.removeAttachment(PolyFunctionApply)
       if ctx.mode.is(Mode.Type) then
         cpy.DefDef(meth)(tpt = meth.tpt.withAttachment(PolyFunctionApply, params))
       else
@@ -1250,29 +1249,35 @@ object desugar {
   /** Desugar [T_1, ..., T_M] => (P_1, ..., P_N) => R
    *  Into    scala.PolyFunction { def apply[T_1, ..., T_M](x$1: P_1, ..., x$N: P_N): R }
    */
-  def makePolyFunctionType(tree: PolyFunction)(using Context): RefinedTypeTree =
-    val PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun @ untpd.Function(vparamTypes, res)) = tree: @unchecked
-    val paramFlags = fun match
-      case fun: FunctionWithMods =>
-        // TODO: make use of this in the desugaring when pureFuns is enabled.
-        // val isImpure = funFlags.is(Impure)
+  def makePolyFunctionType(tree: PolyFunction)(using Context): RefinedTypeTree = tree match
+    case PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun @ untpd.Function(vparamTypes, res)) =>
+      val paramFlags = fun match
+        case fun: FunctionWithMods =>
+          // TODO: make use of this in the desugaring when pureFuns is enabled.
+          // val isImpure = funFlags.is(Impure)
 
-        // Function flags to be propagated to each parameter in the desugared method type.
-        val givenFlag = fun.mods.flags.toTermFlags & Given
-        fun.erasedParams.map(isErased => if isErased then givenFlag | Erased else givenFlag)
-      case _ =>
-        vparamTypes.map(_ => EmptyFlags)
+          // Function flags to be propagated to each parameter in the desugared method type.
+          val givenFlag = fun.mods.flags.toTermFlags & Given
+          fun.erasedParams.map(isErased => if isErased then givenFlag | Erased else givenFlag)
+        case _ =>
+          vparamTypes.map(_ => EmptyFlags)
 
-    val vparams = vparamTypes.lazyZip(paramFlags).zipWithIndex.map {
-      case ((p: ValDef, paramFlags), n) => p.withAddedFlags(paramFlags)
-      case ((p, paramFlags), n) => makeSyntheticParameter(n + 1, p).withAddedFlags(paramFlags)
-    }.toList
+      val vparams = vparamTypes.lazyZip(paramFlags).zipWithIndex.map {
+        case ((p: ValDef, paramFlags), n) => p.withAddedFlags(paramFlags)
+        case ((p, paramFlags), n) => makeSyntheticParameter(n + 1, p).withAddedFlags(paramFlags)
+      }.toList
 
-    RefinedTypeTree(ref(defn.PolyFunctionType), List(
-      DefDef(nme.apply, tparams :: vparams :: Nil, res, EmptyTree)
-        .withFlags(Synthetic)
-        .withAttachment(PolyFunctionApply, List.empty)
-    )).withSpan(tree.span)
+      RefinedTypeTree(ref(defn.PolyFunctionType), List(
+        DefDef(nme.apply, tparams :: vparams :: Nil, res, EmptyTree)
+          .withFlags(Synthetic)
+          .withAttachment(PolyFunctionApply, List.empty)
+      )).withSpan(tree.span)
+    case PolyFunction(tparams: List[untpd.TypeDef] @unchecked, res) =>
+      RefinedTypeTree(ref(defn.PolyFunctionType), List(
+        DefDef(nme.apply, tparams :: Nil, res, EmptyTree)
+          .withFlags(Synthetic)
+          .withAttachment(PolyFunctionApply, List.empty)
+      )).withSpan(tree.span)
   end makePolyFunctionType
 
   /** Invent a name for an anonympus given of type or template `impl`. */
