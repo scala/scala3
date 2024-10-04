@@ -71,7 +71,7 @@ The witness context parameter(s) generated from context bounds are added as foll
 
  1. If one of the bounds is referred to by its name in a subsequent parameter clause, the context bounds are mapped to a using clause immediately preceding the first such parameter clause.
  2. Otherwise, if the last parameter clause is a using (or implicit) clause, merge all parameters arising from context bounds in front of that clause, creating a single using clause.
- 3. Otherwise, let the parameters arising from context bounds form a new using clause at the end.
+ 3. Otherwise, the parameters arising from context bounds form a new using clause at the end.
 
 Rules (2) and (3) match Scala 2's rules. Rule (1) is new but since context bounds so far could not be referred to, it does not apply to legacy code. Therefore, binary compatibility with Scala 2 and earlier Scala 3 versions is maintained.
 
@@ -151,11 +151,14 @@ val less: Comparer = [X] => (x: X, y: X) => (ord: Ord[X]) ?=>
 The expansion of using clauses does look inside alias types. For instance,
 here is a variation of the previous example that uses a parameterized type alias:
 ```scala
-type Cmp[X] = (x: X, y: X) => Ord[X] ?=> Boolean
+type Cmp[X] = (x: X, y: X) => Boolean
 type Comparer2 = [X: Ord] => Cmp[X]
 ```
 The expansion of the right hand side of `Comparer2` expands the `Cmp[X]` alias
-and then inserts the context function at the same place as what's done for `Comparer`.
+and then inserts the context function at the same place as what's done for `Comparer`:
+```scala
+  [X] => (x: X, y: X) => Ord[X] ?=> Boolean
+```
 
 ### Context Bounds for Type Members
 

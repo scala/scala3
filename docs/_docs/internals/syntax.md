@@ -486,7 +486,7 @@ GivenConditional  ::=  DefTypeParamClause
 GivenType         ::=  AnnotType1 {id [nl] AnnotType1}
 
 OldGivenDef       ::=  [OldGivenSig] (AnnotType [‘=’ Expr] | StructuralInstance) -- syntax up to Scala 3.5, to be deprecated in the future
-OldGivenSig       ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’         -- one of `id`, `DefTypeParamClause`, `UsingParamClause` must be present
+OldGivenSig       ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’          -- one of `id`, `DefTypeParamClause`, `UsingParamClause` must be present
 StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} [‘with’ WithTemplateBody]
 
 Extension         ::=  ‘extension’ [DefTypeParamClause] {UsingParamClause}
