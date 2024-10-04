@@ -186,7 +186,7 @@ object NamedTupleDecomposition:
     /** The named tuple consisting of all elements of this tuple in reverse */
     inline def reverse: Reverse[NamedTuple[N, V]] = x.toTuple.reverse
 
-    /** The named tuple consisting of all elements values of this tuple zipped
+    /** The named tuple consisting of all element values of this tuple zipped
      *  with corresponding element values in named tuple `that`.
      *  If the two tuples have different sizes,
      *  the extra elements of the larger tuple will be disregarded.
