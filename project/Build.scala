@@ -1374,25 +1374,21 @@ object Build {
     )
 
   lazy val `scala3-presentation-compiler` = project.in(file("presentation-compiler"))
-    .asScala3PresentationCompiler(NonBootstrapped)
-  lazy val `scala3-presentation-compiler-bootstrapped` = project.in(file("presentation-compiler"))
-    .asScala3PresentationCompiler(Bootstrapped)
+    .withCommonSettings(Bootstrapped)
+    .dependsOn(`scala3-compiler-bootstrapped`, `scala3-library-bootstrapped`)
+    .settings(presentationCompilerSettings)
+    .settings(scala3PresentationCompilerBuildInfo)
     .settings(
       // Add `-Yno-flexible-types` flag for bootstrap, see comments for `bootstrappedDottyCompilerSettings`
       Compile / scalacOptions +=  "-Yno-flexible-types"
     )
 
-  def scala3PresentationCompiler(implicit mode: Mode): Project = mode match {
-    case NonBootstrapped => `scala3-presentation-compiler`
-    case Bootstrapped => `scala3-presentation-compiler-bootstrapped`
-  }
-
-  def scala3PresentationCompilerBuildInfo(implicit mode: Mode) =
+  def scala3PresentationCompilerBuildInfo =
     Seq(
       ideTestsDependencyClasspath := {
-        val dottyLib = (dottyLibrary / Compile / classDirectory).value
+        val dottyLib = (`scala3-library-bootstrapped` / Compile / classDirectory).value
         val scalaLib =
-          (dottyLibrary / Compile / dependencyClasspath)
+          (`scala3-library-bootstrapped` / Compile / dependencyClasspath)
             .value
             .map(_.data)
             .filter(_.getName.matches("scala-library.*\\.jar"))
@@ -2284,9 +2280,9 @@ object Build {
 
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
     def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
-      aggregate(`scala3-interfaces`, dottyLibrary, dottyCompiler, tastyCore, `scala3-sbt-bridge`, scala3PresentationCompiler).
+      aggregate(`scala3-interfaces`, dottyLibrary, dottyCompiler, tastyCore, `scala3-sbt-bridge`).
       bootstrappedAggregate(`scala2-library-tasty`, `scala2-library-cc-tasty`, `scala3-language-server`, `scala3-staging`,
-        `scala3-tasty-inspector`, `scala3-library-bootstrappedJS`, scaladoc).
+        `scala3-tasty-inspector`, `scala3-library-bootstrappedJS`, scaladoc, `scala3-presentation-compiler`).
       dependsOn(tastyCore).
       dependsOn(dottyCompiler).
       dependsOn(dottyLibrary).
@@ -2395,11 +2391,6 @@ object Build {
       dependsOn(dottyCompiler).
       settings(commonBenchmarkSettings).
       enablePlugins(JmhPlugin)
-
-    def asScala3PresentationCompiler(implicit mode: Mode): Project = project.withCommonSettings.
-      dependsOn(dottyCompiler, dottyLibrary).
-      settings(presentationCompilerSettings).
-      settings(scala3PresentationCompilerBuildInfo)
 
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(UniversalPlugin, RepublishPlugin).
