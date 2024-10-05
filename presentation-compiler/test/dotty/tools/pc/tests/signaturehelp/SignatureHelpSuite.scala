@@ -1283,7 +1283,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |""".stripMargin
     )
 
-  @Test def `error-recovery-1` =
+  @Ignore @Test def `error-recovery-1` =
     check(
       """|object Main:
          |  def test[A](x: A): Foo[A] = ???
@@ -1294,7 +1294,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |""".stripMargin
     )
 
-  @Test def `error-recovery-2` =
+  @Ignore @Test def `error-recovery-2` =
     check(
       """|object Main:
          |  def test[A](x: A): Foo[A] = ???

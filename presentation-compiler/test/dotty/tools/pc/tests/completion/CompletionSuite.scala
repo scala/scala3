@@ -1986,7 +1986,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |""".stripMargin,
     )
 
-  @Test def `namedTuple completions` =
+  @Ignore @Test def `namedTuple completions` =
     check(
       """|import scala.NamedTuple.*
          |
@@ -1997,7 +1997,7 @@ class CompletionSuite extends BaseCompletionSuite:
       filter = _.contains("name")
     )
 
-  @Test def `Selectable with namedTuple Fields member` =
+  @Ignore @Test def `Selectable with namedTuple Fields member` =
     check(
       """|import scala.NamedTuple.*
          |

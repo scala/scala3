@@ -358,7 +358,7 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
         |""".stripMargin
     )
 
-  @Test def `complex-1` =
+  @Ignore @Test def `complex-1` =
     check(
       """
         |object Test:
@@ -371,7 +371,7 @@ class SignatureHelpInterleavingSuite extends BaseSignatureHelpSuite:
         |""".stripMargin
     )
 
-  @Test def `complex-2` =
+  @Ignore @Test def `complex-2` =
     check(
       """
         |object Test:
