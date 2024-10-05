@@ -116,6 +116,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
   def generateSingleForwarder(defdef: DefDef,
                               prevMethodType: Type,
                               paramIndex: Int,
+                              paramCount: Int,
                               nextParamIndex: Int,
                               nextSymbol: Symbol,
                               annotatedParamListIndex: Int,
@@ -125,17 +126,11 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
       val forwarderDefSymbol0 = Symbols.newSymbol(
         defdef.symbol.owner,
         defdef.name,
-        (defdef.symbol.flags &~
-        HasDefaultParams &~
-        (if nextParamIndex == -1 then EmptyFlags else Deferred)) |
+        defdef.symbol.flags &~ HasDefaultParams |
         Invisible | Synthetic,
         NoType, // fill in later
         coord = nextSymbol.span.shift(1) // shift by 1 to avoid "secondary constructor must call preceding" error
       ).entered
-
-      // we need this such that when unpickling a TERMREFdirect, if we see this annotation,
-      // we restore the tree to a Select
-      forwarderDefSymbol0.addAnnotation(defn.UnrollForwarderAnnot)
 
       val newParamSymMappings = extractParamSymss(copyParamSym(_, forwarderDefSymbol0))
       val (oldParams, newParams) = newParamSymMappings.flatten.unzip
@@ -170,7 +165,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
         .map(_.size)
         .sum
 
-      val defaultCalls = Range(paramIndex, nextParamIndex).map(n =>
+      val defaultCalls = Range(paramIndex, paramCount).map(n =>
 
         def makeSelect(refTree: Tree, name: TermName): Tree =
           val sym = refTree.symbol
@@ -204,7 +199,8 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
             else Apply(lhs, newParams)
       )
 
-      val forwarderInner: Tree = This(defdef.symbol.owner.asClass).select(nextSymbol)
+      val forwarderInner: Tree =
+        This(defdef.symbol.owner.asClass).select(defdef.symbol)
 
       val forwarderCallArgs =
         newParamSymLists.zipWithIndex.map{case (ps, i) =>
@@ -226,8 +222,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
     }
 
     val forwarderDef =
-      tpd.DefDef(forwarderDefSymbol,
-        rhs = if nextParamIndex == -1 then EmptyTree else forwarderRhs())
+      tpd.DefDef(forwarderDefSymbol, rhs = forwarderRhs())
 
     forwarderDef.withSpan(nextSymbol.span.shift(1))
   }
@@ -297,6 +292,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
                     defdef,
                     defdef.symbol.info,
                     paramIndex,
+                    paramCount,
                     nextParamIndex,
                     nextSymbol,
                     paramClauseIndex,
