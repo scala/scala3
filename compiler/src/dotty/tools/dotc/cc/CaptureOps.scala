@@ -639,8 +639,8 @@ object CapsOfApply:
 class AnnotatedCapability(annot: Context ?=> ClassSymbol):
   def apply(tp: Type)(using Context) =
     AnnotatedType(tp, Annotation(annot, util.Spans.NoSpan))
-  def unapply(tree: AnnotatedType)(using Context): Option[SingletonCaptureRef] = tree match
-    case AnnotatedType(parent: SingletonCaptureRef, ann) if ann.symbol == annot => Some(parent)
+  def unapply(tree: AnnotatedType)(using Context): Option[CaptureRef] = tree match
+    case AnnotatedType(parent: CaptureRef, ann) if ann.symbol == annot => Some(parent)
     case _ => None
 
 /** An extractor for `ref @annotation.internal.reachCapability`, which is used to express
