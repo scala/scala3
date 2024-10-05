@@ -1,0 +1,4 @@
+-- [E200] Syntax Error: tests/neg/unroll-illegal2.scala:7:10 -----------------------------------------------------------
+7 |    final def foo(s: String, @unroll y: Boolean) = s + y // error
+  |          ^^^
+  |          The final modifier is not allowed on local definitions
