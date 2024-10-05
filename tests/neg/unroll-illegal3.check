@@ -1,12 +1,12 @@
--- Error: tests/neg/unroll-illegal3.scala:7:8 --------------------------------------------------------------------------
+-- [E204] Declaration Error: tests/neg/unroll-illegal3.scala:7:31 ------------------------------------------------------
 7 |    def foo(s: String, @unroll y: Boolean) = s + y // error
-  |        ^
-  |        Unrolled method foo must be final
--- Error: tests/neg/unroll-illegal3.scala:12:6 -------------------------------------------------------------------------
+  |                               ^
+  |                               Can not unroll parameters of method foo: it is not final
+-- [E204] Declaration Error: tests/neg/unroll-illegal3.scala:12:29 -----------------------------------------------------
 12 |  def foo(s: String, @unroll y: Boolean) = s + y // error
-   |      ^
-   |      Unrolled method foo must be final
--- Error: tests/neg/unroll-illegal3.scala:16:6 -------------------------------------------------------------------------
+   |                             ^
+   |                             Can not unroll parameters of method foo: it is not final
+-- [E204] Declaration Error: tests/neg/unroll-illegal3.scala:16:29 -----------------------------------------------------
 16 |  def foo(s: String, @unroll y: Boolean): String // error
-   |      ^
-   |      Unrolled method must be final and concrete
+   |                             ^
+   |                             Can not unroll parameters of method foo: it must not be abstract

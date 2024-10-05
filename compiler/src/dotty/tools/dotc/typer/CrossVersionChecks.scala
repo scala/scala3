@@ -82,7 +82,7 @@ class CrossVersionChecks extends MiniPhase:
   }
 
   private def unrollError(pos: SrcPos)(using Context): Unit =
-    report.error("@unroll is only allowed on a method parameter", pos)
+    report.error(IllegalUnrollPlacement(None), pos)
 
   private def checkUnrollAnnot(annotSym: Symbol, pos: SrcPos)(using Context): Unit =
     if annotSym == defn.UnrollAnnot then
