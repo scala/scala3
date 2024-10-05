@@ -490,9 +490,6 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
                   writeByte(if name.isTypeName then SELECTtpt else SELECT)
                   pickleNameAndSig(name, sig, ename)
                   pickleTree(qual)
-                else if sym.is(Invisible) && qual.isInstanceOf[This] && sym.hasAnnotation(defn.UnrollForwarderAnnot) then
-                  writeByte(TERMREFdirect)
-                  pickleSymRef(sym) // SIP-61 HACK: resolution from Signature filters out Invisible symbols
                 else // select from owner
                   writeByte(SELECTin)
                   withLength {
