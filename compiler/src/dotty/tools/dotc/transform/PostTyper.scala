@@ -124,7 +124,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
     private var noCheckNews: Set[New] = Set()
 
-    def isValidUnrolledMethod(method: Symbol)(using Context): Boolean =
+    def isValidUnrolledMethod(method: Symbol, origin: SrcPos)(using Context): Boolean =
       val seenMethods =
         val local = seenUnrolledMethods
         if local == null then
@@ -134,21 +134,23 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         else
           local
       seenMethods.getOrElseUpdate(method, {
-        if method.name.is(DefaultGetterName) then
+        val isCtor = method.isConstructor
+        if
+          method.name.is(DefaultGetterName)
+        then
           false // not an error, but not an expandable unrolled method
+        else if
+          method.is(Deferred)
+          || isCtor && method.owner.is(Trait)
+          || !(isCtor || method.is(Final) || method.owner.is(ModuleClass))
+          || method.owner.companionClass.is(CaseClass)
+            && (method.name == nme.apply || method.name == nme.fromProduct)
+          || method.owner.is(CaseClass) && method.name == nme.copy
+        then
+          report.error(IllegalUnrollPlacement(Some(method)), origin)
+          false
         else
-          var res = true
-          if method.is(Deferred) then
-            report.error("Unrolled method must be final and concrete", method.srcPos)
-            res = false
-          val isCtor = method.isConstructor
-          if isCtor && method.owner.is(Trait) then
-            report.error("implementation restriction: Unrolled method cannot be a trait constructor", method.srcPos)
-            res = false
-          if !(isCtor || method.is(Final) || method.owner.is(ModuleClass)) then
-            report.error(s"Unrolled method ${method.name} must be final", method.srcPos)
-            res = false
-          res
+          true
       })
 
     def withNoCheckNews[T](ts: List[New])(op: => T): T = {
@@ -230,7 +232,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
     }
 
     private def registerIfUnrolledParam(sym: Symbol)(using Context): Unit =
-      if sym.hasAnnotation(defn.UnrollAnnot) && isValidUnrolledMethod(sym.owner) then
+      if sym.hasAnnotation(defn.UnrollAnnot) && isValidUnrolledMethod(sym.owner, sym.sourcePos) then
         val cls = sym.enclosingClass
         val classes = ctx.compilationUnit.unrolledClasses
         val additions = Array(cls, cls.linkedClass).filter(_ != NoSymbol)
