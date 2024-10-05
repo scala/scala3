@@ -146,7 +146,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             report.error("implementation restriction: Unrolled method cannot be a trait constructor", method.srcPos)
             res = false
           if !(isCtor || method.is(Final) || method.owner.is(ModuleClass)) then
-            report.error(s"Unrolled method ${method} must be final", method.srcPos)
+            report.error(s"Unrolled method ${method.name} must be final", method.srcPos)
             res = false
           res
       })
