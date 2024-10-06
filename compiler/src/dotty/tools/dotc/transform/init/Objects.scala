@@ -197,6 +197,13 @@ class Objects(using Context @constructorOnly):
 
         case _ => false
 
+    override def hashCode(): Int =
+      this.klass.hashCode
+      + this.vals.hashCode
+      + this.vars.hashCode
+      + this.outers.hashCode
+      + this.env.hashCode
+
     def widen(height: Int): OfClass =
       val vals2 = vals.map { (k, v) => k -> v.widen(height) }
       val outers2 = outers.map { (k, v) => k -> v.widen(height) }
