@@ -69,10 +69,17 @@ def `old-style constants are usages`: Unit =
   import Constants.i
   println(i + Local.j)
 
+object Constantinople:
+  val k = 42
 class `scope of super`:
-  import Constants.i // bad warn
+  import Constants.i // was bad warn
   class C(x: Int):
     def y = x
-  class D extends C(i):
+  class D(j: Int) extends C(i + j):
     import Constants.* // does not resolve i in C(i)
     def m = i
+    def f =
+      import Constantinople.*
+      class E(e: Int) extends C(i + k):
+        def g = e + y + k + 1
+      E(0).g
