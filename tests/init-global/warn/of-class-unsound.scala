@@ -9,7 +9,7 @@ class A[T](var a: T) extends Base[T]:
 
 class B[T](var b: T) extends Base[T]:
   def update(n: T) =
-    println(O.x)       // warn
+    O.x       // warn
     b = n
 
 object O:
