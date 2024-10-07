@@ -71,10 +71,13 @@ trait Migrations:
     }
     nestedCtx.typerState.commit()
 
+    def functionPrefixSuffix(arity: Int) = if (arity > 0) ("", "") else ("(() => ", "())")
+
     lazy val (prefix, suffix) = res match {
-      case Block(mdef @ DefDef(_, vparams :: Nil, _, _) :: Nil, _: Closure) =>
-        val arity = vparams.length
-        if (arity > 0) ("", "") else ("(() => ", "())")
+      case Block(DefDef(_, vparams :: Nil, _, _) :: Nil, _: Closure) =>
+        functionPrefixSuffix(vparams.length)
+      case Block(ValDef(_, _, _) :: Nil, Block(DefDef(_, vparams :: Nil, _, _) :: Nil, _: Closure)) =>
+        functionPrefixSuffix(vparams.length)
       case _ =>
         ("(() => ", ")")
     }
