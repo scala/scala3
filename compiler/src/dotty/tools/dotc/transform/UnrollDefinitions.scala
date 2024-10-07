@@ -26,7 +26,7 @@ import dotty.tools.unreachable
 /**Implementation of SIP-61.
  * Runs when `@unroll` annotations are found in a compilation unit, installing new definitions
  *
- * Note that it only generates `Invisible` methods, so no interactions with Zinc/SemanticDB
+ * Note that it only generates `SourceInvisible` methods, so no interactions with Zinc/SemanticDB
  */
 class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
   self =>
@@ -127,7 +127,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
         defdef.symbol.owner,
         defdef.name,
         defdef.symbol.flags &~ HasDefaultParams |
-        Invisible | Synthetic,
+        SourceInvisible | Synthetic,
         NoType, // fill in later
         coord = nextSymbol.span.shift(1) // shift by 1 to avoid "secondary constructor must call preceding" error
       ).entered
