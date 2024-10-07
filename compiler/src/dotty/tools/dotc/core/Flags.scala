@@ -380,6 +380,9 @@ object Flags {
   /** Tracked modifier for class parameter / a class with some tracked parameters */
   val (Tracked @ _, _, Dependent @ _) = newFlags(46, "tracked")
 
+  /** Symbol can not be resolved from source during typer. PROVISIONAL (possibly replace with `Invisible` with new semantics) */
+  val (SourceInvisible @ _, _, _) = newFlags(47, "<source-invisible>")
+
   // ------------ Flags following this one are not pickled ----------------------------------
 
   /** Symbol is not a member of its owner */
@@ -471,7 +474,7 @@ object Flags {
     Scala2SpecialFlags, MutableOrOpen, Opaque, Touched, JavaStatic,
     OuterOrCovariant, LabelOrContravariant, CaseAccessor, Tracked,
     Extension, NonMember, Implicit, Given, Permanent, Synthetic, Exported,
-    SuperParamAliasOrScala2x, Inline, Macro, ConstructorProxy, Invisible)
+    SuperParamAliasOrScala2x, Inline, Macro, ConstructorProxy, Invisible, SourceInvisible)
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
    *  a top-level class or object, when completing the denotation once the class
@@ -525,7 +528,7 @@ object Flags {
   val RetainedModuleValAndClassFlags: FlagSet =
     AccessFlags | Package | Case |
     Synthetic | JavaDefined | JavaStatic | Artifact |
-    Lifted | MixedIn | Specialized | ConstructorProxy | Invisible | Erased
+    Lifted | MixedIn | Specialized | ConstructorProxy | Invisible | SourceInvisible | Erased
 
   /** Flags that can apply to a module val */
   val RetainedModuleValFlags: FlagSet = RetainedModuleValAndClassFlags |
