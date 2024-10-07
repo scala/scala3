@@ -2653,11 +2653,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def newTypeAlias(owner: Symbol, name: String, flags: Flags, tpe: TypeRepr, privateWithin: Symbol): Symbol =
         checkValidFlags(flags.toTypeFlags, Flags.validTypeAliasFlags)
         assert(!tpe.isInstanceOf[Types.TypeBounds], "Passed `tpe` into newTypeAlias should not represent TypeBounds")
-        dotc.core.Symbols.newSymbol(owner, name.toTypeName, flags | dotc.core.Flags.Deferred, dotc.core.Types.TypeAlias(tpe), privateWithin)
+        dotc.core.Symbols.newSymbol(owner, name.toTypeName, flags, dotc.core.Types.TypeAlias(tpe), privateWithin)
 
       def newBoundedType(owner: Symbol, name: String, flags: Flags, tpe: TypeBounds, privateWithin: Symbol): Symbol =
         checkValidFlags(flags.toTypeFlags, Flags.validBoundedTypeFlags)
-        dotc.core.Symbols.newSymbol(owner, name.toTypeName, flags, tpe, privateWithin)
+        dotc.core.Symbols.newSymbol(owner, name.toTypeName, flags | dotc.core.Flags.Deferred, tpe, privateWithin)
 
       def noSymbol: Symbol = dotc.core.Symbols.NoSymbol
 
