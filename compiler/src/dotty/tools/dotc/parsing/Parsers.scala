@@ -4684,12 +4684,12 @@ object Parsers {
      *                 | Expr1
      *                 |
      */
-    def blockStatSeq(): List[Tree] = checkNoEscapingPlaceholders {
+    def blockStatSeq(allowGlobalImport: Boolean = false): List[Tree] = checkNoEscapingPlaceholders {
       val stats = new ListBuffer[Tree]
       while
         var empty = false
         if (in.token == IMPORT)
-          stats ++= importClause()
+          stats ++= importClause(outermost = allowGlobalImport)
         else if (isExprIntro)
           stats += expr(Location.InBlock)
         else if in.token == IMPLICIT && !in.inModifierPosition() then
