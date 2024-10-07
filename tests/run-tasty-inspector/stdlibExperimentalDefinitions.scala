@@ -90,7 +90,7 @@ val experimentalDefinitionInLibrary = Set(
   "scala.Predef$.runtimeChecked", "scala.annotation.internal.RuntimeChecked",
 
   // New feature: SIP 61 - @unroll annotation
-  "scala.annotation.unroll"
+  "scala.annotation.unroll", "scala.quoted.Quotes.reflectModule.FlagsModule.SourceInvisible"
 )
 
 
