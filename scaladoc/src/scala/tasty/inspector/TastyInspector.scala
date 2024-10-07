@@ -1,4 +1,4 @@
-// Copy of tasty-inspector/src/scala/tasty/inspector/TastyInspector.scala
+// Renamed copy of tasty-inspector/src/scala/tasty/inspector/TastyInspector.scala
 // FIXME remove this copy of the file
 // Since copying, an inspectAllTastyFilesInContext ,ethod was added for scaladoc only
 // to fix regressions introduced by the switch from old to a new TastyInspector
@@ -23,7 +23,7 @@ import dotty.tools.dotc.report
 
 import java.io.File.pathSeparator
 
-object TastyInspector:
+object ScaladocInternalTastyInspector:
 
   /** Load and process TASTy files using TASTy reflect
    *
@@ -145,4 +145,4 @@ object TastyInspector:
   end inspectFiles
 
 
-end TastyInspector
+end ScaladocInternalTastyInspector
