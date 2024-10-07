@@ -19,6 +19,7 @@ import config.Printers.transforms
 import reporting.trace
 import java.lang.StringBuilder
 
+import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
 /** Helper object to generate generic java signatures, as defined in
@@ -294,36 +295,13 @@ object GenericSignatures {
         case ExprType(restpe) =>
           jsig(defn.FunctionType(0).appliedTo(restpe))
 
-        case PolyType(tparams, mtpe: MethodType) =>
-          assert(tparams.nonEmpty)
+        case mtd: MethodOrPoly =>
+          val (tparams, vparams, rte) = collectMethodParams(mtd)
           if (toplevel && !sym0.isConstructor) polyParamSig(tparams)
-          jsig(mtpe)
-
-        // Nullary polymorphic method
-        case PolyType(tparams, restpe) =>
-          assert(tparams.nonEmpty)
-          if (toplevel) polyParamSig(tparams)
-          builder.append("()")
-          methodResultSig(restpe)
-
-        case mtpe: MethodType =>
-          // erased method parameters do not make it to the bytecode.
-          def effectiveParamInfoss(t: Type)(using Context): List[List[Type]] = t match {
-            case t: MethodType if t.hasErasedParams =>
-              t.paramInfos.zip(t.erasedParams).collect{ case (i, false) => i }
-                :: effectiveParamInfoss(t.resType)
-            case t: MethodType => t.paramInfos :: effectiveParamInfoss(t.resType)
-            case _ => Nil
-          }
-          val params = effectiveParamInfoss(mtpe).flatten
-          val restpe = mtpe.finalResultType
           builder.append('(')
-          // TODO: Update once we support varargs
-          params.foreach { tp =>
-            jsig(tp)
-          }
+          for vparam <- vparams do jsig(vparam)
           builder.append(')')
-          methodResultSig(restpe)
+          methodResultSig(rte)
 
         case tp: AndType =>
           // Only intersections appearing as the upper-bound of a type parameter
@@ -475,4 +453,23 @@ object GenericSignatures {
         }
       else x
   }
+
+  private def collectMethodParams(mtd: MethodOrPoly)(using Context): (List[TypeParamInfo], List[Type], Type) = 
+    val tparams = ListBuffer.empty[TypeParamInfo]
+    val vparams = ListBuffer.empty[Type]
+
+    @tailrec def recur(tpe: Type): Type = tpe match
+      case mtd: MethodType =>
+        vparams ++= mtd.paramInfos.filterNot(_.hasAnnotation(defn.ErasedParamAnnot))
+        recur(mtd.resType)
+      case PolyType(tps, tpe) => 
+        tparams ++= tps
+        recur(tpe)
+      case _ =>
+        tpe
+    end recur
+
+    val rte = recur(mtd)
+    (tparams.toList, vparams.toList, rte)
+  end collectMethodParams
 }
