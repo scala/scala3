@@ -1988,7 +1988,7 @@ object Parsers {
       if isSimpleLiteral then
         SingletonTypeTree(simpleLiteral())
       else if in.token == USCORE then
-        if ctx.settings.XkindProjector.value == "underscores" then
+        if ctx.settings.XkindProjector.value == "underscores" && !inMatchPattern then
           val start = in.skipToken()
           Ident(tpnme.USCOREkw).withSpan(Span(start, in.lastOffset, start))
         else
