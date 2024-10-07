@@ -105,7 +105,7 @@ object Mode {
 
   /** Use previous Scheme for implicit resolution. Currently significant
    *  in 3.0-migration where we use Scala-2's scheme instead and in 3.5 and 3.6-migration
-   *  where we use the previous scheme up to 3.4 for comparison with the new scheme. 
+   *  where we use the previous scheme up to 3.4 for comparison with the new scheme.
    */
   val OldImplicitResolution: Mode = newMode(15, "OldImplicitResolution")
 
@@ -124,6 +124,9 @@ object Mode {
 
   /** Read original positions when unpickling from TASTY */
   val ReadPositions: Mode = newMode(17, "ReadPositions")
+
+  /** We are resolving a SELECT name from TASTy */
+  val ResolveFromTASTy: Mode = newMode(18, "ResolveFromTASTy")
 
   /** We are elaborating the fully qualified name of a package clause.
    *  In this case, identifiers should never be imported.

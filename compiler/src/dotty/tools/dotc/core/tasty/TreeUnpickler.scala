@@ -1563,7 +1563,7 @@ class TreeUnpickler(reader: TastyReader,
                *  - sbt-test/tasty-compat/remove-override
                *  - sbt-test/tasty-compat/move-method
                */
-              def lookupInSuper =
+              def lookupInSuper(using Context) =
                 val cls = ownerTpe.classSymbol
                 if cls.exists then
                   cls.asClass.classDenot
@@ -1572,13 +1572,17 @@ class TreeUnpickler(reader: TastyReader,
                 else
                   NoDenotation
 
-              val denot =
+
+              def searchDenot(using Context): Denotation =
                 if owner.is(JavaAnnotation) && name == nme.CONSTRUCTOR then
                   // #19951 Fix up to read TASTy produced before 3.5.0 -- ignore the signature
                   ownerTpe.nonPrivateDecl(name).asSeenFrom(prefix)
                 else
                   val d = ownerTpe.decl(name).atSignature(sig, target)
                   (if !d.exists then lookupInSuper else d).asSeenFrom(prefix)
+
+              val denot = inContext(ctx.addMode(Mode.ResolveFromTASTy)):
+                searchDenot // able to resolve Invisible members
 
               makeSelect(qual, name, denot)
             case REPEATED =>

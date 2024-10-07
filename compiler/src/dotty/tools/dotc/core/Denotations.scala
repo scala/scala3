@@ -1072,7 +1072,7 @@ object Denotations {
     def filterDisjoint(denots: PreDenotation)(using Context): SingleDenotation =
       if (denots.exists && denots.matches(this)) NoDenotation else this
     def filterWithFlags(required: FlagSet, excluded: FlagSet)(using Context): SingleDenotation =
-      val realExcluded = if ctx.isAfterTyper then excluded else excluded | Invisible
+      val realExcluded = if ctx.isAfterTyper then excluded else excluded | (if ctx.mode.is(Mode.ResolveFromTASTy) then EmptyFlags else Invisible)
       def symd: SymDenotation = this match
         case symd: SymDenotation => symd
         case _ => symbol.denot
