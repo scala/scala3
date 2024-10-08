@@ -1,6 +1,6 @@
 // Renamed copy of tasty-inspector/src/scala/tasty/inspector/TastyInspector.scala
 // FIXME remove this copy of the file
-// Since copying, an inspectAllTastyFilesInContext ,ethod was added for scaladoc only
+// Since copying, an inspectAllTastyFilesInContext method was added for scaladoc only
 // to fix regressions introduced by the switch from old to a new TastyInspector
 
 package scala.tasty.inspector
