@@ -2118,16 +2118,20 @@ trait Applications extends Compatibility {
   def resolveOverloaded(alts: List[TermRef], pt: Type)(using Context): List[TermRef] =
     record("resolveOverloaded")
 
-    /** Is `alt` a method or polytype whose result type after the first value parameter
+    /** Is `alt` a method or polytype whose approximated result type after the first value parameter
      *  section conforms to the expected type `resultType`? If `resultType`
      *  is a `IgnoredProto`, pick the underlying type instead.
+     *
+     *  Using approximated result types is necessary to avoid false negatives
+     *  due to incomplete type inference such as in tests/pos/i21410.scala.
      */
     def resultConforms(altSym: Symbol, altType: Type, resultType: Type)(using Context): Boolean =
       resultType.revealIgnored match {
         case resultType: ValueType =>
           altType.widen match {
-            case tp: PolyType => resultConforms(altSym, instantiateWithTypeVars(tp), resultType)
-            case tp: MethodType => constrainResult(altSym, tp.resultType, resultType)
+            case tp: PolyType => resultConforms(altSym, tp.resultType, resultType)
+            case tp: MethodType =>
+              constrainResult(altSym, wildApprox(tp.resultType), resultType)
             case _ => true
           }
         case _ => true
