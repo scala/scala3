@@ -24,6 +24,12 @@ type ComparerRef = [X] => (x: X, y: X) => Ord[X] ?=> Boolean
 type Comparer = [X: Ord] => (x: X, y: X) => Boolean
 val less3: Comparer = [X: Ord as ord] => (x: X, y: X) => ord.compare(x, y) < 0
 
+type CmpRest[X] = X => Boolean
+type CmpMid[X] = X => CmpRest[X]
+type Cmp3 = [X: Ord] => X => CmpMid[X]
+val lessCmp3: Cmp3 = [X: Ord] => (x: X) => (y: X) => (z: X) => summon[Ord[X]].compare(x, y) < 0
+val lessCmp3_1: Cmp3 = [X: Ord as ord] => (x: X) => (y: X) => (z: X) => ord.compare(x, y) < 0
+
 // type Cmp[X] = (x: X, y: X) => Boolean
 // type Comparer2 = [X: Ord] => Cmp[X]
 // val less4: Comparer2 = [X: Ord] => (x: X, y: X) => summon[Ord[X]].compare(x, y) < 0
