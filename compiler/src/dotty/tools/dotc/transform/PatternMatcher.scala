@@ -35,6 +35,13 @@ class PatternMatcher extends MiniPhase {
 
   override def runsAfter: Set[String] = Set(ElimRepeated.name)
 
+  private val InInlinedCode = new util.Property.Key[Boolean]
+  private def inInlinedCode(using Context) = ctx.property(InInlinedCode).getOrElse(false)
+
+  override def prepareForInlined(tree: Inlined)(using Context): Context =
+    if inInlinedCode then ctx
+    else ctx.fresh.setProperty(InInlinedCode, true)
+
   override def transformMatch(tree: Match)(using Context): Tree =
     if (tree.isInstanceOf[InlineMatch]) tree
     else {
@@ -46,10 +53,13 @@ class PatternMatcher extends MiniPhase {
         case rt => tree.tpe
       val translated = new Translator(matchType, this).translateMatch(tree)
 
-      // Skip analysis on inlined code (eg pos/i19157)
-      if !tpd.enclosingInlineds.nonEmpty then
+      if !inInlinedCode then
         // check exhaustivity and unreachability
         SpaceEngine.checkMatch(tree)
+      else
+        // only check exhaustivity, as inlining may generate unreachable code 
+        // like in i19157.scala
+        SpaceEngine.checkMatchExhaustivityOnly(tree)
 
       translated.ensureConforms(matchType)
     }
