@@ -170,11 +170,13 @@ class TreeUnpickler(reader: TastyReader,
             case ex: Exception => fail(ex)
   }
 
-  class TreeReader(val reader: TastyReader) {
+  class TreeReader(val reader: TastyReader, inInlineBody: Boolean = false) {
     import reader.*
 
-    def forkAt(start: Addr): TreeReader = new TreeReader(subReader(start, endAddr))
-    def fork: TreeReader = forkAt(currentAddr)
+    def forkAt(start: Addr, inInlineBody: Boolean = false): TreeReader =
+      new TreeReader(subReader(start, endAddr), inInlineBody)
+
+    def fork: TreeReader = forkAt(currentAddr, inInlineBody)
 
     def skipParentTree(tag: Int): Unit = {
       if tag == SPLITCLAUSE then ()
@@ -694,7 +696,7 @@ class TreeUnpickler(reader: TastyReader,
           val ctx1 = localContext(sym)(using ctx0).addMode(Mode.ReadPositions)
           inContext(sourceChangeContext(Addr(0))(using ctx1)) {
             // avoids space leaks by not capturing the current context
-            forkAt(rhsStart).readTree()
+            forkAt(rhsStart, inInlineBody = true).readTree()
           }
         })
       goto(start)
@@ -1581,21 +1583,14 @@ class TreeUnpickler(reader: TastyReader,
                   val d = ownerTpe.decl(name).atSignature(sig, target)
                   (if !d.exists then lookupInSuper else d).asSeenFrom(prefix)
 
-              val denot0 = inContext(ctx.addMode(Mode.ResolveFromTASTy)):
+              val denot = inContext(ctx.addMode(Mode.ResolveFromTASTy)):
                 searchDenot // able to resolve SourceInvisible members
 
-              val denot =
-                if
-                  denot0.symbol.exists
-                  && denot0.symbol.is(SourceInvisible)
-                  && denot0.symbol.isDefinedInSource
-                then
-                  searchDenot // fallback
-                else
-                  denot0
 
-
-              makeSelect(qual, name, denot)
+              val sel = makeSelect(qual, name, denot)
+              if denot == NoDenotation && inInlineBody && sel.denot.symbol.exists && sel.symbol.isDefinedInCurrentRun then
+                throw new ChangedMethodDenot(sel.denot.symbol)
+              sel
             case REPEATED =>
               val elemtpt = readTpt()
               SeqLiteral(until(end)(readTree()), elemtpt)
@@ -1901,6 +1896,9 @@ class TreeUnpickler(reader: TastyReader,
 }
 
 object TreeUnpickler {
+
+  /** Specifically thrown when a SELECTin was written to TASTy, i.e. is expected to resolve, and then doesn't. */
+  private[dotc] final class ChangedMethodDenot(val resolved: Symbol) extends Exception
 
   /** Define the expected format of the tasty bytes
    *   - TopLevel: Tasty that contains a full class nested in its package
