@@ -63,6 +63,9 @@ val experimentalDefinitionInLibrary = Set(
   "scala.quoted.Quotes.reflectModule.SymbolModule.newModule",
   "scala.quoted.Quotes.reflectModule.SymbolModule.freshName",
   "scala.quoted.Quotes.reflectModule.SymbolMethods.info",
+  // Added for 3.6.0, stabilize after feedback.
+  "scala.quoted.Quotes.reflectModule.SymbolModule.newBoundedType",
+  "scala.quoted.Quotes.reflectModule.SymbolModule.newTypeAlias",
 
   // New feature: functions with erased parameters.
   // Need erasedDefinitions enabled.

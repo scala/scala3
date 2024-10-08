@@ -2649,6 +2649,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def newBind(owner: Symbol, name: String, flags: Flags, tpe: TypeRepr): Symbol =
         checkValidFlags(flags.toTermFlags, Flags.validBindFlags)
         dotc.core.Symbols.newSymbol(owner, name.toTermName, flags | dotc.core.Flags.Case, tpe)
+
+      def newTypeAlias(owner: Symbol, name: String, flags: Flags, tpe: TypeRepr, privateWithin: Symbol): Symbol =
+        checkValidFlags(flags.toTypeFlags, Flags.validTypeAliasFlags)
+        assert(!tpe.isInstanceOf[Types.TypeBounds], "Passed `tpe` into newTypeAlias should not represent TypeBounds")
+        dotc.core.Symbols.newSymbol(owner, name.toTypeName, flags, dotc.core.Types.TypeAlias(tpe), privateWithin)
+
+      def newBoundedType(owner: Symbol, name: String, flags: Flags, tpe: TypeBounds, privateWithin: Symbol): Symbol =
+        checkValidFlags(flags.toTypeFlags, Flags.validBoundedTypeFlags)
+        dotc.core.Symbols.newSymbol(owner, name.toTypeName, flags | dotc.core.Flags.Deferred, tpe, privateWithin)
+
       def noSymbol: Symbol = dotc.core.Symbols.NoSymbol
 
       private inline def checkValidFlags(inline flags: Flags, inline valid: Flags): Unit =
@@ -2989,6 +2999,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
       // Keep: aligned with Quotes's `newBind` doc
       private[QuotesImpl] def validBindFlags: Flags = Case // Flags that could be allowed: Implicit | Given | Erased
+
+      // Keep: aligned with Quotes's 'newBoundedType' doc
+      private[QuotesImpl] def validBoundedTypeFlags: Flags = Private | Protected | Override | Deferred | Final | Infix | Local
+
+      // Keep: aligned with Quotes's `newTypeAlias` doc
+      private[QuotesImpl] def validTypeAliasFlags: Flags = Private | Protected | Override | Final | Infix | Local
+
     end Flags
 
     given FlagsMethods: FlagsMethods with

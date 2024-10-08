@@ -3963,6 +3963,42 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       // Keep: `flags` doc aligned with QuotesImpl's `validBindFlags`
       def newBind(parent: Symbol, name: String, flags: Flags, tpe: TypeRepr): Symbol
 
+      /** Generate a new type symbol for a type alias with the given parent, name and type
+        *
+        *  This symbol starts without an accompanying definition.
+        *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
+        *  this symbol to the TypeDef constructor.
+        *
+        *  @param parent The owner of the type
+        *  @param name The name of the type
+        *  @param flags extra flags to with which symbol can be constructed. Can be `Private` | `Protected` | `Override` | `Final` | `Infix` | `Local`
+        *  @param tpe The rhs the type alias
+        *  @param privateWithin the symbol within which this new type symbol should be private. May be noSymbol.
+        *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
+        *        direct or indirect children of the reflection context's owner.
+        */
+      @experimental
+      // Keep: `flags` doc aligned with QuotesImpl's `validTypeAliasFlags`
+      def newTypeAlias(parent: Symbol, name: String, flags: Flags, tpe: TypeRepr, privateWithin: Symbol): Symbol
+
+      /** Generate a new type symbol for a type bounds with the given parent, name and type
+        *
+        *  This symbol starts without an accompanying definition.
+        *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
+        *  this symbol to the TypeDef constructor.
+        *
+        *  @param parent The owner of the type
+        *  @param name The name of the type
+        *  @param flags extra flags to with which symbol can be constructed. `Deferred` flag will be added. Can be `Private` | `Protected` | `Override` | `Deferred` | `Final` | `Infix` | `Local`
+        *  @param tpe The bounds of the type
+        *  @param privateWithin the symbol within which this new type symbol should be private. May be noSymbol.
+        *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
+        *        direct or indirect children of the reflection context's owner.
+        */
+      @experimental
+      // Keep: `flags` doc aligned with QuotesImpl's `validBoundedTypeFlags`
+      def newBoundedType(parent: Symbol, name: String, flags: Flags, tpe: TypeBounds, privateWithin: Symbol): Symbol
+
       /** Definition not available */
       def noSymbol: Symbol
 
