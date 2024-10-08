@@ -83,3 +83,8 @@ class `scope of super`:
       class E(e: Int) extends C(i + k):
         def g = e + y + k + 1
       E(0).g
+
+import scala.annotation.meta.*
+object Alias {
+  type A = Deprecated @param
+}

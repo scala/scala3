@@ -222,6 +222,9 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
         transformAllDeep(hi)
         transformAllDeep(alias)
       case tree: NamedArg => transformAllDeep(tree.arg)
+      case Annotated(arg, annot) =>
+        transformAllDeep(arg)
+        transformAllDeep(annot)
       case _: InferredTypeTree =>
       case _ if tree.isType =>
         //println(s"OTHER TYPE ${tree.getClass} ${tree.show}")
@@ -684,6 +687,7 @@ object CheckUnused:
           && !memDef.symbol.isAllOf(Flags.AccessorCreationFlags)
           && !memDef.name.isWildcard
           && !memDef.symbol.owner.is(ExtensionMethod)
+          && !memDef.symbol.owner.isRefinementClass
 
       private def isValidParam(using Context): Boolean =
         val sym = memDef.symbol
