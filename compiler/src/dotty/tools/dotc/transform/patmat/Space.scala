@@ -3,9 +3,7 @@ package dotc
 package transform
 package patmat
 
-import core.*
-import Constants.*, Contexts.*, Decorators.*, Flags.*, NullOpsDecorator.*, Symbols.*, Types.*
-import Names.*, NameOps.*, StdNames.*
+import core.*, Constants.*, Contexts.*, Decorators.*, Flags.*, Names.*, NameOps.*, StdNames.*, Symbols.*, Types.*
 import ast.*, tpd.*
 import config.Printers.*
 import printing.{ Printer, * }, Texts.*
@@ -352,7 +350,7 @@ object SpaceEngine {
       val funRef = fun1.tpe.asInstanceOf[TermRef]
       if (fun.symbol.name == nme.unapplySeq)
         val (arity, elemTp, resultTp) = unapplySeqInfo(fun.tpe.widen.finalResultType, fun.srcPos)
-        if fun.symbol.owner == defn.SeqFactoryClass && pat.tpe.hasClassSymbol(defn.ListClass) then
+        if (fun.symbol.owner == defn.SeqFactoryClass && defn.ListType.appliedTo(elemTp) <:< pat.tpe)
           // The exhaustivity and reachability logic already handles decomposing sum types (into its subclasses)
           // and product types (into its components).  To get better counter-examples for patterns that are of type
           // List (or a super-type of list, like LinearSeq) we project them into spaces that use `::` and Nil.
@@ -524,26 +522,14 @@ object SpaceEngine {
     val mt: MethodType = unapp.widen match {
       case mt: MethodType => mt
       case pt: PolyType   =>
-          val locked = ctx.typerState.ownedVars
           val tvars = constrained(pt)
           val mt = pt.instantiate(tvars).asInstanceOf[MethodType]
           scrutineeTp <:< mt.paramInfos(0)
           // force type inference to infer a narrower type: could be singleton
           // see tests/patmat/i4227.scala
           mt.paramInfos(0) <:< scrutineeTp
-          maximizeType(mt.paramInfos(0), Spans.NoSpan)
-          if !(ctx.typerState.ownedVars -- locked).isEmpty then
-            // constraining can create type vars out of wildcard types
-            // (in legalBound, by using a LevelAvoidMap)
-            // maximise will only do one pass at maximising the type vars in the target type
-            // which means we can maximise to types that include other type vars
-            // this fails TreeChecker's "non-empty constraint at end of $fusedPhase" check
-            // e.g. run-macros/string-context-implicits
-            // I can't prove that a second call won't also create type vars,
-            // but I'd rather have an unassigned new-new type var, than an infinite loop.
-            // After all, there's nothing strictly "wrong" with unassigned type vars,
-            // it just fails TreeChecker's linting.
-            maximizeType(mt.paramInfos(0), Spans.NoSpan)
+          instantiateSelected(mt, tvars)
+          isFullyDefined(mt, ForceDegree.all)
           mt
     }
 
@@ -557,7 +543,7 @@ object SpaceEngine {
     // Case unapplySeq:
     // 1. return the type `List[T]` where `T` is the element type of the unapplySeq return type `Seq[T]`
 
-    val resTp = wildApprox(ctx.typeAssigner.safeSubstMethodParams(mt, scrutineeTp :: Nil).finalResultType)
+    val resTp = ctx.typeAssigner.safeSubstMethodParams(mt, scrutineeTp :: Nil).finalResultType
 
     val sig =
       if (resTp.isRef(defn.BooleanClass))
@@ -578,14 +564,20 @@ object SpaceEngine {
           if (arity > 0)
             productSelectorTypes(resTp, unappSym.srcPos)
           else {
-            val getTp = extractorMemberType(resTp, nme.get, unappSym.srcPos)
+            val getTp = resTp.select(nme.get).finalResultType match
+              case tp: TermRef if !tp.isOverloaded =>
+                // Like widenTermRefExpr, except not recursively.
+                // For example, in i17184 widen Option[foo.type]#get
+                // to Option[foo.type] instead of Option[Int].
+                tp.underlying.widenExpr
+              case tp => tp
             if (argLen == 1) getTp :: Nil
             else productSelectorTypes(getTp, unappSym.srcPos)
           }
         }
       }
 
-    sig.map { case tp: WildcardType => tp.bounds.hi case tp => tp }
+    sig.map(_.annotatedToRepeated)
   }
 
   /** Whether the extractor covers the given type */
@@ -624,36 +616,14 @@ object SpaceEngine {
       case tp if tp.classSymbol.isAllOf(JavaEnum)      => tp.classSymbol.children.map(_.termRef)
         // the class of a java enum value is the enum class, so this must follow SingletonType to not loop infinitely
 
-      case Childless(tp @ AppliedType(Parts(parts), targs)) =>
+      case tp @ AppliedType(Parts(parts), targs) if tp.classSymbol.children.isEmpty =>
         // It might not obvious that it's OK to apply the type arguments of a parent type to child types.
         // But this is guarded by `tp.classSymbol.children.isEmpty`,
         // meaning we'll decompose to the same class, just not the same type.
         // For instance, from i15029, `decompose((X | Y).Field[T]) = [X.Field[T], Y.Field[T]]`.
         parts.map(tp.derivedAppliedType(_, targs))
 
-      case tpOriginal if tpOriginal.isDecomposableToChildren =>
-        // isDecomposableToChildren uses .classSymbol.is(Sealed)
-        // But that classSymbol could be from an AppliedType
-        // where the type constructor is a non-class type
-        // E.g. t11620 where `?1.AA[X]` returns as "sealed"
-        // but using that we're not going to infer A1[X] and A2[X]
-        // but end up with A1[<?>] and A2[<?>].
-        // So we widen (like AppliedType superType does) away
-        // non-class type constructors.
-        //
-        // Can't use `tpOriginal.baseType(cls)` because it causes
-        // i15893 to return exhaustivity warnings, because instead of:
-        //    <== refineUsingParent(N, class Succ, []) = Succ[<? <: NatT>]
-        //    <== isSub(Succ[<? <: NatT>] <:< Succ[Succ[<?>]]) = true
-        // we get
-        //    <== refineUsingParent(NatT, class Succ, []) = Succ[NatT]
-        //    <== isSub(Succ[NatT] <:< Succ[Succ[<?>]]) = false
-        def getAppliedClass(tp: Type): Type = tp match
-          case tp @ AppliedType(_: HKTypeLambda, _)                        => tp
-          case tp @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass => tp
-          case tp @ AppliedType(tycon: TypeProxy, _)                       => getAppliedClass(tycon.superType.applyIfParameterized(tp.args))
-          case tp                                                          => tp
-        val tp = getAppliedClass(tpOriginal)
+      case tp if tp.isDecomposableToChildren =>
         def getChildren(sym: Symbol): List[Symbol] =
           sym.children.flatMap { child =>
             if child eq sym then List(sym) // i3145: sealed trait Baz, val x = new Baz {}, Baz.children returns Baz...
@@ -705,12 +675,6 @@ object SpaceEngine {
 
   final class PartsExtractor(val get: List[Type]) extends AnyVal:
     def isEmpty: Boolean = get == ListOfNoType
-
-  object Childless:
-    def unapply(tp: Type)(using Context): Result =
-      Result(if tp.classSymbol.children.isEmpty then tp else NoType)
-    class Result(val get: Type) extends AnyVal:
-      def isEmpty: Boolean = !get.exists
 
   /** Show friendly type name with current scope in mind
    *
@@ -808,15 +772,12 @@ object SpaceEngine {
     doShow(s)
   }
 
-  extension (self: Type) private def stripUnsafeNulls()(using Context): Type =
-    if Nullables.unsafeNullsEnabled then self.stripNull() else self
-
-  private def exhaustivityCheckable(sel: Tree)(using Context): Boolean = trace(i"exhaustivityCheckable($sel ${sel.className})") {
+  private def exhaustivityCheckable(sel: Tree)(using Context): Boolean = {
     val seen = collection.mutable.Set.empty[Symbol]
 
     // Possible to check everything, but be compatible with scalac by default
-    def isCheckable(tp: Type): Boolean = trace(i"isCheckable($tp ${tp.className})"):
-      val tpw = tp.widen.dealias.stripUnsafeNulls()
+    def isCheckable(tp: Type): Boolean =
+      val tpw = tp.widen.dealias
       val classSym = tpw.classSymbol
       classSym.is(Sealed) && !tpw.isLargeGenericTuple || // exclude large generic tuples from exhaustivity
                                                          // requires an unknown number of changes to make work
@@ -852,7 +813,7 @@ object SpaceEngine {
   /** Return the underlying type of non-module, non-constant, non-enum case singleton types.
    *  Also widen ExprType to its result type, and rewrap any annotation wrappers.
    *  For example, with `val opt = None`, widen `opt.type` to `None.type`. */
-  def toUnderlying(tp: Type)(using Context): Type = trace(i"toUnderlying($tp ${tp.className})")(tp match {
+  def toUnderlying(tp: Type)(using Context): Type = trace(i"toUnderlying($tp)")(tp match {
     case _: ConstantType                            => tp
     case tp: TermRef if tp.symbol.is(Module)        => tp
     case tp: TermRef if tp.symbol.isAllOf(EnumCase) => tp
@@ -863,7 +824,7 @@ object SpaceEngine {
   })
 
   def checkExhaustivity(m: Match)(using Context): Unit = trace(i"checkExhaustivity($m)") {
-    val selTyp = toUnderlying(m.selector.tpe.stripUnsafeNulls()).dealias
+    val selTyp = toUnderlying(m.selector.tpe).dealias
     val targetSpace = trace(i"targetSpace($selTyp)")(project(selTyp))
 
     val patternSpace = Or(m.cases.foldLeft(List.empty[Space]) { (acc, x) =>
@@ -941,6 +902,9 @@ object SpaceEngine {
   }
 
   def checkMatch(m: Match)(using Context): Unit =
-    if exhaustivityCheckable(m.selector) then checkExhaustivity(m)
+    checkMatchExhaustivityOnly(m)
     if reachabilityCheckable(m.selector) then checkReachability(m)
+
+  def checkMatchExhaustivityOnly(m: Match)(using Context): Unit =
+    if exhaustivityCheckable(m.selector) then checkExhaustivity(m)
 }
