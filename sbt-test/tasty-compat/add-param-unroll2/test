@@ -1,0 +1,8 @@
+# compile library A via Zinc, with an initial file A defining method foo
+> a_v1/compile
+# compile library A via Zinc, for the second time, adding a new file that defines an inline
+# method B.caller, calling A.foo
+> a_v2/compile
+# compile library A via Zinc, for the third time, add a new parameter to A.foo, using @unroll to generate a forwarder
+# in the same file A.scala, define object C that inlines B.caller, it should succeed and resolve the new invisible forwarder
+> a_v3/compile
