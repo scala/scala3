@@ -2237,7 +2237,19 @@ trait Applications extends Compatibility {
 
         def isCorrectUnaryFunction(alt: TermRef): Boolean =
           val formals = params(alt)
-          formals.length == 1 && ptIsCorrectProduct(formals.head, args)
+          formals.length == 1 && {
+            formals.head match
+              case formal: TypeParamRef =>
+                // While `formal` isn't a tuple type of the correct arity,
+                // it's a type parameter (a method type parameter presumably)
+                // so check its bounds allow for a tuple type of the correct arity.
+                // See i21682 for an example.
+                val tup = defn.tupleType(args.map(v => if v.tpt.isEmpty then WildcardType else typedAheadType(v.tpt).tpe))
+                val TypeBounds(lo, hi) = formal.paramInfo
+                lo <:< tup && tup <:< hi
+              case formal =>
+                ptIsCorrectProduct(formal, args)
+          }
 
         val numArgs = args.length
         if numArgs > 1
