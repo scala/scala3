@@ -12,7 +12,7 @@ import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames.nme
-import dotty.tools.dotc.core.Types.{AnnotatedType, ClassInfo, ConstantType, NamedType, NoType, TermRef, Type, TypeProxy, TypeTraverser}
+import dotty.tools.dotc.core.Types.{AnnotatedType, ClassInfo, ConstantType, NamedType, NoPrefix, NoType, TermRef, Type, TypeProxy, TypeTraverser}
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.{Name, TermName, termName}
 import dotty.tools.dotc.core.NameOps.isReplWrapperName
@@ -87,14 +87,6 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
       ud.registerUsed(tree.symbol, name, tree.qualifier.tpe, includeForImport = tree.qualifier.span.isSynthetic, tree = tree)
     tree
 
-  override def transformApply(tree: Apply)(using Context): Tree =
-    tree
-
-  override def transformTyped(tree: Typed)(using Context): Tree =
-    tree match
-    case Typed(expr, tpt) =>
-    tree
-
   override def transformAssign(tree: Assign)(using Context): tree.type =
     preparing:
       val sym = tree.lhs.symbol
@@ -113,12 +105,10 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
     transformAllDeep(tree.call)
     tree
 
-  override def prepareForTypeTree(tree: TypeTree)(using Context): Context = ctx
-
   override def transformTypeTree(tree: TypeTree)(using Context): tree.type =
     tree.tpe match
     case AnnotatedType(_, annot) => transformAllDeep(annot.tree)
-    case tpt if tpt.typeSymbol.exists =>
+    case tpt if !tree.isInferred && tpt.typeSymbol.exists =>
       preparing:
         ud.registerUsed(tpt.typeSymbol, Some(tpt.typeSymbol.name), tree = tree) // usage was a simple name
     case _ =>
@@ -191,12 +181,6 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
   override def transformPackageDef(tree: PackageDef)(using Context): Tree =
     popScope(tree)
     tree
-
-  override def prepareForStats(trees: List[Tree])(using Context): Context = ctx
-
-  override def transformStats(trees: List[Tree])(using Context): List[Tree] =
-    super.transformStats(trees)
-    trees
 
   override def transformOther(tree: Tree)(using Context): tree.type =
     preparing:
@@ -377,7 +361,7 @@ object CheckUnused:
      *  The optional name will be used to target the right import
      *  as the same element can be imported with different renaming.
      */
-    def registerUsed(sym: Symbol, name: Option[Name], prefix: Type = NoType, includeForImport: Boolean = true, tree: Tree)(using Context): Unit =
+    def registerUsed(sym: Symbol, name: Option[Name], prefix: Type = NoPrefix, includeForImport: Boolean = true, tree: Tree)(using Context): Unit =
       if sym.exists && !isConstructorOfSynth(sym) && !doNotRegister(sym) && !doNotRegisterPrefix(prefix.typeSymbol) then
         if sym.isConstructor then
           // constructors are "implicitly" imported with the class
@@ -647,7 +631,7 @@ object CheckUnused:
           }
         else
           !altName.exists(_.toTermName != selector.rename) && // if there is an explicit name, it must match
-            selData.qualTpe =:= prefix && selData.allSymbolsForNamed.contains(sym)
+            (prefix.eq(NoPrefix) || selData.qualTpe =:= prefix) && selData.allSymbolsForNamed.contains(sym)
       end isInImport
 
       /** Annotated with @unused */
