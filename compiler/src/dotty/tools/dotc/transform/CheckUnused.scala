@@ -625,7 +625,7 @@ object CheckUnused:
             if selector.isGiven then // Further check that the symbol is a given or implicit and conforms to the bound
               sym.isOneOf(Given | Implicit)
                 && (selector.bound.isEmpty || sym.info.finalResultType <:< selector.boundTpe)
-                && selData.qualTpe =:= prefix
+                && (prefix.eq(NoPrefix) || selData.qualTpe =:= prefix)
             else
               !sym.is(Given) // Normal wildcard, check that the symbol is not a given (but can be implicit)
           }
