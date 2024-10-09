@@ -551,6 +551,17 @@ class Definitions {
     completeClass(enterCompleteClassSymbol(
       ScalaPackageClass, tpnme.maybeCapability, Final, List(StaticAnnotationClass.typeRef)))
 
+  /** A type `type <use>[+T] <: T` used locally in capture checking. At certain points
+   *  `T @use` types are converted to `<use>[T]` types. These types are handled as 
+   *  compile-time applied types by TypeComparer.
+   */
+  @tu lazy val UseType: TypeSymbol =
+    enterPermanentSymbol(
+      tpnme.USE,
+      TypeBounds.upper(
+        HKTypeLambda(HKTypeLambda.syntheticParamNames(1), Covariant :: Nil)
+          (_ => TypeBounds.empty :: Nil, _.paramRefs.head))).asType
+
   @tu lazy val CollectionSeqType: TypeRef  = requiredClassRef("scala.collection.Seq")
   @tu lazy val SeqType: TypeRef            = requiredClassRef("scala.collection.immutable.Seq")
   @tu lazy val SeqModule: Symbol           = requiredModule("scala.collection.immutable.Seq")
@@ -1057,12 +1068,13 @@ class Definitions {
   @tu lazy val ExperimentalAnnot: ClassSymbol = requiredClass("scala.annotation.experimental")
   @tu lazy val ThrowsAnnot: ClassSymbol = requiredClass("scala.throws")
   @tu lazy val TransientAnnot: ClassSymbol = requiredClass("scala.transient")
-  @tu lazy val UnboxAnnot:  ClassSymbol = requiredClass("scala.caps.unbox")
+  @tu lazy val UnboxAnnot: ClassSymbol = requiredClass("scala.caps.unbox")
   @tu lazy val UncheckedAnnot: ClassSymbol = requiredClass("scala.unchecked")
   @tu lazy val UncheckedStableAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedStable")
   @tu lazy val UncheckedVarianceAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedVariance")
   @tu lazy val UncheckedCapturesAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedCaptures")
   @tu lazy val UntrackedCapturesAnnot: ClassSymbol = requiredClass("scala.caps.untrackedCaptures")
+  @tu lazy val UseAnnot: ClassSymbol = requiredClass("scala.caps.use")
   @tu lazy val VolatileAnnot: ClassSymbol = requiredClass("scala.volatile")
   @tu lazy val BeanGetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanGetter")
   @tu lazy val BeanSetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanSetter")
@@ -1077,6 +1089,7 @@ class Definitions {
   @tu lazy val TargetNameAnnot: ClassSymbol = requiredClass("scala.annotation.targetName")
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
   @tu lazy val ReachCapabilityAnnot = requiredClass("scala.annotation.internal.reachCapability")
+  @tu lazy val ReachUnderUseCapabilityAnnot = requiredClass("scala.annotation.internal.reachUnderUseCapability")
   @tu lazy val RequiresCapabilityAnnot: ClassSymbol = requiredClass("scala.annotation.internal.requiresCapability")
   @tu lazy val RetainsAnnot: ClassSymbol = requiredClass("scala.annotation.retains")
   @tu lazy val RetainsCapAnnot: ClassSymbol = requiredClass("scala.annotation.retainsCap")
@@ -1352,6 +1365,9 @@ class Definitions {
   final def isNamedTuple_From(sym: Symbol)(using Context): Boolean =
     sym.name == tpnme.From && sym.owner == NamedTupleModule.moduleClass
 
+  final def isUse(sym: Symbol)(using Context): Boolean =
+    sym.name == tpnme.USE && sym.owner == ScalaPackageClass
+
   private val compiletimePackageAnyTypes: Set[Name] = Set(
     tpnme.Equals, tpnme.NotEquals, tpnme.IsConst, tpnme.ToString
   )
@@ -1380,7 +1396,7 @@ class Definitions {
     tpnme.Plus, tpnme.Length, tpnme.Substring, tpnme.Matches, tpnme.CharAt
   )
   private val compiletimePackageOpTypes: Set[Name] =
-    Set(tpnme.S, tpnme.From)
+    Set(tpnme.S, tpnme.From, tpnme.USE)
     ++ compiletimePackageAnyTypes
     ++ compiletimePackageIntTypes
     ++ compiletimePackageLongTypes
@@ -1394,6 +1410,7 @@ class Definitions {
     && (
          isCompiletime_S(sym)
       || isNamedTuple_From(sym)
+      || isUse(sym)
       || sym.owner == CompiletimeOpsAnyModuleClass && compiletimePackageAnyTypes.contains(sym.name)
       || sym.owner == CompiletimeOpsIntModuleClass && compiletimePackageIntTypes.contains(sym.name)
       || sym.owner == CompiletimeOpsLongModuleClass && compiletimePackageLongTypes.contains(sym.name)
@@ -2195,7 +2212,8 @@ class Definitions {
       NothingClass,
       SingletonClass,
       CBCompanion,
-      MaybeCapabilityAnnot)
+      MaybeCapabilityAnnot,
+      UseType)
 
   @tu lazy val syntheticCoreClasses: List[Symbol] = syntheticScalaClasses ++ List(
     EmptyPackageVal,

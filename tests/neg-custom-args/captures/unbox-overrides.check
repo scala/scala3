@@ -1,21 +1,28 @@
--- [E164] Declaration Error: tests/neg-custom-args/captures/unbox-overrides.scala:8:6 ----------------------------------
-8 |  def foo(x: C): C        // error
-  |      ^
-  |error overriding method foo in trait A of type (x: C): C;
-  |  method foo of type (x: C): C has a parameter x with different @unbox status than the corresponding parameter in the overridden definition
-  |
-  | longer explanation available when compiling with `-explain`
 -- [E164] Declaration Error: tests/neg-custom-args/captures/unbox-overrides.scala:9:6 ----------------------------------
-9 |  def bar(@unbox x: C): C // error
+9 |  def bar(x: C @use): C // error
   |      ^
-  |error overriding method bar in trait A of type (x: C): C;
-  |  method bar of type (x: C): C has a parameter x with different @unbox status than the corresponding parameter in the overridden definition
+  |      error overriding method bar in trait A of type (x: C): C;
+  |        method bar of type (x: C @use): C has incompatible type
   |
   | longer explanation available when compiling with `-explain`
--- [E164] Declaration Error: tests/neg-custom-args/captures/unbox-overrides.scala:15:15 --------------------------------
-15 |abstract class C extends A[C], B2 // error
+-- [E164] Declaration Error: tests/neg-custom-args/captures/unbox-overrides.scala:16:6 ---------------------------------
+16 |  def foo(x: C @use): C // error
+   |      ^
+   |      error overriding method foo in trait B2 of type (x: C): C;
+   |        method foo of type (x: C @use): C has incompatible type
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E164] Declaration Error: tests/neg-custom-args/captures/unbox-overrides.scala:19:15 --------------------------------
+19 |abstract class C extends A[C], B2 // error
    |               ^
-   |error overriding method foo in trait A of type (x: C): C;
-   |  method foo in trait B2 of type (x: C): C has a parameter x with different @unbox status than the corresponding parameter in the overridden definition
+   |               error overriding method bar in trait A of type (x: C): C;
+   |                 method bar in trait B2 of type (x: C @use): C has incompatible type
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E164] Declaration Error: tests/neg-custom-args/captures/unbox-overrides.scala:26:6 ---------------------------------
+26 |  def foo[T](a: Int)(x: C @use): C // error
+   |      ^
+   |      error overriding method foo in trait Poly of type [T](a: Int)(x: C): C;
+   |        method foo of type [T](a: Int)(x: C @use): C has incompatible type
    |
    | longer explanation available when compiling with `-explain`

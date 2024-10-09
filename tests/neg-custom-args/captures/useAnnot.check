@@ -1,0 +1,4 @@
+-- Error: tests/neg-custom-args/captures/useAnnot.scala:13:26 ----------------------------------------------------------
+13 |  val _ = () => println(f(ioProcs))  // error
+   |                          ^^^^^^^
+   |                          Local reach capability ioProcs* leaks into capture scope of method Test2

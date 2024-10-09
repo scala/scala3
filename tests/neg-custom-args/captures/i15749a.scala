@@ -1,5 +1,5 @@
 import caps.cap
-import caps.unbox
+import caps.use
 
 class Unit
 object u extends Unit
@@ -18,7 +18,7 @@ def test =
 
   def force[A](thunk: Unit ->{cap} A): A = thunk(u)
 
-  def forceWrapper[A](@unbox mx: Wrapper[Unit ->{cap} A]): Wrapper[A] =
+  def forceWrapper[A](mx: Wrapper[Unit ->{cap} A] @use): Wrapper[A] =
     // Γ ⊢ mx: Wrapper[□ {cap} Unit => A]
     // `force` should be typed as ∀(□ {cap} Unit -> A) A, but it can not
     strictMap[Unit ->{mx*} A, A](mx)(t => force[A](t)) // error // should work

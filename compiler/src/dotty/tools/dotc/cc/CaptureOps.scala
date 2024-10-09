@@ -92,6 +92,16 @@ class CCState:
    */
   val approxWarnings: mutable.ListBuffer[Message] = mutable.ListBuffer()
 
+  /** The operation to perform `recordUse` is called. This is typically the case
+   *  when a subtype check is performed between a part of a function argument
+   *  and a corresponding part of a formal parameter that was labelled @use.
+   *  Such annotations are mapped to `<use>[T]` applications, which are handled
+   *  as compiletime ops.
+   *  The parameter to the handler is typically the deep capture set of the argument.
+   *  The result of the handler is the result to be returned from the subtype check.
+   */
+  private var useHandler: CaptureSet => Boolean = Function.const(true)
+
   private var curLevel: Level = outermostLevel
   private val symLevel: mutable.Map[Symbol, Int] = mutable.Map()
 
@@ -107,6 +117,17 @@ object CCState:
    *  each nested function or class. -1 means the level is undefined.
    */
   def currentLevel(using Context): Level = ccState.curLevel
+
+  /** Perform operation `op` with a given useHandler */
+  inline def withUseHandler[T](handler: CaptureSet => Boolean)(inline op: T)(using Context): T =
+    val ccs = ccState
+    val saved = ccs.useHandler
+    ccs.useHandler = handler
+    try op finally ccs.useHandler = saved
+
+  /** Record a deep capture set in the current `useSet` */
+  def recordUse(cs: CaptureSet)(using Context): Boolean =
+    ccState.useHandler(cs)
 
   inline def inNestedLevel[T](inline op: T)(using Context): T =
     val ccs = ccState
@@ -146,7 +167,7 @@ extension (tree: Tree)
    */
   def toCaptureRefs(using Context): List[CaptureRef] = tree match
     case ReachCapabilityApply(arg) =>
-      arg.toCaptureRefs.map(_.reach)
+      arg.toCaptureRefs.map(_.reach())
     case CapsOfApply(arg) =>
       arg.toCaptureRefs
     case _ => tree.tpe.dealiasKeepAnnots match
@@ -204,6 +225,7 @@ extension (tp: Type)
       tp.derivesFrom(defn.Caps_CapSet)
     case AnnotatedType(parent, annot) =>
       (annot.symbol == defn.ReachCapabilityAnnot
+      || annot.symbol == defn.ReachUnderUseCapabilityAnnot
       || annot.symbol == defn.MaybeCapabilityAnnot
       ) && parent.isTrackableRef
     case _ =>
@@ -233,7 +255,8 @@ extension (tp: Type)
     if dcs.isAlwaysEmpty then dcs
     else tp match
       case tp @ ReachCapability(_) => tp.singletonCaptureSet
-      case tp: SingletonCaptureRef => tp.reach.singletonCaptureSet
+      case tp @ ReachUnderUseCapability(_) => tp.singletonCaptureSet
+      case tp: SingletonCaptureRef => tp.reach().singletonCaptureSet
       case _ => dcs
 
   /** A type capturing `ref` */
@@ -396,9 +419,11 @@ extension (tp: Type)
    *  type of `x`. If `x` and `y` are different variables then `{x*}` and `{y*}`
    *  are unrelated.
    */
-  def reach(using Context): CaptureRef = tp match
+  def reach(underUse: Boolean = false)(using Context): CaptureRef = tp match
     case tp: CaptureRef if tp.isTrackableRef =>
-      if tp.isReach then tp else ReachCapability(tp)
+      if tp.isReach then tp
+      else if underUse then ReachUnderUseCapability(tp)
+      else ReachCapability(tp)
 
   /** If `x` is a capture ref, its maybe capability `x?`, represented internally
    *  as `x @maybeCapability`. `x?` stands for a capability `x` that might or might
@@ -471,26 +496,32 @@ extension (tp: Type)
     object narrowCaps extends TypeMap:
       /** Has the variance been flipped at this point? */
       private var isFlipped: Boolean = false
+      private var underUse = false
 
       def apply(t: Type) =
         val saved = isFlipped
         try
           if variance <= 0 then isFlipped = true
-          t.dealias match
-            case t1 @ CapturingType(p, cs) if cs.isUniversal && !isFlipped =>
-              t1.derivedCapturingType(apply(p), ref.reach.singletonCaptureSet)
-            case t1 @ FunctionOrMethod(args, res @ Existential(_, _))
+          t.dealiasKeepAnnots match
+            case t @ CapturingType(p, cs) if cs.isUniversal && !isFlipped =>
+              t.derivedCapturingType(apply(p), ref.reach(underUse).singletonCaptureSet)
+            case t @ AnnotatedType(parent, ann) =>
+              if ann.symbol == defn.UseAnnot then
+                val saved = underUse
+                underUse = true
+                try mapOver(t)
+                finally underUse = saved
+              else
+                t.derivedAnnotatedType(this(parent), ann)
+            case t @ FunctionOrMethod(args, res @ Existential(_, _))
             if args.forall(_.isAlwaysPure) =>
               // Also map existentials in results to reach capabilities if all
               // preceding arguments are known to be always pure
-              apply(t1.derivedFunctionOrMethod(args, Existential.toCap(res)))
+              this(t.derivedFunctionOrMethod(args, Existential.toCap(res)))
             case Existential(_, _) =>
               t
-            case _ => t match
-              case t @ CapturingType(p, cs) =>
-                t.derivedCapturingType(apply(p), cs) // don't map capture set variables
-              case t =>
-                mapOver(t)
+            case _ =>
+              mapOver(t)
         finally isFlipped = saved
     end narrowCaps
 
@@ -640,7 +671,7 @@ object CapsOfApply:
 class AnnotatedCapability(annot: Context ?=> ClassSymbol):
   def apply(tp: Type)(using Context) =
     AnnotatedType(tp, Annotation(annot, util.Spans.NoSpan))
-  def unapply(tree: AnnotatedType)(using Context): Option[CaptureRef] = tree match
+  def unapply(tp: AnnotatedType)(using Context): Option[CaptureRef] = tp match
     case AnnotatedType(parent: CaptureRef, ann) if ann.symbol == annot => Some(parent)
     case _ => None
 
@@ -648,6 +679,7 @@ class AnnotatedCapability(annot: Context ?=> ClassSymbol):
  *  the reach capability `ref*` as a type.
  */
 object ReachCapability extends AnnotatedCapability(defn.ReachCapabilityAnnot)
+object ReachUnderUseCapability extends AnnotatedCapability(defn.ReachUnderUseCapabilityAnnot)
 
 /** An extractor for `ref @maybeCapability`, which is used to express
  *  the maybe capability `ref?` as a type.

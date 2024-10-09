@@ -212,8 +212,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
       def apply(tp: Type) =
         val tp1 = tp match
-          case AnnotatedType(parent, annot) if annot.symbol.isRetains =>
-            // Drop explicit retains annotations
+          case AnnotatedType(parent, annot) if annot.symbol.isRetains || annot.symbol == defn.UseAnnot =>
+            // Drop inferred retains and @use annotations
             apply(parent)
           case tp @ AppliedType(tycon, args) =>
             val tycon1 = this(tycon)

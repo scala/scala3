@@ -30,8 +30,20 @@ trait CaptureRef extends TypeProxy, ValueType:
 
   /** Is this a reach reference of the form `x*`? */
   final def isReach(using Context): Boolean = this match
-    case AnnotatedType(_, annot) => annot.symbol == defn.ReachCapabilityAnnot
+    case AnnotatedType(_, annot) =>
+      annot.symbol == defn.ReachCapabilityAnnot || annot.symbol == defn.ReachUnderUseCapabilityAnnot
     case _ => false
+
+  final def isUnderUse(using Context): Boolean = this match
+    case AnnotatedType(_, annot) => annot.symbol == defn.ReachUnderUseCapabilityAnnot
+    case _ => false
+
+  def toUnderUse(using Context): CaptureRef =
+    if isUnderUse then
+      this match
+        case _: AnnotatedType => stripReach.reach(underUse = true)
+        // TODO: Handle capture set variables here
+    else this
 
   /** Is this a maybe reference of the form `x?`? */
   final def isMaybe(using Context): Boolean = this match
@@ -132,6 +144,7 @@ trait CaptureRef extends TypeProxy, ValueType:
         case _ => false
     || this.match
         case ReachCapability(x1) => x1.subsumes(y.stripReach)
+        case ReachUnderUseCapability(x1) => x1.subsumes(y.stripReach)
         case x: TermRef => viaInfo(x.info)(subsumingRefs(_, y))
         case x: TermParamRef => subsumesExistentially(x, y)
         case x: TypeRef => assumedContainsOf(x).contains(y)

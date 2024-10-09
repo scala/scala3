@@ -15,7 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
-import cc.{CapturingType, RetainingType, CaptureSet, ReachCapability, MaybeCapability, isBoxed, retainedElems, isRetainsLike}
+import cc.{CapturingType, RetainingType, CaptureSet, ReachCapability, ReachUnderUseCapability, MaybeCapability, isBoxed, retainedElems, isRetainsLike}
 
 class PlainPrinter(_ctx: Context) extends Printer {
 
@@ -418,6 +418,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: SingletonType => toTextRef(tp)
       case tp: (TypeRef | TypeParamRef) => toText(tp) ~ "^"
       case ReachCapability(tp1) => toTextCaptureRef(tp1) ~ "*"
+      case ReachUnderUseCapability(tp1) => toTextCaptureRef(tp1) ~ "*@use"
       case MaybeCapability(tp1) => toTextCaptureRef(tp1) ~ "?"
       case tp => toText(tp)
 

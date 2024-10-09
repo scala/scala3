@@ -51,6 +51,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     assocExistentials = Nil
     recCount = 0
     needsGc = false
+    useContravariance = false
     if Config.checkTypeComparerReset then checkReset()
 
   private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
@@ -78,6 +79,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  may resolve at this point.
    */
   private var assocExistentials: ExAssoc = Nil
+
+  /** Whether method type parameters should be compared contra-variantly.
+   *  This is usually false, but set to true for comparisons of methods in
+   *  refinements and for override checks in capture checking.
+   */
+  private var useContravariance = false
 
   private var myInstance: TypeComparer = this
   def currentInstance: TypeComparer = myInstance
@@ -667,7 +674,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 info1.paramNames.hasSameLengthAs(info2.paramNames)
                 && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
               case (info1: MethodType, info2: MethodType) =>
-                matchingMethodParams(info1, info2, precise = false)
+                usingContravarianceForMethods(matchingMethodParams(info1, info2))
                 && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
               case (info1 @ CapturingType(parent1, refs1), info2: Type)
               if info2.stripCapturing.isInstanceOf[MethodOrPoly] =>
@@ -1527,13 +1534,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
      *  with `other` via ">:>" if fromBelow is true, "<:<" otherwise.
      *  Delegates to compareS if `tycon` is scala.compiletime.S. Otherwise, constant folds if possible.
      */
-    def compareCompiletimeAppliedType(tp: AppliedType, other: Type, fromBelow: Boolean): Boolean = {
-      if (defn.isCompiletime_S(tp.tycon.typeSymbol)) compareS(tp, other, fromBelow)
-      else {
+    def compareCompiletimeAppliedType(tp: AppliedType, other: Type, fromBelow: Boolean): Boolean =
+      val tycon = tp.tycon.typeSymbol
+      if defn.isCompiletime_S(tycon) then
+        compareS(tp, other, fromBelow)
+      else if defn.isUse(tycon) && fromBelow then
+        CCState.recordUse(other.deepCaptureSet) && recur(other, tp.args.head)
+      else
         val folded = tp.tryCompiletimeConstantFold
         if (fromBelow) recur(other, folded) else recur(folded, other)
-      }
-    }
 
     /** Like tp1 <:< tp2, but returns false immediately if we know that
      *  the case was covered previously during subtyping.
@@ -2154,7 +2163,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             info1 match
               case info1: MethodType =>
                 val symInfo1 = symInfo.stripPoly
-                matchingMethodParams(info1, info2, precise = false)
+                usingContravarianceForMethods(matchingMethodParams(info1, info2))
                 && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1), symInfo1.resultType)
                 && sigsOK(symInfo1, info2)
               case _ => inFrozenGadtIf(tp1IsSingleton) { isSubType(info1, info2) }
@@ -2277,18 +2286,18 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   }
 
   /** Do the parameter types of `tp1` and `tp2` match in a way that allows `tp1`
-   *  to override `tp2` ? Two modes: precise or not.
-   *  If `precise` is set (which is the default) this is the case if they're pairwise `=:=`.
-   *  Otherwise parameters in `tp2` must be subtypes of corresponding parameters in `tp1`.
+   *  to override `tp2` ? Two modes, dependenging on `useContravariance`.
+   *  If `useContravariance` is off (which is the default) this is the case if they're pairwise `=:=`.
+   *  If `useContravariance` is on, parameters in `tp2` must be subtypes of corresponding parameters in `tp1`.
    */
-  def matchingMethodParams(tp1: MethodType, tp2: MethodType, precise: Boolean = true): Boolean = {
+  def matchingMethodParams(tp1: MethodType, tp2: MethodType): Boolean = {
     def loop(formals1: List[Type], formals2: List[Type]): Boolean = formals1 match {
       case formal1 :: rest1 =>
         formals2 match {
           case formal2 :: rest2 =>
             val formal2a = if (tp2.isParamDependent) formal2.subst(tp2, tp1) else formal2
             val paramsMatch =
-              if precise then
+              if !useContravariance then
                 isSameTypeWhenFrozen(formal1, formal2a)
               else if isCaptureCheckingOrSetup then
                 // allow to constrain capture set variables
@@ -2907,6 +2916,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     (tp1.isBoxedCapturing == tp2.isBoxedCapturing)
     || refs1.subCaptures(CaptureSet.empty, frozenConstraint).isOK
 
+  protected def usingContravarianceForMethods[T](op: => T)(using Context) =
+    val saved = useContravariance
+    useContravariance = true
+    try op finally useContravariance = saved
+
   // ----------- Diagnostics --------------------------------------------------
 
   /** A hook for showing subtype traces. Overridden in ExplainingTypeComparer */
@@ -3452,6 +3466,9 @@ object TypeComparer {
 
   def subsumesExistentially(tp1: TermParamRef, tp2: CaptureRef)(using Context) =
     comparing(_.subsumesExistentially(tp1, tp2))
+
+  def usingContravarianceForMethods[T](op: => T)(using Context) =
+    comparing(_.usingContravarianceForMethods(op))
 }
 
 object MatchReducer:

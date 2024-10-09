@@ -402,7 +402,10 @@ class CheckCaptures extends Recheck, SymTransformer:
                   && (!ccConfig.useSealed || refSym.is(Param))
                   && refOwner == env.owner
               then
-                if refSym.hasAnnotation(defn.UnboxAnnot) then
+                if refSym.hasAnnotation(defn.UnboxAnnot)
+                  || ref.info.hasAnnotation(defn.UseAnnot)
+                  || c.isUnderUse
+                then
                   capt.println(i"exempt: $ref in $refOwner")
                 else
                   // Reach capabilities that go out of scope have to be approximated
@@ -410,7 +413,8 @@ class CheckCaptures extends Recheck, SymTransformer:
                   // Reach capabilities of @unboxed parameters are exempted.
                   val cs = CaptureSet.ofInfo(c)
                   cs.disallowRootCapability: () =>
-                    report.error(em"Local reach capability $c leaks into capture scope of ${env.ownerString}", pos)
+                    def kind = if c.isReach then "reach capability" else "capture set variable"
+                    report.error(em"Local $kind $c leaks into capture scope of ${env.ownerString}", pos)
                   checkSubset(cs, env.captured, pos, provenance(env))
               isVisible
             case ref: ThisType => isVisibleFromEnv(ref.cls, env)
@@ -576,10 +580,37 @@ class CheckCaptures extends Recheck, SymTransformer:
     protected override
     def recheckArg(arg: Tree, formal: Type)(using Context): Type =
       val argType = recheck(arg, formal)
+      accountForUses(arg, argType, formal)
       if unboxedArgs.contains(arg) then
         capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
         markFree(argType.deepCaptureSet, arg.srcPos)
       argType
+
+    class MapUses(deep: Boolean)(using Context) extends TypeMap:
+      var usesFound = false
+      def apply(t: Type) = t match
+        case t @ AnnotatedType(parent, ann) =>
+          if ann.symbol == defn.UseAnnot then
+            usesFound = true
+            defn.UseType.typeRef.appliedTo(apply(parent))
+          else
+            t.derivedAnnotatedType(this(parent), ann)
+        case Existential(_, _) if !deep =>
+          t
+        case _ =>
+          mapOver(t)
+
+    def accountForUses(arg: Tree, argType: Type, formal: Type)(using Context): Unit =
+      val mapper = MapUses(deep = false)
+      val formal1 = mapper(formal)
+      if mapper.usesFound then
+        def markUsesAsFree(cs: CaptureSet): Boolean =
+          capt.println(i"actual uses for $arg: $argType vs $formal = $cs")
+          markFree(cs, arg.srcPos)
+          true
+        CCState.withUseHandler(markUsesAsFree):
+          checkConformsExpr(argType, formal1, arg, NothingToAdd)
+    end accountForUses
 
     /** A specialized implementation of the apply rule.
      *
@@ -1366,13 +1397,15 @@ class CheckCaptures extends Recheck, SymTransformer:
         *  @param sym  symbol of the field definition that is being checked
         */
         override def checkSubType(actual: Type, expected: Type)(using Context): Boolean =
-          val expected1 = alignDependentFunction(addOuterRefs(expected, actual, srcPos), actual.stripCapturing)
+          val mapUses = MapUses(deep = true)
+          val expected1 = alignDependentFunction(
+            addOuterRefs(mapUses(expected), actual, srcPos), actual.stripCapturing)
           val actual1 =
             val saved = curEnv
             try
               curEnv = Env(clazz, EnvKind.NestedInOwner, capturedVars(clazz), outer0 = curEnv)
               val adapted =
-                adaptBoxed(actual, expected1, srcPos, covariant = true, alwaysConst = true, null)
+                adaptBoxed(mapUses(actual), expected1, srcPos, covariant = true, alwaysConst = true, null)
               actual match
                 case _: MethodType =>
                   // We remove the capture set resulted from box adaptation for method types,
@@ -1382,7 +1415,9 @@ class CheckCaptures extends Recheck, SymTransformer:
                   adapted.stripCapturing
                 case _ => adapted
             finally curEnv = saved
-          actual1 frozen_<:< expected1
+          CCState.withUseHandler(Function.const(false)):
+            TypeComparer.usingContravarianceForMethods:
+              actual1 frozen_<:< expected1
 
         override def needsCheck(overriding: Symbol, overridden: Symbol)(using Context): Boolean =
           !setup.isPreCC(overriding) && !setup.isPreCC(overridden)
