@@ -285,3 +285,13 @@ class `absolve ONLY serial framework`:
   private def readObjectNoData(): Unit = () // warn
   @throws(classOf[ObjectStreamException])
   private def readResolve(): Object = ??? // warn
+
+@throws(classOf[java.io.ObjectStreamException])
+private def readResolve(): Object = ??? // warn
+private def print() = println() // warn
+private val printed = false // warn
+
+package locked:
+  private[locked] def locker(): Unit = () // warn as we cannot distinguish unqualified private at top level
+  package basement:
+    private[locked] def shackle(): Unit = () // no warn as it is not top level at boundary

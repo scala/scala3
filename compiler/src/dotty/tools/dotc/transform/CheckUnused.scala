@@ -697,10 +697,12 @@ object CheckUnused:
         !sym.shouldNotReportParamOwner
 
       private def shouldReportPrivateDef(using Context): Boolean =
+        val sym = memDef.symbol
         peekScopeType == ScopeType.Template
-        && !memDef.symbol.isConstructor
-        && memDef.symbol.is(Private, butNot = SelfName | Synthetic | CaseAccessor)
-        && !ignoredSignature(memDef.symbol)
+        && !sym.isConstructor
+        && (sym.is(Private, butNot = SelfName | Synthetic | CaseAccessor)
+         || sym.effectiveOwner.is(PackageClass) && sym.denot.privateWithin == sym.effectiveOwner)
+        && !ignoredSignature(sym)
 
       private def isUnsetVarDef(using Context): Boolean =
         val sym = memDef.symbol
