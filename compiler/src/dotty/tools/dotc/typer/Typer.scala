@@ -78,7 +78,7 @@ object Typer {
   /** An attachment for GADT constraints that were inferred for a pattern. */
   val InferredGadtConstraints = new Property.StickyKey[core.GadtConstraint]
 
-  /** Inducates that a definition was copied over from the parent refinements */
+  /** Indicates that a definition was copied over from the parent refinements */
   val RefinementFromParent = new Property.StickyKey[Unit]
 
   /** An attachment on a Select node with an `apply` field indicating that the `apply`
