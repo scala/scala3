@@ -1548,7 +1548,8 @@ object Parsers {
       case _ => None
     }
 
-    /** CaptureRef  ::=  SimpleRef { `.` id } [`*` | `^`]
+    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`]
+     *                |  [ { SimpleRef `.` } SimpleRef `.` ] id `^`
      */
     def captureRef(): Tree =
       val ref = dotSelectors(simpleRef())
