@@ -295,3 +295,12 @@ package locked:
   private[locked] def locker(): Unit = () // warn as we cannot distinguish unqualified private at top level
   package basement:
     private[locked] def shackle(): Unit = () // no warn as it is not top level at boundary
+
+object `i19998 refinement`:
+  trait Foo {
+    type X[a]
+  }
+  trait Bar[X[_]] {
+    private final type SelfX[a] = X[a] // was false positive
+    val foo: Foo { type X[a] = SelfX[a] }
+  }

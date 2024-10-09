@@ -32,3 +32,9 @@ object Main {
     (bad1, bad2)
   }
 }
+
+def `i18388`: Unit =
+  def func(pred: [A] => A => Boolean): Unit =
+    val _ = pred
+    ()
+  val _ = func
