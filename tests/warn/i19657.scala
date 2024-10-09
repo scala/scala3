@@ -88,3 +88,28 @@ import scala.annotation.meta.*
 object Alias {
   type A = Deprecated @param
 }
+
+// avoid reporting on runtime (nothing to do with transparent inline)
+import scala.runtime.EnumValue
+
+trait Lime
+
+enum Color(val rgb: Int):
+  case Red   extends Color(0xFF0000) with EnumValue
+  case Green extends Color(0x00FF00) with Lime
+  case Blue  extends Color(0x0000FF)
+
+object prefixes:
+  class C:
+    object N:
+      type U
+  object Test:
+    val c: C = ???
+    def k2: c.N.U = ???
+    import c.N.*
+    def k3: U = ??? // TypeTree if not a select
+  object Alt:
+    val c: C = ???
+    import c.N
+    def k4: N.U = ???
+end prefixes

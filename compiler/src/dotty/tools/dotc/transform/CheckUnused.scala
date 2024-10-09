@@ -118,6 +118,9 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
   override def transformTypeTree(tree: TypeTree)(using Context): tree.type =
     tree.tpe match
     case AnnotatedType(_, annot) => transformAllDeep(annot.tree)
+    case tpt if tpt.typeSymbol.exists =>
+      preparing:
+        ud.registerUsed(tpt.typeSymbol, Some(tpt.typeSymbol.name), tree = tree) // usage was a simple name
     case _ =>
     tree
 
@@ -405,6 +408,7 @@ object CheckUnused:
         !languageImport(imp.expr).nonEmpty
           && !imp.isGeneratedByEnum
           && !isTransparentAndInline(imp)
+          && !doNotRegisterPrefix(imp.expr.tpe.typeSymbol)
           && peekScopeType != ScopeType.ReplWrapper // #18383 Do not report top-level import's in the repl as unused
       then
         val qualTpe = imp.expr.tpe
