@@ -228,6 +228,19 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
       case Annotated(arg, annot) =>
         transformAllDeep(arg)
         transformAllDeep(annot)
+      case Quote(body, tags) =>
+        transformAllDeep(body)
+        tags.foreach(transformAllDeep)
+      case Splice(expr) =>
+        transformAllDeep(expr)
+      case QuotePattern(bindings, body, quotes) =>
+        bindings.foreach(transformAllDeep)
+        transformAllDeep(body)
+        transformAllDeep(quotes)
+      case SplicePattern(body, typeargs, args) =>
+        transformAllDeep(body)
+        typeargs.foreach(transformAllDeep)
+        args.foreach(transformAllDeep)
       case _: InferredTypeTree =>
       case _ if tree.isType =>
         //println(s"OTHER TYPE ${tree.getClass} ${tree.show}")
