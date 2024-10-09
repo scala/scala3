@@ -1559,22 +1559,20 @@ object Parsers {
       case _ => None
     }
 
-    /** CaptureRef  ::=  (ident | `this`) [`*` | `^`]
+    /** CaptureRef  ::=  SimpleRef { `.` id } [`*` | `^`]
      */
     def captureRef(): Tree =
-      val ref = singleton()
+      val ref = dotSelectors(simpleRef())
       if isIdent(nme.raw.STAR) then
         in.nextToken()
         atSpan(startOffset(ref)):
           PostfixOp(ref, Ident(nme.CC_REACH))
       else if isIdent(nme.UPARROW) then
         in.nextToken()
-        def toTypeSel(r: Tree): Tree = r match
-          case id: Ident => cpy.Ident(id)(id.name.toTypeName)
-          case Select(qual, id) => Select(qual, id.toTypeName)
-          case _ => r
         atSpan(startOffset(ref)):
-          makeCapsOf(toTypeSel(ref))
+          convertToTypeId(ref) match
+            case ref: RefTree => makeCapsOf(ref)
+            case ref => ref
       else ref
 
     /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking

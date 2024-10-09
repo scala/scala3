@@ -524,7 +524,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def makeRetaining(parent: Tree, refs: List[Tree], annotName: TypeName)(using Context): Annotated =
     Annotated(parent, New(scalaAnnotationDot(annotName), List(refs)))
 
-  def makeCapsOf(tp: Tree)(using Context): Tree =
+  def makeCapsOf(tp: RefTree)(using Context): Tree =
     TypeApply(Select(scalaDot(nme.caps), nme.capsOf), tp :: Nil)
 
   def makeCapsBound()(using Context): Tree =
