@@ -12,6 +12,7 @@ object Test1 {
   def test[A](bar: Bar[A]) =
     bar match {
       case _: Bar[Boolean] => ??? // warn
+      case _ => ???
     }
 }
 
@@ -22,6 +23,7 @@ object Test2 {
   def test[A](bar: Bar[A]) =
     bar match {
       case _: Bar[Boolean] => ??? // warn
+      case _ => ???
     }
 }
 
@@ -32,5 +34,6 @@ object Test3 {
   def test[A](bar: Bar[A]) =
     bar match {
       case _: Bar[Boolean] => ??? // warn
+      case _ => ???
     }
 }

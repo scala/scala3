@@ -10,20 +10,20 @@
   |the type test for List[Int] cannot be checked at runtime because its type arguments can't be determined from List[String]
   |
   | longer explanation available when compiling with `-explain`
--- [E092] Pattern Match Unchecked Warning: tests/warn/i5826.scala:16:9 -------------------------------------------------
-16 |    case ls: A[X] => 4                 // warn
+-- [E092] Pattern Match Unchecked Warning: tests/warn/i5826.scala:17:9 -------------------------------------------------
+17 |    case ls: A[X] => 4                 // warn
    |         ^
    |the type test for Foo.this.A[X] cannot be checked at runtime because its type arguments can't be determined from Foo.this.B[X]
    |
    | longer explanation available when compiling with `-explain`
--- [E092] Pattern Match Unchecked Warning: tests/warn/i5826.scala:21:9 -------------------------------------------------
-21 |    case ls: List[Int] => ls.head       // warn, List extends Int => T
+-- [E092] Pattern Match Unchecked Warning: tests/warn/i5826.scala:22:9 -------------------------------------------------
+22 |    case ls: List[Int] => ls.head       // warn, List extends Int => T
    |         ^
    |the type test for List[Int] cannot be checked at runtime because its type arguments can't be determined from A => Int
    |
    | longer explanation available when compiling with `-explain`
--- [E092] Pattern Match Unchecked Warning: tests/warn/i5826.scala:27:54 ------------------------------------------------
-27 |  def test5[T](x: A[T] | B[T] | Option[T]): Boolean = x.isInstanceOf[C[String]] // warn
+-- [E092] Pattern Match Unchecked Warning: tests/warn/i5826.scala:28:54 ------------------------------------------------
+28 |  def test5[T](x: A[T] | B[T] | Option[T]): Boolean = x.isInstanceOf[C[String]] // warn
    |                                                      ^
    |the type test for Foo.this.C[String] cannot be checked at runtime because its type arguments can't be determined from Foo.this.A[T]
    |
