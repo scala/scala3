@@ -1827,7 +1827,7 @@ object Parsers {
       if in.token == LPAREN then funParamClause() :: funParamClauses() else Nil
 
     /** InfixType ::= RefinedType {id [nl] RefinedType}
-     *             |  RefinedType `^`   // under capture checking
+     *             |  RefinedType `^` {Annotation}  // under capture checking
      */
     def infixType(): Tree = infixTypeRest(refinedType())
 
@@ -1838,7 +1838,7 @@ object Parsers {
                      && !(isIdent(nme.as) && in.featureEnabled(Feature.modularity))
                      && nextCanFollowOperator(canStartInfixTypeTokens))
 
-    /** RefinedType   ::=  WithType {[nl] Refinement} [`^` CaptureSet]
+    /** RefinedType   ::=  WithType {[nl] Refinement} [`^` CaptureSet {Annotation}]
      */
     val refinedTypeFn: Location => Tree = _ => refinedType()
 
@@ -1867,9 +1867,10 @@ object Parsers {
       else if Feature.ccEnabled && in.isIdent(nme.UPARROW) && isCaptureUpArrow then
         atSpan(t.span.start):
           in.nextToken()
-          if in.token == LBRACE
-          then makeRetaining(t, captureSet(), tpnme.retains)
-          else makeRetaining(t, Nil, tpnme.retainsCap)
+          annotTypeRest:
+            if in.token == LBRACE
+            then makeRetaining(t, captureSet(), tpnme.retains)
+            else makeRetaining(t, Nil, tpnme.retainsCap)
       else
         t
     }

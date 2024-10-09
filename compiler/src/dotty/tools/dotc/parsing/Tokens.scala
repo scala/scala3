@@ -232,7 +232,7 @@ object Tokens extends TokensCommon {
   final val canStartExprTokens2: TokenSet = canStartExprTokens3 | BitSet(DO)
 
   final val canStartInfixTypeTokens: TokenSet = literalTokens | identifierTokens | BitSet(
-    THIS, SUPER, USCORE, LPAREN, LBRACE, AT)
+    THIS, SUPER, USCORE, LPAREN, LBRACE)
 
   final val canStartTypeTokens: TokenSet = canStartInfixTypeTokens | BitSet(LBRACE)
 
