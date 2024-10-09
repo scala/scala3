@@ -184,7 +184,9 @@ trait IndexedBuffer[A] extends IndexedSeq[A]
     var i = 0
     val s = size
     val newElems = new Array[(IterableOnce[A]^{f})](s)
-    while (i < s) { newElems(i) = f(this(i)); i += 1 }
+    while i < s do
+      newElems(i) = f(this(i)).asInstanceOf // CC TODO asInstanceOf needed once we drop special handling of apply
+      i += 1
     clear()
     i = 0
     while (i < s) { ++=(newElems(i)); i += 1 }

@@ -19,7 +19,7 @@ object test:
     final class LazyCons[+T](val x: T, val xs: () => LazyList[T]^) extends LazyList[T]: // error
       def isEmpty = false
       def head = x
-      def tail: LazyList[T]^{this} = xs()
+      def tail: LazyList[T]^{this} = xs().asInstanceOf
     end LazyCons
 
     new LazyCons(1, () => LazyNil)
