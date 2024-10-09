@@ -110,8 +110,8 @@ trait CaptureRef extends TypeProxy, ValueType:
 
     def viaInfo(info: Type)(test: Type => Boolean): Boolean = info.match
       case info: SingletonCaptureRef => test(info)
-      case info: AndType => test(info.tp1) || test(info.tp2)
-      case info: OrType => test(info.tp1) && test(info.tp2)
+      case info: AndType => viaInfo(info.tp1)(test) || viaInfo(info.tp2)(test)
+      case info: OrType => viaInfo(info.tp1)(test) && viaInfo(info.tp2)(test)
       case _ => false
 
     (this eq y)
@@ -123,7 +123,7 @@ trait CaptureRef extends TypeProxy, ValueType:
                 this.subsumes(ypre)
                 || this.match
                     case x @ TermRef(xpre: CaptureRef, _) if x.symbol == y.symbol =>
-                      subsumingRefs(xpre, ypre) && subsumingRefs(ypre, xpre)
+                      withMode(Mode.IgnoreCaptures) {TypeComparer.isSameRef(xpre, ypre)}
                     case _ =>
                       false
               case _ => false
