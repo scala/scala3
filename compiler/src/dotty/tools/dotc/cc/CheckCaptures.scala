@@ -402,15 +402,16 @@ class CheckCaptures extends Recheck, SymTransformer:
                   && (!ccConfig.useSealed || refSym.is(Param))
                   && refOwner == env.owner
               then
-                if refSym.hasAnnotation(defn.UnboxAnnot)
-                  || ref.info.hasAnnotation(defn.UseAnnot)
-                  || c.isUnderUse
-                then
+                if ref.info.hasAnnotation(defn.UseAnnot)|| c.isUnderUse then
                   capt.println(i"exempt: $ref in $refOwner")
                 else
                   // Reach capabilities that go out of scope have to be approximated
                   // by their underlying capture set, which cannot be universal.
-                  // Reach capabilities of @unboxed parameters are exempted.
+                  // Reach capabilities are exempted if
+                  //  - they are under-use capabilties that were generated from a cap
+                  //    appearing under a @use, or
+                  //  - their reference has a type thar carries a @use annotation. In that
+                  //    case callers will charge the deep capture set of the argument.
                   val cs = CaptureSet.ofInfo(c)
                   cs.disallowRootCapability: () =>
                     def kind = if c.isReach then "reach capability" else "capture set variable"
@@ -428,48 +429,14 @@ class CheckCaptures extends Recheck, SymTransformer:
     end markFree
 
     /** Include references captured by the called method in the current environment stack */
-    def includeCallCaptures(sym: Symbol, pos: SrcPos)(using Context): Unit =
-      if sym.exists && curEnv.isOpen then markFree(capturedVars(sym), pos)
-
-    private val prefixCalls = util.EqHashSet[GenericApply]()
-    private val unboxedArgs = util.EqHashSet[Tree]()
-
-    def handleCall(meth: Symbol, call: GenericApply, eval: () => Type)(using Context): Type =
-      if prefixCalls.remove(call) then return eval()
-
-      val unboxedParamNames =
-        meth.rawParamss.flatMap: params =>
-          params.collect:
-            case param if param.hasAnnotation(defn.UnboxAnnot) =>
-              param.name
-        .toSet
-
-      def markUnboxedArgs(call: GenericApply): Unit = call.fun.tpe.widen match
-        case MethodType(pnames) =>
-          for (pname, arg) <- pnames.lazyZip(call.args) do
-            if unboxedParamNames.contains(pname) then
-              unboxedArgs.add(arg)
-        case _ =>
-
-      def markPrefixCalls(tree: Tree): Unit = tree match
-        case tree: GenericApply =>
-          prefixCalls.add(tree)
-          markUnboxedArgs(tree)
-          markPrefixCalls(tree.fun)
-        case _ =>
-
-      markUnboxedArgs(call)
-      markPrefixCalls(call.fun)
-      val res = eval()
-      includeCallCaptures(meth, call.srcPos)
-      res
-    end handleCall
+    def includeCallCaptures(sym: Symbol, resType: Type, pos: SrcPos)(using Context): Unit = resType match
+      case _: MethodOrPoly => // wait until method is fully applied
+      case _ =>
+        if sym.exists && curEnv.isOpen then markFree(capturedVars(sym), pos)
 
     override def recheckIdent(tree: Ident, pt: Type)(using Context): Type =
       if tree.symbol.is(Method) then
-        if tree.symbol.info.isParameterless then
-          // there won't be an apply; need to include call captures now
-          includeCallCaptures(tree.symbol, tree.srcPos)
+        includeCallCaptures(tree.symbol, tree.symbol.info, tree.srcPos)
       else if !tree.symbol.isStatic then
         //debugShowEnvs()
         def addSelects(ref: TermRef, pt: Type): TermRef = pt match
@@ -574,16 +541,15 @@ class CheckCaptures extends Recheck, SymTransformer:
             tp.derivedCapturingType(forceBox(parent), refs)
         mapArgUsing(forceBox)
       else
-        handleCall(meth, tree, () => super.recheckApply(tree, pt))
+        val res = super.recheckApply(tree, pt)
+        includeCallCaptures(meth, res, tree.srcPos)
+        res
     end recheckApply
 
     protected override
     def recheckArg(arg: Tree, formal: Type)(using Context): Type =
       val argType = recheck(arg, formal)
       accountForUses(arg, argType, formal)
-      if unboxedArgs.contains(arg) then
-        capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
-        markFree(argType.deepCaptureSet, arg.srcPos)
       argType
 
     class MapUses(deep: Boolean)(using Context) extends TypeMap:
@@ -620,15 +586,10 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  ---------------------
      *  E |- f(a): Tr^C
      *
-     *  If the function `f` does not have an `@unboxed` parameter, then
-     *  any unboxing it does would be charged to the environment of the function
-     *  so they have to appear in Cq. Since any capabilities of the result of the
-     *  application must already be present in the application, an upper
-     *  approximation of the result capture set is Cq \union Ca, where `Ca`
-     *  is the capture set of the argument.
-     *  If the function `f` does have an `@unboxed` parameter, then it could in addition
-     *  unbox reach capabilities over its formal parameter. Therefore, the approximation
-     *  would be `Cq \union dcs(Ca)` instead.
+     *  If the type of the function `f` does not mention any formal parameters
+     *  any capabilities of the result of the application must already be present in
+     *  the application. So an upper approximation of the result capture set is Cq \union Ca,
+     *  where `Ca` is the capture set of the argument.
      *  If the approximation is known to subcapture the declared result Cr, we pick it for C
      *  otherwise we pick Cr.
      */
@@ -636,11 +597,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def recheckApplication(tree: Apply, qualType: Type, funType: MethodType, argTypes: List[Type])(using Context): Type =
       val appType = Existential.toCap(super.recheckApplication(tree, qualType, funType, argTypes))
       val qualCaptures = qualType.captureSet
-      val argCaptures =
-        for (arg, argType) <- tree.args.lazyZip(argTypes) yield
-          if unboxedArgs.remove(arg) // need to ensure the remove happens, that's why argCaptures is computed even if not needed.
-          then argType.deepCaptureSet
-          else argType.captureSet
+      val argCaptures = argTypes.map(_.captureSet)
       appType match
         case appType @ CapturingType(appType1, refs)
         if qualType.exists
@@ -735,8 +692,10 @@ class CheckCaptures extends Recheck, SymTransformer:
               i"Sealed type variable $pname", "be instantiated to",
               i"This is often caused by a local capability$where\nleaking as part of its result.",
               tree.srcPos)
-      try handleCall(meth, tree, () => Existential.toCap(super.recheckTypeApply(tree, pt)))
-      finally checkContains(tree)
+      val res = Existential.toCap(super.recheckTypeApply(tree, pt))
+      includeCallCaptures(meth, res, tree.srcPos)
+      checkContains(tree)
+      res
     end recheckTypeApply
 
     /** Faced with a tree of form `caps.contansImpl[CS, r.type]`, check that `R` is a tracked
@@ -1423,21 +1382,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           !setup.isPreCC(overriding) && !setup.isPreCC(overridden)
 
         override def checkInheritedTraitParameters: Boolean = false
-
-        /** Check that overrides don't change the @unbox status of their parameters */
-        override def additionalChecks(member: Symbol, other: Symbol)(using Context): Unit =
-          for
-            (params1, params2) <- member.rawParamss.lazyZip(other.rawParamss)
-            (param1, param2) <- params1.lazyZip(params2)
-          do
-            if param1.hasAnnotation(defn.UnboxAnnot) != param2.hasAnnotation(defn.UnboxAnnot) then
-              report.error(
-                OverrideError(
-                    i"has a parameter ${param1.name} with different @unbox status than the corresponding parameter in the overridden definition",
-                    self, member, other, self.memberInfo(member), self.memberInfo(other)
-                  ),
-                if member.owner == clazz then member.srcPos else clazz.srcPos
-              )
       end OverridingPairsCheckerCC
 
       def traverse(t: Tree)(using Context) =

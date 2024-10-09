@@ -552,7 +552,7 @@ class Definitions {
       ScalaPackageClass, tpnme.maybeCapability, Final, List(StaticAnnotationClass.typeRef)))
 
   /** A type `type <use>[+T] <: T` used locally in capture checking. At certain points
-   *  `T @use` types are converted to `<use>[T]` types. These types are handled as 
+   *  `T @use` types are converted to `<use>[T]` types. These types are handled as
    *  compile-time applied types by TypeComparer.
    */
   @tu lazy val UseType: TypeSymbol =
@@ -1068,7 +1068,6 @@ class Definitions {
   @tu lazy val ExperimentalAnnot: ClassSymbol = requiredClass("scala.annotation.experimental")
   @tu lazy val ThrowsAnnot: ClassSymbol = requiredClass("scala.throws")
   @tu lazy val TransientAnnot: ClassSymbol = requiredClass("scala.transient")
-  @tu lazy val UnboxAnnot: ClassSymbol = requiredClass("scala.caps.unbox")
   @tu lazy val UncheckedAnnot: ClassSymbol = requiredClass("scala.unchecked")
   @tu lazy val UncheckedStableAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedStable")
   @tu lazy val UncheckedVarianceAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedVariance")
