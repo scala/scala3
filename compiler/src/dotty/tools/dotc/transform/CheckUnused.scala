@@ -716,7 +716,7 @@ object CheckUnused:
         peekScopeType == ScopeType.Template
         && !memDef.symbol.isConstructor
         && memDef.symbol.is(Private, butNot = SelfName | Synthetic | CaseAccessor)
-        && !ignoredNames(memDef.symbol.name.toTermName)
+        && !ignoredSignature(memDef.symbol)
 
       private def isUnsetVarDef(using Context): Boolean =
         val sym = memDef.symbol
@@ -747,7 +747,12 @@ object CheckUnused:
         case _: Block => Local
         case _ => Other
 
-    val ignoredNames: Set[TermName] = Set("readResolve", "readObject", "writeObject", "writeReplace").map(termName(_))
+    val ignoredNames: Set[TermName] =
+      Set("readResolve", "readObject", "readObjectNoData", "writeObject", "writeReplace").map(termName(_))
+
+    def ignoredSignature(m: Symbol)(using Context): Boolean =
+      m.is(Method) && ignoredNames(m.name.toTermName) && m.owner.isClass
+      && m.owner.asClass.classDenot.parentSyms.contains(defn.JavaSerializableClass)
 
     final case class ImportSelectorData(val qualTpe: Type, val selector: ImportSelector):
       private var myUsed: Boolean = false
