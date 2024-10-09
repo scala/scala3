@@ -1,0 +1,24 @@
+-- Error: tests/neg/i16451.scala:13:9 ----------------------------------------------------------------------------------
+13 |    case x: Wrapper[Color.Red.type] => Some(x) // error
+   |         ^
+   |the type test for Wrapper[(Color.Red : Color)] cannot be checked at runtime because its type arguments can't be determined from Wrapper[Color]
+-- Error: tests/neg/i16451.scala:21:9 ----------------------------------------------------------------------------------
+21 |    case x: Wrapper[Color.Red.type] => Some(x) // error
+   |         ^
+   |the type test for Wrapper[(Color.Red : Color)] cannot be checked at runtime because its type arguments can't be determined from Any
+-- Error: tests/neg/i16451.scala:25:9 ----------------------------------------------------------------------------------
+25 |    case x: Wrapper[Color.Red.type] => Some(x) // error
+   |         ^
+   |the type test for Wrapper[(Color.Red : Color)] cannot be checked at runtime because its type arguments can't be determined from Wrapper[Color]
+-- Error: tests/neg/i16451.scala:29:9 ----------------------------------------------------------------------------------
+29 |    case x: Wrapper[Color.Red.type] => Some(x) // error
+   |         ^
+   |the type test for Wrapper[(Color.Red : Color)] cannot be checked at runtime because its type arguments can't be determined from A1
+-- Error: tests/neg/i16451.scala:34:11 ---------------------------------------------------------------------------------
+34 |      case x: Wrapper[Color.Red.type] => x // error
+   |           ^
+   |the type test for Wrapper[(Color.Red : Color)] cannot be checked at runtime because its type arguments can't be determined from Wrapper[Color]
+-- Error: tests/neg/i16451.scala:39:11 ---------------------------------------------------------------------------------
+39 |      case x: Wrapper[Color.Red.type] => x // error
+   |           ^
+   |the type test for Wrapper[(Color.Red : Color)] cannot be checked at runtime because its type arguments can't be determined from Wrapper[Color]
