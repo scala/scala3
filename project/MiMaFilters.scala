@@ -10,10 +10,17 @@ object MiMaFilters {
       Build.mimaPreviousDottyVersion -> Seq(
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.betterFors"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$betterFors$"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.quotedPatternsWithPolymorphicFunctions"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$quotedPatternsWithPolymorphicFunctions$"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.runtime.Patterns.higherOrderHoleWithTypes"),
       ),
 
       // Additions since last LTS
       Build.mimaPreviousLTSDottyVersion -> Seq(
+        ProblemFilters.exclude[MissingClassProblem]("scala.NamedTuple"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.NamedTuple$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.NamedTupleDecomposition"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.NamedTupleDecomposition$"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule.ValOrDefDefMethods"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule.ValOrDefDefTypeTest"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#defnModule.FunctionClass"),
