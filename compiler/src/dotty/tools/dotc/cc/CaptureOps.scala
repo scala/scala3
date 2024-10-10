@@ -178,7 +178,7 @@ extension (tree: Tree)
    */
   def toCaptureRefs(using Context): List[CaptureRef] = tree match
     case ReachCapabilityApply(arg) =>
-      arg.toCaptureRefs.map(_.reach())
+      arg.toCaptureRefs.map(_.reach)
     case CapsOfApply(arg) =>
       arg.toCaptureRefs
     case _ => tree.tpe.dealiasKeepAnnots match
@@ -236,8 +236,8 @@ extension (tp: Type)
       tp.derivesFrom(defn.Caps_CapSet)
     case AnnotatedType(parent, annot) =>
       (annot.symbol == defn.ReachCapabilityAnnot
-      || annot.symbol == defn.ReachUnderUseCapabilityAnnot
       || annot.symbol == defn.MaybeCapabilityAnnot
+      || annot.symbol == defn.UseAnnot
       ) && parent.isTrackableRef
     case _ =>
       false
@@ -264,10 +264,9 @@ extension (tp: Type)
   def deepCaptureSet(using Context): CaptureSet =
     val dcs = CaptureSet.ofTypeDeeply(tp)
     if dcs.isAlwaysEmpty then dcs
-    else tp match
+    else tp.stripUse match
       case tp @ ReachCapability(_) => tp.singletonCaptureSet
-      case tp @ ReachUnderUseCapability(_) => tp.singletonCaptureSet
-      case tp: SingletonCaptureRef => tp.reach().singletonCaptureSet
+      case tp: SingletonCaptureRef => tp.reach.singletonCaptureSet
       case _ => dcs
 
   /** A type capturing `ref` */
@@ -430,11 +429,9 @@ extension (tp: Type)
    *  type of `x`. If `x` and `y` are different variables then `{x*}` and `{y*}`
    *  are unrelated.
    */
-  def reach(underUse: Boolean = false)(using Context): CaptureRef = tp match
+  def reach(using Context): CaptureRef = tp match
     case tp: CaptureRef if tp.isTrackableRef =>
-      if tp.isReach then tp
-      else if underUse then ReachUnderUseCapability(tp)
-      else ReachCapability(tp)
+      if tp.isReach then tp else ReachCapability(tp)
 
   /** If `x` is a capture ref, its maybe capability `x?`, represented internally
    *  as `x @maybeCapability`. `x?` stands for a capability `x` that might or might
@@ -457,6 +454,14 @@ extension (tp: Type)
   def maybe(using Context): CaptureRef = tp match
     case tp: CaptureRef if tp.isTrackableRef =>
       if tp.isMaybe then tp else MaybeCapability(tp)
+
+  def isUnderUse(using Context): Boolean = tp match
+    case AnnotatedType(_: CaptureRef, annot) => annot.symbol == defn.UseAnnot
+    case _ => false
+
+  def stripUse(using Context): Type = tp match
+    case AnnotatedType(tp1: CaptureRef, annot) if annot.symbol == defn.UseAnnot => tp1
+    case _ => tp
 
   /** If `ref` is a trackable capture ref, and `tp` has only covariant occurrences of a
    *  universal capture set, replace all these occurrences by `{ref*}`. This implements
@@ -515,7 +520,9 @@ extension (tp: Type)
           if variance <= 0 then isFlipped = true
           t.dealiasKeepAnnots match
             case t @ CapturingType(p, cs) if cs.isUniversal && !isFlipped =>
-              t.derivedCapturingType(apply(p), ref.reach(underUse).singletonCaptureSet)
+              var reach = ref.reach
+              if underUse then reach = reach.underUse
+              t.derivedCapturingType(apply(p), reach.singletonCaptureSet)
             case t @ AnnotatedType(parent, ann) =>
               if ann.symbol == defn.UseAnnot then
                 val saved = underUse
@@ -682,7 +689,7 @@ object CapsOfApply:
 class AnnotatedCapability(annot: Context ?=> ClassSymbol):
   def apply(tp: Type)(using Context) =
     AnnotatedType(tp, Annotation(annot, util.Spans.NoSpan))
-  def unapply(tp: AnnotatedType)(using Context): Option[CaptureRef] = tp match
+  def unapply(tp: AnnotatedType)(using Context): Option[CaptureRef] = tp.stripUse match
     case AnnotatedType(parent: CaptureRef, ann) if ann.symbol == annot => Some(parent)
     case _ => None
 
@@ -690,7 +697,6 @@ class AnnotatedCapability(annot: Context ?=> ClassSymbol):
  *  the reach capability `ref*` as a type.
  */
 object ReachCapability extends AnnotatedCapability(defn.ReachCapabilityAnnot)
-object ReachUnderUseCapability extends AnnotatedCapability(defn.ReachUnderUseCapabilityAnnot)
 
 /** An extractor for `ref @maybeCapability`, which is used to express
  *  the maybe capability `ref?` as a type.

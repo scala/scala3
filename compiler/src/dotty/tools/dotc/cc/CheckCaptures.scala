@@ -1359,7 +1359,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     */
     def checkOverrides = new TreeTraverser:
       class OverridingPairsCheckerCC(clazz: ClassSymbol, self: Type, srcPos: SrcPos)(using Context) extends OverridingPairsChecker(clazz, self):
-        /** Check subtype with box adaptation and @use checking. 
+        /** Check subtype with box adaptation and @use checking.
          *  This function is passed to RefChecks to check the compatibility of overriding pairs.
          *  @param sym  symbol of the field definition that is being checked
          *  @use checking: Overrides must have fewer @uses than overridden members.
@@ -1385,7 +1385,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                   adapted.stripCapturing
                 case _ => adapted
             finally curEnv = saved
-            
+
           def lowerUseSeen: UseHandler = (tpUnderUse, other, fromBelow) => cmp =>
             cmp()
           def noLowerUseSeen: UseHandler = (tpUnderUse, other, fromBelow) => cmp =>
@@ -1395,8 +1395,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           CCState.withUseHandler(noLowerUseSeen):
             TypeComparer.usingContravarianceForMethods:
               actual1 frozen_<:< expected1
-        end checkSubtype
-        
+        end checkSubType
+
         override def needsCheck(overriding: Symbol, overridden: Symbol)(using Context): Boolean =
           !setup.isPreCC(overriding) && !setup.isPreCC(overridden)
 

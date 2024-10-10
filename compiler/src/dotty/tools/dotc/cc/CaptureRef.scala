@@ -13,6 +13,7 @@ import CCState.*
 import Periods.NoRunId
 import compiletime.uninitialized
 import StdNames.nme
+import Annotations.Annotation
 
 /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs,
  *  as well as two kinds of AnnotatedTypes representing reach and maybe capabilities.
@@ -29,36 +30,31 @@ trait CaptureRef extends TypeProxy, ValueType:
     this.isTrackableRef && (isMaxCapability || !captureSetOfInfo.isAlwaysEmpty)
 
   /** Is this a reach reference of the form `x*`? */
-  final def isReach(using Context): Boolean = this match
-    case AnnotatedType(_, annot) =>
-      annot.symbol == defn.ReachCapabilityAnnot || annot.symbol == defn.ReachUnderUseCapabilityAnnot
+  final def isReach(using Context): Boolean = this.stripUse match
+    case AnnotatedType(_, annot) => annot.symbol == defn.ReachCapabilityAnnot
     case _ => false
 
   final def isUnderUse(using Context): Boolean = this match
-    case AnnotatedType(_, annot) => annot.symbol == defn.ReachUnderUseCapabilityAnnot
+    case AnnotatedType(_, annot) => annot.symbol == defn.UseAnnot
     case _ => false
 
-  def toUnderUse(using Context): CaptureRef =
-    if isUnderUse then
-      this match
-        case _: AnnotatedType => stripReach.reach(underUse = true)
-        // TODO: Handle capture set variables here
-    else this
+  def underUse(using Context): CaptureRef =
+    AnnotatedType(this, Annotation(defn.UseAnnot, util.Spans.NoSpan))
 
   /** Is this a maybe reference of the form `x?`? */
-  final def isMaybe(using Context): Boolean = this match
+  final def isMaybe(using Context): Boolean = this.stripUse match
     case AnnotatedType(_, annot) => annot.symbol == defn.MaybeCapabilityAnnot
     case _ => false
 
   final def stripReach(using Context): CaptureRef =
     if isReach then
-      val AnnotatedType(parent: CaptureRef, _) = this: @unchecked
+      val AnnotatedType(parent: CaptureRef, _) = this.stripUse: @unchecked
       parent
     else this
 
   final def stripMaybe(using Context): CaptureRef =
     if isMaybe then
-      val AnnotatedType(parent: CaptureRef, _) = this: @unchecked
+      val AnnotatedType(parent: CaptureRef, _) = this.stripUse: @unchecked
       parent
     else this
 
@@ -144,7 +140,6 @@ trait CaptureRef extends TypeProxy, ValueType:
         case _ => false
     || this.match
         case ReachCapability(x1) => x1.subsumes(y.stripReach)
-        case ReachUnderUseCapability(x1) => x1.subsumes(y.stripReach)
         case x: TermRef => viaInfo(x.info)(subsumingRefs(_, y))
         case x: TermParamRef => subsumesExistentially(x, y)
         case x: TypeRef => assumedContainsOf(x).contains(y)

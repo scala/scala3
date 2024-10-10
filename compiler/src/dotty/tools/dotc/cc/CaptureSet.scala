@@ -517,8 +517,6 @@ object CaptureSet:
           elem.cls.ccLevel.nextInner <= level
         case ReachCapability(elem1) =>
           levelOK(elem1)
-        case ReachUnderUseCapability(elem1) =>
-          levelOK(elem1)
         case MaybeCapability(elem1) =>
           levelOK(elem1)
         case _ =>
@@ -1068,8 +1066,6 @@ object CaptureSet:
       else CaptureSet.universal
     case ReachCapability(ref1) => deepCaptureSet(ref1.widen)
       .showing(i"Deep capture set of $ref: ${ref1.widen} = $result", capt)
-    case ReachUnderUseCapability(ref1) => deepCaptureSet(ref1.widen)
-      .showing(i"Deep capture set of $ref: ${ref1.widen} = $result", capt)
     case _ => ofType(ref.underlying, followResult = true)
 
   /** Capture set of a type */
@@ -1087,8 +1083,7 @@ object CaptureSet:
         case CapturingType(parent, refs) =>
           recur(parent) ++ refs
         case tp @ AnnotatedType(parent, ann)
-        if ann.hasSymbol(defn.ReachCapabilityAnnot)
-            || ann.hasSymbol(defn.ReachUnderUseCapabilityAnnot) =>
+        if ann.hasSymbol(defn.ReachCapabilityAnnot) =>
           parent match
             case parent: SingletonCaptureRef if parent.isTrackableRef =>
               tp.singletonCaptureSet
