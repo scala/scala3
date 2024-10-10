@@ -57,6 +57,8 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
    */
   final class use extends annotation.StaticAnnotation
 
+  type $use[+T]
+
   object unsafe:
 
     extension [T](x: T)

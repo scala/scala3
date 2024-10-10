@@ -819,10 +819,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp2: MethodType =>
         def compareMethod = tp1 match {
           case tp1: MethodType =>
-            (tp1.signature consistentParams tp2.signature) &&
-            matchingMethodParams(tp1, tp2) &&
-            (!tp2.isImplicitMethod || tp1.isImplicitMethod) &&
-            isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
+            (useContravariance || tp1.signature.consistentParams(tp2.signature))
+            && matchingMethodParams(tp1, tp2)
+            && (!tp2.isImplicitMethod || tp1.isImplicitMethod)
+            && isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
           case _ => false
         }
         compareMethod
@@ -830,7 +830,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def comparePoly = tp1 match {
           case tp1: PolyType =>
             comparingTypeLambdas(tp1, tp2) {
-              (tp1.signature consistentParams tp2.signature)
+              (useContravariance || (tp1.signature consistentParams tp2.signature))
               && matchingPolyParams(tp1, tp2)
               && isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
             }
@@ -1538,8 +1538,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       val tycon = tp.tycon.typeSymbol
       if defn.isCompiletime_S(tycon) then
         compareS(tp, other, fromBelow)
-      else if defn.isUse(tycon) && fromBelow then
-        CCState.recordUse(other.deepCaptureSet) && recur(other, tp.args.head)
+      else if defn.isUse(tycon) then
+        CCState.underUse(tp.args.head, other, fromBelow):
+          if fromBelow then recur(other, tp.args.head) else recur(tp.args.head, other)
       else
         val folded = tp.tryCompiletimeConstantFold
         if (fromBelow) recur(other, folded) else recur(folded, other)

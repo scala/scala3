@@ -26,3 +26,17 @@
    |        method foo of type [T](a: Int)(x: C @use): C has incompatible type
    |
    | longer explanation available when compiling with `-explain`
+-- [E164] Declaration Error: tests/neg-custom-args/captures/unbox-overrides.scala:35:6 ---------------------------------
+35 |  def foo(x: (List[C], List[C]) @use): Unit  // error
+   |      ^
+   |      error overriding method foo in trait D1 of type (x: (List[C @use], List[C])): Unit;
+   |        method foo of type (x: (List[C], List[C]) @use): Unit has incompatible type
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E164] Declaration Error: tests/neg-custom-args/captures/unbox-overrides.scala:36:6 ---------------------------------
+36 |  def bar(x: (List[C], List[C]) @use): Unit  // error
+   |      ^
+   |      error overriding method bar in trait D1 of type (x: (List[C @use], List[C @use])): Unit;
+   |        method bar of type (x: (List[C], List[C]) @use): Unit has incompatible type
+   |
+   | longer explanation available when compiling with `-explain`

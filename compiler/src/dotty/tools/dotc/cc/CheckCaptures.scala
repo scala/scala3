@@ -552,13 +552,16 @@ class CheckCaptures extends Recheck, SymTransformer:
       accountForUses(arg, argType, formal)
       argType
 
-    class MapUses(deep: Boolean)(using Context) extends TypeMap:
+    /** At given variance, map occurrences of `T @use` to `caps.$use[T]`.
+     *  @param deep   If true also map result types of functions
+     */
+    class MapUses(deep: Boolean, atVariance: Int)(using Context) extends TypeMap:
       var usesFound = false
       def apply(t: Type) = t match
         case t @ AnnotatedType(parent, ann) =>
-          if ann.symbol == defn.UseAnnot then
+          if ann.symbol == defn.UseAnnot && variance == atVariance then
             usesFound = true
-            defn.UseType.typeRef.appliedTo(apply(parent))
+            defn.Caps_Use.typeRef.appliedTo(apply(parent))
           else
             t.derivedAnnotatedType(this(parent), ann)
         case Existential(_, _) if !deep =>
@@ -566,15 +569,20 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
           mapOver(t)
 
+    /** If `formal` contains `@use` occurrences charge the deep capture set
+     *  of the corresponding `argType` parts to the enclosing environments.
+     */
     def accountForUses(arg: Tree, argType: Type, formal: Type)(using Context): Unit =
-      val mapper = MapUses(deep = false)
+      val mapper = MapUses(deep = false, atVariance = 1)
       val formal1 = mapper(formal)
       if mapper.usesFound then
-        def markUsesAsFree(cs: CaptureSet): Boolean =
-          capt.println(i"actual uses for $arg: $argType vs $formal = $cs")
-          markFree(cs, arg.srcPos)
-          true
-        CCState.withUseHandler(markUsesAsFree):
+        def useHandler(tpUnderUse: Type, other: Type, fromBelow: Boolean)(cmp: () => Boolean): Boolean =
+          if fromBelow then
+            val dcs = other.deepCaptureSet
+            capt.println(i"actual uses for $arg: $argType vs $formal = $dcs")
+            markFree(dcs, arg.srcPos)
+          cmp()
+        CCState.withUseHandler(useHandler):
           checkConformsExpr(argType, formal1, arg, NothingToAdd)
     end accountForUses
 
@@ -1351,12 +1359,15 @@ class CheckCaptures extends Recheck, SymTransformer:
     */
     def checkOverrides = new TreeTraverser:
       class OverridingPairsCheckerCC(clazz: ClassSymbol, self: Type, srcPos: SrcPos)(using Context) extends OverridingPairsChecker(clazz, self):
-        /** Check subtype with box adaptation.
-        *  This function is passed to RefChecks to check the compatibility of overriding pairs.
-        *  @param sym  symbol of the field definition that is being checked
-        */
+        /** Check subtype with box adaptation and @use checking. 
+         *  This function is passed to RefChecks to check the compatibility of overriding pairs.
+         *  @param sym  symbol of the field definition that is being checked
+         *  @use checking: Overrides must have fewer @uses than overridden members.
+         *  I.e. every @use in an parameter of an overriding method must correspond
+         *  to an enclosing @use in the parameter of the overridden method.
+         */
         override def checkSubType(actual: Type, expected: Type)(using Context): Boolean =
-          val mapUses = MapUses(deep = true)
+          val mapUses = MapUses(deep = true, atVariance = -1)
           val expected1 = alignDependentFunction(
             addOuterRefs(mapUses(expected), actual, srcPos), actual.stripCapturing)
           val actual1 =
@@ -1374,10 +1385,18 @@ class CheckCaptures extends Recheck, SymTransformer:
                   adapted.stripCapturing
                 case _ => adapted
             finally curEnv = saved
-          CCState.withUseHandler(Function.const(false)):
+            
+          def lowerUseSeen: UseHandler = (tpUnderUse, other, fromBelow) => cmp =>
+            cmp()
+          def noLowerUseSeen: UseHandler = (tpUnderUse, other, fromBelow) => cmp =>
+            if fromBelow
+            then false // found a @use in overriding that is not covered by an enclosing @use in overridden
+            else CCState.withUseHandler(lowerUseSeen)(cmp())
+          CCState.withUseHandler(noLowerUseSeen):
             TypeComparer.usingContravarianceForMethods:
               actual1 frozen_<:< expected1
-
+        end checkSubtype
+        
         override def needsCheck(overriding: Symbol, overridden: Symbol)(using Context): Boolean =
           !setup.isPreCC(overriding) && !setup.isPreCC(overridden)
 

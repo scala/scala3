@@ -25,3 +25,24 @@ trait Poly:
 trait Poly1 extends Poly:
   def foo[T](a: Int)(x: C @use): C // error
   def bar[T](a: Int)(x: C): C // ok
+
+trait D1:
+  def foo(x: (List[C @use], List[C])): Unit
+  def bar(x: (List[C @use], List[C @use])): Unit
+  def baz(x: (List[C], List[C]) @use): Unit
+
+trait D2 extends D1:
+  def foo(x: (List[C], List[C]) @use): Unit  // error
+  def bar(x: (List[C], List[C]) @use): Unit  // error
+  def baz(x: (List[C] @use, List[C] @use)): Unit  // ok
+
+trait E2:
+  def foo(x: (List[C], List[C]) @use): Unit
+  def bar(x: (List[C], List[C]) @use): Unit
+  def baz(x: (List[C] @use, List[C] @use)): Unit
+
+trait E3 extends E2:
+  def foo(x: (List[C] @use, List[C])): Unit  // ok
+  def bar(x: (List[C], List[C])): Unit  // ok
+  def baz(x: (List[C] @use, List[C] @use)): Unit  // ok
+

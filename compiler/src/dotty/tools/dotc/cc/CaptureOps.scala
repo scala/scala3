@@ -79,6 +79,15 @@ def depFun(args: List[Type], resultType: Type, isContextual: Boolean, paramNames
 /** An exception thrown if a @retains argument is not syntactically a CaptureRef */
 class IllegalCaptureRef(tpe: Type)(using Context) extends Exception(tpe.show)
 
+/** The type of a function to be called when a `caps.$use[T]` is encountered in a subtype
+ *  comparison.
+ *  @param tpUnderUse   the type under the caps.$use[...]
+ *  @param other        the type it is compared with
+ *  @param fromBelow    If true it's `other <: tpUnderUse` otherwise it's `tpUnderUse <: other`
+ *  @param op           The subtype test to possibly perform as a continuation
+ */
+type UseHandler = (toUnderUse: Type, other: Type, fromBelow: Boolean) => (op: () => Boolean) => Boolean
+
 /** Capture checking state, which is known to other capture checking components */
 class CCState:
 
@@ -95,12 +104,12 @@ class CCState:
   /** The operation to perform `recordUse` is called. This is typically the case
    *  when a subtype check is performed between a part of a function argument
    *  and a corresponding part of a formal parameter that was labelled @use.
-   *  Such annotations are mapped to `<use>[T]` applications, which are handled
+   *  Such annotations are mapped to `caps.$use[T]` applications, which are handled
    *  as compiletime ops.
    *  The parameter to the handler is typically the deep capture set of the argument.
    *  The result of the handler is the result to be returned from the subtype check.
    */
-  private var useHandler: CaptureSet => Boolean = Function.const(true)
+  private var useHandler: UseHandler = (tpUnderUse, other, fromBelow) => op => op()
 
   private var curLevel: Level = outermostLevel
   private val symLevel: mutable.Map[Symbol, Int] = mutable.Map()
@@ -118,16 +127,18 @@ object CCState:
    */
   def currentLevel(using Context): Level = ccState.curLevel
 
-  /** Perform operation `op` with a given useHandler */
-  inline def withUseHandler[T](handler: CaptureSet => Boolean)(inline op: T)(using Context): T =
+  /** Perform operation `op` with a given useHandler to be called when `caps.$use[T]` types
+   *  are encountered.
+   */
+  inline def withUseHandler[T](handler: UseHandler)(inline op: T)(using Context): T =
     val ccs = ccState
     val saved = ccs.useHandler
     ccs.useHandler = handler
     try op finally ccs.useHandler = saved
 
-  /** Record a deep capture set in the current `useSet` */
-  def recordUse(cs: CaptureSet)(using Context): Boolean =
-    ccState.useHandler(cs)
+  /** Call the current use handler with given arguments. This might then call `op`. */
+  def underUse[T](tpUnderUse: Type, other: Type, fromBelow: Boolean)(op: => Boolean)(using Context): Boolean =
+    ccState.useHandler(tpUnderUse, other, fromBelow)(() => op)
 
   inline def inNestedLevel[T](inline op: T)(using Context): T =
     val ccs = ccState
