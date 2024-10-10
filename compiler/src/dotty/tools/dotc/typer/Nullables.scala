@@ -52,12 +52,10 @@ object Nullables:
     val hiTree = if(hiTpe eq hi.typeOpt) hi else TypeTree(hiTpe)
     TypeBoundsTree(lo, hiTree, alias)
 
-  /** A set of val or var references that are known to be not null, plus a set of
-   *  variable references that are not known (anymore) to be not null
+  /** A set of val or var references that are known to be not null,
+   *  plus a set of variable references that are once assigned to null.
    */
   case class NotNullInfo(asserted: Set[TermRef], retracted: Set[TermRef]):
-    assert((asserted & retracted).isEmpty)
-
     def isEmpty = this eq NotNullInfo.empty
 
     def retractedInfo = NotNullInfo(Set(), retracted)
@@ -67,14 +65,17 @@ object Nullables:
       if this.isEmpty then that
       else if that.isEmpty then this
       else NotNullInfo(
-        this.asserted.union(that.asserted).diff(that.retracted),
-        this.retracted.union(that.retracted).diff(that.asserted))
+        this.asserted.diff(that.retracted).union(that.asserted),
+        this.retracted.union(that.retracted))
 
     /** The alternative path combination with another not-null info. Used to merge
      *  the nullability info of the two branches of an if.
      */
     def alt(that: NotNullInfo): NotNullInfo =
       NotNullInfo(this.asserted.intersect(that.asserted), this.retracted.union(that.retracted))
+
+    def withRetracted(that: NotNullInfo): NotNullInfo =
+      NotNullInfo(this.asserted, this.retracted.union(that.retracted))
 
   object NotNullInfo:
     val empty = new NotNullInfo(Set(), Set())
@@ -233,16 +234,13 @@ object Nullables:
     *  or retractions in `info` supersede infos in existing entries of `infos`.
     */
     def extendWith(info: NotNullInfo) =
-      if info.isEmpty
-        || info.asserted.forall(infos.impliesNotNull(_))
-            && !info.retracted.exists(infos.impliesNotNull(_))
-      then infos
+      if info.isEmpty then infos
       else info :: infos
 
     /** Retract all references to mutable variables */
     def retractMutables(using Context) =
-      val mutables = infos.foldLeft(Set[TermRef]())((ms, info) =>
-        ms.union(info.asserted.filter(_.symbol.is(Mutable))))
+      val mutables = infos.foldLeft(Set[TermRef]()):
+        (ms, info) => ms.union(info.asserted.filter(_.symbol.is(Mutable)))
       infos.extendWith(NotNullInfo(Set(), mutables))
 
   end extension
