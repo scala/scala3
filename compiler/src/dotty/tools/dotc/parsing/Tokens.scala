@@ -297,7 +297,7 @@ object Tokens extends TokensCommon {
 
   final val closingParens = BitSet(RPAREN, RBRACKET, RBRACE)
 
-  final val softModifierNames = Set(nme.inline, nme.into, nme.opaque, nme.open, nme.transparent, nme.infix)
+  final val softModifierNames = Set(nme.inline, nme.into, nme.opaque, nme.open, nme.transparent, nme.infix, nme.tracked)
 
   def showTokenDetailed(token: Int): String = debugString(token)
 

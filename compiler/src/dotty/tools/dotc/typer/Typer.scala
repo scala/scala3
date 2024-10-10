@@ -1426,7 +1426,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     index(stats)
     typedStats(stats, ctx.owner)
 
-  def typedBlock(tree: untpd.Block, pt: Type)(using Context): Tree = {
+  def typedBlock(tree: untpd.Block, pt: Type)(using Context): Tree = trace.force(i"typing block $tree, pt = $pt") {
     val (stats1, exprCtx) = withoutMode(Mode.Pattern) {
       typedBlockStats(tree.stats)
     }
@@ -2411,7 +2411,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         else if ctx.reporter.errorsReported then UnspecifiedErrorType
         else errorType(em"cannot infer type; expected type $pt is not fully defined", tree.srcPos))
 
-  def typedTypeTree(tree: untpd.TypeTree, pt: Type)(using Context): Tree =
+  def typedTypeTree(tree: untpd.TypeTree, pt: Type)(using Context): Tree = trace.force(s"typedTypeTree $tree: $pt") {
     tree match
       case tree: untpd.DerivedTypeTree =>
         tree.ensureCompletions
@@ -2427,6 +2427,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         }
       case _ =>
         completeTypeTree(InferredTypeTree(), pt, tree)
+  }
 
   def typedInLambdaTypeTree(tree: untpd.InLambdaTypeTree, pt: Type)(using Context): Tree =
     val tp =
@@ -2820,7 +2821,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case _ =>
         typed(rhs)
 
-  def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree = {
+  def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree = trace.force(i"typed val def $vdef, sym = $sym") {
     val ValDef(name, tpt, _) = vdef
     checkNonRootName(vdef.name, vdef.nameSpan)
     completeAnnotations(vdef, sym)
@@ -2833,10 +2834,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case rhs =>
         excludeDeferredGiven(rhs, sym):
           typedExpr(_, tpt1.tpe.widenExpr)
-    val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
-    postProcessInfo(vdef1, sym)
-    vdef1.setDefTree
+    setAbstractTrackedInfo(sym, rhs1, tpt)
+    val tpt2 = if tpt.isEmpty then TypeTree(rhs1.tpe) else tpt1
+    val vdef2 = assignType(cpy.ValDef(vdef)(name, tpt2, rhs1), sym)
+    postProcessInfo(vdef2, sym)
+    vdef2.setDefTree
   }
+
+  private def setAbstractTrackedInfo(sym: Symbol, rhs: Tree, tpt: untpd.Tree)(using Context): Unit =
+    if sym.allOverriddenSymbols.exists(_.flags.is(Tracked)) then
+      sym.setFlag(Tracked)
+      if tpt.isEmpty then
+        sym.info = rhs.tpe
+
 
   private def retractDefDef(sym: Symbol)(using Context): Tree =
     // it's a discarded method (synthetic case class method or synthetic java record constructor or overridden member), drop it
@@ -3628,7 +3638,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   /** Typecheck and adapt tree, returning a typed tree. Parameters as for `typedUnadapted` */
-  def typed(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
+  def typed(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree = trace.force(i"typing $tree", typr) {
     trace(i"typing $tree, pt = $pt", typr, show = true) {
       record(s"typed $getClass")
       record("typed total")
@@ -3640,6 +3650,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         tree.withType(WildcardType)
       else adapt(typedUnadapted(tree, pt, locked), pt, locked)
     }
+  }
 
   def typed(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree =
     typed(tree, pt, ctx.typerState.ownedVars)
@@ -3755,7 +3766,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedExpr(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree =
     withoutMode(Mode.PatternOrTypeBits)(typed(tree, pt))
 
-  def typedType(tree: untpd.Tree, pt: Type = WildcardType, mapPatternBounds: Boolean = false)(using Context): Tree =
+  def typedType(tree: untpd.Tree, pt: Type = WildcardType, mapPatternBounds: Boolean = false)(using Context): Tree = trace.force(i"typing type $tree, pt = $pt") {
     val tree1 = withMode(Mode.Type) { typed(tree, pt) }
     if mapPatternBounds && ctx.mode.is(Mode.Pattern) && !ctx.isAfterTyper then
       tree1 match
@@ -3771,6 +3782,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case tree1 =>
           tree1
     else tree1
+  }
 
   def typedPattern(tree: untpd.Tree, selType: Type = WildcardType)(using Context): Tree =
     withMode(Mode.Pattern)(typed(tree, selType))
