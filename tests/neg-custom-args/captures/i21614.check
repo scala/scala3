@@ -8,7 +8,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:12:12 ---------------------------------------
 12 |  files.map(new Logger(_)) // error, Q: can we improve the error message?
    |            ^^^^^^^^^^^^^
-   |            Found:    Logger{val f: (_$1 : File^{files*})}^
+   |            Found:    Logger{val f: (_$1 : File^{files*@use})}^
    |            Required: Logger{val f: File^?}^?
    |
    |            Note that the universal capability `cap`
