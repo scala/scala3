@@ -881,7 +881,6 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
     if flags.is(Transparent) then writeModTag(TRANSPARENT)
     if flags.is(Infix) then writeModTag(INFIX)
     if flags.is(Invisible) then writeModTag(INVISIBLE)
-    if flags.is(SourceInvisible) then writeModTag(SOURCEINVISIBLE)
     if (flags.is(Erased)) writeModTag(ERASED)
     if (flags.is(Exported)) writeModTag(EXPORTED)
     if (flags.is(Given)) writeModTag(GIVEN)
