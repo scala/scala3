@@ -2198,7 +2198,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   /** Type a case. */
   def typedCase(tree: untpd.CaseDef, sel: Tree, wideSelType: Type, pt: Type)(using Context): CaseDef = {
     val originalCtx = ctx
-    val gadtCtx: Context = ctx.fresh.setFreshGADTBounds.setNewScope
+    val gadtCtx: Context = ctx.fresh.setFreshGADTBounds
 
     def caseRest(pat: Tree)(using Context) = {
       val pt1 = instantiateMatchTypeProto(pat, pt) match {
@@ -2228,7 +2228,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val pat1 = typedPattern(tree.pat, wideSelType)(using gadtCtx)
     caseRest(pat1)(
       using Nullables.caseContext(sel, pat1)(
-        using gadtCtx))
+        using gadtCtx.fresh.setNewScope))
   }
 
   def typedLabeled(tree: untpd.Labeled)(using Context): Labeled = {
