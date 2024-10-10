@@ -4588,10 +4588,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Is this symbol invisible when typechecking? */
       def Invisible: Flags
 
-      /** Is this symbol invisible when typechecking? (only from source) */
-      @experimental
-      def SourceInvisible: Flags
-
       /** Is this symbol defined in a Java class */
       def JavaDefined: Flags
 

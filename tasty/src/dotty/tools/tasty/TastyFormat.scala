@@ -227,8 +227,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   PARAMalias                                                       -- Parameter is alias of a superclass parameter
                   EXPORTED                                                         -- An export forwarder
                   OPEN                                                             -- an open class
-                  INVISIBLE                                                        -- invisible during typechecking
-                  SOURCEINVISIBLE                                                  -- invisible in the source code
+                  INVISIBLE                                                        -- invisible during typechecking, except when resolving from TASTy
                   TRACKED                                                          -- a tracked class parameter / a dependent class
                   Annotation
 
@@ -512,7 +511,6 @@ object TastyFormat {
   final val EMPTYCLAUSE = 45
   final val SPLITCLAUSE = 46
   final val TRACKED = 47
-  final val SOURCEINVISIBLE = 48
 
   // Tree Cat. 2:    tag Nat
   final val firstNatTreeTag = SHAREDterm
@@ -702,7 +700,6 @@ object TastyFormat {
        | EXPORTED
        | OPEN
        | INVISIBLE
-       | SOURCEINVISIBLE
        | ANNOTATION
        | PRIVATEqualified
        | PROTECTEDqualified
@@ -767,7 +764,6 @@ object TastyFormat {
     case EXPORTED => "EXPORTED"
     case OPEN => "OPEN"
     case INVISIBLE => "INVISIBLE"
-    case SOURCEINVISIBLE => "SOURCEINVISIBLE"
     case PARAMalias => "PARAMalias"
     case EMPTYCLAUSE => "EMPTYCLAUSE"
     case SPLITCLAUSE => "SPLITCLAUSE"

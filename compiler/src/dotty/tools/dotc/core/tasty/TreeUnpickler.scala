@@ -756,7 +756,6 @@ class TreeUnpickler(reader: TastyReader,
           case EXPORTED => addFlag(Exported)
           case OPEN => addFlag(Open)
           case INVISIBLE => addFlag(Invisible)
-          case SOURCEINVISIBLE => addFlag(SourceInvisible)
           case TRANSPARENT => addFlag(Transparent)
           case INFIX => addFlag(Infix)
           case TRACKED => addFlag(Tracked)
@@ -1583,7 +1582,7 @@ class TreeUnpickler(reader: TastyReader,
                   (if !d.exists then lookupInSuper else d).asSeenFrom(prefix)
 
               val denot = inContext(ctx.addMode(Mode.ResolveFromTASTy)):
-                searchDenot // able to resolve SourceInvisible members
+                searchDenot // able to resolve Invisible members
 
 
               val sel = makeSelect(qual, name, denot)
