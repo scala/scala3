@@ -365,8 +365,8 @@ object Build {
   }
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
-  lazy val commonBootstrappedSettings = commonDottySettings ++ NoBloopExport.settings ++ Seq(
-    // To enable support of scaladoc and language-server projects you need to change this to true and use sbt as your build server
+  lazy val commonBootstrappedSettings = commonDottySettings ++ Seq(
+    // To enable support of scaladoc and language-server projects you need to change this to true
     bspEnabled := false,
     (Compile / unmanagedSourceDirectories) += baseDirectory.value / "src-bootstrapped",
 
