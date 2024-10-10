@@ -2503,6 +2503,7 @@ trait Applications extends Compatibility {
       if t.exists && alt.symbol.exists then
         val (trimmed, skipped) = trimParamss(t.stripPoly, alt.symbol.rawParamss)
         val mappedSym = alt.symbol.asTerm.copy(info = t)
+        mappedSym.annotations = alt.symbol.annotations
         mappedSym.rawParamss = trimmed
         val (pre, totalSkipped) = mappedAltInfo(alt.symbol) match
           case Some((pre, prevSkipped)) =>
