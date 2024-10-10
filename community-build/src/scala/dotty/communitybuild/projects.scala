@@ -10,9 +10,6 @@ lazy val compilerVersion: String =
   val file = communitybuildDir.resolve("scala3-bootstrapped.version")
   new String(Files.readAllBytes(file), UTF_8)
 
-lazy val compilerSupportExperimental: Boolean =
-  compilerVersion.contains("SNAPSHOT") || compilerVersion.contains("NIGHTLY")
-
 lazy val sbtPluginFilePath: String =
   // Workaround for https://github.com/sbt/sbt/issues/4395
   new File(sys.props("user.home") + "/.sbt/1.0/plugins").mkdirs()
@@ -43,7 +40,6 @@ sealed trait CommunityProject:
   val testOnlyDependencies: () => List[CommunityProject]
   val binaryName: String
   val runCommandsArgs: List[String] = Nil
-  val requiresExperimental: Boolean
   val environment: Map[String, String] = Map.empty
 
   final val projectDir = communitybuildDir.resolve("community-projects").resolve(project)
@@ -53,7 +49,6 @@ sealed trait CommunityProject:
 
   /** Publish this project to the local Maven repository */
   final def publish(): Unit =
-    // TODO what should this do with .requiresExperimental?
     if !published then
       publishDependencies()
       log(s"Publishing $project")
@@ -65,11 +60,6 @@ sealed trait CommunityProject:
       published = true
 
   final def doc(): Unit =
-    if this.requiresExperimental && !compilerSupportExperimental then
-      log(
-        s"Skipping ${this.project} - it needs experimental features unsupported in this build."
-      )
-      return
     publishDependencies()
     log(s"Documenting $project")
     if docCommand eq null then
@@ -89,8 +79,7 @@ final case class MillCommunityProject(
     baseCommand: String,
     dependencies: List[CommunityProject] = Nil,
     testOnlyDependencies: () => List[CommunityProject] = () => Nil,
-    ignoreDocs: Boolean = false,
-    requiresExperimental: Boolean = false,
+    ignoreDocs: Boolean = false
     ) extends CommunityProject:
   override val binaryName: String = "./mill"
   override val testCommand = s"$baseCommand.test"
@@ -109,8 +98,7 @@ final case class SbtCommunityProject(
     testOnlyDependencies: () => List[CommunityProject] = () => Nil,
     sbtPublishCommand: String = null,
     sbtDocCommand: String = null,
-    scalacOptions: List[String] = SbtCommunityProject.scalacOptions,
-    requiresExperimental: Boolean = false,
+    scalacOptions: List[String] = SbtCommunityProject.scalacOptions
   ) extends CommunityProject:
   override val binaryName: String = "sbt"
 
@@ -260,7 +248,6 @@ object projects:
     project       = "intent",
     sbtTestCommand   = "test",
     sbtDocCommand = "doc",
-    requiresExperimental = true,
   )
 
   lazy val scalacheck = SbtCommunityProject(

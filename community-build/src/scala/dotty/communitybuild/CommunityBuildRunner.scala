@@ -16,13 +16,12 @@ object CommunityBuildRunner:
    *  and avoid network overhead. See https://github.com/lampepfl/dotty-drone
    *  for more infrastructural details.
    */
-  extension (self: CommunityProject) def run()(using suite: CommunityBuildRunner): Unit =
-    if self.requiresExperimental && !compilerSupportExperimental then
-      log(s"Skipping ${self.project} - it needs experimental features unsupported in this build.")
-      return
-    self.dependencies.foreach(_.publish())
-    self.testOnlyDependencies().foreach(_.publish())
-    suite.runProject(self)
+  extension (self: CommunityProject) 
+    def run()(using suite: CommunityBuildRunner): Unit =
+      self.dependencies.foreach(_.publish())
+      self.testOnlyDependencies().foreach(_.publish())
+      suite.runProject(self)
+  end extension
 
 trait CommunityBuildRunner:
 
