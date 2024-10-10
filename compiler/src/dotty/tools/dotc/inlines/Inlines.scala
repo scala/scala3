@@ -19,6 +19,7 @@ import staging.StagingLevel
 import collection.mutable
 import reporting.{NotConstant, trace}
 import util.Spans.Span
+import dotty.tools.dotc.core.tasty.TreeUnpickler
 
 /** Support for querying inlineable methods and for inlining calls to such methods */
 object Inlines:
@@ -158,8 +159,18 @@ object Inlines:
       else if enclosingInlineds.length < ctx.settings.XmaxInlines.value && !reachedInlinedTreesLimit then
         val body =
           try bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
-          catch case _: MissingInlineInfo =>
-            throw CyclicReference(ctx.owner)
+          catch
+            case _: MissingInlineInfo => throw CyclicReference(ctx.owner)
+            case err: TreeUnpickler.ChangedMethodDenot =>
+              // tested in sbt-test/tasty-compat/add-param-unroll2/a_v3/A.scala
+              if err.resolved.source == ctx.source then
+                report.error(em"""cannot inline ${tree.symbol}:
+                  |  The definition of ${err.resolved.showLocated}, defined in the current file, has changed incompatibly.
+                  |  Try inlining from a different file.""", tree.srcPos)
+                EmptyTree
+              else
+                // Tested in sbt-test/tasty-compat/add-param-unroll2/a_v3_2/C.scala
+                ctx.compilationUnit.suspend("suspending in case of possible generated methods")
         new InlineCall(tree).expand(body)
       else
         ctx.base.stopInlining = true
