@@ -625,16 +625,55 @@ object SpaceEngine {
         // For instance, from i15029, `decompose((X | Y).Field[T]) = [X.Field[T], Y.Field[T]]`.
         parts.map(tp.derivedAppliedType(_, targs))
 
-      case tp if tp.isDecomposableToChildren =>
-        def getChildren(sym: Symbol): List[Symbol] =
+      case tpOriginal if tpOriginal.isDecomposableToChildren =>
+        // isDecomposableToChildren uses .classSymbol.is(Sealed)
+        // But that classSymbol could be from an AppliedType
+        // where the type constructor is a non-class type
+        // E.g. t11620 where `?1.AA[X]` returns as "sealed"
+        // but using that we're not going to infer A1[X] and A2[X]
+        // but end up with A1[<?>] and A2[<?>].
+        // So we widen (like AppliedType superType does) away
+        // non-class type constructors.
+        //
+        // Can't use `tpOriginal.baseType(cls)` because it causes
+        // i15893 to return exhaustivity warnings, because instead of:
+        //    <== refineUsingParent(N, class Succ, []) = Succ[<? <: NatT>]
+        //    <== isSub(Succ[<? <: NatT>] <:< Succ[Succ[<?>]]) = true
+        // we get
+        //    <== refineUsingParent(NatT, class Succ, []) = Succ[NatT]
+        //    <== isSub(Succ[NatT] <:< Succ[Succ[<?>]]) = false
+        def getAppliedClass(tp: Type): (Type, List[Type]) = tp match
+          case tp @ AppliedType(_: HKTypeLambda, _)                        => (tp, Nil)
+          case tp @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass => (tp, tp.args)
+          case tp @ AppliedType(tycon: TypeProxy, _)                       => getAppliedClass(tycon.superType.applyIfParameterized(tp.args))
+          case tp                                                          => (tp, Nil)
+        val (tp, typeArgs) = getAppliedClass(tpOriginal)
+        // This function is needed to get the arguments of the types that will be applied to the class.
+        // This is necessary because if the arguments of the types contain Nothing,
+        // then this can affect whether the class will be taken into account during the exhaustiveness check
+        def getTypeArgs(parent: Symbol, child: Symbol, typeArgs: List[Type]): List[Type] =
+          val superType = child.typeRef.superType
+          if typeArgs.exists(_.isBottomType) && superType.isInstanceOf[ClassInfo] then
+            val parentClass = superType.asInstanceOf[ClassInfo].declaredParents.find(_.classSymbol == parent).get
+            val paramTypeMap = Map.from(parentClass.argTypes.map(_.typeSymbol).zip(typeArgs))
+            val substArgs = child.typeRef.typeParamSymbols.map(param => paramTypeMap.getOrElse(param, WildcardType))
+            substArgs
+          else Nil
+        def getChildren(sym: Symbol, typeArgs: List[Type]): List[Symbol] =
           sym.children.flatMap { child =>
             if child eq sym then List(sym) // i3145: sealed trait Baz, val x = new Baz {}, Baz.children returns Baz...
             else if tp.classSymbol == defn.TupleClass || tp.classSymbol == defn.NonEmptyTupleClass then
               List(child) // TupleN and TupleXXL classes are used for Tuple, but they aren't Tuple's children
-            else if (child.is(Private) || child.is(Sealed)) && child.isOneOf(AbstractOrTrait) then getChildren(child)
-            else List(child)
+            else if (child.is(Private) || child.is(Sealed)) && child.isOneOf(AbstractOrTrait) then
+              getChildren(child, getTypeArgs(sym, child, typeArgs))
+            else
+              val childSubstTypes = child.typeRef.applyIfParameterized(getTypeArgs(sym, child, typeArgs))
+              // if a class contains a field of type Nothing,
+              // then it can be ignored in pattern matching, because it is impossible to obtain an instance of it
+              val existFieldWithBottomType = childSubstTypes.fields.exists(_.info.isBottomType)
+              if existFieldWithBottomType then Nil else List(child)
           }
-        val children = trace(i"getChildren($tp)")(getChildren(tp.classSymbol))
+        val children = trace(i"getChildren($tp)")(getChildren(tp.classSymbol, typeArgs))
 
         val parts = children.map { sym =>
           val sym1 = if (sym.is(ModuleClass)) sym.sourceModule else sym
