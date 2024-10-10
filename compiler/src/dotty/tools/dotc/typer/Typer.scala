@@ -3577,6 +3577,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   protected def simplify(tree: Tree, pt: Type, locked: TypeVars)(using Context): tree.type =
     if !tree.denot.isOverloaded then // for overloaded trees: resolve overloading before simplifying
       if !tree.tpe.widen.isInstanceOf[MethodOrPoly] // wait with simplifying until method is fully applied
+         && !tree.tpe.match { case defn.PolyFunctionOf(_) => true case _ => false } // ... or polyfunction is fully applied
          || tree.isDef                              // ... unless tree is a definition
       then
         interpolateTypeVars(tree, pt, locked)
