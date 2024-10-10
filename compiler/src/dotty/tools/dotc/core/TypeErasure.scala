@@ -24,11 +24,16 @@ enum SourceLanguage:
 object SourceLanguage:
   /** The language in which `sym` was defined. */
   def apply(sym: Symbol)(using Context): SourceLanguage =
-    if sym.is(JavaDefined) then
+    // We might be using this method while recalculating the denotation,
+    // so let's use `lastKnownDenotation`.
+    // This is ok as the source of the symbol and whether it is inline should
+    // not change between runs/phases.
+    val denot = sym.lastKnownDenotation
+    if denot.is(JavaDefined) then
       SourceLanguage.Java
     // Scala 2 methods don't have Inline set, except for the ones injected with `patchStdlibClass`
     // which are really Scala 3 methods.
-    else if sym.isClass && sym.is(Scala2x) || (sym.maybeOwner.is(Scala2x) && !sym.is(Inline)) then
+    else if denot.isClass && denot.is(Scala2x) || (denot.maybeOwner.lastKnownDenotation.is(Scala2x) && !denot.is(Inline)) then
       SourceLanguage.Scala2
     else
       SourceLanguage.Scala3
