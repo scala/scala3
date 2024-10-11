@@ -2107,6 +2107,19 @@ class CompletionSuite extends BaseCompletionSuite:
         |""".stripMargin
    )
 
+  @Test def `shadowing` =
+   check(
+     """|package pkg
+        |object Main {
+        |  val x = ListBuff@@
+        |}
+        |""".stripMargin,
+     """|ListBuffer[A](elems: A*): ListBuffer[A] - scala.collection.mutable
+        |new ListBuffer[A]: ListBuffer[A] - scala.collection.mutable
+        |ListBuffer - scala.collection.mutable
+        |""".stripMargin
+   )
+
   @Test def `conflict-edit-2` =
     checkEdit(
       """|package a
