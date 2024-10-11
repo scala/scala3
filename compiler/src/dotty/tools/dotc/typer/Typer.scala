@@ -1552,9 +1552,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def thenPathInfo = cond1.notNullInfoIf(true).seq(result.thenp.notNullInfo)
     def elsePathInfo = cond1.notNullInfoIf(false).seq(result.elsep.notNullInfo)
     result.withNotNullInfo(
-      if result.thenp.tpe.isRef(defn.NothingClass) then
+      if result.thenp.tpe.isNothingType then
         elsePathInfo.withRetracted(thenPathInfo)
-      else if result.elsep.tpe.isRef(defn.NothingClass) then
+      else if result.elsep.tpe.isNothingType then
         thenPathInfo.withRetracted(elsePathInfo)
       else thenPathInfo.alt(elsePathInfo)
     )
@@ -2141,19 +2141,27 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case1
       }
       .asInstanceOf[List[CaseDef]]
-    var nni = sel.notNullInfo
-    if cases1.nonEmpty then nni = nni.seq(cases1.map(_.notNullInfo).reduce(_.alt(_)))
-    assignType(cpy.Match(tree)(sel, cases1), sel, cases1).cast(pt).withNotNullInfo(nni)
+    assignType(cpy.Match(tree)(sel, cases1), sel, cases1).cast(pt)
+      .withNotNullInfo(notNullInfoFromCases(sel.notNullInfo, cases1))
   }
 
   // Overridden in InlineTyper for inline matches
   def typedMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: List[untpd.CaseDef], pt: Type)(using Context): Tree = {
     val cases1 = harmonic(harmonize, pt)(typedCases(cases, sel, wideSelType, pt.dropIfProto))
       .asInstanceOf[List[CaseDef]]
-    var nnInfo = sel.notNullInfo
-    if cases1.nonEmpty then nnInfo = nnInfo.seq(cases1.map(_.notNullInfo).reduce(_.alt(_)))
-    assignType(cpy.Match(tree)(sel, cases1), sel, cases1).withNotNullInfo(nnInfo)
+    assignType(cpy.Match(tree)(sel, cases1), sel, cases1)
+      .withNotNullInfo(notNullInfoFromCases(sel.notNullInfo, cases1))
   }
+
+  private def notNullInfoFromCases(initInfo: NotNullInfo, cases: List[CaseDef])(using Context): NotNullInfo =
+    var nnInfo = initInfo
+    if cases.nonEmpty then
+      val (nothingCases, normalCases) = cases.partition(_.body.tpe.isNothingType)
+      nnInfo = nothingCases.foldLeft(nnInfo):
+        (nni, c) => nni.withRetracted(c.notNullInfo)
+      if normalCases.nonEmpty then
+        nnInfo = nnInfo.seq(normalCases.map(_.notNullInfo).reduce(_.alt(_)))
+    nnInfo
 
   def typedCases(cases: List[untpd.CaseDef], sel: Tree, wideSelType0: Type, pt: Type)(using Context): List[CaseDef] =
     var caseCtx = ctx
