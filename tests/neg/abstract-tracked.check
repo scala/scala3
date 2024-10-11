@@ -1,0 +1,5 @@
+-- [E156] Syntax Error: tests/neg/abstract-tracked.scala:4:14 ----------------------------------------------------------
+4 |tracked trait F: // error
+  |^
+  |Modifier tracked is not allowed for this definition
+5 |  val x: Int
