@@ -229,12 +229,12 @@ extension (tp: Type)
    *  in the type, as computed by `CaptureSet.ofTypeDeeply`.
    */
   def deepCaptureSet(using Context): CaptureSet =
-    val dcs = CaptureSet.ofTypeDeeply(tp)
-    if dcs.isAlwaysEmpty then dcs
+    val dcs = CaptureSet.ofTypeDeeply(tp.widen.stripCapturing)
+    if dcs.isAlwaysEmpty then tp.captureSet
     else tp match
       case tp @ ReachCapability(_) => tp.singletonCaptureSet
-      case tp: SingletonCaptureRef => tp.reach.singletonCaptureSet
-      case _ => dcs
+      case tp: SingletonCaptureRef if tp.isTrackableRef => tp.reach.singletonCaptureSet
+      case _ => tp.captureSet ++ dcs
 
   /** A type capturing `ref` */
   def capturing(ref: CaptureRef)(using Context): Type =
