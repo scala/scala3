@@ -90,8 +90,6 @@ time it is accessed. If the given is a mere alias to some immutable value, the g
 Here is the full syntax for given instances. Some of these forms of givens are explained in a separate page: [Other Forms of Givens](../more-givens.md).
 
 ```ebnf
-Here is the complete context-free syntax for all proposed features.
-```
 TmplDef           ::=  ... | 'given' GivenDef
 GivenDef          ::=  [id ':'] GivenSig
 GivenSig          ::=  GivenImpl
