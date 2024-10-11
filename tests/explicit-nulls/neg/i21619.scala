@@ -41,7 +41,7 @@ def test3: String =
     case e: Exception =>
   finally
     x = "f"
-  x.replace("", "") // ok
+  x.replace("", "") // error // LTS specific
 
 def test4: String =
   var x: String | Null = null
@@ -76,4 +76,4 @@ def test5: Unit =
   catch
     case _ =>
   val z1: String = x.replace("", "") // error
-  val z2: String = y.replace("", "")
+  val z2: String = y.replace("", "") // error // LTS specific
