@@ -38,3 +38,17 @@ def `i18388`: Unit =
     val _ = pred
     ()
   val _ = func
+
+trait L[T]:
+  type E
+
+def `i19748` =
+  type Warn1 = [T] => (l: L[T]) => T => l.E
+  type Warn2 = [T] => L[T] => T
+  type Warn3 = [T] => T => T
+  def use(x: (Warn1, Warn2, Warn3)) = x
+  use
+
+type NoWarning1 = [T] => (l: L[T]) => T => l.E
+type NoWarning2 = [T] => L[T] => T
+type NoWarning3 = [T] => T => T
