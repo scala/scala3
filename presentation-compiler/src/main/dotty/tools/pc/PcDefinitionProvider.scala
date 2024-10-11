@@ -137,7 +137,7 @@ class PcDefinitionProvider(
                     SemanticdbSymbols.symbolName(sym),
                     List(loc).asJava,
                   )
-                else DefinitionResultImpl.empty
+              else DefinitionResultImpl.empty
             case None =>
               DefinitionResultImpl.empty
         else
