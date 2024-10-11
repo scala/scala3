@@ -469,29 +469,23 @@ extension (tp: Type)
     end CheckContraCaps
 
     object narrowCaps extends TypeMap:
-      /** Has the variance been flipped at this point? */
-      private var isFlipped: Boolean = false
-
       def apply(t: Type) =
-        val saved = isFlipped
-        try
-          if variance <= 0 then isFlipped = true
-          t.dealias match
-            case t1 @ CapturingType(p, cs) if cs.isUniversal && !isFlipped =>
-              t1.derivedCapturingType(apply(p), ref.reach.singletonCaptureSet)
-            case t1 @ FunctionOrMethod(args, res @ Existential(_, _))
-            if args.forall(_.isAlwaysPure) =>
-              // Also map existentials in results to reach capabilities if all
-              // preceding arguments are known to be always pure
-              apply(t1.derivedFunctionOrMethod(args, Existential.toCap(res)))
-            case Existential(_, _) =>
-              t
-            case _ => t match
-              case t @ CapturingType(p, cs) =>
-                t.derivedCapturingType(apply(p), cs) // don't map capture set variables
-              case t =>
-                mapOver(t)
-        finally isFlipped = saved
+        if variance <= 0 then t
+        else t.dealiasKeepAnnots match
+          case t @ CapturingType(p, cs) if cs.isUniversal =>
+            t.derivedCapturingType(apply(p), ref.reach.singletonCaptureSet)
+          case t @ AnnotatedType(parent, ann) =>
+            // Don't map annotations, which includes capture sets
+            t.derivedAnnotatedType(this(parent), ann)
+          case t @ FunctionOrMethod(args, res @ Existential(_, _))
+          if args.forall(_.isAlwaysPure) =>
+            // Also map existentials in results to reach capabilities if all
+            // preceding arguments are known to be always pure
+            apply(t.derivedFunctionOrMethod(args, Existential.toCap(res)))
+          case Existential(_, _) =>
+            t
+          case _ =>
+            mapOver(t)
     end narrowCaps
 
     ref match
