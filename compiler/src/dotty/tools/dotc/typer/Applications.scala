@@ -2122,8 +2122,8 @@ trait Applications extends Compatibility {
      *  section conforms to the expected type `resultType`? If `resultType`
      *  is a `IgnoredProto`, pick the underlying type instead.
      *
-     *  Using approximated result types is necessary to avoid false negatives
-     *  due to incomplete type inference such as in tests/pos/i21410.scala.
+     *  Using an approximated result type is necessary to avoid false negatives
+     *  due to incomplete type inference such as in tests/pos/i21410.scala and tests/pos/i21410b.scala.
      */
     def resultConforms(altSym: Symbol, altType: Type, resultType: Type)(using Context): Boolean =
       resultType.revealIgnored match {
@@ -2131,7 +2131,14 @@ trait Applications extends Compatibility {
           altType.widen match {
             case tp: PolyType => resultConforms(altSym, tp.resultType, resultType)
             case tp: MethodType =>
-              constrainResult(altSym, wildApprox(tp.resultType), resultType)
+              val wildRes = wildApprox(tp.resultType)
+
+              class ResultApprox extends AvoidWildcardsMap:
+                // Avoid false negatives by approximating to a lower bound
+                variance = -1
+
+              val approx = ResultApprox()(wildRes)
+              constrainResult(altSym, approx, resultType)
             case _ => true
           }
         case _ => true
