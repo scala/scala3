@@ -30,7 +30,7 @@
    |    ^^^^^^^^^^^^^^^^^^^
    |    Local reach capability id* leaks into capture scope of method test
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:62:27 --------------------------------------
-62 |    val f1: File^{id*} = id(f) // error, since now id(f): File^
+62 |    val f1: File^{id*} = id(f) // error, since now id(f): File^ // error
    |                         ^^^^^
    |                         Found:    File^{f}
    |                         Required: File^{id*}
@@ -50,3 +50,11 @@
    |                                             Type argument () -> Unit does not conform to lower bound () => Unit
    |
    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/reaches.scala:61:31 -----------------------------------------------------------
+61 |  val leaked = usingFile[File^{id*}]: f => // error
+   |                               ^^^
+   |                               id* cannot be tracked since its capture set is empty
+-- Error: tests/neg-custom-args/captures/reaches.scala:62:18 -----------------------------------------------------------
+62 |    val f1: File^{id*} = id(f) // error, since now id(f): File^ // error
+   |                  ^^^
+   |                  id* cannot be tracked since its capture set is empty

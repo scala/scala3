@@ -1064,7 +1064,7 @@ object CaptureSet:
     case ref: (TermRef | TermParamRef) if ref.isMaxCapability =>
       if ref.isTrackableRef then ref.singletonCaptureSet
       else CaptureSet.universal
-    case ReachCapability(ref1) => deepCaptureSet(ref1.widen)
+    case ReachCapability(ref1) => ref1.widen.deepCaptureSet
       .showing(i"Deep capture set of $ref: ${ref1.widen} = $result", capt)
     case _ => ofType(ref.underlying, followResult = true)
 
@@ -1115,17 +1115,25 @@ object CaptureSet:
 
   /** The deep capture set of a type is the union of all covariant occurrences of
    *  capture sets. Nested existential sets are approximated with `cap`.
+   *  NOTE: The traversal logic needs to be in sync with narrowCaps in CaptureOps, which
+   *  replaces caps with reach capabilties.
    */
   def ofTypeDeeply(tp: Type)(using Context): CaptureSet =
     val collect = new TypeAccumulator[CaptureSet]:
-      def apply(cs: CaptureSet, t: Type) = t.dealias match
-        case t @ CapturingType(p, cs1) =>
-          val cs2 = apply(cs, p)
-          if variance > 0 then cs2 ++ cs1 else cs2
-        case t @ Existential(_, _) =>
-          apply(cs, Existential.toCap(t))
-        case _ =>
-          foldOver(cs, t)
+      def apply(cs: CaptureSet, t: Type) =
+        if variance <= 0 then cs
+        else t.dealias match
+          case t @ CapturingType(p, cs1) =>
+            this(cs, p) ++ cs1
+          case t @ AnnotatedType(parent, ann) =>
+            this(cs, parent)
+          case t @ FunctionOrMethod(args, res @ Existential(_, _))
+          if args.forall(_.isAlwaysPure) =>
+            this(cs, Existential.toCap(res))
+          case t @ Existential(_, _) =>
+            cs
+          case _ =>
+            foldOver(cs, t)
     collect(CaptureSet.empty, tp)
 
   type AssumedContains = immutable.Map[TypeRef, SimpleIdentitySet[CaptureRef]]
