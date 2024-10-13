@@ -1796,7 +1796,7 @@ object Types extends TypeUtils {
 
     /** Is this either not a method at all, or a parameterless method? */
     final def isParameterless(using Context): Boolean = stripPoly match {
-      case mt: MethodType => false
+      case mt: MethodOrPoly => false
       case _ => true
     }
 

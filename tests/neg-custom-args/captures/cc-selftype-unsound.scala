@@ -11,5 +11,5 @@ def magic(l: Logger^): Logger =
       Boxed[Logger^{this}](l)  // error
   val x = new Foo
   val y = x.foo.unbox  // y: Logger^{x}
-  val z: Logger = y  // now the capability becomes pure
+  val z: Logger = y  // error
   z

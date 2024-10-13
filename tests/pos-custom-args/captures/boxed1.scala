@@ -8,4 +8,4 @@ def test(c: Cap) =
   val f = () => { c; 1 }
   val _: () ->{c} Int = f
   val g = () => Box(f)
-  val _: () -> Box[() ->{f} Int] = g
+  val _: () ->{g} Box[() ->{f} Int] = g

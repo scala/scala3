@@ -1,15 +1,5 @@
--- Error: tests/neg-custom-args/captures/i21347.scala:4:15 -------------------------------------------------------------
-4 |  ops.foreach: op => // error
-  |               ^
-  |               Local reach capability C leaks into capture scope of method runOps
-5 |    op()
--- Error: tests/neg-custom-args/captures/i21347.scala:8:14 -------------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/i21347.scala:8:15 -------------------------------------------------------------
 8 |  () => runOps(f :: Nil) // error
-  |        ^^^^^^^^^^^^^^^^
-  |        reference (caps.cap : caps.Capability) is not included in the allowed capture set {}
-  |        of an enclosing function literal with expected type () -> Unit
--- Error: tests/neg-custom-args/captures/i21347.scala:11:15 ------------------------------------------------------------
-11 |  ops.foreach: op => // error
-   |               ^
-   |               Local reach capability ops* leaks into capture scope of method runOpsAlt
-12 |    op()
+  |               ^
+  |               reference (f : () => Unit) is not included in the allowed capture set {}
+  |               of an enclosing function literal with expected type () -> Unit

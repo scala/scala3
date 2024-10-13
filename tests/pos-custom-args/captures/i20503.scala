@@ -14,5 +14,5 @@ def runOps(@unbox ops: List[() => Unit]): Unit =
   ops.foreach(op => op())
 
 def main(): Unit =
-  val f: List[() => Unit] -> Unit = (ops: List[() => Unit]) => runOps(ops)  // error
-  val _: List[() => Unit] -> Unit = runOps  // error
+  val f: List[() => Unit] -> Unit = (ops: List[() => Unit]) => runOps(ops)  // now ok
+  val _: List[() => Unit] -> Unit = runOps  // now ok

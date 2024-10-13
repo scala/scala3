@@ -384,7 +384,7 @@ final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => Laz
     * @param suffix The collection that gets appended to this lazy list
     * @return The lazy list containing elements of this lazy list and the iterable object.
     */
-  def lazyAppendedAll[B >: A](suffix: => collection.IterableOnce[B]^): LazyListIterable[B]^{this, suffix} =
+  def lazyAppendedAll[B >: A](suffix: => collection.IterableOnce[B]^): LazyListIterable[B]^{this, suffix*} =
     newLL {
       if (isEmpty) suffix match {
         case lazyList: LazyListIterable[B]       => lazyList.state // don't recompute the LazyListIterable
@@ -497,7 +497,7 @@ final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => Laz
     *
     * $preservesLaziness
     */
-  def prepended[B >: A](elem: B): LazyListIterable[B] = newLL(sCons(elem, this))
+  def prepended[B >: A](elem: B): LazyListIterable[B]^{this} = newLL(sCons(elem, this))
 
   /** @inheritdoc
     *
@@ -1137,7 +1137,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     /** Construct a LazyListIterable consisting of the concatenation of the given LazyListIterable and
       *  another LazyListIterable.
       */
-    def #:::[B >: A](prefix: LazyListIterable[B]^): LazyListIterable[B]^{prefix, l} = prefix lazyAppendedAll l
+    def #:::[B >: A](prefix: LazyListIterable[B]^): LazyListIterable[B]^{prefix, l*} = prefix lazyAppendedAll l
 
   object #:: {
     def unapply[A](s: LazyListIterable[A]^): Option[(A, LazyListIterable[A]^{s})] =
@@ -1155,7 +1155,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
   /** Creates a State from an Iterator, with another State appended after the Iterator
     * is empty.
     */
-  private def stateFromIteratorConcatSuffix[A](it: Iterator[A]^)(suffix: => State[A]^): State[A]^{it, suffix} =
+  private def stateFromIteratorConcatSuffix[A](it: Iterator[A]^)(suffix: => State[A]^): State[A]^{it, suffix*} =
     if (it.hasNext) sCons(it.next(), newLL(stateFromIteratorConcatSuffix(it)(suffix)))
     else suffix
 

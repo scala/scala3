@@ -1,5 +1,3 @@
-//> using options -source 3.4
-// (to make sure we use the sealed policy)
 trait Cap { def use(): Int; def close(): Unit }
 def mkCap(): Cap^ = ???
 
@@ -15,19 +13,19 @@ def withCap[T](op: Cap^ => T): T = {
 def main(fs: Cap^): Unit = {
   def badOp(io: Cap^): Unit ->{} Unit = {
     val op1: Unit ->{io} Unit = (x: Unit) =>
-      expect[Cap^] {  // error
+      expect[Cap^] {
         io.use()
-        fs  // error (limitation)
+        fs  // error
       }
 
     val op2: Unit ->{fs} Unit = (x: Unit) =>
-      expect[Cap^] { // error
+      expect[Cap^] {
         fs.use()
-        io  // error (limitation)
+        io  // error
       }
 
     val op3: Unit ->{io} Unit = (x: Unit) =>
-      expect[Cap^] {  // error
+      expect[Cap^] {
         io.use()
         io
       }
@@ -36,7 +34,7 @@ def main(fs: Cap^): Unit = {
       expect[Cap^](io) // error
 
     val op: Unit -> Unit = (x: Unit) =>
-      expect[Cap^] { // error
+      expect[Cap^] {
         io.use()    // error
         io          // error
       }

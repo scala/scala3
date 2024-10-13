@@ -52,7 +52,7 @@ class Id[-A,  +B >: A]():
 def test =
   val id: Id[Proc, Proc] = new Id[Proc, () -> Unit] // error
   usingFile: f =>
-    id(() => f.write()) // error
+    id(() => f.write())
 
 def attack2 =
   val id: File^ -> File^ = x => x
@@ -72,11 +72,3 @@ extension [A](x: A) def :: (xs: List[A]): List[A] = ???
 
 object Nil extends List[Nothing]
 
-def compose1[A, B, C](f: A => B, g: B => C): A ->{f, g} C =
-  z => g(f(z))
-
-def mapCompose[A](ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
-  ps.map((x, y) => compose1(x, y)) // error // error
-
-def mapCompose2[A](@unbox ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
-  ps.map((x, y) => compose1(x, y))

@@ -1,8 +1,3 @@
--- Error: tests/neg-custom-args/captures/unsound-reach.scala:18:21 -----------------------------------------------------
-18 |        boom.use(f): (f1: File^{backdoor*}) => // error
-   |                     ^
-   |                     Local reach capability backdoor* leaks into capture scope of method bad
-19 |            escaped = f1
 -- [E164] Declaration Error: tests/neg-custom-args/captures/unsound-reach.scala:10:8 -----------------------------------
 10 |    def use(x: File^)(op: File^ => Unit): Unit = op(x) // error, was OK using sealed checking
    |        ^

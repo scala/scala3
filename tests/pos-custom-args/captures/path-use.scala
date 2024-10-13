@@ -9,8 +9,8 @@ type Proc = () => Unit
 
 def test(io: IO^) =
   val c = C(io)
-  val f = () => println(c.f)
-  val _: () ->{c.f} Unit = f
+  val ff = () => println(c.f)
+  val _: () ->{c.f} Unit = ff
 
   val x = c.procs
   val _: List[() ->{c.procs*} Unit] = x

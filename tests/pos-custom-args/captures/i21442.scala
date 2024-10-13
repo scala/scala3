@@ -6,7 +6,7 @@ case class Boxed[+T](unbox: T)
 // `foo` is a function that unboxes its parameter
 // and uses the capability boxed inside the parameter.
 def foo(x: Boxed[IO^]): Unit =
-  val io = x.unbox // error: local reach capability {x*} leaks
+  val io = x.unbox // now ok, was error: local reach capability {x*} leaks
   io.use()
 
 // `bar` is a function that does the same thing in a
@@ -14,5 +14,5 @@ def foo(x: Boxed[IO^]): Unit =
 // But, no type error reported.
 def bar(x: Boxed[IO^]): Unit =
   val x1: Boxed[IO^] = x
-  val io = x1.unbox // error
+  val io = x1.unbox // now ok, was error
   io.use()

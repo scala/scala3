@@ -7,7 +7,7 @@ type Op[T, C] =
   (v: T) => (s: C) => C
 
 type List[T] =
-  [C] -> (op: Op[T, C]) -> (s: C) ->{op} C
+  [C] -> (op: Op[T, C]) -> (s: C) ->{op*} C
 
 def nil[T]: List[T] =
   [C] => (op: Op[T, C]) => (s: C) => s
