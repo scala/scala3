@@ -1,4 +1,4 @@
-//> using options  -Wunused:explicits
+//> using options -Wunused:explicits
 
 object Foo {
   /* This goes around the "trivial method" detection */
@@ -31,7 +31,7 @@ package scala3main:
 package foo.test.lambda.param:
   val default_val = 1
   val a = (i: Int) => i // OK
-  val b = (i: Int) => default_val // OK
+  val b = (i: Int) => default_val // warn
   val c = (_: Int) => default_val // OK
 
 package foo.test.trivial:
