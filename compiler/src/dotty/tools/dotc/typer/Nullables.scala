@@ -52,8 +52,11 @@ object Nullables:
     val hiTree = if(hiTpe eq hi.typeOpt) hi else TypeTree(hiTpe)
     TypeBoundsTree(lo, hiTree, alias)
 
-  /** A set of val or var references that are known to be not null,
-   *  plus a set of variable references that are once assigned to null.
+  /** A set of val or var references that are known to be not null
+  * after the tree finishes executing normally (non-exceptionally),
+   *  plus a set of variable references that are ever assigned to null,
+   *  and may therefore be null if execution of the tree is interrupted
+   *  by an exception.
    */
   case class NotNullInfo(asserted: Set[TermRef], retracted: Set[TermRef]):
     def isEmpty = this eq NotNullInfo.empty
