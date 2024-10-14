@@ -514,7 +514,6 @@ object desugar {
       case Nil =>
         params :: Nil
 
-    // TODO(kπ) is this enough? SHould this be a TreeTraverse-thing?
     def pushDownEvidenceParams(tree: Tree): Tree = tree match
       case Function(params, body) =>
         cpy.Function(tree)(params, pushDownEvidenceParams(body))
@@ -527,7 +526,6 @@ object desugar {
         makeContextualFunction(paramTpts, paramNames, tree, paramsErased).withSpan(tree.span)
 
     if meth.hasAttachment(PolyFunctionApply) then
-      // meth.removeAttachment(PolyFunctionApply)
       if ctx.mode.is(Mode.Type) then
         cpy.DefDef(meth)(tpt = meth.tpt.withAttachment(PolyFunctionApply, params))
       else
