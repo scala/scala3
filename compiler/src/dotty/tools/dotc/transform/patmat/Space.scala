@@ -111,6 +111,20 @@ case class Prod(tp: Type, unappTp: TermRef, params: List[Space]) extends Space
 case class Or(spaces: Seq[Space]) extends Space
 
 object SpaceEngine {
+  val DeadlineKey = new Property.Key[Long]
+
+  def setupDeadline(using Context): Context =
+    val timeout = ctx.run.nn.exhaustivityAnalysisTimeout
+    if timeout >= 0 then
+      ctx.fresh.setProperty(DeadlineKey, System.currentTimeMillis() + timeout)
+    else
+      ctx
+
+  def isPastDeadline(using Context): Boolean =
+    ctx.property(DeadlineKey) match
+      case Some(deadline) => System.currentTimeMillis() > deadline
+      case _              => false
+
   def simplify(space: Space)(using Context): Space           = space.simplify
   def isSubspace(a: Space, b: Space)(using Context): Boolean = a.isSubspace(b)
   def canDecompose(typ: Typ)(using Context): Boolean         = typ.canDecompose
@@ -590,6 +604,7 @@ object SpaceEngine {
 
   /** Whether the extractor covers the given type */
   def covers(unapp: TermRef, scrutineeTp: Type, argLen: Int)(using Context): Boolean = trace(i"covers($unapp, $scrutineeTp, $argLen)") {
+    !isPastDeadline && (
     SpaceEngine.isIrrefutable(unapp, argLen)
     || unapp.symbol == defn.TypeTest_unapply && {
       val AppliedType(_, _ :: tp :: Nil) = unapp.prefix.widen.dealias: @unchecked
@@ -599,6 +614,7 @@ object SpaceEngine {
       val AppliedType(_, tp :: Nil) = unapp.prefix.widen.dealias: @unchecked
       scrutineeTp <:< tp
     }
+    )
   }
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */
@@ -666,13 +682,16 @@ object SpaceEngine {
 
         val parts = children.map { sym =>
           val sym1 = if (sym.is(ModuleClass)) sym.sourceModule else sym
-          val refined = trace(i"refineUsingParent($tp, $sym1, $mixins)")(TypeOps.refineUsingParent(tp, sym1, mixins))
+          val refined =
+            if isPastDeadline then NoType
+            else TypeOps.refineUsingParent(tp, sym1, mixins)
 
           def inhabited(tp: Type): Boolean = tp.dealias match
             case AndType(tp1, tp2) => !TypeComparer.provablyDisjoint(tp1, tp2)
             case OrType(tp1, tp2) => inhabited(tp1) || inhabited(tp2)
             case tp: RefinedType => inhabited(tp.parent)
             case tp: TypeRef => inhabited(tp.prefix)
+            case NoType => false
             case _ => true
 
           if inhabited(refined) then refined
@@ -862,6 +881,21 @@ object SpaceEngine {
     case _                                          => tp
   })
 
+  def checkExhaustivityInDeadline(m: Match)(using Context): Unit = {
+    inContext(setupDeadline):
+      checkExhaustivity(m)
+      if isPastDeadline then
+        ctx.run.nn.backoffExhaustivityAnalysisTimeout()
+        val setting = ctx.settings.XpatmatAnalysisTimeout
+        report.warning(
+          em"""Match analysis requires more time than allowed. You can try:
+              |  * doubling the timeout: ${setting.name}:${setting.value * 2}
+              |  * disabling the timeout: ${setting.name}:-1
+              |  * adding `: @unchecked` to the scrutinee""", m.srcPos)
+      else
+        ctx.run.nn.recoverExhaustivityAnalysisTimeout()
+  }
+
   def checkExhaustivity(m: Match)(using Context): Unit = trace(i"checkExhaustivity($m)") {
     val selTyp = toUnderlying(m.selector.tpe.stripUnsafeNulls()).dealias
     val targetSpace = trace(i"targetSpace($selTyp)")(project(selTyp))
@@ -880,7 +914,8 @@ object SpaceEngine {
 
     if uncovered.nonEmpty then
       val deduped = dedup(uncovered)
-      report.warning(PatternMatchExhaustivity(deduped, m), m.selector)
+      if !isPastDeadline then
+        report.warning(PatternMatchExhaustivity(deduped, m), m.selector)
   }
 
   private def reachabilityCheckable(sel: Tree)(using Context): Boolean =
@@ -929,7 +964,8 @@ object SpaceEngine {
         then {
           val nullOnly = isNullable && i == len - 1 && isWildcardArg(pat)
           val msg = if nullOnly then MatchCaseOnlyNullWarning() else MatchCaseUnreachable()
-          report.warning(msg, pat.srcPos)
+          if !isPastDeadline then
+            report.warning(msg, pat.srcPos)
         }
         deferred = Nil
       }
@@ -941,6 +977,6 @@ object SpaceEngine {
   }
 
   def checkMatch(m: Match)(using Context): Unit =
-    if exhaustivityCheckable(m.selector) then checkExhaustivity(m)
+    if exhaustivityCheckable(m.selector) then checkExhaustivityInDeadline(m)
     if reachabilityCheckable(m.selector) then checkReachability(m)
 }

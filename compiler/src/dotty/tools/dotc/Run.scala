@@ -62,6 +62,30 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    */
   @volatile var isCancelled = false
 
+  /** The timeout for pattern match exhaustivity analysis, in ms.
+   *  When the timeout is reached, it is reduced for the next analysis (see "backoff").
+   *  When the timeout is not reached, it is recovered (up to the original, see "recover").
+   * */
+  private var myExhaustivityAnalysisTimeout: Int =
+    Int.MinValue // sentinel value; means whatever is set in command line option
+
+  def exhaustivityAnalysisTimeout: Int =
+    if myExhaustivityAnalysisTimeout == Int.MinValue
+    then ctx.settings.XpatmatAnalysisTimeout.value
+    else myExhaustivityAnalysisTimeout
+
+  /** Exponentially back off, by halving on every timeout, to a minimum 100 ms. */
+  def backoffExhaustivityAnalysisTimeout(): Unit =
+    myExhaustivityAnalysisTimeout =
+      (exhaustivityAnalysisTimeout / 2)
+        .max(100)
+
+  /** Recover slowly, by 1.5 times, up to the original value. */
+  def recoverExhaustivityAnalysisTimeout(): Unit =
+    myExhaustivityAnalysisTimeout =
+      (exhaustivityAnalysisTimeout * 1.5).toInt
+        .min(ictx.settings.XpatmatAnalysisTimeout.value)
+
   private var compiling = false
 
   private var myUnits: List[CompilationUnit] = Nil
