@@ -119,7 +119,8 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
    *  For regular source files, simply return the argument.
    */
   def positionInUltimateSource(position: SourcePosition): SourcePosition =
-    SourcePosition(underlying, position.span shift start)
+    if isSelfContained then position // return the argument
+    else SourcePosition(underlying, position.span shift start)
 
   private def calculateLineIndicesFromContents() = {
     val cs = content()
