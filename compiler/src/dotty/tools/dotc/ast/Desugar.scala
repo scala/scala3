@@ -1484,7 +1484,7 @@ object desugar {
   val legalTracked: Context ?=> MemberDefTest = {
     case valdef @ ValDef(_, _, _) =>
       val sym = valdef.symbol
-      ctx.owner.exists && (ctx.owner.isClass || ctx.owner.isConstructor)
+      !ctx.owner.exists || ctx.owner.isClass || ctx.owner.is(Case) || ctx.owner.isConstructor || valdef.mods.is(Param) || valdef.mods.is(ParamAccessor)
   }
 
   def checkOpaqueAlias(tree: MemberDef)(using Context): MemberDef =

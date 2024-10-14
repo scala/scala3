@@ -2835,14 +2835,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         excludeDeferredGiven(rhs, sym):
           typedExpr(_, tpt1.tpe.widenExpr)
     setAbstractTrackedInfo(sym, rhs1, tpt)
-    val tpt2 = if sym.flags.is(Tracked) && tpt.isEmpty && !sym.flags.is(ParamAccessor) then TypeTree(rhs1.tpe) else tpt1
+    val tpt2 = if sym.flags.is(Tracked) && tpt.isEmpty && !sym.flags.is(ParamAccessor) && !sym.flags.is(Param) then TypeTree(rhs1.tpe) else tpt1
     val vdef2 = assignType(cpy.ValDef(vdef)(name, tpt2, rhs1), sym)
     postProcessInfo(vdef2, sym)
     vdef2.setDefTree
   }
 
   private def setAbstractTrackedInfo(sym: Symbol, rhs: Tree, tpt: untpd.Tree)(using Context): Unit =
-    if sym.allOverriddenSymbols.exists(_.flags.is(Tracked)) && !sym.flags.is(ParamAccessor) then
+    if sym.allOverriddenSymbols.exists(_.flags.is(Tracked)) && !sym.flags.is(ParamAccessor) && !sym.flags.is(Param) then
       sym.setFlag(Tracked)
       if tpt.isEmpty then
         sym.info = rhs.tpe
