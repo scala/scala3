@@ -25,12 +25,12 @@ import dotty.tools.dotc.transform.{Erasure, ValueClasses}
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.report
 
-import org.scalajs.ir
-import org.scalajs.ir.{ClassKind, Position, Names => jsNames, Trees => js, Types => jstpe}
-import org.scalajs.ir.Names.{ClassName, MethodName, SimpleMethodName}
-import org.scalajs.ir.OriginalName
-import org.scalajs.ir.OriginalName.NoOriginalName
-import org.scalajs.ir.Trees.OptimizerHints
+import dotty.tools.sjs.ir
+import dotty.tools.sjs.ir.{ClassKind, Position, Names => jsNames, Trees => js, Types => jstpe}
+import dotty.tools.sjs.ir.Names.{ClassName, MethodName, SimpleMethodName}
+import dotty.tools.sjs.ir.OriginalName
+import dotty.tools.sjs.ir.OriginalName.NoOriginalName
+import dotty.tools.sjs.ir.Trees.OptimizerHints
 
 import dotty.tools.dotc.transform.sjs.JSSymUtils.*
 
