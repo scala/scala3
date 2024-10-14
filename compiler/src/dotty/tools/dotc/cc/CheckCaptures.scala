@@ -1090,13 +1090,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         (erefs /: erefs.elems): (erefs, eref) =>
           eref match
             case eref: ThisType if isPureContext(ctx.owner, eref.cls) =>
-              def isOuterRef(aref: Type): Boolean = aref.pathRoot match
-                case aref: NamedType => eref.cls.isProperlyContainedIn(aref.symbol.owner)
-                case aref: ThisType => eref.cls.isProperlyContainedIn(aref.cls)
-                case _ => false
-
-              val outerRefs = arefs.filter(isOuterRef)
-
+              val outerRefs = arefs.filter: aref =>
+                eref.cls.isProperlyContainedIn(aref.pathOwner)
               // Include implicitly added outer references in the capture set of the class of `eref`.
               for outerRef <- outerRefs.elems do
                 if !erefs.elems.contains(outerRef)

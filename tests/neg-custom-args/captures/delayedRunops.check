@@ -1,0 +1,5 @@
+-- Error: tests/neg-custom-args/captures/delayedRunops.scala:15:13 -----------------------------------------------------
+15 |      runOps(ops1)  // error
+   |             ^^^^
+   |             reference ops* is not included in the allowed capture set {}
+   |             of an enclosing function literal with expected type () -> Unit
