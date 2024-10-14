@@ -33,7 +33,7 @@ def test4: Int =
     case _ => x = ""
   x.length // error
   // Although the catch block here is exhaustive, it is possible to have non-exhaustive cases,
-  // and some exceptions are thrown and not caught. Therefore, the code in the finallizer and
+  // and some exceptions are thrown and not caught. Therefore, the code in the finalizer and
   // after the try block can only rely on the retracted info from the cases' body.
 
 def test5: Int =

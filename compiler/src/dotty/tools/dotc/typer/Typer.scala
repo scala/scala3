@@ -2086,7 +2086,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val cases2 = cases2x.asInstanceOf[List[CaseDef]]
 
     // It is possible to have non-exhaustive cases, and some exceptions are thrown and not caught.
-    // Therefore, the code in the finallizer and after the try block can only rely on the retracted
+    // Therefore, the code in the finalizer and after the try block can only rely on the retracted
     // info from the cases' body.
     if cases2.nonEmpty then
       nnInfo = nnInfo.seq(cases2.map(_.notNullInfo.retractedInfo).reduce(_.alt(_)))
