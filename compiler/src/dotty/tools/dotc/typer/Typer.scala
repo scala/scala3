@@ -3596,6 +3596,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      }
   }
 
+  /** Push down the deferred evidence parameters up until the result type is not
+   *  a method type, poly type or a function type
+   */
   private def pushDownDeferredEvidenceParams(tpe: Type, params: List[untpd.ValDef], span: Span)(using Context): Type = tpe.dealias match {
     case tpe: MethodType =>
       tpe.derivedLambdaType(tpe.paramNames, tpe.paramInfos, pushDownDeferredEvidenceParams(tpe.resultType, params, span))
@@ -3617,46 +3620,22 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       typed(ctxFunction).tpe
   }
 
-  private def extractTopMethodTermParams(tpe: Type)(using Context): (List[TermName], List[Type]) = tpe match {
-    case tpe: MethodType =>
-      tpe.paramNames -> tpe.paramInfos
-    case tpe: RefinedType if defn.isFunctionType(tpe.parent) =>
-      extractTopMethodTermParams(tpe.refinedInfo)
-    case _ =>
-      Nil -> Nil
-  }
-
-  private def removeTopMethodTermParams(tpe: Type)(using Context): Type = tpe match {
-    case tpe: MethodType =>
-      tpe.resultType
-    case tpe: RefinedType if defn.isFunctionType(tpe.parent) =>
-      tpe.derivedRefinedType(tpe.parent, tpe.refinedName, removeTopMethodTermParams(tpe.refinedInfo))
-    case tpe: AppliedType if defn.isFunctionType(tpe) =>
-      tpe.args.last
-    case _ =>
-      tpe
-  }
-
-  private def healToPolyFunctionType(tree: Tree)(using Context): Tree = tree match {
-    case defdef: DefDef if defdef.name == nme.apply && defdef.paramss.forall(_.forall(_.symbol.flags.is(TypeParam))) && defdef.paramss.size == 1 =>
-      val (names, types) = extractTopMethodTermParams(defdef.tpt.tpe)
-      val newTpe = removeTopMethodTermParams(defdef.tpt.tpe)
-      val newParams = names.lazyZip(types).map((name, tpe) => SyntheticValDef(name, TypeTree(tpe), flags = SyntheticTermParam))
-      val newDefDef = cpy.DefDef(defdef)(paramss = defdef.paramss ++ List(newParams), tpt = untpd.TypeTree(newTpe))
-      val nestedCtx = ctx.fresh.setNewTyperState()
-      typed(newDefDef)(using nestedCtx)
-    case _ => tree
-  }
-
+  /** If the tree has a `PolyFunctionApply` attachment, add the deferred
+   *  evidence parameters as the last argument list before the result type. This
+   *  follows aliases, so the following two types will be expanded to (up to the
+   *  context bound encoding):
+   *    type CmpWeak[X] = X => Boolean
+   *    type Comparer2Weak = [X: Ord] => X => CmpWeak[X]
+   *  ===>
+   *    type CmpWeak[X] = X => Boolean type Comparer2Weak = [X] => X => X ?=>
+   *    Ord[X] => Boolean
+   */
   private def addDeferredEvidenceParams(tree: Tree, pt: Type)(using Context): (Tree, Type) = {
     tree.getAttachment(desugar.PolyFunctionApply) match
       case Some(params) if params.nonEmpty =>
         tree.removeAttachment(desugar.PolyFunctionApply)
         val tpe = pushDownDeferredEvidenceParams(tree.tpe, params, tree.span)
         TypeTree(tpe).withSpan(tree.span) -> tpe
-      // case Some(params) if params.isEmpty =>
-      //   println(s"tree: $tree")
-      //   healToPolyFunctionType(tree) -> pt
       case _ => tree -> pt
   }
 
