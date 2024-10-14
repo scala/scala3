@@ -1481,8 +1481,10 @@ object desugar {
       rhsOK(rhs)
   }
 
-  val legalTracked: MemberDefTest = {
-    case ValDef(_, _, _) => true
+  val legalTracked: Context ?=> MemberDefTest = {
+    case valdef @ ValDef(_, _, _) =>
+      val sym = valdef.symbol
+      ctx.owner.exists && (ctx.owner.isClass || ctx.owner.isConstructor)
   }
 
   def checkOpaqueAlias(tree: MemberDef)(using Context): MemberDef =

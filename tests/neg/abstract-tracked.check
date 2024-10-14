@@ -1,5 +1,20 @@
 -- [E156] Syntax Error: tests/neg/abstract-tracked.scala:4:14 ----------------------------------------------------------
-4 |tracked trait F: // error
-  |^
+4 |tracked trait F // error
+  |^^^^^^^^^^^^^^^
   |Modifier tracked is not allowed for this definition
-5 |  val x: Int
+-- [E156] Syntax Error: tests/neg/abstract-tracked.scala:9:15 ----------------------------------------------------------
+9 |tracked object O // error
+  |^^^^^^^^^^^^^^^^
+  |Modifier tracked is not allowed for this definition
+-- [E156] Syntax Error: tests/neg/abstract-tracked.scala:11:14 ---------------------------------------------------------
+11 |tracked class C // error
+   |^^^^^^^^^^^^^^^
+   |Modifier tracked is not allowed for this definition
+-- [E156] Syntax Error: tests/neg/abstract-tracked.scala:7:14 ----------------------------------------------------------
+7 |  tracked def f: F // error
+  |  ^^^^^^^^^^^^^^^^
+  |  Modifier tracked is not allowed for this definition
+-- [E156] Syntax Error: tests/neg/abstract-tracked.scala:14:14 ---------------------------------------------------------
+14 |  tracked val x = 1 // error
+   |  ^^^^^^^^^^^^^^^^^
+   |  Modifier tracked is not allowed for this definition
