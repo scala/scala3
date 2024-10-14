@@ -1761,8 +1761,6 @@ object Parsers {
             getFunction(body) match
               case Some(f) =>
                 PolyFunction(tparams, body)
-              case None if tparams.exists(_.rhs.isInstanceOf[ContextBounds]) =>
-                PolyFunction(tparams, body)
               case None =>
                 syntaxError(em"Implementation restriction: polymorphic function types must have a value parameter", arrowOffset)
                 Ident(nme.ERROR.toTypeName)
