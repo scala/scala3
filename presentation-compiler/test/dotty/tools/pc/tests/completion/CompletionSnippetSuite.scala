@@ -388,6 +388,29 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
     checkSnippet(
       s"""|package example
           |
+          |object Widget{}
+          |object Main {
+          |  Wi@@
+          |}
+          |""".stripMargin,
+      """|Widget -  example
+         |Window -  java.awt
+         |WindowPeer -  java.awt.peer
+         |WithFilter - [A](p: A => Boolean, xs: Array[A]): WithFilter[A]
+         |WithFilter - [A, CC[_$$2]](self: IterableOps[A, CC, ?], p: A => Boolean): WithFilter[A, CC]
+         |WithFilter - [K, V, IterableCC[_$$3], CC[_$$4,_$$5] <: IterableOps[?, AnyConstr, ?]](self: MapOps[K, V, CC, ?] & IterableOps[(K, V), IterableCC, ?], p: ((K, V)) => Boolean): WithFilter[K, V, IterableCC, CC]
+         |WithFilter - [K, V, IterableCC[_$$1], MapCC[X,Y] <: scala.collection.Map[X, Y], CC[X,Y] <: scala.collection.Map[X, Y] & SortedMapOps[X, Y, CC, ?]](self: SortedMapOps[K, V, CC, ?] & MapOps[K, V, MapCC, ?] & IterableOps[(K, V), IterableCC, ?], p: ((K, V)) => Boolean): WithFilter[K, V, IterableCC, MapCC, CC]
+         |WithFilter - [A, IterableCC[_$$1], CC[X] <: SortedSet[X]](self: SortedSetOps[A, CC, ?] & IterableOps[A, IterableCC, ?], p: A => Boolean): WithFilter[A, IterableCC, CC]
+         |WithFilter - (p: Char => Boolean, s: String): WithFilter
+         |WithFilter - [A](l: Stream[A] @uncheckedVariance, p: A => Boolean): WithFilter[A]
+         |""".stripMargin,
+      includeDetail = true,
+    )
+
+  @Test def `no-apply2` =
+    checkSnippet(
+      s"""|package example
+          |
           |object TestObject {}
           |object Main {
           |  TestObjec@@

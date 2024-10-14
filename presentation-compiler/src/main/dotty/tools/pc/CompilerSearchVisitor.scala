@@ -28,7 +28,7 @@ class CompilerSearchVisitor(
     owner.isStatic && owner.isPublic
 
   private def isAccessible(sym: Symbol): Boolean = try
-    sym != NoSymbol && sym.isPublic && sym.isStatic || isAccessibleImplicitClass(sym)
+    (sym != NoSymbol && sym.isAccessibleFrom(ctx.owner.info) && sym.isStatic) || isAccessibleImplicitClass(sym)
   catch
     case err: AssertionError =>
       logger.log(Level.WARNING, err.getMessage())

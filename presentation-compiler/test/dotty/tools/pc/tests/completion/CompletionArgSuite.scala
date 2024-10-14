@@ -796,7 +796,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |  def k: Int = m(1, a@@)
          |""".stripMargin,
       """|aaa = : Int
-         |assert(assertion: Boolean): Unit
+         |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
       topLines = Some(2),
     )
@@ -810,7 +810,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |  def k: Int = m(inn = 1, a@@)
          |""".stripMargin,
       """|aaa = : Int
-         |assert(assertion: Boolean): Unit
+         |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
       topLines = Some(2),
     )
@@ -912,7 +912,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|aaa = : Int
          |abb = : Option[Int]
-         |assert(assertion: Boolean): Unit
+         |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
       topLines = Some(3),
     )
@@ -927,7 +927,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|aaa = : Int
          |abb = : Option[Int]
-         |assert(assertion: Boolean): Unit
+         |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
       topLines = Some(3),
     )
@@ -945,7 +945,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|aaa = : Int
          |abb = : Option[Int]
-         |assert(assertion: Boolean): Unit
+         |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
       topLines = Some(3),
     )
@@ -963,7 +963,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|abb = : Option[Int]
          |acc = : List[Int]
-         |assert(assertion: Boolean): Unit
+         |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
       topLines = Some(3),
     )
