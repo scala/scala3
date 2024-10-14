@@ -21,8 +21,8 @@ import dotty.tools.backend.sjs.JSDefinitions.jsdefn
 import JSExportUtils.*
 import JSSymUtils.*
 
-import org.scalajs.ir.Names.DefaultModuleID
-import org.scalajs.ir.Trees.TopLevelExportDef.isValidTopLevelExportName
+import dotty.tools.sjs.ir.Names.DefaultModuleID
+import dotty.tools.sjs.ir.Trees.TopLevelExportDef.isValidTopLevelExportName
 
 object PrepJSExports {
   import tpd.*
