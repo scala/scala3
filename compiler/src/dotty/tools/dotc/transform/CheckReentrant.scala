@@ -43,7 +43,7 @@ class CheckReentrant extends MiniPhase {
     requiredClass("scala.annotation.internal.unshared"))
 
   private val scalaJSIRPackageClass = new CtxLazy(
-    getPackageClassIfDefined("org.scalajs.ir"))
+    getPackageClassIfDefined("dotty.tools.sjs.ir"))
 
   def isIgnored(sym: Symbol)(using Context): Boolean =
     sym.hasAnnotation(sharableAnnot()) ||
