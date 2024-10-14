@@ -1,4 +1,3 @@
-import caps.unbox
 
 class C
 def f(xs: List[C^]) =
@@ -22,7 +21,7 @@ extension [A](x: A) def :: (xs: List[A]): List[A] = ???
 
 object Nil extends List[Nothing]
 
-def runAll(@unbox xs: List[Proc]): Unit =
+def runAll(xs: List[Proc]): Unit =
   var cur: List[() ->{xs*} Unit] = xs  // OK, by revised VAR
   while cur.nonEmpty do
     val next: () ->{xs*} Unit = cur.head

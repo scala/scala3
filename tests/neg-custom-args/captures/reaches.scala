@@ -1,4 +1,3 @@
-import caps.unbox
 class File:
   def write(): Unit = ???
 
@@ -11,7 +10,7 @@ class Ref[T](init: T):
   def get: T = x
   def set(y: T) = { x = y }
 
-def runAll0(@unbox xs: List[Proc]): Unit =
+def runAll0(xs: List[Proc]): Unit =
   var cur: List[() ->{xs*} Unit] = xs
   while cur.nonEmpty do
     val next: () ->{xs*} Unit = cur.head
@@ -21,7 +20,7 @@ def runAll0(@unbox xs: List[Proc]): Unit =
   usingFile: f =>
     cur = (() => f.write()) :: Nil // error
 
-def runAll1(@unbox xs: List[Proc]): Unit =
+def runAll1(xs: List[Proc]): Unit =
   val cur = Ref[List[() ->{xs*} Unit]](xs)  // OK, by revised VAR
   while cur.get.nonEmpty do
     val next: () ->{xs*} Unit = cur.get.head

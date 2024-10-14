@@ -1,11 +1,10 @@
 import language.experimental.captureChecking
-import caps.unbox
 
 class Box[T](items: Seq[T^]):
   def getOne: T^{items*} = ???
 
 object Box:
-  def getOne[T](@unbox items: Seq[T^]): T^{items*} =
+  def getOne[T](items: Seq[T^]): T^{items*} =
     val bx = Box(items)
     bx.getOne
 /*

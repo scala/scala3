@@ -1,12 +1,12 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:22:11 --------------------------------------
-22 |    cur = (() => f.write()) :: Nil // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:21:11 --------------------------------------
+21 |    cur = (() => f.write()) :: Nil // error
    |           ^^^^^^^^^^^^^^^^^^^^^^^
    |           Found:    List[box () ->{f} Unit]
    |           Required: List[box () ->{xs*} Unit]
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:33:7 ---------------------------------------
-33 |      (() => f.write()) :: Nil // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:32:7 ---------------------------------------
+32 |      (() => f.write()) :: Nil // error
    |       ^^^^^^^^^^^^^^^^^^^^^^^
    |       Found:    List[box () ->{f} Unit]
    |       Required: box List[box () ->{xs*} Unit]^?
@@ -15,40 +15,40 @@
    |       cannot be included in outer capture set {xs*} of value cur
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/reaches.scala:38:31 -----------------------------------------------------------
-38 |    val next: () => Unit = cur.head // error
+-- Error: tests/neg-custom-args/captures/reaches.scala:37:31 -----------------------------------------------------------
+37 |    val next: () => Unit = cur.head // error
    |                           ^^^^^^^^
    |                       The expression's type box () => Unit is not allowed to capture the root capability `cap`.
    |                       This usually means that a capability persists longer than its allowed lifetime.
--- Error: tests/neg-custom-args/captures/reaches.scala:45:35 -----------------------------------------------------------
-45 |    val next: () => Unit = cur.get.head // error
+-- Error: tests/neg-custom-args/captures/reaches.scala:44:35 -----------------------------------------------------------
+44 |    val next: () => Unit = cur.get.head // error
    |                           ^^^^^^^^^^^^
    |                       The expression's type box () => Unit is not allowed to capture the root capability `cap`.
    |                       This usually means that a capability persists longer than its allowed lifetime.
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:53:2 ---------------------------------------
-53 |  val id: Id[Proc, Proc] = new Id[Proc, () -> Unit] // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:52:2 ---------------------------------------
+52 |  val id: Id[Proc, Proc] = new Id[Proc, () -> Unit] // error
    |  ^
    |  Found:    box () => Unit
    |  Required: () => Unit
    |
    |  Note that box () => Unit cannot be box-converted to () => Unit
    |  since at least one of their capture sets contains the root capability `cap`
-54 |  usingFile: f =>
-55 |    id(() => f.write())
+53 |  usingFile: f =>
+54 |    id(() => f.write())
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:62:27 --------------------------------------
-62 |    val f1: File^{id*} = id(f) // error, since now id(f): File^ // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:61:27 --------------------------------------
+61 |    val f1: File^{id*} = id(f) // error, since now id(f): File^ // error
    |                         ^^^^^
    |                         Found:    File^{f}
    |                         Required: File^{id*}
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/reaches.scala:61:31 -----------------------------------------------------------
-61 |  val leaked = usingFile[File^{id*}]: f => // error
+-- Error: tests/neg-custom-args/captures/reaches.scala:60:31 -----------------------------------------------------------
+60 |  val leaked = usingFile[File^{id*}]: f => // error
    |                               ^^^
    |                               id* cannot be tracked since its capture set is empty
--- Error: tests/neg-custom-args/captures/reaches.scala:62:18 -----------------------------------------------------------
-62 |    val f1: File^{id*} = id(f) // error, since now id(f): File^ // error
+-- Error: tests/neg-custom-args/captures/reaches.scala:61:18 -----------------------------------------------------------
+61 |    val f1: File^{id*} = id(f) // error, since now id(f): File^ // error
    |                  ^^^
    |                  id* cannot be tracked since its capture set is empty
