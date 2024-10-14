@@ -73,9 +73,9 @@ class VarianceChecker(using Context) {
 
     /** The variance of a symbol occurrence of `tvar` seen at the level of the definition of `base`.
      *  The search proceeds from `base` to the owner of `tvar`.
-     *  Initially the state is covariant, but it might change along the search.
+     *  Initially the state is the accumulator's variance, but it might change along the search.
      */
-    def relativeVariance(tvar: Symbol, base: Symbol, v: Variance = Covariant): Variance = /*trace(i"relative variance of $tvar wrt $base, so far: $v")*/
+    def relativeVariance(tvar: Symbol, base: Symbol, v: Variance = varianceFromInt(variance)): Variance = /*trace(i"relative variance of $tvar wrt $base, so far: $v")*/
       if base == tvar.owner then
         v
       else if base.is(Param) && base.owner.isTerm && !base.owner.isAllOf(PrivateLocal) then

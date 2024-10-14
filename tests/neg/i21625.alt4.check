@@ -1,0 +1,4 @@
+-- Error: tests/neg/i21625.alt4.scala:2:11 -----------------------------------------------------------------------------
+2 |  def test[F[_ >: L] >: Unit]: Unit // error
+  |           ^^^^^^^^^^^^^^^^^
+  |           covariant type L occurs in contravariant position in type [_$1 >: L] >: Unit of type F
