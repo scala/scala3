@@ -47,8 +47,8 @@
 -- Error: tests/neg-custom-args/captures/reaches.scala:60:31 -----------------------------------------------------------
 60 |  val leaked = usingFile[File^{id*}]: f => // error
    |                               ^^^
-   |                               id* cannot be tracked since its capture set is empty
+   |                               id* cannot be tracked since its deep capture set is empty
 -- Error: tests/neg-custom-args/captures/reaches.scala:61:18 -----------------------------------------------------------
 61 |    val f1: File^{id*} = id(f) // error, since now id(f): File^ // error
    |                  ^^^
-   |                  id* cannot be tracked since its capture set is empty
+   |                  id* cannot be tracked since its deep capture set is empty

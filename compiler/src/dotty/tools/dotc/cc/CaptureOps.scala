@@ -226,20 +226,15 @@ extension (tp: Type)
    *  covariant capture sets embedded in the widened type, as computed by
    *  `CaptureSet.ofTypeDeeply`. If that set is nonempty, and the type is
    *  a singleton capability `x` or a reach capability `x*`, the deep capture
-   *  set can be narrowed to`{x*}`. However, A deep capture set should not be
-   *  narrowed to a reach capability `x*` if there are elements in the underlying
-   *  set that live longer than `x`. See `delayedRunops.scala` for a test case.
+   *  set can be narrowed to`{x*}`.
    */
   def deepCaptureSet(using Context): CaptureSet =
     val dcs = CaptureSet.ofTypeDeeply(tp.widen.stripCapturing)
-    def reachCanSubsumDcs =
-      dcs.isUniversal
-      || dcs.elems.forall(c => c.pathOwner.isContainedIn(tp.pathOwner))
     if dcs.isAlwaysEmpty then tp.captureSet
     else tp match
-      case tp @ ReachCapability(_) if reachCanSubsumDcs =>
+      case tp @ ReachCapability(_) =>
         tp.singletonCaptureSet
-      case tp: SingletonCaptureRef if tp.isTrackableRef && reachCanSubsumDcs =>
+      case tp: SingletonCaptureRef if tp.isTrackableRef =>
         tp.reach.singletonCaptureSet
       case _ =>
         tp.captureSet ++ dcs
@@ -296,6 +291,13 @@ extension (tp: Type)
     case tp1: NamedType => tp1.symbol.owner
     case tp1: ThisType => tp1.cls
     case _ => NoSymbol
+
+  final def isParamPath(using Context): Boolean = tp.dealias match
+    case tp1: NamedType =>
+      tp1.prefix match
+        case _: ThisType | NoPrefix => tp1.symbol.isOneOf(Param | ParamAccessor)
+        case prefix => prefix.isParamPath
+    case _ => false
 
   /** If this is a unboxed capturing type with nonempty capture set, its boxed version.
    *  Or, if type is a TypeBounds of capturing types, the version where the bounds are boxed.
