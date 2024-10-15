@@ -149,8 +149,8 @@ object Build {
    *  scala-library.
    */
   def stdlibVersion(implicit mode: Mode): String = mode match {
-    case NonBootstrapped => "2.13.14"
-    case Bootstrapped => "2.13.14"
+    case NonBootstrapped => "2.13.15"
+    case Bootstrapped => "2.13.15"
   }
 
   /** Version of the scala-library for which we will generate TASTy.
@@ -160,7 +160,7 @@ object Build {
    *  We can use nightly versions to tests the future compatibility in development.
    *  Nightly versions: https://scala-ci.typesafe.com/ui/native/scala-integration/org/scala-lang
    */
-  val stdlibBootstrappedVersion = "2.13.14"
+  val stdlibBootstrappedVersion = "2.13.15"
 
   val dottyOrganization = "org.scala-lang"
   val dottyGithubUrl = "https://github.com/scala/scala3"
@@ -1426,7 +1426,7 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   lazy val presentationCompilerSettings = {
-    val mtagsVersion = "1.3.4"
+    val mtagsVersion = "1.3.5"
     Seq(
       libraryDependencies ++= Seq(
         "org.lz4" % "lz4-java" % "1.8.0",
@@ -1436,7 +1436,7 @@ object Build {
           .exclude("org.eclipse.lsp4j","org.eclipse.lsp4j.jsonrpc"),
         "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.20.1",
       ),
-      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.14" % mtagsVersion % SourceDeps),
+      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.15" % mtagsVersion % SourceDeps),
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       scalacOptions ++= Seq("-source", "3.3"), // To avoid fatal migration warnings
