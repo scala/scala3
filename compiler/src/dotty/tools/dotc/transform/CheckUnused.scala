@@ -101,8 +101,16 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
     popScope(tree)
     tree
 
+  // Megaphase will feed us Inlined(call, bindings, expansion) bindings and expansion,
+  // but we care about call only.
+  override def prepareForInlined(tree: Inlined)(using Context): Context =
+    preparing:
+      ud.exclude.top.addAll(tree.bindings)
+      ud.exclude.top.addOne(tree.expansion)
+
   override def transformInlined(tree: Inlined)(using Context): tree.type =
-    transformAllDeep(tree.call)
+    if phaseMode == PhaseMode.Aggregate then
+      transformAllDeep(tree.call)
     tree
 
   override def transformTypeTree(tree: TypeTree)(using Context): tree.type =
@@ -343,6 +351,8 @@ object CheckUnused:
 
     private val paramsToSkip = mut.Set.empty[Symbol]
 
+    val exclude = Stack(ListBuffer.empty[Tree])
+
     def finishAggregation(using Context)(): Unit =
       unusedAggregate = unusedAggregate match
         case None =>
@@ -360,7 +370,9 @@ object CheckUnused:
      *  as the same element can be imported with different renaming.
      */
     def registerUsed(sym: Symbol, name: Option[Name], prefix: Type = NoPrefix, includeForImport: Boolean = true, tree: Tree)(using Context): Unit =
-      if sym.exists && !isConstructorOfSynth(sym) && !doNotRegister(sym) && !doNotRegisterPrefix(prefix.typeSymbol) then
+      if sym.exists && !isConstructorOfSynth(sym) && !doNotRegister(sym) && !doNotRegisterPrefix(prefix.typeSymbol)
+        && !exclude.top.exists(_ eq tree)
+      then
         if sym.isConstructor then
           // constructors are "implicitly" imported with the class
           registerUsed(sym.owner, name = None, prefix, includeForImport = includeForImport, tree = tree)
@@ -447,6 +459,7 @@ object CheckUnused:
       impInScope.push(ListBuffer.empty)
       usedInScope.push(mut.Map.empty)
       this.parents.push(parents)
+      exclude.push(ListBuffer.empty)
 
     def registerSetVar(sym: Symbol): Unit =
       setVars += sym
@@ -475,6 +488,7 @@ object CheckUnused:
           unusedImport += selData
 
       this.parents.pop()
+      exclude.pop()
     end popScope
 
     /** Leave the scope and return a result set of warnings.
@@ -594,9 +608,10 @@ object CheckUnused:
       ||
       imp.expr.tpe.member(sel.name.toTermName).alternatives.exists(p => derivesFromCanEqual(p.symbol))
 
-    /** Ignore definitions of CanEqual given.
+    /** Ignore definitions of CanEqual given, and ignore certain other trees.
      */
-    private def isDefIgnored(memDef: MemberDef)(using Context): Boolean = derivesFromCanEqual(memDef.symbol)
+    private def isDefIgnored(tree: Tree)(using Context): Boolean =
+      exclude.top.exists(t => t.find(_ eq tree).isDefined) || derivesFromCanEqual(tree.symbol)
 
     extension (sel: ImportSelector)
       def boundTpe: Type = sel.bound match
