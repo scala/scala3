@@ -1119,12 +1119,18 @@ object CaptureSet:
    *  replaces caps with reach capabilties.
    */
   def ofTypeDeeply(tp: Type)(using Context): CaptureSet =
+    object ReachesMap extends IdempotentCaptRefMap:
+      def apply(t: Type): Type = t match
+        case ReachCapability(ref) if !ref.isParamPath =>
+          defn.Caps_CapSet.typeRef.capturing(ref.deepCaptureSet)
+        case _ =>
+          t
     val collect = new TypeAccumulator[CaptureSet]:
       def apply(cs: CaptureSet, t: Type) =
         if variance <= 0 then cs
         else t.dealias match
           case t @ CapturingType(p, cs1) =>
-            this(cs, p) ++ cs1
+            this(cs, p) ++ cs1.map(ReachesMap)
           case t @ AnnotatedType(parent, ann) =>
             this(cs, parent)
           case t @ FunctionOrMethod(args, res @ Existential(_, _))
