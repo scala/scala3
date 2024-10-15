@@ -25,6 +25,7 @@ object NamedTuple:
   extension [V <: Tuple](x: V)
     inline def withNames[N <: Tuple]: NamedTuple[N, V] = x
 
+  import NamedTupleDecomposition.{Names, DropNames}
   export NamedTupleDecomposition.{
     Names, DropNames,
     apply, size, init, head, last, tail, take, drop, splitAt, ++, map, reverse, zip, toList, toArray, toIArray
@@ -134,78 +135,69 @@ object NamedTupleDecomposition:
   import NamedTuple.*
   extension [N <: Tuple, V <: Tuple](x: NamedTuple[N, V])
       /** The value (without the name) at index `n` of this tuple */
-    inline def apply(n: Int): Tuple.Elem[V, n.type] =
+    inline def apply(n: Int): Elem[NamedTuple[N, V], n.type] =
       inline x.toTuple match
-        case tup: NonEmptyTuple => tup(n).asInstanceOf[Tuple.Elem[V, n.type]]
-        case tup => tup.productElement(n).asInstanceOf[Tuple.Elem[V, n.type]]
+        case tup: NonEmptyTuple => tup(n).asInstanceOf[Elem[NamedTuple[N, V], n.type]]
+        case tup => tup.productElement(n).asInstanceOf[Elem[NamedTuple[N, V], n.type]]
 
     /** The number of elements in this tuple */
-    inline def size: Tuple.Size[V] = x.toTuple.size
+    inline def size: Size[NamedTuple[N, V]] = x.toTuple.size
 
     /** The first element value of this tuple */
-    inline def head: Tuple.Elem[V, 0] = apply(0)
+    inline def head: Head[NamedTuple[N, V]] = apply(0)
 
     /** The last element value of this tuple */
-    inline def last: Tuple.Last[V] = apply(size - 1).asInstanceOf[Tuple.Last[V]]
+    inline def last: Last[NamedTuple[N, V]] = apply(size - 1).asInstanceOf[Last[NamedTuple[N, V]]]
 
     /** The tuple consisting of all elements of this tuple except the last one */
-    inline def init: NamedTuple[Tuple.Init[N], Tuple.Init[V]] =
-      x.toTuple.take(size - 1).asInstanceOf[NamedTuple[Tuple.Init[N], Tuple.Init[V]]]
+    inline def init: Init[NamedTuple[N, V]] =
+      x.take(size - 1).asInstanceOf[Init[NamedTuple[N, V]]]
 
     /** The tuple consisting of all elements of this tuple except the first one */
-    inline def tail: NamedTuple[Tuple.Tail[N], Tuple.Tail[V]] =
-      x.toTuple.drop(1).asInstanceOf[NamedTuple[Tuple.Tail[N], Tuple.Tail[V]]]
+    inline def tail: Tail[NamedTuple[N, V]] = x.toTuple.drop(1)
 
     /** The tuple consisting of the first `n` elements of this tuple, or all
      *  elements if `n` exceeds `size`.
      */
-    inline def take(n: Int): NamedTuple[Tuple.Take[N, n.type], Tuple.Take[V, n.type]] =
-      x.toTuple.take(n)
+    inline def take(n: Int): Take[NamedTuple[N, V], n.type] = x.toTuple.take(n)
 
     /** The tuple consisting of all elements of this tuple except the first `n` ones,
      *  or no elements if `n` exceeds `size`.
      */
-    inline def drop(n: Int): NamedTuple[Tuple.Drop[N, n.type], Tuple.Drop[V, n.type]] =
-      x.toTuple.drop(n)
+    inline def drop(n: Int): Drop[NamedTuple[N, V], n.type] = x.toTuple.drop(n)
 
     /** The tuple `(x.take(n), x.drop(n))` */
-    inline def splitAt(n: Int):
-      (NamedTuple[Tuple.Take[N, n.type], Tuple.Take[V, n.type]],
-       NamedTuple[Tuple.Drop[N, n.type], Tuple.Drop[V, n.type]]) =
-        // would be nice if this could have type `Split[NamedTuple[N, V]]` instead, but
-        // we get a type error then. Similar for other methods here.
-      x.toTuple.splitAt(n)
+    inline def splitAt(n: Int): Split[NamedTuple[N, V], n.type] = x.toTuple.splitAt(n)
 
     /** The tuple consisting of all elements of this tuple followed by all elements
      *  of tuple `that`. The names of the two tuples must be disjoint.
      */
     inline def ++ [N2 <: Tuple, V2 <: Tuple](that: NamedTuple[N2, V2])(using Tuple.Disjoint[N, N2] =:= true)
-      : NamedTuple[Tuple.Concat[N, N2], Tuple.Concat[V, V2]]
+      : Concat[NamedTuple[N, V], NamedTuple[N2, V2]]
       = x.toTuple ++ that.toTuple
 
     /** The named tuple consisting of all element values of this tuple mapped by
      *  the polymorphic mapping function `f`. The names of elements are preserved.
      *  If `x = (n1 = v1, ..., ni = vi)` then `x.map(f) = `(n1 = f(v1), ..., ni = f(vi))`.
      */
-    inline def map[F[_]](f: [t] => t => F[t]): NamedTuple[N, Tuple.Map[V, F]] =
-      x.toTuple.map(f).asInstanceOf[NamedTuple[N, Tuple.Map[V, F]]]
+    inline def map[F[_]](f: [t] => t => F[t]): Map[NamedTuple[N, V], F] =
+      x.toTuple.map[F](f)
 
     /** The named tuple consisting of all elements of this tuple in reverse */
-    inline def reverse: NamedTuple[Tuple.Reverse[N], Tuple.Reverse[V]] =
-      x.toTuple.reverse
+    inline def reverse: Reverse[NamedTuple[N, V]] = x.toTuple.reverse
 
-    /** The named tuple consisting of all elements values of this tuple zipped
+    /** The named tuple consisting of all element values of this tuple zipped
      *  with corresponding element values in named tuple `that`.
      *  If the two tuples have different sizes,
      *  the extra elements of the larger tuple will be disregarded.
      *  The names of `x` and `that` at the same index must be the same.
      *  The result tuple keeps the same names as the operand tuples.
      */
-    inline def zip[V2 <: Tuple](that: NamedTuple[N, V2]): NamedTuple[N, Tuple.Zip[V, V2]] =
+    inline def zip[V2 <: Tuple](that: NamedTuple[N, V2]): Zip[NamedTuple[N, V], NamedTuple[N, V2]] =
       x.toTuple.zip(that.toTuple)
 
     /** A list consisting of all element values */
-    inline def toList: List[Tuple.Union[V]] = x.toTuple.toList.asInstanceOf[List[Tuple.Union[V]]]
+    inline def toList: List[Tuple.Union[V]] = x.toTuple.toList
 
     /** An array consisting of all element values */
     inline def toArray: Array[Object] = x.toTuple.toArray
