@@ -489,8 +489,8 @@ object projects:
 
   lazy val scalaCollectionCompat = SbtCommunityProject(
     project        = "scala-collection-compat",
-    sbtTestCommand = "compat30/test",
-    sbtPublishCommand = "compat30/publishLocal",
+    sbtTestCommand = "compat3/test",
+    sbtPublishCommand = "compat3/publishLocal",
   )
 
   lazy val scalaJava8Compat = SbtCommunityProject(
