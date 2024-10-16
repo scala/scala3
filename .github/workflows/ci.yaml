@@ -799,8 +799,8 @@ jobs:
             tar -czf "${artifactName}.tar.gz" -C "${tmpDir}" .
 
             # Caluclate SHA for each of archive files
-            for file in "./${artifactName}.zip" "./${artifactName}.tar.gz"; do
-              sha256sum "${file}" | cut -d " " -f 1 > "${file}.sha256"
+            for file in "${artifactName}.zip" "${artifactName}.tar.gz"; do
+              sha256sum "${file}" > "${file}.sha256"
             done
           }
           prepareSDK "" ${{needs.build-sdk-package.outputs.universal-id}}
