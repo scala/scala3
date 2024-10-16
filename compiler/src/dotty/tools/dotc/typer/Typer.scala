@@ -2842,9 +2842,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   private def setAbstractTrackedInfo(sym: Symbol, rhs: Tree, tpt: untpd.Tree)(using Context): Unit =
-    if sym.allOverriddenSymbols.exists(_.flags.is(Tracked)) && !sym.flags.is(ParamAccessor) && !sym.flags.is(Param) then
-      sym.setFlag(Tracked)
-      if tpt.isEmpty then
+    if !sym.flags.is(ParamAccessor) && !sym.flags.is(Param) then
+      if sym.allOverriddenSymbols.exists(_.flags.is(Tracked)) then
+        sym.setFlag(Tracked)
+      if sym.flags.is(Tracked) && tpt.isEmpty then
         sym.info = rhs.tpe
 
   private def retractDefDef(sym: Symbol)(using Context): Tree =
