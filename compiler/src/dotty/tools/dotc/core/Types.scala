@@ -4706,6 +4706,7 @@ object Types extends TypeUtils {
     type BT <: LambdaType
     def paramNum: Int
     def paramName: binder.ThisName = binder.paramNames(paramNum)
+    def paramInfo: binder.PInfo    = binder.paramInfos(paramNum)
 
     override def underlying(using Context): Type = {
       // TODO: update paramInfos's type to nullable
