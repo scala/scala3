@@ -902,7 +902,9 @@ object TypeOps:
     }
 
     val inferThisMap = new InferPrefixMap
-    val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds, DepParamName.fresh(tparam.paramName)) }
+    val tvars = tp1.etaExpand match
+      case eta: TypeLambda => constrained(eta)
+      case _               => Nil
     val protoTp1 = inferThisMap.apply(tp1).appliedTo(tvars)
 
     if gadtSyms.nonEmpty then

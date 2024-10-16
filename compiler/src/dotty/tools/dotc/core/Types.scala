@@ -4395,9 +4395,11 @@ object Types extends TypeUtils {
 
     /** Distributes Lambda inside type bounds. Examples:
      *
-     *      type T[X] = U        becomes    type T = [X] -> U
-     *      type T[X] <: U       becomes    type T >: Nothing <: ([X] -> U)
-     *      type T[X] >: L <: U  becomes    type T >: ([X] -> L) <: ([X] -> U)
+     *  {{{
+     *      type T[X] = U        becomes    type T = [X] =>> U
+     *      type T[X] <: U       becomes    type T >: Nothing <: ([X] =>> U)
+     *      type T[X] >: L <: U  becomes    type T >: ([X] =>> L) <: ([X] =>> U)
+     *  }}}
      *
      *  The variances of regular TypeBounds types, as well as of match aliases
      *  and of opaque aliases are always determined from the given parameters
@@ -4409,6 +4411,7 @@ object Types extends TypeUtils {
      *
      *  Examples:
      *
+     *  {{{
      *    type T[X] >: A              // X is invariant
      *    type T[X] <: List[X]        // X is invariant
      *    type T[X] = List[X]         // X is covariant (determined structurally)
@@ -4416,6 +4419,7 @@ object Types extends TypeUtils {
      *    opaque type T[+X] = List[X] // X is covariant
      *    type T[A, B] = A => B       // A is contravariant, B is covariant (determined structurally)
      *    type T[A, +B] = A => B      // A is invariant, B is covariant
+     *  }}}
      */
     def boundsFromParams[PI <: ParamInfo.Of[TypeName]](params: List[PI], bounds: TypeBounds)(using Context): TypeBounds = {
       def expand(tp: Type, useVariances: Boolean) =
