@@ -1,7 +1,7 @@
 -- Error: tests/neg-custom-args/captures/i21347.scala:4:15 -------------------------------------------------------------
 4 |  ops.foreach: op => // error
   |               ^
-  |               Local reach capability C leaks into capture scope of method runOps
+  |               Local capture set variable C leaks into capture scope of method runOps
 5 |    op()
 -- Error: tests/neg-custom-args/captures/i21347.scala:8:14 -------------------------------------------------------------
 8 |  () => runOps(f :: Nil) // error
