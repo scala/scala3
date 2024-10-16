@@ -769,36 +769,38 @@ jobs:
       - name: Prepare the SDKs
         run : |
           function prepareSDK() {
-            distroSuffix=$1
-            artifactId=$2
+            distroSuffix="$1"
+            artifactId="$2"
             artifactName="scala3-${{ env.RELEASE_TAG }}${distroSuffix}"
 
             downloadedArchive="./artifact.zip"
             if [[ -f "${downloadedArchive}" ]]; then
-              rm $downloadedArchive
+              rm "${downloadedArchive}"
             fi
 
             # Download previously prepared SDK bundle
             curl -L \
               -H "Authorization: token ${{secrets.GITHUB_TOKEN}}" \
-              -o ${downloadedArchive} \
+              -H "Accept: application/vnd.github+json" \
+              -o "${downloadedArchive}" \
               --retry 5 --retry-delay 10 --retry-connrefused \
               --max-time 600 --connect-timeout 60  \
               https://api.github.com/repos/scala/scala3/actions/artifacts/${artifactId}/zip
 
             # Repackage content of .zip to .tar.gz and prepare digest
             tmpDir="./archive-tmp-dir"
-            if [[ -f "${tmpDir}" ]]; then
-              rm -r ${tmpDir}
+            if [[ -d "${tmpDir}" ]]; then
+              rm -r "${tmpDir}"
             fi
-            unzip ${downloadedArchive} -d ${tmpDir}
+            mkdir "${tmpDir}"
+            unzip "${downloadedArchive}" -d "${tmpDir}"
 
-            mv ${downloadedArchive} ./${artifactName}.zip
-            tar -czf ${artifactName}.tar.gz -C ${tmpDir} .
+            mv "${downloadedArchive}" "./${artifactName}.zip"
+            tar -czf "${artifactName}.tar.gz" -C "${tmpDir}" .
 
             # Caluclate SHA for each of archive files
-            for file in ./${artifactName}.zip ./${artifactName}.tar.gz; do
-              sha256sum ${file} | cut -d " " -f 1 > ${file}.sha256
+            for file in "./${artifactName}.zip" "./${artifactName}.tar.gz"; do
+              sha256sum "${file}" | cut -d " " -f 1 > "${file}.sha256"
             done
           }
           prepareSDK "" ${{needs.build-sdk-package.outputs.universal-id}}
