@@ -88,7 +88,7 @@ object Build {
 
   val referenceVersion = "3.5.1"
 
-  val baseVersion = "3.5.2-RC2"
+  val baseVersion = "3.5.2"
 
   // LTS or Next
   val versionLine = "Next"
