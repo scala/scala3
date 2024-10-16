@@ -1008,13 +1008,24 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         typedSelectWithAdapt(tree, pt, qual).withSpan(tree.span).computeNullable()
 
     def javaSelection(qual: Tree)(using Context) =
-      val tree1 = assignType(cpy.Select(tree)(qual, tree.name), qual)
-      tree1.tpe match
-        case moduleRef: TypeRef if moduleRef.symbol.is(ModuleClass, butNot = JavaDefined) =>
-          // handle unmangling of module names (Foo$ -> Foo[ModuleClass])
-          cpy.Select(tree)(qual, tree.name.unmangleClassName).withType(moduleRef)
-        case _ =>
-          tree1
+      qual match
+      case id @ Ident(name) if id.symbol.is(Package) && !id.symbol.owner.isRoot =>
+        def nextPackage(last: Symbol)(using Context): Type =
+          val startAt = ctx.outersIterator.dropWhile(_.owner != last.owner).drop(1).next()
+          val next = findRef(name, WildcardType, required = Package, EmptyFlags, qual.srcPos)(using startAt)
+          if next.exists && !next.typeSymbol.owner.isRoot then nextPackage(next.typeSymbol)
+          else next
+        val next = nextPackage(id.symbol)
+        val qual1 = if next.exists then assignType(cpy.Ident(id)(tree.name), next) else qual
+        assignType(cpy.Select(tree)(qual1, tree.name), qual1)
+      case _ =>
+        val tree1 = assignType(cpy.Select(tree)(qual, tree.name), qual)
+        tree1.tpe match
+          case moduleRef: TypeRef if moduleRef.symbol.is(ModuleClass, butNot = JavaDefined) =>
+            // handle unmangling of module names (Foo$ -> Foo[ModuleClass])
+            cpy.Select(tree)(qual, tree.name.unmangleClassName).withType(moduleRef)
+          case _ =>
+            tree1
 
     def tryJavaSelectOnType(using Context): Tree = tree.qualifier match {
       case sel @ Select(qual, name) =>
