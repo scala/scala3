@@ -62,7 +62,7 @@ trait MessageRendering {
     }
 
     val syntax =
-      if (ctx.settings.color.value != "never")
+      if (ctx.settings.color.value != "never" && !ctx.isJava)
         SyntaxHighlighting.highlight(new String(pos.linesSlice)).toCharArray
       else pos.linesSlice
     val lines = linesFrom(syntax)
