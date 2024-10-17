@@ -12,9 +12,9 @@ object LzyNil extends LzyList[Nothing]:
   def head = ???
   def tail = ???
 
-final class LzyCons[+A](hd: A, tl: () => LzyList[A]^) extends LzyList[A]:
+def LzyCons[A, C^](hd: A, tl: () => LzyList[A]^{C^}): LzyList[A]^{tl, C^} = new LzyList[A]:
   private var forced = false
-  private var cache: LzyList[A @uncheckedCaptures]^{this} = uninitialized
+  private var cache: LzyList[A @uncheckedCaptures]^{this, C^} = uninitialized
   private def force =
     if !forced then { cache = tl(); forced = true }
     cache

@@ -1,20 +1,14 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/explain-under-approx.scala:12:10 -------------------------
 12 |  col.add(Future(() => 25)) // error
    |          ^^^^^^^^^^^^^^^^
-   |       Found:    Future[Int]{val a: (async : Async^)}^{async}
-   |       Required: Future[Int]^{}
-   |
-   |       Note that a capability Collector.this.futs* in a capture set appearing in contravariant position
-   |       was mapped to col.futs* which is not a capability. Therefore, it was under-approximated to the empty set.
+   |          Found:    Future[Int]{val a: (async : Async^)}^{async}
+   |          Required: Future[Int]^{col.futs*}
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/explain-under-approx.scala:15:11 -------------------------
 15 |  col1.add(Future(() => 25)) // error
    |           ^^^^^^^^^^^^^^^^
-   |      Found:    Future[Int]{val a: (async : Async^)}^{async}
-   |      Required: Future[Int]^{}
-   |
-   |      Note that a capability Collector.this.futs* in a capture set appearing in contravariant position
-   |      was mapped to col1.futs* which is not a capability. Therefore, it was under-approximated to the empty set.
+   |           Found:    Future[Int]{val a: (async : Async^)}^{async}
+   |           Required: Future[Int]^{col1.futs*}
    |
    | longer explanation available when compiling with `-explain`

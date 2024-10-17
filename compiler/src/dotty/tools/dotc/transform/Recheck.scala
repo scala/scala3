@@ -12,7 +12,7 @@ import DenotTransformers.{DenotTransformer, IdentityDenotTransformer, SymTransfo
 import NamerOps.linkConstructorParams
 import NullOpsDecorator.stripNull
 import typer.ErrorReporting.err
-import typer.ProtoTypes.*
+import typer.ProtoTypes.{AnySelectionProto, LhsProto}
 import typer.TypeAssigner.seqLitType
 import typer.ConstFold
 import typer.ErrorReporting.{Addenda, NothingToAdd}
@@ -206,13 +206,12 @@ abstract class Recheck extends Phase, SymTransformer:
       tree.tpe
 
     def recheckSelect(tree: Select, pt: Type)(using Context): Type =
-      recheckSelection(tree, recheckSelectQualifier(tree), tree.name, pt)
+      recheckSelection(tree,
+        recheck(tree.qualifier, selectionProto(tree, pt)).widenIfUnstable,
+        tree.name, pt)
 
-    def recheckSelectQualifier(tree: Select)(using Context): Type =
-      val proto =
-        if tree.symbol == defn.Any_asInstanceOf then WildcardType
-        else AnySelectionProto
-      recheck(tree.qualifier, proto).widenIfUnstable
+    def selectionProto(tree: Select, pt: Type)(using Context): Type =
+      if tree.symbol == defn.Any_asInstanceOf then WildcardType else AnySelectionProto
 
     def recheckSelection(tree: Select, qualType: Type, name: Name,
         sharpen: Denotation => Denotation)(using Context): Type =
@@ -311,7 +310,7 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckApply(tree: Apply, pt: Type)(using Context): Type =
       val (funtpe0, qualType) = tree.fun match
         case fun: Select =>
-          val qualType = recheckSelectQualifier(fun)
+          val qualType = recheck(fun.qualifier, selectionProto(fun, WildcardType)).widenIfUnstable
           (recheckSelection(fun, qualType, fun.name, WildcardType), qualType)
         case _ =>
           (recheck(tree.fun), NoType)

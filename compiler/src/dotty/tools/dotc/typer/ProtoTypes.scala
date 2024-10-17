@@ -324,6 +324,8 @@ object ProtoTypes {
       case tp: UnapplyFunProto => new UnapplySelectionProto(name, nameSpan)
       case tp => SelectionProto(name, IgnoredProto(tp), typer, privateOK = true, nameSpan)
 
+  class WildcardSelectionProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed, true, NoSpan)
+
   /** A prototype for expressions [] that are in some unspecified selection operation
    *
    *    [].?: ?
@@ -332,9 +334,9 @@ object ProtoTypes {
    *  operation is further selection. In this case, the expression need not be a value.
    *  @see checkValue
    */
-  @sharable object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed, true, NoSpan)
+  @sharable object AnySelectionProto extends WildcardSelectionProto
 
-  @sharable object SingletonTypeProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed, true, NoSpan)
+  @sharable object SingletonTypeProto extends WildcardSelectionProto
 
   /** A prototype for selections in pattern constructors */
   class UnapplySelectionProto(name: Name, nameSpan: Span) extends SelectionProto(name, WildcardType, NoViewsAllowed, true, nameSpan)
