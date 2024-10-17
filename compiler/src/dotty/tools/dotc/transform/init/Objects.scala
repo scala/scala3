@@ -116,7 +116,16 @@ class Objects(using Context @constructorOnly):
    * regions ::= List(sourcePosition)
    */
 
+  import Heap.Addr
+
   sealed abstract class Value:
+    /** Flatten component values or addresses (non-recursive)
+     *
+     *  If the value does not contain a component, return an empty collection.
+     */
+    def flatten: Iterable[Value | Addr]
+
+    /** Display the value  */
     def show(using Context): String
 
   /** ValueElement are elements that can be contained in a RefSet */
@@ -167,6 +176,8 @@ class Objects(using Context @constructorOnly):
       outers(cls) = value
     }
 
+    def flatten: Iterable[Value | Addr] = vals.values ++ vars.values ++ outers.values
+
   /** A reference to a static object */
   case class ObjectRef(klass: ClassSymbol)
   extends Ref(valsMap = mutable.Map.empty, varsMap = mutable.Map.empty, outersMap = mutable.Map.empty):
@@ -183,8 +194,20 @@ class Objects(using Context @constructorOnly):
     klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], env: Env.Data)(
     valsMap: mutable.Map[Symbol, Value], varsMap: mutable.Map[Symbol, Heap.Addr], outersMap: mutable.Map[ClassSymbol, Value])
   extends Ref(valsMap, varsMap, outersMap):
-    def widenedCopy(outer: Value, args: List[Value], env: Env.Data): OfClass =
-      new OfClass(klass, outer, ctor, args, env)(this.valsMap, this.varsMap, this.outersMap)
+    override def equals(that: Any): Boolean =
+      that match
+        case ref: OfClass =>
+          this.klass == ref.klass
+          && this.vals == ref.vals
+          && this.vars == ref.vars
+          && this.outers == ref.outers
+
+        case _ => false
+
+    def widenedCopy(outer: Value, args: List[Value], env: Env.Data, height: Int): OfClass =
+      val vals2 = vals.map { (k, v) => k -> v.widen(height) }
+      val outers2 = outers.map { (k, v) => k -> v.widen(height) }
+      new OfClass(klass, outer, ctor, args, env)(vals2, this.varsMap, outers2)
 
     def show(using Context) =
       val valFields = vals.map(_.show +  " -> " +  _.show)
@@ -218,12 +241,54 @@ class Objects(using Context @constructorOnly):
     val addr: Heap.Addr = Heap.arrayAddr(regions, owner)
     def show(using Context) = "OfArray(owner = " + owner.show + ")"
 
+    def flatten: Iterable[Value | Addr] = Vector(addr)
+
   /**
    * Represents a lambda expression
    * @param klass The enclosing class of the anonymous function's creation site
    */
-  case class Fun(code: Tree, thisV: ThisValue, klass: ClassSymbol, env: Env.Data) extends ValueElement:
-    def show(using Context) = "Fun(" + code.show + ", " + thisV.show + ", " + klass.show + ")"
+  case class Fun(code: Tree, thisV: ThisValue, klass: ClassSymbol, env: Env.Data)(using @constructorOnly ctx: Context) extends ValueElement:
+    def show(using Context) = "Fun(" + code.show + ", " + thisV.show + ", " + klass.show + ", " + freeVals + ", " + env.show + ")"
+
+    val freeVals: Set[Symbol] = computeFreeVars()(using ctx)
+
+    def computeFreeVars()(using Context): Set[Symbol] =
+      // TODO: compute captures transitively for local methods
+      val refs = mutable.Set.empty[Symbol]
+      val defs = mutable.Set.empty[Symbol]
+      val traverser = new TreeTraverser:
+        def traverse(tree: Tree)(using Context) =
+          tree match
+            case ident: Ident =>
+              val sym = ident.symbol
+              if sym.isTerm && sym.isLocal && !sym.is(Flags.Method)
+              then refs += sym
+
+            case vdef: ValDef =>
+              val sym = vdef.symbol
+              if sym.isLocal then defs += sym
+              traverseChildren(vdef.rhs)
+
+            case _ =>
+              traverseChildren(tree)
+        end traverse
+      traverser.traverse(code)
+      refs.diff(defs).toSet
+
+    // Early compute the flattened value to avoid capturing `ctx`
+    val flatten = computeflatten()(using ctx)
+
+    def computeflatten()(using Context): Iterable[Value | Addr] =
+      val captured = freeVals.flatMap: x =>
+        Env.resolveEnv(x.enclosingMethod, thisV, env) match
+          case Some(thisV -> env) =>
+            val resOpt = Env.get(x)(using env)
+            resOpt.map(_ :: Nil).getOrElse(Nil)
+
+          case None =>
+            Nil
+
+      captured ++ Vector(thisV)
 
   /**
    * Represents a set of values
@@ -233,12 +298,16 @@ class Objects(using Context @constructorOnly):
   case class ValueSet(values: ListSet[ValueElement]) extends Value:
     def show(using Context) = values.map(_.show).mkString("[", ",", "]")
 
+    def flatten: Iterable[Value | Addr] = values
+
   /** A cold alias which should not be used during initialization.
    *
    *  Cold is not ValueElement since RefSet containing Cold is equivalent to Cold
    */
   case object Cold extends Value:
     def show(using Context) = "Cold"
+
+    def flatten: Iterable[Value | Addr] = Vector()
 
   val Bottom = ValueSet(ListSet.empty)
 
@@ -255,6 +324,8 @@ class Objects(using Context @constructorOnly):
     end Data
 
     def currentObject(using data: Data): ClassSymbol = data.checkingObjects.last.klass
+
+    def currentObjectRef(using data: Data): ObjectRef = data.checkingObjects.last
 
     private def doCheckObject(classSym: ClassSymbol)(using ctx: Context, data: Data) =
       val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
@@ -273,7 +344,7 @@ class Objects(using Context @constructorOnly):
         given regions: Regions.Data = Regions.empty // explicit name to avoid naming conflict
 
         val obj = ObjectRef(classSym)
-        log("Iteration " + count) {
+        log("Iteration " + count + " for " + classSym) {
           data.checkingObjects += obj
           init(tpl, obj, classSym)
           assert(data.checkingObjects.last.klass == classSym, "Expect = " + classSym.show + ", found = " + data.checkingObjects.last.klass)
@@ -335,6 +406,8 @@ class Objects(using Context @constructorOnly):
 
       def show(using Context): String
 
+      def flatten: Iterable[Value | Addr]
+
     /** Local environments can be deeply nested, therefore we need `outer`.
      *
      *  For local variables in rhs of class field definitions, the `meth` is the primary constructor.
@@ -362,6 +435,9 @@ class Objects(using Context @constructorOnly):
       def widen(height: Int)(using Context): Data =
         new LocalEnv(params.map(_ -> _.widen(height)), meth, outer.widen(height))(this.vals, this.vars)
 
+      def flatten: Iterable[Value | Addr] =
+        params.values ++ outer.flatten ++ valsMap.values ++ varsMap.values
+
       def show(using Context) =
         "owner: " + meth.show + "\n" +
         "params: " + params.map(_.show + " ->" + _.show).mkString("{", ", ", "}") + "\n" +
@@ -382,6 +458,8 @@ class Objects(using Context @constructorOnly):
 
       def widen(height: Int)(using Context): Data = this
 
+      def flatten: Iterable[Value | Addr] = Vector()
+
       def show(using Context): String = "NoEnv"
     end NoEnv
 
@@ -398,12 +476,16 @@ class Objects(using Context @constructorOnly):
       case Some(theValue) =>
         theValue
       case _ =>
-        report.warning("[Internal error] Value not found " + x.show + "\nenv = " + data.show + ". " + Trace.show, Trace.position)
+        report.warning("[Internal error] Value not found " + x.show + ". " + Trace.show, Trace.position)
         Bottom
 
-    def getVal(x: Symbol)(using data: Data, ctx: Context): Option[Value] = data.getVal(x)
+    def getVal(x: Symbol)(using data: Data): Option[Value] = data.getVal(x)
 
-    def getVar(x: Symbol)(using data: Data, ctx: Context): Option[Heap.Addr] = data.getVar(x)
+    def getVar(x: Symbol)(using data: Data): Option[Heap.Addr] = data.getVar(x)
+
+    def get(x: Symbol)(using data: Data): Option[Heap.Addr | Value] =
+      if x.is(Flags.Mutable) then data.getVar(x)
+      else data.getVal(x)
 
     def of(ddef: DefDef, args: List[Value], outer: Data)(using Context): Data =
       val params = ddef.termParamss.flatten.map(_.symbol)
@@ -489,7 +571,7 @@ class Objects(using Context @constructorOnly):
     opaque type Data = Map[Addr, Value]
 
     /** Store the heap as a mutable field to avoid threading it through the program. */
-    class MutableData(private[Heap] var heap: Data):
+    class MutableData(private[Heap] var heap: Data, private[Heap] var changeSet: Set[Addr]):
       private[Heap] def writeJoin(addr: Addr, value: Value): Unit =
         heap.get(addr) match
         case None =>
@@ -499,15 +581,23 @@ class Objects(using Context @constructorOnly):
           val value2 = value.join(current)
           if value2 != current then
             heap = heap.updated(addr, value2)
+            changeSet = changeSet + addr
     end MutableData
 
-    def empty(): MutableData = new MutableData(Map.empty)
+    def show(using mutable: MutableData): String =
+      "(size = " + mutable.heap.size + ")"
+
+    def empty(): MutableData = new MutableData(Map.empty, Set.empty)
 
     def contains(addr: Addr)(using mutable: MutableData): Boolean =
       mutable.heap.contains(addr)
 
-    def read(addr: Addr)(using mutable: MutableData): Value =
-      mutable.heap(addr)
+    def read(addr: Addr)(using mutable: MutableData, trace: Trace, ctx: Context): Value =
+      if mutable.heap.contains(addr) then
+        mutable.heap(addr)
+      else
+        report.warning("[Internal error] Address not found " + addr + ". Trace:\n" + Trace.show, Trace.position)
+        Bottom
 
     def writeJoin(addr: Addr, value: Value)(using mutable: MutableData): Unit =
       mutable.writeJoin(addr, value)
@@ -523,24 +613,215 @@ class Objects(using Context @constructorOnly):
 
     def getHeapData()(using mutable: MutableData): Data = mutable.heap
 
-    def setHeap(newHeap: Data)(using mutable: MutableData): Unit = mutable.heap = newHeap
+    def getChangeSet()(using mutable: MutableData): Set[Addr] = mutable.changeSet
+
+    def update(heap: Data, changeSet: Set[Addr])(using mutable: MutableData): Unit =
+      mutable.heap = heap
+      mutable.changeSet = changeSet
+
+    def join(heap1: Data, heap2: Data): Data =
+      heap1.foldLeft(heap2):
+        case (heap2, (k1, v1)) =>
+          val v2 = heap2.getOrElse(k1, Bottom)
+          heap2.updated(k1, v1.join(v2))
+
+    def reachableAddresses(roots: Iterable[Value | Addr], heap: Data, currentObj: ObjectRef, ctx: String)(using Trace): Set[Addr] =
+      val visited = mutable.Set.empty[Value]
+      val reachableKeys = mutable.Set.empty[Addr]
+
+      def indent(height: Int, startHeight: Int): String =
+        (Trace.CONNECTING_INDENT + "  ") * (startHeight - height)
+
+      def debug(items: Iterable[Value | Addr], height: Int): Unit =
+        printItems(items, height, height)
+
+      def printItems(items: Iterable[Value | Addr], height: Int, startHeight: Int): Unit =
+        for item <- items do printItem(item, height, startHeight)
+
+      def printItem(item: Value | Addr, height: Int, startHeight: Int): Unit =
+        if height == 0 then
+          println(indent(height, startHeight) + Trace.CHILD + " ... ")
+        else item match
+            case ValueSet(values) =>
+              printItems(values, height, startHeight)
+
+            case value: Value =>
+              val children = value.flatten
+              println(indent(height, startHeight) + Trace.CHILD + value.show)
+              printItems(children, height - 1, startHeight)
+
+            case addr: Addr =>
+              heap.get(addr) match
+                case Some(value) =>
+                  println(indent(height, startHeight) + Trace.CHILD + addr)
+                  printItem(value, height - 1, startHeight)
+
+                case None =>
+                  println(indent(height, startHeight) + Trace.CHILD + addr + " not found ")
+
+      def visit(item: Value | Addr): Unit =
+        item match
+          case addr: Addr =>
+            // Thanks to initialization-time irrelevance, there is no need to
+            // visit the heap regions owned by other global objects.
+            if addr.owner == currentObj.klass then
+              reachableKeys += addr
+              heap.get(addr) match
+                case Some(value) =>
+                  recur(value)
+
+                case None =>
+                  println("[Internal error] Not found addr " + addr)
+
+          case objRef: ObjectRef if objRef != currentObj =>
+            // Thanks to initialization-time irrelevance, there is no need to
+            // visit the heap regions owned by other global objects.
+            //
+            // Other objects may also refer to memory regions of the current
+            // global object. However, they must do so by referring to fields
+            // of the current global objects --- which are already visited.
+
+          case value: Value =>
+            recur(value)
+      end visit
+
+      def recur(value: Value): Unit =
+        if !visited.contains(value) then
+          visited += value
+          for item <- value.flatten do visit(item)
+
+      for item <- roots do visit(item)
+
+      reachableKeys.toSet
+    end reachableAddresses
+
+    /** Compute the footprint of the heap for evaluating an expression
+     *
+     *  The regions of the heap not in the footprint do not matter for
+     *  evaluating the underlying expression.
+     *
+     *  The reasoning above is similar to the frame rule in separation logic.
+     */
+    def footprint(heap: Data, roots: Iterable[Value | Addr], currentObj: ObjectRef)(using Trace): Data =
+      val reachableKeys = reachableAddresses(roots, heap, currentObj, "footprint")
+      heap.filter((k, v) => reachableKeys.contains(k))
+
+    /** Perform garbage collection on the abstract heap.
+     *
+     *  A heap address created after evaluating an expression can be reclaimed
+     *  if it is not reachable from the resulting value of the expression and
+     *  not reachable from the values of `heapAfter` for keys of `heapBefore`.
+     *
+     *  This optimization can help avoid populating the heap with local mutable
+     *  variables that do not leak.
+     *
+     *  GC may only be performed from method call contexts --- otherwise, we need
+     *  to consider values of the current local environment as well.
+     */
+    def gc(returnValues: List[Value], heapBefore: Data, heapAfter: Data, changeSet: Set[Addr], currentObj: ObjectRef)(using Trace): Data =
+      val roots: Iterable[Addr | Value] = changeSet.toSeq ++ returnValues
+      // reachable locations from the return value and change set
+      val reachableKeys = reachableAddresses(roots, heapAfter, currentObj, "gc")
+
+      val unreachableKeys = heapAfter.keys.filter: addr =>
+        !heapBefore.contains(addr) && !reachableKeys.contains(addr)
+
+      // println("collected keys = " + unreachableKeys)
+      heapAfter -- unreachableKeys
 
   /** Cache used to terminate the check  */
   object Cache:
-    case class Config(thisV: Value, env: Env.Data, heap: Heap.Data)
-    case class Res(value: Value, heap: Heap.Data)
+    /**
+     * TODO: heap optimization with memory side-effect analysis
+     *
+     * Observation:
+     *
+     * 1. Most methods will not read/mutate the heap (it may create more heap
+     *    cells), despite the fact that portions of the heap is reachable from
+     *    the method arugments and global objects.
+     *
+     * 2. If a particular execution of a method does not read any memory
+     *    addresses of the initial heap, then execution of the method with the
+     *    same arguments but a different heap cannot read memory addresses of
+     *    the initial heap.
+     *
+     * The above implies that in analyzing most methods, it suffices to use the
+     * empty heap which will be a better version of the footprint optimization.
+     *
+     * To figure out the memory effects of a method, we need to perform an
+     * analysis of the method. This effect analysis result can be computed as
+     * part of the analysis as part of the fixed-point computation:
+     *
+     *     Method x Env => HeapSensitive | HeapInsensitive
+     *
+     * Initially, we can assume a method to be heap-insensitive. If it is
+     * discovered to be heap-sensitive, another round of computation can be
+     * performed.
+     */
+    enum Config:
+      val heap: Heap.Data
+
+      /** The cache key for instantiation does not contain the value for `this` */
+      case Instantiation(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value], env: Env.Data, heap: Heap.Data)
+
+      /** The cache key for method calls contain the value for `this` */
+      case Call(thisV: Value, env: Env.Data, heap: Heap.Data)
+
+    case class Res(value: Value, heap: Heap.Data, changeSet: Set[Addr])
 
     class Data extends Cache[Config, Res]:
-      def get(thisV: Value, expr: Tree)(using Heap.MutableData, Env.Data): Option[Value] =
-        val config = Config(thisV, summon[Env.Data], Heap.getHeapData())
-        super.get(config, expr).map(_.value)
+      def cachedInstantiate(klass: ClassSymbol, outer: Value, ctor: Symbol, argInfos: List[ArgInfo], envOuter: Env.Data): Contextual[Value] =
+        val args = argInfos.map(_.value)
+        val instance = OfClass(klass, outer, ctor, args, envOuter)
+        val roots = envOuter.flatten.toSeq ++ args :+ State.currentObjectRef
+        val footprint = Heap.footprint(Heap.getHeapData(), roots, State.currentObjectRef)
+        val config = Config.Instantiation(klass, outer, ctor, args, envOuter, footprint)
+        cachedWithMemoryOptimization(config, klass.defTree, default = instance):
+          given Env.Data = Env.NoEnv
+          callConstructor(instance, ctor, argInfos)
+          instance
 
-      def cachedEval(thisV: ThisValue, expr: Tree, cacheResult: Boolean)(fun: Tree => Value)(using Heap.MutableData, Env.Data): Value =
-        val config = Config(thisV, summon[Env.Data], Heap.getHeapData())
-        val result = super.cachedEval(config, expr, cacheResult, default = Res(Bottom, Heap.getHeapData())) { expr =>
-          Res(fun(expr), Heap.getHeapData())
+      def cachedEval(thisV: ThisValue, expr: Tree, klass: ClassSymbol, ctx: EvalContext): Contextual[Value] =
+        val env = summon[Env.Data]
+        ctx match
+          case EvalContext.Method(meth) =>
+            // Only perform footprint optimization for method context
+            val roots = env.flatten.toSeq :+ thisV :+ State.currentObjectRef
+            val footprint = Heap.footprint(Heap.getHeapData(), roots, State.currentObjectRef)
+            val config = Config.Call(thisV, env, footprint)
+            cachedWithMemoryOptimization(config, expr, default = Bottom):
+              Returns.installHandler(meth)
+              val res = cases(expr, thisV, klass)
+              val returns = Returns.popHandler(meth)
+              res.join(returns)
+
+          case EvalContext.LazyVal | EvalContext.Function =>
+            val config = Config.Call(thisV, env, Heap.getHeapData())
+            val result = super.cachedEval(config, expr, default = Res(Bottom, config.heap, Set.empty)) {
+              val resValue = cases(expr, thisV, klass)
+              Res(resValue, Heap.getHeapData(), Heap.getChangeSet())
+            }
+            Heap.update(result.heap, result.changeSet)
+            result.value
+
+          case EvalContext.Other =>
+            cases(expr, thisV, klass)
+
+      def cachedWithMemoryOptimization(config: Config, tree: Tree, default: Value)(doEval: => Value)(using Heap.MutableData, State.Data, Trace): Value =
+        val heapBefore = Heap.getHeapData()
+        val changeSetBefore = Heap.getChangeSet()
+
+        Heap.update(config.heap, changeSet = Set.empty)
+        val result = super.cachedEval(config, tree, default = Res(default, config.heap, Set.empty)) {
+          val value = doEval
+          val heapAfter = Heap.getHeapData()
+          val changeSetNew = Heap.getChangeSet()
+          // Only perform garbage collection for method context
+          val heapGC = Heap.gc(value :: Nil, config.heap, heapAfter, changeSetNew, State.currentObjectRef)
+          Res(value, heapGC, changeSetNew)
         }
-        Heap.setHeap(result.heap)
+        Heap.update(Heap.join(heapBefore, result.heap), changeSetBefore ++ result.changeSet)
+
         result.value
   end Cache
 
@@ -618,7 +899,7 @@ class Objects(using Context @constructorOnly):
             val outer2 = outer.widen(height - 1)
             val args2 = args.map(_.widen(height - 1))
             val env2 = env.widen(height - 1)
-            ref.widenedCopy(outer2, args2, env2)
+            ref.widenedCopy(outer2, args2, env2, height - 1)
 
           case _ => a
 
@@ -659,7 +940,9 @@ class Objects(using Context @constructorOnly):
    * @param superType    The type of the super in a super call. NoType for non-super calls.
    * @param needResolve  Whether the target of the call needs resolution?
    */
-  def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+  def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log(
+      "call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show) + ", heap = " + Heap.show, printer, (v: Value) => v.show) {
+
     value.filterClass(meth.owner) match
     case Cold =>
       report.warning("Using cold alias. " + Trace.show, Trace.position)
@@ -722,12 +1005,7 @@ class Objects(using Context @constructorOnly):
           val env2 = Env.of(ddef, args.map(_.value), outerEnv)
           extendTrace(ddef) {
             given Env.Data = env2
-            cache.cachedEval(ref, ddef.rhs, cacheResult = true) { expr =>
-              Returns.installHandler(meth)
-              val res = cases(expr, thisV, cls)
-              val returns = Returns.popHandler(meth)
-              res.join(returns)
-            }
+            eval(ddef.rhs, thisV, cls, EvalContext.Method(meth))
           }
         else
           Bottom
@@ -751,7 +1029,7 @@ class Objects(using Context @constructorOnly):
         case ddef: DefDef =>
           if meth.name == nme.apply then
             given Env.Data = Env.of(ddef, args.map(_.value), env)
-            extendTrace(code) { eval(ddef.rhs, thisV, klass, cacheResult = true) }
+            extendTrace(code) { eval(ddef.rhs, thisV, klass, EvalContext.Function) }
           else
             // The methods defined in `Any` and `AnyRef` are trivial and don't affect initialization.
             if meth.owner == defn.AnyClass || meth.owner == defn.ObjectClass then
@@ -766,7 +1044,7 @@ class Objects(using Context @constructorOnly):
         case _ =>
           // by-name closure
           given Env.Data = env
-          extendTrace(code) { eval(code, thisV, klass, cacheResult = true) }
+          extendTrace(code) { eval(code, thisV, klass, EvalContext.Function) }
 
     case ValueSet(vs) =>
       vs.map(v => call(v, meth, args, receiver, superType)).join
@@ -778,7 +1056,7 @@ class Objects(using Context @constructorOnly):
    * @param ctor         The symbol of the target method.
    * @param args         Arguments of the constructor call (all parameter blocks flatten to a list).
    */
-  def callConstructor(value: Value, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+  def callConstructor(value: Value, ctor: Symbol, args: List[ArgInfo]): Contextual[Unit] = log("call " + ctor.show + ", args = " + args.map(_.value.show)  + ", heap = " + Heap.show, printer, (_: Value).show) {
     value match
     case ref: Ref =>
       if ctor.hasSource then
@@ -789,13 +1067,14 @@ class Objects(using Context @constructorOnly):
         given Env.Data = Env.of(ddef, argValues, Env.NoEnv)
         if ctor.isPrimaryConstructor then
           val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-          extendTrace(cls.defTree) { eval(tpl, ref, cls, cacheResult = true) }
+          extendTrace(cls.defTree):
+            init(tpl, ref, cls)
         else
-          extendTrace(ddef) { // The return values for secondary constructors can be ignored
+          extendTrace(ddef):
+            // `return` is possible in secondary constructors
             Returns.installHandler(ctor)
-            eval(ddef.rhs, ref, cls, cacheResult = true)
+            eval(ddef.rhs, ref, cls, EvalContext.Other)
             Returns.popHandler(ctor)
-          }
       else
         // no source code available
         Bottom
@@ -824,7 +1103,7 @@ class Objects(using Context @constructorOnly):
         given Env.Data = Env.emptyEnv(target.owner.asInstanceOf[ClassSymbol].primaryConstructor)
         if target.hasSource then
           val rhs = target.defTree.asInstanceOf[ValDef].rhs
-          eval(rhs, ref, target.owner.asClass, cacheResult = true)
+          eval(rhs, ref, target.owner.asClass, EvalContext.LazyVal)
         else
           Bottom
       else if target.exists then
@@ -916,8 +1195,6 @@ class Objects(using Context @constructorOnly):
 
   /**
    * Handle new expression `new p.C(args)`.
-   * The actual instance might be cached without running the constructor.
-   * See tests/init-global/pos/cache-constructor.scala
    *
    * @param outer       The value for `p`.
    * @param klass       The symbol of the class `C`.
@@ -957,8 +1234,7 @@ class Objects(using Context @constructorOnly):
                 // klass.enclosingMethod returns its primary constructor
                 Env.resolveEnv(klass.owner.enclosingMethod, thisV, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
 
-        val instance = OfClass(klass, outerWidened, ctor, args.map(_.value), envWidened)
-        callConstructor(instance, ctor, args)
+        cache.cachedInstantiate(klass, outerWidened, ctor, args, envWidened)
 
     case ValueSet(values) =>
       values.map(ref => instantiate(ref, klass, ctor, args)).join
@@ -1000,13 +1276,13 @@ class Objects(using Context @constructorOnly):
           end if
         case _ =>
           // Only vals can be lazy
-          report.warning("[Internal error] Variable not found " + sym.show + "\nenv = " + env.show + ". " + Trace.show, Trace.position)
+          report.warning("[Internal error] Variable not found " + sym.show + ". " + Trace.show, Trace.position)
           Bottom
       else
         given Env.Data = env
         if sym.is(Flags.Lazy) then
           val rhs = sym.defTree.asInstanceOf[ValDef].rhs
-          eval(rhs, thisV, sym.enclosingClass.asClass, cacheResult = true)
+          eval(rhs, thisV, sym.enclosingClass.asClass, EvalContext.LazyVal)
         else
           // Assume forward reference check is doing a good job
           val value = Env.valValue(sym)
@@ -1051,7 +1327,7 @@ class Objects(using Context @constructorOnly):
         else
           Heap.writeJoin(addr, value)
       case _ =>
-        report.warning("[Internal error] Variable not found " + sym.show + "\nenv = " + env.show + ". " + Trace.show, Trace.position)
+        report.warning("[Internal error] Variable not found " + sym.show + ". " + Trace.show, Trace.position)
 
     case _ =>
       report.warning("Assigning to variables in outer scope. " + Trace.show, Trace.position)
@@ -1079,6 +1355,12 @@ class Objects(using Context @constructorOnly):
     do
       accessObject(classSym)
 
+  enum EvalContext:
+    case Method(sym: Symbol)
+    case Function
+    case LazyVal
+    case Other
+
   /** Evaluate an expression with the given value for `this` in a given class `klass`
    *
    *  Note that `klass` might be a super class of the object referred by `thisV`.
@@ -1097,11 +1379,12 @@ class Objects(using Context @constructorOnly):
    * @param expr        The expression to be evaluated.
    * @param thisV       The value for `C.this` where `C` is represented by the parameter `klass`.
    * @param klass       The enclosing class where the expression is located.
-   * @param cacheResult It is used to reduce the size of the cache.
+   * @param ctx         The context where `eval` is called.
    */
-  def eval(expr: Tree, thisV: ThisValue, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Value] = log("evaluating " + expr.show + ", this = " + thisV.show + ", regions = " + Regions.show + " in " + klass.show, printer, (_: Value).show) {
-    cache.cachedEval(thisV, expr, cacheResult) { expr => cases(expr, thisV, klass) }
-  }
+  def eval(expr: Tree, thisV: ThisValue, klass: ClassSymbol, ctx: EvalContext = EvalContext.Other): Contextual[Value] =
+    log("evaluating " + expr.show + ", this = " + thisV.show + ", heap = " + Heap.show + " in " + klass.show, printer, (_: Value).show) {
+      cache.cachedEval(thisV, expr, klass, ctx)
+    }
 
 
   /** Evaluate a list of expressions */
@@ -1116,7 +1399,9 @@ class Objects(using Context @constructorOnly):
    * @param thisV  The value for `C.this` where `C` is represented by the parameter `klass`.
    * @param klass  The enclosing class where the expression `expr` is located.
    */
-  def cases(expr: Tree, thisV: ThisValue, klass: ClassSymbol): Contextual[Value] = log("evaluating " + expr.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Value).show) {
+  def cases(expr: Tree, thisV: ThisValue, klass: ClassSymbol): Contextual[Value] = log(
+    "evaluating " + expr.show + ", this = " + thisV.show + ", heap = " + Heap.show + " in " + klass.show, printer, (_: Value).show) {
+
     val trace2 = trace.add(expr)
 
     expr match
@@ -1173,6 +1458,7 @@ class Objects(using Context @constructorOnly):
           val receiver = eval(qual, thisV, klass)
           if ref.symbol.isConstructor then
             withTrace(trace2) { callConstructor(receiver, ref.symbol, args) }
+            Bottom
           else
             withTrace(trace2) { call(receiver, ref.symbol, args, receiver = qual.tpe, superType = NoType) }
 
@@ -1188,6 +1474,7 @@ class Objects(using Context @constructorOnly):
             val receiver = withTrace(trace2) { evalType(prefix, thisV, klass) }
             if id.symbol.isConstructor then
               withTrace(trace2) { callConstructor(receiver, id.symbol, args) }
+              Bottom
             else
               withTrace(trace2) { call(receiver, id.symbol, args, receiver = prefix, superType = NoType) }
 
@@ -1240,9 +1527,11 @@ class Objects(using Context @constructorOnly):
           withTrace(trace2) { assign(receiver, lhs.symbol, widened, rhs.tpe) }
 
       case closureDef(ddef) =>
+        // TODO: trim the environment and `thisV` to only captured locals
         Fun(ddef, thisV, klass, summon[Env.Data])
 
       case PolyFun(ddef) =>
+        // TODO: trim the environment and `thisV` to only captured locals
         Fun(ddef, thisV, klass, summon[Env.Data])
 
       case Block(stats, expr) =>
@@ -1309,9 +1598,6 @@ class Objects(using Context @constructorOnly):
 
       case _: Import | _: Export =>
         Bottom
-
-      case tpl: Template =>
-        init(tpl, thisV.asInstanceOf[Ref], klass)
 
       case _ =>
         report.warning("[Internal error] unexpected tree: " + expr + "\n" + Trace.show, expr)
@@ -1550,7 +1836,7 @@ class Objects(using Context @constructorOnly):
         val sym = tmref.symbol
         if sym.isStaticObject then
           if elideObjectAccess then
-            ObjectRef(sym.moduleClass.asClass)
+            Bottom
           else
             accessObject(sym.moduleClass.asClass)
         else
@@ -1564,7 +1850,7 @@ class Objects(using Context @constructorOnly):
         else if sym.isStaticObject && sym != klass then
           // The typer may use ThisType to refer to an object outside its definition.
           if elideObjectAccess then
-            ObjectRef(sym.moduleClass.asClass)
+            Bottom
           else
             accessObject(sym.moduleClass.asClass)
 
@@ -1583,17 +1869,17 @@ class Objects(using Context @constructorOnly):
   def widenEscapedValue(value: Value, annotatedTree: Tree): Contextual[Value] =
     def parseAnnotation: Option[Int] =
       annotatedTree.tpe.getAnnotation(defn.InitWidenAnnot).flatMap: annot =>
-          annot.argument(0).get match
-            case arg @ Literal(c: Constants.Constant) =>
-              val height = c.intValue
-              if height < 0 then
-                report.warning("The argument should be positive", arg)
-                None
-              else
-                Some(height)
-            case arg =>
-              report.warning("The argument should be a constant integer value", arg)
+        annot.argument(0).get match
+          case arg @ Literal(c: Constants.Constant) =>
+            val height = c.intValue
+            if height < 0 then
+              report.warning("The argument should be positive", arg)
               None
+            else
+              Some(height)
+          case arg =>
+            report.warning("The argument should be a constant integer value", arg)
+            None
     end parseAnnotation
 
     parseAnnotation match
@@ -1626,7 +1912,7 @@ class Objects(using Context @constructorOnly):
    * @param thisV     The value of the current object to be initialized.
    * @param klass     The class to which the template belongs.
    */
-  def init(tpl: Template, thisV: Ref, klass: ClassSymbol): Contextual[Ref] = log("init " + klass.show, printer, (_: Value).show) {
+  def init(tpl: Template, thisV: Ref, klass: ClassSymbol): Contextual[Ref] = log("init " + klass.show + ", heap = " + Heap.show, printer, (_: Value).show) {
     val paramsMap = tpl.constr.termParamss.flatten.map { vdef =>
       vdef.name -> Env.valValue(vdef.symbol)
     }.toMap
@@ -1657,7 +1943,6 @@ class Objects(using Context @constructorOnly):
         tasks.append { () =>
           printer.println("init super class " + cls.show)
           callConstructor(thisV, ctor, args)
-          ()
         }
 
     // parents
@@ -1762,8 +2047,7 @@ class Objects(using Context @constructorOnly):
     else if target.is(Flags.Package) then
       Bottom
     else if target.isStaticObject then
-      val res = ObjectRef(target.moduleClass.asClass)
-      if elideObjectAccess then res
+      if elideObjectAccess then Bottom
       else accessObject(target)
     else
       thisV match
