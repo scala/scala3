@@ -213,6 +213,11 @@ class CompilationTests {
     )
   }.checkCompile()
 
+  @Test def explicitNullsWarn: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("explicitNullsWarn")
+    compileFilesInDir("tests/explicit-nulls/warn", explicitNullsOptions)
+  }.checkWarnings()
+
   @Test def explicitNullsRun: Unit = {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsRun")
     compileFilesInDir("tests/explicit-nulls/run", explicitNullsOptions)
