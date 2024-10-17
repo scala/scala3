@@ -1,8 +1,8 @@
 class Repo[EC, E](using defaults: RepoDefaults[EC, E])
 trait RepoDefaults[EC, E]
 object RepoDefaults:
-  inline given genImmutableRepo[E: DbCodec]: RepoDefaults[E, E] = ???
-  inline given genRepo[EC: DbCodec, E: DbCodec]: RepoDefaults[EC, E] = ???
+  inline given genImmutableRepo: [E: DbCodec] => RepoDefaults[E, E] = ???
+  inline given genRepo: [EC: DbCodec, E: DbCodec] => RepoDefaults[EC, E] = ???
 
 trait DbCodec[E]
 
