@@ -93,8 +93,6 @@ class Cache[Config, Res]:
    *
    *  The algorithmic skeleton is as follows:
    *
-   *      if don't cache result then
-   *        return eval(expr)
    *      if this.current.contains(config, expr) then
    *        return cached value
    *      else
@@ -107,32 +105,28 @@ class Cache[Config, Res]:
    *          this.current(config, expr) = actual
    *
    */
-  def cachedEval(config: Config, expr: Tree, cacheResult: Boolean, default: Res)(eval: Tree => Res): Res =
-    if !cacheResult then
-      eval(expr)
-    else
-      this.get(config, expr) match
-      case Some(value) => value
-      case None =>
-        val assumeValue: Res =
-          this.last.get(config, expr) match
-          case Some(value) => value
-          case None =>
-            this.last = this.last.updatedNested(config, expr, default)
-            default
+  def cachedEval(config: Config, expr: Tree, default: Res)(doEval: => Res): Res =
+    this.get(config, expr) match
+    case Some(value) => value
+    case None =>
+      val assumeValue: Res =
+        this.last.get(config, expr) match
+        case Some(value) => value
+        case None =>
+          this.last = this.last.updatedNested(config, expr, default)
+          default
 
-        this.current = this.current.updatedNested(config, expr, assumeValue)
+      this.current = this.current.updatedNested(config, expr, assumeValue)
 
-        val actual = eval(expr)
-        if actual != assumeValue then
-          // println("Changed! from = " + assumeValue + ", to = " + actual)
-          this.changed = true
-          this.current = this.current.updatedNested(config, expr, actual)
-          // this.current = this.current.removed(config, expr)
-        end if
+      val actual = doEval
+      if actual != assumeValue then
+        // println("Changed! from = " + assumeValue + ", to = " + actual)
+        this.changed = true
+        this.current = this.current.updatedNested(config, expr, actual)
+        // this.current = this.current.removed(config, expr)
+      end if
 
-        actual
-    end if
+      actual
   end cachedEval
 
   def hasChanged = changed
