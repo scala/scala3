@@ -177,8 +177,13 @@ object Annotations {
       assert(myTree != null)
       myTree match {
         case treeFn: (Context ?=> Tree) @unchecked =>
+          var result: Tree | Null = null
           myTree = null
-          myTree = atPhaseBeforeTransforms(treeFn)
+          try
+            result = atPhaseBeforeTransforms(treeFn)
+            myTree = result
+          finally if result == null then
+            myTree = ctx ?=> treeFn(using ctx) // reset, if unit is suspended then it will re-enter this annotation
         case _ =>
       }
       myTree.asInstanceOf[Tree]

@@ -227,7 +227,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   PARAMalias                                                       -- Parameter is alias of a superclass parameter
                   EXPORTED                                                         -- An export forwarder
                   OPEN                                                             -- an open class
-                  INVISIBLE                                                        -- invisible during typechecking
+                  INVISIBLE                                                        -- invisible during typechecking, except when resolving from TASTy
                   TRACKED                                                          -- a tracked class parameter / a dependent class
                   Annotation
 
