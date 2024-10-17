@@ -193,7 +193,7 @@ class BootstrappedOnlyCompilationTests {
 
     // 1. hack with absolute path for -Xplugin
     // 2. copy `pluginFile` to destination
-    def compileFilesInDir(dir: String): CompilationTest = {
+    def compileFilesInDir(dir: String, run: Boolean = false): CompilationTest = {
       val outDir = defaultOutputDir + "testPlugins/"
       val sourceDir = new java.io.File(dir)
 
@@ -201,7 +201,10 @@ class BootstrappedOnlyCompilationTests {
       val targets = dirs.map { dir =>
         val compileDir = createOutputDirsForDir(dir, sourceDir, outDir)
         Files.copy(dir.toPath.resolve(pluginFile), compileDir.toPath.resolve(pluginFile), StandardCopyOption.REPLACE_EXISTING)
-        val flags = TestFlags(withCompilerClasspath, noCheckOptions).and("-Xplugin:" + compileDir.getAbsolutePath)
+        val flags = {
+          val base = TestFlags(withCompilerClasspath, noCheckOptions).and("-Xplugin:" + compileDir.getAbsolutePath)
+          if run then base.withRunClasspath(withCompilerClasspath) else base
+        }
         SeparateCompilationSource("testPlugins", dir, flags, compileDir)
       }
 
@@ -210,6 +213,7 @@ class BootstrappedOnlyCompilationTests {
 
     compileFilesInDir("tests/plugins/neg").checkExpectedErrors()
     compileDir("tests/plugins/custom/analyzer", withCompilerOptions.and("-Yretain-trees")).checkCompile()
+    compileFilesInDir("tests/plugins/run", run = true).checkRuns()
   }
 }
 
