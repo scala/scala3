@@ -767,14 +767,15 @@ jobs:
         run : echo "RELEASE_TAG=${GITHUB_REF#*refs/tags/}" >> $GITHUB_ENV
 
       - name: Prepare the SDKs
+        shell: bash
         run : |
-          function prepareSDK() {
+          prepareSDK() {
             distroSuffix="$1"
             artifactId="$2"
             artifactName="scala3-${{ env.RELEASE_TAG }}${distroSuffix}"
 
             downloadedArchive="./artifact.zip"
-            if [[ -f "${downloadedArchive}" ]]; then
+            if [ -f "${downloadedArchive}" ]; then
               rm "${downloadedArchive}"
             fi
 
@@ -789,7 +790,7 @@ jobs:
 
             # Repackage content of .zip to .tar.gz and prepare digest
             tmpDir="./archive-tmp-dir"
-            if [[ -d "${tmpDir}" ]]; then
+            if [ -d "${tmpDir}" ]; then
               rm -r "${tmpDir}"
             fi
             mkdir "${tmpDir}"
