@@ -14,6 +14,7 @@ import typer.*, Applications.*, Inferencing.*, ProtoTypes.*
 import util.*
 
 import scala.annotation.internal.sharable
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 import SpaceEngine.*
@@ -696,7 +697,7 @@ object SpaceEngine {
           else NoType
         }.filter(_.exists)
         parts
-
+      case tp: FlexibleType => List(tp.underlying, ConstantType(Constant(null)))
       case _ => ListOfNoType
     end rec
 
@@ -876,6 +877,7 @@ object SpaceEngine {
     case tp: SingletonType                          => toUnderlying(tp.underlying)
     case tp: ExprType                               => toUnderlying(tp.resultType)
     case AnnotatedType(tp, annot)                   => AnnotatedType(toUnderlying(tp), annot)
+    case tp: FlexibleType                           => tp.derivedFlexibleType(toUnderlying(tp.underlying))
     case _                                          => tp
   })
 
@@ -910,58 +912,40 @@ object SpaceEngine {
     && !sel.tpe.widen.isRef(defn.QuotedExprClass)
     && !sel.tpe.widen.isRef(defn.QuotedTypeClass)
 
-  def checkReachability(m: Match)(using Context): Unit = trace(i"checkReachability($m)") {
-    val cases = m.cases.toIndexedSeq
-
+  def checkReachability(m: Match)(using Context): Unit = trace(i"checkReachability($m)"):
     val selTyp = toUnderlying(m.selector.tpe).dealias
-
-    val isNullable = selTyp.classSymbol.isNullableClass
-    val targetSpace = trace(i"targetSpace($selTyp)")(if isNullable
+    val isNullable = selTyp.isInstanceOf[FlexibleType] || selTyp.classSymbol.isNullableClass
+    val targetSpace = trace(i"targetSpace($selTyp)"):
+      if isNullable && !ctx.mode.is(Mode.SafeNulls)
       then project(OrType(selTyp, ConstantType(Constant(null)), soft = false))
       else project(selTyp)
-    )
-    
-    var i        = 0
-    val len      = cases.length
-    var prevs    = List.empty[Space]
-    var deferred = List.empty[Tree]
 
-    while (i < len) {
-      val CaseDef(pat, guard, _) = cases(i)
+    @tailrec def recur(cases: List[CaseDef], prevs: List[Space], deferred: List[Tree]): Unit =
+      cases match
+        case Nil =>
+        case CaseDef(pat, guard, _) :: rest =>
+          val curr = trace(i"project($pat)")(project(pat))
+          val covered = trace("covered")(simplify(intersect(curr, targetSpace)))
+          val prev = trace("prev")(simplify(Or(prevs)))
+          if prev == Empty && covered == Empty then // defer until a case is reachable
+            recur(rest, prevs, pat :: deferred)
+          else
+            for pat <- deferred.reverseIterator
+            do report.warning(MatchCaseUnreachable(), pat.srcPos)
 
-      val curr = trace(i"project($pat)")(project(pat))
+            if pat != EmptyTree // rethrow case of catch uses EmptyTree
+                && !pat.symbol.isAllOf(SyntheticCase, butNot=Method) // ExpandSAMs default cases use SyntheticCase
+                && isSubspace(covered, prev)
+            then
+              val nullOnly = isNullable && rest.isEmpty && isWildcardArg(pat)
+              val msg = if nullOnly then MatchCaseOnlyNullWarning() else MatchCaseUnreachable()
+              report.warning(msg, pat.srcPos)
 
-      val covered = trace("covered")(simplify(intersect(curr, targetSpace)))
+            val newPrev = if guard.isEmpty then covered :: prevs else prevs
+            recur(rest, newPrev, Nil)
 
-      val prev = trace("prev")(simplify(Or(prevs)))
-
-      if prev == Empty && covered == Empty then // defer until a case is reachable
-        deferred ::= pat
-      else {
-        for (pat <- deferred.reverseIterator)
-          report.warning(MatchCaseUnreachable(), pat.srcPos)
-        if pat != EmptyTree // rethrow case of catch uses EmptyTree
-            && !pat.symbol.isAllOf(SyntheticCase, butNot=Method) // ExpandSAMs default cases use SyntheticCase
-            && isSubspace(covered, Or(List(prev, Typ(defn.NullType)))) // for when Null is not subtype of AnyRef under explicit nulls
-        then {
-          val nullOnly = 
-            (isNullable || (defn.NullType <:< selTyp)) 
-            && i == len - 1 
-            && isWildcardArg(pat)
-          if nullOnly then {
-            report.warning(MatchCaseOnlyNullWarning(), pat.srcPos)
-          } else if isSubspace(covered, prev) then {
-            report.warning(MatchCaseUnreachable(), pat.srcPos)
-          }
-        }
-        deferred = Nil
-      }
-
-      // in redundancy check, take guard as false in order to soundly approximate
-      prevs ::= (if guard.isEmpty then covered else Empty)
-      i += 1
-    }
-  }
+    recur(m.cases, Nil, Nil)
+  end checkReachability
 
   def checkMatch(m: Match)(using Context): Unit =
     if exhaustivityCheckable(m.selector) then checkExhaustivity(m)
