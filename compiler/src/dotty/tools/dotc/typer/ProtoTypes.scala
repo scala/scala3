@@ -71,6 +71,10 @@ object ProtoTypes {
                    |constraint was: ${ctx.typerState.constraint}
                    |constraint now: ${newctx.typerState.constraint}""")
             if result && (ctx.typerState.constraint ne newctx.typerState.constraint) then
+              val tvars = (newctx.typerState.ownedVars -- ctx.typerState.ownedVars).toList
+              inContext(newctx):
+                Inferencing.instantiateSelected(tp, tvars)
+                for tvar <- tvars do if !tvar.isInstantiated then tvar.instantiate(fromBelow = false)
               newctx.typerState.commit()
             result
           case _ => testCompat
