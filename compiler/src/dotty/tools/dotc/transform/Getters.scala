@@ -103,7 +103,7 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
   override def transformValDef(tree: ValDef)(using Context): Tree =
     val sym = tree.symbol
     if !sym.is(Method) then return tree
-    val getterDef = DefDef(sym.asTerm, tree.rhs).withSpan(tree.span)
+    val getterDef = DefDef(sym.asTerm, tree.rhs).withSpan(tree.span).withAttachmentsFrom(tree)
     if !sym.is(Mutable) then return getterDef
     ensureSetter(sym.asTerm)
     if !newSetters.contains(sym.setter) then return getterDef
