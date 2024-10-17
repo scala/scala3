@@ -7,7 +7,7 @@ import core.*
 import Constants.*, Contexts.*, Decorators.*, Flags.*, NullOpsDecorator.*, Symbols.*, Types.*
 import Names.*, NameOps.*, StdNames.*
 import ast.*, tpd.*
-import config.Printers.*
+import config.Printers.exhaustivity
 import printing.{ Printer, * }, Texts.*
 import reporting.*
 import typer.*, Applications.*, Inferencing.*, ProtoTypes.*
@@ -524,14 +524,36 @@ object SpaceEngine {
     val mt: MethodType = unapp.widen match {
       case mt: MethodType => mt
       case pt: PolyType   =>
+        if unappSym.is(Synthetic) then
+          val mt = pt.resultType.asInstanceOf[MethodType]
+          val unapplyArgType = mt.paramInfos.head
+          val targs = scrutineeTp.baseType(unapplyArgType.classSymbol) match
+            case AppliedType(_, targs) => targs
+            case _ =>
+              // Typically when the scrutinee is Null or Nothing (see i5067 and i5067b)
+              // For performance, do `variances(unapplyArgType)` but without using TypeVars
+              // so just find the variance, so we know if to min/max to the LB/UB or use a wildcard.
+              object accu extends TypeAccumulator[VarianceMap[TypeParamRef]]:
+                def apply(vmap: VarianceMap[TypeParamRef], tp: Type) = tp match
+                  case tp: TypeParamRef if tp.binder eq pt => vmap.recordLocalVariance(tp, variance)
+                  case _                                   => foldOver(vmap, tp)
+              val vs = accu(VarianceMap.empty[TypeParamRef], unapplyArgType)
+              pt.paramRefs.map: p =>
+                vs.computedVariance(p).uncheckedNN match
+                  case -1 => p.paramInfo.lo
+                  case 1  => p.paramInfo.hi
+                  case _  => WildcardType(p.paramInfo)
+          pt.instantiate(targs).asInstanceOf[MethodType]
+        else
           val locked = ctx.typerState.ownedVars
           val tvars = constrained(pt)
           val mt = pt.instantiate(tvars).asInstanceOf[MethodType]
-          scrutineeTp <:< mt.paramInfos(0)
+          val unapplyArgType = mt.paramInfos.head
+          scrutineeTp <:< unapplyArgType
           // force type inference to infer a narrower type: could be singleton
           // see tests/patmat/i4227.scala
-          mt.paramInfos(0) <:< scrutineeTp
-          maximizeType(mt.paramInfos(0), Spans.NoSpan)
+          unapplyArgType <:< scrutineeTp
+          maximizeType(unapplyArgType, Spans.NoSpan)
           if !(ctx.typerState.ownedVars -- locked).isEmpty then
             // constraining can create type vars out of wildcard types
             // (in legalBound, by using a LevelAvoidMap)
@@ -543,7 +565,7 @@ object SpaceEngine {
             // but I'd rather have an unassigned new-new type var, than an infinite loop.
             // After all, there's nothing strictly "wrong" with unassigned type vars,
             // it just fails TreeChecker's linting.
-            maximizeType(mt.paramInfos(0), Spans.NoSpan)
+            maximizeType(unapplyArgType, Spans.NoSpan)
           mt
     }
 
