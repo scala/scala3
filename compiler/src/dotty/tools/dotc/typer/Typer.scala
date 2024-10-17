@@ -1001,22 +1001,35 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     record("typedSelect")
 
     def typeSelectOnTerm(using Context): Tree =
-      val qual = typedExpr(tree.qualifier, shallowSelectionProto(tree.name, pt, this, tree.nameSpan))
       if ctx.isJava then
-        javaSelection(qual)
+        // permitted selection depends on Java context (type or expression).
+        // we don't propagate (as a mode) whether a.b.m is a type name; OK since we only see type contexts.
+        // to allow correct selections, approximate by fallback for x.y: take x as class or (rooted) package.
+        def tryQualFallback(qual: untpd.Ident, name: Name)(using Context): Tree =
+          val qualTpe =
+            findRef(name.toTypeName, WildcardType, EmptyFlags, EmptyFlags, qual.srcPos) match
+            case tpe: NamedType if tpe.symbol.isClass => tpe
+            case _ =>
+              val maybePackage = defn.RootPackage.info.member(name)
+              if maybePackage.exists then maybePackage.info else NoType
+          if qualTpe.exists then
+            javaSelection(assignType(cpy.Ident(qual)(name), qualTpe))
+          else
+            errorTree(tree, em"no class or package to resolve `$name`") // just fail fallback
+        def tryQual(qual: untpd.Tree)(using Context): Tree =
+          javaSelection(typedExpr(qual, shallowSelectionProto(tree.name, pt, this, tree.nameSpan)))
+        tree.qualifier match
+        case qual @ Ident(name) => tryAlternatively(tryQual(qual))(tryQualFallback(qual, name))
+        case qual               => tryQual(qual)
       else
+        val qual = typedExpr(tree.qualifier, shallowSelectionProto(tree.name, pt, this, tree.nameSpan))
         typedSelectWithAdapt(tree, pt, qual).withSpan(tree.span).computeNullable()
 
     def javaSelection(qual: Tree)(using Context) =
       qual match
       case id @ Ident(name) if id.symbol.is(Package) && !id.symbol.owner.isRoot =>
-        def nextPackage(last: Symbol)(using Context): Type =
-          val startAt = ctx.outersIterator.dropWhile(_.owner != last.owner).drop(1).next()
-          val next = findRef(name, WildcardType, required = Package, EmptyFlags, qual.srcPos)(using startAt)
-          if next.exists && !next.typeSymbol.owner.isRoot then nextPackage(next.typeSymbol)
-          else next
-        val next = nextPackage(id.symbol)
-        val qual1 = if next.exists then assignType(cpy.Ident(id)(tree.name), next) else qual
+        val rooted = defn.RootPackage.info.member(name)
+        val qual1 = if rooted.exists then assignType(cpy.Ident(id)(name), rooted.info) else qual
         assignType(cpy.Select(tree)(qual1, tree.name), qual1)
       case _ =>
         val tree1 = assignType(cpy.Select(tree)(qual, tree.name), qual)
@@ -1042,17 +1055,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         errorTree(tree, em"cannot convert to type selection") // will never be printed due to fallback
     }
 
-    def selectWithFallback(fallBack: Context ?=> Tree) =
-      tryAlternatively(typeSelectOnTerm)(fallBack)
-
     if (tree.qualifier.isType) {
       val qual1 = typedType(tree.qualifier, shallowSelectionProto(tree.name, pt, this, tree.nameSpan))
       assignType(cpy.Select(tree)(qual1, tree.name), qual1)
     }
     else if (ctx.isJava && tree.name.isTypeName)
-      // SI-3120 Java uses the same syntax, A.B, to express selection from the
-      // value A and from the type A. We have to try both.
-      selectWithFallback(tryJavaSelectOnType) // !!! possibly exponential bcs of qualifier retyping
+      // scala/bug#3120 Java uses the same syntax, A.B, to express selection from the
+      // value A and from the type A. We have to try both. (possibly exponential bc of qualifier retyping)
+      tryAlternatively(typeSelectOnTerm)(tryJavaSelectOnType)
     else
       typeSelectOnTerm
   }

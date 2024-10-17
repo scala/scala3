@@ -1,3 +1,5 @@
+package p;
+
 public class Foo {
 	private String java;
 
