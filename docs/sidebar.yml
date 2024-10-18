@@ -162,6 +162,7 @@ subsection:
           - page: reference/experimental/modularity.md
           - page: reference/experimental/typeclasses.md
           - page: reference/experimental/runtimeChecked.md
+          - page: reference/experimental/better-fors.md
       - page: reference/syntax.md
       - title: Language Versions
         index: reference/language-versions/language-versions.md
