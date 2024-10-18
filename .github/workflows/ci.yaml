@@ -771,45 +771,32 @@ jobs:
         run : |
           prepareSDK() {
             distroSuffix="$1"
-            artifactId="$2"
+            sbtProject="$2"
+            distDir="$3"
+
+            # Build binaries
+            ./project/scripts/sbt "${sbtProject}/Universal/stage"
+
+            outputPath="${distDir}/target/universal/stage"
             artifactName="scala3-${{ env.RELEASE_TAG }}${distroSuffix}"
+            zipArchive="${artifactName}.zip"
+            tarGzArchive="${artifactName}.tar.gz"
 
-            downloadedArchive="./artifact.zip"
-            if [ -f "${downloadedArchive}" ]; then
-              rm "${downloadedArchive}"
-            fi
-
-            # Download previously prepared SDK bundle
-            curl -L \
-              -H "Authorization: token ${{secrets.GITHUB_TOKEN}}" \
-              -H "Accept: application/vnd.github+json" \
-              -o "${downloadedArchive}" \
-              --retry 5 --retry-delay 10 --retry-connrefused \
-              --max-time 600 --connect-timeout 60  \
-              https://api.github.com/repos/scala/scala3/actions/artifacts/${artifactId}/zip
-
-            # Repackage content of .zip to .tar.gz and prepare digest
-            tmpDir="./archive-tmp-dir"
-            if [ -d "${tmpDir}" ]; then
-              rm -r "${tmpDir}"
-            fi
-            mkdir "${tmpDir}"
-            unzip "${downloadedArchive}" -d "${tmpDir}"
-
-            mv "${downloadedArchive}" "./${artifactName}.zip"
-            tar -czf "${artifactName}.tar.gz" -C "${tmpDir}" .
+            cwd=$(pwd)
+            (cd $outputPath && zip -r ${zipArchive} . && mv ${zipArchive} "${cwd}/")
+            tar -czf ${tarGzArchive} -C "$outputPath" .
 
             # Caluclate SHA for each of archive files
-            for file in "${artifactName}.zip" "${artifactName}.tar.gz"; do
+            for file in "${zipArchive}" "${tarGzArchive}"; do
               sha256sum "${file}" > "${file}.sha256"
             done
           }
-          prepareSDK "" ${{needs.build-sdk-package.outputs.universal-id}}
-          prepareSDK "-aarch64-pc-linux"     ${{needs.build-sdk-package.outputs.linux-aarch64-id}}
-          prepareSDK "-x86_64-pc-linux"      ${{needs.build-sdk-package.outputs.linux-x86_64-id}}
-          prepareSDK "-aarch64-apple-darwin" ${{needs.build-sdk-package.outputs.mac-aarch64-id}}
-          prepareSDK "-x86_64-apple-darwin"  ${{needs.build-sdk-package.outputs.mac-x86_64-id}}
-          prepareSDK "-x86_64-pc-win32"      ${{needs.build-sdk-package.outputs.win-x86_64-id}}
+          prepareSDK ""                      "dist"               "./dist/"
+          prepareSDK "-aarch64-pc-linux"     "dist-linux-aarch64" "./dist/linux-aarch64/"
+          prepareSDK "-x86_64-pc-linux"      "dist-linux-x86_64"  "./dist/linux-x86_64/"
+          prepareSDK "-aarch64-apple-darwin" "dist-mac-aarch64"   "./dist/mac-aarch64/"
+          prepareSDK "-x86_64-apple-darwin"  "dist-mac-x86_64"    "./dist/mac-x86_64/"
+          prepareSDK "-x86_64-pc-win32"      "dist-win-x86_64"    "./dist/win-x86_64/"
 
       # Create the GitHub release
       - name: Create GitHub Release
