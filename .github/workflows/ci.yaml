@@ -766,6 +766,18 @@ jobs:
       - name: Extract the release tag
         run : echo "RELEASE_TAG=${GITHUB_REF#*refs/tags/}" >> $GITHUB_ENV
 
+      - name: Check compiler version
+        shell: bash
+        run : |
+          # Pipe through xargs to remove whitespaces
+          version=$(sbt "scala3-compiler-bootstrapped/version" | grep -oEh "3\.\d+\.\d+([-a-zA-Z1-9]+)?" | xargs)
+          if [ "${version}" = "${{ env.RELEASE_TAG }}" ]; then
+            echo "Compiler version '${version}' matches tag: ${{  env.RELEASE_TAG }}"
+          else
+            echo "Invalid compiler version '${version}', does not match tag: ${{ env.RELEASE_TAG }}"
+            exit 1
+          fi
+
       - name: Prepare the SDKs
         shell: bash
         run : |
