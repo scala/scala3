@@ -264,7 +264,7 @@ trait ImportSuggestions:
   end importSuggestions
 
   /** Reduce next timeout for import suggestions by the amount of time it took
-   *  for current search, but but never less than to half of the previous budget.
+   *  for current search, but never less than to half of the previous budget.
    */
   private def reduceTimeBudget(used: Int)(using Context) =
     val run = ctx.run.nn

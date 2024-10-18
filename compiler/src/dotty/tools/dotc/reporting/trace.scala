@@ -96,6 +96,7 @@ trait TraceSyntax:
                         (op: => T)(using Context): T =
     if ctx.mode.is(Mode.Printing) || !isForced && (printer eq Printers.noPrinter) then op
     else
+      val start = System.nanoTime
       // Avoid evaluating question multiple time, since each evaluation
       // may cause some extra logging output.
       val q = question
@@ -109,7 +110,13 @@ trait TraceSyntax:
       def finalize(msg: String) =
         if !finalized then
           ctx.base.indent -= 1
-          doLog(s"$margin$msg")
+          val stop = System.nanoTime
+          val diffNs = stop - start
+          val diffS = (diffNs / 1000 / 1000).toInt / 1000.0
+          if diffS > 0.1 then
+            doLog(s"$margin$msg (${"%.2f".format(diffS)} s)")
+          else
+            doLog(s"$margin$msg")
           finalized = true
       try
         doLog(s"$margin$leading")
