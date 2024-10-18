@@ -1366,7 +1366,9 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
         case SerializeEnd => initRead = true
         case a => init += a.asInstanceOf[A]
       }
-      val tail = in.readObject().asInstanceOf[LazyListIterable[A]]
+      val tail: LazyListIterable[A] = in.readObject().asInstanceOf[LazyListIterable[A]]
+        // Explicit type annotation needed so that tail.state below is dropped from capture set.
+        // Before paths were added, it was tail that was added, and the `asSeenFrom` to a pure type made it work.
       // scala/scala#10118: caution that no code path can evaluate `tail.state`
       // before the resulting LazyListIterable is returned
       val it = init.toList.iterator
