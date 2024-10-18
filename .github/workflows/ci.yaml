@@ -729,7 +729,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test_non_bootstrapped, test, mima, build-sdk-package]
+    needs: [test_non_bootstrapped, test, mima, community_build_a, community_build_b, community_build_c, test_sbt, test_java8, build-sdk-package]
     if: "github.event_name == 'push'
          && startsWith(github.event.ref, 'refs/tags/')"
 
