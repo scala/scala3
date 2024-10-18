@@ -2,7 +2,7 @@ import language.experimental.captureChecking
 
 trait Source[+T]
 
-def race[T](@caps.unbox sources: (Source[T]^)*): Source[T]^{sources*} = ???
+def race[T](sources: (Source[T]^)*): Source[T]^{sources*} = ???
 
 def raceTwo[T](src1: Source[T]^, src2: Source[T]^): Source[T]^{} =
   race(Seq(src1, src2)*) // error

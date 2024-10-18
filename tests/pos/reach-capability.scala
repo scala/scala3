@@ -1,7 +1,6 @@
 import language.experimental.captureChecking
 import annotation.experimental
 import caps.Capability
-import caps.unbox
 
 @experimental object Test2:
 
@@ -12,7 +11,7 @@ import caps.unbox
 
   class Listener
 
-  def test2(@unbox lbls: List[Label]) =
+  def test2(lbls: List[Label]) =
     def makeListener(lbl: Label): Listener^{lbl} = ???
     val listeners = lbls.map(makeListener) // should work
 
