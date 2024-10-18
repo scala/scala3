@@ -1717,10 +1717,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           typedFunctionType(desugar.makeFunctionWithValDefs(tree, pt), pt)
         else
           val funSym = defn.FunctionSymbol(numArgs, isContextual, isImpure)
-          // val args1 = args.mapConserve {
-          //   case cb: untpd.ContextBoundTypeTree => typed(cb)
-          //   case t => t
-          // }
           val result = typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funSym.typeRef), args :+ body), pt)
           // if there are any erased classes, we need to re-do the typecheck.
           result match
