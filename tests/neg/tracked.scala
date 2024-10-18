@@ -8,13 +8,13 @@ object A:
     tracked val b: Int = 2 // error
 
 object B:
-  tracked object Foo // error // error
+  tracked object Foo // error
 
 object C:
-  tracked class D // error // error
+  tracked class D // error
 
 object D:
-  tracked type T = Int // error // error
+  tracked type T = Int // error
 
 object E:
   given g2: (tracked val x: Int) => C = C(x) // error
