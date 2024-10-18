@@ -10,7 +10,7 @@ object DropParentRefinements:
   val name: String = "dropParentRefinements"
   val description: String = "drop parent refinements from a template"
 
-/** Drop parent refinements from a template. because they are generated without
+/** Drop parent refinements from a template, as they are generated without
   * an implementation. These refinements are unusally required for tracked
   * members with more specific types.
   */
