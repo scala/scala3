@@ -87,6 +87,10 @@ object Formatting {
         def show(x: H *: T) =
           CtxShow(toStr(x.head) *: toShown(x.tail).asInstanceOf[Tuple])
 
+      given Show[typer.VarianceChecker.VarianceError] with
+        def show(x: typer.VarianceChecker.VarianceError) =
+          CtxShow("VarianceError(" + toStr(x.tvar) + ", " + toStr(x.required) + ")")
+
       given Show[FlagSet] with
         def show(x: FlagSet) = x.flagsString
 
