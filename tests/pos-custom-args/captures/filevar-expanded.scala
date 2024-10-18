@@ -1,4 +1,5 @@
 import language.experimental.captureChecking
+import language.experimental.modularity
 import compiletime.uninitialized
 
 object test1:
@@ -22,7 +23,7 @@ object test2:
   class File:
     def write(x: String): Unit = ???
 
-  class Service(io: IO^):
+  class Service(tracked val io: IO^):
     var file: File^{io} = uninitialized
     def log = file.write("log")
 

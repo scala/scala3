@@ -1,7 +1,7 @@
 import language.experimental.captureChecking
 import annotation.experimental
 import caps.{CapSet, Capability}
-import caps.unbox
+import caps.use
 
 @experimental object Test:
 
@@ -18,7 +18,7 @@ import caps.unbox
 
     def allListeners: Set[Listener^{X^}] = listeners
 
-  def test1(async1: Async, @unbox others: List[Async]) =
+  def test1(async1: Async, others: List[Async @use]) =
     val src = Source[CapSet^{async1, others*}]
     val lst1 = listener(async1)
     val lsts = others.map(listener)

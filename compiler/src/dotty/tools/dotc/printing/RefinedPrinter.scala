@@ -29,7 +29,7 @@ import config.SourceVersion.*
 
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
-import cc.{CaptureSet, CapturingType, toCaptureSet, IllegalCaptureRef, isRetains, ReachCapability, MaybeCapability}
+import cc.*
 import dotty.tools.dotc.parsing.JavaParsers
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
