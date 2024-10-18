@@ -851,7 +851,7 @@ jobs:
       #     template("Linux x86-64", "-x86_64-pc-linux"),
       #     template("Linux aarch64", "-aarch64-pc-linux"),
       #     template("Mac x86-64", "-x86_64-apple-darwin"),
-      #     template("Mac aarch64", "-aarcb64-apple-darwin"),
+      #     template("Mac aarch64", "-aarch64-apple-darwin"),
       #     template("Windows x86_64", "-x86_64-pc-win32")
       #   ).foreach(println)
       # Universal
@@ -1017,8 +1017,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarcb64-apple-darwin.zip
-          asset_name: scala3-${{ env.RELEASE_TAG }}-aarcb64-apple-darwin.zip
+          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.zip
+          asset_name: scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.zip
           asset_content_type: application/zip
       - name: Upload zip archive SHA to GitHub Release (Mac aarch64)
         uses: actions/upload-release-asset@v1
@@ -1026,8 +1026,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarcb64-apple-darwin.zip.sha256
-          asset_name: scala3-${{ env.RELEASE_TAG }}-aarcb64-apple-darwin.zip.sha256
+          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.zip.sha256
+          asset_name: scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.zip.sha256
           asset_content_type: text/plain
       - name: Upload tar.gz archive to GitHub Release (Mac aarch64)
         uses: actions/upload-release-asset@v1
@@ -1035,8 +1035,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarcb64-apple-darwin.tar.gz
-          asset_name: scala3-${{ env.RELEASE_TAG }}-aarcb64-apple-darwin.tar.gz
+          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.tar.gz
+          asset_name: scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.tar.gz
           asset_content_type: application/gzip
       - name: Upload tar.gz archive SHA to GitHub Release (Mac aarch64)
         uses: actions/upload-release-asset@v1
@@ -1044,8 +1044,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarcb64-apple-darwin.tar.gz.sha256
-          asset_name: scala3-${{ env.RELEASE_TAG }}-aarcb64-apple-darwin.tar.gz.sha256
+          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.tar.gz.sha256
+          asset_name: scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.tar.gz.sha256
           asset_content_type: text/plain
 
 
