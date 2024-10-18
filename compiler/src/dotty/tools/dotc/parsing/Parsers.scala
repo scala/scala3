@@ -4696,9 +4696,11 @@ object Parsers {
           stats += closure(in.offset, Location.InBlock, modifiers(BitSet(IMPLICIT)))
         else if isIdent(nme.extension) && followingIsExtension() then
           stats += extension()
-        else if outermost && ctx.mode.is(Mode.Interactive) && isDefIntro(localModifierTokens) then
-          stats +++= localDef(in.offset)
-        else if isDefIntro(localModifierTokens, excludedSoftModifiers = Set(nme.`opaque`)) then
+        else if isDefIntro(localModifierTokens,
+            excludedSoftModifiers =
+              // Allow opaque definitions at outermost level in REPL.
+              if outermost && ctx.mode.is(Mode.Interactive)
+              then Set.empty else Set(nme.`opaque`)) then
           stats +++= localDef(in.offset)
         else
           empty = true
