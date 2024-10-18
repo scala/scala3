@@ -93,9 +93,9 @@ object Build {
 
   val referenceVersion = "3.5.2"
 
-  val baseVersion = "3.6.0"
+  val baseVersion = "3.6.1"
   // Will be required by some automation later
-  val prereleaseVersion = s"$baseVersion-RC1"
+  // val prereleaseVersion = s"$baseVersion-RC1"
 
   // LTS or Next
   val versionLine = "Next"
