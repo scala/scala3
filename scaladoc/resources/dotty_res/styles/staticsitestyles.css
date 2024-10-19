@@ -1,0 +1,134 @@
+.place-inline {
+    padding: 10px;
+    margin: 20px 0;
+}
+
+
+.alt-details.help-info .alt-details-toggle {
+    width: 100%;
+    background-color: #007bff;
+
+    color: white;
+}
+
+.alt-details.help-info .alt-details-toggle:hover {
+    background-color: #0056b3;
+
+}
+
+.alt-details.help-info .alt-details-detail {
+    background: #fae6e6;
+}
+
+.alt-details {
+    width: 100%;
+    display: flex;
+    justify-items: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+
+.alt-details-toggle {
+    width: 100%;
+
+    font-family: Arial, sans-serif;
+
+    line-height: normal;
+    text-align: center;
+    border: none;
+    background-color: #6c757d;
+
+    padding: 5px 10px;
+    border-radius: 0.3rem;
+
+    font-size: 1rem;
+
+    cursor: pointer;
+    font-weight: 500;
+    color: #343a40;
+}
+
+.alt-details-toggle:hover {
+    background-color: #545b62;
+
+}
+
+.alt-details-toggle:after {
+    content: "\f138";
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    font-size: 15px;
+    float: right;
+    margin-top: 2px;
+}
+
+.alt-details-control {
+    margin: 0;
+}
+
+.alt-details-control+.alt-details-toggle+.alt-details-detail {
+    position: absolute;
+    top: -999em;
+    left: -999em;
+}
+
+.alt-details-control:checked+.alt-details-toggle+.alt-details-detail {
+    position: static;
+}
+
+.alt-details-control:checked+.alt-details-toggle:after {
+    content: "\f13a";
+
+}
+
+.alt-details-detail {
+    border-bottom: 1px solid #ddd;
+
+    border-left: 1px solid #ddd;
+
+    border-right: 1px solid #ddd;
+
+    padding-top: 15px;
+    margin-top: 15px;
+}
+
+/* General Tabs Styles */
+.tabs {
+    width: 100%;
+    margin: 0 auto;
+}
+
+/* Tab Radio Buttons (Hidden) */
+.tab-radio {
+    display: none;
+}
+
+/* Tab Labels */
+.tab-label {
+    display: inline-block;
+    padding: 10px 20px;
+    margin: 0;
+    cursor: pointer;
+    background-color: #f1f1f1;
+    border: 1px solid #ddd;
+    border-bottom: none;
+    transition: background-color 0.3s ease-in-out;
+}
+
+.tab-label:hover {
+    background-color: #ddd;
+}
+
+/* Tab Contents */
+.tab-content {
+    display: none;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-top: none;
+}
+
+/* Show the content of the selected tab */
+.tab-radio:checked+.tab-label+.tab-content {
+    display: block;
+}
