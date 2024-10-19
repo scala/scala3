@@ -91,11 +91,12 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.5.2-RC1"
+  val referenceVersion = "3.6.1"
 
-  val baseVersion = "3.6.1"
+  val baseVersion = "3.6.2"
   // Will be required by some automation later
-  val prereleaseVersion = s"$baseVersion-RC1"
+  // TODO: Introduce automation and handling for RC versions before 3.6.2-RC1
+  // val prereleaseVersion = s"$baseVersion-RC1"
 
   // LTS or Next
   val versionLine = "Next"
@@ -113,8 +114,9 @@ object Build {
    *  For a baseVersion `3.M.P` the mimaPreviousDottyVersion should be set to:
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
+   *  3.6.1 is an exception from this rule - 3.6.0 was a broken release
    */
-  val mimaPreviousDottyVersion = "3.5.0"
+  val mimaPreviousDottyVersion = "3.6.1"
 
   /** LTS version against which we check binary compatibility.
    *
