@@ -663,6 +663,13 @@ jobs:
           echo "This build version: $ver"
           echo "THISBUILD_VERSION=$ver" >> $GITHUB_ENV
 
+      - name: Check is version matching pattern
+        run: |
+          if ! grep -Eo "3\.[0-9]+\.[0-9]+-RC[0-9]+-bin-[0-9]{8}-[a-zA-Z0-9]{7}-NIGHTLY" <<< "${{ env.THISBUILD_VERSION }}"; then
+            echo "Version used by compiler to publish nightly release does not match expected pattern"
+            exit 1
+          fi
+
       - name: Check whether not yet published
         id: not_yet_published
         continue-on-error: true
@@ -766,49 +773,47 @@ jobs:
       - name: Extract the release tag
         run : echo "RELEASE_TAG=${GITHUB_REF#*refs/tags/}" >> $GITHUB_ENV
 
-      - name: Prepare the SDKs
+      - name: Check compiler version
+        shell: bash
         run : |
-          function prepareSDK() {
+          version=$(./project/scripts/sbt "print scala3-compiler-bootstrapped/version" | tail -n1)
+          echo "This build version: ${version}"
+          if [ "${version}" != "${{ env.RELEASE_TAG }}" ]; then
+            echo "Compiler version for this build '${version}', does not match tag: ${{ env.RELEASE_TAG }}"
+            exit 1
+          fi
+
+      - name: Prepare the SDKs
+        shell: bash
+        run : |
+          prepareSDK() {
             distroSuffix="$1"
-            artifactId="$2"
+            sbtProject="$2"
+            distDir="$3"
+
+            # Build binaries
+            ./project/scripts/sbt "${sbtProject}/Universal/stage"
+
+            outputPath="${distDir}/target/universal/stage"
             artifactName="scala3-${{ env.RELEASE_TAG }}${distroSuffix}"
+            zipArchive="${artifactName}.zip"
+            tarGzArchive="${artifactName}.tar.gz"
 
-            downloadedArchive="./artifact.zip"
-            if [[ -f "${downloadedArchive}" ]]; then
-              rm "${downloadedArchive}"
-            fi
-
-            # Download previously prepared SDK bundle
-            curl -L \
-              -H "Authorization: token ${{secrets.GITHUB_TOKEN}}" \
-              -H "Accept: application/vnd.github+json" \
-              -o "${downloadedArchive}" \
-              --retry 5 --retry-delay 10 --retry-connrefused \
-              --max-time 600 --connect-timeout 60  \
-              https://api.github.com/repos/scala/scala3/actions/artifacts/${artifactId}/zip
-
-            # Repackage content of .zip to .tar.gz and prepare digest
-            tmpDir="./archive-tmp-dir"
-            if [[ -d "${tmpDir}" ]]; then
-              rm -r "${tmpDir}"
-            fi
-            mkdir "${tmpDir}"
-            unzip "${downloadedArchive}" -d "${tmpDir}"
-
-            mv "${downloadedArchive}" "./${artifactName}.zip"
-            tar -czf "${artifactName}.tar.gz" -C "${tmpDir}" .
+            cwd=$(pwd)
+            (cd $outputPath && zip -r ${zipArchive} . && mv ${zipArchive} "${cwd}/")
+            tar -czf ${tarGzArchive} -C "$outputPath" .
 
             # Caluclate SHA for each of archive files
-            for file in "${artifactName}.zip" "${artifactName}.tar.gz"; do
+            for file in "${zipArchive}" "${tarGzArchive}"; do
               sha256sum "${file}" > "${file}.sha256"
             done
           }
-          prepareSDK "" ${{needs.build-sdk-package.outputs.universal-id}}
-          prepareSDK "-aarch64-pc-linux"     ${{needs.build-sdk-package.outputs.linux-aarch64-id}}
-          prepareSDK "-x86_64-pc-linux"      ${{needs.build-sdk-package.outputs.linux-x86_64-id}}
-          prepareSDK "-aarch64-apple-darwin" ${{needs.build-sdk-package.outputs.mac-aarch64-id}}
-          prepareSDK "-x86_64-apple-darwin"  ${{needs.build-sdk-package.outputs.mac-x86_64-id}}
-          prepareSDK "-x86_64-pc-win32"      ${{needs.build-sdk-package.outputs.win-x86_64-id}}
+          prepareSDK ""                      "dist"               "./dist/"
+          prepareSDK "-aarch64-pc-linux"     "dist-linux-aarch64" "./dist/linux-aarch64/"
+          prepareSDK "-x86_64-pc-linux"      "dist-linux-x86_64"  "./dist/linux-x86_64/"
+          prepareSDK "-aarch64-apple-darwin" "dist-mac-aarch64"   "./dist/mac-aarch64/"
+          prepareSDK "-x86_64-apple-darwin"  "dist-mac-x86_64"    "./dist/mac-x86_64/"
+          prepareSDK "-x86_64-pc-win32"      "dist-win-x86_64"    "./dist/win-x86_64/"
 
       # Create the GitHub release
       - name: Create GitHub Release
@@ -850,7 +855,7 @@ jobs:
       #     template("Linux x86-64", "-x86_64-pc-linux"),
       #     template("Linux aarch64", "-aarch64-pc-linux"),
       #     template("Mac x86-64", "-x86_64-apple-darwin"),
-      #     template("Mac aarch64", "-aarcb64-apple-darwin"),
+      #     template("Mac aarch64", "-aarch64-apple-darwin"),
       #     template("Windows x86_64", "-x86_64-pc-win32")
       #   ).foreach(println)
       # Universal
@@ -1016,8 +1021,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarcb64-apple-darwin.zip
-          asset_name: scala3-${{ env.RELEASE_TAG }}-aarcb64-apple-darwin.zip
+          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.zip
+          asset_name: scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.zip
           asset_content_type: application/zip
       - name: Upload zip archive SHA to GitHub Release (Mac aarch64)
         uses: actions/upload-release-asset@v1
@@ -1025,8 +1030,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarcb64-apple-darwin.zip.sha256
-          asset_name: scala3-${{ env.RELEASE_TAG }}-aarcb64-apple-darwin.zip.sha256
+          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.zip.sha256
+          asset_name: scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.zip.sha256
           asset_content_type: text/plain
       - name: Upload tar.gz archive to GitHub Release (Mac aarch64)
         uses: actions/upload-release-asset@v1
@@ -1034,8 +1039,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarcb64-apple-darwin.tar.gz
-          asset_name: scala3-${{ env.RELEASE_TAG }}-aarcb64-apple-darwin.tar.gz
+          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.tar.gz
+          asset_name: scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.tar.gz
           asset_content_type: application/gzip
       - name: Upload tar.gz archive SHA to GitHub Release (Mac aarch64)
         uses: actions/upload-release-asset@v1
@@ -1043,8 +1048,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarcb64-apple-darwin.tar.gz.sha256
-          asset_name: scala3-${{ env.RELEASE_TAG }}-aarcb64-apple-darwin.tar.gz.sha256
+          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.tar.gz.sha256
+          asset_name: scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.tar.gz.sha256
           asset_content_type: text/plain
 
 
