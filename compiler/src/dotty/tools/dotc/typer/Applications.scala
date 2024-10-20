@@ -2237,7 +2237,10 @@ trait Applications extends Compatibility {
 
         def isCorrectUnaryFunction(alt: TermRef): Boolean =
           val formals = params(alt)
-          formals.length == 1 && ptIsCorrectProduct(formals.head, args)
+          formals.lengthIs == 1 && {
+            ptIsCorrectProduct(formals.head, args)
+            | formals.head.dealias.isInstanceOf[TypeParamRef] // eg. i21682
+          }
 
         val numArgs = args.length
         if numArgs > 1
