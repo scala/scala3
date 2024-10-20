@@ -581,6 +581,7 @@ jobs:
           echo "THISBUILD_VERSION=$ver" >> $GITHUB_ENV
 
       - name: Check is version matching pattern
+        shell: bash
         run: |
           if ! grep -Eo "3\.[0-9]+\.[0-9]+-RC[0-9]+-bin-[0-9]{8}-[a-zA-Z0-9]{7}-NIGHTLY" <<< "${{ env.THISBUILD_VERSION }}"; then
             echo "Version used by compiler to publish nightly release does not match expected pattern"
