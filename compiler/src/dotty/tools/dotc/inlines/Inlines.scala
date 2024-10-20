@@ -49,7 +49,13 @@ object Inlines:
 
   /** Can a call to method `meth` be inlined? */
   def isInlineable(meth: Symbol)(using Context): Boolean =
-    meth.is(Inline) && meth.hasAnnotation(defn.BodyAnnot) && !inInlineMethod
+    meth.is(Inline)
+    && (meth.hasAnnotation(defn.BodyAnnot)
+        // Ensure `isInlineable` works with temporary symbols created during
+        // overloading resolution by `Applications#resolveMapped`.
+        // Testcase: tests/pos/i21410c.scala
+        || meth.hasAnnotation(defn.MappedAlternativeAnnot))
+    && !inInlineMethod
 
   /** Should call be inlined in this context? */
   def needsInlining(tree: Tree)(using Context): Boolean = tree match {
