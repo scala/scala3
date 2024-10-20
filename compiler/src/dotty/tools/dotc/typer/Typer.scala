@@ -4048,8 +4048,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       /** Search for an alternative that does not take parameters.
        * If there is one, return it, otherwise emit an error.
        */
-      def tryParameterless(alts: List[TermRef])(error: => tpd.Tree): Tree =
-        alts.filter(_.info.isParameterless) match
+      def noApplyNoParams: TermRef => Boolean =
+        alt => alt.info.isParameterless && !alt.info.member(nme.apply).exists
+
+      def tryNoApplyParameterless(alts: List[TermRef])(error: => tpd.Tree): Tree =
+        alts.filter(noApplyNoParams) match
           case alt :: Nil => readaptSimplified(tree.withType(alt))
           case _ =>
             if altDenots.exists(_.info.paramInfoss == ListOfNil) then
@@ -4076,7 +4079,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               // insert apply or convert qualifier, but only for a regular application
               tryInsertApplyOrImplicit(tree, pt, locked)(errorNoMatch)
             case _ =>
-              tryParameterless(alts)(errorNoMatch)
+              tryNoApplyParameterless(alts)(errorNoMatch)
 
         case ambiAlts =>
           // If there are ambiguous alternatives, and:
@@ -4103,11 +4106,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             tree.withType(UnspecifiedErrorType)
           else
             pt match
-              case _: FunProto =>
-                errorAmbiguous
-              case _  =>
-                tryParameterless(alts)(errorAmbiguous)
-
+              case _: FunProto => errorAmbiguous
+              case _ => tryNoApplyParameterless(alts)(errorAmbiguous)
       end match
     end adaptOverloaded
 
