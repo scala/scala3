@@ -125,8 +125,8 @@ trait TypeAssigner {
 
   /** The type of the selection `tree`, where `qual1` is the typed qualifier part. */
   def selectionType(tree: untpd.RefTree, qual1: Tree)(using Context): Type =
-    val qualType0 = qual1.tpe.widenIfUnstable
     val qualType =
+      val qualType0 = qual1.tpe.widenIfUnstable
       if !qualType0.hasSimpleKind && tree.name != nme.CONSTRUCTOR then
         // constructors are selected on type constructor, type arguments are passed afterwards
         errorType(em"$qualType0 takes type parameters", qual1.srcPos)
@@ -199,7 +199,7 @@ trait TypeAssigner {
 
   /** Type assignment method. Each method takes as parameters
    *   - an untpd.Tree to which it assigns a type,
-   *   - typed child trees it needs to access to cpmpute that type,
+   *   - typed child trees it needs to access to compute that type,
    *   - any further information it needs to access to compute that type.
    */
   def assignType(tree: untpd.Ident, tp: Type)(using Context): Ident =
