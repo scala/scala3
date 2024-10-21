@@ -137,12 +137,14 @@ object Feature:
   /** Is pureFunctions enabled for this compilation unit? */
   def pureFunsEnabled(using Context) =
     enabledBySetting(pureFunctions)
+    || enabledByImport(pureFunctions)
     || ctx.compilationUnit.knowsPureFuns
     || ccEnabled
 
   /** Is captureChecking enabled for this compilation unit? */
   def ccEnabled(using Context) =
     enabledBySetting(captureChecking)
+    || enabledByImport(captureChecking)
     || ctx.compilationUnit.needsCaptureChecking
 
   /** Is pureFunctions enabled for any of the currently compiled compilation units? */
