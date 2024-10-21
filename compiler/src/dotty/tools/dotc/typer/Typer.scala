@@ -3398,6 +3398,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   /** Translate tuples of all arities */
   def typedTuple(tree: untpd.Tuple, pt: Type)(using Context): Tree =
     val tree1 = desugar.tuple(tree, pt)
+    checkAmbiguousNamedTupleAssignment(tree)
     if tree1 ne tree then typed(tree1, pt)
     else
       val arity = tree.trees.length
@@ -3422,6 +3423,20 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             TypeComparer.widenInferred(elem.tpe, pt, Widen.Unions)
           val resTpe = TypeOps.nestedPairs(elemTpes)
           app1.cast(resTpe)
+
+ /** Checks if `tree` is a named tuple with one element that could be
+  *  interpreted as an assignment, such as `(x = 1)`. If so, issues a warning.
+  */
+  def checkAmbiguousNamedTupleAssignment(tree: untpd.Tuple)(using Context): Unit =
+    tree.trees match
+      case List(NamedArg(name, value)) =>
+        val tmpCtx = ctx.fresh.setNewTyperState()
+        typedAssign(untpd.Assign(untpd.Ident(name), value), WildcardType)(using tmpCtx)
+        if !tmpCtx.reporter.hasErrors then
+          // If there are no errors typing the above, then the named tuple is
+          // ambiguous and we issue a warning.
+          report.migrationWarning(AmbiguousNamedTupleAssignment(name, value), tree.srcPos)
+      case _ => ()
 
   /** Retrieve symbol attached to given tree */
   protected def retrieveSym(tree: untpd.Tree)(using Context): Symbol = tree.removeAttachment(SymOfTree) match {

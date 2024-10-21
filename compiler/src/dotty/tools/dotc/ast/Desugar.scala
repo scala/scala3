@@ -1605,9 +1605,10 @@ object desugar {
 
   /** Translate tuple expressions
    *
-   *     ()             ==>   ()
-   *     (t)            ==>   t
-   *     (t1, ..., tN)  ==>   TupleN(t1, ..., tN)
+   *     ()                       ==>   ()
+   *     (t)                      ==>   t
+   *     (t1, ..., tN)            ==>   TupleN(t1, ..., tN)
+   *     (n1 = t1, ..., nN = tN)  ==>   NamedTuple.build[(n1, ..., nN)]()(TupleN(t1, ..., tN))
    */
   def tuple(tree: Tuple, pt: Type)(using Context): Tree =
     var elems = checkWellFormedTupleElems(tree.trees)
