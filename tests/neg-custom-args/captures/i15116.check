@@ -18,13 +18,17 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15116.scala:5:13 ----------------------------------------
 5 |  val x = Foo(m)   // error
   |          ^^^^^^
-  |          Found:    Foo{val m: String^{Baz.this}}^{Baz.this}
+  |          Found:    Foo{val m²: (Baz.this.m : String^)}^{Baz.this.m}
   |          Required: Foo
+  |
+  |          where:    m  is a value in trait Baz
+  |                    m² is a value in class Foo
+  |
   |
   |          Note that the expected type Foo
   |          is the previously inferred type of value x
   |          which is also the type seen in separately compiled sources.
-  |          The new inferred type Foo{val m: String^{Baz.this}}^{Baz.this}
+  |          The new inferred type Foo{val m: (Baz.this.m : String^)}^{Baz.this.m}
   |          must conform to this type.
   |
   | longer explanation available when compiling with `-explain`
@@ -48,13 +52,17 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15116.scala:9:13 ----------------------------------------
 9 |  val x = Foo(m)   // error
   |          ^^^^^^
-  |          Found:    Foo{val m: String^{Baz2.this}}^{Baz2.this}
+  |          Found:    Foo{val m²: (Baz2.this.m : String^)}^{Baz2.this.m}
   |          Required: Foo
+  |
+  |          where:    m  is a value in trait Baz2
+  |                    m² is a value in class Foo
+  |
   |
   |          Note that the expected type Foo
   |          is the previously inferred type of value x
   |          which is also the type seen in separately compiled sources.
-  |          The new inferred type Foo{val m: String^{Baz2.this}}^{Baz2.this}
+  |          The new inferred type Foo{val m: (Baz2.this.m : String^)}^{Baz2.this.m}
   |          must conform to this type.
   |
   | longer explanation available when compiling with `-explain`
