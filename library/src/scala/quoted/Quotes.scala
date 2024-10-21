@@ -3855,6 +3855,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       // TODO: add flags and privateWithin
       @experimental def newClass(parent: Symbol, name: String, parents: List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr]): Symbol
 
+      /*
+       * @param paramNames constructor parameter names.
+       * @param paramTypes constructor parameter types.
+       * @param flags extra flags with which the class symbol should be constructed.
+       * @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
+       *
+       * Parameters can be obtained via classSymbol.memberField
+       */
+      @experimental def newClass(parent: Symbol, name: String, parents: List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr], paramNames: List[String], paramTypes: List[TypeRepr], flags: Flags, privateWithin: Symbol): Symbol
+
       /** Generates a new module symbol with an associated module class symbol,
        *  this is equivalent to an `object` declaration in source code.
        *  This method returns the module symbol. The module class can be accessed calling `moduleClass` on this symbol.

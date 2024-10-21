@@ -12,6 +12,7 @@ import collection.mutable
 import reporting.*
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 import cc.CaptureSet
+import transform.Splicer
 
 trait TypeAssigner {
   import tpd.*
@@ -301,7 +302,10 @@ trait TypeAssigner {
           if fntpe.isResultDependent then safeSubstMethodParams(fntpe, args.tpes)
           else fntpe.resultType // fast path optimization
         else
-          errorType(em"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.srcPos)
+          val erroringPhase =
+            if Splicer.inMacroExpansion then i"${ctx.phase} (while expanding macro)"
+            else ctx.phase.prev.toString
+          errorType(em"wrong number of arguments at $erroringPhase for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.srcPos)
       case err: ErrorType =>
         err
       case t =>
