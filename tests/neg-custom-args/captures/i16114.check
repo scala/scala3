@@ -1,0 +1,25 @@
+-- Error: tests/neg-custom-args/captures/i16114.scala:18:8 -------------------------------------------------------------
+18 |        fs  // error
+   |        ^^
+   |        (fs : Cap^) cannot be referenced here; it is not included in the allowed capture set {io}
+   |        of an enclosing function literal with expected type Unit ->{io} Unit
+-- Error: tests/neg-custom-args/captures/i16114.scala:24:8 -------------------------------------------------------------
+24 |        io  // error
+   |        ^^
+   |        (io : Cap^) cannot be referenced here; it is not included in the allowed capture set {fs}
+   |        of an enclosing function literal with expected type Unit ->{fs} Unit
+-- Error: tests/neg-custom-args/captures/i16114.scala:34:19 ------------------------------------------------------------
+34 |      expect[Cap^](io) // error
+   |                   ^^
+   |                   reference (io : Cap^) is not included in the allowed capture set {}
+   |                   of an enclosing function literal with expected type Unit -> Unit
+-- Error: tests/neg-custom-args/captures/i16114.scala:38:8 -------------------------------------------------------------
+38 |        io.use()    // error
+   |        ^^
+   |        (io : Cap^) cannot be referenced here; it is not included in the allowed capture set {}
+   |        of an enclosing function literal with expected type Unit -> Unit
+-- Error: tests/neg-custom-args/captures/i16114.scala:39:8 -------------------------------------------------------------
+39 |        io          // error
+   |        ^^
+   |        (io : Cap^) cannot be referenced here; it is not included in the allowed capture set {}
+   |        of an enclosing function literal with expected type Unit -> Unit

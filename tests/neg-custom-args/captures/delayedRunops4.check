@@ -1,0 +1,21 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/delayedRunops4.scala:11:4 --------------------------------
+11 |    runOps[C]: List[() ->{C^} Unit] ->{C^} Unit) // error
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |    Found:    List[box () ->{C^} Unit] ->{C^} Unit
+   |    Required: List[box () ->{C^} Unit] -> Unit
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/delayedRunops4.scala:15:43 -------------------------------
+15 |  app[List[() ->{C^} Unit], Unit](ops, rops[C]) // error
+   |                                       ^^^^^^^
+   |                                       Found:    (ops: List[box () ->{C^} Unit]) ->{C^} Unit
+   |                                       Required: (ops: List[box () ->{C^} Unit]) -> Unit
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/delayedRunops4.scala:18:39 -------------------------------
+18 |  app[List[() ->{C^} Unit], Unit](ops, runOps) // error
+   |                                       ^^^^^^
+   |                                       Found:    (ops: List[box () ->? Unit]^?) ->? Unit
+   |                                       Required: (ops: List[box () ->{C^} Unit]) -> Unit
+   |
+   | longer explanation available when compiling with `-explain`

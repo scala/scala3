@@ -1,10 +1,8 @@
--- Error: tests/neg-custom-args/captures/reaches2.scala:8:10 -----------------------------------------------------------
-8 |  ps.map((x, y) => compose1(x, y)) // error // error
-  |          ^
-  |reference ps* is not included in the allowed capture set {}
-  |of an enclosing function literal with expected type ((box A ->{ps*} A, box A ->{ps*} A)) -> box (x$0: A^?) ->? (ex$15: caps.Exists) -> A^?
--- Error: tests/neg-custom-args/captures/reaches2.scala:8:13 -----------------------------------------------------------
-8 |  ps.map((x, y) => compose1(x, y)) // error // error
-  |             ^
-  |reference ps* is not included in the allowed capture set {}
-  |of an enclosing function literal with expected type ((box A ->{ps*} A, box A ->{ps*} A)) -> box (x$0: A^?) ->? (ex$15: caps.Exists) -> A^?
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches2.scala:8:10 --------------------------------------
+8 |  ps.map((x, y) => compose1(x, y)) // error
+  |          ^^^^^^^^^^^^^^^^^^^^^^^
+  |Found:    (x$1: (box (x$0: A^?) ->? (ex$18: caps.Exists) -> A^?, box (x$0: A^?) ->? (ex$19: caps.Exists) -> A^?)^?) ->?
+  |  box (x$0: A^?) ->? A^?
+  |Required: (x$1: (box A ->{ps*} A, box A ->{ps*} A)) -> box (x$0: A^?) ->? A^?
+  |
+  | longer explanation available when compiling with `-explain`

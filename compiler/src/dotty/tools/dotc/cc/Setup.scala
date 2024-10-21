@@ -518,6 +518,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           info match
             case mt: MethodOrPoly =>
               val psyms = psymss.head
+              // TODO: the substitution does not work for param-dependent method types.
+              // For example, `(x: T, y: x.f.type) => Unit`. In this case, when we
+              // substitute `x.f.type`, `x` becomes a `TermParamRef`. But the new method
+              // type is still under initialization and `paramInfos` is still `null`,
+              // so the new `NamedType` will not have a denoation.
               mt.companion(mt.paramNames)(
                 mt1 =>
                   if !paramSignatureChanges && !mt.isParamDependent && prevLambdas.isEmpty then
@@ -746,7 +751,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             report.warning(em"redundant capture: $dom already accounts for $ref", pos)
 
         if ref.captureSetOfInfo.elems.isEmpty && !ref.derivesFrom(defn.Caps_Capability) then
-          report.error(em"$ref cannot be tracked since its capture set is empty", pos)
+          val deepStr = if ref.isReach then " deep" else ""
+          report.error(em"$ref cannot be tracked since its$deepStr capture set is empty", pos)
         check(parent.captureSet, parent)
 
         val others =

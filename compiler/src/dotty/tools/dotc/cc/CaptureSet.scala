@@ -374,7 +374,7 @@ object CaptureSet:
 
   def apply(elems: CaptureRef*)(using Context): CaptureSet.Const =
     if elems.isEmpty then empty
-    else Const(SimpleIdentitySet(elems.map(_.normalizedRef.ensuring(_.isTrackableRef))*))
+    else Const(SimpleIdentitySet(elems.map(_.ensuring(_.isTrackableRef))*))
 
   def apply(elems: Refs)(using Context): CaptureSet.Const =
     if elems.isEmpty then empty else Const(elems)
@@ -508,7 +508,11 @@ object CaptureSet:
         !noUniversal
       else elem match
         case elem: TermRef if level.isDefined =>
-          elem.symbol.ccLevel <= level
+          elem.prefix match
+            case prefix: CaptureRef =>
+              levelOK(prefix)
+            case _ =>
+              elem.symbol.ccLevel <= level
         case elem: ThisType if level.isDefined =>
           elem.cls.ccLevel.nextInner <= level
         case ReachCapability(elem1) =>
@@ -1060,9 +1064,42 @@ object CaptureSet:
     case ref: (TermRef | TermParamRef) if ref.isMaxCapability =>
       if ref.isTrackableRef then ref.singletonCaptureSet
       else CaptureSet.universal
-    case ReachCapability(ref1) => deepCaptureSet(ref1.widen)
+    case ReachCapability(ref1) => ref1.widen.deepCaptureSet
       .showing(i"Deep capture set of $ref: ${ref1.widen} = $result", capt)
     case _ => ofType(ref.underlying, followResult = true)
+
+  /** Add captures implied by a type. This means: if we have a contravarint, boxed
+   *  capability in a function parameter and the capability is either `cap`, or a
+   *  reach capability, or a capture set variable, add the same capability to the enclosing
+   *  function arrow. For instance `List[() ->{ops*} Unit] -> Unit` would become
+   *  `List[() ->{ops*} Unit] ->{ops*} Unit`. This is needed to make
+   *  the `delayedRunops*.scala` tests produce errors.
+   *  TODO: Investigate whether we can roll this into a widening rule like
+   *
+   *      List[() ->{cap} Unit] -> Unit <: List[() ->{ops*} Unit] ->{ops*} Unit
+   *
+   *  but not
+   *
+   *      List[() ->{cap} Unit] -> Unit <: List[() ->{ops*} Unit] -> Unit
+   *
+   *  It would mean that a reach capability can no longer be a subtype of `cap`.
+   */
+  class addImplied(using Context) extends TypeAccumulator[CaptureSet]:
+    var boundVars: Set[CaptureRef] = Set.empty
+    def isImplied(tp: CaptureRef) =
+      (tp.isRootCapability || tp.isReach || tp.derivesFrom(defn.Caps_CapSet))
+      && !boundVars.contains(tp.stripReach)
+    def apply(cs: CaptureSet, t: Type) = t match
+      case t @ CapturingType(parent, cs1) =>
+        val cs2 = this(cs, parent)
+        if variance <= 0 && t.isBoxed then cs2 ++ cs1.filter(isImplied)
+        else cs2
+      case t: MethodOrPoly =>
+        val saved = boundVars
+        boundVars ++= t.paramRefs.asInstanceOf[List[CaptureRef]]
+        try foldOver(cs, t) finally boundVars = saved
+      case _ =>
+        foldOver(cs, t)
 
   /** Capture set of a type */
   def ofType(tp: Type, followResult: Boolean)(using Context): CaptureSet =
@@ -1111,17 +1148,25 @@ object CaptureSet:
 
   /** The deep capture set of a type is the union of all covariant occurrences of
    *  capture sets. Nested existential sets are approximated with `cap`.
+   *  NOTE: The traversal logic needs to be in sync with narrowCaps in CaptureOps, which
+   *  replaces caps with reach capabilties.
    */
   def ofTypeDeeply(tp: Type)(using Context): CaptureSet =
     val collect = new TypeAccumulator[CaptureSet]:
-      def apply(cs: CaptureSet, t: Type) = t.dealias match
-        case t @ CapturingType(p, cs1) =>
-          val cs2 = apply(cs, p)
-          if variance > 0 then cs2 ++ cs1 else cs2
-        case t @ Existential(_, _) =>
-          apply(cs, Existential.toCap(t))
-        case _ =>
-          foldOver(cs, t)
+      def apply(cs: CaptureSet, t: Type) =
+        if variance <= 0 then cs
+        else t.dealias match
+          case t @ CapturingType(p, cs1) =>
+            this(cs, p) ++ cs1
+          case t @ AnnotatedType(parent, ann) =>
+            this(cs, parent)
+          case t @ FunctionOrMethod(args, res @ Existential(_, _))
+          if args.forall(_.isAlwaysPure) =>
+            this(cs, Existential.toCap(res))
+          case t @ Existential(_, _) =>
+            cs
+          case _ =>
+            foldOver(cs, t)
     collect(CaptureSet.empty, tp)
 
   type AssumedContains = immutable.Map[TypeRef, SimpleIdentitySet[CaptureRef]]
