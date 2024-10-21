@@ -1639,8 +1639,6 @@ object desugar {
       if ctx.mode.is(Mode.Type) then
         AppliedTypeTree(ref(defn.NamedTupleTypeRef), namesTuple :: tup :: Nil)
       else
-        if names.length == 1 && ctx.scope.lookup(names.head).is(Flags.Mutable) then
-          report.migrationWarning(AmbiguousNamedTupleAssignment(names.head, elemValues.head), tree.srcPos)
         Apply(
           Apply(
             TypeApply(
