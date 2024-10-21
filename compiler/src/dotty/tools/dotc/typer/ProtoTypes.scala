@@ -71,7 +71,8 @@ object ProtoTypes {
                    |constraint was: ${ctx.typerState.constraint}
                    |constraint now: ${newctx.typerState.constraint}""")
             if result && (ctx.typerState.constraint ne newctx.typerState.constraint) then
-              newctx.typerState.commit()
+              newctx.typerState.gc()     // Remove any type lambdas and tvars added via testCompat
+              newctx.typerState.commit() // Commit the rest of the typer state information
             result
           case _ => testCompat
       else explore(testCompat)
