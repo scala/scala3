@@ -122,7 +122,7 @@ object ParseResult {
 
   private def parseStats(using Context): List[untpd.Tree] = {
     val parser = new Parser(ctx.source)
-    val stats = parser.blockStatSeq()
+    val stats = parser.blockStatSeq(outermost = true)
     parser.accept(Tokens.EOF)
     stats
   }
