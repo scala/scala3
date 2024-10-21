@@ -3343,3 +3343,12 @@ final class QuotedTypeMissing(tpe: Type)(using Context) extends StagingMessage(Q
         |"""
 
 end QuotedTypeMissing
+
+final class AmbiguousNamedTupleAssignment(key: Name, value: untpd.Tree)(using Context) extends SyntaxMsg(AmbiguousNamedTupleAssignmentID):
+  override protected def msg(using Context): String =
+    i"""Ambiguous syntax: this is interpreted as a named tuple with one element,
+      |not as an assignment.
+      |
+      |To assign a value, use curly braces: `{${key} = ${value}}`."""
+  
+  override protected def explain(using Context): String = ""

@@ -1605,9 +1605,10 @@ object desugar {
 
   /** Translate tuple expressions
    *
-   *     ()             ==>   ()
-   *     (t)            ==>   t
-   *     (t1, ..., tN)  ==>   TupleN(t1, ..., tN)
+   *     ()                       ==>   ()
+   *     (t)                      ==>   t
+   *     (t1, ..., tN)            ==>   TupleN(t1, ..., tN)
+   *     (n1 = t1, ..., nN = tN)  ==>   NamedTuple.build[(n1, ..., nN)]()(TupleN(t1, ..., tN))
    */
   def tuple(tree: Tuple, pt: Type)(using Context): Tree =
     var elems = checkWellFormedTupleElems(tree.trees)
@@ -1638,6 +1639,8 @@ object desugar {
       if ctx.mode.is(Mode.Type) then
         AppliedTypeTree(ref(defn.NamedTupleTypeRef), namesTuple :: tup :: Nil)
       else
+        if names.length == 1 && ctx.scope.lookup(names.head).is(Flags.Mutable) then
+          report.migrationWarning(AmbiguousNamedTupleAssignment(names.head, elemValues.head), tree.srcPos)
         Apply(
           Apply(
             TypeApply(
