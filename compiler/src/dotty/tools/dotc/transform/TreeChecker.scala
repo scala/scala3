@@ -854,30 +854,34 @@ object TreeChecker {
       val phases = ctx.base.allPhases.toList
       val treeChecker = new LocalChecker(previousPhases(phases))
 
+      def reportMalformedMacroTree(msg: String | Null, err: Throwable) =
+        val stack =
+          if !ctx.settings.Ydebug.value then "\nstacktrace available when compiling with `-Ydebug`"
+          else if err.getStackTrace == null then "  no stacktrace"
+          else err.getStackTrace.nn.mkString("  ", "  \n", "")
+        report.error(
+          em"""Malformed tree was found while expanding macro with -Xcheck-macros.
+              |The tree does not conform to the compiler's tree invariants.
+              |
+              |Macro was:
+              |${scala.quoted.runtime.impl.QuotesImpl.showDecompiledTree(original)}
+              |
+              |The macro returned:
+              |${scala.quoted.runtime.impl.QuotesImpl.showDecompiledTree(expansion)}
+              |
+              |Error:
+              |$msg
+              |$stack
+              |""",
+          original
+        )
+
       try treeChecker.typed(expansion)(using checkingCtx)
       catch
         case err: java.lang.AssertionError =>
-          val stack =
-            if !ctx.settings.Ydebug.value then "\nstacktrace available when compiling with `-Ydebug`"
-            else if err.getStackTrace == null then "  no stacktrace"
-            else err.getStackTrace.nn.mkString("  ", "  \n", "")
-
-          report.error(
-            em"""Malformed tree was found while expanding macro with -Xcheck-macros.
-               |The tree does not conform to the compiler's tree invariants.
-               |
-               |Macro was:
-               |${scala.quoted.runtime.impl.QuotesImpl.showDecompiledTree(original)}
-               |
-               |The macro returned:
-               |${scala.quoted.runtime.impl.QuotesImpl.showDecompiledTree(expansion)}
-               |
-               |Error:
-               |${err.getMessage}
-               |$stack
-               |""",
-            original
-          )
+          reportMalformedMacroTree(err.getMessage(), err)
+        case err: UnhandledError =>
+          reportMalformedMacroTree(err.diagnostic.message, err)
 
   private[TreeChecker] def previousPhases(phases: List[Phase])(using Context): List[Phase] = phases match {
     case (phase: MegaPhase) :: phases1 =>
