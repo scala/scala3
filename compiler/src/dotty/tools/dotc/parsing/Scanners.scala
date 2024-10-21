@@ -212,6 +212,7 @@ object Scanners {
 
     def featureEnabled(name: TermName) = Feature.enabled(name)(using languageImportContext)
     def erasedEnabled = featureEnabled(Feature.erasedDefinitions)
+    def trackedEnabled = featureEnabled(Feature.modularity)
 
     private var postfixOpsEnabledCache = false
     private var postfixOpsEnabledCtx: Context = NoContext
@@ -1195,7 +1196,7 @@ object Scanners {
 
     def isSoftModifier: Boolean =
       token == IDENTIFIER
-      && (softModifierNames.contains(name) || name == nme.erased && erasedEnabled)
+      && (softModifierNames.contains(name) || name == nme.erased && erasedEnabled || name == nme.tracked && trackedEnabled)
 
     def isSoftModifierInModifierPosition: Boolean =
       isSoftModifier && inModifierPosition()
