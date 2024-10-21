@@ -27,7 +27,7 @@ def test(): Unit =
     t1.read()
 
   val xsLambda2 = () => useBoxedAsync2(xs)
-  val _: () ->{xs*} Unit = xsLambda2
+  val _: () ->{useBoxedAsync2, xs*} Unit = xsLambda2 // useBoxedAsync2 needed after adding addImplied widening
   val _: () -> Unit = xsLambda2 // error
 
   val f: Box[Async^] => Unit = (x:  Box[Async^]) => useBoxedAsync(x)

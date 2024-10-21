@@ -527,6 +527,14 @@ extension (tp: Type)
       case _ =>
         tp
 
+  /** Add implied captures as defined by `CaptureSet.addImplied`. */
+  def withImpliedCaptures(using Context): Type =
+    if tp.isValueType && !tp.isAlwaysPure then
+      val implied = CaptureSet.addImplied()(CaptureSet.empty, tp)
+      if !implied.isAlwaysEmpty then capt.println(i"Add implied $implied to $tp")
+      tp.capturing(implied)
+    else tp
+
   def level(using Context): Level =
     tp match
     case tp: TermRef => tp.symbol.ccLevel

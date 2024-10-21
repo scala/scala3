@@ -1,0 +1,14 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/delayedRunops2.scala:10:35 -------------------------------
+10 |  app[List[() ->{ops*} Unit], Unit](ops, runOps) // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Found:    () ->{ops*} Unit
+   |  Required: () -> Unit
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/delayedRunops2.scala:18:36 -------------------------------
+18 |  app2[List[() => Unit], Unit](ops, runOps: List[() => Unit] -> Unit) // error
+   |                                    ^^^^^^
+   |                                    Found:    (ops: List[box () ->? Unit]^?) ->? Unit
+   |                                    Required: (ops: List[box () => Unit]) -> Unit
+   |
+   | longer explanation available when compiling with `-explain`

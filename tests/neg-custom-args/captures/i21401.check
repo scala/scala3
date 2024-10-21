@@ -13,3 +13,10 @@
    |                                                          ^^^^^^^^^^^^^^^^^^^
    |              The expression's type Res is not allowed to capture the root capability `cap` in its part box IO^.
    |              This usually means that a capability persists longer than its allowed lifetime.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21401.scala:17:67 ---------------------------------------
+17 |  val x: Boxed[IO^] = leaked[Boxed[IO^], Boxed[IO^] -> Boxed[IO^]](x => x) // error after adding addImplied widening
+   |                                                                   ^^^^^^
+   |                                                          Found:    (x: Boxed[box IO^?]^?) ->? Boxed[box IO^?]^?
+   |                                                          Required: (x: Boxed[box IO^]) -> Boxed[box IO^]
+   |
+   | longer explanation available when compiling with `-explain`

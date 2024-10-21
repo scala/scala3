@@ -1068,6 +1068,39 @@ object CaptureSet:
       .showing(i"Deep capture set of $ref: ${ref1.widen} = $result", capt)
     case _ => ofType(ref.underlying, followResult = true)
 
+  /** Add captures implied by a type. This means: if we have a contravarint, boxed
+   *  capability in a function parameter and the capability is either `cap`, or a
+   *  reach capability, or a capture set variable, add the same capability to the enclosing
+   *  function arrow. For instance `List[() ->{ops*} Unit] -> Unit` would become
+   *  `List[() ->{ops*} Unit] ->{ops*} Unit`. This is needed to make
+   *  the `delayedRunops*.scala` tests produce errors.
+   *  TODO: Investigate whether we can roll this into a widening rule like
+   *
+   *      List[() ->{cap} Unit] -> Unit <: List[() ->{ops*} Unit] ->{ops*} Unit
+   *
+   *  but not
+   *
+   *      List[() ->{cap} Unit] -> Unit <: List[() ->{ops*} Unit] -> Unit
+   *
+   *  It would mean that a reach capability can no longer be a subtype of `cap`.
+   */
+  class addImplied(using Context) extends TypeAccumulator[CaptureSet]:
+    var boundVars: Set[CaptureRef] = Set.empty
+    def isImplied(tp: CaptureRef) =
+      (tp.isRootCapability || tp.isReach || tp.derivesFrom(defn.Caps_CapSet))
+      && !boundVars.contains(tp.stripReach)
+    def apply(cs: CaptureSet, t: Type) = t match
+      case t @ CapturingType(parent, cs1) =>
+        val cs2 = this(cs, parent)
+        if variance <= 0 && t.isBoxed then cs2 ++ cs1.filter(isImplied)
+        else cs2
+      case t: MethodOrPoly =>
+        val saved = boundVars
+        boundVars ++= t.paramRefs.asInstanceOf[List[CaptureRef]]
+        try foldOver(cs, t) finally boundVars = saved
+      case _ =>
+        foldOver(cs, t)
+
   /** Capture set of a type */
   def ofType(tp: Type, followResult: Boolean)(using Context): CaptureSet =
     def recur(tp: Type): CaptureSet = trace(i"ofType $tp, ${tp.getClass} $followResult", show = true):

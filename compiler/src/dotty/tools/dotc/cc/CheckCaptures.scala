@@ -1292,7 +1292,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       else
         val widened = improveCaptures(actual.widen.dealiasKeepAnnots, actual)
         val adapted = adaptBoxed(
-            widened.withReachCaptures(actual), expected, pos,
+            widened.withReachCaptures(actual).withImpliedCaptures, expected, pos,
             covariant = true, alwaysConst = false, boxErrors)
         if adapted eq widened then actual
         else adapted.showing(i"adapt boxed $actual vs $expected = $adapted", capt)

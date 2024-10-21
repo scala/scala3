@@ -4,6 +4,12 @@ import caps.{CapSet, Capability}
 
 @experimental object Test:
 
+  class Set[T] extends Pure: // Define sets as `Pure` needed after adding addImplied widening
+    def +[T](x: T): Set[T] = ???
+
+  object Set:
+    def empty[T]: Set[T] = ???
+
   class Async extends Capability
 
   def listener(async: Async): Listener^{async} = ???
@@ -28,5 +34,8 @@ import caps.{CapSet, Capability}
     others.map(listener).foreach(src.register)
     val ls = src.allListeners
     val _: Set[Listener^{async1, others*}] = ls
+      // {ls, others*} would be added by addImplied here since sets are invariant
+      // But this is suppressed since Set is now declared to be pure.
+      
 
 

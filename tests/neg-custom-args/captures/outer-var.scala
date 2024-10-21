@@ -13,6 +13,6 @@ def test(p: Proc, q: () => Unit) =
     y = (q: Proc)   // error
     y = q           // OK, was error under sealed
 
-  var finalizeActions = collection.mutable.ListBuffer[() => Unit]() // OK, was error under sealed
+  var finalizeActions = collection.mutable.ListBuffer[() => Unit]() // error under addImplied widening
 
 

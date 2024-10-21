@@ -4,6 +4,12 @@ import caps.{CapSet, Capability}
 
 @experimental object Test:
 
+  class Set[T] extends Pure:  // Define sets as `Pure` needed after adding addImplied widening
+    def +[T](x: T): Set[T] = ???
+
+  object Set:
+    def empty[T]: Set[T] = ???
+
   class Label //extends Capability
 
   class Listener
