@@ -7,6 +7,7 @@ import java.util.Optional
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.ScheduledExecutorService
+import java.util.Collections
 import java.util as ju
 
 import scala.concurrent.ExecutionContext
@@ -108,7 +109,9 @@ case class ScalaPresentationCompiler(
       params.token()
     ) { access =>
       val driver = access.compiler()
-      new PcSemanticTokensProvider(driver, params).provide().asJava
+      new PcSemanticTokensProvider(driver, params)
+        .provide()
+        .asJava
     }
 
   override def inlayHints(
@@ -175,7 +178,7 @@ case class ScalaPresentationCompiler(
       params: OffsetParams
   ): CompletableFuture[ju.List[DocumentHighlight]] =
     compilerAccess.withInterruptableCompiler(Some(params))(
-      List.empty[DocumentHighlight].asJava,
+      Collections.emptyList(),
       params.token()
     ) { access =>
       val driver = access.compiler()
@@ -186,7 +189,7 @@ case class ScalaPresentationCompiler(
       params: ReferencesRequest
   ): CompletableFuture[ju.List[ReferencesResult]] =
     compilerAccess.withNonInterruptableCompiler(Some(params.file()))(
-      List.empty[ReferencesResult].asJava,
+      Collections.emptyList(),
       params.file().token,
     ) { access =>
       val driver = access.compiler()
@@ -204,14 +207,11 @@ case class ScalaPresentationCompiler(
       new InferExpectedType(search, driver, params).infer().asJava
     }
 
-  def shutdown(): Unit =
-    compilerAccess.shutdown()
+  def shutdown(): Unit = compilerAccess.shutdown()
 
-  def restart(): Unit =
-    compilerAccess.shutdownCurrentCompiler()
+  def restart(): Unit = compilerAccess.shutdownCurrentCompiler()
 
-  def diagnosticsForDebuggingPurposes(): ju.List[String] =
-    List[String]().asJava
+  def diagnosticsForDebuggingPurposes(): ju.List[String] = Collections.emptyList()
 
   override def info(
       symbol: String
@@ -264,7 +264,7 @@ case class ScalaPresentationCompiler(
     ju.List[scala.meta.pc.AutoImportsResult]
   ] =
     compilerAccess.withNonInterruptableCompiler(Some(params))(
-      List.empty[scala.meta.pc.AutoImportsResult].asJava,
+      Collections.emptyList(),
       params.token()
     ) { access =>
       val driver = access.compiler()
@@ -283,9 +283,8 @@ case class ScalaPresentationCompiler(
   def implementAbstractMembers(
       params: OffsetParams
   ): CompletableFuture[ju.List[l.TextEdit]] =
-    val empty: ju.List[l.TextEdit] = new ju.ArrayList[l.TextEdit]()
     compilerAccess.withNonInterruptableCompiler(Some(params))(
-      empty,
+      Collections.emptyList(),
       params.token()
     ) { pc =>
       val driver = pc.compiler()
@@ -301,9 +300,8 @@ case class ScalaPresentationCompiler(
   override def insertInferredType(
       params: OffsetParams
   ): CompletableFuture[ju.List[l.TextEdit]] =
-    val empty: ju.List[l.TextEdit] = new ju.ArrayList[l.TextEdit]()
     compilerAccess.withNonInterruptableCompiler(Some(params))(
-      empty,
+      Collections.emptyList(),
       params.token()
     ) { pc =>
       new InferredTypeProvider(params, pc.compiler(), config, search)
@@ -330,8 +328,10 @@ case class ScalaPresentationCompiler(
       range: RangeParams,
       extractionPos: OffsetParams
   ): CompletableFuture[ju.List[l.TextEdit]] =
-    val empty: ju.List[l.TextEdit] = new ju.ArrayList[l.TextEdit]()
-    compilerAccess.withInterruptableCompiler(Some(range))(empty, range.token()) {
+    compilerAccess.withInterruptableCompiler(Some(range))(
+      Collections.emptyList(),
+      range.token()
+    ) {
       pc =>
         new ExtractMethodProvider(
           range,
@@ -368,7 +368,7 @@ case class ScalaPresentationCompiler(
   ): CompletableFuture[ju.List[l.SelectionRange]] =
     CompletableFuture.completedFuture {
       compilerAccess.withSharedCompiler(params.asScala.headOption)(
-        List.empty[l.SelectionRange].asJava
+        Collections.emptyList()
       ) { pc =>
         new SelectionRangeProvider(
           pc.compiler(),
@@ -438,7 +438,13 @@ case class ScalaPresentationCompiler(
   override def didChange(
       params: VirtualFileParams
   ): CompletableFuture[ju.List[l.Diagnostic]] =
-    CompletableFuture.completedFuture(Nil.asJava)
+    compilerAccess.withNonInterruptableCompiler(Some(params))(
+      Collections.emptyList(),
+      params.token()
+    ) { access =>
+      val driver = access.compiler()
+      new DiagnosticProvider(driver, params).diagnostics().asJava
+    }
 
   override def didClose(uri: URI): Unit =
     compilerAccess.withNonInterruptableCompiler(None)(
