@@ -101,3 +101,4 @@
    |                                Required: (name : ?, age : ?)
    |
    | longer explanation available when compiling with `-explain`
+there were 2 deprecation warnings; re-run with -deprecation for details
