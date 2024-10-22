@@ -1,0 +1,7 @@
+-- [E203] Syntax Migration Warning: tests/warn/21770.scala:5:9 ---------------------------------------------------------
+5 |  f(i => (cache = Some(i))) // warn
+  |         ^^^^^^^^^^^^^^^^^
+  |         Ambiguous syntax: this is interpreted as a named tuple with one element,
+  |         not as an assignment.
+  |
+  |         To assign a value, use curly braces: `{cache = Some(i)}`.
