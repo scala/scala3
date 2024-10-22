@@ -1,0 +1,13 @@
+-- [E134] Type Error: tests/neg/infix-named-args.scala:2:13 ------------------------------------------------------------
+2 |  def f = 42 + (x = 1) // error // a named tuple!
+  |          ^^^^
+  |          None of the overloaded alternatives of method + in class Int with types
+  |           (x: Double): Double
+  |           (x: Float): Float
+  |           (x: Long): Long
+  |           (x: Int): Int
+  |           (x: Char): Int
+  |           (x: Short): Int
+  |           (x: Byte): Int
+  |           (x: String): String
+  |          match arguments ((x : Int)) (a named tuple)
