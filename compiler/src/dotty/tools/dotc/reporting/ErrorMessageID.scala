@@ -217,7 +217,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case NonNamedArgumentInJavaAnnotationID // errorNumber: 201
   case QuotedTypeMissingID // errorNumber: 202
   case AmbiguousNamedTupleAssignmentID // errorNumber: 203
-  case DeprecatedNamedInfixArgID // errorNumber: 204 - used ONLY in LTS
+  case DeprecatedNamedInfixArgID // errorNumber: 204
 
   def errorNumber = ordinal - 1
 
