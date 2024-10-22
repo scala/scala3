@@ -810,8 +810,12 @@ object desugar {
           for i <- List.range(0, arity)
               selName = nme.selectorName(i)
               if (selName ne caseParams(i).name) && !selectorNamesInBody.contains(selName)
-          yield syntheticProperty(selName, caseParams(i).tpt,
-            Select(This(EmptyTypeIdent), caseParams(i).name))
+          yield
+            val ptp =
+              if caseParams(i).mods.mods.exists(_.isInstanceOf[Mod.Var]) then caseParams(i).tpt
+              else SingletonTypeTree(Select(This(EmptyTypeIdent), caseParams(i).name))
+            syntheticProperty(selName, ptp,
+              Select(This(EmptyTypeIdent), caseParams(i).name))
 
       def enumCaseMeths =
         if isEnumCase then
@@ -918,7 +922,10 @@ object desugar {
             if (arity == 0) Literal(Constant(true))
             else if caseClassInScala2Library then scala2LibCompatUnapplyRhs(unapplyParam.name)
             else Ident(unapplyParam.name)
-          val unapplyResTp = if (arity == 0) Literal(Constant(true)) else TypeTree()
+          val unapplyResTp =
+            if (arity == 0) Literal(Constant(true))
+            else if caseClassInScala2Library then TypeTree()
+            else SingletonTypeTree(Ident(unapplyParam.name))
 
           DefDef(
             methName,

@@ -1625,7 +1625,8 @@ trait Applications extends Compatibility {
             val patternBound = maximizeType(unapplyArgType, unapplyFn.span.endPos)
             if (patternBound.nonEmpty) unapplyFn = addBinders(unapplyFn, patternBound)
             unapp.println(i"case 2 $unapplyArgType ${ctx.typerState.constraint}")
-            unapplyArgType
+            selType & unapplyArgType
+            // unapplyArgType
 
         val dummyArg = dummyTreeOfType(ownType)
         val (newUnapplyFn, unapplyApp) =
@@ -1637,7 +1638,7 @@ trait Applications extends Compatibility {
           .typedPatterns(qual, this)
         val result = assignType(cpy.UnApply(tree)(newUnapplyFn, unapplyImplicits(dummyArg, unapplyApp), unapplyPatterns), ownType)
         if (ownType.stripped eq selType.stripped) || ownType.isError then result
-        else tryWithTypeTest(Typed(result, TypeTree(ownType)), selType)
+        else tryWithTypeTest(Typed(result, TypeTree(unapplyArgType)), selType)
       case tp =>
         val unapplyErr = if (tp.isError) unapplyFn else notAnExtractor(unapplyFn)
         val typedArgsErr = unadaptedArgs.mapconserve(typed(_, defn.AnyType))

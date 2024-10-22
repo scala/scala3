@@ -593,7 +593,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     typr.println(s"typed ident $kind$name in ${ctx.owner}")
     if ctx.mode.is(Mode.Pattern) then
       if name == nme.WILDCARD then
-        return tree.withType(pt)
+        val wpt = pt match
+          case pt: TermRef => pt.widen
+          case pt => pt
+        return tree.withType(wpt)
       if name == tpnme.WILDCARD then
         return tree.withType(defn.AnyType)
       if untpd.isVarPattern(tree) && name.isTermName then
@@ -2031,7 +2034,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val rawSelectorTpe = fullyDefinedType(sel1.tpe, "pattern selector", tree.srcPos)
         val selType = rawSelectorTpe match
           case c: ConstantType if tree.isInline => c
+          case ref: TermRef => ref
           case otherTpe => otherTpe.widen
+        val selTypeW = selType match
+          case tr: TermRef => tr.widen
+          case _ => selType
+
 
         /** Does `tree` has the same shape as the given match type?
          *  We only support typed patterns with empty guards, but
@@ -2049,7 +2057,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 // To check that pattern types correspond we need to type
                 // check `pat` here and throw away the result.
                 val gadtCtx: Context = ctx.fresh.setFreshGADTBounds
-                val pat1 = typedPattern(pat, selType)(using gadtCtx)
+                val pat1 = typedPattern(pat, selTypeW)(using gadtCtx)
                 val tpt = tpd.unbind(tpd.unsplice(pat1)) match
                   case Typed(_, tpt) => tpt
                   case UnApply(fun, _, p1 :: _) if fun.symbol == defn.TypeTest_unapply => p1
@@ -2067,7 +2075,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
         val result = pt.underlyingNormalizable match {
           case mt: MatchType if isMatchTypeShaped(mt) =>
-            typedDependentMatchFinish(tree, sel1, selType, tree.cases, mt)
+            typedDependentMatchFinish(tree, sel1, selTypeW, tree.cases, mt)
           case _ =>
             typedMatchFinish(tree, sel1, selType, tree.cases, pt)
         }
@@ -2677,6 +2685,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedBind(tree: untpd.Bind, pt: Type)(using Context): Tree = {
     if !isFullyDefined(pt, ForceDegree.all) then
       return errorTree(tree, em"expected type of $tree is not fully defined")
+    val wpt = pt match
+      case pt: TermRef => pt.widen
+      case _ => pt
     val body1 = typed(tree.body, pt)
     body1 match {
       case UnApply(fn, Nil, arg :: Nil)
@@ -2705,9 +2716,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val symTp =
             if isStableIdentifierOrLiteral || pt.isNamedTupleType then pt
               // need to combine tuple element types with expected named type
-            else if isWildcardStarArg(body1)
-                    || pt == defn.ImplicitScrutineeTypeRef
-                    || body1.tpe <:< pt  // There is some strange interaction with gadt matching.
+            else if isWildcardStarArg(body1) || pt == defn.ImplicitScrutineeTypeRef
+            then body1.tpe
+            else if body1.tpe <:< wpt  // There is some strange interaction with gadt matching.
                                          // and implicit scopes.
                                          // run/t2755.scala fails to compile if this subtype test is omitted
                                          // and the else clause is changed to `body1.tpe & pt`. What
@@ -2717,14 +2728,18 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                                          // it is Array[T] we get an implicit not found. To avoid fragility
                                          // wrt to operand order for `&`, we include the explicit subtype test here.
                                          // See also #5649.
-            then body1.tpe
+            then
+              if ctx.mode.is(Mode.Pattern) && (pt ne wpt) // && !(body1.tpe <:< pt)
+              then AndType(pt, body1.tpe)
+              // then pt & body1.tpe
+              else body1.tpe
             else body1.tpe match
               case btpe: TypeRef
               if btpe.symbol == defn.TupleXXLClass && pt.tupleElementTypes.isDefined =>
                 // leave the original tuple type; don't mix with & TupleXXL which would only obscure things
                 pt
               case _ =>
-                pt & body1.tpe
+                wpt & body1.tpe
           val sym = newPatternBoundSymbol(name, symTp, tree.span)
           if (pt == defn.ImplicitScrutineeTypeRef || tree.mods.is(Given)) sym.setFlag(Given)
           if (ctx.mode.is(Mode.InPatternAlternative))
