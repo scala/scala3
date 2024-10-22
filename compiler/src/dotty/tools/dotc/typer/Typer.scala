@@ -3427,9 +3427,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def checkAmbiguousNamedTupleAssignment(tree: untpd.Tuple)(using Context): Unit =
     tree.trees match
       case List(NamedArg(name, value)) =>
-        val typedName = typedIdent(untpd.Ident(name), WildcardType)
-        val sym = typedName.symbol
-        if sym.exists && (sym.is(Flags.Mutable) || sym.setter.exists) then
+        val tmpCtx = ctx.fresh.setNewTyperState()
+        typedAssign(untpd.Assign(untpd.Ident(name), value), WildcardType)(using tmpCtx)
+        if !tmpCtx.reporter.hasErrors then
+          // If there are no errors typing the above, then the named tuple is
+          // ambiguous and we issue a warning.
           report.migrationWarning(AmbiguousNamedTupleAssignment(name, value), tree.srcPos)
       case _ => ()
 
