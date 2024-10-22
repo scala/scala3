@@ -1054,14 +1054,17 @@ object Parsers {
         else {
           val opInfo = opStack.head
           val opPrec = precedence(opInfo.operator.name)
-          if (prec < opPrec || leftAssoc && prec == opPrec) {
+          if prec < opPrec || leftAssoc && prec == opPrec then
             opStack = opStack.tail
-            recur {
-              atSpan(opInfo.operator.span union opInfo.operand.span union top.span) {
+            recur:
+              atSpan(opInfo.operator.span union opInfo.operand.span union top.span):
+                def deprecateInfixNamedArg(t: Tree): Unit = t match
+                  case Tuple(ts) => ts.foreach(deprecateInfixNamedArg)
+                  case Parens(t) => deprecateInfixNamedArg(t)
+                  case t: Assign => report.deprecationWarning(InfixNamedArgDeprecation(), t.srcPos)
+                  case _ =>
+                deprecateInfixNamedArg(top)
                 InfixOp(opInfo.operand, opInfo.operator, top)
-              }
-            }
-          }
           else top
         }
       recur(top)

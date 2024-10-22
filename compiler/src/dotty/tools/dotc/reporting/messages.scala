@@ -3150,3 +3150,12 @@ object UnusedSymbol {
     def privateMembers(using Context): UnusedSymbol = new UnusedSymbol(i"unused private member")
     def patVars(using Context): UnusedSymbol = new UnusedSymbol(i"unused pattern variable")
 }
+
+class InfixNamedArgDeprecation()(using Context)
+  extends Message(DeprecatedNamedInfixArgID):
+    def kind = MessageKind.PotentialIssue
+    def msg(using Context) = "Named argument syntax is deprecated for infix application"
+    def explain(using Context) =
+      i"""The argument will be parsed as a named tuple in future.
+      |
+      |To avoid this warning, either remove the argument names or use dotted selection."""
