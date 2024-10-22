@@ -1069,16 +1069,19 @@ object RefChecks {
         target.nonPrivateMember(sym.name)
         .filterWithPredicate:
           member =>
-          val memberIsImplicit = member.info.hasImplicitParams
-          val paramTps =
-            if memberIsImplicit then methTp.stripPoly.firstParamTypes
-            else methTp.firstExplicitParamTypes
+          val memberIsPublic = (member.symbol.flags & AccessFlags).isEmpty && !member.symbol.privateWithin.exists
+          memberIsPublic && {
+            val memberIsImplicit = member.info.hasImplicitParams
+            val paramTps =
+              if memberIsImplicit then methTp.stripPoly.firstParamTypes
+              else methTp.firstExplicitParamTypes
 
-          paramTps.isEmpty || memberIsImplicit && !methTp.hasImplicitParams || {
-            val memberParamTps = member.info.stripPoly.firstParamTypes
-            !memberParamTps.isEmpty
-            && memberParamTps.lengthCompare(paramTps) == 0
-            && memberParamTps.lazyZip(paramTps).forall((m, x) => x frozen_<:< m)
+            paramTps.isEmpty || memberIsImplicit && !methTp.hasImplicitParams || {
+              val memberParamTps = member.info.stripPoly.firstParamTypes
+              !memberParamTps.isEmpty
+              && memberParamTps.lengthCompare(paramTps) == 0
+              && memberParamTps.lazyZip(paramTps).forall((m, x) => x frozen_<:< m)
+            }
           }
         .exists
       if !target.typeSymbol.denot.isAliasType && !target.typeSymbol.denot.isOpaqueAlias && hidden
