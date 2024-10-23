@@ -3,6 +3,8 @@ package dotc
 package core
 
 import Symbols.*, Types.*, Contexts.*, Constants.*, Phases.*
+import Decorators.i
+import StdNames.nme
 import ast.tpd, tpd.*
 import util.Spans.Span
 import printing.{Showable, Printer}
@@ -105,6 +107,51 @@ object Annotations {
         metaSyms.exists(symbol.hasAnnotation) || rec(tree)
       go(metaSyms) || orNoneOf.nonEmpty && !go(orNoneOf)
     }
+
+    /** Checks if this annotation can be used as a type annotation. Reports one
+     *  or more errors if it cannot.
+     */
+    final def checkValidTypeAnnotation()(using Context): Unit =
+      def isTupleModule(sym: Symbol): Boolean =
+        ctx.definitions.isTupleClass(sym.companionClass)
+
+      def isFunctionAllowed(t: Tree): Boolean =
+        t match
+          case Select(qual, nme.apply) => qual.symbol == defn.ArrayModule || isTupleModule(qual.symbol)
+          case TypeApply(fun, _) => isFunctionAllowed(fun)
+          case _ => false
+        
+      def check(t: Tree): Boolean =
+        t match
+          case Literal(_) => true
+          case Apply(fun, args) => isFunctionAllowed(fun) && args.forall(check)
+          case SeqLiteral(elems, _) => elems.forall(check)
+          case Typed(expr, _) => check(expr)
+          case NamedArg(_, arg) => check(arg)
+          case _ =>
+            t.tpe.stripped match
+              case _: SingletonType => true
+              // We need to handle type refs for these test cases:
+              // - tests/pos/dependent-annot.scala
+              // - tests/pos/i16208.scala
+              // - tests/run/java-ann-super-class
+              // - tests/run/java-ann-super-class-separate
+              // - tests/neg/i19470.scala (@retains)
+              // Why do we get type refs in these cases?
+              case _: TypeRef => true
+              case _: TypeParamRef => true
+              case tp => false
+
+      val uncheckedAnnots = Set[Symbol](defn.RetainsAnnot, defn.RetainsByNameAnnot)
+      if uncheckedAnnots(symbol) then return
+      
+      for arg <- arguments if !check(arg)  do
+        report.error(
+          s"""Implementation restriction: not a valid type annotation argument.
+             |  Argument: $arg
+             |  Type: ${arg.tpe}""".stripMargin, arg.srcPos)
+      
+      ()
 
     /** Operations for hash-consing, can be overridden */
     def hash: Int = System.identityHashCode(this)
