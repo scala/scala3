@@ -278,6 +278,9 @@ class Namer { typer: Typer =>
                 if rhs.isEmpty || flags.is(Opaque) then flags |= Deferred
             if flags.is(Param) then tree.rhs else analyzeRHS(tree.rhs)
 
+        def isNonInferingTree(tree: ValOrDefDef): Boolean =
+          !tree.tpt.isEmpty || tree.mods.isOneOf(TermParamOrAccessor)
+
         // to complete a constructor, move one context further out -- this
         // is the context enclosing the class. Note that the context in which a
         // constructor is recorded and the context in which it is completed are
@@ -291,6 +294,7 @@ class Namer { typer: Typer =>
 
         val completer = tree match
           case tree: TypeDef => TypeDefCompleter(tree)(cctx)
+          case tree: ValOrDefDef if isNonInferingTree(tree) => NonInferingCompleter(tree)(cctx)
           case _ => Completer(tree)(cctx)
         val info = adjustIfModule(completer, tree)
         createOrRefine[Symbol](tree, name, flags, ctx.owner, _ => info,
@@ -1736,6 +1740,10 @@ class Namer { typer: Typer =>
     }
   }
 
+  class NonInferingCompleter(original: ValOrDefDef)(ictx: Context) extends Completer(original)(ictx) {
+    override def isNonInfering: Boolean = true
+  }
+
   /** Possible actions to perform when deciding on a forwarder for a member */
   private enum CanForward:
     case Yes
@@ -1994,14 +2002,13 @@ class Namer { typer: Typer =>
   def needsTracked(sym: Symbol, param: ValDef)(using Context) =
     !sym.is(Tracked)
     && sym.isTerm
-    && sym.maybeOwner.isPrimaryConstructor
-    // && !sym.flags.is(Synthetic)
-    // && !sym.maybeOwner.flags.is(Synthetic)
-    && !sym.maybeOwner.maybeOwner.flags.is(Synthetic)
     && (
       isContextBoundWitnessWithAbstractMembers(sym, param)
-      || isReferencedInPublicSignatures(sym)
-      || isPassedToTrackedParentParameter(sym, param)
+      || sym.maybeOwner.isPrimaryConstructor
+      // && !sym.flags.is(Synthetic)
+      // && !sym.maybeOwner.flags.is(Synthetic)
+      // && !sym.maybeOwner.maybeOwner.flags.is(Synthetic)
+      && isReferencedInPublicSignatures(sym)
     )
 
   /** Under x.modularity, we add `tracked` to context bound witnesses
@@ -2010,6 +2017,11 @@ class Namer { typer: Typer =>
   def isContextBoundWitnessWithAbstractMembers(sym: Symbol, param: ValDef)(using Context): Boolean =
     param.hasAttachment(ContextBoundParam)
     && sym.info.memberNames(abstractTypeNameFilter).nonEmpty
+
+  extension (sym: Symbol)
+    def infoWithForceNonInferingCompleter(using Context): Type = sym.infoOrCompleter match
+      case tpe: LazyType if tpe.isNonInfering => sym.info
+      case info => info
 
   /** Under x.modularity, we add `tracked` to term parameters whose types are referenced
    *  in public signatures of the defining class
@@ -2022,19 +2034,9 @@ class Namer { typer: Typer =>
         case info: ClassInfo =>
           info.decls.filter(_.isTerm).filter(_.isPublic)
             .filter(_ != sym.maybeOwner)
-            .exists(d => tpeContainsSymbolRef(d.info, accessorSyms))
+            .exists(d => tpeContainsSymbolRef(d.infoWithForceNonInferingCompleter, accessorSyms))
         case _ => false
     checkOwnerMemberSignatures(owner)
-
-  def isPassedToTrackedParentParameter(sym: Symbol, param: ValDef)(using Context): Boolean =
-    // TODO(kπ) Add tracked if the param is passed as a tracked arg in parent. Can we touch the inheritance terms?
-    val owner = sym.maybeOwner.maybeOwner
-    val accessorSyms = maybeParamAccessors(owner, sym)
-    owner.infoOrCompleter match
-      // case info: ClassInfo =>
-      //   info.parents.foreach(println)
-      //   info.parents.exists(tpeContainsSymbolRef(_, accessorSyms))
-      case _ => false
 
   private def namedTypeWithPrefixContainsSymbolRef(tpe: Type, syms: List[Symbol])(using Context): Boolean = tpe match
     case tpe: NamedType => tpe.prefix.exists && tpeContainsSymbolRef(tpe.prefix, syms)
