@@ -265,7 +265,7 @@ object Tuple {
 
   /** Convert an array into a tuple of unknown arity and types */
   def fromArray[T](xs: Array[T]): Tuple = {
-    val xs2 = xs match {
+    val xs2: Array[Object] = xs match {
       case xs: Array[Object] => xs
       case xs => xs.map(_.asInstanceOf[Object])
     }
