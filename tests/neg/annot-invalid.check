@@ -1,0 +1,48 @@
+-- Error: tests/neg/annot-invalid.scala:4:21 ---------------------------------------------------------------------------
+4 |  val x1: Int @annot(new Object {}) = 0 // error
+  |                     ^^^^^^^^^^^^^
+  |                     Implementation restriction: not a valid annotation argument.
+  |                     Argument: {
+  |                       final class $anon() extends Object() {}
+  |                       new $anon():Object
+  |                     }
+  |                     Type: Object
+-- Error: tests/neg/annot-invalid.scala:5:21 ---------------------------------------------------------------------------
+5 |  val x2: Int @annot({val x = 1}) = 0 // error
+  |                     ^^^^^^^^^^^
+  |                     Implementation restriction: not a valid annotation argument.
+  |                     Argument: {
+  |                       val x: Int = 1
+  |                       ()
+  |                     }
+  |                     Type: Unit
+-- Error: tests/neg/annot-invalid.scala:6:21 ---------------------------------------------------------------------------
+6 |  val x3: Int @annot((x: Int) => x) = 0 // error
+  |                     ^^^^^^^^^^^^^
+  |                     Implementation restriction: not a valid annotation argument.
+  |                     Argument: (x: Int) => x
+  |                     Type: Int => Int
+-- Error: tests/neg/annot-invalid.scala:8:9 ----------------------------------------------------------------------------
+8 |  @annot(new Object {}) val y1: Int = 0 // error
+  |         ^^^^^^^^^^^^^
+  |         Implementation restriction: not a valid annotation argument.
+  |         Argument: {
+  |           final class $anon() extends Object() {}
+  |           new $anon():Object
+  |         }
+  |         Type: Object
+-- Error: tests/neg/annot-invalid.scala:9:9 ----------------------------------------------------------------------------
+9 |  @annot({val x = 1}) val y2: Int = 0 // error
+  |         ^^^^^^^^^^^
+  |         Implementation restriction: not a valid annotation argument.
+  |         Argument: {
+  |           val x: Int = 1
+  |           ()
+  |         }
+  |         Type: Unit
+-- Error: tests/neg/annot-invalid.scala:10:9 ---------------------------------------------------------------------------
+10 |  @annot((x: Int) => x) val y3: Int = 0  // error
+   |         ^^^^^^^^^^^^^
+   |         Implementation restriction: not a valid annotation argument.
+   |         Argument: (x: Int) => x
+   |         Type: Int => Int
