@@ -1119,7 +1119,15 @@ jobs:
   build-msi-package:
     uses: ./.github/workflows/build-msi.yml
     if  : github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_msi]')
-    # TODO: ADD A JOB THAT DEPENDS ON THIS TO TEST THE MSI
+
+  test-msi-package:
+    uses: ./.github/workflows/test-msi.yml
+    needs: [build-msi-package]
+    with:
+      # Ensure that version starts with prefix 3.
+      # In the future it can be adapted to compare with with git tag or version set in the build.s 
+      version: "3."
+      java-version: 8
 
   build-sdk-package:
     uses: ./.github/workflows/build-sdk.yml
