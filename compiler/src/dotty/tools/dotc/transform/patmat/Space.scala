@@ -524,27 +524,16 @@ object SpaceEngine {
     val mt: MethodType = unapp.widen match {
       case mt: MethodType => mt
       case pt: PolyType   =>
-        if unappSym.is(Synthetic) then
-          val mt = pt.resultType.asInstanceOf[MethodType]
-          val unapplyArgType = mt.paramInfos.head
-          val targs = scrutineeTp.baseType(unapplyArgType.classSymbol) match
-            case AppliedType(_, targs) => targs
-            case _ =>
-              // Typically when the scrutinee is Null or Nothing (see i5067 and i5067b)
-              // For performance, do `variances(unapplyArgType)` but without using TypeVars
-              // so just find the variance, so we know if to min/max to the LB/UB or use a wildcard.
-              object accu extends TypeAccumulator[VarianceMap[TypeParamRef]]:
-                def apply(vmap: VarianceMap[TypeParamRef], tp: Type) = tp match
-                  case tp: TypeParamRef if tp.binder eq pt => vmap.recordLocalVariance(tp, variance)
-                  case _                                   => foldOver(vmap, tp)
-              val vs = accu(VarianceMap.empty[TypeParamRef], unapplyArgType)
-              pt.paramRefs.map: p =>
-                vs.computedVariance(p).uncheckedNN match
-                  case -1 => p.paramInfo.lo
-                  case 1  => p.paramInfo.hi
-                  case _  => WildcardType(p.paramInfo)
+        scrutineeTp match
+        case AppliedType(tycon, targs)
+            if unappSym.is(Synthetic)
+            && (pt.resultType.asInstanceOf[MethodType].paramInfos.head.typeConstructor eq tycon) =>
+          // Special case synthetic unapply/unapplySeq's
+          // Provided the shapes of the types match:
+          // the scrutinee type being unapplied and
+          // the unapply parameter type
           pt.instantiate(targs).asInstanceOf[MethodType]
-        else
+        case _ =>
           val locked = ctx.typerState.ownedVars
           val tvars = constrained(pt)
           val mt = pt.instantiate(tvars).asInstanceOf[MethodType]
