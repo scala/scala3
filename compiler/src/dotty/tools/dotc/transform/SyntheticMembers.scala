@@ -419,7 +419,13 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *
      *  `@unchecked` is needed for parametric case classes.
      */
-    def canEqualBody(that: Tree, span: Span): Tree = that.isInstance(AnnotatedType(clazzType, Annotation(defn.UncheckedAnnot, span)))
+    def canEqualBody(that: Tree, span: Span): Tree = {
+      val clazzTypeU = AnnotatedType(clazzType, Annotation(defn.UncheckedAnnot, span))
+      that.isInstance(clazzTypeU).and(
+        This(clazz).select(defn.Product_productPrefix)
+          .select(defn.Any_==)
+          .appliedTo(that.cast(clazzTypeU).select(defn.Product_productPrefix)))
+    }
 
     symbolsToSynthesize.flatMap(syntheticDefIfMissing)
   }
