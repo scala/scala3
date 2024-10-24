@@ -28,5 +28,8 @@ object Dependencies {
     "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % flexmarkVersion,
   )
 
+  private val snakeYamlVersion = "2.2"
+  val `snakeyaml` = "org.yaml" % "snakeyaml" % snakeYamlVersion
+
   val compilerInterface = "org.scala-sbt" % "compiler-interface" % "1.9.6"
 }
