@@ -979,6 +979,7 @@ object Checking {
           case SeqLiteral(elems, _) => elems.forall(valid)
           case Typed(expr, _) => valid(expr)
           case NamedArg(_, arg) => valid(arg)
+          case Splice(_) => true
           case _ =>
             false
       )
