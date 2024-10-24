@@ -193,7 +193,7 @@ package foo.test.i16877:
 
   class ExampleAnnotation(val a: Object) extends StaticAnnotation // OK
 
-  @ExampleAnnotation(new HashMap()) // OK
+  //@ExampleAnnotation(new HashMap()) // Invalid annotation argument
   class Test //OK
 
 package foo.test.i16926:

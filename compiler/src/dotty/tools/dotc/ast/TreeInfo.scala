@@ -144,6 +144,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
   def allTermArguments(tree: Tree): List[Tree] = unsplice(tree) match {
     case Apply(fn, args) => allTermArguments(fn) ::: args
     case TypeApply(fn, args) => allTermArguments(fn)
+    // TOOD(mbovel): is it really safe to skip all blocks here and in `allArguments`?
     case Block(_, expr) => allTermArguments(expr)
     case _ => Nil
   }

@@ -7,5 +7,5 @@ class ann(x: Int) extends annotation.StaticAnnotation
 
 class t {
   val a = new A
-  @ann(a.foo(1)) def bar = 1
+  @ann(a.foo(1)) def bar = 1 // error: not a valid annotation
 }

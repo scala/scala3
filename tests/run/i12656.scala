@@ -9,7 +9,7 @@ transparent inline def expectTypeCheck(
   inline code: String,
 ) : Boolean = compiletime.testing.typeChecks(code)
 
-@main def Test =
+@main def Test: Unit =
   assert(!expectTypeCheck("""compiletime.error("some error")"""))
   assert(expectTypeCheck("""1 + 1"""))
   expectCompileError("""compiletime.error("some error")""", "some error")

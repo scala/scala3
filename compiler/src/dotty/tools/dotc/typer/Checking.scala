@@ -937,16 +937,15 @@ object Checking {
           case Literal(_) => // ok
           case _ =>
             report.error(em"@${cls.name} needs a string literal as argument", arg.srcPos)
-      case Apply(tycon, args) => args.foreach(checkAnnotArg)
       case _ =>
-        // `FirstTransform.toTypeTree` creates `Annotated` nodes where the
-        // annotation tree is not an `Apply` node. For example, in
-        // tests/neg/i13044.scala, `FirstTransform.toTypeTree` creates two
-        // annotations with trees `t` and `ts`. In tests/run/t2755.scala,
-        // `FirstTransform.toTypeTree` creates an annotated types with tree `_`.
-        //
-        // report.error(em"unexpected annotation tree: $tree", tree.srcPos)
-        ()
+        if cls.isRetainsLike then () // Do not check @retain annotations
+        else if cls == defn.ThrowsAnnot then
+          // Do not check @throws annotations.
+          // TODO(mbovel): in tests/run/t6380.scala, an annotation tree is
+          // `new throws[Exception](throws.<init>[Exception])`. What is this?
+          ()
+        else
+          tpd.allTermArguments(tree).foreach(checkAnnotArg)
     tree
 
   private def checkAnnotArg(tree: Tree)(using Context): Unit =
@@ -955,40 +954,38 @@ object Checking {
 
     def isFunctionAllowed(t: Tree): Boolean =
       t match
-        case Select(qual, nme.apply) => qual.symbol == defn.ArrayModule || isTupleModule(qual.symbol)
+        case Select(qual, nme.apply) =>
+          qual.symbol == defn.ArrayModule
+          || qual.symbol == defn.ClassTagModule // class tags are used as arguments to Array.apply
+          || isTupleModule(qual.symbol)
+        case Select(New(clazz), nme.CONSTRUCTOR) => clazz.symbol.isAnnotation
         case Apply(fun, _) => isFunctionAllowed(fun)
         case TypeApply(fun, _) => isFunctionAllowed(fun)
         case _ => false
       
     def valid(t: Tree): Boolean =
-      t match
-        case Literal(_) => true
-        case Apply(fun, args) => isFunctionAllowed(fun) && args.forall(valid)
-        case SeqLiteral(elems, _) => elems.forall(valid)
-        case Typed(expr, _) => valid(expr)
-        case NamedArg(_, arg) => valid(arg)
-        case _ =>
-          t.tpe.stripped match
-            case _: SingletonType => true
-            // We need to handle type refs for these test cases:
-            // - tests/pos/dependent-annot.scala
-            // - tests/pos/i16208.scala
-            // - tests/run/java-ann-super-class
-            // - tests/run/java-ann-super-class-separate
-            // - tests/neg/i19470.scala (@retains)
-            // Why do we get type refs in these cases?
-            case _: TypeRef => true
-            case _: TypeParamRef => true
-            case tp => false
+      t.tpe.isEffectivelySingleton
+      || (
+        t match
+          case Literal(_) => true
+          case Ident(nme.WILDCARD) => true // example: tests/run/java-ann-super-class
+          case Apply(fun, args) => isFunctionAllowed(fun) && args.forall(valid)
+          case TypeApply(fun, args) => isFunctionAllowed(fun)
+          //case TypeApply(meth @ Select(arg, _), _) if meth.symbol == defn.Any_asInstanceOf => valid(arg)
+          case SeqLiteral(elems, _) => elems.forall(valid)
+          case Typed(expr, _) => valid(expr)
+          case NamedArg(_, arg) => valid(arg)
+          case _ =>
+            false
+      )
     
     if !valid(tree) then
       report.error(
-        s"""Implementation restriction: not a valid annotation argument.
+        i"""Implementation restriction: not a valid annotation argument.
            |  Argument: $tree
-           |  Type: ${tree.tpe}""".stripMargin,
+           |  Type: ${tree.tpe}""",
         tree.srcPos
       )
-
 }
 
 trait Checking {
