@@ -980,8 +980,8 @@ object Checking {
           case Typed(expr, _) => valid(expr)
           case NamedArg(_, arg) => valid(arg)
           case Splice(_) => true
-          case _ =>
-            false
+          case Hole(_, _, _, _) => true
+          case _ => false
       )
     
     if !valid(tree) then
