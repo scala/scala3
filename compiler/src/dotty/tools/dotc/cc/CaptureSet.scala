@@ -821,6 +821,10 @@ object CaptureSet:
         // If this is the union of a constant and a variable,
         // propagate `elem` to the variable part to avoid slack
         // between the operands and the union.
+        // TODO: This means there's no back-propagation to the operands
+        // of a union of two variables. That could be a source of unsoundness.
+        // Altermative would be to be conservatibe and back-propagate to one
+        // of the operands arbitrarily or even to both of them.
         if res.isOK && (origin ne cs1) && (origin ne cs2) then
           if cs1.isConst then cs2.tryInclude(elem, origin)
           else if cs2.isConst then cs1.tryInclude(elem, origin)
