@@ -394,7 +394,12 @@ object ExtractSemanticDB:
         case tree: Ident =>
           if tree.name != nme.WILDCARD then
             val sym = tree.symbol.adjustIfCtorTyparam
-            registerUseGuarded(None, sym, tree.span, tree.source)
+            val span =
+              if tree.span.isSynthetic then
+                // use synthetic's definition span instead of the original span, if exists
+                localBodies.get(tree.symbol).map(_.span).filter(_.exists).getOrElse(tree.span)
+              else tree.span
+            registerUseGuarded(None, sym, span, tree.source)
         case tree: Select =>
           val qual = tree.qualifier
           val qualSpan = qual.span
