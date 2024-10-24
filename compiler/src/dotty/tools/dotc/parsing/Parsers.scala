@@ -1548,21 +1548,23 @@ object Parsers {
       case _ => None
     }
 
-    /** CaptureRef  ::=  ident [`*` | `^`] | `this`
+    /** CaptureRef  ::=  (ident | `this`) [`*` | `^`]
      */
     def captureRef(): Tree =
-      if in.token == THIS then simpleRef()
-      else
-        val id = termIdent()
-        if isIdent(nme.raw.STAR) then
-          in.nextToken()
-          atSpan(startOffset(id)):
-            PostfixOp(id, Ident(nme.CC_REACH))
-        else if isIdent(nme.UPARROW) then
-          in.nextToken()
-          atSpan(startOffset(id)):
-            makeCapsOf(cpy.Ident(id)(id.name.toTypeName))
-        else id
+      val ref = singleton()
+      if isIdent(nme.raw.STAR) then
+        in.nextToken()
+        atSpan(startOffset(ref)):
+          PostfixOp(ref, Ident(nme.CC_REACH))
+      else if isIdent(nme.UPARROW) then
+        in.nextToken()
+        def toTypeSel(r: Tree): Tree = r match
+          case id: Ident => cpy.Ident(id)(id.name.toTypeName)
+          case Select(qual, id) => Select(qual, id.toTypeName)
+          case _ => r
+        atSpan(startOffset(ref)):
+          makeCapsOf(toTypeSel(ref))
+      else ref
 
     /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking
      */
@@ -1825,7 +1827,7 @@ object Parsers {
       if in.token == LPAREN then funParamClause() :: funParamClauses() else Nil
 
     /** InfixType ::= RefinedType {id [nl] RefinedType}
-     *             |  RefinedType `^`   // under capture checking
+     *             |  RefinedType `^` {Annotation}  // under capture checking
      */
     def infixType(): Tree = infixTypeRest(refinedType())
 
@@ -1836,7 +1838,7 @@ object Parsers {
                      && !(isIdent(nme.as) && sourceVersion.isAtLeast(`3.6`))
                      && nextCanFollowOperator(canStartInfixTypeTokens))
 
-    /** RefinedType   ::=  WithType {[nl] Refinement} [`^` CaptureSet]
+    /** RefinedType   ::=  WithType {[nl] Refinement} [`^` CaptureSet {Annotation}]
      */
     val refinedTypeFn: Location => Tree = _ => refinedType()
 
@@ -1865,9 +1867,10 @@ object Parsers {
       else if Feature.ccEnabled && in.isIdent(nme.UPARROW) && isCaptureUpArrow then
         atSpan(t.span.start):
           in.nextToken()
-          if in.token == LBRACE
-          then makeRetaining(t, captureSet(), tpnme.retains)
-          else makeRetaining(t, Nil, tpnme.retainsCap)
+          annotTypeRest:
+            if in.token == LBRACE
+            then makeRetaining(t, captureSet(), tpnme.retains)
+            else makeRetaining(t, Nil, tpnme.retainsCap)
       else
         t
     }

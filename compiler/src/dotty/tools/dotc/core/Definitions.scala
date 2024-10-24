@@ -1004,6 +1004,7 @@ class Definitions {
     @tu lazy val Caps_unsafeBoxFunArg: Symbol = CapsUnsafeModule.requiredMethod("unsafeBoxFunArg")
     @tu lazy val Caps_ContainsTrait: TypeSymbol = CapsModule.requiredType("Contains")
     @tu lazy val Caps_containsImpl: TermSymbol = CapsModule.requiredMethod("containsImpl")
+    @tu lazy val Caps_Use: TypeSymbol = CapsModule.requiredType("$use")
 
   /** The same as CaptureSet.universal but generated implicitly for references of Capability subtypes */
   @tu lazy val universalCSImpliedByCapability = CaptureSet(captureRoot.termRef)
@@ -1057,12 +1058,12 @@ class Definitions {
   @tu lazy val ExperimentalAnnot: ClassSymbol = requiredClass("scala.annotation.experimental")
   @tu lazy val ThrowsAnnot: ClassSymbol = requiredClass("scala.throws")
   @tu lazy val TransientAnnot: ClassSymbol = requiredClass("scala.transient")
-  @tu lazy val UnboxAnnot:  ClassSymbol = requiredClass("scala.caps.unbox")
   @tu lazy val UncheckedAnnot: ClassSymbol = requiredClass("scala.unchecked")
   @tu lazy val UncheckedStableAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedStable")
   @tu lazy val UncheckedVarianceAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedVariance")
   @tu lazy val UncheckedCapturesAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedCaptures")
   @tu lazy val UntrackedCapturesAnnot: ClassSymbol = requiredClass("scala.caps.untrackedCaptures")
+  @tu lazy val UseAnnot: ClassSymbol = requiredClass("scala.caps.use")
   @tu lazy val VolatileAnnot: ClassSymbol = requiredClass("scala.volatile")
   @tu lazy val BeanGetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanGetter")
   @tu lazy val BeanSetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanSetter")
@@ -1351,6 +1352,9 @@ class Definitions {
   final def isNamedTuple_From(sym: Symbol)(using Context): Boolean =
     sym.name == tpnme.From && sym.owner == NamedTupleModule.moduleClass
 
+  final def isUse(sym: Symbol)(using Context): Boolean =
+    sym.name == tpnme.USE && sym.owner == CapsModule.moduleClass
+
   private val compiletimePackageAnyTypes: Set[Name] = Set(
     tpnme.Equals, tpnme.NotEquals, tpnme.IsConst, tpnme.ToString
   )
@@ -1379,7 +1383,7 @@ class Definitions {
     tpnme.Plus, tpnme.Length, tpnme.Substring, tpnme.Matches, tpnme.CharAt
   )
   private val compiletimePackageOpTypes: Set[Name] =
-    Set(tpnme.S, tpnme.From)
+    Set(tpnme.S, tpnme.From, tpnme.USE)
     ++ compiletimePackageAnyTypes
     ++ compiletimePackageIntTypes
     ++ compiletimePackageLongTypes
@@ -1393,6 +1397,7 @@ class Definitions {
     && (
          isCompiletime_S(sym)
       || isNamedTuple_From(sym)
+      || isUse(sym)
       || sym.owner == CompiletimeOpsAnyModuleClass && compiletimePackageAnyTypes.contains(sym.name)
       || sym.owner == CompiletimeOpsIntModuleClass && compiletimePackageIntTypes.contains(sym.name)
       || sym.owner == CompiletimeOpsLongModuleClass && compiletimePackageLongTypes.contains(sym.name)

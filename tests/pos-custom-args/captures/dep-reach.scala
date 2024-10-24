@@ -1,10 +1,10 @@
-import caps.unbox
+import caps.use
 object Test:
   class C
   type Proc = () => Unit
 
   def f(c: C^, d: C^): () ->{c, d} Unit =
-    def foo(@unbox xs: Proc*): () ->{xs*} Unit =
+    def foo(xs: Proc @use *): () ->{xs*} Unit =
       xs.head
     val a: () ->{c} Unit = () => ()
     val b: () ->{d} Unit = () => ()
@@ -13,7 +13,7 @@ object Test:
 
   def g(c: C^, d: C^): () ->{c, d} Unit =
 
-    def foo(@unbox xs: Seq[() => Unit]): () ->{xs*} Unit =
+    def foo(xs: Seq[(() => Unit) @use]): () ->{xs*} Unit =
       xs.head
 
     val a: () ->{c} Unit = () => ()
