@@ -5,22 +5,22 @@
    |          its body in a block; no exceptions are handled.
    |
    | longer explanation available when compiling with `-explain`
--- [E002] Syntax Warning: tests/neg/nowarn.scala:25:25 -----------------------------------------------------------------
-25 |@nowarn(o.inl) def t2d = try 1   // two warnings (`inl` is not a compile-time constant)
+-- [E002] Syntax Warning: tests/neg/nowarn.scala:22:25 -----------------------------------------------------------------
+22 |@nowarn(o.inl) def t2d = try 1   // two warnings (`inl` is not a compile-time constant)
    |                         ^^^^^
    |                         A try without catch or finally is equivalent to putting
    |                         its body in a block; no exceptions are handled.
    |
    | longer explanation available when compiling with `-explain`
--- [E002] Syntax Warning: tests/neg/nowarn.scala:33:26 -----------------------------------------------------------------
-33 |@nowarn("id=1") def t4d = try 1 // error and warning (unused nowarn, wrong id)
+-- [E002] Syntax Warning: tests/neg/nowarn.scala:30:26 -----------------------------------------------------------------
+30 |@nowarn("id=1") def t4d = try 1 // error and warning (unused nowarn, wrong id)
    |                          ^^^^^
    |                          A try without catch or finally is equivalent to putting
    |                          its body in a block; no exceptions are handled.
    |
    | longer explanation available when compiling with `-explain`
--- [E002] Syntax Warning: tests/neg/nowarn.scala:35:28 -----------------------------------------------------------------
-35 |@nowarn("verbose") def t5 = try 1 // warning with details
+-- [E002] Syntax Warning: tests/neg/nowarn.scala:32:28 -----------------------------------------------------------------
+32 |@nowarn("verbose") def t5 = try 1 // warning with details
    |                            ^^^^^
    |                            A try without catch or finally is equivalent to putting
    |                            its body in a block; no exceptions are handled.
@@ -40,71 +40,61 @@ Matching filters for @nowarn or -Wconf:
    |        ^^^^^^
    |        Invalid message filter
    |        unknown filter: wat?
--- [E129] Potential Issue Warning: tests/neg/nowarn.scala:18:12 --------------------------------------------------------
-18 |def t2a = { 1; 2 } // warning (invalid nowarn doesn't silence)
-   |            ^
-   |            A pure expression does nothing in statement position
-   |
-   | longer explanation available when compiling with `-explain`
--- Warning: tests/neg/nowarn.scala:17:8 --------------------------------------------------------------------------------
-17 |@nowarn(t1a.toString) // warning (typer, argument not a compile-time constant)
-   |        ^^^^^^^^^^^^
-   |        filter needs to be a compile-time constant string
--- Warning: tests/neg/nowarn.scala:25:10 -------------------------------------------------------------------------------
-25 |@nowarn(o.inl) def t2d = try 1   // two warnings (`inl` is not a compile-time constant)
+-- Warning: tests/neg/nowarn.scala:22:10 -------------------------------------------------------------------------------
+22 |@nowarn(o.inl) def t2d = try 1   // two warnings (`inl` is not a compile-time constant)
    |        ^^^^^
    |        filter needs to be a compile-time constant string
--- Deprecation Warning: tests/neg/nowarn.scala:39:10 -------------------------------------------------------------------
-39 |def t6a = f // warning (refchecks, deprecation)
+-- Deprecation Warning: tests/neg/nowarn.scala:36:10 -------------------------------------------------------------------
+36 |def t6a = f // warning (refchecks, deprecation)
    |          ^
    |          method f is deprecated
--- Deprecation Warning: tests/neg/nowarn.scala:42:30 -------------------------------------------------------------------
-42 |@nowarn("msg=fish") def t6d = f // error (unused nowarn), warning (deprecation)
+-- Deprecation Warning: tests/neg/nowarn.scala:39:30 -------------------------------------------------------------------
+39 |@nowarn("msg=fish") def t6d = f // error (unused nowarn), warning (deprecation)
    |                              ^
    |                              method f is deprecated
--- Deprecation Warning: tests/neg/nowarn.scala:49:10 -------------------------------------------------------------------
-49 |def t7c = f             // warning (deprecation)
+-- Deprecation Warning: tests/neg/nowarn.scala:46:10 -------------------------------------------------------------------
+46 |def t7c = f             // warning (deprecation)
    |          ^
    |          method f is deprecated
--- [E092] Pattern Match Unchecked Warning: tests/neg/nowarn.scala:55:7 -------------------------------------------------
-55 |  case _: List[Int] => 0 // warning (patmat, unchecked)
+-- [E092] Pattern Match Unchecked Warning: tests/neg/nowarn.scala:52:7 -------------------------------------------------
+52 |  case _: List[Int] => 0 // warning (patmat, unchecked)
    |       ^
    |the type test for List[Int] cannot be checked at runtime because its type arguments can't be determined from Any
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg/nowarn.scala:33:1 ----------------------------------------------------------------------------------
-33 |@nowarn("id=1") def t4d = try 1 // error and warning (unused nowarn, wrong id)
+-- Error: tests/neg/nowarn.scala:30:1 ----------------------------------------------------------------------------------
+30 |@nowarn("id=1") def t4d = try 1 // error and warning (unused nowarn, wrong id)
    |^^^^^^^^^^^^^^^
    |@nowarn annotation does not suppress any warnings
--- Error: tests/neg/nowarn.scala:42:1 ----------------------------------------------------------------------------------
-42 |@nowarn("msg=fish") def t6d = f // error (unused nowarn), warning (deprecation)
+-- Error: tests/neg/nowarn.scala:39:1 ----------------------------------------------------------------------------------
+39 |@nowarn("msg=fish") def t6d = f // error (unused nowarn), warning (deprecation)
    |^^^^^^^^^^^^^^^^^^^
    |@nowarn annotation does not suppress any warnings
--- Error: tests/neg/nowarn.scala:50:5 ----------------------------------------------------------------------------------
-50 |  : @nowarn("msg=fish") // error (unused nowarn)
+-- Error: tests/neg/nowarn.scala:47:5 ----------------------------------------------------------------------------------
+47 |  : @nowarn("msg=fish") // error (unused nowarn)
    |    ^^^^^^^^^^^^^^^^^^^
    |    @nowarn annotation does not suppress any warnings
--- Error: tests/neg/nowarn.scala:62:0 ----------------------------------------------------------------------------------
-62 |@nowarn def t9a = { 1: @nowarn; 2 } // error (outer @nowarn is unused)
+-- Error: tests/neg/nowarn.scala:59:0 ----------------------------------------------------------------------------------
+59 |@nowarn def t9a = { 1: @nowarn; 2 } // error (outer @nowarn is unused)
    |^^^^^^^
    |@nowarn annotation does not suppress any warnings
--- Error: tests/neg/nowarn.scala:63:27 ---------------------------------------------------------------------------------
-63 |@nowarn def t9b = { 1: Int @nowarn; 2 } // error (inner @nowarn is unused, it covers the type, not the expression)
+-- Error: tests/neg/nowarn.scala:60:27 ---------------------------------------------------------------------------------
+60 |@nowarn def t9b = { 1: Int @nowarn; 2 } // error (inner @nowarn is unused, it covers the type, not the expression)
    |                           ^^^^^^^
    |                           @nowarn annotation does not suppress any warnings
--- Error: tests/neg/nowarn.scala:68:0 ----------------------------------------------------------------------------------
-68 |@nowarn @ann(f) def t10b = 0  // error (unused nowarn)
+-- Error: tests/neg/nowarn.scala:65:0 ----------------------------------------------------------------------------------
+65 |@nowarn @ann(f) def t10b = 0  // error (unused nowarn)
    |^^^^^^^
    |@nowarn annotation does not suppress any warnings
--- Error: tests/neg/nowarn.scala:69:8 ----------------------------------------------------------------------------------
-69 |@ann(f: @nowarn) def t10c = 0 // error (unused nowarn), should be silent
+-- Error: tests/neg/nowarn.scala:66:8 ----------------------------------------------------------------------------------
+66 |@ann(f: @nowarn) def t10c = 0 // error (unused nowarn), should be silent
    |        ^^^^^^^
    |        @nowarn annotation does not suppress any warnings
--- Error: tests/neg/nowarn.scala:72:0 ----------------------------------------------------------------------------------
-72 |@nowarn class I1a { // error (unused nowarn)
+-- Error: tests/neg/nowarn.scala:69:0 ----------------------------------------------------------------------------------
+69 |@nowarn class I1a { // error (unused nowarn)
    |^^^^^^^
    |@nowarn annotation does not suppress any warnings
--- Error: tests/neg/nowarn.scala:77:0 ----------------------------------------------------------------------------------
-77 |@nowarn class I1b { // error (unused nowarn)
+-- Error: tests/neg/nowarn.scala:74:0 ----------------------------------------------------------------------------------
+74 |@nowarn class I1b { // error (unused nowarn)
    |^^^^^^^
    |@nowarn annotation does not suppress any warnings

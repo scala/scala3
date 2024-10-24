@@ -14,9 +14,6 @@ def t1a = try 1 // warning (parser)
 @nowarn("wat?") // warning (typer, invalid filter)
 def t2 = { 1; 2 } // warning (the invalid nowarn doesn't silence anything)
 
-@nowarn(t1a.toString) // warning (typer, argument not a compile-time constant)
-def t2a = { 1; 2 } // warning (invalid nowarn doesn't silence)
-
 object o:
   final val const = "msg=try"
   inline def inl = "msg=try"

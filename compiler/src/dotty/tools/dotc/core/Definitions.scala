@@ -499,6 +499,8 @@ class Definitions {
 
   @tu lazy val DummyImplicitClass: ClassSymbol = requiredClass("scala.DummyImplicit")
 
+  @tu lazy val SymbolModule: Symbol = requiredModule("scala.Symbol")
+  
   @tu lazy val ScalaRuntimeModule: Symbol = requiredModule("scala.runtime.ScalaRunTime")
     def runtimeMethodRef(name: PreName): TermRef = ScalaRuntimeModule.requiredMethodRef(name)
     def ScalaRuntime_drop: Symbol = runtimeMethodRef(nme.drop).symbol
