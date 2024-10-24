@@ -131,7 +131,7 @@ done automatically under `-rewrite`.
 
 ## Context Bounds for Polymorphic Functions
 
-From Scala 3.6 on, context bounds can also be used in polymorphic function types and polymorphic function literals:
+From Scala 3.7 on, context bounds can also be used in polymorphic function types and polymorphic function literals:
 
 ```scala
 type Comparer = [X: Ord] => (x: X, y: X) => Boolean
