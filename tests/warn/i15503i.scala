@@ -188,12 +188,12 @@ package foo.test.i16822:
   }
 
 package foo.test.i16877:
-  import scala.collection.immutable.HashMap // OK
+  import scala.Array // OK
   import scala.annotation.StaticAnnotation // OK
 
-  class ExampleAnnotation(val a: Object) extends StaticAnnotation // OK
+  class ExampleAnnotation(val a: Array[Int]) extends StaticAnnotation // OK
 
-  //@ExampleAnnotation(new HashMap()) // Invalid annotation argument
+  @ExampleAnnotation(Array(1,2)) // OK
   class Test //OK
 
 package foo.test.i16926:
