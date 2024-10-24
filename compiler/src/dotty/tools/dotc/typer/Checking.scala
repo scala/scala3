@@ -969,9 +969,12 @@ object Checking {
       || (
         t match
           case Literal(_) => true
-          case Ident(nme.WILDCARD) => true // example: tests/run/java-ann-super-class
+          // `_` is used as placeholder for unspecified arguments of Java
+          // annotations. Example: tests/run/java-ann-super-class
+          case Ident(nme.WILDCARD) => true
           case Apply(fun, args) => isFunctionAllowed(fun) && args.forall(valid)
           case TypeApply(fun, args) => isFunctionAllowed(fun)
+          // Support for `x.isInstanceOf[T]`. Probably not needed.
           //case TypeApply(meth @ Select(arg, _), _) if meth.symbol == defn.Any_asInstanceOf => valid(arg)
           case SeqLiteral(elems, _) => elems.forall(valid)
           case Typed(expr, _) => valid(expr)

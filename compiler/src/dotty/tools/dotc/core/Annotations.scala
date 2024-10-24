@@ -3,8 +3,6 @@ package dotc
 package core
 
 import Symbols.*, Types.*, Contexts.*, Constants.*, Phases.*
-import Decorators.i
-import StdNames.nme
 import ast.tpd, tpd.*
 import util.Spans.Span
 import printing.{Showable, Printer}
