@@ -3352,3 +3352,10 @@ final class AmbiguousNamedTupleAssignment(key: Name, value: untpd.Tree)(using Co
       |To assign a value, use curly braces: `{${key} = ${value}}`."""
   
   override protected def explain(using Context): String = ""
+
+class InfixNamedArgDeprecation()(using Context) extends SyntaxMsg(DeprecatedNamedInfixArgID):
+  def msg(using Context) = "Named argument syntax is deprecated for infix application"
+  def explain(using Context) =
+    i"""The argument will be parsed as a named tuple in future.
+        |
+        |To avoid this warning, either remove the argument names or use dotted selection."""
