@@ -1,0 +1,10 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/delayedRunops3.scala:10:41 -------------------------------
+10 |  app[List[() ->{ops*} Unit], Unit](ops, runOps) // error
+   |                                         ^^^^^^
+   |                                         Found:    (ops: List[box () ->? Unit]^?) ->? Unit
+   |                                         Required: (ops: List[box () ->{ops²*} Unit]) -> Unit
+   |
+   |                                         where:    ops  is a reference to a value parameter
+   |                                                   ops² is a parameter in method unsafeRunOps
+   |
+   | longer explanation available when compiling with `-explain`

@@ -52,11 +52,6 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
    */
   final class untrackedCaptures extends annotation.StaticAnnotation
 
-  /** This should go into annotations. For now it is here, so that we
-   *  can experiment with it quickly between minor releases
-   */
-  final class unbox extends annotation.StaticAnnotation
-
   object unsafe:
 
     extension [T](x: T)
