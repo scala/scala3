@@ -294,7 +294,8 @@ class Namer { typer: Typer =>
 
         val completer = tree match
           case tree: TypeDef => TypeDefCompleter(tree)(cctx)
-          case tree: ValOrDefDef if isNonInferingTree(tree) => NonInferingCompleter(tree)(cctx)
+          case tree: ValOrDefDef if Feature.enabled(Feature.modularity) && isNonInferingTree(tree) =>
+            NonInferingCompleter(tree)(cctx)
           case _ => Completer(tree)(cctx)
         val info = adjustIfModule(completer, tree)
         createOrRefine[Symbol](tree, name, flags, ctx.owner, _ => info,
@@ -1549,8 +1550,6 @@ class Namer { typer: Typer =>
         case completer: Completer => completer.indexConstructor(constr, constrSym)
         case _ =>
 
-      // constrSym.info = typeSig(constrSym)
-
       tempInfo = denot.asClass.classInfo.integrateOpaqueMembers.asInstanceOf[TempClassInfo]
       denot.info = savedInfo
     }
@@ -1659,8 +1658,7 @@ class Namer { typer: Typer =>
               case tp: MethodOrPoly => Method | Synthetic | Deferred | Tracked
               case _ if name.isTermName => Synthetic | Deferred | Tracked
               case _ => Synthetic | Deferred
-            val s = newSymbol(cls, name, flags, tp, coord = original.rhs.span.startPos).entered
-            refinedSyms += s
+            refinedSyms += newSymbol(cls, name, flags, tp, coord = original.rhs.span.startPos).entered
         if refinedSyms.nonEmpty then
           typr.println(i"parent refinement symbols: ${refinedSyms.toList}")
           original.pushAttachment(ParentRefinements, refinedSyms.toList)
@@ -1945,7 +1943,7 @@ class Namer { typer: Typer =>
       // Add refinements for all tracked parameters to the result type.
       for params <- ddef.termParamss; param <- params do
         val psym = symbolOfTree(param)
-        if needsTracked(psym, param) then psym.setFlag(Tracked)
+        if needsTracked(psym, param, sym) then psym.setFlag(Tracked)
       valOrDefDefSig(ddef, sym, paramSymss, wrapRefinedMethType)
     else
       valOrDefDefSig(ddef, sym, paramSymss, wrapMethType)
@@ -1999,24 +1997,28 @@ class Namer { typer: Typer =>
 
   /** Try to infer if the parameter needs a `tracked` modifier
    */
-  def needsTracked(sym: Symbol, param: ValDef)(using Context) =
-    !sym.is(Tracked)
-    && sym.isTerm
+  def needsTracked(psym: Symbol, param: ValDef, owningSym: Symbol)(using Context) =
+    lazy val abstractContextBound = isContextBoundWitnessWithAbstractMembers(psym, param, owningSym)
+    lazy val isRefInSignatures =
+      psym.maybeOwner.isPrimaryConstructor
+      // && !psym.flags.is(Synthetic)
+      // && !psym.maybeOwner.flags.is(Synthetic)
+      // && !psym.maybeOwner.maybeOwner.flags.is(Synthetic)
+      && isReferencedInPublicSignatures(psym)
+    !psym.is(Tracked)
+    && psym.isTerm
     && (
-      isContextBoundWitnessWithAbstractMembers(sym, param)
-      || sym.maybeOwner.isPrimaryConstructor
-      // && !sym.flags.is(Synthetic)
-      // && !sym.maybeOwner.flags.is(Synthetic)
-      // && !sym.maybeOwner.maybeOwner.flags.is(Synthetic)
-      && isReferencedInPublicSignatures(sym)
+      abstractContextBound
+      || isRefInSignatures
     )
 
   /** Under x.modularity, we add `tracked` to context bound witnesses
    *  that have abstract type members
    */
-  def isContextBoundWitnessWithAbstractMembers(sym: Symbol, param: ValDef)(using Context): Boolean =
-    param.hasAttachment(ContextBoundParam)
-    && sym.info.memberNames(abstractTypeNameFilter).nonEmpty
+  def isContextBoundWitnessWithAbstractMembers(psym: Symbol, param: ValDef, owningSym: Symbol)(using Context): Boolean =
+    (owningSym.isClass || owningSym.isAllOf(Given | Method))
+    && param.hasAttachment(ContextBoundParam)
+    && psym.info.memberNames(abstractTypeNameFilter).nonEmpty
 
   extension (sym: Symbol)
     def infoWithForceNonInferingCompleter(using Context): Type = sym.infoOrCompleter match
@@ -2069,7 +2071,7 @@ class Namer { typer: Typer =>
   def setTracked(param: ValDef)(using Context): Unit =
     val sym = symbolOfTree(param)
     sym.maybeOwner.maybeOwner.infoOrCompleter match
-      case info: ClassInfo if needsTracked(sym, param) =>
+      case info: ClassInfo if needsTracked(sym, param, sym.maybeOwner.maybeOwner) =>
         typr.println(i"set tracked $param, $sym: ${sym.info} containing ${sym.info.memberNames(abstractTypeNameFilter).toList}")
         for acc <- info.decls.lookupAll(sym.name) if acc.is(ParamAccessor) do
           acc.resetFlag(PrivateLocal)
