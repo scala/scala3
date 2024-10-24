@@ -118,6 +118,7 @@ object Annotations {
       def isFunctionAllowed(t: Tree): Boolean =
         t match
           case Select(qual, nme.apply) => qual.symbol == defn.ArrayModule || isTupleModule(qual.symbol)
+          case Apply(fun, _) => isFunctionAllowed(fun)
           case TypeApply(fun, _) => isFunctionAllowed(fun)
           case _ => false
         
