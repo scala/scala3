@@ -957,6 +957,7 @@ object Checking {
         case Select(qual, nme.apply) =>
           qual.symbol == defn.ArrayModule
           || qual.symbol == defn.ClassTagModule // class tags are used as arguments to Array.apply
+          || qual.symbol == defn.SymbolModule // used in Akka
           || isTupleModule(qual.symbol)
         case Select(New(clazz), nme.CONSTRUCTOR) => clazz.symbol.isAnnotation
         case Apply(fun, _) => isFunctionAllowed(fun)

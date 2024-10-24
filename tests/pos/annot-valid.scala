@@ -13,6 +13,7 @@ def main =
   val x7: Int @annot((1,2,3)) = 0
   val x8: Int @annot(((1,2),3)) = 0
   val x9: Int @annot(((1,2),(3,4))) = 0
+  val x10: Int @annot(Symbol("hello")) = 0
   
   @annot(42) val y1: Int = 0
   @annot("hello") val y2: Int = 0
@@ -23,5 +24,6 @@ def main =
   @annot((1,2,3)) val y7: Int = 0
   @annot(((1,2),3)) val y8: Int = 0
   @annot(((1,2),(3,4))) val y9: Int = 0
+  @annot(Symbol("hello")) val y10: Int = 0
 
   ()
