@@ -61,6 +61,7 @@ package shapeless {
 import shapeless.*
 
 object Test extends App {
+  import Selector.given
   val sel = Selector[L, Boolean]
 
   type L =
