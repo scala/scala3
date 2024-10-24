@@ -518,6 +518,22 @@ object Parsers {
         tree
     }
 
+    def makePolyFunction(tparams: List[Tree], body: Tree,
+        kind: String, errorTree: => Tree,
+        start: Offset, arrowOffset: Offset): Tree =
+      atSpan(start, arrowOffset):
+        getFunction(body) match
+          case None =>
+            syntaxError(em"Implementation restriction: polymorphic function ${kind}s must have a value parameter", arrowOffset)
+            errorTree
+          case Some(Function(_, _: CapturesAndResult)) =>
+            // A function tree like this will be desugared
+            // into a capturing type in the typer.
+            syntaxError(em"Implementation restriction: polymorphic function types cannot wrap function types that have capture sets", arrowOffset)
+            errorTree
+          case Some(f) =>
+            PolyFunction(tparams, body)
+
 /* --------------- PLACEHOLDERS ------------------------------------------- */
 
     /** The implicit parameters introduced by `_` in the current expression.
@@ -1539,11 +1555,6 @@ object Parsers {
     private def getFunction(tree: Tree): Option[Function] = tree match {
       case Parens(tree1) => getFunction(tree1)
       case Block(Nil, tree1) => getFunction(tree1)
-      case Function(_, _: CapturesAndResult) =>
-        // A function tree like this will be desugared
-        // into a capturing type in the typer,
-        // so None is returned.
-        None
       case t: Function => Some(t)
       case _ => None
     }
@@ -1757,13 +1768,7 @@ object Parsers {
         else if in.token == ARROW || isPureArrow(nme.PUREARROW) then
           val arrowOffset = in.skipToken()
           val body = toplevelTyp(nestedIntoOK(in.token))
-          atSpan(start, arrowOffset):
-            getFunction(body) match
-              case Some(f) =>
-                PolyFunction(tparams, body)
-              case None =>
-                syntaxError(em"Implementation restriction: polymorphic function types must have a value parameter", arrowOffset)
-                Ident(nme.ERROR.toTypeName)
+          makePolyFunction(tparams, body, "type", Ident(nme.ERROR.toTypeName), start, arrowOffset)
         else
           accept(TLARROW)
           typ()
@@ -2360,14 +2365,7 @@ object Parsers {
           val tparams = typeParamClause(ParamOwner.Type)
           val arrowOffset = accept(ARROW)
           val body = expr(location)
-          atSpan(start, arrowOffset) {
-            getFunction(body) match
-              case Some(f) =>
-                PolyFunction(tparams, f)
-              case None =>
-                syntaxError(em"Implementation restriction: polymorphic function literals must have a value parameter", arrowOffset)
-                errorTermTree(arrowOffset)
-          }
+          makePolyFunction(tparams, body, "literal", errorTermTree(arrowOffset), start, arrowOffset)
         case _ =>
           val saved = placeholderParams
           placeholderParams = Nil
