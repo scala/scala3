@@ -68,6 +68,7 @@ class TreeChecker extends Phase with SymTransformer {
 
   def transformSym(symd: SymDenotation)(using Context): SymDenotation = {
     val sym = symd.symbol
+    Checking.checkWellFormedType(symd.info)
 
     if (sym.isClass && !sym.isAbsent()) {
       val validSuperclass = sym.isPrimitiveValueClass || defn.syntheticCoreClasses.contains(sym) ||
@@ -827,6 +828,8 @@ object TreeChecker {
             |${mismatch.message}${mismatch.explanation}
             |tree = $tree ${tree.className}""".stripMargin
       })
+      Checking.checkWellFormedType(tp1)
+      Checking.checkWellFormedType(tp2)
   }
 
   /** Tree checker that can be applied to a local tree. */

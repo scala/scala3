@@ -604,6 +604,17 @@ object Checking {
     checkNoConflict(Lazy, ParamAccessor, em"parameter may not be `lazy`")
   }
 
+  /** Check that the type `tp` is well-formed. Currently this only means
+   *  checking that annotated types have valid annotation arguments.
+   */
+  def checkWellFormedType(tp: Type)(using Context) =
+    tp.foreachPart:
+      case AnnotatedType(underlying, annot) =>
+        // Not checking `checkAnnotClass` because `Transform.toTypeTree` creates
+        // `Annotated` whose trees are not annotation instantiations.
+        checkAnnotArgs(annot.tree)
+      case _ => ()
+
   /** Check for illegal or redundant modifiers on modules. This is done separately
    *  from checkWellformed, since the original module modifiers don't surivive desugaring
    */
@@ -914,6 +925,69 @@ object Checking {
         annot
       case _ => annot
   end checkNamedArgumentForJavaAnnotation
+
+  /** Check arguments of annotations */
+  private def checkAnnotArgs(tree: Tree)(using Context): Tree =
+    val cls = Annotations.annotClass(tree)
+    tree match
+      case Apply(tycon, arg :: Nil) if cls == defn.TargetNameAnnot =>
+        arg match
+          case Literal(Constant("")) =>
+            report.error(em"target name cannot be empty", arg.srcPos)
+          case Literal(_) => // ok
+          case _ =>
+            report.error(em"@${cls.name} needs a string literal as argument", arg.srcPos)
+      case Apply(tycon, args) => args.foreach(checkAnnotArg)
+      case _ =>
+        // `FirstTransform.toTypeTree` creates `Annotated` nodes where the
+        // annotation tree is not an `Apply` node. For example, in
+        // tests/neg/i13044.scala, `FirstTransform.toTypeTree` creates two
+        // annotations with trees `t` and `ts`. In tests/run/t2755.scala,
+        // `FirstTransform.toTypeTree` creates an annotated types with tree `_`.
+        //
+        // report.error(em"unexpected annotation tree: $tree", tree.srcPos)
+        ()
+    tree
+
+  private def checkAnnotArg(tree: Tree)(using Context): Unit =
+    def isTupleModule(sym: Symbol): Boolean =
+      ctx.definitions.isTupleClass(sym.companionClass)
+
+    def isFunctionAllowed(t: Tree): Boolean =
+      t match
+        case Select(qual, nme.apply) => qual.symbol == defn.ArrayModule || isTupleModule(qual.symbol)
+        case Apply(fun, _) => isFunctionAllowed(fun)
+        case TypeApply(fun, _) => isFunctionAllowed(fun)
+        case _ => false
+      
+    def valid(t: Tree): Boolean =
+      t match
+        case Literal(_) => true
+        case Apply(fun, args) => isFunctionAllowed(fun) && args.forall(valid)
+        case SeqLiteral(elems, _) => elems.forall(valid)
+        case Typed(expr, _) => valid(expr)
+        case NamedArg(_, arg) => valid(arg)
+        case _ =>
+          t.tpe.stripped match
+            case _: SingletonType => true
+            // We need to handle type refs for these test cases:
+            // - tests/pos/dependent-annot.scala
+            // - tests/pos/i16208.scala
+            // - tests/run/java-ann-super-class
+            // - tests/run/java-ann-super-class-separate
+            // - tests/neg/i19470.scala (@retains)
+            // Why do we get type refs in these cases?
+            case _: TypeRef => true
+            case _: TypeParamRef => true
+            case tp => false
+    
+    if !valid(tree) then
+      report.error(
+        s"""Implementation restriction: not a valid annotation argument.
+           |  Argument: $tree
+           |  Type: ${tree.tpe}""".stripMargin,
+        tree.srcPos
+      )
 
 }
 
@@ -1385,12 +1459,15 @@ trait Checking {
     if !Inlines.inInlineMethod && !ctx.isInlineContext then
       report.error(em"$what can only be used in an inline method", pos)
 
+  def checkAnnot(tree: Tree)(using Context): Tree =
+    Checking.checkAnnotArgs(checkAnnotClass(tree))
+
   /** Check that the class corresponding to this tree is either a Scala or Java annotation.
    *
    *  @return The original tree or an error tree in case `tree` isn't a valid
    *          annotation or already an error tree.
    */
-  def checkAnnotClass(tree: Tree)(using Context): Tree =
+  private def checkAnnotClass(tree: Tree)(using Context): Tree =
     if tree.tpe.isError then
       return tree
     val cls = Annotations.annotClass(tree)
@@ -1401,21 +1478,7 @@ trait Checking {
     else if !cls.derivesFrom(defn.AnnotationClass) then
       errorTree(tree, em"$cls is not a valid Scala annotation: it does not extend `scala.annotation.Annotation`")
     else tree
-
-  /** Check arguments of compiler-defined annotations */
-  def checkAnnotArgs(tree: Tree)(using Context): tree.type =
-    val cls = Annotations.annotClass(tree)
-    tree match
-      case Apply(tycon, arg :: Nil) if cls == defn.TargetNameAnnot =>
-        arg match
-          case Literal(Constant("")) =>
-            report.error(em"target name cannot be empty", arg.srcPos)
-          case Literal(_) => // ok
-          case _ =>
-            report.error(em"@${cls.name} needs a string literal as argument", arg.srcPos)
-      case _ =>
-    tree
-
+  
   /** 1. Check that all case classes that extend `scala.reflect.Enum` are `enum` cases
    *  2. Check that parameterised `enum` cases do not extend java.lang.Enum.
    *  3. Check that only a static `enum` base class can extend java.lang.Enum.
@@ -1663,7 +1726,7 @@ trait NoChecking extends ReChecking {
   override def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit = ()
   override def checkImplicitConversionUseOK(tree: Tree, expected: Type)(using Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: SrcPos, where: => String = "")(using Context): Type = tp
-  override def checkAnnotArgs(tree: Tree)(using Context): tree.type = tree
+  override def checkAnnot(tree: Tree)(using Context): tree.type = tree
   override def checkNoTargetNameConflict(stats: List[Tree])(using Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit = ()
   override def checkSimpleKinded(tpt: Tree)(using Context): Tree = tpt

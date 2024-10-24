@@ -5754,7 +5754,6 @@ object Types extends TypeUtils {
     def make(underlying: Type, annots: List[Annotation])(using Context): Type =
       annots.foldLeft(underlying)(apply(_, _))
     def apply(parent: Type, annot: Annotation)(using Context): AnnotatedType =
-      annot.checkValidTypeAnnotation()
       unique(CachedAnnotatedType(parent, annot))
   end AnnotatedType
 
