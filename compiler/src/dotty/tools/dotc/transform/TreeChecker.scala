@@ -68,7 +68,9 @@ class TreeChecker extends Phase with SymTransformer {
 
   def transformSym(symd: SymDenotation)(using Context): SymDenotation = {
     val sym = symd.symbol
-    Checking.checkWellFormedType(symd.info)
+
+    if symd.isCompleted then
+      Checking.checkWellFormedType(symd.info)
 
     if (sym.isClass && !sym.isAbsent()) {
       val validSuperclass = sym.isPrimitiveValueClass || defn.syntheticCoreClasses.contains(sym) ||
