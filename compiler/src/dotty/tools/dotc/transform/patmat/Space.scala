@@ -7,7 +7,7 @@ import core.*
 import Constants.*, Contexts.*, Decorators.*, Flags.*, NullOpsDecorator.*, Symbols.*, Types.*
 import Names.*, NameOps.*, StdNames.*
 import ast.*, tpd.*
-import config.Printers.*
+import config.Printers.exhaustivity
 import printing.{ Printer, * }, Texts.*
 import reporting.*
 import typer.*, Applications.*, Inferencing.*, ProtoTypes.*
@@ -524,14 +524,25 @@ object SpaceEngine {
     val mt: MethodType = unapp.widen match {
       case mt: MethodType => mt
       case pt: PolyType   =>
+        scrutineeTp match
+        case AppliedType(tycon, targs)
+            if unappSym.is(Synthetic)
+            && (pt.resultType.asInstanceOf[MethodType].paramInfos.head.typeConstructor eq tycon) =>
+          // Special case synthetic unapply/unapplySeq's
+          // Provided the shapes of the types match:
+          // the scrutinee type being unapplied and
+          // the unapply parameter type
+          pt.instantiate(targs).asInstanceOf[MethodType]
+        case _ =>
           val locked = ctx.typerState.ownedVars
           val tvars = constrained(pt)
           val mt = pt.instantiate(tvars).asInstanceOf[MethodType]
-          scrutineeTp <:< mt.paramInfos(0)
+          val unapplyArgType = mt.paramInfos.head
+          scrutineeTp <:< unapplyArgType
           // force type inference to infer a narrower type: could be singleton
           // see tests/patmat/i4227.scala
-          mt.paramInfos(0) <:< scrutineeTp
-          maximizeType(mt.paramInfos(0), Spans.NoSpan)
+          unapplyArgType <:< scrutineeTp
+          maximizeType(unapplyArgType, Spans.NoSpan)
           if !(ctx.typerState.ownedVars -- locked).isEmpty then
             // constraining can create type vars out of wildcard types
             // (in legalBound, by using a LevelAvoidMap)
@@ -543,7 +554,7 @@ object SpaceEngine {
             // but I'd rather have an unassigned new-new type var, than an infinite loop.
             // After all, there's nothing strictly "wrong" with unassigned type vars,
             // it just fails TreeChecker's linting.
-            maximizeType(mt.paramInfos(0), Spans.NoSpan)
+            maximizeType(unapplyArgType, Spans.NoSpan)
           mt
     }
 
