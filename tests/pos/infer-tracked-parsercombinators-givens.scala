@@ -1,6 +1,5 @@
 import scala.language.experimental.modularity
 import scala.language.future
-
 import collection.mutable
 
 /// A parser combinator.
@@ -19,7 +18,7 @@ end Combinator
 final case class Apply[C, E](action: C => Option[E])
 final case class Combine[A, B](first: A, second: B)
 
-given apply[C, E]: Combinator[Apply[C, E]] with {
+given apply: [C, E] => Combinator[Apply[C, E]] {
   type Context = C
   type Element = E
   extension(self: Apply[C, E]) {

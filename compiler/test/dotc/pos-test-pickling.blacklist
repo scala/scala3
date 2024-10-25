@@ -136,6 +136,7 @@ parsercombinators-new-syntax.scala
 hylolib-deferred-given
 hylolib-cb
 hylolib
+infer-tracked-parsercombinators-givens.scala
 
 # typecheckErrors method unpickling
 i21415.scala

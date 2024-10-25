@@ -1791,6 +1791,7 @@ class Namer { typer: Typer =>
     sym.owner.typeParams.foreach(_.ensureCompleted())
     completeTrailingParamss(constr, sym, indexingCtor = true)
     if Feature.enabled(modularity) then
+      // println(i"[indexConstructor] Checking if params of $constr need tracked")
       constr.termParamss.foreach(_.foreach(setTracked))
 
   /** The signature of a module valdef.
@@ -1931,22 +1932,26 @@ class Namer { typer: Typer =>
     def wrapRefinedMethType(restpe: Type): Type =
       wrapMethType(addParamRefinements(restpe, paramSymss))
 
+    def addTrackedIfNeeded(ddef: DefDef, owningSym: Symbol): Boolean =
+      var wasSet = false
+      for params <- ddef.termParamss; param <- params do
+        val psym = symbolOfTree(param)
+        if needsTracked(psym, param, owningSym) then
+          psym.setFlag(Tracked)
+          wasSet = true
+      wasSet
+
+    if Feature.enabled(modularity) then addTrackedIfNeeded(ddef, sym.maybeOwner)
+
     if isConstructor then
       // set result type tree to unit, but take the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)
       val mt = wrapMethType(effectiveResultType(sym, paramSymss))
       if sym.isPrimaryConstructor then checkCaseClassParamDependencies(mt, sym.owner)
       mt
-    else if Feature.enabled(modularity) then
-      // set every context bound evidence parameter of a given companion method
-      // to be tracked, provided it has a type that has an abstract type member.
-      // Add refinements for all tracked parameters to the result type.
-      for params <- ddef.termParamss; param <- params do
-        val psym = symbolOfTree(param)
-        if needsTracked(psym, param, sym) then psym.setFlag(Tracked)
-      valOrDefDefSig(ddef, sym, paramSymss, wrapRefinedMethType)
     else
-      valOrDefDefSig(ddef, sym, paramSymss, wrapMethType)
+      val paramFn = if Feature.enabled(Feature.modularity) && sym.isAllOf(Given | Method) then wrapRefinedMethType else wrapMethType
+      valOrDefDefSig(ddef, sym, paramSymss, paramFn)
   end defDefSig
 
   /** Complete the trailing parameters of a DefDef,
@@ -1998,6 +2003,7 @@ class Namer { typer: Typer =>
   /** Try to infer if the parameter needs a `tracked` modifier
    */
   def needsTracked(psym: Symbol, param: ValDef, owningSym: Symbol)(using Context) =
+    // println(i"Checking if $psym needs tracked")
     lazy val abstractContextBound = isContextBoundWitnessWithAbstractMembers(psym, param, owningSym)
     lazy val isRefInSignatures =
       psym.maybeOwner.isPrimaryConstructor
@@ -2071,8 +2077,9 @@ class Namer { typer: Typer =>
   def setTracked(param: ValDef)(using Context): Unit =
     val sym = symbolOfTree(param)
     sym.maybeOwner.maybeOwner.infoOrCompleter match
-      case info: ClassInfo if needsTracked(sym, param, sym.maybeOwner.maybeOwner) =>
-        typr.println(i"set tracked $param, $sym: ${sym.info} containing ${sym.info.memberNames(abstractTypeNameFilter).toList}")
+      case info: ClassInfo
+        if !sym.is(Tracked) && isContextBoundWitnessWithAbstractMembers(sym, param, sym.maybeOwner.maybeOwner) =>
+        typr.println(i"set tracked $param, $sym: ${sym.info}")
         for acc <- info.decls.lookupAll(sym.name) if acc.is(ParamAccessor) do
           acc.resetFlag(PrivateLocal)
           acc.setFlag(Tracked)
