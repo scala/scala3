@@ -7,27 +7,13 @@ package <empty> {
   final lazy module val Test: Test = new Test()
   final module class Test() extends Object() { this: Test.type =>
     val y: Int = ???
-    val z:
-      Int @lambdaAnnot(
-        {
-          def $anonfun(): Int = Test.y
-          closure($anonfun)
-        }
-      )
-     = f(Test.y)
+    val z: Int @lambdaAnnot(() => Test.y) = f(Test.y)
   }
   final lazy module val annot-19846b$package: annot-19846b$package =
     new annot-19846b$package()
   final module class annot-19846b$package() extends Object() {
     this: annot-19846b$package.type =>
-    def f(x: Int):
-      Int @lambdaAnnot(
-        {
-          def $anonfun(): Int = x
-          closure($anonfun)
-        }
-      )
-     = x
+    def f(x: Int): Int @lambdaAnnot(() => x) = x
   }
 }
 
