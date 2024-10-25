@@ -802,11 +802,11 @@ object Contexts {
     final def retractMode(mode: Mode): c.type = c.setMode(c.mode &~ mode)
   }
 
-  /** Run `op` with a pool-allocated context that has an ExporeTyperState. */
+  /** Run `op` with a pool-allocated context that has an ExploreTyperState. */
   inline def explore[T](inline op: Context ?=> T)(using Context): T =
     exploreInFreshCtx(op)
 
-  /** Run `op` with a pool-allocated FreshContext that has an ExporeTyperState. */
+  /** Run `op` with a pool-allocated FreshContext that has an ExploreTyperState. */
   inline def exploreInFreshCtx[T](inline op: FreshContext ?=> T)(using Context): T =
     val pool = ctx.base.exploreContextPool
     val nestedCtx = pool.next()
@@ -931,7 +931,7 @@ object Contexts {
       FreshContext(ctx.base).init(ctx, ctx)
 
     private var inUse: Int = 0
-    private var pool = new mutable.ArrayBuffer[FreshContext]
+    private val pool = new mutable.ArrayBuffer[FreshContext]
 
     def next()(using Context): FreshContext =
       val base = ctx.base

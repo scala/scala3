@@ -4471,17 +4471,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             tree
     }
 
-    // Follow proxies and approximate type paramrefs by their upper bound
-    // in the current constraint in order to figure out robustly
-    // whether an expected type is some sort of function type.
-    def underlyingApplied(tp: Type): Type = tp.stripTypeVar match {
-      case tp: RefinedType => tp
-      case tp: AppliedType => tp
-      case tp: TypeParamRef => underlyingApplied(TypeComparer.bounds(tp).hi)
-      case tp: TypeProxy => underlyingApplied(tp.superType)
-      case _ => tp
-    }
-
     // If the expected type is a selection of an extension method, deepen it
     // to also propagate the argument type (which is the receiver we have
     // typechecked already). This is needed for i8311.scala. Doing so
@@ -4494,7 +4483,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case _ => pt
 
     def adaptNoArgs(wtp: Type): Tree = {
-      val ptNorm = underlyingApplied(pt)
+      val ptNorm = pt.underlyingApplied
       def functionExpected = defn.isFunctionNType(ptNorm)
       def needsEta = pt.revealIgnored match
         case _: SingletonType | _: FunOrPolyProto => false

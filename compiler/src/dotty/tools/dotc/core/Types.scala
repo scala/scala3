@@ -1630,6 +1630,17 @@ object Types extends TypeUtils {
         NoType
     }
 
+    /** Follow proxies and approximate type paramrefs by their upper bound
+     *  in the current constraint in order to figure out robustly
+     *  whether an expected type is some sort of function type.
+     */
+    def underlyingApplied(using Context): Type = this.stripTypeVar match
+      case tp: RefinedType  => tp
+      case tp: AppliedType  => tp
+      case tp: TypeParamRef => TypeComparer.bounds(tp).hi.underlyingApplied
+      case tp: TypeProxy    => tp.superType.underlyingApplied
+      case _                => this
+
     /** The iterator of underlying types as long as type is a TypeProxy.
      *  Useful for diagnostics
      */

@@ -1803,7 +1803,8 @@ trait Applications extends Compatibility {
    *  an alternative that takes more implicit parameters wins over one
    *  that takes fewer.
    */
-  def compare(alt1: TermRef, alt2: TermRef, preferGeneral: Boolean = false)(using Context): Int = trace(i"compare($alt1, $alt2)", overload) {
+  def compare(alt1: TermRef, alt2: TermRef, preferGeneral: Boolean = false, needsEta: Boolean = false)(using Context): Int =
+  trace(i"compare($alt1, $alt2)", overload) {
     record("resolveOverloaded.compare")
     val scheme =
       val oldResolution = ctx.mode.is(Mode.OldImplicitResolution)
@@ -1818,9 +1819,11 @@ trait Applications extends Compatibility {
     /** Is alternative `alt1` with type `tp1` as good as alternative
      *  `alt2` with type `tp2` ?
      *
-     *    1. A method `alt1` of type `(p1: T1, ..., pn: Tn)U` is as good as `alt2`
-     *       if `alt1` is nullary or `alt2` is applicable to arguments (p1, ..., pn) of
-     *       types T1,...,Tn. If the last parameter `pn` has a vararg type T*, then
+     *    1. A method `alt1` of type `(p1: T1, ..., pn: Tn)U` is as good as `alt2` if:
+     *       a. `alt1` is nullary, or
+     *       b. `alt2` is applicable to arguments (p1, ..., pn) of types T1,...,Tn, or
+     *       c. eta-expanded `alt1` is as good as `alt2` (when needing eta-expansion).
+     *       When testing method applicability (1b), if the last parameter `pn` has a vararg type T*, then
      *       `alt1` must be applicable to arbitrary numbers of `T` parameters (which
      *       implies that it must be a varargs method as well).
      *    2. A polymorphic member of type [a1 >: L1 <: U1, ..., an >: Ln <: Un]T is as
@@ -1828,20 +1831,22 @@ trait Applications extends Compatibility {
      *       assumption that for i = 1,...,n each ai is an abstract type name bounded
      *       from below by Li and from above by Ui.
      *    3. A member of any other type `tp1` is:
-     *       a. always as good as a method or a polymorphic method.
-     *       b. as good as a member of any other type `tp2` if `asGoodValueType(tp1, tp2) = true`
+     *       a. as good as an eta-expanded `tp2` method (when needing eta-expansion)
+     *       b. always as good as a (not eta-expanded) method or a polymorphic method.
+     *       c. as good as a member of any other type `tp2` if `asGoodValueType(tp1, tp2) = true`
      */
     def isAsGood(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = trace(i"isAsGood $tp1 $tp2", overload) {
       tp1 match
         case tp1: MethodType => // (1)
-          tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
+          tp1.paramInfos.isEmpty && tp2.isInstanceOf[MethodOrPoly] // (1a)
           || {
             if tp1.isVarArgsMethod then
               tp2.isVarArgsMethod
-              && isApplicableMethodRef(alt2, tp1.paramInfos.map(_.repeatedToSingle), WildcardType, ArgMatch.Compatible)
+              && isApplicableMethodRef(alt2, tp1.paramInfos.map(_.repeatedToSingle), WildcardType, ArgMatch.Compatible) // (1b)
             else
-              isApplicableMethodRef(alt2, tp1.paramInfos, WildcardType, ArgMatch.Compatible)
+              isApplicableMethodRef(alt2, tp1.paramInfos, WildcardType, ArgMatch.Compatible) // (1b)
           }
+          || needsEta && !tp2.isInstanceOf[MethodOrPoly] && isAsGood(alt1, tp1.toFunctionType(), alt2, tp2) // (1c)
         case tp1: PolyType => // (2)
           inContext(ctx.fresh.setExploreTyperState()) {
             // Fully define the PolyType parameters so that the infos of the
@@ -1859,11 +1864,12 @@ trait Applications extends Compatibility {
           def compareValues(tp2: Type)(using Context) =
             isAsGoodValueType(tp1, tp2, alt1.symbol.is(Implicit))
           tp2 match
-            case tp2: MethodType => true // (3a)
-            case tp2: PolyType if tp2.resultType.isInstanceOf[MethodType] => true // (3a)
-            case tp2: PolyType => // (3b)
+            case tp2: MethodType if needsEta => isAsGood(alt1, tp1, alt2, tp2.toFunctionType()) // (3a)
+            case tp2: MethodType => true // (3b)
+            case tp2: PolyType if tp2.resultType.isInstanceOf[MethodType] => true // (3b)
+            case tp2: PolyType => // (3c)
               explore(compareValues(instantiateWithTypeVars(tp2)))
-            case _ => // 3b)
+            case _ => // (3c)
               compareValues(tp2)
     }
 
@@ -2037,13 +2043,13 @@ trait Applications extends Compatibility {
   }
   end compare
 
-  def narrowMostSpecific(alts: List[TermRef])(using Context): List[TermRef] = {
+  def narrowMostSpecific(alts: List[TermRef], needsEta: Boolean)(using Context): List[TermRef] = {
     record("narrowMostSpecific")
     alts match {
       case Nil => alts
       case _ :: Nil => alts
       case alt1 :: alt2 :: Nil =>
-        compare(alt1, alt2) match {
+        compare(alt1, alt2, needsEta = needsEta) match {
           case  1 => alt1 :: Nil
           case -1 => alt2 :: Nil
           case  0 => alts
@@ -2051,7 +2057,7 @@ trait Applications extends Compatibility {
       case alt :: alts1 =>
         def survivors(previous: List[TermRef], alts: List[TermRef]): List[TermRef] = alts match {
           case alt :: alts1 =>
-            compare(previous.head, alt) match {
+            compare(previous.head, alt, needsEta = needsEta) match {
               case  1 => survivors(previous, alts1)
               case -1 => survivors(alt :: previous.tail, alts1)
               case  0 => survivors(alt :: previous, alts1)
@@ -2061,7 +2067,7 @@ trait Applications extends Compatibility {
         val best :: rest = survivors(alt :: Nil, alts1): @unchecked
         def asGood(alts: List[TermRef]): List[TermRef] = alts match {
           case alt :: alts1 =>
-            if (compare(alt, best) < 0) asGood(alts1) else alt :: asGood(alts1)
+            if (compare(alt, best, needsEta = needsEta) < 0) asGood(alts1) else alt :: asGood(alts1)
           case nil =>
             Nil
         }
@@ -2374,7 +2380,8 @@ trait Applications extends Compatibility {
       // If `pt` is erroneous, don't try to go further; report the error in `pt` instead.
       candidates
     else
-      val found = narrowMostSpecific(candidates)
+      val needsEta = defn.isFunctionNType(pt.underlyingApplied)
+      val found = narrowMostSpecific(candidates, needsEta)
       if found.length <= 1 then found
       else
         val deepPt = pt.deepenProto
