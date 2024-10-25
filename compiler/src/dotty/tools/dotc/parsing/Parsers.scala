@@ -80,6 +80,9 @@ object Parsers {
   enum IntoOK:
     case Yes, No, Nested
 
+  enum InContextBound:
+    case Yes, No
+
   type StageKind = Int
   object StageKind {
     val None = 0
@@ -1550,7 +1553,8 @@ object Parsers {
     /** Same as [[typ]], but if this results in a wildcard it emits a syntax error and
      *  returns a tree for type `Any` instead.
      */
-    def toplevelTyp(intoOK: IntoOK = IntoOK.No): Tree = rejectWildcardType(typ(intoOK))
+    def toplevelTyp(intoOK: IntoOK = IntoOK.No, inContextBound: InContextBound = InContextBound.No): Tree =
+      rejectWildcardType(typ(intoOK, inContextBound))
 
     private def getFunction(tree: Tree): Option[Function] = tree match {
       case Parens(tree1) => getFunction(tree1)
@@ -1605,7 +1609,7 @@ object Parsers {
      *  IntoTargetType ::=  Type
      *                   |  FunTypeArgs (‘=>’ | ‘?=>’) IntoType
      */
-    def typ(intoOK: IntoOK = IntoOK.No): Tree =
+    def typ(intoOK: IntoOK = IntoOK.No, inContextBound: InContextBound = InContextBound.No): Tree =
       val start = in.offset
       var imods = Modifiers()
       val erasedArgs: ListBuffer[Boolean] = ListBuffer()
@@ -1754,7 +1758,7 @@ object Parsers {
             val tuple = atSpan(start):
               makeTupleOrParens(args.mapConserve(convertToElem))
             typeRest:
-              infixTypeRest:
+              infixTypeRest(inContextBound):
                 refinedTypeRest:
                   withTypeRest:
                     annotTypeRest:
@@ -1777,7 +1781,7 @@ object Parsers {
       else if isIntoPrefix then
         PrefixOp(typeIdent(), typ(IntoOK.Nested))
       else
-        typeRest(infixType())
+        typeRest(infixType(inContextBound))
     end typ
 
     private def makeKindProjectorTypeDef(name: TypeName): TypeDef = {
@@ -1832,13 +1836,13 @@ object Parsers {
     /** InfixType ::= RefinedType {id [nl] RefinedType}
      *             |  RefinedType `^`   // under capture checking
      */
-    def infixType(): Tree = infixTypeRest(refinedType())
+    def infixType(inContextBound: InContextBound = InContextBound.No): Tree = infixTypeRest(inContextBound)(refinedType())
 
-    def infixTypeRest(t: Tree, operand: Location => Tree = refinedTypeFn): Tree =
+    def infixTypeRest(inContextBound: InContextBound = InContextBound.No)(t: Tree, operand: Location => Tree = refinedTypeFn): Tree =
       infixOps(t, canStartInfixTypeTokens, operand, Location.ElseWhere, ParseKind.Type,
         isOperator = !followingIsVararg()
                      && !isPureArrow
-                     && !(isIdent(nme.as) && sourceVersion.isAtLeast(`3.6`))
+                     && !(isIdent(nme.as) && sourceVersion.isAtLeast(`3.6`) && inContextBound == InContextBound.Yes)
                      && nextCanFollowOperator(canStartInfixTypeTokens))
 
     /** RefinedType   ::=  WithType {[nl] Refinement} [`^` CaptureSet]
@@ -2229,7 +2233,7 @@ object Parsers {
 
     /** ContextBound      ::=  Type [`as` id] */
     def contextBound(pname: TypeName): Tree =
-      val t = toplevelTyp()
+      val t = toplevelTyp(inContextBound = InContextBound.Yes)
       val ownName =
         if isIdent(nme.as) && sourceVersion.isAtLeast(`3.6`) then
           in.nextToken()
@@ -4207,7 +4211,7 @@ object Parsers {
         else constrApp() match
           case parent: Apply => parent :: moreConstrApps()
           case parent if in.isIdent && newSyntaxAllowed =>
-            infixTypeRest(parent, _ => annotType1()) :: Nil
+            infixTypeRest()(parent, _ => annotType1()) :: Nil
           case parent => parent :: moreConstrApps()
 
       // The term parameters and parent references */
