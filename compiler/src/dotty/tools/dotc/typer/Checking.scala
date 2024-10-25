@@ -804,23 +804,21 @@ object Checking {
    *
    */
   def checkAndAdaptExperimentalImports(trees: List[Tree])(using Context): Unit =
-    def nonExperimentalTopLevelDefs(): Iterator[Symbol] =
+    def nonExperimentalTopLevelDefs(): List[Symbol] =
       new TreeAccumulator[List[Symbol]] {
         override def apply(x: List[Symbol], tree: tpd.Tree)(using Context): List[Symbol] =
-        def addIfExperimental(sym: Symbol) =
-          if !sym.isExperimental then sym :: x
-          else x
-        tree match {
-          case tpd.PackageDef(_, contents) =>
-            super.apply(x, contents)
-          case defdef: tpd.DefDef => addIfExperimental(defdef.symbol)
-          case valdef: tpd.ValDef => addIfExperimental(valdef.symbol)
-          case typeDef @ tpd.TypeDef(_, temp: Template) if typeDef.symbol.isPackageObject =>
-            super.apply(x, temp.body)
-          case typeDef @ tpd.TypeDef(_, Template(_, _, _, _)) => addIfExperimental(typeDef.symbol)
-          case _ => x
-        }
-      }.apply(Nil, ctx.compilationUnit.tpdTree).iterator
+          def addIfNotExperimental(sym: Symbol) =
+            if !sym.isExperimental then sym :: x
+            else x
+          tree match {
+            case tpd.PackageDef(_, contents) => apply(x, contents)
+            case typeDef @ tpd.TypeDef(_, temp: Template) if typeDef.symbol.isPackageObject =>
+              apply(x, temp.body)
+            case vdef: tpd.ValDef if vdef.symbol.isPackageObject => x // ValDef(new PackageObject)
+            case mdef: tpd.MemberDef => addIfNotExperimental(mdef.symbol)
+            case _ => x
+          }
+      }.apply(Nil, ctx.compilationUnit.tpdTree)
 
     def unitExperimentalLanguageImports =
       def isAllowedImport(sel: untpd.ImportSelector) =
