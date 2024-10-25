@@ -73,10 +73,9 @@ object ProtoTypes {
             if result && (ctx.typerState.constraint ne newctx.typerState.constraint) then
               // Remove all type lambdas and tvars introduced by testCompat
               for tvar <- newctx.typerState.ownedVars do
-                val tl = tvar.origin.binder
-                newctx.typerState.ownedVars -= tvar
-                if newctx.typerState.constraint.contains(tl) then
-                  newctx.typerState.constraint = newctx.typerState.constraint.remove(tl)(using newctx)
+                inContext(newctx):
+                  if !tvar.isInstantiated then
+                    tvar.instantiate(fromBelow = false) // any direction
 
               // commit any remaining changes in typer state
               newctx.typerState.commit()
