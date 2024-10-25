@@ -236,7 +236,7 @@ object TreeChecker {
   private[TreeChecker] def isValidJVMMethodName(name: Name): Boolean = name.toString.forall(isValidJVMMethodChar)
 
 
-  class Checker(phasesToCheck: Seq[Phase]) extends ReTyper with Checking {
+  class Checker(phasesToCheck: Seq[Phase]) extends ReTyper {
     import ast.tpd.*
 
     protected val nowDefinedSyms = util.HashSet[Symbol]()
