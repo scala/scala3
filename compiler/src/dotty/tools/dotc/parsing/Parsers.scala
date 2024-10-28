@@ -3557,7 +3557,7 @@ object Parsers {
         if isErasedKw then
           mods = addModifier(mods)
         if paramOwner.isClass then
-          if isIdent(nme.tracked) && in.featureEnabled(Feature.modularity) && !in.lookahead.isColon then
+          if isIdent(nme.tracked) && (in.featureEnabled(Feature.tracked) || in.featureEnabled(Feature.modularity)) && !in.lookahead.isColon then
             mods = addModifier(mods)
           mods = addFlag(modifiers(start = mods), ParamAccessor)
           mods =
@@ -3633,7 +3633,7 @@ object Parsers {
                     || isIdent
                         && (in.name == nme.inline    // inline starts a name binding
                            || in.name == nme.tracked // tracked starts a name binding under x.modularity
-                              && in.featureEnabled(Feature.modularity)
+                              && (in.featureEnabled(Feature.tracked) || in.featureEnabled(Feature.modularity))
                            || in.lookahead.isColon)  // a following `:` starts a name binding
                   (mods, paramsAreNamed)
               val params =

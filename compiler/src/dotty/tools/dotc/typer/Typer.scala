@@ -1148,7 +1148,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         if templ1.parents.isEmpty
             && isFullyDefined(pt, ForceDegree.flipBottom)
             && isSkolemFree(pt)
-            && isEligible(pt.underlyingClassRef(refinementOK = Feature.enabled(modularity)))
+            && isEligible(pt.underlyingClassRef(refinementOK = Feature.trackedEnabled))
         then
           templ1 = cpy.Template(templ)(parents = untpd.TypeTree(pt) :: Nil)
         for case parent: RefTree <- templ1.parents do
@@ -4719,7 +4719,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           cpy.Ident(qual)(qual.symbol.name.sourceModuleName.toTypeName)
         case _ =>
           errorTree(tree, em"cannot convert from $tree to an instance creation expression")
-      val tycon = ctorResultType.underlyingClassRef(refinementOK = Feature.enabled(modularity))
+      val tycon = ctorResultType.underlyingClassRef(refinementOK = Feature.trackedEnabled)
       typed(
         untpd.Select(
           untpd.New(untpd.TypedSplice(tpt.withType(tycon))),

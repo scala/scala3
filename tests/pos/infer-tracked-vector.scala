@@ -1,4 +1,4 @@
-import scala.language.experimental.modularity
+import scala.language.experimental.tracked
 import scala.language.future
 
 object typeparams:
