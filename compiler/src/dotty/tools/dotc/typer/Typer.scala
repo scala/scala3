@@ -2949,19 +2949,22 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val ddef2 = assignType(cpy.DefDef(ddef)(name, paramss1, tpt1, rhs1), sym)
 
     postProcessInfo(ddef2, sym)
-    ddef2.setDefTree
-      //todo: make sure dependent method types do not depend on implicits or by-name params
+    //todo: make sure dependent method types do not depend on implicits or by-name params
   }
 
   /** (1) Check that the signature of the class member does not return a repeated parameter type
    *  (2) If info is an erased class, set erased flag of member
    *  (3) Check that erased classes are not parameters of polymorphic functions.
+   *  (4) Make sure the definition's symbol is `sym`.
+   *  (5) Set the `defTree` of `sym` to be `mdef`.
    */
-  private def postProcessInfo(mdef: MemberDef, sym: Symbol)(using Context): Unit =
+  private def postProcessInfo(mdef: MemberDef, sym: Symbol)(using Context): MemberDef =
     if (!sym.isOneOf(Synthetic | InlineProxy | Param) && sym.info.finalResultType.isRepeatedParam)
       report.error(em"Cannot return repeated parameter type ${sym.info.finalResultType}", sym.srcPos)
     if !sym.is(Module) && !sym.isConstructor && sym.info.finalResultType.isErasedClass then
       sym.setFlag(Erased)
+    mdef.ensureHasSym(sym)
+    mdef.setDefTree
 
   def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree = ctx.profiler.onTypedDef(sym) {
     val TypeDef(name, rhs) = tdef

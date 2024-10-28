@@ -11,6 +11,7 @@ import Symbols.*, StdNames.*, Annotations.*, Trees.*, Symbols.*
 import Decorators.*, DenotTransformers.*
 import collection.{immutable, mutable}
 import util.{Property, SourceFile}
+import config.Printers.typr
 import NameKinds.{TempResultName, OuterSelectName}
 import typer.ConstFold
 
@@ -1164,6 +1165,21 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       if (sym.exists) sym.defTree = tree
       tree
     }
+
+    /** Make sure tree has given symbol. This is called when typing or unpickling
+     *  a ValDef or DefDef. It turns out that under very rare circumstances the symbol
+     *  computed for a tree is not correct. The only known test case is i21755.scala.
+     *  Here we have a self type that mentions a supertype as well as a type parameter
+     *  upper-bounded by the current class and it turns out that we compute the symbol
+     *  for a member method (named `root` in this case) in a subclass to be the
+     *  corresponding symbol in the superclass. It is not known what are the precise
+     *  conditions where this happens, but my guess would be that it's connected to the
+     *  recursion in the self type.
+     */
+    def ensureHasSym(sym: Symbol)(using Context): Unit =
+      if sym.exists && sym != tree.symbol then
+        typr.println(i"correcting definition symbol from ${tree.symbol.showLocated} to ${sym.showLocated}")
+        tree.overwriteType(NamedType(sym.owner.thisType, sym.asTerm.name, sym.denot))
 
     def etaExpandCFT(using Context): Tree =
       def expand(target: Tree, tp: Type)(using Context): Tree = tp match
