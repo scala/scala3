@@ -923,6 +923,12 @@ object SpaceEngine {
     && !sel.tpe.widen.isRef(defn.QuotedExprClass)
     && !sel.tpe.widen.isRef(defn.QuotedTypeClass)
 
+  def mayCoverNull(tp: Space)(using Context): Boolean = tp match
+    case Empty => false
+    case Prod(_, _, _) => false
+    case Typ(tp, decomposed) => tp == ConstantType(Constant(null)) 
+    case Or(ss) => ss.exists(mayCoverNull)
+
   def checkReachability(m: Match)(using Context): Unit = trace(i"checkReachability($m)"):
     val selTyp = toUnderlying(m.selector.tpe).dealias
     val isNullable = selTyp.isInstanceOf[FlexibleType] || selTyp.classSymbol.isNullableClass
@@ -948,12 +954,16 @@ object SpaceEngine {
                 && !pat.symbol.isAllOf(SyntheticCase, butNot=Method) // ExpandSAMs default cases use SyntheticCase
                 && isSubspace(covered, prev)
             then
-              val nullOnly = isNullable && rest.isEmpty && isWildcardArg(pat)
+              val nullOnly = isNullable && isWildcardArg(pat) && !mayCoverNull(prev)
               val msg = if nullOnly then MatchCaseOnlyNullWarning() else MatchCaseUnreachable()
               report.warning(msg, pat.srcPos)
 
             // in redundancy check, take guard as false in order to soundly approximate
-            val newPrev = if guard.isEmpty then covered :: prevs else prevs
+            val newPrev = if (guard.isEmpty)
+              then if (isWildcardArg(pat)) 
+                then Typ(ConstantType(Constant(null))) :: covered :: prevs
+                else covered :: prevs
+              else prevs
             recur(rest, newPrev, Nil)
 
     recur(m.cases, Nil, Nil)
