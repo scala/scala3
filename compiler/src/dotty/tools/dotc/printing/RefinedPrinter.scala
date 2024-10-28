@@ -1121,6 +1121,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         recur(fn) ~ "(" ~ toTextGlobal(explicitArgs, ", ") ~ ")"
       case TypeApply(fn, args) => recur(fn) ~ "[" ~ toTextGlobal(args, ", ") ~ "]"
       case Select(qual, nme.CONSTRUCTOR) => recur(qual)
+      case id @ Ident(tpnme.BOUNDTYPE_ANNOT) => "@" ~ toText(id.symbol.name)
       case New(tpt) => recur(tpt)
       case _ =>
         val annotSym = sym.orElse(tree.symbol.enclosingClass)
