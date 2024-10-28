@@ -941,6 +941,7 @@ object SpaceEngine {
               val msg = if nullOnly then MatchCaseOnlyNullWarning() else MatchCaseUnreachable()
               report.warning(msg, pat.srcPos)
 
+            // in redundancy check, take guard as false in order to soundly approximate
             val newPrev = if guard.isEmpty then covered :: prevs else prevs
             recur(rest, newPrev, Nil)
 
