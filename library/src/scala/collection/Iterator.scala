@@ -1257,12 +1257,15 @@ object Iterator extends IterableFactory[Iterator] {
         else if (until <= lo) 0               // empty
         else if (unbounded) until - lo        // now finite
         else adjustedBound min (until - lo)   // keep lesser bound
+      val sum = dropping + lo
       if (rest == 0) empty
+      else if (sum < 0) {
+        dropping = Int.MaxValue
+        remaining = 0
+        this.concat(new SliceIterator(underlying, start = sum - Int.MaxValue, limit = rest))
+      }
       else {
-        dropping = {
-          val sum = dropping + lo
-          if (sum < 0) Int.MaxValue else sum
-        }
+        dropping = sum
         remaining = rest
         this
       }
