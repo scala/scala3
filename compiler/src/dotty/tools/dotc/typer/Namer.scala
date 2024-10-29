@@ -1931,14 +1931,14 @@ class Namer { typer: Typer =>
     def wrapRefinedMethType(restpe: Type): Type =
       wrapMethType(addParamRefinements(restpe, paramSymss))
 
-    def addTrackedIfNeeded(ddef: DefDef, owningSym: Symbol): Boolean =
-      var wasSet = false
+    def addTrackedIfNeeded(ddef: DefDef, owningSym: Symbol): Unit =
       for params <- ddef.termParamss; param <- params do
         val psym = symbolOfTree(param)
         if needsTracked(psym, param, owningSym) then
           psym.setFlag(Tracked)
-          wasSet = true
-      wasSet
+          for acc <- sym.maybeOwner.infoOrCompleter.decls.lookupAll(psym.name) if acc.is(ParamAccessor) do
+            acc.resetFlag(PrivateLocal)
+            acc.setFlag(Tracked)
 
     if Feature.trackedEnabled then addTrackedIfNeeded(ddef, sym.maybeOwner)
 
