@@ -1,0 +1,18 @@
+
+-- Error: tests/neg/i20946a/Test_2.scala:5:29 --------------------------------------------------------------------------
+5 |  macroWithAssertFailing[Int](123) // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  Exception occurred while executing macro expansion.
+  |  java.lang.AssertionError: assertion failed: Expected a type symbol, but got val <none>
+  |  	at scala.runtime.Scala3RunTime$.assertFailed(Scala3RunTime.scala:8)
+  |  	at scala.quoted.runtime.impl.QuotesImpl$reflect$TypeIdent$.apply(QuotesImpl.scala:1165)
+  |  	at scala.quoted.runtime.impl.QuotesImpl$reflect$TypeIdent$.apply(QuotesImpl.scala:1164)
+  |  	at Macro_1$package$.macroWithAssertFailingImpl(Macro_1.scala:6)
+  |
+  |---------------------------------------------------------------------------------------------------------------------
+  |Inline stack trace
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  |This location contains code that was inlined from Test_2.scala:1
+1 |inline def macroWithAssertFailing[T](t: T): Unit = ${ macroWithAssertFailingImpl[T]('t) }
+  |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   ---------------------------------------------------------------------------------------------------------------------
