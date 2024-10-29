@@ -124,10 +124,10 @@ trait CaptureRef extends TypeProxy, ValueType:
                 || this.match
                     case x @ TermRef(xpre: CaptureRef, _) if x.symbol == y.symbol =>
                       // To show `{x.f} <:< {y.f}`, it is important to prove `x` and `y`
-                      // are equvalent, which means `x =:= y` in terms for subtyping,
-                      // not just `{x} =:= {y}`.
-                      // It is posible to construct two singleton types `x` and `y`,
-                      // which subumse each other, but are not equal references.
+                      // are equvalent, which means `x =:= y` in terms of subtyping,
+                      // not just `{x} =:= {y}` in terms of subcapturing.
+                      // It is possible to construct two singleton types `x` and `y`,
+                      // which subsume each other, but are not equal references.
                       // See `tests/neg-custom-args/captures/path-prefix.scala` for example.
                       withMode(Mode.IgnoreCaptures) {TypeComparer.isSameRef(xpre, ypre)}
                     case _ =>
