@@ -115,7 +115,7 @@ object Feature:
    *                    feature is defined.
    */
   def enabled(feature: TermName)(using Context): Boolean =
-    enabledBySetting(feature) || enabledByImport(feature) || feature == tracked
+    enabledBySetting(feature) || enabledByImport(feature)
 
   /** Is auto-tupling enabled? */
   def autoTuplingEnabled(using Context): Boolean = !enabled(nme.noAutoTupling)
