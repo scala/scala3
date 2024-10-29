@@ -273,6 +273,11 @@ extension (tp: Type)
     case _ =>
       tp
 
+  /** The first element of this path type */
+  final def pathRoot(using Context): Type = tp.dealias match
+    case tp1: NamedType if tp1.symbol.owner.isClass => tp1.prefix.pathRoot
+    case _ => tp
+
   /** If this is a unboxed capturing type with nonempty capture set, its boxed version.
    *  Or, if type is a TypeBounds of capturing types, the version where the bounds are boxed.
    *  The identity for all other types.
