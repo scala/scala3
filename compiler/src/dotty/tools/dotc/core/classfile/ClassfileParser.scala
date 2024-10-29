@@ -226,7 +226,8 @@ class ClassfileParser(
       classRoot.setFlag(sflags)
       moduleRoot.setFlag(Flags.JavaDefined | Flags.ModuleClassCreationFlags)
 
-      val privateWithin = getPrivateWithin(jflags)
+      val jflags1 = innerClasses.get(currentClassName.toString).fold(jflags: Int)(_.jflags)
+      val privateWithin = getPrivateWithin(jflags1)
 
       classRoot.setPrivateWithin(privateWithin)
       moduleRoot.setPrivateWithin(privateWithin)
