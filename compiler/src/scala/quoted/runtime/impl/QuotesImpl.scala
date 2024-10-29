@@ -472,7 +472,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def term(tp: TermRef): Ref =
         withDefaultPos(tpd.ref(tp).asInstanceOf[tpd.RefTree])
       def apply(sym: Symbol): Ref =
-        assert(sym.isTerm)
+        assert(sym.isTerm, s"expected a term symbol but received $sym")
         val refTree = tpd.ref(sym) match
           case t @ tpd.This(ident) => // not a RefTree, so we need to work around this - issue #19732
             // ident in `This` can be a TypeIdent of sym, so we manually prepare the ref here,
@@ -1162,7 +1162,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object TypeIdent extends TypeIdentModule:
       def apply(sym: Symbol): TypeTree =
-        assert(sym.isType)
+        assert(sym.isType, s"Expected a type symbol, but got $sym")
         withDefaultPos(tpd.ref(sym).asInstanceOf[tpd.TypeTree])
       def copy(original: Tree)(name: String): TypeIdent =
         tpd.cpy.Ident(original)(name.toTypeName)
