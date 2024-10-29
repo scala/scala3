@@ -109,6 +109,13 @@ object Formatting {
           case Atoms.Range(lo, hi) => CtxShow(s"Range(${toStr(lo.toList)}, ${toStr(hi.toList)})")
       end given
 
+      given Show[ast.untpd.Modifiers] with
+        def show(x: ast.untpd.Modifiers) =
+          CtxShow(s"Modifiers(${toStr(x.flags)}, ${toStr(x.privateWithin)}, ${toStr(x.annotations)}, ${toStr(x.mods)})")
+
+      given Show[ast.untpd.Mod] with
+        def show(x: ast.untpd.Mod) = CtxShow(s"Mod(${toStr(x.flags)})")
+
       given Show[Showable]                            = ShowAny
       given Show[Shown]                               = ShowAny
       given Show[Int]                                 = ShowAny
