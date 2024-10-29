@@ -424,49 +424,16 @@ class CheckCaptures extends Recheck, SymTransformer:
     end markFree
 
     /** Include references captured by the called method in the current environment stack */
-    def includeCallCaptures(sym: Symbol, pos: SrcPos)(using Context): Unit =
-      if sym.exists && curEnv.isOpen then markFree(capturedVars(sym), pos)
-
-    private val prefixCalls = util.EqHashSet[GenericApply]()
-    private val unboxedArgs = util.EqHashSet[Tree]()
-
-    def handleCall(meth: Symbol, call: GenericApply, eval: () => Type)(using Context): Type =
-      if prefixCalls.remove(call) then return eval()
-
-      val unboxedParamNames =
-        meth.rawParamss.flatMap: params =>
-          params.collect:
-            case param if param.hasAnnotation(defn.UnboxAnnot) =>
-              param.name
-        .toSet
-
-      def markUnboxedArgs(call: GenericApply): Unit = call.fun.tpe.widen match
-        case MethodType(pnames) =>
-          for (pname, arg) <- pnames.lazyZip(call.args) do
-            if unboxedParamNames.contains(pname) then
-              unboxedArgs.add(arg)
-        case _ =>
-
-      def markPrefixCalls(tree: Tree): Unit = tree match
-        case tree: GenericApply =>
-          prefixCalls.add(tree)
-          markUnboxedArgs(tree)
-          markPrefixCalls(tree.fun)
-        case _ =>
-
-      markUnboxedArgs(call)
-      markPrefixCalls(call.fun)
-      val res = eval()
-      includeCallCaptures(meth, call.srcPos)
-      res
-    end handleCall
+    def includeCallCaptures(sym: Symbol, resType: Type, pos: SrcPos)(using Context): Unit = resType match
+      case _: MethodOrPoly => // wait until method is fully applied
+      case _ =>
+        if sym.exists && curEnv.isOpen then markFree(capturedVars(sym), pos)
 
     override def recheckIdent(tree: Ident, pt: Type)(using Context): Type =
-      if tree.symbol.is(Method) then
-        if tree.symbol.info.isParameterless then
-          // there won't be an apply; need to include call captures now
-          includeCallCaptures(tree.symbol, tree.srcPos)
-      else if !tree.symbol.isStatic then
+      val sym = tree.symbol
+      if sym.is(Method) then
+        includeCallCaptures(sym, sym.info, tree.srcPos)
+      else if !sym.isStatic then
         //debugShowEnvs()
         def addSelects(ref: TermRef, pt: Type): TermRef = pt match
           case pt: PathSelectionProto if ref.isTracked =>
@@ -474,11 +441,11 @@ class CheckCaptures extends Recheck, SymTransformer:
             // class SerializationProxy in stdlib-cc/../LazyListIterable.scala has an example where this matters.
             addSelects(ref.select(pt.sym).asInstanceOf[TermRef], pt.pt)
           case _ => ref
-        val ref = tree.symbol.termRef
+        val ref = sym.termRef
         val pathRef = addSelects(ref, pt)
         //if pathRef ne ref then
         //  println(i"add selects $ref --> $pathRef")
-        markFree(tree.symbol, if false then ref else pathRef, tree.srcPos)
+        markFree(sym, if false then ref else pathRef, tree.srcPos)
       super.recheckIdent(tree, pt)
 
     override def selectionProto(tree: Select, pt: Type)(using Context): Type =
@@ -536,6 +503,16 @@ class CheckCaptures extends Recheck, SymTransformer:
           selType
     }//.showing(i"recheck sel $tree, $qualType = $result")
 
+    /** Copy all @use annotations on method parameter symbols to the corresponding paramInfo types.
+     */
+    override def prepareFunction(funtpe: MethodType, meth: Symbol)(using Context): MethodType =
+      val paramInfosWithUses = funtpe.paramInfos.zipWithConserve(funtpe.paramNames): (formal, pname) =>
+        val paramOpt = meth.rawParamss.nestedFind(_.name == pname)
+        paramOpt.flatMap(_.getAnnotation(defn.UnboxAnnot)) match
+          case Some(ann) => AnnotatedType(formal, ann)
+          case _ => formal
+      funtpe.derivedLambdaType(paramInfos = paramInfosWithUses)
+
     override def recheckApply(tree: Apply, pt: Type)(using Context): Type =
       val meth = tree.fun.symbol
 
@@ -570,15 +547,19 @@ class CheckCaptures extends Recheck, SymTransformer:
             tp.derivedCapturingType(forceBox(parent), refs)
         mapArgUsing(forceBox)
       else
-        handleCall(meth, tree, () => super.recheckApply(tree, pt))
+        val res = super.recheckApply(tree, pt)
+        includeCallCaptures(meth, res, tree.srcPos)
+        res
     end recheckApply
 
     protected override
     def recheckArg(arg: Tree, formal: Type)(using Context): Type =
       val argType = recheck(arg, formal)
-      if unboxedArgs.contains(arg) then
-        capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
-        markFree(argType.deepCaptureSet, arg.srcPos)
+      formal match
+        case AnnotatedType(formal1, ann) if ann.symbol == defn.UnboxAnnot =>
+          capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
+          markFree(argType.deepCaptureSet, arg.srcPos)
+        case _ =>
       argType
 
     /** A specialized implementation of the apply rule.
@@ -606,10 +587,10 @@ class CheckCaptures extends Recheck, SymTransformer:
       val appType = Existential.toCap(super.recheckApplication(tree, qualType, funType, argTypes))
       val qualCaptures = qualType.captureSet
       val argCaptures =
-        for (arg, argType) <- tree.args.lazyZip(argTypes) yield
-          if unboxedArgs.remove(arg) // need to ensure the remove happens, that's why argCaptures is computed even if not needed.
-          then argType.deepCaptureSet
-          else argType.captureSet
+        for (argType, formal) <- argTypes.lazyZip(funType.paramInfos) yield
+          formal match
+            case AnnotatedType(_, ann) if ann.symbol == defn.UnboxAnnot => argType.deepCaptureSet
+            case _ => argType.captureSet
       appType match
         case appType @ CapturingType(appType1, refs)
         if qualType.exists
@@ -704,8 +685,10 @@ class CheckCaptures extends Recheck, SymTransformer:
               i"Sealed type variable $pname", "be instantiated to",
               i"This is often caused by a local capability$where\nleaking as part of its result.",
               tree.srcPos)
-      try handleCall(meth, tree, () => Existential.toCap(super.recheckTypeApply(tree, pt)))
-      finally checkContains(tree)
+      val res = Existential.toCap(super.recheckTypeApply(tree, pt))
+      includeCallCaptures(meth, res, tree.srcPos)
+      checkContains(tree)
+      res
     end recheckTypeApply
 
     /** Faced with a tree of form `caps.contansImpl[CS, r.type]`, check that `R` is a tracked
@@ -1156,12 +1139,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         (erefs /: erefs.elems): (erefs, eref) =>
           eref match
             case eref: ThisType if isPureContext(ctx.owner, eref.cls) =>
-
-              def pathRoot(aref: Type): Type = aref match
-                case aref: NamedType if aref.symbol.owner.isClass => pathRoot(aref.prefix)
-                case _ => aref
-
-              def isOuterRef(aref: Type): Boolean = pathRoot(aref) match
+              def isOuterRef(aref: Type): Boolean = aref.pathRoot match
                 case aref: NamedType => eref.cls.isProperlyContainedIn(aref.symbol.owner)
                 case aref: ThisType => eref.cls.isProperlyContainedIn(aref.cls)
                 case _ => false
@@ -1171,7 +1149,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               // Include implicitly added outer references in the capture set of the class of `eref`.
               for outerRef <- outerRefs.elems do
                 if !erefs.elems.contains(outerRef)
-                    && !pathRoot(outerRef).isInstanceOf[ThisType]
+                    && !outerRef.pathRoot.isInstanceOf[ThisType]
                     // we don't need to add outer ThisTypes as these are anyway added as path
                     // prefixes at the use site. And this exemption is required since capture sets
                     // of non-local classes are always empty, so we can't add an outer this to them.
@@ -1328,6 +1306,12 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** If actual is a tracked CaptureRef `a` and widened is a capturing type T^C,
      *  improve `T^C` to `T^{a}`, following the VAR rule of CC.
+     *  TODO: We probably should do this also for other top-level occurrences of captures
+     *  E.g.
+     *    class Foo { def a: C^{io}; val def: C^{async} }
+     *    val foo: Foo^{io, async}
+     *  Then
+     *    foo: Foo { def a: C^{foo}; def b: C^{foo} }^{foo}
      */
     private def improveCaptures(widened: Type, actual: Type)(using Context): Type = actual match
       case ref: CaptureRef if ref.isTracked =>

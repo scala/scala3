@@ -99,7 +99,7 @@ object Recheck:
    *   - in function and method parameter types
    *   - under annotations
    */
-  def normalizeByName(tp: Type)(using Context): Type = tp.dealias match
+  def normalizeByName(tp: Type)(using Context): Type = tp.dealiasKeepAnnots match
     case tp: ExprType =>
       mapExprType(tp)
     case tp: PolyType =>
@@ -291,7 +291,7 @@ abstract class Recheck extends Phase, SymTransformer:
     protected def instantiate(mt: MethodType, argTypes: List[Type], sym: Symbol)(using Context): Type =
       mt.instantiate(argTypes)
 
-    /** A hook to massage the type of an applied method; currently not overridden */
+    /** A hook to massage the type of an applied method */
     protected def prepareFunction(funtpe: MethodType, meth: Symbol)(using Context): MethodType = funtpe
 
     protected def recheckArg(arg: Tree, formal: Type)(using Context): Type =
@@ -336,7 +336,7 @@ abstract class Recheck extends Phase, SymTransformer:
               assert(formals.isEmpty)
               Nil
           val argTypes = recheckArgs(tree.args, formals, fntpe.paramRefs)
-          recheckApplication(tree, qualType, fntpe1, argTypes)
+          recheckApplication(tree, qualType, fntpe, argTypes)
             //.showing(i"typed app $tree : $fntpe with ${tree.args}%, % : $argTypes%, % = $result")
         case tp =>
           assert(false, i"unexpected type of ${tree.fun}: $tp")
