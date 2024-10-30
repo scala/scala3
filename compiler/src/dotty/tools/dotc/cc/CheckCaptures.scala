@@ -13,7 +13,7 @@ import Trees.*
 import typer.RefChecks.{checkAllOverrides, checkSelfAgainstParents, OverridingPairsChecker}
 import typer.Checking.{checkBounds, checkAppliedTypesIn}
 import typer.ErrorReporting.{Addenda, NothingToAdd, err}
-import typer.ProtoTypes.{AnySelectionProto, LhsProto}
+import typer.ProtoTypes.{LhsProto, WildcardSelectionProto}
 import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
 import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
@@ -122,10 +122,6 @@ object CheckCaptures:
    *  This check is performed at Typer.
    */
   def checkWellformed(parent: Tree, ann: Tree)(using Context): Unit =
-    parent.tpe match
-      case _: SingletonType =>
-        report.error(em"Singleton type $parent cannot have capture set", parent.srcPos)
-      case _ =>
     def check(elem: Tree, pos: SrcPos): Unit = elem.tpe match
       case ref: CaptureRef =>
         if !ref.isTrackableRef then
@@ -186,6 +182,9 @@ object CheckCaptures:
 
   /** Attachment key for bodies of closures, provided they are values */
   val ClosureBodyValue = Property.Key[Unit]
+
+  /** A prototype that indicates selection with an immutable value */
+  class PathSelectionProto(val sym: Symbol, val pt: Type)(using Context) extends WildcardSelectionProto
 
 class CheckCaptures extends Recheck, SymTransformer:
   thisPhase =>
@@ -361,57 +360,67 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  the environment in which `sym` is defined.
      */
     def markFree(sym: Symbol, pos: SrcPos)(using Context): Unit =
-      if sym.exists then
-        val ref = sym.termRef
-        if ref.isTracked then
-          forallOuterEnvsUpTo(sym.enclosure): env =>
-            capt.println(i"Mark $sym with cs ${ref.captureSet} free in ${env.owner}")
-            checkElem(ref, env.captured, pos, provenance(env))
+      markFree(sym, sym.termRef, pos)
+
+    def markFree(sym: Symbol, ref: TermRef, pos: SrcPos)(using Context): Unit =
+      if sym.exists && ref.isTracked then
+        forallOuterEnvsUpTo(sym.enclosure): env =>
+          capt.println(i"Mark $sym with cs ${ref.captureSet} free in ${env.owner}")
+          checkElem(ref, env.captured, pos, provenance(env))
 
     /** Make sure (projected) `cs` is a subset of the capture sets of all enclosing
      *  environments. At each stage, only include references from `cs` that are outside
      *  the environment's owner
      */
     def markFree(cs: CaptureSet, pos: SrcPos)(using Context): Unit =
+      // A captured reference with the symbol `sym` is visible from the environment
+      // if `sym` is not defined inside the owner of the environment.
+      inline def isVisibleFromEnv(sym: Symbol, env: Env) =
+        if env.kind == EnvKind.NestedInOwner then
+          !sym.isProperlyContainedIn(env.owner)
+        else
+          !sym.isContainedIn(env.owner)
+
+      def checkSubsetEnv(cs: CaptureSet, env: Env)(using Context): Unit =
+        // Only captured references that are visible from the environment
+        // should be included.
+        val included = cs.filter: c =>
+          c.stripReach match
+            case ref: NamedType =>
+              val refSym = ref.symbol
+              val refOwner = refSym.owner
+              val isVisible = isVisibleFromEnv(refOwner, env)
+              if isVisible && !ref.isRootCapability then
+                ref match
+                  case ref: TermRef if ref.prefix `ne` NoPrefix =>
+                    // If c is a path of a class defined outside the environment,
+                    // we check the capture set of its info.
+                    checkSubsetEnv(ref.captureSetOfInfo, env)
+                  case _ =>
+              if !isVisible
+                  && (c.isReach || ref.isType)
+                  && (!ccConfig.useSealed || refSym.is(Param))
+                  && refOwner == env.owner
+              then
+                if refSym.hasAnnotation(defn.UnboxAnnot) then
+                  capt.println(i"exempt: $ref in $refOwner")
+                else
+                  // Reach capabilities that go out of scope have to be approximated
+                  // by their underlying capture set, which cannot be universal.
+                  // Reach capabilities of @unboxed parameters are exempted.
+                  val cs = CaptureSet.ofInfo(c)
+                  cs.disallowRootCapability: () =>
+                    report.error(em"Local reach capability $c leaks into capture scope of ${env.ownerString}", pos)
+                  checkSubset(cs, env.captured, pos, provenance(env))
+              isVisible
+            case ref: ThisType => isVisibleFromEnv(ref.cls, env)
+            case _ => false
+        checkSubset(included, env.captured, pos, provenance(env))
+        capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
+
       if !cs.isAlwaysEmpty then
         forallOuterEnvsUpTo(ctx.owner.topLevelClass): env =>
-          // Whether a symbol is defined inside the owner of the environment?
-          inline def isContainedInEnv(sym: Symbol) =
-            if env.kind == EnvKind.NestedInOwner then
-              sym.isProperlyContainedIn(env.owner)
-            else
-              sym.isContainedIn(env.owner)
-          // A captured reference with the symbol `sym` is visible from the environment
-          // if `sym` is not defined inside the owner of the environment
-          inline def isVisibleFromEnv(sym: Symbol) = !isContainedInEnv(sym)
-          // Only captured references that are visible from the environment
-          // should be included.
-          val included = cs.filter: c =>
-            c.stripReach match
-              case ref: NamedType =>
-                val refSym = ref.symbol
-                val refOwner = refSym.owner
-                val isVisible = isVisibleFromEnv(refOwner)
-                if !isVisible
-                    && (c.isReach || ref.isType)
-                    && (!ccConfig.useSealed || refSym.is(Param))
-                    && refOwner == env.owner
-                then
-                  if refSym.hasAnnotation(defn.UnboxAnnot) then
-                    capt.println(i"exempt: $ref in $refOwner")
-                  else
-                    // Reach capabilities that go out of scope have to be approximated
-                    // by their underlying capture set, which cannot be universal.
-                    // Reach capabilities of @unboxed parameters are exempted.
-                    val cs = CaptureSet.ofInfo(c)
-                    cs.disallowRootCapability: () =>
-                      report.error(em"Local reach capability $c leaks into capture scope of ${env.ownerString}", pos)
-                    checkSubset(cs, env.captured, pos, provenance(env))
-                isVisible
-              case ref: ThisType => isVisibleFromEnv(ref.cls)
-              case _ => false
-          checkSubset(included, env.captured, pos, provenance(env))
-          capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
+          checkSubsetEnv(cs, env)
     end markFree
 
     /** Include references captured by the called method in the current environment stack */
@@ -457,10 +466,25 @@ class CheckCaptures extends Recheck, SymTransformer:
         if tree.symbol.info.isParameterless then
           // there won't be an apply; need to include call captures now
           includeCallCaptures(tree.symbol, tree.srcPos)
-      else
+      else if !tree.symbol.isStatic then
         //debugShowEnvs()
-        markFree(tree.symbol, tree.srcPos)
+        def addSelects(ref: TermRef, pt: Type): TermRef = pt match
+          case pt: PathSelectionProto if ref.isTracked =>
+            // if `ref` is not tracked then the selection could not give anything new
+            // class SerializationProxy in stdlib-cc/../LazyListIterable.scala has an example where this matters.
+            addSelects(ref.select(pt.sym).asInstanceOf[TermRef], pt.pt)
+          case _ => ref
+        val ref = tree.symbol.termRef
+        val pathRef = addSelects(ref, pt)
+        //if pathRef ne ref then
+        //  println(i"add selects $ref --> $pathRef")
+        markFree(tree.symbol, if false then ref else pathRef, tree.srcPos)
       super.recheckIdent(tree, pt)
+
+    override def selectionProto(tree: Select, pt: Type)(using Context): Type =
+      val sym = tree.symbol
+      if !sym.isOneOf(UnstableValueFlags) && !sym.isStatic then PathSelectionProto(sym, pt)
+      else super.selectionProto(tree, pt)
 
     /** A specialized implementation of the selection rule.
      *
@@ -488,21 +512,25 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ => denot
 
       val selType = recheckSelection(tree, qualType, name, disambiguate)
-      val selCs = selType.widen.captureSet
-      if selCs.isAlwaysEmpty
-          || selType.widen.isBoxedCapturing
+      val selWiden = selType.widen
+
+      if pt == LhsProto
           || qualType.isBoxedCapturing
-          || pt == LhsProto
+          || selType.isTrackableRef
+          || selWiden.isBoxedCapturing
+          || selWiden.captureSet.isAlwaysEmpty
       then
         selType
       else
         val qualCs = qualType.captureSet
-        capt.println(i"pick one of $qualType, ${selType.widen}, $qualCs, $selCs in $tree")
+        val selCs = selType.captureSet
+        capt.println(i"pick one of $qualType, ${selType.widen}, $qualCs, $selCs ${selWiden.captureSet} in $tree")
+
         if qualCs.mightSubcapture(selCs)
             && !selCs.mightSubcapture(qualCs)
             && !pt.stripCapturing.isInstanceOf[SingletonType]
         then
-          selType.widen.stripCapturing.capturing(qualCs)
+          selWiden.stripCapturing.capturing(qualCs)
             .showing(i"alternate type for select $tree: $selType --> $result, $qualCs / $selCs", capt)
         else
           selType
@@ -1061,7 +1089,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       if actualBoxed eq actual then
         // Only `addOuterRefs` when there is no box adaptation
-        expected1 = addOuterRefs(expected1, actual)
+        expected1 = addOuterRefs(expected1, actual, tree.srcPos)
       if isCompatible(actualBoxed, expected1) then
         if debugSuccesses then tree match
             case Ident(_) =>
@@ -1102,8 +1130,12 @@ class CheckCaptures extends Recheck, SymTransformer:
      *     that are outside `Cls`. These are all accessed through `Cls.this`,
      *     so we can assume they are already accounted for by `Ce` and adding
      *     them explicitly to `Ce` changes nothing.
+     *   - To make up for this, we also add these variables to the capture set of `Cls`,
+     *     so that all instances of `Cls` will capture these outer references.
+     *  So in a sense we use `{Cls.this}` as a placeholder for certain outer captures.
+     *  that we needed to be subsumed by `Cls.this`.
      */
-    private def addOuterRefs(expected: Type, actual: Type)(using Context): Type =
+    private def addOuterRefs(expected: Type, actual: Type, pos: SrcPos)(using Context): Type =
 
       def isPure(info: Type): Boolean = info match
         case info: PolyType => isPure(info.resType)
@@ -1116,16 +1148,40 @@ class CheckCaptures extends Recheck, SymTransformer:
         else isPure(owner.info) && isPureContext(owner.owner, limit)
 
       // Augment expeced capture set `erefs` by all references in actual capture
-      // set `arefs` that are outside some `this.type` reference in `erefs`
+      // set `arefs` that are outside some `C.this.type` reference in `erefs` for an enclosing
+      // class `C`. If an added reference is not a ThisType itself, add it to the capture set
+      // (i.e. use set) of the `C`. This makes sure that any outer reference implicitly subsumed
+      // by `C.this` becomes a capture reference of every instance of `C`.
       def augment(erefs: CaptureSet, arefs: CaptureSet): CaptureSet =
         (erefs /: erefs.elems): (erefs, eref) =>
           eref match
             case eref: ThisType if isPureContext(ctx.owner, eref.cls) =>
-              erefs ++ arefs.filter {
-                case aref: TermRef => eref.cls.isProperlyContainedIn(aref.symbol.owner)
+
+              def pathRoot(aref: Type): Type = aref match
+                case aref: NamedType if aref.symbol.owner.isClass => pathRoot(aref.prefix)
+                case _ => aref
+
+              def isOuterRef(aref: Type): Boolean = pathRoot(aref) match
+                case aref: NamedType => eref.cls.isProperlyContainedIn(aref.symbol.owner)
                 case aref: ThisType => eref.cls.isProperlyContainedIn(aref.cls)
                 case _ => false
-              }
+
+              val outerRefs = arefs.filter(isOuterRef)
+
+              // Include implicitly added outer references in the capture set of the class of `eref`.
+              for outerRef <- outerRefs.elems do
+                if !erefs.elems.contains(outerRef)
+                    && !pathRoot(outerRef).isInstanceOf[ThisType]
+                    // we don't need to add outer ThisTypes as these are anyway added as path
+                    // prefixes at the use site. And this exemption is required since capture sets
+                    // of non-local classes are always empty, so we can't add an outer this to them.
+                then
+                  def provenance =
+                    i""" of the enclosing class ${eref.cls}.
+                       |The reference was included since we tried to establish that $arefs <: $erefs"""
+                  checkElem(outerRef, capturedVars(eref.cls), pos, provenance)
+
+              erefs ++ outerRefs
             case _ =>
               erefs
 
@@ -1310,7 +1366,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         *  @param sym  symbol of the field definition that is being checked
         */
         override def checkSubType(actual: Type, expected: Type)(using Context): Boolean =
-          val expected1 = alignDependentFunction(addOuterRefs(expected, actual), actual.stripCapturing)
+          val expected1 = alignDependentFunction(addOuterRefs(expected, actual, srcPos), actual.stripCapturing)
           val actual1 =
             val saved = curEnv
             try

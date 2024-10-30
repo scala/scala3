@@ -374,7 +374,7 @@ object CaptureSet:
 
   def apply(elems: CaptureRef*)(using Context): CaptureSet.Const =
     if elems.isEmpty then empty
-    else Const(SimpleIdentitySet(elems.map(_.normalizedRef.ensuring(_.isTrackableRef))*))
+    else Const(SimpleIdentitySet(elems.map(_.ensuring(_.isTrackableRef))*))
 
   def apply(elems: Refs)(using Context): CaptureSet.Const =
     if elems.isEmpty then empty else Const(elems)
@@ -508,7 +508,11 @@ object CaptureSet:
         !noUniversal
       else elem match
         case elem: TermRef if level.isDefined =>
-          elem.symbol.ccLevel <= level
+          elem.prefix match
+            case prefix: CaptureRef =>
+              levelOK(prefix)
+            case _ =>
+              elem.symbol.ccLevel <= level
         case elem: ThisType if level.isDefined =>
           elem.cls.ccLevel.nextInner <= level
         case ReachCapability(elem1) =>
