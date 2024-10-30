@@ -5,7 +5,7 @@ def runOps[C^](ops: List[() ->{C^} Unit]): Unit =
     op()
 
 def boom(f: () => Unit): () -> Unit =
-  () => runOps(f :: Nil) // error
+  () => runOps(f :: Nil) // now ok
 
 def runOpsAlt(ops: List[() => Unit]): Unit =
   ops.foreach: op => // error

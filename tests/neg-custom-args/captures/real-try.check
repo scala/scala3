@@ -1,7 +1,7 @@
--- [E190] Potential Issue Warning: tests/neg-custom-args/captures/real-try.scala:38:4 ----------------------------------
-38 |  b.x
-   |  ^^^
-   |  Discarded non-Unit value of type () -> Unit. You may want to use `()`.
+-- [E190] Potential Issue Warning: tests/neg-custom-args/captures/real-try.scala:38:2 ----------------------------------
+38 |  b
+   |  ^
+   |  Discarded non-Unit value of type Cell[() -> Unit]. You may want to use `()`.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/real-try.scala:14:2 -----------------------------------------------------------

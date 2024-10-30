@@ -221,19 +221,22 @@ extension (tp: Type)
     case tp: SingletonCaptureRef => tp.captureSetOfInfo
     case _ => CaptureSet.ofType(tp, followResult = false)
 
-  /** The deep capture set of a type.
-   *  For singleton capabilities `x` and reach capabilities `x*`, this is `{x*}`, provided
-   *  the underlying capture set resulting from traversing the type is non-empty.
-   *  For other types this is the union of all covariant capture sets embedded
-   *  in the type, as computed by `CaptureSet.ofTypeDeeply`.
+  /** The deep capture set of a type. This is by default the union of all
+   *  covariant capture sets embedded in the widened type, as computed by
+   *  `CaptureSet.ofTypeDeeply`. If that set is nonempty, and the type is
+   *  a singleton capability `x` or a reach capability `x*`, the deep capture
+   *  set can be narrowed to`{x*}`.
    */
   def deepCaptureSet(using Context): CaptureSet =
     val dcs = CaptureSet.ofTypeDeeply(tp.widen.stripCapturing)
     if dcs.isAlwaysEmpty then tp.captureSet
     else tp match
-      case tp @ ReachCapability(_) => tp.singletonCaptureSet
-      case tp: SingletonCaptureRef if tp.isTrackableRef => tp.reach.singletonCaptureSet
-      case _ => tp.captureSet ++ dcs
+      case tp @ ReachCapability(_) =>
+        tp.singletonCaptureSet
+      case tp: SingletonCaptureRef if tp.isTrackableRef =>
+        tp.reach.singletonCaptureSet
+      case _ =>
+        tp.captureSet ++ dcs
 
   /** A type capturing `ref` */
   def capturing(ref: CaptureRef)(using Context): Type =
@@ -274,9 +277,27 @@ extension (tp: Type)
       tp
 
   /** The first element of this path type */
-  final def pathRoot(using Context): Type = tp.dealias match
+  final def pathRoot(using Context): Type = tp.dealiasKeepAnnots match
     case tp1: NamedType if tp1.symbol.owner.isClass => tp1.prefix.pathRoot
+    case ReachCapability(tp1) => tp1.pathRoot
     case _ => tp
+
+  /** If this part starts with `C.this`, the class `C`.
+   *  Otherwise, if it starts with a reference `r`, `r`'s owner.
+   *  Otherwise NoSymbol.
+   */
+  final def pathOwner(using Context): Symbol = pathRoot match
+    case tp1: NamedType => tp1.symbol.owner
+    case tp1: ThisType => tp1.cls
+    case _ => NoSymbol
+
+  final def isParamPath(using Context): Boolean = tp.dealias match
+    case tp1: NamedType =>
+      tp1.prefix match
+        case _: ThisType | NoPrefix =>
+          tp1.symbol.is(Param) || tp1.symbol.is(ParamAccessor)
+        case prefix => prefix.isParamPath
+    case _ => false
 
   /** If this is a unboxed capturing type with nonempty capture set, its boxed version.
    *  Or, if type is a TypeBounds of capturing types, the version where the bounds are boxed.

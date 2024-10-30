@@ -1,0 +1,55 @@
+-- Error: tests/neg-custom-args/captures/i16114.scala:18:12 ------------------------------------------------------------
+18 |      expect[Cap^] {  // error
+   |      ^^^^^^^^^^^^
+   |      Sealed type variable T cannot be instantiated to box Cap^ since
+   |      that type captures the root capability `cap`.
+   |      This is often caused by a local capability in an argument of method expect
+   |      leaking as part of its result.
+-- Error: tests/neg-custom-args/captures/i16114.scala:20:8 -------------------------------------------------------------
+20 |        fs  // error (limitation)
+   |        ^^
+   |        (fs : Cap^) cannot be referenced here; it is not included in the allowed capture set {io}
+   |        of an enclosing function literal with expected type Unit ->{io} Unit
+-- Error: tests/neg-custom-args/captures/i16114.scala:24:12 ------------------------------------------------------------
+24 |      expect[Cap^] { // error
+   |      ^^^^^^^^^^^^
+   |      Sealed type variable T cannot be instantiated to box Cap^ since
+   |      that type captures the root capability `cap`.
+   |      This is often caused by a local capability in an argument of method expect
+   |      leaking as part of its result.
+-- Error: tests/neg-custom-args/captures/i16114.scala:26:8 -------------------------------------------------------------
+26 |        io  // error (limitation)
+   |        ^^
+   |        (io : Cap^) cannot be referenced here; it is not included in the allowed capture set {fs}
+   |        of an enclosing function literal with expected type Unit ->{fs} Unit
+-- Error: tests/neg-custom-args/captures/i16114.scala:30:12 ------------------------------------------------------------
+30 |      expect[Cap^] {  // error
+   |      ^^^^^^^^^^^^
+   |      Sealed type variable T cannot be instantiated to box Cap^ since
+   |      that type captures the root capability `cap`.
+   |      This is often caused by a local capability in an argument of method expect
+   |      leaking as part of its result.
+-- Error: tests/neg-custom-args/captures/i16114.scala:36:12 ------------------------------------------------------------
+36 |      expect[Cap^](io) // error
+   |      ^^^^^^^^^^^^
+   |      Sealed type variable T cannot be instantiated to box Cap^ since
+   |      that type captures the root capability `cap`.
+   |      This is often caused by a local capability in an argument of method expect
+   |      leaking as part of its result.
+-- Error: tests/neg-custom-args/captures/i16114.scala:39:12 ------------------------------------------------------------
+39 |      expect[Cap^] { // error
+   |      ^^^^^^^^^^^^
+   |      Sealed type variable T cannot be instantiated to box Cap^ since
+   |      that type captures the root capability `cap`.
+   |      This is often caused by a local capability in an argument of method expect
+   |      leaking as part of its result.
+-- Error: tests/neg-custom-args/captures/i16114.scala:40:8 -------------------------------------------------------------
+40 |        io.use()    // error
+   |        ^^
+   |        (io : Cap^) cannot be referenced here; it is not included in the allowed capture set {}
+   |        of an enclosing function literal with expected type Unit -> Unit
+-- Error: tests/neg-custom-args/captures/i16114.scala:41:8 -------------------------------------------------------------
+41 |        io          // error
+   |        ^^
+   |        (io : Cap^) cannot be referenced here; it is not included in the allowed capture set {}
+   |        of an enclosing function literal with expected type Unit -> Unit
