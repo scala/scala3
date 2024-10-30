@@ -58,4 +58,13 @@ class Synthetic/*<-example::Synthetic#*/ {
       given Int/*->scala::Int#*/ = 1
       foo/*->example::Synthetic#Contexts.foo().*/(0)
   }
+
+  // Argument lifting
+  val _ =
+    def f/*<-local14*/(s/*<-local12*/: String/*->scala::Predef.String#*/)(i/*<-local13*/: Int/*->scala::Int#*/ = s/*->local12*/.length/*->java::lang::String#length().*/()) = i/*->local13*/ +/*->scala::Int#`+`(+4).*/ 1
+    def g/*<-local18*/(s/*<-local16*/: String/*->scala::Predef.String#*/, t/*<-local17*/: String/*->scala::Predef.String#*/) = s/*->local16*/ +/*->java::lang::String#`+`().*/ t/*->local17*/
+
+    def impure/*<-local20*/(s/*<-local19*/: String/*->scala::Predef.String#*/) = { ???/*->scala::Predef.`???`().*/; s/*->local19*/ }
+    val _ = f/*->local14*/(impure/*->local20*/(""))()
+    val _ = g/*->local18*/(t/*->local17*/ = impure/*->local20*/(""), s/*->local16*/ = "a")
 }
