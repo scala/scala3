@@ -1,5 +1,5 @@
 import language.experimental.namedTuples
-import caps.unbox
+import caps.use
 
 class IO
 
@@ -9,7 +9,7 @@ class C(val f: IO^):
 type Proc = () => Unit
 
 def test(io: IO^) =
-  def test1(@unbox c: C { val f: IO^{io}}^{io}) =
+  def test1(@use c: C { val f: IO^{io}}^{io}) =
     val f = () => println(c.f)
     val _: () ->{c.f} Unit = f
 
@@ -19,3 +19,4 @@ def test(io: IO^) =
     val g = () => println(c.procs.head)
     val _: () ->{c.procs*} Unit = g
   test1(C(io))
+

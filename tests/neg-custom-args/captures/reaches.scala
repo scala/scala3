@@ -1,4 +1,4 @@
-import caps.unbox
+import caps.use
 class File:
   def write(): Unit = ???
 
@@ -11,7 +11,7 @@ class Ref[T](init: T):
   def get: T = x
   def set(y: T) = { x = y }
 
-def runAll0(@unbox xs: List[Proc]): Unit =
+def runAll0(@use xs: List[Proc]): Unit =
   var cur: List[() ->{xs*} Unit] = xs
   while cur.nonEmpty do
     val next: () ->{xs*} Unit = cur.head
@@ -21,7 +21,7 @@ def runAll0(@unbox xs: List[Proc]): Unit =
   usingFile: f =>
     cur = (() => f.write()) :: Nil // error
 
-def runAll1(@unbox xs: List[Proc]): Unit =
+def runAll1(@use xs: List[Proc]): Unit =
   val cur = Ref[List[() ->{xs*} Unit]](xs)  // OK, by revised VAR
   while cur.get.nonEmpty do
     val next: () ->{xs*} Unit = cur.get.head
@@ -78,5 +78,5 @@ def compose1[A, B, C](f: A => B, g: B => C): A ->{f, g} C =
 def mapCompose[A](ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
   ps.map((x, y) => compose1(x, y)) // error // error
 
-def mapCompose2[A](@unbox ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
+def mapCompose2[A](@use ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
   ps.map((x, y) => compose1(x, y))

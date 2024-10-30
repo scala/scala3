@@ -55,7 +55,7 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
   /** This should go into annotations. For now it is here, so that we
    *  can experiment with it quickly between minor releases
    */
-  final class unbox extends annotation.StaticAnnotation
+  final class use extends annotation.StaticAnnotation
 
   object unsafe:
 

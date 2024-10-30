@@ -392,7 +392,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       def checkUseDeclared(c: CaptureRef, env: Env) =
         c.pathRoot match
-          case ref: NamedType if !ref.symbol.hasAnnotation(defn.UnboxAnnot) =>
+          case ref: NamedType if !ref.symbol.hasAnnotation(defn.UseAnnot) =>
             val what = if ref.isType then "Capture set parameter" else "Local reach capability"
             report.error(
               em"""$what $c leaks into capture scope of ${env.ownerString}.
@@ -524,7 +524,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def prepareFunction(funtpe: MethodType, meth: Symbol)(using Context): MethodType =
       val paramInfosWithUses = funtpe.paramInfos.zipWithConserve(funtpe.paramNames): (formal, pname) =>
         val paramOpt = meth.rawParamss.nestedFind(_.name == pname)
-        paramOpt.flatMap(_.getAnnotation(defn.UnboxAnnot)) match
+        paramOpt.flatMap(_.getAnnotation(defn.UseAnnot)) match
           case Some(ann) => AnnotatedType(formal, ann)
           case _ => formal
       funtpe.derivedLambdaType(paramInfos = paramInfosWithUses)
@@ -572,7 +572,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def recheckArg(arg: Tree, formal: Type)(using Context): Type =
       val argType = recheck(arg, formal)
       formal match
-        case AnnotatedType(formal1, ann) if ann.symbol == defn.UnboxAnnot =>
+        case AnnotatedType(formal1, ann) if ann.symbol == defn.UseAnnot =>
           capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
           markFree(argType.deepCaptureSet, arg.srcPos)
         case _ =>
@@ -586,13 +586,13 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  ---------------------
      *  E |- f(a): Tr^C
      *
-     *  If the function `f` does not have an `@unboxed` parameter, then
+     *  If the function `f` does not have an `@use` parameter, then
      *  any unboxing it does would be charged to the environment of the function
      *  so they have to appear in Cq. Since any capabilities of the result of the
      *  application must already be present in the application, an upper
      *  approximation of the result capture set is Cq \union Ca, where `Ca`
      *  is the capture set of the argument.
-     *  If the function `f` does have an `@unboxed` parameter, then it could in addition
+     *  If the function `f` does have an `@use` parameter, then it could in addition
      *  unbox reach capabilities over its formal parameter. Therefore, the approximation
      *  would be `Cq \union dcs(Ca)` instead.
      *  If the approximation is known to subcapture the declared result Cr, we pick it for C
@@ -605,7 +605,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val argCaptures =
         for (argType, formal) <- argTypes.lazyZip(funType.paramInfos) yield
           formal match
-            case AnnotatedType(_, ann) if ann.symbol == defn.UnboxAnnot => argType.deepCaptureSet
+            case AnnotatedType(_, ann) if ann.symbol == defn.UseAnnot => argType.deepCaptureSet
             case _ => argType.captureSet
       appType match
         case appType @ CapturingType(appType1, refs)
@@ -1384,16 +1384,16 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         override def checkInheritedTraitParameters: Boolean = false
 
-        /** Check that overrides don't change the @unbox status of their parameters */
+        /** Check that overrides don't change the @use status of their parameters */
         override def additionalChecks(member: Symbol, other: Symbol)(using Context): Unit =
           for
             (params1, params2) <- member.rawParamss.lazyZip(other.rawParamss)
             (param1, param2) <- params1.lazyZip(params2)
           do
-            if param1.hasAnnotation(defn.UnboxAnnot) != param2.hasAnnotation(defn.UnboxAnnot) then
+            if param1.hasAnnotation(defn.UseAnnot) != param2.hasAnnotation(defn.UseAnnot) then
               report.error(
                 OverrideError(
-                    i"has a parameter ${param1.name} with different @unbox status than the corresponding parameter in the overridden definition",
+                    i"has a parameter ${param1.name} with different @use status than the corresponding parameter in the overridden definition",
                     self, member, other, self.memberInfo(member), self.memberInfo(other)
                   ),
                 if member.owner == clazz then member.srcPos else clazz.srcPos
