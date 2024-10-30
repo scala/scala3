@@ -256,7 +256,8 @@ object TypeTestsCasts {
             else foundClasses.exists(check)
           end checkSensical
 
-          if (expr.tpe <:< testType) && inMatch then
+          val tp = if expr.tpe.isPrimitiveValueType then defn.boxedType(expr.tpe) else expr.tpe
+          if tp <:< testType && inMatch then
             if expr.tpe.isNotNull then constant(expr, Literal(Constant(true)))
             else expr.testNotNull
           else {
@@ -358,11 +359,7 @@ object TypeTestsCasts {
                 report.error(em"$untestable cannot be used in runtime type tests", tree.srcPos)
                 constant(expr, Literal(Constant(false)))
               case _ =>
-                val erasedTestType =
-                  if testType.isAny && expr.tpe.isPrimitiveValueType then
-                    defn.AnyValType
-                  else
-                    erasure(testType)
+                val erasedTestType = erasure(testType)
                 transformIsInstanceOf(expr, erasedTestType, erasedTestType, flagUnrelated)
         }
 
