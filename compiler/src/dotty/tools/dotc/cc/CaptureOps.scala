@@ -40,6 +40,9 @@ object ccConfig:
    */
   inline val handleEtaExpansionsSpecially = false
 
+  /** If enabled we drop inner uses in outer arrows of a curried function */
+  inline val DropOuterUsesInCurried = false
+
   /** If true, use existential capture set variables */
   def useExistentials(using Context) =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.5`)

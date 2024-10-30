@@ -302,7 +302,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               case _ => res
           )
         val fntpe = defn.PolyFunctionOf(mt)
-        if !encl.isEmpty && resDecomposed.isEmpty then
+        if !encl.isEmpty && (!ccConfig.DropOuterUsesInCurried || resDecomposed.isEmpty) then
           val cs = CaptureSet(encl.map(_.paramRefs.head)*)
           CapturingType(fntpe, cs, boxed = false)
         else fntpe

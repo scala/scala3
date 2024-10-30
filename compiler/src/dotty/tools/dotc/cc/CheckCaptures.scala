@@ -36,7 +36,8 @@ object CheckCaptures:
     case NestedInOwner  // environment is a temporary one nested in the owner's environment,
                         // and does not have a different actual owner symbol
                         // (this happens when doing box adaptation).
-    case ClosureResult  // environment is for the result of a closure
+    case ClosureResult  // environment is for the result of a closure,
+                        // used only under ccConfig.DropOuterUsesInCurried
     case Boxed          // environment is inside a box (in which case references are not counted)
 
   /** A class describing environments.
@@ -183,7 +184,9 @@ object CheckCaptures:
     if ccConfig.useSealed then check.traverse(tp)
   end disallowRootCapabilitiesIn
 
-  /** Attachment key for bodies of closures, provided they are values */
+  /** Attachment key for bodies of closures, provided they are values.
+   *  Used only under ccConfig.DropOuterUsesInCurried
+   */
   val ClosureBodyValue = Property.Key[Unit]
 
   /** A prototype that indicates selection with an immutable value */
@@ -733,7 +736,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     override def recheckClosureBlock(mdef: DefDef, expr: Closure, pt: Type)(using Context): Type =
       mdef.rhs match
-        case rhs @ closure(_, _, _) =>
+        case rhs @ closure(_, _, _) if ccConfig.DropOuterUsesInCurried =>
           // In a curried closure `x => y => e` don't leak capabilities retained by
           // the second closure `y => e` into the first one. This is an approximation
           // of the CC rule which says that a closure contributes captures to its

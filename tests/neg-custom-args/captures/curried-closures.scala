@@ -30,5 +30,5 @@ def Test4(g: OutputStream^) =
   val _: (f: OutputStream^) ->{} Int ->{f} Unit = later
 
   val later2 = () => (y: Int) => xs.foreach(x => g.write(x + y))
-  val _: () ->{} Int ->{g} Unit = later2
+  val _: () ->{} Int ->{g} Unit = later2 // error, inferred type is () ->{later2} Int ->{g} Unit
 
