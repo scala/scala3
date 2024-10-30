@@ -535,13 +535,16 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               // substitute `x.f.type`, `x` becomes a `TermParamRef`. But the new method
               // type is still under initialization and `paramInfos` is still `null`,
               // so the new `NamedType` will not have a denoation.
+              def adaptedInfo(psym: Symbol, info: mt.PInfo): mt.PInfo = mt.companion match
+                case mtc: MethodTypeCompanion => mtc.adaptParamInfo(psym, info).asInstanceOf[mt.PInfo]
+                case _ => info
               mt.companion(mt.paramNames)(
                 mt1 =>
                   if !paramSignatureChanges && !mt.isParamDependent && prevLambdas.isEmpty then
                     mt.paramInfos
                   else
                     val subst = SubstParams(psyms :: prevPsymss, mt1 :: prevLambdas)
-                    psyms.map(psym => subst(psym.nextInfo).asInstanceOf[mt.PInfo]),
+                    psyms.map(psym => adaptedInfo(psym, subst(psym.nextInfo).asInstanceOf[mt.PInfo])),
                 mt1 =>
                   integrateRT(mt.resType, psymss.tail, resType, psyms :: prevPsymss, mt1 :: prevLambdas)
               )

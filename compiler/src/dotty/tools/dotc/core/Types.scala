@@ -4175,24 +4175,28 @@ object Types extends TypeUtils {
      *   - wrap types of parameters that have an @allowConversions annotation with Into[_]
      */
     def fromSymbols(params: List[Symbol], resultType: Type)(using Context): MethodType =
+      apply(params.map(_.name.asTermName))(
+         tl => params.map(p => tl.integrate(params, adaptParamInfo(p))),
+         tl => tl.integrate(params, resultType))
+
+    /** Adapt info of parameter symbol to be integhrated into corresponding MethodType
+     *  using the scheme described in `fromSymbols`.
+     */
+    def adaptParamInfo(param: Symbol, pinfo: Type)(using Context): Type =
       def addAnnotation(tp: Type, cls: ClassSymbol, param: Symbol): Type = tp match
         case ExprType(resType) => ExprType(addAnnotation(resType, cls, param))
         case _ => AnnotatedType(tp, Annotation(cls, param.span))
+      var paramType = pinfo
+        .annotatedToRepeated
+        .mapIntoAnnot(defn.IntoAnnot, defn.IntoParamAnnot)
+      if param.is(Inline) then
+        paramType = addAnnotation(paramType, defn.InlineParamAnnot, param)
+      if param.is(Erased) then
+        paramType = addAnnotation(paramType, defn.ErasedParamAnnot, param)
+      paramType
 
-      def paramInfo(param: Symbol) =
-        var paramType = param.info
-          .annotatedToRepeated
-          .mapIntoAnnot(defn.IntoAnnot, defn.IntoParamAnnot)
-        if param.is(Inline) then
-          paramType = addAnnotation(paramType, defn.InlineParamAnnot, param)
-        if param.is(Erased) then
-          paramType = addAnnotation(paramType, defn.ErasedParamAnnot, param)
-        paramType
-
-      apply(params.map(_.name.asTermName))(
-         tl => params.map(p => tl.integrate(params, paramInfo(p))),
-         tl => tl.integrate(params, resultType))
-    end fromSymbols
+    def adaptParamInfo(param: Symbol)(using Context): Type =
+      adaptParamInfo(param, param.info)
 
     def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(using Context): MethodType =
       checkValid(unique(new CachedMethodType(paramNames)(paramInfosExp, resultTypeExp, self)))
