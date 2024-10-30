@@ -1159,7 +1159,8 @@ object Iterator extends IterableFactory[Iterator] {
         // If we advanced the current iterator to a ConcatIterator, merge it into this one
         @tailrec def merge(): Unit =
           if (current.isInstanceOf[ConcatIterator[_]]) {
-            val c = current.asInstanceOf[ConcatIterator[A]]
+            val c: ConcatIterator[A] { val from: Iterator[A] }
+               = current.asInstanceOf
             current = c.current.asInstanceOf // !!! CC unsafe op
             currentHasNextChecked = c.currentHasNextChecked
             if (c.tail != null) {

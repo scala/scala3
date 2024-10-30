@@ -333,20 +333,22 @@ class CheckCaptures extends Recheck, SymTransformer:
         then CaptureSet.Var(sym.owner, level = sym.ccLevel)
         else CaptureSet.empty)
 
-    /** For all nested environments up to `limit` or a closed environment perform `op`,
-     *  but skip environmenrts directly enclosing environments of kind ClosureResult.
+    /** The next environment enclosing `env` that needs to be charged
+     *  with free references.
+     *  Skips environments directly enclosing environments of kind ClosureResult.
+     *  @param included Whether an environment is included in the range of
+     *                  environments to charge. Once `included` is false, no
+     *                  more environments need to be charged.
      */
-    def forallOuterEnvsUpTo(limit: Symbol)(op: Env => Unit)(using Context): Unit =
-      def recur(env: Env, skip: Boolean): Unit =
-        if env.isOpen && env.owner != limit then
-          if !skip then op(env)
-          if !env.isOutermost then
-            var nextEnv = env.outer
-            if env.owner.isConstructor then
-              if nextEnv.owner != limit && !nextEnv.isOutermost then
-                nextEnv = nextEnv.outer
-            recur(nextEnv, skip = env.kind == EnvKind.ClosureResult)
-      recur(curEnv, skip = false)
+    def nextEnvToCharge(env: Env, included: Env => Boolean)(using Context): Env =
+      var nextEnv = env.outer
+      if env.owner.isConstructor then
+        if included(nextEnv) then nextEnv = nextEnv.outer
+      if env.kind == EnvKind.ClosureResult then
+        // skip this one
+        nextEnvToCharge(nextEnv, included)
+      else
+        nextEnv
 
     /** A description where this environment comes from */
     private def provenance(env: Env)(using Context): String =
@@ -360,7 +362,6 @@ class CheckCaptures extends Recheck, SymTransformer:
       else
         i"\nof the enclosing ${owner.showLocated}"
 
-
     /** Include `sym` in the capture sets of all enclosing environments nested in the
      *  the environment in which `sym` is defined.
      */
@@ -369,9 +370,12 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     def markFree(sym: Symbol, ref: TermRef, pos: SrcPos)(using Context): Unit =
       if sym.exists && ref.isTracked then
-        forallOuterEnvsUpTo(sym.enclosure): env =>
-          capt.println(i"Mark $sym with cs ${ref.captureSet} free in ${env.owner}")
-          checkElem(ref, env.captured, pos, provenance(env))
+        def recur(env: Env): Unit =
+          if env.isOpen && env.owner != sym.enclosure then
+            capt.println(i"Mark $sym with cs ${ref.captureSet} free in ${env.owner}")
+            checkElem(ref, env.captured, pos, provenance(env))
+            recur(nextEnvToCharge(env, _.owner != sym.enclosure))
+        recur(curEnv)
 
     /** Make sure (projected) `cs` is a subset of the capture sets of all enclosing
      *  environments. At each stage, only include references from `cs` that are outside
@@ -386,46 +390,53 @@ class CheckCaptures extends Recheck, SymTransformer:
         else
           !sym.isContainedIn(env.owner)
 
-      def checkSubsetEnv(cs: CaptureSet, env: Env)(using Context): Unit =
-        // Only captured references that are visible from the environment
-        // should be included.
-        val included = cs.filter: c =>
-          c.stripReach match
-            case ref: NamedType =>
-              val refSym = ref.symbol
-              val refOwner = refSym.owner
-              val isVisible = isVisibleFromEnv(refOwner, env)
-              if isVisible && !ref.isRootCapability then
-                ref match
-                  case ref: TermRef if ref.prefix `ne` NoPrefix =>
-                    // If c is a path of a class defined outside the environment,
-                    // we check the capture set of its info.
-                    checkSubsetEnv(ref.captureSetOfInfo, env)
-                  case _ =>
-              if !isVisible
-                  && (c.isReach || ref.isType)
-                  && (!ccConfig.useSealed || refSym.is(Param))
-                  && refOwner == env.owner
-              then
-                if refSym.hasAnnotation(defn.UnboxAnnot) then
-                  capt.println(i"exempt: $ref in $refOwner")
-                else
-                  // Reach capabilities that go out of scope have to be approximated
-                  // by their underlying capture set, which cannot be universal.
-                  // Reach capabilities of @unboxed parameters are exempted.
-                  val cs = CaptureSet.ofInfo(c)
-                  cs.disallowRootCapability: () =>
-                    report.error(em"Local reach capability $c leaks into capture scope of ${env.ownerString}", pos)
-                  checkSubset(cs, env.captured, pos, provenance(env))
-              isVisible
-            case ref: ThisType => isVisibleFromEnv(ref.cls, env)
-            case _ => false
-        checkSubset(included, env.captured, pos, provenance(env))
-        capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
+      def checkUseDeclared(c: CaptureRef, env: Env) =
+        c.pathRoot match
+          case ref: NamedType if !ref.symbol.hasAnnotation(defn.UnboxAnnot) =>
+            val what = if ref.isType then "Capture set parameter" else "Local reach capability"
+            report.error(
+              em"""$what $c leaks into capture scope of ${env.ownerString}.
+                  |To allow this, the ${ref.symbol} should be declared with a @use annotation""", pos)
+          case _ =>
 
-      if !cs.isAlwaysEmpty then
-        forallOuterEnvsUpTo(ctx.owner.topLevelClass): env =>
-          checkSubsetEnv(cs, env)
+      def recur(cs: CaptureSet, env: Env)(using Context): Unit =
+        if env.isOpen && !env.owner.isStaticOwner && !cs.isAlwaysEmpty then
+          // Only captured references that are visible from the environment
+          // should be included.
+          val included = cs.filter: c =>
+            val isVisible = c.pathRoot match
+              case ref: NamedType => isVisibleFromEnv(ref.symbol.owner, env)
+              case ref: ThisType => isVisibleFromEnv(ref.cls, env)
+              case ref =>
+                false
+            if !isVisible then
+              c match
+                case ReachCapability(c1) =>
+                  if c1.isParamPath then
+                    checkUseDeclared(c, env)
+                  else
+                    // When a reach capabilty x* where `x` is not a parameter goes out
+                    // of scope, we need to continue with `x`'s underlying deep capture set.
+                    // It is an error if that set contains cap.
+                    // The same is not an issue for normal capabilities since in a local
+                    // definition `val x = e`, the capabilities of `e` have already been charged.
+                    // Note: It's not true that the underlying capture set of a reach capability
+                    // is always cap. Reach capabilities over paths depend on the prefix, which
+                    // might turn a cap into something else.
+                    // The path-use.scala neg test contains an example.
+                    val underlying = CaptureSet.ofTypeDeeply(c1.widen)
+                    capt.println(i"Widen reach $c to $underlying in ${env.owner}")
+                    underlying.disallowRootCapability: () =>
+                      report.error(em"Local reach capability $c leaks into capture scope of ${env.ownerString}", pos)
+                    recur(underlying, env)
+                case c: TypeRef if c.isParamPath =>
+                  checkUseDeclared(c, env)
+                case _ =>
+            isVisible
+          checkSubset(included, env.captured, pos, provenance(env))
+          capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
+          recur(included, nextEnvToCharge(env, !_.owner.isStaticOwner))
+      recur(cs, curEnv)
     end markFree
 
     /** Include references captured by the called method in the current environment stack */
@@ -1144,13 +1155,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         (erefs /: erefs.elems): (erefs, eref) =>
           eref match
             case eref: ThisType if isPureContext(ctx.owner, eref.cls) =>
-              def isOuterRef(aref: Type): Boolean = aref.pathRoot match
-                case aref: NamedType => eref.cls.isProperlyContainedIn(aref.symbol.owner)
-                case aref: ThisType => eref.cls.isProperlyContainedIn(aref.cls)
-                case _ => false
-
-              val outerRefs = arefs.filter(isOuterRef)
-
+              val outerRefs = arefs.filter: aref =>
+                eref.cls.isProperlyContainedIn(aref.pathOwner)
               // Include implicitly added outer references in the capture set of the class of `eref`.
               for outerRef <- outerRefs.elems do
                 if !erefs.elems.contains(outerRef)

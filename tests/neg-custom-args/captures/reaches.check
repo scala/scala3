@@ -39,11 +39,13 @@
 -- Error: tests/neg-custom-args/captures/reaches.scala:79:10 -----------------------------------------------------------
 79 |  ps.map((x, y) => compose1(x, y)) // error // error
    |          ^
-   |          Local reach capability ps* leaks into capture scope of method mapCompose
+   |          Local reach capability ps* leaks into capture scope of method mapCompose.
+   |          To allow this, the parameter ps should be declared with a @use annotation
 -- Error: tests/neg-custom-args/captures/reaches.scala:79:13 -----------------------------------------------------------
 79 |  ps.map((x, y) => compose1(x, y)) // error // error
    |             ^
-   |             Local reach capability ps* leaks into capture scope of method mapCompose
+   |             Local reach capability ps* leaks into capture scope of method mapCompose.
+   |             To allow this, the parameter ps should be declared with a @use annotation
 -- [E057] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:53:51 --------------------------------------
 53 |  val id: Id[Proc, Proc] = new Id[Proc, () -> Unit] // error
    |                                                   ^
@@ -53,8 +55,8 @@
 -- Error: tests/neg-custom-args/captures/reaches.scala:61:31 -----------------------------------------------------------
 61 |  val leaked = usingFile[File^{id*}]: f => // error
    |                               ^^^
-   |                               id* cannot be tracked since its capture set is empty
+   |                               id* cannot be tracked since its deep capture set is empty
 -- Error: tests/neg-custom-args/captures/reaches.scala:62:18 -----------------------------------------------------------
 62 |    val f1: File^{id*} = id(f) // error, since now id(f): File^ // error
    |                  ^^^
-   |                  id* cannot be tracked since its capture set is empty
+   |                  id* cannot be tracked since its deep capture set is empty

@@ -35,4 +35,4 @@ def test(): Unit =
     case _: Ex1 => ???
     case _: Ex2 => ???
 
-  b.x
+  b

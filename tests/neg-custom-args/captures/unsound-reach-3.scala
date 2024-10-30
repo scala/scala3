@@ -16,8 +16,8 @@ def bad(): Unit =
   val boom: Foo[File^{backdoor*}] = backdoor
 
   var escaped: File^{backdoor*} = null
-  withFile("hello.txt"): f => // error
-    escaped = boom.use(f)
+  withFile("hello.txt"): f =>
+    escaped = boom.use(f) // error
       // boom.use: (x: File^) -> File^{backdoor*}, it is a selection so reach capabilities are allowed
       // f: File^, so there is no reach capabilities
 
