@@ -1,5 +1,5 @@
 import language.experimental.captureChecking
-import caps.unbox
+import caps.use
 
 trait Future[+T]:
   def await: T
@@ -17,7 +17,7 @@ class Result[+T, +E]:
 case class Err[+E](e: E) extends Result[Nothing, E]
 case class Ok[+T](x: T) extends Result[T, Nothing]
 
-extension [T](@unbox fs: Seq[Future[T]^])
+extension [T](@use fs: Seq[Future[T]^])
   def awaitAll =
     val collector//: Collector[T]{val futures: Seq[Future[T]^{fs*}]}
        = Collector(fs)

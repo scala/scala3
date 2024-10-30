@@ -1,12 +1,12 @@
 import language.experimental.captureChecking
-import caps.unbox
+import caps.use
 
   // ok
-  def runOps(@unbox ops: List[() => Unit]): Unit =
+  def runOps(@use ops: List[() => Unit]): Unit =
     ops.foreach(op => op())
 
   // ok
-  def delayedRunOps(@unbox ops: List[() => Unit]): () ->{ops*} Unit = // @unbox should not be necessary in the future
+  def delayedRunOps(@use ops: List[() => Unit]): () ->{ops*} Unit = // @use should not be necessary in the future
     () => runOps(ops)
 
   // unsound: impure operation pretended pure
