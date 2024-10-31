@@ -31,15 +31,15 @@ Normally this is fine, but if you're working on certain modules like `scaladoc`
 you'll actually want these modules exported. In order to achieve this you'll
 want to make sure you do two things:
 
-1. You'll want to find and change the following under
+1. You'll want to find and change the following above
    `commonBootstrappedSettings` which is found in the
    [`Build.scala`](https://github.com/scala/scala3/blob/main/project/Build.scala)
    file.
 
 ```diff
 
--    bspEnabled := false,
-+    bspEnabled := true,
+-    val enableBspAllProjects = false,
++    val enableBspAllProjects = true,
 ```
 
 2. Run `sbt publishLocal` to get the needed presentation compiler jars.
