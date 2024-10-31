@@ -824,13 +824,15 @@ class CheckCaptures extends Recheck, SymTransformer:
       if Synthetics.isExcluded(sym) then sym.info
       else
         // If rhs ends in a closure or anonymous class, the corresponding symbol
-        def nestedClosure(rhs: Tree)(using Context): Symbol = rhs match
-          case Closure(_, meth, _) => meth.symbol
-          case Apply(fn, _) if fn.symbol.isConstructor && fn.symbol.owner.isAnonymousClass => fn.symbol.owner
-          case Block(_, expr) => nestedClosure(expr)
-          case Inlined(_, _, expansion) => nestedClosure(expansion)
-          case Typed(expr, _) => nestedClosure(expr)
-          case _ => NoSymbol
+        def nestedClosure(rhs: Tree)(using Context): Symbol =
+          if !ccConfig.deferredReaches then NoSymbol
+          else rhs match
+            case Closure(_, meth, _) => meth.symbol
+            case Apply(fn, _) if fn.symbol.isConstructor && fn.symbol.owner.isAnonymousClass => fn.symbol.owner
+            case Block(_, expr) => nestedClosure(expr)
+            case Inlined(_, _, expansion) => nestedClosure(expansion)
+            case Typed(expr, _) => nestedClosure(expr)
+            case _ => NoSymbol
 
         val saved = curEnv
         val localSet = capturedVars(sym)

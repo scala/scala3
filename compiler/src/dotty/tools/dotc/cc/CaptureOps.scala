@@ -28,11 +28,15 @@ object ccConfig:
   inline val allowUnsoundMaps = false
 
   /** If enabled, use a special path in recheckClosure for closures
-   *  that are eta expansions. This can improve some error messages but
-   *  currently leads to unsoundess for handling reach capabilities.
-   *  TODO: The unsoundness needs followin up.
+   *  that are eta expansions. This can improve some error messages.
    */
   inline val handleEtaExpansionsSpecially = true
+
+  /** Don't require @use for reach capabilities that are accessed
+   *  only in a nested closure. This is unsound without additional
+   *  mitigation measures, as shown by unsound-reach-5.scala.
+   */
+  inline val deferredReaches = false
 
   /** If true, use existential capture set variables */
   def useExistentials(using Context) =
