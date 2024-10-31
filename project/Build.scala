@@ -364,10 +364,20 @@ object Build {
     ) ++ extMap
   }
 
+  /* This projects are irrelevant from IDE point of view and do not compile with Bloop*/
+  val fullyDisabledProjects = Set(
+    "scala2-library-cc",
+    "scala2-library-bootstrapped",
+    "scala2-library-cc-tasty",
+    "scala2-library-tasty"
+  )
+
+  val enableBspAllProjects = false
+
   // Settings used when compiling dotty with a non-bootstrapped dotty
   lazy val commonBootstrappedSettings = commonDottySettings ++ Seq(
     // To enable support of scaladoc and language-server projects you need to change this to true
-    bspEnabled := false,
+    bspEnabled := { if(fullyDisabledProjects(name.value)) false else enableBspAllProjects },
     (Compile / unmanagedSourceDirectories) += baseDirectory.value / "src-bootstrapped",
 
     version := dottyVersion,
