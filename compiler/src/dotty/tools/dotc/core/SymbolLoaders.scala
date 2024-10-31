@@ -100,13 +100,14 @@ object SymbolLoaders {
    */
   def enterClassAndModule(
       owner: Symbol, name: PreName, completer: SymbolLoader,
-      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(using Context): Unit = {
+      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(using Context): (Symbol, Symbol) = {
     val clazz = enterClass(owner, name, completer, flags, scope)
     val module = enterModule(
       owner, name, completer,
       modFlags = flags.toTermFlags & RetainedModuleValFlags,
       clsFlags = flags.toTypeFlags & RetainedModuleClassFlags,
       scope = scope)
+    (clazz, module)
   }
 
   /** Enter all toplevel classes and objects in file `src` into package `owner`, provided
