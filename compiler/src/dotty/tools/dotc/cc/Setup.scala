@@ -23,8 +23,20 @@ import dotty.tools.dotc.util.NoSourcePosition
 /** Operations accessed from CheckCaptures */
 trait SetupAPI:
   type DefRecheck = (tpd.ValOrDefDef, Symbol) => Context ?=> Type
+
+  /** Setup procedure to run for each compilation unit
+   *   @param tree       the typed tree of the unit to check
+   *   @param recheckDef the recheck method to run on completion of symbols with
+   *                     inferred (result-) types
+   */
   def setupUnit(tree: Tree, recheckDef: DefRecheck)(using Context): Unit
+
+  /** Symbol is a term member of a class that was not capture checked
+   *  The info of these symbols is made fluid.
+   */
   def isPreCC(sym: Symbol)(using Context): Boolean
+
+  /** Check to do after the capture checking traversal */
   def postCheck()(using Context): Unit
 
 object Setup:

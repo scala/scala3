@@ -365,6 +365,12 @@ class CheckCaptures extends Recheck, SymTransformer:
       else
         i"\nof the enclosing ${owner.showLocated}"
 
+    def isOfNestedMethod(env: Env | Null)(using Context) =
+      env != null
+      && env.owner.is(Method)
+      && env.owner.owner.isTerm
+      && !env.owner.isAnonymousFunction
+
     /** Include `sym` in the capture sets of all enclosing environments nested in the
      *  the environment in which `sym` is defined.
      */
@@ -377,7 +383,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           if env.isOpen && env.owner != sym.enclosure then
             capt.println(i"Mark $sym with cs ${ref.captureSet} free in ${env.owner}")
             checkElem(ref, env.captured, pos, provenance(env))
-            recur(nextEnvToCharge(env, _.owner != sym.enclosure))
+            if !isOfNestedMethod(env) then
+              recur(nextEnvToCharge(env, _.owner != sym.enclosure))
         recur(curEnv)
 
     /** Make sure (projected) `cs` is a subset of the capture sets of all enclosing
@@ -438,7 +445,8 @@ class CheckCaptures extends Recheck, SymTransformer:
             isVisible
           checkSubset(included, env.captured, pos, provenance(env))
           capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
-          recur(included, nextEnvToCharge(env, !_.owner.isStaticOwner))
+          if !isOfNestedMethod(env) then
+            recur(included, nextEnvToCharge(env, !_.owner.isStaticOwner))
       recur(cs, curEnv)
     end markFree
 
