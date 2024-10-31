@@ -9,4 +9,4 @@ def mkLoggers1[F <: File^](@use files: List[F]): List[Logger^] =
   files.map((f: F) => new Logger(f)) // error, Q: can we make this pass (see #19076)?
 
 def mkLoggers2(@use files: List[File^]): List[Logger^] =
-  files.map(new Logger(_)) // error, Q: can we improve the error message?
+  files.map(new Logger(_)) // error, Q: can we improve the error message? // error

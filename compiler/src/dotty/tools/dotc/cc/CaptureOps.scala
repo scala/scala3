@@ -27,18 +27,12 @@ object ccConfig:
    */
   inline val allowUnsoundMaps = false
 
-  /** If true, when computing the memberinfo of a refined type created
-   *  by addCaptureRefinements take the refineInfo directly without intersecting
-   *  with the parent info.
-   */
-  inline val optimizedRefinements = false
-
   /** If enabled, use a special path in recheckClosure for closures
    *  that are eta expansions. This can improve some error messages but
    *  currently leads to unsoundess for handling reach capabilities.
    *  TODO: The unsoundness needs followin up.
    */
-  inline val handleEtaExpansionsSpecially = false
+  inline val handleEtaExpansionsSpecially = true
 
   /** If true, use existential capture set variables */
   def useExistentials(using Context) =

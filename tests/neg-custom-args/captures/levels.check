@@ -5,10 +5,13 @@
    |          that type captures the root capability `cap`.
    |          This is often caused by a local capability in an argument of constructor Ref
    |          leaking as part of its result.
--- Error: tests/neg-custom-args/captures/levels.scala:24:11 ------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/levels.scala:24:11 ---------------------------------------
 24 |    r.setV(g) // error
    |           ^
-   |           reference (cap3 : CC^) is not included in the allowed capture set ? of value r
+   |           Found:    box (x: String) ->{cap3} String
+   |           Required: box (x$0: String) ->? String
    |
    |           Note that reference (cap3 : CC^), defined in method scope
    |           cannot be included in outer capture set ? of value r
+   |
+   | longer explanation available when compiling with `-explain`
