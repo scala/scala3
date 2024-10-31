@@ -36,8 +36,6 @@ object CheckCaptures:
     case NestedInOwner  // environment is a temporary one nested in the owner's environment,
                         // and does not have a different actual owner symbol
                         // (this happens when doing box adaptation).
-    case ClosureResult  // environment is for the result of a closure,
-                        // used only under ccConfig.DropOuterUsesInCurried
     case Boxed          // environment is inside a box (in which case references are not counted)
 
   /** A class describing environments.
@@ -184,11 +182,6 @@ object CheckCaptures:
             traverseChildren(t)
     if ccConfig.useSealed then check.traverse(tp)
   end disallowRootCapabilitiesIn
-
-  /** Attachment key for bodies of closures, provided they are values.
-   *  Used only under ccConfig.DropOuterUsesInCurried
-   */
-  val ClosureBodyValue = Property.Key[Unit]
 
   /** A prototype that indicates selection with an immutable value */
   class PathSelectionProto(val sym: Symbol, val pt: Type)(using Context) extends WildcardSelectionProto
@@ -339,20 +332,13 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** The next environment enclosing `env` that needs to be charged
      *  with free references.
-     *  Skips environments directly enclosing environments of kind ClosureResult.
      *  @param included Whether an environment is included in the range of
      *                  environments to charge. Once `included` is false, no
      *                  more environments need to be charged.
      */
     def nextEnvToCharge(env: Env, included: Env => Boolean)(using Context): Env =
-      var nextEnv = env.outer
-      if env.owner.isConstructor then
-        if included(nextEnv) then nextEnv = nextEnv.outer
-      if env.kind == EnvKind.ClosureResult then
-        // skip this one
-        nextEnvToCharge(nextEnv, included)
-      else
-        nextEnv
+      if env.owner.isConstructor && included(env.outer) then env.outer.outer
+      else env.outer
 
     /** A description where this environment comes from */
     private def provenance(env: Env)(using Context): String =
@@ -746,15 +732,6 @@ class CheckCaptures extends Recheck, SymTransformer:
         .showing(i"rechecked closure $tree / $pt = $result", capt)
 
     override def recheckClosureBlock(mdef: DefDef, expr: Closure, pt: Type)(using Context): Type =
-      mdef.rhs match
-        case rhs @ closure(_, _, _) if ccConfig.DropOuterUsesInCurried =>
-          // In a curried closure `x => y => e` don't leak capabilities retained by
-          // the second closure `y => e` into the first one. This is an approximation
-          // of the CC rule which says that a closure contributes captures to its
-          // environment only if a let-bound reference to the closure is used.
-          mdef.rhs.putAttachment(ClosureBodyValue, ())
-        case _ =>
-
       openClosures = (mdef.symbol, pt) :: openClosures
       try
         // Constrain closure's parameters and result from the expected type before
@@ -1002,8 +979,6 @@ class CheckCaptures extends Recheck, SymTransformer:
       tree match
         case _: RefTree | closureDef(_) if pt.isBoxedCapturing =>
           curEnv = Env(curEnv.owner, EnvKind.Boxed, CaptureSet.Var(curEnv.owner, level = currentLevel), curEnv)
-        case _ if tree.hasAttachment(ClosureBodyValue) =>
-          curEnv = Env(curEnv.owner, EnvKind.ClosureResult, CaptureSet.Var(curEnv.owner, level = currentLevel), curEnv)
         case _ =>
       val res =
         try
