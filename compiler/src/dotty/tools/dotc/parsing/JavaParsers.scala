@@ -292,6 +292,7 @@ object JavaParsers {
           }
           while (in.token == DOT) {
             in.nextToken()
+            annotations()
             t = typeArgs(atSpan(t.span.start, in.offset)(typeSelect(t, ident())))
           }
           convertToTypeId(t)
