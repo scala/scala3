@@ -50,7 +50,8 @@ object CheckCaptures:
       owner: Symbol,
       kind: EnvKind,
       captured: CaptureSet,
-      outer0: Env | Null):
+      outer0: Env | Null,
+      nestedClosure: Symbol = NoSymbol):
 
     def outer = outer0.nn
 
@@ -400,8 +401,10 @@ class CheckCaptures extends Recheck, SymTransformer:
         else
           !sym.isContainedIn(env.owner)
 
-      def checkUseDeclared(c: CaptureRef, env: Env) =
-        c.pathRoot match
+      def checkUseDeclared(c: CaptureRef, env: Env, lastEnv: Env | Null) =
+        if lastEnv != null && env.nestedClosure.exists && env.nestedClosure == lastEnv.owner then
+          () // access is from a nested closure, so it's OK
+        else c.pathRoot match
           case ref: NamedType if !ref.symbol.hasAnnotation(defn.UseAnnot) =>
             val what = if ref.isType then "Capture set parameter" else "Local reach capability"
             report.error(
@@ -409,7 +412,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                   |To allow this, the ${ref.symbol} should be declared with a @use annotation""", pos)
           case _ =>
 
-      def recur(cs: CaptureSet, env: Env)(using Context): Unit =
+      def recur(cs: CaptureSet, env: Env, lastEnv: Env | Null)(using Context): Unit =
         if env.isOpen && !env.owner.isStaticOwner && !cs.isAlwaysEmpty then
           // Only captured references that are visible from the environment
           // should be included.
@@ -423,7 +426,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               c match
                 case ReachCapability(c1) =>
                   if c1.isParamPath then
-                    checkUseDeclared(c, env)
+                    checkUseDeclared(c, env, lastEnv)
                   else
                     // When a reach capabilty x* where `x` is not a parameter goes out
                     // of scope, we need to continue with `x`'s underlying deep capture set.
@@ -438,16 +441,16 @@ class CheckCaptures extends Recheck, SymTransformer:
                     capt.println(i"Widen reach $c to $underlying in ${env.owner}")
                     underlying.disallowRootCapability: () =>
                       report.error(em"Local reach capability $c leaks into capture scope of ${env.ownerString}", pos)
-                    recur(underlying, env)
+                    recur(underlying, env, lastEnv)
                 case c: TypeRef if c.isParamPath =>
-                  checkUseDeclared(c, env)
+                  checkUseDeclared(c, env, lastEnv)
                 case _ =>
             isVisible
           checkSubset(included, env.captured, pos, provenance(env))
           capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
           if !isOfNestedMethod(env) then
-            recur(included, nextEnvToCharge(env, !_.owner.isStaticOwner))
-      recur(cs, curEnv)
+            recur(included, nextEnvToCharge(env, !_.owner.isStaticOwner), env)
+      recur(cs, curEnv, null)
     end markFree
 
     /** Include references captured by the called method in the current environment stack */
@@ -843,10 +846,19 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def recheckDefDef(tree: DefDef, sym: Symbol)(using Context): Type =
       if Synthetics.isExcluded(sym) then sym.info
       else
+        // If rhs ends in a closure or anonymous class, the corresponding symbol
+        def nestedClosure(rhs: Tree)(using Context): Symbol = rhs match
+          case Closure(_, meth, _) => meth.symbol
+          case Apply(fn, _) if fn.symbol.isConstructor && fn.symbol.owner.isAnonymousClass => fn.symbol.owner
+          case Block(_, expr) => nestedClosure(expr)
+          case Inlined(_, _, expansion) => nestedClosure(expansion)
+          case Typed(expr, _) => nestedClosure(expr)
+          case _ => NoSymbol
+
         val saved = curEnv
         val localSet = capturedVars(sym)
         if !localSet.isAlwaysEmpty then
-          curEnv = Env(sym, EnvKind.Regular, localSet, curEnv)
+          curEnv = Env(sym, EnvKind.Regular, localSet, curEnv, nestedClosure(tree.rhs))
 
         // ctx with AssumedContains entries for each Contains parameter
         val bodyCtx =
