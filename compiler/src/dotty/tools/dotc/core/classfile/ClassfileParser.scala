@@ -401,12 +401,12 @@ class ClassfileParser(
       classRoot.setFlag(sflags)
       moduleRoot.setFlag(Flags.JavaDefined | Flags.ModuleClassCreationFlags)
 
-      val jflags1 = innerClasses.get(currentClassName.toString).fold(jflags: Int)(_.jflags)
-      val privateWithin = getPrivateWithin(jflags1)
+      val privateWithin = getPrivateWithin(jflags)
 
-      classRoot.setPrivateWithin(privateWithin)
-      moduleRoot.setPrivateWithin(privateWithin)
-      moduleRoot.sourceModule.setPrivateWithin(privateWithin)
+      if privateWithin.exists then
+        classRoot.setPrivateWithin(privateWithin)
+        moduleRoot.setPrivateWithin(privateWithin)
+        moduleRoot.sourceModule.setPrivateWithin(privateWithin)
 
       for (i <- 0 until in.nextChar) parseMember(method = false)
       for (i <- 0 until in.nextChar) parseMember(method = true)
@@ -1059,12 +1059,17 @@ class ClassfileParser(
    */
   private def enterOwnInnerClasses()(using Context, DataReader): Unit = {
     def enterClassAndModule(entry: InnerClassEntry, file: AbstractFile, jflags: Int) =
-      SymbolLoaders.enterClassAndModule(
+      val (cls, mod) = SymbolLoaders.enterClassAndModule(
           getOwner(jflags),
-          entry.originalName,
+        entry.originalName,
           new ClassfileLoader(file),
           classTranslation.flags(jflags),
           getScope(jflags))
+
+      val privateWithin = getPrivateWithin(jflags)
+      cls.setPrivateWithin(privateWithin)
+      mod.setPrivateWithin(privateWithin)
+      mod.sourceModule.setPrivateWithin(privateWithin)
 
     for entry <- innerClasses.valuesIterator do
       // create a new class member for immediate inner classes
