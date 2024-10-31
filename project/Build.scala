@@ -364,7 +364,7 @@ object Build {
     ) ++ extMap
   }
 
-  /* This projects are irrelevant from IDE point of view and do not compile with Bloop*/
+  /* These projects are irrelevant from IDE point of view and do not compile with Bloop*/
   val fullyDisabledProjects = Set(
     "scala2-library-cc",
     "scala2-library-bootstrapped",
