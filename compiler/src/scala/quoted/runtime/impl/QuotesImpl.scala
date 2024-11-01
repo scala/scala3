@@ -282,7 +282,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object DefDef extends DefDefModule:
       def apply(symbol: Symbol, rhsFn: List[List[Tree]] => Option[Term]): DefDef =
-        xCheckMacroAssert(symbol.isTerm, s"expected a term symbol but received $symbol")
+        xCheckMacroAssert(symbol.isTerm, s"expected a term symbol, but received $symbol")
         xCheckMacroAssert(symbol.flags.is(Flags.Method), "expected a symbol with `Method` flag set")
         withDefaultPos(tpd.DefDef(symbol.asTerm, prefss =>
           xCheckedMacroOwners(xCheckMacroValidExpr(rhsFn(prefss)), symbol).getOrElse(tpd.EmptyTree)
@@ -453,7 +453,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def term(tp: TermRef): Ref =
         withDefaultPos(tpd.ref(tp).asInstanceOf[tpd.RefTree])
       def apply(sym: Symbol): Ref =
-        assert(sym.isTerm, s"expected a term symbol but received $sym")
+        assert(sym.isTerm, s"expected a term symbol, but received $sym")
         val refTree = tpd.ref(sym) match
           case t @ tpd.This(ident) => // not a RefTree, so we need to work around this - issue #19732
             // ident in `This` can be a TypeIdent of sym, so we manually prepare the ref here,
@@ -1105,7 +1105,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def of[T <: AnyKind](using tp: scala.quoted.Type[T]): TypeTree =
         tp.asInstanceOf[TypeImpl].typeTree
       def ref(sym: Symbol): TypeTree =
-        assert(sym.isType, "Expected a type symbol, but got " + sym)
+        assert(sym.isType, s"Expected a type symbol, but got $sym")
         tpd.ref(sym)
     end TypeTree
 

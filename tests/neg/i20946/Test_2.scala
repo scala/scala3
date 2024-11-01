@@ -3,4 +3,3 @@ inline def macroWithAssertFailing[T](t: T): Unit = ${ macroWithAssertFailingImpl
 @main
 def run =
   macroWithAssertFailing[Int](123) // error
-
