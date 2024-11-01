@@ -3,8 +3,12 @@ import scala.quoted.*
 def macroWithAssertFailingImpl[T: Type](t: Expr[T])(using Quotes): Expr[Unit] = {
   import quotes.reflect.*
 
-  TypeIdent(t.asTerm.symbol)
+  try
+    TypeIdent(t.asTerm.symbol)
+  catch
+    case ex: Throwable =>
+      if ex.getMessage().contains("Expected a type symbol, but got ") then
+        throw ex
 
   '{()}
 }
-
