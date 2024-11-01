@@ -111,13 +111,6 @@ object language:
     @compileTimeOnly("`modularity` can only be used at compile time in import statements")
     object modularity
 
-    /** Experimental support for tracked modifier
-     *
-     * `tracked` is a subset of `modularity`
-     */
-    @compileTimeOnly("`tracked` can only be used at compile time in import statements")
-    object tracked
-
     /** Was needed to add support for relaxed imports of extension methods.
       * The language import is no longer needed as this is now a standard feature since SIP was accepted.
       * @see [[http://dotty.epfl.ch/docs/reference/contextual/extension-methods]]

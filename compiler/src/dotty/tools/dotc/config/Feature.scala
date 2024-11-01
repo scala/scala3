@@ -36,7 +36,6 @@ object Feature:
   val into = experimental("into")
   val namedTuples = experimental("namedTuples")
   val modularity = experimental("modularity")
-  val tracked = experimental("tracked")
   val betterMatchTypeExtractors = experimental("betterMatchTypeExtractors")
   val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
   val betterFors = experimental("betterFors")
@@ -69,7 +68,6 @@ object Feature:
     (into, "Allow into modifier on parameter types"),
     (namedTuples, "Allow named tuples"),
     (modularity, "Enable experimental modularity features"),
-    (tracked, "Enable tracked modifier"),
     (betterMatchTypeExtractors, "Enable better match type extractors"),
     (betterFors, "Enable improvements in `for` comprehensions")
   )
@@ -115,7 +113,7 @@ object Feature:
    *                    feature is defined.
    */
   def enabled(feature: TermName)(using Context): Boolean =
-    enabledBySetting(feature) || enabledByImport(feature)
+    enabledBySetting(feature) || enabledByImport(feature) || feature == modularity
 
   /** Is auto-tupling enabled? */
   def autoTuplingEnabled(using Context): Boolean = !enabled(nme.noAutoTupling)
@@ -130,8 +128,6 @@ object Feature:
     sourceVersion.isAtLeast(`3.6`) || enabled(clauseInterleaving)
 
   def betterForsEnabled(using Context) = enabled(betterFors)
-
-  def trackedEnabled(using Context) = enabled(tracked) || enabled(modularity)
 
   def genericNumberLiteralsEnabled(using Context) = enabled(genericNumberLiterals)
 

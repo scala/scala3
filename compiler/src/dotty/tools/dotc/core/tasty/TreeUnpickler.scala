@@ -924,7 +924,7 @@ class TreeUnpickler(reader: TastyReader,
           val resType =
             if name == nme.CONSTRUCTOR then
               effectiveResultType(sym, paramss)
-            else if sym.isAllOf(Given | Method) && Feature.trackedEnabled then
+            else if sym.isAllOf(Given | Method) && Feature.enabled(Feature.modularity) then
               addParamRefinements(tpt.tpe, paramss)
             else
               tpt.tpe
