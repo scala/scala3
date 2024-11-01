@@ -1551,13 +1551,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     def thenPathInfo = cond1.notNullInfoIf(true).seq(result.thenp.notNullInfo)
     def elsePathInfo = cond1.notNullInfoIf(false).seq(result.elsep.notNullInfo)
-    result.withNotNullInfo(
-      if result.thenp.tpe.isNothingType then
-        elsePathInfo.withRetracted(thenPathInfo)
-      else if result.elsep.tpe.isNothingType then
-        thenPathInfo.withRetracted(elsePathInfo)
-      else thenPathInfo.alt(elsePathInfo)
-    )
+    result.withNotNullInfo(thenPathInfo.alt(elsePathInfo))
   end typedIf
 
   /** Decompose function prototype into a list of parameter prototypes and a result
@@ -2154,14 +2148,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   private def notNullInfoFromCases(initInfo: NotNullInfo, cases: List[CaseDef])(using Context): NotNullInfo =
-    var nnInfo = initInfo
     if cases.nonEmpty then
-      val (nothingCases, normalCases) = cases.partition(_.body.tpe.isNothingType)
-      nnInfo = nothingCases.foldLeft(nnInfo):
-        (nni, c) => nni.withRetracted(c.notNullInfo)
-      if normalCases.nonEmpty then
-        nnInfo = nnInfo.seq(normalCases.map(_.notNullInfo).reduce(_.alt(_)))
-    nnInfo
+      initInfo.seq(cases.map(_.notNullInfo).reduce(_.alt(_)))
+    else initInfo
 
   def typedCases(cases: List[untpd.CaseDef], sel: Tree, wideSelType0: Type, pt: Type)(using Context): List[CaseDef] =
     var caseCtx = ctx
@@ -2251,7 +2240,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedLabeled(tree: untpd.Labeled)(using Context): Labeled = {
     val bind1 = typedBind(tree.bind, WildcardType).asInstanceOf[Bind]
     val expr1 = typed(tree.expr, bind1.symbol.info)
-    assignType(cpy.Labeled(tree)(bind1, expr1))
+    assignType(cpy.Labeled(tree)(bind1, expr1)).withNotNullInfo(expr1.notNullInfo.retractedInfo)
   }
 
   /** Type a case of a type match */
@@ -2301,7 +2290,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                             // Hence no adaptation is possible, and we assume WildcardType as prototype.
         (from, proto)
     val expr1 = typedExpr(tree.expr orElse untpd.syntheticUnitLiteral.withSpan(tree.span), proto)
-    assignType(cpy.Return(tree)(expr1, from))
+    assignType(cpy.Return(tree)(expr1, from)).withNotNullInfo(expr1.notNullInfo.terminatedInfo)
   end typedReturn
 
   def typedWhileDo(tree: untpd.WhileDo)(using Context): Tree =
@@ -2388,15 +2377,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedThrow(tree: untpd.Throw)(using Context): Tree =
     val expr1 = typed(tree.expr, defn.ThrowableType)
     val cap = checkCanThrow(expr1.tpe.widen, tree.span)
-    val res = Throw(expr1).withSpan(tree.span)
+    var res = Throw(expr1).withSpan(tree.span)
     if Feature.ccEnabled && !cap.isEmpty && !ctx.isAfterTyper then
       // Record access to the CanThrow capabulity recovered in `cap` by wrapping
       // the type of the `throw` (i.e. Nothing) in a `@requiresCapability` annotation.
-      Typed(res,
+      res = Typed(res,
         TypeTree(
           AnnotatedType(res.tpe,
             Annotation(defn.RequiresCapabilityAnnot, cap, tree.span))))
-    else res
+    res.withNotNullInfo(expr1.notNullInfo.terminatedInfo)
 
   def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(using Context): SeqLiteral = {
     val elemProto = pt.stripNull().elemType match {
