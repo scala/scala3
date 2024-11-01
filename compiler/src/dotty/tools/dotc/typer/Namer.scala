@@ -294,7 +294,7 @@ class Namer { typer: Typer =>
 
         val completer = tree match
           case tree: TypeDef => TypeDefCompleter(tree)(cctx)
-          case tree: ValOrDefDef if Feature.trackedEnabled && isNonInferingTree(tree) =>
+          case tree: ValOrDefDef if Feature.enabled(Feature.modularity) && isNonInferingTree(tree) =>
             NonInferingCompleter(tree)(cctx)
           case _ => Completer(tree)(cctx)
         val info = adjustIfModule(completer, tree)
@@ -1614,7 +1614,7 @@ class Namer { typer: Typer =>
         if (cls.isRefinementClass) ptype
         else {
           val pt = checkClassType(
-              if Feature.trackedEnabled
+              if Feature.enabled(modularity)
               then ptype.separateRefinements(cls, parentRefinements)
               else ptype,
               parent.srcPos,
@@ -1790,7 +1790,8 @@ class Namer { typer: Typer =>
     index(constr.leadingTypeParams)
     sym.owner.typeParams.foreach(_.ensureCompleted())
     completeTrailingParamss(constr, sym, indexingCtor = true)
-    if Feature.trackedEnabled then
+    if Feature.enabled(modularity) then
+      // println(i"[indexConstructor] Checking if params of $constr need tracked")
       constr.termParamss.foreach(_.foreach(setTracked))
 
   /** The signature of a module valdef.
@@ -1940,7 +1941,7 @@ class Namer { typer: Typer =>
             acc.resetFlag(PrivateLocal)
             acc.setFlag(Tracked)
 
-    if Feature.trackedEnabled then addTrackedIfNeeded(ddef, sym.maybeOwner)
+    if Feature.enabled(modularity) then addTrackedIfNeeded(ddef, sym.maybeOwner)
 
     if isConstructor then
       // set result type tree to unit, but take the current class as result type of the symbol
@@ -1949,7 +1950,7 @@ class Namer { typer: Typer =>
       if sym.isPrimaryConstructor then checkCaseClassParamDependencies(mt, sym.owner)
       mt
     else
-      val paramFn = if Feature.trackedEnabled && sym.isAllOf(Given | Method) then wrapRefinedMethType else wrapMethType
+      val paramFn = if Feature.enabled(Feature.modularity) && sym.isAllOf(Given | Method) then wrapRefinedMethType else wrapMethType
       valOrDefDefSig(ddef, sym, paramSymss, paramFn)
   end defDefSig
 
