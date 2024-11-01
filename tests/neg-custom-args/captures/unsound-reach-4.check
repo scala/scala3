@@ -1,3 +1,8 @@
+-- Error: tests/neg-custom-args/captures/unsound-reach-4.scala:13:18 ---------------------------------------------------
+13 |class Bar extends Foo[File^]: // error
+   |                  ^^^^^^^^^^
+   |                  Type variable X of trait Foo cannot be instantiated to File^ since
+   |                  that type captures the root capability `cap`.
 -- Error: tests/neg-custom-args/captures/unsound-reach-4.scala:22:22 ---------------------------------------------------
 22 |    escaped = boom.use(f)  // error
    |              ^^^^^^^^^^^

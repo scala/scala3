@@ -33,16 +33,16 @@ def runAll1(@use xs: List[Proc]): Unit =
       (() => f.write()) :: Nil // error
 
 def runAll2(xs: List[Proc]): Unit =
-  var cur: List[Proc] = xs
+  var cur: List[Proc] = xs   // error
   while cur.nonEmpty do
-    val next: () => Unit = cur.head // error
+    val next: () => Unit = cur.head
     next()
     cur = cur.tail
 
 def runAll3(xs: List[Proc]): Unit =
-  val cur = Ref[List[Proc]](xs)
+  val cur = Ref[List[Proc]](xs) // error
   while cur.get.nonEmpty do
-    val next: () => Unit = cur.get.head // error
+    val next: () => Unit = cur.get.head
     next()
     cur.set(cur.get.tail: List[Proc])
 

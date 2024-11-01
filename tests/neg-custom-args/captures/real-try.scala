@@ -1,5 +1,5 @@
-//> using options -source 3.4
-// (to make sure we use the sealed policy)
+
+
 import language.experimental.saferExceptions
 
 class Ex1 extends Exception("Ex1")

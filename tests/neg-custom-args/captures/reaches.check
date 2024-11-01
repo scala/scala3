@@ -15,16 +15,21 @@
    |       cannot be included in outer capture set {xs*} of value cur
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/reaches.scala:38:31 -----------------------------------------------------------
-38 |    val next: () => Unit = cur.head // error
-   |                           ^^^^^^^^
-   |                       The expression's type box () => Unit is not allowed to capture the root capability `cap`.
-   |                       This usually means that a capability persists longer than its allowed lifetime.
--- Error: tests/neg-custom-args/captures/reaches.scala:45:35 -----------------------------------------------------------
-45 |    val next: () => Unit = cur.get.head // error
-   |                           ^^^^^^^^^^^^
-   |                       The expression's type box () => Unit is not allowed to capture the root capability `cap`.
-   |                       This usually means that a capability persists longer than its allowed lifetime.
+-- Error: tests/neg-custom-args/captures/reaches.scala:36:6 ------------------------------------------------------------
+36 |  var cur: List[Proc] = xs   // error
+   |      ^
+   |      Mutable variable cur cannot have type List[box () => Unit] since
+   |      the part box () => Unit of that type captures the root capability `cap`.
+-- Error: tests/neg-custom-args/captures/reaches.scala:43:16 -----------------------------------------------------------
+43 |  val cur = Ref[List[Proc]](xs) // error
+   |                ^^^^^^^^^^
+   |                Type variable T of constructor Ref cannot be instantiated to List[box () => Unit] since
+   |                the part box () => Unit of that type captures the root capability `cap`.
+-- Error: tests/neg-custom-args/captures/reaches.scala:53:51 -----------------------------------------------------------
+53 |  val id: Id[Proc, Proc] = new Id[Proc, () -> Unit] // error
+   |                                                   ^
+   |                                Type variable A of constructor Id cannot be instantiated to box () => Unit since
+   |                                that type captures the root capability `cap`.
 -- Error: tests/neg-custom-args/captures/reaches.scala:55:6 ------------------------------------------------------------
 55 |    id(() => f.write()) // error
    |    ^^^^^^^^^^^^^^^^^^^
@@ -46,12 +51,6 @@
    |             ^
    |             Local reach capability ps* leaks into capture scope of method mapCompose.
    |             To allow this, the parameter ps should be declared with a @use annotation
--- [E057] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:53:51 --------------------------------------
-53 |  val id: Id[Proc, Proc] = new Id[Proc, () -> Unit] // error
-   |                                                   ^
-   |                                             Type argument () -> Unit does not conform to lower bound () => Unit
-   |
-   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/reaches.scala:61:31 -----------------------------------------------------------
 61 |  val leaked = usingFile[File^{id*}]: f => // error
    |                               ^^^

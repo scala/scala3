@@ -6,20 +6,12 @@
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:12:12 ---------------------------------------
-12 |  files.map(new Logger(_)) // error, Q: can we improve the error message? // error
+12 |  files.map(new Logger(_)) // error, Q: can we improve the error message?
    |            ^^^^^^^^^^^^^
-   |           Found:    (_$1: box File^{files*}) ->{files*} (ex$4: caps.Exists) -> Logger{val f: File^{_$1}}^{ex$4}
-   |           Required: (_$1: box File^{files*}) -><fluid> box Logger{val f: File^?}^{ex$4, ex$4²}
+   |     Found:    (_$1: box File^{files*}) ->{files*} (ex$13: caps.Exists) -> box Logger{val f: File^{_$1}}^{ex$13}
+   |     Required: (_$1: box File^{files*}) -><fluid> box Logger{val f: File^?}^?
    |
-   |           where:    ex$4  is a reference to a value parameter
-   |                     ex$4² is a reference to a value parameter
-   |
-   |
-   |           Note that the universal capability `cap`
-   |           cannot be included in capture set ?
+   |     Note that the universal capability `cap`
+   |     cannot be included in capture set ?
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/i21614.scala:12:8 -------------------------------------------------------------
-12 |  files.map(new Logger(_)) // error, Q: can we improve the error message? // error
-   |  ^^^^^^^^^
-   |  escaping local reference ex$4.type

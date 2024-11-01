@@ -22,3 +22,8 @@
 73 |            fr.await.ok
    |
    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/effect-swaps.scala:66:15 ------------------------------------------------------
+66 |        Result.make: // error: local reference leaks
+   |        ^^^^^^^^^^^
+   |local reference contextual$9 from (using contextual$9: boundary.Label[Result[box Future[box T^?]^{fr, contextual$9}, box E^?]]^):
+   |  box Future[box T^?]^{fr, contextual$9} leaks into outer capture set of type parameter T of method make in object Result

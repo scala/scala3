@@ -45,12 +45,11 @@ object ccConfig:
   /** If true, use "sealed" as encapsulation mechanism, meaning that we
    *  check that type variable instantiations don't have `cap` in any of
    *  their capture sets. This is an alternative of the original restriction
-   *  that `cap` can't be boxed or unboxed. It is used in 3.3 and 3.4 but
-   *  dropped again in 3.5.
+   *  that `cap` can't be boxed or unboxed. It is dropped in 3.5 but used
+   *  again in 3.6.
    */
   def useSealed(using Context) =
-    Feature.sourceVersion.stable == SourceVersion.`3.3`
-    || Feature.sourceVersion.stable == SourceVersion.`3.4`
+    Feature.sourceVersion.stable != SourceVersion.`3.5`
 end ccConfig
 
 

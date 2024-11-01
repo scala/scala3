@@ -25,11 +25,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:33:34 ---------------------------------------
 33 |  val boxed2 : Observe[C]^ = box2(c) // error
    |                                  ^
-   |                                  Found:    C^
-   |                                  Required: box C{val arg: C^?}^
+   |                                  Found:    box C^
+   |                                  Required: box C{val arg: C^?}^?
    |
-   |                                  Note that C^ cannot be box-converted to box C{val arg: C^?}^
-   |                                  since at least one of their capture sets contains the root capability `cap`
+   |                                  Note that the universal capability `cap`
+   |                                  cannot be included in capture set ?
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:44:2 ----------------------------------------

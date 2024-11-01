@@ -5,8 +5,8 @@ trait IO
 trait Foo[+T]:
   val foo: IO^ -> T
 
-trait Bar extends Foo[IO^]:
-  val foo: IO^ -> IO^ = x => x // error
+trait Bar extends Foo[IO^]: // error
+  val foo: IO^ -> IO^ = x => x
 
 def test(x: Foo[IO^]): Unit =
   val y1: Foo[IO^{x*}] = x

@@ -11,8 +11,8 @@ def test(p: Proc, q: () => Unit) =
     x = q           // error
     x = (q: Proc)   // error
     y = (q: Proc)   // error
-    y = q           // OK, was error under sealed
+    y = q           // error, was OK under unsealed
 
-  var finalizeActions = collection.mutable.ListBuffer[() => Unit]() // OK, was error under sealed
+  var finalizeActions = collection.mutable.ListBuffer[() => Unit]() // error, was OK under unsealed
 
 
