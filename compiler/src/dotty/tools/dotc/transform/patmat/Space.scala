@@ -937,36 +937,36 @@ object SpaceEngine {
       then project(OrType(selTyp, ConstantType(Constant(null)), soft = false))
       else project(selTyp)
 
-    @tailrec def recur(cases: List[CaseDef], prevs: List[Space], deferred: List[Tree]): Unit =
+    @tailrec def recur(cases: List[CaseDef], prevs: List[Space], deferred: List[Tree], nullCovered: Boolean): Unit =
       cases match
         case Nil =>
-        case CaseDef(pat, guard, _) :: rest =>
-          val curr = trace(i"project($pat)")(project(pat))
+        case (c @ CaseDef(pat, guard, _)) :: rest =>
+          val patNullable = Nullables.matchesNull(c)
+          val curr = trace(i"project($pat)")(
+            if patNullable
+            then Or(List(project(pat), Typ(ConstantType(Constant(null)))))
+            else project(pat))
           val covered = trace("covered")(simplify(intersect(curr, targetSpace)))
           val prev = trace("prev")(simplify(Or(prevs)))
           if prev == Empty && covered == Empty then // defer until a case is reachable
-            recur(rest, prevs, pat :: deferred)
+            recur(rest, prevs, pat :: deferred, nullCovered)
           else
             for pat <- deferred.reverseIterator
             do report.warning(MatchCaseUnreachable(), pat.srcPos)
 
             if pat != EmptyTree // rethrow case of catch uses EmptyTree
                 && !pat.symbol.isAllOf(SyntheticCase, butNot=Method) // ExpandSAMs default cases use SyntheticCase
-                && isSubspace(covered, prev)
+                && isSubspace(covered, Or(List(prev, Typ(ConstantType(Constant(null))))))
             then
-              val nullOnly = isNullable && isWildcardArg(pat) && !mayCoverNull(prev)
-              val msg = if nullOnly then MatchCaseOnlyNullWarning() else MatchCaseUnreachable()
-              report.warning(msg, pat.srcPos)
+              val nullOnly = isNullable && isWildcardArg(pat) && !nullCovered && !isSubspace(covered, prev) && (!ctx.explicitNulls || selTyp.isInstanceOf[FlexibleType])
+              if nullOnly then report.warning(MatchCaseOnlyNullWarning() , pat.srcPos)
+              else if (isSubspace(covered, prev)) then report.warning(MatchCaseUnreachable(), pat.srcPos)
 
             // in redundancy check, take guard as false in order to soundly approximate
-            val newPrev = if (guard.isEmpty)
-              then if (isWildcardArg(pat)) 
-                then Typ(ConstantType(Constant(null))) :: covered :: prevs
-                else covered :: prevs
-              else prevs
-            recur(rest, newPrev, Nil)
+            val newPrev = if (guard.isEmpty) then covered :: prevs else prevs
+            recur(rest, newPrev, Nil, nullCovered || (guard.isEmpty && patNullable))
 
-    recur(m.cases, Nil, Nil)
+    recur(m.cases, Nil, Nil, false)
   end checkReachability
 
   def checkMatch(m: Match)(using Context): Unit =
