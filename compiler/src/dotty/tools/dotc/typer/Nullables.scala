@@ -49,37 +49,45 @@ object Nullables:
     TypeBoundsTree(lo, newHi, alias)
 
   /** A set of val or var references that are known to be not null
-  * after the tree finishes executing normally (non-exceptionally),
+   *  after the tree finishes executing normally (non-exceptionally),
    *  plus a set of variable references that are ever assigned to null,
    *  and may therefore be null if execution of the tree is interrupted
    *  by an exception.
    */
-  case class NotNullInfo(asserted: Set[TermRef], retracted: Set[TermRef]):
+  case class NotNullInfo(asserted: Set[TermRef] | Null, retracted: Set[TermRef]):
     def isEmpty = this eq NotNullInfo.empty
 
     def retractedInfo = NotNullInfo(Set(), retracted)
+
+    def terminatedInfo = NotNullInfo(null, retracted)
 
     /** The sequential combination with another not-null info */
     def seq(that: NotNullInfo): NotNullInfo =
       if this.isEmpty then that
       else if that.isEmpty then this
-      else NotNullInfo(
-        this.asserted.diff(that.retracted).union(that.asserted),
-        this.retracted.union(that.retracted))
+      else
+        val newAsserted =
+          if this.asserted == null || that.asserted == null then null
+          else this.asserted.diff(that.retracted).union(that.asserted)
+        val newRetracted = this.retracted.union(that.retracted)
+        NotNullInfo(newAsserted, newRetracted)
 
     /** The alternative path combination with another not-null info. Used to merge
-     *  the nullability info of the two branches of an if.
+     *  the nullability info of the branches of an if or match.
      */
     def alt(that: NotNullInfo): NotNullInfo =
-      NotNullInfo(this.asserted.intersect(that.asserted), this.retracted.union(that.retracted))
-
-    def withRetracted(that: NotNullInfo): NotNullInfo =
-      NotNullInfo(this.asserted, this.retracted.union(that.retracted))
+      val newAsserted =
+        if this.asserted == null then that.asserted
+        else if that.asserted == null then this.asserted
+        else this.asserted.intersect(that.asserted)
+      val newRetracted = this.retracted.union(that.retracted)
+      NotNullInfo(newAsserted, newRetracted)
+  end NotNullInfo
 
   object NotNullInfo:
     val empty = new NotNullInfo(Set(), Set())
-    def apply(asserted: Set[TermRef], retracted: Set[TermRef]): NotNullInfo =
-      if asserted.isEmpty && retracted.isEmpty then empty
+    def apply(asserted: Set[TermRef] | Null, retracted: Set[TermRef]): NotNullInfo =
+      if asserted != null && asserted.isEmpty && retracted.isEmpty then empty
       else new NotNullInfo(asserted, retracted)
   end NotNullInfo
 
@@ -202,7 +210,7 @@ object Nullables:
     */
     @tailrec def impliesNotNull(ref: TermRef): Boolean = infos match
       case info :: infos1 =>
-        if info.asserted.contains(ref) then true
+        if info.asserted != null && info.asserted.contains(ref) then true
         else if info.retracted.contains(ref) then false
         else infos1.impliesNotNull(ref)
       case _ =>
@@ -218,7 +226,9 @@ object Nullables:
     /** Retract all references to mutable variables */
     def retractMutables(using Context) =
       val mutables = infos.foldLeft(Set[TermRef]()):
-        (ms, info) => ms.union(info.asserted.filter(_.symbol.is(Mutable)))
+        (ms, info) => ms.union(
+                        if info.asserted == null then Set.empty
+                        else info.asserted.filter(_.symbol.is(Mutable)))
       infos.extendWith(NotNullInfo(Set(), mutables))
 
   end extension
@@ -491,7 +501,10 @@ object Nullables:
       && assignmentSpans.getOrElse(sym.span.start, Nil).exists(whileSpan.contains(_))
       && ctx.notNullInfos.impliesNotNull(ref)
 
-    val retractedVars = ctx.notNullInfos.flatMap(_.asserted.filter(isRetracted)).toSet
+    val retractedVars = ctx.notNullInfos.flatMap(info =>
+      if info.asserted == null then Set.empty
+      else info.asserted.filter(isRetracted)
+    ).toSet
     ctx.addNotNullInfo(NotNullInfo(Set(), retractedVars))
   end whileContext
 

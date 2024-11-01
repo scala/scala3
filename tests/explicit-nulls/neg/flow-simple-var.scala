@@ -19,7 +19,7 @@ class SimpleVar {
     }
 
     assert(x != null)
-    val a: String = x
+    val a: String = x // error
     x = nullable(x)
     val b: String = x // error: x might be null
   }
