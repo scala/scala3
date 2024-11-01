@@ -2003,13 +2003,9 @@ class Namer { typer: Typer =>
   /** Try to infer if the parameter needs a `tracked` modifier
    */
   def needsTracked(psym: Symbol, param: ValDef, owningSym: Symbol)(using Context) =
-    // println(i"Checking if $psym needs tracked")
     lazy val abstractContextBound = isContextBoundWitnessWithAbstractMembers(psym, param, owningSym)
     lazy val isRefInSignatures =
       psym.maybeOwner.isPrimaryConstructor
-      // && !psym.flags.is(Synthetic)
-      // && !psym.maybeOwner.flags.is(Synthetic)
-      // && !psym.maybeOwner.maybeOwner.flags.is(Synthetic)
       && isReferencedInPublicSignatures(psym)
     !psym.is(Tracked)
     && psym.isTerm
@@ -2046,29 +2042,21 @@ class Namer { typer: Typer =>
         case _ => false
     checkOwnerMemberSignatures(owner)
 
-  private def namedTypeWithPrefixContainsSymbolRef(tpe: Type, syms: List[Symbol])(using Context): Boolean = tpe match
-    case tpe: NamedType => tpe.prefix.exists && tpeContainsSymbolRef(tpe.prefix, syms)
-    case _ => false
+  /** Check if any of syms are referenced in tpe */
+  private def tpeContainsSymbolRef(tpe: Type, syms: List[Symbol])(using Context): Boolean =
+    val acc = new ExistsAccumulator(
+      { tpe => tpe.termSymbol.exists && syms.contains(tpe.termSymbol) },
+      StopAt.Static,
+      forceLazy = false
+    ) {
+      override def apply(acc: Boolean, tpe: Type): Boolean = super.apply(acc, tpe.safeDealias)
+    }
+    acc(false, tpe)
 
-  private def tpeContainsSymbolRef(tpe0: Type, syms: List[Symbol])(using Context): Boolean =
-    val tpe = tpe0.dropAlias.safeDealias
-    tpe match
-      case ExprType(resType) => tpeContainsSymbolRef(resType, syms)
-      case m : MethodOrPoly =>
-        m.paramInfos.exists(tpeContainsSymbolRef(_, syms))
-          || tpeContainsSymbolRef(m.resultType, syms)
-      case r @ RefinedType(parent, _, refinedInfo) => tpeContainsSymbolRef(parent, syms) || tpeContainsSymbolRef(refinedInfo, syms)
-      case TypeBounds(lo, hi) => tpeContainsSymbolRef(lo, syms) || tpeContainsSymbolRef(hi, syms)
-      case t: Type =>
-        tpe.termSymbol.exists && syms.contains(tpe.termSymbol)
-          || tpe.argInfos.exists(tpeContainsSymbolRef(_, syms))
-          || namedTypeWithPrefixContainsSymbolRef(tpe, syms)
-
-  private def maybeParamAccessors(owner: Symbol, sym: Symbol)(using Context): List[Symbol] =
-    owner.infoOrCompleter match
-      case info: ClassInfo =>
-        info.decls.lookupAll(sym.name).filter(d => d.is(ParamAccessor)).toList
-      case _ => List.empty
+  private def maybeParamAccessors(owner: Symbol, sym: Symbol)(using Context): List[Symbol] = owner.infoOrCompleter match
+    case info: ClassInfo =>
+      info.decls.lookupAll(sym.name).filter(d => d.is(ParamAccessor)).toList
+    case _ => List.empty
 
   /** Under x.modularity, set every context bound evidence parameter of a class to be tracked,
    *  provided it has a type that has an abstract type member. Reset private and local flags
