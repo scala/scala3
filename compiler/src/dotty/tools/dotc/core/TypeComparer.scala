@@ -3110,7 +3110,7 @@ object TypeComparer {
 
   def explaining[T](op: ExplainingTypeComparer => T, short: Boolean = false)(using Context): T =
     comparing(_.explaining(op, short))
-    
+
   def tracked[T](op: TrackingTypeComparer => T)(using Context): T =
     comparing(_.tracked(op))
 }
