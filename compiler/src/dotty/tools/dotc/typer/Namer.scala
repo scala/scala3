@@ -907,6 +907,16 @@ class Namer { typer: Typer =>
       case _ =>
     }
 
+    private def setAbstractTrackedInfo(sym: Symbol)(using Context): Unit =
+      if !sym.flags.is(ParamAccessor) && !sym.flags.is(Param) then
+        if sym.allOverriddenSymbols.exists(_.flags.is(Tracked)) then
+          sym.setFlag(Tracked)
+        if sym.flags.is(Tracked) then
+          original match
+            case tree: untpd.ValDef if tree.tpt.isEmpty =>
+              sym.info = typedAheadExpr(tree.rhs).tpe
+            case _ => ()
+
     /** Invalidate `denot` by overwriting its info with `NoType` if
      *  `denot` is a compiler generated case class method that clashes
      *  with a user-defined method in the same scope with a matching type.
@@ -989,6 +999,7 @@ class Namer { typer: Typer =>
       addInlineInfo(sym)
       denot.info = typeSig(sym)
       invalidateIfClashingSynthetic(denot)
+      setAbstractTrackedInfo(sym)
       Checking.checkWellFormed(sym)
       denot.info = avoidPrivateLeaks(sym)
     }
