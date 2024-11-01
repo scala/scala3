@@ -273,7 +273,7 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
   override def beforePhase(phase: Phase): (TracedEventId, ProfileSnap) = {
     assert(mainThread eq Thread.currentThread())
     traceThreadSnapshotCounters()
-    val eventId = traceDurationStart(Category.Phase, phase.phaseName)
+    val eventId = traceDurationStart(Category.Phase, escapeSpecialChars(phase.phaseName))
     if (ctx.settings.YprofileRunGcBetweenPhases.value.contains(phase.toString))
       doGC()
     if (ctx.settings.YprofileExternalTool.value.contains(phase.toString)) {
@@ -287,7 +287,7 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
     assert(mainThread eq Thread.currentThread())
     if chromeTrace != null then
       traceThreadSnapshotCounters()
-      traceDurationStart(Category.File, unit.source.name)
+      traceDurationStart(Category.File, escapeSpecialChars(unit.source.name))
     else TracedEventId.Empty
   }
 
@@ -325,7 +325,7 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
     then EmptyCompletionEvent
     else
       val completionName = this.completionName(root, associatedFile)
-      val event = TracedEventId(associatedFile.name)
+      val event = TracedEventId(escapeSpecialChars(associatedFile.name))
       chromeTrace.traceDurationEventStart(Category.Completion.name, "↯", colour = "thread_state_sleeping")
       chromeTrace.traceDurationEventStart(Category.File.name, event)
       chromeTrace.traceDurationEventStart(Category.Completion.name, completionName)
@@ -350,8 +350,13 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
     if chromeTrace != null then
       chromeTrace.traceDurationEventEnd(category.name, event, colour)
 
-  private def symbolName(sym: Symbol): String = s"${sym.showKind} ${sym.showName}"
-  private def completionName(root: Symbol, associatedFile: AbstractFile): String =
+  private inline def escapeSpecialChars(value: String): String =
+    JsonNameTransformer.encode(value)
+
+  private def symbolName(sym: Symbol): String = escapeSpecialChars:
+    s"${sym.showKind} ${sym.showName}"
+
+  private def completionName(root: Symbol, associatedFile: AbstractFile): String = escapeSpecialChars:
     def isTopLevel = root.owner != NoSymbol && root.owner.is(Flags.Package)
     if root.is(Flags.Package) || isTopLevel
     then root.javaBinaryName
