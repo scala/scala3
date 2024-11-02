@@ -8,5 +8,5 @@
 -- Error: tests/neg-custom-args/captures/eta.scala:6:20 ----------------------------------------------------------------
 6 |         bar( () => f )  // error
   |                    ^
-  |                    (f : Proc^) cannot be referenced here; it is not included in the allowed capture set {}
+  |                    reference (f : Proc^) is not included in the allowed capture set {}
   |                    of an enclosing function literal with expected type () -> box () ->? Unit

@@ -6,7 +6,7 @@
 -- Error: tests/neg-custom-args/captures/i16114.scala:20:8 -------------------------------------------------------------
 20 |        fs  // error (limitation)
    |        ^^
-   |        (fs : Cap^) cannot be referenced here; it is not included in the allowed capture set {io}
+   |        reference (fs : Cap^) is not included in the allowed capture set {io}
    |        of an enclosing function literal with expected type Unit ->{io} Unit
 -- Error: tests/neg-custom-args/captures/i16114.scala:24:13 ------------------------------------------------------------
 24 |      expect[Cap^] { // error
@@ -16,7 +16,7 @@
 -- Error: tests/neg-custom-args/captures/i16114.scala:26:8 -------------------------------------------------------------
 26 |        io  // error (limitation)
    |        ^^
-   |        (io : Cap^) cannot be referenced here; it is not included in the allowed capture set {fs}
+   |        reference (io : Cap^) is not included in the allowed capture set {fs}
    |        of an enclosing function literal with expected type Unit ->{fs} Unit
 -- Error: tests/neg-custom-args/captures/i16114.scala:30:13 ------------------------------------------------------------
 30 |      expect[Cap^] {  // error
@@ -36,10 +36,10 @@
 -- Error: tests/neg-custom-args/captures/i16114.scala:40:8 -------------------------------------------------------------
 40 |        io.use()    // error
    |        ^^
-   |        (io : Cap^) cannot be referenced here; it is not included in the allowed capture set {}
+   |        reference (io : Cap^) is not included in the allowed capture set {}
    |        of an enclosing function literal with expected type Unit -> Unit
 -- Error: tests/neg-custom-args/captures/i16114.scala:41:8 -------------------------------------------------------------
 41 |        io          // error
    |        ^^
-   |        (io : Cap^) cannot be referenced here; it is not included in the allowed capture set {}
+   |        reference (io : Cap^) is not included in the allowed capture set {}
    |        of an enclosing function literal with expected type Unit -> Unit

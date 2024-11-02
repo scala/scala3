@@ -290,6 +290,7 @@ extension (tp: Type)
         case _: ThisType | NoPrefix =>
           tp1.symbol.is(Param) || tp1.symbol.is(ParamAccessor)
         case prefix => prefix.isParamPath
+    case _: ParamRef => true
     case _ => false
 
   /** If this is a unboxed capturing type with nonempty capture set, its boxed version.

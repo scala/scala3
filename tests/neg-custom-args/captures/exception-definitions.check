@@ -5,7 +5,7 @@
 -- Error: tests/neg-custom-args/captures/exception-definitions.scala:7:12 ----------------------------------------------
 7 |    val x = c  // error
   |            ^
-  |(c : Any^) cannot be referenced here; it is not included in the allowed capture set {} of the self type of class Err2
+  |            reference (c : Any^) is not included in the allowed capture set {} of the self type of class Err2
 -- Error: tests/neg-custom-args/captures/exception-definitions.scala:8:13 ----------------------------------------------
 8 |  class Err3(c: Any^) extends Exception // error
   |             ^

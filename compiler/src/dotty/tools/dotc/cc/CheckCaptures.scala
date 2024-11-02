@@ -390,14 +390,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       markFree(sym, sym.termRef, pos)
 
     def markFree(sym: Symbol, ref: TermRef, pos: SrcPos)(using Context): Unit =
-      if sym.exists && ref.isTracked then
-        def recur(env: Env): Unit =
-          if env.isOpen && env.owner != sym.enclosure then
-            capt.println(i"Mark $sym with cs ${ref.captureSet} free in ${env.owner}")
-            checkElem(ref, env.captured, pos, provenance(env))
-            if !isOfNestedMethod(env) then
-              recur(nextEnvToCharge(env, _.owner != sym.enclosure))
-        recur(curEnv)
+      if sym.exists && ref.isTracked then markFree(ref.captureSet, pos)
 
     /** Make sure (projected) `cs` is a subset of the capture sets of all enclosing
      *  environments. At each stage, only include references from `cs` that are outside
@@ -434,7 +427,24 @@ class CheckCaptures extends Recheck, SymTransformer:
               case ref =>
                 false
             if !isVisible then
-              c match
+              //println(i"out of scope: $c")
+              if ccConfig.deferredReaches then // avoid all locally bound capabilities
+                if c.isParamPath then
+                  c match
+                    case ReachCapability(_) | _: TypeRef =>
+                      checkUseDeclared(c, env, lastEnv)
+                    case _ =>
+                else
+                  val underlying = c match
+                    case ReachCapability(c1) =>
+                      CaptureSet.ofTypeDeeply(c1.widen)
+                    case _ =>
+                      CaptureSet.ofType(c.widen, followResult = false)
+                    capt.println(i"Widen reach $c to $underlying in ${env.owner}")
+                  underlying.disallowRootCapability: () =>
+                    report.error(em"Local capability $c in ${env.ownerString} cannot have `cap` as underlying capture set", pos)
+                  recur(underlying, env, lastEnv)
+              else c match // avoid only reach capabilities and capture sets
                 case ReachCapability(c1) =>
                   if c1.isParamPath then
                     checkUseDeclared(c, env, lastEnv)

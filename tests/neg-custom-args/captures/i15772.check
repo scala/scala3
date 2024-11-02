@@ -1,7 +1,7 @@
 -- Error: tests/neg-custom-args/captures/i15772.scala:19:26 ------------------------------------------------------------
 19 |    val c : C^{x} = new C(x)  // error
    |                          ^
-   |                          (x : C^) cannot be referenced here; it is not included in the allowed capture set {}
+   |                          reference (x : C^) is not included in the allowed capture set {}
    |                          of an enclosing function literal with expected type () -> Int
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:20:46 ---------------------------------------
 20 |    val boxed1 : ((C^) => Unit) -> Unit = box1(c)  // error
@@ -13,7 +13,7 @@
 -- Error: tests/neg-custom-args/captures/i15772.scala:26:26 ------------------------------------------------------------
 26 |    val c : C^{x} = new C(x) // error
    |                          ^
-   |                          (x : C^) cannot be referenced here; it is not included in the allowed capture set {}
+   |                          reference (x : C^) is not included in the allowed capture set {}
    |                          of an enclosing function literal with expected type () -> Int
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:27:35 ---------------------------------------
 27 |    val boxed2 : Observe[C^] = box2(c)  // error

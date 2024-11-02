@@ -6,8 +6,8 @@
 -- Error: tests/neg-custom-args/captures/try.scala:30:65 ---------------------------------------------------------------
 30 |    (x: CanThrow[Exception]) => () => raise(new Exception)(using x) // error
    |                                                                 ^
-   |           (x : CanThrow[Exception]) cannot be referenced here; it is not included in the allowed capture set {}
-   |           of an enclosing function literal with expected type () ->? Nothing
+   |                               reference (x : CanThrow[Exception]) is not included in the allowed capture set {}
+   |                               of an enclosing function literal with expected type () ->? Nothing
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:52:2 -------------------------------------------
 47 |val global: () -> Int = handle {
 48 |  (x: CanThrow[Exception]) =>
