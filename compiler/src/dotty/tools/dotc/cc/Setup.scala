@@ -495,6 +495,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         case _ =>
           traverseChildren(tree)
       postProcess(tree)
+      checkProperUse(tree)
     end traverse
 
     def postProcess(tree: Tree)(using Context): Unit = tree match
@@ -637,6 +638,16 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case _ =>
       case _ =>
     end postProcess
+
+    def checkProperUse(tree: Tree)(using Context): Unit = tree match
+      case tree: MemberDef =>
+        def useAllowed(sym: Symbol) =
+          (sym.is(Param) || sym.is(ParamAccessor)) && !sym.owner.isAnonymousFunction
+        for ann <- tree.symbol.annotations do
+          if ann.symbol == defn.UseAnnot && !useAllowed(tree.symbol) then
+            report.error(i"Only parameters of methods can have @use annotations", tree.srcPos)
+      case _ =>
+    end checkProperUse
   end setupTraverser
 
   /** Checks whether an abstract type could be impure. See also: [[needsVariable]]. */
