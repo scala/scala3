@@ -660,7 +660,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
             val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
             if !getter.is(Private) && getter.hasTrackedParts then
-              refined = RefinedType(refined, getterName, argType)
+              refined = RefinedType(refined, getterName, argType.unboxed)
               allCaptures ++= argType.captureSet
           (refined, allCaptures)
 

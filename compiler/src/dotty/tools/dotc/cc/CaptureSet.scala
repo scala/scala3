@@ -1120,6 +1120,7 @@ object CaptureSet:
    */
   def ofTypeDeeply(tp: Type)(using Context): CaptureSet =
     val collect = new TypeAccumulator[CaptureSet]:
+      val seen = util.HashSet[Symbol]()
       def apply(cs: CaptureSet, t: Type) =
         if variance <= 0 then cs
         else t.dealias match
@@ -1127,6 +1128,9 @@ object CaptureSet:
             this(cs, p) ++ cs1
           case t @ AnnotatedType(parent, ann) =>
             this(cs, parent)
+          case t: TypeRef if t.symbol.isAbstractOrParamType && !seen.contains(t.symbol) =>
+            seen += t.symbol
+            this(cs, t.info.bounds.hi)
           case t @ FunctionOrMethod(args, res @ Existential(_, _))
           if args.forall(_.isAlwaysPure) =>
             this(cs, Existential.toCap(res))

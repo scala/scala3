@@ -9,5 +9,5 @@ class Resource[T <: Capability](gen: T):
 
 @main def run =
   val myFile: File = ???
-  val r = Resource(myFile) // now ok, was error
+  val r = Resource(myFile) // error
   ()

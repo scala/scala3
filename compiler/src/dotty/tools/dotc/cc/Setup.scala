@@ -81,11 +81,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   private def newFlagsFor(symd: SymDenotation)(using Context): FlagSet =
 
     object containsCovarRetains extends TypeAccumulator[Boolean]:
+      val seen = util.HashSet[Symbol]()
       def apply(x: Boolean, tp: Type): Boolean =
         if x then true
         else if tp.derivesFromCapability && variance >= 0 then true
         else tp match
           case AnnotatedType(_, ann) if ann.symbol.isRetains && variance >= 0 => true
+          case t: TypeRef if t.symbol.isAbstractOrParamType && !seen.contains(t.symbol) =>
+            seen += t.symbol
+            apply(x, t.info.bounds.hi)
           case _ => foldOver(x, tp)
       def apply(tp: Type): Boolean = apply(false, tp)
 

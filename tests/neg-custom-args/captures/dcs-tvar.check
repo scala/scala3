@@ -1,0 +1,10 @@
+-- Error: tests/neg-custom-args/captures/dcs-tvar.scala:6:15 -----------------------------------------------------------
+6 |  () => runOps(xs) // error
+  |               ^^
+  |               reference xs* is not included in the allowed capture set {}
+  |               of an enclosing function literal with expected type () -> Unit
+-- Error: tests/neg-custom-args/captures/dcs-tvar.scala:9:15 -----------------------------------------------------------
+9 |  () => runOps(xs) // error
+  |               ^^
+  |               reference xs* is not included in the allowed capture set {}
+  |               of an enclosing function literal with expected type () -> Unit
