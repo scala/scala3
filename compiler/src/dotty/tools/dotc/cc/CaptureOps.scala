@@ -38,10 +38,6 @@ object ccConfig:
    */
   inline val deferredReaches = false
 
-  /** If true, use existential capture set variables */
-  def useExistentials(using Context) =
-    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.5`)
-
   /** If true, use "sealed" as encapsulation mechanism, meaning that we
    *  check that type variable instantiations don't have `cap` in any of
    *  their capture sets. This is an alternative of the original restriction
@@ -479,17 +475,6 @@ extension (tp: Type)
    *  occurrences of cap are allowed in instance types of type variables.
    */
   def withReachCaptures(ref: Type)(using Context): Type =
-    class CheckContraCaps extends TypeTraverser:
-      var ok = true
-      def traverse(t: Type): Unit =
-        if ok then
-          t.dealias match
-            case CapturingType(_, cs) if cs.isUniversal && variance <= 0 =>
-              ok = false
-            case _ =>
-              traverseChildren(t)
-    end CheckContraCaps
-
     object narrowCaps extends TypeMap:
       def apply(t: Type) =
         if variance <= 0 then t
@@ -512,15 +497,9 @@ extension (tp: Type)
 
     ref match
       case ref: CaptureRef if ref.isTrackableRef =>
-        val checker = new CheckContraCaps
-        if !ccConfig.useExistentials then checker.traverse(tp)
-        if checker.ok then
-          val tp1 = narrowCaps(tp)
-          if tp1 ne tp then capt.println(i"narrow $tp of $ref to $tp1")
-          tp1
-        else
-          capt.println(i"cannot narrow $tp of $ref")
-          tp
+        val tp1 = narrowCaps(tp)
+        if tp1 ne tp then capt.println(i"narrow $tp of $ref to $tp1")
+        tp1
       case _ =>
         tp
 

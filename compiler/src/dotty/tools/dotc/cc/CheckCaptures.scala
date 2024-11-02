@@ -121,6 +121,9 @@ object CheckCaptures:
       def inverse = thisMap
   end SubstParamsBiMap
 
+  /** A prototype that indicates selection with an immutable value */
+  class PathSelectionProto(val sym: Symbol, val pt: Type)(using Context) extends WildcardSelectionProto
+
   /** Check that a @retains annotation only mentions references that can be tracked.
    *  This check is performed at Typer.
    */
@@ -144,9 +147,9 @@ object CheckCaptures:
         case ReachCapabilityApply(arg) => check(arg, elem.srcPos)
         case _ => check(elem, elem.srcPos)
 
-  /** Report an error if some part of `tp` contains the root capability in its capture set
-   *  or if it refers to an unsealed type parameter that could possibly be instantiated with
-   *  cap in a way that's visible at the type.
+  /** Under the sealed policy, report an error if some part of `tp` contains the
+   *  root capability in its capture set or if it refers to a type parameter that
+   *  could possibly be instantiated with cap in a way that's visible at the type.
    */
   private def disallowRootCapabilitiesIn(tp: Type, carrier: Symbol, what: String, have: String, addendum: String, pos: SrcPos)(using Context) =
     val check = new TypeTraverser:
@@ -182,8 +185,66 @@ object CheckCaptures:
     if ccConfig.useSealed then check.traverse(tp)
   end disallowRootCapabilitiesIn
 
-  /** A prototype that indicates selection with an immutable value */
-  class PathSelectionProto(val sym: Symbol, val pt: Type)(using Context) extends WildcardSelectionProto
+  /** Under the sealed policy, disallow the root capability in type arguments.
+   *  Type arguments come either from a TypeApply node or from an AppliedType
+   *  which represents a trait parent in a template.
+   *  @param  fn   the type application, of type TypeApply or TypeTree
+   *  @param  sym  the constructor symbol (could be a method or a val or a class)
+   *  @param  args the type arguments
+   */
+  private def disallowCapInTypeArgs(fn: Tree, sym: Symbol, args: List[Tree], thisPhase: Phase)(using Context): Unit =
+    def isExempt = sym.isTypeTestOrCast || sym == defn.Compiletime_erasedValue
+    if ccConfig.useSealed && !isExempt then
+      val paramNames = atPhase(thisPhase.prev):
+        fn.tpe.widenDealias match
+          case tl: TypeLambda => tl.paramNames
+          case ref: AppliedType if ref.typeSymbol.isClass => ref.typeSymbol.typeParams.map(_.name)
+          case t =>
+            println(i"parent type: $t")
+            args.map(_ => EmptyTypeName)
+      for case (arg: TypeTree, pname) <- args.lazyZip(paramNames) do
+        def where = if sym.exists then i" in an argument of $sym" else ""
+        val (addendum, pos) =
+          if arg.isInferred
+          then ("\nThis is often caused by a local capability$where\nleaking as part of its result.", fn.srcPos)
+          else if arg.span.exists then ("", arg.srcPos)
+          else ("", fn.srcPos)
+        disallowRootCapabilitiesIn(arg.knownType, NoSymbol,
+          i"Type variable $pname of $sym", "be instantiated to", addendum, pos)
+  end disallowCapInTypeArgs
+
+  /** If we are not under the sealed policy, and a tree is an application that unboxes
+   *  its result or is a try, check that the tree's type does not have covariant universal
+   *  capabilities.
+   */
+  private def checkNotUniversalInUnboxedResult(tpe: Type, tree: Tree)(using Context): Unit =
+    def needsUniversalCheck = tree match
+      case _: RefTree | _: Apply | _: TypeApply => tree.symbol.unboxesResult
+      case _: Try => true
+      case _ => false
+
+    object checkNotUniversal extends TypeTraverser:
+      def traverse(tp: Type) =
+        tp.dealias match
+        case wtp @ CapturingType(parent, refs) =>
+          if variance > 0 then
+            refs.disallowRootCapability: () =>
+              def part = if wtp eq tpe.widen then "" else i" in its part $wtp"
+              report.error(
+                em"""The expression's type ${tpe.widen} is not allowed to capture the root capability `cap`$part.
+                  |This usually means that a capability persists longer than its allowed lifetime.""",
+                tree.srcPos)
+          if !wtp.isBoxed then traverse(parent)
+        case tp =>
+          traverseChildren(tp)
+
+    if !ccConfig.useSealed
+        && !tpe.hasAnnotation(defn.UncheckedCapturesAnnot)
+        && needsUniversalCheck
+        && tpe.widen.isValueType
+    then
+      checkNotUniversal.traverse(tpe.widen)
+  end checkNotUniversalInUnboxedResult
 
 class CheckCaptures extends Recheck, SymTransformer:
   thisPhase =>
@@ -268,41 +329,6 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     def showRef(ref: CaptureRef)(using Context): String =
         ctx.printer.toTextCaptureRef(ref).show
-
-    // Uses 4-space indent as a trial
-    private def checkReachCapsIsolated(tpe: Type, pos: SrcPos)(using Context): Unit =
-
-        object checker extends TypeTraverser:
-            var refVariances: Map[Boolean, Int] = Map.empty
-            var seenReach: CaptureRef | Null = null
-            def traverse(tp: Type) =
-                tp.dealias match
-                case CapturingType(parent, refs) =>
-                    traverse(parent)
-                    for ref <- refs.elems do
-                        if ref.isReach && !ref.stripReach.isInstanceOf[TermParamRef]
-                            || ref.isRootCapability
-                        then
-                            val isReach = ref.isReach
-                            def register() =
-                                refVariances = refVariances.updated(isReach, variance)
-                                seenReach = ref
-                            refVariances.get(isReach) match
-                                case None => register()
-                                case Some(v) => if v != 0 && variance == 0 then register()
-                case _ =>
-                    traverseChildren(tp)
-
-        checker.traverse(tpe)
-        if checker.refVariances.size == 2
-            && checker.refVariances(true) >= 0
-            && checker.refVariances(false) <= 0
-        then
-            report.error(
-                em"""Reach capability ${showRef(checker.seenReach.nn)} and universal capability cap cannot both
-                    |appear in the type $tpe of this expression""",
-                pos)
-    end checkReachCapsIsolated
 
     /** The current environment */
     private val rootEnv: Env = inContext(ictx):
@@ -685,32 +711,11 @@ class CheckCaptures extends Recheck, SymTransformer:
       else ownType
     end instantiate
 
-    def disallowCapInTypeArgs(fn: Tree, sym: Symbol, args: List[Tree])(using Context): Unit =
-      def isExempt = sym.isTypeTestOrCast || sym == defn.Compiletime_erasedValue
-      if ccConfig.useSealed && !isExempt then
-        val paramNames = atPhase(thisPhase.prev):
-          fn.tpe.widenDealias match
-            case tl: TypeLambda => tl.paramNames
-            case ref: AppliedType if ref.typeSymbol.isClass => ref.typeSymbol.typeParams.map(_.name)
-            case t =>
-              println(i"parent type: $t")
-              args.map(_ => EmptyTypeName)
-        for case (arg: TypeTree, pname) <- args.lazyZip(paramNames) do
-          def where = if sym.exists then i" in an argument of $sym" else ""
-          val (addendum, pos) =
-            if arg.isInferred
-            then ("\nThis is often caused by a local capability$where\nleaking as part of its result.", fn.srcPos)
-            else if arg.span.exists then ("", arg.srcPos)
-            else ("", fn.srcPos)
-          disallowRootCapabilitiesIn(arg.knownType, NoSymbol,
-            i"Type variable $pname of $sym", "be instantiated to", addendum, pos)
-    end disallowCapInTypeArgs
-
     override def recheckTypeApply(tree: TypeApply, pt: Type)(using Context): Type =
       val meth = tree.fun match
         case fun @ Select(qual, nme.apply) => qual.symbol.orElse(fun.symbol)
         case fun => fun.symbol
-      disallowCapInTypeArgs(tree.fun, meth, tree.args)
+      disallowCapInTypeArgs(tree.fun, meth, tree.args, thisPhase)
       val res = Existential.toCap(super.recheckTypeApply(tree, pt))
       includeCallCaptures(tree.symbol, res, tree.srcPos)
       checkContains(tree)
@@ -940,7 +945,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         for case tpt: TypeTree <- impl.parents do
           tpt.tpe match
             case AppliedType(fn, args) =>
-              disallowCapInTypeArgs(tpt, fn.typeSymbol, args.map(TypeTree(_)))
+              disallowCapInTypeArgs(tpt, fn.typeSymbol, args.map(TypeTree(_)), thisPhase)
             case _ =>
         inNestedLevelUnless(cls.is(Module)):
           super.recheckClassDef(tree, impl, cls)
@@ -1008,40 +1013,12 @@ class CheckCaptures extends Recheck, SymTransformer:
           report.error(ex.getMessage.nn)
           tree.tpe
         finally curEnv = saved
-      if tree.isTerm then
-        if !ccConfig.useExistentials then
-          checkReachCapsIsolated(res.widen, tree.srcPos)
-        if !pt.isBoxedCapturing && pt != LhsProto then
-          markFree(res.boxedCaptureSet, tree.srcPos)
+      if tree.isTerm && !pt.isBoxedCapturing && pt != LhsProto then
+        markFree(res.boxedCaptureSet, tree.srcPos)
       res
 
     override def recheckFinish(tpe: Type, tree: Tree, pt: Type)(using Context): Type =
-      def needsUniversalCheck = tree match
-        case _: RefTree | _: Apply | _: TypeApply => tree.symbol.unboxesResult
-        case _: Try => true
-        case _ => false
-
-      object checkNotUniversal extends TypeTraverser:
-        def traverse(tp: Type) =
-         tp.dealias match
-          case wtp @ CapturingType(parent, refs) =>
-            if variance > 0 then
-              refs.disallowRootCapability: () =>
-                def part = if wtp eq tpe.widen then "" else i" in its part $wtp"
-                report.error(
-                  em"""The expression's type ${tpe.widen} is not allowed to capture the root capability `cap`$part.
-                    |This usually means that a capability persists longer than its allowed lifetime.""",
-                  tree.srcPos)
-            if !wtp.isBoxed then traverse(parent)
-          case tp =>
-            traverseChildren(tp)
-
-      if !ccConfig.useSealed
-          && !tpe.hasAnnotation(defn.UncheckedCapturesAnnot)
-          && needsUniversalCheck
-          && tpe.widen.isValueType
-      then
-        checkNotUniversal.traverse(tpe.widen)
+      checkNotUniversalInUnboxedResult(tpe, tree)
       super.recheckFinish(tpe, tree, pt)
     end recheckFinish
 
