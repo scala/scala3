@@ -907,16 +907,6 @@ class Namer { typer: Typer =>
       case _ =>
     }
 
-    private def setAbstractTrackedInfo(sym: Symbol)(using Context): Unit =
-      if !sym.flags.is(ParamAccessor) && !sym.flags.is(Param) then
-        if sym.allOverriddenSymbols.exists(_.flags.is(Tracked)) then
-          sym.setFlag(Tracked)
-        if sym.flags.is(Tracked) then
-          original match
-            case tree: untpd.ValDef if tree.tpt.isEmpty =>
-              sym.info = typedAheadExpr(tree.rhs).tpe
-            case _ => ()
-
     /** Invalidate `denot` by overwriting its info with `NoType` if
      *  `denot` is a compiler generated case class method that clashes
      *  with a user-defined method in the same scope with a matching type.
@@ -999,7 +989,6 @@ class Namer { typer: Typer =>
       addInlineInfo(sym)
       denot.info = typeSig(sym)
       invalidateIfClashingSynthetic(denot)
-      setAbstractTrackedInfo(sym)
       Checking.checkWellFormed(sym)
       denot.info = avoidPrivateLeaks(sym)
     }
@@ -2062,12 +2051,17 @@ class Namer { typer: Typer =>
               if paramss.isEmpty then info.widenExpr
               else NoType
 
-          val iRawInfo =
-            cls.info.nonPrivateDecl(sym.name).matchingDenotation(site, schema, sym.targetName).info
+          val iDenot = cls.info.nonPrivateDecl(sym.name).matchingDenotation(site, schema, sym.targetName)
+          val iSym = iDenot.symbol
+          val iRawInfo = iDenot.info
           val iResType = instantiatedResType(iRawInfo, paramss).asSeenFrom(site, cls)
-          if (iResType.exists)
-            typr.println(i"using inherited type for ${mdef.name}; raw: $iRawInfo, inherited: $iResType")
-          tp & iResType
+          if iSym.is(Tracked) && !mdef.rhs.isEmpty then
+            // When inherting a tracked member, we infer a precise type from the rhs
+            tp & typedAheadExpr(mdef.rhs, iResType).tpe
+          else
+            if (iResType.exists)
+              typr.println(i"using inherited type for ${mdef.name}; raw: $iRawInfo, inherited: $iResType")
+            tp & iResType
         }
     end inherited
 
