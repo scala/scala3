@@ -1116,13 +1116,15 @@ object CaptureSet:
   /** The deep capture set of a type is the union of all covariant occurrences of
    *  capture sets. Nested existential sets are approximated with `cap`.
    *  NOTE: The traversal logic needs to be in sync with narrowCaps in CaptureOps, which
-   *  replaces caps with reach capabilties.
+   *  replaces caps with reach capabilties. The one exception to this is invariant
+   *  arguments. This have to be included to be conservative in dcs but must be
+   *  excluded in narrowCaps.
    */
   def ofTypeDeeply(tp: Type)(using Context): CaptureSet =
     val collect = new TypeAccumulator[CaptureSet]:
       val seen = util.HashSet[Symbol]()
       def apply(cs: CaptureSet, t: Type) =
-        if variance <= 0 then cs
+        if variance < 0 then cs
         else t.dealias match
           case t @ CapturingType(p, cs1) =>
             this(cs, p) ++ cs1
