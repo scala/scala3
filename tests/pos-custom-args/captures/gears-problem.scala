@@ -17,3 +17,8 @@ extension [T](@use fs: Seq[Future[T]^])
        = Collector(fs)
     // val ch = collector.results // also errors
     val fut: Future[T]^{fs*} = collector.results.read().right.get // found ...^{caps.cap}
+
+    val ch = collector.results
+    val item = ch.read()
+    val r = item.right
+    val fut2: Future[T]^{fs*} = r.get
