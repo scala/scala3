@@ -1136,7 +1136,7 @@ class CompletionSuite extends BaseCompletionSuite:
           |  scala@@
           |}
           |""".stripMargin,
-      """|scala <root>
+      """|scala `<root>`
          |""".stripMargin
     )
 
@@ -1726,8 +1726,8 @@ class CompletionSuite extends BaseCompletionSuite:
     check(
       """|import @@
          |""".stripMargin,
-      """|java <root>
-         |javax <root>
+      """|java `<root>`
+         |javax `<root>`
          |""".stripMargin,
       filter = _.startsWith("java")
     )
@@ -1745,8 +1745,8 @@ class CompletionSuite extends BaseCompletionSuite:
     check(
       """|export @@
          |""".stripMargin,
-      """|java <root>
-         |javax <root>
+      """|java `<root>`
+         |javax `<root>`
          |""".stripMargin,
       filter = _.startsWith("java")
     )
