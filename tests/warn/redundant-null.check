@@ -1,52 +1,56 @@
 -- [E030] Match case Unreachable Warning: tests/warn/redundant-null.scala:10:7 -----------------------------------------
-10 |  case _: n.type => // warn
+10 |  case _: n.type => // warn: unreachable
    |       ^^^^^^^^^
    |       Unreachable case
 -- [E030] Match case Unreachable Warning: tests/warn/redundant-null.scala:12:7 -----------------------------------------
-12 |  case _ => // warn
+12 |  case _ => // warn: unreachable
    |       ^
    |       Unreachable case
 -- [E030] Match case Unreachable Warning: tests/warn/redundant-null.scala:13:7 -----------------------------------------
-13 |  case _ => // warn
+13 |  case _ => // warn: unreachable
    |       ^
    |       Unreachable case
 -- [E030] Match case Unreachable Warning: tests/warn/redundant-null.scala:18:7 -----------------------------------------
-18 |  case _ => 3 // warn
+18 |  case _ => 3 // warn: unreachable
    |       ^
    |       Unreachable case
 -- [E030] Match case Unreachable Warning: tests/warn/redundant-null.scala:23:7 -----------------------------------------
-23 |  case _: B => // warn
+23 |  case _: B => // warn: unreachable
    |       ^^^^
    |       Unreachable case
 -- [E030] Match case Unreachable Warning: tests/warn/redundant-null.scala:24:7 -----------------------------------------
-24 |  case _ => // warn
+24 |  case _ => // warn: unreachable
    |       ^
    |       Unreachable case
 -- [E030] Match case Unreachable Warning: tests/warn/redundant-null.scala:25:7 -----------------------------------------
-25 |  case null => // warn
+25 |  case null => // warn: unreachable
    |       ^^^^
    |       Unreachable case
 -- [E121] Pattern Match Warning: tests/warn/redundant-null.scala:30:7 --------------------------------------------------
-30 |  case _ => // warn
+30 |  case _ => // warn: null only
    |       ^
    |       Unreachable case except for null (if this is intentional, consider writing case null => instead).
 -- [E030] Match case Unreachable Warning: tests/warn/redundant-null.scala:31:7 -----------------------------------------
-31 |  case null => // warn
+31 |  case null => // warn: unreachable
    |       ^^^^
    |       Unreachable case
 -- [E030] Match case Unreachable Warning: tests/warn/redundant-null.scala:32:7 -----------------------------------------
-32 |  case _ => // warn
+32 |  case _ => // warn: unreachable
    |       ^
    |       Unreachable case
 -- [E030] Match case Unreachable Warning: tests/warn/redundant-null.scala:33:7 -----------------------------------------
-33 |  case _ => // warn
+33 |  case _ => // warn: unreachable
    |       ^
    |       Unreachable case
 -- [E030] Match case Unreachable Warning: tests/warn/redundant-null.scala:37:7 -----------------------------------------
-37 |  case _ => println("unreachable") // warn
+37 |  case _ => // warn: unreachable
    |       ^
    |       Unreachable case
 -- [E030] Match case Unreachable Warning: tests/warn/redundant-null.scala:41:7 -----------------------------------------
-41 |  case _ => // warn
+41 |  case _ => // warn: unreachable
    |       ^
    |       Unreachable case
+-- [E121] Pattern Match Warning: tests/warn/redundant-null.scala:45:7 --------------------------------------------------
+45 |  case _ => // warn: null only
+   |       ^
+   |       Unreachable case except for null (if this is intentional, consider writing case null => instead).
