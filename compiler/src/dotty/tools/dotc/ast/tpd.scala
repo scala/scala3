@@ -661,6 +661,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         case tree: Apply
         if (fun.tpe eq tree.fun.tpe) && sameTypes(args, tree.args) =>
           tree1.withTypeUnchecked(tree.tpe)
+        case tree: Apply if fun.tpe.underlyingIfProxy == NoType =>
+          // The function type is not yet known. This happens for example if its
+          // type refers to a previous parameter in the same parameters list. In
+          // this case, we use the previously known type of the function.
+          // See tests/pos/dependent-annot-2.scala for an example.
+          ta.assignType(tree1, fun.withType(tree.fun.tpe), args)
         case _ => ta.assignType(tree1, fun, args)
       }
     }
