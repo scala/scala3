@@ -168,19 +168,19 @@ object report:
     val fileAReportMsg =
       if ctx.phase.isInstanceOf[plugins.PluginPhase]
       then
-        s"""|  Please file a crash report in the compiler plugin backlog.
-            |  The name of the compiler plugin which caused the crash is "${ctx.phase.megaPhase}".
+        s"""|  An unhandled exception was thrown in the compiler plugin named "${ctx.phase.megaPhase}".
+            |  Please file a crash report in the compiler plugin backlog.
             |  For non-enriched exceptions, compile with -Xno-enrich-error-messages.
             |""".stripMargin
       else
-        s"""|  Please file a crash report here:
+        s"""|  An unhandled exception was thrown in the compiler.
+            |  Please file a crash report here:
             |  https://github.com/scala/scala3/issues/new/choose
             |  For non-enriched exceptions, compile with -Xno-enrich-error-messages.
             |""".stripMargin
     s"""
        |  $errorMessage
        |
-       |  An unhandled exception was thrown in the compiler.
        |$fileAReportMsg
        |
        |$info1
