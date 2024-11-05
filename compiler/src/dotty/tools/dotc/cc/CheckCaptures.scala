@@ -894,6 +894,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       def canUseInferred =    // If canUseInferred is false, all capturing types in the type of `sym` need to be given explicitly
         sym.is(Private)                   // private symbols can always have inferred types
+        || sym.privateWithin == sym.effectiveOwner
         || sym.name.is(DefaultGetterName) // default getters are exempted since otherwise it would be
                                           // too annoying. This is a hole since a defualt getter's result type
                                           // might leak into a type variable.
