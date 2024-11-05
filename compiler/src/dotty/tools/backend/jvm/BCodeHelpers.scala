@@ -491,7 +491,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
       report.debuglog(s"Potentially conflicting names for forwarders: $conflictingNames")
 
       for (m0 <- sortedMembersBasedOnFlags(moduleClass.info, required = Method, excluded = ExcludedForwarder)) {
-        val m = if (m0.is(Bridge)) m0.nextOverriddenSymbol else m0
+        val m = if (m0.isOneOf(Bridge | MixedIn)) m0.nextOverriddenSymbol else m0
         if (m == NoSymbol)
           report.log(s"$m0 is a bridge method that overrides nothing, something went wrong in a previous phase.")
         else if (m.isType || m.is(Deferred) || (m.owner eq defn.ObjectClass) || m.isConstructor || m.name.is(ExpandedName))
@@ -507,10 +507,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
           // we generate ACC_SYNTHETIC forwarders so Java compilers ignore them.
           val isSynthetic =
             m0.name.is(NameKinds.SyntheticSetterName) ||
-            // Only hide bridges generated at Erasure, mixin forwarders are also
-            // marked as bridge but shouldn't be hidden since they don't have a
-            // non-bridge overload.
-            m0.is(Bridge) && m0.initial.validFor.firstPhaseId == erasurePhase.next.id
+            m0.is(Bridge)
           addForwarder(jclass, moduleClass, m, isSynthetic)
         }
       }
