@@ -185,34 +185,6 @@ object CheckCaptures:
     if ccConfig.useSealed then check.traverse(tp)
   end disallowRootCapabilitiesIn
 
-  /** Under the sealed policy, disallow the root capability in type arguments.
-   *  Type arguments come either from a TypeApply node or from an AppliedType
-   *  which represents a trait parent in a template.
-   *  @param  fn   the type application, of type TypeApply or TypeTree
-   *  @param  sym  the constructor symbol (could be a method or a val or a class)
-   *  @param  args the type arguments
-   */
-  private def disallowCapInTypeArgs(fn: Tree, sym: Symbol, args: List[Tree], thisPhase: Phase)(using Context): Unit =
-    def isExempt = sym.isTypeTestOrCast || sym == defn.Compiletime_erasedValue
-    if ccConfig.useSealed && !isExempt then
-      val paramNames = atPhase(thisPhase.prev):
-        fn.tpe.widenDealias match
-          case tl: TypeLambda => tl.paramNames
-          case ref: AppliedType if ref.typeSymbol.isClass => ref.typeSymbol.typeParams.map(_.name)
-          case t =>
-            println(i"parent type: $t")
-            args.map(_ => EmptyTypeName)
-      for case (arg: TypeTree, pname) <- args.lazyZip(paramNames) do
-        def where = if sym.exists then i" in an argument of $sym" else ""
-        val (addendum, pos) =
-          if arg.isInferred
-          then ("\nThis is often caused by a local capability$where\nleaking as part of its result.", fn.srcPos)
-          else if arg.span.exists then ("", arg.srcPos)
-          else ("", fn.srcPos)
-        disallowRootCapabilitiesIn(arg.knownType, NoSymbol,
-          i"Type variable $pname of $sym", "be instantiated to", addendum, pos)
-  end disallowCapInTypeArgs
-
   /** If we are not under the sealed policy, and a tree is an application that unboxes
    *  its result or is a try, check that the tree's type does not have covariant universal
    *  capabilities.
@@ -409,14 +381,14 @@ class CheckCaptures extends Recheck, SymTransformer:
         if lastEnv != null && env.nestedClosure.exists && env.nestedClosure == lastEnv.owner then
           () // access is from a nested closure, so it's OK
         else c.pathRoot match
-          case ref: NamedType if !ref.symbol.hasAnnotation(defn.UseAnnot) =>
+          case ref: NamedType if !ref.symbol.isUseParam =>
             val what = if ref.isType then "Capture set parameter" else "Local reach capability"
             report.error(
               em"""$what $c leaks into capture scope of ${env.ownerString}.
                   |To allow this, the ${ref.symbol} should be declared with a @use annotation""", pos)
           case _ =>
 
-      def recur(cs: CaptureSet, env: Env, lastEnv: Env | Null)(using Context): Unit =
+      def recur(cs: CaptureSet, env: Env, lastEnv: Env | Null): Unit =
         if env.isOpen && !env.owner.isStaticOwner && !cs.isAlwaysEmpty then
           // Only captured references that are visible from the environment
           // should be included.
@@ -479,6 +451,40 @@ class CheckCaptures extends Recheck, SymTransformer:
       case _: MethodOrPoly => // wait until method is fully applied
       case _ =>
         if sym.exists && curEnv.isOpen then markFree(capturedVars(sym), pos)
+
+    /** Under the sealed policy, disallow the root capability in type arguments.
+     *  Type arguments come either from a TypeApply node or from an AppliedType
+     *  which represents a trait parent in a template. Also, if a corresponding
+     *  formal type parameter is declared or implied @use, charge the deep capture
+     *  set of the argument to the environent.
+     *  @param  fn   the type application, of type TypeApply or TypeTree
+     *  @param  sym  the constructor symbol (could be a method or a val or a class)
+     *  @param  args the type arguments
+     */
+    def disallowCapInTypeArgs(fn: Tree, sym: Symbol, args: List[Tree])(using Context): Unit =
+      def isExempt = sym.isTypeTestOrCast || sym == defn.Compiletime_erasedValue
+      if ccConfig.useSealed && !isExempt then
+        val paramNames = atPhase(thisPhase.prev):
+          fn.tpe.widenDealias match
+            case tl: TypeLambda => tl.paramNames
+            case ref: AppliedType if ref.typeSymbol.isClass => ref.typeSymbol.typeParams.map(_.name)
+            case t =>
+              println(i"parent type: $t")
+              args.map(_ => EmptyTypeName)
+
+        for case (arg: TypeTree, pname) <- args.lazyZip(paramNames) do
+          def where = if sym.exists then i" in an argument of $sym" else ""
+          val (addendum, pos) =
+            if arg.isInferred
+            then ("\nThis is often caused by a local capability$where\nleaking as part of its result.", fn.srcPos)
+            else if arg.span.exists then ("", arg.srcPos)
+            else ("", fn.srcPos)
+          disallowRootCapabilitiesIn(arg.knownType, NoSymbol,
+            i"Type variable $pname of $sym", "be instantiated to", addendum, pos)
+
+          val param = fn.symbol.paramNamed(pname)
+          if param.isUseParam then markFree(arg.knownType.deepCaptureSet, pos)
+    end disallowCapInTypeArgs
 
     override def recheckIdent(tree: Ident, pt: Type)(using Context): Type =
       val sym = tree.symbol
@@ -558,8 +564,8 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     override def prepareFunction(funtpe: MethodType, meth: Symbol)(using Context): MethodType =
       val paramInfosWithUses = funtpe.paramInfos.zipWithConserve(funtpe.paramNames): (formal, pname) =>
-        val paramOpt = meth.rawParamss.nestedFind(_.name == pname)
-        paramOpt.flatMap(_.getAnnotation(defn.UseAnnot)) match
+        val param = meth.paramNamed(pname)
+        param.getAnnotation(defn.UseAnnot) match
           case Some(ann) => AnnotatedType(formal, ann)
           case _ => formal
       funtpe.derivedLambdaType(paramInfos = paramInfosWithUses)
@@ -725,7 +731,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val meth = tree.fun match
         case fun @ Select(qual, nme.apply) => qual.symbol.orElse(fun.symbol)
         case fun => fun.symbol
-      disallowCapInTypeArgs(tree.fun, meth, tree.args, thisPhase)
+      disallowCapInTypeArgs(tree.fun, meth, tree.args)
       val res = Existential.toCap(super.recheckTypeApply(tree, pt))
       includeCallCaptures(tree.symbol, res, tree.srcPos)
       checkContains(tree)
@@ -956,7 +962,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         for case tpt: TypeTree <- impl.parents do
           tpt.tpe match
             case AppliedType(fn, args) =>
-              disallowCapInTypeArgs(tpt, fn.typeSymbol, args.map(TypeTree(_)), thisPhase)
+              disallowCapInTypeArgs(tpt, fn.typeSymbol, args.map(TypeTree(_)))
             case _ =>
         inNestedLevelUnless(cls.is(Module)):
           super.recheckClassDef(tree, impl, cls)

@@ -1064,8 +1064,9 @@ object CaptureSet:
     case ref: (TermRef | TermParamRef) if ref.isMaxCapability =>
       if ref.isTrackableRef then ref.singletonCaptureSet
       else CaptureSet.universal
-    case ReachCapability(ref1) => ref1.widen.deepCaptureSet
-      .showing(i"Deep capture set of $ref: ${ref1.widen} = $result", capt)
+    case ReachCapability(ref1) =>
+      ref1.widen.deepCaptureSet(includeTypevars = true)
+        .showing(i"Deep capture set of $ref: ${ref1.widen} = ${result}", capt)
     case _ => ofType(ref.underlying, followResult = true)
 
   /** Capture set of a type */
@@ -1120,7 +1121,7 @@ object CaptureSet:
    *  arguments. This have to be included to be conservative in dcs but must be
    *  excluded in narrowCaps.
    */
-  def ofTypeDeeply(tp: Type)(using Context): CaptureSet =
+  def ofTypeDeeply(tp: Type, includeTypevars: Boolean = false)(using Context): CaptureSet =
     val collect = new TypeAccumulator[CaptureSet]:
       val seen = util.HashSet[Symbol]()
       def apply(cs: CaptureSet, t: Type) =
@@ -1132,7 +1133,9 @@ object CaptureSet:
             this(cs, parent)
           case t: TypeRef if t.symbol.isAbstractOrParamType && !seen.contains(t.symbol) =>
             seen += t.symbol
-            this(cs, t.info.bounds.hi)
+            val upper = t.info.bounds.hi
+            if includeTypevars && upper.isExactlyAny then CaptureSet.universal
+            else this(cs, t.info.bounds.hi)
           case t @ FunctionOrMethod(args, res @ Existential(_, _))
           if args.forall(_.isAlwaysPure) =>
             this(cs, Existential.toCap(res))

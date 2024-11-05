@@ -220,8 +220,8 @@ extension (tp: Type)
    *  a singleton capability `x` or a reach capability `x*`, the deep capture
    *  set can be narrowed to`{x*}`.
    */
-  def deepCaptureSet(using Context): CaptureSet =
-    val dcs = CaptureSet.ofTypeDeeply(tp.widen.stripCapturing)
+  def deepCaptureSet(includeTypevars: Boolean)(using Context): CaptureSet =
+    val dcs = CaptureSet.ofTypeDeeply(tp.widen.stripCapturing, includeTypevars)
     if dcs.isAlwaysEmpty then tp.captureSet
     else tp match
       case tp @ ReachCapability(_) =>
@@ -230,6 +230,9 @@ extension (tp: Type)
         tp.reach.singletonCaptureSet
       case _ =>
         tp.captureSet ++ dcs
+
+  def deepCaptureSet(using Context): CaptureSet =
+    deepCaptureSet(includeTypevars = false)
 
   /** A type capturing `ref` */
   def capturing(ref: CaptureRef)(using Context): Type =
@@ -593,15 +596,25 @@ extension (sym: Symbol)
   def isRefiningParamAccessor(using Context): Boolean =
     sym.is(ParamAccessor)
     && {
-      val param = sym.owner.primaryConstructor.paramSymss
-        .nestedFind(_.name == sym.name)
-        .getOrElse(NoSymbol)
+      val param = sym.owner.primaryConstructor.paramNamed(sym.name)
       !param.hasAnnotation(defn.ConstructorOnlyAnnot)
       && !param.hasAnnotation(defn.UntrackedCapturesAnnot)
     }
 
   def hasTrackedParts(using Context): Boolean =
     !CaptureSet.ofTypeDeeply(sym.info).isAlwaysEmpty
+
+  /** `sym` is annotated @use or it is a type parameter with a matching
+   *  @use-annotated term parameter that contains `sym` in its deep capture set.
+   */
+  def isUseParam(using Context): Boolean =
+    sym.hasAnnotation(defn.UseAnnot)
+    || sym.is(TypeParam)
+        && sym.owner.rawParamss.nestedExists: param =>
+            param.is(TermParam) && param.hasAnnotation(defn.UseAnnot)
+            && param.info.deepCaptureSet.elems.exists:
+                case c: TypeRef => c.symbol == sym
+                case _ => false
 
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */

@@ -1,0 +1,19 @@
+-- Error: tests/neg-custom-args/captures/use-capset.scala:7:50 ---------------------------------------------------------
+7 |private def g[C^] = (xs: List[Object^{C^}]) => xs.head // error
+  |                                               ^^^^^^^
+  |                                               Capture set parameter C leaks into capture scope of method g.
+  |                                               To allow this, the type C should be declared with a @use annotation
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/use-capset.scala:13:22 -----------------------------------
+13 |  val _: () -> Unit = h // error: should be ->{io}
+   |                      ^
+   |                      Found:    (h : () ->{io} Unit)
+   |                      Required: () -> Unit
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/use-capset.scala:15:50 -----------------------------------
+15 |  val _: () -> List[Object^{io}] -> Object^{io} = h2 // error, should be ->{io}
+   |                                                  ^^
+   |                     Found:    () ->? (x$0: List[box Object^{io}]^{}) ->{io} (ex$13: caps.Exists) -> Object^{io}
+   |                     Required: () -> List[box Object^{io}] -> Object^{io}
+   |
+   | longer explanation available when compiling with `-explain`
