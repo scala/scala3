@@ -169,7 +169,7 @@ object report:
       if ctx.phase.isInstanceOf[plugins.PluginPhase]
       then
         s"""|  An unhandled exception was thrown in the compiler plugin named "${ctx.phase.megaPhase}".
-            |  Please file a crash report in the compiler plugin backlog.
+            |  Please report the issue to the plugin's maintainers.
             |  For non-enriched exceptions, compile with -Xno-enrich-error-messages.
             |""".stripMargin
       else
