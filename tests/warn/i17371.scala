@@ -17,7 +17,7 @@ def Test() =
 
 // unminimized OP
 trait Circular[T] extends Ordering[T]
-trait Turns[C: Circular, T] extends Ordering[T]:
+trait Turns[C: Circular, T] extends Ordering[T]: // warn Circular is not a marker interface
   extension (turns: T) def extract: C
 
 def f[K, T](start: T, end: T)(using circular: Circular[K], turns: Turns[K, T]): Boolean =
