@@ -388,6 +388,52 @@ class CheckCaptures extends Recheck, SymTransformer:
                   |To allow this, the ${ref.symbol} should be declared with a @use annotation""", pos)
           case _ =>
 
+      /** Avoid locally defined capability by charging the underlying type
+       *  (which may not be cap). This scheme applies only under the deferredReaches setting.
+       */
+      def avoidLocalCapability(c: CaptureRef, env: Env, lastEnv: Env | Null): Unit =
+        if c.isParamPath then
+          c match
+            case ReachCapability(_) | _: TypeRef =>
+              checkUseDeclared(c, env, lastEnv)
+            case _ =>
+        else
+          val underlying = c match
+            case ReachCapability(c1) =>
+              CaptureSet.ofTypeDeeply(c1.widen)
+            case _ =>
+              CaptureSet.ofType(c.widen, followResult = false)
+            capt.println(i"Widen reach $c to $underlying in ${env.owner}")
+          underlying.disallowRootCapability: () =>
+            report.error(em"Local capability $c in ${env.ownerString} cannot have `cap` as underlying capture set", pos)
+          recur(underlying, env, lastEnv)
+
+      /** Avoid locally defined capability if it is a reach capability or capture set
+       *  parameter. This is the default.
+       */
+      def avoidLocalReachCapability(c: CaptureRef, env: Env): Unit = c match
+        case ReachCapability(c1) =>
+          if c1.isParamPath then
+            checkUseDeclared(c, env, null)
+          else
+            // When a reach capabilty x* where `x` is not a parameter goes out
+            // of scope, we need to continue with `x`'s underlying deep capture set.
+            // It is an error if that set contains cap.
+            // The same is not an issue for normal capabilities since in a local
+            // definition `val x = e`, the capabilities of `e` have already been charged.
+            // Note: It's not true that the underlying capture set of a reach capability
+            // is always cap. Reach capabilities over paths depend on the prefix, which
+            // might turn a cap into something else.
+            // The path-use.scala neg test contains an example.
+            val underlying = CaptureSet.ofTypeDeeply(c1.widen)
+            capt.println(i"Widen reach $c to $underlying in ${env.owner}")
+            underlying.disallowRootCapability: () =>
+              report.error(em"Local reach capability $c leaks into capture scope of ${env.ownerString}", pos)
+            recur(underlying, env, null)
+        case c: TypeRef if c.isParamPath =>
+          checkUseDeclared(c, env, null)
+        case _ =>
+
       def recur(cs: CaptureSet, env: Env, lastEnv: Env | Null): Unit =
         if env.isOpen && !env.owner.isStaticOwner && !cs.isAlwaysEmpty then
           // Only captured references that are visible from the environment
@@ -399,45 +445,9 @@ class CheckCaptures extends Recheck, SymTransformer:
               case ref =>
                 false
             if !isVisible then
-              //println(i"out of scope: $c")
-              if ccConfig.deferredReaches then // avoid all locally bound capabilities
-                if c.isParamPath then
-                  c match
-                    case ReachCapability(_) | _: TypeRef =>
-                      checkUseDeclared(c, env, lastEnv)
-                    case _ =>
-                else
-                  val underlying = c match
-                    case ReachCapability(c1) =>
-                      CaptureSet.ofTypeDeeply(c1.widen)
-                    case _ =>
-                      CaptureSet.ofType(c.widen, followResult = false)
-                    capt.println(i"Widen reach $c to $underlying in ${env.owner}")
-                  underlying.disallowRootCapability: () =>
-                    report.error(em"Local capability $c in ${env.ownerString} cannot have `cap` as underlying capture set", pos)
-                  recur(underlying, env, lastEnv)
-              else c match // avoid only reach capabilities and capture sets
-                case ReachCapability(c1) =>
-                  if c1.isParamPath then
-                    checkUseDeclared(c, env, lastEnv)
-                  else
-                    // When a reach capabilty x* where `x` is not a parameter goes out
-                    // of scope, we need to continue with `x`'s underlying deep capture set.
-                    // It is an error if that set contains cap.
-                    // The same is not an issue for normal capabilities since in a local
-                    // definition `val x = e`, the capabilities of `e` have already been charged.
-                    // Note: It's not true that the underlying capture set of a reach capability
-                    // is always cap. Reach capabilities over paths depend on the prefix, which
-                    // might turn a cap into something else.
-                    // The path-use.scala neg test contains an example.
-                    val underlying = CaptureSet.ofTypeDeeply(c1.widen)
-                    capt.println(i"Widen reach $c to $underlying in ${env.owner}")
-                    underlying.disallowRootCapability: () =>
-                      report.error(em"Local reach capability $c leaks into capture scope of ${env.ownerString}", pos)
-                    recur(underlying, env, lastEnv)
-                case c: TypeRef if c.isParamPath =>
-                  checkUseDeclared(c, env, lastEnv)
-                case _ =>
+              if ccConfig.deferredReaches
+              then avoidLocalCapability(c, env, lastEnv)
+              else avoidLocalReachCapability(c, env)
             isVisible
           checkSubset(included, env.captured, pos, provenance(env))
           capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
