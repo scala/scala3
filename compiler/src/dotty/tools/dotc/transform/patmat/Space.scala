@@ -116,6 +116,7 @@ object SpaceEngine {
   def isSubspace(a: Space, b: Space)(using Context): Boolean = a.isSubspace(b)
   def canDecompose(typ: Typ)(using Context): Boolean         = typ.canDecompose
   def decompose(typ: Typ)(using Context): List[Typ]          = typ.decompose
+  def nullSpace(using Context): Space = Typ(ConstantType(Constant(null)), decomposed = false)
 
   /** Simplify space such that a space equal to `Empty` becomes `Empty` */
   def computeSimplify(space: Space)(using Context): Space = trace(i"simplify($space)")(space match {
@@ -335,6 +336,13 @@ object SpaceEngine {
 
     case pat: Ident if isBackquoted(pat) =>
       Typ(pat.tpe, decomposed = false)
+
+    case Ident(nme.WILDCARD) =>
+      val tp = pat.tpe.stripAnnots.widenSkolem
+      val isNullable = tp.isInstanceOf[FlexibleType] || tp.classSymbol.isNullableClass
+      val tpSpace = Typ(erase(tp, isValue = true), decomposed = false)
+      if isNullable then Or(tpSpace :: nullSpace :: Nil)
+      else tpSpace
 
     case Ident(_) | Select(_, _) =>
       Typ(erase(pat.tpe.stripAnnots.widenSkolem, isValue = true), decomposed = false)
@@ -667,7 +675,7 @@ object SpaceEngine {
           case tp                                                          => (tp, Nil)
         val (tp, typeArgs) = getAppliedClass(tpOriginal)
         // This function is needed to get the arguments of the types that will be applied to the class.
-        // This is necessary because if the arguments of the types contain Nothing, 
+        // This is necessary because if the arguments of the types contain Nothing,
         // then this can affect whether the class will be taken into account during the exhaustiveness check
         def getTypeArgs(parent: Symbol, child: Symbol, typeArgs: List[Type]): List[Type] =
           val superType = child.typeRef.superType
@@ -930,7 +938,7 @@ object SpaceEngine {
       if isNullable && !ctx.mode.is(Mode.SafeNulls)
       then project(OrType(selTyp, ConstantType(Constant(null)), soft = false))
       else project(selTyp)
-
+    var hadNullOnly = false
     @tailrec def recur(cases: List[CaseDef], prevs: List[Space], deferred: List[Tree]): Unit =
       cases match
         case Nil =>
@@ -946,11 +954,19 @@ object SpaceEngine {
 
             if pat != EmptyTree // rethrow case of catch uses EmptyTree
                 && !pat.symbol.isAllOf(SyntheticCase, butNot=Method) // ExpandSAMs default cases use SyntheticCase
-                && isSubspace(covered, prev)
             then
-              val nullOnly = isNullable && rest.isEmpty && isWildcardArg(pat)
-              val msg = if nullOnly then MatchCaseOnlyNullWarning() else MatchCaseUnreachable()
-              report.warning(msg, pat.srcPos)
+              if isSubspace(covered, prev) then
+                report.warning(MatchCaseUnreachable(), pat.srcPos)
+              else if isNullable && !hadNullOnly && isWildcardArg(pat)
+                && isSubspace(covered, Or(prev :: nullSpace :: Nil)) then
+                // Issue OnlyNull warning only if:
+                // 1. The target space is nullable;
+                // 2. OnlyNull warning has not been issued before;
+                // 3. The pattern is a wildcard pattern;
+                // 4. The pattern is not covered by the previous cases,
+                //    but covered by the previous cases with null.
+                hadNullOnly = true
+                report.warning(MatchCaseOnlyNullWarning(), pat.srcPos)
 
             // in redundancy check, take guard as false in order to soundly approximate
             val newPrev = if guard.isEmpty then covered :: prevs else prevs

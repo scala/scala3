@@ -7,7 +7,7 @@ case class CC_E(a: CC_C[Char, Byte])
 
 val v_a: T_B[Int, CC_A] = CC_B(CC_E(CC_C(null)))
 val v_b = v_a match
-  case CC_B(CC_E(CC_C(_))) => 0 // warn: unreachable
+  case CC_B(CC_E(CC_C(_))) => 0
   case _                   => 1
     // for CC_B[A, C] to match T_B[C, CC_A]
     // C <: Int, ok
