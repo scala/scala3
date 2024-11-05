@@ -298,9 +298,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
         // without having to provide any implementations, but that is an
         // illegal combination of modifiers at the bytecode level so
         // suppress final if abstract if present.
-        && !sym.isOneOf(AbstractOrTrait)
-        //  Mixin forwarders are bridges and can be final, but final bridges confuse some frameworks
-        && !sym.is(Bridge), ACC_FINAL)
+        && !sym.isOneOf(AbstractOrTrait), ACC_FINAL)
       .addFlagIf(sym.isStaticMember, ACC_STATIC)
       .addFlagIf(sym.is(Bridge), ACC_BRIDGE | ACC_SYNTHETIC)
       .addFlagIf(sym.is(Artifact), ACC_SYNTHETIC)
