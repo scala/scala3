@@ -1059,17 +1059,14 @@ class ClassfileParser(
    */
   private def enterOwnInnerClasses()(using Context, DataReader): Unit = {
     def enterClassAndModule(entry: InnerClassEntry, file: AbstractFile, jflags: Int) =
-      val (cls, mod) = SymbolLoaders.enterClassAndModule(
-          getOwner(jflags),
+      SymbolLoaders.enterClassAndModule(
+        getOwner(jflags),
         entry.originalName,
-          new ClassfileLoader(file),
-          classTranslation.flags(jflags),
-          getScope(jflags))
-
-      val privateWithin = getPrivateWithin(jflags)
-      cls.setPrivateWithin(privateWithin)
-      mod.setPrivateWithin(privateWithin)
-      mod.sourceModule.setPrivateWithin(privateWithin)
+        new ClassfileLoader(file),
+        classTranslation.flags(jflags),
+        getScope(jflags),
+        getPrivateWithin(jflags),
+      )
 
     for entry <- innerClasses.valuesIterator do
       // create a new class member for immediate inner classes
