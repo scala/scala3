@@ -1,4 +1,4 @@
-//> using options -Wunused:params -Werror
+//> using options -Wunused:params
 //
 
 import Answers._
@@ -23,7 +23,7 @@ trait BadAPI extends InterFace {
     a
   }
   override def call(a: Int,
-                    b: String,               // no warn, required by superclass
+                    b: String, // warn
                     c: Double): Int = {
     println(c)
     a
@@ -33,7 +33,7 @@ trait BadAPI extends InterFace {
 
   override def equals(other: Any): Boolean = true  // no warn
 
-  def i(implicit s: String) = answer           // yes, warn
+  def i(implicit s: String) = answer           // warn
 
   /*
   def future(x: Int): Int = {
@@ -60,7 +60,7 @@ class Revaluing(u: Int) { def f = u } // no warn
 
 case class CaseyKasem(k: Int)        // no warn
 
-case class CaseyAtTheBat(k: Int)(s: String)        // warn
+case class CaseyAtTheBat(k: Int)(s: String)        // NO warn
 
 trait Ignorance {
   def f(readResolve: Int) = answer           // warn
@@ -78,13 +78,13 @@ trait Unimplementation {
 
 trait DumbStuff {
   def f(implicit dummy: DummyImplicit) = answer
-  def g(dummy: DummyImplicit) = answer
+  def g(dummy: DummyImplicit) = answer // warn
 }
 trait Proofs {
   def f[A, B](implicit ev: A =:= B) = answer
   def g[A, B](implicit ev: A <:< B) = answer
-  def f2[A, B](ev: A =:= B) = answer
-  def g2[A, B](ev: A <:< B) = answer
+  def f2[A, B](ev: A =:= B) = answer // warn
+  def g2[A, B](ev: A <:< B) = answer // warn
 }
 
 trait Anonymous {
@@ -94,19 +94,19 @@ trait Anonymous {
 
   def f2: Int => Int = _ + 1  // no warn placeholder syntax (a fresh name and synthetic parameter)
 
-  def g = for (i <- List(1)) yield answer    // no warn patvar elaborated as map.(i => 42)
+  def g = for (i <- List(1)) yield answer    // warn // TODO no warn patvar elaborated as map.(i => 42)
 }
 trait Context[A] { def m(a: A): A = a }
 trait Implicits {
-  def f[A](implicit ctx: Context[A]) = answer
-  def g[A: Context] = answer
+  def f[A](implicit ctx: Context[A]) = answer // warn
+  def g[A: Context] = answer // warn
 }
-class Bound[A: Context]
+class Bound[A: Context] // warn
 object Answers {
   def answer: Int = 42
 }
 
-trait BadMix { _: InterFace =>
+trait BadMix { self: InterFace =>
   def f(a: Int,
         b: String,               // warn
         c: Double): Int = {
@@ -121,7 +121,7 @@ trait BadMix { _: InterFace =>
     a
   }
   override def call(a: Int,
-                    b: String,               // no warn, required by superclass
+                    XXXX: String,               // warn no longer excused because required by superclass
                     c: Double): Int = {
     println(c)
     a
@@ -131,11 +131,11 @@ trait BadMix { _: InterFace =>
 
   override def equals(other: Any): Boolean = true  // no warn
 
-  def i(implicit s: String) = answer           // yes, warn
+  def i(implicit s: String) = answer           // warn
 }
 
 class Unequal {
-  override def equals(other: Any) = toString.nonEmpty   // no warn non-trivial RHS, required by universal method
+  override def equals(other: Any) = toString.nonEmpty   // warn
 }
 
 class Seriously {
@@ -143,11 +143,11 @@ class Seriously {
 }
 
 class TryStart(start: String) {
-  def FINALLY(end: END.type) = start
+  def FINALLY(end: END.type) = start // no warn for DSL taking a singleton
 }
 
 object END
 
 class Nested {
-  @annotation.unused private def actuallyNotUsed(fresh: Int, stale: Int) = fresh
+  @annotation.unused private def actuallyNotUsed(fresh: Int, stale: Int) = fresh // no warn if owner is unused
 }

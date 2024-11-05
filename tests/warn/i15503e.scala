@@ -64,7 +64,7 @@ package foo.test.i16865:
   trait Bar extends Foo
 
   object Ex extends Bar:
-    def fn(a: Int, b: Int): Int = b + 3 // OK
+    def fn(a: Int, b: Int): Int = b + 3 // warn
 
   object Ex2 extends Bar:
-    override def fn(a: Int, b: Int): Int = b + 3 // OK
+    override def fn(a: Int, b: Int): Int = b + 3 // warn

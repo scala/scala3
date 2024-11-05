@@ -16,7 +16,7 @@ import dotty.tools.dotc.core.Types.{AnnotatedType, ClassInfo, ConstantType, Name
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.{Name, TermName, termName}
 import dotty.tools.dotc.core.NameOps.isReplWrapperName
-import dotty.tools.dotc.core.NameKinds.WildcardParamName
+import dotty.tools.dotc.core.NameKinds.{ContextFunctionParamName, WildcardParamName}
 import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol, defn, isDeprecated}
 import dotty.tools.dotc.report
 import dotty.tools.dotc.reporting.{Message, UnusedSymbol as UnusedSymbolMessage}
@@ -517,13 +517,25 @@ object CheckUnused:
               warnings.addOne(UnusedSymbol(d.namePos, d.name, WarnTypes.LocalDefs))
 
       if ctx.settings.WunusedHas.explicits then
+        def forgiven(sym: Symbol) =
+             containsSyntheticSuffix(sym)
+          || sym.owner.hasAnnotation(defn.UnusedAnnot)
+          || sym.info.isSingleton
         for d <- explicitParamInScope do
-          if !d.symbol.usedDefContains && !isUsedInPosition(d.symbol.name, d.span) && !containsSyntheticSuffix(d.symbol) then
+          if !d.symbol.usedDefContains && !isUsedInPosition(d.symbol.name, d.span) && !forgiven(d.symbol) then
             warnings.addOne(UnusedSymbol(d.namePos, d.name, WarnTypes.ExplicitParams))
 
       if ctx.settings.WunusedHas.implicits then
+        def forgiven(sym: Symbol) =
+          val dd = defn
+             sym.name.is(ContextFunctionParamName)
+          || sym.owner.hasAnnotation(defn.UnusedAnnot)
+          || sym.info.typeSymbol.match
+             case dd.DummyImplicitClass | dd.SubTypeClass | dd.SameTypeClass => true
+             case _ => false
+          || sym.info.isSingleton
         for d <- implicitParamInScope do
-          if !d.symbol.usedDefContains && !containsSyntheticSuffix(d.symbol) then
+          if !d.symbol.usedDefContains && !forgiven(d.symbol) then
             warnings.addOne(UnusedSymbol(d.namePos, d.name, WarnTypes.ImplicitParams))
 
       // Partition to extract unset private variables from usedPrivates
@@ -556,7 +568,9 @@ object CheckUnused:
     /** Heuristic to detect synthetic suffixes in names of symbols.
      */
     private def containsSyntheticSuffix(symbol: Symbol)(using Context): Boolean =
-      symbol.name.mangledString.contains("$")
+      val mangled = symbol.name.mangledString
+      val index = mangled.indexOf('$')
+      index >= 0 && !(index == mangled.length - 1 && symbol.is(Module))
 
     /**
      * Is the constructor of synthetic package object
@@ -659,8 +673,7 @@ object CheckUnused:
           owner.isPrimaryConstructor ||
           owner.isDeprecated ||
           owner.isAllOf(Synthetic | PrivateLocal) ||
-          owner.is(Accessor) ||
-          owner.isOverridden
+          owner.is(Accessor)
         }
 
       private def usedDefContains(using Context): Boolean =
@@ -669,9 +682,10 @@ object CheckUnused:
       private def everySymbol(using Context): List[Symbol] =
         List(sym, sym.companionClass, sym.companionModule, sym.moduleClass).filter(_.exists)
 
-      /** A function is overridden. Either has `override flags` or parent has a matching member (type and name) */
+      /** A function is overridden. Either has `override flags` or parent has a matching member (type and name)
       private def isOverridden(using Context): Boolean =
         sym.is(Flags.Override) || (sym.exists && sym.owner.thisType.parents.exists(p => sym.matchingMember(p).exists))
+       */
 
     end extension
 
@@ -688,7 +702,7 @@ object CheckUnused:
             case ConstantType(_) => true
             case tp: TermRef =>
               // Detect Scala 2 SingleType
-              tp.underlying.classSymbol.is(Flags.Module)
+              tp.underlying.classSymbol.is(Module)
             case _ =>
               false
       def registerTrivial(using Context): Unit =
