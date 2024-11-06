@@ -5,7 +5,6 @@ package core
 import Symbols.*, Types.*, Contexts.*, Flags.*, Names.*, StdNames.*, Phases.*
 import Flags.JavaDefined
 import Uniques.unique
-import TypeOps.makePackageObjPrefixExplicit
 import backend.sjs.JSDefinitions
 import transform.ExplicitOuter.*
 import transform.ValueClasses.*
