@@ -102,15 +102,15 @@ object Build {
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
    *  Should be updated ONLY after release or cutoff for previous release cycle.
-   *  
-   *  Should only be referred from `dottyVersion` or settings/tasks requiring simplified version string, 
+   *
+   *  Should only be referred from `dottyVersion` or settings/tasks requiring simplified version string,
    *  eg. `compatMode` or Windows native distribution version.
    */
-  val developedVersion = "3.6.2"
+  val developedVersion = "3.6.3"
 
-  /** The version of the compiler including the RC prefix. 
+  /** The version of the compiler including the RC prefix.
    *  Defined as common base before calculating environment specific suffixes in `dottyVersion`
-   * 
+   *
    *  By default, during development cycle defined as `${developedVersion}-RC1`;
    *  During release candidate cycle incremented by the release officer before publishing a subsequent RC version;
    *  During final, stable release is set exactly to `developedVersion`.
