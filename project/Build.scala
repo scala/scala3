@@ -93,9 +93,39 @@ object Build {
 
   val referenceVersion = "3.5.2"
 
-  val baseVersion = "3.6.2"
-  // Will be required by some automation later
-  // val prereleaseVersion = s"$baseVersion-RC1"
+  /** Version of the Scala compiler targeted in the current release cycle
+   *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
+   *  Should be updated ONLY after release or cutoff for previous release cycle.
+   *
+   *  Should only be referred from `dottyVersion` or settings/tasks requiring simplified version string,
+   *  eg. `compatMode` or Windows native distribution version.
+   */
+  val developedVersion = "3.6.2"
+
+  /** The version of the compiler including the RC prefix.
+   *  Defined as common base before calculating environment specific suffixes in `dottyVersion`
+   *
+   *  By default, during development cycle defined as `${developedVersion}-RC1`;
+   *  During release candidate cycle incremented by the release officer before publishing a subsequent RC version;
+   *  During final, stable release is set exactly to `developedVersion`.
+  */
+  val baseVersion = s"$developedVersion-RC1"
+
+  /** Final version of Scala compiler, controlled by environment variables. */
+  val dottyVersion = {
+    if (isRelease) baseVersion
+    else if (isNightly) s"${baseVersion}-bin-${VersionUtil.commitDate}-${VersionUtil.gitHash}-NIGHTLY"
+    else s"${baseVersion}-bin-SNAPSHOT"
+  }
+  def isRelease = sys.env.get("RELEASEBUILD").contains("yes")
+  def isNightly = sys.env.get("NIGHTLYBUILD").contains("yes")
+
+  /** Version calculate for `nonbootstrapped` projects */
+  val dottyNonBootstrappedVersion = {
+    // Make sure sbt always computes the scalaBinaryVersion correctly
+    val bin = if (!dottyVersion.contains("-bin")) "-bin" else ""
+    dottyVersion + bin + "-nonbootstrapped"
+  }
 
   // LTS or Next
   val versionLine = "Next"
@@ -110,7 +140,7 @@ object Build {
   /** Minor version against which we check binary compatibility.
    *
    *  This must be the earliest published release in the same versioning line.
-   *  For a baseVersion `3.M.P` the mimaPreviousDottyVersion should be set to:
+   *  For a developedVersion `3.M.P` the mimaPreviousDottyVersion should be set to:
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
    */
@@ -136,7 +166,7 @@ object Build {
 
   val compatMode = {
     val VersionRE = """^\d+\.(\d+)\.(\d+)""".r
-    baseVersion match {
+    developedVersion match {
       case VersionRE(_, "0")   => CompatMode.BinaryCompatible
       case _                   => CompatMode.SourceAndBinaryCompatible
     }
@@ -165,24 +195,6 @@ object Build {
   val dottyOrganization = "org.scala-lang"
   val dottyGithubUrl = "https://github.com/scala/scala3"
   val dottyGithubRawUserContentUrl = "https://raw.githubusercontent.com/scala/scala3"
-
-
-  val isRelease = sys.env.get("RELEASEBUILD") == Some("yes")
-
-  val dottyVersion = {
-    def isNightly = sys.env.get("NIGHTLYBUILD") == Some("yes")
-    if (isRelease)
-      baseVersion
-    else if (isNightly)
-      baseVersion + "-RC1-bin-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash + "-NIGHTLY"
-    else
-      baseVersion + "-RC1-bin-SNAPSHOT"
-  }
-  val dottyNonBootstrappedVersion = {
-    // Make sure sbt always computes the scalaBinaryVersion correctly
-    val bin = if (!dottyVersion.contains("-bin")) "-bin" else ""
-    dottyVersion + bin + "-nonbootstrapped"
-  }
 
   val sbtCommunityBuildVersion = "0.1.0-SNAPSHOT"
 
@@ -2235,6 +2247,9 @@ object Build {
     )
     .settings(
       Windows / name := "scala",
+      // Windows/version is used to create ProductInfo - it requires a version without any -RC suffixes
+      // If not explicitly overriden it would try to use `dottyVersion` assigned to `dist-win-x86_64/version`
+      Windows / version    := developedVersion,
       Windows / mappings   := (Universal / mappings).value,
       Windows / packageBin := (Windows / packageBin).dependsOn(republish).value,
       Windows / wixFiles   := (Windows / wixFiles).dependsOn(republish).value,
