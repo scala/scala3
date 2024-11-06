@@ -1,0 +1,12 @@
+-- [E040] Syntax Error: tests/neg/i20511.scala:7:19 --------------------------------------------------------------------
+7 |export toppingPrice, crustPrice // error // error
+  |                   ^
+  |                   '.' expected, but ',' found
+-- [E040] Syntax Error: tests/neg/i20511.scala:8:0 ---------------------------------------------------------------------
+8 |val i = 1 // error
+  |^^^
+  |'.' expected, but 'end of statement' found
+-- Error: tests/neg/i20511.scala:7:21 ----------------------------------------------------------------------------------
+7 |export toppingPrice, crustPrice // error // error
+  |                     ^^^^^^^^^^
+  |                     Export selector must have prefix and `.`

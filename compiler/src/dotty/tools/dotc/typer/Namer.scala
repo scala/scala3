@@ -1111,7 +1111,7 @@ class Namer { typer: Typer =>
     private def exportForwarders(exp: Export, pathMethod: Symbol)(using Context): List[tpd.MemberDef] =
       val buf = new mutable.ListBuffer[tpd.MemberDef]
       val Export(expr, selectors) = exp
-      if expr.isEmpty then
+      if expr.isEmpty || selectors.exists(_.imported.name == nme.ERROR) then
         report.error(em"Export selector must have prefix and `.`", exp.srcPos)
         return Nil
 
