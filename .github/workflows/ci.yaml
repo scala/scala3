@@ -1093,7 +1093,7 @@ jobs:
           asset_content_type: text/plain
 
       - name: Publish Release
-        run: ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleRelease"
+        run: ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleUpload"
 
 
   open_issue_on_failure:
@@ -1125,7 +1125,7 @@ jobs:
     needs: [build-msi-package]
     with:
       # Ensure that version starts with prefix 3.
-      # In the future it can be adapted to compare with with git tag or version set in the build.s 
+      # In the future it can be adapted to compare with with git tag or version set in the project/Build.scala
       version: "3."
       java-version: 8
 
