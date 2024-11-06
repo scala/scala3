@@ -518,6 +518,22 @@ object Parsers {
         tree
     }
 
+    def makePolyFunction(tparams: List[Tree], body: Tree,
+        kind: String, errorTree: => Tree,
+        start: Offset, arrowOffset: Offset): Tree =
+      atSpan(start, arrowOffset):
+        getFunction(body) match
+          case None =>
+            syntaxError(em"Implementation restriction: polymorphic function ${kind}s must have a value parameter", arrowOffset)
+            errorTree
+          case Some(Function(_, _: CapturesAndResult)) =>
+            // A function tree like this will be desugared
+            // into a capturing type in the typer.
+            syntaxError(em"Implementation restriction: polymorphic function types cannot wrap function types that have capture sets", arrowOffset)
+            errorTree
+          case Some(f) =>
+            PolyFunction(tparams, body)
+
 /* --------------- PLACEHOLDERS ------------------------------------------- */
 
     /** The implicit parameters introduced by `_` in the current expression.
@@ -1534,35 +1550,32 @@ object Parsers {
     /** Same as [[typ]], but if this results in a wildcard it emits a syntax error and
      *  returns a tree for type `Any` instead.
      */
-    def toplevelTyp(intoOK: IntoOK = IntoOK.No): Tree = rejectWildcardType(typ(intoOK))
+    def toplevelTyp(intoOK: IntoOK = IntoOK.No, inContextBound: Boolean = false): Tree =
+      rejectWildcardType(typ(intoOK, inContextBound))
 
     private def getFunction(tree: Tree): Option[Function] = tree match {
       case Parens(tree1) => getFunction(tree1)
       case Block(Nil, tree1) => getFunction(tree1)
-      case Function(_, _: CapturesAndResult) =>
-        // A function tree like this will be desugared
-        // into a capturing type in the typer,
-        // so None is returned.
-        None
       case t: Function => Some(t)
       case _ => None
     }
 
-    /** CaptureRef  ::=  ident [`*` | `^`] | `this`
+    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`]
+     *                |  [ { SimpleRef `.` } SimpleRef `.` ] id `^`
      */
     def captureRef(): Tree =
-      if in.token == THIS then simpleRef()
-      else
-        val id = termIdent()
-        if isIdent(nme.raw.STAR) then
-          in.nextToken()
-          atSpan(startOffset(id)):
-            PostfixOp(id, Ident(nme.CC_REACH))
-        else if isIdent(nme.UPARROW) then
-          in.nextToken()
-          atSpan(startOffset(id)):
-            makeCapsOf(cpy.Ident(id)(id.name.toTypeName))
-        else id
+      val ref = dotSelectors(simpleRef())
+      if isIdent(nme.raw.STAR) then
+        in.nextToken()
+        atSpan(startOffset(ref)):
+          PostfixOp(ref, Ident(nme.CC_REACH))
+      else if isIdent(nme.UPARROW) then
+        in.nextToken()
+        atSpan(startOffset(ref)):
+          convertToTypeId(ref) match
+            case ref: RefTree => makeCapsOf(ref)
+            case ref => ref
+      else ref
 
     /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking
      */
@@ -1594,7 +1607,7 @@ object Parsers {
      *  IntoTargetType ::=  Type
      *                   |  FunTypeArgs (‘=>’ | ‘?=>’) IntoType
      */
-    def typ(intoOK: IntoOK = IntoOK.No): Tree =
+    def typ(intoOK: IntoOK = IntoOK.No, inContextBound: Boolean = false): Tree =
       val start = in.offset
       var imods = Modifiers()
       val erasedArgs: ListBuffer[Boolean] = ListBuffer()
@@ -1743,7 +1756,7 @@ object Parsers {
             val tuple = atSpan(start):
               makeTupleOrParens(args.mapConserve(convertToElem))
             typeRest:
-              infixTypeRest:
+              infixTypeRest(inContextBound):
                 refinedTypeRest:
                   withTypeRest:
                     annotTypeRest:
@@ -1757,13 +1770,7 @@ object Parsers {
         else if in.token == ARROW || isPureArrow(nme.PUREARROW) then
           val arrowOffset = in.skipToken()
           val body = toplevelTyp(nestedIntoOK(in.token))
-          atSpan(start, arrowOffset):
-            getFunction(body) match
-              case Some(f) =>
-                PolyFunction(tparams, body)
-              case None =>
-                syntaxError(em"Implementation restriction: polymorphic function types must have a value parameter", arrowOffset)
-                Ident(nme.ERROR.toTypeName)
+          makePolyFunction(tparams, body, "type", Ident(nme.ERROR.toTypeName), start, arrowOffset)
         else
           accept(TLARROW)
           typ()
@@ -1772,7 +1779,7 @@ object Parsers {
       else if isIntoPrefix then
         PrefixOp(typeIdent(), typ(IntoOK.Nested))
       else
-        typeRest(infixType())
+        typeRest(infixType(inContextBound))
     end typ
 
     private def makeKindProjectorTypeDef(name: TypeName): TypeDef = {
@@ -1827,13 +1834,13 @@ object Parsers {
     /** InfixType ::= RefinedType {id [nl] RefinedType}
      *             |  RefinedType `^`   // under capture checking
      */
-    def infixType(): Tree = infixTypeRest(refinedType())
+    def infixType(inContextBound: Boolean = false): Tree = infixTypeRest(inContextBound)(refinedType())
 
-    def infixTypeRest(t: Tree, operand: Location => Tree = refinedTypeFn): Tree =
+    def infixTypeRest(inContextBound: Boolean = false)(t: Tree, operand: Location => Tree = refinedTypeFn): Tree =
       infixOps(t, canStartInfixTypeTokens, operand, Location.ElseWhere, ParseKind.Type,
         isOperator = !followingIsVararg()
                      && !isPureArrow
-                     && !(isIdent(nme.as) && sourceVersion.isAtLeast(`3.6`))
+                     && !(isIdent(nme.as) && sourceVersion.isAtLeast(`3.6`) && inContextBound)
                      && nextCanFollowOperator(canStartInfixTypeTokens))
 
     /** RefinedType   ::=  WithType {[nl] Refinement} [`^` CaptureSet]
@@ -2224,7 +2231,7 @@ object Parsers {
 
     /** ContextBound      ::=  Type [`as` id] */
     def contextBound(pname: TypeName): Tree =
-      val t = toplevelTyp()
+      val t = toplevelTyp(inContextBound = true)
       val ownName =
         if isIdent(nme.as) && sourceVersion.isAtLeast(`3.6`) then
           in.nextToken()
@@ -2360,14 +2367,7 @@ object Parsers {
           val tparams = typeParamClause(ParamOwner.Type)
           val arrowOffset = accept(ARROW)
           val body = expr(location)
-          atSpan(start, arrowOffset) {
-            getFunction(body) match
-              case Some(f) =>
-                PolyFunction(tparams, f)
-              case None =>
-                syntaxError(em"Implementation restriction: polymorphic function literals must have a value parameter", arrowOffset)
-                errorTermTree(arrowOffset)
-          }
+          makePolyFunction(tparams, body, "literal", errorTermTree(arrowOffset), start, arrowOffset)
         case _ =>
           val saved = placeholderParams
           placeholderParams = Nil
@@ -4209,7 +4209,7 @@ object Parsers {
         else constrApp() match
           case parent: Apply => parent :: moreConstrApps()
           case parent if in.isIdent && newSyntaxAllowed =>
-            infixTypeRest(parent, _ => annotType1()) :: Nil
+            infixTypeRest()(parent, _ => annotType1()) :: Nil
           case parent => parent :: moreConstrApps()
 
       // The term parameters and parent references */

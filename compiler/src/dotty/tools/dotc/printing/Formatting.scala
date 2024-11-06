@@ -115,6 +115,7 @@ object Formatting {
       given Show[Char]                                = ShowAny
       given Show[Boolean]                             = ShowAny
       given Show[Integer]                             = ShowAny
+      given Show[Long]                                = ShowAny
       given Show[String]                              = ShowAny
       given Show[Class[?]]                            = ShowAny
       given Show[Throwable]                           = ShowAny
@@ -122,6 +123,7 @@ object Formatting {
       given Show[CompilationUnit]                     = ShowAny
       given Show[Phases.Phase]                        = ShowAny
       given Show[TyperState]                          = ShowAny
+      given Show[Unit]                                = ShowAny
       given Show[config.ScalaVersion]                 = ShowAny
       given Show[io.AbstractFile]                     = ShowAny
       given Show[parsing.Scanners.Scanner]            = ShowAny

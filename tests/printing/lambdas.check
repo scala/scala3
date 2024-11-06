@@ -1,0 +1,30 @@
+[[syntax trees at end of                     typer]] // tests/printing/lambdas.scala
+package <empty> {
+  final lazy module val Main: Main = new Main()
+  final module class Main() extends Object() { this: Main.type =>
+    val f1: Int => Int = (x: Int) => x.+(1)
+    val f2: (Int, Int) => Int = (x: Int, y: Int) => x.+(y)
+    val f3: Int => Int => Int = (x: Int) => (y: Int) => x.+(y)
+    val f4: [T] => (x: Int) => Int = [T >: Nothing <: Any] => (x: Int) => x.+(1)
+    val f5: [T] => (x: Int) => Int => Int = [T >: Nothing <: Any] => (x: Int)
+       => (y: Int) => x.+(y)
+    val f6: Int => Int = (x: Int) =>
+      {
+        val x2: Int = x.+(1)
+        x2.+(1)
+      }
+    def f7(x: Int): Int = x.+(1)
+    val f8: Int => Int = (x: Int) => Main.f7(x)
+    val l: List[Int] = List.apply[Int]([1,2,3 : Int]*)
+    Main.l.map[Int]((_$1: Int) => _$1.+(1))
+    Main.l.map[Int]((x: Int) => x.+(1))
+    Main.l.map[Int]((x: Int) =>
+      {
+        val x2: Int = x.+(1)
+        x2.+(1)
+      }
+    )
+    Main.l.map[Int]((x: Int) => Main.f7(x))
+  }
+}
+

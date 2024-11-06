@@ -3196,9 +3196,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       cls.is(Sealed) && !cls.hasAnonymousChild
 
     def decompose(cls: Symbol): List[Symbol] =
-      cls.children.map { child =>
-        if child.isTerm then child.info.classSymbol
-        else child
+      cls.children.flatMap { child =>
+        if child.isTerm then
+          child.info.classSymbols // allow enum vals to be decomposed to their enum class (then filtered out) and any mixins
+        else child :: Nil
       }.filter(child => child.exists && child != cls)
 
     def eitherDerivesFromOther(cls1: Symbol, cls2: Symbol): Boolean =

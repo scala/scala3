@@ -61,18 +61,19 @@ trait CaptureRef extends TypeProxy, ValueType:
     case tp: TermParamRef => tp.underlying.derivesFrom(defn.Caps_Exists)
     case _ => false
 
-  /** Normalize reference so that it can be compared with `eq` for equality */
-  final def normalizedRef(using Context): CaptureRef = this match
-    case tp @ AnnotatedType(parent: CaptureRef, annot) if tp.isTrackableRef =>
-      tp.derivedAnnotatedType(parent.normalizedRef, annot)
-    case tp: TermRef if tp.isTrackableRef =>
-      tp.symbol.termRef
-    case _ => this
+  // With the support of pathes, we don't need to normalize the `TermRef`s anymore.
+  // /** Normalize reference so that it can be compared with `eq` for equality */
+  // final def normalizedRef(using Context): CaptureRef = this match
+  //   case tp @ AnnotatedType(parent: CaptureRef, annot) if tp.isTrackableRef =>
+  //     tp.derivedAnnotatedType(parent.normalizedRef, annot)
+  //   case tp: TermRef if tp.isTrackableRef =>
+  //     tp.symbol.termRef
+  //   case _ => this
 
   /** The capture set consisting of exactly this reference */
   final def singletonCaptureSet(using Context): CaptureSet.Const =
     if mySingletonCaptureSet == null then
-      mySingletonCaptureSet = CaptureSet(this.normalizedRef)
+      mySingletonCaptureSet = CaptureSet(this)
     mySingletonCaptureSet.uncheckedNN
 
   /** The capture set of the type underlying this reference */
@@ -97,27 +98,51 @@ trait CaptureRef extends TypeProxy, ValueType:
    *   x subsumes y  ==>  x* subsumes y, x subsumes y?
    *   x subsumes y  ==>  x* subsumes y*, x? subsumes y?
    *   x: x1.type /\ x1 subsumes y  ==>  x subsumes y
+   *   TODO: Document path cases
    */
   final def subsumes(y: CaptureRef)(using Context): Boolean =
+
+    def subsumingRefs(x: Type, y: Type): Boolean = x match
+      case x: CaptureRef => y match
+        case y: CaptureRef => x.subsumes(y)
+        case _ => false
+      case _ => false
+
+    def viaInfo(info: Type)(test: Type => Boolean): Boolean = info.match
+      case info: SingletonCaptureRef => test(info)
+      case info: AndType => viaInfo(info.tp1)(test) || viaInfo(info.tp2)(test)
+      case info: OrType => viaInfo(info.tp1)(test) && viaInfo(info.tp2)(test)
+      case _ => false
+
     (this eq y)
     || this.isRootCapability
     || y.match
         case y: TermRef =>
-          (y.prefix eq this)
-          || y.info.match
-              case y1: SingletonCaptureRef => this.subsumes(y1)
+            y.prefix.match
+              case ypre: CaptureRef =>
+                this.subsumes(ypre)
+                || this.match
+                    case x @ TermRef(xpre: CaptureRef, _) if x.symbol == y.symbol =>
+                      // To show `{x.f} <:< {y.f}`, it is important to prove `x` and `y`
+                      // are equvalent, which means `x =:= y` in terms of subtyping,
+                      // not just `{x} =:= {y}` in terms of subcapturing.
+                      // It is possible to construct two singleton types `x` and `y`,
+                      // which subsume each other, but are not equal references.
+                      // See `tests/neg-custom-args/captures/path-prefix.scala` for example.
+                      withMode(Mode.IgnoreCaptures) {TypeComparer.isSameRef(xpre, ypre)}
+                    case _ =>
+                      false
               case _ => false
+          || viaInfo(y.info)(subsumingRefs(this, _))
         case MaybeCapability(y1) => this.stripMaybe.subsumes(y1)
         case _ => false
     || this.match
         case ReachCapability(x1) => x1.subsumes(y.stripReach)
-        case x: TermRef =>
-          x.info match
-            case x1: SingletonCaptureRef => x1.subsumes(y)
-            case _ => false
+        case x: TermRef => viaInfo(x.info)(subsumingRefs(_, y))
         case x: TermParamRef => subsumesExistentially(x, y)
         case x: TypeRef => assumedContainsOf(x).contains(y)
         case _ => false
+  end subsumes
 
   def assumedContainsOf(x: TypeRef)(using Context): SimpleIdentitySet[CaptureRef] =
     CaptureSet.assumedContains.getOrElse(x, SimpleIdentitySet.empty)

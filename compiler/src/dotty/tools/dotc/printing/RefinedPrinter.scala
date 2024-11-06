@@ -17,6 +17,7 @@ import Denotations.*
 import SymDenotations.*
 import StdNames.{nme, tpnme}
 import ast.{Trees, tpd, untpd}
+import tpd.closureDef
 import typer.{Implicits, Namer, Applications}
 import typer.ProtoTypes.*
 import Trees.*
@@ -510,6 +511,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toText(name) ~ (if name.isTermName && arg.isType then " : " else " = ") ~ toText(arg)
       case Assign(lhs, rhs) =>
         changePrec(GlobalPrec) { toTextLocal(lhs) ~ " = " ~ toText(rhs) }
+      case closureDef(meth) if !printDebug =>
+        withEnclosingDef(meth):
+          meth.paramss.map(paramsText).foldRight(toText(meth.rhs))(_ ~ " => " ~ _)
       case block: Block =>
         blockToText(block)
       case If(cond, thenp, elsep) =>
@@ -1121,6 +1125,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         recur(fn) ~ "(" ~ toTextGlobal(explicitArgs, ", ") ~ ")"
       case TypeApply(fn, args) => recur(fn) ~ "[" ~ toTextGlobal(args, ", ") ~ "]"
       case Select(qual, nme.CONSTRUCTOR) => recur(qual)
+      case id @ Ident(tpnme.BOUNDTYPE_ANNOT) => "@" ~ toText(id.symbol.name)
       case New(tpt) => recur(tpt)
       case _ =>
         val annotSym = sym.orElse(tree.symbol.enclosingClass)

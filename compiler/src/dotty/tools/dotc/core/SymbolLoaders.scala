@@ -337,7 +337,7 @@ abstract class SymbolLoader extends LazyType { self =>
     val sym = root.symbol
     def associatedFile = root.symbol.associatedFile match
       case file: AbstractFile => file
-      case _ => NoAbstractFile
+      case null => NoAbstractFile
     ctx.profiler.onCompletion(sym, associatedFile)(body)
   }
 
