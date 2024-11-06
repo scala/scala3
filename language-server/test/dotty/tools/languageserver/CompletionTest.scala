@@ -987,7 +987,7 @@ class CompletionTest {
 
   @Test def importAnnotationAfterImport : Unit =
     code"""import java.lang.annotation; import annot${m1}"""
-      .completion(("annotation", Module, "scala.annotation"))
+      .completion(("annotation", Module, "java.lang.annotation"))
 
   @Test def completeTemplateConstrArgType: Unit = {
     code"""import scala.concurrent.Future
