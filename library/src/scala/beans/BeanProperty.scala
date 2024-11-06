@@ -27,6 +27,11 @@ import scala.annotation.meta.{beanGetter, beanSetter, field}
  *  }}}
  *  For fields of type `Boolean`, if you need a getter named `isStatus`,
  *  use the `scala.beans.BooleanBeanProperty` annotation instead.
+ *
+ *  In Scala 2, the added methods are visible from both Scala and Java.
+ *
+ *  In Scala 3, that has changed. The added methods are only visible from
+ *  Java (including via Java reflection).
  */
 @field @beanGetter @beanSetter
 @deprecatedInheritance("Scheduled for being final in the future", "2.13.0")
