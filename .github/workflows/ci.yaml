@@ -1093,7 +1093,7 @@ jobs:
           asset_content_type: text/plain
 
       - name: Publish Release
-        run: ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeCentralUpload"
+        run: ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleUpload"
 
 
   open_issue_on_failure:
