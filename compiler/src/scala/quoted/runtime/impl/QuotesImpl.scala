@@ -406,6 +406,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         case x: (tpd.NamedArg & x.type) => Some(x)
         case x: (tpd.Typed & x.type) =>
           TypedTypeTest.unapply(x) // Matches `Typed` but not `TypedOrTest`
+        case x: (tpd.TypeDef & x.type) => Some(x)
         case _ => if x.isTerm then Some(x) else None
     end TermTypeTest
 
@@ -2669,10 +2670,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         for sym <- decls(cls) do cls.enter(sym)
         cls
 
-      def newClass(parent: Symbol, name: String, parents: List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr], paramNames: List[String], paramTypes: List[TypeRepr], flags: Flags, privateWithin: Symbol): Symbol =
-        assert(parents.nonEmpty && !parents.head.typeSymbol.is(dotc.core.Flags.Trait), "First parent must be a class")
+      def newClass(parent: Symbol, name: String, parents: Symbol => List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr], paramNames: List[String], paramTypes: List[TypeRepr], flags: Flags, privateWithin: Symbol): Symbol =
         checkValidFlags(flags.toTermFlags, Flags.validClassFlags)
-        val cls = dotc.core.Symbols.newNormalizedClassSymbol(
+        assert(!privateWithin.exists || privateWithin.isType, "privateWithin must be a type symbol or `Symbol.noSymbol`")
+        val cls = dotc.core.Symbols.newNormalizedClassSymbolUsingClassSymbolinParents(
           parent,
           name.toTypeName,
           flags,
@@ -2685,10 +2686,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         for sym <- decls(cls) do cls.enter(sym)
         cls
 
-      def newModule(owner: Symbol, name: String, modFlags: Flags, clsFlags: Flags, parents: List[TypeRepr], decls: Symbol => List[Symbol], privateWithin: Symbol): Symbol =
-        assert(parents.nonEmpty && !parents.head.typeSymbol.is(dotc.core.Flags.Trait), "First parent must be a class")
+      def newModule(owner: Symbol, name: String, modFlags: Flags, clsFlags: Flags, parents: Symbol => List[TypeRepr], decls: Symbol => List[Symbol], privateWithin: Symbol): Symbol =
+        // assert(parents.nonEmpty && !parents.head.typeSymbol.is(dotc.core.Flags.Trait), "First parent must be a class")
         assert(!privateWithin.exists || privateWithin.isType, "privateWithin must be a type symbol or `Symbol.noSymbol`")
-        val mod = dotc.core.Symbols.newNormalizedModuleSymbol(
+        val mod = dotc.core.Symbols.newNormalizedModuleSymbolUsingClassSymbolInParents(
           owner,
           name.toTermName,
           modFlags | dotc.core.Flags.ModuleValCreationFlags,

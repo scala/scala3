@@ -629,6 +629,30 @@ object Symbols extends SymUtils {
     newClassSymbol(owner, name, flags, completer, privateWithin, coord, compUnitInfo)
   }
 
+  /** Same as `newNormalizedClassSymbol` except that `parents` can be a function returning a list of arbitrary
+   *  types which get normalized into type refs and parameter bindings.
+   */
+  def newNormalizedClassSymbolUsingClassSymbolinParents(
+      owner: Symbol,
+      name: TypeName,
+      flags: FlagSet,
+      parentTypes: Symbol => List[Type],
+      selfInfo: Type = NoType,
+      privateWithin: Symbol = NoSymbol,
+      coord: Coord = NoCoord,
+      compUnitInfo: CompilationUnitInfo | Null = null)(using Context): ClassSymbol = {
+    def completer = new LazyType {
+      def complete(denot: SymDenotation)(using Context): Unit = {
+        val cls = denot.asClass.classSymbol
+        val decls = newScope
+        val parents = parentTypes(cls).map(_.dealias)
+        assert(parents.nonEmpty && !parents.head.typeSymbol.is(dotc.core.Flags.Trait), "First parent must be a class")
+        denot.info = ClassInfo(owner.thisType, cls, parents, decls, selfInfo)
+      }
+    }
+    newClassSymbol(owner, name, flags, completer, privateWithin, coord, compUnitInfo)
+  }
+
   def newRefinedClassSymbol(coord: Coord = NoCoord)(using Context): ClassSymbol =
     newCompleteClassSymbol(ctx.owner, tpnme.REFINE_CLASS, NonMember, parents = Nil, newScope, coord = coord)
 
@@ -698,6 +722,34 @@ object Symbols extends SymUtils {
         val cls = denot.asClass.classSymbol
         val decls = newScope
         denot.info = ClassInfo(owner.thisType, cls, parentTypes.map(_.dealias), decls, TermRef(owner.thisType, module))
+      }
+    }
+    newModuleSymbol(
+        owner, name, modFlags, clsFlags,
+        (module, modcls) => completer(module),
+        privateWithin, coord, compUnitInfo)
+  }
+
+  /** Same as `newNormalizedModuleSymbol` except that `parents` can be a function returning a list of arbitrary
+   *  types which get normalized into type refs and parameter bindings.
+   */
+  def newNormalizedModuleSymbolUsingClassSymbolInParents(
+      owner: Symbol,
+      name: TermName,
+      modFlags: FlagSet,
+      clsFlags: FlagSet,
+      parentTypes: ClassSymbol => List[Type],
+      decls: Scope,
+      privateWithin: Symbol = NoSymbol,
+      coord: Coord = NoCoord,
+      compUnitInfo: CompilationUnitInfo | Null = null)(using Context): TermSymbol = {
+    def completer(module: Symbol) = new LazyType {
+      def complete(denot: SymDenotation)(using Context): Unit = {
+        val cls = denot.asClass.classSymbol
+        val decls = newScope
+        val parents = parentTypes(cls)
+        assert(parents.nonEmpty && !parents.head.typeSymbol.is(dotc.core.Flags.Trait), "First parent must be a class")
+        denot.info = ClassInfo(owner.thisType, cls, parents.map(_.dealias), decls, TermRef(owner.thisType, module))
       }
     }
     newModuleSymbol(
