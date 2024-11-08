@@ -5,7 +5,6 @@ import scala.annotation.internal.sharable
 // Based on NameTransformer but dedicated for JSON encoding rules
 object JsonNameTransformer {
   private val nops = 128
-  private val ncodes = 26 * 26
 
   @sharable private val op2code = new Array[String](nops)
   private def enterOp(op: Char, code: String) = op2code(op.toInt) = code
