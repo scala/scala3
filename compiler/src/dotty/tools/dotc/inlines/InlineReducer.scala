@@ -198,7 +198,7 @@ class InlineReducer(inliner: Inliner)(using Context):
         val evTyper = new Typer(ctx.nestingLevel + 1)
         val evCtx = ctx.fresh.setTyper(evTyper)
         inContext(evCtx) {
-          val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)
+          val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span, ignored = Set.empty)
           evidence.tpe match {
             case fail: Implicits.AmbiguousImplicits =>
               report.error(evTyper.missingArgMsg(evidence, tpt.tpe, ""), tpt.srcPos)

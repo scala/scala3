@@ -3705,6 +3705,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       *  @param tpe type of the implicit parameter
       */
       def search(tpe: TypeRepr): ImplicitSearchResult
+
+      @experimental def searchIgnoring(tpe: TypeRepr)(ignored: Symbol*): ImplicitSearchResult
     }
 
     /** Result of a given instance search */

@@ -1107,7 +1107,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case Decimal => defn.FromDigits_DecimalClass
           case Floating => defn.FromDigits_FloatingClass
         }
-        inferImplicit(fromDigitsCls.typeRef.appliedTo(target), EmptyTree, tree.span) match {
+        inferImplicit(fromDigitsCls.typeRef.appliedTo(target), EmptyTree, tree.span, ignored = Set.empty) match {
           case SearchSuccess(arg, _, _, _) =>
             val fromDigits = untpd.Select(untpd.TypedSplice(arg), nme.fromDigits).withSpan(tree.span)
             val firstArg = Literal(Constant(digits))
@@ -1282,7 +1282,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def withTag(tpe: Type): Option[Tree] = {
       require(ctx.mode.is(Mode.Pattern))
       withoutMode(Mode.Pattern)(
-        inferImplicit(tpe, EmptyTree, tree.tpt.span)
+        inferImplicit(tpe, EmptyTree, tree.tpt.span, ignored = Set.empty)
       ) match
         case SearchSuccess(clsTag, _, _, _) =>
           withMode(Mode.InTypeTest) {
@@ -4201,7 +4201,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 else formals1
               implicitArgs(formals2, argIndex + 1, pt)
 
-            val arg = inferImplicitArg(formal, tree.span.endPos)
+            val arg = inferImplicitArg(formal, tree.span.endPos, ignored = Set.empty)
             arg.tpe match
               case failed: AmbiguousImplicits =>
                 val pt1 = pt.deepenProtoTrans

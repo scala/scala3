@@ -662,7 +662,7 @@ object Completion:
      */
     private def implicitConversionTargets(qual: tpd.Tree)(using Context): Set[SearchSuccess] = {
       val typer = ctx.typer
-      val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.span).allImplicits
+      val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.span, Set.empty).allImplicits
 
       interactiv.println(i"implicit conversion targets considered: ${conversions.toList}%, %")
       conversions

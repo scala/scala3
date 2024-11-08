@@ -506,7 +506,7 @@ object Inlines:
           val evTyper = new Typer(ctx.nestingLevel + 1)
           val evCtx = ctx.fresh.setTyper(evTyper)
           inContext(evCtx) {
-            val evidence = evTyper.inferImplicitArg(tpe, callTypeArgs.head.span)
+            val evidence = evTyper.inferImplicitArg(tpe, callTypeArgs.head.span, ignored = Set.empty)
             evidence.tpe match
               case fail: Implicits.SearchFailureType =>
                 errorTree(call, evTyper.missingArgMsg(evidence, tpe, ""))

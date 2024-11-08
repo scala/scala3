@@ -280,4 +280,12 @@ object Expr {
     }
   }
 
+  @scala.annotation.experimental def summonIgnoring[T](using Type[T])(using quotes: Quotes)(ignored: quotes.reflect.Symbol*): Option[Expr[T]] = {
+    import quotes.reflect._
+    Implicits.searchIgnoring(TypeRepr.of[T])(ignored*) match {
+      case iss: ImplicitSearchSuccess => Some(iss.tree.asExpr.asInstanceOf[Expr[T]])
+      case isf: ImplicitSearchFailure => None
+    }
+  }
+
 }
