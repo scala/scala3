@@ -14,8 +14,8 @@ on:
   workflow_call:
 
 env:
-  # NECESSARY FLAG TO CORRECTLY CONFIGURE THE VERSION FOR SCALA
-  RELEASEBUILD: yes
+  # Release only happends when triggering CI by pushing tag
+  RELEASEBUILD: ${{ startsWith(github.event.ref, 'refs/tags/') && 'yes' || 'no' }}
 
 jobs:
   build:
