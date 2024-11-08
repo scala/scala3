@@ -27,7 +27,7 @@
 -- Error: tests/neg-custom-args/captures/real-try.scala:26:10 ----------------------------------------------------------
 26 |  val y = try  // error
    |          ^
-   |          The result of `try` cannot have type () => (ex$8: caps.Exists) -> Cell[Unit]^? since
+   |          The result of `try` cannot have type () => Cell[Unit]^? since
    |          that type captures the root capability `cap`.
    |          This is often caused by a locally generated exception capability leaking as part of its result.
 27 |    () => Cell(foo(1))

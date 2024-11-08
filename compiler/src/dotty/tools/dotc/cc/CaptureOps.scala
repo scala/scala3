@@ -476,10 +476,12 @@ extension (tp: Type)
    */
   def withReachCaptures(ref: Type)(using Context): Type =
     object narrowCaps extends TypeMap:
+      var change = false
       def apply(t: Type) =
         if variance <= 0 then t
         else t.dealiasKeepAnnots match
           case t @ CapturingType(p, cs) if cs.isUniversal =>
+            change = true
             t.derivedCapturingType(apply(p), ref.reach.singletonCaptureSet)
           case t @ AnnotatedType(parent, ann) =>
             // Don't map annotations, which includes capture sets
@@ -498,8 +500,11 @@ extension (tp: Type)
     ref match
       case ref: CaptureRef if ref.isTrackableRef =>
         val tp1 = narrowCaps(tp)
-        if tp1 ne tp then capt.println(i"narrow $tp of $ref to $tp1")
-        tp1
+        if narrowCaps.change then
+          capt.println(i"narrow $tp of $ref to $tp1")
+          tp1
+        else
+          tp
       case _ =>
         tp
 

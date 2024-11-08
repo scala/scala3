@@ -13,7 +13,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/use-capset.scala:15:50 -----------------------------------
 15 |  val _: () -> List[Object^{io}] -> Object^{io} = h2 // error, should be ->{io}
    |                                                  ^^
-   |                     Found:    () ->? (x$0: List[box Object^{io}]^{}) ->{io} (ex$13: caps.Exists) -> Object^{io}
-   |                     Required: () -> List[box Object^{io}] -> Object^{io}
+   |                                      Found:    (h2 : () ->? (x$0: List[box Object^{io}]^{}) ->{io} Object^{io})
+   |                                      Required: () -> List[box Object^{io}] -> Object^{io}
    |
    | longer explanation available when compiling with `-explain`

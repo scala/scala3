@@ -30,7 +30,7 @@ import config.SourceVersion.*
 
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
-import cc.{CaptureSet, CapturingType, toCaptureSet, IllegalCaptureRef, isRetains, ReachCapability, MaybeCapability}
+import cc.{CaptureSet, CapturingType, toCaptureSet, IllegalCaptureRef, isRetains, ReachCapability, MaybeCapability, Existential}
 import dotty.tools.dotc.parsing.JavaParsers
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
@@ -285,6 +285,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       if !printDebug && appliedText(tp.asInstanceOf[HKLambda].resType).isEmpty =>
         // don't eta contract if the application would be printed specially
         toText(tycon)
+      case Existential(boundVar, unpacked)
+      if !printDebug && !ctx.settings.YccDebug.value && !unpacked.existsPart(_ == boundVar) =>
+        toText(unpacked)
       case tp: RefinedType if defn.isFunctionType(tp) && !printDebug =>
         toTextMethodAsFunction(tp.refinedInfo,
           isPure = Feature.pureFunsEnabled && !tp.typeSymbol.name.isImpureFunction,
