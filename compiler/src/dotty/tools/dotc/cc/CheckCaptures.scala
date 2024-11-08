@@ -607,13 +607,6 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  otherwise return NoType.
      */
     private def recheckUnsafeApply(tree: Apply, pt: Type)(using Context): Type =
-
-      def mapArgUsing(f: Type => Type) =
-        val arg :: Nil = tree.args: @unchecked
-        val argType0 = f(recheckStart(arg, pt))
-        val argType = super.recheckFinish(argType0, arg, pt)
-        super.recheckFinish(argType, tree, pt)
-
       val meth = tree.fun.symbol
       if meth == defn.Caps_unsafeAssumePure then
         val arg :: Nil = tree.args: @unchecked
@@ -623,31 +616,25 @@ class CheckCaptures extends Recheck, SymTransformer:
           else argType0.widen.stripCapturing
         capt.println(i"rechecking $arg with $pt: $argType")
         super.recheckFinish(argType, tree, pt)
-      else if meth == defn.Caps_unsafeBox then
-        mapArgUsing(_.forceBoxStatus(true))
-      else if meth == defn.Caps_unsafeUnbox then
-        mapArgUsing(_.forceBoxStatus(false))
-      else if meth == defn.Caps_unsafeBoxFunArg then
-        def forceBox(tp: Type): Type = tp.strippedDealias match
-          case defn.FunctionOf(paramtpe :: Nil, restpe, isContextual) =>
-            defn.FunctionOf(paramtpe.forceBoxStatus(true) :: Nil, restpe, isContextual)
-          case tp @ RefinedType(parent, rname, rinfo: MethodType) =>
-            tp.derivedRefinedType(parent, rname,
-              rinfo.derivedLambdaType(
-                paramInfos = rinfo.paramInfos.map(_.forceBoxStatus(true))))
-          case tp @ CapturingType(parent, refs) =>
-            tp.derivedCapturingType(forceBox(parent), refs)
-        mapArgUsing(forceBox)
       else NoType
     end recheckUnsafeApply
 
-    /** Recheck applications. More work is done in `recheckApplication`,
-     *  `recheckArg` and `instantiate` below.
+    /** Recheck applications, with special handling of unsafeAssumePure.
+     *  More work is done in `recheckApplication`, `recheckArg` and `instantiate` below.
      */
     override def recheckApply(tree: Apply, pt: Type)(using Context): Type =
-      recheckUnsafeApply(tree, pt).orElse:
+      val meth = tree.fun.symbol
+      if meth == defn.Caps_unsafeAssumePure then
+        val arg :: Nil = tree.args: @unchecked
+        val argType0 = recheck(arg, pt.capturing(CaptureSet.universal))
+        val argType =
+          if argType0.captureSet.isAlwaysEmpty then argType0
+          else argType0.widen.stripCapturing
+        capt.println(i"rechecking $arg with $pt: $argType")
+        super.recheckFinish(argType, tree, pt)
+      else
         val res = super.recheckApply(tree, pt)
-        includeCallCaptures(tree.symbol, res, tree.srcPos)
+        includeCallCaptures(meth, res, tree.srcPos)
         res
 
     /** Recheck argument, and, if formal parameter carries a `@use`,

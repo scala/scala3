@@ -584,8 +584,6 @@ extension (sym: Symbol)
       case _ => false
     containsEnclTypeParam(sym.info.finalResultType)
     && !sym.allowsRootCapture
-    && sym != defn.Caps_unsafeBox
-    && sym != defn.Caps_unsafeUnbox
     && !defn.isPolymorphicAfterErasure(sym)
     && !defn.isTypeTestOrCast(sym)
 
