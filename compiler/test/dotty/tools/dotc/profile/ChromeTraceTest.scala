@@ -54,11 +54,11 @@ class ChromeTraceTest:
     val testStart = System.nanoTime()
     testTraceOutputs{ tracer =>
     tracer.traceDurationEventStart(cat = "test1", name = "event1")
-    LockSupport.parkNanos(2.millis.toNanos)
+    sleep(2.millis)
     tracer.traceDurationEventStart(cat = "test2", name = "event2", colour = "RED", pidSuffix = "pid-suffix")
-    LockSupport.parkNanos(4.millis.toNanos)
+    sleep(4.millis)
     tracer.traceDurationEventEnd(cat = "test2", name = "event2")
-    LockSupport.parkNanos(8.millis.toNanos)
+    sleep(8.millis)
     tracer.traceDurationEventEnd(cat = "test1", name = "event1", colour = "RED", pidSuffix = "pid-suffix")
   }{
     case """{"traceEvents":[""" ::
@@ -89,5 +89,18 @@ class ChromeTraceTest:
           assertTrue(ts4 >= ts3 + 8.millis.toMicros)
         case _ => fail("unreachable")
       }
+    }
   }
-}
+
+  private def sleep(duration: FiniteDuration): Unit = {
+    // A bit of additional precautions to ensure we don't continue execution to early
+    // Both LockSuppport and Thread.sleep can return earlier then expected (depending on OS)
+    var remainingNanos = duration.toNanos
+    val deadline = System.nanoTime() + remainingNanos
+    while
+      remainingNanos = deadline - System.nanoTime()
+      remainingNanos > 0
+    do
+      val millis = NANOSECONDS.toMillis(remainingNanos)
+      Thread.sleep(millis, (remainingNanos % 1.millis.toNanos).toInt)
+  }
