@@ -39,10 +39,12 @@ object CheckCaptures:
     case Boxed          // environment is inside a box (in which case references are not counted)
 
   /** A class describing environments.
-   *  @param owner     the current owner
-   *  @param kind      the environment's kind
-   *  @param captured  the capture set containing all references to tracked free variables outside of boxes
-   *  @param outer0    the next enclosing environment
+   *  @param owner         the current owner
+   *  @param kind          the environment's kind
+   *  @param captured      the capture set containing all references to tracked free variables outside of boxes
+   *  @param outer0        the next enclosing environment
+   *  @param nestedClosure under deferredReaches: If this is an env of a method with an anonymous function or
+   *                       anonymous class as RHS, the symbol of that function or class. NoSymbol in all other cases.
    */
   case class Env(
       owner: Symbol,
@@ -88,6 +90,9 @@ object CheckCaptures:
           mapOver(tp)
   end SubstParamsMap
 
+  /** Used for substituting parameters in a special case: when all actual arguments
+   *  are mutually distinct capabilities.
+   */
   final class SubstParamsBiMap(from: LambdaType, to: List[Type])(using Context)
   extends BiTypeMap:
     thisMap =>
@@ -240,6 +245,22 @@ class CheckCaptures extends Recheck, SymTransformer:
 
   class CaptureChecker(ictx: Context) extends Rechecker(ictx):
 
+    /** The current environment */
+    private val rootEnv: Env = inContext(ictx):
+      Env(defn.RootClass, EnvKind.Regular, CaptureSet.empty, null)
+    private var curEnv = rootEnv
+
+    /** Currently checked closures and their expected types, used for error reporting */
+    private var openClosures: List[(Symbol, Type)] = Nil
+
+    private val myCapturedVars: util.EqHashMap[Symbol, CaptureSet] = EqHashMap()
+
+    /** A list of actions to perform at postCheck. The reason to defer these actions
+     *  is that it is sometimes better for type inference to not constrain too early
+     *  with a checkConformsExpr.
+     */
+    private var todoAtPostCheck = new mutable.ListBuffer[() => Unit]
+
     override def keepType(tree: Tree) =
       super.keepType(tree)
       || tree.isInstanceOf[Try]  // type of `try` needs tp be checked for * escapes
@@ -271,10 +292,11 @@ class CheckCaptures extends Recheck, SymTransformer:
         report.warning(msg, tpt.srcPos)
       ccState.approxWarnings.clear()
 
-    /** Assert subcapturing `cs1 <: cs2` */
+    /** Assert subcapturing `cs1 <: cs2` (available for debugging, otherwise unused) */
     def assertSub(cs1: CaptureSet, cs2: CaptureSet)(using Context) =
       assert(cs1.subCaptures(cs2, frozen = false).isOK, i"$cs1 is not a subset of $cs2")
 
+    /** If `res` is not CompareResult.OK, report an error */
     def checkOK(res: CompareResult, prefix: => String, pos: SrcPos, provenance: => String = "")(using Context): Unit =
       if !res.isOK then
         def toAdd: String = CaptureSet.levelErrors.toAdd.mkString
@@ -299,25 +321,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           else i"references $cs1$cs1description are not all",
           pos, provenance)
 
-    def showRef(ref: CaptureRef)(using Context): String =
-        ctx.printer.toTextCaptureRef(ref).show
-
-    /** The current environment */
-    private val rootEnv: Env = inContext(ictx):
-      Env(defn.RootClass, EnvKind.Regular, CaptureSet.empty, null)
-    private var curEnv = rootEnv
-
-    /** Currently checked closures and their expected types, used for error reporting */
-    private var openClosures: List[(Symbol, Type)] = Nil
-
-    private val myCapturedVars: util.EqHashMap[Symbol, CaptureSet] = EqHashMap()
-
-    /** A list of actions to perform at postCheck. The reason to defer these actions
-     *  is that it is sometimes better for type inference to not constrain too early
-     *  with a checkConformsExpr.
-     */
-    private var todoAtPostCheck = new mutable.ListBuffer[() => Unit]
-
     /** If `sym` is a class or method nested inside a term, a capture set variable representing
      *  the captured variables of the environment associated with `sym`.
      */
@@ -326,6 +329,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         if sym.ownersIterator.exists(_.isTerm)
         then CaptureSet.Var(sym.owner, level = sym.ccLevel)
         else CaptureSet.empty)
+
+// ---- Record Uses with MarkFree ----------------------------------------------------
 
     /** The next environment enclosing `env` that needs to be charged
      *  with free references.
@@ -349,6 +354,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       else
         i"\nof the enclosing ${owner.showLocated}"
 
+    /** Does the given environment belong to a method that is (a) nested in a term
+     *  and (b) not the method of an anonympus function?
+     */
     def isOfNestedMethod(env: Env | Null)(using Context) =
       env != null
       && env.owner.is(Method)
@@ -364,7 +372,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def markFree(sym: Symbol, ref: TermRef, pos: SrcPos)(using Context): Unit =
       if sym.exists && ref.isTracked then markFree(ref.captureSet, pos)
 
-    /** Make sure (projected) `cs` is a subset of the capture sets of all enclosing
+    /** Make sure the (projected) `cs` is a subset of the capture sets of all enclosing
      *  environments. At each stage, only include references from `cs` that are outside
      *  the environment's owner
      */
@@ -377,9 +385,12 @@ class CheckCaptures extends Recheck, SymTransformer:
         else
           !sym.isContainedIn(env.owner)
 
+      /** If captureRef `c` refers to a parameter that is not @use declared, report an error.
+       *  Exception under deferredReaches: If use comes from a nested closure, accept it.
+       */
       def checkUseDeclared(c: CaptureRef, env: Env, lastEnv: Env | Null) =
         if lastEnv != null && env.nestedClosure.exists && env.nestedClosure == lastEnv.owner then
-          () // access is from a nested closure, so it's OK
+          assert(ccConfig.deferredReaches) // access is from a nested closure under deferredReaches, so it's OK
         else c.pathRoot match
           case ref: NamedType if !ref.symbol.isUseParam =>
             val what = if ref.isType then "Capture set parameter" else "Local reach capability"
@@ -453,6 +464,9 @@ class CheckCaptures extends Recheck, SymTransformer:
           capt.println(i"Include call or box capture $included from $cs in ${env.owner} --> ${env.captured}")
           if !isOfNestedMethod(env) then
             recur(included, nextEnvToCharge(env, !_.owner.isStaticOwner), env)
+          // Don't propagate out of methods inside terms. The use set of these methods
+          // will be charged when that method is called.
+
       recur(cs, curEnv, null)
     end markFree
 
@@ -464,9 +478,9 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** Under the sealed policy, disallow the root capability in type arguments.
      *  Type arguments come either from a TypeApply node or from an AppliedType
-     *  which represents a trait parent in a template. Also, if a corresponding
-     *  formal type parameter is declared or implied @use, charge the deep capture
-     *  set of the argument to the environent.
+     *  which represents a trait parent in a template.
+     *  Also, if a corresponding formal type parameter is declared or implied @use,
+     *  charge the deep capture set of the argument to the environent.
      *  @param  fn   the type application, of type TypeApply or TypeTree
      *  @param  sym  the constructor symbol (could be a method or a val or a class)
      *  @param  args the type arguments
@@ -499,22 +513,26 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def recheckIdent(tree: Ident, pt: Type)(using Context): Type =
       val sym = tree.symbol
       if sym.is(Method) then
+        // If ident refers to a parameterless method, charge its cv to the environment
         includeCallCaptures(sym, sym.info, tree.srcPos)
       else if !sym.isStatic then
-        //debugShowEnvs()
+        // Otherwise charge its symbol, but add all selections implied by the e
+        // expected type `pt`.
+        // Example: If we have `x` and the expected type says we select that with `.a.b`,
+        // we charge `x.a.b` instead of `x`.
         def addSelects(ref: TermRef, pt: Type): TermRef = pt match
           case pt: PathSelectionProto if ref.isTracked =>
             // if `ref` is not tracked then the selection could not give anything new
             // class SerializationProxy in stdlib-cc/../LazyListIterable.scala has an example where this matters.
             addSelects(ref.select(pt.sym).asInstanceOf[TermRef], pt.pt)
           case _ => ref
-        val ref = sym.termRef
-        val pathRef = addSelects(ref, pt)
-        //if pathRef ne ref then
-        //  println(i"add selects $ref --> $pathRef")
-        markFree(sym, if false then ref else pathRef, tree.srcPos)
+        val pathRef = addSelects(sym.termRef, pt)
+        markFree(sym, pathRef, tree.srcPos)
       super.recheckIdent(tree, pt)
 
+    /** The expected type for the qualifier of a selection. If the selection
+     *  could be part of a capabaility path, we return a PathSelectionProto.
+     */
     override def selectionProto(tree: Select, pt: Type)(using Context): Type =
       val sym = tree.symbol
       if !sym.isOneOf(UnstableValueFlags) && !sym.isStatic then PathSelectionProto(sym, pt)
@@ -527,8 +545,8 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  E |- f.m: R^C
      *
      *  The implementation picks as `C` one of `{f}` or `Cr`, depending on the
-     *  outcome of a `mightSubcapture` test. It picks `{f}` if this might subcapture Cr
-     *  and Cr otherwise.
+     *  outcome of a `mightSubcapture` test. It picks `{f}` if it might subcapture Cr
+     *  and picks Cr otherwise.
      */
     override def recheckSelection(tree: Select, qualType: Type, name: Name, pt: Type)(using Context) = {
       def disambiguate(denot: Denotation): Denotation = denot match
@@ -548,10 +566,14 @@ class CheckCaptures extends Recheck, SymTransformer:
       val selType = recheckSelection(tree, qualType, name, disambiguate)
       val selWiden = selType.widen
 
+      // Don't apply the rule
+      //   - on the LHS of assignments, or
+      //   - if the qualifier or selection type is boxed, or
+      //   - the selection is either a trackable capture ref or a pure type
       if pt == LhsProto
           || qualType.isBoxedCapturing
-          || selType.isTrackableRef
           || selWiden.isBoxedCapturing
+          || selType.isTrackableRef
           || selWiden.captureSet.isAlwaysEmpty
       then
         selType
@@ -561,7 +583,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         capt.println(i"pick one of $qualType, ${selType.widen}, $qualCs, $selCs ${selWiden.captureSet} in $tree")
 
         if qualCs.mightSubcapture(selCs)
-            && !selCs.mightSubcapture(qualCs)
+            //&& !selCs.mightSubcapture(qualCs)
             && !pt.stripCapturing.isInstanceOf[SingletonType]
         then
           selWiden.stripCapturing.capturing(qualCs)
@@ -570,7 +592,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           selType
     }//.showing(i"recheck sel $tree, $qualType = $result")
 
-    /** Copy all @use annotations on method parameter symbols to the corresponding paramInfo types.
+    /** Hook for massaging a function before it is applied. Copies all @use annotations
+     *  on method parameter symbols to the corresponding paramInfo types.
      */
     override def prepareFunction(funtpe: MethodType, meth: Symbol)(using Context): MethodType =
       val paramInfosWithUses = funtpe.paramInfos.zipWithConserve(funtpe.paramNames): (formal, pname) =>
@@ -580,16 +603,18 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ => formal
       funtpe.derivedLambdaType(paramInfos = paramInfosWithUses)
 
-    override def recheckApply(tree: Apply, pt: Type)(using Context): Type =
-      val meth = tree.fun.symbol
+    /** If this is an application of a caps.unsafe method, handle it specially
+     *  otherwise return NoType.
+     */
+    private def recheckUnsafeApply(tree: Apply, pt: Type)(using Context): Type =
 
-      // Unsafe box/unbox handling, only for versions < 3.3
       def mapArgUsing(f: Type => Type) =
         val arg :: Nil = tree.args: @unchecked
         val argType0 = f(recheckStart(arg, pt))
         val argType = super.recheckFinish(argType0, arg, pt)
         super.recheckFinish(argType, tree, pt)
 
+      val meth = tree.fun.symbol
       if meth == defn.Caps_unsafeAssumePure then
         val arg :: Nil = tree.args: @unchecked
         val argType0 = recheck(arg, pt.capturing(CaptureSet.universal))
@@ -613,23 +638,33 @@ class CheckCaptures extends Recheck, SymTransformer:
           case tp @ CapturingType(parent, refs) =>
             tp.derivedCapturingType(forceBox(parent), refs)
         mapArgUsing(forceBox)
-      else
-        val res = super.recheckApply(tree, pt)
-        includeCallCaptures(meth, res, tree.srcPos)
-        res
-    end recheckApply
+      else NoType
+    end recheckUnsafeApply
 
-    protected override
-    def recheckArg(arg: Tree, formal: Type)(using Context): Type =
+    /** Recheck applications. More work is done in `recheckApplication`,
+     *  `recheckArg` and `instantiate` below.
+     */
+    override def recheckApply(tree: Apply, pt: Type)(using Context): Type =
+      recheckUnsafeApply(tree, pt).orElse:
+        val res = super.recheckApply(tree, pt)
+        includeCallCaptures(tree.symbol, res, tree.srcPos)
+        res
+
+    /** Recheck argument, and, if formal parameter carries a `@use`,
+     *  charge the deep capture set of the actual argument to the environment.
+     */
+    protected override def recheckArg(arg: Tree, formal: Type)(using Context): Type =
       val argType = recheck(arg, formal)
       formal match
         case AnnotatedType(formal1, ann) if ann.symbol == defn.UseAnnot =>
+          // The UseAnnot is added to `formal` by `prepareFunction`
           capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
           markFree(argType.deepCaptureSet, arg.srcPos)
         case _ =>
       argType
 
-    /** A specialized implementation of the apply rule.
+    /** Map existential captures in result to `cap` and implement the following
+     *  rele:
      *
      *  E |- q: Tq^Cq
      *  E |- q.f: Ta^Ca ->Cf Tr^Cr
@@ -646,7 +681,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  If the function `f` does have an `@use` parameter, then it could in addition
      *  unbox reach capabilities over its formal parameter. Therefore, the approximation
      *  would be `Cq \union dcs(Ca)` instead.
-     *  If the approximation is known to subcapture the declared result Cr, we pick it for C
+     *  If the approximation might subcapture the declared result Cr, we pick it for C
      *  otherwise we pick Cr.
      */
     protected override
@@ -675,12 +710,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       case Nil => true
 
     /** Handle an application of method `sym` with type `mt` to arguments of types `argTypes`.
-     *  This means:
+     *  This means
      *   - Instantiate result type with actual arguments
-     *   - If call is to a constructor:
-     *      - remember types of arguments corresponding to tracked
-     *        parameters in refinements.
-     *      - add capture set of instantiated class to capture set of result type.
+     *   - if `sym` is a constructor, refine its type with `refineInstanceType`
      *  If all argument types are mutually different trackable capture references, use a BiTypeMap,
      *  since that is more precise. Otherwise use a normal idempotent map, which might lose information
      *  in the case where the result type contains captureset variables that are further
@@ -694,49 +726,64 @@ class CheckCaptures extends Recheck, SymTransformer:
           SubstParamsBiMap(mt, argTypes)(mt.resType)
         else
           SubstParamsMap(mt, argTypes)(mt.resType)
-
-      if sym.isConstructor then
-        val cls = sym.owner.asClass
-
-        /** First half of result pair:
-         *  Refine the type of a constructor call `new C(t_1, ..., t_n)`
-         *  to C{val x_1: T_1, ..., x_m: T_m} where x_1, ..., x_m are the tracked
-         *  parameters of C and T_1, ..., T_m are the types of the corresponding arguments.
-         *
-         *  Second half: union of all capture sets of arguments to tracked parameters.
-         */
-        def addParamArgRefinements(core: Type, initCs: CaptureSet): (Type, CaptureSet) =
-          var refined: Type = core
-          var allCaptures: CaptureSet =
-            if core.derivesFromCapability then defn.universalCSImpliedByCapability else initCs
-          for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
-            val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
-            if !getter.is(Private) && getter.hasTrackedParts then
-              refined = RefinedType(refined, getterName, argType.unboxed)
-              allCaptures ++= argType.captureSet
-          (refined, allCaptures)
-
-        /** Augment result type of constructor with refinements and captures.
-         *  @param  core   The result type of the constructor
-         *  @param  initCs The initial capture set to add, not yet counting capture sets from arguments
-         */
-        def augmentConstructorType(core: Type, initCs: CaptureSet): Type = core match
-          case core: MethodType =>
-            // more parameters to follow; augment result type
-            core.derivedLambdaType(resType = augmentConstructorType(core.resType, initCs))
-          case CapturingType(parent, refs) =>
-            // can happen for curried constructors if instantiate of a previous step
-            // added capture set to result.
-            augmentConstructorType(parent, initCs ++ refs)
-          case _ =>
-            val (refined, cs) = addParamArgRefinements(core, initCs)
-            refined.capturing(cs)
-
-        augmentConstructorType(ownType, capturedVars(cls) ++ capturedVars(sym))
-          .showing(i"constr type $mt with $argTypes%, % in $cls = $result", capt)
+      if sym.isConstructor then refineConstructorInstance(ownType, mt, argTypes, sym)
       else ownType
-    end instantiate
 
+    /** Refine the type returned from a constructor as follows:
+     *   - remember types of arguments corresponding to tracked parameters in refinements.
+     *   - add capture set of instantiated class and capture set of constructor to capture set of result type.
+     *  Note: This scheme does not distinguish whether a capture is made by the constructor
+     *  only or by a method in the class. Both captures go into the result type. We
+     *  could be more precise by distinguishing the two capture sets.
+     */
+    private def refineConstructorInstance(resType: Type, mt: MethodType, argTypes: List[Type], constr: Symbol)(using Context): Type =
+      val cls = constr.owner.asClass
+
+      /** First half of result pair:
+       *  Refine the type of a constructor call `new C(t_1, ..., t_n)`
+       *  to C{val x_1: T_1, ..., x_m: T_m} where x_1, ..., x_m are the tracked
+       *  parameters of C and T_1, ..., T_m are the types of the corresponding arguments.
+       *
+       *  Second half: union of initial capture set and all capture sets of arguments
+       *  to tracked parameters.
+       */
+      def addParamArgRefinements(core: Type, initCs: CaptureSet): (Type, CaptureSet) =
+        var refined: Type = core
+        var allCaptures: CaptureSet =
+          if core.derivesFromCapability then defn.universalCSImpliedByCapability else initCs
+        for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
+          val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
+          if !getter.is(Private) && getter.hasTrackedParts then
+            refined = RefinedType(refined, getterName, argType.unboxed)
+            allCaptures ++= argType.captureSet
+        (refined, allCaptures)
+
+      /** Augment result type of constructor with refinements and captures.
+       *  @param  core   The result type of the constructor
+       *  @param  initCs The initial capture set to add, not yet counting capture sets from arguments
+       */
+      def augmentConstructorType(core: Type, initCs: CaptureSet): Type = core match
+        case core: MethodType =>
+          // more parameters to follow; augment result type
+          core.derivedLambdaType(resType = augmentConstructorType(core.resType, initCs))
+        case CapturingType(parent, refs) =>
+          // can happen for curried constructors if instantiate of a previous step
+          // added capture set to result.
+          augmentConstructorType(parent, initCs ++ refs)
+        case _ =>
+          val (refined, cs) = addParamArgRefinements(core, initCs)
+          refined.capturing(cs)
+
+      augmentConstructorType(resType, capturedVars(cls) ++ capturedVars(constr))
+        .showing(i"constr type $mt with $argTypes%, % in $constr = $result", capt)
+    end refineConstructorInstance
+
+    /** Recheck type applications:
+     *   - Map existential captures in result to `cap`
+     *   - include captures of called methods in environment
+     *   - don't allow cap to appear covariantly in type arguments
+     *   - special handling of `contains[A, B]` calls
+     */
     override def recheckTypeApply(tree: TypeApply, pt: Type)(using Context): Type =
       val meth = tree.fun match
         case fun @ Select(qual, nme.apply) => qual.symbol.orElse(fun.symbol)
@@ -766,12 +813,19 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def recheckBlock(tree: Block, pt: Type)(using Context): Type =
       inNestedLevel(super.recheckBlock(tree, pt))
 
+    /** Recheck Closure node: add the captured vars of the anonymoys function
+     *  to the result type. See also `recheckClosureBlock` which rechecks the
+     *  block containing the anonymous function and the Closure node.
+     */
     override def recheckClosure(tree: Closure, pt: Type, forceDependent: Boolean)(using Context): Type =
       val cs = capturedVars(tree.meth.symbol)
       capt.println(i"typing closure $tree with cvs $cs")
       super.recheckClosure(tree, pt, forceDependent).capturing(cs)
         .showing(i"rechecked closure $tree / $pt = $result", capt)
 
+    /** Recheck a lambda of the form
+     *      { def $anonfun(...) = ...; closure($anonfun, ...)}
+     */
     override def recheckClosureBlock(mdef: DefDef, expr: Closure, pt: Type)(using Context): Type =
       openClosures = (mdef.symbol, pt) :: openClosures
       try
@@ -779,12 +833,14 @@ class CheckCaptures extends Recheck, SymTransformer:
         // rechecking the body.
         val res = recheckClosure(expr, pt, forceDependent = true)
         if !(isEtaExpansion(mdef) && ccConfig.handleEtaExpansionsSpecially) then
-          // If closure is an eta expanded method reference it's better to not constrain
+          // Check whether the closure's results conforms to the expected type
+          // This constrains parameter types of the closure which can give better
+          // error messages.
+          // But if the closure is an eta expanded method reference it's better to not constrain
           // its internals early since that would give error messages in generated code
-          // which are less intelligible.
-          // Example is the line `a = x` in neg-custom-args/captures/vars.scala.
-          // For all other closures, early constraints are preferred since they
-          // give more localized error messages.
+          // which are less intelligible. An example is the line `a = x` in
+          // neg-custom-args/captures/vars.scala. That's why this code is conditioned.
+          // to apply only to closures that are not eta expansions.
           val res1 = Existential.toCapDeeply(res)
           val pt1 = Existential.toCapDeeply(pt)
             // We need to open existentials here in order not to get vars mixed up in them
@@ -797,42 +853,18 @@ class CheckCaptures extends Recheck, SymTransformer:
         openClosures = openClosures.tail
     end recheckClosureBlock
 
+    /** Elements of a SeqLiteral instantiate a Seq or Array parameter, so they
+     *  should be boxed.
+     */
     override def seqLiteralElemProto(tree: SeqLiteral, pt: Type, declared: Type)(using Context) =
       super.seqLiteralElemProto(tree, pt, declared).boxed
 
-    /** Maps mutable variables to the symbols that capture them (in the
-     *  CheckCaptures sense, i.e. symbol is referred to from a different method
-     *  than the one it is defined in).
+    /** Recheck val and var definitions:
+     *   - disallow cap in the type of mutable vars.
+     *   - for externally visible definitions: check that their inferred type
+     *     does not refine what was known before capture checking.
+     *   - Interpolate contravariant capture set variables in result type.
      */
-    private val capturedBy = util.HashMap[Symbol, Symbol]()
-
-    /** Maps anonymous functions appearing as function arguments to
-     *  the function that is called.
-     */
-    private val anonFunCallee = util.HashMap[Symbol, Symbol]()
-
-    /** Populates `capturedBy` and `anonFunCallee`. Called by `checkUnit`.
-     */
-    private def collectCapturedMutVars(using Context) = new TreeTraverser:
-      def traverse(tree: Tree)(using Context) = tree match
-        case id: Ident =>
-          val sym = id.symbol
-          if sym.is(Mutable, butNot = Method) && sym.owner.isTerm then
-            val enclMeth = ctx.owner.enclosingMethod
-            if sym.enclosingMethod != enclMeth then
-              capturedBy(sym) = enclMeth
-        case Apply(fn, args) =>
-          for case closureDef(mdef) <- args do
-            anonFunCallee(mdef.symbol) = fn.symbol
-          traverseChildren(tree)
-        case Inlined(_, bindings, expansion) =>
-          traverse(bindings)
-          traverse(expansion)
-        case mdef: DefDef =>
-          if !mdef.symbol.isInlineMethod then traverseChildren(tree)
-        case _ =>
-          traverseChildren(tree)
-
     override def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Type =
       try
         if sym.is(Module) then sym.info // Modules are checked by checking the module class
@@ -861,10 +893,20 @@ class CheckCaptures extends Recheck, SymTransformer:
           // function is compiled since we do not propagate expected types into blocks.
           interpolateVarsIn(tree.tpt)
 
+    /** Recheck method definitions:
+     *   - check body in a nested environment that tracks uses, in  a nested level,
+     *     and in a nested context that knows abaout Contains parameters so that we
+     *     can assume they are true.
+     *   - for externally visible definitions: check that their inferred type
+     *     does not refine what was known before capture checking.
+     *   - Interpolate contravariant capture set variables in result type unless
+     *     def is anonymous.
+     */
     override def recheckDefDef(tree: DefDef, sym: Symbol)(using Context): Type =
       if Synthetics.isExcluded(sym) then sym.info
       else
-        // If rhs ends in a closure or anonymous class, the corresponding symbol
+        // Under the deferredReaches setting: If rhs ends in a closure or
+        // anonymous class, the corresponding symbol
         def nestedClosure(rhs: Tree)(using Context): Symbol =
           if !ccConfig.deferredReaches then NoSymbol
           else rhs match
@@ -889,7 +931,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           if ac.isEmpty then ctx
           else ctx.withProperty(CaptureSet.AssumedContains, Some(ac))
 
-        inNestedLevel: // TODO: needed here?
+        inNestedLevel: // TODO: nestedLevel needed here?
           try checkInferredResult(super.recheckDefDef(tree, sym)(using bodyCtx), tree)
           finally
             if !sym.isAnonymousFunction then
@@ -909,14 +951,14 @@ class CheckCaptures extends Recheck, SymTransformer:
       val sym = tree.symbol
 
       def canUseInferred =    // If canUseInferred is false, all capturing types in the type of `sym` need to be given explicitly
-        sym.is(Private)                   // private symbols can always have inferred types
-        || sym.privateWithin == sym.effectiveOwner
-        || sym.name.is(DefaultGetterName) // default getters are exempted since otherwise it would be
+        sym.isLocalToCompilationUnit      // Symbols that can't be seen outside the compilation unit can always have inferred types
+        || sym.privateWithin == defn.EmptyPackageClass
+                                          // We make an exception for private symbols in a toplevel file in the empty package
+                                          // these could theoretically be accessed from other files in the empty package, but
+                                          // it would be too annoying to require explicit types.
+        || sym.name.is(DefaultGetterName) // Default getters are exempted since otherwise it would be
                                           // too annoying. This is a hole since a defualt getter's result type
                                           // might leak into a type variable.
-        ||                                // non-local symbols cannot have inferred types since external capture types are not inferred
-          sym.isLocalToCompilationUnit    // local symbols still need explicit types if
-          && !sym.owner.is(Trait)         // they are defined in a trait, since we do OverridingPairs checking before capture inference
 
       def addenda(expected: Type) = new Addenda:
         override def toAdd(using Context) =
@@ -933,23 +975,60 @@ class CheckCaptures extends Recheck, SymTransformer:
         case tpt: InferredTypeTree if !canUseInferred =>
           val expected = tpt.tpe.dropAllRetains
           todoAtPostCheck += (() => checkConformsExpr(tp, expected, tree.rhs, addenda(expected)))
+            // The check that inferred <: expected is done after recheck so that it
+            // does not interfere with normal rechecking by constraining capture set variables.
         case _ =>
       tp
     end checkInferredResult
 
-    /** Class-specific capture set relations:
+    /** The set of symbols that were rechecked via a completer */
+    private val completed = new mutable.HashSet[Symbol]
+
+    /** The normal rechecking if `sym` was already completed before */
+    override def skipRecheck(sym: Symbol)(using Context): Boolean =
+      completed.contains(sym)
+
+    /** Check a ValDef or DefDef as an action performed in a completer. Since
+     *  these checks can appear out of order, we need to first create the correct
+     *  environment for checking the definition.
+     */
+    def completeDef(tree: ValOrDefDef, sym: Symbol)(using Context): Type =
+      val saved = curEnv
+      try
+        // Setup environment to reflect the new owner.
+        val envForOwner: Map[Symbol, Env] = curEnv.outersIterator
+          .takeWhile(e => !capturedVars(e.owner).isAlwaysEmpty) // no refs can leak beyond this point
+          .map(e => (e.owner, e))
+          .toMap
+        def restoreEnvFor(sym: Symbol): Env =
+          val localSet = capturedVars(sym)
+          if localSet.isAlwaysEmpty then rootEnv
+          else envForOwner.get(sym) match
+            case Some(e) => e
+            case None => Env(sym, EnvKind.Regular, localSet, restoreEnvFor(sym.owner))
+        curEnv = restoreEnvFor(sym.owner)
+        capt.println(i"Complete $sym in ${curEnv.outersIterator.toList.map(_.owner)}")
+        try recheckDef(tree, sym)
+        finally completed += sym
+      finally
+        curEnv = saved
+
+    /** Recheck classDef by enforcing the following class-specific capture set relations:
      *   1. The capture set of a class includes the capture sets of its parents.
      *   2. The capture set of the self type of a class includes the capture set of the class.
      *   3. The capture set of the self type of a class includes the capture set of every class parameter,
-     *      unless the parameter is marked @constructorOnly.
+     *      unless the parameter is marked @constructorOnly or @untrackedCaptures.
      *   4. If the class extends a pure base class, the capture set of the self type must be empty.
+     *  Also, check that trait parents represented as applied types don't have cap in their
+     *  type arguments. Other generic parents are represented as TypeApplys, where the same check
+     *  is already done in the TypeApply.
      */
     override def recheckClassDef(tree: TypeDef, impl: Template, cls: ClassSymbol)(using Context): Type =
-      val saved = curEnv
       val localSet = capturedVars(cls)
       for parent <- impl.parents do // (1)
         checkSubset(capturedVars(parent.tpe.classSymbol), localSet, parent.srcPos,
           i"\nof the references allowed to be captured by $cls")
+      val saved = curEnv
       if !localSet.isAlwaysEmpty then
         curEnv = Env(cls, EnvKind.Regular, localSet, curEnv)
       try
@@ -960,15 +1039,15 @@ class CheckCaptures extends Recheck, SymTransformer:
             && !param.hasAnnotation(defn.UntrackedCapturesAnnot) then
             checkSubset(param.termRef.captureSet, thisSet, param.srcPos) // (3)
         for pureBase <- cls.pureBaseClass do // (4)
-          def selfType = impl.body
+          def selfTypeTree = impl.body
             .collect:
               case TypeDef(tpnme.SELF, rhs) => rhs
             .headOption
-            .getOrElse(tree)
-            .orElse(tree)
+            .getOrElse(tree)  // Use class tree if self type tree is missing ...
+            .orElse(tree)     // ... or empty.
           checkSubset(thisSet,
             CaptureSet.empty.withDescription(i"of pure base class $pureBase"),
-            selfType.srcPos, cs1description = " captured by this self type")
+            selfTypeTree.srcPos, cs1description = " captured by this self type")
         for case tpt: TypeTree <- impl.parents do
           tpt.tpe match
             case AppliedType(fn, args) =>
@@ -993,6 +1072,9 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
       super.recheckTyped(tree)
 
+    /** Under the sealed policy and with saferExceptions, disallow cap in the
+     *  result type of a try
+     */
     override def recheckTry(tree: Try, pt: Type)(using Context): Type =
       val tp = super.recheckTry(tree, pt)
       if ccConfig.useSealed && Feature.enabled(Feature.saferExceptions) then
@@ -1018,10 +1100,12 @@ class CheckCaptures extends Recheck, SymTransformer:
       recheckFinish(result, arg, pt)
     */
 
-    /** If expected type `pt` is boxed and the tree is a function or a reference,
-     *  don't propagate free variables.
-     *  Otherwise, if the result type is boxed, simulate an unboxing by
-     *  adding all references in the boxed capture set to the current environment.
+    /** The main recheck method does some box adapation for all nodes:
+     *   - If expected type `pt` is boxed and the tree is a lambda or a reference,
+     *     don't propagate free variables.
+     *   - If the expected type is not boxed but the result type is boxed,
+     *     simulate an unboxing by adding all references in the boxed capture set
+     *     of the result type to the current environment.
      */
     override def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
       val saved = curEnv
@@ -1036,14 +1120,12 @@ class CheckCaptures extends Recheck, SymTransformer:
           else
             trace.force(i"rechecking $tree with pt = $pt", recheckr, show = true):
               super.recheck(tree, pt)
-        catch case ex: NoCommonRoot =>
-          report.error(ex.getMessage.nn)
-          tree.tpe
         finally curEnv = saved
       if tree.isTerm && !pt.isBoxedCapturing && pt != LhsProto then
         markFree(res.boxedCaptureSet, tree.srcPos)
       res
 
+    /** Under the old unsealed policy: check that cap is ot unboxed */
     override def recheckFinish(tpe: Type, tree: Tree, pt: Type)(using Context): Type =
       checkNotUniversalInUnboxedResult(tpe, tree)
       super.recheckFinish(tpe, tree, pt)
@@ -1073,6 +1155,10 @@ class CheckCaptures extends Recheck, SymTransformer:
               |
               |Note that ${msg.toString}"""
 
+    /** Addendas for error messages that show where we have under-approximated by
+     *  mapping a a capture ref in contravariant position to the empty set because
+     *  the original result type of the map was not itself a capture ref.
+     */
     private def addApproxAddenda(using Context) =
       new TypeAccumulator[Addenda]:
         def apply(add: Addenda, t: Type) = t match
@@ -1253,6 +1339,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         def adaptStr = i"adapting $actual ${if covariant then "~~>" else "<~~"} $expected"
 
+        // Get existentials and wildcards out of the way
         actual match
           case actual @ Existential(_, actualUnpacked) =>
             return Existential.derivedExistentialType(actual):
@@ -1286,11 +1373,10 @@ class CheckCaptures extends Recheck, SymTransformer:
           else
             if !leaked.subCaptures(cs, frozen = false).isOK then
               report.error(
-                em"""$expected cannot be box-converted to $actual
+                em"""$expected cannot be box-converted to ${actual.capturing(leaked)}
                     |since the additional capture set $leaked resulted from box conversion is not allowed in $actual""", pos)
             cs
 
-        // Compute the adapted type
         def adaptedType(resultBoxed: Boolean) =
           if (adaptedShape eq actualShape) && leaked.isAlwaysEmpty && actualIsBoxed == resultBoxed
           then actual
@@ -1299,35 +1385,43 @@ class CheckCaptures extends Recheck, SymTransformer:
             .forceBoxStatus(resultBoxed)
 
         if needsAdaptation then
-          val criticalSet =          // the set which is not allowed to have `cap`
-            if covariant then captures    // can't box with `cap`
-            else expected.captureSet // can't unbox with `cap`
+          val criticalSet =          // the set with which we box or unbox
+            if covariant then captures   // covariant: we box with captures of actual type plus captures leaked by inner adapation
+            else expected.captureSet     // contravarant: we unbox with captures of epected type
           def msg = em"""$actual cannot be box-converted to $expected
                         |since at least one of their capture sets contains the root capability `cap`"""
           def allowUniversalInBoxed =
             ccConfig.useSealed
             || expected.hasAnnotation(defn.UncheckedCapturesAnnot)
             || actual.widen.hasAnnotation(defn.UncheckedCapturesAnnot)
-          if criticalSet.isUnboxable && expected.isValueType && !allowUniversalInBoxed then
-            // We can't box/unbox the universal capability. Leave `actual` as it is
-            // so we get an error in checkConforms. Add the error message generated
-            // from boxing as an addendum. This tends to give better error
-            // messages than disallowing the root capability in `criticalSet`.
-            if boxErrors != null then boxErrors += msg
-            if ctx.settings.YccDebug.value then
-              println(i"cannot box/unbox $actual vs $expected")
-            actual
-          else
-            if !allowUniversalInBoxed then
-              // Disallow future addition of `cap` to `criticalSet`.
-              criticalSet.disallowRootCapability: () =>
-                report.error(msg, pos)
-            if !insertBox then  // unboxing
-              //debugShowEnvs()
-              markFree(criticalSet, pos)
-            adaptedType(!actualIsBoxed)
-        else
-          adaptedType(actualIsBoxed)
+          if !allowUniversalInBoxed then
+            if criticalSet.isUnboxable && expected.isValueType then
+              // We can't box/unbox the universal capability. Leave `actual` as it is
+              // so we get an error in checkConforms. Add the error message generated
+              // from boxing as an addendum. This tends to give better error
+              // messages than disallowing the root capability in `criticalSet`.
+              if boxErrors != null then boxErrors += msg
+              if ctx.settings.YccDebug.value then
+                println(i"cannot box/unbox $actual vs $expected")
+              return actual
+            // Disallow future addition of `cap` to `criticalSet`.
+            criticalSet.disallowRootCapability: () =>
+              report.error(msg, pos)
+
+          if !insertBox then  // we are unboxing
+            //debugShowEnvs()
+            markFree(criticalSet, pos)
+        end if
+
+        // Compute the adapted type.
+        // The result is boxed if actual is boxed and we don't need to adapt,
+        // or if actual is unboxed and we do need to adapt.
+        val resultIsBoxed = actualIsBoxed != needsAdaptation
+        if (adaptedShape eq actualShape) && leaked.isAlwaysEmpty && actualIsBoxed == resultIsBoxed
+          then actual
+          else adaptedShape
+            .capturing(if alwaysConst then CaptureSet(captures.elems) else captures)
+            .forceBoxStatus(resultIsBoxed)
         }
       end recur
 
@@ -1352,9 +1446,10 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ => widened
       case _ => widened
 
-    /** Adapt `actual` type to `expected` type by inserting boxing and unboxing conversions
-     *
-     *  @param alwaysConst  always make capture set variables constant after adaptation
+    /** Adapt `actual` type to `expected` type. This involves:
+     *   - narrow toplevel captures of `x`'s underlying type to `{x}` according to CC's VAR rule
+     *   - narrow nested captures of `x`'s underlying type to `{x*}`
+     *   - do box adaptation
      */
     def adapt(actual: Type, expected: Type, pos: SrcPos, boxErrors: BoxErrors)(using Context): Type =
       if expected == LhsProto || expected.isSingleton && actual.isSingleton then
@@ -1367,6 +1462,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         if adapted eq widened then actual
         else adapted.showing(i"adapt boxed $actual vs $expected = $adapted", capt)
     end adapt
+
+// ---- Unit-level rechecking -------------------------------------------
 
     /** Check overrides again, taking capture sets into account.
     *  TODO: Can we avoid doing overrides checks twice?
@@ -1398,6 +1495,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             finally curEnv = saved
           actual1 frozen_<:< expected1
 
+        /** Omit the check if one of {overriding,overridden} was nnot capture checked */
         override def needsCheck(overriding: Symbol, overridden: Symbol)(using Context): Boolean =
           !setup.isPreCC(overriding) && !setup.isPreCC(overridden)
 
@@ -1425,36 +1523,43 @@ class CheckCaptures extends Recheck, SymTransformer:
             checkAllOverrides(ctx.owner.asClass, OverridingPairsCheckerCC(_, _, t))
           case _ =>
         traverseChildren(t)
+    end checkOverrides
 
-    private val completed = new mutable.HashSet[Symbol]
-
-    override def skipRecheck(sym: Symbol)(using Context): Boolean =
-      completed.contains(sym)
-
-    /** Check a ValDef or DefDef as an action performed in a completer. Since
-     *  these checks can appear out of order, we need to firsty create the correct
-     *  environment for checking the definition.
+    /** Used for error reporting:
+     *  Maps mutable variables to the symbols that capture them (in the
+     *  CheckCaptures sense, i.e. symbol is referred to from a different method
+     *  than the one it is defined in).
      */
-    def completeDef(tree: ValOrDefDef, sym: Symbol)(using Context): Type =
-      val saved = curEnv
-      try
-        // Setup environment to reflect the new owner.
-        val envForOwner: Map[Symbol, Env] = curEnv.outersIterator
-          .takeWhile(e => !capturedVars(e.owner).isAlwaysEmpty) // no refs can leak beyind this point
-          .map(e => (e.owner, e))
-          .toMap
-        def restoreEnvFor(sym: Symbol): Env =
-          val localSet = capturedVars(sym)
-          if localSet.isAlwaysEmpty then rootEnv
-          else envForOwner.get(sym) match
-            case Some(e) => e
-            case None => Env(sym, EnvKind.Regular, localSet, restoreEnvFor(sym.owner))
-        curEnv = restoreEnvFor(sym.owner)
-        capt.println(i"Complete $sym in ${curEnv.outersIterator.toList.map(_.owner)}")
-        try recheckDef(tree, sym)
-        finally completed += sym
-      finally
-        curEnv = saved
+    private val capturedBy = util.HashMap[Symbol, Symbol]()
+
+    /** Used for error reporting:
+     *  Maps anonymous functions appearing as function arguments to
+     *  the function that is called.
+     */
+    private val anonFunCallee = util.HashMap[Symbol, Symbol]()
+
+    /** Used for error reporting:
+     *  Populates `capturedBy` and `anonFunCallee`. Called by `checkUnit`.
+     */
+    private def collectCapturedMutVars(using Context) = new TreeTraverser:
+      def traverse(tree: Tree)(using Context) = tree match
+        case id: Ident =>
+          val sym = id.symbol
+          if sym.is(Mutable, butNot = Method) && sym.owner.isTerm then
+            val enclMeth = ctx.owner.enclosingMethod
+            if sym.enclosingMethod != enclMeth then
+              capturedBy(sym) = enclMeth
+        case Apply(fn, args) =>
+          for case closureDef(mdef) <- args do
+            anonFunCallee(mdef.symbol) = fn.symbol
+          traverseChildren(tree)
+        case Inlined(_, bindings, expansion) =>
+          traverse(bindings)
+          traverse(expansion)
+        case mdef: DefDef =>
+          if !mdef.symbol.isInlineMethod then traverseChildren(tree)
+        case _ =>
+          traverseChildren(tree)
 
     private val setup: SetupAPI = thisPhase.prev.asInstanceOf[Setup]
 
@@ -1475,6 +1580,9 @@ class CheckCaptures extends Recheck, SymTransformer:
         postCheckWF(unit.tpdTree)
         if ctx.settings.YccDebug.value then
           show(unit.tpdTree) // this does not print tree, but makes its variables visible for dependency printing
+    end checkUnit
+
+// ----- Checks to do after the rechecking traversal --------------------------
 
     /** Check that self types of subclasses conform to self types of super classes.
      *  (See comment below how this is achieved). The check assumes that classes
@@ -1602,6 +1710,10 @@ class CheckCaptures extends Recheck, SymTransformer:
         checker.traverse(tree.knownType)
     end healTypeParam
 
+    /** Under the unsealed policy: Arrays are like vars, check that their element types
+     *  do not contains `cap` (in fact it would work also to check on array creation
+     *  like we do under sealed).
+     */
     def checkArraysAreSealedIn(tp: Type, pos: SrcPos)(using Context): Unit =
       val check = new TypeTraverser:
         def traverse(t: Type): Unit =
@@ -1643,7 +1755,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                 checkBounds(normArgs, tl)
                 args.lazyZip(tl.paramNames).foreach(healTypeParam(_, _, fun.symbol))
               case _ =>
-          case tree: TypeTree =>
+          case tree: TypeTree if !ccConfig.useSealed =>
             checkArraysAreSealedIn(tree.tpe, tree.srcPos)
           case _ =>
         end check

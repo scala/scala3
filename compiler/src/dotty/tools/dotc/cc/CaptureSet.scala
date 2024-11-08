@@ -185,10 +185,12 @@ sealed abstract class CaptureSet extends Showable:
 
   /** A more optimistic version of subCaptures used to choose one of two typing rules
    *  for selections and applications. `cs1 mightSubcapture cs2` if `cs2` might account for
-   *  every element currently known to be in `cs1`.
+   *  every element currently known to be in `cs1`, and the same is not true in reverse
+   *  when we compare elements of cs2 vs cs1.
    */
   def mightSubcapture(that: CaptureSet)(using Context): Boolean =
     elems.forall(that.mightAccountFor)
+    && !that.elems.forall(this.mightAccountFor)
 
   /** The subcapturing test.
    *  @param frozen   if true, no new variables or dependent sets are allowed to

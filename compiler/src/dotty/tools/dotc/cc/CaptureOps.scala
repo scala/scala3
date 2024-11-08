@@ -127,10 +127,6 @@ end CCState
 def ccState(using Context) =
   Phases.checkCapturesPhase.asInstanceOf[CheckCaptures].ccState1
 
-class NoCommonRoot(rs: Symbol*)(using Context) extends Exception(
-  i"No common capture root nested in ${rs.mkString(" and ")}"
-)
-
 extension (tree: Tree)
 
   /** Map tree with CaptureRef type to its type,
