@@ -8,7 +8,7 @@ The `betterFors` language extension improves the usability of `for`-comprehensio
 
 The extension is enabled by the language import `import scala.language.experimental.betterFors` or by setting the command line option `-language:experimental.betterFors`.
 
-The biggest user facing change is the new ability to start `for`-comprehensions with with aliases. This means that the following previously invalid code is now valid:
+The biggest user facing change is the new ability to start `for`-comprehensions with aliases. This means that the following previously invalid code is now valid:
 
 ```scala
 for
