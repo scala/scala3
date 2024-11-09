@@ -1103,7 +1103,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
          *       - Every time when generating an ATHROW, a new basic block is started.
          *       - During classfile writing, such basic blocks are found to be dead: no branches go there
          *       - Eliminating dead code would probably require complex shifts in the output byte buffer
-         *       - But there's an easy solution: replace all code in the dead block with with
+         *       - But there's an easy solution: replace all code in the dead block with
          *         `nop; nop; ... nop; athrow`, making sure the bytecode size stays the same
          *       - The corresponding stack frame can be easily generated: on entering a dead the block,
          *         the frame requires a single Throwable on the stack.

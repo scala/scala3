@@ -70,7 +70,7 @@ abstract class Printer extends Pure {
   def changePrec(prec: Precedence)(op: => Text): Text =
     if (prec < this.prec) atPrec(prec) ("(" ~ op ~ ")") else atPrec(prec)(op)
 
-  /** The name, possibly with with namespace suffix if debugNames is set:
+  /** The name, possibly with namespace suffix if debugNames is set:
    *  /L for local names, /V for other term names, /T for type names
    */
   def nameString(name: Name): String
