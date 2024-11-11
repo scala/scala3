@@ -1,7 +1,7 @@
 -- [E190] Potential Issue Warning: tests/neg-custom-args/captures/real-try.scala:30:4 ----------------------------------
 30 |  b.x
    |  ^^^
-   |  Discarded non-Unit value of type () -> Unit. You may want to use `()`.
+   |  Discarded non-Unit value of type () -> Unit. Add `: Unit` to discard silently.
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/real-try.scala:12:2 -----------------------------------------------------------

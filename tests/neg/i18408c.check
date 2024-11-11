@@ -7,7 +7,7 @@
 -- [E190] Potential Issue Warning: tests/neg/i18408c.scala:3:15 --------------------------------------------------------
 3 |def test1 = fa(42)
   |               ^^
-  |               Discarded non-Unit value of type Int. You may want to use `()`.
+  |               Discarded non-Unit value of type Int. Add `: Unit` to discard silently.
   |
   | longer explanation available when compiling with `-explain`
 -- [E129] Potential Issue Warning: tests/neg/i18408c.scala:4:16 --------------------------------------------------------
