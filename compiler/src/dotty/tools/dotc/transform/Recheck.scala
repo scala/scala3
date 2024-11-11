@@ -387,6 +387,10 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckClosure(tree: Closure, pt: Type, forceDependent: Boolean = false)(using Context): Type =
       if tree.tpt.isEmpty then
         tree.meth.tpe.widen.toFunctionType(tree.meth.symbol.is(JavaDefined), alwaysDependent = forceDependent)
+      else if defn.isByNameFunction(tree.tpt.tpe) then
+        val mt @ MethodType(Nil) = tree.meth.tpe.widen: @unchecked
+        val cmt = ContextualMethodType(Nil, Nil, mt.resultType)
+        cmt.toFunctionType(alwaysDependent = forceDependent)
       else
         recheck(tree.tpt)
 
