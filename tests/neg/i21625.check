@@ -1,0 +1,72 @@
+-- Error: tests/neg/i21625.scala:5:7 -----------------------------------------------------------------------------------
+5 |  type F_LA_LB[K >: L] >: LB[K] // error: >: L
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  contravariant type L occurs in covariant position in type [K >: L] >: LB[K] of type F_LA_LB
+-- Error: tests/neg/i21625.scala:8:7 -----------------------------------------------------------------------------------
+8 |  type F_NU_LB[V <: U] >: LB[V] // error: <: U
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  covariant type U occurs in contravariant position in type [V <: U] >: LB[V] of type F_NU_LB
+-- Error: tests/neg/i21625.scala:10:7 ----------------------------------------------------------------------------------
+10 |  type F_LA_UB[K >: L] <: UB[K] // error: >: L
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  contravariant type L occurs in covariant position in type [K >: L] <: UB[K] of type F_LA_UB
+-- Error: tests/neg/i21625.scala:13:7 ----------------------------------------------------------------------------------
+13 |  type F_NU_UB[V <: U] <: UB[V] // error: <: U
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  covariant type U occurs in contravariant position in type [V <: U] <: UB[V] of type F_NU_UB
+-- Error: tests/neg/i21625.scala:17:7 ----------------------------------------------------------------------------------
+17 |       F_NL_LB[M <: L] >: LB[M], // error: <: L
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^
+   |       contravariant type L occurs in covariant position in type [M <: L] >: LB[M] of type F_NL_LB
+-- Error: tests/neg/i21625.scala:18:7 ----------------------------------------------------------------------------------
+18 |       F_UA_LB[T >: U] >: LB[T], // error: >: U
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^
+   |       covariant type U occurs in contravariant position in type [T >: U] >: LB[T] of type F_UA_LB
+-- Error: tests/neg/i21625.scala:22:7 ----------------------------------------------------------------------------------
+22 |       F_NL_UB[M <: L] <: UB[M], // error: <: L
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^
+   |       contravariant type L occurs in covariant position in type [M <: L] <: UB[M] of type F_NL_UB
+-- Error: tests/neg/i21625.scala:23:7 ----------------------------------------------------------------------------------
+23 |       F_UA_UB[T >: U] <: UB[T], // error: >: U
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^
+   |       covariant type U occurs in contravariant position in type [T >: U] <: UB[T] of type F_UA_UB
+-- Error: tests/neg/i21625.scala:28:7 ----------------------------------------------------------------------------------
+28 |  type M <: L // error: <: L
+   |  ^^^^^^^^^^^
+   |  contravariant type L occurs in covariant position in type  <: L of type M
+-- Error: tests/neg/i21625.scala:29:7 ----------------------------------------------------------------------------------
+29 |  type T >: U // error: >: U
+   |  ^^^^^^^^^^^
+   |  covariant type U occurs in contravariant position in type  >: U of type T
+-- Error: tests/neg/i21625.scala:32:10 ---------------------------------------------------------------------------------
+32 |  def d_K[K >: L](): K // error: >: L
+   |          ^^^^^^
+   |          contravariant type L occurs in covariant position in type  >: L of type K
+-- Error: tests/neg/i21625.scala:33:6 ----------------------------------------------------------------------------------
+33 |  def d_L():         L // error: => L
+   |  ^^^^^^^^^^^^^^^^^^^^
+   |  contravariant type L occurs in covariant position in type (): L of method d_L
+-- Error: tests/neg/i21625.scala:37:10 ---------------------------------------------------------------------------------
+37 |  def d_V[V <: U](): V // error: <: U
+   |          ^^^^^^
+   |          covariant type U occurs in contravariant position in type  <: U of type V
+-- Error: tests/neg/i21625.scala:40:6 ----------------------------------------------------------------------------------
+40 |  val v_L: L // error: L
+   |  ^^^^^^^^^^
+   |  contravariant type L occurs in covariant position in type L of value v_L
+-- Error: tests/neg/i21625.scala:48:15 ---------------------------------------------------------------------------------
+48 |  def d_K_Unit[K >: L](): K => Unit // error: >: L
+   |               ^^^^^^
+   |               contravariant type L occurs in covariant position in type  >: L of type K
+-- Error: tests/neg/i21625.scala:52:6 ----------------------------------------------------------------------------------
+52 |  def d_U_Unit():         U => Unit // error: U =>
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  covariant type U occurs in contravariant position in type (): U => Unit of method d_U_Unit
+-- Error: tests/neg/i21625.scala:53:15 ---------------------------------------------------------------------------------
+53 |  def d_V_Unit[V <: U](): V => Unit // error: <: U
+   |               ^^^^^^
+   |               covariant type U occurs in contravariant position in type  <: U of type V
+-- Error: tests/neg/i21625.scala:59:6 ----------------------------------------------------------------------------------
+59 |  val v_U_Unit: U => Unit // error: U =>
+   |  ^^^^^^^^^^^^^^^^^^^^^^^
+   |  covariant type U occurs in contravariant position in type U => Unit of value v_U_Unit

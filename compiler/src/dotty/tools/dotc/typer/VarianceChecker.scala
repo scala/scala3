@@ -120,7 +120,7 @@ class VarianceChecker(using Context) {
      *  explicitly (their TypeDefs will be passed here.) For MethodTypes, the
      *  same is true of the parameters (ValDefs).
      */
-    def apply(status: Option[VarianceError], tp: Type): Option[VarianceError] = trace(s"variance checking $tp of $base at $variance", variances) {
+    def apply(status: Option[VarianceError], tp: Type): Option[VarianceError] = trace(i"variance checking $tp of $base at $variance", variances) {
       try
         if (status.isDefined) status
         else tp match {
@@ -136,6 +136,14 @@ class VarianceChecker(using Context) {
             status
           case tp: ClassInfo =>
             foldOver(status, tp.parents)
+          case tp @ TypeBounds(lo: LambdaType, hi) if lo ne hi =>
+            // When checking the info of higher-kinded type members,
+            // (such as the following from i21625)
+            //     type F_NL_LB[M <: L] >: LB[M]
+            // we only check the lambda type param bounds (`>: L`)
+            // when checking the upper bound, eg `<: [M <: L] =>> Any`,
+            // not when checking the lower bound `>: [M <: L] =>> LB[M]`.
+            foldOver(status, tp.derivedTypeBounds(lo.resultType, hi))
           case _ =>
             foldOver(status, tp)
         }
