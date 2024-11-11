@@ -27,15 +27,15 @@
 -- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:58:19 --------------------------------------------
 58 |    if (!isEmpty) f(a)      // warn (if)
    |                  ^^^^
-   |                  discarded non-Unit value of type U
+   |                  discarded non-Unit value of type U. Add `: Unit` to discard silently.
 -- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:62:7 ---------------------------------------------
 62 |      f(a)                  // warn (if)
    |      ^^^^
-   |      discarded non-Unit value of type Boolean
+   |      discarded non-Unit value of type Boolean. Add `: Unit` to discard silently.
 -- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:73:25 --------------------------------------------
 73 |    if (!fellback) action(z)  // warn (if)
    |                   ^^^^^^^^^
-   |                   discarded non-Unit value of type U
+   |                   discarded non-Unit value of type U. Add `: Unit` to discard silently.
 -- [E176] Potential Issue Warning: tests/warn/nonunit-statement.scala:79:6 ---------------------------------------------
 79 |      g   // warn block statement
    |      ^
@@ -43,7 +43,7 @@
 -- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:81:6 ---------------------------------------------
 81 |      g   // warn (if)
    |      ^
-   |      discarded non-Unit value of type (g : => Int)
+   |      discarded non-Unit value of type Int. Add `: Unit` to discard silently.
 -- [E176] Potential Issue Warning: tests/warn/nonunit-statement.scala:84:6 ---------------------------------------------
 84 |      g   // warn
    |      ^
@@ -51,7 +51,7 @@
 -- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:86:6 ---------------------------------------------
 86 |      g   // warn
    |      ^
-   |      discarded non-Unit value of type (g : => Int)
+   |      discarded non-Unit value of type Int. Add `: Unit` to discard silently.
 -- [E176] Potential Issue Warning: tests/warn/nonunit-statement.scala:96:4 ---------------------------------------------
  96 |    if (b) {          // warn, at least one branch looks interesting
     |    ^
@@ -70,20 +70,20 @@
 -- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:126:37 -------------------------------------------
 126 |    if (start.length != 0) jsb.append(start) // warn (value-discard)
     |                           ^^^^^^^^^^^^^^^^^
-    |                           discarded non-Unit value of type StringBuilder
+    |                           discarded non-Unit value of type StringBuilder. Add `: Unit` to discard silently.
 -- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:132:18 -------------------------------------------
 132 |        jsb.append(it.next()) // warn (value-discard)
     |        ^^^^^^^^^^^^^^^^^^^^^
-    |        discarded non-Unit value of type StringBuilder
+    |        discarded non-Unit value of type StringBuilder. Add `: Unit` to discard silently.
 -- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:135:35 -------------------------------------------
 135 |    if (end.length != 0) jsb.append(end) // warn (value-discard)
     |                         ^^^^^^^^^^^^^^^
-    |                         discarded non-Unit value of type StringBuilder
+    |                         discarded non-Unit value of type StringBuilder. Add `: Unit` to discard silently.
 -- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:141:14 -------------------------------------------
 141 |      b.append(it.next()) // warn (value-discard)
     |      ^^^^^^^^^^^^^^^^^^^
-    |      discarded non-Unit value of type StringBuilder
+    |      discarded non-Unit value of type StringBuilder. Add `: Unit` to discard silently.
 -- [E175] Potential Issue Warning: tests/warn/nonunit-statement.scala:146:30 -------------------------------------------
 146 |    while (it.hasNext) it.next()  // warn
     |                       ^^^^^^^^^
-    |                       discarded non-Unit value of type String
+    |                       discarded non-Unit value of type String. Add `: Unit` to discard silently.
