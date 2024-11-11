@@ -2563,8 +2563,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     tree.args match
       case arg :: _ if arg.isTerm =>
         if Feature.enabled(Feature.modularity) then
-          tpt1.tpe.typeSymbol.primaryConstructor.typeRef.underlying match
-            case mt: MethodType =>
+          val constr =
+            if tpt1.tpe.typeSymbol.primaryConstructor.exists then
+              tpt1.tpe.typeSymbol.primaryConstructor
+            else
+              tpt1.tpe.typeSymbol.companionClass.primaryConstructor
+          constr.typeRef.underlying match
+            case mt: MethodOrPoly =>
               return TypeTree(mt.instantiate(tree.args.map((typedExpr(_).tpe))))
         else
           return errorTree(tree, dependentMsg)

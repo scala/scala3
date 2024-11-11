@@ -1335,15 +1335,20 @@ object Parsers {
      *                 |  SimpleLiteral
      *                 |  Singleton ‘.’ id
      *                 |  Singleton ‘(’ Singletons ‘)’
-     * -- not yet      |  Singleton ‘[’ Types ‘]’
+     *                 |  Singleton ‘[’ Types ‘]’
      */
     def singleton(): Tree =
       val res =
         if isSimpleLiteral then simpleLiteral()
         else dotSelectors(simpleRef())
-      if in.token == LPAREN then
-        AppliedTypeTree(res, inParens(commaSeparated(() => singleton())))
-      else res
+      singletonArgs(res)
+
+    def singletonArgs(t: Tree): Tree =
+      if in.token == LPAREN && in.featureEnabled(Feature.modularity) then
+        singletonArgs(AppliedTypeTree(t, inParensWithCommas(commaSeparated(singleton))))
+      else if in.token == LBRACKET && in.featureEnabled(Feature.modularity) then
+        singletonArgs(AppliedTypeTree(t, inBrackets(commaSeparated(() => typ()))))
+      else t
 
     /** SimpleLiteral     ::=  [‘-’] integerLiteral
      *                      |  [‘-’] floatingPointLiteral
@@ -2087,10 +2092,6 @@ object Parsers {
         val start = in.skipToken()
         typeBounds().withSpan(Span(start, in.lastOffset, start))
       else
-        def singletonArgs(t: Tree): Tree =
-          if in.token == LPAREN && in.featureEnabled(Feature.modularity)
-          then singletonArgs(AppliedTypeTree(t, inParensWithCommas(commaSeparated(singleton))))
-          else t
         singletonArgs(simpleType1())
 
     /** SimpleType1      ::=  id
