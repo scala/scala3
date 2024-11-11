@@ -80,9 +80,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
         signatureRenderer.renderLink(stripQuotes(text), dri)
       case Annotation.UnresolvedParameter(_, value) => stripQuotes(value)
 
-    val (named, unnamed) = a.params.partition(_.name.nonEmpty)
-    val message = named.find(_.name.get == "message")
-    val since = named.find(_.name.get == "since")
+    val message = a.params.lift(0)
+    val since = a.params.lift(1)
 
     val content = (
       Seq(
