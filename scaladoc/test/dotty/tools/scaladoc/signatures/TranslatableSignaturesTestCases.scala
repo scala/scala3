@@ -55,6 +55,8 @@ class GivenSignatures extends SignatureTest("givenSignatures", SignatureTest.all
 
 class Annotations extends SignatureTest("annotations", SignatureTest.all)
 
+class Deprecated extends SignatureTest("deprecated", SignatureTest.all)
+
 class InheritanceLoop extends SignatureTest("inheritanceLoop", SignatureTest.all)
 
 class InheritedMembers extends SignatureTest("inheritedMembers2", SignatureTest.all.filter(_ != "class"),
