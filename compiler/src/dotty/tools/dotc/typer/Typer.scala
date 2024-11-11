@@ -2834,20 +2834,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case rhs =>
         excludeDeferredGiven(rhs, sym):
           typedExpr(_, tpt1.tpe.widenExpr)
-    setAbstractTrackedInfo(sym, rhs1, tpt)
-    val tpt2 = if sym.flags.is(Tracked) && tpt.isEmpty && !sym.flags.is(ParamAccessor) && !sym.flags.is(Param) then TypeTree(rhs1.tpe) else tpt1
-    val vdef2 = assignType(cpy.ValDef(vdef)(name, tpt2, rhs1), sym)
-    postProcessInfo(vdef2, sym)
-    vdef2.setDefTree
+    val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
+    postProcessInfo(vdef1, sym)
+    vdef1.setDefTree
   }
-
-  private def setAbstractTrackedInfo(sym: Symbol, rhs: Tree, tpt: untpd.Tree)(using Context): Unit =
-    if !sym.flags.is(ParamAccessor) && !sym.flags.is(Param) then
-      if sym.allOverriddenSymbols.exists(_.flags.is(Tracked)) then
-        sym.setFlag(Tracked)
-      if sym.flags.is(Tracked) && tpt.isEmpty then
-        sym.info = rhs.tpe
-
   private def retractDefDef(sym: Symbol)(using Context): Tree =
     // it's a discarded method (synthetic case class method or synthetic java record constructor or overridden member), drop it
     val canBeInvalidated: Boolean =
