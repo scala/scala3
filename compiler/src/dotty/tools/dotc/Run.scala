@@ -12,7 +12,7 @@ import typer.Typer
 import typer.ImportInfo.withRootImports
 import Decorators.*
 import io.AbstractFile
-import Phases.{unfusedPhases, Phase}
+import Phases.{assemblePhases, unfusedPhases, Phase}
 
 import sbt.interfaces.ProgressCallback
 
@@ -295,18 +295,11 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
       report.echo(this.enrichErrorMessage(s"exception occurred while compiling ${files1.map(_.path)}"))
       throw ex
 
-  /** TODO: There's a fundamental design problem here: We assemble phases using `fusePhases`
-   *  when we first build the compiler. But we modify them with -Yskip, -Ystop
-   *  on each run. That modification needs to either transform the tree structure,
-   *  or we need to assemble phases on each run, and take -Yskip, -Ystop into
-   *  account. I think the latter would be preferable.
-   */
   def compileSources(sources: List[SourceFile]): Unit =
     if (sources forall (_.exists)) {
       units = sources.map(CompilationUnit(_))
       compileUnits()
     }
-
 
   def compileUnits(us: List[CompilationUnit]): Unit = {
     units = us
@@ -333,22 +326,8 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
       then ActiveProfile(ctx.settings.VprofileDetails.value.max(0).min(1000))
       else NoProfile
 
-    // If testing pickler, make sure to stop after pickling phase:
-    val stopAfter =
-      if (ctx.settings.YtestPickler.value) List("pickler")
-      else ctx.settings.YstopAfter.value
-
-    val runCtx = ctx.fresh
+    val runCtx = assemblePhases()
     runCtx.setProfiler(Profiler())
-
-    val pluginPlan = ctx.base.addPluginPhases(ctx.base.phasePlan)
-    val phases = ctx.base.fusePhases(pluginPlan,
-      ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, stopAfter, ctx.settings.Ycheck.value)
-    ctx.base.usePhases(phases, runCtx)
-    val phasesSettings = List("-Vphases", "-Vprint")
-    for phasesSetting <- ctx.settings.allSettings if phasesSettings.contains(phasesSetting.name) do
-      for case vs: List[String] <- phasesSetting.userValue; p <- vs do
-        if !phases.exists(List(p).containsPhase) then report.warning(s"'$p' specifies no phase")
 
     if ctx.settings.YnoDoubleBindings.value then
       ctx.base.checkNoDoubleBindings = true
@@ -359,7 +338,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
       var phasesWereAdjusted = false
 
       var forceReachPhaseMaybe =
-        if (ctx.isBestEffort && phases.exists(_.phaseName == "typer")) Some("typer")
+        if (ctx.isBestEffort && allPhases.exists(_.phaseName == "typer")) Some("typer")
         else None
 
       for phase <- allPhases do
