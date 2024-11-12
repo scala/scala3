@@ -306,4 +306,28 @@ class ScalaSettingsTests:
       assertEquals(0, result.warnings.length)
       assertEquals(1, result.errors.length)
 
+  @Test def `Vphases takes optional phase names`: Unit =
+    val settings = ScalaSettings
+    def process(args: List[String]) =
+      val summary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
+      settings.processArguments(summary, processAll = true, skipped = Nil)
+    locally:
+      val summary = process("-Vphases:foo,bar,baz" :: Nil)
+      assertTrue(summary.errors.isEmpty && summary.warnings.isEmpty)
+      assertEquals(List("foo","bar","baz"), settings.Vphases.valueIn(summary.sstate))
+    locally:
+      val summary = process(List("-Vphases","foo","-Vphases","bar","-Vphases","baz"))
+      assertTrue(summary.errors.isEmpty && summary.warnings.isEmpty)
+      assertEquals(List("foo","bar","baz"), settings.Vphases.valueIn(summary.sstate))
+    locally:
+      val summary = process(List("-Vphases","--","foo"))
+      assertTrue(summary.errors.isEmpty && summary.warnings.isEmpty)
+      assertEquals(List("none"), settings.Vphases.valueIn(summary.sstate)) // nonempty default required
+      assertEquals(Some(List("none")), settings.Vphases.userValueIn(summary.sstate)) // nonempty default required
+    locally:
+      val summary = process(Nil)
+      assertTrue(summary.errors.isEmpty && summary.warnings.isEmpty)
+      assertEquals(List("none"), settings.Vphases.valueIn(summary.sstate)) // nonempty default required
+      assertEquals(None, settings.Vphases.userValueIn(summary.sstate))
+
 end ScalaSettingsTests

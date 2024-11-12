@@ -13,13 +13,15 @@ import dotty.tools.io.PlainDirectory
 import dotty.tools.io.Directory
 import dotty.tools.dotc.config.ScalaVersion
 
-import java.nio.file._
+import java.nio.file.*
 
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.{assertEquals, assertFalse, assertNotEquals, assertTrue}
 import scala.util.Using
 
-class SettingsTests {
+class SettingsTests:
+
+  private val TestCategory = new SettingCategory { def prefixLetter = "T" }
 
   @Test def missingOutputDir: Unit =
     val options = Array("-d", "not_here")
@@ -110,7 +112,7 @@ class SettingsTests {
         false
 
     val default = Settings.defaultState
-    dotty.tools.assertThrows[IllegalArgumentException](checkMessage("found: not an option of type java.lang.String, required: Boolean")) {
+    assertThrows[IllegalArgumentException](checkMessage("found: not an option of type java.lang.String, required: Boolean")) {
       Settings.option.updateIn(default, "not an option")
     }
 
@@ -170,11 +172,12 @@ class SettingsTests {
       )
       assertEquals(expectedErrors, summary.errors)
     }
+  end validateChoices
 
   @Test def `Allow IntSetting's to be set with a colon`: Unit =
     object Settings extends SettingGroup:
       val foo = IntSetting(RootSetting, "foo", "foo", 80)
-    import Settings._
+    import Settings.*
 
     val args = List("-foo:100")
     val summary = processArguments(args, processAll = true)
@@ -189,7 +192,7 @@ class SettingsTests {
       val bar = BooleanSetting(RootSetting, "bar", "bar", true)
       val baz = BooleanSetting(RootSetting, "baz", "baz", false)
       val qux = BooleanSetting(RootSetting, "qux", "qux", false)
-    import Settings._
+    import Settings.*
 
     val args = List("-foo:true", "-bar:false", "-baz", "-qux:true", "-qux:false")
     val summary = processArguments(args, processAll = true)
@@ -208,7 +211,7 @@ class SettingsTests {
         val defaultDir = new PlainDirectory(Directory("."))
         val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir)
 
-      import Settings._
+      import Settings.*
 
       Files.write(file, "test".getBytes())
       val fileStateBefore = String(Files.readAllBytes(file))
@@ -228,7 +231,7 @@ class SettingsTests {
         val defaultDir = new PlainDirectory(Directory("."))
         val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true)
 
-      import Settings._
+      import Settings.*
 
       Files.write(file1, "test1".getBytes())
       Files.write(file2, "test2".getBytes())
@@ -253,7 +256,7 @@ class SettingsTests {
         val defaultDir = new PlainDirectory(Directory("."))
         val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true, deprecation = Deprecation.renamed("XtestOutput"))
 
-      import Settings._
+      import Settings.*
 
       Files.write(file, "test".getBytes())
       val fileStateBefore = String(Files.readAllBytes(file))
@@ -280,7 +283,7 @@ class SettingsTests {
       val phasesSetting = PhasesSetting(RootSetting, "phasesSetting", "phasesSetting", "all")
       val versionSetting= VersionSetting(RootSetting, "versionSetting", "versionSetting")
 
-    import Settings._
+    import Settings.*
     Using.resource(Files.createTempDirectory("testDir")) { dir =>
 
       val args = List(
@@ -321,8 +324,17 @@ class SettingsTests {
 
     }(Files.deleteIfExists(_))
 
+  @Test def `Multi setting with empty default errors if missing`: Unit =
+    object Settings extends SettingGroup:
+      val answers = MultiStringSetting(TestCategory, name="Tanswer", helpArg="your reply", descr="answer me this")
+    import Settings.{answers, processArguments}
+    val summary = processArguments("-Tanswer" :: Nil, processAll = true)
+    assertTrue(summary.warnings.isEmpty)
+    assertFalse(summary.errors.isEmpty)
+    withProcessedArgs(summary):
+      assertTrue(answers.value.isEmpty)
+
   private def withProcessedArgs(summary: ArgsSummary)(f: SettingsState ?=> Unit) = f(using summary.sstate)
 
   extension [T](setting: Setting[T])
     private def value(using ss: SettingsState): T = setting.valueIn(ss)
-}
