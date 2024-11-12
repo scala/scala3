@@ -931,7 +931,7 @@ object TypeOps:
         protoTp1 <:< tp
       maximizeType(protoTp1, NoSpan)
       val inst = wildApprox(protoTp1)
-      if !inst.classSymbol.exists then
+      if inst.classSymbols.isEmpty then
         // E.g. i21790, can't instantiate S#CA as a subtype of O.A, because O.CA isn't accessible
         NoType
       else inst
