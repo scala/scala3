@@ -30,7 +30,7 @@ object JsonNameTransformer {
           buf.append(name.subSequence(0, i))
         }
         buf.append(op2code(c.toInt))
-      } else if (c <= 0x1F || c > 0x7F) {
+      } else if (c <= 0x1F || c >= 0x7F) {
         if (buf eq null) {
           buf = new StringBuilder()
           buf.append(name.subSequence(0, i))
