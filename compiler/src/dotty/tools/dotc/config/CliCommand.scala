@@ -119,7 +119,7 @@ trait CliCommand:
 
   /** Used for the formatted output of -Xshow-phases */
   protected def phasesMessage(using Context): String =
-    val compiler = Compiler()
+    val compiler = new Compiler()
     ctx.initialize()
     ctx.base.setPhasePlan(compiler.phases)
     val runCtx = assemblePhases()
