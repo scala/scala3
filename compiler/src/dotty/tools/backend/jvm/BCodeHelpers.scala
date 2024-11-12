@@ -31,6 +31,7 @@ import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.transform.GenericSignatures
 import dotty.tools.dotc.transform.ElimErasedValueType
+import dotty.tools.dotc.transform.Mixin
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.report
 
@@ -395,12 +396,20 @@ trait BCodeHelpers extends BCodeIdiomatic {
      */
     def getGenericSignature(sym: Symbol, owner: Symbol): String = {
       atPhase(erasurePhase) {
-        val memberTpe =
+        def computeMemberTpe(): Type =
           if (sym.is(Method)) sym.denot.info
           else if sym.denot.validFor.phaseId > erasurePhase.id && sym.isField && sym.getter.exists then
             // Memoization field of getter entered after erasure, see run/i17069 for an example
             sym.getter.denot.info.resultType
           else owner.denot.thisType.memberInfo(sym)
+
+        val memberTpe = if sym.is(MixedIn) then
+          mixinPhase.asInstanceOf[Mixin].mixinForwarderGenericInfos.get(sym) match
+            case Some(genericInfo) => genericInfo
+            case none              => computeMemberTpe()
+        else
+          computeMemberTpe()
+
         getGenericSignatureHelper(sym, owner, memberTpe).orNull
       }
     }
