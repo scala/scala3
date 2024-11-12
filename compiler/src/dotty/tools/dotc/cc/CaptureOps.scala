@@ -592,6 +592,7 @@ extension (sym: Symbol)
     && !defn.isPolymorphicAfterErasure(sym)
     && !defn.isTypeTestOrCast(sym)
 
+  /** It's a parameter accessor that is not annotated @constructorOnly or @uncheckedCaptures */
   def isRefiningParamAccessor(using Context): Boolean =
     sym.is(ParamAccessor)
     && {
