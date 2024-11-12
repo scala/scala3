@@ -85,7 +85,7 @@ trait TypeAssigner {
       defn.FromJavaObjectType
     else tpe match
       case tpe: NamedType =>
-        val tpe1 = TypeOps.makePackageObjPrefixExplicit(tpe)
+        val tpe1 = tpe.makePackageObjPrefixExplicit
         if tpe1 ne tpe then
           accessibleType(tpe1, superAccess)
         else

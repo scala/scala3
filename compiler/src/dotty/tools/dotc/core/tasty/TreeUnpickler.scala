@@ -1273,7 +1273,7 @@ class TreeUnpickler(reader: TastyReader,
         val tpe0 = name match
           case name: TypeName => TypeRef(qualType, name, denot)
           case name: TermName => TermRef(qualType, name, denot)
-        val tpe = TypeOps.makePackageObjPrefixExplicit(tpe0)
+        val tpe = tpe0.makePackageObjPrefixExplicit
         ConstFold.Select(untpd.Select(qual, name).withType(tpe))
 
       def completeSelect(name: Name, sig: Signature, target: Name): Select =

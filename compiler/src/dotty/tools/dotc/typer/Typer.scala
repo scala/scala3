@@ -344,7 +344,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               // so we ignore that import.
               if reallyExists(denot) && !isScalaJsPseudoUnion then
                 if unimported.isEmpty || !unimported.contains(pre.termSymbol) then
-                  return pre.select(name, denot)
+                  return pre.select(name, denot).makePackageObjPrefixExplicit
           case _ =>
             if imp.importSym.isCompleting then
               report.warning(i"cyclic ${imp.importSym}, ignored", pos)
@@ -504,7 +504,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                       defDenot.symbol.owner
                     else
                       curOwner
-                  effectiveOwner.thisType.select(name, defDenot)
+                  effectiveOwner.thisType.select(name, defDenot).makePackageObjPrefixExplicit
                 }
               if !curOwner.is(Package) || isDefinedInCurrentUnit(defDenot) then
                 result = checkNewOrShadowed(found, Definition) // no need to go further out, we found highest prec entry
