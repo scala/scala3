@@ -690,7 +690,6 @@ object SpaceEngine {
           else NoType
         }.filter(_.exists)
         parts
-
       case _ => ListOfNoType
     end rec
 
