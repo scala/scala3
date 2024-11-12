@@ -930,7 +930,11 @@ object TypeOps:
       for tp <- mixins.reverseIterator do
         protoTp1 <:< tp
       maximizeType(protoTp1, NoSpan)
-      wildApprox(protoTp1)
+      val inst = wildApprox(protoTp1)
+      if !inst.classSymbol.exists then
+        // E.g. i21790, can't instantiate S#CA as a subtype of O.A, because O.CA isn't accessible
+        NoType
+      else inst
     }
 
     if (protoTp1 <:< tp2) instantiate()
