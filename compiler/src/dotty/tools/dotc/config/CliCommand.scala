@@ -3,7 +3,9 @@ package config
 
 import Settings.*
 import core.Contexts.*
+import core.Phases.assemblePhases
 import printing.Highlighting
+import transform.MegaPhase
 
 import dotty.tools.dotc.util.chaining.*
 import scala.PartialFunction.cond
@@ -115,9 +117,17 @@ trait CliCommand:
 
   /** Used for the formatted output of -Xshow-phases */
   protected def phasesMessage(using Context): String =
-    val phases = new Compiler().phases
+    val compiler = new Compiler()
+    ctx.initialize()
+    ctx.base.setPhasePlan(compiler.phases)
+    val runCtx = assemblePhases()
+    val phases = runCtx.base.allPhases
+    val texts = phases.iterator.map {
+      case mp: MegaPhase => mp.miniPhases.iterator.map(p => (p.phaseName, p.description)).toList
+      case p => (p.phaseName, p.description) :: Nil
+    }.toList
     val formatter = Columnator("phase name", "description", maxField = 25)
-    formatter(phases.map(mega => mega.map(p => (p.phaseName, p.description))))
+    formatter(texts)
 
   /** Provide usage feedback on argument summary, assuming that all settings
    *  are already applied in context.

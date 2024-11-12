@@ -128,12 +128,12 @@ object Phases {
      */
     final def usePhases(phasess: List[Phase], runCtx: FreshContext, fuse: Boolean = true): Unit = {
 
-      val flatPhases = collection.mutable.ListBuffer[Phase]()
+      val flatPhases = ListBuffer.empty[Phase]
 
-      phasess.foreach(p => p match {
+      phasess.foreach {
         case p: MegaPhase => flatPhases ++= p.miniPhases
-        case _ => flatPhases += p
-      })
+        case p => flatPhases += p
+      }
 
       phases = (NoPhase :: flatPhases.toList ::: new TerminalPhase :: Nil).toArray
       setSpecificPhases()
@@ -564,4 +564,24 @@ object Phases {
   private def replace(oldPhaseClass: Class[? <: Phase], newPhases: Phase => List[Phase], current: List[List[Phase]]): List[List[Phase]] =
     current.map(_.flatMap(phase =>
       if (oldPhaseClass.isInstance(phase)) newPhases(phase) else phase :: Nil))
+
+  def assemblePhases()(using Context): FreshContext =
+    val runCtx = ctx.fresh
+
+    // If testing pickler, make sure to stop after pickling phase:
+    val stopAfter =
+      if (ctx.settings.YtestPickler.value) List("pickler")
+      else ctx.settings.YstopAfter.value
+
+    val pluginPlan = ctx.base.addPluginPhases(ctx.base.phasePlan)
+    val phases = ctx.base.fusePhases(pluginPlan,
+      ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, stopAfter, ctx.settings.Ycheck.value)
+    ctx.base.usePhases(phases, runCtx)
+
+    val phasesSettings = List("-Vphases", "-Vprint")
+    for phasesSetting <- ctx.settings.allSettings if phasesSettings.contains(phasesSetting.name) do
+      for case vs: List[String] <- phasesSetting.userValue; p <- vs do
+        if !phases.exists(List(p).containsPhase) then report.warning(s"'$p' specifies no phase")
+    runCtx
+  end assemblePhases
 }
