@@ -241,7 +241,8 @@ object PickledQuotes {
         treeOwner(tree) match
           case Some(owner) =>
             // Copy the cached tree to make sure the all definitions are unique.
-            TreeTypeMap(oldOwners = List(owner), newOwners = List(owner)).apply(tree)
+            // Also replace the owner of top-level symbols.
+            TreeTypeMap(oldOwners = List(owner), newOwners = List(ctx.owner)).apply(tree)
           case _ =>
             tree
 
