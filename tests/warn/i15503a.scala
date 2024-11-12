@@ -100,20 +100,28 @@ object SomeGivenImports:
   given String = "foo"
 
 /* BEGIN : Check on packages*/
-package testsamepackageimport:
-  package p {
+package nestedpackageimport:
+  package p:
     class C
-  }
-
-  package p {
-    import p._ // warn
-    package q {
-      class U {
+  package p:
+    package q:
+      import p.* // warn
+      class U:
         def f = new C
-      }
-    }
-  }
-// -----------------------
+package unnestedpackageimport:
+  package p:
+    class C
+  package p.q:
+    import p.* // nowarn
+    class U:
+      def f = new C
+
+package redundancy:
+  object redundant:
+    def f = 42
+  import redundancy.* // warn superseded by def in scope
+  class R:
+    def g = redundant.f
 
 package testpackageimport:
   package a:

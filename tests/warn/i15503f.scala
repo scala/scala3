@@ -11,4 +11,6 @@ object Xd {
   private def f6(a: Int)(using Int) = summon[Int] // OK
   private def f7(a: Int)(using Int) = summon[Int] + a // OK
   private def f8(a: Int)(using foo: Int) = a // warn
+  private def f9(a: Int)(using Int) = ??? // OK trivial
+  private def g1(a: Int)(implicit foo: Int) = a // warn
 }

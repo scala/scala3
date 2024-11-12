@@ -56,7 +56,8 @@ package foo.test.trivial:
   object Y
 
 package foo.test.i16955:
-  class S(var r: String) // OK
+  class S(var rrr: String) // OK
+  class T(rrr: String) // warn
 
 package foo.test.i16865:
   trait Foo:

@@ -33,7 +33,7 @@ class Compiler {
   protected def frontendPhases: List[List[Phase]] =
     List(new Parser) ::             // Compiler frontend: scanner, parser
     List(new TyperPhase) ::         // Compiler frontend: namer, typer
-    List(new CheckUnused.PostTyper, new CheckShadowing) :: // Check for unused, shadowed elements
+    List(/*LintPreparation(),*/ CheckUnused.PostTyper()/*, CheckShadowing()*/) :: // Check for unused, shadowed elements
     List(new YCheckPositions) ::    // YCheck positions
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new semanticdb.ExtractSemanticDB.ExtractSemanticInfo) :: // Extract info into .semanticdb files
@@ -51,7 +51,7 @@ class Compiler {
     List(new Staging) ::            // Check staging levels and heal staged types
     List(new Splicing) ::           // Replace level 1 splices with holes
     List(new PickleQuotes) ::       // Turn quoted trees into explicit run-time data structures
-    List(new CheckUnused.PostInlining) ::  // Check for unused elements
+    List(/*LintPreparation(),*/ CheckUnused.PostInlining()) ::  // Check for unused elements
     Nil
 
   /** Phases dealing with the transformation from pickled trees to backend trees */

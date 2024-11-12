@@ -20,4 +20,5 @@ package foo.test.i17101:
   extension[A] (x: Test[A]) { // OK
     def value: A = x
     def causesIssue: Unit = println("oh no")
+    def isAnIssue(y: A): Boolean = x == x // warn
   }

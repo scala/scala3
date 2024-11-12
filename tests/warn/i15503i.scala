@@ -93,7 +93,7 @@ package foo.test.possibleclasses:
     k: Int, // OK
     private val y: Int // OK /* Kept as it can be taken from pattern */
   )(
-    s: Int,
+    s: Int, // warn
     val t: Int, // OK
     private val z: Int // warn
   )
@@ -132,11 +132,11 @@ package foo.test.possibleclasses:
 package foo.test.possibleclasses.withvar:
   case class AllCaseClass(
     k: Int, // OK
-    private var y: Int // OK /* Kept as it can be taken from pattern */
+    private var y: Int // warn unset
   )(
-    s: Int,
-    var t: Int, // OK
-    private var z: Int // warn
+    s: Int, // warn
+    var ttt: Int, // OK
+    private var zzz: Int // warn
   )
 
   case class AllCaseUsed(
@@ -144,10 +144,10 @@ package foo.test.possibleclasses.withvar:
     private var y: Int // OK
   )(
     s: Int, // OK
-    var t: Int, // OK global scope can be set somewhere else
-    private var z: Int // warn not set
+    var tt: Int, // OK global scope can be set somewhere else
+    private var zz: Int // warn not set
   ) {
-    def a = k + y + s + t + z
+    def a = k + y + s + tt + zz
   }
 
   class AllClass(

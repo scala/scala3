@@ -3302,6 +3302,8 @@ object UnusedSymbol:
   def implicitParams(using Context): UnusedSymbol = UnusedSymbol(i"unused implicit parameter")
   def privateMembers(using Context): UnusedSymbol = UnusedSymbol(i"unused private member")
   def patVars(using Context): UnusedSymbol = UnusedSymbol(i"unused pattern variable")
+  def unsetLocals(using Context): UnusedSymbol = UnusedSymbol(i"unset local variable, consider using an immutable val instead")
+  def unsetPrivates(using Context): UnusedSymbol = UnusedSymbol(i"unset private variable, consider using an immutable val instead")
 
 class NonNamedArgumentInJavaAnnotation(using Context) extends SyntaxMsg(NonNamedArgumentInJavaAnnotationID):
 
