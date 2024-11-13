@@ -135,7 +135,7 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
         new JarEntryWriter(jarFile, jarManifestMainClass, jarCompressionLevel)
       }
       else if (file.isVirtual) new VirtualFileWriter(file)
-      else if (file.isDirectory) new DirEntryWriter(file.file.toPath)
+      else if (file.isDirectory) new DirEntryWriter(file.file.nn.toPath)
       else throw new IllegalStateException(s"don't know how to handle an output of $file [${file.getClass}]")
   }
 
