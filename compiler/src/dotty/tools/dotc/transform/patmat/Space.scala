@@ -337,13 +337,6 @@ object SpaceEngine {
     case pat: Ident if isBackquoted(pat) =>
       Typ(pat.tpe, decomposed = false)
 
-    case Ident(nme.WILDCARD) =>
-      val tp = pat.tpe.stripAnnots.widenSkolem
-      val isNullable = tp.isInstanceOf[FlexibleType] || tp.classSymbol.isNullableClass
-      val tpSpace = Typ(erase(tp, isValue = true), decomposed = false)
-      if isNullable then Or(tpSpace :: nullSpace :: Nil)
-      else tpSpace
-
     case Ident(_) | Select(_, _) =>
       Typ(erase(pat.tpe.stripAnnots.widenSkolem, isValue = true), decomposed = false)
 
@@ -716,7 +709,6 @@ object SpaceEngine {
           else NoType
         }.filter(_.exists)
         parts
-      case tp: FlexibleType => List(tp.underlying, ConstantType(Constant(null)))
       case _ => ListOfNoType
     end rec
 
@@ -939,11 +931,15 @@ object SpaceEngine {
       then project(OrType(selTyp, ConstantType(Constant(null)), soft = false))
       else project(selTyp)
     var hadNullOnly = false
+    def projectPat(pat: Tree): Space =
+      // Project toplevel wildcard pattern to nullable
+      if isNullable && isWildcardArg(pat) then Or(project(pat) :: nullSpace :: Nil)
+      else project(pat)
     @tailrec def recur(cases: List[CaseDef], prevs: List[Space], deferred: List[Tree]): Unit =
       cases match
         case Nil =>
         case CaseDef(pat, guard, _) :: rest =>
-          val curr = trace(i"project($pat)")(project(pat))
+          val curr = trace(i"project($pat)")(projectPat(pat))
           val covered = trace("covered")(simplify(intersect(curr, targetSpace)))
           val prev = trace("prev")(simplify(Or(prevs)))
           if prev == Empty && covered == Empty then // defer until a case is reachable
