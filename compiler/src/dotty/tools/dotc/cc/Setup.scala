@@ -28,6 +28,9 @@ trait SetupAPI:
 
 object Setup:
 
+  val name: String = "ccSetup"
+  val description: String = "prepare compilation unit for capture checking"
+
   /** Recognizer for `res $throws exc`, returning `(res, exc)` in case of success */
   object throwsAlias:
     def unapply(tp: Type)(using Context): Option[(Type, Type)] = tp match
@@ -52,6 +55,10 @@ import Setup.*
  */
 class Setup extends PreRecheck, SymTransformer, SetupAPI:
   thisPhase =>
+
+  override def phaseName: String = Setup.name
+
+  override def description: String = Setup.description
 
   override def isRunnable(using Context) =
     super.isRunnable && Feature.ccEnabledSomewhere

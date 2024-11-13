@@ -28,6 +28,9 @@ import reporting.{trace, Message, OverrideError}
 object CheckCaptures:
   import ast.tpd.*
 
+  val name: String = "cc"
+  val description: String = "capture checking"
+
   enum EnvKind:
     case Regular        // normal case
     case NestedInOwner  // environment is a temporary one nested in the owner's environment,
@@ -192,7 +195,9 @@ class CheckCaptures extends Recheck, SymTransformer:
   import ast.tpd.*
   import CheckCaptures.*
 
-  def phaseName: String = "cc"
+  override def phaseName: String = CheckCaptures.name
+
+  override def description: String = CheckCaptures.description
 
   override def isRunnable(using Context) = super.isRunnable && Feature.ccEnabledSomewhere
 
