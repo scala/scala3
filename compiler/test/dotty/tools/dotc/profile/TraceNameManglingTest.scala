@@ -46,7 +46,7 @@ class TraceNameManglingTest extends DottyTest {
         raw"setter /\\_="
       ).map(TraceEvent("typecheck", _))
         ++ Set(
-          TraceEvent("file", if isWindows then "/.scala" else "\\\\.scala")
+          TraceEvent("file", if isWindows then ".scala" else "\\\\.scala")
         )
     )
   }
