@@ -1423,41 +1423,41 @@ trait Checking {
           case Literal(_) => // ok
           case _ =>
             report.error(em"@${cls.name} needs a string literal as argument", arg.srcPos)
+        tree
       case _ =>
-        if cls.isRetainsLike then () // Do not check @retain annotations
-        else if cls == defn.ThrowsAnnot then
-          // Do not check @throws annotations.
-          // TODO(mbovel): in tests/run/t6380.scala, an annotation tree is
-          // `new throws[Exception](throws.<init>[Exception])`. What is this?
-          ()
+        if cls.isRetainsLike then tree
         else
-          tpd.allTermArguments(tree).foreach(checkAnnotArg)
-    tree
+          tpd.allTermArguments(tree).foldLeft(tree: Tree)((acc: Tree, arg: Tree) =>
+            if validAnnotArg(arg) then acc
+            else errorTree(
+              EmptyTree,
+              em"""Implementation restriction: not a valid annotation argument.
+                  |Argument: $arg
+                  |Type: ${arg.tpe}""",
+              arg.srcPos
+            )
+          )
 
-  private def checkAnnotArg(tree: Tree)(using Context): Unit =
-    def valid(t: Tree): Boolean =
-      t match
-        case _ if t.tpe.isEffectivelySingleton => true
-        case Literal(_) => true
-        // `_` is used as placeholder for unspecified arguments of Java
-        // annotations. Example: tests/run/java-ann-super-class
-        case Ident(nme.WILDCARD) => true
-        case Apply(fun, args) => valid(fun) && args.forall(valid)
-        case TypeApply(fun, args) => valid(fun)
-        case SeqLiteral(elems, _) => elems.forall(valid)
-        case Typed(expr, _) => valid(expr)
-        case NamedArg(_, arg) => valid(arg)
-        case Splice(_) => true
-        case Hole(_, _, _, _) => true
-        case _ => false
-    if !valid(tree) then
-      report.error(
-        i"""Implementation restriction: not a valid annotation argument.
-           |Argument: $tree
-           |Type: ${tree.tpe}""",
-        tree.srcPos
-      )
-  
+  private def validAnnotArg(t: Tree)(using Context): Boolean =
+    t match
+      case _ if t.tpe.isEffectivelySingleton => true
+      case Literal(_) => true
+      // `Ident(nme.WILDCARD)` is used as placeholder for unspecified
+      // arguments of Java annotations. Example: tests/run/java-ann-super-class.
+      case Ident(nme.WILDCARD) => true
+      case Apply(fun, args) => validAnnotArg(fun) && args.forall(validAnnotArg)
+      case TypeApply(fun, args) => validAnnotArg(fun)
+      case SeqLiteral(elems, _) => elems.forall(validAnnotArg)
+      case Typed(expr, _) => validAnnotArg(expr)
+      // TODO(mbovel): should probably be handled by `tpd.allTermArguments` instead.
+      case NamedArg(_, arg) => validAnnotArg(arg)
+      // TODO(mbovel): do we really want to allow `Splice` and `Hole`?
+      // When removing those cases, tests/pos-macros/i7519b.scala and
+      // tests/pos-macros/i7052.scala fail.
+      case Splice(_) => true
+      case Hole(_, _, _, _) => true
+      case _ => false
+      
   /** 1. Check that all case classes that extend `scala.reflect.Enum` are `enum` cases
    *  2. Check that parameterised `enum` cases do not extend java.lang.Enum.
    *  3. Check that only a static `enum` base class can extend java.lang.Enum.
