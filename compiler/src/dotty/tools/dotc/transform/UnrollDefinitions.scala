@@ -22,6 +22,7 @@ import scala.collection.mutable
 import scala.util.boundary, boundary.break
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.unreachable
+import dotty.tools.dotc.util.Spans.Span
 
 /**Implementation of SIP-61.
  * Runs when `@unroll` annotations are found in a compilation unit, installing new definitions
@@ -33,16 +34,10 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
 
   import tpd.*
 
-  private var _unrolledDefs: util.EqHashMap[Symbol, ComputedIndicies] | Null = null
-  private def initializeUnrolledDefs(): util.EqHashMap[Symbol, ComputedIndicies] =
-    val local = _unrolledDefs
-    if local == null then
-      val map = new util.EqHashMap[Symbol, ComputedIndicies]
-      _unrolledDefs = map
-      map
-    else
-      local.clear()
-      local
+  private val _unrolledDefs: util.EqHashMap[Symbol, ComputedIndices] = new util.EqHashMap[Symbol, ComputedIndices]
+  private def initializeUnrolledDefs(): util.EqHashMap[Symbol, ComputedIndices] =
+    _unrolledDefs.clear()
+    _unrolledDefs
 
   override def phaseName: String = UnrollDefinitions.name
 
@@ -55,18 +50,25 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
       super.run // create and run the transformer on the current compilation unit
 
   def newTransformer(using Context): Transformer =
-    UnrollingTransformer(ctx.compilationUnit.unrolledClasses.nn)
+    UnrollingTransformer(ctx.compilationUnit.unrolledClasses)
 
-  type ComputedIndicies = List[(Int, List[Int])]
-  type ComputeIndicies = Context ?=> Symbol => ComputedIndicies
+  type ComputedIndices = List[(Int, List[Int])]
+  type ComputeIndices = Context ?=> Symbol => ComputedIndices
 
-  private class UnrollingTransformer(classes: Set[Symbol]) extends Transformer {
+  private class UnrollingTransformer(unrolledClasses: Set[Symbol]) extends Transformer {
     private val unrolledDefs = initializeUnrolledDefs()
 
-    def computeIndices(annotated: Symbol)(using Context): ComputedIndicies =
+    def computeIndices(annotated: Symbol)(using Context): ComputedIndices =
       unrolledDefs.getOrElseUpdate(annotated, {
         if annotated.name.is(DefaultGetterName) then
-          Nil // happens in curried methods where more than one parameter list has @unroll
+          // happens in curried methods, where default argument occurs in parameter list
+          // after the unrolled parameter list.
+          // example:
+          //   `final def foo(@unroll y: String = "")(x: Int = 23) = x`
+          // yields:
+          //   `def foo$default$2(@unroll y: String): Int @uncheckedVariance = 23`
+          // Perhaps annotations should be preprocessed before they are copied?
+          Nil
         else
           val indices = annotated
             .paramSymss
@@ -84,17 +86,17 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
     end computeIndices
 
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match
-      case tree @ TypeDef(_, impl: Template) if classes(tree.symbol) =>
+      case tree @ TypeDef(_, impl: Template) if unrolledClasses(tree.symbol) =>
         super.transform(cpy.TypeDef(tree)(rhs = unrollTemplate(impl, computeIndices)))
       case tree =>
         super.transform(tree)
   }
 
-  def copyParamSym(sym: Symbol, parent: Symbol)(using Context): (Symbol, Symbol) =
+  private def copyParamSym(sym: Symbol, parent: Symbol)(using Context): (Symbol, Symbol) =
     val copied = sym.copy(owner = parent, flags = (sym.flags &~ HasDefault), coord = sym.coord)
     sym -> copied
 
-  def symLocation(sym: Symbol)(using Context) = {
+  private def symLocation(sym: Symbol)(using Context) = {
     val lineDesc =
       if (sym.span.exists && sym.span != sym.owner.span)
         s" at line ${sym.srcPos.line + 1}"
@@ -102,7 +104,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
     i"in ${sym.owner}${lineDesc}"
   }
 
-  def findUnrollAnnotations(params: List[Symbol])(using Context): List[Int] = {
+  private def findUnrollAnnotations(params: List[Symbol])(using Context): List[Int] = {
     params
       .zipWithIndex
       .collect {
@@ -111,16 +113,23 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
       }
   }
 
-  def isTypeClause(p: ParamClause) = p.headOption.exists(_.isInstanceOf[TypeDef])
+  private def isTypeClause(p: ParamClause) = p.headOption.exists(_.isInstanceOf[TypeDef])
 
-  def generateSingleForwarder(defdef: DefDef,
-                              prevMethodType: Type,
+  /** Generate a forwarder that calls the next one in a "chain" of forwarders
+   *
+   * @param defdef the original unrolled def that the forwarder is derived from
+   * @param paramIndex index of the unrolled parameter (in the parameter list) that we stop at
+   * @param paramCount number of parameters in the annotated parameter list
+   * @param nextParamIndex index of next unrolled parameter - to fetch default argument
+   * @param annotatedParamListIndex index of the parameter list that contains unrolled parameters
+   * @param isCaseApply if `defdef` is a case class apply/constructor - used for selection of default arguments
+   */
+  private def generateSingleForwarder(defdef: DefDef,
                               paramIndex: Int,
                               paramCount: Int,
                               nextParamIndex: Int,
-                              nextSymbol: Symbol,
                               annotatedParamListIndex: Int,
-                              isCaseApply: Boolean)(using Context) = {
+                              isCaseApply: Boolean)(using Context): DefDef = {
 
     def initNewForwarder()(using Context): (TermSymbol, List[List[Symbol]]) = {
       val forwarderDefSymbol0 = Symbols.newSymbol(
@@ -129,15 +138,15 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
         defdef.symbol.flags &~ HasDefaultParams |
         Invisible | Synthetic,
         NoType, // fill in later
-        coord = nextSymbol.span.shift(1) // shift by 1 to avoid "secondary constructor must call preceding" error
+        coord = defdef.span
       ).entered
 
       val newParamSymMappings = extractParamSymss(copyParamSym(_, forwarderDefSymbol0))
       val (oldParams, newParams) = newParamSymMappings.flatten.unzip
 
       val newParamSymLists0 =
-        newParamSymMappings.map: pairss =>
-          pairss.map: (oldSym, newSym) =>
+        newParamSymMappings.map: pairs =>
+          pairs.map: (oldSym, newSym) =>
             newSym.info = oldSym.info.substSym(oldParams, newParams)
             newSym
 
@@ -152,8 +161,6 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
         if (i == annotatedParamListIndex) ps.take(paramIndex).map(p => onSymbol(p.symbol))
         else ps.map(p => onSymbol(p.symbol))
       }
-
-    val paramCount = defdef.symbol.paramSymss(annotatedParamListIndex).size
 
     val (forwarderDefSymbol, newParamSymLists) = initNewForwarder()
 
@@ -194,9 +201,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
         newParamSymLists
           .take(annotatedParamListIndex)
           .map(_.map(ref))
-          .foldLeft(inner): (lhs, newParams) =>
-            if (newParams.headOption.exists(_.isInstanceOf[TypeTree])) TypeApply(lhs, newParams)
-            else Apply(lhs, newParams)
+          .foldLeft(inner)(_.appliedToArgs(_))
       )
 
       val forwarderInner: Tree =
@@ -208,11 +213,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
           else ps.map(ref)
         }
 
-      val forwarderCall0 = forwarderCallArgs.foldLeft[Tree](forwarderInner){
-        case (lhs: Tree, newParams) =>
-          if (newParams.headOption.exists(_.isInstanceOf[TypeTree])) TypeApply(lhs, newParams)
-          else Apply(lhs, newParams)
-      }
+      val forwarderCall0 = forwarderCallArgs.foldLeft(forwarderInner)(_.appliedToArgs(_))
 
       val forwarderCall =
         if (!defdef.symbol.isConstructor) forwarderCall0
@@ -222,12 +223,12 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
     }
 
     val forwarderDef =
-      tpd.DefDef(forwarderDefSymbol, rhs = forwarderRhs())
+      tpd.DefDef(forwarderDefSymbol, rhs = forwarderRhs()).withSpan(defdef.span)
 
-    forwarderDef.withSpan(nextSymbol.span.shift(1))
+    forwarderDef
   }
 
-  def generateFromProduct(startParamIndices: List[Int], paramCount: Int, defdef: DefDef)(using Context) = {
+  private def generateFromProduct(startParamIndices: List[Int], paramCount: Int, defdef: DefDef)(using Context) = {
     cpy.DefDef(defdef)(
       name = defdef.name,
       paramss = defdef.paramss,
@@ -248,28 +249,35 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
                 )
             )
           )
-        } ++ Seq(
-          CaseDef(
-            Underscore(defn.IntType),
-            EmptyTree,
-            defdef.rhs
-          )
+        } :+ CaseDef(
+          Underscore(defn.IntType),
+          EmptyTree,
+          defdef.rhs
         )
       )
     ).setDefTree
   }
 
-  def generateSyntheticDefs(tree: Tree, compute: ComputeIndicies)(using Context): Option[(Symbol, Option[Symbol], Seq[DefDef])] = tree match {
+  private enum Gen:
+    case Substitute(origin: Symbol, newDef: DefDef)
+    case Forwarders(origin: Symbol, forwarders: List[DefDef])
+
+    def origin: Symbol
+    def extras: List[DefDef] = this match
+      case Substitute(_, d) => d :: Nil
+      case Forwarders(_, ds) => ds
+
+  private def generateSyntheticDefs(tree: Tree, compute: ComputeIndices)(using Context): Option[Gen] = tree match {
     case defdef: DefDef if defdef.paramss.nonEmpty =>
       import dotty.tools.dotc.core.NameOps.isConstructorName
 
       val isCaseCopy =
-        defdef.name.toString == "copy" && defdef.symbol.owner.is(CaseClass)
+        defdef.name == nme.copy && defdef.symbol.owner.is(CaseClass)
 
       val isCaseApply =
-        defdef.name.toString == "apply" && defdef.symbol.owner.companionClass.is(CaseClass)
+        defdef.name == nme.apply && defdef.symbol.owner.companionClass.is(CaseClass)
 
-      val isCaseFromProduct = defdef.name.toString == "fromProduct" && defdef.symbol.owner.companionClass.is(CaseClass)
+      val isCaseFromProduct = defdef.name == nme.fromProduct && defdef.symbol.owner.companionClass.is(CaseClass)
 
       val annotated =
         if (isCaseCopy) defdef.symbol.owner.primaryConstructor
@@ -279,28 +287,28 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
 
       compute(annotated) match {
         case Nil => None
-        case Seq((paramClauseIndex, annotationIndices)) =>
+        case (paramClauseIndex, annotationIndices) :: Nil =>
           val paramCount = annotated.paramSymss(paramClauseIndex).size
           if isCaseFromProduct then
-            Some((defdef.symbol, Some(defdef.symbol), Seq(generateFromProduct(annotationIndices, paramCount, defdef))))
+            Some(Gen.Substitute(
+              origin = defdef.symbol,
+              newDef = generateFromProduct(annotationIndices, paramCount, defdef)
+            ))
           else
-            val (generatedDefs, _) =
+            val generatedDefs =
               val indices = (annotationIndices :+ paramCount).sliding(2).toList.reverse
-              indices.foldLeft((Seq.empty[DefDef], defdef.symbol)):
-                case ((defdefs, nextSymbol), Seq(paramIndex, nextParamIndex)) =>
-                  val forwarder = generateSingleForwarder(
+              indices.foldLeft(List.empty[DefDef]):
+                case (defdefs, paramIndex :: nextParamIndex :: Nil) =>
+                  generateSingleForwarder(
                     defdef,
-                    defdef.symbol.info,
                     paramIndex,
                     paramCount,
                     nextParamIndex,
-                    nextSymbol,
                     paramClauseIndex,
                     isCaseApply
-                  )
-                  (forwarder +: defdefs, forwarder.symbol)
+                  ) :: defdefs
                 case _ => unreachable("sliding with at least 2 elements")
-            Some((defdef.symbol, None, generatedDefs))
+            Some(Gen.Forwarders(origin = defdef.symbol, forwarders = generatedDefs))
 
         case multiple =>
           report.error("Cannot have multiple parameter lists containing `@unroll` annotation", defdef.srcPos)
@@ -310,44 +318,37 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
     case _ => None
   }
 
-  def unrollTemplate(tmpl: tpd.Template, compute: ComputeIndicies)(using Context): tpd.Tree = {
+  private def unrollTemplate(tmpl: tpd.Template, compute: ComputeIndices)(using Context): tpd.Tree = {
 
     val generatedBody = tmpl.body.flatMap(generateSyntheticDefs(_, compute))
     val generatedConstr0 = generateSyntheticDefs(tmpl.constr, compute)
     val allGenerated = generatedBody ++ generatedConstr0
-    val bodySubs = generatedBody.flatMap((_, maybeSub, _) => maybeSub).toSet
+    val bodySubs = generatedBody.collect({ case s: Gen.Substitute => s.origin }).toSet
     val otherDecls = tmpl.body.filterNot(d => d.symbol.exists && bodySubs(d.symbol))
-
-    /** inlined from compiler/src/dotty/tools/dotc/typer/Checking.scala */
-    def checkClash(decl: Symbol, other: Symbol) =
-      def staticNonStaticPair = decl.isScalaStatic != other.isScalaStatic
-      decl.matches(other) && !staticNonStaticPair
 
     if allGenerated.nonEmpty then
       val byName = (tmpl.constr :: otherDecls).groupMap(_.symbol.name.toString)(_.symbol)
       for
-        (src, _, dcls) <- allGenerated
-        dcl <- dcls
+        syntheticDefs <- allGenerated
+        dcl <- syntheticDefs.extras
       do
         val replaced = dcl.symbol
         byName.get(dcl.name.toString).foreach { syms =>
-          val clashes = syms.filter(checkClash(replaced, _))
+          val clashes = syms.filter(ctx.typer.matchesSameStatic(replaced, _))
           for existing <- clashes do
+            val src = syntheticDefs.origin
             report.error(i"""Unrolled $replaced clashes with existing declaration.
               |Please remove the clashing definition, or the @unroll annotation.
               |Unrolled from ${hl(src.showDcl)} ${symLocation(src)}""".stripMargin, existing.srcPos)
         }
     end if
 
-    val generatedDefs = generatedBody.flatMap((_, _, gens) => gens)
-    val generatedConstr = generatedConstr0.toList.flatMap((_, _, gens) => gens)
-
     cpy.Template(tmpl)(
       tmpl.constr,
       tmpl.parents,
       tmpl.derived,
       tmpl.self,
-      otherDecls ++ generatedDefs ++ generatedConstr
+      otherDecls ++ allGenerated.flatMap(_.extras)
     )
   }
 

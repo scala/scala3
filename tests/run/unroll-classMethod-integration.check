@@ -1,0 +1,14 @@
+Assertion passed: found "cow" + "1true0"
+Assertion passed: found "cow1true" + "0"
+Assertion passed: found "cow2true" + "0"
+Assertion passed: found "cow2false" + "0"
+public boolean unroll.Unrolled.foo$default$3()
+public final java.lang.String unroll.Unrolled.foo(java.lang.String)
+public final java.lang.String unroll.Unrolled.foo(java.lang.String,int,boolean)
+public final java.lang.String unroll.Unrolled.foo(java.lang.String,int,boolean,long)
+public int unroll.Unrolled.foo$default$2()
+public long unroll.Unrolled.foo$default$4()
+Assertion passed: found "cow1true0"
+Assertion passed: found "cow2true0"
+Assertion passed: found "cow2false0"
+Assertion passed: found "cow2false3"

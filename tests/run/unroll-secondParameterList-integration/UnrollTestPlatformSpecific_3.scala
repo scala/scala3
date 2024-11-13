@@ -27,6 +27,6 @@ object UnrollTestPlatformSpecificV3{
         "hello2false3"
     )
 
-    cls.getMethods.filter(_.getName.contains("foo")).foreach(println)
+    cls.getMethods.filter(_.getName.contains("foo")).map(_.toString).sorted.foreach(println)
   }
 }

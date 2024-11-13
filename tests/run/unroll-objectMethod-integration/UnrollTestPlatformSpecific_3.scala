@@ -7,7 +7,7 @@ object UnrollTestPlatformSpecificV3{
     val instance = Unrolled
     val instanceCls = Class.forName("unroll.Unrolled$")
 
-    instanceCls.getMethods.filter(_.getName.contains("foo")).foreach(println)
+    instanceCls.getMethods.filter(_.getName.contains("foo")).map(_.toString).sorted.foreach(println)
 
     // Make sure singleton instance forwarder methods are generated
     assert(scala.util.Try(instanceCls.getMethod("foo", classOf[String])).isFailure)
@@ -28,7 +28,7 @@ object UnrollTestPlatformSpecificV3{
 
     // Make sure static forwarder methods are generated
     val staticCls = Class.forName("unroll.Unrolled")
-    staticCls.getMethods.filter(_.getName.contains("foo")).foreach(println)
+    staticCls.getMethods.filter(_.getName.contains("foo")).map(_.toString).sorted.foreach(println)
 
     assert(scala.util.Try(staticCls.getMethod("foo", classOf[String])).isFailure)
     assert(

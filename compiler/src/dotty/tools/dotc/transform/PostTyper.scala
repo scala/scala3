@@ -120,20 +120,12 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
     private var inJavaAnnot: Boolean = false
 
-    private var seenUnrolledMethods: util.EqHashMap[Symbol, Boolean] | Null = null
+    private val seenUnrolledMethods: util.EqHashMap[Symbol, Boolean] = new util.EqHashMap[Symbol, Boolean]
 
     private var noCheckNews: Set[New] = Set()
 
     def isValidUnrolledMethod(method: Symbol, origin: SrcPos)(using Context): Boolean =
-      val seenMethods =
-        val local = seenUnrolledMethods
-        if local == null then
-          val map = new util.EqHashMap[Symbol, Boolean]
-          seenUnrolledMethods = map
-          map
-        else
-          local
-      seenMethods.getOrElseUpdate(method, {
+      seenUnrolledMethods.getOrElseUpdate(method, {
         val isCtor = method.isConstructor
         if
           method.name.is(DefaultGetterName)
@@ -234,12 +226,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
     private def registerIfUnrolledParam(sym: Symbol)(using Context): Unit =
       if sym.hasAnnotation(defn.UnrollAnnot) && isValidUnrolledMethod(sym.owner, sym.sourcePos) then
         val cls = sym.enclosingClass
-        val classes = ctx.compilationUnit.unrolledClasses
         val additions = Array(cls, cls.linkedClass).filter(_ != NoSymbol)
-        if classes == null then
-          ctx.compilationUnit.unrolledClasses = Set.from(additions)
-        else
-          ctx.compilationUnit.unrolledClasses = classes ++ additions
+        ctx.compilationUnit.unrolledClasses ++= additions
 
     private def processValOrDefDef(tree: Tree)(using Context): tree.type =
       val sym = tree.symbol

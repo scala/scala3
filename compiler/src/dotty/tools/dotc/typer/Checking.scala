@@ -1226,6 +1226,10 @@ trait Checking {
   /** A hook to exclude selected symbols from double declaration check */
   def excludeFromDoubleDeclCheck(sym: Symbol)(using Context): Boolean = false
 
+  def matchesSameStatic(decl: Symbol, other: Symbol)(using Context): Boolean =
+    def staticNonStaticPair = decl.isScalaStatic != other.isScalaStatic
+    decl.matches(other) && !staticNonStaticPair
+
   /** Check that class does not declare same symbol twice */
   def checkNoDoubleDeclaration(cls: Symbol)(using Context): Unit = {
     val seen = new mutable.HashMap[Name, List[Symbol]].withDefaultValue(Nil)
@@ -1237,8 +1241,7 @@ trait Checking {
         def javaFieldMethodPair =
           decl.is(JavaDefined) && other.is(JavaDefined) &&
           decl.is(Method) != other.is(Method)
-        def staticNonStaticPair = decl.isScalaStatic != other.isScalaStatic
-        if (decl.matches(other) && !javaFieldMethodPair && !staticNonStaticPair) {
+        if (matchesSameStatic(decl, other) && !javaFieldMethodPair) {
           def doubleDefError(decl: Symbol, other: Symbol): Unit =
             if (!decl.info.isErroneous && !other.info.isErroneous)
               report.error(DoubleDefinition(decl, other, cls), decl.srcPos)

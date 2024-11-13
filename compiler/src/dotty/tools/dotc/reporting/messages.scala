@@ -3416,7 +3416,7 @@ extends DeclarationMsg(IllegalUnrollPlacementID):
     case Some(method) =>
       val isCtor = method.isConstructor
       def what = if isCtor then i"a ${if method.owner.is(Trait) then "trait" else "class"} constructor" else i"method ${method.name}"
-      val prefix = s"Can not unroll parameters of $what"
+      val prefix = s"Cannot unroll parameters of $what"
       if method.is(Deferred) then
         i"$prefix: it must not be abstract"
       else if isCtor && method.owner.is(Trait) then

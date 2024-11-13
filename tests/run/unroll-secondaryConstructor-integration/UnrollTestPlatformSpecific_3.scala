@@ -30,6 +30,6 @@ object UnrollTestPlatformSpecificV3{
         "hello2false3"
     )
 
-    cls.getConstructors.foreach(println)
+    cls.getConstructors.map(_.toString).sorted.foreach(println)
   }
 }
