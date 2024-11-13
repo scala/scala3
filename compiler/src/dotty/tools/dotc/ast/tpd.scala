@@ -827,6 +827,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       Closure(tree: Tree)(env, meth, tpt)
   }
 
+  // This is a more fault-tolerant copier that does not cause errors when
+  // function types in applications are undefined.
+  // This was called `Inliner.InlineCopier` before 3.6.3.
+  class ConservativeTreeCopier() extends TypedTreeCopier:
+    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply =
+      if fun.tpe.widen.exists then super.Apply(tree)(fun, args)
+      else untpd.cpy.Apply(tree)(fun, args).withTypeUnchecked(tree.tpe)
+
   override def skipTransform(tree: Tree)(using Context): Boolean = tree.tpe.isError
 
   implicit class TreeOps[ThisTree <: tpd.Tree](private val tree: ThisTree) extends AnyVal {
