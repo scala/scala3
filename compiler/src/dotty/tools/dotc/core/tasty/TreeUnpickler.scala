@@ -170,13 +170,11 @@ class TreeUnpickler(reader: TastyReader,
             case ex: Exception => fail(ex)
   }
 
-  class TreeReader(val reader: TastyReader, inInlineBody: Boolean = false) {
+  class TreeReader(val reader: TastyReader) {
     import reader.*
 
-    def forkAt(start: Addr, inInlineBody: Boolean = false): TreeReader =
-      new TreeReader(subReader(start, endAddr), inInlineBody)
-
-    def fork: TreeReader = forkAt(currentAddr, inInlineBody)
+    def forkAt(start: Addr): TreeReader = new TreeReader(subReader(start, endAddr))
+    def fork: TreeReader = forkAt(currentAddr)
 
     def skipParentTree(tag: Int): Unit = {
       if tag == SPLITCLAUSE then ()
@@ -696,7 +694,7 @@ class TreeUnpickler(reader: TastyReader,
           val ctx1 = localContext(sym)(using ctx0).addMode(Mode.ReadPositions)
           inContext(sourceChangeContext(Addr(0))(using ctx1)) {
             // avoids space leaks by not capturing the current context
-            forkAt(rhsStart, inInlineBody = true).readTree()
+            forkAt(rhsStart).readTree()
           }
         })
       goto(start)
@@ -1585,11 +1583,7 @@ class TreeUnpickler(reader: TastyReader,
               val denot = inContext(ctx.addMode(Mode.ResolveFromTASTy)):
                 searchDenot // able to resolve Invisible members
 
-
-              val sel = makeSelect(qual, name, denot)
-              if denot == NoDenotation && inInlineBody && sel.denot.symbol.exists && sel.symbol.isDefinedInCurrentRun then
-                throw new ChangedMethodDenot(sel.denot.symbol)
-              sel
+              makeSelect(qual, name, denot)
             case REPEATED =>
               val elemtpt = readTpt()
               SeqLiteral(until(end)(readTree()), elemtpt)
@@ -1895,9 +1889,6 @@ class TreeUnpickler(reader: TastyReader,
 }
 
 object TreeUnpickler {
-
-  /** Specifically thrown when a SELECTin was written to TASTy, i.e. is expected to resolve, and then doesn't. */
-  private[dotc] final class ChangedMethodDenot(val resolved: Symbol) extends Exception
 
   /** Define the expected format of the tasty bytes
    *   - TopLevel: Tasty that contains a full class nested in its package
