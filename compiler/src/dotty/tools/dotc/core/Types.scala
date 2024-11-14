@@ -6291,7 +6291,14 @@ object Types extends TypeUtils {
       }
     }
 
-    private def treeTypeMap = new TreeTypeMap(typeMap = this)
+    private def treeTypeMap = new TreeTypeMap(
+      typeMap = this,
+      // Using `ConservativeTreeCopier` is needed when copying dependent annoted
+      // types, where we can refer to a previous parameter represented as
+      // `TermParamRef` that has no underlying type yet.
+      // See tests/pos/annot-17242.scala.
+      cpy = ConservativeTreeCopier()
+    )
 
     def mapOver(syms: List[Symbol]): List[Symbol] = mapSymbols(syms, treeTypeMap)
 

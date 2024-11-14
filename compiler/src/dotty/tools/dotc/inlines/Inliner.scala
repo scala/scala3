@@ -96,15 +96,6 @@ object Inliner:
     }
   end isElideableExpr
 
-  // InlineCopier is a more fault-tolerant copier that does not cause errors when
-  // function types in applications are undefined. This is necessary since we copy at
-  // the same time as establishing the proper context in which the copied tree should
-  // be evaluated. This matters for opaque types, see neg/i14653.scala.
-  private class InlineCopier() extends TypedTreeCopier:
-    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply =
-      if fun.tpe.widen.exists then super.Apply(tree)(fun, args)
-      else untpd.cpy.Apply(tree)(fun, args).withTypeUnchecked(tree.tpe)
-
   // InlinerMap is a TreeTypeMap with special treatment for inlined arguments:
   // They are generally left alone (not mapped further, and if they wrap a type
   // the type Inlined wrapper gets dropped
@@ -116,7 +107,13 @@ object Inliner:
       substFrom: List[Symbol],
       substTo: List[Symbol])(using Context)
     extends TreeTypeMap(
-      typeMap, treeMap, oldOwners, newOwners, substFrom, substTo, InlineCopier()):
+      typeMap, treeMap, oldOwners, newOwners, substFrom, substTo,
+      // It is necessary to use the `ConservativeTreeCopier` since we copy at
+      // the same time as establishing the proper context in which the copied
+      // tree should be evaluated. This matters for opaque types, see
+      // neg/i14653.scala.
+      ConservativeTreeCopier()
+    ):
 
     override def copy(
         typeMap: Type => Type,
