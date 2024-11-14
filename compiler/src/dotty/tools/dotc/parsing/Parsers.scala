@@ -1335,7 +1335,7 @@ object Parsers {
      *                 |  SimpleLiteral
      *                 |  Singleton ‘.’ id
      *                 |  Singleton ‘(’ Singletons ‘)’
-     *                 |  Singleton ‘[’ Types ‘]’
+     *  -- not yet     |  Singleton ‘[’ Types ‘]’
      */
     def singleton(): Tree =
       val res =
@@ -1346,8 +1346,8 @@ object Parsers {
     def singletonArgs(t: Tree): Tree =
       if in.token == LPAREN && in.featureEnabled(Feature.modularity) then
         singletonArgs(AppliedTypeTree(t, inParensWithCommas(commaSeparated(singleton))))
-      else if in.token == LBRACKET && in.featureEnabled(Feature.modularity) then
-        singletonArgs(AppliedTypeTree(t, inBrackets(commaSeparated(() => typ()))))
+      // else if in.token == LBRACKET && in.featureEnabled(Feature.modularity) then
+      //   singletonArgs(AppliedTypeTree(t, inBrackets(commaSeparated(() => typ())))) // should this be marked in a different way, so that we know that it is a type application, and not a term application?
       else t
 
     /** SimpleLiteral     ::=  [‘-’] integerLiteral

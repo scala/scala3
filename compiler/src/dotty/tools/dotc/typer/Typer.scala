@@ -2556,23 +2556,37 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     assignType(cpy.RefinedTypeTree(tree)(tpt1, refinements1), tpt1, refinements1, refineCls)
   }
 
+  /** Type applied dependent class constructors in type positions */
+  private def typedTermAppliedTypeTree(tree: untpd.AppliedTypeTree, tpt1: Tree)(using Context): Tree = {
+    if Feature.enabled(Feature.modularity) then
+      val constr =
+        if tpt1.tpe.typeSymbol.primaryConstructor.exists then
+          tpt1.tpe.typeSymbol.primaryConstructor
+        else
+          tpt1.tpe.typeSymbol.companionClass.primaryConstructor
+      // TODO(kπ)       vvvvvvv   Might want to take the first term list? or all term lists? depends on the rest of the logic.
+      constr.paramSymss.flatten.foreach { p =>
+        if p.isTerm && !p.flags.is(Tracked) then
+          report.error(
+            em"""The constructor parameter `${p.name}` of `${tpt1.tpe}` is not tracked.
+                |Only tracked parameters are allowed in dependent constructor applications.""",
+            tree.srcPos
+          )
+      }
+      constr.typeRef.underlying match
+        case mt: MethodOrPoly =>
+          TypeTree(mt.instantiate(tree.args.map((typedExpr(_).tpe))))
+    else
+      errorTree(tree, dependentMsg)
+  }
+
   def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(using Context): Tree = {
     val tpt1 = withoutMode(Mode.Pattern):
       typed(tree.tpt, AnyTypeConstructorProto)
 
     tree.args match
       case arg :: _ if arg.isTerm =>
-        if Feature.enabled(Feature.modularity) then
-          val constr =
-            if tpt1.tpe.typeSymbol.primaryConstructor.exists then
-              tpt1.tpe.typeSymbol.primaryConstructor
-            else
-              tpt1.tpe.typeSymbol.companionClass.primaryConstructor
-          constr.typeRef.underlying match
-            case mt: MethodOrPoly =>
-              return TypeTree(mt.instantiate(tree.args.map((typedExpr(_).tpe))))
-        else
-          return errorTree(tree, dependentMsg)
+        return typedTermAppliedTypeTree(tree, tpt1)
       case _ =>
 
     val tparams = tpt1.tpe.typeParams
