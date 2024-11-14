@@ -351,6 +351,7 @@ object desugar {
         val Function(vparams: List[untpd.ValDef] @unchecked, rhs) = fun: @unchecked
         val newParamss = paramssNoContextBounds(tparams :: vparams :: Nil)
         val params = evidenceParamBuf.toList
+        if params.isEmpty then return meth
         val boundNames = getBoundNames(params, newParamss)
         val recur = fitEvidenceParams(params, nme.apply, boundNames)
         val (paramsFst, paramsSnd) = recur(newParamss)
