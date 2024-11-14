@@ -3353,9 +3353,12 @@ final class AmbiguousNamedTupleAssignment(key: Name, value: untpd.Tree)(using Co
   
   override protected def explain(using Context): String = ""
 
-class InfixNamedArgDeprecation()(using Context) extends SyntaxMsg(DeprecatedNamedInfixArgID):
-  def msg(using Context) = "Named argument syntax is deprecated for infix application"
+class AmbiguousNamedTupleInfixApply()(using Context) extends SyntaxMsg(AmbiguousNamedTupleInfixApplyID):
+  def msg(using Context) =
+    "Ambigious syntax: this infix call argument list is interpreted as single named tuple argument, not as an named arguments list."
+    + Message.rewriteNotice("This", version = SourceVersion.`3.6-migration`)
+
   def explain(using Context) =
-    i"""The argument will be parsed as a named tuple in future.
+    i"""Starting with Scala 3.6 infix named arguments are interpretted as Named Tuple.
         |
         |To avoid this warning, either remove the argument names or use dotted selection."""

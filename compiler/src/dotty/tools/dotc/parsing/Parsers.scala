@@ -1120,19 +1120,30 @@ object Parsers {
           if (prec < opPrec || leftAssoc && prec == opPrec) {
             opStack = opStack.tail
             recur {
-              atSpan(opInfo.operator.span union opInfo.operand.span union top.span):
-                def deprecateInfixNamedArg(t: Tree): Unit = t match
-                  case Tuple(ts) => ts.foreach(deprecateInfixNamedArg)
-                  case Parens(t) => deprecateInfixNamedArg(t)
-                  case t: NamedArg => report.deprecationWarning(InfixNamedArgDeprecation(), t.srcPos)
-                  case _ =>
-                deprecateInfixNamedArg(top)
-                InfixOp(opInfo.operand, opInfo.operator, top)
+              migrateInfixOp(opInfo, isType):
+                atSpan(opInfo.operator.span union opInfo.operand.span union top.span):
+                  InfixOp(opInfo.operand, opInfo.operator, top)
             }
           }
           else top
         }
       recur(top)
+    }
+
+    private def migrateInfixOp(opInfo: OpInfo, isType: Boolean)(infixOp: InfixOp): Tree = {
+      def isNamedTupleOperator = opInfo.operator.name match
+        case nme.EQ | nme.NE |  nme.eq | nme.ne | nme.`++` | nme.zip => true
+        case _ => false
+      if isType then infixOp
+      else infixOp.right match
+        case Tuple(args) if args.exists(_.isInstanceOf[NamedArg]) && !isNamedTupleOperator =>
+          report.errorOrMigrationWarning(AmbiguousNamedTupleInfixApply(), infixOp.right.srcPos, MigrationVersion.AmbiguousNamedTupleInfixApply)
+          if MigrationVersion.AmbiguousNamedTupleInfixApply.needsPatch then
+            val asApply = cpy.Apply(infixOp)(Select(opInfo.operand, opInfo.operator.name), args)
+            patch(source, infixOp.span, asApply.show)
+            asApply // allow to use pre-3.6 syntax in migration mode
+          else infixOp
+        case _ => infixOp
     }
 
     /** True if we are seeing a lambda argument after a colon of the form:
