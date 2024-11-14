@@ -814,7 +814,6 @@ object Checking {
             case tpd.PackageDef(_, contents) => apply(x, contents)
             case typeDef @ tpd.TypeDef(_, temp: Template) if typeDef.symbol.isPackageObject =>
               apply(x, temp.body)
-            case vdef: tpd.ValDef if vdef.symbol.isPackageObject => x // ValDef(new PackageObject)
             case mdef: tpd.MemberDef => addIfNotExperimental(mdef.symbol)
             case _ => x
           }
