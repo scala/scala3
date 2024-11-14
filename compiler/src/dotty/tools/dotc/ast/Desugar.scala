@@ -22,6 +22,7 @@ import parsing.Parsers
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
+import dotty.tools.dotc.quoted.QuoteUtils.treeOwner
 
 object desugar {
   import untpd.*
@@ -52,8 +53,12 @@ object desugar {
    */
   val ContextBoundParam: Property.Key[Unit] = Property.StickyKey()
 
-  /** An attachment key to indicate that a DefDef is a poly function apply
-   * method definition.
+  /** When first desugaring a PolyFunction, this attachment is added to the
+   *  PolyFunction `apply` method with an empty list value.
+   *
+   *  Afterwards, the attachment is added to poly function type trees, with the
+   *  list of their context bounds.
+   *  //TODO(kπ) see if it has to be updated
    */
   val PolyFunctionApply: Property.Key[List[ValDef]] = Property.StickyKey()
 
@@ -497,9 +502,9 @@ object desugar {
         case Ident(name: TermName) => boundNames.contains(name)
         case _ => false
 
-    def recur(mparamss: List[ParamClause]): List[ParamClause] = mparamss match
+    def recur(mparamss: List[ParamClause]): (List[ParamClause], List[ParamClause]) = mparamss match
       case ValDefs(mparams) :: _ if mparams.exists(referencesBoundName) =>
-        params :: mparamss
+        (params :: Nil) -> mparamss
       case ValDefs(mparams @ (mparam :: _)) :: Nil if mparam.mods.isOneOf(GivenOrImplicit) =>
         val normParams =
           if params.head.mods.flags.is(Given) != mparam.mods.flags.is(Given) then
@@ -508,30 +513,71 @@ object desugar {
               param.withMods(param.mods.withFlags(normFlags))
                 .showing(i"adapted param $result ${result.mods.flags} for ${meth.name}", Printers.desugar)
           else params
-        (normParams ++ mparams) :: Nil
+        ((normParams ++ mparams) :: Nil) -> Nil
       case mparams :: mparamss1 =>
-        mparams :: recur(mparamss1)
+        val (fst, snd) = recur(mparamss1)
+        (mparams :: fst) -> snd
       case Nil =>
-        params :: Nil
+        Nil -> (params :: Nil)
 
-    def pushDownEvidenceParams(tree: Tree): Tree = tree match
-      case Function(params, body) =>
-        cpy.Function(tree)(params, pushDownEvidenceParams(body))
-      case Block(stats, expr) =>
-        cpy.Block(tree)(stats, pushDownEvidenceParams(expr))
-      case tree =>
+    // def pushDownEvidenceParams(tree: Tree): Tree = tree match
+    //   case Function(mparams, body) if mparams.collect { case v: ValDef => v }.exists(referencesBoundName) =>
+    //     ctxFunctionWithParams(tree)
+    //   case Function(mparams, body) =>
+    //     cpy.Function(tree)(mparams, pushDownEvidenceParams(body))
+    //   case Block(stats, expr) =>
+    //     cpy.Block(tree)(stats, pushDownEvidenceParams(expr))
+    //   case tree =>
+    //     ctxFunctionWithParams(tree)
+
+    // def ctxFunctionWithParams(tree: Tree): Tree =
+    //   val paramTpts = params.map(_.tpt)
+    //   val paramNames = params.map(_.name)
+    //   val paramsErased = params.map(_.mods.flags.is(Erased))
+    //   Function(params, tree).withSpan(tree.span).withAttachmentsFrom(tree)
+
+    def functionsOf(paramss: List[ParamClause], rhs: Tree): Tree = paramss match
+      case Nil => rhs
+      case ValDefs(head @ (fst :: _)) :: rest if fst.mods.isOneOf(GivenOrImplicit) =>
         val paramTpts = params.map(_.tpt)
         val paramNames = params.map(_.name)
         val paramsErased = params.map(_.mods.flags.is(Erased))
-        makeContextualFunction(paramTpts, paramNames, tree, paramsErased).withSpan(tree.span)
+        makeContextualFunction(paramTpts, paramNames, functionsOf(rest, rhs), paramsErased).withSpan(rhs.span)
+      case head :: rest =>
+        Function(head, functionsOf(rest, rhs))
 
     if meth.hasAttachment(PolyFunctionApply) then
-      if ctx.mode.is(Mode.Type) then
-        cpy.DefDef(meth)(tpt = meth.tpt.withAttachment(PolyFunctionApply, params))
-      else
-        cpy.DefDef(meth)(rhs = pushDownEvidenceParams(meth.rhs))
+      println(i"${recur(meth.paramss)}")
+      recur(meth.paramss) match
+        case (paramsFst, Nil) =>
+          cpy.DefDef(meth)(paramss = paramsFst)
+        case (paramsFst, paramsSnd) =>
+          if ctx.mode.is(Mode.Type) then
+            cpy.DefDef(meth)(paramss = paramsFst, tpt = functionsOf(paramsSnd, meth.tpt))
+          else
+            cpy.DefDef(meth)(paramss = paramsFst, rhs = functionsOf(paramsSnd, meth.rhs))
+
+      // if ctx.mode.is(Mode.Type) then
+      //   meth.removeAttachment(PolyFunctionApply)
+      //   // should be kept on meth to see the current param types?
+      //   meth.tpt.putAttachment(PolyFunctionApply, params)
+      //   val newParamss = recur(meth.paramss)
+      //   println(i"added PolyFunctionApply to ${meth.name}.tpt: ${meth.tpt} with $params")
+      //   println(i"new paramss: $newParamss")
+      //   meth
+      // else
+      //   val newParamss = recur(meth.paramss)
+      //   println(i"added PolyFunctionApply to ${meth.name} with $params")
+      //   println(i"new paramss: $newParamss")
+      //   val DefDef(_, mparamss, _ , _) = meth: @unchecked
+      //   val tparams :: ValDefs(vparams) :: Nil = mparamss: @unchecked
+      //   if vparams.exists(referencesBoundName) then
+      //     cpy.DefDef(meth)(paramss = tparams :: params :: Nil, rhs = Function(vparams, meth.rhs))
+      //   else
+      //     cpy.DefDef(meth)(rhs = pushDownEvidenceParams(meth.rhs))
     else
-      cpy.DefDef(meth)(paramss = recur(meth.paramss))
+      val (paramsFst, paramsSnd) = recur(meth.paramss)
+      cpy.DefDef(meth)(paramss = paramsFst ++ paramsSnd)
   end addEvidenceParams
 
   /** The parameters generated from the contextual bounds of `meth`, as generated by `desugar.defDef` */
@@ -1265,17 +1311,20 @@ object desugar {
         case ((p, paramFlags), n) => makeSyntheticParameter(n + 1, p).withAddedFlags(paramFlags)
       }.toList
 
+      vparams.foreach(p => println(i"  $p, ${p.mods.flags.flagsString}"))
       RefinedTypeTree(ref(defn.PolyFunctionType), List(
         DefDef(nme.apply, tparams :: vparams :: Nil, res, EmptyTree)
           .withFlags(Synthetic)
           .withAttachment(PolyFunctionApply, List.empty)
       )).withSpan(tree.span)
+      .withAttachment(PolyFunctionApply, tree.attachmentOrElse(PolyFunctionApply, List.empty))
     case PolyFunction(tparams: List[untpd.TypeDef] @unchecked, res) =>
       RefinedTypeTree(ref(defn.PolyFunctionType), List(
         DefDef(nme.apply, tparams :: Nil, res, EmptyTree)
           .withFlags(Synthetic)
           .withAttachment(PolyFunctionApply, List.empty)
       )).withSpan(tree.span)
+      .withAttachment(PolyFunctionApply, tree.attachmentOrElse(PolyFunctionApply, List.empty))
   end makePolyFunctionType
 
   /** Invent a name for an anonympus given of type or template `impl`. */
