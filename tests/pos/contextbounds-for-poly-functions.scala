@@ -86,3 +86,8 @@ val namedConstraintRef = [X: {Ord as ord}] => (x: ord.T) => x
 type DependentCmp = [X: {Ord as ord}] => ord.T => Boolean
 type DependentCmp1 = [X: {Ord as ord}] => (ord.T, Int) => ord.T => Boolean
 val dependentCmp: DependentCmp = [X: {Ord as ord}] => (x: ord.T) => true
+val dependentCmp_1: [X: {Ord as ord}] => ord.T => Boolean = [X: {Ord as ord}] => (x: ord.T) => true
+
+val dependentCmp1: DependentCmp1 = [X: {Ord as ord}] => (x: ord.T, y: Int) => (z: ord.T) => true
+val dependentCmp1_1: [X: {Ord as ord}] => (ord.T, Int) => ord.T => Boolean =
+  [X: {Ord as ord}] => (x: ord.T, y: Int) => (z: ord.T) => true
