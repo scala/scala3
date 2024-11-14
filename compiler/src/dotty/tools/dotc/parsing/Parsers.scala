@@ -1140,7 +1140,7 @@ object Parsers {
           report.errorOrMigrationWarning(AmbiguousNamedTupleInfixApply(), infixOp.right.srcPos, MigrationVersion.AmbiguousNamedTupleInfixApply)
           if MigrationVersion.AmbiguousNamedTupleInfixApply.needsPatch then
             val asApply = cpy.Apply(infixOp)(Select(opInfo.operand, opInfo.operator.name), args)
-            patch(source, infixOp.span, asApply.show)
+            patch(source, infixOp.span, asApply.show(using ctx.withoutColors))
             asApply // allow to use pre-3.6 syntax in migration mode
           else infixOp
         case _ => infixOp
