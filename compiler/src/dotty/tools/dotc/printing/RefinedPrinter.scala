@@ -1151,7 +1151,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     Text(annotTexts, " ") ~~ flagsText ~~ (Str(kw) provided !suppressKw)
   }
 
-  override def annotText(annot: Annotation): Text = annotText(annot.symbol, annot.tree)
+  override def annotText(annot: Annotation): Text = annotText(annot.symbol, annot.normalizedTree)
 
   def optText(name: Name)(encl: Text => Text): Text =
     if (name.isEmpty) "" else encl(toText(name))
