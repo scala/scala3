@@ -53,14 +53,9 @@ object desugar {
    */
   val ContextBoundParam: Property.Key[Unit] = Property.StickyKey()
 
-  /** When first desugaring a PolyFunction, this attachment is added to the
-   *  PolyFunction `apply` method with an empty list value.
-   *
-   *  Afterwards, the attachment is added to poly function type trees, with the
-   *  list of their context bounds.
-   *  //TODO(kπ) see if it has to be updated
+  /** Marks a poly fcuntion apply method, so that we can handle adding evidence parameters to them in a special way
    */
-  val PolyFunctionApply: Property.Key[List[ValDef]] = Property.StickyKey()
+  val PolyFunctionApply: Property.Key[Unit] = Property.StickyKey()
 
   /** What static check should be applied to a Match? */
   enum MatchCheck {
@@ -520,22 +515,6 @@ object desugar {
       case Nil =>
         Nil -> (params :: Nil)
 
-    // def pushDownEvidenceParams(tree: Tree): Tree = tree match
-    //   case Function(mparams, body) if mparams.collect { case v: ValDef => v }.exists(referencesBoundName) =>
-    //     ctxFunctionWithParams(tree)
-    //   case Function(mparams, body) =>
-    //     cpy.Function(tree)(mparams, pushDownEvidenceParams(body))
-    //   case Block(stats, expr) =>
-    //     cpy.Block(tree)(stats, pushDownEvidenceParams(expr))
-    //   case tree =>
-    //     ctxFunctionWithParams(tree)
-
-    // def ctxFunctionWithParams(tree: Tree): Tree =
-    //   val paramTpts = params.map(_.tpt)
-    //   val paramNames = params.map(_.name)
-    //   val paramsErased = params.map(_.mods.flags.is(Erased))
-    //   Function(params, tree).withSpan(tree.span).withAttachmentsFrom(tree)
-
     def functionsOf(paramss: List[ParamClause], rhs: Tree): Tree = paramss match
       case Nil => rhs
       case ValDefs(head @ (fst :: _)) :: rest if fst.mods.isOneOf(GivenOrImplicit) =>
@@ -543,38 +522,21 @@ object desugar {
         val paramNames = params.map(_.name)
         val paramsErased = params.map(_.mods.flags.is(Erased))
         makeContextualFunction(paramTpts, paramNames, functionsOf(rest, rhs), paramsErased).withSpan(rhs.span)
-      case head :: rest =>
+      case ValDefs(head) :: rest =>
         Function(head, functionsOf(rest, rhs))
+      case head :: _ =>
+        assert(false, i"unexpected type parameters when adding evidence parameters to $meth")
+        EmptyTree
 
     if meth.hasAttachment(PolyFunctionApply) then
-      println(i"${recur(meth.paramss)}")
-      recur(meth.paramss) match
-        case (paramsFst, Nil) =>
-          cpy.DefDef(meth)(paramss = paramsFst)
-        case (paramsFst, paramsSnd) =>
-          if ctx.mode.is(Mode.Type) then
-            cpy.DefDef(meth)(paramss = paramsFst, tpt = functionsOf(paramsSnd, meth.tpt))
-          else
-            cpy.DefDef(meth)(paramss = paramsFst, rhs = functionsOf(paramsSnd, meth.rhs))
-
-      // if ctx.mode.is(Mode.Type) then
-      //   meth.removeAttachment(PolyFunctionApply)
-      //   // should be kept on meth to see the current param types?
-      //   meth.tpt.putAttachment(PolyFunctionApply, params)
-      //   val newParamss = recur(meth.paramss)
-      //   println(i"added PolyFunctionApply to ${meth.name}.tpt: ${meth.tpt} with $params")
-      //   println(i"new paramss: $newParamss")
-      //   meth
-      // else
-      //   val newParamss = recur(meth.paramss)
-      //   println(i"added PolyFunctionApply to ${meth.name} with $params")
-      //   println(i"new paramss: $newParamss")
-      //   val DefDef(_, mparamss, _ , _) = meth: @unchecked
-      //   val tparams :: ValDefs(vparams) :: Nil = mparamss: @unchecked
-      //   if vparams.exists(referencesBoundName) then
-      //     cpy.DefDef(meth)(paramss = tparams :: params :: Nil, rhs = Function(vparams, meth.rhs))
-      //   else
-      //     cpy.DefDef(meth)(rhs = pushDownEvidenceParams(meth.rhs))
+      meth.removeAttachment(PolyFunctionApply)
+      // for PolyFunctions we are limited to a single term param list, so we reuse the recur logic to compute the new parameter lists
+      // and then we add the other parameter lists as function types to the return type
+      val (paramsFst, paramsSnd) = recur(meth.paramss)
+      if ctx.mode.is(Mode.Type) then
+        cpy.DefDef(meth)(paramss = paramsFst, tpt = functionsOf(paramsSnd, meth.tpt))
+      else
+        cpy.DefDef(meth)(paramss = paramsFst, rhs = functionsOf(paramsSnd, meth.rhs))
     else
       val (paramsFst, paramsSnd) = recur(meth.paramss)
       cpy.DefDef(meth)(paramss = paramsFst ++ paramsSnd)
@@ -1293,7 +1255,7 @@ object desugar {
   /** Desugar [T_1, ..., T_M] => (P_1, ..., P_N) => R
    *  Into    scala.PolyFunction { def apply[T_1, ..., T_M](x$1: P_1, ..., x$N: P_N): R }
    */
-  def makePolyFunctionType(tree: PolyFunction)(using Context): RefinedTypeTree = tree match
+  def makePolyFunctionType(tree: PolyFunction)(using Context): RefinedTypeTree = (tree: @unchecked) match
     case PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun @ untpd.Function(vparamTypes, res)) =>
       val paramFlags = fun match
         case fun: FunctionWithMods =>
@@ -1311,20 +1273,11 @@ object desugar {
         case ((p, paramFlags), n) => makeSyntheticParameter(n + 1, p).withAddedFlags(paramFlags)
       }.toList
 
-      vparams.foreach(p => println(i"  $p, ${p.mods.flags.flagsString}"))
       RefinedTypeTree(ref(defn.PolyFunctionType), List(
         DefDef(nme.apply, tparams :: vparams :: Nil, res, EmptyTree)
           .withFlags(Synthetic)
-          .withAttachment(PolyFunctionApply, List.empty)
+          .withAttachment(PolyFunctionApply, ())
       )).withSpan(tree.span)
-      .withAttachment(PolyFunctionApply, tree.attachmentOrElse(PolyFunctionApply, List.empty))
-    case PolyFunction(tparams: List[untpd.TypeDef] @unchecked, res) =>
-      RefinedTypeTree(ref(defn.PolyFunctionType), List(
-        DefDef(nme.apply, tparams :: Nil, res, EmptyTree)
-          .withFlags(Synthetic)
-          .withAttachment(PolyFunctionApply, List.empty)
-      )).withSpan(tree.span)
-      .withAttachment(PolyFunctionApply, tree.attachmentOrElse(PolyFunctionApply, List.empty))
   end makePolyFunctionType
 
   /** Invent a name for an anonympus given of type or template `impl`. */

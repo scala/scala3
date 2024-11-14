@@ -37,12 +37,12 @@ val lessCmp3_1: Cmp3 = [X: Ord as ord] => (x: X) => (y: X) => (z: X) => ord.comp
 // type Comparer2 = [X: Ord] => Cmp[X]
 // val less4: Comparer2 = [X: Ord] => (x: X, y: X) => summon[Ord[X]].compare(x, y) < 0
 
-// type CmpWeak[X] = X => Boolean
-// type Comparer2Weak = [X: Ord] => X => CmpWeak[X]
-// val less4_0: [X: Ord] => X => X => Boolean =
-//   [X: Ord] => (x: X) => (y: X) => summon[Ord[X]].compare(x, y) < 0
-// val less4_1: Comparer2Weak =
-//   [X: Ord] => (x: X) => (y: X) => summon[Ord[X]].compare(x, y) < 0
+type CmpWeak[X] = X => Boolean
+type Comparer2Weak = [X: Ord] => X => CmpWeak[X]
+val less4_0: [X: Ord] => X => X => Boolean =
+  [X: Ord] => (x: X) => (y: X) => summon[Ord[X]].compare(x, y) < 0
+val less4_1: Comparer2Weak =
+  [X: Ord] => (x: X) => (y: X) => summon[Ord[X]].compare(x, y) < 0
 
 val less5 = [X: [X] =>> Ord[X]] => (x: X, y: X) => summon[Ord[X]].compare(x, y) < 0
 
@@ -73,11 +73,11 @@ type CmpNested = [X: Ord] => X => [Y: Ord] => Y => Boolean
 val less10: CmpNested = [X: Ord] => (x: X) => [Y: Ord] => (y: Y) => true
 val less10Explicit: CmpNested = [X] => (x: X) => (ordx: Ord[X]) ?=> [Y] => (y: Y) => (ordy: Ord[Y]) ?=> true
 
-// type CmpAlias[X] = X => Boolean
-// type CmpNestedAliased = [X: Ord] => X => [Y] => Y => CmpAlias[Y]
+type CmpAlias[X] = X => Boolean
+type CmpNestedAliased = [X: Ord] => X => [Y] => Y => CmpAlias[Y]
 
-// val less11: CmpNestedAliased = [X: Ord] => (x: X) => [Y] => (y: Y) => (y1: Y) => true
-// val less11Explicit: CmpNestedAliased = [X] => (x: X) => (ordx: Ord[X]) ?=> [Y] => (y: Y) => (y1: Y) => true
+val less11: CmpNestedAliased = [X: Ord] => (x: X) => [Y] => (y: Y) => (y1: Y) => true
+val less11Explicit: CmpNestedAliased = [X] => (x: X) => (ordx: Ord[X]) ?=> [Y] => (y: Y) => (y1: Y) => true
 
 val notationalExample: [X: Ord] => X => [Y: Ord] => Y => Int =
   [X] => (x: X) => (ordx: Ord[X]) ?=> [Y] => (y: Y) => (ordy: Ord[Y]) ?=> 1
