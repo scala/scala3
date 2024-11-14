@@ -3589,61 +3589,62 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      }
   }
 
-  /** Push down the deferred evidence parameters up until the result type is not
-   *  a method type, poly type or a function type
-   */
-  private def pushDownDeferredEvidenceParams(tpe: Type, params: List[untpd.ValDef], span: Span)(using Context): Type = tpe.dealias match {
-    case tpe: MethodType =>
-      tpe.derivedLambdaType(tpe.paramNames, tpe.paramInfos, pushDownDeferredEvidenceParams(tpe.resultType, params, span))
-    case tpe: PolyType =>
-      tpe.derivedLambdaType(tpe.paramNames, tpe.paramInfos, pushDownDeferredEvidenceParams(tpe.resultType, params, span))
-    case tpe: RefinedType =>
-      tpe.derivedRefinedType(
-        pushDownDeferredEvidenceParams(tpe.parent, params, span),
-        tpe.refinedName,
-        pushDownDeferredEvidenceParams(tpe.refinedInfo, params, span)
-      )
-    case tpe @ AppliedType(tycon, args) if defn.isFunctionType(tpe) && args.size > 1 =>
-      tpe.derivedAppliedType(tycon, args.init :+ pushDownDeferredEvidenceParams(args.last, params, span))
-    case tpe =>
-      val paramNames = params.map(_.name)
-      val paramTpts = params.map(_.tpt)
-      val paramsErased = params.map(_.mods.flags.is(Erased))
-      val ctxFunction = desugar.makeContextualFunction(paramTpts, paramNames, untpd.TypedSplice(TypeTree(tpe.dealias)), paramsErased).withSpan(span)
-      typed(ctxFunction).tpe
-  }
+  // /** Push down the deferred evidence parameters up until the result type is not
+  //  *  a method type, poly type or a function type
+  //  */
+  // private def pushDownDeferredEvidenceParams(tpe: Type, params: List[untpd.ValDef], span: Span)(using Context): Type =
+  //   tpe.dealias match {
+  //     case tpe if tpe.baseClasses.contains(defn.PolyFunctionClass) =>
+  //       attachEvidenceParams(tpe, params, span)
+  //     case tpe: MethodType =>
+  //       tpe.derivedLambdaType(tpe.paramNames, tpe.paramInfos, pushDownDeferredEvidenceParams(tpe.resultType, params, span))
+  //     case tpe @ AppliedType(tycon, args) if defn.isFunctionType(tpe) && args.size > 1 =>
+  //       tpe.derivedAppliedType(tycon, args.init :+ pushDownDeferredEvidenceParams(args.last, params, span))
+  //     case tpe =>
+  //       attachEvidenceParams(tpe, params, span)
+  //   }
 
-  /** If the tree has a `PolyFunctionApply` attachment, add the deferred
-   *  evidence parameters as the last argument list before the result type. This
-   *  follows aliases, so the following two types will be expanded to (up to the
-   *  context bound encoding):
-   *    type CmpWeak[X] = X => Boolean
-   *    type Comparer2Weak = [X: Ord] => X => CmpWeak[X]
-   *  ===>
-   *    type CmpWeak[X] = X => Boolean type Comparer2Weak = [X] => X => X ?=>
-   *    Ord[X] => Boolean
-   */
-  private def addDeferredEvidenceParams(tree: Tree, pt: Type)(using Context): (Tree, Type) = {
-    tree.getAttachment(desugar.PolyFunctionApply) match
-      case Some(params) if params.nonEmpty =>
-        tree.removeAttachment(desugar.PolyFunctionApply)
-        val tpe = pushDownDeferredEvidenceParams(tree.tpe, params, tree.span)
-        TypeTree(tpe).withSpan(tree.span) -> tpe
-      case _ => tree -> pt
-  }
+  // /** (params) ?=> tpe */
+  // private def attachEvidenceParams(tpe: Type, params: List[untpd.ValDef], span: Span)(using Context): Type =
+  //   val paramNames = params.map(_.name)
+  //   val paramTpts = params.map(_.tpt)
+  //   val paramsErased = params.map(_.mods.flags.is(Erased))
+  //   val ctxFunction = desugar.makeContextualFunction(paramTpts, paramNames, untpd.TypedSplice(TypeTree(tpe.dealias)), paramsErased).withSpan(span)
+  //   typed(ctxFunction).tpe
+
+  // /** If the tree has a `PolyFunctionApply` attachment, add the deferred
+  //  *  evidence parameters as the last argument list before the result type or a next poly type.
+  //  *  This follows aliases, so the following two types will be expanded to (up to the
+  //  *  context bound encoding):
+  //  *    type CmpWeak[X] = X => Boolean
+  //  *    type Comparer2Weak = [X: Ord] => X => CmpWeak[X]
+  //  *  ===>
+  //  *    type CmpWeak[X] = X => Boolean type Comparer2Weak = [X] => X => X ?=>
+  //  *    Ord[X] => Boolean
+  //  */
+  // private def addDeferredEvidenceParams(tree: Tree, pt: Type)(using Context): (Tree, Type) = {
+  //   tree.getAttachment(desugar.PolyFunctionApply) match
+  //     case Some(params) if params.nonEmpty =>
+  //       tree.putAttachment(desugar.PolyFunctionApply, Nil)
+  //       val tpe = pushDownDeferredEvidenceParams(tree.tpe, params, tree.span)
+  //       TypeTree(tpe).withSpan(tree.span) -> tpe
+  //     case Some(params) =>
+  //       tree -> pt
+  //     case _ => tree -> pt
+  // }
 
   /** Interpolate and simplify the type of the given tree. */
   protected def simplify(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree =
-    val (tree1, pt1) = addDeferredEvidenceParams(tree, pt)
-    if !tree1.denot.isOverloaded then // for overloaded trees: resolve overloading before simplifying
-      if !tree1.tpe.widen.isInstanceOf[MethodOrPoly] // wait with simplifying until method is fully applied
-         || tree1.isDef                              // ... unless tree is a definition
+    // val (tree1, pt1) = addDeferredEvidenceParams(tree, pt)
+    if !tree.denot.isOverloaded then // for overloaded trees: resolve overloading before simplifying
+      if !tree.tpe.widen.isInstanceOf[MethodOrPoly] // wait with simplifying until method is fully applied
+         || tree.isDef                              // ... unless tree is a definition
       then
-        interpolateTypeVars(tree1, pt1, locked)
-        val simplified = tree1.tpe.simplified
-        if !MatchType.thatReducesUsingGadt(tree1.tpe) then // needs a GADT cast. i15743
+        interpolateTypeVars(tree, pt, locked)
+        val simplified = tree.tpe.simplified
+        if !MatchType.thatReducesUsingGadt(tree.tpe) then // needs a GADT cast. i15743
           tree.overwriteType(simplified)
-    tree1
+    tree
 
   protected def makeContextualFunction(tree: untpd.Tree, pt: Type)(using Context): Tree = {
     val defn.FunctionOf(formals, _, true) = pt.dropDependentRefinement: @unchecked
