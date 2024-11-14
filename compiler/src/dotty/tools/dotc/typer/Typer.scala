@@ -1920,7 +1920,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedPolyFunction(tree: untpd.PolyFunction, pt: Type)(using Context): Tree =
     val tree1 = desugar.normalizePolyFunction(tree)
     if (ctx.mode is Mode.Type) typed(desugar.makePolyFunctionType(tree1), pt)
-    else typedPolyFunctionValue(tree1, pt)
+    else typedPolyFunctionValue(desugar.elimContextBounds(tree1).asInstanceOf[untpd.PolyFunction], pt)
 
   def typedPolyFunctionValue(tree: untpd.PolyFunction, pt: Type)(using Context): Tree =
     val untpd.PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun) = tree: @unchecked
@@ -1946,7 +1946,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             untpd.InLambdaTypeTree(isResult = true, (tsyms, vsyms) =>
               mt.resultType.substParams(mt, vsyms.map(_.termRef)).substParams(poly, tsyms.map(_.typeRef)))
           val desugared @ Block(List(defdef), _) = desugar.makeClosure(tparams, inferredVParams, body, resultTpt, tree.span)
-          defdef.putAttachment(desugar.PolyFunctionApply, List.empty)
           typed(desugared, pt)
         else
           val msg =
@@ -1955,7 +1954,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           errorTree(EmptyTree, msg, tree.srcPos)
       case _ =>
         val desugared @ Block(List(defdef), _) = desugar.makeClosure(tparams, vparams, body, untpd.TypeTree(), tree.span)
-        defdef.putAttachment(desugar.PolyFunctionApply, List.empty)
         typed(desugared, pt)
   end typedPolyFunctionValue
 
