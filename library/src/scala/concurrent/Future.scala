@@ -126,6 +126,11 @@ trait Future[+T] extends Awaitable[T] {
    */
   def onComplete[U](f: Try[T] => U)(implicit executor: ExecutionContext): Unit
 
+  /** The same as [[onComplete]], but additionally returns a function which can be
+   *  invoked to unregister the callback function. Removing a callback from a long-lived
+   *  future can enable garbage collection of objects referenced by the closure.
+   */
+  private[concurrent] def onCompleteWithUnregister[U](f: Try[T] => U)(implicit executor: ExecutionContext): () => Unit
 
   /* Miscellaneous */
 
@@ -616,6 +621,7 @@ object Future {
     }
 
     override final def onComplete[U](f: Try[Nothing] => U)(implicit executor: ExecutionContext): Unit = ()
+    override private[concurrent] final def onCompleteWithUnregister[U](f: Try[Nothing] => U)(implicit executor: ExecutionContext): () => Unit = () => ()
     override final def isCompleted: Boolean = false
     override final def value: Option[Try[Nothing]] = None
     override final def failed: Future[Throwable] = this
@@ -732,15 +738,25 @@ object Future {
     if (!i.hasNext) Future.never
     else {
       val p = Promise[T]()
-      val firstCompleteHandler = new AtomicReference[Promise[T]](p) with (Try[T] => Unit) {
-        override final def apply(v1: Try[T]): Unit =  {
-          val r = getAndSet(null)
-          if (r ne null)
-            r tryComplete v1 // tryComplete is likely to be cheaper than complete
+      val firstCompleteHandler = new AtomicReference(List.empty[() => Unit]) with (Try[T] => Unit) {
+        final def apply(res: Try[T]): Unit =  {
+          val deregs = getAndSet(null)
+          if (deregs != null) {
+            p.tryComplete(res) // tryComplete is likely to be cheaper than complete
+            deregs.foreach(_.apply())
+          }
         }
       }
-      while(i.hasNext && firstCompleteHandler.get != null) // exit early if possible
-        i.next().onComplete(firstCompleteHandler)
+      var completed = false
+      while (i.hasNext && !completed) {
+        val deregs = firstCompleteHandler.get
+        if (deregs == null) completed = true
+        else {
+          val d = i.next().onCompleteWithUnregister(firstCompleteHandler)
+          if (!firstCompleteHandler.compareAndSet(deregs, d :: deregs))
+            d.apply()
+        }
+      }
       p.future
     }
   }
