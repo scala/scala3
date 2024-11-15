@@ -22,7 +22,6 @@ import parsing.Parsers
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
-import dotty.tools.dotc.quoted.QuoteUtils.treeOwner
 
 object desugar {
   import untpd.*
