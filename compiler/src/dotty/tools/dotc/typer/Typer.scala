@@ -1945,7 +1945,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val resultTpt =
             untpd.InLambdaTypeTree(isResult = true, (tsyms, vsyms) =>
               mt.resultType.substParams(mt, vsyms.map(_.termRef)).substParams(poly, tsyms.map(_.typeRef)))
-          val desugared @ Block(List(defdef), _) = desugar.makeClosure(tparams, inferredVParams, body, resultTpt, tree.span)
+          val desugared = desugar.makeClosure(tparams, inferredVParams, body, resultTpt, tree.span)
           typed(desugared, pt)
         else
           val msg =
@@ -1953,7 +1953,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                  |Expected type should be a polymorphic function with the same number of type and value parameters."""
           errorTree(EmptyTree, msg, tree.srcPos)
       case _ =>
-        val desugared @ Block(List(defdef), _) = desugar.makeClosure(tparams, vparams, body, untpd.TypeTree(), tree.span)
+        val desugared = desugar.makeClosure(tparams, vparams, body, untpd.TypeTree(), tree.span)
         typed(desugared, pt)
   end typedPolyFunctionValue
 
@@ -3581,17 +3581,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               case xtree => typedUnnamed(xtree)
 
           val unsimplifiedType = result.tpe
-          val result1 = simplify(result, pt, locked)
-          result1.tpe.stripTypeVar match
+          simplify(result, pt, locked)
+          result.tpe.stripTypeVar match
             case e: ErrorType if !unsimplifiedType.isErroneous => errorTree(xtree, e.msg, xtree.srcPos)
-            case _ => result1
+            case _ => result
         catch case ex: TypeError =>
           handleTypeError(ex)
      }
   }
 
   /** Interpolate and simplify the type of the given tree. */
-  protected def simplify(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree =
+  protected def simplify(tree: Tree, pt: Type, locked: TypeVars)(using Context): tree.type =
     if !tree.denot.isOverloaded then // for overloaded trees: resolve overloading before simplifying
       if !tree.tpe.widen.isInstanceOf[MethodOrPoly] // wait with simplifying until method is fully applied
          || tree.isDef                              // ... unless tree is a definition
