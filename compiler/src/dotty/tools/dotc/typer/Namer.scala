@@ -1791,7 +1791,6 @@ class Namer { typer: Typer =>
     sym.owner.typeParams.foreach(_.ensureCompleted())
     completeTrailingParamss(constr, sym, indexingCtor = true)
     if Feature.enabled(modularity) then
-      // println(i"[indexConstructor] Checking if params of $constr need tracked")
       constr.termParamss.foreach(_.foreach(setTracked))
 
   /** The signature of a module valdef.
@@ -2000,7 +1999,8 @@ class Namer { typer: Typer =>
             cls.srcPos)
       case _ =>
 
-  /** Try to infer if the parameter needs a `tracked` modifier
+  /** `psym` needs tracked if it is referenced in any of the public signatures of the defining class
+   *  or when `psym` is a context bound witness with an abstract type member
    */
   def needsTracked(psym: Symbol, param: ValDef, owningSym: Symbol)(using Context) =
     lazy val abstractContextBound = isContextBoundWitnessWithAbstractMembers(psym, param, owningSym)
@@ -2025,6 +2025,7 @@ class Namer { typer: Typer =>
   extension (sym: Symbol)
     def infoWithForceNonInferingCompleter(using Context): Type = sym.infoOrCompleter match
       case tpe: LazyType if tpe.isNonInfering => sym.info
+      case tpe if sym.isType => sym.info
       case info => info
 
   /** Under x.modularity, we add `tracked` to term parameters whose types are referenced
@@ -2036,9 +2037,11 @@ class Namer { typer: Typer =>
     def checkOwnerMemberSignatures(owner: Symbol): Boolean =
       owner.infoOrCompleter match
         case info: ClassInfo =>
-          info.decls.filter(_.isTerm).filter(_.isPublic)
+          info.decls.filter(_.isPublic)
             .filter(_ != sym.maybeOwner)
-            .exists(d => tpeContainsSymbolRef(d.infoWithForceNonInferingCompleter, accessorSyms))
+            .exists { decl =>
+              tpeContainsSymbolRef(decl.infoWithForceNonInferingCompleter, accessorSyms)
+            }
         case _ => false
     checkOwnerMemberSignatures(owner)
 
@@ -2056,7 +2059,7 @@ class Namer { typer: Typer =>
   private def maybeParamAccessors(owner: Symbol, sym: Symbol)(using Context): List[Symbol] = owner.infoOrCompleter match
     case info: ClassInfo =>
       info.decls.lookupAll(sym.name).filter(d => d.is(ParamAccessor)).toList
-    case _ => List.empty
+    case _ => List(sym)
 
   /** Under x.modularity, set every context bound evidence parameter of a class to be tracked,
    *  provided it has a type that has an abstract type member. Reset private and local flags

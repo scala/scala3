@@ -22,6 +22,9 @@ case class J(c: C):
 case class K(c: C):
   def result[B >: c.T]: B = c.foo
 
+case class L(c: C):
+  type T = c.T
+
 def Test =
   val c = new C:
     type T = Int
@@ -44,3 +47,6 @@ def Test =
 
   val k = K(c)
   val _: Int = k.result
+
+  val l = L(c)
+  summon[l.T =:= Int]
