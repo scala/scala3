@@ -634,7 +634,7 @@ object CaptureSet:
 
     // For debugging: A trace where a set was created. Note that logically it would make more
     // sense to place this variable in Mapped, but that runs afoul of the initializatuon checker.
-    val stack = if debugSets && this.isInstanceOf[Mapped] then (new Throwable).getStackTrace().nn.take(20) else null
+    val stack = if debugSets && this.isInstanceOf[Mapped] then (new Throwable).getStackTrace().take(20) else null
 
     /** The variable from which this variable is derived */
     def source: Var

@@ -30,7 +30,7 @@ object Bench extends Driver:
       println(s"time elapsed: ${times(curRun)}ms")
       if ctx.settings.Xprompt.value || waitAfter == curRun + 1 then
         print("hit <return> to continue >")
-        System.in.nn.read()
+        System.in.read()
     reporter
 
   def extractNumArg(args: Array[String], name: String, default: Int = 1): (Int, Array[String]) = {

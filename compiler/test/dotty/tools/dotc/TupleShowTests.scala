@@ -71,7 +71,7 @@ class TupleShowTests extends DottyTest:
   /** On Windows the string literal in this test source file will be read with `\n` (b/c of "-encoding UTF8")
   *   but the compiler will correctly emit \r\n as the line separator.
   *   So we align the expected result to faithfully compare test results. */
-  extension (str: String) def normEOL = if EOL == "\n" then str else str.replace("\n", EOL).nn
+  extension (str: String) def normEOL = if EOL == "\n" then str else str.replace("\n", EOL)
 
   def diff(exp: String, obt: String) =
     val min = math.min(exp.length, obt.length)

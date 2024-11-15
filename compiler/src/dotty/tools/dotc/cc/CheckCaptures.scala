@@ -996,7 +996,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             trace.force(i"rechecking $tree with pt = $pt", recheckr, show = true):
               super.recheck(tree, pt)
         catch case ex: NoCommonRoot =>
-          report.error(ex.getMessage.nn)
+          report.error(ex.getMessage)
           tree.tpe
         finally curEnv = saved
       if tree.isTerm then
