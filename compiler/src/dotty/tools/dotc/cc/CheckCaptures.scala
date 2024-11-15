@@ -259,7 +259,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  is that it is sometimes better for type inference to not constrain too early
      *  with a checkConformsExpr.
      */
-    private var todoAtPostCheck = new mutable.ListBuffer[() => Unit]
+    private val todoAtPostCheck = new mutable.ListBuffer[() => Unit]
 
     override def keepType(tree: Tree) =
       super.keepType(tree)
@@ -453,8 +453,8 @@ class CheckCaptures extends Recheck, SymTransformer:
             val isVisible = c.pathRoot match
               case ref: NamedType => isVisibleFromEnv(ref.symbol.owner, env)
               case ref: ThisType => isVisibleFromEnv(ref.cls, env)
-              case ref =>
-                false
+              case ref => false
+
             if !isVisible then
               if ccConfig.deferredReaches
               then avoidLocalCapability(c, env, lastEnv)
@@ -603,22 +603,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ => formal
       funtpe.derivedLambdaType(paramInfos = paramInfosWithUses)
 
-    /** If this is an application of a caps.unsafe method, handle it specially
-     *  otherwise return NoType.
-     */
-    private def recheckUnsafeApply(tree: Apply, pt: Type)(using Context): Type =
-      val meth = tree.fun.symbol
-      if meth == defn.Caps_unsafeAssumePure then
-        val arg :: Nil = tree.args: @unchecked
-        val argType0 = recheck(arg, pt.capturing(CaptureSet.universal))
-        val argType =
-          if argType0.captureSet.isAlwaysEmpty then argType0
-          else argType0.widen.stripCapturing
-        capt.println(i"rechecking $arg with $pt: $argType")
-        super.recheckFinish(argType, tree, pt)
-      else NoType
-    end recheckUnsafeApply
-
     /** Recheck applications, with special handling of unsafeAssumePure.
      *  More work is done in `recheckApplication`, `recheckArg` and `instantiate` below.
      */
@@ -667,7 +651,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  is the capture set of the argument.
      *  If the function `f` does have an `@use` parameter, then it could in addition
      *  unbox reach capabilities over its formal parameter. Therefore, the approximation
-     *  would be `Cq \union dcs(Ca)` instead.
+     *  would be `Cq \union dcs(Ta)` instead.
      *  If the approximation might subcapture the declared result Cr, we pick it for C
      *  otherwise we pick Cr.
      */
@@ -741,7 +725,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
           val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
           if !getter.is(Private) && getter.hasTrackedParts then
-            refined = RefinedType(refined, getterName, argType.unboxed)
+            refined = RefinedType(refined, getterName, argType.unboxed) // Yichen you might want to check this
             allCaptures ++= argType.captureSet
         (refined, allCaptures)
 
@@ -783,7 +767,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     end recheckTypeApply
 
     /** Faced with a tree of form `caps.contansImpl[CS, r.type]`, check that `R` is a tracked
-     *  capability and assert that `{r} <:CS`.
+     *  capability and assert that `{r} <: CS`.
      */
     def checkContains(tree: TypeApply)(using Context): Unit = tree match
       case ContainsImpl(csArg, refArg) =>
