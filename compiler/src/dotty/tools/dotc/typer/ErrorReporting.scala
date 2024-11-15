@@ -111,9 +111,7 @@ object ErrorReporting {
           }
           i"(${tp.typedArgs().tpes}%, %)$result"
         def hasNames = tp.args.exists:
-          case tree: untpd.Tuple => tree.trees.exists:
-            case NamedArg(_, _) => true
-            case _ => false
+          case tree: untpd.Tuple => tree.trees.exists(_.isInstanceOf[NamedArg])
           case _ => false
         val addendum = if hasNames then " (a named tuple)" else ""
         s"arguments ${argStr(tp)}$addendum"
