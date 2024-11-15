@@ -2558,6 +2558,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   /** Type applied dependent class constructors in type positions */
   private def typedTermAppliedTypeTree(tree: untpd.AppliedTypeTree, tpt1: Tree)(using Context): Tree = {
+    val AppliedTypeTree(originalTpt, args) = tree
     if Feature.enabled(Feature.modularity) then
       val constr =
         if tpt1.tpe.typeSymbol.primaryConstructor.exists then
@@ -2565,17 +2566,32 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         else
           tpt1.tpe.typeSymbol.companionClass.primaryConstructor
       // TODO(kπ)       vvvvvvv   Might want to take the first term list? or all term lists? depends on the rest of the logic.
-      constr.paramSymss.flatten.foreach { p =>
-        if p.isTerm && !p.flags.is(Tracked) then
-          report.error(
-            em"""The constructor parameter `${p.name}` of `${tpt1.tpe}` is not tracked.
-                |Only tracked parameters are allowed in dependent constructor applications.""",
-            tree.srcPos
-          )
-      }
+      // constr.paramSymss.flatten.foreach { p =>
+      //   if p.isTerm && !p.flags.is(Tracked) then
+      //     report.error(
+      //       em"""The constructor parameter `${p.name}` of `${tpt1.tpe}` is not tracked.
+      //           |Only tracked parameters are allowed in dependent constructor applications.""",
+      //       tree.srcPos
+      //     )
+      // }
+      def getArgs(t: Tree): List[List[Tree]] = t match
+        case AppliedTypeTree(base, args) => getArgs(base) :+ args
+        case _ => Nil
+
+      def instAll(t: Type, args: List[List[Tree]]): Type = (t.widenDealias, args) match
+        case (_, Nil) => t
+        case (t: MethodType, args :: rest) =>
+          val t1 = t.instantiate(args.map(_.tpe))
+          instAll(t1, rest)
+        case (_, args :: rest) =>
+          val t1 = t.appliedTo(args.map(_.tpe))
+          instAll(t1, rest)
+
       constr.typeRef.underlying match
         case mt: MethodOrPoly =>
-          TypeTree(mt.instantiate(tree.args.map((typedExpr(_).tpe))))
+          val typedArgs = tree.args.map(a => (TypeTree(typedExpr(a).tpe)))
+          val preArgs = getArgs(tpt1)
+          TypeTree(instAll(mt, preArgs :+ typedArgs))
     else
       errorTree(tree, dependentMsg)
   }
