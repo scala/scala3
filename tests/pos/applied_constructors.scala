@@ -11,6 +11,6 @@ object Test extends App {
   val c: C(42) = C(42)
   val d: D(C(42)) = D(C(42))
   val e: E(D(C(42))) = E(D(C(42)))
-  // val f: F[Int](42) = F[Int](42)
+  val f: F[Int](42) = F[Int](42)
   // val g: G(42) = G(42)
 }
