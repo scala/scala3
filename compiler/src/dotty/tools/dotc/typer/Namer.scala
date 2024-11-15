@@ -2070,7 +2070,7 @@ class Namer { typer: Typer =>
     sym.maybeOwner.maybeOwner.infoOrCompleter match
       case info: ClassInfo
         if !sym.is(Tracked) && isContextBoundWitnessWithAbstractMembers(sym, param, sym.maybeOwner.maybeOwner) =>
-        typr.println(i"set tracked $param, $sym: ${sym.info}")
+        typr.println(i"set tracked $param, $sym: ${sym.info} containing ${sym.info.memberNames(abstractTypeNameFilter).toList}")
         for acc <- info.decls.lookupAll(sym.name) if acc.is(ParamAccessor) do
           acc.resetFlag(PrivateLocal)
           acc.setFlag(Tracked)

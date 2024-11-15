@@ -33,6 +33,7 @@ def Test =
   val f = new F(c)
   val _: Int = f.result
 
+  // Not really possible to work with inference in Namer, should emit a lint
   // val g = new G(c)
   // val _: Int = g.result
 
