@@ -110,7 +110,13 @@ object ErrorReporting {
             case tp => i" and expected result type $tp"
           }
           i"(${tp.typedArgs().tpes}%, %)$result"
-        s"arguments ${argStr(tp)}"
+        def hasNames = tp.args.exists:
+          case tree: untpd.Tuple => tree.trees.exists:
+            case NamedArg(_, _) => true
+            case _ => false
+          case _ => false
+        val addendum = if hasNames then " (a named tuple)" else ""
+        s"arguments ${argStr(tp)}$addendum"
       case _ =>
         i"expected type $tp"
     }

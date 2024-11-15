@@ -1,0 +1,21 @@
+-- [E134] Type Error: tests/neg/infix-named-args.scala:2:13 ------------------------------------------------------------
+2 |  def f = 42 + (x = 1) // error // a named tuple!
+  |          ^^^^
+  |          None of the overloaded alternatives of method + in class Int with types
+  |           (x: Double): Double
+  |           (x: Float): Float
+  |           (x: Long): Long
+  |           (x: Int): Int
+  |           (x: Char): Int
+  |           (x: Short): Int
+  |           (x: Byte): Int
+  |           (x: String): String
+  |          match arguments ((x : Int)) (a named tuple)
+-- [E007] Type Mismatch Error: tests/neg/infix-named-args.scala:13:18 --------------------------------------------------
+13 |  def g = this ** 2 // error
+   |                  ^
+   |                  Found:    (2 : Int)
+   |                  Required: X
+   |
+   | longer explanation available when compiling with `-explain`
+there were 6 deprecation warnings; re-run with -deprecation for details
