@@ -342,7 +342,7 @@ but that would make it less generally usable. Another alternative is to optimize
 def sumElems(xs: Vector[Int]): Int =
   val faster: faster.Vector[Int] | Null = xs match
     case xs: faster.Vector[_] => xs
-    case _ => xs
+    case _ => null
   var i = 0
   var sum = 0
   while i < xs.length do
@@ -350,7 +350,7 @@ def sumElems(xs: Vector[Int]): Int =
     i += 1
   sum
 ```
-That would avoid the boxing at the cost of a type test in the computation of `faster` and a null test in the call of `apply`. The single type test would be amortized over possibly many calls in the loop. We could do even better by generating a bit more code, splitting the whole loop:
+That would avoid the boxing at the cost of a type test in the computation of `faster` and a null test in the call of `apply`. The type test would be amortized over possibly many calls in the loop. We could do even better by generating a bit more code, splitting the whole loop:
 ```scala
 def sumElems(xs: Vector[Int]): Int =
   val faster: faster.Vector[Int] | Null = xs match
@@ -373,7 +373,7 @@ The example has shown that it is possible to have code over possibly specialized
 The boilerplate could be generated automatically by an optimization phase in the compiler. Essentially when compiling methods that take parameters whose type is a class
 that's annotated with `specializedBy`, we can do the path splitting automatically in an optimization step. The optimization would first analyze the body of the method to decide which path splitting strategy to use.
 
-I believe the three steps I have outlined could overcome most of the performance penalties imposed by existing unspecialized class hierarchies like collections, making their performance comparable to languages that use global monomorphization.
+I believe the three tweaks I have outlined could overcome most of the performance penalties imposed by existing unspecialized class hierarchies like collections, making their performance comparable to languages that use global monomorphization.
 
 ## Going Further: Hand-written Specializations
 
