@@ -1,4 +1,5 @@
 //> using options -experimental
+// scalajs: --skip
 package unroll
 
 object UnrollTestPlatformSpecificV3{
@@ -12,7 +13,7 @@ object UnrollTestPlatformSpecificV3{
     )
 
     assert(scala.util.Try(cls.getMethod("foo", classOf[String], classOf[Int], classOf[String => String])).isFailure)
-    
+
     assert(
       cls.getMethod("foo", classOf[String], classOf[Int], classOf[Boolean], classOf[String => String])
         .invoke(instance, "hello", 2: Integer, java.lang.Boolean.FALSE, identity[String](_)) ==
