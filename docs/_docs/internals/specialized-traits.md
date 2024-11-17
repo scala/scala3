@@ -1,7 +1,7 @@
 # Specialized Traits and Classes
 
 Specialization is one of the few remaining desirable features from Scala 2 that's are as yet missing in Scala 3. We could try to port the Scala 2 scheme, which would be non-trivial since the implementation is quite complex. But that scheme is problematic enough to suggest that we also look for alternatives. A possible alternative is described here. It is meant to complement the [proposal on inline traits](https://github.com/lampepfl/dotty/issues/15532). That proposal also contains a more detailed critique of Scala 2 specialization.
-The parts in that proposal that mention specialization should be ignored; they are superseded by the proposal here.
+The parts in that proposal that mention a proposed new specialization design should be ignored; they are superseded by the proposal here.
 
 The main problem of Scala-2 specialization is code bloat. We have to pro-actively generate up to 11 copies of functions and classes when they have a specialized type parameter, and this grows exponentially with the number of such type parameters. Miniboxing tries to reduce the number under the exponent from ~10 to 3 or 4, but it has problems dealing with arrays.
 
@@ -55,7 +55,7 @@ we require that each such anonymous class instance
  - cannot contain member definitions.
 
 So each such class instance is of the form `new A[Ts](ps1)...(psN) {}` where
-`A` is a specialized trait and the type parameters `Ts` and term parameters `ps1, ,,, psN` which can also be absent.
+`A` is a specialized trait and the type parameters `Ts` and term parameters `ps1, ,,, psN` can also be absent.
 
 The restrictions ensure that each time we create an instance of a specialized trait we know statically the classes of all `Specialized` type arguments. This enables us to implement the following expansion scheme:
 
@@ -355,7 +355,7 @@ That would avoid the boxing at the cost of a type test in the computation of `fa
 def sumElems(xs: Vector[Int]): Int =
   val faster: faster.Vector[Int] | Null = xs match
     case xs: faster.Vector[_] => xs
-    case _ => xs
+    case _ => null
   var i = 0
   var sum = 0
   if faster != null then
@@ -368,12 +368,23 @@ def sumElems(xs: Vector[Int]): Int =
       i += 1
   sum
 ```
-The example has shown that it is possible to have code over possibly specialized collections that is both general and high performance. But it does require a lot of hand-written boiler-plate.
+The example has shown that one can write code over possibly specialized collections that is both general and highly performant. But it does require a lot of hand-written boiler-plate.
 
-The boilerplate could be generated automatically by an optimization phase in the compiler. Essentially when compiling methods that take parameters whose type is a class
-that's annotated with `specializedBy`, we can do the path splitting automatically in an optimization step. The optimization would first analyze the body of the method to decide which path splitting strategy to use.
+The boilerplate could be generated automatically by an optimization phase in the compiler. Essentially, when compiling methods that take parameters whose type is a class annotated with `specializedBy`, we can do the path splitting automatically in an optimization step. The optimization would first analyze the body of the method to decide which path splitting strategy to apply.
 
-I believe the three tweaks I have outlined could overcome most of the performance penalties imposed by existing unspecialized class hierarchies like collections, making their performance comparable to languages that use global monomorphization.
+We believe the three tweaks we have outlined could overcome most of the performance penalties imposed by existing unspecialized class hierarchies like collections, making their performance comparable to languages that use global monomorphization.
+
+### Specializing Tuples
+
+The same optimizations can also avoid boxing for tuple elements, and with it extractor-based pattern matching. Scala 3 does not currently specialize tuples at all. Scala 2 specializes pairs but not tuples of higher arity. But it uses a scheme quite different from the one proposed here.
+
+Scala 2 pre-generates pair classes for all combinations of primitive types and Object. Each pair class inherits or implements access methods for all primitive types and Object. This allows to
+arrange it so that access always goes through a specialized method that does not involve boxing. No path splitting is needed to achieve that. On the other hand, the exponentially growing amount of code that needs to be generated restricts the scheme to pairs only. Also, specialization is not done for reference types, access to fields of (say) `String` type still need a cast from `Object` to `String`.
+
+We could adopt the Scala 2 specialization scheme for pairs. This is not hard, since no new classes need to be generated, we simply re-use the Scala 2 classes. Then the new specialization scheme would apply to tuples of higher arities. Or we forego Scala 2 specialization altogether and specialize all tuples with the new scheme.
+
+The situation with functions is a bit different. Here, Scala 2 specializes functions with up to two parameters, and Scala 3 re-uses these specializations.
+Going beyond that requires some adaptations since functions are not implemented as classes but as lambdas that are directly supported by the JVM. So Scala 3 specialization would have to be extended to the definition of these lambdas.
 
 ## Going Further: Hand-written Specializations
 
@@ -389,6 +400,15 @@ inline trait IntHashMap[+V: Specialized] extends HashMap[Int, V] ...
 The implementation in `IntHashMap` could exploit that fact that the key type `K` is known to be `Int` to pick a more performant algorithm, for instance.
 
 It would be great if we could use `IntHashMap` each time a specialized HashMap such as `HashMap$sp$Int$String` is referred to or created. In other words, `IntHashMap` should act as a drop-in replacement for `HashMap$sp$Int$String` that is selected automatically. A detailed proposal for this is left for future work.
+
+## Summary
+
+This proposal
+
+ 1. _Inline traits._ With them one can create specialized modules and classes, but no specialization on type parameters is possible. Inline traits also enable new patterns for meta programming.
+ 2. _Specialized traits and classes._ With them one can create class hierarchies that can require and exploit statically known type parameters.
+ 3. _Specialized overloads and path splitting_. With these additions one can create structures that can take advantage of statically known type parameters when they are available while still working for other type parameters as well. They also allow retro-fitting specializaton to existing libraries.
+ 4. _Hand-written specializations_. They allow to make use-defined algorithmic optimizations based on statically known type parameters.
 
 
 
