@@ -14,6 +14,8 @@ package scala
 package collection
 package immutable
 
+import scala.collection.generic.CommonErrors
+
 /** Trait that overrides operations to take advantage of strict builders.
  */
 trait StrictOptimizedSeqOps[+A, +CC[_], +C]
@@ -38,7 +40,11 @@ trait StrictOptimizedSeqOps[+A, +CC[_], +C]
   }
 
   override def updated[B >: A](index: Int, elem: B): CC[B] = {
-    if (index < 0) throw new IndexOutOfBoundsException(s"$index is out of bounds (min 0, max ${if (knownSize>=0) knownSize else "unknown"})")
+    if (index < 0)
+      throw (
+        if (knownSize >= 0) CommonErrors.indexOutOfBounds(index = index, max = knownSize)
+        else CommonErrors.indexOutOfBounds(index = index)
+      )
     val b = iterableFactory.newBuilder[B]
     b.sizeHint(this)
     var i = 0
@@ -47,7 +53,8 @@ trait StrictOptimizedSeqOps[+A, +CC[_], +C]
       b += it.next()
       i += 1
     }
-    if (!it.hasNext) throw new IndexOutOfBoundsException(s"$index is out of bounds (min 0, max ${i-1})")
+    if (!it.hasNext)
+      throw CommonErrors.indexOutOfBounds(index = index, max = i - 1)
     b += elem
     it.next()
     while (it.hasNext) b += it.next()
