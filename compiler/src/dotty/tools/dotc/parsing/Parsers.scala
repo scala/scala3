@@ -1010,12 +1010,12 @@ object Parsers {
       skipParams()
       lookahead.isColon
       && {
-        lookahead.nextToken()
         !sourceVersion.isAtLeast(`3.6`)
         || { // in the new given syntax, a `:` at EOL after an identifier represents a single identifier given
              // Example:
              //    given C:
              //      def f = ...
+          lookahead.nextToken()
           !lookahead.isAfterLineEnd
         } || {
             // Support for for pre-3.6 syntax where type is put on the next line
