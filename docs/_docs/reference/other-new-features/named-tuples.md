@@ -17,8 +17,9 @@ val persons: List[Person] = ...
 val minors = persons.filter: p =>
   p.age < 18
 ```
-Named bindings in tuples are similar to function parameters and arguments. We use `name: Type` for element types and `name = value` for element values. It is illegal to mix named and unnamed elements in a tuple, or to use the same same
-name for two different elements.
+Named bindings in tuples are similar to function parameters and arguments.
+We use `name: Type` for element types and `name = value` for element values.
+It is illegal to mix named and unnamed elements in a tuple, or to use the same name for two different elements.
 
 Fields of named tuples can be selected by their name, as in the line `p.age < 18` above.
 
