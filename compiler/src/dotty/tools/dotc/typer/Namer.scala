@@ -2078,12 +2078,12 @@ class Namer { typer: Typer =>
       case _ =>
 
   def inferredResultType(
-      mdef: ValOrDefDef,
-      sym: Symbol,
-      paramss: List[List[Symbol]],
-      paramFn: Type => Type,
-      fallbackProto: Type
-    )(using Context): Type =
+    mdef: ValOrDefDef,
+    sym: Symbol,
+    paramss: List[List[Symbol]],
+    paramFn: Type => Type,
+    fallbackProto: Type
+  )(using Context): Type =
 
     /** A type for this definition that might be inherited from elsewhere:
      *  If this is a setter parameter, the corresponding getter type.
