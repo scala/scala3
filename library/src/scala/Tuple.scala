@@ -205,15 +205,12 @@ object Tuple {
   }
 
   /** Given two tuples, `A1 *: ... *: An * At` and `B1 *: ... *: Bn *: Bt`
-   *  where at least one of `At` or `Bt` is `EmptyTuple` or `Tuple`,
-   *  returns the tuple type `(A1, B1) *: ... *: (An, Bn) *: Ct`
-   *  where `Ct` is `EmptyTuple` if `At` or `Bt` is `EmptyTuple`, otherwise `Ct` is `Tuple`.
+   *  where at least one of `At` or `Bt` is `EmptyTuple`,
+   *  returns the tuple type `(A1, B1) *: ... *: (An, Bn) *: EmptyTuple`.
    */
   type Zip[T1 <: Tuple, T2 <: Tuple] <: Tuple = (T1, T2) match {
     case (h1 *: t1, h2 *: t2) => (h1, h2) *: Zip[t1, t2]
-    case (EmptyTuple, _) => EmptyTuple
-    case (_, EmptyTuple) => EmptyTuple
-    case _ => Tuple
+    case _ => EmptyTuple
   }
 
   /** Converts a tuple `(F[T1], ..., F[Tn])` to `(T1,  ... Tn)` */
