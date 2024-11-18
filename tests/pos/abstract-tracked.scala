@@ -22,6 +22,9 @@ class L
 trait M:
   val f: Int
 
+class N extends F:
+  val a = 10
+
 object Test:
   val f = new F:
     val a = 1
@@ -39,6 +42,7 @@ object Test:
   }
   val m = new M:
     tracked val f = 9
+  val n = new N
 
   summon[f.a.type <:< 1]
   summon[g.b.type <:< 2]
@@ -48,3 +52,4 @@ object Test:
   summon[k.d.type <:< 7]
   // summon[l.e.type <:< 8] // unrelated issue -- error: e is not a member of L
   summon[m.f.type <:< 9]
+  summon[n.a.type <:< 10]
