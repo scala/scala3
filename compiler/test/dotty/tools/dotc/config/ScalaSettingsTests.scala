@@ -89,7 +89,6 @@ class ScalaSettingsTests:
     val nowr = new Diagnostic.Warning("This is a problem.".toMessage, util.NoSourcePosition)
     assertEquals(Action.Silent, sut.action(nowr))
 
-  @Ignore("LTS backport rejected: https://github.com/scala/scala3/pull/18503")
   @Test def `i18367 rightmost WConf flags take precedence over flags to the left`: Unit =
     import reporting.{Action, Diagnostic}
     val sets = new ScalaSettings
