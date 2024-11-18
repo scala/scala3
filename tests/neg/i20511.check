@@ -6,7 +6,9 @@
 8 |val i = 1 // error
   |^^^
   |'.' expected, but 'end of statement' found
--- Error: tests/neg/i20511.scala:7:21 ----------------------------------------------------------------------------------
+-- [E083] Type Error: tests/neg/i20511.scala:7:21 ----------------------------------------------------------------------
 7 |export toppingPrice, crustPrice // error // error
   |                     ^^^^^^^^^^
-  |                     Export selector must have prefix and `.`
+  |                     Any is not a valid export prefix, since it is not an immutable path
+  |
+  | longer explanation available when compiling with `-explain`
