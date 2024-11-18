@@ -116,6 +116,37 @@ ClsParam  ::=  {Annotation} [{Modifier | ‘tracked’} (‘val’ | ‘var’)]
 
 The (soft) `tracked` modifier is only allowed for `val` parameters of classes.
 
+**Tracked inference**
+
+In some cases `tracked` can be infered and doesn't have to be written
+explicitly. A common such case is when a class parameter is referenced in the
+signatures of the public members of the class. e.g.
+```scala 3
+class OrdSet(val ord: Ordering) {
+  type Set = List[ord.T]
+  def empty: Set = Nil
+
+  implicit class helper(s: Set) {
+    def add(x: ord.T): Set = x :: remove(x)
+    def remove(x: ord.T): Set = s.filter(e => ord.compare(x, e) != 0)
+    def member(x: ord.T): Boolean = s.exists(e => ord.compare(x, e) == 0)
+  }
+}
+```
+In the example above, `ord` is referenced in the signatures of the public
+members of `OrdSet`, so a `tracked` modifier will be inserted automatically.
+
+Another common case is when a context bound has an associated type (i.e. an abstract type member) e.g.
+```scala 3
+trait TC:
+  type Self
+  type T
+
+class Klass[A: {TC as tc}]
+```
+
+Here, `tc` is a context bound with an associated type `T`, so `tracked` will be inferred for `tc`.
+
 **Discussion**
 
 Since `tracked` is so useful, why not assume it by default? First, `tracked` makes sense only for `val` parameters. If a class parameter is not also a field declared using `val` then there's nothing to refine in the constructor result type. One could think of at least making all `val` parameters tracked by default, but that would be a backwards incompatible change. For instance, the following code would break:
