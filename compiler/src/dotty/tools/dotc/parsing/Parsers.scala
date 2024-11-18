@@ -1017,6 +1017,18 @@ object Parsers {
              //      def f = ...
           lookahead.nextToken()
           !lookahead.isAfterLineEnd
+        } || {
+            // Support for for pre-3.6 syntax where type is put on the next line
+            // Examples:
+            //     given namedGiven:
+            //       X[T] with {}
+            //     given otherGiven:
+            //       X[T] = new X[T]{}
+          lookahead.isIdent && {
+            lookahead.nextToken()
+            skipParams()
+            lookahead.token == WITH || lookahead.token == EQUALS
+          }
         }
       }
 
