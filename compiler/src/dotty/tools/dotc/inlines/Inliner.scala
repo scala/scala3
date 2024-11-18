@@ -1083,9 +1083,7 @@ class Inliner(val call: tpd.Tree)(using Context):
           hints.nn += i"suspension triggered by macro call to ${sym.showLocated} in ${sym.associatedFile}"
       if suspendable then
         if ctx.settings.YnoSuspendedUnits.value then
-          return ref(defn.Predef_undefined)
-            .withType(ErrorType(em"could not expand macro, suspended units are disabled by -Yno-suspended-units"))
-            .withSpan(splicePos.span)
+          return errorTree(ref(defn.Predef_undefined), em"could not expand macro, suspended units are disabled by -Yno-suspended-units", splicePos)
         else
           ctx.compilationUnit.suspend(hints.nn.toList.mkString(", ")) // this throws a SuspendException
 
