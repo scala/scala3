@@ -25,6 +25,11 @@ case class K(c: C):
 case class L(c: C):
   type T = c.T
 
+class M
+
+given mInst: (c: C) => M:
+  def foo: c.T = c.foo
+
 def Test =
   val c = new C:
     type T = Int
@@ -33,8 +38,7 @@ def Test =
   val f = new F(c)
   val _: Int = f.result
 
-  // Not really possible to work with inference in Namer, should emit a lint
-  // val g = new G(c)
+  // val g = new G(c) // current limitation of infering in Namer, should emit a lint
   // val _: Int = g.result
 
   val h = new H(c)
@@ -51,3 +55,6 @@ def Test =
 
   val l = L(c)
   summon[l.T =:= Int]
+
+  // val m = mInst(using c) // current limitation, we infer tracked after this desugaring
+  // val _: Int = m.foo
