@@ -22,8 +22,8 @@ sealed trait Tuple extends Product {
     runtime.Tuples.toIArray(this)
 
   /** Return a copy of `this` tuple with an element appended */
-  inline def :* [This >: this.type <: Tuple, L] (x: L): Append[This, L] =
-    runtime.Tuples.append(x, this).asInstanceOf[Append[This, L]]
+  inline def :* [This >: this.type <: Tuple, L] (x: L): This :* L =
+    runtime.Tuples.append(x, this).asInstanceOf[This :* L]
 
   /** Return a new tuple by prepending the element to `this` tuple.
    *  This operation is O(this.size)
@@ -58,8 +58,8 @@ sealed trait Tuple extends Product {
   /** Return a new tuple by concatenating `this` tuple with `that` tuple.
    *  This operation is O(this.size + that.size)
    */
-  inline def ++ [This >: this.type <: Tuple](that: Tuple): Concat[This, that.type] =
-    runtime.Tuples.concat(this, that).asInstanceOf[Concat[This, that.type]]
+  inline def ++ [This >: this.type <: Tuple](that: Tuple): This ++ that.type =
+    runtime.Tuples.concat(this, that).asInstanceOf[This ++ that.type]
 
   /** Return the size (or arity) of the tuple */
   inline def size[This >: this.type <: Tuple]: Size[This] =
@@ -118,6 +118,9 @@ object Tuple {
     case x *: xs => x *: Append[xs, Y]
   }
 
+  /** An infix shorthand for `Append[X, Y]` */
+  infix type :*[X <: Tuple, Y] = Append[X, Y]
+
   /** Type of the head of a tuple */
   type Head[X <: Tuple] = X match {
     case x *: _ => x
@@ -146,6 +149,9 @@ object Tuple {
     case EmptyTuple => Y
     case x1 *: xs1 => x1 *: Concat[xs1, Y]
   }
+
+  /** An infix shorthand for `Concat[X, Y]` */
+  infix type ++[X <: Tuple, +Y <: Tuple] = Concat[X, Y]
 
   /** Type of the element at position N in the tuple X */
   type Elem[X <: Tuple, N <: Int] = X match {
