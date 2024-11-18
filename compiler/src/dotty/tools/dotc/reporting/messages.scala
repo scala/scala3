@@ -3352,3 +3352,13 @@ final class AmbiguousNamedTupleAssignment(key: Name, value: untpd.Tree)(using Co
       |To assign a value, use curly braces: `{${key} = ${value}}`."""
   
   override protected def explain(using Context): String = ""
+
+class AmbiguousNamedTupleInfixApply()(using Context) extends SyntaxMsg(AmbiguousNamedTupleInfixApplyID):
+  def msg(using Context) =
+    "Ambigious syntax: this infix call argument list is interpreted as single named tuple argument, not as an named arguments list."
+    + Message.rewriteNotice("This", version = SourceVersion.`3.6-migration`)
+
+  def explain(using Context) =
+    i"""Starting with Scala 3.6 infix named arguments are interpretted as Named Tuple.
+        |
+        |To avoid this warning, either remove the argument names or use dotted selection."""
