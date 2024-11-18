@@ -1,0 +1,4 @@
+-- Error: tests/neg/unroll-no-default.scala:6:32 -----------------------------------------------------------------------
+6 |  final def foo(x: Int, @unroll y: Int) = x + y // error
+  |                        ^^^^^^^^^^^^^^
+  |                        Cannot unroll method foo in class Foo at line 6 because parameter y needs a default value

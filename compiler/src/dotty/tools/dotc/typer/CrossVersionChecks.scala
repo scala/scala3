@@ -81,18 +81,37 @@ class CrossVersionChecks extends MiniPhase:
       report.deprecationWarning(em"inheritance from $psym is deprecated$since$msg", parent.srcPos, origin=psym.showFullName)
   }
 
+  private def unrollError(pos: SrcPos)(using Context): Unit =
+    report.error(IllegalUnrollPlacement(None), pos)
+
+  private def checkUnrollAnnot(annotSym: Symbol, pos: SrcPos)(using Context): Unit =
+    if annotSym == defn.UnrollAnnot then
+      unrollError(pos)
+
+  private def checkUnrollMemberDef(memberDef: MemberDef)(using Context): Unit =
+    val sym = memberDef.symbol
+    if
+      sym.hasAnnotation(defn.UnrollAnnot)
+      && !(sym.isTerm && sym.is(Param))
+    then
+      val normSym = if sym.is(ModuleVal) then sym.moduleClass else sym
+      unrollError(normSym.srcPos)
+
   override def transformValDef(tree: ValDef)(using Context): ValDef =
+    checkUnrollMemberDef(tree)
     checkDeprecatedOvers(tree)
     checkExperimentalAnnots(tree.symbol)
     tree
 
   override def transformDefDef(tree: DefDef)(using Context): DefDef =
+    checkUnrollMemberDef(tree)
     checkDeprecatedOvers(tree)
     checkExperimentalAnnots(tree.symbol)
     tree
 
   override def transformTypeDef(tree: TypeDef)(using Context): TypeDef =
     // TODO do we need to check checkDeprecatedOvers(tree)?
+    checkUnrollMemberDef(tree)
     checkExperimentalAnnots(tree.symbol)
     tree
 
@@ -126,6 +145,8 @@ class CrossVersionChecks extends MiniPhase:
         if tree.span.isSourceDerived then
           checkDeprecatedRef(sym, tree.srcPos)
         checkExperimentalRef(sym, tree.srcPos)
+      case AnnotatedType(_, annot) =>
+        checkUnrollAnnot(annot.symbol, tree.srcPos)
       case _ =>
     }
     tree
@@ -140,7 +161,11 @@ class CrossVersionChecks extends MiniPhase:
         case tree: TypeTree => transformTypeTree(tree)
         case _ =>
       }
-    tree
+    tree match
+      case Annotated(_, annot) =>
+        checkUnrollAnnot(annot.tpe.typeSymbol, tree.srcPos)
+        tree
+      case tree => tree
 
 end CrossVersionChecks
 
