@@ -73,7 +73,7 @@ object Access:
   extension (x: PermissionChoice)
     def | (y: PermissionChoice): PermissionChoice = x | y
   extension (x: Permissions)
-    def & (y: Permissions): Permissions = x | y
+    def & (y: Permissions): Permissions = x & y
   extension (granted: Permissions)
     def is(required: Permissions) = (granted & required) == required
     def isOneOf(required: PermissionChoice) = (granted & required) != 0
