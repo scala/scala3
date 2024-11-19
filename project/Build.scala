@@ -106,7 +106,7 @@ object Build {
    *  Should only be referred from `dottyVersion` or settings/tasks requiring simplified version string,
    *  eg. `compatMode` or Windows native distribution version.
    */
-  val developedVersion = "3.6.3"
+  val developedVersion = "3.6.4"
 
   /** The version of the compiler including the RC prefix.
    *  Defined as common base before calculating environment specific suffixes in `dottyVersion`
