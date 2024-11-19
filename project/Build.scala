@@ -327,7 +327,7 @@ object Build {
         .withTestRetryConfiguration(
           config.testRetryConfiguration
             .withFlakyTestPolicy(FlakyTestPolicy.Fail)
-            .withMaxRetries(1)
+            .withMaxRetries(if (isInsideCI) 1 else 0)
             .withMaxFailures(10)
             .withClassesFilter((className, _) => !noRetryTestClasses.contains(className))
         )
