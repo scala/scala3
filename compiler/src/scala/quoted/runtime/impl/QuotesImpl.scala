@@ -540,11 +540,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
       def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term], returnType: TypeRepr): Term =
         withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, returnType))
+      
       def copy(original: Tree)(qualifier: Term, name: String): Select =
+        val sym = original.symbol
+        if sym.name.is(NameKinds.DefaultGetterName) && sym.name.toString == name then
+          tpd.cpy.Select(original)(qualifier, sym.name)
+        else
         tpd.cpy.Select(original)(qualifier, name.toTermName)
       
-      def copy(original: Tree)(qualifier: Term, sym: Symbol): Select = 
-        tpd.cpy.Select(original)(qualifier, sym.name)
       def unapply(x: Select): (Term, String) =
         (x.qualifier, x.name.toString)
     end Select
