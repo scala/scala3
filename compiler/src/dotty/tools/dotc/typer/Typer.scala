@@ -1920,7 +1920,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedPolyFunction(tree: untpd.PolyFunction, pt: Type)(using Context): Tree =
     val tree1 = desugar.normalizePolyFunction(tree)
     if (ctx.mode is Mode.Type) typed(desugar.makePolyFunctionType(tree1), pt)
-    else typedPolyFunctionValue(tree1, pt)
+    else typedPolyFunctionValue(desugar.elimContextBounds(tree1).asInstanceOf[untpd.PolyFunction], pt)
 
   def typedPolyFunctionValue(tree: untpd.PolyFunction, pt: Type)(using Context): Tree =
     val untpd.PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun) = tree: @unchecked
@@ -2474,7 +2474,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val TypeDef(_, impl: Template) = typed(refineClsDef): @unchecked
     val refinements1 = impl.body
     val seen = mutable.Set[Symbol]()
-    for (refinement <- refinements1) { // TODO: get clarity whether we want to enforce these conditions
+    for refinement <- refinements1 do // TODO: get clarity whether we want to enforce these conditions
       typr.println(s"adding refinement $refinement")
       checkRefinementNonCyclic(refinement, refineCls, seen)
       val rsym = refinement.symbol
@@ -2488,7 +2488,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val member = refineCls.info.member(rsym.name)
       if (member.isOverloaded)
         report.error(OverloadInRefinement(rsym), refinement.srcPos)
-    }
     assignType(cpy.RefinedTypeTree(tree)(tpt1, refinements1), tpt1, refinements1, refineCls)
   }
 

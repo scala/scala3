@@ -3459,7 +3459,7 @@ object Parsers {
      *
      *  TypTypeParamClause::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
      *  TypTypeParam      ::=  {Annotation}
-     *                         (id | ‘_’) [HkTypeParamClause] TypeBounds
+     *                         (id | ‘_’) [HkTypeParamClause] TypeAndCtxBounds
      *
      *  HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
      *  HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’]
@@ -3490,7 +3490,9 @@ object Parsers {
             else ident().toTypeName
           val hkparams = typeParamClauseOpt(ParamOwner.Hk)
           val bounds =
-            if paramOwner.acceptsCtxBounds then typeAndCtxBounds(name) else typeBounds()
+            if paramOwner.acceptsCtxBounds then typeAndCtxBounds(name)
+            else if in.featureEnabled(Feature.modularity) && paramOwner == ParamOwner.Type then typeAndCtxBounds(name)
+            else typeBounds()
           TypeDef(name, lambdaAbstract(hkparams, bounds)).withMods(mods)
         }
       }
