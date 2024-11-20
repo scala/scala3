@@ -17,6 +17,9 @@ object SeqLits:
   inline def seqLit[T: ClassTag, C](inline xs: T*)(using inline f: FromArray[T, C]): C =
     f.fromArray(IArray(xs*))
 
+  inline def seqLit2[T, C](inline xs: IArray[T])(using inline f: FromArray[T, C]): C =
+    f.fromArray(xs)
+
   /** Straightfoward mapping to Seq */
   given [T] => FromArray[T, Seq[T]]:
     inline def fromArray(inline xs: IArray[T]) = Seq(xs*)
@@ -31,11 +34,17 @@ object SeqLits:
 
   def last: Int = { println("last was evaluated"); 4 }
 
-  val s: Seq[Int] = seqLit(1, 2, 3, last)
-  val v: Vector[Int] = seqLit(1, 2, 3, last)
-  val t: Task[Seq[Int]] = seqLit(1, 2, 3, last)
-
    @main def Test =
+    val s: Seq[Int] = seqLit(1, 2, 3, last)
+    val v: Vector[Int] = seqLit(1, 2, 3, last)
+    val t: Task[Seq[Int]] = seqLit(1, 2, 3, last)
     println(s"Seq $s")
     println(s"Vector $v")
     println(s"${t.getClass.getSimpleName} with elems ${t.body()}")
+
+    val s2: Seq[Int] = seqLit2(IArray(1, 2, 3, last))
+    val v2: Vector[Int] = seqLit2(IArray(1, 2, 3, last))
+    val t2: Task[Seq[Int]] = seqLit2(IArray(1, 2, 3, last))
+    println(s"Seq $s2")
+    println(s"Vector $v2")
+    println(s"${t2.getClass.getSimpleName} with elems ${t2.body()}")
