@@ -119,7 +119,7 @@ object WConf:
   def fromSettings(settings: List[String]): Either[List[String], WConf] =
     if (settings.isEmpty) Right(WConf(Nil))
     else
-      val parsedConfs: List[Either[List[String], (List[MessageFilter], Action)]] = settings.map(conf =>
+      val parsedConfs: List[Either[List[String], (List[MessageFilter], Action)]] = settings.reverse.map(conf =>
         val filtersAndAction = conf.split(':')
         if filtersAndAction.length != 2 then Left(List("exactly one `:` expected (<filter>&...&<filter>:<action>)"))
         else
