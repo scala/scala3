@@ -456,12 +456,10 @@ object Types extends TypeUtils {
      */
     def isMatch(using Context): Boolean = underlyingMatchType.exists
 
-    def underlyingMatchType(using Context): Type = stripped match {
+    def underlyingMatchType(using Context): Type = stripped match
       case tp: MatchType => tp
-      case tp: HKTypeLambda => tp.resType.underlyingMatchType
-      case tp: AppliedType if tp.isMatchAlias => tp.superType.underlyingMatchType
+      case tp: AppliedType => tp.underlyingMatchType
       case _ => NoType
-    }
 
     /** Is this a higher-kinded type lambda with given parameter variances?
      *  These lambdas are used as the RHS of higher-kinded abstract types or
@@ -4455,6 +4453,9 @@ object Types extends TypeUtils {
     private var myEvalRunId: RunId = NoRunId
     private var myEvalued: Type = uninitialized
 
+    private var validUnderlyingMatch: Period = Nowhere
+    private var cachedUnderlyingMatch: Type = uninitialized
+
     def isGround(acc: TypeAccumulator[Boolean])(using Context): Boolean =
       if myGround == 0 then myGround = if acc.foldOver(true, this) then 1 else -1
       myGround > 0
@@ -4511,29 +4512,25 @@ object Types extends TypeUtils {
         case nil => x
       foldArgs(op(x, tycon), args)
 
-    override def tryNormalize(using Context): Type = tycon.stripTypeVar match {
-      case tycon: TypeRef =>
-        def tryMatchAlias = tycon.info match {
-          case MatchAlias(alias) =>
-            trace(i"normalize $this", typr, show = true) {
-              MatchTypeTrace.recurseWith(this) {
-                alias.applyIfParameterized(args).tryNormalize
-                /* `applyIfParameterized` may reduce several HKTypeLambda applications
-                 * before the underlying MatchType is reached.
-                 * Even if they do not involve any match type normalizations yet,
-                 * we still want to record these reductions in the MatchTypeTrace.
-                 * They should however only be attempted if they eventually expand
-                 * to a match type, which is ensured by the `isMatchAlias` guard.
-                 */
-              }
-            }
-          case _ =>
-            NoType
-        }
-        tryCompiletimeConstantFold.orElse(tryMatchAlias)
-      case _ =>
-        NoType
-    }
+    /** Exists if the tycon is a TypeRef of an alias with an underlying match type.
+     *  Anything else should have already been reduced in `appliedTo` by the TypeAssigner.
+     *  May reduce several HKTypeLambda applications before the underlying MatchType is reached.
+     */
+    override def underlyingMatchType(using Context): Type =
+      if ctx.period != validUnderlyingMatch then
+        cachedUnderlyingMatch = superType.underlyingMatchType
+        validUnderlyingMatch = validSuper
+      cachedUnderlyingMatch
+
+    override def tryNormalize(using Context): Type =
+      def tryMatchAlias =
+        if isMatchAlias then trace(i"normalize $this", typr, show = true):
+          if MatchTypeTrace.isRecording then
+            MatchTypeTrace.recurseWith(this)(superType.tryNormalize)
+          else
+            underlyingMatchType.tryNormalize
+        else NoType
+      tryCompiletimeConstantFold.orElse(tryMatchAlias)
 
     /** Does this application expand to a match type? */
     def isMatchAlias(using Context): Boolean = tycon.stripTypeVar match
