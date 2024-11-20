@@ -20,6 +20,7 @@ on:
       - 'gh-readonly-queue/**'
       - 'release-**'
       - 'lts-**'
+      - 'backport-**'
   pull_request:
   merge_group:
   schedule:
