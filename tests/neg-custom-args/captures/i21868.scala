@@ -1,4 +1,4 @@
-import caps.
+import caps.*
 
 trait AbstractWrong:
     type C <: CapSet
