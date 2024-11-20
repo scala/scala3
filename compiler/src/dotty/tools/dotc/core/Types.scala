@@ -452,13 +452,18 @@ object Types extends TypeUtils {
     /** Is this a MethodType for which the parameters will not be used? */
     def hasErasedParams(using Context): Boolean = false
 
-    /** Is this a match type or a higher-kinded abstraction of one?
-     */
-    def isMatch(using Context): Boolean = underlyingMatchType.exists
+    /** Is this a match type or a higher-kinded abstraction of one? */
+    def isMatch(using Context): Boolean = stripped match
+      case tp: MatchType => true
+      case tp: HKTypeLambda => tp.resType.isMatch
+      case _ => false
 
-    def underlyingMatchType(using Context): Type = stripped match
+    /** Does this application expand to a match type? */
+    def isMatchAlias(using Context): Boolean = underlyingNormalizable.isMatch
+
+    def underlyingNormalizable(using Context): Type = stripped match
       case tp: MatchType => tp
-      case tp: AppliedType => tp.underlyingMatchType
+      case tp: AppliedType => tp.underlyingNormalizable
       case _ => NoType
 
     /** Is this a higher-kinded type lambda with given parameter variances?
@@ -4453,8 +4458,8 @@ object Types extends TypeUtils {
     private var myEvalRunId: RunId = NoRunId
     private var myEvalued: Type = uninitialized
 
-    private var validUnderlyingMatch: Period = Nowhere
-    private var cachedUnderlyingMatch: Type = uninitialized
+    private var validUnderlyingNormalizable: Period = Nowhere
+    private var cachedUnderlyingNormalizable: Type = uninitialized
 
     def isGround(acc: TypeAccumulator[Boolean])(using Context): Boolean =
       if myGround == 0 then myGround = if acc.foldOver(true, this) then 1 else -1
@@ -4516,11 +4521,15 @@ object Types extends TypeUtils {
      *  Anything else should have already been reduced in `appliedTo` by the TypeAssigner.
      *  May reduce several HKTypeLambda applications before the underlying MatchType is reached.
      */
-    override def underlyingMatchType(using Context): Type =
-      if ctx.period != validUnderlyingMatch then
-        cachedUnderlyingMatch = superType.underlyingMatchType
-        validUnderlyingMatch = validSuper
-      cachedUnderlyingMatch
+    override def underlyingNormalizable(using Context): Type =
+      if ctx.period != validUnderlyingNormalizable then tycon match
+        case tycon: TypeRef if defn.isCompiletimeAppliedType(tycon.symbol) =>
+          cachedUnderlyingNormalizable = this
+          validUnderlyingNormalizable = ctx.period
+        case _ =>
+          cachedUnderlyingNormalizable = superType.underlyingNormalizable
+          validUnderlyingNormalizable = validSuper
+      cachedUnderlyingNormalizable
 
     override def tryNormalize(using Context): Type =
       def tryMatchAlias =
@@ -4528,17 +4537,9 @@ object Types extends TypeUtils {
           if MatchTypeTrace.isRecording then
             MatchTypeTrace.recurseWith(this)(superType.tryNormalize)
           else
-            underlyingMatchType.tryNormalize
+            underlyingNormalizable.tryNormalize
         else NoType
       tryCompiletimeConstantFold.orElse(tryMatchAlias)
-
-    /** Does this application expand to a match type? */
-    def isMatchAlias(using Context): Boolean = tycon.stripTypeVar match
-      case tycon: TypeRef =>
-        tycon.info match
-          case _: MatchAlias => true
-          case _ => false
-      case _ => false
 
     /** Is this an unreducible application to wildcard arguments?
      *  This is the case if tycon is higher-kinded. This means
@@ -5041,10 +5042,9 @@ object Types extends TypeUtils {
     def apply(bound: Type, scrutinee: Type, cases: List[Type])(using Context): MatchType =
       unique(new CachedMatchType(bound, scrutinee, cases))
 
-    def thatReducesUsingGadt(tp: Type)(using Context): Boolean = tp match
-      case MatchType.InDisguise(mt) => mt.reducesUsingGadt
-      case mt: MatchType            => mt.reducesUsingGadt
-      case _                        => false
+    def thatReducesUsingGadt(tp: Type)(using Context): Boolean = tp.underlyingNormalizable match
+      case mt: MatchType => mt.reducesUsingGadt
+      case _ => false
 
     /** Extractor for match types hidden behind an AppliedType/MatchAlias. */
     object InDisguise:
