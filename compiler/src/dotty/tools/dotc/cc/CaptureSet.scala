@@ -1137,7 +1137,7 @@ object CaptureSet:
             seen += t.symbol
             val upper = t.info.bounds.hi
             if includeTypevars && upper.isExactlyAny then CaptureSet.universal
-            else this(cs, t.info.bounds.hi)
+            else this(cs, upper)
           case t @ FunctionOrMethod(args, res @ Existential(_, _))
           if args.forall(_.isAlwaysPure) =>
             this(cs, Existential.toCap(res))

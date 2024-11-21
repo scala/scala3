@@ -380,10 +380,12 @@ class CheckCaptures extends Recheck, SymTransformer:
       // A captured reference with the symbol `sym` is visible from the environment
       // if `sym` is not defined inside the owner of the environment.
       inline def isVisibleFromEnv(sym: Symbol, env: Env) =
-        if env.kind == EnvKind.NestedInOwner then
-          !sym.isProperlyContainedIn(env.owner)
-        else
-          !sym.isContainedIn(env.owner)
+        sym.exists && {
+          if env.kind == EnvKind.NestedInOwner then
+            !sym.isProperlyContainedIn(env.owner)
+          else
+            !sym.isContainedIn(env.owner)
+        }
 
       /** If captureRef `c` refers to a parameter that is not @use declared, report an error.
        *  Exception under deferredReaches: If use comes from a nested closure, accept it.
@@ -450,11 +452,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           // Only captured references that are visible from the environment
           // should be included.
           val included = cs.filter: c =>
-            val isVisible = c.pathRoot match
-              case ref: NamedType => isVisibleFromEnv(ref.symbol.owner, env)
-              case ref: ThisType => isVisibleFromEnv(ref.cls, env)
-              case ref => false
-
+            val isVisible = isVisibleFromEnv(c.pathOwner, env)
             if !isVisible then
               if ccConfig.deferredReaches
               then avoidLocalCapability(c, env, lastEnv)

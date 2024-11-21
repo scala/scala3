@@ -269,10 +269,9 @@ extension (tp: Type)
       tp
 
   /** The first element of this path type */
-  final def pathRoot(using Context): Type = tp.dealiasKeepAnnots match
+  final def pathRoot(using Context): Type = tp.dealias match
     case tp1: NamedType if tp1.symbol.owner.isClass => tp1.prefix.pathRoot
-    case ReachCapability(tp1) => tp1.pathRoot
-    case _ => tp
+    case tp1 => tp1
 
   /** If this part starts with `C.this`, the class `C`.
    *  Otherwise, if it starts with a reference `r`, `r`'s owner.
