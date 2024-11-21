@@ -328,7 +328,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 CapturingType(parent2, ann.tree.toCaptureSet)
               catch case ex: IllegalCaptureRef =>
                 report.error(em"Illegal capture reference: ${ex.getMessage.nn}", tptToCheck.fold(NoSourcePosition)(_.srcPos))
-                t
+                parent2
             else
               t.derivedAnnotatedType(parent1, ann)
           case throwsAlias(res, exc) =>
