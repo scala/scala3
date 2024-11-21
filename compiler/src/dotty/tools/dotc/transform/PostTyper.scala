@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package transform
 
-import dotty.tools.dotc.ast.{Trees, tpd, untpd, desugar}
+import dotty.tools.dotc.ast.{Trees, tpd, untpd, desugar, TreeTypeMap}
 import scala.collection.mutable
 import core.*
 import dotty.tools.dotc.typer.Checking
@@ -16,7 +16,7 @@ import Symbols.*, NameOps.*
 import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
 import config.Feature
-import util.SrcPos
+import util.{SrcPos, Stats}
 import reporting.*
 import NameKinds.WildcardParamName
 import cc.*
@@ -154,16 +154,38 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           case _ =>
       case _ =>
 
+    /** Returns a copy of the given tree with all symbols fresh.
+     *
+     *  Used to guarantee that no symbols are shared between trees in different
+     *  annotations.
+     */
+    private def copySymbols(tree: Tree)(using Context) =
+      Stats.trackTime("Annotations copySymbols"):
+        val ttm =
+          new TreeTypeMap:
+            override def withMappedSyms(syms: List[Symbol]) =
+              withMappedSyms(syms, mapSymbols(syms, this, true))
+        ttm(tree)
+
+    /** Transforms the given annotation tree. */
     private def transformAnnot(annot: Tree)(using Context): Tree = {
       val saved = inJavaAnnot
       inJavaAnnot = annot.symbol.is(JavaDefined)
       if (inJavaAnnot) checkValidJavaAnnotation(annot)
-      try transform(annot)
+      try transform(copySymbols(annot))
       finally inJavaAnnot = saved
     }
 
     private def transformAnnot(annot: Annotation)(using Context): Annotation =
       annot.derivedAnnotation(transformAnnot(annot.tree))
+
+    /** Transforms all annotations in the given type. */
+    private def transformAnnots(using Context) =
+      new TypeMap:
+        def apply(tp: Type) = tp match
+          case tp @ AnnotatedType(parent, annot) =>
+            tp.derivedAnnotatedType(mapOver(parent), transformAnnot(annot))
+          case _ => mapOver(tp)
 
     private def processMemberDef(tree: Tree)(using Context): tree.type = {
       val sym = tree.symbol
@@ -524,11 +546,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           super.transform(tree)
         case tree: TypeTree =>
           val tpe = if tree.isInferred then CleanupRetains()(tree.tpe) else tree.tpe
-          tree.withType:
-            tpe match
-              case AnnotatedType(parent, annot) =>
-                AnnotatedType(parent, transformAnnot(annot)) // TODO: Also map annotations embedded in type?
-              case _ => tpe
+          tree.withType(transformAnnots(tpe))
         case Typed(Ident(nme.WILDCARD), _) =>
           withMode(Mode.Pattern)(super.transform(tree))
             // The added mode signals that bounds in a pattern need not
