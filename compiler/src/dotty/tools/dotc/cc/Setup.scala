@@ -352,11 +352,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             if ann.symbol.isRetains then
               val parent2 = stripImpliedCaptureSet(parent1)
               if !tptToCheck.isEmpty then
-                checkWellformedLater(parent2, ann.tree, tpt)
+                checkWellformedLater(parent2, ann.tree, tptToCheck)
               try
                 CapturingType(parent2, ann.tree.toCaptureSet)
               catch case ex: IllegalCaptureRef =>
-                report.error(em"Illegal capture reference: ${ex.getMessage.nn}", tptToCheck.fold(NoSourcePosition)(_.srcPos))
+                report.error(em"Illegal capture reference: ${ex.getMessage.nn}", tptToCheck.srcPos)
                 parent2
             else
               t.derivedAnnotatedType(parent1, ann)
