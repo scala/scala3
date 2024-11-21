@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package transform
 
-import dotty.tools.dotc.ast.{Trees, tpd, untpd, desugar}
+import dotty.tools.dotc.ast.{Trees, tpd, untpd, desugar, TreeTypeMap}
 import scala.collection.mutable
 import core.*
 import dotty.tools.dotc.typer.Checking
@@ -16,7 +16,7 @@ import Symbols.*, NameOps.*
 import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
 import config.Feature
-import util.SrcPos
+import util.{SrcPos, Stats}
 import reporting.*
 import NameKinds.WildcardParamName
 
@@ -132,16 +132,38 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           case _ =>
       case _ =>
 
+    /** Returns a copy of the given tree with all symbols fresh.
+     *
+     *  Used to guarantee that no symbols are shared between trees in different
+     *  annotations.
+     */
+    private def copySymbols(tree: Tree)(using Context) =
+      Stats.trackTime("Annotations copySymbols"):
+        val ttm =
+          new TreeTypeMap:
+            override def withMappedSyms(syms: List[Symbol]) =
+              withMappedSyms(syms, mapSymbols(syms, this, true))
+        ttm(tree)
+
+    /** Transforms the given annotation tree. */
     private def transformAnnot(annot: Tree)(using Context): Tree = {
       val saved = inJavaAnnot
       inJavaAnnot = annot.symbol.is(JavaDefined)
       if (inJavaAnnot) checkValidJavaAnnotation(annot)
-      try transform(annot)
+      try transform(copySymbols(annot))
       finally inJavaAnnot = saved
     }
 
     private def transformAnnot(annot: Annotation)(using Context): Annotation =
       annot.derivedAnnotation(transformAnnot(annot.tree))
+
+    /** Transforms all annotations in the given type. */
+    private def transformAnnots(using Context) =
+      new TypeMap:
+        def apply(tp: Type) = tp match
+          case tp @ AnnotatedType(parent, annot) =>
+            tp.derivedAnnotatedType(mapOver(parent), transformAnnot(annot))
+          case _ => mapOver(tp)
 
     private def processMemberDef(tree: Tree)(using Context): tree.type = {
       val sym = tree.symbol
@@ -460,12 +482,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               report.error(em"type ${alias.tpe} outside bounds $bounds", tree.srcPos)
           super.transform(tree)
         case tree: TypeTree =>
-          tree.withType(
-            tree.tpe match {
-              case AnnotatedType(tpe, annot) => AnnotatedType(tpe, transformAnnot(annot))
-              case tpe => tpe
-            }
-          )
+          tree.withType(transformAnnotsIn(tpe))
         case Typed(Ident(nme.WILDCARD), _) =>
           withMode(Mode.Pattern)(super.transform(tree))
             // The added mode signals that bounds in a pattern need not
