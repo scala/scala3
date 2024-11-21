@@ -32,7 +32,7 @@ on:
 # - terminate previous on-push CI run after merging new PR to main 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   DOTTY_CI_RUN: true
