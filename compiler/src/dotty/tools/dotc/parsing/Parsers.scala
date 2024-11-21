@@ -2240,7 +2240,7 @@ object Parsers {
       atSpan(in.offset):
         if in.isIdent(nme.UPARROW) && Feature.ccEnabled then
           in.nextToken()
-          TypeBoundsTree(EmptyTree, makeCapsBound())
+          makeCapsBound()
         else
           TypeBoundsTree(bound(SUPERTYPE), bound(SUBTYPE))
 
@@ -4057,8 +4057,11 @@ object Parsers {
               || sourceVersion.isAtLeast(`3.6`) && in.isColon =>
             makeTypeDef(typeAndCtxBounds(tname))
           case _ =>
-            syntaxErrorOrIncomplete(ExpectedTypeBoundOrEquals(in.token))
-            return EmptyTree // return to avoid setting the span to EmptyTree
+            if in.isIdent(nme.UPARROW) && Feature.ccEnabled then
+              makeTypeDef(typeAndCtxBounds(tname))
+            else
+              syntaxErrorOrIncomplete(ExpectedTypeBoundOrEquals(in.token))
+              return EmptyTree // return to avoid setting the span to EmptyTree
         }
       }
     }

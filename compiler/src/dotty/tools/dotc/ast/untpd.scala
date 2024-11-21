@@ -527,10 +527,14 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def makeCapsOf(tp: RefTree)(using Context): Tree =
     TypeApply(Select(scalaDot(nme.caps), nme.capsOf), tp :: Nil)
 
-  def makeCapsBound()(using Context): Tree =
-    makeRetaining(
+  // `type C^` and `[C^]` becomes:
+  // `type C >: CapSet <: CapSet^{cap}` and `[C >: CapSet <: CapSet^{cap}]`
+  def makeCapsBound()(using Context): TypeBoundsTree =
+    TypeBoundsTree(
       Select(scalaDot(nme.caps), tpnme.CapSet),
-      Nil, tpnme.retainsCap)
+      makeRetaining(
+        Select(scalaDot(nme.caps), tpnme.CapSet),
+        Nil, tpnme.retainsCap))
 
   def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(using Context): DefDef =
     DefDef(nme.CONSTRUCTOR, joinParams(tparams, vparamss), TypeTree(), rhs)
