@@ -73,7 +73,7 @@ object Annotations {
 
     /** Does this annotation refer to a parameter of `tl`? */
     def refersToParamOf(tl: TermLambda)(using Context): Boolean =
-      val args = arguments
+      val args = tpd.allArguments(tree)
       if args.isEmpty then false
       else tree.existsSubTree {
         case id: Ident => id.tpe.stripped match
