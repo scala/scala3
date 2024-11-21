@@ -140,6 +140,8 @@ trait CaptureRef extends TypeProxy, ValueType:
         case ReachCapability(x1) => x1.subsumes(y.stripReach)
         case x: TermRef => viaInfo(x.info)(subsumingRefs(_, y))
         case x: TermParamRef => subsumesExistentially(x, y)
+        case x: TypeRef if x.symbol.info.derivesFrom(defn.Caps_CapSet) =>
+          x.captureSetOfInfo.elems.exists(_.subsumes(y))
         case x: TypeRef => assumedContainsOf(x).contains(y)
         case _ => false
   end subsumes

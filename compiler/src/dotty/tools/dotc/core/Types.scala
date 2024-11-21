@@ -4007,7 +4007,7 @@ object Types extends TypeUtils {
                 (compute(status, parent, theAcc) /: refs.elems) {
                   (s, ref) => ref.stripReach match
                     case tp: TermParamRef if tp.binder eq thisLambdaType => combine(s, CaptureDeps)
-                    case _ => s
+                    case tp => combine(s, compute(status, tp, theAcc))
                 }
               case _ =>
                 if tp.annot.refersToParamOf(thisLambdaType) then TrueDeps
@@ -6078,6 +6078,8 @@ object Types extends TypeUtils {
         case tp: CaptureRef =>
           if tp.isTrackableRef then tp
           else ensureTrackable(tp.underlying)
+        case tp: TypeAlias =>
+          ensureTrackable(tp.alias)
         case _ =>
           assert(false, i"not a trackable captureRef ref: $result, ${result.underlyingIterator.toList}")
       ensureTrackable(result)

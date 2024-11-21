@@ -198,7 +198,7 @@ extension (tp: Type)
       || tp.isRootCapability
       ) && !tp.symbol.isOneOf(UnstableValueFlags)
     case tp: TypeRef =>
-      tp.symbol.isAbstractOrParamType && tp.derivesFrom(defn.Caps_CapSet)
+      tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet)
     case tp: TypeParamRef =>
       tp.derivesFrom(defn.Caps_CapSet)
     case AnnotatedType(parent, annot) =>

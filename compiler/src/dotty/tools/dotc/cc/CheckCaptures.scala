@@ -135,7 +135,7 @@ object CheckCaptures:
       elem match
         case CapsOfApply(arg) =>
           def isLegalCapsOfArg =
-            arg.symbol.isAbstractOrParamType && arg.symbol.info.derivesFrom(defn.Caps_CapSet)
+            arg.symbol.isType && arg.symbol.info.derivesFrom(defn.Caps_CapSet)
           if !isLegalCapsOfArg then
             report.error(
               em"""$arg is not a legal prefix for `^` here,

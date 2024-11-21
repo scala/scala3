@@ -18,6 +18,7 @@ import reporting.Message
 import printing.{Printer, Texts}, Texts.{Text, Str}
 import collection.mutable
 import CCState.*
+import dotty.tools.dotc.util.NoSourcePosition
 
 /** Operations accessed from CheckCaptures */
 trait SetupAPI:
@@ -323,7 +324,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               val parent2 = stripImpliedCaptureSet(parent1)
               for tpt <- tptToCheck do
                 checkWellformedLater(parent2, ann.tree, tpt)
-              CapturingType(parent2, ann.tree.toCaptureSet)
+              try
+                CapturingType(parent2, ann.tree.toCaptureSet)
+              catch case ex: IllegalCaptureRef =>
+                report.error(em"Illegal capture reference: ${ex.getMessage.nn}", tptToCheck.fold(NoSourcePosition)(_.srcPos))
+                parent2
             else
               t.derivedAnnotatedType(parent1, ann)
           case throwsAlias(res, exc) =>
