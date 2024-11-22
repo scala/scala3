@@ -1424,8 +1424,6 @@ trait Checking {
           case _ =>
             report.error(em"@${cls.name} needs a string literal as argument", arg.srcPos)
         tree
-      case _ if cls.isRetainsLike =>
-        tree
       case _ =>
         checkAnnotTreeMap.transform(tree)
 
@@ -1437,6 +1435,7 @@ trait Checking {
             super.transform(tree)
           case _: ( Literal
                   | Ident
+                  | This
                   | New
                   | Select
                   | Apply
@@ -1450,7 +1449,8 @@ trait Checking {
                   | NamedArg
                   | EmptyTree.type
                   | Splice
-                  | Hole) =>
+                  | Hole
+                  | Inlined) =>
             super.transform(tree)
           case _ =>
             errorTree(
