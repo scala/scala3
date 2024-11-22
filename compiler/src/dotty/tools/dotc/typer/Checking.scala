@@ -1388,12 +1388,12 @@ trait Checking {
 
   def checkAnnot(tree: Tree)(using Context): Tree =
     tree match
-      case Ident(tpnme.BOUNDTYPE_ANNOT) => 
+      case Ident(tpnme.BOUNDTYPE_ANNOT) =>
         // `FirstTransform.toTypeTree` creates `Annotated` nodes whose `annot` are
         // `Ident`s, not annotation instances. See `tests/pos/annot-boundtype.scala`.
         tree
-      case _ => 
-        checkAnnotArgs(checkAnnotClass(tree))
+      case _ =>
+        checkAnnotTree(checkAnnotClass(tree))
 
   /** Check that the class corresponding to this tree is either a Scala or Java annotation.
    *
@@ -1413,7 +1413,7 @@ trait Checking {
     else tree
 
   /** Check arguments of annotations */
-  private def checkAnnotArgs(tree: Tree)(using Context): Tree =
+  private def checkAnnotTree(tree: Tree)(using Context): Tree =
     val cls = Annotations.annotClass(tree)
     tree match
       case Apply(tycon, arg :: Nil) if cls == defn.TargetNameAnnot =>
@@ -1424,40 +1424,43 @@ trait Checking {
           case _ =>
             report.error(em"@${cls.name} needs a string literal as argument", arg.srcPos)
         tree
+      case _ if cls.isRetainsLike =>
+        tree
       case _ =>
-        if cls.isRetainsLike then tree
-        else
-          tpd.allTermArguments(tree).foldLeft(tree: Tree)((acc: Tree, arg: Tree) =>
-            if validAnnotArg(arg) then acc
-            else errorTree(
-              EmptyTree,
-              em"""Implementation restriction: not a valid annotation argument.
-                  |Argument: $arg
-                  |Type: ${arg.tpe}""",
-              arg.srcPos
-            )
-          )
+        checkAnnotTreeMap.transform(tree)
 
-  private def validAnnotArg(t: Tree)(using Context): Boolean =
-    t match
-      case _ if t.tpe.isEffectivelySingleton => true
-      case Literal(_) => true
-      // `Ident(nme.WILDCARD)` is used as placeholder for unspecified
-      // arguments of Java annotations. Example: tests/run/java-ann-super-class.
-      case Ident(nme.WILDCARD) => true
-      case Apply(fun, args) => validAnnotArg(fun) && args.forall(validAnnotArg)
-      case TypeApply(fun, args) => validAnnotArg(fun)
-      case SeqLiteral(elems, _) => elems.forall(validAnnotArg)
-      case Typed(expr, _) => validAnnotArg(expr)
-      // TODO(mbovel): should probably be handled by `tpd.allTermArguments` instead.
-      case NamedArg(_, arg) => validAnnotArg(arg)
-      // TODO(mbovel): do we really want to allow `Splice` and `Hole`?
-      // When removing those cases, tests/pos-macros/i7519b.scala and
-      // tests/pos-macros/i7052.scala fail.
-      case Splice(_) => true
-      case Hole(_, _, _, _) => true
-      case _ => false
-      
+  private def checkAnnotTreeMap(using Context) =
+    new TreeMap:
+      override def transform(tree: Tree)(using Context): Tree =
+        tree match
+          case _ if tree.isType =>
+            super.transform(tree)
+          case _: ( Literal
+                  | Ident
+                  | New
+                  | Select
+                  | Apply
+                  | TypeApply
+                  | SeqLiteral
+                  | Typed
+                  | Block
+                  | ValDef
+                  | DefDef
+                  | Closure
+                  | NamedArg
+                  | EmptyTree.type
+                  | Splice
+                  | Hole) =>
+            super.transform(tree)
+          case _ =>
+            errorTree(
+              EmptyTree,
+              em"""Implementation restriction: this tree cannot be used in an annotation.
+                  |Tree: ${tree}
+                  |Type: ${tree.tpe}""",
+              tree.srcPos
+            )
+
   /** 1. Check that all case classes that extend `scala.reflect.Enum` are `enum` cases
    *  2. Check that parameterised `enum` cases do not extend java.lang.Enum.
    *  3. Check that only a static `enum` base class can extend java.lang.Enum.
