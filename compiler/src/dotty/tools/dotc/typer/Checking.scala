@@ -1433,24 +1433,30 @@ trait Checking {
         tree match
           case _ if tree.isType =>
             super.transform(tree)
-          case _: ( Literal
+          case _: ( EmptyTree.type
                   | Ident
-                  | This
-                  | New
                   | Select
+                  | This
+                  | Super
                   | Apply
                   | TypeApply
-                  | SeqLiteral
+                  | Literal
+                  | New
                   | Typed
-                  | Block
-                  | ValDef
-                  | DefDef
-                  | Closure
                   | NamedArg
-                  | EmptyTree.type
+                  | Assign
+                  | Block
+                  | If
+                  | Closure
+                  | Return
+                  | SeqLiteral
+                  | Inlined
+                  | Quote
                   | Splice
                   | Hole
-                  | Inlined) =>
+                  | ValDef
+                  | DefDef
+                  | Annotated) =>
             super.transform(tree)
           case _ =>
             errorTree(
