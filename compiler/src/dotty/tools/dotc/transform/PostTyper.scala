@@ -168,19 +168,23 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         ttm(tree)
 
     /** Transforms the given annotation tree. */
-    private def transformAnnot(annot: Tree)(using Context): Tree = {
+    private def transformAnnotTree(annot: Tree)(using Context): Tree = {
       val saved = inJavaAnnot
       inJavaAnnot = annot.symbol.is(JavaDefined)
       if (inJavaAnnot) checkValidJavaAnnotation(annot)
-      try transform(copySymbols(annot))
+      try transform(annot)
       finally inJavaAnnot = saved
     }
 
     private def transformAnnot(annot: Annotation)(using Context): Annotation =
-      annot.derivedAnnotation(transformAnnot(annot.tree))
+      val tree1 =
+        annot match
+          case _: BodyAnnotation => annot.tree
+          case _ => copySymbols(annot.tree)
+      annot.derivedAnnotation(transformAnnotTree(tree1))
 
     /** Transforms all annotations in the given type. */
-    private def transformAnnots(using Context) =
+    private def transformAnnotsIn(using Context) =
       new TypeMap:
         def apply(tp: Type) = tp match
           case tp @ AnnotatedType(parent, annot) =>
@@ -523,7 +527,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           Checking.checkRealizable(tree.tpt.tpe, tree.srcPos, "SAM type")
           super.transform(tree)
         case tree @ Annotated(annotated, annot) =>
-          cpy.Annotated(tree)(transform(annotated), transformAnnot(annot))
+          cpy.Annotated(tree)(transform(annotated), transformAnnotTree(annot))
         case tree: AppliedTypeTree =>
           if (tree.tpt.symbol == defn.andType)
             Checking.checkNonCyclicInherited(tree.tpe, tree.args.tpes, EmptyScope, tree.srcPos)
@@ -546,7 +550,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           super.transform(tree)
         case tree: TypeTree =>
           val tpe = if tree.isInferred then CleanupRetains()(tree.tpe) else tree.tpe
-          tree.withType(transformAnnots(tpe))
+          tree.withType(transformAnnotsIn(tpe))
         case Typed(Ident(nme.WILDCARD), _) =>
           withMode(Mode.Pattern)(super.transform(tree))
             // The added mode signals that bounds in a pattern need not
