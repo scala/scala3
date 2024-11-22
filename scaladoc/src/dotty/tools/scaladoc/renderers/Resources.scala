@@ -120,7 +120,6 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     ).map(dottyRes)
 
     val urls = List(
-      "https://code.jquery.com/jquery-3.5.1.min.js",
       "https://d3js.org/d3.v6.min.js",
       "https://cdn.jsdelivr.net/npm/graphlib-dot@0.6.2/dist/graphlib-dot.min.js",
       "https://cdnjs.cloudflare.com/ajax/libs/dagre-d3/0.6.1/dagre-d3.min.js",
