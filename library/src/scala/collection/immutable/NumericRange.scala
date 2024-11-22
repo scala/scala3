@@ -14,6 +14,7 @@ package scala.collection.immutable
 
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.{AbstractIterator, AnyStepper, IterableFactoryDefaults, Iterator, Stepper, StepperShape}
+import scala.collection.generic.CommonErrors
 
 /** `NumericRange` is a more generic version of the
   *  `Range` class which works with arbitrary types.
@@ -104,7 +105,8 @@ sealed class NumericRange[T](
 
   @throws[IndexOutOfBoundsException]
   def apply(idx: Int): T = {
-    if (idx < 0 || idx >= length) throw new IndexOutOfBoundsException(s"$idx is out of bounds (min 0, max ${length - 1})")
+    if (idx < 0 || idx >= length)
+      throw CommonErrors.indexOutOfBounds(index = idx, max = length - 1)
     else locationAfterN(idx)
   }
 

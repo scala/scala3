@@ -17,7 +17,7 @@ package mutable
 import java.util.Arrays
 import scala.annotation.{nowarn, tailrec}
 import scala.collection.Stepper.EfficientSplit
-import scala.collection.generic.DefaultSerializable
+import scala.collection.generic.{CommonErrors, DefaultSerializable}
 import scala.runtime.PStatics.VM_MaxArraySize
 
 /** An implementation of the `Buffer` class using an array to
@@ -99,8 +99,8 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
     array = ArrayBuffer.downsize(array, requiredLength)
 
   @inline private def checkWithinBounds(lo: Int, hi: Int) = {
-    if (lo < 0) throw new IndexOutOfBoundsException(s"$lo is out of bounds (min 0, max ${size0 - 1})")
-    if (hi > size0) throw new IndexOutOfBoundsException(s"${hi - 1} is out of bounds (min 0, max ${size0 - 1})")
+    if (lo < 0) throw CommonErrors.indexOutOfBounds(index = lo, max = size0 - 1)
+    if (hi > size0) throw CommonErrors.indexOutOfBounds(index = hi - 1, max = size0 - 1)
   }
 
   def apply(n: Int): A = {
