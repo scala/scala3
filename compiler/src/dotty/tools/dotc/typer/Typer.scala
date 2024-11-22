@@ -618,10 +618,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     // Shortcut for the root package, this is not just a performance
     // optimization, it also avoids forcing imports thus potentially avoiding
     // cyclic references.
-    if (name == nme.ROOTPKG)
-      val tree2 = tree.withType(defn.RootPackage.termRef)
-      checkLegalValue(tree2, pt)
-      return tree2
+    if name == nme.ROOTPKG then
+      return checkLegalValue(tree.withType(defn.RootPackage.termRef), pt)
 
     val rawType =
       val saved1 = unimported
@@ -681,9 +679,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             cpy.Ident(tree)(tree.name.unmangleClassName).withType(checkedType)
           else
             tree.withType(checkedType)
-      val tree2 = toNotNullTermRef(tree1, pt)
-      checkLegalValue(tree2, pt)
-      tree2
+      checkLegalValue(toNotNullTermRef(tree1, pt), pt)
 
     def isLocalExtensionMethodRef: Boolean = rawType match
       case rawType: TermRef =>
@@ -723,21 +719,47 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       errorTree(tree, MissingIdent(tree, kind, name, pt))
   end typedIdent
 
+  def checkValue(tree: Tree)(using Context): Tree =
+    val sym = tree.tpe.termSymbol
+    if sym.isNoValue && !ctx.isJava then
+      if sym.is(Package)
+          && Feature.enabled(Feature.packageObjectValues)
+          && tree.tpe.member(nme.PACKAGE).hasAltWith(_.symbol.isPackageObject)
+      then
+        typed(untpd.Select(untpd.TypedSplice(tree), nme.PACKAGE))
+      else
+        report.error(SymbolIsNotAValue(sym), tree.srcPos)
+        tree
+    else tree
+
+  /** Check that `tree` refers to a value, unless `tree` is selected or applied
+   *  (singleton types x.type don't count as selections).
+   */
+  def checkValue(tree: Tree, proto: Type)(using Context): Tree =
+    tree match
+      case tree: RefTree if tree.name.isTermName =>
+        proto match
+          case _: SelectionProto if proto ne SingletonTypeProto => tree // no value check
+          case _: FunOrPolyProto => tree // no value check
+          case _ => checkValue(tree)
+      case _ => tree
+
   /** (1) If this reference is neither applied nor selected, check that it does
    *      not refer to a package or Java companion object.
    *  (2) Check that a stable identifier pattern is indeed stable (SLS 8.1.5)
    */
-  private def checkLegalValue(tree: Tree, pt: Type)(using Context): Unit =
-    checkValue(tree, pt)
+  private def checkLegalValue(tree: Tree, pt: Type)(using Context): Tree =
+    val tree1 = checkValue(tree, pt)
     if ctx.mode.is(Mode.Pattern)
-       && !tree.isType
+       && !tree1.isType
        && !pt.isInstanceOf[ApplyingProto]
-       && !tree.tpe.match
+       && !tree1.tpe.match
         case tp: NamedType => tp.denot.hasAltWith(_.symbol.isStableMember && tp.prefix.isStable || tp.info.isStable)
         case tp            => tp.isStable
-       && !isWildcardArg(tree)
+       && !isWildcardArg(tree1)
     then
-      report.error(StableIdentPattern(tree, pt), tree.srcPos)
+      report.error(StableIdentPattern(tree1, pt), tree1.srcPos)
+    tree1
 
   def typedSelectWithAdapt(tree0: untpd.Select, pt: Type, qual: Tree)(using Context): Tree =
     val selName = tree0.name
@@ -751,8 +773,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if checkedType.exists then
         val select = toNotNullTermRef(assignType(tree, checkedType), pt)
         if selName.isTypeName then checkStable(qual.tpe, qual.srcPos, "type prefix")
-        checkLegalValue(select, pt)
-        ConstFold(select)
+        ConstFold(checkLegalValue(select, pt))
       else EmptyTree
 
     // Otherwise, simplify `m.apply(...)` to `m(...)`

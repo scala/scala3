@@ -39,6 +39,7 @@ object Feature:
   val betterMatchTypeExtractors = experimental("betterMatchTypeExtractors")
   val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
   val betterFors = experimental("betterFors")
+  val packageObjectValues = experimental("packageObjectValues")
 
   def experimentalAutoEnableFeatures(using Context): List[TermName] =
     defn.languageExperimentalFeatures
