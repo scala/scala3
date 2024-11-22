@@ -1,12 +1,15 @@
--- Error: tests/neg-custom-args/captures/unsound-reach.scala:18:21 -----------------------------------------------------
-18 |        boom.use(f): (f1: File^{backdoor*}) => // error
+-- Error: tests/neg-custom-args/captures/unsound-reach.scala:9:18 ------------------------------------------------------
+9 |class Bar extends Foo[File^]: // error
+  |                  ^^^^^^^^^^
+  |                  Type variable X of trait Foo cannot be instantiated to File^ since
+  |                  that type captures the root capability `cap`.
+-- Error: tests/neg-custom-args/captures/unsound-reach.scala:14:19 -----------------------------------------------------
+14 |class Bar2 extends Foo2[File^]: // error
+   |                   ^
+   |                   Type variable X of constructor Foo2 cannot be instantiated to box File^ since
+   |                   that type captures the root capability `cap`.
+-- Error: tests/neg-custom-args/captures/unsound-reach.scala:23:21 -----------------------------------------------------
+23 |        boom.use(f): (f1: File^{backdoor*}) => // error
    |                     ^
    |                     Local reach capability backdoor* leaks into capture scope of method bad
-19 |            escaped = f1
--- [E164] Declaration Error: tests/neg-custom-args/captures/unsound-reach.scala:10:8 -----------------------------------
-10 |    def use(x: File^)(op: File^ => Unit): Unit = op(x) // error, was OK using sealed checking
-   |        ^
-   |        error overriding method use in trait Foo of type (x: File^)(op: box File^ => Unit): Unit;
-   |          method use of type (x: File^)(op: File^ => Unit): Unit has incompatible type
-   |
-   | longer explanation available when compiling with `-explain`
+24 |            escaped = f1

@@ -1,3 +1,5 @@
+//> using options -source 3.5
+// (to make sure we use the unsealed policy)
 /** Concrete collection type: View */
 trait View[+A] extends Itable[A], ILike[A, [X] =>> View[X]^]:
   override def fromIterable[B](c: Itable[B]^): View[B]^{c} = ???

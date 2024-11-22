@@ -1,14 +1,15 @@
--- Error: tests/neg-custom-args/captures/levels.scala:19:13 ------------------------------------------------------------
-19 |  val _ = Ref[String => String]((x: String) => x) // error
-   |          ^^^^^^^^^^^^^^^^^^^^^
-   |          Sealed type variable T cannot be instantiated to box String => String since
-   |          that type captures the root capability `cap`.
-   |          This is often caused by a local capability in an argument of constructor Ref
-   |          leaking as part of its result.
--- Error: tests/neg-custom-args/captures/levels.scala:24:11 ------------------------------------------------------------
-24 |    r.setV(g) // error
+-- Error: tests/neg-custom-args/captures/levels.scala:17:21 ------------------------------------------------------------
+17 |  val _ = Ref[String => String]((x: String) => x) // error
+   |              ^^^^^^^^^^^^^^^^
+   |              Type variable T of constructor Ref cannot be instantiated to box String => String since
+   |              that type captures the root capability `cap`.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/levels.scala:22:11 ---------------------------------------
+22 |    r.setV(g) // error
    |           ^
-   |           reference (cap3 : CC^) is not included in the allowed capture set ? of value r
+   |           Found:    box (x: String) ->{cap3} String
+   |           Required: box (x$0: String) ->? String
    |
    |           Note that reference (cap3 : CC^), defined in method scope
    |           cannot be included in outer capture set ? of value r
+   |
+   | longer explanation available when compiling with `-explain`

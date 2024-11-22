@@ -63,7 +63,7 @@ def test[T, E](using Async) =
           fr.await.ok
 
     def fail4[T, E](fr: Future[Result[T, E]]^) =
-        Result.make: // should be errorm but inders Result[Any, Any]
+        Result.make: // error: local reference leaks
           Future: fut ?=>
             fr.await.ok
 

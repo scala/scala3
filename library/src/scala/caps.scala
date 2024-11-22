@@ -55,7 +55,7 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
   /** This should go into annotations. For now it is here, so that we
    *  can experiment with it quickly between minor releases
    */
-  final class unbox extends annotation.StaticAnnotation
+  final class use extends annotation.StaticAnnotation
 
   object unsafe:
 
@@ -65,21 +65,5 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
        *  Calls to this method are treated specially by the capture checker.
        */
       def unsafeAssumePure: T = x
-
-      /** If argument is of type `cs T`, converts to type `box cs T`. This
-      *  avoids the error that would be raised when boxing `cap`.
-      */
-      def unsafeBox: T = x
-
-      /** If argument is of type `box cs T`, converts to type `cs T`. This
-       *  avoids the error that would be raised when unboxing `cap`.
-       */
-      def unsafeUnbox: T = x
-
-    extension [T, U](f: T => U)
-      /** If argument is of type `box cs T`, converts to type `cs T`. This
-       *  avoids the error that would be raised when unboxing `cap`.
-       */
-      def unsafeBoxFunArg: T => U = f
 
   end unsafe

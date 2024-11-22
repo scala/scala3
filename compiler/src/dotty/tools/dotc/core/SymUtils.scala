@@ -271,6 +271,9 @@ class SymUtils:
       self.owner.info.decl(fieldName).suchThat(!_.is(Method)).symbol
     }
 
+    def paramNamed(name: Name)(using Context): Symbol =
+      self.rawParamss.nestedFind(_.name == name).getOrElse(NoSymbol)
+
     /** Is this symbol a constant expression final val?
      *
      *  This is the case if all of the following are true:

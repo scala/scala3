@@ -1,5 +1,5 @@
-//> using options -source 3.4
-// (to make sure we use the sealed policy)
+
+
 object boundary:
 
   final class Label[-T] // extends caps.Capability
