@@ -43,7 +43,7 @@ val x: (String, Int) = Bob.toTuple // ok
 ```
 `toTuple` is defined as an extension method in the `NamedTuple` object.
 It returns the given tuple unchanged and simply "forgets" the names.
-
+<!--
 A `.toTuple` selection is inserted implicitly by the compiler if it encounters a named tuple but the expected type is a regular tuple. So the following works as well:
 ```scala
 val x: (String, Int) = Bob  // works, expanded to Bob.toTuple
@@ -63,6 +63,7 @@ We would need an explicit `_.toTuple` selection to express this:
 ```scala
   val pairs: List[(String, Int)] = persons.map(_.toTuple)
 ```
+-->
 Note that conformance rules for named tuples are analogous to the rules for named parameters. One can assign parameters by position to a named parameter list.
 ```scala
   def f(param: Int) = ...
