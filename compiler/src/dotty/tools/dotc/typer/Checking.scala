@@ -1425,47 +1425,45 @@ trait Checking {
             report.error(em"@${cls.name} needs a string literal as argument", arg.srcPos)
         tree
       case _ =>
-        checkAnnotTreeMap.transform(tree)
-
-  private def checkAnnotTreeMap(using Context) =
-    new TreeMap:
-      override def transform(tree: Tree)(using Context): Tree =
-        tree match
-          case _ if tree.isType =>
-            super.transform(tree)
-          case _: ( EmptyTree.type
-                  | Ident
-                  | Select
-                  | This
-                  | Super
-                  | Apply
-                  | TypeApply
-                  | Literal
-                  | New
-                  | Typed
-                  | NamedArg
-                  | Assign
-                  | Block
-                  | If
-                  | Closure
-                  | Return
-                  | SeqLiteral
-                  | Inlined
-                  | Quote
-                  | Splice
-                  | Hole
-                  | ValDef
-                  | DefDef
-                  | Annotated) =>
-            super.transform(tree)
-          case _ =>
+        tree.find(!isValidAnnotSubtree(_)) match
+          case None => tree
+          case Some(invalidSubTree) =>
             errorTree(
               EmptyTree,
-              em"""Implementation restriction: this tree cannot be used in an annotation.
-                  |Tree: ${tree}
-                  |Type: ${tree.tpe}""",
-              tree.srcPos
+              em"""Implementation restriction: expression cannot be used inside an annotation argument.
+                  |Tree: ${invalidSubTree}
+                  |Type: ${invalidSubTree.tpe}""",
+              invalidSubTree.srcPos
             )
+
+  /** Returns `true` if this tree can appear inside an annotation argument. */
+  private def isValidAnnotSubtree(subTree: Tree) =
+    subTree.isType || subTree.isInstanceOf[
+        EmptyTree.type
+      | Ident
+      | Select
+      | This
+      | Super
+      | Apply
+      | TypeApply
+      | Literal
+      | New
+      | Typed
+      | NamedArg
+      | Assign
+      | Block
+      | If
+      | Closure
+      | Return
+      | SeqLiteral
+      | Inlined
+      | Quote
+      | Splice
+      | Hole
+      | ValDef
+      | DefDef
+      | Annotated
+    ]
 
   /** 1. Check that all case classes that extend `scala.reflect.Enum` are `enum` cases
    *  2. Check that parameterised `enum` cases do not extend java.lang.Enum.
