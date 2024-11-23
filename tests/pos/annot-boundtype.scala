@@ -13,3 +13,4 @@ def f2(t: Tuple) =
   t match
     case _: (t *: ts) => ()
     case _ => ()
+

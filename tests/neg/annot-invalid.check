@@ -10,15 +10,63 @@
   |                      Implementation restriction: expression cannot be used inside an annotation argument.
   |                      Tree: class C() extends Object() {}
   |                      Type: C
--- Error: tests/neg/annot-invalid.scala:7:9 ----------------------------------------------------------------------------
-7 |  @annot(new Object {}) val y1: Int = 0 // error
-  |         ^^^^^^^^^^^^^
-  |         Implementation restriction: expression cannot be used inside an annotation argument.
-  |         Tree: final class $anon() extends Object() {}
-  |         Type: Object {...}
--- Error: tests/neg/annot-invalid.scala:8:16 ---------------------------------------------------------------------------
-8 |  @annot({class C}) val y2: Int = 0  // error
-  |          ^^^^^^^
-  |          Implementation restriction: expression cannot be used inside an annotation argument.
-  |          Tree: class C() extends Object() {}
-  |          Type: C
+-- Error: tests/neg/annot-invalid.scala:6:27 ---------------------------------------------------------------------------
+6 |  val x16: Int @annot({val y: Int = 2}) = 0 // error
+  |                       ^^^^^^^^^^^^^^
+  |                       Implementation restriction: expression cannot be used inside an annotation argument.
+  |                       Tree: val y: Int = 2
+  |                       Type: (y : Int)
+-- Error: tests/neg/annot-invalid.scala:7:27 ---------------------------------------------------------------------------
+7 |  val x17: Int @annot({def f = 2}) = 0 // error
+  |                       ^^^^^^^^^
+  |                       Implementation restriction: expression cannot be used inside an annotation argument.
+  |                       Tree: def f: Int = 2
+  |                       Type: (f : => Int)
+-- Error: tests/neg/annot-invalid.scala:8:31 ---------------------------------------------------------------------------
+8 |  val x18: Int @annot((x: Int) => x) = 0 // error
+  |                      ^^^^^^^^^^^^^
+  |                      Implementation restriction: expression cannot be used inside an annotation argument.
+  |                      Tree: closure($anonfun)
+  |                      Type: Int => Int
+-- [E006] Not Found Error: tests/neg/annot-invalid.scala:9:22 ----------------------------------------------------------
+9 |  val x19: Int @annot(O.g) = 0 // error
+  |                      ^
+  |                      Not found: O
+  |
+  | longer explanation available when compiling with `-explain`
+-- Error: tests/neg/annot-invalid.scala:11:9 ---------------------------------------------------------------------------
+11 |  @annot(new Object {}) val y1: Int = 0 // error
+   |         ^^^^^^^^^^^^^
+   |         Implementation restriction: expression cannot be used inside an annotation argument.
+   |         Tree: final class $anon() extends Object() {}
+   |         Type: Object {...}
+-- Error: tests/neg/annot-invalid.scala:12:16 --------------------------------------------------------------------------
+12 |  @annot({class C}) val y2: Int = 0  // error
+   |          ^^^^^^^
+   |          Implementation restriction: expression cannot be used inside an annotation argument.
+   |          Tree: class C() extends Object() {}
+   |          Type: C
+-- Error: tests/neg/annot-invalid.scala:13:14 --------------------------------------------------------------------------
+13 |  @annot({val y: Int = 2}) val y16: Int = 0 // error
+   |          ^^^^^^^^^^^^^^
+   |          Implementation restriction: expression cannot be used inside an annotation argument.
+   |          Tree: val y: Int = 2
+   |          Type: (y : Int)
+-- Error: tests/neg/annot-invalid.scala:14:14 --------------------------------------------------------------------------
+14 |  @annot({def f = 2}) val y17: Int = 0 // error
+   |          ^^^^^^^^^
+   |          Implementation restriction: expression cannot be used inside an annotation argument.
+   |          Tree: def f: Int = 2
+   |          Type: (f : => Int)
+-- Error: tests/neg/annot-invalid.scala:15:18 --------------------------------------------------------------------------
+15 |  @annot((x: Int) => x) val y18: Int = 0 // error
+   |         ^^^^^^^^^^^^^
+   |         Implementation restriction: expression cannot be used inside an annotation argument.
+   |         Tree: closure($anonfun)
+   |         Type: Int => Int
+-- [E006] Not Found Error: tests/neg/annot-invalid.scala:16:9 ----------------------------------------------------------
+16 |  @annot(O.g) val y19: Int = 0 // error
+   |         ^
+   |         Not found: O
+   |
+   | longer explanation available when compiling with `-explain`

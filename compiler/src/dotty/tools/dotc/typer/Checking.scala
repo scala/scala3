@@ -1452,16 +1452,11 @@ trait Checking {
       | NamedArg
       | Assign
       | Block
-      | If
-      | Closure
-      | Return
       | SeqLiteral
       | Inlined
       | Quote
       | Splice
       | Hole
-      | ValDef
-      | DefDef
       | Annotated
     ]
 

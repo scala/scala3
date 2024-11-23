@@ -22,10 +22,6 @@ def main =
   val x13: Int @annot(throw new Error()) = 0
   val x14: Int @annot(42: Double) = 0
   val x15: Int @annot(O.g(2)) = 0
-  val x16: Int @annot({val y: Int = 2}) = 0
-  val x17: Int @annot({def f = 2}) = 0
-  val x18: Int @annot((x: Int) => x) = 0
-  val x19: Int @annot(O.g) = 0
 
   @annot(42) val y1: Int = 0
   @annot("hello") val y2: Int = 0
@@ -42,9 +38,5 @@ def main =
   @annot(throw new Error()) val y13: Int = 0
   @annot(42: Double) val y14: Int = 0
   @annot(O.g(2)) val y15: Int = 0
-  @annot({val y: Int = 2}) val y16: Int = 0
-  @annot({def f = 2}) val y17: Int = 0
-  @annot((x: Int) => x) val y18: Int = 0
-  @annot(O.g) val y19: Int = 0
 
   ()
