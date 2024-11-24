@@ -2410,6 +2410,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       assign(elems1, elemtpt1)
     }
     else {
+      assert(tree.isInstanceOf[Trees.JavaSeqLiteral[?]])
       val elems1 = tree.elems.mapconserve(typed(_, elemProto))
       val elemtptType =
         if (isFullyDefined(elemProto, ForceDegree.none))
