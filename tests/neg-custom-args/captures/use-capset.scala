@@ -1,7 +1,5 @@
 import caps.{use, CapSet}
 
-
-
 def f[C^](@use xs: List[Object^{C^}]): Unit = ???
 
 private def g[C^] = (xs: List[Object^{C^}]) => xs.head // error

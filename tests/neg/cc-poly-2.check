@@ -1,10 +1,3 @@
--- [E007] Type Mismatch Error: tests/neg/cc-poly-2.scala:13:15 ---------------------------------------------------------
-13 |    f[Nothing](d) // error
-   |               ^
-   |               Found:    (d : Test.D^)
-   |               Required: Test.D
-   |
-   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/cc-poly-2.scala:14:19 ---------------------------------------------------------
 14 |    f[CapSet^{c1}](d) // error
    |                   ^

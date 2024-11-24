@@ -100,7 +100,8 @@ trait CaptureRef extends TypeProxy, ValueType:
    *   x: x1.type /\ x1 subsumes y  ==>  x subsumes y
    *   TODO: Document path cases
    */
-  final def subsumes(y: CaptureRef)(using Context): Boolean =
+  // import reporting.trace
+  final def subsumes(y: CaptureRef)(using Context): Boolean = // trace.force(i"subsumes $this, $y"):
 
     def subsumingRefs(x: Type, y: Type): Boolean = x match
       case x: CaptureRef => y match
@@ -135,14 +136,28 @@ trait CaptureRef extends TypeProxy, ValueType:
               case _ => false
           || viaInfo(y.info)(subsumingRefs(this, _))
         case MaybeCapability(y1) => this.stripMaybe.subsumes(y1)
+        case y: TypeRef if y.symbol.info.derivesFrom(defn.Caps_CapSet) =>
+          y.info match
+            case _: TypeAlias => y.captureSetOfInfo.elems.forall(this.subsumes)
+            case TypeBounds(_, hi: CaptureRef) => this.subsumes(hi)
+            case _ => y.captureSetOfInfo.elems.forall(this.subsumes)
         case _ => false
     || this.match
         case ReachCapability(x1) => x1.subsumes(y.stripReach)
         case x: TermRef => viaInfo(x.info)(subsumingRefs(_, y))
         case x: TermParamRef => subsumesExistentially(x, y)
-        case x: TypeRef if x.symbol.info.derivesFrom(defn.Caps_CapSet) =>
-          x.captureSetOfInfo.elems.exists(_.subsumes(y))
-        case x: TypeRef => assumedContainsOf(x).contains(y)
+        case x: TypeRef if assumedContainsOf(x).contains(y) => true
+        case x: TypeRef if x.derivesFrom(defn.Caps_CapSet) =>
+          x.info match
+            case _: TypeAlias =>
+              x.captureSetOfInfo.elems.exists(_.subsumes(y))
+            case TypeBounds(lo: CaptureRef, _) =>
+              lo.subsumes(y)
+            case _ =>
+              x.captureSetOfInfo.elems.exists(_.subsumes(y))
+        case AnnotatedType(parent, ann)
+        if ann.symbol.isRetains && parent.derivesFrom(defn.Caps_CapSet) =>
+          ann.tree.toCaptureSet.elems.exists(_.subsumes(y))
         case _ => false
   end subsumes
 

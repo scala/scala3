@@ -22,12 +22,12 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
   /** A type constraint expressing that the capture set `C` needs to contain
    *  the capability `R`
    */
-  sealed trait Contains[C <: CapSet @retainsCap, R <: Singleton]
+  sealed trait Contains[+C >: CapSet <: CapSet @retainsCap, R <: Singleton]
 
   /** The only implementation of `Contains`. The constraint that `{R} <: C` is
    *  added separately by the capture checker.
    */
-  given containsImpl[C <: CapSet @retainsCap, R <: Singleton]: Contains[C, R]()
+  given containsImpl[C >: CapSet <: CapSet @retainsCap, R <: Singleton]: Contains[C, R]()
 
   /** A wrapper indicating a type variable in a capture argument list of a
    *  @retains annotation. E.g. `^{x, Y^}` is represented as `@retains(x, capsOf[Y])`.
