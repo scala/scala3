@@ -93,7 +93,12 @@ val experimentalDefinitionInLibrary = Set(
   "scala.quoted.runtime.Patterns$.higherOrderHoleWithTypes",
 
   // New feature: SIP 57 - runtimeChecked replacement of @unchecked
-  "scala.Predef$.runtimeChecked", "scala.annotation.internal.RuntimeChecked"
+  "scala.Predef$.runtimeChecked",
+  "scala.annotation.internal.RuntimeChecked",
+
+  // New feature: Collection literals
+  "scala.compiletime.ExpressibleAsCollectionLiteral",
+  "scala.compiletime.ExpressibleAsCollectionLiteral$",
 )
 
 

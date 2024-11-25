@@ -1,4 +1,6 @@
 package scala.compiletime
+
+import annotation.experimental
 import reflect.ClassTag
 
 // This is in compiletime since it is an inline type class. Another
@@ -7,7 +9,7 @@ import reflect.ClassTag
 /** A typeclass that supports creating collection-like data from
  *  collection literals `[x1,...,xN]`.
  */
-trait ExpressibleAsCollectionLiteral[+Coll]:
+@experimental trait ExpressibleAsCollectionLiteral[+Coll]:
 
   /** The element type of the created collection */
   type Elem
@@ -15,7 +17,7 @@ trait ExpressibleAsCollectionLiteral[+Coll]:
   /** The inline method that creates the collection */
   inline def fromLiteral(inline xs: Elem*): Coll
 
-object ExpressibleAsCollectionLiteral:
+@experimental object ExpressibleAsCollectionLiteral:
 
   // Some instances for standard collections. It would be good to have a method
   // that works for all collections in stdlib. But to do that I believe we either
