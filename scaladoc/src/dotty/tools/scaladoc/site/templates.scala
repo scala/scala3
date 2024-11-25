@@ -3,7 +3,7 @@ package site
 
 import java.io.File
 import java.nio.file.{Files, Paths}
-
+import java.util.{HashMap => JavaHashMap}
 import com.vladsch.flexmark.ext.autolink.AutolinkExtension
 import com.vladsch.flexmark.ext.emoji.EmojiExtension
 import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
@@ -13,17 +13,26 @@ import com.vladsch.flexmark.ext.yaml.front.matter.{AbstractYamlFrontMatterVisito
 import com.vladsch.flexmark.parser.{Parser, ParserEmulationProfile}
 import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.formatter.Formatter
+import dotty.tools.scaladoc.site.helpers.DataLoader
 import liqp.Template
-import liqp.ParseSettings
+import liqp.TemplateParser
 import liqp.parser.Flavor
 import liqp.TemplateContext
 import liqp.tags.Tag
 import liqp.nodes.LNode
-import scala.jdk.CollectionConverters._
+import scala.collection.mutable
+import dotty.tools.scaladoc.site.blocks.{AltDetails,TabsBlock,TabBlock}
+import dotty.tools.scaladoc.site.tags.{IncludeTag,LanguagePickerTag}
+import dotty.tools.scaladoc.site.helpers.{ConfigLoader=>SiteConfigLoader}
 
+
+
+
+import scala.jdk.CollectionConverters.*
 import scala.io.Source
-import dotty.tools.scaladoc.snippets._
-import scala.util.chaining._
+import dotty.tools.scaladoc.snippets.*
+
+import scala.util.chaining.*
 
 /** RenderingContext stores information about defined properties, layouts and sites being resolved
  *
@@ -79,6 +88,7 @@ case class TemplateFile(
 
     lazy val snippetCheckingFunc: SnippetChecker.SnippetCheckingFunc =
       val path = Some(Paths.get(file.getAbsolutePath))
+
       val pathBasedArg = ssctx.snippetCompilerArgs.get(path)
       val sourceFile = dotty.tools.dotc.util.SourceFile(dotty.tools.io.AbstractFile.getFile(path.get), scala.io.Codec.UTF8)
       (str: String, lineOffset: SnippetChecker.LineOffset, argOverride: Option[SCFlags]) => {
@@ -98,6 +108,7 @@ case class TemplateFile(
     if (ctx.resolving.contains(file.getAbsolutePath))
       throw new RuntimeException(s"Cycle in templates involving $file: ${ctx.resolving}")
 
+
     val layoutTemplate = layout.map(name =>
       ctx.layouts.getOrElse(name, throw new RuntimeException(s"No layouts named $name in ${ctx.layouts}"))
     )
@@ -110,11 +121,52 @@ case class TemplateFile(
       case other => other
 
     // Library requires mutable maps..
-    val mutableProperties = new JHashMap(ctx.properties.transform((_, v) => asJavaElement(v)).asJava)
+    val mutableProperties = new JHashMap[String, Any](
+      ctx.properties.transform((_, v) => asJavaElement(v)).asJava
+    )
+    // Initialize liqpParser with a default value
+    var liqpParser: TemplateParser = TemplateParser.Builder().withFlavor(Flavor.JEKYLL).build()
 
-    val parseSettings = ParseSettings.Builder().withFlavor(Flavor.JEKYLL).build()
+    // Activate additional features based on the experimental features flag
+    if (ssctx.args.experimentalFeatures) {
+      // report.warning("This project has experimental features turned on!!")
 
-    val rendered = Template.parse(this.rawCode, parseSettings).render(mutableProperties)
+      // Load the data from the YAML file in the _data folder
+      val dataPath = ssctx.root.toPath.resolve("_data")
+      val dataMap = DataLoader().loadDataDirectory(dataPath.toString)
+      val siteData = new JHashMap[String, Any]()
+      siteData.put("data", dataMap)
+
+      // Assign the path for Include Tag
+      val includePath = ssctx.root.toPath.resolve("_includes")
+      IncludeTag.setDocsFolder(includePath.toString)
+
+      // load the config data
+      val configLoader = new SiteConfigLoader()
+      val configMap = configLoader.loadConfig(ssctx.root.toPath.toString)
+      val siteConfig: java.util.Map[String, Any] = configMap.convertToJava
+
+      // Set the configuration value for LanguagePickerTag
+      LanguagePickerTag.setConfigValue(configMap)
+      siteData.put("config", siteConfig)
+
+      mutableProperties.put("site", siteData)
+
+      // Rebuild liqpParser with all the tags and blocks
+      liqpParser = TemplateParser.Builder()
+        .withFlavor(Flavor.JEKYLL)
+        .withBlock(AltDetails())
+        .withBlock(TabsBlock())
+        .withBlock(TabBlock())
+        .withTag(IncludeTag())
+        .withTag(LanguagePickerTag())
+        .build()
+    }
+
+    // Parse and render the template
+    val rendered = liqpParser.parse(this.rawCode).render(mutableProperties)
+
+
 
     // We want to render markdown only if next template is html
     val code = if (isHtml || layoutTemplate.exists(!_.isHtml)) rendered else

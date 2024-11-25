@@ -7,8 +7,8 @@ import java.nio.file.FileVisitOption
 import java.nio.file.Path
 import java.nio.file.Paths
 
-import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
+
 
 class StaticSiteContext(
   val root: File,
@@ -42,10 +42,15 @@ class StaticSiteContext(
 
   lazy val staticSiteRoot: StaticSiteRoot = StaticSiteLoader(root, args)(using this, outerCtx).load()
 
+
+
   lazy val allTemplates =
     def process(l: LoadedTemplate): List[LoadedTemplate] =
       l +: l.children.flatMap(process)
     process(staticSiteRoot.rootTemplate)
+
+
+
   /** Handles redirecting from multiple locations to one page
    *
    * For each entry in redirectFrom setting, create a page which contains code that redirects you to the page where the redirectFrom is defined.
@@ -116,6 +121,8 @@ class StaticSiteContext(
 
   def pathFromRoot(myTemplate: LoadedTemplate) = root.toPath.relativize(myTemplate.file.toPath)
 
+
   val projectWideProperties =
     Seq("projectName" -> args.name) ++
       args.projectVersion.map("projectVersion" -> _)
+

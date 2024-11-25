@@ -104,6 +104,8 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "styles/versions-dropdown.css",
       "styles/content-contributors.css",
       "styles/fontawesome.css",
+      "styles/staticsitestyles.css",
+      "scripts/staticsite/alt-details.js",
       "hljs/highlight.pack.js",
       "hljs/LICENSE",
       "scripts/hljs-scala3.js",
@@ -117,6 +119,8 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "scripts/components/Filter.js",
       "scripts/scaladoc-scalajs.js",
       "scripts/contributors.js",
+      "scripts/staticsite/main.js"
+
     ).map(dottyRes)
 
     val urls = List(
@@ -135,7 +139,8 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
   ).map(dottyRes)
 
   val staticSiteOnlyResources = List(
-    "styles/staticsitestyles.css"
+    // "styles/staticsitestyles.css",
+
   ).map(dottyRes)
 
   val searchDataPath = "scripts/searchData.js"

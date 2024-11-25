@@ -20,6 +20,9 @@ import scala.jdk.CollectionConverters._
 import com.vladsch.flexmark.util.data.DataHolder
 import com.vladsch.flexmark.util.data.MutableDataSet
 
+import org.yaml.snakeyaml.Yaml
+
+
 val docsRootDRI: DRI = DRI(location = "_docs/index", symbolUUID = staticFileSymbolUUID)
 val apiPageDRI: DRI = DRI(location = "api/index")
 
@@ -75,9 +78,20 @@ def loadTemplateFile(file: File, defaultTitle: Option[TemplateName] = None)(usin
       (lines.tail, Nil)
   } else (Nil, lines)
 
-  val configParsed = yamlParser.parse(config.mkString(LineSeparator))
+  val yamlString = config.mkString(LineSeparator)
+  val configParsed = yamlParser.parse(yamlString)
   val yamlCollector = new AbstractYamlFrontMatterVisitor()
   yamlCollector.visit(configParsed)
+
+  val cleanedYamlString = yamlString
+      .stripPrefix(ConfigSeparator)
+      .stripSuffix(ConfigSeparator)
+  val yaml = new Yaml()
+  val parsedYaml: java.util.LinkedHashMap[String, Object]= if (cleanedYamlString.trim.isEmpty) null else yaml.load(cleanedYamlString).asInstanceOf[java.util.LinkedHashMap[String, Object]]
+
+
+
+
 
   def getSettingValue(k: String, v: JList[String]): String | List[String] =
     if v.size == 1 then v.get(0) else v.asScala.toList
@@ -85,7 +99,12 @@ def loadTemplateFile(file: File, defaultTitle: Option[TemplateName] = None)(usin
   val globalKeys = Set("extraJS", "extraCSS", "layout", "hasFrame", "name", "title")
   val allSettings = yamlCollector.getData.asScala.toMap.transform(getSettingValue)
   val (global, inner) = allSettings.partition((k,_) => globalKeys.contains(k))
-  val settings = Map("page" -> inner) ++ global
+  val settings = if (parsedYaml == null) {
+        Map("page" -> inner) ++ global
+      } else {
+        Map("page" -> parsedYaml.asScala.toMap) ++ global
+      }
+
 
   def stringSetting(settings: Map[String, Object], name: String): Option[String] = settings.get(name).map {
     case List(elem: String) => elem

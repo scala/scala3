@@ -47,6 +47,7 @@ object Scaladoc:
     defaultTemplate: Option[String] = None,
     quickLinks: List[QuickLink] = List.empty,
     dynamicSideMenu: Boolean = false,
+    experimentalFeatures: Boolean = false,
   )
 
   def run(args: Array[String], rootContext: CompilerContext): Reporter =
@@ -66,6 +67,12 @@ object Scaladoc:
         val updatedArgs = parsedArgs.copy(tastyDirs = parsedArgs.tastyDirs, tastyFiles = tastyFiles)
 
         if (parsedArgs.output.exists()) util.IO.delete(parsedArgs.output)
+
+        // TODO:  Activate the new method to genarate only the static site
+        // if parsedArgs.staticSiteOnly then
+        //   generateStaticSite(updatedArgs) // New method to generate only static site
+        // else
+        //   run(updatedArgs)
 
         run(updatedArgs)
         report.inform("Done")
@@ -197,6 +204,9 @@ object Scaladoc:
 
       if deprecatedSkipPackages.get.nonEmpty then report.warning(deprecatedSkipPackages.description)
 
+      val experimentalFeatures = args.contains("-use-experimental-features")
+
+
       val docArgs = Args(
         projectName.withDefault("root"),
         dirs,
@@ -231,6 +241,7 @@ object Scaladoc:
         defaultTemplate.nonDefault,
         quickLinksParsed,
         dynamicSideMenu.get,
+        experimentalFeatures
       )
       (Some(docArgs), newContext)
     }
