@@ -3492,7 +3492,7 @@ object Parsers {
           val hkparams = typeParamClauseOpt(ParamOwner.Hk)
           val bounds =
             if paramOwner.acceptsCtxBounds then typeAndCtxBounds(name)
-            else if in.featureEnabled(Feature.modularity) && paramOwner == ParamOwner.Type then typeAndCtxBounds(name)
+            else if sourceVersion.isAtLeast(`3.6`) && paramOwner == ParamOwner.Type then typeAndCtxBounds(name)
             else typeBounds()
           TypeDef(name, lambdaAbstract(hkparams, bounds)).withMods(mods)
         }
