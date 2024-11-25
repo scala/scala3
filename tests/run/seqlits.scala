@@ -72,3 +72,10 @@ object SeqLits:
     println(mbs)
     println(hbs)
     println(mbss)
+
+
+    val oneTwoThree: Vector[Int] = [1, 2, 3]
+    val anotherLit: IArray[Double] = [math.Pi, math.cos(2.0), math.E * 3.0]
+    val diag: Array[Array[Int]] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+    val empty: ArrayBuffer[Object] = []
+    val mapy: HashMap[Int, String] = [1 -> "one", 2 -> "two", 3 -> "three"]
