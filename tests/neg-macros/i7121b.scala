@@ -4,7 +4,7 @@ class annot1[T](x: Expr[T]) extends scala.annotation.Annotation
 class annot2[T: Type](x: T) extends scala.annotation.Annotation
 
 class Test()(implicit qtx: Quotes) {
-  @annot2(4)(using Type.of[Int]) // error
-  def foo2(str: String) = ()
+  @annot1('{4}) // error: expression cannot be used inside an annotation argument
+  def foo(str: String) = ()
 
 }

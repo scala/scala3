@@ -9,5 +9,5 @@ inline def quote[T]: Quoted[T] = ${ quoteImpl[T] }
 
 def quoteImpl[T: Type](using Quotes): Expr[Quoted[T]] = {
   val value: Expr[Int] = '{ 42 }
-  '{ new Quoted[T @Annot($value)] }
+  '{ new Quoted[T @Annot($value)] } // error: expression cannot be used inside an annotation argument
 }

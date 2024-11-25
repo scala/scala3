@@ -1454,8 +1454,6 @@ trait Checking {
       | Block
       | SeqLiteral
       | Inlined
-      | Quote
-      | Splice
       | Hole
       | Annotated
     ]
