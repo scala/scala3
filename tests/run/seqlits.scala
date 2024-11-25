@@ -47,6 +47,13 @@ object SeqLits:
     val hbs: HashMap[Int, Seq[BitSet]] = [1 -> [[1], [2, 3]], 2 -> [[]], 0 -> []]
     // val mbss: Map[BitSet, Seq[Int]] =  [[1] -> [1], [0, 2] -> [1, 2], [0] -> []]  // error: keys get default value Seq
     val mbss: Map[BitSet, Seq[Int]] =  [([1], [1]), ([0, 2], [1, 2]), ([0], [])] // ok
+    val mixed1 = [1, 1.0, -2]
+    val _: Seq[Double] = mixed1
+    val mixed2 = [1, true]
+    val _: Seq[Int | Boolean] = mixed2
+    val anInt = 3
+    val mixed3 = [anInt, 3.0]
+    val _: Seq[Int | Double] = mixed3
 
     val x1 = f1(Vector(1, 2, 3), [3, 4, 5])
     val _: Seq[Int] = x1
