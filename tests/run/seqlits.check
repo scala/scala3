@@ -1,12 +1,18 @@
 last was evaluated
 last was evaluated
-Seq Vector(1, 2, 3, 4)
+last was evaluated
+Seq List(1, 2, 3, 4)
 Vector Vector(1, 2, 3, 4)
+BitSet(1, 2, 4)
 last was evaluated
 Task with elems List(1, 2, 3, 4)
-last was evaluated
-last was evaluated
-Seq Vector(1, 2, 3, 4)
-Vector Vector(1, 2, 3, 4)
-last was evaluated
-Task with elems List(1, 2, 3, 4)
+Vector()
+List(hello, world)
+List(hello, world)
+List()
+List(1, 2, 3)
+List()
+Map(1 -> one, 2 -> two)
+List(List(1), List(2, 3), List())
+List(List(1), List(2, 3), List())
+Vector(Vector(1), Vector(2, 3), Vector())

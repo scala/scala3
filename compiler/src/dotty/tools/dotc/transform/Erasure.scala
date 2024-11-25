@@ -891,7 +891,7 @@ object Erasure {
     // The following four methods take as the proto-type the erasure of the pre-existing type,
     // if the original proto-type is not a value type.
     // This makes all branches be adapted to the correct type.
-    override def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(using Context): SeqLiteral =
+    override def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(using Context): Tree =
       super.typedSeqLiteral(tree, erasure(tree.typeOpt))
         // proto type of typed seq literal is original type;
 

@@ -1,0 +1,11 @@
+-- [E172] Type Error: tests/neg/seqlits.scala:20:14 --------------------------------------------------------------------
+20 |  val x: A = [1, 2, 3] // error: ambiguous
+   |              ^^^^^^^
+   |Ambiguous given instances: both given instance given_ExpressibleAsCollectionLiteral_B in object SeqLits and given instance given_ExpressibleAsCollectionLiteral_C in object SeqLits match type scala.compiletime.ExpressibleAsCollectionLiteral[A]
+-- [E007] Type Mismatch Error: tests/neg/seqlits.scala:21:14 -----------------------------------------------------------
+21 |  val y: D = [1, 2, 3] // error: type mismatch
+   |              ^^^^^^^
+   |              Found:    Seq[Int]
+   |              Required: D
+   |
+   | longer explanation available when compiling with `-explain`
