@@ -30,3 +30,17 @@
    |                                                         Required: (scala.collection.immutable.BitSet, Seq[Int])
    |
    | longer explanation available when compiling with `-explain`
+-- [E134] Type Error: tests/neg/seqlits.scala:30:11 --------------------------------------------------------------------
+30 |  val xx = f([1, 2, 3])  // error: no matching alternatives for Seq[Int]
+   |           ^
+   |           None of the overloaded alternatives of method f in object SeqLits with types
+   |            [A](xs: Vector[A]): Vector[A]
+   |            [A](xs: List[A]): List[A]
+   |           match arguments (Seq[Int])
+-- [E134] Type Error: tests/neg/seqlits.scala:34:11 --------------------------------------------------------------------
+34 |  val yy = g([1, 2, 3])  // error: no matching alternatives for Seq[Int] (even if one method is more specific than the other)
+   |           ^
+   |           None of the overloaded alternatives of method g in object SeqLits with types
+   |            [A](xs: scala.collection.immutable.HashSet[A]): Set[A]
+   |            [A](xs: Set[A]): Set[A]
+   |           match arguments (Seq[Int])

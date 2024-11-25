@@ -16,6 +16,12 @@ object SeqLits:
 
   def last: Int = { println("last was evaluated"); 4 }
 
+  def f1[A](xs: A, ys: A) = ys
+  def f2[A](xs: Vector[A]) = xs
+
+  def g[A](xs: Set[A]): Set[A] = xs
+  def g[A](xs: collection.immutable.HashSet[A]): Set[A] = xs
+
   @main def Test =
     val s: Seq[Int] = [1, 2, 3, last]
     val v: Vector[Int] = [1, 2, 3, last]
@@ -41,6 +47,11 @@ object SeqLits:
     val hbs: HashMap[Int, Seq[BitSet]] = [1 -> [[1], [2, 3]], 2 -> [[]], 0 -> []]
     // val mbss: Map[BitSet, Seq[Int]] =  [[1] -> [1], [0, 2] -> [1, 2], [0] -> []]  // error: keys get default value Seq
     val mbss: Map[BitSet, Seq[Int]] =  [([1], [1]), ([0, 2], [1, 2]), ([0], [])] // ok
+
+    val x1 = f1(Vector(1, 2, 3), [3, 4, 5])
+    val _: Seq[Int] = x1
+    val x2 = f2([1, 2, 3])
+    val _: Vector[Int] = x2
 
     println(s"Seq $s")
     println(s"Vector $v")
