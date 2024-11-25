@@ -53,6 +53,26 @@ import reflect.ClassTag
     type Elem = T
     inline def fromLiteral(inline xs: T*) = IArray(xs*)
 
+  given arrayBufferFromLiteral: [T: ClassTag] => ExpressibleAsCollectionLiteral[collection.mutable.ArrayBuffer[T]]:
+    type Elem = T
+    inline def fromLiteral(inline xs: T*) = collection.mutable.ArrayBuffer(xs*)
+
+  given setFromLiteral: [T] => ExpressibleAsCollectionLiteral[Set[T]]:
+    type Elem = T
+    inline def fromLiteral(inline xs: T*) = Set(xs*)
+
+  given hashSetFromLiteral: [T] => ExpressibleAsCollectionLiteral[collection.mutable.HashSet[T]]:
+    type Elem = T
+    inline def fromLiteral(inline xs: T*) = collection.mutable.HashSet(xs*)
+
   given bitsetFromLiteral: ExpressibleAsCollectionLiteral[collection.immutable.BitSet]:
     type Elem = Int
     inline def fromLiteral(inline xs: Int*) = collection.immutable.BitSet(xs*)
+
+  given mapFromLiteral: [K, V] => ExpressibleAsCollectionLiteral[Map[K, V]]:
+    type Elem = (K, V)
+    inline def fromLiteral(inline xs: (K, V)*) = Map(xs*)
+
+  given hashMapFromLiteral: [K, V] => ExpressibleAsCollectionLiteral[collection.mutable.HashMap[K, V]]:
+    type Elem = (K, V)
+    inline def fromLiteral(inline xs: (K, V)*) = collection.mutable.HashMap(xs*)

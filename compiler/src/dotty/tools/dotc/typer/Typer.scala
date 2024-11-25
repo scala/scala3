@@ -2439,32 +2439,25 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       // is either a given instance of type ExpressibleAsCollectionLiteralClass
       // or a default instance. The default instance is either Seq or Map,
       // depending on the forms of `tree.elems`. We search for a type class if
-      // the expected type is a value type that is not an uninstantiated type variable.
+      // the expected type is a value type that is not underspeficied for implicit search.
       val maker = pt match
-        case pt: TypeVar if !pt.isInstantiated =>
-          defaultMaker
-        case pt: ValueType =>
+        case pt: ValueType if !Implicits.isUnderspecified(wildApprox(pt)) =>
           val tc = defn.ExpressibleAsCollectionLiteralClass.typeRef.appliedTo(pt)
           val nestedCtx = ctx.fresh.setNewTyperState()
-          val maker = inContext(nestedCtx):
-            // Find given instance `witness` of type `ExpressibleAsCollectionLiteral[<pt>]`
-            val witness = inferImplicitArg(tc, tree.span.startPos)
-            if witness.tpe.isInstanceOf[SearchFailureType] then
-              val msg = missingArgMsg(witness, pt, "")
-              if isAmbiguousGiven(witness) then report.error(msg, tree.srcPos)
-              else typr.println(i"failed collection literal witness: ${msg.toString}")
+          // Find given instance `witness` of type `ExpressibleAsCollectionLiteral[<pt>]`
+          val witness = inferImplicitArg(tc, tree.span.startPos)
+          def errMsg = missingArgMsg(witness, pt, "")
+          typr.println(i"infer for $tree with $tc = $witness, ${ctx.typerState.constraint}")
+          witness.tpe match
+            case _: AmbiguousImplicits =>
+              report.error(errMsg, tree.srcPos)
               defaultMaker
-            else
-              // Instantiate local type variables in witness.tpe, so that nested
-              // SeqLiterals don't get typed as default Seq due to first case above
-              def isLocal(tv: TypeVar) =
-                val state = tv.owningState
-                state != null && (state.get eq ctx.typerState)
-              instantiateSelected(witness.tpe, isLocal, minimize = false)
+            case _: SearchFailureType =>
+              typr.println(i"failed collection literal witness: ${errMsg.toString}")
+              defaultMaker
+            case _ =>
               // Continue with typing `witness.fromLiteral` as the constructor
               untpd.TypedSplice(witness.select(nme.fromLiteral))
-          nestedCtx.typerState.commit()
-          maker
         case _ =>
           defaultMaker
       typed(

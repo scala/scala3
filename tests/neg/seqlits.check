@@ -1,11 +1,32 @@
--- [E172] Type Error: tests/neg/seqlits.scala:20:14 --------------------------------------------------------------------
-20 |  val x: A = [1, 2, 3] // error: ambiguous
+-- [E172] Type Error: tests/neg/seqlits.scala:23:14 --------------------------------------------------------------------
+23 |  val x: A = [1, 2, 3] // error: ambiguous
    |              ^^^^^^^
    |Ambiguous given instances: both given instance given_ExpressibleAsCollectionLiteral_B in object SeqLits and given instance given_ExpressibleAsCollectionLiteral_C in object SeqLits match type scala.compiletime.ExpressibleAsCollectionLiteral[A]
--- [E007] Type Mismatch Error: tests/neg/seqlits.scala:21:14 -----------------------------------------------------------
-21 |  val y: D = [1, 2, 3] // error: type mismatch
+-- [E007] Type Mismatch Error: tests/neg/seqlits.scala:24:14 -----------------------------------------------------------
+24 |  val y: D = [1, 2, 3] // error: type mismatch
    |              ^^^^^^^
    |              Found:    Seq[Int]
    |              Required: D
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/seqlits.scala:26:39 -----------------------------------------------------------
+26 |  val mbss: Map[BitSet, Seq[Int]] =  [[1] -> [1], [0, 2] -> [1, 2], [0] -> []] // error: type mismatch // error // error
+   |                                       ^^^^^^^^
+   |                                       Found:    (Seq[Int], Seq[Int])
+   |                                       Required: (scala.collection.immutable.BitSet, Seq[Int])
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/seqlits.scala:26:51 -----------------------------------------------------------
+26 |  val mbss: Map[BitSet, Seq[Int]] =  [[1] -> [1], [0, 2] -> [1, 2], [0] -> []] // error: type mismatch // error // error
+   |                                                   ^^^^^^^^^^^^^^
+   |                                                   Found:    (Seq[Int], Seq[Int])
+   |                                                   Required: (scala.collection.immutable.BitSet, Seq[Int])
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/seqlits.scala:26:69 -----------------------------------------------------------
+26 |  val mbss: Map[BitSet, Seq[Int]] =  [[1] -> [1], [0, 2] -> [1, 2], [0] -> []] // error: type mismatch // error // error
+   |                                                                     ^^^^^
+   |                                                         Found:    (Seq[Int], Seq[Nothing])
+   |                                                         Required: (scala.collection.immutable.BitSet, Seq[Int])
    |
    | longer explanation available when compiling with `-explain`

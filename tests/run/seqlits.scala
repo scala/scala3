@@ -2,6 +2,8 @@ import language.`3.7`
 import reflect.ClassTag
 import compiletime.ExpressibleAsCollectionLiteral
 import collection.immutable.BitSet
+import collection.mutable.{ArrayBuffer, HashMap}
+import language.experimental.collectionLiterals
 
 /** Some delayed computation like a Mill Task */
 case class Task[T](body: () => T)
@@ -33,6 +35,12 @@ object SeqLits:
     val ss2 = [[1], [2, 3], []]
     val _: Seq[Seq[Int]] = ss2
     val vs: Vector[Vector[Int]] = [[1], [2, 3], []]
+    val ab: ArrayBuffer[Set[String]] = [["hello", "world"], []]
+    val sbs: Set[BitSet] = [[1], [2, 3], []]
+    val mbs: Map[Int, BitSet] = [1 -> [1], 2 -> [1, 2], 0 -> []]
+    val hbs: HashMap[Int, Seq[BitSet]] = [1 -> [[1], [2, 3]], 2 -> [[]], 0 -> []]
+    // val mbss: Map[BitSet, Seq[Int]] =  [[1] -> [1], [0, 2] -> [1, 2], [0] -> []]  // error: keys get default value Seq
+    val mbss: Map[BitSet, Seq[Int]] =  [([1], [1]), ([0, 2], [1, 2]), ([0], [])] // ok
 
     println(s"Seq $s")
     println(s"Vector $v")
@@ -48,3 +56,8 @@ object SeqLits:
     println(ss)
     println(ss2)
     println(vs)
+    println(ab)
+    println(sbs)
+    println(mbs)
+    println(hbs)
+    println(mbss)
