@@ -2746,7 +2746,7 @@ object Parsers {
         case LBRACE | INDENT =>
           canApply = false
           blockExpr()
-        case LBRACKET =>
+        case LBRACKET if in.featureEnabled(Feature.collectionLiterals) =>
           inBrackets:
             SeqLiteral(exprsInBrackets(), TypeTree())
         case QUOTE =>
