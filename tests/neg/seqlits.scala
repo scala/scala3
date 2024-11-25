@@ -1,4 +1,7 @@
+import language.`3.7`
 import compiletime.ExpressibleAsCollectionLiteral
+import language.experimental.collectionLiterals
+import collection.immutable.BitSet
 
 class A
 
@@ -19,3 +22,5 @@ object SeqLits:
 
   val x: A = [1, 2, 3] // error: ambiguous
   val y: D = [1, 2, 3] // error: type mismatch
+
+  val mbss: Map[BitSet, Seq[Int]] =  [[1] -> [1], [0, 2] -> [1, 2], [0] -> []] // error: type mismatch // error // error
