@@ -443,10 +443,12 @@ object Implicits:
   extends SearchResult with RefAndLevel with Showable:
     final def found = ref :: Nil
 
+  def isAmbiguousGiven(tree: Tree) = tree.tpe.isInstanceOf[AmbiguousImplicits | TooUnspecific]
+
   /** A failed search */
   case class SearchFailure(tree: Tree) extends SearchResult {
     require(tree.tpe.isInstanceOf[SearchFailureType], s"unexpected type for ${tree}")
-    final def isAmbiguous: Boolean = tree.tpe.isInstanceOf[AmbiguousImplicits | TooUnspecific]
+    final def isAmbiguous: Boolean = isAmbiguousGiven(tree)
     final def reason: SearchFailureType = tree.tpe.asInstanceOf[SearchFailureType]
     final def found = tree.tpe match
       case tpe: AmbiguousImplicits => tpe.alt1.ref :: tpe.alt2.ref :: Nil

@@ -2390,7 +2390,7 @@ object Parsers {
       in.token match
         case IMPLICIT =>
           closure(start, location, modifiers(BitSet(IMPLICIT)))
-        case LBRACKET =>
+        case LBRACKET if followingIsArrow() =>
           val start = in.offset
           val tparams = typeParamClause(ParamOwner.Type)
           val arrowOffset = accept(ARROW)
@@ -2710,6 +2710,7 @@ object Parsers {
      *                 |  xmlLiteral
      *                 |  SimpleRef
      *                 |  `(` [ExprsInParens] `)`
+     *                 |  `[` ExprsInBrackets `]`
      *                 |  SimpleExpr `.` id
      *                 |  SimpleExpr `.` MatchClause
      *                 |  SimpleExpr (TypeArgs | NamedTypeArgs)
@@ -2745,6 +2746,9 @@ object Parsers {
         case LBRACE | INDENT =>
           canApply = false
           blockExpr()
+        case LBRACKET =>
+          inBrackets:
+            SeqLiteral(exprsInBrackets(), TypeTree())
         case QUOTE =>
           quote(location.inPattern)
         case NEW =>
@@ -2839,6 +2843,12 @@ object Parsers {
             t
         commaSeparatedRest(exprOrBinding(), exprOrBinding)
       }
+
+    /**  ExprsInBrackets   ::=  ExprInParens {`,' ExprInParens} */
+    def exprsInBrackets(): List[Tree] =
+      if in.token == RBRACKET then Nil
+      else in.currentRegion.withCommasExpected:
+        commaSeparatedRest(exprInParens(), exprInParens)
 
     /** ParArgumentExprs ::= `(' [‘using’] [ExprsInParens] `)'
      *                    |  `(' [ExprsInParens `,'] PostfixExpr `*' ')'

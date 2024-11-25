@@ -563,7 +563,7 @@ class Definitions {
     @tu lazy val Seq_lengthCompare: Symbol = SeqClass.requiredMethod(nme.lengthCompare, List(IntType))
     @tu lazy val Seq_length       : Symbol = SeqClass.requiredMethod(nme.length)
     @tu lazy val Seq_toSeq        : Symbol = SeqClass.requiredMethod(nme.toSeq)
-
+  @tu lazy val MapModule: Symbol           = requiredModule("scala.collection.immutable.Map")
 
   @tu lazy val StringOps: Symbol = requiredClass("scala.collection.StringOps")
     @tu lazy val StringOps_format: Symbol  = StringOps.requiredMethod(nme.format)
@@ -581,6 +581,9 @@ class Definitions {
 
   @tu lazy val IArrayModule: Symbol = requiredModule("scala.IArray")
   def IArrayModuleClass: Symbol = IArrayModule.moduleClass
+
+  @tu lazy val ExpressibleAsCollectionLiteralClass: ClassSymbol = requiredClass("scala.compiletime.ExpressibleAsCollectionLiteral")
+    @tu lazy val ExpressibleACL_fromLiteral: Symbol = ExpressibleAsCollectionLiteralClass.requiredMethod("fromLiteral")
 
   @tu lazy val UnitType: TypeRef = valueTypeRef("scala.Unit", java.lang.Void.TYPE, UnitEnc, nme.specializedTypeNames.Void)
   def UnitClass(using Context): ClassSymbol = UnitType.symbol.asClass

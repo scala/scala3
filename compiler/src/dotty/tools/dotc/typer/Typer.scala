@@ -2394,7 +2394,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             Annotation(defn.RequiresCapabilityAnnot, cap, tree.span))))
     res.withNotNullInfo(expr1.notNullInfo.terminatedInfo)
 
-  def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(using Context): SeqLiteral = {
+  def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(using Context): Tree =
     val elemProto = pt.stripNull().elemType match {
       case NoType => WildcardType
       case bounds: TypeBounds => WildcardType(bounds)
@@ -2404,25 +2404,78 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def assign(elems1: List[Tree], elemtpt1: Tree) =
       assignType(cpy.SeqLiteral(tree)(elems1, elemtpt1), elems1, elemtpt1)
 
-    if (!tree.elemtpt.isEmpty) {
+    // Seq literal used in varargs: elem type is given
+    def varargSeqLiteral =
       val elemtpt1 = typed(tree.elemtpt, elemProto)
       val elems1 = tree.elems.mapconserve(typed(_, elemtpt1.tpe))
       assign(elems1, elemtpt1)
-    }
-    else {
-      assert(tree.isInstanceOf[Trees.JavaSeqLiteral[?]])
+
+    // Seq literal used in Java annotations: elem type needs to be computed
+    def javaSeqLiteral =
       val elems1 = tree.elems.mapconserve(typed(_, elemProto))
       val elemtptType =
-        if (isFullyDefined(elemProto, ForceDegree.none))
+        if isFullyDefined(elemProto, ForceDegree.none) then
           elemProto
-        else if (tree.elems.isEmpty && tree.isInstanceOf[Trees.JavaSeqLiteral[?]])
+        else if tree.elems.isEmpty then
           defn.ObjectType // generic empty Java varargs are of type Object[]
         else
           TypeComparer.lub(elems1.tpes)
       val elemtpt1 = typed(tree.elemtpt, elemtptType)
       assign(elems1, elemtpt1)
-    }
-  }
+
+    // Stand-alone collection literal [x1, ..., xN]
+    def collectionLiteral =
+      def isArrow(tree: untpd.Tree) = tree match
+        case untpd.InfixOp(_, Ident(nme.PUREARROW), _) => true
+        case _ => false
+
+      // The default maker if no typeclass is searched or found
+      def defaultMaker =
+        if tree.elems.nonEmpty && tree.elems.forall(isArrow)
+        then untpd.ref(defn.MapModule)
+        else untpd.ref(defn.SeqModule)
+
+      // We construct and typecheck a term `maker(tree.elems)`, where `maker`
+      // is either a given instance of type ExpressibleAsCollectionLiteralClass
+      // or a default instance. The default instance is either Seq or Map,
+      // depending on the forms of `tree.elems`. We search for a type class if
+      // the expected type is a value type that is not an uninstantiated type variable.
+      val maker = pt match
+        case pt: TypeVar if !pt.isInstantiated =>
+          defaultMaker
+        case pt: ValueType =>
+          val tc = defn.ExpressibleAsCollectionLiteralClass.typeRef.appliedTo(pt)
+          val nestedCtx = ctx.fresh.setNewTyperState()
+          val maker = inContext(nestedCtx):
+            // Find given instance `witness` of type `ExpressibleAsCollectionLiteral[<pt>]`
+            val witness = inferImplicitArg(tc, tree.span.startPos)
+            if witness.tpe.isInstanceOf[SearchFailureType] then
+              val msg = missingArgMsg(witness, pt, "")
+              if isAmbiguousGiven(witness) then report.error(msg, tree.srcPos)
+              else typr.println(i"failed collection literal witness: ${msg.toString}")
+              defaultMaker
+            else
+              // Instantiate local type variables in witness.tpe, so that nested
+              // SeqLiterals don't get typed as default Seq due to first case above
+              def isLocal(tv: TypeVar) =
+                val state = tv.owningState
+                state != null && (state.get eq ctx.typerState)
+              instantiateSelected(witness.tpe, isLocal, minimize = false)
+              // Continue with typing `witness.fromLiteral` as the constructor
+              untpd.TypedSplice(witness.select(nme.fromLiteral))
+          nestedCtx.typerState.commit()
+          maker
+        case _ =>
+          defaultMaker
+      typed(
+        untpd.Apply(maker, tree.elems).withSpan(tree.span)
+          .showing(i"typed collection literal $tree ---> $result", typr)
+        , pt)
+
+    if !tree.elemtpt.isEmpty then varargSeqLiteral
+    else if tree.isInstanceOf[Trees.JavaSeqLiteral[?]] then javaSeqLiteral
+    else collectionLiteral
+  end typedSeqLiteral
 
   def typedInlined(tree: untpd.Inlined, pt: Type)(using Context): Tree =
     throw new UnsupportedOperationException("cannot type check a Inlined node")
