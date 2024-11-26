@@ -74,13 +74,9 @@ Using this scheme, the literals we have seen earlier could also be given alterna
  - Since the fromLiteral method in `ExpressibleAsCollectionLiteral` is an inline method with inline arguments, given instances can implement it as a macro.
 
  - The precise meaning of "is there an expected type?" is as follows: There is no expected
-   type if the expected type known from the context is _underdefined_ as specified for
-   implicit search. That is, implicit search for a conversion to the expected type would fail with an error message that contains a note like this:
-   ```
-   Note that implicit conversions were not tried because the result of an implicit conversion|must be more specific than ...
-   ```
-   Concretely, this is the case for Wildcard types `?`, `Any`, `AnyRef`, or type variables
-   bounded by one of these types.
+   type if the expected type known from the context is _under-specified_, as it is defined for
+   implicit search. That is, an implicit search for a given of the type would not be
+   attempted because the type is not specific enough. Concretely, this is the case for Wildcard types `?`, `Any`, `AnyRef`, unconstrained type variables, or type variables constrained from above by an under-specified type.
 
 **Syntax**
 

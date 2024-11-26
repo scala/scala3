@@ -20,10 +20,11 @@ import reflect.ClassTag
 @experimental object ExpressibleAsCollectionLiteral:
 
   // Some instances for standard collections. It would be good to have a method
-  // that works for all collections in stdlib. But to do that I believe we either
-  // have to put a given instance in Factory in stdlib, or write some macro
-  // method here. I have not found a straightforward way to build a collection
-  // of type `C` is all we know is the type.
+  // that works for all collections in stdlib. But to do that int his file,
+  // we have to write some macro method here. I have not found a straightforward
+  // way to build a collection of type `C` if all we know is the type.
+  // Once we can put Scala 3 code in the standard library this would be resolved by
+  // adding a given instance in Factory.
 
   given seqFromLiteral: [T] => ExpressibleAsCollectionLiteral[collection.Seq[T]]:
     type Elem = T
