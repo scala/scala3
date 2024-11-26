@@ -916,7 +916,6 @@ object Checking {
         annot
       case _ => annot
   end checkNamedArgumentForJavaAnnotation
-
 }
 
 trait Checking {
@@ -1387,12 +1386,21 @@ trait Checking {
     if !Inlines.inInlineMethod && !ctx.isInlineContext then
       report.error(em"$what can only be used in an inline method", pos)
 
+  def checkAnnot(tree: Tree)(using Context): Tree =
+    tree match
+      case Ident(tpnme.BOUNDTYPE_ANNOT) =>
+        // `FirstTransform.toTypeTree` creates `Annotated` nodes whose `annot` are
+        // `Ident`s, not annotation instances. See `tests/pos/annot-boundtype.scala`.
+        tree
+      case _ =>
+        checkAnnotTree(checkAnnotClass(tree))
+
   /** Check that the class corresponding to this tree is either a Scala or Java annotation.
    *
    *  @return The original tree or an error tree in case `tree` isn't a valid
    *          annotation or already an error tree.
    */
-  def checkAnnotClass(tree: Tree)(using Context): Tree =
+  private def checkAnnotClass(tree: Tree)(using Context): Tree =
     if tree.tpe.isError then
       return tree
     val cls = Annotations.annotClass(tree)
@@ -1404,19 +1412,46 @@ trait Checking {
       errorTree(tree, em"$cls is not a valid Scala annotation: it does not extend `scala.annotation.Annotation`")
     else tree
 
-  /** Check arguments of compiler-defined annotations */
-  def checkAnnotArgs(tree: Tree)(using Context): tree.type =
+  /** Check arguments of annotations */
+  private def checkAnnotTree(tree: Tree)(using Context): Tree =
     val cls = Annotations.annotClass(tree)
-    tree match
-      case Apply(tycon, arg :: Nil) if cls == defn.TargetNameAnnot =>
-        arg match
-          case Literal(Constant("")) =>
-            report.error(em"target name cannot be empty", arg.srcPos)
-          case Literal(_) => // ok
-          case _ =>
-            report.error(em"@${cls.name} needs a string literal as argument", arg.srcPos)
-      case _ =>
-    tree
+    if cls == defn.TargetNameAnnot then
+      allArguments(tree) match
+        case List(Literal(Constant(name: String))) if !name.isEmpty => tree
+        case _ => errorTree(tree, em"@${cls.name} needs a non-empty string literal as argument")
+    else
+      tree.find(!isValidAnnotSubtree(_)) match
+        case None => tree
+        case Some(invalidSubTree) =>
+          errorTree(
+            EmptyTree,
+            em"""Implementation restriction: expression cannot be used inside an annotation argument.
+                |Tree: ${invalidSubTree}
+                |Type: ${invalidSubTree.tpe}""",
+            invalidSubTree.srcPos
+          )
+
+  /** Returns `true` if this tree can appear inside an annotation argument. */
+  private def isValidAnnotSubtree(subTree: Tree) =
+    subTree.isType || subTree.isInstanceOf[
+        EmptyTree.type
+      | Ident
+      | Select
+      | This
+      | Super
+      | Apply
+      | TypeApply
+      | Literal
+      | New
+      | Typed
+      | NamedArg
+      | Assign
+      | Block
+      | SeqLiteral
+      | Inlined
+      | Hole
+      | Annotated
+    ]
 
   /** 1. Check that all case classes that extend `scala.reflect.Enum` are `enum` cases
    *  2. Check that parameterised `enum` cases do not extend java.lang.Enum.
@@ -1665,7 +1700,7 @@ trait NoChecking extends ReChecking {
   override def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit = ()
   override def checkImplicitConversionUseOK(tree: Tree, expected: Type)(using Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: SrcPos, where: => String = "")(using Context): Type = tp
-  override def checkAnnotArgs(tree: Tree)(using Context): tree.type = tree
+  override def checkAnnot(tree: Tree)(using Context): tree.type = tree
   override def checkNoTargetNameConflict(stats: List[Tree])(using Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit = ()
   override def checkSimpleKinded(tpt: Tree)(using Context): Tree = tpt

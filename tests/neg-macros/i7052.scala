@@ -1,7 +1,7 @@
 import scala.quoted.*
 class Test {
   def foo(str: String)(using Quotes) = '{
-    @deprecated(str, "") // error
+    @deprecated(str, "") // error: expression cannot be used inside an annotation argument
     def bar = ???
   }
 }
