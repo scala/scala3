@@ -93,15 +93,21 @@ trait CaptureRef extends TypeProxy, ValueType:
   final def invalidateCaches() =
     myCaptureSetRunId = NoRunId
 
-  /** x subsumes x
-   *   this subsumes this.f
+  /**  x subsumes x
+   *   x subsumes x.f
+   *   x =:= y ==> x subsumes y
    *   x subsumes y  ==>  x* subsumes y, x subsumes y?
    *   x subsumes y  ==>  x* subsumes y*, x? subsumes y?
    *   x: x1.type /\ x1 subsumes y  ==>  x subsumes y
-   *   TODO: Document path cases
+   *   X = CapSet^cx, exists rx in cx, rx subsumes y ==>  X subsumes y
+   *   Y = CapSet^cy, forall ry in cy, x subsumes ry ==>  x subsumes Y
+   *   X: CapSet^c1...CapSet^c2, (CapSet^c1) subsumes y  ==> X subsumes y
+   *   Y: CapSet^c1...CapSet^c2, x subsumes (CapSet^c2) ==> x subsumes Y
+   *   Contains[X, y]  ==>  X subsumes y
+   *
+   *   TODO: Document cases with more comments.
    */
-  // import reporting.trace
-  final def subsumes(y: CaptureRef)(using Context): Boolean = // trace.force(i"subsumes $this, $y"):
+  final def subsumes(y: CaptureRef)(using Context): Boolean =
 
     def subsumingRefs(x: Type, y: Type): Boolean = x match
       case x: CaptureRef => y match
@@ -136,11 +142,13 @@ trait CaptureRef extends TypeProxy, ValueType:
               case _ => false
           || viaInfo(y.info)(subsumingRefs(this, _))
         case MaybeCapability(y1) => this.stripMaybe.subsumes(y1)
-        case y: TypeRef if y.symbol.info.derivesFrom(defn.Caps_CapSet) =>
+        case y: TypeRef if y.derivesFrom(defn.Caps_CapSet) =>
           y.info match
-            case _: TypeAlias => y.captureSetOfInfo.elems.forall(this.subsumes)
             case TypeBounds(_, hi: CaptureRef) => this.subsumes(hi)
             case _ => y.captureSetOfInfo.elems.forall(this.subsumes)
+        case AnnotatedType(parent, ann)
+        if ann.symbol.isRetains && parent.derivesFrom(defn.Caps_CapSet) =>
+          ann.tree.toCaptureSet.elems.forall(this.subsumes)
         case _ => false
     || this.match
         case ReachCapability(x1) => x1.subsumes(y.stripReach)
@@ -149,8 +157,6 @@ trait CaptureRef extends TypeProxy, ValueType:
         case x: TypeRef if assumedContainsOf(x).contains(y) => true
         case x: TypeRef if x.derivesFrom(defn.Caps_CapSet) =>
           x.info match
-            case _: TypeAlias =>
-              x.captureSetOfInfo.elems.exists(_.subsumes(y))
             case TypeBounds(lo: CaptureRef, _) =>
               lo.subsumes(y)
             case _ =>
