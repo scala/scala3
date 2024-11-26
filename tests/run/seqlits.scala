@@ -42,6 +42,7 @@ object SeqLits:
     val _: Seq[Seq[Int]] = ss2
     val vs: Vector[Vector[Int]] = [[1], [2, 3], []]
     val ab: ArrayBuffer[Set[String]] = [["hello", "world"], []]
+    ab += ["!"]
     val sbs: Set[BitSet] = [[1], [2, 3], []]
     val mbs: Map[Int, BitSet] = [1 -> [1], 2 -> [1, 2], 0 -> []]
     val hbs: HashMap[Int, Seq[BitSet]] = [1 -> [[1], [2, 3]], 2 -> [[]], 0 -> []]
