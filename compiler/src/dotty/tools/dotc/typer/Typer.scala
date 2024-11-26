@@ -2706,7 +2706,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             body1.isInstanceOf[RefTree] && !isWildcardArg(body1)
             || body1.isInstanceOf[Literal]
           val symTp =
-            if isStableIdentifierOrLiteral || pt.isNamedTupleType then pt
+            if isStableIdentifierOrLiteral || pt.dealias.isNamedTupleType then pt
               // need to combine tuple element types with expected named type
             else if isWildcardStarArg(body1)
                     || pt == defn.ImplicitScrutineeTypeRef
