@@ -142,18 +142,17 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
 
   /** All term arguments of an application in a single flattened list */
   def allTermArguments(tree: Tree): List[Tree] = unsplice(tree) match {
-    case Apply(fn, args) => allTermArguments(fn) ::: args
+    case Apply(fn, args) => allTermArguments(fn) ::: args.map(stripNamedArg)
     case TypeApply(fn, args) => allTermArguments(fn)
-    // TOOD(mbovel): is it really safe to skip all blocks here and in `allArguments`?
-    case Block(_, expr) => allTermArguments(expr)
+    case Block(Nil, expr) => allTermArguments(expr)
     case _ => Nil
   }
 
   /** All type and term arguments of an application in a single flattened list */
   def allArguments(tree: Tree): List[Tree] = unsplice(tree) match {
-    case Apply(fn, args) => allArguments(fn) ::: args
-    case TypeApply(fn, args) => allArguments(fn) ::: args
-    case Block(_, expr) => allArguments(expr)
+    case Apply(fn, args) => allArguments(fn) ::: args.map(stripNamedArg)
+    case TypeApply(fn, args) => allArguments(fn) ::: args.map(stripNamedArg)
+    case Block(Nil, expr) => allArguments(expr)
     case _ => Nil
   }
 

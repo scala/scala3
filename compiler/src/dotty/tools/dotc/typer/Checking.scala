@@ -1415,26 +1415,21 @@ trait Checking {
   /** Check arguments of annotations */
   private def checkAnnotTree(tree: Tree)(using Context): Tree =
     val cls = Annotations.annotClass(tree)
-    tree match
-      case Apply(tycon, arg :: Nil) if cls == defn.TargetNameAnnot =>
-        arg match
-          case Literal(Constant("")) =>
-            report.error(em"target name cannot be empty", arg.srcPos)
-          case Literal(_) => // ok
-          case _ =>
-            report.error(em"@${cls.name} needs a string literal as argument", arg.srcPos)
-        tree
-      case _ =>
-        tree.find(!isValidAnnotSubtree(_)) match
-          case None => tree
-          case Some(invalidSubTree) =>
-            errorTree(
-              EmptyTree,
-              em"""Implementation restriction: expression cannot be used inside an annotation argument.
-                  |Tree: ${invalidSubTree}
-                  |Type: ${invalidSubTree.tpe}""",
-              invalidSubTree.srcPos
-            )
+    if cls == defn.TargetNameAnnot then
+      allArguments(tree) match
+        case List(Literal(Constant(name: String))) if !name.isEmpty => tree
+        case _ => errorTree(tree, em"@${cls.name} needs a non-empty string literal as argument")
+    else
+      tree.find(!isValidAnnotSubtree(_)) match
+        case None => tree
+        case Some(invalidSubTree) =>
+          errorTree(
+            EmptyTree,
+            em"""Implementation restriction: expression cannot be used inside an annotation argument.
+                |Tree: ${invalidSubTree}
+                |Type: ${invalidSubTree.tpe}""",
+            invalidSubTree.srcPos
+          )
 
   /** Returns `true` if this tree can appear inside an annotation argument. */
   private def isValidAnnotSubtree(subTree: Tree) =

@@ -171,13 +171,14 @@ extension (tree: Tree)
         refs
 
   /** The arguments of a @retains, @retainsCap or @retainsByName annotation */
-  def retainedElems(using Context): List[Tree] = tree match
-    case Apply(_, Typed(SeqLiteral(elems, _), _) :: Nil) =>
-      elems
-    case _ =>
-      if tree.symbol.maybeOwner == defn.RetainsCapAnnot
-      then ref(defn.captureRoot.termRef) :: Nil
-      else Nil
+  def retainedElems(using Context): List[Tree] =
+    tpd.allTermArguments(tree) match
+      case List(Typed(SeqLiteral(elems, _), _)) =>
+        elems
+      case _ =>
+        if tree.symbol.maybeOwner == defn.RetainsCapAnnot
+        then ref(defn.captureRoot.termRef) :: Nil
+        else Nil
 
 extension (tp: Type)
 

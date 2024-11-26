@@ -2,6 +2,6 @@
 5 |def x: Int @nowarn @main @Foo @Bar("hello") = "abc" // error
   |                                              ^^^^^
   |                                              Found:    ("abc" : String)
-  |                                              Required: Int @nowarn() @main @Foo @Bar("hello")
+  |                                              Required: Int @nowarn() @main @Foo @Bar(s = "hello")
   |
   | longer explanation available when compiling with `-explain`
