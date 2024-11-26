@@ -278,7 +278,7 @@ SimpleExpr        ::=  SimpleRef
                     |  ‘new’ ConstrApp {‘with’ ConstrApp} [TemplateBody]        New(constr | templ)
                     |  ‘new’ TemplateBody
                     |  ‘(’ ExprsInParens ‘)’                                    Parens(exprs)
-                    |  ‘[’ ExprInBrackets ‘)’                                   SeqLiteral(exprs, TypeTree())
+                    |  ‘[’ ExprInParens {‘,’ ExprInParens} ‘]’                  SeqLiteral(exprs, TypeTree())
                     |  SimpleExpr ‘.’ id                                        Select(expr, id)
                     |  SimpleExpr ‘.’ MatchClause
                     |  SimpleExpr TypeArgs                                      TypeApply(expr, args)
@@ -300,7 +300,6 @@ TypeSplice        ::= spliceId                                                  
                     |  ‘$’ ‘{’ Pattern ‘}’                                      -- when inside quoted type pattern -- deprecated syntax
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
                     |  NamedExprInParens {‘,’ NamedExprInParens}
-ExprsInBrackets   ::=  ExprInParens {‘,’ ExprInParens}
 ExprInParens      ::=  PostfixExpr ‘:’ Type                                     -- normal Expr allows only RefinedType here
                     |  Expr
 NamedExprInParens ::=  id '=' ExprInParens
