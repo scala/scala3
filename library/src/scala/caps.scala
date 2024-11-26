@@ -33,7 +33,7 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
    *  @retains annotation. E.g. `^{x, Y^}` is represented as `@retains(x, capsOf[Y])`.
    */
   @compileTimeOnly("Should be be used only internally by the Scala compiler")
-  def capsOf[CS]: Any = ???
+  def capsOf[CS >: CapSet <: CapSet @retainsCap]: Any = ???
 
   /** Reach capabilities x* which appear as terms in @retains annotations are encoded
    *  as `caps.reachCapability(x)`. When converted to CaptureRef types in capture sets

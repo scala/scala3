@@ -161,7 +161,9 @@ sealed abstract class CaptureSet extends Showable:
     def debugInfo(using Context) = i"$this accountsFor $x, which has capture set ${x.captureSetOfInfo}"
     def test(using Context) = reporting.trace(debugInfo):
       elems.exists(_.subsumes(x))
-      || !x.isMaxCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
+      || !x.isMaxCapability
+        && !x.derivesFrom(defn.Caps_CapSet)
+        && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
     comparer match
       case comparer: ExplainingTypeComparer => comparer.traceIndented(debugInfo)(test)
       case _ => test

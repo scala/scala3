@@ -13,13 +13,7 @@ def either[T1, T2, Cap^](
   val left = src1.transformValuesWith(Left(_))
   val right = src2.transformValuesWith(Right(_))
   race[Either[T1, T2], Cap](left, right)
-  // An explcit type argument is required here because the second argument is
-  // inferred as `CapSet^{Cap^}` instead of `Cap`.
+  // Explcit type arguments are required here because the second argument
+  // is inferred as `CapSet^{Cap^}` instead of `Cap`.
   // Although `CapSet^{Cap^}` subsums `Cap` in terms of capture set,
   // `Cap` is not a subtype of `CapSet^{Cap^}` in terms of subtyping.
-
-
-
-
-
-

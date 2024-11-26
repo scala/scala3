@@ -16,6 +16,6 @@ class Concrete3 extends Abstract[CapSet^{}]:
   type C = CapSet^{} | CapSet^{}
   def boom() = ()
 
-class Concrete4 extends Abstract[CapSet^{}]:
-  type C = Nothing // error
+class Concrete4 extends Abstract[CapSet^]:
+  type C = CapSet // error
   def boom() = ()
