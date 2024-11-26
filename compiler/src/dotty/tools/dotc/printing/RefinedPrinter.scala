@@ -1039,7 +1039,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     def recur(t: untpd.Tree): Text = t match
       case Apply(fn, Nil) => recur(fn)
       case Apply(fn, args) =>
-        val explicitArgs = args.filterNot(_.symbol.name.is(DefaultGetterName))
+        val explicitArgs = args.filterNot(untpd.stripNamedArg(_).symbol.name.is(DefaultGetterName))
         recur(fn) ~ "(" ~ toTextGlobal(explicitArgs, ", ") ~ ")"
       case TypeApply(fn, args) => recur(fn) ~ "[" ~ toTextGlobal(args, ", ") ~ "]"
       case Select(qual, nme.CONSTRUCTOR) => recur(qual)
