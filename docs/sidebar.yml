@@ -72,6 +72,7 @@ subsection:
           - page: reference/other-new-features/export.md
           - page: reference/other-new-features/opaques.md
           - page: reference/other-new-features/opaques-details.md
+          - page: reference/other-new-features/toplevel-definitions.md
           - page: reference/other-new-features/named-tuples.md
           - page: reference/other-new-features/open-classes.md
           - page: reference/other-new-features/parameter-untupling.md
@@ -124,7 +125,6 @@ subsection:
           - page: reference/dropped-features/type-projection.md
           - page: reference/dropped-features/do-while.md
           - page: reference/dropped-features/procedure-syntax.md
-          - page: reference/dropped-features/package-objects.md
           - page: reference/dropped-features/early-initializers.md
           - page: reference/dropped-features/class-shadowing.md
           - page: reference/dropped-features/class-shadowing-spec.md
@@ -163,6 +163,7 @@ subsection:
           - page: reference/experimental/typeclasses.md
           - page: reference/experimental/runtimeChecked.md
           - page: reference/experimental/better-fors.md
+          - page: reference/experimental/package-object-values.md
       - page: reference/syntax.md
       - title: Language Versions
         index: reference/language-versions/language-versions.md

@@ -2317,7 +2317,7 @@ class ParamsNoInline(owner: Symbol)(using Context)
   def explain(using Context) = ""
 }
 
-class JavaSymbolIsNotAValue(symbol: Symbol)(using Context) extends TypeMsg(JavaSymbolIsNotAValueID) {
+class SymbolIsNotAValue(symbol: Symbol)(using Context) extends TypeMsg(SymbolIsNotAValueID) {
   def msg(using Context) =
     val kind =
       if symbol is Package then i"$symbol"
@@ -3331,14 +3331,14 @@ final class QuotedTypeMissing(tpe: Type)(using Context) extends StagingMessage(Q
 
   private def witness = defn.QuotedTypeClass.typeRef.appliedTo(tpe)
 
-  override protected def msg(using Context): String = 
+  override protected def msg(using Context): String =
     i"Reference to $tpe within quotes requires a given ${witness} in scope"
 
   override protected def explain(using Context): String =
-    i"""Referencing `$tpe` inside a quoted expression requires a `${witness}` to be in scope. 
+    i"""Referencing `$tpe` inside a quoted expression requires a `${witness}` to be in scope.
         |Since Scala is subject to erasure at runtime, the type information will be missing during the execution of the code.
-        |`${witness}` is therefore needed to carry `$tpe`'s type information into the quoted code. 
-        |Without an implicit `${witness}`, the type `$tpe` cannot be properly referenced within the expression. 
+        |`${witness}` is therefore needed to carry `$tpe`'s type information into the quoted code.
+        |Without an implicit `${witness}`, the type `$tpe` cannot be properly referenced within the expression.
         |To resolve this, ensure that a `${witness}` is available, either through a context-bound or explicitly.
         |"""
 
@@ -3350,7 +3350,7 @@ final class AmbiguousNamedTupleAssignment(key: Name, value: untpd.Tree)(using Co
       |not as an assignment.
       |
       |To assign a value, use curly braces: `{${key} = ${value}}`."""
-  
+
   override protected def explain(using Context): String = ""
 
 class AmbiguousNamedTupleInfixApply()(using Context) extends SyntaxMsg(AmbiguousNamedTupleInfixApplyID):

@@ -132,7 +132,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case MissingCompanionForStaticID // errorNumber: 116
   case PolymorphicMethodMissingTypeInParentID // errorNumber: 117
   case ParamsNoInlineID // errorNumber: 118
-  case JavaSymbolIsNotAValueID // errorNumber: 119
+  case SymbolIsNotAValueID // errorNumber: 119
   case DoubleDefinitionID // errorNumber: 120
   case MatchCaseOnlyNullWarningID // errorNumber: 121
   case ImportedTwiceID // errorNumber: 122
