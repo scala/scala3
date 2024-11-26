@@ -443,12 +443,10 @@ object Implicits:
   extends SearchResult with RefAndLevel with Showable:
     final def found = ref :: Nil
 
-  def isAmbiguousGiven(tree: Tree) = tree.tpe.isInstanceOf[AmbiguousImplicits | TooUnspecific]
-
   /** A failed search */
   case class SearchFailure(tree: Tree) extends SearchResult {
     require(tree.tpe.isInstanceOf[SearchFailureType], s"unexpected type for ${tree}")
-    final def isAmbiguous: Boolean = isAmbiguousGiven(tree)
+    final def isAmbiguous: Boolean = tree.tpe.isInstanceOf[AmbiguousImplicits | TooUnspecific]
     final def reason: SearchFailureType = tree.tpe.asInstanceOf[SearchFailureType]
     final def found = tree.tpe match
       case tpe: AmbiguousImplicits => tpe.alt1.ref :: tpe.alt2.ref :: Nil
@@ -622,6 +620,15 @@ object Implicits:
   private def isUnderSpecifiedArgument(tp: Type)(using Context): Boolean =
       tp.isRef(defn.NothingClass) || tp.isRef(defn.NullClass) || (tp eq NoPrefix)
 
+  /** Is `tp` not specific enough to warrant an implicit search for it?
+   *  This is the case for
+   *    - `?`, `Any`, `AnyRef`,
+   *    - conversions from a bottom type, or to an underspecified type, or to `Unit
+   *    - bounded wildcard types with underspecified upper bound
+   *  The method is usually called after transforming a type with `wildApprox`,
+   *  which means that type variables with underspecified upper constraints are also
+   *  underspecified.
+   */
   def isUnderspecified(tp: Type)(using Context): Boolean = tp.stripTypeVar match
     case tp: WildcardType =>
       !tp.optBounds.exists || isUnderspecified(tp.optBounds.hiBound)

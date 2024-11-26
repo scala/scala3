@@ -4913,7 +4913,7 @@ object Types extends TypeUtils {
     /** The state owning the variable. This is at first `creatorState`, but it can
      *  be changed to an enclosing state on a commit.
      */
-    private[dotc] var owningState: WeakReference[TyperState] | Null =
+    private[core] var owningState: WeakReference[TyperState] | Null =
       if (creatorState == null) null else new WeakReference(creatorState)
 
     /** The nesting level of this type variable in the current typer state. This is usually

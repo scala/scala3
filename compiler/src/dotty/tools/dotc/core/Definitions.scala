@@ -583,7 +583,6 @@ class Definitions {
   def IArrayModuleClass: Symbol = IArrayModule.moduleClass
 
   @tu lazy val ExpressibleAsCollectionLiteralClass: ClassSymbol = requiredClass("scala.compiletime.ExpressibleAsCollectionLiteral")
-    @tu lazy val ExpressibleACL_fromLiteral: Symbol = ExpressibleAsCollectionLiteralClass.requiredMethod("fromLiteral")
 
   @tu lazy val UnitType: TypeRef = valueTypeRef("scala.Unit", java.lang.Void.TYPE, UnitEnc, nme.specializedTypeNames.Void)
   def UnitClass(using Context): ClassSymbol = UnitType.symbol.asClass
