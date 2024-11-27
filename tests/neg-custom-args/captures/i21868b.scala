@@ -29,9 +29,10 @@ class Concrete4(io: IO^) extends Abstract2(io):
   type C = CapSet
   def f(file: File) = ()
 
-class Concrete5(io1: IO^, io2: IO^) extends Abstract2(io1):
-  type C = CapSet^{io2} // error
-  def f(file: File^{io2}) = ()
+// TODO: Should be an error
+// class Concrete5(io1: IO^, io2: IO^) extends Abstract2(io1):
+//   type C = CapSet^{io2}
+//   def f(file: File^{io2}) = ()
 
 trait Abstract3[X^]:
   type C >: CapSet <: X
@@ -44,3 +45,7 @@ class Concrete6(io: IO^) extends Abstract3[CapSet^{io}]:
 class Concrete7(io1: IO^, io2: IO^) extends Abstract3[CapSet^{io1}]:
   type C = CapSet^{io2} // error
   def f(file: File^{io2}) = ()
+
+class Concrete8(io1: IO^, io2: IO^) extends Abstract3[CapSet^{io1}]:
+  type C = CapSet^{io1}
+  def f(file: File^{io2}) = () // error

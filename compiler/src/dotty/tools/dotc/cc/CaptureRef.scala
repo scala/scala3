@@ -94,15 +94,15 @@ trait CaptureRef extends TypeProxy, ValueType:
     myCaptureSetRunId = NoRunId
 
   /**  x subsumes x
-   *   x subsumes x.f
-   *   x =:= y ==> x subsumes y
+   *   x =:= y       ==>  x subsumes y
+   *   x subsumes y  ==>  x subsumes y.f
    *   x subsumes y  ==>  x* subsumes y, x subsumes y?
    *   x subsumes y  ==>  x* subsumes y*, x? subsumes y?
    *   x: x1.type /\ x1 subsumes y  ==>  x subsumes y
-   *   X = CapSet^cx, exists rx in cx, rx subsumes y ==>  X subsumes y
-   *   Y = CapSet^cy, forall ry in cy, x subsumes ry ==>  x subsumes Y
-   *   X: CapSet^c1...CapSet^c2, (CapSet^c1) subsumes y  ==> X subsumes y
-   *   Y: CapSet^c1...CapSet^c2, x subsumes (CapSet^c2) ==> x subsumes Y
+   *   X = CapSet^cx, exists rx in cx, rx subsumes y     ==>  X subsumes y
+   *   Y = CapSet^cy, forall ry in cy, x subsumes ry     ==>  x subsumes Y
+   *   X: CapSet^c1...CapSet^c2, (CapSet^c1) subsumes y  ==>  X subsumes y
+   *   Y: CapSet^c1...CapSet^c2, x subsumes (CapSet^c2)  ==>  x subsumes Y
    *   Contains[X, y]  ==>  X subsumes y
    *
    *   TODO: Document cases with more comments.
