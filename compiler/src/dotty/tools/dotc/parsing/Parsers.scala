@@ -3285,13 +3285,14 @@ object Parsers {
       case SEALED      => Mod.Sealed()
       case IDENTIFIER =>
         name match {
-          case nme.erased if in.erasedEnabled => Mod.Erased()
           case nme.inline => Mod.Inline()
           case nme.opaque => Mod.Opaque()
           case nme.open => Mod.Open()
           case nme.transparent => Mod.Transparent()
           case nme.infix => Mod.Infix()
           case nme.tracked => Mod.Tracked()
+          case nme.erased if in.erasedEnabled => Mod.Erased()
+          case nme.mut if Feature.ccEnabled => Mod.Mut()
         }
     }
 
