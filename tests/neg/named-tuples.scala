@@ -1,6 +1,7 @@
 import annotation.experimental
+import language.experimental.namedTuples
 
-object Test:
+@experimental object Test:
 
   type Person = (name: String, age: Int)
   val person = (name = "Bob", age = 33): (name: String, age: Int)

@@ -1,3 +1,5 @@
+import scala.language.experimental.namedTuples
+
 object Test:
   def age: Int = ???
   def age_=(x: Int): Unit = ()

@@ -792,7 +792,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def tryNamedTupleSelection() =
       val namedTupleElems = qual.tpe.widenDealias.namedTupleElementTypes
       val nameIdx = namedTupleElems.indexWhere(_._1 == selName)
-      if nameIdx >= 0 && sourceVersion.isAtLeast(`3.6`) then
+      if nameIdx >= 0 && Feature.enabled(Feature.namedTuples) then
         typed(
           untpd.Apply(
             untpd.Select(untpd.TypedSplice(qual), nme.apply),

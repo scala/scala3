@@ -1,3 +1,4 @@
+import language.experimental.namedTuples
 var age = 22
 val x = (age = 1)
 val _: (age: Int) = x

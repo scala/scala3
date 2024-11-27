@@ -1,3 +1,4 @@
+import language.experimental.namedTuples
 import NamedTuple.{NamedTuple, AnyNamedTuple}
 
 /* This is a demonstrator that shows how to map regular for expressions to
