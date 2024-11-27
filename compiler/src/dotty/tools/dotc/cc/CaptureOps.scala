@@ -615,6 +615,16 @@ extension (sym: Symbol)
                 case c: TypeRef => c.symbol == sym
                 case _ => false
 
+  def isUpdateMethod(using Context): Boolean =
+    sym.isAllOf(Mutable | Method, butNot = Accessor)
+
+  def isReadOnlyMethod(using Context): Boolean =
+    sym.is(Method, butNot = Mutable | Accessor) && sym.owner.derivesFrom(defn.Caps_Mutable)
+
+  def isInReadOnlyMethod(using Context): Boolean =
+    if sym.is(Method) && sym.owner.isClass then isReadOnlyMethod
+    else sym.owner.isInReadOnlyMethod
+
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */
   def isBoxed(using Context): Boolean = tp.annot match
