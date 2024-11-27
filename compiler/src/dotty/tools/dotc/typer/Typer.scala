@@ -3404,7 +3404,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   /** Translate tuples of all arities */
   def typedTuple(tree: untpd.Tuple, pt: Type)(using Context): Tree =
     val tree1 = desugar.tuple(tree, pt)
-    checkAmbiguousNamedTupleAssignment(tree)
+    checkDeprecatedAssignmentSyntax(tree)
     if tree1 ne tree then typed(tree1, pt)
     else
       val arity = tree.trees.length
@@ -3433,7 +3433,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
  /** Checks if `tree` is a named tuple with one element that could be
   *  interpreted as an assignment, such as `(x = 1)`. If so, issues a warning.
   */
-  def checkAmbiguousNamedTupleAssignment(tree: untpd.Tuple)(using Context): Unit =
+  def checkDeprecatedAssignmentSyntax(tree: untpd.Tuple)(using Context): Unit =
     tree.trees match
       case List(NamedArg(name, value)) =>
         val tmpCtx = ctx.fresh.setNewTyperState()
@@ -3441,7 +3441,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         if !tmpCtx.reporter.hasErrors then
           // If there are no errors typing the above, then the named tuple is
           // ambiguous and we issue a warning.
-          report.migrationWarning(AmbiguousNamedTupleAssignment(name, value), tree.srcPos)
+          report.migrationWarning(DeprecatedAssignmentSyntax(name, value), tree.srcPos)
       case _ => ()
 
   /** Retrieve symbol attached to given tree */
