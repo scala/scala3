@@ -5,3 +5,4 @@
   |  not as an assignment.
   |
   |  To assign a value, use curly braces: `{age = 29}`.
+  |  This can be rewritten automatically under -rewrite -source 3.6-migration.

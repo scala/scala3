@@ -3432,6 +3432,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           // If there are no errors typing the above, then the named tuple is
           // ambiguous and we issue a warning.
           report.migrationWarning(DeprecatedAssignmentSyntax(name, value), tree.srcPos)
+          if MigrationVersion.AmbiguousNamedTupleSyntax.needsPatch then
+            patch(tree.source, Span(tree.span.start, tree.span.start + 1), "{")
+            patch(tree.source, Span(tree.span.end - 1, tree.span.end), "}")
       case _ => ()
 
   /** Retrieve symbol attached to given tree */
