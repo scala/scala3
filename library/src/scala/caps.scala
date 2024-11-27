@@ -19,6 +19,8 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
   /** Carrier trait for capture set type parameters */
   trait CapSet extends Any
 
+  trait Mutable
+
   /** A type constraint expressing that the capture set `C` needs to contain
    *  the capability `R`
    */

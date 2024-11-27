@@ -895,6 +895,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       if (flags.is(Extension)) writeModTag(EXTENSION)
       if (flags.is(ParamAccessor)) writeModTag(PARAMsetter)
       if (flags.is(SuperParamAlias)) writeModTag(PARAMalias)
+      if (flags.is(Mut)) writeModTag(MUT)
       assert(!(flags.is(Label)))
     }
     else {
