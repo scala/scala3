@@ -22,6 +22,9 @@ class Concrete4(a: AnyRef^) extends Abstract[CapSet^{a}]:
   def boom(): AnyRef^{a} = a // error
 
 class Concrete5(a: AnyRef^, b: AnyRef^) extends Abstract[CapSet^{a}]:
-  // TODO: Crash with the type member
-  // type C = CapSet^{a}
+  type C = CapSet^{a}
   def boom(): AnyRef^{b} = b // error
+
+class Concrete6(a: AnyRef^, b: AnyRef^) extends Abstract[CapSet^{a}]:
+  def boom(): AnyRef^{b} = b // error
+  

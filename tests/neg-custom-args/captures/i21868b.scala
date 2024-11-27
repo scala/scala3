@@ -30,9 +30,15 @@ class Concrete4(io: IO^) extends Abstract2(io):
   def f(file: File) = ()
 
 // TODO: Should be an error
-// class Concrete5(io1: IO^, io2: IO^) extends Abstract2(io1):
-//   type C = CapSet^{io2}
-//   def f(file: File^{io2}) = ()
+class Concrete5(io1: IO^, io2: IO^) extends Abstract2(io1):
+  // Similar to Concrete8, this type member should have overriding error.
+  // Parent class is Abstract2 { val io = Concrete5.this.io1 }
+  // Abstract2.this.C >: CapSet <: CapSet^{Concrete5.this.io1}
+  // Concrete5.this.C = CapSet^{Concrete5.this.io2}
+  // CapSet^{Concrete5.this.io2} !<:< CapSet^{Concrete5.this.io1}
+  // Hence, Concrete5.this.C !<:< Abstract2.this.C
+  type C = CapSet^{io2}
+  def f(file: File^{io2}) = ()
 
 trait Abstract3[X^]:
   type C >: CapSet <: X

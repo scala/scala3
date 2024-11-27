@@ -146,9 +146,8 @@ trait CaptureRef extends TypeProxy, ValueType:
           y.info match
             case TypeBounds(_, hi: CaptureRef) => this.subsumes(hi)
             case _ => y.captureSetOfInfo.elems.forall(this.subsumes)
-        case AnnotatedType(parent, ann)
-        if ann.symbol.isRetains && parent.derivesFrom(defn.Caps_CapSet) =>
-          ann.tree.toCaptureSet.elems.forall(this.subsumes)
+        case CapturingType(parent, refs) if parent.derivesFrom(defn.Caps_CapSet) =>
+          refs.elems.forall(this.subsumes)
         case _ => false
     || this.match
         case ReachCapability(x1) => x1.subsumes(y.stripReach)
@@ -161,9 +160,8 @@ trait CaptureRef extends TypeProxy, ValueType:
               lo.subsumes(y)
             case _ =>
               x.captureSetOfInfo.elems.exists(_.subsumes(y))
-        case AnnotatedType(parent, ann)
-        if ann.symbol.isRetains && parent.derivesFrom(defn.Caps_CapSet) =>
-          ann.tree.toCaptureSet.elems.exists(_.subsumes(y))
+        case CapturingType(parent, refs) if parent.derivesFrom(defn.Caps_CapSet) =>
+          refs.elems.exists(_.subsumes(y))
         case _ => false
   end subsumes
 
