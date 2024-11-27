@@ -472,7 +472,8 @@ class CheckCaptures extends Recheck, SymTransformer:
     def includeCallCaptures(sym: Symbol, resType: Type, pos: SrcPos)(using Context): Unit = resType match
       case _: MethodOrPoly => // wait until method is fully applied
       case _ =>
-        if sym.exists && curEnv.isOpen then markFree(capturedVars(sym), pos)
+        if sym.exists then
+          if curEnv.isOpen then markFree(capturedVars(sym), pos)
 
     /** Under the sealed policy, disallow the root capability in type arguments.
      *  Type arguments come either from a TypeApply node or from an AppliedType
@@ -1472,18 +1473,16 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         /** Check that overrides don't change the @use status of their parameters */
         override def additionalChecks(member: Symbol, other: Symbol)(using Context): Unit =
+          def fail(msg: String) =
+            report.error(
+              OverrideError(msg, self, member, other, self.memberInfo(member), self.memberInfo(other)),
+              if member.owner == clazz then member.srcPos else clazz.srcPos)
           for
             (params1, params2) <- member.rawParamss.lazyZip(other.rawParamss)
             (param1, param2) <- params1.lazyZip(params2)
           do
             if param1.hasAnnotation(defn.UseAnnot) != param2.hasAnnotation(defn.UseAnnot) then
-              report.error(
-                OverrideError(
-                    i"has a parameter ${param1.name} with different @use status than the corresponding parameter in the overridden definition",
-                    self, member, other, self.memberInfo(member), self.memberInfo(other)
-                  ),
-                if member.owner == clazz then member.srcPos else clazz.srcPos
-              )
+              fail(i"has a parameter ${param1.name} with different @use status than the corresponding parameter in the overridden definition")
       end OverridingPairsCheckerCC
 
       def traverse(t: Tree)(using Context) =
