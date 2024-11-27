@@ -234,6 +234,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Tracked()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Tracked)
 
+    case class Mut()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Mut)
+
     /** Used under pureFunctions to mark impure function types `A => B` in `FunctionWithMods` */
     case class Impure()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Impure)
   }

@@ -229,6 +229,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   OPEN                                                             -- an open class
                   INVISIBLE                                                        -- invisible during typechecking
                   TRACKED                                                          -- a tracked class parameter / a dependent class
+                  MUT                                                              -- an update method (cc only)
                   Annotation
 
   Variance      = STABLE                                                           -- invariant
@@ -511,6 +512,7 @@ object TastyFormat {
   final val EMPTYCLAUSE = 45
   final val SPLITCLAUSE = 46
   final val TRACKED = 47
+  final val MUT = 48
 
   // Tree Cat. 2:    tag Nat
   final val firstNatTreeTag = SHAREDterm
@@ -703,7 +705,8 @@ object TastyFormat {
        | ANNOTATION
        | PRIVATEqualified
        | PROTECTEDqualified
-       | TRACKED => true
+       | TRACKED
+       | MUT => true
     case _ => false
   }
 
