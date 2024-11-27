@@ -3350,6 +3350,7 @@ final class DeprecatedAssignmentSyntax(key: Name, value: untpd.Tree)(using Conte
       |not as an assignment.
       |
       |To assign a value, use curly braces: `{${key} = ${value}}`."""
+      + Message.rewriteNotice("This", version = SourceVersion.`3.6-migration`)
 
   override protected def explain(using Context): String = ""
 

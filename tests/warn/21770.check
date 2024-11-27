@@ -5,3 +5,4 @@
   |         not as an assignment.
   |
   |         To assign a value, use curly braces: `{cache = Some(i)}`.
+  |         This can be rewritten automatically under -rewrite -source 3.6-migration.
