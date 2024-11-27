@@ -21,7 +21,7 @@ import config.MigrationVersion
 import config.Printers.refcheck
 import reporting.*
 import Constants.Constant
-import cc.stripCapturing
+import cc.{stripCapturing, isUpdateMethod}
 
 object RefChecks {
   import tpd.*
@@ -615,6 +615,8 @@ object RefChecks {
         overrideError("is erased, cannot override non-erased member")
       else if (other.is(Erased) && !member.isOneOf(Erased | Inline)) // (1.9)
         overrideError("is not erased, cannot override erased member")
+      else if member.isUpdateMethod && !other.is(Mutable) then
+        overrideError(i"is an update method, cannot override a read-only method")
       else if other.is(Inline) && !member.is(Inline) then // (1.10)
         overrideError("is not inline, cannot implement an inline method")
       else if (other.isScala2Macro && !member.isScala2Macro) // (1.11)
