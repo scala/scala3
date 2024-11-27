@@ -10,6 +10,10 @@ Support for collection literals is enabled by the experimental language import
 ```scala
 import scala.language.experimental.collectionLiterals
 ```
+This feature requires a source version 3.7 or higher. One can specify both import and source version on the command line with these settings:
+```
+ -source 3.7 -language:experimental.collectionLiterals
+```
 Collection literals are comma-separated sequences of expressions, like these:
 ```scala
   val oneTwoThree = [1, 2, 3]

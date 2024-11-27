@@ -2747,8 +2747,9 @@ object Parsers {
           canApply = false
           blockExpr()
         case LBRACKET if in.featureEnabled(Feature.collectionLiterals) =>
-          inBrackets:
-            SeqLiteral(exprsInBrackets(), TypeTree())
+          atSpan(in.offset):
+            inBrackets:
+              SeqLiteral(exprsInBrackets(), TypeTree())
         case QUOTE =>
           quote(location.inPattern)
         case NEW =>
