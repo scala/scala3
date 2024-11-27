@@ -4667,7 +4667,8 @@ object Parsers {
           syntaxError(msg, tree.span)
           Nil
         tree match
-          case tree: MemberDef if !(tree.mods.flags & (ModifierFlags &~ Mutable)).isEmpty =>
+          case tree: MemberDef
+          if !(tree.mods.flags & ModifierFlags).isEmpty && !tree.mods.isMutableVar => // vars are OK, mut defs are not
             fail(em"refinement cannot be ${(tree.mods.flags & ModifierFlags).flagStrings().mkString("`", "`, `", "`")}")
           case tree: DefDef if tree.termParamss.nestedExists(!_.rhs.isEmpty) =>
             fail(em"refinement cannot have default arguments")
