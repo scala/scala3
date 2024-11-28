@@ -117,7 +117,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *  The info of these symbols is made fluid.
    */
   def isPreCC(sym: Symbol)(using Context): Boolean =
-    // TODO: check type members as well
     sym.isTerm && sym.maybeOwner.isClass
     && !sym.is(Module)
     && !sym.owner.is(CaptureChecked)
