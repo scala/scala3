@@ -1,3 +1,4 @@
+import scala.language.experimental.namedTuples
 
 class FromFields extends Selectable:
   type Fields = (xs: List[Int], poly: [T] => (x: List[T]) => Option[T])

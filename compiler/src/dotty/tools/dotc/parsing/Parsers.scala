@@ -651,7 +651,7 @@ object Parsers {
       else leading :: Nil
 
     def maybeNamed(op: () => Tree): () => Tree = () =>
-      if isIdent && in.lookahead.token == EQUALS && sourceVersion.isAtLeast(`3.6`) then
+      if isIdent && in.lookahead.token == EQUALS && in.featureEnabled(Feature.namedTuples) then
         atSpan(in.offset):
           val name = ident()
           in.nextToken()
@@ -1133,8 +1133,8 @@ object Parsers {
       if isType then infixOp
       else infixOp.right match
         case Tuple(args) if args.exists(_.isInstanceOf[NamedArg]) && !isNamedTupleOperator =>
-          report.errorOrMigrationWarning(AmbiguousNamedTupleInfixApply(), infixOp.right.srcPos, MigrationVersion.AmbiguousNamedTupleInfixApply)
-          if MigrationVersion.AmbiguousNamedTupleInfixApply.needsPatch then
+          report.errorOrMigrationWarning(DeprecatedInfixNamedArgumentSyntax(), infixOp.right.srcPos, MigrationVersion.AmbiguousNamedTupleSyntax)
+          if MigrationVersion.AmbiguousNamedTupleSyntax.needsPatch then
             val asApply = cpy.Apply(infixOp)(Select(opInfo.operand, opInfo.operator.name), args)
             patch(source, infixOp.span, asApply.show(using ctx.withoutColors))
             asApply // allow to use pre-3.6 syntax in migration mode
@@ -2166,7 +2166,7 @@ object Parsers {
 
       if namedOK && isIdent && in.lookahead.token == EQUALS then
         commaSeparated(() => namedArgType())
-      else if tupleOK && isIdent && in.lookahead.isColon && sourceVersion.isAtLeast(`3.6`) then
+      else if tupleOK && isIdent && in.lookahead.isColon && in.featureEnabled(Feature.namedTuples) then
         commaSeparated(() => namedElem())
       else
         commaSeparated(() => argType())
