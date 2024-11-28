@@ -1,3 +1,5 @@
+import scala.language.experimental.namedTuples
+
 class C:
   def multi(x: Int, y: Int): Int = x + y
   def **(x: Int, y: Int): Int = x + y

@@ -1,3 +1,4 @@
+import language.experimental.namedTuples
 
 class A
 class B

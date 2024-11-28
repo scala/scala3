@@ -1,3 +1,4 @@
+import language.experimental.namedTuples
 import NamedTuple.toTuple
 
 type Person = (
