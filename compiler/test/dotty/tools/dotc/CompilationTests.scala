@@ -262,7 +262,6 @@ class CompilationTests {
   }
 
   // parallel backend tests
-  @Ignore("Temporarily disabled due to frequent timeouts")
   @Test def parallelBackend: Unit = {
     given TestGroup = TestGroup("parallelBackend")
     val parallelism = Runtime.getRuntime().availableProcessors().min(16)
