@@ -651,7 +651,7 @@ object Parsers {
       else leading :: Nil
 
     def maybeNamed(op: () => Tree): () => Tree = () =>
-      if isIdent && in.lookahead.token == EQUALS && sourceVersion.isAtLeast(`3.6`) then
+      if isIdent && in.lookahead.token == EQUALS && in.featureEnabled(Feature.namedTuples) then
         atSpan(in.offset):
           val name = ident()
           in.nextToken()
@@ -2166,7 +2166,7 @@ object Parsers {
 
       if namedOK && isIdent && in.lookahead.token == EQUALS then
         commaSeparated(() => namedArgType())
-      else if tupleOK && isIdent && in.lookahead.isColon && sourceVersion.isAtLeast(`3.6`) then
+      else if tupleOK && isIdent && in.lookahead.isColon && in.featureEnabled(Feature.namedTuples) then
         commaSeparated(() => namedElem())
       else
         commaSeparated(() => argType())

@@ -1,5 +1,5 @@
--- [E134] Type Error: tests/neg/infix-named-args.scala:2:13 ------------------------------------------------------------
-2 |  def f = 42 + (x = 1) // error // werror
+-- [E134] Type Error: tests/neg/infix-named-args.scala:4:13 ------------------------------------------------------------
+4 |  def f = 42 + (x = 1) // error // werror
   |          ^^^^
   |          None of the overloaded alternatives of method + in class Int with types
   |           (x: Double): Double
@@ -11,29 +11,29 @@
   |           (x: Byte): Int
   |           (x: String): String
   |          match arguments ((x : Int)) (a named tuple)
--- [E204] Syntax Warning: tests/neg/infix-named-args.scala:2:15 --------------------------------------------------------
-2 |  def f = 42 + (x = 1) // error // werror
+-- [E204] Syntax Warning: tests/neg/infix-named-args.scala:4:15 --------------------------------------------------------
+4 |  def f = 42 + (x = 1) // error // werror
   |               ^^^^^^^
   |Ambigious syntax: this infix call argument list is interpreted as single named tuple argument, not as an named arguments list.
   |This can be rewritten automatically under -rewrite -source 3.6-migration.
   |
   | longer explanation available when compiling with `-explain`
--- [E204] Syntax Warning: tests/neg/infix-named-args.scala:5:26 --------------------------------------------------------
-5 |  def g = new C() `multi` (x = 42, y = 27) // werror
+-- [E204] Syntax Warning: tests/neg/infix-named-args.scala:7:26 --------------------------------------------------------
+7 |  def g = new C() `multi` (x = 42, y = 27) // werror
   |                          ^^^^^^^^^^^^^^^^
   |Ambigious syntax: this infix call argument list is interpreted as single named tuple argument, not as an named arguments list.
   |This can be rewritten automatically under -rewrite -source 3.6-migration.
   |
   | longer explanation available when compiling with `-explain`
--- [E204] Syntax Warning: tests/neg/infix-named-args.scala:6:21 --------------------------------------------------------
-6 |  def h = new C() ** (x = 42, y = 27) // werror
+-- [E204] Syntax Warning: tests/neg/infix-named-args.scala:8:21 --------------------------------------------------------
+8 |  def h = new C() ** (x = 42, y = 27) // werror
   |                     ^^^^^^^^^^^^^^^^
   |Ambigious syntax: this infix call argument list is interpreted as single named tuple argument, not as an named arguments list.
   |This can be rewritten automatically under -rewrite -source 3.6-migration.
   |
   | longer explanation available when compiling with `-explain`
--- [E204] Syntax Warning: tests/neg/infix-named-args.scala:13:18 -------------------------------------------------------
-13 |  def f = this ** (x = 2) // werror
+-- [E204] Syntax Warning: tests/neg/infix-named-args.scala:15:18 -------------------------------------------------------
+15 |  def f = this ** (x = 2) // werror
    |                  ^^^^^^^
    |Ambigious syntax: this infix call argument list is interpreted as single named tuple argument, not as an named arguments list.
    |This can be rewritten automatically under -rewrite -source 3.6-migration.
