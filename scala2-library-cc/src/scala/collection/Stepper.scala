@@ -53,7 +53,7 @@ trait Stepper[@specialized(Double, Int, Long) +A] {
     *
     * See method `trySplit` in [[java.util.Spliterator]].
     */
-  def trySplit(): Stepper[A]
+  def trySplit(): Stepper[A]^{this}
 
   /** Returns an estimate of the number of elements of this Stepper, or [[Long.MaxValue]]. See
     * method `estimateSize` in [[java.util.Spliterator]].
@@ -71,7 +71,7 @@ trait Stepper[@specialized(Double, Int, Long) +A] {
     * a [[java.util.Spliterator.OfInt]] (which is a `Spliterator[Integer]`) in the subclass [[IntStepper]]
     * (which is a `Stepper[Int]`).
     */
-  def spliterator[B >: A]: Spliterator[_]
+  def spliterator[B >: A]: Spliterator[_]^{this}
 
   /** Returns a Java [[java.util.Iterator]] corresponding to this Stepper.
     *
@@ -79,7 +79,7 @@ trait Stepper[@specialized(Double, Int, Long) +A] {
     * a [[java.util.PrimitiveIterator.OfInt]] (which is a `Iterator[Integer]`) in the subclass
     * [[IntStepper]] (which is a `Stepper[Int]`).
     */
-  def javaIterator[B >: A]: JIterator[_]
+  def javaIterator[B >: A]: JIterator[_]^{this}
 
   /** Returns an [[Iterator]] corresponding to this Stepper. Note that Iterators corresponding to
     * primitive Steppers box the elements.
