@@ -150,6 +150,7 @@ object CheckCaptures:
                   |is must be a type parameter or abstract type with a caps.CapSet upper bound.""",
               elem.srcPos)
         case ReachCapabilityApply(arg) => check(arg, elem.srcPos)
+        case ReadOnlyCapabilityApply(arg) => check(arg, elem.srcPos)
         case _ => check(elem, elem.srcPos)
 
   /** Under the sealed policy, report an error if some part of `tp` contains the
@@ -1094,6 +1095,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       if tree.isTerm && !pt.isBoxedCapturing && pt != LhsProto then
         markFree(res.boxedCaptureSet, tree.srcPos)
       res
+    end recheck
 
     /** Under the old unsealed policy: check that cap is ot unboxed */
     override def recheckFinish(tpe: Type, tree: Tree, pt: Type)(using Context): Type =

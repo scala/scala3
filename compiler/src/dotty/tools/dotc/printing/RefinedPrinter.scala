@@ -742,6 +742,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case PostfixOp(l, op) =>
         if op.name == nme.CC_REACH then
           changePrec(DotPrec) { toText(l) ~ "*" }
+        else if op.name == nme.CC_READONLY then
+          changePrec(DotPrec) { toText(l) ~ ".rd" }
         else
           changePrec(InfixPrec) { toText(l) ~ " " ~ toText(op) }
       case PrefixOp(op, r) =>
