@@ -2,6 +2,9 @@ import language.experimental.captureChecking
 import caps.Capability
 import caps.use
 
+trait List[+T]:
+  def map[U](f: T => U): List[U]
+
 trait File extends Capability
 class Logger(f: File^) extends Capability // <- will work if we remove the extends clause
 
