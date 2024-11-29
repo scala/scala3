@@ -1588,22 +1588,34 @@ object Parsers {
       case _ => None
     }
 
-    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`]
+    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`.` rd] [`*`]
      *                |  [ { SimpleRef `.` } SimpleRef `.` ] id `^`
      */
     def captureRef(): Tree =
-      val ref = dotSelectors(simpleRef())
-      if isIdent(nme.raw.STAR) then
+
+      def derived(ref: Tree, name: TermName) =
         in.nextToken()
-        atSpan(startOffset(ref)):
-          PostfixOp(ref, Ident(nme.CC_REACH))
-      else if isIdent(nme.UPARROW) then
-        in.nextToken()
-        atSpan(startOffset(ref)):
-          convertToTypeId(ref) match
-            case ref: RefTree => makeCapsOf(ref)
-            case ref => ref
-      else ref
+        atSpan(startOffset(ref)) { PostfixOp(ref, Ident(name)) }
+
+      def optStar(ref: Tree): Tree =
+        if isIdent(nme.raw.STAR) then derived(ref, nme.CC_REACH)
+        else ref
+
+      def recur(ref: Tree): Tree =
+        if in.token == DOT then
+          in.nextToken()
+          if in.isIdent(nme.rd) then optStar(derived(ref, nme.CC_READONLY))
+          else recur(selector(ref))
+        else if isIdent(nme.UPARROW) then
+          in.nextToken()
+          atSpan(startOffset(ref)):
+            convertToTypeId(ref) match
+              case ref: RefTree => makeCapsOf(ref)
+              case ref => ref
+        else optStar(ref)
+
+      recur(simpleRef())
+    end captureRef
 
     /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking
      */
