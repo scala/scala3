@@ -145,6 +145,15 @@ class TypeUtils:
       case defn.NamedTuple(_, _) => true
       case _ => false
 
+    def derivesFromNamedTuple(using Context): Boolean = self match
+      case defn.NamedTuple(_, _) => true
+      case tp: MatchType =>
+        tp.bound.derivesFromNamedTuple || tp.reduced.derivesFromNamedTuple
+      case tp: TypeProxy => tp.superType.derivesFromNamedTuple
+      case tp: AndType => tp.tp1.derivesFromNamedTuple || tp.tp2.derivesFromNamedTuple
+      case tp: OrType => tp.tp1.derivesFromNamedTuple && tp.tp2.derivesFromNamedTuple
+      case _ => false
+
     /** Drop all named elements in tuple type */
     def stripNamedTuple(using Context): Type = self.normalized.dealias match
       case defn.NamedTuple(_, vals) =>

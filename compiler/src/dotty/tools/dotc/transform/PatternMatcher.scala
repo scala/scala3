@@ -107,7 +107,7 @@ object PatternMatcher {
         // TODO: Drop Case once we use everywhere else `isPatmatGenerated`.
 
     private def dropNamedTuple(tree: Tree): Tree =
-      val tpe = tree.tpe.widen
+      val tpe = tree.tpe.widenDealias
       if tpe.isNamedTupleType then tree.cast(tpe.stripNamedTuple) else tree
 
     /** The plan `let x = rhs in body(x)` where `x` is a fresh variable */
