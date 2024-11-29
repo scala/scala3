@@ -1935,9 +1935,9 @@ class Namer { typer: Typer =>
       for params <- ddef.termParamss; param <- params do
         val psym = symbolOfTree(param)
         if needsTracked(psym, param, owningSym) then
-          psym.setFlag(Tracked)
           for acc <- sym.maybeOwner.infoOrCompleter.decls.lookupAll(psym.name) if acc.is(ParamAccessor) do
             acc.resetFlag(PrivateLocal)
+            psym.setFlag(Tracked)
             acc.setFlag(Tracked)
 
     if Feature.enabled(modularity) then addTrackedIfNeeded(ddef, sym.maybeOwner)
@@ -2019,7 +2019,7 @@ class Namer { typer: Typer =>
    */
   def isContextBoundWitnessWithAbstractMembers(psym: Symbol, param: ValDef, owningSym: Symbol)(using Context): Boolean =
     (owningSym.isClass || owningSym.isAllOf(Given | Method))
-    && param.hasAttachment(ContextBoundParam)
+    && (param.hasAttachment(ContextBoundParam) || psym.isOneOf(GivenOrImplicit))
     && psym.info.memberNames(abstractTypeNameFilter).nonEmpty
 
   extension (sym: Symbol)
