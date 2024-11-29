@@ -84,10 +84,8 @@ object RefChecks {
    *  This one used to succeed only if forwarding parameters is on.
    *  (Forwarding tends to hide problems by binding parameter names).
    */
-
   private def upwardsThisType(cls: Symbol)(using Context) = cls.info match {
     case ClassInfo(_, _, _, _, tp: Type) if (tp.stripCapturing ne cls.typeRef) && !cls.isOneOf(FinalOrModuleClass) =>
-      // println(i"upwardsThisType($cls) = ${cls.typeRef}, ne $tp")
       SkolemType(cls.appliedRef).withName(nme.this_)
     case _ =>
       cls.thisType
@@ -442,7 +440,7 @@ object RefChecks {
         val (mtp, otp) = if compareTypes then (memberTp(self), otherTp(self)) else (NoType, NoType)
         OverrideError(core, self, member, other, mtp, otp)
 
-      def compatTypes(memberTp: Type, otherTp: Type): Boolean = // race.force(i"compatTypes $memberTp <:< $otherTp"):
+      def compatTypes(memberTp: Type, otherTp: Type): Boolean =
         try
           isOverridingPair(member, memberTp, other, otherTp,
             fallBack = warnOnMigration(
