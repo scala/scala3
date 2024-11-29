@@ -373,6 +373,10 @@ object CaptureSet:
   def universal(using Context): CaptureSet =
     defn.captureRoot.termRef.singletonCaptureSet
 
+  /** The shared capture set `{cap.rd}` */
+  def shared(using Context): CaptureSet =
+    defn.captureRoot.termRef.readOnly.singletonCaptureSet
+
   /** Used as a recursion brake */
   @sharable private[dotc] val Pending = Const(SimpleIdentitySet.empty)
 
@@ -520,6 +524,8 @@ object CaptureSet:
         case elem: ThisType if level.isDefined =>
           elem.cls.ccLevel.nextInner <= level
         case ReachCapability(elem1) =>
+          levelOK(elem1)
+        case ReadOnlyCapability(elem1) =>
           levelOK(elem1)
         case MaybeCapability(elem1) =>
           levelOK(elem1)
@@ -1021,25 +1027,29 @@ object CaptureSet:
   /** The current VarState, as passed by the implicit context */
   def varState(using state: VarState): VarState = state
 
-  /** Maps `x` to `x?` */
-  private class MaybeMap(using Context) extends BiTypeMap:
+  /** A template for maps on capabilities where f(c) <: c and f(f(c)) = c */
+  private abstract class NarrowingCapabilityMap(using Context) extends BiTypeMap:
+    def mapRef(ref: CaptureRef): CaptureRef
 
     def apply(t: Type) = t match
-      case t: CaptureRef if t.isTrackableRef => t.maybe
+      case t: CaptureRef if t.isTrackableRef => mapRef(t)
       case _ => mapOver(t)
 
+    lazy val inverse = new BiTypeMap:
+      def apply(t: Type) = t // since f(c) <: c, this is the best inverse
+      def inverse = NarrowingCapabilityMap.this
+      override def toString = NarrowingCapabilityMap.this.toString ++ ".inverse"
+  end NarrowingCapabilityMap
+
+  /** Maps `x` to `x?` */
+  private class MaybeMap(using Context) extends NarrowingCapabilityMap:
+    def mapRef(ref: CaptureRef): CaptureRef = ref.maybe
     override def toString = "Maybe"
 
-    lazy val inverse = new BiTypeMap:
-
-      def apply(t: Type) = t match
-        case t: CaptureRef if t.isMaybe => t.stripMaybe
-        case t => mapOver(t)
-
-      def inverse = MaybeMap.this
-
-      override def toString = "Maybe.inverse"
-  end MaybeMap
+  /** Maps `x` to `x.rd` */
+  private class ReadOnlyMap(using Context) extends NarrowingCapabilityMap:
+    def mapRef(ref: CaptureRef): CaptureRef = ref.readOnly
+    override def toString = "ReadOnly"
 
   /* Not needed:
   def ofClass(cinfo: ClassInfo, argTypes: List[Type])(using Context): CaptureSet =
