@@ -22,6 +22,7 @@ import CCState.*
 /** A class for capture sets. Capture sets can be constants or variables.
  *  Capture sets support inclusion constraints <:< where <:< is subcapturing.
  *
+ *
  *  They also allow
  *   - mapping with functions from elements to capture sets
  *   - filtering with predicates on elements
