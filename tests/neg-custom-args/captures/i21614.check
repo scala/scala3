@@ -1,15 +1,15 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:9:33 ----------------------------------------
-9 |  files.map((f: F) => new Logger(f)) // error, Q: can we make this pass (see #19076)?
-  |                                 ^
-  |                                 Found:    (f : F^)
-  |                                 Required: File^
-  |
-  | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:12:12 ---------------------------------------
-12 |  files.map(new Logger(_)) // error, Q: can we improve the error message?
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:12:33 ---------------------------------------
+12 |  files.map((f: F) => new Logger(f)) // error, Q: can we make this pass (see #19076)?
+   |                                 ^
+   |                                 Found:    (f : F^)
+   |                                 Required: File^
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:15:12 ---------------------------------------
+15 |  files.map(new Logger(_)) // error, Q: can we improve the error message?
    |            ^^^^^^^^^^^^^
-   |     Found:    (_$1: box File^{files*}) ->{files*} (ex$13: caps.Exists) -> box Logger{val f: File^{_$1}}^{ex$13}
-   |     Required: (_$1: box File^{files*}) -><fluid> box Logger{val f: File^?}^?
+   |     Found:    (_$1: box File^{files*}) ->{files*} (ex$16: caps.Exists) -> box Logger{val f: File^{_$1}}^{ex$16}
+   |     Required: (_$1: box File^{files*}) => box Logger{val f: File^?}^?
    |
    |     Note that the universal capability `cap`
    |     cannot be included in capture set ?
