@@ -180,6 +180,13 @@ jobs:
            && contains(github.event.pull_request.body, '[test_scala2_library_tasty]')
          )
          || (
+           github.event_name == 'pull_request'
+           && (   contains(github.event.pull_request.changed_files, 'scala2-library-cc/') 
+               || contains(github.event.pull_request.changed_files, 'scala2-library-cc-tasty/')
+               || contains(github.event.pull_request.changed_files, 'compiler/src/dotty/tools/dotc/cc/')
+              )
+         )
+         || (
            github.event_name == 'workflow_dispatch'
            && github.repository == 'scala/scala3'
          )"
