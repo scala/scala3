@@ -527,8 +527,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def makeCapsOf(tp: RefTree)(using Context): Tree =
     TypeApply(Select(scalaDot(nme.caps), nme.capsOf), tp :: Nil)
 
-  // `type C^` and `[C^]` becomes:
-  // `type C >: CapSet <: CapSet^{cap}` and `[C >: CapSet <: CapSet^{cap}]`
+  // Capture set variable `[C^]` becomes: `[C >: CapSet <: CapSet^{cap}]`
   def makeCapsBound()(using Context): TypeBoundsTree =
     TypeBoundsTree(
       Select(scalaDot(nme.caps), tpnme.CapSet),
