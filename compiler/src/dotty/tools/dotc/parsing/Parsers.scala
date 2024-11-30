@@ -4057,11 +4057,8 @@ object Parsers {
               || sourceVersion.isAtLeast(`3.6`) && in.isColon =>
             makeTypeDef(typeAndCtxBounds(tname))
           case _ =>
-            if in.isIdent(nme.UPARROW) && Feature.ccEnabled then
-              makeTypeDef(typeAndCtxBounds(tname))
-            else
-              syntaxErrorOrIncomplete(ExpectedTypeBoundOrEquals(in.token))
-              return EmptyTree // return to avoid setting the span to EmptyTree
+            syntaxErrorOrIncomplete(ExpectedTypeBoundOrEquals(in.token))
+            return EmptyTree // return to avoid setting the span to EmptyTree
         }
       }
     }

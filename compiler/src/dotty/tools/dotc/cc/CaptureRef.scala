@@ -143,6 +143,9 @@ trait CaptureRef extends TypeProxy, ValueType:
           || viaInfo(y.info)(subsumingRefs(this, _))
         case MaybeCapability(y1) => this.stripMaybe.subsumes(y1)
         case y: TypeRef if y.derivesFrom(defn.Caps_CapSet) =>
+          // The upper and lower bounds don't have to be in the form of `CapSet^{...}`.
+          // They can be other capture set variables, which are bounded by `CapSet`,
+          // like `def test[X^, Y^, Z >: X <: Y]`.
           y.info match
             case TypeBounds(_, hi: CaptureRef) => this.subsumes(hi)
             case _ => y.captureSetOfInfo.elems.forall(this.subsumes)
