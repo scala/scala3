@@ -1,14 +1,13 @@
 import caps.*
 
 trait AbstractWrong:
-    type C <: CapSet
-    def boom(): Unit^{C^} // error
+  type C <: CapSet
+  def f(): Unit^{C^} // error
 
-trait Abstract:
-    type C <: CapSet^
-    def boom(): Unit^{C^}
+trait Abstract1:
+  type C >: CapSet <: CapSet^
+  def f(): Unit^{C^}
 
-class Concrete extends Abstract:
-    type C = Nothing
-    def boom() = () // error
-
+// class Abstract2:
+//   type C^
+//   def f(): Unit^{C^}

@@ -2240,7 +2240,7 @@ object Parsers {
       atSpan(in.offset):
         if in.isIdent(nme.UPARROW) && Feature.ccEnabled then
           in.nextToken()
-          TypeBoundsTree(EmptyTree, makeCapsBound())
+          makeCapsBound()
         else
           TypeBoundsTree(bound(SUPERTYPE), bound(SUBTYPE))
 

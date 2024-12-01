@@ -866,7 +866,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           if others.accountsFor(ref) then
             report.warning(em"redundant capture: $dom already accounts for $ref", pos)
 
-        if ref.captureSetOfInfo.elems.isEmpty && !ref.derivesFrom(defn.Caps_Capability) then
+        if ref.captureSetOfInfo.elems.isEmpty
+            && !ref.derivesFrom(defn.Caps_Capability)
+            && !ref.derivesFrom(defn.Caps_CapSet) then
           val deepStr = if ref.isReach then " deep" else ""
           report.error(em"$ref cannot be tracked since its$deepStr capture set is empty", pos)
         check(parent.captureSet, parent)
