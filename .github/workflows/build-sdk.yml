@@ -40,13 +40,7 @@ jobs:
           distribution: temurin
           java-version: ${{ inputs.java-version }}
           cache       : sbt
-          
-      - name: Get version string for this build
-        run: |
-          ver=$(./project/scripts/sbt "print scala3-compiler-bootstrapped/version" | tail -n1)
-          echo "This build version: $ver"
-          echo "THISBUILD_VERSION=$ver" >> $GITHUB_ENV
-      
+
       - name: Build and pack the SDK (universal)
         run : ./project/scripts/sbt dist/packArchive
 
@@ -54,7 +48,7 @@ jobs:
         uses: actions/upload-artifact@v4
         id  : universal
         with:
-          path: ./dist/target/scala3-${{env.THISBUILD_VERSION}}.zip
+          path: ./dist/target/pack/*
           name: scala3-universal
           
       - name: Compute SHA256 of the uploaded artifact (universal)
