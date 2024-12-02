@@ -85,7 +85,24 @@ object desugar {
     override def ensureCompletions(using Context): Unit = {
       def completeConstructor(sym: Symbol) =
         sym.infoOrCompleter match {
-          case completer: Namer#ClassCompleter =>
+          case completer: Namer#ClassCompleter if !sym.isCompleting =>
+            // An example, derived from tests/run/t6385.scala
+            //
+            //     class Test():
+            //       def t1: Foo = Foo(1)
+            //     final case class Foo(value: Int)
+            //
+            // Here's the sequence of events:
+            //  * The symbol for Foo.apply is forced to complete
+            //  * The symbol for the `value` parameter of the apply method is forced to complete
+            //  * Completing that value parameter requires typing its type, which is a DerivedTypeTrees,
+            //    which only types if it has an OriginalSymbol.
+            //  * So if the case class hasn't been completed, we need (at least) its constructor to be completed
+            //
+            // Test tests/neg/i9294.scala is an example of why isCompleting is necessary.
+            // Annotations are added while completing the constructor,
+            // so the back reference to foo reaches here which re-initiates the constructor completion.
+            // So we just skip, as completion is already being triggered.
             completer.completeConstructor(sym)
           case _ =>
         }
