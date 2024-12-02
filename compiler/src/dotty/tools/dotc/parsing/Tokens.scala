@@ -257,7 +257,7 @@ object Tokens extends TokensCommon {
 
   final val modifierTokensOrCase: TokenSet = modifierTokens | BitSet(CASE)
 
-  final val modifierFollowers = modifierTokens | defIntroTokens
+  final val modifierFollowers = modifierTokensOrCase | defIntroTokens
 
   /** Is token only legal as start of statement (eof also included)? */
   final val mustStartStatTokens: TokenSet = defIntroTokens | modifierTokens | BitSet(IMPORT, EXPORT, PACKAGE)
