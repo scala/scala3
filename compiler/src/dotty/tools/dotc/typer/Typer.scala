@@ -205,29 +205,27 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         !owner.isEmptyPackage || ctx.owner.enclosingPackageClass.isEmptyPackage
       }
 
-    import BindingPrec.*
-    type Result = (Type, BindingPrec)
-    val NoResult = (NoType, NothingBound)
-
     /** Find the denotation of enclosing `name` in given context `ctx`.
-     *  @param prevResult  A type that was found in a more deeply nested scope,
-     *                     and its precedence, or NoResult if nothing was found yet.
+     *  @param previous    A denotation that was found in a more deeply nested scope,
+     *                     or else `NoDenotation` if nothing was found yet.
+     *  @param prevPrec    The binding precedence of the previous denotation,
+     *                     or else `nothingBound` if nothing was found yet.
      *  @param prevCtx     The context of the previous denotation,
      *                     or else `NoContext` if nothing was found yet.
      */
-    def findRefRecur(prevResult: Result, prevCtx: Context)(using Context): Result = {
-      val (previous, prevPrec) = prevResult
+    def findRefRecur(previous: Type, prevPrec: BindingPrec, prevCtx: Context)(using Context): Type = {
+      import BindingPrec.*
 
       /** Check that any previously found result from an inner context
        *  does properly shadow the new one from an outer context.
-       *  @param newResult The newly found type and its precedence.
+       *  @param found     The newly found result
+       *  @param newPrec   Its precedence
        *  @param scala2pkg Special mode where we check members of the same package, but defined
        *                   in different compilation units under Scala2. If set, and the
        *                   previous and new contexts do not have the same scope, we select
        *                   the previous (inner) definition. This models what scalac does.
        */
-      def checkNewOrShadowed(newResult: Result, scala2pkg: Boolean = false)(using Context): Result =
-        val (found, newPrec) = newResult
+      def checkNewOrShadowed(found: Type, newPrec: BindingPrec, scala2pkg: Boolean = false)(using Context): Type =
         if !previous.exists || TypeComparer.isSameRef(previous, found) then
            found
         else if (prevCtx.scope eq ctx.scope)
@@ -235,24 +233,35 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         then
           // special cases: definitions beat imports, and named imports beat
           // wildcard imports, provided both are in contexts with same scope
-          newResult
+          found
+        else if newPrec == WildImport && ctx.outersIterator.exists: ctx =>
+          ctx.isImportContext && namedImportRef(ctx.importInfo.uncheckedNN).exists
+        then
+          // Don't let two ambiguous wildcard imports rule over
+          // a winning named import. See pos/i18529.
+          found
         else
           if !scala2pkg && !previous.isError && !found.isError then
             fail(AmbiguousReference(name, newPrec, prevPrec, prevCtx))
           previous
+
+      /** Assemble and check alternatives to an imported reference. This implies:
+       *   - If we expand an extension method (i.e. altImports != null),
+       *     search imports on the same level for other possible resolutions of `name`.
+       *     The result and altImports together then contain all possible imported
+       *     references of the highest possible precedence, where `NamedImport` beats
        *     `WildImport`.
        *   - Find a posssibly shadowing reference in an outer context.
        *     If the result is the same as `previous`, check that it is new or
        *     shadowed. This order of checking is necessary since an outer package-level
        *     definition might trump two conflicting inner imports, so no error should be
        *     issued in that case. See i7876.scala.
-       *  @param prevResult the previously found reference (which is an import), and
-       *                    the precedence of the reference (either NamedImport or WildImport)
+       *  @param previous   the previously found reference (which is an import)
+       *  @param prevPrec   the precedence of the reference (either NamedImport or WildImport)
        *  @param prevCtx    the context in which the reference was found
        *  @param using_Context the outer context of `precCtx`
        */
-      def checkImportAlternatives(prevResult: Result, prevCtx: Context)(using Context): Result =
-        val (previous, prevPrec) = prevResult
+      def checkImportAlternatives(previous: Type, prevPrec: BindingPrec, prevCtx: Context)(using Context): Type =
 
         def addAltImport(altImp: TermRef) =
           if !TypeComparer.isSameRef(previous, altImp)
@@ -267,20 +276,20 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               if prevPrec == WildImport then
                 // Discard all previously found references and continue with `altImp`
                 altImports.clear()
-                checkImportAlternatives((altImp, NamedImport), ctx)(using ctx.outer)
+                checkImportAlternatives(altImp, NamedImport, ctx)(using ctx.outer)
               else
                 addAltImport(altImp)
-                checkImportAlternatives(prevResult, prevCtx)(using ctx.outer)
+                checkImportAlternatives(previous, prevPrec, prevCtx)(using ctx.outer)
             case _ =>
               if prevPrec == WildImport then
                 wildImportRef(curImport) match
                   case altImp: TermRef => addAltImport(altImp)
                   case _ =>
-              checkImportAlternatives(prevResult, prevCtx)(using ctx.outer)
+              checkImportAlternatives(previous, prevPrec, prevCtx)(using ctx.outer)
         else
-          val foundResult = findRefRecur(prevResult, prevCtx)
-          if foundResult._1 eq previous then checkNewOrShadowed(foundResult)(using prevCtx)
-          else foundResult
+          val found = findRefRecur(previous, prevPrec, prevCtx)
+          if found eq previous then checkNewOrShadowed(found, prevPrec)(using prevCtx)
+          else found
       end checkImportAlternatives
 
       def selection(imp: ImportInfo, name: Name, checkBounds: Boolean): Type =
@@ -367,10 +376,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         !noImports &&
         (prevPrec.ordinal < prec.ordinal || prevPrec == prec && (prevCtx.scope eq ctx.scope))
 
-      @tailrec def loop(lastCtx: Context)(using Context): Result =
-        if (ctx.scope eq EmptyScope) prevResult
+      @tailrec def loop(lastCtx: Context)(using Context): Type =
+        if (ctx.scope eq EmptyScope) previous
         else {
-          var result: Result = NoResult
+          var result: Type = NoType
           val curOwner = ctx.owner
 
           /** Is curOwner a package object that should be skipped?
@@ -469,7 +478,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                   effectiveOwner.thisType.select(name, defDenot)
                 }
               if !curOwner.is(Package) || isDefinedInCurrentUnit(defDenot) then
-                result = checkNewOrShadowed((found, Definition)) // no need to go further out, we found highest prec entry
+                result = checkNewOrShadowed(found, Definition) // no need to go further out, we found highest prec entry
                 found match
                   case found: NamedType
                   if curOwner.isClass && isInherited(found.denot) && !ctx.compilationUnit.isJava =>
@@ -477,28 +486,29 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                   case _ =>
               else
                 if migrateTo3 && !foundUnderScala2.exists then
-                  foundUnderScala2 = checkNewOrShadowed((found, Definition), scala2pkg = true)._1
+                  foundUnderScala2 = checkNewOrShadowed(found, Definition, scala2pkg = true)
                 if (defDenot.symbol.is(Package))
-                  result = checkNewOrShadowed((previous orElse found, PackageClause))
+                  result = checkNewOrShadowed(previous orElse found, PackageClause)
                 else if (prevPrec.ordinal < PackageClause.ordinal)
-                  result = findRefRecur((found, PackageClause), ctx)(using ctx.outer)
+                  result = findRefRecur(found, PackageClause, ctx)(using ctx.outer)
             }
 
-          if result._1.exists then result
+          if result.exists then result
           else {  // find import
             val outer = ctx.outer
             val curImport = ctx.importInfo
+            def updateUnimported() =
+              if (curImport.nn.unimported ne NoSymbol) unimported += curImport.nn.unimported
             if (curOwner.is(Package) && curImport != null && curImport.isRootImport && previous.exists)
-              prevResult // no more conflicts possible in this case
-            else if (isPossibleImport(NamedImport) && curImport != null && (curImport ne outer.importInfo)) {
-              def updateUnimported() = if curImport.unimported ne NoSymbol then unimported += curImport.unimported
-              val namedImp = namedImportRef(curImport)
+              previous // no more conflicts possible in this case
+            else if (isPossibleImport(NamedImport) && (curImport nen outer.importInfo)) {
+              val namedImp = namedImportRef(curImport.uncheckedNN)
               if (namedImp.exists)
-                checkImportAlternatives((namedImp, NamedImport), ctx)(using outer)
-              else if (isPossibleImport(WildImport) && !curImport.importSym.isCompleting) {
-                val wildImp = wildImportRef(curImport)
+                checkImportAlternatives(namedImp, NamedImport, ctx)(using outer)
+              else if (isPossibleImport(WildImport) && !curImport.nn.importSym.isCompleting) {
+                val wildImp = wildImportRef(curImport.uncheckedNN)
                 if (wildImp.exists)
-                  checkImportAlternatives((wildImp, WildImport), ctx)(using outer)
+                  checkImportAlternatives(wildImp, WildImport, ctx)(using outer)
                 else {
                   updateUnimported()
                   loop(ctx)(using outer)
@@ -517,8 +527,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       loop(NoContext)
     }
 
-    val (foundRef, foundPrec) = findRefRecur(NoResult, NoContext)
-    foundRef
+    findRefRecur(NoType, BindingPrec.NothingBound, NoContext)
   }
 
   /** If `tree`'s type is a `TermRef` identified by flow typing to be non-null, then
