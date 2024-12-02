@@ -355,6 +355,36 @@ object Inlines:
         override def end: Int = endId
       }
 
+      // Let's reconstruct necessary transform MegaPhases, without anything
+      // that could cause problems here (like `CrossVersionChecks`).
+      // The individiual lists here should line up with Compiler.scala, i.e
+      // separate chunks there should also be kept separate here.
+      // For now we create a single MegaPhase, since there does not seem to
+      // be any important checks later (e.g. ForwardDepChecks could be applicable here,
+      // but the equivalent is also not run in the scala 2's `ctx.typechecks`,
+      // so let's leave it out for now).
+      lazy val reconstructedTransformPhases =
+        val transformPhases: List[List[(Class[?], () => MiniPhase)]] = List(
+          List(
+            (classOf[InlineVals], () => new InlineVals),
+            (classOf[ElimRepeated], () => new ElimRepeated),
+            (classOf[RefChecks], () => new RefChecks),
+          ),
+        )
+
+        transformPhases.flatMap( (megaPhaseList: List[(Class[?], () => MiniPhase)]) =>
+          val (newMegaPhasePhases, phaseIds) =
+            megaPhaseList.flatMap {
+              case (filteredPhaseClass, miniphaseConstructor) =>
+                ctx.base.phases
+                  .find(phase => filteredPhaseClass.isInstance(phase))
+                  .map(phase => (miniphaseConstructor(), phase.id))
+            }
+            .unzip
+          if newMegaPhasePhases.isEmpty then None
+          else Some(MegaPhaseWithCustomPhaseId(newMegaPhasePhases.toArray, phaseIds.head, phaseIds.last))
+        )
+
       ConstFold(underlyingCodeArg).tpe.widenTermRefExpr match {
         case ConstantType(Constant(code: String)) =>
           val unitName = "tasty-reflect"
@@ -371,36 +401,6 @@ object Inlines:
             .withOwner(dummyOwner)
 
           inContext(newContext) {
-            // Let's reconstruct necessary transform MegaPhases, without anything
-            // that could cause problems here (like `CrossVersionChecks`).
-            // The individiual lists here should line up with Compiler.scala, i.e
-            // separate chunks there should also be kept separate here.
-            // For now we create a single MegaPhase, since there does not seem to
-            // be any important checks later (e.g. ForwardDepChecks could be applicable here,
-            // but the equivalent is also not run in the scala 2's `ctx.typechecks`,
-            // so let's leave it out for now).
-            val transformPhases: List[List[(Class[?], () => MiniPhase)]] = List(
-              List(
-                (classOf[InlineVals], () => new InlineVals),
-                (classOf[ElimRepeated], () => new ElimRepeated),
-                (classOf[RefChecks], () => new RefChecks),
-              ),
-            )
-
-            val mergedTransformPhases =
-              transformPhases.flatMap( (megaPhaseList: List[(Class[?], () => MiniPhase)]) =>
-                val (newMegaPhasePhases, phaseIds) =
-                  megaPhaseList
-                    .flatMap { filteredPhase =>
-                      ctx.base.phases.find(phase => filteredPhase._1.isInstance(phase)).map { a =>
-                        (filteredPhase._2(), a.id)
-                      }
-                    }
-                    .unzip
-                if newMegaPhasePhases.isEmpty then None
-                else Some(MegaPhaseWithCustomPhaseId(newMegaPhasePhases.toArray, phaseIds.head, phaseIds.last))
-              )
-
             val tree2 = new Parser(source2).block()
             if ctx.reporter.allErrors.nonEmpty then
               ctx.reporter.allErrors.map((ErrorKind.Parser, _))
@@ -417,15 +417,14 @@ object Inlines:
                         compilationUnit.untpdTree = tree2
                         var units = List(compilationUnit)
                         atPhase(setRootTree)(setRootTree.runOn(units).head.tpdTree)
-
                       ctx.base.inliningPhase match
                         case inlining: Inlining if ctx.reporter.allErrors.isEmpty =>
                           val tree6 = atPhase(inlining) { inlining.newTransformer.transform(tree5) }
-                          if mergedTransformPhases.nonEmpty then
+                          if ctx.reporter.allErrors.isEmpty && reconstructedTransformPhases.nonEmpty then
                             var transformTree = tree6
-                            for (phase <- mergedTransformPhases if ctx.reporter.allErrors.isEmpty) {
-                              transformTree = atPhase(phase.end + 1)(phase.transformUnit(transformTree))
-                            }
+                            for phase <- reconstructedTransformPhases do
+                              if ctx.reporter.allErrors.isEmpty then
+                                transformTree = atPhase(phase.end + 1)(phase.transformUnit(transformTree))
                         case _ =>
                 case _ =>
               ctx.reporter.allErrors.map((ErrorKind.Typer, _))
