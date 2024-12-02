@@ -88,7 +88,7 @@ class ExpandSAMs extends MiniPhase:
    *  }
    *  ```
    *
-   *  is expanded to an anomymous class:
+   *  is expanded to an anonymous class:
    *
    *  ```
    *  val x: PartialFunction[A, B] = {

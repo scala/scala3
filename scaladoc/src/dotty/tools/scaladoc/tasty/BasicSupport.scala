@@ -48,7 +48,7 @@ trait BasicSupport:
         "scala.transient",
         "scala.volatile",
         "scala.annotation.experimental",
-        "scala.annotation.contructorOnly",
+        "scala.annotation.constructorOnly",
         "scala.annotation.static",
         "scala.annotation.targetName",
         "scala.annotation.threadUnsafe",

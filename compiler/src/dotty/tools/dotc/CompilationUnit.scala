@@ -72,7 +72,7 @@ class CompilationUnit protected (val source: SourceFile) {
   /** List of all comments present in this compilation unit */
   var comments: List[Comment] = Nil
 
-  /** Suspends the compilation unit by thowing a SuspendException
+  /** Suspends the compilation unit by throwing a SuspendException
    *  and recording the suspended compilation unit
    */
   def suspend()(using Context): Nothing =
