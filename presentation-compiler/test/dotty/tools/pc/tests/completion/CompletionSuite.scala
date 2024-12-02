@@ -1983,3 +1983,28 @@ class CompletionSuite extends BaseCompletionSuite:
          |val foo: SomeClass
          |""".stripMargin,
     )
+
+  @Test def `Selectable without namedTuple Fields mamber` =
+    check(
+      """|class NonNamedTupleSelectable extends Selectable {
+         |  def selectDynamic(name: String): Any = ???
+         |}
+         |
+         |val person2 = new NonNamedTupleSelectable {}
+         |
+         |val n = person2.na@@""".stripMargin,
+      """|selectDynamic(name: String): Any
+      """.stripMargin,
+      filter = _.contains("name")
+    )
+
+  @Test def `with-parenthesis` =
+    check(
+      """|package a
+         |class MyClass
+         |val i = MyClass@@()
+         |""".stripMargin,
+         """|MyClass(): MyClass (Constructor)
+            |""".stripMargin,
+         includeCompletionKind = true
+    )
