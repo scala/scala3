@@ -60,4 +60,5 @@ jobs:
       - name: Compute SHA256 of the uploaded artifact (universal)
         id  : universal-digest
         run : |
-          echo "digest=$(sha256sum ./dist/target/scala3-${{env.THISBUILD_VERSION}}.zip | cut -d " " -f 1)" >> "$GITHUB_OUTPUT"
+          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -o artifact.zip -L https://api.github.com/repos/scala/scala3/actions/artifacts/${{ steps.universal.outputs.artifact-id }}/zip
+          echo "digest=$(sha256sum artifact.zip | cut -d " " -f 1)" >> "$GITHUB_OUTPUT"
