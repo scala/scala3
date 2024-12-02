@@ -1498,13 +1498,7 @@ class Namer { typer: Typer =>
       index(constr)
       index(rest)(using localCtx)
 
-      symbolOfTree(constr).info.stripPoly match // Completes constr symbol as a side effect
-        case mt: MethodType if cls.is(Case) && mt.isParamDependent =>
-          // See issue #8073 for background
-          report.error(
-              em"""Implementation restriction: case classes cannot have dependencies between parameters""",
-              cls.srcPos)
-        case _ =>
+      checkCaseClassParamDependencies(symbolOfTree(constr).info, cls) // Completes constr symbol as a side effect
 
       tempInfo = denot.asClass.classInfo.integrateOpaqueMembers.asInstanceOf[TempClassInfo]
       denot.info = savedInfo
@@ -1825,9 +1819,10 @@ class Namer { typer: Typer =>
       for tparam <- ddef.leadingTypeParams yield typedAheadExpr(tparam).symbol
     if completedTypeParams.forall(_.isType) then
       completer.setCompletedTypeParams(completedTypeParams.asInstanceOf[List[TypeSymbol]])
-    ddef.trailingParamss.foreach(completeParams)
+    completeTrailingParamss(ddef, sym)
     val paramSymss = normalizeIfConstructor(ddef.paramss.nestedMap(symbolOfTree), isConstructor)
     sym.setParamss(paramSymss)
+
     def wrapMethType(restpe: Type): Type =
       instantiateDependent(restpe, paramSymss)
       methodType(paramSymss, restpe, ddef.mods.is(JavaDefined))
@@ -1838,6 +1833,29 @@ class Namer { typer: Typer =>
     else
       valOrDefDefSig(ddef, sym, paramSymss, wrapMethType)
   }
+
+  def completeTrailingParamss(ddef: DefDef, sym: Symbol)(using Context): Unit =
+    /** Enter and typecheck parameter list.
+     *  Once all witness parameters for a context bound are seen, create a
+     *  context bound companion for it.
+     */
+    def completeParams(params: List[MemberDef])(using Context): Unit =
+      index(params)
+      for param <- params do
+        typedAheadExpr(param)
+
+    ddef.trailingParamss.foreach(completeParams)
+  end completeTrailingParamss
+
+  /** Checks an implementation restriction on case classes. */
+  def checkCaseClassParamDependencies(mt: Type, cls: Symbol)(using Context): Unit =
+    mt.stripPoly match
+      case mt: MethodType if cls.is(Case) && mt.isParamDependent =>
+        // See issue #8073 for background
+        report.error(
+            em"""Implementation restriction: case classes cannot have dependencies between parameters""",
+            cls.srcPos)
+      case _ =>
 
   def inferredResultType(
       mdef: ValOrDefDef,
