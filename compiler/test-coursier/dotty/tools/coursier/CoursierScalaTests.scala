@@ -75,8 +75,8 @@ class CoursierScalaTests:
     version()
 
     def emptyArgsEqualsRepl() =
-      val output = CoursierScalaTests.csScalaCmd()
-      assertTrue(output.mkString("\n").contains("Unable to create a terminal")) // Scala attempted to create REPL so we can assume it is working
+      val output = CoursierScalaTests.csScalaCmdWithStdin(Seq.empty, Some("println(\"Hello World\")\n:quit"))
+      assertTrue(output.mkString("\n").contains("Hello World"))
     emptyArgsEqualsRepl()
 
     def run() =
@@ -132,8 +132,8 @@ class CoursierScalaTests:
     compileFilesToJarAndRun()
 
     def replWithArgs() =
-      val output = CoursierScalaTests.csScalaCmd("-source", "3.0-migration")
-      assertTrue(output.mkString("\n").contains("Unable to create a terminal")) // Scala attempted to create REPL so we can assume it is working
+      val output = CoursierScalaTests.csScalaCmdWithStdin(Seq("-source", "3.0-migration"), Some("println(\"Hello World\")\n:quit"))
+      assertTrue(output.mkString("\n").contains("Hello World"))
     replWithArgs()
 
     def argumentFile() =
@@ -148,25 +148,31 @@ class CoursierScalaTests:
 
 object CoursierScalaTests:
 
-  def execCmd(command: String, options: String*): (Int, List[String]) =
+  private def execCmd(command: String, options: Seq[String] = Seq.empty, stdin: Option[String] = None): (Int, List[String]) =
     val cmd = (command :: options.toList).toSeq.mkString(" ")
     val out = new ListBuffer[String]
-    val code = cmd.!(ProcessLogger(out += _, out += _))
+    val process = stdin match
+      case Some(input) => Process(cmd) #< new java.io.ByteArrayInputStream(input.getBytes)
+      case None => Process(cmd)
+    val code = process.!(ProcessLogger(out += _, out += _))
     (code, out.toList)
 
   def csScalaCmd(options: String*): List[String] =
-    csCmd("dotty.tools.MainGenericRunner", options*)
+    csScalaCmdWithStdin(options, None)
+  
+  def csScalaCmdWithStdin(options: Seq[String], stdin: Option[String]): List[String] =
+    csCmd("dotty.tools.MainGenericRunner", options, stdin)
 
   def csScalaCompilerCmd(options: String*): List[String] =
-    csCmd("dotty.tools.dotc.Main", options*)
+    csCmd("dotty.tools.dotc.Main", options)
 
-  private def csCmd(entry: String, options: String*): List[String] =
+  private def csCmd(entry: String, options: Seq[String], stdin: Option[String] = None): List[String] =
     val (jOpts, args) = options.partition(_.startsWith("-J"))
     val newOptions = args match
       case Nil => args
       case _ => "--" +: args
     val newJOpts = jOpts.map(s => s"--java-opt ${s.stripPrefix("-J")}").mkString(" ")
-    execCmd("./cs", (s"""launch "org.scala-lang:scala3-compiler_3:${sys.env("DOTTY_BOOTSTRAPPED_VERSION")}" $newJOpts --main-class "$entry" --property "scala.usejavacp=true"""" +: newOptions)*)._2
+    execCmd("./cs", (s"""launch "org.scala-lang:scala3-compiler_3:${sys.env("DOTTY_BOOTSTRAPPED_VERSION")}" $newJOpts --main-class "$entry" --property "scala.usejavacp=true" --property "scala.use_legacy_launcher=true"""" +: newOptions), stdin)._2
 
   /** Get coursier script */
   @BeforeClass def setup(): Unit =
@@ -177,7 +183,7 @@ object CoursierScalaTests:
       case other => fail(s"Unsupported OS for coursier launcher: $other")
 
     def runAndCheckCmd(cmd: String, options: String*): Unit =
-      val (code, out) = execCmd(cmd, options*)
+      val (code, out) = execCmd(cmd, options)
       if code != 0 then
         fail(s"Failed to run $cmd ${options.mkString(" ")}, exit code: $code, output: ${out.mkString("\n")}")
 
