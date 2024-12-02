@@ -135,9 +135,13 @@ class ScalaCompilerForUnitTesting {
    * The sequence of temporary files corresponding to passed snippets and analysis
    * callback is returned as a result.
    */
-  def compileSrcs(groupedSrcs: List[List[String]], sourcePath: List[String] = Nil, compileToJar: Boolean = false): CompileOutput = {
+  def compileSrcs(groupedSrcs: List[List[String]], sourcePath: List[String] = Nil, compileToJar: Boolean = false, incEnabled: Boolean = true): CompileOutput = {
       val temp = IO.createTemporaryDirectory
-      val analysisCallback = new TestCallback
+      val (forceSbtArgs, analysisCallback) =
+        if (incEnabled)
+          (Seq("-Yforce-sbt-phases"), new TestCallback)
+        else
+          (Seq.empty, new TestCallbackNoInc)
       val testProgress = new TestCompileProgress
       val classesOutput =
         if (compileToJar) {
@@ -174,7 +178,7 @@ class ScalaCompilerForUnitTesting {
         bridge.run(
           virtualSrcFiles,
           new TestDependencyChanges,
-          Array("-Yforce-sbt-phases", "-classpath", classesOutputPath, "-usejavacp", "-d", classesOutputPath) ++ maybeSourcePath,
+          (forceSbtArgs ++: Array("-classpath", classesOutputPath, "-usejavacp", "-d", classesOutputPath)) ++ maybeSourcePath,
           output,
           analysisCallback,
           new TestReporter,
@@ -193,6 +197,10 @@ class ScalaCompilerForUnitTesting {
     compileSrcs(List(srcs.toList))
   }
 
+  def compileSrcsNoInc(srcs: String*): CompileOutput = {
+    compileSrcs(List(srcs.toList), incEnabled = false)
+  }
+
   def compileSrcsToJar(srcs: String*): CompileOutput =
     compileSrcs(List(srcs.toList), compileToJar = true)
 
@@ -202,4 +210,3 @@ class ScalaCompilerForUnitTesting {
     new TestVirtualFile(srcFile.toPath)
   }
 }
-
