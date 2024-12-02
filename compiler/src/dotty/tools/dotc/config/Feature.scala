@@ -33,6 +33,7 @@ object Feature:
   val clauseInterleaving = experimental("clauseInterleaving")
   val pureFunctions = experimental("pureFunctions")
   val captureChecking = experimental("captureChecking")
+  val qualifiedTypes = experimental("qualifiedTypes")
   val into = experimental("into")
   val namedTuples = experimental("namedTuples")
   val modularity = experimental("modularity")
@@ -65,6 +66,7 @@ object Feature:
     (clauseInterleaving, "Enable clause interleaving"),
     (pureFunctions, "Enable pure functions for capture checking"),
     (captureChecking, "Enable experimental capture checking"),
+    (qualifiedTypes, "Enable experimental qualified types"),
     (into, "Allow into modifier on parameter types"),
     (namedTuples, "Allow named tuples"),
     (modularity, "Enable experimental modularity features"),
@@ -157,6 +159,10 @@ object Feature:
   def ccEnabledSomewhere(using Context) =
     if ctx.run != null then ctx.run.nn.ccEnabledSomewhere
     else enabledBySetting(captureChecking)
+
+   /** Is qualifiedTypes enabled for this compilation unit? */
+  def qualifiedTypesEnabled(using Context) =
+    enabledBySetting(qualifiedTypes)
 
   def sourceVersionSetting(using Context): SourceVersion =
     SourceVersion.valueOf(ctx.settings.source.value)

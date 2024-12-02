@@ -35,6 +35,9 @@ val experimentalDefinitionInLibrary = Set(
   "scala.caps",
   "scala.caps$",
 
+  // Experimental feature: qualified types
+  "scala.annotation.qualified",
+
   //// New feature: into
   "scala.annotation.into",
   "scala.annotation.internal.$into",
