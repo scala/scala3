@@ -241,9 +241,23 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object ClassDef extends ClassDefModule:
       def apply(cls: Symbol, parents: List[Tree], body: List[Statement]): ClassDef =
-        val untpdCtr = untpd.DefDef(nme.CONSTRUCTOR, Nil, tpd.TypeTree(dotc.core.Symbols.defn.UnitClass.typeRef), tpd.EmptyTree)
+        val paramsDefs: List[untpd.ParamClause] =
+          cls.primaryConstructor.paramSymss.map { paramSym =>
+            paramSym.map( symm =>
+              ValDef(symm, None)
+            )
+          }
+        val paramsAccessDefs: List[untpd.ParamClause] =
+          cls.primaryConstructor.paramSymss.map { paramSym =>
+            paramSym.map( symm =>
+              ValDef(cls.fieldMember(symm.name.toString()), None) // TODO I don't like the toString here
+            )
+          }
+
+        val termSymbol: dotc.core.Symbols.TermSymbol = cls.primaryConstructor.asTerm
+        val untpdCtr = untpd.DefDef(nme.CONSTRUCTOR, paramsDefs, tpd.TypeTree(dotc.core.Symbols.defn.UnitClass.typeRef), tpd.EmptyTree)
         val ctr = ctx.typeAssigner.assignType(untpdCtr, cls.primaryConstructor)
-        tpd.ClassDefWithParents(cls.asClass, ctr, parents, body)
+        tpd.ClassDefWithParents(cls.asClass, ctr, parents, paramsAccessDefs.flatten ++ body)
 
       def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef = {
         val dotc.ast.Trees.TypeDef(_, originalImpl: tpd.Template) = original: @unchecked
@@ -392,6 +406,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         case x: (tpd.NamedArg & x.type) => Some(x)
         case x: (tpd.Typed & x.type) =>
           TypedTypeTest.unapply(x) // Matches `Typed` but not `TypedOrTest`
+        case x: (tpd.TypeDef & x.type) => Some(x)
         case _ => if x.isTerm then Some(x) else None
     end TermTypeTest
 
@@ -2605,10 +2620,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def requiredMethod(path: String): Symbol = dotc.core.Symbols.requiredMethod(path)
       def classSymbol(fullName: String): Symbol = dotc.core.Symbols.requiredClass(fullName)
 
-      def newClass(owner: Symbol, name: String, parents: List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr]): Symbol =
+      def newClass(parent: Symbol, name: String, parents: List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr]): Symbol =
         assert(parents.nonEmpty && !parents.head.typeSymbol.is(dotc.core.Flags.Trait), "First parent must be a class")
         val cls = dotc.core.Symbols.newNormalizedClassSymbol(
-          owner,
+          parent,
           name.toTypeName,
           dotc.core.Flags.EmptyFlags,
           parents,
@@ -2618,10 +2633,26 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         for sym <- decls(cls) do cls.enter(sym)
         cls
 
-      def newModule(owner: Symbol, name: String, modFlags: Flags, clsFlags: Flags, parents: List[TypeRepr], decls: Symbol => List[Symbol], privateWithin: Symbol): Symbol =
-        assert(parents.nonEmpty && !parents.head.typeSymbol.is(dotc.core.Flags.Trait), "First parent must be a class")
+      def newClass(parent: Symbol, name: String, parents: Symbol => List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr], paramNames: List[String], paramTypes: List[TypeRepr], flags: Flags, privateWithin: Symbol): Symbol =
+        checkValidFlags(flags.toTermFlags, Flags.validClassFlags)
         assert(!privateWithin.exists || privateWithin.isType, "privateWithin must be a type symbol or `Symbol.noSymbol`")
-        val mod = dotc.core.Symbols.newNormalizedModuleSymbol(
+        val cls = dotc.core.Symbols.newNormalizedClassSymbolUsingClassSymbolinParents(
+          parent,
+          name.toTypeName,
+          flags,
+          parents,
+          selfType.getOrElse(Types.NoType),
+          privateWithin)
+        cls.enter(dotc.core.Symbols.newConstructor(cls, dotc.core.Flags.Synthetic, paramNames.map(_.toTermName), paramTypes))
+        for (name, tpe) <- paramNames.zip(paramTypes) do
+          cls.enter(dotc.core.Symbols.newSymbol(cls, name.toTermName, Flags.ParamAccessor, tpe, Symbol.noSymbol)) // add other flags (local, private, privatelocal) and set privateWithin
+        for sym <- decls(cls) do cls.enter(sym)
+        cls
+
+      def newModule(owner: Symbol, name: String, modFlags: Flags, clsFlags: Flags, parents: Symbol => List[TypeRepr], decls: Symbol => List[Symbol], privateWithin: Symbol): Symbol =
+        // assert(parents.nonEmpty && !parents.head.typeSymbol.is(dotc.core.Flags.Trait), "First parent must be a class")
+        assert(!privateWithin.exists || privateWithin.isType, "privateWithin must be a type symbol or `Symbol.noSymbol`")
+        val mod = dotc.core.Symbols.newNormalizedModuleSymbolUsingClassSymbolInParents(
           owner,
           name.toTermName,
           modFlags | dotc.core.Flags.ModuleValCreationFlags,
@@ -3006,6 +3037,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
       // Keep: aligned with Quotes's `newTypeAlias` doc
       private[QuotesImpl] def validTypeAliasFlags: Flags = Private | Protected | Override | Final | Infix | Local
+
+      // Keep: aligned with Quotes's `newClass`
+      private[QuotesImpl] def validClassFlags: Flags = Private | Protected | Final // Abstract, AbsOverride Local OPen ? PrivateLocal Protected ?
 
     end Flags
 
