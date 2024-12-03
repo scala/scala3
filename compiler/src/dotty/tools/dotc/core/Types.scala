@@ -5612,22 +5612,18 @@ object Types extends TypeUtils {
 
     def samClass(tp: Type)(using Context): Symbol = tp match
       case tp: ClassInfo =>
-        def zeroParams(tp: Type): Boolean = tp.stripPoly match
-          case mt: MethodType =>
-            val noArgsNeeded = mt.paramInfos match
-              case Nil => true
-              case info :: Nil => info.isRepeatedParam
-              case _ => false
-            noArgsNeeded && !mt.resultType.isInstanceOf[MethodType]
-          case et: ExprType => true
-          case _ => false
-        def validCtor(cls: Symbol): Boolean =
-          val ctor = cls.primaryConstructor
-          (!ctor.exists || zeroParams(ctor.info)) // `ContextFunctionN` does not have constructors
-          && (!cls.is(Trait) || validCtor(cls.info.parents.head.classSymbol))
+        val cls = tp.cls
+        def takesNoArgs(tp: Type) =
+          !tp.classSymbol.primaryConstructor.exists
+              // e.g. `ContextFunctionN` does not have constructors
+          || tp.applicableConstructors(Nil, adaptVarargs = true).lengthCompare(1) == 0
+              // we require a unique constructor so that SAM expansion is deterministic
+        val noArgsNeeded: Boolean =
+          takesNoArgs(tp)
+          && (!tp.cls.is(Trait) || takesNoArgs(tp.parents.head))
         def isInstantiable =
           !tp.cls.isOneOf(FinalOrSealed) && (tp.appliedRef <:< tp.selfType)
-        if validCtor(tp.cls) && isInstantiable then tp.cls
+        if noArgsNeeded && isInstantiable then tp.cls
         else NoSymbol
       case tp: AppliedType =>
         samClass(tp.superType)
