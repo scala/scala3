@@ -3,7 +3,7 @@ def test1 =
   x = ""
   1 match
     case 1 => x = null
-    case _ => x = x.trim() // ok
+    case _ => x = x.trim() // error // LTS specific
   x.replace("", "") // error
 
 def test2(i: Int) =
@@ -11,11 +11,11 @@ def test2(i: Int) =
   i match
     case 1 => x = "1"
     case _ => x = " "
-  x.replace("", "") // ok
+  x.replace("", "") // error // LTS specific
 
 def test3(i: Int) =
   var x: String | Null = null
   i match
     case 1 if x != null => ()
     case _ => x = " "
-  x.trim() // ok
+  x.trim() // error // LTS specific

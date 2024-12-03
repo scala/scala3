@@ -3,7 +3,7 @@ def test1(i: Int): Int =
   if i == 0 then x = ""
   else x = ""
   try
-    x = x.replace(" ", "") // ok
+    x = x.replace(" ", "") // error // LTS specific
     throw new Exception()
   catch
     case e: Exception =>
@@ -15,7 +15,7 @@ def test2: Int =
   var x: String | Null = null
   try throw new Exception()
   finally x = ""
-  x.length // ok
+  x.length // error // LTS specific
 
 def test3 =
   var x: String | Null = ""
