@@ -221,25 +221,22 @@ class InferExpectedTypeSuite extends BasePCSuite:
          |""".stripMargin
     )
 
-  @Ignore("Generic functions are not handled correctly.")
   @Test def flatmap =
     check(
       """|val _ : List[Int] = List().flatMap(_ => @@)
          |""".stripMargin,
-      """|IterableOnce[Int]
-         |""".stripMargin
+      """|IterableOnce[Nothing]
+         |""".stripMargin // ideally IterableOnce[Int], but can't change interpolateTypeVars
     )
 
-  @Ignore("Generic functions are not handled correctly.")
   @Test def map =
     check(
       """|val _ : List[Int] = List().map(_ => @@)
          |""".stripMargin,
-      """|Int
-         |""".stripMargin
+      """|Nothing
+         |""".stripMargin // ideally Int, but can't change interpolateTypeVars
     )
 
-  @Ignore("Generic functions are not handled correctly.")
   @Test def `for-comprehension` =
     check(
       """|val _ : List[Int] =
@@ -247,8 +244,8 @@ class InferExpectedTypeSuite extends BasePCSuite:
          |    _ <- List("a", "b")
          |  } yield @@
          |""".stripMargin,
-      """|Int
-         |""".stripMargin
+      """|Nothing
+         |""".stripMargin // ideally Int, but can't change interpolateTypeVars
     )
 
 // bounds
