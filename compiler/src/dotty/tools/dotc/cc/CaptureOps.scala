@@ -186,7 +186,7 @@ extension (tp: Type)
     case tp: TermRef =>
       ((tp.prefix eq NoPrefix)
       || tp.symbol.isField && !tp.symbol.isStatic && tp.prefix.isTrackableRef
-      || tp.isRootCapability
+      || tp.isCap
       ) && !tp.symbol.isOneOf(UnstableValueFlags)
     case tp: TypeRef =>
       tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet)
@@ -225,6 +225,8 @@ extension (tp: Type)
     else tp match
       case tp @ ReachCapability(_) =>
         tp.singletonCaptureSet
+      case ReadOnlyCapability(ref) =>
+        ref.deepCaptureSet(includeTypevars)
       case tp: SingletonCaptureRef if tp.isTrackableRef =>
         tp.reach.singletonCaptureSet
       case _ =>
@@ -507,9 +509,12 @@ extension (tp: Type)
       def apply(t: Type) =
         if variance <= 0 then t
         else t.dealiasKeepAnnots match
-          case t @ CapturingType(p, cs) if cs.isUniversal =>
+          case t @ CapturingType(p, cs) if cs.containsRootCapability =>
             change = true
-            t.derivedCapturingType(apply(p), ref.reach.singletonCaptureSet)
+            val reachRef =
+              if cs.elems.forall(_.isReadOnly) then ref.reach.readOnly
+              else ref.reach
+            t.derivedCapturingType(apply(p), reachRef.singletonCaptureSet)
           case t @ AnnotatedType(parent, ann) =>
             // Don't map annotations, which includes capture sets
             t.derivedAnnotatedType(this(parent), ann)
@@ -709,17 +714,17 @@ abstract class AnnotatedCapability(annot: Context ?=> ClassSymbol):
 object MaybeCapability extends AnnotatedCapability(defn.MaybeCapabilityAnnot):
   protected def unwrappable(using Context) = Set()
 
-/** An extractor for `ref @annotation.internal.reachCapability`, which is used to express
- *  the reach capability `ref*` as a type.
- */
-object ReachCapability extends AnnotatedCapability(defn.ReachCapabilityAnnot):
-  protected def unwrappable(using Context) = Set(defn.MaybeCapabilityAnnot)
-
 /** An extractor for `ref @readOnlyCapability`, which is used to express
  *  the rad-only capability `ref.rd` as a type.
  */
 object ReadOnlyCapability extends AnnotatedCapability(defn.ReadOnlyCapabilityAnnot):
-  protected def unwrappable(using Context) = Set(defn.ReachCapabilityAnnot, defn.MaybeCapabilityAnnot)
+  protected def unwrappable(using Context) = Set(defn.MaybeCapabilityAnnot)
+
+/** An extractor for `ref @annotation.internal.reachCapability`, which is used to express
+ *  the reach capability `ref*` as a type.
+ */
+object ReachCapability extends AnnotatedCapability(defn.ReachCapabilityAnnot):
+  protected def unwrappable(using Context) = Set(defn.MaybeCapabilityAnnot, defn.ReadOnlyCapabilityAnnot)
 
 /** Offers utility method to be used for type maps that follow aliases */
 trait ConservativeFollowAliasMap(using Context) extends TypeMap:
