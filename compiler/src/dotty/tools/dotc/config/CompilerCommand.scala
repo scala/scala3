@@ -9,6 +9,7 @@ abstract class CompilerCommand extends CliCommand:
 
   final def helpMsg(using settings: ScalaSettings)(using SettingsState, Context): String =
     settings.allSettings.find(isHelping) match
+      case Some(s @ settings.language) => availableOptionsMsg(_ == s)
       case Some(s) => s.description
       case _ =>
         if (settings.help.value) usageMessage
