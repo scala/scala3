@@ -1588,7 +1588,7 @@ object Parsers {
       case _ => None
     }
 
-    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`.` rd] [`*`]
+    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`] [`.` rd]
      *                |  [ { SimpleRef `.` } SimpleRef `.` ] id `^`
      */
     def captureRef(): Tree =
@@ -1597,22 +1597,24 @@ object Parsers {
         in.nextToken()
         atSpan(startOffset(ref)) { PostfixOp(ref, Ident(name)) }
 
-      def optStar(ref: Tree): Tree =
-        if isIdent(nme.raw.STAR) then derived(ref, nme.CC_REACH)
-        else ref
-
       def recur(ref: Tree): Tree =
         if in.token == DOT then
           in.nextToken()
-          if in.isIdent(nme.rd) then optStar(derived(ref, nme.CC_READONLY))
+          if in.isIdent(nme.rd) then derived(ref, nme.CC_READONLY)
           else recur(selector(ref))
+        else if in.isIdent(nme.raw.STAR) then
+          val reachRef = derived(ref, nme.CC_REACH)
+          if in.token == DOT && in.lookahead.isIdent(nme.rd) then
+            in.nextToken()
+            derived(reachRef, nme.CC_READONLY)
+          else reachRef
         else if isIdent(nme.UPARROW) then
           in.nextToken()
           atSpan(startOffset(ref)):
             convertToTypeId(ref) match
               case ref: RefTree => makeCapsOf(ref)
               case ref => ref
-        else optStar(ref)
+        else ref
 
       recur(simpleRef())
     end captureRef

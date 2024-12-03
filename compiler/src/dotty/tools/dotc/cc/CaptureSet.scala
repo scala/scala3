@@ -83,6 +83,10 @@ sealed abstract class CaptureSet extends Showable:
 
   /** Does this capture set contain the root reference `cap` as element? */
   final def isUniversal(using Context) =
+    elems.exists(_.isCap)
+
+  /** Does this capture set contain a root reference `cap` or `cap.rd` as element? */
+  final def containsRootCapability(using Context) =
     elems.exists(_.isRootCapability)
 
   final def isUnboxable(using Context) =
@@ -559,8 +563,10 @@ object CaptureSet:
     final def upperApprox(origin: CaptureSet)(using Context): CaptureSet =
       if isConst then
         this
-      else if elems.exists(_.isRootCapability) || computingApprox then
+      else if isUniversal || computingApprox then
         universal
+      else if containsRootCapability && elems.forall(_.isReadOnly) then
+        shared
       else
         computingApprox = true
         try
@@ -1081,6 +1087,8 @@ object CaptureSet:
     case ReachCapability(ref1) =>
       ref1.widen.deepCaptureSet(includeTypevars = true)
         .showing(i"Deep capture set of $ref: ${ref1.widen} = ${result}", capt)
+    case ReadOnlyCapability(ref1) =>
+      ref1.captureSetOfInfo.map(ReadOnlyMap())
     case _ => ofType(ref.underlying, followResult = true)
 
   /** Capture set of a type */
@@ -1203,9 +1211,10 @@ object CaptureSet:
       for CompareResult.LevelError(cs, ref) <- ccState.levelError.toList yield
         ccState.levelError = None
         if ref.isRootCapability then
+          def capStr = if ref.isReadOnly then "cap.rd" else "cap"
           i"""
             |
-            |Note that the universal capability `cap`
+            |Note that the universal capability `$capStr`
             |cannot be included in capture set $cs"""
         else
           val levelStr = ref match

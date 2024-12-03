@@ -17,7 +17,7 @@ import StdNames.nme
 /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs,
  *  as well as three kinds of AnnotatedTypes representing readOnly, reach, and maybe capabilities.
  *  If there are several annotations they come with an orderL
- *  `.rd` first, `*` next, `?` last.
+ *  `*` first, `.rd` next, `?` last.
  */
 trait CaptureRef extends TypeProxy, ValueType:
   private var myCaptureSet: CaptureSet | Null = uninitialized
@@ -33,27 +33,15 @@ trait CaptureRef extends TypeProxy, ValueType:
   /** Is this a maybe reference of the form `x?`? */
   final def isMaybe(using Context): Boolean = this ne stripMaybe
 
-  /** Is this a reach reference of the form `x*`? */
-  final def isReach(using Context): Boolean = this ne stripReach
-
   /** Is this a unique reference of the form `x!`? */
   final def isReadOnly(using Context): Boolean = this ne stripReadOnly
+
+  /** Is this a reach reference of the form `x*`? */
+  final def isReach(using Context): Boolean = this ne stripReach
 
   final def stripMaybe(using Context): CaptureRef = this match
     case AnnotatedType(tp1: CaptureRef, annot) if annot.symbol == defn.MaybeCapabilityAnnot =>
       tp1
-    case _ =>
-      this
-
-  final def stripReach(using Context): CaptureRef = this match
-    case tp @ AnnotatedType(tp1: CaptureRef, annot) =>
-      val sym = annot.symbol
-      if sym == defn.ReachCapabilityAnnot then
-        tp1
-      else if sym == defn.MaybeCapabilityAnnot then
-        tp.derivedAnnotatedType(tp1.stripReach, annot)
-      else
-        this
     case _ =>
       this
 
@@ -62,17 +50,34 @@ trait CaptureRef extends TypeProxy, ValueType:
       val sym = annot.symbol
       if sym == defn.ReadOnlyCapabilityAnnot then
         tp1
-      else if sym == defn.ReachCapabilityAnnot || sym == defn.MaybeCapabilityAnnot then
+      else if sym == defn.MaybeCapabilityAnnot then
         tp.derivedAnnotatedType(tp1.stripReadOnly, annot)
       else
         this
     case _ =>
       this
 
+  final def stripReach(using Context): CaptureRef = this match
+    case tp @ AnnotatedType(tp1: CaptureRef, annot) =>
+      val sym = annot.symbol
+      if sym == defn.ReachCapabilityAnnot then
+        tp1
+      else if sym == defn.ReadOnlyCapabilityAnnot || sym == defn.MaybeCapabilityAnnot then
+        tp.derivedAnnotatedType(tp1.stripReach, annot)
+      else
+        this
+    case _ =>
+      this
+
   /** Is this reference the generic root capability `cap` ? */
-  final def isRootCapability(using Context): Boolean = this match
+  final def isCap(using Context): Boolean = this match
     case tp: TermRef => tp.name == nme.CAPTURE_ROOT && tp.symbol == defn.captureRoot
     case _ => false
+
+  /** Is this reference one the generic root capabilities `cap` or `cap.rd` ? */
+  final def isRootCapability(using Context): Boolean = this match
+    case ReadOnlyCapability(tp1) => tp1.isCap
+    case _ => isCap
 
   /** Is this reference capability that does not derive from another capability ? */
   final def isMaxCapability(using Context): Boolean = this match
@@ -141,7 +146,7 @@ trait CaptureRef extends TypeProxy, ValueType:
       case _ => false
 
     (this eq y)
-    || this.isRootCapability
+    || this.isCap
     || y.match
         case y: TermRef =>
             y.prefix.match
