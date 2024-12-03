@@ -704,11 +704,22 @@ object TypeOps:
       val hiBound = instantiate(bounds.hi, skolemizedArgTypes)
       val loBound = instantiate(bounds.lo, skolemizedArgTypes)
 
-      def check(using Context) = {
-        if (!(lo <:< hiBound)) violations += ((arg, "upper", hiBound))
-        if (!(loBound <:< hi)) violations += ((arg, "lower", loBound))
+      def check(tp1: Type, tp2: Type, which: String, bound: Type)(using Context) = {
+        val isSub = TypeComparer.explaining { cmp =>
+          val isSub = cmp.isSubType(tp1, tp2)
+          if !isSub then
+            if !ctx.typerState.constraint.domainLambdas.isEmpty then
+              typr.println(i"${ctx.typerState.constraint}")
+            if !ctx.gadt.symbols.isEmpty then
+              typr.println(i"${ctx.gadt}")
+            typr.println(cmp.lastTrace(i"checkOverlapsBounds($lo, $hi, $arg, $bounds)($which)"))
+            //trace.dumpStack()
+          isSub
+        }//(using ctx.fresh.setSetting(ctx.settings.verbose, true)) // uncomment to enable moreInfo in ExplainingTypeComparer recur
+        if !isSub then violations += ((arg, which, bound))
       }
-      check(using checkCtx)
+      check(lo, hiBound, "upper", hiBound)(using checkCtx)
+      check(loBound, hi, "lower", loBound)(using checkCtx)
     }
 
     def loop(args: List[Tree], boundss: List[TypeBounds]): Unit = args match

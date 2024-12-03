@@ -27,6 +27,18 @@ object trace extends TraceSyntax:
   object log extends TraceSyntax:
     inline def isEnabled: true = true
     protected val isForced = false
+
+  def dumpStack(limit: Int = -1): Unit = {
+    val out = Console.out
+    val exc = new Exception("Dump Stack")
+    var stack = exc.getStackTrace
+      .filter(e => !e.getClassName.startsWith("dotty.tools.dotc.reporting.TraceSyntax"))
+      .filter(e => !e.getClassName.startsWith("dotty.tools.dotc.reporting.trace"))
+    if limit >= 0 then
+      stack = stack.take(limit)
+    exc.setStackTrace(stack)
+    exc.printStackTrace(out)
+  }
 end trace
 
 /** This module is carefully optimized to give zero overhead if Config.tracingEnabled
