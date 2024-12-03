@@ -73,6 +73,8 @@ class MissingType(val pre: Type, val name: Name)(using Context) extends TypeErro
       case _ if givenSelf.exists && givenSelf.member(name).exists =>
         i"""$name exists as a member of the self type $givenSelf of $cls
            |but it cannot be called on a receiver whose type does not extend $cls"""
+      case _ if pre.baseClasses.exists(_.findMember(name, pre, Private, EmptyFlags).exists) =>
+        i"$name is a private member in a base class"
       case _ =>
         missingClassFile
 
