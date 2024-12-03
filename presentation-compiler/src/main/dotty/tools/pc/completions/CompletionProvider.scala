@@ -16,6 +16,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Flags
+import dotty.tools.dotc.core.Names.DerivedName
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.interactive.InteractiveDriver
@@ -39,7 +40,8 @@ import scala.meta.pc.CompletionItemPriority
 
 class CompletionProvider(
     search: SymbolSearch,
-    driver: InteractiveDriver,
+    cachingDriver: InteractiveDriver,
+    freshDriver: () => InteractiveDriver,
     params: OffsetParams,
     config: PresentationCompilerConfig,
     buildTargetIdentifier: String,
@@ -52,6 +54,16 @@ class CompletionProvider(
 
     val (wasCursorApplied, code) = applyCompletionCursor(params)
     val sourceFile = SourceFile.virtual(uri, code)
+
+    /** Creating a new fresh driver is way slower than reusing existing one,
+     *  but runnig a compilation has side effects that modifies the state of the driver.
+     *  We don't want to affect cachingDriver state with compilation including "CURSOR" suffix.
+     *
+     *  We could in theory save this fresh driver for reuse, but it is a choice between extra memory usage and speed.
+     *  The scenario in which "CURSOR" is applied (empty query or query equal to any keyword) has a slim chance of happening.
+     */
+
+    val driver = if wasCursorApplied then freshDriver() else cachingDriver
     driver.run(uri, sourceFile)
 
     given ctx: Context = driver.currentCtx
@@ -63,11 +75,12 @@ class CompletionProvider(
         val adjustedPath = Interactive.resolveTypedOrUntypedPath(tpdPath0, pos)(using newctx)
 
         val tpdPath = tpdPath0 match
-          // $1$ // FIXME add check for a $1$ name to make sure we only do the below in lifting case
-          case Select(qual, name) :: tail if qual.symbol.is(Flags.Synthetic) =>
-            qual.symbol.defTree match
-              case valdef: ValDef => Select(valdef.rhs, name) :: tail
-              case _ => tpdPath0
+          case Select(qual, name) :: tail
+            // If for any reason we end up in param after lifting, we want to inline the synthetic val
+            if qual.symbol.is(Flags.Synthetic) && qual.symbol.name.isInstanceOf[DerivedName] =>
+              qual.symbol.defTree match
+                case valdef: ValDef => Select(valdef.rhs, name) :: tail
+                case _ => tpdPath0
           case _ => tpdPath0
 
 

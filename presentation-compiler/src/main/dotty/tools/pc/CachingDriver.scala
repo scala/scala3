@@ -7,9 +7,11 @@ import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.dotc.util.SourceFile
 
+import scala.compiletime.uninitialized
+
 /**
- * MetalsDriver is a wrapper class that provides a compilation cache for InteractiveDriver.
- * MetalsDriver skips running compilation if
+ * CachingDriver is a wrapper class that provides a compilation cache for InteractiveDriver.
+ * CachingDriver skips running compilation if
  * - the target URI of `run` is the same as the previous target URI
  * - the content didn't change since the last compilation.
  *
@@ -25,11 +27,9 @@ import dotty.tools.dotc.util.SourceFile
  * To avoid the complexity related to currentCtx,
  * we decided to cache only when the target URI only if the same as the previous run.
  */
-class MetalsDriver(
-    override val settings: List[String]
-) extends InteractiveDriver(settings):
+class CachingDriver(override val settings: List[String]) extends InteractiveDriver(settings):
 
-  @volatile private var lastCompiledURI: URI = _
+  @volatile private var lastCompiledURI: URI = uninitialized
 
   private def alreadyCompiled(uri: URI, content: Array[Char]): Boolean =
     compilationUnits.get(uri) match
@@ -53,4 +53,4 @@ class MetalsDriver(
     lastCompiledURI = uri
     diags
 
-end MetalsDriver
+end CachingDriver
