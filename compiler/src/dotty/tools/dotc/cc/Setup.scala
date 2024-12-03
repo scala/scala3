@@ -736,7 +736,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case RetainingType(parent, refs) =>
         needsVariable(parent)
         && !refs.tpes.exists:
-            case ref: TermRef => ref.isRootCapability
+            case ref: TermRef => ref.isCap
             case _ => false
       case AnnotatedType(parent, _) =>
         needsVariable(parent)
