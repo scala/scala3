@@ -282,7 +282,7 @@ private sealed trait WarningSettings:
          |to prevent the shell from expanding patterns.""".stripMargin,
   )
 
-  val WcheckInit: Setting[Boolean] = BooleanSetting("-Wsafe-init", "Ensure safe initialization of objects.")
+  val YcheckInit: Setting[Boolean] = BooleanSetting("-Ysafe-init", "Ensure safe initialization of objects.")
 
   object Whas:
     def allOr(s: Setting[Boolean])(using Context): Boolean =
@@ -290,7 +290,7 @@ private sealed trait WarningSettings:
     def valueDiscard(using Context): Boolean = allOr(WvalueDiscard)
     def nonUnitStatement(using Context): Boolean = allOr(WNonUnitStatement)
     def enumCommentDiscard(using Context): Boolean = allOr(WenumCommentDiscard)
-    def checkInit(using Context): Boolean = allOr(WcheckInit)
+    def checkInit(using Context): Boolean = allOr(YcheckInit)
 
 /** -X "Extended" or "Advanced" settings */
 private sealed trait XSettings:
@@ -429,7 +429,6 @@ private sealed trait YSettings:
   // Experimental language features
   val YnoKindPolymorphism: Setting[Boolean] = BooleanSetting("-Yno-kind-polymorphism", "Disable kind polymorphism.")
   val YexplicitNulls: Setting[Boolean] = BooleanSetting("-Yexplicit-nulls", "Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.")
-  val YcheckInit: Setting[Boolean] = BooleanSetting("-Ysafe-init", "Ensure safe initialization of objects.")
   val YrequireTargetName: Setting[Boolean] = BooleanSetting("-Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation.")
   val YrecheckTest: Setting[Boolean] = BooleanSetting("-Yrecheck-test", "Run basic rechecking (internal test only).")
   val YccDebug: Setting[Boolean] = BooleanSetting("-Ycc-debug", "Used in conjunction with captureChecking language import, debug info for captured references.")
