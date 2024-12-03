@@ -33,8 +33,12 @@ trait CaptureRef extends TypeProxy, ValueType:
   /** Is this a maybe reference of the form `x?`? */
   final def isMaybe(using Context): Boolean = this ne stripMaybe
 
-  /** Is this a unique reference of the form `x!`? */
-  final def isReadOnly(using Context): Boolean = this ne stripReadOnly
+  /** Is this a read-only reference of the form `x.rd` or a capture set variable
+   *  with only read-ony references in its upper bound?
+   */
+  final def isReadOnly(using Context): Boolean = this match
+    case tp: TypeRef => tp.captureSetOfInfo.isReadOnly
+    case _ => this ne stripReadOnly
 
   /** Is this a reach reference of the form `x*`? */
   final def isReach(using Context): Boolean = this ne stripReach
@@ -81,9 +85,13 @@ trait CaptureRef extends TypeProxy, ValueType:
 
   /** Is this reference capability that does not derive from another capability ? */
   final def isMaxCapability(using Context): Boolean = this match
-    case tp: TermRef => tp.isRootCapability || tp.info.derivesFrom(defn.Caps_Exists)
+    case tp: TermRef => tp.isCap || tp.info.derivesFrom(defn.Caps_Exists)
     case tp: TermParamRef => tp.underlying.derivesFrom(defn.Caps_Exists)
+    case ReadOnlyCapability(tp1) => tp1.isMaxCapability
     case _ => false
+
+  final def isExclusive(using Context): Boolean =
+    !isReadOnly && (isMaxCapability || captureSetOfInfo.isExclusive)
 
   // With the support of pathes, we don't need to normalize the `TermRef`s anymore.
   // /** Normalize reference so that it can be compared with `eq` for equality */

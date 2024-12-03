@@ -370,7 +370,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def markFree(sym: Symbol, pos: SrcPos)(using Context): Unit =
       markFree(sym, sym.termRef, pos)
 
-    def markFree(sym: Symbol, ref: TermRef, pos: SrcPos)(using Context): Unit =
+    def markFree(sym: Symbol, ref: CaptureRef, pos: SrcPos)(using Context): Unit =
       if sym.exists && ref.isTracked then markFree(ref.captureSet, pos)
 
     /** Make sure the (projected) `cs` is a subset of the capture sets of all enclosing
@@ -520,13 +520,18 @@ class CheckCaptures extends Recheck, SymTransformer:
         // expected type `pt`.
         // Example: If we have `x` and the expected type says we select that with `.a.b`,
         // we charge `x.a.b` instead of `x`.
-        def addSelects(ref: TermRef, pt: Type): TermRef = pt match
+        def addSelects(ref: TermRef, pt: Type): CaptureRef = pt match
           case pt: PathSelectionProto if ref.isTracked =>
-            // if `ref` is not tracked then the selection could not give anything new
-            // class SerializationProxy in stdlib-cc/../LazyListIterable.scala has an example where this matters.
-            addSelects(ref.select(pt.sym).asInstanceOf[TermRef], pt.pt)
+            if pt.sym.isReadOnlyMethod then
+              ref.readOnly
+            else
+              // if `ref` is not tracked then the selection could not give anything new
+              // class SerializationProxy in stdlib-cc/../LazyListIterable.scala has an example where this matters.
+              addSelects(ref.select(pt.sym).asInstanceOf[TermRef], pt.pt)
           case _ => ref
-        val pathRef = addSelects(sym.termRef, pt)
+        var pathRef: CaptureRef = addSelects(sym.termRef, pt)
+        if pathRef.derivesFrom(defn.Caps_Mutable) && pt.isValueType && !pt.isMutableType then
+          pathRef = pathRef.readOnly
         markFree(sym, pathRef, tree.srcPos)
       super.recheckIdent(tree, pt)
 
@@ -535,7 +540,9 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     override def selectionProto(tree: Select, pt: Type)(using Context): Type =
       val sym = tree.symbol
-      if !sym.isOneOf(UnstableValueFlags) && !sym.isStatic then PathSelectionProto(sym, pt)
+      if !sym.isOneOf(UnstableValueFlags) && !sym.isStatic
+          || sym.isReadOnlyMethod
+      then PathSelectionProto(sym, pt)
       else super.selectionProto(tree, pt)
 
     /** A specialized implementation of the selection rule.
