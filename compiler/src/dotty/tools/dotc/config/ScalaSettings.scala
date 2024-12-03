@@ -282,7 +282,7 @@ private sealed trait WarningSettings:
          |to prevent the shell from expanding patterns.""".stripMargin,
   )
 
-  private val WcheckInit: Setting[Boolean] = BooleanSetting("-Wsafe-init", "Ensure safe initialization of objects.")
+  val WcheckInit: Setting[Boolean] = BooleanSetting("-Wsafe-init", "Ensure safe initialization of objects.")
 
   object Whas:
     def allOr(s: Setting[Boolean])(using Context): Boolean =
