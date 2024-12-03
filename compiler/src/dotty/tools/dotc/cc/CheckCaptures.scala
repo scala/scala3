@@ -46,7 +46,7 @@ object CheckCaptures:
    *  @param owner         the current owner
    *  @param nestedInOwner true if the environment is a temporary one nested in the owner's environment,
    *                       and does not have a different actual owner symbol (this happens when doing box adaptation).
-   *  @param captured      the caputure set containing all references to tracked free variables outside of boxes
+   *  @param captured      the capture set containing all references to tracked free variables outside of boxes
    *  @param isBoxed       true if the environment is inside a box (in which case references are not counted)
    *  @param outer0        the next enclosing environment
    */

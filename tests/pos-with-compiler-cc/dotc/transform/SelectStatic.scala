@@ -15,7 +15,7 @@ import dotty.tools.dotc.transform.SymUtils._
  *  Otherwise, the backend needs to be aware that some qualifiers need to be
  *  dropped.
  *
- *  A tranformation similar to what this phase does seems to be performed by
+ *  A transformation similar to what this phase does seems to be performed by
  *  flatten in nsc.
  *
  *  The side effects of the qualifier of a dropped `Select` is normally
