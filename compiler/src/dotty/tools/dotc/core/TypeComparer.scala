@@ -2881,6 +2881,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         true
       case (_, _: HKLambda) =>
         true
+      /* Nothing is not a class type in the spec but dotc represents it as if it were one.
+       * Get it out of the way early to avoid mistakes (see for example #20897).
+       * Nothing ⋔ T and T ⋔ Nothing for all T.
+       */
+      case (tp1, tp2) if tp1.isExactlyNothing || tp2.isExactlyNothing =>
+        true
       case (tp1: OrType, _)  =>
         provablyDisjoint(tp1.tp1, tp2) && provablyDisjoint(tp1.tp2, tp2)
       case (_, tp2: OrType)  =>
@@ -2891,6 +2897,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case (_, tp2: AndType) =>
         !(tp2 <:< tp1)
         && (provablyDisjoint(tp1, tp2.tp2) || provablyDisjoint(tp1, tp2.tp1))
+      /* Handle AnyKind now for the same reason as Nothing above: it is not a real class type.
+       * Other than the rules with Nothing, unions and intersections, there is structurally
+       * no rule such that AnyKind ⋔ T or T ⋔ AnyKind for any T.
+       */
+      case (tp1, tp2) if tp1.isDirectRef(AnyKindClass) || tp2.isDirectRef(AnyKindClass) =>
+        false
       case (tp1: NamedType, _) if gadtBounds(tp1.symbol) != null =>
         provablyDisjoint(gadtBounds(tp1.symbol).uncheckedNN.hi, tp2)
         || provablyDisjoint(tp1.superTypeNormalized, tp2)
