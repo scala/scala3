@@ -60,6 +60,14 @@ class Completions(
 
   private lazy val shouldAddSnippet =
     path match
+      case (_: (Import | Export)) :: _ => false
+      case _ :: (_: (Import | Export)) :: _ => false
+      // UnApply has patterns included in MatchCaseCompletions
+      case _ :: (_: UnApply) :: _ => false
+      case _ => true
+
+  private lazy val shouldAddSuffix = shouldAddSnippet && 
+    (path match
       /* In case of `method@@()` we should not add snippets and the path
        * will contain apply as the parent of the current tree.
        */
@@ -72,11 +80,8 @@ class Completions(
       case _ :: (withcursor @ Select(fun, name)) :: (appl: GenericApply) :: _
           if appl.fun == withcursor && name.decoded == Cursor.value =>
         false
-      case (_: (Import | Export)) :: _ => false
-      case _ :: (_: (Import | Export)) :: _ => false
-      // UnApply has patterns included in MatchCaseCompletions
-      case _ :: (_: UnApply) :: _ => false
-      case _ => true
+      case _ => true)
+
 
   private lazy val isNew: Boolean = Completion.isInNewContext(adjustedPath)
 
@@ -198,12 +203,12 @@ class Completions(
   private def findSuffix(symbol: Symbol): CompletionAffix =
     CompletionAffix.empty
       .chain { suffix => // for [] suffix
-        if shouldAddSnippet && symbol.info.typeParams.nonEmpty then
+        if shouldAddSuffix && symbol.info.typeParams.nonEmpty then
           suffix.withNewSuffixSnippet(Affix(SuffixKind.Bracket))
         else suffix
       }
       .chain { suffix => // for () suffix
-        if shouldAddSnippet && symbol.is(Flags.Method) then
+        if shouldAddSuffix && symbol.is(Flags.Method) then
           val paramss = getParams(symbol)
           paramss match
             case Nil => suffix
@@ -224,7 +229,7 @@ class Completions(
         else suffix
       }
       .chain { suffix => // for {} suffix
-        if shouldAddSnippet && isNew && isAbstractType(symbol) then
+        if shouldAddSuffix && isNew && isAbstractType(symbol) then
           if suffix.hasSnippet then suffix.withNewSuffix(Affix(SuffixKind.Template))
           else suffix.withNewSuffixSnippet(Affix(SuffixKind.Template))
         else suffix
