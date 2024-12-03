@@ -1,9 +1,7 @@
-//> using options -Werror
-
 def boundary[T](body: (T => RuntimeException) => T): T =
   case class Break(value: T) extends RuntimeException
   try body(Break.apply)
-  catch case Break(t) => t // error: pattern matching on local classes is unsound currently
+  catch case Break(t) => t // warn: pattern matching on local classes is unsound currently
 
 def test =
   boundary[Int]: EInt =>
@@ -16,4 +14,4 @@ def boundaryCorrectBehaviour[T](body: (T => RuntimeException) => T): T =
     // A correct implementation, but is still treated as a local class right now
     case class Break(value: T) extends RuntimeException
   try body(local.Break.apply)
-  catch case local.Break(t) => t // error
+  catch case local.Break(t) => t // warn
