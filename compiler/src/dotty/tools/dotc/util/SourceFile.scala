@@ -286,7 +286,7 @@ object SourceFile {
     if isScript(file, chars) then
       ScriptSourceFile(file, chars)
     else
-      SourceFile(file, chars)
+      WrappedSourceFile(file, chars)
 
   def apply(file: AbstractFile | Null, computeContent: => Array[Char]): SourceFile = new SourceFile(file, computeContent)
 }
@@ -295,3 +295,17 @@ object SourceFile {
   override def exists: Boolean = false
   override def atSpan(span: Span): SourcePosition = NoSourcePosition
 }
+
+object WrappedSourceFile:
+  val headerText = """//SOURCECODE_ORIGINAL_CODE_START_MARKER"""
+  @sharable private val headerPattern = Pattern.compile(s"""^$headerText(\r|\n|\r\n)""", Pattern.MULTILINE)
+  def apply(file: AbstractFile, content: Array[Char]): SourceFile =
+    val matcher = headerPattern matcher content.mkString
+    if matcher.find then
+      val offset = matcher.end
+      val originalSource = new SourceFile(file, content.drop(offset))
+      new SourceFile(file, content):
+        override def atSpan(span: Span): SourcePosition =
+          if span.exists then SourcePosition(originalSource, span.shift(-offset))
+          else NoSourcePosition
+    else new SourceFile(file, content)
