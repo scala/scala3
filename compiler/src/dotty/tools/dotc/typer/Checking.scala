@@ -37,7 +37,7 @@ import config.Feature, Feature.{sourceVersion, modularity}
 import config.SourceVersion.*
 import config.MigrationVersion
 import printing.Formatting.hlAsKeyword
-import cc.{isCaptureChecking, isRetainsLike}
+import cc.{isCaptureChecking, isRetainsLike, isUpdateMethod}
 
 import collection.mutable
 import reporting.*
@@ -587,6 +587,8 @@ object Checking {
       }
     if sym.isWrappedToplevelDef && !sym.isType && sym.flags.is(Infix, butNot = Extension) then
       fail(ModifierNotAllowedForDefinition(Flags.Infix, s"A top-level ${sym.showKind} cannot be infix."))
+    if sym.isUpdateMethod && !sym.owner.derivesFrom(defn.Caps_Mutable) then
+      fail(em"Update methods can only be used as members of classes deriving from the `Mutable` trait")
     checkApplicable(Erased,
       !sym.is(Lazy, butNot = Given)
       && !sym.isMutableVarOrAccessor
