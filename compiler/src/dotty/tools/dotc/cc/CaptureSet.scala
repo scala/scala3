@@ -92,6 +92,12 @@ sealed abstract class CaptureSet extends Showable:
   final def isUnboxable(using Context) =
     elems.exists(elem => elem.isRootCapability || Existential.isExistentialVar(elem))
 
+  final def isReadOnly(using Context): Boolean =
+    elems.forall(_.isReadOnly)
+
+  final def isExclusive(using Context): Boolean =
+    elems.exists(_.isExclusive)
+
   final def keepAlways: Boolean = this.isInstanceOf[EmptyWithProvenance]
 
   /** Try to include an element in this capture set.
@@ -565,7 +571,7 @@ object CaptureSet:
         this
       else if isUniversal || computingApprox then
         universal
-      else if containsRootCapability && elems.forall(_.isReadOnly) then
+      else if containsRootCapability && isReadOnly then
         shared
       else
         computingApprox = true

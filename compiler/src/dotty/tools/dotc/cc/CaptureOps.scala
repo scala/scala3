@@ -385,6 +385,12 @@ extension (tp: Type)
     case _ =>
       false
 
+  /** Is this a type extending `Mutable` that has update methods? */
+  def isMutableType(using Context): Boolean =
+    tp.derivesFrom(defn.Caps_Mutable)
+    && tp.membersBasedOnFlags(Mutable | Method, EmptyFlags)
+      .exists(_.hasAltWith(_.symbol.isUpdateMethod))
+
   /** Tests whether the type derives from `caps.Capability`, which means
    *  references of this type are maximal capabilities.
    */
@@ -511,9 +517,7 @@ extension (tp: Type)
         else t.dealiasKeepAnnots match
           case t @ CapturingType(p, cs) if cs.containsRootCapability =>
             change = true
-            val reachRef =
-              if cs.elems.forall(_.isReadOnly) then ref.reach.readOnly
-              else ref.reach
+            val reachRef = if cs.isReadOnly then ref.reach.readOnly else ref.reach
             t.derivedCapturingType(apply(p), reachRef.singletonCaptureSet)
           case t @ AnnotatedType(parent, ann) =>
             // Don't map annotations, which includes capture sets
