@@ -742,7 +742,8 @@ object Build {
           extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface)
         }
 
-        val fullArgs = main :: (if (printTasty) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator)))
+        val wrappedArgs = (if (printTasty) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator))).map(arg => "\""+ arg + "\"")
+        val fullArgs = main :: wrappedArgs
 
         (Compile / runMain).toTask(fullArgs.mkString(" ", " ", ""))
       }.evaluated,
