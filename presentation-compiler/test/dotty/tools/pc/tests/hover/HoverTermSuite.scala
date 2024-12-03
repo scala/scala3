@@ -596,6 +596,21 @@ class HoverTermSuite extends BaseHoverSuite:
         |""".stripMargin
     )
 
+  @Test def `i20560`=
+    check(
+      "val re@@s = tests.macros.Macro20560.loadJavaSqlDriver",
+      """```scala
+        |val res: Int
+        |```
+        |""".stripMargin
+    )
+
+  @Test def `i20560-2`=
+    check(
+      "val re@@s = tests.macros.Macro20560.loadJavaSqlInexisting",
+      "", // crashes in the Macro; no type info
+    )
+
   @Test def `import-rename` =
     check(
       """
