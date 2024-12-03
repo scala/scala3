@@ -2934,6 +2934,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def PolyFunctionClass = dotc.core.Symbols.defn.PolyFunctionClass
       def TupleClass(arity: Int): Symbol =
         dotc.core.Symbols.defn.TupleType(arity).nn.classSymbol.asClass
+      def NamedTupleModule: Symbol = dotc.core.Symbols.defn.NamedTupleModule
       def isTupleClass(sym: Symbol): Boolean =
         dotc.core.Symbols.defn.isTupleClass(sym)
       def ScalaPrimitiveValueClasses: List[Symbol] =

@@ -4513,6 +4513,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       */
       def TupleClass(arity: Int): Symbol
 
+      /** The module symbol of module `scala.NamedTuple`. */
+      @experimental def NamedTupleModule: Symbol
+
       /** Returns `true` if `sym` is a `Tuple1`, `Tuple2`, ... `Tuple22` */
       def isTupleClass(sym: Symbol): Boolean
 
