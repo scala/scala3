@@ -127,8 +127,8 @@ class TypeUtils:
       case mt: MethodType => mt.isImplicitMethod || mt.resType.takesImplicitParams
       case _ => false
 
-    /** The constructors of this tyoe that that are applicable to `argTypes`, without needing
-     *  an implicit conversion.
+    /** The constructors of this type that are applicable to `argTypes`, without needing
+     *  an implicit conversion. Curried constructors are always excluded.
      *  @param adaptVarargs   if true, allow a constructor with just a varargs argument to
      *                        match an empty argument list.
      */
@@ -144,7 +144,7 @@ class TypeUtils:
               && atPhaseNoLater(Phases.elimRepeatedPhase)(constr.info.isVarArgsMethod)
             then // accept missing argument for varargs parameter
               paramInfos = paramInfos.init
-            argTypes.corresponds(paramInfos)(_ <:< _)
+            argTypes.corresponds(paramInfos)(_ <:< _) && !ctpe.resultType.isInstanceOf[MethodType]
           case _ =>
             false
         recur(constr.info)
