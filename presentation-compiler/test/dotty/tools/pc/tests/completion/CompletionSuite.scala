@@ -2057,7 +2057,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
-  @Test def `conflict-3` = 
+  @Test def `conflict-3` =
    check(
      """|package a
         |object A {
@@ -2115,4 +2115,22 @@ class CompletionSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       assertSingleItem = false
+    )
+
+  @Test def `metals-i6861` =
+    check(
+      """|trait Builder[Alg]:
+         |  def withTraces: String
+         |
+         |trait BuilderFactory:
+         |  def transformRouter(f: [Alg] => Builder[Alg] => String): BuilderFactory
+         |  def build: Unit
+         |
+         |def demo =
+         |  (??? : BuilderFactory)
+         |    .transformRouter([Alg] => (builder: Builder[Alg]) => builder.withTraces)
+         |    .build@@
+         |""".stripMargin,
+      """|build: Unit
+         |""".stripMargin,
     )
