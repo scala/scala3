@@ -48,8 +48,9 @@ object SymbolLoaders {
    */
   def enterClass(
       owner: Symbol, name: PreName, completer: SymbolLoader,
-      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(using Context): Symbol = {
-    val cls = newClassSymbol(owner, name.toTypeName.unmangleClassName.decode, flags, completer, assocFile = completer.sourceFileOrNull)
+      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope, privateWithin: Symbol = NoSymbol,
+  )(using Context): Symbol = {
+    val cls = newClassSymbol(owner, name.toTypeName.unmangleClassName.decode, flags, completer, privateWithin, assocFile = completer.sourceFileOrNull)
     enterNew(owner, cls, completer, scope)
   }
 
@@ -57,10 +58,13 @@ object SymbolLoaders {
    */
   def enterModule(
       owner: Symbol, name: PreName, completer: SymbolLoader,
-      modFlags: FlagSet = EmptyFlags, clsFlags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(using Context): Symbol = {
+      modFlags: FlagSet = EmptyFlags, clsFlags: FlagSet = EmptyFlags,
+      scope: Scope = EmptyScope, privateWithin: Symbol = NoSymbol,
+  )(using Context): Symbol = {
     val module = newModuleSymbol(
       owner, name.toTermName.decode, modFlags, clsFlags,
       (module, _) => completer.proxy.withDecls(newScope).withSourceModule(module),
+      privateWithin,
       assocFile = completer.sourceFileOrNull)
     enterNew(owner, module, completer, scope)
     enterNew(owner, module.moduleClass, completer, scope)
@@ -100,14 +104,16 @@ object SymbolLoaders {
    */
   def enterClassAndModule(
       owner: Symbol, name: PreName, completer: SymbolLoader,
-      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(using Context): (Symbol, Symbol) = {
-    val clazz = enterClass(owner, name, completer, flags, scope)
+      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope, privateWithin: Symbol = NoSymbol,
+  )(using Context): Unit = {
+    val clazz = enterClass(owner, name, completer, flags, scope, privateWithin)
     val module = enterModule(
       owner, name, completer,
       modFlags = flags.toTermFlags & RetainedModuleValFlags,
       clsFlags = flags.toTypeFlags & RetainedModuleClassFlags,
-      scope = scope)
-    (clazz, module)
+      scope = scope,
+      privateWithin = privateWithin,
+    )
   }
 
   /** Enter all toplevel classes and objects in file `src` into package `owner`, provided
