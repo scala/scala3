@@ -500,3 +500,57 @@ class AutoImportsSuite extends BaseAutoImportsSuite:
           |object Main{ val obj = ABC }
           |""".stripMargin
     )
+
+  @Test def scalaCliNoEmptyLineAfterDirective =
+    checkEdit(
+      """|//> using scala 3.5.0
+         |object Main:
+         |  <<Files>>
+         |""".stripMargin,
+      """|//> using scala 3.5.0
+         |import java.nio.file.Files
+         |object Main:
+         |  Files
+         |""".stripMargin
+    )
+
+  @Test def scalaCliNoEmptyLineAfterLicense =
+    checkEdit(
+      """|/**
+         | * Some license text
+         | */
+         |
+         |object Main:
+         |  <<Files>>
+         |""".stripMargin,
+      """|/**
+         | * Some license text
+         | */
+         |import java.nio.file.Files
+         |
+         |object Main:
+         |  Files
+         |""".stripMargin
+    )
+
+  @Test def scalaCliNoEmptyLineAfterLicenseWithPackage =
+    checkEdit(
+      """|/**
+         | * Some license text
+         | */
+         |package test
+         |
+         |object Main:
+         |  <<Files>>
+         |""".stripMargin,
+      """|/**
+         | * Some license text
+         | */
+         |package test
+         |
+         |import java.nio.file.Files
+         |
+         |object Main:
+         |  Files
+         |""".stripMargin
+    )
