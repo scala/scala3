@@ -398,7 +398,7 @@ object Parsers {
       false
     }
 
-    def errorTermTree(start: Offset): Tree = atSpan(start, in.offset, in.offset) { unimplementedExpr }
+    def errorTermTree(start: Offset): Tree = atSpan(Span(start, in.offset)) { unimplementedExpr }
 
     private var inFunReturnType = false
     private def fromWithinReturnType[T](body: => T): T = {

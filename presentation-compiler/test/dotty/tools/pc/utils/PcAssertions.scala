@@ -4,7 +4,6 @@ import scala.language.unsafeNulls
 
 import dotty.tools.pc.completions.CompletionSource
 import dotty.tools.dotc.util.DiffUtil
-import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.hamcrest
 import org.hamcrest.*
@@ -127,7 +126,6 @@ trait PcAssertions:
     def getDetailedMessage(diff: String): String =
       val lines = diff.linesIterator.toList
       val sources = completionSources.padTo(lines.size, CompletionSource.Empty)
-      val maxLength = lines.map(_.length).maxOption.getOrElse(0)
       var completionIndex = 0
       lines.map: line =>
         if line.startsWith(Console.BOLD + Console.RED) || line.startsWith("  ") then
