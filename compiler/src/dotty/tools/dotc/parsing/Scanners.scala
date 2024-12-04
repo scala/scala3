@@ -735,7 +735,10 @@ object Scanners {
                  && currentRegion.commasExpected
                  && (token == RPAREN || token == RBRACKET || token == RBRACE || token == OUTDENT)
               then
-                () /* skip the trailing comma */
+                // encountered a trailing comma
+                // reset only the lastOffset
+                // so that the tree's span is correct
+                lastOffset = prev.lastOffset
               else
                 reset()
         case END =>
