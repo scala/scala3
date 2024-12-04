@@ -1262,7 +1262,8 @@ object Types extends TypeUtils {
     final def widen(using Context): Type = this match
       case _: TypeRef | _: MethodOrPoly => this // fast path for most frequent cases
       case tp: TermRef => // fast path for next most frequent case
-        if tp.isOverloaded then tp else tp.underlying.widen
+        val denot = tp.denot
+        if denot.isOverloaded then tp else denot.info.widen
       case tp: SingletonType => tp.underlying.widen
       case tp: ExprType => tp.resultType.widen
       case tp =>
@@ -1276,7 +1277,10 @@ object Types extends TypeUtils {
      *  base type by applying one or more `underlying` dereferences.
      */
     final def widenSingleton(using Context): Type = stripped match {
-      case tp: SingletonType if !tp.isOverloaded => tp.underlying.widenSingleton
+      case tp: TermRef =>
+        val denot = tp.denot
+        if denot.isOverloaded then this else denot.info.widenSingleton
+      case tp: SingletonType => tp.underlying.widenSingleton
       case _ => this
     }
 
@@ -1284,7 +1288,9 @@ object Types extends TypeUtils {
      *  base type, while also skipping Expr types.
      */
     final def widenTermRefExpr(using Context): Type = stripTypeVar match {
-      case tp: TermRef if !tp.isOverloaded => tp.underlying.widenExpr.widenTermRefExpr
+      case tp: TermRef =>
+        val denot = tp.denot
+        if denot.isOverloaded then this else denot.info.widenExpr.widenTermRefExpr
       case _ => this
     }
 
