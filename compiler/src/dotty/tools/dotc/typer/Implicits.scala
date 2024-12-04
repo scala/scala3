@@ -781,6 +781,10 @@ trait ImplicitRunInfo:
           override def stopAt = StopAt.Static
           private val seen = util.HashSet[Type]()
 
+          override def derivedTypeBounds(tp: TypeBounds, lo: Type, hi: Type): Type =
+            if lo.exists && hi.exists then super.derivedTypeBounds(tp, lo, hi)
+            else NoType // Survive inaccessible types, for instance in i21543.scala.
+
           def applyToUnderlying(t: TypeProxy) =
             if seen.contains(t) then
               WildcardType
