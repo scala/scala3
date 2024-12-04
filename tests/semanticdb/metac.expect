@@ -575,7 +575,7 @@ Text => empty
 Language => Scala
 Symbols => 108 entries
 Occurrences => 127 entries
-Diagnostics => 6 entries
+Diagnostics => 10 entries
 Synthetics => 2 entries
 
 Symbols:
@@ -830,6 +830,10 @@ See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifie
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [22:27..22:28): [warning] unused explicit parameter
 [24:10..24:11): [warning] unused explicit parameter
+[36:11..36:12): [warning] unused explicit parameter
+[39:11..39:12): [warning] unused explicit parameter
+[39:19..39:20): [warning] unused explicit parameter
+[51:30..51:31): [warning] unused explicit parameter
 
 Synthetics:
 [51:16..51:27):List(1).map => *[Int]
@@ -3533,6 +3537,7 @@ Text => empty
 Language => Scala
 Symbols => 62 entries
 Occurrences => 165 entries
+Diagnostics => 2 entries
 Synthetics => 39 entries
 
 Symbols:
@@ -3765,6 +3770,10 @@ Occurrences:
 [68:14..68:15): t -> local17
 [68:18..68:24): impure -> local20
 [68:30..68:31): s -> local16
+
+Diagnostics:
+[19:21..19:22): [warning] unused explicit parameter
+[41:4..41:5): [warning] unused explicit parameter
 
 Synthetics:
 [5:2..5:13):List(1).map => *[Int]
@@ -4235,6 +4244,7 @@ Text => empty
 Language => Scala
 Symbols => 6 entries
 Occurrences => 11 entries
+Diagnostics => 2 entries
 
 Symbols:
 example/Vararg# => class Vararg extends Object { self: Vararg => +3 decls }
@@ -4256,6 +4266,10 @@ Occurrences:
 [4:14..4:17): Seq -> scala/package.Seq#
 [4:18..4:21): Int -> scala/Int#
 [4:26..4:30): Unit -> scala/Unit#
+
+Diagnostics:
+[3:11..3:12): [warning] unused explicit parameter
+[4:11..4:12): [warning] unused explicit parameter
 
 expect/dep-match.scala
 ----------------------
@@ -4873,6 +4887,7 @@ Text => empty
 Language => Scala
 Symbols => 36 entries
 Occurrences => 48 entries
+Diagnostics => 5 entries
 
 Symbols:
 local0 => type N$1  <: Nat
@@ -4962,6 +4977,13 @@ Occurrences:
 [23:35..23:39): Zero -> recursion/Nats.Zero.
 [23:40..23:42): ++ -> recursion/Nats.Nat#`++`().
 
+Diagnostics:
+[10:24..10:24): [warning] unused local definition
+[10:33..11:5): [warning] unused local definition
+[23:19..23:19): [warning] unused local definition
+[23:24..23:32): [warning] unused local definition
+[23:40..25:2): [warning] unused local definition
+
 expect/semanticdb-Definitions.scala
 -----------------------------------
 
@@ -5006,7 +5028,7 @@ Text => empty
 Language => Scala
 Symbols => 50 entries
 Occurrences => 78 entries
-Diagnostics => 4 entries
+Diagnostics => 5 entries
 Synthetics => 2 entries
 
 Symbols:
@@ -5142,6 +5164,7 @@ Occurrences:
 [25:33..25:36): ??? -> scala/Predef.`???`().
 
 Diagnostics:
+[5:19..5:20): [warning] unused private member
 [9:30..9:31): [warning] unused explicit parameter
 [9:36..9:37): [warning] unused explicit parameter
 [9:42..9:43): [warning] unused explicit parameter
@@ -5161,7 +5184,7 @@ Text => empty
 Language => Scala
 Symbols => 143 entries
 Occurrences => 246 entries
-Diagnostics => 4 entries
+Diagnostics => 5 entries
 Synthetics => 1 entries
 
 Symbols:
@@ -5565,6 +5588,7 @@ This construct can be rewritten automatically under -rewrite -source 3.4-migrati
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [71:31..71:31): [warning] `_` is deprecated for wildcard arguments of types: use `?` instead
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+[96:13..96:14): [warning] unused explicit parameter
 
 Synthetics:
 [68:20..68:24):@ann => *[Int]

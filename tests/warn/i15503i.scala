@@ -1,4 +1,4 @@
-//> using options  -Wunused:all
+//> using options -Wunused:all -Ystop-after:checkUnusedPostInlining
 
 import collection.mutable.{Map => MutMap} // warn
 import collection.mutable.Set // warn
@@ -17,10 +17,12 @@ class A {
   private def c2 = 2 // OK
   def c3 = c2
 
-  def d1(using x:Int): Int = default_int // ok
-  def d2(using x:Int): Int = x // OK
+  def d1(using x: Int): Int = default_int // warn param
+  def d2(using x: Int): Int = x // OK
+  def d3(using Int): Int = summon[Int] // OK
+  def d4(using Int): Int = default_int // warn
 
-  def e1(x: Int) = default_int // ok
+  def e1(x: Int) = default_int // warn param
   def e2(x: Int) = x // OK
   def f =
     val x = 1 // warn
@@ -44,7 +46,7 @@ package foo.test.scala.annotation:
   val default_int = 12
 
   def a1(a: Int) = a // OK
-  def a2(a: Int) = default_int // ok
+  def a2(a: Int) = default_int // warn
 
   def a3(@unused a: Int) = default_int //OK
 
@@ -82,8 +84,8 @@ package foo.test.i16678:
   def run =
     println(foo(number => number.toString, value = 5)) // OK
     println(foo(number => "<number>", value = 5)) // warn
-    println(foo(func = number => "<number>", value = 5)) // warn
     println(foo(func = number => number.toString, value = 5)) // OK
+    println(foo(func = number => "<number>", value = 5)) // warn
     println(foo(func = _.toString, value = 5)) // OK
 
 package foo.test.possibleclasses:
@@ -247,7 +249,7 @@ package foo.test.i16679a:
       import scala.deriving.Mirror
       object CaseClassByStringName:
         inline final def derived[A](using inline A: Mirror.Of[A]): CaseClassByStringName[A] =
-          new CaseClassByStringName[A]: // warn
+          new CaseClassByStringName[A]:
             def name: String = A.toString
 
   object secondPackage:
@@ -263,7 +265,7 @@ package foo.test.i16679b:
     object CaseClassName:
       import scala.deriving.Mirror
       inline final def derived[A](using inline A: Mirror.Of[A]): CaseClassName[A] =
-        new CaseClassName[A]: // warn
+        new CaseClassName[A]:
           def name: String = A.toString
 
   object Foo:
@@ -279,7 +281,7 @@ package foo.test.i17156:
   package a:
     trait Foo[A]
     object Foo:
-      inline def derived[T]: Foo[T] = new Foo{} // warn
+      inline def derived[T]: Foo[T] = new Foo {}
 
   package b:
     import a.Foo
