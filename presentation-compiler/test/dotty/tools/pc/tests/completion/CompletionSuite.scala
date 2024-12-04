@@ -2150,3 +2150,21 @@ class CompletionSuite extends BaseCompletionSuite:
          |""".stripMargin,
       assertSingleItem = false
     )
+
+  @Test def `metals-i6861` =
+    check(
+      """|trait Builder[Alg]:
+         |  def withTraces: String
+         |
+         |trait BuilderFactory:
+         |  def transformRouter(f: [Alg] => Builder[Alg] => String): BuilderFactory
+         |  def build: Unit
+         |
+         |def demo =
+         |  (??? : BuilderFactory)
+         |    .transformRouter([Alg] => _.withTraces)
+         |    .build@@
+         |""".stripMargin,
+      """|build: Unit
+         |""".stripMargin,
+    )
