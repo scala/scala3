@@ -4196,7 +4196,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         // so will take the code path that decides on inlining
         val tree1 = adapt(tree, WildcardType, locked)
         checkStatementPurity(tree1)(tree, ctx.owner, isUnitExpr = true)
-        if (!ctx.isAfterTyper && !tree.isInstanceOf[Inlined] && ctx.settings.WvalueDiscard.value && !isThisTypeResult(tree)) {
+        if (!ctx.isAfterTyper && !tree.isInstanceOf[Inlined] && ctx.settings.Whas.valueDiscard && !isThisTypeResult(tree)) {
           report.warning(ValueDiscarding(tree.tpe), tree.srcPos)
         }
         return tpd.Block(tree1 :: Nil, unitLiteral)
@@ -4498,7 +4498,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       && !isJavaApplication(t)                  // Java methods are inherently side-effecting
       // && !treeInfo.hasExplicitUnit(t)           // suppressed by explicit expr: Unit // TODO Should explicit `: Unit` be added as warning suppression?
     )
-    if ctx.settings.WNonUnitStatement.value && !ctx.isAfterTyper && checkInterestingShapes(t) then
+    if ctx.settings.Whas.nonUnitStatement && !ctx.isAfterTyper && checkInterestingShapes(t) then
       val where = t match {
         case Block(_, res) => res
         case If(_, thenpart, Literal(Constant(()))) =>

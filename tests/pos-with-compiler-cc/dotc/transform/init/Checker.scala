@@ -28,7 +28,7 @@ class Checker extends Phase:
   override val runsAfter = Set(Pickler.name)
 
   override def isEnabled(using Context): Boolean =
-    super.isEnabled && ctx.settings.YcheckInit.value
+    super.isEnabled && ctx.settings.Whas.checkInit
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
     val checkCtx = ctx.fresh.setPhase(this.start)

@@ -29,7 +29,7 @@ class Checker extends Phase:
   override val runsAfter = Set(Pickler.name)
 
   override def isEnabled(using Context): Boolean =
-    super.isEnabled && ctx.settings.YcheckInit.value
+    super.isEnabled && ctx.settings.Whas.checkInit
 
   def traverse(traverser: InitTreeTraverser)(using Context): Boolean = monitor(phaseName):
     val unit = ctx.compilationUnit
@@ -46,7 +46,8 @@ class Checker extends Phase:
     cancellable {
       val classes = traverser.getClasses()
 
-      Semantic.checkClasses(classes)(using checkCtx)
+      if ctx.settings.Whas.checkInit then
+        Semantic.checkClasses(classes)(using checkCtx)
     }
 
     units0
