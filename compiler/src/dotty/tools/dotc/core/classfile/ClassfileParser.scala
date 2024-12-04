@@ -228,9 +228,10 @@ class ClassfileParser(
 
       val privateWithin = getPrivateWithin(jflags)
 
-      classRoot.setPrivateWithin(privateWithin)
-      moduleRoot.setPrivateWithin(privateWithin)
-      moduleRoot.sourceModule.setPrivateWithin(privateWithin)
+      if privateWithin.exists then
+        classRoot.setPrivateWithin(privateWithin)
+        moduleRoot.setPrivateWithin(privateWithin)
+        moduleRoot.sourceModule.setPrivateWithin(privateWithin)
 
       for (i <- 0 until in.nextChar) parseMember(method = false)
       for (i <- 0 until in.nextChar) parseMember(method = true)
@@ -884,11 +885,13 @@ class ClassfileParser(
   private def enterOwnInnerClasses()(using Context, DataReader): Unit = {
     def enterClassAndModule(entry: InnerClassEntry, file: AbstractFile, jflags: Int) =
       SymbolLoaders.enterClassAndModule(
-          getOwner(jflags),
-          entry.originalName,
-          new ClassfileLoader(file),
-          classTranslation.flags(jflags),
-          getScope(jflags))
+        getOwner(jflags),
+        entry.originalName,
+        new ClassfileLoader(file),
+        classTranslation.flags(jflags),
+        getScope(jflags),
+        getPrivateWithin(jflags),
+      )
 
     for entry <- innerClasses.valuesIterator do
       // create a new class member for immediate inner classes
