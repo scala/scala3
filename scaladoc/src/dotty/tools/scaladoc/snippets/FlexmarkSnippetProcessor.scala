@@ -65,7 +65,7 @@ object FlexmarkSnippetProcessor:
             content.add(s, 0)
             node.setContent(content)
 
-        val fullSnippet = Seq(snippetImports, snippet).mkString("\n").trim
+        val fullSnippet = Seq(snippetImports, snippet).mkString("\n").stripPrefix("\n")
         val snippetCompilationResult = cf(fullSnippet, lineOffset, argOverride) match {
           case Some(result @ SnippetCompilationResult(wrapped, _, _, messages)) =>
             node.setContentString(fullSnippet)

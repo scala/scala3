@@ -13,5 +13,12 @@ class Renderer(using RenderingContext)
 val renderer: Renderer = Renderer()
 ```
 
+```scala
+  trait Ord:
+    type Self
 
+  trait SemiGroup:
+    type Self
+    extension (x: Self) def combine(y: Self): Self
+```
 
