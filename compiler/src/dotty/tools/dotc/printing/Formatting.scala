@@ -74,6 +74,9 @@ object Formatting {
       given [X: Show]: Show[Seq[X]] with
         def show(x: Seq[X]) = CtxShow(x.map(toStr))
 
+      given Show[Seq[Nothing]] with
+        def show(x: Seq[Nothing]) = CtxShow(x)
+
       given [K: Show, V: Show]: Show[Map[K, V]] with
         def show(x: Map[K, V]) =
           CtxShow(x.map((k, v) => s"${toStr(k)} => ${toStr(v)}"))
