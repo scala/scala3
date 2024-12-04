@@ -517,7 +517,7 @@ trait Applications extends Compatibility {
           fail(TypeMismatch(methType.resultType, resultType, None))
 
         // match all arguments with corresponding formal parameters
-        matchArgs(orderedArgs, methType.paramInfos, 0)
+        if success then matchArgs(orderedArgs, methType.paramInfos, 0)
       case _ =>
         if (methType.isError) ok = false
         else fail(em"$methString does not take parameters")
@@ -595,7 +595,7 @@ trait Applications extends Compatibility {
      *  @param n   The position of the first parameter in formals in `methType`.
      */
     def matchArgs(args: List[Arg], formals: List[Type], n: Int): Unit =
-      if (success) formals match {
+      formals match {
         case formal :: formals1 =>
 
           def checkNoVarArg(arg: Arg) =
@@ -807,7 +807,9 @@ trait Applications extends Compatibility {
     init()
 
     def addArg(arg: Tree, formal: Type): Unit =
-      typedArgBuf += adapt(arg, formal.widenExpr)
+      val typedArg = adapt(arg, formal.widenExpr)
+      typedArgBuf += typedArg
+      ok = ok & !typedArg.tpe.isError
 
     def makeVarArg(n: Int, elemFormal: Type): Unit = {
       val args = typedArgBuf.takeRight(n).toList
@@ -872,7 +874,7 @@ trait Applications extends Compatibility {
       var typedArgs = typedArgBuf.toList
       def app0 = cpy.Apply(app)(normalizedFun, typedArgs) // needs to be a `def` because typedArgs can change later
       val app1 =
-        if (!success || typedArgs.exists(_.tpe.isError)) app0.withType(UnspecifiedErrorType)
+        if !success then app0.withType(UnspecifiedErrorType)
         else {
           if !sameSeq(args, orderedArgs)
              && !isJavaAnnotConstr(methRef.symbol)

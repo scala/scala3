@@ -178,25 +178,12 @@ object Inferencing {
           && ctx.typerState.constraint.contains(tvar)
           && {
             var fail = false
-            val direction = instDirection(tvar.origin)
-            if minimizeSelected then
-              if direction <= 0 && tvar.hasLowerBound then
-                instantiate(tvar, fromBelow = true)
-              else if direction >= 0 && tvar.hasUpperBound then
-                instantiate(tvar, fromBelow = false)
-              // else hold off instantiating unbounded unconstrained variable
-            else if direction != 0 then
-              instantiate(tvar, fromBelow = direction < 0)
-            else if variance >= 0 && tvar.hasLowerBound then
-              instantiate(tvar, fromBelow = true)
-            else if (variance > 0 || variance == 0 && !tvar.hasUpperBound)
-                && force.ifBottom == IfBottom.ok
-            then // if variance == 0, prefer upper bound if one is given
-              instantiate(tvar, fromBelow = true)
-            else if variance >= 0 && force.ifBottom == IfBottom.fail then
-              fail = true
-            else
-              toMaximize = tvar :: toMaximize
+            instDecision(tvar, variance, minimizeSelected, force.ifBottom) match
+              case Decision.Min   => instantiate(tvar, fromBelow = true)
+              case Decision.Max   => instantiate(tvar, fromBelow = false)
+              case Decision.Skip  => // hold off instantiating unbounded unconstrained variable
+              case Decision.Fail  => fail = true
+              case Decision.ToMax => toMaximize ::= tvar
             !fail && foldOver(x, tvar)
           }
         case tp => foldOver(x, tp)
@@ -385,8 +372,31 @@ object Inferencing {
       if (!cmp.isSubTypeWhenFrozen(constrained.lo, original.lo)) 1 else 0
     val approxAbove =
       if (!cmp.isSubTypeWhenFrozen(original.hi, constrained.hi)) 1 else 0
+    //println(i"instDirection($param) = $approxAbove - $approxBelow  original=[$original] constrained=[$constrained]")
     approxAbove - approxBelow
   }
+
+  /** The instantiation decision for given poly param computed from the constraint. */
+  enum Decision { case Min; case Max; case ToMax; case Skip; case Fail }
+  private def instDecision(tvar: TypeVar, v: Int, minimizeSelected: Boolean, ifBottom: IfBottom)(using Context): Decision =
+    import Decision.*
+    val direction = instDirection(tvar.origin)
+    val dec = if minimizeSelected then
+      if direction <= 0 && tvar.hasLowerBound then Min
+      else if direction >= 0 && tvar.hasUpperBound then Max
+      else Skip
+    else if direction != 0 then if direction < 0 then Min else Max
+    else if tvar.hasLowerBound then if v >= 0 then Min else ToMax
+    else ifBottom match
+      // What's left are unconstrained tvars with at most a non-Any param upperbound:
+      // * IfBottom.flip will always maximise to the param upperbound, for all variances
+      // * IfBottom.fail will fail the IFD check, for covariant or invariant tvars, maximise contravariant tvars
+      // * IfBottom.ok will minimise to Nothing covariant and unbounded invariant tvars, and max to Any the others
+      case IfBottom.ok   => if v > 0 || v == 0 && !tvar.hasUpperBound then Min else ToMax // prefer upper bound if one is given
+      case IfBottom.fail => if v >= 0 then Fail else ToMax
+      case ifBottom_flip => ToMax
+    //println(i"instDecision($tvar, v=v, minimizedSelected=$minimizeSelected, $ifBottom) dir=$direction = $dec")
+    dec
 
   /** Following type aliases and stripping refinements and annotations, if one arrives at a
    *  class type reference where the class has a companion module, a reference to
@@ -584,7 +594,7 @@ trait Inferencing { this: Typer =>
 
     val ownedVars = state.ownedVars
     if (ownedVars ne locked) && !ownedVars.isEmpty then
-      val qualifying = ownedVars -- locked
+      val qualifying = (ownedVars -- locked).toList
       if (!qualifying.isEmpty) {
         typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, pt = $pt, owned vars = ${state.ownedVars.toList}%, %, qualifying = ${qualifying.toList}%, %, previous = ${locked.toList}%, % / ${state.constraint}")
         val resultAlreadyConstrained =
@@ -619,6 +629,10 @@ trait Inferencing { this: Typer =>
         if state.reporter.hasUnreportedErrors then return tree
 
         def constraint = state.constraint
+
+        trace(i"interpolateTypeVars($tree: ${tree.tpe}, $pt, $qualifying)", typr, (_: Any) => i"$qualifying\n$constraint\n${ctx.gadt}") {
+        //println(i"$constraint")
+        //println(i"${ctx.gadt}")
 
         /** Values of this type report type variables to instantiate with variance indication:
          *    +1  variable appears covariantly, can be instantiated from lower bound
@@ -737,6 +751,7 @@ trait Inferencing { this: Typer =>
         end doInstantiate
 
         doInstantiate(filterByDeps(toInstantiate))
+        }
       }
     end if
     tree

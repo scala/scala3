@@ -113,3 +113,7 @@ i15525.scala
 i19955a.scala
 i19955b.scala
 i20053b.scala
+
+
+# LTS specific
+i21390.TrieMap.scala
