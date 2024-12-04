@@ -5,12 +5,13 @@ package core
 import TypeErasure.ErasedValueType
 import Types.*, Contexts.*, Symbols.*, Flags.*, Decorators.*
 import Names.Name
+import StdNames.nme
 
-class TypeUtils {
+class TypeUtils:
   /** A decorator that provides methods on types
    *  that are needed in the transformer pipeline.
    */
-  extension (self: Type) {
+  extension (self: Type)
 
     def isErasedValueType(using Context): Boolean =
       self.isInstanceOf[ErasedValueType]
@@ -125,5 +126,30 @@ class TypeUtils {
     def takesImplicitParams(using Context): Boolean = self.stripPoly match
       case mt: MethodType => mt.isImplicitMethod || mt.resType.takesImplicitParams
       case _ => false
-  }
-}
+
+    /** The constructors of this type that are applicable to `argTypes`, without needing
+     *  an implicit conversion. Curried constructors are always excluded.
+     *  @param adaptVarargs   if true, allow a constructor with just a varargs argument to
+     *                        match an empty argument list.
+     */
+    def applicableConstructors(argTypes: List[Type], adaptVarargs: Boolean)(using Context): List[Symbol] =
+      def isApplicable(constr: Symbol): Boolean =
+        def recur(ctpe: Type): Boolean = ctpe match
+          case ctpe: PolyType =>
+            if argTypes.isEmpty then recur(ctpe.resultType) // no need to know instances
+            else recur(ctpe.instantiate(self.argTypes))
+          case ctpe: MethodType =>
+            var paramInfos = ctpe.paramInfos
+            if adaptVarargs && paramInfos.length == argTypes.length + 1
+              && atPhaseNoLater(Phases.elimRepeatedPhase)(constr.info.isVarArgsMethod)
+            then // accept missing argument for varargs parameter
+              paramInfos = paramInfos.init
+            argTypes.corresponds(paramInfos)(_ <:< _) && !ctpe.resultType.isInstanceOf[MethodType]
+          case _ =>
+            false
+        recur(constr.info)
+
+      self.decl(nme.CONSTRUCTOR).altsWith(isApplicable).map(_.symbol)
+
+end TypeUtils
+

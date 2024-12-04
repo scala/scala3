@@ -305,24 +305,41 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def TypeDef(sym: TypeSymbol)(using Context): TypeDef =
     ta.assignType(untpd.TypeDef(sym.name, TypeTree(sym.info)), sym)
 
-  def ClassDef(cls: ClassSymbol, constr: DefDef, body: List[Tree], superArgs: List[Tree] = Nil)(using Context): TypeDef = {
+  /** Create a class definition
+   *  @param cls          the class symbol of the created class
+   *  @param constr       its primary constructor
+   *  @param body         the statements in its template
+   *  @param superArgs    the arguments to pass to the superclass constructor
+   *  @param adaptVarargs if true, allow matching a vararg superclass constructor
+   *                      with a missing argument in superArgs, and synthesize an
+   *                      empty repeated parameter in the supercall in this case
+   */
+  def ClassDef(cls: ClassSymbol, constr: DefDef, body: List[Tree],
+      superArgs: List[Tree] = Nil, adaptVarargs: Boolean = false)(using Context): TypeDef =
     val firstParent :: otherParents = cls.info.parents: @unchecked
+
+    def adaptedSuperArgs(ctpe: Type): List[Tree] = ctpe match
+      case ctpe: PolyType =>
+        adaptedSuperArgs(ctpe.instantiate(firstParent.argTypes))
+      case ctpe: MethodType
+      if ctpe.paramInfos.length == superArgs.length + 1 =>
+        // last argument must be a vararg, otherwise isApplicable would have failed
+        superArgs :+
+          repeated(Nil, TypeTree(ctpe.paramInfos.last.argInfos.head, inferred = true))
+      case _ =>
+        superArgs
+
     val superRef =
-      if (cls.is(Trait)) TypeTree(firstParent)
-      else {
-        def isApplicable(ctpe: Type): Boolean = ctpe match {
-          case ctpe: PolyType =>
-            isApplicable(ctpe.instantiate(firstParent.argTypes))
-          case ctpe: MethodType =>
-            (superArgs corresponds ctpe.paramInfos)(_.tpe <:< _)
-          case _ =>
-            false
-        }
-        val constr = firstParent.decl(nme.CONSTRUCTOR).suchThat(constr => isApplicable(constr.info))
-        New(firstParent, constr.symbol.asTerm, superArgs)
-      }
+      if cls.is(Trait) then TypeTree(firstParent)
+      else
+        val parentConstr = firstParent.applicableConstructors(superArgs.tpes, adaptVarargs) match
+          case Nil => assert(false, i"no applicable parent constructor of $firstParent for supercall arguments $superArgs")
+          case constr :: Nil => constr
+          case _ => assert(false, i"multiple applicable parent constructors of $firstParent for supercall arguments $superArgs")
+        New(firstParent, parentConstr.asTerm, adaptedSuperArgs(parentConstr.info))
+
     ClassDefWithParents(cls, constr, superRef :: otherParents.map(TypeTree(_)), body)
-  }
+  end ClassDef
 
   def ClassDefWithParents(cls: ClassSymbol, constr: DefDef, parents: List[Tree], body: List[Tree])(using Context): TypeDef = {
     val selfType =
@@ -349,13 +366,18 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  @param parents        a non-empty list of class types
    *  @param termForwarders a non-empty list of forwarding definitions specified by their name and the definition they forward to.
    *  @param typeMembers    a possibly-empty list of type members specified by their name and their right hand side.
+   *  @param adaptVarargs   if true, allow matching a vararg superclass constructor
+   *                        with a missing argument in superArgs, and synthesize an
+   *                        empty repeated parameter in the supercall in this case
    *
    *  The class has the same owner as the first function in `termForwarders`.
    *  Its position is the union of all symbols in `termForwarders`.
    */
-  def AnonClass(parents: List[Type], termForwarders: List[(TermName, TermSymbol)],
-      typeMembers: List[(TypeName, TypeBounds)] = Nil)(using Context): Block = {
-    AnonClass(termForwarders.head._2.owner, parents, termForwarders.map(_._2.span).reduceLeft(_ union _)) { cls =>
+  def AnonClass(parents: List[Type],
+      termForwarders: List[(TermName, TermSymbol)],
+      typeMembers: List[(TypeName, TypeBounds)],
+      adaptVarargs: Boolean)(using Context): Block = {
+    AnonClass(termForwarders.head._2.owner, parents, termForwarders.map(_._2.span).reduceLeft(_ union _), adaptVarargs) { cls =>
       def forwarder(name: TermName, fn: TermSymbol) = {
         val fwdMeth = fn.copy(cls, name, Synthetic | Method | Final).entered.asTerm
         for overridden <- fwdMeth.allOverriddenSymbols do
@@ -375,6 +397,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    * with the specified owner and position.
    */
   def AnonClass(owner: Symbol, parents: List[Type], coord: Coord)(body: ClassSymbol => List[Tree])(using Context): Block =
+    AnonClass(owner, parents, coord, adaptVarargs = false)(body)
+
+  private def AnonClass(owner: Symbol, parents: List[Type], coord: Coord, adaptVarargs: Boolean)(body: ClassSymbol => List[Tree])(using Context): Block =
     val parents1 =
       if (parents.head.classSymbol.is(Trait)) {
         val head = parents.head.parents.head
@@ -383,7 +408,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       else parents
     val cls = newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, Synthetic | Final, parents1, coord = coord)
     val constr = newConstructor(cls, Synthetic, Nil, Nil).entered
-    val cdef = ClassDef(cls, DefDef(constr), body(cls))
+    val cdef = ClassDef(cls, DefDef(constr), body(cls), Nil, adaptVarargs)
     Block(cdef :: Nil, New(cls.typeRef, Nil))
 
   def Import(expr: Tree, selectors: List[untpd.ImportSelector])(using Context): Import =
