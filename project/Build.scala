@@ -1425,7 +1425,7 @@ object Build {
 
   lazy val `scala3-presentation-compiler` = project.in(file("presentation-compiler"))
     .withCommonSettings(Bootstrapped)
-    .dependsOn(`scala3-compiler-bootstrapped`, `scala3-library-bootstrapped`)
+    .dependsOn(`scala3-compiler-bootstrapped`, `scala3-library-bootstrapped`, `scala3-presentation-compiler-testcases`)
     .settings(presentationCompilerSettings)
     .settings(scala3PresentationCompilerBuildInfo)
     .settings(
@@ -1436,6 +1436,7 @@ object Build {
   def scala3PresentationCompilerBuildInfo =
     Seq(
       ideTestsDependencyClasspath := {
+        val testCasesLib = (`scala3-presentation-compiler-testcases` / Compile / classDirectory).value
         val dottyLib = (`scala3-library-bootstrapped` / Compile / classDirectory).value
         val scalaLib =
           (`scala3-library-bootstrapped` / Compile / dependencyClasspath)
@@ -1443,7 +1444,7 @@ object Build {
             .map(_.data)
             .filter(_.getName.matches("scala-library.*\\.jar"))
             .toList
-        dottyLib :: scalaLib
+        testCasesLib :: dottyLib :: scalaLib
         // Nil
       },
       Compile / buildInfoPackage := "dotty.tools.pc.buildinfo",
@@ -1502,6 +1503,10 @@ object Build {
       }.taskValue,
     )
   }
+
+  lazy val `scala3-presentation-compiler-testcases` = project.in(file("presentation-compiler-testcases"))
+    .dependsOn(`scala3-compiler-bootstrapped`)
+    .settings(commonBootstrappedSettings)
 
   lazy val `scala3-language-server` = project.in(file("language-server")).
     dependsOn(dottyCompiler(Bootstrapped)).
