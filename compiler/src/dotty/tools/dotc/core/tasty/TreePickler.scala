@@ -283,8 +283,9 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       }
     case tpe: AnnotatedType =>
       writeByte(ANNOTATEDtype)
-      withLength { pickleType(tpe.parent, richTypes); pickleTree(tpe.annot.tree) }
-      annotatedTypeTrees += tpe.annot.tree
+      val normTree = tpe.annot.normalizedTree
+      withLength { pickleType(tpe.parent, richTypes); pickleTree(normTree) }
+      annotatedTypeTrees += normTree
     case tpe: AndType =>
       writeByte(ANDtype)
       withLength { pickleType(tpe.tp1, richTypes); pickleType(tpe.tp2, richTypes) }
@@ -922,12 +923,13 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
   def pickleAnnotation(owner: Symbol, mdef: MemberDef, ann: Annotation)(using Context): Unit =
     if !isUnpicklable(owner, ann) then
       writeByte(ANNOTATION)
-      withLength { pickleType(ann.symbol.typeRef); pickleTree(ann.tree) }
+      val normTree = ann.normalizedTree
+      withLength { pickleType(ann.symbol.typeRef); pickleTree(normTree) }
       var treeBuf = annotTrees.lookup(mdef)
       if treeBuf == null then
         treeBuf = new mutable.ListBuffer[Tree]
         annotTrees(mdef) = treeBuf
-      treeBuf += ann.tree
+      treeBuf += normTree
 
 // ---- main entry points ---------------------------------------
 

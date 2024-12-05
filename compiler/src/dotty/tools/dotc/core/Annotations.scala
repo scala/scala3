@@ -7,8 +7,11 @@ import ast.tpd, tpd.*
 import util.Spans.Span
 import printing.{Showable, Printer}
 import printing.Texts.Text
+import SimpleExprs.{SimpleExpr, existsType, toTree, show, se}
+import annotation.{threadUnsafe => tu}
 
 import scala.annotation.internal.sharable
+import dotty.tools.dotc.util.NoSource
 
 object Annotations {
 
@@ -30,6 +33,11 @@ object Annotations {
     def derivedAnnotation(tree: Tree)(using Context): Annotation =
       if (tree eq this.tree) this else Annotation(tree)
 
+    private def derivedAnnotation(e: SimpleExpr)(using Context): Annotation =
+      this match
+        case SimpleExprAnnotation(e1) if e1 == e => this
+        case _ => SimpleExprAnnotation(e)
+
     /** All term arguments of this annotation in a single flat list */
     def arguments(using Context): List[Tree] = tpd.allTermArguments(tree)
 
@@ -49,27 +57,15 @@ object Annotations {
     /** The tree evaluation has finished. */
     def isEvaluated: Boolean = true
 
-    /** Normally, applies a type map to all tree nodes of this annotation, but can
-     *  be overridden. Returns EmptyAnnotation if type type map produces a range
-     *  type, since ranges cannot be types of trees.
-     */
-    def mapWith(tm: TypeMap)(using Context) =
-      val args = tpd.allArguments(tree)
-      if args.isEmpty then this
-      else
-        // Checks if `tm` would result in any change by applying it to types
-        // inside the annotations' arguments and checking if the resulting types
-        // are different.
-        val findDiff = new TreeAccumulator[Type]:
-          def apply(x: Type, tree: Tree)(using Context): Type =
-            if tm.isRange(x) then x
-            else
-              val tp1 = tm(tree.tpe)
-              foldOver(if !tp1.exists || (tp1 frozen_=:= tree.tpe) then x else tp1, tree)
-        val diff = findDiff(NoType, args)
-        if tm.isRange(diff) then EmptyAnnotation
-        else if diff.exists then derivedAnnotation(tm.mapOver(tree))
-        else this
+    def mapWith(tm: TypeMap)(using Context): Annotation =
+      val maybeE = SimpleExprs.fromTree(tree)
+      assert(maybeE.isDefined, s"Cannot convert $tree to SimpleExpr")
+
+      val res =
+        for e <- maybeE; e1 <- e.mapWith(tm) yield
+          //println(s"${tree.show} -->  ${e.show}  -->  ${e1.show}")
+          derivedAnnotation(e1)
+      res.getOrElse(EmptyAnnotation)
 
     /** Does this annotation refer to a parameter of `tl`? */
     def refersToParamOf(tl: TermLambda)(using Context): Boolean =
@@ -109,11 +105,42 @@ object Annotations {
     /** Operations for hash-consing, can be overridden */
     def hash: Int = System.identityHashCode(this)
     def eql(that: Annotation) = this eq that
+
+    def normalizedTree(using Context) =
+      this match
+        case annot: SimpleExprAnnotation => annot.tree
+        case annot =>
+          atPhaseBeforeTransforms:
+            inContext(ctx.withSource(NoSource)):
+              SimpleExprs.fromTree(annot.tree).get.toTree()
   }
 
   case class ConcreteAnnotation(t: Tree) extends Annotation:
     def tree(using Context): Tree = t
 
+  case class SimpleExprAnnotation(e: SimpleExpr) extends Annotation:
+    override def tree(using Context): Tree =
+      atPhaseBeforeTransforms:
+        inContext(ctx.withSource(NoSource)):
+          e.toTree()
+
+    /*override def symbol(using Context): Symbol =
+      def stripArgs(e: SimpleExpr): SimpleExpr =
+        e match
+          case se.Apply(fun, args) => stripArgs(fun)
+          case se.TypeApply(fun, args) => stripArgs(fun)
+          case _ => e
+        
+      stripArgs(e) match
+        case se.Select(se.New(sym), _) => sym.owner
+        case _ => ???*/
+
+    override def refersToParamOf(tl: TermLambda)(using Context): Boolean =
+      e.existsType:
+        _.stripped match
+          case TermParamRef(tl1, _) => tl eq tl1
+          case _ => false
+  
   abstract class LazyAnnotation extends Annotation {
     protected var mySym: Symbol | (Context ?=> Symbol) | Null
     override def symbol(using parentCtx: Context): Symbol =
@@ -195,7 +222,10 @@ object Annotations {
 
   object Annotation {
 
-    def apply(tree: Tree): ConcreteAnnotation = ConcreteAnnotation(tree)
+    def apply(tree: Tree)(using Context): Annotation =
+      val e = SimpleExprs.fromTree(tree)
+      assert(e.isDefined, s"Cannot convert ${tree.show} to SimpleExpr")
+      SimpleExprAnnotation(e.get)
 
     def apply(cls: ClassSymbol, span: Span)(using Context): Annotation =
       apply(cls, Nil, span)
@@ -248,7 +278,7 @@ object Annotations {
     }
   }
 
-  @sharable val EmptyAnnotation = Annotation(EmptyTree)
+  @sharable val EmptyAnnotation = ConcreteAnnotation(EmptyTree)
 
   def ThrowsAnnotation(cls: ClassSymbol)(using Context): Annotation = {
     val tref = cls.typeRef
@@ -303,5 +333,4 @@ object Annotations {
         case annot @ ExperimentalAnnotation(msg) => ExperimentalAnnotation(msg, annot.tree.span)
       }
   }
-
 }
