@@ -582,6 +582,12 @@ class CheckCaptures extends Recheck, SymTransformer:
           }
         case _ => denot
 
+      if tree.symbol.isUpdateMethod && !qualType.captureSet.isExclusive then
+        report.error(
+            em"""cannot call update ${tree.symbol} from $qualType,
+                |since its capture set ${qualType.captureSet} is read-only""",
+            tree.srcPos)
+
       val selType = recheckSelection(tree, qualType, name, disambiguate)
       val selWiden = selType.widen
 
