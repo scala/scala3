@@ -868,7 +868,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           && pt != LhsProto
       then
         val pre = if !TypeOps.isLegalPrefix(qual.tpe) then SkolemType(qual.tpe) else qual.tpe
-        val fieldsType = pre.select(tpnme.Fields).dealias.simplified
+        val fieldsType = pre.select(tpnme.Fields).widenDealias.simplified
         val fields = fieldsType.namedTupleElementTypes
         typr.println(i"try dyn select $qual, $selName, $fields")
         fields.find(_._1 == selName) match
