@@ -8,16 +8,39 @@ package <empty> {
   final module class annot() extends AnyRef() { this: annot.type =>
     def $lessinit$greater$default$2: Any @uncheckedVariance = 42
   }
+  class annot2(x: Any, y: Array[Any]) extends annotation.Annotation() {
+    private[this] val x: Any
+    private[this] val y: Array[Any]
+  }
+  final lazy module val annot2: annot2 = new annot2()
+  final module class annot2() extends AnyRef() { this: annot2.type =>
+    def $lessinit$greater$default$1: Any @uncheckedVariance = -1
+    def $lessinit$greater$default$2: Array[Any] @uncheckedVariance =
+      Array.apply[Any](["Hello" : Any]*)(scala.reflect.ClassTag.Any)
+  }
   final lazy module val dependent-annot-default-args$package:
     dependent-annot-default-args$package =
     new dependent-annot-default-args$package()
   final module class dependent-annot-default-args$package() extends Object() {
     this: dependent-annot-default-args$package.type =>
     def f(x: Int): Int @annot(x) = x
+    def f2(x: Int):
+      Int @annot2(
+        y = Array.apply[Any](["Hello",x : Any]*)(scala.reflect.ClassTag.Any))
+     = x
     def test: Unit =
       {
         val y: Int = ???
         val z: Int @annot(y) = f(y)
+        val z2:
+          Int @annot2(
+            y = Array.apply[Any](["Hello",y : Any]*)(scala.reflect.ClassTag.Any)
+            )
+         = f2(y)
+        @annot(44) val z3: Int = 45
+        @annot2(
+          y = Array.apply[Any](["Hello",y : Any]*)(scala.reflect.ClassTag.Any))
+          val z4: Int = 45
         ()
       }
   }
