@@ -10,6 +10,10 @@ on:
       - scala2-library-cc/**
       - scala2-library-cc-tasty/**
       - compiler/src/dotty/tools/dotc/cc/**
+      ## Capture Checking Tests
+      - tests/pos-custom-args/captures/**
+      - tests/run-custom-args/captures/**
+      - tests/neg-custom-args/captures/**
 
 env:
   DOTTY_CI_RUN: true
