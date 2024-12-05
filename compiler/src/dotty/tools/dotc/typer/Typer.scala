@@ -2649,7 +2649,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val lub = cases1.foldLeft(defn.NothingType: Type): (acc, case1) =>
         if !acc.exists then NoType
         else if case1.body.tpe.isProvisional then NoType
-        else acc | case1.body.tpe
+        else acc | TypeOps.avoid(case1.body.tpe, case1.pat.bindTypeSymbols)
       if lub.exists then
         if !lub.isAny then
           val msg = em"Match type upper bound inferred as $lub, where previously it was defaulted to Any"

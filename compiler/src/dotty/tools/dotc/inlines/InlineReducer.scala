@@ -216,31 +216,21 @@ class InlineReducer(inliner: Inliner)(using Context):
       type TypeBindsMap = SimpleIdentityMap[TypeSymbol, java.lang.Boolean]
 
       def getTypeBindsMap(pat: Tree, tpt: Tree): TypeBindsMap = {
-        val getBinds = new TreeAccumulator[Set[TypeSymbol]] {
-          def apply(syms: Set[TypeSymbol], t: Tree)(using Context): Set[TypeSymbol] = {
-            val syms1 = t match {
-              case t: Bind if t.symbol.isType =>
-                syms + t.symbol.asType
-              case _ => syms
-            }
-            foldOver(syms1, t)
-          }
-        }
-
         // Extractors can contain Bind nodes in type parameter lists,
         // for that case tree looks like this:
         //   UnApply[t @ t](pats)(implicits): T[t]
         // Test case is pos/inline-caseclass.scala.
+        //
         // Alternatively, for explicitly specified type binds in type annotations like in
         //   case A(B): A[t]
         // the tree will look like this:
         //   Unapply[t](pats)(implicits) : T[t @ t]
         // and the binds will be found in the type tree instead
         // Test case is pos-macros/i15971
-        val tptBinds = getBinds(Set.empty[TypeSymbol], tpt)
+        val tptBinds = tpt.bindTypeSymbols.toSet
         val binds: Set[TypeSymbol] = pat match {
           case UnApply(TypeApply(_, tpts), _, _) =>
-            getBinds(Set.empty[TypeSymbol], tpts) ++ tptBinds
+            tpts.flatMap(_.bindTypeSymbols).toSet ++ tptBinds
           case _ => tptBinds
         }
 
