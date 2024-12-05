@@ -2552,9 +2552,6 @@ object SymDenotations {
                  |  $chosen
                  |and also in
                  |  $f"""
-            if youngest.size > 1 then
-              throw TypeError(em"""${ambiguousFilesMsg(youngest.tail.head)}
-                                  |One of these files should be removed from the classpath.""")
 
             // Warn if one of the older files comes from a different container.
             // In that case picking the youngest file is not necessarily what we want,
