@@ -17,6 +17,8 @@ abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String, val c
     def this(x: T)
     = this()
 
+    //expected: def toArray[B >: T : ClassTag]: Array[B]
+
     class innerDocumentationClass
     {
 
