@@ -1081,12 +1081,13 @@ object desugar {
       if mods.isAllOf(Given | Inline | Transparent) then
         report.error("inline given instances cannot be trasparent", cdef)
       var classMods = if mods.is(Given) then mods &~ (Inline | Transparent) | Synthetic else mods
-      if vparamAccessors.exists(_.mods.is(Tracked)) then
+      val newBody = tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths
+      if newBody.collect { case d: ValOrDefDef => d }.exists(_.mods.is(Tracked)) then
         classMods |= Dependent
       cpy.TypeDef(cdef: TypeDef)(
         name = className,
         rhs = cpy.Template(impl)(constr, parents1, clsDerived, self1,
-          tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths)
+          newBody)
       ).withMods(classMods)
     }
 
@@ -1556,6 +1557,12 @@ object desugar {
       rhsOK(rhs)
   }
 
+  val legalTracked: Context ?=> MemberDefTest = {
+    case valdef @ ValDef(_, _, _) =>
+      val sym = valdef.symbol
+      !ctx.owner.exists || ctx.owner.isClass || ctx.owner.is(Case) || ctx.owner.isConstructor || valdef.mods.is(Param) || valdef.mods.is(ParamAccessor)
+  }
+
   def checkOpaqueAlias(tree: MemberDef)(using Context): MemberDef =
     def check(rhs: Tree): MemberDef = rhs match
       case bounds: TypeBoundsTree if bounds.alias.isEmpty =>
@@ -1581,6 +1588,7 @@ object desugar {
         } else tested
       tested = checkOpaqueAlias(tested)
       tested = checkApplicable(Opaque, legalOpaque)
+      tested = checkApplicable(Tracked, legalTracked)
       tested
     case _ =>
       tree

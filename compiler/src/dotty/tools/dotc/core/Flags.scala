@@ -480,7 +480,7 @@ object Flags {
    */
   val AfterLoadFlags: FlagSet = commonFlags(
     FromStartFlags, AccessFlags, Final, AccessorOrSealed,
-    Abstract, LazyOrTrait, SelfName, JavaDefined, JavaAnnotation, Transparent, Tracked)
+    Abstract, LazyOrTrait, SelfName, JavaDefined, JavaAnnotation, Transparent)
 
   /** A value that's unstable unless complemented with a Stable flag */
   val UnstableValueFlags: FlagSet = Mutable | Method

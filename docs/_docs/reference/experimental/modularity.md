@@ -108,14 +108,6 @@ This works as it should now. Without the addition of `tracked` to the
 parameter of `SetFunctor` typechecking would immediately lose track of
 the element type `T` after an `add`, and would therefore fail.
 
-**Syntax Change**
-
-```
-ClsParam  ::=  {Annotation} [{Modifier | ‘tracked’} (‘val’ | ‘var’)] Param
-```
-
-The (soft) `tracked` modifier is only allowed for `val` parameters of classes.
-
 **Discussion**
 
 Since `tracked` is so useful, why not assume it by default? First, `tracked` makes sense only for `val` parameters. If a class parameter is not also a field declared using `val` then there's nothing to refine in the constructor result type. One could think of at least making all `val` parameters tracked by default, but that would be a backwards incompatible change. For instance, the following code would break:
@@ -133,6 +125,38 @@ Another approach might be to assume `tracked` for a `val` parameter `x`
 only if the class refers to a type member of `x`. But it turns out that this
 scheme is unimplementable since it would quickly lead to cyclic references
 when typechecking recursive class graphs. So an explicit `tracked` looks like the best available option.
+
+## Tracked members
+
+The `tracked` modifier can also be used for `val` members of classes and traits
+to force the type of the member (or it's overriding member) to be as exact as
+possible. More precisely, it will will assign the `tracked` member the infered
+type of the rhs. For instance, consider the following definition:
+
+```scala
+trait F:
+  tracked val a: Int
+  tracked val b: Int
+
+class N extends F:
+  val a = 22 // a.type =:= 22
+  val b: Int = 22 // b.type =:= Int
+  tracked val c = 22 // c.type =:= 22
+```
+
+Here, the `tracked` modifier ensures that the type of `a` in `N` is `22` and not
+`Int`. But the type of `b` is `N` is `Int` since it's explicitly declared as
+`Int`. `tracked` members can also be immediately initialized, as in the case of
+`c`.
+
+## Tracked syntax change
+
+```
+LocalModifier     ::=  ‘tracked’
+```
+
+The (soft) `tracked` modifier is allowed as a local modifier.
+
 
 ## Allow Class Parents to be Refined Types
 
