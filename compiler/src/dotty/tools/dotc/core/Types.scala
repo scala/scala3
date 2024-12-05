@@ -140,6 +140,9 @@ object Types extends TypeUtils {
               !t.isPermanentlyInstantiated || test(t.permanentInst, theAcc)
             case t: LazyRef =>
               !t.completed || test(t.ref, theAcc)
+            case t: ParamRef =>
+              (t: Type).mightBeProvisional = false // break cycles
+              test(t.underlying, theAcc)
             case _ =>
               (if theAcc != null then theAcc else ProAcc()).foldOver(false, t)
         end if
