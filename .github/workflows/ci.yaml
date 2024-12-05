@@ -580,6 +580,13 @@ jobs:
           echo "This build version: $ver"
           echo "THISBUILD_VERSION=$ver" >> $GITHUB_ENV
 
+      - name: Check is version matching pattern
+        run: |
+          if ! grep -Eo "3\.[0-9]+\.[0-9]+-RC[0-9]+-bin-[0-9]{8}-[a-zA-Z0-9]{7}-NIGHTLY" <<< "${{ env.THISBUILD_VERSION }}"; then
+            echo "Version used by compiler to publish nightly release does not match expected pattern"
+            exit 1
+          fi
+
       - name: Check whether not yet published
         id: not_yet_published
         continue-on-error: true
@@ -684,6 +691,16 @@ jobs:
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
+      - name: Check compiler version
+        shell: bash
+        run : |
+          version=$(./project/scripts/sbt "print scala3-compiler-bootstrapped/version" | tail -n1)
+          echo "This build version: ${version}"
+          if [ "${version}" != "${{ env.RELEASE_TAG }}" ]; then
+            echo "Compiler version for this build '${version}', does not match tag: ${{ env.RELEASE_TAG }}"
+            exit 1
+          fi
 
       - name: Prepare Release
         run: |
