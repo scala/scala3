@@ -5,7 +5,7 @@ echo "Pull request submitted by $AUTHOR";
 if [[ "$AUTHOR" == "github-actions[bot]" || "$AUTHOR" == "dependabot[bot]" ]] ; then
   echo "CLA check for $AUTHOR successful";
 else
-  signed=$(curl -s "https://contribute.akka.io/contribute/cla/scala/check/$AUTHOR" | jq -r ".signed");
+  signed=$(curl -L -s "https://contribute.akka.io/contribute/cla/scala/check/$AUTHOR" | jq -r ".signed");
   if [ "$signed" = "true" ] ; then
     echo "CLA check for $AUTHOR successful";
   else
