@@ -177,6 +177,8 @@ object Extractors {
         this += "Alternatives(" ++= patterns += ")"
       case TypedOrTest(tree, tpt) =>
         this += "TypedOrTest(" += tree += ", " += tpt += ")"
+      case tree =>
+        this += s"<Internal compiler AST $tree does not have a corresponding reflect extractor>"
     }
 
     def visitConstant(x: Constant): this.type = x match {
@@ -239,6 +241,8 @@ object Extractors {
         this += "NoPrefix()"
       case MatchCase(pat, rhs) =>
         this += "MatchCase(" += pat += ", " += rhs += ")"
+      case tp =>
+        this += s"<Internal compiler type $tp does not have a corresponding reflect extractor>"
     }
 
     def visitSignature(sig: Signature): this.type = {
