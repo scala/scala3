@@ -1052,8 +1052,8 @@ object desugar {
         // we can reuse the constructor parameters; no derived params are needed.
         DefDef(
           className.toTermName, joinParams(constrTparams, defParamss), classTypeRef, creatorExpr
-        ) .withMods(companionMods | mods.flags.toTermFlags & (GivenOrImplicit | Inline) | finalFlag)
-          .withSpan(cdef.span) :: Nil
+        ).withMods(companionMods | mods.flags.toTermFlags & (GivenOrImplicit | Inline) | finalFlag)
+         .withSpan(cdef.span) :: Nil
       }
 
     val self1 = {
