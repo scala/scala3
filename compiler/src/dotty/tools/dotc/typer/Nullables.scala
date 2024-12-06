@@ -319,11 +319,29 @@ object Nullables:
       if !info.isEmpty then tree.putAttachment(NNInfo, info)
       tree
 
+    /* Collect the nullability info from parts of `tree` */
+    def collectNotNullInfo(using Context): NotNullInfo = tree match
+      case Typed(expr, _) =>
+        expr.notNullInfo
+      case Apply(fn, args) =>
+        val argsInfo = args.map(_.notNullInfo)
+        val fnInfo = fn.notNullInfo
+        argsInfo.foldLeft(fnInfo)(_ seq _)
+      case TypeApply(fn, _) =>
+        fn.notNullInfo
+      case _ =>
+        // Other cases are handled specially in typer.
+        NotNullInfo.empty
+
     /* The nullability info of `tree` */
     def notNullInfo(using Context): NotNullInfo =
-      stripInlined(tree).getAttachment(NNInfo) match
+      val tree1 = stripInlined(tree)
+      tree1.getAttachment(NNInfo) match
         case Some(info) if !ctx.erasedTypes => info
-        case _ => NotNullInfo.empty
+        case _ =>
+          val nnInfo = tree1.collectNotNullInfo
+          tree1.withNotNullInfo(nnInfo)
+          nnInfo
 
     /* The nullability info of `tree`, assuming it is a condition that evaluates to `c` */
     def notNullInfoIf(c: Boolean)(using Context): NotNullInfo =
@@ -404,21 +422,23 @@ object Nullables:
   end extension
 
   extension (tree: Assign)
-    def computeAssignNullable()(using Context): tree.type = tree.lhs match
-      case TrackedRef(ref) =>
-        val rhstp = tree.rhs.typeOpt
-        if ctx.explicitNulls && ref.isNullableUnion then
-          if rhstp.isNullType || rhstp.isNullableUnion then
-            // If the type of rhs is nullable (`T|Null` or `Null`), then the nullability of the
-            // lhs variable is no longer trackable. We don't need to check whether the type `T`
-            // is correct here, as typer will check it.
-            tree.withNotNullInfo(NotNullInfo(Set(), Set(ref)))
-          else
-            // If the initial type is nullable and the assigned value is non-null,
-            // we add it to the NotNull.
-            tree.withNotNullInfo(NotNullInfo(Set(ref), Set()))
-        else tree
-      case _ => tree
+    def computeAssignNullable()(using Context): tree.type =
+      var nnInfo = tree.rhs.notNullInfo
+      tree.lhs match
+        case TrackedRef(ref) if ctx.explicitNulls && ref.isNullableUnion =>
+          nnInfo = nnInfo.seq:
+            val rhstp = tree.rhs.typeOpt
+            if rhstp.isNullType || rhstp.isNullableUnion then
+              // If the type of rhs is nullable (`T|Null` or `Null`), then the nullability of the
+              // lhs variable is no longer trackable. We don't need to check whether the type `T`
+              // is correct here, as typer will check it.
+              NotNullInfo(Set(), Set(ref))
+            else
+              // If the initial type is nullable and the assigned value is non-null,
+              // we add it to the NotNull.
+              NotNullInfo(Set(ref), Set())
+        case _ =>
+      tree.withNotNullInfo(nnInfo)
   end extension
 
   private val analyzedOps = Set(nme.EQ, nme.NE, nme.eq, nme.ne, nme.ZAND, nme.ZOR, nme.UNARY_!)
