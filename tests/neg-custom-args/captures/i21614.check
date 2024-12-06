@@ -1,8 +1,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:12:33 ---------------------------------------
 12 |  files.map((f: F) => new Logger(f)) // error, Q: can we make this pass (see #19076)?
    |                                 ^
-   |                                 Found:    (f : F^)
-   |                                 Required: File^
+   |                                 Found:    (f : F)
+   |                                 Required: File
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:15:12 ---------------------------------------
