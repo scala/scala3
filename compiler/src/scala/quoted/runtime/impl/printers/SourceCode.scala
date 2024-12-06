@@ -1150,8 +1150,19 @@ object SourceCode {
           case tp: TypeRef if tp.typeSymbol == Symbol.requiredClass("scala.<repeated>") =>
             this += "_*"
           case _ =>
-            printType(tp)
-            inSquare(printTypesOrBounds(args, ", "))
+            if !fullNames && args.lengthCompare(2) == 0 && tp.typeSymbol.flags.is(Flags.Infix) then
+              val lhs = args(0)
+              val rhs = args(1)
+              this += "("
+              printType(lhs)
+              this += " "
+              printType(tp)
+              this += " "
+              printType(rhs)
+              this += ")"
+            else
+              printType(tp)
+              inSquare(printTypesOrBounds(args, ", "))
         }
 
       case AnnotatedType(tp, annot) =>
