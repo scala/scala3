@@ -19,6 +19,7 @@ import printing.Formatting.hl
 import config.Printers
 
 import scala.annotation.internal.sharable
+import dotty.tools.dotc.util.SrcPos
 
 object desugar {
   import untpd.*
