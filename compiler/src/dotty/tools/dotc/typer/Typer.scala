@@ -1000,7 +1000,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             untpd.unsplice(tree.expr).putAttachment(AscribedToUnit, ())
           typed(tree.expr, underlyingTreeTpe.tpe.widenSkolem)
       assignType(cpy.Typed(tree)(expr1, tpt), underlyingTreeTpe)
-        .withNotNullInfo(expr1.notNullInfo)
     }
 
     if (untpd.isWildcardStarArg(tree)) {

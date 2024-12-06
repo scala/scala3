@@ -77,3 +77,16 @@ def test5: Unit =
     case _ =>
   val z1: String = x.replace("", "") // error
   val z2: String = y.replace("", "") // error // LTS specific
+
+def test6 = {
+  var x: String | Null = ""
+  var y: String = ""
+  x = ""
+  y = if (false) x else 1 match { // error
+    case _ => {
+      x = null
+      y
+    }
+  }
+  x.replace("", "") // error
+}

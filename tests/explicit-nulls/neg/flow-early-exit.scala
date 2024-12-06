@@ -49,7 +49,7 @@ class Foo(x: String|Null) {
   def retTypeNothing(): String = {
     val y: String|Null = ???
     if (y == null) err("y is null!")
-    y // error
+    y
   }
 
   def errRetUnit(msg: String): Unit = {
