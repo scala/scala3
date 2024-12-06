@@ -177,11 +177,16 @@ class PlainPrinter(_ctx: Context) extends Printer {
    *  capturing function types.
    */
   protected def toTextCapturing(parent: Type, refsText: Text, boxText: Text): Text =
-    changePrec(InfixPrec):
-      boxText ~ toTextLocal(parent) ~ "^"
-      ~ (refsText provided refsText != rootSetText)
+    def coreText = boxText ~ toTextLocal(parent)
+    if parent.derivesFrom(defn.Caps_Capability)
+      && refsText == impliedByCapabilitySetText
+      && !printDebug
+    then coreText
+    else changePrec(InfixPrec):
+      coreText~ "^" ~ (refsText provided refsText != rootSetText)
 
   final protected def rootSetText = Str("{cap}") // TODO Use disambiguation
+  final protected def impliedByCapabilitySetText = Str("{cap}")
 
   def toText(tp: Type): Text = controlled {
     homogenize(tp) match {
