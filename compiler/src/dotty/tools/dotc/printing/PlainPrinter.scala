@@ -177,16 +177,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
    *  capturing function types.
    */
   protected def toTextCapturing(parent: Type, refsText: Text, boxText: Text): Text =
-    def coreText = boxText ~ toTextLocal(parent)
-    if parent.derivesFrom(defn.Caps_Capability)
-      && refsText == impliedByCapabilitySetText
-      && !printDebug
-    then coreText
-    else changePrec(InfixPrec):
-      coreText~ "^" ~ (refsText provided refsText != rootSetText)
+    changePrec(InfixPrec):
+      boxText ~ toTextLocal(parent) ~ "^" ~ (refsText provided refsText != rootSetText)
 
   final protected def rootSetText = Str("{cap}") // TODO Use disambiguation
-  final protected def impliedByCapabilitySetText = Str("{cap}")
 
   def toText(tp: Type): Text = controlled {
     homogenize(tp) match {
@@ -247,9 +241,16 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }.close
       case tp @ CapturingType(parent, refs) =>
         val boxText: Text = Str("box ") provided tp.isBoxed //&& ctx.settings.YccDebug.value
-        val showAsCap = refs.isUniversal && (refs.elems.size == 1 || !printDebug)
-        val refsText = if showAsCap then rootSetText else toTextCaptureSet(refs)
-        toTextCapturing(parent, refsText, boxText)
+        if parent.derivesFrom(defn.Caps_Capability)
+              && refs.containsRootCapability && refs.isReadOnly && !printDebug
+        then
+          toText(parent)
+        else
+          val refsText =
+            if refs.isUniversal && (refs.elems.size == 1 || !printDebug)
+            then rootSetText
+            else toTextCaptureSet(refs)
+          toTextCapturing(parent, refsText, boxText)
       case tp @ RetainingType(parent, refs) =>
         if Feature.ccEnabledSomewhere then
           val refsText = refs match
