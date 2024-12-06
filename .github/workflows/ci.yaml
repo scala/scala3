@@ -175,7 +175,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Test
-        run: sbt ";scala3-bootstrapped/compile; scala3-bootstrapped/testCompilation"
+        run: sbt ";scala3-bootstrapped/compile; scala3-bootstrapped/testCompilation; scala3-presentation-compiler-bootstrapped/test; scala3-language-server/test"
         shell: cmd
 
       - name: build binary
