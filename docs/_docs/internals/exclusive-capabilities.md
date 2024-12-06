@@ -152,7 +152,7 @@ type extending `Mutable` and it contains only shared capabilities, otherwise it 
 
 The read-only function `ro` maps capture sets to read-only capture sets. It is defined pointwise on capabilities as follows:
 
- - `ro ({ x1, ..., xn } _) = { ro(x1), ..., ro(xn) } rd`
+ - `ro ({ x1, ..., xn } _) = { ro(x1), ..., ro(xn) }`
  - `ro(x)    =  x` if `x` is shared
  - `ro(x)    =  x.rd` if `x` is exclusive
 
@@ -243,14 +243,17 @@ Then
 
 ## Accesses to Mutable Types
 
-A _read-only access_ is a reference `x` to a `Mutable` type with a regular capture set if the expected type is one of the following:
+A _read-only access_ is a reference `x` to a type extending `Mutable` with a regular capture set if the expected type is one of the following:
 
- - a value type that has a capture set containing only shared capabilities, or
+ - a value type that is not a mutable type, or
  - a select prototype with a member that is a normal method or class (not an update method or class).
 
 A read-only access contributes the read-only capability `x.rd` to its environment (as formalized by _cv_). Other accesses contribute the full capability `x`.
 
 A reference `p.m` to an update method or class `m` of a mutable type is allowed only if `p`'s capture set is regular.
+
+If `e` is an expression of a type `T^cs` extending `Mutable` and the expected type is a value type that is not a mutable type, then the type of `e` is mapped to `T^ro(cs)`.
+
 
 ## Expression Typing
 
