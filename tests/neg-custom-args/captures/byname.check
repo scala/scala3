@@ -8,10 +8,10 @@
 -- Error: tests/neg-custom-args/captures/byname.scala:19:5 -------------------------------------------------------------
 19 |  h(g()) // error
    |    ^^^
-   |    reference (cap2 : Cap^) is not included in the allowed capture set {cap1}
+   |    reference (cap2 : Cap) is not included in the allowed capture set {cap1}
    |    of an enclosing function literal with expected type () ?->{cap1} I
 -- Error: tests/neg-custom-args/captures/byname.scala:22:12 ------------------------------------------------------------
 22 |  h2(() => g())() // error
    |           ^^^
-   |           reference (cap2 : Cap^) is not included in the allowed capture set {cap1}
+   |           reference (cap2 : Cap) is not included in the allowed capture set {cap1}
    |           of an enclosing function literal with expected type () ->{cap1} I
