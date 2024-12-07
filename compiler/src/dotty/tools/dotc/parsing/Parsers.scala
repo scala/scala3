@@ -429,6 +429,14 @@ object Parsers {
       finally inEnum = saved
     }
 
+    private var inMatchPattern = false
+    private def withinMatchPattern[T](body: => T): T = {
+      val saved = inMatchPattern
+      inMatchPattern = true
+      try body
+      finally inMatchPattern = saved
+    }
+
     private var staged = StageKind.None
     def withinStaged[T](kind: StageKind)(op: => T): T = {
       val saved = staged
@@ -1857,7 +1865,7 @@ object Parsers {
       if isSimpleLiteral then
         SingletonTypeTree(simpleLiteral())
       else if in.token == USCORE then
-        if ctx.settings.YkindProjector.value == "underscores" then
+        if ctx.settings.YkindProjector.value == "underscores" && !inMatchPattern then
           val start = in.skipToken()
           Ident(tpnme.USCOREkw).withSpan(Span(start, in.lastOffset, start))
         else
@@ -2883,7 +2891,7 @@ object Parsers {
     def caseClause(exprOnly: Boolean = false): CaseDef = atSpan(in.offset) {
       val (pat, grd) = inSepRegion(InCase) {
         accept(CASE)
-        (pattern(), guard())
+        (withinMatchPattern(pattern()), guard())
       }
       CaseDef(pat, grd, atSpan(accept(ARROW)) {
         if exprOnly then
@@ -2907,7 +2915,7 @@ object Parsers {
             val start = in.skipToken()
             Ident(tpnme.WILDCARD).withSpan(Span(start, in.lastOffset, start))
           case _ =>
-            rejectWildcardType(infixType())
+            withinMatchPattern(rejectWildcardType(infixType()))
         }
       }
       CaseDef(pat, EmptyTree, atSpan(accept(ARROW)) {

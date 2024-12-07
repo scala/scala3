@@ -333,15 +333,20 @@ object Phases {
       for unit <- units do
         given unitCtx: Context = runCtx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
         if ctx.run.enterUnit(unit) then
-          try run
-          catch case ex: Throwable if !ctx.run.enrichedErrorMessage =>
-            println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
-            throw ex
+          try
+            run
+            buf += unitCtx.compilationUnit
+          catch
+            case _: CompilationUnit.SuspendException => // this unit will be run again in `Run#compileSuspendedUnits`
+            case ex: Throwable if !ctx.run.enrichedErrorMessage =>
+              println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
+              throw ex
           finally ctx.run.advanceUnit()
-          buf += unitCtx.compilationUnit
         end if
       end for
-      buf.result()
+      val res = buf.result()
+      ctx.run.nn.checkSuspendedUnits(res)
+      res
     end runOn
 
     /** Convert a compilation unit's tree to a string; can be overridden */

@@ -15,7 +15,8 @@ RUN apt-get update && \
                        openjdk-17-jdk-headless \
                        openjdk-21-jdk-headless && \
     (curl -fsSL https://deb.nodesource.com/setup_18.x | bash -) && \
-    apt-get install -y nodejs
+    apt-get install -y nodejs && \
+    apt-get install -y zip unzip
 
 
 # Install sbt

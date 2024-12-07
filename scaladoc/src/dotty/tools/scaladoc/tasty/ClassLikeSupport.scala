@@ -314,7 +314,7 @@ trait ClassLikeSupport:
   def parseObject(classDef: ClassDef, signatureOnly: Boolean = false): Member =
     mkClass(classDef)(
       // All objects are final so we do not need final modifier!
-      modifiers = classDef.symbol.getExtraModifiers().filter(_ != Modifier.Final),
+      modifiers = classDef.symbol.getExtraModifiers().filter(mod => mod != Modifier.Final && mod != Modifier.Opaque),
       signatureOnly = signatureOnly
     )
 

@@ -48,7 +48,7 @@ jobs:
   test_non_bootstrapped:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -100,7 +100,7 @@ jobs:
   test:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -175,7 +175,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Test
-        run: sbt ";scala3-bootstrapped/compile; scala3-bootstrapped/testCompilation"
+        run: sbt ";scala3-bootstrapped/compile; scala3-bootstrapped/testCompilation; scala3-presentation-compiler-bootstrapped/test; scala3-language-server/test"
         shell: cmd
 
       - name: build binary
@@ -230,7 +230,7 @@ jobs:
     name: MiMa
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -276,7 +276,7 @@ jobs:
   community_build_a:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -330,7 +330,7 @@ jobs:
   community_build_b:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -384,7 +384,7 @@ jobs:
   community_build_c:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -438,7 +438,7 @@ jobs:
   test_sbt:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -483,7 +483,7 @@ jobs:
   test_java8:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -539,7 +539,7 @@ jobs:
   publish_nightly:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -580,6 +580,14 @@ jobs:
           echo "This build version: $ver"
           echo "THISBUILD_VERSION=$ver" >> $GITHUB_ENV
 
+      - name: Check is version matching pattern
+        shell: bash
+        run: |
+          if ! grep -Eo "3\.[0-9]+\.[0-9]+-RC[0-9]+-bin-[0-9]{8}-[a-zA-Z0-9]{7}-NIGHTLY" <<< "${{ env.THISBUILD_VERSION }}"; then
+            echo "Version used by compiler to publish nightly release does not match expected pattern"
+            exit 1
+          fi
+
       - name: Check whether not yet published
         id: not_yet_published
         continue-on-error: true
@@ -594,7 +602,7 @@ jobs:
   nightly_documentation:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -648,7 +656,7 @@ jobs:
       contents: write  # for actions/create-release to create a release
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -684,6 +692,16 @@ jobs:
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
+      - name: Check compiler version
+        shell: bash
+        run : |
+          version=$(./project/scripts/sbt "print scala3-compiler-bootstrapped/version" | tail -n1)
+          echo "This build version: ${version}"
+          if [ "${version}" != "${{ env.RELEASE_TAG }}" ]; then
+            echo "Compiler version for this build '${version}', does not match tag: ${{ env.RELEASE_TAG }}"
+            exit 1
+          fi
 
       - name: Prepare Release
         run: |
@@ -740,7 +758,7 @@ jobs:
   open_issue_on_failure:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
     needs: [nightly_documentation, test_windows_full]
     # The `failure()` expression is true iff at least one of the dependencies
     # of this job (including transitive dependencies) has failed.

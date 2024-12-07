@@ -107,6 +107,9 @@ end CyclicMsg
 abstract class ReferenceMsg(errorId: ErrorMessageID)(using Context) extends Message(errorId):
   def kind = MessageKind.Reference
 
+abstract class StagingMessage(errorId: ErrorMessageID)(using Context) extends Message(errorId):
+  override final def kind = MessageKind.Staging
+
 abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: ErrorMessageID)(using Context)
 extends SyntaxMsg(errNo) {
   def explain(using Context) = {
@@ -1797,12 +1800,24 @@ class SuperCallsNotAllowedInlineable(symbol: Symbol)(using Context)
 }
 
 class NotAPath(tp: Type, usage: String)(using Context) extends TypeMsg(NotAPathID):
-  def msg(using Context) = i"$tp is not a valid $usage, since it is not an immutable path"
+  def msg(using Context) = i"$tp is not a valid $usage, since it is not an immutable path" + inlineParamAddendum
   def explain(using Context) =
     i"""An immutable path is
         | - a reference to an immutable value, or
         | - a reference to `this`, or
         | - a selection of an immutable path with an immutable value."""
+
+  def inlineParamAddendum(using Context) =
+    val sym = tp.termSymbol
+    if sym.isAllOf(Flags.InlineParam) then
+      i"""
+         |Inline parameters are not considered immutable paths and cannot be used as
+         |singleton types. 
+         | 
+         |Hint: Removing the `inline` qualifier from the `${sym.name}` parameter
+         |may help resolve this issue."""
+    else ""
+    
 
 class WrongNumberOfParameters(tree: untpd.Tree, foundCount: Int, pt: Type, expectedCount: Int)(using Context)
   extends SyntaxMsg(WrongNumberOfParametersID) {
@@ -3153,3 +3168,20 @@ object UnusedSymbol {
     def privateMembers(using Context): UnusedSymbol = new UnusedSymbol(i"unused private member")
     def patVars(using Context): UnusedSymbol = new UnusedSymbol(i"unused pattern variable")
 }
+
+final class QuotedTypeMissing(tpe: Type)(using Context) extends StagingMessage(QuotedTypeMissingID):
+
+  private def witness = defn.QuotedTypeClass.typeRef.appliedTo(tpe)
+
+  override protected def msg(using Context): String = 
+    i"Reference to $tpe within quotes requires a given ${witness} in scope"
+
+  override protected def explain(using Context): String =
+    i"""Referencing `$tpe` inside a quoted expression requires a `${witness}` to be in scope. 
+        |Since Scala is subject to erasure at runtime, the type information will be missing during the execution of the code.
+        |`${witness}` is therefore needed to carry `$tpe`'s type information into the quoted code. 
+        |Without an implicit `${witness}`, the type `$tpe` cannot be properly referenced within the expression. 
+        |To resolve this, ensure that a `${witness}` is available, either through a context-bound or explicitly.
+        |"""
+
+end QuotedTypeMissing

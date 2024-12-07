@@ -7,3 +7,7 @@ opaque type Permissions
 opaque type PermissionChoice
  = Int
 //opaque type Permission <: Permissions & PermissionChoice = Int TODO: #112
+
+object Foo:
+  opaque type Bar
+   = Int

@@ -10,7 +10,7 @@ import java.io.IOException
 import java.util.jar.Attributes.{ Name => AttributeName }
 import java.nio.charset.StandardCharsets
 
-/** Loads `library.properties` from the jar. */
+/** Loads `compiler.properties` from the jar. */
 object Properties extends PropertiesTrait {
   protected def propCategory: String = "compiler"
   protected def pickJarBasedOn: Class[PropertiesTrait] = classOf[PropertiesTrait]

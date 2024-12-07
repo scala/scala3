@@ -1,0 +1,11 @@
+-- [E083] Type Error: tests/neg/21538.scala:3:45 -----------------------------------------------------------------------
+3 |inline def foo[V](inline value: V)(using Bar[value.type]) : Unit = {} // error
+  |                                             ^^^^^^^^^^
+  |                                      (value : V) is not a valid singleton type, since it is not an immutable path
+  |                                      Inline parameters are not considered immutable paths and cannot be used as
+  |                                      singleton types. 
+  |                                       
+  |                                      Hint: Removing the `inline` qualifier from the `value` parameter
+  |                                      may help resolve this issue.
+  |
+  | longer explanation available when compiling with `-explain`
