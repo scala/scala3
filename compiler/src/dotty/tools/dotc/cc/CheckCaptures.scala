@@ -1443,6 +1443,25 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ => widened
       case _ => widened
 
+    /** If actual is a capturing type T^C extending Mutable, and expected is an
+     *  unboxed non-singleton value type not extending mutable, narrow the capture
+     *  set `C` to `ro(C)`.
+     *  The unboxed condition ensures that the expected is not a type variable
+     *  that's upper bounded by a read-only type. In this case it would not be sound
+     *  to narrow to the read-only set, since that set can be propagated
+     *  by the type variable instantiatiin.
+     */
+    private def improveReadOnly(actual: Type, expected: Type)(using Context): Type = actual match
+      case actual @ CapturingType(parent, refs)
+      if parent.derivesFrom(defn.Caps_Mutable)
+          && expected.isValueType
+          && !expected.isMutableType
+          && !expected.isSingleton
+          && !expected.isBoxedCapturing =>
+        actual.derivedCapturingType(parent, refs.readOnly)
+      case _ =>
+        actual
+
     /** Adapt `actual` type to `expected` type. This involves:
      *   - narrow toplevel captures of `x`'s underlying type to `{x}` according to CC's VAR rule
      *   - narrow nested captures of `x`'s underlying type to `{x*}`
@@ -1452,12 +1471,14 @@ class CheckCaptures extends Recheck, SymTransformer:
       if expected == LhsProto || expected.isSingleton && actual.isSingleton then
         actual
       else
-        val widened = improveCaptures(actual.widen.dealiasKeepAnnots, actual)
+        val improvedVAR = improveCaptures(actual.widen.dealiasKeepAnnots, actual)
+        val improvedRO = improveReadOnly(improvedVAR, expected)
         val adapted = adaptBoxed(
-            widened.withReachCaptures(actual), expected, pos,
+            improvedRO.withReachCaptures(actual), expected, pos,
             covariant = true, alwaysConst = false, boxErrors)
-        if adapted eq widened then actual
-        else adapted.showing(i"adapt boxed $actual vs $expected = $adapted", capt)
+        if adapted eq improvedVAR // no .rd improvement, no box-adaptation
+        then actual               // might as well use actual instead of improved widened
+        else adapted.showing(i"adapt $actual vs $expected = $adapted", capt)
     end adapt
 
 // ---- Unit-level rechecking -------------------------------------------
