@@ -210,7 +210,7 @@ object Nullables:
     */
     @tailrec def impliesNotNull(ref: TermRef): Boolean = infos match
       case info :: infos1 =>
-        if info.asserted != null && info.asserted.contains(ref) then true
+        if info.asserted == null || info.asserted.contains(ref) then true
         else if info.retracted.contains(ref) then false
         else infos1.impliesNotNull(ref)
       case _ =>
@@ -290,8 +290,8 @@ object Nullables:
   extension (tree: Tree)
 
     /* The `tree` with added nullability attachment */
-    def withNotNullInfo(info: NotNullInfo): tree.type =
-      if !info.isEmpty then tree.putAttachment(NNInfo, info)
+    def withNotNullInfo(info: NotNullInfo)(using Context): tree.type =
+      if ctx.explicitNulls && !info.isEmpty then tree.putAttachment(NNInfo, info)
       tree
 
     /* Collect the nullability info from parts of `tree` */
@@ -310,13 +310,15 @@ object Nullables:
 
     /* The nullability info of `tree` */
     def notNullInfo(using Context): NotNullInfo =
-      val tree1 = stripInlined(tree)
-      tree1.getAttachment(NNInfo) match
-        case Some(info) if !ctx.erasedTypes => info
-        case _ =>
-          val nnInfo = tree1.collectNotNullInfo
-          tree1.withNotNullInfo(nnInfo)
-          nnInfo
+      if !ctx.explicitNulls then NotNullInfo.empty
+      else
+        val tree1 = stripInlined(tree)
+        tree1.getAttachment(NNInfo) match
+          case Some(info) if !ctx.erasedTypes => info
+          case _ =>
+            val nnInfo = tree1.collectNotNullInfo
+            tree1.withNotNullInfo(nnInfo)
+            nnInfo
 
     /* The nullability info of `tree`, assuming it is a condition that evaluates to `c` */
     def notNullInfoIf(c: Boolean)(using Context): NotNullInfo =
