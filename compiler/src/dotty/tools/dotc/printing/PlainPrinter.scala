@@ -167,8 +167,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
       toTextCaptureRef(ref.typeOpt)
     case TypeApply(fn, arg :: Nil) if fn.symbol == defn.Caps_capsOf =>
       toTextRetainedElem(arg)
-    case _ =>
-      toText(ref)
+    case ReachCapabilityApply(ref1) => toTextRetainedElem(ref1) ~ "*"
+    case ReadOnlyCapabilityApply(ref1) => toTextRetainedElem(ref1) ~ ".rd"
+    case _ => toText(ref)
 
   private def toTextRetainedElems[T <: Untyped](refs: List[Tree[T]]): Text =
     "{" ~ Text(refs.map(ref => toTextRetainedElem(ref)), ", ") ~ "}"

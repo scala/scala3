@@ -56,6 +56,22 @@ When we create an instance of a mutable type we always add `cap` to its capture 
 
 **Restriction:** A non-mutable type cannot be downcast by a pattern match to a mutable type.
 
+**Definition:** A class is _read_only_ if the following conditions are met:
+
+ 1. It does not extend any exclusive capabilities from its environment.
+ 2. It does not take parameters with exclusive capabilities.
+ 3. It does not contain mutable fields, or fields that take exclusive capabilities.
+
+**Restriction:** If a class or trait extends `Mutable` all its parent classes or traits must either extend `Mutable` or be read-only.
+
+The idea is that when we upcast a reference to a type extending `Mutable` to a type that does not extend `Mutable`, we cannot possibly call a method on this reference that uses an exclusive capability. Indeed, by the previous restriction this class must be a read-only class, which means that none of the code implemented
+in the class can access exclusive capabilities on its own. And we
+also cannot override any of the methods of this class with a method
+accessing exclusive capabilities, since such a method would have
+to be an update method and update methods are not allowed to override regular methods.
+
+
+
 **Example:**
 
 Consider trait `IterableOnce` from the standard library.
@@ -92,6 +108,7 @@ All inherited update methods are (re-)implemented by normal methods.
 **Note:** One might think that we don't need a base trait `Mutable` since in any case
 a mutable type is defined by the presence of update methods, not by what it extends. In fact the importance of `Mutable` is that it defines _the other methods_ as read-only methods that _cannot_ access exclusive capabilities. For types not extending `Mutable`, this is not the case. For instance, the `apply` method of a function type is not an update method and the type itself does not extend `Mutable`. But `apply` may well be implemented by
 a method that accesses exclusive capabilities.
+
 
 
 ## Read-only Capabilities
