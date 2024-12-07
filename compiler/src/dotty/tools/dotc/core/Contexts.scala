@@ -777,13 +777,13 @@ object Contexts {
 
   extension (c: Context)
     def addNotNullInfo(info: NotNullInfo) =
-      c.withNotNullInfos(c.notNullInfos.extendWith(info))
+      if c.explicitNulls then c.withNotNullInfos(c.notNullInfos.extendWith(info)) else c
 
     def addNotNullRefs(refs: Set[TermRef]) =
-      c.addNotNullInfo(NotNullInfo(refs, Set()))
+      if c.explicitNulls then c.addNotNullInfo(NotNullInfo(refs, Set())) else c
 
     def withNotNullInfos(infos: List[NotNullInfo]): Context =
-      if c.notNullInfos eq infos then c else c.fresh.setNotNullInfos(infos)
+      if !c.explicitNulls || (c.notNullInfos eq infos) then c else c.fresh.setNotNullInfos(infos)
 
     def relaxedOverrideContext: Context =
       c.withModeBits(c.mode &~ Mode.SafeNulls | Mode.RelaxedOverriding)
