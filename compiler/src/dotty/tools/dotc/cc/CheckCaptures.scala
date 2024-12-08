@@ -734,7 +734,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       def addParamArgRefinements(core: Type, initCs: CaptureSet): (Type, CaptureSet) =
         var refined: Type = core
         var allCaptures: CaptureSet =
-          if core.derivesFromCapability then defn.universalCSImpliedByCapability else initCs
+          if core.derivesFromMutable then CaptureSet.universal
+          else if core.derivesFromCapability then initCs ++ defn.universalCSImpliedByCapability
+          else initCs
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
           val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
           if !getter.is(Private) && getter.hasTrackedParts then

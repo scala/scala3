@@ -475,39 +475,8 @@ extension (tp: Type)
     case _ =>
       ReadOnlyCapability(tp)
 
-  /** If `ref` is a trackable capture ref, and `tp` has only covariant occurrences of a
-   *  universal capture set, replace all these occurrences by `{ref*}`. This implements
-   *  the new aspect of the (Var) rule, which can now be stated as follows:
-   *
-   *     x: T in E
-   *     -----------
-   *     E |- x: T'
-   *
-   *  where T' is T with (1) the toplevel capture set replaced by `{x}` and
-   *  (2) all covariant occurrences of cap replaced by `x*`, provided there
-   *  are no occurrences in `T` at other variances. (1) is standard, whereas
-   *  (2) is new.
-   *
-   *  For (2), multiple-flipped covariant occurrences of cap won't be replaced.
-   *  In other words,
-   *
-   *    - For xs: List[File^]  ==>  List[File^{xs*}], the cap is replaced;
-   *    - while f: [R] -> (op: File^ => R) -> R remains unchanged.
-   *
-   *  Without this restriction, the signature of functions like withFile:
-   *
-   *    (path: String) -> [R] -> (op: File^ => R) -> R
-   *
-   *  could be refined to
-   *
-   *    (path: String) -> [R] -> (op: File^{withFile*} => R) -> R
-   *
-   *  which is clearly unsound.
-   *
-   *  Why is this sound? Covariant occurrences of cap must represent capabilities
-   *  that are reachable from `x`, so they are included in the meaning of `{x*}`.
-   *  At the same time, encapsulation is still maintained since no covariant
-   *  occurrences of cap are allowed in instance types of type variables.
+  /** If `x` is a capture ref, replacxe all no-flip covariant occurrences of `cap`
+   *  in type `tp` with `x*`.
    */
   def withReachCaptures(ref: Type)(using Context): Type =
     object narrowCaps extends TypeMap:
