@@ -4,7 +4,6 @@ package cc
 
 import core.*
 import Types.*, Symbols.*, Contexts.*, Annotations.*, Flags.*
-import CaptureSet.IdempotentCaptRefMap
 import StdNames.nme
 import ast.tpd.*
 import Decorators.*
