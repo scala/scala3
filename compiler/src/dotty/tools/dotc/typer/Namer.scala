@@ -1925,9 +1925,7 @@ class Namer { typer: Typer =>
     if isConstructor then
       // set result type tree to unit, but take the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)
-      val mt = wrapMethType(effectiveResultType(sym, paramSymss))
-      if sym.isPrimaryConstructor then checkCaseClassParamDependencies(mt, sym.owner)
-      mt
+      wrapMethType(effectiveResultType(sym, paramSymss))
     else if sym.isAllOf(Given | Method) && Feature.enabled(modularity) then
       // set every context bound evidence parameter of a given companion method
       // to be tracked, provided it has a type that has an abstract type member.
@@ -1975,16 +1973,6 @@ class Namer { typer: Typer =>
 
     ddef.trailingParamss.foreach(completeParams)
   end completeTrailingParamss
-
-  /** Checks an implementation restriction on case classes. */
-  def checkCaseClassParamDependencies(mt: Type, cls: Symbol)(using Context): Unit =
-    mt.stripPoly match
-      case mt: MethodType if cls.is(Case) && mt.isParamDependent =>
-        // See issue #8073 for background
-        report.error(
-            em"""Implementation restriction: case classes cannot have dependencies between parameters""",
-            cls.srcPos)
-      case _ =>
 
   /** Under x.modularity, we add `tracked` to context bound witnesses
    *  that have abstract type members
