@@ -1,6 +1,8 @@
 package scala
+import annotation.experimental
 import compiletime.ops.boolean.*
 
+@experimental
 object NamedTuple:
 
   /** The type to which named tuples get mapped to. For instance,
@@ -131,6 +133,7 @@ object NamedTuple:
 end NamedTuple
 
 /** Separate from NamedTuple object so that we can match on the opaque type NamedTuple. */
+@experimental
 object NamedTupleDecomposition:
   import NamedTuple.*
   extension [N <: Tuple, V <: Tuple](x: NamedTuple[N, V])
