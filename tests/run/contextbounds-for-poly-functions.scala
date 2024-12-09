@@ -1,6 +1,3 @@
-import scala.language.experimental.modularity
-import scala.language.future
-
 trait Show[X]:
   def show(x: X): String
 
