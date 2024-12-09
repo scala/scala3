@@ -728,7 +728,7 @@ jobs:
 
   publish_release:
     permissions:
-      contents: write  # for actions/create-release to create a release
+      contents: write  # for GH CLI to create a release
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2024-10-18
@@ -770,6 +770,7 @@ jobs:
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
       # Extract the release tag
       - name: Extract the release tag
         run : echo "RELEASE_TAG=${GITHUB_REF#*refs/tags/}" >> $GITHUB_ENV
@@ -828,311 +829,29 @@ jobs:
           mv scala.msi "${msiInstaller}"
           sha256sum "${msiInstaller}" > "${msiInstaller}.sha256"
 
+      - name: Install GH CLI
+        uses: dev-hanz-ops/install-gh-cli-action@v0.2.0
+        with:
+          gh-cli-version: 2.59.0 
+          
       # Create the GitHub release
       - name: Create GitHub Release
-        id: create_gh_release
-        uses: actions/create-release@latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref }}
-          body_path: ./changelogs/${{ env.RELEASE_TAG }}.md
-          draft: true
-          prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
-
-      # The following upload steps are generated using template:
-      # val baseFileName = "scala3-${{ env.RELEASE_TAG }}"
-      # def upload(kind: String, path: String, contentType: String, distribution: String) =
-      #   s"""- name: Upload $kind to GitHub Release ($distribution)
-      #         uses: actions/upload-release-asset@v1
-      #         env:
-      #           GITHUB_TOKEN: $${{ secrets.GITHUB_TOKEN }}
-      #         with:
-      #           upload_url: $${{ steps.create_gh_release.outputs.upload_url }}
-      #           asset_path: ./${path}
-      #           asset_name: ${path}
-      #           asset_content_type: ${contentType}"""
-      # def uploadSDK(distribution: String, suffix: String) =
-      #   val filename = s"${baseFileName}${suffix}"
-      #   s"""
-      #       # $distribution
-      #       ${upload("zip archive", s"$filename.zip", "application/zip", distribution)}
-      #       ${upload("zip archive SHA", s"$filename.zip.sha256", "text/plain", distribution)}
-      #       ${upload("tar.gz archive", s"$filename.tar.gz", "application/gzip", distribution)}
-      #       ${upload("tar.gz archive SHA", s"$filename.tar.gz.sha256", "text/plain", distribution)}
-      # """
-      # def uploadMSI() = 
-      #     val distribution = "Windows x86_64 MSI"
-      #     s"""
-      #       # $distribution
-      #       ${upload(".msi file", s"${baseFileName}.msi", "application/x-msi", distribution)}
-      #       ${upload(".msi file SHA", s"${baseFileName}.msi.sha256", "text/plain", distribution)}
-      # """
-      # @main def gen =
-      #   Seq(
-      #     uploadSDK("Universal", ""),
-      #     uploadSDK("Linux x86-64", "-x86_64-pc-linux"),
-      #     uploadSDK("Linux aarch64", "-aarch64-pc-linux"),
-      #     uploadSDK("Mac x86-64", "-x86_64-apple-darwin"),
-      #     uploadSDK("Mac aarch64", "-aarch64-apple-darwin"),
-      #     uploadSDK("Windows x86_64", "-x86_64-pc-win32"),
-      #     uploadMSI()
-      #   ).foreach(println)
-
-      # Universal
-      - name: Upload zip archive to GitHub Release (Universal)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}.zip
-          asset_name: scala3-${{ env.RELEASE_TAG }}.zip
-          asset_content_type: application/zip
-      - name: Upload zip archive SHA to GitHub Release (Universal)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}.zip.sha256
-          asset_name: scala3-${{ env.RELEASE_TAG }}.zip.sha256
-          asset_content_type: text/plain
-      - name: Upload tar.gz archive to GitHub Release (Universal)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}.tar.gz
-          asset_name: scala3-${{ env.RELEASE_TAG }}.tar.gz
-          asset_content_type: application/gzip
-      - name: Upload tar.gz archive SHA to GitHub Release (Universal)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}.tar.gz.sha256
-          asset_name: scala3-${{ env.RELEASE_TAG }}.tar.gz.sha256
-          asset_content_type: text/plain
-
-
-      # Linux x86-64
-      - name: Upload zip archive to GitHub Release (Linux x86-64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-x86_64-pc-linux.zip
-          asset_name: scala3-${{ env.RELEASE_TAG }}-x86_64-pc-linux.zip
-          asset_content_type: application/zip
-      - name: Upload zip archive SHA to GitHub Release (Linux x86-64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-x86_64-pc-linux.zip.sha256
-          asset_name: scala3-${{ env.RELEASE_TAG }}-x86_64-pc-linux.zip.sha256
-          asset_content_type: text/plain
-      - name: Upload tar.gz archive to GitHub Release (Linux x86-64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-x86_64-pc-linux.tar.gz
-          asset_name: scala3-${{ env.RELEASE_TAG }}-x86_64-pc-linux.tar.gz
-          asset_content_type: application/gzip
-      - name: Upload tar.gz archive SHA to GitHub Release (Linux x86-64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-x86_64-pc-linux.tar.gz.sha256
-          asset_name: scala3-${{ env.RELEASE_TAG }}-x86_64-pc-linux.tar.gz.sha256
-          asset_content_type: text/plain
-
-
-      # Linux aarch64
-      - name: Upload zip archive to GitHub Release (Linux aarch64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarch64-pc-linux.zip
-          asset_name: scala3-${{ env.RELEASE_TAG }}-aarch64-pc-linux.zip
-          asset_content_type: application/zip
-      - name: Upload zip archive SHA to GitHub Release (Linux aarch64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarch64-pc-linux.zip.sha256
-          asset_name: scala3-${{ env.RELEASE_TAG }}-aarch64-pc-linux.zip.sha256
-          asset_content_type: text/plain
-      - name: Upload tar.gz archive to GitHub Release (Linux aarch64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarch64-pc-linux.tar.gz
-          asset_name: scala3-${{ env.RELEASE_TAG }}-aarch64-pc-linux.tar.gz
-          asset_content_type: application/gzip
-      - name: Upload tar.gz archive SHA to GitHub Release (Linux aarch64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarch64-pc-linux.tar.gz.sha256
-          asset_name: scala3-${{ env.RELEASE_TAG }}-aarch64-pc-linux.tar.gz.sha256
-          asset_content_type: text/plain
-
-
-      # Mac x86-64
-      - name: Upload zip archive to GitHub Release (Mac x86-64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-x86_64-apple-darwin.zip
-          asset_name: scala3-${{ env.RELEASE_TAG }}-x86_64-apple-darwin.zip
-          asset_content_type: application/zip
-      - name: Upload zip archive SHA to GitHub Release (Mac x86-64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-x86_64-apple-darwin.zip.sha256
-          asset_name: scala3-${{ env.RELEASE_TAG }}-x86_64-apple-darwin.zip.sha256
-          asset_content_type: text/plain
-      - name: Upload tar.gz archive to GitHub Release (Mac x86-64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-x86_64-apple-darwin.tar.gz
-          asset_name: scala3-${{ env.RELEASE_TAG }}-x86_64-apple-darwin.tar.gz
-          asset_content_type: application/gzip
-      - name: Upload tar.gz archive SHA to GitHub Release (Mac x86-64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-x86_64-apple-darwin.tar.gz.sha256
-          asset_name: scala3-${{ env.RELEASE_TAG }}-x86_64-apple-darwin.tar.gz.sha256
-          asset_content_type: text/plain
-
-
-      # Mac aarch64
-      - name: Upload zip archive to GitHub Release (Mac aarch64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.zip
-          asset_name: scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.zip
-          asset_content_type: application/zip
-      - name: Upload zip archive SHA to GitHub Release (Mac aarch64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.zip.sha256
-          asset_name: scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.zip.sha256
-          asset_content_type: text/plain
-      - name: Upload tar.gz archive to GitHub Release (Mac aarch64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.tar.gz
-          asset_name: scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.tar.gz
-          asset_content_type: application/gzip
-      - name: Upload tar.gz archive SHA to GitHub Release (Mac aarch64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.tar.gz.sha256
-          asset_name: scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.tar.gz.sha256
-          asset_content_type: text/plain
-
-
-      # Windows x86_64
-      - name: Upload zip archive to GitHub Release (Windows x86_64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-x86_64-pc-win32.zip
-          asset_name: scala3-${{ env.RELEASE_TAG }}-x86_64-pc-win32.zip
-          asset_content_type: application/zip
-      - name: Upload zip archive SHA to GitHub Release (Windows x86_64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-x86_64-pc-win32.zip.sha256
-          asset_name: scala3-${{ env.RELEASE_TAG }}-x86_64-pc-win32.zip.sha256
-          asset_content_type: text/plain
-      - name: Upload tar.gz archive to GitHub Release (Windows x86_64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-x86_64-pc-win32.tar.gz
-          asset_name: scala3-${{ env.RELEASE_TAG }}-x86_64-pc-win32.tar.gz
-          asset_content_type: application/gzip
-      - name: Upload tar.gz archive SHA to GitHub Release (Windows x86_64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}-x86_64-pc-win32.tar.gz.sha256
-          asset_name: scala3-${{ env.RELEASE_TAG }}-x86_64-pc-win32.tar.gz.sha256
-          asset_content_type: text/plain
-
-
-      # Windows x86_64 MSI
-      - name: Upload .msi file to GitHub Release (Windows x86_64 MSI)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}.msi
-          asset_name: scala3-${{ env.RELEASE_TAG }}.msi
-          asset_content_type: application/x-msi
-      - name: Upload .msi file SHA to GitHub Release (Windows x86_64 MSI)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./scala3-${{ env.RELEASE_TAG }}.msi.sha256
-          asset_name: scala3-${{ env.RELEASE_TAG }}.msi.sha256
-          asset_content_type: text/plain
+        shell: bash
+        run: |
+          git config --global --add safe.directory /__w/scala3/scala3
+          gh release create \
+          --draft \
+          --title "${{ env.RELEASE_TAG }}" \
+          --notes-file ./changelogs/${{ env.RELEASE_TAG }}.md \
+          --latest=${{ !contains(env.RELEASE_TAG, '-RC') }} \
+          --prerelease=${{ contains(env.RELEASE_TAG, '-RC') }} \
+          --verify-tag ${{ env.RELEASE_TAG }} \
+          scala3-${{ env.RELEASE_TAG }}*.zip \
+          scala3-${{ env.RELEASE_TAG }}*.tar.gz \
+          scala3-${{ env.RELEASE_TAG }}*.sha256 \
+          scala3-${{ env.RELEASE_TAG }}.msi 
 
       - name: Publish Release
         run: ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleUpload"
