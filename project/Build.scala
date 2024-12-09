@@ -97,7 +97,7 @@ object Build {
    *  - In release branch it should be the last stable release
    *  3.6.0-RC1 was released as 3.6.0 - it's having and experimental TASTy version
    */
-  val referenceVersion = "3.6.0"
+  val referenceVersion = "3.6.2"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -151,7 +151,7 @@ object Build {
    *   - `3.(M-1).0` if `P = 0`
    *  3.6.1 is an exception from this rule - 3.6.0 was a broken release
    */
-  val mimaPreviousDottyVersion = "3.6.1"
+  val mimaPreviousDottyVersion = "3.6.2"
 
   /** LTS version against which we check binary compatibility.
    *
