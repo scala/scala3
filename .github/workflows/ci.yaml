@@ -774,3 +774,30 @@ jobs:
           WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
           filename: .github/workflows/issue_nightly_failed.md
+
+  build-sdk-package:
+    uses: ./.github/workflows/build-sdk.yml
+    if:
+      (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]')) ||
+      (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3') ||
+      (github.event_name == 'schedule' && github.repository == 'scala/scala3') ||
+      github.event_name == 'push'
+    with:
+      java-version: 8
+
+  build-chocolatey-package:
+    uses: ./.github/workflows/build-chocolatey.yml
+    needs: [ build-sdk-package ]
+    with:
+      version: 3.3.5-local # unused
+      url    : https://api.github.com/repos/scala/scala3/actions/artifacts/${{ needs.build-sdk-package.outputs.universal-id }}/zip
+      digest : ${{ needs.build-sdk-package.outputs.universal-digest }}
+
+  test-chocolatey-package:
+    uses: ./.github/workflows/test-chocolatey.yml
+    with:
+      version     : 3.3.5-local # unused
+      java-version: 8
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_chocolatey]')
+    needs: [ build-chocolatey-package ]
+
