@@ -42,7 +42,7 @@ jobs:
           cache       : sbt
 
       - name: Build and pack the SDK (universal)
-        run : ./project/scripts/sbt dist/packArchive
+        run : ./project/scripts/sbt dist/pack
 
       - name: Upload zip archive to GitHub Artifact (universal)
         uses: actions/upload-artifact@v4
