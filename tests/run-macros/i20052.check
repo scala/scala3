@@ -1,0 +1,5 @@
+method <init> (Flags.JavaDefined | Flags.Method) List(List((x$0,scala.Int)))
+method <init> (Flags.JavaDefined | Flags.Method) List(List())
+method <init> (Flags.JavaDefined | Flags.Method | Flags.Private) List(List())
+method <init> (Flags.JavaDefined | Flags.Method | Flags.Private) List(List())
+method <init> (Flags.JavaDefined | Flags.Method) List(List((A,_ >: scala.Nothing <: <special-ops>.<FromJavaObject>)), List((x$0,A)))
