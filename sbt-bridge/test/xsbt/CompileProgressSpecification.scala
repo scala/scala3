@@ -56,7 +56,7 @@ class CompileProgressSpecification {
         "sbt-deps",
         "posttyper",
         "sbt-api",
-        "SetRootTree",
+        "setRootTree",
         "pickler",
         "inlining",
         "postInlining",
