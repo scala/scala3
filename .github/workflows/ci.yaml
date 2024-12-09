@@ -838,6 +838,8 @@ jobs:
 
       # Create the GitHub release
       - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         shell: bash
         run: |
           gh release create \
