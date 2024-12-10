@@ -52,34 +52,46 @@ object Nullables:
     val hiTree = if(hiTpe eq hi.typeOpt) hi else TypeTree(hiTpe)
     TypeBoundsTree(lo, hiTree, alias)
 
-  /** A set of val or var references that are known to be not null, plus a set of
-   *  variable references that are not known (anymore) to be not null
+  /** A set of val or var references that are known to be not null
+   *  after the tree finishes executing normally (non-exceptionally),
+   *  plus a set of variable references that are ever assigned to null,
+   *  and may therefore be null if execution of the tree is interrupted
+   *  by an exception.
    */
-  case class NotNullInfo(asserted: Set[TermRef], retracted: Set[TermRef]):
-    assert((asserted & retracted).isEmpty)
-
+  case class NotNullInfo(asserted: Set[TermRef] | Null, retracted: Set[TermRef]):
     def isEmpty = this eq NotNullInfo.empty
 
     def retractedInfo = NotNullInfo(Set(), retracted)
+
+    def terminatedInfo = NotNullInfo(null, retracted)
 
     /** The sequential combination with another not-null info */
     def seq(that: NotNullInfo): NotNullInfo =
       if this.isEmpty then that
       else if that.isEmpty then this
-      else NotNullInfo(
-        this.asserted.union(that.asserted).diff(that.retracted),
-        this.retracted.union(that.retracted).diff(that.asserted))
+      else
+        val newAsserted =
+          if this.asserted == null || that.asserted == null then null
+          else this.asserted.diff(that.retracted).union(that.asserted)
+        val newRetracted = this.retracted.union(that.retracted)
+        NotNullInfo(newAsserted, newRetracted)
 
     /** The alternative path combination with another not-null info. Used to merge
-     *  the nullability info of the two branches of an if.
+     *  the nullability info of the branches of an if or match.
      */
     def alt(that: NotNullInfo): NotNullInfo =
-      NotNullInfo(this.asserted.intersect(that.asserted), this.retracted.union(that.retracted))
+      val newAsserted =
+        if this.asserted == null then that.asserted
+        else if that.asserted == null then this.asserted
+        else this.asserted.intersect(that.asserted)
+      val newRetracted = this.retracted.union(that.retracted)
+      NotNullInfo(newAsserted, newRetracted)
+  end NotNullInfo
 
   object NotNullInfo:
     val empty = new NotNullInfo(Set(), Set())
-    def apply(asserted: Set[TermRef], retracted: Set[TermRef]): NotNullInfo =
-      if asserted.isEmpty && retracted.isEmpty then empty
+    def apply(asserted: Set[TermRef] | Null, retracted: Set[TermRef]): NotNullInfo =
+      if asserted != null && asserted.isEmpty && retracted.isEmpty then empty
       else new NotNullInfo(asserted, retracted)
   end NotNullInfo
 
@@ -223,7 +235,7 @@ object Nullables:
     */
     @tailrec def impliesNotNull(ref: TermRef): Boolean = infos match
       case info :: infos1 =>
-        if info.asserted.contains(ref) then true
+        if info.asserted == null || info.asserted.contains(ref) then true
         else if info.retracted.contains(ref) then false
         else infos1.impliesNotNull(ref)
       case _ =>
@@ -233,16 +245,15 @@ object Nullables:
     *  or retractions in `info` supersede infos in existing entries of `infos`.
     */
     def extendWith(info: NotNullInfo) =
-      if info.isEmpty
-        || info.asserted.forall(infos.impliesNotNull(_))
-            && !info.retracted.exists(infos.impliesNotNull(_))
-      then infos
+      if info.isEmpty then infos
       else info :: infos
 
     /** Retract all references to mutable variables */
     def retractMutables(using Context) =
-      val mutables = infos.foldLeft(Set[TermRef]())((ms, info) =>
-        ms.union(info.asserted.filter(_.symbol.is(Mutable))))
+      val mutables = infos.foldLeft(Set[TermRef]()):
+        (ms, info) => ms.union(
+                        if info.asserted == null then Set.empty
+                        else info.asserted.filter(_.symbol.is(Mutable)))
       infos.extendWith(NotNullInfo(Set(), mutables))
 
   end extension
@@ -304,15 +315,35 @@ object Nullables:
   extension (tree: Tree)
 
     /* The `tree` with added nullability attachment */
-    def withNotNullInfo(info: NotNullInfo): tree.type =
-      if !info.isEmpty then tree.putAttachment(NNInfo, info)
+    def withNotNullInfo(info: NotNullInfo)(using Context): tree.type =
+      if ctx.explicitNulls && !info.isEmpty then tree.putAttachment(NNInfo, info)
       tree
+
+    /* Collect the nullability info from parts of `tree` */
+    def collectNotNullInfo(using Context): NotNullInfo = tree match
+      case Typed(expr, _) =>
+        expr.notNullInfo
+      case Apply(fn, args) =>
+        val argsInfo = args.map(_.notNullInfo)
+        val fnInfo = fn.notNullInfo
+        argsInfo.foldLeft(fnInfo)(_ seq _)
+      case TypeApply(fn, _) =>
+        fn.notNullInfo
+      case _ =>
+        // Other cases are handled specially in typer.
+        NotNullInfo.empty
 
     /* The nullability info of `tree` */
     def notNullInfo(using Context): NotNullInfo =
-      stripInlined(tree).getAttachment(NNInfo) match
-        case Some(info) if !ctx.erasedTypes => info
-        case _ => NotNullInfo.empty
+      if !ctx.explicitNulls then NotNullInfo.empty
+      else
+        val tree1 = stripInlined(tree)
+        tree1.getAttachment(NNInfo) match
+          case Some(info) if !ctx.erasedTypes => info
+          case _ =>
+            val nnInfo = tree1.collectNotNullInfo
+            tree1.withNotNullInfo(nnInfo)
+            nnInfo
 
     /* The nullability info of `tree`, assuming it is a condition that evaluates to `c` */
     def notNullInfoIf(c: Boolean)(using Context): NotNullInfo =
@@ -393,21 +424,23 @@ object Nullables:
   end extension
 
   extension (tree: Assign)
-    def computeAssignNullable()(using Context): tree.type = tree.lhs match
-      case TrackedRef(ref) =>
-        val rhstp = tree.rhs.typeOpt
-        if ctx.explicitNulls && ref.isNullableUnion then
-          if rhstp.isNullType || rhstp.isNullableUnion then
-            // If the type of rhs is nullable (`T|Null` or `Null`), then the nullability of the
-            // lhs variable is no longer trackable. We don't need to check whether the type `T`
-            // is correct here, as typer will check it.
-            tree.withNotNullInfo(NotNullInfo(Set(), Set(ref)))
-          else
-            // If the initial type is nullable and the assigned value is non-null,
-            // we add it to the NotNull.
-            tree.withNotNullInfo(NotNullInfo(Set(ref), Set()))
-        else tree
-      case _ => tree
+    def computeAssignNullable()(using Context): tree.type =
+      var nnInfo = tree.rhs.notNullInfo
+      tree.lhs match
+        case TrackedRef(ref) if ctx.explicitNulls && ref.isNullableUnion =>
+          nnInfo = nnInfo.seq:
+            val rhstp = tree.rhs.typeOpt
+            if rhstp.isNullType || rhstp.isNullableUnion then
+              // If the type of rhs is nullable (`T|Null` or `Null`), then the nullability of the
+              // lhs variable is no longer trackable. We don't need to check whether the type `T`
+              // is correct here, as typer will check it.
+              NotNullInfo(Set(), Set(ref))
+            else
+              // If the initial type is nullable and the assigned value is non-null,
+              // we add it to the NotNull.
+              NotNullInfo(Set(ref), Set())
+        case _ =>
+      tree.withNotNullInfo(nnInfo)
   end extension
 
   private val analyzedOps = Set(nme.EQ, nme.NE, nme.eq, nme.ne, nme.ZAND, nme.ZOR, nme.UNARY_!)
@@ -515,7 +548,10 @@ object Nullables:
       && assignmentSpans.getOrElse(sym.span.start, Nil).exists(whileSpan.contains(_))
       && ctx.notNullInfos.impliesNotNull(ref)
 
-    val retractedVars = ctx.notNullInfos.flatMap(_.asserted.filter(isRetracted)).toSet
+    val retractedVars = ctx.notNullInfos.flatMap(info =>
+      if info.asserted == null then Set.empty
+      else info.asserted.filter(isRetracted)
+    ).toSet
     ctx.addNotNullInfo(NotNullInfo(Set(), retractedVars))
   end whileContext
 
