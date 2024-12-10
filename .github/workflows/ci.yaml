@@ -736,7 +736,7 @@ jobs:
 
   publish_release:
     permissions:
-      contents: write  # for actions/create-release to create a release
+      contents: write  # for GH CLI to create a release
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2024-10-18
@@ -778,6 +778,7 @@ jobs:
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
       # Extract the release tag
       - name: Extract the release tag
         run : echo "RELEASE_TAG=${GITHUB_REF#*refs/tags/}" >> $GITHUB_ENV
@@ -835,6 +836,11 @@ jobs:
           msiInstaller="scala3-${{ env.RELEASE_TAG }}.msi"
           mv scala.msi "${msiInstaller}"
           sha256sum "${msiInstaller}" > "${msiInstaller}.sha256"
+
+      - name: Install GH CLI
+        uses: dev-hanz-ops/install-gh-cli-action@v0.2.0
+        with:
+          gh-cli-version: 2.59.0 
 
       # Create the GitHub release
       - name: Create GitHub Release
