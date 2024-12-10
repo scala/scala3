@@ -500,6 +500,7 @@ object StdNames {
     val foreach: N              = "foreach"
     val format: N               = "format"
     val fromDigits: N           = "fromDigits"
+    val fromLiteral: N          = "fromLiteral"
     val fromProduct: N          = "fromProduct"
     val genericArrayOps: N      = "genericArrayOps"
     val genericClass: N         = "genericClass"

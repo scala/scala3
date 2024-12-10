@@ -1,0 +1,79 @@
+package scala.compiletime
+
+import annotation.experimental
+import reflect.ClassTag
+
+// This is in compiletime since it is an inline type class. Another
+// possibility would be to put it in `scala.collection`
+
+/** A typeclass that supports creating collection-like data from
+ *  collection literals `[x1,...,xN]`.
+ */
+@experimental trait ExpressibleAsCollectionLiteral[+Coll]:
+
+  /** The element type of the created collection */
+  type Elem
+
+  /** The inline method that creates the collection */
+  inline def fromLiteral(inline xs: Elem*): Coll
+
+@experimental object ExpressibleAsCollectionLiteral:
+
+  // Some instances for standard collections. It would be good to have a method
+  // that works for all collections in stdlib. But to do that int his file,
+  // we have to write some macro method here. I have not found a straightforward
+  // way to build a collection of type `C` if all we know is the type.
+  // Once we can put Scala 3 code in the standard library this would be resolved by
+  // adding a given instance in Factory.
+
+  given seqFromLiteral: [T] => ExpressibleAsCollectionLiteral[collection.Seq[T]]:
+    type Elem = T
+    inline def fromLiteral(inline xs: T*): Seq[T] = Seq(xs*)
+
+  given mutableSeqFromLiteral: [T] => ExpressibleAsCollectionLiteral[collection.mutable.Seq[T]]:
+    type Elem = T
+    inline def fromLiteral(inline xs: T*) = collection.mutable.Seq(xs*)
+
+  given immutableSeqFromLiteral: [T] => ExpressibleAsCollectionLiteral[collection.immutable.Seq[T]]:
+    type Elem = T
+    inline def fromLiteral(inline xs: T*) = collection.immutable.Seq(xs*)
+
+  given vectorFromLiteral: [T] => ExpressibleAsCollectionLiteral[Vector[T]]:
+    type Elem = T
+    inline def fromLiteral(inline xs: T*) = Vector[Elem](xs*)
+
+  given listFromLiteral: [T] => ExpressibleAsCollectionLiteral[List[T]]:
+    type Elem = T
+    inline def fromLiteral(inline xs: T*) = List(xs*)
+
+  given arrayFromLiteral: [T: ClassTag] => ExpressibleAsCollectionLiteral[Array[T]]:
+    type Elem = T
+    inline def fromLiteral(inline xs: T*) = Array(xs*)
+
+  given iarrayFromLiteral: [T: ClassTag] => ExpressibleAsCollectionLiteral[IArray[T]]:
+    type Elem = T
+    inline def fromLiteral(inline xs: T*) = IArray(xs*)
+
+  given arrayBufferFromLiteral: [T: ClassTag] => ExpressibleAsCollectionLiteral[collection.mutable.ArrayBuffer[T]]:
+    type Elem = T
+    inline def fromLiteral(inline xs: T*) = collection.mutable.ArrayBuffer(xs*)
+
+  given setFromLiteral: [T] => ExpressibleAsCollectionLiteral[Set[T]]:
+    type Elem = T
+    inline def fromLiteral(inline xs: T*) = Set(xs*)
+
+  given hashSetFromLiteral: [T] => ExpressibleAsCollectionLiteral[collection.mutable.HashSet[T]]:
+    type Elem = T
+    inline def fromLiteral(inline xs: T*) = collection.mutable.HashSet(xs*)
+
+  given bitsetFromLiteral: ExpressibleAsCollectionLiteral[collection.immutable.BitSet]:
+    type Elem = Int
+    inline def fromLiteral(inline xs: Int*) = collection.immutable.BitSet(xs*)
+
+  given mapFromLiteral: [K, V] => ExpressibleAsCollectionLiteral[Map[K, V]]:
+    type Elem = (K, V)
+    inline def fromLiteral(inline xs: (K, V)*) = Map(xs*)
+
+  given hashMapFromLiteral: [K, V] => ExpressibleAsCollectionLiteral[collection.mutable.HashMap[K, V]]:
+    type Elem = (K, V)
+    inline def fromLiteral(inline xs: (K, V)*) = collection.mutable.HashMap(xs*)
