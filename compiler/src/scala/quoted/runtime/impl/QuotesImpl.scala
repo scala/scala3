@@ -2822,7 +2822,26 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           self.typeRef.info.decls.toList
 
         def paramSymss: List[List[Symbol]] = self.denot.paramSymss
-        def primaryConstructor: Symbol = self.denot.primaryConstructor
+        def primaryConstructor: Symbol =
+          val initialPrimary = self.denot.primaryConstructor
+          // Java outline parser creates a dummyConstructor. We want to avoid returning it here,
+          // instead returning the first non-dummy one, which is what happens when a java classfile
+          // is read from classpath instead of using the java outline parser.
+          // We check if the constructor is dummy if it has the same parameters as defined in JavaParsers.scala,
+          // incliding the private[this] flags and parameter shape with scala.Unit argument.
+          val isJavaDummyConstructor =
+            val paramSymss = initialPrimary.paramSymss
+            initialPrimary.flags.is(Flags.JavaDefined | Flags.Local | Flags.Method | Flags.Private | Flags.PrivateLocal)
+            && {
+              paramSymss match
+                case List(List(typeTree)) if self.typeRef.memberType(typeTree).typeSymbol == defn.UnitClass => true
+                case _ => false
+            }
+          if isJavaDummyConstructor then
+            declarations.filter(sym => sym != initialPrimary && sym.isConstructor).headOption.getOrElse(Symbol.noSymbol)
+          else
+            initialPrimary
+
         def allOverriddenSymbols: Iterator[Symbol] = self.denot.allOverriddenSymbols
         def overridingSymbol(ofclazz: Symbol): Symbol =
           if ofclazz.isClass then self.denot.overridingSymbol(ofclazz.asClass)
