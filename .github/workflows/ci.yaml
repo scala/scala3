@@ -848,6 +848,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         shell: bash
         run: |
+          # We need to config safe.directory in every step that might reference git
+          # It is not persisted between steps
+          git config --global --add safe.directory /__w/scala3/scala3
           gh release create \
           --draft \
           --title "${{ env.RELEASE_TAG }}" \
