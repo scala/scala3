@@ -16,7 +16,9 @@ RUN apt-get update && \
                        openjdk-21-jdk-headless && \
     (curl -fsSL https://deb.nodesource.com/setup_18.x | bash -) && \
     apt-get install -y nodejs && \
-    apt-get install -y zip unzip
+    apt-get install -y zip unzip && \
+    # Ensure Git can do stuff in the working directory
+    git config --system --add safe.directory '*'
 
 
 # Install sbt
