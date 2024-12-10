@@ -93,9 +93,10 @@ object Build {
 
   /** Version of the Scala compiler used to build the artifacts.
    *  Reference version should track the latest version pushed to Maven:
-   *  - In main branch it should be the last RC version (using experimental TASTy required for non-bootstrapped tests)
+   *  - In main branch it should be the last RC version
    *  - In release branch it should be the last stable release
-   *  3.6.0-RC1 was released as 3.6.0 - it's having and experimental TASTy version
+   * 
+   *  Warning: Change of this variable needs to consulted with `expectedTastyVersion` 
    */
   val referenceVersion = "3.6.3-RC1"
 
@@ -105,6 +106,8 @@ object Build {
    *
    *  Should only be referred from `dottyVersion` or settings/tasks requiring simplified version string,
    *  eg. `compatMode` or Windows native distribution version.
+   * 
+   *  Warning: Change of this variable might require updating `expectedTastyVersion` 
    */
   val developedVersion = "3.6.4"
 
@@ -116,6 +119,24 @@ object Build {
    *  During final, stable release is set exactly to `developedVersion`.
   */
   val baseVersion = s"$developedVersion-RC1"
+  
+  /** The version of TASTY that should be emitted, checked in runtime test 
+   *  For defails on how TASTY version should be set see related discussions: 
+   *    - https://github.com/scala/scala3/issues/13447#issuecomment-912447107
+   *    - https://github.com/scala/scala3/issues/14306#issuecomment-1069333516
+   *    - https://github.com/scala/scala3/pull/19321
+   *   
+   *  Simplified rules, given 3.$minor.$patch = $developedVersion
+   *    - Major version is always 28
+   *    - TASTY minor version:
+   *      - in main (NIGHTLY): {if $patch == 0 then $minor else ${minor + 1}}
+   *      - in release branch is always equal to $minor
+   *    - TASTY experimental version:
+   *      - in main (NIGHTLY) is always experimental
+   *      - in release candidate branch is experimental if {patch == 0}
+   *      - in stable release is always non-experimetnal
+   */
+  val expectedTastyVersion = "28.7-experimental-1"
 
   /** Final version of Scala compiler, controlled by environment variables. */
   val dottyVersion = {
@@ -2424,6 +2445,10 @@ object Build {
       settings(disableDocSetting).
       settings(
         versionScheme := Some("semver-spec"),
+        Test / envVars ++= Map(
+          "EXPECTED_TASTY_VERSION" -> expectedTastyVersion,
+          "BASE_VERSION" -> baseVersion
+        ),
         if (mode == Bootstrapped) Def.settings(
           commonMiMaSettings,
           mimaForwardIssueFilters := MiMaFilters.TastyCore.ForwardsBreakingChanges,
