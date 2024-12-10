@@ -140,6 +140,13 @@ object language:
      */
     @compileTimeOnly("`betterFors` can only be used at compile time in import statements")
     object betterFors
+
+    /** Experimental support for collection literals
+     *
+     * @see [[https://dotty.epfl.ch/docs/reference/experimental/collection-literals]]
+     */
+    @compileTimeOnly("`collectionLiterals` can only be used at compile time in import statements")
+    object collectionLiterals
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.

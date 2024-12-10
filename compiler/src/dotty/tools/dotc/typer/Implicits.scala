@@ -616,6 +616,28 @@ object Implicits:
     def msg(using Context): Message =
       em"${errors.map(_.msg).mkString("\n")}"
   }
+
+  private def isUnderSpecifiedArgument(tp: Type)(using Context): Boolean =
+      tp.isRef(defn.NothingClass) || tp.isRef(defn.NullClass) || (tp eq NoPrefix)
+
+  /** Is `tp` not specific enough to warrant an implicit search for it?
+   *  This is the case for
+   *    - `?`, `Any`, `AnyRef`,
+   *    - conversions from a bottom type, or to an underspecified type, or to `Unit
+   *    - bounded wildcard types with underspecified upper bound
+   *  The method is usually called after transforming a type with `wildApprox`,
+   *  which means that type variables with underspecified upper constraints are also
+   *  underspecified.
+   */
+  def isUnderspecified(tp: Type)(using Context): Boolean = tp.stripTypeVar match
+    case tp: WildcardType =>
+      !tp.optBounds.exists || isUnderspecified(tp.optBounds.hiBound)
+    case tp: ViewProto =>
+      isUnderspecified(tp.resType)
+      || tp.resType.isRef(defn.UnitClass)
+      || isUnderSpecifiedArgument(tp.argType.widen)
+    case _ =>
+      tp.isAny || tp.isAnyRef
 end Implicits
 
 import Implicits.*
@@ -1662,19 +1684,6 @@ trait Implicits:
 
       res
     end searchImplicit
-
-    def isUnderSpecifiedArgument(tp: Type): Boolean =
-      tp.isRef(defn.NothingClass) || tp.isRef(defn.NullClass) || (tp eq NoPrefix)
-
-    private def isUnderspecified(tp: Type): Boolean = tp.stripTypeVar match
-      case tp: WildcardType =>
-        !tp.optBounds.exists || isUnderspecified(tp.optBounds.hiBound)
-      case tp: ViewProto =>
-        isUnderspecified(tp.resType)
-        || tp.resType.isRef(defn.UnitClass)
-        || isUnderSpecifiedArgument(tp.argType.widen)
-      case _ =>
-        tp.isAny || tp.isAnyRef
 
     /** Search implicit in context `ctxImplicits` or else in implicit scope
      *  of expected type if `ctxImplicits == null`.
