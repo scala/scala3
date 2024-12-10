@@ -26,10 +26,10 @@ on:
     - cron: '0 3 * * *'  # Every day at 3 AM
   workflow_dispatch:
 
-# Cancels any in-progress runs within the same group identified by workflow name and GH reference (branch or tag) 
+# Cancels any in-progress runs within the same group identified by workflow name and GH reference (branch or tag)
 # For example it would:
 # - terminate previous PR CI execution after pushing more changes to the same PR branch
-# - terminate previous on-push CI run after merging new PR to main 
+# - terminate previous on-push CI run after merging new PR to main
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -831,7 +831,7 @@ jobs:
           path: .
       - name: Prepare MSI package
         shell: bash
-        run: | 
+        run: |
           msiInstaller="scala3-${{ env.RELEASE_TAG }}.msi"
           mv scala.msi "${msiInstaller}"
           sha256sum "${msiInstaller}" > "${msiInstaller}.sha256"
@@ -870,7 +870,7 @@ jobs:
       #       ${upload("tar.gz archive", s"$filename.tar.gz", "application/gzip", distribution)}
       #       ${upload("tar.gz archive SHA", s"$filename.tar.gz.sha256", "text/plain", distribution)}
       # """
-      # def uploadMSI() = 
+      # def uploadMSI() =
       #     val distribution = "Windows x86_64 MSI"
       #     s"""
       #       # $distribution

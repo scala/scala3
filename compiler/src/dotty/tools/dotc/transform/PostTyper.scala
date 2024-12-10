@@ -378,7 +378,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
               def checkClassType(tpe: Type, stablePrefixReq: Boolean) =
                 ctx.typer.checkClassType(tpe, tree.srcPos,
                     traitReq = false, stablePrefixReq = stablePrefixReq,
-                    refinementOK = Feature.enabled(Feature.modularity))
+                    refinementOK = Feature.trackedEnabled)
               checkClassType(tree.tpe, true)
               if !nu.tpe.isLambdaSub then
                 // Check the constructor type as well; it could be an illegal singleton type
