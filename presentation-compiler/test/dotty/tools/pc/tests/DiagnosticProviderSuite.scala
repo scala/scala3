@@ -36,34 +36,9 @@ class DiagnosticProviderSuite extends BasePCSuite with RangeReplace {
 
   @Test def simple1 =
     check(
-      """|class Bar(i: It)
+      """|class Bar(i: <<It>>)
          |""".stripMargin,
       List(TestDiagnostic(13, 15, "Not found: type It - did you mean Int.type? or perhaps Int?", DiagnosticSeverity.Error))
     )
 
-  // @Test def `implicit-args-2` =
-  //   check(
-  //     """|package example
-  //       |
-  //       |class Bar(i: Int)
-  //       |class Foo(implicit b: Bar)
-  //       |
-  //       |object Hello {
-  //       |  implicit val ba@@rr: Bar = new Bar(1)
-  //       |  val foo = new Foo<<>>
-  //       |}
-  //       |""".stripMargin
-  //   )
-
-  // @Test def `case-class` =
-  //   check(
-  //     """|case class Ma@@in(i: Int)
-  //        |""".stripMargin
-  //   )
-
-  // @Test def `case-class-with-implicit` =
-  //   check(
-  //     """"|case class A()(implicit val fo@@o: Int)
-  //         |""".stripMargin
-  //   )
 }
