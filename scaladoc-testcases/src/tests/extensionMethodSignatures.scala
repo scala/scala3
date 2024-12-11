@@ -45,3 +45,22 @@ case class ClassTwo(a: String, b: String)
 }
 
 class ClassOneTwo extends ClassOne
+
+trait C[T]
+trait Equiv[T]:
+  extension [U : C](x: U)
+    def ><[V](y: V): Nothing
+      = ???
+
+trait Monoid[T]:
+  extension (a: T)
+    def \:[U](b: U): Nothing
+      = ???
+  extension [U](a: T)
+    def \\:(b: U): Nothing
+      = ???
+
+class Clazz[U]:
+  extension [T : ([X] =>> String) : ([X] =>> String)](x: Int)
+    def bar[U : ([X] =>> String) : List](y: Int): Nothing
+      = ???

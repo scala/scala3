@@ -37,7 +37,7 @@ trait TypesSupport:
 
   private def tpe(str: String): SignaturePart = dotty.tools.scaladoc.Type(str, None)
 
-  private def inParens(s: SSignature, wrap: Boolean = true) =
+  protected def inParens(s: SSignature, wrap: Boolean = true) =
     if wrap then plain("(").l ++ s ++ plain(")").l else s
 
   extension (on: SignaturePart) def l: List[SignaturePart] = List(on)
@@ -115,8 +115,11 @@ trait TypesSupport:
       case AnnotatedType(tpe, _) =>
         inner(tpe)
       case tl @ TypeLambda(params, paramBounds, AppliedType(tpe, args))
-        if paramBounds.map(inner).forall(_.isEmpty) && params.zip(args.map(inner).flatten.map(_.name)).forall(_ == _) =>
-        inner(tpe)
+        if paramBounds.forall { case TypeBounds(low, hi) => low.typeSymbol == defn.NothingClass && hi.typeSymbol == defn.AnyClass }
+        && params.length == args.length
+        && args.zipWithIndex.forall(_ == tl.param(_)) =>
+          // simplify type lambdas such as [X, Y] =>> Map[X, Y] to just Map
+          inner(tpe)
       case tl @ TypeLambda(params, paramBounds, resType) =>
         plain("[").l ++ commas(params.zip(paramBounds).map { (name, typ) =>
           val normalizedName = if name.matches("_\\$\\d*") then "_" else name
