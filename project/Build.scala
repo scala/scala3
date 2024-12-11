@@ -2447,7 +2447,6 @@ object Build {
         versionScheme := Some("semver-spec"),
         Test / envVars ++= Map(
           "EXPECTED_TASTY_VERSION" -> expectedTastyVersion,
-          "BASE_VERSION" -> baseVersion
         ),
         if (mode == Bootstrapped) Def.settings(
           commonMiMaSettings,
