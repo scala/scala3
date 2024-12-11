@@ -96,7 +96,7 @@ object Build {
    *  - In main branch it should be the last RC version
    *  - In release branch it should be the last stable release
    * 
-   *  Warning: Change of this variable needs to consulted with `expectedTastyVersion` 
+   *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion` 
    */
   val referenceVersion = "3.6.3-RC1"
 
@@ -137,6 +137,7 @@ object Build {
    *      - in stable release is always non-experimetnal
    */
   val expectedTastyVersion = "28.7-experimental-1"
+  checkReleasedTastyVersion()
 
   /** Final version of Scala compiler, controlled by environment variables. */
   val dottyVersion = {
@@ -2496,6 +2497,34 @@ object Build {
       case NonBootstrapped => commonNonBootstrappedSettings
       case Bootstrapped => commonBootstrappedSettings
     })
+  }
+  
+  /* Tests TASTy version invariants during NIGHLY, RC or Stable releases */
+  def checkReleasedTastyVersion(): Unit = {
+    lazy val (scalaMinor, scalaPatch, scalaIsRC) = baseVersion.split("\\.|-").take(4) match {
+      case Array("3", minor, patch)    => (minor.toInt, patch.toInt, false)
+      case Array("3", minor, patch, _) => (minor.toInt, patch.toInt, true)
+      case other => sys.error(s"Invalid Scala base version string: $baseVersion")
+    }
+    lazy val (tastyMinor, tastyIsExperimental) = expectedTastyVersion.split("\\.|-").take(4) match {
+      case Array("28", minor)                    => (minor.toInt, false)
+      case Array("28", minor, "experimental", _) => (minor.toInt, true)
+      case other => sys.error(s"Invalid TASTy version string: $expectedTastyVersion")
+    }
+     
+    if(isNightly) {
+      assert(tastyIsExperimental, "TASTY needs to be experimental in nightly builds")
+      val expectedTastyMinor = if(scalaPatch == 0) scalaMinor else scalaMinor + 1
+      assert(tastyMinor == expectedTastyMinor, "Invalid TASTy minor version")
+    }
+    
+    if(isRelease) {
+      assert(scalaMinor == tastyMinor, "Minor versions of TASTY vesion and Scala version should match in release builds")
+      if (scalaIsRC && scalaPatch == 0)
+        assert(tastyIsExperimental, "TASTy should be experimental when releasing a new minor version RC")
+      else
+        assert(!tastyIsExperimental, "Stable version cannot use experimental TASTY") 
+    }
   }
 }
 
