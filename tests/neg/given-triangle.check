@@ -7,6 +7,6 @@
    |  (given_B : B)
    |and
    |  (given_A : A)
-   |will change.
-   |Current choice           : the first alternative
-   |New choice from Scala 3.7: the second alternative
+   |will change in the future release.
+   |Current choice        : the first alternative
+   |Choice from Scala 3.7 : the second alternative
