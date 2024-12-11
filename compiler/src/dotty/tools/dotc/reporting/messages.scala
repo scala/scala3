@@ -3361,3 +3361,41 @@ class DeprecatedInfixNamedArgumentSyntax()(using Context) extends SyntaxMsg(Depr
         + Message.rewriteNotice("This", version = SourceVersion.`3.6-migration`)
 
   def explain(using Context) = ""
+
+class GivenSearchPriorityWarning(
+    pt: Type,
+    cmp: Int,
+    prev: Int,
+    winner: TermRef,
+    loser: TermRef,
+    isLastOldVersion: Boolean
+)(using Context) extends Message(GivenSearchPriorityID):
+  def kind = MessageKind.PotentialIssue
+  def choice(nth: String, c: Int) =
+    if c == 0 then "none - it's ambiguous"
+    else s"the $nth alternative"
+  val (change, whichChoice) =
+    if isLastOldVersion
+    then ("will change in the future release", "Current choice ")
+    else ("has changed",                       "Previous choice")
+  def warningMessage: String =
+    i"""Given search preference for $pt between alternatives
+       |  ${loser}
+       |and
+       |  ${winner}
+       |$change.
+       |$whichChoice       : ${choice("first", prev)}
+       |Choice from Scala 3.7 : ${choice("second", cmp)}"""
+  def migrationHints: String =
+    i"""Suppress this warning by choosing -source 3.5, -source 3.7, or
+       |by using @annotation.nowarn("id=205")"""
+  def ambiguousNote: String =
+    i"""
+       |
+       |Note: $warningMessage"""
+  def msg(using Context) =
+    i"""$warningMessage
+       |
+       |$migrationHints"""
+
+  def explain(using Context) = ""
