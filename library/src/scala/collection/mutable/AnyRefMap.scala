@@ -161,13 +161,17 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K => V, initi
     val h = hashOf(key)
     var i = seekEntryOrOpen(h, key)
     if (i < 0) {
-      // It is possible that the default value computation was side-effecting
-      // Our hash table may have resized or even contain what we want now
-      // (but if it does, we'll replace it)
       val value = {
-        val oh = _hashes
+        val ohs = _hashes
+        val j = i & IndexMask
+        val oh = ohs(j)
         val ans = defaultValue
-        if (oh ne _hashes) {
+        // Evaluating `defaultValue` may change the map
+        //   - repack: the array is different
+        //   - element added at `j`: since `i < 0`, the key was missing and `oh` is either 0 or MinValue.
+        //     If `defaultValue` added an element at `j` then `_hashes(j)` must be different now.
+        //     (`hashOf` never returns 0 or MinValue.)
+        if (ohs.ne(_hashes) || oh != _hashes(j)) {
           i = seekEntryOrOpen(h, key)
           if (i >= 0) _size -= 1
         }
