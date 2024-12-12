@@ -146,6 +146,6 @@ The main development discussion channels are:
 [java11]: https://www.oracle.com/java/technologies/javase-jdk11-downloads.html
 [adopt]: https://adoptopenjdk.net/
 [compat]: https://docs.scala-lang.org/overviews/jdk-compatibility/overview.html
-[scala-cla]: https://www.lightbend.com/contribute/cla/scala
+[scala-cla]: https://contribute.akka.io/cla/scala
 [dotty-issue]: https://github.com/scala/scala3/issues
 [dotty-discussion]: https://github.com/scala/scala3/discussions
