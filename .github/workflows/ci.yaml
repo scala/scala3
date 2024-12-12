@@ -803,14 +803,11 @@ jobs:
             # Build binaries
             ./project/scripts/sbt "all ${sbtProject}/Universal/packageBin ${sbtProject}/Universal/packageZipTarball"
 
-            outputPath="${distDir}/target/universal/stage"
             artifactName="scala3-${{ env.RELEASE_TAG }}${distroSuffix}"
-            zipArchive="${artifactName}.zip"
-            tarGzArchive="${artifactName}.tar.gz"
 
             # Caluclate SHA for each of archive files
-            for file in "${zipArchive}" "${tarGzArchive}"; do
-              mv $outputPath/$file $file
+            for file in "${artifactName}.zip" "${artifactName}.tar.gz"; do
+              mv ${distDir}/target/universal/$file $file
               sha256sum "${file}" > "${file}.sha256"
             done
           }
