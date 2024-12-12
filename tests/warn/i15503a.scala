@@ -213,7 +213,8 @@ package testImportsInImports:
   package c:
     import a.b // OK
     import b.x // OK
-    val y = x
+    import b.x as z // OK
+    val y = x + z
 
 //-------------------------------------
 package testOnOverloadedMethodsImports:
