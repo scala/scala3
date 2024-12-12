@@ -717,3 +717,33 @@ class HoverTermSuite extends BaseHoverSuite:
         |""".stripMargin,
       """def ???: Nothing""".stripMargin.hover
   )
+
+  @Test def `named-tuples`: Unit =
+    check(
+      """import scala.language.experimental.namedTuples
+        |
+        |val foo = (name = "Bob", age = 42, height = 1.9d)
+        |val foo_name = foo.na@@me
+        |""".stripMargin,
+      "name: String".hover
+    )
+
+  @Test def `named-tuples2`: Unit =
+    check(
+      """|import scala.language.experimental.namedTuples
+         |
+         |import NamedTuple.*
+         |
+         |class NamedTupleSelectable extends Selectable {
+         |  type Fields <: AnyNamedTuple
+         |  def selectDynamic(name: String): Any = ???
+         |}
+         |
+         |val person = new NamedTupleSelectable {
+         |  type Fields = (name: String, city: String)
+         |}
+         |
+         |val person_name = person.na@@me
+         |""".stripMargin,
+      "name: String".hover
+    )

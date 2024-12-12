@@ -101,7 +101,7 @@ class PcDefinitionProvider(
     val enclosing = path.expandRangeToEnclosingApply(pos)
     val typeSymbols = MetalsInteractive
       .enclosingSymbolsWithExpressionType(enclosing, pos, indexed)
-      .map { case (_, tpe) =>
+      .map { case (_, tpe, _) =>
         tpe.typeSymbol
       }
     typeSymbols match
