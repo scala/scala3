@@ -104,10 +104,10 @@ object HoverProvider:
       ) match
         case Nil =>
           fallbackToDynamics(path, printer, contentType)
-        case (symbol, tpe) :: _
+        case (symbol, tpe, _) :: _
             if symbol.name == nme.selectDynamic || symbol.name == nme.applyDynamic =>
           fallbackToDynamics(path, printer, contentType)
-        case symbolTpes @ ((symbol, tpe) :: _) =>
+        case symbolTpes @ ((symbol, tpe, None) :: _) =>
           val exprTpw = tpe.widenTermRefExpr.deepDealias
           val hoverString =
             tpw match
@@ -153,6 +153,21 @@ object HoverProvider:
             case _ =>
               ju.Optional.empty().nn
           end match
+        case (_, tpe, Some(namedTupleArg)) :: _ =>
+          val exprTpw = tpe.widenTermRefExpr.deepDealias
+          printer.expressionType(exprTpw) match
+            case Some(tpe) =>
+              ju.Optional.of(
+                new ScalaHover(
+                  expressionType = Some(tpe),
+                  symbolSignature = Some(s"$namedTupleArg: $tpe"),
+                  docstring = None,
+                  forceExpressionType = false,
+                  contextInfo = printer.getUsedRenamesInfo,
+                  contentType = contentType
+                )
+              ).nn
+            case _ => ju.Optional.empty().nn
       end match
     end if
   end hover
@@ -165,23 +180,30 @@ object HoverProvider:
       printer: ShortenedTypePrinter,
       contentType: ContentType
   )(using Context): ju.Optional[HoverSignature] = path match
-    case SelectDynamicExtractor(sel, n, name) =>
+    case SelectDynamicExtractor(sel, n, name, rest) =>
       def findRefinement(tp: Type): Option[HoverSignature] =
         tp match
-          case RefinedType(_, refName, tpe) if name == refName.toString() =>
+          case RefinedType(_, refName, tpe) if (name == refName.toString() || refName.toString() == nme.Fields.toString()) =>
+            val resultType =
+              rest match
+                case Select(_, asInstanceOf) :: TypeApply(_, List(tpe)) :: _ if asInstanceOf == nme.asInstanceOfPM => tpe.tpe
+                case _ if n == nme.selectDynamic => tpe.resultType
+                case _ => tpe
+
             val tpeString =
-              if n == nme.selectDynamic then s": ${printer.tpe(tpe.resultType)}"
-              else printer.tpe(tpe)
+              if n == nme.selectDynamic then s": ${printer.tpe(resultType)}"
+              else printer.tpe(resultType)
 
             val valOrDef =
-              if n == nme.selectDynamic && !tpe.isInstanceOf[ExprType]
-              then "val"
-              else "def"
+              if refName.toString() == nme.Fields.toString() then ""
+              else if n == nme.selectDynamic && !tpe.isInstanceOf[ExprType]
+              then "val "
+              else "def "
 
             Some(
               new ScalaHover(
                 expressionType = Some(tpeString),
-                symbolSignature = Some(s"$valOrDef $name$tpeString"),
+                symbolSignature = Some(s"$valOrDef$name$tpeString"),
                 contextInfo = printer.getUsedRenamesInfo,
                 contentType = contentType
               )
@@ -208,16 +230,16 @@ object SelectDynamicExtractor:
       case Select(_, _) :: Apply(
             Select(Apply(reflSel, List(sel)), n),
             List(Literal(Constant(name: String)))
-          ) :: _
+          ) :: rest
           if (n == nme.selectDynamic || n == nme.applyDynamic) &&
             nme.reflectiveSelectable == reflSel.symbol.name =>
-        Some(sel, n, name)
+        Some(sel, n, name, rest)
       // tests `selectable`,  `selectable2` and `selectable-full` in HoverScala3TypeSuite
       case Select(_, _) :: Apply(
             Select(sel, n),
             List(Literal(Constant(name: String)))
-          ) :: _ if n == nme.selectDynamic || n == nme.applyDynamic =>
-        Some(sel, n, name)
+          ) :: rest if n == nme.selectDynamic || n == nme.applyDynamic =>
+        Some(sel, n, name, rest)
       case _ => None
     end match
   end unapply
