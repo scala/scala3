@@ -794,19 +794,13 @@ jobs:
             distDir="$3"
 
             # Build binaries
-            ./project/scripts/sbt "${sbtProject}/Universal/stage"
+            ./project/scripts/sbt "all ${sbtProject}/Universal/packageBin ${sbtProject}/Universal/packageZipTarball"
 
-            outputPath="${distDir}/target/universal/stage"
             artifactName="scala3-${{ env.RELEASE_TAG }}${distroSuffix}"
-            zipArchive="${artifactName}.zip"
-            tarGzArchive="${artifactName}.tar.gz"
-
-            cwd=$(pwd)
-            (cd $outputPath && zip -r ${zipArchive} . && mv ${zipArchive} "${cwd}/")
-            tar -czf ${tarGzArchive} -C "$outputPath" .
 
             # Caluclate SHA for each of archive files
-            for file in "${zipArchive}" "${tarGzArchive}"; do
+            for file in "${artifactName}.zip" "${artifactName}.tar.gz"; do
+              mv ${distDir}/target/universal/$file $file
               sha256sum "${file}" > "${file}.sha256"
             done
           }
