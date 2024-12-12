@@ -2257,7 +2257,14 @@ object Build {
     // ========
     Universal / stage := (Universal / stage).dependsOn(republish).value,
     Universal / packageBin := (Universal / packageBin).dependsOn(republish).value,
-    Universal / packageZipTarball := (Universal / packageZipTarball).dependsOn(republish).value,
+    Universal / packageZipTarball := (Universal / packageZipTarball).dependsOn(republish)
+      .map { archiveFile =>
+        // Rename .tgz to .tar.gz for consistency with previous versions
+        val renamedFile = archiveFile.getParentFile() / archiveFile.getName.replaceAll("\\.tgz$", ".tar.gz")
+        IO.move(archiveFile, renamedFile)
+        renamedFile
+      }
+      .value,
     // ========
     Universal / mappings ++= directory(dist.base / "bin"),
     Universal / mappings ++= directory(republishRepo.value / "maven2"),
