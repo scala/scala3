@@ -1310,7 +1310,7 @@ private final class BitmapIndexedMapNode[K, +V](
         }
       }
     case _: HashCollisionMapNode[_, _] =>
-      throw new Exception("Cannot merge BitmapIndexedMapNode with HashCollisionMapNode")
+      throw new RuntimeException("Cannot merge BitmapIndexedMapNode with HashCollisionMapNode")
   }
 
   override def equals(that: Any): Boolean =
@@ -2061,7 +2061,7 @@ private final class HashCollisionMapNode[K, +V ](
         i += 1
       }
     case _: BitmapIndexedMapNode[K, V1] =>
-      throw new Exception("Cannot merge HashCollisionMapNode with BitmapIndexedMapNode")
+      throw new RuntimeException("Cannot merge HashCollisionMapNode with BitmapIndexedMapNode")
 
   }
 
