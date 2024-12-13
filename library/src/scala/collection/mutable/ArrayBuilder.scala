@@ -46,7 +46,7 @@ sealed abstract class ArrayBuilder[T]
   protected[this] def resize(size: Int): Unit
 
   /** Add all elements of an array. */
-  def addAll(xs: Array[_ <: T]): this.type = doAddAll(xs, 0, xs.length)
+  def addAll(xs: Array[_ <: T]): this.type = addAll(xs, 0, xs.length)
 
   /** Add a slice of an array. */
   def addAll(xs: Array[_ <: T], offset: Int, length: Int): this.type = {
