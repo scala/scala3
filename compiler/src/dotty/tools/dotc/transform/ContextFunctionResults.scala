@@ -101,7 +101,7 @@ object ContextFunctionResults:
   def contextFunctionResultTypeAfter(meth: Symbol, depth: Int)(using Context) =
     def recur(tp: Type, n: Int): Type =
       if n == 0 then tp
-      else tp match
+      else tp.dealias match
         case defn.FunctionTypeOfMethod(mt) => recur(mt.resType, n - 1)
     recur(meth.info.finalResultType, depth)
 
