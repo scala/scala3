@@ -765,7 +765,7 @@ object Build {
         Dependencies.compilerInterface,
         "org.jline" % "jline-reader" % "3.27.0",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.27.0",
-        "org.jline" % "jline-terminal-jna" % "3.27.0", // needed for Windows
+        "org.jline" % "jline-terminal-jni" % "3.27.0", // needed for Windows
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
       ),
 
