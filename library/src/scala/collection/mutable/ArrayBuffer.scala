@@ -317,9 +317,9 @@ object ArrayBuffer extends StrictOptimizedSeqFactory[ArrayBuffer] {
    *   - Throws an exception if `targetLen` exceeds `VM_MaxArraySize` or is negative (overflow).
    */
   private[mutable] def resizeUp(arrayLen: Int, targetLen: Int): Int =
-    if (targetLen < 0) throw new Exception(s"Overflow while resizing array of array-backed collection. Requested length: $targetLen; current length: $arrayLen; increase: ${targetLen - arrayLen}")
+    if (targetLen < 0) throw new RuntimeException(s"Overflow while resizing array of array-backed collection. Requested length: $targetLen; current length: $arrayLen; increase: ${targetLen - arrayLen}")
     else if (targetLen <= arrayLen) -1
-    else if (targetLen > VM_MaxArraySize) throw new Exception(s"Array of array-backed collection exceeds VM length limit of $VM_MaxArraySize. Requested length: $targetLen; current length: $arrayLen")
+    else if (targetLen > VM_MaxArraySize) throw new RuntimeException(s"Array of array-backed collection exceeds VM length limit of $VM_MaxArraySize. Requested length: $targetLen; current length: $arrayLen")
     else if (arrayLen > VM_MaxArraySize / 2) VM_MaxArraySize
     else math.max(targetLen, math.max(arrayLen * 2, DefaultInitialSize))
 
