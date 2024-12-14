@@ -46,6 +46,8 @@ object ccConfig:
    */
   def useSealed(using Context) =
     Feature.sourceVersion.stable != SourceVersion.`3.5`
+
+  val useFresh: Boolean = false
 end ccConfig
 
 
@@ -193,10 +195,7 @@ extension (tp: Type)
     case tp: TypeParamRef =>
       tp.derivesFrom(defn.Caps_CapSet)
     case AnnotatedType(parent, annot) =>
-      (annot.symbol == defn.ReachCapabilityAnnot
-      || annot.symbol == defn.MaybeCapabilityAnnot
-      || annot.symbol == defn.ReadOnlyCapabilityAnnot
-      ) && parent.isTrackableRef
+      defn.capabilityWrapperAnnots.contains(annot.symbol) && parent.isTrackableRef
     case _ =>
       false
 
@@ -512,6 +511,24 @@ extension (tp: Type)
           tp
       case _ =>
         tp
+  end withReachCaptures
+
+  /** Does this type contain no-flip covariant occurrences of `cap`? */
+  def containsCap(using Context): Boolean =
+    val acc = new TypeAccumulator[Boolean]:
+      def apply(x: Boolean, t: Type) =
+        x
+        || variance > 0 && t.dealiasKeepAnnots.match
+          case t @ CapturingType(p, cs) if cs.containsRootCapability =>
+            true
+          case t @ AnnotatedType(parent, ann) =>
+            // Don't traverse annotations, which includes capture sets
+            this(x, parent)
+          case Existential(_, _) =>
+            false
+          case _ =>
+            foldOver(x, t)
+    acc(false, tp)
 
   def level(using Context): Level =
     tp match

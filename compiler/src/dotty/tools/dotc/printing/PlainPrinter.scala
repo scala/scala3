@@ -158,7 +158,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else
       val core: Text =
         if !cs.isConst && cs.elems.isEmpty then "?"
-        else "{" ~ Text(cs.elems.toList.map(toTextCaptureRef), ", ") ~ "}"
+        else "{" ~ Text(cs.processElems(_.toList.map(toTextCaptureRef)), ", ") ~ "}"
            //     ~ Str("?").provided(!cs.isConst)
       core ~ cs.optionalInfo
 
@@ -202,14 +202,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
         else
           toTextPrefixOf(tp) ~ selectionString(tp)
       case tp: TermParamRef =>
-        ParamRefNameString(tp) ~ lambdaHash(tp.binder) ~ ".type"
+        ParamRefNameString(tp) ~ hashStr(tp.binder) ~ ".type"
       case tp: TypeParamRef =>
         val suffix =
           if showNestingLevel then
             val tvar = ctx.typerState.constraint.typeVarOfParam(tp)
             if tvar.exists then s"#${tvar.asInstanceOf[TypeVar].nestingLevel.toString}" else ""
           else ""
-        ParamRefNameString(tp) ~ lambdaHash(tp.binder) ~ suffix
+        ParamRefNameString(tp) ~ hashStr(tp.binder) ~ suffix
       case tp: SingletonType =>
         toTextSingleton(tp)
       case AppliedType(tycon, args) =>
@@ -290,11 +290,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
         changePrec(GlobalPrec)(arrowText ~ " " ~ toText(restp))
       case tp: HKTypeLambda =>
         changePrec(GlobalPrec) {
-          "[" ~ paramsText(tp) ~ "]" ~ lambdaHash(tp) ~ Str(" =>> ") ~ toTextGlobal(tp.resultType)
+          "[" ~ paramsText(tp) ~ "]" ~ hashStr(tp) ~ Str(" =>> ") ~ toTextGlobal(tp.resultType)
         }
       case tp: PolyType =>
         changePrec(GlobalPrec) {
-          "[" ~ paramsText(tp) ~ "]" ~ lambdaHash(tp) ~
+          "[" ~ paramsText(tp) ~ "]" ~ hashStr(tp) ~
           (Str(": ") provided !tp.resultType.isInstanceOf[MethodOrPoly]) ~
           toTextGlobal(tp.resultType)
         }
@@ -342,7 +342,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def paramsText(lam: LambdaType): Text = {
     def paramText(ref: ParamRef) =
       val erased = ref.underlying.hasAnnotation(defn.ErasedParamAnnot)
-      keywordText("erased ").provided(erased) ~ ParamRefNameString(ref) ~ lambdaHash(lam) ~ toTextRHS(ref.underlying, isParameter = true)
+      keywordText("erased ").provided(erased) ~ ParamRefNameString(ref) ~ hashStr(lam) ~ toTextRHS(ref.underlying, isParameter = true)
     Text(lam.paramRefs.map(paramText), ", ")
   }
 
@@ -354,11 +354,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** The name of the symbol without a unique id. */
   protected def simpleNameString(sym: Symbol): String = nameString(sym.name)
 
-  /** If -uniqid is set, the hashcode of the lambda type, after a # */
-  protected def lambdaHash(pt: LambdaType): Text =
-    if (showUniqueIds)
-      try "#" + pt.hashCode
-      catch { case ex: NullPointerException => "" }
+  /** If -uniqid is set, the hashcode of the type, after a # */
+  protected def hashStr(tp: Type): String =
+    if showUniqueIds then
+      try "#" + tp.hashCode
+      catch case ex: NullPointerException => ""
     else ""
 
   /** A string to append to a symbol composed of:
@@ -407,7 +407,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp @ ConstantType(value) =>
         toText(value)
       case pref: TermParamRef =>
-        ParamRefNameString(pref) ~ lambdaHash(pref.binder)
+        ParamRefNameString(pref) ~ hashStr(pref.binder)
       case tp: RecThis =>
         val idx = openRecs.reverse.indexOf(tp.binder)
         if (idx >= 0) selfRecName(idx + 1)
@@ -427,6 +427,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case ReadOnlyCapability(tp1) => toTextCaptureRef(tp1) ~ ".rd"
       case ReachCapability(tp1) => toTextCaptureRef(tp1) ~ "*"
       case MaybeCapability(tp1) => toTextCaptureRef(tp1) ~ "?"
+      case Fresh.Cap(hidden) => s"<cap${hashStr(tp)} hiding " ~ toTextCaptureSet(hidden) ~ ">"
       case tp => toText(tp)
 
   protected def isOmittablePrefix(sym: Symbol): Boolean =
