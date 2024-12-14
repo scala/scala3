@@ -353,8 +353,7 @@ private sealed trait XSettings:
   val XreadComments: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xread-docs", "Read documentation from tasty.")
 
   /** Area-specific debug output */
-  val XnoDecodeStacktraces: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xno-decode-stacktraces", "Show raw StackOverflow stacktraces, instead of decoding them into triggering operations.")
-  val XnoEnrichErrorMessages: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xno-enrich-error-messages", "Show raw error messages, instead of enriching them with contextual information.")
+  val XnoEnrichErrorMessages: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xno-enrich-error-messages", "Show raw error messages, instead of enriching them with contextual information.", aliases = List("Xno-decode-stacktraces"))
   val XdebugMacros: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xdebug-macros", "Show debug info when quote pattern match fails")
 
   /** Pipeline compilation options */

@@ -137,7 +137,7 @@ object handleRecursive:
     e
 
   def apply(op: String, details: => String, exc: Throwable, weight: Int = 1)(using Context): Nothing =
-    if ctx.settings.XnoDecodeStacktraces.value then
+    if ctx.settings.XnoEnrichErrorMessages.value then
       throw exc
     else exc match
       case _: RecursionOverflow =>

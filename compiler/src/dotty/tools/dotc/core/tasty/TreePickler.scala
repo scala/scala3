@@ -392,7 +392,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
         }
       catch
         case ex: Throwable =>
-          if !ctx.settings.XnoDecodeStacktraces.value
+          if !ctx.settings.XnoEnrichErrorMessages.value
             && handleRecursive.underlyingStackOverflowOrNull(ex) != null then
             throw StackSizeExceeded(mdef)
           else
