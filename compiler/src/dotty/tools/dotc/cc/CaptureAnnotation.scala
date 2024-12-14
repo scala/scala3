@@ -55,11 +55,6 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
     if (this.refs eq refs) && (this.boxed == boxed) then this
     else CaptureAnnotation(refs, boxed)(cls)
 
-  override def sameAnnotation(that: Annotation)(using Context): Boolean = that match
-    case CaptureAnnotation(refs, boxed) =>
-      this.refs == refs && this.boxed == boxed && this.symbol == that.symbol
-    case _ => false
-
   override def mapWith(tm: TypeMap)(using Context) =
     val elems = refs.elems.toList
     val elems1 = elems.mapConserve(tm)
