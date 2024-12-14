@@ -69,7 +69,7 @@ The following is the list of all the principal areas of the compiler and the int
 - Parser: @odersky, @hamzaremmal, @KacperFKorban
 - Typer: @odersky, @smarter, (@dwijnand), @noti0nal, @EugeneFlesselle, @KacperFKorban, @bracevac
 - Erasure: @smarter, @odersky
-- Enums: 
+- Enums:
 - Derivation & Mirrors: (@dwijnand), @EugeneFlesselle
 - Export: @odersky
 - Pattern Matching: @dwijnand, @sjrd, @noti0na1
@@ -77,7 +77,7 @@ The following is the list of all the principal areas of the compiler and the int
 - Metaprogramming (Quotes, Reflect, Staging): @jchyb, @hamzaremmal
 - Match types: @sjrd, @dwijnand, @Linyxus, @EugeneFlesselle
 - GADT: @dwijnand, @Linyxus
-- Initialization checker: 
+- Initialization checker:
 - Transforms: @sjrd, @odersky, @smarter
 - Tailrec: @sjrd, @mbovel
 - JS backend: @sjrd
@@ -87,7 +87,7 @@ The following is the list of all the principal areas of the compiler and the int
 - Safe nulls (experimental): @noti0na1
 - Capture checker (experimental): @odersky, @Linyxus, @bracevac, @noti0na1
 - Modularity (experimental): @KacperFKorban
-- Named Tuples (experimental): @odersky
+- Named Tuples (experimental): @odersky, @aherlihy
 
 ### Tooling
 - REPL: @dwijnand
@@ -95,9 +95,9 @@ The following is the list of all the principal areas of the compiler and the int
 - IDE: @tgodzik, (@kasiaMarek)
 - Scaladoc: @Florian3k
 - SemanticDB: @natsukagami, (@tanishiking)
-- Coverage: @KacperFKorban 
+- Coverage: @KacperFKorban
 - Linting (especially unused warnings) / Reporting UX: @KacperFKorban
-- Presentation Compiler: @rochala, @tgodzik, @kasiaMarek, @natsukagami 
+- Presentation Compiler: @rochala, @tgodzik, @kasiaMarek, @natsukagami
 - Debug Adapter: @adpi2, (@tgodzik)
 - Scastie: @rochala
 
