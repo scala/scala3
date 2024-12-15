@@ -519,7 +519,7 @@ extension (tp: Type)
       def apply(x: Boolean, t: Type) =
         x
         || variance > 0 && t.dealiasKeepAnnots.match
-          case t @ CapturingType(p, cs) if cs.containsRootCapability =>
+          case t @ CapturingType(p, cs) if cs.containsCap =>
             true
           case t @ AnnotatedType(parent, ann) =>
             // Don't traverse annotations, which includes capture sets

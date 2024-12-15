@@ -734,7 +734,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       def addParamArgRefinements(core: Type, initCs: CaptureSet): (Type, CaptureSet) =
         var refined: Type = core
         var allCaptures: CaptureSet =
-          if core.derivesFromMutable then CaptureSet.universal
+          if core.derivesFromMutable then CaptureSet.fresh()
           else if core.derivesFromCapability then initCs ++ defn.universalCSImpliedByCapability
           else initCs
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do

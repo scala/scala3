@@ -84,9 +84,16 @@ sealed abstract class CaptureSet extends Showable:
   final def isUniversal(using Context) =
     elems.exists(_.isCap)
 
+  /** Does this capture set contain the root reference `cap` as element? */
+  final def isUniversalOrFresh(using Context) =
+    elems.exists(_.isCapOrFresh)
+
   /** Does this capture set contain a root reference `cap` or `cap.rd` as element? */
   final def containsRootCapability(using Context) =
     elems.exists(_.isRootCapability)
+
+  final def containsCap(using Context) =
+    elems.exists(_.stripReadOnly.isCap)
 
   final def isUnboxable(using Context) =
     elems.exists(elem => elem.isRootCapability || Existential.isExistentialVar(elem))
@@ -412,6 +419,9 @@ object CaptureSet:
   def universal(using Context): CaptureSet =
     defn.captureRoot.termRef.singletonCaptureSet
 
+  def fresh(owner: Symbol = NoSymbol)(using Context): CaptureSet =
+    Fresh.Cap(owner).singletonCaptureSet
+
   /** The shared capture set `{cap.rd}` */
   def shared(using Context): CaptureSet =
     defn.captureRoot.termRef.readOnly.singletonCaptureSet
@@ -601,7 +611,7 @@ object CaptureSet:
         this
       else if isUniversal || computingApprox then
         universal
-      else if containsRootCapability && isReadOnly then
+      else if containsCap && isReadOnly then
         shared
       else
         computingApprox = true
@@ -1223,7 +1233,7 @@ object CaptureSet:
           case t: TypeRef if t.symbol.isAbstractOrParamType && !seen.contains(t.symbol) =>
             seen += t.symbol
             val upper = t.info.bounds.hi
-            if includeTypevars && upper.isExactlyAny then CaptureSet.universal
+            if includeTypevars && upper.isExactlyAny then CaptureSet.fresh(t.symbol)
             else this(cs, upper)
           case t @ FunctionOrMethod(args, res @ Existential(_, _))
           if args.forall(_.isAlwaysPure) =>
