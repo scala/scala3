@@ -248,7 +248,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           toText(parent)
         else
           val refsText =
-            if refs.isUniversal && (refs.elems.size == 1 || !printDebug)
+            if refs.isUniversal && (refs.elems.size == 1 || !printDebug) //???
             then rootSetText
             else toTextCaptureSet(refs)
           toTextCapturing(parent, refsText, boxText)
@@ -282,9 +282,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case ExprType(restp) =>
         def arrowText: Text = restp match
           case AnnotatedType(parent, ann) if ann.symbol == defn.RetainsByNameAnnot =>
-            val refs = ann.tree.retainedElems
-            if refs.exists(_.symbol == defn.captureRoot) then Str("=>")
-            else Str("->") ~ toTextRetainedElems(refs)
+            ann.tree.retainedElems match
+              case ref :: Nil if ref.symbol == defn.captureRoot => Str("=>")
+              case refs => Str("->") ~ toTextRetainedElems(refs)
           case _ =>
             if Feature.pureFunsEnabled then "->" else "=>"
         changePrec(GlobalPrec)(arrowText ~ " " ~ toText(restp))

@@ -78,10 +78,16 @@ trait CaptureRef extends TypeProxy, ValueType:
     case tp: TermRef => tp.name == nme.CAPTURE_ROOT && tp.symbol == defn.captureRoot
     case _ => false
 
+  /** Is this reference the generic root capability `cap` ? */
+  final def isCapOrFresh(using Context): Boolean = this match
+    case tp: TermRef => tp.name == nme.CAPTURE_ROOT && tp.symbol == defn.captureRoot
+    case Fresh.Cap(_) => true
+    case _ => false
+
   /** Is this reference one the generic root capabilities `cap` or `cap.rd` ? */
   final def isRootCapability(using Context): Boolean = this match
-    case ReadOnlyCapability(tp1) => tp1.isCap
-    case _ => isCap
+    case ReadOnlyCapability(tp1) => tp1.isCapOrFresh
+    case _ => isCapOrFresh
 
   /** Is this reference capability that does not derive from another capability ? */
   final def isMaxCapability(using Context): Boolean = this match
@@ -156,6 +162,13 @@ trait CaptureRef extends TypeProxy, ValueType:
 
     (this eq y)
     || this.isCap
+    /* need to do black hole detection here
+    || this.match
+      case Fresh.Cap(hidden) =>
+        hidden.elems.exists(_.subsumes(y))
+      case _ =>
+        false
+    */
     || y.match
         case y: TermRef =>
             y.prefix.match
