@@ -242,18 +242,10 @@ object Existential:
       case _ =>
         core
 
-  /** Map top-level existentials to `cap`. Do the same for existentials
-   *  in function results if all preceding arguments are known to be always pure.
-   */
+  /** Map top-level existentials to `cap`. */
   def toCap(tp: Type)(using Context): Type = tp.dealiasKeepAnnots match
     case Existential(boundVar, unpacked) =>
-      val transformed = unpacked.substParam(boundVar, defn.captureRoot.termRef)
-      transformed match
-        case FunctionOrMethod(args, res @ Existential(_, _))
-        if args.forall(_.isAlwaysPure) =>
-          transformed.derivedFunctionOrMethod(args, toCap(res))
-        case _ =>
-          transformed
+      unpacked.substParam(boundVar, defn.captureRoot.termRef)
     case tp1 @ CapturingType(parent, refs) =>
       tp1.derivedCapturingType(toCap(parent), refs)
     case tp1 @ AnnotatedType(parent, ann) =>
