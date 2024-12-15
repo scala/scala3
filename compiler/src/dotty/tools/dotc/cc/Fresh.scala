@@ -32,29 +32,56 @@ object Fresh:
       case _ => false
   end Annot
 
+  private def ownerToHidden(owner: Symbol, reach: Boolean)(using Context): Refs =
+    val ref = owner.termRef
+    if reach then
+      if ref.isTrackableRef then SimpleIdentitySet(ref.reach) else emptySet
+    else
+      if ref.isTracked then SimpleIdentitySet(ref) else emptySet
+
   object Cap:
-    def apply(initialHidden: Refs = emptySet)(using Context): AnnotatedType =
-      AnnotatedType(defn.captureRoot.termRef, Annot(CaptureSet.HiddenSet(initialHidden)))
+
+    def apply(initialHidden: Refs = emptySet)(using Context): CaptureRef =
+      if ccConfig.useFresh then
+        AnnotatedType(defn.captureRoot.termRef, Annot(CaptureSet.HiddenSet(initialHidden)))
+      else
+        defn.captureRoot.termRef
+
+    def apply(owner: Symbol, reach: Boolean)(using Context): CaptureRef =
+      apply(ownerToHidden(owner, reach))
+
+    def apply(owner: Symbol)(using Context): CaptureRef =
+      apply(ownerToHidden(owner, reach = false))
 
     def unapply(tp: AnnotatedType)(using Context): Option[CaptureSet.HiddenSet] = tp.annot match
       case Annot(hidden) => Some(hidden)
       case _ => None
   end Cap
 
-  class FromCap(initialHidden: Refs = emptySet)(using Context) extends BiTypeMap:
+  class FromCap(owner: Symbol)(using Context) extends BiTypeMap:
     thisMap =>
 
     var change = false
+    var reach = false
+
+    private def initHidden =
+      val ref = owner.termRef
+      if reach then
+        if ref.isTrackableRef then SimpleIdentitySet(ref.reach) else emptySet
+      else
+        if ref.isTracked then SimpleIdentitySet(ref) else emptySet
 
     override def apply(t: Type) =
       if variance <= 0 then t
       else t.dealiasKeepAnnots match
         case t: CaptureRef if t.isCap =>
           change = true
-          Cap(initialHidden)
-        case CapturingType(_, v: CaptureSet.Var) =>
-          change = true
-          mapOver(t)
+          Cap(initHidden)
+        case t @ CapturingType(_, refs) =>
+          change = refs.isInstanceOf[CaptureSet.Var]
+          val savedReach = reach
+          if t.isBoxed then reach = true
+          try mapOver(t) finally reach = savedReach
         case _ =>
           mapOver(t)
 
@@ -70,19 +97,28 @@ object Fresh:
   end FromCap
 
   /** Maps cap to fresh */
-  def fromCap(tp: Type, initialHidden: Refs = emptySet)(using Context): Type =
-    val mapper = FromCap(initialHidden)
-    val mapped = mapper(tp)
-    if mapper.change then mapped else tp
+  def fromCap(tp: Type, owner: Symbol)(using Context): Type =
+    if ccConfig.useFresh then
+      val mapper = FromCap(owner)
+      val mapped = mapper(tp)
+      if mapper.change then mapped else tp
+    else
+      tp
+/*
+  def fromCap(tp: CaptureRef, initialHidden: Refs)(using Context): CaptureRef =
+    fromCap(tp: Type, initialHidden).asInstanceOf[CaptureRef]
 
   def fromCap(tp: Type, initialHidden: CaptureRef)(using Context): Type =
     fromCap(tp, SimpleIdentitySet(initialHidden))
 
-  def fromCap(info: Type, sym: Symbol)(using Context): Type =
+  def fromCap(info: Type, owner: Symbol)(using Context): CaptureRef =
+    val ref = sym.termRef
     val initHidden =
-      if sym.exists && sym.termRef.isTracked then SimpleIdentitySet(sym.termRef)
-      else emptySet
-    fromCap(info, initHidden)
+      if reach then
+        if ref.isTrackableRef then SimpleIdentitySet(ref.reach) else emptySet
+      else
+        if ref.isTracked then SimpleIdentitySet(ref) else emptySet
+    fromCap(info, initHidden)*/
 end Fresh
 
 

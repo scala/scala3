@@ -132,7 +132,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       def mappedInfo =
         if toBeUpdated.contains(sym)
         then symd.info // don't transform symbols that will anyway be updated
-        else transformExplicitType(symd.info)
+        else Fresh.fromCap(transformExplicitType(symd.info), sym)
       if Synthetics.needsTransform(symd) then
         Synthetics.transform(symd, mappedInfo)
       else if isPreCC(sym) then
@@ -440,13 +440,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     def transformResultType(tpt: TypeTree, sym: Symbol)(using Context): Unit =
       // First step: Transform the type and record it as knownType of tpt.
       try
-        transformTT(tpt,
+        transformTT(tpt, sym,
             boxed =
               sym.isMutableVar
                 && !ccConfig.useSealed
                 && !sym.hasAnnotation(defn.UncheckedCapturesAnnot),
               // Under the sealed policy, we disallow root capabilities in the type of mutable
-              // variables, no need to box them here.
+              // variables, no need to box them here
           )
       catch case ex: IllegalCaptureRef =>
         capt.println(i"fail while transforming result type $tpt of $sym")
@@ -491,7 +491,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           traverse(fn)
           if !defn.isTypeTestOrCast(fn.symbol) then
             for case arg: TypeTree <- args do
-              transformTT(arg, boxed = true) // type arguments in type applications are boxed
+              transformTT(arg, NoSymbol, boxed = true) // type arguments in type applications are boxed
 
         case tree: TypeDef if tree.symbol.isClass =>
           val sym = tree.symbol
@@ -516,7 +516,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     /** Processing done on node `tree` after its children are traversed */
     def postProcess(tree: Tree)(using Context): Unit = tree match
       case tree: TypeTree =>
-        transformTT(tree, boxed = false)
+        transformTT(tree, NoSymbol, boxed = false)
       case tree: ValOrDefDef =>
         // Make sure denotation of tree's symbol is correct
         val sym = tree.symbol
