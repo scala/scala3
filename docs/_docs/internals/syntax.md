@@ -278,6 +278,7 @@ SimpleExpr        ::=  SimpleRef
                     |  ‘new’ ConstrApp {‘with’ ConstrApp} [TemplateBody]        New(constr | templ)
                     |  ‘new’ TemplateBody
                     |  ‘(’ ExprsInParens ‘)’                                    Parens(exprs)
+                    |  ‘[’ ExprInParens {‘,’ ExprInParens} ‘]’                  SeqLiteral(exprs, TypeTree())
                     |  SimpleExpr ‘.’ id                                        Select(expr, id)
                     |  SimpleExpr ‘.’ MatchClause
                     |  SimpleExpr TypeArgs                                      TypeApply(expr, args)
