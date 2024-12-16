@@ -248,9 +248,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
           toText(parent)
         else
           val refsText =
-            if refs.isUniversal && (refs.elems.size == 1 || !printDebug) //???
-            then rootSetText
-            else toTextCaptureSet(refs)
+            if refs.isUniversal then
+              if refs.elems.size == 1 || !printDebug then rootSetText
+              else toTextCaptureSet(refs)
+            else if !refs.elems.isEmpty && refs.elems.forall(_.isCapOrFresh) && !printDebug then
+              rootSetText
+            else
+              toTextCaptureSet(refs)
           toTextCapturing(parent, refsText, boxText)
       case tp @ RetainingType(parent, refs) =>
         if Feature.ccEnabledSomewhere then
@@ -421,13 +425,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toTextCaptureRef(tp: Type): Text =
     homogenize(tp) match
-      case tp: TermRef if tp.symbol == defn.captureRoot => Str("cap")
+      case tp: TermRef if tp.symbol == defn.captureRoot => "cap"
       case tp: SingletonType => toTextRef(tp)
       case tp: (TypeRef | TypeParamRef) => toText(tp) ~ "^"
       case ReadOnlyCapability(tp1) => toTextCaptureRef(tp1) ~ ".rd"
       case ReachCapability(tp1) => toTextCaptureRef(tp1) ~ "*"
       case MaybeCapability(tp1) => toTextCaptureRef(tp1) ~ "?"
-      case Fresh.Cap(hidden) => s"<cap${hashStr(tp)} hiding " ~ toTextCaptureSet(hidden) ~ ">"
+      case Fresh.Cap(hidden) =>
+        if printDebug then s"<cap${hashStr(tp)} hiding " ~ toTextCaptureSet(hidden) ~ ">"
+        else "cap"
       case tp => toText(tp)
 
   protected def isOmittablePrefix(sym: Symbol): Boolean =
