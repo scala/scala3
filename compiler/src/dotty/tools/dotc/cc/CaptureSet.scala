@@ -1070,6 +1070,14 @@ object CaptureSet:
     def rollBack(): Unit =
       elemsMap.keysIterator.foreach(_.resetElems()(using this))
       depsMap.keysIterator.foreach(_.resetDeps()(using this))
+
+    private var seen: util.EqHashSet[CaptureRef] = new util.EqHashSet
+
+    /** Run test `pred` unless `ref` was seen in an enclosing `ifNotSeen` operation */
+    def ifNotSeen(ref: CaptureRef)(pred: => Boolean): Boolean =
+      if seen.add(ref) then
+        try pred finally seen -= ref
+      else false
   end VarState
 
   /** A special state that does not allow to record elements or dependent sets.
