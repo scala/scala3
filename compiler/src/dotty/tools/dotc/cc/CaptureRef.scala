@@ -168,8 +168,7 @@ trait CaptureRef extends TypeProxy, ValueType:
     || this.isCap
     || this.match
       case Fresh.Cap(hidden) =>
-        if hidden.elems.contains(y) then true
-        //if hidden.elems.exists(_.subsumes(y)) then true
+        if vs.ifNotSeen(this)(hidden.elems.exists(_.subsumes(y))) then true
         else if !hidden.recordElemsState() || y.stripReadOnly.isCap then false
         else
           hidden.elems += y
