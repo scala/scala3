@@ -2523,7 +2523,9 @@ object SymDenotations {
           )
         if compiledNow.exists then compiledNow
         else
-          val assocFiles = multi.aggregate(d => Set(d.symbol.associatedFile.nn), _ union _)
+          val assocFiles = multi
+            .filterWithPredicate(_.symbol.maybeOwner.isPackageObject)
+            .aggregate(d => Set(d.symbol.associatedFile.nn), _ union _)
           if assocFiles.size == 1 then
             multi // they are all overloaded variants from the same file
           else
