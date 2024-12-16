@@ -97,28 +97,13 @@ object Fresh:
   end FromCap
 
   /** Maps cap to fresh */
-  def fromCap(tp: Type, owner: Symbol)(using Context): Type =
+  def fromCap(tp: Type, owner: Symbol = NoSymbol)(using Context): Type =
     if ccConfig.useFresh then
       val mapper = FromCap(owner)
       val mapped = mapper(tp)
       if mapper.change then mapped else tp
     else
       tp
-/*
-  def fromCap(tp: CaptureRef, initialHidden: Refs)(using Context): CaptureRef =
-    fromCap(tp: Type, initialHidden).asInstanceOf[CaptureRef]
-
-  def fromCap(tp: Type, initialHidden: CaptureRef)(using Context): Type =
-    fromCap(tp, SimpleIdentitySet(initialHidden))
-
-  def fromCap(info: Type, owner: Symbol)(using Context): CaptureRef =
-    val ref = sym.termRef
-    val initHidden =
-      if reach then
-        if ref.isTrackableRef then SimpleIdentitySet(ref.reach) else emptySet
-      else
-        if ref.isTracked then SimpleIdentitySet(ref) else emptySet
-    fromCap(info, initHidden)*/
 end Fresh
 
 
