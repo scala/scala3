@@ -493,6 +493,24 @@ class ReplCompilerTests extends ReplTest:
     assertTrue(all.head.startsWith("-- [E103] Syntax Error"))
     assertTrue(all.exists(_.trim().startsWith("|  Illegal start of statement: this modifier is not allowed here")))
 
+  @Test def `i16250a`: Unit = initially:
+    val hints = List(
+      "this language import is not allowed in the REPL",
+      "To use this language feature, include the flag `-language:experimental.captureChecking` when starting the REPL"
+    )
+    run("import language.experimental.captureChecking")
+    val all = lines()
+    assertTrue(hints.forall(hint => all.exists(_.contains(hint))))
+
+  @Test def `i16250b`: Unit = initially:
+    val hints = List(
+      "this language import is not allowed in the REPL",
+      "To use this language feature, include the flag `-language:experimental.pureFunctions` when starting the REPL"
+    )
+    run("import language.experimental.pureFunctions")
+    val all = lines()
+    assertTrue(hints.forall(hint => all.exists(_.contains(hint))))
+
 object ReplCompilerTests:
 
   private val pattern = Pattern.compile("\\r[\\n]?|\\n");
