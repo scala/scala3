@@ -273,7 +273,7 @@ object Existential:
     case AppliedType(tycon, _) => !defn.isFunctionSymbol(tycon.typeSymbol)
     case _ => false
 
-  /** Replace all occurrences of `cap` in parts of this type by an existentially bound
+  /** Replace all occurrences of `cap` (or fresh) in parts of this type by an existentially bound
    *  variable. If there are such occurrences, or there might be in the future due to embedded
    *  capture set variables, create an existential with the variable wrapping the type.
    *  Stop at function or method types since these have been mapped before.
@@ -294,7 +294,7 @@ object Existential:
 
     class Wrap(boundVar: TermParamRef) extends CapMap:
       def apply(t: Type) = t match
-        case t: TermRef if t.isCapOrFresh => // !!! we should map different fresh refs to different existentials
+        case t: CaptureRef if t.isCapOrFresh => // !!! we should map different fresh refs to different existentials
           if variance > 0 then
             needsWrap = true
             boundVar

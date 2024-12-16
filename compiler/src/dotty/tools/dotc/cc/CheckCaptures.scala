@@ -650,7 +650,9 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  charge the deep capture set of the actual argument to the environment.
      */
     protected override def recheckArg(arg: Tree, formal: Type)(using Context): Type =
-      val argType = recheck(arg, formal)
+      val freshenedFormal = Fresh.fromCap(formal)
+      val argType = recheck(arg, freshenedFormal)
+        .showing(i"recheck arg $arg vs $freshenedFormal", capt)
       formal match
         case AnnotatedType(formal1, ann) if ann.symbol == defn.UseAnnot =>
           // The UseAnnot is added to `formal` by `prepareFunction`
