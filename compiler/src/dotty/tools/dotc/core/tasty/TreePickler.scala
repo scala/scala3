@@ -941,7 +941,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
           em"""Recursion limit exceeded while pickling ${ex.mdef}
               |in ${ex.mdef.symbol.showLocated}.
               |You could try to increase the stacksize using the -Xss JVM option.
-              |For the unprocessed stack trace, compile with -Xno-decode-stacktraces.""",
+              |For the unprocessed stack trace, compile with -Xno-enrich-error-messages.""",
           ex.mdef.srcPos)
 
     def missing = forwardSymRefs.keysIterator
