@@ -185,19 +185,10 @@ sealed abstract class CaptureSet extends Showable:
         case elem @ Fresh.Cap(_) => p(elem)
         case elem => false
 
-    def subsumesX(elem: CaptureRef) = elem match
-      case Fresh.Cap(hidden) =>
-        if (elem eq x) || hidden.elems.exists(_.subsumes(x)) then true
-        else if !hidden.recordElemsState() || x.stripReadOnly.isCap then false
-        else
-          hidden.elems += x
-          true
-      case _ => elem.subsumes(x)
-
     def debugInfo(using Context) = i"$this accountsFor $x, which has capture set ${x.captureSetOfInfo}"
 
     def test(using Context) = reporting.trace(debugInfo):
-      existsElem(elems, subsumesX(_))
+      existsElem(elems, _.subsumes(x))
       || !x.isMaxCapability
         && !x.derivesFrom(defn.Caps_CapSet)
         && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
@@ -215,14 +206,13 @@ sealed abstract class CaptureSet extends Showable:
    *  root capability `cap`.
    */
   def mightAccountFor(x: CaptureRef)(using Context): Boolean =
-    reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true) {
-      elems.exists(_.subsumes(x))
+    reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true):
+      elems.exists(_.subsumes(x)(using ctx, FrozenState()))
       || !x.isMaxCapability
         && {
           val elems = x.captureSetOfInfo.elems
           !elems.isEmpty && elems.forall(mightAccountFor)
         }
-    }
 
   /** A more optimistic version of subCaptures used to choose one of two typing rules
    *  for selections and applications. `cs1 mightSubcapture cs2` if `cs2` might account for

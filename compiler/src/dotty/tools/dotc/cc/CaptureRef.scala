@@ -78,11 +78,13 @@ trait CaptureRef extends TypeProxy, ValueType:
     case tp: TermRef => tp.name == nme.CAPTURE_ROOT && tp.symbol == defn.captureRoot
     case _ => false
 
-  /** Is this reference the generic root capability `cap` ? */
-  final def isCapOrFresh(using Context): Boolean = this match
-    case tp: TermRef => tp.name == nme.CAPTURE_ROOT && tp.symbol == defn.captureRoot
+  /** Is this reference a Fresh.Cap instance? */
+  final def isFresh(using Context): Boolean = this match
     case Fresh.Cap(_) => true
     case _ => false
+
+  /** Is this reference the generic root capability `cap` or a Fresh.Cap instance? */
+  final def isCapOrFresh(using Context): Boolean = isCap || isFresh
 
   /** Is this reference one the generic root capabilities `cap` or `cap.rd` ? */
   final def isRootCapability(using Context): Boolean = this match
@@ -132,6 +134,8 @@ trait CaptureRef extends TypeProxy, ValueType:
   final def invalidateCaches() =
     myCaptureSetRunId = NoRunId
 
+  import CaptureSet.{VarState, FrozenSepState}
+
   /**  x subsumes x
    *   x =:= y       ==>  x subsumes y
    *   x subsumes y  ==>  x subsumes y.f
@@ -144,9 +148,9 @@ trait CaptureRef extends TypeProxy, ValueType:
    *   Y: CapSet^c1...CapSet^c2, x subsumes (CapSet^c2)  ==>  x subsumes Y
    *   Contains[X, y]  ==>  X subsumes y
    *
-   *   TODO: Document cases with more comments.
+   *   TODO: Move to CaptureSet
    */
-  final def subsumes(y: CaptureRef)(using Context): Boolean =
+  final def subsumes(y: CaptureRef)(using ctx: Context, vs: VarState = FrozenSepState): Boolean =
 
     def subsumingRefs(x: Type, y: Type): Boolean = x match
       case x: CaptureRef => y match
@@ -162,13 +166,16 @@ trait CaptureRef extends TypeProxy, ValueType:
 
     (this eq y)
     || this.isCap
-    /* need to do black hole detection here
     || this.match
       case Fresh.Cap(hidden) =>
-        hidden.elems.exists(_.subsumes(y))
+        if hidden.elems.contains(y) then true
+        //if hidden.elems.exists(_.subsumes(y)) then true
+        else if !hidden.recordElemsState() || y.stripReadOnly.isCap then false
+        else
+          hidden.elems += y
+          true
       case _ =>
         false
-    */
     || y.match
         case y: TermRef =>
             y.prefix.match

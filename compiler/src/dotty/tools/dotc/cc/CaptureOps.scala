@@ -47,7 +47,8 @@ object ccConfig:
   def useSealed(using Context) =
     Feature.sourceVersion.stable != SourceVersion.`3.5`
 
-  val useFresh: Boolean = false
+  def useFresh(using Context): Boolean =
+    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.6`)
 end ccConfig
 
 
