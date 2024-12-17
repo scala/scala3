@@ -27,6 +27,7 @@ jobs:
           distribution: 'adopt'
           java-version: '8'
           cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
       - name: Build MSI package
         run: sbt 'dist-win-x86_64/Windows/packageBin'
         env:
