@@ -36,6 +36,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
 
       - name: Generate reference documentation and test links
         run: |
