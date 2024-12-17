@@ -353,8 +353,7 @@ private sealed trait XSettings:
   val XreadComments: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xread-docs", "Read documentation from tasty.")
 
   /** Area-specific debug output */
-  val XnoDecodeStacktraces: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xno-decode-stacktraces", "Show raw StackOverflow stacktraces, instead of decoding them into triggering operations.")
-  val XnoEnrichErrorMessages: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xno-enrich-error-messages", "Show raw error messages, instead of enriching them with contextual information.")
+  val XnoEnrichErrorMessages: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xno-enrich-error-messages", "Show raw error messages, instead of enriching them with contextual information.", aliases = List("Xno-decode-stacktraces"))
   val XdebugMacros: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xdebug-macros", "Show debug info when quote pattern match fails")
 
   /** Pipeline compilation options */
@@ -487,7 +486,7 @@ private sealed trait YSettings:
   @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
   val YreadComments: Setting[Boolean] = BooleanSetting(ForkSetting, "Yread-docs", "Read documentation from tasty.", deprecation = Deprecation.renamed("-Xread-docs"))
   @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
-  val YnoDecodeStacktraces: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-decode-stacktraces", "Show raw StackOverflow stacktraces, instead of decoding them into triggering operations.", deprecation = Deprecation.renamed("-Xno-decode-stacktraces"))
+  val YnoDecodeStacktraces: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-decode-stacktraces", "Show raw StackOverflow stacktraces, instead of decoding them into triggering operations.", deprecation = Deprecation.renamed("-Xno-enrich-error-messages"))
   @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
   val YnoEnrichErrorMessages: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-enrich-error-messages", "Show raw error messages, instead of enriching them with contextual information.", deprecation = Deprecation.renamed("-Xno-enrich-error-messages"))
   @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
