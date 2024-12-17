@@ -117,19 +117,6 @@ object MetalsInteractive:
   ): List[(Symbol, Type, Option[String])] =
     import indexed.ctx
     path match
-      // Handle select on named tuples
-      case (Apply(Apply(TypeApply(fun, List(t1, t2)), List(ddef)), List(Literal(Constant(i: Int))))) :: _
-        if fun.symbol.exists && fun.symbol.name == nme.apply &&
-            fun.symbol.owner.exists && fun.symbol.owner == getModuleIfDefined("scala.NamedTuple").moduleClass =>
-        def getIndex(t: Tree): Option[Type] =
-          t.tpe.dealias match
-            case AppliedType(_, args) => args.get(i)
-            case _ => None
-        val name = getIndex(t1) match
-          case Some(c: ConstantType) => c.value.stringValue
-          case _ => ""
-        val tpe = getIndex(t2).getOrElse(NoType)
-        List((ddef.symbol, tpe, Some(name)))
       // For a named arg, find the target `DefDef` and jump to the param
       case NamedArg(name, _) :: Apply(fn, _) :: _ =>
         val funSym = fn.symbol
@@ -215,6 +202,20 @@ object MetalsInteractive:
             List((tpeSym, tpeSym.info, None))
           case _ =>
             Nil
+
+      // Handle select on named tuples
+      case (Apply(Apply(TypeApply(fun, List(t1, t2)), List(ddef)), List(Literal(Constant(i: Int))))) :: _
+        if fun.symbol.exists && fun.symbol.name == nme.apply &&
+            fun.symbol.owner.exists && fun.symbol.owner == getModuleIfDefined("scala.NamedTuple").moduleClass =>
+        def getIndex(t: Tree): Option[Type] =
+          t.tpe.dealias match
+            case AppliedType(_, args) => args.get(i)
+            case _ => None
+        val name = getIndex(t1) match
+          case Some(c: ConstantType) => c.value.stringValue
+          case _ => ""
+        val tpe = getIndex(t2).getOrElse(NoType)
+        List((ddef.symbol, tpe, Some(name)))
 
       case path @ head :: tail =>
         if head.symbol.is(Exported) then
