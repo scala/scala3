@@ -36,6 +36,7 @@ import scala.util.Properties.isJavaAtLeast
 
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import org.scalajs.linker.interface.{ModuleInitializer, StandardConfig}
+import BuildStdLib.autoImport.*
 
 object DottyJSPlugin extends AutoPlugin {
   import Build._
