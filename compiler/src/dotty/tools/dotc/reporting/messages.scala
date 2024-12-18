@@ -3399,3 +3399,9 @@ class GivenSearchPriorityWarning(
        |$migrationHints"""
 
   def explain(using Context) = ""
+
+final class EnumMayNotBeValueClasses(sym: Symbol)(using Context) extends SyntaxMsg(EnumMayNotBeValueClassesID):
+    def msg(using Context): String = i"$sym may not be a value class"
+
+    def explain(using Context) = ""
+end EnumMayNotBeValueClasses
