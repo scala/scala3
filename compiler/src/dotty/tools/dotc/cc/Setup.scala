@@ -428,13 +428,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     import checker.*
 
     /** Transform type of tree, and remember the transformed type as the type the tree */
-    private def transformTT(tree: TypeTree, boxed: Boolean)(using Context): Unit =
+    private def transformTT(tree: TypeTree, sym: Symbol, boxed: Boolean)(using Context): Unit =
       if !tree.hasNuType then
         val transformed =
           if tree.isInferred
           then transformInferredType(tree.tpe)
           else transformExplicitType(tree.tpe, tptToCheck = tree)
-        tree.setNuType(if boxed then box(transformed) else transformed)
+        tree.setNuType(
+          if boxed then box(transformed) else Fresh.fromCap(transformed, sym))
 
     /** Transform the type of a val or var or the result type of a def */
     def transformResultType(tpt: TypeTree, sym: Symbol)(using Context): Unit =
