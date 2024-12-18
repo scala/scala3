@@ -110,7 +110,7 @@ import scala.quoted.*
 // make available the necessary compiler for runtime code generation
 given staging.Compiler = staging.Compiler.make(getClass.getClassLoader)
 
-def power3: Double => Double = staging.run {
+val power3: Double => Double = staging.run {
   val stagedPower3: Expr[Double => Double] =
     '{ (x: Double) => ${ unrolledPowerCode('x, 3) } }
   println(stagedPower3.show) // Prints "((x: scala.Double) => x.*(x.*(x)))"
