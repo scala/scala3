@@ -1626,7 +1626,8 @@ class Namer { typer: Typer =>
           }
           else {
             val pclazz = pt.typeSymbol
-            if pclazz.is(Final) then
+            // The second condition avoids generating a useless message (See #22236 for more details)
+            if pclazz.is(Final) && !(pclazz.is(Enum) && pclazz.isDerivedValueClass) then
               report.error(ExtendFinalClass(cls, pclazz), cls.srcPos)
             else if pclazz.isEffectivelySealed && pclazz.associatedFile != cls.associatedFile then
               if pclazz.is(Sealed) && !pclazz.is(JavaDefined) then
