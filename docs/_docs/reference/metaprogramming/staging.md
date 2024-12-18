@@ -110,12 +110,12 @@ import scala.quoted.*
 // make available the necessary compiler for runtime code generation
 given staging.Compiler = staging.Compiler.make(getClass.getClassLoader)
 
-val f: Array[Int] => Int = staging.run {
-  val stagedSum: Expr[Array[Int] => Int] =
-    '{ (arr: Array[Int]) => ${sum('arr)}}
-  println(stagedSum.show) // Prints "(arr: Array[Int]) => { var sum = 0; ... }"
-  stagedSum
+def power3: Double => Double = staging.run {
+  val stagedPower3: Expr[Double => Double] =
+    '{ (x: Double) => ${ unrolledPowerCode('x, 3) } }
+  println(stagedPower3.show) // Prints "((x: scala.Double) => x.*(x.*(x)))"
+  stagedPower3
 }
 
-f.apply(Array(1, 2, 3)) // Returns 6
+power3.apply(2.0) // Returns 8.0
 ```
