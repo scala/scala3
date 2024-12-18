@@ -1812,12 +1812,12 @@ class NotAPath(tp: Type, usage: String)(using Context) extends TypeMsg(NotAPathI
     if sym.isAllOf(Flags.InlineParam) then
       i"""
          |Inline parameters are not considered immutable paths and cannot be used as
-         |singleton types. 
-         | 
+         |singleton types.
+         |
          |Hint: Removing the `inline` qualifier from the `${sym.name}` parameter
          |may help resolve this issue."""
     else ""
-    
+
 
 class WrongNumberOfParameters(tree: untpd.Tree, foundCount: Int, pt: Type, expectedCount: Int)(using Context)
   extends SyntaxMsg(WrongNumberOfParametersID) {
@@ -3173,15 +3173,21 @@ final class QuotedTypeMissing(tpe: Type)(using Context) extends StagingMessage(Q
 
   private def witness = defn.QuotedTypeClass.typeRef.appliedTo(tpe)
 
-  override protected def msg(using Context): String = 
+  override protected def msg(using Context): String =
     i"Reference to $tpe within quotes requires a given ${witness} in scope"
 
   override protected def explain(using Context): String =
-    i"""Referencing `$tpe` inside a quoted expression requires a `${witness}` to be in scope. 
+    i"""Referencing `$tpe` inside a quoted expression requires a `${witness}` to be in scope.
         |Since Scala is subject to erasure at runtime, the type information will be missing during the execution of the code.
-        |`${witness}` is therefore needed to carry `$tpe`'s type information into the quoted code. 
-        |Without an implicit `${witness}`, the type `$tpe` cannot be properly referenced within the expression. 
+        |`${witness}` is therefore needed to carry `$tpe`'s type information into the quoted code.
+        |Without an implicit `${witness}`, the type `$tpe` cannot be properly referenced within the expression.
         |To resolve this, ensure that a `${witness}` is available, either through a context-bound or explicitly.
         |"""
 
 end QuotedTypeMissing
+
+final class EnumMayNotBeValueClasses(sym: Symbol)(using Context) extends SyntaxMsg(EnumMayNotBeValueClassesID):
+    def msg(using Context): String = i"$sym may not be a value class"
+
+    def explain(using Context) = ""
+end EnumMayNotBeValueClasses
