@@ -208,20 +208,22 @@ object Applications {
       else tp :: Nil
 
     private def productUnapplySelectors(tp: Type)(using Context): Option[List[Type]] =
+      val validatedTupleElements = desugar.checkWellFormedTupleElems(args)
+
       if defn.isProductSubType(tp) && args.lengthCompare(productArity(tp)) <= 0 then
-        tryAdaptPatternArgs(args, tp) match
+        tryAdaptPatternArgs(validatedTupleElements, tp) match
           case Some(args1) if isProductMatch(tp, args1.length, pos) =>
             args = args1
             Some(productSelectorTypes(tp, pos))
           case _ => None
-        else tp.widen.normalized.dealias match
-          case tp @ defn.NamedTuple(_, tt) =>
-            tryAdaptPatternArgs(args, tp) match
-              case Some(args1) =>
-                args = args1
-                tt.tupleElementTypes
-              case _ => None
-          case _ => None
+      else tp.widen.normalized.dealias match
+        case tp @ defn.NamedTuple(_, tt) =>
+          tryAdaptPatternArgs(validatedTupleElements, tp) match
+            case Some(args1) =>
+              args = args1
+              tt.tupleElementTypes
+            case _ => None
+        case _ => None
 
     /** The computed argument types which will be the scutinees of the sub-patterns. */
     val argTypes: List[Type] =
