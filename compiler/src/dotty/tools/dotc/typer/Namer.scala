@@ -878,7 +878,7 @@ class Namer { typer: Typer =>
       case original: untpd.MemberDef =>
         lazy val annotCtx = annotContext(original, sym)
         original.setMods:
-          original.mods.withAnnotations :
+          original.mods.withAnnotations:
             original.mods.annotations.mapConserve: annotTree =>
               val cls = typedAheadAnnotationClass(annotTree)(using annotCtx)
               if (cls eq sym)
