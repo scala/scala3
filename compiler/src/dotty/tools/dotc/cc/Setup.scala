@@ -427,15 +427,20 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   def setupTraverser(checker: CheckerAPI) = new TreeTraverserWithPreciseImportContexts:
     import checker.*
 
+    private val paramSigChange = util.EqHashSet[Tree]()
+
     /** Transform type of tree, and remember the transformed type as the type the tree */
     private def transformTT(tree: TypeTree, sym: Symbol, boxed: Boolean)(using Context): Unit =
       if !tree.hasNuType then
-        val transformed =
+        var transformed =
           if tree.isInferred
           then transformInferredType(tree.tpe)
           else transformExplicitType(tree.tpe, tptToCheck = tree)
+        if boxed then transformed = box(transformed)
+        if sym.is(Param) && (transformed ne tree.tpe) then
+          paramSigChange += tree
         tree.setNuType(
-          if boxed then box(transformed) else Fresh.fromCap(transformed, sym))
+          if boxed then transformed else Fresh.fromCap(transformed, sym))
 
     /** Transform the type of a val or var or the result type of a def */
     def transformResultType(tpt: TypeTree, sym: Symbol)(using Context): Unit =
@@ -501,6 +506,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             inContext(ctx.withOwner(sym))
               traverseChildren(tree)
 
+        case tree @ TypeDef(_, rhs: TypeTree) =>
+          transformTT(rhs, tree.symbol, boxed = false)
+
         case tree @ SeqLiteral(elems, tpt: TypeTree) =>
           traverse(elems)
           tpt.setNuType(box(transformInferredType(tpt.tpe)))
@@ -544,8 +552,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         def paramSignatureChanges = tree.match
           case tree: DefDef =>
             tree.paramss.nestedExists:
-              case param: ValDef => param.tpt.hasNuType
-              case param: TypeDef => param.rhs.hasNuType
+              case param: ValDef =>  paramSigChange.contains(param.tpt)
+              case param: TypeDef => paramSigChange.contains(param.rhs)
           case _ => false
 
         // A symbol's signature changes if some of its parameter types or its result type
@@ -580,7 +588,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                     mt.paramInfos
                   else
                     val subst = SubstParams(psyms :: prevPsymss, mt1 :: prevLambdas)
-                    psyms.map(psym => adaptedInfo(psym, subst(psym.nextInfo).asInstanceOf[mt.PInfo])),
+                    psyms.map(psym => adaptedInfo(psym, subst(Fresh.toCap(psym.nextInfo)).asInstanceOf[mt.PInfo])),
                 mt1 =>
                   integrateRT(mt.resType, psymss.tail, resType, psyms :: prevPsymss, mt1 :: prevLambdas)
               )

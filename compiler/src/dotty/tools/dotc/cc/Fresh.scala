@@ -89,7 +89,9 @@ object Fresh:
 
     lazy val inverse = new BiTypeMap:
       def apply(t: Type): Type = t match
-        case t @ Cap(_) => defn.captureRoot.termRef
+        case t @ Cap(_) =>
+          change = true
+          defn.captureRoot.termRef
         case _ => mapOver(t)
       def inverse = thisMap
       override def toString = thisMap.toString + ".inverse"
@@ -102,6 +104,16 @@ object Fresh:
       val mapper = FromCap(owner)
       val mapped = mapper(tp)
       if mapper.change then mapped else tp
+    else
+      tp
+
+  /** Maps fresh to cap */
+  def toCap(tp: Type)(using Context): Type =
+    if ccConfig.useFresh then
+      val fromCap = FromCap(NoSymbol)
+      val mapper = fromCap.inverse
+      val mapped = mapper(tp)
+      if fromCap.change then mapped else tp
     else
       tp
 end Fresh
