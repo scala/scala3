@@ -1,3 +1,4 @@
+import language.experimental.namedTuples
 import NamedTuple.{NamedTuple, AnyNamedTuple}
 
 // Repros for bugs or questions

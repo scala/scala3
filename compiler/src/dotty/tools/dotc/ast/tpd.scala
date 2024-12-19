@@ -11,6 +11,7 @@ import Symbols.*, StdNames.*, Annotations.*, Trees.*, Symbols.*
 import Decorators.*, DenotTransformers.*
 import collection.{immutable, mutable}
 import util.{Property, SourceFile}
+import config.Printers.typr
 import NameKinds.{TempResultName, OuterSelectName}
 import typer.ConstFold
 
@@ -826,6 +827,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       Closure(tree: Tree)(env, meth, tpt)
   }
 
+  // This is a more fault-tolerant copier that does not cause errors when
+  // function types in applications are undefined.
+  // This was called `Inliner.InlineCopier` before 3.6.3.
+  class ConservativeTreeCopier() extends TypedTreeCopier:
+    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply =
+      if fun.tpe.widen.exists then super.Apply(tree)(fun, args)
+      else untpd.cpy.Apply(tree)(fun, args).withTypeUnchecked(tree.tpe)
+
   override def skipTransform(tree: Tree)(using Context): Boolean = tree.tpe.isError
 
   implicit class TreeOps[ThisTree <: tpd.Tree](private val tree: ThisTree) extends AnyVal {
@@ -1128,6 +1137,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     /** Replace Ident nodes references to the underlying tree that defined them */
     def underlying(using Context): Tree = MapToUnderlying().transform(tree)
 
+    /** Collect all the TypeSymbol's of the type Bind nodes in the tree. */
+    def bindTypeSymbols(using Context): List[TypeSymbol] =
+      tree.collectSubTrees { case b: Bind if b.isType => b.symbol.asType }
+
     // --- Higher order traversal methods -------------------------------
 
     /** Apply `f` to each subtree of this tree */
@@ -1164,6 +1177,21 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       if (sym.exists) sym.defTree = tree
       tree
     }
+
+    /** Make sure tree has given symbol. This is called when typing or unpickling
+     *  a ValDef or DefDef. It turns out that under very rare circumstances the symbol
+     *  computed for a tree is not correct. The only known test case is i21755.scala.
+     *  Here we have a self type that mentions a supertype as well as a type parameter
+     *  upper-bounded by the current class and it turns out that we compute the symbol
+     *  for a member method (named `root` in this case) in a subclass to be the
+     *  corresponding symbol in the superclass. It is not known what are the precise
+     *  conditions where this happens, but my guess would be that it's connected to the
+     *  recursion in the self type.
+     */
+    def ensureHasSym(sym: Symbol)(using Context): Unit =
+      if sym.exists && sym != tree.symbol then
+        typr.println(i"correcting definition symbol from ${tree.symbol.showLocated} to ${sym.showLocated}")
+        tree.overwriteType(NamedType(sym.owner.thisType, sym.asTerm.name, sym.denot))
 
     def etaExpandCFT(using Context): Tree =
       def expand(target: Tree, tp: Type)(using Context): Tree = tp match

@@ -518,6 +518,22 @@ object Parsers {
         tree
     }
 
+    def makePolyFunction(tparams: List[Tree], body: Tree,
+        kind: String, errorTree: => Tree,
+        start: Offset, arrowOffset: Offset): Tree =
+      atSpan(start, arrowOffset):
+        getFunction(body) match
+          case None =>
+            syntaxError(em"Implementation restriction: polymorphic function ${kind}s must have a value parameter", arrowOffset)
+            errorTree
+          case Some(Function(_, _: CapturesAndResult)) =>
+            // A function tree like this will be desugared
+            // into a capturing type in the typer.
+            syntaxError(em"Implementation restriction: polymorphic function types cannot wrap function types that have capture sets", arrowOffset)
+            errorTree
+          case Some(f) =>
+            PolyFunction(tparams, body)
+
 /* --------------- PLACEHOLDERS ------------------------------------------- */
 
     /** The implicit parameters introduced by `_` in the current expression.
@@ -651,7 +667,7 @@ object Parsers {
       else leading :: Nil
 
     def maybeNamed(op: () => Tree): () => Tree = () =>
-      if isIdent && in.lookahead.token == EQUALS && sourceVersion.isAtLeast(`3.6`) then
+      if isIdent && in.lookahead.token == EQUALS && in.featureEnabled(Feature.namedTuples) then
         atSpan(in.offset):
           val name = ident()
           in.nextToken()
@@ -1001,6 +1017,18 @@ object Parsers {
              //      def f = ...
           lookahead.nextToken()
           !lookahead.isAfterLineEnd
+        } || {
+            // Support for for pre-3.6 syntax where type is put on the next line
+            // Examples:
+            //     given namedGiven:
+            //       X[T] with {}
+            //     given otherGiven:
+            //       X[T] = new X[T]{}
+          lookahead.isIdent && {
+            lookahead.nextToken()
+            skipParams()
+            lookahead.token == WITH || lookahead.token == EQUALS
+          }
         }
       }
 
@@ -1104,14 +1132,30 @@ object Parsers {
           if (prec < opPrec || leftAssoc && prec == opPrec) {
             opStack = opStack.tail
             recur {
-              atSpan(opInfo.operator.span union opInfo.operand.span union top.span) {
-                InfixOp(opInfo.operand, opInfo.operator, top)
-              }
+              migrateInfixOp(opInfo, isType):
+                atSpan(opInfo.operator.span union opInfo.operand.span union top.span):
+                  InfixOp(opInfo.operand, opInfo.operator, top)
             }
           }
           else top
         }
       recur(top)
+    }
+
+    private def migrateInfixOp(opInfo: OpInfo, isType: Boolean)(infixOp: InfixOp): Tree = {
+      def isNamedTupleOperator = opInfo.operator.name match
+        case nme.EQ | nme.NE |  nme.eq | nme.ne | nme.`++` | nme.zip => true
+        case _ => false
+      if isType then infixOp
+      else infixOp.right match
+        case Tuple(args) if args.exists(_.isInstanceOf[NamedArg]) && !isNamedTupleOperator =>
+          report.errorOrMigrationWarning(DeprecatedInfixNamedArgumentSyntax(), infixOp.right.srcPos, MigrationVersion.AmbiguousNamedTupleSyntax)
+          if MigrationVersion.AmbiguousNamedTupleSyntax.needsPatch then
+            val asApply = cpy.Apply(infixOp)(Select(opInfo.operand, opInfo.operator.name), args)
+            patch(source, infixOp.span, asApply.show(using ctx.withoutColors))
+            asApply // allow to use pre-3.6 syntax in migration mode
+          else infixOp
+        case _ => infixOp
     }
 
     /** True if we are seeing a lambda argument after a colon of the form:
@@ -1534,35 +1578,32 @@ object Parsers {
     /** Same as [[typ]], but if this results in a wildcard it emits a syntax error and
      *  returns a tree for type `Any` instead.
      */
-    def toplevelTyp(intoOK: IntoOK = IntoOK.No): Tree = rejectWildcardType(typ(intoOK))
+    def toplevelTyp(intoOK: IntoOK = IntoOK.No, inContextBound: Boolean = false): Tree =
+      rejectWildcardType(typ(intoOK, inContextBound))
 
     private def getFunction(tree: Tree): Option[Function] = tree match {
       case Parens(tree1) => getFunction(tree1)
       case Block(Nil, tree1) => getFunction(tree1)
-      case Function(_, _: CapturesAndResult) =>
-        // A function tree like this will be desugared
-        // into a capturing type in the typer,
-        // so None is returned.
-        None
       case t: Function => Some(t)
       case _ => None
     }
 
-    /** CaptureRef  ::=  ident [`*` | `^`] | `this`
+    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`]
+     *                |  [ { SimpleRef `.` } SimpleRef `.` ] id `^`
      */
     def captureRef(): Tree =
-      if in.token == THIS then simpleRef()
-      else
-        val id = termIdent()
-        if isIdent(nme.raw.STAR) then
-          in.nextToken()
-          atSpan(startOffset(id)):
-            PostfixOp(id, Ident(nme.CC_REACH))
-        else if isIdent(nme.UPARROW) then
-          in.nextToken()
-          atSpan(startOffset(id)):
-            makeCapsOf(cpy.Ident(id)(id.name.toTypeName))
-        else id
+      val ref = dotSelectors(simpleRef())
+      if isIdent(nme.raw.STAR) then
+        in.nextToken()
+        atSpan(startOffset(ref)):
+          PostfixOp(ref, Ident(nme.CC_REACH))
+      else if isIdent(nme.UPARROW) then
+        in.nextToken()
+        atSpan(startOffset(ref)):
+          convertToTypeId(ref) match
+            case ref: RefTree => makeCapsOf(ref)
+            case ref => ref
+      else ref
 
     /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking
      */
@@ -1594,7 +1635,7 @@ object Parsers {
      *  IntoTargetType ::=  Type
      *                   |  FunTypeArgs (‘=>’ | ‘?=>’) IntoType
      */
-    def typ(intoOK: IntoOK = IntoOK.No): Tree =
+    def typ(intoOK: IntoOK = IntoOK.No, inContextBound: Boolean = false): Tree =
       val start = in.offset
       var imods = Modifiers()
       val erasedArgs: ListBuffer[Boolean] = ListBuffer()
@@ -1743,7 +1784,7 @@ object Parsers {
             val tuple = atSpan(start):
               makeTupleOrParens(args.mapConserve(convertToElem))
             typeRest:
-              infixTypeRest:
+              infixTypeRest(inContextBound):
                 refinedTypeRest:
                   withTypeRest:
                     annotTypeRest:
@@ -1757,13 +1798,7 @@ object Parsers {
         else if in.token == ARROW || isPureArrow(nme.PUREARROW) then
           val arrowOffset = in.skipToken()
           val body = toplevelTyp(nestedIntoOK(in.token))
-          atSpan(start, arrowOffset):
-            getFunction(body) match
-              case Some(f) =>
-                PolyFunction(tparams, body)
-              case None =>
-                syntaxError(em"Implementation restriction: polymorphic function types must have a value parameter", arrowOffset)
-                Ident(nme.ERROR.toTypeName)
+          makePolyFunction(tparams, body, "type", Ident(nme.ERROR.toTypeName), start, arrowOffset)
         else
           accept(TLARROW)
           typ()
@@ -1772,7 +1807,7 @@ object Parsers {
       else if isIntoPrefix then
         PrefixOp(typeIdent(), typ(IntoOK.Nested))
       else
-        typeRest(infixType())
+        typeRest(infixType(inContextBound))
     end typ
 
     private def makeKindProjectorTypeDef(name: TypeName): TypeDef = {
@@ -1827,13 +1862,13 @@ object Parsers {
     /** InfixType ::= RefinedType {id [nl] RefinedType}
      *             |  RefinedType `^`   // under capture checking
      */
-    def infixType(): Tree = infixTypeRest(refinedType())
+    def infixType(inContextBound: Boolean = false): Tree = infixTypeRest(inContextBound)(refinedType())
 
-    def infixTypeRest(t: Tree, operand: Location => Tree = refinedTypeFn): Tree =
+    def infixTypeRest(inContextBound: Boolean = false)(t: Tree, operand: Location => Tree = refinedTypeFn): Tree =
       infixOps(t, canStartInfixTypeTokens, operand, Location.ElseWhere, ParseKind.Type,
         isOperator = !followingIsVararg()
                      && !isPureArrow
-                     && !(isIdent(nme.as) && sourceVersion.isAtLeast(`3.6`))
+                     && !(isIdent(nme.as) && sourceVersion.isAtLeast(`3.6`) && inContextBound)
                      && nextCanFollowOperator(canStartInfixTypeTokens))
 
     /** RefinedType   ::=  WithType {[nl] Refinement} [`^` CaptureSet]
@@ -2137,7 +2172,7 @@ object Parsers {
 
       if namedOK && isIdent && in.lookahead.token == EQUALS then
         commaSeparated(() => namedArgType())
-      else if tupleOK && isIdent && in.lookahead.isColon && sourceVersion.isAtLeast(`3.6`) then
+      else if tupleOK && isIdent && in.lookahead.isColon && in.featureEnabled(Feature.namedTuples) then
         commaSeparated(() => namedElem())
       else
         commaSeparated(() => argType())
@@ -2205,7 +2240,7 @@ object Parsers {
       atSpan(in.offset):
         if in.isIdent(nme.UPARROW) && Feature.ccEnabled then
           in.nextToken()
-          TypeBoundsTree(EmptyTree, makeCapsBound())
+          makeCapsBound()
         else
           TypeBoundsTree(bound(SUPERTYPE), bound(SUBTYPE))
 
@@ -2224,7 +2259,7 @@ object Parsers {
 
     /** ContextBound      ::=  Type [`as` id] */
     def contextBound(pname: TypeName): Tree =
-      val t = toplevelTyp()
+      val t = toplevelTyp(inContextBound = true)
       val ownName =
         if isIdent(nme.as) && sourceVersion.isAtLeast(`3.6`) then
           in.nextToken()
@@ -2360,14 +2395,7 @@ object Parsers {
           val tparams = typeParamClause(ParamOwner.Type)
           val arrowOffset = accept(ARROW)
           val body = expr(location)
-          atSpan(start, arrowOffset) {
-            getFunction(body) match
-              case Some(f) =>
-                PolyFunction(tparams, f)
-              case None =>
-                syntaxError(em"Implementation restriction: polymorphic function literals must have a value parameter", arrowOffset)
-                errorTermTree(arrowOffset)
-          }
+          makePolyFunction(tparams, body, "literal", errorTermTree(arrowOffset), start, arrowOffset)
         case _ =>
           val saved = placeholderParams
           placeholderParams = Nil
@@ -3431,7 +3459,7 @@ object Parsers {
      *
      *  TypTypeParamClause::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
      *  TypTypeParam      ::=  {Annotation}
-     *                         (id | ‘_’) [HkTypeParamClause] TypeBounds
+     *                         (id | ‘_’) [HkTypeParamClause] TypeAndCtxBounds
      *
      *  HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
      *  HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’]
@@ -3462,7 +3490,9 @@ object Parsers {
             else ident().toTypeName
           val hkparams = typeParamClauseOpt(ParamOwner.Hk)
           val bounds =
-            if paramOwner.acceptsCtxBounds then typeAndCtxBounds(name) else typeBounds()
+            if paramOwner.acceptsCtxBounds then typeAndCtxBounds(name)
+            else if sourceVersion.isAtLeast(`3.6`) && paramOwner == ParamOwner.Type then typeAndCtxBounds(name)
+            else typeBounds()
           TypeDef(name, lambdaAbstract(hkparams, bounds)).withMods(mods)
         }
       }
@@ -3674,7 +3704,15 @@ object Parsers {
           in.languageImportContext = in.languageImportContext.importContext(imp, NoSymbol)
           for case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors do
             if Feature.handleGlobalLanguageImport(prefix, imported) && !outermost then
-              syntaxError(em"this language import is only allowed at the toplevel", id.span)
+              val desc =
+                if ctx.mode.is(Mode.Interactive) then
+                  "not allowed in the REPL"
+                else "only allowed at the toplevel"
+              val hint =
+                if ctx.mode.is(Mode.Interactive) then
+                  f"\nTo use this language feature, include the flag `-language:$prefix.$imported` when starting the REPL"
+                else ""
+              syntaxError(em"this language import is $desc$hint", id.span)
             if allSourceVersionNames.contains(imported) && prefix.isEmpty then
               if !outermost then
                 syntaxError(em"source version import is only allowed at the toplevel", id.span)
@@ -4207,7 +4245,7 @@ object Parsers {
         else constrApp() match
           case parent: Apply => parent :: moreConstrApps()
           case parent if in.isIdent && newSyntaxAllowed =>
-            infixTypeRest(parent, _ => annotType1()) :: Nil
+            infixTypeRest()(parent, _ => annotType1()) :: Nil
           case parent => parent :: moreConstrApps()
 
       // The term parameters and parent references */
@@ -4682,7 +4720,7 @@ object Parsers {
      *                 | Expr1
      *                 |
      */
-    def blockStatSeq(): List[Tree] = checkNoEscapingPlaceholders {
+    def blockStatSeq(outermost: Boolean = false): List[Tree] = checkNoEscapingPlaceholders {
       val stats = new ListBuffer[Tree]
       while
         var empty = false
@@ -4694,7 +4732,11 @@ object Parsers {
           stats += closure(in.offset, Location.InBlock, modifiers(BitSet(IMPLICIT)))
         else if isIdent(nme.extension) && followingIsExtension() then
           stats += extension()
-        else if isDefIntro(localModifierTokens, excludedSoftModifiers = Set(nme.`opaque`)) then
+        else if isDefIntro(localModifierTokens,
+            excludedSoftModifiers =
+              // Allow opaque definitions at outermost level in REPL.
+              if outermost && ctx.mode.is(Mode.Interactive)
+              then Set.empty else Set(nme.`opaque`)) then
           stats +++= localDef(in.offset)
         else
           empty = true

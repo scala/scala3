@@ -515,7 +515,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
      */
     object locals {
 
-      private val slots = mutable.AnyRefMap.empty[Symbol, Local] // (local-or-param-sym -> Local(BType, name, idx, isSynth))
+      private val slots = mutable.HashMap.empty[Symbol, Local] // (local-or-param-sym -> Local(BType, name, idx, isSynth))
 
       private var nxtIdx = -1 // next available index for local-var
 
@@ -623,7 +623,13 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       }
 
       if (emitLines && tree.span.exists && !tree.hasAttachment(SyntheticUnit)) {
-        val nr = ctx.source.offsetToLine(tree.span.point) + 1
+        val nr =
+          val sourcePos = tree.sourcePos
+          (
+            if sourcePos.exists then sourcePos.source.positionInUltimateSource(sourcePos).line
+            else ctx.source.offsetToLine(tree.span.point) // fallback
+          ) + 1
+
         if (nr != lastEmittedLineNr) {
           lastEmittedLineNr = nr
           getNonLabelNode(lastInsn) match {

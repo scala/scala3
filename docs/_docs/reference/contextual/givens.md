@@ -87,11 +87,9 @@ time it is accessed. If the given is a mere alias to some immutable value, the g
 
 ## Syntax
 
-Here is the full syntax for given instances. Some of these forms of givens are explained in a separate page: [Other Forms of Givens](../more-givens.md).
+Here is the full syntax for given instances. Some of these forms of givens are explained in a separate page: [Other Forms of Givens](./more-givens.md).
 
 ```ebnf
-Here is the complete context-free syntax for all proposed features.
-```
 TmplDef           ::=  ... | 'given' GivenDef
 GivenDef          ::=  [id ':'] GivenSig
 GivenSig          ::=  GivenImpl
@@ -115,4 +113,4 @@ A given instance starts with the reserved keyword `given`, which is followed by
     - A _structural given_ implements one or more class constructors with a
       list of member definitions in a template body.
 
-**Note** Parts of the given syntax have changed in Scala 3.6. The original syntax from Scala 3.0 on is described in a separate page [Previous Given Syntax](../previous-givens.md). The original syntax is still supported for now but will be deprecated and phased out over time.
+**Note** Parts of the given syntax have changed in Scala 3.6. The original syntax from Scala 3.0 on is described in a separate page [Previous Given Syntax](./previous-givens.md). The original syntax is still supported for now but will be deprecated and phased out over time.

@@ -18,5 +18,6 @@ class Test {
     case Some(null)     =>
     case None           =>
     case y              =>
+    case _              =>
   }
 }

@@ -1162,10 +1162,10 @@ object SymDenotations {
     final def enclosingClass(using Context): Symbol = {
       def enclClass(sym: Symbol, skip: Boolean): Symbol = {
         def newSkip = sym.is(JavaStaticTerm)
-        if (!sym.exists)
+        if !sym.exists then
           NoSymbol
-        else if (sym.isClass)
-          if (skip) enclClass(sym.owner, newSkip) else sym
+        else if sym.isClass then
+          if skip || sym.isRefinementClass then enclClass(sym.owner, newSkip) else sym
         else
           enclClass(sym.owner, skip || newSkip)
       }
@@ -2539,7 +2539,9 @@ object SymDenotations {
           )
         if compiledNow.exists then compiledNow
         else
-          val assocFiles = multi.aggregate(d => Set(d.symbol.associatedFile.nn), _ union _)
+          val assocFiles = multi
+            .filterWithPredicate(_.symbol.maybeOwner.isPackageObject)
+            .aggregate(d => Set(d.symbol.associatedFile.nn), _ union _)
           if assocFiles.size == 1 then
             multi // they are all overloaded variants from the same file
           else
@@ -2679,10 +2681,6 @@ object SymDenotations {
       else
         stillValidInOwner(denot)
     }
-
-  def movedToCompanionClass(denot: SymDenotation)(using Context): Boolean =
-    val ownerCompanion = denot.maybeOwner.companionClass
-    stillValid(ownerCompanion) && ownerCompanion.unforcedDecls.contains(denot.name, denot.symbol)
 
   private[SymDenotations] def stillValidInOwner(denot: SymDenotation)(using Context): Boolean = try
     val owner = denot.maybeOwner.denot

@@ -2469,7 +2469,7 @@ class PureExpressionInStatementPosition(stat: untpd.Tree, val exprOwner: Symbol)
 class PureUnitExpression(stat: untpd.Tree, tpe: Type)(using Context)
   extends Message(PureUnitExpressionID) {
   def kind = MessageKind.PotentialIssue
-  def msg(using Context) = i"Discarded non-Unit value of type ${tpe.widen}. You may want to use `()`."
+  def msg(using Context) = i"Discarded non-Unit value of type ${tpe.widen}. Add `: Unit` to discard silently."
   def explain(using Context) =
     i"""As this expression is not of type Unit, it is desugared into `{ $stat; () }`.
        |Here the `$stat` expression is a pure statement that can be discarded.
@@ -3173,7 +3173,7 @@ class InlinedAnonClassWarning()(using Context)
 class ValueDiscarding(tp: Type)(using Context)
   extends Message(ValueDiscardingID):
     def kind = MessageKind.PotentialIssue
-    def msg(using Context) = i"discarded non-Unit value of type $tp"
+    def msg(using Context) = i"discarded non-Unit value of type ${tp.widen}. Add `: Unit` to discard silently."
     def explain(using Context) = ""
 
 class UnusedNonUnitValue(tp: Type)(using Context)
@@ -3343,3 +3343,65 @@ final class QuotedTypeMissing(tpe: Type)(using Context) extends StagingMessage(Q
         |"""
 
 end QuotedTypeMissing
+
+final class DeprecatedAssignmentSyntax(key: Name, value: untpd.Tree)(using Context) extends SyntaxMsg(DeprecatedAssignmentSyntaxID):
+  override protected def msg(using Context): String =
+    i"""Deprecated syntax: in the future it would be interpreted as a named tuple with one element,
+      |not as an assignment.
+      |
+      |To assign a value, use curly braces: `{${key} = ${value}}`."""
+      + Message.rewriteNotice("This", version = SourceVersion.`3.6-migration`)
+
+  override protected def explain(using Context): String = ""
+
+class DeprecatedInfixNamedArgumentSyntax()(using Context) extends SyntaxMsg(DeprecatedInfixNamedArgumentSyntaxID):
+  def msg(using Context) =
+    i"""Deprecated syntax: infix named arguments lists are deprecated; in the future it would be interpreted as a single name tuple argument.
+       |To avoid this warning, either remove the argument names or use dotted selection."""
+        + Message.rewriteNotice("This", version = SourceVersion.`3.6-migration`)
+
+  def explain(using Context) = ""
+
+class GivenSearchPriorityWarning(
+    pt: Type,
+    cmp: Int,
+    prev: Int,
+    winner: TermRef,
+    loser: TermRef,
+    isLastOldVersion: Boolean
+)(using Context) extends Message(GivenSearchPriorityID):
+  def kind = MessageKind.PotentialIssue
+  def choice(nth: String, c: Int) =
+    if c == 0 then "none - it's ambiguous"
+    else s"the $nth alternative"
+  val (change, whichChoice) =
+    if isLastOldVersion
+    then ("will change in the future release", "Current choice ")
+    else ("has changed",                       "Previous choice")
+  def warningMessage: String =
+    i"""Given search preference for $pt between alternatives
+       |  ${loser}
+       |and
+       |  ${winner}
+       |$change.
+       |$whichChoice       : ${choice("first", prev)}
+       |Choice from Scala 3.7 : ${choice("second", cmp)}"""
+  def migrationHints: String =
+    i"""Suppress this warning by choosing -source 3.5, -source 3.7, or
+       |by using @annotation.nowarn("id=205")"""
+  def ambiguousNote: String =
+    i"""
+       |
+       |Note: $warningMessage"""
+  def msg(using Context) =
+    i"""$warningMessage
+       |
+       |$migrationHints"""
+
+  def explain(using Context) = ""
+
+final class EnumMayNotBeValueClasses(sym: Symbol)(using Context) extends SyntaxMsg(EnumMayNotBeValueClassesID):
+    def msg(using Context): String = i"$sym may not be a value class"
+
+    def explain(using Context) = ""
+end EnumMayNotBeValueClasses

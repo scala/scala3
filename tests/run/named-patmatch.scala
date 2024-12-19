@@ -1,4 +1,5 @@
 import annotation.experimental
+import language.experimental.namedTuples
 
 @main def Test =
   locally:

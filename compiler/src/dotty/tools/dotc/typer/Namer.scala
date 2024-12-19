@@ -66,9 +66,9 @@ class Namer { typer: Typer =>
   /** A partial map from unexpanded member and pattern defs and to their expansions.
    *  Populated during enterSyms, emptied during typer.
    */
-  //lazy val expandedTree = new mutable.AnyRefMap[DefTree, Tree]
+  //lazy val expandedTree = new mutable.HashMap[DefTree, Tree]
   /*{
-    override def default(tree: DefTree) = tree // can't have defaults on AnyRefMaps :-(
+    override def default(tree: DefTree) = tree // can't have defaults on HashMaps :-(
   }*/
 
   /** A map from expanded MemberDef, PatDef or Import trees to their symbols.
@@ -76,12 +76,12 @@ class Namer { typer: Typer =>
    *  with the same symbol is created (this can be when the symbol is completed
    *  or at the latest when the tree is typechecked.
    */
-  //lazy val symOfTree = new mutable.AnyRefMap[Tree, Symbol]
+  //lazy val symOfTree = new mutable.HashMap[Tree, Symbol]
 
   /** A map from expanded trees to their typed versions.
    *  Populated when trees are typechecked during completion (using method typedAhead).
    */
-  // lazy val typedTree = new mutable.AnyRefMap[Tree, tpd.Tree]
+  // lazy val typedTree = new mutable.HashMap[Tree, tpd.Tree]
 
   /** A map from method symbols to nested typers.
    *  Populated when methods are completed. Emptied when they are typechecked.
@@ -89,7 +89,7 @@ class Namer { typer: Typer =>
    *  one, so that trees that are shared between different DefDefs can be independently
    *  used as indices. It also contains a scope that contains nested parameters.
    */
-  lazy val nestedTyper: mutable.AnyRefMap[Symbol, Typer] = new mutable.AnyRefMap
+  lazy val nestedTyper: mutable.HashMap[Symbol, Typer] = new mutable.HashMap
 
   /** We are entering symbols coming from a SourceLoader */
   private var lateCompile = false
@@ -395,7 +395,7 @@ class Namer { typer: Typer =>
     def recur(stat: Tree): Context = stat match {
       case pcl: PackageDef =>
         val pkg = createPackageSymbol(pcl.pid)
-        index(pcl.stats)(using ctx.fresh.setOwner(pkg.moduleClass))
+        index(pcl.stats)(using ctx.packageContext(pcl, pkg))
         invalidateCompanions(pkg, Trees.flatten(pcl.stats map expanded))
         setDocstring(pkg, stat)
         ctx
@@ -1626,7 +1626,8 @@ class Namer { typer: Typer =>
           }
           else {
             val pclazz = pt.typeSymbol
-            if pclazz.is(Final) then
+            // The second condition avoids generating a useless message (See #22236 for more details)
+            if pclazz.is(Final) && !(pclazz.is(Enum) && pclazz.isDerivedValueClass) then
               report.error(ExtendFinalClass(cls, pclazz), cls.srcPos)
             else if pclazz.isEffectivelySealed && pclazz.associatedFile != cls.associatedFile then
               if pclazz.is(Sealed) && !pclazz.is(JavaDefined) then
@@ -2137,6 +2138,11 @@ class Namer { typer: Typer =>
       val pt = inherited.orElse(expectedDefaultArgType).orElse(fallbackProto).widenExpr
       val tp = typedAheadRhs(pt).tpe
       if (defaultTp eq pt) && (tp frozen_<:< defaultTp) then
+        // See i21558, the default argument new A(1.0) is of type A[?T]
+        // With an uninterpolated, invariant ?T type variable.
+        // So before we return the default getter parameter type (A[? <: Double])
+        // we want to force ?T to instantiate, so it's poly is removed from the constraint
+        isFullyDefined(tp, ForceDegree.all)
         // When possible, widen to the default getter parameter type to permit a
         // larger choice of overrides (see `default-getter.scala`).
         // For justification on the use of `@uncheckedVariance`, see

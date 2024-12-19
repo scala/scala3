@@ -109,12 +109,20 @@ object Formatting {
           case Atoms.Range(lo, hi) => CtxShow(s"Range(${toStr(lo.toList)}, ${toStr(hi.toList)})")
       end given
 
+      given Show[ast.untpd.Modifiers] with
+        def show(x: ast.untpd.Modifiers) =
+          CtxShow(s"Modifiers(${toStr(x.flags)}, ${toStr(x.privateWithin)}, ${toStr(x.annotations)}, ${toStr(x.mods)})")
+
+      given Show[ast.untpd.Mod] with
+        def show(x: ast.untpd.Mod) = CtxShow(s"Mod(${toStr(x.flags)})")
+
       given Show[Showable]                            = ShowAny
       given Show[Shown]                               = ShowAny
       given Show[Int]                                 = ShowAny
       given Show[Char]                                = ShowAny
       given Show[Boolean]                             = ShowAny
       given Show[Integer]                             = ShowAny
+      given Show[Long]                                = ShowAny
       given Show[String]                              = ShowAny
       given Show[Class[?]]                            = ShowAny
       given Show[Throwable]                           = ShowAny
@@ -122,6 +130,7 @@ object Formatting {
       given Show[CompilationUnit]                     = ShowAny
       given Show[Phases.Phase]                        = ShowAny
       given Show[TyperState]                          = ShowAny
+      given Show[Unit]                                = ShowAny
       given Show[config.ScalaVersion]                 = ShowAny
       given Show[io.AbstractFile]                     = ShowAny
       given Show[parsing.Scanners.Scanner]            = ShowAny
@@ -175,7 +184,7 @@ object Formatting {
     * The idea is to do this for known cases that are useful and then fall back
     * on regular syntax highlighting for the cases which are unhandled.
     *
-    * Please not that if used in combination with `disambiguateTypes` the
+    * Please note that if used in combination with `disambiguateTypes` the
     * correct `Context` for printing should also be passed when calling the
     * method.
     *

@@ -16,7 +16,6 @@ package collection
 import scala.annotation.nowarn
 import language.experimental.captureChecking
 import caps.unsafe.unsafeAssumePure
-import scala.annotation.unchecked.uncheckedCaptures
 
 /** !!! Scala 2 difference: Need intermediate trait SeqViewOps to collect the
  *  necessary functionality over which SeqViews are defined, and at the same

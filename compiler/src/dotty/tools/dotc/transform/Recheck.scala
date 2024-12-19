@@ -12,7 +12,7 @@ import DenotTransformers.{DenotTransformer, IdentityDenotTransformer, SymTransfo
 import NamerOps.linkConstructorParams
 import NullOpsDecorator.stripNull
 import typer.ErrorReporting.err
-import typer.ProtoTypes.*
+import typer.ProtoTypes.{AnySelectionProto, LhsProto}
 import typer.TypeAssigner.seqLitType
 import typer.ConstFold
 import typer.ErrorReporting.{Addenda, NothingToAdd}
@@ -99,7 +99,7 @@ object Recheck:
    *   - in function and method parameter types
    *   - under annotations
    */
-  def normalizeByName(tp: Type)(using Context): Type = tp.dealias match
+  def normalizeByName(tp: Type)(using Context): Type = tp.dealiasKeepAnnots match
     case tp: ExprType =>
       mapExprType(tp)
     case tp: PolyType =>
@@ -206,22 +206,21 @@ abstract class Recheck extends Phase, SymTransformer:
       tree.tpe
 
     def recheckSelect(tree: Select, pt: Type)(using Context): Type =
-      recheckSelection(tree, recheckSelectQualifier(tree), tree.name, pt)
+      recheckSelection(tree,
+        recheck(tree.qualifier, selectionProto(tree, pt)).widenIfUnstable,
+        tree.name, pt)
 
-    def recheckSelectQualifier(tree: Select)(using Context): Type =
-      val proto =
-        if tree.symbol == defn.Any_asInstanceOf then WildcardType
-        else AnySelectionProto
-      recheck(tree.qualifier, proto).widenIfUnstable
+    def selectionProto(tree: Select, pt: Type)(using Context): Type =
+      if tree.symbol == defn.Any_asInstanceOf then WildcardType else AnySelectionProto
 
     def recheckSelection(tree: Select, qualType: Type, name: Name,
         sharpen: Denotation => Denotation)(using Context): Type =
       if name.is(OuterSelectName) then tree.tpe
       else
-        //val pre = ta.maybeSkolemizePrefix(qualType, name)
+        val pre = ta.maybeSkolemizePrefix(qualType, name)
         val mbr =
           sharpen(
-            qualType.findMember(name, qualType,
+            qualType.findMember(name, pre,
               excluded = if tree.symbol.is(Private) then EmptyFlags else Private
           )).suchThat(tree.symbol == _)
         val newType = tree.tpe match
@@ -292,7 +291,7 @@ abstract class Recheck extends Phase, SymTransformer:
     protected def instantiate(mt: MethodType, argTypes: List[Type], sym: Symbol)(using Context): Type =
       mt.instantiate(argTypes)
 
-    /** A hook to massage the type of an applied method; currently not overridden */
+    /** A hook to massage the type of an applied method */
     protected def prepareFunction(funtpe: MethodType, meth: Symbol)(using Context): MethodType = funtpe
 
     protected def recheckArg(arg: Tree, formal: Type)(using Context): Type =
@@ -311,7 +310,7 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckApply(tree: Apply, pt: Type)(using Context): Type =
       val (funtpe0, qualType) = tree.fun match
         case fun: Select =>
-          val qualType = recheckSelectQualifier(fun)
+          val qualType = recheck(fun.qualifier, selectionProto(fun, WildcardType)).widenIfUnstable
           (recheckSelection(fun, qualType, fun.name, WildcardType), qualType)
         case _ =>
           (recheck(tree.fun), NoType)
@@ -337,7 +336,7 @@ abstract class Recheck extends Phase, SymTransformer:
               assert(formals.isEmpty)
               Nil
           val argTypes = recheckArgs(tree.args, formals, fntpe.paramRefs)
-          recheckApplication(tree, qualType, fntpe1, argTypes)
+          recheckApplication(tree, qualType, fntpe, argTypes)
             //.showing(i"typed app $tree : $fntpe with ${tree.args}%, % : $argTypes%, % = $result")
         case tp =>
           assert(false, i"unexpected type of ${tree.fun}: $tp")
@@ -388,6 +387,10 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckClosure(tree: Closure, pt: Type, forceDependent: Boolean = false)(using Context): Type =
       if tree.tpt.isEmpty then
         tree.meth.tpe.widen.toFunctionType(tree.meth.symbol.is(JavaDefined), alwaysDependent = forceDependent)
+      else if defn.isByNameFunction(tree.tpt.tpe) then
+        val mt @ MethodType(Nil) = tree.meth.tpe.widen: @unchecked
+        val cmt = ContextualMethodType(Nil, Nil, mt.resultType)
+        cmt.toFunctionType(alwaysDependent = forceDependent)
       else
         recheck(tree.tpt)
 

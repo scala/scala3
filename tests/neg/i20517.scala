@@ -1,3 +1,4 @@
+import scala.language.experimental.namedTuples
 import NamedTuple.From
 
 case class Foo[+T](elem: T)

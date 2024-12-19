@@ -17,7 +17,7 @@ import scala.annotation.tailrec
 import scala.annotation.unchecked.uncheckedVariance
 import scala.runtime.Statics
 import language.experimental.captureChecking
-
+import caps.unsafe.unsafeAssumePure
 
 /** Iterators are data structures that allow to iterate over a sequence
   * of elements. They have a `hasNext` method for checking
@@ -1008,7 +1008,7 @@ object Iterator extends IterableFactory[Iterator] {
   def newBuilder[A]: Builder[A, Iterator[A]] =
     new ImmutableBuilder[A, Iterator[A]](empty[A]) {
       override def addOne(elem: A): this.type = { elems = elems ++ single(elem); this }
-    }.asInstanceOf // !!! CC unsafe op
+    }.unsafeAssumePure
 
   /** Creates iterator that produces the results of some element computation a number of times.
     *
@@ -1159,8 +1159,8 @@ object Iterator extends IterableFactory[Iterator] {
         // If we advanced the current iterator to a ConcatIterator, merge it into this one
         @tailrec def merge(): Unit =
           if (current.isInstanceOf[ConcatIterator[_]]) {
-            val c = current.asInstanceOf[ConcatIterator[A]]
-            current = c.current.asInstanceOf // !!! CC unsafe op
+            val c: ConcatIterator[A] = current.asInstanceOf
+            current = c.current.unsafeAssumePure // !!! CC unsafe op
             currentHasNextChecked = c.currentHasNextChecked
             if (c.tail != null) {
               if (last == null) last = c.last

@@ -999,6 +999,7 @@ class TreeUnpickler(reader: TastyReader,
         }
       }
 
+      tree.ensureHasSym(sym)
       tree.setDefTree
     }
 
@@ -1272,7 +1273,7 @@ class TreeUnpickler(reader: TastyReader,
         val tpe0 = name match
           case name: TypeName => TypeRef(qualType, name, denot)
           case name: TermName => TermRef(qualType, name, denot)
-        val tpe = TypeOps.makePackageObjPrefixExplicit(tpe0)
+        val tpe = tpe0.makePackageObjPrefixExplicit
         ConstFold.Select(untpd.Select(qual, name).withType(tpe))
 
       def completeSelect(name: Name, sig: Signature, target: Name): Select =
@@ -1431,7 +1432,7 @@ class TreeUnpickler(reader: TastyReader,
                 extendOnly(namedArgs)
               else
                 // needs reordering, and possibly fill in holes for default arguments
-                val argsByName = mutable.AnyRefMap.from(namedArgs.map(arg => arg.name -> arg))
+                val argsByName = mutable.HashMap.from(namedArgs.map(arg => arg.name -> arg))
                 val reconstructedArgs = formalNames.lazyZip(methType.paramInfos).map { (name, tpe) =>
                   argsByName.remove(name).getOrElse(makeDefault(name, tpe))
                 }

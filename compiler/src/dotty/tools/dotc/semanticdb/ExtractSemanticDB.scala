@@ -286,6 +286,14 @@ object ExtractSemanticDB:
       || sym.owner == defn.OpsPackageClass
       || qualifier.exists(excludeQual)
 
+    /** This block is created by lifting i.e. EtaExpansion */
+    private def isProbablyLifted(block: Block)(using Context) =
+      def isSyntheticDef(t: Tree) =
+        t match
+          case t: (ValDef | DefDef) => t.symbol.isSyntheticWithIdent
+          case _ => false
+      block.stats.forall(isSyntheticDef)
+
     private def traverseAnnotsOfDefinition(sym: Symbol)(using Context): Unit =
       for annot <- sym.annotations do
         if annot.tree.span.exists
@@ -438,6 +446,12 @@ object ExtractSemanticDB:
               registerUseGuarded(None, sym, tree.span, tree.source)
             case _ => ()
 
+        // If tree is lifted, ignore Synthetic status on all the definitions and traverse all childrens
+        case tree: Block if isProbablyLifted(tree) =>
+          tree.stats.foreach:
+            case t: (ValDef | DefDef) if !excludeChildren(t.symbol) => traverseChildren(t)
+            case _ => ()
+          traverse(tree.expr)
 
         case _ =>
           traverseChildren(tree)

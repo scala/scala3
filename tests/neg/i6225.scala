@@ -1,4 +1,4 @@
-object O1 {
+object O1 { // error: cannot be instantiated
   type A[X] = X
   opaque type T = A // error: opaque type alias must be fully applied
 }

@@ -72,7 +72,6 @@ subsection:
           - page: reference/other-new-features/export.md
           - page: reference/other-new-features/opaques.md
           - page: reference/other-new-features/opaques-details.md
-          - page: reference/other-new-features/named-tuples.md
           - page: reference/other-new-features/open-classes.md
           - page: reference/other-new-features/parameter-untupling.md
           - page: reference/other-new-features/parameter-untupling-spec.md
@@ -159,9 +158,11 @@ subsection:
           - page: reference/experimental/cc.md
           - page: reference/experimental/purefuns.md
           - page: reference/experimental/tupled-function.md
+          - page: reference/experimental/named-tuples.md
           - page: reference/experimental/modularity.md
           - page: reference/experimental/typeclasses.md
           - page: reference/experimental/runtimeChecked.md
+          - page: reference/experimental/better-fors.md
       - page: reference/syntax.md
       - title: Language Versions
         index: reference/language-versions/language-versions.md

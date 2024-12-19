@@ -2841,7 +2841,7 @@ Schema => SemanticDB v4
 Uri => NamedApplyBlock.scala
 Text => empty
 Language => Scala
-Symbols => 43 entries
+Symbols => 41 entries
 Occurrences => 41 entries
 
 Symbols:
@@ -2886,8 +2886,6 @@ example/NamedApplyBlockMethods.foo().(b) => param b: Int
 example/NamedApplyBlockMethods.foo().(c) => param c: Int
 example/NamedApplyBlockMethods.local. => val method local Int
 example/NamedApplyBlockMethods.recursive(). => method recursive => Int
-local0 => val local c$1: Int
-local1 => val local b$1: Int @uncheckedVariance
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -3533,8 +3531,8 @@ Schema => SemanticDB v4
 Uri => Synthetic.scala
 Text => empty
 Language => Scala
-Symbols => 52 entries
-Occurrences => 137 entries
+Symbols => 62 entries
+Occurrences => 165 entries
 Synthetics => 39 entries
 
 Symbols:
@@ -3590,6 +3588,16 @@ local8 => param a: Int
 local9 => param b: Int
 local10 => final implicit lazy val given local x: Int
 local11 => final implicit lazy val given local given_Int: Int
+local12 => param s: String
+local13 => param i: Int
+local14 => local f: (param s: String)(param i: Int): Int
+local15 => local f$default$2: (param s: String): Int @uncheckedVariance
+local15(s) => param s: String
+local16 => param s: String
+local17 => param t: String
+local18 => local g: (param s: String, param t: String): String
+local19 => param s: String
+local20 => local impure: (param s: String): String
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -3729,6 +3737,34 @@ Occurrences:
 [56:8..56:10): m4 <- example/Synthetic#Contexts.m4().
 [57:12..57:15): Int -> scala/Int#
 [58:6..58:9): foo -> example/Synthetic#Contexts.foo().
+[63:8..63:9): f <- local14
+[63:10..63:11): s <- local12
+[63:13..63:19): String -> scala/Predef.String#
+[63:21..63:22): i <- local13
+[63:24..63:27): Int -> scala/Int#
+[63:30..63:31): s -> local12
+[63:32..63:38): length -> java/lang/String#length().
+[63:44..63:45): i -> local13
+[63:46..63:47): + -> scala/Int#`+`(+4).
+[64:8..64:9): g <- local18
+[64:10..64:11): s <- local16
+[64:13..64:19): String -> scala/Predef.String#
+[64:21..64:22): t <- local17
+[64:24..64:30): String -> scala/Predef.String#
+[64:34..64:35): s -> local16
+[64:36..64:37): + -> java/lang/String#`+`().
+[64:38..64:39): t -> local17
+[66:8..66:14): impure <- local20
+[66:15..66:16): s <- local19
+[66:18..66:24): String -> scala/Predef.String#
+[66:30..66:33): ??? -> scala/Predef.`???`().
+[66:35..66:36): s -> local19
+[67:12..67:13): f -> local14
+[67:14..67:20): impure -> local20
+[68:12..68:13): g -> local18
+[68:14..68:15): t -> local17
+[68:18..68:24): impure -> local20
+[68:30..68:31): s -> local16
 
 Synthetics:
 [5:2..5:13):List(1).map => *[Int]

@@ -161,7 +161,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   private val entries = new Array[AnyRef](index.length)
 
   /** A map from symbols to their associated `decls` scopes */
-  private val symScopes = mutable.AnyRefMap[Symbol, Scope]()
+  private val symScopes = mutable.HashMap[Symbol, Scope]()
 
   /** A mapping from method types to the parameters used in constructing them */
   private val paramsOfMethodType = new java.util.IdentityHashMap[MethodType, List[Symbol]]

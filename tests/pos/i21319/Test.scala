@@ -1,0 +1,3 @@
+package app
+
+class Test

@@ -1136,7 +1136,7 @@ class CompletionSuite extends BaseCompletionSuite:
           |  scala@@
           |}
           |""".stripMargin,
-      """|scala <root>
+      """|scala `<root>`
          |""".stripMargin
     )
 
@@ -1726,8 +1726,8 @@ class CompletionSuite extends BaseCompletionSuite:
     check(
       """|import @@
          |""".stripMargin,
-      """|java <root>
-         |javax <root>
+      """|java `<root>`
+         |javax `<root>`
          |""".stripMargin,
       filter = _.startsWith("java")
     )
@@ -1745,8 +1745,8 @@ class CompletionSuite extends BaseCompletionSuite:
     check(
       """|export @@
          |""".stripMargin,
-      """|java <root>
-         |javax <root>
+      """|java `<root>`
+         |javax `<root>`
          |""".stripMargin,
       filter = _.startsWith("java")
     )
@@ -1988,7 +1988,8 @@ class CompletionSuite extends BaseCompletionSuite:
 
   @Test def `namedTuple completions` =
     check(
-      """|import scala.NamedTuple.*
+      """|import scala.language.experimental.namedTuples
+         |import scala.NamedTuple.*
          |
          |val person = (name = "Jamie", city = "Lausanne")
          |
@@ -1999,7 +2000,8 @@ class CompletionSuite extends BaseCompletionSuite:
 
   @Test def `Selectable with namedTuple Fields member` =
     check(
-      """|import scala.NamedTuple.*
+      """|import scala.language.experimental.namedTuples
+         |import scala.NamedTuple.*
          |
          |class NamedTupleSelectable extends Selectable {
          |  type Fields <: AnyNamedTuple
@@ -2107,6 +2109,19 @@ class CompletionSuite extends BaseCompletionSuite:
         |""".stripMargin
    )
 
+  @Test def `shadowing` =
+   check(
+     """|package pkg
+        |object Main {
+        |  val x = ListBuff@@
+        |}
+        |""".stripMargin,
+     """|ListBuffer[A](elems: A*): ListBuffer[A] - scala.collection.mutable
+        |new ListBuffer[A]: ListBuffer[A] - scala.collection.mutable
+        |ListBuffer - scala.collection.mutable
+        |""".stripMargin
+   )
+
   @Test def `conflict-edit-2` =
     checkEdit(
       """|package a
@@ -2134,4 +2149,22 @@ class CompletionSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       assertSingleItem = false
+    )
+
+  @Test def `metals-i6861` =
+    check(
+      """|trait Builder[Alg]:
+         |  def withTraces: String
+         |
+         |trait BuilderFactory:
+         |  def transformRouter(f: [Alg] => Builder[Alg] => String): BuilderFactory
+         |  def build: Unit
+         |
+         |def demo =
+         |  (??? : BuilderFactory)
+         |    .transformRouter([Alg] => _.withTraces)
+         |    .build@@
+         |""".stripMargin,
+      """|build: Unit
+         |""".stripMargin,
     )

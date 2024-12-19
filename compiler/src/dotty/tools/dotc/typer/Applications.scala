@@ -513,7 +513,7 @@ trait Applications extends Compatibility {
         case tp => args.size
       }
 
-      !isJavaAnnotConstr(methRef.symbol) &&
+      !isAnnotConstr(methRef.symbol) &&
       args.size < requiredArgNum(funType)
     }
 
@@ -661,6 +661,11 @@ trait Applications extends Compatibility {
     /** Is `sym` a constructor of a Java-defined annotation? */
     def isJavaAnnotConstr(sym: Symbol): Boolean =
       sym.is(JavaDefined) && sym.isConstructor && sym.owner.is(JavaAnnotation)
+
+
+    /** Is `sym` a constructor of an annotation? */
+    def isAnnotConstr(sym: Symbol): Boolean =
+      sym.isConstructor && sym.owner.isAnnotation
 
     /** Match re-ordered arguments against formal parameters
      *  @param n   The position of the first parameter in formals in `methType`.
@@ -958,6 +963,8 @@ trait Applications extends Compatibility {
                 case (arg: NamedArg, _) => arg
                 case (arg, name)        => NamedArg(name, arg)
               }
+          else if isAnnotConstr(methRef.symbol) then
+            typedArgs
           else if !sameSeq(args, orderedArgs) && !typedArgs.forall(isSafeArg) then
             // need to lift arguments to maintain evaluation order in the
             // presence of argument reorderings.
@@ -1129,7 +1136,7 @@ trait Applications extends Compatibility {
             case _ => ()
         else ()
 
-      fun1.tpe match {
+      val result = fun1.tpe match {
         case err: ErrorType => cpy.Apply(tree)(fun1, proto.typedArgs()).withType(err)
         case TryDynamicCallType =>
           val isInsertedApply = fun1 match {
@@ -1203,6 +1210,11 @@ trait Applications extends Compatibility {
                   else tryWithImplicitOnQualifier(fun1, proto).getOrElse(fail))
             }
       }
+
+      if result.tpe.isNothingType then
+        val nnInfo = result.notNullInfo
+        result.withNotNullInfo(nnInfo.terminatedInfo)
+      else result
     }
 
     /** Convert expression like
@@ -1348,7 +1360,7 @@ trait Applications extends Compatibility {
       tree
   }
 
-  /** Is `tp` a unary function type or an overloaded type with with only unary function
+  /** Is `tp` a unary function type or an overloaded type with only unary function
    *  types as alternatives?
    */
   def isUnary(tp: Type)(using Context): Boolean = tp match {
@@ -2237,7 +2249,19 @@ trait Applications extends Compatibility {
 
         def isCorrectUnaryFunction(alt: TermRef): Boolean =
           val formals = params(alt)
-          formals.length == 1 && ptIsCorrectProduct(formals.head, args)
+          formals.length == 1 && {
+            formals.head match
+              case formal: TypeParamRef =>
+                // While `formal` isn't a tuple type of the correct arity,
+                // it's a type parameter (a method type parameter presumably)
+                // so check its bounds allow for a tuple type of the correct arity.
+                // See i21682 for an example.
+                val tup = defn.tupleType(args.map(v => if v.tpt.isEmpty then WildcardType else typedAheadType(v.tpt).tpe))
+                val TypeBounds(lo, hi) = formal.paramInfo
+                lo <:< tup && tup <:< hi
+              case formal =>
+                ptIsCorrectProduct(formal, args)
+          }
 
         val numArgs = args.length
         if numArgs > 1

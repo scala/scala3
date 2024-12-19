@@ -1,0 +1,37 @@
+-- [E134] Type Error: tests/neg/infix-named-args.scala:4:13 ------------------------------------------------------------
+4 |  def f = 42 + (x = 1) // error // werror
+  |          ^^^^
+  |          None of the overloaded alternatives of method + in class Int with types
+  |           (x: Double): Double
+  |           (x: Float): Float
+  |           (x: Long): Long
+  |           (x: Int): Int
+  |           (x: Char): Int
+  |           (x: Short): Int
+  |           (x: Byte): Int
+  |           (x: String): String
+  |          match arguments ((x : Int)) (a named tuple)
+-- [E204] Syntax Warning: tests/neg/infix-named-args.scala:4:15 --------------------------------------------------------
+4 |  def f = 42 + (x = 1) // error // werror
+  |               ^^^^^^^
+  |Deprecated syntax: infix named arguments lists are deprecated; in the future it would be interpreted as a single name tuple argument.
+  |To avoid this warning, either remove the argument names or use dotted selection.
+  |This can be rewritten automatically under -rewrite -source 3.6-migration.
+-- [E204] Syntax Warning: tests/neg/infix-named-args.scala:7:26 --------------------------------------------------------
+7 |  def g = new C() `multi` (x = 42, y = 27) // werror
+  |                          ^^^^^^^^^^^^^^^^
+  |Deprecated syntax: infix named arguments lists are deprecated; in the future it would be interpreted as a single name tuple argument.
+  |To avoid this warning, either remove the argument names or use dotted selection.
+  |This can be rewritten automatically under -rewrite -source 3.6-migration.
+-- [E204] Syntax Warning: tests/neg/infix-named-args.scala:8:21 --------------------------------------------------------
+8 |  def h = new C() ** (x = 42, y = 27) // werror
+  |                     ^^^^^^^^^^^^^^^^
+  |Deprecated syntax: infix named arguments lists are deprecated; in the future it would be interpreted as a single name tuple argument.
+  |To avoid this warning, either remove the argument names or use dotted selection.
+  |This can be rewritten automatically under -rewrite -source 3.6-migration.
+-- [E204] Syntax Warning: tests/neg/infix-named-args.scala:15:18 -------------------------------------------------------
+15 |  def f = this ** (x = 2) // werror
+   |                  ^^^^^^^
+   |Deprecated syntax: infix named arguments lists are deprecated; in the future it would be interpreted as a single name tuple argument.
+   |To avoid this warning, either remove the argument names or use dotted selection.
+   |This can be rewritten automatically under -rewrite -source 3.6-migration.

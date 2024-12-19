@@ -8,7 +8,7 @@ assignees: ''
 
 <!--
   TODO first sign the CLA
-  https://www.lightbend.com/contribute/cla/scala
+  https://contribute.akka.io/cla/scala
 -->
 
 ## Fix #XYZ

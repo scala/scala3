@@ -15,12 +15,12 @@ import StdNames.*
 
 import dotty.tools.dotc.transform.sjs.JSSymUtils.*
 
-import org.scalajs.ir
-import org.scalajs.ir.{Trees => js, Types => jstpe}
-import org.scalajs.ir.Names.{LocalName, LabelName, SimpleFieldName, FieldName, SimpleMethodName, MethodName, ClassName}
-import org.scalajs.ir.OriginalName
-import org.scalajs.ir.OriginalName.NoOriginalName
-import org.scalajs.ir.UTF8String
+import dotty.tools.sjs.ir
+import dotty.tools.sjs.ir.{Trees => js, Types => jstpe}
+import dotty.tools.sjs.ir.Names.{LocalName, LabelName, SimpleFieldName, FieldName, SimpleMethodName, MethodName, ClassName}
+import dotty.tools.sjs.ir.OriginalName
+import dotty.tools.sjs.ir.OriginalName.NoOriginalName
+import dotty.tools.sjs.ir.UTF8String
 
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 

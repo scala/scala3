@@ -15,11 +15,12 @@ RUN apt-get update && \
                        openjdk-17-jdk-headless \
                        openjdk-21-jdk-headless && \
     (curl -fsSL https://deb.nodesource.com/setup_18.x | bash -) && \
-    apt-get install -y nodejs
+    apt-get install -y nodejs && \
+    apt-get install -y zip unzip
 
 
 # Install sbt
 ENV SBT_HOME /usr/local/sbt
 ENV PATH ${SBT_HOME}/bin:${PATH}
-ENV SBT_VERSION 1.9.0
+ENV SBT_VERSION 1.10.5
 RUN curl -sL "https://github.com/sbt/sbt/releases/download/v$SBT_VERSION/sbt-$SBT_VERSION.tgz" | gunzip | tar -x -C /usr/local
