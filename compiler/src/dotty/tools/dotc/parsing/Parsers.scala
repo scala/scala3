@@ -3519,7 +3519,7 @@ object Parsers {
      *  UsingClsTermParamClause::= ‘(’ ‘using’ [‘erased’] (ClsParams | ContextTypes) ‘)’
      *  ClsParams         ::=  ClsParam {‘,’ ClsParam}
      *  ClsParam          ::=  {Annotation}
-     *                         [{Modifier | ‘tracked’} (‘val’ | ‘var’)] Param
+     *                         [{Modifier} (‘val’ | ‘var’)] Param
      *  TypelessClause    ::= DefTermParamClause
      *                      | UsingParamClause
      *
@@ -3557,8 +3557,6 @@ object Parsers {
         if isErasedKw then
           mods = addModifier(mods)
         if paramOwner.isClass then
-          if isIdent(nme.tracked) && in.featureEnabled(Feature.modularity) && !in.lookahead.isColon then
-            mods = addModifier(mods)
           mods = addFlag(modifiers(start = mods), ParamAccessor)
           mods =
             if in.token == VAL then

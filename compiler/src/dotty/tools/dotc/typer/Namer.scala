@@ -878,7 +878,7 @@ class Namer { typer: Typer =>
       case original: untpd.MemberDef =>
         lazy val annotCtx = annotContext(original, sym)
         original.setMods:
-          original.mods.withAnnotations :
+          original.mods.withAnnotations:
             original.mods.annotations.mapConserve: annotTree =>
               val cls = typedAheadAnnotationClass(annotTree)(using annotCtx)
               if (cls eq sym)
@@ -2017,6 +2017,11 @@ class Namer { typer: Typer =>
       paramFn: Type => Type,
       fallbackProto: Type
     )(using Context): Type =
+    /** Is this member tracked? This is true if it is marked as `tracked` or if
+     *  it overrides a `tracked` member. To account for the later, `isTracked`
+     *  is overriden to `true` as a side-effect of computing `inherited`.
+     */
+    var isTracked: Boolean = sym.is(Tracked)
 
     /** A type for this definition that might be inherited from elsewhere:
      *  If this is a setter parameter, the corresponding getter type.
@@ -2052,8 +2057,10 @@ class Namer { typer: Typer =>
               if paramss.isEmpty then info.widenExpr
               else NoType
 
-          val iRawInfo =
-            cls.info.nonPrivateDecl(sym.name).matchingDenotation(site, schema, sym.targetName).info
+          val iDenot = cls.info.nonPrivateDecl(sym.name).matchingDenotation(site, schema, sym.targetName)
+          val iSym = iDenot.symbol
+          if iSym.is(Tracked) then isTracked = true
+          val iRawInfo = iDenot.info
           val iResType = instantiatedResType(iRawInfo, paramss).asSeenFrom(site, cls)
           if (iResType.exists)
             typr.println(i"using inherited type for ${mdef.name}; raw: $iRawInfo, inherited: $iResType")
@@ -2147,6 +2154,7 @@ class Namer { typer: Typer =>
             if defaultTp.exists then TypeOps.SimplifyKeepUnchecked() else null)
         match
           case ctp: ConstantType if sym.isInlineVal => ctp
+          case tp if isTracked => tp
           case tp => TypeComparer.widenInferred(tp, pt, Widen.Unions)
 
     // Replace aliases to Unit by Unit itself. If we leave the alias in
@@ -2157,7 +2165,7 @@ class Namer { typer: Typer =>
     def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.srcPos)
     //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
     if (inherited.exists)
-      if sym.isInlineVal then lhsType else inherited
+      if sym.isInlineVal || isTracked then lhsType else inherited
     else {
       if (sym.is(Implicit))
         mdef match {
