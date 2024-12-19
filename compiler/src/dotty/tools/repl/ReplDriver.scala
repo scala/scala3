@@ -362,11 +362,9 @@ class ReplDriver(settings: Array[String],
               given Ordering[Diagnostic] =
                 Ordering[(Int, Int, Int)].on(d => (d.pos.line, -d.level, d.pos.column))
 
-              if (!quiet) {
-                (definitions ++ warnings)
-                  .sorted
-                  .foreach(printDiagnostic)
-              }
+              (if quiet then warnings else definitions ++ warnings)
+                .sorted
+                .foreach(printDiagnostic)
 
               updatedState
             }
