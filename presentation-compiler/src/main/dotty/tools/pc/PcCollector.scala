@@ -1,30 +1,22 @@
 package dotty.tools.pc
 
-import java.nio.file.Paths
 
 import dotty.tools.pc.PcSymbolSearch.*
-import scala.meta.internal.metals.CompilerOffsetParams
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.VirtualFileParams
 import scala.meta as m
 
-import dotty.tools.dotc.ast.NavigateAST
-import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.untpd
-import dotty.tools.dotc.ast.untpd.ExtMethods
 import dotty.tools.dotc.ast.untpd.ImportSelector
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
-import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
-import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
-import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.pc.utils.InteractiveEnrichments.*
