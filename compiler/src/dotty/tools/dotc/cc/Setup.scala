@@ -135,7 +135,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       def mappedInfo =
         if toBeUpdated.contains(sym)
         then symd.info // don't transform symbols that will anyway be updated
-        else transformExplicitType(symd.info)
+        else Fresh.fromCap(transformExplicitType(symd.info), sym)
       if Synthetics.needsTransform(symd) then
         Synthetics.transform(symd, mappedInfo)
       else if isPreCC(sym) then
@@ -379,13 +379,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   end transformExplicitType
 
   /** Transform type of tree, and remember the transformed type as the type the tree */
-  private def transformTT(tree: TypeTree, boxed: Boolean)(using Context): Unit =
+  private def transformTT(tree: TypeTree, sym: Symbol, boxed: Boolean)(using Context): Unit =
     if !tree.hasRememberedType then
       val transformed =
         if tree.isInferred
         then transformInferredType(tree.tpe)
         else transformExplicitType(tree.tpe, tptToCheck = tree)
-      tree.rememberType(if boxed then box(transformed) else transformed)
+      tree.rememberType(
+        if boxed then box(transformed) else Fresh.fromCap(transformed, sym))
 
   /** Substitute parameter symbols in `from` to paramRefs in corresponding
    *  method or poly types `to`. We use a single BiTypeMap to do everything.
@@ -442,13 +443,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     def transformResultType(tpt: TypeTree, sym: Symbol)(using Context): Unit =
       // First step: Transform the type and record it as knownType of tpt.
       try
-        transformTT(tpt,
+        transformTT(tpt, sym,
             boxed =
-              sym.is(Mutable, butNot = Method)
+              sym.isMutableVar
                 && !ccConfig.useSealed
                 && !sym.hasAnnotation(defn.UncheckedCapturesAnnot),
               // Under the sealed policy, we disallow root capabilities in the type of mutable
-              // variables, no need to box them here.
+              // variables, no need to box them here
           )
       catch case ex: IllegalCaptureRef =>
         capt.println(i"fail while transforming result type $tpt of $sym")
@@ -493,7 +494,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           traverse(fn)
           if !defn.isTypeTestOrCast(fn.symbol) then
             for case arg: TypeTree <- args do
-              transformTT(arg, boxed = true) // type arguments in type applications are boxed
+              transformTT(arg, NoSymbol, boxed = true) // type arguments in type applications are boxed
 
         case tree: TypeDef if tree.symbol.isClass =>
           val sym = tree.symbol
@@ -518,7 +519,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     /** Processing done on node `tree` after its children are traversed */
     def postProcess(tree: Tree)(using Context): Unit = tree match
       case tree: TypeTree =>
-        transformTT(tree, boxed = false)
+        transformTT(tree, NoSymbol, boxed = false)
       case tree: ValOrDefDef =>
         // Make sure denotation of tree's symbol is correct
         val sym = tree.symbol
@@ -736,7 +737,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case RetainingType(parent, refs) =>
         needsVariable(parent)
         && !refs.tpes.exists:
-            case ref: TermRef => ref.isRootCapability
+            case ref: TermRef => ref.isCap
             case _ => false
       case AnnotatedType(parent, _) =>
         needsVariable(parent)

@@ -15,7 +15,7 @@ import Comments.{Comment, docCtx}
 import util.Spans.NoSpan
 import config.Feature
 import Symbols.requiredModuleRef
-import cc.{CaptureSet, RetainingType, Existential}
+import cc.{CaptureSet, RetainingType, Existential, readOnly}
 import ast.tpd.ref
 
 import scala.annotation.tailrec
@@ -992,18 +992,20 @@ class Definitions {
 
   @tu lazy val CapsModule: Symbol = requiredModule("scala.caps")
     @tu lazy val captureRoot: TermSymbol = CapsModule.requiredValue("cap")
-    @tu lazy val Caps_Capability: TypeSymbol = CapsModule.requiredType("Capability")
+    @tu lazy val Caps_Capability: ClassSymbol = requiredClass("scala.caps.Capability")
     @tu lazy val Caps_CapSet: ClassSymbol = requiredClass("scala.caps.CapSet")
     @tu lazy val Caps_reachCapability: TermSymbol = CapsModule.requiredMethod("reachCapability")
+    @tu lazy val Caps_readOnlyCapability: TermSymbol = CapsModule.requiredMethod("readOnlyCapability")
     @tu lazy val Caps_capsOf: TermSymbol = CapsModule.requiredMethod("capsOf")
     @tu lazy val Caps_Exists: ClassSymbol = requiredClass("scala.caps.Exists")
     @tu lazy val CapsUnsafeModule: Symbol = requiredModule("scala.caps.unsafe")
     @tu lazy val Caps_unsafeAssumePure: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumePure")
     @tu lazy val Caps_ContainsTrait: TypeSymbol = CapsModule.requiredType("Contains")
     @tu lazy val Caps_containsImpl: TermSymbol = CapsModule.requiredMethod("containsImpl")
+    @tu lazy val Caps_Mutable: ClassSymbol = requiredClass("scala.caps.Mutable")
 
   /** The same as CaptureSet.universal but generated implicitly for references of Capability subtypes */
-  @tu lazy val universalCSImpliedByCapability = CaptureSet(captureRoot.termRef)
+  @tu lazy val universalCSImpliedByCapability = CaptureSet(captureRoot.termRef.readOnly)
 
   @tu lazy val PureClass: Symbol = requiredClass("scala.Pure")
 
@@ -1074,6 +1076,8 @@ class Definitions {
   @tu lazy val TargetNameAnnot: ClassSymbol = requiredClass("scala.annotation.targetName")
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
   @tu lazy val ReachCapabilityAnnot = requiredClass("scala.annotation.internal.reachCapability")
+  @tu lazy val FreshCapabilityAnnot = requiredClass("scala.annotation.internal.freshCapability")
+  @tu lazy val ReadOnlyCapabilityAnnot = requiredClass("scala.annotation.internal.readOnlyCapability")
   @tu lazy val RequiresCapabilityAnnot: ClassSymbol = requiredClass("scala.annotation.internal.requiresCapability")
   @tu lazy val RetainsAnnot: ClassSymbol = requiredClass("scala.annotation.retains")
   @tu lazy val RetainsCapAnnot: ClassSymbol = requiredClass("scala.annotation.retainsCap")
@@ -1521,6 +1525,9 @@ class Definitions {
    */
   @tu lazy val pureSimpleClasses =
     Set(StringClass, NothingClass, NullClass) ++ ScalaValueClasses()
+
+  @tu lazy val capabilityWrapperAnnots: Set[Symbol] =
+    Set(ReachCapabilityAnnot, ReadOnlyCapabilityAnnot, MaybeCapabilityAnnot, FreshCapabilityAnnot)
 
   @tu lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0).asInstanceOf[Array[TypeRef]]
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(AbstractFunctionType.map(_.symbol.asClass))
