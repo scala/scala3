@@ -967,17 +967,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             || compareGADT
             || tryLiftedToThis1
           case _ =>
-            // `Mode.RelaxedOverriding` is only enabled when checking Java overriding
-            // in explicit nulls, and `Null` becomes a bottom type, which allows
-            // `T | Null` being a subtype of `T`.
-            // A type variable `T` from Java is translated to `T >: Nothing <: Any`.
-            // However, `null` can always be a value of `T` for Java side.
-            // So the best solution here is to let `Null` be a subtype of non-primitive
-            // value types temporarily.
             def isNullable(tp: Type): Boolean = tp.dealias match
               case tp: TypeRef =>
                 val tpSym = tp.symbol
-                ctx.mode.is(Mode.RelaxedOverriding) && !tpSym.isPrimitiveValueClass ||
+                !tpSym.isPrimitiveValueClass ||
                 tpSym.isNullableClass
               case tp: TermRef =>
                 // https://scala-lang.org/files/archive/spec/2.13/03-types.html#singleton-types
