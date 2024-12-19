@@ -126,6 +126,7 @@ trait CommonScalaSettings:
   val encoding: Setting[String] = StringSetting(RootSetting, "encoding", "encoding", "Specify character encoding used by source files.", Properties.sourceEncoding, aliases = List("--encoding"))
   val usejavacp: Setting[Boolean] = BooleanSetting(RootSetting, "usejavacp", "Utilize the java.class.path in classpath resolution.", aliases = List("--use-java-class-path"))
   val scalajs: Setting[Boolean] = BooleanSetting(RootSetting, "scalajs", "Compile in Scala.js mode (requires scalajs-library.jar on the classpath).", aliases = List("--scalajs"))
+  val replInitScript: Setting[String] = StringSetting(RootSetting, "repl-init-script", "code", "The code will be run on REPL startup.", "")
 end CommonScalaSettings
 
 /** -P "plugin" settings. Various tools might support plugins. */
