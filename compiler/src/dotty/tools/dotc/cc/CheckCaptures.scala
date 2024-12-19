@@ -23,6 +23,7 @@ import CCState.*
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
 import reporting.{trace, Message, OverrideError}
+import Existential.derivedExistentialType
 
 /** The capture checker */
 object CheckCaptures:
@@ -770,6 +771,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           // can happen for curried constructors if instantiate of a previous step
           // added capture set to result.
           augmentConstructorType(parent, initCs ++ refs)
+        case core @ Existential(boundVar, core1) =>
+          core.derivedExistentialType(augmentConstructorType(core1, initCs))
         case _ =>
           val (refined, cs) = addParamArgRefinements(core, initCs)
           refined.capturing(cs)
