@@ -537,6 +537,8 @@ class ReplDriver(settings: Array[String],
         rootCtx = setupRootCtx(tokenize(arg).toArray, rootCtx)
         state.copy(context = rootCtx)
 
+    case Silent => state.copy(quiet = !state.quiet)
+
     case Quit =>
       // end of the world!
       state
