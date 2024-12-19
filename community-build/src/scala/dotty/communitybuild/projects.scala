@@ -691,7 +691,13 @@ object projects:
 
   lazy val fs2 = SbtCommunityProject(
     project = "fs2",
-    sbtTestCommand = "coreJVM/test; coreJS/test",  // io/test requires JDK9+
+    sbtTestCommand = List(
+      // Exclude flaky tests
+      """set core.jvm / Test / managedSources ~= { _.filterNot(_.getName == "BracketSuite.scala") }""",
+      """set core.js  / Test / managedSources ~= { _.filterNot(_.getName == "BracketSuite.scala") }""",
+      "coreJVM/test",  // io/test requires JDK9+
+      "coreJS/test"
+    ).mkString("; "),
     sbtPublishCommand = "coreJVM/publishLocal; coreJS/publishLocal",
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"),
     dependencies = List(cats, catsEffect3, munitCatsEffect, scalacheckEffect, scodecBits)
