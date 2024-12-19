@@ -98,9 +98,9 @@ scala -with-compiler -classpath out Test
 ## Example
 
 Now take exactly the same example as in [Macros](./macros.md). Assume that we
-do not want to pass an array statically but generate code at run-time and pass
+do not want to pass a base double value statically but generate code at run-time and pass
 the value, also at run-time. Note, how we make a future-stage function of type
-`Expr[Array[Int] => Int]` in line 6 below. Using `staging.run { ... }` we can evaluate an
+`Expr[Double => Double]` in line 6 below. Using `staging.run { ... }` we can evaluate an
 expression at runtime. Within the scope of `staging.run` we can also invoke `show` on an expression
 to get a source-like representation of the expression.
 
