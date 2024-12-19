@@ -141,7 +141,7 @@ package foo.test.possibleclasses.withvar:
 
   case class AllCaseUsed(
     k: Int, // OK
-    private var y: Int // OK
+    private var y: Int // warn unset
   )(
     s: Int, // OK
     var tt: Int, // OK global scope can be set somewhere else
@@ -202,13 +202,13 @@ package foo.test.i16926:
   def hello(): Unit =
     for {
       i <- (0 to 10).toList
-      (a, b) = "hello" -> "world" // OK
+      (a, b) = "hello" -> "world" // warn // warn TODO patvars
     } yield println(s"$a $b")
 
 package foo.test.i16925:
   def hello =
     for {
-      i <- 1 to 2 if true
+      i <- 1 to 2 if true // warn TODO patvar
       _ = println(i) // OK
     } yield ()
 
@@ -296,7 +296,7 @@ package foo.test.i17175:
   val continue = true
   def foo =
     for {
-      i <- 1.until(10) // OK
+      i <- 1.until(10) // warn patvar TODO
       if continue
     } {
       println(i)

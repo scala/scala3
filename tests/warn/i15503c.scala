@@ -1,4 +1,4 @@
-//> using options  -Wunused:privates -source:3.3
+//> using options -Wunused:privates -source:3.3
 
 trait C
 class A:
@@ -33,17 +33,22 @@ class A:
     var w = 2 // OK
 
 package foo.test.constructors:
-  case class A private (x:Int) // OK
+  case class A private (x: Int) // OK
   class B private (val x: Int) // OK
-  class C private (private val x: Int) // warn
+  object B { def default = B(42) }
+  class C private (private val xy: Int) // warn
+  object C { def default = C(42) }
   class D private (private val x: Int): // OK
     def y = x
+  object D { def default = D(42) }
   class E private (private var x: Int): // warn not set
     def y = x
+  object E { def default = E(42) }
   class F private (private var x: Int): // OK
     def y =
       x = 3
       x
+  object F { def default = F(42) }
 
 package test.foo.i16682:
   object myPackage:
