@@ -543,6 +543,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         res
 
       case tp1 @ CapturingType(parent1, refs1) =>
+        if (approx.lowIgnoreCaptures) then return recur(parent1, tp2)
         def compareCapturing =
           if tp2.isAny then true
           else if subCaptures(refs1, tp2.captureSet, frozenConstraint).isOK && sameBoxed(tp1, tp2, refs1)
@@ -936,7 +937,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               || tp1.widen.underlyingClassRef(refinementOK = true).exists)
       then
         def checkBase =
-          isSubType(base, tp2, if tp1.isRef(cls2) then approx else approx.addLow)
+          var a = approx
+          if (!tp1.isRef(cls2)) then a = a.addLow
+          if (cls2 eq defn.Caps_CapSet) then a = a.addLowIgnoreCaptures //TODO is this the correct place to add this?
+          isSubType(base, tp2, a)
           && recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp1) }
         if tp1.widenDealias.isInstanceOf[AndType] || base.isInstanceOf[OrType] then
           // If tp1 is a intersection, it could be that one of the original
@@ -3325,6 +3329,7 @@ object TypeComparer {
    *   - `None`    : They are still the same types
    *   - `LoApprox`: The left type is approximated (i.e widened)"
    *   - `HiApprox`: The right type is approximated (i.e narrowed)"
+   *   - `LoIgnoreCaptures`: (Capture checking): The captures of the left type are ignored in the comparison
    */
   object ApproxState:
     opaque type Repr = Int
@@ -3332,23 +3337,27 @@ object TypeComparer {
     val None: Repr = 0
     private val LoApprox = 1
     private val HiApprox = 2
+    private val LoIgnoreCaptures = 4
 
     /** A special approximation state to indicate that this is the first time we
      *  compare (approximations of) this pair of types. It's converted to `None`
      *  in `isSubType`, but also leads to `leftRoot` being set there.
      */
-    val Fresh: Repr = 4
+    val Fresh: Repr = 8
 
     object Repr:
       extension (approx: Repr)
         def low: Boolean = (approx & LoApprox) != 0
         def high: Boolean = (approx & HiApprox) != 0
+        def lowIgnoreCaptures: Boolean = (approx & LoIgnoreCaptures) != 0
         def addLow: Repr = approx | LoApprox
         def addHigh: Repr = approx | HiApprox
+        def addLowIgnoreCaptures: Repr = approx | LoIgnoreCaptures
         def show: String =
           val lo = if low then " (left is approximated)" else ""
           val hi = if high then " (right is approximated)" else ""
-          lo ++ hi
+          val locapt = if lowIgnoreCaptures then " (left captures are ignored)" else ""
+          lo ++ hi ++ locapt
   end ApproxState
   type ApproxState = ApproxState.Repr
 
