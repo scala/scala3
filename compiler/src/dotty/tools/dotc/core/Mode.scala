@@ -105,7 +105,7 @@ object Mode {
 
   /** Use previous Scheme for implicit resolution. Currently significant
    *  in 3.0-migration where we use Scala-2's scheme instead and in 3.5 and 3.6-migration
-   *  where we use the previous scheme up to 3.4 for comparison with the new scheme. 
+   *  where we use the previous scheme up to 3.4 for comparison with the new scheme.
    */
   val OldImplicitResolution: Mode = newMode(15, "OldImplicitResolution")
 
@@ -162,11 +162,6 @@ object Mode {
    *  This mode forces expansion of inline calls in those positions even during typing.
    */
   val ForceInline: Mode = newMode(29, "ForceInline")
-
-  /** This mode is enabled when we check Java overriding in explicit nulls.
-   *  Type `Null` becomes a subtype of non-primitive value types in TypeComparer.
-   */
-  val RelaxedOverriding: Mode = newMode(30, "RelaxedOverriding")
 
   /** Skip inlining of methods. */
   val NoInline: Mode = newMode(31, "NoInline")
