@@ -93,7 +93,8 @@ object InterCompletionType:
       case UnApply(fun, _, pats) :: _ =>
         val ind = pats.indexWhere(_.span.contains(span))
         if ind < 0 then None
-        else Some(UnapplyArgs(fun.tpe.finalResultType, fun, pats, NoSourcePosition).argTypes(ind))
+        else
+          UnapplyArgs(fun.tpe.finalResultType, fun, pats, NoSourcePosition).argTypes.get(ind)
       // f(@@)
       case (app: Apply) :: rest =>
         val param =

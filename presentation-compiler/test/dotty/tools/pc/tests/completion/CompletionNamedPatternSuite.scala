@@ -50,8 +50,7 @@ class CompletionNamedPatternSuite extends BaseCompletionSuite:
          |def idsWithName(name: String) = user match
          |  case (name = supername, na@@
          |""".stripMargin,
-      """name = : String
-        |surname = : String""".stripMargin
+      """surname = : String""".stripMargin
     )
 
   @Test def `named-tuples-3` =
@@ -65,8 +64,7 @@ class CompletionNamedPatternSuite extends BaseCompletionSuite:
          |def idsWithName(name: String) = user match
          |  case (na@@, name = name) =>
          |""".stripMargin,
-      """name = : String
-        |surname = : String""".stripMargin
+      """surname = : String""".stripMargin
     )
 
   @Test def `named-tuples-synthetic` =

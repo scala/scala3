@@ -1,6 +1,7 @@
 package dotty.tools.pc.completions
 
 import dotty.tools.dotc.ast.tpd.*
+import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames.*
@@ -10,6 +11,8 @@ import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.ast.NavigateAST
+
 import scala.meta.internal.pc.CompletionFuzzy
 
 object NamedPatternCompletions:
@@ -38,8 +41,13 @@ object NamedPatternCompletions:
           rest.collectFirst: // We can't complete names without knowing the type of selector
             case Match(selector, _) => selector
           .flatMap: selector =>
+            // Named patterns are desugared to normal binds without original arg name info
+            val patterns = NavigateAST.untypedPath(unapply).collectFirst:
+              case untpd.Tuple(elems) => elems
+            .getOrElse(Nil)
+
             if selector.tpe.widenDealias.isNamedTupleType then
-              Some(selector.tpe.widenDealias.namedTupleElementTypes.toMap, unapply.patterns)
+              Some(selector.tpe.widenDealias.namedTupleElementTypes.toMap, patterns)
             else None
 
       // case User(nam@@
@@ -89,10 +97,10 @@ object NamedPatternCompletions:
   def contribute(
     completionPos: CompletionPos,
     namesToArgs: Map[Name, Type],
-    patterns: List[Tree]
+    patterns: List[untpd.Tree]
   )(using Context): List[CompletionValue] =
     val usedNames = patterns.collect:
-      case NamedArg(name, _) => name.asTermName
+      case untpd.NamedArg(name, _) => name.asTermName
 
     val remainingParams = namesToArgs -- usedNames
     remainingParams
