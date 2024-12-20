@@ -3,6 +3,7 @@ package dotty.tools.dotc.config
 import org.junit.Before
 import org.junit.Test
 import org.junit.Assert._
+import scala.language.unsafeNulls
 
 class PropertiesTest {
   final val TestProperty = "dotty.tools.dotc.config.PropertiesTest.__test_property__"
