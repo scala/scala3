@@ -68,7 +68,7 @@ object InlineChecks:
     inline def getSet = Set(1)
 
   object InlinedBar:
-    import collection.mutable.Set // ok
+    import collection.mutable.Set // warn (don't be fooled by inline expansion)
     import collection.mutable.Map // warn
     val a = InlineFoo.getSet
 

@@ -1063,6 +1063,7 @@ class Definitions {
   @tu lazy val UntrackedCapturesAnnot: ClassSymbol = requiredClass("scala.caps.untrackedCaptures")
   @tu lazy val UseAnnot:  ClassSymbol = requiredClass("scala.caps.use")
   @tu lazy val VolatileAnnot: ClassSymbol = requiredClass("scala.volatile")
+  @tu lazy val LanguageFeatureMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.languageFeature")
   @tu lazy val BeanGetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanGetter")
   @tu lazy val BeanSetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanSetter")
   @tu lazy val FieldMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.field")

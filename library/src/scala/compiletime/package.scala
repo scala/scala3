@@ -89,10 +89,10 @@ inline def error(inline msg: String): Nothing = ???
  *  @syntax markdown
  */
 transparent inline def codeOf(arg: Any): String =
-  // implemented in dotty.tools.dotc.typer.Inliner.Intrinsics
+  // implemented in dotty.tools.dotc.inlines.Inlines
   error("Compiler bug: `codeOf` was not evaluated by the compiler")
 
-/** Checks at compiletime that the provided values is a constant after
+/** Checks at compiletime that the provided value is a constant after
  *  inlining and constant folding.
  *
  *  Usage:
@@ -108,7 +108,7 @@ transparent inline def codeOf(arg: Any): String =
  *  @syntax markdown
  */
 inline def requireConst(inline x: Boolean | Byte | Short | Int | Long | Float | Double | Char | String): Unit =
-  // implemented in dotty.tools.dotc.typer.Inliner
+  // implemented in dotty.tools.dotc.inlines.Inlines
   error("Compiler bug: `requireConst` was not evaluated by the compiler")
 
 /** Same as `constValue` but returns a `None` if a constant value
@@ -116,21 +116,21 @@ inline def requireConst(inline x: Boolean | Byte | Short | Int | Long | Float | 
  *  that value wrapped in `Some`.
  */
 transparent inline def constValueOpt[T]: Option[T] =
-  // implemented in dotty.tools.dotc.typer.Inliner
+  // implemented in dotty.tools.dotc.inlines.Inlines
   error("Compiler bug: `constValueOpt` was not evaluated by the compiler")
 
 /** Given a constant, singleton type `T`, convert it to a value
  *  of the same singleton type. For example: `assert(constValue[1] == 1)`.
  */
 transparent inline def constValue[T]: T =
-  // implemented in dotty.tools.dotc.typer.Inliner
+  // implemented in dotty.tools.dotc.inlines.Inlines
   error("Compiler bug: `constValue` was not evaluated by the compiler")
 
 /** Given a tuple type `(X1, ..., Xn)`, returns a tuple value
  *  `(constValue[X1], ..., constValue[Xn])`.
  */
 inline def constValueTuple[T <: Tuple]: T =
-  // implemented in dotty.tools.dotc.typer.Inliner
+  // implemented in dotty.tools.dotc.inlines.Inlines
   error("Compiler bug: `constValueTuple` was not evaluated by the compiler")
 
 
@@ -177,7 +177,7 @@ transparent inline def summonInline[T]: T =
  *  @return the given values typed as elements of the tuple
  */
 inline def summonAll[T <: Tuple]: T =
-  // implemented in dotty.tools.dotc.typer.Inliner
+  // implemented in dotty.tools.dotc.inlines.Inlines
   error("Compiler bug: `summonAll` was not evaluated by the compiler")
 
 /** Assertion that an argument is by-name. Used for nullability checking. */

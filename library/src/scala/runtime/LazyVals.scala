@@ -33,7 +33,7 @@ object LazyVals {
   private val monitors: Array[Object] =
     Array.tabulate(base)(_ => new Object)
 
-  private def getMonitor(obj: Object, fieldId: Int = 0) = {
+  private def getMonitor(obj: Object, fieldId: Int) = {
     var id = (java.lang.System.identityHashCode(obj) + fieldId) % base
 
     if (id < 0) id += base

@@ -276,7 +276,7 @@ object Expr {
     import quotes.reflect.*
     Implicits.search(TypeRepr.of[T]) match {
       case iss: ImplicitSearchSuccess => Some(iss.tree.asExpr.asInstanceOf[Expr[T]])
-      case isf: ImplicitSearchFailure => None
+      case   _: ImplicitSearchFailure => None
     }
   }
 

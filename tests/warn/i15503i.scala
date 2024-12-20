@@ -201,14 +201,14 @@ package foo.test.i16877:
 package foo.test.i16926:
   def hello(): Unit =
     for {
-      i <- (0 to 10).toList
-      (a, b) = "hello" -> "world" // warn // warn TODO patvars
+      i <- (0 to 10).toList // warn patvar
+      (a, b) = "hello" -> "world" // OK
     } yield println(s"$a $b")
 
 package foo.test.i16925:
   def hello =
     for {
-      i <- 1 to 2 if true // warn TODO patvar
+      i <- 1 to 2 if true // OK
       _ = println(i) // OK
     } yield ()
 
@@ -296,7 +296,7 @@ package foo.test.i17175:
   val continue = true
   def foo =
     for {
-      i <- 1.until(10) // warn patvar TODO
+      i <- 1.until(10) // OK
       if continue
     } {
       println(i)

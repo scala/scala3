@@ -14,3 +14,38 @@ object Xd {
   private def f9(a: Int)(using Int) = ??? // OK trivial
   private def g1(a: Int)(implicit foo: Int) = a // warn
 }
+
+trait T
+object T:
+  def hole(using T) = ()
+
+class C(using T) // warn
+
+class D(using T):
+  def t = T.hole // nowarn
+
+object Example:
+  import scala.quoted.*
+  given OptionFromExpr[T](using Type[T], FromExpr[T]): FromExpr[Option[T]] with
+    def unapply(x: Expr[Option[T]])(using Quotes) = x match
+      case '{ Option[T](${Expr(y)}) } => Some(Option(y))
+      case '{ None } => Some(None)
+      case '{ ${Expr(opt)} : Some[T] } => Some(opt)
+      case _ => None
+  given OptionFromExprNoisy[T](using Type[T], FromExpr[T]): FromExpr[Option[T]] with
+    def unapply(x: Expr[Option[T]])(using Quotes) = x match
+      case '{ Option[T](${Expr(y)}) } => Some(Option(y))
+      case '{ None } => Some(None)
+      //case '{ ${Expr(opt)} : Some[T] } => Some(opt) // make Type param unused after typer
+      case _ => None
+
+//absolving names on matches of quote trees requires consulting non-abstract types in QuotesImpl
+object Unmatched:
+  import scala.quoted.*
+  def transform[T](e: Expr[T])(using Quotes): Expr[T] =
+    import quotes.reflect.*
+    def f(tree: Tree) =
+      tree match
+      case Ident(name) =>
+      case _ =>
+    e
