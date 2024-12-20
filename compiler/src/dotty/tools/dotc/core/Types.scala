@@ -1193,7 +1193,8 @@ object Types extends TypeUtils {
      */
     def matches(that: Type)(using Context): Boolean = {
       record("matches")
-      TypeComparer.matchesType(this, that, relaxed = !ctx.phase.erasedTypes)
+      withoutMode(Mode.SafeNulls)(
+        TypeComparer.matchesType(this, that, relaxed = !ctx.phase.erasedTypes))
     }
 
     /** This is the same as `matches` except that it also matches => T with T and

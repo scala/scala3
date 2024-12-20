@@ -970,7 +970,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             def isNullable(tp: Type): Boolean = tp.dealias match
               case tp: TypeRef =>
                 val tpSym = tp.symbol
-                !tpSym.isPrimitiveValueClass ||
                 tpSym.isNullableClass
               case tp: TermRef =>
                 // https://scala-lang.org/files/archive/spec/2.13/03-types.html#singleton-types
