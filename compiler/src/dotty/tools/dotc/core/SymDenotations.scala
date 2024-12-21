@@ -617,7 +617,7 @@ object SymDenotations {
       case _ =>
         // Otherwise, no completion is necessary, see the preconditions of `markAbsent()`.
         (myInfo `eq` NoType)
-        || is(Invisible) && ctx.isTyper
+        || (is(Invisible) && !ctx.mode.is(Mode.ResolveFromTASTy)) && ctx.isTyper
         || is(ModuleVal, butNot = Package) && moduleClass.isAbsent(canForce)
     }
 
