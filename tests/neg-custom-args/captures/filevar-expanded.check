@@ -1,0 +1,9 @@
+-- Error: tests/neg-custom-args/captures/filevar-expanded.scala:34:19 --------------------------------------------------
+34 |    withFile(io3): f => // error: separation failure
+   |                   ^
+   |                Separation failure: argument to capture-polymorphic parameter x$1: (f: test2.File^{io3}) => Unit
+   |                captures {io3} and also passes this capability separately to method withFile
+35 |      val o = Service(io3)
+36 |      o.file = f  // this is a bit dubious. It's legal since we treat class refinements
+37 |                  // as capture set variables that can be made to include refs coming from outside.
+38 |      o.log

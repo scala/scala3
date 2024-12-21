@@ -682,7 +682,7 @@ final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => Laz
         remaining -= 1
         scout = scout.tail
       }
-      dropRightState(scout)
+      caps.unsafe.unsafeAssumeSeparate(dropRightState(scout))
     }
   }
 
@@ -879,6 +879,7 @@ final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => Laz
         if (!cursor.stateDefined) b.append(sep).append("<not computed>")
       } else {
         @inline def same(a: LazyListIterable[A]^, b: LazyListIterable[A]^): Boolean = (a eq b) || (a.state eq b.state)
+          // !!!CC with qualifiers, same should have cap.rd parameters
         // Cycle.
         // If we have a prefix of length P followed by a cycle of length C,
         // the scout will be at position (P%C) in the cycle when the cursor
@@ -890,7 +891,7 @@ final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => Laz
         // the start of the loop.
         var runner = this
         var k = 0
-        while (!same(runner, scout)) {
+        while (!caps.unsafe.unsafeAssumeSeparate(same(runner, scout))) {
           runner = runner.tail
           scout = scout.tail
           k += 1
@@ -900,11 +901,11 @@ final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => Laz
         // everything once.  If cursor is already at beginning, we'd better
         // advance one first unless runner didn't go anywhere (in which case
         // we've already looped once).
-        if (same(cursor, scout) && (k > 0)) {
+        if (caps.unsafe.unsafeAssumeSeparate(same(cursor, scout)) && (k > 0)) {
           appendCursorElement()
           cursor = cursor.tail
         }
-        while (!same(cursor, scout)) {
+        while (!caps.unsafe.unsafeAssumeSeparate(same(cursor, scout))) {
           appendCursorElement()
           cursor = cursor.tail
         }
@@ -1052,7 +1053,9 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
         val head = it.next()
         rest     = rest.tail
         restRef  = rest                       // restRef.elem = rest
-        sCons(head, newLL(stateFromIteratorConcatSuffix(it)(flatMapImpl(rest, f).state)))
+        sCons(head, newLL(
+          caps.unsafe.unsafeAssumeSeparate(
+            stateFromIteratorConcatSuffix(it)(flatMapImpl(rest, f).state))))
       } else State.Empty
     }
   }

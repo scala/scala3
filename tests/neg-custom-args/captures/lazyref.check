@@ -26,3 +26,8 @@
    |                                   Required: LazyRef[Int]^{cap1}
    |
    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/lazyref.scala:24:55 -----------------------------------------------------------
+24 |  val ref4 = (if cap1 == cap2 then ref1 else ref2).map(g) // error: separation failure
+   |                                                       ^
+   |                                   Separation failure: argument to capture-polymorphic parameter x$0: Int => Int
+   |                                   captures {cap2} and also passes this capability separately to method map
