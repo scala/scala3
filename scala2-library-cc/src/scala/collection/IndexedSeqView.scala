@@ -136,7 +136,7 @@ object IndexedSeqView {
 
   @SerialVersionUID(3L)
   class Concat[A](prefix: SomeIndexedSeqOps[A]^, suffix: SomeIndexedSeqOps[A]^)
-    extends SeqView.Concat[A](prefix, suffix) with IndexedSeqView[A]
+    extends SeqView.Concat[A](prefix, caps.unsafe.unsafeAssumeSeparate(suffix)) with IndexedSeqView[A]
 
   @SerialVersionUID(3L)
   class Take[A](underlying: SomeIndexedSeqOps[A]^, n: Int)

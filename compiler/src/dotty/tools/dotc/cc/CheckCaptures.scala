@@ -239,6 +239,12 @@ object CheckCaptures:
 
       /** Was a new type installed for this tree? */
       def hasNuType: Boolean
+
+      /** Is this tree passed to a parameter or assigned to a value with a type
+       *  that contains cap in no-flip covariant position, which will necessite
+       *  a separation check?
+       */
+      def needsSepCheck: Boolean
   end CheckerAPI
 
 class CheckCaptures extends Recheck, SymTransformer:
@@ -278,6 +284,12 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  with a checkConformsExpr.
      */
     private val todoAtPostCheck = new mutable.ListBuffer[() => Unit]
+
+    /** Trees that will need a separation check because they contain cap */
+    private val sepCheckable = util.EqHashSet[Tree]()
+
+    extension [T <: Tree](tree: T)
+      def needsSepCheck: Boolean = sepCheckable.contains(tree)
 
     /** Instantiate capture set variables appearing contra-variantly to their
      *  upper approximation.
@@ -636,11 +648,11 @@ class CheckCaptures extends Recheck, SymTransformer:
       val meth = tree.fun.symbol
       if meth == defn.Caps_unsafeAssumePure then
         val arg :: Nil = tree.args: @unchecked
-        val argType0 = recheck(arg, pt.capturing(CaptureSet.universal))
+        val argType0 = recheck(arg, pt.stripCapturing.capturing(CaptureSet.universal))
         val argType =
           if argType0.captureSet.isAlwaysEmpty then argType0
           else argType0.widen.stripCapturing
-        capt.println(i"rechecking $arg with $pt: $argType")
+        capt.println(i"rechecking unsafeAssumePure of $arg with $pt: $argType")
         super.recheckFinish(argType, tree, pt)
       else
         val res = super.recheckApply(tree, pt)
@@ -660,6 +672,9 @@ class CheckCaptures extends Recheck, SymTransformer:
           capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
           markFree(argType.deepCaptureSet, arg.srcPos)
         case _ =>
+      if formal.containsCap then
+        arg.updNuType(freshenedFormal)
+        sepCheckable += arg
       argType
 
     /** Map existential captures in result to `cap` and implement the following
@@ -1785,6 +1800,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       end checker
 
       checker.traverse(unit)(using ctx.withOwner(defn.RootClass))
+      if ccConfig.useFresh then SepChecker(this).traverse(unit)
       if !ctx.reporter.errorsReported then
         // We dont report errors here if previous errors were reported, because other
         // errors often result in bad applied types, but flagging these bad types gives
