@@ -134,7 +134,7 @@ trait CaptureRef extends TypeProxy, ValueType:
   final def invalidateCaches() =
     myCaptureSetRunId = NoRunId
 
-  import CaptureSet.{VarState, FrozenSepState}
+  import CaptureSet.{VarState, FrozenAllState}
 
   /**  x subsumes x
    *   x =:= y       ==>  x subsumes y
@@ -150,7 +150,7 @@ trait CaptureRef extends TypeProxy, ValueType:
    *
    *   TODO: Move to CaptureSet
    */
-  final def subsumes(y: CaptureRef)(using ctx: Context, vs: VarState = FrozenSepState): Boolean =
+  final def subsumes(y: CaptureRef)(using ctx: Context, vs: VarState = FrozenAllState): Boolean =
 
     def subsumingRefs(x: Type, y: Type): Boolean = x match
       case x: CaptureRef => y match
