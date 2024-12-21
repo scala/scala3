@@ -95,8 +95,8 @@ object Build {
    *  Reference version should track the latest version pushed to Maven:
    *  - In main branch it should be the last RC version
    *  - In release branch it should be the last stable release
-   * 
-   *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion` 
+   *
+   *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
   val referenceVersion = "3.6.3-RC1"
 
@@ -106,8 +106,8 @@ object Build {
    *
    *  Should only be referred from `dottyVersion` or settings/tasks requiring simplified version string,
    *  eg. `compatMode` or Windows native distribution version.
-   * 
-   *  Warning: Change of this variable might require updating `expectedTastyVersion` 
+   *
+   *  Warning: Change of this variable might require updating `expectedTastyVersion`
    */
   val developedVersion = "3.6.4"
 
@@ -119,13 +119,13 @@ object Build {
    *  During final, stable release is set exactly to `developedVersion`.
   */
   val baseVersion = s"$developedVersion-RC1"
-  
-  /** The version of TASTY that should be emitted, checked in runtime test 
-   *  For defails on how TASTY version should be set see related discussions: 
+
+  /** The version of TASTY that should be emitted, checked in runtime test
+   *  For defails on how TASTY version should be set see related discussions:
    *    - https://github.com/scala/scala3/issues/13447#issuecomment-912447107
    *    - https://github.com/scala/scala3/issues/14306#issuecomment-1069333516
    *    - https://github.com/scala/scala3/pull/19321
-   *   
+   *
    *  Simplified rules, given 3.$minor.$patch = $developedVersion
    *    - Major version is always 28
    *    - TASTY minor version:
@@ -1058,7 +1058,6 @@ object Build {
     // compiler is updated.
     // Then, the next step is to enable flexible types by default and reduce the use of
     // `unsafeNulls`.
-    scalacOptions ++= Seq("-Yno-flexible-types"),
     packageAll := {
       (`scala3-compiler` / packageAll).value ++ Seq(
         "scala3-compiler" -> (Compile / packageBin).value.getAbsolutePath,
@@ -2505,7 +2504,7 @@ object Build {
       case Bootstrapped => commonBootstrappedSettings
     })
   }
-  
+
   /* Tests TASTy version invariants during NIGHLY, RC or Stable releases */
   def checkReleasedTastyVersion(): Unit = {
     lazy val (scalaMinor, scalaPatch, scalaIsRC) = baseVersion.split("\\.|-").take(4) match {
@@ -2518,19 +2517,19 @@ object Build {
       case Array("28", minor, "experimental", _) => (minor.toInt, true)
       case other => sys.error(s"Invalid TASTy version string: $expectedTastyVersion")
     }
-     
+
     if(isNightly) {
       assert(tastyIsExperimental, "TASTY needs to be experimental in nightly builds")
       val expectedTastyMinor = if(scalaPatch == 0) scalaMinor else scalaMinor + 1
       assert(tastyMinor == expectedTastyMinor, "Invalid TASTy minor version")
     }
-    
+
     if(isRelease) {
       assert(scalaMinor == tastyMinor, "Minor versions of TASTY vesion and Scala version should match in release builds")
       if (scalaIsRC && scalaPatch == 0)
         assert(tastyIsExperimental, "TASTy should be experimental when releasing a new minor version RC")
       else
-        assert(!tastyIsExperimental, "Stable version cannot use experimental TASTY") 
+        assert(!tastyIsExperimental, "Stable version cannot use experimental TASTY")
     }
   }
 }
