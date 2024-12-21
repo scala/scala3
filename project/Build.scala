@@ -1449,10 +1449,6 @@ object Build {
     .dependsOn(`scala3-compiler-bootstrapped`, `scala3-library-bootstrapped`, `scala3-presentation-compiler-testcases`)
     .settings(presentationCompilerSettings)
     .settings(scala3PresentationCompilerBuildInfo)
-    .settings(
-      // Add `-Yno-flexible-types` flag for bootstrap, see comments for `bootstrappedDottyCompilerSettings`
-      Compile / scalacOptions +=  "-Yno-flexible-types"
-    )
 
   def scala3PresentationCompilerBuildInfo =
     Seq(
