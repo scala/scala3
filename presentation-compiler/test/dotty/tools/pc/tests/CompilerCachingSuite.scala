@@ -11,7 +11,6 @@ import scala.meta.internal.metals.CompilerOffsetParams
 import scala.meta.pc.OffsetParams
 import scala.concurrent.Future
 import scala.concurrent.Await
-import scala.meta.pc.VirtualFileParams
 import scala.concurrent.duration.*
 
 import java.util.Collections

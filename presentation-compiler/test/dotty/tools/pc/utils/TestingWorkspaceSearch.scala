@@ -11,7 +11,6 @@ import java.io.File
 import java.nio.file.Paths
 import scala.collection.mutable
 import scala.language.unsafeNulls
-import scala.meta.internal.metals.CompilerVirtualFileParams
 import scala.meta.internal.metals.Fuzzy
 import scala.meta.internal.metals.WorkspaceSymbolQuery
 import scala.meta.pc.SymbolSearchVisitor

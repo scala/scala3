@@ -30,10 +30,8 @@ import scala.meta.pc.{PcSymbolInformation as IPcSymbolInformation}
 
 import dotty.tools.dotc.reporting.StoreReporter
 import dotty.tools.pc.completions.CompletionProvider
-import dotty.tools.pc.InferExpectedType
 import dotty.tools.pc.completions.OverrideCompletions
 import dotty.tools.pc.buildinfo.BuildInfo
-import dotty.tools.pc.SymbolInformationProvider
 import dotty.tools.dotc.interactive.InteractiveDriver
 
 import org.eclipse.lsp4j.DocumentHighlight

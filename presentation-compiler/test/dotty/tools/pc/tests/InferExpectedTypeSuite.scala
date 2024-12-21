@@ -9,7 +9,6 @@ import dotty.tools.pc.ScalaPresentationCompiler
 import scala.meta.internal.mtags.CommonMtagsEnrichments.*
 
 import org.junit.Test
-import org.junit.Ignore
 
 class InferExpectedTypeSuite extends BasePCSuite:
   def check(

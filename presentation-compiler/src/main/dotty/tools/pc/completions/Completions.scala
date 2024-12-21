@@ -336,6 +336,8 @@ class Completions(
         val values = ScaladocCompletions.contribute(pos, text, config)
         (values, true)
 
+      case NamedPatternCompletions(namedPatternCompletions) => (namedPatternCompletions(completionPos), false)
+
       case MatchCaseExtractor.MatchExtractor(selector) =>
         (
           CaseKeywordCompletion.matchContribute(
