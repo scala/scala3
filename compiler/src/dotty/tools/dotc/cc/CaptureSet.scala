@@ -142,7 +142,7 @@ sealed abstract class CaptureSet extends Showable:
    *  capture set.
    */
   protected final def addNewElem(elem: CaptureRef)(using Context, VarState): CompareResult =
-    if elem.isMaxCapability || summon[VarState].isInstanceOf[FrozenState] then
+    if elem.isMaxCapability || summon[VarState].isInstanceOf[FrozenVarState] then
       addThisElem(elem)
     else
       addThisElem(elem).orElse:
@@ -173,7 +173,7 @@ sealed abstract class CaptureSet extends Showable:
   /** {x} <:< this   where <:< is subcapturing, but treating all variables
    *                 as frozen.
    */
-  def accountsFor(x: CaptureRef)(using ctx: Context, vs: VarState = FrozenSepState): Boolean =
+  def accountsFor(x: CaptureRef)(using ctx: Context, vs: VarState = FrozenAllState): Boolean =
 
     /** Like `refs.exists(p)`, but testing fresh cap instances in refs last */
     def existsElem(refs: SimpleIdentitySet[CaptureRef], p: CaptureRef => Boolean): Boolean =
@@ -191,7 +191,10 @@ sealed abstract class CaptureSet extends Showable:
       existsElem(elems, _.subsumes(x))
       || !x.isMaxCapability
         && !x.derivesFrom(defn.Caps_CapSet)
-        && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
+        && x.captureSetOfInfo.subCaptures(this)(using ctx,
+            vs match
+              case vs: FrozenVarState => vs
+              case _ => FrozenVarState()).isOK
 
     comparer match
       case comparer: ExplainingTypeComparer => comparer.traceIndented(debugInfo)(test)
@@ -207,7 +210,7 @@ sealed abstract class CaptureSet extends Showable:
    */
   def mightAccountFor(x: CaptureRef)(using Context): Boolean =
     reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true):
-      elems.exists(_.subsumes(x)(using ctx, FrozenState()))
+      elems.exists(_.subsumes(x)(using ctx, FrozenVarState()))
       || !x.isMaxCapability
         && {
           val elems = x.captureSetOfInfo.elems
@@ -228,8 +231,12 @@ sealed abstract class CaptureSet extends Showable:
    *                  be added when making this test. An attempt to add either
    *                  will result in failure.
    */
-  final def subCaptures(that: CaptureSet, frozen: Boolean)(using Context): CompareResult =
-    subCaptures(that)(using ctx, if frozen then FrozenState() else VarState())
+  final def subCaptures(that: CaptureSet, frozen: Frozen)(using Context): CompareResult =
+    val state = frozen match
+      case Frozen.None => VarState()
+      case Frozen.Vars => FrozenVarState()
+      case Frozen.All => FrozenAllState
+    subCaptures(that)(using ctx, state)
 
   /** The subcapturing test, using a given VarState */
   private def subCaptures(that: CaptureSet)(using Context, VarState): CompareResult =
@@ -246,16 +253,16 @@ sealed abstract class CaptureSet extends Showable:
    *  in a frozen state.
    */
   def =:= (that: CaptureSet)(using Context): Boolean =
-       this.subCaptures(that, frozen = true).isOK
-    && that.subCaptures(this, frozen = true).isOK
+       this.subCaptures(that, Frozen.All).isOK
+    && that.subCaptures(this, Frozen.All).isOK
 
   /** The smallest capture set (via <:<) that is a superset of both
    *  `this` and `that`
    */
   def ++ (that: CaptureSet)(using Context): CaptureSet =
-    if this.subCaptures(that, frozen = true).isOK then
+    if this.subCaptures(that, Frozen.All).isOK then
       if that.isAlwaysEmpty && this.keepAlways then this else that
-    else if that.subCaptures(this, frozen = true).isOK then this
+    else if that.subCaptures(this, Frozen.All).isOK then this
     else if this.isConst && that.isConst then Const(this.elems ++ that.elems)
     else Union(this, that)
 
@@ -267,8 +274,8 @@ sealed abstract class CaptureSet extends Showable:
   /** The largest capture set (via <:<) that is a subset of both `this` and `that`
    */
   def **(that: CaptureSet)(using Context): CaptureSet =
-    if this.subCaptures(that, frozen = true).isOK then this
-    else if that.subCaptures(this, frozen = true).isOK then that
+    if this.subCaptures(that, Frozen.Vars).isOK then this
+    else if that.subCaptures(this, Frozen.Vars).isOK then that
     else if this.isConst && that.isConst then Const(elemIntersection(this, that))
     else Intersection(this, that)
 
@@ -394,6 +401,12 @@ object CaptureSet:
   type Refs = SimpleIdentitySet[CaptureRef]
   type Vars = SimpleIdentitySet[Var]
   type Deps = SimpleIdentitySet[CaptureSet]
+
+  /** An enum indicating a Frozen degree for subCapturing tests */
+  enum Frozen:
+    case None // operations are performed in a regular VarState
+    case Vars // operations are performed in a FrozenVarState
+    case All  // operations are performed in FrozenAllState
 
   @sharable private var varId = 0
 
@@ -538,7 +551,7 @@ object CaptureSet:
       else
         //if id == 34 then assert(!elem.isUniversalRootCapability)
         assert(elem.isTrackableRef, elem)
-        assert(!this.isInstanceOf[HiddenSet] || summon[VarState] == FrozenSepState, summon[VarState])
+        assert(!this.isInstanceOf[HiddenSet] || summon[VarState] == FrozenAllState, summon[VarState])
         elems += elem
         if elem.isRootCapability then
           rootAddedHandler()
@@ -1043,7 +1056,7 @@ object CaptureSet:
     def getElems(v: Var): Option[Refs] = elemsMap.get(v)
 
     /** Record elements, return whether this was allowed.
-     *  By default, recording is allowed but the special state FrozenState
+     *  By default, recording is allowed in regular both not in frozen states.
      *  overrides this.
      */
     def putElems(v: Var, elems: Refs): Boolean = { elemsMap(v) = elems; true }
@@ -1055,14 +1068,14 @@ object CaptureSet:
     def getDeps(v: Var): Option[Deps] = depsMap.get(v)
 
     /** Record dependent sets, return whether this was allowed.
-     *  By default, recording is allowed but the special state FrozenState
+     *  By default, recording is allowed in regular both not in frozen states.
      *  overrides this.
      */
     def putDeps(v: Var, deps: Deps): Boolean = { depsMap(v) = deps; true }
 
     /** Record hidden elements in elemsMap of hidden set `v`,
      *  return whether this was allowed. By default, recording is allowed
-     *  but the special state FrozenSepState overrides this.
+     *  but the special state FrozenAllState overrides this.
      */
     def putHidden(v: HiddenSet, elems: Refs): Boolean = { elemsMap(v) = elems; true }
 
@@ -1080,21 +1093,22 @@ object CaptureSet:
       else false
   end VarState
 
-  /** A special state that does not allow to record elements or dependent sets.
+  /** A class for states that do not allow to record elements or dependent sets.
    *  In effect this means that no new elements or dependent sets can be added
-   *  in this state (since the previous state cannot be recorded in a snapshot)
-   *  On the other hand, this state does allow by default Fresh.Cap to subsume arbitary
-   *  types, which are then recorded in its hidden set.
+   *  in these states (since the previous state cannot be recorded in a snapshot)
+   *  On the other hand, these states do allow by default Fresh.Cap instances to
+   *  subsume arbitary types, which are then recorded in their hidden sets.
    */
-  class FrozenState extends VarState:
+  class FrozenVarState extends VarState:
     override def putElems(v: Var, refs: Refs) = false
     override def putDeps(v: Var, deps: Deps) = false
 
   @sharable
-  /** A frozen state that allows a Fresh.Cap instncce to subsume a
-   *  reference `r` only if `r` is present in the hidden set of the instance.
+  /** A frozen state that allows a Fresh.Cap instancce to subsume a
+   *  reference `r` only if `r` is already present in the hidden set of the instance.
+   *  No new references can be added.
    */
-  object FrozenSepState extends FrozenState:
+  object FrozenAllState extends FrozenVarState:
     override def putHidden(v: HiddenSet, elems: Refs): Boolean = false
 
   @sharable

@@ -16,6 +16,7 @@ import config.Feature
 import collection.mutable
 import CCState.*
 import reporting.Message
+import CaptureSet.Frozen
 
 private val Captures: Key[CaptureSet] = Key()
 
@@ -244,7 +245,7 @@ extension (tp: Type)
    *  the two capture sets are combined.
    */
   def capturing(cs: CaptureSet)(using Context): Type =
-    if (cs.isAlwaysEmpty || cs.isConst && cs.subCaptures(tp.captureSet, frozen = true).isOK)
+    if (cs.isAlwaysEmpty || cs.isConst && cs.subCaptures(tp.captureSet, Frozen.All).isOK)
         && !cs.keepAlways
     then tp
     else tp match

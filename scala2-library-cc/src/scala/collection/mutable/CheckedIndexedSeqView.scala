@@ -75,7 +75,7 @@ private[mutable] object CheckedIndexedSeqView {
 
   @SerialVersionUID(3L)
   class Concat[A](prefix: SomeIndexedSeqOps[A]^, suffix: SomeIndexedSeqOps[A]^)(protected val mutationCount: () => Int)
-    extends IndexedSeqView.Concat[A](prefix, caps.unsafe.unsafeAssumeSeparate(suffix)) with CheckedIndexedSeqView[A]
+    extends IndexedSeqView.Concat[A](prefix, suffix) with CheckedIndexedSeqView[A]
 
   @SerialVersionUID(3L)
   class Take[A](underlying: SomeIndexedSeqOps[A]^, n: Int)(protected val mutationCount: () => Int)

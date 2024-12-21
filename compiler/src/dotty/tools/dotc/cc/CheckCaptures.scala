@@ -18,7 +18,7 @@ import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
 import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
 import scala.collection.mutable
-import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult}
+import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult, Frozen}
 import CCState.*
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
@@ -320,7 +320,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** Assert subcapturing `cs1 <: cs2` (available for debugging, otherwise unused) */
     def assertSub(cs1: CaptureSet, cs2: CaptureSet)(using Context) =
-      assert(cs1.subCaptures(cs2, frozen = false).isOK, i"$cs1 is not a subset of $cs2")
+      assert(cs1.subCaptures(cs2, Frozen.None).isOK, i"$cs1 is not a subset of $cs2")
 
     /** If `res` is not CompareResult.OK, report an error */
     def checkOK(res: CompareResult, prefix: => String, pos: SrcPos, provenance: => String = "")(using Context): Unit =
@@ -334,7 +334,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** Check subcapturing `{elem} <: cs`, report error on failure */
     def checkElem(elem: CaptureRef, cs: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context) =
       checkOK(
-          elem.singletonCaptureSet.subCaptures(cs, frozen = false),
+          elem.singletonCaptureSet.subCaptures(cs, Frozen.None),
           i"$elem cannot be referenced here; it is not",
           pos, provenance)
 
@@ -342,7 +342,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def checkSubset(cs1: CaptureSet, cs2: CaptureSet, pos: SrcPos,
         provenance: => String = "", cs1description: String = "")(using Context) =
       checkOK(
-          cs1.subCaptures(cs2, frozen = false),
+          cs1.subCaptures(cs2, Frozen.None),
           if cs1.elems.size == 1 then i"reference ${cs1.elems.toList.head}$cs1description is not"
           else i"references $cs1$cs1description are not all",
           pos, provenance)
@@ -1390,7 +1390,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           val cs = actual.captureSet
           if covariant then cs ++ leaked
           else
-            if !leaked.subCaptures(cs, frozen = false).isOK then
+            if !leaked.subCaptures(cs, Frozen.None).isOK then
               report.error(
                 em"""$expected cannot be box-converted to ${actual.capturing(leaked)}
                     |since the additional capture set $leaked resulted from box conversion is not allowed in $actual""", pos)
@@ -1713,7 +1713,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                     val widened = ref.captureSetOfInfo
                     val added = widened.filter(isAllowed(_))
                     capt.println(i"heal $ref in $cs by widening to $added")
-                    if !added.subCaptures(cs, frozen = false).isOK then
+                    if !added.subCaptures(cs, Frozen.None).isOK then
                       val location = if meth.exists then i" of ${meth.showLocated}" else ""
                       val paramInfo =
                         if ref.paramName.info.kind.isInstanceOf[UniqueNameKind]
