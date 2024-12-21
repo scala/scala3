@@ -223,6 +223,22 @@ object CheckCaptures:
       checkNotUniversal.traverse(tpe.widen)
   end checkNotUniversalInUnboxedResult
 
+  trait CheckerAPI:
+    /** Complete symbol info of a val or a def */
+    def completeDef(tree: ValOrDefDef, sym: Symbol)(using Context): Type
+
+    extension [T <: Tree](tree: T)
+
+      /** Set new type of the tree if none was installed yet. */
+      def setNuType(tpe: Type): Unit
+
+      /** The new type of the tree, or if none was installed, the original type */
+      def nuType(using Context): Type
+
+      /** Was a new type installed for this tree? */
+      def hasNuType: Boolean
+  end CheckerAPI
+
 class CheckCaptures extends Recheck, SymTransformer:
   thisPhase =>
 
@@ -243,7 +259,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
   val ccState1 = new CCState // Dotty problem: Rename to ccState ==> Crash in ExplicitOuter
 
-  class CaptureChecker(ictx: Context) extends Rechecker(ictx):
+  class CaptureChecker(ictx: Context) extends Rechecker(ictx), CheckerAPI:
 
     /** The current environment */
     private val rootEnv: Env = inContext(ictx):
@@ -260,10 +276,6 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  with a checkConformsExpr.
      */
     private val todoAtPostCheck = new mutable.ListBuffer[() => Unit]
-
-    override def keepType(tree: Tree) =
-      super.keepType(tree)
-      || tree.isInstanceOf[Try]  // type of `try` needs tp be checked for * escapes
 
     /** Instantiate capture set variables appearing contra-variantly to their
      *  upper approximation.
@@ -286,8 +298,8 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     private def interpolateVarsIn(tpt: Tree)(using Context): Unit =
       if tpt.isInstanceOf[InferredTypeTree] then
-        interpolator().traverse(tpt.knownType)
-          .showing(i"solved vars in ${tpt.knownType}", capt)
+        interpolator().traverse(tpt.nuType)
+          .showing(i"solved vars in ${tpt.nuType}", capt)
       for msg <- ccState.approxWarnings do
         report.warning(msg, tpt.srcPos)
       ccState.approxWarnings.clear()
@@ -501,11 +513,11 @@ class CheckCaptures extends Recheck, SymTransformer:
             then ("\nThis is often caused by a local capability$where\nleaking as part of its result.", fn.srcPos)
             else if arg.span.exists then ("", arg.srcPos)
             else ("", fn.srcPos)
-          disallowRootCapabilitiesIn(arg.knownType, NoSymbol,
+          disallowRootCapabilitiesIn(arg.nuType, NoSymbol,
             i"Type variable $pname of $sym", "be instantiated to", addendum, pos)
 
           val param = fn.symbol.paramNamed(pname)
-          if param.isUseParam then markFree(arg.knownType.deepCaptureSet, pos)
+          if param.isUseParam then markFree(arg.nuType.deepCaptureSet, pos)
     end disallowCapInTypeArgs
 
     override def recheckIdent(tree: Ident, pt: Type)(using Context): Type =
@@ -769,8 +781,8 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     def checkContains(tree: TypeApply)(using Context): Unit = tree match
       case ContainsImpl(csArg, refArg) =>
-        val cs = csArg.knownType.captureSet
-        val ref = refArg.knownType
+        val cs = csArg.nuType.captureSet
+        val ref = refArg.nuType
         capt.println(i"check contains $cs , $ref")
         ref match
           case ref: CaptureRef if ref.isTracked =>
@@ -852,7 +864,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               case _ =>
                 (sym, "")
             disallowRootCapabilitiesIn(
-              tree.tpt.knownType, carrier, i"Mutable $sym", "have type", addendum, sym.srcPos)
+              tree.tpt.nuType, carrier, i"Mutable $sym", "have type", addendum, sym.srcPos)
           checkInferredResult(super.recheckValDef(tree, sym), tree)
       finally
         if !sym.is(Param) then
@@ -1533,7 +1545,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     private val setup: SetupAPI = thisPhase.prev.asInstanceOf[Setup]
 
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
-      setup.setupUnit(unit.tpdTree, completeDef)
+      setup.setupUnit(unit.tpdTree, this)
       collectCapturedMutVars.traverse(unit.tpdTree)
 
       if ctx.settings.YccPrintSetup.value then
@@ -1676,7 +1688,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               traverseChildren(tp)
 
       if tree.isInstanceOf[InferredTypeTree] then
-        checker.traverse(tree.knownType)
+        checker.traverse(tree.nuType)
     end healTypeParam
 
     /** Under the unsealed policy: Arrays are like vars, check that their element types
@@ -1716,10 +1728,10 @@ class CheckCaptures extends Recheck, SymTransformer:
             check(tree)
         def check(tree: Tree)(using Context) = tree match
           case TypeApply(fun, args) =>
-            fun.knownType.widen match
+            fun.nuType.widen match
               case tl: PolyType =>
                 val normArgs = args.lazyZip(tl.paramInfos).map: (arg, bounds) =>
-                  arg.withType(arg.knownType.forceBoxStatus(
+                  arg.withType(arg.nuType.forceBoxStatus(
                     bounds.hi.isBoxedCapturing | bounds.lo.isBoxedCapturing))
                 checkBounds(normArgs, tl)
                 args.lazyZip(tl.paramNames).foreach(healTypeParam(_, _, fun.symbol))
@@ -1739,7 +1751,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           def traverse(t: Tree)(using Context) = t match
             case tree: InferredTypeTree =>
             case tree: New =>
-            case tree: TypeTree => checkAppliedTypesIn(tree.withKnownType)
+            case tree: TypeTree => checkAppliedTypesIn(tree.withType(tree.nuType))
             case _ => traverseChildren(t)
         checkApplied.traverse(unit)
     end postCheck

@@ -28,18 +28,29 @@ import dotty.tools.dotc.cc.boxed
 object Recheck:
   import tpd.*
 
-  /** Attachment key for rechecked types of TypeTrees */
-  val RecheckedType = Property.Key[Type]
+  /** Attachment key for a toplevel tree of a unit that contains a map
+   *  from nodes in that tree to their rechecked "new" types
+   */
+  val RecheckedTypes = Property.Key[util.EqHashMap[Tree, Type]]
 
-  val addRecheckedTypes = new TreeMap:
-    override def transform(tree: Tree)(using Context): Tree =
-      try
-        val tree1 = super.transform(tree)
-        tree.getAttachment(RecheckedType) match
-          case Some(tpe) => tree1.withType(tpe)
-          case None => tree1
-      catch
-        case _:TypeError => tree
+  /** If tree carries a RecheckedTypes attachment, use the associated `nuTypes`
+   *  map to produce a new tree that contains at each node the type in the
+   *  map as the node's .tpe field
+   */
+  def addRecheckedTypes(tree: Tree)(using Context): Tree =
+    tree.getAttachment(RecheckedTypes) match
+      case Some(nuTypes) =>
+        val withNuTypes = new TreeMap:
+          override def transform(tree: Tree)(using Context): Tree =
+            try
+              val tree1 = super.transform(tree)
+              val tpe = nuTypes.lookup(tree)
+              if tpe != null then tree1.withType(tpe) else tree1
+            catch
+              case _: TypeError => tree
+        withNuTypes.transform(tree)
+      case None =>
+        tree
 
   extension (sym: Symbol)(using Context)
 
@@ -60,30 +71,6 @@ object Recheck:
     def isUpdatedAfter(phase: Phase) =
       val symd = sym.denot
       symd.validFor.firstPhaseId == phase.id + 1 && (sym.originDenotation ne symd)
-
-  extension [T <: Tree](tree: T)
-
-    /** Remember `tpe` as the type of `tree`, which might be different from the
-     *  type stored in the tree itself, unless a type was already remembered for `tree`.
-     */
-    def rememberType(tpe: Type)(using Context): Unit =
-      if !tree.hasAttachment(RecheckedType) then rememberTypeAlways(tpe)
-
-    /** Remember `tpe` as the type of `tree`, which might be different from the
-     *  type stored in the tree itself
-     */
-    def rememberTypeAlways(tpe: Type)(using Context): Unit =
-      if tpe ne tree.knownType then tree.putAttachment(RecheckedType, tpe)
-
-    /** The remembered type of the tree, or if none was installed, the original type */
-    def knownType: Type =
-      tree.attachmentOrElse(RecheckedType, tree.tpe)
-
-    def hasRememberedType: Boolean = tree.hasAttachment(RecheckedType)
-
-    def withKnownType(using Context): T = tree.getAttachment(RecheckedType) match
-      case Some(tpe) => tree.withType(tpe).asInstanceOf[T]
-      case None => tree
 
   /** Map ExprType => T to () ?=> T (and analogously for pure versions).
    *  Even though this phase runs after ElimByName, ExprTypes can still occur
@@ -172,17 +159,32 @@ abstract class Recheck extends Phase, SymTransformer:
   class Rechecker(@constructorOnly ictx: Context):
     private val ta = ictx.typeAssigner
 
-    /** If true, remember types of all tree nodes in attachments so that they
-     *  can be retrieved with `knownType`
-     */
-    private val keepAllTypes = inContext(ictx) {
-      ictx.settings.Xprint.value.containsPhase(thisPhase)
-    }
+    private val nuTypes = util.EqHashMap[Tree, Type]()
 
-    /** Should type of `tree` be kept in an attachment so that it can be retrieved with
-     *  `knownType`? By default true only is `keepAllTypes` hold, but can be overridden.
+    extension [T <: Tree](tree: T)
+
+      /** Set new type of the tree if none was installed yet and the new type is different
+       *  from the current type.
+       */
+      def setNuType(tpe: Type): Unit =
+        if nuTypes.lookup(tree) == null && (tpe ne tree.tpe) then nuTypes(tree) = tpe
+
+      /** The new type of the tree, or if none was installed, the original type */
+      def nuType(using Context): Type =
+        val ntpe = nuTypes.lookup(tree)
+        if ntpe != null then ntpe else tree.tpe
+
+      /** Was a new type installed for this tree? */
+      def hasNuType: Boolean =
+        nuTypes.lookup(tree) != null
+    end extension
+
+    /** If true, remember the new types of nodes in this compilation unit
+     *  as an attachment in the unit's tpdTree node. By default, this is
+     *  enabled when -Xprint:cc is set. Can be overridden.
      */
-    def keepType(tree: Tree): Boolean = keepAllTypes
+    def keepNuTypes(using Context): Boolean =
+      ctx.settings.Xprint.value.containsPhase(thisPhase)
 
     /** A map from NamedTypes to the denotations they had before this phase.
      *  Needed so that we can `reset` them after this phase.
@@ -343,7 +345,6 @@ abstract class Recheck extends Phase, SymTransformer:
 
     def recheckTypeApply(tree: TypeApply, pt: Type)(using Context): Type =
       val funtpe = recheck(tree.fun)
-      tree.fun.rememberType(funtpe) // remember type to support later bounds checks
       funtpe.widen match
         case fntpe: PolyType =>
           assert(fntpe.paramInfos.hasSameLengthAs(tree.args))
@@ -459,7 +460,7 @@ abstract class Recheck extends Phase, SymTransformer:
       seqLitType(tree, TypeComparer.lub(declaredElemType :: elemTypes))
 
     def recheckTypeTree(tree: TypeTree)(using Context): Type =
-      tree.knownType  // allows to install new types at Setup
+      tree.nuType  // allows to install new types at Setup
 
     def recheckAnnotated(tree: Annotated)(using Context): Type =
       tree.tpe match
@@ -558,7 +559,7 @@ abstract class Recheck extends Phase, SymTransformer:
      */
     def recheckFinish(tpe: Type, tree: Tree, pt: Type)(using Context): Type =
       val tpe1 = checkConforms(tpe, pt, tree)
-      if keepType(tree) then tree.rememberType(tpe1)
+      tree.setNuType(tpe1)
       tpe1
 
     def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
@@ -617,6 +618,7 @@ abstract class Recheck extends Phase, SymTransformer:
 
     def checkUnit(unit: CompilationUnit)(using Context): Unit =
       recheck(unit.tpdTree)
+      if keepNuTypes then unit.tpdTree.putAttachment(RecheckedTypes, nuTypes)
 
   end Rechecker
 
@@ -624,7 +626,8 @@ abstract class Recheck extends Phase, SymTransformer:
   override def show(tree: untpd.Tree)(using Context): String =
     atPhase(thisPhase):
       withMode(Mode.Printing):
-        super.show(addRecheckedTypes.transform(tree.asInstanceOf[tpd.Tree]))
+        super.show:
+          addRecheckedTypes(tree.asInstanceOf[tpd.Tree])
 end Recheck
 
 /** A class that can be used to test basic rechecking without any customaization */
