@@ -2170,7 +2170,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         val info2 = tp2.refinedInfo
         val isExpr2 = info2.isInstanceOf[ExprType]
         var info1 = m.info match
-          case info1: ValueType if isExpr2 || m.symbol.is(Mutable) =>
+          case info1: ValueType if isExpr2 || m.symbol.isMutableVarOrAccessor =>
             // OK: { val x: T } <: { def x: T }
             // OK: { var x: T } <: { def x: T }
             // NO: { var x: T } <: { val x: T }
@@ -2889,10 +2889,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     end inverse
   end MapExistentials
 
+  protected def frozenDegree(frozen: Boolean) =
+    if frozen then CaptureSet.Frozen.Vars else CaptureSet.Frozen.None
+
   protected def subCaptures(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult =
     try
       if assocExistentials.isEmpty then
-        refs1.subCaptures(refs2, frozen)
+        refs1.subCaptures(refs2, frozenDegree(frozen))
       else
         val mapped = refs1.map(MapExistentials(assocExistentials))
         if mapped.elems.exists(Existential.isBadExistential)
@@ -2903,7 +2906,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       throw ex
 
   protected def subCapturesMapped(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult =
-    refs1.subCaptures(refs2, frozen)
+    refs1.subCaptures(refs2, frozenDegree(frozen))
 
   /** Is the boxing status of tp1 and tp2 the same, or alternatively, is
    *  the capture sets `refs1` of `tp1` a subcapture of the empty set?
@@ -2911,7 +2914,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    */
   protected def sameBoxed(tp1: Type, tp2: Type, refs1: CaptureSet)(using Context): Boolean =
     (tp1.isBoxedCapturing == tp2.isBoxedCapturing)
-    || refs1.subCaptures(CaptureSet.empty, frozenConstraint).isOK
+    || refs1.subCaptures(CaptureSet.empty, frozenDegree(frozenConstraint)).isOK
 
   // ----------- Diagnostics --------------------------------------------------
 

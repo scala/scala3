@@ -4178,7 +4178,7 @@ object Types extends TypeUtils {
          tl => params.map(p => tl.integrate(params, adaptParamInfo(p))),
          tl => tl.integrate(params, resultType))
 
-    /** Adapt info of parameter symbol to be integhrated into corresponding MethodType
+    /** Adapt info of parameter symbol to be integrated into corresponding MethodType
      *  using the scheme described in `fromSymbols`.
      */
     def adaptParamInfo(param: Symbol, pinfo: Type)(using Context): Type =
