@@ -5,19 +5,14 @@ import org.eclipse.lsp4j.DiagnosticSeverity
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.interfaces.Diagnostic as DiagnosticInterfaces
 import dotty.tools.dotc.reporting.Diagnostic
-import dotty.tools.dotc.semanticdb.DiagnosticOps.toSemanticDiagnostic
 import dotty.tools.pc.utils.InteractiveEnrichments.toLsp
 
 import scala.meta.pc.VirtualFileParams
-import com.google.gson.Gson
 import ch.epfl.scala.bsp4j
 import dotty.tools.dotc.reporting.CodeAction
 import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
 import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.reporting.Message
-import dotty.tools.dotc.interfaces.DiagnosticRelatedInformation
-import org.eclipse.lsp4j.Location
 import dotty.tools.dotc.reporting.ErrorMessageID
 import org.eclipse.lsp4j.DiagnosticTag
 
@@ -40,8 +35,9 @@ class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
 
       val scalaDiagnostic = new bsp4j.ScalaDiagnostic()
       val actions = diag.msg.actions.map(toBspScalaAction).asJava
+      scalaDiagnostic.setActions(actions)
       // lspDiag.setRelatedInformation(???) Currently not emitted by the compiler
-      lspDiag.setData(actions)
+      lspDiag.setData(scalaDiagnostic)
       if diag.msg.errorId == ErrorMessageID.UnusedSymbolID then
         lspDiag.setTags(List(DiagnosticTag.Unnecessary).asJava)
 
