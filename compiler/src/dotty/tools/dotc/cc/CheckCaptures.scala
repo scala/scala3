@@ -245,6 +245,13 @@ object CheckCaptures:
        *  a separation check?
        */
       def needsSepCheck: Boolean
+
+      /** If a tree is an argument for which needsSepCheck is true,
+       *  the actual type of the argument before it was widened to formal.
+       *  The nuType of this argument is the formal parameter type in this case,
+       *  but for error diagnosis it's important to know what the actual type was.
+       */
+      def actualType: Type
   end CheckerAPI
 
 class CheckCaptures extends Recheck, SymTransformer:
@@ -285,11 +292,14 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     private val todoAtPostCheck = new mutable.ListBuffer[() => Unit]
 
-    /** Trees that will need a separation check because they contain cap */
-    private val sepCheckable = util.EqHashSet[Tree]()
+    /** Maps trees that will need a separation check because they contain cap
+     *  to the actual, non-widened type.
+     */
+    private val sepCheckable = util.EqHashMap[Tree, Type]()
 
     extension [T <: Tree](tree: T)
       def needsSepCheck: Boolean = sepCheckable.contains(tree)
+      def actualType: Type = sepCheckable.getOrElse(tree, NoType)
 
     /** Instantiate capture set variables appearing contra-variantly to their
      *  upper approximation.
@@ -666,15 +676,13 @@ class CheckCaptures extends Recheck, SymTransformer:
       val freshenedFormal = Fresh.fromCap(formal)
       val argType = recheck(arg, freshenedFormal)
         .showing(i"recheck arg $arg vs $freshenedFormal", capt)
-      formal match
-        case AnnotatedType(formal1, ann) if ann.symbol == defn.UseAnnot =>
-          // The UseAnnot is added to `formal` by `prepareFunction`
-          capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
-          markFree(argType.deepCaptureSet, arg.srcPos)
-        case _ =>
+      if formal.hasUseAnnot then
+        // The @use annotation is added to `formal` by `prepareFunction`
+        capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
+        markFree(argType.deepCaptureSet, arg.srcPos)
       if formal.containsCap then
         arg.updNuType(freshenedFormal)
-        sepCheckable += arg
+        sepCheckable(arg) = argType
       argType
 
     /** Map existential captures in result to `cap` and implement the following
@@ -704,9 +712,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val qualCaptures = qualType.captureSet
       val argCaptures =
         for (argType, formal) <- argTypes.lazyZip(funType.paramInfos) yield
-          formal match
-            case AnnotatedType(_, ann) if ann.symbol == defn.UseAnnot => argType.deepCaptureSet
-            case _ => argType.captureSet
+          if formal.hasUseAnnot then argType.deepCaptureSet else argType.captureSet
       appType match
         case appType @ CapturingType(appType1, refs)
         if qualType.exists

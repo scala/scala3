@@ -1,5 +1,5 @@
 -- Error: tests/neg-custom-args/captures/cc-dep-param.scala:8:6 --------------------------------------------------------
 8 |  foo(a, useA) // error: separation failure
   |      ^
-  |      Separation failure: argument to capture-polymorphic parameter x$0: Foo[Int]^
-  |      captures {a} and also passes this capability separately to method foo
+  |      Separation failure: argument of type (a : Foo[Int]^) to capture-polymorphic parameter
+  |      of type Foo[Int]^ captures {a}, and this capability is also passed separately to method foo.

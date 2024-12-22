@@ -61,11 +61,7 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
     def captures(arg: Tree) =
       val argType = arg.nuType
-      argType match
-        case AnnotatedType(formal1, ann) if ann.symbol == defn.UseAnnot =>
-          argType.deepCaptureSet
-        case _ =>
-          argType.captureSet
+      if argType.hasUseAnnot then argType.deepCaptureSet else argType.captureSet
 
     val argCaptures = args.map(captures)
     capt.println(i"check separate $fn($args), fnCaptures = $fnCaptures, argCaptures = $argCaptures")
@@ -80,13 +76,14 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         //println(i"check sep $arg / $footprint / $hiddenInArg")
         val overlap = hiddenInArg.footprint.overlapWith(footprint)
         if !overlap.isEmpty then
+          def formalName = if pname.toString.contains('$') then "" else i"$pname "
           def whatStr = if overlap.size == 1 then "this capability" else "these capabilities"
           def funStr =
             if fn.symbol.exists then i"${fn.symbol}"
             else "the function"
           report.error(
-            em"""Separation failure: argument to capture-polymorphic parameter $pname: ${arg.nuType}
-                |captures ${CaptureSet(overlap)} and also passes $whatStr separately to $funStr""",
+            em"""Separation failure: argument of type ${arg.actualType} to capture-polymorphic parameter
+                |${formalName}of type ${arg.nuType} captures ${CaptureSet(overlap)}, and $whatStr is also passed separately to $funStr.""",
             arg.srcPos)
         footprint ++= hiddenInArg
 
