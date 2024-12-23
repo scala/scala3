@@ -191,10 +191,7 @@ sealed abstract class CaptureSet extends Showable:
       existsElem(elems, _.subsumes(x))
       || !x.isMaxCapability
         && !x.derivesFrom(defn.Caps_CapSet)
-        && x.captureSetOfInfo.subCaptures(this)(using ctx,
-            vs match
-              case vs: FrozenVarState => vs
-              case _ => FrozenVarState()).isOK
+        && x.captureSetOfInfo.subCaptures(this, Frozen.All).isOK
 
     comparer match
       case comparer: ExplainingTypeComparer => comparer.traceIndented(debugInfo)(test)
@@ -1044,7 +1041,7 @@ object CaptureSet:
   class VarState:
 
     /** A map from captureset variables to their elements at the time of the snapshot. */
-    private val elemsMap: util.EqHashMap[Var, Refs] = new util.EqHashMap
+    protected val elemsMap: util.EqHashMap[Var, Refs] = new util.EqHashMap
 
     /** A map from captureset variables to their dependent sets at the time of the snapshot. */
     private val depsMap: util.EqHashMap[Var, Deps] = new util.EqHashMap
@@ -1102,6 +1099,7 @@ object CaptureSet:
   class FrozenVarState extends VarState:
     override def putElems(v: Var, refs: Refs) = false
     override def putDeps(v: Var, deps: Deps) = false
+    override def putHidden(v: HiddenSet, elems: Refs): Boolean = { elemsMap(v) = elems; true }
 
   @sharable
   /** A frozen state that allows a Fresh.Cap instancce to subsume a
