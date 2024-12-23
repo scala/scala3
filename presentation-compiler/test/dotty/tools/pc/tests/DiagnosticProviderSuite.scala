@@ -29,11 +29,31 @@ class DiagnosticProviderSuite extends BasePCSuite with RangeReplace {
     val actual = diagnostics.map(d => TestDiagnostic(d.getRange().getStart().getOffset(text), d.getRange().getEnd().getOffset(text), d.getMessage(), d.getSeverity()))
     assertEquals(expected, actual, s"Expected [${expected.mkString(", ")}] but got [${actual.mkString(", ")}]")
 
-  @Test def simple1 =
+  @Test def error =
     check(
-      """|class Bar(i: <<It>>)
+      """|class Bar(i: It)
          |""".stripMargin,
       List(TestDiagnostic(13, 15, "Not found: type It - did you mean Int.type? or perhaps Int?", DiagnosticSeverity.Error))
+    )
+
+  @Test def warning =
+    check(
+      """|object M:
+         |  1 + 1
+         |""".stripMargin,
+      List(TestDiagnostic(12, 17, "A pure expression does nothing in statement position", DiagnosticSeverity.Warning))
+    )
+
+  @Test def mixed =
+    check(
+      """|class Bar(i: It)
+         |object M:
+         |  1 + 1
+         |""".stripMargin,
+      List(
+        TestDiagnostic(13 ,15, "Not found: type It - did you mean Int.type? or perhaps Int?", DiagnosticSeverity.Error),
+        TestDiagnostic(29, 34, "A pure expression does nothing in statement position", DiagnosticSeverity.Warning)
+      )
     )
 
 }
