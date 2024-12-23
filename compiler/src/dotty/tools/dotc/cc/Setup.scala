@@ -24,9 +24,6 @@ import CheckCaptures.CheckerAPI
 /** Operations accessed from CheckCaptures */
 trait SetupAPI:
 
-  /** The operation to recheck a ValDef or DefDef */
-  type DefRecheck = (tpd.ValOrDefDef, Symbol) => Context ?=> Type
-
   /** Setup procedure to run for each compilation unit
    *   @param tree       the typed tree of the unit to check
    *   @param checker    the capture checker which will run subsequently.
