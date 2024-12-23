@@ -517,7 +517,7 @@ object Build {
     "scala2-library-tasty"
   )
 
-  val enableBspAllProjects = true
+  val enableBspAllProjects = false
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
   lazy val commonBootstrappedSettings = commonDottySettings ++ Seq(
