@@ -25,11 +25,11 @@ class B3(msg0: String) extends A("msg")
 trait Accessors {
   private var v1: Int = 0 // warn
   private var v2: Int = 0 // warn, never set
-  private var v3: Int = 0 // NO warn, never got
+  private var v3: Int = 0 // warn, never got
   private var v4: Int = 0 // no warn
 
   private var v5 = 0 // warn, never set
-  private var v6 = 0 // NO warn, never got
+  private var v6 = 0 // warn, never got
   private var v7 = 0 // no warn
 
   def bippy(): Int = {
@@ -44,11 +44,11 @@ trait Accessors {
 class StableAccessors {
   private var s1: Int = 0 // warn
   private var s2: Int = 0 // warn, never set
-  private var s3: Int = 0 // NO warn, never got
+  private var s3: Int = 0 // warn, never got
   private var s4: Int = 0 // no warn
 
   private var s5 = 0 // warn, never set
-  private var s6 = 0 // no warn, limitation
+  private var s6 = 0 // warn, never got
   private var s7 = 0 // no warn
 
   def bippy(): Int = {
@@ -61,8 +61,8 @@ class StableAccessors {
 }
 
 trait DefaultArgs {
-  // NO warn about default getters for x2 and x3
-  private def bippy(x1: Int, x2: Int = 10, x3: Int = 15): Int = x1 + x2 + x3
+  // DO warn about default getters for x2 and x3
+  private def bippy(x1: Int, x2: Int = 10, x3: Int = 15): Int = x1 + x2 + x3 // warn // warn
 
   def boppy() = bippy(5, 100, 200)
 }
@@ -128,9 +128,9 @@ trait Underwarn {
 }
 
 class OtherNames {
-  private def x_=(i: Int): Unit = ()
+  private def x_=(i: Int): Unit = () // warn
   private def x: Int = 42 // warn
-  private def y_=(i: Int): Unit = ()
+  private def y_=(i: Int): Unit = () // warn
   private def y: Int = 42
 
   def f = y
@@ -209,7 +209,7 @@ trait CaseyAtTheBat {
 class `not even using companion privates`
 
 object `not even using companion privates` {
-  private implicit class `for your eyes only`(i: Int) {  // no warn deprecated feature
+  private implicit class `for your eyes only`(i: Int) {  // warn no warn deprecated feature TODO
     def f = i
   }
 }
@@ -287,12 +287,12 @@ class `absolve ONLY serial framework`:
   private def readResolve(): Object = ??? // warn
 
 @throws(classOf[java.io.ObjectStreamException])
-private def readResolve(): Object = ??? // warn
-private def print() = println() // warn
-private val printed = false // warn
+private def readResolve(): Object = ??? // TODO warn
+private def print() = println() // TODO warn
+private val printed = false // TODO warn
 
 package locked:
-  private[locked] def locker(): Unit = () // warn as we cannot distinguish unqualified private at top level
+  private[locked] def locker(): Unit = () // TODO warn as we cannot distinguish unqualified private at top level
   package basement:
     private[locked] def shackle(): Unit = () // no warn as it is not top level at boundary
 

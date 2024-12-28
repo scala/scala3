@@ -24,7 +24,7 @@ trait Selectable extends scala.Selectable:
       val fld = rcls.getField(NameTransformer.encode(name)).nn
       ensureAccessible(fld)
       fld.get(selectedValue)
-    catch case ex: NoSuchFieldException =>
+    catch case _: NoSuchFieldException =>
       applyDynamic(name)()
 
   // The Scala.js codegen relies on this method being final for correctness

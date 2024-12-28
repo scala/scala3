@@ -275,3 +275,44 @@ package foo.test.typeapply.hklamdba.i16680:
 
     def f[F[_]]: String = "hello"
     def go = f[IO]
+
+object Selections:
+  def f(list: List[Int]): Int =
+    import list.{head => first} // OK
+    first
+
+  def f2(list: List[Int]): Int =
+    import list.head // OK
+    head
+
+  def f3(list: List[Int]): Int =
+    import list.head // warn
+    list.head
+
+  object N:
+    val ns: List[Int] = Nil
+
+  def g(): Int =
+    import N.ns // OK
+    ns.head
+end Selections
+
+object `more nestings`:
+  object Outer:
+    object Inner:
+      val thing = 42
+      def j() =
+        import Inner.thing // warn
+        thing
+      def k() =
+        import Inner.thing // warn
+        Inner.thing
+
+  object Thing:
+    object Inner:
+      val thing = 42
+      import Inner.thing // warn
+      def j() =
+        thing
+      def k() =
+        Inner.thing

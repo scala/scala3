@@ -80,3 +80,15 @@ class C(c0: Option[Int], k0: K):
     case S(i, j) => i + j
     case _ => 0
     */
+
+class Wild:
+  def f(x: Any) =
+    x match
+    case _: Option[?] => true
+    case _ => false
+
+def untuple(t: Tuple) =
+  t match
+  case Tuple() =>
+  case h *: t => // no warn canonical names taken from tuple element types, (Head, Tail) -> (head, tail)
+  //case head *: tail => // no warn canonical names taken from tuple element types, (Head, Tail) -> (head, tail)

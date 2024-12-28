@@ -60,7 +60,7 @@ class Revaluing(u: Int) { def f = u } // no warn
 
 case class CaseyKasem(k: Int)        // no warn
 
-case class CaseyAtTheBat(k: Int)(s: String)        // NO warn
+case class CaseyAtTheBat(k: Int)(s: String)  // warn
 
 trait Ignorance {
   def f(readResolve: Int) = answer           // warn
@@ -94,14 +94,15 @@ trait Anonymous {
 
   def f2: Int => Int = _ + 1  // no warn placeholder syntax (a fresh name and synthetic parameter)
 
-  def g = for (i <- List(1)) yield answer    // warn // TODO no warn patvar elaborated as map.(i => 42)
+  def g = for (i <- List(1)) yield answer    // no warn patvar elaborated as map.(i => 42)
 }
 trait Context[A] { def m(a: A): A = a }
 trait Implicits {
   def f[A](implicit ctx: Context[A]) = answer // warn
-  def g[A: Context] = answer // warn
+  def g[A: Context] = answer // no warn
+  def h[A](using Context[A]) = answer // warn
 }
-class Bound[A: Context] // warn
+class Bound[A: Context] // no warn
 object Answers {
   def answer: Int = 42
 }
@@ -147,6 +148,11 @@ class TryStart(start: String) {
 }
 
 object END
+
+object Optional:
+  extension (opt: Option.type) // no warn for extension of module
+    @annotation.experimental
+    inline def fromNullable[T](t: T | Null): Option[T] = Option(t).asInstanceOf[Option[T]]
 
 class Nested {
   @annotation.unused private def actuallyNotUsed(fresh: Int, stale: Int) = fresh // no warn if owner is unused

@@ -286,7 +286,7 @@ object Tuples {
   // Tail for Tuple1 to Tuple22
   private def specialCaseTail(self: Tuple): Tuple = {
     (self: Any) match {
-      case self: Tuple1[?] =>
+      case _: Tuple1[?] =>
         EmptyTuple
       case self: Tuple2[?, ?] =>
         Tuple1(self._2)

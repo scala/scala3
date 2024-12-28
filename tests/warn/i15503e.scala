@@ -1,5 +1,7 @@
 //> using options -Wunused:explicits
 
+import annotation.*
+
 object Foo {
   /* This goes around the "trivial method" detection */
   val default_val = 1
@@ -36,7 +38,7 @@ package foo.test.lambda.param:
 
 package foo.test.trivial:
   /* A twisted test from Scala 2 */
-  class C {
+  class C(val value: Int) {
     def answer: 42 = 42
     object X
     private def g0(x: Int) = ??? // OK
@@ -50,8 +52,10 @@ package foo.test.trivial:
     private def f7(x: Int) = Y // OK
     private def f8(x: Int): List[C] = Nil // OK
     private def f9(x: Int): List[Int] = List(1,2,3,4) // warn
-    private def foo:Int = 32  // OK
+    private def foo: Int = 32  // OK
     private def f77(x: Int) = foo // warn
+    private def self(x: Int): C = this // no warn
+    private def unwrap(x: Int): Int = value // no warn
   }
   object Y
 
@@ -69,3 +73,19 @@ package foo.test.i16865:
 
   object Ex2 extends Bar:
     override def fn(a: Int, b: Int): Int = b + 3 // warn
+
+final class alpha(externalName: String) extends StaticAnnotation // no warn annotation arg
+
+object Unimplemented:
+  import compiletime.*
+  inline def f(inline x: Int | Double): Unit = error("unimplemented") // no warn param of trivial method
+
+def `trivially wrapped`(x: String): String ?=> String = "hello, world" // no warn param of trivial method
+
+object UnwrapTyped:
+  import compiletime.error
+  inline def requireConst(inline x: Boolean | Byte | Short | Int | Long | Float | Double | Char | String): Unit =
+    error("Compiler bug: `requireConst` was not evaluated by the compiler")
+
+  transparent inline def codeOf(arg: Any): String =
+    error("Compiler bug: `codeOf` was not evaluated by the compiler")

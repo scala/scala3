@@ -3287,16 +3287,17 @@ extends TypeMsg(ConstructorProxyNotValueID):
        |companion value with the (term-)name `A`. However, these context bound companions
        |are not values themselves, they can only be referred to in selections."""
 
-class UnusedSymbol(errorText: String)(using Context)
+class UnusedSymbol(errorText: String, val actions: List[CodeAction] = Nil)(using Context)
 extends Message(UnusedSymbolID) {
   def kind = MessageKind.UnusedSymbol
 
   override def msg(using Context) = errorText
   override def explain(using Context) = ""
+  override def actions(using Context) = this.actions
 }
 
 object UnusedSymbol:
-  def imports(using Context): UnusedSymbol = UnusedSymbol(i"unused import")
+  def imports(actions: List[CodeAction])(using Context): UnusedSymbol = UnusedSymbol(i"unused import", actions)
   def localDefs(using Context): UnusedSymbol = UnusedSymbol(i"unused local definition")
   def explicitParams(using Context): UnusedSymbol = UnusedSymbol(i"unused explicit parameter")
   def implicitParams(using Context): UnusedSymbol = UnusedSymbol(i"unused implicit parameter")

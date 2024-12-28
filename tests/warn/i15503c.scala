@@ -61,3 +61,12 @@ package test.foo.i16682:
     }
 
   def f = myPackage.isInt("42")
+
+object LazyVals:
+  import java.util.concurrent.CountDownLatch
+
+  // This trait extends Serializable to fix #16806 that caused a race condition
+  sealed trait LazyValControlState extends Serializable
+
+  final class Waiting extends CountDownLatch(1), LazyValControlState:
+    private def writeReplace(): Any = null

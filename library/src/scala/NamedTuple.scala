@@ -1,6 +1,6 @@
 package scala
 import annotation.experimental
-import compiletime.ops.boolean.*
+//import compiletime.ops.boolean.*
 
 @experimental
 object NamedTuple:
