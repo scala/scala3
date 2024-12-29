@@ -162,6 +162,11 @@ sealed abstract class CaptureSet extends Showable:
    */
   protected def addThisElem(elem: CaptureRef)(using Context, VarState): CompareResult
 
+  protected def addHiddenElem(elem: CaptureRef)(using ctx: Context, vs: VarState): CompareResult =
+    if elems.exists(_.maxSubsumes(elem, canAddHidden = true))
+    then CompareResult.OK
+    else CompareResult.Fail(this :: Nil)
+
   /** If this is a variable, add `cs` as a dependent set */
   protected def addDependent(cs: CaptureSet)(using Context, VarState): CompareResult
 
@@ -399,12 +404,6 @@ object CaptureSet:
   type Vars = SimpleIdentitySet[Var]
   type Deps = SimpleIdentitySet[CaptureSet]
 
-  /** An enum indicating a Frozen degree for subCapturing tests */
-  enum Frozen:
-    case None // operations are performed in a regular VarState
-    case Vars // operations are performed in a FrozenVarState
-    case All  // operations are performed in FrozenAllState
-
   @sharable private var varId = 0
 
   /** If set to `true`, capture stack traces that tell us where sets are created */
@@ -442,7 +441,7 @@ object CaptureSet:
     def isAlwaysEmpty = elems.isEmpty
 
     def addThisElem(elem: CaptureRef)(using Context, VarState): CompareResult =
-      CompareResult.Fail(this :: Nil)
+      addHiddenElem(elem)
 
     def addDependent(cs: CaptureSet)(using Context, VarState) = CompareResult.OK
 
@@ -538,15 +537,14 @@ object CaptureSet:
       deps = state.deps(this)
 
     final def addThisElem(elem: CaptureRef)(using Context, VarState): CompareResult =
-      if isConst                                // Fail if variable is solved,
-          || !recordElemsState()                // or given VarState is frozen,
-          || Existential.isBadExistential(elem) // or `elem` is an out-of-scope existential,
-      then
+      if isConst  || !recordElemsState() then // Fail if variable is solved or given VarState is frozen
+        addHiddenElem(elem)
+      else if Existential.isBadExistential(elem) then // Fail if `elem` is an out-of-scope existential
         CompareResult.Fail(this :: Nil)
       else if !levelOK(elem) then
         CompareResult.LevelError(this, elem)    // or `elem` is not visible at the level of the set.
       else
-        //if id == 34 then assert(!elem.isUniversalRootCapability)
+        // id == 108 then assert(false, i"trying to add $elem to $this")
         assert(elem.isTrackableRef, elem)
         assert(!this.isInstanceOf[HiddenSet] || summon[VarState] == FrozenAllState, summon[VarState])
         elems += elem
@@ -562,8 +560,13 @@ object CaptureSet:
           res.addToTrace(this)
 
     private def levelOK(elem: CaptureRef)(using Context): Boolean =
-      if elem.isRootCapability || Existential.isExistentialVar(elem) then
+      if elem.isRootCapability then
         !noUniversal
+      else if Existential.isExistentialVar(elem) then
+        !noUniversal
+        && !TypeComparer.isOpenedExistential(elem)
+          // Opened existentials on the left cannot be added to nested capture sets on the right
+          // of a comparison. Test case is open-existential.scala.
       else elem match
         case elem: TermRef if level.isDefined =>
           elem.prefix match
@@ -635,7 +638,7 @@ object CaptureSet:
      */
     def solve()(using Context): Unit =
       if !isConst then
-        val approx = upperApprox(empty)
+        val approx = upperApprox(empty).map(Fresh.FromCap(NoSymbol).inverse)
           .showing(i"solve $this = $result", capt)
         //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toList}")
         val newElems = approx.elems -- elems
@@ -1035,10 +1038,18 @@ object CaptureSet:
       case _ => this
   end CompareResult
 
+  /** An enum indicating a Frozen degree for subCapturing tests */
+  enum Frozen:
+    case None // operations are performed in a regular VarState
+    case Vars // operations are performed in a FrozenVarState
+    case All  // operations are performed in FrozenAllState
+
   /** A VarState serves as a snapshot mechanism that can undo
    *  additions of elements or super sets if an operation fails
    */
   class VarState:
+
+    def frozen: Frozen = Frozen.None
 
     /** A map from captureset variables to their elements at the time of the snapshot. */
     protected val elemsMap: util.EqHashMap[Var, Refs] = new util.EqHashMap
@@ -1054,7 +1065,6 @@ object CaptureSet:
 
     /** Record elements, return whether this was allowed.
      *  By default, recording is allowed in regular both not in frozen states.
-     *  overrides this.
      */
     def putElems(v: Var, elems: Refs): Boolean = { elemsMap(v) = elems; true }
 
@@ -1066,7 +1076,6 @@ object CaptureSet:
 
     /** Record dependent sets, return whether this was allowed.
      *  By default, recording is allowed in regular both not in frozen states.
-     *  overrides this.
      */
     def putDeps(v: Var, deps: Deps): Boolean = { depsMap(v) = deps; true }
 
@@ -1097,6 +1106,7 @@ object CaptureSet:
    *  subsume arbitary types, which are then recorded in their hidden sets.
    */
   class FrozenVarState extends VarState:
+    override def frozen = Frozen.Vars
     override def putElems(v: Var, refs: Refs) = false
     override def putDeps(v: Var, deps: Deps) = false
     override def putHidden(v: HiddenSet, elems: Refs): Boolean = { elemsMap(v) = elems; true }
@@ -1107,6 +1117,7 @@ object CaptureSet:
    *  No new references can be added.
    */
   object FrozenAllState extends FrozenVarState:
+    override def frozen = Frozen.All
     override def putHidden(v: HiddenSet, elems: Refs): Boolean = false
 
   @sharable

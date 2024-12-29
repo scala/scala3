@@ -27,6 +27,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def printDebug = ctx.settings.YprintDebug.value
 
+  /** Print Fresh.Cap instances as <cap hiding ...> */
+  protected def printFreshDetailed = printDebug
+
+  /** Print Fresh.Cap instances as "fresh" */
+  protected def printFresh = printFreshDetailed || ctx.property(PrintFresh).isDefined
+
   private var openRecs: List[RecType] = Nil
 
   protected def maxToTextRecursions: Int = 100
@@ -251,7 +257,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
             if refs.isUniversal then
               if refs.elems.size == 1 || !printDebug then rootSetText
               else toTextCaptureSet(refs)
-            else if !refs.elems.isEmpty && refs.elems.forall(_.isCapOrFresh) && !printDebug then
+            else if !refs.elems.isEmpty && refs.elems.forall(_.isCapOrFresh) && !printFresh then
               rootSetText
             else
               toTextCaptureSet(refs)
@@ -308,7 +314,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
         else if (annot.symbol == defn.IntoAnnot || annot.symbol == defn.IntoParamAnnot)
             && !printDebug
         then atPrec(GlobalPrec)( Str("into ") ~ toText(tpe) )
-        else toTextLocal(tpe) ~ " " ~ toText(annot)
+        else if annot.isInstanceOf[CaptureAnnotation] then
+          toTextLocal(tpe) ~ "^" ~ toText(annot)
+        else
+          toTextLocal(tpe) ~ " " ~ toText(annot)
       case FlexibleType(_, tpe) =>
         "(" ~ toText(tpe) ~ ")?"
       case tp: TypeVar =>
@@ -432,7 +441,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case ReachCapability(tp1) => toTextCaptureRef(tp1) ~ "*"
       case MaybeCapability(tp1) => toTextCaptureRef(tp1) ~ "?"
       case Fresh.Cap(hidden) =>
-        if printDebug then s"<cap${hashStr(tp)} hiding " ~ toTextCaptureSet(hidden) ~ ">"
+        if printFreshDetailed then s"<cap${hashStr(tp)} hiding " ~ toTextCaptureSet(hidden) ~ ">" ~ "//"
+        else if printFresh then "fresh"
         else "cap"
       case tp => toText(tp)
 

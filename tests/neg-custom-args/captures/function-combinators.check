@@ -1,5 +1,10 @@
--- Error: tests/neg-custom-args/captures/function-combinators.scala:15:22 ----------------------------------------------
-15 |  val b2 = g1.andThen(g1); // error: separation failure
+-- Error: tests/neg-custom-args/captures/function-combinators.scala:10:21 ----------------------------------------------
+10 |  val a1 = f.andThen(f);  // error: separation failure
+   |                     ^
+   |               Separation failure: argument of type (f : Int => Int) to capture-polymorphic parameter
+   |               of type Int => Int captures {f}, and this capability is also passed separately to method andThen.
+-- Error: tests/neg-custom-args/captures/function-combinators.scala:16:22 ----------------------------------------------
+16 |  val b2 = g1.andThen(g1); // error: separation failure
    |                      ^^
    |            Separation failure: argument of type (g1 : Int ->{ctx1} Int) to capture-polymorphic parameter
    |            of type Int => Int captures {ctx1}, and this capability is also passed separately to method andThen.

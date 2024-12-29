@@ -4,6 +4,9 @@
    |          Found:    Future[Int]{val a: (async : Async)}^{async}
    |          Required: Future[Int]^{col.futs*}
    |
+   |          Note that reference ex$25.type
+   |          cannot be included in outer capture set {cap}
+   |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/explain-under-approx.scala:15:11 -------------------------
 15 |  col1.add(Future(() => 25)) // error

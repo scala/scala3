@@ -58,10 +58,9 @@ object Fresh:
       case _ => None
   end Cap
 
-  class FromCap(owner: Symbol)(using Context) extends BiTypeMap:
+  class FromCap(owner: Symbol)(using Context) extends BiTypeMap, FollowAliasesMap:
     thisMap =>
 
-    var change = false
     var reach = false
 
     private def initHidden =
@@ -73,26 +72,30 @@ object Fresh:
 
     override def apply(t: Type) =
       if variance <= 0 then t
-      else t.dealiasKeepAnnots match
+      else t match
         case t: CaptureRef if t.isCap =>
-          change = true
           Cap(initHidden)
         case t @ CapturingType(_, refs) =>
-          change = refs.isInstanceOf[CaptureSet.Var]
           val savedReach = reach
           if t.isBoxed then reach = true
           try mapOver(t) finally reach = savedReach
+        case t @ AnnotatedType(parent, ann) =>
+          val parent1 = this(parent)
+          if ann.symbol.isRetains && ann.tree.toCaptureSet.containsCap then
+            this(CapturingType(parent1, ann.tree.toCaptureSet))
+          else
+            t.derivedAnnotatedType(parent1, ann)
         case _ =>
-          mapOver(t)
+          mapFollowingAliases(t)
 
     override def toString = "CapToFresh"
 
-    lazy val inverse = new BiTypeMap:
+    lazy val inverse: BiTypeMap & FollowAliasesMap = new BiTypeMap with FollowAliasesMap:
       def apply(t: Type): Type = t match
-        case t @ Cap(_) =>
-          change = true
-          defn.captureRoot.termRef
-        case _ => mapOver(t)
+        case t @ Cap(_) => defn.captureRoot.termRef
+        case t @ CapturingType(_, refs) => mapOver(t)
+        case _ => mapFollowingAliases(t)
+
       def inverse = thisMap
       override def toString = thisMap.toString + ".inverse"
 
@@ -100,22 +103,34 @@ object Fresh:
 
   /** Maps cap to fresh */
   def fromCap(tp: Type, owner: Symbol = NoSymbol)(using Context): Type =
-    if ccConfig.useFresh then
-      val mapper = FromCap(owner)
-      val mapped = mapper(tp)
-      if mapper.change then mapped else tp
-    else
-      tp
+    if ccConfig.useFresh then FromCap(owner)(tp) else tp
 
   /** Maps fresh to cap */
   def toCap(tp: Type)(using Context): Type =
-    if ccConfig.useFresh then
-      val fromCap = FromCap(NoSymbol)
-      val mapper = fromCap.inverse
-      val mapped = mapper(tp)
-      if fromCap.change then mapped else tp
-    else
-      tp
+    if ccConfig.useFresh then FromCap(NoSymbol).inverse(tp) else tp
+
+  /** If `refs` contains an occurrence of `cap` or `cap.rd`, the current context
+   *  with an added property PrintFresh. This addition causes all occurrences of
+   *  `Fresh.Cap` to be printed as `fresh` instead of `cap`, so that one avoids
+   *  confusion in error messages.
+   */
+  def printContext(refs: (Type | CaptureSet)*)(using Context): Context =
+    def hasCap = new TypeAccumulator[Boolean]:
+      def apply(x: Boolean, t: Type) =
+        x || t.dealiasKeepAnnots.match
+          case Fresh.Cap(_) => false
+          case t: TermRef => t.isCap || this(x, t.widen)
+          case x: ThisType => false
+          case _ => foldOver(x, t)
+    def containsFresh(x: Type | CaptureSet): Boolean = x match
+      case tp: Type =>
+        hasCap(false, tp)
+      case refs: CaptureSet =>
+        refs.elems.exists(_.stripReadOnly.isCap)
+
+    if refs.exists(containsFresh) then ctx.withProperty(PrintFresh, Some(()))
+    else ctx
+  end printContext
 end Fresh
 
 

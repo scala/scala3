@@ -2,7 +2,7 @@
 12 |  files.map((f: F) => new Logger(f)) // error, Q: can we make this pass (see #19076)?
    |            ^^^^^^^^^^^^^^^^^^^^^^^
    |            Found:    (f: F) ->{files.rd*} box Logger{val f²: File^?}^?
-   |            Required: (f: box F^{files.rd*}) => box Logger{val f²: File^?}^?
+   |            Required: (f: box F^{files.rd*}) ->{fresh} box Logger{val f²: File^?}^?
    |
    |            where:    f  is a reference to a value parameter
    |                      f² is a value in class Logger

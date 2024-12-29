@@ -333,20 +333,21 @@ class CheckCaptures extends Recheck, SymTransformer:
       assert(cs1.subCaptures(cs2, Frozen.None).isOK, i"$cs1 is not a subset of $cs2")
 
     /** If `res` is not CompareResult.OK, report an error */
-    def checkOK(res: CompareResult, prefix: => String, pos: SrcPos, provenance: => String = "")(using Context): Unit =
+    def checkOK(res: CompareResult, prefix: => String, added: CaptureRef | CaptureSet, pos: SrcPos, provenance: => String = "")(using Context): Unit =
       if !res.isOK then
-        def toAdd: String = CaptureSet.levelErrors.toAdd.mkString
-        def descr: String =
-          val d = res.blocking.description
-          if d.isEmpty then provenance else ""
-        report.error(em"$prefix included in the allowed capture set ${res.blocking}$descr$toAdd", pos)
+        inContext(Fresh.printContext(added, res.blocking)):
+          def toAdd: String = CaptureSet.levelErrors.toAdd.mkString
+          def descr: String =
+            val d = res.blocking.description
+            if d.isEmpty then provenance else ""
+          report.error(em"$prefix included in the allowed capture set ${res.blocking}$descr$toAdd", pos)
 
     /** Check subcapturing `{elem} <: cs`, report error on failure */
     def checkElem(elem: CaptureRef, cs: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context) =
       checkOK(
           elem.singletonCaptureSet.subCaptures(cs, Frozen.None),
           i"$elem cannot be referenced here; it is not",
-          pos, provenance)
+          elem, pos, provenance)
 
     /** Check subcapturing `cs1 <: cs2`, report error on failure */
     def checkSubset(cs1: CaptureSet, cs2: CaptureSet, pos: SrcPos,
@@ -355,7 +356,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           cs1.subCaptures(cs2, Frozen.None),
           if cs1.elems.size == 1 then i"reference ${cs1.elems.toList.head}$cs1description is not"
           else i"references $cs1$cs1description are not all",
-          pos, provenance)
+          cs1, pos, provenance)
 
     /** If `sym` is a class or method nested inside a term, a capture set variable representing
      *  the captured variables of the environment associated with `sym`.
@@ -771,7 +772,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         var refined: Type = core
         var allCaptures: CaptureSet =
           if core.derivesFromMutable then CaptureSet.fresh()
-          else if core.derivesFromCapability then initCs ++ defn.universalCSImpliedByCapability
+          else if core.derivesFromCapability then initCs ++ Fresh.Cap().readOnly.singletonCaptureSet
           else initCs
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
           val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
@@ -1227,10 +1228,11 @@ class CheckCaptures extends Recheck, SymTransformer:
         actualBoxed
       else
         capt.println(i"conforms failed for ${tree}: $actual vs $expected")
-        err.typeMismatch(tree.withType(actualBoxed), expected1,
-            addApproxAddenda(
-              addenda ++ CaptureSet.levelErrors ++ boxErrorAddenda(boxErrors),
-              expected1))
+        inContext(Fresh.printContext(actualBoxed, expected1)):
+          err.typeMismatch(tree.withType(actualBoxed), expected1,
+              addApproxAddenda(
+                addenda ++ CaptureSet.levelErrors ++ boxErrorAddenda(boxErrors),
+                expected1))
         actual
     end checkConformsExpr
 

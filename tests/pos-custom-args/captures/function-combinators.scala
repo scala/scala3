@@ -7,7 +7,7 @@ def Test(using ctx1: Context, ctx2: Context) =
   val g1: Int ->{ctx1} Int = identity
   val g2: Int ->{ctx2} Int = identity
   val h: Int -> Int = identity
-  val a1 = f.andThen(f); val _: Int ->{f} Int = a1
+  val a1 = unsafeAssumeSeparate(f.andThen(f)); val _: Int ->{f} Int = a1
   val a2 = f.andThen(g1); val _: Int ->{f, g1} Int = a2
   val a3 = f.andThen(g2); val _: Int ->{f, g2} Int = a3
   val a4 = f.andThen(h); val _: Int ->{f} Int = a4

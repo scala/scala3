@@ -25,6 +25,7 @@ import scala.runtime.Statics
 import language.experimental.captureChecking
 import annotation.unchecked.uncheckedCaptures
 import caps.untrackedCaptures
+import caps.unsafe.unsafeAssumeSeparate
 
 /**  This class implements an immutable linked list. We call it "lazy"
   *  because it computes its elements only when they are needed.
@@ -1184,7 +1185,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
   def iterate[A](start: => A)(f: A => A): LazyListIterable[A]^{start, f} =
     newLL {
       val head = start
-      sCons(head, iterate(f(head))(f))
+      sCons(head, unsafeAssumeSeparate(iterate(f(head))(f)))
     }
 
   /**

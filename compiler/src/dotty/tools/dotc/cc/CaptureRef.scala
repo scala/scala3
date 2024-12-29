@@ -124,7 +124,7 @@ trait CaptureRef extends TypeProxy, ValueType:
     else
       myCaptureSet = CaptureSet.Pending
       val computed = CaptureSet.ofInfo(this)
-      if !isCaptureChecking || underlying.isProvisional then
+      if !isCaptureChecking || ctx.mode.is(Mode.IgnoreCaptures) || underlying.isProvisional then
         myCaptureSet = null
       else
         myCaptureSet = computed
@@ -165,18 +165,9 @@ trait CaptureRef extends TypeProxy, ValueType:
       case _ => false
 
     (this eq y)
-    || this.isCap
-    || this.match
-      case Fresh.Cap(hidden) =>
-        if vs.ifNotSeen(this)(hidden.elems.exists(_.subsumes(y))) then true
-        else if !hidden.recordElemsState() || y.stripReadOnly.isCap then false
-        else
-          hidden.elems += y
-          true
-      case _ =>
-        false
+    || maxSubsumes(y, canAddHidden = vs.frozen != CaptureSet.Frozen.None)
     || y.match
-        case y: TermRef =>
+        case y: TermRef if !y.isCap =>
             y.prefix.match
               case ypre: CaptureRef =>
                 this.subsumes(ypre)
@@ -220,6 +211,33 @@ trait CaptureRef extends TypeProxy, ValueType:
           refs.elems.exists(_.subsumes(y))
         case _ => false
   end subsumes
+
+  /** This is a maximal capabaility that subsumes `y` in given context and VarState.
+   *  @param canAddHidden  If true we allow maximal capabilties to subsume all other capabilities.
+   *                       We add those capabilities to the hidden set if this is Fresh.Cap
+   *                       If false we only accept `y` elements that are already in the
+   *                       hidden set of this Fresh.Cap. The idea is that in a VarState that
+   *                       accepts additions we first run `maxSubsumes` with `canAddHidden = false`
+   *                       so that new variables get added to the sets. If that fails, we run
+   *                       the test again with canAddHidden = true as a last effort before we
+   *                       fail a comparison.
+   */
+  def maxSubsumes(y: CaptureRef, canAddHidden: Boolean)(using ctx: Context, vs: VarState = FrozenAllState): Boolean =
+    this.match
+      case Fresh.Cap(hidden) =>
+        if vs.ifNotSeen(this)(hidden.elems.exists(_.subsumes(y))) then true
+        else if !y.stripReadOnly.isCap && hidden.recordElemsState() then
+          if canAddHidden then
+            hidden.elems += y
+            true
+          else
+            false
+        else false
+      case _ =>
+        this.isCap && canAddHidden
+        || y.match
+            case ReadOnlyCapability(y1) => this.stripReadOnly.maxSubsumes(y1, canAddHidden)
+            case _ => false
 
   def assumedContainsOf(x: TypeRef)(using Context): SimpleIdentitySet[CaptureRef] =
     CaptureSet.assumedContains.getOrElse(x, SimpleIdentitySet.empty)
