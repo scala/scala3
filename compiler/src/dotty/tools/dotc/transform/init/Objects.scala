@@ -92,13 +92,13 @@ class Objects(using Context @constructorOnly):
    * ve ::= ObjectRef(class)                                             // global object
    *      | OfClass(class, vs[outer], ctor, args, env)                   // instance of a class
    *      | OfArray(object[owner], regions)
-   *      | BaseOrUnknownValue                                           // Int, String, etc., and values without source
    *      | Fun(..., env)                                                // value elements that can be contained in ValueSet
+   *      | BaseValue                                                    // Int, String, etc.
    * vs ::= ValueSet(ve)                                                 // set of abstract values
    * Bottom ::= ValueSet(Empty)
-   * val ::= ve | Cold | vs                                              // all possible abstract values in domain
+   * val ::= ve | UnknownValue | vs | Package                            // all possible abstract values in domain
    * Ref ::= ObjectRef | OfClass                                         // values that represent a reference to some (global or instance) object
-   * ThisValue ::= Ref | Cold                                            // possible values for 'this'
+   * ThisValue ::= Ref | UnknownValue                                    // possible values for 'this'
    *
    * refMap = Ref -> ( valsMap, varsMap, outersMap )                     // refMap stores field informations of an object or instance
    * valsMap = valsym -> val                                             // maps immutable fields to their values
@@ -227,6 +227,11 @@ class Objects(using Context @constructorOnly):
   case class Fun(code: Tree, thisV: ThisValue, klass: ClassSymbol, env: Env.Data) extends ValueElement:
     def show(using Context) = "Fun(" + code.show + ", " + thisV.show + ", " + klass.show + ")"
 
+  /** Represents common base values like Int, String, etc.
+   */
+  case object BaseValue extends ValueElement:
+    def show(using Context): String = "BaseValue"
+
   /**
    * Represents a set of values
    *
@@ -235,22 +240,24 @@ class Objects(using Context @constructorOnly):
   case class ValueSet(values: ListSet[ValueElement]) extends Value:
     def show(using Context) = values.map(_.show).mkString("[", ",", "]")
 
-  // Represents common base values like Int, String, etc.
-  // and also values loaded without source
-  case object BaseOrUnknownValue extends ValueElement:
-    def show(using Context): String = "BaseOrUnknownValue"
+  case class Package(packageSym: Symbol) extends Value:
+    def show(using Context): String = "Package(" + packageSym.show + ")"
 
-  /** A cold alias which should not be used during initialization.
+  /** Represents values unknown to the checker, such as values loaded without source
    *
-   *  Cold is not ValueElement since RefSet containing Cold is equivalent to Cold
+   *  This is the top of the abstract domain lattice, which should not
+   *  be used during initialization.
+   *
+   *  UnknownValue is not ValueElement since RefSet containing UnknownValue
+   *  is equivalent to UnknownValue
    */
-  case object Cold extends Value:
-    def show(using Context) = "Cold"
+  case object UnknownValue extends Value:
+    def show(using Context): String = "UnknownValue"
 
   val Bottom = ValueSet(ListSet.empty)
 
   /** Possible types for 'this' */
-  type ThisValue = Ref | Cold.type
+  type ThisValue = Ref | UnknownValue.type
 
   /** Checking state  */
   object State:
@@ -642,8 +649,10 @@ class Objects(using Context @constructorOnly):
   extension (a: Value)
     def join(b: Value): Value =
       (a, b) match
-      case (Cold, _)                              => Cold
-      case (_, Cold)                              => Cold
+      case (UnknownValue, _)                => UnknownValue
+      case (_, UnknownValue)                => UnknownValue
+      case (Package(_), _)                        => UnknownValue // should not happen
+      case (_, Package(_))                        => UnknownValue
       case (Bottom, b)                            => b
       case (a, Bottom)                            => a
       case (ValueSet(values1), ValueSet(values2)) => ValueSet(values1 ++ values2)
@@ -658,7 +667,7 @@ class Objects(using Context @constructorOnly):
       case _ => a
 
     def widen(height: Int)(using Context): Value =
-      if height == 0 then Cold
+      if height == 0 then UnknownValue
       else
         a match
           case Bottom => Bottom
@@ -692,16 +701,17 @@ class Objects(using Context @constructorOnly):
         else
           val klass = sym.asClass
           a match
-            case Cold => Cold
-            case BaseOrUnknownValue => BaseOrUnknownValue
+            case UnknownValue => UnknownValue
+            case Package(_) => a
+            case BaseValue => BaseValue
             case ref: Ref => if ref.klass.isSubClass(klass) then ref else Bottom
             case ValueSet(values) => values.map(v => v.filterClass(klass)).join
             case arr: OfArray => if defn.ArrayClass.isSubClass(klass) then arr else Bottom
             case fun: Fun =>
               if klass.isOneOf(AbstractOrTrait) && klass.baseClasses.exists(defn.isFunctionClass) then fun else Bottom
 
-  extension (value: Ref | Cold.type)
-    def widenRefOrCold(height : Int)(using Context) : Ref | Cold.type = value.widen(height).asInstanceOf[ThisValue]
+  extension (value: Ref | UnknownValue.type)
+    def widenRefOrCold(height : Int)(using Context) : Ref | UnknownValue.type = value.widen(height).asInstanceOf[ThisValue]
 
   extension (values: Iterable[Value])
     def join: Value = if values.isEmpty then Bottom else values.reduce { (v1, v2) => v1.join(v2) }
@@ -719,9 +729,16 @@ class Objects(using Context @constructorOnly):
    */
   def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     value.filterClass(meth.owner) match
-    case Cold =>
-      report.warning("Using cold alias. " + Trace.show, Trace.position)
+    case UnknownValue => // TODO: This ensures soundness but emits extra warnings. Add an option to turn off warnings here
+      report.warning("Using unknown value. " + Trace.show, Trace.position)
       Bottom
+
+    case Package(packageSym) =>
+      report.warning("[Internal error] Unexpected call on package = " + value.show + ", meth = " + meth.show + Trace.show, Trace.position)
+      Bottom
+
+    case BaseValue => // TODO: This ensures soundness but emits extra warnings. Add an option to return BaseValue here
+      UnknownValue
 
     case Bottom =>
       Bottom
@@ -729,9 +746,6 @@ class Objects(using Context @constructorOnly):
     // Bottom arguments mean unreachable call
     case _ if args.map(_.value).contains(Bottom) =>
       Bottom
-
-    case BaseOrUnknownValue =>
-      BaseOrUnknownValue
 
     case arr: OfArray =>
       val target = resolve(defn.ArrayClass, meth)
@@ -751,7 +765,7 @@ class Objects(using Context @constructorOnly):
         Bottom
       else
         // Array.length is OK
-        BaseOrUnknownValue
+        BaseValue
 
     case ref: Ref =>
       val isLocal = !meth.owner.isClass
@@ -772,7 +786,7 @@ class Objects(using Context @constructorOnly):
           arr
         else if target.equals(defn.Predef_classOf) then
           // Predef.classOf is a stub method in tasty and is replaced in backend
-          BaseOrUnknownValue
+          UnknownValue
         else if target.hasSource then
           val cls = target.owner.enclosingClass.asClass
           val ddef = target.defTree.asInstanceOf[DefDef]
@@ -782,7 +796,7 @@ class Objects(using Context @constructorOnly):
             if meth.owner.isClass then
               (ref, Env.NoEnv)
             else
-              Env.resolveEnvByOwner(meth.owner.enclosingMethod, ref, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
+              Env.resolveEnvByOwner(meth.owner.enclosingMethod, ref, summon[Env.Data]).getOrElse(UnknownValue -> Env.NoEnv)
 
           val env2 = Env.ofDefDef(ddef, args.map(_.value), outerEnv)
           extendTrace(ddef) {
@@ -795,7 +809,7 @@ class Objects(using Context @constructorOnly):
             }
           }
         else
-          BaseOrUnknownValue
+          UnknownValue
       else if target.exists then
         select(ref, target, receiver, needResolve = false)
       else
@@ -824,7 +838,7 @@ class Objects(using Context @constructorOnly):
             else
               // In future, we will have Tasty for stdlib classes and can abstractly interpret that Tasty.
               // For now, return `Cold` to ensure soundness and trigger a warning.
-              Cold
+              UnknownValue
             end if
           end if
 
@@ -863,7 +877,7 @@ class Objects(using Context @constructorOnly):
           }
       else
         // no source code available
-        BaseOrUnknownValue
+        UnknownValue
 
     case _ =>
       report.warning("[Internal error] unexpected constructor call, meth = " + ctor + ", this = " + value + Trace.show, Trace.position)
@@ -879,12 +893,21 @@ class Objects(using Context @constructorOnly):
    */
   def select(value: Value, field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] = log("select " + field.show + ", this = " + value.show, printer, (_: Value).show) {
     value.filterClass(field.owner) match
-    case Cold =>
-      report.warning("Using cold alias", Trace.position)
+    case UnknownValue =>
+      report.warning("Using unknown value", Trace.position)
       Bottom
 
-    case BaseOrUnknownValue =>
-      BaseOrUnknownValue
+    case BaseValue =>
+      UnknownValue
+
+    case Package(packageSym) =>
+      if field.isStaticObject then
+        accessObject(field.moduleClass.asClass)
+      else if field.is(Flags.Package) then
+        Package(field)
+      else
+        report.warning("[Internal error] Unexpected selection on package " + packageSym.show + ", field = " + field.show + Trace.show, Trace.position)
+        Bottom
 
     case ref: Ref =>
       val target = if needResolve then resolve(ref.klass, field) else field
@@ -894,7 +917,7 @@ class Objects(using Context @constructorOnly):
           val rhs = target.defTree.asInstanceOf[ValDef].rhs
           eval(rhs, ref, target.owner.asClass, cacheResult = true)
         else
-          BaseOrUnknownValue
+          UnknownValue
       else if target.exists then
         def isNextFieldOfColonColon: Boolean = ref.klass == defn.ConsClass && target.name.toString == "next"
         if target.isOneOf(Flags.Mutable) && !isNextFieldOfColonColon then
@@ -910,7 +933,7 @@ class Objects(using Context @constructorOnly):
             Bottom
           else
             // initialization error, reported by the initialization checker
-            BaseOrUnknownValue
+            UnknownValue
         else if ref.hasVal(target) then
           ref.valValue(target)
         else if ref.isObjectRef && ref.klass.hasSource then
@@ -918,7 +941,7 @@ class Objects(using Context @constructorOnly):
           Bottom
         else
           // initialization error, reported by the initialization checker
-          BaseOrUnknownValue
+          UnknownValue
 
       else
         if ref.klass.isSubClass(receiver.widenSingleton.classSymbol) then
@@ -927,7 +950,7 @@ class Objects(using Context @constructorOnly):
         else
           // This is possible due to incorrect type cast or accessing standard library objects
           // See tests/init/pos/Type.scala / tests/init/warn/unapplySeq-implicit-arg2.scala
-          BaseOrUnknownValue
+          UnknownValue
 
     case fun: Fun =>
       report.warning("[Internal error] unexpected tree in selecting a function, fun = " + fun.code.show + Trace.show, fun.code)
@@ -937,9 +960,7 @@ class Objects(using Context @constructorOnly):
       report.warning("[Internal error] unexpected tree in selecting an array, array = " + arr.show + Trace.show, Trace.position)
       Bottom
 
-    case Bottom => // TODO: add a value for packages?
-      if field.isStaticObject then accessObject(field.moduleClass.asClass)
-      else Bottom
+    case Bottom => Bottom
 
     case ValueSet(values) =>
       values.map(ref => select(ref, field, receiver)).join
@@ -954,16 +975,15 @@ class Objects(using Context @constructorOnly):
    */
   def assign(lhs: Value, field: Symbol, rhs: Value, rhsTyp: Type): Contextual[Value] = log("Assign" + field.show + " of " + lhs.show + ", rhs = " + rhs.show, printer, (_: Value).show) {
     lhs.filterClass(field.owner) match
+    case p: Package =>
+      report.warning("[Internal error] unexpected tree in assignment, package = " + p.packageSym.show + Trace.show, Trace.position)
     case fun: Fun =>
       report.warning("[Internal error] unexpected tree in assignment, fun = " + fun.code.show + Trace.show, Trace.position)
-
     case arr: OfArray =>
       report.warning("[Internal error] unexpected tree in assignment, array = " + arr.show + " field = " + field + Trace.show, Trace.position)
 
-    case Cold =>
-      report.warning("Assigning to cold aliases is forbidden. " + Trace.show, Trace.position)
-
-    case BaseOrUnknownValue | Bottom =>
+    case BaseValue | UnknownValue =>
+      report.warning("Assigning to base or unknown value is forbidden. " + Trace.show, Trace.position)
 
     case ValueSet(values) =>
       values.foreach(ref => assign(ref, field, rhs, rhsTyp))
@@ -994,14 +1014,14 @@ class Objects(using Context @constructorOnly):
    */
   def instantiate(outer: Value, klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", outer = " + outer + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     outer.filterClass(klass.owner) match
-    case _ : Fun | _: OfArray  =>
+    case _ : Fun | _: OfArray | BaseValue  =>
       report.warning("[Internal error] unexpected outer in instantiating a class, outer = " + outer.show + ", class = " + klass.show + ", " + Trace.show, Trace.position)
       Bottom
 
-    case BaseOrUnknownValue =>
-      BaseOrUnknownValue
+    case UnknownValue =>
+      UnknownValue
 
-    case outer: (Ref | Cold.type | Bottom.type) =>
+    case outer: (Ref | UnknownValue.type | Package) =>
       if klass == defn.ArrayClass then
         args.head.tree.tpe match
           case ConstantType(Constants.Constant(0)) =>
@@ -1015,18 +1035,18 @@ class Objects(using Context @constructorOnly):
         // Widen the outer to finitize the domain. Arguments already widened in `evalArgs`.
         val (outerWidened, envWidened) =
           outer match
-            case _ : Bottom.type => // For top-level classes
-              (Bottom, Env.NoEnv)
-            case thisV : (Ref | Cold.type) =>
+            case Package(_) => // For top-level classes
+              (outer, Env.NoEnv)
+            case thisV : (Ref | UnknownValue.type) =>
               if klass.owner.isClass then
                 if klass.owner.is(Flags.Package) then
-                  report.warning("[Internal error] top-level class should have `Bottom` as outer, class = " + klass.show + ", outer = " + outer.show + ", " + Trace.show, Trace.position)
+                  report.warning("[Internal error] top-level class should have `Package` as outer, class = " + klass.show + ", outer = " + outer.show + ", " + Trace.show, Trace.position)
                   (Bottom, Env.NoEnv)
                 else
                   (thisV.widenRefOrCold(1), Env.NoEnv)
               else
                 // klass.enclosingMethod returns its primary constructor
-                Env.resolveEnvByOwner(klass.owner.enclosingMethod, thisV, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
+                Env.resolveEnvByOwner(klass.owner.enclosingMethod, thisV, summon[Env.Data]).getOrElse(UnknownValue -> Env.NoEnv)
 
         val instance = OfClass(klass, outerWidened, ctor, args.map(_.value), envWidened)
         callConstructor(instance, ctor, args)
@@ -1088,11 +1108,10 @@ class Objects(using Context @constructorOnly):
             case fun: Fun =>
               given Env.Data = Env.ofByName(sym, fun.env)
               eval(fun.code, fun.thisV, fun.klass)
-            case Cold =>
-              report.warning("Calling cold by-name alias. " + Trace.show, Trace.position)
+            case UnknownValue =>
+              report.warning("Calling on unknown value. " + Trace.show, Trace.position)
               Bottom
-            case BaseOrUnknownValue => BaseOrUnknownValue
-            case _: ValueSet | _: Ref | _: OfArray =>
+            case _: ValueSet | _: Ref | _: OfArray | _: Package | BaseValue =>
               report.warning("[Internal error] Unexpected by-name value " + value.show  + ". " + Trace.show, Trace.position)
               Bottom
           else
@@ -1103,7 +1122,7 @@ class Objects(using Context @constructorOnly):
         report.warning("Calling cold by-name alias. " + Trace.show, Trace.position)
         Bottom
       else
-        Cold
+        UnknownValue
   }
 
   /** Handle local variable assignmenbt, `x = e`.
@@ -1281,7 +1300,7 @@ class Objects(using Context @constructorOnly):
         evalType(expr.tpe, thisV, klass)
 
       case Literal(_) =>
-        BaseOrUnknownValue
+        BaseValue
 
       case Typed(expr, tpt) =>
         if tpt.tpe.hasAnnotation(defn.UncheckedAnnot) then
@@ -1559,7 +1578,7 @@ class Objects(using Context @constructorOnly):
       // call .lengthCompare or .length
       val lengthCompareDenot = getMemberMethod(scrutineeType, nme.lengthCompare, lengthCompareType)
       if lengthCompareDenot.exists then
-        call(scrutinee, lengthCompareDenot.symbol, ArgInfo(BaseOrUnknownValue, summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
+        call(scrutinee, lengthCompareDenot.symbol, ArgInfo(UnknownValue, summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
       else
         val lengthDenot = getMemberMethod(scrutineeType, nme.length, lengthType)
         call(scrutinee, lengthDenot.symbol, Nil, scrutineeType, superType = NoType, needResolve = true)
@@ -1567,7 +1586,7 @@ class Objects(using Context @constructorOnly):
 
       // call .apply
       val applyDenot = getMemberMethod(scrutineeType, nme.apply, applyType(elemType))
-      val applyRes = call(scrutinee, applyDenot.symbol, ArgInfo(BaseOrUnknownValue, summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
+      val applyRes = call(scrutinee, applyDenot.symbol, ArgInfo(BaseValue, summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
 
       if isWildcardStarArgList(pats) then
         if pats.size == 1 then
@@ -1578,7 +1597,7 @@ class Objects(using Context @constructorOnly):
         else
           // call .drop
           val dropDenot = getMemberMethod(scrutineeType, nme.drop, dropType(elemType))
-          val dropRes = call(scrutinee, dropDenot.symbol, ArgInfo(BaseOrUnknownValue, summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
+          val dropRes = call(scrutinee, dropDenot.symbol, ArgInfo(BaseValue, summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
           for pat <- pats.init do evalPattern(applyRes, pat)
           evalPattern(dropRes, pats.last)
         end if
@@ -1620,12 +1639,12 @@ class Objects(using Context @constructorOnly):
   def evalType(tp: Type, thisV: ThisValue, klass: ClassSymbol, elideObjectAccess: Boolean = false): Contextual[Value] = log("evaluating " + tp.show, printer, (_: Value).show) {
     tp match
       case _: ConstantType =>
-        BaseOrUnknownValue
+        BaseValue
 
       case tmref: TermRef if tmref.prefix == NoPrefix =>
         val sym = tmref.symbol
         if sym.is(Flags.Package) then
-          Bottom // TODO: package value?
+          Package(sym)
         else if sym.owner.isClass then
           // The typer incorrectly assigns a TermRef with NoPrefix for `config`,
           // while the actual denotation points to the symbol of the class member
@@ -1651,7 +1670,7 @@ class Objects(using Context @constructorOnly):
       case tp @ ThisType(tref) =>
         val sym = tref.symbol
         if sym.is(Flags.Package) then
-          Bottom
+          Package(sym)
         else if sym.isStaticObject && sym != klass then
           // The typer may use ThisType to refer to an object outside its definition.
           if elideObjectAccess then
@@ -1851,7 +1870,7 @@ class Objects(using Context @constructorOnly):
     if target == klass then
       thisV
     else if target.is(Flags.Package) then
-      Bottom
+      Package(target) // TODO: What is the semantics for package.this?
     else if target.isStaticObject then
       val res = ObjectRef(target.moduleClass.asClass)
       if elideObjectAccess then res
@@ -1859,8 +1878,7 @@ class Objects(using Context @constructorOnly):
     else
       thisV match
         case Bottom => Bottom
-        case BaseOrUnknownValue => BaseOrUnknownValue
-        case Cold => Cold
+        case UnknownValue => UnknownValue
         case ref: Ref =>
           val outerCls = klass.owner.lexicallyEnclosingClass.asClass
           if !ref.hasOuter(klass) then
@@ -1871,7 +1889,7 @@ class Objects(using Context @constructorOnly):
             resolveThis(target, ref.outerValue(klass), outerCls)
         case ValueSet(values) =>
           values.map(ref => resolveThis(target, ref, klass)).join
-        case _: Fun | _ : OfArray =>
+        case _: Fun | _ : OfArray | _: Package | BaseValue =>
           report.warning("[Internal error] unexpected thisV = " + thisV + ", target = " + target.show + ", klass = " + klass.show + Trace.show, Trace.position)
           Bottom
   }
