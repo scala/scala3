@@ -808,6 +808,7 @@ class Definitions {
   @tu lazy val LanguageModule: Symbol = requiredModule("scala.language")
   @tu lazy val LanguageModuleClass: Symbol = LanguageModule.moduleClass.asClass
   @tu lazy val LanguageExperimentalModule: Symbol = requiredModule("scala.language.experimental")
+  @tu lazy val LanguagePreviewModule: Symbol = requiredModule("scala.language.preview")
   @tu lazy val LanguageDeprecatedModule: Symbol = requiredModule("scala.language.deprecated")
   @tu lazy val NonLocalReturnControlClass: ClassSymbol = requiredClass("scala.runtime.NonLocalReturnControl")
   @tu lazy val SelectableClass: ClassSymbol = requiredClass("scala.Selectable")
@@ -1053,6 +1054,7 @@ class Definitions {
   @tu lazy val CompileTimeOnlyAnnot: ClassSymbol = requiredClass("scala.annotation.compileTimeOnly")
   @tu lazy val SwitchAnnot: ClassSymbol = requiredClass("scala.annotation.switch")
   @tu lazy val ExperimentalAnnot: ClassSymbol = requiredClass("scala.annotation.experimental")
+  @tu lazy val PreviewAnnot: ClassSymbol = requiredClass("scala.annotation.preview")
   @tu lazy val ThrowsAnnot: ClassSymbol = requiredClass("scala.throws")
   @tu lazy val TransientAnnot: ClassSymbol = requiredClass("scala.transient")
   @tu lazy val UncheckedAnnot: ClassSymbol = requiredClass("scala.unchecked")
@@ -2078,6 +2080,10 @@ class Definitions {
    */
   @tu lazy val languageExperimentalFeatures: List[TermSymbol] =
     LanguageExperimentalModule.moduleClass.info.decls.toList.filter(_.isAllOf(Lazy | Module)).map(_.asTerm)
+
+  /** Preview language features defined in `scala.runtime.stdLibPatches.language.preview` */
+  @tu lazy val languagePreviewFeatures: List[TermSymbol] =
+    LanguagePreviewModule.moduleClass.info.decls.toList.filter(_.isAllOf(Lazy | Module)).map(_.asTerm)
 
   // ----- primitive value class machinery ------------------------------------------
 

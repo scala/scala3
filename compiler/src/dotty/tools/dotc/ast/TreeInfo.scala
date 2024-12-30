@@ -297,7 +297,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case TypeDefs(_) => true
     case _ => false
 
-  private val languageSubCategories = Set(nme.experimental, nme.deprecated)
+  private val languageSubCategories = Set(nme.experimental, nme.preview, nme.deprecated)
 
   /** If `path` looks like a language import, `Some(name)` where name
    *  is `experimental` if that sub-module is imported, and the empty

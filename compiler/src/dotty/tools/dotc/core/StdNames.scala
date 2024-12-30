@@ -579,6 +579,7 @@ object StdNames {
     val parts: N                = "parts"
     val postfixOps: N           = "postfixOps"
     val prefix : N              = "prefix"
+    val preview: N              = "preview"
     val processEscapes: N       = "processEscapes"
     val productArity: N         = "productArity"
     val productElement: N       = "productElement"

@@ -141,10 +141,12 @@ class CrossVersionChecks extends MiniPhase:
         if tree.span.isSourceDerived then
           checkDeprecatedRef(sym, tree.srcPos)
         checkExperimentalRef(sym, tree.srcPos)
+        checkPreviewFeatureRef(sym, tree.srcPos)
       case TermRef(_, sym: Symbol)  =>
         if tree.span.isSourceDerived then
           checkDeprecatedRef(sym, tree.srcPos)
         checkExperimentalRef(sym, tree.srcPos)
+        checkPreviewFeatureRef(sym, tree.srcPos)
       case AnnotatedType(_, annot) =>
         checkUnrollAnnot(annot.symbol, tree.srcPos)
       case _ =>
@@ -174,11 +176,12 @@ object CrossVersionChecks:
   val description: String = "check issues related to deprecated and experimental"
 
   /** Check that a reference to an experimental definition with symbol `sym` meets cross-version constraints
-   *  for `@deprecated` and `@experimental`.
+   *  for `@deprecated`, `@experimental` and `@preview`.
    */
   def checkRef(sym: Symbol, pos: SrcPos)(using Context): Unit =
     checkDeprecatedRef(sym, pos)
     checkExperimentalRef(sym, pos)
+    checkPreviewFeatureRef(sym, pos)
 
   /** Check that a reference to an experimental definition with symbol `sym` is only
    *  used in an experimental scope
@@ -186,6 +189,13 @@ object CrossVersionChecks:
   private[CrossVersionChecks] def checkExperimentalRef(sym: Symbol, pos: SrcPos)(using Context): Unit =
     if sym.isExperimental && !ctx.owner.isInExperimentalScope then
       Feature.checkExperimentalDef(sym, pos)
+
+  /** Check that a reference to a preview definition with symbol `sym` is only
+   *  used in a preview mode.
+   */
+  private[CrossVersionChecks] def checkPreviewFeatureRef(sym: Symbol, pos: SrcPos)(using Context): Unit =
+    if sym.isPreview && !ctx.owner.isInPreviewScope then
+      Feature.checkPreviewDef(sym, pos)
 
   /** If @deprecated is present, and the point of reference is not enclosed
    *  in either a deprecated member or a scala bridge method, issue a warning.
