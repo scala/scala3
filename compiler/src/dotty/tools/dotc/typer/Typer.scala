@@ -2394,7 +2394,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             Annotation(defn.RequiresCapabilityAnnot, cap, tree.span))))
     res.withNotNullInfo(expr1.notNullInfo.terminatedInfo)
 
-  def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(using Context): SeqLiteral = {
+  def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(using Context): Tree =
     val elemProto = pt.stripNull().elemType match {
       case NoType => WildcardType
       case bounds: TypeBounds => WildcardType(bounds)
@@ -2404,24 +2404,71 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def assign(elems1: List[Tree], elemtpt1: Tree) =
       assignType(cpy.SeqLiteral(tree)(elems1, elemtpt1), elems1, elemtpt1)
 
-    if (!tree.elemtpt.isEmpty) {
+    // Seq literal used in varargs: elem type is given
+    def varargSeqLiteral =
       val elemtpt1 = typed(tree.elemtpt, elemProto)
       val elems1 = tree.elems.mapconserve(typed(_, elemtpt1.tpe))
       assign(elems1, elemtpt1)
-    }
-    else {
+
+    // Seq literal used in Java annotations: elem type needs to be computed
+    def javaSeqLiteral =
       val elems1 = tree.elems.mapconserve(typed(_, elemProto))
       val elemtptType =
-        if (isFullyDefined(elemProto, ForceDegree.none))
+        if isFullyDefined(elemProto, ForceDegree.none) then
           elemProto
-        else if (tree.elems.isEmpty && tree.isInstanceOf[Trees.JavaSeqLiteral[?]])
+        else if tree.elems.isEmpty then
           defn.ObjectType // generic empty Java varargs are of type Object[]
         else
           TypeComparer.lub(elems1.tpes)
       val elemtpt1 = typed(tree.elemtpt, elemtptType)
       assign(elems1, elemtpt1)
-    }
-  }
+
+    // Stand-alone collection literal [x1, ..., xN]
+    def collectionLiteral =
+      def isArrow(tree: untpd.Tree) = tree match
+        case untpd.InfixOp(_, Ident(nme.PUREARROW), _) => true
+        case _ => false
+
+      // The default maker if no typeclass is searched or found
+      def defaultMaker =
+        if tree.elems.nonEmpty && tree.elems.forall(isArrow)
+        then untpd.ref(defn.MapModule)
+        else untpd.ref(defn.SeqModule)
+
+      // We construct and typecheck a term `maker(tree.elems)`, where `maker`
+      // is either a given instance of type ExpressibleAsCollectionLiteralClass
+      // or a default instance. The default instance is either Seq or Map,
+      // depending on the forms of `tree.elems`. We search for a type class if
+      // the expected type is a value type that is not underspeficied for implicit search.
+      val maker = pt match
+        case pt: ValueType if !Implicits.isUnderspecified(wildApprox(pt)) =>
+          val tc = defn.ExpressibleAsCollectionLiteralClass.typeRef.appliedTo(pt)
+          val nestedCtx = ctx.fresh.setNewTyperState()
+          // Find given instance `witness` of type `ExpressibleAsCollectionLiteral[<pt>]`
+          val witness = inferImplicitArg(tc, tree.span.startPos)
+          def errMsg = missingArgMsg(witness, pt, "")
+          typr.println(i"infer for $tree with $tc = $witness, ${ctx.typerState.constraint}")
+          witness.tpe match
+            case _: AmbiguousImplicits =>
+              report.error(errMsg, tree.srcPos)
+              defaultMaker
+            case _: SearchFailureType =>
+              typr.println(i"failed collection literal witness: ${errMsg.toString}")
+              defaultMaker
+            case _ =>
+              // Continue with typing `witness.fromLiteral` as the constructor
+              untpd.TypedSplice(witness.select(nme.fromLiteral))
+        case _ =>
+          defaultMaker
+      typed(
+        untpd.Apply(maker, tree.elems).withSpan(tree.span)
+          .showing(i"typed collection literal $tree ---> $result", typr)
+        , pt)
+
+    if !tree.elemtpt.isEmpty then varargSeqLiteral
+    else if tree.isInstanceOf[Trees.JavaSeqLiteral[?]] then javaSeqLiteral
+    else collectionLiteral
+  end typedSeqLiteral
 
   def typedInlined(tree: untpd.Inlined, pt: Type)(using Context): Tree =
     throw new UnsupportedOperationException("cannot type check a Inlined node")
