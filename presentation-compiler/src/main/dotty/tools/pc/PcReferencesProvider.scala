@@ -8,7 +8,6 @@ import scala.meta.internal.metals.CompilerOffsetParams
 import scala.meta.pc.ReferencesRequest
 import scala.meta.pc.ReferencesResult
 
-import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.interactive.InteractiveDriver

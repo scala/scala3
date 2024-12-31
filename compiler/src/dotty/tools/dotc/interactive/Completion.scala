@@ -89,21 +89,24 @@ object Completion:
    *
    * Otherwise, provide no completion suggestion.
    */
-  def completionMode(path: List[untpd.Tree], pos: SourcePosition): Mode = path match
-    case GenericImportSelector(sel) =>
-      if sel.imported.span.contains(pos.span) then Mode.ImportOrExport // import scala.@@
-      else if sel.isGiven && sel.bound.span.contains(pos.span) then Mode.ImportOrExport
-      else Mode.None // import scala.{util => u@@}
-    case GenericImportOrExport(_) => Mode.ImportOrExport | Mode.Scope // import TrieMa@@
-    case untpd.Literal(Constants.Constant(_: String)) :: _ => Mode.Term | Mode.Scope // literal completions
-    case (ref: untpd.RefTree) :: _ =>
-      val maybeSelectMembers = if ref.isInstanceOf[untpd.Select] then Mode.Member else Mode.Scope
+  def completionMode(path: List[untpd.Tree], pos: SourcePosition): Mode =
+    path match
+      case GenericImportSelector(sel) =>
+        if sel.imported.span.contains(pos.span) then Mode.ImportOrExport // import scala.@@
+        else if sel.isGiven && sel.bound.span.contains(pos.span) then Mode.ImportOrExport
+        else Mode.None // import scala.{util => u@@}
+      case GenericImportOrExport() => Mode.ImportOrExport | Mode.Scope // import TrieMa@@
+      case BindMixedWithNamedPatterns() => Mode.None // case User(name = name, sur@@)
+      case untpd.Literal(Constants.Constant(_: String)) :: _ => Mode.Term | Mode.Scope // literal completions
+      // TODO case (_: tpd.Bind) :: _ => we should complete only when in backticks
+      case (ref: untpd.RefTree) :: _ =>
+        val maybeSelectMembers = if ref.isInstanceOf[untpd.Select] then Mode.Member else Mode.Scope
 
-      if (ref.name.isTermName) Mode.Term | maybeSelectMembers
-      else if (ref.name.isTypeName) Mode.Type | maybeSelectMembers
-      else Mode.None
+        if (ref.name.isTermName) Mode.Term | maybeSelectMembers
+        else if (ref.name.isTypeName) Mode.Type | maybeSelectMembers
+        else Mode.None
 
-    case _ => Mode.None
+      case _ => Mode.None
 
   /** When dealing with <errors> in varios palces we check to see if they are
    *  due to incomplete backticks. If so, we ensure we get the full prefix
@@ -161,12 +164,19 @@ object Completion:
         case (sel: untpd.ImportSelector) :: _ => Some(sel)
         case _ => None
 
-  private object GenericImportOrExport:
-    def unapply(path: List[untpd.Tree]): Option[untpd.ImportOrExport] =
+  private object BindMixedWithNamedPatterns:
+    def unapply(path: List[untpd.Tree]): Boolean =
       path match
-        case untpd.Ident(_) :: (importOrExport: untpd.ImportOrExport) :: _ => Some(importOrExport)
-        case (importOrExport: untpd.ImportOrExport) :: _ => Some(importOrExport)
-        case _ => None
+        case (_: untpd.Ident) :: (fn0: untpd.Apply) :: untpd.CaseDef(fn1, _, _) :: _
+            if fn1 == fn0 && fn0.args.exists(_.isInstanceOf[untpd.NamedArg]) => true
+        case _ => false
+
+  private object GenericImportOrExport:
+    def unapply(path: List[untpd.Tree]): Boolean =
+      path match
+        case untpd.Ident(_) :: (importOrExport: untpd.ImportOrExport) :: _ => true
+        case (importOrExport: untpd.ImportOrExport) :: _ => true
+        case _ => false
 
   /** Inspect `path` to determine the offset where the completion result should be inserted. */
   def completionOffset(untpdPath: List[untpd.Tree]): Int =

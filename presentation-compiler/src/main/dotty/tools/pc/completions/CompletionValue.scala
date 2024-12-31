@@ -250,7 +250,7 @@ object CompletionValue:
       denotation: Denotation
   ) extends Symbolic:
     override def insertText: Option[String] = Some(label.replace("$", "$$").nn)
-    override def completionItemDataKind: Integer = CompletionSource.OverrideKind.ordinal
+    override def completionItemDataKind: Integer = CompletionSource.NamedArgKind.ordinal
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Field
     override def description(printer: ShortenedTypePrinter)(using Context): String =
@@ -265,7 +265,7 @@ object CompletionValue:
   ) extends CompletionValue:
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Enum
-    override def completionItemDataKind: Integer = CompletionSource.OverrideKind.ordinal
+    override def completionItemDataKind: Integer = CompletionSource.AutoFillKind.ordinal
     override def insertText: Option[String] = Some(value)
     override def label: String = "Autofill with default values"
 
