@@ -4,7 +4,7 @@
    |          Found:    Future[Int]{val a: (async : Async)}^{async}
    |          Required: Future[Int]^{col.futs*}
    |
-   |          Note that reference ex$25.type
+   |          Note that reference ex$22.type
    |          cannot be included in outer capture set {cap}
    |
    | longer explanation available when compiling with `-explain`

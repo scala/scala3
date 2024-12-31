@@ -7,6 +7,6 @@
 22 |  val bad: bar.T = foo(bar) // error
    |                   ^^^^^^^^
    |                   Found:    () => Logger^
-   |                   Required: () ->{fresh} Logger^{fresh}
+   |                   Required: () ->{fresh} (ex$9: caps.Exists) -> Logger^{ex$9}
    |
    | longer explanation available when compiling with `-explain`

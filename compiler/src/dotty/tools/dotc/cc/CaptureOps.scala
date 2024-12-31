@@ -56,7 +56,7 @@ object ccConfig:
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.6`)
 
   def followAliases(using Context): Boolean =
-    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
+    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.6`)
 end ccConfig
 
 /** Are we at checkCaptures phase? */
