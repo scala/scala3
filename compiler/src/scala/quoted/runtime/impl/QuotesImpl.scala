@@ -25,6 +25,7 @@ import scala.quoted.runtime.impl.printers.*
 import scala.reflect.TypeTest
 import dotty.tools.dotc.core.NameKinds.ExceptionBinderName
 import dotty.tools.dotc.transform.TreeChecker
+import dotty.tools.dotc.core.Names
 
 object QuotesImpl {
 
@@ -243,15 +244,21 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def apply(cls: Symbol, parents: List[Tree], body: List[Statement]): ClassDef =
         val paramsDefs: List[untpd.ParamClause] =
           cls.primaryConstructor.paramSymss.map { paramSym =>
-            paramSym.map( symm =>
-              ValDef(symm, None)
-            )
+            if paramSym.headOption.map(_.isType).getOrElse(false) then
+              paramSym.map(sym => TypeDef(sym))
+            else
+              paramSym.map(ValDef(_, None))
           }
         val paramsAccessDefs: List[untpd.ParamClause] =
           cls.primaryConstructor.paramSymss.map { paramSym =>
-            paramSym.map( symm =>
-              ValDef(cls.fieldMember(symm.name.toString()), None) // TODO I don't like the toString here
-            )
+            if paramSym.headOption.map(_.isType).getOrElse(false) then
+              paramSym.map { symm =>
+                TypeDef(cls.typeMember(symm.name.toString()))
+              }
+            else
+              paramSym.map { symm =>
+                ValDef(cls.fieldMember(symm.name.toString()), None)// TODO I don't like the toString here
+              }
           }
 
         val termSymbol: dotc.core.Symbols.TermSymbol = cls.primaryConstructor.asTerm
@@ -406,7 +413,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         case x: (tpd.NamedArg & x.type) => Some(x)
         case x: (tpd.Typed & x.type) =>
           TypedTypeTest.unapply(x) // Matches `Typed` but not `TypedOrTest`
-        case x: (tpd.TypeDef & x.type) => Some(x)
         case _ => if x.isTerm then Some(x) else None
     end TermTypeTest
 
@@ -2657,10 +2663,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def requiredMethod(path: String): Symbol = dotc.core.Symbols.requiredMethod(path)
       def classSymbol(fullName: String): Symbol = dotc.core.Symbols.requiredClass(fullName)
 
-      def newClass(parent: Symbol, name: String, parents: List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr]): Symbol =
+      def newClass(owner: Symbol, name: String, parents: List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr]): Symbol =
         assert(parents.nonEmpty && !parents.head.typeSymbol.is(dotc.core.Flags.Trait), "First parent must be a class")
         val cls = dotc.core.Symbols.newNormalizedClassSymbol(
-          parent,
+          owner,
           name.toTypeName,
           dotc.core.Flags.EmptyFlags,
           parents,
@@ -2670,19 +2676,96 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         for sym <- decls(cls) do cls.enter(sym)
         cls
 
-      def newClass(parent: Symbol, name: String, parents: Symbol => List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr], paramNames: List[String], paramTypes: List[TypeRepr], flags: Flags, privateWithin: Symbol): Symbol =
-        checkValidFlags(flags.toTermFlags, Flags.validClassFlags)
-        assert(!privateWithin.exists || privateWithin.isType, "privateWithin must be a type symbol or `Symbol.noSymbol`")
+      def newClass(
+        owner: Symbol,
+        name: String,
+        parents: Symbol => List[TypeRepr],
+        decls: Symbol => List[Symbol],
+        selfType: Option[TypeRepr],
+        paramNames: List[String],
+        paramTypes: List[TypeRepr],
+        clsFlags: Flags,
+        clsPrivateWithin: Symbol
+      ): Symbol =
+        checkValidFlags(clsFlags.toTermFlags, Flags.validClassFlags)
+        assert(paramNames.length == paramTypes.length, "paramNames and paramTypes must have the same length")
+        assert(!clsPrivateWithin.exists || clsPrivateWithin.isType, "clsPrivateWithin must be a type symbol or `Symbol.noSymbol`")
         val cls = dotc.core.Symbols.newNormalizedClassSymbolUsingClassSymbolinParents(
-          parent,
+          owner,
           name.toTypeName,
-          flags,
+          clsFlags,
           parents,
           selfType.getOrElse(Types.NoType),
-          privateWithin)
+          clsPrivateWithin)
         cls.enter(dotc.core.Symbols.newConstructor(cls, dotc.core.Flags.Synthetic, paramNames.map(_.toTermName), paramTypes))
         for (name, tpe) <- paramNames.zip(paramTypes) do
-          cls.enter(dotc.core.Symbols.newSymbol(cls, name.toTermName, Flags.ParamAccessor, tpe, Symbol.noSymbol)) // add other flags (local, private, privatelocal) and set privateWithin
+          cls.enter(dotc.core.Symbols.newSymbol(cls, name.toTermName, Flags.ParamAccessor, tpe, Symbol.noSymbol))
+        for sym <- decls(cls) do cls.enter(sym)
+        cls
+
+      def newClass(
+        owner: Symbol,
+        name: String,
+        parents: Symbol => List[TypeRepr],
+        decls: Symbol => List[Symbol],
+        selfType: Option[TypeRepr],
+        constructorMethodType: TypeRepr => MethodOrPoly,
+        clsFlags: Flags,
+        clsPrivateWithin: Symbol,
+        consFlags: Flags,
+        consPrivateWithin: Symbol,
+        consParamFlags: List[List[Flags]]
+      ) =
+        assert(!clsPrivateWithin.exists || clsPrivateWithin.isType, "clsPrivateWithin must be a type symbol or `Symbol.noSymbol`")
+        assert(!consPrivateWithin.exists || consPrivateWithin.isType, "consPrivateWithin must be a type symbol or `Symbol.noSymbol`")
+        checkValidFlags(clsFlags.toTermFlags, Flags.validClassFlags)
+        val cls = dotc.core.Symbols.newNormalizedClassSymbolUsingClassSymbolinParents(
+          owner,
+          name.toTypeName,
+          clsFlags,
+          parents,
+          selfType.getOrElse(Types.NoType),
+          clsPrivateWithin)
+        val methodType: MethodOrPoly = constructorMethodType(cls.typeRef)
+        def throwShapeException() = throw new Exception("Shapes of constructorMethodType and consParamFlags differ.")
+        def checkMethodOrPolyShape(checkedMethodType: TypeRepr, clauseIdx: Int): Unit =
+          checkedMethodType match
+            case PolyType(params, _, res) if clauseIdx == 0 =>
+              if (consParamFlags.length < clauseIdx) throwShapeException()
+              if (consParamFlags(clauseIdx).length != params.length) throwShapeException()
+              checkMethodOrPolyShape(res, clauseIdx + 1)
+            case PolyType(_, _, _) => throw new Exception("Clause interleaving not supported for constructors")
+            case MethodType(params, _, res) =>
+              if (consParamFlags.length < clauseIdx) throwShapeException()
+              if (consParamFlags(clauseIdx).length != params.length) throwShapeException()
+              checkMethodOrPolyShape(res, clauseIdx + 1)
+            case _ =>
+        checkMethodOrPolyShape(methodType, clauseIdx = 0)
+        cls.enter(dotc.core.Symbols.newSymbol(cls, nme.CONSTRUCTOR, Flags.Synthetic | Flags.Method | consFlags, methodType, consPrivateWithin, dotty.tools.dotc.util.Spans.NoCoord)) // constructor flags
+        def getParamAccessors(methodType: TypeRepr, clauseIdx: Int): List[((String, TypeRepr, Boolean, Int), Int)] =
+          methodType match
+            case MethodType(paramInfosExp, resultTypeExp, res) =>
+              paramInfosExp.zip(resultTypeExp).map(_ :* false :* clauseIdx).zipWithIndex ++ getParamAccessors(res, clauseIdx + 1)
+            case pt @ PolyType(paramNames, paramBounds, res) =>
+              paramNames.zip(paramBounds).map(_ :* true :* clauseIdx).zipWithIndex ++ getParamAccessors(res, clauseIdx + 1)
+            case result =>
+              List()
+        // Maps PolyType indexes to type symbols
+        val paramRefMap = collection.mutable.HashMap[Int, Symbol]()
+        val paramRefRemapper = new Types.TypeMap {
+          def apply(tp: Types.Type) = tp match {
+            case pRef: ParamRef if pRef.binder == methodType => paramRefMap(pRef.paramNum).typeRef
+            case _ => mapOver(tp)
+          }
+        }
+        for ((name, tpe, isType, clauseIdx), elementIdx) <- getParamAccessors(methodType, 0) do
+          if isType then
+            val symbol = dotc.core.Symbols.newSymbol(cls, name.toTypeName, Flags.Param | Flags.Deferred | consParamFlags(clauseIdx)(elementIdx), tpe, Symbol.noSymbol)
+            paramRefMap.addOne(elementIdx, symbol)
+            cls.enter(symbol)
+          else
+            val fixedType = paramRefRemapper(tpe)
+            cls.enter(dotc.core.Symbols.newSymbol(cls, name.toTermName, Flags.ParamAccessor | consParamFlags(clauseIdx)(elementIdx), fixedType, Symbol.noSymbol)) // add other flags (local, private, privatelocal) and set privateWithin
         for sym <- decls(cls) do cls.enter(sym)
         cls
 

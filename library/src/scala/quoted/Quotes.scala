@@ -3811,7 +3811,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** The class Symbol of a global class definition */
       def classSymbol(fullName: String): Symbol
 
-      /** Generates a new class symbol for a class with a parameterless constructor.
+      /** Generates a new class symbol for a class with a public parameterless constructor.
        *
        *  Example usage:
        *  ```
@@ -3839,7 +3839,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  }
        *  ```
        *
-       *  @param parent The owner of the class
+       *  @param owner The owner of the class
        *  @param name The name of the class
        *  @param parents The parent classes of the class. The first parent must not be a trait.
        *  @param decls The member declarations of the class provided the symbol of this class
@@ -3855,17 +3855,61 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       // TODO: add flags and privateWithin
       @experimental def newClass(owner: Symbol, name: String, parents: List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr]): Symbol
 
-      /**
-       * @param parent declerations of this class provided the symbol of this class.
-       * Calling `cls.typeRef.asType` as part of this function will lead to cyclic reference errors.
+      /** Generates a new class symbol for a class with a public constructor.
+       *
+       * @param owner The owner of the class
+       * @param name The name of the class
+       * @param parents Function returning the parent classes of the class. The first parent must not be a trait.
+       * Takes the constructed class symbol as an argument. Calling `cls.typeRef.asType` as part of this function will lead to cyclic reference errors.
        * @param paramNames constructor parameter names.
        * @param paramTypes constructor parameter types.
-       * @param flags extra flags with which the class symbol should be constructed.
-       * @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
+       * @param clsFlags extra flags with which the class symbol should be constructed.
+       * @param clsPrivateWithin the symbol within which this new class symbol should be private. May be noSymbol.
        *
        * Parameters can be obtained via classSymbol.memberField
        */
-      @experimental def newClass(owner: Symbol, name: String, parents: Symbol => List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr], paramNames: List[String], paramTypes: List[TypeRepr], flags: Flags, privateWithin: Symbol): Symbol
+      @experimental def newClass(
+        owner: Symbol,
+        name: String,
+        parents: Symbol => List[TypeRepr],
+        decls: Symbol => List[Symbol], selfType: Option[TypeRepr],
+        paramNames: List[String],
+        paramTypes: List[TypeRepr],
+        clsFlags: Flags,
+        clsPrivateWithin: Symbol
+      ): Symbol
+
+      /**
+        *
+        *
+        * @param owner The owner of the class
+        * @param name The name of the class
+        * @param parents Function returning the parent classes of the class. The first parent must not be a trait.
+        * Takes the constructed class symbol as an argument. Calling `cls.typeRef.asType` as part of this function will lead to cyclic reference errors.
+        * @param decls The member declarations of the class provided the symbol of this class
+        * @param selfType The self type of the class if it has one
+        * @param constructorMethodType The MethodOrPoly type representing the type of the constructor.
+        * PolyType may only represent only the first clause of the constructor.
+        * @param clsFlags extra flags with which the class symbol should be constructed.
+        * @param clsPrivateWithin the symbol within which this new class symbol should be private. May be noSymbol
+        * @param consFlags extra flags with which the constructor symbol should be constructed.
+        * @param consPrivateWithin the symbol within which the constructor for this new class symbol should be private. May be noSymbol
+        * @param conParamFlags extra flags with which the constructor parameter symbols should be constructed. Must match the shape of @param constructorMethodType
+        *
+        */
+      @experimental def newClass(
+        owner: Symbol,
+        name: String,
+        parents: Symbol => List[TypeRepr],
+        decls: Symbol => List[Symbol],
+        selfType: Option[TypeRepr],
+        constructorMethodType: TypeRepr => MethodOrPoly,
+        clsFlags: Flags,
+        clsPrivateWithin: Symbol,
+        consFlags: Flags,
+        consPrivateWithin: Symbol,
+        conParamFlags: List[List[Flags]]
+      ): Symbol
 
       /** Generates a new module symbol with an associated module class symbol,
        *  this is equivalent to an `object` declaration in source code.
