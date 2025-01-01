@@ -359,6 +359,8 @@ extension (tp: Type)
       parent.stripCapturing
     case atd @ AnnotatedType(parent, annot) =>
       atd.derivedAnnotatedType(parent.stripCapturing, annot)
+    case tp if tp.derivesFrom(defn.Caps_CapSet) =>
+      defn.Caps_CapSet.typeRef
     case _ =>
       tp
 
