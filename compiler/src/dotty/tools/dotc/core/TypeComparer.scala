@@ -298,6 +298,43 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       }
     }
 
+     //TODO move the following functions somewhere more appropriate
+    /**
+     * Is the type `tp` a `CapSet` type, i.e., a capture variable?
+     *
+     * @param tp The type to check
+     * @param includeCapSet Whether to include the bare `CapSet` type itself in the check, false at the top level
+     */
+    def isCapSet(tp: Type, includeCapSet: Boolean = false): Boolean = tp match {
+      case tp: TypeRef => (includeCapSet && (tp.symbol eq defn.Caps_CapSet)) || {
+        tp.underlying match
+          case TypeBounds(lo, hi) => isCapSet(lo, true) && isCapSet(hi, true)
+          case TypeAlias(alias)   => isCapSet(alias) // TODO: test cases involving type aliases
+          case _                  => false
+      }
+      case tp: SingletonType => isCapSet(tp.underlying)
+      case CapturingType(parent, _) => isCapSet(parent, true)
+      case _ => false
+    }
+
+    /**
+     * Assumes that isCapSet(tp) is true.
+     */
+    def canonicalizeToCapSet(tp: Type): Type = tp match
+      case ct @ CapturingType(_,_) => ct
+      case tp: TypeRef if tp.symbol eq defn.Caps_CapSet => CapturingType(tp, CaptureSet.empty)
+      case tp: SingletonType => canonicalizeToCapSet(tp.underlying)
+      case tp: CaptureRef => CapturingType(defn.Caps_CapSet.typeRef, CaptureSet(tp))
+
+
+    /** In capture checking, implements the logic to compare type variables which represent
+     *  capture variables.
+     *
+     *  Note: should only be called in a context where tp1 or tp2 is a type variable representing a capture variable.
+     */
+    def tryHandleCaptureVars: Boolean =
+      isCaptureCheckingOrSetup && isCapSet(tp1) && isCapSet(tp2) && recur(canonicalizeToCapSet(tp1), canonicalizeToCapSet(tp2)) // TODO: we could probably just call subcapturing right away here and terminate early
+
     def firstTry: Boolean = tp2 match {
       case tp2: NamedType =>
         def compareNamed(tp1: Type, tp2: NamedType): Boolean =
@@ -346,6 +383,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 && isSubPrefix(tp1.prefix, tp2.prefix)
                 && tp1.signature == tp2.signature
                 && !(sym1.isClass && sym2.isClass)  // class types don't subtype each other
+                || tryHandleCaptureVars
                 || thirdTryNamed(tp2)
             case _ =>
               secondTry
@@ -858,9 +896,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         }
         compareTypeBounds
       case CapturingType(parent2, refs2) =>
-        def compareCapturing =
+        def compareCapturing: Boolean =
           val refs1 = tp1.captureSet
           try
+            if tp1.isInstanceOf[TypeRef] && tryHandleCaptureVars then return true
             if refs1.isAlwaysEmpty then recur(tp1, parent2)
             else
               // The singletonOK branch is because we sometimes have a larger capture set in a singleton
