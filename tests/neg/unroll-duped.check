@@ -1,0 +1,12 @@
+-- [E207] Declaration Error: tests/neg/unroll-duped.scala:11:45 --------------------------------------------------------
+11 |  final def copy(s: String = this.s, @unroll y: Boolean = this.y): UnrolledCase = // error
+   |                                             ^
+   |          Cannot unroll parameters of method copy of a case class: please annotate the class constructor instead
+-- [E207] Declaration Error: tests/neg/unroll-duped.scala:18:12 --------------------------------------------------------
+18 |    @unroll y: Boolean = true // error
+   |            ^
+   |Cannot unroll parameters of method apply of a case class companion object: please annotate the class constructor instead
+-- [E207] Declaration Error: tests/neg/unroll-duped.scala:22:26 --------------------------------------------------------
+22 |  def fromProduct(@unroll p: Product = EmptyTuple): UnrolledCase = { // error
+   |                          ^
+   |Cannot unroll parameters of method fromProduct of a case class companion object: please annotate the class constructor instead
