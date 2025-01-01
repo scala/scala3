@@ -5,12 +5,16 @@ import scala.annotation.tailrec
 
 import dotc.*
 import ast.*, tpd.*
+import dotty.tools.dotc.core.Constants.*
 import core.*, Contexts.*, Flags.*, Names.*, Symbols.*, Types.*
+import dotty.tools.dotc.core.StdNames.*
 import interactive.*
 import util.*
 import util.SourcePosition
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 object MetalsInteractive:
+  type NamedTupleArg = String
 
   def contextOfStat(
       stats: List[Tree],
@@ -110,7 +114,7 @@ object MetalsInteractive:
       pos: SourcePosition,
       indexed: IndexedContext,
       skipCheckOnName: Boolean = false
-  ): List[(Symbol, Type)] =
+  ): List[(Symbol, Type, Option[String])] =
     import indexed.ctx
     path match
       // For a named arg, find the target `DefDef` and jump to the param
@@ -118,59 +122,59 @@ object MetalsInteractive:
         val funSym = fn.symbol
         if funSym.is(Synthetic) && funSym.owner.is(CaseClass) then
           val sym = funSym.owner.info.member(name).symbol
-          List((sym, sym.info))
+          List((sym, sym.info, None))
         else
           val paramSymbol =
             for param <- funSym.paramSymss.flatten.find(_.name == name)
             yield param
           val sym = paramSymbol.getOrElse(fn.symbol)
-          List((sym, sym.info))
+          List((sym, sym.info, None))
 
       case (_: untpd.ImportSelector) :: (imp: Import) :: _ =>
         importedSymbols(imp, _.span.contains(pos.span)).map(sym =>
-          (sym, sym.info)
+          (sym, sym.info, None)
         )
 
       case (imp: Import) :: _ =>
         importedSymbols(imp, _.span.contains(pos.span)).map(sym =>
-          (sym, sym.info)
+          (sym, sym.info, None)
         )
 
       // wildcard param
       case head :: _ if (head.symbol.is(Param) && head.symbol.is(Synthetic)) =>
-        List((head.symbol, head.typeOpt))
+        List((head.symbol, head.typeOpt, None))
 
       case (head @ Select(target, name)) :: _
           if head.symbol.is(Synthetic) && name == StdNames.nme.apply =>
         val sym = target.symbol
         if sym.is(Synthetic) && sym.is(Module) then
-          List((sym.companionClass, sym.companionClass.info))
-        else List((target.symbol, target.typeOpt))
+          List((sym.companionClass, sym.companionClass.info, None))
+        else List((target.symbol, target.typeOpt, None))
 
       // L@@ft(...)
       case (head @ ApplySelect(select)) :: _
           if select.qualifier.sourcePos.contains(pos) &&
             select.name == StdNames.nme.apply =>
-        List((head.symbol, head.typeOpt))
+        List((head.symbol, head.typeOpt, None))
 
       // for Inlined we don't have a symbol, but it's needed to show proper type
       case (head @ Inlined(call, bindings, expansion)) :: _ =>
-        List((call.symbol, head.typeOpt))
+        List((call.symbol, head.typeOpt, None))
 
       // for comprehension
       case (head @ ApplySelect(select)) :: _ if isForSynthetic(head) =>
         // If the cursor is on the qualifier, return the symbol for it
         // `for { x <- List(1).head@@Option }`  returns the symbol of `headOption`
         if select.qualifier.sourcePos.contains(pos) then
-          List((select.qualifier.symbol, select.qualifier.typeOpt))
+          List((select.qualifier.symbol, select.qualifier.typeOpt, None))
         // Otherwise, returns the symbol of for synthetics such as "withFilter"
-        else List((head.symbol, head.typeOpt))
+        else List((head.symbol, head.typeOpt, None))
 
       // f@@oo.bar
       case Select(target, _) :: _
           if target.span.isSourceDerived &&
             target.sourcePos.contains(pos) =>
-        List((target.symbol, target.typeOpt))
+        List((target.symbol, target.typeOpt, None))
 
       /* In some cases type might be represented by TypeTree, however it's possible
        * that the type tree will not be marked properly as synthetic even if it doesn't
@@ -185,7 +189,7 @@ object MetalsInteractive:
        */
       case (tpt: TypeTree) :: parent :: _
           if tpt.span != parent.span && !tpt.symbol.is(Synthetic) =>
-        List((tpt.symbol, tpt.typeOpt))
+        List((tpt.symbol, tpt.typeOpt, None))
 
       /* TypeTest class https://dotty.epfl.ch/docs/reference/other-new-features/type-test.html
        * compiler automatically adds unapply if possible, we need to find the type symbol
@@ -195,14 +199,28 @@ object MetalsInteractive:
         pat match
           case UnApply(fun, _, pats) =>
             val tpeSym = pats.head.typeOpt.typeSymbol
-            List((tpeSym, tpeSym.info))
+            List((tpeSym, tpeSym.info, None))
           case _ =>
             Nil
+
+      // Handle select on named tuples
+      case (Apply(Apply(TypeApply(fun, List(t1, t2)), List(ddef)), List(Literal(Constant(i: Int))))) :: _
+        if fun.symbol.exists && fun.symbol.name == nme.apply &&
+            fun.symbol.owner.exists && fun.symbol.owner == getModuleIfDefined("scala.NamedTuple").moduleClass =>
+        def getIndex(t: Tree): Option[Type] =
+          t.tpe.dealias match
+            case AppliedType(_, args) => args.get(i)
+            case _ => None
+        val name = getIndex(t1) match
+          case Some(c: ConstantType) => c.value.stringValue
+          case _ => ""
+        val tpe = getIndex(t2).getOrElse(NoType)
+        List((ddef.symbol, tpe, Some(name)))
 
       case path @ head :: tail =>
         if head.symbol.is(Exported) then
           val sym = head.symbol.sourceSymbol
-          List((sym, sym.info))
+          List((sym, sym.info, None))
         else if head.symbol.is(Synthetic) then
           enclosingSymbolsWithExpressionType(
             tail,
@@ -217,7 +235,7 @@ object MetalsInteractive:
               pos,
               indexed.ctx.source
             )
-          then List((head.symbol, head.typeOpt))
+          then List((head.symbol, head.typeOpt, None))
           /* Type tree for List(1) has an Int type variable, which has span
            * but doesn't exist in code.
            * https://github.com/scala/scala3/issues/15937
@@ -234,7 +252,7 @@ object MetalsInteractive:
               indexed,
               skipCheckOnName
             )
-          else recovered.map(sym => (sym, sym.info))
+          else recovered.map(sym => (sym, sym.info, None))
         end if
       case Nil => Nil
     end match
