@@ -356,6 +356,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               catch case ex: IllegalCaptureRef =>
                 report.error(em"Illegal capture reference: ${ex.getMessage.nn}", tptToCheck.srcPos)
                 parent2
+            else if ann.symbol == defn.UncheckedCapturesAnnot then
+              makeUnchecked(apply(parent))
             else
               t.derivedAnnotatedType(parent1, ann)
           case throwsAlias(res, exc) =>
@@ -439,7 +441,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
     private val paramSigChange = util.EqHashSet[Tree]()
 
-    /** Transform type of tree, and remember the transformed type as the type the tree */
+    /** Transform type of tree, and remember the transformed type as the type the tree
+     *  @pre !(boxed && sym.exists)
+     */
     private def transformTT(tree: TypeTree, sym: Symbol, boxed: Boolean)(using Context): Unit =
       if !tree.hasNuType then
         var transformed =
@@ -450,7 +454,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         if sym.is(Param) && (transformed ne tree.tpe) then
           paramSigChange += tree
         tree.setNuType(
-          if boxed then transformed else Fresh.fromCap(transformed, sym))
+          if boxed then transformed
+          else if sym.hasAnnotation(defn.UncheckedCapturesAnnot) then makeUnchecked(transformed)
+          else Fresh.fromCap(transformed, sym))
 
     /** Transform the type of a val or var or the result type of a def */
     def transformResultType(tpt: TypeTree, sym: Symbol)(using Context): Unit =
@@ -817,6 +823,16 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             mapOver(t)
         if variance > 0 then t1
         else decorate(t1, Function.const(CaptureSet.Fluid))
+
+  /** Replace all universal capture sets in this type by <fluid> */
+  private def makeUnchecked(using Context): TypeMap = new TypeMap with FollowAliasesMap:
+    def apply(t: Type) = t match
+      case t @ CapturingType(parent, refs) =>
+        val parent1 = this(parent)
+        if refs.isUniversal then t.derivedCapturingType(parent1, CaptureSet.Fluid)
+        else t
+      case Existential(_) => t
+      case _ => mapFollowingAliases(t)
 
   /** Pull out an embedded capture set from a part of `tp` */
   def normalizeCaptures(tp: Type)(using Context): Type = tp match
