@@ -907,10 +907,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       *  If `sym` refers to a class member `foo` in class `C`,
       *  returns a tree representing `C.this.foo`.
       *
+      *  If `sym` refers to an object member `foo` in object C, itself in prefix
+      *  `pre` (which might include `.this`, if it contains a class),
+      *  returns `pre.C.foo`.
+      *
       *  If `sym` refers to a local definition `foo`, returns
       *  a tree representing `foo`.
       *
-      *  @note In both cases, the constructed tree should only
+      *  @note In all cases, the constructed tree should only
       *  be spliced into the places where such accesses make sense.
       *  For example, it is incorrect to have `C.this.foo` outside
       *  the class body of `C`, or have `foo` outside the lexical
