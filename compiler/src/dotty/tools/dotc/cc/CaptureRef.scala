@@ -165,7 +165,7 @@ trait CaptureRef extends TypeProxy, ValueType:
       case _ => false
 
     (this eq y)
-    || maxSubsumes(y, canAddHidden = vs.frozen != CaptureSet.Frozen.None)
+    || maxSubsumes(y, canAddHidden = vs.frozen == CaptureSet.Frozen.Vars)
     || y.match
         case y: TermRef if !y.isCap =>
             y.prefix.match

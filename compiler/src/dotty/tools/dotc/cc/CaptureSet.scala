@@ -141,8 +141,8 @@ sealed abstract class CaptureSet extends Showable:
    *  element is not the root capability, try instead to include its underlying
    *  capture set.
    */
-  protected final def addNewElem(elem: CaptureRef)(using Context, VarState): CompareResult =
-    if elem.isMaxCapability || summon[VarState].isInstanceOf[FrozenVarState] then
+  protected final def addNewElem(elem: CaptureRef)(using ctx: Context, vs: VarState): CompareResult =
+    if elem.isMaxCapability || vs.frozen != Frozen.None then
       addThisElem(elem)
     else
       addThisElem(elem).orElse:
@@ -163,7 +163,7 @@ sealed abstract class CaptureSet extends Showable:
   protected def addThisElem(elem: CaptureRef)(using Context, VarState): CompareResult
 
   protected def addHiddenElem(elem: CaptureRef)(using ctx: Context, vs: VarState): CompareResult =
-    if elems.exists(_.maxSubsumes(elem, canAddHidden = true))
+    if elems.exists(_.maxSubsumes(elem, canAddHidden = vs.frozen != Frozen.All))
     then CompareResult.OK
     else CompareResult.Fail(this :: Nil)
 
@@ -196,6 +196,8 @@ sealed abstract class CaptureSet extends Showable:
       existsElem(elems, _.subsumes(x))
       || !x.isMaxCapability
         && !x.derivesFrom(defn.Caps_CapSet)
+        && !(vs.frozen == Frozen.All && x.captureSetOfInfo.containsRootCapability)
+           // under Frozen.All, don't try to widen to cap since that might succeed with {cap} <: {cap}
         && x.captureSetOfInfo.subCaptures(this, Frozen.All).isOK
 
     comparer match
