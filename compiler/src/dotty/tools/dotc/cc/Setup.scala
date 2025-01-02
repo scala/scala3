@@ -914,6 +914,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           for
             j <- 0 until retained.length if j != i
             r <- retained(j).toCaptureRefs
+            if !r.isMaxCapability
           yield r
         val remaining = CaptureSet(others*)
         check(remaining, remaining)

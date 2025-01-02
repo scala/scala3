@@ -19,15 +19,15 @@ trait IO
 type Op = () -> Unit
 def test2(c: IO^, f: Op^{c}) = {
   def run(io: IO^)(op: Op^{io}): Unit = op()
-  run(c)(f) // error: separation failure
+  run(c)(f)
 
   def bad(getIO: () => IO^, g: Op^{getIO}): Unit =
-    run(getIO())(g)  // error // error: separation failure
+    run(getIO())(g)  // error
 }
 
 def test3() = {
   def run(io: IO^)(op: Op^{io}): Unit = ???
   val myIO: IO^ = ???
   val myOp: Op^{myIO} = ???
-  run(myIO)(myOp) // error: separation failure
+  run(myIO)(myOp)
 }

@@ -545,7 +545,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp1 @ CapturingType(parent1, refs1) =>
         def compareCapturing =
           if tp2.isAny then true
-          else if subCaptures(refs1, tp2.captureSet, frozenConstraint).isOK && sameBoxed(tp1, tp2, refs1)
+          else if subCaptures(refs1, tp2.captureSet).isOK && sameBoxed(tp1, tp2, refs1)
             || !ctx.mode.is(Mode.CheckBoundsOrSelfType) && tp1.isAlwaysPure
           then
             val tp2a =
@@ -672,12 +672,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
               case (info1 @ CapturingType(parent1, refs1), info2: Type)
               if info2.stripCapturing.isInstanceOf[MethodOrPoly] =>
-                subCaptures(refs1, info2.captureSet, frozenConstraint).isOK && sameBoxed(info1, info2, refs1)
+                subCaptures(refs1, info2.captureSet).isOK && sameBoxed(info1, info2, refs1)
                   && isSubInfo(parent1, info2)
               case (info1: Type, CapturingType(parent2, refs2))
               if info1.stripCapturing.isInstanceOf[MethodOrPoly] =>
                 val refs1 = info1.captureSet
-                (refs1.isAlwaysEmpty || subCaptures(refs1, refs2, frozenConstraint).isOK) && sameBoxed(info1, info2, refs1)
+                (refs1.isAlwaysEmpty || subCaptures(refs1, refs2).isOK) && sameBoxed(info1, info2, refs1)
                   && isSubInfo(info1, parent2)
               case _ =>
                 isSubType(info1, info2)
@@ -871,12 +871,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               // capt-capibility.scala and function-combinators.scala
               val singletonOK = tp1 match
                 case tp1: SingletonType
-                if subCaptures(tp1.underlying.captureSet, refs2, frozen = true).isOK =>
+                if subCaptures(tp1.underlying.captureSet, refs2, CaptureSet.Frozen.All).isOK =>
                   recur(tp1.widen, tp2)
                 case _ =>
                   false
               singletonOK
-              || subCaptures(refs1, refs2, frozenConstraint).isOK
+              || subCaptures(refs1, refs2).isOK
                   && sameBoxed(tp1, tp2, refs1)
                   && (recur(tp1.widen.stripCapturing, parent2)
                      || tp1.isInstanceOf[SingletonType] && recur(tp1, parent2)
@@ -2892,24 +2892,25 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     end inverse
   end MapExistentials
 
-  protected def frozenDegree(frozen: Boolean) =
-    if frozen then CaptureSet.Frozen.Vars else CaptureSet.Frozen.None
+  protected def currentFrozenDegree =
+    if frozenConstraint then CaptureSet.Frozen.Vars else CaptureSet.Frozen.None
 
-  protected def subCaptures(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult =
+  protected def subCaptures(refs1: CaptureSet, refs2: CaptureSet,
+      frozenDegree: CaptureSet.Frozen = currentFrozenDegree)(using Context): CaptureSet.CompareResult =
     try
       if assocExistentials.isEmpty then
-        refs1.subCaptures(refs2, frozenDegree(frozen))
+        refs1.subCaptures(refs2, frozenDegree)
       else
         val mapped = refs1.map(MapExistentials(assocExistentials))
         if mapped.elems.exists(Existential.isBadExistential)
         then CaptureSet.CompareResult.Fail(refs2 :: Nil)
-        else subCapturesMapped(mapped, refs2, frozen)
+        else subCapturesMapped(mapped, refs2, frozenDegree)
     catch case ex: AssertionError =>
       println(i"fail while subCaptures $refs1 <:< $refs2")
       throw ex
 
-  protected def subCapturesMapped(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult =
-    refs1.subCaptures(refs2, frozenDegree(frozen))
+  protected def subCapturesMapped(refs1: CaptureSet, refs2: CaptureSet, frozenDegree: CaptureSet.Frozen)(using Context): CaptureSet.CompareResult =
+    refs1.subCaptures(refs2, frozenDegree)
 
   /** Is the boxing status of tp1 and tp2 the same, or alternatively, is
    *  the capture sets `refs1` of `tp1` a subcapture of the empty set?
@@ -2917,7 +2918,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    */
   protected def sameBoxed(tp1: Type, tp2: Type, refs1: CaptureSet)(using Context): Boolean =
     (tp1.isBoxedCapturing == tp2.isBoxedCapturing)
-    || refs1.subCaptures(CaptureSet.empty, frozenDegree(frozenConstraint)).isOK
+    || refs1.subCaptures(CaptureSet.empty, currentFrozenDegree).isOK
 
   // ----------- Diagnostics --------------------------------------------------
 
@@ -3477,8 +3478,8 @@ object TypeComparer {
   def reduceMatchWith[T](op: MatchReducer => T)(using Context): T =
     comparing(_.reduceMatchWith(op))
 
-  def subCaptures(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult =
-    comparing(_.subCaptures(refs1, refs2, frozen))
+  def subCaptures(refs1: CaptureSet, refs2: CaptureSet, frozenDegree: CaptureSet.Frozen)(using Context): CaptureSet.CompareResult =
+    comparing(_.subCaptures(refs1, refs2, frozenDegree))
 
   def subsumesExistentially(tp1: TermParamRef, tp2: CaptureRef)(using Context) =
     comparing(_.subsumesExistentially(tp1, tp2))
@@ -3959,14 +3960,14 @@ class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeCompa
       super.gadtAddBound(sym, b, isUpper)
     }
 
-  override def subCaptures(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult =
-    traceIndented(i"subcaptures $refs1 <:< $refs2 ${if frozen then "frozen" else ""}") {
-      super.subCaptures(refs1, refs2, frozen)
+  override def subCaptures(refs1: CaptureSet, refs2: CaptureSet, frozenDegree: CaptureSet.Frozen)(using Context): CaptureSet.CompareResult =
+    traceIndented(i"subcaptures $refs1 <:< $refs2, frozen = $frozenDegree") {
+      super.subCaptures(refs1, refs2, frozenDegree)
     }
 
-  override def subCapturesMapped(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult =
-    traceIndented(i"subcaptures mapped $refs1 <:< $refs2 ${if frozen then "frozen" else ""}") {
-      super.subCapturesMapped(refs1, refs2, frozen)
+  override def subCapturesMapped(refs1: CaptureSet, refs2: CaptureSet, frozenDegree: CaptureSet.Frozen)(using Context): CaptureSet.CompareResult =
+    traceIndented(i"subcaptures mapped $refs1 <:< $refs2, frozen = $frozenDegree") {
+      super.subCapturesMapped(refs1, refs2, frozenDegree)
     }
 
   def lastTrace(header: String): String = header + { try b.toString finally b.clear() }

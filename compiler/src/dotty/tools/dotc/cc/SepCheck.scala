@@ -65,27 +65,29 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
     val argCaptures = args.map(captures)
     capt.println(i"check separate $fn($args), fnCaptures = $fnCaptures, argCaptures = $argCaptures")
-    var footprint = argCaptures.foldLeft(fnCaptures.footprint): (fp, ac) =>
-      fp ++ ac.footprint
+    var footprint = args.foldLeft(fnCaptures.footprint): (fp, arg) =>
+      if arg.needsSepCheck then fp else fp ++ captures(arg)
     val paramNames = fn.nuType.widen match
       case MethodType(pnames) => pnames
       case _ => args.indices.map(nme.syntheticParamName(_))
-    for (arg, ac, pname) <- args.lazyZip(argCaptures).lazyZip(paramNames) do
+    for (arg, pname) <- args.lazyZip(paramNames) do
       if arg.needsSepCheck then
-        val hiddenInArg = CaptureSet(hidden(ac))
-        //println(i"check sep $arg / $footprint / $hiddenInArg")
+        val ac = captures(arg)
+        val hiddenInArg = CaptureSet(hidden(ac)).footprint
+        //println(i"check sep $arg: $ac, footprint so far = $footprint, hidden = $hiddenInArg")
         val overlap = hiddenInArg.footprint.overlapWith(footprint)
         if !overlap.isEmpty then
           def formalName = if pname.toString.contains('$') then "" else i"$pname "
-          def whatStr = if overlap.size == 1 then "this capability" else "these capabilities"
+          def whatStr = if overlap.size == 1 then "this capability is" else "these capabilities are"
           def funStr =
             if fn.symbol.exists then i"${fn.symbol}"
             else "the function"
           report.error(
             em"""Separation failure: argument of type ${arg.actualType} to capture-polymorphic parameter
-                |${formalName}of type ${arg.nuType} captures ${CaptureSet(overlap)}, and $whatStr is also passed separately to $funStr.""",
+                |${formalName}of type ${arg.nuType} captures ${CaptureSet(overlap)}, and $whatStr also passed separately to $funStr.""",
             arg.srcPos)
-        footprint ++= hiddenInArg
+        footprint ++= hiddenInArg.footprint
+        footprint ++= ac.footprint
 
   private def traverseApply(tree: Tree, argss: List[List[Tree]])(using Context): Unit = tree match
     case Apply(fn, args) => traverseApply(fn, args :: argss)
