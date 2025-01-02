@@ -47,6 +47,14 @@ object desugar {
    */
   val UntupledParam: Property.Key[Unit] = Property.StickyKey()
 
+  /** An attachment key to indicate that a ValDef originated from a pattern.
+   */
+  val PatternVar: Property.Key[Unit] = Property.StickyKey()
+
+  /** An attachment key for Trees originating in for-comprehension, such as tupling of assignments.
+   */
+  val ForArtifact: Property.Key[Unit] = Property.StickyKey()
+
   /** An attachment key to indicate that a ValDef is an evidence parameter
    *  for a context bound.
    */
@@ -1505,7 +1513,7 @@ object desugar {
       val matchExpr =
         if (tupleOptimizable) rhs
         else
-          val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids))
+          val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids).withAttachment(ForArtifact, ()))
           Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
       vars match {
         case Nil if !mods.is(Lazy) =>
@@ -1535,6 +1543,7 @@ object desugar {
                   ValDef(named.name.asTermName, tpt, selector(n))
                     .withMods(mods)
                     .withSpan(named.span)
+                    .withAttachment(PatternVar, ())
                 )
           flatTree(firstDef :: restDefs)
       }
@@ -1920,6 +1929,7 @@ object desugar {
     val vdef = ValDef(named.name.asTermName, tpt, rhs)
       .withMods(mods)
       .withSpan(original.span.withPoint(named.span.start))
+      .withAttachment(PatternVar, ())
     val mayNeedSetter = valDef(vdef)
     mayNeedSetter
   }
@@ -2165,7 +2175,7 @@ object desugar {
               case _ => Modifiers()
             makePatDef(valeq, mods, defpat, rhs)
           }
-          val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil, Block(pdefs, makeTuple(id0 :: ids)))
+          val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil, Block(pdefs, makeTuple(id0 :: ids).withAttachment(ForArtifact, ())))
           val allpats = gen.pat :: pats
           val vfrom1 = GenFrom(makeTuple(allpats), rhs1, GenCheckMode.Ignore)
           makeFor(mapName, flatMapName, vfrom1 :: rest1, body)

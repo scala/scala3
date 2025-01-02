@@ -48,9 +48,7 @@ object CommandLineParser {
 
     def fromStringOption(s: String): Option[T] =
       try Some(fromString(s))
-      catch {
-        case ex: IllegalArgumentException => None
-      }
+      catch case _: IllegalArgumentException => None
   }
 
   object FromString {

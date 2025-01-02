@@ -1,6 +1,5 @@
 package scala.util
-import scala.math.{BigInt}
-import quoted.*
+import scala.math.BigInt
 import annotation.internal.sharable
 
 
@@ -131,9 +130,7 @@ object FromDigits {
   def floatFromDigits(digits: String): Float = {
     val x: Float =
       try java.lang.Float.parseFloat(digits)
-      catch {
-        case ex: NumberFormatException => throw MalformedNumber()
-      }
+      catch case _: NumberFormatException => throw MalformedNumber()
     if (x.isInfinite) throw NumberTooLarge()
     if (x == 0.0f && !zeroFloat.pattern.matcher(digits).nn.matches) throw NumberTooSmall()
     x
@@ -149,9 +146,7 @@ object FromDigits {
   def doubleFromDigits(digits: String): Double = {
     val x: Double =
       try java.lang.Double.parseDouble(digits)
-      catch {
-        case ex: NumberFormatException => throw MalformedNumber()
-      }
+      catch case _: NumberFormatException => throw MalformedNumber()
     if (x.isInfinite) throw NumberTooLarge()
     if (x == 0.0d && !zeroFloat.pattern.matcher(digits).nn.matches) throw NumberTooSmall()
     x

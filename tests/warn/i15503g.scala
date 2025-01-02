@@ -6,8 +6,8 @@ object Foo {
 
   private def f1(a: Int) = a // OK
   private def f2(a: Int) = default_int // warn
-  private def f3(a: Int)(using Int) = a // OK
-  private def f4(a: Int)(using Int) = default_int // warn
+  private def f3(a: Int)(using Int) = a // warn
+  private def f4(a: Int)(using Int) = default_int // warn // warn
   private def f6(a: Int)(using Int) = summon[Int] // warn
   private def f7(a: Int)(using Int) = summon[Int] + a // OK
   /* --- Trivial method check --- */
@@ -20,4 +20,5 @@ package foo.test.i17101:
   extension[A] (x: Test[A]) { // OK
     def value: A = x
     def causesIssue: Unit = println("oh no")
+    def isAnIssue(y: A): Boolean = x == x // warn
   }

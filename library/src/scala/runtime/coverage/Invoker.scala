@@ -5,7 +5,6 @@ import scala.annotation.nowarn
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable.{BitSet, HashMap}
 import java.io.{File, FileWriter}
-import java.nio.file.Files
 
 @sharable // avoids false positive by -Ycheck-reentrant
 object Invoker {

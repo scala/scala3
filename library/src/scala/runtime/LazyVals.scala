@@ -8,7 +8,7 @@ import scala.annotation.*
  * Helper methods used in thread-safe lazy vals.
  */
 object LazyVals {
-  @nowarn
+  //@nowarn
   private val unsafe: sun.misc.Unsafe = {
     def throwInitializationException() =
       throw new ExceptionInInitializerError(
@@ -33,7 +33,7 @@ object LazyVals {
   private val monitors: Array[Object] =
     Array.tabulate(base)(_ => new Object)
 
-  private def getMonitor(obj: Object, fieldId: Int = 0) = {
+  private def getMonitor(obj: Object, fieldId: Int) = {
     var id = (java.lang.System.identityHashCode(obj) + fieldId) % base
 
     if (id < 0) id += base
@@ -96,13 +96,13 @@ object LazyVals {
       println(s"CAS($t, $offset, $e, $v, $ord)")
     val mask = ~(LAZY_VAL_MASK << ord * BITS_PER_LAZY_VAL)
     val n = (e & mask) | (v.toLong << (ord * BITS_PER_LAZY_VAL))
-    unsafe.compareAndSwapLong(t, offset, e, n)
+    unsafe.compareAndSwapLong(t, offset, e, n): @nowarn
   }
 
   def objCAS(t: Object, offset: Long, exp: Object, n: Object): Boolean = {
     if (debug)
       println(s"objCAS($t, $exp, $n)")
-    unsafe.compareAndSwapObject(t, offset, exp, n)
+    unsafe.compareAndSwapObject(t, offset, exp, n): @nowarn
   }
 
   def setFlag(t: Object, offset: Long, v: Int, ord: Int): Unit = {
@@ -147,7 +147,7 @@ object LazyVals {
   def get(t: Object, off: Long): Long = {
     if (debug)
       println(s"get($t, $off)")
-    unsafe.getLongVolatile(t, off)
+    unsafe.getLongVolatile(t, off): @nowarn
   }
 
   // kept for backward compatibility
