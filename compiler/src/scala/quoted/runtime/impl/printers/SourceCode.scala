@@ -1379,13 +1379,13 @@ object SourceCode {
         printTypeTree(bounds.low)
       else
         bounds.low match {
-          case Inferred() =>
+          case Inferred() if bounds.low.tpe.typeSymbol == TypeRepr.of[Nothing].typeSymbol =>
           case low =>
             this += " >: "
             printTypeTree(low)
         }
         bounds.hi match {
-          case Inferred() => this
+          case Inferred() if bounds.hi.tpe.typeSymbol == TypeRepr.of[Any].typeSymbol => this
           case hi =>
             this += " <: "
             printTypeTree(hi)
