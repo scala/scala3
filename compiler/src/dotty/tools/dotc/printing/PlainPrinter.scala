@@ -255,8 +255,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         else
           val refsText =
             if refs.isUniversal then
-              if refs.elems.size == 1 || !printDebug then rootSetText
-              else toTextCaptureSet(refs)
+              if refs.elems.size == 1 then rootSetText else toTextCaptureSet(refs)
             else if !refs.elems.isEmpty && refs.elems.forall(_.isCapOrFresh) && !printFresh then
               rootSetText
             else
