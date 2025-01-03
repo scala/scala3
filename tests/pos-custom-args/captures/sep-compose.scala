@@ -1,0 +1,12 @@
+import caps.cap
+
+def seq1(x: () => Unit, y: () ->{x, cap} Unit): Unit =
+  x(); y()
+
+def seq2(x: () => Unit)(y: () ->{x, cap} Unit): Unit =
+  x(); y()
+
+def test(io: Object^, a: Object^{io}): Unit =
+  val f = () => println(a)
+  seq1(f, f)
+  seq2(f)(f)

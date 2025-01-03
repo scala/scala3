@@ -29,5 +29,5 @@
 -- Error: tests/neg-custom-args/captures/lazyref.scala:24:55 -----------------------------------------------------------
 24 |  val ref4 = (if cap1 == cap2 then ref1 else ref2).map(g) // error: separation failure
    |                                                       ^
-   |                Separation failure: argument of type (x: Int) ->{cap2} Int to capture-polymorphic parameter
-   |                of type Int => Int captures {cap2}, and this capability is also passed separately to method map.
+   |              Separation failure: argument of type (x: Int) ->{cap2} Int to capture-polymorphic parameter
+   |              f of type Int => Int captures {cap2}, and this capability is also passed separately to method map.

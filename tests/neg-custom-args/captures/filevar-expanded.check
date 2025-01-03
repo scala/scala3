@@ -2,7 +2,7 @@
 34 |    withFile(io3): f => // error: separation failure
    |                   ^
    |Separation failure: argument of type (f: test2.File^{io3}) ->{io3} Unit to capture-polymorphic parameter
-   |of type (f: test2.File^{io3}) => Unit captures {io3}, and this capability is also passed separately to method withFile.
+   |op of type (f: test2.File^{io3}) => Unit captures {io3}, and this capability is also passed separately to method withFile.
 35 |      val o = Service(io3)
 36 |      o.file = f  // this is a bit dubious. It's legal since we treat class refinements
 37 |                  // as capture set variables that can be made to include refs coming from outside.

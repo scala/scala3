@@ -67,17 +67,21 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     capt.println(i"check separate $fn($args), fnCaptures = $fnCaptures, argCaptures = $argCaptures")
     var footprint = args.foldLeft(fnCaptures.footprint): (fp, arg) =>
       if arg.needsSepCheck then fp else fp ++ captures(arg)
-    val paramNames = fn.nuType.widen match
-      case MethodType(pnames) => pnames
-      case _ => args.indices.map(nme.syntheticParamName(_))
-    for (arg, pname) <- args.lazyZip(paramNames) do
+    def paramName(mt: Type, idx: Int): Option[Name] = mt match
+      case mt @ MethodType(pnames) =>
+        if idx < pnames.length then Some(pnames(idx)) else paramName(mt.resType, idx - pnames.length)
+      case mt: PolyType => paramName(mt.resType, idx)
+      case _ => None
+    for (arg, idx) <- args.zipWithIndex do
       if arg.needsSepCheck then
         val ac = captures(arg)
         val hiddenInArg = CaptureSet(hidden(ac)).footprint
         //println(i"check sep $arg: $ac, footprint so far = $footprint, hidden = $hiddenInArg")
         val overlap = hiddenInArg.footprint.overlapWith(footprint)
         if !overlap.isEmpty then
-          def formalName = if pname.toString.contains('$') then "" else i"$pname "
+          def formalName = paramName(fn.nuType.widen, idx) match
+            case Some(pname) => i"$pname "
+            case _ => ""
           def whatStr = if overlap.size == 1 then "this capability is" else "these capabilities are"
           def funStr =
             if fn.symbol.exists then i"${fn.symbol}"
