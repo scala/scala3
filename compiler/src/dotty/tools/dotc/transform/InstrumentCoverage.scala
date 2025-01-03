@@ -38,9 +38,6 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
   override def isEnabled(using ctx: Context) =
     ctx.settings.coverageOutputDir.value.nonEmpty
 
-  // counter to assign a unique id to each statement
-  private var statementId = 0
-
   // stores all instrumented statements
   private val coverage = Coverage()
 
@@ -54,7 +51,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     val dataDir = File(outputPath)
     val newlyCreated = dataDir.mkdirs()
 
-    if !newlyCreated then
+    if !newlyCreated && !ctx.base.coverageStartedWriting then
       // If the directory existed before, let's clean it up.
       dataDir.listFiles.nn
         .filter(_.nn.getName.nn.startsWith("scoverage"))
@@ -110,8 +107,8 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       * @return the statement's id
       */
     private def recordStatement(tree: Tree, pos: SourcePosition, branch: Boolean)(using ctx: Context): Int =
-      val id = statementId
-      statementId += 1
+      val id = ctx.base.coverageStatementId
+      ctx.base.coverageStatementId += 1
 
       val sourceFile = pos.source
       val statement = Statement(

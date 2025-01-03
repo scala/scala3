@@ -982,6 +982,11 @@ object Contexts {
     /** Was best effort file used during compilation? */
     private[core] var usedBestEffortTasty = false
 
+    /** Counter to assign a unique id to each statement (for coverage) */
+    private[dotc] var coverageStatementId = 0
+    /** A variable denoting if the coverage file already written to (for coverage) */
+    private[dotc] var coverageStartedWriting = false
+
     // Types state
     /** A table for hash consing unique types */
     private[core] val uniques: Uniques = Uniques()
