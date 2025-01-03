@@ -258,15 +258,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
      * For a given test source, returns a check file against which the result of the test run
      * should be compared. Is used by implementations of this trait.
      */
-    final def checkFile(testSource: TestSource): Option[JFile] = (testSource match {
-      case ts: JointCompilationSource =>
-        ts.files.collectFirst {
-          case f if !f.isDirectory =>
-            new JFile(f.getPath.replaceFirst("\\.(scala|java)$", ".check"))
-        }
-      case ts: SeparateCompilationSource =>
-        Option(new JFile(ts.dir.getPath + ".check"))
-    }).filter(_.exists)
+    final def checkFile(testSource: TestSource): Option[JFile] = (CompilationLogic.checkFilePath(testSource)).filter(_.exists)
 
     /**
      * Checks if the given actual lines are the same as the ones in the check file.
@@ -340,6 +332,18 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       reporters.filter(reporterFailed).foreach(logger.logReporterContents)
       logBuildInstructions(testSource, reporters)
       failTestSource(testSource)
+    }
+  }
+
+  object CompilationLogic {
+    private[ParallelTesting] def checkFilePath(testSource: TestSource) = testSource match {
+      case ts: JointCompilationSource =>
+        ts.files.collectFirst {
+          case f if !f.isDirectory =>
+            new JFile(f.getPath.replaceFirst("\\.(scala|java)$", ".check"))
+        }
+      case ts: SeparateCompilationSource =>
+        Option(new JFile(ts.dir.getPath + ".check"))
     }
   }
 
@@ -1156,6 +1160,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     def this(targets: List[TestSource]) =
       this(targets, 1, true, None, false, false)
+
+    def checkFilePaths: List[JFile] = targets.map(CompilationLogic.checkFilePath).flatten
 
     def copy(targets: List[TestSource],
       times: Int = times,
