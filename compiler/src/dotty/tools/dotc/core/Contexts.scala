@@ -41,6 +41,7 @@ import util.Store
 import plugins.*
 import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
+import dotty.tools.dotc.coverage.Coverage
 
 object Contexts {
 
@@ -982,10 +983,11 @@ object Contexts {
     /** Was best effort file used during compilation? */
     private[core] var usedBestEffortTasty = false
 
-    /** Counter to assign a unique id to each statement (for coverage) */
-    private[dotc] var coverageStatementId = 0
-    /** A variable denoting if the coverage file already written to (for coverage) */
-    private[dotc] var coverageStartedWriting = false
+    /** Stores all instrumented statements (for InstrumentCoverage).
+     * We need this information to be persisted across different runs,
+     * so it's stored here.
+     */
+    private[dotc] var coverage: Coverage = Coverage()
 
     // Types state
     /** A table for hash consing unique types */

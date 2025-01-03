@@ -65,7 +65,7 @@ class CoverageTests:
       val (targetDir, expectFile, expectMeasurementFile) =
         if Files.isDirectory(path) then
           val dirName = path.getFileName().toString
-          assert(!Files.walk(path).filter(scalaFile.matches(_)).toList.isEmpty, s"No scala files found in test directory: ${path}")
+          assert(!Files.walk(path).filter(scalaFile.matches(_)).toArray.isEmpty, s"No scala files found in test directory: ${path}")
           val targetDir = computeCoverageInTmp(path, isDirectory = true, dir, run)
           (targetDir, path.resolve(s"test.scoverage.check"), path.resolve(s"test.measurement.check"))
         else
