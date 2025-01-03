@@ -11,8 +11,8 @@
 -- Error: tests/neg-custom-args/captures/i21401.scala:16:66 ------------------------------------------------------------
 16 |  val leaked: [R, X <: Boxed[IO^] -> R] -> (op: X) -> R = usingIO[Res](mkRes) // error
    |                                                                  ^^^
-   |                                           Type variable R of method usingIO cannot be instantiated to Res since
-   |                                           the part box IO^ of that type captures the root capability `cap`.
+   | Type variable R of method usingIO cannot be instantiated to [R, X <: Boxed[box IO^] -> R] => (op: X) -> R since
+   | the part box IO^ of that type captures the root capability `cap`.
 -- Error: tests/neg-custom-args/captures/i21401.scala:17:29 ------------------------------------------------------------
 17 |  val x: Boxed[IO^] = leaked[Boxed[IO^], Boxed[IO^] -> Boxed[IO^]](x => x) // error // error
    |                             ^^^^^^^^^^
@@ -21,8 +21,8 @@
 -- Error: tests/neg-custom-args/captures/i21401.scala:17:52 ------------------------------------------------------------
 17 |  val x: Boxed[IO^] = leaked[Boxed[IO^], Boxed[IO^] -> Boxed[IO^]](x => x) // error // error
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^
-   |Type variable X of value leaked cannot be instantiated to Boxed[box IO^] -> (ex$18: caps.Exists) -> Boxed[box IO^{ex$18}] since
-   |the part box IO^{ex$18} of that type captures the root capability `cap`.
+   |Type variable X of value leaked cannot be instantiated to Boxed[box IO^] -> (ex$20: caps.Exists) -> Boxed[box IO^{ex$20}] since
+   |the part box IO^{ex$20} of that type captures the root capability `cap`.
 -- Error: tests/neg-custom-args/captures/i21401.scala:18:21 ------------------------------------------------------------
 18 |  val y: IO^{x*} = x.unbox // error
    |                   ^^^^^^^

@@ -1,0 +1,25 @@
+-- Error: tests/neg-custom-args/captures/sep-compose.scala:29:10 -------------------------------------------------------
+29 |  seq3(f)(f) // error
+   |          ^
+   |Separation failure: argument of type (f : () ->{a} Unit) to capture-polymorphic parameter
+   |y of type () ->{a, cap} Unit captures {io, a, f}, and these capabilities are also passed separately to method seq3.
+-- Error: tests/neg-custom-args/captures/sep-compose.scala:30:10 -------------------------------------------------------
+30 |  seq4(f)(f) // error
+   |          ^
+   |     Separation failure: argument of type (f : () ->{a} Unit) to capture-polymorphic parameter
+   |     y of type () => Unit captures {io, a, f}, and these capabilities are also passed separately to method seq4.
+-- Error: tests/neg-custom-args/captures/sep-compose.scala:31:10 -------------------------------------------------------
+31 |  seq5(f)(f) // error
+   |          ^
+   |     Separation failure: argument of type (f : () ->{a} Unit) to capture-polymorphic parameter
+   |     y of type () => Unit captures {io, a, f}, and these capabilities are also passed separately to method seq5.
+-- Error: tests/neg-custom-args/captures/sep-compose.scala:32:10 -------------------------------------------------------
+32 |  seq6(f, f) // error
+   |          ^
+   |Separation failure: argument of type (f : () ->{a} Unit) to capture-polymorphic parameter
+   |y of type () ->{a, cap} Unit captures {io, a, f}, and these capabilities are also passed separately to method seq6.
+-- Error: tests/neg-custom-args/captures/sep-compose.scala:33:10 -------------------------------------------------------
+33 |  seq7(f, f) // error
+   |          ^
+   |     Separation failure: argument of type (f : () ->{a} Unit) to capture-polymorphic parameter
+   |     y of type () => Unit captures {io, a, f}, and these capabilities are also passed separately to method seq7.

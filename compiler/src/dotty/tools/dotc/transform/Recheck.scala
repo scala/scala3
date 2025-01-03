@@ -167,7 +167,11 @@ abstract class Recheck extends Phase, SymTransformer:
        *  from the current type.
        */
       def setNuType(tpe: Type): Unit =
-        if nuTypes.lookup(tree) == null && (tpe ne tree.tpe) then nuTypes(tree) = tpe
+        if nuTypes.lookup(tree) == null then updNuType(tpe)
+
+      /** Set new type of the tree unconditionally. */
+      def updNuType(tpe: Type): Unit =
+        if tpe ne tree.tpe then nuTypes(tree) = tpe
 
       /** The new type of the tree, or if none was installed, the original type */
       def nuType(using Context): Type =
@@ -255,7 +259,10 @@ abstract class Recheck extends Phase, SymTransformer:
 
     def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Type =
       val resType = recheck(tree.tpt)
-      if tree.rhs.isEmpty then resType
+      def isUninitWildcard = tree.rhs match
+        case Ident(nme.WILDCARD) => tree.symbol.is(Mutable)
+        case _ => false
+      if tree.rhs.isEmpty || isUninitWildcard then resType
       else recheck(tree.rhs, resType)
 
     def recheckDefDef(tree: DefDef, sym: Symbol)(using Context): Type =
