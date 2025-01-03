@@ -54,15 +54,27 @@ class CoverageTests:
         lines
     end fixWindowsPaths
 
-    def runOnFile(p: Path): Boolean =
-      scalaFile.matches(p) &&
-      (Properties.testsFilter.isEmpty || Properties.testsFilter.exists(p.toString.contains))
+    def runOnFileOrDir(p: Path): Boolean =
+      (scalaFile.matches(p) || Files.isDirectory(p))
+      && (p != dir)
+      && (Properties.testsFilter.isEmpty || Properties.testsFilter.exists(p.toString.contains))
 
-    Files.walk(dir).filter(runOnFile).forEach(path => {
-      val fileName = path.getFileName.toString.stripSuffix(".scala")
-      val targetDir = computeCoverageInTmp(path, dir, run)
+    Files.walk(dir, 1).filter(runOnFileOrDir).forEach(path => {
+      // measurement files only exist in the "run" category
+      // as these are generated at runtime by the scala.runtime.coverage.Invoker
+      val (targetDir, expectFile, expectMeasurementFile) =
+        if Files.isDirectory(path) then
+          val dirName = path.getFileName().toString
+          assert(!Files.walk(path).filter(scalaFile.matches(_)).toList.isEmpty, s"No scala files found in test directory: ${path}")
+          val targetDir = computeCoverageInTmp(path, isDirectory = true, dir, run)
+          (targetDir, path.resolve(s"test.scoverage.check"), path.resolve(s"test.measurement.check"))
+        else
+          val fileName = path.getFileName.toString.stripSuffix(".scala")
+          val targetDir = computeCoverageInTmp(path, isDirectory = false, dir, run)
+          (targetDir, path.resolveSibling(s"${fileName}.scoverage.check"), path.resolveSibling(s"${fileName}.measurement.check"))
+
       val targetFile = targetDir.resolve(s"scoverage.coverage")
-      val expectFile = path.resolveSibling(s"$fileName.scoverage.check")
+
       if updateCheckFiles then
         Files.copy(targetFile, expectFile, StandardCopyOption.REPLACE_EXISTING)
       else
@@ -72,9 +84,6 @@ class CoverageTests:
           val instructions = FileDiff.diffMessage(expectFile.toString, targetFile.toString)
           fail(s"Coverage report differs from expected data.\n$instructions")
 
-      // measurement files only exist in the "run" category
-      // as these are generated at runtime by the scala.runtime.coverage.Invoker
-      val expectMeasurementFile = path.resolveSibling(s"$fileName.measurement.check")
       if run && Files.exists(expectMeasurementFile) then
 
         // Note that this assumes that the test invoked was single threaded,
@@ -95,14 +104,20 @@ class CoverageTests:
     })
 
   /** Generates the coverage report for the given input file, in a temporary directory. */
-  def computeCoverageInTmp(inputFile: Path, sourceRoot: Path, run: Boolean)(using TestGroup): Path =
+  def computeCoverageInTmp(inputFile: Path, isDirectory: Boolean, sourceRoot: Path, run: Boolean)(using TestGroup): Path =
     val target = Files.createTempDirectory("coverage")
     val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", target.toString, "-sourceroot", sourceRoot.toString)
     if run then
-      val test = compileDir(inputFile.getParent.toString, options)
+      val path = if isDirectory then inputFile.toString else inputFile.getParent.toString
+      val test = compileDir(path, options)
+      test.checkFilePaths.foreach { checkFilePath =>
+        assert(checkFilePath.exists, s"Expected checkfile for $path $checkFilePath does not exist.")
+      }
       test.checkRuns()
     else
-      val test = compileFile(inputFile.toString, options)
+      val test =
+        if isDirectory then compileDir(inputFile.toString, options)
+        else compileFile(inputFile.toString, options)
       test.checkCompile()
     target
 

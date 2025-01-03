@@ -38,12 +38,6 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
   override def isEnabled(using ctx: Context) =
     ctx.settings.coverageOutputDir.value.nonEmpty
 
-  // counter to assign a unique id to each statement
-  private var statementId = 0
-
-  // stores all instrumented statements
-  private val coverage = Coverage()
-
   private var coverageExcludeClasslikePatterns: List[Pattern] = Nil
   private var coverageExcludeFilePatterns: List[Pattern] = Nil
 
@@ -64,9 +58,10 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     coverageExcludeClasslikePatterns = ctx.settings.coverageExcludeClasslikes.value.map(_.r.pattern)
     coverageExcludeFilePatterns = ctx.settings.coverageExcludeFiles.value.map(_.r.pattern)
 
+    ctx.base.coverage.removeStatementsFromFile(ctx.compilationUnit.source.file.absolute.jpath)
     super.run
 
-    Serializer.serialize(coverage, outputPath, ctx.settings.sourceroot.value)
+    Serializer.serialize(ctx.base.coverage, outputPath, ctx.settings.sourceroot.value)
 
   private def isClassIncluded(sym: Symbol)(using Context): Boolean =
     val fqn = sym.fullName.toText(ctx.printerFn(ctx)).show
@@ -110,8 +105,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       * @return the statement's id
       */
     private def recordStatement(tree: Tree, pos: SourcePosition, branch: Boolean)(using ctx: Context): Int =
-      val id = statementId
-      statementId += 1
+      val id = ctx.base.coverage.nextStatementId()
 
       val sourceFile = pos.source
       val statement = Statement(
@@ -127,7 +121,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         treeName = tree.getClass.getSimpleName.nn,
         branch
       )
-      coverage.addStatement(statement)
+      ctx.base.coverage.addStatement(statement)
       id
 
     /**
