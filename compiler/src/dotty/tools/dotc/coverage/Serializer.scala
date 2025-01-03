@@ -1,11 +1,10 @@
 package dotty.tools.dotc
 package coverage
 
-import java.nio.file.{Path, Paths, Files, StandardOpenOption}
+import java.nio.file.{Path, Paths, Files}
 import java.io.Writer
 import scala.language.unsafeNulls
 import scala.collection.mutable.StringBuilder
-import dotty.tools.dotc.core.Contexts.Context
 
 /**
  * Serializes scoverage data.
@@ -17,12 +16,12 @@ object Serializer:
   private val CoverageDataFormatVersion = "3.0"
 
   /** Write out coverage data to the given data directory, using the default coverage filename */
-  def serialize(coverage: Coverage, dataDir: String, sourceRoot: String)(using Context): Unit =
+  def serialize(coverage: Coverage, dataDir: String, sourceRoot: String): Unit =
     serialize(coverage, Paths.get(dataDir, CoverageFileName).toAbsolutePath, Paths.get(sourceRoot).toAbsolutePath)
 
   /** Write out coverage data to a file. */
-  def serialize(coverage: Coverage, file: Path, sourceRoot: Path)(using Context): Unit =
-    val writer = Files.newBufferedWriter(file, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
+  def serialize(coverage: Coverage, file: Path, sourceRoot: Path): Unit =
+    val writer = Files.newBufferedWriter(file)
     try
       serialize(coverage, writer, sourceRoot)
     finally
@@ -30,7 +29,7 @@ object Serializer:
 
   /** Write out coverage data (info about each statement that can be covered) to a writer.
    */
-  def serialize(coverage: Coverage, writer: Writer, sourceRoot: Path)(using ctx: Context): Unit =
+  def serialize(coverage: Coverage, writer: Writer, sourceRoot: Path): Unit =
 
     def getRelativePath(filePath: Path): String =
       // We need to normalize the path here because the relativizing paths containing '.' or '..' differs between Java versions
@@ -82,8 +81,7 @@ object Serializer:
                       |\f
                       |""".stripMargin)
 
-    if (!ctx.base.coverageStartedWriting) writeHeader(writer)
-    ctx.base.coverageStartedWriting = true
+    writeHeader(writer)
     coverage.statements.toSeq
       .sortBy(_.id)
       .foreach(stmt => writeStatement(stmt, writer))
