@@ -109,6 +109,10 @@ object Applications {
     if (isValid) elemTp else NoType
   }
 
+  def namedTupleOrProductTypes(tp: Type)(using Context): List[Type] =
+    if tp.isNamedTupleType then tp.namedTupleElementTypes.map(_(1))
+    else productSelectorTypes(tp, NoSourcePosition)
+
   def productSelectorTypes(tp: Type, errorPos: SrcPos)(using Context): List[Type] = {
     val sels = for (n <- Iterator.from(0)) yield extractorMemberType(tp, nme.selectorName(n), errorPos)
     sels.takeWhile(_.exists).toList
@@ -177,9 +181,14 @@ object Applications {
       else fallback
 
     private def tryAdaptPatternArgs(elems: List[untpd.Tree], pt: Type)(using Context): Option[List[untpd.Tree]] =
-      tryEither[Option[List[untpd.Tree]]]
-        (Some(desugar.adaptPatternArgs(elems, pt)))
-        ((_, _) => None)
+      namedTupleOrProductTypes(pt) match
+        case List(defn.NamedTuple(_, _))=>
+          // if the product types list is a singleton named tuple, autotupling might be applied, so don't fail eagerly
+          tryEither[Option[List[untpd.Tree]]]
+            (Some(desugar.adaptPatternArgs(elems, pt)))
+            ((_, _) => None)
+        case pts =>
+          Some(desugar.adaptPatternArgs(elems, pt))
 
     private def getUnapplySelectors(tp: Type)(using Context): List[Type] =
       // We treat patterns as product elements if
@@ -199,7 +208,7 @@ object Applications {
       else tp :: Nil
 
     private def productUnapplySelectors(tp: Type)(using Context): Option[List[Type]] =
-      if defn.isProductSubType(tp) then
+      if defn.isProductSubType(tp) && args.lengthCompare(productArity(tp)) <= 0 then
         tryAdaptPatternArgs(args, tp) match
           case Some(args1) if isProductMatch(tp, args1.length, pos) =>
             args = args1
