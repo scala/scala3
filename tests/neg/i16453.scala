@@ -12,7 +12,7 @@ def testScala3() = {
   given Conversion[Char, String] = ???
   given Conversion[Char, Option[Int]] = ???
 
-  given foo: Foo with
+  given foo: Foo:
     type T = Int
   given bar3: Int = 0
   given baz3: Char = 'a'

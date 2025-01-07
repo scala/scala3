@@ -1,0 +1,9 @@
+-- Error: tests/neg-custom-args/captures/i21442.scala:9:13 -------------------------------------------------------------
+9 |  val io = x.unbox // error: local reach capability {x*} leaks
+  |           ^^^^^^^
+  |           Local reach capability x* leaks into capture scope of method foo.
+  |           To allow this, the parameter x should be declared with a @use annotation
+-- Error: tests/neg-custom-args/captures/i21442.scala:17:14 ------------------------------------------------------------
+17 |  val io = x1.unbox // error
+   |           ^^^^^^^^
+   |           Local reach capability x1* leaks into capture scope of method bar

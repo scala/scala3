@@ -7,8 +7,6 @@ import scala.meta.pc.PcSymbolKind
 import scala.meta.pc.PcSymbolProperty
 
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Denotations.Denotation
-import dotty.tools.dotc.core.Denotations.MultiDenotation
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.nme
@@ -19,6 +17,7 @@ import dotty.tools.pc.utils.InteractiveEnrichments.allSymbols
 import dotty.tools.pc.utils.InteractiveEnrichments.stripBackticks
 import scala.meta.internal.pc.PcSymbolInformation
 import scala.meta.internal.pc.SymbolInfo
+import dotty.tools.dotc.core.Denotations.{Denotation, MultiDenotation}
 
 class SymbolInformationProvider(using Context):
 

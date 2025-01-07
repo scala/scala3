@@ -7,7 +7,7 @@ object NatExample {
     case class Succ[N <: Nat](prev: N) extends Nat
 
     given zero: Zero.type = Zero
-    given buildSucc[N <: Nat](using n: N): Succ[N] = Succ(n)
+    given buildSucc: [N <: Nat] => (n: N) => Succ[N] = Succ(n)
 
     def value[N <: Nat](using n: N): N = n
 

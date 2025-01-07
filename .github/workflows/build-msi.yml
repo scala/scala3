@@ -14,8 +14,8 @@ on:
   workflow_call:
 
 env:
-  # NECESSARY FLAG TO CORRECTLY CONFIGURE THE VERSION FOR SCALA
-  RELEASEBUILD: yes
+  # Release only happends when triggering CI by pushing tag
+  RELEASEBUILD: ${{ startsWith(github.event.ref, 'refs/tags/') && 'yes' || 'no' }}
 
 jobs:
   build:
@@ -29,6 +29,8 @@ jobs:
           cache: 'sbt'
       - name: Build MSI package
         run: sbt 'dist-win-x86_64/Windows/packageBin'
+        env:
+          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
       - name: Upload MSI Artifact
         uses: actions/upload-artifact@v4
         with:

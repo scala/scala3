@@ -212,6 +212,7 @@ object Scanners {
 
     def featureEnabled(name: TermName) = Feature.enabled(name)(using languageImportContext)
     def erasedEnabled = featureEnabled(Feature.erasedDefinitions)
+    def trackedEnabled = featureEnabled(Feature.modularity)
 
     private var postfixOpsEnabledCache = false
     private var postfixOpsEnabledCtx: Context = NoContext
@@ -306,11 +307,15 @@ object Scanners {
         println(s"\nSTART SKIP AT ${sourcePos().line + 1}, $this in $currentRegion")
       var noProgress = 0
         // Defensive measure to ensure we always get out of the following while loop
-        // even if source file is weirly formatted (i.e. we never reach EOF
+        // even if source file is weirly formatted (i.e. we never reach EOF)
+      var prevOffset = offset
       while !atStop && noProgress < 3 do
-        val prevOffset = offset
         nextToken()
-        if offset == prevOffset then noProgress += 1 else noProgress = 0
+        if offset <= prevOffset then
+          noProgress += 1
+        else
+          prevOffset = offset
+          noProgress = 0
       if debugTokenStream then
         println(s"\nSTOP SKIP AT ${sourcePos().line + 1}, $this in $currentRegion")
       if token == OUTDENT then dropUntil(_.isInstanceOf[Indented])
@@ -736,7 +741,10 @@ object Scanners {
                  && currentRegion.commasExpected
                  && (token == RPAREN || token == RBRACKET || token == RBRACE || token == OUTDENT)
               then
-                () /* skip the trailing comma */
+                // encountered a trailing comma
+                // reset only the lastOffset
+                // so that the tree's span is correct
+                lastOffset = prev.lastOffset
               else
                 reset()
         case END =>
@@ -1188,7 +1196,7 @@ object Scanners {
 
     def isSoftModifier: Boolean =
       token == IDENTIFIER
-      && (softModifierNames.contains(name) || name == nme.erased && erasedEnabled)
+      && (softModifierNames.contains(name) || name == nme.erased && erasedEnabled || name == nme.tracked && trackedEnabled)
 
     def isSoftModifierInModifierPosition: Boolean =
       isSoftModifier && inModifierPosition()

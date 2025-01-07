@@ -8,7 +8,6 @@ import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 import scala.meta.internal.metals.{ClasspathSearch, WorkspaceSymbolQuery}
 import scala.meta.pc.ContentType
-import scala.meta.pc.SymbolSearch.Result
 import scala.meta.pc.{
   ParentSymbols,
   SymbolDocumentation,

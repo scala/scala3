@@ -370,7 +370,7 @@ object Phases {
       // Test that we are in a state where we need to check if the phase should be skipped for a java file,
       // this prevents checking the expensive `unit.typedAsJava` unnecessarily.
       val doCheckJava = skipIfJava && !isAfterLastJavaPhase
-      for unit <- units do
+      for unit <- units do ctx.profiler.onUnit(this, unit):
         given unitCtx: Context = runCtx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
         if ctx.run.enterUnit(unit) then
           try
@@ -378,14 +378,18 @@ object Phases {
               ()
             else
               run
-          catch case ex: Throwable if !ctx.run.enrichedErrorMessage =>
-            println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
-            throw ex
+            buf += unitCtx.compilationUnit
+          catch
+            case _: CompilationUnit.SuspendException => // this unit will be run again in `Run#compileSuspendedUnits`
+            case ex: Throwable if !ctx.run.enrichedErrorMessage =>
+              println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
+              throw ex
           finally ctx.run.advanceUnit()
-          buf += unitCtx.compilationUnit
         end if
       end for
-      buf.result()
+      val res = buf.result()
+      ctx.run.nn.checkSuspendedUnits(res)
+      res
     end runOn
 
     /** Convert a compilation unit's tree to a string; can be overridden */
@@ -532,7 +536,7 @@ object Phases {
   def sbtExtractAPIPhase(using Context): Phase          = ctx.base.sbtExtractAPIPhase
   def picklerPhase(using Context): Phase                = ctx.base.picklerPhase
   def inliningPhase(using Context): Phase               = ctx.base.inliningPhase
-  def stagingPhase(using Context): Phase               = ctx.base.stagingPhase
+  def stagingPhase(using Context): Phase                = ctx.base.stagingPhase
   def splicingPhase(using Context): Phase               = ctx.base.splicingPhase
   def firstTransformPhase(using Context): Phase         = ctx.base.firstTransformPhase
   def refchecksPhase(using Context): Phase              = ctx.base.refchecksPhase

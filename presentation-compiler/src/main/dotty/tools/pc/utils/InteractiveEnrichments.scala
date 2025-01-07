@@ -99,12 +99,6 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
     def focusAt(point: Int): SourcePosition =
       pos.withSpan(pos.span.withPoint(point).focus)
 
-    def toLocation: Option[l.Location] =
-      for
-        uri <- InteractiveDriver.toUriOption(pos.source)
-        range <- if pos.exists then Some(pos.toLsp) else None
-      yield new l.Location(uri.toString(), range)
-
     def encloses(other: SourcePosition): Boolean =
       pos.start <= other.start && pos.end >= other.end
 
@@ -411,5 +405,8 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
         case RefinedType(parent, name, refinedInfo) =>
           RefinedType(parent.dealias, name, refinedInfo.deepDealias)
         case dealised => dealised
+
+  extension[T] (list: List[T])
+    def get(n: Int): Option[T] = if 0 <= n && n < list.size then Some(list(n)) else None
 
 end InteractiveEnrichments

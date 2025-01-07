@@ -21,6 +21,7 @@ import config.MigrationVersion
 import config.Printers.refcheck
 import reporting.*
 import Constants.Constant
+import cc.stripCapturing
 
 object RefChecks {
   import tpd.*
@@ -84,7 +85,7 @@ object RefChecks {
    *  (Forwarding tends to hide problems by binding parameter names).
    */
   private def upwardsThisType(cls: Symbol)(using Context) = cls.info match {
-    case ClassInfo(_, _, _, _, tp: Type) if (tp ne cls.typeRef) && !cls.isOneOf(FinalOrModuleClass) =>
+    case ClassInfo(_, _, _, _, tp: Type) if (tp.stripCapturing ne cls.typeRef) && !cls.isOneOf(FinalOrModuleClass) =>
       SkolemType(cls.appliedRef).withName(nme.this_)
     case _ =>
       cls.thisType
@@ -484,7 +485,9 @@ object RefChecks {
       def overrideDeprecation(what: String, member: Symbol, other: Symbol, fix: String): Unit =
         report.deprecationWarning(
           em"overriding $what${infoStringWithLocation(other)} is deprecated;\n  ${infoString(member)} should be $fix.",
-          if member.owner == clazz then member.srcPos else clazz.srcPos)
+          if member.owner == clazz then member.srcPos else clazz.srcPos,
+          origin = other.showFullName
+        )
 
       def autoOverride(sym: Symbol) =
         sym.is(Synthetic) && (
@@ -523,7 +526,6 @@ object RefChecks {
 
       // todo: align accessibility implication checking with isAccessible in Contexts
       def isOverrideAccessOK =
-        val memberIsPublic = (member.flags & AccessFlags).isEmpty && !member.privateWithin.exists
         def protectedOK = !other.is(Protected) || member.is(Protected)        // if o is protected, so is m
         def accessBoundaryOK =
           val ob = other.accessBoundary(member.owner)
@@ -532,7 +534,7 @@ object RefChecks {
           def companionBoundaryOK = ob.isClass && !ob.isLocalToBlock && mb.is(Module) && (ob.companionModule eq mb.companionModule)
           ob.isContainedIn(mb) || companionBoundaryOK    // m relaxes o's access boundary,
         def otherIsJavaProtected = other.isAllOf(JavaProtected)               // or o is Java defined and protected (see #3946)
-        memberIsPublic || protectedOK && (accessBoundaryOK || otherIsJavaProtected)
+        member.isPublic || protectedOK && (accessBoundaryOK || otherIsJavaProtected)
       end isOverrideAccessOK
 
       if !member.hasTargetName(other.targetName) then
@@ -1154,6 +1156,11 @@ object RefChecks {
    *
    *  If the extension method is nullary, it is always hidden by a member of the same name.
    *  (Either the member is nullary, or the reference is taken as the eta-expansion of the member.)
+   *
+   *  This check is in lieu of a more expensive use-site check that an application failed to use an extension.
+   *  That check would account for accessibility and opacity. As a limitation, this check considers
+   *  only public members, a target receiver that is not an alias, and corresponding method parameters
+   *  that are either both opaque types or both not.
    */
   def checkExtensionMethods(sym: Symbol)(using Context): Unit =
     if sym.is(Extension) && !sym.nextOverriddenSymbol.exists then
@@ -1167,16 +1174,20 @@ object RefChecks {
         target.nonPrivateMember(sym.name)
         .filterWithPredicate:
           member =>
-          val memberIsImplicit = member.info.hasImplicitParams
-          val paramTps =
-            if memberIsImplicit then methTp.stripPoly.firstParamTypes
-            else methTp.firstExplicitParamTypes
+          member.symbol.isPublic && {
+            val memberIsImplicit = member.info.hasImplicitParams
+            val paramTps =
+              if memberIsImplicit then methTp.stripPoly.firstParamTypes
+              else methTp.firstExplicitParamTypes
 
-          paramTps.isEmpty || memberIsImplicit && !methTp.hasImplicitParams || {
-            val memberParamTps = member.info.stripPoly.firstParamTypes
-            !memberParamTps.isEmpty
-            && memberParamTps.lengthCompare(paramTps) == 0
-            && memberParamTps.lazyZip(paramTps).forall((m, x) => x frozen_<:< m)
+            paramTps.isEmpty || memberIsImplicit && !methTp.hasImplicitParams || {
+              val memberParamTps = member.info.stripPoly.firstParamTypes
+              !memberParamTps.isEmpty
+              && memberParamTps.lengthCompare(paramTps) == 0
+              && memberParamTps.lazyZip(paramTps).forall: (m, x) =>
+                m.typeSymbol.denot.isOpaqueAlias == x.typeSymbol.denot.isOpaqueAlias
+                && (x frozen_<:< m)
+            }
           }
         .exists
       if !target.typeSymbol.denot.isAliasType && !target.typeSymbol.denot.isOpaqueAlias && hidden

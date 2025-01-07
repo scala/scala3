@@ -3,11 +3,12 @@ package dotc
 package core
 
 import TypeErasure.ErasedValueType
-import Types.*, Contexts.*, Symbols.*, Flags.*, Decorators.*
+import Types.*, Contexts.*, Symbols.*, Flags.*, Decorators.*, SymDenotations.*
 import Names.{Name, TermName}
 import Constants.Constant
 
 import Names.Name
+import StdNames.nme
 import config.Feature
 
 class TypeUtils:
@@ -144,6 +145,15 @@ class TypeUtils:
       case defn.NamedTuple(_, _) => true
       case _ => false
 
+    def derivesFromNamedTuple(using Context): Boolean = self match
+      case defn.NamedTuple(_, _) => true
+      case tp: MatchType =>
+        tp.bound.derivesFromNamedTuple || tp.reduced.derivesFromNamedTuple
+      case tp: TypeProxy => tp.superType.derivesFromNamedTuple
+      case tp: AndType => tp.tp1.derivesFromNamedTuple || tp.tp2.derivesFromNamedTuple
+      case tp: OrType => tp.tp1.derivesFromNamedTuple && tp.tp2.derivesFromNamedTuple
+      case _ => false
+
     /** Drop all named elements in tuple type */
     def stripNamedTuple(using Context): Type = self.normalized.dealias match
       case defn.NamedTuple(_, vals) =>
@@ -185,9 +195,64 @@ class TypeUtils:
       case self: Types.ThisType => self.cls == cls
       case _ => false
 
+    /** If `self` is of the form `p.x` where `p` refers to a package
+     *  but `x` is not owned by a package, expand it to
+     *
+     *      p.package.x
+     */
+    def makePackageObjPrefixExplicit(using Context): Type =
+      def tryInsert(tpe: NamedType, pkgClass: SymDenotation): Type = pkgClass match
+        case pkg: PackageClassDenotation =>
+          var sym = tpe.symbol
+          if !sym.exists && tpe.denot.isOverloaded then
+            // we know that all alternatives must come from the same package object, since
+            // otherwise we would get "is already defined" errors. So we can take the first
+            // symbol we see.
+            sym = tpe.denot.alternatives.head.symbol
+          val pobj = pkg.packageObjFor(sym)
+          if pobj.exists then tpe.derivedSelect(pobj.termRef)
+          else tpe
+        case _ =>
+          tpe
+      self match
+      case tpe: NamedType =>
+        if tpe.symbol.isRoot then
+          tpe
+        else
+          tpe.prefix match
+            case pre: ThisType if pre.cls.is(Package) => tryInsert(tpe, pre.cls)
+            case pre: TermRef if pre.symbol.is(Package) => tryInsert(tpe, pre.symbol.moduleClass)
+            case _ => tpe
+      case tpe => tpe
+
     /** Strip all outer refinements off this type */
     def stripRefinement: Type = self match
       case self: RefinedOrRecType => self.parent.stripRefinement
       case seld => self
+
+    /** The constructors of this type that are applicable to `argTypes`, without needing
+     *  an implicit conversion. Curried constructors are always excluded.
+     *  @param adaptVarargs   if true, allow a constructor with just a varargs argument to
+     *                        match an empty argument list.
+     */
+    def applicableConstructors(argTypes: List[Type], adaptVarargs: Boolean)(using Context): List[Symbol] =
+      def isApplicable(constr: Symbol): Boolean =
+        def recur(ctpe: Type): Boolean = ctpe match
+          case ctpe: PolyType =>
+            if argTypes.isEmpty then recur(ctpe.resultType) // no need to know instances
+            else recur(ctpe.instantiate(self.argTypes))
+          case ctpe: MethodType =>
+            var paramInfos = ctpe.paramInfos
+            if adaptVarargs && paramInfos.length == argTypes.length + 1
+              && atPhaseNoLater(Phases.elimRepeatedPhase)(constr.info.isVarArgsMethod)
+            then // accept missing argument for varargs parameter
+              paramInfos = paramInfos.init
+            argTypes.corresponds(paramInfos)(_ <:< _) && !ctpe.resultType.isInstanceOf[MethodType]
+          case _ =>
+            false
+        recur(constr.info)
+
+      self.decl(nme.CONSTRUCTOR).altsWith(isApplicable).map(_.symbol)
+
 end TypeUtils
 

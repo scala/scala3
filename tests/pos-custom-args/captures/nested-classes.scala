@@ -1,5 +1,4 @@
 import language.experimental.captureChecking
-import language.experimental.modularity
 import annotation.{capability, constructorOnly}
 
 class IO extends caps.Capability

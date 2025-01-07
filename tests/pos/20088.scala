@@ -1,6 +1,6 @@
 trait Foo
 trait Bar
 
-given (using foo: Foo = new {}): Bar with {}
+given (foo: Foo = new {}) => Bar()
 
 def Test = summon[Bar]

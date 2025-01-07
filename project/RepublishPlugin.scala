@@ -60,9 +60,9 @@ object RepublishPlugin extends AutoPlugin {
     val republishFetchCoursier = taskKey[File]("cache the coursier.jar for resolving the local maven repo.")
     val republishPrepareBin = taskKey[File]("prepare the bin directory, including launchers and scripts.")
     val republishWriteExtraProps = taskKey[Option[File]]("write extra properties for the launchers.")
-    val republishBinDir = settingKey[File]("where to find static files for the bin dir.")
+    val republishLibexecDir = settingKey[File]("where to find static files for the `libexec` dir.")
     val republishCoursierDir = settingKey[File]("where to download the coursier launcher jar.")
-    val republishBinOverrides = settingKey[Seq[File]]("files to override those in bin-dir.")
+    val republishLibexecOverrides = settingKey[Seq[File]]("files to override those in libexec-dir.")
     val republishCommandLibs = settingKey[Seq[(String, List[String])]]("libraries needed for each command.")
     val republish = taskKey[File]("cache the dependencies and download launchers for the distribution")
     val republishPack = taskKey[File]("do the pack command")
@@ -405,7 +405,7 @@ object RepublishPlugin extends AutoPlugin {
     republishCoursierDir := republishRepo.value / "coursier",
     republishLaunchers := Seq.empty,
     republishCoursier := Seq.empty,
-    republishBinOverrides := Seq.empty,
+    republishLibexecOverrides := Seq.empty,
     republishExtraProps := Seq.empty,
     republishCommandLibs := Seq.empty,
     republishLocalResolved / republishProjectRefs := {
@@ -489,16 +489,14 @@ object RepublishPlugin extends AutoPlugin {
     },
     republishPrepareBin := {
       val baseDir = baseDirectory.value
-      val srcBin = republishBinDir.value
-      val overrides = republishBinOverrides.value
+      val srcLibexec = republishLibexecDir.value
+      val overrides = republishLibexecOverrides.value
       val repoDir = republishRepo.value
 
-      val targetBin = repoDir / "bin"
-      IO.copyDirectory(srcBin, targetBin)
-      overrides.foreach { dir =>
-        IO.copyDirectory(dir, targetBin, overwrite = true)
-      }
-      targetBin
+      val targetLibexec = repoDir / "libexec"
+      IO.copyDirectory(srcLibexec, targetLibexec)
+      overrides.foreach(IO.copyDirectory(_, targetLibexec, overwrite = true))
+      targetLibexec
     },
     republishWriteExtraProps := {
       val s = streams.value

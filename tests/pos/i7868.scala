@@ -15,16 +15,15 @@ object Coproduct {
 
   object At {
 
-    given atHead[Head, Tail]: At[Head +: Tail, Head, 0] with {
+    given atHead: [Head, Tail] => At[Head +: Tail, Head, 0]:
       def cast: Head <:< Head +: Tail = summon[Head <:< Head +: Tail]
-    }
 
     given atTail[Head, Tail, Value, NextIndex <: Int]
           (using atNext: At[Tail, Value, NextIndex])
       : At[Head +: Tail, Value, S[NextIndex]] with
       val cast: Value <:< Head +: Tail = atNext.cast
 
-    given [A](using A): (() => A) = { () => summon[A]}
+    given [A] => A => (() => A) = { () => summon[A] }
   }
 
   def upCast[A, B](a: A)(using erased evidence: (A <:< B) ): B = a.asInstanceOf[B]

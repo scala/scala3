@@ -35,6 +35,7 @@ import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourcePosition
 import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.util.SourceFile
+import dotty.tools.dotc.config.SourceVersion
 import DidYouMean.*
 
 /**  Messages
@@ -106,6 +107,9 @@ end CyclicMsg
 
 abstract class ReferenceMsg(errorId: ErrorMessageID)(using Context) extends Message(errorId):
   def kind = MessageKind.Reference
+
+abstract class StagingMessage(errorId: ErrorMessageID)(using Context) extends Message(errorId):
+  override final def kind = MessageKind.Staging
 
 abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: ErrorMessageID)(using Context)
 extends SyntaxMsg(errNo) {
@@ -1816,12 +1820,23 @@ class SuperCallsNotAllowedInlineable(symbol: Symbol)(using Context)
 }
 
 class NotAPath(tp: Type, usage: String)(using Context) extends TypeMsg(NotAPathID):
-  def msg(using Context) = i"$tp is not a valid $usage, since it is not an immutable path"
+  def msg(using Context) = i"$tp is not a valid $usage, since it is not an immutable path" + inlineParamAddendum
   def explain(using Context) =
     i"""An immutable path is
         | - a reference to an immutable value, or
         | - a reference to `this`, or
         | - a selection of an immutable path with an immutable value."""
+
+  def inlineParamAddendum(using Context) =
+    val sym = tp.termSymbol
+    if sym.isAllOf(Flags.InlineParam) then
+      i"""
+         |Inline parameters are not considered immutable paths and cannot be used as
+         |singleton types.
+         |
+         |Hint: Removing the `inline` qualifier from the `${sym.name}` parameter
+         |may help resolve this issue."""
+    else ""
 
 class WrongNumberOfParameters(tree: untpd.Tree, foundCount: Int, pt: Type, expectedCount: Int)(using Context)
   extends SyntaxMsg(WrongNumberOfParametersID) {
@@ -2454,7 +2469,7 @@ class PureExpressionInStatementPosition(stat: untpd.Tree, val exprOwner: Symbol)
 class PureUnitExpression(stat: untpd.Tree, tpe: Type)(using Context)
   extends Message(PureUnitExpressionID) {
   def kind = MessageKind.PotentialIssue
-  def msg(using Context) = i"Discarded non-Unit value of type ${tpe.widen}. You may want to use `()`."
+  def msg(using Context) = i"Discarded non-Unit value of type ${tpe.widen}. Add `: Unit` to discard silently."
   def explain(using Context) =
     i"""As this expression is not of type Unit, it is desugared into `{ $stat; () }`.
        |Here the `$stat` expression is a pure statement that can be discarded.
@@ -2489,12 +2504,15 @@ class ExtensionNullifiedByMember(method: Symbol, target: Symbol)(using Context)
   extends Message(ExtensionNullifiedByMemberID):
   def kind = MessageKind.PotentialIssue
   def msg(using Context) =
-    i"""Extension method ${hl(method.name.toString)} will never be selected
-       |because ${hl(target.name.toString)} already has a member with the same name and compatible parameter types."""
+    val targetName = hl(target.name.toString)
+    i"""Extension method ${hl(method.name.toString)} will never be selected from type $targetName
+       |because $targetName already has a member with the same name and compatible parameter types."""
   def explain(using Context) =
-    i"""An extension method can be invoked as a regular method, but if that is intended,
+    i"""Although extensions can be overloaded, they do not overload existing member methods.
+       |An extension method can be invoked as a regular method, but if that is the intended usage,
        |it should not be defined as an extension.
-       |Although extensions can be overloaded, they do not overload existing member methods."""
+       |
+       |The extension may be invoked as though selected from an arbitrary type if conversions are in play."""
 
 class TraitCompanionWithMutableStatic()(using Context)
   extends SyntaxMsg(TraitCompanionWithMutableStaticID) {
@@ -3158,7 +3176,7 @@ class InlinedAnonClassWarning()(using Context)
 class ValueDiscarding(tp: Type)(using Context)
   extends Message(ValueDiscardingID):
     def kind = MessageKind.PotentialIssue
-    def msg(using Context) = i"discarded non-Unit value of type $tp"
+    def msg(using Context) = i"discarded non-Unit value of type ${tp.widen}. Add `: Unit` to discard silently."
     def explain(using Context) = ""
 
 class UnusedNonUnitValue(tp: Type)(using Context)
@@ -3291,13 +3309,14 @@ object UnusedSymbol {
 
 class NonNamedArgumentInJavaAnnotation(using Context) extends SyntaxMsg(NonNamedArgumentInJavaAnnotationID):
 
-  override protected def msg(using Context): String = 
+  override protected def msg(using Context): String =
     "Named arguments are required for Java defined annotations"
+    + Message.rewriteNotice("This", version = SourceVersion.`3.6-migration`)
 
-  override protected def explain(using Context): String = 
+  override protected def explain(using Context): String =
     i"""Starting from Scala 3.6.0, named arguments are required for Java defined annotations.
-        |Java defined annotations don't have an exact constructor representation 
-        |and we previously relied on the order of the fields to create one. 
+        |Java defined annotations don't have an exact constructor representation
+        |and we previously relied on the order of the fields to create one.
         |One possible issue with this representation is the reordering of the fields.
         |Lets take the following example:
         |
@@ -3310,3 +3329,82 @@ class NonNamedArgumentInJavaAnnotation(using Context) extends SyntaxMsg(NonNamed
         """
 
 end NonNamedArgumentInJavaAnnotation
+
+final class QuotedTypeMissing(tpe: Type)(using Context) extends StagingMessage(QuotedTypeMissingID):
+
+  private def witness = defn.QuotedTypeClass.typeRef.appliedTo(tpe)
+
+  override protected def msg(using Context): String = 
+    i"Reference to $tpe within quotes requires a given ${witness} in scope"
+
+  override protected def explain(using Context): String =
+    i"""Referencing `$tpe` inside a quoted expression requires a `${witness}` to be in scope. 
+        |Since Scala is subject to erasure at runtime, the type information will be missing during the execution of the code.
+        |`${witness}` is therefore needed to carry `$tpe`'s type information into the quoted code. 
+        |Without an implicit `${witness}`, the type `$tpe` cannot be properly referenced within the expression. 
+        |To resolve this, ensure that a `${witness}` is available, either through a context-bound or explicitly.
+        |"""
+
+end QuotedTypeMissing
+
+final class DeprecatedAssignmentSyntax(key: Name, value: untpd.Tree)(using Context) extends SyntaxMsg(DeprecatedAssignmentSyntaxID):
+  override protected def msg(using Context): String =
+    i"""Deprecated syntax: in the future it would be interpreted as a named tuple with one element,
+      |not as an assignment.
+      |
+      |To assign a value, use curly braces: `{${key} = ${value}}`."""
+      + Message.rewriteNotice("This", version = SourceVersion.`3.6-migration`)
+
+  override protected def explain(using Context): String = ""
+
+class DeprecatedInfixNamedArgumentSyntax()(using Context) extends SyntaxMsg(DeprecatedInfixNamedArgumentSyntaxID):
+  def msg(using Context) =
+    i"""Deprecated syntax: infix named arguments lists are deprecated; in the future it would be interpreted as a single name tuple argument.
+       |To avoid this warning, either remove the argument names or use dotted selection."""
+        + Message.rewriteNotice("This", version = SourceVersion.`3.6-migration`)
+
+  def explain(using Context) = ""
+
+class GivenSearchPriorityWarning(
+    pt: Type,
+    cmp: Int,
+    prev: Int,
+    winner: TermRef,
+    loser: TermRef,
+    isLastOldVersion: Boolean
+)(using Context) extends Message(GivenSearchPriorityID):
+  def kind = MessageKind.PotentialIssue
+  def choice(nth: String, c: Int) =
+    if c == 0 then "none - it's ambiguous"
+    else s"the $nth alternative"
+  val (change, whichChoice) =
+    if isLastOldVersion
+    then ("will change in the future release", "Current choice ")
+    else ("has changed",                       "Previous choice")
+  def warningMessage: String =
+    i"""Given search preference for $pt between alternatives
+       |  ${loser}
+       |and
+       |  ${winner}
+       |$change.
+       |$whichChoice       : ${choice("first", prev)}
+       |Choice from Scala 3.7 : ${choice("second", cmp)}"""
+  def migrationHints: String =
+    i"""Suppress this warning by choosing -source 3.5, -source 3.7, or
+       |by using @annotation.nowarn("id=205")"""
+  def ambiguousNote: String =
+    i"""
+       |
+       |Note: $warningMessage"""
+  def msg(using Context) =
+    i"""$warningMessage
+       |
+       |$migrationHints"""
+
+  def explain(using Context) = ""
+
+final class EnumMayNotBeValueClasses(sym: Symbol)(using Context) extends SyntaxMsg(EnumMayNotBeValueClassesID):
+    def msg(using Context): String = i"$sym may not be a value class"
+
+    def explain(using Context) = ""
+end EnumMayNotBeValueClasses

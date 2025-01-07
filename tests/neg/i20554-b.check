@@ -2,12 +2,13 @@
 3 |@SimpleAnnotation(1) // error: the parameters is not named 'value'
   |                  ^
   |                  Named arguments are required for Java defined annotations
+  |                  This can be rewritten automatically under -rewrite -source 3.6-migration.
   |---------------------------------------------------------------------------------------------------------------------
   | Explanation (enabled by `-explain`)
   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   | Starting from Scala 3.6.0, named arguments are required for Java defined annotations.
-  | Java defined annotations don't have an exact constructor representation 
-  | and we previously relied on the order of the fields to create one. 
+  | Java defined annotations don't have an exact constructor representation
+  | and we previously relied on the order of the fields to create one.
   | One possible issue with this representation is the reordering of the fields.
   | Lets take the following example:
   |

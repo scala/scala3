@@ -17,6 +17,7 @@ import Denotations.*
 import SymDenotations.*
 import StdNames.{nme, tpnme}
 import ast.{Trees, tpd, untpd}
+import tpd.closureDef
 import typer.{Implicits, Namer, Applications}
 import typer.ProtoTypes.*
 import Trees.*
@@ -24,10 +25,12 @@ import TypeApplications.*
 import NameKinds.{WildcardParamName, DefaultGetterName}
 import util.Chars.isOperatorPart
 import config.{Config, Feature}
+import config.Feature.sourceVersion
+import config.SourceVersion.*
 
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
-import cc.{CaptureSet, CapturingType, toCaptureSet, IllegalCaptureRef, isRetains, ReachCapability, MaybeCapability}
+import cc.*
 import dotty.tools.dotc.parsing.JavaParsers
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
@@ -282,6 +285,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       if !printDebug && appliedText(tp.asInstanceOf[HKLambda].resType).isEmpty =>
         // don't eta contract if the application would be printed specially
         toText(tycon)
+      case Existential(boundVar, unpacked)
+      if !printDebug && !ctx.settings.YccDebug.value && !unpacked.existsPart(_ == boundVar) =>
+        toText(unpacked)
       case tp: RefinedType if defn.isFunctionType(tp) && !printDebug =>
         toTextMethodAsFunction(tp.refinedInfo,
           isPure = Feature.pureFunsEnabled && !tp.typeSymbol.name.isImpureFunction,
@@ -508,6 +514,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toText(name) ~ (if name.isTermName && arg.isType then " : " else " = ") ~ toText(arg)
       case Assign(lhs, rhs) =>
         changePrec(GlobalPrec) { toTextLocal(lhs) ~ " = " ~ toText(rhs) }
+      case closureDef(meth) if !printDebug =>
+        withEnclosingDef(meth):
+          meth.paramss.map(paramsText).foldRight(toText(meth.rhs))(_ ~ " => " ~ _)
       case block: Block =>
         blockToText(block)
       case If(cond, thenp, elsep) =>
@@ -751,7 +760,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case GenAlias(pat, expr) =>
         toText(pat) ~ " = " ~ toText(expr)
       case ContextBounds(bounds, cxBounds) =>
-        if Feature.enabled(Feature.modularity) then
+        if sourceVersion.isAtLeast(`3.6`) then
           def boundsText(bounds: Tree) = bounds match
             case ContextBoundTypeTree(tpt, _, ownName) =>
               toText(tpt) ~ (" as " ~ toText(ownName) `provided` !ownName.isEmpty)
@@ -1115,10 +1124,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     def recur(t: untpd.Tree): Text = t match
       case Apply(fn, Nil) => recur(fn)
       case Apply(fn, args) =>
-        val explicitArgs = args.filterNot(_.symbol.name.is(DefaultGetterName))
+        val explicitArgs = args.filterNot(untpd.stripNamedArg(_).symbol.name.is(DefaultGetterName))
         recur(fn) ~ "(" ~ toTextGlobal(explicitArgs, ", ") ~ ")"
       case TypeApply(fn, args) => recur(fn) ~ "[" ~ toTextGlobal(args, ", ") ~ "]"
       case Select(qual, nme.CONSTRUCTOR) => recur(qual)
+      case id @ Ident(tpnme.BOUNDTYPE_ANNOT) => "@" ~ toText(id.symbol.name)
       case New(tpt) => recur(tpt)
       case _ =>
         val annotSym = sym.orElse(tree.symbol.enclosingClass)

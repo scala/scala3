@@ -18,10 +18,11 @@ import config.Printers.typr
 import Inferencing.*
 import ErrorReporting.*
 import util.SourceFile
+import util.Spans.{NoSpan, Span}
 import TypeComparer.necessarySubType
+import reporting.*
 
 import scala.annotation.internal.sharable
-import dotty.tools.dotc.util.Spans.{NoSpan, Span}
 
 object ProtoTypes {
 
@@ -70,6 +71,13 @@ object ProtoTypes {
                    |constraint was: ${ctx.typerState.constraint}
                    |constraint now: ${newctx.typerState.constraint}""")
             if result && (ctx.typerState.constraint ne newctx.typerState.constraint) then
+              // Remove all type lambdas and tvars introduced by testCompat
+              for tvar <- newctx.typerState.ownedVars do
+                inContext(newctx):
+                  if !tvar.isInstantiated then
+                    tvar.instantiate(fromBelow = false) // any direction
+
+              // commit any remaining changes in typer state
               newctx.typerState.commit()
             result
           case _ => testCompat
@@ -83,6 +91,7 @@ object ProtoTypes {
      *  fits the given expected result type.
      */
     def constrainResult(mt: Type, pt: Type)(using Context): Boolean =
+    trace(i"constrainResult($mt, $pt)", typr):
       val savedConstraint = ctx.typerState.constraint
       val res = pt.widenExpr match {
         case pt: FunProto =>
@@ -322,6 +331,8 @@ object ProtoTypes {
       case tp: UnapplyFunProto => new UnapplySelectionProto(name, nameSpan)
       case tp => SelectionProto(name, IgnoredProto(tp), typer, privateOK = true, nameSpan)
 
+  class WildcardSelectionProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed, true, NoSpan)
+
   /** A prototype for expressions [] that are in some unspecified selection operation
    *
    *    [].?: ?
@@ -330,9 +341,9 @@ object ProtoTypes {
    *  operation is further selection. In this case, the expression need not be a value.
    *  @see checkValue
    */
-  @sharable object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed, true, NoSpan)
+  @sharable object AnySelectionProto extends WildcardSelectionProto
 
-  @sharable object SingletonTypeProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed, true, NoSpan)
+  @sharable object SingletonTypeProto extends WildcardSelectionProto
 
   /** A prototype for selections in pattern constructors */
   class UnapplySelectionProto(name: Name, nameSpan: Span) extends SelectionProto(name, WildcardType, NoViewsAllowed, true, nameSpan)

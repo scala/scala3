@@ -1,0 +1,11 @@
+-- [E007] Type Mismatch Error: tests/neg/i21535.scala:7:4 --------------------------------------------------------------
+3 |  (if (true) then
+4 |    new A(66)
+5 |  else
+6 |    m1()
+7 |  ).m2(p1 = p); // error
+  |  ^
+  |  Found:    (Int | Short) @uncheckedVariance
+  |  Required: Int & Short
+  |
+  | longer explanation available when compiling with `-explain`

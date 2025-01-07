@@ -9,6 +9,7 @@ import sbt.*
 import complete.DefaultParsers._
 import pl.project13.scala.sbt.JmhPlugin
 import pl.project13.scala.sbt.JmhPlugin.JmhKeys.Jmh
+import com.gradle.develocity.agent.sbt.DevelocityPlugin.autoImport._
 import com.typesafe.sbt.packager.Keys._
 import com.typesafe.sbt.packager.MappingsHelper.directory
 import com.typesafe.sbt.packager.universal.UniversalPlugin
@@ -90,11 +91,69 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.5.0"
+  /** Version of the Scala compiler used to build the artifacts.
+   *  Reference version should track the latest version pushed to Maven:
+   *  - In main branch it should be the last RC version
+   *  - In release branch it should be the last stable release
+   *
+   *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
+   */
+  val referenceVersion = "3.6.3-RC2"
 
-  val baseVersion = "3.6.0"
-  // Will be required by some automation later
-  val prereleaseVersion = s"$baseVersion-RC1"
+  /** Version of the Scala compiler targeted in the current release cycle
+   *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
+   *  Should be updated ONLY after release or cutoff for previous release cycle.
+   *
+   *  Should only be referred from `dottyVersion` or settings/tasks requiring simplified version string,
+   *  eg. `compatMode` or Windows native distribution version.
+   *
+   *  Warning: Change of this variable might require updating `expectedTastyVersion`
+   */
+  val developedVersion = "3.6.4"
+
+  /** The version of the compiler including the RC prefix.
+   *  Defined as common base before calculating environment specific suffixes in `dottyVersion`
+   *
+   *  By default, during development cycle defined as `${developedVersion}-RC1`;
+   *  During release candidate cycle incremented by the release officer before publishing a subsequent RC version;
+   *  During final, stable release is set exactly to `developedVersion`.
+  */
+  val baseVersion = s"$developedVersion-RC1"
+
+  /** The version of TASTY that should be emitted, checked in runtime test
+   *  For defails on how TASTY version should be set see related discussions:
+   *    - https://github.com/scala/scala3/issues/13447#issuecomment-912447107
+   *    - https://github.com/scala/scala3/issues/14306#issuecomment-1069333516
+   *    - https://github.com/scala/scala3/pull/19321
+   *
+   *  Simplified rules, given 3.$minor.$patch = $developedVersion
+   *    - Major version is always 28
+   *    - TASTY minor version:
+   *      - in main (NIGHTLY): {if $patch == 0 then $minor else ${minor + 1}}
+   *      - in release branch is always equal to $minor
+   *    - TASTY experimental version:
+   *      - in main (NIGHTLY) is always experimental
+   *      - in release candidate branch is experimental if {patch == 0}
+   *      - in stable release is always non-experimetnal
+   */
+  val expectedTastyVersion = "28.7-experimental-1"
+  checkReleasedTastyVersion()
+
+  /** Final version of Scala compiler, controlled by environment variables. */
+  val dottyVersion = {
+    if (isRelease) baseVersion
+    else if (isNightly) s"${baseVersion}-bin-${VersionUtil.commitDate}-${VersionUtil.gitHash}-NIGHTLY"
+    else s"${baseVersion}-bin-SNAPSHOT"
+  }
+  def isRelease = sys.env.get("RELEASEBUILD").contains("yes")
+  def isNightly = sys.env.get("NIGHTLYBUILD").contains("yes")
+
+  /** Version calculate for `nonbootstrapped` projects */
+  val dottyNonBootstrappedVersion = {
+    // Make sure sbt always computes the scalaBinaryVersion correctly
+    val bin = if (!dottyVersion.contains("-bin")) "-bin" else ""
+    dottyVersion + bin + "-nonbootstrapped"
+  }
 
   // LTS or Next
   val versionLine = "Next"
@@ -109,11 +168,12 @@ object Build {
   /** Minor version against which we check binary compatibility.
    *
    *  This must be the earliest published release in the same versioning line.
-   *  For a baseVersion `3.M.P` the mimaPreviousDottyVersion should be set to:
+   *  For a developedVersion `3.M.P` the mimaPreviousDottyVersion should be set to:
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
+   *  3.6.2 is an exception from this rule - 3.6.0 was a broken release, 3.6.1 was hotfix (unstable) release
    */
-  val mimaPreviousDottyVersion = "3.5.0"
+  val mimaPreviousDottyVersion = "3.6.2"
 
   /** LTS version against which we check binary compatibility.
    *
@@ -124,9 +184,9 @@ object Build {
   val mimaPreviousLTSDottyVersion = "3.3.0"
 
   /** Version of Scala CLI to download */
-  val scalaCliLauncherVersion = "1.4.3"
+  val scalaCliLauncherVersion = "1.5.4"
   /** Version of Coursier to download for initializing the local maven repo of Scala command */
-  val coursierJarVersion = "2.1.10"
+  val coursierJarVersion = "2.1.18"
 
   object CompatMode {
     final val BinaryCompatible = 0
@@ -134,8 +194,8 @@ object Build {
   }
 
   val compatMode = {
-    val VersionRE = """^\d+\.(\d+).(\d+).*""".r
-    baseVersion match {
+    val VersionRE = """^\d+\.(\d+)\.(\d+)""".r
+    developedVersion match {
       case VersionRE(_, "0")   => CompatMode.BinaryCompatible
       case _                   => CompatMode.SourceAndBinaryCompatible
     }
@@ -148,8 +208,8 @@ object Build {
    *  scala-library.
    */
   def stdlibVersion(implicit mode: Mode): String = mode match {
-    case NonBootstrapped => "2.13.14"
-    case Bootstrapped => "2.13.14"
+    case NonBootstrapped => "2.13.15"
+    case Bootstrapped => "2.13.15"
   }
 
   /** Version of the scala-library for which we will generate TASTy.
@@ -159,29 +219,11 @@ object Build {
    *  We can use nightly versions to tests the future compatibility in development.
    *  Nightly versions: https://scala-ci.typesafe.com/ui/native/scala-integration/org/scala-lang
    */
-  val stdlibBootstrappedVersion = "2.13.14"
+  val stdlibBootstrappedVersion = "2.13.15"
 
   val dottyOrganization = "org.scala-lang"
   val dottyGithubUrl = "https://github.com/scala/scala3"
   val dottyGithubRawUserContentUrl = "https://raw.githubusercontent.com/scala/scala3"
-
-
-  val isRelease = sys.env.get("RELEASEBUILD") == Some("yes")
-
-  val dottyVersion = {
-    def isNightly = sys.env.get("NIGHTLYBUILD") == Some("yes")
-    if (isRelease)
-      baseVersion
-    else if (isNightly)
-      baseVersion + "-RC1-bin-" + VersionUtil.commitDate + "-" + VersionUtil.gitHash + "-NIGHTLY"
-    else
-      baseVersion + "-RC1-bin-SNAPSHOT"
-  }
-  val dottyNonBootstrappedVersion = {
-    // Make sure sbt always computes the scalaBinaryVersion correctly
-    val bin = if (!dottyVersion.contains("-bin")) "-bin" else ""
-    dottyVersion + bin + "-nonbootstrapped"
-  }
 
   val sbtCommunityBuildVersion = "0.1.0-SNAPSHOT"
 
@@ -268,6 +310,50 @@ object Build {
 
     // enable verbose exception messages for JUnit
     (Test / testOptions) += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "-s"),
+
+    // Configuration to publish build scans to develocity.scala-lang.org
+    develocityConfiguration := {
+      val isInsideCI = insideCI.value
+      val config = develocityConfiguration.value
+      val buildScan = config.buildScan
+      val buildCache = config.buildCache
+      // disable test retry on compilation test classes
+      val noRetryTestClasses = Set(
+        "dotty.tools.dotc.BestEffortOptionsTests",
+        "dotty.tools.dotc.CompilationTests",
+        "dotty.tools.dotc.FromTastyTests",
+        "dotty.tools.dotc.IdempotencyTests",
+        "dotty.tools.dotc.ScalaJSCompilationTests",
+        "dotty.tools.dotc.TastyBootstrapTests",
+        "dotty.tools.dotc.coverage.CoverageTests",
+        "dotty.tools.dotc.transform.PatmatExhaustivityTest",
+        "dotty.tools.repl.ScriptedTests"
+      )
+      config
+        .withProjectId(ProjectId("scala3"))
+        .withServer(config.server.withUrl(Some(url("https://develocity.scala-lang.org"))))
+        .withBuildScan(
+          buildScan
+            .withPublishing(Publishing.onlyIf(_.authenticated))
+            .withBackgroundUpload(!isInsideCI)
+            .tag(if (isInsideCI) "CI" else "Local")
+            .withLinks(buildScan.links ++ GithubEnv.develocityLinks)
+            .withValues(buildScan.values ++ GithubEnv.develocityValues)
+            .withObfuscation(buildScan.obfuscation.withIpAddresses(_.map(_ => "0.0.0.0")))
+        )
+        .withBuildCache(
+          buildCache
+            .withLocal(buildCache.local.withEnabled(false))
+            .withRemote(buildCache.remote.withEnabled(false))
+        )
+        .withTestRetryConfiguration(
+          config.testRetryConfiguration
+            .withFlakyTestPolicy(FlakyTestPolicy.Fail)
+            .withMaxRetries(if (isInsideCI) 1 else 0)
+            .withMaxFailures(10)
+            .withClassesFilter((className, _) => !noRetryTestClasses.contains(className))
+        )
+    }
   )
 
   // Settings shared globally (scoped in Global). Used in build.sbt
@@ -319,7 +405,7 @@ object Build {
     ),
 
     // This is used to download nightly builds of the Scala 2 library in `scala2-library-bootstrapped`
-    resolvers += "scala-integration" at "https://scala-ci.typesafe.com/artifactory/scala-integration/",
+    resolvers += "scala-integration" at "https://scala-ci.typesafe.com/artifactory/scala-integration/"
   )
 
   lazy val disableDocSetting =
@@ -423,10 +509,20 @@ object Build {
     ) ++ extMap
   }
 
+  /* These projects are irrelevant from IDE point of view and do not compile with Bloop*/
+  val fullyDisabledProjects = Set(
+    "scala2-library-cc",
+    "scala2-library-bootstrapped",
+    "scala2-library-cc-tasty",
+    "scala2-library-tasty"
+  )
+
+  val enableBspAllProjects = false
+
   // Settings used when compiling dotty with a non-bootstrapped dotty
-  lazy val commonBootstrappedSettings = commonDottySettings ++ NoBloopExport.settings ++ Seq(
-    // To enable support of scaladoc and language-server projects you need to change this to true and use sbt as your build server
-    bspEnabled := false,
+  lazy val commonBootstrappedSettings = commonDottySettings ++ Seq(
+    // To enable support of scaladoc and language-server projects you need to change this to true
+    bspEnabled := { if(fullyDisabledProjects(name.value)) false else enableBspAllProjects },
     (Compile / unmanagedSourceDirectories) += baseDirectory.value / "src-bootstrapped",
 
     version := dottyVersion,
@@ -571,18 +667,36 @@ object Build {
   def findArtifactPath(classpath: Def.Classpath, name: String): String =
     findArtifact(classpath, name).getAbsolutePath
 
+  /** Replace package names in package definitions, for shading.
+   * It assumes the full package def is written on a single line.
+   * It does not adapt the imports accordingly.
+   */
+  def replacePackage(lines: List[String])(replace: PartialFunction[String, String]): List[String] = {
+    def recur(lines: List[String]): List[String] =
+      lines match {
+        case head :: tail =>
+          if (head.startsWith("package ")) {
+            val packageName = head.stripPrefix("package ").trim
+            val newPackageName = replace.applyOrElse(packageName, (_: String) => packageName)
+            s"package $newPackageName" :: tail
+          } else head :: recur(tail)
+        case _ => lines
+      }
+    recur(lines)
+  }
+
   /** Insert UnsafeNulls Import after package */
-  def insertUnsafeNullsImport(lines: Seq[String]): Seq[String] = {
-    def recur(ls: Seq[String], foundPackage: Boolean): Seq[String] = ls match {
-      case Seq(l, rest @ _*) =>
+  def insertUnsafeNullsImport(lines: List[String]): List[String] = {
+    def recur(ls: List[String], foundPackage: Boolean): List[String] = ls match {
+      case l :: rest =>
         val lt = l.trim()
         if (foundPackage) {
           if (!(lt.isEmpty || lt.startsWith("package ")))
-            "import scala.language.unsafeNulls" +: ls
-          else l +: recur(rest, foundPackage)
+            "import scala.language.unsafeNulls" :: ls
+          else l :: recur(rest, foundPackage)
         } else {
           if (lt.startsWith("package ")) l +: recur(rest, true)
-          else l +: recur(rest, foundPackage)
+          else l :: recur(rest, foundPackage)
         }
       case _ => ls
     }
@@ -647,11 +761,11 @@ object Build {
 
       // get libraries onboard
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "9.6.0-scala-1", // used by the backend
+        "org.scala-lang.modules" % "scala-asm" % "9.7.1-scala-1", // used by the backend
         Dependencies.compilerInterface,
-        "org.jline" % "jline-reader" % "3.25.1",   // used by the REPL
-        "org.jline" % "jline-terminal" % "3.25.1",
-        "org.jline" % "jline-terminal-jna" % "3.25.1", // needed for Windows
+        "org.jline" % "jline-reader" % "3.27.1",   // used by the REPL
+        "org.jline" % "jline-terminal" % "3.27.1",
+        "org.jline" % "jline-terminal-jni" % "3.27.1", // needed for Windows
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
       ),
 
@@ -844,8 +958,8 @@ object Build {
           extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface)
         }
 
-        val wrappedArgs = (if (printTasty) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator))).map(arg => "\""+ arg + "\"")
-        val fullArgs = main :: defaultOutputDirectory ::: wrappedArgs
+        val wrappedArgs = if (printTasty) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator))
+        val fullArgs = main :: (defaultOutputDirectory ::: wrappedArgs).map("\""+ _ + "\"").map(_.replace("\\", "\\\\"))
 
         (Compile / runMain).toTask(fullArgs.mkString(" ", " ", ""))
       }.evaluated,
@@ -883,11 +997,18 @@ object Build {
           val sjsSources = (trgDir ** "*.scala").get.toSet
           sjsSources.foreach(f => {
             val lines = IO.readLines(f)
-            IO.writeLines(f, insertUnsafeNullsImport(lines))
+            val linesWithPackage = replacePackage(lines) {
+              case "org.scalajs.ir" => "dotty.tools.sjs.ir"
+            }
+            IO.writeLines(f, insertUnsafeNullsImport(linesWithPackage))
           })
           sjsSources
         } (Set(scalaJSIRSourcesJar)).toSeq
       }.taskValue,
+
+      // Develocity's Build Cache does not work with our compilation tests
+      // at the moment: it does not take compilation files as inputs.
+      Test / develocityBuildCacheClient := None,
   )
 
   def insertClasspathInArgs(args: List[String], cp: String): List[String] = {
@@ -1325,30 +1446,27 @@ object Build {
     )
 
   lazy val `scala3-presentation-compiler` = project.in(file("presentation-compiler"))
-    .asScala3PresentationCompiler(NonBootstrapped)
-  lazy val `scala3-presentation-compiler-bootstrapped` = project.in(file("presentation-compiler"))
-    .asScala3PresentationCompiler(Bootstrapped)
+    .withCommonSettings(Bootstrapped)
+    .dependsOn(`scala3-compiler-bootstrapped`, `scala3-library-bootstrapped`, `scala3-presentation-compiler-testcases` % "test->test")
+    .settings(presentationCompilerSettings)
+    .settings(scala3PresentationCompilerBuildInfo)
     .settings(
       // Add `-Yno-flexible-types` flag for bootstrap, see comments for `bootstrappedDottyCompilerSettings`
       Compile / scalacOptions +=  "-Yno-flexible-types"
     )
 
-  def scala3PresentationCompiler(implicit mode: Mode): Project = mode match {
-    case NonBootstrapped => `scala3-presentation-compiler`
-    case Bootstrapped => `scala3-presentation-compiler-bootstrapped`
-  }
-
-  def scala3PresentationCompilerBuildInfo(implicit mode: Mode) =
+  def scala3PresentationCompilerBuildInfo =
     Seq(
       ideTestsDependencyClasspath := {
-        val dottyLib = (dottyLibrary / Compile / classDirectory).value
+        val testCasesLib = (`scala3-presentation-compiler-testcases` / Compile / classDirectory).value
+        val dottyLib = (`scala3-library-bootstrapped` / Compile / classDirectory).value
         val scalaLib =
-          (dottyLibrary / Compile / dependencyClasspath)
+          (`scala3-library-bootstrapped` / Compile / dependencyClasspath)
             .value
             .map(_.data)
             .filter(_.getName.matches("scala-library.*\\.jar"))
             .toList
-        dottyLib :: scalaLib
+        testCasesLib :: dottyLib :: scalaLib
         // Nil
       },
       Compile / buildInfoPackage := "dotty.tools.pc.buildinfo",
@@ -1360,7 +1478,7 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   lazy val presentationCompilerSettings = {
-    val mtagsVersion = "1.3.4"
+    val mtagsVersion = "1.4.1"
     Seq(
       libraryDependencies ++= Seq(
         "org.lz4" % "lz4-java" % "1.8.0",
@@ -1370,7 +1488,7 @@ object Build {
           .exclude("org.eclipse.lsp4j","org.eclipse.lsp4j.jsonrpc"),
         "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.20.1",
       ),
-      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.14" % mtagsVersion % SourceDeps),
+      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.15" % mtagsVersion % SourceDeps),
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       scalacOptions ++= Seq("-source", "3.3"), // To avoid fatal migration warnings
@@ -1407,6 +1525,10 @@ object Build {
       }.taskValue,
     )
   }
+
+  lazy val `scala3-presentation-compiler-testcases` = project.in(file("presentation-compiler-testcases"))
+    .dependsOn(`scala3-compiler-bootstrapped`)
+    .settings(commonBootstrappedSettings)
 
   lazy val `scala3-language-server` = project.in(file("language-server")).
     dependsOn(dottyCompiler(Bootstrapped)).
@@ -2135,11 +2257,19 @@ object Build {
     // ========
     Universal / stage := (Universal / stage).dependsOn(republish).value,
     Universal / packageBin := (Universal / packageBin).dependsOn(republish).value,
-    Universal / packageZipTarball := (Universal / packageZipTarball).dependsOn(republish).value,
+    Universal / packageZipTarball := (Universal / packageZipTarball).dependsOn(republish)
+      .map { archiveFile =>
+        // Rename .tgz to .tar.gz for consistency with previous versions
+        val renamedFile = archiveFile.getParentFile() / archiveFile.getName.replaceAll("\\.tgz$", ".tar.gz")
+        IO.move(archiveFile, renamedFile)
+        renamedFile
+      }
+      .value,
     // ========
-    Universal / mappings ++= directory(republishRepo.value / "bin"),
+    Universal / mappings ++= directory(dist.base / "bin"),
     Universal / mappings ++= directory(republishRepo.value / "maven2"),
     Universal / mappings ++= directory(republishRepo.value / "lib"),
+    Universal / mappings ++= directory(republishRepo.value / "libexec"),
     Universal / mappings +=  (republishRepo.value / "VERSION") -> "VERSION",
     // ========
     republishCommandLibs += ("scala" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "tasty-core")),
@@ -2150,7 +2280,7 @@ object Build {
   lazy val dist = project.asDist(Bootstrapped)
     .settings(packageName := "scala3-" + dottyVersion)
     .settings(
-      republishBinDir := baseDirectory.value / "bin",
+      republishLibexecDir := baseDirectory.value / "libexec",
       republishCoursier +=
         ("coursier.jar" -> s"https://github.com/coursier/coursier/releases/download/v$coursierJarVersion/coursier.jar"),
       republishLaunchers +=
@@ -2160,8 +2290,8 @@ object Build {
   lazy val `dist-mac-x86_64` = project.in(file("dist/mac-x86_64")).asDist(Bootstrapped)
     .settings(packageName := (dist / packageName).value + "-x86_64-apple-darwin")
     .settings(
-      republishBinDir := (dist / republishBinDir).value,
-      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishLibexecDir := (dist / republishLibexecDir).value,
+      republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-apple-darwin.gz")
@@ -2170,8 +2300,8 @@ object Build {
   lazy val `dist-mac-aarch64` = project.in(file("dist/mac-aarch64")).asDist(Bootstrapped)
     .settings(packageName := (dist / packageName).value + "-aarch64-apple-darwin")
     .settings(
-      republishBinDir := (dist / republishBinDir).value,
-      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishLibexecDir := (dist / republishLibexecDir).value,
+      republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-aarch64-apple-darwin.gz")
@@ -2181,14 +2311,17 @@ object Build {
     .enablePlugins(WindowsPlugin) // TO GENERATE THE `.msi` installer
     .settings(packageName := (dist / packageName).value + "-x86_64-pc-win32")
     .settings(
-      republishBinDir := (dist / republishBinDir).value,
-      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishLibexecDir := (dist / republishLibexecDir).value,
+      republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli.exe" -> s"zip+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-pc-win32.zip!/scala-cli.exe")
     )
     .settings(
       Windows / name := "scala",
+      // Windows/version is used to create ProductInfo - it requires a version without any -RC suffixes
+      // If not explicitly overriden it would try to use `dottyVersion` assigned to `dist-win-x86_64/version`
+      Windows / version    := developedVersion,
       Windows / mappings   := (Universal / mappings).value,
       Windows / packageBin := (Windows / packageBin).dependsOn(republish).value,
       Windows / wixFiles   := (Windows / wixFiles).dependsOn(republish).value,
@@ -2204,8 +2337,8 @@ object Build {
   lazy val `dist-linux-x86_64` = project.in(file("dist/linux-x86_64")).asDist(Bootstrapped)
     .settings(packageName := (dist / packageName).value + "-x86_64-pc-linux")
     .settings(
-      republishBinDir := (dist / republishBinDir).value,
-      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishLibexecDir := (dist / republishLibexecDir).value,
+      republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-pc-linux.gz")
@@ -2214,8 +2347,8 @@ object Build {
   lazy val `dist-linux-aarch64` = project.in(file("dist/linux-aarch64")).asDist(Bootstrapped)
     .settings(packageName := (dist / packageName).value + "-aarch64-pc-linux")
     .settings(
-      republishBinDir := (dist / republishBinDir).value,
-      republishBinOverrides += (dist / baseDirectory).value / "bin-native-overrides",
+      republishLibexecDir := (dist / republishLibexecDir).value,
+      republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-aarch64-pc-linux.gz")
@@ -2234,9 +2367,9 @@ object Build {
 
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
     def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
-      aggregate(`scala3-interfaces`, dottyLibrary, dottyCompiler, tastyCore, `scala3-sbt-bridge`, scala3PresentationCompiler).
+      aggregate(`scala3-interfaces`, dottyLibrary, dottyCompiler, tastyCore, `scala3-sbt-bridge`).
       bootstrappedAggregate(`scala2-library-tasty`, `scala2-library-cc-tasty`, `scala3-language-server`, `scala3-staging`,
-        `scala3-tasty-inspector`, `scala3-library-bootstrappedJS`, scaladoc).
+        `scala3-tasty-inspector`, `scala3-library-bootstrappedJS`, scaladoc, `scala3-presentation-compiler`).
       dependsOn(tastyCore).
       dependsOn(dottyCompiler).
       dependsOn(dottyLibrary).
@@ -2320,6 +2453,9 @@ object Build {
       settings(disableDocSetting).
       settings(
         versionScheme := Some("semver-spec"),
+        Test / envVars ++= Map(
+          "EXPECTED_TASTY_VERSION" -> expectedTastyVersion,
+        ),
         if (mode == Bootstrapped) Def.settings(
           commonMiMaSettings,
           mimaForwardIssueFilters := MiMaFilters.TastyCore.ForwardsBreakingChanges,
@@ -2346,11 +2482,6 @@ object Build {
       settings(commonBenchmarkSettings).
       enablePlugins(JmhPlugin)
 
-    def asScala3PresentationCompiler(implicit mode: Mode): Project = project.withCommonSettings.
-      dependsOn(dottyCompiler, dottyLibrary).
-      settings(presentationCompilerSettings).
-      settings(scala3PresentationCompilerBuildInfo)
-
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(UniversalPlugin, RepublishPlugin).
       withCommonSettings.
@@ -2373,6 +2504,34 @@ object Build {
       case NonBootstrapped => commonNonBootstrappedSettings
       case Bootstrapped => commonBootstrappedSettings
     })
+  }
+
+  /* Tests TASTy version invariants during NIGHLY, RC or Stable releases */
+  def checkReleasedTastyVersion(): Unit = {
+    lazy val (scalaMinor, scalaPatch, scalaIsRC) = baseVersion.split("\\.|-").take(4) match {
+      case Array("3", minor, patch)    => (minor.toInt, patch.toInt, false)
+      case Array("3", minor, patch, _) => (minor.toInt, patch.toInt, true)
+      case other => sys.error(s"Invalid Scala base version string: $baseVersion")
+    }
+    lazy val (tastyMinor, tastyIsExperimental) = expectedTastyVersion.split("\\.|-").take(4) match {
+      case Array("28", minor)                    => (minor.toInt, false)
+      case Array("28", minor, "experimental", _) => (minor.toInt, true)
+      case other => sys.error(s"Invalid TASTy version string: $expectedTastyVersion")
+    }
+
+    if(isNightly) {
+      assert(tastyIsExperimental, "TASTY needs to be experimental in nightly builds")
+      val expectedTastyMinor = if(scalaPatch == 0) scalaMinor else scalaMinor + 1
+      assert(tastyMinor == expectedTastyMinor, "Invalid TASTy minor version")
+    }
+
+    if(isRelease) {
+      assert(scalaMinor == tastyMinor, "Minor versions of TASTY vesion and Scala version should match in release builds")
+      if (scalaIsRC && scalaPatch == 0)
+        assert(tastyIsExperimental, "TASTy should be experimental when releasing a new minor version RC")
+      else
+        assert(!tastyIsExperimental, "Stable version cannot use experimental TASTY")
+    }
   }
 }
 

@@ -549,10 +549,10 @@ object Implicits:
   /** An ambiguous implicits failure */
   class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree, val nested: Boolean = false) extends SearchFailureType:
 
-    private[Implicits] var priorityChangeWarnings: List[Message] = Nil
+    private[Implicits] var priorityChangeWarnings: List[GivenSearchPriorityWarning] = Nil
 
     def priorityChangeWarningNote(using Context): String =
-      priorityChangeWarnings.map(msg => s"\n\nNote: $msg").mkString
+      priorityChangeWarnings.map(_.ambiguousNote).mkString
 
     def msg(using Context): Message =
       var str1 = err.refStr(alt1.ref)
@@ -636,7 +636,7 @@ trait ImplicitRunInfo:
   private def isAnchor(sym: Symbol) =
     sym.isClass && !isExcluded(sym)
     || sym.isOpaqueAlias
-    || sym.is(Deferred)
+    || sym.is(Deferred, butNot = Param)
     || sym.info.isMatchAlias
 
   private def computeIScope(rootTp: Type): OfTypeImplicits =
@@ -821,6 +821,10 @@ trait ImplicitRunInfo:
           override def stopAt = StopAt.Static
           private val seen = util.HashSet[Type]()
 
+          override def derivedTypeBounds(tp: TypeBounds, lo: Type, hi: Type): Type =
+            if lo.exists && hi.exists then super.derivedTypeBounds(tp, lo, hi)
+            else NoType // Survive inaccessible types, for instance in i21543.scala.
+
           def applyToUnderlying(t: TypeProxy) =
             if seen.contains(t) then
               WildcardType
@@ -872,7 +876,7 @@ trait Implicits:
        || inferView(dummyTreeOfType(from), to)
             (using ctx.fresh.addMode(Mode.ImplicitExploration).setExploreTyperState()).isSuccess
           // TODO: investigate why we can't TyperState#test here
-       || from.widen.isNamedTupleType && to.derivesFrom(defn.TupleClass)
+       || from.widen.derivesFromNamedTuple && to.derivesFrom(defn.TupleClass)
            && from.widen.stripNamedTuple <:< to
        )
 
@@ -1078,7 +1082,7 @@ trait Implicits:
    *                         it should be applied, EmptyTree otherwise.
    *  @param span            The position where errors should be reported.
    */
-  def inferImplicit(pt: Type, argument: Tree, span: Span)(using Context): SearchResult =
+  def inferImplicit(pt: Type, argument: Tree, span: Span)(using Context): SearchResult = ctx.profiler.onImplicitSearch(pt):
     trace(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
       record("inferImplicit")
       assert(ctx.phase.allowsImplicitSearch,
@@ -1172,7 +1176,7 @@ trait Implicits:
             case _ => info.derivesFrom(defn.ConversionClass)
           def tryConversion(using Context) = {
             val untpdConv =
-              if ref.symbol.is(Given) && producesConversion(ref.symbol.info) then
+              if ref.symbol.isOneOf(GivenOrImplicit) && producesConversion(ref.symbol.info) then
                 untpd.Select(
                   untpd.TypedSplice(
                     adapt(generated,
@@ -1308,7 +1312,7 @@ trait Implicits:
       // A map that associates a priority change warning (between -source 3.6 and 3.7)
       // with the candidate refs mentioned in the warning. We report the associated
       // message if one of the critical candidates is part of the result of the implicit search.
-      val priorityChangeWarnings = mutable.ListBuffer[(/*critical:*/ List[TermRef], Message)]()
+      val priorityChangeWarnings = mutable.ListBuffer[(/*critical:*/ List[TermRef], GivenSearchPriorityWarning)]()
 
       val sv = Feature.sourceVersion
       val isLastOldVersion = sv.stable == SourceVersion.`3.6`
@@ -1349,21 +1353,7 @@ trait Implicits:
                     cmp match
                       case 1 => (alt2, alt1)
                       case -1 => (alt1, alt2)
-              def choice(nth: String, c: Int) =
-                if c == 0 then  "none - it's ambiguous"
-                else s"the $nth alternative"
-              val (change, whichChoice) =
-                if isLastOldVersion
-                then ("will change", "Current choice ")
-                else ("has changed", "Previous choice")
-              val msg =
-                em"""Given search preference for $pt between alternatives
-                    |  ${loser.ref}
-                    |and
-                    |  ${winner.ref}
-                    |$change.
-                    |$whichChoice          : ${choice("first", prev)}
-                    |New choice from Scala 3.7: ${choice("second", cmp)}"""
+              val msg = GivenSearchPriorityWarning(pt, cmp, prev, winner.ref, loser.ref, isLastOldVersion)
               val critical = alt1.ref :: alt2.ref :: Nil
               priorityChangeWarnings += ((critical, msg))
               if isLastOldVersion then prev else cmp

@@ -158,14 +158,15 @@ sealed abstract class CaptureSet extends Showable:
    *                 as frozen.
    */
   def accountsFor(x: CaptureRef)(using Context): Boolean =
-    if comparer.isInstanceOf[ExplainingTypeComparer] then // !!! DEBUG
-      reporting.trace.force(i"$this accountsFor $x, ${x.captureSetOfInfo}?", show = true):
-        elems.exists(_.subsumes(x))
-        || !x.isMaxCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
-    else
-      reporting.trace(i"$this accountsFor $x, ${x.captureSetOfInfo}?", show = true):
-        elems.exists(_.subsumes(x))
-        || !x.isMaxCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
+    def debugInfo(using Context) = i"$this accountsFor $x, which has capture set ${x.captureSetOfInfo}"
+    def test(using Context) = reporting.trace(debugInfo):
+      elems.exists(_.subsumes(x))
+      || !x.isMaxCapability
+        && !x.derivesFrom(defn.Caps_CapSet)
+        && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
+    comparer match
+      case comparer: ExplainingTypeComparer => comparer.traceIndented(debugInfo)(test)
+      case _ => test
 
   /** A more optimistic version of accountsFor, which does not take variable supersets
    *  of the `x` reference into account. A set might account for `x` if it accounts
@@ -186,10 +187,12 @@ sealed abstract class CaptureSet extends Showable:
 
   /** A more optimistic version of subCaptures used to choose one of two typing rules
    *  for selections and applications. `cs1 mightSubcapture cs2` if `cs2` might account for
-   *  every element currently known to be in `cs1`.
+   *  every element currently known to be in `cs1`, and the same is not true in reverse
+   *  when we compare elements of cs2 vs cs1.
    */
   def mightSubcapture(that: CaptureSet)(using Context): Boolean =
     elems.forall(that.mightAccountFor)
+    && !that.elems.forall(this.mightAccountFor)
 
   /** The subcapturing test.
    *  @param frozen   if true, no new variables or dependent sets are allowed to
@@ -375,7 +378,7 @@ object CaptureSet:
 
   def apply(elems: CaptureRef*)(using Context): CaptureSet.Const =
     if elems.isEmpty then empty
-    else Const(SimpleIdentitySet(elems.map(_.normalizedRef.ensuring(_.isTrackableRef))*))
+    else Const(SimpleIdentitySet(elems.map(_.ensuring(_.isTrackableRef))*))
 
   def apply(elems: Refs)(using Context): CaptureSet.Const =
     if elems.isEmpty then empty else Const(elems)
@@ -509,7 +512,11 @@ object CaptureSet:
         !noUniversal
       else elem match
         case elem: TermRef if level.isDefined =>
-          elem.symbol.ccLevel <= level
+          elem.prefix match
+            case prefix: CaptureRef =>
+              levelOK(prefix)
+            case _ =>
+              elem.symbol.ccLevel <= level
         case elem: ThisType if level.isDefined =>
           elem.cls.ccLevel.nextInner <= level
         case ReachCapability(elem1) =>
@@ -1061,8 +1068,9 @@ object CaptureSet:
     case ref: (TermRef | TermParamRef) if ref.isMaxCapability =>
       if ref.isTrackableRef then ref.singletonCaptureSet
       else CaptureSet.universal
-    case ReachCapability(ref1) => deepCaptureSet(ref1.widen)
-      .showing(i"Deep capture set of $ref: ${ref1.widen} = $result", capt)
+    case ReachCapability(ref1) =>
+      ref1.widen.deepCaptureSet(includeTypevars = true)
+        .showing(i"Deep capture set of $ref: ${ref1.widen} = ${result}", capt)
     case _ => ofType(ref.underlying, followResult = true)
 
   /** Capture set of a type */
@@ -1112,17 +1120,33 @@ object CaptureSet:
 
   /** The deep capture set of a type is the union of all covariant occurrences of
    *  capture sets. Nested existential sets are approximated with `cap`.
+   *  NOTE: The traversal logic needs to be in sync with narrowCaps in CaptureOps, which
+   *  replaces caps with reach capabilties. The one exception to this is invariant
+   *  arguments. This have to be included to be conservative in dcs but must be
+   *  excluded in narrowCaps.
    */
-  def ofTypeDeeply(tp: Type)(using Context): CaptureSet =
+  def ofTypeDeeply(tp: Type, includeTypevars: Boolean = false)(using Context): CaptureSet =
     val collect = new TypeAccumulator[CaptureSet]:
-      def apply(cs: CaptureSet, t: Type) = t.dealias match
-        case t @ CapturingType(p, cs1) =>
-          val cs2 = apply(cs, p)
-          if variance > 0 then cs2 ++ cs1 else cs2
-        case t @ Existential(_, _) =>
-          apply(cs, Existential.toCap(t))
-        case _ =>
-          foldOver(cs, t)
+      val seen = util.HashSet[Symbol]()
+      def apply(cs: CaptureSet, t: Type) =
+        if variance < 0 then cs
+        else t.dealias match
+          case t @ CapturingType(p, cs1) =>
+            this(cs, p) ++ cs1
+          case t @ AnnotatedType(parent, ann) =>
+            this(cs, parent)
+          case t: TypeRef if t.symbol.isAbstractOrParamType && !seen.contains(t.symbol) =>
+            seen += t.symbol
+            val upper = t.info.bounds.hi
+            if includeTypevars && upper.isExactlyAny then CaptureSet.universal
+            else this(cs, upper)
+          case t @ FunctionOrMethod(args, res @ Existential(_, _))
+          if args.forall(_.isAlwaysPure) =>
+            this(cs, Existential.toCap(res))
+          case t @ Existential(_, _) =>
+            cs
+          case _ =>
+            foldOver(cs, t)
     collect(CaptureSet.empty, tp)
 
   type AssumedContains = immutable.Map[TypeRef, SimpleIdentitySet[CaptureRef]]

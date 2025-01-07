@@ -16,7 +16,6 @@ package collection
 import scala.annotation.nowarn
 import language.experimental.captureChecking
 import caps.unsafe.unsafeAssumePure
-import scala.annotation.unchecked.uncheckedCaptures
 
 /** !!! Scala 2 difference: Need intermediate trait SeqViewOps to collect the
  *  necessary functionality over which SeqViews are defined, and at the same
@@ -25,7 +24,6 @@ import scala.annotation.unchecked.uncheckedCaptures
  *  mapping a SeqView with an impure function gives an impure view).
  */
 trait SeqViewOps[+A, +CC[_], +C] extends Any with IterableOps[A, CC, C] {
-  self: SeqViewOps[A, CC, C]^ =>
 
   def length: Int
   def apply(x: Int): A
@@ -75,7 +73,6 @@ trait SeqViewOps[+A, +CC[_], +C] extends Any with IterableOps[A, CC, C] {
 }
 
 trait SeqView[+A] extends SeqViewOps[A, View, View[A]] with View[A] {
-  self: SeqView[A]^ =>
 
   override def view: SeqView[A]^{this} = this
 

@@ -73,6 +73,8 @@ class MissingType(val pre: Type, val name: Name)(using Context) extends TypeErro
       case _ if givenSelf.exists && givenSelf.member(name).exists =>
         i"""$name exists as a member of the self type $givenSelf of $cls
            |but it cannot be called on a receiver whose type does not extend $cls"""
+      case _ if pre.baseClasses.exists(_.findMember(name, pre, Private, EmptyFlags).exists) =>
+        i"$name is a private member in a base class"
       case _ =>
         missingClassFile
 
@@ -115,7 +117,7 @@ extends TypeError:
     em"""Recursion limit exceeded.
         |Maybe there is an illegal cyclic reference?
         |If that's not the case, you could also try to increase the stacksize using the -Xss JVM option.
-        |For the unprocessed stack trace, compile with -Xno-decode-stacktraces.
+        |For the unprocessed stack trace, compile with -Xno-enrich-error-messages.
         |A recurring operation is (inner to outer):
         |${opsString(mostCommon).stripMargin}"""
 
@@ -135,7 +137,7 @@ object handleRecursive:
     e
 
   def apply(op: String, details: => String, exc: Throwable, weight: Int = 1)(using Context): Nothing =
-    if ctx.settings.XnoDecodeStacktraces.value then
+    if ctx.settings.XnoEnrichErrorMessages.value then
       throw exc
     else exc match
       case _: RecursionOverflow =>

@@ -5,7 +5,6 @@ import java.nio.file.Path
 import java.nio.file.Paths
 
 import scala.collection.mutable
-import scala.meta.internal.metals.Fuzzy
 import scala.meta.internal.metals.ReportContext
 import scala.meta.internal.mtags.CoursierComplete
 import scala.meta.internal.pc.{IdentifierComparator, MemberOrdering, CompletionFuzzy}
@@ -27,15 +26,12 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.interactive.Completion.Mode
-import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
 import dotty.tools.pc.buildinfo.BuildInfo
 import dotty.tools.pc.completions.OverrideCompletions.OverrideExtractor
 import dotty.tools.pc.utils.InteractiveEnrichments.*
-import dotty.tools.dotc.core.Denotations.SingleDenotation
-import dotty.tools.dotc.interactive.Interactive
 
 class Completions(
     text: String,
@@ -67,22 +63,18 @@ class Completions(
       case _ :: (_: UnApply) :: _ => false
       case _ => true
 
-  private lazy val shouldAddSuffix = shouldAddSnippet && 
+  private lazy val shouldAddSuffix = shouldAddSnippet &&
     (path match
       /* In case of `method@@()` we should not add snippets and the path
        * will contain apply as the parent of the current tree.
        */
-      case (fun) :: (appl: GenericApply) :: _ if appl.fun == fun =>
-        false
+      case (fun) :: (appl: GenericApply) :: _ if appl.fun == fun => false
       /* In case of `T@@[]` we should not add snippets.
        */
-      case tpe :: (appl: AppliedTypeTree) :: _ if appl.tpt == tpe =>
-        false
-      case _ :: (withcursor @ Select(fun, name)) :: (appl: GenericApply) :: _
-          if appl.fun == withcursor && name.decoded == Cursor.value =>
-        false
+      case tpe :: (appl: AppliedTypeTree) :: _ if appl.tpt == tpe => false
+      case sel  :: (funSel @ Select(fun, name)) :: (appl: GenericApply) :: _
+        if appl.fun == funSel && sel == fun => false
       case _ => true)
-
 
   private lazy val isNew: Boolean = Completion.isInNewContext(adjustedPath)
 
@@ -283,7 +275,6 @@ class Completions(
         val affix = if methodDenot.symbol.isConstructor && existsApply then
           adjustedPath match
             case (select @ Select(qual, _)) :: _ =>
-              val start = qual.span.start
               val insertRange = select.sourcePos.startPos.withEnd(completionPos.queryEnd).toLsp
 
               suffix
@@ -521,14 +512,8 @@ class Completions(
           if tree.selectors.exists(_.renamed.sourcePos.contains(pos)) =>
         (List.empty, true)
 
-      // From Scala 3.1.3-RC3 (as far as I know), path contains
-      // `Literal(Constant(null))` on head for an incomplete program, in this case, just ignore the head.
-      case Literal(Constant(null)) :: tl =>
-        advancedCompletions(tl, completionPos)
-
       case _ =>
         val args = NamedArgCompletions.contribute(
-          pos,
           path,
           adjustedPath,
           indexedContext,
@@ -672,7 +657,7 @@ class Completions(
       .collect { case symbolic: CompletionValue.Symbolic => symbolic }
       .groupBy(_.symbol.fullName) // we somehow have to ignore proxy type
 
-    val filteredSymbolicCompletions = symbolicCompletionsMap.filter: (name, denots) =>
+    val filteredSymbolicCompletions = symbolicCompletionsMap.filter: (name, _) =>
       lazy val existsTypeWithoutSuffix: Boolean = !symbolicCompletionsMap
         .get(name.toTypeName)
         .forall(_.forall(sym => sym.snippetAffix.suffixes.nonEmpty))

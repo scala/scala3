@@ -26,8 +26,8 @@ if [ -z "${PROG_HOME-}" ] ; then
   cd "$saveddir"
 fi
 
-source "$PROG_HOME/bin/common-shared"
-source "$PROG_HOME/bin/cli-common-platform"
+source "$PROG_HOME/libexec/common-shared"
+source "$PROG_HOME/libexec/cli-common-platform"
 
 SCALA_VERSION=""
 # iterate through lines in VERSION_SRC

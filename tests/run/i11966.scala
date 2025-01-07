@@ -6,11 +6,11 @@ trait B[T: A]:
 
 trait C[T: A] extends B[T]
 
-given a1: A[Int] with
+given a1: A[Int]:
   def f = 1
 
 class D extends C[Int]:
-  given a2: A[Int] with
+  given a2: A[Int]:
     def f = 2
 
 @main def Test = D()

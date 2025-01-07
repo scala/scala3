@@ -84,6 +84,7 @@ class CodeGen(val int: DottyBackendInterface, val primitives: DottyPrimitives)( 
         registerGeneratedClass(mirrorClassNode, isArtifact = true)
       catch
         case ex: InterruptedException => throw ex
+        case ex: CompilationUnit.SuspendException => throw ex
         case ex: Throwable =>
           ex.printStackTrace()
           report.error(s"Error while emitting ${unit.source}\n${ex.getMessage}", NoSourcePosition)

@@ -530,8 +530,6 @@ class CompletionSuite extends BaseCompletionSuite:
       """.stripMargin,
       """|until(end: Int): Range
          |until(end: Int, step: Int): Range
-         |until(end: Long): Exclusive[Long]
-         |until(end: Long, step: Long): Exclusive[Long]
          |""".stripMargin,
       stableOrder = false
     )
@@ -1606,7 +1604,7 @@ class CompletionSuite extends BaseCompletionSuite:
 
   @Test def `multi-export` =
     check(
-      """export scala.collection.{AbstractMap, Set@@}
+      """export scala.collection.{AbstractMap, Se@@}
         |""".stripMargin,
       """Set scala.collection
         |SetOps scala.collection
@@ -1619,7 +1617,9 @@ class CompletionSuite extends BaseCompletionSuite:
         |StrictOptimizedSetOps scala.collection
         |StrictOptimizedSortedSetOps scala.collection
         |GenSet = scala.collection.Set[X]
-        |""".stripMargin
+        |""".stripMargin,
+      filter = _.contains("Set")
+
     )
 
   @Test def `multi-imports` =
@@ -1638,6 +1638,7 @@ class CompletionSuite extends BaseCompletionSuite:
         |StrictOptimizedSortedSetOps scala.collection
         |GenSet = scala.collection.Set[X]
         |""".stripMargin,
+      filter = _.contains("Set")
     )
 
 
@@ -2108,6 +2109,19 @@ class CompletionSuite extends BaseCompletionSuite:
         |""".stripMargin
    )
 
+  @Test def `shadowing` =
+   check(
+     """|package pkg
+        |object Main {
+        |  val x = ListBuff@@
+        |}
+        |""".stripMargin,
+     """|ListBuffer[A](elems: A*): ListBuffer[A] - scala.collection.mutable
+        |new ListBuffer[A]: ListBuffer[A] - scala.collection.mutable
+        |ListBuffer - scala.collection.mutable
+        |""".stripMargin
+   )
+
   @Test def `conflict-edit-2` =
     checkEdit(
       """|package a
@@ -2135,4 +2149,22 @@ class CompletionSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       assertSingleItem = false
+    )
+
+  @Test def `metals-i6861` =
+    check(
+      """|trait Builder[Alg]:
+         |  def withTraces: String
+         |
+         |trait BuilderFactory:
+         |  def transformRouter(f: [Alg] => Builder[Alg] => String): BuilderFactory
+         |  def build: Unit
+         |
+         |def demo =
+         |  (??? : BuilderFactory)
+         |    .transformRouter([Alg] => _.withTraces)
+         |    .build@@
+         |""".stripMargin,
+      """|build: Unit
+         |""".stripMargin,
     )

@@ -204,36 +204,43 @@ trait TypesSupport:
           prefix ++ plain("{ ").l ++ refinedElems.flatMap(e => parseRefinedElem(e.name, e.info)) ++ plain(" }").l
         }
       }
+
+      case AppliedType(tpe, args) if defn.isTupleClass(tpe.typeSymbol) && args.length > 1 =>
+        inParens(commas(args.map(inner(_))))
+
+      case AppliedType(namedTuple, List(AppliedType(tuple1, names), AppliedType(tuple2, types)))
+          if namedTuple.typeSymbol == Symbol.requiredModule("scala.NamedTuple").typeMember("NamedTuple")
+          && defn.isTupleClass(tuple1.typeSymbol) && defn.isTupleClass(tuple2.typeSymbol) && names.length == types.length
+          && names.forall { case ConstantType(StringConstant(_)) => true case _ => false } =>
+        val elems = names
+          .collect { case ConstantType(StringConstant(s)) => s }
+          .zip(types)
+          .map((name, tpe) => plain(name) +: plain(": ") +: inner(tpe))
+        inParens(commas(elems))
+
+      case t @ AppliedType(tpe, List(lhs, rhs)) if isInfix(t) =>
+        inParens(inner(lhs), shouldWrapInParens(lhs, t, true))
+        ++ plain(" ").l
+        ++ inner(tpe)
+        ++ plain(" ").l
+        ++ inParens(inner(rhs), shouldWrapInParens(rhs, t, false))
+
+      case t @ AppliedType(tpe, args) if t.isFunctionType =>
+        val arrow = if t.isContextFunctionType then " ?=> " else " => "
+        args match
+          case Nil => Nil
+          case List(rtpe) => plain("()").l ++ keyword(arrow).l ++ inner(rtpe)
+          case List(arg, rtpe) =>
+            val wrapInParens = stripAnnotated(arg) match
+              case _: TermRef | _: TypeRef | _: ConstantType | _: ParamRef => false
+              case at: AppliedType if !isInfix(at) && !at.isFunctionType && !at.isTupleN => false
+              case _ => true
+            inParens(inner(arg), wrapInParens) ++ keyword(arrow).l ++ inner(rtpe)
+          case _ =>
+            plain("(").l ++ commas(args.init.map(inner(_))) ++ plain(")").l ++ keyword(arrow).l ++ inner(args.last)
+
       case t @ AppliedType(tpe, typeList) =>
-        import dotty.tools.dotc.util.Chars._
-        if defn.isTupleClass(tpe.typeSymbol) && typeList.length != 1 then
-          typeList match
-            case Nil => Nil
-            case args => inParens(commas(args.map(inner(_))))
-        else if isInfix(t) then
-          val lhs = typeList.head
-          val rhs = typeList.last
-          inParens(inner(lhs), shouldWrapInParens(lhs, t, true))
-          ++ plain(" ").l
-          ++ inner(tpe)
-          ++ plain(" ").l
-          ++ inParens(inner(rhs), shouldWrapInParens(rhs, t, false))
-        else if t.isFunctionType then
-          val arrow = if t.isContextFunctionType then " ?=> " else " => "
-          typeList match
-            case Nil =>
-              Nil
-            case Seq(rtpe) =>
-              plain("()").l ++ keyword(arrow).l ++ inner(rtpe)
-            case Seq(arg, rtpe) =>
-              val partOfSignature = stripAnnotated(arg) match
-                case _: TermRef | _: TypeRef | _: ConstantType | _: ParamRef => inner(arg)
-                case at: AppliedType if !isInfix(at) && !at.isFunctionType && !at.isTupleN => inner(arg)
-                case _ => inParens(inner(arg))
-              partOfSignature ++ keyword(arrow).l ++ inner(rtpe)
-            case args =>
-              plain("(").l ++ commas(args.init.map(inner(_))) ++ plain(")").l ++ keyword(arrow).l ++ inner(args.last)
-        else inner(tpe) ++ plain("[").l ++ commas(typeList.map { t => t match
+        inner(tpe) ++ plain("[").l ++ commas(typeList.map { t => t match
           case _: TypeBounds => keyword("_").l ++ inner(t)
           case _ => topLevelProcess(t)
         }) ++ plain("]").l

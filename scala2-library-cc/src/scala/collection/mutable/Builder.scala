@@ -80,7 +80,7 @@ trait Builder[-A, +To] extends Growable[A] {
     }
   }
 
-  /** A builder resulting from this builder my mapping the result using `f`. */
+  /** A builder resulting from this builder by mapping the result using `f`. */
   def mapResult[NewTo](f: To => NewTo): Builder[A, NewTo]^{this, f} = new Builder[A, NewTo] {
     def addOne(x: A): this.type = { self += x; this }
     def clear(): Unit = self.clear()

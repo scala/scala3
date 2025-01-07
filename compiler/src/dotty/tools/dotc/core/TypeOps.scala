@@ -124,7 +124,7 @@ object TypeOps:
   }
 
   def isLegalPrefix(pre: Type)(using Context): Boolean =
-    pre.isStable || !ctx.phase.isTyper
+    pre.isStable
 
   /** Implementation of Types#simplified */
   def simplify(tp: Type, theMap: SimplifyMap | Null)(using Context): Type = {
@@ -560,36 +560,6 @@ object TypeOps:
     widenMap(tp)
   }
 
-  /** If `tpe` is of the form `p.x` where `p` refers to a package
-   *  but `x` is not owned by a package, expand it to
-   *
-   *      p.package.x
-   */
-  def makePackageObjPrefixExplicit(tpe: NamedType)(using Context): Type = {
-    def tryInsert(pkgClass: SymDenotation): Type = pkgClass match {
-      case pkg: PackageClassDenotation =>
-        var sym = tpe.symbol
-        if !sym.exists && tpe.denot.isOverloaded then
-          // we know that all alternatives must come from the same package object, since
-          // otherwise we would get "is already defined" errors. So we can take the first
-          // symbol we see.
-          sym = tpe.denot.alternatives.head.symbol
-        val pobj = pkg.packageObjFor(sym)
-        if (pobj.exists) tpe.derivedSelect(pobj.termRef)
-        else tpe
-      case _ =>
-        tpe
-    }
-    if (tpe.symbol.isRoot)
-      tpe
-    else
-      tpe.prefix match {
-        case pre: ThisType if pre.cls.is(Package) => tryInsert(pre.cls)
-        case pre: TermRef if pre.symbol.is(Package) => tryInsert(pre.symbol.moduleClass)
-        case _ => tpe
-      }
-  }
-
   /** An argument bounds violation is a triple consisting of
    *   - the argument tree
    *   - a string "upper" or "lower" indicating which bound is violated
@@ -691,11 +661,20 @@ object TypeOps:
       val hiBound = instantiate(bounds.hi, skolemizedArgTypes)
       val loBound = instantiate(bounds.lo, skolemizedArgTypes)
 
-      def check(using Context) = {
-        if (!(lo <:< hiBound)) violations += ((arg, "upper", hiBound))
-        if (!(loBound <:< hi)) violations += ((arg, "lower", loBound))
-      }
-      check(using checkCtx)
+      def check(tp1: Type, tp2: Type, which: String, bound: Type)(using Context) =
+        val isSub = TypeComparer.isSubType(tp1, tp2)
+        if !isSub then
+          // inContext(ctx.fresh.setSetting(ctx.settings.verbose, true)):  // uncomment to enable moreInfo in ExplainingTypeComparer
+            TypeComparer.explaining: cmp =>
+              if !ctx.typerState.constraint.domainLambdas.isEmpty then
+                typr.println(i"${ctx.typerState.constraint}")
+              if !ctx.gadt.symbols.isEmpty then
+                typr.println(i"${ctx.gadt}")
+              typr.println(cmp.lastTrace(i"checkOverlapsBounds($lo, $hi, $arg, $bounds)($which)"))
+            violations += ((arg, which, bound))
+
+      check(lo, hiBound, "upper", hiBound)(using checkCtx)
+      check(loBound, hi, "lower", loBound)(using checkCtx)
     }
 
     def loop(args: List[Tree], boundss: List[TypeBounds]): Unit = args match
@@ -758,6 +737,67 @@ object TypeOps:
    *  Otherwise, return NoType.
    */
   private def instantiateToSubType(tp1: NamedType, tp2: Type, mixins: List[Type])(using Context): Type = trace(i"instantiateToSubType($tp1, $tp2, $mixins)", typr) {
+    /** Gather GADT symbols and singletons found in `tp2`, ie. the scrutinee. */
+    object TraverseTp2 extends TypeTraverser:
+      val singletons = util.HashMap[Symbol, SingletonType]()
+      val gadtSyms = new mutable.ListBuffer[Symbol]
+
+      def traverse(tp: Type) = try
+        val tpd = tp.dealias
+        if tpd ne tp then traverse(tpd)
+        else tp match
+          case tp: ThisType if !singletons.contains(tp.tref.symbol) && !tp.tref.symbol.isStaticOwner =>
+            singletons(tp.tref.symbol) = tp
+            traverseChildren(tp.tref)
+          case tp: TermRef =>
+            singletons(tp.typeSymbol) = tp
+            traverseChildren(tp)
+          case tp: TypeRef if !gadtSyms.contains(tp.symbol) && tp.symbol.isAbstractOrParamType =>
+            gadtSyms += tp.symbol
+            traverseChildren(tp)
+            // traverse abstract type infos, to add any singletons
+            // for example, i16451.CanForward.scala, add `Namer.this`, from the info of the type parameter `A1`
+            // also, i19031.ci-reg2.scala, add `out`, from the info of the type parameter `A1` (from synthetic applyOrElse)
+            traverseChildren(tp.info)
+          case _ =>
+            traverseChildren(tp)
+      catch case ex: Throwable => handleRecursive("traverseTp2", tp.show, ex)
+    TraverseTp2.traverse(tp2)
+    val singletons = TraverseTp2.singletons
+    val gadtSyms   = TraverseTp2.gadtSyms.toList
+
+    // Prefix inference, given `p.C.this.Child`:
+    //   1. return it as is, if `C.this` is found in `tp`, i.e. the scrutinee; or
+    //   2. replace it with `X.Child` where `X <: p.C`, stripping ThisType in `p` recursively.
+    //
+    // See tests/patmat/i3938.scala, tests/pos/i15029.more.scala, tests/pos/i16785.scala
+    class InferPrefixMap extends TypeMap {
+      var prefixTVar: Type | Null = null
+      def apply(tp: Type): Type = tp match {
+        case tp: TermRef if singletons.contains(tp.symbol) =>
+          prefixTVar = singletons(tp.symbol) // e.g. tests/pos/i19031.ci-reg2.scala, keep out
+          prefixTVar.uncheckedNN
+        case ThisType(tref) if !tref.symbol.isStaticOwner =>
+          val symbol = tref.symbol
+          if singletons.contains(symbol) then
+            prefixTVar = singletons(symbol) // e.g. tests/pos/i16785.scala, keep Outer.this
+            prefixTVar.uncheckedNN
+          else if symbol.is(Module) then
+            TermRef(this(tref.prefix), symbol.sourceModule)
+          else if (prefixTVar != null)
+            this(tref.applyIfParameterized(tref.typeParams.map(_ => WildcardType)))
+          else {
+            prefixTVar = WildcardType  // prevent recursive call from assigning it
+            // e.g. tests/pos/i15029.more.scala, create a TypeVar for `Instances`' B, so we can disregard `Ints`
+            val tvars = tref.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds, DepParamName.fresh(tparam.paramName)) }
+            val tref2 = this(tref.applyIfParameterized(tvars))
+            prefixTVar = newTypeVar(TypeBounds.upper(tref2), DepParamName.fresh(tref.name))
+            prefixTVar.uncheckedNN
+          }
+        case tp => mapOver(tp)
+      }
+    }
+
     // In order for a child type S to qualify as a valid subtype of the parent
     // T, we need to test whether it is possible S <: T.
     //
@@ -779,8 +819,15 @@ object TypeOps:
                                  // then to avoid it failing the <:<
                                  // we'll approximate by widening to its bounds
 
+        case tp: TermRef if singletons.contains(tp.symbol) =>
+          singletons(tp.symbol)
+
         case ThisType(tref: TypeRef) if !tref.symbol.isStaticOwner =>
-          tref
+          val symbol = tref.symbol
+          if singletons.contains(symbol) then
+            singletons(symbol)
+          else
+            tref
 
         case tp: TypeRef if !tp.symbol.isClass =>
           val lookup = boundTypeParams.lookup(tp)
@@ -831,69 +878,10 @@ object TypeOps:
       }
     }
 
-    /** Gather GADT symbols and singletons found in `tp2`, ie. the scrutinee. */
-    object TraverseTp2 extends TypeTraverser:
-      val singletons = util.HashMap[Symbol, SingletonType]()
-      val gadtSyms = new mutable.ListBuffer[Symbol]
-
-      def traverse(tp: Type) = try
-        val tpd = tp.dealias
-        if tpd ne tp then traverse(tpd)
-        else tp match
-          case tp: ThisType if !singletons.contains(tp.tref.symbol) && !tp.tref.symbol.isStaticOwner =>
-            singletons(tp.tref.symbol) = tp
-            traverseChildren(tp.tref)
-          case tp: TermRef if tp.symbol.is(Param) =>
-            singletons(tp.typeSymbol) = tp
-            traverseChildren(tp)
-          case tp: TypeRef if !gadtSyms.contains(tp.symbol) && tp.symbol.isAbstractOrParamType =>
-            gadtSyms += tp.symbol
-            traverseChildren(tp)
-            // traverse abstract type infos, to add any singletons
-            // for example, i16451.CanForward.scala, add `Namer.this`, from the info of the type parameter `A1`
-            // also, i19031.ci-reg2.scala, add `out`, from the info of the type parameter `A1` (from synthetic applyOrElse)
-            traverseChildren(tp.info)
-          case _ =>
-            traverseChildren(tp)
-      catch case ex: Throwable => handleRecursive("traverseTp2", tp.show, ex)
-    TraverseTp2.traverse(tp2)
-    val singletons = TraverseTp2.singletons
-    val gadtSyms   = TraverseTp2.gadtSyms.toList
-
-    // Prefix inference, given `p.C.this.Child`:
-    //   1. return it as is, if `C.this` is found in `tp`, i.e. the scrutinee; or
-    //   2. replace it with `X.Child` where `X <: p.C`, stripping ThisType in `p` recursively.
-    //
-    // See tests/patmat/i3938.scala, tests/pos/i15029.more.scala, tests/pos/i16785.scala
-    class InferPrefixMap extends TypeMap {
-      var prefixTVar: Type | Null = null
-      def apply(tp: Type): Type = tp match {
-        case tp: TermRef if singletons.contains(tp.symbol) =>
-          prefixTVar = singletons(tp.symbol) // e.g. tests/pos/i19031.ci-reg2.scala, keep out
-          prefixTVar.uncheckedNN
-        case ThisType(tref) if !tref.symbol.isStaticOwner =>
-          val symbol = tref.symbol
-          if singletons.contains(symbol) then
-            prefixTVar = singletons(symbol) // e.g. tests/pos/i16785.scala, keep Outer.this
-            prefixTVar.uncheckedNN
-          else if symbol.is(Module) then
-            TermRef(this(tref.prefix), symbol.sourceModule)
-          else if (prefixTVar != null)
-            this(tref.applyIfParameterized(tref.typeParams.map(_ => WildcardType)))
-          else {
-            prefixTVar = WildcardType  // prevent recursive call from assigning it
-            // e.g. tests/pos/i15029.more.scala, create a TypeVar for `Instances`' B, so we can disregard `Ints`
-            val tvars = tref.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds, DepParamName.fresh(tparam.paramName)) }
-            val tref2 = this(tref.applyIfParameterized(tvars))
-            prefixTVar = newTypeVar(TypeBounds.upper(tref2), DepParamName.fresh(tref.name))
-            prefixTVar.uncheckedNN
-          }
-        case tp => mapOver(tp)
-      }
-    }
-
     val inferThisMap = new InferPrefixMap
-    val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds, DepParamName.fresh(tparam.paramName)) }
+    val tvars = tp1.etaExpand match
+      case eta: TypeLambda => constrained(eta)
+      case _               => Nil
     val protoTp1 = inferThisMap.apply(tp1).appliedTo(tvars)
 
     if gadtSyms.nonEmpty then
@@ -912,7 +900,11 @@ object TypeOps:
       for tp <- mixins.reverseIterator do
         protoTp1 <:< tp
       maximizeType(protoTp1, NoSpan)
-      wildApprox(protoTp1)
+      val inst = wildApprox(protoTp1)
+      if inst.classSymbols.isEmpty then
+        // E.g. i21790, can't instantiate S#CA as a subtype of O.A, because O.CA isn't accessible
+        NoType
+      else inst
     }
 
     if (protoTp1 <:< tp2) instantiate()

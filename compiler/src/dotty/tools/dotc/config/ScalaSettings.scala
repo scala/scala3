@@ -158,48 +158,52 @@ private sealed trait WarningSettings:
 
   val Whelp: Setting[Boolean] = BooleanSetting(WarningSetting, "W", "Print a synopsis of warning options.")
   val XfatalWarnings: Setting[Boolean] = BooleanSetting(WarningSetting, "Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
-  val WvalueDiscard: Setting[Boolean] = BooleanSetting(WarningSetting, "Wvalue-discard", "Warn when non-Unit expression results are unused.")
-  val WNonUnitStatement = BooleanSetting(WarningSetting, "Wnonunit-statement", "Warn when block statements are non-Unit expressions.")
-  val WenumCommentDiscard = BooleanSetting(WarningSetting, "Wenum-comment-discard", "Warn when a comment ambiguously assigned to multiple enum cases is discarded.")
-  val WimplausiblePatterns = BooleanSetting(WarningSetting, "Wimplausible-patterns", "Warn if comparison with a pattern value looks like it might always fail.")
-  val WunstableInlineAccessors = BooleanSetting(WarningSetting, "WunstableInlineAccessors", "Warn an inline methods has references to non-stable binary APIs.")
-  val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
+  val Wall: Setting[Boolean] = BooleanSetting(WarningSetting, "Wall", "Enable all warning settings.")
+  private val WvalueDiscard: Setting[Boolean] = BooleanSetting(WarningSetting, "Wvalue-discard", "Warn when non-Unit expression results are unused.")
+  private val WNonUnitStatement = BooleanSetting(WarningSetting, "Wnonunit-statement", "Warn when block statements are non-Unit expressions.")
+  private val WenumCommentDiscard = BooleanSetting(WarningSetting, "Wenum-comment-discard", "Warn when a comment ambiguously assigned to multiple enum cases is discarded.")
+  private val WimplausiblePatterns = BooleanSetting(WarningSetting, "Wimplausible-patterns", "Warn if comparison with a pattern value looks like it might always fail.")
+  private val WunstableInlineAccessors = BooleanSetting(WarningSetting, "WunstableInlineAccessors", "Warn an inline methods has references to non-stable binary APIs.")
+  private val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     WarningSetting,
     name = "Wunused",
     helpArg = "warning",
     descr = "Enable or disable specific `unused` warnings",
     choices = List(
       ChoiceWithHelp("nowarn", ""),
-      ChoiceWithHelp("all",""),
+      ChoiceWithHelp("all", ""),
       ChoiceWithHelp(
         name = "imports",
         description = "Warn if an import selector is not referenced.\n" +
         "NOTE : overrided by -Wunused:strict-no-implicit-warn"),
-        ChoiceWithHelp("privates","Warn if a private member is unused"),
-        ChoiceWithHelp("locals","Warn if a local definition is unused"),
-        ChoiceWithHelp("explicits","Warn if an explicit parameter is unused"),
-        ChoiceWithHelp("implicits","Warn if an implicit parameter is unused"),
-        ChoiceWithHelp("params","Enable -Wunused:explicits,implicits"),
-        ChoiceWithHelp("linted","Enable -Wunused:imports,privates,locals,implicits"),
-        ChoiceWithHelp(
-          name = "strict-no-implicit-warn",
-          description = "Same as -Wunused:import, only for imports of explicit named members.\n" +
-          "NOTE : This overrides -Wunused:imports and NOT set by -Wunused:all"
-        ),
-        // ChoiceWithHelp("patvars","Warn if a variable bound in a pattern is unused"),
-        ChoiceWithHelp(
-          name = "unsafe-warn-patvars",
-          description = "(UNSAFE) Warn if a variable bound in a pattern is unused.\n" +
-          "This warning can generate false positive, as warning cannot be\n" +
-          "suppressed yet."
-        )
+      ChoiceWithHelp("privates", "Warn if a private member is unused"),
+      ChoiceWithHelp("locals", "Warn if a local definition is unused"),
+      ChoiceWithHelp("explicits", "Warn if an explicit parameter is unused"),
+      ChoiceWithHelp("implicits", "Warn if an implicit parameter is unused"),
+      ChoiceWithHelp("params", "Enable -Wunused:explicits,implicits"),
+      ChoiceWithHelp("linted", "Enable -Wunused:imports,privates,locals,implicits"),
+      ChoiceWithHelp(
+        name = "strict-no-implicit-warn",
+        description = "Same as -Wunused:import, only for imports of explicit named members.\n" +
+        "NOTE : This overrides -Wunused:imports and NOT set by -Wunused:all"
+      ),
+      // ChoiceWithHelp("patvars","Warn if a variable bound in a pattern is unused"),
+      ChoiceWithHelp(
+        name = "unsafe-warn-patvars",
+        description = "(UNSAFE) Warn if a variable bound in a pattern is unused.\n" +
+        "This warning can generate false positive, as warning cannot be\n" +
+        "suppressed yet."
+      )
     ),
     default = Nil
   )
   object WunusedHas:
     def isChoiceSet(s: String)(using Context) = Wunused.value.pipe(us => us.contains(s))
-    def allOr(s: String)(using Context) = Wunused.value.pipe(us => us.contains("all") || us.contains(s))
+    def allOr(s: String)(using Context) = Wall.value || Wunused.value.pipe(us => us.contains("all") || us.contains(s))
     def nowarn(using Context) = allOr("nowarn")
+
+    // Is any choice set for -Wunused?
+    def any(using Context): Boolean = Wall.value || Wunused.value.nonEmpty
 
     // overrided by strict-no-implicit-warn
     def imports(using Context) =
@@ -229,7 +233,7 @@ private sealed trait WarningSettings:
     "patterns",
     default = List(),
     descr =
-      s"""Configure compiler warnings.
+    raw"""Configure compiler warnings.
          |Syntax: -Wconf:<filters>:<action>,<filters>:<action>,...
          |multiple <filters> are combined with &, i.e., <filter>&...&<filter>
          |
@@ -250,6 +254,9 @@ private sealed trait WarningSettings:
          |  - Source location: src=regex
          |    The regex is evaluated against the full source path.
          |
+         |  - Origin of warning: origin=regex
+         |    The regex must match the full name (`package.Class.method`) of the deprecated entity.
+         |
          |In verbose warning mode the compiler prints matching filters for warnings.
          |Verbose mode can be enabled globally using `-Wconf:any:verbose`, or locally
          |using the @nowarn annotation (example: `@nowarn("v") def test = try 1`).
@@ -269,6 +276,7 @@ private sealed trait WarningSettings:
          |Examples:
          |  - change every warning into an error: -Wconf:any:error
          |  - silence deprecations: -Wconf:cat=deprecation:s
+         |  - silence a deprecation: -Wconf:origin=java\.lang\.Thread\.getId:s
          |  - silence warnings in src_managed directory: -Wconf:src=src_managed/.*:s
          |
          |Note: on the command-line you might need to quote configurations containing `*` or `&`
@@ -297,6 +305,16 @@ private sealed trait WarningSettings:
       allOr("type-parameter-shadow")
 
   val WcheckInit: Setting[Boolean] = BooleanSetting(WarningSetting, "Wsafe-init", "Ensure safe initialization of objects.")
+
+  object Whas:
+    def allOr(s: Setting[Boolean])(using Context): Boolean =
+      Wall.value || s.value
+    def valueDiscard(using Context): Boolean = allOr(WvalueDiscard)
+    def nonUnitStatement(using Context): Boolean = allOr(WNonUnitStatement)
+    def enumCommentDiscard(using Context): Boolean = allOr(WenumCommentDiscard)
+    def implausiblePatterns(using Context): Boolean = allOr(WimplausiblePatterns)
+    def unstableInlineAccessors(using Context): Boolean = allOr(WunstableInlineAccessors)
+    def checkInit(using Context): Boolean = allOr(WcheckInit)
 
 /** -X "Extended" or "Advanced" settings */
 private sealed trait XSettings:
@@ -335,8 +353,7 @@ private sealed trait XSettings:
   val XreadComments: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xread-docs", "Read documentation from tasty.")
 
   /** Area-specific debug output */
-  val XnoDecodeStacktraces: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xno-decode-stacktraces", "Show raw StackOverflow stacktraces, instead of decoding them into triggering operations.")
-  val XnoEnrichErrorMessages: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xno-enrich-error-messages", "Show raw error messages, instead of enriching them with contextual information.")
+  val XnoEnrichErrorMessages: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xno-enrich-error-messages", "Show raw error messages, instead of enriching them with contextual information.", aliases = List("Xno-decode-stacktraces"))
   val XdebugMacros: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xdebug-macros", "Show debug info when quote pattern match fails")
 
   /** Pipeline compilation options */
@@ -423,12 +440,10 @@ private sealed trait YSettings:
   val YlegacyLazyVals: Setting[Boolean] = BooleanSetting(ForkSetting, "Ylegacy-lazy-vals", "Use legacy (pre 3.3.0) implementation of lazy vals.")
   val YcompileScala2Library: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycompile-scala2-library", "Used when compiling the Scala 2 standard library.")
   val YprofileEnabled: Setting[Boolean] = BooleanSetting(ForkSetting, "Yprofile-enabled", "Enable profiling.")
-  val YprofileDestination: Setting[String] = StringSetting(ForkSetting, "Yprofile-destination", "file", "Where to send profiling output - specify a file, default is to the console.", "")
-      //.withPostSetHook( _ => YprofileEnabled.value = true )
-  val YprofileExternalTool: Setting[List[String]] = PhasesSetting(ForkSetting, "Yprofile-external-tool", "Enable profiling for a phase using an external tool hook. Generally only useful for a single phase.", "typer")
-      //.withPostSetHook( _ => YprofileEnabled.value = true )
-  val YprofileRunGcBetweenPhases: Setting[List[String]] = PhasesSetting(ForkSetting, "Yprofile-run-gc", "Run a GC between phases - this allows heap size to be accurate at the expense of more time. Specify a list of phases, or *", "_")
-      //.withPostSetHook( _ => YprofileEnabled.value = true )
+  val YprofileDestination: Setting[String] = StringSetting(ForkSetting, "Yprofile-destination", "file", "Where to send profiling output - specify a file, default is to the console.", "", depends = List(YprofileEnabled -> true))
+  val YprofileExternalTool: Setting[List[String]] = PhasesSetting(ForkSetting, "Yprofile-external-tool", "Enable profiling for a phase using an external tool hook. Generally only useful for a single phase.", "typer", depends = List(YprofileEnabled -> true))
+  val YprofileRunGcBetweenPhases: Setting[List[String]] = PhasesSetting(ForkSetting, "Yprofile-run-gc", "Run a GC between phases - this allows heap size to be accurate at the expense of more time. Specify a list of phases, or *", "_", depends = List(YprofileEnabled -> true))
+  val YprofileTrace: Setting[String]  = StringSetting(ForkSetting, "Yprofile-trace", "file", s"Capture trace of compilation in JSON Chrome Trace format to the specified file. This option requires ${YprofileEnabled.name}. The output file can be visualized using https://ui.perfetto.dev/.", "", depends = List(YprofileEnabled -> true))
 
   val YbestEffort: Setting[Boolean] = BooleanSetting(ForkSetting, "Ybest-effort", "Enable best-effort compilation attempting to produce betasty to the META-INF/best-effort directory, regardless of errors, as part of the pickler phase.")
   val YwithBestEffortTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Ywith-best-effort-tasty", "Allow to compile using best-effort tasty files. If such file is used, the compiler will stop after the pickler phase.")
@@ -471,7 +486,7 @@ private sealed trait YSettings:
   @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
   val YreadComments: Setting[Boolean] = BooleanSetting(ForkSetting, "Yread-docs", "Read documentation from tasty.", deprecation = Deprecation.renamed("-Xread-docs"))
   @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
-  val YnoDecodeStacktraces: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-decode-stacktraces", "Show raw StackOverflow stacktraces, instead of decoding them into triggering operations.", deprecation = Deprecation.renamed("-Xno-decode-stacktraces"))
+  val YnoDecodeStacktraces: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-decode-stacktraces", "Show raw StackOverflow stacktraces, instead of decoding them into triggering operations.", deprecation = Deprecation.renamed("-Xno-enrich-error-messages"))
   @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
   val YnoEnrichErrorMessages: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-enrich-error-messages", "Show raw error messages, instead of enriching them with contextual information.", deprecation = Deprecation.renamed("-Xno-enrich-error-messages"))
   @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")

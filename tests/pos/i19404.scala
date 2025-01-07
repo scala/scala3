@@ -1,4 +1,4 @@
-given ipEncoder[IP <: IpAddress]: Encoder[IP] = Encoder[String].contramap(_.toString)
+given ipEncoder: [IP <: IpAddress] => Encoder[IP] = Encoder[String].contramap(_.toString)
 
 class Encoder[A] {
   final def contramap[B](f: B => A): Encoder[B] = new Encoder[B]

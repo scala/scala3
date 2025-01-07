@@ -1,5 +1,5 @@
 -- Error: tests/neg/abstract-givens.scala:11:8 -------------------------------------------------------------------------
-11 |  given s[T](using T): Seq[T] with // error
+11 |  given s: [T] => T => Seq[T]: // error
    |        ^
    |instance cannot be created, since def iterator: Iterator[A] in trait IterableOnce in package scala.collection is not defined 
 -- [E164] Declaration Error: tests/neg/abstract-givens.scala:8:8 -------------------------------------------------------

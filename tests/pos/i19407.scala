@@ -6,6 +6,6 @@ object Decoder:
 
 object GeneratedEnumDecoder:
 
-  given [A <: GeneratedEnum]: Decoder[A] =
+  given [A <: GeneratedEnum] => Decoder[A] =
     summon[Decoder[Int]]
     ???

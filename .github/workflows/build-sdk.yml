@@ -52,6 +52,8 @@ jobs:
       mac-aarch64-id   : ${{ steps.mac-aarch64.outputs.artifact-id }}
       win-x86_64-id    : ${{ steps.win-x86_64.outputs.artifact-id }}
       win-x86_64-digest: ${{ steps.win-x86_64-digest.outputs.digest }}
+    env:
+      DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -59,6 +61,7 @@ jobs:
           distribution: temurin
           java-version: ${{ inputs.java-version }}
           cache       : sbt
+      - uses: sbt/setup-sbt@v1
       - name: Build and pack the SDK (universal)
         run : ./project/scripts/sbt dist/Universal/stage
       - name: Build and pack the SDK (linux x86-64)
@@ -112,5 +115,3 @@ jobs:
         run : |
           curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -o artifact.zip -L https://api.github.com/repos/scala/scala3/actions/artifacts/${{ steps.win-x86_64.outputs.artifact-id }}/zip
           echo "digest=$(sha256sum artifact.zip | cut -d " " -f 1)" >> "$GITHUB_OUTPUT"
-
-          

@@ -34,9 +34,9 @@ TODO: complete
 
 3. Functions
    * `(erased x1: T1, x2: T2, ..., xN: TN) => y : (erased T1, T2, ..., TN) => R`
-   * `(given x1: T1, erased x2: T2, ..., xN: TN) => y: (given T1, erased T2, ..., TN) => R`
-   * `(given erased T1) => R  <:<  erased T1 => R`
-   * `(given T1, erased T2) => R  <:< (T1, erased T2) => R`
+   * `(using x1: T1, erased x2: T2, ..., xN: TN) => y: (using T1, erased T2, ..., TN) => R`
+   * `(using erased T1) => R  <:<  erased T1 => R`
+   * `(using T1, erased T2) => R  <:< (T1, erased T2) => R`
    *  ...
 
    Note that there is no subtype relation between `(erased T) => R` and `T => R` (or `(given erased T) => R` and `(given T) => R`). The `erased` parameters must match exactly in their respective positions.

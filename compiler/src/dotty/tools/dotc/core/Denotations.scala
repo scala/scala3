@@ -742,6 +742,8 @@ object Denotations {
      *     the old version otherwise.
      *   - If the symbol did not have a denotation that was defined at the current phase
      *     return a NoDenotation instead.
+     *   - If the symbol was first defined in one of the transform phases (after pickling), it should not
+     *     be visible in new runs, so also return a NoDenotation.
      */
     private def bringForward()(using Context): SingleDenotation = {
       this match {
@@ -755,6 +757,7 @@ object Denotations {
       }
       if (!symbol.exists) return updateValidity()
       if (!coveredInterval.containsPhaseId(ctx.phaseId)) return NoDenotation
+      if (coveredInterval.firstPhaseId >= Phases.firstTransformPhase.id) return NoDenotation
       if (ctx.debug) traceInvalid(this)
       staleSymbolError
     }
@@ -956,7 +959,7 @@ object Denotations {
     }
 
     def staleSymbolError(using Context): Nothing =
-      if symbol.isPackageObject && ctx.run != null && ctx.run.nn.isCompilingSuspended
+      if symbol.lastKnownDenotation.isPackageObject && ctx.run != null && ctx.run.nn.isCompilingSuspended
       then throw StaleSymbolTypeError(symbol)
       else throw StaleSymbolException(staleSymbolMsg)
 

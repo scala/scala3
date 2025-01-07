@@ -5,7 +5,7 @@ object i19328conversion:
 
   type Id[A] = A
 
-  given wrapId[A]: Conversion[A, Id[A]] with
+  given wrapId: [A] => Conversion[A, Id[A]]:
     def apply(x: A): Id[A] = x
 
   def bar(using bool: Boolean): Unit = ()

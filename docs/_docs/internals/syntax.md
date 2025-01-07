@@ -141,7 +141,7 @@ type      val       var       while     with      yield
 ### Soft keywords
 
 ```
-as  derives  end  erased  extension  infix  inline  opaque  open  throws transparent  using  |  *  +  -
+as  derives  end  erased  extension  infix  inline  opaque  open  throws tracked transparent  using  |  *  +  -
 ```
 
 See the [separate section on soft keywords](../reference/soft-modifier.md) for additional
@@ -223,7 +223,9 @@ TypeArgs          ::=  ‘[’ Types ‘]’                                    
 Refinement        ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>                  ds
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]                                  TypeBoundsTree(lo, hi)
 TypeAndCtxBounds  ::=  TypeBounds [‘:’ ContextBounds]                           ContextBounds(typeBounds, tps)
-ContextBounds     ::=  ContextBound | '{' ContextBound {',' ContextBound} '}'
+ContextBounds     ::=  ContextBound
+                    |  ContextBound `:` ContextBounds                           -- to be deprecated
+                    |  '{' ContextBound {',' ContextBound} '}'
 ContextBound      ::=  Type ['as' id]
 Types             ::=  Type {‘,’ Type}
 NamesAndTypes     ::=  NameAndType {‘,’ NameAndType}
@@ -379,7 +381,7 @@ ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’
                     |  [nl] ‘(’ ‘using’ (ClsParams | FunArgTypes) ‘)’
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
-                       [{Modifier | ‘tracked’} (‘val’ | ‘var’)] Param
+                       [{Modifier} (‘val’ | ‘var’)] Param
 
 DefParamClauses   ::=  DefParamClause { DefParamClause } -- and two DefTypeParamClause cannot be adjacent
 DefParamClause    ::=  DefTypeParamClause
@@ -416,6 +418,7 @@ LocalModifier     ::=  ‘abstract’
                     |  ‘transparent’
                     |  ‘infix’
                     |  ‘erased’
+                    |  ‘tracked’
 
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
 AccessQualifier   ::=  ‘[’ id ‘]’
@@ -464,7 +467,7 @@ TypeDef           ::=  id [HkTypeParamClause] {FunParamClause} TypeAndCtxBounds 
 TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef
                     |  ‘enum’ EnumDef
-                    |  ‘given’ GivenDef
+                    |  ‘given’ (GivenDef | OldGivenDef)
 ClassDef          ::=  id ClassConstr [Template]                                ClassDef(mods, name, tparams, templ)
 ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
 ConstrMods        ::=  {Annotation} [AccessModifier]
@@ -482,6 +485,10 @@ GivenConditional  ::=  DefTypeParamClause
                     |  '(' FunArgTypes ')'
                     |  GivenType
 GivenType         ::=  AnnotType1 {id [nl] AnnotType1}
+
+OldGivenDef       ::=  [OldGivenSig] (AnnotType [‘=’ Expr] | StructuralInstance) -- syntax up to Scala 3.5, to be deprecated in the future
+OldGivenSig       ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’          -- one of `id`, `DefTypeParamClause`, `UsingParamClause` must be present
+StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} [‘with’ WithTemplateBody]
 
 Extension         ::=  ‘extension’ [DefTypeParamClause] {UsingParamClause}
                        ‘(’ DefTermParam ‘)’ {UsingParamClause} ExtMethods

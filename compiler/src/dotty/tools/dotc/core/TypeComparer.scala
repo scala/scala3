@@ -10,7 +10,7 @@ import TypeOps.refineUsingParent
 import collection.mutable
 import util.{Stats, NoSourcePosition, EqHashMap}
 import config.Config
-import config.Feature.{betterMatchTypeExtractorsEnabled, migrateTo3, sourceVersion}
+import config.Feature.{migrateTo3, sourceVersion}
 import config.Printers.{subtyping, gadts, matchTypes, capt, noPrinter}
 import config.SourceVersion
 import TypeErasure.{erasedLub, erasedGlb}
@@ -369,7 +369,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         }
         compareWild
       case tp2: LazyRef =>
-        isBottom(tp1) || !tp2.evaluating && recur(tp1, tp2.ref)
+        isBottom(tp1)
+        || !tp2.evaluating && recur(tp1, tp2.ref)
       case CapturingType(_, _) =>
         secondTry
       case tp2: AnnotatedType if !tp2.isRefining =>
@@ -489,7 +490,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         // If `tp1` is in train of being evaluated, don't force it
         // because that would cause an assertionError. Return false instead.
         // See i859.scala for an example where we hit this case.
-        tp2.isRef(AnyClass, skipRefined = false)
+        tp2.isAny
         || !tp1.evaluating && recur(tp1.ref, tp2)
       case AndType(tp11, tp12) =>
         if tp11.stripTypeVar eq tp12.stripTypeVar then recur(tp11, tp2)
@@ -2133,11 +2134,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       // resort to reflection to invoke the member. And Java reflection needs to know exact
       // erased parameter types. See neg/i12211.scala. Other reflection algorithms could
       // conceivably dispatch without knowing precise parameter signatures. One can signal
-      // this by inheriting from the `scala.reflect.SignatureCanBeImprecise` marker trait,
+      // this by inheriting from the `scala.Selectable.WithoutPreciseParameterTypes` marker trait,
       // in which case the signature test is elided.
+      // We also relax signature checking when checking bounds,
+      // for instance in tests/pos/i17222.izumi.min.scala
+      // the `go` method info as seen from `Foo` is `>: (in: Any): Unit <: (Nothing): Unit`
+      // So the parameter types conform but their signatures don't match.
       def sigsOK(symInfo: Type, info2: Type) =
         tp2.underlyingClassRef(refinementOK = true).member(name).exists
         || tp2.derivesFrom(defn.WithoutPreciseParameterTypesClass)
+        || ctx.mode.is(Mode.CheckBoundsOrSelfType)
         || symInfo.isInstanceOf[MethodType]
             && symInfo.signature.consistentParams(info2.signature)
 
@@ -3196,9 +3202,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       cls.is(Sealed) && !cls.hasAnonymousChild
 
     def decompose(cls: Symbol): List[Symbol] =
-      cls.children.map { child =>
-        if child.isTerm then child.info.classSymbol
-        else child
+      cls.children.flatMap { child =>
+        if child.isTerm then
+          child.info.classSymbols // allow enum vals to be decomposed to their enum class (then filtered out) and any mixins
+        else child :: Nil
       }.filter(child => child.exists && child != cls)
 
     def eitherDerivesFromOther(cls1: Symbol, cls2: Symbol): Boolean =
@@ -3231,6 +3238,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   end provablyDisjointClasses
 
   private def provablyDisjointTypeArgs(cls: ClassSymbol, args1: List[Type], args2: List[Type], pending: util.HashSet[(Type, Type)])(using Context): Boolean =
+    // sjrd: I will not be surprised when this causes further issues in the future.
+    // This is a compromise to be able to fix #21295 without breaking the world.
+    def cannotBeNothing(tp: Type): Boolean = tp match
+      case tp: TypeParamRef => cannotBeNothing(tp.paramInfo)
+      case _                => !(tp.loBound.stripTypeVar <:< defn.NothingType)
+
     // It is possible to conclude that two types applied are disjoint by
     // looking at covariant type parameters if the said type parameters
     // are disjoint and correspond to fields.
@@ -3239,9 +3252,20 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     def covariantDisjoint(tp1: Type, tp2: Type, tparam: TypeParamInfo): Boolean =
       provablyDisjoint(tp1, tp2, pending) && typeparamCorrespondsToField(cls.appliedRef, tparam)
 
-    // In the invariant case, direct type parameter disjointness is enough.
+    // In the invariant case, we have more ways to prove disjointness:
+    // - either the type param corresponds to a field, like in the covariant case, or
+    // - one of the two actual args can never be `Nothing`.
+    // The latter condition, as tested by `cannotBeNothing`, is ad hoc and was
+    // not carefully evaluated to be sound. We have it because we had to
+    // reintroduce the former condition to fix #21295, and alone, that broke a
+    // lot of existing test cases.
+    // Having either one of the two conditions be true is better than not requiring
+    // any, which was the status quo before #21295.
     def invariantDisjoint(tp1: Type, tp2: Type, tparam: TypeParamInfo): Boolean =
-      provablyDisjoint(tp1, tp2, pending)
+      provablyDisjoint(tp1, tp2, pending) && {
+        typeparamCorrespondsToField(cls.appliedRef, tparam)
+          || (cannotBeNothing(tp1) || cannotBeNothing(tp2))
+      }
 
     args1.lazyZip(args2).lazyZip(cls.typeParams).exists {
       (arg1, arg2, tparam) =>
@@ -3268,9 +3292,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   /** The trace of comparison operations when performing `op` */
   def explained[T](op: ExplainingTypeComparer => T, header: String = "Subtype trace:", short: Boolean)(using Context): String =
-    val cmp = explainingTypeComparer(short)
-    inSubComparer(cmp)(op)
-    cmp.lastTrace(header)
+    explaining(cmp => { op(cmp); cmp.lastTrace(header) }, short)
+
+  def explaining[T](op: ExplainingTypeComparer => T, short: Boolean)(using Context): T =
+    inSubComparer(explainingTypeComparer(short))(op)
 
   def reduceMatchWith[T](op: MatchReducer => T)(using Context): T =
     inSubComparer(matchReducer)(op)
@@ -3439,6 +3464,9 @@ object TypeComparer {
 
   def explained[T](op: ExplainingTypeComparer => T, header: String = "Subtype trace:", short: Boolean = false)(using Context): String =
     comparing(_.explained(op, header, short))
+
+  def explaining[T](op: ExplainingTypeComparer => T, short: Boolean = false)(using Context): T =
+    comparing(_.explaining(op, short))
 
   def reduceMatchWith[T](op: MatchReducer => T)(using Context): T =
     comparing(_.reduceMatchWith(op))
@@ -3621,10 +3649,8 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
           case MatchTypeCasePattern.TypeMemberExtractor(typeMemberName, capture) =>
             /** Try to remove references to `skolem` from a type in accordance with the spec.
              *
-             *  If `betterMatchTypeExtractorsEnabled` is enabled then references
-             *  to `skolem` occuring are avoided by following aliases and
-             *  singletons, otherwise no attempt made to avoid references to
-             *  `skolem`.
+             *  References to `skolem` occuring are avoided by following aliases and
+             *  singletons.
              *
              *  If any reference to `skolem` remains in the result type,
              *  `refersToSkolem` is set to true.
@@ -3638,7 +3664,7 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
                   case `skolem` =>
                     refersToSkolem = true
                     tp
-                  case tp: NamedType if betterMatchTypeExtractorsEnabled =>
+                  case tp: NamedType =>
                     val pre1 = apply(tp.prefix)
                     if refersToSkolem then
                       tp match
@@ -3656,7 +3682,7 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
                             tp.derivedSelect(pre1)
                     else
                       tp.derivedSelect(pre1)
-                  case tp: LazyRef if betterMatchTypeExtractorsEnabled =>
+                  case tp: LazyRef =>
                     // By default, TypeMap maps LazyRefs lazily. We need to
                     // force it for `refersToSkolem` to be correctly set.
                     apply(tp.ref)
@@ -3679,19 +3705,37 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
 
             stableScrut.member(typeMemberName) match
               case denot: SingleDenotation if denot.exists =>
-                val info = denot.info match
-                  case alias: AliasingBounds           => alias.alias        // Extract the alias
-                  case ClassInfo(prefix, cls, _, _, _) => prefix.select(cls) // Re-select the class from the prefix
-                  case info => info // Notably, RealTypeBounds, which will eventually give a MatchResult.NoInstances
-                val info1 = stableScrut match
+                val info = stableScrut match
                   case skolem: SkolemType =>
-                    dropSkolem(info, skolem).orElse:
-                      info match
-                        case info: TypeBounds  => info                       // Will already trigger a MatchResult.NoInstances
-                        case _                 => RealTypeBounds(info, info) // Explicitly trigger a MatchResult.NoInstances
-                  case _ => info
-                rec(capture, info1, variance = 0, scrutIsWidenedAbstract)
+                    /* If it is a skolem type, we cannot have class selections nor
+                     * abstract type selections. If it is an alias, we try to remove
+                     * any reference to the skolem from the right-hand-side. If that
+                     * succeeds, we take the result, otherwise we fail as not-specific.
+                     */
+
+                    def adaptToTriggerNotSpecific(info: Type): Type = info match
+                      case info: TypeBounds => info
+                      case _                => RealTypeBounds(info, info)
+
+                    denot.info match
+                      case denotInfo: AliasingBounds =>
+                        val alias = denotInfo.alias
+                        dropSkolem(alias, skolem).orElse(adaptToTriggerNotSpecific(alias))
+                      case ClassInfo(prefix, cls, _, _, _) =>
+                        // for clean error messages
+                        adaptToTriggerNotSpecific(prefix.select(cls))
+                      case denotInfo =>
+                        adaptToTriggerNotSpecific(denotInfo)
+
+                  case _ =>
+                    // The scrutinee type is truly stable. We select the type member directly on it.
+                    stableScrut.select(typeMemberName)
+                end info
+
+                rec(capture, info, variance = 0, scrutIsWidenedAbstract)
+
               case _ =>
+                // The type member was not found; no match
                 false
       end rec
 
@@ -3873,7 +3917,7 @@ class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeCompa
   override def recur(tp1: Type, tp2: Type): Boolean =
     def moreInfo =
       if Config.verboseExplainSubtype || ctx.settings.verbose.value
-      then s" ${tp1.getClass} ${tp2.getClass}"
+      then s" ${tp1.className} ${tp2.className}"
       else ""
     val approx = approxState
     def approxStr = if short then "" else approx.show

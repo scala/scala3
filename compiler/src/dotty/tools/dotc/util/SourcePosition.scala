@@ -79,7 +79,6 @@ extends SrcPos, interfaces.SourcePosition, Showable {
     rec(this)
   }
 
-
   override def toString: String =
     s"${if (source.exists) source.file.toString else "(no source)"}:$span"
 

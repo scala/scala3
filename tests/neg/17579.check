@@ -25,6 +25,6 @@
    |
    | longer explanation available when compiling with `-explain`
 -- [E147] Syntax Warning: tests/neg/17579.scala:19:6 -------------------------------------------------------------------
-19 |      final given Object with {} // warning: modifier `final` is redundant for this definition
+19 |      final given Object() // warning: modifier `final` is redundant for this definition
    |      ^^^^^
    |      Modifier final is redundant for this definition

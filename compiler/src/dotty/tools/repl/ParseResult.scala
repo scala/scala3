@@ -93,6 +93,10 @@ object Reset {
   val command: String = ":reset"
 }
 
+/** Toggle automatic printing of results */
+case object Silent extends Command:
+  val command: String = ":silent"
+
 /** `:quit` exits the repl */
 case object Quit extends Command {
   val command: String = ":quit"
@@ -113,6 +117,7 @@ case object Help extends Command {
       |:imports                 show import history
       |:reset [options]         reset the repl to its initial state, forgetting all session entries
       |:settings <options>      update compiler options, if possible
+      |:silent                  disable/enable automatic printing of results
     """.stripMargin
 }
 
@@ -122,7 +127,7 @@ object ParseResult {
 
   private def parseStats(using Context): List[untpd.Tree] = {
     val parser = new Parser(ctx.source)
-    val stats = parser.blockStatSeq()
+    val stats = parser.blockStatSeq(outermost = true)
     parser.accept(Tokens.EOF)
     stats
   }
@@ -137,6 +142,7 @@ object ParseResult {
     TypeOf.command -> (arg => TypeOf(arg)),
     DocOf.command -> (arg => DocOf(arg)),
     Settings.command -> (arg => Settings(arg)),
+    Silent.command -> (_ => Silent),
   )
 
   def apply(source: SourceFile)(using state: State): ParseResult = {

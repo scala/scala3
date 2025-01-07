@@ -47,7 +47,7 @@ object App2 extends App {
 object Foo2 {
   case class Bar(i: Int)
 
-  private given BarOps: AnyRef with {
+  private given BarOps: AnyRef {
     extension (bar: Bar)
       def twice: Bar = Bar(bar.i * 2)
   }

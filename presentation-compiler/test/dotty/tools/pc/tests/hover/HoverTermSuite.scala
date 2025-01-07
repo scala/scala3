@@ -269,9 +269,9 @@ class HoverTermSuite extends BaseHoverSuite:
         |  } yield x
         |}
         |""".stripMargin,
-      """|Option[Int]
-         |override def headOption: Option[A]
-         |""".stripMargin.hover
+      """|```scala
+         |override def headOption: Option[Int]
+         |```""".stripMargin.hover
     )
 
   @Test def `object` =
@@ -596,6 +596,21 @@ class HoverTermSuite extends BaseHoverSuite:
         |""".stripMargin
     )
 
+  @Test def `i20560`=
+    check(
+      "val re@@s = tests.macros.Macro20560.loadJavaSqlDriver",
+      """```scala
+        |val res: Int
+        |```
+        |""".stripMargin
+    )
+
+  @Test def `i20560-2`=
+    check(
+      "val re@@s = tests.macros.Macro20560.loadJavaSqlInexisting",
+      "", // crashes in the Macro; no type info
+    )
+
   @Test def `import-rename` =
     check(
       """
@@ -694,3 +709,11 @@ class HoverTermSuite extends BaseHoverSuite:
         |""".stripMargin,
       "extension [T](a: T) def *:[U <: Tuple](b: Wrap[U]): Wrap[T *: U]".hover
     )
+
+  @Test def `dont-ignore-???-in-path`: Unit =
+    check(
+      """object Obj:
+        |  val x = ?@@??
+        |""".stripMargin,
+      """def ???: Nothing""".stripMargin.hover
+  )

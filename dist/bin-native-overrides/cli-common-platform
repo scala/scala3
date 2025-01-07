@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-
-SCALA_CLI_CMD_BASH=("\"$PROG_HOME/bin/scala-cli\"")

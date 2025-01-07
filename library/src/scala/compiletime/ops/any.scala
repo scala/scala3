@@ -13,7 +13,7 @@ object any:
    * ```
    * @syntax markdown
    */
-  type ==[X, Y] <: Boolean
+  infix type ==[X, Y] <: Boolean
 
   /** Inequality comparison of two singleton types.
    * ```scala
@@ -26,7 +26,7 @@ object any:
    * ```
    * @syntax markdown
    */
-  type !=[X, Y] <: Boolean
+  infix type !=[X, Y] <: Boolean
 
   /** Tests if a type is a constant.
    * ```scala

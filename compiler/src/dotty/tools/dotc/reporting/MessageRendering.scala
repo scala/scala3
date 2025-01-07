@@ -15,7 +15,7 @@ import util.{ SourcePosition, NoSourcePosition }
 import util.Chars.{ LF, CR, FF, SU }
 import scala.annotation.switch
 
-import scala.collection.mutable
+import scala.collection.mutable.StringBuilder
 
 trait MessageRendering {
   import Highlight.*
@@ -209,22 +209,27 @@ trait MessageRendering {
     sb.toString
   }
 
-  private def appendFilterHelp(dia: Diagnostic, sb: mutable.StringBuilder): Unit =
-    import dia.*
+  private def appendFilterHelp(dia: Diagnostic, sb: StringBuilder): Unit =
+    import dia.msg
     val hasId = msg.errorId.errorNumber >= 0
-    val category = dia match {
-      case _: UncheckedWarning => "unchecked"
-      case _: DeprecationWarning => "deprecation"
-      case _: FeatureWarning => "feature"
-      case _ => ""
-    }
-    if (hasId || category.nonEmpty)
-      sb.append(EOL).append("Matching filters for @nowarn or -Wconf:")
-      if (hasId)
-        sb.append(EOL).append("  - id=E").append(msg.errorId.errorNumber)
-        sb.append(EOL).append("  - name=").append(msg.errorId.productPrefix.stripSuffix("ID"))
-      if (category.nonEmpty)
-        sb.append(EOL).append("  - cat=").append(category)
+    val (category, origin) = dia match
+      case _: UncheckedWarning => ("unchecked", "")
+      case w: DeprecationWarning => ("deprecation", w.origin)
+      case _: FeatureWarning => ("feature", "")
+      case _ => ("", "")
+    var entitled = false
+    def addHelp(what: String)(value: String): Unit =
+      if !entitled then
+        sb.append(EOL).append("Matching filters for @nowarn or -Wconf:")
+        entitled = true
+      sb.append(EOL).append("  - ").append(what).append(value)
+    if hasId then
+      addHelp("id=E")(msg.errorId.errorNumber.toString)
+      addHelp("name=")(msg.errorId.productPrefix.stripSuffix("ID"))
+    if category.nonEmpty then
+      addHelp("cat=")(category)
+    if origin.nonEmpty then
+      addHelp("origin=")(origin)
 
   /** The whole message rendered from `msg` */
   def messageAndPos(dia: Diagnostic)(using Context): String = {
@@ -236,7 +241,7 @@ trait MessageRendering {
       else 0
     given Level = Level(level)
     given Offset = Offset(maxLineNumber.toString.length + 2)
-    val sb = mutable.StringBuilder()
+    val sb = StringBuilder()
     val posString = posStr(pos, msg, diagnosticLevel(dia))
     if (posString.nonEmpty) sb.append(posString).append(EOL)
     if (pos.exists) {

@@ -119,7 +119,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree)(implicit @constructorOnly src: SourceFile) extends DefTree
   case class ExtMethods(paramss: List[ParamClause], methods: List[Tree])(implicit @constructorOnly src: SourceFile) extends Tree
   case class ContextBoundTypeTree(tycon: Tree, paramName: TypeName, ownName: TermName)(implicit @constructorOnly src: SourceFile) extends Tree
-    // `paramName: tycon as ownName`, ownName != EmptyTermName only under x.modularity
   case class MacroTree(expr: Tree)(implicit @constructorOnly src: SourceFile) extends Tree
 
   case class ImportSelector(imported: Ident, renamed: Tree = EmptyTree, bound: Tree = EmptyTree)(implicit @constructorOnly src: SourceFile) extends Tree {
@@ -525,13 +524,16 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def makeRetaining(parent: Tree, refs: List[Tree], annotName: TypeName)(using Context): Annotated =
     Annotated(parent, New(scalaAnnotationDot(annotName), List(refs)))
 
-  def makeCapsOf(id: Ident)(using Context): Tree =
-    TypeApply(Select(scalaDot(nme.caps), nme.capsOf), id :: Nil)
+  def makeCapsOf(tp: RefTree)(using Context): Tree =
+    TypeApply(Select(scalaDot(nme.caps), nme.capsOf), tp :: Nil)
 
-  def makeCapsBound()(using Context): Tree =
-    makeRetaining(
+  // Capture set variable `[C^]` becomes: `[C >: CapSet <: CapSet^{cap}]`
+  def makeCapsBound()(using Context): TypeBoundsTree =
+    TypeBoundsTree(
       Select(scalaDot(nme.caps), tpnme.CapSet),
-      Nil, tpnme.retainsCap)
+      makeRetaining(
+        Select(scalaDot(nme.caps), tpnme.CapSet),
+        Nil, tpnme.retainsCap))
 
   def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(using Context): DefDef =
     DefDef(nme.CONSTRUCTOR, joinParams(tparams, vparamss), TypeTree(), rhs)

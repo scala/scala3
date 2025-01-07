@@ -16,7 +16,7 @@ trait Baz
 trait Width[T]:
   type Out <: Int
 object Width:
-  given fromDFBoolOrBit[T <: DFBoolOrBit]: Width[T] with
+  given fromDFBoolOrBit: [T <: DFBoolOrBit] => Width[T]:
     type Out = 1
   transparent inline given [T]: Width[T] = ${ getWidthMacro[T] }
   def getWidthMacro[T](using Quotes, Type[T]): Expr[Width[T]] =
@@ -38,7 +38,7 @@ private object CompanionsDFBits:
       type OutW <: Int
       def apply(value: R): DFValOf[DFBits[OutW]]
     object Candidate:
-      given fromDFUInt[W <: Int, R <: DFValOf[DFDecimal]]: Candidate[R] with
+      given fromDFUInt: [W <: Int, R <: DFValOf[DFDecimal]] => Candidate[R]:
         type OutW = W
         def apply(value: R): DFValOf[DFBits[W]] =
           import DFVal.Ops.bits

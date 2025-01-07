@@ -8,7 +8,7 @@ import java.nio.channels.ClosedByInterruptException
 import scala.util.control.NonFatal
 
 import dotty.tools.dotc.classpath.FileUtils.{hasTastyExtension, hasBetastyExtension}
-import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile }
+import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile, NoAbstractFile }
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
 import Contexts.*, Symbols.*, Flags.*, SymDenotations.*, Types.*, Scopes.*, Names.*
@@ -51,8 +51,9 @@ object SymbolLoaders {
    */
   def enterClass(
       owner: Symbol, name: PreName, completer: SymbolLoader,
-      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(using Context): Symbol = {
-    val cls = newClassSymbol(owner, name.toTypeName.unmangleClassName.decode, flags, completer, compUnitInfo = completer.compilationUnitInfo)
+      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope, privateWithin: Symbol = NoSymbol,
+  )(using Context): Symbol = {
+    val cls = newClassSymbol(owner, name.toTypeName.unmangleClassName.decode, flags, completer, privateWithin, compUnitInfo = completer.compilationUnitInfo)
     enterNew(owner, cls, completer, scope)
   }
 
@@ -60,10 +61,13 @@ object SymbolLoaders {
    */
   def enterModule(
       owner: Symbol, name: PreName, completer: SymbolLoader,
-      modFlags: FlagSet = EmptyFlags, clsFlags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(using Context): Symbol = {
+      modFlags: FlagSet = EmptyFlags, clsFlags: FlagSet = EmptyFlags,
+      scope: Scope = EmptyScope, privateWithin: Symbol = NoSymbol,
+  )(using Context): Symbol = {
     val module = newModuleSymbol(
       owner, name.toTermName.decode, modFlags, clsFlags,
       (module, _) => completer.proxy.withDecls(newScope).withSourceModule(module),
+      privateWithin,
       compUnitInfo = completer.compilationUnitInfo)
     enterNew(owner, module, completer, scope)
     enterNew(owner, module.moduleClass, completer, scope)
@@ -103,13 +107,16 @@ object SymbolLoaders {
    */
   def enterClassAndModule(
       owner: Symbol, name: PreName, completer: SymbolLoader,
-      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(using Context): Unit = {
-    val clazz = enterClass(owner, name, completer, flags, scope)
+      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope, privateWithin: Symbol = NoSymbol,
+  )(using Context): Unit = {
+    val clazz = enterClass(owner, name, completer, flags, scope, privateWithin)
     val module = enterModule(
       owner, name, completer,
       modFlags = flags.toTermFlags & RetainedModuleValFlags,
       clsFlags = flags.toTypeFlags & RetainedModuleClassFlags,
-      scope = scope)
+      scope = scope,
+      privateWithin = privateWithin,
+    )
   }
 
   /** Enter all toplevel classes and objects in file `src` into package `owner`, provided
@@ -333,7 +340,15 @@ abstract class SymbolLoader extends LazyType { self =>
     def description(using Context): String = s"proxy to ${self.description}"
   }
 
-  override def complete(root: SymDenotation)(using Context): Unit = {
+  private inline def profileCompletion[T](root: SymDenotation)(inline body: T)(using Context): T = {
+    val sym = root.symbol
+    def associatedFile = root.symbol.associatedFile match
+      case file: AbstractFile => file
+      case null => NoAbstractFile
+    ctx.profiler.onCompletion(sym, associatedFile)(body)
+  }
+
+  override def complete(root: SymDenotation)(using Context): Unit = profileCompletion(root) {
     def signalError(ex: Exception): Unit = {
       if (ctx.debug) ex.printStackTrace()
       val msg = ex.getMessage()

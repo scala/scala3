@@ -6,7 +6,7 @@ import scala.language.unsafeNulls
 
 import vulpix.FileDiff
 import vulpix.TestConfiguration
-import vulpix.TestConfiguration
+import vulpix.ParallelTesting
 import reporting.TestReporter
 
 import java.io._
@@ -25,7 +25,9 @@ import java.io.File
 class PrintingTest {
 
   def options(phase: String, flags: List[String]) =
-    List(s"-Xprint:$phase", "-color:never", "-nowarn", "-classpath", TestConfiguration.basicClasspath) ::: flags
+    val outDir = ParallelTesting.defaultOutputDir + "printing" + File.pathSeparator
+    File(outDir).mkdirs()
+    List(s"-Xprint:$phase", "-color:never", "-nowarn", "-d", outDir, "-classpath", TestConfiguration.basicClasspath) ::: flags
 
   private def compileFile(path: JPath, phase: String): Boolean = {
     val baseFilePath  = path.toString.stripSuffix(".scala")

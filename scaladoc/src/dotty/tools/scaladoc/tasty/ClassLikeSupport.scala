@@ -314,7 +314,7 @@ trait ClassLikeSupport:
   def parseObject(classDef: ClassDef, signatureOnly: Boolean = false): Member =
     mkClass(classDef)(
       // All objects are final so we do not need final modifier!
-      modifiers = classDef.symbol.getExtraModifiers().filter(_ != Modifier.Final),
+      modifiers = classDef.symbol.getExtraModifiers().filter(mod => mod != Modifier.Final && mod != Modifier.Opaque),
       signatureOnly = signatureOnly
     )
 
@@ -577,7 +577,8 @@ trait ClassLikeSupport:
 
 
   def unwrapMemberInfo(c: ClassDef, symbol: Symbol): MemberInfo =
-    val baseTypeRepr = typeForClass(c).memberType(symbol)
+    val qualTypeRepr = if c.symbol.isClassDef then This(c.symbol).tpe else typeForClass(c)
+    val baseTypeRepr = qualTypeRepr.memberType(symbol)
 
     def isSyntheticEvidence(name: String) =
       if !name.startsWith(NameKinds.ContextBoundParamName.separator) then false else

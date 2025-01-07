@@ -133,8 +133,6 @@ object Feature:
 
   def scala2ExperimentalMacroEnabled(using Context) = enabled(scala2macros)
 
-  def betterMatchTypeExtractorsEnabled(using Context) = enabled(betterMatchTypeExtractors)
-
   def quotedPatternsWithPolymorphicFunctionsEnabled(using Context) =
     enabled(quotedPatternsWithPolymorphicFunctions)
 

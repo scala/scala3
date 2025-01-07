@@ -3,10 +3,15 @@ on:
   pull_request:
   workflow_dispatch:
 
+env:
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+
 jobs:
   linux-x86_64:
     name: Deploy and Test on Linux x64 architecture
     runs-on: ubuntu-latest
+    if: (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]') ) ||
+        (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3' )
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 17
@@ -15,6 +20,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
       - name: Build and test launcher command
         run: ./project/scripts/native-integration/bashTests
         env:
@@ -32,9 +38,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'sbt'
-      # https://github.com/actions/runner-images/issues/9369
-      - name: Install sbt
-        run: brew install sbt
+      - uses: sbt/setup-sbt@v1
       - name: Build and test launcher command
         run: ./project/scripts/native-integration/bashTests
         env:
@@ -43,6 +47,8 @@ jobs:
   mac-x86_64:
     name: Deploy and Test on Mac x64 architecture
     runs-on: macos-13
+    if: (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]') ) ||
+        (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3' )
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 17
@@ -51,9 +57,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'sbt'
-      # https://github.com/actions/runner-images/issues/9369
-      - name: Install sbt
-        run: brew install sbt
+      - uses: sbt/setup-sbt@v1
       - name: Build and test launcher command
         run: ./project/scripts/native-integration/bashTests
         env:
@@ -62,6 +66,8 @@ jobs:
   mac-aarch64:
     name: Deploy and Test on Mac ARM64 architecture
     runs-on: macos-latest
+    if: (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]') ) ||
+        (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3' )
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 17
@@ -70,9 +76,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'sbt'
-      # https://github.com/actions/runner-images/issues/9369
-      - name: Install sbt
-        run: brew install sbt
+      - uses: sbt/setup-sbt@v1
       - name: Build and test launcher command
         run: ./project/scripts/native-integration/bashTests
         env:
@@ -81,6 +85,8 @@ jobs:
   win-x86_64:
     name: Deploy and Test on Windows x64 architecture
     runs-on: windows-latest
+    if: (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]') ) ||
+        (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3' )
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 17
@@ -89,6 +95,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
       - name: Build the launcher command
         run: sbt "dist-win-x86_64/Universal/stage"
       - name: Run the launcher command tests

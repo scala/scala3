@@ -8,7 +8,6 @@
    |      writer =
    |        /* ambiguous: both given instance given_Writer_JsValue and given instance given_Writer_JsObject match type Writer[B] */
    |          summon[Writer[B]]
-   |      ,
-   |    this.given_BodySerializer_B$default$2[B])
+   |    )
    |
    |But both given instance given_Writer_JsValue and given instance given_Writer_JsObject match type Writer[B].

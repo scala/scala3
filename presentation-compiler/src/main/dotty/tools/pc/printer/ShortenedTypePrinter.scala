@@ -3,6 +3,7 @@ package dotty.tools.pc.printer
 import scala.collection.mutable
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.ReportContext
+import scala.meta.internal.mtags.KeywordWrapper
 import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
 
@@ -24,8 +25,6 @@ import dotty.tools.dotc.printing.RefinedPrinter
 import dotty.tools.dotc.printing.Texts.Text
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
 import dotty.tools.pc.AutoImports.ImportSel
-import dotty.tools.pc.AutoImports.ImportSel.Direct
-import dotty.tools.pc.AutoImports.ImportSel.Rename
 import dotty.tools.pc.IndexedContext
 import dotty.tools.pc.IndexedContext.Result
 import dotty.tools.pc.Params
@@ -68,6 +67,11 @@ class ShortenedTypePrinter(
     )
 
   private val foundRenames = collection.mutable.LinkedHashMap.empty[Symbol, String]
+
+  override def nameString(name: Name): String =
+    val nameStr = super.nameString(name)
+    if (nameStr.nonEmpty) KeywordWrapper.Scala3Keywords.backtickWrap(nameStr)
+    else nameStr
 
   def getUsedRenames: Map[Symbol, String] =
     foundRenames.toMap.filter { case (k, v) => k.showName != v }
@@ -538,7 +542,8 @@ class ShortenedTypePrinter(
         else if includeDefaultParam == ShortenedTypePrinter.IncludeDefaultParam.ResolveLater && isDefaultParam
         then " = ..."
         else "" // includeDefaultParam == Never or !isDefaultParam
-      s"$keywordName: ${paramTypeString}$default"
+      val inline = if(param.is(Flags.Inline)) "inline " else ""
+      s"$inline$keywordName: ${paramTypeString}$default"
     end if
   end paramLabel
 
