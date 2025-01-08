@@ -134,7 +134,7 @@ trait CommonScalaSettings:
   val encoding: Setting[String] = StringSetting("-encoding", "encoding", "Specify character encoding used by source files.", Properties.sourceEncoding, aliases = List("--encoding"))
   val usejavacp: Setting[Boolean] = BooleanSetting("-usejavacp", "Utilize the java.class.path in classpath resolution.", aliases = List("--use-java-class-path"))
   val scalajs: Setting[Boolean] = BooleanSetting("-scalajs", "Compile in Scala.js mode (requires scalajs-library.jar on the classpath).", aliases = List("--scalajs"))
-  val replInitScript: Setting[String] = StringSetting("-repl-init-script", "code", "The code will be run on REPL startup.", "")
+  val replInitScript: Setting[String] = StringSetting("-repl-init-script", "code", "The code will be run on REPL startup.", "", aliases = List("--repl-init-script"))
 
 end CommonScalaSettings
 
