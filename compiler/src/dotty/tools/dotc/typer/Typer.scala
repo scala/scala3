@@ -852,11 +852,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       else EmptyTree
 
     def dynamicSelect(pt: Type) =
-        val tree2 = cpy.Select(tree0)(untpd.TypedSplice(qual), selName)
-        if pt.isInstanceOf[FunOrPolyProto] || pt == LhsProto then
-          assignType(tree2, TryDynamicCallType)
-        else
-          typedDynamicSelect(tree2, Nil, pt)
+      val tree2 = cpy.Select(tree0)(untpd.TypedSplice(qual), selName)
+      if pt.isInstanceOf[FunOrPolyProto] || pt == LhsProto then
+        assignType(tree2, TryDynamicCallType)
+      else
+        typedDynamicSelect(tree2, Nil, pt)
 
     // Otherwise, if the qualifier derives from class Dynamic, expand to a
     // dynamic dispatch using selectDynamic or applyDynamic
@@ -885,7 +885,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 // Reject corner case where selectDynamic needs annother selectDynamic to be called. E.g. as in neg/unselectable-fields.scala.
                 report.error(i"Cannot use selectDynamic here since it needs another selectDynamic to be invoked", tree.srcPos)
               case _ =>
-            dynSelected.ensureConforms(fieldType)
+            adapt(dynSelected, defn.AnyType).ensureConforms(fieldType)
           case _ => EmptyTree
       else EmptyTree
 
