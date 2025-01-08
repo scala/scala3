@@ -799,7 +799,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     // Otherwise, try to expand a named tuple selection
     def tryNamedTupleSelection() =
-      val namedTupleElems = qual.tpe.widenDealias.namedTupleElementTypes
+      val namedTupleElems = qual.tpe.widenDealias.namedTupleElementTypes(true)
       val nameIdx = namedTupleElems.indexWhere(_._1 == selName)
       if nameIdx >= 0 && Feature.enabled(Feature.namedTuples) then
         typed(
@@ -875,7 +875,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       then
         val pre = if !TypeOps.isLegalPrefix(qual.tpe) then SkolemType(qual.tpe) else qual.tpe
         val fieldsType = pre.select(tpnme.Fields).widenDealias.simplified
-        val fields = fieldsType.namedTupleElementTypes
+        val fields = fieldsType.namedTupleElementTypes(true)
         typr.println(i"try dyn select $qual, $selName, $fields")
         fields.find(_._1 == selName) match
           case Some((_, fieldType)) =>

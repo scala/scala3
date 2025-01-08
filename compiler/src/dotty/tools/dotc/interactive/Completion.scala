@@ -532,7 +532,7 @@ object Completion:
       def namedTupleCompletionsFromType(tpe: Type): CompletionMap =
         val freshCtx = ctx.fresh.setExploreTyperState()
         inContext(freshCtx):
-          tpe.namedTupleElementTypes
+          tpe.namedTupleElementTypes(true)
             .map { (name, tpe) =>
               val symbol = newSymbol(owner = NoSymbol, name, EmptyFlags, tpe)
               val denot = SymDenotation(symbol, NoSymbol, name, EmptyFlags, tpe)

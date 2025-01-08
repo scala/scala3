@@ -127,7 +127,7 @@ class TypeUtils:
         case Some(types) => TypeOps.nestedPairs(types)
         case None => throw new AssertionError("not a tuple")
 
-    def namedTupleElementTypesUpTo(bound: Int, normalize: Boolean = true)(using Context): List[(TermName, Type)] =
+    def namedTupleElementTypesUpTo(bound: Int, derived: Boolean, normalize: Boolean = true)(using Context): List[(TermName, Type)] =
       (if normalize then self.normalized else self).dealias match
         case defn.NamedTuple(nmes, vals) =>
           val names = nmes.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil).map(_.dealias).map:
@@ -135,11 +135,25 @@ class TypeUtils:
             case t => throw TypeError(em"Malformed NamedTuple: names must be string types, but $t was found.")
           val values = vals.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil)
           names.zip(values)
+        case tp: TypeProxy if derived =>
+          tp.superType.namedTupleElementTypesUpTo(bound - 1, normalize)
+        case tp: OrType if derived =>
+          val lhs = tp.tp1.namedTupleElementTypesUpTo(bound - 1, normalize)
+          val rhs = tp.tp2.namedTupleElementTypesUpTo(bound - 1, normalize)
+          if (lhs.map(_._1) != rhs.map(_._1)) throw TypeError(em"Malformed Union Type: Named Tuple elements must be the same, but $lhs and $rhs were found.")
+          lhs.zip(rhs).map((lhs, rhs) => (lhs._1, lhs._2 | rhs._2))
+        case tp: AndType if derived =>
+          (tp.tp1.namedTupleElementTypesUpTo(bound - 1, normalize), tp.tp2.namedTupleElementTypesUpTo(bound - 1, normalize)) match
+            case (Nil, rhs) => rhs
+            case (lhs, Nil) => lhs
+            case (lhs, rhs) =>
+              if (lhs.map(_._1) != rhs.map(_._1)) throw TypeError(em"Malformed Intersection Type: Named Tuple elements must be the same, but $lhs and $rhs were found.")
+              lhs.zip(rhs).map((lhs, rhs) => (lhs._1, lhs._2 & rhs._2))
         case t =>
           Nil
 
-    def namedTupleElementTypes(using Context): List[(TermName, Type)] =
-      namedTupleElementTypesUpTo(Int.MaxValue)
+    def namedTupleElementTypes(derived: Boolean)(using Context): List[(TermName, Type)] =
+      namedTupleElementTypesUpTo(Int.MaxValue, derived)
 
     def isNamedTupleType(using Context): Boolean = self match
       case defn.NamedTuple(_, _) => true
