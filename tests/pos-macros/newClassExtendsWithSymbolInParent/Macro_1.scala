@@ -13,7 +13,7 @@ private def makeClassExpr(nameExpr: Expr[String])(using Quotes): Expr[Foo[_]] = 
     List(AppliedType(TypeRepr.typeConstructorOf(Class.forName("Foo")), List(TypeIdent(cls).tpe)))
   def decls(cls: Symbol): List[Symbol] = Nil
 
-  val cls = Symbol.newClass(Symbol.spliceOwner, name, parents, decls, selfType = None, paramNames = Nil, paramTypes = Nil, Flags.EmptyFlags, Symbol.noSymbol)
+  val cls = Symbol.newClass(Symbol.spliceOwner, name, parents, decls, selfType = None, Flags.EmptyFlags, Symbol.noSymbol, conParamNames = Nil, conParamTypes = Nil)
 
   val parentsWithSym =
     cls.typeRef.asType match
