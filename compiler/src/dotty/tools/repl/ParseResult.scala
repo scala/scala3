@@ -52,6 +52,13 @@ object Load {
   val command: String = ":load"
 }
 
+/** `:require <path>` adds a jar to the classpath 
+ */
+case class Require(path: String) extends Command
+object Require {
+  val command: String = ":require"
+}
+
 /** `:kind <type>` display the kind of a type. see also :help kind
  */
 case class KindOf(expr: String) extends Command
@@ -147,6 +154,7 @@ object ParseResult {
     Imports.command -> (_  => Imports),
     KindOf.command -> (arg => KindOf(arg)),
     Load.command -> (arg => Load(arg)),
+    Require.command -> (arg => Require(arg)),
     TypeOf.command -> (arg => TypeOf(arg)),
     DocOf.command -> (arg => DocOf(arg)),
     Settings.command -> (arg => Settings(arg)),

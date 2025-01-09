@@ -510,6 +510,18 @@ class ReplDriver(settings: Array[String],
         state
       }
 
+    case Require(path) =>
+      val file = new JFile(path)
+      if (file.exists) {
+//        val contents = Using(scala.io.Source.fromFile(file, StandardCharsets.UTF_8.name))(_.mkString).get
+//        run(contents)
+        ???
+      }
+      else {
+        out.println(s"""Couldn't find file "${file.getCanonicalPath}"""")
+        state
+      }
+
     case KindOf(expr) =>
       out.println(s"""The :kind command is not currently supported.""")
       state
