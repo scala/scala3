@@ -534,8 +534,15 @@ class ReplDriver(settings: Array[String],
           }
         }
 
+        // TODO: no idea how to access and reload the class paths
+        val newClassPath = state.context.platform.classPath(using state.context).asURLs :+ f.toURI.toURL
+        println(s"new class path=${newClassPath.mkString(", ")}")
         val clsl = rendering.classLoader()(using state.context)
+        val newClsl = fromURLsParallelCapable(newClassPath, clsl)
+        println(s"newClsl getResource=${newClsl.getURLs.toList}")
+        newClsl.asContext(state.context)
 
+//        Scala 2:
 //        def alreadyDefined(clsName: String) = classLoader.tryToLoadClass(clsName).isDefined
 //        val existingClass = entries.filter(_.ext.isClass).map(classNameOf).find(alreadyDefined)
 
