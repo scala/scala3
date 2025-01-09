@@ -52,7 +52,7 @@ object Load {
   val command: String = ":load"
 }
 
-/** `:require <path>` adds a jar to the classpath 
+/** `:require <path>` adds a jar to the classpath
  */
 case class Require(path: String) extends Command
 object Require {

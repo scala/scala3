@@ -39,6 +39,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.compiletime.uninitialized
 import scala.jdk.CollectionConverters.*
+import scala.tools.asm.ClassReader
 import scala.util.control.NonFatal
 import scala.util.Using
 
@@ -511,16 +512,40 @@ class ReplDriver(settings: Array[String],
       }
 
     case Require(path) =>
-      val file = new JFile(path)
-      if (file.exists) {
-//        val contents = Using(scala.io.Source.fromFile(file, StandardCharsets.UTF_8.name))(_.mkString).get
-//        run(contents)
-        ???
-      }
-      else {
-        out.println(s"""Couldn't find file "${file.getCanonicalPath}"""")
+      val f = new JFile(path)
+      val jarFile = AbstractFile.getDirectory(path)
+      if (!f.exists || jarFile == null)
+        out.println(s"""Cannot add "$path" to classpath.""")
         state
-      }
+      else
+        def flatten(f: AbstractFile): Iterator[AbstractFile] =
+          if (f.isClassContainer) f.iterator.flatMap(flatten)
+          else Iterator(f)
+
+        val entries = flatten(jarFile)
+
+        def classNameOf(classFile: AbstractFile): String = {
+          val input = classFile.input
+          try {
+            val reader = new ClassReader(input)
+            reader.getClassName.replace('/', '.')
+          } finally {
+            input.close()
+          }
+        }
+
+        val clsl = rendering.classLoader()(using state.context)
+
+//        def alreadyDefined(clsName: String) = classLoader.tryToLoadClass(clsName).isDefined
+//        val existingClass = entries.filter(_.ext.isClass).map(classNameOf).find(alreadyDefined)
+
+//        if (existingClass.nonEmpty) out.println(s"The path '$f' cannot be loaded, it contains a classfile that already exists on the classpath: ${existingClass.get}")
+//        else {
+//          intp.addUrlsToClassPath(f.toURI.toURL)
+//          out.println(s"Added '$path' to classpath.")
+//          out.println("Added '%s'. Your new classpath is:\n\"%s\"".format(f.path, intp.classPathString))
+//        }
+        state
 
     case KindOf(expr) =>
       out.println(s"""The :kind command is not currently supported.""")
