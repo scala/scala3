@@ -2693,21 +2693,20 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         conParamNames: List[String],
         conParamTypes: List[TypeRepr],
       ): Symbol =
-        checkValidFlags(clsFlags, Flags.validClassFlags)
-        assert(conParamNames.length == conParamTypes.length, "paramNames and paramTypes must have the same length")
-        assert(!clsPrivateWithin.exists || clsPrivateWithin.isType, "clsPrivateWithin must be a type symbol or `Symbol.noSymbol`")
-        val cls = dotc.core.Symbols.newNormalizedClassSymbolUsingClassSymbolinParents(
+        assert(conParamNames.length == conParamTypes.length, "Lengths of conParamNames and conParamTypes must be equal")
+        newClass(
           owner,
-          name.toTypeName,
-          clsFlags,
+          name,
           parents,
-          selfType.getOrElse(Types.NoType),
-          clsPrivateWithin)
-        cls.enter(dotc.core.Symbols.newConstructor(cls, dotc.core.Flags.Synthetic, conParamNames.map(_.toTermName), conParamTypes))
-        for (name, tpe) <- conParamNames.zip(conParamTypes) do
-          cls.enter(dotc.core.Symbols.newSymbol(cls, name.toTermName, Flags.ParamAccessor, tpe, Symbol.noSymbol))
-        for sym <- decls(cls) do cls.enter(sym)
-        cls
+          decls,
+          selfType,
+          clsFlags,
+          clsPrivateWithin,
+          conMethodType = res => MethodType(conParamNames)(_ => conParamTypes, _ => res),
+          conFlags = Flags.EmptyFlags,
+          conPrivateWithin = Symbol.noSymbol,
+          conParamFlags = List(for i <- conParamNames yield Flags.EmptyFlags)
+        )
 
       def newClass(
         owner: Symbol,
