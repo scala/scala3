@@ -19,8 +19,8 @@ trait Description:
   type Elem <: Tuple
 
 class PrimBroken extends Expr:
-  type Value = Alias
-  type Alias = Value // error
+  type Value = Alias // error
+  type Alias = Value
 
 class Prim extends Expr:
   type Value = BigInt
