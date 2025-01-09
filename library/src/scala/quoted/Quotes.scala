@@ -3861,10 +3861,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        * @param name The name of the class
        * @param parents Function returning the parent classes of the class. The first parent must not be a trait.
        * Takes the constructed class symbol as an argument. Calling `cls.typeRef.asType` as part of this function will lead to cyclic reference errors.
-       * @param paramNames constructor parameter names.
-       * @param paramTypes constructor parameter types.
        * @param clsFlags extra flags with which the class symbol should be constructed.
        * @param clsPrivateWithin the symbol within which this new class symbol should be private. May be noSymbol.
+       * @param conParamNames constructor parameter names.
+       * @param conParamTypes constructor parameter types.
        *
        * Parameters can be obtained via classSymbol.memberField
        */
@@ -3873,10 +3873,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         name: String,
         parents: Symbol => List[TypeRepr],
         decls: Symbol => List[Symbol], selfType: Option[TypeRepr],
-        paramNames: List[String],
-        paramTypes: List[TypeRepr],
         clsFlags: Flags,
-        clsPrivateWithin: Symbol
+        clsPrivateWithin: Symbol,
+        conParamNames: List[String],
+        conParamTypes: List[TypeRepr]
       ): Symbol
 
       /**
@@ -3884,17 +3884,17 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         *
         * @param owner The owner of the class
         * @param name The name of the class
-        * @param parents Function returning the parent classes of the class. The first parent must not be a trait.
+        * @param parents Function returning the parent classes of the class. The first parent must not be a trait
         * Takes the constructed class symbol as an argument. Calling `cls.typeRef.asType` as part of this function will lead to cyclic reference errors.
         * @param decls The member declarations of the class provided the symbol of this class
         * @param selfType The self type of the class if it has one
-        * @param constructorMethodType The MethodOrPoly type representing the type of the constructor.
-        * PolyType may only represent only the first clause of the constructor.
-        * @param clsFlags extra flags with which the class symbol should be constructed.
+        * @param clsFlags extra flags with which the class symbol should be constructed
         * @param clsPrivateWithin the symbol within which this new class symbol should be private. May be noSymbol
-        * @param consFlags extra flags with which the constructor symbol should be constructed.
-        * @param consPrivateWithin the symbol within which the constructor for this new class symbol should be private. May be noSymbol
-        * @param conParamFlags extra flags with which the constructor parameter symbols should be constructed. Must match the shape of @param constructorMethodType
+        * @param conMethodType The MethodOrPoly type representing the type of the constructor.
+        * PolyType may only represent the first clause of the constructor.
+        * @param conFlags extra flags with which the constructor symbol should be constructed
+        * @param conPrivateWithin the symbol within which the constructor for this new class symbol should be private. May be noSymbol.
+        * @param conParamFlags extra flags with which the constructor parameter symbols should be constructed. Must match the shape of `conMethodType`.
         *
         */
       @experimental def newClass(
@@ -3903,11 +3903,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         parents: Symbol => List[TypeRepr],
         decls: Symbol => List[Symbol],
         selfType: Option[TypeRepr],
-        constructorMethodType: TypeRepr => MethodOrPoly,
         clsFlags: Flags,
         clsPrivateWithin: Symbol,
-        consFlags: Flags,
-        consPrivateWithin: Symbol,
+        conMethodType: TypeRepr => MethodOrPoly,
+        conFlags: Flags,
+        conPrivateWithin: Symbol,
         conParamFlags: List[List[Flags]]
       ): Symbol
 
