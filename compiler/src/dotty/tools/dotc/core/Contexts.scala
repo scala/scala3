@@ -983,11 +983,10 @@ object Contexts {
     /** Was best effort file used during compilation? */
     private[core] var usedBestEffortTasty = false
 
-    /** Stores all instrumented statements (for InstrumentCoverage).
-     * We need this information to be persisted across different runs,
-     * so it's stored here.
+    /** If coverage option is used, it stores all instrumented statements (for InstrumentCoverage).
+     * We need this information to be persisted across different runs, so it's stored here.
      */
-    private[dotc] var coverage: Coverage = Coverage()
+    private[dotc] var coverage: Coverage | Null = null
 
     // Types state
     /** A table for hash consing unique types */
