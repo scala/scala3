@@ -38,12 +38,6 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
   override def isEnabled(using ctx: Context) =
     ctx.settings.coverageOutputDir.value.nonEmpty
 
-  // counter to assign a unique id to each statement
-  private var statementId = 0
-
-  // stores all instrumented statements
-  private val coverage = Coverage()
-
   private var coverageExcludeClasslikePatterns: List[Pattern] = Nil
   private var coverageExcludeFilePatterns: List[Pattern] = Nil
 
@@ -61,12 +55,17 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         .foreach(_.nn.delete())
     end if
 
+    // Initialise a coverage object if it does not exist yet
+    if ctx.base.coverage == null then
+      ctx.base.coverage = Coverage()
+
     coverageExcludeClasslikePatterns = ctx.settings.coverageExcludeClasslikes.value.map(_.r.pattern)
     coverageExcludeFilePatterns = ctx.settings.coverageExcludeFiles.value.map(_.r.pattern)
 
+    ctx.base.coverage.nn.removeStatementsFromFile(ctx.compilationUnit.source.file.absolute.jpath)
     super.run
 
-    Serializer.serialize(coverage, outputPath, ctx.settings.sourceroot.value)
+    Serializer.serialize(ctx.base.coverage.nn, outputPath, ctx.settings.sourceroot.value)
 
   private def isClassIncluded(sym: Symbol)(using Context): Boolean =
     val fqn = sym.fullName.toText(ctx.printerFn(ctx)).show
@@ -110,8 +109,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       * @return the statement's id
       */
     private def recordStatement(tree: Tree, pos: SourcePosition, branch: Boolean)(using ctx: Context): Int =
-      val id = statementId
-      statementId += 1
+      val id = ctx.base.coverage.nn.nextStatementId()
 
       val sourceFile = pos.source
       val statement = Statement(
@@ -127,7 +125,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         treeName = tree.getClass.getSimpleName.nn,
         branch
       )
-      coverage.addStatement(statement)
+      ctx.base.coverage.nn.addStatement(statement)
       id
 
     /**
