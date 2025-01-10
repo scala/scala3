@@ -49,7 +49,6 @@ object ccConfig:
 
 end ccConfig
 
-
 /** Are we at checkCaptures phase? */
 def isCaptureChecking(using Context): Boolean =
   ctx.phaseId == Phases.checkCapturesPhase.id

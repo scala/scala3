@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:11:8 -------------------------------------
 11 |    x = q           // error
    |        ^
-   |        Found:    (q : Proc)
+   |        Found:    (q : () => Unit)
    |        Required: () ->{p, q²} Unit
    |
    |        where:    q  is a parameter in method inner
@@ -11,14 +11,14 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:12:9 -------------------------------------
 12 |    x = (q: Proc)   // error
    |         ^^^^^^^
-   |         Found:    Proc
+   |         Found:    () => Unit
    |         Required: () ->{p, q} Unit
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:13:9 -------------------------------------
 13 |    y = (q: Proc)   // error
    |         ^^^^^^^
-   |         Found:    Proc
+   |         Found:    () => Unit
    |         Required: () ->{p} Unit
    |
    |         Note that the universal capability `cap`
@@ -28,10 +28,10 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:14:8 -------------------------------------
 14 |    y = q           // error, was OK under unsealed
    |        ^
-   |        Found:    (q : Proc)
+   |        Found:    (q : () => Unit)
    |        Required: () ->{p} Unit
    |
-   |        Note that reference (q : Proc), defined in method inner
+   |        Note that reference (q : () => Unit), defined in method inner
    |        cannot be included in outer capture set {p} of variable y
    |
    | longer explanation available when compiling with `-explain`

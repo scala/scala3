@@ -278,7 +278,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               paramInfos = tp.paramInfos.mapConserve(_.dropAllRetains.bounds),
               resType = this(tp.resType))
           case _ =>
-            mapOver(tp)
+            mapFollowingAliases(tp)
         addVar(addCaptureRefinements(normalizeCaptures(tp1)), ctx.owner)
       end apply
     end mapInferred
@@ -364,7 +364,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             // Map references to capability classes C to C^
             if t.derivesFromCapability && !t.isSingleton && t.typeSymbol != defn.Caps_Exists
             then CapturingType(t, defn.universalCSImpliedByCapability, boxed = false)
-            else normalizeCaptures(mapOver(t))
+            else normalizeCaptures(mapFollowingAliases(t))
     end toCapturing
 
     def fail(msg: Message) =
@@ -821,7 +821,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     case tp @ OrType(tp1, tp2 @ CapturingType(parent2, refs2)) =>
       CapturingType(OrType(tp1, parent2, tp.isSoft), refs2, tp2.isBoxed)
     case tp @ AppliedType(tycon, args)
-    if !defn.isFunctionClass(tp.dealias.typeSymbol) =>
+    if !defn.isFunctionClass(tp.dealias.typeSymbol) && (tp.dealias eq tp) =>
       tp.derivedAppliedType(tycon, args.mapConserve(box))
     case tp: RealTypeBounds =>
       tp.derivedTypeBounds(tp.lo, box(tp.hi))
