@@ -29,7 +29,7 @@ on:
 # Cancels any in-progress runs within the same group identified by workflow name and GH reference (branch or tag) 
 # For example it would:
 # - terminate previous PR CI execution after pushing more changes to the same PR branch
-# - terminate previous on-push CI run after merging new PR to main  
+# - terminate previous on-push CI run after merging new PR to main 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
