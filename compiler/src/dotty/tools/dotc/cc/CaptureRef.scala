@@ -15,7 +15,9 @@ import compiletime.uninitialized
 import StdNames.nme
 
 /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs,
- *  as well as two kinds of AnnotatedTypes representing reach and maybe capabilities.
+ *  as well as three kinds of AnnotatedTypes representing readOnly, reach, and maybe capabilities.
+ *  If there are several annotations they come with an orderL
+ *  `*` first, `.rd` next, `?` last.
  */
 trait CaptureRef extends TypeProxy, ValueType:
   private var myCaptureSet: CaptureSet | Null = uninitialized
@@ -28,38 +30,68 @@ trait CaptureRef extends TypeProxy, ValueType:
   final def isTracked(using Context): Boolean =
     this.isTrackableRef && (isMaxCapability || !captureSetOfInfo.isAlwaysEmpty)
 
-  /** Is this a reach reference of the form `x*`? */
-  final def isReach(using Context): Boolean = this match
-    case AnnotatedType(_, annot) => annot.symbol == defn.ReachCapabilityAnnot
-    case _ => false
-
   /** Is this a maybe reference of the form `x?`? */
-  final def isMaybe(using Context): Boolean = this match
-    case AnnotatedType(_, annot) => annot.symbol == defn.MaybeCapabilityAnnot
-    case _ => false
+  final def isMaybe(using Context): Boolean = this ne stripMaybe
 
-  final def stripReach(using Context): CaptureRef =
-    if isReach then
-      val AnnotatedType(parent: CaptureRef, _) = this: @unchecked
-      parent
-    else this
+  /** Is this a read-only reference of the form `x.rd` or a capture set variable
+   *  with only read-ony references in its upper bound?
+   */
+  final def isReadOnly(using Context): Boolean = this match
+    case tp: TypeRef => tp.captureSetOfInfo.isReadOnly
+    case _ => this ne stripReadOnly
 
-  final def stripMaybe(using Context): CaptureRef =
-    if isMaybe then
-      val AnnotatedType(parent: CaptureRef, _) = this: @unchecked
-      parent
-    else this
+  /** Is this a reach reference of the form `x*`? */
+  final def isReach(using Context): Boolean = this ne stripReach
+
+  final def stripMaybe(using Context): CaptureRef = this match
+    case AnnotatedType(tp1: CaptureRef, annot) if annot.symbol == defn.MaybeCapabilityAnnot =>
+      tp1
+    case _ =>
+      this
+
+  final def stripReadOnly(using Context): CaptureRef = this match
+    case tp @ AnnotatedType(tp1: CaptureRef, annot) =>
+      val sym = annot.symbol
+      if sym == defn.ReadOnlyCapabilityAnnot then
+        tp1
+      else if sym == defn.MaybeCapabilityAnnot then
+        tp.derivedAnnotatedType(tp1.stripReadOnly, annot)
+      else
+        this
+    case _ =>
+      this
+
+  final def stripReach(using Context): CaptureRef = this match
+    case tp @ AnnotatedType(tp1: CaptureRef, annot) =>
+      val sym = annot.symbol
+      if sym == defn.ReachCapabilityAnnot then
+        tp1
+      else if sym == defn.ReadOnlyCapabilityAnnot || sym == defn.MaybeCapabilityAnnot then
+        tp.derivedAnnotatedType(tp1.stripReach, annot)
+      else
+        this
+    case _ =>
+      this
 
   /** Is this reference the generic root capability `cap` ? */
-  final def isRootCapability(using Context): Boolean = this match
+  final def isCap(using Context): Boolean = this match
     case tp: TermRef => tp.name == nme.CAPTURE_ROOT && tp.symbol == defn.captureRoot
     case _ => false
 
+  /** Is this reference one the generic root capabilities `cap` or `cap.rd` ? */
+  final def isRootCapability(using Context): Boolean = this match
+    case ReadOnlyCapability(tp1) => tp1.isCap
+    case _ => isCap
+
   /** Is this reference capability that does not derive from another capability ? */
   final def isMaxCapability(using Context): Boolean = this match
-    case tp: TermRef => tp.isRootCapability || tp.info.derivesFrom(defn.Caps_Exists)
+    case tp: TermRef => tp.isCap || tp.info.derivesFrom(defn.Caps_Exists)
     case tp: TermParamRef => tp.underlying.derivesFrom(defn.Caps_Exists)
+    case ReadOnlyCapability(tp1) => tp1.isMaxCapability
     case _ => false
+
+  final def isExclusive(using Context): Boolean =
+    !isReadOnly && (isMaxCapability || captureSetOfInfo.isExclusive)
 
   // With the support of pathes, we don't need to normalize the `TermRef`s anymore.
   // /** Normalize reference so that it can be compared with `eq` for equality */
@@ -130,7 +162,7 @@ trait CaptureRef extends TypeProxy, ValueType:
       case _ => false
 
     (this eq y)
-    || this.isRootCapability
+    || this.isCap
     || y.match
         case y: TermRef if !y.isRootCapability =>
             y.prefix.match
@@ -150,6 +182,7 @@ trait CaptureRef extends TypeProxy, ValueType:
               case _ => false
           || viaInfo(y.info)(subsumingRefs(this, _))
         case MaybeCapability(y1) => this.stripMaybe.subsumes(y1)
+        case ReadOnlyCapability(y1) => this.stripReadOnly.subsumes(y1)
         case y: TypeRef if y.derivesFrom(defn.Caps_CapSet) =>
           // The upper and lower bounds don't have to be in the form of `CapSet^{...}`.
           // They can be other capture set variables, which are bounded by `CapSet`,
