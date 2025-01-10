@@ -1393,7 +1393,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           cpy.Assign(tree)(lhsCore, typed(tree.rhs, lhs1.tpe.widen)).withType(defn.UnitType)
 
         def canAssign(sym: Symbol) =
-          sym.is(Mutable, butNot = Accessor) ||
+          sym.isMutableVar ||
           ctx.owner.isPrimaryConstructor && !sym.is(Method) && sym.maybeOwner == ctx.owner.owner ||
             // allow assignments from the primary constructor to class fields
           ctx.owner.name.is(TraitSetterName) || ctx.owner.isStaticConstructor
