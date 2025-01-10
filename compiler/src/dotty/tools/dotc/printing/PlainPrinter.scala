@@ -15,7 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
-import cc.{CapturingType, RetainingType, CaptureSet, ReachCapability, MaybeCapability, isBoxed, retainedElems, isRetainsLike}
+import cc.*
 
 class PlainPrinter(_ctx: Context) extends Printer {
 
@@ -297,7 +297,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
         else if (annot.symbol == defn.IntoAnnot || annot.symbol == defn.IntoParamAnnot)
             && !printDebug
         then atPrec(GlobalPrec)( Str("into ") ~ toText(tpe) )
-        else toTextLocal(tpe) ~ " " ~ toText(annot)
+        else if annot.isInstanceOf[CaptureAnnotation] then
+          toTextLocal(tpe) ~ "^" ~ toText(annot)
+        else
+          toTextLocal(tpe) ~ " " ~ toText(annot)
       case FlexibleType(_, tpe) =>
         "(" ~ toText(tpe) ~ ")?"
       case tp: TypeVar =>

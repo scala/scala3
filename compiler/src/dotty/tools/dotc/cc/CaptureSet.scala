@@ -508,8 +508,13 @@ object CaptureSet:
           res.addToTrace(this)
 
     private def levelOK(elem: CaptureRef)(using Context): Boolean =
-      if elem.isRootCapability || Existential.isExistentialVar(elem) then
+      if elem.isRootCapability then
         !noUniversal
+      else if Existential.isExistentialVar(elem) then
+        !noUniversal
+        && !TypeComparer.isOpenedExistential(elem)
+          // Opened existentials on the left cannot be added to nested capture sets on the right
+          // of a comparison. Test case is open-existential.scala.
       else elem match
         case elem: TermRef if level.isDefined =>
           elem.prefix match
@@ -1065,13 +1070,12 @@ object CaptureSet:
 
   /** The capture set of the type underlying CaptureRef */
   def ofInfo(ref: CaptureRef)(using Context): CaptureSet = ref match
-    case ref: (TermRef | TermParamRef) if ref.isMaxCapability =>
-      if ref.isTrackableRef then ref.singletonCaptureSet
-      else CaptureSet.universal
     case ReachCapability(ref1) =>
       ref1.widen.deepCaptureSet(includeTypevars = true)
         .showing(i"Deep capture set of $ref: ${ref1.widen} = ${result}", capt)
-    case _ => ofType(ref.underlying, followResult = true)
+    case _ =>
+      if ref.isMaxCapability then ref.singletonCaptureSet
+      else ofType(ref.underlying, followResult = true)
 
   /** Capture set of a type */
   def ofType(tp: Type, followResult: Boolean)(using Context): CaptureSet =

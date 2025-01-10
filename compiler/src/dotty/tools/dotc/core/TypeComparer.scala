@@ -2845,6 +2845,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         false
     Existential.isExistentialVar(tp1) && canInstantiateWith(assocExistentials)
 
+  def isOpenedExistential(ref: CaptureRef)(using Context): Boolean =
+    openedExistentials.contains(ref)
+
   /** bi-map taking existentials to the left of a comparison to matching
    *  existentials on the right. This is not a bijection. However
    *  we have `forwards(backwards(bv)) == bv` for an existentially bound `bv`.
@@ -3476,6 +3479,9 @@ object TypeComparer {
 
   def subsumesExistentially(tp1: TermParamRef, tp2: CaptureRef)(using Context) =
     comparing(_.subsumesExistentially(tp1, tp2))
+
+  def isOpenedExistential(ref: CaptureRef)(using Context) =
+    comparing(_.isOpenedExistential(ref))
 }
 
 object MatchReducer:

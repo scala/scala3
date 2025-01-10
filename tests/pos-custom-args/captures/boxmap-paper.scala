@@ -1,7 +1,13 @@
 
-type Cell[+T] = [K] -> (T => K) -> K
+type Cell_orig[+T] = [K] -> (T => K) -> K
 
-def cell[T](x: T): Cell[T] =
+def cell_orig[T](x: T): Cell_orig[T] =
+  [K] => (k: T => K) => k(x)
+
+class Cell[+T](val value: [K] -> (T => K) -> K):
+  def apply[K]: (T => K) -> K = value[K]
+
+def cell[T](x: T): Cell[T] = Cell:
   [K] => (k: T => K) => k(x)
 
 def get[T](c: Cell[T]): T = c[T](identity)
@@ -21,6 +27,10 @@ trait IO:
 def test(io: IO^) =
 
   val loggedOne: () ->{io} Int = () => { io.print("1"); 1 }
+
+  // We have a leakage of io because type arguments to alias type `Cell` are not boxed.
+  val c_orig: Cell[() ->{io} Int]^{io}
+      = cell[() ->{io} Int](loggedOne)
 
   val c: Cell[() ->{io} Int]
       = cell[() ->{io} Int](loggedOne)

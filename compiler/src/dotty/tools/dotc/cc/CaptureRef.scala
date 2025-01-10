@@ -83,7 +83,7 @@ trait CaptureRef extends TypeProxy, ValueType:
     else
       myCaptureSet = CaptureSet.Pending
       val computed = CaptureSet.ofInfo(this)
-      if !isCaptureChecking || underlying.isProvisional then
+      if !isCaptureChecking || ctx.mode.is(Mode.IgnoreCaptures) || underlying.isProvisional then
         myCaptureSet = null
       else
         myCaptureSet = computed
@@ -124,7 +124,7 @@ trait CaptureRef extends TypeProxy, ValueType:
     (this eq y)
     || this.isRootCapability
     || y.match
-        case y: TermRef =>
+        case y: TermRef if !y.isRootCapability =>
             y.prefix.match
               case ypre: CaptureRef =>
                 this.subsumes(ypre)
