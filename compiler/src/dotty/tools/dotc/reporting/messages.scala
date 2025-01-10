@@ -343,7 +343,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
     val (found2, expected2) =
       if (found1 frozen_<:< expected1) || reported.fbounded then (found, expected)
       else (found1, expected1)
-    val (foundStr, expectedStr) = Formatting.typeDiff(found2, expected2)
+    val (foundStr, expectedStr) = Formatting.typeDiff(found2.normalized, expected2.normalized)
     i"""|Found:    $foundStr
         |Required: $expectedStr${reported.notes}"""
   end msg
