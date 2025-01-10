@@ -1,0 +1,173 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+macro-suspend/Macro.scala
+<empty>
+Macro
+Object
+<empty>.Macro
+decorateQuotes
+195
+215
+5
+unpickleExprV2
+Apply
+false
+0
+false
+">>> " + $s + " <<<"
+
+1
+macro-suspend/Macro.scala
+<empty>
+Macro
+Object
+<empty>.Macro
+$anonfun
+205
+206
+5
+apply
+Apply
+false
+0
+false
+s
+
+2
+macro-suspend/Macro.scala
+<empty>
+Macro
+Object
+<empty>.Macro
+decorateQuotes
+126
+144
+5
+decorateQuotes
+DefDef
+false
+0
+false
+def decorateQuotes
+
+3
+macro-suspend/Macro.scala
+<empty>
+Greeting
+Object
+<empty>.Greeting
+greet
+238
+247
+8
+greet
+DefDef
+false
+0
+false
+def greet
+
+4
+macro-suspend/Test.scala
+<empty>
+Test
+Object
+<empty>.Test
+main
+57
+98
+3
+println
+Apply
+false
+0
+false
+println(Macro.decorate(Greeting.greet()))
+
+5
+macro-suspend/Test.scala
+<empty>
+Test
+Object
+<empty>.Test
+main
+65
+97
+3
++
+Apply
+false
+0
+false
+Macro.decorate(Greeting.greet())
+
+6
+macro-suspend/Test.scala
+<empty>
+Test
+Object
+<empty>.Test
+main
+65
+97
+3
++
+Apply
+false
+0
+false
+Macro.decorate(Greeting.greet())
+
+7
+macro-suspend/Test.scala
+<empty>
+Test
+Object
+<empty>.Test
+main
+80
+96
+3
+greet
+Apply
+false
+0
+false
+Greeting.greet()
+
+8
+macro-suspend/Test.scala
+<empty>
+Test
+Object
+<empty>.Test
+main
+15
+23
+2
+main
+DefDef
+false
+0
+false
+def main
+
