@@ -1143,8 +1143,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 tl => otherTycon.appliedTo(bodyArgs(tl)))
             else
               otherTycon
-          (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon)) &&
-          directionalRecur(adaptedTycon.appliedTo(args), other)
+          rollbackConstraintsUnless:
+            (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon))
+              && directionalRecur(adaptedTycon.appliedTo(args), other)
         }
       }
     end compareAppliedTypeParamRef
