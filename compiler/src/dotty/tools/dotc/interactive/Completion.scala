@@ -543,7 +543,7 @@ object Completion:
             .groupByName
 
       val qualTpe = qual.typeOpt
-      if qualTpe.derivesFromNamedTuple then
+      if qualTpe.isNamedTupleType then
         namedTupleCompletionsFromType(qualTpe)
       else if qualTpe.derivesFrom(defn.SelectableClass) then
         val pre = if !TypeOps.isLegalPrefix(qualTpe) then Types.SkolemType(qualTpe) else qualTpe
