@@ -301,6 +301,7 @@ object Build {
 
     // Avoid various sbt craziness involving classloaders and parallelism
     run / fork := true,
+    run / connectInput := true,
     Test / fork := true,
     Test / parallelExecution := false,
 
