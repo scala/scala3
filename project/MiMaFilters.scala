@@ -13,6 +13,7 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.quotedPatternsWithPolymorphicFunctions"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$quotedPatternsWithPolymorphicFunctions$"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.runtime.Patterns.higherOrderHoleWithTypes"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.readOnlyCapability"),
       ),
 
       // Additions since last LTS

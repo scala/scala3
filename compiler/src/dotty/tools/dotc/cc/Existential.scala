@@ -4,7 +4,6 @@ package cc
 
 import core.*
 import Types.*, Symbols.*, Contexts.*, Annotations.*, Flags.*
-import CaptureSet.IdempotentCaptRefMap
 import StdNames.nme
 import ast.tpd.*
 import Decorators.*
@@ -303,7 +302,7 @@ object Existential:
 
     class Wrap(boundVar: TermParamRef) extends CapMap:
       def apply(t: Type) = t match
-        case t: TermRef if t.isRootCapability =>
+        case t: TermRef if t.isCap =>
           if variance > 0 then
             needsWrap = true
             boundVar
