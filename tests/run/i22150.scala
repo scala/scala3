@@ -10,8 +10,8 @@ val directionsNT = IArray(
 val IArray(UpNT @ _, _, _, _) = directionsNT
 
 object NT:
-//  def foo[T <: (x: Int, y: String)](tup: T): Int = // TODO 3: this fails with similar error to https://github.com/scala/scala3/issues/22324 not sure if related?
-//    tup.x
+  def foo[T <: (x: Int, y: String)](tup: T): Int =
+    tup.x
 
   def union[T](tup: (x: Int, y: String) | (x: Int, y: String)): Int =
     tup.x
