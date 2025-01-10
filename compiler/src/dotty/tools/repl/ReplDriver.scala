@@ -537,21 +537,23 @@ class ReplDriver(settings: Array[String],
         val existingClass = entries.filter(_.ext.isClass).map(classNameOf).find(alreadyDefined)
         if (existingClass.nonEmpty)
           out.println(s"The path '$f' cannot be loaded, it contains a classfile that already exists on the classpath: ${existingClass.get}")
+          state
         else
-//          val cp = state.context.platform.classPath(using state.context).asClassPathString
+          val cp = state.context.platform.classPath(using state.context).asClassPathString
 //          println(s"CURRENT CP STRING: $cp")
-//          val newCP = s"$cp${JFile.pathSeparator}$path"
-//          println(s"UPDATED CP: $newCP")
+          val newCP = s"$cp${JFile.pathSeparator}$path"
+          println(s"UPDATED CP: $newCP")
 
           // add to compiler class path
-          println(s"INIT state classPath = ${state.context.platform.classPath(using state.context).asClassPathString}")
-          val cpCP = ClassPathFactory.newClassPath(jarFile)(using state.context)
-          state.context.platform.addToClassPath(cpCP)
-          println(s"classPath after add = ${state.context.platform.classPath(using state.context).asClassPathString}")
+//          println(s"INIT state classPath = ${state.context.platform.classPath(using state.context).asClassPathString}")
+//          val cpCP = ClassPathFactory.newClassPath(jarFile)(using state.context)
+//          state.context.platform.addToClassPath(cpCP)
+//          println(s"classPath after add = ${state.context.platform.classPath(using state.context).asClassPathString}")
 
-          // create initial context
-          rootCtx = setupRootCtx(Array(), rootCtx)
-          state.copy(context = rootCtx)
+          // recreate initial context
+          rootCtx = setupRootCtx(Array(), rootCtx.fresh.setSetting(rootCtx.settings.classpath, newCP))
+          val s = state.copy(context = rootCtx)
+          println(s"after setupRootCtx classPath = ${s.context.platform.classPath(using s.context).asClassPathString}")
 
 
           // new class loader
@@ -562,13 +564,11 @@ class ReplDriver(settings: Array[String],
 //          println(s"\nclass name = ${cpCP.className}")
 //          rendering.myClassLoader = new AbstractFileClassLoader(state.context.settings.outputDir.default, newCL)
 //          out.println(s"Added '$path' to classpath.")
-          println(s"after setupRootCtx classPath = ${state.context.platform.classPath(using state.context).asClassPathString}")
-        state
+          s
 
     case KindOf(expr) =>
       out.println(s"""The :kind command is not currently supported.""")
       state
-
     case TypeOf(expr) =>
       expr match {
         case "" => out.println(s":type <expression>")
