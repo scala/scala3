@@ -117,7 +117,7 @@ extends TypeError:
     em"""Recursion limit exceeded.
         |Maybe there is an illegal cyclic reference?
         |If that's not the case, you could also try to increase the stacksize using the -Xss JVM option.
-        |For the unprocessed stack trace, compile with -Xno-decode-stacktraces.
+        |For the unprocessed stack trace, compile with -Xno-enrich-error-messages.
         |A recurring operation is (inner to outer):
         |${opsString(mostCommon).stripMargin}"""
 
@@ -137,7 +137,7 @@ object handleRecursive:
     e
 
   def apply(op: String, details: => String, exc: Throwable, weight: Int = 1)(using Context): Nothing =
-    if ctx.settings.XnoDecodeStacktraces.value then
+    if ctx.settings.XnoEnrichErrorMessages.value then
       throw exc
     else exc match
       case _: RecursionOverflow =>

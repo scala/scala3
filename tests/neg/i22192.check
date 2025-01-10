@@ -1,0 +1,30 @@
+-- Error: tests/neg/i22192.scala:6:12 ----------------------------------------------------------------------------------
+6 |  case City(iam = n, confused = p) => // error // error
+  |            ^^^^^^^
+  |            No element named `iam` is defined in selector type City
+-- Error: tests/neg/i22192.scala:6:21 ----------------------------------------------------------------------------------
+6 |  case City(iam = n, confused = p) => // error // error
+  |                     ^^^^^^^^^^^^
+  |                     No element named `confused` is defined in selector type City
+-- [E006] Not Found Error: tests/neg/i22192.scala:7:7 ------------------------------------------------------------------
+7 |    s"$n has a population of $p" // error // error
+  |       ^
+  |       Not found: n
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i22192.scala:7:30 -----------------------------------------------------------------
+7 |    s"$n has a population of $p" // error // error
+  |                              ^
+  |                              Not found: p
+  |
+  | longer explanation available when compiling with `-explain`
+-- Error: tests/neg/i22192.scala:10:12 ---------------------------------------------------------------------------------
+10 |  case Some(iam = n) => // error
+   |            ^^^^^^^
+   |            No element named `iam` is defined in selector type City
+-- [E006] Not Found Error: tests/neg/i22192.scala:11:4 -----------------------------------------------------------------
+11 |    n // error
+   |    ^
+   |    Not found: n
+   |
+   | longer explanation available when compiling with `-explain`

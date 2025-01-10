@@ -1,4 +1,4 @@
--- [E007] Type Mismatch Error: tests/neg/i19470.scala:9:12 -------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i19470.scala:9:12 ----------------------------------------
 9 |    List(foo(f())) // error
   |         ^^^^^^^^
   |         Found:    Inv[box IO^{f?}]

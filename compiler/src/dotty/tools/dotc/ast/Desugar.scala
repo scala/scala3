@@ -694,15 +694,15 @@ object desugar {
     val originalTparams = constr1.leadingTypeParams
     val originalVparamss = asTermOnly(constr1.trailingParamss)
     lazy val derivedEnumParams = enumClass.typeParams.map(derivedTypeParamWithVariance)
-    val impliedTparams =
-      if (isEnumCase) {
+    val enumTParams =
+      if isEnumCase then
         val tparamReferenced = typeParamIsReferenced(
-            enumClass.typeParams, originalTparams, originalVparamss, parents)
-        if (originalTparams.isEmpty && (parents.isEmpty || tparamReferenced))
+          enumClass.typeParams, originalTparams, originalVparamss, parents)
+        if originalTparams.isEmpty && (parents.isEmpty || tparamReferenced) then
           derivedEnumParams.map(tdef => tdef.withFlags(tdef.mods.flags | PrivateLocal))
-        else originalTparams
-      }
-      else originalTparams
+        else Nil
+      else Nil
+    val impliedTparams = enumTParams ++ originalTparams
 
     if mods.is(Trait) then
       for vparams <- originalVparamss; vparam <- vparams do
@@ -735,6 +735,11 @@ object desugar {
         derived.withAnnotations(Nil)
 
     val constr = cpy.DefDef(constr1)(paramss = joinParams(constrTparams, constrVparamss))
+    if enumTParams.nonEmpty then
+      defaultGetters = defaultGetters.map:
+        case ddef: DefDef =>
+          val tParams = enumTParams.map(tparam => toMethParam(tparam, KeepAnnotations.All))
+          cpy.DefDef(ddef)(paramss = joinParams(tParams, ddef.trailingParamss))
 
     val (normalizedBody, enumCases, enumCompanionRef) = {
       // Add constructor type parameters and evidence implicit parameters
@@ -1081,12 +1086,13 @@ object desugar {
       if mods.isAllOf(Given | Inline | Transparent) then
         report.error("inline given instances cannot be trasparent", cdef)
       var classMods = if mods.is(Given) then mods &~ (Inline | Transparent) | Synthetic else mods
-      if vparamAccessors.exists(_.mods.is(Tracked)) then
+      val newBody = tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths
+      if newBody.collect { case d: ValOrDefDef => d }.exists(_.mods.is(Tracked)) then
         classMods |= Dependent
       cpy.TypeDef(cdef: TypeDef)(
         name = className,
         rhs = cpy.Template(impl)(constr, parents1, clsDerived, self1,
-          tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths)
+          newBody)
       ).withMods(classMods)
     }
 
@@ -1556,6 +1562,12 @@ object desugar {
       rhsOK(rhs)
   }
 
+  val legalTracked: Context ?=> MemberDefTest = {
+    case valdef @ ValDef(_, _, _) =>
+      val sym = valdef.symbol
+      !ctx.owner.exists || ctx.owner.isClass || ctx.owner.is(Case) || ctx.owner.isConstructor || valdef.mods.is(Param) || valdef.mods.is(ParamAccessor)
+  }
+
   def checkOpaqueAlias(tree: MemberDef)(using Context): MemberDef =
     def check(rhs: Tree): MemberDef = rhs match
       case bounds: TypeBoundsTree if bounds.alias.isEmpty =>
@@ -1581,6 +1593,7 @@ object desugar {
         } else tested
       tested = checkOpaqueAlias(tested)
       tested = checkApplicable(Opaque, legalOpaque)
+      tested = checkApplicable(Tracked, legalTracked)
       tested
     case _ =>
       tree

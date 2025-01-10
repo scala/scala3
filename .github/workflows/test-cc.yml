@@ -26,5 +26,6 @@ jobs:
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
+      - uses: sbt/setup-sbt@v1
       - name: Test with Scala 2 library with CC TASTy
         run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryCCTasty ;scala3-bootstrapped/test"

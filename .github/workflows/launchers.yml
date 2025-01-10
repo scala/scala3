@@ -20,6 +20,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
       - name: Build and test launcher command
         run: ./project/scripts/native-integration/bashTests
         env:
@@ -37,9 +38,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'sbt'
-      # https://github.com/actions/runner-images/issues/9369
-      - name: Install sbt
-        run: brew install sbt
+      - uses: sbt/setup-sbt@v1
       - name: Build and test launcher command
         run: ./project/scripts/native-integration/bashTests
         env:
@@ -58,9 +57,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'sbt'
-      # https://github.com/actions/runner-images/issues/9369
-      - name: Install sbt
-        run: brew install sbt
+      - uses: sbt/setup-sbt@v1
       - name: Build and test launcher command
         run: ./project/scripts/native-integration/bashTests
         env:
@@ -79,9 +76,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'sbt'
-      # https://github.com/actions/runner-images/issues/9369
-      - name: Install sbt
-        run: brew install sbt
+      - uses: sbt/setup-sbt@v1
       - name: Build and test launcher command
         run: ./project/scripts/native-integration/bashTests
         env:
@@ -100,6 +95,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
       - name: Build the launcher command
         run: sbt "dist-win-x86_64/Universal/stage"
       - name: Run the launcher command tests

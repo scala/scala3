@@ -2504,12 +2504,15 @@ class ExtensionNullifiedByMember(method: Symbol, target: Symbol)(using Context)
   extends Message(ExtensionNullifiedByMemberID):
   def kind = MessageKind.PotentialIssue
   def msg(using Context) =
-    i"""Extension method ${hl(method.name.toString)} will never be selected
-       |because ${hl(target.name.toString)} already has a member with the same name and compatible parameter types."""
+    val targetName = hl(target.name.toString)
+    i"""Extension method ${hl(method.name.toString)} will never be selected from type $targetName
+       |because $targetName already has a member with the same name and compatible parameter types."""
   def explain(using Context) =
-    i"""An extension method can be invoked as a regular method, but if that is intended,
+    i"""Although extensions can be overloaded, they do not overload existing member methods.
+       |An extension method can be invoked as a regular method, but if that is the intended usage,
        |it should not be defined as an extension.
-       |Although extensions can be overloaded, they do not overload existing member methods."""
+       |
+       |The extension may be invoked as though selected from an arbitrary type if conversions are in play."""
 
 class TraitCompanionWithMutableStatic()(using Context)
   extends SyntaxMsg(TraitCompanionWithMutableStaticID) {
@@ -3361,3 +3364,47 @@ class DeprecatedInfixNamedArgumentSyntax()(using Context) extends SyntaxMsg(Depr
         + Message.rewriteNotice("This", version = SourceVersion.`3.6-migration`)
 
   def explain(using Context) = ""
+
+class GivenSearchPriorityWarning(
+    pt: Type,
+    cmp: Int,
+    prev: Int,
+    winner: TermRef,
+    loser: TermRef,
+    isLastOldVersion: Boolean
+)(using Context) extends Message(GivenSearchPriorityID):
+  def kind = MessageKind.PotentialIssue
+  def choice(nth: String, c: Int) =
+    if c == 0 then "none - it's ambiguous"
+    else s"the $nth alternative"
+  val (change, whichChoice) =
+    if isLastOldVersion
+    then ("will change in the future release", "Current choice ")
+    else ("has changed",                       "Previous choice")
+  def warningMessage: String =
+    i"""Given search preference for $pt between alternatives
+       |  ${loser}
+       |and
+       |  ${winner}
+       |$change.
+       |$whichChoice       : ${choice("first", prev)}
+       |Choice from Scala 3.7 : ${choice("second", cmp)}"""
+  def migrationHints: String =
+    i"""Suppress this warning by choosing -source 3.5, -source 3.7, or
+       |by using @annotation.nowarn("id=205")"""
+  def ambiguousNote: String =
+    i"""
+       |
+       |Note: $warningMessage"""
+  def msg(using Context) =
+    i"""$warningMessage
+       |
+       |$migrationHints"""
+
+  def explain(using Context) = ""
+
+final class EnumMayNotBeValueClasses(sym: Symbol)(using Context) extends SyntaxMsg(EnumMayNotBeValueClassesID):
+    def msg(using Context): String = i"$sym may not be a value class"
+
+    def explain(using Context) = ""
+end EnumMayNotBeValueClasses
