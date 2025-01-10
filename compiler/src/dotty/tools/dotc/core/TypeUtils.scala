@@ -127,21 +127,22 @@ class TypeUtils:
         case Some(types) => TypeOps.nestedPairs(types)
         case None => throw new AssertionError("not a tuple")
 
-    def namedTupleElementTypesUpTo(bound: Int, derived: Boolean)(using Context): List[(TermName, Type)] =
-      self.normalized.dealias match
-        // for desugaring, ignore derived types to avoid infinite recursion in NamedTuple.unapply
+    def namedTupleElementTypesUpTo(bound: Int, derived: Boolean, normalize: Boolean = true)(using Context): List[(TermName, Type)] =
+      (if normalize then self.normalized else self).dealias match
+        // for desugaring and printer, ignore derived types to avoid infinite recursion in NamedTuple.unapply
         case AppliedType(tycon, nmes :: vals :: Nil) if !derived && tycon.typeSymbol == defn.NamedTupleTypeRef.symbol =>
-          val names = nmes.tupleElementTypesUpTo(bound).getOrElse(Nil).map(_.dealias).map:
+          val names = nmes.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil).map(_.dealias).map:
             case ConstantType(Constant(str: String)) => str.toTermName
             case t => throw TypeError(em"Malformed NamedTuple: names must be string types, but $t was found.")
-          val values = vals.tupleElementTypesUpTo(bound, true).getOrElse(Nil)
+          val values = vals.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil)
           names.zip(values)
+        case t if !derived => Nil
         // default cause, used for post-typing
-        case defn.NamedTuple(nmes, vals) if derived =>
-          val names = nmes.tupleElementTypesUpTo(bound).getOrElse(Nil).map(_.dealias).map:
+        case defn.NamedTuple(nmes, vals) =>
+          val names = nmes.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil).map(_.dealias).map:
             case ConstantType(Constant(str: String)) => str.toTermName
             case t => throw TypeError(em"Malformed NamedTuple: names must be string types, but $t was found.")
-          val values = vals.tupleElementTypesUpTo(bound, derived).getOrElse(Nil)
+          val values = vals.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil)
           names.zip(values)
         case t =>
           Nil
