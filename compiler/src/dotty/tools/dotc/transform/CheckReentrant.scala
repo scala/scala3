@@ -65,7 +65,7 @@ class CheckReentrant extends MiniPhase {
       scanning(cls) {
         for (sym <- cls.classInfo.decls)
           if (sym.isTerm && !sym.isSetter && !isIgnored(sym))
-            if (sym.is(Mutable)) {
+            if (sym.isMutableVarOrAccessor) {
               report.error(
                 em"""possible data race involving globally reachable ${sym.showLocated}: ${sym.info}
                     |  use -Ylog:checkReentrant+ to find out more about why the variable is reachable.""")
