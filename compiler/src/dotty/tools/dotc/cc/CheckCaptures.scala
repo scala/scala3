@@ -150,6 +150,7 @@ object CheckCaptures:
                   |is must be a type parameter or abstract type with a caps.CapSet upper bound.""",
               elem.srcPos)
         case ReachCapabilityApply(arg) => check(arg, elem.srcPos)
+        case ReadOnlyCapabilityApply(arg) => check(arg, elem.srcPos)
         case _ => check(elem, elem.srcPos)
 
   /** Under the sealed policy, report an error if some part of `tp` contains the
@@ -381,7 +382,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def markFree(sym: Symbol, pos: SrcPos)(using Context): Unit =
       markFree(sym, sym.termRef, pos)
 
-    def markFree(sym: Symbol, ref: TermRef, pos: SrcPos)(using Context): Unit =
+    def markFree(sym: Symbol, ref: CaptureRef, pos: SrcPos)(using Context): Unit =
       if sym.exists && ref.isTracked then markFree(ref.captureSet, pos)
 
     /** Make sure the (projected) `cs` is a subset of the capture sets of all enclosing
@@ -484,7 +485,8 @@ class CheckCaptures extends Recheck, SymTransformer:
     def includeCallCaptures(sym: Symbol, resType: Type, pos: SrcPos)(using Context): Unit = resType match
       case _: MethodOrPoly => // wait until method is fully applied
       case _ =>
-        if sym.exists && curEnv.isOpen then markFree(capturedVars(sym), pos)
+        if sym.exists then
+          if curEnv.isOpen then markFree(capturedVars(sym), pos)
 
     /** Under the sealed policy, disallow the root capability in type arguments.
      *  Type arguments come either from a TypeApply node or from an AppliedType
@@ -530,13 +532,18 @@ class CheckCaptures extends Recheck, SymTransformer:
         // expected type `pt`.
         // Example: If we have `x` and the expected type says we select that with `.a.b`,
         // we charge `x.a.b` instead of `x`.
-        def addSelects(ref: TermRef, pt: Type): TermRef = pt match
+        def addSelects(ref: TermRef, pt: Type): CaptureRef = pt match
           case pt: PathSelectionProto if ref.isTracked =>
-            // if `ref` is not tracked then the selection could not give anything new
-            // class SerializationProxy in stdlib-cc/../LazyListIterable.scala has an example where this matters.
-            addSelects(ref.select(pt.sym).asInstanceOf[TermRef], pt.pt)
+            if pt.sym.isReadOnlyMethod then
+              ref.readOnly
+            else
+              // if `ref` is not tracked then the selection could not give anything new
+              // class SerializationProxy in stdlib-cc/../LazyListIterable.scala has an example where this matters.
+              addSelects(ref.select(pt.sym).asInstanceOf[TermRef], pt.pt)
           case _ => ref
-        val pathRef = addSelects(sym.termRef, pt)
+        var pathRef: CaptureRef = addSelects(sym.termRef, pt)
+        if pathRef.derivesFrom(defn.Caps_Mutable) && pt.isValueType && !pt.isMutableType then
+          pathRef = pathRef.readOnly
         markFree(sym, pathRef, tree.srcPos)
       super.recheckIdent(tree, pt)
 
@@ -545,7 +552,9 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     override def selectionProto(tree: Select, pt: Type)(using Context): Type =
       val sym = tree.symbol
-      if !sym.isOneOf(UnstableValueFlags) && !sym.isStatic then PathSelectionProto(sym, pt)
+      if !sym.isOneOf(UnstableValueFlags) && !sym.isStatic
+          || sym.isReadOnlyMethod
+      then PathSelectionProto(sym, pt)
       else super.selectionProto(tree, pt)
 
     /** A specialized implementation of the selection rule.
@@ -572,6 +581,12 @@ class CheckCaptures extends Recheck, SymTransformer:
             disambiguate(denot1).meet(disambiguate(denot2), qualType)
           }
         case _ => denot
+
+      if tree.symbol.isUpdateMethod && !qualType.captureSet.isExclusive then
+        report.error(
+            em"""cannot call update ${tree.symbol} from $qualType,
+                |since its capture set ${qualType.captureSet} is read-only""",
+            tree.srcPos)
 
       val selType = recheckSelection(tree, qualType, name, disambiguate)
       val selWiden = selType.widen
@@ -731,7 +746,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       def addParamArgRefinements(core: Type, initCs: CaptureSet): (Type, CaptureSet) =
         var refined: Type = core
         var allCaptures: CaptureSet =
-          if core.derivesFromCapability then defn.universalCSImpliedByCapability else initCs
+          if core.derivesFromMutable then CaptureSet.universal
+          else if core.derivesFromCapability then initCs ++ defn.universalCSImpliedByCapability
+          else initCs
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
           val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
           if !getter.is(Private) && getter.hasTrackedParts then
@@ -1105,6 +1122,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       if tree.isTerm && !pt.isBoxedCapturing && pt != LhsProto then
         markFree(res.boxedCaptureSet, tree.srcPos)
       res
+    end recheck
 
     /** Under the old unsealed policy: check that cap is ot unboxed */
     override def recheckFinish(tpe: Type, tree: Tree, pt: Type)(using Context): Type =
@@ -1427,6 +1445,25 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ => widened
       case _ => widened
 
+    /** If actual is a capturing type T^C extending Mutable, and expected is an
+     *  unboxed non-singleton value type not extending mutable, narrow the capture
+     *  set `C` to `ro(C)`.
+     *  The unboxed condition ensures that the expected is not a type variable
+     *  that's upper bounded by a read-only type. In this case it would not be sound
+     *  to narrow to the read-only set, since that set can be propagated
+     *  by the type variable instantiatiin.
+     */
+    private def improveReadOnly(actual: Type, expected: Type)(using Context): Type = actual match
+      case actual @ CapturingType(parent, refs)
+      if parent.derivesFrom(defn.Caps_Mutable)
+          && expected.isValueType
+          && !expected.isMutableType
+          && !expected.isSingleton
+          && !expected.isBoxedCapturing =>
+        actual.derivedCapturingType(parent, refs.readOnly)
+      case _ =>
+        actual
+
     /** Adapt `actual` type to `expected` type. This involves:
      *   - narrow toplevel captures of `x`'s underlying type to `{x}` according to CC's VAR rule
      *   - narrow nested captures of `x`'s underlying type to `{x*}`
@@ -1436,12 +1473,14 @@ class CheckCaptures extends Recheck, SymTransformer:
       if expected == LhsProto || expected.isSingleton && actual.isSingleton then
         actual
       else
-        val widened = improveCaptures(actual.widen.dealiasKeepAnnots, actual)
+        val improvedVAR = improveCaptures(actual.widen.dealiasKeepAnnots, actual)
+        val improvedRO = improveReadOnly(improvedVAR, expected)
         val adapted = adaptBoxed(
-            widened.withReachCaptures(actual), expected, pos,
+            improvedRO.withReachCaptures(actual), expected, pos,
             covariant = true, alwaysConst = false, boxErrors)
-        if adapted eq widened then actual
-        else adapted.showing(i"adapt boxed $actual vs $expected = $adapted", capt)
+        if adapted eq improvedVAR // no .rd improvement, no box-adaptation
+        then actual               // might as well use actual instead of improved widened
+        else adapted.showing(i"adapt $actual vs $expected = $adapted", capt)
     end adapt
 
 // ---- Unit-level rechecking -------------------------------------------
@@ -1484,18 +1523,16 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         /** Check that overrides don't change the @use status of their parameters */
         override def additionalChecks(member: Symbol, other: Symbol)(using Context): Unit =
+          def fail(msg: String) =
+            report.error(
+              OverrideError(msg, self, member, other, self.memberInfo(member), self.memberInfo(other)),
+              if member.owner == clazz then member.srcPos else clazz.srcPos)
           for
             (params1, params2) <- member.rawParamss.lazyZip(other.rawParamss)
             (param1, param2) <- params1.lazyZip(params2)
           do
             if param1.hasAnnotation(defn.UseAnnot) != param2.hasAnnotation(defn.UseAnnot) then
-              report.error(
-                OverrideError(
-                    i"has a parameter ${param1.name} with different @use status than the corresponding parameter in the overridden definition",
-                    self, member, other, self.memberInfo(member), self.memberInfo(other)
-                  ),
-                if member.owner == clazz then member.srcPos else clazz.srcPos
-              )
+              fail(i"has a parameter ${param1.name} with different @use status than the corresponding parameter in the overridden definition")
       end OverridingPairsCheckerCC
 
       def traverse(t: Tree)(using Context) =
@@ -1526,7 +1563,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       def traverse(tree: Tree)(using Context) = tree match
         case id: Ident =>
           val sym = id.symbol
-          if sym.is(Mutable, butNot = Method) && sym.owner.isTerm then
+          if sym.isMutableVar && sym.owner.isTerm then
             val enclMeth = ctx.owner.enclosingMethod
             if sym.enclosingMethod != enclMeth then
               capturedBy(sym) = enclMeth
@@ -1601,7 +1638,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             selfType match
               case CapturingType(_, refs: CaptureSet.Var)
               if !root.isEffectivelySealed
-                  && !refs.elems.exists(_.isRootCapability)
+                  && !refs.isUniversal
                   && !root.matchesExplicitRefsInBaseClass(refs)
               =>
                 // Forbid inferred self types unless they are already implied by an explicit

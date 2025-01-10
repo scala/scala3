@@ -2174,7 +2174,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         val info2 = tp2.refinedInfo
         val isExpr2 = info2.isInstanceOf[ExprType]
         var info1 = m.info match
-          case info1: ValueType if isExpr2 || m.symbol.is(Mutable) =>
+          case info1: ValueType if isExpr2 || m.symbol.isMutableVarOrAccessor =>
             // OK: { val x: T } <: { def x: T }
             // OK: { var x: T } <: { def x: T }
             // NO: { var x: T } <: { val x: T }

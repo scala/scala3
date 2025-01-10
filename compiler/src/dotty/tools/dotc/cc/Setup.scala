@@ -443,7 +443,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       try
         transformTT(tpt,
             boxed =
-              sym.is(Mutable, butNot = Method)
+              sym.isMutableVar
                 && !ccConfig.useSealed
                 && !sym.hasAnnotation(defn.UncheckedCapturesAnnot),
               // Under the sealed policy, we disallow root capabilities in the type of mutable
@@ -735,7 +735,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case RetainingType(parent, refs) =>
         needsVariable(parent)
         && !refs.tpes.exists:
-            case ref: TermRef => ref.isRootCapability
+            case ref: TermRef => ref.isCap
             case _ => false
       case AnnotatedType(parent, _) =>
         needsVariable(parent)
