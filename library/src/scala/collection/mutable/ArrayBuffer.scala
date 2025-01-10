@@ -140,9 +140,9 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   def addOne(elem: A): this.type = {
     mutationCount += 1
     val newSize = size0 + 1
-    ensureSize(newSize)
+    if(array.length <= newSize - 1) ensureSize(newSize)
     size0 = newSize
-    this(size0 - 1) = elem
+    array(newSize - 1) = elem.asInstanceOf[AnyRef]
     this
   }
 
