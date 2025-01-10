@@ -83,10 +83,20 @@ sealed abstract class CaptureSet extends Showable:
 
   /** Does this capture set contain the root reference `cap` as element? */
   final def isUniversal(using Context) =
+    elems.exists(_.isCap)
+
+  /** Does this capture set contain a root reference `cap` or `cap.rd` as element? */
+  final def containsRootCapability(using Context) =
     elems.exists(_.isRootCapability)
 
   final def isUnboxable(using Context) =
     elems.exists(elem => elem.isRootCapability || Existential.isExistentialVar(elem))
+
+  final def isReadOnly(using Context): Boolean =
+    elems.forall(_.isReadOnly)
+
+  final def isExclusive(using Context): Boolean =
+    elems.exists(_.isExclusive)
 
   final def keepAlways: Boolean = this.isInstanceOf[EmptyWithProvenance]
 
@@ -310,6 +320,8 @@ sealed abstract class CaptureSet extends Showable:
 
   def maybe(using Context): CaptureSet = map(MaybeMap())
 
+  def readOnly(using Context): CaptureSet = map(ReadOnlyMap())
+
   /** Invoke handler if this set has (or later aquires) the root capability `cap` */
   def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
     if isUnboxable then handler()
@@ -372,6 +384,10 @@ object CaptureSet:
   /** The universal capture set `{cap}` */
   def universal(using Context): CaptureSet =
     defn.captureRoot.termRef.singletonCaptureSet
+
+  /** The shared capture set `{cap.rd}` */
+  def shared(using Context): CaptureSet =
+    defn.captureRoot.termRef.readOnly.singletonCaptureSet
 
   /** Used as a recursion brake */
   @sharable private[dotc] val Pending = Const(SimpleIdentitySet.empty)
@@ -526,6 +542,8 @@ object CaptureSet:
           elem.cls.ccLevel.nextInner <= level
         case ReachCapability(elem1) =>
           levelOK(elem1)
+        case ReadOnlyCapability(elem1) =>
+          levelOK(elem1)
         case MaybeCapability(elem1) =>
           levelOK(elem1)
         case _ =>
@@ -558,8 +576,10 @@ object CaptureSet:
     final def upperApprox(origin: CaptureSet)(using Context): CaptureSet =
       if isConst then
         this
-      else if elems.exists(_.isRootCapability) || computingApprox then
+      else if isUniversal || computingApprox then
         universal
+      else if containsRootCapability && isReadOnly then
+        shared
       else
         computingApprox = true
         try
@@ -1026,25 +1046,29 @@ object CaptureSet:
   /** The current VarState, as passed by the implicit context */
   def varState(using state: VarState): VarState = state
 
-  /** Maps `x` to `x?` */
-  private class MaybeMap(using Context) extends BiTypeMap:
+  /** A template for maps on capabilities where f(c) <: c and f(f(c)) = c */
+  private abstract class NarrowingCapabilityMap(using Context) extends BiTypeMap:
+    def mapRef(ref: CaptureRef): CaptureRef
 
     def apply(t: Type) = t match
-      case t: CaptureRef if t.isTrackableRef => t.maybe
+      case t: CaptureRef if t.isTrackableRef => mapRef(t)
       case _ => mapOver(t)
 
+    lazy val inverse = new BiTypeMap:
+      def apply(t: Type) = t // since f(c) <: c, this is the best inverse
+      def inverse = NarrowingCapabilityMap.this
+      override def toString = NarrowingCapabilityMap.this.toString ++ ".inverse"
+  end NarrowingCapabilityMap
+
+  /** Maps `x` to `x?` */
+  private class MaybeMap(using Context) extends NarrowingCapabilityMap:
+    def mapRef(ref: CaptureRef): CaptureRef = ref.maybe
     override def toString = "Maybe"
 
-    lazy val inverse = new BiTypeMap:
-
-      def apply(t: Type) = t match
-        case t: CaptureRef if t.isMaybe => t.stripMaybe
-        case t => mapOver(t)
-
-      def inverse = MaybeMap.this
-
-      override def toString = "Maybe.inverse"
-  end MaybeMap
+  /** Maps `x` to `x.rd` */
+  private class ReadOnlyMap(using Context) extends NarrowingCapabilityMap:
+    def mapRef(ref: CaptureRef): CaptureRef = ref.readOnly
+    override def toString = "ReadOnly"
 
   /* Not needed:
   def ofClass(cinfo: ClassInfo, argTypes: List[Type])(using Context): CaptureSet =
@@ -1073,6 +1097,8 @@ object CaptureSet:
     case ReachCapability(ref1) =>
       ref1.widen.deepCaptureSet(includeTypevars = true)
         .showing(i"Deep capture set of $ref: ${ref1.widen} = ${result}", capt)
+    case ReadOnlyCapability(ref1) =>
+      ref1.captureSetOfInfo.map(ReadOnlyMap())
     case _ =>
       if ref.isMaxCapability then ref.singletonCaptureSet
       else ofType(ref.underlying, followResult = true)
@@ -1197,9 +1223,10 @@ object CaptureSet:
       for CompareResult.LevelError(cs, ref) <- ccState.levelError.toList yield
         ccState.levelError = None
         if ref.isRootCapability then
+          def capStr = if ref.isReadOnly then "cap.rd" else "cap"
           i"""
             |
-            |Note that the universal capability `cap`
+            |Note that the universal capability `$capStr`
             |cannot be included in capture set $cs"""
         else
           val levelStr = ref match

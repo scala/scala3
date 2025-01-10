@@ -803,7 +803,7 @@ object CheckUnused:
 
       private def isUnsetVarDef(using Context): Boolean =
         val sym = memDef.symbol
-        sym.is(Mutable) && !setVars(sym)
+        sym.isMutableVarOrAccessor && !setVars(sym)
 
     extension (imp: tpd.Import)
       /** Enum generate an import for its cases (but outside them), which should be ignored */
