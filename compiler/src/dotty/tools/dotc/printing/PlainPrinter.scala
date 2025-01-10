@@ -167,8 +167,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
       toTextCaptureRef(ref.typeOpt)
     case TypeApply(fn, arg :: Nil) if fn.symbol == defn.Caps_capsOf =>
       toTextRetainedElem(arg)
-    case _ =>
-      toText(ref)
+    case ReachCapabilityApply(ref1) => toTextRetainedElem(ref1) ~ "*"
+    case ReadOnlyCapabilityApply(ref1) => toTextRetainedElem(ref1) ~ ".rd"
+    case _ => toText(ref)
 
   private def toTextRetainedElems[T <: Untyped](refs: List[Tree[T]]): Text =
     "{" ~ Text(refs.map(ref => toTextRetainedElem(ref)), ", ") ~ "}"
@@ -178,8 +179,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
    */
   protected def toTextCapturing(parent: Type, refsText: Text, boxText: Text): Text =
     changePrec(InfixPrec):
-      boxText ~ toTextLocal(parent) ~ "^"
-      ~ (refsText provided refsText != rootSetText)
+      boxText ~ toTextLocal(parent) ~ "^" ~ (refsText provided refsText != rootSetText)
 
   final protected def rootSetText = Str("{cap}") // TODO Use disambiguation
 
@@ -190,7 +190,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: TermRef
       if !tp.denotationIsCurrent
           && !homogenizedView // always print underlying when testing picklers
-          && !tp.isRootCapability
+          && !tp.isCap
           || tp.symbol.is(Module)
           || tp.symbol.name == nme.IMPORT =>
         toTextRef(tp) ~ ".type"
@@ -242,9 +242,16 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }.close
       case tp @ CapturingType(parent, refs) =>
         val boxText: Text = Str("box ") provided tp.isBoxed //&& ctx.settings.YccDebug.value
-        val showAsCap = refs.isUniversal && (refs.elems.size == 1 || !printDebug)
-        val refsText = if showAsCap then rootSetText else toTextCaptureSet(refs)
-        toTextCapturing(parent, refsText, boxText)
+        if parent.derivesFrom(defn.Caps_Capability)
+              && refs.containsRootCapability && refs.isReadOnly && !printDebug
+        then
+          toText(parent)
+        else
+          val refsText =
+            if refs.isUniversal && (refs.elems.size == 1 || !printDebug)
+            then rootSetText
+            else toTextCaptureSet(refs)
+          toTextCapturing(parent, refsText, boxText)
       case tp @ RetainingType(parent, refs) =>
         if Feature.ccEnabledSomewhere then
           val refsText = refs match
@@ -420,6 +427,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: TermRef if tp.symbol == defn.captureRoot => Str("cap")
       case tp: SingletonType => toTextRef(tp)
       case tp: (TypeRef | TypeParamRef) => toText(tp) ~ "^"
+      case ReadOnlyCapability(tp1) => toTextCaptureRef(tp1) ~ ".rd"
       case ReachCapability(tp1) => toTextCaptureRef(tp1) ~ "*"
       case MaybeCapability(tp1) => toTextCaptureRef(tp1) ~ "?"
       case tp => toText(tp)
@@ -536,7 +544,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else if sym.is(Param) then "parameter"
     else if sym.is(Given) then "given instance"
     else if (flags.is(Lazy)) "lazy value"
-    else if (flags.is(Mutable)) "variable"
+    else if (sym.isMutableVar) "variable"
     else if (sym.isClassConstructor && sym.isPrimaryConstructor) "primary constructor"
     else if (sym.isClassConstructor) "constructor"
     else if (sym.is(Method)) "method"
@@ -552,7 +560,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else if (flags.is(Module)) "object"
     else if (sym.isClass) "class"
     else if (sym.isType) "type"
-    else if (flags.is(Mutable)) "var"
+    else if (sym.isMutableVarOrAccessor) "var"
     else if (flags.is(Package)) "package"
     else if (sym.is(Method)) "def"
     else if (sym.isTerm && !flags.is(Param)) "val"
