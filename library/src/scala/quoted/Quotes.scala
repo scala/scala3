@@ -3852,10 +3852,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
        *        direct or indirect children of the reflection context's owner.
        */
-      // TODO: add flags and privateWithin
       @experimental def newClass(owner: Symbol, name: String, parents: List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr]): Symbol
 
-      /** Generates a new class symbol for a class with a public constructor.
+      /** Generates a new class symbol for a class with a public single term clause constructor.
        *
        * @param owner The owner of the class
        * @param name The name of the class
@@ -3866,7 +3865,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        * @param conParamNames constructor parameter names.
        * @param conParamTypes constructor parameter types.
        *
-       * Parameters can be obtained via classSymbol.memberField
+       *  Parameters assigned by the constructor can be obtained via `classSymbol.memberField`.
+       *  This symbol starts without an accompanying definition.
+       *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
+       *  this symbol to the ClassDef constructor.
+       *
+       *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
+       *        direct or indirect children of the reflection context's owner.
        */
       @experimental def newClass(
         owner: Symbol,
@@ -3879,24 +3884,32 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         conParamTypes: List[TypeRepr]
       ): Symbol
 
-      /**
-        *
-        *
-        * @param owner The owner of the class
-        * @param name The name of the class
-        * @param parents Function returning the parent classes of the class. The first parent must not be a trait
-        * Takes the constructed class symbol as an argument. Calling `cls.typeRef.asType` as part of this function will lead to cyclic reference errors.
-        * @param decls The member declarations of the class provided the symbol of this class
-        * @param selfType The self type of the class if it has one
-        * @param clsFlags extra flags with which the class symbol should be constructed
-        * @param clsPrivateWithin the symbol within which this new class symbol should be private. May be noSymbol
-        * @param conMethodType The MethodOrPoly type representing the type of the constructor.
-        * PolyType may only represent the first clause of the constructor.
-        * @param conFlags extra flags with which the constructor symbol should be constructed
-        * @param conPrivateWithin the symbol within which the constructor for this new class symbol should be private. May be noSymbol.
-        * @param conParamFlags extra flags with which the constructor parameter symbols should be constructed. Must match the shape of `conMethodType`.
-        *
-        */
+      /** Generates a new class symbol with a constructor of the shape signified by a passed PolyOrMethod parameter.
+       * TODO example with PolyType
+       *
+       * @param owner The owner of the class
+       * @param name The name of the class
+       * @param parents Function returning the parent classes of the class. The first parent must not be a trait
+       * Takes the constructed class symbol as an argument. Calling `cls.typeRef.asType` as part of this function will lead to cyclic reference errors.
+       * @param decls The member declarations of the class provided the symbol of this class
+       * @param selfType The self type of the class if it has one
+       * @param clsFlags extra flags with which the class symbol should be constructed
+       * @param clsPrivateWithin the symbol within which this new class symbol should be private. May be noSymbol
+       * @param conMethodType Function returning MethodOrPoly type representing the type of the constructor.
+       * Takes the result type as parameter which must be returned from the innermost MethodOrPoly.
+       * PolyType may only represent the first clause of the constructor.
+       * @param conFlags extra flags with which the constructor symbol should be constructed
+       * @param conPrivateWithin the symbol within which the constructor for this new class symbol should be private. May be noSymbol.
+       * @param conParamFlags extra flags with which the constructor parameter symbols should be constructed. Must match the shape of `conMethodType`.
+       *
+       *  Term and type parameters assigned by the constructor can be obtained via `classSymbol.memberField`/`classSymbol.memberType`.
+       *  This symbol starts without an accompanying definition.
+       *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
+       *  this symbol to the ClassDef constructor.
+       *
+       *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
+       *        direct or indirect children of the reflection context's owner.
+       */
       @experimental def newClass(
         owner: Symbol,
         name: String,
