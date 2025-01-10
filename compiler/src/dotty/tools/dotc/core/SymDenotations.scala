@@ -2753,7 +2753,7 @@ object SymDenotations {
     def complete(denot: SymDenotation)(using Context): Unit
 
     /** Is this a completer for an explicit type tree */
-    def isNonInfering: Boolean = false
+    def isExplicit: Boolean = false
 
     def apply(sym: Symbol): LazyType = this
     def apply(module: TermSymbol, modcls: ClassSymbol): LazyType = this

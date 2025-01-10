@@ -116,7 +116,7 @@ ClsParam  ::=  {Annotation} [{Modifier | ‘tracked’} (‘val’ | ‘var’)]
 
 The (soft) `tracked` modifier is only allowed for `val` parameters of classes.
 
-**Tracked inference**
+### Tracked inference
 
 In some cases `tracked` can be infered and doesn't have to be written
 explicitly. A common such case is when a class parameter is referenced in the
@@ -147,7 +147,7 @@ class Klass[A: {TC as tc}]
 
 Here, `tc` is a context bound with an associated type `T`, so `tracked` will be inferred for `tc`.
 
-**Discussion**
+### Discussion
 
 Since `tracked` is so useful, why not assume it by default? First, `tracked` makes sense only for `val` parameters. If a class parameter is not also a field declared using `val` then there's nothing to refine in the constructor result type. One could think of at least making all `val` parameters tracked by default, but that would be a backwards incompatible change. For instance, the following code would break:
 
