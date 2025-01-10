@@ -136,6 +136,8 @@ extension (tree: Tree)
   def toCaptureRefs(using Context): List[CaptureRef] = tree match
     case ReachCapabilityApply(arg) =>
       arg.toCaptureRefs.map(_.reach)
+    case ReadOnlyCapabilityApply(arg) =>
+      arg.toCaptureRefs.map(_.readOnly)
     case CapsOfApply(arg) =>
       arg.toCaptureRefs
     case _ => tree.tpe.dealiasKeepAnnots match
@@ -184,7 +186,7 @@ extension (tp: Type)
     case tp: TermRef =>
       ((tp.prefix eq NoPrefix)
       || tp.symbol.isField && !tp.symbol.isStatic && tp.prefix.isTrackableRef
-      || tp.isRootCapability
+      || tp.isCap
       ) && !tp.symbol.isOneOf(UnstableValueFlags)
     case tp: TypeRef =>
       tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet)
@@ -193,6 +195,7 @@ extension (tp: Type)
     case AnnotatedType(parent, annot) =>
       (annot.symbol == defn.ReachCapabilityAnnot
       || annot.symbol == defn.MaybeCapabilityAnnot
+      || annot.symbol == defn.ReadOnlyCapabilityAnnot
       ) && parent.isTrackableRef
     case _ =>
       false
@@ -222,6 +225,8 @@ extension (tp: Type)
     else tp match
       case tp @ ReachCapability(_) =>
         tp.singletonCaptureSet
+      case ReadOnlyCapability(ref) =>
+        ref.deepCaptureSet(includeTypevars)
       case tp: SingletonCaptureRef if tp.isTrackableRef =>
         tp.reach.singletonCaptureSet
       case _ =>
@@ -345,7 +350,8 @@ extension (tp: Type)
   def forceBoxStatus(boxed: Boolean)(using Context): Type = tp.widenDealias match
     case tp @ CapturingType(parent, refs) if tp.isBoxed != boxed =>
       val refs1 = tp match
-        case ref: CaptureRef if ref.isTracked || ref.isReach => ref.singletonCaptureSet
+        case ref: CaptureRef if ref.isTracked || ref.isReach || ref.isReadOnly =>
+          ref.singletonCaptureSet
         case _ => refs
       CapturingType(parent, refs1, boxed)
     case _ =>
@@ -379,22 +385,31 @@ extension (tp: Type)
     case _ =>
       false
 
+  /** Is this a type extending `Mutable` that has update methods? */
+  def isMutableType(using Context): Boolean =
+    tp.derivesFrom(defn.Caps_Mutable)
+    && tp.membersBasedOnFlags(Mutable | Method, EmptyFlags)
+      .exists(_.hasAltWith(_.symbol.isUpdateMethod))
+
   /** Tests whether the type derives from `caps.Capability`, which means
    *  references of this type are maximal capabilities.
    */
-  def derivesFromCapability(using Context): Boolean = tp.dealias match
+  def derivesFromCapTrait(cls: ClassSymbol)(using Context): Boolean = tp.dealias match
     case tp: (TypeRef | AppliedType) =>
       val sym = tp.typeSymbol
-      if sym.isClass then sym.derivesFrom(defn.Caps_Capability)
-      else tp.superType.derivesFromCapability
+      if sym.isClass then sym.derivesFrom(cls)
+      else tp.superType.derivesFromCapTrait(cls)
     case tp: (TypeProxy & ValueType) =>
-      tp.superType.derivesFromCapability
+      tp.superType.derivesFromCapTrait(cls)
     case tp: AndType =>
-      tp.tp1.derivesFromCapability || tp.tp2.derivesFromCapability
+      tp.tp1.derivesFromCapTrait(cls) || tp.tp2.derivesFromCapTrait(cls)
     case tp: OrType =>
-      tp.tp1.derivesFromCapability && tp.tp2.derivesFromCapability
+      tp.tp1.derivesFromCapTrait(cls) && tp.tp2.derivesFromCapTrait(cls)
     case _ =>
       false
+
+  def derivesFromCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_Capability)
+  def derivesFromMutable(using Context): Boolean = derivesFromCapTrait(defn.Caps_Mutable)
 
   /** Drop @retains annotations everywhere */
   def dropAllRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
@@ -405,17 +420,6 @@ extension (tp: Type)
         case _ =>
           mapOver(t)
     tm(tp)
-
-  /** If `x` is a capture ref, its reach capability `x*`, represented internally
-   *  as `x @reachCapability`. `x*` stands for all capabilities reachable through `x`".
-   *  We have `{x} <: {x*} <: dcs(x)}` where the deep capture set `dcs(x)` of `x`
-   *  is the union of all capture sets that appear in covariant position in the
-   *  type of `x`. If `x` and `y` are different variables then `{x*}` and `{y*}`
-   *  are unrelated.
-   */
-  def reach(using Context): CaptureRef = tp match
-    case tp: CaptureRef if tp.isTrackableRef =>
-      if tp.isReach then tp else ReachCapability(tp)
 
   /** If `x` is a capture ref, its maybe capability `x?`, represented internally
    *  as `x @maybeCapability`. `x?` stands for a capability `x` that might or might
@@ -436,42 +440,43 @@ extension (tp: Type)
    *   but it has fewer issues with type inference.
    */
   def maybe(using Context): CaptureRef = tp match
-    case tp: CaptureRef if tp.isTrackableRef =>
-      if tp.isMaybe then tp else MaybeCapability(tp)
+    case tp @ AnnotatedType(_, annot) if annot.symbol == defn.MaybeCapabilityAnnot => tp
+    case _ => MaybeCapability(tp)
 
-  /** If `ref` is a trackable capture ref, and `tp` has only covariant occurrences of a
-   *  universal capture set, replace all these occurrences by `{ref*}`. This implements
-   *  the new aspect of the (Var) rule, which can now be stated as follows:
-   *
-   *     x: T in E
-   *     -----------
-   *     E |- x: T'
-   *
-   *  where T' is T with (1) the toplevel capture set replaced by `{x}` and
-   *  (2) all covariant occurrences of cap replaced by `x*`, provided there
-   *  are no occurrences in `T` at other variances. (1) is standard, whereas
-   *  (2) is new.
-   *
-   *  For (2), multiple-flipped covariant occurrences of cap won't be replaced.
-   *  In other words,
-   *
-   *    - For xs: List[File^]  ==>  List[File^{xs*}], the cap is replaced;
-   *    - while f: [R] -> (op: File^ => R) -> R remains unchanged.
-   *
-   *  Without this restriction, the signature of functions like withFile:
-   *
-   *    (path: String) -> [R] -> (op: File^ => R) -> R
-   *
-   *  could be refined to
-   *
-   *    (path: String) -> [R] -> (op: File^{withFile*} => R) -> R
-   *
-   *  which is clearly unsound.
-   *
-   *  Why is this sound? Covariant occurrences of cap must represent capabilities
-   *  that are reachable from `x`, so they are included in the meaning of `{x*}`.
-   *  At the same time, encapsulation is still maintained since no covariant
-   *  occurrences of cap are allowed in instance types of type variables.
+  /** If `x` is a capture ref, its reach capability `x*`, represented internally
+   *  as `x @reachCapability`. `x*` stands for all capabilities reachable through `x`".
+   *  We have `{x} <: {x*} <: dcs(x)}` where the deep capture set `dcs(x)` of `x`
+   *  is the union of all capture sets that appear in covariant position in the
+   *  type of `x`. If `x` and `y` are different variables then `{x*}` and `{y*}`
+   *  are unrelated.
+   */
+  def reach(using Context): CaptureRef = tp match
+    case tp @ AnnotatedType(tp1: CaptureRef, annot)
+    if annot.symbol == defn.MaybeCapabilityAnnot =>
+      tp.derivedAnnotatedType(tp1.reach, annot)
+    case tp @ AnnotatedType(tp1: CaptureRef, annot)
+    if annot.symbol == defn.ReachCapabilityAnnot =>
+      tp
+    case _ =>
+      ReachCapability(tp)
+
+  /** If `x` is a capture ref, its read-only capability `x.rd`, represented internally
+   *  as `x @readOnlyCapability`. We have {x.rd} <: {x}. If `x` is a reach capability `y*`,
+   *  then its read-only version is `x.rd*`.
+   */
+  def readOnly(using Context): CaptureRef = tp match
+    case tp @ AnnotatedType(tp1: CaptureRef, annot)
+    if annot.symbol == defn.MaybeCapabilityAnnot
+        || annot.symbol == defn.ReachCapabilityAnnot =>
+      tp.derivedAnnotatedType(tp1.readOnly, annot)
+    case tp @ AnnotatedType(tp1: CaptureRef, annot)
+    if annot.symbol == defn.ReadOnlyCapabilityAnnot =>
+      tp
+    case _ =>
+      ReadOnlyCapability(tp)
+
+  /** If `x` is a capture ref, replacxe all no-flip covariant occurrences of `cap`
+   *  in type `tp` with `x*`.
    */
   def withReachCaptures(ref: Type)(using Context): Type =
     object narrowCaps extends TypeMap:
@@ -479,9 +484,10 @@ extension (tp: Type)
       def apply(t: Type) =
         if variance <= 0 then t
         else t.dealiasKeepAnnots match
-          case t @ CapturingType(p, cs) if cs.isUniversal =>
+          case t @ CapturingType(p, cs) if cs.containsRootCapability =>
             change = true
-            t.derivedCapturingType(apply(p), ref.reach.singletonCaptureSet)
+            val reachRef = if cs.isReadOnly then ref.reach.readOnly else ref.reach
+            t.derivedCapturingType(apply(p), reachRef.singletonCaptureSet)
           case t @ AnnotatedType(parent, ann) =>
             // Don't map annotations, which includes capture sets
             t.derivedAnnotatedType(this(parent), ann)
@@ -615,6 +621,16 @@ extension (sym: Symbol)
                 case c: TypeRef => c.symbol == sym
                 case _ => false
 
+  def isUpdateMethod(using Context): Boolean =
+    sym.isAllOf(Mutable | Method, butNot = Accessor)
+
+  def isReadOnlyMethod(using Context): Boolean =
+    sym.is(Method, butNot = Mutable | Accessor) && sym.owner.derivesFrom(defn.Caps_Mutable)
+
+  def isInReadOnlyMethod(using Context): Boolean =
+    if sym.is(Method) && sym.owner.isClass then isReadOnlyMethod
+    else sym.owner.isInReadOnlyMethod
+
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */
   def isBoxed(using Context): Boolean = tp.annot match
@@ -650,6 +666,14 @@ object ReachCapabilityApply:
     case Apply(reach, arg :: Nil) if reach.symbol == defn.Caps_reachCapability => Some(arg)
     case _ => None
 
+/** An extractor for `caps.readOnlyCapability(ref)`, which is used to express a read-only
+ *  capability as a tree in a @retains annotation.
+ */
+object ReadOnlyCapabilityApply:
+  def unapply(tree: Apply)(using Context): Option[Tree] = tree match
+    case Apply(ro, arg :: Nil) if ro.symbol == defn.Caps_readOnlyCapability => Some(arg)
+    case _ => None
+
 /** An extractor for `caps.capsOf[X]`, which is used to express a generic capture set
  *  as a tree in a @retains annotation.
  */
@@ -658,22 +682,35 @@ object CapsOfApply:
     case TypeApply(capsOf, arg :: Nil) if capsOf.symbol == defn.Caps_capsOf => Some(arg)
     case _ => None
 
-class AnnotatedCapability(annot: Context ?=> ClassSymbol):
-  def apply(tp: Type)(using Context) =
+abstract class AnnotatedCapability(annot: Context ?=> ClassSymbol):
+  def apply(tp: Type)(using Context): AnnotatedType =
+    assert(tp.isTrackableRef)
+    tp match
+      case AnnotatedType(_, annot) => assert(!unwrappable.contains(annot.symbol))
+      case _ =>
     AnnotatedType(tp, Annotation(annot, util.Spans.NoSpan))
   def unapply(tree: AnnotatedType)(using Context): Option[CaptureRef] = tree match
     case AnnotatedType(parent: CaptureRef, ann) if ann.symbol == annot => Some(parent)
     case _ => None
-
-/** An extractor for `ref @annotation.internal.reachCapability`, which is used to express
- *  the reach capability `ref*` as a type.
- */
-object ReachCapability extends AnnotatedCapability(defn.ReachCapabilityAnnot)
+  protected def unwrappable(using Context): Set[Symbol]
 
 /** An extractor for `ref @maybeCapability`, which is used to express
  *  the maybe capability `ref?` as a type.
  */
-object MaybeCapability extends AnnotatedCapability(defn.MaybeCapabilityAnnot)
+object MaybeCapability extends AnnotatedCapability(defn.MaybeCapabilityAnnot):
+  protected def unwrappable(using Context) = Set()
+
+/** An extractor for `ref @readOnlyCapability`, which is used to express
+ *  the rad-only capability `ref.rd` as a type.
+ */
+object ReadOnlyCapability extends AnnotatedCapability(defn.ReadOnlyCapabilityAnnot):
+  protected def unwrappable(using Context) = Set(defn.MaybeCapabilityAnnot)
+
+/** An extractor for `ref @annotation.internal.reachCapability`, which is used to express
+ *  the reach capability `ref*` as a type.
+ */
+object ReachCapability extends AnnotatedCapability(defn.ReachCapabilityAnnot):
+  protected def unwrappable(using Context) = Set(defn.MaybeCapabilityAnnot, defn.ReadOnlyCapabilityAnnot)
 
 /** Offers utility method to be used for type maps that follow aliases */
 trait ConservativeFollowAliasMap(using Context) extends TypeMap:
