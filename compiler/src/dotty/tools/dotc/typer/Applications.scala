@@ -365,21 +365,7 @@ object Applications {
 
   /** Splice new method reference `meth` into existing application `app` */
   private def spliceMeth(meth: Tree, app: Tree)(using Context): Tree = app match {
-    case Apply(fn, args) =>
-      // Constructors always have one leading non-implicit parameter list.
-      // Empty list is inserted for constructors where the first parameter list is implicit.
-      //
-      // Therefore, we need to ignore the first empty argument list.
-      // This is needed for the test tests/neg/i12344.scala
-      //
-      // see NamerOps.normalizeIfConstructor
-      //
-      if args == Nil
-         && !fn.isInstanceOf[Apply]
-         && app.tpe.isImplicitMethod
-         && fn.symbol.isConstructor
-      then meth
-      else spliceMeth(meth, fn).appliedToArgs(args)
+    case Apply(fn, args) => spliceMeth(meth, fn).appliedToArgs(args)
     case TypeApply(fn, targs) =>
       // Note: It is important that the type arguments `targs` are passed in new trees
       // instead of being spliced in literally. Otherwise, a type argument to a default
