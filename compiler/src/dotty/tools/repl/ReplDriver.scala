@@ -1,17 +1,16 @@
 package dotty.tools.repl
 
 import scala.language.unsafeNulls
-
-import java.io.{File => JFile, PrintStream}
+import java.io.{PrintStream, File as JFile}
 import java.nio.charset.StandardCharsets
-
 import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.ast.{tpd, untpd}
+import dotty.tools.dotc.classpath.{AggregateClassPath, ClassPathFactory, ZipAndJarClassPathFactory}
 import dotty.tools.dotc.config.CommandLineParser.tokenize
 import dotty.tools.dotc.config.Properties.{javaVersion, javaVmName, simpleVersionString}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
-import dotty.tools.dotc.core.Phases.{unfusedPhases, typerPhase}
+import dotty.tools.dotc.core.Phases.{typerPhase, unfusedPhases}
 import dotty.tools.dotc.core.Denotations.Denotation
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Mode
@@ -534,24 +533,36 @@ class ReplDriver(settings: Array[String],
           }
         }
 
-        // TODO: no idea how to access and reload the class paths
-        val newClassPath = state.context.platform.classPath(using state.context).asURLs :+ f.toURI.toURL
-        println(s"new class path=${newClassPath.mkString(", ")}")
-        val clsl = rendering.classLoader()(using state.context)
-        val newClsl = fromURLsParallelCapable(newClassPath, clsl)
-        println(s"newClsl getResource=${newClsl.getURLs.toList}")
-        newClsl.asContext(state.context)
+        def alreadyDefined(clsName: String) = state.context.platform.classPath(using state.context).findClassFile(clsName).isDefined
+        val existingClass = entries.filter(_.ext.isClass).map(classNameOf).find(alreadyDefined)
+        if (existingClass.nonEmpty)
+          out.println(s"The path '$f' cannot be loaded, it contains a classfile that already exists on the classpath: ${existingClass.get}")
+        else
+//          val cp = state.context.platform.classPath(using state.context).asClassPathString
+//          println(s"CURRENT CP STRING: $cp")
+//          val newCP = s"$cp${JFile.pathSeparator}$path"
+//          println(s"UPDATED CP: $newCP")
 
-//        Scala 2:
-//        def alreadyDefined(clsName: String) = classLoader.tryToLoadClass(clsName).isDefined
-//        val existingClass = entries.filter(_.ext.isClass).map(classNameOf).find(alreadyDefined)
+          // add to compiler class path
+          println(s"INIT state classPath = ${state.context.platform.classPath(using state.context).asClassPathString}")
+          val cpCP = ClassPathFactory.newClassPath(jarFile)(using state.context)
+          state.context.platform.addToClassPath(cpCP)
+          println(s"classPath after add = ${state.context.platform.classPath(using state.context).asClassPathString}")
 
-//        if (existingClass.nonEmpty) out.println(s"The path '$f' cannot be loaded, it contains a classfile that already exists on the classpath: ${existingClass.get}")
-//        else {
-//          intp.addUrlsToClassPath(f.toURI.toURL)
+          // create initial context
+          rootCtx = setupRootCtx(Array(), rootCtx)
+          state.copy(context = rootCtx)
+
+
+          // new class loader
+//          val newClassPath = state.context.platform.classPath(using state.context).asURLs :+ f.toURI.toURL
+//          val oldCL = rendering.classLoader()(using state.context)
+//          val newCL = fromURLsParallelCapable(newClassPath, oldCL)
+//          println(s"new CL class path = ${newCL.getURLs.toList}")
+//          println(s"\nclass name = ${cpCP.className}")
+//          rendering.myClassLoader = new AbstractFileClassLoader(state.context.settings.outputDir.default, newCL)
 //          out.println(s"Added '$path' to classpath.")
-//          out.println("Added '%s'. Your new classpath is:\n\"%s\"".format(f.path, intp.classPathString))
-//        }
+          println(s"after setupRootCtx classPath = ${state.context.platform.classPath(using state.context).asClassPathString}")
         state
 
     case KindOf(expr) =>

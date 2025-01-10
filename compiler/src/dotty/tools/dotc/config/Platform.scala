@@ -20,6 +20,7 @@ abstract class Platform {
 
   /** Update classpath with a substitution that maps entries to entries */
   def updateClassPath(subst: Map[ClassPath, ClassPath]): Unit
+  def addToClassPath(cPath: ClassPath): Unit
 
   /** Any platform-specific phases. */
   //def platformPhases: List[SubComponent]
