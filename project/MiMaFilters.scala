@@ -16,6 +16,7 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.preview"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.packageObjectValues"),
         ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$packageObjectValues$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.freshCapability"),
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.readOnlyCapability"),
       ),
 
