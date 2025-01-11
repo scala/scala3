@@ -25,6 +25,20 @@
    |                ^^^^^^^^^^
    |                Type variable T of constructor Ref cannot be instantiated to List[box () => Unit] since
    |                the part box () => Unit of that type captures the root capability `cap`.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:45:35 --------------------------------------
+45 |    val next: () => Unit = cur.get.head // error
+   |                           ^^^^^^^^^^^^
+   |                           Found:    () => Unit
+   |                           Required: () ->{fresh} Unit
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:47:20 --------------------------------------
+47 |    cur.set(cur.get.tail: List[Proc]) // error
+   |            ^^^^^^^^^^^^
+   |            Found:    List[box () => Unit]
+   |            Required: List[box () ->{fresh} Unit]
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/reaches.scala:53:51 -----------------------------------------------------------
 53 |  val id: Id[Proc, Proc] = new Id[Proc, () -> Unit] // error
    |                                                   ^

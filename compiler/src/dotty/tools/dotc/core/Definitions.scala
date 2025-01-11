@@ -1004,6 +1004,7 @@ class Definitions {
     @tu lazy val Caps_Exists: ClassSymbol = requiredClass("scala.caps.Exists")
     @tu lazy val CapsUnsafeModule: Symbol = requiredModule("scala.caps.unsafe")
     @tu lazy val Caps_unsafeAssumePure: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumePure")
+    @tu lazy val Caps_unsafeAssumeSeparate: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumeSeparate")
     @tu lazy val Caps_ContainsTrait: TypeSymbol = CapsModule.requiredType("Contains")
     @tu lazy val Caps_containsImpl: TermSymbol = CapsModule.requiredMethod("containsImpl")
     @tu lazy val Caps_Mutable: ClassSymbol = requiredClass("scala.caps.Mutable")

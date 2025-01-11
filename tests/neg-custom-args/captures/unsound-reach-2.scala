@@ -1,4 +1,4 @@
-import language.experimental.captureChecking
+import language.experimental.captureChecking; import language.`3.7` // sepchecks on
 trait Consumer[-T]:
   def apply(x: T): Unit
 
@@ -13,7 +13,7 @@ class Bar extends Foo[File^]: // error
   def use(x: File^)(op: Consumer[File^]): Unit = op.apply(x)
 
 def bad(): Unit =
-  val backdoor: Foo[File^] = new Bar
+  val backdoor: Foo[File^] = new Bar // error (follow-on, since the parent Foo[File^] of bar is illegal).
   val boom: Foo[File^{backdoor*}] = backdoor
 
   var escaped: File^{backdoor*} = null

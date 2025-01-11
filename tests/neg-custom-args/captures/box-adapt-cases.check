@@ -1,12 +1,19 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/box-adapt-cases.scala:14:10 ------------------------------
-14 |  x.value(cap => cap.use())  // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/box-adapt-cases.scala:8:10 -------------------------------
+8 |  x.value(cap => cap.use())  // error, was OK
+  |          ^^^^^^^^^^^^^^^^
+  |          Found:    (cap: box Cap^?) => Int
+  |          Required: (cap: box Cap^) ->{fresh} Int
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/box-adapt-cases.scala:15:10 ------------------------------
+15 |  x.value(cap => cap.use())  // error
    |          ^^^^^^^^^^^^^^^^
    |          Found:    (cap: box Cap^?) ->{io} Int
    |          Required: (cap: box Cap^{io}) -> Int
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/box-adapt-cases.scala:28:10 ------------------------------
-28 |  x.value(cap => cap.use())  // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/box-adapt-cases.scala:29:10 ------------------------------
+29 |  x.value(cap => cap.use())  // error
    |          ^^^^^^^^^^^^^^^^
    |          Found:    (cap: box Cap^?) ->{io, fs} Int
    |          Required: (cap: box Cap^{io, fs}) ->{io} Int
