@@ -1,5 +1,6 @@
 import caps.Mutable
 import caps.cap
+import language.future // sepchecks on
 
 trait Rdr[T]:
   def get: T
@@ -9,7 +10,7 @@ class Ref[T](init: T) extends Rdr[T], Mutable:
   def get: T = current
   mut def put(x: T): Unit = current = x
 
-def Test(c: Object^) =
+def Test(c: Object^): Unit =
   val a: Ref[Int]^ = Ref(1)
   val b: Ref[Int]^ = Ref(2)
   def aa = a
@@ -29,6 +30,8 @@ def Test(c: Object^) =
 
   setMax2(aa, aa, b)
   setMax2(a, aa, b)
+  setMax2(a, b, b) // error
+  setMax2(b, b, b) // error
 
   abstract class IMatrix:
     def apply(i: Int, j: Int): Double
@@ -38,9 +41,22 @@ def Test(c: Object^) =
     def apply(i: Int, j: Int): Double = arr(i)(j)
     mut def update(i: Int, j: Int, x: Double): Unit = arr(i)(j) = x
 
-  def mul(x: IMatrix^{cap.rd}, y: IMatrix^{cap.rd}, z: Matrix^) = ???
+  def mul(x: IMatrix^{cap.rd}, y: IMatrix^{cap.rd}, z: Matrix^): Matrix^ = ???
 
   val m1 = Matrix(10, 10)
   val m2 = Matrix(10, 10)
-  mul(m1, m2, m2) // will fail separation checking
+  mul(m1, m2, m2) // error: will fail separation checking
   mul(m1, m1, m2) // ok
+
+  def move(get: () => Int, set: Int => Unit) =
+    set(get())
+
+  val geta = () => a.get
+
+  def get2(x: () => Int, y: () => Int): (Int, Int) =
+    (x(), y())
+
+  move(geta, b.put(_)) // ok
+  move(geta, a.put(_)) // error
+  get2(geta, geta) // ok
+  get2(geta, () => a.get) // ok
