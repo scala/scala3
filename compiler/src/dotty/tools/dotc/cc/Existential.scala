@@ -242,10 +242,10 @@ object Existential:
       case _ =>
         core
 
-  /** Map top-level existentials to `cap`. */
+  /** Map top-level existentials to `Fresh.Cap`. */
   def toCap(tp: Type)(using Context): Type = tp.dealiasKeepAnnots match
     case Existential(boundVar, unpacked) =>
-      unpacked.substParam(boundVar, defn.captureRoot.termRef)
+      unpacked.substParam(boundVar, Fresh.Cap())
     case tp1 @ CapturingType(parent, refs) =>
       tp1.derivedCapturingType(toCap(parent), refs)
     case tp1 @ AnnotatedType(parent, ann) =>
@@ -256,7 +256,7 @@ object Existential:
    */
   def toCapDeeply(tp: Type)(using Context): Type = tp.dealiasKeepAnnots match
     case Existential(boundVar, unpacked) =>
-      toCapDeeply(unpacked.substParam(boundVar, defn.captureRoot.termRef))
+      toCapDeeply(unpacked.substParam(boundVar, Fresh.Cap()))
     case tp1 @ FunctionOrMethod(args, res) =>
       val tp2 = tp1.derivedFunctionOrMethod(args, toCapDeeply(res))
       if tp2 ne tp1 then tp2 else tp
@@ -273,7 +273,7 @@ object Existential:
     case AppliedType(tycon, _) => !defn.isFunctionSymbol(tycon.typeSymbol)
     case _ => false
 
-  /** Replace all occurrences of `cap` in parts of this type by an existentially bound
+  /** Replace all occurrences of `cap` (or fresh) in parts of this type by an existentially bound
    *  variable. If there are such occurrences, or there might be in the future due to embedded
    *  capture set variables, create an existential with the variable wrapping the type.
    *  Stop at function or method types since these have been mapped before.
@@ -294,7 +294,7 @@ object Existential:
 
     class Wrap(boundVar: TermParamRef) extends CapMap:
       def apply(t: Type) = t match
-        case t: TermRef if t.isCap =>
+        case t: CaptureRef if t.isCapOrFresh => // !!! we should map different fresh refs to different existentials
           if variance > 0 then
             needsWrap = true
             boundVar
@@ -317,8 +317,9 @@ object Existential:
         //.showing(i"mapcap $t = $result")
 
       lazy val inverse = new BiTypeMap:
+        lazy val freshCap = Fresh.Cap()
         def apply(t: Type) = t match
-          case t: TermParamRef if t eq boundVar => defn.captureRoot.termRef
+          case t: TermParamRef if t eq boundVar => freshCap
           case _ => mapOver(t)
         def inverse = Wrap.this
         override def toString = "Wrap.inverse"

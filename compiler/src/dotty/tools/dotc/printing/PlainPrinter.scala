@@ -27,6 +27,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def printDebug = ctx.settings.YprintDebug.value
 
+  /** Print Fresh.Cap instances as <cap hiding ...> */
+  protected def printFreshDetailed = printDebug
+
+  /** Print Fresh.Cap instances as "fresh" */
+  protected def printFresh = printFreshDetailed || ctx.property(PrintFresh).isDefined
+
   private var openRecs: List[RecType] = Nil
 
   protected def maxToTextRecursions: Int = 100
@@ -153,12 +159,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
     + defn.FromJavaObjectSymbol
 
   def toTextCaptureSet(cs: CaptureSet): Text =
-    if printDebug && ctx.settings.YccDebug.value && !cs.isConst then cs.toString
+    if printDebug && ctx.settings.YccDebug.value
+      && !cs.isConst && !cs.isInstanceOf[CaptureSet.HiddenSet] //HiddenSets can be cyclic
+    then cs.toString
     else if cs == CaptureSet.Fluid then "<fluid>"
     else
       val core: Text =
         if !cs.isConst && cs.elems.isEmpty then "?"
-        else "{" ~ Text(cs.elems.toList.map(toTextCaptureRef), ", ") ~ "}"
+        else "{" ~ Text(cs.processElems(_.toList.map(toTextCaptureRef)), ", ") ~ "}"
            //     ~ Str("?").provided(!cs.isConst)
       core ~ cs.optionalInfo
 
@@ -202,14 +210,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
         else
           toTextPrefixOf(tp) ~ selectionString(tp)
       case tp: TermParamRef =>
-        ParamRefNameString(tp) ~ lambdaHash(tp.binder) ~ ".type"
+        ParamRefNameString(tp) ~ hashStr(tp.binder) ~ ".type"
       case tp: TypeParamRef =>
         val suffix =
           if showNestingLevel then
             val tvar = ctx.typerState.constraint.typeVarOfParam(tp)
             if tvar.exists then s"#${tvar.asInstanceOf[TypeVar].nestingLevel.toString}" else ""
           else ""
-        ParamRefNameString(tp) ~ lambdaHash(tp.binder) ~ suffix
+        ParamRefNameString(tp) ~ hashStr(tp.binder) ~ suffix
       case tp: SingletonType =>
         toTextSingleton(tp)
       case AppliedType(tycon, args) =>
@@ -248,9 +256,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
           toText(parent)
         else
           val refsText =
-            if refs.isUniversal && (refs.elems.size == 1 || !printDebug)
-            then rootSetText
-            else toTextCaptureSet(refs)
+            if refs.isUniversal then
+              if refs.elems.size == 1 then rootSetText else toTextCaptureSet(refs)
+            else if !refs.elems.isEmpty && refs.elems.forall(_.isCapOrFresh) && !printFresh then
+              rootSetText
+            else
+              toTextCaptureSet(refs)
           toTextCapturing(parent, refsText, boxText)
       case tp @ RetainingType(parent, refs) =>
         if Feature.ccEnabledSomewhere then
@@ -282,19 +293,19 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case ExprType(restp) =>
         def arrowText: Text = restp match
           case AnnotatedType(parent, ann) if ann.symbol == defn.RetainsByNameAnnot =>
-            val refs = ann.tree.retainedElems
-            if refs.exists(_.symbol == defn.captureRoot) then Str("=>")
-            else Str("->") ~ toTextRetainedElems(refs)
+            ann.tree.retainedElems match
+              case ref :: Nil if ref.symbol == defn.captureRoot => Str("=>")
+              case refs => Str("->") ~ toTextRetainedElems(refs)
           case _ =>
             if Feature.pureFunsEnabled then "->" else "=>"
         changePrec(GlobalPrec)(arrowText ~ " " ~ toText(restp))
       case tp: HKTypeLambda =>
         changePrec(GlobalPrec) {
-          "[" ~ paramsText(tp) ~ "]" ~ lambdaHash(tp) ~ Str(" =>> ") ~ toTextGlobal(tp.resultType)
+          "[" ~ paramsText(tp) ~ "]" ~ hashStr(tp) ~ Str(" =>> ") ~ toTextGlobal(tp.resultType)
         }
       case tp: PolyType =>
         changePrec(GlobalPrec) {
-          "[" ~ paramsText(tp) ~ "]" ~ lambdaHash(tp) ~
+          "[" ~ paramsText(tp) ~ "]" ~ hashStr(tp) ~
           (Str(": ") provided !tp.resultType.isInstanceOf[MethodOrPoly]) ~
           toTextGlobal(tp.resultType)
         }
@@ -345,7 +356,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def paramsText(lam: LambdaType): Text = {
     def paramText(ref: ParamRef) =
       val erased = ref.underlying.hasAnnotation(defn.ErasedParamAnnot)
-      keywordText("erased ").provided(erased) ~ ParamRefNameString(ref) ~ lambdaHash(lam) ~ toTextRHS(ref.underlying, isParameter = true)
+      keywordText("erased ").provided(erased) ~ ParamRefNameString(ref) ~ hashStr(lam) ~ toTextRHS(ref.underlying, isParameter = true)
     Text(lam.paramRefs.map(paramText), ", ")
   }
 
@@ -357,11 +368,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** The name of the symbol without a unique id. */
   protected def simpleNameString(sym: Symbol): String = nameString(sym.name)
 
-  /** If -uniqid is set, the hashcode of the lambda type, after a # */
-  protected def lambdaHash(pt: LambdaType): Text =
-    if (showUniqueIds)
-      try "#" + pt.hashCode
-      catch { case ex: NullPointerException => "" }
+  /** If -uniqid is set, the hashcode of the type, after a # */
+  protected def hashStr(tp: Type): String =
+    if showUniqueIds then
+      try "#" + tp.hashCode
+      catch case ex: NullPointerException => ""
     else ""
 
   /** A string to append to a symbol composed of:
@@ -410,7 +421,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp @ ConstantType(value) =>
         toText(value)
       case pref: TermParamRef =>
-        ParamRefNameString(pref) ~ lambdaHash(pref.binder)
+        ParamRefNameString(pref) ~ hashStr(pref.binder)
       case tp: RecThis =>
         val idx = openRecs.reverse.indexOf(tp.binder)
         if (idx >= 0) selfRecName(idx + 1)
@@ -424,12 +435,16 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toTextCaptureRef(tp: Type): Text =
     homogenize(tp) match
-      case tp: TermRef if tp.symbol == defn.captureRoot => Str("cap")
+      case tp: TermRef if tp.symbol == defn.captureRoot => "cap"
       case tp: SingletonType => toTextRef(tp)
       case tp: (TypeRef | TypeParamRef) => toText(tp) ~ "^"
       case ReadOnlyCapability(tp1) => toTextCaptureRef(tp1) ~ ".rd"
       case ReachCapability(tp1) => toTextCaptureRef(tp1) ~ "*"
       case MaybeCapability(tp1) => toTextCaptureRef(tp1) ~ "?"
+      case Fresh.Cap(hidden) =>
+        if printFreshDetailed then s"<cap${hashStr(tp)} hiding " ~ toTextCaptureSet(hidden) ~ ">"
+        else if printFresh then "fresh"
+        else "cap"
       case tp => toText(tp)
 
   protected def isOmittablePrefix(sym: Symbol): Boolean =

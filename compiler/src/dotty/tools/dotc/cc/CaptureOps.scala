@@ -16,8 +16,13 @@ import config.Feature
 import collection.mutable
 import CCState.*
 import reporting.Message
+import CaptureSet.VarState
 
+/** Attachment key for capturing type trees */
 private val Captures: Key[CaptureSet] = Key()
+
+/** Context property to print Fresh.Cap as "fresh" instead of "cap" */
+val PrintFresh: Key[Unit] = Key()
 
 object ccConfig:
 
@@ -46,6 +51,10 @@ object ccConfig:
    */
   def useSealed(using Context) =
     Feature.sourceVersion.stable != SourceVersion.`3.5`
+
+  /** If true, turn on separation checking */
+  def useFresh(using Context): Boolean =
+    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`future`)
 
 end ccConfig
 
@@ -193,10 +202,7 @@ extension (tp: Type)
     case tp: TypeParamRef =>
       tp.derivesFrom(defn.Caps_CapSet)
     case AnnotatedType(parent, annot) =>
-      (annot.symbol == defn.ReachCapabilityAnnot
-      || annot.symbol == defn.MaybeCapabilityAnnot
-      || annot.symbol == defn.ReadOnlyCapabilityAnnot
-      ) && parent.isTrackableRef
+      defn.capabilityWrapperAnnots.contains(annot.symbol) && parent.isTrackableRef
     case _ =>
       false
 
@@ -244,7 +250,7 @@ extension (tp: Type)
    *  the two capture sets are combined.
    */
   def capturing(cs: CaptureSet)(using Context): Type =
-    if (cs.isAlwaysEmpty || cs.isConst && cs.subCaptures(tp.captureSet, frozen = true).isOK)
+    if (cs.isAlwaysEmpty || cs.isConst && cs.subCaptures(tp.captureSet, VarState.Separate).isOK)
         && !cs.keepAlways
     then tp
     else tp match
@@ -421,6 +427,10 @@ extension (tp: Type)
           mapOver(t)
     tm(tp)
 
+  def hasUseAnnot(using Context): Boolean = tp match
+    case AnnotatedType(_, ann) => ann.symbol == defn.UseAnnot
+    case _ => false
+
   /** If `x` is a capture ref, its maybe capability `x?`, represented internally
    *  as `x @maybeCapability`. `x?` stands for a capability `x` that might or might
    *  not be part of a capture set. We have `{} <: {x?} <: {x}`. Maybe capabilities
@@ -512,6 +522,24 @@ extension (tp: Type)
           tp
       case _ =>
         tp
+  end withReachCaptures
+
+  /** Does this type contain no-flip covariant occurrences of `cap`? */
+  def containsCap(using Context): Boolean =
+    val acc = new TypeAccumulator[Boolean]:
+      def apply(x: Boolean, t: Type) =
+        x
+        || variance > 0 && t.dealiasKeepAnnots.match
+          case t @ CapturingType(p, cs) if cs.containsCap =>
+            true
+          case t @ AnnotatedType(parent, ann) =>
+            // Don't traverse annotations, which includes capture sets
+            this(x, parent)
+          case Existential(_, _) =>
+            false
+          case _ =>
+            foldOver(x, t)
+    acc(false, tp)
 
   def level(using Context): Level =
     tp match
@@ -690,7 +718,7 @@ abstract class AnnotatedCapability(annot: Context ?=> ClassSymbol):
       case _ =>
     AnnotatedType(tp, Annotation(annot, util.Spans.NoSpan))
   def unapply(tree: AnnotatedType)(using Context): Option[CaptureRef] = tree match
-    case AnnotatedType(parent: CaptureRef, ann) if ann.symbol == annot => Some(parent)
+    case AnnotatedType(parent: CaptureRef, ann) if ann.hasSymbol(annot) => Some(parent)
     case _ => None
   protected def unwrappable(using Context): Set[Symbol]
 
