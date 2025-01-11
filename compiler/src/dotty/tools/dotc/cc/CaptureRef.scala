@@ -13,6 +13,7 @@ import CCState.*
 import Periods.NoRunId
 import compiletime.uninitialized
 import StdNames.nme
+import CaptureSet.VarState
 
 /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs,
  *  as well as three kinds of AnnotatedTypes representing readOnly, reach, and maybe capabilities.
@@ -78,15 +79,24 @@ trait CaptureRef extends TypeProxy, ValueType:
     case tp: TermRef => tp.name == nme.CAPTURE_ROOT && tp.symbol == defn.captureRoot
     case _ => false
 
+  /** Is this reference a Fresh.Cap instance? */
+  final def isFresh(using Context): Boolean = this match
+    case Fresh.Cap(_) => true
+    case _ => false
+
+  /** Is this reference the generic root capability `cap` or a Fresh.Cap instance? */
+  final def isCapOrFresh(using Context): Boolean = isCap || isFresh
+
   /** Is this reference one the generic root capabilities `cap` or `cap.rd` ? */
   final def isRootCapability(using Context): Boolean = this match
-    case ReadOnlyCapability(tp1) => tp1.isCap
-    case _ => isCap
+    case ReadOnlyCapability(tp1) => tp1.isCapOrFresh
+    case _ => isCapOrFresh
 
   /** Is this reference capability that does not derive from another capability ? */
   final def isMaxCapability(using Context): Boolean = this match
     case tp: TermRef => tp.isCap || tp.info.derivesFrom(defn.Caps_Exists)
     case tp: TermParamRef => tp.underlying.derivesFrom(defn.Caps_Exists)
+    case Fresh.Cap(_) => true
     case ReadOnlyCapability(tp1) => tp1.isMaxCapability
     case _ => false
 
@@ -137,9 +147,9 @@ trait CaptureRef extends TypeProxy, ValueType:
    *   Y: CapSet^c1...CapSet^c2, x subsumes (CapSet^c2)  ==>  x subsumes Y
    *   Contains[X, y]  ==>  X subsumes y
    *
-   *   TODO: Document cases with more comments.
+   *   TODO: Move to CaptureSet
    */
-  final def subsumes(y: CaptureRef)(using Context): Boolean =
+  final def subsumes(y: CaptureRef)(using ctx: Context, vs: VarState = VarState.Separate): Boolean =
 
     def subsumingRefs(x: Type, y: Type): Boolean = x match
       case x: CaptureRef => y match
@@ -147,16 +157,17 @@ trait CaptureRef extends TypeProxy, ValueType:
         case _ => false
       case _ => false
 
-    def viaInfo(info: Type)(test: Type => Boolean): Boolean = info.match
+    def viaInfo(info: Type)(test: Type => Boolean): Boolean = info.dealias match
       case info: SingletonCaptureRef => test(info)
+      case CapturingType(parent, _) => viaInfo(parent)(test)
       case info: AndType => viaInfo(info.tp1)(test) || viaInfo(info.tp2)(test)
       case info: OrType => viaInfo(info.tp1)(test) && viaInfo(info.tp2)(test)
       case _ => false
 
     (this eq y)
-    || this.isCap
+    || maxSubsumes(y, canAddHidden = !vs.isOpen)
     || y.match
-        case y: TermRef if !y.isRootCapability =>
+        case y: TermRef if !y.isCap =>
             y.prefix.match
               case ypre: CaptureRef =>
                 this.subsumes(ypre)
@@ -200,6 +211,27 @@ trait CaptureRef extends TypeProxy, ValueType:
           refs.elems.exists(_.subsumes(y))
         case _ => false
   end subsumes
+
+  /** This is a maximal capabaility that subsumes `y` in given context and VarState.
+   *  @param canAddHidden  If true we allow maximal capabilties to subsume all other capabilities.
+   *                       We add those capabilities to the hidden set if this is Fresh.Cap
+   *                       If false we only accept `y` elements that are already in the
+   *                       hidden set of this Fresh.Cap. The idea is that in a VarState that
+   *                       accepts additions we first run `maxSubsumes` with `canAddHidden = false`
+   *                       so that new variables get added to the sets. If that fails, we run
+   *                       the test again with canAddHidden = true as a last effort before we
+   *                       fail a comparison.
+   */
+  def maxSubsumes(y: CaptureRef, canAddHidden: Boolean)(using ctx: Context, vs: VarState = VarState.Separate): Boolean =
+    this.match
+      case Fresh.Cap(hidden) =>
+        vs.ifNotSeen(this)(hidden.elems.exists(_.subsumes(y)))
+        || !y.stripReadOnly.isCap && canAddHidden && vs.addHidden(hidden, y)
+      case _ =>
+        this.isCap && canAddHidden
+        || y.match
+            case ReadOnlyCapability(y1) => this.stripReadOnly.maxSubsumes(y1, canAddHidden)
+            case _ => false
 
   def assumedContainsOf(x: TypeRef)(using Context): SimpleIdentitySet[CaptureRef] =
     CaptureSet.assumedContains.getOrElse(x, SimpleIdentitySet.empty)
