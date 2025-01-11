@@ -1,7 +1,7 @@
 import language.experimental.captureChecking
 import language.experimental.modularity
 import compiletime.uninitialized
-
+import language.future // sepchecks on
 object test1:
   class File:
     def write(x: String): Unit = ???
@@ -31,7 +31,7 @@ object test2:
     op(new File)
 
   def test(io3: IO^) =
-    withFile(io3): f =>
+    withFile(io3): f => // error: separation failure
       val o = Service(io3)
       o.file = f  // this is a bit dubious. It's legal since we treat class refinements
                   // as capture set variables that can be made to include refs coming from outside.
