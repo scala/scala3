@@ -1,4 +1,4 @@
-import caps.use
+import caps.use; import language.`3.7` // sepchecks on
 class File:
   def write(): Unit = ???
 
@@ -42,9 +42,9 @@ def runAll2(xs: List[Proc]): Unit =
 def runAll3(xs: List[Proc]): Unit =
   val cur = Ref[List[Proc]](xs) // error
   while cur.get.nonEmpty do
-    val next: () => Unit = cur.get.head
+    val next: () => Unit = cur.get.head // error
     next()
-    cur.set(cur.get.tail: List[Proc])
+    cur.set(cur.get.tail: List[Proc]) // error
 
 class Id[-A,  +B >: A]():
   def apply(a: A): B = a
