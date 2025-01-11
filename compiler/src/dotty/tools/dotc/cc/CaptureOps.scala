@@ -54,7 +54,7 @@ object ccConfig:
 
   /** If true, turn on separation checking */
   def useFresh(using Context): Boolean =
-    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`future`)
+    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
 
 end ccConfig
 

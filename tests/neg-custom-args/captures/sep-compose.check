@@ -1,0 +1,120 @@
+-- Error: tests/neg-custom-args/captures/sep-compose.scala:32:10 -------------------------------------------------------
+32 |  seq3(f)(f) // error
+   |          ^
+   |          Separation failure: argument of type  (f : () ->{a} Unit)
+   |          to method seq3: (x: () => Unit)(y: () ->{a, cap} Unit): Unit
+   |          corresponds to capture-polymorphic formal parameter y of type  () ->{a, cap} Unit
+   |          and captures {f, a, io}, but these capabilities are also passed separately
+   |          in the first argument with type  (f : () ->{a} Unit).
+   |
+   |            Capture set of first argument         : {f}
+   |            Hidden set of current argument        : {f}
+   |            Footprint of first argument           : {f, a, io}
+   |            Hidden footprint of current argument  : {f, a, io}
+   |            Declared footprint of current argument: {}
+   |            Undeclared overlap of footprints      : {f, a, io}
+-- Error: tests/neg-custom-args/captures/sep-compose.scala:33:10 -------------------------------------------------------
+33 |  seq4(f)(f) // error
+   |          ^
+   |          Separation failure: argument of type  (f : () ->{a} Unit)
+   |          to method seq4: (x: () ->{a, cap} Unit)(y: () => Unit): Unit
+   |          corresponds to capture-polymorphic formal parameter y of type  () => Unit
+   |          and captures {f, a, io}, but these capabilities are also passed separately
+   |          in the first argument with type  (f : () ->{a} Unit).
+   |
+   |            Capture set of first argument         : {f}
+   |            Hidden set of current argument        : {f}
+   |            Footprint of first argument           : {f, a, io}
+   |            Hidden footprint of current argument  : {f, a, io}
+   |            Declared footprint of current argument: {}
+   |            Undeclared overlap of footprints      : {f, a, io}
+-- Error: tests/neg-custom-args/captures/sep-compose.scala:34:10 -------------------------------------------------------
+34 |  seq5(f)(f) // error
+   |          ^
+   |          Separation failure: argument of type  (f : () ->{a} Unit)
+   |          to method seq5: (x: () => Unit)(y: () => Unit): Unit
+   |          corresponds to capture-polymorphic formal parameter y of type  () => Unit
+   |          and captures {f, a, io}, but these capabilities are also passed separately
+   |          in the first argument with type  (f : () ->{a} Unit).
+   |
+   |            Capture set of first argument         : {f}
+   |            Hidden set of current argument        : {f}
+   |            Footprint of first argument           : {f, a, io}
+   |            Hidden footprint of current argument  : {f, a, io}
+   |            Declared footprint of current argument: {}
+   |            Undeclared overlap of footprints      : {f, a, io}
+-- Error: tests/neg-custom-args/captures/sep-compose.scala:35:10 -------------------------------------------------------
+35 |  seq6(f, f) // error
+   |          ^
+   |          Separation failure: argument of type  (f : () ->{a} Unit)
+   |          to method seq6: (x: () => Unit, y: () ->{a, cap} Unit): Unit
+   |          corresponds to capture-polymorphic formal parameter y of type  () ->{a, cap} Unit
+   |          and captures {f, a, io}, but these capabilities are also passed separately
+   |          in the first argument with type  (f : () ->{a} Unit).
+   |
+   |            Capture set of first argument         : {f}
+   |            Hidden set of current argument        : {f}
+   |            Footprint of first argument           : {f, a, io}
+   |            Hidden footprint of current argument  : {f, a, io}
+   |            Declared footprint of current argument: {}
+   |            Undeclared overlap of footprints      : {f, a, io}
+-- Error: tests/neg-custom-args/captures/sep-compose.scala:36:10 -------------------------------------------------------
+36 |  seq7(f, f) // error
+   |          ^
+   |          Separation failure: argument of type  (f : () ->{a} Unit)
+   |          to method seq7: (x: () ->{a, cap} Unit, y: () => Unit): Unit
+   |          corresponds to capture-polymorphic formal parameter y of type  () => Unit
+   |          and captures {f, a, io}, but these capabilities are also passed separately
+   |          in the first argument with type  (f : () ->{a} Unit).
+   |
+   |            Capture set of first argument         : {f}
+   |            Hidden set of current argument        : {f}
+   |            Footprint of first argument           : {f, a, io}
+   |            Hidden footprint of current argument  : {f, a, io}
+   |            Declared footprint of current argument: {}
+   |            Undeclared overlap of footprints      : {f, a, io}
+-- Error: tests/neg-custom-args/captures/sep-compose.scala:37:7 --------------------------------------------------------
+37 |  seq8(f)(f) // error
+   |       ^
+   |       Separation failure: argument of type  (f : () ->{a} Unit)
+   |       to method seq8: (x: () => Unit)(y: () ->{a} Unit): Unit
+   |       corresponds to capture-polymorphic formal parameter x of type  () => Unit
+   |       and captures {f, a, io}, but these capabilities are also passed separately
+   |       in the second argument with type  (f : () ->{a} Unit).
+   |
+   |         Capture set of second argument        : {f}
+   |         Hidden set of current argument        : {f}
+   |         Footprint of second argument          : {f, a, io}
+   |         Hidden footprint of current argument  : {f, a, io}
+   |         Declared footprint of current argument: {}
+   |         Undeclared overlap of footprints      : {f, a, io}
+-- Error: tests/neg-custom-args/captures/sep-compose.scala:40:5 --------------------------------------------------------
+40 |  p1(f) // error
+   |     ^
+   |     Separation failure: argument of type  (f : () ->{a} Unit)
+   |     to method apply: (v1: T1): R
+   |     corresponds to capture-polymorphic formal parameter x$0 of type  () => Unit
+   |     and captures {f, a, io}, but these capabilities are also passed separately
+   |     in the function prefix with type  (p1 : (x$0: () => Unit) ->{f} Unit).
+   |
+   |       Capture set of function prefix        : {p1}
+   |       Hidden set of current argument        : {f}
+   |       Footprint of function prefix          : {p1, f, a, io}
+   |       Hidden footprint of current argument  : {f, a, io}
+   |       Declared footprint of current argument: {}
+   |       Undeclared overlap of footprints      : {f, a, io}
+-- Error: tests/neg-custom-args/captures/sep-compose.scala:41:38 -------------------------------------------------------
+41 |  val p8 = (x: () ->{a} Unit) => seq8(f)(x) // error
+   |                                      ^
+   |                                      Separation failure: argument of type  (f : () ->{a} Unit)
+   |                                      to method seq8: (x: () => Unit)(y: () ->{a} Unit): Unit
+   |                                      corresponds to capture-polymorphic formal parameter x of type  () => Unit
+   |                                      and captures {a, io}, but these capabilities are also passed separately
+   |                                      in the second argument with type  (x : () ->{a} Unit).
+   |
+   |                                        Capture set of second argument        : {x}
+   |                                        Hidden set of current argument        : {f}
+   |                                        Footprint of second argument          : {x, a, io}
+   |                                        Hidden footprint of current argument  : {f, a, io}
+   |                                        Declared footprint of current argument: {}
+   |                                        Undeclared overlap of footprints      : {a, io}

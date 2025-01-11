@@ -242,6 +242,17 @@ object CheckCaptures:
 
       /** Was a new type installed for this tree? */
       def hasNuType: Boolean
+
+      /** Is this tree passed to a parameter or assigned to a value with a type
+       *  that contains cap in no-flip covariant position, which will necessite
+       *  a separation check?
+       */
+      def needsSepCheck: Boolean
+
+      /** If a tree is an argument for which needsSepCheck is true,
+       *  the type of the formal paremeter corresponding to the argument.
+       */
+      def formalType: Type
   end CheckerAPI
 
 class CheckCaptures extends Recheck, SymTransformer:
@@ -281,6 +292,15 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  with a checkConformsExpr.
      */
     private val todoAtPostCheck = new mutable.ListBuffer[() => Unit]
+
+    /** Maps trees that need a separation check because they are arguments to
+     *  polymorphic parameters. The trees are mapped to the formal parameter type.
+     */
+    private val sepCheckFormals = util.EqHashMap[Tree, Type]()
+
+    extension [T <: Tree](tree: T)
+      def needsSepCheck: Boolean = sepCheckFormals.contains(tree)
+      def formalType: Type = sepCheckFormals.getOrElse(tree, NoType)
 
     /** Instantiate capture set variables appearing contra-variantly to their
      *  upper approximation.
@@ -662,6 +682,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         // The @use annotation is added to `formal` by `prepareFunction`
         capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
         markFree(argType.deepCaptureSet, arg.srcPos)
+      if formal.containsCap then
+        sepCheckFormals(arg) = freshenedFormal
       argType
 
     /** Map existential captures in result to `cap` and implement the following
@@ -1786,6 +1808,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       end checker
 
       checker.traverse(unit)(using ctx.withOwner(defn.RootClass))
+      if ccConfig.useFresh then SepChecker(this).traverse(unit)
       if !ctx.reporter.errorsReported then
         // We dont report errors here if previous errors were reported, because other
         // errors often result in bad applied types, but flagging these bad types gives

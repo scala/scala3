@@ -1,5 +1,7 @@
 import Predef.{augmentString as _, wrapString as _, *}
 import scala.reflect.ClassTag
+import caps.unsafe.unsafeAssumeSeparate
+import language.`3.7` // sepchecks on
 
 object Test {
   import colltest5.strawman.collections.*
@@ -89,7 +91,7 @@ object Test {
     val ys9: View[Boolean]^{xs9} = xs9
     val xs10 = xs.flatMap(flips)
     val ys10: View[Int]^{xs10} = xs10
-    val xs11 = xs ++ xs
+    val xs11 = unsafeAssumeSeparate(xs ++ xs)
     val ys11: View[Int]^{xs11} = xs11
     val xs12 = xs ++ Nil
     val ys12: View[Int]^{xs12} = xs12
@@ -97,7 +99,7 @@ object Test {
     val ys13: List[Int] = xs13
     val xs14 = xs ++ Cons("a", Nil)
     val ys14: View[Any]^{xs14} = xs14
-    val xs15 = xs.zip(xs9)
+    val xs15 = unsafeAssumeSeparate(xs.zip(xs9))
     val ys15: View[(Int, Boolean)]^{xs15} = xs15
     println("-------")
     println(x1)

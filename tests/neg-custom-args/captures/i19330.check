@@ -3,3 +3,10 @@
    |                           ^^^
    |                           Type variable T of method usingLogger cannot be instantiated to x.T since
    |                           the part () => Logger^ of that type captures the root capability `cap`.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i19330.scala:22:22 ---------------------------------------
+22 |  val bad: bar.T = foo(bar) // error
+   |                   ^^^^^^^^
+   |                   Found:    () => Logger^
+   |                   Required: () ->{fresh} (ex$9: caps.Exists) -> Logger^{ex$9}
+   |
+   | longer explanation available when compiling with `-explain`

@@ -1,7 +1,7 @@
 import language.experimental.captureChecking
 import caps.Capability
 import caps.use
-
+import language.`3.7` // sepchecks on
 trait List[+T]:
   def map[U](f: T => U): List[U]
 
