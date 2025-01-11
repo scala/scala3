@@ -18,11 +18,12 @@ import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
 import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
 import scala.collection.mutable
-import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult}
+import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult, VarState}
 import CCState.*
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
 import reporting.{trace, Message, OverrideError}
+import Existential.derivedExistentialType
 
 /** The capture checker */
 object CheckCaptures:
@@ -88,6 +89,7 @@ object CheckCaptures:
           tp
         case _ =>
           mapOver(tp)
+    override def toString = "SubstParamsMap"
   end SubstParamsMap
 
   /** Used for substituting parameters in a special case: when all actual arguments
@@ -107,6 +109,7 @@ object CheckCaptures:
         tp
       case _ =>
         mapOver(tp)
+    override def toString = "SubstParamsBiMap"
 
     lazy val inverse = new BiTypeMap:
       def apply(tp: Type): Type = tp match
@@ -123,6 +126,7 @@ object CheckCaptures:
           tp
         case _ =>
           mapOver(tp)
+      override def toString = "SubstParamsBiMap.inverse"
       def inverse = thisMap
   end SubstParamsBiMap
 
@@ -307,32 +311,33 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** Assert subcapturing `cs1 <: cs2` (available for debugging, otherwise unused) */
     def assertSub(cs1: CaptureSet, cs2: CaptureSet)(using Context) =
-      assert(cs1.subCaptures(cs2, frozen = false).isOK, i"$cs1 is not a subset of $cs2")
+      assert(cs1.subCaptures(cs2).isOK, i"$cs1 is not a subset of $cs2")
 
     /** If `res` is not CompareResult.OK, report an error */
-    def checkOK(res: CompareResult, prefix: => String, pos: SrcPos, provenance: => String = "")(using Context): Unit =
+    def checkOK(res: CompareResult, prefix: => String, added: CaptureRef | CaptureSet, pos: SrcPos, provenance: => String = "")(using Context): Unit =
       if !res.isOK then
-        def toAdd: String = CaptureSet.levelErrors.toAdd.mkString
-        def descr: String =
-          val d = res.blocking.description
-          if d.isEmpty then provenance else ""
-        report.error(em"$prefix included in the allowed capture set ${res.blocking}$descr$toAdd", pos)
+        inContext(Fresh.printContext(added, res.blocking)):
+          def toAdd: String = CaptureSet.levelErrors.toAdd.mkString
+          def descr: String =
+            val d = res.blocking.description
+            if d.isEmpty then provenance else ""
+          report.error(em"$prefix included in the allowed capture set ${res.blocking}$descr$toAdd", pos)
 
     /** Check subcapturing `{elem} <: cs`, report error on failure */
     def checkElem(elem: CaptureRef, cs: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context) =
       checkOK(
-          elem.singletonCaptureSet.subCaptures(cs, frozen = false),
+          elem.singletonCaptureSet.subCaptures(cs),
           i"$elem cannot be referenced here; it is not",
-          pos, provenance)
+          elem, pos, provenance)
 
     /** Check subcapturing `cs1 <: cs2`, report error on failure */
     def checkSubset(cs1: CaptureSet, cs2: CaptureSet, pos: SrcPos,
         provenance: => String = "", cs1description: String = "")(using Context) =
       checkOK(
-          cs1.subCaptures(cs2, frozen = false),
+          cs1.subCaptures(cs2),
           if cs1.elems.size == 1 then i"reference ${cs1.elems.toList.head}$cs1description is not"
           else i"references $cs1$cs1description are not all",
-          pos, provenance)
+          cs1, pos, provenance)
 
     /** If `sym` is a class or method nested inside a term, a capture set variable representing
      *  the captured variables of the environment associated with `sym`.
@@ -635,11 +640,11 @@ class CheckCaptures extends Recheck, SymTransformer:
       val meth = tree.fun.symbol
       if meth == defn.Caps_unsafeAssumePure then
         val arg :: Nil = tree.args: @unchecked
-        val argType0 = recheck(arg, pt.capturing(CaptureSet.universal))
+        val argType0 = recheck(arg, pt.stripCapturing.capturing(CaptureSet.universal))
         val argType =
           if argType0.captureSet.isAlwaysEmpty then argType0
           else argType0.widen.stripCapturing
-        capt.println(i"rechecking $arg with $pt: $argType")
+        capt.println(i"rechecking unsafeAssumePure of $arg with $pt: $argType")
         super.recheckFinish(argType, tree, pt)
       else
         val res = super.recheckApply(tree, pt)
@@ -650,13 +655,13 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  charge the deep capture set of the actual argument to the environment.
      */
     protected override def recheckArg(arg: Tree, formal: Type)(using Context): Type =
-      val argType = recheck(arg, formal)
-      formal match
-        case AnnotatedType(formal1, ann) if ann.symbol == defn.UseAnnot =>
-          // The UseAnnot is added to `formal` by `prepareFunction`
-          capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
-          markFree(argType.deepCaptureSet, arg.srcPos)
-        case _ =>
+      val freshenedFormal = Fresh.fromCap(formal)
+      val argType = recheck(arg, freshenedFormal)
+        .showing(i"recheck arg $arg vs $freshenedFormal", capt)
+      if formal.hasUseAnnot then
+        // The @use annotation is added to `formal` by `prepareFunction`
+        capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
+        markFree(argType.deepCaptureSet, arg.srcPos)
       argType
 
     /** Map existential captures in result to `cap` and implement the following
@@ -686,9 +691,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val qualCaptures = qualType.captureSet
       val argCaptures =
         for (argType, formal) <- argTypes.lazyZip(funType.paramInfos) yield
-          formal match
-            case AnnotatedType(_, ann) if ann.symbol == defn.UseAnnot => argType.deepCaptureSet
-            case _ => argType.captureSet
+          if formal.hasUseAnnot then argType.deepCaptureSet else argType.captureSet
       appType match
         case appType @ CapturingType(appType1, refs)
         if qualType.exists
@@ -746,8 +749,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       def addParamArgRefinements(core: Type, initCs: CaptureSet): (Type, CaptureSet) =
         var refined: Type = core
         var allCaptures: CaptureSet =
-          if core.derivesFromMutable then CaptureSet.universal
-          else if core.derivesFromCapability then initCs ++ defn.universalCSImpliedByCapability
+          if core.derivesFromMutable then CaptureSet.fresh()
+          else if core.derivesFromCapability then initCs ++ Fresh.Cap().readOnly.singletonCaptureSet
           else initCs
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
           val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
@@ -768,6 +771,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           // can happen for curried constructors if instantiate of a previous step
           // added capture set to result.
           augmentConstructorType(parent, initCs ++ refs)
+        case core @ Existential(boundVar, core1) =>
+          core.derivedExistentialType(augmentConstructorType(core1, initCs))
         case _ =>
           val (refined, cs) = addParamArgRefinements(core, initCs)
           refined.capturing(cs)
@@ -1201,10 +1206,11 @@ class CheckCaptures extends Recheck, SymTransformer:
         actualBoxed
       else
         capt.println(i"conforms failed for ${tree}: $actual vs $expected")
-        err.typeMismatch(tree.withType(actualBoxed), expected1,
-            addApproxAddenda(
-              addenda ++ CaptureSet.levelErrors ++ boxErrorAddenda(boxErrors),
-              expected1))
+        inContext(Fresh.printContext(actualBoxed, expected1)):
+          err.typeMismatch(tree.withType(actualBoxed), expected1,
+              addApproxAddenda(
+                addenda ++ CaptureSet.levelErrors ++ boxErrorAddenda(boxErrors),
+                expected1))
         actual
     end checkConformsExpr
 
@@ -1370,7 +1376,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           val cs = actual.captureSet
           if covariant then cs ++ leaked
           else
-            if !leaked.subCaptures(cs, frozen = false).isOK then
+            if !leaked.subCaptures(cs).isOK then
               report.error(
                 em"""$expected cannot be box-converted to ${actual.capturing(leaked)}
                     |since the additional capture set $leaked resulted from box conversion is not allowed in $actual""", pos)
@@ -1693,7 +1699,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                     val widened = ref.captureSetOfInfo
                     val added = widened.filter(isAllowed(_))
                     capt.println(i"heal $ref in $cs by widening to $added")
-                    if !added.subCaptures(cs, frozen = false).isOK then
+                    if !added.subCaptures(cs).isOK then
                       val location = if meth.exists then i" of ${meth.showLocated}" else ""
                       val paramInfo =
                         if ref.paramName.info.kind.isInstanceOf[UniqueNameKind]
