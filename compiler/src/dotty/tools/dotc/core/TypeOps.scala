@@ -19,7 +19,7 @@ import typer.Inferencing.*
 import typer.IfBottom
 import reporting.TestingReporter
 import cc.{CapturingType, derivedCapturingType, CaptureSet, captureSet, isBoxed, isBoxedCapturing}
-import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
+import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap, VarState}
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -161,7 +161,7 @@ object TypeOps:
         TypeComparer.lub(simplify(l, theMap), simplify(r, theMap), isSoft = tp.isSoft)
       case tp @ CapturingType(parent, refs) =>
         if !ctx.mode.is(Mode.Type)
-            && refs.subCaptures(parent.captureSet, frozen = true).isOK
+            && refs.subCaptures(parent.captureSet, VarState.Separate).isOK
             && (tp.isBoxed || !parent.isBoxedCapturing)
               // fuse types with same boxed status and outer boxed with any type
         then
