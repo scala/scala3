@@ -446,7 +446,7 @@ private sealed trait YSettings:
   val YnoKindPolymorphism: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-kind-polymorphism", "Disable kind polymorphism.")
   val YexplicitNulls: Setting[Boolean] = BooleanSetting(ForkSetting, "Yexplicit-nulls", "Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.")
   val YnoFlexibleTypes: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-flexible-types", "Disable turning nullable Java return types and parameter types into flexible types, which behave like abstract types with a nullable lower bound and non-nullable upper bound.")
-  val YcheckInitGlobal: Setting[Boolean] = BooleanSetting(ForkSetting, "Ysafe-init-global", "Check safe initialization of global objects.")
+  val YcheckInitGlobal: Setting[String] = ChoiceSetting(ForkSetting, "Ysafe-init-global", "[report-unknown, ignore-unknown]", "Check safe initialization of global objects.", List("report-unknown", "ignore-unknown", "off"), "off")
   val YrequireTargetName: Setting[Boolean] = BooleanSetting(ForkSetting, "Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation.")
   val YrecheckTest: Setting[Boolean] = BooleanSetting(ForkSetting, "Yrecheck-test", "Run basic rechecking (internal test only).")
   val YccDebug: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycc-debug", "Used in conjunction with captureChecking language import, debug info for captured references.")
