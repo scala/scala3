@@ -92,10 +92,10 @@
 40 |  p1(f) // error
    |     ^
    |     Separation failure: argument of type  (f : () ->{a} Unit)
-   |     to method apply: (v1: T1): R
+   |     to a function of type (x$0: () => Unit) ->{f} Unit
    |     corresponds to capture-polymorphic formal parameter x$0 of type  () => Unit
    |     and captures {f, a, io}, but these capabilities are also passed separately
-   |     in the function prefix with type  (p1 : (x$0: () => Unit) ->{f} Unit).
+   |     in the function prefix.
    |
    |       Capture set of function prefix        : {p1}
    |       Hidden set of current argument        : {f}

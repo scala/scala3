@@ -1,3 +1,5 @@
+import language.future // sepchecks on
+
 type Observe[T] = (T => Unit) -> Unit
 
 def unsafe(cap: C^) = cap.bad()

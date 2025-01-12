@@ -1,0 +1,24 @@
+-- Error: tests/neg-custom-args/captures/sep-use.scala:7:10 ------------------------------------------------------------
+7 |  println(io) // error
+  |          ^^
+  |          Separation failure: Illegal access to {io} which is hidden by the previous definition
+  |          of value x with type () => Unit.
+  |          This type hides capabilities  {io}
+-- Error: tests/neg-custom-args/captures/sep-use.scala:13:10 -----------------------------------------------------------
+13 |  println(io) // error
+   |          ^^
+   |          Separation failure: Illegal access to {io} which is hidden by the previous definition
+   |          of method x with result type () => Unit.
+   |          This type hides capabilities  {io}
+-- Error: tests/neg-custom-args/captures/sep-use.scala:19:10 -----------------------------------------------------------
+19 |  println(io) // error
+   |          ^^
+   |          Separation failure: Illegal access to {io} which is hidden by the previous definition
+   |          of method xx with result type (y: Int) => Unit.
+   |          This type hides capabilities  {io}
+-- Error: tests/neg-custom-args/captures/sep-use.scala:25:10 -----------------------------------------------------------
+25 |  println(io) // error
+   |          ^^
+   |          Separation failure: Illegal access to {io} which is hidden by the previous definition
+   |          of method xxx with result type Object^.
+   |          This type hides capabilities  {io}
