@@ -683,7 +683,8 @@ final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => Laz
         remaining -= 1
         scout = scout.tail
       }
-      dropRightState(scout)
+      unsafeAssumeSeparate:
+        dropRightState(scout)
     }
   }
 

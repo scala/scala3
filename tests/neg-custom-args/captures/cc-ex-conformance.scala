@@ -1,5 +1,6 @@
 import language.experimental.captureChecking
 import caps.{Exists, Capability}
+import language.future // sepchecks on
 
 class C
 
@@ -15,7 +16,7 @@ def Test =
   val ex1: EX1 = ???
   val ex2: EX2 = ???
   val _: EX1 = ex1
-  val _: EX2 = ex1  // ok
+  val _: EX2 = ex1  // error separation
   val _: EX1 = ex2  // ok
 
   val ex3: EX3 = ???
