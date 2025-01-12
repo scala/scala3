@@ -5,15 +5,31 @@ import ast.tpd
 import collection.mutable
 
 import core.*
-import Symbols.*, Types.*
+import Symbols.*, Types.*, Flags.*
 import Contexts.*, Names.*, Flags.*, Symbols.*, Decorators.*
-import CaptureSet.{Refs, emptySet}
+import CaptureSet.{Refs, emptySet, HiddenSet}
 import config.Printers.capt
 import StdNames.nme
+import util.{SimpleIdentitySet, EqHashMap}
 
 class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   import tpd.*
   import checker.*
+
+  /** The set of capabilities that are hidden by a polymorphic result type
+   *  of some previous definition.
+   */
+  private var defsShadow: Refs = SimpleIdentitySet.empty
+
+  /** A map from definitions to their internal result types.
+   *  Populated during separation checking traversal.
+   */
+  private val resultType = EqHashMap[Symbol, Type]()
+
+  /** The previous val or def definitions encountered during separation checking.
+   *  These all enclose and precede the current traversal node.
+   */
+  private var previousDefs: List[mutable.ListBuffer[ValOrDefDef]] = Nil
 
   extension (refs: Refs)
     private def footprint(using Context): Refs =
@@ -34,38 +50,39 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           ref.isExclusive && refs2.exists(_.stripReadOnly eq ref)
       common(refs, other) ++ common(other, refs)
 
-  private def hidden(refs: Refs)(using Context): Refs =
-    val seen: util.EqHashSet[CaptureRef] = new util.EqHashSet
+    private def hidden(using Context): Refs =
+      val seen: util.EqHashSet[CaptureRef] = new util.EqHashSet
 
-    def hiddenByElem(elem: CaptureRef): Refs =
-      if seen.add(elem) then elem match
-        case Fresh.Cap(hcs) => hcs.elems.filter(!_.isRootCapability) ++ recur(hcs.elems)
-        case ReadOnlyCapability(ref) => hiddenByElem(ref).map(_.readOnly)
-        case _ => emptySet
-      else emptySet
+      def hiddenByElem(elem: CaptureRef): Refs =
+        if seen.add(elem) then elem match
+          case Fresh.Cap(hcs) => hcs.elems.filter(!_.isRootCapability) ++ recur(hcs.elems)
+          case ReadOnlyCapability(ref) => hiddenByElem(ref).map(_.readOnly)
+          case _ => emptySet
+        else emptySet
 
-    def recur(cs: Refs): Refs =
-      (emptySet /: cs): (elems, elem) =>
-        elems ++ hiddenByElem(elem)
+      def recur(cs: Refs): Refs =
+        (emptySet /: cs): (elems, elem) =>
+          elems ++ hiddenByElem(elem)
 
-    recur(refs)
-  end hidden
+      recur(refs)
+    end hidden
+  end extension
 
   /** The captures of an argument or prefix widened to the formal parameter, if
    *  the latter contains a cap.
    */
   private def formalCaptures(arg: Tree)(using Context): Refs =
     val argType = arg.formalType.orElse(arg.nuType)
-    (if arg.nuType.hasUseAnnot then argType.deepCaptureSet else argType.captureSet)
-      .elems
-
-   /** The captures of an argument of prefix. No widening takes place */
-  private def actualCaptures(arg: Tree)(using Context): Refs =
-    val argType = arg.nuType
     (if argType.hasUseAnnot then argType.deepCaptureSet else argType.captureSet)
       .elems
 
-  private def sepError(fn: Tree, args: List[Tree], argIdx: Int,
+   /** The captures of a node */
+  private def captures(tree: Tree)(using Context): Refs =
+    val tpe = tree.nuType
+    (if tree.formalType.hasUseAnnot then tpe.deepCaptureSet else tpe.captureSet)
+      .elems
+
+  private def sepApplyError(fn: Tree, args: List[Tree], argIdx: Int,
       overlap: Refs, hiddenInArg: Refs, footprints: List[(Refs, Int)],
       deps: collection.Map[Tree, List[Tree]])(using Context): Unit =
     val arg = args(argIdx)
@@ -78,9 +95,15 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       case Some(pname) => i"$pname "
       case _ => ""
     def whatStr = if overlap.size == 1 then "this capability is" else "these capabilities are"
+    def qualifier = methPart(fn) match
+      case Select(qual, _) => qual
+      case _ => EmptyTree
+    def isShowableMethod = fn.symbol.exists && !defn.isFunctionSymbol(fn.symbol.maybeOwner)
+    def funType =
+      if fn.symbol.exists && !qualifier.isEmpty then qualifier.nuType else fn.nuType
     def funStr =
-      if fn.symbol.exists then i"${fn.symbol}: ${fn.symbol.info}"
-      else i"a function of type ${fn.nuType.widen}"
+      if isShowableMethod then i"${fn.symbol}: ${fn.symbol.info}"
+      else i"a function of type ${funType.widen}"
     val clashIdx = footprints
       .collect:
         case (fp, idx) if !hiddenInArg.overlapWith(fp).isEmpty => idx
@@ -92,21 +115,23 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       case 3 => "third argument "
       case n => s"${n}th argument  "
     def clashTree =
-      if clashIdx == 0 then methPart(fn).asInstanceOf[Select].qualifier
+      if clashIdx == 0 then qualifier
       else args(clashIdx - 1)
-    def clashType = clashTree.nuType
-    def clashCaptures = actualCaptures(clashTree)
-    def hiddenCaptures = hidden(formalCaptures(arg))
+    def clashTypeStr =
+      if clashIdx == 0 && !isShowableMethod then "" // we already mentioned the type in `funStr`
+      else i" with type  ${clashTree.nuType}"
+    def clashCaptures = captures(clashTree)
+    def hiddenCaptures = formalCaptures(arg).hidden
     def clashFootprint = clashCaptures.footprint
     def hiddenFootprint = hiddenCaptures.footprint
-    def declaredFootprint = deps(arg).map(actualCaptures(_)).foldLeft(emptySet)(_ ++ _).footprint
+    def declaredFootprint = deps(arg).map(captures(_)).foldLeft(emptySet)(_ ++ _).footprint
     def footprintOverlap = hiddenFootprint.overlapWith(clashFootprint) -- declaredFootprint
     report.error(
       em"""Separation failure: argument of type  ${arg.nuType}
           |to $funStr
           |corresponds to capture-polymorphic formal parameter ${formalName}of type  ${arg.formalType}
           |and captures ${CaptureSet(overlap)}, but $whatStr also passed separately
-          |in the ${whereStr.trim} with type  $clashType.
+          |in the ${whereStr.trim}$clashTypeStr.
           |
           |  Capture set of $whereStr        : ${CaptureSet(clashCaptures)}
           |  Hidden set of current argument        : ${CaptureSet(hiddenCaptures)}
@@ -115,7 +140,28 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           |  Declared footprint of current argument: ${CaptureSet(declaredFootprint)}
           |  Undeclared overlap of footprints      : ${CaptureSet(footprintOverlap)}""",
       arg.srcPos)
-  end sepError
+  end sepApplyError
+
+  def sepUseError(tree: Tree, used: Refs, globalOverlap: Refs)(using Context): Unit =
+    val individualChecks = for mdefs <- previousDefs.iterator; mdef <- mdefs.iterator yield
+      val hiddenByDef = captures(mdef.tpt).hidden
+      val overlap = defUseOverlap(hiddenByDef, used, tree.symbol)
+      if !overlap.isEmpty then
+        def resultStr = if mdef.isInstanceOf[DefDef] then " result" else ""
+        report.error(
+          em"""Separation failure: Illegal access to ${CaptureSet(overlap)} which is hidden by the previous definition
+              |of ${mdef.symbol} with$resultStr type ${mdef.tpt.nuType}.
+              |This type hides capabilities  ${CaptureSet(hiddenByDef)}""",
+          tree.srcPos)
+        true
+      else false
+    val clashes = individualChecks.filter(identity)
+    if clashes.hasNext then clashes.next // issues error as a side effect
+    else report.error(
+      em"""Separation failure: Illegal access to ${CaptureSet(globalOverlap)} which is hidden by some previous definitions
+          |No clashing definitions were found. This might point to an internal error.""",
+      tree.srcPos)
+  end sepUseError
 
   private def checkApply(fn: Tree, args: List[Tree], deps: collection.Map[Tree, List[Tree]])(using Context): Unit =
     val fnCaptures = methPart(fn) match
@@ -128,23 +174,40 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
     def subtractDeps(elems: Refs, arg: Tree): Refs =
       deps(arg).foldLeft(elems): (elems, dep) =>
-        elems -- actualCaptures(dep).footprint
+        elems -- captures(dep).footprint
 
     for (arg, idx) <- indexedArgs do
       if !arg.needsSepCheck then
-        footprint = footprint ++ subtractDeps(actualCaptures(arg).footprint, arg)
+        footprint = footprint ++ subtractDeps(captures(arg).footprint, arg)
         footprints += ((footprint, idx + 1))
     for (arg, idx) <- indexedArgs do
       if arg.needsSepCheck then
         val ac = formalCaptures(arg)
-        val hiddenInArg = hidden(ac).footprint
+        val hiddenInArg = ac.hidden.footprint
         //println(i"check sep $arg: $ac, footprint so far = $footprint, hidden = $hiddenInArg")
         val overlap = subtractDeps(hiddenInArg.overlapWith(footprint), arg)
         if !overlap.isEmpty then
-          sepError(fn, args, idx, overlap, hiddenInArg, footprints.toList, deps)
-        footprint ++= actualCaptures(arg).footprint
+          sepApplyError(fn, args, idx, overlap, hiddenInArg, footprints.toList, deps)
+        footprint ++= captures(arg).footprint
         footprints += ((footprint, idx + 1))
   end checkApply
+
+  def defUseOverlap(hiddenByDef: Refs, used: Refs, sym: Symbol)(using Context): Refs =
+    val overlap = hiddenByDef.overlapWith(used)
+    resultType.get(sym) match
+      case Some(tp) if !overlap.isEmpty =>
+        val declared = tp.captureSet.elems
+        overlap -- declared.footprint -- declared.hidden.footprint
+      case _ =>
+        overlap
+
+  def checkUse(tree: Tree)(using Context) =
+    val used = tree.markedFree
+    if !used.elems.isEmpty then
+      val usedFootprint = used.elems.footprint
+      val overlap = defUseOverlap(defsShadow, usedFootprint, tree.symbol)
+      if !overlap.isEmpty then
+        sepUseError(tree, usedFootprint, overlap)
 
   private def collectMethodTypes(tp: Type): List[TermLambda] = tp match
     case tp: MethodType => tp :: collectMethodTypes(tp.resType)
@@ -185,12 +248,28 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   def traverse(tree: Tree)(using Context): Unit =
     tree match
+      case tree: Apply if tree.symbol == defn.Caps_unsafeAssumeSeparate => return
+      case _ =>
+    checkUse(tree)
+    tree match
       case tree: GenericApply =>
-        if tree.symbol != defn.Caps_unsafeAssumeSeparate then
-          tree.tpe match
-            case _: MethodOrPoly =>
-            case _ => traverseApply(tree, Nil)
-          traverseChildren(tree)
+        tree.tpe match
+          case _: MethodOrPoly =>
+          case _ => traverseApply(tree, Nil)
+        traverseChildren(tree)
+      case tree: Block =>
+        val saved = defsShadow
+        previousDefs = mutable.ListBuffer() :: previousDefs
+        try traverseChildren(tree)
+        finally
+          previousDefs = previousDefs.tail
+          defsShadow = saved
+      case tree: ValOrDefDef =>
+        traverseChildren(tree)
+        if previousDefs.nonEmpty && !tree.symbol.isOneOf(TermParamOrAccessor) then
+          defsShadow ++= captures(tree.tpt).hidden.footprint
+          resultType(tree.symbol) = tree.tpt.nuType
+          previousDefs.head += tree
       case _ =>
         traverseChildren(tree)
 end SepChecker
