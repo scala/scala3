@@ -1,3 +1,5 @@
+import language.future // sepchecks on
+
 def Test(c: Object^, f: Object^ => Object^) =
   def cc: Object^ = c
   val x1 =
