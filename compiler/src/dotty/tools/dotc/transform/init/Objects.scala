@@ -718,6 +718,11 @@ class Objects(using Context @constructorOnly):
 
     def widen(height: Int): Contextual[List[Value]] = values.map(_.widen(height)).toList
 
+  /** Check if the checker option reports warnings about unknown code
+   */
+  def reportUnknown(using context: Context): Boolean =
+    context.settings.YcheckInitGlobal.value == "report-unknown"
+
   /** Handle method calls `e.m(args)`.
    *
    * @param value        The value for the receiver.
@@ -727,18 +732,21 @@ class Objects(using Context @constructorOnly):
    * @param superType    The type of the super in a super call. NoType for non-super calls.
    * @param needResolve  Whether the target of the call needs resolution?
    */
-  def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+  def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.tree.show), printer, (_: Value).show) {
     value.filterClass(meth.owner) match
-    case UnknownValue => // TODO: This ensures soundness but emits extra warnings. Add an option to turn off warnings here
-      report.warning("Using unknown value. " + Trace.show, Trace.position)
-      Bottom
+    case UnknownValue =>
+      if reportUnknown then
+        report.warning("Using unknown value. " + Trace.show, Trace.position)
+        Bottom
+      else
+        UnknownValue
 
     case Package(packageSym) =>
       report.warning("[Internal error] Unexpected call on package = " + value.show + ", meth = " + meth.show + Trace.show, Trace.position)
       Bottom
 
-    case BaseValue => // TODO: This ensures soundness but emits extra warnings. Add an option to return BaseValue here
-      UnknownValue
+    case BaseValue =>
+      if reportUnknown then UnknownValue else BaseValue
 
     case Bottom =>
       Bottom
@@ -786,7 +794,10 @@ class Objects(using Context @constructorOnly):
           arr
         else if target.equals(defn.Predef_classOf) then
           // Predef.classOf is a stub method in tasty and is replaced in backend
-          UnknownValue
+          BaseValue
+        else if target.equals(defn.ClassTagModule_apply) then
+          // ClassTag and other reflection related values are considered safe
+          BaseValue
         else if target.hasSource then
           val cls = target.owner.enclosingClass.asClass
           val ddef = target.defTree.asInstanceOf[DefDef]
@@ -894,11 +905,14 @@ class Objects(using Context @constructorOnly):
   def select(value: Value, field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] = log("select " + field.show + ", this = " + value.show, printer, (_: Value).show) {
     value.filterClass(field.owner) match
     case UnknownValue =>
-      report.warning("Using unknown value", Trace.position)
-      Bottom
+      if reportUnknown then
+        report.warning("Using unknown value. " + Trace.show, Trace.position)
+        Bottom
+      else
+        UnknownValue
 
     case BaseValue =>
-      UnknownValue
+      if reportUnknown then UnknownValue else BaseValue
 
     case Package(packageSym) =>
       if field.isStaticObject then
