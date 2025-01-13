@@ -790,7 +790,13 @@ class Inliner(val call: tpd.Tree)(using Context):
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
       val locked = ctx.typerState.ownedVars
       val qual1 = typed(tree.qualifier, shallowSelectionProto(tree.name, pt, this, tree.nameSpan))
-      selectionType(tree, qual1) // side-effect
+
+      // Make sure that the named type has the correct denotation.
+      // For instance in tests/pos/i22070 when we type `Featureful[?]#toFeatures`,
+      // `selectionType` will skolemize the prefix, find the denotation,
+      // and then set that denotation for the `TermRef(Featureful[?], symbol toFeatures)`.
+      selectionType(tree, qual1)
+
       val resNoReduce = untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
       val reducedProjection = reducer.reduceProjection(resNoReduce)
       if reducedProjection.isType then
