@@ -551,18 +551,14 @@ class ReplDriver(settings: Array[String],
 //          println(s"classPath after add = ${state.context.platform.classPath(using state.context).asClassPathString}")
 
           // recreate initial context
-          rootCtx = setupRootCtx(Array(), rootCtx.fresh.setSetting(rootCtx.settings.classpath, newCP))
+          resetToInitial(List("-classpath", newCP))
+//          rootCtx = setupRootCtx(Array(), rootCtx.fresh.setSetting(rootCtx.settings.classpath, newCP))
           val s = state.copy(context = rootCtx)
-          println(s"after setupRootCtx classPath = ${s.context.platform.classPath(using s.context).asClassPathString}")
-
 
           // new class loader
-//          val newClassPath = state.context.platform.classPath(using state.context).asURLs :+ f.toURI.toURL
-//          val oldCL = rendering.classLoader()(using state.context)
-//          val newCL = fromURLsParallelCapable(newClassPath, oldCL)
-//          println(s"new CL class path = ${newCL.getURLs.toList}")
-//          println(s"\nclass name = ${cpCP.className}")
-//          rendering.myClassLoader = new AbstractFileClassLoader(state.context.settings.outputDir.default, newCL)
+          val oldCL = rendering.classLoader()(using state.context)
+          val newCL = fromURLsParallelCapable(s.context.platform.classPath(using s.context).asURLs, oldCL)
+          rendering.myClassLoader = new AbstractFileClassLoader(state.context.settings.outputDir.default, newCL)
 //          out.println(s"Added '$path' to classpath.")
           s
 
