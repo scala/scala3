@@ -110,7 +110,7 @@ object Applications {
   }
 
   def namedTupleOrProductTypes(tp: Type)(using Context): List[Type] =
-    if tp.isNamedTupleType then tp.namedTupleElementTypes.map(_(1))
+    if tp.isNamedTupleType then tp.namedTupleElementTypes(true).map(_(1))
     else productSelectorTypes(tp, NoSourcePosition)
 
   def productSelectorTypes(tp: Type, errorPos: SrcPos)(using Context): List[Type] = {
