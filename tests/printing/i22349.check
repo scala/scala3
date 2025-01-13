@@ -1,0 +1,15 @@
+[[syntax trees at end of                     typer]] // tests/printing/i22349.scala
+package <empty> {
+  final lazy module val i22349$package: i22349$package = new i22349$package()
+  final module class i22349$package() extends Object() {
+    this: i22349$package.type =>
+    val x: Int = 0
+    val _$1: x.type = x
+    inline val _$2: true = true
+    inline val _$3: "abc" = "abc"
+    inline val _$4: 'c' = 'c'
+    inline val _$5: 1.2f = 1.2f
+    inline val _$6: 1.2d = 1.2d
+  }
+}
+
