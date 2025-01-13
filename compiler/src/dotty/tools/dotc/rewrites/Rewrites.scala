@@ -32,7 +32,7 @@ object Rewrites {
   case class ActionPatch(srcPos: SourcePosition, replacement: String)
 
   private class Patches(source: SourceFile) {
-    private[Rewrites] val pbuf = mutable.ListBuffer.empty[Patch]
+    private[Rewrites] val pbuf = new mutable.ListBuffer[Patch]()
 
     def addPatch(span: Span, replacement: String): Unit =
       pbuf += Patch(span, replacement)
