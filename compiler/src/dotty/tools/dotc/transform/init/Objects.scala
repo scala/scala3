@@ -82,7 +82,7 @@ class Objects(using Context @constructorOnly):
   val immutableLazyList: Symbol = requiredModule("scala.collection.immutable.LazyList")
   val LazyList_empty: Symbol = immutableLazyList.requiredValue("_empty")
 
-  val whiteList: Set[Symbol] = Set(SetNode_EmptySetNode, HashSet_EmptySet, Vector_EmptyIterator, MapNode_EmptyMapNode, HashMap_EmptyMap, LazyList_empty)
+  val allowList: Set[Symbol] = Set(SetNode_EmptySetNode, HashSet_EmptySet, Vector_EmptyIterator, MapNode_EmptyMapNode, HashMap_EmptyMap, LazyList_empty)
 
   // ----------------------------- abstract domain -----------------------------
 
@@ -1728,7 +1728,7 @@ class Objects(using Context @constructorOnly):
     tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
         val sym = vdef.symbol
-        val res = if (whiteList.contains(sym)) Bottom else eval(vdef.rhs, thisV, klass)
+        val res = if (allowList.contains(sym)) Bottom else eval(vdef.rhs, thisV, klass)
         if sym.is(Flags.Mutable) then
           val addr = Heap.fieldVarAddr(summon[Regions.Data], sym, State.currentObject)
           thisV.initVar(sym, addr)

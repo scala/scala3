@@ -1709,7 +1709,7 @@ object Build {
         )
       },
 
-      // A first blacklist of tests for those that do not compile or do not link
+      // A first excludelist of tests for those that do not compile or do not link
       (Test / managedSources) ++= {
         val dir = fetchScalaJSSource.value / "test-suite"
 

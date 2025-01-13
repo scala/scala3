@@ -23,7 +23,7 @@ class FromTastyTests {
 
     implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
     compileTastyInDir(s"tests${JFile.separator}pos", defaultOptions,
-      fromTastyFilter = FileFilter.exclude(TestSources.posFromTastyBlacklisted)
+      fromTastyFilter = FileFilter.exclude(TestSources.posFromTastyExcludelisted)
     ).checkCompile()
   }
 
@@ -35,7 +35,7 @@ class FromTastyTests {
 
     implicit val testGroup: TestGroup = TestGroup("runTestFromTasty")
     compileTastyInDir(s"tests${JFile.separator}run", defaultOptions,
-      fromTastyFilter = FileFilter.exclude(TestSources.runFromTastyBlacklisted)
+      fromTastyFilter = FileFilter.exclude(TestSources.runFromTastyExcludelisted)
     ).checkRuns()
   }
 }
