@@ -1,0 +1,4 @@
+t7746.scala # order of exhaustivity suggestions differs
+t4408.scala # order of exhaustivity suggestions differs
+patmat-ortype.scala # order of exhaustivity suggestions differs
+i13003.scala # order of exhaustivity suggestions differs
