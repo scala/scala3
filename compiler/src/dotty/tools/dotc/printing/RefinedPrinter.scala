@@ -248,8 +248,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     def appliedText(tp: Type): Text = tp match
       case tp @ AppliedType(tycon, args) =>
         val namedElems =
-          try tp.namedTupleElementTypesUpTo(200, normalize = false)
-          catch case ex: TypeError => Nil
+          try tp.namedTupleElementTypesUpTo(200, false, normalize = false)
+          catch
+            case ex: TypeError => Nil
         if namedElems.nonEmpty then
           toTextNamedTuple(namedElems)
         else tp.tupleElementTypesUpTo(200, normalize = false) match
@@ -572,6 +573,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tree: TypeTree =>
         typeText(toText(tree.typeOpt))
         ~ Str("(inf)").provided(tree.isInferred && printDebug)
+      case SingletonTypeTree(ref: Literal) => toTextLocal(ref)
       case SingletonTypeTree(ref) =>
         toTextLocal(ref) ~ "." ~ keywordStr("type")
       case RefinedTypeTree(tpt, refines) =>

@@ -139,9 +139,7 @@ object NamedTupleDecomposition:
   extension [N <: Tuple, V <: Tuple](x: NamedTuple[N, V])
       /** The value (without the name) at index `n` of this tuple */
     inline def apply(n: Int): Elem[NamedTuple[N, V], n.type] =
-      inline x.toTuple match
-        case tup: NonEmptyTuple => tup(n).asInstanceOf[Elem[NamedTuple[N, V], n.type]]
-        case tup => tup.productElement(n).asInstanceOf[Elem[NamedTuple[N, V], n.type]]
+      x.toTuple.apply(n).asInstanceOf[Elem[NamedTuple[N, V], n.type]]
 
     /** The number of elements in this tuple */
     inline def size: Size[NamedTuple[N, V]] = x.toTuple.size

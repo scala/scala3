@@ -109,8 +109,8 @@ object ResolveSuper {
         sym = other.symbol
         // Having a matching denotation is not enough: it should also be a subtype
         // of the superaccessor's type, see i5433.scala for an example where this matters
-        val otherTp = other.asSeenFrom(base.typeRef).info
-        val accTp = acc.asSeenFrom(base.typeRef).info
+        val otherTp = other.asSeenFrom(base.thisType).info
+        val accTp = acc.asSeenFrom(base.thisType).info
 
         if !otherTp.overrides(accTp, matchLoosely = true) then
           report.error(IllegalSuperAccessor(base, memberName, targetName, acc, accTp, other.symbol, otherTp), base.srcPos)

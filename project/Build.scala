@@ -98,7 +98,7 @@ object Build {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.6.3-RC1"
+  val referenceVersion = "3.6.3-RC2"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -301,6 +301,7 @@ object Build {
 
     // Avoid various sbt craziness involving classloaders and parallelism
     run / fork := true,
+    run / connectInput := true,
     Test / fork := true,
     Test / parallelExecution := false,
 
@@ -761,11 +762,11 @@ object Build {
 
       // get libraries onboard
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "9.7.0-scala-2", // used by the backend
+        "org.scala-lang.modules" % "scala-asm" % "9.7.1-scala-1", // used by the backend
         Dependencies.compilerInterface,
-        "org.jline" % "jline-reader" % "3.27.0",   // used by the REPL
-        "org.jline" % "jline-terminal" % "3.27.0",
-        "org.jline" % "jline-terminal-jna" % "3.27.0", // needed for Windows
+        "org.jline" % "jline-reader" % "3.27.1",   // used by the REPL
+        "org.jline" % "jline-terminal" % "3.27.1",
+        "org.jline" % "jline-terminal-jni" % "3.27.1", // needed for Windows
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
       ),
 
@@ -1446,7 +1447,7 @@ object Build {
 
   lazy val `scala3-presentation-compiler` = project.in(file("presentation-compiler"))
     .withCommonSettings(Bootstrapped)
-    .dependsOn(`scala3-compiler-bootstrapped`, `scala3-library-bootstrapped`, `scala3-presentation-compiler-testcases`)
+    .dependsOn(`scala3-compiler-bootstrapped`, `scala3-library-bootstrapped`, `scala3-presentation-compiler-testcases` % "test->test")
     .settings(presentationCompilerSettings)
     .settings(scala3PresentationCompilerBuildInfo)
 

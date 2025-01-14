@@ -395,9 +395,10 @@ class TreeUnpickler(reader: TastyReader,
             case TYPEREFin =>
               val name = readName().toTypeName
               val prefix = readType()
+              def pre = if TypeOps.isLegalPrefix(prefix) then prefix else QualSkolemType(prefix)
               val space = readType()
               space.decl(name) match {
-                case symd: SymDenotation if prefix.isArgPrefixOf(symd.symbol) => TypeRef(prefix, symd.symbol)
+                case symd: SymDenotation if prefix.isArgPrefixOf(symd.symbol) => TypeRef(pre, symd.symbol)
                 case _ => TypeRef(prefix, name, space.decl(name).asSeenFrom(prefix))
               }
             case REFINEDtype =>
@@ -1432,7 +1433,7 @@ class TreeUnpickler(reader: TastyReader,
                 extendOnly(namedArgs)
               else
                 // needs reordering, and possibly fill in holes for default arguments
-                val argsByName = mutable.AnyRefMap.from(namedArgs.map(arg => arg.name -> arg))
+                val argsByName = mutable.HashMap.from(namedArgs.map(arg => arg.name -> arg))
                 val reconstructedArgs = formalNames.lazyZip(methType.paramInfos).map { (name, tpe) =>
                   argsByName.remove(name).getOrElse(makeDefault(name, tpe))
                 }

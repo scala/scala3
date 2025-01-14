@@ -343,7 +343,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
     val (found2, expected2) =
       if (found1 frozen_<:< expected1) || reported.fbounded then (found, expected)
       else (found1, expected1)
-    val (foundStr, expectedStr) = Formatting.typeDiff(found2, expected2)
+    val (foundStr, expectedStr) = Formatting.typeDiff(found2.normalized, expected2.normalized)
     i"""|Found:    $foundStr
         |Required: $expectedStr${reported.notes}"""
   end msg
@@ -2504,12 +2504,15 @@ class ExtensionNullifiedByMember(method: Symbol, target: Symbol)(using Context)
   extends Message(ExtensionNullifiedByMemberID):
   def kind = MessageKind.PotentialIssue
   def msg(using Context) =
-    i"""Extension method ${hl(method.name.toString)} will never be selected
-       |because ${hl(target.name.toString)} already has a member with the same name and compatible parameter types."""
+    val targetName = hl(target.name.toString)
+    i"""Extension method ${hl(method.name.toString)} will never be selected from type $targetName
+       |because $targetName already has a member with the same name and compatible parameter types."""
   def explain(using Context) =
-    i"""An extension method can be invoked as a regular method, but if that is intended,
+    i"""Although extensions can be overloaded, they do not overload existing member methods.
+       |An extension method can be invoked as a regular method, but if that is the intended usage,
        |it should not be defined as an extension.
-       |Although extensions can be overloaded, they do not overload existing member methods."""
+       |
+       |The extension may be invoked as though selected from an arbitrary type if conversions are in play."""
 
 class TraitCompanionWithMutableStatic()(using Context)
   extends SyntaxMsg(TraitCompanionWithMutableStaticID) {

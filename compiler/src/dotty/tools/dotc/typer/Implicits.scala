@@ -876,7 +876,7 @@ trait Implicits:
        || inferView(dummyTreeOfType(from), to)
             (using ctx.fresh.addMode(Mode.ImplicitExploration).setExploreTyperState()).isSuccess
           // TODO: investigate why we can't TyperState#test here
-       || from.widen.derivesFromNamedTuple && to.derivesFrom(defn.TupleClass)
+       || from.widen.isNamedTupleType && to.derivesFrom(defn.TupleClass)
            && from.widen.stripNamedTuple <:< to
        )
 

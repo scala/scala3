@@ -3,7 +3,7 @@ package scala.runtime.coverage
 import scala.annotation.internal.sharable
 import scala.annotation.nowarn
 import scala.collection.concurrent.TrieMap
-import scala.collection.mutable.{BitSet, AnyRefMap}
+import scala.collection.mutable.{BitSet, HashMap}
 import java.io.{File, FileWriter}
 import java.nio.file.Files
 
@@ -12,7 +12,7 @@ object Invoker {
   private val runtimeUUID = java.util.UUID.randomUUID()
 
   private val MeasurementsPrefix = "scoverage.measurements."
-  private val threadFiles = new ThreadLocal[AnyRefMap[String, FileWriter]]
+  private val threadFiles = new ThreadLocal[HashMap[String, FileWriter]]
   private val dataDirToSet = TrieMap.empty[String, BitSet]
 
   /** We record that the given id has been invoked by appending its id to the coverage data file.
@@ -38,7 +38,7 @@ object Invoker {
       if added then
         var writers = threadFiles.get()
         if writers == null then
-          writers = AnyRefMap.empty
+          writers = HashMap.empty
           threadFiles.set(writers)
         val writer = writers.getOrElseUpdate(
           dataDir,

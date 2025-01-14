@@ -799,7 +799,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     // Otherwise, try to expand a named tuple selection
     def tryNamedTupleSelection() =
-      val namedTupleElems = qual.tpe.widenDealias.namedTupleElementTypes
+      val namedTupleElems = qual.tpe.widenDealias.namedTupleElementTypes(true)
       val nameIdx = namedTupleElems.indexWhere(_._1 == selName)
       if nameIdx >= 0 && Feature.enabled(Feature.namedTuples) then
         typed(
@@ -852,11 +852,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       else EmptyTree
 
     def dynamicSelect(pt: Type) =
-        val tree2 = cpy.Select(tree0)(untpd.TypedSplice(qual), selName)
-        if pt.isInstanceOf[FunOrPolyProto] || pt == LhsProto then
-          assignType(tree2, TryDynamicCallType)
-        else
-          typedDynamicSelect(tree2, Nil, pt)
+      val tree2 = cpy.Select(tree0)(untpd.TypedSplice(qual), selName)
+      if pt.isInstanceOf[FunOrPolyProto] || pt == LhsProto then
+        assignType(tree2, TryDynamicCallType)
+      else
+        typedDynamicSelect(tree2, Nil, pt)
 
     // Otherwise, if the qualifier derives from class Dynamic, expand to a
     // dynamic dispatch using selectDynamic or applyDynamic
@@ -875,7 +875,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       then
         val pre = if !TypeOps.isLegalPrefix(qual.tpe) then SkolemType(qual.tpe) else qual.tpe
         val fieldsType = pre.select(tpnme.Fields).widenDealias.simplified
-        val fields = fieldsType.namedTupleElementTypes
+        val fields = fieldsType.namedTupleElementTypes(true)
         typr.println(i"try dyn select $qual, $selName, $fields")
         fields.find(_._1 == selName) match
           case Some((_, fieldType)) =>
@@ -885,7 +885,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 // Reject corner case where selectDynamic needs annother selectDynamic to be called. E.g. as in neg/unselectable-fields.scala.
                 report.error(i"Cannot use selectDynamic here since it needs another selectDynamic to be invoked", tree.srcPos)
               case _ =>
-            dynSelected.ensureConforms(fieldType)
+            adapt(dynSelected, defn.AnyType).ensureConforms(fieldType)
           case _ => EmptyTree
       else EmptyTree
 
@@ -2433,7 +2433,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         else if ctx.reporter.errorsReported then UnspecifiedErrorType
         else errorType(em"cannot infer type; expected type $pt is not fully defined", tree.srcPos))
 
-  def typedTypeTree(tree: untpd.TypeTree, pt: Type)(using Context): Tree =
+  def typedTypeTree(tree: untpd.TypeTree, pt: Type)(using Context): Tree = {
     tree match
       case tree: untpd.DerivedTypeTree =>
         tree.ensureCompletions
@@ -2449,6 +2449,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         }
       case _ =>
         completeTypeTree(InferredTypeTree(), pt, tree)
+  }
 
   def typedInLambdaTypeTree(tree: untpd.InLambdaTypeTree, pt: Type)(using Context): Tree =
     val tp =
@@ -2860,7 +2861,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val nnInfo = rhs1.notNullInfo
     vdef1.withNotNullInfo(if sym.is(Lazy) then nnInfo.retractedInfo else nnInfo)
   }
-
   private def retractDefDef(sym: Symbol)(using Context): Tree =
     // it's a discarded method (synthetic case class method or synthetic java record constructor or overridden member), drop it
     val canBeInvalidated: Boolean =
@@ -3672,7 +3672,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   /** Typecheck and adapt tree, returning a typed tree. Parameters as for `typedUnadapted` */
-  def typed(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
+  def typed(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree = {
     trace(i"typing $tree, pt = $pt", typr, show = true) {
       record(s"typed $getClass")
       record("typed total")
@@ -3684,6 +3684,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         tree.withType(WildcardType)
       else adapt(typedUnadapted(tree, pt, locked), pt, locked)
     }
+  }
 
   def typed(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree =
     typed(tree, pt, ctx.typerState.ownedVars)
@@ -3799,7 +3800,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedExpr(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree =
     withoutMode(Mode.PatternOrTypeBits)(typed(tree, pt))
 
-  def typedType(tree: untpd.Tree, pt: Type = WildcardType, mapPatternBounds: Boolean = false)(using Context): Tree =
+  def typedType(tree: untpd.Tree, pt: Type = WildcardType, mapPatternBounds: Boolean = false)(using Context): Tree = {
     val tree1 = withMode(Mode.Type) { typed(tree, pt) }
     if mapPatternBounds && ctx.mode.is(Mode.Pattern) && !ctx.isAfterTyper then
       tree1 match
@@ -3815,6 +3816,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case tree1 =>
           tree1
     else tree1
+  }
 
   def typedPattern(tree: untpd.Tree, selType: Type = WildcardType)(using Context): Tree =
     withMode(Mode.Pattern)(typed(tree, selType))
@@ -4661,7 +4663,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case _: SelectionProto =>
           tree // adaptations for selections are handled in typedSelect
         case _ if ctx.mode.is(Mode.ImplicitsEnabled) && tree.tpe.isValueType =>
-          if tree.tpe.derivesFromNamedTuple && pt.derivesFrom(defn.TupleClass) then
+          if tree.tpe.isNamedTupleType && pt.derivesFrom(defn.TupleClass) then
             readapt(typed(untpd.Select(untpd.TypedSplice(tree), nme.toTuple)))
           else if pt.isRef(defn.AnyValClass, skipRefined = false)
               || pt.isRef(defn.ObjectClass, skipRefined = false)

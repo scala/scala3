@@ -405,11 +405,18 @@ class Objects(using Context @constructorOnly):
 
     def getVar(x: Symbol)(using data: Data, ctx: Context): Option[Heap.Addr] = data.getVar(x)
 
-    def of(ddef: DefDef, args: List[Value], outer: Data)(using Context): Data =
+    private[Env] def _of(argMap: Map[Symbol, Value], meth: Symbol, outer: Data): Data =
+      new LocalEnv(argMap, meth, outer)(valsMap = mutable.Map.empty, varsMap = mutable.Map.empty)
+
+    def ofDefDef(ddef: DefDef, args: List[Value], outer: Data)(using Context): Data =
       val params = ddef.termParamss.flatten.map(_.symbol)
       assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size)
       assert(ddef.symbol.owner.isClass ^ (outer != NoEnv), "ddef.owner = " + ddef.symbol.owner.show + ", outer = " + outer + ", " + ddef.source)
-      new LocalEnv(params.zip(args).toMap, ddef.symbol, outer)(valsMap = mutable.Map.empty, varsMap = mutable.Map.empty)
+      _of(params.zip(args).toMap, ddef.symbol, outer)
+
+    def ofByName(byNameParam: Symbol, outer: Data): Data =
+      assert(byNameParam.is(Flags.Param) && byNameParam.info.isInstanceOf[ExprType]);
+      _of(Map.empty, byNameParam, outer)
 
     def setLocalVal(x: Symbol, value: Value)(using data: Data, ctx: Context): Unit =
       assert(!x.isOneOf(Flags.Param | Flags.Mutable), "Only local immutable variable allowed")
@@ -719,7 +726,7 @@ class Objects(using Context @constructorOnly):
             else
               Env.resolveEnv(meth.owner.enclosingMethod, ref, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
 
-          val env2 = Env.of(ddef, args.map(_.value), outerEnv)
+          val env2 = Env.ofDefDef(ddef, args.map(_.value), outerEnv)
           extendTrace(ddef) {
             given Env.Data = env2
             cache.cachedEval(ref, ddef.rhs, cacheResult = true) { expr =>
@@ -750,7 +757,7 @@ class Objects(using Context @constructorOnly):
         code match
         case ddef: DefDef =>
           if meth.name == nme.apply then
-            given Env.Data = Env.of(ddef, args.map(_.value), env)
+            given Env.Data = Env.ofDefDef(ddef, args.map(_.value), env)
             extendTrace(code) { eval(ddef.rhs, thisV, klass, cacheResult = true) }
           else
             // The methods defined in `Any` and `AnyRef` are trivial and don't affect initialization.
@@ -786,7 +793,7 @@ class Objects(using Context @constructorOnly):
         val ddef = ctor.defTree.asInstanceOf[DefDef]
         val argValues = args.map(_.value)
 
-        given Env.Data = Env.of(ddef, argValues, Env.NoEnv)
+        given Env.Data = Env.ofDefDef(ddef, argValues, Env.NoEnv)
         if ctor.isPrimaryConstructor then
           val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
           extendTrace(cls.defTree) { eval(tpl, ref, cls, cacheResult = true) }
@@ -1013,7 +1020,7 @@ class Objects(using Context @constructorOnly):
           if isByNameParam(sym) then
             value match
             case fun: Fun =>
-              given Env.Data = fun.env
+              given Env.Data = Env.ofByName(sym, fun.env)
               eval(fun.code, fun.thisV, fun.klass)
             case Cold =>
               report.warning("Calling cold by-name alias. " + Trace.show, Trace.position)

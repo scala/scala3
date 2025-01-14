@@ -68,6 +68,21 @@ object Applications {
       unapplySeqTypeElemTp(productSelectorTypes(tp, errorPos).last).exists
   }
 
+  /** Does `tp` fit the "product-seq match" conditions for a `NonEmptyTuple` as
+   *  an unapply result type for a pattern with `numArgs` subpatterns?
+   *  This is the case if (1) `tp` derives from `NonEmptyTuple`.
+   *                      (2) `tp.tupleElementTypes` exists.
+   *                      (3) `tp.tupleElementTypes.last` conforms to Seq match
+   */
+  def isNonEmptyTupleSeqMatch(tp: Type, numArgs: Int, errorPos: SrcPos = NoSourcePosition)(using Context): Boolean = {
+    tp.derivesFrom(defn.NonEmptyTupleClass)
+      && tp.tupleElementTypes.exists { elemTypes =>
+        val arity = elemTypes.size
+        arity > 0 && arity <= numArgs + 1 &&
+          unapplySeqTypeElemTp(elemTypes.last).exists
+      }
+  }
+
   /** Does `tp` fit the "get match" conditions as an unapply result type?
    *  This is the case of `tp` has a `get` member as well as a
    *  parameterless `isEmpty` member of result type `Boolean`.
@@ -109,6 +124,10 @@ object Applications {
     if (isValid) elemTp else NoType
   }
 
+  def namedTupleOrProductTypes(tp: Type)(using Context): List[Type] =
+    if tp.isNamedTupleType then tp.namedTupleElementTypes(true).map(_(1))
+    else productSelectorTypes(tp, NoSourcePosition)
+
   def productSelectorTypes(tp: Type, errorPos: SrcPos)(using Context): List[Type] = {
     val sels = for (n <- Iterator.from(0)) yield extractorMemberType(tp, nme.selectorName(n), errorPos)
     sels.takeWhile(_.exists).toList
@@ -136,12 +155,17 @@ object Applications {
     sels.takeWhile(_.exists).toList
   }
 
-  def productSeqSelectors(tp: Type, argsNum: Int, pos: SrcPos)(using Context): List[Type] = {
-    val selTps = productSelectorTypes(tp, pos)
-    val arity = selTps.length
-    val elemTp = unapplySeqTypeElemTp(selTps.last)
-    (0 until argsNum).map(i => if (i < arity - 1) selTps(i) else elemTp).toList
-  }
+  def productSeqSelectors(tp: Type, argsNum: Int, pos: SrcPos)(using Context): List[Type] =
+    seqSelectors(productSelectorTypes(tp, pos), argsNum)
+
+  def nonEmptyTupleSeqSelectors(tp: Type, argsNum: Int, pos: SrcPos)(using Context): List[Type] =
+    seqSelectors(tp.tupleElementTypes.get, argsNum)
+
+  private def seqSelectors(selectorTypes: List[Type], argsNum: Int)(using Context): List[Type] =
+    val arity = selectorTypes.length
+    val elemTp = unapplySeqTypeElemTp(selectorTypes.last)
+    (0 until argsNum).map(i => if (i < arity - 1) selectorTypes(i) else elemTp).toList
+  end seqSelectors
 
   /** A utility class that matches results of unapplys with patterns. Two queriable members:
    *     val argTypes: List[Type]
@@ -172,14 +196,19 @@ object Applications {
         args.map(Function.const(elemTp))
       else if isProductSeqMatch(tp, args.length, pos) then
         productSeqSelectors(tp, args.length, pos)
-      else if tp.derivesFrom(defn.NonEmptyTupleClass) then
-        tp.tupleElementTypes.getOrElse(Nil)
+      else if isNonEmptyTupleSeqMatch(tp, args.length, pos) then
+        nonEmptyTupleSeqSelectors(tp, args.length, pos)
       else fallback
 
     private def tryAdaptPatternArgs(elems: List[untpd.Tree], pt: Type)(using Context): Option[List[untpd.Tree]] =
-      tryEither[Option[List[untpd.Tree]]]
-        (Some(desugar.adaptPatternArgs(elems, pt)))
-        ((_, _) => None)
+      namedTupleOrProductTypes(pt) match
+        case List(defn.NamedTuple(_, _))=>
+          // if the product types list is a singleton named tuple, autotupling might be applied, so don't fail eagerly
+          tryEither[Option[List[untpd.Tree]]]
+            (Some(desugar.adaptPatternArgs(elems, pt)))
+            ((_, _) => None)
+        case pts =>
+          Some(desugar.adaptPatternArgs(elems, pt))
 
     private def getUnapplySelectors(tp: Type)(using Context): List[Type] =
       // We treat patterns as product elements if
@@ -199,20 +228,22 @@ object Applications {
       else tp :: Nil
 
     private def productUnapplySelectors(tp: Type)(using Context): Option[List[Type]] =
-      if defn.isProductSubType(tp) then
-        tryAdaptPatternArgs(args, tp) match
+      val validatedTupleElements = desugar.checkWellFormedTupleElems(args)
+
+      if defn.isProductSubType(tp) && args.lengthCompare(productArity(tp)) <= 0 then
+        tryAdaptPatternArgs(validatedTupleElements, tp) match
           case Some(args1) if isProductMatch(tp, args1.length, pos) =>
             args = args1
             Some(productSelectorTypes(tp, pos))
           case _ => None
-        else tp.widen.normalized.dealias match
-          case tp @ defn.NamedTuple(_, tt) =>
-            tryAdaptPatternArgs(args, tp) match
-              case Some(args1) =>
-                args = args1
-                tt.tupleElementTypes
-              case _ => None
-          case _ => None
+      else tp.widen.normalized.dealias match
+        case tp @ defn.NamedTuple(_, tt) =>
+          tryAdaptPatternArgs(validatedTupleElements, tp) match
+            case Some(args1) =>
+              args = args1
+              tt.tupleElementTypes
+            case _ => None
+        case _ => None
 
     /** The computed argument types which will be the scutinees of the sub-patterns. */
     val argTypes: List[Type] =

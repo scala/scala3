@@ -1086,12 +1086,13 @@ object desugar {
       if mods.isAllOf(Given | Inline | Transparent) then
         report.error("inline given instances cannot be trasparent", cdef)
       var classMods = if mods.is(Given) then mods &~ (Inline | Transparent) | Synthetic else mods
-      if vparamAccessors.exists(_.mods.is(Tracked)) then
+      val newBody = tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths
+      if newBody.collect { case d: ValOrDefDef => d }.exists(_.mods.is(Tracked)) then
         classMods |= Dependent
       cpy.TypeDef(cdef: TypeDef)(
         name = className,
         rhs = cpy.Template(impl)(constr, parents1, clsDerived, self1,
-          tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths)
+          newBody)
       ).withMods(classMods)
     }
 
@@ -1561,6 +1562,12 @@ object desugar {
       rhsOK(rhs)
   }
 
+  val legalTracked: Context ?=> MemberDefTest = {
+    case valdef @ ValDef(_, _, _) =>
+      val sym = valdef.symbol
+      !ctx.owner.exists || ctx.owner.isClass || ctx.owner.is(Case) || ctx.owner.isConstructor || valdef.mods.is(Param) || valdef.mods.is(ParamAccessor)
+  }
+
   def checkOpaqueAlias(tree: MemberDef)(using Context): MemberDef =
     def check(rhs: Tree): MemberDef = rhs match
       case bounds: TypeBoundsTree if bounds.alias.isEmpty =>
@@ -1586,6 +1593,7 @@ object desugar {
         } else tested
       tested = checkOpaqueAlias(tested)
       tested = checkApplicable(Opaque, legalOpaque)
+      tested = checkApplicable(Tracked, legalTracked)
       tested
     case _ =>
       tree
@@ -1659,7 +1667,7 @@ object desugar {
       AppliedTypeTree(
         TypeTree(defn.throwsAlias.typeRef).withSpan(op.span), tpt :: excepts :: Nil)
 
-  private def checkWellFormedTupleElems(elems: List[Tree])(using Context): List[Tree] =
+  def checkWellFormedTupleElems(elems: List[Tree])(using Context): List[Tree] =
     val seen = mutable.Set[Name]()
     for case arg @ NamedArg(name, _) <- elems do
       if seen.contains(name) then
@@ -1736,7 +1744,7 @@ object desugar {
   def adaptPatternArgs(elems: List[Tree], pt: Type)(using Context): List[Tree] =
 
     def reorderedNamedArgs(wildcardSpan: Span): List[untpd.Tree] =
-      var selNames = pt.namedTupleElementTypes.map(_(0))
+      var selNames = pt.namedTupleElementTypes(false).map(_(0))
       if selNames.isEmpty && pt.classSymbol.is(CaseClass) then
         selNames = pt.classSymbol.caseAccessors.map(_.name.asTermName)
       val nameToIdx = selNames.zipWithIndex.toMap
