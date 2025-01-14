@@ -1667,7 +1667,7 @@ object desugar {
       AppliedTypeTree(
         TypeTree(defn.throwsAlias.typeRef).withSpan(op.span), tpt :: excepts :: Nil)
 
-  private def checkWellFormedTupleElems(elems: List[Tree])(using Context): List[Tree] =
+  def checkWellFormedTupleElems(elems: List[Tree])(using Context): List[Tree] =
     val seen = mutable.Set[Name]()
     for case arg @ NamedArg(name, _) <- elems do
       if seen.contains(name) then
