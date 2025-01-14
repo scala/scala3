@@ -1403,9 +1403,9 @@ object Types extends TypeUtils {
       case tp =>
         tp
 
-    /** Widen all top-level singletons reachable by dealiasing
-     *  and going to the operands of & and |.
-     *  Overridden and cached in OrType.
+    /** Widen all top-level singletons reachable by dealiasing and going to the
+     *  operands of intersections and soft unions (only when `skipSoftUnions` is
+     *  `false`). Overridden and cached in [[OrType]].
      */
     def widenSingletons(skipSoftUnions: Boolean = false)(using Context): Type = dealias match {
       case tp: SingletonType =>
@@ -3630,7 +3630,7 @@ object Types extends TypeUtils {
       myAtoms
 
     override def widenSingletons(skipSoftUnions: Boolean)(using Context): Type =
-      if isSoft && skipSoftUnions then this
+      if !isSoft || skipSoftUnions then this
       else
         if widenedRunId != ctx.runId then
           myWidened = computeWidenSingletons()
