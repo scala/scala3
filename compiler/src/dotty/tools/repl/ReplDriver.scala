@@ -511,9 +511,8 @@ class ReplDriver(settings: Array[String],
       }
 
     case Require(path) =>
-      val f = new JFile(path)
       val jarFile = AbstractFile.getDirectory(path)
-      if (!f.exists || jarFile == null)
+      if (jarFile == null)
         out.println(s"""Cannot add "$path" to classpath.""")
         state
       else
@@ -539,15 +538,17 @@ class ReplDriver(settings: Array[String],
 
         val existingClass = entries.filter(_.ext.isClass).find(tryClassLoad(_).isDefined)
         if (existingClass.nonEmpty)
-          out.println(s"The path '$f' cannot be loaded, it contains a classfile that already exists on the classpath: ${existingClass.get}")
+          out.println(s"The path '$path' cannot be loaded, it contains a classfile that already exists on the classpath: ${existingClass.get}")
           state
         else
-          val cp = state.context.platform.classPath(using state.context).asClassPathString
-          val newCP = s"$cp${JFile.pathSeparator}$path"
+          val prevClassPath = state.context.platform.classPath(using state.context).asClassPathString
+          val newClassPath = s"$prevClassPath${JFile.pathSeparator}$path"
 
           // add to compiler class path
           val prevOutputDir = rootCtx.settings.outputDir.valueIn(rootCtx.settingsState)
-          val ctxToUse = initCtx.fresh.setSetting(rootCtx.settings.classpath, newCP)
+          val ctxToUse = initCtx.fresh
+            .setSetting(rootCtx.settings.classpath, newClassPath)
+            .setSetting(rootCtx.settings.outputDir, prevOutputDir) // reuse virtual output directory
           rootCtx = setupRootCtx(
             Array(),
             ctxToUse,
@@ -559,10 +560,11 @@ class ReplDriver(settings: Array[String],
           val prevClassLoader = rendering.classLoader()(using state.context)
           val jarClassLoader = fromURLsParallelCapable(
             ClassPathFactory.newClassPath(jarFile)(using rootCtx).asURLs, prevClassLoader)
-          val replOutputClassLoader = new AbstractFileClassLoader(
-            prevOutputDir, jarClassLoader)
+//          val replOutputClassLoader = new AbstractFileClassLoader(
+//            prevOutputDir, jarClassLoader)
           rendering.myClassLoader = new AbstractFileClassLoader(
-            rootCtx.settings.outputDir.valueIn(rootCtx.settingsState), replOutputClassLoader)
+            rootCtx.settings.outputDir.valueIn(rootCtx.settingsState), jarClassLoader) //replOutputClassLoader)
+          println(s"new classpath: ${s.context.platform.classPath(using s.context)}")
           out.println(s"Added '$path' to classpath.")
           s
 
