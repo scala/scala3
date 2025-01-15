@@ -30,7 +30,7 @@ import StdNames.nme
 import java.io.{BufferedWriter, OutputStreamWriter}
 import java.nio.charset.StandardCharsets
 
-import scala.collection.mutable
+import scala.collection.mutable, mutable.ListBuffer
 import scala.util.control.NonFatal
 import scala.io.Codec
 
@@ -69,7 +69,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private var myFiles: Set[AbstractFile] = uninitialized
 
   // `@nowarn` annotations by source file, populated during typer
-  private val mySuppressions: mutable.LinkedHashMap[SourceFile, mutable.ListBuffer[Suppression]] = mutable.LinkedHashMap.empty
+  private val mySuppressions: mutable.LinkedHashMap[SourceFile, ListBuffer[Suppression]] = mutable.LinkedHashMap.empty
   // source files whose `@nowarn` annotations are processed
   private val mySuppressionsComplete: mutable.Set[SourceFile] = mutable.Set.empty
   // warnings issued before a source file's `@nowarn` annotations are processed, suspended so that `@nowarn` can filter them
@@ -99,8 +99,9 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       }
 
     def addSuppression(sup: Suppression): Unit =
-      val source = sup.annotPos.source
-      mySuppressions.getOrElseUpdate(source, mutable.ListBuffer.empty) += sup
+      val suppressions = mySuppressions.getOrElseUpdate(sup.annotPos.source, ListBuffer.empty)
+      if sup.start != sup.end && suppressions.forall(x => x.start != sup.start || x.end != sup.end) then
+        suppressions += sup
 
     def reportSuspendedMessages(source: SourceFile)(using Context): Unit = {
       // sort suppressions. they are not added in any particular order because of lazy type completion
@@ -115,11 +116,12 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       mySuspendedMessages.keysIterator.toList.foreach(reportSuspendedMessages)
       // report unused nowarns only if all all phases are done
       if !hasErrors && ctx.settings.WunusedHas.nowarn then
-        for {
+        for
           source <- mySuppressions.keysIterator.toList
           sups   <- mySuppressions.remove(source)
           sup    <- sups.reverse
-        } if (!sup.used)
+          if !sup.used
+        do
           report.warning("@nowarn annotation does not suppress any warnings", sup.annotPos)
 
   /** The compilation units currently being compiled, this may return different
@@ -130,7 +132,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private def units_=(us: List[CompilationUnit]): Unit =
     myUnits = us
 
-  var suspendedUnits: mutable.ListBuffer[CompilationUnit] = mutable.ListBuffer()
+  var suspendedUnits: ListBuffer[CompilationUnit] = ListBuffer.empty
   var suspendedHints: mutable.Map[CompilationUnit, (String, Boolean)] = mutable.HashMap()
 
   /** Were any units suspended in the typer phase? if so then pipeline tasty can not complete. */
@@ -172,7 +174,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   val staticRefs = util.EqHashMap[Name, Denotation](initialCapacity = 1024)
 
   /** Actions that need to be performed at the end of the current compilation run */
-  private var finalizeActions = mutable.ListBuffer[() => Unit]()
+  private var finalizeActions = ListBuffer.empty[() => Unit]
 
   private var _progress: Progress | Null = null // Set if progress reporting is enabled
 
