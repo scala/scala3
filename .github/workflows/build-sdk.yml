@@ -24,7 +24,7 @@ on:
       universal-digest:
           description: The SHA256 of the uploaded artifact (universal)
           value      : ${{ jobs.build.outputs.universal-digest }}
-  
+
 
 jobs:
   build:
@@ -40,7 +40,7 @@ jobs:
           distribution: temurin
           java-version: ${{ inputs.java-version }}
           cache       : sbt
-
+      - uses: sbt/setup-sbt@v1
       - name: Build and pack the SDK (universal)
         run : ./project/scripts/sbt dist/pack
 
@@ -50,7 +50,7 @@ jobs:
         with:
           path: ./dist/target/pack/*
           name: scala3-universal
-          
+
       - name: Compute SHA256 of the uploaded artifact (universal)
         id  : universal-digest
         run : |

@@ -15,7 +15,7 @@ permissions:
 jobs:
   build:
     env:
-      AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
+      AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}m
     runs-on: ubuntu-latest
     if: "github.event_name == 'merge_group'
          || (    github.event_name == 'pull_request'
@@ -36,6 +36,7 @@ jobs:
           java-version: 17
           cache: 'sbt'
 
+      - uses: sbt/setup-sbt@v1
       - name: Compile and test scala3doc-js
         run: ./project/scripts/sbt scaladoc-js-main/test
 
