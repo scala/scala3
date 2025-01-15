@@ -2466,7 +2466,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedContextBoundTypeTree(tree: untpd.ContextBoundTypeTree)(using Context): Tree =
     val tycon = typedType(tree.tycon)
     def spliced(tree: Tree) = untpd.TypedSplice(tree)
-    val tparam = untpd.Ident(tree.paramName).withSpan(tree.span)
+    val tparam = untpd.Ident(tree.paramName).withSpan(tree.span.withEnd(tree.span.point))
     if tycon.tpe.typeParams.nonEmpty then
       val tycon0 = tycon.withType(tycon.tpe.etaCollapse)
       typed(untpd.AppliedTypeTree(spliced(tycon0), tparam :: Nil))

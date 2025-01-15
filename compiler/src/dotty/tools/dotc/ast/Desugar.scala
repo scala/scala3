@@ -272,18 +272,20 @@ object desugar {
       case ContextBounds(tbounds, ctxbounds) =>
         val isMember = evidenceFlags.isAllOf(DeferredGivenFlags)
         for bound <- ctxbounds do
-          val evidenceName = bound match
+          val (evidenceName, spanPoint) = bound match
             case ContextBoundTypeTree(_, _, ownName) if !ownName.isEmpty =>
-              ownName // if there is an explicitly given name, use it.
+              val realName = ownName.stripModuleClassSuffix.lastPart
+              (ownName, bound.span.end - realName.length) // if there is an explicitly given name, use it.
             case _ =>
               if Config.nameSingleContextBounds
                 && !isMember
                 && ctxbounds.tail.isEmpty
                 && Feature.enabled(Feature.modularity)
-              then tdef.name.toTermName
-              else freshName(bound)
+              then (tdef.name.toTermName, bound.span.point)
+              else (freshName(bound), bound.span.point)
           evidenceNames += evidenceName
-          val evidenceParam = ValDef(evidenceName, bound, EmptyTree).withFlags(evidenceFlags)
+          val evidenceParam =
+            ValDef(evidenceName, bound, EmptyTree).withFlags(evidenceFlags).withSpan(bound.span.withPoint(spanPoint))
           evidenceParam.pushAttachment(ContextBoundParam, ())
           evidenceBuf += evidenceParam
         tbounds
