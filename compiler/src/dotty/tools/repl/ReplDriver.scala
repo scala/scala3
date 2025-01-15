@@ -560,11 +560,8 @@ class ReplDriver(settings: Array[String],
           val prevClassLoader = rendering.classLoader()(using state.context)
           val jarClassLoader = fromURLsParallelCapable(
             ClassPathFactory.newClassPath(jarFile)(using rootCtx).asURLs, prevClassLoader)
-//          val replOutputClassLoader = new AbstractFileClassLoader(
-//            prevOutputDir, jarClassLoader)
           rendering.myClassLoader = new AbstractFileClassLoader(
-            rootCtx.settings.outputDir.valueIn(rootCtx.settingsState), jarClassLoader) //replOutputClassLoader)
-          println(s"new classpath: ${s.context.platform.classPath(using s.context)}")
+            rootCtx.settings.outputDir.valueIn(rootCtx.settingsState), jarClassLoader)
           out.println(s"Added '$path' to classpath.")
           s
 
