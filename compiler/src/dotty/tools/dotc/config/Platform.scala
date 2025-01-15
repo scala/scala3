@@ -19,8 +19,10 @@ abstract class Platform {
   def classPath(using Context): ClassPath
 
   /** Update classpath with a substitution that maps entries to entries */
-  def updateClassPath(subst: Map[ClassPath, ClassPath]): Unit
-  def addToClassPath(cPath: ClassPath): Unit
+  def updateClassPath(subst: Map[ClassPath, ClassPath])(using Context): Unit
+
+  /** Add new entry to classpath */
+  def addToClassPath(cPath: ClassPath)(using Context): Unit
 
   /** Any platform-specific phases. */
   //def platformPhases: List[SubComponent]

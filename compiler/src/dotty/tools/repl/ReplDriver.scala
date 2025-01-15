@@ -1,16 +1,16 @@
 package dotty.tools.repl
 
 import scala.language.unsafeNulls
-import java.io.{PrintStream, File as JFile}
+import java.io.{File => JFile, PrintStream}
 import java.nio.charset.StandardCharsets
 import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.ast.{tpd, untpd}
-import dotty.tools.dotc.classpath.{AggregateClassPath, ClassPathFactory, ZipAndJarClassPathFactory}
+import dotty.tools.dotc.classpath.ClassPathFactory
 import dotty.tools.dotc.config.CommandLineParser.tokenize
 import dotty.tools.dotc.config.Properties.{javaVersion, javaVmName, simpleVersionString}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
-import dotty.tools.dotc.core.Phases.{typerPhase, unfusedPhases}
+import dotty.tools.dotc.core.Phases.{unfusedPhases, typerPhase}
 import dotty.tools.dotc.core.Denotations.Denotation
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Mode
@@ -94,7 +94,7 @@ class ReplDriver(settings: Array[String],
     initCtx.settings.YwithBestEffortTasty.name
   )
 
-  private def setupRootCtx(settings: Array[String], rootCtx: Context) = {
+  private def setupRootCtx(settings: Array[String], rootCtx: Context, previousOutputDir: Option[AbstractFile] = None) = {
     val incompatible = settings.intersect(incompatibleOptions)
     val filteredSettings =
       if !incompatible.isEmpty then
@@ -107,7 +107,7 @@ class ReplDriver(settings: Array[String],
       case Some((files, ictx)) => inContext(ictx) {
         shouldStart = true
         if files.nonEmpty then out.println(i"Ignoring spurious arguments: $files%, %")
-        ictx.base.initialize()
+        ictx.base.initialize(previousOutputDir)
         ictx
       }
       case None =>
@@ -523,43 +523,47 @@ class ReplDriver(settings: Array[String],
 
         val entries = flatten(jarFile)
 
-        def classNameOf(classFile: AbstractFile): String = {
+        def tryClassLoad(classFile: AbstractFile): Option[String] = {
           val input = classFile.input
           try {
             val reader = new ClassReader(input)
-            reader.getClassName.replace('/', '.')
-          } finally {
+            val clsName = reader.getClassName.replace('/', '.')
+            rendering.myClassLoader.loadClass(clsName)
+            Some(clsName)
+          } catch
+            case _: ClassNotFoundException => None
+          finally {
             input.close()
           }
         }
 
-        def alreadyDefined(clsName: String) = state.context.platform.classPath(using state.context).findClassFile(clsName).isDefined
-        val existingClass = entries.filter(_.ext.isClass).map(classNameOf).find(alreadyDefined)
+        val existingClass = entries.filter(_.ext.isClass).find(tryClassLoad(_).isDefined)
         if (existingClass.nonEmpty)
           out.println(s"The path '$f' cannot be loaded, it contains a classfile that already exists on the classpath: ${existingClass.get}")
           state
         else
           val cp = state.context.platform.classPath(using state.context).asClassPathString
-//          println(s"CURRENT CP STRING: $cp")
           val newCP = s"$cp${JFile.pathSeparator}$path"
-          println(s"UPDATED CP: $newCP")
 
           // add to compiler class path
-//          println(s"INIT state classPath = ${state.context.platform.classPath(using state.context).asClassPathString}")
-//          val cpCP = ClassPathFactory.newClassPath(jarFile)(using state.context)
-//          state.context.platform.addToClassPath(cpCP)
-//          println(s"classPath after add = ${state.context.platform.classPath(using state.context).asClassPathString}")
-
-          // recreate initial context
-          resetToInitial(List("-classpath", newCP))
-//          rootCtx = setupRootCtx(Array(), rootCtx.fresh.setSetting(rootCtx.settings.classpath, newCP))
+          val prevOutputDir = rootCtx.settings.outputDir.valueIn(rootCtx.settingsState)
+          val ctxToUse = initCtx.fresh.setSetting(rootCtx.settings.classpath, newCP)
+          rootCtx = setupRootCtx(
+            Array(),
+            ctxToUse,
+            previousOutputDir = Some(prevOutputDir)
+          )
           val s = state.copy(context = rootCtx)
 
-          // new class loader
-          val oldCL = rendering.classLoader()(using state.context)
-          val newCL = fromURLsParallelCapable(s.context.platform.classPath(using s.context).asURLs, oldCL)
-          rendering.myClassLoader = new AbstractFileClassLoader(state.context.settings.outputDir.default, newCL)
-//          out.println(s"Added '$path' to classpath.")
+          // new class loader with previous output dir and specified jar
+          val prevClassLoader = rendering.classLoader()(using state.context)
+          val jarClassLoader = fromURLsParallelCapable(
+            ClassPathFactory.newClassPath(jarFile)(using rootCtx).asURLs, prevClassLoader)
+          val replOutputClassLoader = new AbstractFileClassLoader(
+            prevOutputDir, jarClassLoader)
+          rendering.myClassLoader = new AbstractFileClassLoader(
+            rootCtx.settings.outputDir.valueIn(rootCtx.settingsState), replOutputClassLoader)
+          out.println(s"Added '$path' to classpath.")
           s
 
     case KindOf(expr) =>
