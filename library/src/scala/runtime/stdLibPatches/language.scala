@@ -330,6 +330,20 @@ object language:
   @compileTimeOnly("`3.7` can only be used at compile time in import statements")
   object `3.7`
 
+    /** Set source version to 3.8-migration.
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.8-migration` can only be used at compile time in import statements")
+  object `3.8-migration`
+
+  /** Set source version to 3.8
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.8` can only be used at compile time in import statements")
+  object `3.8`
+
 
   // !!! Keep in sync with dotty.tools.dotc.config.SourceVersion !!!
   // Also add tests in `tests/pos/source-import-3-x.scala` and `tests/pos/source-import-3-x-migration.scala`
