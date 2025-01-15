@@ -1420,6 +1420,10 @@ trait Checking {
           case Literal(_) => // ok
           case _ =>
             report.error(em"@${cls.name} needs a string literal as argument", arg.srcPos)
+      case Apply(tycon, arg :: Nil) if cls == defn.ImplicitNotFoundAnnot || cls == defn.ImplicitAmbiguousAnnot =>
+        arg.tpe.widenTermRefExpr.normalized match
+          case _: ConstantType => ()
+          case _ => report.error(em"@${cls.name} requires constant expressions as a parameter", arg.srcPos)
       case _ =>
     tree
 
