@@ -532,7 +532,7 @@ object Completion:
       def namedTupleCompletionsFromType(tpe: Type): CompletionMap =
         val freshCtx = ctx.fresh.setExploreTyperState()
         inContext(freshCtx):
-          tpe.namedTupleElementTypes
+          tpe.namedTupleElementTypes(true)
             .map { (name, tpe) =>
               val symbol = newSymbol(owner = NoSymbol, name, EmptyFlags, tpe)
               val denot = SymDenotation(symbol, NoSymbol, name, EmptyFlags, tpe)
@@ -543,7 +543,7 @@ object Completion:
             .groupByName
 
       val qualTpe = qual.typeOpt
-      if qualTpe.derivesFromNamedTuple then
+      if qualTpe.isNamedTupleType then
         namedTupleCompletionsFromType(qualTpe)
       else if qualTpe.derivesFrom(defn.SelectableClass) then
         val pre = if !TypeOps.isLegalPrefix(qualTpe) then Types.SkolemType(qualTpe) else qualTpe

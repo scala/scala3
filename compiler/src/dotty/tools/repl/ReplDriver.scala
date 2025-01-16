@@ -116,7 +116,12 @@ class ReplDriver(settings: Array[String],
   }
 
   /** the initial, empty state of the REPL session */
-  final def initialState: State = State(0, 0, Map.empty, Set.empty, false, rootCtx)
+  final def initialState: State =
+    val emptyState = State(0, 0, Map.empty, Set.empty, false, rootCtx)
+    val initScript = rootCtx.settings.replInitScript.value(using rootCtx)
+    initScript.trim() match
+      case "" => emptyState
+      case script => run(script)(using emptyState)
 
   /** Reset state of repl to the initial state
    *

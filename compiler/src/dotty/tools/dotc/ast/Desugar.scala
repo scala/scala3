@@ -1667,7 +1667,7 @@ object desugar {
       AppliedTypeTree(
         TypeTree(defn.throwsAlias.typeRef).withSpan(op.span), tpt :: excepts :: Nil)
 
-  private def checkWellFormedTupleElems(elems: List[Tree])(using Context): List[Tree] =
+  def checkWellFormedTupleElems(elems: List[Tree])(using Context): List[Tree] =
     val seen = mutable.Set[Name]()
     for case arg @ NamedArg(name, _) <- elems do
       if seen.contains(name) then
@@ -1744,7 +1744,7 @@ object desugar {
   def adaptPatternArgs(elems: List[Tree], pt: Type)(using Context): List[Tree] =
 
     def reorderedNamedArgs(wildcardSpan: Span): List[untpd.Tree] =
-      var selNames = pt.namedTupleElementTypes.map(_(0))
+      var selNames = pt.namedTupleElementTypes(false).map(_(0))
       if selNames.isEmpty && pt.classSymbol.is(CaseClass) then
         selNames = pt.classSymbol.caseAccessors.map(_.name.asTermName)
       val nameToIdx = selNames.zipWithIndex.toMap

@@ -1,0 +1,6 @@
+-- [E108] Declaration Error: tests/neg/i21841.scala:20:13 --------------------------------------------------------------
+20 |    case v[T](l, r) => ()  // error
+   |         ^^^^^^^^^^
+   | [31mOption[(Test.Expr[Test.T], Test.Expr[Test.T])][0m is not a valid result type of an unapplySeq method of an [35mextractor[0m.
+   |
+   | longer explanation available when compiling with `-explain`

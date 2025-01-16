@@ -131,6 +131,39 @@ object Inliner:
           case _ => tree
       else super.transformInlined(tree)
   end InlinerMap
+
+  object OpaqueProxy:
+
+    def apply(ref: TermRef, cls: ClassSymbol, span: Span)(using Context): TermRef =
+      def openOpaqueAliases(selfType: Type): List[(Name, Type)] = selfType match
+        case RefinedType(parent, rname, TypeAlias(alias)) =>
+          val opaq = cls.info.member(rname).symbol
+          if opaq.isOpaqueAlias then
+            (rname, alias.stripLazyRef.asSeenFrom(ref, cls))
+            :: openOpaqueAliases(parent)
+          else Nil
+        case _ => Nil
+      val refinements = openOpaqueAliases(cls.givenSelfType)
+      val refinedType = refinements.foldLeft(ref: Type): (parent, refinement) =>
+        RefinedType(parent, refinement._1, TypeAlias(refinement._2))
+      val refiningSym = newSym(InlineBinderName.fresh(), Synthetic, refinedType, span)
+      refiningSym.termRef
+
+    def unapply(refiningRef: TermRef)(using Context): Option[TermRef] =
+      val refiningSym = refiningRef.symbol
+      if refiningSym.name.is(InlineBinderName) && refiningSym.is(Synthetic, butNot=InlineProxy) then
+        refiningRef.info match
+          case refinedType: RefinedType => refinedType.stripRefinement match
+            case ref: TermRef => Some(ref)
+            case _ => None
+          case _ => None
+      else
+        None
+
+  end OpaqueProxy
+
+  private[inlines] def newSym(name: Name, flags: FlagSet, info: Type, span: Span)(using Context): Symbol =
+    newSymbol(ctx.owner, name, flags, info, coord = span)
 end Inliner
 
 /** Produces an inlined version of `call` via its `inlined` method.
@@ -189,7 +222,7 @@ class Inliner(val call: tpd.Tree)(using Context):
   private val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
 
   private[inlines] def newSym(name: Name, flags: FlagSet, info: Type)(using Context): Symbol =
-    newSymbol(ctx.owner, name, flags, info, coord = call.span)
+    Inliner.newSym(name, flags, info, call.span)
 
   /** A binding for the parameter of an inline method. This is a `val` def for
    *  by-value parameters and a `def` def for by-name parameters. `val` defs inherit
@@ -351,20 +384,9 @@ class Inliner(val call: tpd.Tree)(using Context):
              && (forThisProxy || inlinedMethod.isContainedIn(cls))
              && mapRef(ref).isEmpty
           then
-            def openOpaqueAliases(selfType: Type): List[(Name, Type)] = selfType match
-              case RefinedType(parent, rname, TypeAlias(alias)) =>
-                val opaq = cls.info.member(rname).symbol
-                if opaq.isOpaqueAlias then
-                  (rname, alias.stripLazyRef.asSeenFrom(ref, cls))
-                  :: openOpaqueAliases(parent)
-                else Nil
-              case _ =>
-                Nil
-            val refinements = openOpaqueAliases(cls.givenSelfType)
-            val refinedType = refinements.foldLeft(ref: Type) ((parent, refinement) =>
-              RefinedType(parent, refinement._1, TypeAlias(refinement._2))
-            )
-            val refiningSym = newSym(InlineBinderName.fresh(), Synthetic, refinedType).asTerm
+            val refiningRef = OpaqueProxy(ref, cls, call.span)
+            val refiningSym = refiningRef.symbol.asTerm
+            val refinedType = refiningRef.info
             val refiningDef = ValDef(refiningSym, tpd.ref(ref).cast(refinedType), inferred = true).withSpan(span)
             inlining.println(i"add opaque alias proxy $refiningDef for $ref in $tp")
             bindingsBuf += refiningDef
@@ -768,6 +790,13 @@ class Inliner(val call: tpd.Tree)(using Context):
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
       val locked = ctx.typerState.ownedVars
       val qual1 = typed(tree.qualifier, shallowSelectionProto(tree.name, pt, this, tree.nameSpan))
+
+      // Make sure that the named type has the correct denotation.
+      // For instance in tests/pos/i22070 when we type `Featureful[?]#toFeatures`,
+      // `selectionType` will skolemize the prefix, find the denotation,
+      // and then set that denotation for the `TermRef(Featureful[?], symbol toFeatures)`.
+      selectionType(tree, qual1)
+
       val resNoReduce = untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
       val reducedProjection = reducer.reduceProjection(resNoReduce)
       if reducedProjection.isType then
