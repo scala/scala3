@@ -1392,12 +1392,21 @@ trait Checking {
     if !Inlines.inInlineMethod && !ctx.isInlineContext then
       report.error(em"$what can only be used in an inline method", pos)
 
+  def checkAnnot(tree: Tree)(using Context): Tree =
+    tree match
+      case Ident(tpnme.BOUNDTYPE_ANNOT) =>
+        // `FirstTransform.toTypeTree` creates `Annotated` nodes whose `annot` are
+        // `Ident`s, not annotation instances. See `tests/pos/annot-boundtype.scala`.
+        tree
+      case _ =>
+        checkAnnotTree(checkAnnotClass(tree))
+
   /** Check that the class corresponding to this tree is either a Scala or Java annotation.
    *
    *  @return The original tree or an error tree in case `tree` isn't a valid
    *          annotation or already an error tree.
    */
-  def checkAnnotClass(tree: Tree)(using Context): Tree =
+  private def checkAnnotClass(tree: Tree)(using Context): Tree =
     if tree.tpe.isError then
       return tree
     val cls = Annotations.annotClass(tree)
@@ -1409,8 +1418,8 @@ trait Checking {
       errorTree(tree, em"$cls is not a valid Scala annotation: it does not extend `scala.annotation.Annotation`")
     else tree
 
-  /** Check arguments of compiler-defined annotations */
-  def checkAnnotArgs(tree: Tree)(using Context): tree.type =
+  /** Check arguments of annotations */
+  private def checkAnnotTree(tree: Tree)(using Context): Tree =
     val cls = Annotations.annotClass(tree)
     tree match
       case Apply(tycon, arg :: Nil) if cls == defn.TargetNameAnnot =>
@@ -1424,8 +1433,57 @@ trait Checking {
         arg.tpe.widenTermRefExpr.normalized match
           case _: ConstantType => ()
           case _ => report.error(em"@${cls.name} requires constant expressions as a parameter", arg.srcPos)
-      case _ =>
-    tree
+      case _ => ()
+
+    findInvalidAnnotSubTree(tree) match
+      case None => tree
+      case Some(invalidSubTree) =>
+        errorTree(
+          EmptyTree,
+          em"""Expression cannot be used inside an annotation argument.
+              |Tree: ${invalidSubTree}
+              |Type: ${invalidSubTree.tpe}""",
+          invalidSubTree.srcPos
+        )
+
+  private def findInvalidAnnotSubTree(tree: Tree)(using Context): Option[Tree] =
+    type ValidAnnotTree =
+      Ident
+      | Select
+      | This
+      | Super
+      | Apply
+      | TypeApply
+      | Literal
+      | New
+      | Typed
+      | NamedArg
+      | Assign
+      | Block
+      | SeqLiteral
+      | Inlined
+      | Hole
+      | Annotated
+      | EmptyTree.type
+
+    val accumulator = new TreeAccumulator[Option[Tree]]:
+      override def apply(acc: Option[Tree], tree: Tree)(using Context): Option[Tree] =
+        if acc.isDefined then
+          acc
+        else
+          tree match
+            case tree if tree.isType => foldOver(acc, tree)
+            case closureDef(meth) =>
+              val paramsRes =
+                meth.paramss.foldLeft(acc): (acc: Option[Tree], params: List[ValDef] | List[TypeDef]) =>
+                  params.foldLeft(acc): (acc: Option[Tree], param: ValDef | TypeDef) =>
+                    foldOver(acc, param)
+              foldOver(paramsRes, meth.rhs)
+            case tree: ValidAnnotTree => foldOver(acc, tree)
+            case _ => Some(tree)
+
+    accumulator(None, tree)
+
 
   /** 1. Check that all case classes that extend `scala.reflect.Enum` are `enum` cases
    *  2. Check that parameterised `enum` cases do not extend java.lang.Enum.
@@ -1674,7 +1732,7 @@ trait NoChecking extends ReChecking {
   override def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit = ()
   override def checkImplicitConversionUseOK(tree: Tree, expected: Type)(using Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: SrcPos, where: => String = "")(using Context): Type = tp
-  override def checkAnnotArgs(tree: Tree)(using Context): tree.type = tree
+  override def checkAnnot(tree: Tree)(using Context): tree.type = tree
   override def checkNoTargetNameConflict(stats: List[Tree])(using Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit = ()
   override def checkSimpleKinded(tpt: Tree)(using Context): Tree = tpt

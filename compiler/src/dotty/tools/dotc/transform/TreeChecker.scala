@@ -827,6 +827,17 @@ object TreeChecker {
             |${mismatch.message}${mismatch.explanation}
             |tree = $tree ${tree.className}""".stripMargin
       })
+      checkWellFormedType(tp1)
+      checkWellFormedType(tp2)
+
+    /** Check that the type `tp` is well-formed. Currently this only means
+     *  checking that annotated types have valid annotation arguments.
+     */
+    private def checkWellFormedType(tp: Type)(using Context): Unit =
+      tp.foreachPart:
+        case AnnotatedType(underlying, annot) => checkAnnot(annot.tree)
+        case _ => ()
+    
   }
 
   /** Tree checker that can be applied to a local tree. */
