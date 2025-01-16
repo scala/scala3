@@ -4,14 +4,11 @@ package vulpix
 
 import scala.language.unsafeNulls
 
-import java.io.{File => JFile, IOException, PrintStream, ByteArrayOutputStream}
-import java.lang.System.{lineSeparator => EOL}
+import java.io.{File as JFile, PrintStream}
 import java.lang.management.ManagementFactory
-import java.net.URL
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import java.nio.file.{Files, NoSuchFileException, Path, Paths}
+import java.nio.file.{Files, NoSuchFileException, Paths}
 import java.nio.charset.{Charset, StandardCharsets}
-import java.text.SimpleDateFormat
 import java.util.{HashMap, Timer, TimerTask}
 import java.util.concurrent.{TimeUnit, TimeoutException, Executors => JExecutors}
 
@@ -19,21 +16,16 @@ import scala.collection.mutable
 import scala.io.{Codec, Source}
 import scala.jdk.CollectionConverters.*
 import scala.util.{Random, Try, Failure => TryFailure, Success => TrySuccess, Using}
-import scala.util.control.NonFatal
-import scala.util.matching.Regex
 import scala.collection.mutable.ListBuffer
 
 import dotc.{Compiler, Driver}
 import dotc.core.Contexts.*
-import dotc.decompiler
 import dotc.report
 import dotc.interfaces.Diagnostic.ERROR
 import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.Diagnostic
-import dotc.config.Config
-import dotc.util.{DiffUtil, SourceFile, SourcePosition, Spans, NoSourcePosition}
+import dotc.util.{SourceFile, SourcePosition, Spans, NoSourcePosition}
 import io.AbstractFile
-import dotty.tools.vulpix.TestConfiguration.defaultOptions
 
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
  *
@@ -1460,7 +1452,7 @@ trait ParallelTesting extends RunnerOrchestration:
    *  By default, files are compiled in alphabetical order. An optional seed
    *  can be used for randomization.
    */
-  def compileDir(f: String, flags: TestFlags, randomOrder: Option[Int] = None, recursive: Boolean = true)(implicit testGroup: TestGroup): CompilationTest = {
+  def compileDir(f: String, flags: TestFlags, randomOrder: Option[Int] = None, recursive: Boolean = true)(using testGroup: TestGroup): CompilationTest = {
     val outDir = defaultOutputDir + testGroup + JFile.separator
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)
