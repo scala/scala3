@@ -24,7 +24,7 @@ import java.io.PrintWriter
 
 import scala.collection.mutable
 import scala.util.hashing.MurmurHash3
-import scala.util.chaining.*
+import dotty.tools.dotc.util.chaining.*
 
 /** This phase sends a representation of the API of classes to sbt via callbacks.
  *

@@ -18,9 +18,9 @@ import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.util.{ParsedComment, Property, SourceFile}
 import dotty.tools.dotc.{CompilationUnit, Compiler, Run}
 import dotty.tools.repl.results.*
+import dotty.tools.dotc.util.chaining.*
 
 import scala.collection.mutable
-import scala.util.chaining.given
 
 /** This subclass of `Compiler` is adapted for use in the REPL.
  *

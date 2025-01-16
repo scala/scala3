@@ -12,7 +12,7 @@ import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory}
 import dotty.tools.backend.jvm.BackendUtils.classfileVersionMap
 import Setting.ChoiceWithHelp
 
-import scala.util.chaining.*
+import dotty.tools.dotc.util.chaining.*
 
 import java.util.zip.Deflater
 
