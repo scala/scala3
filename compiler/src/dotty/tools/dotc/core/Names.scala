@@ -401,7 +401,7 @@ object Names {
       }
 
     /** It's OK to take a toString if the stacktrace does not contain a method
-     *  from GenBCode or it also contains one of the whitelisted methods below.
+     *  from GenBCode or it also contains one of the allowed methods below.
      */
     private def toStringOK = {
       val trace: Array[StackTraceElement] = Thread.currentThread.nn.getStackTrace.asInstanceOf[Array[StackTraceElement]]

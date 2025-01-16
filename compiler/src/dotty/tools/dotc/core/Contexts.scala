@@ -122,7 +122,7 @@ object Contexts {
    *      risk of capturing complete trees.
    *    - To make sure these rules are kept, it would be good to do a sanity
    *      check using bytecode inspection with javap or scalap: Keep track
-   *      of all class fields of type context; allow them only in whitelisted
+   *      of all class fields of type context; allow them only in allowlisted
    *      classes (which should be short-lived).
    */
   abstract class Context(val base: ContextBase) { thiscontext =>

@@ -1972,7 +1972,7 @@ class Definitions {
           Some((args.init, args.last))
         case _ => None
 
-  /** A whitelist of Scala-2 classes that are known to be pure */
+  /** A allowlist of Scala-2 classes that are known to be pure */
   def isAssuredNoInits(sym: Symbol): Boolean =
     (sym `eq` SomeClass) || isTupleClass(sym)
 
