@@ -13,7 +13,7 @@ import ast.tpd, tpd.*
 import transform.{PreRecheck, Recheck}, Recheck.*
 import CaptureSet.{IdentityCaptRefMap, IdempotentCaptRefMap}
 import Synthetics.isExcluded
-import util.{Property, SimpleIdentitySet}
+import util.SimpleIdentitySet
 import reporting.Message
 import printing.{Printer, Texts}, Texts.{Text, Str}
 import collection.mutable
@@ -40,7 +40,7 @@ trait SetupAPI:
 
 object Setup:
 
-  val name: String = "ccSetup"
+  val name: String = "setupCC"
   val description: String = "prepare compilation unit for capture checking"
 
   /** Recognizer for `res $throws exc`, returning `(res, exc)` in case of success */
@@ -192,11 +192,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     *  3. Refine other class types C by adding capture set variables to their parameter getters
     *     (see addCaptureRefinements), provided `refine` is true.
     *  4. Add capture set variables to all types that can be tracked
+    *  5. Perform normalizeCaptures
     *
     *  Polytype bounds are only cleaned using step 1, but not otherwise transformed.
     */
   private def transformInferredType(tp: Type)(using Context): Type =
-    def mapInferred(refine: Boolean): TypeMap = new TypeMap:
+    def mapInferred(refine: Boolean): TypeMap = new TypeMap with FollowAliasesMap:
       override def toString = "map inferred"
 
       /** Refine a possibly applied class type C where the class has tracked parameters
@@ -277,7 +278,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               paramInfos = tp.paramInfos.mapConserve(_.dropAllRetains.bounds),
               resType = this(tp.resType))
           case _ =>
-            mapOver(tp)
+            mapFollowingAliases(tp)
         addVar(addCaptureRefinements(normalizeCaptures(tp1)), ctx.owner)
       end apply
     end mapInferred
@@ -299,9 +300,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *   3. Add universal capture sets to types deriving from Capability
    *   4. Map `cap` in function result types to existentially bound variables.
    *   5. Schedule deferred well-formed tests for types with retains annotations.
+   *  6. Perform normalizeCaptures
    */
   private def transformExplicitType(tp: Type, tptToCheck: Tree = EmptyTree)(using Context): Type =
-    val toCapturing = new DeepTypeMap:
+    val toCapturing = new DeepTypeMap with FollowAliasesMap:
       override def toString = "expand aliases"
 
       /** Expand $throws aliases. This is hard-coded here since $throws aliases in stdlib
@@ -337,7 +339,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         case tp @ CapturingType(parent, refs)
         if (refs eq defn.universalCSImpliedByCapability) && !tp.isBoxedCapturing =>
           parent
-        case tp @ CapturingType(parent, refs) => tp
         case _ => tp
 
       def apply(t: Type) =
@@ -363,7 +364,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             // Map references to capability classes C to C^
             if t.derivesFromCapability && !t.isSingleton && t.typeSymbol != defn.Caps_Exists
             then CapturingType(t, defn.universalCSImpliedByCapability, boxed = false)
-            else normalizeCaptures(mapOver(t))
+            else normalizeCaptures(mapFollowingAliases(t))
     end toCapturing
 
     def fail(msg: Message) =
@@ -819,7 +820,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       CapturingType(OrType(parent1, tp2, tp.isSoft), refs1, tp1.isBoxed)
     case tp @ OrType(tp1, tp2 @ CapturingType(parent2, refs2)) =>
       CapturingType(OrType(tp1, parent2, tp.isSoft), refs2, tp2.isBoxed)
-    case tp @ AppliedType(tycon, args) if !defn.isFunctionClass(tp.dealias.typeSymbol) =>
+    case tp @ AppliedType(tycon, args)
+    if !defn.isFunctionClass(tp.dealias.typeSymbol) && (tp.dealias eq tp) =>
       tp.derivedAppliedType(tycon, args.mapConserve(box))
     case tp: RealTypeBounds =>
       tp.derivedTypeBounds(tp.lo, box(tp.hi))
