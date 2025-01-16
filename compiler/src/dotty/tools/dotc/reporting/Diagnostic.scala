@@ -8,9 +8,9 @@ import dotty.tools.dotc.config.Settings.Setting
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.interfaces.Diagnostic.{ERROR, INFO, WARNING}
 import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.util.chaining.*
 
 import java.util.{Collections, Optional, List => JList}
-import scala.util.chaining.*
 import core.Decorators.toMessage
 
 object Diagnostic:
