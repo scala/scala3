@@ -3,12 +3,9 @@ package dotc
 package cc
 
 import core.*
-import Types.*, Symbols.*, Contexts.*, Decorators.*
-import util.{SimpleIdentitySet, Property}
-import typer.ErrorReporting.Addenda
+import Types.*, Symbols.*, Contexts.*
+import util.SimpleIdentitySet
 import TypeComparer.subsumesExistentially
-import util.common.alwaysTrue
-import scala.collection.mutable
 import CCState.*
 import Periods.NoRunId
 import compiletime.uninitialized

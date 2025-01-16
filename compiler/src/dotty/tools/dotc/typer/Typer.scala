@@ -33,7 +33,7 @@ import inlines.{Inlines, PrepareInlineable}
 import util.Spans.*
 import util.common.*
 import util.{Property, SimpleIdentityMap, SrcPos}
-import Applications.{tupleComponentTypes, wrapDefs, defaultArgument}
+import Applications.{wrapDefs, defaultArgument}
 
 import collection.mutable
 import annotation.tailrec
@@ -48,7 +48,6 @@ import reporting.*
 import Nullables.*
 import NullOpsDecorator.*
 import cc.{CheckCaptures, isRetainsLike}
-import config.Config
 import config.MigrationVersion
 import transform.CheckUnused.OriginalName
 

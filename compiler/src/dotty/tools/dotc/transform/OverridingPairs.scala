@@ -3,7 +3,7 @@ package dotc
 package transform
 
 import core.*
-import Flags.*, Symbols.*, Contexts.*, Scopes.*, Decorators.*, Types.Type
+import Flags.*, Symbols.*, Contexts.*, Scopes.*, Types.Type
 import NameKinds.DefaultGetterName
 import NullOpsDecorator.*
 import collection.immutable.BitSet

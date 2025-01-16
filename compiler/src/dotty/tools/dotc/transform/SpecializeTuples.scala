@@ -3,8 +3,8 @@ package dotc
 package transform
 
 import ast.Trees.*, ast.tpd, core.*
-import Contexts.*, Types.*, Decorators.*, Symbols.*, DenotTransformers.*
-import SymDenotations.*, Scopes.*, StdNames.*, NameOps.*, Names.*
+import Contexts.*, Types.*, Symbols.*
+import StdNames.*, NameOps.*
 import MegaPhase.MiniPhase
 import inlines.Inliner.isElideableExpr
 

@@ -5,9 +5,8 @@ package patmat
 
 import core.*
 import Constants.*, Contexts.*, Decorators.*, Flags.*, NullOpsDecorator.*, Symbols.*, Types.*
-import Names.*, NameOps.*, StdNames.*
+import Names.*, StdNames.*
 import ast.*, tpd.*
-import config.Printers.exhaustivity
 import printing.{ Printer, * }, Texts.*
 import reporting.*
 import typer.*, Applications.*, Inferencing.*, ProtoTypes.*

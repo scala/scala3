@@ -4,8 +4,8 @@ package reporting
 
 import core.*
 import Contexts.*
-import Decorators.*, Symbols.*, Names.*, Types.*, Flags.*
-import typer.ProtoTypes.{FunProto, SelectionProto}
+import Symbols.*, Names.*, Types.*, Flags.*
+import typer.ProtoTypes.SelectionProto
 
 /** A utility object to support "did you mean" hinting */
 object DidYouMean:

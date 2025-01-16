@@ -4,7 +4,6 @@ import scala.language.unsafeNulls
 
 import dotty.tools.io.AbstractFile
 import dotty.tools.io.JarArchive
-import dotty.tools.io.PlainFile
 
 import java.io.BufferedOutputStream
 import java.io.DataOutputStream
@@ -24,7 +23,6 @@ import java.util.zip.CRC32
 import java.util.zip.Deflater
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
-import scala.collection.mutable
 
 import dotty.tools.dotc.core.Contexts, Contexts.Context
 import dotty.tools.dotc.core.Decorators.em
@@ -35,7 +33,6 @@ import dotty.tools.dotc.reporting.Message
 import dotty.tools.dotc.report
 
 import dotty.tools.backend.jvm.PostProcessorFrontendAccess.BackendReporting
-import scala.annotation.constructorOnly
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.ConcurrentModificationException

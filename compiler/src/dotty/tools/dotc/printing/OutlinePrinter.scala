@@ -5,7 +5,6 @@ package printing
 import core.*
 import Texts.*
 import Flags.*
-import NameOps.*
 import StdNames.*
 import Contexts.*
 import Symbols.*

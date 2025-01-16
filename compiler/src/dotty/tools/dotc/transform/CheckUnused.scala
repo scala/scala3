@@ -6,33 +6,22 @@ import scala.collection.mutable
 import dotty.tools.uncheckedNN
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.ast.tpd.{Inlined, TreeTraverser}
+import dotty.tools.dotc.ast.tpd.TreeTraverser
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.ast.untpd.ImportSelector
-import dotty.tools.dotc.config.ScalaSettings
 import dotty.tools.dotc.core.Contexts.*
-import dotty.tools.dotc.core.Decorators.{em, i}
-import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags.*
-import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.report
-import dotty.tools.dotc.reporting.Message
 import dotty.tools.dotc.reporting.UnusedSymbol as UnusedSymbolMessage
-import dotty.tools.dotc.typer.ImportInfo
 import dotty.tools.dotc.util.{Property, SrcPos}
-import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Types.{AnnotatedType, ConstantType, NoType, TermRef, Type, TypeTraverser}
-import dotty.tools.dotc.core.Flags.flagsString
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.NameOps.isReplWrapperName
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
-import dotty.tools.dotc.core.Annotations
-import dotty.tools.dotc.core.Definitions
 import dotty.tools.dotc.core.NameKinds.WildcardParamName
 import dotty.tools.dotc.core.Symbols.Symbol
-import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.util.Spans.Span
 import scala.math.Ordering
 
@@ -217,7 +206,6 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
    */
   private def traverser = new TreeTraverser:
     import tpd.*
-    import UnusedData.ScopeType
 
     /* Register every imports, definition and usage */
     override def traverse(tree: tpd.Tree)(using Context): Unit =

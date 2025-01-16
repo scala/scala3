@@ -14,12 +14,11 @@ import ast.{untpd, tpd}
 import Contexts.*, Symbols.*, Types.*, Names.*, Constants.*, Decorators.*, Annotations.*, Flags.*
 import Comments.{Comment, docCtx}
 import NameKinds.*
-import StdNames.{nme, tpnme}
+import StdNames.nme
 import config.Config
 import collection.mutable
 import reporting.{Profile, NoProfile}
 import dotty.tools.tasty.TastyFormat.ASTsSection
-import quoted.QuotePatterns
 
 object TreePickler:
   class StackSizeExceeded(val mdef: tpd.MemberDef) extends Exception

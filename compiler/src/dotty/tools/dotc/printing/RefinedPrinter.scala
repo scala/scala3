@@ -18,13 +18,13 @@ import SymDenotations.*
 import StdNames.{nme, tpnme}
 import ast.{Trees, tpd, untpd}
 import tpd.closureDef
-import typer.{Implicits, Namer, Applications}
+import typer.{Implicits, Namer}
 import typer.ProtoTypes.*
 import Trees.*
 import TypeApplications.*
 import NameKinds.{WildcardParamName, DefaultGetterName}
 import util.Chars.isOperatorPart
-import config.{Config, Feature}
+import config.Feature
 import config.Feature.sourceVersion
 import config.SourceVersion.*
 

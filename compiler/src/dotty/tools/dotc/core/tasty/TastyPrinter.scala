@@ -5,14 +5,11 @@ package tasty
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
 import TastyBuffer.NameRef
 
-import Contexts.*, Decorators.*
-import Names.Name
 import TastyUnpickler.*
 import util.Spans.offsetToInt
 import dotty.tools.tasty.TastyFormat.{ASTsSection, PositionsSection, CommentsSection, AttributesSection}
 import java.nio.file.{Files, Paths}
 import dotty.tools.io.{JarArchive, Path}
-import dotty.tools.tasty.TastyFormat.header
 import scala.collection.immutable.BitSet
 
 import scala.compiletime.uninitialized
@@ -206,7 +203,6 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
 
   class PositionSectionUnpickler(sb: StringBuilder) extends PrinterSectionUnpickler[Unit](PositionsSection) {
     def unpickle0(reader: TastyReader)(using tastyName: NameRefs): Unit = {
-      import reader.*
       val posUnpickler = new PositionUnpickler(reader, tastyName)
       sb.append(sectionHeader("Positions", reader))
       val lineSizes = posUnpickler.lineSizes
@@ -238,7 +234,6 @@ class TastyPrinter(bytes: Array[Byte], isBestEffortTasty: Boolean, val testPickl
 
   class CommentSectionUnpickler(sb: StringBuilder) extends PrinterSectionUnpickler[Unit](CommentsSection) {
     def unpickle0(reader: TastyReader)(using NameRefs): Unit = {
-      import reader.*
       val comments = new CommentUnpickler(reader).comments
       if !comments.isEmpty then
         sb.append(sectionHeader("Comments", reader))

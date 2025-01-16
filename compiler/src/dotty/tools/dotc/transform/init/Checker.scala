@@ -8,7 +8,6 @@ import tpd.*
 
 import dotty.tools.dotc.core.*
 import Contexts.*
-import Types.*
 import Symbols.*
 import StdNames.*
 
@@ -17,7 +16,6 @@ import Phases.*
 
 import scala.collection.mutable
 
-import Semantic.*
 import dotty.tools.unsupported
 
 class Checker extends Phase:

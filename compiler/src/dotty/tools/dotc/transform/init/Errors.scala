@@ -7,7 +7,7 @@ import ast.tpd.*
 import core.*
 import util.Property
 import util.SourcePosition
-import Types.*, Symbols.*, Contexts.*
+import Symbols.*, Contexts.*
 
 import Trace.Trace
 

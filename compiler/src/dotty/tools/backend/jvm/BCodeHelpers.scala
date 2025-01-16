@@ -31,7 +31,6 @@ import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.transform.GenericSignatures
 import dotty.tools.dotc.transform.ElimErasedValueType
-import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.report
 
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
@@ -49,7 +48,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
   import bTypes.*
   import tpd.*
   import coreBTypes.*
-  import int.{_, given}
+  import int.given
   import DottyBackendInterface.*
 
   // We need to access GenBCode phase to get access to post-processor components.
@@ -380,7 +379,6 @@ trait BCodeHelpers extends BCodeIdiomatic {
   } // end of trait BCAnnotGen
 
   trait BCJGenSigGen {
-    import int.given
 
     def getCurrentCUnit(): CompilationUnit
 

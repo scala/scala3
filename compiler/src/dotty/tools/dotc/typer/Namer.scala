@@ -6,7 +6,7 @@ import core.*
 import ast.*
 import Trees.*, StdNames.*, Scopes.*, Denotations.*, NamerOps.*, ContextOps.*
 import Contexts.*, Symbols.*, Types.*, SymDenotations.*, Names.*, NameOps.*, Flags.*
-import Decorators.*, Comments.{_, given}
+import Decorators.*, Comments._
 import NameKinds.DefaultGetterName
 import ast.desugar, ast.desugar.*
 import ProtoTypes.*
@@ -23,7 +23,6 @@ import parsing.Parsers.Parser
 import Annotations.*
 import Inferencing.*
 import Nullables.*
-import transform.ValueClasses.*
 import TypeErasure.erasure
 import reporting.*
 import config.Feature.{sourceVersion, modularity}

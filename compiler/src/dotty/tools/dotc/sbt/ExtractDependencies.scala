@@ -3,7 +3,6 @@ package sbt
 
 import scala.language.unsafeNulls
 
-import java.io.File
 import java.nio.file.Path
 import java.util.{Arrays, EnumSet}
 
@@ -21,14 +20,14 @@ import dotty.tools.dotc.core.Types.*
 
 import dotty.tools.dotc.util.{SrcPos, NoSourcePosition}
 import dotty.tools.io
-import dotty.tools.io.{AbstractFile, PlainFile, ZipArchive, NoAbstractFile, FileExtension}
+import dotty.tools.io.{PlainFile, ZipArchive, FileExtension}
 import xsbti.UseScope
 import xsbti.api.DependencyContext
 import xsbti.api.DependencyContext.*
 
 import scala.jdk.CollectionConverters.*
 
-import scala.collection.{Set, mutable}
+import scala.collection.mutable
 import scala.compiletime.uninitialized
 
 /** This phase sends information on classes' dependencies to sbt via callbacks.
@@ -51,7 +50,6 @@ import scala.compiletime.uninitialized
  *  @see ExtractAPI
  */
 class ExtractDependencies extends Phase {
-  import ExtractDependencies.*
 
   override def phaseName: String = ExtractDependencies.name
 
@@ -548,7 +546,6 @@ class DependencyRecorder {
    *  This is backed by a cache which is invalidated when `ctx.owner` changes.
    */
   private def resolveDependencyFromClass(using Context): Symbol = {
-    import dotty.tools.uncheckedNN
     if (lastOwner != ctx.owner) {
       lastOwner = ctx.owner
       val source = nonLocalEnclosingClass

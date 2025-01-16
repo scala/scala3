@@ -9,7 +9,6 @@ import typer.*
 import Names.Name
 import NameKinds.InlineBinderName
 import ProtoTypes.shallowSelectionProto
-import SymDenotations.SymDenotation
 import Inferencing.isFullyDefined
 import config.Printers.inlining
 import ErrorReporting.errorTree

@@ -149,7 +149,6 @@ private [profile] object RealProfiler {
 
   @nowarn("cat=deprecation")
   private[profile] def snapThread(idleTimeNanos: Long): ProfileSnap = {
-    import RealProfiler.*
     val current = Thread.currentThread()
 
     ProfileSnap(

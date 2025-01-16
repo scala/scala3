@@ -17,8 +17,7 @@ import Symbols.*
 import Flags.Module
 import reporting.{ThrowingReporter, Profile, Message}
 import collection.mutable
-import util.concurrent.{Executor, Future}
-import compiletime.uninitialized
+import util.concurrent.Executor
 import dotty.tools.io.{JarArchive, AbstractFile}
 import dotty.tools.dotc.printing.OutlinePrinter
 import scala.annotation.constructorOnly
@@ -26,7 +25,7 @@ import scala.concurrent.Promise
 import dotty.tools.dotc.transform.Pickler.writeSigFilesAsync
 
 import scala.util.chaining.given
-import dotty.tools.io.FileWriters.{EagerReporter, BufferingReporter}
+import dotty.tools.io.FileWriters.BufferingReporter
 import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
 import dotty.tools.dotc.sbt.asyncZincPhasesCompleted
 import scala.concurrent.ExecutionContext

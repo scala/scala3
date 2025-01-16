@@ -5,7 +5,6 @@ import core.*
 import Contexts.*, Symbols.*, Types.*, Flags.*, StdNames.*
 import MegaPhase.*
 import NameKinds.NonLocalReturnKeyName
-import config.SourceVersion.*
 import Decorators.em
 import dotty.tools.dotc.config.MigrationVersion
 

@@ -3,7 +3,6 @@ package dotty.tools.dotc.core.tasty
 import dotty.tools.tasty.TastyFormat.*
 
 import scala.collection.immutable.BitSet
-import scala.collection.immutable.TreeMap
 
 class Attributes private[tasty](
   private[tasty] val booleanTags: BitSet,

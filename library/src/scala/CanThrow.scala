@@ -1,6 +1,6 @@
 package scala
 import language.experimental.erasedDefinitions
-import annotation.{implicitNotFound, experimental, capability}
+import annotation.{implicitNotFound, experimental}
 
 /** A capability class that allows to throw exception `E`. When used with the
  *  experimental.saferExceptions feature, a `throw Ex()` expression will require

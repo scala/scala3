@@ -1,6 +1,5 @@
 package dotty.tools.dotc.core
 
-import dotty.tools.io.AbstractFile
 import dotty.tools.tasty.TastyVersion
 
 /** Information about the TASTy of a class symbol.

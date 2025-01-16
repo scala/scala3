@@ -5,12 +5,9 @@ package reporting
 import core.*
 import Contexts.{Context, ctx}
 import Symbols.{Symbol, NoSymbol}
-import collection.mutable
-import util.{EqHashMap, NoSourcePosition}
+import util.EqHashMap
 import util.Spans.{Span, NoSpan}
-import Decorators.i
 import parsing.Scanners.Scanner
-import io.AbstractFile
 import annotation.internal.sharable
 
 abstract class Profile:

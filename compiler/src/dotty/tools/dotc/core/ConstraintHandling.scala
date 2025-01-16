@@ -12,7 +12,6 @@ import config.Printers.typr
 import typer.ProtoTypes.{newTypeVar, representedParamRef}
 import UnificationDirection.*
 import NameKinds.AvoidNameKind
-import util.SimpleIdentitySet
 import NullOpsDecorator.stripNull
 
 /** Methods for adding constraints and solving them.

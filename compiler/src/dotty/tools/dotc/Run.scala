@@ -12,7 +12,7 @@ import typer.Typer
 import typer.ImportInfo.withRootImports
 import Decorators.*
 import io.AbstractFile
-import Phases.{unfusedPhases, Phase}
+import Phases.Phase
 
 import sbt.interfaces.ProgressCallback
 
@@ -22,17 +22,13 @@ import reporting.Diagnostic
 import reporting.Diagnostic.Warning
 import rewrites.Rewrites
 import profile.Profiler
-import printing.XprintMode
 import typer.ImplicitRunInfo
 import config.Feature
 import StdNames.nme
 
-import java.io.{BufferedWriter, OutputStreamWriter}
-import java.nio.charset.StandardCharsets
 
 import scala.collection.mutable
 import scala.util.control.NonFatal
-import scala.io.Codec
 
 import Run.Progress
 import scala.compiletime.uninitialized

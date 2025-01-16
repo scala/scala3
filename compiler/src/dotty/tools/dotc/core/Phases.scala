@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package core
 
-import Periods.*
 import Contexts.*
 import dotty.tools.backend.jvm.GenBCode
 import DenotTransformers.*

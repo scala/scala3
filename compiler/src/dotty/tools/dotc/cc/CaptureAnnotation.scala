@@ -4,10 +4,8 @@ package cc
 
 import core.*
 import Types.*, Symbols.*, Contexts.*, Annotations.*
-import ast.Trees.*
 import ast.{tpd, untpd}
 import Decorators.*
-import config.Printers.capt
 import printing.Printer
 import printing.Texts.Text
 
@@ -21,7 +19,6 @@ import printing.Texts.Text
  *  @param cls     the underlying class (either annotation.retains or annotation.retainsByName)
  */
 case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) extends Annotation:
-  import CaptureAnnotation.*
   import tpd.*
 
   /** A cache for the version of this annotation which differs in its boxed status. */

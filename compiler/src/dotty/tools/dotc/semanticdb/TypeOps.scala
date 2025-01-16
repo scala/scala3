@@ -15,7 +15,6 @@ import collection.mutable
 
 import dotty.tools.dotc.{semanticdb => s}
 import Scala3.{FakeSymbol, SemanticSymbol, WildcardTypeSymbol, TypeParamRefSymbol, TermParamRefSymbol, RefinementSymbol}
-import dotty.tools.dotc.core.Names.Designator
 
 class TypeOps:
   import SymbolScopeOps.*
@@ -527,7 +526,7 @@ class TypeOps:
 
 
 object SymbolScopeOps:
-  import Scala3.{_, given}
+  import Scala3.given
   extension (syms: List[SemanticSymbol])
     def sscope(using linkMode: LinkMode)(using SemanticSymbolBuilder, TypeOps, Context): s.Scope =
       linkMode match

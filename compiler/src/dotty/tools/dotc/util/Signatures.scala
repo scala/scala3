@@ -6,7 +6,6 @@ import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.StdNames.nme
-import dotty.tools.dotc.core.Symbols.defn
 
 import ast.Trees.*
 import ast.tpd
@@ -16,7 +15,7 @@ import core.Flags
 import core.Names.*
 import core.NameKinds
 import core.Types.*
-import core.Symbols.{NoSymbol, isLocalToBlock}
+import core.Symbols.isLocalToBlock
 import interactive.Interactive
 import util.Spans.Span
 import reporting.*

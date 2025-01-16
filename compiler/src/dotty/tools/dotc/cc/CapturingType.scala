@@ -4,7 +4,6 @@ package cc
 
 import core.*
 import Types.*, Symbols.*, Contexts.*
-import Decorators.i
 
 /** A (possibly boxed) capturing type. This is internally represented as an annotated type with a @retains
  *  or @retainsByName annotation, but the extractor will succeed only at phase CheckCaptures.

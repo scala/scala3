@@ -5,7 +5,6 @@ package classfile
 
 import scala.language.unsafeNulls
 
-import dotty.tools.tasty.{ TastyReader, TastyHeaderUnpickler }
 
 import Contexts.*, Symbols.*, Types.*, Names.*, StdNames.*, NameOps.*, Scopes.*, Decorators.*
 import SymDenotations.*, unpickleScala2.Scala2Unpickler.*, Constants.*, Annotations.*, util.Spans.*
@@ -15,13 +14,12 @@ import ast.tpd.*, util.*
 import java.io.IOException
 
 import java.lang.Integer.toHexString
-import java.util.UUID
 
 import scala.collection.immutable
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import typer.Checking.checkNonCyclic
-import io.{AbstractFile, ZipArchive}
+import io.AbstractFile
 import scala.util.control.NonFatal
 import dotty.tools.dotc.classpath.FileUtils.hasSiblingTasty
 

@@ -4,7 +4,7 @@ package transform
 
 import core.*
 import Symbols.*, Contexts.*, Types.*, ContextOps.*, Decorators.*, SymDenotations.*
-import Flags.*, NameKinds.*, Denotations.{Denotation, SingleDenotation}
+import Flags.*, NameKinds.*, Denotations.Denotation
 import ast.*
 import Names.Name
 import Phases.Phase
@@ -19,11 +19,9 @@ import typer.ErrorReporting.{Addenda, NothingToAdd}
 import config.Printers.recheckr
 import util.Property
 import StdNames.nme
-import reporting.trace
 import annotation.constructorOnly
 import cc.CaptureSet.IdempotentCaptRefMap
 import annotation.tailrec
-import dotty.tools.dotc.cc.boxed
 
 object Recheck:
   import tpd.*

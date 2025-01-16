@@ -4,7 +4,6 @@ package core
 
 import Types.*, Contexts.*
 import printing.Showable
-import util.{SimpleIdentitySet, SimpleIdentityMap}
 
 /** Constraint over undetermined type parameters. Constraints are built
  *  over values of the following types:

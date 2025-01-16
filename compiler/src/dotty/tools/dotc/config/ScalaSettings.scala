@@ -7,7 +7,7 @@ import dotty.tools.dotc.config.Settings.{Setting, SettingGroup, SettingCategory,
 import dotty.tools.dotc.config.SourceVersion
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.rewrites.Rewrites
-import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory, NoAbstractFile}
+import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, NoAbstractFile}
 import Setting.ChoiceWithHelp
 import ScalaSettingCategories.*
 

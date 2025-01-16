@@ -5,7 +5,6 @@ package inlines
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import Trees.*
 import core.*
-import Flags.*
 import Symbols.*
 import Flags.*
 import Types.*
@@ -22,8 +21,6 @@ import staging.CrossStageSafety
 import config.Printers.inlining
 import util.Property
 import staging.StagingLevel
-import dotty.tools.dotc.reporting.Message
-import dotty.tools.dotc.util.SrcPos
 
 object PrepareInlineable {
   import tpd.*

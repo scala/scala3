@@ -1,7 +1,5 @@
 package scala.quoted.runtime.impl
 
-import dotty.tools.dotc.ast.tpd.Tree
-import dotty.tools.dotc.core.Contexts.*
 
 class ExprCastException(msg: String) extends Exception(msg)
 

@@ -15,7 +15,6 @@ import ProtoTypes.*
 import Scopes.*
 import CheckRealizable.*
 import ErrorReporting.errorTree
-import util.Spans.Span
 import Phases.refchecksPhase
 import Constants.Constant
 
@@ -24,7 +23,7 @@ import util.Spans.Span
 import rewrites.Rewrites.patch
 import inlines.Inlines
 import Decorators.*
-import ErrorReporting.{err, errorType}
+import ErrorReporting.errorType
 import config.Printers.{typr, patmatch}
 import NameKinds.DefaultGetterName
 import NameOps.*

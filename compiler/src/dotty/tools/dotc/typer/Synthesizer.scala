@@ -12,13 +12,11 @@ import ProtoTypes.*
 import Inferencing.{fullyDefinedType, isFullyDefined}
 import ast.untpd
 import transform.SyntheticMembers.*
-import util.Property
 import ast.Trees.genericEmptyTree
 import annotation.{tailrec, constructorOnly}
 import ast.tpd
 import ast.tpd.*
 import Synthesizer.*
-import sbt.ExtractDependencies.*
 import xsbti.api.DependencyContext.*
 
 /** Synthesize terms for special classes */

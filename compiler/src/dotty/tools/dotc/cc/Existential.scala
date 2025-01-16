@@ -3,12 +3,9 @@ package dotc
 package cc
 
 import core.*
-import Types.*, Symbols.*, Contexts.*, Annotations.*, Flags.*
-import CaptureSet.IdempotentCaptRefMap
+import Types.*, Symbols.*, Contexts.*, Annotations.*
 import StdNames.nme
-import ast.tpd.*
 import Decorators.*
-import typer.ErrorReporting.errorType
 import Names.TermName
 import NameKinds.ExistentialBinderName
 import NameOps.isImpureFunction

@@ -5,7 +5,7 @@ package core
 import Symbols.*
 import Flags.*
 import Names.*
-import StdNames.*, NameOps.*
+import StdNames.*
 import NullOpsDecorator.*
 import NameKinds.{SkolemName, WildcardParamName}
 import Scopes.*
@@ -39,11 +39,10 @@ import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
 import cc.*
-import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
+import CaptureSet.{IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
-import dotty.tools.dotc.cc.ccConfig
 
 object Types extends TypeUtils {
 

@@ -3,9 +3,8 @@ package core.tasty
 
 import scala.language.unsafeNulls
 import scala.collection.immutable.BitSet
-import scala.collection.immutable.TreeMap
 
-import dotty.tools.tasty.{TastyFormat, TastyReader, TastyBuffer}, TastyFormat.{isBooleanAttrTag, isStringAttrTag}
+import dotty.tools.tasty.{TastyFormat, TastyReader}, TastyFormat.{isBooleanAttrTag, isStringAttrTag}
 import dotty.tools.dotc.core.tasty.TastyUnpickler.NameTable
 
 class AttributeUnpickler(reader: TastyReader, nameAtRef: NameTable):

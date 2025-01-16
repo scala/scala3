@@ -8,7 +8,6 @@ import dotty.tools.dotc.core.Flags.*
 import java.io.{File => _}
 
 import scala.reflect.ClassTag
-import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.core.*
 import Contexts.*
 import Types.*

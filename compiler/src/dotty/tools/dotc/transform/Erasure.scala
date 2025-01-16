@@ -16,7 +16,6 @@ import core.NameOps.*
 import core.Periods.currentStablePeriod
 import core.NameKinds.{AdaptedClosureName, BodyRetainerName, DirectMethName}
 import core.Scopes.newScopeWith
-import core.Decorators.*
 import core.Constants.*
 import core.Definitions.*
 import core.Annotations.BodyAnnotation

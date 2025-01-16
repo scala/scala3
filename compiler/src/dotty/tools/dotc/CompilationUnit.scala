@@ -14,7 +14,6 @@ import ast.Trees.{Import, Ident}
 import typer.Nullables
 import core.Decorators.*
 import config.{SourceVersion, Feature}
-import StdNames.nme
 import scala.annotation.internal.sharable
 import scala.util.control.NoStackTrace
 import transform.MacroAnnotations.isMacroAnnotation

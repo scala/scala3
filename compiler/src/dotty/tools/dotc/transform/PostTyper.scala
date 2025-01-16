@@ -2,8 +2,7 @@ package dotty.tools
 package dotc
 package transform
 
-import dotty.tools.dotc.ast.{Trees, tpd, untpd, desugar, TreeTypeMap}
-import scala.collection.mutable
+import dotty.tools.dotc.ast.{Trees, tpd, desugar, TreeTypeMap}
 import core.*
 import dotty.tools.dotc.typer.Checking
 import dotty.tools.dotc.inlines.Inlines
@@ -12,11 +11,11 @@ import typer.ErrorReporting.errorTree
 import Types.*, Contexts.*, Names.*, Flags.*, DenotTransformers.*, Phases.*
 import SymDenotations.*, StdNames.*, Annotations.*, Trees.*, Scopes.*
 import Decorators.*
-import Symbols.*, NameOps.*
+import Symbols.*
 import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
 import config.Feature
-import util.{SrcPos, Stats}
+import util.Stats
 import reporting.*
 import NameKinds.WildcardParamName
 import cc.*

@@ -1,7 +1,6 @@
 package dotty.tools.dotc.core
 
 import dotty.tools.io.AbstractFile
-import dotty.tools.tasty.TastyVersion
 
 /** Information about the compilation unit of a class symbol.
   *

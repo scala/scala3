@@ -3,7 +3,7 @@ package config
 
 import Settings.Setting.ChoiceWithHelp
 import dotty.tools.backend.jvm.BackendUtils.classfileVersionMap
-import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory, NoAbstractFile}
+import dotty.tools.io.JDK9Reflectors
 import scala.language.unsafeNulls
 
 object ScalaSettingsProperties:

@@ -22,7 +22,6 @@ object EqHashSet:
  *                           once the number of elements reaches the table's size.
  */
 class EqHashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends GenericHashSet[T](initialCapacity, capacityMultiple) {
-  import GenericHashSet.DenseLimit
 
   /** System's identity hashcode left shifted by 1 */
   final def hash(key: T): Int =

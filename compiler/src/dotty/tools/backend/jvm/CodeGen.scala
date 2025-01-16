@@ -5,10 +5,8 @@ import scala.language.unsafeNulls
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.Trees.{PackageDef, ValDef}
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Phases.Phase
 
 import scala.collection.mutable
-import scala.jdk.CollectionConverters.*
 
 import dotty.tools.dotc.interfaces
 import dotty.tools.dotc.report
@@ -21,13 +19,10 @@ import Phases.*
 import Symbols.*
 import StdNames.nme
 
-import java.io.DataOutputStream
-import java.nio.channels.ClosedByInterruptException
 
 import dotty.tools.tasty.{ TastyBuffer, TastyHeaderUnpickler }
 import dotty.tools.dotc.core.tasty.TastyUnpickler
 
-import scala.tools.asm
 import scala.tools.asm.tree.*
 import tpd.*
 import dotty.tools.io.AbstractFile

@@ -11,7 +11,7 @@ import ast.*
 import Trees.WithLazyFields
 import util.{SourceFile, NoSource}
 import core.*
-import Annotations.*, Decorators.*
+import Decorators.*
 import collection.mutable
 import util.Spans.*
 import reporting.Message

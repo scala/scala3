@@ -9,7 +9,6 @@ import StdNames.*
 import Decorators.*
 import typer.ProtoTypes.*
 import ast.{tpd, untpd}
-import scala.util.control.NonFatal
 import util.Spans.Span
 import Nullables.*
 import staging.StagingLevel.*

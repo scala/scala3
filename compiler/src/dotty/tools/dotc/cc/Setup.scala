@@ -3,7 +3,7 @@ package dotc
 package cc
 
 import core.*
-import Phases.*, DenotTransformers.*, SymDenotations.*
+import DenotTransformers.*, SymDenotations.*
 import Contexts.*, Names.*, Flags.*, Symbols.*, Decorators.*
 import Types.*, StdNames.*
 import Annotations.Annotation
@@ -11,14 +11,13 @@ import config.Feature
 import config.Printers.{capt, captDebug}
 import ast.tpd, tpd.*
 import transform.{PreRecheck, Recheck}, Recheck.*
-import CaptureSet.{IdentityCaptRefMap, IdempotentCaptRefMap}
+import CaptureSet.IdempotentCaptRefMap
 import Synthetics.isExcluded
 import util.SimpleIdentitySet
 import reporting.Message
-import printing.{Printer, Texts}, Texts.{Text, Str}
+import printing.Texts
 import collection.mutable
 import CCState.*
-import dotty.tools.dotc.util.NoSourcePosition
 import CheckCaptures.CheckerAPI
 
 /** Operations accessed from CheckCaptures */

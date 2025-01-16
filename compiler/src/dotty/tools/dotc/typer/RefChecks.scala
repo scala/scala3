@@ -11,11 +11,11 @@ import util.Spans.*
 import scala.collection.{mutable, immutable}
 import ast.*
 import MegaPhase.*
-import config.Printers.{checks, noPrinter, capt}
+import config.Printers.{checks, noPrinter}
 import Decorators.*
 import OverridingPairs.isOverridingPair
 import typer.ErrorReporting.*
-import config.Feature.{warnOnMigration, migrateTo3, sourceVersion}
+import config.Feature.{warnOnMigration, migrateTo3}
 import config.SourceVersion.`3.0`
 import config.MigrationVersion
 import config.Printers.refcheck

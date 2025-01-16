@@ -2,8 +2,8 @@ package dotty.tools
 package dotc
 package core
 
-import Periods.*, Contexts.*, Symbols.*, Denotations.*, Names.*, NameOps.*, Annotations.*
-import Types.*, Flags.*, Decorators.*, DenotTransformers.*, StdNames.*, Scopes.*
+import Periods.*, Contexts.*, Symbols.*, Denotations.*, Names.*, Annotations.*
+import Types.*, Flags.*, DenotTransformers.*, StdNames.*, Scopes.*
 import NameOps.*, NameKinds.*
 import Phases.{Phase, typerPhase, unfusedPhases}
 import Constants.Constant

@@ -12,7 +12,6 @@ import Decorators.*
 import MegaPhase.*
 import java.io.File.separatorChar
 
-import ValueClasses.*
 
 /** Make private term members that are accessed from another class
  *  non-private by resetting the Private flag and expanding their name.

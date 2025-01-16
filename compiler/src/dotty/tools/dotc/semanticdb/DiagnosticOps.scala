@@ -3,7 +3,6 @@ package dotty.tools.dotc.semanticdb
 import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.dotc.{semanticdb => s}
 import dotty.tools.dotc.interfaces.Diagnostic.{ERROR, INFO, WARNING}
-import dotty.tools.dotc.core.Contexts.Context
 import scala.annotation.internal.sharable
 
 object DiagnosticOps:

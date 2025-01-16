@@ -18,7 +18,7 @@ import config.{Feature, ScalaVersion}
 import transform.patmat.Space
 import transform.patmat.SpaceEngine
 import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbolsInScope}
-import typer.ProtoTypes.{ViewProto, SelectionProto, FunProto}
+import typer.ProtoTypes.{ViewProto, FunProto}
 import typer.Implicits.*
 import typer.Inferencing
 import scala.util.control.NonFatal
@@ -33,7 +33,6 @@ import cc.CaptureSet.IdentityCaptRefMap
 import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourcePosition
-import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.config.SourceVersion
 import DidYouMean.*

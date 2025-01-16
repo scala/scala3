@@ -8,7 +8,7 @@ import scala.annotation.{switch, tailrec}
 import scala.collection.mutable.SortedMap
 
 import scala.tools.asm
-import scala.tools.asm.{Handle, Opcodes}
+import scala.tools.asm.Opcodes
 import BCodeHelpers.InvokeStyle
 
 import dotty.tools.dotc.ast.tpd

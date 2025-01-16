@@ -10,7 +10,6 @@ import util.Stats.{record, monitored}
 import printing.{Showable, Printer}
 import printing.Texts.*
 import Contexts.*
-import Types.*
 import Flags.*
 import Mode.ImplicitsEnabled
 import NameKinds.{LazyImplicitName, ContextBoundParamName}
@@ -22,7 +21,6 @@ import StdNames.*
 import ProtoTypes.*
 import ErrorReporting.*
 import Inferencing.{fullyDefinedType, isFullyDefined}
-import Scopes.newScope
 import Typer.BindingPrec, BindingPrec.*
 import Hashable.*
 import util.{EqHashMap, Stats}

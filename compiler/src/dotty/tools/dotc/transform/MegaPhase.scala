@@ -5,7 +5,7 @@ package transform
 import scala.compiletime.uninitialized
 
 import core.*
-import Contexts.*, Phases.*, Symbols.*, Decorators.*
+import Contexts.*, Phases.*, Symbols.*
 import Flags.PackageVal
 import staging.StagingLevel.*
 

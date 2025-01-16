@@ -20,7 +20,6 @@ import Constants.*
 import Annotations.*
 import NameKinds.*
 import NamerOps.*
-import ContextOps.*
 import Variances.Invariant
 import TastyUnpickler.NameTable
 import typer.ConstFold

@@ -7,7 +7,6 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
-import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.StdNames.*
