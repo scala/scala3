@@ -15,7 +15,7 @@ Added 'compiler/test-resources/jars/mylibrary2.jar' to classpath.
 scala> import mylibrary2.Utils2
 
 scala> Utils2.greet("Alice")
-val res1: String = Hello, Alice!
+val res1: String = Greetings, Alice!
 
 scala> Utils.greet("Alice")
 val res2: String = Hello, Alice!
