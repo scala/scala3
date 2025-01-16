@@ -142,7 +142,7 @@ private[scala] trait PropertiesTrait {
   private[scala] lazy val isAvian = javaVmName.contains("Avian")
 
   private[scala] def coloredOutputEnabled: Boolean = propOrElse("scala.color", "auto") match {
-    case "auto" => !isWin && consoleIsTerminal
+    case "auto" => consoleIsTerminal
     case s      => "" == s || "true".equalsIgnoreCase(s)
   }
 
