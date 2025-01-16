@@ -26,7 +26,7 @@ function onExit() {
 # to reenable echo if we are interrupted before completing.
 trap onExit INT TERM EXIT
 
-unset cygwin mingw msys darwin conemu
+unset cygwin mingw msys darwin
 
 # COLUMNS is used together with command line option '-pageWidth'.
 if command -v tput >/dev/null 2>&1; then
@@ -55,8 +55,6 @@ esac
 
 unset CYGPATHCMD
 if [[ ${cygwin-} || ${mingw-} || ${msys-} ]]; then
-  # ConEmu terminal is incompatible with jna-5.*.jar
-  [[ (${CONEMUANSI-} || ${ConEmuANSI-}) ]] && conemu=true
   # cygpath is used by various windows shells: cygwin, git-sdk, gitbash, msys, etc.
   CYGPATHCMD=`which cygpath 2>/dev/null`
   case "$TERM" in
