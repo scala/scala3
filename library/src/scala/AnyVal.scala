@@ -9,7 +9,7 @@
  * See the NOTICE file distributed with this work for
  * additional information regarding copyright ownership.
  */
-
+/*
 package scala
 
 /** `AnyVal` is the root class of all ''value types'', which describe values
@@ -56,3 +56,4 @@ package scala
 abstract class AnyVal extends Any {
   def getClass(): Class[_ <: AnyVal] = null
 }
+*/
