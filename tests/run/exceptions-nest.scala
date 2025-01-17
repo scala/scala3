@@ -1,4 +1,4 @@
-// scalajs: --skip
+// scalajs: --compliant-semantics
 
 object Test extends App {
 
@@ -12,8 +12,11 @@ object Test extends App {
   try { println(test8) } catch { case _: Throwable => println("OK") }
   println(test9)
   println(test10)
-  println(test11)
+  portablePrintln(test11)
   println(test12)
+
+  def portablePrintln(x: Any): Unit =
+    println(if (x == ()) "()" else x)
 
   def test1 = {
     var x = 1
