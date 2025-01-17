@@ -1,0 +1,3 @@
+BuildDescription(true,true,.,typescript,true,null,List(null, null),List(Plugin(typescript-transform-paths,false), Plugin(typescript-transform-paths,true)),List(someValue, some-value, a value),node,CommonJS,ES2020,)
+BuildDescription(true,true,.,typescript,false,null,List(null, null),List(Plugin(typescript-transform-paths,false), Plugin(typescript-transform-paths,true)),List(),node,,ES2020,)
+BuildDescription(false,true,.,,false,.,List(null, null),List(),List(),,,,)

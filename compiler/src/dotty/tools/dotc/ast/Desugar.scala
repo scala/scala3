@@ -1717,7 +1717,20 @@ object desugar {
         cpy.Tuple(tree)(elemValues)
     val names = elems.collect:
       case NamedArg(name, arg) => name
-    if names.isEmpty || ctx.mode.is(Mode.Pattern) then
+    val targetClassType = pt.underlyingClassRef(refinementOK = true)
+    val targetClass = targetClassType.typeSymbol
+    val isCaseClassConstr =
+      ctx.mode.isExpr
+      && targetClass.is(Case)
+      && !defn.isTupleClass(targetClass)
+      && targetClass != defn.TupleXXLClass
+      && names.hasSameLengthAs(elems) // true iff all arguments are named
+    if isCaseClassConstr then
+      import tpd.TreeOps
+      val companion = targetClass.companionModule.termRef
+        .withPrefix(targetClassType.asInstanceOf[TypeRef].prefix).asInstanceOf[TermRef]
+      Apply(TypedSplice(tpd.ref(companion).select(nme.apply)), elems).withSpan(tree.span)
+    else if names.isEmpty || ctx.mode.is(Mode.Pattern) then
       tup
     else
       def namesTuple = withModeBits(ctx.mode &~ Mode.Pattern | Mode.Type):
