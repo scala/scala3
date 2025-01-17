@@ -1114,7 +1114,8 @@ object Build {
     (Compile / scalacOptions) ++= Seq(
       // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
       "-sourcepath", (Compile / sourceDirectories).value.map(_.getAbsolutePath).distinct.mkString(File.pathSeparator),
-      "-Yexplicit-nulls",
+      // "-Yexplicit-nulls", TODO: Enable it back
+      "-Ycompile-scala2-library"
     ),
     (Compile / doc / scalacOptions) ++= ScaladocConfigs.DefaultGenerationSettings.value.settings,
     (Compile / packageSrc / mappings) ++= {

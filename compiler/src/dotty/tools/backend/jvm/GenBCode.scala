@@ -109,7 +109,7 @@ class GenBCode extends Phase { self =>
       result
     finally
       // frontendAccess and postProcessor are created lazilly, clean them up only if they were initialized
-      if _frontendAccess ne null then
+      if !(_frontendAccess eq null) then
         frontendAccess.compilerSettings.outputDirectory match {
           case jar: JarArchive =>
             if (ctx.run.nn.suspendedUnits.nonEmpty)
@@ -120,7 +120,7 @@ class GenBCode extends Phase { self =>
             jar.close()
           case _ => ()
         }
-      if _postProcessor ne null then
+      if !(_postProcessor eq null) then
         postProcessor.classfileWriter.close()
       generatedClassHandler.close()
   }
