@@ -10,7 +10,7 @@ const attrsToCopy = [
 
 /**
  * @typedef {Object} SavedPageState
- * @property {Strign} mainDiv
+ * @property {String} mainDiv
  * @property {String} leftColumn
  * @property {String} title
  * @property {Record<string, string>} attrs
@@ -322,7 +322,7 @@ function attachAllListeners() {
 
   if (location.hash) {
     var target = location.hash.substring(1);
-    // setting the 'expand' class on the top-level container causes undesireable styles
+    // setting the 'expand' class on the top-level container causes undesirable styles
     // to apply to the top-level docs, so we avoid this logic for that element.
     if (target != "container") {
       var selected = document.getElementById(location.hash.substring(1));
@@ -568,7 +568,7 @@ function showGraph() {
         .attr("offset", "30%");
       radialGradient
         .append("stop")
-        .attr("stop-color", "var(--background-default)")
+        .attr("stop-color", "var(--background-main)")
         .attr("offset", "100%");
 
       var inner = svg.append("g");

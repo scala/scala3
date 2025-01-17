@@ -12,14 +12,21 @@ trait RangeReplace:
   def renderHighlightsAsString(
       code: String,
       highlights: List[DocumentHighlight]
+  ): String = renderRangesAsString(code, highlights.map(_.getRange()))
+
+  def renderRangesAsString(
+      code: String,
+      highlights: List[Range],
+      alreadyAddedMarkings: List[(Int, Int)] = Nil,
+      currentBase: Option[String] = None
   ): String =
     highlights
-      .foldLeft((code, immutable.List.empty[(Int, Int)])) {
-        case ((base, alreadyAddedMarkings), location) =>
-          replaceInRangeWithAdjustmens(
+      .foldLeft((currentBase.getOrElse(code), alreadyAddedMarkings)) {
+        case ((base, alreadyAddedMarkings), range) =>
+          replaceInRangeWithAdjustments(
             code,
             base,
-            location.getRange,
+            range,
             alreadyAddedMarkings
           )
       }
@@ -31,9 +38,9 @@ trait RangeReplace:
       prefix: String = "<<",
       suffix: String = ">>"
   ): String =
-    replaceInRangeWithAdjustmens(base, base, range, List(), prefix, suffix)._1
+    replaceInRangeWithAdjustments(base, base, range, List(), prefix, suffix)._1
 
-  protected def replaceInRangeWithAdjustmens(
+  protected def replaceInRangeWithAdjustments(
       code: String,
       currentBase: String,
       range: Range,

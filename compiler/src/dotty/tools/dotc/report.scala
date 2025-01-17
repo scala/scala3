@@ -23,8 +23,8 @@ object report:
   private def issueWarning(warning: Warning)(using Context): Unit =
     ctx.reporter.report(warning)
 
-  def deprecationWarning(msg: Message, pos: SrcPos)(using Context): Unit =
-    issueWarning(new DeprecationWarning(msg, pos.sourcePos))
+  def deprecationWarning(msg: Message, pos: SrcPos, origin: String = "")(using Context): Unit =
+    issueWarning(new DeprecationWarning(msg, pos.sourcePos, origin))
 
   def migrationWarning(msg: Message, pos: SrcPos)(using Context): Unit =
     issueWarning(new MigrationWarning(msg, pos.sourcePos))
@@ -99,7 +99,7 @@ object report:
 
   def errorOrMigrationWarning(msg: Message, pos: SrcPos, migrationVersion: MigrationVersion)(using Context): Unit =
     if sourceVersion.isAtLeast(migrationVersion.errorFrom) then
-      if !sourceVersion.isMigrating then error(msg, pos)
+      if sourceVersion != migrationVersion.errorFrom.prevMigrating then error(msg, pos)
       else if ctx.settings.rewrite.value.isEmpty then migrationWarning(msg, pos)
     else if sourceVersion.isAtLeast(migrationVersion.warnFrom) then warning(msg, pos)
 
@@ -165,13 +165,23 @@ object report:
       "compiler version"   -> dotty.tools.dotc.config.Properties.versionString,
       "settings"           -> settings.map(showSetting).mkString(" "),
     ))
+    val fileAReportMsg =
+      if ctx.phase.isInstanceOf[plugins.PluginPhase]
+      then
+        s"""|  An unhandled exception was thrown in the compiler plugin named "${ctx.phase.megaPhase}".
+            |  Please report the issue to the plugin's maintainers.
+            |  For non-enriched exceptions, compile with -Xno-enrich-error-messages.
+            |""".stripMargin
+      else
+        s"""|  An unhandled exception was thrown in the compiler.
+            |  Please file a crash report here:
+            |  https://github.com/scala/scala3/issues/new/choose
+            |  For non-enriched exceptions, compile with -Xno-enrich-error-messages.
+            |""".stripMargin
     s"""
        |  $errorMessage
        |
-       |  An unhandled exception was thrown in the compiler.
-       |  Please file a crash report here:
-       |  https://github.com/scala/scala3/issues/new/choose
-       |  For non-enriched exceptions, compile with -Xno-enrich-error-messages.
+       |$fileAReportMsg
        |
        |$info1
        |""".stripMargin

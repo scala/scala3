@@ -46,7 +46,7 @@ jobs:
           - platform: WINDOWS_64
             archive : 'scala3-${{ inputs.version }}-x86_64-pc-win32.zip'
     steps:
-      - uses: hamzaremmal/sdkman-release-action@4cb6c8cf99cfdf0ed5de586d6b38500558737e65
+      - uses: sdkman/sdkman-release-action@1f2d4209b4f5a38721d4ae20014ea8e1689d869e
         with:
           CONSUMER-KEY   : ${{ secrets.CONSUMER-KEY }}
           CONSUMER-TOKEN : ${{ secrets.CONSUMER-TOKEN }}
@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: publish
     steps:
-      - uses: hamzaremmal/sdkman-default-action@f312ff69dec7c4f83b060c3df90df7ed19e2d70e
+      - uses: sdkman/sdkman-default-action@b3f991bd109e40155af1b13a4c6fc8e8ccada65e
         with:
           CONSUMER-KEY   : ${{ secrets.CONSUMER-KEY }}
           CONSUMER-TOKEN : ${{ secrets.CONSUMER-TOKEN }}

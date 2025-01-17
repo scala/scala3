@@ -611,6 +611,8 @@ object Checking {
     val mods = mdef.mods
     def flagSourcePos(flag: FlagSet) =
       mods.mods.find(_.flags == flag).getOrElse(mdef).srcPos
+    if mods.is(Open) then
+      report.error(ModifierNotAllowedForDefinition(Open), flagSourcePos(Open))
     if mods.is(Abstract) then
       report.error(ModifierNotAllowedForDefinition(Abstract), flagSourcePos(Abstract))
     if mods.is(Sealed) then
@@ -727,7 +729,7 @@ object Checking {
         report.error(ValueClassesMayNotDefineNonParameterField(clazz, stat.symbol), stat.srcPos)
       case _: DefDef if stat.symbol.isConstructor =>
         report.error(ValueClassesMayNotDefineASecondaryConstructor(clazz, stat.symbol), stat.srcPos)
-      case _: MemberDef | _: Import | EmptyTree =>
+      case _: MemberDef | _: Import | _: Export | EmptyTree =>
       // ok
       case _ =>
         report.error(ValueClassesMayNotContainInitalization(clazz), stat.srcPos)
@@ -804,20 +806,20 @@ object Checking {
    *
    */
   def checkAndAdaptExperimentalImports(trees: List[Tree])(using Context): Unit =
-    def nonExperimentalTopLevelDefs(pack: Symbol): Iterator[Symbol] =
-      def isNonExperimentalTopLevelDefinition(sym: Symbol) =
-        sym.isDefinedInCurrentRun
-        && sym.source == ctx.compilationUnit.source
-        && !sym.isConstructor // not constructor of package object
-        && !sym.is(Package) && !sym.name.isPackageObjectName
-        && !sym.isExperimental
-
-      pack.info.decls.toList.iterator.flatMap: sym =>
-        if sym.isClass && (sym.is(Package) || sym.isPackageObject) then
-          nonExperimentalTopLevelDefs(sym)
-        else if isNonExperimentalTopLevelDefinition(sym) then
-          sym :: Nil
-        else Nil
+    def nonExperimentalTopLevelDefs(): List[Symbol] =
+      new TreeAccumulator[List[Symbol]] {
+        override def apply(x: List[Symbol], tree: tpd.Tree)(using Context): List[Symbol] =
+          def addIfNotExperimental(sym: Symbol) =
+            if !sym.isExperimental then sym :: x
+            else x
+          tree match {
+            case tpd.PackageDef(_, contents) => apply(x, contents)
+            case typeDef @ tpd.TypeDef(_, temp: Template) if typeDef.symbol.isPackageObject =>
+              apply(x, temp.body)
+            case mdef: tpd.MemberDef => addIfNotExperimental(mdef.symbol)
+            case _ => x
+          }
+      }.apply(Nil, ctx.compilationUnit.tpdTree)
 
     def unitExperimentalLanguageImports =
       def isAllowedImport(sel: untpd.ImportSelector) =
@@ -835,7 +837,7 @@ object Checking {
 
     if ctx.owner.is(Package) || ctx.owner.name.startsWith(str.REPL_SESSION_LINE) then
       def markTopLevelDefsAsExperimental(why: String): Unit =
-        for sym <- nonExperimentalTopLevelDefs(ctx.owner) do
+        for sym <- nonExperimentalTopLevelDefs() do
           sym.addAnnotation(ExperimentalAnnotation(s"Added by $why", sym.span))
 
       unitExperimentalLanguageImports match
@@ -883,6 +885,38 @@ object Checking {
     templ.parents.find(_.tpe.derivesFrom(defn.PolyFunctionClass)) match
       case Some(parent) => report.error(s"`PolyFunction` marker trait is reserved for compiler generated refinements", parent.srcPos)
       case None =>
+
+  /** check that parameters of a java defined annotations are all named arguments if we have more than one parameter */
+  def checkNamedArgumentForJavaAnnotation(annot: untpd.Tree, sym: ClassSymbol)(using Context): untpd.Tree =
+    assert(sym.is(JavaDefined))
+
+    def annotationHasValueField: Boolean =
+      sym.info.decls.exists(_.name == nme.value)
+
+    lazy val annotationFieldNamesByIdx: Map[Int, TermName] =
+      sym.info.decls.filter: decl =>
+        decl.is(Method) && decl.name != nme.CONSTRUCTOR
+      .map(_.name.toTermName)
+      .zipWithIndex
+      .map(_.swap)
+      .toMap
+
+    annot match
+      case untpd.Apply(fun, List(param)) if !param.isInstanceOf[untpd.NamedArg] && annotationHasValueField =>
+        untpd.cpy.Apply(annot)(fun, List(untpd.cpy.NamedArg(param)(nme.value, param)))
+      case untpd.Apply(_, params) =>
+        for
+          (param, paramIdx) <- params.zipWithIndex
+          if !param.isInstanceOf[untpd.NamedArg]
+        do
+          report.errorOrMigrationWarning(NonNamedArgumentInJavaAnnotation(), param, MigrationVersion.NonNamedArgumentInJavaAnnotation)
+          if MigrationVersion.NonNamedArgumentInJavaAnnotation.needsPatch then
+            annotationFieldNamesByIdx.get(paramIdx).foreach: paramName =>
+              patch(param.span.startPos, s"$paramName = ")
+        annot
+      case _ => annot
+  end checkNamedArgumentForJavaAnnotation
+
 }
 
 trait Checking {
@@ -981,6 +1015,7 @@ trait Checking {
     def recur(pat: Tree, pt: Type): Boolean =
       !sourceVersion.isAtLeast(`3.2`)
       || pt.hasAnnotation(defn.UncheckedAnnot)
+      || pt.hasAnnotation(defn.RuntimeCheckedAnnot)
       || {
         patmatch.println(i"check irrefutable $pat: ${pat.tpe} against $pt")
         pat match

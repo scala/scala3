@@ -12,7 +12,7 @@ abstract class Conversion[-T, +U] extends (T => U):
 ```
 For example, here is an implicit conversion from `String` to `Token`:
 ```scala
-given Conversion[String, Token] with
+given Conversion[String, Token]:
   def apply(str: String): Token = new KeyWord(str)
 ```
 Using an alias this can be expressed more concisely as:

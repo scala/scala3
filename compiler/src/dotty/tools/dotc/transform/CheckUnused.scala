@@ -17,6 +17,7 @@ import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.report
 import dotty.tools.dotc.reporting.Message
+import dotty.tools.dotc.reporting.UnusedSymbol as UnusedSymbolMessage
 import dotty.tools.dotc.typer.ImportInfo
 import dotty.tools.dotc.util.{Property, SrcPos}
 import dotty.tools.dotc.core.Mode
@@ -57,7 +58,7 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
 
   override def isRunnable(using Context): Boolean =
     super.isRunnable &&
-    ctx.settings.Wunused.value.nonEmpty &&
+    ctx.settings.WunusedHas.any &&
     !ctx.isJava
 
   // ========== SETUP ============
@@ -134,25 +135,22 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
     }
 
   override def prepareForDefDef(tree: tpd.DefDef)(using Context): Context =
-    unusedDataApply{ ud =>
+    unusedDataApply: ud =>
       if !tree.symbol.is(Private) then
         tree.termParamss.flatten.foreach { p =>
           ud.addIgnoredParam(p.symbol)
         }
-      import ud.registerTrivial
-      tree.registerTrivial
+      ud.registerTrivial(tree)
       traverseAnnotations(tree.symbol)
       ud.registerDef(tree)
       ud.addIgnoredUsage(tree.symbol)
-    }
 
   override def prepareForTypeDef(tree: tpd.TypeDef)(using Context): Context =
-    unusedDataApply{ ud =>
+    unusedDataApply: ud =>
+      traverseAnnotations(tree.symbol)
       if !tree.symbol.is(Param) then // Ignore type parameter (as Scala 2)
-        traverseAnnotations(tree.symbol)
         ud.registerDef(tree)
         ud.addIgnoredUsage(tree.symbol)
-    }
 
   override def prepareForBind(tree: tpd.Bind)(using Context): Context =
     traverseAnnotations(tree.symbol)
@@ -295,21 +293,21 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
     res.warnings.toList.sortBy(_.pos.span.point)(using Ordering[Int]).foreach { s =>
       s match
         case UnusedSymbol(t, _, WarnTypes.Imports) =>
-          report.warning(s"unused import", t)
+          report.warning(UnusedSymbolMessage.imports, t)
         case UnusedSymbol(t, _, WarnTypes.LocalDefs) =>
-          report.warning(s"unused local definition", t)
+          report.warning(UnusedSymbolMessage.localDefs, t)
         case UnusedSymbol(t, _, WarnTypes.ExplicitParams) =>
-          report.warning(s"unused explicit parameter", t)
+          report.warning(UnusedSymbolMessage.explicitParams, t)
         case UnusedSymbol(t, _, WarnTypes.ImplicitParams) =>
-          report.warning(s"unused implicit parameter", t)
+          report.warning(UnusedSymbolMessage.implicitParams, t)
         case UnusedSymbol(t, _, WarnTypes.PrivateMembers) =>
-          report.warning(s"unused private member", t)
+          report.warning(UnusedSymbolMessage.privateMembers, t)
         case UnusedSymbol(t, _, WarnTypes.PatVars) =>
-          report.warning(s"unused pattern variable", t)
+          report.warning(UnusedSymbolMessage.patVars, t)
         case UnusedSymbol(t, _, WarnTypes.UnsetLocals) =>
-          report.warning(s"unset local variable, consider using an immutable val instead", t)
+          report.warning("unset local variable, consider using an immutable val instead", t)
         case UnusedSymbol(t, _, WarnTypes.UnsetPrivates) =>
-          report.warning(s"unset private variable, consider using an immutable val instead", t)
+          report.warning("unset private variable, consider using an immutable val instead", t)
     }
 
 end CheckUnused
@@ -624,7 +622,7 @@ object CheckUnused:
       symbol.name.mangledString.contains("$")
 
     /**
-     * Is the the constructor of synthetic package object
+     * Is the constructor of synthetic package object
      * Should be ignored as it is always imported/used in package
      * Trigger false negative on used import
      *

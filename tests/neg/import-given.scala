@@ -1,6 +1,6 @@
 class TC
 object A {
-  given tc: TC with {}
+  given tc: TC()
   def foo(using TC) = ()
 }
 object B {

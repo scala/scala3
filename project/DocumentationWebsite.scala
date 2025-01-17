@@ -43,7 +43,7 @@ object DocumentationWebsite {
     import _root_.scala.concurrent._
     import _root_.scala.concurrent.duration.Duration
     import ExecutionContext.Implicits.global
-    val inkuireVersion = "v1.0.0-M7"
+    val inkuireVersion = "v1.0.0-M9"
     val inkuireLink = s"https://github.com/VirtusLab/Inkuire/releases/download/$inkuireVersion/inkuire.js"
     val inkuireDestinationFile = baseDest / "dotty_res" / "scripts" / "inkuire.js"
     sbt.IO.touch(inkuireDestinationFile)

@@ -42,7 +42,7 @@ object AnyCollection {
 
 }
 
-given anyCollectionIsCollection[T](using tIsValue: Value[T]): Collection[AnyCollection[T]] with {
+given anyCollectionIsCollection: [T] => (tIsValue: Value[T]) => Collection[AnyCollection[T]] {
 
   type Element = T
   //given elementIsValue: Value[Element] = tIsValue

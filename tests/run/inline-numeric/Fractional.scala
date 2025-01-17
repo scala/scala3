@@ -17,13 +17,13 @@ trait Fractional[T] extends Numeric[T]:
     transparent inline def /(inline y: T) = div(x, y)
 
 object Fractional:
-  given BigDecimalIsFractional: BigDecimalIsConflicted with Fractional[BigDecimal] with
+  given BigDecimalIsFractional: BigDecimalIsConflicted, Fractional[BigDecimal]:
     transparent inline def div(inline x: BigDecimal, inline y: BigDecimal): BigDecimal = x / y
 
     protected transparent inline def isNaN(inline x: BigDecimal): Boolean = false
     protected transparent inline def isNegZero(inline x: BigDecimal): Boolean = false
 
-  given DoubleIsFractional: Fractional[Double] with Ordering.DoubleIeeeOrdering with
+  given DoubleIsFractional: Fractional[Double], Ordering.DoubleIeeeOrdering:
     transparent inline def plus(inline x: Double, inline y: Double): Double = x + y
     transparent inline def minus(inline x: Double, inline y: Double): Double = x - y
     transparent inline def times(inline x: Double, inline y: Double): Double = x * y
@@ -42,7 +42,7 @@ object Fractional:
       transparent inline def toFloat: Float = x.toFloat
       transparent inline def toDouble: Double = x
 
-  given FloatIsFractional: Fractional[Float] with Ordering.FloatIeeeOrdering with
+  given FloatIsFractional: Fractional[Float], Ordering.FloatIeeeOrdering:
     transparent inline def plus(inline x: Float, inline y: Float): Float = x + y
     transparent inline def minus(inline x: Float, inline y: Float): Float = x - y
     transparent inline def times(inline x: Float, inline y: Float): Float = x * y

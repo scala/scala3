@@ -279,7 +279,14 @@ object OverrideCompletions:
         else ""
       (indent, indent, lastIndent)
     end calcIndent
-    val abstractMembers = defn.typeOpt.abstractTermMembers.map(_.symbol)
+    val abstractMembers =
+      defn.tpe.abstractTermMembers.map(_.symbol).groupBy(_.owner).map {
+        case (owner, members) => (owner, members.sortWith{ (sym1, sym2) =>
+          if(sym1.sourcePos.exists && sym2.sourcePos.exists)
+            sym1.sourcePos.start <= sym2.sourcePos.start
+          else !sym2.sourcePos.exists
+        })
+      }.toSeq.sortBy(_._1.name.decoded).flatMap(_._2)
 
     val caseClassOwners = Set("Product", "Equals")
     val overridables =
@@ -506,6 +513,8 @@ object OverrideCompletions:
     defn match
       case td: TypeDef if text.charAt(td.rhs.span.end) == ':' =>
         Some(td.rhs.span.end)
+      case TypeDef(_, temp : Template) =>
+        temp.parentsOrDerived.lastOption.map(_.span.end).filter(text.charAt(_) == ':')
       case _ => None
 
   private def fallbackFromParent(parent: Tree, name: String)(using Context) =
@@ -521,8 +530,11 @@ object OverrideCompletions:
   object OverrideExtractor:
     def unapply(path: List[Tree])(using Context) =
       path match
-        // class FooImpl extends Foo:
-        //   def x|
+        // abstract class Val:
+        //   def hello: Int = 2
+        //
+        // class Main extends Val:
+        //   def h|
         case (dd: (DefDef | ValDef)) :: (t: Template) :: (td: TypeDef) :: _
             if t.parents.nonEmpty =>
           val completing =
@@ -538,12 +550,13 @@ object OverrideCompletions:
             )
           )
 
-        // class FooImpl extends Foo:
+        // abstract class Val:
+        //   def hello: Int = 2
+        //
+        // class Main extends Val:
         //   ov|
         case (ident: Ident) :: (t: Template) :: (td: TypeDef) :: _
-            if t.parents.nonEmpty && "override".startsWith(
-              ident.name.show.replace(Cursor.value, "")
-            ) =>
+            if t.parents.nonEmpty && "override".startsWith(ident.name.show.replace(Cursor.value, "")) =>
           Some(
             (
               td,
@@ -554,15 +567,13 @@ object OverrideCompletions:
             )
           )
 
+        // abstract class Val:
+        //   def hello: Int = 2
+        //
         // class Main extends Val:
         //    def@@
         case (id: Ident) :: (t: Template) :: (td: TypeDef) :: _
-            if t.parents.nonEmpty && "def".startsWith(
-              id.name.decoded.replace(
-                Cursor.value,
-                "",
-              )
-            ) =>
+            if t.parents.nonEmpty && "def".startsWith(id.name.decoded.replace(Cursor.value, "")) =>
           Some(
             (
               td,
@@ -572,8 +583,12 @@ object OverrideCompletions:
               None,
             )
           )
+
+        // abstract class Val:
+        //   def hello: Int = 2
+        //
         // class Main extends Val:
-        //    he@@
+        //   he@@
         case (id: Ident) :: (t: Template) :: (td: TypeDef) :: _
             if t.parents.nonEmpty =>
           Some(
@@ -583,6 +598,23 @@ object OverrideCompletions:
               id.sourcePos.start,
               false,
               Some(id.name.show),
+            )
+          )
+
+        // abstract class Val:
+        //   def hello: Int = 2
+        //
+        // class Main extends Val:
+        //   hello@ // this transforms into this.hello, thus is a Select
+        case (sel @ Select(th: This, name)) :: (t: Template) :: (td: TypeDef) :: _
+            if t.parents.nonEmpty && th.qual.name == td.name =>
+          Some(
+            (
+              td,
+              None,
+              sel.sourcePos.start,
+              false,
+              Some(name.show),
             )
           )
 

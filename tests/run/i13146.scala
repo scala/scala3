@@ -10,7 +10,7 @@ trait Eq[-T]:
   def eqv(x: T, y: T): Boolean
 
 object Eq:
-  given Eq[Int] with
+  given Eq[Int]:
     def eqv(x: Int, y: Int) = x == y
 
   def check(elem: Eq[_])(x: Any, y: Any): Boolean =
@@ -31,7 +31,7 @@ object Eq:
           case ((x, y), elem) => check(elem)(x, y)
         }
 
-  inline given derived[T](using m: Mirror.Of[T]): Eq[T] =
+  inline given derived: [T] => (m: Mirror.Of[T]) => Eq[T] =
     lazy val elemInstances = summonAll[m.MirroredElemTypes]
     inline m match
       case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)
@@ -43,7 +43,7 @@ enum Opt[+T]:
   case Nn
 
 object Opt:
-  given derivedEq[T]: Eq[Opt[T]] = Eq.derived
+  given derivedEq: [T] => Eq[Opt[T]] = Eq.derived
 
 @main def Test(): Unit =
   import Opt.*

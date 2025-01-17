@@ -19,6 +19,7 @@ import config.Printers.transforms
 import reporting.trace
 import java.lang.StringBuilder
 
+import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
 /** Helper object to generate generic java signatures, as defined in
@@ -64,7 +65,7 @@ object GenericSignatures {
       ps.foreach(boxedSig)
     }
 
-    def boxedSig(tp: Type): Unit = jsig(tp.widenDealias, primitiveOK = false)
+    def boxedSig(tp: Type): Unit = jsig(tp.widenDealias, unboxedVCs = false)
 
     /** The signature of the upper-bound of a type parameter.
      *
@@ -232,7 +233,7 @@ object GenericSignatures {
     }
 
     @noinline
-    def jsig(tp0: Type, toplevel: Boolean = false, primitiveOK: Boolean = true): Unit = {
+    def jsig(tp0: Type, toplevel: Boolean = false, unboxedVCs: Boolean = true): Unit = {
 
       val tp = tp0.dealias
       tp match {
@@ -241,7 +242,7 @@ object GenericSignatures {
           val erasedUnderlying = fullErasure(ref.underlying.bounds.hi)
           // don't emit type param name if the param is upper-bounded by a primitive type (including via a value class)
           if erasedUnderlying.isPrimitiveValueType then
-            jsig(erasedUnderlying, toplevel, primitiveOK)
+            jsig(erasedUnderlying, toplevel, unboxedVCs)
           else typeParamSig(ref.paramName.lastPart)
 
         case defn.ArrayOf(elemtp) =>
@@ -269,15 +270,14 @@ object GenericSignatures {
           else if (sym == defn.NullClass)
             builder.append("Lscala/runtime/Null$;")
           else if (sym.isPrimitiveValueClass)
-            if (!primitiveOK) jsig(defn.ObjectType)
+            if (!unboxedVCs) jsig(defn.ObjectType)
             else if (sym == defn.UnitClass) jsig(defn.BoxedUnitClass.typeRef)
             else builder.append(defn.typeTag(sym.info))
           else if (sym.isDerivedValueClass) {
-            val erasedUnderlying = fullErasure(tp)
-            if (erasedUnderlying.isPrimitiveValueType && !primitiveOK)
-              classSig(sym, pre, args)
-            else
-              jsig(erasedUnderlying, toplevel, primitiveOK)
+            if (unboxedVCs) {
+              val erasedUnderlying = fullErasure(tp)
+              jsig(erasedUnderlying, toplevel)
+            } else classSig(sym, pre, args)
           }
           else if (defn.isSyntheticFunctionClass(sym)) {
             val erasedSym = defn.functionTypeErasure(sym).typeSymbol
@@ -286,7 +286,7 @@ object GenericSignatures {
           else if sym.isClass then
             classSig(sym, pre, args)
           else
-            jsig(erasure(tp), toplevel, primitiveOK)
+            jsig(erasure(tp), toplevel, unboxedVCs)
 
         case ExprType(restpe) if toplevel =>
           builder.append("()")
@@ -295,36 +295,13 @@ object GenericSignatures {
         case ExprType(restpe) =>
           jsig(defn.FunctionType(0).appliedTo(restpe))
 
-        case PolyType(tparams, mtpe: MethodType) =>
-          assert(tparams.nonEmpty)
+        case mtd: MethodOrPoly =>
+          val (tparams, vparams, rte) = collectMethodParams(mtd)
           if (toplevel && !sym0.isConstructor) polyParamSig(tparams)
-          jsig(mtpe)
-
-        // Nullary polymorphic method
-        case PolyType(tparams, restpe) =>
-          assert(tparams.nonEmpty)
-          if (toplevel) polyParamSig(tparams)
-          builder.append("()")
-          methodResultSig(restpe)
-
-        case mtpe: MethodType =>
-          // erased method parameters do not make it to the bytecode.
-          def effectiveParamInfoss(t: Type)(using Context): List[List[Type]] = t match {
-            case t: MethodType if t.hasErasedParams =>
-              t.paramInfos.zip(t.erasedParams).collect{ case (i, false) => i }
-                :: effectiveParamInfoss(t.resType)
-            case t: MethodType => t.paramInfos :: effectiveParamInfoss(t.resType)
-            case _ => Nil
-          }
-          val params = effectiveParamInfoss(mtpe).flatten
-          val restpe = mtpe.finalResultType
           builder.append('(')
-          // TODO: Update once we support varargs
-          params.foreach { tp =>
-            jsig(tp)
-          }
+          for vparam <- vparams do jsig(vparam)
           builder.append(')')
-          methodResultSig(restpe)
+          methodResultSig(rte)
 
         case tp: AndType =>
           // Only intersections appearing as the upper-bound of a type parameter
@@ -339,7 +316,7 @@ object GenericSignatures {
           val (reprParents, _) = splitIntersection(parents)
           val repr =
             reprParents.find(_.typeSymbol.is(TypeParam)).getOrElse(reprParents.head)
-          jsig(repr, primitiveOK = primitiveOK)
+          jsig(repr, unboxedVCs = unboxedVCs)
 
         case ci: ClassInfo =>
           val tParams = tp.typeParams
@@ -347,15 +324,15 @@ object GenericSignatures {
           superSig(ci.typeSymbol, ci.parents)
 
         case AnnotatedType(atp, _) =>
-          jsig(atp, toplevel, primitiveOK)
+          jsig(atp, toplevel, unboxedVCs)
 
         case hktl: HKTypeLambda =>
-          jsig(hktl.finalResultType, toplevel, primitiveOK)
+          jsig(hktl.finalResultType, toplevel, unboxedVCs)
 
         case _ =>
           val etp = erasure(tp)
           if (etp eq tp) throw new UnknownSig
-          else jsig(etp, toplevel, primitiveOK)
+          else jsig(etp, toplevel, unboxedVCs)
       }
     }
     val throwsArgs = sym0.annotations flatMap ThrownException.unapply
@@ -476,4 +453,23 @@ object GenericSignatures {
         }
       else x
   }
+
+  private def collectMethodParams(mtd: MethodOrPoly)(using Context): (List[TypeParamInfo], List[Type], Type) = 
+    val tparams = ListBuffer.empty[TypeParamInfo]
+    val vparams = ListBuffer.empty[Type]
+
+    @tailrec def recur(tpe: Type): Type = tpe match
+      case mtd: MethodType =>
+        vparams ++= mtd.paramInfos.filterNot(_.hasAnnotation(defn.ErasedParamAnnot))
+        recur(mtd.resType)
+      case PolyType(tps, tpe) => 
+        tparams ++= tps
+        recur(tpe)
+      case _ =>
+        tpe
+    end recur
+
+    val rte = recur(mtd)
+    (tparams.toList, vparams.toList, rte)
+  end collectMethodParams
 }

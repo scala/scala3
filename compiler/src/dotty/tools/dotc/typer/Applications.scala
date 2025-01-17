@@ -571,7 +571,7 @@ trait Applications extends Compatibility {
           fail(TypeMismatch(methType.resultType, resultType, None))
 
         // match all arguments with corresponding formal parameters
-        matchArgs(orderedArgs, methType.paramInfos, 0)
+        if success then matchArgs(orderedArgs, methType.paramInfos, 0)
       case _ =>
         if (methType.isError) ok = false
         else fail(em"$methString does not take parameters")
@@ -666,7 +666,7 @@ trait Applications extends Compatibility {
      *  @param n   The position of the first parameter in formals in `methType`.
      */
     def matchArgs(args: List[Arg], formals: List[Type], n: Int): Unit =
-      if (success) formals match {
+      formals match {
         case formal :: formals1 =>
 
           def checkNoVarArg(arg: Arg) =
@@ -696,6 +696,10 @@ trait Applications extends Compatibility {
             fail(MissingArgument(methodType.paramNames(n), methString))
 
           def tryDefault(n: Int, args1: List[Arg]): Unit = {
+            if !success then
+              missingArg(n) // fail fast before forcing the default arg tpe, to avoid cyclic errors
+              return
+
             val sym = methRef.symbol
             val testOnly = this.isInstanceOf[TestApplication[?]]
 
@@ -878,12 +882,14 @@ trait Applications extends Compatibility {
     init()
 
     def addArg(arg: Tree, formal: Type): Unit =
-      typedArgBuf += adapt(arg, formal.widenExpr)
+      val typedArg = adapt(arg, formal.widenExpr)
+      typedArgBuf += typedArg
+      ok = ok & !typedArg.tpe.isError
 
     def makeVarArg(n: Int, elemFormal: Type): Unit = {
       val args = typedArgBuf.takeRight(n).toList
       typedArgBuf.dropRightInPlace(n)
-      val elemtpt = TypeTree(elemFormal)
+      val elemtpt = TypeTree(elemFormal, inferred = true)
       typedArgBuf += seqToRepeated(SeqLiteral(args, elemtpt))
     }
 
@@ -943,14 +949,19 @@ trait Applications extends Compatibility {
       var typedArgs = typedArgBuf.toList
       def app0 = cpy.Apply(app)(normalizedFun, typedArgs) // needs to be a `def` because typedArgs can change later
       val app1 =
-        if (!success || typedArgs.exists(_.tpe.isError)) app0.withType(UnspecifiedErrorType)
+        if !success then app0.withType(UnspecifiedErrorType)
         else {
-          if !sameSeq(args, orderedArgs)
-             && !isJavaAnnotConstr(methRef.symbol)
-             && !typedArgs.forall(isSafeArg)
-          then
+          if isJavaAnnotConstr(methRef.symbol) then
+            // #19951 Make sure all arguments are NamedArgs for Java annotations
+            if typedArgs.exists(!_.isInstanceOf[NamedArg]) then
+              typedArgs = typedArgs.lazyZip(methType.asInstanceOf[MethodType].paramNames).map {
+                case (arg: NamedArg, _) => arg
+                case (arg, name)        => NamedArg(name, arg)
+              }
+          else if !sameSeq(args, orderedArgs) && !typedArgs.forall(isSafeArg) then
             // need to lift arguments to maintain evaluation order in the
             // presence of argument reorderings.
+            // (never do this for Java annotation constructors, hence the 'else if')
 
             liftFun()
 
@@ -1227,6 +1238,8 @@ trait Applications extends Compatibility {
         }
       else {
         val app = tree.fun match
+          case untpd.TypeApply(_: untpd.SplicePattern, _) if Feature.quotedPatternsWithPolymorphicFunctionsEnabled =>
+            typedAppliedSpliceWithTypes(tree, pt)
           case _: untpd.SplicePattern => typedAppliedSplice(tree, pt)
           case _ => realApply
         app match {
@@ -1278,9 +1291,16 @@ trait Applications extends Compatibility {
     if (ctx.mode.is(Mode.Pattern))
       return errorTree(tree, em"invalid pattern")
 
+    tree.fun match {
+      case _: untpd.SplicePattern if Feature.quotedPatternsWithPolymorphicFunctionsEnabled =>
+        return errorTree(tree, em"Implementation restriction: A higher-order pattern must carry value arguments")
+      case _ =>
+    }
+
     val isNamed = hasNamedArg(tree.args)
     val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
     record("typedTypeApply")
+
     typedExpr(tree.fun, PolyProto(typedArgs, pt)) match {
       case fun: TypeApply if !ctx.isAfterTyper =>
         val function = fun.fun
@@ -1328,7 +1348,7 @@ trait Applications extends Compatibility {
       tree
   }
 
-  /** Is `tp` a unary function type or an overloaded type with with only unary function
+  /** Is `tp` a unary function type or an overloaded type with only unary function
    *  types as alternatives?
    */
   def isUnary(tp: Type)(using Context): Boolean = tp match {
@@ -1942,7 +1962,12 @@ trait Applications extends Compatibility {
 
     def widenPrefix(alt: TermRef): Type = alt.prefix.widen match
       case pre: (TypeRef | ThisType) if pre.typeSymbol.is(Module) =>
-        pre.parents.reduceLeft(TypeComparer.andType(_, _))
+        val ps = pre.parents
+        if ps.isEmpty then
+          // The parents of a module class are non-empty, unless the module is a package.
+          assert(pre.typeSymbol.is(Package), pre)
+          pre
+        else ps.reduceLeft(TypeComparer.andType(_, _))
       case wpre => wpre
 
     /** If two alternatives have the same symbol, we pick the one with the most
@@ -2198,19 +2223,38 @@ trait Applications extends Compatibility {
       case untpd.Function(args: List[untpd.ValDef] @unchecked, body) =>
 
         // If ref refers to a method whose parameter at index `idx` is a function type,
-        // the arity of that function, otherise -1.
-        def paramCount(ref: TermRef) =
+        // the parameters of that function, otherwise Nil.
+        // We return Nil for both nilary functions and non-functions,
+        // because we won't be making tupled functions for nilary functions anyways,
+        // seeing as there is no Tuple0.
+        def params(ref: TermRef) =
           val formals = ref.widen.firstParamTypes
           if formals.length > idx then
             formals(idx).dealias match
-              case defn.FunctionNOf(args, _, _) => args.length
-              case _ => -1
-          else -1
+              case defn.FunctionNOf(args, _, _) => args
+              case _ => Nil
+          else Nil
+
+        def isCorrectUnaryFunction(alt: TermRef): Boolean =
+          val formals = params(alt)
+          formals.length == 1 && {
+            formals.head match
+              case formal: TypeParamRef =>
+                // While `formal` isn't a tuple type of the correct arity,
+                // it's a type parameter (a method type parameter presumably)
+                // so check its bounds allow for a tuple type of the correct arity.
+                // See i21682 for an example.
+                val tup = defn.tupleType(args.map(v => if v.tpt.isEmpty then WildcardType else typedAheadType(v.tpt).tpe))
+                val TypeBounds(lo, hi) = formal.paramInfo
+                lo <:< tup && tup <:< hi
+              case formal =>
+                ptIsCorrectProduct(formal, args)
+          }
 
         val numArgs = args.length
-        if numArgs != 1
-           && !alts.exists(paramCount(_) == numArgs)
-           && alts.exists(paramCount(_) == 1)
+        if numArgs > 1
+           && !alts.exists(params(_).lengthIs == numArgs)
+           && alts.exists(isCorrectUnaryFunction)
         then
           desugar.makeTupledFunction(args, body, isGenericTuple = true)
             // `isGenericTuple = true` is the safe choice here. It means the i'th tuple
@@ -2378,6 +2422,13 @@ trait Applications extends Compatibility {
                 candidates
     }
   end resolveOverloaded1
+
+  /** Is `formal` a product type which is elementwise compatible with `params`? */
+  def ptIsCorrectProduct(formal: Type, params: List[untpd.ValDef])(using Context): Boolean =
+    isFullyDefined(formal, ForceDegree.flipBottom)
+    && defn.isProductSubType(formal)
+    && tupleComponentTypes(formal).corresponds(params): (argType, param) =>
+         param.tpt.isEmpty || argType.widenExpr <:< typedAheadType(param.tpt).tpe
 
   /** The largest suffix of `paramss` that has the same first parameter name as `t`,
    *  plus the number of term parameters in `paramss` that come before that suffix.

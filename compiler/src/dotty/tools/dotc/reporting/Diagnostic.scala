@@ -75,7 +75,8 @@ object Diagnostic:
 
   class DeprecationWarning(
     msg: Message,
-    pos: SourcePosition
+    pos: SourcePosition,
+    val origin: String
   ) extends ConditionalWarning(msg, pos) {
     def enablingOption(using Context): Setting[Boolean] = ctx.settings.deprecation
   }

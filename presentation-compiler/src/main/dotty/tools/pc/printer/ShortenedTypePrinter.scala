@@ -3,6 +3,7 @@ package dotty.tools.pc.printer
 import scala.collection.mutable
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.ReportContext
+import scala.meta.internal.mtags.KeywordWrapper
 import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
 
@@ -24,8 +25,6 @@ import dotty.tools.dotc.printing.RefinedPrinter
 import dotty.tools.dotc.printing.Texts.Text
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
 import dotty.tools.pc.AutoImports.ImportSel
-import dotty.tools.pc.AutoImports.ImportSel.Direct
-import dotty.tools.pc.AutoImports.ImportSel.Rename
 import dotty.tools.pc.IndexedContext
 import dotty.tools.pc.IndexedContext.Result
 import dotty.tools.pc.Params
@@ -65,6 +64,11 @@ class ShortenedTypePrinter(
     )
 
   private val foundRenames = collection.mutable.LinkedHashMap.empty[Symbol, String]
+
+  override def nameString(name: Name): String =
+    val nameStr = super.nameString(name)
+    if (nameStr.nonEmpty) KeywordWrapper.Scala3Keywords.backtickWrap(nameStr)
+    else nameStr
 
   def getUsedRenames: Map[Symbol, String] =
     foundRenames.toMap.filter { case (k, v) => k.showName != v }
@@ -296,7 +300,7 @@ class ShortenedTypePrinter(
     val (methodParams, extParams) = splitExtensionParamss(gsym)
     val paramss = methodParams ++ extParams
     lazy val implicitParams: List[Symbol] =
-      paramss.flatMap(params => params.filter(p => p.is(Flags.Implicit)))
+      paramss.flatMap(params => params.filter(p => p.isOneOf(Flags.GivenOrImplicit)))
 
     lazy val implicitEvidenceParams: Set[Symbol] =
       implicitParams
@@ -419,7 +423,9 @@ class ShortenedTypePrinter(
     if gsym.is(Flags.ExtensionMethod) then
       val filteredParams =
         if gsym.name.isRightAssocOperatorName then
-          val (leadingTyParamss, rest1) = paramss.span(isTypeParamClause)
+          val (leadingTyParamss, rest1) = paramss match
+            case fst :: tail if isTypeParamClause(fst) => (List(fst), tail)
+            case other => (List(), other)
           val (leadingUsing, rest2) = rest1.span(isUsingClause)
           val (rightTyParamss, rest3) = rest2.span(isTypeParamClause)
           val (rightParamss, rest4) = rest3.splitAt(1)
@@ -527,7 +533,8 @@ class ShortenedTypePrinter(
         else if includeDefaultParam == ShortenedTypePrinter.IncludeDefaultParam.ResolveLater && isDefaultParam
         then " = ..."
         else "" // includeDefaultParam == Never or !isDefaultParam
-      s"$keywordName: ${paramTypeString}$default"
+      val inline = if(param.is(Flags.Inline)) "inline " else ""
+      s"$inline$keywordName: ${paramTypeString}$default"
     end if
   end paramLabel
 

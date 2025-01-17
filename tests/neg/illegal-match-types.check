@@ -3,6 +3,7 @@
   |                     ^
   |                     The match type contains an illegal case:
   |                         case Inv[Cov[t]] => t
+  |                     The pattern contains an unaccounted type parameter `t`.
   |                     (this error can be ignored for now with `-source:3.3`)
 8 |  case Inv[Cov[t]] => t
 -- [E191] Type Error: tests/neg/illegal-match-types.scala:10:26 --------------------------------------------------------
@@ -10,6 +11,7 @@
    |                        ^
    |                        The match type contains an illegal case:
    |                            case Contra[Cov[t]] => t
+   |                        The pattern contains an unaccounted type parameter `t`.
    |                        (this error can be ignored for now with `-source:3.3`)
 11 |  case Contra[Cov[t]] => t
 -- [E191] Type Error: tests/neg/illegal-match-types.scala:15:22 --------------------------------------------------------
@@ -17,6 +19,7 @@
    |                    ^
    |                    The match type contains an illegal case:
    |                        case t & Seq[Any] => t
+   |                    The pattern contains an unaccounted type parameter `t`.
    |                    (this error can be ignored for now with `-source:3.3`)
 16 |  case t & Seq[Any] => t
 -- [E191] Type Error: tests/neg/illegal-match-types.scala:22:33 --------------------------------------------------------
@@ -24,19 +27,22 @@
    |                               ^
    |                               The match type contains an illegal case:
    |                                   case IsSeq[t] => t
+   |                               The pattern contains a type alias `IsSeq`.
    |                               (this error can be ignored for now with `-source:3.3`)
 23 |  case IsSeq[t] => t
 -- [E191] Type Error: tests/neg/illegal-match-types.scala:29:34 --------------------------------------------------------
 29 |type TypeMemberExtractorMT[X] = X match // error
    |                                ^
-   |                                The match type contains an illegal case:
-   |                                    case TypeMemberAux[t] => t
-   |                                (this error can be ignored for now with `-source:3.3`)
+   |          The match type contains an illegal case:
+   |              case TypeMemberAux[t] => t
+   |          The pattern contains an abstract type member `TypeMember` that does not refine a member in its parent.
+   |          (this error can be ignored for now with `-source:3.3`)
 30 |  case TypeMemberAux[t] => t
 -- [E191] Type Error: tests/neg/illegal-match-types.scala:40:35 --------------------------------------------------------
 40 |type TypeMemberExtractorMT2[X] = X match // error
    |                                 ^
-   |                                 The match type contains an illegal case:
-   |                                     case TypeMemberAux2[t] => t
-   |                                 (this error can be ignored for now with `-source:3.3`)
+   |                   The match type contains an illegal case:
+   |                       case TypeMemberAux2[t] => t
+   |                   The pattern contains an abstract type member `TypeMember` with bounds that need verification.
+   |                   (this error can be ignored for now with `-source:3.3`)
 41 |  case TypeMemberAux2[t] => t

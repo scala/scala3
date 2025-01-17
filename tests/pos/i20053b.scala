@@ -1,10 +1,10 @@
 
 trait Sub[R, T >: R]
-given [R, T >: R]: Sub[R, T] with {}
+given [R, T >: R] => Sub[R, T]()
 
 trait Candidate[-R]:
   type OutP
-given [P]: Candidate[Option[P]] with
+given [P] => Candidate[Option[P]]:
   type OutP = P
 
 extension [L](lhs: L)

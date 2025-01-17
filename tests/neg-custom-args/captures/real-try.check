@@ -1,46 +1,46 @@
--- [E190] Potential Issue Warning: tests/neg-custom-args/captures/real-try.scala:36:4 ----------------------------------
-36 |  b.x
+-- [E190] Potential Issue Warning: tests/neg-custom-args/captures/real-try.scala:38:4 ----------------------------------
+38 |  b.x
    |  ^^^
    |  Discarded non-Unit value of type () -> Unit. You may want to use `()`.
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/real-try.scala:12:2 -----------------------------------------------------------
-12 |  try  // error
+-- Error: tests/neg-custom-args/captures/real-try.scala:14:2 -----------------------------------------------------------
+14 |  try  // error
    |  ^
    |  result of `try` cannot have type () => Unit since
    |  that type captures the root capability `cap`.
    |  This is often caused by a locally generated exception capability leaking as part of its result.
-13 |    () => foo(1)
-14 |  catch
-15 |    case _: Ex1 => ???
-16 |    case _: Ex2 => ???
--- Error: tests/neg-custom-args/captures/real-try.scala:18:10 ----------------------------------------------------------
-18 |  val x = try // error
+15 |    () => foo(1)
+16 |  catch
+17 |    case _: Ex1 => ???
+18 |    case _: Ex2 => ???
+-- Error: tests/neg-custom-args/captures/real-try.scala:20:10 ----------------------------------------------------------
+20 |  val x = try // error
    |          ^
    |          result of `try` cannot have type () => Unit since
    |          that type captures the root capability `cap`.
    |          This is often caused by a locally generated exception capability leaking as part of its result.
-19 |    () => foo(1)
-20 |  catch
-21 |    case _: Ex1 => ???
-22 |    case _: Ex2 => ???
--- Error: tests/neg-custom-args/captures/real-try.scala:24:10 ----------------------------------------------------------
-24 |  val y = try  // error
+21 |    () => foo(1)
+22 |  catch
+23 |    case _: Ex1 => ???
+24 |    case _: Ex2 => ???
+-- Error: tests/neg-custom-args/captures/real-try.scala:26:10 ----------------------------------------------------------
+26 |  val y = try  // error
    |          ^
    |          result of `try` cannot have type () => Cell[Unit]^? since
    |          that type captures the root capability `cap`.
    |          This is often caused by a locally generated exception capability leaking as part of its result.
-25 |    () => Cell(foo(1))
-26 |  catch
-27 |    case _: Ex1 => ???
-28 |    case _: Ex2 => ???
--- Error: tests/neg-custom-args/captures/real-try.scala:30:10 ----------------------------------------------------------
-30 |  val b = try // error
+27 |    () => Cell(foo(1))
+28 |  catch
+29 |    case _: Ex1 => ???
+30 |    case _: Ex2 => ???
+-- Error: tests/neg-custom-args/captures/real-try.scala:32:10 ----------------------------------------------------------
+32 |  val b = try // error
    |          ^
    |          result of `try` cannot have type Cell[box () => Unit]^? since
    |          the part box () => Unit of that type captures the root capability `cap`.
    |          This is often caused by a locally generated exception capability leaking as part of its result.
-31 |    Cell(() => foo(1))
-32 |  catch
-33 |    case _: Ex1 => ???
-34 |    case _: Ex2 => ???
+33 |    Cell(() => foo(1))
+34 |  catch
+35 |    case _: Ex1 => ???
+36 |    case _: Ex2 => ???

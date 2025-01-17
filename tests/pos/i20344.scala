@@ -19,7 +19,7 @@ type Beta[R] = [F[_]] =>> GenBeta[R, R, R][F]
 object Beta:
   trait Params[+A, +B]
 trait BetaInstances:
-  given schrodingerRandomBetaForDouble[F[_]: Monad]: Beta[Double][F] = ???
+  given schrodingerRandomBetaForDouble: [F[_]: Monad] => Beta[Double][F] = ???
 
 object all extends BetaInstances
 

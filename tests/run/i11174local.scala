@@ -34,10 +34,10 @@ trait EnumerateNames[T] {
 }
 
 class MainClass {
-  given EnumerateNames[Int] with {
+  given EnumerateNames[Int] {
     def apply: String = "int"
   }
-  inline given auto[T]: EnumerateNames[T] = EnumerateNames.derived
+  inline given auto: [T] => EnumerateNames[T] = EnumerateNames.derived
   def deriveEnumerateNames[T](using en: EnumerateNames[T]) = en.apply
 
   def run = {

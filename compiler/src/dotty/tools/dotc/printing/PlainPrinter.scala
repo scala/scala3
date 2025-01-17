@@ -15,7 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
-import cc.{CapturingType, RetainingType, CaptureSet, ReachCapability, MaybeCapability, isBoxed, levelOwner, retainedElems, isRetainsLike}
+import cc.{CapturingType, RetainingType, CaptureSet, ReachCapability, MaybeCapability, isBoxed, retainedElems, isRetainsLike}
 
 class PlainPrinter(_ctx: Context) extends Printer {
 
@@ -165,6 +165,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
   private def toTextRetainedElem[T <: Untyped](ref: Tree[T]): Text = ref match
     case ref: RefTree[?] if ref.typeOpt.exists =>
       toTextCaptureRef(ref.typeOpt)
+    case TypeApply(fn, arg :: Nil) if fn.symbol == defn.Caps_capsOf =>
+      toTextRetainedElem(arg)
     case _ =>
       toText(ref)
 
@@ -251,7 +253,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           toTextCapturing(parent, refsText, "") ~ Str("R").provided(printDebug)
         else toText(parent)
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
-        "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely
+        "<error>" // do not print previously reported error message because they may try to print this error type again recursively
       case tp: ErrorType =>
         s"<error ${tp.msg.message}>"
       case tp: WildcardType =>
@@ -414,9 +416,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     homogenize(tp) match
       case tp: TermRef if tp.symbol == defn.captureRoot => Str("cap")
       case tp: SingletonType => toTextRef(tp)
-      case ReachCapability(tp1) => toTextRef(tp1) ~ "*"
-      case MaybeCapability(tp1) => toTextRef(tp1) ~ "?"
-      case _ => toText(tp)
+      case tp: (TypeRef | TypeParamRef) => toText(tp) ~ "^"
+      case ReachCapability(tp1) => toTextCaptureRef(tp1) ~ "*"
+      case MaybeCapability(tp1) => toTextCaptureRef(tp1) ~ "?"
+      case tp => toText(tp)
 
   protected def isOmittablePrefix(sym: Symbol): Boolean =
     defn.unqualifiedOwnerTypes.exists(_.symbol == sym) || isEmptyPrefix(sym)

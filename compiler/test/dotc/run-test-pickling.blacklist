@@ -27,7 +27,6 @@ tuple-zip.scala
 tuples1.scala
 tuples1a.scala
 tuples1b.scala
-typeCheckErrors.scala
 typeclass-derivation-doc-example.scala
 typeclass-derivation1.scala
 typeclass-derivation2.scala
@@ -46,4 +45,7 @@ i12656.scala
 trait-static-forwarder
 i17255
 named-tuples-strawman-2.scala
+
+# typecheckErrors method unpickling
+typeCheckErrors.scala
 

@@ -161,9 +161,9 @@ object HyArray {
 
 }
 
-given [T: Value] => Value[HyArray[T]] with {
+given [T: Value] => Value[HyArray[T]]:
 
-  extension (self: HyArray[T]) {
+  extension (self: HyArray[T])
 
     def copy(): HyArray[T] =
       self.copy()
@@ -173,17 +173,14 @@ given [T: Value] => Value[HyArray[T]] with {
 
     def hashInto(hasher: Hasher): Hasher =
       self.reduce(hasher, (h, e) => e.hashInto(h))
+end given
 
-  }
-
-}
-
-given [T: Value] => Collection[HyArray[T]] with {
+given [T: Value] => Collection[HyArray[T]]:
 
   type Element = T
   type Position = Int
 
-  extension (self: HyArray[T]) {
+  extension (self: HyArray[T])
 
     // NOTE: Having to explicitly override means that primary declaration can't automatically
     // specialize trait requirements.
@@ -198,10 +195,7 @@ given [T: Value] => Collection[HyArray[T]] with {
     def positionAfter(p: Int) = p + 1
 
     def at(p: Int) = self.at(p)
-
-  }
-
-}
+end given
 
 // NOTE: This should work.
 // given hyArrayIsStringConvertible[T](using

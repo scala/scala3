@@ -17,8 +17,9 @@ val persons: List[Person] = ...
 val minors = persons.filter: p =>
   p.age < 18
 ```
-Named bindings in tuples are similar to function parameters and arguments. We use `name: Type` for element types and `name = value` for element values. It is illegal to mix named and unnamed elements in a tuple, or to use the same same
-name for two different elements.
+Named bindings in tuples are similar to function parameters and arguments.
+We use `name: Type` for element types and `name = value` for element values.
+It is illegal to mix named and unnamed elements in a tuple, or to use the same name for two different elements.
 
 Fields of named tuples can be selected by their name, as in the line `p.age < 18` above.
 
@@ -94,6 +95,24 @@ Bob match
   case (age = x, name = y) => ...
 ```
 
+### Pattern Matching with Named Fields in General
+
+We allow named patterns not just for named tuples but also for case classes. For instance:
+```scala
+city match
+  case c @ City(name = "London") => println(c.population)
+  case City(name = n, zip = 1026, population = pop) => println(pop)
+```
+
+Named constructor patterns are analogous to named tuple patterns. In both cases
+
+ - every name must match the name some field of the selector,
+ - names can come in any order,
+ - not all fields of the selector need to be matched.
+
+Named patterns are compatible with extensible pattern matching simply because
+`unapply` results can be named tuples.
+
 ### Expansion
 
 Named tuples are in essence just a convenient syntax for regular tuples. In the internal representation, a named tuple type is represented at compile time as a pair of two tuples. One tuple contains the names as literal constant string types, the other contains the element types. The runtime representation of a named tuples consists of just the element values, whereas the names are forgotten. This is achieved  by declaring `NamedTuple`
@@ -109,7 +128,7 @@ NamedTuple[("name", "age"), (String, Int)]
 
 A `NamedTuple[N, V]` type is publicly known to be a supertype (but not a subtype) of its value paramater `V`, which means that regular tuples can be assigned to named tuples but not _vice versa_.
 
-The `NamedTuple` object contains a number of extension methods for named tuples hat mirror the same functions in `Tuple`. Examples are
+The `NamedTuple` object contains a number of extension methods for named tuples that mirror the same functions in `Tuple`. Examples are
 `apply`, `head`, `tail`, `take`, `drop`, `++`, `map`, or `zip`.
 Similar to `Tuple`, the `NamedTuple` object also contains types such as `Elem`, `Head`, `Concat`
 that describe the results of these extension methods.
@@ -118,108 +137,6 @@ The translation of named tuples to instances of `NamedTuple` is fixed by the spe
 
  - All tuple operations also work with named tuples "out of the box".
  - Macro libraries can rely on this expansion.
-
-### The NamedTuple.From Type
-
-The `NamedTuple` object contains a type definition
-```scala
-  type From[T] <: AnyNamedTuple
-```
-`From` is treated specially by the compiler. When `NamedTuple.From` is applied to
-an argument type that is an instance of a case class, the type expands to the named
-tuple consisting of all the fields of that case class.
-Here, _fields_ means: elements of the first parameter section. For instance, assuming
-```scala
-case class City(zip: Int, name: String, population: Int)
-```
-then `NamedTuple.From[City]` is the named tuple
-```scala
-(zip: Int, name: String, population: Int)
-```
-The same works for enum cases expanding to case classes, abstract types with case classes as upper bound, alias types expanding to case classes
-and singleton types with case classes as underlying type.
-
-`From` is also defined on named tuples. If `NT` is a named tuple type, then `From[NT] = NT`.
-
-
-### Restrictions
-
-The following restrictions apply to named tuple elements:
-
- 1. Either all elements of a tuple are named or none are named. It is illegal to mix named and unnamed elements in a tuple. For instance, the following is in error:
-    ```scala
-    val illFormed1 = ("Bob", age = 33)  // error
-    ```
- 2. Each element name in a named tuple must be unique. For instance, the following is in error:
-    ```scala
-    val illFormed2 = (name = "", age = 0, name = true)  // error
-    ```
- 3. Named tuples can be matched with either named or regular patterns. But regular tuples and other selector types can only be matched with regular tuple patterns. For instance, the following is in error:
-    ```scala
-    (tuple: Tuple) match
-        case (age = x) => // error
-    ```
- 4. Regular selector names `_1`, `_2`, ... are not allowed as names in named tuples.
-
-### Syntax
-
-The syntax of Scala is extended as follows to support named tuples:
-```
-SimpleType        ::=  ...
-                    |  ‘(’ NameAndType {‘,’ NameAndType} ‘)’
-NameAndType       ::=  id ':' Type
-
-SimpleExpr        ::=  ...
-                    |  '(' NamedExprInParens {‘,’ NamedExprInParens} ')'
-NamedExprInParens ::=  id '=' ExprInParens
-
-Patterns          ::=  Pattern {‘,’ Pattern}
-                    |  NamedPattern {‘,’ NamedPattern}
-NamedPattern      ::=  id '=' Pattern
-```
-
-### Named Pattern Matching
-
-We allow named patterns not just for named tuples but also for case classes.
-For instance:
-```scala
-city match
-  case c @ City(name = "London") => println(p.population)
-  case City(name = n, zip = 1026, population = pop) => println(pop)
-```
-
-Named constructor patterns are analogous to named tuple patterns. In both cases
-
- - either all fields are named or none is,
- - every name must match the name some field of the selector,
- - names can come in any order,
- - not all fields of the selector need to be matched.
-
-This revives SIP 43, with a much simpler desugaring than originally proposed.
-Named patterns are compatible with extensible pattern matching simply because
-`unapply` results can be named tuples.
-
-### Source Incompatibilities
-
-There are some source incompatibilities involving named tuples of length one.
-First, what was previously classified as an assignment could now be interpreted as a named tuple. Example:
-```scala
-var age: Int
-(age = 1)
-```
-This was an assignment in parentheses before, and is a named tuple of arity one now. It is however not idiomatic Scala code, since assignments are not usually enclosed in parentheses.
-
-Second, what was a named argument to an infix operator can now be interpreted as a named tuple.
-```scala
-class C:
-  infix def f(age: Int)
-val c: C
-```
-then
-```scala
-c f (age = 1)
-```
-will now construct a tuple as second operand instead of passing a named parameter.
 
 ### Computed Field Names
 
@@ -238,7 +155,7 @@ that `c: C`, and that `n` is not otherwise legal as a name of a selection on `c`
 Then `c.n` is a legal selection, which expands to `c.selectDynamic("n").asInstanceOf[T]`.
 
 It is the task of the implementation of `selectDynamic` in `C` to ensure that its
-computed result conforms to the predicted type `T`
+computed result conforms to the predicted type `T`.
 
 As an example, assume we have a query type `Q[T]` defined as follows:
 
@@ -261,3 +178,89 @@ has type `Q[Int]` and it expands to
 ```scala
 city.selectDynamic("zipCode").asInstanceOf[Q[Int]]
 ```
+
+### The NamedTuple.From Type
+
+The `NamedTuple` object contains a type definition
+```scala
+  type From[T] <: AnyNamedTuple
+```
+`From` is treated specially by the compiler. When `NamedTuple.From` is applied to
+an argument type that is an instance of a case class, the type expands to the named
+tuple consisting of all the fields of that case class.
+Here, _fields_ means: elements of the first parameter section. For instance, assuming
+```scala
+case class City(zip: Int, name: String, population: Int)
+```
+then `NamedTuple.From[City]` is the named tuple
+```scala
+(zip: Int, name: String, population: Int)
+```
+The same works for enum cases expanding to case classes, abstract types with case classes as upper bound, alias types expanding to case classes
+and singleton types with case classes as underlying type (in terms of the implementation, the `classSymbol` of a type must be a case class).
+
+`From` is also defined on named tuples. If `NT` is a named tuple type, then `From[NT] = NT`.
+
+
+### Operations on Named Tuples
+
+The operations on named tuples are defined in object [scala.NamedTuple](https://www.scala-lang.org/api/3.x/scala/NamedTuple$.html).
+
+### Restrictions
+
+The following restrictions apply to named tuples and named pattern arguments:
+
+ 1. Either all elements of a tuple or constructor pattern are named or none are named. It is illegal to mix named and unnamed elements in a tuple. For instance, the following is in error:
+    ```scala
+    val illFormed1 = ("Bob", age = 33)  // error
+    ```
+ 2. Each element name in a named tuple or constructor pattern must be unique. For instance, the following is in error:
+    ```scala
+    val illFormed2 = (name = "", age = 0, name = true)  // error
+    ```
+ 3. Named tuples and case classes can be matched with either named or regular patterns. But regular tuples and other selector types can only be matched with regular tuple patterns. For instance, the following is in error:
+    ```scala
+    (tuple: Tuple) match
+        case (age = x) => // error
+    ```
+## Syntax Changes
+
+The syntax of Scala is extended as follows to support named tuples and
+named constructor arguments:
+```
+SimpleType        ::=  ...
+                    |  ‘(’ NameAndType {‘,’ NameAndType} ‘)’
+NameAndType       ::=  id ':' Type
+
+SimpleExpr        ::=  ...
+                    |  '(' NamedExprInParens {‘,’ NamedExprInParens} ')'
+NamedExprInParens ::=  id '=' ExprInParens
+
+Patterns          ::=  Pattern {‘,’ Pattern}
+                    |  NamedPattern {‘,’ NamedPattern}
+NamedPattern      ::=  id '=' Pattern
+```
+
+### Source Incompatibilities
+
+There are some source incompatibilities involving named tuples of length one.
+First, what was previously classified as an assignment could now be interpreted as a named tuple. Example:
+
+```scala
+var age: Int
+(age = 1)
+```
+This was an assignment in parentheses before, and is a named tuple of arity one now. It is however not idiomatic Scala code, since assignments are not usually enclosed in parentheses.
+
+Second, what was a named argument to an infix operator can now be interpreted as a named tuple.
+```scala
+class C:
+  infix def f(age: Int)
+val c: C
+```
+then
+```scala
+c f (age = 1)
+```
+will now construct a tuple as second operand instead of passing a named parameter.
+

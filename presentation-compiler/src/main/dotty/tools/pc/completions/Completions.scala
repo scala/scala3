@@ -5,7 +5,6 @@ import java.nio.file.Path
 import java.nio.file.Paths
 
 import scala.collection.mutable
-import scala.meta.internal.metals.Fuzzy
 import scala.meta.internal.metals.ReportContext
 import scala.meta.internal.mtags.CoursierComplete
 import scala.meta.internal.pc.{IdentifierComparator, MemberOrdering, CompletionFuzzy}
@@ -27,15 +26,12 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.interactive.Completion.Mode
-import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
 import dotty.tools.pc.buildinfo.BuildInfo
 import dotty.tools.pc.completions.OverrideCompletions.OverrideExtractor
 import dotty.tools.pc.utils.InteractiveEnrichments.*
-import dotty.tools.dotc.core.Denotations.SingleDenotation
-import dotty.tools.dotc.interactive.Interactive
 
 class Completions(
     text: String,
@@ -50,7 +46,8 @@ class Completions(
     workspace: Option[Path],
     autoImports: AutoImportsGenerator,
     comments: List[Comment],
-    options: List[String]
+    options: List[String],
+    completionItemPriority: CompletionItemPriority
 )(using ReportContext):
 
   given context: Context = ctx
@@ -60,17 +57,24 @@ class Completions(
 
   private lazy val shouldAddSnippet =
     path match
+      case (_: (Import | Export)) :: _ => false
+      case _ :: (_: (Import | Export)) :: _ => false
+      // UnApply has patterns included in MatchCaseCompletions
+      case _ :: (_: UnApply) :: _ => false
+      case _ => true
+
+  private lazy val shouldAddSuffix = shouldAddSnippet &&
+    (path match
       /* In case of `method@@()` we should not add snippets and the path
        * will contain apply as the parent of the current tree.
        */
-      case (fun) :: (appl: GenericApply) :: _ if appl.fun == fun =>
-        false
-      case _ :: (withcursor @ Select(fun, name)) :: (appl: GenericApply) :: _
-          if appl.fun == withcursor && name.decoded == Cursor.value =>
-        false
-      case (_: (Import | Export)) :: _ => false
-      case _ :: (_: (Import | Export)) :: _ => false
-      case _ => true
+      case (fun) :: (appl: GenericApply) :: _ if appl.fun == fun => false
+      /* In case of `T@@[]` we should not add snippets.
+       */
+      case tpe :: (appl: AppliedTypeTree) :: _ if appl.tpt == tpe => false
+      case sel  :: (funSel @ Select(fun, name)) :: (appl: GenericApply) :: _
+        if appl.fun == funSel && sel == fun => false
+      case _ => true)
 
   private lazy val isNew: Boolean = Completion.isInNewContext(adjustedPath)
 
@@ -192,12 +196,12 @@ class Completions(
   private def findSuffix(symbol: Symbol): CompletionAffix =
     CompletionAffix.empty
       .chain { suffix => // for [] suffix
-        if shouldAddSnippet && symbol.info.typeParams.nonEmpty then
+        if shouldAddSuffix && symbol.info.typeParams.nonEmpty then
           suffix.withNewSuffixSnippet(Affix(SuffixKind.Bracket))
         else suffix
       }
       .chain { suffix => // for () suffix
-        if shouldAddSnippet && symbol.is(Flags.Method) then
+        if shouldAddSuffix && symbol.is(Flags.Method) then
           val paramss = getParams(symbol)
           paramss match
             case Nil => suffix
@@ -218,7 +222,7 @@ class Completions(
         else suffix
       }
       .chain { suffix => // for {} suffix
-        if shouldAddSnippet && isNew && isAbstractType(symbol) then
+        if shouldAddSuffix && isNew && isAbstractType(symbol) then
           if suffix.hasSnippet then suffix.withNewSuffix(Affix(SuffixKind.Template))
           else suffix.withNewSuffixSnippet(Affix(SuffixKind.Template))
         else suffix
@@ -271,7 +275,6 @@ class Completions(
         val affix = if methodDenot.symbol.isConstructor && existsApply then
           adjustedPath match
             case (select @ Select(qual, _)) :: _ =>
-              val start = qual.span.start
               val insertRange = select.sourcePos.startPos.withEnd(completionPos.queryEnd).toLsp
 
               suffix
@@ -317,7 +320,7 @@ class Completions(
     val ScalaCliCompletions =
       new ScalaCliCompletions(coursierComplete, pos, text)
 
-    path match
+    val (advanced, exclusive) = path match
       case ScalaCliCompletions(dependency) =>
         (ScalaCliCompletions.contribute(dependency), true)
 
@@ -405,6 +408,36 @@ class Completions(
           true,
         )
 
+      // unapply pattern
+      case Ident(name) :: (unapp : UnApply) :: _ =>
+        (
+          CaseKeywordCompletion.contribute(
+            EmptyTree, // no selector
+            completionPos,
+            indexedContext,
+            config,
+            search,
+            parent = unapp,
+            autoImports,
+            patternOnly = Some(name.decoded)
+          ),
+          false,
+        )
+      case Select(_, name) :: (unapp : UnApply) :: _ =>
+        (
+          CaseKeywordCompletion.contribute(
+            EmptyTree, // no selector
+            completionPos,
+            indexedContext,
+            config,
+            search,
+            parent = unapp,
+            autoImports,
+            patternOnly = Some(name.decoded)
+          ),
+          false,
+        )
+
       // class FooImpl extends Foo:
       //   def x|
       case OverrideExtractor(td, completing, start, exhaustive, fallbackName) =>
@@ -479,21 +512,18 @@ class Completions(
           if tree.selectors.exists(_.renamed.sourcePos.contains(pos)) =>
         (List.empty, true)
 
-      // From Scala 3.1.3-RC3 (as far as I know), path contains
-      // `Literal(Constant(null))` on head for an incomplete program, in this case, just ignore the head.
-      case Literal(Constant(null)) :: tl =>
-        advancedCompletions(tl, completionPos)
-
       case _ =>
         val args = NamedArgCompletions.contribute(
-          pos,
           path,
           adjustedPath,
           indexedContext,
           config.isCompletionSnippetsEnabled()
         )
         (args, false)
-    end match
+    val singletonCompletions = InterCompletionType.inferType(path).map(
+      SingletonCompletions.contribute(path, _, completionPos)
+    ).getOrElse(Nil)
+    (singletonCompletions ++ advanced, exclusive)
   end advancedCompletions
 
   private def isAmmoniteCompletionPosition(
@@ -627,7 +657,7 @@ class Completions(
       .collect { case symbolic: CompletionValue.Symbolic => symbolic }
       .groupBy(_.symbol.fullName) // we somehow have to ignore proxy type
 
-    val filteredSymbolicCompletions = symbolicCompletionsMap.filter: (name, denots) =>
+    val filteredSymbolicCompletions = symbolicCompletionsMap.filter: (name, _) =>
       lazy val existsTypeWithoutSuffix: Boolean = !symbolicCompletionsMap
         .get(name.toTypeName)
         .forall(_.forall(sym => sym.snippetAffix.suffixes.nonEmpty))
@@ -672,6 +702,7 @@ class Completions(
             case fileSysMember: CompletionValue.FileSystemMember =>
               (fileSysMember.label, true)
             case ii: CompletionValue.IvyImport => (ii.label, true)
+            case sv: CompletionValue.SingletonValue => (sv.label, true)
 
         if !alreadySeen(id) && include then
           alreadySeen += id
@@ -864,6 +895,20 @@ class Completions(
         else 0
       end compareLocalSymbols
 
+      private def workspaceMemberPriority(symbol: Symbol): Int =
+        completionItemPriority
+          .workspaceMemberPriority(
+            SemanticdbSymbols.symbolName(symbol),
+          ).nn
+
+      def compareFrequency(o1: CompletionValue, o2: CompletionValue): Int =
+        (o1, o2) match
+          case (w1: CompletionValue.Workspace, w2: CompletionValue.Workspace) =>
+            workspaceMemberPriority(w1.symbol)
+              .compareTo(workspaceMemberPriority(w2.symbol))
+          case _ => 0
+      end compareFrequency
+
       def compareByRelevance(o1: CompletionValue, o2: CompletionValue): Int =
         Integer.compare(
           computeRelevancePenalty(o1, application),
@@ -879,38 +924,19 @@ class Completions(
             else 2
           }
         )
-
-      /**
-       * This one is used for the following case:
-       * ```scala
-       * def foo(argument: Int): Int = ???
-       * val argument = 42
-       * foo(arg@@) // completions should be ordered as :
-       *            // - argument       (local val) - actual value comes first
-       *            // - argument = ... (named arg) - named arg after
-       *            // - ... all other options
-       * ```
-       */
-      def compareInApplyParams(o1: CompletionValue, o2: CompletionValue): Int =
+      def prioritizeByClass(o1: CompletionValue, o2: CompletionValue): Int =
         def priority(v: CompletionValue): Int =
           v match
-            case _: CompletionValue.Compiler => 0
-            case CompletionValue.ExtraMethod(_, _: CompletionValue.Compiler) => 0
-            case _ => 1
+            case _: CompletionValue.SingletonValue => 0
+            case _: CompletionValue.Compiler => 1
+            case CompletionValue.ExtraMethod(_, _: CompletionValue.Compiler) => 1
+            case _: CompletionValue.CaseKeyword => 2
+            case _: CompletionValue.NamedArg => 3
+            case _: CompletionValue.Keyword => 4
+            case _ => 5
 
         priority(o1) - priority(o2)
-      end compareInApplyParams
-
-      def prioritizeKeywords(o1: CompletionValue, o2: CompletionValue): Int =
-        def priority(v: CompletionValue): Int =
-          v match
-            case _: CompletionValue.CaseKeyword => 0
-            case _: CompletionValue.NamedArg => 1
-            case _: CompletionValue.Keyword => 2
-            case _ => 3
-
-        priority(o1) - priority(o2)
-      end prioritizeKeywords
+      end prioritizeByClass
       /**
        * Some completion values should be shown first such as CaseKeyword and
        * NamedArg
@@ -992,29 +1018,29 @@ class Completions(
                       )
                       if byIdentifier != 0 then byIdentifier
                       else
-                        val byOwner =
-                          s1.owner.fullName.toString
-                            .compareTo(s2.owner.fullName.toString)
-                        if byOwner != 0 then byOwner
+                        val byFrequency = compareFrequency(o1, o2)
+                        if byFrequency != 0 then byFrequency
                         else
-                          val byParamCount = Integer.compare(
-                            s1.paramSymss.flatten.size,
-                            s2.paramSymss.flatten.size
-                          )
-                          if byParamCount != 0 then byParamCount
-                          else s1.detailString.compareTo(s2.detailString)
+                          val byOwner =
+                            s1.owner.fullName.toString
+                              .compareTo(s2.owner.fullName.toString)
+                          if byOwner != 0 then byOwner
+                          else
+                            val byParamCount = Integer.compare(
+                              s1.paramSymss.flatten.size,
+                              s2.paramSymss.flatten.size
+                            )
+                            if byParamCount != 0 then byParamCount
+                            else s1.detailString.compareTo(s2.detailString)
                     end if
                   end if
                 end if
               end if
             end if
           case _ =>
-            val byApplyParams = compareInApplyParams(o1, o2)
-            if byApplyParams != 0 then byApplyParams
-            else
-              val keywords = prioritizeKeywords(o1, o2)
-              if keywords != 0 then keywords
-              else compareByRelevance(o1, o2)
+            val byClass = prioritizeByClass(o1, o2)
+            if byClass != 0 then byClass
+            else compareByRelevance(o1, o2)
       end compare
 
 end Completions

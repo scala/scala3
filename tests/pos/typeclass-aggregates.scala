@@ -42,6 +42,6 @@ val y: Int = ??? : x.Self
 // given [A, B](using ord: A is Ord, monoid: A is Monoid) => A is Ord & Monoid =
 //   new ord.OrdProxy with monoid.MonoidProxy {}
 
-given [A](using ord: Ord { type Self = A }, monoid: Monoid { type Self = A}): ((Ord & Monoid) { type Self = A}) =
+given [A] => (ord: Ord { type Self = A }, monoid: Monoid { type Self = A}) => ((Ord & Monoid) { type Self = A}) =
   new ord.OrdProxy with monoid.MonoidProxy {}
 

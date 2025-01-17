@@ -36,13 +36,7 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
 
   override def run(using Context): Unit =
     if ctx.compilationUnit.needsInlining || ctx.compilationUnit.hasMacroAnnotations then
-      try super.run
-      catch case _: CompilationUnit.SuspendException => ()
-
-  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
-    val newUnits = super.runOn(units).filterNot(_.suspended)
-    ctx.run.nn.checkSuspendedUnits(newUnits)
-    newUnits
+      super.run
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     tree match {

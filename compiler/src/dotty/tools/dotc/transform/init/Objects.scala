@@ -29,7 +29,6 @@ import scala.collection.mutable
 import scala.annotation.tailrec
 import scala.annotation.constructorOnly
 import dotty.tools.dotc.core.Flags.AbstractOrTrait
-import Decorators.*
 
 /** Check initialization safety of static objects
  *
@@ -524,6 +523,8 @@ class Objects(using Context @constructorOnly):
 
     def getHeapData()(using mutable: MutableData): Data = mutable.heap
 
+    def setHeap(newHeap: Data)(using mutable: MutableData): Unit = mutable.heap = newHeap
+
   /** Cache used to terminate the check  */
   object Cache:
     case class Config(thisV: Value, env: Env.Data, heap: Heap.Data)
@@ -539,6 +540,7 @@ class Objects(using Context @constructorOnly):
         val result = super.cachedEval(config, expr, cacheResult, default = Res(Bottom, Heap.getHeapData())) { expr =>
           Res(fun(expr), Heap.getHeapData())
         }
+        Heap.setHeap(result.heap)
         result.value
   end Cache
 
@@ -703,6 +705,9 @@ class Objects(using Context @constructorOnly):
           val arr = OfArray(State.currentObject, summon[Regions.Data])
           Heap.writeJoin(arr.addr, args.map(_.value).join)
           arr
+        else if target.equals(defn.Predef_classOf) then
+          // Predef.classOf is a stub method in tasty and is replaced in backend
+          Bottom
         else if target.hasSource then
           val cls = target.owner.enclosingClass.asClass
           val ddef = target.defTree.asInstanceOf[DefDef]
@@ -865,7 +870,7 @@ class Objects(using Context @constructorOnly):
       Bottom
 
     case Bottom =>
-      if field.isStaticObject then ObjectRef(field.moduleClass.asClass)
+      if field.isStaticObject then accessObject(field.moduleClass.asClass)
       else Bottom
 
     case ValueSet(values) =>
@@ -909,7 +914,10 @@ class Objects(using Context @constructorOnly):
     Bottom
   }
 
-  /** Handle new expression `new p.C(args)`.
+  /**
+   * Handle new expression `new p.C(args)`.
+   * The actual instance might be cached without running the constructor.
+   * See tests/init-global/pos/cache-constructor.scala
    *
    * @param outer       The value for `p`.
    * @param klass       The symbol of the class `C`.
@@ -951,7 +959,6 @@ class Objects(using Context @constructorOnly):
 
         val instance = OfClass(klass, outerWidened, ctor, args.map(_.value), envWidened)
         callConstructor(instance, ctor, args)
-        instance
 
     case ValueSet(values) =>
       values.map(ref => instantiate(ref, klass, ctor, args)).join
@@ -1225,11 +1232,12 @@ class Objects(using Context @constructorOnly):
               extendTrace(id) { evalType(prefix, thisV, klass) }
 
         val value = eval(rhs, thisV, klass)
+        val widened = widenEscapedValue(value, rhs)
 
         if isLocal then
-          writeLocal(thisV, lhs.symbol, value)
+          writeLocal(thisV, lhs.symbol, widened)
         else
-          withTrace(trace2) { assign(receiver, lhs.symbol, value, rhs.tpe) }
+          withTrace(trace2) { assign(receiver, lhs.symbol, widened, rhs.tpe) }
 
       case closureDef(ddef) =>
         Fun(ddef, thisV, klass, summon[Env.Data])
@@ -1486,12 +1494,12 @@ class Objects(using Context @constructorOnly):
       if isWildcardStarArgList(pats) then
         if pats.size == 1 then
           // call .toSeq
-          val toSeqDenot = scrutineeType.member(nme.toSeq).suchThat(_.info.isParameterless)
+          val toSeqDenot = getMemberMethod(scrutineeType, nme.toSeq, toSeqType(elemType))
           val toSeqRes = call(scrutinee, toSeqDenot.symbol, Nil, scrutineeType, superType = NoType, needResolve = true)
           evalPattern(toSeqRes, pats.head)
         else
           // call .drop
-          val dropDenot = getMemberMethod(scrutineeType, nme.drop, applyType(elemType))
+          val dropDenot = getMemberMethod(scrutineeType, nme.drop, dropType(elemType))
           val dropRes = call(scrutinee, dropDenot.symbol, ArgInfo(Bottom, summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
           for pat <- pats.init do evalPattern(applyRes, pat)
           evalPattern(dropRes, pats.last)
@@ -1567,6 +1575,36 @@ class Objects(using Context @constructorOnly):
         throw new Exception("unexpected type: " + tp + ", Trace:\n" + Trace.show)
   }
 
+  /** Widen the escaped value (a method argument or rhs of an assignment)
+   *
+   *  The default widening is 1 for most values, 2 for function values.
+   *  User-specified widening annotations are repected.
+   */
+  def widenEscapedValue(value: Value, annotatedTree: Tree): Contextual[Value] =
+    def parseAnnotation: Option[Int] =
+      annotatedTree.tpe.getAnnotation(defn.InitWidenAnnot).flatMap: annot =>
+          annot.argument(0).get match
+            case arg @ Literal(c: Constants.Constant) =>
+              val height = c.intValue
+              if height < 0 then
+                report.warning("The argument should be positive", arg)
+                None
+              else
+                Some(height)
+            case arg =>
+              report.warning("The argument should be a constant integer value", arg)
+              None
+    end parseAnnotation
+
+    parseAnnotation match
+      case Some(i) =>
+        value.widen(i)
+
+      case None =>
+        if value.isInstanceOf[Fun]
+        then value.widen(2)
+        else value.widen(1)
+
   /** Evaluate arguments of methods and constructors */
   def evalArgs(args: List[Arg], thisV: ThisValue, klass: ClassSymbol): Contextual[List[ArgInfo]] =
     val argInfos = new mutable.ArrayBuffer[ArgInfo]
@@ -1577,23 +1615,7 @@ class Objects(using Context @constructorOnly):
         else
           eval(arg.tree, thisV, klass)
 
-      val widened =
-        arg.tree.tpe.getAnnotation(defn.InitWidenAnnot) match
-        case Some(annot) =>
-          annot.argument(0).get match
-          case arg @ Literal(c: Constants.Constant) =>
-            val height = c.intValue
-            if height < 0 then
-              report.warning("The argument should be positive", arg)
-              res.widen(1)
-            else
-              res.widen(c.intValue)
-          case arg =>
-            report.warning("The argument should be a constant integer value", arg)
-            res.widen(1)
-        case _ =>
-          if res.isInstanceOf[Fun] then res.widen(2) else res.widen(1)
-
+      val widened = widenEscapedValue(res, arg.tree)
       argInfos += ArgInfo(widened, trace.add(arg.tree), arg.tree)
     }
     argInfos.toList

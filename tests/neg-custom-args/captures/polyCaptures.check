@@ -1,0 +1,8 @@
+-- Error: tests/neg-custom-args/captures/polyCaptures.scala:4:22 -------------------------------------------------------
+4 |val runOpsCheck: [C^] -> (ops: List[() ->{C^} Unit]) ->{C^} Unit = runOps  // error
+  |                      ^
+  |          Implementation restriction: polymorphic function types cannot wrap function types that have capture sets
+-- Error: tests/neg-custom-args/captures/polyCaptures.scala:5:23 -------------------------------------------------------
+5 |val runOpsCheck2: [C^] => (ops: List[() ->{C^} Unit]) ->{C^} Unit = runOps // error
+  |                       ^
+  |          Implementation restriction: polymorphic function types cannot wrap function types that have capture sets

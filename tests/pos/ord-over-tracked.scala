@@ -6,7 +6,7 @@ trait Ord[T]:
 given Ord[Int] = ???
 
 case class D(tracked val x: Int)
-given [T <: D]: Ord[T] = (a, b) => a.x < b.x
+given [T <: D] => Ord[T] = (a, b) => a.x < b.x
 
 def mySort[T: Ord](x: Array[T]): Array[T] = ???
 

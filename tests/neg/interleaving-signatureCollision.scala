@@ -1,4 +1,3 @@
-import scala.language.experimental.clauseInterleaving
 
 object signatureCollision:
     def f[T](x: T)[U](y: U) = (x,y)

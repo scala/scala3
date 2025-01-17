@@ -11,7 +11,7 @@ trait Compiler:
 
 object Compiler:
 
-  /** Create a new instance of the compiler using the the classloader of the application.
+  /** Create a new instance of the compiler using the classloader of the application.
    *
    *  Usage:
    *  ```

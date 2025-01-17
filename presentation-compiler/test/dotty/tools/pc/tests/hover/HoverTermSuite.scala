@@ -269,9 +269,9 @@ class HoverTermSuite extends BaseHoverSuite:
         |  } yield x
         |}
         |""".stripMargin,
-      """|Option[Int]
-         |override def headOption: Option[A]
-         |""".stripMargin.hover
+      """|```scala
+         |override def headOption: Option[Int]
+         |```""".stripMargin.hover
     )
 
   @Test def `object` =
@@ -682,4 +682,23 @@ class HoverTermSuite extends BaseHoverSuite:
         |    ()
         |""".stripMargin,
       """yy: A{type T = Int}""".stripMargin.hover
+  )
+
+  @Test def `right-assoc-extension`: Unit =
+    check(
+      """
+        |case class Wrap[+T](x: T)
+        |
+        |extension [T](a: T)
+        |  def <<*@@:>>[U <: Tuple](b: Wrap[U]): Wrap[T *: U] = Wrap(a *: b.x)
+        |""".stripMargin,
+      "extension [T](a: T) def *:[U <: Tuple](b: Wrap[U]): Wrap[T *: U]".hover
+    )
+
+  @Test def `dont-ignore-???-in-path`: Unit =
+    check(
+      """object Obj:
+        |  val x = ?@@??
+        |""".stripMargin,
+      """def ???: Nothing""".stripMargin.hover
   )

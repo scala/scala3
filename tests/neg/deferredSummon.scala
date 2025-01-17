@@ -1,4 +1,4 @@
-//> using options -language:experimental.modularity
+
 
 object Test:
   given Int = compiletime.deferred // error

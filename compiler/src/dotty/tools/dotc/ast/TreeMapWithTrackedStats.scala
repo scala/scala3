@@ -32,7 +32,7 @@ abstract class TreeMapWithTrackedStats extends TreeMapWithImplicits:
       case _ => tree
   end updateTracked
 
-  /** Process a list of trees and give the priority to trakced trees */
+  /** Process a list of trees and give the priority to tracked trees */
   private final def withUpdatedTrackedTrees(stats: List[Tree])(using Context) =
     val trackedTrees = TreeMapWithTrackedStats.trackedTrees
     stats.mapConserve:
@@ -67,7 +67,7 @@ end TreeMapWithTrackedStats
 object TreeMapWithTrackedStats:
   private val TrackedTrees = new Property.Key[mutable.Map[Symbol, tpd.MemberDef]]
 
-  /** Fetch the tracked trees in the cuurent context */
+  /** Fetch the tracked trees in the current context */
   private def trackedTrees(using Context): mutable.Map[Symbol, MemberDef] =
     ctx.property(TrackedTrees).get
 

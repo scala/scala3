@@ -47,9 +47,9 @@ class Qux() extends Foo(5, 5):
 
 trait A[T]:
   def f: T
-@publicInBinary given A[Int] with
+@publicInBinary given A[Int]:
   def f: Int = 1
-@publicInBinary given (using Double): A[Int] with
+@publicInBinary given Double => A[Int]:
   def f: Int = 1
 
 package inlines {

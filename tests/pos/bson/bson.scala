@@ -7,7 +7,7 @@ object BSONWriter extends BSONWriterInstances
 trait BSONHandler[T] extends BSONWriter[T]
 
 private[bson] trait BSONWriterInstances {
-  given mapWriter[V](using BSONWriter[V]): BSONDocumentWriter[Map[String, V]] = bson.mapWriter[V]
+  given mapWriter: [V] => BSONWriter[V] => BSONDocumentWriter[Map[String, V]] = bson.mapWriter[V]
   export bson.collectionWriter
 }
 
@@ -21,7 +21,7 @@ object ¬ {
 
 private[bson] trait DefaultBSONHandlers extends LowPriorityHandlers
 private[bson] trait LowPriorityHandlers{
-  given collectionWriter[T, Repr <: Iterable[T]](using BSONWriter[T], Repr ¬ Option[T]): BSONWriter[Repr] = ???
+  given collectionWriter: [T, Repr <: Iterable[T]] => (BSONWriter[T], Repr ¬ Option[T]) => BSONWriter[Repr] = ???
   private[bson] def mapWriter[V](implicit valueWriter: BSONWriter[V]): BSONDocumentWriter[Map[String, V]] = ???
 }
 

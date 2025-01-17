@@ -16,7 +16,7 @@ object Even {
     def fromDigits(digits: String) = evenFromDigits(digits)
   }
 
-  given EvenFromDigits with {
+  given EvenFromDigits {
     override inline def fromDigits(digits: String) = ${
       EvenFromDigitsImpl('digits)
     }

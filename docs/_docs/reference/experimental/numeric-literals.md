@@ -168,7 +168,7 @@ To accept `BigFloat` literals, all that's needed in addition is a `given` instan
 `FromDigits.Floating[BigFloat]`:
 
 ```scala
-  given FromDigits: FromDigits.Floating[BigFloat] with
+  given FromDigits: FromDigits.Floating[BigFloat]:
     def fromDigits(digits: String) = apply(digits)
 end BigFloat
 ```
@@ -205,7 +205,7 @@ object BigFloat:
   class FromDigits extends FromDigits.Floating[BigFloat]:
     def fromDigits(digits: String) = apply(digits)
 
-  given FromDigits with
+  given FromDigits:
     override inline def fromDigits(digits: String) = ${
       fromDigitsImpl('digits)
     }

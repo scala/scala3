@@ -180,7 +180,15 @@ object Inferencing {
           t match
             case t: TypeRef =>
               if t.symbol == defn.NothingClass then
-                newTypeVar(TypeBounds.empty, nestingLevel = tvar.nestingLevel)
+                val notExactlyNothing = LazyRef(_ => defn.NothingType)
+                val bounds = TypeBounds(notExactlyNothing, defn.AnyType)
+                  // The new type variale has a slightly disguised lower bound Nothing.
+                  // This foils the `isExactlyNothing` test in `hasLowerBound` and
+                  // therefore makes the new type variable have a lower bound. That way,
+                  // we favor in `apply` below instantiating from below to `Nothing` instead
+                  // of from above to `Any`. That avoids a spurious flip of the original `Nothing`
+                  // instance to `Any`. See i21275 for a test case.
+                newTypeVar(bounds, nestingLevel = tvar.nestingLevel)
               else if t.symbol.is(ModuleClass) then
                 tryWidened(t.parents.filter(!_.isTransparent())
                   .foldLeft(defn.AnyType: Type)(TypeComparer.andType(_, _)))
@@ -232,25 +240,12 @@ object Inferencing {
           && {
             var fail = false
             var skip = false
-            val direction = instDirection(tvar.origin)
-            if minimizeSelected then
-              if direction <= 0 && tvar.hasLowerBound then
-                skip = instantiate(tvar, fromBelow = true)
-              else if direction >= 0 && tvar.hasUpperBound then
-                skip = instantiate(tvar, fromBelow = false)
-              // else hold off instantiating unbounded unconstrained variable
-            else if direction != 0 then
-              skip = instantiate(tvar, fromBelow = direction < 0)
-            else if variance >= 0 && tvar.hasLowerBound then
-              skip = instantiate(tvar, fromBelow = true)
-            else if (variance > 0 || variance == 0 && !tvar.hasUpperBound)
-                && force.ifBottom == IfBottom.ok
-            then // if variance == 0, prefer upper bound if one is given
-              skip = instantiate(tvar, fromBelow = true)
-            else if variance >= 0 && force.ifBottom == IfBottom.fail then
-              fail = true
-            else
-              toMaximize = tvar :: toMaximize
+            instDecision(tvar, variance, minimizeSelected, force.ifBottom) match
+              case Decision.Min   => skip = instantiate(tvar, fromBelow = true)
+              case Decision.Max   => skip = instantiate(tvar, fromBelow = false)
+              case Decision.Skip  => // hold off instantiating unbounded unconstrained variable
+              case Decision.Fail  => fail = true
+              case Decision.ToMax => toMaximize ::= tvar
             !fail && (skip || foldOver(x, tvar))
           }
         case tp => foldOver(x, tp)
@@ -444,8 +439,31 @@ object Inferencing {
       if (!cmp.isSubTypeWhenFrozen(constrained.lo, original.lo)) 1 else 0
     val approxAbove =
       if (!cmp.isSubTypeWhenFrozen(original.hi, constrained.hi)) 1 else 0
+    //println(i"instDirection($param) = $approxAbove - $approxBelow  original=[$original] constrained=[$constrained]")
     approxAbove - approxBelow
   }
+
+  /** The instantiation decision for given poly param computed from the constraint. */
+  enum Decision { case Min; case Max; case ToMax; case Skip; case Fail }
+  private def instDecision(tvar: TypeVar, v: Int, minimizeSelected: Boolean, ifBottom: IfBottom)(using Context): Decision =
+    import Decision.*
+    val direction = instDirection(tvar.origin)
+    val dec = if minimizeSelected then
+      if direction <= 0 && tvar.hasLowerBound then Min
+      else if direction >= 0 && tvar.hasUpperBound then Max
+      else Skip
+    else if direction != 0 then if direction < 0 then Min else Max
+    else if tvar.hasLowerBound then if v >= 0 then Min else ToMax
+    else ifBottom match
+      // What's left are unconstrained tvars with at most a non-Any param upperbound:
+      // * IfBottom.flip will always maximise to the param upperbound, for all variances
+      // * IfBottom.fail will fail the IFD check, for covariant or invariant tvars, maximise contravariant tvars
+      // * IfBottom.ok will minimise to Nothing covariant and unbounded invariant tvars, and max to Any the others
+      case IfBottom.ok   => if v > 0 || v == 0 && !tvar.hasUpperBound then Min else ToMax // prefer upper bound if one is given
+      case IfBottom.fail => if v >= 0 then Fail else ToMax
+      case ifBottom_flip => ToMax
+    //println(i"instDecision($tvar, v=v, minimizedSelected=$minimizeSelected, $ifBottom) dir=$direction = $dec")
+    dec
 
   /** Following type aliases and stripping refinements and annotations, if one arrives at a
    *  class type reference where the class has a companion module, a reference to
@@ -643,7 +661,7 @@ trait Inferencing { this: Typer =>
 
     val ownedVars = state.ownedVars
     if (ownedVars ne locked) && !ownedVars.isEmpty then
-      val qualifying = ownedVars -- locked
+      val qualifying = (ownedVars -- locked).toList
       if (!qualifying.isEmpty) {
         typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, pt = $pt, owned vars = ${state.ownedVars.toList}%, %, qualifying = ${qualifying.toList}%, %, previous = ${locked.toList}%, % / ${state.constraint}")
         val resultAlreadyConstrained =
@@ -679,6 +697,10 @@ trait Inferencing { this: Typer =>
 
         def constraint = state.constraint
 
+        trace(i"interpolateTypeVars($tree: ${tree.tpe}, $pt, $qualifying)", typr, (_: Any) => i"$qualifying\n$constraint\n${ctx.gadt}") {
+        //println(i"$constraint")
+        //println(i"${ctx.gadt}")
+
         /** Values of this type report type variables to instantiate with variance indication:
          *    +1  variable appears covariantly, can be instantiated from lower bound
          *    -1  variable appears contravariantly, can be instantiated from upper bound
@@ -706,7 +728,9 @@ trait Inferencing { this: Typer =>
                   else
                     typr.println(i"no interpolation for nonvariant $tvar in $state")
                 )
-          buf.toList
+          // constrainIfDependentParamRef could also have instantiated tvars added to buf before the check
+          buf.filterNot(_._1.isInstantiated).toList
+        end toInstantiate
 
         def typeVarsIn(xs: ToInstantiate): TypeVars =
           xs.foldLeft(SimpleIdentitySet.empty: TypeVars)((tvs, tvi) => tvs + tvi._1)
@@ -794,6 +818,7 @@ trait Inferencing { this: Typer =>
         end doInstantiate
 
         doInstantiate(filterByDeps(toInstantiate))
+        }
       }
     end if
     tree

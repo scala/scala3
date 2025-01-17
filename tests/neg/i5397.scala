@@ -16,8 +16,10 @@ object Test {
         rec3 // error: not in tail position
     })
 
-  @tailrec def rec4: Unit = {
-    def local = rec4 // error: not in tail position
+  // This is technically not breaching tail recursion as rec4 does not call itself, local does
+  // This instead fails due to having no tail recursion at all
+  @tailrec def rec4: Unit = { // error: no recursive calls
+    def local = rec4
   }
 
   @tailrec def rec5: Int = {

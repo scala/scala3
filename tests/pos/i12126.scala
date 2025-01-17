@@ -22,12 +22,12 @@ object Structures:
       def map2[B, C](fb: F[B], f: (A, B) => C): F[C] =
         flatMap(a => fb.map(b => f(a, b)))
 
-  given Monad[List] with
+  given Monad[List]:
     def pure[A](a: A) = List(a)
     extension[A](fa: List[A])
       def flatMap[B](f: A => List[B]) = fa.flatMap(f)
 
-  given Monad[Option] with
+  given Monad[Option]:
     def pure[A](a: A) = Some(a)
     extension[A](fa: Option[A])
       def flatMap[B](f: A => Option[B]) = fa.flatMap(f)
@@ -41,7 +41,7 @@ object Structures:
   object Kleisli:
     def apply[F[_], A, B](f: A => F[B]): Kleisli[F, A, B] = f
 
-  given [F[_], A](using F: Monad[F]): Monad[[B] =>> Kleisli[F, A, B]] with
+  given [F[_], A] => (F: Monad[F]) => Monad[[B] =>> Kleisli[F, A, B]]:
     def pure[B](b: B) = Kleisli(_ => F.pure(b))
     extension[B](k: Kleisli[F, A, B])
       def flatMap[C](f: B => Kleisli[F, A, C]) =

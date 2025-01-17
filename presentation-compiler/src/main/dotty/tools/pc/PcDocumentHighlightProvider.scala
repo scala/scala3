@@ -14,7 +14,7 @@ import org.eclipse.lsp4j.DocumentHighlightKind
 final class PcDocumentHighlightProvider(
     driver: InteractiveDriver,
     params: OffsetParams
-) extends PcCollector[DocumentHighlight](driver, params):
+) extends WithSymbolSearchCollector[DocumentHighlight](driver, params):
 
   def collect(
       parent: Option[Tree]

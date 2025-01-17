@@ -105,8 +105,24 @@ object ExtractDependencies {
   val name: String = "sbt-deps"
   val description: String = "sends information on classes' dependencies to sbt"
 
+  /** Construct String name for the given sym.
+   * See https://github.com/sbt/zinc/blob/v1.9.6/internal/zinc-apiinfo/src/main/scala/sbt/internal/inc/ClassToAPI.scala#L86-L99
+   *
+   * For a Java nested class M of a class C returns C's canonical name + "." + M's simple name.
+   */
   def classNameAsString(sym: Symbol)(using Context): String =
-    sym.fullName.stripModuleClassSuffix.toString
+    def isJava(sym: Symbol)(using Context): Boolean =
+      Option(sym.source) match
+        case Some(src) => src.toString.endsWith(".java")
+        case None      => false
+    def classNameAsString0(sym: Symbol)(using Context): String =
+      sym.fullName.stripModuleClassSuffix.toString
+    def javaClassNameAsString(sym: Symbol)(using Context): String =
+      if sym.owner.isClass && !sym.owner.isRoot then
+        javaClassNameAsString(sym.owner) + "." + sym.name.stripModuleClassSuffix.toString
+      else classNameAsString0(sym)
+    if isJava(sym) then javaClassNameAsString(sym)
+    else classNameAsString0(sym)
 
   /** Report an internal error in incremental compilation. */
   def internalError(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =

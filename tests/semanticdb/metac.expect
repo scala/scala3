@@ -2621,9 +2621,9 @@ example/Methods#m6(+1). => method m6 (param x: List[T]): Nothing
 example/Methods#m6(+1).(x) => param x: List[T]
 example/Methods#m6(+2). => method m6 (param x: List[T]): Nothing
 example/Methods#m6(+2).(x) => param x: List[T]
-example/Methods#m7(). => method m7 [typeparam U ](param c: Methods[T], param l: List[U])(implicit param evidence$1: Ordering[U]): Nothing
+example/Methods#m7(). => method m7 [typeparam U ](param c: Methods[T], param l: List[U])(implicit given param evidence$1: Ordering[U]): Nothing
 example/Methods#m7().(c) => param c: Methods[T]
-example/Methods#m7().(evidence$1) => implicit param evidence$1: Ordering[U]
+example/Methods#m7().(evidence$1) => implicit given param evidence$1: Ordering[U]
 example/Methods#m7().(l) => param l: List[U]
 example/Methods#m7().[U] => typeparam U 
 example/Methods#m9(). => method m9 (param x: m9().): Nothing
@@ -2841,7 +2841,7 @@ Schema => SemanticDB v4
 Uri => NamedApplyBlock.scala
 Text => empty
 Language => Scala
-Symbols => 43 entries
+Symbols => 41 entries
 Occurrences => 41 entries
 
 Symbols:
@@ -2886,8 +2886,6 @@ example/NamedApplyBlockMethods.foo().(b) => param b: Int
 example/NamedApplyBlockMethods.foo().(c) => param c: Int
 example/NamedApplyBlockMethods.local. => val method local Int
 example/NamedApplyBlockMethods.recursive(). => method recursive => Int
-local0 => val local c$1: Int
-local1 => val local b$1: Int @uncheckedVariance
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -3533,8 +3531,8 @@ Schema => SemanticDB v4
 Uri => Synthetic.scala
 Text => empty
 Language => Scala
-Symbols => 52 entries
-Occurrences => 137 entries
+Symbols => 62 entries
+Occurrences => 165 entries
 Synthetics => 39 entries
 
 Symbols:
@@ -3553,10 +3551,10 @@ example/Synthetic#F# => class F extends Object { self: F => +1 decls }
 example/Synthetic#F#`<init>`(). => primary ctor <init> (): F
 example/Synthetic#J# => class J [typeparam T ] extends Object { self: J[T] => +4 decls }
 example/Synthetic#J#[T] => typeparam T 
-example/Synthetic#J#`<init>`(). => primary ctor <init> [typeparam T ]()(implicit param evidence$1: Manifest[T]): J[T]
-example/Synthetic#J#`<init>`().(evidence$1) => implicit param evidence$1: Manifest[T]
+example/Synthetic#J#`<init>`(). => primary ctor <init> [typeparam T ](implicit given param evidence$1: Manifest[T])(): J[T]
+example/Synthetic#J#`<init>`().(evidence$1) => implicit given param evidence$1: Manifest[T]
 example/Synthetic#J#arr. => val method arr Array[T]
-example/Synthetic#J#evidence$1. => private[this] implicit val method evidence$1 Manifest[T]
+example/Synthetic#J#evidence$1. => private[this] implicit val given method evidence$1 Manifest[T]
 example/Synthetic#Name. => val method Name Regex
 example/Synthetic#`<init>`(). => primary ctor <init> (): Synthetic
 example/Synthetic#a1. => val method a1 Int
@@ -3590,6 +3588,16 @@ local8 => param a: Int
 local9 => param b: Int
 local10 => final implicit lazy val given local x: Int
 local11 => final implicit lazy val given local given_Int: Int
+local12 => param s: String
+local13 => param i: Int
+local14 => local f: (param s: String)(param i: Int): Int
+local15 => local f$default$2: (param s: String): Int @uncheckedVariance
+local15(s) => param s: String
+local16 => param s: String
+local17 => param t: String
+local18 => local g: (param s: String, param t: String): String
+local19 => param s: String
+local20 => local impure: (param s: String): String
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -3729,6 +3737,34 @@ Occurrences:
 [56:8..56:10): m4 <- example/Synthetic#Contexts.m4().
 [57:12..57:15): Int -> scala/Int#
 [58:6..58:9): foo -> example/Synthetic#Contexts.foo().
+[63:8..63:9): f <- local14
+[63:10..63:11): s <- local12
+[63:13..63:19): String -> scala/Predef.String#
+[63:21..63:22): i <- local13
+[63:24..63:27): Int -> scala/Int#
+[63:30..63:31): s -> local12
+[63:32..63:38): length -> java/lang/String#length().
+[63:44..63:45): i -> local13
+[63:46..63:47): + -> scala/Int#`+`(+4).
+[64:8..64:9): g <- local18
+[64:10..64:11): s <- local16
+[64:13..64:19): String -> scala/Predef.String#
+[64:21..64:22): t <- local17
+[64:24..64:30): String -> scala/Predef.String#
+[64:34..64:35): s -> local16
+[64:36..64:37): + -> java/lang/String#`+`().
+[64:38..64:39): t -> local17
+[66:8..66:14): impure <- local20
+[66:15..66:16): s <- local19
+[66:18..66:24): String -> scala/Predef.String#
+[66:30..66:33): ??? -> scala/Predef.`???`().
+[66:35..66:36): s -> local19
+[67:12..67:13): f -> local14
+[67:14..67:20): impure -> local20
+[68:12..68:13): g -> local18
+[68:14..68:15): t -> local17
+[68:18..68:24): impure -> local20
+[68:30..68:31): s -> local16
 
 Synthetics:
 [5:2..5:13):List(1).map => *[Int]
@@ -3798,6 +3834,43 @@ Synthetics:
 [3:1..4:6):List(1,2,3)
 		.map => *[Int]
 [3:1..3:5):List => *.apply[Int]
+
+expect/TargetName.scala
+-----------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => TargetName.scala
+Text => empty
+Language => Scala
+Symbols => 7 entries
+Occurrences => 15 entries
+
+Symbols:
+example/TargetName. => final object TargetName extends Object { self: TargetName.type => +4 decls }
+example/TargetName.m(). => @targetName method m (param i: Int): Int
+example/TargetName.m().(i) => param i: Int
+example/TargetName.m(+1). => @targetName method m (param i: Int): Int
+example/TargetName.m(+1).(i) => param i: Int
+example/TargetName.m1(). => method m1 (param i: String): Int
+example/TargetName.m1().(i) => param i: String
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:7..2:17): TargetName <- example/TargetName.
+[3:3..3:13): annotation -> scala/annotation/
+[3:14..3:24): targetName -> scala/annotation/targetName#
+[4:6..4:7): m <- example/TargetName.m().
+[4:8..4:9): i <- example/TargetName.m().(i)
+[4:11..4:14): Int -> scala/Int#
+[5:3..5:13): annotation -> scala/annotation/
+[5:14..5:24): targetName -> scala/annotation/targetName#
+[6:6..6:7): m <- example/TargetName.m(+1).
+[6:8..6:9): i <- example/TargetName.m(+1).(i)
+[6:11..6:14): Int -> scala/Int#
+[7:6..7:8): m1 <- example/TargetName.m1().
+[7:9..7:10): i <- example/TargetName.m1().(i)
+[7:12..7:18): String -> scala/Predef.String#
 
 expect/Traits.scala
 -------------------

@@ -35,7 +35,7 @@ object BigFloat extends App {
     def fromDigits(digits: String) = apply(digits)
   }
 
-  given BigFloatFromDigits with {
+  given BigFloatFromDigits {
     override inline def fromDigits(digits: String) = ${
       BigFloatFromDigitsImpl('digits)
     }
@@ -43,7 +43,7 @@ object BigFloat extends App {
 
   // Should be in StdLib:
 
-  given ToExpr[BigInt] with {
+  given ToExpr[BigInt] {
     def apply(x: BigInt)(using Quotes) =
       '{BigInt(${Expr(x.toString)})}
   }

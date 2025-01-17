@@ -987,7 +987,7 @@ class CompletionTest {
 
   @Test def importAnnotationAfterImport : Unit =
     code"""import java.lang.annotation; import annot${m1}"""
-      .completion(("annotation", Module, "scala.annotation"))
+      .completion(("annotation", Module, "java.lang.annotation"))
 
   @Test def completeTemplateConstrArgType: Unit = {
     code"""import scala.concurrent.Future
@@ -1028,6 +1028,7 @@ class CompletionTest {
         ("ensuring", Method, "(cond: Boolean): Foo.Bar.type"),
         ("##", Method, "=> Int"),
         ("nn", Method, "=> Foo.Bar.type"),
+        ("runtimeChecked", Method, "=> Foo.Bar.type"),
         ("==", Method, "(x$0: Any): Boolean"),
         ("ensuring", Method, "(cond: Boolean, msg: => Any): Foo.Bar.type"),
         ("ne", Method, "(x$0: Object): Boolean"),
@@ -1722,5 +1723,15 @@ class CompletionTest {
      .completion(m4, Set(("TestCase", Field, "TestEnum")))
      .completion(m5, Set())
      .completion(m6, Set())
+
+  @Test def namedTupleCompletion: Unit =
+    code"""|import scala.language.experimental.namedTuples
+           |
+           |val person: (name: String, city: String) =
+           |  (name = "Jamie", city = "Lausanne")
+           |
+           |val n = person.na$m1
+           |"""
+      .completion(m1, Set(("name", Field, "String")))
 
 }

@@ -16,6 +16,8 @@ enum SourceVersion:
   // !!! Keep in sync with scala.runtime.stdlibPatches.language !!!
   case `future-migration`, `future`
 
+  case `never`    // needed for MigrationVersion.errorFrom if we never want to issue an error
+
   val isMigrating: Boolean = toString.endsWith("-migration")
 
   def stable: SourceVersion =
@@ -29,10 +31,10 @@ enum SourceVersion:
   def isAtMost(v: SourceVersion) = stable.ordinal <= v.ordinal
 
 object SourceVersion extends Property.Key[SourceVersion]:
-  def defaultSourceVersion = `3.5`
+  def defaultSourceVersion = `3.6`
 
   /** language versions that may appear in a language import, are deprecated, but not removed from the standard library. */
-  val illegalSourceVersionNames = List("3.1-migration").map(_.toTermName)
+  val illegalSourceVersionNames = List("3.1-migration", "never").map(_.toTermName)
 
   /** language versions that the compiler recognises. */
   val validSourceVersionNames = values.toList.map(_.toString.toTermName)

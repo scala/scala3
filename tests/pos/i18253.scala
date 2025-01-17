@@ -4,7 +4,7 @@ trait Foo[A]
 trait Bar[B]:
   type Out <: Int
 object Bar:
-  given inst[C <: Int]: Bar[C] with
+  given [C <: Int] => Bar[C]:
     type Out = C
 
 class Test:

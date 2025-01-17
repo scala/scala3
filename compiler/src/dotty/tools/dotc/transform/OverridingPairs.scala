@@ -34,7 +34,9 @@ object OverridingPairs:
      */
     protected def exclude(sym: Symbol): Boolean =
       !sym.memberCanMatchInheritedSymbols
-      || isCaptureChecking && sym.is(Recheck.ResetPrivate)
+      || isCaptureChecking && atPhase(ctx.phase.prev)(sym.is(Private))
+        // for capture checking we drop the private flag of certain parameter accessors
+        // but these still need no overriding checks
 
     /** The parents of base that are checked when deciding whether an overriding
      *  pair has already been treated in a parent class.

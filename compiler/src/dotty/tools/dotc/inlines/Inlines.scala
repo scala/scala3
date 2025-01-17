@@ -342,10 +342,13 @@ object Inlines:
         if Inlines.isInlineable(codeArg1.symbol) then stripTyped(Inlines.inlineCall(codeArg1))
         else codeArg1
 
+      // We should not be rewriting tested strings
+      val noRewriteSettings = ctx.settings.rewrite.updateIn(ctx.settingsState.reinitializedCopy(), None)
+
       ConstFold(underlyingCodeArg).tpe.widenTermRefExpr match {
         case ConstantType(Constant(code: String)) =>
           val source2 = SourceFile.virtual("tasty-reflect", code)
-          inContext(ctx.fresh.setNewTyperState().setTyper(new Typer(ctx.nestingLevel + 1)).setSource(source2)) {
+          inContext(ctx.fresh.setSettings(noRewriteSettings).setNewTyperState().setTyper(new Typer(ctx.nestingLevel + 1)).setSource(source2)) {
             val tree2 = new Parser(source2).block()
             if ctx.reporter.allErrors.nonEmpty then
               ctx.reporter.allErrors.map((ErrorKind.Parser, _))
@@ -429,6 +432,7 @@ object Inlines:
           val constVal = tryConstValue(tpe)
           if constVal.isEmpty then
             val msg = NotConstant("cannot take constValue", tpe)
+            report.error(msg, callTypeArgs.head.srcPos)
             ref(defn.Predef_undefined).withSpan(callTypeArgs.head.span).withType(ErrorType(msg))
           else
             constVal

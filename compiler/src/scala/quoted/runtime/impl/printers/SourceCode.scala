@@ -1150,8 +1150,19 @@ object SourceCode {
           case tp: TypeRef if tp.typeSymbol == Symbol.requiredClass("scala.<repeated>") =>
             this += "_*"
           case _ =>
-            printType(tp)
-            inSquare(printTypesOrBounds(args, ", "))
+            if !fullNames && args.lengthCompare(2) == 0 && tp.typeSymbol.flags.is(Flags.Infix) then
+              val lhs = args(0)
+              val rhs = args(1)
+              this += "("
+              printType(lhs)
+              this += " "
+              printType(tp)
+              this += " "
+              printType(rhs)
+              this += ")"
+            else
+              printType(tp)
+              inSquare(printTypesOrBounds(args, ", "))
         }
 
       case AnnotatedType(tp, annot) =>
@@ -1292,7 +1303,9 @@ object SourceCode {
           val sym = annot.tpe.typeSymbol
           sym != Symbol.requiredClass("scala.forceInline") &&
           sym.maybeOwner != Symbol.requiredPackage("scala.annotation.internal")
-        case x => cannotBeShownAsSource(x.show(using Printer.TreeStructure))
+        case x =>
+          cannotBeShownAsSource(x.show(using Printer.TreeStructure))
+          false
       }
       printAnnotations(annots)
       if (annots.nonEmpty) this += " "
@@ -1463,8 +1476,8 @@ object SourceCode {
       }
     }
 
-    private def cannotBeShownAsSource(x: String): Nothing =
-      throw new Exception(s"$x does not have a source representation")
+    private def cannotBeShownAsSource(x: String): this.type =
+      this += s"<$x does not have a source representation>"
 
     private object SpecialOp {
       def unapply(arg: Tree): Option[(String, List[Term])] = arg match {

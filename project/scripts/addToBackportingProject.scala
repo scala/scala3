@@ -1,6 +1,6 @@
-//> using scala 3.3.1
-//> using toolkit 0.2.1
-//> using lib pro.kordyjan::pytanie:0.1.7
+//> using scala 3.lts
+//> using toolkit 0.4.0
+//> using lib pro.kordyjan::pytanie:0.1.9
 
 import pytanie.*
 import sttp.client4.*
@@ -10,8 +10,29 @@ lazy val apiToken =
 
 case class ID(value: String) derives WrapperVariable
 
-val PROJECT_ID = ID("PVT_kwDOACj3ec4AWSoi")
-val FIELD_ID = ID("PVTF_lADOACj3ec4AWSoizgO7uJ4")
+// Obtained with:
+// query {
+//   organization(login: "scala") {
+//     projectV2(number: 2) {
+//       id
+//     }
+//   }
+// }
+val PROJECT_ID = ID("PVT_kwDN3uPOAHewkg")
+
+// Obtained with:
+// query {
+//   organization(login: "scala") {
+//     projectV2(number: 2) {
+//       field(name: "Merged at") {
+//         ... on ProjectV2FieldCommon {
+//           id
+//         }
+//       }
+//     }
+//   }
+// }
+val FIELD_ID = ID("PVTF_lADN3uPOAHewks4E3B1I")
 
 @main def run(commitSha: String) =
   val (id, date) = getPrData(commitSha)

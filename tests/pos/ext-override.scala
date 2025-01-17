@@ -7,6 +7,6 @@ trait Foo[T]:
 class Bla:
   def hi: String = "hi"
 object Bla:
-  given Foo[Bla] with
+  given Foo[Bla]:
     extension (x: Bla)
       def hi: String = x.hi

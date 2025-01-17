@@ -1,0 +1,28 @@
+-- Error: tests/neg/i16815.scala:3:37 ----------------------------------------------------------------------------------
+3 |extension [C1 >: Chain <: Chain](c2: c1.Tail) // error
+  |                                     ^^
+  |                                     right-associative extension method cannot have a forward reference to c1
+-- Error: tests/neg/i16815.scala:6:24 ----------------------------------------------------------------------------------
+6 |extension [C1](c2: (C1, C2)) // error
+  |                        ^^
+  |                        right-associative extension method cannot have a forward reference to C2
+-- Error: tests/neg/i16815.scala:9:19 ----------------------------------------------------------------------------------
+9 |extension [C1](c2: C2) // error
+  |                   ^^
+  |                   right-associative extension method cannot have a forward reference to C2
+-- Error: tests/neg/i16815.scala:12:24 ---------------------------------------------------------------------------------
+12 |extension [C1](c2: (C1, C2, C3)) // error // error
+   |                        ^^
+   |                        right-associative extension method cannot have a forward reference to C2
+-- Error: tests/neg/i16815.scala:12:28 ---------------------------------------------------------------------------------
+12 |extension [C1](c2: (C1, C2, C3)) // error // error
+   |                            ^^
+   |                            right-associative extension method cannot have a forward reference to C3
+-- Error: tests/neg/i16815.scala:15:48 ---------------------------------------------------------------------------------
+15 |extension [C1](str: String)(using z: (str.type, C2)) // error
+   |                                                ^^
+   |                                        right-associative extension method cannot have a forward reference to C2
+-- Error: tests/neg/i16815.scala:19:31 ---------------------------------------------------------------------------------
+19 |extension [D1 <: Int](D2: (D1, D2)) // error
+   |                               ^^
+   |                               right-associative extension method cannot have a forward reference to D2

@@ -4,8 +4,7 @@ trait Foo[A]
 
 object Example {
 
-  given Foo[Int] with {
-  }
+  given Foo[Int]()
 
   def foo0[A: Foo]: A => A = identity
   def foo1[A](implicit foo: Foo[A]): A => A = identity

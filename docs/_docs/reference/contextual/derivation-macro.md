@@ -135,10 +135,10 @@ trait Eq[T]:
   def eqv(x: T, y: T): Boolean
 
 object Eq:
-  given Eq[String] with
+  given Eq[String]:
     def eqv(x: String, y: String) = x == y
 
-  given Eq[Int] with
+  given Eq[Int]:
     def eqv(x: Int, y: Int) = x == y
 
   def eqProduct[T](body: (T, T) => Boolean): Eq[T] =

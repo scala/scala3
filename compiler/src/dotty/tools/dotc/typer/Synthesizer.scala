@@ -187,7 +187,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         // val x: String = null.asInstanceOf[String]
         // if (x == null) {} // error: x is non-nullable
         // if (x.asInstanceOf[String|Null] == null) {} // ok
-        cls1 == defn.NullClass && cls1 == cls2
+        if cls1 == defn.NullClass || cls2 == defn.NullClass then cls1 == cls2
+        else cls1 == defn.NothingClass || cls2 == defn.NothingClass
       else if cls1 == defn.NullClass then
         cls1 == cls2 || cls2.derivesFrom(defn.ObjectClass)
       else if cls2 == defn.NullClass then
@@ -455,7 +456,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     MirrorSource.reduce(mirroredType) match
       case Right(msrc) => msrc match
         case MirrorSource.Singleton(_, tref) =>
-          val singleton = tref.termSymbol // prefer alias name over the orignal name
+          val singleton = tref.termSymbol // prefer alias name over the original name
           val singletonPath = tpd.singleton(tref).withSpan(span)
           if tref.classSymbol.is(Scala2x) then // could be Scala 3 alias of Scala 2 case object.
             val mirrorType = formal.constrained_& {
@@ -536,7 +537,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           else
             refineAtPrefix(childPre, childClass, childClass.primaryConstructor.info) match
               case info: PolyType =>
-                // Compute the the full child type by solving the subtype constraint
+                // Compute the full child type by solving the subtype constraint
                 // `C[X1, ..., Xn] <: P`, where
                 //
                 //   - P is the current `mirroredType`

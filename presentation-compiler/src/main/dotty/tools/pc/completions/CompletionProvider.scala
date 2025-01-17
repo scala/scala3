@@ -14,9 +14,14 @@ import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Phases
-import dotty.tools.dotc.core.StdNames
+import dotty.tools.dotc.core.StdNames.nme
+import dotty.tools.dotc.core.Flags
+import dotty.tools.dotc.core.Names.DerivedName
 import dotty.tools.dotc.interactive.Interactive
+import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.interactive.InteractiveDriver
+import dotty.tools.dotc.parsing.Tokens
+import dotty.tools.dotc.profile.Profiler
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.pc.AutoImports.AutoImportEdits
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
@@ -32,36 +37,79 @@ import org.eclipse.lsp4j.InsertTextFormat
 import org.eclipse.lsp4j.InsertTextMode
 import org.eclipse.lsp4j.Range as LspRange
 import org.eclipse.lsp4j.TextEdit
+import scala.meta.pc.CompletionItemPriority
+
+object CompletionProvider:
+  val allKeywords =
+    val softKeywords = Tokens.softModifierNames + nme.as + nme.derives + nme.extension + nme.throws + nme.using
+    Tokens.keywords.toList.map(Tokens.tokenString) ++ softKeywords.map(_.toString)
 
 class CompletionProvider(
     search: SymbolSearch,
-    driver: InteractiveDriver,
+    cachingDriver: InteractiveDriver,
+    freshDriver: () => InteractiveDriver,
     params: OffsetParams,
     config: PresentationCompilerConfig,
     buildTargetIdentifier: String,
-    folderPath: Option[Path]
+    folderPath: Option[Path],
+    referenceCounter: CompletionItemPriority
 )(using reports: ReportContext):
   def completions(): CompletionList =
     val uri = params.uri().nn
     val text = params.text().nn
 
-    val code = applyCompletionCursor(params)
+    val (wasCursorApplied, code) = applyCompletionCursor(params)
     val sourceFile = SourceFile.virtual(uri, code)
+
+    /** Creating a new fresh driver is way slower than reusing existing one,
+     *  but runnig a compilation has side effects that modifies the state of the driver.
+     *  We don't want to affect cachingDriver state with compilation including "CURSOR" suffix.
+     *
+     *  We could in theory save this fresh driver for reuse, but it is a choice between extra memory usage and speed.
+     *  The scenario in which "CURSOR" is applied (empty query or query equal to any keyword) has a slim chance of happening.
+     */
+
+    val driver = if wasCursorApplied then freshDriver() else cachingDriver
     driver.run(uri, sourceFile)
 
-    val ctx = driver.currentCtx
+    given ctx: Context = driver.currentCtx
     val pos = driver.sourcePosition(params)
     val (items, isIncomplete) = driver.compilationUnits.get(uri) match
       case Some(unit) =>
+        val newctx = ctx.fresh
+          .setCompilationUnit(unit)
+          .setProfiler(Profiler()(using ctx))
+          .withPhase(Phases.typerPhase(using ctx))
+        val tpdPath0 = Interactive.pathTo(unit.tpdTree, pos.span)(using newctx)
+        val adjustedPath = Interactive.resolveTypedOrUntypedPath(tpdPath0, pos)(using newctx)
 
-        val newctx = ctx.fresh.setCompilationUnit(unit).withPhase(Phases.typerPhase(using ctx))
-        val tpdPath = Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using newctx)
-        val adjustedPath = Interactive.resolveTypedOrUntypedPath(tpdPath, pos)(using newctx)
+        val tpdPath = tpdPath0 match
+          case Select(qual, name) :: tail
+            /** If for any reason we end up in param after lifting, we want to inline the synthetic val:
+             *  List(1).iterator.sliding@@ will be transformed into:
+             *
+             *  1| val $1$: Iterator[Int] = List.apply[Int]([1 : Int]*).iterator
+             *  2| {
+             *  3|   def $anonfun(size: Int, step: Int): $1$.GroupedIterator[Int] =
+             *  4|     $1$.sliding[Int](size, step)
+             *  5|   closure($anonfun)
+             *  6| }:((Int, Int) => Iterator[Int]#GroupedIterator[Int])
+             *
+             *  With completion being run at line 4 at @@:
+             *  4|     $1$.sliding@@[Int](size, step)
+             *
+             */
+            if qual.symbol.is(Flags.Synthetic) && qual.symbol.name.isInstanceOf[DerivedName] =>
+              qual.symbol.defTree match
+                case valdef: ValDef => Select(valdef.rhs, name) :: tail
+                case _ => tpdPath0
+          case _ => tpdPath0
+
 
         val locatedCtx = Interactive.contextOfPath(tpdPath)(using newctx)
         val indexedCtx = IndexedContext(locatedCtx)
 
-        val completionPos = CompletionPos.infer(pos, params, adjustedPath)(using locatedCtx)
+        val completionPos = CompletionPos.infer(pos, params, adjustedPath, wasCursorApplied)(using locatedCtx)
 
         val autoImportsGen = AutoImports.generator(
           completionPos.toSourcePosition,
@@ -86,7 +134,8 @@ class CompletionProvider(
             folderPath,
             autoImportsGen,
             unit.comments,
-            driver.settings
+            driver.settings,
+            referenceCounter
           ).completions()
 
         val items = completions.zipWithIndex.map { case (item, idx) =>
@@ -123,23 +172,30 @@ class CompletionProvider(
    * Otherwise, completion poisition doesn't point at any tree
    * because scala parser trim end position to the last statement pos.
    */
-  private def applyCompletionCursor(params: OffsetParams): String =
+  private def applyCompletionCursor(params: OffsetParams): (Boolean, String) =
     val text = params.text().nn
     val offset = params.offset().nn
+    val query = Completion.naiveCompletionPrefix(text, offset)
 
-    val isStartMultilineComment =
-      val i = params.offset()
-      i >= 3 && (text.charAt(i - 1) match
-        case '*' =>
-          text.charAt(i - 2) == '*' &&
-          text.charAt(i - 3) == '/'
-        case _ => false
-      )
-    if isStartMultilineComment then
-      // Insert potentially missing `*/` to avoid comment out all codes after the "/**".
-      text.substring(0, offset).nn + Cursor.value + "*/" + text.substring(offset)
+    if offset > 0 && text.charAt(offset - 1).isUnicodeIdentifierPart
+      && !CompletionProvider.allKeywords.contains(query) then false -> text
     else
-      text.substring(0, offset).nn + Cursor.value + text.substring(offset)
+      val isStartMultilineComment =
+
+        val i = params.offset()
+        i >= 3 && (text.charAt(i - 1) match
+          case '*' =>
+            text.charAt(i - 2) == '*' &&
+            text.charAt(i - 3) == '/'
+          case _ => false
+        )
+      true -> (
+        if isStartMultilineComment then
+          // Insert potentially missing `*/` to avoid comment out all codes after the "/**".
+          text.substring(0, offset).nn + Cursor.value + "*/" + text.substring(offset)
+        else
+          text.substring(0, offset).nn + Cursor.value + text.substring(offset)
+      )
   end applyCompletionCursor
 
   private def completionItems(
@@ -172,7 +228,7 @@ class CompletionProvider(
               Select(Apply(Select(Select(_, name), _), _), _),
               _
             ) :: _ =>
-          name == StdNames.nme.StringContext
+          name == nme.StringContext
         // "My name is $name"
         case Literal(Constant(_: String)) :: _ =>
           true

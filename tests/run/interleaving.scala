@@ -1,4 +1,3 @@
-import scala.language.experimental.clauseInterleaving
 
 object Test extends App {
   trait Key { type Value }

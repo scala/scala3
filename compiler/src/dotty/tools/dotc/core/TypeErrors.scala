@@ -57,17 +57,32 @@ end TypeError
 class MalformedType(pre: Type, denot: Denotation, absMembers: Set[Name])(using Context) extends TypeError:
   def toMessage(using Context) = em"malformed type: $pre is not a legal prefix for $denot because it contains abstract type member${if (absMembers.size == 1) "" else "s"} ${absMembers.mkString(", ")}"
 
-class MissingType(pre: Type, name: Name)(using Context) extends TypeError:
-  private def otherReason(pre: Type)(using Context): String = pre match {
-    case pre: ThisType if pre.cls.givenSelfType.exists =>
-      i"\nor the self type of $pre might not contain all transitive dependencies"
-    case _ => ""
-  }
+class MissingType(val pre: Type, val name: Name)(using Context) extends TypeError:
+
+  def reason(using Context): String =
+    def missingClassFile =
+      "The classfile defining the type might be missing from the classpath"
+    val cls = pre.classSymbol
+    val givenSelf = cls match
+      case cls: ClassSymbol => cls.givenSelfType
+      case _ => NoType
+    pre match
+      case pre: ThisType if pre.cls.givenSelfType.exists =>
+        i"""$missingClassFile
+           |or the self type of $pre might not contain all transitive dependencies"""
+      case _ if givenSelf.exists && givenSelf.member(name).exists =>
+        i"""$name exists as a member of the self type $givenSelf of $cls
+           |but it cannot be called on a receiver whose type does not extend $cls"""
+      case _ if pre.baseClasses.exists(_.findMember(name, pre, Private, EmptyFlags).exists) =>
+        i"$name is a private member in a base class"
+      case _ =>
+        missingClassFile
+
 
   override def toMessage(using Context): Message =
     if ctx.debug then printStackTrace()
-    em"""cannot resolve reference to type $pre.$name
-        |the classfile defining the type might be missing from the classpath${otherReason(pre)}"""
+    em"""Cannot resolve reference to type $pre.$name.
+        |$reason."""
 end MissingType
 
 class RecursionOverflow(val op: String, details: => String, val previous: Throwable, val weight: Int)(using Context)

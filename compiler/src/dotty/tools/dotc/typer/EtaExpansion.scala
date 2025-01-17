@@ -39,9 +39,6 @@ abstract class Lifter {
   /** The tree of a lifted definition */
   protected def liftedDef(sym: TermSymbol, rhs: Tree)(using Context): MemberDef = ValDef(sym, rhs)
 
-  /** Is lifting performed on erased terms? */
-  protected def isErased = false
-
   private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
     if (noLift(expr)) expr
     else {
@@ -117,8 +114,7 @@ abstract class Lifter {
     case Apply(fn, args) =>
       val fn1 = liftApp(defs, fn)
       val args1 = liftArgs(defs, fn.tpe, args)
-      if isErased then untpd.cpy.Apply(tree)(fn1, args1).withType(tree.tpe) // application may be partial
-      else cpy.Apply(tree)(fn1, args1)
+      cpy.Apply(tree)(fn1, args1)
     case TypeApply(fn, targs) =>
       cpy.TypeApply(tree)(liftApp(defs, fn), targs)
     case Select(pre, name) if isPureRef(tree) =>
@@ -141,7 +137,7 @@ abstract class Lifter {
    *
    *  unless `pre` is idempotent.
    */
-  def liftNonIdempotentPrefix(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree =
+  private def liftNonIdempotentPrefix(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree =
     if (isIdempotentExpr(tree)) tree else lift(defs, tree)
 
   /** Lift prefix `pre` of an application `pre.f(...)` to
@@ -154,7 +150,7 @@ abstract class Lifter {
    *  Note that default arguments will refer to the prefix, we do not want
    *  to re-evaluate a complex expression each time we access a getter.
    */
-  def liftPrefix(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree =
+  private def liftPrefix(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree =
     tree match
       case tree: Literal => tree
       case tree: This => tree
@@ -217,9 +213,6 @@ object LiftCoverage extends LiftImpure {
     tpd.cpy.Apply(tree)(liftedFun, liftedArgs)
   }
 }
-
-object LiftErased extends LiftComplex:
-  override def isErased = true
 
 /** Lift all impure or complex arguments to `def`s */
 object LiftToDefs extends LiftComplex {

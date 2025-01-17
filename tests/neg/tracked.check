@@ -22,10 +22,10 @@
 17 |  tracked type T = Int // error // error
    |          ^^^^
    |          end of statement expected but 'type' found
--- Error: tests/neg/tracked.scala:20:29 --------------------------------------------------------------------------------
-20 |  given g2(using tracked val x: Int): C = C(x) // error
-   |                 ^^^^^^^^^^^^^^^^^^
-   |                 method parameter x may not be a `val`
+-- Error: tests/neg/tracked.scala:20:25 --------------------------------------------------------------------------------
+20 |  given g2: (tracked val x: Int) => C = C(x) // error
+   |             ^^^^^^^^^^^^^^^^^^
+   |             method parameter x may not be a `val`
 -- Error: tests/neg/tracked.scala:4:21 ---------------------------------------------------------------------------------
 4 |class C2(tracked var x: Int) // error
   |                     ^

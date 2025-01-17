@@ -456,6 +456,43 @@ class ReplCompilerTests extends ReplTest:
       assertTrue(last, last.startsWith("val res0: tpolecat.type = null"))
       assertTrue(last, last.endsWith("""// result of "res0.toString" is null"""))
 
+  @Test def `i21431 filter out best effort options`: Unit =
+    initially:
+      run(":settings -Ybest-effort -Ywith-best-effort-tasty")
+    .andThen:
+      run("0") // check for crash
+      val last = lines()
+      assertTrue(last(0), last(0) == ("Options incompatible with repl will be ignored: -Ybest-effort, -Ywith-best-effort-tasty"))
+      assertTrue(last(1), last(1) == ("val res0: Int = 0"))
+
+  @Test def `i9879`: Unit = initially:
+    run {
+      """|opaque type A = Int; def getA: A = 0
+         |object Wrapper { opaque type A = Int; def getA: A = 1 }
+         |val x = getA
+         |val y = Wrapper.getA""".stripMargin
+    }
+    val expected = List(
+      "def getA: A",
+      "// defined object Wrapper",
+      "val x: A = 0",
+      "val y: Wrapper.A = 1"
+    )
+    assertEquals(expected, lines())
+
+  @Test def `i9879b`: Unit = initially:
+    run {
+      """|def test =
+         |  type A = Int
+         |  opaque type B = String
+         |  object Wrapper { opaque type C = Int }
+         |  ()""".stripMargin
+    }
+    val all = lines()
+    assertEquals(6, all.length)
+    assertTrue(all.head.startsWith("-- [E103] Syntax Error"))
+    assertTrue(all.exists(_.trim().startsWith("|  Illegal start of statement: this modifier is not allowed here")))
+
 object ReplCompilerTests:
 
   private val pattern = Pattern.compile("\\r[\\n]?|\\n");

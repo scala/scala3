@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/i20517.scala:10:43 ------------------------------------------------------------
+10 |  def dep(foo: Foo[Any]): From[foo.type] = (elem = "") // error
+   |                                           ^^^^^^^^^^^
+   |                                           Found:    (elem : String)
+   |                                           Required: NamedTuple.From[(foo : Foo[Any])]
+   |
+   | longer explanation available when compiling with `-explain`

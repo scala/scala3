@@ -4,7 +4,7 @@ import scala.deriving.Mirror
 trait Printer[T]:
   def format: String
 
-given Printer[String] with
+given Printer[String]:
   def format: String = "String"
 
 inline given[T](using mirror: Mirror.ProductOf[T]): Printer[T] = Printer.derived[T]

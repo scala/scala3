@@ -11,12 +11,12 @@ def main(io: Capp^, net: Capp^): Unit = {
   }
 
   val test2: (c: Capp^) -> () => Unit =
-    localCap { c =>  // should work
+    localCap { c =>  // error
       (c1: Capp^) => () => { c1.use() }
     }
 
   val test3: (c: Capp^{io}) -> () ->{io} Unit =
-    localCap { c =>  // should work
+    localCap { c =>  // error
       (c1: Capp^{io}) => () => { c1.use() }
     }
 

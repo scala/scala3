@@ -30,13 +30,16 @@ import scala.meta.pc.{PcSymbolInformation as IPcSymbolInformation}
 
 import dotty.tools.dotc.reporting.StoreReporter
 import dotty.tools.pc.completions.CompletionProvider
+import dotty.tools.pc.InferExpectedType
 import dotty.tools.pc.completions.OverrideCompletions
 import dotty.tools.pc.buildinfo.BuildInfo
+import dotty.tools.pc.SymbolInformationProvider
+import dotty.tools.dotc.interactive.InteractiveDriver
 
 import org.eclipse.lsp4j.DocumentHighlight
 import org.eclipse.lsp4j.TextEdit
 import org.eclipse.lsp4j as l
-import scala.meta.internal.pc.SymbolInformationProvider
+
 
 case class ScalaPresentationCompiler(
     buildTargetIdentifier: String = "",
@@ -48,7 +51,8 @@ case class ScalaPresentationCompiler(
     sh: Option[ScheduledExecutorService] = None,
     config: PresentationCompilerConfig = PresentationCompilerConfigImpl(),
     folderPath: Option[Path] = None,
-    reportsLevel: ReportLevel = ReportLevel.Info
+    reportsLevel: ReportLevel = ReportLevel.Info,
+    completionItemPriority: CompletionItemPriority = (_: String) => 0,
 ) extends PresentationCompiler:
 
   def this() = this("", None, Nil, Nil)
@@ -56,12 +60,17 @@ case class ScalaPresentationCompiler(
   val scalaVersion = BuildInfo.scalaVersion
 
   private val forbiddenOptions = Set("-print-lines", "-print-tasty")
-  private val forbiddenDoubleOptions = Set("-release")
+  private val forbiddenDoubleOptions = Set.empty[String]
 
   given ReportContext =
     folderPath
       .map(StdReportContext(_, _ => buildTargetName, reportsLevel))
       .getOrElse(EmptyReportContext)
+
+  override def withCompletionItemPriority(
+    priority: CompletionItemPriority
+  ): PresentationCompiler =
+    copy(completionItemPriority = priority)
 
   override def withBuildTargetName(buildTargetName: String) =
     copy(buildTargetName = Some(buildTargetName))
@@ -69,14 +78,20 @@ case class ScalaPresentationCompiler(
   override def withReportsLoggerLevel(level: String): PresentationCompiler =
     copy(reportsLevel = ReportLevel.fromString(level))
 
-  val compilerAccess: CompilerAccess[StoreReporter, MetalsDriver] =
+  val compilerAccess: CompilerAccess[StoreReporter, InteractiveDriver] =
     Scala3CompilerAccess(
       config,
       sh,
-      () => new Scala3CompilerWrapper(newDriver)
-    )(using
-      ec
-    )
+      () => new Scala3CompilerWrapper(CachingDriver(driverSettings))
+    )(using ec)
+
+  val driverSettings =
+    val implicitSuggestionTimeout = List("-Ximport-suggestion-timeout", "0")
+    val defaultFlags = List("-color:never")
+    val filteredOptions = removeDoubleOptions(options.filterNot(forbiddenOptions))
+
+    filteredOptions ::: defaultFlags ::: implicitSuggestionTimeout ::: "-classpath" :: classpath
+      .mkString(File.pathSeparator) :: Nil
 
   private def removeDoubleOptions(options: List[String]): List[String] =
     options match
@@ -84,19 +99,6 @@ case class ScalaPresentationCompiler(
         removeDoubleOptions(tail)
       case head :: tail => head :: removeDoubleOptions(tail)
       case Nil => options
-
-  def newDriver: MetalsDriver =
-    val implicitSuggestionTimeout = List("-Ximport-suggestion-timeout", "0")
-    val defaultFlags = List("-color:never")
-    val filteredOptions = removeDoubleOptions(
-      options.filterNot(forbiddenOptions)
-    )
-    val settings =
-      filteredOptions ::: defaultFlags ::: implicitSuggestionTimeout ::: "-classpath" :: classpath
-        .mkString(
-          File.pathSeparator
-        ) :: Nil
-    new MetalsDriver(settings)
 
   override def semanticTokens(
       params: VirtualFileParams
@@ -139,10 +141,12 @@ case class ScalaPresentationCompiler(
       new CompletionProvider(
         search,
         driver,
+        () => InteractiveDriver(driverSettings),
         params,
         config,
         buildTargetIdentifier,
-        folderPath
+        folderPath,
+        completionItemPriority
       ).completions()
 
     }
@@ -176,6 +180,28 @@ case class ScalaPresentationCompiler(
     ) { access =>
       val driver = access.compiler()
       PcDocumentHighlightProvider(driver, params).highlights.asJava
+    }
+
+  override def references(
+      params: ReferencesRequest
+  ): CompletableFuture[ju.List[ReferencesResult]] =
+    compilerAccess.withNonInterruptableCompiler(Some(params.file()))(
+      List.empty[ReferencesResult].asJava,
+      params.file().token,
+    ) { access =>
+      val driver = access.compiler()
+      PcReferencesProvider(driver, params)
+        .references()
+        .asJava
+    }
+
+  def inferExpectedType(params: OffsetParams): CompletableFuture[ju.Optional[String]] =
+    compilerAccess.withInterruptableCompiler(Some(params))(
+      Optional.empty(),
+      params.token,
+    ) { access =>
+      val driver = access.compiler()
+      new InferExpectedType(search, driver, params).infer().asJava
     }
 
   def shutdown(): Unit =

@@ -2,7 +2,7 @@ package dotty.tools.pc.tests.signaturehelp
 
 import dotty.tools.pc.base.BaseSignatureHelpSuite
 
-import org.junit.Test
+import org.junit.{ Ignore, Test }
 
 class SignatureHelpSuite extends BaseSignatureHelpSuite:
 
@@ -256,12 +256,51 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
     check(
       """
         |object a {
+        |  List[Int](1).lengthCompare(@@)
+        |}
+      """.stripMargin,
+      """|lengthCompare(len: Int): Int
+         |              ^^^^^^^^
+         |lengthCompare(that: Iterable[?]): Int
+         |""".stripMargin
+    )
+
+  @Ignore("See if applyCallInfo can still inform on lengthCompare's sig, even if recv is in error")
+  @Test def `tparam5_TypeMismatch` =
+    check(
+      """
+        |object a {
         |  List[String](1).lengthCompare(@@)
         |}
       """.stripMargin,
       """|lengthCompare(len: Int): Int
          |              ^^^^^^^^
          |lengthCompare(that: Iterable[?]): Int
+         |""".stripMargin
+    )
+
+  @Test def `tparam5_nonvarargs` =
+    check(
+      """
+        |object a {
+        |  Option[Int](1).getOrElse(@@)
+        |}
+      """.stripMargin,
+      """|getOrElse[B >: Int](default: => B): B
+         |                    ^^^^^^^^^^^^^
+         |""".stripMargin
+    )
+
+  @Ignore("Similar to `tparam5_TypeMismatch`")
+  @Test def `tparam5_nonvarargs_TypeMismatch` =
+    check(
+      """
+        |object a {
+        |  Option[String](1).getOrElse(@@)
+        |}
+      """.stripMargin,
+      """|getOrElse[B >: String](default: => B): B
+         |                       ^^^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -547,6 +586,19 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
     )
 
   @Test def `last-arg1` =
+    check(
+      """
+        |object A {
+        |  List[Int](1).map(a => @@)
+        |}
+      """.stripMargin,
+      """|map[B](f: Int => B): List[B]
+         |       ^^^^^^^^^^^
+         |""".stripMargin
+    )
+
+  @Ignore("Similar to `tparam5_TypeMismatch`")
+  @Test def `last-arg1_TypeMismatch` =
     check(
       """
         |object A {

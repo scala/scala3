@@ -256,7 +256,7 @@ object Expr {
   private def tupleTypeFromSeq(seq: Seq[Expr[Any]])(using Quotes): quotes.reflect.TypeRepr =
     import quotes.reflect.*
     val consRef = Symbol.classSymbol("scala.*:").typeRef
-    seq.foldLeft(TypeRepr.of[EmptyTuple]) { (ts, expr) =>
+    seq.foldRight(TypeRepr.of[EmptyTuple]) { (expr, ts) =>
       AppliedType(consRef, expr.asTerm.tpe :: ts :: Nil)
     }
 

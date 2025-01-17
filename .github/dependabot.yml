@@ -8,3 +8,12 @@ updates:
       - hamzaremmal
     reviewers:
       - hamzaremmal
+  - package-ecosystem: bundler
+    directory: '/docs/_spec'
+    schedule:
+      interval: weekly
+    assignees:
+      - hamzaremmal
+    reviewers:
+      - hamzaremmal
+      

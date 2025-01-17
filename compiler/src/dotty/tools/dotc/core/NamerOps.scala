@@ -272,7 +272,7 @@ object NamerOps:
    *  where
    *
    *      <context-bound-companion> is the CBCompanion type created in Definitions
-   *      withnessRefK is a refence to the K'th witness.
+   *      withnessRefK is a reference to the K'th witness.
    *
    *  The companion has the same access flags as the original type.
    */

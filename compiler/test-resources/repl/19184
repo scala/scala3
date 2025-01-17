@@ -1,0 +1,5 @@
+scala> def o(s: String) = "o"; def oo(s: String) = "oo"; val o = "o"; val oo = "oo"
+def o(s: String): String
+def oo(s: String): String
+val o: String = o
+val oo: String = oo

@@ -148,9 +148,9 @@ trait ImportSuggestions:
    *   `name` that are applicable to `T`.
    */
   private def importSuggestions(pt: Type)(using Context): (List[TermRef], List[TermRef]) =
-    val timer = new Timer()
     val allotted = ctx.run.nn.importSuggestionBudget
     if allotted <= 1 then return (Nil, Nil)
+    val timer = new Timer()
     implicits.println(i"looking for import suggestions, timeout = ${allotted}ms")
     val start = System.currentTimeMillis()
     val deadLine = start + allotted
@@ -264,7 +264,7 @@ trait ImportSuggestions:
   end importSuggestions
 
   /** Reduce next timeout for import suggestions by the amount of time it took
-   *  for current search, but but never less than to half of the previous budget.
+   *  for current search, but never less than to half of the previous budget.
    */
   private def reduceTimeBudget(used: Int)(using Context) =
     val run = ctx.run.nn

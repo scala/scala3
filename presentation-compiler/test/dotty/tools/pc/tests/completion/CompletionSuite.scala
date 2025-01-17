@@ -117,6 +117,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |fromSpecific(from: Any)(it: IterableOnce[Nothing]): List[Nothing]
          |fromSpecific(it: IterableOnce[Nothing]): List[Nothing]
          |nn: List.type & List.type
+         |runtimeChecked scala.collection.immutable
          |toFactory(from: Any): Factory[Nothing, List[Nothing]]
          |formatted(fmtstr: String): String
          |→[B](y: B): (List.type, B)
@@ -529,8 +530,6 @@ class CompletionSuite extends BaseCompletionSuite:
       """.stripMargin,
       """|until(end: Int): Range
          |until(end: Int, step: Int): Range
-         |until(end: Long): Exclusive[Long]
-         |until(end: Long, step: Long): Exclusive[Long]
          |""".stripMargin,
       stableOrder = false
     )
@@ -634,6 +633,49 @@ class CompletionSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
+  @Test def patRecursive =
+    check(
+      s"""|object Main {
+          |  Option(List(Option(1))) match {
+          |    case Some(List(None, Som@@))
+          |}
+          |""".stripMargin,
+      """|Some(value) scala
+         |Some scala
+         |""".stripMargin
+    )
+    check(
+      s"""|object Main {
+          |  (null: Option[Option[Option[Option[Int]]]]) match
+          |    case Some(Some(Some(Som@@))))
+          |}
+          |""".stripMargin,
+      """|Some(value) scala
+         |Some scala
+         |""".stripMargin
+    )
+    check(
+      s"""|object Main {
+          |  Option(Option(1)) match {
+          |    case Some(Som@@)
+          |}
+          |""".stripMargin,
+      """|Some(value) scala
+         |Some scala
+         |""".stripMargin
+    )
+    check(
+      s"""|object Test:
+          |  case class NestedClass(x: Int)
+          |object TestRun:
+          |  Option(Test.NestedClass(5)) match
+          |    case Some(Test.Neste@@)
+          |""".stripMargin,
+      """|NestedClass(x) test.Test
+         |NestedClass test.Test
+         |""".stripMargin
+    )
+
   @Test def pat1 =
     check(
       s"""|object Main {
@@ -641,7 +683,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |    case List(Som@@)
           |}
           |""".stripMargin,
-      """|Some[A](value: A): Some[A]
+      """|Some(value) scala
+         |Some scala
          |Some scala
          |""".stripMargin
     )
@@ -1093,7 +1136,7 @@ class CompletionSuite extends BaseCompletionSuite:
           |  scala@@
           |}
           |""".stripMargin,
-      """|scala <root>
+      """|scala `<root>`
          |""".stripMargin
     )
 
@@ -1561,7 +1604,7 @@ class CompletionSuite extends BaseCompletionSuite:
 
   @Test def `multi-export` =
     check(
-      """export scala.collection.{AbstractMap, Set@@}
+      """export scala.collection.{AbstractMap, Se@@}
         |""".stripMargin,
       """Set scala.collection
         |SetOps scala.collection
@@ -1574,7 +1617,9 @@ class CompletionSuite extends BaseCompletionSuite:
         |StrictOptimizedSetOps scala.collection
         |StrictOptimizedSortedSetOps scala.collection
         |GenSet = scala.collection.Set[X]
-        |""".stripMargin
+        |""".stripMargin,
+      filter = _.contains("Set")
+
     )
 
   @Test def `multi-imports` =
@@ -1593,6 +1638,7 @@ class CompletionSuite extends BaseCompletionSuite:
         |StrictOptimizedSortedSetOps scala.collection
         |GenSet = scala.collection.Set[X]
         |""".stripMargin,
+      filter = _.contains("Set")
     )
 
 
@@ -1680,8 +1726,8 @@ class CompletionSuite extends BaseCompletionSuite:
     check(
       """|import @@
          |""".stripMargin,
-      """|java <root>
-         |javax <root>
+      """|java `<root>`
+         |javax `<root>`
          |""".stripMargin,
       filter = _.startsWith("java")
     )
@@ -1699,8 +1745,8 @@ class CompletionSuite extends BaseCompletionSuite:
     check(
       """|export @@
          |""".stripMargin,
-      """|java <root>
-         |javax <root>
+      """|java `<root>`
+         |javax `<root>`
          |""".stripMargin,
       filter = _.startsWith("java")
     )
@@ -1907,4 +1953,200 @@ class CompletionSuite extends BaseCompletionSuite:
         |""".stripMargin,
       """TestEnum test
         |""".stripMargin,
+    )
+
+  @Test def `i6477-1` =
+    checkEdit(
+      """|package a
+         |import a.b.SomeClass as SC
+         |
+         |package b {
+         |  class SomeClass
+         |}
+         |package c {
+         |  class SomeClass
+         |}
+         |
+         |val bar: SC = ???
+         |val foo: SomeClass@@
+         |""".stripMargin,
+      """|package a
+         |import a.b.SomeClass as SC
+         |import a.c.SomeClass
+         |
+         |package b {
+         |  class SomeClass
+         |}
+         |package c {
+         |  class SomeClass
+         |}
+         |
+         |val bar: SC = ???
+         |val foo: SomeClass
+         |""".stripMargin,
+    )
+
+  @Test def `namedTuple completions` =
+    check(
+      """|import scala.language.experimental.namedTuples
+         |import scala.NamedTuple.*
+         |
+         |val person = (name = "Jamie", city = "Lausanne")
+         |
+         |val n = person.na@@""".stripMargin,
+      "name: String",
+      filter = _.contains("name")
+    )
+
+  @Test def `Selectable with namedTuple Fields member` =
+    check(
+      """|import scala.language.experimental.namedTuples
+         |import scala.NamedTuple.*
+         |
+         |class NamedTupleSelectable extends Selectable {
+         |  type Fields <: AnyNamedTuple
+         |  def selectDynamic(name: String): Any = ???
+         |}
+         |
+         |val person2 = new NamedTupleSelectable {
+         |  type Fields = (name: String, city: String)
+         |}
+         |
+         |val n = person2.na@@""".stripMargin,
+      """|name: String
+         |selectDynamic(name: String): Any
+      """.stripMargin,
+      filter = _.contains("name")
+    )
+
+  @Test def `Selectable without namedTuple Fields mamber` =
+    check(
+      """|class NonNamedTupleSelectable extends Selectable {
+         |  def selectDynamic(name: String): Any = ???
+         |}
+         |
+         |val person2 = new NonNamedTupleSelectable {}
+         |
+         |val n = person2.na@@""".stripMargin,
+      """|selectDynamic(name: String): Any
+      """.stripMargin,
+      filter = _.contains("name")
+    )
+
+  @Test def `with-parenthesis` =
+    check(
+      """|package a
+         |class MyClass
+         |val i = MyClass@@()
+         |""".stripMargin,
+         """|MyClass(): MyClass (Constructor)
+            |""".stripMargin,
+         includeCompletionKind = true
+    )
+
+  @Test def `def-arg` =
+    check(
+     """|package a
+        |object W {
+        |  val aaaaaa = 1
+        |}
+        |object O {
+        |  def foo(aa@@)
+        |}
+        |""".stripMargin,
+     ""
+   )
+
+  @Test def conflict =
+    check(
+      """|package a
+         |object O {
+         |  val foofoo: Int = 123
+         |  def method = {
+         |    val foofoo: String = "abc"
+         |    foofoo@@
+         |  }
+         |}
+         |""".stripMargin,
+      """|foofoo: String
+         |foofoo - a.O: Int
+         |""".stripMargin
+    )
+
+  @Test def `conflict-2` =
+    check(
+      """|package a
+         |object A {
+         |  val foo = 1
+         |}
+         |object B {
+         |  val foo = 1
+         |}
+         |object O {
+         |  val x: Int = foo@@
+         |}
+         |""".stripMargin,
+      """|foo - a.A: Int
+         |foo - a.B: Int
+         |""".stripMargin
+    )
+
+  @Test def `conflict-3` =
+   check(
+     """|package a
+        |object A {
+        |  var foo = 1
+        |}
+        |object B {
+        |  var foo = 1
+        |}
+        |object O {
+        |  val x: Int = foo@@
+        |}
+        |""".stripMargin,
+     """|foo - a.A: Int
+        |foo - a.B: Int
+        |""".stripMargin
+   )
+
+  @Test def `shadowing` =
+   check(
+     """|package pkg
+        |object Main {
+        |  val x = ListBuff@@
+        |}
+        |""".stripMargin,
+     """|ListBuffer[A](elems: A*): ListBuffer[A] - scala.collection.mutable
+        |new ListBuffer[A]: ListBuffer[A] - scala.collection.mutable
+        |ListBuffer - scala.collection.mutable
+        |""".stripMargin
+   )
+
+  @Test def `conflict-edit-2` =
+    checkEdit(
+      """|package a
+         |object A {
+         |  val foo = 1
+         |}
+         |object B {
+         |  val foo = 1
+         |}
+         |object O {
+         |  val x: Int = foo@@
+         |}
+         |""".stripMargin,
+      """|package a
+         |
+         |import a.A.foo
+         |object A {
+         |  val foo = 1
+         |}
+         |object B {
+         |  val foo = 1
+         |}
+         |object O {
+         |  val x: Int = foo
+         |}
+         |""".stripMargin,
+      assertSingleItem = false
     )

@@ -101,7 +101,7 @@ object TypeEval:
         expectArgsNum(1)
         val arg = tp.args.head
         val cls = arg.classSymbol
-        if cls.is(CaseClass) then
+        if MatchTypes.isConcrete(arg) && cls.is(CaseClass) then
           val fields = cls.caseAccessors
           val fieldLabels = fields.map: field =>
             ConstantType(Constant(field.name.toString))

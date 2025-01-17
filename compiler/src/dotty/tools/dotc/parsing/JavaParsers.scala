@@ -298,6 +298,7 @@ object JavaParsers {
           }
           while (in.token == DOT) {
             in.nextToken()
+            annotations()
             t = typeArgs(atSpan(t.span.start, in.offset)(typeSelect(t, ident())))
           }
           convertToTypeId(t)
@@ -369,8 +370,8 @@ object JavaParsers {
     def annotation(): Option[Tree] = {
       def classOrId(): Tree =
         val id = qualId()
-        if in.lookaheadToken == CLASS then
-          in.nextToken()
+        if in.token == DOT && in.lookaheadToken == CLASS then
+          accept(DOT)
           accept(CLASS)
           TypeApply(
             Select(

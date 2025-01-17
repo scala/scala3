@@ -1,6 +1,6 @@
 package hylo
 
-given booleanIsValue: Value[Boolean] with {
+given booleanIsValue: Value[Boolean] {
 
   extension (self: Boolean) {
 
@@ -18,7 +18,7 @@ given booleanIsValue: Value[Boolean] with {
 
 }
 
-given intIsValue: Value[Int] with {
+given intIsValue: Value[Int] {
 
   extension (self: Int) {
 
@@ -36,7 +36,7 @@ given intIsValue: Value[Int] with {
 
 }
 
-given intIsComparable: Comparable[Int] with {
+given intIsComparable: Comparable[Int] {
 
   extension (self: Int) {
 
@@ -55,4 +55,4 @@ given intIsComparable: Comparable[Int] with {
 
 }
 
-given intIsStringConvertible: StringConvertible[Int] with {}
+given intIsStringConvertible: StringConvertible[Int] {}

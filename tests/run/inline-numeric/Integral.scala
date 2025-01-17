@@ -19,11 +19,11 @@ trait Integral[T] extends Numeric[T]:
     transparent inline def /%(inline y: T) = (quot(x, y), rem(x, y))
 
 object Integral:
-  given BigDecimalAsIfIntegral: Integral[BigDecimal] with BigDecimalIsConflicted with
+  given BigDecimalAsIfIntegral: Integral[BigDecimal], BigDecimalIsConflicted:
     transparent inline def quot(inline x: BigDecimal, inline y: BigDecimal): BigDecimal = x quot y
     transparent inline def rem(inline x: BigDecimal, inline y: BigDecimal): BigDecimal = x remainder y
 
-  given BigIntIsIntegral: Integral[BigInt] with Ordering.BigIntOrdering with
+  given BigIntIsIntegral: Integral[BigInt], Ordering.BigIntOrdering:
     transparent inline def plus(inline x: BigInt, inline y: BigInt): BigInt = x + y
     transparent inline def minus(inline x: BigInt, inline y: BigInt): BigInt = x - y
     transparent inline def times(inline x: BigInt, inline y: BigInt): BigInt = x * y
@@ -41,7 +41,7 @@ object Integral:
     transparent inline def quot(inline x: BigInt, inline y: BigInt): BigInt = x / y
     transparent inline def rem(inline x: BigInt, inline y: BigInt): BigInt = x % y
 
-  given ByteIsIntegral: Integral[Byte] with Ordering.ByteOrdering with
+  given ByteIsIntegral: Integral[Byte], Ordering.ByteOrdering:
     transparent inline def plus(inline x: Byte, inline y: Byte): Byte = (x + y).toByte
     transparent inline def minus(inline x: Byte, inline y: Byte): Byte = (x - y).toByte
     transparent inline def times(inline x: Byte, inline y: Byte): Byte = (x * y).toByte
@@ -59,7 +59,7 @@ object Integral:
       transparent inline def toFloat: Float = x.toFloat
       transparent inline def toDouble: Double = x.toDouble
 
-  given CharIsIntegral: Integral[Char] with Ordering.CharOrdering with
+  given CharIsIntegral: Integral[Char], Ordering.CharOrdering:
     transparent inline def plus(inline x: Char, inline y: Char): Char = (x + y).toChar
     transparent inline def minus(inline x: Char, inline y: Char): Char = (x - y).toChar
     transparent inline def times(inline x: Char, inline y: Char): Char = (x * y).toChar
@@ -77,7 +77,7 @@ object Integral:
       transparent inline def toFloat: Float = x.toFloat
       transparent inline def toDouble: Double = x.toDouble
 
-  given IntIsIntegral: Integral[Int] with Ordering.IntOrdering with
+  given IntIsIntegral: Integral[Int], Ordering.IntOrdering:
     transparent inline def plus(inline x: Int, inline y: Int): Int = x + y
     transparent inline def minus(inline x: Int, inline y: Int): Int = x - y
     transparent inline def times(inline x: Int, inline y: Int): Int = x * y
@@ -95,7 +95,7 @@ object Integral:
       transparent inline def toFloat: Float = x.toFloat
       transparent inline def toDouble: Double = x.toDouble
 
-  given LongIsIntegral: Integral[Long] with Ordering.LongOrdering with
+  given LongIsIntegral: Integral[Long], Ordering.LongOrdering:
     transparent inline def plus(inline x: Long, inline y: Long): Long = x + y
     transparent inline def minus(inline x: Long, inline y: Long): Long = x - y
     transparent inline def times(inline x: Long, inline y: Long): Long = x * y
@@ -113,7 +113,7 @@ object Integral:
       transparent inline def toFloat: Float = x.toFloat
       transparent inline def toDouble: Double = x.toDouble
 
-  given ShortIsIntegral: Integral[Short] with Ordering.ShortOrdering with
+  given ShortIsIntegral: Integral[Short], Ordering.ShortOrdering:
     transparent inline def plus(inline x: Short, inline y: Short): Short = (x + y).toShort
     transparent inline def minus(inline x: Short, inline y: Short): Short = (x - y).toShort
     transparent inline def times(inline x: Short, inline y: Short): Short = (x * y).toShort

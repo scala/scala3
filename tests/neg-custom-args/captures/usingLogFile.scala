@@ -1,11 +1,10 @@
 import java.io.*
-import annotation.capability
 
 object Test1:
 
-  def usingLogFile[T](op: (local: caps.Cap) ?-> FileOutputStream => T): T =
+  def usingLogFile[T](op: (local: caps.Capability) ?-> FileOutputStream => T): T =
     val logFile = FileOutputStream("log")
-    val result = op(logFile)
+    val result = op(using caps.cap)(logFile)
     logFile.close()
     result
 

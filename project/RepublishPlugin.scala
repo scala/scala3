@@ -1,22 +1,18 @@
 package dotty.tools.sbtplugin
 
-import sbt._
-import xerial.sbt.pack.PackPlugin
-import xerial.sbt.pack.PackPlugin.autoImport.{packResourceDir, packDir}
-import sbt.Keys._
+import com.typesafe.sbt.packager.universal.UniversalPlugin
+import sbt.*
+import sbt.Keys.*
 import sbt.AutoPlugin
 import sbt.PublishBinPlugin
-import sbt.PublishBinPlugin.autoImport._
+import sbt.PublishBinPlugin.autoImport.*
 import sbt.io.Using
-import sbt.util.CacheImplicits._
+import sbt.util.CacheImplicits.*
 
-import scala.collection.mutable
 import java.nio.file.Files
-
 import java.nio.file.attribute.PosixFilePermission
-import java.nio.file.{Files, Path}
-
-import scala.jdk.CollectionConverters._
+import java.nio.file.Path
+import scala.jdk.CollectionConverters.*
 
 /** This local plugin provides ways of publishing a project classpath and library dependencies to
  * .a local repository */
@@ -53,7 +49,7 @@ object RepublishPlugin extends AutoPlugin {
   }
 
   override def trigger = allRequirements
-  override def requires = super.requires && PublishBinPlugin && PackPlugin
+  override def requires = super.requires && PublishBinPlugin && UniversalPlugin
 
   object autoImport {
     val republishProjectRefs = taskKey[Seq[ProjectRef]]("fetch the classpath deps from the project.")
@@ -64,9 +60,9 @@ object RepublishPlugin extends AutoPlugin {
     val republishFetchCoursier = taskKey[File]("cache the coursier.jar for resolving the local maven repo.")
     val republishPrepareBin = taskKey[File]("prepare the bin directory, including launchers and scripts.")
     val republishWriteExtraProps = taskKey[Option[File]]("write extra properties for the launchers.")
-    val republishBinDir = settingKey[File]("where to find static files for the bin dir.")
+    val republishLibexecDir = settingKey[File]("where to find static files for the `libexec` dir.")
     val republishCoursierDir = settingKey[File]("where to download the coursier launcher jar.")
-    val republishBinOverrides = settingKey[Seq[File]]("files to override those in bin-dir.")
+    val republishLibexecOverrides = settingKey[Seq[File]]("files to override those in libexec-dir.")
     val republishCommandLibs = settingKey[Seq[(String, List[String])]]("libraries needed for each command.")
     val republish = taskKey[File]("cache the dependencies and download launchers for the distribution")
     val republishPack = taskKey[File]("do the pack command")
@@ -346,11 +342,70 @@ object RepublishPlugin extends AutoPlugin {
     allLaunchers.toSet
   }
 
+  private def generateVersionFile() = Def.task[Unit] {
+    import scala.util.Try
+    import java.time.format.DateTimeFormatterBuilder
+    import java.time.format.SignStyle
+    import java.time.temporal.ChronoField.*
+    import java.time.ZoneId
+    import java.time.Instant
+    import java.time.ZonedDateTime
+    import java.time.ZonedDateTime
+    import java.util.Locale
+    import java.util.Date
+
+    val base: File = new File(".") // Using the working directory as base for readability
+    val s = streams.value
+    val log = s.log
+    val progVersion = version.value
+    val distDir = republishRepo.value
+
+    def write(path: String, content: String) {
+      val p = distDir / path
+      IO.write(p, content)
+    }
+
+    val humanReadableTimestampFormatter = new DateTimeFormatterBuilder()
+        .parseCaseInsensitive()
+        .appendValue(YEAR, 4, 10, SignStyle.EXCEEDS_PAD)
+        .appendLiteral('-')
+        .appendValue(MONTH_OF_YEAR, 2)
+        .appendLiteral('-')
+        .appendValue(DAY_OF_MONTH, 2)
+        .appendLiteral(' ')
+        .appendValue(HOUR_OF_DAY, 2)
+        .appendLiteral(':')
+        .appendValue(MINUTE_OF_HOUR, 2)
+        .appendLiteral(':')
+        .appendValue(SECOND_OF_MINUTE, 2)
+        .appendOffset("+HHMM", "Z")
+        .toFormatter(Locale.US)
+
+    // Retrieve build time
+    val systemZone = ZoneId.systemDefault().normalized()
+    val timestamp  = ZonedDateTime.ofInstant(Instant.ofEpochMilli(new Date().getTime), systemZone)
+    val buildTime  = humanReadableTimestampFormatter.format(timestamp)
+
+    // Check the current Git revision
+    val gitRevision: String = Try {
+      if ((base / ".git").exists()) {
+        log.info("[republish] Checking the git revision of the current project")
+        sys.process.Process("git rev-parse HEAD").!!
+      } else {
+        "unknown"
+      }
+    }.getOrElse("unknown").trim
+
+
+    // Output the version number and Git revision
+    write("VERSION", s"version:=${progVersion}\nrevision:=${gitRevision}\nbuildTime:=${buildTime}\n")
+  }
+
   override val projectSettings: Seq[Def.Setting[_]] = Def.settings(
     republishCoursierDir := republishRepo.value / "coursier",
     republishLaunchers := Seq.empty,
     republishCoursier := Seq.empty,
-    republishBinOverrides := Seq.empty,
+    republishLibexecOverrides := Seq.empty,
     republishExtraProps := Seq.empty,
     republishCommandLibs := Seq.empty,
     republishLocalResolved / republishProjectRefs := {
@@ -434,16 +489,14 @@ object RepublishPlugin extends AutoPlugin {
     },
     republishPrepareBin := {
       val baseDir = baseDirectory.value
-      val srcBin = republishBinDir.value
-      val overrides = republishBinOverrides.value
+      val srcLibexec = republishLibexecDir.value
+      val overrides = republishLibexecOverrides.value
       val repoDir = republishRepo.value
 
-      val targetBin = repoDir / "bin"
-      IO.copyDirectory(srcBin, targetBin)
-      overrides.foreach { dir =>
-        IO.copyDirectory(dir, targetBin, overwrite = true)
-      }
-      targetBin
+      val targetLibexec = repoDir / "libexec"
+      IO.copyDirectory(srcLibexec, targetLibexec)
+      overrides.foreach(IO.copyDirectory(_, targetLibexec, overwrite = true))
+      targetLibexec
     },
     republishWriteExtraProps := {
       val s = streams.value
@@ -470,88 +523,8 @@ object RepublishPlugin extends AutoPlugin {
       val artifacts = republishClasspath.value
       val launchers = republishFetchLaunchers.value
       val extraProps = republishWriteExtraProps.value
+      val versionFile = generateVersionFile().value
       cacheDir
     },
-    republishPack := {
-      val cacheDir = republish.value
-      val s = streams.value
-      val log = s.log
-      val distDir = target.value / packDir.value
-      val progVersion = version.value
-
-      IO.createDirectory(distDir)
-      for ((path, dir) <- packResourceDir.value) {
-        val target = distDir / dir
-        IO.copyDirectory(path, target)
-      }
-
-      locally {
-        // everything in this block is copied from sbt-pack plugin
-        import scala.util.Try
-        import java.time.format.DateTimeFormatterBuilder
-        import java.time.format.SignStyle
-        import java.time.temporal.ChronoField.*
-        import java.time.ZoneId
-        import java.time.Instant
-        import java.time.ZonedDateTime
-        import java.time.ZonedDateTime
-        import java.util.Locale
-        import java.util.Date
-        val base: File = new File(".") // Using the working directory as base for readability
-
-        // Copy explicitly added dependencies
-        val mapped: Seq[(File, String)] = mappings.value
-        log.info("[republish] Copying explicit dependencies:")
-        val explicitDepsJars = for ((file, path) <- mapped) yield {
-          log.info(file.getPath)
-          val dest = distDir / path
-          IO.copyFile(file, dest, true)
-          dest
-        }
-
-        def write(path: String, content: String) {
-          val p = distDir / path
-          IO.write(p, content)
-        }
-
-        val humanReadableTimestampFormatter = new DateTimeFormatterBuilder()
-            .parseCaseInsensitive()
-            .appendValue(YEAR, 4, 10, SignStyle.EXCEEDS_PAD)
-            .appendLiteral('-')
-            .appendValue(MONTH_OF_YEAR, 2)
-            .appendLiteral('-')
-            .appendValue(DAY_OF_MONTH, 2)
-            .appendLiteral(' ')
-            .appendValue(HOUR_OF_DAY, 2)
-            .appendLiteral(':')
-            .appendValue(MINUTE_OF_HOUR, 2)
-            .appendLiteral(':')
-            .appendValue(SECOND_OF_MINUTE, 2)
-            .appendOffset("+HHMM", "Z")
-            .toFormatter(Locale.US)
-
-        // Retrieve build time
-        val systemZone = ZoneId.systemDefault().normalized()
-        val timestamp  = ZonedDateTime.ofInstant(Instant.ofEpochMilli(new Date().getTime), systemZone)
-        val buildTime  = humanReadableTimestampFormatter.format(timestamp)
-
-        // Check the current Git revision
-        val gitRevision: String = Try {
-          if ((base / ".git").exists()) {
-            log.info("[republish] Checking the git revision of the current project")
-            sys.process.Process("git rev-parse HEAD").!!
-          } else {
-            "unknown"
-          }
-        }.getOrElse("unknown").trim
-
-
-        // Output the version number and Git revision
-        write("VERSION", s"version:=${progVersion}\nrevision:=${gitRevision}\nbuildTime:=${buildTime}\n")
-      }
-
-
-      distDir
-    }
   )
 }

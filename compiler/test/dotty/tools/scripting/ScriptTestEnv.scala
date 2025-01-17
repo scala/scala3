@@ -16,7 +16,7 @@ import scala.jdk.CollectionConverters.*
 /**
  * Common Code for supporting scripting tests.
  * To override the path to the bash executable, set TEST_BASH=<path-to-bash.exe>
- * To specify where `dist[*]/target/pack/bin` resides, set TEST_CWD=<working-directory>
+ * To specify where `dist[*]/target/universal/stage/bin` resides, set TEST_CWD=<working-directory>
  * Test scripts run in a bash env, so paths are converted to forward slash via .norm.
  */
 object ScriptTestEnv {
@@ -48,7 +48,7 @@ object ScriptTestEnv {
   }
 
   lazy val nativePackDir: Option[String] = {
-    def nativeDir(os: String, arch: String) = Some(s"dist/$os-$arch/target/pack")
+    def nativeDir(os: String, arch: String) = Some(s"dist/$os-$arch/target/universal/stage")
     def nativeOs(os: String) = archNorm match
       case arch @ ("aarch64" | "x86_64") => nativeDir(os, arch)
       case _ => None
@@ -61,7 +61,7 @@ object ScriptTestEnv {
 
   def jvmPackDir() =
     println("warning: unknown OS architecture combination, defaulting to JVM launcher.")
-    "dist/target/pack"
+    "dist/target/universal/stage"
 
   def packDir: String = nativePackDir.getOrElse(jvmPackDir())
 
@@ -302,7 +302,7 @@ object ScriptTestEnv {
   // use optional TEST_BASH if defined, otherwise, bash must be in PATH
 
   // envScalaHome is:
-  //    dist[*]/target/pack, if present
+  //    dist[*]/target/universal/stage, if present
   //    else, SCALA_HOME if defined
   //    else, not defined
   lazy val envScalaHome =

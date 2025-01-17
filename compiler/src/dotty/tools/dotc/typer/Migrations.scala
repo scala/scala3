@@ -57,7 +57,7 @@ trait Migrations:
     val nestedCtx = ctx.fresh.setNewTyperState()
     val res = typed(qual, pt1)(using nestedCtx)
     res match {
-      case closure(_, _, _) =>
+      case blockEndingInClosure(_, _, _) =>
       case _ =>
         val recovered = typed(qual)(using ctx.fresh.setExploreTyperState())
         val msg = OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen, tree)
@@ -71,10 +71,13 @@ trait Migrations:
     }
     nestedCtx.typerState.commit()
 
+    def functionPrefixSuffix(arity: Int) = if (arity > 0) ("", "") else ("(() => ", "())")
+
     lazy val (prefix, suffix) = res match {
-      case Block(mdef @ DefDef(_, vparams :: Nil, _, _) :: Nil, _: Closure) =>
-        val arity = vparams.length
-        if (arity > 0) ("", "") else ("(() => ", "())")
+      case Block(DefDef(_, vparams :: Nil, _, _) :: Nil, _: Closure) =>
+        functionPrefixSuffix(vparams.length)
+      case Block(ValDef(_, _, _) :: Nil, Block(DefDef(_, vparams :: Nil, _, _) :: Nil, _: Closure)) =>
+        functionPrefixSuffix(vparams.length)
       case _ =>
         ("(() => ", ")")
     }
@@ -113,6 +116,12 @@ trait Migrations:
         em"""Context bounds will map to context parameters.
             |A `using` clause is needed to pass explicit arguments to them.$rewriteMsg""",
         tree.srcPos, mversion)
+      tree match
+        case Apply(ta @ TypeApply(Select(New(_), _), _), Nil) =>
+          // Remove empty arguments for calls to new that may precede the context bound.
+          // They are no longer necessary.
+          patch(Span(ta.span.end, pt.args.head.span.start - 1), "")
+        case _ => ()
       if mversion.needsPatch && pt.args.nonEmpty then
         patch(Span(pt.args.head.span.start), "using ")
   end contextBoundParams

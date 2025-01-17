@@ -763,9 +763,10 @@ object Trees {
    *  `SplicePattern` can only be contained within a `QuotePattern`.
    *
    *  @param body  The tree that was spliced
+   *  @param typeargs The type arguments of the splice (the HOAS arguments)
    *  @param args  The arguments of the splice (the HOAS arguments)
    */
-  case class SplicePattern[+T <: Untyped] private[ast] (body: Tree[T], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
+  case class SplicePattern[+T <: Untyped] private[ast] (body: Tree[T], typeargs: List[Tree[T]], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
     extends TermTree[T] {
     type ThisTree[+T <: Untyped] = SplicePattern[T]
   }
@@ -777,6 +778,7 @@ object Trees {
     override def isEmpty: Boolean = !hasType
     override def toString: String =
       s"TypeTree${if (hasType) s"[$typeOpt]" else ""}"
+    def isInferred = false
   }
 
   /** Tree that replaces a level 1 splices in pickled (level 0) quotes.
@@ -799,6 +801,7 @@ object Trees {
    */
   class InferredTypeTree[+T <: Untyped](implicit @constructorOnly src: SourceFile) extends TypeTree[T]:
     type ThisTree[+T <: Untyped] <: InferredTypeTree[T]
+    override def isInferred = true
 
   /** ref.type */
   case class SingletonTypeTree[+T <: Untyped] private[ast] (ref: Tree[T])(implicit @constructorOnly src: SourceFile)
@@ -1372,9 +1375,9 @@ object Trees {
         case tree: QuotePattern if (bindings eq tree.bindings) && (body eq tree.body) && (quotes eq tree.quotes) => tree
         case _ => finalize(tree, untpd.QuotePattern(bindings, body, quotes)(sourceFile(tree)))
       }
-      def SplicePattern(tree: Tree)(body: Tree, args: List[Tree])(using Context): SplicePattern = tree match {
-        case tree: SplicePattern if (body eq tree.body) && (args eq tree.args) => tree
-        case _ => finalize(tree, untpd.SplicePattern(body, args)(sourceFile(tree)))
+      def SplicePattern(tree: Tree)(body: Tree, typeargs: List[Tree], args: List[Tree])(using Context): SplicePattern = tree match {
+        case tree: SplicePattern if (body eq tree.body) && (typeargs eq tree.typeargs) & (args eq tree.args) => tree
+        case _ => finalize(tree, untpd.SplicePattern(body, typeargs, args)(sourceFile(tree)))
       }
       def SingletonTypeTree(tree: Tree)(ref: Tree)(using Context): SingletonTypeTree = tree match {
         case tree: SingletonTypeTree if (ref eq tree.ref) => tree
@@ -1622,8 +1625,8 @@ object Trees {
               cpy.Splice(tree)(transform(expr)(using spliceContext))
             case tree @ QuotePattern(bindings, body, quotes) =>
               cpy.QuotePattern(tree)(transform(bindings), transform(body)(using quoteContext), transform(quotes))
-            case tree @ SplicePattern(body, args) =>
-              cpy.SplicePattern(tree)(transform(body)(using spliceContext), transform(args))
+            case tree @ SplicePattern(body, targs, args) =>
+              cpy.SplicePattern(tree)(transform(body)(using spliceContext), transform(targs), transform(args))
             case tree @ Hole(isTerm, idx, args, content) =>
               cpy.Hole(tree)(isTerm, idx, transform(args), transform(content))
             case _ =>
@@ -1771,8 +1774,8 @@ object Trees {
               this(x, expr)(using spliceContext)
             case QuotePattern(bindings, body, quotes) =>
               this(this(this(x, bindings), body)(using quoteContext), quotes)
-            case SplicePattern(body, args) =>
-              this(this(x, body)(using spliceContext), args)
+            case SplicePattern(body, typeargs, args) =>
+              this(this(this(x, body)(using spliceContext), typeargs), args)
             case Hole(_, _, args, content) =>
               this(this(x, args), content)
             case _ =>

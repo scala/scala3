@@ -1,17 +1,12 @@
-
-trait Monad[T]:
-  def id: String
 class Foo
-object Foo {
-  given Monad[Foo] with { def id = "Foo" }
-}
 
-opaque type Bar = Foo
 object Bar {
-  given Monad[Bar] = summon[Monad[Foo]] // error
+  given Foo()
+  given List[Foo] = List(summon[Foo]) // ok
 }
 
-object Test extends App {
-  println(summon[Monad[Foo]].id)
-  println(summon[Monad[Bar]].id)
+object Baz {
+  @annotation.nowarn
+  given List[Foo] = List(summon[Foo]) // error
+  given Foo()
 }

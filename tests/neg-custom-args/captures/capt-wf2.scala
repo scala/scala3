@@ -1,4 +1,4 @@
-@annotation.capability class C
+class C extends caps.Capability
 
 def test(c: C) =
   var x: Any^{c} = ???

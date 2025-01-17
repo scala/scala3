@@ -2,6 +2,7 @@ Dotty
 =====
 [![Dotty CI](https://github.com/scala/scala3/workflows/Dotty/badge.svg?branch=main)](https://github.com/scala/scala3/actions?query=branch%3Amain)
 [![Join the chat at https://discord.com/invite/scala](https://img.shields.io/discord/632150470000902164)](https://discord.com/invite/scala)
+[![Revved up by Develocity](https://img.shields.io/badge/Revved%20up%20by-Develocity-06A0CE?logo=Gradle&labelColor=02303A)](https://develocity.scala-lang.org)
 
 * [Documentation](https://docs.scala-lang.org/scala3/)
 
@@ -11,7 +12,7 @@ To try it in your project see also the [Getting Started User Guide](https://docs
 
 Building a Local Distribution
 =============================
-1. `sbt dist/packArchive`
+1. `sbt dist/Universal/packageBin`
 2. Find the newly-built distributions in `dist/target/`
 
 Code of Conduct

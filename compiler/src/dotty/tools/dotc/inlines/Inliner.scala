@@ -96,15 +96,6 @@ object Inliner:
     }
   end isElideableExpr
 
-  // InlineCopier is a more fault-tolerant copier that does not cause errors when
-  // function types in applications are undefined. This is necessary since we copy at
-  // the same time as establishing the proper context in which the copied tree should
-  // be evaluated. This matters for opaque types, see neg/i14653.scala.
-  private class InlineCopier() extends TypedTreeCopier:
-    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply =
-      if fun.tpe.widen.exists then super.Apply(tree)(fun, args)
-      else untpd.cpy.Apply(tree)(fun, args).withTypeUnchecked(tree.tpe)
-
   // InlinerMap is a TreeTypeMap with special treatment for inlined arguments:
   // They are generally left alone (not mapped further, and if they wrap a type
   // the type Inlined wrapper gets dropped
@@ -116,7 +107,13 @@ object Inliner:
       substFrom: List[Symbol],
       substTo: List[Symbol])(using Context)
     extends TreeTypeMap(
-      typeMap, treeMap, oldOwners, newOwners, substFrom, substTo, InlineCopier()):
+      typeMap, treeMap, oldOwners, newOwners, substFrom, substTo,
+      // It is necessary to use the `ConservativeTreeCopier` since we copy at
+      // the same time as establishing the proper context in which the copied
+      // tree should be evaluated. This matters for opaque types, see
+      // neg/i14653.scala.
+      ConservativeTreeCopier()
+    ):
 
     override def copy(
         typeMap: Type => Type,
@@ -957,6 +954,12 @@ class Inliner(val call: tpd.Tree)(using Context):
             case None => tree
         case _ =>
           tree
+
+    /** For inlining only: Given `(x: T)` with expected type `x.type`, replace the tree with `x`.
+     */
+    override def healAdapt(tree: Tree, pt: Type)(using Context): Tree = (tree, pt) match
+      case (Typed(tree1, _), pt: SingletonType) if tree1.tpe <:< pt => tree1
+      case _ => tree
   end InlineTyper
 
   /** Drop any side-effect-free bindings that are unused in expansion or other reachable bindings.
@@ -1077,9 +1080,7 @@ class Inliner(val call: tpd.Tree)(using Context):
           hints.nn += i"suspension triggered by macro call to ${sym.showLocated} in ${sym.associatedFile}"
       if suspendable then
         if ctx.settings.YnoSuspendedUnits.value then
-          return ref(defn.Predef_undefined)
-            .withType(ErrorType(em"could not expand macro, suspended units are disabled by -Yno-suspended-units"))
-            .withSpan(splicePos.span)
+          return errorTree(ref(defn.Predef_undefined), em"could not expand macro, suspended units are disabled by -Yno-suspended-units", splicePos)
         else
           ctx.compilationUnit.suspend(hints.nn.toList.mkString(", ")) // this throws a SuspendException
 
@@ -1104,6 +1105,8 @@ class Inliner(val call: tpd.Tree)(using Context):
     new TreeAccumulator[List[Symbol]] {
       override def apply(syms: List[Symbol], tree: tpd.Tree)(using Context): List[Symbol] =
         tree match {
+          case Closure(env, meth, tpt) if meth.symbol.isAnonymousFunction =>
+            this(syms, tpt :: env)
           case tree: RefTree if tree.isTerm && level == -1 && tree.symbol.isDefinedInCurrentRun && !tree.symbol.isLocal =>
             foldOver(tree.symbol :: syms, tree)
           case _: This if level == -1 && tree.symbol.isDefinedInCurrentRun =>
