@@ -34,8 +34,7 @@ object JSPrimitives {
   inline val CREATE_INNER_JS_CLASS = CONSTRUCTOROF + 1                  // runtime.createInnerJSClass
   inline val CREATE_LOCAL_JS_CLASS = CREATE_INNER_JS_CLASS + 1          // runtime.createLocalJSClass
   inline val WITH_CONTEXTUAL_JS_CLASS_VALUE = CREATE_LOCAL_JS_CLASS + 1 // runtime.withContextualJSClassValue
-  inline val LINKING_INFO = WITH_CONTEXTUAL_JS_CLASS_VALUE + 1          // runtime.linkingInfo
-  inline val DYNAMIC_IMPORT = LINKING_INFO + 1                          // runtime.dynamicImport
+  inline val DYNAMIC_IMPORT = WITH_CONTEXTUAL_JS_CLASS_VALUE + 1        // runtime.dynamicImport
 
   inline val STRICT_EQ = DYNAMIC_IMPORT + 1                // js.special.strictEquals
   inline val IN = STRICT_EQ + 1                            // js.special.in
@@ -122,7 +121,6 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
     addPrimitive(jsdefn.Runtime_createInnerJSClass, CREATE_INNER_JS_CLASS)
     addPrimitive(jsdefn.Runtime_createLocalJSClass, CREATE_LOCAL_JS_CLASS)
     addPrimitive(jsdefn.Runtime_withContextualJSClassValue, WITH_CONTEXTUAL_JS_CLASS_VALUE)
-    addPrimitive(jsdefn.Runtime_linkingInfo, LINKING_INFO)
     addPrimitive(jsdefn.Runtime_dynamicImport, DYNAMIC_IMPORT)
 
     addPrimitive(jsdefn.Special_strictEquals, STRICT_EQ)

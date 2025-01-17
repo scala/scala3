@@ -1669,6 +1669,7 @@ object Build {
             "productionMode" -> sems.productionMode,
             "esVersion" -> linkerConfig.esFeatures.esVersion.edition,
             "useECMAScript2015Semantics" -> linkerConfig.esFeatures.useECMAScript2015Semantics,
+            "isWebAssembly" -> linkerConfig.experimentalUseWebAssembly,
         )
       }.taskValue,
 
