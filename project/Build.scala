@@ -2424,6 +2424,7 @@ object Build {
     def asDottyLibrary(implicit mode: Mode): Project = {
       val base =
         project.withCommonSettings.
+          enablePlugins(BuildStdLib).
           settings(versionScheme := Some("semver-spec")).
           settings(dottyLibrarySettings)
       if (mode == Bootstrapped) {
