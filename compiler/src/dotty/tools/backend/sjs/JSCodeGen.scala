@@ -2569,6 +2569,8 @@ class JSCodeGen()(using genCtx: Context) {
       genCoercion(tree, receiver, code)
     else if (code == JSPrimitives.THROW)
       genThrow(tree, args)
+    else if (code == JSPrimitives.NEW_ARRAY)
+      genNewArray(tree, args)
     else if (JSPrimitives.isJSPrimitive(code))
       genJSPrimitive(tree, args, code, isStat)
     else
@@ -3035,6 +3037,24 @@ class JSCodeGen()(using genCtx: Context) {
       case _ =>
         js.UnaryOp(js.UnaryOp.Throw, js.UnaryOp(js.UnaryOp.UnwrapFromThrowable,
             js.UnaryOp(js.UnaryOp.CheckNotNull, genException)))
+    }
+  }
+
+  /** Gen a call to the special `newArray` method. */
+  private def genNewArray(tree: Apply, args: List[Tree]): js.Tree = {
+    implicit val pos: SourcePosition = tree.sourcePos
+
+    val List(elemClazz, Literal(arrayClassConstant), dimsArray: JavaSeqLiteral) = args: @unchecked
+
+    dimsArray.elems match {
+      case singleDim :: Nil =>
+        // Use a js.NewArray
+        val arrayTypeRef = toTypeRef(arrayClassConstant.typeValue).asInstanceOf[jstpe.ArrayTypeRef]
+        js.NewArray(arrayTypeRef, genExpr(singleDim))
+      case _ =>
+        // Delegate to jlr.Array.newInstance
+        js.ApplyStatic(js.ApplyFlags.empty, JLRArrayClassName, js.MethodIdent(JLRArrayNewInstanceMethodName),
+            List(genExpr(elemClazz), genJavaSeqLiteral(dimsArray)))(jstpe.AnyType)
     }
   }
 
@@ -4846,7 +4866,7 @@ class JSCodeGen()(using genCtx: Context) {
 
 object JSCodeGen {
 
-  private val NullPointerExceptionClass = ClassName("java.lang.NullPointerException")
+  private val JLRArrayClassName = ClassName("java.lang.reflect.Array")
   private val JSObjectClassName = ClassName("scala.scalajs.js.Object")
   private val JavaScriptExceptionClassName = ClassName("scala.scalajs.js.JavaScriptException")
 
@@ -4855,6 +4875,9 @@ object JSCodeGen {
   private val newSimpleMethodName = SimpleMethodName("new")
 
   private val selectedValueMethodName = MethodName("selectedValue", Nil, ObjectClassRef)
+
+  private val JLRArrayNewInstanceMethodName =
+    MethodName("newInstance", List(jstpe.ClassRef(jsNames.ClassClass), jstpe.ArrayTypeRef(jstpe.IntRef, 1)), ObjectClassRef)
 
   private val ObjectArgConstructorName = MethodName.constructor(List(ObjectClassRef))
 
