@@ -1106,6 +1106,10 @@ object Build {
 
   // Settings shared between scala3-library, scala3-library-bootstrapped and scala3-library-bootstrappedJS
   lazy val dottyLibrarySettings = Seq(
+    library := "org.scala-lang" % "scala-library" % "2.13.16",
+    libraryDependencies += library.value, // TODO: We should not require a dependency to the scala2's stdlib
+    jarExtractTarget := new File((Compile / target).value + "/scala-3.6.3-RC2/classes"),
+    //(Compile / compile) := (Compile / compile).dependsOn(copyJarContent).value,
     (Compile / scalacOptions) ++= Seq(
       // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
       "-sourcepath", (Compile / sourceDirectories).value.map(_.getAbsolutePath).distinct.mkString(File.pathSeparator),
@@ -2418,10 +2422,7 @@ object Build {
     def asDottyLibrary(implicit mode: Mode): Project = {
       val base =
         project.withCommonSettings.
-          settings(
-            versionScheme := Some("semver-spec"),
-            libraryDependencies += "org.scala-lang" % "scala-library" % stdlibVersion,
-          ).
+          settings(versionScheme := Some("semver-spec")).
           settings(dottyLibrarySettings)
       if (mode == Bootstrapped) {
         base.settings(
