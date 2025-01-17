@@ -9,6 +9,7 @@ import dotty.tools.dotc.config.SourceVersion
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.rewrites.Rewrites
 import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory}
+import dotty.tools.backend.jvm.BackendUtils.classfileVersionMap
 import Setting.ChoiceWithHelp
 
 import scala.util.chaining.*
@@ -19,8 +20,8 @@ class ScalaSettings extends SettingGroup with AllScalaSettings
 
 object ScalaSettings:
   // Keep synchronized with `classfileVersion` in `BackendUtils`
-  private val minTargetVersion = 8
-  private val maxTargetVersion = 22
+  private lazy val minTargetVersion = classfileVersionMap.keysIterator.min
+  private lazy val maxTargetVersion = classfileVersionMap.keysIterator.max
 
   def supportedTargetVersions: List[String] =
     (minTargetVersion to maxTargetVersion).toList.map(_.toString)
