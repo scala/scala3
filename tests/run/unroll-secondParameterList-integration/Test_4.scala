@@ -1,5 +1,4 @@
 //> using options -experimental
-// scalajs: --skip
 import unroll.*
 
 @main def Test: Unit =

@@ -57,25 +57,54 @@ def assertThrows[T <: Throwable: ClassTag](p: T => Boolean)(body: => Any): Unit 
     case NonFatal(other) => throw AssertionError(s"Wrong exception: expected ${implicitly[ClassTag[T]]} but was ${other.getClass.getName}").tap(_.addSuppressed(other))
 end assertThrows
 
+enum TestPlatform:
+  case JVM, ScalaJS
+  override def toString: String = this match
+    case JVM     => "jvm"
+    case ScalaJS => "scala-js"
+
+object TestPlatform:
+  def named(s: String): TestPlatform = s match
+    case "jvm"      => TestPlatform.JVM
+    case "scala-js" => TestPlatform.ScalaJS
+    case _          => throw IllegalArgumentException(s)
+
 /** Famous tool names in the ecosystem. Used for tool args in test files. */
 enum ToolName:
-  case Scala, Scalac, Java, Javac, ScalaJS, Test
+  case Scala, Scalac, Java, Javac, ScalaJS, Test, Target
 object ToolName:
   def named(s: String): ToolName = values.find(_.toString.equalsIgnoreCase(s)).getOrElse(throw IllegalArgumentException(s))
 
 type ToolArgs = Map[ToolName, List[String]]
+type PlatformFiles = Map[TestPlatform, List[String]]
 
 /** Take a prefix of each file, extract tool args, parse, and combine.
  *  Arg parsing respects quotation marks. Result is a map from ToolName to the combined tokens.
  */
 def toolArgsFor(files: List[JPath], charset: Charset = UTF_8): ToolArgs =
-  files.foldLeft(Map.empty[ToolName, List[String]]) { (res, path) =>
+  val (_, toolArgs) = platformAndToolArgsFor(files, charset)
+  toolArgs
+
+/** Take a prefix of each file, extract tool args, parse, and combine.
+ *  Arg parsing respects quotation marks. Result is a map from ToolName to the combined tokens.
+ * If the ToolName is Target, then also accumulate the file name associated with the given platform.
+ */
+def platformAndToolArgsFor(files: List[JPath], charset: Charset = UTF_8): (PlatformFiles, ToolArgs) =
+  files.foldLeft(Map.empty[TestPlatform, List[String]] -> Map.empty[ToolName, List[String]]) { (res, path) =>
     val toolargs = toolArgsParse(resource(Files.lines(path, charset))(_.limit(10).toScala(List)), Some(path.toString))
     toolargs.foldLeft(res) {
-      case (acc, (tool, args)) =>
+      case ((plat, acc), (tool, args)) =>
         val name = ToolName.named(tool)
         val tokens = CommandLineParser.tokenize(args)
-        acc.updatedWith(name)(v0 => v0.map(_ ++ tokens).orElse(Some(tokens)))
+
+        val plat1 = if name eq ToolName.Target then
+          val testPlatform = TestPlatform.named(tokens.head)
+          val fileName = path.toString
+          plat.updatedWith(testPlatform)(_.map(fileName :: _).orElse(Some(fileName :: Nil)))
+        else
+          plat
+
+        plat1 -> acc.updatedWith(name)(v0 => v0.map(_ ++ tokens).orElse(Some(tokens)))
     }
   }
 
@@ -94,6 +123,8 @@ private val toolArg = raw"(?://|/\*| \*) ?(?i:(${ToolName.values.mkString("|")})
 /** Directive to specify to vulpix the options to pass to Dotty */
 private val directiveOptionsArg = raw"//> using options (.*)".r.unanchored
 private val directiveJavacOptions = raw"//> using javacOpt (.*)".r.unanchored
+private val directiveTargetOptions = raw"//> using target.platform (jvm|scala-js)".r.unanchored
+private val directiveUnknown = raw"//> using (.*)".r.unanchored
 
 // Inspect the lines for compiler options of the form
 // `//> using options args`, `// scalajs: args`, `/* scalajs: args`, ` * scalajs: args` etc.
@@ -109,6 +140,8 @@ def toolArgsParse(lines: List[String], filename: Option[String]): List[(String,S
   lines.flatMap {
     case directiveOptionsArg(args) => List(("scalac", args))
     case directiveJavacOptions(args) => List(("javac", args))
+    case directiveTargetOptions(platform) => List(("target", platform))
+    case directiveUnknown(rest) => sys.error(s"Unknown directive: `//> using ${CommandLineParser.tokenize(rest).headOption.getOrElse("''")}`${filename.fold("")(f => s" in file $f")}")
     case _ => Nil
   }
 

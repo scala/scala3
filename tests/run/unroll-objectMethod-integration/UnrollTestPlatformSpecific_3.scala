@@ -1,5 +1,5 @@
 //> using options -experimental
-// scalajs: --skip
+//> using target.platform jvm
 package unroll
 
 object UnrollTestPlatformSpecificV3{
