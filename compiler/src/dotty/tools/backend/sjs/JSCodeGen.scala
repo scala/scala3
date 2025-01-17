@@ -2227,10 +2227,7 @@ class JSCodeGen()(using genCtx: Context) {
     val Apply(fun @ Select(sup @ Super(qual, _), _), args) = tree: @unchecked
     val sym = fun.symbol
 
-    if (sym == defn.Any_getClass) {
-      // The only primitive that is also callable as super call
-      js.GetClass(genThis())
-    } else if (currentClassSym.isNonNativeJSClass) {
+    if (currentClassSym.isNonNativeJSClass) {
       genJSSuperCall(tree, isStat)
     } else {
       /* #3013 `qual` can be `this.$outer()` in some cases since Scala 2.12,
