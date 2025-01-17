@@ -1826,7 +1826,33 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def termSymbol: Symbol = self.termSymbol
         def isSingleton: Boolean = self.isSingleton
         def memberType(member: Symbol): TypeRepr =
-          member.info.asSeenFrom(self, member.owner)
+          // This check only fails if no owner of the passed symbol is related to the `self` type
+          // Ideally we would just check if the symbol is a member of the type,
+          // but:
+          //  A) the children of enums are not members of those enums, which is unintuitive
+          //  B) this check was added late, risking major hard to fix regressions
+          //     (including in compilation tests)
+          // Additionally, it's useful to be able to learn a type of a symbol using some prefix,
+          // even if it's not a direct member of that prefix, but e.g. a nested one.
+          def isTypePrefixingPassedMember =
+            import scala.util.boundary
+            boundary {
+              var checked: Symbol = member
+              while(checked.exists) {
+                if self.derivesFrom(checked)
+                || self.typeSymbol.declarations.contains(checked)
+                || self.typeSymbol.companionClass.declarations.contains(checked) then
+                  boundary.break(true)
+                checked = checked.owner
+              }
+              boundary.break(false)
+            }
+          xCheckMacroAssert(isTypePrefixingPassedMember, s"$member is not a member of ${self.show}")
+          // We do not want to expose ClassInfo in the reflect API, instead we change it to a TypeRef,
+          // see issue #22395
+          member.info.asSeenFrom(self, member.owner) match
+            case dotc.core.Types.ClassInfo(prefix, sym, _, _, _) => prefix.select(sym)
+            case other => other
         def baseClasses: List[Symbol] = self.baseClasses
         def baseType(cls: Symbol): TypeRepr = self.baseType(cls)
         def derivesFrom(cls: Symbol): Boolean = self.derivesFrom(cls)

@@ -1,0 +1,17 @@
+
+-- Error: tests/neg-macros/i15159/Test_2.scala:5:16 --------------------------------------------------------------------
+5 |  TestMacro.test[A] // error
+  |  ^^^^^^^^^^^^^^^^^
+  |  Exception occurred while executing macro expansion.
+  |  java.lang.AssertionError: class X is not a member of A
+  |  	at TestMacro$.testImpl$$anonfun$1(Macro_1.scala:8)
+  |  	at scala.collection.immutable.List.map(List.scala:247)
+  |  	at TestMacro$.testImpl(Macro_1.scala:7)
+  |
+  |---------------------------------------------------------------------------------------------------------------------
+  |Inline stack trace
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  |This location contains code that was inlined from Macro_1.scala:3
+3 |  inline def test[T]: Unit = ${ testImpl[T] }
+  |                             ^^^^^^^^^^^^^^^^
+   ---------------------------------------------------------------------------------------------------------------------
