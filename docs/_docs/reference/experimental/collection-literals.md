@@ -82,6 +82,12 @@ Using this scheme, the literals we have seen earlier could also be given alterna
    implicit search. That is, an implicit search for a given of the type would not be
    attempted because the type is not specific enough. Concretely, this is the case for Wildcard types `?`, `Any`, `AnyRef`, unconstrained type variables, or type variables constrained from above by an under-specified type.
 
+ - If the expected type is a subtype of `Seq` or an array type, we typecheck the
+   elements with the elements of the expected type. This means we can get the same
+   precision in propagated expected types as if the constructor was written explicitly.
+   Hence, we can't regress by going from `Seq(...)` or `Array(...)` to a
+   collection literal.
+
 **Syntax**
 
 ```

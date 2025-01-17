@@ -2460,8 +2460,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               untpd.TypedSplice(witness.select(nme.fromLiteral))
         case _ =>
           defaultMaker
+      // When expected type is a Seq or Array, propagate the `elemProto` as expected
+      // type of the elements.
+      val elems = elemProto match
+        case WildcardType(_) => tree.elems
+        case _ => tree.elems.map(untpd.Typed(_, untpd.TypeTree(elemProto)))
       typed(
-        untpd.Apply(maker, tree.elems).withSpan(tree.span)
+        untpd.Apply(maker, elems).withSpan(tree.span)
           .showing(i"typed collection literal $tree ---> $result", typr)
         , pt)
 
