@@ -53,7 +53,7 @@ object ccConfig:
     Feature.sourceVersion.stable != SourceVersion.`3.5`
 
   /** If true, turn on separation checking */
-  def useFresh(using Context): Boolean =
+  def useSepChecks(using Context): Boolean =
     Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
 
 end ccConfig
