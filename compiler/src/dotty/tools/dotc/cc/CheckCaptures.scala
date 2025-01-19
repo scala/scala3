@@ -1487,7 +1487,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  The unboxed condition ensures that the expected is not a type variable
      *  that's upper bounded by a read-only type. In this case it would not be sound
      *  to narrow to the read-only set, since that set can be propagated
-     *  by the type variable instantiatiin.
+     *  by the type variable instantiation.
      */
     private def improveReadOnly(actual: Type, expected: Type)(using Context): Type = actual match
       case actual @ CapturingType(parent, refs)
@@ -1816,7 +1816,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       end checker
 
       checker.traverse(unit)(using ctx.withOwner(defn.RootClass))
-      if ccConfig.useFresh then SepChecker(this).traverse(unit)
+      if ccConfig.useSepChecks then SepChecker(this).traverse(unit)
       if !ctx.reporter.errorsReported then
         // We dont report errors here if previous errors were reported, because other
         // errors often result in bad applied types, but flagging these bad types gives

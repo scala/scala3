@@ -42,7 +42,7 @@ object Fresh:
   object Cap:
 
     def apply(initialHidden: Refs = emptySet)(using Context): CaptureRef =
-      if ccConfig.useFresh then
+      if ccConfig.useSepChecks then
         AnnotatedType(defn.captureRoot.termRef, Annot(CaptureSet.HiddenSet(initialHidden)))
       else
         defn.captureRoot.termRef
@@ -61,20 +61,13 @@ object Fresh:
   class FromCap(owner: Symbol)(using Context) extends BiTypeMap, FollowAliasesMap:
     thisMap =>
 
-    var reach = false
-
-    private def initHidden =
-      val ref = owner.termRef
-      if reach then
-        if ref.isTrackableRef then SimpleIdentitySet(ref.reach) else emptySet
-      else
-        if ref.isTracked then SimpleIdentitySet(ref) else emptySet
+    private var reach = false
 
     override def apply(t: Type) =
       if variance <= 0 then t
       else t match
         case t: CaptureRef if t.isCap =>
-          Cap(initHidden)
+          Cap(ownerToHidden(owner, reach))
         case t @ CapturingType(_, refs) =>
           val savedReach = reach
           if t.isBoxed then reach = true
@@ -103,11 +96,11 @@ object Fresh:
 
   /** Maps cap to fresh */
   def fromCap(tp: Type, owner: Symbol = NoSymbol)(using Context): Type =
-    if ccConfig.useFresh then FromCap(owner)(tp) else tp
+    if ccConfig.useSepChecks then FromCap(owner)(tp) else tp
 
   /** Maps fresh to cap */
   def toCap(tp: Type)(using Context): Type =
-    if ccConfig.useFresh then FromCap(NoSymbol).inverse(tp) else tp
+    if ccConfig.useSepChecks then FromCap(NoSymbol).inverse(tp) else tp
 
   /** If `refs` contains an occurrence of `cap` or `cap.rd`, the current context
    *  with an added property PrintFresh. This addition causes all occurrences of
