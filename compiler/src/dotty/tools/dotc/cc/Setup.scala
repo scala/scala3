@@ -432,7 +432,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
     private val paramSigChange = util.EqHashSet[Tree]()
 
-    /** Transform type of tree, and remember the transformed type as the type the tree
+    /** Transform type of tree, and remember the transformed type as the type of the tree
      *  @pre !(boxed && sym.exists)
      */
     private def transformTT(tree: TypeTree, sym: Symbol, boxed: Boolean)(using Context): Unit =
