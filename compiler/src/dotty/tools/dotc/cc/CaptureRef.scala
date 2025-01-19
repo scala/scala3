@@ -17,7 +17,7 @@ import CaptureSet.VarState
 
 /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs,
  *  as well as three kinds of AnnotatedTypes representing readOnly, reach, and maybe capabilities.
- *  If there are several annotations they come with an orderL
+ *  If there are several annotations they come with an order:
  *  `*` first, `.rd` next, `?` last.
  */
 trait CaptureRef extends TypeProxy, ValueType:
