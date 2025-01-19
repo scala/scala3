@@ -43,9 +43,9 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
    */
   extension (x: Any) def reachCapability: Any = x
 
-  /** Unique capabilities x! which appear as terms in @retains annotations are encoded
-   *  as `caps.uniqueCapability(x)`. When converted to CaptureRef types in capture sets
-   *  they are  represented as `x.type @annotation.internal.uniqueCapability`.
+  /** Read-only capabilities x.rd which appear as terms in @retains annotations are encoded
+   *  as `caps.readOnlyCapability(x)`. When converted to CaptureRef types in capture sets
+   *  they are  represented as `x.type @annotation.internal.readOnlyCapability`.
    */
   extension (x: Any) def readOnlyCapability: Any = x
 
