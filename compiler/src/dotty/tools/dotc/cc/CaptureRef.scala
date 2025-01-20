@@ -14,6 +14,7 @@ import Periods.NoRunId
 import compiletime.uninitialized
 import StdNames.nme
 import CaptureSet.VarState
+import Annotations.Annotation
 
 /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs,
  *  as well as three kinds of AnnotatedTypes representing readOnly, reach, and maybe capabilities.
@@ -24,6 +25,18 @@ trait CaptureRef extends TypeProxy, ValueType:
   private var myCaptureSet: CaptureSet | Null = uninitialized
   private var myCaptureSetRunId: Int = NoRunId
   private var mySingletonCaptureSet: CaptureSet.Const | Null = null
+  private var myDerivedRefs: List[AnnotatedType] = Nil
+
+  /** A derived reach, readOnly or maybe reference. Derived references are cached. */
+  def derivedRef(annotCls: ClassSymbol)(using Context): AnnotatedType =
+    def recur(refs: List[AnnotatedType]): AnnotatedType = refs match
+      case ref :: refs1 =>
+        if ref.annot.symbol == annotCls then ref else recur(refs1)
+      case Nil =>
+        val derived = AnnotatedType(this, Annotation(annotCls, util.Spans.NoSpan))
+        myDerivedRefs = derived :: myDerivedRefs
+        derived
+    recur(myDerivedRefs)
 
   /** Is the reference tracked? This is true if it can be tracked and the capture
    *  set of the underlying type is not always empty.
