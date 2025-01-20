@@ -66,21 +66,28 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
       recur(refs)
     end hidden
+
+    /** Deduct the footprint of `sym` and `sym*` from `refs` */
+    private def deductSym(sym: Symbol)(using Context) =
+      val ref = sym.termRef
+      if ref.isTrackableRef then refs -- CaptureSet(ref, ref.reach).elems.footprint
+      else refs
+
+    /** Deduct the footprint of all captures of `deps` from `refs` */
+    private def deductCapturesOf(deps: List[Tree])(using Context): Refs =
+      deps.foldLeft(refs): (refs, dep) =>
+        refs -- captures(dep).footprint
   end extension
 
   /** The captures of an argument or prefix widened to the formal parameter, if
    *  the latter contains a cap.
    */
   private def formalCaptures(arg: Tree)(using Context): Refs =
-    val argType = arg.formalType.orElse(arg.nuType)
-    (if argType.hasUseAnnot then argType.deepCaptureSet else argType.captureSet)
-      .elems
+    arg.formalType.orElse(arg.nuType).deepCaptureSet.elems
 
    /** The captures of a node */
   private def captures(tree: Tree)(using Context): Refs =
-    val tpe = tree.nuType
-    (if tree.formalType.hasUseAnnot then tpe.deepCaptureSet else tpe.captureSet)
-      .elems
+   tree.nuType.deepCaptureSet.elems
 
   private def sepApplyError(fn: Tree, args: List[Tree], argIdx: Int,
       overlap: Refs, hiddenInArg: Refs, footprints: List[(Refs, Int)],
@@ -144,7 +151,7 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   def sepUseError(tree: Tree, used: Refs, globalOverlap: Refs)(using Context): Unit =
     val individualChecks = for mdefs <- previousDefs.iterator; mdef <- mdefs.iterator yield
-      val hiddenByDef = captures(mdef.tpt).hidden
+      val hiddenByDef = captures(mdef.tpt).hidden.footprint
       val overlap = defUseOverlap(hiddenByDef, used, tree.symbol)
       if !overlap.isEmpty then
         def resultStr = if mdef.isInstanceOf[DefDef] then " result" else ""
@@ -172,20 +179,16 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     val footprints = mutable.ListBuffer[(Refs, Int)]((footprint, 0))
     val indexedArgs = args.zipWithIndex
 
-    def subtractDeps(elems: Refs, arg: Tree): Refs =
-      deps(arg).foldLeft(elems): (elems, dep) =>
-        elems -- captures(dep).footprint
-
     for (arg, idx) <- indexedArgs do
       if !arg.needsSepCheck then
-        footprint = footprint ++ subtractDeps(captures(arg).footprint, arg)
+        footprint = footprint ++ captures(arg).footprint.deductCapturesOf(deps(arg))
         footprints += ((footprint, idx + 1))
     for (arg, idx) <- indexedArgs do
       if arg.needsSepCheck then
         val ac = formalCaptures(arg)
         val hiddenInArg = ac.hidden.footprint
         //println(i"check sep $arg: $ac, footprint so far = $footprint, hidden = $hiddenInArg")
-        val overlap = subtractDeps(hiddenInArg.overlapWith(footprint), arg)
+        val overlap = hiddenInArg.overlapWith(footprint).deductCapturesOf(deps(arg))
         if !overlap.isEmpty then
           sepApplyError(fn, args, idx, overlap, hiddenInArg, footprints.toList, deps)
         footprint ++= captures(arg).footprint
@@ -267,7 +270,8 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       case tree: ValOrDefDef =>
         traverseChildren(tree)
         if previousDefs.nonEmpty && !tree.symbol.isOneOf(TermParamOrAccessor) then
-          defsShadow ++= captures(tree.tpt).hidden.footprint
+          capt.println(i"sep check def ${tree.symbol}: ${tree.tpt} with ${captures(tree.tpt).hidden.footprint}")
+          defsShadow ++= captures(tree.tpt).hidden.footprint.deductSym(tree.symbol)
           resultType(tree.symbol) = tree.tpt.nuType
           previousDefs.head += tree
       case _ =>

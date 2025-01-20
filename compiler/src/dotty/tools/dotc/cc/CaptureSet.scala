@@ -1051,7 +1051,7 @@ object CaptureSet:
     def getElems(v: Var): Option[Refs] = elemsMap.get(v)
 
     /** Record elements, return whether this was allowed.
-     *  By default, recording is allowed in regular both not in frozen states.
+     *  By default, recording is allowed in regular but not in frozen states.
      */
     def putElems(v: Var, elems: Refs): Boolean = { elemsMap(v) = elems; true }
 
@@ -1062,7 +1062,7 @@ object CaptureSet:
     def getDeps(v: Var): Option[Deps] = depsMap.get(v)
 
     /** Record dependent sets, return whether this was allowed.
-     *  By default, recording is allowed in regular both not in frozen states.
+     *  By default, recording is allowed in regular but not in frozen states.
      */
     def putDeps(v: Var, deps: Deps): Boolean = { depsMap(v) = deps; true }
 
