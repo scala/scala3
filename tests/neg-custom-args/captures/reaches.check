@@ -56,15 +56,45 @@
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/reaches.scala:79:10 -----------------------------------------------------------
-79 |  ps.map((x, y) => compose1(x, y)) // error // error
+79 |  ps.map((x, y) => compose1(x, y)) // error // error // error sepcheck
    |          ^
    |          Local reach capability ps* leaks into capture scope of method mapCompose.
    |          To allow this, the parameter ps should be declared with a @use annotation
 -- Error: tests/neg-custom-args/captures/reaches.scala:79:13 -----------------------------------------------------------
-79 |  ps.map((x, y) => compose1(x, y)) // error // error
+79 |  ps.map((x, y) => compose1(x, y)) // error // error // error sepcheck
    |             ^
    |             Local reach capability ps* leaks into capture scope of method mapCompose.
    |             To allow this, the parameter ps should be declared with a @use annotation
+-- Error: tests/neg-custom-args/captures/reaches.scala:79:31 -----------------------------------------------------------
+79 |  ps.map((x, y) => compose1(x, y)) // error // error // error sepcheck
+   |                               ^
+   |                               Separation failure: argument of type  (x$0: A) ->{y} box A^?
+   |                               to method compose1: [A, B, C](f: A => B, g: B => C): A ->{f, g} C
+   |                               corresponds to capture-polymorphic formal parameter g of type  box A^? => box A^?
+   |                               and captures {ps*}, but this capability is also passed separately
+   |                               in the first argument with type  (x$0: A) ->{x} box A^?.
+   |
+   |                                 Capture set of first argument         : {x}
+   |                                 Hidden set of current argument        : {y}
+   |                                 Footprint of first argument           : {x, ps*}
+   |                                 Hidden footprint of current argument  : {y, ps*}
+   |                                 Declared footprint of current argument: {}
+   |                                 Undeclared overlap of footprints      : {ps*}
+-- Error: tests/neg-custom-args/captures/reaches.scala:82:31 -----------------------------------------------------------
+82 |  ps.map((x, y) => compose1(x, y)) // error sepcheck
+   |                               ^
+   |                               Separation failure: argument of type  (x$0: A) ->{y} box A^?
+   |                               to method compose1: [A, B, C](f: A => B, g: B => C): A ->{f, g} C
+   |                               corresponds to capture-polymorphic formal parameter g of type  box A^? => box A^?
+   |                               and captures {ps*}, but this capability is also passed separately
+   |                               in the first argument with type  (x$0: A) ->{x} box A^?.
+   |
+   |                                 Capture set of first argument         : {x}
+   |                                 Hidden set of current argument        : {y}
+   |                                 Footprint of first argument           : {x, ps*}
+   |                                 Hidden footprint of current argument  : {y, ps*}
+   |                                 Declared footprint of current argument: {}
+   |                                 Undeclared overlap of footprints      : {ps*}
 -- Error: tests/neg-custom-args/captures/reaches.scala:61:31 -----------------------------------------------------------
 61 |  val leaked = usingFile[File^{id*}]: f => // error
    |                               ^^^
