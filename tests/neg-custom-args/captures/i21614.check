@@ -1,11 +1,8 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:12:12 ---------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:12:33 ---------------------------------------
 12 |  files.map((f: F) => new Logger(f)) // error, Q: can we make this pass (see #19076)?
-   |            ^^^^^^^^^^^^^^^^^^^^^^^
-   |            Found:    (f: F) ->{files.rd*} box Logger{val f²: File^?}^?
-   |            Required: (f: box F^{files.rd*}) ->{fresh} box Logger{val f²: File^?}^?
-   |
-   |            where:    f  is a reference to a value parameter
-   |                      f² is a value in class Logger
+   |                                 ^
+   |                                 Found:    (f : F)
+   |                                 Required: File^
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21614.scala:15:12 ---------------------------------------
@@ -14,7 +11,7 @@
    |Found:    (_$1: box File^{files*}) ->{files*} (ex$16: caps.Exists) -> box Logger{val f: File^{_$1}}^{ex$16.rd, _$1}
    |Required: (_$1: box File^{files*}) => box Logger{val f: File^?}^?
    |
-   |Note that reference ex$16.rd
-   |cannot be included in outer capture set ?
+   |Note that the universal capability `cap.rd`
+   |cannot be included in capture set ?
    |
    | longer explanation available when compiling with `-explain`
