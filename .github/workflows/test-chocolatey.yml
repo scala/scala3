@@ -21,7 +21,10 @@ on:
 
 env:
   CHOCOLATEY-REPOSITORY: chocolatey-pkgs
-  DOTTY_CI_INSTALLATION: ${{ secrets.GITHUB_TOKEN }}
+  # Controls behaviour of chocolatey{Install,Uninstall}.ps1 scripts
+  # During snapshot releases it uses a different layout and requires access token to GH Actions artifacts
+  # During stable releases it uses publically available archives
+  DOTTY_CI_INSTALLATION: ${{ endsWith(inputs.version, '-SNAPSHOT') && secrets.GITHUB_TOKEN || '' }}
 
 jobs:
   test:
