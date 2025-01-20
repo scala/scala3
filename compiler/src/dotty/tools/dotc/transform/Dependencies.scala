@@ -29,7 +29,7 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
   def tracked: Iterable[Symbol] = free.keys
 
   /** The outermost class that captures all free variables of a function
-   *  that are captured by enclosinh classes (this means that the function could
+   *  that are captured by enclosing classes (this means that the function could
    *  be placed in that class without having to add more environment parameters)
    */
   def logicalOwner: collection.Map[Symbol, Symbol] = logicOwner
