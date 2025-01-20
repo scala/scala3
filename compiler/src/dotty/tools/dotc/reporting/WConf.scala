@@ -19,23 +19,27 @@ enum MessageFilter:
     case Deprecated => message.isInstanceOf[Diagnostic.DeprecationWarning]
     case Feature => message.isInstanceOf[Diagnostic.FeatureWarning]
     case Unchecked => message.isInstanceOf[Diagnostic.UncheckedWarning]
+    case MessageID(errorId) => message.msg.errorId == errorId
     case MessagePattern(pattern) =>
       val noHighlight = message.msg.message.replaceAll("\\e\\[[\\d;]*[^\\d;]","")
       pattern.findFirstIn(noHighlight).nonEmpty
-    case MessageID(errorId) => message.msg.errorId == errorId
     case SourcePattern(pattern) =>
       val source = message.position.orElse(NoSourcePosition).source()
       val path = source.jfile()
         .map(_.toPath.toAbsolutePath.toUri.normalize().getRawPath)
         .orElse(source.path())
       pattern.findFirstIn(path).nonEmpty
-
+    case Origin(pattern) =>
+      message match
+      case message: Diagnostic.DeprecationWarning => pattern.findFirstIn(message.origin).nonEmpty
+      case _ => false
     case None => false
 
   case Any, Deprecated, Feature, Unchecked, None
   case MessagePattern(pattern: Regex)
   case MessageID(errorId: ErrorMessageID)
   case SourcePattern(pattern: Regex)
+  case Origin(pattern: Regex)
 
 enum Action:
   case Error, Warning, Verbose, Info, Silent
@@ -96,6 +100,7 @@ object WConf:
         case _             => Left(s"unknown category: $conf")
 
       case "src" => regex(conf).map(SourcePattern.apply)
+      case "origin" => regex(conf).map(Origin.apply)
 
       case _ => Left(s"unknown filter: $filter")
     case _ => Left(s"unknown filter: $s")

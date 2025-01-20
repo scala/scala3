@@ -36,7 +36,7 @@ end Common
 
 object Instances extends Common:
 
-  given Int is Ord as intOrd:
+  given intOrd: Int is Ord:
     extension (x: Int)
       def compareTo(y: Int) =
         if x < y then -1
@@ -52,7 +52,7 @@ object Instances extends Common:
         val fst = x.compareTo(y)
         if (fst != 0) fst else xs1.compareTo(ys1)
 
-  given List is Monad as listMonad:
+  given listMonad: List is Monad:
     extension [A](xs: List[A]) def flatMap[B](f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
@@ -60,7 +60,7 @@ object Instances extends Common:
 
   type Reader[Ctx] = [X] =>> Ctx => X
 
-  given [Ctx] => Reader[Ctx] is Monad as readerMonad:
+  given readerMonad: [Ctx] => Reader[Ctx] is Monad:
     extension [A](r: Ctx => A) def flatMap[B](f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
@@ -82,7 +82,7 @@ object Instances extends Common:
   def maximum[T: Ord](xs: List[T]): T =
     xs.reduce(_ `max` _)
 
-  given [T: Ord] => T is Ord as descending:
+  given descending: [T: Ord] => T is Ord:
     extension (x: T) def compareTo(y: T) = T.compareTo(y)(x)
 
   def minimum[T: Ord](xs: List[T]) =

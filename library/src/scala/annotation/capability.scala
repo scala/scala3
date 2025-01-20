@@ -11,4 +11,6 @@ import annotation.experimental
  *  THere, the capture set of any instance of `CanThrow` is assumed to be
  *  `{*}`.
  */
-@experimental final class capability extends StaticAnnotation
+@experimental
+@deprecated("To make a class a capability, let it derive from the `Capability` trait instead")
+final class capability extends StaticAnnotation

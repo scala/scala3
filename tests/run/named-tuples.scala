@@ -100,6 +100,24 @@ val _: CombinedInfo = bob ++ addr
   val addr4 = addr3.zip("Preverenges", 1028)
   println(addr4)
 
+  val reducer: (map: Person => Int, reduce: (Int, Int) => Int) =
+    (map = _.age, reduce = _ + _)
+
+  extension [T](xs: List[T])
+    def mapReduce[U](reducer: (map: T => U, reduce: (U, U) => U)): U =
+      xs.map(reducer.map).reduce(reducer.reduce)
+
+  val totalAge = persons.mapReduce(reducer)
+  println(totalAge)
+
+  inline def namesOf[T <: AnyNamedTuple](t: T): Names[T] = compiletime.constValueTuple[Names[T]]
+  val namesEmpty = namesOf(NamedTuple.Empty)
+  val namesBob = namesOf(bob)
+  val namesEmpty2: EmptyTuple = namesEmpty
+  val namesBob2: ("name", "age") = namesBob
+  println(namesEmpty)
+  println(namesBob)
+
   // testing conversions
 object Conv:
 
@@ -108,7 +126,11 @@ object Conv:
   def f22(x: String) = x
   f22(bob)
 
+object SingletonExpectedTypes:
+  // original code from issue https://github.com/scala/scala3/issues/20267
+  type TripleSingle = ("Lausanne", 1000, 140000)
+  type CitySingle = (name: "Lausanne", zip: 1000, pop: 140000)
 
-
-
-
+  def test =
+    val tripleSingle: TripleSingle = ("Lausanne", 1000, 140000) // OK
+    val citySingle: CitySingle = (name = "Lausanne", zip = 1000, pop = 140000) // error

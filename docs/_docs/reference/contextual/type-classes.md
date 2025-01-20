@@ -27,7 +27,7 @@ trait Monoid[T] extends SemiGroup[T]:
 An implementation of this `Monoid` type class for the type `String` can be the following:
 
 ```scala
-given Monoid[String] with
+given Monoid[String]:
   extension (x: String) def combine (y: String): String = x.concat(y)
   def unit: String = ""
 ```
@@ -35,7 +35,7 @@ given Monoid[String] with
 Whereas for the type `Int` one could write the following:
 
 ```scala
-given Monoid[Int] with
+given Monoid[Int]:
   extension (x: Int) def combine (y: Int): Int = x + y
   def unit: Int = 0
 ```
@@ -43,22 +43,8 @@ given Monoid[Int] with
 This monoid can now be used as _context bound_ in the following `combineAll` method:
 
 ```scala
-def combineAll[T: Monoid](xs: List[T]): T =
-  xs.foldLeft(summon[Monoid[T]].unit)(_.combine(_))
-```
-
-To get rid of the `summon[...]` we can define a `Monoid` object as follows:
-
-```scala
-object Monoid:
-  def apply[T](using m: Monoid[T]) = m
-```
-
-Which would allow to re-write the `combineAll` method this way:
-
-```scala
-def combineAll[T: Monoid](xs: List[T]): T =
-  xs.foldLeft(Monoid[T].unit)(_.combine(_))
+def combineAll[T: Monoid as m](xs: List[T]): T =
+  xs.foldLeft(m.unit)(_.combine(_))
 ```
 
 ## Functors
@@ -77,7 +63,7 @@ Which could read as follows: "A `Functor` for the type constructor `F[_]` repres
 This way, we could define an instance of `Functor` for the `List` type:
 
 ```scala
-given Functor[List] with
+given Functor[List]:
   def map[A, B](x: List[A], f: A => B): List[B] =
     x.map(f) // List already has a `map` method
 ```
@@ -109,7 +95,7 @@ trait Functor[F[_]]:
 The instance of `Functor` for `List` now becomes:
 
 ```scala
-given Functor[List] with
+given Functor[List]:
   extension [A](xs: List[A])
     def map[B](f: A => B): List[B] =
       xs.map(f) // List already has a `map` method
@@ -159,7 +145,7 @@ end Monad
 A `List` can be turned into a monad via this `given` instance:
 
 ```scala
-given listMonad: Monad[List] with
+given listMonad: Monad[List]:
   def pure[A](x: A): List[A] =
     List(x)
   extension [A](xs: List[A])
@@ -176,7 +162,7 @@ it explicitly.
 `Option` is an other type having the same kind of behaviour:
 
 ```scala
-given optionMonad: Monad[Option] with
+given optionMonad: Monad[Option]:
   def pure[A](x: A): Option[A] =
     Option(x)
   extension [A](xo: Option[A])
@@ -223,7 +209,7 @@ type ConfigDependent[Result] = Config => Result
 The monad instance will look like this:
 
 ```scala
-given configDependentMonad: Monad[ConfigDependent] with
+given configDependentMonad: Monad[ConfigDependent]:
 
   def pure[A](x: A): ConfigDependent[A] =
     config => x
@@ -244,7 +230,7 @@ type ConfigDependent = [Result] =>> Config => Result
 Using this syntax would turn the previous `configDependentMonad` into:
 
 ```scala
-given configDependentMonad: Monad[[Result] =>> Config => Result] with
+given configDependentMonad: Monad[[Result] =>> Config => Result]:
 
   def pure[A](x: A): Config => A =
     config => x
@@ -259,7 +245,7 @@ end configDependentMonad
 It is likely that we would like to use this pattern with other kinds of environments than our `Config` trait. The Reader monad allows us to abstract away `Config` as a type _parameter_, named `Ctx` in the following definition:
 
 ```scala
-given readerMonad[Ctx]: Monad[[X] =>> Ctx => X] with
+given readerMonad: [Ctx] => Monad[[X] =>> Ctx => X]:
 
   def pure[A](x: A): Ctx => A =
     ctx => x

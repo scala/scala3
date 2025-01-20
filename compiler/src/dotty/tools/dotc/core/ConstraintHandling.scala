@@ -120,7 +120,7 @@ trait ConstraintHandling {
    */
   private var myTrustBounds = true
 
-  inline def withUntrustedBounds(op: => Type): Type =
+  transparent inline def withUntrustedBounds(op: => Type): Type =
     val saved = myTrustBounds
     myTrustBounds = false
     try op finally myTrustBounds = saved
@@ -295,40 +295,63 @@ trait ConstraintHandling {
   end legalBound
 
   protected def addOneBound(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(using Context): Boolean =
+
+    // Replace top-level occurrences of `param` in `bound` by `Nothing`
+    def sanitize(bound: Type): Type =
+      if bound.stripped eq param then defn.NothingType
+      else bound match
+        case bound: AndOrType =>
+          bound.derivedAndOrType(sanitize(bound.tp1), sanitize(bound.tp2))
+        case _ =>
+          bound
+
     if !constraint.contains(param) then true
-    else if !isUpper && param.occursIn(rawBound) then
-      // We don't allow recursive lower bounds when defining a type,
-      // so we shouldn't allow them as constraints either.
-      false
+    else if !isUpper && param.occursIn(rawBound.widen) then
+      val rawBound1 = sanitize(rawBound.widenDealias)
+      if param.occursIn(rawBound1) then
+        // We don't allow recursive lower bounds when defining a type,
+        // so we shouldn't allow them as constraints either.
+        false
+      else addOneBound(param, rawBound1, isUpper)
     else
-      val bound = legalBound(param, rawBound, isUpper)
-      val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
-      val equalBounds = (if isUpper then lo else hi) eq bound
-      if equalBounds && !bound.existsPart(_ eq param, StopAt.Static) then
-        // The narrowed bounds are equal and not recursive,
-        // so we can remove `param` from the constraint.
-        constraint = constraint.replace(param, bound)
-        true
-      else
-        // Narrow one of the bounds of type parameter `param`
-        // If `isUpper` is true, ensure that `param <: `bound`, otherwise ensure
-        // that `param >: bound`.
-        val narrowedBounds =
-          val saved = homogenizeArgs
-          homogenizeArgs = Config.alignArgsInAnd
-          try
-            withUntrustedBounds(
-              if isUpper then oldBounds.derivedTypeBounds(lo, hi & bound)
-              else oldBounds.derivedTypeBounds(lo | bound, hi))
-          finally
-            homogenizeArgs = saved
+
+      // Narrow one of the bounds of type parameter `param`
+      // If `isUpper` is true, ensure that `param <: `bound`,
+      // otherwise ensure that `param >: bound`.
+      val narrowedBounds: TypeBounds =
+        val bound = legalBound(param, rawBound, isUpper)
+        val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
+
+        val saved = homogenizeArgs
+        homogenizeArgs = Config.alignArgsInAnd
+        try
+          withUntrustedBounds(
+            if isUpper then oldBounds.derivedTypeBounds(lo, hi & bound)
+            else oldBounds.derivedTypeBounds(lo | bound, hi))
+        finally
+          homogenizeArgs = saved
+      end narrowedBounds
+
+      // If the narrowed bounds are equal and not recursive,
+      // we can remove `param` from the constraint.
+      def tryReplace(newBounds: TypeBounds): Boolean =
+        val TypeBounds(lo, hi) = newBounds
+        val canReplace = (lo eq hi) && !newBounds.existsPart(_ eq param, StopAt.Static)
+        if canReplace then constraint = constraint.replace(param, lo)
+        canReplace
+
+      tryReplace(narrowedBounds) || locally:
         //println(i"narrow bounds for $param from $oldBounds to $narrowedBounds")
         val c1 = constraint.updateEntry(param, narrowedBounds)
         (c1 eq constraint)
         || {
           constraint = c1
           val TypeBounds(lo, hi) = constraint.entry(param): @unchecked
-          isSub(lo, hi)
+          val isSat = isSub(lo, hi)
+          if isSat then
+            // isSub may have narrowed the bounds further
+            tryReplace(constraint.nonParamBounds(param))
+          isSat
         }
   end addOneBound
 

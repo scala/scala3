@@ -14,8 +14,8 @@ object BigInt:
 @main def Test =
   val x = BigInt(2)
   val y = 3
-  val a1 = x + y
-  val a2 = y * x
+  val a1 = x + y // uses conversion on `y`
+  val a2 = y * x // uses conversion on `y`
   val a3 = x * x
   val a4 = y + y
 

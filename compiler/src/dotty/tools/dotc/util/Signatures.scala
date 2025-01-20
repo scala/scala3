@@ -499,7 +499,7 @@ object Signatures {
 
     def isSyntheticEvidence(name: String) =
       name.startsWith(NameKinds.ContextBoundParamName.separator)
-      && symbol.paramSymss.flatten.find(_.name.show == name).exists(_.flags.is(Flags.Implicit))
+      && symbol.paramSymss.flatten.find(_.name.show == name).exists(_.flags.isOneOf(Flags.GivenOrImplicit))
 
     def toTypeParam(tpe: PolyType): List[Param] =
       val evidenceParams = (tpe.paramNamess.flatten zip tpe.paramInfoss.flatten).flatMap:
@@ -651,7 +651,7 @@ object Signatures {
    *
    * @param err            The error message to inspect.
    * @param params         The parameters that were given at the call site.
-   * @param alreadyCurried Index of paramss we are currently in.
+   * @param paramssIndex   Index of paramss we are currently in.
    *
    * @return A pair composed of the index of the best alternative (0 if no alternatives
    *         were found), and the list of alternatives.

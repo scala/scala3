@@ -295,7 +295,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
 
     val selfType = apiType(sym.givenSelfType)
 
-    val name = sym.fullName.stripModuleClassSuffix.toString
+    val name = ExtractDependencies.classNameAsString(sym)
       // We strip module class suffix. Zinc relies on a class and its companion having the same name
 
     val tparams = sym.typeParams.map(apiTypeParameter).toArray

@@ -11,12 +11,7 @@ package <empty> {
     def f(y: C, z: C): Unit =
       {
         def g(): C @ann([y,z : Any]*) = ???
-        val ac:
-          (C => Array[String])
-            {
-              def apply(x: C): Array[String @ann([x : Any]*)]
-            }
-         = ???
+        val ac: (x: C) => Array[String @ann([x : Any]*)] = ???
         val dc: Array[String] = ac.apply(g())
         ()
       }

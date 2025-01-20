@@ -767,7 +767,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |package b:
          |  def main: Unit = incre@@
          |""".stripMargin,
-      """|increment3: Int
+      """|increment3 - d: Int
          |increment - a: Int
          |increment2 - a.c: Int
          |""".stripMargin
@@ -810,7 +810,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       """|fooBar: String
-         |fooBar: List[Int]
+         |fooBar - test.A: List[Int]
          |""".stripMargin,
     )
 
@@ -936,4 +936,14 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       ""
+    )
+
+  @Test def `metals-i6593` =
+    check(
+      """|package a:
+         |  class UniqueObject
+         |package b:
+         |  val i = Uniq@@
+         |""".stripMargin,
+         "UniqueObject(): UniqueObject - a"
     )

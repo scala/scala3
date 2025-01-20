@@ -41,6 +41,10 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
    */
   private val annotTrees = util.EqHashMap[untpd.MemberDef, mutable.ListBuffer[Tree]]()
 
+  /** A set of annotation trees appearing in annotated types.
+   */
+  private val annotatedTypeTrees = mutable.ListBuffer[Tree]()
+
   /** A map from member definitions to their doc comments, so that later
    *  parallel comment pickling does not need to access symbols of trees (which
    *  would involve accessing symbols of named types and possibly changing phases
@@ -56,6 +60,8 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
   def treeAnnots(tree: untpd.MemberDef): List[Tree] =
     val ts = annotTrees.lookup(tree)
     if ts == null then Nil else ts.toList
+
+  def typeAnnots: List[Tree] = annotatedTypeTrees.toList
 
   def docString(tree: untpd.MemberDef): Option[Comment] =
     Option(docStrings.lookup(tree))
@@ -278,6 +284,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
     case tpe: AnnotatedType =>
       writeByte(ANNOTATEDtype)
       withLength { pickleType(tpe.parent, richTypes); pickleTree(tpe.annot.tree) }
+      annotatedTypeTrees += tpe.annot.tree
     case tpe: AndType =>
       writeByte(ANDtype)
       withLength { pickleType(tpe.tp1, richTypes); pickleType(tpe.tp2, richTypes) }
@@ -466,7 +473,10 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
               }
             case _ =>
               if passesConditionForErroringBestEffortCode(tree.hasType) then
-                val sig = tree.tpe.signature
+                // #19951 The signature of a constructor of a Java annotation is irrelevant
+                val sig =
+                  if name == nme.CONSTRUCTOR && tree.symbol.exists && tree.symbol.owner.is(JavaAnnotation) then Signature.NotAMethod
+                  else tree.tpe.signature
                 var ename = tree.symbol.targetName
                 val selectFromQualifier =
                   name.isTypeName
@@ -507,7 +517,14 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
             writeByte(APPLY)
             withLength {
               pickleTree(fun)
-              args.foreach(pickleTree)
+              // #19951 Do not pickle default arguments to Java annotation constructors
+              if fun.symbol.isClassConstructor && fun.symbol.owner.is(JavaAnnotation) then
+                for arg <- args do
+                  arg match
+                    case NamedArg(_, Ident(nme.WILDCARD)) => ()
+                    case _                                => pickleTree(arg)
+              else
+                args.foreach(pickleTree)
             }
           }
         case TypeApply(fun, args) =>
@@ -766,8 +783,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
             pickleType(tree.tpe)
             bindings.foreach(pickleTree)
           }
-        case SplicePattern(pat, args) =>
-          val targs = Nil // SplicePattern `targs` will be added with #18271
+        case SplicePattern(pat, targs, args) =>
           writeByte(SPLICEPATTERN)
           withLength {
             pickleTree(pat)
@@ -797,10 +813,10 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
           report.error(ex.toMessage, tree.srcPos.focus)
           pickleErrorType()
         case ex: AssertionError =>
-          println(i"error when pickling tree $tree")
+          println(i"error when pickling tree $tree of class ${tree.getClass}")
           throw ex
         case ex: MatchError =>
-          println(i"error when pickling tree $tree")
+          println(i"error when pickling tree $tree of class ${tree.getClass}")
           throw ex
       }
   }

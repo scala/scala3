@@ -6,7 +6,7 @@ given IntWidth:
 
 trait IntCandidate:
   type Out
-given (using tracked val w: IntWidth) => IntCandidate:
+given (tracked val w: IntWidth) => IntCandidate:
   type Out = w.Out
 
 val x = summon[IntCandidate]

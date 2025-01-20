@@ -44,7 +44,7 @@ object Pickler {
    */
   inline val ParallelPickling = true
 
-  /**A holder for syncronization points and reports when writing TASTy asynchronously.
+  /**A holder for synchronization points and reports when writing TASTy asynchronously.
    * The callbacks should only be called once.
    */
   class AsyncTastyHolder private (
@@ -322,7 +322,7 @@ class Pickler extends Phase {
           if tree.span.exists then
             val reference = ctx.settings.sourceroot.value
             PositionPickler.picklePositions(
-                pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, reference,
+                pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, treePkl.typeAnnots, reference,
                 unit.source, tree :: Nil, positionWarnings,
                 scratch.positionBuffer, scratch.pickledIndices)
 

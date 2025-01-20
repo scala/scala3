@@ -3,6 +3,8 @@ package dotty.tools.pc
 
 import java.nio.file.Paths
 
+import scala.annotation.tailrec
+
 import scala.meta.internal.metals.ReportContext
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 import dotty.tools.pc.printer.ShortenedTypePrinter
@@ -12,7 +14,6 @@ import scala.meta.internal.pc.LabelPart.*
 import scala.meta.pc.InlayHintsParams
 import scala.meta.pc.SymbolSearch
 
-import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
@@ -194,10 +195,10 @@ object ImplicitConversion:
   def unapply(tree: Tree)(using params: InlayHintsParams, ctx: Context) =
     if (params.implicitConversions()) {
       tree match
-        case Apply(fun: Ident, args) if isSynthetic(fun) =>
+        case Apply(fun: Ident, args) if isSynthetic(fun) && args.exists(!_.span.isZeroExtent) =>
           implicitConversion(fun, args)
         case Apply(Select(fun, name), args)
-            if name == nme.apply && isSynthetic(fun) =>
+            if name == nme.apply && isSynthetic(fun) && args.exists(!_.span.isZeroExtent) =>
           implicitConversion(fun, args)
         case _ => None
     } else None
@@ -218,7 +219,7 @@ object ImplicitParameters:
     if (params.implicitParameters()) {
       tree match
         case Apply(fun, args)
-            if args.exists(isSyntheticArg) && !tree.sourcePos.span.isZeroExtent =>
+            if args.exists(isSyntheticArg) && !tree.sourcePos.span.isZeroExtent && !args.exists(isQuotes(_)) =>
           val (implicitArgs, providedArgs) = args.partition(isSyntheticArg)
           val allImplicit = providedArgs.isEmpty || providedArgs.forall {
             case Ident(name) => name == nme.MISSING
@@ -229,10 +230,12 @@ object ImplicitParameters:
         case _ => None
     } else None
 
-  private def isSyntheticArg(tree: Tree)(using Context) = tree match
+  @tailrec
+  def isSyntheticArg(tree: Tree)(using Context): Boolean = tree match
     case tree: Ident =>
-      tree.span.isSynthetic && tree.symbol.isOneOf(Flags.GivenOrImplicit) &&
-        !isQuotes(tree)
+      tree.span.isSynthetic && tree.symbol.isOneOf(Flags.GivenOrImplicit)
+    case Apply(fun, _ ) if tree.span.isZeroExtent => isSyntheticArg(fun)
+    case TypeApply(fun, _ ) if tree.span.isZeroExtent => isSyntheticArg(fun)
     case _ => false
 
   // Decorations for Quotes are rarely useful

@@ -159,7 +159,7 @@ class ReplCompiler extends Compiler:
       def wrap(trees: List[untpd.Tree]): untpd.PackageDef = {
         import untpd.*
 
-        val valdef = ValDef("expr".toTermName, TypeTree(), Block(trees, unitLiteral).withSpan(Span(0, expr.length)))
+        val valdef = ValDef("expr".toTermName, TypeTree(), Block(trees, syntheticUnitLiteral).withSpan(Span(0, expr.length)))
         val tmpl = Template(emptyConstructor, Nil, Nil, EmptyValDef, List(valdef))
         val wrapper = TypeDef("$wrapper".toTypeName, tmpl)
           .withMods(Modifiers(Final))

@@ -15,13 +15,13 @@ echo "testing scala.quoted.Expr.run from sbt scala"
 grep -qe "val a: scala.Int = 3" "$tmp"
 
 # setup for `scalac`/`scala` script tests
-"$SBT" "$DIST_PROJECT/pack"
+"$SBT" "$DIST_PROJECT/Universal/stage"
 
-echo "capturing scala version from $DIST_DIR/target/pack/VERSION"
-IFS=':=' read -ra versionProps < "$ROOT/$DIST_DIR/target/pack/VERSION" # temporarily set IFS to ':=' to split versionProps
+echo "capturing scala version from $DIST_DIR/target/universal/stage/VERSION"
+IFS=':=' read -ra versionProps < "$ROOT/$DIST_DIR/target/universal/stage/VERSION" # temporarily set IFS to ':=' to split versionProps
 [ ${#versionProps[@]} -eq 3 ] && \
   [ ${versionProps[0]} = "version" ] && \
-  [ -n ${versionProps[2]} ] || die "Expected non-empty 'version' property in $ROOT/$DIST_DIR/target/pack/VERSION"
+  [ -n ${versionProps[2]} ] || die "Expected non-empty 'version' property in $ROOT/$DIST_DIR/target/universal/stage/VERSION"
 scala_version=${versionProps[2]}
 
 # check that `scalac` compiles and `scala` runs it
@@ -77,7 +77,7 @@ echo "testing sbt scalac with suspension"
 clear_out "$OUT"
 "$SBT" "scala3-compiler-bootstrapped/scalac -d $OUT tests/pos-macros/macros-in-same-project-1/Bar.scala tests/pos-macros/macros-in-same-project-1/Foo.scala"  > "$tmp"
 
-# echo ":quit" | ./$DIST_DIR/target/pack/bin/scala  # not supported by CI
+# echo ":quit" | ./$DIST_DIR/target/universal/stage/bin/scala  # not supported by CI
 
 echo "testing ./bin/scaladoc"
 clear_out "$OUT1"

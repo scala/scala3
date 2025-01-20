@@ -46,7 +46,7 @@ object Test extends App {
   trait Monoid[T] extends SemiGroup[T]:
     def unit: T
 
-  given StringMonoid: Monoid[String] with
+  given StringMonoid: Monoid[String]:
     extension (x: String) def combine(y: String): String = x.concat(y)
     def unit: String = ""
 
@@ -63,12 +63,12 @@ object Test extends App {
     val minimum: T
   end Ord
 
-  given Ord[Int] with
+  given Ord[Int]:
     extension (x: Int) def compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
     val minimum = Int.MinValue
 
-  given listOrd[T: Ord]: Ord[List[T]] with
+  given listOrd: [T: Ord] => Ord[List[T]]:
     extension (xs: List[T]) def compareTo(ys: List[T]): Int = (xs, ys).match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -99,13 +99,13 @@ object Test extends App {
     def pure[A](x: A): F[A]
   end Monad
 
-  given listMonad: Monad[List] with
+  given listMonad: Monad[List]:
     extension [A](xs: List[A]) def flatMap[B](f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
 
-  given readerMonad[Ctx]: Monad[[X] =>> Ctx => X] with
+  given readerMonad: [Ctx] => Monad[[X] =>> Ctx => X]:
     extension [A](r: Ctx => A) def flatMap[B](f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =

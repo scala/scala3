@@ -110,7 +110,7 @@ class Compiler {
          new LetOverApply,           // Lift blocks from receivers of applications
          new ArrayConstructors) ::   // Intercept creation of (non-generic) arrays and intrinsify.
     List(new Erasure) ::             // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
-    List(new ElimErasedValueType,    // Expand erased value types to their underlying implmementation types
+    List(new ElimErasedValueType,    // Expand erased value types to their underlying implementation types
          new PureStats,              // Remove pure stats from blocks
          new VCElideAllocations,     // Peep-hole optimization to eliminate unnecessary value class allocations
          new EtaReduce,              // Reduce eta expansions of pure paths to the underlying function reference
@@ -132,6 +132,7 @@ class Compiler {
          new ElimStaticThis,         // Replace `this` references to static objects by global identifiers
          new CountOuterAccesses) ::  // Identify outer accessors that can be dropped
     List(new DropOuterAccessors,     // Drop unused outer accessors
+         new DropParentRefinements,  // Drop parent refinements from a template
          new CheckNoSuperThis,       // Check that supercalls don't contain references to `this`
          new Flatten,                // Lift all inner classes to package scope
          new TransformWildcards,     // Replace wildcards with default values
@@ -151,7 +152,10 @@ class Compiler {
     List(new GenBCode) ::             // Generate JVM bytecode
     Nil
 
-  var runId: Int = 1
+  // TODO: Initially 0, so that the first nextRunId call would return InitialRunId == 1
+  // Changing the initial runId from 1 to 0 makes the scala2-library-bootstrap fail to compile,
+  // when the underlying issue is fixed, please update dotc.profiler.RealProfiler.chromeTrace logic
+  private var runId: Int = 1
   def nextRunId: Int = {
     runId += 1; runId
   }

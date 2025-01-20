@@ -1,0 +1,13 @@
+-- [E202] Staging Issue Error: tests/neg/i21696.scala:7:52 -------------------------------------------------------------
+7 |def foo[T](using Quotes): Expr[Thing[T]] = '{ Thing[T]() } // error
+  |                                                    ^
+  |                                       Reference to T within quotes requires a given scala.quoted.Type[T] in scope
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | Referencing `T` inside a quoted expression requires a `scala.quoted.Type[T]` to be in scope. 
+  | Since Scala is subject to erasure at runtime, the type information will be missing during the execution of the code.
+  | `scala.quoted.Type[T]` is therefore needed to carry `T`'s type information into the quoted code. 
+  | Without an implicit `scala.quoted.Type[T]`, the type `T` cannot be properly referenced within the expression. 
+  | To resolve this, ensure that a `scala.quoted.Type[T]` is available, either through a context-bound or explicitly.
+   ---------------------------------------------------------------------------------------------------------------------

@@ -2,6 +2,7 @@ package dotty.tools.pc
 
 import java.nio.file.Paths
 
+import dotty.tools.pc.PcSymbolSearch.*
 import scala.meta.internal.metals.CompilerOffsetParams
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.VirtualFileParams
@@ -28,312 +29,13 @@ import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 
-abstract class PcCollector[T](
-    driver: InteractiveDriver,
-    params: VirtualFileParams
-):
-  private val caseClassSynthetics: Set[Name] = Set(nme.apply, nme.copy)
-  val uri = params.uri().nn
-  val filePath = Paths.get(uri).nn
-  val sourceText = params.text().nn
-  val text = sourceText.toCharArray().nn
-  val source =
-    SourceFile.virtual(filePath.toString(), sourceText)
-  driver.run(uri, source)
-  given ctx: Context = driver.currentCtx
-
-  val unit = driver.currentCtx.run.nn.units.head
-  val compilatonUnitContext = ctx.fresh.setCompilationUnit(unit)
-  val offset = params match
-    case op: OffsetParams => op.offset()
-    case _ => 0
-  val offsetParams =
-    params match
-      case op: OffsetParams => op
-      case _ => CompilerOffsetParams(uri, sourceText, 0, params.token().nn)
-  val pos = driver.sourcePosition(offsetParams)
-  val rawPath =
-    Interactive
-      .pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx)
-      .dropWhile(t => // NamedArg anyway doesn't have symbol
-        t.symbol == NoSymbol && !t.isInstanceOf[NamedArg] ||
-          // same issue https://github.com/scala/scala3/issues/15937 as below
-          t.isInstanceOf[TypeTree]
-      )
-
-  val path = rawPath match
-    // For type it will sometimes go into the wrong tree since TypeTree also contains the same span
-    // https://github.com/scala/scala3/issues/15937
-    case TypeApply(sel: Select, _) :: tail if sel.span.contains(pos.span) =>
-      Interactive.pathTo(sel, pos.span) ::: rawPath
-    case _ => rawPath
+trait PcCollector[T]:
+  self: WithCompilationUnit =>
   def collect(
       parent: Option[Tree]
   )(tree: Tree| EndMarker, pos: SourcePosition, symbol: Option[Symbol]): T
 
-  def symbolAlternatives(sym: Symbol) =
-    def member(parent: Symbol) = parent.info.member(sym.name).symbol
-    def primaryConstructorTypeParam(owner: Symbol) =
-      for
-        typeParams <- owner.primaryConstructor.paramSymss.headOption
-        param <- typeParams.find(_.name == sym.name)
-        if (param.isType)
-      yield param
-    def additionalForEnumTypeParam(enumClass: Symbol) =
-      if enumClass.is(Flags.Enum) then
-        val enumOwner =
-          if enumClass.is(Flags.Case)
-          then
-            Option.when(member(enumClass).is(Flags.Synthetic))(
-              enumClass.maybeOwner.companionClass
-            )
-          else Some(enumClass)
-        enumOwner.toSet.flatMap { enumOwner =>
-          val symsInEnumCases = enumOwner.children.toSet.flatMap(enumCase =>
-            if member(enumCase).is(Flags.Synthetic)
-            then primaryConstructorTypeParam(enumCase)
-            else None
-          )
-          val symsInEnumOwner =
-            primaryConstructorTypeParam(enumOwner).toSet + member(enumOwner)
-          symsInEnumCases ++ symsInEnumOwner
-        }
-      else Set.empty
-    val all =
-      if sym.is(Flags.ModuleClass) then
-        Set(sym, sym.companionModule, sym.companionModule.companion)
-      else if sym.isClass then
-        Set(sym, sym.companionModule, sym.companion.moduleClass)
-      else if sym.is(Flags.Module) then
-        Set(sym, sym.companionClass, sym.moduleClass)
-      else if sym.isTerm && (sym.owner.isClass || sym.owner.isConstructor)
-      then
-        val info =
-          if sym.owner.isClass then sym.owner.info else sym.owner.owner.info
-        Set(
-          sym,
-          info.member(sym.asTerm.name.setterName).symbol,
-          info.member(sym.asTerm.name.getterName).symbol
-        ) ++ sym.allOverriddenSymbols.toSet
-      // type used in primary constructor will not match the one used in the class
-      else if sym.isTypeParam && sym.owner.isPrimaryConstructor then
-        Set(sym, member(sym.maybeOwner.maybeOwner))
-          ++ additionalForEnumTypeParam(sym.maybeOwner.maybeOwner)
-      else if sym.isTypeParam then
-        primaryConstructorTypeParam(sym.maybeOwner).toSet
-          ++ additionalForEnumTypeParam(sym.maybeOwner) + sym
-      else Set(sym)
-    all.filter(s => s != NoSymbol && !s.isError)
-  end symbolAlternatives
-
-  private def isGeneratedGiven(df: NamedDefTree)(using Context) =
-    val nameSpan = df.nameSpan
-    df.symbol.is(Flags.Given) && sourceText.substring(
-      nameSpan.start,
-      nameSpan.end
-    ) != df.name.toString()
-
-  // First identify the symbol we are at, comments identify @@ as current cursor position
-  def soughtSymbols(path: List[Tree]): Option[(Set[Symbol], SourcePosition)] =
-    val sought = path match
-      /* reference of an extension paramter
-       * extension [EF](<<xs>>: List[EF])
-       *   def double(ys: List[EF]) = <<x@@s>> ++ ys
-       */
-      case (id: Ident) :: _
-          if id.symbol
-            .is(Flags.Param) && id.symbol.owner.is(Flags.ExtensionMethod) =>
-        Some(findAllExtensionParamSymbols(id.sourcePos, id.name, id.symbol))
-      /**
-       * Workaround for missing symbol in:
-       * class A[T](a: T)
-       * val x = new <<A>>(1)
-       */
-      case t :: (n: New) :: (sel: Select) :: _
-          if t.symbol == NoSymbol && sel.symbol.isConstructor =>
-        Some(symbolAlternatives(sel.symbol.owner), namePos(t))
-      /**
-       * Workaround for missing symbol in:
-       * class A[T](a: T)
-       * val x = <<A>>[Int](1)
-       */
-      case (sel @ Select(New(t), _)) :: (_: TypeApply) :: _
-          if sel.symbol.isConstructor =>
-        Some(symbolAlternatives(sel.symbol.owner), namePos(t))
-      /* simple identifier:
-       * val a = val@@ue + value
-       */
-      case (id: Ident) :: _ =>
-        Some(symbolAlternatives(id.symbol), id.sourcePos)
-      /* simple selector:
-       * object.val@@ue
-       */
-      case (sel: Select) :: _ if selectNameSpan(sel).contains(pos.span) =>
-        Some(symbolAlternatives(sel.symbol), pos.withSpan(sel.nameSpan))
-      /* named argument:
-       * foo(nam@@e = "123")
-       */
-      case (arg: NamedArg) :: (appl: Apply) :: _ =>
-        val realName = arg.name.stripModuleClassSuffix.lastPart
-        if pos.span.start > arg.span.start && pos.span.end < arg.span.point + realName.length
-        then
-          val length = realName.toString.backticked.length()
-          val pos = arg.sourcePos.withSpan(
-            arg.span
-              .withEnd(arg.span.start + length)
-              .withPoint(arg.span.start)
-          )
-          appl.symbol.paramSymss.flatten.find(_.name == arg.name).map { s =>
-            // if it's a case class we need to look for parameters also
-            if caseClassSynthetics(s.owner.name) && s.owner.is(Flags.Synthetic)
-            then
-              (
-                Set(
-                  s,
-                  s.owner.owner.companion.info.member(s.name).symbol,
-                  s.owner.owner.info.member(s.name).symbol
-                )
-                  .filter(_ != NoSymbol),
-                pos,
-              )
-            else (Set(s), pos)
-          }
-        else None
-        end if
-      /* all definitions:
-       * def fo@@o = ???
-       * class Fo@@o = ???
-       * etc.
-       */
-      case (df: NamedDefTree) :: _
-          if df.nameSpan.contains(pos.span) && !isGeneratedGiven(df) =>
-        Some(symbolAlternatives(df.symbol), pos.withSpan(df.nameSpan))
-      /* enum cases with params
-       * enum Foo:
-       *  case B@@ar[A](i: A)
-       */
-      case (df: NamedDefTree) :: Template(_, _, self, _) :: _
-          if (df.name == nme.apply || df.name == nme.unapply) && df.nameSpan.isZeroExtent =>
-        Some(symbolAlternatives(self.tpt.symbol), self.sourcePos)
-      /**
-       * For traversing annotations:
-       * @JsonNo@@tification("")
-       * def params() = ???
-       */
-      case (df: MemberDef) :: _ if df.span.contains(pos.span) =>
-        val annotTree = df.mods.annotations.find { t =>
-          t.span.contains(pos.span)
-        }
-        collectTrees(annotTree).flatMap { t =>
-          soughtSymbols(
-            Interactive.pathTo(t, pos.span)
-          )
-        }.headOption
-
-      /* Import selectors:
-       * import scala.util.Tr@@y
-       */
-      case (imp: Import) :: _ if imp.span.contains(pos.span) =>
-        imp
-          .selector(pos.span)
-          .map(sym => (symbolAlternatives(sym), sym.sourcePos))
-
-      case _ => None
-
-    sought match
-      case None => seekInExtensionParameters()
-      case _ => sought
-
-  end soughtSymbols
-
-  lazy val extensionMethods =
-    NavigateAST
-      .untypedPath(pos.span)(using compilatonUnitContext)
-      .collectFirst { case em @ ExtMethods(_, _) => em }
-
-  private def findAllExtensionParamSymbols(
-      pos: SourcePosition,
-      name: Name,
-      sym: Symbol
-  ) =
-    val symbols =
-      for
-        methods <- extensionMethods.map(_.methods)
-        symbols <- collectAllExtensionParamSymbols(
-          unit.tpdTree,
-          ExtensionParamOccurence(name, pos, sym, methods)
-        )
-      yield symbols
-    symbols.getOrElse((symbolAlternatives(sym), pos))
-  end findAllExtensionParamSymbols
-
-  private def seekInExtensionParameters() =
-    def collectParams(
-        extMethods: ExtMethods
-    ): Option[ExtensionParamOccurence] =
-      NavigateAST
-        .pathTo(pos.span, extMethods.paramss.flatten)(using
-          compilatonUnitContext
-        )
-        .collectFirst {
-          case v: untpd.ValOrTypeDef =>
-            ExtensionParamOccurence(
-              v.name,
-              v.namePos,
-              v.symbol,
-              extMethods.methods
-            )
-          case i: untpd.Ident =>
-            ExtensionParamOccurence(
-              i.name,
-              i.sourcePos,
-              i.symbol,
-              extMethods.methods
-            )
-        }
-
-    for
-      extensionMethodScope <- extensionMethods
-      occurrence <- collectParams(extensionMethodScope)
-      symbols <- collectAllExtensionParamSymbols(
-        path.headOption.getOrElse(unit.tpdTree),
-        occurrence
-      )
-    yield symbols
-  end seekInExtensionParameters
-
-  private def collectAllExtensionParamSymbols(
-      tree: tpd.Tree,
-      occurrence: ExtensionParamOccurence
-  ): Option[(Set[Symbol], SourcePosition)] =
-    occurrence match
-      case ExtensionParamOccurence(_, namePos, symbol, _)
-          if symbol != NoSymbol && !symbol.isError && !symbol.owner.is(
-            Flags.ExtensionMethod
-          ) =>
-        Some((symbolAlternatives(symbol), namePos))
-      case ExtensionParamOccurence(name, namePos, _, methods) =>
-        val symbols =
-          for
-            method <- methods.toSet
-            symbol <-
-              Interactive.pathTo(tree, method.span) match
-                case (d: DefDef) :: _ =>
-                  d.paramss.flatten.collect {
-                    case param if param.name.decoded == name.decoded =>
-                      param.symbol
-                  }
-                case _ => Set.empty[Symbol]
-            if (symbol != NoSymbol && !symbol.isError)
-            withAlt <- symbolAlternatives(symbol)
-          yield withAlt
-        if symbols.nonEmpty then Some((symbols, namePos)) else None
-  end collectAllExtensionParamSymbols
-
-  def result(): List[T] =
-    params match
-      case _: OffsetParams => resultWithSought()
-      case _ => resultAllOccurences().toList
+  def allowZeroExtentImplicits: Boolean = false
 
   def resultAllOccurences(): Set[T] =
     def noTreeFilter = (_: Tree) => true
@@ -341,54 +43,55 @@ abstract class PcCollector[T](
 
     traverseSought(noTreeFilter, noSoughtFilter)
 
-  def resultWithSought(): List[T] =
-    soughtSymbols(path) match
-      case Some((sought, _)) =>
-        lazy val owners = sought
-          .flatMap { s => Set(s.owner, s.owner.companionModule) }
-          .filter(_ != NoSymbol)
-        lazy val soughtNames: Set[Name] = sought.map(_.name)
+  def resultWithSought(sought: Set[Symbol]): List[T] =
+    lazy val owners = sought
+      .flatMap { s => Set(s.owner, s.owner.companionModule) }
+      .filter(_ != NoSymbol)
+    lazy val soughtNames: Set[Name] = sought.map(_.name)
 
-        /*
-         * For comprehensions have two owners, one for the enumerators and one for
-         * yield. This is a heuristic to find that out.
-         */
-        def isForComprehensionOwner(named: NameTree) =
-          soughtNames(named.name) &&
-            scala.util
-              .Try(named.symbol.owner)
-              .toOption
-              .exists(_.isAnonymousFunction) &&
-            owners.exists(o =>
-              o.span.exists && o.span.point == named.symbol.owner.span.point
-            )
+    /*
+      * For comprehensions have two owners, one for the enumerators and one for
+      * yield. This is a heuristic to find that out.
+      */
+    def isForComprehensionOwner(named: NameTree) =
+      soughtNames(named.name) &&
+        scala.util
+          .Try(named.symbol.owner)
+          .toOption
+          .exists(_.isAnonymousFunction) &&
+        owners.exists(o =>
+          o.span.exists && o.span.point == named.symbol.owner.span.point
+        )
 
-        def soughtOrOverride(sym: Symbol) =
-          sought(sym) || sym.allOverriddenSymbols.exists(sought(_))
+    def soughtOrOverride(sym: Symbol) =
+      sought(sym) || sym.allOverriddenSymbols.exists(sought(_))
 
-        def soughtTreeFilter(tree: Tree): Boolean =
-          tree match
-            case ident: Ident
-                if soughtOrOverride(ident.symbol) ||
-                  isForComprehensionOwner(ident) =>
-              true
-            case sel: Select if soughtOrOverride(sel.symbol) => true
-            case df: NamedDefTree
-                if soughtOrOverride(df.symbol) && !df.symbol.isSetter =>
-              true
-            case imp: Import if owners(imp.expr.symbol) => true
-            case _ => false
+    def soughtTreeFilter(tree: Tree): Boolean =
+      tree match
+        case ident: Ident
+            if soughtOrOverride(ident.symbol) ||
+              isForComprehensionOwner(ident) =>
+          true
+        case sel: Select if soughtOrOverride(sel.symbol) => true
+        case df: NamedDefTree
+            if soughtOrOverride(df.symbol) && !df.symbol.isSetter =>
+          true
+        case imp: Import if owners(imp.expr.symbol) => true
+        case _ => false
 
-        def soughtFilter(f: Symbol => Boolean): Boolean =
-          sought.exists(f)
+    def soughtFilter(f: Symbol => Boolean): Boolean =
+      sought.exists(f)
 
-        traverseSought(soughtTreeFilter, soughtFilter).toList
-
-      case None => Nil
+    traverseSought(soughtTreeFilter, soughtFilter).toList
+  end resultWithSought
 
   extension (span: Span)
     def isCorrect =
       !span.isZeroExtent && span.exists && span.start < sourceText.size && span.end <= sourceText.size
+
+  extension (tree: Tree)
+    def isCorrectSpan =
+      tree.span.isCorrect || (allowZeroExtentImplicits && tree.symbol.is(Flags.Implicit))
 
   def traverseSought(
       filter: Tree => Boolean,
@@ -410,7 +113,7 @@ abstract class PcCollector[T](
          * All indentifiers such as:
          * val a = <<b>>
          */
-        case ident: Ident if ident.span.isCorrect && filter(ident) =>
+        case ident: Ident if ident.isCorrectSpan && filter(ident) =>
           // symbols will differ for params in different ext methods, but source pos will be the same
           if soughtFilter(_.sourcePos == ident.symbol.sourcePos)
           then
@@ -425,7 +128,7 @@ abstract class PcCollector[T](
          * val x = new <<A>>(1)
          */
         case sel @ Select(New(t), _)
-            if sel.span.isCorrect &&
+            if sel.isCorrectSpan &&
               sel.symbol.isConstructor &&
               t.symbol == NoSymbol =>
           if soughtFilter(_ == sel.symbol.owner) then
@@ -440,7 +143,7 @@ abstract class PcCollector[T](
          * val a = hello.<<b>>
          */
         case sel: Select
-          if sel.span.isCorrect && filter(sel) &&
+          if sel.isCorrectSpan && filter(sel) &&
             !sel.isForComprehensionMethod =>
           occurrences + collect(
             sel,
@@ -453,7 +156,7 @@ abstract class PcCollector[T](
          */
         case df: NamedDefTree
             if df.span.isCorrect && df.nameSpan.isCorrect &&
-              filter(df) && !isGeneratedGiven(df) =>
+              filter(df) && !isGeneratedGiven(df, sourceText) =>
           def collectEndMarker =
             EndMarker.getPosition(df, pos, sourceText).map:
               collect(EndMarker(df.symbol), _)
@@ -572,35 +275,9 @@ abstract class PcCollector[T](
 
     val traverser =
       new PcCollector.DeepFolderWithParent[Set[T]](collectNamesWithParent)
-    val all = traverser(Set.empty[T], unit.tpdTree)
-    all
+    traverser(Set.empty[T], unit.tpdTree)
   end traverseSought
 
-  // @note (tgodzik) Not sure currently how to get rid of the warning, but looks to correctly
-  // @nowarn
-  private def collectTrees(trees: Iterable[Positioned]): Iterable[Tree] =
-    trees.collect { case t: Tree =>
-      t
-    }
-
-  // NOTE: Connected to https://github.com/scala/scala3/issues/16771
-  // `sel.nameSpan` is calculated incorrectly in (1 + 2).toString
-  // See test DocumentHighlightSuite.select-parentheses
-  private def selectNameSpan(sel: Select): Span =
-    val span = sel.span
-    if span.exists then
-      val point = span.point
-      if sel.name.toTermName == nme.ERROR then Span(point)
-      else if sel.qualifier.span.start > span.point then // right associative
-        val realName = sel.name.stripModuleClassSuffix.lastPart
-        Span(span.start, span.start + realName.length, point)
-      else Span(point, span.end, point)
-    else span
-
-  private def namePos(tree: Tree): SourcePosition =
-    tree match
-      case sel: Select => sel.sourcePos.withSpan(selectNameSpan(sel))
-      case _ => tree.sourcePos
 end PcCollector
 
 object PcCollector:
@@ -656,3 +333,21 @@ object EndMarker:
       )
   end getPosition
 end EndMarker
+
+abstract class WithSymbolSearchCollector[T](
+    driver: InteractiveDriver,
+    params: OffsetParams,
+) extends WithCompilationUnit(driver, params)
+    with PcSymbolSearch
+    with PcCollector[T]:
+  def result(): List[T] =
+    soughtSymbols.toList.flatMap { case (sought, _) =>
+      resultWithSought(sought)
+    }
+
+abstract class SimpleCollector[T](
+    driver: InteractiveDriver,
+    params: VirtualFileParams,
+) extends WithCompilationUnit(driver, params)
+    with PcCollector[T]:
+  def result(): List[T] = resultAllOccurences().toList

@@ -115,7 +115,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
     val objectName = sym.owner.fullName.encode.toString.stripSuffix("$")
     val resObj: Class[?] = Class.forName(objectName, true, classLoader())
     val symValue = resObj
-      .getDeclaredMethods.find(_.getName == sym.name.encode.toString)
+      .getDeclaredMethods
+      .find(method => method.getName == sym.name.encode.toString && method.getParameterCount == 0)
       .flatMap(result => rewrapValueClass(sym.info.classSymbol, result.invoke(null)))
     symValue
       .filter(_ => sym.is(Flags.Method) || sym.info != defn.UnitType)

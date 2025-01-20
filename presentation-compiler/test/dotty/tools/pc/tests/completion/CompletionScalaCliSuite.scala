@@ -8,7 +8,7 @@ import org.junit.Ignore
 class CompletionScalaCliSuite extends BaseCompletionSuite:
 
   @Test def `simple` =
-    check(
+    checkSubset(
       """|//> using lib "io.cir@@
          |package A
          |""".stripMargin,
@@ -30,11 +30,12 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
          |//> using lib io.circe::circe-core_native0.4
          |package A
          |""".stripMargin,
-      assertSingleItem = false
+      assertSingleItem = false,
+      filter = _.contains("circe-core_native0.4")
     )
 
   @Test def `version-sort` =
-    check(
+    checkSubset(
       """|//> using dep "com.lihaoyi::pprint:0.7@@"
          |package A
          |""".stripMargin,
@@ -42,12 +43,12 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
          |0.7.2
          |0.7.1
          |0.7.0
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Ignore
   @Test def `single-colon` =
-    check(
+    checkSubset(
       """|//> using lib "io.circe:circe-core_na@@
          |package A
          |""".stripMargin,
@@ -58,27 +59,28 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
     )
 
   @Test def `version` =
-    check(
-      """|//> using lib "io.circe::circe-core_sjs1:0.14.1@@"
+    checkSubset(
+      """|//> using lib "io.circe::circe-core_sjs1:0.14.10@@"
          |package A
          |""".stripMargin,
-      "0.14.1"
+      "0.14.10"
     )
 
   // We don't to add `::` before version if `sjs1` is specified
   @Test def `version-edit` =
     checkEdit(
-      """|//> using lib "io.circe::circe-core_sjs1:0.14.1@@"
+      """|//> using lib "io.circe::circe-core_sjs1:0.14.10@@"
          |package A
          |""".stripMargin,
-      """|//> using lib "io.circe::circe-core_sjs1:0.14.1"
+      """|//> using lib "io.circe::circe-core_sjs1:0.14.10"
          |package A
          |""".stripMargin,
+      filter = _.endsWith("0.14.10")
     )
 
   @Ignore
   @Test def `multiple-libs` =
-    check(
+    checkSubset(
       """|//> using lib "io.circe::circe-core:0.14.0", "io.circe::circe-core_na@@"
          |package A
          |""".stripMargin,
@@ -87,7 +89,7 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
 
   @Ignore
   @Test def `script` =
-    check(
+    checkSubset(
       scriptWrapper(
         """|//> using lib "io.circe:circe-core_na@@
            |
@@ -103,7 +105,7 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
     )
 
   @Test def `closing-quote` =
-    check(
+    checkSubset(
       """|//> using lib "io.circe::circe-core:0.14.0"@@
          |package A
          |""".stripMargin,
@@ -111,7 +113,7 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
     )
 
   @Test def `whitespace` =
-    check(
+    checkSubset(
       """|//> using lib "io.circe::circe-co @@
          |package A
          |""".stripMargin,
@@ -130,7 +132,7 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
     )
 
   @Test def `dep` =
-    check(
+    checkSubset(
       """|//> using dep "io.cir@@
          |package A
          |""".stripMargin,
@@ -140,12 +142,28 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
 
   @Ignore
   @Test def `multiple-deps2` =
-    check(
+    checkSubset(
       """|//> using libs "io.circe::circe-core:0.14.0", "io.circe::circe-core_na@@"
          |package A
          |""".stripMargin,
       "circe-core_native0.4"
     )
+
+  def checkSubset(
+      original: String,
+      expected: String,
+      filename: String = "A.scala",
+      enablePackageWrap: Boolean = true
+  ) = {
+    val expectedAtLeast = expected.linesIterator.toSet
+    check(
+      original,
+      expected,
+      filter = expectedAtLeast,
+      filename = filename,
+      enablePackageWrap = enablePackageWrap
+    )
+  }
 
   private def scriptWrapper(code: String, filename: String): String =
     // Vaguely looks like a scala file that ScalaCLI generates

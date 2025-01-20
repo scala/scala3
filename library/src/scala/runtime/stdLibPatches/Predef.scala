@@ -1,6 +1,7 @@
 package scala.runtime.stdLibPatches
 
 import scala.annotation.experimental
+import scala.annotation.internal.RuntimeChecked
 
 object Predef:
   import compiletime.summonFrom
@@ -79,5 +80,20 @@ object Predef:
    */
   @experimental
   infix type is[A <: AnyKind, B <: Any{type Self <: AnyKind}] = B { type Self = A }
+
+  extension [T](x: T)
+    /**Asserts that a term should be exempt from static checks that can be reliably checked at runtime.
+     * @example {{{
+     * val xs: Option[Int] = Option(1)
+     * xs.runtimeChecked match
+     *    case Some(x) => x // `Some(_)` can be checked at runtime, so no warning
+     * }}}
+     * @example {{{
+     * val xs: List[Int] = List(1,2,3)
+     * val y :: ys = xs.runtimeChecked // `_ :: _` can be checked at runtime, so no warning
+     * }}}
+     */
+    @experimental
+    inline def runtimeChecked: x.type @RuntimeChecked = x: @RuntimeChecked
 
 end Predef

@@ -1,6 +1,7 @@
 package dotty.tools.dotc
 package config
 
+import Settings.Setting.ChoiceWithHelp
 import dotty.tools.backend.jvm.BackendUtils.classfileVersionMap
 import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory, NoAbstractFile}
 import scala.language.unsafeNulls
@@ -24,7 +25,13 @@ object ScalaSettingsProperties:
     ScalaRelease.values.toList.map(_.show)
 
   def supportedSourceVersions: List[String] =
-    SourceVersion.values.toList.map(_.toString)
+    (SourceVersion.values.toList.diff(SourceVersion.illegalSourceVersionNames)).toList.map(_.toString)
+
+  def supportedLanguageFeatures: List[ChoiceWithHelp[String]] =
+    Feature.values.map((n, d) => ChoiceWithHelp(n.toString, d))
+
+  val legacyLanguageFeatures: List[String] =
+    Feature.legacyFeatures
 
   def defaultClasspath: String = sys.env.getOrElse("CLASSPATH", ".")
 

@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import SymDenotations.{ SymDenotation, ClassDenotation, NoDenotation, LazyType, stillValid, acceptStale, traceInvalid }
+import SymDenotations.{ SymDenotation, ClassDenotation, NoDenotation, LazyType, stillValid, movedToCompanionClass, acceptStale, traceInvalid }
 import Contexts.*
 import Names.*
 import NameKinds.*
@@ -755,6 +755,11 @@ object Denotations {
       }
       if (!symbol.exists) return updateValidity()
       if (!coveredInterval.containsPhaseId(ctx.phaseId)) return NoDenotation
+      // Moved to a companion class, likely at a later phase (in MoveStatics)
+      this match {
+        case symd: SymDenotation if movedToCompanionClass(symd) => return NoDenotation
+        case _ =>
+      }
       if (ctx.debug) traceInvalid(this)
       staleSymbolError
     }
@@ -956,7 +961,7 @@ object Denotations {
     }
 
     def staleSymbolError(using Context): Nothing =
-      if symbol.isPackageObject && ctx.run != null && ctx.run.nn.isCompilingSuspended
+      if symbol.lastKnownDenotation.isPackageObject && ctx.run != null && ctx.run.nn.isCompilingSuspended
       then throw StaleSymbolTypeError(symbol)
       else throw StaleSymbolException(staleSymbolMsg)
 

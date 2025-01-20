@@ -314,7 +314,7 @@ trait ClassLikeSupport:
   def parseObject(classDef: ClassDef, signatureOnly: Boolean = false): Member =
     mkClass(classDef)(
       // All objects are final so we do not need final modifier!
-      modifiers = classDef.symbol.getExtraModifiers().filter(_ != Modifier.Final),
+      modifiers = classDef.symbol.getExtraModifiers().filter(mod => mod != Modifier.Final && mod != Modifier.Opaque),
       signatureOnly = signatureOnly
     )
 
@@ -359,7 +359,9 @@ trait ClassLikeSupport:
       if methodSymbol.isExtensionMethod && methodSymbol.isRightAssoc then
         // Taken from RefinedPrinter.scala
         // If you change the names of the clauses below, also change them in right-associative-extension-methods.md
-        val (leftTyParams, rest1) = memberInfo.paramLists.span(_.isType)
+        val (leftTyParams, rest1) = memberInfo.paramLists match
+          case fst :: tail if fst.isType => (List(fst), tail)
+          case other => (List(), other)
         val (leadingUsing, rest2) = rest1.span(_.isUsing)
         val (rightTyParams, rest3) = rest2.span(_.isType)
         val (rightParam, rest4) = rest3.splitAt(1)
@@ -586,7 +588,8 @@ trait ClassLikeSupport:
         // `def foo[A: ClassTag] = 1`.
         // Scala spec states that `$` should not be used in names and behaviour may be undefiend in such case.
         // Documenting method slightly different then its definition is withing the 'undefiend behaviour'.
-        symbol.paramSymss.flatten.find(_.name == name).exists(_.flags.is(Flags.Implicit))
+        symbol.paramSymss.flatten.find(_.name == name).exists(p =>
+          p.flags.is(Flags.Given) || p.flags.is(Flags.Implicit))
 
     def handlePolyType(memberInfo: MemberInfo, polyType: PolyType): MemberInfo =
       val typeParamList = MemberInfo.TypeParameterList(polyType.paramNames.zip(polyType.paramBounds).toMap)

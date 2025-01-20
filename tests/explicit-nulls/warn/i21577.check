@@ -1,0 +1,32 @@
+-- [E121] Pattern Match Warning: tests/explicit-nulls/warn/i21577.scala:5:9 --------------------------------------------
+5 |    case _ => // warn: null only
+  |         ^
+  |         Unreachable case except for null (if this is intentional, consider writing case null => instead).
+-- [E121] Pattern Match Warning: tests/explicit-nulls/warn/i21577.scala:12:9 -------------------------------------------
+12 |    case _ => // warn: null only
+   |         ^
+   |         Unreachable case except for null (if this is intentional, consider writing case null => instead).
+-- [E121] Pattern Match Warning: tests/explicit-nulls/warn/i21577.scala:16:7 -------------------------------------------
+16 |  case _ => // warn: null only
+   |       ^
+   |       Unreachable case except for null (if this is intentional, consider writing case null => instead).
+-- [E030] Match case Unreachable Warning: tests/explicit-nulls/warn/i21577.scala:20:7 ----------------------------------
+20 |  case _ => // warn: unreachable
+   |       ^
+   |       Unreachable case
+-- [E029] Pattern Match Exhaustivity Warning: tests/explicit-nulls/warn/i21577.scala:29:27 -----------------------------
+29 |def f7(s: String | Null) = s match // warn: not exhuastive
+   |                           ^
+   |                           match may not be exhaustive.
+   |
+   |                           It would fail on pattern case: _: Null
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/explicit-nulls/warn/i21577.scala:36:33 -----------------------------
+36 |def f9(s: String | Int | Null) = s match // warn: not exhuastive
+   |                                 ^
+   |                                 match may not be exhaustive.
+   |
+   |                                 It would fail on pattern case: _: Int
+   |
+   | longer explanation available when compiling with `-explain`

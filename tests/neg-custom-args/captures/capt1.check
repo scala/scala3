@@ -1,54 +1,54 @@
--- Error: tests/neg-custom-args/captures/capt1.scala:4:11 --------------------------------------------------------------
-4 |  () => if x == null then y else y  // error
+-- Error: tests/neg-custom-args/captures/capt1.scala:6:11 --------------------------------------------------------------
+6 |  () => if x == null then y else y  // error
   |           ^
   |           (x : C^) cannot be referenced here; it is not included in the allowed capture set {}
   |           of an enclosing function literal with expected type () -> C
--- Error: tests/neg-custom-args/captures/capt1.scala:7:11 --------------------------------------------------------------
-7 |  () => if x == null then y else y  // error
+-- Error: tests/neg-custom-args/captures/capt1.scala:9:11 --------------------------------------------------------------
+9 |  () => if x == null then y else y  // error
   |           ^
   |           (x : C^) cannot be referenced here; it is not included in the allowed capture set {}
   |           of an enclosing function literal with expected type Matchable
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:14:2 -----------------------------------------
-14 |  def f(y: Int) = if x == null then y else y  // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:16:2 -----------------------------------------
+16 |  def f(y: Int) = if x == null then y else y  // error
    |  ^
    |  Found:    (y: Int) ->{x} Int
    |  Required: Matchable
-15 |  f
+17 |  f
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:21:2 -----------------------------------------
-21 |  class F(y: Int) extends A:   // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:23:2 -----------------------------------------
+23 |  class F(y: Int) extends A:   // error
    |  ^
    |  Found:    A^{x}
    |  Required: A
-22 |    def m() = if x == null then y else y
-23 |  F(22)
+24 |    def m() = if x == null then y else y
+25 |  F(22)
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:26:2 -----------------------------------------
-26 |  new A: // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:28:2 -----------------------------------------
+28 |  new A: // error
    |  ^
    |  Found:    A^{x}
    |  Required: A
-27 |    def m() = if x == null then y else y
+29 |    def m() = if x == null then y else y
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/capt1.scala:32:12 -------------------------------------------------------------
-32 |  val z2 = h[() -> Cap](() => x) // error // error
+-- Error: tests/neg-custom-args/captures/capt1.scala:34:12 -------------------------------------------------------------
+34 |  val z2 = h[() -> Cap](() => x) // error // error
    |           ^^^^^^^^^^^^
    |           Sealed type variable X cannot be instantiated to () -> box C^ since
    |           the part box C^ of that type captures the root capability `cap`.
    |           This is often caused by a local capability in an argument of method h
    |           leaking as part of its result.
--- Error: tests/neg-custom-args/captures/capt1.scala:32:30 -------------------------------------------------------------
-32 |  val z2 = h[() -> Cap](() => x) // error // error
+-- Error: tests/neg-custom-args/captures/capt1.scala:34:30 -------------------------------------------------------------
+34 |  val z2 = h[() -> Cap](() => x) // error // error
    |                              ^
    |                            (x : C^) cannot be referenced here; it is not included in the allowed capture set {}
    |                            of an enclosing function literal with expected type () -> box C^
--- Error: tests/neg-custom-args/captures/capt1.scala:34:12 -------------------------------------------------------------
-34 |  val z3 = h[(() -> Cap) @retains(x)](() => x)(() => C())  // error
+-- Error: tests/neg-custom-args/captures/capt1.scala:36:12 -------------------------------------------------------------
+36 |  val z3 = h[(() -> Cap) @retains(x)](() => x)(() => C())  // error
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |           Sealed type variable X cannot be instantiated to box () ->{x} Cap since
-   |           the part C^ of that type captures the root capability `cap`.
+   |           the part Cap of that type captures the root capability `cap`.
    |           This is often caused by a local capability in an argument of method h
    |           leaking as part of its result.

@@ -138,8 +138,10 @@ object MatchTypeTrace:
        |    ${casesText(cases)}"""
 
   def illegalPatternText(scrut: Type, cas: MatchTypeCaseSpec.LegacyPatMat)(using Context): String =
+    val explanation =
+      if cas.err == null then "" else s"The pattern contains ${cas.err.explanation}.\n"
     i"""The match type contains an illegal case:
        |    ${caseText(cas)}
-       |(this error can be ignored for now with `-source:3.3`)"""
+       |$explanation(this error can be ignored for now with `-source:3.3`)"""
 
 end MatchTypeTrace

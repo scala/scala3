@@ -55,10 +55,7 @@ object Main:
         Seq("rm", "-rf", destStr).!
         Files.createDirectory(dest)
         val (toRun, ignored) =
-          allProjects.partition( p =>
-            p.docCommand != null
-            && (!p.requiresExperimental || compilerSupportExperimental)
-          )
+          allProjects.partition(_.docCommand != null)
 
         val paths = toRun.map { project =>
           val name = project.project

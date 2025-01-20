@@ -999,6 +999,7 @@ class TreeUnpickler(reader: TastyReader,
         }
       }
 
+      tree.ensureHasSym(sym)
       tree.setDefTree
     }
 
@@ -1272,7 +1273,7 @@ class TreeUnpickler(reader: TastyReader,
         val tpe0 = name match
           case name: TypeName => TypeRef(qualType, name, denot)
           case name: TermName => TermRef(qualType, name, denot)
-        val tpe = TypeOps.makePackageObjPrefixExplicit(tpe0)
+        val tpe = tpe0.makePackageObjPrefixExplicit
         ConstFold.Select(untpd.Select(qual, name).withType(tpe))
 
       def completeSelect(name: Name, sig: Signature, target: Name): Select =
@@ -1281,7 +1282,14 @@ class TreeUnpickler(reader: TastyReader,
           if unpicklingJava && name == tpnme.Object && qual.symbol == defn.JavaLangPackageVal then
             defn.FromJavaObjectSymbol.denot
           else
-            accessibleDenot(qual.tpe.widenIfUnstable, name, sig, target)
+            val qualType = qual.tpe.widenIfUnstable
+            if name == nme.CONSTRUCTOR && qualType.classSymbol.is(JavaAnnotation) then
+              // #19951 Disregard the signature (or the absence thereof) for constructors of Java annotations
+              // Note that Java annotations always have a single public constructor
+              // They may have a PrivateLocal constructor if compiled from source in mixed compilation
+              qualType.findMember(name, qualType, excluded = Private)
+            else
+              accessibleDenot(qualType, name, sig, target)
         makeSelect(qual, name, denot)
 
       def readQualId(): (untpd.Ident, TypeRef) =
@@ -1335,7 +1343,16 @@ class TreeUnpickler(reader: TastyReader,
           readPathTree()
       }
 
-      /** Adapt constructor calls where class has only using clauses from old to new scheme.
+      /** Adapt constructor calls for Java annot constructors and for the new scheme of `using` clauses.
+       *
+       *  #19951 If the `fn` is the constructor of a Java annotation, reorder and refill
+       *  arguments against the constructor signature. Only reorder if all the arguments
+       *  are `NamedArg`s, which is always the case if the TASTy was produced by 3.5+.
+       *  If some arguments are positional, only *add* missing arguments to the right
+       *  and hope for the best; this will at least fix #19951 after the fact if the new
+       *  annotation fields are added after all the existing ones.
+       *
+       *  Otherwise, adapt calls where class has only using clauses from old to new scheme.
        *  or class has mixed using clauses and other clauses.
        *  Old: leading (), new: nothing, or trailing () if all clauses are using clauses.
        *  This is neccessary so that we can read pre-3.2 Tasty correctly. There,
@@ -1343,7 +1360,9 @@ class TreeUnpickler(reader: TastyReader,
        *  use the new scheme, since they are reconstituted with normalizeIfConstructor.
        */
       def constructorApply(fn: Tree, args: List[Tree]): Tree =
-        if fn.tpe.widen.isContextualMethod && args.isEmpty then
+        if fn.symbol.owner.is(JavaAnnotation) then
+          tpd.Apply(fn, fixArgsToJavaAnnotConstructor(fn.tpe.widen, args))
+        else if fn.tpe.widen.isContextualMethod && args.isEmpty then
           fn.withAttachment(SuppressedApplyToNone, ())
         else
           val fn1 = fn match
@@ -1364,6 +1383,68 @@ class TreeUnpickler(reader: TastyReader,
               else if mt.isContextualMethod then
                 res.withAttachment(SuppressedApplyToNone, ())
               else res
+
+      def fixArgsToJavaAnnotConstructor(methType: Type, args: List[Tree]): List[Tree] =
+        methType match
+          case methType: MethodType =>
+            val formalNames = methType.paramNames
+            val sizeCmp = args.sizeCompare(formalNames)
+
+            def makeDefault(name: TermName, tpe: Type): NamedArg =
+              NamedArg(name, Underscore(tpe))
+
+            def extendOnly(args: List[NamedArg]): List[NamedArg] =
+              if sizeCmp < 0 then
+                val argsSize = args.size
+                val additionalArgs: List[NamedArg] =
+                  formalNames.drop(argsSize).lazyZip(methType.paramInfos.drop(argsSize)).map(makeDefault(_, _))
+                args ::: additionalArgs
+              else
+                args // fast path
+
+            if formalNames.isEmpty then
+              // fast path
+              args
+            else if sizeCmp > 0 then
+              // Something's wrong anyway; don't touch anything
+              args
+            else if args.exists(!_.isInstanceOf[NamedArg]) then
+              // Pre 3.5 TASTy -- do our best, assuming that args match as a prefix of the formals
+              val prefixMatch = args.lazyZip(formalNames).forall {
+                case (NamedArg(actualName, _), formalName) => actualName == formalName
+                case _                                     => true
+              }
+              // If the prefix does not match, something's wrong; don't touch anything
+              if !prefixMatch then
+                args
+              else
+                // Turn non-named args to named and extend with defaults
+                extendOnly(args.lazyZip(formalNames).map {
+                  case (arg: NamedArg, _) => arg
+                  case (arg, formalName)  => NamedArg(formalName, arg)
+                })
+            else
+              // Good TASTy where all the arguments are named; reorder and extend if needed
+              val namedArgs = args.asInstanceOf[List[NamedArg]]
+              val prefixMatch = namedArgs.lazyZip(formalNames).forall((arg, formalName) => arg.name == formalName)
+              if prefixMatch then
+                // fast path, extend only
+                extendOnly(namedArgs)
+              else
+                // needs reordering, and possibly fill in holes for default arguments
+                val argsByName = mutable.AnyRefMap.from(namedArgs.map(arg => arg.name -> arg))
+                val reconstructedArgs = formalNames.lazyZip(methType.paramInfos).map { (name, tpe) =>
+                  argsByName.remove(name).getOrElse(makeDefault(name, tpe))
+                }
+                if argsByName.nonEmpty then
+                  // something's wrong; don't touch anything
+                  args
+                else
+                  reconstructedArgs
+
+          case _ =>
+            args
+      end fixArgsToJavaAnnotConstructor
 
       def quotedExpr(fn: Tree, args: List[Tree]): Tree =
         val TypeApply(_, targs) = fn: @unchecked
@@ -1491,8 +1572,12 @@ class TreeUnpickler(reader: TastyReader,
                   NoDenotation
 
               val denot =
-                val d = ownerTpe.decl(name).atSignature(sig, target)
-                (if !d.exists then lookupInSuper else d).asSeenFrom(prefix)
+                if owner.is(JavaAnnotation) && name == nme.CONSTRUCTOR then
+                  // #19951 Fix up to read TASTy produced before 3.5.0 -- ignore the signature
+                  ownerTpe.nonPrivateDecl(name).asSeenFrom(prefix)
+                else
+                  val d = ownerTpe.decl(name).atSignature(sig, target)
+                  (if !d.exists then lookupInSuper else d).asSeenFrom(prefix)
 
               makeSelect(qual, name, denot)
             case REPEATED =>
@@ -1584,8 +1669,7 @@ class TreeUnpickler(reader: TastyReader,
               val pat = readTree()
               val patType = readType()
               val (targs, args) = until(end)(readTree()).span(_.isType)
-              assert(targs.isEmpty, "unexpected type arguments in SPLICEPATTERN") // `targs` will be needed for #18271. Until this fearure is added they should be empty.
-              SplicePattern(pat, args, patType)
+              SplicePattern(pat, targs, args, patType)
             case HOLE =>
               readHole(end, isTerm = true)
             case _ =>

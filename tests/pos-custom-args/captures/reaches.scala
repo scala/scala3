@@ -1,3 +1,5 @@
+import caps.unbox
+
 class C
 def f(xs: List[C^]) =
   val y = xs
@@ -20,7 +22,7 @@ extension [A](x: A) def :: (xs: List[A]): List[A] = ???
 
 object Nil extends List[Nothing]
 
-def runAll(xs: List[Proc]): Unit =
+def runAll(@unbox xs: List[Proc]): Unit =
   var cur: List[() ->{xs*} Unit] = xs  // OK, by revised VAR
   while cur.nonEmpty do
     val next: () ->{xs*} Unit = cur.head
@@ -45,10 +47,10 @@ def compose1[A, B, C](f: A => B, g: B => C): A ->{f, g} C =
 def compose2[A, B, C](f: A => B, g: B => C): A => C =
   z => g(f(z))
 
-def mapCompose[A](ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
-  ps.map((x, y) => compose1(x, y)) // Does not work if map takes an impure function, see reaches in neg
+//def mapCompose[A](ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
+//  ps.map((x, y) => compose1(x, y)) // Does not work, see neg-customargs/../reaches2.scala
 
-@annotation.capability class IO
+class IO extends caps.Capability
 
 def test(io: IO) =
   val a: () ->{io} Unit = () => ()

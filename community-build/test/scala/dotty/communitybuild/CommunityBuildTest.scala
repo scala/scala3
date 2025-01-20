@@ -68,7 +68,7 @@ class CommunityBuildTestC:
   @Test def fastparse = projects.fastparse.run()
   @Test def geny = projects.geny.run()
   @Test def intent = projects.intent.run()
-  @Test def jacksonModuleScala = projects.jacksonModuleScala.run()
+  //@Test def jacksonModuleScala = projects.jacksonModuleScala.run()
   @Test def libretto = projects.libretto.run()
   @Test def minitest = projects.minitest.run()
   //@Test def onnxScala = projects.onnxScala.run()
@@ -95,7 +95,7 @@ class CommunityBuildTestC:
   @Test def sourcecode = projects.sourcecode.run()
   @Test def specs2 = projects.specs2.run()
 
-  @Test def stdLib213 = projects.stdLib213.run()
+  // @Test def stdLib213 = projects.stdLib213.run()
   @Test def ujson = projects.ujson.run()
   @Test def upickle = projects.upickle.run()
   @Test def utest = projects.utest.run()

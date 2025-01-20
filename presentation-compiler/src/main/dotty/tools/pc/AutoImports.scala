@@ -269,7 +269,14 @@ object AutoImports:
     private def importName(sym: Symbol): String =
       if indexedContext.importContext.toplevelClashes(sym) then
         s"_root_.${sym.fullNameBackticked(false)}"
-      else sym.fullNameBackticked(false)
+      else
+        sym.ownersIterator.zipWithIndex.foldLeft((List.empty[String], false)) { case ((acc, isDone), (sym, idx)) =>
+          if(isDone || sym.isEmptyPackage || sym.isRoot) (acc, true)
+          else indexedContext.rename(sym) match
+            case Some(renamed) => (renamed :: acc, true)
+            case None if !sym.isPackageObject => (sym.nameBackticked(false) :: acc, false)
+            case None => (acc, false)
+        }._1.mkString(".")
   end AutoImportsGenerator
 
   private def autoImportPosition(
@@ -313,13 +320,14 @@ object AutoImports:
         case _ => None
 
 
-    def skipUsingDirectivesOffset(
-      firstObjectPos: Int = firstMemberDefinitionStart(tree).getOrElse(0)
-    ): Int =
+    def skipUsingDirectivesOffset(firstObjectPos: Int = firstMemberDefinitionStart(tree).getOrElse(0)): Int =
       val firstObjectLine = pos.source.offsetToLine(firstObjectPos)
+
       comments
         .takeWhile(comment =>
-          !comment.isDocComment && pos.source.offsetToLine(comment.span.end) + 1 < firstObjectLine
+          val commentLine = pos.source.offsetToLine(comment.span.end)
+          val isFirstObjectComment = commentLine + 1 == firstObjectLine && !comment.raw.startsWith("//>")
+          commentLine < firstObjectLine && !isFirstObjectComment
         )
         .lastOption
         .fold(0)(_.span.end + 1)

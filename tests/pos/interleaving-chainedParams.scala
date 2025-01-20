@@ -1,4 +1,3 @@
-import scala.language.experimental.clauseInterleaving
 
 object chainedParams{
 

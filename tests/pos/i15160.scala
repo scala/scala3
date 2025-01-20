@@ -2,7 +2,7 @@ trait Eq[A] {
   def eqv(a1: A, a2: A): Boolean
 }
 
-given stringEq: Eq[String] with {
+given stringEq: Eq[String] {
   def eqv(a1: String, a2: String) = a1 == a2
 }
 

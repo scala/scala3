@@ -9,4 +9,4 @@ SBT="$ROOT/project/scripts/sbt" # if run on CI
 source "$ROOT/bin/common-platform"
 
 # build the scala/scalac/scaladoc binary, where scala is native for the current platform.
-"$SBT" "$DIST_PROJECT/pack"
+"$SBT" "$DIST_PROJECT/Universal/stage"

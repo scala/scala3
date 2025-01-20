@@ -84,7 +84,7 @@ object Symbols extends SymUtils {
       ctx.settings.YretainTrees.value ||
       denot.owner.isTerm ||                // no risk of leaking memory after a run for these
       denot.isOneOf(InlineOrProxy) ||      // need to keep inline info
-      ctx.settings.WcheckInit.value ||     // initialization check
+      ctx.settings.Whas.checkInit ||       // initialization check
       ctx.settings.YcheckInitGlobal.value
 
     /** The last denotation of this symbol */
@@ -846,7 +846,8 @@ object Symbols extends SymUtils {
   /** Map given symbols, subjecting their attributes to the mappings
    *  defined in the given TreeTypeMap `ttmap`.
    *  Cross symbol references are brought over from originals to copies.
-   *  Do not copy any symbols if all attributes of all symbols stay the same.
+   *  Do not copy any symbols if all attributes of all symbols stay the same
+   *  and mapAlways is false.
    */
   def mapSymbols(originals: List[Symbol], ttmap: TreeTypeMap, mapAlways: Boolean = false)(using Context): List[Symbol] =
     if (originals.forall(sym =>

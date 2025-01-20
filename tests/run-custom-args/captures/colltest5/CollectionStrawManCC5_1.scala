@@ -552,7 +552,7 @@ object CollectionStrawMan5 {
     }
 
     def flatMap[B](f: A => IterableOnce[B]^): Iterator[B]^{this, f} = new Iterator[B] {
-      private var myCurrent: Iterator[B]^{this} = Iterator.empty
+      private var myCurrent: Iterator[B]^{this, f} = Iterator.empty
       private def current = {
         while (!myCurrent.hasNext && self.hasNext)
           myCurrent = f(self.next()).iterator

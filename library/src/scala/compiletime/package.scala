@@ -52,7 +52,6 @@ def uninitialized: Nothing = ???
  *  that implement the enclosing trait and that do not contain an explicit overriding
  *  definition of that given.
  */
-@experimental
 @compileTimeOnly("`deferred` can only be used as the right hand side of a given definition in a trait")
 def deferred: Nothing = ???
 

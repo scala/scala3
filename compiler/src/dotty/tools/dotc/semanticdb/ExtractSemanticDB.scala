@@ -286,6 +286,14 @@ object ExtractSemanticDB:
       || sym.owner == defn.OpsPackageClass
       || qualifier.exists(excludeQual)
 
+    /** This block is created by lifting i.e. EtaExpansion */
+    private def isProbablyLifted(block: Block)(using Context) =
+      def isSyntheticDef(t: Tree) =
+        t match
+          case t: (ValDef | DefDef) => t.symbol.isSyntheticWithIdent
+          case _ => false
+      block.stats.forall(isSyntheticDef)
+
     private def traverseAnnotsOfDefinition(sym: Symbol)(using Context): Unit =
       for annot <- sym.annotations do
         if annot.tree.span.exists
@@ -438,6 +446,12 @@ object ExtractSemanticDB:
               registerUseGuarded(None, sym, tree.span, tree.source)
             case _ => ()
 
+        // If tree is lifted, ignore Synthetic status on all the definitions and traverse all childrens
+        case tree: Block if isProbablyLifted(tree) =>
+          tree.stats.foreach:
+            case t: (ValDef | DefDef) if !excludeChildren(t.symbol) => traverseChildren(t)
+            case _ => ()
+          traverse(tree.expr)
 
         case _ =>
           traverseChildren(tree)
@@ -458,14 +472,15 @@ object ExtractSemanticDB:
       def unapply(tree: ValDef)(using Context): Option[(Tree, Tree)] = tree.rhs match
 
         case Match(Typed(selected: Tree, tpt: TypeTree), CaseDef(pat: Tree, _, _) :: Nil)
-        if tpt.span.exists && !tpt.span.hasLength && tpt.tpe.isAnnotatedByUnchecked =>
+        if tpt.span.exists && !tpt.span.hasLength && tpt.tpe.isAnnotatedByUncheckedOrRuntimeChecked =>
           Some((pat, selected))
 
         case _ => None
 
       extension (tpe: Types.Type)
-        private inline def isAnnotatedByUnchecked(using Context) = tpe match
-          case Types.AnnotatedType(_, annot) => annot.symbol == defn.UncheckedAnnot
+        private inline def isAnnotatedByUncheckedOrRuntimeChecked(using Context) = tpe match
+          case Types.AnnotatedType(_, annot) =>
+            annot.symbol == defn.UncheckedAnnot || annot.symbol == defn.RuntimeCheckedAnnot
           case _                             => false
 
       def collectPats(pat: Tree): List[Tree] =

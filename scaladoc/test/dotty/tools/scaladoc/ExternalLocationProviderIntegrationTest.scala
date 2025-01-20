@@ -57,8 +57,9 @@ class Scaladoc3ExternalLocationProviderIntegrationTest extends ExternalLocationP
 
 def getScalaLibraryPath: String = {
   val classpath: List[String] = System.getProperty("java.class.path").split(java.io.File.pathSeparatorChar).toList
-  val stdlib = classpath.find(_.contains("scala-library-2")).getOrElse("foobarbazz") // If we don't find the scala 2 library, the test will fail
-  new java.io.File(stdlib).getCanonicalPath() // canonicalize for case-insensitive file systems
+  // For an unclear reason, depending on if we pass the compiler context onto the tasty inspector
+  // the scala-2-library path needs to have its characters case fixed with new java.io.File(stdlib).getCanonicalPath()
+  classpath.find(_.contains("scala-library-2")).getOrElse("foobarbazz") // If we don't find the scala 2 library, the test will fail
 }
 
 class Scaladoc2LegacyExternalLocationProviderIntegrationTest extends LegacyExternalLocationProviderIntegrationTest(

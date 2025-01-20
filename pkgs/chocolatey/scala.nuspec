@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>scala</id>
+    <version>@LAUNCHER_VERSION@</version>
+    <title>Scala</title>
+    <authors>scala</authors>
+    <owners>scala</owners>
+    <tags>scala</tags>
+    <summary>Scala</summary>
+    <description>Official release of the Scala Programming Language on Chocolatey.</description>
+    <packageSourceUrl>https://github.com/scala/scala3/tree/main/pkgs/chocolatey</packageSourceUrl>
+    <projectSourceUrl>https://github.com/scala/scala3</projectSourceUrl>
+    <projectUrl>https://scala-lang.org/</projectUrl>
+    <bugTrackerUrl>https://github.com/scala/scala3/issues</bugTrackerUrl>
+    <copyright>© 2002-2025, LAMP/EPFL</copyright>
+    <iconUrl>https://cdn.jsdelivr.net/gh/scala/scala3@a046b0014ffd9536144d67a48f8759901b96d12f/pkgs/chocolatey/icon.svg</iconUrl>
+    <licenseUrl>https://github.com/scala/scala3/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    <releaseNotes>https://github.com/scala/scala3/releases</releaseNotes>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

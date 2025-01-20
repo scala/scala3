@@ -27,13 +27,16 @@
 ./contextual/context-functions-spec.html
 ./contextual/context-functions.html
 ./contextual/conversions.html
+./contextual/deferred-givens.html
 ./contextual/derivation-macro.html
 ./contextual/derivation.html
 ./contextual/extension-methods.html
 ./contextual/given-imports.html
 ./contextual/givens.html
 ./contextual/index.html
+./contextual/more-givens.html
 ./contextual/multiversal-equality.html
+./contextual/previous-givens.html
 ./contextual/relationship-implicits.html
 ./contextual/right-associative-extension-methods.html
 ./contextual/type-classes.html

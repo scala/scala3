@@ -1,8 +1,6 @@
-import annotation.capability
-
 object boundary:
 
-  @capability final class Label[-T]
+  final class Label[-T] extends caps.Capability
 
   /** Abort current computation and instead return `value` as the value of
    *  the enclosing `boundary` call that created `label`.
@@ -14,7 +12,7 @@ end boundary
 
 import boundary.{Label, break}
 
-@capability trait Async
+trait Async extends caps.Capability
 object Async:
   def blocking[T](body: Async ?=> T): T = ???
 
@@ -61,10 +59,16 @@ def test[T, E](using Async) =
 
     def fail3(fr: Future[Result[T, E]]^) =
       Result:
-        Future: // error, escaping label from Result
+        Future: // error, type mismatch
           fr.await.ok
 
     def fail4[T, E](fr: Future[Result[T, E]]^) =
-        Result.make: //lbl ?=> // error, escaping label from Result
+        Result.make: // should be errorm but inders Result[Any, Any]
           Future: fut ?=>
             fr.await.ok
+
+    def fail5[T, E](fr: Future[Result[T, E]]^) =
+        Result.make[Future[T], E]: lbl ?=>
+          Future: fut ?=> // error: type mismatch
+            fr.await.ok
+

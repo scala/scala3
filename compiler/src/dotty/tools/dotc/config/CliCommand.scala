@@ -53,7 +53,7 @@ trait CliCommand:
   end distill
 
   /** Creates a help message for a subset of options based on cond */
-  protected def availableOptionsMsg(p: Setting[?] => Boolean)(using settings: ConcreteSettings)(using SettingsState): String =
+  protected def availableOptionsMsg(p: Setting[?] => Boolean, showArgFileMsg: Boolean = true)(using settings: ConcreteSettings)(using SettingsState): String =
     // result is (Option Name, descrption\ndefault: value\nchoices: x, y, z
     def help(s: Setting[?]): (String, String) =
       // For now, skip the default values that do not make sense for the end user, such as 'false' for the version command.
@@ -68,7 +68,10 @@ trait CliCommand:
     val ss = settings.allSettings.filter(p).toList.sortBy(_.name)
     val formatter = Columnator("", "", maxField = 30)
     val fresh = ContextBase().initialCtx.fresh.setSettings(summon[SettingsState])
-    formatter(List(ss.map(help) :+ ("@<file>", "A text file containing compiler arguments (options and source files).")))(using fresh)
+    var msg = ss.map(help)
+    if showArgFileMsg then
+      msg = msg :+ ("@<file>", "A text file containing compiler arguments (options and source files).")
+    formatter(List(msg))(using fresh)
   end availableOptionsMsg
 
   protected def shortUsage: String = s"Usage: $cmdName <options> <source files>"

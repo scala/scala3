@@ -1,7 +1,7 @@
 trait Label[A]:
   def apply(v: A): String
 
-given [A]: Label[A] = _.toString
+given [A] => Label[A] = _.toString
 
 extension [A](x: A) inline def label(using inline l: Label[A]): String = l(x)
 

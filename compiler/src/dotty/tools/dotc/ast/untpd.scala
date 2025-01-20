@@ -119,7 +119,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree)(implicit @constructorOnly src: SourceFile) extends DefTree
   case class ExtMethods(paramss: List[ParamClause], methods: List[Tree])(implicit @constructorOnly src: SourceFile) extends Tree
   case class ContextBoundTypeTree(tycon: Tree, paramName: TypeName, ownName: TermName)(implicit @constructorOnly src: SourceFile) extends Tree
-    // `paramName: tycon as ownName`, ownName != EmptyTermName only under x.modularity
   case class MacroTree(expr: Tree)(implicit @constructorOnly src: SourceFile) extends Tree
 
   case class ImportSelector(imported: Ident, renamed: Tree = EmptyTree, bound: Tree = EmptyTree)(implicit @constructorOnly src: SourceFile) extends Tree {
@@ -183,7 +182,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   /** An enum to control checking or filtering of patterns in GenFrom trees */
   enum GenCheckMode {
-    case Ignore       // neither filter nor check since filtering was done before
+    case Ignore       // neither filter nor check since pattern is trivially irrefutable
+    case Filtered     // neither filter nor check since filtering was done before
     case Check        // check that pattern is irrefutable
     case CheckAndFilter // both check and filter (transitional period starting with 3.2)
     case FilterNow    // filter out non-matching elements if we are not in 3.2 or later
@@ -415,7 +415,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Quote(body: Tree, tags: List[Tree])(implicit src: SourceFile): Quote = new Quote(body, tags)
   def Splice(expr: Tree)(implicit src: SourceFile): Splice = new Splice(expr)
   def QuotePattern(bindings: List[Tree], body: Tree, quotes: Tree)(implicit src: SourceFile): QuotePattern = new QuotePattern(bindings, body, quotes)
-  def SplicePattern(body: Tree, args: List[Tree])(implicit src: SourceFile): SplicePattern = new SplicePattern(body, args)
+  def SplicePattern(body: Tree, typeargs: List[Tree], args: List[Tree])(implicit src: SourceFile): SplicePattern = new SplicePattern(body, typeargs, args)
   def TypeTree()(implicit src: SourceFile): TypeTree = new TypeTree()
   def InferredTypeTree()(implicit src: SourceFile): TypeTree = new InferredTypeTree()
   def SingletonTypeTree(ref: Tree)(implicit src: SourceFile): SingletonTypeTree = new SingletonTypeTree(ref)
@@ -495,7 +495,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def InferredTypeTree(tpe: Type)(using Context): TypedSplice =
     TypedSplice(new InferredTypeTree().withTypeUnchecked(tpe))
 
-  def unitLiteral(implicit src: SourceFile): Literal = Literal(Constant(())).withAttachment(SyntheticUnit, ())
+  def unitLiteral(implicit src: SourceFile): Literal =
+    Literal(Constant(()))
+
+  def syntheticUnitLiteral(implicit src: SourceFile): Literal =
+    unitLiteral.withAttachment(SyntheticUnit, ())
 
   def ref(tp: NamedType)(using Context): Tree =
     TypedSplice(tpd.ref(tp))
@@ -517,11 +521,16 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def captureRoot(using Context): Select =
     Select(scalaDot(nme.caps), nme.CAPTURE_ROOT)
 
-  def captureRootIn(using Context): Select =
-    Select(scalaDot(nme.caps), nme.capIn)
-
   def makeRetaining(parent: Tree, refs: List[Tree], annotName: TypeName)(using Context): Annotated =
     Annotated(parent, New(scalaAnnotationDot(annotName), List(refs)))
+
+  def makeCapsOf(tp: RefTree)(using Context): Tree =
+    TypeApply(Select(scalaDot(nme.caps), nme.capsOf), tp :: Nil)
+
+  def makeCapsBound()(using Context): Tree =
+    makeRetaining(
+      Select(scalaDot(nme.caps), tpnme.CapSet),
+      Nil, tpnme.retainsCap)
 
   def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(using Context): DefDef =
     DefDef(nme.CONSTRUCTOR, joinParams(tparams, vparamss), TypeTree(), rhs)

@@ -265,7 +265,7 @@ object Contexts {
     /** SourceFile with given path, memoized */
     def getSource(path: String): SourceFile = getSource(path.toTermName)
 
-    /** AbstraFile with given path name, memoized */
+    /** AbstractFile with given path name, memoized */
     def getFile(name: TermName): AbstractFile = base.files.get(name) match
       case Some(file) =>
         file
@@ -769,6 +769,7 @@ object Contexts {
           .updated(settingsStateLoc, settingsGroup.defaultState)
           .updated(notNullInfosLoc, Nil)
           .updated(compilationUnitLoc, NoCompilationUnit)
+          .updated(profilerLoc, Profiler.NoOp)
       c._searchHistory = new SearchRoot
       c._gadtState = GadtState(GadtConstraint.empty)
       c

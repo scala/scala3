@@ -12,6 +12,7 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.pc.utils.InteractiveEnrichments.companion
 
 class CompilerSearchVisitor(
     visitSymbol: Symbol => Boolean
@@ -27,7 +28,7 @@ class CompilerSearchVisitor(
     owner.isStatic && owner.isPublic
 
   private def isAccessible(sym: Symbol): Boolean = try
-    sym != NoSymbol && sym.isPublic && sym.isStatic || isAccessibleImplicitClass(sym)
+    (sym != NoSymbol && sym.isAccessibleFrom(ctx.owner.info) && sym.isStatic) || isAccessibleImplicitClass(sym)
   catch
     case err: AssertionError =>
       logger.log(Level.WARNING, err.getMessage())
@@ -91,11 +92,12 @@ class CompilerSearchVisitor(
       range: org.eclipse.lsp4j.Range
   ): Int =
     val gsym = SemanticdbSymbols.inverseSemanticdbSymbol(symbol).headOption
-    gsym
-      .filter(isAccessible)
-      .map(visitSymbol)
-      .map(_ => 1)
-      .getOrElse(0)
+    val matching = for
+      sym0 <- gsym.toList
+      sym <- if sym0.companion.is(Flags.Synthetic) then List(sym0, sym0.companion) else List(sym0)
+      if isAccessible(sym)
+    yield visitSymbol(sym)
+    matching.size
 
   def shouldVisitPackage(pkg: String): Boolean =
     isAccessible(requiredPackage(normalizePackage(pkg)))

@@ -1,7 +1,5 @@
-import annotation.capability
-
 class C1
-@capability class C2 extends C1
+class C2 extends C1, caps.Capability
 class C3 extends C2
 
 def test =
@@ -9,7 +7,8 @@ def test =
   val x2: C1 = new C2 // error
   val x3: C1 = new C3 // error
 
-  val y1: C2 = new C2
-  val y2: C2 = new C3
-  
-  val z1: C3 = new C3
+  val y2: C2 = new C2
+  val y3: C3 = new C3
+
+  val z2: C1 = y2 // error
+

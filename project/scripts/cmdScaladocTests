@@ -20,7 +20,7 @@ SOURCE_LINKS_REPOSITORY="scala/scala3"
 SOURCE_LINKS_VERSION="${GITHUB_SHA:-$DOTTY_BOOTSTRAPPED_VERSION}"
 
 "$SBT" "scaladoc/generateTestcasesDocumentation" > "$tmp" 2>&1 || echo "generated testcases project with sbt"
-dist/target/pack/bin/scaladoc \
+dist/target/universal/stage/bin/scaladoc \
   -d "$OUT1" \
   -project "scaladoc testcases" \
   -source-links:out/bootstrap/scala2-library-bootstrapped/scala-"${DOTTY_NONBOOTSTRAPPED_VERSION}"/src_managed/main/scala-library-src=github://scala/scala/v"${STDLIB_VERSION}"#src/library \

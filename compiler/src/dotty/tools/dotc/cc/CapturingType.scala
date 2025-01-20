@@ -28,16 +28,14 @@ object CapturingType:
 
   /** Smart constructor that
    *   - drops empty capture sets
-   *   - drops a capability class expansion if it is further refined with another capturing type
    *   - fuses compatible capturing types.
    *  An outer type capturing type A can be fused with an inner capturing type B if their
    *  boxing status is the same or if A is boxed.
    */
   def apply(parent: Type, refs: CaptureSet, boxed: Boolean = false)(using Context): Type =
-    if refs.isAlwaysEmpty then parent
+    assert(!boxed || !parent.derivesFrom(defn.Caps_CapSet))
+    if refs.isAlwaysEmpty && !refs.keepAlways then parent
     else parent match
-      case parent @ CapturingType(parent1, refs1) if refs1 eq defn.expandedUniversalSet =>
-        apply(parent1, refs, boxed)
       case parent @ CapturingType(parent1, refs1) if boxed || !parent.isBoxed =>
         apply(parent1, refs ++ refs1, boxed)
       case _ =>

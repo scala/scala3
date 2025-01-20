@@ -11,16 +11,18 @@ import Constants.*
 import util.{Stats, SimpleIdentityMap, SimpleIdentitySet}
 import Decorators.*
 import Uniques.*
-import Flags.Method
+import Flags.{Method, Transparent}
 import inlines.Inlines
+import config.{Feature, SourceVersion}
 import config.Printers.typr
 import Inferencing.*
 import ErrorReporting.*
 import util.SourceFile
+import util.Spans.{NoSpan, Span}
 import TypeComparer.necessarySubType
+import reporting.*
 
 import scala.annotation.internal.sharable
-import dotty.tools.dotc.util.Spans.{NoSpan, Span}
 
 object ProtoTypes {
 
@@ -69,6 +71,13 @@ object ProtoTypes {
                    |constraint was: ${ctx.typerState.constraint}
                    |constraint now: ${newctx.typerState.constraint}""")
             if result && (ctx.typerState.constraint ne newctx.typerState.constraint) then
+              // Remove all type lambdas and tvars introduced by testCompat
+              for tvar <- newctx.typerState.ownedVars do
+                inContext(newctx):
+                  if !tvar.isInstantiated then
+                    tvar.instantiate(fromBelow = false) // any direction
+
+              // commit any remaining changes in typer state
               newctx.typerState.commit()
             result
           case _ => testCompat
@@ -82,6 +91,7 @@ object ProtoTypes {
      *  fits the given expected result type.
      */
     def constrainResult(mt: Type, pt: Type)(using Context): Boolean =
+    trace(i"constrainResult($mt, $pt)", typr):
       val savedConstraint = ctx.typerState.constraint
       val res = pt.widenExpr match {
         case pt: FunProto =>
@@ -108,7 +118,7 @@ object ProtoTypes {
       res
 
     /** Constrain result with two special cases:
-     *   1. If `meth` is an inlineable method in an inlineable context,
+     *   1. If `meth` is a transparent inlineable method in an inlineable context,
      *      we should always succeed and not constrain type parameters in the expected type,
      *      because the actual return type can be a subtype of the currently known return type.
      *      However, we should constrain parameters of the declared return type. This distinction is
@@ -128,11 +138,30 @@ object ProtoTypes {
         case _ =>
           false
 
-      if Inlines.isInlineable(meth) then
-        constrainResult(mt, wildApprox(pt))
-        true
-      else
-        constFoldException(pt) || constrainResult(mt, pt)
+      constFoldException(pt) || {
+        if Inlines.isInlineable(meth) then
+          // Stricter behavisour in 3.4+: do not apply `wildApprox` to non-transparent inlines
+          // unless their return type is a MatchType. In this case there's no reason
+          // not to constrain type variables in the expected type. For transparent inlines
+          // we do not want to constrain type variables in the expected type since the
+          // actual return type might be smaller after instantiation. For inlines returning
+          // MatchTypes we do not want to constrain because the MatchType might be more
+          // specific after instantiation. TODO: Should we also use Wildcards for non-inline
+          // methods returning MatchTypes?
+          if Feature.sourceVersion.isAtLeast(SourceVersion.`3.4`) then
+            if meth.is(Transparent) || mt.resultType.isMatchAlias then
+              constrainResult(mt, wildApprox(pt))
+              // do not constrain the result type of transparent inline methods
+              true
+            else
+              constrainResult(mt, pt)
+          else
+            // Best-effort to fix https://github.com/scala/scala3/issues/9685 in the 3.3.x series
+            // while preserving source compatibility as much as possible
+            constrainResult(mt, wildApprox(pt)) || meth.is(Transparent)
+        else constrainResult(mt, pt)
+      }
+
     end constrainResult
   end Compatibility
 
@@ -302,6 +331,8 @@ object ProtoTypes {
       case tp: UnapplyFunProto => new UnapplySelectionProto(name, nameSpan)
       case tp => SelectionProto(name, IgnoredProto(tp), typer, privateOK = true, nameSpan)
 
+  class WildcardSelectionProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed, true, NoSpan)
+
   /** A prototype for expressions [] that are in some unspecified selection operation
    *
    *    [].?: ?
@@ -310,9 +341,9 @@ object ProtoTypes {
    *  operation is further selection. In this case, the expression need not be a value.
    *  @see checkValue
    */
-  @sharable object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed, true, NoSpan)
+  @sharable object AnySelectionProto extends WildcardSelectionProto
 
-  @sharable object SingletonTypeProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed, true, NoSpan)
+  @sharable object SingletonTypeProto extends WildcardSelectionProto
 
   /** A prototype for selections in pattern constructors */
   class UnapplySelectionProto(name: Name, nameSpan: Span) extends SelectionProto(name, WildcardType, NoViewsAllowed, true, nameSpan)

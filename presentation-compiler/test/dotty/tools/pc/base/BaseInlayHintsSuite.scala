@@ -8,9 +8,7 @@ import scala.meta.internal.metals.CompilerRangeParams
 import scala.language.unsafeNulls
 
 import dotty.tools.pc.utils.TestInlayHints
-import dotty.tools.pc.utils.TextEdits
 
-import org.eclipse.lsp4j.TextEdit
 
 class BaseInlayHintsSuite extends BasePCSuite {
 

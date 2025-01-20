@@ -4,7 +4,7 @@ enum SUB[-A, +B]:
 class Pow(self: Int):
   def **(other: Int): Int = math.pow(self, other).toInt
 
-given fromList[T]: Conversion[List[T], Pow] = ???
+given fromList: [T] => Conversion[List[T], Pow] = ???
 
 given fromInt: Conversion[Int, Pow] = Pow(_)
 

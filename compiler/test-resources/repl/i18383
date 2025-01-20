@@ -4,7 +4,7 @@ scala> import scala.collection.*
 
 scala> class Foo { import scala.util.*; println("foo") }
 1 warning found
--- Warning: --------------------------------------------------------------------
+-- [E198] Unused Symbol Warning: -----------------------------------------------
 1 | class Foo { import scala.util.*; println("foo") }
   |                               ^
   |                               unused import

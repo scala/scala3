@@ -1,0 +1,10 @@
+-- [E199] Syntax Warning: tests/neg/i20105.scala:6:9 -------------------------------------------------------------------
+6 |      foo()
+  |      ^^^^^
+  |      The tail recursive def foo contains a recursive call inside the non-inlined inner def bar
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E097] Syntax Error: tests/neg/i20105.scala:3:4 ---------------------------------------------------------------------
+3 |def foo(): Unit = // error
+  |    ^
+  |    TailRec optimisation not applicable, method foo contains no recursive calls

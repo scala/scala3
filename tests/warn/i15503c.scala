@@ -32,7 +32,7 @@ class A:
     def z = g // OK
     var w = 2 // OK
 
-package foo.test.contructors:
+package foo.test.constructors:
   case class A private (x:Int) // OK
   class B private (val x: Int) // OK
   class C private (private val x: Int) // warn

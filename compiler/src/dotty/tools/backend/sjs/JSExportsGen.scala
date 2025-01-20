@@ -22,12 +22,12 @@ import TypeErasure.ErasedValueType
 import dotty.tools.dotc.util.{SourcePosition, SrcPos}
 import dotty.tools.dotc.report
 
-import org.scalajs.ir.{Position, Names => jsNames, Trees => js, Types => jstpe}
-import org.scalajs.ir.Names.DefaultModuleID
-import org.scalajs.ir.OriginalName.NoOriginalName
-import org.scalajs.ir.Position.NoPosition
-import org.scalajs.ir.Trees.OptimizerHints
-import org.scalajs.ir.Version.Unversioned
+import dotty.tools.sjs.ir.{Position, Names => jsNames, Trees => js, Types => jstpe}
+import dotty.tools.sjs.ir.Names.DefaultModuleID
+import dotty.tools.sjs.ir.OriginalName.NoOriginalName
+import dotty.tools.sjs.ir.Position.NoPosition
+import dotty.tools.sjs.ir.Trees.OptimizerHints
+import dotty.tools.sjs.ir.Version.Unversioned
 
 import dotty.tools.dotc.transform.sjs.JSExportUtils.*
 import dotty.tools.dotc.transform.sjs.JSSymUtils.*
@@ -932,7 +932,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
         InstanceOfTypeTest(tpe.tycon.typeSymbol.typeRef)
 
       case _ =>
-        import org.scalajs.ir.Names
+        import dotty.tools.sjs.ir.Names
 
         (toIRType(tpe): @unchecked) match {
           case jstpe.AnyType => NoTypeTest

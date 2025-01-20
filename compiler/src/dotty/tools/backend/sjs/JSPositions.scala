@@ -13,7 +13,7 @@ import dotty.tools.dotc.report
 import dotty.tools.dotc.util.{SourceFile, SourcePosition}
 import dotty.tools.dotc.util.Spans.Span
 
-import org.scalajs.ir
+import dotty.tools.sjs.ir
 
 /** Conversion utilities from dotty Positions to IR Positions. */
 class JSPositions()(using Context) {

@@ -405,6 +405,50 @@ class AutoImportsSuite extends BaseAutoImportsSuite:
          |""".stripMargin,
     )
 
+  @Test def `i6477` =
+    checkEdit(
+      """|package a
+         |import a.b.SomeClass as SC
+         |
+         |package b {
+         |  class SomeClass
+         |}
+         |package c {
+         |  class SomeClass
+         |}
+         |
+         |val bar: SC = ???
+         |val foo: <<SomeClass>> = ???
+         |""".stripMargin,
+      """|package a
+         |import a.b.SomeClass as SC
+         |import a.c.SomeClass
+         |
+         |package b {
+         |  class SomeClass
+         |}
+         |package c {
+         |  class SomeClass
+         |}
+         |
+         |val bar: SC = ???
+         |val foo: SomeClass = ???
+         |""".stripMargin
+    )
+
+  @Test def `use-packages-in-scope` =
+    checkEdit(
+      """|import scala.collection.mutable as mut
+         |
+         |val l = <<ListBuffer>>(2)
+         |""".stripMargin,
+      """|import scala.collection.mutable as mut
+         |import mut.ListBuffer
+         |
+         |val l = ListBuffer(2)
+         |""".stripMargin
+    )
+
   private def ammoniteWrapper(code: String): String =
     // Vaguely looks like a scala file that Ammonite generates
     // from a sc file.
@@ -455,4 +499,58 @@ class AutoImportsSuite extends BaseAutoImportsSuite:
           |object $keyword{ object ABC }
           |object Main{ val obj = ABC }
           |""".stripMargin
+    )
+
+  @Test def scalaCliNoEmptyLineAfterDirective =
+    checkEdit(
+      """|//> using scala 3.5.0
+         |object Main:
+         |  <<Files>>
+         |""".stripMargin,
+      """|//> using scala 3.5.0
+         |import java.nio.file.Files
+         |object Main:
+         |  Files
+         |""".stripMargin
+    )
+
+  @Test def scalaCliNoEmptyLineAfterLicense =
+    checkEdit(
+      """|/**
+         | * Some license text
+         | */
+         |
+         |object Main:
+         |  <<Files>>
+         |""".stripMargin,
+      """|/**
+         | * Some license text
+         | */
+         |import java.nio.file.Files
+         |
+         |object Main:
+         |  Files
+         |""".stripMargin
+    )
+
+  @Test def scalaCliNoEmptyLineAfterLicenseWithPackage =
+    checkEdit(
+      """|/**
+         | * Some license text
+         | */
+         |package test
+         |
+         |object Main:
+         |  <<Files>>
+         |""".stripMargin,
+      """|/**
+         | * Some license text
+         | */
+         |package test
+         |
+         |import java.nio.file.Files
+         |
+         |object Main:
+         |  Files
+         |""".stripMargin
     )

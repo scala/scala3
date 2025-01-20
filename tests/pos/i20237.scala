@@ -1,7 +1,6 @@
 import language.experimental.captureChecking
-import scala.annotation.capability
 
-@capability class Cap:
+class Cap extends caps.Capability:
   def use[T](body: Cap ?=> T) = body(using this)
 
 class Box[T](body: Cap ?=> T):

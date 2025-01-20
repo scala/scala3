@@ -28,6 +28,9 @@ subsection:
     directory: contextual
     subsection:
       - page: reference/contextual/givens.md
+      - page: reference/contextual/deferred-givens.md
+      - page: reference/contextual/more-givens.md
+      - page: reference/contextual/previous-givens.md
       - page: reference/contextual/using-clauses.md
       - page: reference/contextual/context-bounds.md
       - page: reference/contextual/given-imports.md

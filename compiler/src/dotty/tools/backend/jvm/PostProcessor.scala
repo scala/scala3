@@ -44,11 +44,11 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
           backendReporting.error(em"Error while emitting $internalName\n${ex.getMessage}")
           null
 
-     if bytes != null then
-        if (AsmUtils.traceSerializedClassEnabled && internalName.contains(AsmUtils.traceSerializedClassPattern))
-          AsmUtils.traceClass(bytes)
-        val clsFile = classfileWriter.writeClass(internalName, bytes, sourceFile)
-        if clsFile != null then clazz.onFileCreated(clsFile)
+    if bytes != null then
+      if AsmUtils.traceSerializedClassEnabled && internalName.contains(AsmUtils.traceSerializedClassPattern) then
+        AsmUtils.traceClass(bytes)
+      val clsFile = classfileWriter.writeClass(internalName, bytes, sourceFile)
+      clazz.onFileCreated(clsFile)
   }
 
   def sendToDisk(tasty: GeneratedTasty, sourceFile: AbstractFile): Unit = {
@@ -73,7 +73,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
           else s" (defined in ${pos2.source.file.name})"
         def nicify(name: String): String = name.replace('/', '.').nn
         if name1 == name2 then
-          backendReporting.warning(
+          backendReporting.error(
             em"${nicify(name1)} and ${nicify(name2)} produce classes that overwrite one another", pos1)
         else
           backendReporting.warning(

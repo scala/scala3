@@ -1,5 +1,3 @@
-//> using options -language:experimental.modularity -source future
-
 class Common:
 
   trait Ord[A]:
@@ -32,14 +30,14 @@ end Common
 
 object Instances extends Common:
 
-  given Ord[Int] as intOrd:
+  given intOrd: Ord[Int]:
     extension (x: Int)
       def compareTo(y: Int) =
         if x < y then -1
         else if x > y then +1
         else 0
 
-  given [T: Ord] => Ord[List[T]]:
+  given listOrd: [T: Ord] => Ord[List[T]]:
     extension (xs: List[T]) def compareTo(ys: List[T]): Int = (xs, ys) match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -48,7 +46,7 @@ object Instances extends Common:
         val fst = x.compareTo(y)
         if (fst != 0) fst else xs1.compareTo(ys1)
 
-  given Monad[List] as listMonad:
+  given listMonad: Monad[List]:
     extension [A](xs: List[A]) def flatMap[B](f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
@@ -56,7 +54,7 @@ object Instances extends Common:
 
   type Reader[Ctx] = [X] =>> Ctx => X
 
-  given [Ctx] => Monad[Reader[Ctx]] as readerMonad:
+  given readerMonad: [Ctx] => Monad[Reader[Ctx]]:
     extension [A](r: Ctx => A) def flatMap[B](f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
@@ -78,7 +76,7 @@ object Instances extends Common:
   def maximum[T: Ord](xs: List[T]): T =
     xs.reduce(_ `max` _)
 
-  given [T: Ord] => Ord[T] as descending:
+  given descending: [T: Ord] => Ord[T]:
     extension (x: T) def compareTo(y: T) = summon[Ord[T]].compareTo(y)(x)
 
   def minimum[T: Ord](xs: List[T]) =

@@ -12,7 +12,7 @@ object Scoped:
 
 class SortedIntCorrect2 extends Sorted:
   type Element = Int
-  override given (Int is Ord)() as given_Ord_Element
+  override given given_Ord_Element: (Int is Ord)()
 
 class SortedIntWrong1 extends Sorted: // error
   type Element = Int

@@ -18,8 +18,8 @@ object BestEffortTastyWriter:
       unit.pickled.foreach { (clz, binary) =>
         val parts = clz.fullName.mangledString.split('.')
         val outPath = outputPath(parts.toList, dir)
-        val outTastyFile = new PlainFile(new File(outPath))
-        val outstream = new DataOutputStream(outTastyFile.bufferedOutput)
+        val outTastyFile = new File(outPath)
+        val outstream = new DataOutputStream(new PlainFile(outTastyFile).bufferedOutput)
         try outstream.write(binary())
         catch case ex: ClosedByInterruptException =>
           try

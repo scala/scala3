@@ -28,6 +28,7 @@ on:
 
 env:
   DOTTY_CI_RUN: true
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
 # In this file, we set `--cpu-shares 4096` on every job. This might seem useless
 # since it means that every container has the same weight which should be
@@ -47,7 +48,7 @@ jobs:
   test_non_bootstrapped:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -87,8 +88,8 @@ jobs:
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Test
-        # DON'T add dist/pack!
-        # Adding dist/pack bootstraps the compiler
+        # DON'T add dist/Universal/stage!
+        # Adding dist/Universal/stage bootstraps the compiler
         # which undermines the point of these tests:
         # to quickly run the tests without the cost of bootstrapping
         # and also to run tests when the compiler doesn't bootstrap
@@ -99,7 +100,7 @@ jobs:
   test:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -159,7 +160,7 @@ jobs:
   test_scala2_library_tasty:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -227,11 +228,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Test
-        run: sbt ";scala3-bootstrapped/compile; scala3-bootstrapped/testCompilation"
+        run: sbt ";scala3-bootstrapped/compile; scala3-bootstrapped/testCompilation; scala3-presentation-compiler/test; scala3-language-server/test"
         shell: cmd
 
       - name: build binary
-        run: sbt "dist-win-x86_64/pack" & bash -version
+        run: sbt "dist-win-x86_64/Universal/stage" & bash -version
         shell: cmd
 
       - name: cygwin tests
@@ -271,7 +272,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: build binary
-        run: sbt "dist-win-x86_64/pack"
+        run: sbt "dist-win-x86_64/Universal/stage"
         shell: cmd
 
       - name: Test
@@ -286,7 +287,7 @@ jobs:
     name: MiMa
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -337,7 +338,7 @@ jobs:
   community_build_a:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -394,7 +395,7 @@ jobs:
   community_build_b:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -451,7 +452,7 @@ jobs:
   community_build_c:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -508,7 +509,7 @@ jobs:
   test_sbt:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -553,7 +554,7 @@ jobs:
   test_java8:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -613,7 +614,7 @@ jobs:
   publish_nightly:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -662,6 +663,14 @@ jobs:
           echo "This build version: $ver"
           echo "THISBUILD_VERSION=$ver" >> $GITHUB_ENV
 
+      - name: Check is version matching pattern
+        shell: bash
+        run: |
+          if ! grep -Eo "3\.[0-9]+\.[0-9]+-RC[0-9]+-bin-[0-9]{8}-[a-zA-Z0-9]{7}-NIGHTLY" <<< "${{ env.THISBUILD_VERSION }}"; then
+            echo "Version used by compiler to publish nightly release does not match expected pattern"
+            exit 1
+          fi
+
       - name: Check whether not yet published
         id: not_yet_published
         continue-on-error: true
@@ -676,7 +685,7 @@ jobs:
   nightly_documentation:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -686,14 +695,6 @@ jobs:
     if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'scala/scala3'"
     env:
       NIGHTLYBUILD: yes
-      DOTTY_WEBSITE_BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # If you need to change this:
-                                          # Generate one at https://github.com/settings/tokens
-                                          # Make sure you have the write permissions to the repo: https://github.com/lampepfl/dotty-website
-      # Currently unused token, no need to deploy anything to docs.scala-lang
-      # DOCS_SCALALANG_BOT_TOKEN: ${{ secrets.DOCS_SCALALANG_BOT_TOKEN }}  # If you need to change this:
-                                          # Generate one at https://github.com/settings/tokens
-                                          # Make sure you have the write permissions to the repo: https://github.com/scala/docs.scala-lang
-
     steps:
       - name: Reset existing repo
         run: |
@@ -717,26 +718,26 @@ jobs:
           git config --global --add safe.directory /__w/scala3/scala3
           ./project/scripts/genDocs -doc-snapshot
 
-      - name: Deploy Website to dotty-website
+      - name: Deploy Website to https://dotty.epfl.ch
         uses: peaceiris/actions-gh-pages@v4
         with:
-          personal_token: ${{ env.DOTTY_WEBSITE_BOT_TOKEN }}
+          personal_token: ${{ secrets.DOTTYBOT_TOKEN }}
           publish_dir: docs/_site
-          external_repository: lampepfl/dotty-website
-          publish_branch: gh-pages
+          external_repository: scala/dotty.epfl.ch
+          publish_branch: main
 
   publish_release:
     permissions:
-      contents: write  # for actions/create-release to create a release
+      contents: write  # for GH CLI to create a release
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test_non_bootstrapped, test, mima, community_build_a, community_build_b, community_build_c, test_sbt, test_java8]
+    needs: [test_non_bootstrapped, test, mima, community_build_a, community_build_b, community_build_c, test_sbt, test_java8, build-sdk-package, build-msi-package]
     if: "github.event_name == 'push'
          && startsWith(github.event.ref, 'refs/tags/')"
 
@@ -769,230 +770,91 @@ jobs:
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
       # Extract the release tag
       - name: Extract the release tag
         run : echo "RELEASE_TAG=${GITHUB_REF#*refs/tags/}" >> $GITHUB_ENV
-      # BUILD THE SDKs
-      - name: Build and pack the SDK (universal)
+
+      - name: Check compiler version
+        shell: bash
         run : |
-          ./project/scripts/sbt dist/packArchive
-          sha256sum dist/target/scala3-* > dist/target/sha256sum.txt
-      - name: Build and pack the SDK (linux x86-64)
+          version=$(./project/scripts/sbt "print scala3-compiler-bootstrapped/version" | tail -n1)
+          echo "This build version: ${version}"
+          if [ "${version}" != "${{ env.RELEASE_TAG }}" ]; then
+            echo "Compiler version for this build '${version}', does not match tag: ${{ env.RELEASE_TAG }}"
+            exit 1
+          fi
+
+      - name: Prepare the SDKs
+        shell: bash
         run : |
-          ./project/scripts/sbt dist-linux-x86_64/packArchive
-          sha256sum dist/linux-x86_64/target/scala3-* > dist/linux-x86_64/target/sha256sum.txt
-      - name: Build and pack the SDK (linux aarch64)
-        run : |
-          ./project/scripts/sbt dist-linux-aarch64/packArchive
-          sha256sum dist/linux-aarch64/target/scala3-* > dist/linux-aarch64/target/sha256sum.txt
-      - name: Build and pack the SDK (mac x86-64)
-        run : |
-          ./project/scripts/sbt dist-mac-x86_64/packArchive
-          sha256sum dist/mac-x86_64/target/scala3-* > dist/mac-x86_64/target/sha256sum.txt
-      - name: Build and pack the SDK (mac aarch64)
-        run : |
-          ./project/scripts/sbt dist-mac-aarch64/packArchive
-          sha256sum dist/mac-aarch64/target/scala3-* > dist/mac-aarch64/target/sha256sum.txt
-      - name: Build and pack the SDK (win x86-64)
-        run : |
-          ./project/scripts/sbt dist-win-x86_64/packArchive
-          sha256sum dist/win-x86_64/target/scala3-* > dist/win-x86_64/target/sha256sum.txt
+          prepareSDK() {
+            distroSuffix="$1"
+            sbtProject="$2"
+            distDir="$3"
+
+            # Build binaries
+            ./project/scripts/sbt "all ${sbtProject}/Universal/packageBin ${sbtProject}/Universal/packageZipTarball"
+
+            artifactName="scala3-${{ env.RELEASE_TAG }}${distroSuffix}"
+
+            # Caluclate SHA for each of archive files
+            for file in "${artifactName}.zip" "${artifactName}.tar.gz"; do
+              mv ${distDir}/target/universal/$file $file
+              sha256sum "${file}" > "${file}.sha256"
+            done
+          }
+          prepareSDK ""                      "dist"               "./dist/"
+          prepareSDK "-aarch64-pc-linux"     "dist-linux-aarch64" "./dist/linux-aarch64/"
+          prepareSDK "-x86_64-pc-linux"      "dist-linux-x86_64"  "./dist/linux-x86_64/"
+          prepareSDK "-aarch64-apple-darwin" "dist-mac-aarch64"   "./dist/mac-aarch64/"
+          prepareSDK "-x86_64-apple-darwin"  "dist-mac-x86_64"    "./dist/mac-x86_64/"
+          prepareSDK "-x86_64-pc-win32"      "dist-win-x86_64"    "./dist/win-x86_64/"
+
+      - name: Download MSI package
+        uses: actions/download-artifact@v4
+        with:
+          name: scala.msi
+          path: .
+      - name: Prepare MSI package
+        shell: bash
+        run: | 
+          msiInstaller="scala3-${{ env.RELEASE_TAG }}.msi"
+          mv scala.msi "${msiInstaller}"
+          sha256sum "${msiInstaller}" > "${msiInstaller}.sha256"
+
+      - name: Install GH CLI
+        uses: dev-hanz-ops/install-gh-cli-action@v0.2.0
+        with:
+          gh-cli-version: 2.59.0 
+          
       # Create the GitHub release
       - name: Create GitHub Release
-        id: create_gh_release
-        uses: actions/create-release@latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref }}
-          body_path: ./changelogs/${{ env.RELEASE_TAG }}.md
-          draft: true
-          prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
-
-      - name: Upload zip archive to GitHub Release (universal)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/target/scala3-${{ env.RELEASE_TAG }}.zip
-          asset_name: scala3-${{ env.RELEASE_TAG }}.zip
-          asset_content_type: application/zip
-      - name: Upload tar.gz archive to GitHub Release (universal)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/target/scala3-${{ env.RELEASE_TAG }}.tar.gz
-          asset_name: scala3-${{ env.RELEASE_TAG }}.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Upload zip archive to GitHub Release (linux x86-64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/linux-x86_64/target/scala3-${{ env.RELEASE_TAG }}-x86_64-pc-linux.zip
-          asset_name: scala3-${{ env.RELEASE_TAG }}-x86_64-pc-linux.zip
-          asset_content_type: application/zip
-      - name: Upload tar.gz archive to GitHub Release (linux x86-64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/linux-x86_64/target/scala3-${{ env.RELEASE_TAG }}-x86_64-pc-linux.tar.gz
-          asset_name: scala3-${{ env.RELEASE_TAG }}-x86_64-pc-linux.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Upload zip archive to GitHub Release (linux aarch64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/linux-aarch64/target/scala3-${{ env.RELEASE_TAG }}-aarch64-pc-linux.zip
-          asset_name: scala3-${{ env.RELEASE_TAG }}-aarch64-pc-linux.zip
-          asset_content_type: application/zip
-      - name: Upload tar.gz archive to GitHub Release (linux aarch64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/linux-aarch64/target/scala3-${{ env.RELEASE_TAG }}-aarch64-pc-linux.tar.gz
-          asset_name: scala3-${{ env.RELEASE_TAG }}-aarch64-pc-linux.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Upload zip archive to GitHub Release (mac x86-64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/mac-x86_64/target/scala3-${{ env.RELEASE_TAG }}-x86_64-apple-darwin.zip
-          asset_name: scala3-${{ env.RELEASE_TAG }}-x86_64-apple-darwin.zip
-          asset_content_type: application/zip
-      - name: Upload tar.gz archive to GitHub Release (mac x86-64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/mac-x86_64/target/scala3-${{ env.RELEASE_TAG }}-x86_64-apple-darwin.tar.gz
-          asset_name: scala3-${{ env.RELEASE_TAG }}-x86_64-apple-darwin.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Upload zip archive to GitHub Release (mac aarch64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/mac-aarch64/target/scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.zip
-          asset_name: scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.zip
-          asset_content_type: application/zip
-      - name: Upload tar.gz archive to GitHub Release (mac aarch64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/mac-aarch64/target/scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.tar.gz
-          asset_name: scala3-${{ env.RELEASE_TAG }}-aarch64-apple-darwin.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Upload zip archive to GitHub Release (win x86-64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/win-x86_64/target/scala3-${{ env.RELEASE_TAG }}-x86_64-pc-win32.zip
-          asset_name: scala3-${{ env.RELEASE_TAG }}-x86_64-pc-win32.zip
-          asset_content_type: application/zip
-      - name: Upload tar.gz archive to GitHub Release (win x86-64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/win-x86_64/target/scala3-${{ env.RELEASE_TAG }}-x86_64-pc-win32.tar.gz
-          asset_name: scala3-${{ env.RELEASE_TAG }}-x86_64-pc-win32.tar.gz
-          asset_content_type: application/gzip
-
-
-      - name: Upload SHA256 sum of the release artefacts to GitHub Release (universal)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/target/sha256sum.txt
-          asset_name: sha256sum.txt
-          asset_content_type: text/plain
-
-      - name: Upload SHA256 sum of the release artefacts to GitHub Release (linux x86-64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/linux-x86_64/target/sha256sum.txt
-          asset_name: sha256sum-x86_64-pc-linux.txt
-          asset_content_type: text/plain
-
-      - name: Upload SHA256 sum of the release artefacts to GitHub Release (linux aarch64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/linux-aarch64/target/sha256sum.txt
-          asset_name: sha256sum-aarch64-pc-linux.txt
-          asset_content_type: text/plain
-
-      - name: Upload SHA256 sum of the release artefacts to GitHub Release (mac x86-64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/mac-x86_64/target/sha256sum.txt
-          asset_name: sha256sum-x86_64-apple-darwin.txt
-          asset_content_type: text/plain
-
-      - name: Upload SHA256 sum of the release artefacts to GitHub Release (mac aarch64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/mac-aarch64/target/sha256sum.txt
-          asset_name: sha256sum-aarch64-apple-darwin.txt
-          asset_content_type: text/plain
-
-      - name: Upload SHA256 sum of the release artefacts to GitHub Release (win x86-64)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/win-x86_64/target/sha256sum.txt
-          asset_name: sha256sum-x86_64-pc-win32.txt
-          asset_content_type: text/plain
+        shell: bash
+        run: |
+          git config --global --add safe.directory /__w/scala3/scala3
+          gh release create \
+          --draft \
+          --title "${{ env.RELEASE_TAG }}" \
+          --notes-file ./changelogs/${{ env.RELEASE_TAG }}.md \
+          --latest=${{ !contains(env.RELEASE_TAG, '-RC') }} \
+          --prerelease=${{ contains(env.RELEASE_TAG, '-RC') }} \
+          --verify-tag ${{ env.RELEASE_TAG }} \
+          scala3-${{ env.RELEASE_TAG }}*.zip \
+          scala3-${{ env.RELEASE_TAG }}*.tar.gz \
+          scala3-${{ env.RELEASE_TAG }}*.sha256 \
+          scala3-${{ env.RELEASE_TAG }}.msi 
 
       - name: Publish Release
-        run: ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleRelease"
+        run: ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleUpload"
 
 
   open_issue_on_failure:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-11-07
+      image: lampepfl/dotty:2024-10-18
     needs: [nightly_documentation, test_windows_full]
     # The `failure()` expression is true iff at least one of the dependencies
     # of this job (including transitive dependencies) has failed.
@@ -1008,3 +870,45 @@ jobs:
           WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
           filename: .github/workflows/issue_nightly_failed.md
+
+  build-msi-package:
+    uses: ./.github/workflows/build-msi.yml
+    if  :
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_msi]')) ||
+      (github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/'))
+
+  test-msi-package:
+    uses: ./.github/workflows/test-msi.yml
+    needs: [build-msi-package]
+    with:
+      # Ensure that version starts with prefix 3.
+      # In the future it can be adapted to compare with git tag or version set in the project/Build.scala
+      version: "3."
+      java-version: 8
+
+  build-sdk-package:
+    uses: ./.github/workflows/build-sdk.yml
+    if:
+      (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]')) ||
+      (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3') ||
+      (github.event_name == 'schedule' && github.repository == 'scala/scala3') ||
+      github.event_name == 'push' ||
+      github.event_name == 'merge_group'
+    with:
+      java-version: 8
+
+  build-chocolatey-package:
+    uses: ./.github/workflows/build-chocolatey.yml
+    needs: [ build-sdk-package ]
+    with:
+      version: 3.6.0-local # TODO: FIX THIS
+      url    : https://api.github.com/repos/scala/scala3/actions/artifacts/${{ needs.build-sdk-package.outputs.win-x86_64-id }}/zip
+      digest : ${{ needs.build-sdk-package.outputs.win-x86_64-digest }}
+
+  test-chocolatey-package:
+    uses: ./.github/workflows/test-chocolatey.yml
+    with:
+      version     : 3.6.0-local # TODO: FIX THIS
+      java-version: 8
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_chocolatey]')
+    needs: [ build-chocolatey-package ]

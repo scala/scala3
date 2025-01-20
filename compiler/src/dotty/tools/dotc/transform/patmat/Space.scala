@@ -3,15 +3,18 @@ package dotc
 package transform
 package patmat
 
-import core.*, Constants.*, Contexts.*, Decorators.*, Flags.*, Names.*, NameOps.*, StdNames.*, Symbols.*, Types.*
+import core.*
+import Constants.*, Contexts.*, Decorators.*, Flags.*, NullOpsDecorator.*, Symbols.*, Types.*
+import Names.*, NameOps.*, StdNames.*
 import ast.*, tpd.*
-import config.Printers.*
+import config.Printers.exhaustivity
 import printing.{ Printer, * }, Texts.*
 import reporting.*
 import typer.*, Applications.*, Inferencing.*, ProtoTypes.*
 import util.*
 
 import scala.annotation.internal.sharable
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 import SpaceEngine.*
@@ -113,6 +116,7 @@ object SpaceEngine {
   def isSubspace(a: Space, b: Space)(using Context): Boolean = a.isSubspace(b)
   def canDecompose(typ: Typ)(using Context): Boolean         = typ.canDecompose
   def decompose(typ: Typ)(using Context): List[Typ]          = typ.decompose
+  def nullSpace(using Context): Space = Typ(ConstantType(Constant(null)), decomposed = false)
 
   /** Simplify space such that a space equal to `Empty` becomes `Empty` */
   def computeSimplify(space: Space)(using Context): Space = trace(i"simplify($space)")(space match {
@@ -350,7 +354,7 @@ object SpaceEngine {
       val funRef = fun1.tpe.asInstanceOf[TermRef]
       if (fun.symbol.name == nme.unapplySeq)
         val (arity, elemTp, resultTp) = unapplySeqInfo(fun.tpe.widen.finalResultType, fun.srcPos)
-        if (fun.symbol.owner == defn.SeqFactoryClass && defn.ListType.appliedTo(elemTp) <:< pat.tpe)
+        if fun.symbol.owner == defn.SeqFactoryClass && pat.tpe.hasClassSymbol(defn.ListClass) then
           // The exhaustivity and reachability logic already handles decomposing sum types (into its subclasses)
           // and product types (into its components).  To get better counter-examples for patterns that are of type
           // List (or a super-type of list, like LinearSeq) we project them into spaces that use `::` and Nil.
@@ -522,14 +526,37 @@ object SpaceEngine {
     val mt: MethodType = unapp.widen match {
       case mt: MethodType => mt
       case pt: PolyType   =>
+        scrutineeTp match
+        case AppliedType(tycon, targs)
+            if unappSym.is(Synthetic)
+            && (pt.resultType.asInstanceOf[MethodType].paramInfos.head.typeConstructor eq tycon) =>
+          // Special case synthetic unapply/unapplySeq's
+          // Provided the shapes of the types match:
+          // the scrutinee type being unapplied and
+          // the unapply parameter type
+          pt.instantiate(targs).asInstanceOf[MethodType]
+        case _ =>
+          val locked = ctx.typerState.ownedVars
           val tvars = constrained(pt)
           val mt = pt.instantiate(tvars).asInstanceOf[MethodType]
-          scrutineeTp <:< mt.paramInfos(0)
+          val unapplyArgType = mt.paramInfos.head
+          scrutineeTp <:< unapplyArgType
           // force type inference to infer a narrower type: could be singleton
           // see tests/patmat/i4227.scala
-          mt.paramInfos(0) <:< scrutineeTp
-          instantiateSelected(mt, tvars)
-          isFullyDefined(mt, ForceDegree.all)
+          unapplyArgType <:< scrutineeTp
+          maximizeType(unapplyArgType, Spans.NoSpan)
+          if !(ctx.typerState.ownedVars -- locked).isEmpty then
+            // constraining can create type vars out of wildcard types
+            // (in legalBound, by using a LevelAvoidMap)
+            // maximise will only do one pass at maximising the type vars in the target type
+            // which means we can maximise to types that include other type vars
+            // this fails TreeChecker's "non-empty constraint at end of $fusedPhase" check
+            // e.g. run-macros/string-context-implicits
+            // I can't prove that a second call won't also create type vars,
+            // but I'd rather have an unassigned new-new type var, than an infinite loop.
+            // After all, there's nothing strictly "wrong" with unassigned type vars,
+            // it just fails TreeChecker's linting.
+            maximizeType(unapplyArgType, Spans.NoSpan)
           mt
     }
 
@@ -543,7 +570,7 @@ object SpaceEngine {
     // Case unapplySeq:
     // 1. return the type `List[T]` where `T` is the element type of the unapplySeq return type `Seq[T]`
 
-    val resTp = ctx.typeAssigner.safeSubstMethodParams(mt, scrutineeTp :: Nil).finalResultType
+    val resTp = wildApprox(ctx.typeAssigner.safeSubstMethodParams(mt, scrutineeTp :: Nil).finalResultType)
 
     val sig =
       if (resTp.isRef(defn.BooleanClass))
@@ -564,20 +591,14 @@ object SpaceEngine {
           if (arity > 0)
             productSelectorTypes(resTp, unappSym.srcPos)
           else {
-            val getTp = resTp.select(nme.get).finalResultType match
-              case tp: TermRef if !tp.isOverloaded =>
-                // Like widenTermRefExpr, except not recursively.
-                // For example, in i17184 widen Option[foo.type]#get
-                // to Option[foo.type] instead of Option[Int].
-                tp.underlying.widenExpr
-              case tp => tp
+            val getTp = extractorMemberType(resTp, nme.get, unappSym.srcPos)
             if (argLen == 1) getTp :: Nil
             else productSelectorTypes(getTp, unappSym.srcPos)
           }
         }
       }
 
-    sig.map(_.annotatedToRepeated)
+    sig.map { case tp: WildcardType => tp.bounds.hi case tp => tp }
   }
 
   /** Whether the extractor covers the given type */
@@ -616,23 +637,62 @@ object SpaceEngine {
       case tp if tp.classSymbol.isAllOf(JavaEnum)      => tp.classSymbol.children.map(_.termRef)
         // the class of a java enum value is the enum class, so this must follow SingletonType to not loop infinitely
 
-      case tp @ AppliedType(Parts(parts), targs) if tp.classSymbol.children.isEmpty =>
+      case Childless(tp @ AppliedType(Parts(parts), targs)) =>
         // It might not obvious that it's OK to apply the type arguments of a parent type to child types.
         // But this is guarded by `tp.classSymbol.children.isEmpty`,
         // meaning we'll decompose to the same class, just not the same type.
         // For instance, from i15029, `decompose((X | Y).Field[T]) = [X.Field[T], Y.Field[T]]`.
         parts.map(tp.derivedAppliedType(_, targs))
 
-      case tp if tp.isDecomposableToChildren =>
-        def getChildren(sym: Symbol): List[Symbol] =
+      case tpOriginal if tpOriginal.isDecomposableToChildren =>
+        // isDecomposableToChildren uses .classSymbol.is(Sealed)
+        // But that classSymbol could be from an AppliedType
+        // where the type constructor is a non-class type
+        // E.g. t11620 where `?1.AA[X]` returns as "sealed"
+        // but using that we're not going to infer A1[X] and A2[X]
+        // but end up with A1[<?>] and A2[<?>].
+        // So we widen (like AppliedType superType does) away
+        // non-class type constructors.
+        //
+        // Can't use `tpOriginal.baseType(cls)` because it causes
+        // i15893 to return exhaustivity warnings, because instead of:
+        //    <== refineUsingParent(N, class Succ, []) = Succ[<? <: NatT>]
+        //    <== isSub(Succ[<? <: NatT>] <:< Succ[Succ[<?>]]) = true
+        // we get
+        //    <== refineUsingParent(NatT, class Succ, []) = Succ[NatT]
+        //    <== isSub(Succ[NatT] <:< Succ[Succ[<?>]]) = false
+        def getAppliedClass(tp: Type): (Type, List[Type]) = tp match
+          case tp @ AppliedType(_: HKTypeLambda, _)                        => (tp, Nil)
+          case tp @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass => (tp, tp.args)
+          case tp @ AppliedType(tycon: TypeProxy, _)                       => getAppliedClass(tycon.superType.applyIfParameterized(tp.args))
+          case tp                                                          => (tp, Nil)
+        val (tp, typeArgs) = getAppliedClass(tpOriginal)
+        // This function is needed to get the arguments of the types that will be applied to the class.
+        // This is necessary because if the arguments of the types contain Nothing,
+        // then this can affect whether the class will be taken into account during the exhaustiveness check
+        def getTypeArgs(parent: Symbol, child: Symbol, typeArgs: List[Type]): List[Type] =
+          val superType = child.typeRef.superType
+          if typeArgs.exists(_.isBottomType) && superType.isInstanceOf[ClassInfo] then
+            val parentClass = superType.asInstanceOf[ClassInfo].declaredParents.find(_.classSymbol == parent).get
+            val paramTypeMap = Map.from(parentClass.argTypes.map(_.typeSymbol).zip(typeArgs))
+            val substArgs = child.typeRef.typeParamSymbols.map(param => paramTypeMap.getOrElse(param, WildcardType))
+            substArgs
+          else Nil
+        def getChildren(sym: Symbol, typeArgs: List[Type]): List[Symbol] =
           sym.children.flatMap { child =>
             if child eq sym then List(sym) // i3145: sealed trait Baz, val x = new Baz {}, Baz.children returns Baz...
             else if tp.classSymbol == defn.TupleClass || tp.classSymbol == defn.NonEmptyTupleClass then
               List(child) // TupleN and TupleXXL classes are used for Tuple, but they aren't Tuple's children
-            else if (child.is(Private) || child.is(Sealed)) && child.isOneOf(AbstractOrTrait) then getChildren(child)
-            else List(child)
+            else if (child.is(Private) || child.is(Sealed)) && child.isOneOf(AbstractOrTrait) then
+              getChildren(child, getTypeArgs(sym, child, typeArgs))
+            else
+              val childSubstTypes = child.typeRef.applyIfParameterized(getTypeArgs(sym, child, typeArgs))
+              // if a class contains a field of type Nothing,
+              // then it can be ignored in pattern matching, because it is impossible to obtain an instance of it
+              val existFieldWithBottomType = childSubstTypes.fields.exists(_.info.isBottomType)
+              if existFieldWithBottomType then Nil else List(child)
           }
-        val children = trace(i"getChildren($tp)")(getChildren(tp.classSymbol))
+        val children = trace(i"getChildren($tp)")(getChildren(tp.classSymbol, typeArgs))
 
         val parts = children.map { sym =>
           val sym1 = if (sym.is(ModuleClass)) sym.sourceModule else sym
@@ -649,7 +709,6 @@ object SpaceEngine {
           else NoType
         }.filter(_.exists)
         parts
-
       case _ => ListOfNoType
     end rec
 
@@ -675,6 +734,12 @@ object SpaceEngine {
 
   final class PartsExtractor(val get: List[Type]) extends AnyVal:
     def isEmpty: Boolean = get == ListOfNoType
+
+  object Childless:
+    def unapply(tp: Type)(using Context): Result =
+      Result(if tp.classSymbol.children.isEmpty then tp else NoType)
+    class Result(val get: Type) extends AnyVal:
+      def isEmpty: Boolean = !get.exists
 
   /** Show friendly type name with current scope in mind
    *
@@ -772,12 +837,15 @@ object SpaceEngine {
     doShow(s)
   }
 
-  private def exhaustivityCheckable(sel: Tree)(using Context): Boolean = {
+  extension (self: Type) private def stripUnsafeNulls()(using Context): Type =
+    if Nullables.unsafeNullsEnabled then self.stripNull() else self
+
+  private def exhaustivityCheckable(sel: Tree)(using Context): Boolean = trace(i"exhaustivityCheckable($sel ${sel.className})") {
     val seen = collection.mutable.Set.empty[Symbol]
 
     // Possible to check everything, but be compatible with scalac by default
-    def isCheckable(tp: Type): Boolean =
-      val tpw = tp.widen.dealias
+    def isCheckable(tp: Type): Boolean = trace(i"isCheckable($tp ${tp.className})"):
+      val tpw = tp.widen.dealias.stripUnsafeNulls()
       val classSym = tpw.classSymbol
       classSym.is(Sealed) && !tpw.isLargeGenericTuple || // exclude large generic tuples from exhaustivity
                                                          // requires an unknown number of changes to make work
@@ -794,6 +862,7 @@ object SpaceEngine {
       }
 
     !sel.tpe.hasAnnotation(defn.UncheckedAnnot)
+    && !sel.tpe.hasAnnotation(defn.RuntimeCheckedAnnot)
     && {
       ctx.settings.YcheckAllPatmat.value
       || isCheckable(sel.tpe)
@@ -812,18 +881,19 @@ object SpaceEngine {
   /** Return the underlying type of non-module, non-constant, non-enum case singleton types.
    *  Also widen ExprType to its result type, and rewrap any annotation wrappers.
    *  For example, with `val opt = None`, widen `opt.type` to `None.type`. */
-  def toUnderlying(tp: Type)(using Context): Type = trace(i"toUnderlying($tp)")(tp match {
+  def toUnderlying(tp: Type)(using Context): Type = trace(i"toUnderlying($tp ${tp.className})")(tp match {
     case _: ConstantType                            => tp
     case tp: TermRef if tp.symbol.is(Module)        => tp
     case tp: TermRef if tp.symbol.isAllOf(EnumCase) => tp
     case tp: SingletonType                          => toUnderlying(tp.underlying)
     case tp: ExprType                               => toUnderlying(tp.resultType)
     case AnnotatedType(tp, annot)                   => AnnotatedType(toUnderlying(tp), annot)
+    case tp: FlexibleType                           => tp.derivedFlexibleType(toUnderlying(tp.underlying))
     case _                                          => tp
   })
 
   def checkExhaustivity(m: Match)(using Context): Unit = trace(i"checkExhaustivity($m)") {
-    val selTyp = toUnderlying(m.selector.tpe).dealias
+    val selTyp = toUnderlying(m.selector.tpe.stripUnsafeNulls()).dealias
     val targetSpace = trace(i"targetSpace($selTyp)")(project(selTyp))
 
     val patternSpace = Or(m.cases.foldLeft(List.empty[Space]) { (acc, x) =>
@@ -840,7 +910,7 @@ object SpaceEngine {
 
     if uncovered.nonEmpty then
       val deduped = dedup(uncovered)
-      report.warning(PatternMatchExhaustivity(deduped.map(display), m), m.selector)
+      report.warning(PatternMatchExhaustivity(deduped, m), m.selector)
   }
 
   private def reachabilityCheckable(sel: Tree)(using Context): Boolean =
@@ -853,52 +923,53 @@ object SpaceEngine {
     && !sel.tpe.widen.isRef(defn.QuotedExprClass)
     && !sel.tpe.widen.isRef(defn.QuotedTypeClass)
 
-  def checkReachability(m: Match)(using Context): Unit = trace(i"checkReachability($m)") {
-    val cases = m.cases.toIndexedSeq
-
+  def checkReachability(m: Match)(using Context): Unit = trace(i"checkReachability($m)"):
     val selTyp = toUnderlying(m.selector.tpe).dealias
-
-    val isNullable = selTyp.classSymbol.isNullableClass
-    val targetSpace = trace(i"targetSpace($selTyp)")(if isNullable
+    val isNullable = selTyp.isInstanceOf[FlexibleType] || selTyp.classSymbol.isNullableClass
+    val targetSpace = trace(i"targetSpace($selTyp)"):
+      if isNullable && !ctx.mode.is(Mode.SafeNulls)
       then project(OrType(selTyp, ConstantType(Constant(null)), soft = false))
       else project(selTyp)
-    )
+    var hadNullOnly = false
+    def projectPat(pat: Tree): Space =
+      // Project toplevel wildcard pattern to nullable
+      if isNullable && isWildcardArg(pat) then Or(project(pat) :: nullSpace :: Nil)
+      else project(pat)
+    @tailrec def recur(cases: List[CaseDef], prevs: List[Space], deferred: List[Tree]): Unit =
+      cases match
+        case Nil =>
+        case CaseDef(pat, guard, _) :: rest =>
+          val curr = trace(i"project($pat)")(projectPat(pat))
+          val covered = trace("covered")(simplify(intersect(curr, targetSpace)))
+          val prev = trace("prev")(simplify(Or(prevs)))
+          if prev == Empty && covered == Empty then // defer until a case is reachable
+            recur(rest, prevs, pat :: deferred)
+          else
+            for pat <- deferred.reverseIterator
+            do report.warning(MatchCaseUnreachable(), pat.srcPos)
 
-    var i        = 0
-    val len      = cases.length
-    var prevs    = List.empty[Space]
-    var deferred = List.empty[Tree]
+            if pat != EmptyTree // rethrow case of catch uses EmptyTree
+                && !pat.symbol.isAllOf(SyntheticCase, butNot=Method) // ExpandSAMs default cases use SyntheticCase
+            then
+              if isSubspace(covered, prev) then
+                report.warning(MatchCaseUnreachable(), pat.srcPos)
+              else if isNullable && !hadNullOnly && isWildcardArg(pat)
+                && isSubspace(covered, Or(prev :: nullSpace :: Nil)) then
+                // Issue OnlyNull warning only if:
+                // 1. The target space is nullable;
+                // 2. OnlyNull warning has not been issued before;
+                // 3. The pattern is a wildcard pattern;
+                // 4. The pattern is not covered by the previous cases,
+                //    but covered by the previous cases with null.
+                hadNullOnly = true
+                report.warning(MatchCaseOnlyNullWarning(), pat.srcPos)
 
-    while (i < len) {
-      val CaseDef(pat, guard, _) = cases(i)
+            // in redundancy check, take guard as false in order to soundly approximate
+            val newPrev = if guard.isEmpty then covered :: prevs else prevs
+            recur(rest, newPrev, Nil)
 
-      val curr = trace(i"project($pat)")(project(pat))
-
-      val covered = trace("covered")(simplify(intersect(curr, targetSpace)))
-
-      val prev = trace("prev")(simplify(Or(prevs)))
-
-      if prev == Empty && covered == Empty then // defer until a case is reachable
-        deferred ::= pat
-      else {
-        for (pat <- deferred.reverseIterator)
-          report.warning(MatchCaseUnreachable(), pat.srcPos)
-        if pat != EmptyTree // rethrow case of catch uses EmptyTree
-            && !pat.symbol.isAllOf(SyntheticCase, butNot=Method) // ExpandSAMs default cases use SyntheticCase
-            && isSubspace(covered, prev)
-        then {
-          val nullOnly = isNullable && i == len - 1 && isWildcardArg(pat)
-          val msg = if nullOnly then MatchCaseOnlyNullWarning() else MatchCaseUnreachable()
-          report.warning(msg, pat.srcPos)
-        }
-        deferred = Nil
-      }
-
-      // in redundancy check, take guard as false in order to soundly approximate
-      prevs ::= (if guard.isEmpty then covered else Empty)
-      i += 1
-    }
-  }
+    recur(m.cases, Nil, Nil)
+  end checkReachability
 
   def checkMatch(m: Match)(using Context): Unit =
     if exhaustivityCheckable(m.selector) then checkExhaustivity(m)

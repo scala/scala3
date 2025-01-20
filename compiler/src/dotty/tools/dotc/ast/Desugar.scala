@@ -11,6 +11,7 @@ import NameKinds.{UniqueName, ContextBoundParamName, ContextFunctionParamName, D
 import typer.{Namer, Checking}
 import util.{Property, SourceFile, SourcePosition, SrcPos, Chars}
 import config.{Feature, Config}
+import config.Feature.{sourceVersion, migrateTo3, enabled, betterForsEnabled}
 import config.SourceVersion.*
 import collection.mutable
 import reporting.*
@@ -50,6 +51,10 @@ object desugar {
    *  for a context bound.
    */
   val ContextBoundParam: Property.Key[Unit] = Property.StickyKey()
+
+  /** Marks a poly fcuntion apply method, so that we can handle adding evidence parameters to them in a special way
+   */
+  val PolyFunctionApply: Property.Key[Unit] = Property.StickyKey()
 
   /** What static check should be applied to a Match? */
   enum MatchCheck {
@@ -92,7 +97,24 @@ object desugar {
     override def ensureCompletions(using Context): Unit = {
       def completeConstructor(sym: Symbol) =
         sym.infoOrCompleter match {
-          case completer: Namer#ClassCompleter =>
+          case completer: Namer#ClassCompleter if !sym.isCompleting =>
+            // An example, derived from tests/run/t6385.scala
+            //
+            //     class Test():
+            //       def t1: Foo = Foo(1)
+            //     final case class Foo(value: Int)
+            //
+            // Here's the sequence of events:
+            //  * The symbol for Foo.apply is forced to complete
+            //  * The symbol for the `value` parameter of the apply method is forced to complete
+            //  * Completing that value parameter requires typing its type, which is a DerivedTypeTrees,
+            //    which only types if it has an OriginalSymbol.
+            //  * So if the case class hasn't been completed, we need (at least) its constructor to be completed
+            //
+            // Test tests/neg/i9294.scala is an example of why isCompleting is necessary.
+            // Annotations are added while completing the constructor,
+            // so the back reference to foo reaches here which re-initiates the constructor completion.
+            // So we just skip, as completion is already being triggered.
             completer.completeConstructor(sym)
           case _ =>
         }
@@ -188,7 +210,7 @@ object desugar {
     if isSetterNeeded(vdef) then
       val setterParam = makeSyntheticParameter(tpt = SetterParamTree().watching(vdef))
       // The rhs gets filled in later, when field is generated and getter has parameters (see Memoize miniphase)
-      val setterRhs = if (vdef.rhs.isEmpty) EmptyTree else unitLiteral
+      val setterRhs = if (vdef.rhs.isEmpty) EmptyTree else syntheticUnitLiteral
       val setter = cpy.DefDef(vdef)(
           name    = valName.setterName,
           paramss = (setterParam :: Nil) :: Nil,
@@ -224,7 +246,7 @@ object desugar {
    *      def f$default$2[T](x: Int) = x + "m"
    */
   private def defDef(meth: DefDef, isPrimaryConstructor: Boolean = false)(using Context): Tree =
-    addDefaultGetters(elimContextBounds(meth, isPrimaryConstructor))
+    addDefaultGetters(elimContextBounds(meth, isPrimaryConstructor).asInstanceOf[DefDef])
 
   /** Drop context bounds in given TypeDef, replacing them with evidence ValDefs that
    *  get added to a buffer.
@@ -286,10 +308,8 @@ object desugar {
       tdef1
   end desugarContextBounds
 
-  private def elimContextBounds(meth: DefDef, isPrimaryConstructor: Boolean)(using Context): DefDef =
-    val DefDef(_, paramss, tpt, rhs) = meth
+  def elimContextBounds(meth: Tree, isPrimaryConstructor: Boolean = false)(using Context): Tree =
     val evidenceParamBuf = mutable.ListBuffer[ValDef]()
-
     var seenContextBounds: Int = 0
     def freshName(unused: Tree) =
       seenContextBounds += 1 // Start at 1 like FreshNameCreator.
@@ -299,22 +319,44 @@ object desugar {
       // parameters of the method since shadowing does not affect
       // implicit resolution in Scala 3.
 
-    val paramssNoContextBounds =
-      val iflag = if Feature.sourceVersion.isAtLeast(`future`) then Given else Implicit
+    def paramssNoContextBounds(paramss: List[ParamClause]): List[ParamClause] =
+      val iflag = paramss.lastOption.flatMap(_.headOption) match
+        case Some(param) if param.mods.isOneOf(GivenOrImplicit) =>
+          param.mods.flags & GivenOrImplicit
+        case _ =>
+          if Feature.sourceVersion.isAtLeast(`3.6`) then Given
+          else Implicit
       val flags = if isPrimaryConstructor then iflag | LocalParamAccessor else iflag | Param
       mapParamss(paramss) {
         tparam => desugarContextBounds(tparam, evidenceParamBuf, flags, freshName, paramss)
       }(identity)
 
-    rhs match
-      case MacroTree(call) =>
-        cpy.DefDef(meth)(rhs = call).withMods(meth.mods | Macro | Erased)
-      case _ =>
-        addEvidenceParams(
-          cpy.DefDef(meth)(
-            name = normalizeName(meth, tpt).asTermName,
-            paramss = paramssNoContextBounds),
-          evidenceParamBuf.toList)
+    meth match
+      case meth @ DefDef(_, paramss, tpt, rhs) =>
+        val newParamss = paramssNoContextBounds(paramss)
+        rhs match
+          case MacroTree(call) =>
+            cpy.DefDef(meth)(rhs = call).withMods(meth.mods | Macro | Erased)
+          case _ =>
+            addEvidenceParams(
+              cpy.DefDef(meth)(
+                name = normalizeName(meth, tpt).asTermName,
+                paramss = newParamss
+              ),
+              evidenceParamBuf.toList
+            )
+      case meth @ PolyFunction(tparams, fun) =>
+        val PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun) = meth: @unchecked
+        val Function(vparams: List[untpd.ValDef] @unchecked, rhs) = fun: @unchecked
+        val newParamss = paramssNoContextBounds(tparams :: vparams :: Nil)
+        val params = evidenceParamBuf.toList
+        if params.isEmpty then
+          meth
+        else
+          val boundNames = getBoundNames(params, newParamss)
+          val recur = fitEvidenceParams(params, nme.apply, boundNames)
+          val (paramsFst, paramsSnd) = recur(newParamss)
+          functionsOf((paramsFst ++ paramsSnd).filter(_.nonEmpty), rhs)
   end elimContextBounds
 
   def addDefaultGetters(meth: DefDef)(using Context): Tree =
@@ -442,6 +484,74 @@ object desugar {
       case _ =>
         (Nil, tree)
 
+  private def referencesName(vdef: ValDef, names: Set[TermName])(using Context): Boolean =
+    vdef.tpt.existsSubTree:
+      case Ident(name: TermName) => names.contains(name)
+      case _ => false
+
+  /** Fit evidence `params` into the `mparamss` parameter lists, making sure
+   * that all parameters referencing `params` are after them.
+   * - for methods the final parameter lists are := result._1 ++ result._2
+   * - for poly functions, each element of the pair contains at most one term
+   *   parameter list
+   *
+   * @param params the evidence parameters list that should fit into `mparamss`
+   * @param methName the name of the method that `mparamss` belongs to
+   * @param boundNames the names of the evidence parameters
+   * @param mparamss the original parameter lists of the method
+   * @return a pair of parameter lists containing all parameter lists in a
+   * reference-correct order; make sure that `params` is always at the
+   * intersection of the pair elements; this is relevant, for poly functions
+   * where `mparamss` is guaranteed to have exectly one term parameter list,
+   * then each pair element will have at most one term parameter list
+   */
+  private def fitEvidenceParams(
+    params: List[ValDef],
+    methName: Name,
+    boundNames: Set[TermName]
+  )(mparamss: List[ParamClause])(using Context): (List[ParamClause], List[ParamClause]) = mparamss match
+    case ValDefs(mparams) :: _ if mparams.exists(referencesName(_, boundNames)) =>
+      (params :: Nil) -> mparamss
+    case ValDefs(mparams @ (mparam :: _)) :: Nil if mparam.mods.isOneOf(GivenOrImplicit) =>
+      val normParams =
+        if params.head.mods.flags.is(Given) != mparam.mods.flags.is(Given) then
+          params.map: param =>
+            val normFlags = param.mods.flags &~ GivenOrImplicit | (mparam.mods.flags & (GivenOrImplicit))
+            param.withMods(param.mods.withFlags(normFlags))
+              .showing(i"adapted param $result ${result.mods.flags} for ${methName}", Printers.desugar)
+        else params
+      ((normParams ++ mparams) :: Nil) -> Nil
+    case mparams :: mparamss1 =>
+      val (fst, snd) = fitEvidenceParams(params, methName, boundNames)(mparamss1)
+      (mparams :: fst) -> snd
+    case Nil =>
+      Nil -> (params :: Nil)
+
+  /** Create a chain of possibly contextual functions from the parameter lists */
+  private def functionsOf(paramss: List[ParamClause], rhs: Tree)(using Context): Tree = paramss match
+    case Nil => rhs
+    case ValDefs(head @ (fst :: _)) :: rest if fst.mods.isOneOf(GivenOrImplicit) =>
+      val paramTpts = head.map(_.tpt)
+      val paramNames = head.map(_.name)
+      val paramsErased = head.map(_.mods.flags.is(Erased))
+      makeContextualFunction(paramTpts, paramNames, functionsOf(rest, rhs), paramsErased).withSpan(rhs.span)
+    case ValDefs(head) :: rest =>
+      Function(head, functionsOf(rest, rhs))
+    case TypeDefs(head) :: rest =>
+      PolyFunction(head, functionsOf(rest, rhs))
+    case _ =>
+      assert(false, i"unexpected paramss $paramss")
+      EmptyTree
+
+  private def getBoundNames(params: List[ValDef], paramss: List[ParamClause])(using Context): Set[TermName] =
+    var boundNames = params.map(_.name).toSet // all evidence parameter + context bound proxy names
+    for mparams <- paramss; mparam <- mparams do
+      mparam match
+        case tparam: TypeDef if tparam.mods.annotations.exists(WitnessNamesAnnot.unapply(_).isDefined) =>
+          boundNames += tparam.name.toTermName
+        case _ =>
+    boundNames
+
   /**  Add all evidence parameters in `params` as implicit parameters to `meth`.
    *   The position of the added parameters is determined as follows:
    *
@@ -456,29 +566,23 @@ object desugar {
   private def addEvidenceParams(meth: DefDef, params: List[ValDef])(using Context): DefDef =
     if params.isEmpty then return meth
 
-    var boundNames = params.map(_.name).toSet // all evidence parameter + context bound proxy names
-    for mparams <- meth.paramss; mparam <- mparams do
-      mparam match
-        case tparam: TypeDef if tparam.mods.annotations.exists(WitnessNamesAnnot.unapply(_).isDefined) =>
-          boundNames += tparam.name.toTermName
-        case _ =>
+    val boundNames = getBoundNames(params, meth.paramss)
 
-    def referencesBoundName(vdef: ValDef): Boolean =
-      vdef.tpt.existsSubTree:
-        case Ident(name: TermName) => boundNames.contains(name)
-        case _ => false
+    val fitParams = fitEvidenceParams(params, meth.name, boundNames)
 
-    def recur(mparamss: List[ParamClause]): List[ParamClause] = mparamss match
-      case ValDefs(mparams) :: _ if mparams.exists(referencesBoundName) =>
-        params :: mparamss
-      case ValDefs(mparams @ (mparam :: _)) :: Nil if mparam.mods.isOneOf(GivenOrImplicit) =>
-        (params ++ mparams) :: Nil
-      case mparams :: mparamss1 =>
-        mparams :: recur(mparamss1)
-      case Nil =>
-        params :: Nil
-
-    cpy.DefDef(meth)(paramss = recur(meth.paramss))
+    if meth.removeAttachment(PolyFunctionApply).isDefined then
+      // for PolyFunctions we are limited to a single term param list, so we
+      // reuse the fitEvidenceParams logic to compute the new parameter lists
+      // and then we add the other parameter lists as function types to the
+      // return type
+      val (paramsFst, paramsSnd) = fitParams(meth.paramss)
+      if ctx.mode.is(Mode.Type) then
+        cpy.DefDef(meth)(paramss = paramsFst, tpt = functionsOf(paramsSnd, meth.tpt))
+      else
+        cpy.DefDef(meth)(paramss = paramsFst, rhs = functionsOf(paramsSnd, meth.rhs))
+    else
+      val (paramsFst, paramsSnd) = fitParams(meth.paramss)
+      cpy.DefDef(meth)(paramss = paramsFst ++ paramsSnd)
   end addEvidenceParams
 
   /** The parameters generated from the contextual bounds of `meth`, as generated by `desugar.defDef` */
@@ -1069,8 +1173,8 @@ object desugar {
           paramss match
             case rightParam :: paramss1 => // `rightParam` must have a single parameter and without `given` flag
 
-              def badRightAssoc(problem: String) =
-                report.error(em"right-associative extension method $problem", mdef.srcPos)
+              def badRightAssoc(problem: String, pos: SrcPos) =
+                report.error(em"right-associative extension method $problem", pos)
                 extParamss ++ mdef.paramss
 
               rightParam match
@@ -1086,11 +1190,23 @@ object desugar {
                     //
                     // If you change the names of the clauses below, also change them in right-associative-extension-methods.md
                     val (leftTyParamsAndLeadingUsing, leftParamAndTrailingUsing) = extParamss.span(isUsingOrTypeParamClause)
+
+                    val names = (for ps <- mdef.paramss; p <- ps yield p.name).toSet[Name]
+
+                    val tt = new untpd.UntypedTreeTraverser:
+                      def traverse(tree: Tree)(using Context): Unit = tree match
+                        case tree: Ident if names.contains(tree.name) =>
+                          badRightAssoc(s"cannot have a forward reference to ${tree.name}", tree.srcPos)
+                        case _ => traverseChildren(tree)
+
+                    for ts <- leftParamAndTrailingUsing; t <- ts do
+                      tt.traverse(t)
+
                     leftTyParamsAndLeadingUsing ::: rightTyParams ::: rightParam :: leftParamAndTrailingUsing ::: paramss1
                   else
-                    badRightAssoc("cannot start with using clause")
+                    badRightAssoc("cannot start with using clause", mdef.srcPos)
                 case _ =>
-                  badRightAssoc("must start with a single parameter")
+                  badRightAssoc("must start with a single parameter", mdef.srcPos)
             case _ =>
               // no value parameters, so not an infix operator.
               extParamss ++ mdef.paramss
@@ -1182,27 +1298,29 @@ object desugar {
   /** Desugar [T_1, ..., T_M] => (P_1, ..., P_N) => R
    *  Into    scala.PolyFunction { def apply[T_1, ..., T_M](x$1: P_1, ..., x$N: P_N): R }
    */
-  def makePolyFunctionType(tree: PolyFunction)(using Context): RefinedTypeTree =
-    val PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun @ untpd.Function(vparamTypes, res)) = tree: @unchecked
-    val paramFlags = fun match
-      case fun: FunctionWithMods =>
-        // TODO: make use of this in the desugaring when pureFuns is enabled.
-        // val isImpure = funFlags.is(Impure)
+  def makePolyFunctionType(tree: PolyFunction)(using Context): RefinedTypeTree = (tree: @unchecked) match
+    case PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun @ untpd.Function(vparamTypes, res)) =>
+      val paramFlags = fun match
+        case fun: FunctionWithMods =>
+          // TODO: make use of this in the desugaring when pureFuns is enabled.
+          // val isImpure = funFlags.is(Impure)
 
-        // Function flags to be propagated to each parameter in the desugared method type.
-        val givenFlag = fun.mods.flags.toTermFlags & Given
-        fun.erasedParams.map(isErased => if isErased then givenFlag | Erased else givenFlag)
-      case _ =>
-        vparamTypes.map(_ => EmptyFlags)
+          // Function flags to be propagated to each parameter in the desugared method type.
+          val givenFlag = fun.mods.flags.toTermFlags & Given
+          fun.erasedParams.map(isErased => if isErased then givenFlag | Erased else givenFlag)
+        case _ =>
+          vparamTypes.map(_ => EmptyFlags)
 
-    val vparams = vparamTypes.lazyZip(paramFlags).zipWithIndex.map {
-      case ((p: ValDef, paramFlags), n) => p.withAddedFlags(paramFlags)
-      case ((p, paramFlags), n) => makeSyntheticParameter(n + 1, p).withAddedFlags(paramFlags)
-    }.toList
+      val vparams = vparamTypes.lazyZip(paramFlags).zipWithIndex.map {
+        case ((p: ValDef, paramFlags), n) => p.withAddedFlags(paramFlags)
+        case ((p, paramFlags), n) => makeSyntheticParameter(n + 1, p).withAddedFlags(paramFlags)
+      }.toList
 
-    RefinedTypeTree(ref(defn.PolyFunctionType), List(
-       DefDef(nme.apply, tparams :: vparams :: Nil, res, EmptyTree).withFlags(Synthetic)
-    )).withSpan(tree.span)
+      RefinedTypeTree(ref(defn.PolyFunctionType), List(
+        DefDef(nme.apply, tparams :: vparams :: Nil, res, EmptyTree)
+          .withFlags(Synthetic)
+          .withAttachment(PolyFunctionApply, ())
+      )).withSpan(tree.span)
   end makePolyFunctionType
 
   /** Invent a name for an anonympus given of type or template `impl`. */
@@ -1219,7 +1337,7 @@ object desugar {
     str.toTermName.asSimpleName
 
   /** Extract a synthesized given name from a type tree. This is used for
-   *  both anonymous givens and (under x.modularity) deferred givens.
+   *  both anonymous givens and deferred givens.
    *  @param followArgs   if true include argument types in the name
    */
   private class NameExtractor(followArgs: Boolean) extends UntypedTreeAccumulator[String] {
@@ -1489,7 +1607,7 @@ object desugar {
   def block(tree: Block)(using Context): Block = tree.expr match {
     case EmptyTree =>
       cpy.Block(tree)(tree.stats,
-        unitLiteral.withSpan(if (tree.stats.isEmpty) tree.span else tree.span.endPos))
+        syntheticUnitLiteral.withSpan(if (tree.stats.isEmpty) tree.span else tree.span.endPos))
     case _ =>
       tree
   }
@@ -1563,9 +1681,10 @@ object desugar {
 
   /** Translate tuple expressions
    *
-   *     ()             ==>   ()
-   *     (t)            ==>   t
-   *     (t1, ..., tN)  ==>   TupleN(t1, ..., tN)
+   *     ()                       ==>   ()
+   *     (t)                      ==>   t
+   *     (t1, ..., tN)            ==>   TupleN(t1, ..., tN)
+   *     (n1 = t1, ..., nN = tN)  ==>   NamedTuple.build[(n1, ..., nN)]()(TupleN(t1, ..., tN))
    */
   def tuple(tree: Tuple, pt: Type)(using Context): Tree =
     var elems = checkWellFormedTupleElems(tree.trees)
@@ -1596,9 +1715,13 @@ object desugar {
       if ctx.mode.is(Mode.Type) then
         AppliedTypeTree(ref(defn.NamedTupleTypeRef), namesTuple :: tup :: Nil)
       else
-        TypeApply(
-          Apply(Select(ref(defn.NamedTupleModule), nme.withNames), tup),
-          namesTuple :: Nil)
+        Apply(
+          Apply(
+            TypeApply(
+              Select(ref(defn.NamedTupleModule), nme.build), // NamedTuple.build
+              namesTuple :: Nil), // ++ [(names...)]
+            Nil), // ++ ()
+          tup :: Nil) // .++ ((values...))
 
   /** When desugaring a list pattern arguments `elems` adapt them and the
    *  expected type `pt` to each other. This means:
@@ -1799,45 +1922,80 @@ object desugar {
     /** Create tree for for-comprehension `<for (enums) do body>` or
      *   `<for (enums) yield body>` where mapName and flatMapName are chosen
      *  corresponding to whether this is a for-do or a for-yield.
-     *  The creation performs the following rewrite rules:
+     *  If betterFors are enabled, the creation performs the following rewrite rules:
      *
-     *  1.
+     *  1. if betterFors is enabled:
      *
-     *    for (P <- G) E   ==>   G.foreach (P => E)
+     *    for () do E  ==>  E
+     *      or
+     *    for () yield E  ==>  E
      *
-     *     Here and in the following (P => E) is interpreted as the function (P => E)
-     *     if P is a variable pattern and as the partial function { case P => E } otherwise.
+     *    (Where empty for-comprehensions are excluded by the parser)
      *
      *  2.
      *
-     *    for (P <- G) yield E  ==>  G.map (P => E)
+     *    for (P <- G) do E   ==>   G.foreach (P => E)
+     *
+     *    Here and in the following (P => E) is interpreted as the function (P => E)
+     *    if P is a variable pattern and as the partial function { case P => E } otherwise.
      *
      *  3.
+     *
+     *    for (P <- G) yield P  ==>  G
+     *
+     *  If betterFors is enabled, P is a variable or a tuple of variables and G is not a withFilter.
+     *
+     *    for (P <- G) yield E  ==>  G.map (P => E)
+     *
+     *    Otherwise
+     *
+     *  4.
      *
      *    for (P_1 <- G_1; P_2 <- G_2; ...) ...
      *      ==>
      *    G_1.flatMap (P_1 => for (P_2 <- G_2; ...) ...)
      *
-     *  4.
+     *  5.
      *
-     *    for (P <- G; E; ...) ...
-     *      =>
-     *    for (P <- G.filter (P => E); ...) ...
-     *
-     *  5. For any N:
-     *
-     *    for (P_1 <- G; P_2 = E_2; val P_N = E_N; ...)
+     *    for (P <- G; if E; ...) ...
      *      ==>
-     *    for (TupleN(P_1, P_2, ... P_N) <-
-     *      for (x_1 @ P_1 <- G) yield {
-     *        val x_2 @ P_2 = E_2
+     *    for (P <- G.withFilter (P => E); ...) ...
+     *
+     *  6. For any N, if betterFors is enabled:
+     *
+     *    for (P <- G; P_1 = E_1; ... P_N = E_N; P1 <- G1; ...) ...
+     *      ==>
+     *    G.flatMap (P => for (P_1 = E_1; ... P_N = E_N; ...))
+     *
+     *  7. For any N, if betterFors is enabled:
+     *
+     *    for (P <- G; P_1 = E_1; ... P_N = E_N) ...
+     *      ==>
+     *    G.map (P => for (P_1 = E_1; ... P_N = E_N) ...)
+     *
+     *  8. For any N:
+     *
+     *    for (P <- G; P_1 = E_1; ... P_N = E_N; ...)
+     *      ==>
+     *    for (TupleN(P, P_1, ... P_N) <-
+     *      for (x @ P <- G) yield {
+     *        val x_1 @ P_1 = E_2
      *        ...
-     *        val x_N & P_N = E_N
-     *        TupleN(x_1, ..., x_N)
-     *      } ...)
+     *        val x_N @ P_N = E_N
+     *        TupleN(x, x_1, ..., x_N)
+     *      }; if E; ...)
      *
      *    If any of the P_i are variable patterns, the corresponding `x_i @ P_i` is not generated
      *    and the variable constituting P_i is used instead of x_i
+     *
+     *  9. For any N, if betterFors is enabled:
+     *
+     *    for (P_1 = E_1; ... P_N = E_N; ...)
+     *      ==>
+     *    {
+     *      val x_N @ P_N = E_N
+     *      for (...)
+     *    }
      *
      *  @param mapName      The name to be used for maps (either map or foreach)
      *  @param flatMapName  The name to be used for flatMaps (either flatMap or foreach)
@@ -1947,7 +2105,7 @@ object desugar {
         case GenCheckMode.FilterAlways => false  // pattern was prefixed by `case`
         case GenCheckMode.FilterNow | GenCheckMode.CheckAndFilter => isVarBinding(gen.pat) || isIrrefutable(gen.pat, gen.expr)
         case GenCheckMode.Check => true
-        case GenCheckMode.Ignore => true
+        case GenCheckMode.Ignore | GenCheckMode.Filtered => true
 
       /** rhs.name with a pattern filter on rhs unless `pat` is irrefutable when
        *  matched against `rhs`.
@@ -1957,12 +2115,31 @@ object desugar {
         Select(rhs, name)
       }
 
+      def deepEquals(t1: Tree, t2: Tree): Boolean =
+        (unsplice(t1), unsplice(t2)) match
+          case (Ident(n1), Ident(n2)) => n1 == n2
+          case (Tuple(ts1), Tuple(ts2)) => ts1.corresponds(ts2)(deepEquals)
+          case _ => false
+
       enums match {
+        case Nil if betterForsEnabled => body
         case (gen: GenFrom) :: Nil =>
-          Apply(rhsSelect(gen, mapName), makeLambda(gen, body))
+          if betterForsEnabled
+            && gen.checkMode != GenCheckMode.Filtered // results of withFilter have the wrong type
+            && deepEquals(gen.pat, body)
+          then gen.expr  // avoid a redundant map with identity
+          else Apply(rhsSelect(gen, mapName), makeLambda(gen, body))
         case (gen: GenFrom) :: (rest @ (GenFrom(_, _, _) :: _)) =>
           val cont = makeFor(mapName, flatMapName, rest, body)
           Apply(rhsSelect(gen, flatMapName), makeLambda(gen, cont))
+        case (gen: GenFrom) :: rest
+        if betterForsEnabled
+           && rest.dropWhile(_.isInstanceOf[GenAlias]).headOption.forall(e => e.isInstanceOf[GenFrom]) => // possible aliases followed by a generator or end of for
+          val cont = makeFor(mapName, flatMapName, rest, body)
+          val selectName =
+            if rest.exists(_.isInstanceOf[GenFrom]) then flatMapName
+            else mapName
+          Apply(rhsSelect(gen, selectName), makeLambda(gen, cont))
         case (gen: GenFrom) :: (rest @ GenAlias(_, _) :: _) =>
           val (valeqs, rest1) = rest.span(_.isInstanceOf[GenAlias])
           val pats = valeqs map { case GenAlias(pat, _) => pat }
@@ -1981,8 +2158,20 @@ object desugar {
           makeFor(mapName, flatMapName, vfrom1 :: rest1, body)
         case (gen: GenFrom) :: test :: rest =>
           val filtered = Apply(rhsSelect(gen, nme.withFilter), makeLambda(gen, test))
-          val genFrom = GenFrom(gen.pat, filtered, GenCheckMode.Ignore)
+          val genFrom = GenFrom(gen.pat, filtered, if betterForsEnabled then GenCheckMode.Filtered else GenCheckMode.Ignore)
           makeFor(mapName, flatMapName, genFrom :: rest, body)
+        case GenAlias(_, _) :: _ if betterForsEnabled =>
+          val (valeqs, rest) = enums.span(_.isInstanceOf[GenAlias])
+          val pats = valeqs.map { case GenAlias(pat, _) => pat }
+          val rhss = valeqs.map { case GenAlias(_, rhs) => rhs }
+          val (defpats, ids) = pats.map(makeIdPat).unzip
+          val pdefs = valeqs.lazyZip(defpats).lazyZip(rhss).map { (valeq, defpat, rhs) =>
+            val mods = defpat match
+              case defTree: DefTree => defTree.mods
+              case _ => Modifiers()
+            makePatDef(valeq, mods, defpat, rhs)
+          }
+          Block(pdefs, makeFor(mapName, flatMapName, rest, body))
         case _ =>
           EmptyTree //may happen for erroneous input
       }
@@ -2013,7 +2202,7 @@ object desugar {
           case ts: Thicket => ts.trees.tail
           case t => Nil
         } map {
-          case Block(Nil, EmptyTree) => unitLiteral // for s"... ${} ..."
+          case Block(Nil, EmptyTree) => syntheticUnitLiteral // for s"... ${} ..."
           case Block(Nil, expr) => expr // important for interpolated string as patterns, see i1773.scala
           case t => t
         }
@@ -2046,7 +2235,7 @@ object desugar {
         val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
         flatTree(pats1 map (makePatDef(tree, mods, _, rhs)))
       case ext: ExtMethods =>
-        Block(List(ext), unitLiteral.withSpan(ext.span))
+        Block(List(ext), syntheticUnitLiteral.withSpan(ext.span))
       case f: FunctionWithMods if f.hasErasedParams => makeFunctionWithValDefs(f, pt)
     }
     desugared.withSpan(tree.span)
@@ -2214,7 +2403,7 @@ object desugar {
       case Quote(body, _) =>
         new UntypedTreeTraverser {
           def traverse(tree: untpd.Tree)(using Context): Unit = tree match {
-            case SplicePattern(body, _) => collect(body)
+            case SplicePattern(body, _, _) => collect(body)
             case _ => traverseChildren(tree)
           }
         }.traverse(body)

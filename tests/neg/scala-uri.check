@@ -1,5 +1,5 @@
--- [E172] Type Error: tests/neg/scala-uri.scala:31:59 ------------------------------------------------------------------
-31 |@main def Test = summon[QueryKeyValue[(String, None.type)]]  // error
+-- [E172] Type Error: tests/neg/scala-uri.scala:30:59 ------------------------------------------------------------------
+30 |@main def Test = summon[QueryKeyValue[(String, None.type)]]  // error
    |                                                           ^
    |No best given instance of type QueryKeyValue[(String, None.type)] was found for parameter x of method summon in object Predef.
    |I found:

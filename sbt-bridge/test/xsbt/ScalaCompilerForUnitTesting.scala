@@ -1,25 +1,19 @@
 /** Adapted from https://github.com/sbt/sbt/blob/0.13/compile/interface/src/test/scala/xsbt/ScalaCompilerForUnitTesting.scala */
 package xsbt
 
-import xsbti.compile.{CompileProgress, SingleOutput}
+import dotty.tools.xsbt.CompilerBridge
+import sbt.io.IO
+import xsbti.*
+import xsbti.api.ClassLike
+import xsbti.api.DependencyContext.*
+import xsbti.compile.SingleOutput
+
 import java.io.File
 import java.nio.file.Path
-import xsbti._
-import sbt.io.IO
-import xsbti.api.{ ClassLike, Def, DependencyContext }
-import DependencyContext._
-import xsbt.api.SameAPI
-import sbt.internal.util.ConsoleLogger
-import dotty.tools.io.PlainFile.toPlainFile
-import dotty.tools.xsbt.CompilerBridge
 
 import TestCallback.ExtractedClassDependencies
-import ScalaCompilerForUnitTesting.Callbacks
 
 case class CompileOutput(srcFiles: Seq[VirtualFileRef], classesOutput: Path, analysis: TestCallback, progress: TestCompileProgress)
-
-object ScalaCompilerForUnitTesting:
-  case class Callbacks(analysis: TestCallback, progress: TestCompileProgress)
 
 /**
  * Provides common functionality needed for unit tests that require compiling

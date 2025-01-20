@@ -36,6 +36,7 @@ import ExplicitOuter.*
 import core.Mode
 import util.Property
 import reporting.*
+import scala.annotation.tailrec
 
 class Erasure extends Phase with DenotTransformer {
 
@@ -764,7 +765,8 @@ object Erasure {
           (ctx.owner.enclosingPackageClass eq boundary)
         }
 
-      def recur(qual: Tree): Tree = {
+      @tailrec
+      def recur(qual: Tree): Tree =
         val qualIsPrimitive = qual.tpe.widen.isPrimitiveValueType
         val symIsPrimitive = sym.owner.isPrimitiveValueClass
 
@@ -773,33 +775,34 @@ object Erasure {
             inContext(preErasureCtx):
               tree.qualifier.typeOpt.widen.finalResultType)
 
-        if (qualIsPrimitive && !symIsPrimitive || qual.tpe.widenDealias.isErasedValueType)
+        if qualIsPrimitive && !symIsPrimitive || qual.tpe.widenDealias.isErasedValueType then
           recur(box(qual))
-        else if (!qualIsPrimitive && symIsPrimitive)
+        else if !qualIsPrimitive && symIsPrimitive then
           recur(unbox(qual, sym.owner.typeRef))
-        else if (sym.owner eq defn.ArrayClass)
+        else if sym.owner eq defn.ArrayClass then
           selectArrayMember(qual, originalQual)
-        else {
-          val qual1 = adaptIfSuper(qual)
-          if (qual1.tpe.derivesFrom(sym.owner) || qual1.isInstanceOf[Super])
-            select(qual1, sym)
-          else
-            val castTarget = // Avoid inaccessible cast targets, see i8661
-              if isJvmAccessible(sym.owner) && sym.owner.isType
-              then
-                sym.owner.typeRef
-              else
-                // If the owner is inaccessible, try going through the qualifier,
-                // but be careful to not go in an infinite loop in case that doesn't
-                // work either.
-                val tp = originalQual
-                if tp =:= qual1.tpe.widen then
-                  return errorTree(qual1,
-                    em"Unable to emit reference to ${sym.showLocated}, ${sym.owner} is not accessible in ${ctx.owner.enclosingClass}")
-                tp
-            recur(cast(qual1, castTarget))
-        }
-      }
+        else
+          adaptIfSuper(qual) match
+            case qual1: Super =>
+              select(qual1, sym)
+            case qual1 if !isJvmAccessible(qual1.tpe.typeSymbol)
+                || !qual1.tpe.derivesFrom(sym.owner) =>
+              val castTarget = // Avoid inaccessible cast targets, see i8661
+                if isJvmAccessible(sym.owner) && sym.owner.isType then
+                  sym.owner.typeRef
+                else
+                  // If the owner is inaccessible, try going through the qualifier,
+                  // but be careful to not go in an infinite loop in case that doesn't
+                  // work either.
+                  val tp = originalQual
+                  if tp =:= qual1.tpe.widen then
+                    return errorTree(qual1,
+                      em"Unable to emit reference to ${sym.showLocated}, ${sym.owner} is not accessible in ${ctx.owner.enclosingClass}")
+                  tp
+              recur(cast(qual1, castTarget))
+            case qual1 =>
+              select(qual1, sym)
+      end recur
 
       checkNotErased(recur(qual1))
     }
@@ -945,6 +948,8 @@ object Erasure {
                   vparams = vparams :+ param
               if crCount == 1 then meth.rhs.changeOwnerAfter(meth.symbol, sym, erasurePhase)
               else skipContextClosures(meth.rhs, crCount - 1)
+            case inlined: Inlined =>
+              skipContextClosures(Inlines.dropInlined(inlined), crCount)
 
         var rhs1 = skipContextClosures(ddef.rhs.asInstanceOf[Tree], contextResultCount(sym))
 

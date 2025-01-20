@@ -1,10 +1,10 @@
-//> using options -Xfatal-warnings -source future
+//> using options -Xfatal-warnings
 
 trait Monad[T]:
   def id: String
 class Foo
 object Foo {
-  given Monad[Foo] with { def id = "Foo" }
+  given Monad[Foo] { def id = "Foo" }
 }
 
 opaque type Bar = Foo

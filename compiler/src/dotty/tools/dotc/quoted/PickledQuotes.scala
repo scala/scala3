@@ -224,7 +224,7 @@ object PickledQuotes {
     if tree.span.exists then
       val positionWarnings = new mutable.ListBuffer[Message]()
       val reference = ctx.settings.sourceroot.value
-      PositionPickler.picklePositions(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, reference,
+      PositionPickler.picklePositions(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, treePkl.typeAnnots, reference,
         ctx.compilationUnit.source, tree :: Nil, positionWarnings)
       positionWarnings.foreach(report.warning(_))
 
@@ -241,7 +241,9 @@ object PickledQuotes {
         treeOwner(tree) match
           case Some(owner) =>
             // Copy the cached tree to make sure the all definitions are unique.
-            TreeTypeMap(oldOwners = List(owner), newOwners = List(owner)).apply(tree)
+            val treeCpy = TreeTypeMap(oldOwners = List(owner), newOwners = List(owner)).apply(tree)
+            // Then replace the symbol owner with the one pointed by the quote context.
+            treeCpy.changeNonLocalOwners(ctx.owner)
           case _ =>
             tree
 

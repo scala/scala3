@@ -36,9 +36,9 @@ object repro:
         given gc: C[Int] = new C[Int]
 
         // these seem like they should work but don't
-        given gcq[V](using p0: priority.Prio0)(using c: C[V]): C[Q[V]] = new C[Q[V]]
-        given gbq[V](using p1: priority.Prio1)(using b: B[V]): B[Q[V]] = new B[Q[V]]
-        given gaq[V](using p2: priority.Prio2)(using a: A[V]): A[Q[V]] = new A[Q[V]]
+        given gcq: [V] => priority.Prio0 => C[V] => C[Q[V]] = new C[Q[V]]
+        given gbq: [V] => priority.Prio1 => B[V] => B[Q[V]] = new B[Q[V]]
+        given gaq: [V] => priority.Prio2 => A[V] => A[Q[V]] = new A[Q[V]]
 
 object test1:
     import repro.*
