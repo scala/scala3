@@ -782,14 +782,14 @@ jobs:
     uses: ./.github/workflows/build-chocolatey.yml
     needs: [ build-sdk-package ]
     with:
-      version: 3.3.5-local # unused
-      url    : https://api.github.com/repos/scala/scala3/actions/artifacts/${{ needs.build-sdk-package.outputs.universal-id }}/zip
-      digest : ${{ needs.build-sdk-package.outputs.universal-digest }}
+      version: 3.3.7-SNAPSHOT # Fake version, used only for choco tests
+      url    : https://api.github.com/repos/scala/scala3/actions/artifacts/${{ needs.build-sdk-package.outputs.win-x86_64-id }}/zip
+      digest : ${{ needs.build-sdk-package.outputs.win-x86_64-digest }}
 
   test-chocolatey-package:
     uses: ./.github/workflows/test-chocolatey.yml
     with:
-      version     : 3.3.5-local # unused
+      version     : 3.3.7-SNAPSHOT # Fake version, used only for choco tests
       java-version: 8
     if: github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_chocolatey]')
     needs: [ build-chocolatey-package ]
