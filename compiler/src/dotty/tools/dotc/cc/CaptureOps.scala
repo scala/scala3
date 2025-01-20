@@ -463,7 +463,10 @@ extension (tp: Type)
   def reach(using Context): CaptureRef = tp match
     case tp @ AnnotatedType(tp1: CaptureRef, annot)
     if annot.symbol == defn.MaybeCapabilityAnnot =>
-      tp.derivedAnnotatedType(tp1.reach, annot)
+      tp1.reach.maybe
+    case tp @ AnnotatedType(tp1: CaptureRef, annot)
+    if annot.symbol == defn.ReadOnlyCapabilityAnnot =>
+      tp1.reach.readOnly
     case tp @ AnnotatedType(tp1: CaptureRef, annot)
     if annot.symbol == defn.ReachCapabilityAnnot =>
       tp
@@ -476,9 +479,8 @@ extension (tp: Type)
    */
   def readOnly(using Context): CaptureRef = tp match
     case tp @ AnnotatedType(tp1: CaptureRef, annot)
-    if annot.symbol == defn.MaybeCapabilityAnnot
-        || annot.symbol == defn.ReachCapabilityAnnot =>
-      tp.derivedAnnotatedType(tp1.readOnly, annot)
+    if annot.symbol == defn.MaybeCapabilityAnnot =>
+      tp1.readOnly.maybe
     case tp @ AnnotatedType(tp1: CaptureRef, annot)
     if annot.symbol == defn.ReadOnlyCapabilityAnnot =>
       tp
@@ -710,17 +712,23 @@ object CapsOfApply:
     case TypeApply(capsOf, arg :: Nil) if capsOf.symbol == defn.Caps_capsOf => Some(arg)
     case _ => None
 
-abstract class AnnotatedCapability(annot: Context ?=> ClassSymbol):
+abstract class AnnotatedCapability(annotCls: Context ?=> ClassSymbol):
   def apply(tp: Type)(using Context): AnnotatedType =
     assert(tp.isTrackableRef)
     tp match
-      case AnnotatedType(_, annot) => assert(!unwrappable.contains(annot.symbol))
+      case AnnotatedType(_, annot) =>
+        assert(!unwrappable.contains(annot.symbol), i"illegal combination of derived capabilities: $annotCls over ${annot.symbol}")
       case _ =>
-    AnnotatedType(tp, Annotation(annot, util.Spans.NoSpan))
+    tp match
+      case tp: CaptureRef => tp.derivedRef(annotCls)
+      case _ => AnnotatedType(tp, Annotation(annotCls, util.Spans.NoSpan))
+
   def unapply(tree: AnnotatedType)(using Context): Option[CaptureRef] = tree match
-    case AnnotatedType(parent: CaptureRef, ann) if ann.hasSymbol(annot) => Some(parent)
+    case AnnotatedType(parent: CaptureRef, ann) if ann.hasSymbol(annotCls) => Some(parent)
     case _ => None
+
   protected def unwrappable(using Context): Set[Symbol]
+end AnnotatedCapability
 
 /** An extractor for `ref @maybeCapability`, which is used to express
  *  the maybe capability `ref?` as a type.
