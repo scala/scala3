@@ -35,9 +35,9 @@
    |and captures {cap2}, but this capability is also passed separately
    |in the function prefix with type  (LazyRef[Int]{val elem: () ->{ref2*} Int} | (ref1 : LazyRef[Int]{val elem: () ->{cap1} Int}^{cap1}))^{ref2}.
    |
-   |  Capture set of function prefix        : {ref1, ref2}
+   |  Capture set of function prefix        : {ref1, ref2, ref2*}
    |  Hidden set of current argument        : {cap2}
-   |  Footprint of function prefix          : {ref1, ref2, cap1, cap2}
+   |  Footprint of function prefix          : {ref1, ref2, ref2*, cap1, cap2}
    |  Hidden footprint of current argument  : {cap2}
    |  Declared footprint of current argument: {}
    |  Undeclared overlap of footprints      : {cap2}
