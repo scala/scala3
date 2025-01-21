@@ -832,7 +832,7 @@ jobs:
           sha256sum "${msiInstaller}" > "${msiInstaller}.sha256"
 
       - name: Install GH CLI
-        uses: dev-hanz-ops/install-gh-cli-action@v0.2.0
+        uses: dev-hanz-ops/install-gh-cli-action@v0.2.1
         with:
           gh-cli-version: 2.59.0
 
