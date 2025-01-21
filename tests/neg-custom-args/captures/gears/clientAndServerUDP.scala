@@ -22,14 +22,13 @@ import PosixLikeIO.{PIOHelper, SocketUDP}
         serverSocket.send(ByteBuffer.wrap(responseMessage), got.getAddress.toString.substring(1), got.getPort)
         sleep(50)
 
-    def client(value: Int): Future[Unit] =
-      Future:
-        PIOHelper.withSocketUDP(): clientSocket =>
-          val data: Array[Byte] = value.toString.getBytes
-          clientSocket.send(ByteBuffer.wrap(data), "localhost", 8134).awaitResult.get
-          val responseDatagram = clientSocket.receive().awaitResult.get
-          val messageReceived = String(responseDatagram.getData.slice(0, responseDatagram.getLength), "UTF-8").toInt
-          println("Sent " + value.toString + " and got " + messageReceived.toString + " in return.")
+    def client(value: Int)(using Async) =
+      PIOHelper.withSocketUDP(): clientSocket =>
+        val data: Array[Byte] = value.toString.getBytes
+        clientSocket.send(ByteBuffer.wrap(data), "localhost", 8134).awaitResult.get
+        val responseDatagram = clientSocket.receive().awaitResult.get
+        val messageReceived = String(responseDatagram.getData.slice(0, responseDatagram.getLength), "UTF-8").toInt
+        println("Sent " + value.toString + " and got " + messageReceived.toString + " in return.")
 
-    client(100).await
+    client(100)
     server.await
