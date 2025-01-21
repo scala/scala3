@@ -1066,7 +1066,6 @@ object Build {
     // compiler is updated.
     // Then, the next step is to enable flexible types by default and reduce the use of
     // `unsafeNulls`.
-    scalacOptions ++= Seq("-Yno-flexible-types"),
     packageAll := {
       (`scala3-compiler` / packageAll).value ++ Seq(
         "scala3-compiler" -> (Compile / packageBin).value.getAbsolutePath,
@@ -1460,10 +1459,6 @@ object Build {
     .dependsOn(`scala3-compiler-bootstrapped`, `scala3-library-bootstrapped`, `scala3-presentation-compiler-testcases` % "test->test")
     .settings(presentationCompilerSettings)
     .settings(scala3PresentationCompilerBuildInfo)
-    .settings(
-      // Add `-Yno-flexible-types` flag for bootstrap, see comments for `bootstrappedDottyCompilerSettings`
-      Compile / scalacOptions +=  "-Yno-flexible-types"
-    )
 
   def scala3PresentationCompilerBuildInfo =
     Seq(

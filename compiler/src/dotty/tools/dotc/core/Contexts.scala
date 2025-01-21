@@ -786,9 +786,6 @@ object Contexts {
     def withNotNullInfos(infos: List[NotNullInfo]): Context =
       if !c.explicitNulls || (c.notNullInfos eq infos) then c else c.fresh.setNotNullInfos(infos)
 
-    def relaxedOverrideContext: Context =
-      c.withModeBits(c.mode &~ Mode.SafeNulls | Mode.RelaxedOverriding)
-
   // TODO: Fix issue when converting ModeChanges and FreshModeChanges to extension givens
   extension (c: Context) {
     final def withModeBits(mode: Mode): Context =
