@@ -1,5 +1,7 @@
 package dotty.tools.pc.utils
 
+import java.util.Optional
+
 import scala.annotation.tailrec
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.mtags.CommonMtagsEnrichments
@@ -272,11 +274,14 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
             symbol.maybeOwner.companion,
           ).filter(_ != NoSymbol) ++ symbol.allOverriddenSymbols
         else symbol.allOverriddenSymbols
-      val documentation = search.documentation(
-        sym,
-        () => parentSymbols.iterator.map(toSemanticdbSymbol).toList.asJava,
-        contentType,
-      )
+      val documentation =
+        if symbol.isLocal then Optional.empty
+        else
+          search.documentation(
+            sym,
+            () => parentSymbols.iterator.map(toSemanticdbSymbol).toList.asJava,
+            contentType,
+          )
       documentation.nn.toScala
     end symbolDocumentation
   end extension
