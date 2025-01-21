@@ -16,12 +16,17 @@ import scala.util.Try
 
 import PosixLikeIO.PIOHelper
 
+private val VTFactory = new java.util.concurrent.ThreadFactory:
+  def newThread(r: Runnable): Thread =
+    new Thread(null, r, "gears.async.VThread-", 0L)
+
+
 case class TimeMeasurementResult(millisecondsPerOperation: Double, standardDeviation: Double)
 
 def measureIterations[T](action: () => T): Int =
   val counter = AtomicInteger(0)
 
-  val t1 = Thread.startVirtualThread: () =>
+  val t1 = VTFactory.newThread: () =>
     try {
       while (!Thread.interrupted()) {
         action()
@@ -41,7 +46,7 @@ def measureIterations[T](action: () => T): Int =
   given ExecutionContext = ExecutionContext.global
 
   val threadJoins = measureIterations: () =>
-    val t = Thread.startVirtualThread: () =>
+    val t = VTFactory.newThread: () =>
       var z = 1
     t.join()
 
@@ -114,21 +119,21 @@ def measureIterations[T](action: () => T): Int =
 
   val c2: Double = measureIterations: () =>
     @volatile var i1 = true
-    val f11 = Thread.startVirtualThread(() => { Thread.sleep(10); i1 = false })
-    val f12 = Thread.startVirtualThread(() => { Thread.sleep(50); i1 = false })
-    val f13 = Thread.startVirtualThread(() => { Thread.sleep(100); i1 = false })
+    val f11 = VTFactory.newThread(() => { Thread.sleep(10); i1 = false })
+    val f12 = VTFactory.newThread(() => { Thread.sleep(50); i1 = false })
+    val f13 = VTFactory.newThread(() => { Thread.sleep(100); i1 = false })
     while (i1) ()
 
     @volatile var i2 = true
-    val f21 = Thread.startVirtualThread(() => { Thread.sleep(100); i2 = false })
-    val f22 = Thread.startVirtualThread(() => { Thread.sleep(10); i2 = false })
-    val f23 = Thread.startVirtualThread(() => { Thread.sleep(50); i2 = false })
+    val f21 = VTFactory.newThread(() => { Thread.sleep(100); i2 = false })
+    val f22 = VTFactory.newThread(() => { Thread.sleep(10); i2 = false })
+    val f23 = VTFactory.newThread(() => { Thread.sleep(50); i2 = false })
     while (i2) ()
 
     @volatile var i3 = true
-    val f31 = Thread.startVirtualThread(() => { Thread.sleep(50); i3 = false })
-    val f32 = Thread.startVirtualThread(() => { Thread.sleep(100); i3 = false })
-    val f33 = Thread.startVirtualThread(() => { Thread.sleep(10); i3 = false })
+    val f31 = VTFactory.newThread(() => { Thread.sleep(50); i3 = false })
+    val f32 = VTFactory.newThread(() => { Thread.sleep(100); i3 = false })
+    val f33 = VTFactory.newThread(() => { Thread.sleep(10); i3 = false })
     while (i3) ()
 
     f11.interrupt()
@@ -164,7 +169,7 @@ def measureIterations[T](action: () => T): Int =
   // java
   @volatile var shared: Long = 0
   @volatile var timeForWriting = true
-  val t1 = Thread.startVirtualThread: () =>
+  val t1 = VTFactory.newThread: () =>
     var i: Long = 0
     while (true) {
       while (!timeForWriting) ()
@@ -173,7 +178,7 @@ def measureIterations[T](action: () => T): Int =
       i += 1
     }
 
-  val t2 = Thread.startVirtualThread: () =>
+  val t2 = VTFactory.newThread: () =>
     while (true) {
       while (timeForWriting) ()
       var z = shared
