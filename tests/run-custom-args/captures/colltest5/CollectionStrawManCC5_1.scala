@@ -452,6 +452,14 @@ object CollectionStrawMan5 {
       this: Filter[A]^{underlying, p} =>
       def iterator: Iterator[A]^{this} = underlying.iterator.filter(p)
     }
+
+    object Filter:
+      def apply[A](underlying: Iterable[A]^, pp: A => Boolean, isFlipped: Boolean): Filter[A]^{underlying, pp} =
+        underlying match
+          case filter: Filter[A]^{underlying} =>
+            new Filter(filter.underlying, a => filter.p(a) && pp(a))
+          case _ => new Filter(underlying, pp)
+
     case class Partition[A](val underlying: Iterable[A]^, p: A => Boolean) {
       self: Partition[A]^{underlying, p} =>
 
