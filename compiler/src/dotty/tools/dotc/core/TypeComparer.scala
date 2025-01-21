@@ -298,6 +298,19 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       }
     }
 
+    /** In capture checking, implements the logic to compare type variables which represent
+     *  capture variables.
+     *
+     *  Note: should only be called in a context where tp1 or tp2 is a type variable representing a capture variable.
+     *
+     *  @return -1 if tp1 or tp2 is not a capture variables, 1 if both tp1 and tp2 are capture variables and tp1 is a subcapture of tp2,
+     *           0 if both tp1 and tp2 are capture variables but tp1 is not a subcapture of tp2.
+     */
+    inline def tryHandleCaptureVars: Int =
+      if !(isCaptureCheckingOrSetup && tp1.derivesFrom(defn.Caps_CapSet) && tp1.derivesFrom(defn.Caps_CapSet)) then -1
+      else if (subCaptures(tp1.captureSet, tp2.captureSet, frozenConstraint).isOK) then 1
+      else 0
+
     def firstTry: Boolean = tp2 match {
       case tp2: NamedType =>
         def compareNamed(tp1: Type, tp2: NamedType): Boolean =
@@ -346,7 +359,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 && isSubPrefix(tp1.prefix, tp2.prefix)
                 && tp1.signature == tp2.signature
                 && !(sym1.isClass && sym2.isClass)  // class types don't subtype each other
-                || thirdTryNamed(tp2)
+                || {val cv = tryHandleCaptureVars
+                    if (cv < 0) then thirdTryNamed(tp2)
+                    else cv != 0 }
             case _ =>
               secondTry
         end compareNamed
@@ -434,6 +449,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     def secondTry: Boolean = tp1 match {
       case tp1: NamedType =>
+        val cv = tryHandleCaptureVars
+        if (cv >= 0) then return cv != 0
         tp1.info match {
           case info1: TypeAlias =>
             if (recur(info1.alias, tp2)) return true
@@ -858,9 +875,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         }
         compareTypeBounds
       case CapturingType(parent2, refs2) =>
-        def compareCapturing =
+        def compareCapturing: Boolean =
           val refs1 = tp1.captureSet
           try
+            if tp1.isInstanceOf[TypeRef] then
+              val cv = tryHandleCaptureVars
+              if (cv >= 0) then return (cv != 0)
             if refs1.isAlwaysEmpty then recur(tp1, parent2)
             else
               // The singletonOK branch is because we sometimes have a larger capture set in a singleton

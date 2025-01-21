@@ -108,7 +108,6 @@ trait CaptureRef extends TypeProxy, ValueType:
    *   TODO: Document cases with more comments.
    */
   final def subsumes(y: CaptureRef)(using Context): Boolean =
-
     def subsumingRefs(x: Type, y: Type): Boolean = x match
       case x: CaptureRef => y match
         case y: CaptureRef => x.subsumes(y)
@@ -119,6 +118,7 @@ trait CaptureRef extends TypeProxy, ValueType:
       case info: SingletonCaptureRef => test(info)
       case info: AndType => viaInfo(info.tp1)(test) || viaInfo(info.tp2)(test)
       case info: OrType => viaInfo(info.tp1)(test) && viaInfo(info.tp2)(test)
+      case info @ CapturingType(_,_) if this.derivesFrom(defn.Caps_CapSet) => test(info)
       case _ => false
 
     (this eq y)
@@ -149,7 +149,7 @@ trait CaptureRef extends TypeProxy, ValueType:
           y.info match
             case TypeBounds(_, hi: CaptureRef) => this.subsumes(hi)
             case _ => y.captureSetOfInfo.elems.forall(this.subsumes)
-        case CapturingType(parent, refs) if parent.derivesFrom(defn.Caps_CapSet) =>
+        case CapturingType(parent, refs) if parent.derivesFrom(defn.Caps_CapSet) || this.derivesFrom(defn.Caps_CapSet) =>
           refs.elems.forall(this.subsumes)
         case _ => false
     || this.match
