@@ -24,6 +24,7 @@ import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
 import reporting.{trace, Message, OverrideError}
 import Existential.derivedExistentialType
+import Annotations.Annotation
 
 /** The capture checker */
 object CheckCaptures:
@@ -785,7 +786,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
           val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
           if !getter.is(Private) && getter.hasTrackedParts then
-            refined = RefinedType(refined, getterName, argType.unboxed) // Yichen you might want to check this
+            refined = RefinedType(refined, getterName,
+              AnnotatedType(argType.unboxed, Annotation(defn.RefineOverrideAnnot, util.Spans.NoSpan))) // Yichen you might want to check this
             allCaptures ++= argType.captureSet
         (refined, allCaptures)
 

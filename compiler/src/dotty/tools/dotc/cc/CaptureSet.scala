@@ -1073,7 +1073,7 @@ object CaptureSet:
      *  return whether this was allowed. By default, recording is allowed
      *  but the special state VarState.Separate overrides this.
      */
-    def addHidden(hidden: HiddenSet, elem: CaptureRef): Boolean =
+    def addHidden(hidden: HiddenSet, elem: CaptureRef)(using Context): Boolean =
       elemsMap.get(hidden) match
         case None => elemsMap(hidden) = hidden.elems
         case _ =>
@@ -1112,7 +1112,7 @@ object CaptureSet:
      */
     @sharable
     object Separate extends Closed:
-      override def addHidden(hidden: HiddenSet, elem: CaptureRef): Boolean = false
+      override def addHidden(hidden: HiddenSet, elem: CaptureRef)(using Context): Boolean = false
 
     /** A special state that turns off recording of elements. Used only
      *  in `addSub` to prevent cycles in recordings.
@@ -1122,14 +1122,14 @@ object CaptureSet:
       override def putElems(v: Var, refs: Refs) = true
       override def putDeps(v: Var, deps: Deps) = true
       override def rollBack(): Unit = ()
-      override def addHidden(hidden: HiddenSet, elem: CaptureRef): Boolean = true
+      override def addHidden(hidden: HiddenSet, elem: CaptureRef)(using Context): Boolean = true
 
     /** A closed state that turns off recording of hidden elements (but allows
      *  adding them). Used in `mightAccountFor`.
      */
     @sharable
     private[CaptureSet] object ClosedUnrecorded extends Closed:
-      override def addHidden(hidden: HiddenSet, elem: CaptureRef): Boolean = true
+      override def addHidden(hidden: HiddenSet, elem: CaptureRef)(using Context): Boolean = true
 
   end VarState
 

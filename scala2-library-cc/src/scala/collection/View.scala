@@ -150,10 +150,8 @@ object View extends IterableFactory[View] {
   object Filter {
     def apply[A](underlying: Iterable[A]^, p: A => Boolean, isFlipped: Boolean): Filter[A]^{underlying, p} =
       underlying match {
-        case filter: Filter[A] if filter.isFlipped == isFlipped =>
+        case filter: Filter[A]^{underlying} if filter.isFlipped == isFlipped =>
           new Filter(filter.underlying, a => filter.p(a) && p(a), isFlipped)
-            .asInstanceOf[Filter[A]^{underlying, p}]
-              // !!! asInstanceOf needed once paths were added, see path-patmat-should-be-pos.scala for minimization
         case _ => new Filter(underlying, p, isFlipped)
       }
   }

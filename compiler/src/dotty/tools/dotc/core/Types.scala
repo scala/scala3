@@ -860,21 +860,24 @@ object Types extends TypeUtils {
               pinfo recoverable_& rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         }
-        else
-          val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
-          val joint = pdenot.meet(
-            new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
-            pre,
-            safeIntersection = ctx.base.pendingMemberSearches.contains(name))
-          joint match
-            case joint: SingleDenotation
-            if isRefinedMethod
-              && (rinfo <:< joint.info
-                || name == nme.apply && defn.isFunctionType(tp.parent)) =>
-              // use `rinfo` to keep the right parameter names for named args. See i8516.scala.
-              joint.derivedSingleDenotation(joint.symbol, rinfo, pre, isRefinedMethod)
-            case _ =>
-              joint
+        else rinfo match
+          case AnnotatedType(rinfo1, ann) if ann.symbol == defn.RefineOverrideAnnot =>
+            pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, rinfo1)
+          case _ =>
+            val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
+            val joint = pdenot.meet(
+              new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
+              pre,
+              safeIntersection = ctx.base.pendingMemberSearches.contains(name))
+            joint match
+              case joint: SingleDenotation
+              if isRefinedMethod
+                && (rinfo <:< joint.info
+                  || name == nme.apply && defn.isFunctionType(tp.parent)) =>
+                // use `rinfo` to keep the right parameter names for named args. See i8516.scala.
+                joint.derivedSingleDenotation(joint.symbol, rinfo, pre, isRefinedMethod)
+              case _ =>
+                joint
       }
 
       def goApplied(tp: AppliedType, tycon: HKTypeLambda) =
