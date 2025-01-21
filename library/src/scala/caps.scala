@@ -70,6 +70,13 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
    */
   final class use extends annotation.StaticAnnotation
 
+  /** An annotation placed on a refinement created by capture checking.
+   *  Refinements with this annotation unconditionally override any
+   *  info vfrom the parent type, so no intersection needs to be formed.
+   *  This could be useful for tracked parameters as well.
+   */
+  final class refineOverride extends annotation.StaticAnnotation
+
   object unsafe:
 
     extension [T](x: T)

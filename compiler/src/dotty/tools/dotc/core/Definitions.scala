@@ -1070,6 +1070,7 @@ class Definitions {
   @tu lazy val UncheckedCapturesAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedCaptures")
   @tu lazy val UntrackedCapturesAnnot: ClassSymbol = requiredClass("scala.caps.untrackedCaptures")
   @tu lazy val UseAnnot:  ClassSymbol = requiredClass("scala.caps.use")
+  @tu lazy val RefineOverrideAnnot:  ClassSymbol = requiredClass("scala.caps.refineOverride")
   @tu lazy val VolatileAnnot: ClassSymbol = requiredClass("scala.volatile")
   @tu lazy val LanguageFeatureMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.languageFeature")
   @tu lazy val BeanGetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanGetter")
@@ -1109,6 +1110,10 @@ class Definitions {
     Set(PublicInBinaryAnnot)
   @tu lazy val MetaAnnots: Set[Symbol] =
     NonBeanMetaAnnots + BeanGetterMetaAnnot + BeanSetterMetaAnnot
+
+  // Set of annotations that are not printed in types except under -Yprint-debug
+  @tu lazy val SilentAnnots: Set[Symbol] =
+    Set(InlineParamAnnot, ErasedParamAnnot, RefineOverrideAnnot)
 
   // A list of annotations that are commonly used to indicate that a field/method argument or return
   // type is not null. These annotations are used by the nullification logic in JavaNullInterop to
