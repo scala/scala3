@@ -10,10 +10,9 @@ import scala.annotation.constructorOnly
 import scala.collection.mutable
 
 object VThreadScheduler extends Scheduler:
-  private val VTFactory = Thread
-    .ofVirtual()
-    .name("gears.async.VThread-", 0L)
-    .factory()
+  private val VTFactory = new java.util.concurrent.ThreadFactory:
+    def newThread(r: Runnable): Thread =
+      new Thread(null, r, "gears.async.VThread-", 0L)
 
   override def execute(body: Runnable): Unit =
     val th = VTFactory.newThread(body)
