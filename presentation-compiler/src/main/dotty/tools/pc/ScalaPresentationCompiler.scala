@@ -79,15 +79,14 @@ case class ScalaPresentationCompiler(
     params: OffsetParams,
     codeActionId: String,
     codeActionPayload: Optional[T]
-   ): CompletableFuture[ju.List[TextEdit]] = {
-     (codeActionId, codeActionPayload.asScala) match {
+   ): CompletableFuture[ju.List[TextEdit]] =
+     (codeActionId, codeActionPayload.asScala) match
        case (
              CodeActionId.ConvertToNamedArguments,
              Some(argIndices: ju.List[_])
            ) =>
-         val payload = argIndices.asScala.collect { case i: Integer =>
-           i.toInt
-         }.toSet
+         val payload =
+          argIndices.asScala.collect { case i: Integer => i.toInt }.toSet
          convertToNamedArguments(params, payload)
        case (CodeActionId.ImplementAbstractMembers, _) =>
          implementAbstractMembers(params)
@@ -108,8 +107,6 @@ case class ScalaPresentationCompiler(
          CompletableFuture.failedFuture(
            new IllegalArgumentException(s"Unsupported action id $id")
          )
-     }
-   }
 
   override def withCompletionItemPriority(
     priority: CompletionItemPriority
