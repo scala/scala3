@@ -29,7 +29,6 @@ class HoverNamedArgSuite extends BaseHoverSuite:
       """|```scala
          |named: Int
          |```
-         |Found documentation for a/b.foo().(named)
          |""".stripMargin
     )
 

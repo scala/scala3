@@ -98,15 +98,14 @@ case class ScalaPresentationCompiler(
          params match {
            case range: RangeParams =>
              extractMethod(range, extractionPos)
-           case _ =>
-             CompletableFuture.failedFuture(
-               new IllegalArgumentException(s"Expected range parameters")
-             )
+           case _ => failedFuture(new IllegalArgumentException(s"Expected range parameters"))
          }
-       case (id, _) =>
-         CompletableFuture.failedFuture(
-           new IllegalArgumentException(s"Unsupported action id $id")
-         )
+       case (id, _) => failedFuture(new IllegalArgumentException(s"Unsupported action id $id"))
+
+  private def failedFuture[T](e: Throwable): CompletableFuture[T] =
+    val f = new CompletableFuture[T]()
+    f.completeExceptionally(e)
+    f
 
   override def withCompletionItemPriority(
     priority: CompletionItemPriority
