@@ -209,20 +209,21 @@ trait MessageRendering {
     sb.toString
   }
 
-  private def appendFilterHelp(dia: Diagnostic, sb: StringBuilder): Unit =
+  private def appendFilterHelp(dia: Diagnostic, sb: StringBuilder)(using Context, Level, Offset): Unit =
+    extension (sb: StringBuilder) def nl: sb.type = sb.append(EOL).append(offsetBox)
     import dia.msg
     val hasId = msg.errorId.errorNumber >= 0
     val (category, origin) = dia match
-      case _: UncheckedWarning => ("unchecked", "")
+      case _: UncheckedWarning   => ("unchecked", "")
       case w: DeprecationWarning => ("deprecation", w.origin)
-      case _: FeatureWarning => ("feature", "")
-      case _ => ("", "")
+      case _: FeatureWarning     => ("feature", "")
+      case _                     => ("", "")
     var entitled = false
     def addHelp(what: String)(value: String): Unit =
       if !entitled then
-        sb.append(EOL).append("Matching filters for @nowarn or -Wconf:")
+        sb.nl.append("Matching filters for @nowarn or -Wconf:")
         entitled = true
-      sb.append(EOL).append("  - ").append(what).append(value)
+      sb.nl.append("  - ").append(what).append(value)
     if hasId then
       addHelp("id=E")(msg.errorId.errorNumber.toString)
       addHelp("name=")(msg.errorId.productPrefix.stripSuffix("ID"))
