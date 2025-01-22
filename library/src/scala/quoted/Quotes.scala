@@ -3716,7 +3716,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       *  @note if an found given requires additional search for other given instances,
       *  this additional search will NOT exclude the symbols from the `ignored` list.
       */
-      @experimental def searchIgnoring(tpe: TypeRepr)(ignored: Symbol*): ImplicitSearchResult
+      def searchIgnoring(tpe: TypeRepr)(ignored: Symbol*): ImplicitSearchResult
     }
 
     /** Result of a given instance search */

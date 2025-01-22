@@ -291,7 +291,7 @@ object Expr {
    *  @note if the found given requires additional search for other given instances,
    *  this additional search will NOT exclude the symbols from the `ignored` list.
    */
-  @scala.annotation.experimental def summonIgnoring[T](using Type[T])(using quotes: Quotes)(ignored: quotes.reflect.Symbol*): Option[Expr[T]] = {
+  def summonIgnoring[T](using Type[T])(using quotes: Quotes)(ignored: quotes.reflect.Symbol*): Option[Expr[T]] = {
     import quotes.reflect._
     Implicits.searchIgnoring(TypeRepr.of[T])(ignored*) match {
       case iss: ImplicitSearchSuccess => Some(iss.tree.asExpr.asInstanceOf[Expr[T]])
