@@ -287,11 +287,16 @@ object Checking {
      */
     def checkInfo(tp: Type): Type = tp match {
       case tp @ TypeAlias(alias) =>
-        tp.derivedAlias(checkPart(alias, "alias"))
+        val lo1 = atVariance(-1)(checkPart(alias, "alias"))
+        val hi1 = checkUpper(alias, "alias")
+        if lo1 eq hi1 then
+          tp.derivedAlias(lo1)
+        else
+          tp.derivedTypeBounds(lo1, hi1)
       case tp @ MatchAlias(alias) =>
-        tp.derivedAlias(checkUpper(alias, "match"))
+        tp.derivedAlias(atVariance(0)(checkUpper(alias, "match")))
       case tp @ TypeBounds(lo, hi) =>
-        tp.derivedTypeBounds(checkPart(lo, "lower bound"), checkUpper(hi, "upper bound"))
+        tp.derivedTypeBounds(atVariance(-1)(checkPart(lo, "lower bound")), checkUpper(hi, "upper bound"))
       case _ =>
         tp
     }
@@ -312,12 +317,12 @@ object Checking {
       case tp: TermRef =>
         this(tp.info)
         mapOver(tp)
-      case tp @ AppliedType(tycon, args) =>
-        tp.derivedAppliedType(this(tycon), args.mapConserve(this(_, nestedCycleOK, nestedCycleOK)))
       case tp @ RefinedType(parent, name, rinfo) =>
         tp.derivedRefinedType(this(parent), name, this(rinfo, nestedCycleOK, nestedCycleOK))
       case tp: RecType =>
         tp.rebind(this(tp.parent))
+      case tp: LazyRef =>
+        tp
       case tp @ TypeRef(pre, _) =>
         try {
           // A prefix is interesting if it might contain (transitively) a reference
@@ -350,14 +355,17 @@ object Checking {
 
           if isInteresting(pre) then
             CyclicReference.trace(i"explore ${tp.symbol} for cyclic references"):
-              val pre1 = this(pre, false, false)
+              val pre1 = atVariance(variance max 0)(this(pre, false, false))
               if locked.contains(tp)
                   || tp.symbol.infoOrCompleter.isInstanceOf[NoCompleter]
+                  && tp.symbol == sym
               then
                 throw CyclicReference(tp.symbol)
               locked += tp
               try
-                if tp.symbol.isOpaqueAlias then
+                if tp.symbol.infoOrCompleter.isInstanceOf[NoCompleter] then
+                  ; // skip checking info (and avoid forcing the symbol with .isOpaqueAlias/etc)
+                else if tp.symbol.isOpaqueAlias then
                   checkInfo(TypeAlias(tp.translucentSuperType))
                 else if !tp.symbol.isClass then
                   checkInfo(tp.info)
@@ -375,6 +383,16 @@ object Checking {
         }
       case _ => mapOver(tp)
     }
+
+    override def mapArg(arg: Type, tparam: ParamInfo): Type =
+      val varianceDiff = variance != tparam.paramVarianceSign
+      atVariance(variance * tparam.paramVarianceSign):
+        // Using tests/pos/i22257.scala as an example,
+        // if we consider FP's lower-bound of Fixed[Node]
+        // than `Node` is a type argument in contravariant
+        // position, while the type parameter is covariant.
+        val nestedCycleOK1 = nestedCycleOK || variance != 0 && varianceDiff
+        this(arg, nestedCycleOK, nestedCycleOK1)
   }
 
   /** Under -Yrequire-targetName, if `sym` has an operator name, check that it has a

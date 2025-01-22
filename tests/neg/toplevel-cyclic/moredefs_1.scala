@@ -1,1 +1,1 @@
-type B = A // error: recursion limit exceeded
+type B = A
