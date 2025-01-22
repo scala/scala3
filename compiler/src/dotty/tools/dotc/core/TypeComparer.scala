@@ -439,7 +439,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             if (recur(info1.alias, tp2)) return true
             if (tp1.prefix.isStable) return tryLiftedToThis1
           case _ =>
-            if (tp1 eq NothingType) || isBottom(tp1) then return true
+            if isCaptureVarComparison then
+              return subCaptures(tp1.captureSet, tp2.captureSet, frozenConstraint).isOK
+            if (tp1 eq NothingType) || isBottom(tp1) then
+              return true
         }
         thirdTry
       case tp1: TypeParamRef =>
@@ -586,6 +589,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 case _ => false
             || narrowGADTBounds(tp2, tp1, approx, isUpper = false))
           && (isBottom(tp1) || GADTusage(tp2.symbol))
+
+        if isCaptureVarComparison then
+          return subCaptures(tp1.captureSet, tp2.captureSet, frozenConstraint).isOK
 
         isSubApproxHi(tp1, info2.lo) && (trustBounds || isSubApproxHi(tp1, info2.hi))
         || compareGADT
@@ -858,7 +864,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         }
         compareTypeBounds
       case CapturingType(parent2, refs2) =>
-        def compareCapturing =
+        def compareCapturing: Boolean =
           val refs1 = tp1.captureSet
           try
             if refs1.isAlwaysEmpty then recur(tp1, parent2)
@@ -1571,6 +1577,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       val tp2a = liftToThis(tp2)
       (tp2a ne tp2) && recur(tp1, tp2a) && { opaquesUsed = true; true }
     }
+
+    def isCaptureVarComparison: Boolean =
+      isCaptureCheckingOrSetup
+      && tp1.derivesFrom(defn.Caps_CapSet)
+      && tp2.derivesFrom(defn.Caps_CapSet)
 
     // begin recur
     if tp2 eq NoType then false

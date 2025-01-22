@@ -1085,10 +1085,9 @@ object CaptureSet:
           tp.captureSet
         case tp: TermParamRef =>
           tp.captureSet
-        case _: TypeRef =>
-          empty
-        case _: TypeParamRef =>
-          empty
+        case tp: (TypeRef | TypeParamRef) =>
+          if tp.derivesFrom(defn.Caps_CapSet) then tp.captureSet
+          else empty
         case CapturingType(parent, refs) =>
           recur(parent) ++ refs
         case tp @ AnnotatedType(parent, ann) if ann.hasSymbol(defn.ReachCapabilityAnnot) =>

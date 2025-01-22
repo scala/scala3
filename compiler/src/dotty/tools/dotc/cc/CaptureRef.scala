@@ -108,7 +108,6 @@ trait CaptureRef extends TypeProxy, ValueType:
    *   TODO: Document cases with more comments.
    */
   final def subsumes(y: CaptureRef)(using Context): Boolean =
-
     def subsumingRefs(x: Type, y: Type): Boolean = x match
       case x: CaptureRef => y match
         case y: CaptureRef => x.subsumes(y)
@@ -119,6 +118,15 @@ trait CaptureRef extends TypeProxy, ValueType:
       case info: SingletonCaptureRef => test(info)
       case info: AndType => viaInfo(info.tp1)(test) || viaInfo(info.tp2)(test)
       case info: OrType => viaInfo(info.tp1)(test) && viaInfo(info.tp2)(test)
+      case info @ CapturingType(_,_) if this.derivesFrom(defn.Caps_CapSet) =>
+        /*
+          If `this` is a capture set variable `C^`, then it is possible that it can be
+          reached from term variables in a reachability chain through the context.
+          For instance, in `def test[C^](src: Foo^{C^}) = { val x: Foo^{src} = src; val y: Foo^{x} = x; y }`
+          we expect that `C^` subsumes `x` and `y` in the body of the method
+          (cf. test case cc-poly-varargs.scala for a more involved example).
+         */
+        test(info)
       case _ => false
 
     (this eq y)
@@ -149,7 +157,11 @@ trait CaptureRef extends TypeProxy, ValueType:
           y.info match
             case TypeBounds(_, hi: CaptureRef) => this.subsumes(hi)
             case _ => y.captureSetOfInfo.elems.forall(this.subsumes)
-        case CapturingType(parent, refs) if parent.derivesFrom(defn.Caps_CapSet) =>
+        case CapturingType(parent, refs) if parent.derivesFrom(defn.Caps_CapSet) || this.derivesFrom(defn.Caps_CapSet) =>
+          /* The second condition in the guard is for `this` being a `CapSet^{a,b...}` and etablishing a
+             potential reachability chain through `y`'s capture to a binding with
+             `this`'s capture set (cf. `CapturingType` case in `def viaInfo` above for more context).
+           */
           refs.elems.forall(this.subsumes)
         case _ => false
     || this.match
