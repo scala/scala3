@@ -55,6 +55,14 @@ case class ScalaPresentationCompiler(
     completionItemPriority: CompletionItemPriority = (_: String) => 0,
 ) extends PresentationCompiler:
 
+  override def supportedCodeActions(): ju.List[String] = List(
+     CodeActionId.ConvertToNamedArguments,
+     CodeActionId.ImplementAbstractMembers,
+     CodeActionId.ExtractMethod,
+     CodeActionId.InlineValue,
+     CodeActionId.InsertInferredType
+   ).asJava
+
   def this() = this("", None, Nil, Nil)
 
   val scalaVersion = BuildInfo.scalaVersion
@@ -66,6 +74,38 @@ case class ScalaPresentationCompiler(
     folderPath
       .map(StdReportContext(_, _ => buildTargetName, reportsLevel))
       .getOrElse(EmptyReportContext)
+
+  override def codeAction[T](
+    params: OffsetParams,
+    codeActionId: String,
+    codeActionPayload: Optional[T]
+   ): CompletableFuture[ju.List[TextEdit]] =
+     (codeActionId, codeActionPayload.asScala) match
+       case (
+             CodeActionId.ConvertToNamedArguments,
+             Some(argIndices: ju.List[_])
+           ) =>
+         val payload =
+          argIndices.asScala.collect { case i: Integer => i.toInt }.toSet
+         convertToNamedArguments(params, payload)
+       case (CodeActionId.ImplementAbstractMembers, _) =>
+         implementAbstractMembers(params)
+       case (CodeActionId.InsertInferredType, _) =>
+         insertInferredType(params)
+       case (CodeActionId.InlineValue, _) =>
+         inlineValue(params)
+       case (CodeActionId.ExtractMethod, Some(extractionPos: OffsetParams)) =>
+         params match {
+           case range: RangeParams =>
+             extractMethod(range, extractionPos)
+           case _ => failedFuture(new IllegalArgumentException(s"Expected range parameters"))
+         }
+       case (id, _) => failedFuture(new IllegalArgumentException(s"Unsupported action id $id"))
+
+  private def failedFuture[T](e: Throwable): CompletableFuture[T] =
+    val f = new CompletableFuture[T]()
+    f.completeExceptionally(e)
+    f
 
   override def withCompletionItemPriority(
     priority: CompletionItemPriority
@@ -349,13 +389,19 @@ case class ScalaPresentationCompiler(
       params: OffsetParams,
       argIndices: ju.List[Integer]
   ): CompletableFuture[ju.List[l.TextEdit]] =
+    convertToNamedArguments(params, argIndices.asScala.toSet.map(_.toInt))
+
+  def convertToNamedArguments(
+      params: OffsetParams,
+      argIndices: Set[Int]
+  ): CompletableFuture[ju.List[l.TextEdit]] =
     val empty: Either[String, List[l.TextEdit]] = Right(List())
     (compilerAccess
       .withNonInterruptableCompiler(Some(params))(empty, params.token()) { pc =>
         new ConvertToNamedArgumentsProvider(
           pc.compiler(),
           params,
-          argIndices.asScala.map(_.toInt).toSet
+          argIndices
         ).convertToNamedArguments
       })
       .thenApplyAsync {

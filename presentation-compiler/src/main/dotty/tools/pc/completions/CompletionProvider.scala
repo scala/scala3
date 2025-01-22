@@ -218,7 +218,9 @@ class CompletionProvider(
     // related issue https://github.com/lampepfl/scala3/issues/11941
     lazy val kind: CompletionItemKind = underlyingCompletion.completionItemKind
     val description = underlyingCompletion.description(printer)
-    val label = underlyingCompletion.labelWithDescription(printer)
+    val label =
+      if config.isDetailIncludedInLabel then completion.labelWithDescription(printer)
+      else completion.label
     val ident = underlyingCompletion.insertText.getOrElse(underlyingCompletion.label)
 
     lazy val isInStringInterpolation =
