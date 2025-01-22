@@ -54,6 +54,25 @@ object TypeEval:
         case ConstantType(Constant(n: String)) => Some(n)
         case _ => None
 
+      /** is the type concrete? if not then the compiletime op should not reduce */
+      def isKnown(tp: Type): Boolean = tp.dealias match
+        // currently not a concrete known type
+        case TypeRef(NoPrefix,_) => false
+        // currently not a concrete known type
+        case _: TypeParamRef => false
+        // constant if the term is constant
+        case t: TermRef =>
+          if t.denot.symbol.flagsUNSAFE.is(Flags.Param) then
+            // might be substituted later
+            false
+          else
+            isKnown(t.underlying)
+        // an operation type => recursively check all argument compositions
+        case applied: AppliedType if defn.isCompiletimeAppliedType(applied.typeSymbol) =>
+          applied.args.forall(isKnown)
+        // all other types are considered known
+        case _ => true
+
       // Returns Some(true) if the type is a constant.
       // Returns Some(false) if the type is not a constant.
       // Returns None if there is not enough information to determine if the type is a constant.
@@ -113,6 +132,23 @@ object TypeEval:
           case arg @ defn.NamedTuple(_, _) => Some(arg)
           case _ => None
 
+      def optFieldsOf: Option[Type] =
+        if isKnown(tp) then fieldsOf match
+          case Some(tp) => Some(defn.SomeClass.typeRef.appliedTo(tp))
+          case None => Some(defn.NoneModule.termRef)
+        else
+          None
+
+      def isNamedTupleType: Option[Type] =
+        if isKnown(tp) then
+          expectArgsNum(1)
+          val arg = tp.args.head
+          arg.widenDealias match
+            case arg @ defn.NamedTuple(_, _) => Some(ConstantType(Constant(true)))
+            case _ => Some(ConstantType(Constant(false)))
+        else
+          None
+
       def constantFold1[T](extractor: Type => Option[T], op: T => Any): Option[Type] =
         expectArgsNum(1)
         extractor(tp.args.head).map(a => runConstantOp(op(a)))
@@ -147,8 +183,11 @@ object TypeEval:
         val constantType =
           if defn.isCompiletime_S(sym) then
             constantFold1(natValue, _ + 1)
-          else if defn.isNamedTuple_From(sym) then
-            fieldsOf
+          else if owner == defn.NamedTupleModuleClass then name match
+            case tpnme.From => fieldsOf
+            case tpnme.OptFrom => optFieldsOf
+            case tpnme.IsNamedTuple => isNamedTupleType
+            case _ => None
           else if owner == defn.CompiletimeOpsAnyModuleClass then name match
             case tpnme.Equals     => constantFold2(constValue, _ == _)
             case tpnme.NotEquals  => constantFold2(constValue, _ != _)
