@@ -18,7 +18,6 @@ import TypeComparer.subsumesExistentially
 import util.common.alwaysTrue
 import scala.collection.{mutable, immutable}
 import CCState.*
-import dotty.tools.dotc.core.TypeOps.AvoidMap
 
 /** A class for capture sets. Capture sets can be constants or variables.
  *  Capture sets support inclusion constraints <:< where <:< is subcapturing.
