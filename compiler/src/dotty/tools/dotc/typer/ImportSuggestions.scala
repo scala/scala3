@@ -12,7 +12,7 @@ import config.Printers.{implicits, implicitsDetailed}
 import ast.{untpd, tpd}
 import Implicits.{hasExtMethod, Candidate}
 import java.util.{Timer, TimerTask}
-import collection.mutable
+import collection.mutable, mutable.ListBuffer
 import scala.util.control.NonFatal
 import cc.isCaptureChecking
 
@@ -57,7 +57,7 @@ trait ImportSuggestions:
    *     skipped as an optimization, since they won't contain implicits anyway.
    */
   private def suggestionRoots(using Context) =
-    val seen = mutable.Set[TermRef]()
+    val seen = mutable.Set.empty[TermRef]
 
     def lookInside(root: Symbol)(using Context): Boolean =
       explore {
@@ -70,7 +70,7 @@ trait ImportSuggestions:
       }
 
     def nestedRoots(site: Type)(using Context): List[Symbol] =
-      val seenNames = mutable.Set[Name]()
+      val seenNames = mutable.Set.empty[Name]
       site.baseClasses.flatMap { bc =>
         bc.info.decls.filter { dcl =>
           lookInside(dcl)
@@ -275,7 +275,7 @@ trait ImportSuggestions:
    *  have the same String part. Elements are sorted by their String parts.
    */
   extension (refs: List[(TermRef, String)]) def distinctRefs(using Context): List[TermRef] =
-    val buf = new mutable.ListBuffer[TermRef]
+    val buf = ListBuffer.empty[TermRef]
     var last = ""
     for (ref, str) <- refs do
       if last != str then
@@ -290,7 +290,7 @@ trait ImportSuggestions:
   extension (refs: List[TermRef]) def best(n: Int)(using Context): List[TermRef] =
     val top = new Array[TermRef](n)
     var filled = 0
-    val rest = new mutable.ListBuffer[TermRef]
+    val rest = ListBuffer.empty[TermRef]
     val noImplicitsCtx = ctx.retractMode(Mode.ImplicitsEnabled)
     for ref <- refs do
       var i = 0
@@ -335,15 +335,33 @@ trait ImportSuggestions:
         else
           ctx.printer.toTextRef(ref).show
       s"  import $imported"
-    val suggestions = suggestedRefs
+    def indubitably(ref: TermRef): Boolean =
+      ref.symbol.isAccessibleFrom(ctx.owner.info)
+    val (suggested, dubious) = suggestedRefs
       .zip(suggestedRefs.map(importString))
       .filter((ref, str) => str.contains('.')) // must be a real import with `.`
       .sortBy(_._2)         // sort first alphabetically for stability
       .distinctRefs         // TermRefs might be different but generate the same strings
       .best(MaxSuggestions) // take MaxSuggestions best references according to specificity
-      .map(importString)
-    if suggestions.isEmpty then ""
+      .partition(indubitably)
+    if suggested.isEmpty then
+      if dubious.isEmpty then ""
+      else
+        def isImportable(ref: TermRef): Boolean =
+          ctx.outersIterator.exists(outer => outer.isImportContext && !outer.importInfo.nn.isRootImport
+          && outer.importInfo.nn.site =:= ref.prefix
+          && outer.importInfo.nn.selectors.exists(sel => sel.isWildcard || sel.name == ref.name))
+        def dubiousAdvice(ref: TermRef): String =
+          s"${importString(ref)}${if isImportable(ref) then " // existing imported member is not accessible" else ""}"
+        i"""
+           |
+           |Consider making one of the following imports accessible to $help:
+           |
+           |${dubious.map(dubiousAdvice)}%\n%
+           |
+           |"""
     else
+      val suggestions = suggested.map(importString)
       val fix =
         if suggestions.tail.isEmpty then "The following import"
         else "One of the following imports"
