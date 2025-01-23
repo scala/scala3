@@ -1,0 +1,5 @@
+-- Warning: tests/warn/i22440.scala:4:12 -------------------------------------------------------------------------------
+4 |val _ = foo(1) // warn
+  |            ^
+  |            Implicit parameters should be provided with a `using` clause.
+  |            This code can be rewritten automatically under -rewrite -source 3.7-migration.
