@@ -18,9 +18,6 @@ object Feature:
 
   def experimental(str: PreName): TermName =
     QualifiedName(nme.experimental, str.toTermName)
-    
-  def preview(str: PreName): TermName = 
-    QualifiedName(nme.preview, str.toTermName)
 
   private def deprecated(str: PreName): TermName =
     QualifiedName(nme.deprecated, str.toTermName)
@@ -48,10 +45,6 @@ object Feature:
     defn.languageExperimentalFeatures
       .map(sym => experimental(sym.name))
       .filterNot(_ == captureChecking) // TODO is this correct?
-      
-  def previewAutoEnableFeatures(using Context): List[TermName] =
-    defn.languagePreviewFeatures
-      .map(sym => preview(sym.name))
 
   val values = List(
     (nme.help, "Display all available features"),
@@ -232,7 +225,7 @@ object Feature:
 
   def isExperimentalEnabledByImport(using Context): Boolean =
     experimentalAutoEnableFeatures.exists(enabledByImport)
-  
+
   /** Handle language import `import language.<prefix>.<imported>` if it is one
    *  of the global imports `pureFunctions` or `captureChecking`. In this case
    *  make the compilation unit's and current run's fields accordingly.
@@ -250,15 +243,14 @@ object Feature:
       true
     else
       false
-      
-  def isPreviewEnabled(using Context): Boolean = 
-    ctx.settings.preview.value || 
-    previewAutoEnableFeatures.exists(enabled)
-  
+
+  def isPreviewEnabled(using Context): Boolean =
+    ctx.settings.preview.value
+
   def checkPreviewFeature(which: String, srcPos: SrcPos, note: => String = "")(using Context) =
     if !isPreviewEnabled then
       report.error(previewUseSite(which) + note, srcPos)
-      
+
   def checkPreviewDef(sym: Symbol, srcPos: SrcPos)(using Context) = if !isPreviewEnabled then
     val previewSym =
       if sym.hasAnnotation(defn.PreviewAnnot) then sym
@@ -273,12 +265,7 @@ object Feature:
       then i"$previewSym is marked @preview$msg"
       else i"$sym inherits @preview$msg"
     report.error(markedPreview + "\n\n" + previewUseSite("definition"), srcPos)
-  
-  private def previewUseSite(which: String): String =
-    s"""Preview $which may only be used under preview mode:
-       |  1. in a definition marked as @preview, or
-       |  2. a preview feature is imported at the package level, or
-       |  3. compiling with the -preview compiler flag.
-       |""".stripMargin
-end Feature
 
+  private def previewUseSite(which: String): String =
+    s"Preview $which may only be used when compiling with the `-preview` compiler flag"
+end Feature

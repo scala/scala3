@@ -370,13 +370,13 @@ class SymUtils:
     def isInExperimentalScope(using Context): Boolean = isInFeatureScope(defn.ExperimentalAnnot, _.isExperimental, _.isInExperimentalScope)
 
     /** Is symbol declared or inherits @preview? */
-    def isPreview(using Context): Boolean = isFeatureAnnotated(defn.PreviewAnnot)       
+    def isPreview(using Context): Boolean = isFeatureAnnotated(defn.PreviewAnnot)
     def isInPreviewScope(using Context): Boolean = isInFeatureScope(defn.PreviewAnnot, _.isPreview, _.isInPreviewScope)
-      
-    private inline def isFeatureAnnotated(checkAnnotaton: ClassSymbol)(using Context): Boolean = 
+
+    private inline def isFeatureAnnotated(checkAnnotaton: ClassSymbol)(using Context): Boolean =
       self.hasAnnotation(checkAnnotaton)
       || (self.maybeOwner.isClass && self.owner.hasAnnotation(checkAnnotaton))
-        
+
     private inline def isInFeatureScope(checkAnnotation: ClassSymbol, checkSymbol: Symbol => Boolean, checkOwner: Symbol => Boolean)(using Context): Boolean =
       def isDefaultArgumentOfCheckedMethod =
         self.name.is(DefaultGetterName)
@@ -390,7 +390,7 @@ class SymUtils:
       self.hasAnnotation(checkAnnotation)
       || isDefaultArgumentOfCheckedMethod
       || (!self.is(Package) && checkOwner(self.owner))
-      
+
     /** The declared self type of this class, as seen from `site`, stripping
     *  all refinements for opaque types.
     */

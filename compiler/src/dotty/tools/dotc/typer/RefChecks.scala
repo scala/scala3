@@ -306,7 +306,7 @@ object RefChecks {
    *           that passes its value on to O.
    *    1.13.  If O is non-experimental, M must be non-experimental.
    *    1.14.  If O has @publicInBinary, M must have @publicInBinary.
-   *    1.15.  If O is non-preview, M must be non-preview 
+   *    1.15.  If O is non-preview, M must be non-preview
    *  2. Check that only abstract classes have deferred members
    *  3. Check that concrete classes do not have deferred definitions
    *     that are not implemented in a subclass.
@@ -644,10 +644,10 @@ object RefChecks {
             MigrationVersion.OverrideValParameter)
       else if !other.isExperimental && member.hasAnnotation(defn.ExperimentalAnnot) then // (1.13)
         overrideError("may not override non-experimental member")
-        else if !member.hasAnnotation(defn.PublicInBinaryAnnot) && other.hasAnnotation(defn.PublicInBinaryAnnot) then // (1.14)
+      else if !member.hasAnnotation(defn.PublicInBinaryAnnot) && other.hasAnnotation(defn.PublicInBinaryAnnot) then // (1.14)
         overrideError("also needs to be declared with @publicInBinary")
-        else if !other.isPreview && member.hasAnnotation(defn.PreviewAnnot) then // (1.15)
-          overrideError("may not override non-preview member")
+      else if !other.isPreview && member.hasAnnotation(defn.PreviewAnnot) then // (1.15)
+        overrideError("may not override non-preview member")
       else if other.hasAnnotation(defn.DeprecatedOverridingAnnot) then
         overrideDeprecation("", member, other, "removed or renamed")
     end checkOverride

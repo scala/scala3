@@ -1079,7 +1079,6 @@ trait Checking {
       case Some(prefix) =>
         val required =
           if prefix == nme.experimental then defn.LanguageExperimentalModule
-          else if prefix == nme.preview then defn.LanguagePreviewModule
           else if prefix == nme.deprecated then defn.LanguageDeprecatedModule
           else defn.LanguageModule
         if path.symbol != required then
@@ -1088,7 +1087,6 @@ trait Checking {
         val foundClasses = path.tpe.classSymbols
         if foundClasses.contains(defn.LanguageModule.moduleClass)
            || foundClasses.contains(defn.LanguageExperimentalModule.moduleClass)
-           || foundClasses.contains(defn.LanguagePreviewModule.moduleClass)
         then
           report.error(em"no aliases can be used to refer to a language import", path.srcPos)
 

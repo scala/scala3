@@ -5,21 +5,6 @@ import scala.annotation.compileTimeOnly
 /** Scala 3 additions and replacements to the `scala.language` object.
  */
 object language:
-  
-  /** The preview object contains previously experimental features that are fully implemented 
-   *  but are awaiting to be stablized as a standard features.
-   *
-   *  Preview features '''may undergo binary compatibility changes''' in future releases, 
-   *  but their API is unlikely to change. These can be used by early adopters that do don't care 
-   *  about the binary breakage, i.e. applications, but not libraries.
-   *
-   *  Programmers are encouraged to try out preview features and
-   *  [[https://github.com/scala/scala3/issues report any bugs or API inconsistencies]]
-   *  they encounter so they can be improved in future releases.
-   *
-   *  @group preview
-   */
-  object preview
 
   /** The experimental object contains features that have been recently added but have not
    *  been thoroughly tested in production yet.

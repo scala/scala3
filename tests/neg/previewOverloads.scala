@@ -1,6 +1,6 @@
+package scala // @preview in private[scala]
 
-
-import scala.annotation.preview
+import scala.annotation.internal.preview
 
 trait A:
   def f: Int
