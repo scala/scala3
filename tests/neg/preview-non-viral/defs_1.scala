@@ -1,5 +1,5 @@
 //> using options -preview
-package scala // @preview in private[scala]
+package scala // @preview is private[scala]
 import scala.annotation.internal.preview
 
 @preview def previewFeature = 42
