@@ -3895,6 +3895,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        * @param selfType The self type of the class if it has one
        * @param clsFlags extra flags with which the class symbol should be constructed
        * @param clsPrivateWithin the symbol within which this new class symbol should be private. May be noSymbol
+       * @param clsAnnotations annotations of the class
        * @param conMethodType Function returning MethodOrPoly type representing the type of the constructor.
        * Takes the result type as parameter which must be returned from the innermost MethodOrPoly.
        * PolyType may only represent the first clause of the constructor.
@@ -3918,6 +3919,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         selfType: Option[TypeRepr],
         clsFlags: Flags,
         clsPrivateWithin: Symbol,
+        clsAnnotations: List[Term],
         conMethodType: TypeRepr => MethodOrPoly,
         conFlags: Flags,
         conPrivateWithin: Symbol,

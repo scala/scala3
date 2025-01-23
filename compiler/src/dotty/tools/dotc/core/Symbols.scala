@@ -639,6 +639,7 @@ object Symbols extends SymUtils {
       parentTypes: Symbol => List[Type],
       selfInfo: Type = NoType,
       privateWithin: Symbol = NoSymbol,
+      annotations: List[Tree] = Nil,
       coord: Coord = NoCoord,
       compUnitInfo: CompilationUnitInfo | Null = null)(using Context): ClassSymbol = {
     def completer = new LazyType {
@@ -648,6 +649,7 @@ object Symbols extends SymUtils {
         val parents = parentTypes(cls).map(_.dealias)
         assert(parents.nonEmpty && !parents.head.typeSymbol.is(dotc.core.Flags.Trait), "First parent must be a class")
         denot.info = ClassInfo(owner.thisType, cls, parents, decls, selfInfo)
+        denot.annotations = annotations.map(Annotations.Annotation(_))
       }
     }
     newClassSymbol(owner, name, flags, completer, privateWithin, coord, compUnitInfo)
