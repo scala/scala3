@@ -2665,6 +2665,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           selfType,
           clsFlags,
           clsPrivateWithin,
+          Nil,
           conMethodType = res => MethodType(conParamNames)(_ => conParamTypes, _ => res),
           conFlags = Flags.EmptyFlags,
           conPrivateWithin = Symbol.noSymbol,
@@ -2679,6 +2680,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         selfType: Option[TypeRepr],
         clsFlags: Flags,
         clsPrivateWithin: Symbol,
+        clsAnnotations: List[Term],
         conMethodType: TypeRepr => MethodOrPoly,
         conFlags: Flags,
         conPrivateWithin: Symbol,
@@ -2694,7 +2696,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           clsFlags,
           parents,
           selfType.getOrElse(Types.NoType),
-          clsPrivateWithin)
+          clsPrivateWithin,
+          clsAnnotations
+        )
         val methodType: MethodOrPoly = conMethodType(cls.typeRef)
         def throwShapeException() = throw new Exception("Shapes of conMethodType and conParamFlags differ.")
         def checkMethodOrPolyShape(checkedMethodType: TypeRepr, clauseIdx: Int): Unit =
