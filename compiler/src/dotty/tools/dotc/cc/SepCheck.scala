@@ -10,11 +10,28 @@ import Contexts.*, Names.*, Flags.*, Symbols.*, Decorators.*
 import CaptureSet.{Refs, emptySet, HiddenSet}
 import config.Printers.capt
 import StdNames.nme
-import util.{SimpleIdentitySet, EqHashMap}
+import util.{SimpleIdentitySet, EqHashMap, SrcPos}
+
+object SepChecker:
+
+  /** Enumerates kinds of captures encountered so far */
+  enum Captures:
+    case None
+    case Explicit   // one or more explicitly declared captures
+    case Hidden     // exacttly one hidden captures
+    case NeedsCheck // one hidden capture and one other capture (hidden or declared)
+
+    def add(that: Captures): Captures =
+      if this == None then that
+      else if that == None then this
+      else if this == Explicit && that == Explicit then Explicit
+      else NeedsCheck
+  end Captures
 
 class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   import tpd.*
   import checker.*
+  import SepChecker.*
 
   /** The set of capabilities that are hidden by a polymorphic result type
    *  of some previous definition.
@@ -52,20 +69,16 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
     private def hidden(using Context): Refs =
       val seen: util.EqHashSet[CaptureRef] = new util.EqHashSet
-
-      def hiddenByElem(elem: CaptureRef): Refs =
-        if seen.add(elem) then elem match
-          case Fresh.Cap(hcs) => hcs.elems.filter(!_.isRootCapability) ++ recur(hcs.elems)
-          case ReadOnlyCapability(ref) => hiddenByElem(ref).map(_.readOnly)
-          case _ => emptySet
-        else emptySet
-
       def recur(cs: Refs): Refs =
         (emptySet /: cs): (elems, elem) =>
-          elems ++ hiddenByElem(elem)
-
+          if seen.add(elem) then elems ++ hiddenByElem(elem, recur)
+          else elems
       recur(refs)
     end hidden
+
+    private def containsHidden(using Context): Boolean =
+      refs.exists: ref =>
+        !hiddenByElem(ref, _ => emptySet).isEmpty
 
     /** Deduct the footprint of `sym` and `sym*` from `refs` */
     private def deductSym(sym: Symbol)(using Context) =
@@ -78,6 +91,11 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       deps.foldLeft(refs): (refs, dep) =>
         refs -- captures(dep).footprint
   end extension
+
+  private def hiddenByElem(ref: CaptureRef, recur: Refs => Refs)(using Context): Refs = ref match
+    case Fresh.Cap(hcs) => hcs.elems.filter(!_.isRootCapability) ++ recur(hcs.elems)
+    case ReadOnlyCapability(ref1) => hiddenByElem(ref1, recur).map(_.readOnly)
+    case _ => emptySet
 
   /** The captures of an argument or prefix widened to the formal parameter, if
    *  the latter contains a cap.
@@ -186,6 +204,7 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     for (arg, idx) <- indexedArgs do
       if arg.needsSepCheck then
         val ac = formalCaptures(arg)
+        checkType(arg.formalType, arg.srcPos, NoSymbol, " the argument's adapted type")
         val hiddenInArg = ac.hidden.footprint
         //println(i"check sep $arg: $ac, footprint so far = $footprint, hidden = $hiddenInArg")
         val overlap = hiddenInArg.overlapWith(footprint).deductCapturesOf(deps(arg))
@@ -212,6 +231,105 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       if !overlap.isEmpty then
         sepUseError(tree, usedFootprint, overlap)
 
+  def checkType(tpt: Tree, sym: Symbol)(using Context): Unit =
+    checkType(tpt.nuType, tpt.srcPos, sym, "")
+
+  /** Check that all parts of type `tpe` are separated.
+   *  @param  tpe  the type to check
+   *  @param  pos  position for error reporting
+   *  @param  sym  if `tpe` is the (result-) type of a val or def, the symbol of
+   *               this definition, otherwise NoSymbol. If `sym` exists we
+   *               deduct its associated direct and reach capabilities everywhere
+   *               from the capture sets we check.
+   *  @param  what a string describing what kind of type it is
+   */
+  def checkType(tpe: Type, pos: SrcPos, sym: Symbol, what: String)(using Context): Unit =
+
+    def checkParts(parts: List[Type]): Unit =
+      var footprint: Refs = emptySet
+      var hiddenSet: Refs = emptySet
+      var checked = 0
+      for part <- parts do
+
+        /** Report an error if `current` and `next` overlap.
+         *  @param  current  the footprint or hidden set seen so far
+         *  @param  next     the footprint or hidden set of the next part
+         *  @param  mapRefs  a function over the capture set elements of the next part
+         *                   that returns the references of the same kind as `current`
+         *                   (i.e. the part's footprint or hidden set)
+         *  @param  prevRel  a verbal description of current ("references or "hides")
+         *  @param  nextRel  a verbal descriiption of next
+         */
+        def checkSep(current: Refs, next: Refs, mapRefs: Refs => Refs, prevRel: String, nextRel: String): Unit =
+          val globalOverlap = current.overlapWith(next)
+          if !globalOverlap.isEmpty then
+            val (prevStr, prevRefs, overlap) = parts.iterator.take(checked)
+              .map: prev =>
+                val prevRefs = mapRefs(prev.deepCaptureSet.elems).footprint.deductSym(sym)
+                (i",  $prev , ", prevRefs, prevRefs.overlapWith(next))
+              .dropWhile(_._3.isEmpty)
+              .nextOption
+              .getOrElse(("", current, globalOverlap))
+            report.error(
+              em"""Separation failure in$what type $tpe.
+                  |One part,  $part , $nextRel  ${CaptureSet(next)}.
+                  |A previous part$prevStr $prevRel  ${CaptureSet(prevRefs)}.
+                  |The two sets overlap at  ${CaptureSet(overlap)}.""",
+              pos)
+
+        val partRefs = part.deepCaptureSet.elems
+        val partFootprint = partRefs.footprint.deductSym(sym)
+        val partHidden = partRefs.hidden.footprint.deductSym(sym) -- partFootprint
+
+        checkSep(footprint, partHidden, identity, "references", "hides")
+        checkSep(hiddenSet, partHidden, _.hidden, "also hides", "hides")
+        checkSep(hiddenSet, partFootprint, _.hidden, "hides", "references")
+
+        footprint ++= partFootprint
+        hiddenSet ++= partHidden
+        checked += 1
+      end for
+    end checkParts
+
+    object traverse extends TypeAccumulator[Captures]:
+
+      /** A stack of part lists to check. We maintain this since immediately
+       *  checking parts when traversing the type would check innermost to oputermost.
+       *  But we want to check outermost parts first since this prioritized errors
+       *  that are more obvious.
+       */
+      var toCheck: List[List[Type]] = Nil
+
+      private val seen = util.HashSet[Symbol]()
+
+      def apply(c: Captures, t: Type) =
+        if variance < 0 then c
+        else
+          val t1 = t.dealias
+          t1 match
+            case t @ AppliedType(tycon, args) =>
+              val c1 = foldOver(Captures.None, t)
+              if c1 == Captures.NeedsCheck then
+                toCheck = (tycon :: args) :: toCheck
+              c.add(c1)
+            case t @ CapturingType(parent, cs) =>
+              val c1 = this(c, parent)
+              if cs.elems.containsHidden then c1.add(Captures.Hidden)
+              else if !cs.elems.isEmpty then c1.add(Captures.Explicit)
+              else c1
+            case t: TypeRef if t.symbol.isAbstractOrParamType =>
+              if seen.contains(t.symbol) then c
+              else
+                seen += t.symbol
+                apply(apply(c, t.prefix), t.info.bounds.hi)
+            case t =>
+              foldOver(c, t)
+
+    if !tpe.hasAnnotation(defn.UntrackedCapturesAnnot) then
+      traverse(Captures.None, tpe)
+      traverse.toCheck.foreach(checkParts)
+  end checkType
+
   private def collectMethodTypes(tp: Type): List[TermLambda] = tp match
     case tp: MethodType => tp :: collectMethodTypes(tp.resType)
     case tp: PolyType => collectMethodTypes(tp.resType)
@@ -231,7 +349,7 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       (formal, arg) <- mt.paramInfos.zip(args)
       dep <- formal.captureSet.elems.toList
     do
-      val referred = dep match
+      val referred = dep.stripReach match
         case dep: TermParamRef =>
           argMap(dep.binder)(dep.paramNum) :: Nil
         case dep: ThisType if dep.cls == fn.symbol.owner =>
@@ -269,11 +387,13 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           defsShadow = saved
       case tree: ValOrDefDef =>
         traverseChildren(tree)
-        if previousDefs.nonEmpty && !tree.symbol.isOneOf(TermParamOrAccessor) then
-          capt.println(i"sep check def ${tree.symbol}: ${tree.tpt} with ${captures(tree.tpt).hidden.footprint}")
-          defsShadow ++= captures(tree.tpt).hidden.footprint.deductSym(tree.symbol)
-          resultType(tree.symbol) = tree.tpt.nuType
-          previousDefs.head += tree
+        if !tree.symbol.isOneOf(TermParamOrAccessor) then
+          checkType(tree.tpt, tree.symbol)
+          if previousDefs.nonEmpty then
+            capt.println(i"sep check def ${tree.symbol}: ${tree.tpt} with ${captures(tree.tpt).hidden.footprint}")
+            defsShadow ++= captures(tree.tpt).hidden.footprint.deductSym(tree.symbol)
+            resultType(tree.symbol) = tree.tpt.nuType
+            previousDefs.head += tree
       case _ =>
         traverseChildren(tree)
 end SepChecker
