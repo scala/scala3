@@ -1,8 +1,20 @@
--- [E172] Type Error: tests/neg/i19594.scala:12:14 ---------------------------------------------------------------------
-12 |  assertEquals(true, 1, "values are not the same") // error
-   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |  Can you see me?!
--- [E172] Type Error: tests/neg/i19594.scala:13:14 ---------------------------------------------------------------------
-13 |  assertEquals(true, 1) // error
-   |  ^^^^^^^^^^^^^^^^^^^^^
-   |  Can you see me?!
+-- [E172] Type Error: tests/neg/i19594.scala:15:50 ---------------------------------------------------------------------
+15 |  assertEquals(true, 1, "values are not the same") // error
+   |                                                  ^
+   |                                                  Can you see me?!
+-- [E172] Type Error: tests/neg/i19594.scala:16:23 ---------------------------------------------------------------------
+16 |  assertEquals(true, 1) // error
+   |                       ^
+   |                       Can you see me?!
+-- [E172] Type Error: tests/neg/i19594.scala:20:12 ---------------------------------------------------------------------
+20 |  f(true, 1) // error
+   |            ^
+   |            Can you see me?!
+-- [E172] Type Error: tests/neg/i19594.scala:23:39 ---------------------------------------------------------------------
+23 |  g(true, 1, "values are not the same") // error
+   |                                       ^
+   |                                       Can you see me?!
+-- [E172] Type Error: tests/neg/i19594.scala:26:3 ----------------------------------------------------------------------
+26 |  h(true, 1) // error
+   |  ^^^^^^^^^^
+   |  No given instance of type String was found

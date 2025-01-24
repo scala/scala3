@@ -1571,7 +1571,7 @@ class Objects(using Context @constructorOnly):
       val trace2 = Trace.trace.add(pat)
       pat match
       case Alternative(pats) =>
-        val (types, values) = pats.map(evalPattern(scrutinee, _)).unzip()
+        val (types, values) = pats.map(evalPattern(scrutinee, _)).unzip
         val orType = types.fold(defn.NothingType)(OrType(_, _, false))
         (orType, values.join)
 
