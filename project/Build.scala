@@ -98,7 +98,7 @@ object Build {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.6.3-RC2"
+  val referenceVersion = "3.6.4-RC1"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -109,7 +109,7 @@ object Build {
    *
    *  Warning: Change of this variable might require updating `expectedTastyVersion`
    */
-  val developedVersion = "3.6.4"
+  val developedVersion = "3.7.0"
 
   /** The version of the compiler including the RC prefix.
    *  Defined as common base before calculating environment specific suffixes in `dottyVersion`
@@ -208,8 +208,8 @@ object Build {
    *  scala-library.
    */
   def stdlibVersion(implicit mode: Mode): String = mode match {
-    case NonBootstrapped => "2.13.15"
-    case Bootstrapped => "2.13.15"
+    case NonBootstrapped => "2.13.16"
+    case Bootstrapped => "2.13.16"
   }
 
   /** Version of the scala-library for which we will generate TASTy.
@@ -219,7 +219,7 @@ object Build {
    *  We can use nightly versions to tests the future compatibility in development.
    *  Nightly versions: https://scala-ci.typesafe.com/ui/native/scala-integration/org/scala-lang
    */
-  val stdlibBootstrappedVersion = "2.13.15"
+  val stdlibBootstrappedVersion = "2.13.16"
 
   val dottyOrganization = "org.scala-lang"
   val dottyGithubUrl = "https://github.com/scala/scala3"
@@ -739,6 +739,13 @@ object Build {
       // Use source 3.3 to avoid fatal migration warnings on scalajs-ir
       scalacOptions ++= Seq("-source", "3.3"),
 
+      /* Ignore a deprecation warning about AnyRefMap in scalajs-ir. The latter
+       * cross-compiles for 2.12, and therefore AnyRefMap remains useful there
+       * for performance reasons.
+       * The build of Scala.js core does the same thing.
+       */
+      scalacOptions += "-Wconf:cat=deprecation&origin=scala\\.collection\\.mutable\\.AnyRefMap.*:s",
+
       // Generate compiler.properties, used by sbt
       (Compile / resourceGenerators) += Def.task {
         import java.util._
@@ -1059,7 +1066,6 @@ object Build {
     // compiler is updated.
     // Then, the next step is to enable flexible types by default and reduce the use of
     // `unsafeNulls`.
-    scalacOptions ++= Seq("-Yno-flexible-types"),
     packageAll := {
       (`scala3-compiler` / packageAll).value ++ Seq(
         "scala3-compiler" -> (Compile / packageBin).value.getAbsolutePath,
@@ -1104,7 +1110,9 @@ object Build {
   }
 
   // Settings shared between scala3-library, scala3-library-bootstrapped and scala3-library-bootstrappedJS
-  lazy val dottyLibrarySettings = Seq(
+  def dottyLibrarySettings(implicit mode: Mode) = Seq(
+    versionScheme := Some("semver-spec"),
+    libraryDependencies += "org.scala-lang" % "scala-library" % stdlibVersion,
     (Compile / scalacOptions) ++= Seq(
       // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
       "-sourcepath", (Compile / sourceDirectories).value.map(_.getAbsolutePath).distinct.mkString(File.pathSeparator),
@@ -1451,10 +1459,6 @@ object Build {
     .dependsOn(`scala3-compiler-bootstrapped`, `scala3-library-bootstrapped`, `scala3-presentation-compiler-testcases` % "test->test")
     .settings(presentationCompilerSettings)
     .settings(scala3PresentationCompilerBuildInfo)
-    .settings(
-      // Add `-Yno-flexible-types` flag for bootstrap, see comments for `bootstrappedDottyCompilerSettings`
-      Compile / scalacOptions +=  "-Yno-flexible-types"
-    )
 
   def scala3PresentationCompilerBuildInfo =
     Seq(
@@ -1479,7 +1483,7 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   lazy val presentationCompilerSettings = {
-    val mtagsVersion = "1.4.1"
+    val mtagsVersion = "1.4.2"
     Seq(
       libraryDependencies ++= Seq(
         "org.lz4" % "lz4-java" % "1.8.0",
@@ -1489,7 +1493,7 @@ object Build {
           .exclude("org.eclipse.lsp4j","org.eclipse.lsp4j.jsonrpc"),
         "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.20.1",
       ),
-      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.15" % mtagsVersion % SourceDeps),
+      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.16" % mtagsVersion % SourceDeps),
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       scalacOptions ++= Seq("-source", "3.3"), // To avoid fatal migration warnings
@@ -1669,6 +1673,7 @@ object Build {
             "productionMode" -> sems.productionMode,
             "esVersion" -> linkerConfig.esFeatures.esVersion.edition,
             "useECMAScript2015Semantics" -> linkerConfig.esFeatures.useECMAScript2015Semantics,
+            "isWebAssembly" -> linkerConfig.experimentalUseWebAssembly,
         )
       }.taskValue,
 
@@ -1709,7 +1714,7 @@ object Build {
         )
       },
 
-      // A first blacklist of tests for those that do not compile or do not link
+      // A first excludelist of tests for those that do not compile or do not link
       (Test / managedSources) ++= {
         val dir = fetchScalaJSSource.value / "test-suite"
 
@@ -2415,13 +2420,9 @@ object Build {
       settings(dottyCompilerSettings)
 
     def asDottyLibrary(implicit mode: Mode): Project = {
-      val base =
-        project.withCommonSettings.
-          settings(
-            versionScheme := Some("semver-spec"),
-            libraryDependencies += "org.scala-lang" % "scala-library" % stdlibVersion,
-          ).
-          settings(dottyLibrarySettings)
+      val base = project
+        .withCommonSettings
+        .settings(dottyLibrarySettings)
       if (mode == Bootstrapped) {
         base.settings(
           (Compile/doc) := {
@@ -2505,6 +2506,7 @@ object Build {
       case NonBootstrapped => commonNonBootstrappedSettings
       case Bootstrapped => commonBootstrappedSettings
     })
+
   }
 
   /* Tests TASTy version invariants during NIGHLY, RC or Stable releases */

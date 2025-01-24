@@ -87,5 +87,5 @@ the previously created Best Effort TASTy, with `-Yread-tasty` and `-Ywith-best-e
 TreeUnpickler for those Best Effort TASTy files.
 
 One of the goals of this feature is to keep the maintainance cost low, and to not let this feature hinder the pace of the
-overall development of the compiler. Because of that, the tests can be freely disabled in `compiler/neg-best-effort.blacklist`
-(testing TreePickler) and `compiler/neg-best-effort-from-tasty.blacklist` (testing TreeUnpickler).
+overall development of the compiler. Because of that, the tests can be freely disabled in `compiler/neg-best-effort.excludelist`
+(testing TreePickler) and `compiler/neg-best-effort-from-tasty.excludelist` (testing TreeUnpickler).

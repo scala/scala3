@@ -28,8 +28,7 @@ jobs:
 
   linux-aarch64:
     name: Deploy and Test on Linux ARM64 architecture
-    runs-on: macos-latest
-    if: ${{ false }}
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 17

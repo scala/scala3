@@ -92,7 +92,7 @@ object printMips {
 
   def apply(nodes: List[Assembler]): Unit = {
     var symbCount = 0L
-    val symbols = new scala.collection.mutable.AnyRefMap[Scoped,Long]()
+    val symbols = new scala.collection.mutable.HashMap[Scoped,Long]()
 
     print(mipsNode(nodes, "  "))
 

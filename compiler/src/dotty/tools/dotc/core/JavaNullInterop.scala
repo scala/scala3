@@ -6,6 +6,8 @@ import Flags.JavaDefined
 import StdNames.nme
 import Symbols.*
 import Types.*
+import dotty.tools.dotc.reporting.*
+import dotty.tools.dotc.core.Decorators.i
 
 /** This module defines methods to interpret types of Java symbols, which are implicitly nullable in Java,
  *  as Scala types, which are explicitly nullable.
@@ -51,7 +53,7 @@ object JavaNullInterop {
    *
    *  But the selection can throw an NPE if the returned value is `null`.
    */
-  def nullifyMember(sym: Symbol, tp: Type, isEnumValueDef: Boolean)(using Context): Type = {
+  def nullifyMember(sym: Symbol, tp: Type, isEnumValueDef: Boolean)(using Context): Type = trace(i"nullifyMember ${sym}, ${tp}"){
     assert(ctx.explicitNulls)
     // assert(sym.is(JavaDefined), "can only nullify java-defined members")
 

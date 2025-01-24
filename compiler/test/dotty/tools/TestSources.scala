@@ -12,65 +12,65 @@ object TestSources {
 
   // pos tests lists
 
-  def posFromTastyBlacklistFile: String = "compiler/test/dotc/pos-from-tasty.blacklist"
-  def posTestPicklingBlacklistFile: String = "compiler/test/dotc/pos-test-pickling.blacklist"
+  def posFromTastyExcludelistFile: String = "compiler/test/dotc/pos-from-tasty.excludelist"
+  def posTestPicklingExcludelistFile: String = "compiler/test/dotc/pos-test-pickling.excludelist"
   def posTestRecheckExcludesFile: String = "compiler/test/dotc/pos-test-recheck.excludes"
   def posLazyValsAllowlistFile: String = "compiler/test/dotc/pos-lazy-vals-tests.allowlist"
   def posLintingAllowlistFile: String = "compiler/test/dotc/pos-linting.allowlist"
-  def posInitGlobalScala2LibraryTastyBlacklistFile: String = "compiler/test/dotc/pos-init-global-scala2-library-tasty.blacklist"
+  def posInitGlobalScala2LibraryTastyExcludelistFile: String = "compiler/test/dotc/pos-init-global-scala2-library-tasty.excludelist"
 
-  def posFromTastyBlacklisted: List[String] = loadList(posFromTastyBlacklistFile)
-  def posTestPicklingBlacklisted: List[String] = loadList(posTestPicklingBlacklistFile)
+  def posFromTastyExcludelisted: List[String] = loadList(posFromTastyExcludelistFile)
+  def posTestPicklingExcludelisted: List[String] = loadList(posTestPicklingExcludelistFile)
   def posTestRecheckExcluded: List[String] = loadList(posTestRecheckExcludesFile)
   def posLazyValsAllowlist: List[String] = loadList(posLazyValsAllowlistFile)
   def posLintingAllowlist: List[String] = loadList(posLintingAllowlistFile)
-  def posInitGlobalScala2LibraryTastyBlacklisted: List[String] =
-    if Properties.usingScalaLibraryTasty then loadList(posInitGlobalScala2LibraryTastyBlacklistFile)
+  def posInitGlobalScala2LibraryTastyExcludelisted: List[String] =
+    if Properties.usingScalaLibraryTasty then loadList(posInitGlobalScala2LibraryTastyExcludelistFile)
     else Nil
 
   // run tests lists
 
-  def runFromTastyBlacklistFile: String = "compiler/test/dotc/run-from-tasty.blacklist"
-  def runTestPicklingBlacklistFile: String = "compiler/test/dotc/run-test-pickling.blacklist"
+  def runFromTastyExcludelistFile: String = "compiler/test/dotc/run-from-tasty.excludelist"
+  def runTestPicklingExcludelistFile: String = "compiler/test/dotc/run-test-pickling.excludelist"
   def runTestRecheckExcludesFile: String = "compiler/test/dotc/run-test-recheck.excludes"
   def runLazyValsAllowlistFile: String = "compiler/test/dotc/run-lazy-vals-tests.allowlist"
-  def runMacrosScala2LibraryTastyBlacklistFile: String = "compiler/test/dotc/run-macros-scala2-library-tasty.blacklist"
+  def runMacrosScala2LibraryTastyExcludelistFile: String = "compiler/test/dotc/run-macros-scala2-library-tasty.excludelist"
 
-  def runFromTastyBlacklisted: List[String] = loadList(runFromTastyBlacklistFile)
-  def runTestPicklingBlacklisted: List[String] = loadList(runTestPicklingBlacklistFile)
+  def runFromTastyExcludelisted: List[String] = loadList(runFromTastyExcludelistFile)
+  def runTestPicklingExcludelisted: List[String] = loadList(runTestPicklingExcludelistFile)
   def runTestRecheckExcluded: List[String] = loadList(runTestRecheckExcludesFile)
   def runLazyValsAllowlist: List[String] = loadList(runLazyValsAllowlistFile)
-  def runMacrosScala2LibraryTastyBlacklisted: List[String] =
-    if Properties.usingScalaLibraryTasty then loadList(runMacrosScala2LibraryTastyBlacklistFile)
+  def runMacrosScala2LibraryTastyExcludelisted: List[String] =
+    if Properties.usingScalaLibraryTasty then loadList(runMacrosScala2LibraryTastyExcludelistFile)
     else Nil
 
   // neg tests lists
 
-  def negScala2LibraryTastyBlacklistFile: String = "compiler/test/dotc/neg-scala2-library-tasty.blacklist"
-  def negInitGlobalScala2LibraryTastyBlacklistFile: String = "compiler/test/dotc/neg-init-global-scala2-library-tasty.blacklist"
+  def negScala2LibraryTastyExcludelistFile: String = "compiler/test/dotc/neg-scala2-library-tasty.excludelist"
+  def negInitGlobalScala2LibraryTastyExcludelistFile: String = "compiler/test/dotc/neg-init-global-scala2-library-tasty.excludelist"
 
-  def negScala2LibraryTastyBlacklisted: List[String] =
-    if Properties.usingScalaLibraryTasty then loadList(negScala2LibraryTastyBlacklistFile)
+  def negScala2LibraryTastyExcludelisted: List[String] =
+    if Properties.usingScalaLibraryTasty then loadList(negScala2LibraryTastyExcludelistFile)
     else Nil
-  def negInitGlobalScala2LibraryTastyBlacklisted: List[String] =
-    if Properties.usingScalaLibraryTasty then loadList(negInitGlobalScala2LibraryTastyBlacklistFile)
+  def negInitGlobalScala2LibraryTastyExcludelisted: List[String] =
+    if Properties.usingScalaLibraryTasty then loadList(negInitGlobalScala2LibraryTastyExcludelistFile)
     else Nil
 
   // patmat tests lists
 
-  def patmatExhaustivityScala2LibraryTastyBlacklistFile: String = "compiler/test/dotc/patmat-exhaustivity-scala2-library-tasty.blacklist"
+  def patmatExhaustivityScala2LibraryTastyExcludelistFile: String = "compiler/test/dotc/patmat-exhaustivity-scala2-library-tasty.excludelist"
 
-  def patmatExhaustivityScala2LibraryTastyBlacklisted: List[String] =
-    if Properties.usingScalaLibraryTasty then loadList(patmatExhaustivityScala2LibraryTastyBlacklistFile)
+  def patmatExhaustivityScala2LibraryTastyExcludelisted: List[String] =
+    if Properties.usingScalaLibraryTasty then loadList(patmatExhaustivityScala2LibraryTastyExcludelistFile)
     else Nil
 
   // neg best effort tests lists
 
-  def negBestEffortPicklingBlacklistFile: String = "compiler/test/dotc/neg-best-effort-pickling.blacklist"
-  def negBestEffortUnpicklingBlacklistFile: String = "compiler/test/dotc/neg-best-effort-unpickling.blacklist"
+  def negBestEffortPicklingExcludelistFile: String = "compiler/test/dotc/neg-best-effort-pickling.excludelist"
+  def negBestEffortUnpicklingExcludelistFile: String = "compiler/test/dotc/neg-best-effort-unpickling.excludelist"
 
-  def negBestEffortPicklingBlacklisted: List[String] = loadList(negBestEffortPicklingBlacklistFile)
-  def negBestEffortUnpicklingBlacklisted: List[String] = loadList(negBestEffortUnpicklingBlacklistFile)
+  def negBestEffortPicklingExcludelisted: List[String] = loadList(negBestEffortPicklingExcludelistFile)
+  def negBestEffortUnpicklingExcludelisted: List[String] = loadList(negBestEffortUnpicklingExcludelistFile)
 
   // load lists
 

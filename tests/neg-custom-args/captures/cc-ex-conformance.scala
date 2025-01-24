@@ -21,5 +21,5 @@ def Test =
   val ex3: EX3 = ???
   val ex4: EX4 = ???
   val _: EX4 = ex3 // ok
-  val _: EX4 = ex4
+  val _: EX4 = ex4 // error (???) Probably since we also introduce existentials on expansion
   val _: EX3 = ex4 // error

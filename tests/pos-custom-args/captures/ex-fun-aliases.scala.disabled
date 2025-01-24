@@ -11,8 +11,12 @@ type EX3 = () -> (c: Exists) -> () -> C^{c}
 
 type EX4 = () -> () -> (c: Exists) -> C^{c}
 
+type FUN1 = (c: C^) ->  (C^{c}, C^{c})
+
 def Test =
   def f =
     val ex1: EX1 = ???
     val c1 = ex1
+    val fun1: FUN1 = c => (c, c)
+    val fun2 = fun1
     c1

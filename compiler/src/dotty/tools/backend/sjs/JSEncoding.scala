@@ -135,16 +135,13 @@ object JSEncoding {
     def freshLabelName(base: String): LabelName =
       freshLabelName(LabelName(base))
 
-    def freshLabelIdent(base: String)(implicit pos: ir.Position): js.LabelIdent =
-      js.LabelIdent(freshLabelName(base))
-
     def labelSymbolName(sym: Symbol)(using Context): LabelName =
       labelSymbolNames.getOrElseUpdate(sym, freshLabelName(sym.javaSimpleName))
 
-    def getEnclosingReturnLabel()(implicit pos: ir.Position): js.LabelIdent = {
+    def getEnclosingReturnLabel(): LabelName = {
       if (returnLabelName.isEmpty)
         returnLabelName = Some(freshLabelName("_return"))
-      js.LabelIdent(returnLabelName.get)
+      returnLabelName.get
     }
 
     /* If this `LocalNameGenerator` has a `returnLabelName` (often added in the
@@ -155,7 +152,7 @@ object JSEncoding {
         case None =>
           body
         case Some(labelName) =>
-          js.Labeled(js.LabelIdent(labelName), tpe, body)
+          js.Labeled(labelName, tpe, body)
       }
     }
   }
@@ -166,10 +163,9 @@ object JSEncoding {
 
   // Encoding methods ----------------------------------------------------------
 
-  def encodeLabelSym(sym: Symbol)(
-      implicit ctx: Context, pos: ir.Position, localNames: LocalNameGenerator): js.LabelIdent = {
+  def encodeLabelSym(sym: Symbol)(implicit ctx: Context, localNames: LocalNameGenerator): LabelName = {
     require(sym.is(Flags.Label), "encodeLabelSym called with non-label symbol: " + sym)
-    js.LabelIdent(localNames.labelSymbolName(sym))
+    localNames.labelSymbolName(sym)
   }
 
   def encodeFieldSym(sym: Symbol)(implicit ctx: Context, pos: ir.Position): js.FieldIdent =
@@ -248,11 +244,13 @@ object JSEncoding {
   private def paramOrResultTypeRef(tpe: Type)(using Context): jstpe.TypeRef =
     toParamOrResultTypeRef(toTypeRef(tpe))
 
-  def encodeLocalSym(sym: Symbol)(
-      implicit ctx: Context, pos: ir.Position, localNames: LocalNameGenerator): js.LocalIdent = {
+  def encodeLocalSym(sym: Symbol)(using Context, ir.Position, LocalNameGenerator): js.LocalIdent =
+    js.LocalIdent(encodeLocalSymName(sym))
+
+  def encodeLocalSymName(sym: Symbol)(using ctx: Context, localNames: LocalNameGenerator): LocalName = {
     require(!sym.owner.isClass && sym.isTerm && !sym.is(Flags.Method) && !sym.is(Flags.Module),
         "encodeLocalSym called with non-local symbol: " + sym)
-    js.LocalIdent(localNames.localSymbolName(sym))
+    localNames.localSymbolName(sym)
   }
 
   def encodeClassType(sym: Symbol)(using Context): jstpe.Type = {
@@ -261,7 +259,7 @@ object JSEncoding {
     else {
       assert(sym != defn.ArrayClass,
           "encodeClassType() cannot be called with ArrayClass")
-      jstpe.ClassType(encodeClassName(sym))
+      jstpe.ClassType(encodeClassName(sym), nullable = true)
     }
   }
 
@@ -324,10 +322,10 @@ object JSEncoding {
         else if (sym == defn.NullClass)
           jstpe.NullType
         else
-          jstpe.ClassType(typeRef.className)
+          jstpe.ClassType(typeRef.className, nullable = true)
 
       case typeRef: jstpe.ArrayTypeRef =>
-        jstpe.ArrayType(typeRef)
+        jstpe.ArrayType(typeRef, nullable = true)
     }
   }
 

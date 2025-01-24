@@ -111,11 +111,8 @@ object ResolveSuper {
         // of the superaccessor's type, see i5433.scala for an example where this matters
         val otherTp = other.asSeenFrom(base.thisType).info
         val accTp = acc.asSeenFrom(base.thisType).info
-        // Since the super class can be Java defined,
-        // we use relaxed overriding check for explicit nulls if one of the symbols is Java defined.
-        // This forces `Null` to be a subtype of non-primitive value types during override checking.
-        val relaxedOverriding = ctx.explicitNulls && (sym.is(JavaDefined) || acc.is(JavaDefined))
-        if !otherTp.overrides(accTp, relaxedOverriding, matchLoosely = true) then
+
+        if !otherTp.overrides(accTp, matchLoosely = true) then
           report.error(IllegalSuperAccessor(base, memberName, targetName, acc, accTp, other.symbol, otherTp), base.srcPos)
       bcs = bcs.tail
     }

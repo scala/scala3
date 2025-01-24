@@ -122,7 +122,7 @@ object Contexts {
    *      risk of capturing complete trees.
    *    - To make sure these rules are kept, it would be good to do a sanity
    *      check using bytecode inspection with javap or scalap: Keep track
-   *      of all class fields of type context; allow them only in whitelisted
+   *      of all class fields of type context; allow them only in allowlisted
    *      classes (which should be short-lived).
    */
   abstract class Context(val base: ContextBase) { thiscontext =>
@@ -785,9 +785,6 @@ object Contexts {
 
     def withNotNullInfos(infos: List[NotNullInfo]): Context =
       if !c.explicitNulls || (c.notNullInfos eq infos) then c else c.fresh.setNotNullInfos(infos)
-
-    def relaxedOverrideContext: Context =
-      c.withModeBits(c.mode &~ Mode.SafeNulls | Mode.RelaxedOverriding)
 
   // TODO: Fix issue when converting ModeChanges and FreshModeChanges to extension givens
   extension (c: Context) {

@@ -156,6 +156,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         }
       }
     }
+
+    final override def toString: String = sourceFiles match {
+      case Array(f) => f.getPath
+      case _        => outDir.getPath.stripPrefix(defaultOutputDir).stripPrefix(name).stripPrefix("/")
+    }
   }
 
   private sealed trait FromTastyCompilationMode
@@ -176,8 +181,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     decompilation: Boolean = false
   ) extends TestSource {
     def sourceFiles: Array[JFile] = files.filter(isSourceFile)
-
-    override def toString() = sourceFiles match { case Array(f) => f.getPath case _ => outDir.getPath }
   }
 
   /** A test source whose files will be compiled separately according to their
@@ -1585,7 +1588,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             |
             |  sbt "testCompilation --from-tasty $file"
             |
-            |This tests can be disabled by adding `${file.getName}` to `compiler${JFile.separator}test${JFile.separator}dotc${JFile.separator}$runOrPos-$listName.blacklist`
+            |This tests can be disabled by adding `${file.getName}` to `compiler${JFile.separator}test${JFile.separator}dotc${JFile.separator}$runOrPos-$listName.excludelist`
             |
             |""".stripMargin
       }
@@ -1640,7 +1643,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             |
             |  sbt "scalac $bestEffortFlag $semanticDbFlag $file"
             |
-            |These tests can be disabled by adding `${file.getName}` to `compiler${JFile.separator}test${JFile.separator}dotc${JFile.separator}neg-best-effort-pickling.blacklist`
+            |These tests can be disabled by adding `${file.getName}` to `compiler${JFile.separator}test${JFile.separator}dotc${JFile.separator}neg-best-effort-pickling.excludelist`
             |""".stripMargin
       }
     }
@@ -1667,7 +1670,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             |  sbt "scalac -Ybest-effort $file"
             |  sbt "scalac --from-tasty -Ywith-best-effort-tasty $beTastyFilesString"
             |
-            |These tests can be disabled by adding `${file.getName}` to `compiler${JFile.separator}test${JFile.separator}dotc${JFile.separator}neg-best-effort-unpickling.blacklist`
+            |These tests can be disabled by adding `${file.getName}` to `compiler${JFile.separator}test${JFile.separator}dotc${JFile.separator}neg-best-effort-unpickling.excludelist`
             |
             |""".stripMargin
       }

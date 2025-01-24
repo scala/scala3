@@ -1,4 +1,4 @@
-// scalajs: --skip
+// scalajs: --compliant-semantics
 
 /*
  * Try exception handling and finally blocks.

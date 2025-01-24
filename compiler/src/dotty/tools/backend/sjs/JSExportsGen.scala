@@ -652,7 +652,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     val superClass = {
       val superClassSym = currentClassSym.asClass.superClass
       if (superClassSym.isNestedJSClass)
-        js.VarRef(js.LocalIdent(JSSuperClassParamName))(jstpe.AnyType)
+        js.VarRef(JSSuperClassParamName)(jstpe.AnyType)
       else
         js.LoadJSConstructor(encodeClassName(superClassSym))
     }
@@ -793,7 +793,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     }
 
     // #15419 If the getter returns void, we must "box" it by returning undefined
-    if (callGetter.tpe == jstpe.NoType)
+    if (callGetter.tpe == jstpe.VoidType)
       js.Block(callGetter, js.Undefined())
     else
       callGetter
@@ -837,7 +837,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
   }
 
   private def genThrowTypeError(msg: String = "No matching overload")(implicit pos: Position): js.Tree =
-    js.Throw(js.JSNew(js.JSGlobalRef("TypeError"), js.StringLiteral(msg) :: Nil))
+    js.UnaryOp(js.UnaryOp.Throw, js.JSNew(js.JSGlobalRef("TypeError"), js.StringLiteral(msg) :: Nil))
 
   abstract class Exported(
     val sym: Symbol,
@@ -935,9 +935,9 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
         import dotty.tools.sjs.ir.Names
 
         (toIRType(tpe): @unchecked) match {
-          case jstpe.AnyType => NoTypeTest
+          case jstpe.AnyType | jstpe.AnyNotNullType => NoTypeTest
 
-          case jstpe.NoType      => PrimitiveTypeTest(jstpe.UndefType, 0)
+          case jstpe.VoidType    => PrimitiveTypeTest(jstpe.UndefType, 0)
           case jstpe.BooleanType => PrimitiveTypeTest(jstpe.BooleanType, 1)
           case jstpe.CharType    => PrimitiveTypeTest(jstpe.CharType, 2)
           case jstpe.ByteType    => PrimitiveTypeTest(jstpe.ByteType, 3)
@@ -947,11 +947,11 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
           case jstpe.FloatType   => PrimitiveTypeTest(jstpe.FloatType, 7)
           case jstpe.DoubleType  => PrimitiveTypeTest(jstpe.DoubleType, 8)
 
-          case jstpe.ClassType(Names.BoxedUnitClass)   => PrimitiveTypeTest(jstpe.UndefType, 0)
-          case jstpe.ClassType(Names.BoxedStringClass) => PrimitiveTypeTest(jstpe.StringType, 9)
-          case jstpe.ClassType(_)                      => InstanceOfTypeTest(tpe)
+          case jstpe.ClassType(Names.BoxedUnitClass, _)   => PrimitiveTypeTest(jstpe.UndefType, 0)
+          case jstpe.ClassType(Names.BoxedStringClass, _) => PrimitiveTypeTest(jstpe.StringType, 9)
+          case jstpe.ClassType(_, _)                      => InstanceOfTypeTest(tpe)
 
-          case jstpe.ArrayType(_) => InstanceOfTypeTest(tpe)
+          case jstpe.ArrayType(_, _) => InstanceOfTypeTest(tpe)
         }
     }
   }
@@ -998,7 +998,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
     def genArgRef(index: Int)(implicit pos: Position): js.Tree = {
       if (index < minArgc)
-        js.VarRef(js.LocalIdent(fixedParamNames(index)))(jstpe.AnyType)
+        js.VarRef(fixedParamNames(index))(jstpe.AnyType)
       else
         js.JSSelect(genRestArgRef(), js.IntLiteral(index - minArgc))
     }
@@ -1014,16 +1014,16 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
     def genRestArgRef()(implicit pos: Position): js.Tree = {
       assert(needsRestParam, s"trying to generate a reference to non-existent rest param at $pos")
-      js.VarRef(js.LocalIdent(restParamName))(jstpe.AnyType)
+      js.VarRef(restParamName)(jstpe.AnyType)
     }
 
     def genAllArgsRefsForForwarder()(implicit pos: Position): List[js.TreeOrJSSpread] = {
       val fixedArgRefs = fixedParamNames.toList.map { paramName =>
-        js.VarRef(js.LocalIdent(paramName))(jstpe.AnyType)
+        js.VarRef(paramName)(jstpe.AnyType)
       }
 
       if (needsRestParam) {
-        val restArgRef = js.VarRef(js.LocalIdent(restParamName))(jstpe.AnyType)
+        val restArgRef = js.VarRef(restParamName)(jstpe.AnyType)
         fixedArgRefs :+ js.JSSpread(restArgRef)
       } else {
         fixedArgRefs

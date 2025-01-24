@@ -80,15 +80,15 @@ class PcInlayHintsProvider(
             LabelPart(")") :: Nil,
             InlayHintKind.Parameter,
           )
-      case ImplicitParameters(symbols, pos, allImplicit) =>
-        val labelParts = symbols.map(s => List(labelPart(s, s.decodedName)))
-        val label =
-          if allImplicit then labelParts.separated("(using ", ", ", ")")
-          else labelParts.separated(", ")
+      case ImplicitParameters(trees, pos) =>
         inlayHints.add(
           adjustPos(pos).toLsp,
-          label,
-          InlayHintKind.Parameter,
+          ImplicitParameters.partsFromImplicitArgs(trees).map((label, maybeSymbol) =>
+             maybeSymbol match
+               case Some(symbol) => labelPart(symbol, label)
+               case None => LabelPart(label)
+           ),
+           InlayHintKind.Parameter
         )
       case ValueOf(label, pos) =>
         inlayHints.add(
@@ -221,12 +221,8 @@ object ImplicitParameters:
         case Apply(fun, args)
             if args.exists(isSyntheticArg) && !tree.sourcePos.span.isZeroExtent && !args.exists(isQuotes(_)) =>
           val (implicitArgs, providedArgs) = args.partition(isSyntheticArg)
-          val allImplicit = providedArgs.isEmpty || providedArgs.forall {
-            case Ident(name) => name == nme.MISSING
-            case _ => false
-          }
           val pos = implicitArgs.head.sourcePos
-          Some(implicitArgs.map(_.symbol), pos, allImplicit)
+          Some(implicitArgs, pos)
         case _ => None
     } else None
 
@@ -241,6 +237,67 @@ object ImplicitParameters:
   // Decorations for Quotes are rarely useful
   private def isQuotes(tree: Tree)(using Context) =
     tree.tpe.typeSymbol == defn.QuotesClass
+
+  def partsFromImplicitArgs(trees: List[Tree])(using Context): List[(String, Option[Symbol])] = {
+    @tailrec
+    def recurseImplicitArgs(
+        currentArgs: List[Tree],
+        remainingArgsLists: List[List[Tree]],
+        parts: List[(String, Option[Symbol])]
+    ): List[(String, Option[Symbol])] =
+      (currentArgs, remainingArgsLists) match {
+        case (Nil, Nil) => parts
+        case (Nil, headArgsList :: tailArgsList) =>
+          if (headArgsList.isEmpty) {
+            recurseImplicitArgs(
+              headArgsList,
+              tailArgsList,
+              (")", None) :: parts
+            )
+          } else {
+            recurseImplicitArgs(
+              headArgsList,
+              tailArgsList,
+              (", ", None) :: (")", None) :: parts
+            )
+          }
+        case (arg :: remainingArgs, remainingArgsLists) =>
+          arg match {
+            case Apply(fun, args) =>
+              val applyLabel = (fun.symbol.decodedName, Some(fun.symbol))
+              recurseImplicitArgs(
+                args,
+                remainingArgs :: remainingArgsLists,
+                ("(", None) :: applyLabel :: parts
+              )
+            case t if t.isTerm =>
+              val termLabel = (t.symbol.decodedName, Some(t.symbol))
+              if (remainingArgs.isEmpty)
+                recurseImplicitArgs(
+                  remainingArgs,
+                  remainingArgsLists,
+                  termLabel :: parts
+                )
+              else
+                recurseImplicitArgs(
+                  remainingArgs,
+                  remainingArgsLists,
+                  (", ", None) :: termLabel :: parts
+                )
+            case _ =>
+              recurseImplicitArgs(
+                remainingArgs,
+                remainingArgsLists,
+                parts
+              )
+          }
+      }
+    ((")", None) :: recurseImplicitArgs(
+      trees,
+      Nil,
+      List(("(using ", None))
+    )).reverse
+  }
 
 end ImplicitParameters
 
