@@ -1,11 +1,11 @@
--- Error: tests/neg-custom-args/captures/sepchecks2.scala:7:10 ---------------------------------------------------------
-7 |  println(c) // error
-  |          ^
-  |          Separation failure: Illegal access to {c} which is hidden by the previous definition
-  |          of value xs with type List[box () => Unit].
-  |          This type hides capabilities  {xs*, c}
--- Error: tests/neg-custom-args/captures/sepchecks2.scala:10:33 --------------------------------------------------------
-10 |  foo((() => println(c)) :: Nil, c) // error
+-- Error: tests/neg-custom-args/captures/sepchecks2.scala:10:10 --------------------------------------------------------
+10 |  println(c) // error
+   |          ^
+   |          Separation failure: Illegal access to {c} which is hidden by the previous definition
+   |          of value xs with type List[box () => Unit].
+   |          This type hides capabilities  {xs*, c}
+-- Error: tests/neg-custom-args/captures/sepchecks2.scala:13:33 --------------------------------------------------------
+13 |  foo((() => println(c)) :: Nil, c) // error
    |                                 ^
    |                                 Separation failure: argument of type  (c : Object^)
    |                                 to method foo: (xs: List[box () => Unit], y: Object^): Nothing
@@ -19,3 +19,24 @@
    |                                   Hidden footprint of current argument  : {c}
    |                                   Declared footprint of current argument: {}
    |                                   Undeclared overlap of footprints      : {c}
+-- Error: tests/neg-custom-args/captures/sepchecks2.scala:14:10 --------------------------------------------------------
+14 |  val x1: (Object^, Object^) = (c, c) // error
+   |          ^^^^^^^^^^^^^^^^^^
+   |          Separation failure in type (box Object^, box Object^).
+   |          One part,  box Object^ , hides  {c}.
+   |          A previous part,  box Object^ ,  also hides  {c}.
+   |          The two sets overlap at  {c}.
+-- Error: tests/neg-custom-args/captures/sepchecks2.scala:15:10 --------------------------------------------------------
+15 |  val x2: (Object^, Object^{d}) = (d, d) // error
+   |          ^^^^^^^^^^^^^^^^^^^^^
+   |          Separation failure in type (box Object^, box Object^{d}).
+   |          One part,  box Object^{d} , references  {d}.
+   |          A previous part,  box Object^ ,  hides  {d}.
+   |          The two sets overlap at  {d}.
+-- Error: tests/neg-custom-args/captures/sepchecks2.scala:27:6 ---------------------------------------------------------
+27 |  bar((c, c)) // error
+   |      ^^^^^^
+   |      Separation failure in the argument's adapted type type (box Object^, box Object^).
+   |      One part,  box Object^ , hides  {c}.
+   |      A previous part,  box Object^ ,  also hides  {c}.
+   |      The two sets overlap at  {c}.
