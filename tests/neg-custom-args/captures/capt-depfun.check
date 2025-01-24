@@ -1,13 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt-depfun.scala:10:43 ----------------------------------
-10 |  val dc: ((Str^{y, z}) => Str^{y, z}) = ac(g()) // error // error sepcheck
+10 |  val dc: ((Str^{y, z}) => Str^{y, z}) = ac(g()) // error
    |                                         ^^^^^^^
    |                                         Found:    Str^{} ->{ac, y, z} Str^{y, z}
    |                                         Required: Str^{y, z} ->{fresh} Str^{y, z}
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/capt-depfun.scala:10:24 -------------------------------------------------------
-10 |  val dc: ((Str^{y, z}) => Str^{y, z}) = ac(g()) // error // error sepcheck
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |           Separation failure: Str^{y, z} => Str^{y, z} captures a root element hiding  {ac, y, z}
-   |           and also refers to  {y, z}.
-   |           The two sets overlap at  {y, z}
