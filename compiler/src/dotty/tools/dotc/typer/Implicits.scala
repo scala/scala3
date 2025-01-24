@@ -570,6 +570,8 @@ object Implicits:
         i"""
            |Note that implicit $what cannot be applied because they are ambiguous;
            |$explanation""" :: Nil
+
+    def asNested = if nested then this else AmbiguousImplicits(alt1, alt2, expectedType, argument, nested = true)
   end AmbiguousImplicits
 
   class MismatchedImplicit(ref: TermRef,

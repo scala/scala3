@@ -757,13 +757,14 @@ trait Applications extends Compatibility {
               }
               else defaultArgument(normalizedFun, n, testOnly)
 
-            def implicitArg = implicitArgTree(formal, appPos.span)
-
             if !defaultArg.isEmpty then
               defaultArg.tpe.widen match
                 case _: MethodOrPoly if testOnly => matchArgs(args1, formals1, n + 1)
                 case _ => matchArgs(args1, addTyped(treeToArg(defaultArg)), n + 1)
-            else if methodType.isImplicitMethod && ctx.mode.is(Mode.ImplicitsEnabled) then
+            else if (methodType.isContextualMethod || applyKind == ApplyKind.Using && methodType.isImplicitMethod)
+              && ctx.mode.is(Mode.ImplicitsEnabled)
+            then
+              val implicitArg = implicitArgTree(formal, appPos.span)
               matchArgs(args1, addTyped(treeToArg(implicitArg)), n + 1)
             else
               missingArg(n)
