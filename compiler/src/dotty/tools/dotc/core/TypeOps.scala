@@ -31,7 +31,7 @@ object TypeOps:
   /** The type `tp` as seen from prefix `pre` and owner `cls`. See the spec
    *  for what this means.
    */
-  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol)(using Context): Type = {
+  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol, approximateUnstablePrefixes: Boolean)(using Context): Type = {
     pre match {
       case pre: QualSkolemType =>
         // When a selection has an unstable qualifier, the qualifier type gets
@@ -42,7 +42,7 @@ object TypeOps:
         // compute the type as seen from the widened prefix, and in the rare
         // cases where this leads to an approximated type we recompute it with
         // the skolemized prefix. See the i6199* tests for usecases.
-        val widenedAsf = new AsSeenFromMap(pre.info, cls)
+        val widenedAsf = new AsSeenFromMap(pre.info, cls, approximateUnstablePrefixes)
         val ret = widenedAsf.apply(tp)
 
         if widenedAsf.approxCount == 0 then
@@ -52,11 +52,11 @@ object TypeOps:
       case _ =>
     }
 
-    new AsSeenFromMap(pre, cls).apply(tp)
+    new AsSeenFromMap(pre, cls, approximateUnstablePrefixes).apply(tp)
   }
 
   /** The TypeMap handling the asSeenFrom */
-  class AsSeenFromMap(pre: Type, cls: Symbol)(using Context) extends ApproximatingTypeMap, IdempotentCaptRefMap {
+  class AsSeenFromMap(pre: Type, cls: Symbol, approximateUnstablePrefixes: Boolean)(using Context) extends ApproximatingTypeMap, IdempotentCaptRefMap {
 
     /** The number of range approximations in invariant or contravariant positions
      *  performed by this TypeMap.
@@ -81,7 +81,7 @@ object TypeOps:
           case pre: SuperType => toPrefix(pre.thistpe, cls, thiscls)
           case _ =>
             if (thiscls.derivesFrom(cls) && pre.baseType(thiscls).exists)
-              if (variance <= 0 && !isLegalPrefix(pre))
+              if (approximateUnstablePrefixes && variance <= 0 && !isLegalPrefix(pre))
                 approxCount += 1
                 range(defn.NothingType, pre)
               else pre

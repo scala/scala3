@@ -1106,11 +1106,14 @@ object Types extends TypeUtils {
 
     /** This type seen as if it were the type of a member of prefix type `pre`
      *  declared in class `cls`.
+     *
+     * @param approximateUnstablePrefixes - needed for mamberType method in quotes reflect API,
+     * where we want to approximate less
      */
-    final def asSeenFrom(pre: Type, cls: Symbol)(using Context): Type = {
+    final def asSeenFrom(pre: Type, cls: Symbol, approximateUnstablePrefixes: Boolean = true)(using Context): Type = {
       record("asSeenFrom")
       if (!cls.membersNeedAsSeenFrom(pre)) this
-      else TypeOps.asSeenFrom(this, pre, cls)
+      else TypeOps.asSeenFrom(this, pre, cls, approximateUnstablePrefixes)
     }
 
 // ----- Subtype-related --------------------------------------------
