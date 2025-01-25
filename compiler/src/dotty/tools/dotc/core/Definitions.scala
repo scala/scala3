@@ -1008,6 +1008,7 @@ class Definitions {
     @tu lazy val Caps_ContainsTrait: TypeSymbol = CapsModule.requiredType("Contains")
     @tu lazy val Caps_containsImpl: TermSymbol = CapsModule.requiredMethod("containsImpl")
     @tu lazy val Caps_Mutable: ClassSymbol = requiredClass("scala.caps.Mutable")
+    @tu lazy val Caps_SharedCapability: ClassSymbol = requiredClass("scala.caps.SharedCapability")
 
   /** The same as CaptureSet.universal but generated implicitly for references of Capability subtypes */
   @tu lazy val universalCSImpliedByCapability = CaptureSet(captureRoot.termRef.readOnly)
@@ -1068,6 +1069,7 @@ class Definitions {
   @tu lazy val UncheckedCapturesAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedCaptures")
   @tu lazy val UntrackedCapturesAnnot: ClassSymbol = requiredClass("scala.caps.untrackedCaptures")
   @tu lazy val UseAnnot:  ClassSymbol = requiredClass("scala.caps.use")
+  @tu lazy val ConsumeAnnot:  ClassSymbol = requiredClass("scala.caps.consume")
   @tu lazy val RefineOverrideAnnot:  ClassSymbol = requiredClass("scala.caps.refineOverride")
   @tu lazy val VolatileAnnot: ClassSymbol = requiredClass("scala.volatile")
   @tu lazy val LanguageFeatureMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.languageFeature")
