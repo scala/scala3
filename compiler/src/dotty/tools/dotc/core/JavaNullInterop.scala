@@ -58,8 +58,9 @@ object JavaNullInterop {
     // assert(sym.is(JavaDefined), "can only nullify java-defined members")
 
     // Some special cases when nullifying the type
-    if isEnumValueDef || sym.name == nme.TYPE_ then
-      // Don't nullify the `TYPE` field in every class and Java enum instances
+    if isEnumValueDef || sym.name == nme.TYPE_ // Don't nullify the `TYPE` field in every class and Java enum instances
+    || sym.is(Flags.ModuleVal) // Don't nullify Modules
+    then
       tp
     else if sym.name == nme.toString_ || sym.isConstructor || hasNotNullAnnot(sym) then
       // Don't nullify the return type of the `toString` method.

@@ -1,3 +1,6 @@
+import unsafeNulls.Foo.*
+import unsafeNulls.Unsafe_1
+
 @main
 def Flexible_2() =
   val s2: String | Null = "foo"
