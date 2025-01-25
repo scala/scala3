@@ -1,6 +1,7 @@
 import language.future // sepchecks on
+import caps.consume
 
-def Test(c: Object^, f: Object^ => Object^) =
+def Test(@consume c: Object^, f: Object^ => Object^) =
   def cc: Object^ = c
   val x1 =
     { f(cc) }

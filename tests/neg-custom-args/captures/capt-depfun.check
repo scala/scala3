@@ -1,7 +1,12 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt-depfun.scala:10:43 ----------------------------------
-10 |  val dc: ((Str^{y, z}) => Str^{y, z}) = ac(g()) // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt-depfun.scala:11:43 ----------------------------------
+11 |  val dc: ((Str^{y, z}) => Str^{y, z}) = ac(g()) // error // error: separatioon
    |                                         ^^^^^^^
    |                                         Found:    Str^{} ->{ac, y, z} Str^{y, z}
    |                                         Required: Str^{y, z} ->{fresh} Str^{y, z}
    |
    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/capt-depfun.scala:11:24 -------------------------------------------------------
+11 |  val dc: ((Str^{y, z}) => Str^{y, z}) = ac(g()) // error // error: separatioon
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           Separation failure: value dc's type Str^{y, z} => Str^{y, z} hides parameters y and z
+   |           The parameters need to be annotated with @consume to allow this.
