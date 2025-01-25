@@ -1,4 +1,5 @@
-import caps.use
+import language.future // sepchecks on
+import caps.{use, consume}
 
 class C
 def f(xs: List[C^]) =
@@ -36,7 +37,7 @@ def cons(x: Proc, xs: List[Proc]): List[() ->{x, xs*} Unit] =
   val y = x :: xs
   y
 
-def addOneProc(xs: List[Proc]): List[Proc] =
+def addOneProc(@consume xs: List[Proc]): List[Proc] =
   val x: Proc = () => println("hello")
   val result: List[() ->{x, xs*} Unit] = x :: xs
   result // OK, we can widen () ->{x, xs*} Unit to cap here.
@@ -44,7 +45,7 @@ def addOneProc(xs: List[Proc]): List[Proc] =
 def compose1[A, B, C](f: A => B, g: B => C): A ->{f, g} C =
   z => g(f(z))
 
-def compose2[A, B, C](f: A => B, g: B => C): A => C =
+def compose2[A, B, C](@consume f: A => B, @consume g: B => C): A => C =
   z => g(f(z))
 
 //def mapCompose[A](ps: List[(A => A, A => A)]): List[A ->{ps*} A] =

@@ -1,4 +1,5 @@
 import caps.use; import language.`3.7` // sepchecks on
+import caps.consume
 class File:
   def write(): Unit = ???
 
@@ -32,7 +33,7 @@ def runAll1(@use xs: List[Proc]): Unit =
     cur.set:
       (() => f.write()) :: Nil // error
 
-def runAll2(xs: List[Proc]): Unit =
+def runAll2(@consume xs: List[Proc]): Unit =
   var cur: List[Proc] = xs   // error
   while cur.nonEmpty do
     val next: () => Unit = cur.head

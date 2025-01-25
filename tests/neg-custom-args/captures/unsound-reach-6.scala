@@ -1,6 +1,9 @@
+import language.future // sepchecks on
+import caps.consume
+
 class IO
 
-def f(xs: List[() => Unit]): () => Unit = () =>
+def f(@consume xs: List[() => Unit]): () => Unit = () =>
   println(xs.head) // error
 
 def test(io: IO^)(ys: List[() ->{io} Unit]) =

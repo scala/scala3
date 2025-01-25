@@ -18,6 +18,8 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
 
   trait Mutable extends Capability
 
+  trait SharedCapability extends Capability
+
   /** Carrier trait for capture set type parameters */
   trait CapSet extends Any
 
@@ -76,6 +78,8 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
    *  This could be useful for tracked parameters as well.
    */
   final class refineOverride extends annotation.StaticAnnotation
+
+  final class consume extends annotation.StaticAnnotation
 
   object unsafe:
 

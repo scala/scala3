@@ -1,6 +1,7 @@
 import language.future // sepchecks on
+import caps.consume
 
-def test1(c: Object^, f: Object^ => Object^) =
+def test1(@consume c: Object^, f: Object^ => Object^) =
   def cc: Object^ = c
   val x1 =
     { f(cc) } // ok
@@ -8,10 +9,10 @@ def test1(c: Object^, f: Object^ => Object^) =
     f(cc)  // ok
   val x3: Object^ =
     f(cc) // ok
-  val x4: Object^ =
+  val x4: Object^ = // error
     { f(c) } // error
 
-def test2(c: Object^, f: Object^ ->{c} Object^) =
+def test2(@consume c: Object^, f: Object^ ->{c} Object^) =
   def cc: Object^ = c
   val x1 =
     { f(cc) } // error // error

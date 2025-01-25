@@ -1,4 +1,4 @@
-import language.`3.7` // sepchecks on
+import language.future // sepchecks on
 class CC
 type Cap = CC^
 
