@@ -1,29 +1,29 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps.scala:62:8 ----------------------------------
-61 |      Result:
-62 |        Future: // error, type mismatch
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps.scala:64:8 ----------------------------------
+63 |      Result:
+64 |        Future: // error, type mismatch
    |      ^
    |      Found:    Result.Ok[box Future[box T^?]^{fr, contextual$1}]
    |      Required: Result[Future[T], Nothing]
-63 |          fr.await.ok
+65 |          fr.await.ok
    |--------------------------------------------------------------------------------------------------------------------
    |Inline stack trace
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-   |This location contains code that was inlined from effect-swaps.scala:39
-39 |    boundary(Ok(body))
+   |This location contains code that was inlined from effect-swaps.scala:41
+41 |    boundary(Ok(body))
    |             ^^^^^^^^
     --------------------------------------------------------------------------------------------------------------------
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps.scala:72:10 ---------------------------------
-72 |          Future: fut ?=> // error: type mismatch
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/effect-swaps.scala:74:10 ---------------------------------
+74 |          Future: fut ?=> // error: type mismatch
    |          ^
    |          Found:    Future[box T^?]^{fr, lbl}
    |          Required: Future[box T^?]^?
-73 |            fr.await.ok
+75 |            fr.await.ok
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/effect-swaps.scala:66:15 ------------------------------------------------------
-66 |        Result.make: // error: local reference leaks
+-- Error: tests/neg-custom-args/captures/effect-swaps.scala:68:15 ------------------------------------------------------
+68 |        Result.make: // error: local reference leaks
    |        ^^^^^^^^^^^
    |local reference contextual$9 from (using contextual$9: boundary.Label[Result[box Future[box T^?]^{fr, contextual$9}, box E^?]]):
    |  box Future[box T^?]^{fr, contextual$9} leaks into outer capture set of type parameter T of method make in object Result
