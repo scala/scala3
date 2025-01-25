@@ -1559,7 +1559,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         override def checkInheritedTraitParameters: Boolean = false
 
-        /** Check that overrides don't change the @use status of their parameters */
+        /** Check that overrides don't change the @use or @consume status of their parameters */
         override def additionalChecks(member: Symbol, other: Symbol)(using Context): Unit =
           def fail(msg: String) =
             report.error(
@@ -1571,6 +1571,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           do
             if param1.hasAnnotation(defn.UseAnnot) != param2.hasAnnotation(defn.UseAnnot) then
               fail(i"has a parameter ${param1.name} with different @use status than the corresponding parameter in the overridden definition")
+            if param1.hasAnnotation(defn.ConsumeAnnot) != param2.hasAnnotation(defn.ConsumeAnnot) then
+              fail(i"has a parameter ${param1.name} with different @consume status than the corresponding parameter in the overridden definition")
       end OverridingPairsCheckerCC
 
       def traverse(t: Tree)(using Context) =
