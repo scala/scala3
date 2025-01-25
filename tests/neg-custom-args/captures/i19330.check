@@ -10,3 +10,8 @@
    |                   Required: () ->{fresh} (ex$9: caps.Exists) -> Logger^{ex$9}
    |
    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/i19330.scala:16:14 ------------------------------------------------------------
+16 |    val t: () => Logger^ = () => l // error
+   |           ^^^^^^^^^^^^^
+   |           Separation failure: value t's type () => (ex$5: caps.Exists) -> Logger^{ex$5} hides parameter l
+   |           The parameter needs to be annotated with @consume to allow this.

@@ -1,15 +1,16 @@
+import language.future // sepchecks on
+import language.experimental.captureChecking
+import caps.consume
 
-
-import language.experimental.captureChecking; import language.`3.7` // sepchecks on
 trait File:
   def close(): Unit
 
 def withFile[R](path: String)(op: File^ => R): R = ???
 
 trait Foo[+X]:
-  def use(x: File^): X
+  def use(@consume x: File^): X
 class Bar extends Foo[File^]: // error
-  def use(x: File^): File^ = x
+  def use(@consume x: File^): File^ = x
 
 def bad(): Unit =
   val backdoor: Foo[File^] = new Bar // error (follow-on, since the parent Foo[File^] of bar is illegal).

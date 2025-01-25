@@ -28,6 +28,16 @@ object SepChecker:
       else NeedsCheck
   end Captures
 
+  /** The kind of checked type, used for composing error messages */
+  enum TypeKind:
+    case Result(sym: Symbol, inferred: Boolean)
+    case Argument
+
+    def dclSym = this match
+      case Result(sym, _) => sym
+      case _ => NoSymbol
+  end TypeKind
+
 class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   import tpd.*
   import checker.*
@@ -204,7 +214,7 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     for (arg, idx) <- indexedArgs do
       if arg.needsSepCheck then
         val ac = formalCaptures(arg)
-        checkType(arg.formalType, arg.srcPos, NoSymbol, " the argument's adapted type")
+        checkType(arg.formalType, arg.srcPos, TypeKind.Argument)
         val hiddenInArg = ac.hidden.footprint
         //println(i"check sep $arg: $ac, footprint so far = $footprint, hidden = $hiddenInArg")
         val overlap = hiddenInArg.overlapWith(footprint).deductCapturesOf(deps(arg))
@@ -232,18 +242,29 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         sepUseError(tree, usedFootprint, overlap)
 
   def checkType(tpt: Tree, sym: Symbol)(using Context): Unit =
-    checkType(tpt.nuType, tpt.srcPos, sym, "")
+    checkType(tpt.nuType, tpt.srcPos,
+        TypeKind.Result(sym, inferred = tpt.isInstanceOf[InferredTypeTree]))
 
-  /** Check that all parts of type `tpe` are separated.
-   *  @param  tpe  the type to check
-   *  @param  pos  position for error reporting
-   *  @param  sym  if `tpe` is the (result-) type of a val or def, the symbol of
-   *               this definition, otherwise NoSymbol. If `sym` exists we
-   *               deduct its associated direct and reach capabilities everywhere
-   *               from the capture sets we check.
-   *  @param  what a string describing what kind of type it is
-   */
-  def checkType(tpe: Type, pos: SrcPos, sym: Symbol, what: String)(using Context): Unit =
+  /** Check that all parts of type `tpe` are separated. */
+  def checkType(tpe: Type, pos: SrcPos, kind: TypeKind)(using Context): Unit =
+
+    def typeDescr = kind match
+      case TypeKind.Result(sym, inferred) =>
+        def inferredStr = if inferred then " inferred" else ""
+        def resultStr = if sym.info.isInstanceOf[MethodicType] then " result" else ""
+        i" $sym's$inferredStr$resultStr"
+      case TypeKind.Argument =>
+        " the argument's adapted type"
+
+    def explicitRefs(tp: Type): Refs = tp match
+      case tp: (TermRef | ThisType) => SimpleIdentitySet(tp)
+      case AnnotatedType(parent, _) => explicitRefs(parent)
+      case AndType(tp1, tp2) => explicitRefs(tp1) ++ explicitRefs(tp2)
+      case OrType(tp1, tp2) => explicitRefs(tp1) ** explicitRefs(tp2)
+      case _ => emptySet
+
+    def prune(refs: Refs): Refs =
+      refs.deductSym(kind.dclSym) -- explicitRefs(tpe)
 
     def checkParts(parts: List[Type]): Unit =
       var footprint: Refs = emptySet
@@ -265,21 +286,21 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           if !globalOverlap.isEmpty then
             val (prevStr, prevRefs, overlap) = parts.iterator.take(checked)
               .map: prev =>
-                val prevRefs = mapRefs(prev.deepCaptureSet.elems).footprint.deductSym(sym)
+                val prevRefs = prune(mapRefs(prev.deepCaptureSet.elems).footprint)
                 (i",  $prev , ", prevRefs, prevRefs.overlapWith(next))
               .dropWhile(_._3.isEmpty)
               .nextOption
               .getOrElse(("", current, globalOverlap))
             report.error(
-              em"""Separation failure in$what type $tpe.
+              em"""Separation failure in$typeDescr type $tpe.
                   |One part,  $part , $nextRel  ${CaptureSet(next)}.
                   |A previous part$prevStr $prevRel  ${CaptureSet(prevRefs)}.
                   |The two sets overlap at  ${CaptureSet(overlap)}.""",
               pos)
 
         val partRefs = part.deepCaptureSet.elems
-        val partFootprint = partRefs.footprint.deductSym(sym)
-        val partHidden = partRefs.hidden.footprint.deductSym(sym) -- partFootprint
+        val partFootprint = prune(partRefs.footprint)
+        val partHidden = prune(partRefs.hidden.footprint) -- partFootprint
 
         checkSep(footprint, partHidden, identity, "references", "hides")
         checkSep(hiddenSet, partHidden, _.hidden, "also hides", "hides")
@@ -325,9 +346,43 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
             case t =>
               foldOver(c, t)
 
+    def checkParameters() =
+      val badParams = mutable.ListBuffer[Symbol]()
+      def currentOwner = kind.dclSym.orElse(ctx.owner)
+      for hiddenRef <- prune(tpe.deepCaptureSet.elems.hidden.footprint) do
+        val refSym = hiddenRef.termSymbol
+        if refSym.is(TermParam)
+          && !refSym.hasAnnotation(defn.ConsumeAnnot)
+          && !refSym.info.derivesFrom(defn.Caps_SharedCapability)
+          && currentOwner.isContainedIn(refSym.owner)
+        then
+          badParams += refSym
+      if badParams.nonEmpty then
+        def paramsStr(params: List[Symbol]): String = (params: @unchecked) match
+          case p :: Nil => i"${p.name}"
+          case p :: p2 :: Nil => i"${p.name} and ${p2.name}"
+          case p :: ps => i"${p.name}, ${paramsStr(ps)}"
+        val (pluralS, singleS) = if badParams.tail.isEmpty then ("", "s") else ("s", "")
+        report.error(
+          em"""Separation failure:$typeDescr type $tpe hides parameter$pluralS ${paramsStr(badParams.toList)}
+              |The parameter$pluralS need$singleS to be annotated with @consume to allow this.""",
+            pos)
+
+    def flagHiddenParams =
+      kind match
+        case TypeKind.Result(sym, _) =>
+          !sym.isAnonymousFunction // we don't check return types of anonymous functions
+          && !sym.is(Case)         // We don't check so far binders in patterns since they
+                                   // have inferred universal types. TODO come back to this;
+                                   // either infer more precise types for such binders or
+                                   // "see through them" when we look at hidden sets.
+        case TypeKind.Argument =>
+          false
+
     if !tpe.hasAnnotation(defn.UntrackedCapturesAnnot) then
       traverse(Captures.None, tpe)
       traverse.toCheck.foreach(checkParts)
+      if flagHiddenParams then checkParameters()
   end checkType
 
   private def collectMethodTypes(tp: Type): List[TermLambda] = tp match
