@@ -85,7 +85,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   /** Drops `private` from the flags of `symd` provided it is
    *  a parameter accessor that's not `constructorOnly` or `uncheckedCaptured`
    *  and that contains at least one @retains in co- or in-variant position.
-   *  The @retains mught be implicit for a type deriving from `Capability`.
+   *  The @retains might be implicit for a type deriving from `Capability`.
    */
   private def newFlagsFor(symd: SymDenotation)(using Context): FlagSet =
 
@@ -303,6 +303,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *  6. Perform normalizeCaptures
    */
   private def transformExplicitType(tp: Type, tptToCheck: Tree = EmptyTree)(using Context): Type =
+
+    def fail(msg: Message) =
+      if !tptToCheck.isEmpty then report.error(msg, tptToCheck.srcPos)
+
     val toCapturing = new DeepTypeMap with FollowAliasesMap:
       override def toString = "expand aliases"
 
@@ -332,7 +336,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         else fntpe
 
       /** If C derives from Capability and we have a C^cs in source, we leave it as is
-       *  instead of expanding it to C^{cap}^cs. We do this by stripping capability-generated
+       *  instead of expanding it to C^{cap.rd}^cs. We do this by stripping capability-generated
        *  universal capture sets from the parent of a CapturingType.
        */
       def stripImpliedCaptureSet(tp: Type): Type = tp match
@@ -341,10 +345,19 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           parent
         case _ => tp
 
+      def checkSharedOK(tp: Type): tp.type =
+        tp match
+          case CapturingType(parent, refs)
+          if refs.isUniversal && parent.derivesFrom(defn.Caps_SharedCapability) =>
+            fail(em"$tp extends SharedCapability, so it cannot capture `cap`")
+          case _ =>
+        tp
+
       def apply(t: Type) =
         t match
           case t @ CapturingType(parent, refs) =>
-            t.derivedCapturingType(stripImpliedCaptureSet(this(parent)), refs)
+            checkSharedOK:
+              t.derivedCapturingType(stripImpliedCaptureSet(this(parent)), refs)
           case t @ AnnotatedType(parent, ann) =>
             val parent1 = this(parent)
             if ann.symbol.isRetains then
@@ -352,7 +365,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               if !tptToCheck.isEmpty then
                 checkWellformedLater(parent2, ann.tree, tptToCheck)
               try
-                CapturingType(parent2, ann.tree.toCaptureSet)
+                checkSharedOK:
+                  CapturingType(parent2, ann.tree.toCaptureSet)
               catch case ex: IllegalCaptureRef =>
                 report.error(em"Illegal capture reference: ${ex.getMessage.nn}", tptToCheck.srcPos)
                 parent2
@@ -368,9 +382,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             then CapturingType(t, defn.universalCSImpliedByCapability, boxed = false)
             else normalizeCaptures(mapFollowingAliases(t))
     end toCapturing
-
-    def fail(msg: Message) =
-      if !tptToCheck.isEmpty then report.error(msg, tptToCheck.srcPos)
 
     val tp1 = toCapturing(tp)
     val tp2 = Existential.mapCapInResults(fail)(tp1)
