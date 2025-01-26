@@ -1,5 +1,5 @@
 import language.experimental.captureChecking
-import language.future // sepchecks on
+
 trait IO:
   def use(): Unit
 case class Boxed[+T](unbox: T)
