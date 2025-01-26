@@ -15,5 +15,5 @@
 -- Error: tests/neg-custom-args/captures/depfun-reach.scala:12:17 ------------------------------------------------------
 12 |               : (xs: List[(X, () ->{io} Unit)]) => List[() ->{} Unit] = // error
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Separation failure: method foo's result type (xs: List[(X, box () ->{io} Unit)]) => List[() -> Unit] hides parameter op
+   |Separation failure: method foo's result type (xs: List[(X, box () ->{io} Unit)]) => List[() -> Unit] hides parameter op.
    |The parameter needs to be annotated with @consume to allow this.

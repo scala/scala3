@@ -11,6 +11,7 @@ import CaptureSet.{Refs, emptySet, HiddenSet}
 import config.Printers.capt
 import StdNames.nme
 import util.{SimpleIdentitySet, EqHashMap, SrcPos}
+import tpd.*
 
 object SepChecker:
 
@@ -31,7 +32,7 @@ object SepChecker:
   /** The kind of checked type, used for composing error messages */
   enum TypeKind:
     case Result(sym: Symbol, inferred: Boolean)
-    case Argument
+    case Argument(arg: Tree)
 
     def dclSym = this match
       case Result(sym, _) => sym
@@ -39,7 +40,6 @@ object SepChecker:
   end TypeKind
 
 class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
-  import tpd.*
   import checker.*
   import SepChecker.*
 
@@ -214,7 +214,7 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     for (arg, idx) <- indexedArgs do
       if arg.needsSepCheck then
         val ac = formalCaptures(arg)
-        checkType(arg.formalType, arg.srcPos, TypeKind.Argument)
+        checkType(arg.formalType, arg.srcPos, TypeKind.Argument(arg))
         val hiddenInArg = ac.hidden.footprint
         //println(i"check sep $arg: $ac, footprint so far = $footprint, hidden = $hiddenInArg")
         val overlap = hiddenInArg.overlapWith(footprint).deductCapturesOf(deps(arg))
@@ -252,9 +252,9 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       case TypeKind.Result(sym, inferred) =>
         def inferredStr = if inferred then " inferred" else ""
         def resultStr = if sym.info.isInstanceOf[MethodicType] then " result" else ""
-        i" $sym's$inferredStr$resultStr"
-      case TypeKind.Argument =>
-        " the argument's adapted type"
+        i"$sym's$inferredStr$resultStr"
+      case TypeKind.Argument(_) =>
+        "the argument's adapted"
 
     def explicitRefs(tp: Type): Refs = tp match
       case tp: (TermRef | ThisType) => SimpleIdentitySet(tp)
@@ -292,7 +292,7 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
               .nextOption
               .getOrElse(("", current, globalOverlap))
             report.error(
-              em"""Separation failure in$typeDescr type $tpe.
+              em"""Separation failure in $typeDescr type $tpe.
                   |One part,  $part , $nextRel  ${CaptureSet(next)}.
                   |A previous part$prevStr $prevRel  ${CaptureSet(prevRefs)}.
                   |The two sets overlap at  ${CaptureSet(overlap)}.""",
@@ -346,10 +346,10 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
             case t =>
               foldOver(c, t)
 
-    def checkParameters() =
+    def checkParams(refsToCheck: Refs, descr: => String) =
       val badParams = mutable.ListBuffer[Symbol]()
       def currentOwner = kind.dclSym.orElse(ctx.owner)
-      for hiddenRef <- prune(tpe.deepCaptureSet.elems.hidden.footprint) do
+      for hiddenRef <- prune(refsToCheck.footprint) do
         val refSym = hiddenRef.termSymbol
         if refSym.is(TermParam)
           && !refSym.hasAnnotation(defn.ConsumeAnnot)
@@ -364,25 +364,29 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           case p :: ps => i"${p.name}, ${paramsStr(ps)}"
         val (pluralS, singleS) = if badParams.tail.isEmpty then ("", "s") else ("s", "")
         report.error(
-          em"""Separation failure:$typeDescr type $tpe hides parameter$pluralS ${paramsStr(badParams.toList)}
+          em"""Separation failure: $descr parameter$pluralS ${paramsStr(badParams.toList)}.
               |The parameter$pluralS need$singleS to be annotated with @consume to allow this.""",
             pos)
 
-    def flagHiddenParams =
-      kind match
-        case TypeKind.Result(sym, _) =>
-          !sym.isAnonymousFunction // we don't check return types of anonymous functions
-          && !sym.is(Case)         // We don't check so far binders in patterns since they
-                                   // have inferred universal types. TODO come back to this;
-                                   // either infer more precise types for such binders or
-                                   // "see through them" when we look at hidden sets.
-        case TypeKind.Argument =>
-          false
+    def checkParameters() = kind match
+      case TypeKind.Result(sym, _) =>
+        if !sym.isAnonymousFunction // we don't check return types of anonymous functions
+            && !sym.is(Case)        // We don't check so far binders in patterns since they
+                                    // have inferred universal types. TODO come back to this;
+                                    // either infer more precise types for such binders or
+                                    // "see through them" when we look at hidden sets.
+        then checkParams(tpe.deepCaptureSet.elems.hidden, i"$typeDescr type $tpe hides")
+      case TypeKind.Argument(arg) =>
+        if tpe.hasAnnotation(defn.ConsumeAnnot) then
+          val capts = captures(arg)
+          def descr(verb: String) = i"argument to @consume parameter with type ${arg.nuType} $verb"
+          checkParams(capts, descr("refers to"))
+          checkParams(capts.hidden, descr("hides"))
 
     if !tpe.hasAnnotation(defn.UntrackedCapturesAnnot) then
       traverse(Captures.None, tpe)
       traverse.toCheck.foreach(checkParts)
-      if flagHiddenParams then checkParameters()
+      checkParameters()
   end checkType
 
   private def collectMethodTypes(tp: Type): List[TermLambda] = tp match
