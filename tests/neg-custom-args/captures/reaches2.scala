@@ -1,4 +1,4 @@
-import language.`3.8` // sepchecks on
+
 
 class List[+A]:
   def map[B](f: A -> B): List[B] = ???

@@ -1,4 +1,4 @@
-import caps.use; import language.`3.7` // sepchecks on
+import caps.use;
 import caps.consume
 class File:
   def write(): Unit = ???
