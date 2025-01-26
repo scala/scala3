@@ -1,5 +1,5 @@
 import caps.cap
-import language.future // sepchecks on
+
 
 def seq1(x: () => Unit, y: () ->{x, cap} Unit): Unit =
   x(); y()
