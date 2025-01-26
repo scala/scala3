@@ -1,5 +1,5 @@
 import caps.{cap, consume}
-import language.future // sepchecks on
+
 
 def test1(@consume io: Object^): Unit =
 

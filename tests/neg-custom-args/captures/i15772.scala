@@ -1,4 +1,4 @@
-import language.future // sepchecks on
+
 
 type Observe[T] = (T => Unit) -> Unit
 

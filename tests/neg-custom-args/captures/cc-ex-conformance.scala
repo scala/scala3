@@ -1,6 +1,6 @@
 import language.experimental.captureChecking
 import caps.{Exists, Capability}
-import language.future // sepchecks on
+
 
 class C
 
