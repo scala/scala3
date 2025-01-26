@@ -36,17 +36,17 @@
 -- Error: tests/neg-custom-args/captures/sepchecks2.scala:27:6 ---------------------------------------------------------
 27 |  bar((c, c)) // error
    |      ^^^^^^
-   |      Separation failure in the argument's adapted type type (box Object^, box Object^).
+   |      Separation failure in the argument's adapted type (box Object^, box Object^).
    |      One part,  box Object^ , hides  {c}.
    |      A previous part,  box Object^ ,  also hides  {c}.
    |      The two sets overlap at  {c}.
 -- Error: tests/neg-custom-args/captures/sepchecks2.scala:30:9 ---------------------------------------------------------
 30 |  val x: (Object^, Object^{c}) = (d, c) // error
    |         ^^^^^^^^^^^^^^^^^^^^^
-   |         Separation failure: value x's type (box Object^, box Object^{c}) hides parameter d
+   |         Separation failure: value x's type (box Object^, box Object^{c}) hides parameter d.
    |         The parameter needs to be annotated with @consume to allow this.
 -- Error: tests/neg-custom-args/captures/sepchecks2.scala:33:9 ---------------------------------------------------------
 33 |  val x: (Object^, Object^) = (c, d) // error
    |         ^^^^^^^^^^^^^^^^^^
-   |         Separation failure: value x's type (box Object^, box Object^) hides parameters c and d
+   |         Separation failure: value x's type (box Object^, box Object^) hides parameters c and d.
    |         The parameters need to be annotated with @consume to allow this.

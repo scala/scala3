@@ -528,7 +528,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         case _ =>
           traverseChildren(tree)
       postProcess(tree)
-      checkProperUse(tree)
+      checkProperUseOrConsume(tree)
     end traverse
 
     /** Processing done on node `tree` after its children are traversed */
@@ -682,16 +682,22 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case _ =>
     end postProcess
 
-    /** Check that @use annotations only appear on parameters and not on anonymous function parameters */
-    def checkProperUse(tree: Tree)(using Context): Unit = tree match
+    /** Check that @use and @consume annotations only appear on parameters and not on
+     *  anonymous function parameters
+     */
+    def checkProperUseOrConsume(tree: Tree)(using Context): Unit = tree match
       case tree: MemberDef =>
-        def useAllowed(sym: Symbol) =
-          (sym.is(Param) || sym.is(ParamAccessor)) && !sym.owner.isAnonymousFunction
         for ann <- tree.symbol.annotations do
-          if ann.symbol == defn.UseAnnot && !useAllowed(tree.symbol) then
-            report.error(i"Only parameters of methods can have @use annotations", tree.srcPos)
+          def isAllowedFor(sym: Symbol) =
+            (sym.is(Param) || sym.is(ParamAccessor))
+            && (ann.symbol != defn.ConsumeAnnot || sym.isTerm)
+            && !sym.owner.isAnonymousFunction
+          def termStr =
+            if ann.symbol == defn.ConsumeAnnot then " term" else ""
+          if defn.ccParamOnlyAnnotations.contains(ann.symbol) && !isAllowedFor(tree.symbol) then
+            report.error(i"Only$termStr parameters of methods can have @${ann.symbol.name} annotations", tree.srcPos)
       case _ =>
-    end checkProperUse
+    end checkProperUseOrConsume
   end setupTraverser
 
 // --------------- Adding capture set variables ----------------------------------
