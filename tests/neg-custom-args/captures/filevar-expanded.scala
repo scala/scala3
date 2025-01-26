@@ -1,7 +1,7 @@
 import language.experimental.captureChecking
 import language.experimental.modularity
 import compiletime.uninitialized
-import language.future // sepchecks on
+
 object test1:
   class File:
     def write(x: String): Unit = ???
