@@ -1,0 +1,15 @@
+-- Error: tests/neg-custom-args/captures/unsound-reach-6.scala:7:13 ----------------------------------------------------
+7 |  println(xs.head) // error
+  |          ^^^^^^^
+  |          Local reach capability xs* leaks into capture scope of method f.
+  |          To allow this, the parameter xs should be declared with a @use annotation
+-- Error: tests/neg-custom-args/captures/unsound-reach-6.scala:11:14 ---------------------------------------------------
+11 |    val z = f(ys)   // error @consume failure
+   |              ^^
+   |Separation failure: argument to @consume parameter with type (ys : List[box () ->{io} Unit]) refers to parameters ys and io.
+   |The parameters need to be annotated with @consume to allow this.
+-- Error: tests/neg-custom-args/captures/unsound-reach-6.scala:19:14 ---------------------------------------------------
+19 |    val z = f(ys)  // error @consume failure
+   |              ^^
+   |Separation failure: argument to @consume parameter with type (ys : -> List[box () ->{io} Unit]) refers to parameter io.
+   |The parameter needs to be annotated with @consume to allow this.

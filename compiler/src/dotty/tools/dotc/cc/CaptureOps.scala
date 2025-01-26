@@ -427,10 +427,6 @@ extension (tp: Type)
           mapOver(t)
     tm(tp)
 
-  def hasUseAnnot(using Context): Boolean = tp match
-    case AnnotatedType(_, ann) => ann.symbol == defn.UseAnnot
-    case _ => false
-
   /** If `x` is a capture ref, its maybe capability `x?`, represented internally
    *  as `x @maybeCapability`. `x?` stands for a capability `x` that might or might
    *  not be part of a capture set. We have `{} <: {x?} <: {x}`. Maybe capabilities
