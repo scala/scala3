@@ -655,11 +655,13 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  on method parameter symbols to the corresponding paramInfo types.
      */
     override def prepareFunction(funtpe: MethodType, meth: Symbol)(using Context): MethodType =
-      val paramInfosWithUses = funtpe.paramInfos.zipWithConserve(funtpe.paramNames): (formal, pname) =>
-        val param = meth.paramNamed(pname)
-        param.getAnnotation(defn.UseAnnot) match
-          case Some(ann) => AnnotatedType(formal, ann)
-          case _ => formal
+      val paramInfosWithUses =
+        funtpe.paramInfos.zipWithConserve(funtpe.paramNames): (formal, pname) =>
+          val param = meth.paramNamed(pname)
+          def copyAnnot(tp: Type, cls: ClassSymbol) = param.getAnnotation(cls) match
+            case Some(ann) => AnnotatedType(tp, ann)
+            case _ => tp
+          copyAnnot(copyAnnot(formal, defn.UseAnnot), defn.ConsumeAnnot)
       funtpe.derivedLambdaType(paramInfos = paramInfosWithUses)
 
     /** Recheck applications, with special handling of unsafeAssumePure.
@@ -687,7 +689,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val freshenedFormal = Fresh.fromCap(formal)
       val argType = recheck(arg, freshenedFormal)
         .showing(i"recheck arg $arg vs $freshenedFormal", capt)
-      if formal.hasUseAnnot then
+      if formal.hasAnnotation(defn.UseAnnot) then
         // The @use annotation is added to `formal` by `prepareFunction`
         capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
         markFree(argType.deepCaptureSet, arg)
@@ -722,7 +724,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val qualCaptures = qualType.captureSet
       val argCaptures =
         for (argType, formal) <- argTypes.lazyZip(funType.paramInfos) yield
-          if formal.hasUseAnnot then argType.deepCaptureSet else argType.captureSet
+          if formal.hasAnnotation(defn.UseAnnot) then argType.deepCaptureSet else argType.captureSet
       appType match
         case appType @ CapturingType(appType1, refs)
         if qualType.exists
@@ -1569,10 +1571,11 @@ class CheckCaptures extends Recheck, SymTransformer:
             (params1, params2) <- member.rawParamss.lazyZip(other.rawParamss)
             (param1, param2) <- params1.lazyZip(params2)
           do
-            if param1.hasAnnotation(defn.UseAnnot) != param2.hasAnnotation(defn.UseAnnot) then
-              fail(i"has a parameter ${param1.name} with different @use status than the corresponding parameter in the overridden definition")
-            if param1.hasAnnotation(defn.ConsumeAnnot) != param2.hasAnnotation(defn.ConsumeAnnot) then
-              fail(i"has a parameter ${param1.name} with different @consume status than the corresponding parameter in the overridden definition")
+            def checkAnnot(cls: ClassSymbol) =
+              if param1.hasAnnotation(cls) != param2.hasAnnotation(cls) then
+                fail(i"has a parameter ${param1.name} with different @${cls.name} status than the corresponding parameter in the overridden definition")
+            checkAnnot(defn.UseAnnot)
+            checkAnnot(defn.ConsumeAnnot)
       end OverridingPairsCheckerCC
 
       def traverse(t: Tree)(using Context) =

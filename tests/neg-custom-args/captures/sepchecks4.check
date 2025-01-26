@@ -1,12 +1,12 @@
 -- Error: tests/neg-custom-args/captures/sepchecks4.scala:8:12 ---------------------------------------------------------
 8 |  val x: () => Unit = () => println(io) // error
   |         ^^^^^^^^^^
-  |         Separation failure: value x's type () => Unit hides parameter io
+  |         Separation failure: value x's type () => Unit hides parameter io.
   |         The parameter needs to be annotated with @consume to allow this.
 -- Error: tests/neg-custom-args/captures/sepchecks4.scala:7:25 ---------------------------------------------------------
 7 |def bad(io: Object^): () => Unit =    // error
   |                      ^^^^^^^^^^
-  |                      Separation failure: method bad's result type () => Unit hides parameter io
+  |                      Separation failure: method bad's result type () => Unit hides parameter io.
   |                      The parameter needs to be annotated with @consume to allow this.
 -- Error: tests/neg-custom-args/captures/sepchecks4.scala:12:25 --------------------------------------------------------
 12 |  par(() => println(io))(() => println(io)) // error // (1)
