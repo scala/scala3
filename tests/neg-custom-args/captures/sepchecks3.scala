@@ -1,4 +1,4 @@
-import language.future // sepchecks on
+
 import caps.consume
 
 def foo(xs: List[() => Unit], y: Object^) = ???

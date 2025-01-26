@@ -1,5 +1,5 @@
 import caps.consume
-import language.future // sepchecks on
+
 
 class Cap extends caps.Capability
 
