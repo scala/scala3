@@ -1,6 +1,6 @@
 
 
-import language.future // sepchecks on
+
 import language.experimental.captureChecking;
 import caps.consume
 

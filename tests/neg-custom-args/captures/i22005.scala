@@ -1,4 +1,4 @@
-import language.future // sepchecks on
+
 import caps.*
 
 class IO

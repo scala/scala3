@@ -1,4 +1,4 @@
-import language.future // sepchecks on
+
 import caps.consume
 
 def test1(@consume c: Object^, f: Object^ => Object^) =

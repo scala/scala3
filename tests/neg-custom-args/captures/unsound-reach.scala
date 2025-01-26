@@ -1,4 +1,4 @@
-import language.experimental.captureChecking; import language.`3.7` // sepchecks on
+import language.experimental.captureChecking;
 trait File:
   def close(): Unit
 

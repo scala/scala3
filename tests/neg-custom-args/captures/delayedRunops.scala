@@ -1,5 +1,5 @@
 import language.experimental.captureChecking
-import language.future // sepchecks on
+
 import caps.{use, consume}
 
   // ok

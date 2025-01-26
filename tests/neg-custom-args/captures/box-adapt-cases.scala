@@ -1,4 +1,4 @@
-import language.`3.7` // sepchecks on
+
 trait Cap { def use(): Int }
 
 def test1(): Unit = {

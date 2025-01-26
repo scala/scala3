@@ -1,6 +1,6 @@
 import language.experimental.captureChecking
 import caps.cap
-import language.`3.7` // sepchecks on
+
 def test(io: Object^, async: Object^) =
   def compose(op: List[(() ->{cap} Unit, () ->{cap} Unit)]): List[() ->{op*} Unit] =
     List(() => op.foreach((f,g) => { f(); g() }))

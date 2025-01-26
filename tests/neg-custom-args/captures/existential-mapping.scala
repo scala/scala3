@@ -1,5 +1,5 @@
 import language.experimental.captureChecking
-import language.`3.7` // sepchecks on
+
 class A
 class C
 type Fun[X] = (x: C^) -> X

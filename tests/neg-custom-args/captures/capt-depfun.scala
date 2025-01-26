@@ -1,5 +1,5 @@
 import annotation.retains
-import language.future // sepchecks on
+
 
 class C
 type Cap = C @retains(caps.cap)
