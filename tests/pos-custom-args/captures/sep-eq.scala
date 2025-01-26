@@ -1,6 +1,6 @@
 import caps.Mutable
 import caps.cap
-import language.future // sepchecks on
+
 
 extension (x: Object^)
   infix def eql (y: Object^{x, cap}): Boolean = x eq y

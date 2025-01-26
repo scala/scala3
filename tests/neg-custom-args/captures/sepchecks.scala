@@ -1,6 +1,6 @@
 import caps.Mutable
 import caps.cap
-import language.future // sepchecks on
+
 
 trait Rdr[T]:
   def get: T

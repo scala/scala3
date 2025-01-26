@@ -1,5 +1,5 @@
 
-import language.future // sepchecks on
+
 import caps.SharedCapability
 
 class Async extends SharedCapability
