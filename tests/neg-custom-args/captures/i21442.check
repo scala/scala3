@@ -10,5 +10,5 @@
 -- Error: tests/neg-custom-args/captures/i21442.scala:17:10 ------------------------------------------------------------
 17 |  val x1: Boxed[IO^] = x // error
    |          ^^^^^^^^^^
-   |          Separation failure: value x1's type Boxed[box IO^] hides parameter x
+   |          Separation failure: value x1's type Boxed[box IO^] hides parameter x.
    |          The parameter needs to be annotated with @consume to allow this.
