@@ -2,7 +2,7 @@
 import caps.consume
 
 def test1(@consume c: Object^, f: Object^ => Object^) =
-  def cc: Object^ = c
+  def cc: Object^ = c  // error
   val x1 =
     { f(cc) } // ok
   val x2 =
@@ -13,7 +13,7 @@ def test1(@consume c: Object^, f: Object^ => Object^) =
     { f(c) } // error
 
 def test2(@consume c: Object^, f: Object^ ->{c} Object^) =
-  def cc: Object^ = c
+  def cc: Object^ = c // error
   val x1 =
     { f(cc) } // error // error
   val x4: Object^ =

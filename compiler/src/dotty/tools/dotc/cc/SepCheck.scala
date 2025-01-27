@@ -346,17 +346,19 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
             case t =>
               foldOver(c, t)
 
-    def checkParams(refsToCheck: Refs, descr: => String) =
+    def checkRefs(refsToCheck: Refs, descr: => String) =
       val badParams = mutable.ListBuffer[Symbol]()
       def currentOwner = kind.dclSym.orElse(ctx.owner)
-      for hiddenRef <- prune(refsToCheck.footprint) do
-        val refSym = hiddenRef.termSymbol
-        if refSym.is(TermParam)
-          && !refSym.hasAnnotation(defn.ConsumeAnnot)
-          && !refSym.info.derivesFrom(defn.Caps_SharedCapability)
-          && currentOwner.isContainedIn(refSym.owner)
-        then
-          badParams += refSym
+      for hiddenRef <- prune(refsToCheck) do
+        val refSym = hiddenRef.pathRoot.termSymbol // TODO also hangle ThisTypes as pathRoots
+        if refSym.exists && !refSym.info.derivesFrom(defn.Caps_SharedCapability) then
+          if currentOwner.enclosingMethodOrClass.isProperlyContainedIn(refSym.owner.enclosingMethodOrClass) then
+            report.error(em"""Separation failure: $descr non-local $refSym""", pos)
+          else if refSym.is(TermParam)
+            && !refSym.hasAnnotation(defn.ConsumeAnnot)
+            && currentOwner.isContainedIn(refSym.owner)
+          then
+            badParams += refSym
       if badParams.nonEmpty then
         def paramsStr(params: List[Symbol]): String = (params: @unchecked) match
           case p :: Nil => i"${p.name}"
@@ -368,25 +370,28 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
               |The parameter$pluralS need$singleS to be annotated with @consume to allow this.""",
             pos)
 
-    def checkParameters() = kind match
+    def checkLegalRefs() = kind match
       case TypeKind.Result(sym, _) =>
         if !sym.isAnonymousFunction // we don't check return types of anonymous functions
             && !sym.is(Case)        // We don't check so far binders in patterns since they
                                     // have inferred universal types. TODO come back to this;
                                     // either infer more precise types for such binders or
                                     // "see through them" when we look at hidden sets.
-        then checkParams(tpe.deepCaptureSet.elems.hidden, i"$typeDescr type $tpe hides")
+        then
+          val refs = tpe.deepCaptureSet.elems
+          val toCheck = refs.hidden.footprint -- refs.footprint
+          checkRefs(toCheck, i"$typeDescr type $tpe hides")
       case TypeKind.Argument(arg) =>
         if tpe.hasAnnotation(defn.ConsumeAnnot) then
           val capts = captures(arg)
           def descr(verb: String) = i"argument to @consume parameter with type ${arg.nuType} $verb"
-          checkParams(capts, descr("refers to"))
-          checkParams(capts.hidden, descr("hides"))
+          checkRefs(capts.footprint, descr("refers to"))
+          checkRefs(capts.hidden.footprint, descr("hides"))
 
     if !tpe.hasAnnotation(defn.UntrackedCapturesAnnot) then
       traverse(Captures.None, tpe)
       traverse.toCheck.foreach(checkParts)
-      checkParameters()
+      checkLegalRefs()
   end checkType
 
   private def collectMethodTypes(tp: Type): List[TermLambda] = tp match
@@ -426,10 +431,12 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       if argss.nestedExists(_.needsSepCheck) then
         checkApply(tree, argss.flatten, dependencies(tree, argss))
 
+  def isUnsafeAssumeSeparate(tree: Tree)(using Context): Boolean = tree match
+    case tree: Apply => tree.symbol == defn.Caps_unsafeAssumeSeparate
+    case _ => false
+
   def traverse(tree: Tree)(using Context): Unit =
-    tree match
-      case tree: Apply if tree.symbol == defn.Caps_unsafeAssumeSeparate => return
-      case _ =>
+    if isUnsafeAssumeSeparate(tree) then return
     checkUse(tree)
     tree match
       case tree: GenericApply =>
@@ -446,7 +453,7 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           defsShadow = saved
       case tree: ValOrDefDef =>
         traverseChildren(tree)
-        if !tree.symbol.isOneOf(TermParamOrAccessor) then
+        if !tree.symbol.isOneOf(TermParamOrAccessor) && !isUnsafeAssumeSeparate(tree.rhs) then
           checkType(tree.tpt, tree.symbol)
           if previousDefs.nonEmpty then
             capt.println(i"sep check def ${tree.symbol}: ${tree.tpt} with ${captures(tree.tpt).hidden.footprint}")
@@ -456,8 +463,6 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       case _ =>
         traverseChildren(tree)
 end SepChecker
-
-
 
 
 
