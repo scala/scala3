@@ -6,7 +6,6 @@ import core.*
 import Types.*, Symbols.*, Contexts.*
 import ast.tpd.*
 import Annotations.Annotation
-import Decorators.i
 
 /** A builder and extractor for annotated types with @retains or @retainsByName annotations.
  */

@@ -3,22 +3,18 @@ package dotc
 package core
 
 import scala.annotation.{threadUnsafe => tu}
-import Types.*, Contexts.*, Symbols.*, SymDenotations.*, StdNames.*, Names.*, Phases.*
+import Types.*, Contexts.*, Symbols.*, SymDenotations.*, StdNames.*, Names.*
 import Flags.*, Scopes.*, Decorators.*, NameOps.*, Periods.*, NullOpsDecorator.*
 import unpickleScala2.Scala2Unpickler.ensureConstructor
-import scala.collection.mutable
 import collection.mutable
-import Denotations.{SingleDenotation, staticRef}
-import util.{SimpleIdentityMap, SourceFile, NoSource}
+import Denotations.staticRef
+import util.{SourceFile, NoSource}
 import typer.ImportInfo.RootRef
 import Comments.{Comment, docCtx}
 import util.Spans.NoSpan
-import config.Feature
-import Symbols.requiredModuleRef
 import cc.{CaptureSet, RetainingType, Existential}
 import ast.tpd.ref
 
-import scala.annotation.tailrec
 import scala.compiletime.uninitialized
 
 object Definitions {

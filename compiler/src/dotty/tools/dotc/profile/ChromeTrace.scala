@@ -17,8 +17,7 @@ import scala.language.unsafeNulls
 
 import java.io.Closeable
 import java.lang.management.ManagementFactory
-import java.nio.file.{Files, Path}
-import java.util
+import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
 import scala.collection.mutable

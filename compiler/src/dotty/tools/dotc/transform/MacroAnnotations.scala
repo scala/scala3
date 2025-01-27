@@ -13,9 +13,7 @@ import core.DenotTransformers.DenotTransformer
 import core.Flags.*
 import core.MacroClassLoader
 import core.Symbols.*
-import core.Types.*
 import quoted.*
-import util.SrcPos
 import scala.quoted.runtime.impl.{QuotesImpl, SpliceScope}
 
 import scala.quoted.Quotes

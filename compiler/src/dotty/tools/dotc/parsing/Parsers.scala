@@ -4,7 +4,6 @@ package parsing
 
 import scala.language.unsafeNulls
 
-import scala.annotation.internal.sharable
 import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.BitSet
 import util.{ SourceFile, SourcePosition, NoSourcePosition }
@@ -15,7 +14,7 @@ import core.*
 import Flags.*
 import Contexts.*
 import Names.*
-import NameKinds.{WildcardParamName, QualifiedName}
+import NameKinds.WildcardParamName
 import NameOps.*
 import ast.{Positioned, Trees}
 import ast.Trees.*

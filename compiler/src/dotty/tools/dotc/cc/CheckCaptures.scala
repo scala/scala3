@@ -3,20 +3,19 @@ package dotc
 package cc
 
 import core.*
-import Phases.*, DenotTransformers.*, SymDenotations.*
+import DenotTransformers.*
 import Contexts.*, Names.*, Flags.*, Symbols.*, Decorators.*
 import Types.*, StdNames.*, Denotations.*
 import config.Printers.{capt, recheckr, noPrinter}
-import config.{Config, Feature}
-import ast.{tpd, untpd, Trees}
+import config.Feature
+import ast.{tpd, Trees}
 import Trees.*
 import typer.RefChecks.{checkAllOverrides, checkSelfAgainstParents, OverridingPairsChecker}
 import typer.Checking.{checkBounds, checkAppliedTypesIn}
 import typer.ErrorReporting.{Addenda, NothingToAdd, err}
 import typer.ProtoTypes.{LhsProto, WildcardSelectionProto}
-import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
-import transform.{Recheck, PreRecheck, CapturedVars}
-import Recheck.*
+import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos}
+import transform.Recheck
 import scala.collection.mutable
 import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult}
 import CCState.*

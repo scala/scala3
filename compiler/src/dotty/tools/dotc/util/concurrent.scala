@@ -1,5 +1,5 @@
 package dotty.tools.dotc.util
-import scala.util.{Try, Failure, Success}
+import scala.util.{Try, Failure}
 import scala.collection.mutable.ArrayBuffer
 
 object concurrent:

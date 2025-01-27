@@ -2,7 +2,6 @@ package dotty.tools.dotc.interactive
 
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.ast.NavigateAST
 import dotty.tools.dotc.config.Printers.interactiv
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
@@ -11,7 +10,6 @@ import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.NameKinds.SimpleNameKind
 import dotty.tools.dotc.core.NameOps.*
-import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.Scopes.*
 import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol, defn, newSymbol}
 import dotty.tools.dotc.core.StdNames.nme
@@ -26,9 +24,6 @@ import dotty.tools.dotc.util.Chars
 import dotty.tools.dotc.util.SourcePosition
 
 import scala.collection.mutable
-import scala.util.control.NonFatal
-import dotty.tools.dotc.core.ContextOps.localContext
-import dotty.tools.dotc.core.Names
 import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.core.Symbols
 import dotty.tools.dotc.core.Constants

@@ -22,7 +22,6 @@ object HashSet:
  *                           once the number of elements reaches the table's size.
  */
 class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends GenericHashSet[T](initialCapacity, capacityMultiple) {
-  import GenericHashSet.DenseLimit
 
   /** Hashcode, by default a processed `x.hashCode`, can be overridden */
   protected def hash(key: T): Int =

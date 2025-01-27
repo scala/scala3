@@ -8,11 +8,9 @@ import java.net.URI
 import java.io.*
 import java.nio.file.*
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.charset.StandardCharsets
 import java.util.zip.*
 
 import scala.collection.*
-import scala.io.Codec
 
 import dotty.tools.io.AbstractFile
 

@@ -6,7 +6,6 @@ import dotty.tools.dotc.core.Annotations.*
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.*
-import dotty.tools.dotc.core.NameKinds.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
@@ -14,7 +13,6 @@ import dotty.tools.dotc.quoted.QuotePatterns
 import dotty.tools.dotc.staging.QuoteTypeTags.*
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.util.Property
-import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.util.SrcPos
 
 /** Checks that staging level consistency holds and heals staged types.

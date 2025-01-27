@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import Types.*, Contexts.*, Symbols.*, Flags.*, Decorators.*
+import Types.*, Contexts.*, Symbols.*, Flags.*
 
 object MatchTypes:
 

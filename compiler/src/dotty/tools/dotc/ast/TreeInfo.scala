@@ -5,7 +5,6 @@ package ast
 import core.*
 import Flags.*, Trees.*, Types.*, Contexts.*
 import Names.*, StdNames.*, NameOps.*, Symbols.*
-import Annotations.Annotation
 import NameKinds.ContextBoundParamName
 import typer.ConstFold
 import reporting.trace

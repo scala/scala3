@@ -3,27 +3,20 @@ package transform
 
 import scala.language.unsafeNulls
 
-import java.io.{PrintWriter, StringWriter}
-import java.lang.reflect.{InvocationTargetException, Method => JLRMethod}
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.*
-import dotty.tools.dotc.core.NameKinds.FlatName
-import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.core.Denotations.staticRef
-import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.core.Constants.Constant
 
 import dotty.tools.dotc.quoted.Interpreter
 
 import scala.util.control.NonFatal
 import dotty.tools.dotc.util.SrcPos
-import dotty.tools.repl.AbstractFileClassLoader
 
 import scala.reflect.ClassTag
 

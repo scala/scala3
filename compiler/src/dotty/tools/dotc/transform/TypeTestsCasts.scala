@@ -6,7 +6,6 @@ import scala.language.unsafeNulls as _
 
 import core.*
 import Contexts.*, Symbols.*, Types.*, Constants.*, StdNames.*, Decorators.*
-import ast.untpd
 import Erasure.Boxing.*
 import TypeErasure.*
 
@@ -15,7 +14,6 @@ import util.Spans.*
 import reporting.*
 import config.Printers.{ transforms => debug }
 
-import patmat.Typ
 import dotty.tools.dotc.util.SrcPos
 
 /** This transform normalizes type tests and type casts,

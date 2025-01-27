@@ -3,16 +3,14 @@ package dotty.tools.backend.jvm
 import java.io.{DataOutputStream, File, IOException, BufferedOutputStream, FileOutputStream}
 import java.nio.ByteBuffer
 import java.nio.channels.{ClosedByInterruptException, FileChannel}
-import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.*
 import java.nio.file.attribute.FileAttribute
 import java.util
 import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.{CRC32, Deflater, ZipEntry, ZipOutputStream}
 
-import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.em
-import dotty.tools.io.{AbstractFile, PlainFile, VirtualFile}
+import dotty.tools.io.{AbstractFile, PlainFile}
 import dotty.tools.io.PlainFile.toPlainFile
 import BTypes.InternalName
 import scala.util.chaining.*

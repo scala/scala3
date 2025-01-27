@@ -10,7 +10,6 @@ import dotty.tools.dotc.core.Annotations
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.NameKinds
-import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.NoCompilationUnit
@@ -23,7 +22,6 @@ import scala.quoted.runtime.{QuoteUnpickler, QuoteMatching}
 import scala.quoted.runtime.impl.printers.*
 
 import scala.reflect.TypeTest
-import dotty.tools.dotc.core.NameKinds.ExceptionBinderName
 import dotty.tools.dotc.transform.TreeChecker
 
 object QuotesImpl {
@@ -2526,7 +2524,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Implicits extends ImplicitsModule:
       def search(tpe: TypeRepr): ImplicitSearchResult =
-        import tpd.TreeOps
         val implicitTree = ctx.typer.inferImplicitArg(tpe, Position.ofMacroExpansion.span)
         // Make sure that we do not have any uninstantiated type variables.
         // See tests/pos-macros/i16636.

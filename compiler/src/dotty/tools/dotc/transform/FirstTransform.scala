@@ -18,7 +18,6 @@ import SymDenotations.SymDenotation
 import NameKinds.OuterSelectName
 import StdNames.*
 import config.Feature
-import inlines.Inlines.inInlineMethod
 
 object FirstTransform {
   val name: String = "firstTransform"

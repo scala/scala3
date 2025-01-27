@@ -1,7 +1,6 @@
 package scala
 
 import annotation.showAsInfix
-import compiletime.*
 import compiletime.ops.int.*
 
 /** Tuple of arbitrary arity */

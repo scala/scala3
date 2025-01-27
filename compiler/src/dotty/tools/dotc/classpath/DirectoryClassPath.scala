@@ -165,7 +165,7 @@ object JrtClassPath {
   * The implementation assumes that no classes exist in the empty package.
   */
 final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath with NoSourcePaths {
-  import java.nio.file.Path, java.nio.file.*
+  import java.nio.file.Path
   type F = Path
   private val dir: Path = fs.getPath("/packages")
 

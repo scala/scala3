@@ -5,7 +5,6 @@ package transform
 import core.Annotations.*
 import core.Contexts.*
 import core.Phases.*
-import core.Decorators.*
 import core.Definitions
 import core.Flags.*
 import core.Names.Name
@@ -15,8 +14,6 @@ import core.TypeErasure.{erasedGlb, erasure, fullErasure, isGenericArrayElement,
 import core.Types.*
 import core.classfile.ClassfileConstants
 
-import config.Printers.transforms
-import reporting.trace
 import java.lang.StringBuilder
 
 import scala.annotation.tailrec

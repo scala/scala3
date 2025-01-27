@@ -6,7 +6,6 @@ import DenotTransformers.*
 import Contexts.*
 import Phases.*
 import SymDenotations.SymDenotation
-import Denotations.*
 import Symbols.*
 
 import Constants.*

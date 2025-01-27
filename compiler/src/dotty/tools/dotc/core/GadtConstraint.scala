@@ -3,14 +3,12 @@ package dotc
 package core
 
 import Contexts.*, Decorators.*, Symbols.*, Types.*
-import NameKinds.UniqueName
 import config.Printers.{gadts, gadtsConstr}
-import util.{SimpleIdentitySet, SimpleIdentityMap}
+import util.SimpleIdentityMap
 import printing.*
 
 import scala.annotation.tailrec
 import scala.annotation.internal.sharable
-import scala.collection.mutable
 
 object GadtConstraint:
   @sharable val empty: GadtConstraint =

@@ -14,7 +14,6 @@ import core.StdNames.nme
 import core.Symbols.*
 import core.Types.*
 import core.{Names, StdNames}
-import dotty.tools.dotc.config.Feature
 import transform.MegaPhase.MiniPhase
 
 import scala.collection.mutable
@@ -455,8 +454,6 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   }
 
   def transformMemberDefThreadSafeNew(x: ValOrDefDef)(using Context): Thicket = {
-    import dotty.tools.dotc.core.Types.*
-    import dotty.tools.dotc.core.Flags.*
 
     val claz = x.symbol.owner.asClass
     val thizClass = Literal(Constant(claz.info))

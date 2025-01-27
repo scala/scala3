@@ -9,12 +9,8 @@ import core.Flags.*
 import core.Decorators.*
 import core.StdNames.nme
 import core.Names.*
-import core.NameKinds.TempResultName
-import core.Constants.*
-import util.Store
 import dotty.tools.uncheckedNN
 import ast.tpd.*
-import compiletime.uninitialized
 
 /** This phase translates variables that are captured in closures to
  *  heap-allocated refs.

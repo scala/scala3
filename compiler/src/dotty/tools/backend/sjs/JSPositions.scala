@@ -64,7 +64,6 @@ class JSPositions()(using Context) {
     sourceAndSpan2irPos(sourcePos.source, sourcePos.span)
 
   private object span2irPosCache {
-    import dotty.tools.dotc.util.*
 
     private var lastDotcSource: SourceFile = null
     private var lastIRSource: ir.Position.SourceFile = null

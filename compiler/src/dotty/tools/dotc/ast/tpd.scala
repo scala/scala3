@@ -5,9 +5,8 @@ package ast
 import dotty.tools.dotc.transform.{ExplicitOuter, Erasure}
 import typer.ProtoTypes
 import core.*
-import Scopes.newScope
 import util.Spans.*, Types.*, Contexts.*, Constants.*, Names.*, Flags.*, NameOps.*
-import Symbols.*, StdNames.*, Annotations.*, Trees.*, Symbols.*
+import StdNames.*, Annotations.*, Trees.*, Symbols.*
 import Decorators.*, DenotTransformers.*
 import collection.{immutable, mutable}
 import util.{Property, SourceFile}

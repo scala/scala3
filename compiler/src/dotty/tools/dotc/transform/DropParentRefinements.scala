@@ -16,7 +16,6 @@ object DropParentRefinements:
   */
 class DropParentRefinements extends MiniPhase with IdentityDenotTransformer:
   thisPhase =>
-  import tpd.*
 
   override def phaseName: String = DropParentRefinements.name
 

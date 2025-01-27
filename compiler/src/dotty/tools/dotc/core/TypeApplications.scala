@@ -9,8 +9,7 @@ import SymDenotations.LazyType
 import Decorators.*
 import util.Stats.*
 import Names.*
-import StdNames.nme
-import Flags.{Module, Provisional}
+import Flags.Module
 import dotty.tools.dotc.config.Config
 
 object TypeApplications {

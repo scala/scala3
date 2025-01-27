@@ -29,7 +29,7 @@ import dotty.tools.dotc.report
  *
  */
 trait BCodeSkelBuilder extends BCodeHelpers {
-  import int.{_, given}
+  import int.given
   import DottyBackendInterface.{symExtensions, _}
   import tpd.*
   import bTypes.*

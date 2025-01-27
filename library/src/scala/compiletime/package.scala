@@ -1,7 +1,7 @@
 package scala
 package compiletime
 
-import annotation.{compileTimeOnly, experimental}
+import annotation.compileTimeOnly
 
 /** Use this method when you have a type, do not have a value for it but want to
  *  pattern match on it. For example, given a type `Tup <: Tuple`, one can

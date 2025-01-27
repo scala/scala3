@@ -2,11 +2,10 @@ package dotty.tools
 package dotc
 package core
 
-import Types.*, Contexts.*, Symbols.*, Flags.*, Names.*, NameOps.*, Denotations.*
+import Types.*, Contexts.*, Symbols.*, Flags.*, Names.*, Denotations.*
 import Decorators.*
 import Phases.{gettersPhase, elimByNamePhase}
 import StdNames.nme
-import TypeOps.refineUsingParent
 import collection.mutable
 import util.{Stats, NoSourcePosition, EqHashMap}
 import config.Config

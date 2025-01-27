@@ -8,7 +8,6 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.staging.StagingLevel.*
 
-import scala.collection.mutable
 
 /** TreeMap that keeps track of staging levels using StagingLevel. */
 abstract class TreeMapWithStages extends TreeMapWithImplicits {

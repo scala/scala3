@@ -4,7 +4,6 @@ package inlines
 
 import ast.*, core.*
 import Flags.*, Symbols.*, Types.*, Decorators.*, Constants.*, Contexts.*
-import StdNames.{tpnme, nme}
 import NameOps.*
 import typer.*
 import NameKinds.BodyRetainerName
@@ -20,7 +19,7 @@ import transform.{PostTyper, Inlining, CrossVersionChecks}
 import staging.StagingLevel
 
 import collection.mutable
-import reporting.{NotConstant, trace}
+import reporting.NotConstant
 import util.Spans.Span
 import dotty.tools.dotc.core.Periods.PhaseId
 
@@ -473,7 +472,6 @@ object Inlines:
    */
   private class InlineCall(call: tpd.Tree)(using Context) extends Inliner(call):
     import tpd.*
-    import Inlines.*
 
     /** The Inlined node representing the inlined call */
     def expand(rhsToInline: Tree): Tree =

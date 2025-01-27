@@ -20,7 +20,6 @@ import util.{SourcePosition, SourceFile}
 import util.Spans.Span
 import localopt.StringInterpolatorOpt
 import inlines.Inlines
-import scala.util.matching.Regex
 import java.util.regex.Pattern
 
 /** Implements code coverage by inserting calls to scala.runtime.coverage.Invoker

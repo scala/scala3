@@ -15,7 +15,6 @@ import Symbols.*
 import Decorators.*
 import DenotTransformers.*
 import collection.mutable
-import Types.*
 
 object Constructors {
   val name: String = "constructors"

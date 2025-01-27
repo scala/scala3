@@ -125,7 +125,6 @@ class ExtractSemanticDB private (phaseMode: ExtractSemanticDB.PhaseMode) extends
 end ExtractSemanticDB
 
 object ExtractSemanticDB:
-  import java.nio.file.Path
   import java.nio.file.Files
   import java.nio.file.Paths
 

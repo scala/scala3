@@ -34,7 +34,6 @@ import Constants.{Constant, IntTag}
 import Denotations.SingleDenotation
 import annotation.threadUnsafe
 
-import scala.util.control.NonFatal
 import dotty.tools.dotc.inlines.Inlines
 
 object Applications {

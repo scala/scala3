@@ -8,10 +8,9 @@ import Contexts.*, Types.*, Flags.*, Symbols.*
 import ProtoTypes.*
 import NameKinds.UniqueName
 import util.Spans.*
-import util.{Stats, SimpleIdentityMap, SimpleIdentitySet, SrcPos}
+import util.{Stats, SimpleIdentitySet, SrcPos}
 import Decorators._
 import config.Printers.{gadts, typr}
-import annotation.tailrec
 import reporting.*
 import collection.mutable
 import scala.annotation.internal.sharable

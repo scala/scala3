@@ -6,8 +6,6 @@ package jvm
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.transform.Erasure
 import scala.tools.asm.{Handle, Opcodes}
-import dotty.tools.dotc.core.StdNames
-import BTypes.InternalName
 import PostProcessorFrontendAccess.Lazy
 
 abstract class CoreBTypes {
@@ -58,7 +56,6 @@ abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTy
 
   import bTypes.*
   import DottyBackendInterface.*
-  import dotty.tools.dotc.core.Contexts.Context
   import frontendAccess.perRunLazy
   /**
    * Maps primitive types to their corresponding PrimitiveBType. The map is defined lexically above

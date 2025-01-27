@@ -31,7 +31,6 @@ import config.Printers.typr
 import dotty.tools.dotc.classpath.FileUtils.isScalaBinary
 
 import scala.compiletime.uninitialized
-import dotty.tools.tasty.TastyVersion
 
 object Symbols extends SymUtils {
 

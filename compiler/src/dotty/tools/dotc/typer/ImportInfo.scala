@@ -6,7 +6,7 @@ import ast.{tpd, untpd}
 import core.*
 import printing.{Printer, Showable}
 import util.SimpleIdentityMap
-import Symbols.*, Names.*, Types.*, Contexts.*, StdNames.*, Flags.*
+import Symbols.*, Names.*, Types.*, Contexts.*, Flags.*
 import Implicits.RenamedImplicitRef
 import StdNames.nme
 import printing.Texts.Text

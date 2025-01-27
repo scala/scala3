@@ -4,8 +4,7 @@ import reporting.*
 import Diagnostic.*
 import util.{SourcePosition, NoSourcePosition, SrcPos}
 import core.*
-import Contexts.*, Flags.*, Symbols.*, Decorators.*
-import config.SourceVersion
+import Contexts.*, Symbols.*, Decorators.*
 import ast.*
 import config.Feature.sourceVersion
 import java.lang.System.currentTimeMillis
@@ -151,7 +150,7 @@ object report:
     catch case _: Throwable => errorMessage // don't introduce new errors trying to report errors, so swallow exceptions
 
   private def enrichErrorMessage1(errorMessage: String)(using Context): String = {
-    import untpd.*, config.Settings.*
+    import config.Settings.*
     def formatExplain(pairs: List[(String, Any)]) = pairs.map((k, v) => f"$k%20s: $v").mkString("\n")
 
     val settings = ctx.settings.userSetSettings(ctx.settingsState).sortBy(_.name)

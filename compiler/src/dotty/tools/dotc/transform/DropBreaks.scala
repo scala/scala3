@@ -7,11 +7,9 @@ import core.*
 import Decorators.*
 import NameKinds.BoundaryName
 import MegaPhase.*
-import Types.*, Contexts.*, Flags.*, DenotTransformers.*
+import Types.*, Contexts.*, Flags.*
 import Symbols.*, StdNames.*, Trees.*
 import util.Property
-import Constants.Constant
-import Flags.MethodOrLazy
 
 object DropBreaks:
   val name: String = "dropBreaks"

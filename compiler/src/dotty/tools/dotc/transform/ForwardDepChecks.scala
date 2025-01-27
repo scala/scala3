@@ -3,7 +3,7 @@ package dotc
 package transform
 
 import core.*
-import Symbols.*, Types.*, Contexts.*, Flags.*, Decorators.*, reporting.*
+import Symbols.*, Types.*, Contexts.*, Flags.*, reporting.*
 import util.Spans.Span
 import util.Store
 import collection.immutable

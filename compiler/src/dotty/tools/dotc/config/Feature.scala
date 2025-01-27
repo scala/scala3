@@ -6,12 +6,11 @@ import core.*
 import Contexts.*, Symbols.*, Names.*
 import StdNames.nme
 import Decorators.*
-import util.{SrcPos, NoSourcePosition}
+import util.SrcPos
 import SourceVersion.*
 import reporting.Message
 import NameKinds.QualifiedName
 import Annotations.ExperimentalAnnotation
-import Settings.Setting.ChoiceWithHelp
 
 object Feature:
 

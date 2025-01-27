@@ -3,12 +3,10 @@ package dotc
 package transform
 
 import core.*
-import Scopes.newScope
-import Contexts.*, Symbols.*, Types.*, Flags.*, Decorators.*, StdNames.*, Constants.*
+import Contexts.*, Symbols.*, Types.*, Flags.*, StdNames.*, Constants.*
 import MegaPhase.*
 import Names.TypeName
 
-import NullOpsDecorator.*
 import ast.untpd
 
 /** Expand SAM closures that cannot be represented by the JVM as lambdas to anonymous classes.

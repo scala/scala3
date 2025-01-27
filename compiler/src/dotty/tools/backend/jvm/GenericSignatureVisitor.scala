@@ -2,7 +2,7 @@ package dotty.tools.backend.jvm
 
 import scala.language.unsafeNulls
 
-import scala.tools.asm.{ClassReader, Type, Handle }
+import scala.tools.asm.{Type, Handle }
 import scala.tools.asm.tree.*
 
 import scala.collection.mutable

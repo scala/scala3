@@ -6,7 +6,6 @@ import scala.language.unsafeNulls
 
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
-import dotty.tools.dotc.interfaces.SourceFile
 import dotty.tools.dotc.reporting.MessageFilter.SourcePattern
 
 import java.util.regex.PatternSyntaxException

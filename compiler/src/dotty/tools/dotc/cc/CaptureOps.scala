@@ -5,13 +5,12 @@ package cc
 import core.*
 import Types.*, Symbols.*, Contexts.*, Annotations.*, Flags.*
 import Names.TermName
-import ast.{tpd, untpd}
-import Decorators.*, NameOps.*
+import ast.tpd
+import Decorators.*
 import config.SourceVersion
 import config.Printers.capt
 import util.Property.Key
 import tpd.*
-import StdNames.nme
 import config.Feature
 import collection.mutable
 import CCState.*

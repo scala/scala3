@@ -4,7 +4,7 @@ package transform
 
 import MegaPhase.MiniPhase
 import core.*
-import Symbols.*, Contexts.*, Types.*, Decorators.*
+import Symbols.*, Contexts.*, Decorators.*
 import StdNames.nme
 
 import NameKinds.AdaptedClosureName

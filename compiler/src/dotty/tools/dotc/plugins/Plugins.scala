@@ -6,7 +6,7 @@ import scala.language.unsafeNulls
 import core.*
 import Contexts.*
 import Decorators.em
-import config.{ PathResolver, Feature }
+import config.PathResolver
 import dotty.tools.io.*
 import Phases.*
 import config.Printers.plugins.{ println => debug }

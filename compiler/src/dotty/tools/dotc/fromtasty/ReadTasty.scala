@@ -11,7 +11,6 @@ import Denotations.staticRef
 import NameOps.*
 import ast.Trees.Tree
 import Phases.Phase
-import core.tasty.Attributes
 
 /** Load trees from TASTY files */
 class ReadTasty extends Phase {

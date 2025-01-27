@@ -7,7 +7,7 @@ import scala.collection.mutable.ListBuffer
 import scala.util.control.NonFatal
 
 import Contexts.*, Names.*, Phases.*, Symbols.*
-import printing.{ Printer, Showable }, printing.Formatting.*, printing.Texts.*
+import printing.Showable, printing.Formatting.*, printing.Texts.*
 import transform.MegaPhase
 import reporting.{Message, NoExplanation}
 

@@ -7,7 +7,6 @@ import dotty.tools.tasty.TastyBuffer
 import TastyBuffer.{Addr, NoAddr}
 import dotty.tools.tasty.TastyFormat.CommentsSection
 
-import java.nio.charset.StandardCharsets
 
 object CommentPickler:
 

@@ -17,7 +17,6 @@ import util.Spans.*
 import core.*
 import Constants.*
 import Decorators.{em, toMessage}
-import util.SourceFile
 import Utility.*
 
 

@@ -5,7 +5,7 @@ import ast.tpd
 import core.*
 import Contexts.*, Symbols.*, Types.*, Flags.*, Phases.*
 import DenotTransformers.*, MegaPhase.*
-import TreeExtractors.*, ValueClasses.*
+import TreeExtractors.*
 
 /** This phase elides unnecessary value class allocations
  *

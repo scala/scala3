@@ -4,7 +4,7 @@ package transform
 
 import core.*
 import MegaPhase.*
-import Symbols.*, Contexts.*, Types.*, Decorators.*
+import Contexts.*, Types.*, Decorators.*
 import NameOps.*
 import Names.*
 

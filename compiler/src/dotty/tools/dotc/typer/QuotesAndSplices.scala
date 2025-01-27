@@ -2,14 +2,11 @@ package dotty.tools.dotc
 package typer
 
 import dotty.tools.dotc.ast.*
-import dotty.tools.dotc.config.Feature.*
-import dotty.tools.dotc.config.SourceVersion.*
 import dotty.tools.dotc.core.*
 import dotty.tools.dotc.core.Annotations.*
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.*
-import dotty.tools.dotc.core.NameKinds.PatMatGivenVarName
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
@@ -25,8 +22,6 @@ import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.util.Stats.record
 import dotty.tools.dotc.reporting.IllegalVariableInPatternAlternative
-import scala.collection.mutable
-import scala.collection.SeqMap
 
 /** Type quotes `'{ ... }` and splices `${ ... }` */
 trait QuotesAndSplices {

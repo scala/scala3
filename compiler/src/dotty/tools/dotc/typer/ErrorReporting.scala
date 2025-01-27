@@ -7,10 +7,8 @@ import core.*
 import Types.*, ProtoTypes.*, Contexts.*, Decorators.*, Denotations.*, Symbols.*
 import Implicits.*, Flags.*, Constants.Constant
 import Trees.*
-import NameOps.*
 import util.Spans.NoSpan
 import util.SrcPos
-import config.Feature
 import reporting.*
 import collection.mutable
 

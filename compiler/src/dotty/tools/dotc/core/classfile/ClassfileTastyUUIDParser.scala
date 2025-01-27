@@ -17,7 +17,6 @@ import dotty.tools.tasty.TastyReader
 import ClassfileParser.Header
 
 import java.io.IOException
-import java.lang.Integer.toHexString
 import java.util.UUID
 
 class ClassfileTastyUUIDParser(classfile: AbstractFile)(ictx: Context) {

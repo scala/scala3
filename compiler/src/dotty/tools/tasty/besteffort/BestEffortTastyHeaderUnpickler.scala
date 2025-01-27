@@ -2,8 +2,8 @@ package dotty.tools.tasty.besteffort
 
 import java.util.UUID
 
-import BestEffortTastyFormat.{MajorVersion, MinorVersion, ExperimentalVersion, bestEffortHeader, header}
-import dotty.tools.tasty.{UnpicklerConfig, TastyHeaderUnpickler, TastyReader, UnpickleException, TastyFormat, TastyVersion}
+import BestEffortTastyFormat.{bestEffortHeader, header}
+import dotty.tools.tasty.{UnpicklerConfig, TastyReader, UnpickleException, TastyFormat, TastyVersion}
 
 /**
  * The Best Effort Tasty Header consists of six fields:

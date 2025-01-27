@@ -2,8 +2,8 @@ package dotty.tools.dotc
 package transform
 
 import ast.Trees.*, ast.tpd, core.*
-import Contexts.*, Types.*, Decorators.*, Symbols.*, DenotTransformers.*
-import SymDenotations.*, Scopes.*, StdNames.*, NameOps.*, Names.*, NameKinds.*
+import Contexts.*, Types.*, Symbols.*
+import StdNames.*, NameOps.*, Names.*, NameKinds.*
 import MegaPhase.MiniPhase
 
 

@@ -4,7 +4,6 @@ package transform
 
 import core.*
 import Contexts.*, Symbols.*, Types.*, Annotations.*, Constants.*, Phases.*
-import Decorators.*
 import StdNames.nme
 import ast.untpd
 import ast.tpd.*

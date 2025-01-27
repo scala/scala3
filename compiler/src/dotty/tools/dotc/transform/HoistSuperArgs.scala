@@ -8,7 +8,6 @@ import core.Contexts.*
 import ast.TreeTypeMap
 import core.Types.*
 import core.Flags.*
-import core.Decorators.*
 import collection.mutable
 import ast.Trees.*
 import core.NameKinds.SuperArgName

@@ -11,7 +11,6 @@ import core.Contexts.*
 import scala.io.Codec
 import Chars.*
 import scala.annotation.internal.sharable
-import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.compiletime.uninitialized
 import scala.util.chaining.given
@@ -21,7 +20,6 @@ import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.nio.file.{FileSystemException, NoSuchFileException, Paths}
 import java.util.Optional
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.regex.Pattern
 
 object ScriptSourceFile {
@@ -62,7 +60,6 @@ object ScriptSourceFile {
 }
 
 class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
-  import SourceFile.*
 
   private var myContent: Array[Char] | Null = null
 

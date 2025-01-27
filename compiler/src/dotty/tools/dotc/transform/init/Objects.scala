@@ -20,7 +20,6 @@ import reporting.StoreReporter
 import reporting.trace as log
 import typer.Applications.*
 
-import Errors.*
 import Trace.*
 import Util.*
 

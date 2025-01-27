@@ -10,10 +10,7 @@ import Symbols.*
 import dotty.tools.io.*
 import scala.collection.mutable
 import scala.compiletime.uninitialized
-import java.util.concurrent.TimeoutException
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.Await
 
 class GenBCode extends Phase { self =>
 

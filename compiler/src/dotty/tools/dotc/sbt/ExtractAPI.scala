@@ -16,10 +16,8 @@ import Types.*
 import Symbols.*
 import Names.*
 import StdNames.str
-import NameOps.*
 import inlines.Inlines
 import transform.ValueClasses
-import transform.Pickler
 import dotty.tools.io.{File, FileExtension, JarArchive}
 import util.{Property, SourceFile}
 import java.io.PrintWriter

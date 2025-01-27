@@ -16,7 +16,6 @@ import util.Property
 import config.Printers.{cyclicErrors, noPrinter}
 import collection.mutable
 
-import scala.annotation.constructorOnly
 
 abstract class TypeError(using creationContext: Context) extends Exception(""):
 

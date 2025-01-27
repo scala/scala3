@@ -3,7 +3,7 @@ package transform
 
 import core.*
 import MegaPhase.MiniPhase
-import Contexts.*, Types.*, Symbols.*, SymDenotations.*, Flags.*
+import Contexts.*, Types.*, Symbols.*, Flags.*
 import ast.*
 import Decorators.*
 import StdNames.*

@@ -4,7 +4,7 @@ package parsing
 
 import scala.language.unsafeNulls
 
-import core.Names.*, core.Contexts.*, core.Decorators.*, util.Spans.*
+import core.Names.*, core.Contexts.*, core.Decorators.*
 import core.StdNames.*, core.Comments.*
 import util.SourceFile
 import util.Chars.*
@@ -18,13 +18,12 @@ import scala.collection.immutable.SortedMap
 import rewrites.Rewrites.patch
 import config.Feature
 import config.Feature.{migrateTo3, fewerBracesEnabled}
-import config.SourceVersion.{`3.0`, `3.0-migration`}
+import config.SourceVersion.`3.0-migration`
 import config.MigrationVersion
 import reporting.{NoProfile, Profile, Message}
 
 import java.util.Objects
 import dotty.tools.dotc.reporting.Message.rewriteNotice
-import dotty.tools.dotc.config.Feature.sourceVersion
 
 object Scanners {
 

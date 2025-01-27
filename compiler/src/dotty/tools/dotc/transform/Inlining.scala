@@ -6,17 +6,12 @@ import ast.Trees.*
 import ast.TreeMapWithTrackedStats
 import core.*
 import Flags.*
-import Decorators.*
 import Contexts.*
 import Symbols.*
-import Decorators.*
-import config.Printers.inlining
 import DenotTransformers.IdentityDenotTransformer
 import MacroAnnotations.hasMacroAnnotation
 import inlines.Inlines
-import quoted.*
 import staging.StagingLevel
-import util.Property
 
 import scala.collection.mutable
 

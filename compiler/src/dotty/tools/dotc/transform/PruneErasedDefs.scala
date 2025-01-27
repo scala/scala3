@@ -13,7 +13,6 @@ import ast.tpd
 import reporting.InlinedAnonClassWarning
 
 import config.Feature
-import Decorators.*
 import dotty.tools.dotc.core.Types.MethodType
 
 /** This phase makes all erased term members of classes private so that they cannot

@@ -7,10 +7,7 @@ import Flags.*
 import Types.*
 import Contexts.*
 import Symbols.*
-import Constants.*
 import ast.Trees.*
-import ast.{TreeTypeMap, untpd}
-import util.Spans.*
 
 import NameKinds.*
 import dotty.tools.dotc.ast.tpd
@@ -19,13 +16,9 @@ import scala.collection.mutable
 import dotty.tools.dotc.core.Annotations.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.*
-import dotty.tools.dotc.quoted.*
-import dotty.tools.dotc.config.ScalaRelease.*
 import dotty.tools.dotc.staging.StagingLevel.*
-import dotty.tools.dotc.staging.QuoteTypeTags
 import dotty.tools.dotc.staging.QuoteTypeTags.*
 
-import scala.annotation.constructorOnly
 
 object Splicing:
   val name: String = "splicing"

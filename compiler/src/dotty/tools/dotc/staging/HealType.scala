@@ -5,7 +5,6 @@ import reporting.*
 
 import core.Contexts.*
 import core.Decorators.*
-import core.Flags.*
 import core.StdNames.*
 import core.Symbols.*
 import core.Types.*

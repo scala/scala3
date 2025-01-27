@@ -6,12 +6,11 @@ import core.*
 import util.Spans.*, Types.*, Contexts.*, Constants.*, Names.*, NameOps.*, Flags.*
 import Symbols.*, StdNames.*, Trees.*, ContextOps.*
 import Decorators.*
-import Annotations.Annotation
 import NameKinds.{UniqueName, ContextBoundParamName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
 import typer.{Namer, Checking}
 import util.{Property, SourceFile, SourcePosition, SrcPos, Chars}
 import config.{Feature, Config}
-import config.Feature.{sourceVersion, migrateTo3, enabled, betterForsEnabled}
+import config.Feature.betterForsEnabled
 import config.SourceVersion.*
 import collection.mutable
 import reporting.*
@@ -21,7 +20,6 @@ import config.Printers
 import parsing.Parsers
 
 import scala.annotation.internal.sharable
-import scala.annotation.threadUnsafe
 
 object desugar {
   import untpd.*

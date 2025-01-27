@@ -14,7 +14,7 @@ import Trees.*
 import ProtoTypes.*
 import Decorators.*
 import config.MigrationVersion as mv
-import config.Feature.{sourceVersion, migrateTo3}
+import config.Feature.sourceVersion
 import config.SourceVersion.*
 import reporting.*
 import NameKinds.ContextBoundParamName
