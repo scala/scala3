@@ -125,6 +125,9 @@ object Mode {
   /** Read original positions when unpickling from TASTY */
   val ReadPositions: Mode = newMode(17, "ReadPositions")
 
+  /** We are resolving a SELECT name from TASTy */
+  val ResolveFromTASTy: Mode = newMode(18, "ResolveFromTASTy")
+
   /** We are elaborating the fully qualified name of a package clause.
    *  In this case, identifiers should never be imported.
    */

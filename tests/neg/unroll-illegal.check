@@ -1,0 +1,36 @@
+-- [E207] Declaration Error: tests/neg/unroll-illegal.scala:6:6 --------------------------------------------------------
+6 |class UnrollClass // error
+  |      ^
+  |      @unroll is only allowed on a method parameter
+-- [E207] Declaration Error: tests/neg/unroll-illegal.scala:9:6 --------------------------------------------------------
+9 |trait UnrollTrait // error
+  |      ^
+  |      @unroll is only allowed on a method parameter
+-- [E207] Declaration Error: tests/neg/unroll-illegal.scala:12:7 -------------------------------------------------------
+12 |object UnrollObject // error
+   |       ^
+   |       @unroll is only allowed on a method parameter
+-- [E207] Declaration Error: tests/neg/unroll-illegal.scala:18:5 -------------------------------------------------------
+18 |enum UnrollEnum { case X } // error
+   |     ^
+   |     @unroll is only allowed on a method parameter
+-- [E207] Declaration Error: tests/neg/unroll-illegal.scala:21:25 ------------------------------------------------------
+21 |  val annotExpr: Int = 23: @unroll // error
+   |                         ^
+   |                         @unroll is only allowed on a method parameter
+-- [E207] Declaration Error: tests/neg/unroll-illegal.scala:22:19 ------------------------------------------------------
+22 |  type annotType = Int @unroll // error
+   |                   ^^^^^^^^^^^
+   |                   @unroll is only allowed on a method parameter
+-- [E207] Declaration Error: tests/neg/unroll-illegal.scala:25:6 -------------------------------------------------------
+25 |  val unrollVal: Int = 23 // error
+   |      ^
+   |      @unroll is only allowed on a method parameter
+-- [E207] Declaration Error: tests/neg/unroll-illegal.scala:28:6 -------------------------------------------------------
+28 |  def unrollDef: Int = 23 // error
+   |      ^
+   |      @unroll is only allowed on a method parameter
+-- [E207] Declaration Error: tests/neg/unroll-illegal.scala:15:5 -------------------------------------------------------
+15 |type UnrollType = Int // error
+   |     ^
+   |     @unroll is only allowed on a method parameter

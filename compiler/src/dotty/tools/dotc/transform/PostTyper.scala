@@ -21,6 +21,7 @@ import reporting.*
 import NameKinds.WildcardParamName
 import cc.*
 import dotty.tools.dotc.transform.MacroAnnotations.hasMacroAnnotation
+import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 
 object PostTyper {
   val name: String = "posttyper"
@@ -119,7 +120,30 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
     private var inJavaAnnot: Boolean = false
 
+    private val seenUnrolledMethods: util.EqHashMap[Symbol, Boolean] = new util.EqHashMap[Symbol, Boolean]
+
     private var noCheckNews: Set[New] = Set()
+
+    def isValidUnrolledMethod(method: Symbol, origin: SrcPos)(using Context): Boolean =
+      seenUnrolledMethods.getOrElseUpdate(method, {
+        val isCtor = method.isConstructor
+        if
+          method.name.is(DefaultGetterName)
+        then
+          false // not an error, but not an expandable unrolled method
+        else if
+          method.is(Deferred)
+          || isCtor && method.owner.is(Trait)
+          || !(isCtor || method.is(Final) || method.owner.is(ModuleClass))
+          || method.owner.companionClass.is(CaseClass)
+            && (method.name == nme.apply || method.name == nme.fromProduct)
+          || method.owner.is(CaseClass) && method.name == nme.copy
+        then
+          report.error(IllegalUnrollPlacement(Some(method)), origin)
+          false
+        else
+          true
+      })
 
     def withNoCheckNews[T](ts: List[New])(op: => T): T = {
       val saved = noCheckNews
@@ -199,6 +223,12 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       tree
     }
 
+    private def registerIfUnrolledParam(sym: Symbol)(using Context): Unit =
+      if sym.hasAnnotation(defn.UnrollAnnot) && isValidUnrolledMethod(sym.owner, sym.sourcePos) then
+        val cls = sym.enclosingClass
+        val additions = Array(cls, cls.linkedClass).filter(_ != NoSymbol)
+        ctx.compilationUnit.unrolledClasses ++= additions
+
     private def processValOrDefDef(tree: Tree)(using Context): tree.type =
       val sym = tree.symbol
       tree match
@@ -215,6 +245,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
                     ++ sym.annotations)
           else
             if sym.is(Param) then
+              registerIfUnrolledParam(sym)
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.ParamMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
             else if sym.is(ParamAccessor) then
               // @publicInBinary is not a meta-annotation and therefore not kept by `keepAnnotationsCarrying`

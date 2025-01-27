@@ -60,6 +60,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
   /** Contains a list of failed tests to run, if list is empty no tests will run */
   def failedTests: Option[List[String]]
 
+  protected def testPlatform: TestPlatform = TestPlatform.JVM
+
   /** A test source whose files or directory of files is to be compiled
    *  in a specific way defined by the `Test`
    */
@@ -346,7 +348,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             new JFile(f.getPath.replaceFirst("\\.(scala|java)$", ".check"))
         }
       case ts: SeparateCompilationSource =>
-        Option(new JFile(ts.dir.getPath + ".check"))
+        val platform =
+          if testSource.allToolArgs.getOrElse(ToolName.Target, Nil).nonEmpty then
+            s".$testPlatform"
+          else ""
+        Option(new JFile(ts.dir.getPath + platform + ".check"))
     }
   }
 
@@ -502,7 +508,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
       val files: Array[JFile] = files0.flatMap(flattenFiles)
 
-      val toolArgs = toolArgsFor(files.toList.map(_.toPath), getCharsetFromEncodingOpt(flags0))
+      val (platformFiles, toolArgs) =
+        platformAndToolArgsFor(files.toList.map(_.toPath), getCharsetFromEncodingOpt(flags0))
 
       val spec = raw"(\d+)(\+)?".r
       val testIsFiltered = toolArgs.get(ToolName.Test) match
@@ -560,7 +567,17 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         // If a test contains a Java file that cannot be parsed by Dotty's Java source parser, its
         // name must contain the string "JAVA_ONLY".
         val dottyFiles = files.filterNot(_.getName.contains("JAVA_ONLY")).map(_.getPath)
-        driver.process(allArgs ++ dottyFiles, reporter = reporter)
+
+        val dottyFiles0 =
+          if platformFiles.isEmpty then dottyFiles
+          else
+            val excludedFiles = platformFiles
+              .collect { case (plat, files) if plat != testPlatform => files }
+              .flatten
+              .toSet
+            dottyFiles.filterNot(excludedFiles)
+
+        driver.process(allArgs ++ dottyFiles0, reporter = reporter)
 
         // todo a better mechanism than ONLY. test: -scala-only?
         val javaFiles = files.filter(_.getName.endsWith(".java")).filterNot(_.getName.contains("SCALA_ONLY")).map(_.getPath)

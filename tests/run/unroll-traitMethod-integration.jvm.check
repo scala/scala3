@@ -1,0 +1,31 @@
+Assertion passed: found "cow1" + "true0"
+Assertion passed: found "cow2" + "true0"
+Assertion passed: found "cow1" + "true0"
+Assertion passed: found "cow2" + "true0"
+Assertion passed: found "cow1true" + "0"
+Assertion passed: found "cow2true" + "0"
+Assertion passed: found "cow2false" + "0"
+Assertion passed: found "cow1true" + "0"
+Assertion passed: found "cow2true" + "0"
+Assertion passed: found "cow2false" + "0"
+
+public default boolean unroll.Unrolled.foo$default$3()
+public default int unroll.Unrolled.foo$default$2()
+public default java.lang.String unroll.Unrolled.foo(java.lang.String,int)
+public default java.lang.String unroll.Unrolled.foo(java.lang.String,int,boolean)
+public default java.lang.String unroll.Unrolled.foo(java.lang.String,int,boolean,long)
+public default long unroll.Unrolled.foo$default$4()
+public static boolean unroll.Unrolled.foo$default$3$(unroll.Unrolled)
+public static int unroll.Unrolled.foo$default$2$(unroll.Unrolled)
+public static java.lang.String unroll.Unrolled.foo$(unroll.Unrolled,java.lang.String,int)
+public static java.lang.String unroll.Unrolled.foo$(unroll.Unrolled,java.lang.String,int,boolean)
+public static java.lang.String unroll.Unrolled.foo$(unroll.Unrolled,java.lang.String,int,boolean,long)
+public static long unroll.Unrolled.foo$default$4$(unroll.Unrolled)
+Assertion passed: found "cow1true0"
+Assertion passed: found "cow2true0"
+Assertion passed: found "cow2false0"
+Assertion passed: found "cow2false3"
+Assertion passed: found "cow1true0"
+Assertion passed: found "cow2true0"
+Assertion passed: found "cow2false0"
+Assertion passed: found "cow2false3"

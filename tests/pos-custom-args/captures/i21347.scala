@@ -1,4 +1,4 @@
-//> using scala 3.6.0-RC1-bin-SNAPSHOT
+//!> using scala 3.6.0-RC1-bin-SNAPSHOT
 
 import language.experimental.captureChecking
 
