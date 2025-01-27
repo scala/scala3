@@ -115,7 +115,7 @@ object TypeEval:
             val fieldTypesOpt = tupleElementTypes(arg)
             fieldTypesOpt match
               case Some(fieldTypes) =>
-                val fieldLabels = (for i <- 1 to fieldTypes.length yield ConstantType(Constant(s"_$i")))).toList
+                val fieldLabels = (for i <- 1 to fieldTypes.length yield ConstantType(Constant(s"_$i"))).toList
                 Some:
                   defn.NamedTupleTypeRef.appliedTo:
                     nestedPairs(fieldLabels) :: nestedPairs(fieldTypes) :: Nil
