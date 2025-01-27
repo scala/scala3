@@ -95,7 +95,8 @@ classpathArgs () {
   CLASS_PATH+="$(find_lib "*compiler-interface*")$PSEP"
   CLASS_PATH+="$(find_lib "*jline-reader*")$PSEP"
   CLASS_PATH+="$(find_lib "*jline-terminal-3*")$PSEP"
-  CLASS_PATH+="$(find_lib "*jline-terminal-jna*")$PSEP"
+  CLASS_PATH+="$(find_lib "*jline-terminal-jni*")$PSEP"
+  CLASS_PATH+="$(find_lib "*jline-native*")$PSEP"
   CLASS_PATH+="$(find_lib "*flexmark-formatter*")$PSEP"
   CLASS_PATH+="$(find_lib "*autolink-0.6*")$PSEP"
   CLASS_PATH+="$(find_lib "*flexmark-jira-converter*")$PSEP"
@@ -107,7 +108,6 @@ classpathArgs () {
   CLASS_PATH+="$(find_lib "*scala-library*")$PSEP"
   CLASS_PATH+="$(find_lib "*protobuf-java*")$PSEP"
   CLASS_PATH+="$(find_lib "*util-interface*")$PSEP"
-  CLASS_PATH+="$(find_lib "*jna-5*")$PSEP"
   CLASS_PATH+="$(find_lib "*antlr4-runtime*")$PSEP"
 
   jvm_cp_args="-classpath \"$CLASS_PATH\""
