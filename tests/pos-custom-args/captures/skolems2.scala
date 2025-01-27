@@ -1,8 +1,9 @@
 
 import caps.consume
+import caps.unsafe.unsafeAssumeSeparate
 
 def Test(@consume c: Object^, f: Object^ => Object^) =
-  def cc: Object^ = c
+  def cc: Object^ = unsafeAssumeSeparate(c)
   val x1 =
     { f(cc) }
   val x2 =
