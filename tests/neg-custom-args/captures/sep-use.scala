@@ -9,19 +9,19 @@ def test1(@consume io: Object^): Unit =
 
 def test2(@consume io: Object^): Unit =
 
-  def x: () => Unit = () => println(io)
+  def x: () => Unit = () => println(io)  // error
   println(io) // error
   println(x)  // ok
 
 def test3(@consume io: Object^): Unit =
 
-  def xx: (y: Int) => Unit = _ => println(io)
+  def xx: (y: Int) => Unit = _ => println(io)  // error
   println(io) // error
   println(xx(2))  // ok
 
 def test4(@consume io: Object^): Unit =
 
-  def xxx(y: Int): Object^ = io
+  def xxx(y: Int): Object^ = io  // error
   println(io) // error
   println(xxx(2))  // ok
 
