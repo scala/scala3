@@ -12,3 +12,7 @@
    |             ^^^^
    |             reference ops* is not included in the allowed capture set {}
    |             of an enclosing function literal with expected type () -> Unit
+-- Error: tests/neg-custom-args/captures/delayedRunops.scala:22:16 -----------------------------------------------------
+22 |      val ops1: List[() => Unit] = ops // error
+   |                ^^^^^^^^^^^^^^^^
+   |                Separation failure: value ops1's type List[box () => Unit] hides non-local parameter ops
