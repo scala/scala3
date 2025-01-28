@@ -12,6 +12,7 @@ import config.Printers.capt
 import StdNames.nme
 import util.{SimpleIdentitySet, EqHashMap, SrcPos}
 import tpd.*
+import reflect.ClassTag
 
 object SepChecker:
 
@@ -39,6 +40,84 @@ object SepChecker:
       case _ => NoSymbol
   end TypeKind
 
+  /** A class for segmented sets of consumed references.
+   *  References are associated with the source positions where they first appeared.
+   *  References are compared with `eq`.
+   */
+  abstract class ConsumedSet:
+    /** The references in the set. The array should be treated as immutable in client code */
+    def refs: Array[CaptureRef]
+
+    /** The associated source positoons. The array should be treated as immutable in client code */
+    def locs: Array[SrcPos]
+
+    /** The number of references in the set */
+    def size: Int
+
+    def toMap: Map[CaptureRef, SrcPos] = refs.take(size).zip(locs).toMap
+
+    def show(using Context) =
+      s"[${toMap.map((ref, loc) => i"$ref -> $loc").toList}]"
+  end ConsumedSet
+
+  /** A fixed consumed set consisting of the given references `refs` and
+   *  associated source positions `locs`
+   */
+  class ConstConsumedSet(val refs: Array[CaptureRef], val locs: Array[SrcPos]) extends ConsumedSet:
+    def size = refs.size
+
+  /** A mutable consumed set, which is initially empty */
+  class MutConsumedSet extends ConsumedSet:
+    var refs: Array[CaptureRef] = new Array(4)
+    var locs: Array[SrcPos] = new Array(4)
+    var size = 0
+
+    private def double[T <: AnyRef : ClassTag](xs: Array[T]): Array[T] =
+      val xs1 = new Array[T](xs.length * 2)
+      xs.copyToArray(xs1)
+      xs1
+
+    private def ensureCapacity(added: Int): Unit =
+      if size + added > refs.length then
+        refs = double(refs)
+        locs = double(locs)
+
+    /** If `ref` is in the set, its associated source position, otherwise `null` */
+    def get(ref: CaptureRef): SrcPos | Null =
+      var i = 0
+      while i < size && (refs(i) ne ref) do i += 1
+      if i < size then locs(i) else null
+
+    /** If `ref` is not yet in the set, add it with given source position */
+    def put(ref: CaptureRef, loc: SrcPos): Unit =
+      if get(ref) == null then
+        ensureCapacity(1)
+        refs(size) = ref
+        locs(size) = loc
+        size += 1
+
+    /** Add all references with their associated positions from `that` which
+     *  are not yet in the set.
+     */
+    def ++= (that: ConsumedSet): Unit =
+      for i <- 0 until that.size do put(that.refs(i), that.locs(i))
+
+    /** Run `op` and return any new references it created in a separate `ConsumedSet`.
+     *  The current mutable set is reset to its state before `op` was run.
+     */
+    def segment(op: => Unit): ConsumedSet =
+      val start = size
+      try
+        op
+        if size == start then EmptyConsumedSet
+        else ConstConsumedSet(refs.slice(start, size), locs.slice(start, size))
+      finally
+        size = start
+
+  end MutConsumedSet
+
+  val EmptyConsumedSet = ConstConsumedSet(Array(), Array())
+
 class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   import checker.*
   import SepChecker.*
@@ -46,7 +125,7 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   /** The set of capabilities that are hidden by a polymorphic result type
    *  of some previous definition.
    */
-  private var defsShadow: Refs = SimpleIdentitySet.empty
+  private var defsShadow: Refs = emptySet
 
   /** A map from definitions to their internal result types.
    *  Populated during separation checking traversal.
@@ -57,6 +136,16 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *  These all enclose and precede the current traversal node.
    */
   private var previousDefs: List[mutable.ListBuffer[ValOrDefDef]] = Nil
+
+  private var consumed: MutConsumedSet = MutConsumedSet()
+
+  private def withFreshConsumed(op: => Unit): Unit =
+    val saved = consumed
+    consumed = MutConsumedSet()
+    op
+    consumed = saved
+
+  private var openLabeled: List[(Name, mutable.ListBuffer[ConsumedSet])] = Nil
 
   extension (refs: Refs)
     private def footprint(using Context): Refs =
@@ -198,6 +287,19 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       tree.srcPos)
   end sepUseError
 
+  def consumeError(ref: CaptureRef, loc: SrcPos, pos: SrcPos)(using Context): Unit =
+    report.error(
+      em"""Separation failure: Illegal access to $ref,
+          |which was passed to a @consume parameter on line ${loc.line + 1}
+          |and therefore is no longer available.""",
+      pos)
+
+  def consumeInLoopError(ref: CaptureRef, pos: SrcPos)(using Context): Unit =
+    report.error(
+      em"""Separation failure: $ref appears in a loop,
+          |therefore it cannot be passed to a @consume parameter.""",
+      pos)
+
   private def checkApply(fn: Tree, args: List[Tree], deps: collection.Map[Tree, List[Tree]])(using Context): Unit =
     val fnCaptures = methPart(fn) match
       case Select(qual, _) => qual.nuType.captureSet
@@ -240,6 +342,9 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       val overlap = defUseOverlap(defsShadow, usedFootprint, tree.symbol)
       if !overlap.isEmpty then
         sepUseError(tree, usedFootprint, overlap)
+      for ref <- used.elems do
+        val pos = consumed.get(ref)
+        if pos != null then consumeError(ref, pos, tree.srcPos)
 
   def checkType(tpt: Tree, sym: Symbol)(using Context): Unit =
     checkType(tpt.nuType, tpt.srcPos,
@@ -383,10 +488,11 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           checkRefs(toCheck, i"$typeDescr type $tpe hides")
       case TypeKind.Argument(arg) =>
         if tpe.hasAnnotation(defn.ConsumeAnnot) then
-          val capts = captures(arg)
-          def descr(verb: String) = i"argument to @consume parameter with type ${arg.nuType} $verb"
-          checkRefs(capts.footprint, descr("refers to"))
-          checkRefs(capts.hidden.footprint, descr("hides"))
+          val capts = captures(arg).footprint
+          checkRefs(capts, i"argument to @consume parameter with type ${arg.nuType} refers to")
+          for ref <- capts do
+            if !ref.derivesFrom(defn.Caps_SharedCapability) then
+              consumed.put(ref, arg.srcPos)
 
     if !tpe.hasAnnotation(defn.UntrackedCapturesAnnot) then
       traverse(Captures.None, tpe)
@@ -435,15 +541,24 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     case tree: Apply => tree.symbol == defn.Caps_unsafeAssumeSeparate
     case _ => false
 
+  def checkValOrDefDef(tree: ValOrDefDef)(using Context): Unit =
+    if !tree.symbol.isOneOf(TermParamOrAccessor) && !isUnsafeAssumeSeparate(tree.rhs) then
+      checkType(tree.tpt, tree.symbol)
+      if previousDefs.nonEmpty then
+        capt.println(i"sep check def ${tree.symbol}: ${tree.tpt} with ${captures(tree.tpt).hidden.footprint}")
+        defsShadow ++= captures(tree.tpt).hidden.footprint.deductSym(tree.symbol)
+        resultType(tree.symbol) = tree.tpt.nuType
+        previousDefs.head += tree
+
   def traverse(tree: Tree)(using Context): Unit =
     if isUnsafeAssumeSeparate(tree) then return
     checkUse(tree)
     tree match
       case tree: GenericApply =>
+        traverseChildren(tree)
         tree.tpe match
           case _: MethodOrPoly =>
           case _ => traverseApply(tree, Nil)
-        traverseChildren(tree)
       case tree: Block =>
         val saved = defsShadow
         previousDefs = mutable.ListBuffer() :: previousDefs
@@ -451,19 +566,47 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         finally
           previousDefs = previousDefs.tail
           defsShadow = saved
-      case tree: ValOrDefDef =>
+      case tree: ValDef =>
         traverseChildren(tree)
-        if !tree.symbol.isOneOf(TermParamOrAccessor) && !isUnsafeAssumeSeparate(tree.rhs) then
-          checkType(tree.tpt, tree.symbol)
-          if previousDefs.nonEmpty then
-            capt.println(i"sep check def ${tree.symbol}: ${tree.tpt} with ${captures(tree.tpt).hidden.footprint}")
-            defsShadow ++= captures(tree.tpt).hidden.footprint.deductSym(tree.symbol)
-            resultType(tree.symbol) = tree.tpt.nuType
-            previousDefs.head += tree
+        checkValOrDefDef(tree)
+      case tree: DefDef =>
+        withFreshConsumed:
+          traverseChildren(tree)
+        checkValOrDefDef(tree)
+      case If(cond, thenp, elsep) =>
+        traverse(cond)
+        val thenConsumed = consumed.segment(traverse(thenp))
+        val elseConsumed = consumed.segment(traverse(elsep))
+        consumed ++= thenConsumed
+        consumed ++= elseConsumed
+      case tree @ Labeled(bind, expr) =>
+        val consumedBuf = mutable.ListBuffer[ConsumedSet]()
+        openLabeled = (bind.name, consumedBuf) :: openLabeled
+        traverse(expr)
+        for cs <- consumedBuf do consumed ++= cs
+        openLabeled = openLabeled.tail
+      case Return(expr, from) =>
+        val retConsumed = consumed.segment(traverse(expr))
+        from match
+          case Ident(name) =>
+            for (lbl, consumedBuf) <- openLabeled do
+              if lbl == name then
+                consumedBuf += retConsumed
+          case _ =>
+      case Match(sel, cases) =>
+        // Matches without returns might still be kept after pattern matching to
+        // encode table switches.
+        traverse(sel)
+        val caseConsumed = for cas <- cases yield consumed.segment(traverse(cas))
+        caseConsumed.foreach(consumed ++= _)
+      case tree: TypeDef if tree.symbol.isClass =>
+        withFreshConsumed:
+          traverseChildren(tree)
+      case tree: WhileDo =>
+        val loopConsumed = consumed.segment(traverseChildren(tree))
+        if loopConsumed.size != 0 then
+          val (ref, pos) = loopConsumed.toMap.head
+          consumeInLoopError(ref, pos)
       case _ =>
         traverseChildren(tree)
 end SepChecker
-
-
-
-
