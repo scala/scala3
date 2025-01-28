@@ -1,5 +1,5 @@
 
-//> using option -Wunused:imports
+//> using options -Wunused:imports
 
 import scala.compiletime.*
 import scala.deriving.*
