@@ -1,3 +1,5 @@
+package warns
+
 //> using options -Xfatal-warnings
 
 trait Foo[T]:

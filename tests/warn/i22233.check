@@ -1,7 +1,0 @@
--- [E194] Potential Issue Warning: tests/warn/i22233.scala:1:26 --------------------------------------------------------
-1 |extension (s: String) def length = 42 // warn
-  |                          ^
-  |                          Extension method length will never be selected from type String
-  |                          because String already has a member with the same name and compatible parameter types.
-  |
-  | longer explanation available when compiling with `-explain`

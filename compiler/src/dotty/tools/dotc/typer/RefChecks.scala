@@ -1190,8 +1190,7 @@ object RefChecks {
             }
           }
         .exists
-      if !target.typeSymbol.denot.isOpaqueAlias // Opaque types hide original members so extension is not nullified by the original member
-        && hidden
+      if !target.typeSymbol.isOpaqueAlias && hidden
       then report.warning(ExtensionNullifiedByMember(sym, target.typeSymbol), sym.srcPos)
   end checkExtensionMethods
 
