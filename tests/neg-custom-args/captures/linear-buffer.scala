@@ -1,8 +1,14 @@
 import caps.{cap, consume, Mutable}
 import language.experimental.captureChecking
 
+class BadBuffer[T] extends Mutable:
+  mut def append(x: T): BadBuffer[T]^ = this // error
+  def foo = // error
+    def bar: BadBuffer[T]^ = this // error
+    bar
+
 class Buffer[T] extends Mutable:
-  mut def append(x: T): Buffer[T]^ = ???
+  @consume mut def append(x: T): Buffer[T]^ = this // ok
 
 def app[T](@consume buf: Buffer[T]^, elem: T): Buffer[T]^ =
   buf.append(elem)
