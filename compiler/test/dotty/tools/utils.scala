@@ -101,10 +101,10 @@ def toolArgsParse(lines: List[String], filename: Option[String]): List[(String,S
     case toolArg(name, args) => List((name, args))
     case _ => Nil
   } ++
-  lines.flatMap { 
+  lines.flatMap {
     case directiveOptionsArg(args) => List(("scalac", args))
     case directiveJavacOptions(args) => List(("javac", args))
-    case _ => Nil 
+    case _ => Nil
   }
 
 import org.junit.Test
