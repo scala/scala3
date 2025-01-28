@@ -26,7 +26,7 @@ function onExit() {
 # to reenable echo if we are interrupted before completing.
 trap onExit INT TERM EXIT
 
-unset cygwin mingw msys darwin conemu
+unset cygwin mingw msys darwin
 
 # COLUMNS is used together with command line option '-pageWidth'.
 if command -v tput >/dev/null 2>&1; then
@@ -55,8 +55,6 @@ esac
 
 unset CYGPATHCMD
 if [[ ${cygwin-} || ${mingw-} || ${msys-} ]]; then
-  # ConEmu terminal is incompatible with jna-5.*.jar
-  [[ (${CONEMUANSI-} || ${ConEmuANSI-}) ]] && conemu=true
   # cygpath is used by various windows shells: cygwin, git-sdk, gitbash, msys, etc.
   CYGPATHCMD=`which cygpath 2>/dev/null`
   case "$TERM" in
@@ -158,10 +156,8 @@ SCALA_LIB=$(find_lib "*scala-library*")
 SBT_INTF=$(find_lib "*compiler-interface*")
 JLINE_READER=$(find_lib "*jline-reader-3*")
 JLINE_TERMINAL=$(find_lib "*jline-terminal-3*")
-JLINE_TERMINAL_JNA=$(find_lib "*jline-terminal-jna-3*")
-
-# jna-5 only appropriate for some combinations
-[[ ${conemu-} && ${msys-} ]] || JNA=$(find_lib "*jna-5*")
+JLINE_TERMINAL_JNI=$(find_lib "*jline-terminal-jni-3*")
+JLINE_NATIVE=$(find_lib "*jline-native-3*")
 
 compilerJavaClasspathArgs () {
   # echo "dotty-compiler: $DOTTY_COMP"
@@ -186,8 +182,8 @@ compilerJavaClasspathArgs () {
   # jine
   toolchain+="$JLINE_READER$PSEP"
   toolchain+="$JLINE_TERMINAL$PSEP"
-  toolchain+="$JLINE_TERMINAL_JNA$PSEP"
-  [ -n "${JNA-}" ] && toolchain+="$JNA$PSEP"
+  toolchain+="$JLINE_TERMINAL_JNI$PSEP"
+  toolchain+="$JLINE_NATIVE$PSEP"
 
   if [ -n "${jvm_cp_args-}" ]; then
     jvm_cp_args="$toolchain$jvm_cp_args"

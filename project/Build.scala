@@ -81,9 +81,9 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.3.4"
+  val referenceVersion = "3.3.5"
 
-  val baseVersion = "3.3.5-RC1"
+  val baseVersion = "3.3.6-RC1"
 
   // LTS or Next
   val versionLine = "LTS"
@@ -102,7 +102,7 @@ object Build {
    *  set to 3.1.3. If it is going to be 3.1.0, it must be set to the latest
    *  3.0.x release.
    */
-  val previousDottyVersion = "3.3.3"
+  val previousDottyVersion = "3.3.5"
 
   object CompatMode {
     final val BinaryCompatible = 0
@@ -582,9 +582,9 @@ object Build {
       libraryDependencies ++= Seq(
         "org.scala-lang.modules" % "scala-asm" % "9.7.0-scala-2", // used by the backend
         Dependencies.compilerInterface,
-        "org.jline" % "jline-reader" % "3.27.0",   // used by the REPL
-        "org.jline" % "jline-terminal" % "3.27.0",
-        "org.jline" % "jline-terminal-jna" % "3.27.0", // needed for Windows
+        "org.jline" % "jline-reader" % "3.27.1",   // used by the REPL
+        "org.jline" % "jline-terminal" % "3.27.1",
+        "org.jline" % "jline-terminal-jni" % "3.27.1", // needed for Windows
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
       ),
 

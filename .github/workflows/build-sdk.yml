@@ -1,0 +1,58 @@
+###################################################################################################
+###                  THIS IS A REUSABLE WORKFLOW TO BUILD THE SCALA LAUNCHERS                   ###
+### HOW TO USE:                                                                                 ###
+###   - THSI WORKFLOW WILL PACKAGE THE ALL THE LAUNCHERS AND UPLOAD THEM TO GITHUB ARTIFACTS    ###
+###                                                                                             ###
+### NOTE:                                                                                       ###
+###   - SEE THE WORFLOW FOR THE NAMES OF THE ARTIFACTS                                          ###
+###################################################################################################
+
+
+name: Build Scala Launchers
+run-name: Build Scala Launchers
+
+on:
+  workflow_call:
+    inputs:
+      java-version:
+        type       : string
+        required   : true
+    outputs:
+      universal-id:
+        description: ID of the `universal` package from GitHub Artifacts (Authentication Required)
+        value      : ${{ jobs.build.outputs.universal-id }}
+      universal-digest:
+          description: The SHA256 of the uploaded artifact (universal)
+          value      : ${{ jobs.build.outputs.universal-digest }}
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      universal-id     : ${{ steps.universal.outputs.artifact-id }}
+      universal-digest : ${{ steps.universal-digest.outputs.digest }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.java-version }}
+          cache       : sbt
+      - uses: sbt/setup-sbt@v1
+      - name: Build and pack the SDK (universal)
+        run : ./project/scripts/sbt dist/pack
+
+      - name: Upload zip archive to GitHub Artifact (universal)
+        uses: actions/upload-artifact@v4
+        id  : universal
+        with:
+          path: ./dist/target/pack/*
+          name: scala3-universal
+
+      - name: Compute SHA256 of the uploaded artifact (universal)
+        id  : universal-digest
+        run : |
+          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -o artifact.zip -L https://api.github.com/repos/scala/scala3/actions/artifacts/${{ steps.universal.outputs.artifact-id }}/zip
+          echo "digest=$(sha256sum artifact.zip | cut -d " " -f 1)" >> "$GITHUB_OUTPUT"

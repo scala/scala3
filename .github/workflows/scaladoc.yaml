@@ -15,7 +15,7 @@ permissions:
 jobs:
   build:
     env:
-      AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
+      AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}m
     runs-on: ubuntu-latest
     if: "github.event_name == 'merge_group'
          || (    github.event_name == 'pull_request'
@@ -36,6 +36,7 @@ jobs:
           java-version: 17
           cache: 'sbt'
 
+      - uses: sbt/setup-sbt@v1
       - name: Compile and test scala3doc-js
         run: ./project/scripts/sbt scaladoc-js-main/test
 
@@ -61,21 +62,6 @@ jobs:
 
       - name: Generate documentation for example project using dotty-sbt
         run: ./project/scripts/sbt "sbt-test/scripted sbt-dotty/scaladoc"
-
-      - name: Generate index file
-        run: scaladoc/scripts/mk-index.sh scaladoc/output > scaladoc/output/index.html
-
-      - name: Upload documentation to server
-        uses: azure/CLI@v1
-        if: env.AZURE_STORAGE_SAS_TOKEN
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        with:
-          inlineScript: |
-            DOC_DEST=$(echo pr-${PR_NUMBER:-${GITHUB_REF##*/}} | tr -d -c "[-A-Za-z0-9]")
-            echo uplading docs to https://scala3doc.virtuslab.com/$DOC_DEST
-            az storage container create --name $DOC_DEST --account-name scala3docstorage --public-access container
-            az storage blob upload-batch --overwrite true -s scaladoc/output -d $DOC_DEST --account-name scala3docstorage
 
   stdlib-sourcelinks-test:
     runs-on: ubuntu-latest
