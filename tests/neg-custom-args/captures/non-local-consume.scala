@@ -21,3 +21,9 @@ def f4(@consume buf: Buffer^): Buffer^ =
   def g(): Buffer^ = buf1 // error
   g()
 
+def f5(@consume buf: Buffer^): Unit =
+  val buf1: Buffer^ = buf
+  def g(): Unit = cc(buf1) // error
+  g()
+
+def cc(@consume buf: Buffer^): Unit = ()
