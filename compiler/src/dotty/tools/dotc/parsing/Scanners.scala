@@ -92,7 +92,7 @@ object Scanners {
       || token == IDENTIFIER && isOperatorPart(name(name.length - 1))
 
     def isArrow =
-      token == ARROW || token == CTXARROW
+      token == ARROW || token == CTXARROW || token == ARROWeol
   }
 
   abstract class ScannerCommon(source: SourceFile)(using Context) extends CharArrayReader with TokenData {
@@ -612,7 +612,11 @@ object Scanners {
         insert(if (pastBlankLine) NEWLINES else NEWLINE, lineOffset)
       else if indentIsSignificant then
         if nextWidth < lastWidth
-           || nextWidth == lastWidth && (indentPrefix == MATCH || indentPrefix == CATCH) && token != CASE then
+        || nextWidth == lastWidth
+          && indentPrefix.match
+             case MATCH | CATCH => token != CASE
+             case _ => false
+        then
           if currentRegion.isOutermost then
             if nextWidth < lastWidth then currentRegion = topLevelRegion(nextWidth)
           else if !isLeadingInfixOperator(nextWidth) && !statCtdTokens.contains(lastToken) && lastToken != INDENT then
@@ -638,9 +642,13 @@ object Scanners {
                     insert(OUTDENT, offset)
                 else if r.isInstanceOf[InBraces] && !closingRegionTokens.contains(token) then
                   report.warning("Line is indented too far to the left, or a `}` is missing", sourcePos())
-
         else if lastWidth < nextWidth
-             || lastWidth == nextWidth && (lastToken == MATCH || lastToken == CATCH) && token == CASE then
+             || lastWidth == nextWidth
+               && lastToken.match
+                  case MATCH | CATCH => token == CASE
+                  case ARROWeol => true
+                  case _ => false
+        then
           if canStartIndentTokens.contains(lastToken) then
             currentRegion = Indented(nextWidth, lastToken, currentRegion)
             insert(INDENT, offset)
@@ -658,7 +666,7 @@ object Scanners {
     def spaceTabMismatchMsg(lastWidth: IndentWidth, nextWidth: IndentWidth): Message =
       em"""Incompatible combinations of tabs and spaces in indentation prefixes.
           |Previous indent : $lastWidth
-         |Latest indent   : $nextWidth"""
+          |Latest indent   : $nextWidth"""
 
     def observeColonEOL(inTemplate: Boolean): Unit =
       val enabled =
@@ -672,6 +680,13 @@ object Scanners {
         reset()
         if atEOL then token = COLONeol
 
+    def observeArrowEOL(): Unit =
+      if indentSyntax && token == ARROW then
+        peekAhead()
+        val atEOL = isAfterLineEnd || token == EOF
+        reset()
+        if atEOL then token = ARROWeol
+
     def observeIndented(): Unit =
       if indentSyntax && isNewLine then
         val nextWidth = indentWidth(next.offset)
@@ -680,7 +695,6 @@ object Scanners {
           currentRegion = Indented(nextWidth, COLONeol, currentRegion)
           offset = next.offset
           token = INDENT
-    end observeIndented
 
     /** Insert an <outdent> token if next token closes an indentation region.
      *  Exception: continue if indentation region belongs to a `match` and next token is `case`.
@@ -1100,7 +1114,7 @@ object Scanners {
         reset()
       next
 
-    class LookaheadScanner(val allowIndent: Boolean = false) extends Scanner(source, offset, allowIndent = allowIndent) {
+    class LookaheadScanner(allowIndent: Boolean = false) extends Scanner(source, offset, allowIndent = allowIndent) {
       override protected def initialCharBufferSize = 8
       override def languageImportContext = Scanner.this.languageImportContext
     }
@@ -1652,7 +1666,7 @@ object Scanners {
   case class InCase(outer: Region) extends Region(OUTDENT)
 
   /** A class describing an indentation region.
-   *  @param width   The principal indendation width
+   *  @param width   The principal indentation width
    *  @param prefix  The token before the initial <indent> of the region
    */
   case class Indented(width: IndentWidth, prefix: Token, outer: Region | Null) extends Region(OUTDENT):
