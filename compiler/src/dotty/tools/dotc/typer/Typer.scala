@@ -84,6 +84,9 @@ object Typer {
   /** Indicates that an expression is explicitly ascribed to [[Unit]] type. */
   val AscribedToUnit = new Property.StickyKey[Unit]
 
+  /** Tree adaptation lost fidelity; this attachment preserves the original tree. */
+  val AdaptedTree = new Property.StickyKey[tpd.Tree]
+
   /** An attachment on a Select node with an `apply` field indicating that the `apply`
    *  was inserted by the Typer.
    */
@@ -3422,7 +3425,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   /** Translate tuples of all arities */
   def typedTuple(tree: untpd.Tuple, pt: Type)(using Context): Tree =
-    val tree1 = desugar.tuple(tree, pt)
+    val tree1 = desugar.tuple(tree, pt).withAttachmentsFrom(tree)
     checkDeprecatedAssignmentSyntax(tree)
     if tree1 ne tree then typed(tree1, pt)
     else
@@ -4568,12 +4571,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     /** Adapt an expression of constant type to a different constant type `tpe`. */
     def adaptConstant(tree: Tree, tpe: ConstantType): Tree = {
-      def lit = Literal(tpe.value).withSpan(tree.span)
+      def lit = Literal(tpe.value).withSpan(tree.span).withAttachment(AdaptedTree, tree)
       tree match {
         case Literal(c) => lit
         case tree @ Block(stats, expr) => tpd.cpy.Block(tree)(stats, adaptConstant(expr, tpe))
         case tree =>
-          if (isIdempotentExpr(tree)) lit // See discussion in phase Literalize why we demand isIdempotentExpr
+          if isIdempotentExpr(tree) then lit // See discussion in phase FirstTransform why we demand isIdempotentExpr
           else Block(tree :: Nil, lit)
       }
     }

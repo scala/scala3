@@ -87,7 +87,7 @@ def toolArgsFor(files: List[JPath], charset: Charset = UTF_8): ToolArgs =
 
 /** Take a prefix of each file, extract tool args, parse, and combine.
  *  Arg parsing respects quotation marks. Result is a map from ToolName to the combined tokens.
- * If the ToolName is Target, then also accumulate the file name associated with the given platform.
+ *  If the ToolName is Target, then also accumulate the file name associated with the given platform.
  */
 def platformAndToolArgsFor(files: List[JPath], charset: Charset = UTF_8): (PlatformFiles, ToolArgs) =
   files.foldLeft(Map.empty[TestPlatform, List[String]] -> Map.empty[ToolName, List[String]]) { (res, path) =>

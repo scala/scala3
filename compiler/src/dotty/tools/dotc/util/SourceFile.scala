@@ -14,7 +14,7 @@ import scala.annotation.internal.sharable
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.compiletime.uninitialized
-import scala.util.chaining.given
+import dotty.tools.dotc.util.chaining.*
 
 import java.io.File.separator
 import java.net.URI

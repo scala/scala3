@@ -1,4 +1,4 @@
-//> using options -Werror -Wunused:all
+//> using options -Werror -Wunused:imports
 
 import scala.quoted.*
 

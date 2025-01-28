@@ -14,11 +14,13 @@ import scala.annotation.internal.sharable
 import scala.util.matching.Regex
 
 enum MessageFilter:
-  def matches(message: Diagnostic): Boolean = this match
+  def matches(message: Diagnostic): Boolean =
+    import Diagnostic.*
+    this match
     case Any => true
-    case Deprecated => message.isInstanceOf[Diagnostic.DeprecationWarning]
-    case Feature => message.isInstanceOf[Diagnostic.FeatureWarning]
-    case Unchecked => message.isInstanceOf[Diagnostic.UncheckedWarning]
+    case Deprecated => message.isInstanceOf[DeprecationWarning]
+    case Feature => message.isInstanceOf[FeatureWarning]
+    case Unchecked => message.isInstanceOf[UncheckedWarning]
     case MessageID(errorId) => message.msg.errorId == errorId
     case MessagePattern(pattern) =>
       val noHighlight = message.msg.message.replaceAll("\\e\\[[\\d;]*[^\\d;]","")
@@ -31,7 +33,7 @@ enum MessageFilter:
       pattern.findFirstIn(path).nonEmpty
     case Origin(pattern) =>
       message match
-      case message: Diagnostic.DeprecationWarning => pattern.findFirstIn(message.origin).nonEmpty
+      case message: OriginWarning => pattern.findFirstIn(message.origin).nonEmpty
       case _ => false
     case None => false
 
@@ -56,12 +58,12 @@ object WConf:
   private type Conf = (List[MessageFilter], Action)
 
   def parseAction(s: String): Either[List[String], Action] = s match
-    case "error" | "e"            => Right(Error)
-    case "warning" | "w"          => Right(Warning)
-    case "verbose" | "v"          => Right(Verbose)
-    case "info" | "i"             => Right(Info)
-    case "silent" | "s"           => Right(Silent)
-    case _                        => Left(List(s"unknown action: `$s`"))
+    case "error"   | "e" => Right(Error)
+    case "warning" | "w" => Right(Warning)
+    case "verbose" | "v" => Right(Verbose)
+    case "info"    | "i" => Right(Info)
+    case "silent"  | "s" => Right(Silent)
+    case _               => Left(List(s"unknown action: `$s`"))
 
   private def regex(s: String) =
     try Right(s.r)

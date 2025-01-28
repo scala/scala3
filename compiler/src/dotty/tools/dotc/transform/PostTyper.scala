@@ -246,7 +246,9 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           else
             if sym.is(Param) then
               registerIfUnrolledParam(sym)
-              sym.keepAnnotationsCarrying(thisPhase, Set(defn.ParamMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
+              // @unused is getter/setter but we want it on ordinary method params
+              if !sym.owner.is(Method) || sym.owner.isConstructor then
+                sym.keepAnnotationsCarrying(thisPhase, Set(defn.ParamMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
             else if sym.is(ParamAccessor) then
               // @publicInBinary is not a meta-annotation and therefore not kept by `keepAnnotationsCarrying`
               val publicInBinaryAnnotOpt = sym.getAnnotation(defn.PublicInBinaryAnnot)

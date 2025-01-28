@@ -1,7 +1,6 @@
 package scala.quoted
 
-import scala.annotation.experimental
-import scala.annotation.implicitNotFound
+import scala.annotation.{experimental, implicitNotFound, unused}
 import scala.reflect.TypeTest
 
 /** Current Quotes in scope
@@ -4941,7 +4940,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             foldTree(foldTree(foldTree(x, cond)(owner), thenp)(owner), elsep)(owner)
           case While(cond, body) =>
             foldTree(foldTree(x, cond)(owner), body)(owner)
-          case Closure(meth, tpt) =>
+          case Closure(meth, _) =>
             foldTree(x, meth)(owner)
           case Match(selector, cases) =>
             foldTrees(foldTree(x, selector)(owner), cases)(owner)
@@ -5019,7 +5018,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       def traverseTree(tree: Tree)(owner: Symbol): Unit = traverseTreeChildren(tree)(owner)
 
-      def foldTree(x: Unit, tree: Tree)(owner: Symbol): Unit = traverseTree(tree)(owner)
+      def foldTree(@unused x: Unit, tree: Tree)(owner: Symbol): Unit = traverseTree(tree)(owner)
 
       protected def traverseTreeChildren(tree: Tree)(owner: Symbol): Unit = foldOverTree((), tree)(owner)
 
