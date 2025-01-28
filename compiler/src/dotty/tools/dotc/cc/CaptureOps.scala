@@ -281,7 +281,8 @@ extension (tp: Type)
 
   /** The first element of this path type */
   final def pathRoot(using Context): Type = tp.dealias match
-    case tp1: NamedType if tp1.symbol.maybeOwner.isClass => tp1.prefix.pathRoot
+    case tp1: TermRef if tp1.symbol.maybeOwner.isClass => tp1.prefix.pathRoot
+    case tp1: TypeRef if !tp1.symbol.is(Param) => tp1.prefix.pathRoot
     case tp1 => tp1
 
   /** If this part starts with `C.this`, the class `C`.

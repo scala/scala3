@@ -698,15 +698,24 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
      */
     def checkProperUseOrConsume(tree: Tree)(using Context): Unit = tree match
       case tree: MemberDef =>
-        for ann <- tree.symbol.annotations do
-          def isAllowedFor(sym: Symbol) =
-            (sym.is(Param) || sym.is(ParamAccessor))
-            && (ann.symbol != defn.ConsumeAnnot || sym.isTerm)
+        val sym = tree.symbol
+        def isMethodParam = (sym.is(Param) || sym.is(ParamAccessor))
             && !sym.owner.isAnonymousFunction
-          def termStr =
-            if ann.symbol == defn.ConsumeAnnot then " term" else ""
-          if defn.ccParamOnlyAnnotations.contains(ann.symbol) && !isAllowedFor(tree.symbol) then
-            report.error(i"Only$termStr parameters of methods can have @${ann.symbol.name} annotations", tree.srcPos)
+        for ann <- tree.symbol.annotations do
+          val annotCls = ann.symbol
+          if annotCls == defn.ConsumeAnnot then
+            if !(isMethodParam && sym.isTerm)
+              && !(sym.is(Method) && sym.owner.isClass)
+            then
+              report.error(
+                em"""@consume cannot be used here. Only memeber methods and their term parameters
+                    |can have @consume annotations.""",
+                tree.srcPos)
+          else if annotCls == defn.UseAnnot then
+            if !isMethodParam then
+              report.error(
+                em"@use cannot be used here. Only method parameters can have @use annotations.",
+                tree.srcPos)
       case _ =>
     end checkProperUseOrConsume
   end setupTraverser

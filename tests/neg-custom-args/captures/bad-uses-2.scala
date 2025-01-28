@@ -6,7 +6,7 @@ class TestUse:
   def foo[@use T](@use c: T): Unit = ??? // OK
 
 class TestConsume:
-  @consume def F = ???  // error
+  @consume def F = ???  // ok
   @consume val x = ???  // error
   @consume type T       // error
   def foo[@consume T](@use c: T): Unit = ??? // error
