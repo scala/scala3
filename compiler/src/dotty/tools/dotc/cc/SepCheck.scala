@@ -455,15 +455,30 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       val badParams = mutable.ListBuffer[Symbol]()
       def currentOwner = kind.dclSym.orElse(ctx.owner)
       for hiddenRef <- prune(refsToCheck) do
-        val refSym = hiddenRef.pathRoot.termSymbol // TODO also hangle ThisTypes as pathRoots
-        if refSym.exists && !refSym.info.derivesFrom(defn.Caps_SharedCapability) then
-          if currentOwner.enclosingMethodOrClass.isProperlyContainedIn(refSym.owner.enclosingMethodOrClass) then
-            report.error(em"""Separation failure: $descr non-local $refSym""", pos)
-          else if refSym.is(TermParam)
-            && !refSym.hasAnnotation(defn.ConsumeAnnot)
-            && currentOwner.isContainedIn(refSym.owner)
-          then
-            badParams += refSym
+        val proot = hiddenRef.pathRoot
+        if !proot.widen.derivesFrom(defn.Caps_SharedCapability) then
+          proot match
+            case ref: TermRef =>
+              val refSym = ref.symbol
+              if currentOwner.enclosingMethodOrClass.isProperlyContainedIn(refSym.maybeOwner.enclosingMethodOrClass) then
+                report.error(em"""Separation failure: $descr non-local $refSym""", pos)
+              else if refSym.is(TermParam)
+                && !refSym.hasAnnotation(defn.ConsumeAnnot)
+                && currentOwner.isContainedIn(refSym.owner)
+              then
+                badParams += refSym
+            case ref: ThisType =>
+              val encl = currentOwner.enclosingMethodOrClass
+              if encl.isProperlyContainedIn(ref.cls)
+                  && !encl.is(Synthetic)
+                  && !encl.hasAnnotation(defn.ConsumeAnnot)
+              then
+                report.error(
+                  em"""Separation failure: $descr non-local this of class ${ref.cls}.
+                      |The access must be in a @consume method to allow this.""",
+                  pos)
+            case _ =>
+
       if badParams.nonEmpty then
         def paramsStr(params: List[Symbol]): String = (params: @unchecked) match
           case p :: Nil => i"${p.name}"
