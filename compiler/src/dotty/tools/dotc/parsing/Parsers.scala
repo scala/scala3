@@ -1090,6 +1090,7 @@ object Parsers {
       def isArrowIndent() =
         lookahead.isArrow
         && {
+          lookahead.observeArrowEOL()
           lookahead.nextToken()
           lookahead.token == INDENT || lookahead.token == EOF
         }
@@ -2654,9 +2655,13 @@ object Parsers {
 
     def closureRest(start: Int, location: Location, params: List[Tree]): Tree =
       atSpan(start, in.offset) {
+        if location == Location.InColonArg then
+          in.observeArrowEOL()
         if in.token == CTXARROW then
           if params.isEmpty then
             syntaxError(em"context function literals require at least one formal parameter", Span(start, in.lastOffset))
+          in.nextToken()
+        else if in.token == ARROWeol then
           in.nextToken()
         else
           accept(ARROW)
