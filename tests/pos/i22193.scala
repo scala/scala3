@@ -22,6 +22,12 @@ def test() =
        val x = env
        println(x)
 
+  fn2(
+      arg = "blue sleeps faster than tuesday",
+      arg2 = "the quick brown fox jumped over the lazy dog"): env =>
+    val x = env
+    println(x)
+
   // does compile
   fn2(
       arg = "blue sleeps faster than tuesday",
@@ -37,6 +43,13 @@ def test() =
   ): env =>
       val x = env
       println(x)
+
+  fn2(
+      arg = "blue sleeps faster than tuesday",
+      arg2 = "the quick brown fox jumped over the lazy dog"
+  ): env =>
+    val x = env
+    println(x)
 
   fn3(
     arg = "blue sleeps faster than tuesday",
@@ -55,3 +68,11 @@ def regress(x: Int) =
   x match
   case 42 =>
   case _ =>
+
+// previously lookahead calculated indent width at the colon
+def k(xs: List[Int]) =
+  xs.foldLeft(
+      0)
+                                            : (acc, x) =>
+        acc + x
+

@@ -92,7 +92,7 @@ object Scanners {
       || token == IDENTIFIER && isOperatorPart(name(name.length - 1))
 
     def isArrow =
-      token == ARROW || token == CTXARROW || token == ARROWeol
+      token == ARROW || token == CTXARROW
   }
 
   abstract class ScannerCommon(source: SourceFile)(using Context) extends CharArrayReader with TokenData {
@@ -612,11 +612,7 @@ object Scanners {
         insert(if (pastBlankLine) NEWLINES else NEWLINE, lineOffset)
       else if indentIsSignificant then
         if nextWidth < lastWidth
-        || nextWidth == lastWidth
-          && indentPrefix.match
-             case MATCH | CATCH => token != CASE
-             case _ => false
-        then
+           || nextWidth == lastWidth && (indentPrefix == MATCH || indentPrefix == CATCH) && token != CASE then
           if currentRegion.isOutermost then
             if nextWidth < lastWidth then currentRegion = topLevelRegion(nextWidth)
           else if !isLeadingInfixOperator(nextWidth) && !statCtdTokens.contains(lastToken) && lastToken != INDENT then
@@ -643,12 +639,7 @@ object Scanners {
                 else if r.isInstanceOf[InBraces] && !closingRegionTokens.contains(token) then
                   report.warning("Line is indented too far to the left, or a `}` is missing", sourcePos())
         else if lastWidth < nextWidth
-             || lastWidth == nextWidth
-               && lastToken.match
-                  case MATCH | CATCH => token == CASE
-                  case ARROWeol => true
-                  case _ => false
-        then
+             || lastWidth == nextWidth && (lastToken == MATCH || lastToken == CATCH) && token == CASE then
           if canStartIndentTokens.contains(lastToken) then
             currentRegion = Indented(nextWidth, lastToken, currentRegion)
             insert(INDENT, offset)
@@ -680,12 +671,19 @@ object Scanners {
         reset()
         if atEOL then token = COLONeol
 
-    def observeArrowEOL(): Unit =
-      if indentSyntax && token == ARROW then
+    // consume => and insert <indent> if applicable
+    def observeArrowIndented(): Unit =
+      if isArrow && indentSyntax then
         peekAhead()
         val atEOL = isAfterLineEnd || token == EOF
         reset()
-        if atEOL then token = ARROWeol
+        if atEOL then
+          val nextWidth = indentWidth(next.offset)
+          val lastWidth = currentRegion.indentWidth
+          if lastWidth < nextWidth then
+            currentRegion = Indented(nextWidth, COLONeol, currentRegion)
+            offset = next.offset
+            token = INDENT
 
     def observeIndented(): Unit =
       if indentSyntax && isNewLine then
