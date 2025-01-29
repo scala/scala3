@@ -617,6 +617,7 @@ object Scanners {
             if nextWidth < lastWidth then currentRegion = topLevelRegion(nextWidth)
           else if !isLeadingInfixOperator(nextWidth) && !statCtdTokens.contains(lastToken) && lastToken != INDENT then
             currentRegion match
+              case _ if token == EOF => // no OUTDENT at EOF
               case r: Indented =>
                 insert(OUTDENT, offset)
                 handleNewIndentWidth(r.enclosing, ir =>
