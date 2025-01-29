@@ -7,7 +7,7 @@ import annotation.unchecked.{uncheckedVariance, uncheckedCaptures}
 import annotation.tailrec
 import caps.cap
 import caps.untrackedCaptures
-import language.`3.7` // sepchecks on
+import caps.unsafe.unsafeAssumeSeparate
 
 /** A strawman architecture for new collections. It contains some
  *  example collection classes and methods with the intent to expose
@@ -460,7 +460,11 @@ object CollectionStrawMan5 {
       def apply[A](underlying: Iterable[A]^, pp: A => Boolean, isFlipped: Boolean): Filter[A]^{underlying, pp} =
         underlying match
           case filter: Filter[A]^{underlying} =>
-            new Filter(filter.underlying, a => filter.p(a) && pp(a))
+            unsafeAssumeSeparate:
+              // See filter-iterable.scala for a test where a variant of Filter
+              // works without the unsafeAssumeSeparate. But it requires significant
+              // changes compared to the version here.
+              new Filter(filter.underlying, a => filter.p(a) && pp(a))
           case _ => new Filter(underlying, pp)
 
     case class Partition[A](val underlying: Iterable[A]^, p: A => Boolean) {
