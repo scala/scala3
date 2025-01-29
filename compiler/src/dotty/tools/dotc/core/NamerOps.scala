@@ -8,6 +8,7 @@ import ContextOps.enter
 import TypeApplications.EtaExpansion
 import collection.mutable
 import config.Printers.typr
+import ast.untpd
 
 /** Operations that are shared between Namer and TreeUnpickler */
 object NamerOps:
@@ -38,19 +39,20 @@ object NamerOps:
    *  unless it is null.
    */
   extension (tp: Type)
-    def separateRefinements(cls: ClassSymbol, refinements: mutable.LinkedHashMap[Name, Type] | Null)(using Context): Type =
+    def separateRefinements(cls: ClassSymbol, refinements: mutable.LinkedHashMap[Name, Type] | Null, parent: untpd.Tree)(using Context): Type =
       tp match
         case RefinedType(tp1, rname, rinfo) =>
-          try tp1.separateRefinements(cls, refinements)
+          try tp1.separateRefinements(cls, refinements, parent)
           finally
             if refinements != null then
+              val rinfo1 = rinfo.widenSkolem
               refinements(rname) = refinements.get(rname) match
-                case Some(tp) => tp & rinfo
-                case None => rinfo
+                case Some(tp) => tp & rinfo1
+                case None => rinfo1
         case tp @ AnnotatedType(tp1, ann) =>
-          tp.derivedAnnotatedType(tp1.separateRefinements(cls, refinements), ann)
+          tp.derivedAnnotatedType(tp1.separateRefinements(cls, refinements, parent), ann)
         case tp: RecType =>
-          tp.parent.substRecThis(tp, cls.thisType).separateRefinements(cls, refinements)
+          tp.parent.substRecThis(tp, cls.thisType).separateRefinements(cls, refinements, parent)
         case tp =>
           tp
 

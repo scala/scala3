@@ -1615,7 +1615,7 @@ class Namer { typer: Typer =>
         else {
           val pt = checkClassType(
               if Feature.enabled(modularity)
-              then ptype.separateRefinements(cls, parentRefinements)
+              then ptype.separateRefinements(cls, parentRefinements, parent)
               else ptype,
               parent.srcPos,
               traitReq = parent ne parents.head,
