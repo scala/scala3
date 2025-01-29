@@ -17,7 +17,7 @@ import language.experimental.captureChecking
 
 private[mutable] trait CheckedIndexedSeqView[+A] extends IndexedSeqView[A] {
 
-  protected val mutationCount: () => Int
+  protected val mutationCount: () -> Int
 
   override def iterator: Iterator[A]^{this} = new CheckedIndexedSeqView.CheckedIterator(this, mutationCount())
   override def reverseIterator: Iterator[A]^{this} = new CheckedIndexedSeqView.CheckedReverseIterator(this, mutationCount())
@@ -42,7 +42,7 @@ private[mutable] object CheckedIndexedSeqView {
   import IndexedSeqView.SomeIndexedSeqOps
 
   @SerialVersionUID(3L)
-  private[mutable] class CheckedIterator[A](self: IndexedSeqView[A]^, mutationCount: => Int)
+  private[mutable] class CheckedIterator[A](self: IndexedSeqView[A]^, mutationCount: -> Int)
     extends IndexedSeqView.IndexedSeqViewIterator[A](self) {
     private[this] val expectedCount = mutationCount
     override def hasNext: Boolean = {
@@ -52,7 +52,7 @@ private[mutable] object CheckedIndexedSeqView {
   }
 
   @SerialVersionUID(3L)
-  private[mutable] class CheckedReverseIterator[A](self: IndexedSeqView[A]^, mutationCount: => Int)
+  private[mutable] class CheckedReverseIterator[A](self: IndexedSeqView[A]^, mutationCount: -> Int)
     extends IndexedSeqView.IndexedSeqViewReverseIterator[A](self) {
     private[this] val expectedCount = mutationCount
     override def hasNext: Boolean = {
@@ -62,43 +62,43 @@ private[mutable] object CheckedIndexedSeqView {
   }
 
   @SerialVersionUID(3L)
-  class Id[+A](underlying: SomeIndexedSeqOps[A]^)(protected val mutationCount: () => Int)
+  class Id[+A](underlying: SomeIndexedSeqOps[A]^)(protected val mutationCount: () -> Int)
     extends IndexedSeqView.Id(underlying) with CheckedIndexedSeqView[A]
 
   @SerialVersionUID(3L)
-  class Appended[+A](underlying: SomeIndexedSeqOps[A]^, elem: A)(protected val mutationCount: () => Int)
+  class Appended[+A](underlying: SomeIndexedSeqOps[A]^, elem: A)(protected val mutationCount: () -> Int)
     extends IndexedSeqView.Appended(underlying, elem) with CheckedIndexedSeqView[A]
 
   @SerialVersionUID(3L)
-  class Prepended[+A](elem: A, underlying: SomeIndexedSeqOps[A]^)(protected val mutationCount: () => Int)
+  class Prepended[+A](elem: A, underlying: SomeIndexedSeqOps[A]^)(protected val mutationCount: () -> Int)
     extends IndexedSeqView.Prepended(elem, underlying) with CheckedIndexedSeqView[A]
 
   @SerialVersionUID(3L)
-  class Concat[A](prefix: SomeIndexedSeqOps[A]^, suffix: SomeIndexedSeqOps[A]^)(protected val mutationCount: () => Int)
+  class Concat[A](prefix: SomeIndexedSeqOps[A]^, suffix: SomeIndexedSeqOps[A]^)(protected val mutationCount: () -> Int)
     extends IndexedSeqView.Concat[A](prefix, suffix) with CheckedIndexedSeqView[A]
 
   @SerialVersionUID(3L)
-  class Take[A](underlying: SomeIndexedSeqOps[A]^, n: Int)(protected val mutationCount: () => Int)
+  class Take[A](underlying: SomeIndexedSeqOps[A]^, n: Int)(protected val mutationCount: () -> Int)
     extends IndexedSeqView.Take(underlying, n) with CheckedIndexedSeqView[A]
 
   @SerialVersionUID(3L)
-  class TakeRight[A](underlying: SomeIndexedSeqOps[A]^, n: Int)(protected val mutationCount: () => Int)
+  class TakeRight[A](underlying: SomeIndexedSeqOps[A]^, n: Int)(protected val mutationCount: () -> Int)
     extends IndexedSeqView.TakeRight(underlying, n) with CheckedIndexedSeqView[A]
 
   @SerialVersionUID(3L)
-  class Drop[A](underlying: SomeIndexedSeqOps[A]^, n: Int)(protected val mutationCount: () => Int)
+  class Drop[A](underlying: SomeIndexedSeqOps[A]^, n: Int)(protected val mutationCount: () -> Int)
     extends IndexedSeqView.Drop[A](underlying, n) with CheckedIndexedSeqView[A]
 
   @SerialVersionUID(3L)
-  class DropRight[A](underlying: SomeIndexedSeqOps[A]^, n: Int)(protected val mutationCount: () => Int)
+  class DropRight[A](underlying: SomeIndexedSeqOps[A]^, n: Int)(protected val mutationCount: () -> Int)
     extends IndexedSeqView.DropRight[A](underlying, n) with CheckedIndexedSeqView[A]
 
   @SerialVersionUID(3L)
-  class Map[A, B](underlying: SomeIndexedSeqOps[A]^, f: A => B)(protected val mutationCount: () => Int)
+  class Map[A, B](underlying: SomeIndexedSeqOps[A]^, f: A => B)(protected val mutationCount: () -> Int)
     extends IndexedSeqView.Map(underlying, f) with CheckedIndexedSeqView[B]
 
   @SerialVersionUID(3L)
-  class Reverse[A](underlying: SomeIndexedSeqOps[A]^)(protected val mutationCount: () => Int)
+  class Reverse[A](underlying: SomeIndexedSeqOps[A]^)(protected val mutationCount: () -> Int)
     extends IndexedSeqView.Reverse[A](underlying) with CheckedIndexedSeqView[A] {
     override def reverse: IndexedSeqView[A] = underlying match {
       case x: IndexedSeqView[A] => x
@@ -107,7 +107,7 @@ private[mutable] object CheckedIndexedSeqView {
   }
 
   @SerialVersionUID(3L)
-  class Slice[A](underlying: SomeIndexedSeqOps[A]^, from: Int, until: Int)(protected val mutationCount: () => Int)
+  class Slice[A](underlying: SomeIndexedSeqOps[A]^, from: Int, until: Int)(protected val mutationCount: () -> Int)
     extends AbstractIndexedSeqView[A] with CheckedIndexedSeqView[A] {
     protected val lo = from max 0
     protected val hi = (until max 0) min underlying.length

@@ -16,6 +16,7 @@ import scala.annotation.{nowarn, tailrec}
 import scala.collection.mutable.{ArrayBuffer, Builder}
 import scala.collection.immutable.LazyList
 import language.experimental.captureChecking
+import caps.unsafe.unsafeAssumeSeparate
 
 /** Views are collections whose transformation operations are non strict: the resulting elements
   * are evaluated only when the view is effectively traversed (e.g. using `foreach` or `foldLeft`),
@@ -151,7 +152,8 @@ object View extends IterableFactory[View] {
     def apply[A](underlying: Iterable[A]^, p: A => Boolean, isFlipped: Boolean): Filter[A]^{underlying, p} =
       underlying match {
         case filter: Filter[A]^{underlying} if filter.isFlipped == isFlipped =>
-          new Filter(filter.underlying, a => filter.p(a) && p(a), isFlipped)
+          unsafeAssumeSeparate:
+            new Filter(filter.underlying, a => filter.p(a) && p(a), isFlipped)
         case _ => new Filter(underlying, p, isFlipped)
       }
   }
