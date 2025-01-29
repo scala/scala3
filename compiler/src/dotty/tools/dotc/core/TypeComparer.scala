@@ -3070,6 +3070,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         disjointnessBoundary(tp.effectiveBounds.hi)
       case tp: ErrorType =>
         defn.AnyType
+      case tp: NoType.type =>
+        defn.AnyType
     end disjointnessBoundary
 
     (disjointnessBoundary(tp1), disjointnessBoundary(tp2)) match
