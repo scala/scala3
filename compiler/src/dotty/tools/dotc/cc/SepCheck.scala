@@ -30,15 +30,28 @@ object SepChecker:
       else NeedsCheck
   end Captures
 
-  /** The kind of checked type, used for composing error messages */
-  enum TypeKind:
+  /** The role in which a checked type appears, used for composing error messages */
+  enum TypeRole:
     case Result(sym: Symbol, inferred: Boolean)
     case Argument(arg: Tree)
+    case Qualifier(qual: Tree, meth: Symbol)
 
+    /** If this is a Result tole, the associated symbol, otherwise NoSymbol */
     def dclSym = this match
       case Result(sym, _) => sym
       case _ => NoSymbol
-  end TypeKind
+
+    /** A textual description of this role */
+    def description(using Context): String = this match
+      case Result(sym, inferred) =>
+        def inferredStr = if inferred then " inferred" else ""
+        def resultStr = if sym.info.isInstanceOf[MethodicType] then " result" else ""
+        i"$sym's$inferredStr$resultStr type"
+      case TypeRole.Argument(_) =>
+        "the argument's adapted type"
+      case TypeRole.Qualifier(_, meth) =>
+        i"the type of the qualifier to a call of $meth"
+  end TypeRole
 
   /** A class for segmented sets of consumed references.
    *  References are associated with the source positions where they first appeared.
@@ -161,10 +174,29 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     private def overlapWith(other: Refs)(using Context): Refs =
       val refs1 = refs
       val refs2 = other
+
+      /** Exclusive capabilities in refs1 that are covered by exclusive or
+       *  stripped read-only capabilties in refs2
+       *  + stripped read-only capabilities in refs1 that are covered by an
+       *    exclusive capability in refs2.
+       */
       def common(refs1: Refs, refs2: Refs) =
         refs1.filter: ref =>
-          ref.isExclusive && refs2.exists(_.stripReadOnly eq ref)
+          ref.isExclusive && refs2.exists(ref2 => ref2.stripReadOnly.covers(ref))
+        ++
+        refs1
+          .filter:
+            case ReadOnlyCapability(ref @ TermRef(prefix: CaptureRef, _)) =>
+              // We can get away testing only references with at least one field selection
+              // here since stripped readOnly references that equal a reference in refs2
+              // are added by the first clause of the symmetric call to common.
+              !ref.isCap && refs2.exists(ref2 => ref2.covers(prefix))
+            case _ =>
+              false
+          .map(_.stripReadOnly)
+
       common(refs, other) ++ common(other, refs)
+    end overlapWith
 
     private def hidden(using Context): Refs =
       val seen: util.EqHashSet[CaptureRef] = new util.EqHashSet
@@ -179,16 +211,20 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       refs.exists: ref =>
         !hiddenByElem(ref, _ => emptySet).isEmpty
 
+    private def deduct(others: Refs)(using Context): Refs =
+      refs.filter: ref =>
+        !others.exists(_.covers(ref))
+
     /** Deduct the footprint of `sym` and `sym*` from `refs` */
-    private def deductSym(sym: Symbol)(using Context) =
+    private def deductSym(sym: Symbol)(using Context): Refs =
       val ref = sym.termRef
-      if ref.isTrackableRef then refs -- CaptureSet(ref, ref.reach).elems.footprint
+      if ref.isTrackableRef then refs.deduct(CaptureSet(ref, ref.reach).elems.footprint)
       else refs
 
     /** Deduct the footprint of all captures of `deps` from `refs` */
     private def deductCapturesOf(deps: List[Tree])(using Context): Refs =
       deps.foldLeft(refs): (refs, dep) =>
-        refs -- captures(dep).footprint
+        refs.deduct(captures(dep).footprint)
   end extension
 
   private def hiddenByElem(ref: CaptureRef, recur: Refs => Refs)(using Context): Refs = ref match
@@ -249,7 +285,7 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     def clashFootprint = clashCaptures.footprint
     def hiddenFootprint = hiddenCaptures.footprint
     def declaredFootprint = deps(arg).map(captures(_)).foldLeft(emptySet)(_ ++ _).footprint
-    def footprintOverlap = hiddenFootprint.overlapWith(clashFootprint) -- declaredFootprint
+    def footprintOverlap = hiddenFootprint.overlapWith(clashFootprint).deduct(declaredFootprint)
     report.error(
       em"""Separation failure: argument of type  ${arg.nuType}
           |to $funStr
@@ -289,15 +325,15 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   def consumeError(ref: CaptureRef, loc: SrcPos, pos: SrcPos)(using Context): Unit =
     report.error(
-      em"""Separation failure: Illegal access to $ref,
-          |which was passed to a @consume parameter on line ${loc.line + 1}
+      em"""Separation failure: Illegal access to $ref, which was passed to a
+          |@consume parameter or was used as a prefix to a @consume method on line ${loc.line + 1}
           |and therefore is no longer available.""",
       pos)
 
   def consumeInLoopError(ref: CaptureRef, pos: SrcPos)(using Context): Unit =
     report.error(
-      em"""Separation failure: $ref appears in a loop,
-          |therefore it cannot be passed to a @consume parameter.""",
+      em"""Separation failure: $ref appears in a loop, therefore it cannot
+          |be passed to a @consume parameter or be used as a prefix of a @consume method call.""",
       pos)
 
   private def checkApply(fn: Tree, args: List[Tree], deps: collection.Map[Tree, List[Tree]])(using Context): Unit =
@@ -316,7 +352,7 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     for (arg, idx) <- indexedArgs do
       if arg.needsSepCheck then
         val ac = formalCaptures(arg)
-        checkType(arg.formalType, arg.srcPos, TypeKind.Argument(arg))
+        checkType(arg.formalType, arg.srcPos, TypeRole.Argument(arg))
         val hiddenInArg = ac.hidden.footprint
         //println(i"check sep $arg: $ac, footprint so far = $footprint, hidden = $hiddenInArg")
         val overlap = hiddenInArg.overlapWith(footprint).deductCapturesOf(deps(arg))
@@ -331,7 +367,7 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     resultType.get(sym) match
       case Some(tp) if !overlap.isEmpty =>
         val declared = tp.captureSet.elems
-        overlap -- declared.footprint -- declared.hidden.footprint
+        overlap.deduct(declared.footprint).deduct(declared.hidden.footprint)
       case _ =>
         overlap
 
@@ -346,30 +382,79 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         val pos = consumed.get(ref)
         if pos != null then consumeError(ref, pos, tree.srcPos)
 
+  def explicitRefs(tp: Type): Refs = tp match
+    case tp: (TermRef | ThisType) => SimpleIdentitySet(tp)
+    case AnnotatedType(parent, _) => explicitRefs(parent)
+    case AndType(tp1, tp2) => explicitRefs(tp1) ++ explicitRefs(tp2)
+    case OrType(tp1, tp2) => explicitRefs(tp1) ** explicitRefs(tp2)
+    case _ => emptySet
+
+  def prune(refs: Refs, tpe: Type, role: TypeRole)(using Context): Refs =
+    refs.deductSym(role.dclSym).deduct(explicitRefs(tpe))
+
   def checkType(tpt: Tree, sym: Symbol)(using Context): Unit =
     checkType(tpt.nuType, tpt.srcPos,
-        TypeKind.Result(sym, inferred = tpt.isInstanceOf[InferredTypeTree]))
+        TypeRole.Result(sym, inferred = tpt.isInstanceOf[InferredTypeTree]))
+
+  /** Check validity consumed references `refsToCheck`. The references are consumed
+   *  because they are hidden in a Fresh.Cap result type or they are referred
+   *  to in an argument to a @consume parameter or in a prefix of a @consume method --
+   *  which one applie is determined by the role parameter.
+   *  @param refsToCheck   the referencves to check
+   *  @param tpe           the type containing those references
+   *  @param role          the role in which the type apears
+   *  @param descr         a textual description of the type and its relationship with the checked reference
+   *  @param pos           position for error reporting
+   */
+  def checkConsumedRefs(refsToCheck: Refs, tpe: Type, role: TypeRole, descr: => String, pos: SrcPos)(using Context) =
+    val badParams = mutable.ListBuffer[Symbol]()
+    def currentOwner = role.dclSym.orElse(ctx.owner)
+    for hiddenRef <- prune(refsToCheck, tpe, role) do
+      val proot = hiddenRef.pathRoot
+      if !proot.widen.derivesFrom(defn.Caps_SharedCapability) then
+        proot match
+          case ref: TermRef =>
+            val refSym = ref.symbol
+            if currentOwner.enclosingMethodOrClass.isProperlyContainedIn(refSym.maybeOwner.enclosingMethodOrClass) then
+              report.error(em"""Separation failure: $descr non-local $refSym""", pos)
+            else if refSym.is(TermParam)
+              && !refSym.hasAnnotation(defn.ConsumeAnnot)
+              && currentOwner.isContainedIn(refSym.owner)
+            then
+              badParams += refSym
+          case ref: ThisType =>
+            val encl = currentOwner.enclosingMethodOrClass
+            if encl.isProperlyContainedIn(ref.cls)
+                && !encl.is(Synthetic)
+                && !encl.hasAnnotation(defn.ConsumeAnnot)
+            then
+              report.error(
+                em"""Separation failure: $descr non-local this of class ${ref.cls}.
+                    |The access must be in a @consume method to allow this.""",
+                pos)
+          case _ =>
+
+    if badParams.nonEmpty then
+      def paramsStr(params: List[Symbol]): String = (params: @unchecked) match
+        case p :: Nil => i"${p.name}"
+        case p :: p2 :: Nil => i"${p.name} and ${p2.name}"
+        case p :: ps => i"${p.name}, ${paramsStr(ps)}"
+      val (pluralS, singleS) = if badParams.tail.isEmpty then ("", "s") else ("s", "")
+      report.error(
+        em"""Separation failure: $descr parameter$pluralS ${paramsStr(badParams.toList)}.
+            |The parameter$pluralS need$singleS to be annotated with @consume to allow this.""",
+          pos)
+
+    role match
+      case _: TypeRole.Argument | _: TypeRole.Qualifier =>
+        for ref <- refsToCheck do
+          if !ref.derivesFrom(defn.Caps_SharedCapability) then
+            consumed.put(ref, pos)
+      case _ =>
+  end checkConsumedRefs
 
   /** Check that all parts of type `tpe` are separated. */
-  def checkType(tpe: Type, pos: SrcPos, kind: TypeKind)(using Context): Unit =
-
-    def typeDescr = kind match
-      case TypeKind.Result(sym, inferred) =>
-        def inferredStr = if inferred then " inferred" else ""
-        def resultStr = if sym.info.isInstanceOf[MethodicType] then " result" else ""
-        i"$sym's$inferredStr$resultStr"
-      case TypeKind.Argument(_) =>
-        "the argument's adapted"
-
-    def explicitRefs(tp: Type): Refs = tp match
-      case tp: (TermRef | ThisType) => SimpleIdentitySet(tp)
-      case AnnotatedType(parent, _) => explicitRefs(parent)
-      case AndType(tp1, tp2) => explicitRefs(tp1) ++ explicitRefs(tp2)
-      case OrType(tp1, tp2) => explicitRefs(tp1) ** explicitRefs(tp2)
-      case _ => emptySet
-
-    def prune(refs: Refs): Refs =
-      refs.deductSym(kind.dclSym) -- explicitRefs(tpe)
+  def checkType(tpe: Type, pos: SrcPos, role: TypeRole)(using Context): Unit =
 
     def checkParts(parts: List[Type]): Unit =
       var footprint: Refs = emptySet
@@ -391,21 +476,21 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           if !globalOverlap.isEmpty then
             val (prevStr, prevRefs, overlap) = parts.iterator.take(checked)
               .map: prev =>
-                val prevRefs = prune(mapRefs(prev.deepCaptureSet.elems).footprint)
+                val prevRefs = prune(mapRefs(prev.deepCaptureSet.elems).footprint, tpe, role)
                 (i",  $prev , ", prevRefs, prevRefs.overlapWith(next))
               .dropWhile(_._3.isEmpty)
               .nextOption
               .getOrElse(("", current, globalOverlap))
             report.error(
-              em"""Separation failure in $typeDescr type $tpe.
+              em"""Separation failure in ${role.description} $tpe.
                   |One part,  $part , $nextRel  ${CaptureSet(next)}.
                   |A previous part$prevStr $prevRel  ${CaptureSet(prevRefs)}.
                   |The two sets overlap at  ${CaptureSet(overlap)}.""",
               pos)
 
         val partRefs = part.deepCaptureSet.elems
-        val partFootprint = prune(partRefs.footprint)
-        val partHidden = prune(partRefs.hidden.footprint) -- partFootprint
+        val partFootprint = prune(partRefs.footprint, tpe, role)
+        val partHidden = prune(partRefs.hidden.footprint, tpe, role).deduct(partFootprint)
 
         checkSep(footprint, partHidden, identity, "references", "hides")
         checkSep(hiddenSet, partHidden, _.hidden, "also hides", "hides")
@@ -451,47 +536,8 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
             case t =>
               foldOver(c, t)
 
-    def checkRefs(refsToCheck: Refs, descr: => String) =
-      val badParams = mutable.ListBuffer[Symbol]()
-      def currentOwner = kind.dclSym.orElse(ctx.owner)
-      for hiddenRef <- prune(refsToCheck) do
-        val proot = hiddenRef.pathRoot
-        if !proot.widen.derivesFrom(defn.Caps_SharedCapability) then
-          proot match
-            case ref: TermRef =>
-              val refSym = ref.symbol
-              if currentOwner.enclosingMethodOrClass.isProperlyContainedIn(refSym.maybeOwner.enclosingMethodOrClass) then
-                report.error(em"""Separation failure: $descr non-local $refSym""", pos)
-              else if refSym.is(TermParam)
-                && !refSym.hasAnnotation(defn.ConsumeAnnot)
-                && currentOwner.isContainedIn(refSym.owner)
-              then
-                badParams += refSym
-            case ref: ThisType =>
-              val encl = currentOwner.enclosingMethodOrClass
-              if encl.isProperlyContainedIn(ref.cls)
-                  && !encl.is(Synthetic)
-                  && !encl.hasAnnotation(defn.ConsumeAnnot)
-              then
-                report.error(
-                  em"""Separation failure: $descr non-local this of class ${ref.cls}.
-                      |The access must be in a @consume method to allow this.""",
-                  pos)
-            case _ =>
-
-      if badParams.nonEmpty then
-        def paramsStr(params: List[Symbol]): String = (params: @unchecked) match
-          case p :: Nil => i"${p.name}"
-          case p :: p2 :: Nil => i"${p.name} and ${p2.name}"
-          case p :: ps => i"${p.name}, ${paramsStr(ps)}"
-        val (pluralS, singleS) = if badParams.tail.isEmpty then ("", "s") else ("s", "")
-        report.error(
-          em"""Separation failure: $descr parameter$pluralS ${paramsStr(badParams.toList)}.
-              |The parameter$pluralS need$singleS to be annotated with @consume to allow this.""",
-            pos)
-
-    def checkLegalRefs() = kind match
-      case TypeKind.Result(sym, _) =>
+    def checkLegalRefs() = role match
+      case TypeRole.Result(sym, _) =>
         if !sym.isAnonymousFunction // we don't check return types of anonymous functions
             && !sym.is(Case)        // We don't check so far binders in patterns since they
                                     // have inferred universal types. TODO come back to this;
@@ -499,15 +545,13 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
                                     // "see through them" when we look at hidden sets.
         then
           val refs = tpe.deepCaptureSet.elems
-          val toCheck = refs.hidden.footprint -- refs.footprint
-          checkRefs(toCheck, i"$typeDescr type $tpe hides")
-      case TypeKind.Argument(arg) =>
+          val toCheck = refs.hidden.footprint.deduct(refs.footprint)
+          checkConsumedRefs(toCheck, tpe, role, i"${role.description} $tpe hides", pos)
+      case TypeRole.Argument(arg) =>
         if tpe.hasAnnotation(defn.ConsumeAnnot) then
           val capts = captures(arg).footprint
-          checkRefs(capts, i"argument to @consume parameter with type ${arg.nuType} refers to")
-          for ref <- capts do
-            if !ref.derivesFrom(defn.Caps_SharedCapability) then
-              consumed.put(ref, arg.srcPos)
+          checkConsumedRefs(capts, tpe, role, i"argument to @consume parameter with type ${arg.nuType} refers to", pos)
+      case _ =>
 
     if !tpe.hasAnnotation(defn.UntrackedCapturesAnnot) then
       traverse(Captures.None, tpe)
@@ -569,6 +613,12 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     if isUnsafeAssumeSeparate(tree) then return
     checkUse(tree)
     tree match
+      case tree @ Select(qual, _) if tree.symbol.is(Method) && tree.symbol.hasAnnotation(defn.ConsumeAnnot) =>
+        traverseChildren(tree)
+        checkConsumedRefs(
+            captures(qual).footprint, qual.nuType,
+            TypeRole.Qualifier(qual, tree.symbol),
+            i"call prefix of @consume ${tree.symbol} refers to", qual.srcPos)
       case tree: GenericApply =>
         traverseChildren(tree)
         tree.tpe match
