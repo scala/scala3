@@ -202,10 +202,9 @@ object Tokens extends TokensCommon {
   inline val COLONeol = 89;         enter(COLONeol, ":", ": at eol")
     // A `:` recognized as starting an indentation block
   inline val SELFARROW = 90;        enter(SELFARROW, "=>") // reclassified ARROW following self-type
-  inline val ARROWeol = 99;         enter(ARROWeol, "=>", "=> at eol") // lambda ARROW at eol followed by indent
 
   /** XML mode */
-  inline val XMLSTART = 100;        enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
+  inline val XMLSTART = 99;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
   final val alphaKeywords: TokenSet = tokenRange(IF, END)
   final val symbolicKeywords: TokenSet = tokenRange(USCORE, CTXARROW)
@@ -283,7 +282,7 @@ object Tokens extends TokensCommon {
   final val closingRegionTokens = BitSet(RBRACE, RPAREN, RBRACKET, CASE) | statCtdTokens
 
   final val canStartIndentTokens: BitSet =
-    statCtdTokens | BitSet(COLONeol, WITH, EQUALS, ARROWeol, ARROW, CTXARROW, LARROW, WHILE, TRY, FOR, IF, THROW, RETURN)
+    statCtdTokens | BitSet(COLONeol, WITH, EQUALS, ARROW, CTXARROW, LARROW, WHILE, TRY, FOR, IF, THROW, RETURN)
 
   /** Faced with the choice between a type and a formal parameter, the following
    *  tokens determine it's a formal parameter.

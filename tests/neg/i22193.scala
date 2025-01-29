@@ -5,6 +5,7 @@ def fn3(arg: String, arg2: String)(f: => Unit): Unit = f
 
 def test1() =
 
+  // ok baseline
   fn2(arg = "blue sleeps faster than tuesday", arg2 = "the quick brown fox jumped over the lazy dog"): env =>
     val x = env
     println(x)
@@ -15,12 +16,6 @@ def test1() =
   val x = env // error
   println(x)
 
-  fn2( // error
-      arg = "blue sleeps faster than tuesday",
-      arg2 = "the quick brown fox jumped over the lazy dog"): env =>
-    val x = env // error
-    println(x)
-
   fn2(
       arg = "blue sleeps faster than tuesday",
       arg2 = "the quick brown fox jumped over the lazy dog"):
@@ -29,13 +24,6 @@ def test1() =
       println(x)
 
 def test2() =
-
-  fn2(
-      arg = "blue sleeps faster than tuesday",
-      arg2 = "the quick brown fox jumped over the lazy dog"
-  ): env =>
-    val x = env
-    println(x)
 
   fn3( // error missing argument list for value of type (=> Unit) => Unit
     arg = "blue sleeps faster than tuesday",
