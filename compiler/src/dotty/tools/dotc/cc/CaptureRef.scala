@@ -259,6 +259,32 @@ trait CaptureRef extends TypeProxy, ValueType:
             case ReadOnlyCapability(y1) => this.stripReadOnly.maxSubsumes(y1, canAddHidden)
             case _ => false
 
+  /** `x covers y` if we should retain `y` when computing the overlap of
+   *  two footprints which have `x` respectively `y` as elements.
+   *  We assume that .rd have already been stripped on both sides.
+   *  We have:
+   *
+   *   x covers x
+   *   x covers y  ==>  x covers y.f
+   *   x covers y  ==>  x* covers y*, x? covers y?
+   *   TODO what other clauses from subsumes do we need to port here?
+   */
+  final def covers(y: CaptureRef)(using Context): Boolean =
+    (this eq y)
+    || y.match
+        case y @ TermRef(ypre: CaptureRef, _) if !y.isCap =>
+          this.covers(ypre)
+        case ReachCapability(y1) =>
+          this match
+            case ReachCapability(x1) => x1.covers(y1)
+            case _ => false
+        case MaybeCapability(y1) =>
+          this match
+            case MaybeCapability(x1) => x1.covers(y1)
+            case _ => false
+        case _ =>
+          false
+
   def assumedContainsOf(x: TypeRef)(using Context): SimpleIdentitySet[CaptureRef] =
     CaptureSet.assumedContains.getOrElse(x, SimpleIdentitySet.empty)
 
