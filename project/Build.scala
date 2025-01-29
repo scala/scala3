@@ -1494,6 +1494,7 @@ object Build {
           .exclude("org.eclipse.lsp4j","org.eclipse.lsp4j")
           .exclude("org.eclipse.lsp4j","org.eclipse.lsp4j.jsonrpc"),
         "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.20.1",
+        "ch.epfl.scala" % "bsp4j" % "2.1.1",
       ),
       libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.16" % mtagsVersion % SourceDeps),
       ivyConfigurations += SourceDeps.hide,
