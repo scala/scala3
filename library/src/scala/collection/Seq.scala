@@ -878,7 +878,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any
     *
     *  @param that   the sequence of elements to remove
     *  @return       a new $coll which contains all elements of this $coll
-    *                except some of occurrences of elements that also appear in `that`.
+    *                except some of the occurrences of elements that also appear in `that`.
     *                If an element value `x` appears
     *                ''n'' times in `that`, then the first ''n'' occurrences of `x` will not form
     *                part of the result, but any following occurrences will.
