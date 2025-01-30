@@ -137,6 +137,7 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
       if !enclosure.exists then throw NoPath()
       if enclosure == sym.enclosure then NoSymbol
       else
+        /** is sym a constructor or a term that is nested in a constructor? */
         def nestedInConstructor(sym: Symbol): Boolean =
           sym.isConstructor
           || sym.isTerm && nestedInConstructor(sym.enclosure)
@@ -237,6 +238,10 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
         captureImplicitThis(tree.tpe)
       case tree: Select =>
         if isExpr(sym) && isLocal(sym) then markCalled(sym, enclosure)
+      case tree: New =>
+        val constr = tree.tpe.typeSymbol.primaryConstructor
+        if isExpr(constr) then
+          symSet(called, enclosure) += constr
       case tree: This =>
         narrowTo(tree.symbol.asClass)
       case tree: MemberDef if isExpr(sym) && sym.owner.isTerm =>
@@ -291,7 +296,6 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
         val calleeOwner = normalizedCallee.owner
         if calleeOwner.isTerm then narrowLogicOwner(caller, logicOwner(normalizedCallee))
         else
-          assert(calleeOwner.is(Trait))
           // methods nested inside local trait methods cannot be lifted out
           // beyond the trait. Note that we can also call a trait method through
           // a qualifier; in that case no restriction to lifted owner arises.
