@@ -75,7 +75,15 @@ object ProtoTypes {
               for tvar <- newctx.typerState.ownedVars do
                 inContext(newctx):
                   if !tvar.isInstantiated then
-                    tvar.instantiate(fromBelow = false) // any direction
+                    // Filter out any tvar that instantiating would further constrain the current constraint
+                    // Similar to filterByDeps in interpolateTypeVars.
+                    val excluded = ctx.typerState.ownedVars.filter(!_.isInstantiated)
+                    val aboveOK = !ctx.typerState.constraint.dependsOn(tvar, excluded, co = true)
+                    val belowOK = !ctx.typerState.constraint.dependsOn(tvar, excluded, co = false)
+                    if aboveOK then
+                      tvar.instantiate(fromBelow = true)
+                    else if belowOK then
+                      tvar.instantiate(fromBelow = false)
 
               // commit any remaining changes in typer state
               newctx.typerState.commit()

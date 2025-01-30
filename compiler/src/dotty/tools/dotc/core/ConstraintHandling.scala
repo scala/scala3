@@ -436,17 +436,8 @@ trait ConstraintHandling {
 
     val level1 = nestingLevel(p1)
     val level2 = nestingLevel(p2)
-    val p1Wins = if level1 == level2 then
-      // If the nesting levels match, then we would prefer to unify to the outer most parameter.
-      // For instance in pos/i21981, while running `normalizedCompatible` against `.map2`,
-      // we want to unify to B over K, to allow easily removing K by just instantiating it.
-      def preferP1(ctx: Context): Boolean =
-        val c = ctx.typerState.constraint
-        !c.contains(p2) || c.contains(p1) && preferP1(ctx.outer)
-      preferP1(ctx)
-    else level1 <= level2
-    val pKept    = if p1Wins then p1 else p2
-    val pRemoved = if p1Wins then p2 else p1
+    val pKept    = if level1 <= level2 then p1 else p2
+    val pRemoved = if level1 <= level2 then p2 else p1
 
     val down = constraint.exclusiveLower(p2, p1)
     val up = constraint.exclusiveUpper(p1, p2)
