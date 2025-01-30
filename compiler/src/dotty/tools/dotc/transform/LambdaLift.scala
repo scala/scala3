@@ -127,9 +127,7 @@ object LambdaLift:
 
     private def proxy(sym: Symbol)(using Context): Symbol = {
       def liftedEnclosure(sym: Symbol) =
-        if sym.is(Method)
-        then deps.logicalOwner.getOrElse(sym, sym.enclosure)
-        else sym.enclosure
+        deps.logicalOwner.getOrElse(sym, sym.enclosure)
       def searchIn(enclosure: Symbol): Symbol = {
         if (!enclosure.exists) {
           def enclosures(encl: Symbol): List[Symbol] =
