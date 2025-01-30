@@ -22,10 +22,12 @@ private def makeClassExpr(nameExpr: Expr[String])(using Quotes): Expr[Any] = {
     selfType = None,
     clsFlags = Flags.EmptyFlags,
     clsPrivateWithin = Symbol.noSymbol,
+    clsAnnotations = Nil,
     conMethodType,
     conFlags = Flags.EmptyFlags,
     conPrivateWithin = Symbol.noSymbol,
-    conParamFlags = List(List(Flags.EmptyFlags, Flags.EmptyFlags), List(Flags.EmptyFlags, Flags.EmptyFlags))
+    conParamFlags = List(List(Flags.EmptyFlags, Flags.EmptyFlags), List(Flags.EmptyFlags, Flags.EmptyFlags)),
+    conParamPrivateWithins = List(List(Symbol.noSymbol, Symbol.noSymbol), List(Symbol.noSymbol, Symbol.noSymbol))
   )
 
   val clsDef = ClassDef(cls, List(TypeTree.of[Object]), body = Nil)

@@ -2690,10 +2690,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         selfType: Option[TypeRepr],
         clsFlags: Flags,
         clsPrivateWithin: Symbol,
-        conParamNames: List[String],
-        conParamTypes: List[TypeRepr],
+        conParams: List[(String, TypeRepr)]
       ): Symbol =
-        assert(conParamNames.length == conParamTypes.length, "Lengths of conParamNames and conParamTypes must be equal")
+        val (conParamNames, conParamTypes) = conParams.unzip()
         newClass(
           owner,
           name,
@@ -2706,7 +2705,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           conMethodType = res => MethodType(conParamNames)(_ => conParamTypes, _ => res),
           conFlags = Flags.EmptyFlags,
           conPrivateWithin = Symbol.noSymbol,
-          conParamFlags = List(for i <- conParamNames yield Flags.EmptyFlags)
+          conParamFlags = List(for i <- conParamNames yield Flags.EmptyFlags),
+          conParamPrivateWithins = List(for i <- conParamNames yield Symbol.noSymbol)
         )
 
       def newClass(
@@ -2721,7 +2721,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         conMethodType: TypeRepr => MethodOrPoly,
         conFlags: Flags,
         conPrivateWithin: Symbol,
-        conParamFlags: List[List[Flags]]
+        conParamFlags: List[List[Flags]],
+        conParamPrivateWithins: List[List[Symbol]]
       ) =
         assert(!clsPrivateWithin.exists || clsPrivateWithin.isType, "clsPrivateWithin must be a type symbol or `Symbol.noSymbol`")
         assert(!conPrivateWithin.exists || conPrivateWithin.isType, "consPrivateWithin must be a type symbol or `Symbol.noSymbol`")
@@ -2760,7 +2761,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
               paramNames.zip(paramBounds).map(_ :* true :* clauseIdx).zipWithIndex ++ getParamAccessors(res, clauseIdx + 1)
             case result =>
               List()
-        // Maps PolyType indexes to type symbols
+        // Maps PolyType indexes to type parameter symbols
         val paramRefMap = collection.mutable.HashMap[Int, Symbol]()
         val paramRefRemapper = new Types.TypeMap {
           def apply(tp: Types.Type) = tp match {
@@ -2771,13 +2772,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         for ((name, tpe, isType, clauseIdx), elementIdx) <- getParamAccessors(methodType, 0) do
           if isType then
             checkValidFlags(conParamFlags(clauseIdx)(elementIdx), Flags.validClassTypeParamFlags)
-            val symbol = dotc.core.Symbols.newSymbol(cls, name.toTypeName, Flags.Param | Flags.Deferred | Flags.Private | Flags.PrivateLocal | Flags.Local | conParamFlags(clauseIdx)(elementIdx), tpe, Symbol.noSymbol)
+            val symbol = dotc.core.Symbols.newSymbol(cls, name.toTypeName, Flags.Param | Flags.Deferred | Flags.Private | Flags.PrivateLocal | Flags.Local | conParamFlags(clauseIdx)(elementIdx), tpe, conParamPrivateWithins(clauseIdx)(elementIdx))
             paramRefMap.addOne(elementIdx, symbol)
             cls.enter(symbol)
           else
             checkValidFlags(conParamFlags(clauseIdx)(elementIdx), Flags.validClassTermParamFlags)
             val fixedType = paramRefRemapper(tpe)
-            cls.enter(dotc.core.Symbols.newSymbol(cls, name.toTermName, Flags.ParamAccessor | conParamFlags(clauseIdx)(elementIdx), fixedType, Symbol.noSymbol)) // TODO set privateWithin?
+            cls.enter(dotc.core.Symbols.newSymbol(cls, name.toTermName, Flags.ParamAccessor | conParamFlags(clauseIdx)(elementIdx), fixedType, conParamPrivateWithins(clauseIdx)(elementIdx)))
         for sym <- decls(cls) do cls.enter(sym)
         cls
 
@@ -3189,10 +3190,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       private[QuotesImpl] def validTypeAliasFlags: Flags = Private | Protected | Override | Final | Infix | Local
 
       // Keep: aligned with Quotes's `newClass`
-      private[QuotesImpl] def validClassFlags: Flags = Private | Protected | PrivateLocal | Local | Final | Trait | Abstract // AbsOverride, Open
+      private[QuotesImpl] def validClassFlags: Flags = Private | Protected | PrivateLocal | Local | Final | Trait | Abstract | Open
 
       // Keep: aligned with Quote's 'newClass'
-      // Private constructor would be currently useless, but if we decide to add a way to register companions in the future it might be useful
       private[QuotesImpl] def validClassConstructorFlags: Flags = Synthetic | Method | Private | Protected | PrivateLocal | Local
 
       // Keep: aligned with Quotes's `newClass`

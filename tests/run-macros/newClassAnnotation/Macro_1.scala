@@ -31,7 +31,8 @@ private def makeClassExpr(nameExpr: Expr[String])(using Quotes): Expr[Any] = {
     conMethodType,
     conFlags = Flags.EmptyFlags,
     conPrivateWithin = Symbol.noSymbol,
-    conParamFlags = List(List())
+    conParamFlags = List(List()),
+    conParamPrivateWithins = List(List())
   )
 
   val clsDef = ClassDef(cls, List(TypeTree.of[Object]), body = Nil)

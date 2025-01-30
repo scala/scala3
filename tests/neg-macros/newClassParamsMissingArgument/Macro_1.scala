@@ -10,7 +10,7 @@ private def makeClassExpr(nameExpr: Expr[String])(using Quotes): Expr[Object] = 
   val parents = List(TypeTree.of[Object])
   def decls(cls: Symbol): List[Symbol] = Nil
 
-  val cls = Symbol.newClass(Symbol.spliceOwner, name, parents = _ => parents.map(_.tpe), decls, selfType = None, Flags.EmptyFlags, Symbol.noSymbol, List("idx"), List(TypeRepr.of[Int]))
+  val cls = Symbol.newClass(Symbol.spliceOwner, name, parents = _ => parents.map(_.tpe), decls, selfType = None, Flags.EmptyFlags, Symbol.noSymbol, List(("idx", TypeRepr.of[Int])))
 
   val clsDef = ClassDef(cls, parents, body = Nil)
   val newCls = Typed(Apply(Select(New(TypeIdent(cls)), cls.primaryConstructor), Nil), TypeTree.of[Object])
