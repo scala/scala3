@@ -384,6 +384,9 @@ class Inliner(val call: tpd.Tree)(using Context):
    */
   private val opaqueProxies = new mutable.ListBuffer[(TermRef, TermRef)]
 
+  /** TermRefs for which we already started synthesising proxies */
+  private val visitedTermRefs = new mutable.HashSet[TermRef]
+
   protected def hasOpaqueProxies = opaqueProxies.nonEmpty
 
   /** Map first halves of opaqueProxies pairs to second halves, using =:= as equality */
@@ -401,8 +404,9 @@ class Inliner(val call: tpd.Tree)(using Context):
         for cls <- ref.widen.baseClasses do
           if cls.containsOpaques
              && (forThisProxy || inlinedMethod.isContainedIn(cls))
-             && mapRef(ref).isEmpty
+             && !visitedTermRefs.contains(ref)
           then
+            visitedTermRefs += ref
             val refiningRef = OpaqueProxy(ref, cls, call.span)
             val refiningSym = refiningRef.symbol.asTerm
             val refinedType = refiningRef.info
