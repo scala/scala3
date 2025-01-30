@@ -44,10 +44,12 @@ private def makeClassExpr(using Quotes)(
     selfType = None,
     clsFlags,
     clsPrivateWithin = Symbol.noSymbol,
+    clsAnnotations = Nil,
     conMethodType,
     conFlags = Flags.EmptyFlags,
     conPrivateWithin = Symbol.noSymbol,
-    conParamFlags = List(List(Flags.EmptyFlags, Flags.EmptyFlags), List(Flags.EmptyFlags, Flags.EmptyFlags))
+    conParamFlags = List(List(Flags.EmptyFlags, Flags.EmptyFlags), List(Flags.EmptyFlags, Flags.EmptyFlags)),
+    conParamPrivateWithins = List(List(Symbol.noSymbol, Symbol.noSymbol), List(Symbol.noSymbol, Symbol.noSymbol))
   )
   val traitDef = ClassDef(traitSymbol, List(TypeTree.of[Object]), body = Nil)
 
@@ -60,10 +62,12 @@ private def makeClassExpr(using Quotes)(
     selfType = None,
     clsFlags = Flags.EmptyFlags,
     clsPrivateWithin = Symbol.noSymbol,
+    clsAnnotations = Nil,
     conMethodType = (classType: TypeRepr) => MethodType(Nil)(_ => Nil, _ => classType),
     conFlags = Flags.EmptyFlags,
     conPrivateWithin = Symbol.noSymbol,
-    conParamFlags = List(List())
+    conParamFlags = List(List()),
+    conParamPrivateWithins = List(List(Symbol.noSymbol, Symbol.noSymbol), List(Symbol.noSymbol, Symbol.noSymbol))
   )
   val obj = '{new java.lang.Object()}.asTerm match
     case Inlined(_, _, term) => term

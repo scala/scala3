@@ -10,7 +10,7 @@ private def makeClassExpr(nameExpr: Expr[String])(using Quotes): Expr[Foo] = {
   val parents = List('{ new Foo(1) }.asTerm)
   def decls(cls: Symbol): List[Symbol] = Nil
 
-  val cls = Symbol.newClass(Symbol.spliceOwner, name, parents = _ => parents.map(_.tpe), decls, selfType = None, Flags.EmptyFlags, Symbol.noSymbol, List("idx"), List(TypeRepr.of[Int]))
+  val cls = Symbol.newClass(Symbol.spliceOwner, name, parents = _ => parents.map(_.tpe), decls, selfType = None, Flags.EmptyFlags, Symbol.noSymbol, List(("idx", TypeRepr.of[Int])))
 
   val parentsWithSym = List(Apply(Select(New(TypeTree.of[Foo]), TypeRepr.of[Foo].typeSymbol.primaryConstructor), List(Ref(cls.fieldMember("idx")))))
   val clsDef = ClassDef(cls, parentsWithSym, body = Nil)
