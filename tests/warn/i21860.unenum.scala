@@ -3,7 +3,7 @@ sealed trait Corners { self: Figure => }
 
 sealed abstract class Shape extends Figure
 object Shape:
-  case object Triange  extends Shape with Corners
+  case object Triangle extends Shape with Corners
   case object Square   extends Shape with Corners
   case object Circle   extends Shape
   case object Ellipsis extends Shape

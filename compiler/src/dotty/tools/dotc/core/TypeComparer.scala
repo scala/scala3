@@ -3201,35 +3201,28 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             result
         end existsCommonBaseTypeWithDisjointArguments
 
-        provablyDisjointClasses(cls1, cls2, seen = null)
+        provablyDisjointClasses(cls1, cls2)
           || existsCommonBaseTypeWithDisjointArguments
     end match
   }
 
-  private def provablyDisjointClasses(cls1: Symbol, cls2: Symbol, seen: util.HashSet[Symbol] | Null)(using Context): Boolean =
+  private def provablyDisjointClasses(cls1: Symbol, cls2: Symbol)(using Context): Boolean =
     def isDecomposable(cls: Symbol): Boolean =
-      if seen != null && seen.contains(cls) then false
-      else cls.is(Sealed) && !cls.hasAnonymousChild
+      cls.is(Sealed) && !cls.hasAnonymousChild
 
     def decompose(cls: Symbol): List[Symbol] =
-      cls.children.flatMap { child =>
+      cls.children.map: child =>
         if child.isTerm then
-          child.info.classSymbols // allow enum vals to be decomposed to their enum class (then filtered out) and any mixins
-        else child :: Nil
-      }.filter(child => child.exists && child != cls)
-
-    inline def seeing(inline cls: Symbol)(inline thunk: util.HashSet[Symbol] => Boolean) =
-      val seen1 = if seen == null then new util.HashSet[Symbol] else seen
-      try
-        seen1 += cls
-        thunk(seen1)
-      finally seen1 -= cls
+          child.info.classSymbol.orElse(child)
+        else child
+      .filter(child => child.exists && child != cls)
 
     def eitherDerivesFromOther(cls1: Symbol, cls2: Symbol): Boolean =
       cls1.derivesFrom(cls2) || cls2.derivesFrom(cls1)
 
     def smallestNonTraitBase(cls: Symbol): Symbol =
-      cls.asClass.baseClasses.find(!_.is(Trait)).get
+      val classes = if cls.isClass then cls.asClass.baseClasses else cls.info.classSymbols
+      classes.find(!_.is(Trait)).get
 
     if (eitherDerivesFromOther(cls1, cls2))
       false
@@ -3247,11 +3240,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         // instantiations of `cls1` (terms of the form `new cls1`) are not
         // of type `tp2`. Therefore, we can safely decompose `cls1` using
         // `.children`, even if `cls1` is non abstract.
-        seeing(cls1): seen1 =>
-          decompose(cls1).forall(x => provablyDisjointClasses(x, cls2, seen1))
+        decompose(cls1).forall(x => provablyDisjointClasses(x, cls2))
       else if (isDecomposable(cls2))
-        seeing(cls2): seen1 =>
-          decompose(cls2).forall(x => provablyDisjointClasses(cls1, x, seen1))
+        decompose(cls2).forall(x => provablyDisjointClasses(cls1, x))
       else
         false
   end provablyDisjointClasses
