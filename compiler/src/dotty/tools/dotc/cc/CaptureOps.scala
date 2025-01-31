@@ -232,7 +232,9 @@ extension (tp: Type)
       case tp @ ReachCapability(_) =>
         tp.singletonCaptureSet
       case ReadOnlyCapability(ref) =>
-        ref.deepCaptureSet(includeTypevars)
+        val refDcs = ref.deepCaptureSet(includeTypevars)
+        if refDcs.isConst then CaptureSet(refDcs.elems.map(_.readOnly))
+        else refDcs // this case should not happen for correct programs
       case tp: SingletonCaptureRef if tp.isTrackableRef =>
         tp.reach.singletonCaptureSet
       case _ =>
@@ -279,17 +281,19 @@ extension (tp: Type)
     case _ =>
       tp
 
-  /** The first element of this path type */
+  /** The first element of this path type. Note that class parameter references
+   *  are of the form this.C but their pathroot is still this.C, not this.
+   */
   final def pathRoot(using Context): Type = tp.dealias match
     case tp1: TermRef if tp1.symbol.maybeOwner.isClass => tp1.prefix.pathRoot
     case tp1: TypeRef if !tp1.symbol.is(Param) => tp1.prefix.pathRoot
     case tp1 => tp1
 
   /** The first element of a path type, but stop at references extending
-   *  SharableCapability
+   *  SharedCapability.
    */
   final def pathRootOrShared(using Context): Type =
-    if tp.derivesFrom(defn.Caps_SharedCapability) then tp
+    if tp.derivesFromSharedCapability then tp
     else tp.dealias match
       case tp1: TermRef if tp1.symbol.maybeOwner.isClass => tp1.prefix.pathRoot
       case tp1: TypeRef if !tp1.symbol.is(Param) => tp1.prefix.pathRoot
@@ -427,6 +431,7 @@ extension (tp: Type)
 
   def derivesFromCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_Capability)
   def derivesFromMutable(using Context): Boolean = derivesFromCapTrait(defn.Caps_Mutable)
+  def derivesFromSharedCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_SharedCapability)
 
   /** Drop @retains annotations everywhere */
   def dropAllRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
@@ -466,6 +471,11 @@ extension (tp: Type)
    *  is the union of all capture sets that appear in covariant position in the
    *  type of `x`. If `x` and `y` are different variables then `{x*}` and `{y*}`
    *  are unrelated.
+   *
+   *  Reach capabilities cannot wrap read-only capabilities or maybe capabilities.
+   *  We have
+   *      (x.rd).reach = x*.rd
+   *      (x.rd)?      = (x*)?
    */
   def reach(using Context): CaptureRef = tp match
     case tp @ AnnotatedType(tp1: CaptureRef, annot)
@@ -483,6 +493,10 @@ extension (tp: Type)
   /** If `x` is a capture ref, its read-only capability `x.rd`, represented internally
    *  as `x @readOnlyCapability`. We have {x.rd} <: {x}. If `x` is a reach capability `y*`,
    *  then its read-only version is `x.rd*`.
+   *
+   *  Read-only capabilities cannot wrap maybe capabilities
+   *  but they can wrap reach capabilities. We have
+   *      (x?).readOnly = (x.rd)?
    */
   def readOnly(using Context): CaptureRef = tp match
     case tp @ AnnotatedType(tp1: CaptureRef, annot)
