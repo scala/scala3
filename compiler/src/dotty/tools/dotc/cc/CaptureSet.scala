@@ -636,7 +636,8 @@ object CaptureSet:
      */
     def solve()(using Context): Unit =
       if !isConst then
-        val approx = upperApprox(empty).map(Fresh.FromCap(NoSymbol).inverse)
+        val approx = upperApprox(empty)
+          .map(Fresh.FromCap(NoSymbol).inverse)    // Fresh.Cap --> cap
           .showing(i"solve $this = $result", capt)
         //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toList}")
         val newElems = approx.elems -- elems
@@ -1139,6 +1140,7 @@ object CaptureSet:
 
   /** A template for maps on capabilities where f(c) <: c and f(f(c)) = c */
   private abstract class NarrowingCapabilityMap(using Context) extends BiTypeMap:
+
     def mapRef(ref: CaptureRef): CaptureRef
 
     def apply(t: Type) = t match

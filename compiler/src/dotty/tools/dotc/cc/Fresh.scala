@@ -16,11 +16,16 @@ import util.SimpleIdentitySet.empty
 import CaptureSet.{Refs, emptySet, NarrowingCapabilityMap}
 import dotty.tools.dotc.util.SimpleIdentitySet
 
-/** Handling fresh in CC:
-
-*/
+/** A module for handling Fresh types. Fresh.Cap instances are top type that keep
+ *  track of what they hide when capabilities get widened by subsumption to fresh.
+ *  The module implements operations to convert between regular caps.cap and
+ *  Fresh.Cap instances. Fresh.Cap is encoded as `caps.cap @freshCapability(...)` where
+ *  `freshCapability(...)` is a special kind of annotation of type `Fresh.Annot`
+ *  that contains a hidden set.
+ */
 object Fresh:
 
+  /** The annotation of a Fresh.Cap instance */
   case class Annot(hidden: CaptureSet.HiddenSet) extends Annotation:
     override def symbol(using Context) = defn.FreshCapabilityAnnot
     override def tree(using Context) = New(symbol.typeRef, Nil)
@@ -32,6 +37,9 @@ object Fresh:
       case _ => false
   end Annot
 
+  /** The initial elements (either 0 or 1) of a hidden set created for given `owner`.
+   *  If owner `x` is a trackable this is `x*` if reach` is true, or `x` otherwise.
+   */
   private def ownerToHidden(owner: Symbol, reach: Boolean)(using Context): Refs =
     val ref = owner.termRef
     if reach then
@@ -39,6 +47,7 @@ object Fresh:
     else
       if ref.isTracked then SimpleIdentitySet(ref) else emptySet
 
+  /** An extractor for "fresh" capabilities */
   object Cap:
 
     def apply(initialHidden: Refs = emptySet)(using Context): CaptureRef =
