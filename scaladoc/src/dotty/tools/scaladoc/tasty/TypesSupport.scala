@@ -75,7 +75,7 @@ trait TypesSupport:
         else inner(tpe) ++ plain(".").l ++ suffix
       case tpe => inner(tpe)
 
-  // TODO #23 add support for all types signatures that makes sense
+  // TODO #23 add support for all types signatures that make sense
   private def inner(
     using Quotes,
   )(
@@ -87,7 +87,7 @@ trait TypesSupport:
   ): SSignature =
     import reflect._
     def noSupported(name: String): SSignature =
-      println(s"WARN: Unsupported type: $name: ${tp.show}")
+      report.warning(s"Unsupported type: $name: ${tp.show}")
       plain(s"Unsupported[$name]").l
     tp match
       case OrType(left, right) =>

@@ -31,8 +31,8 @@ trait MemberLookup {
       def nearestPackage(sym: Symbol): Symbol =
         if sym.flags.is(Flags.Package) then sym else nearestPackage(sym.owner)
 
-      def nearestMembered(sym: Symbol): Symbol =
-        if sym.isClassDef || sym.flags.is(Flags.Package) then sym else nearestMembered(sym.owner)
+      def nearestMember(sym: Symbol): Symbol =
+        if sym.isClassDef || sym.flags.is(Flags.Package) then sym else nearestMember(sym.owner)
 
       val res: Option[(Symbol, String, Option[Symbol])] = {
         def toplevelLookup(querystrings: List[String]) =
@@ -43,7 +43,7 @@ trait MemberLookup {
 
         ownerOpt match {
           case Some(owner) =>
-            val nearest = nearestMembered(owner)
+            val nearest = nearestMember(owner)
             val nearestCls = nearestClass(owner)
             val nearestPkg = nearestPackage(owner)
             def relativeLookup(querystrings: List[String], owner: Symbol): Option[(Symbol, Option[Symbol])] = {
