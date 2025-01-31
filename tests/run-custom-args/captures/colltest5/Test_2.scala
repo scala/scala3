@@ -1,7 +1,6 @@
 import Predef.{augmentString as _, wrapString as _, *}
 import scala.reflect.ClassTag
 import caps.unsafe.unsafeAssumeSeparate
-import language.`3.7` // sepchecks on
 
 object Test {
   import colltest5.strawman.collections.*
