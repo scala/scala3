@@ -345,10 +345,18 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           parent
         case _ => tp
 
+      /** Check that types extending SharedCapability don't have a `cap` in their capture set.
+       *  TODO This is not enough.
+       *  We need to also track that we cannot get exclusive capabilities in paths
+       *  where some prefix derives from SharedCapability. Also, can we just
+       *  exclude `cap`, or do we have to extend this to all exclusive capabilties?
+       *  The problem is that we know what is exclusive in general only after capture
+       *  checking, not before.
+       */
       def checkSharedOK(tp: Type): tp.type =
         tp match
           case CapturingType(parent, refs)
-          if refs.isUniversal && parent.derivesFrom(defn.Caps_SharedCapability) =>
+          if refs.isUniversal && parent.derivesFromSharedCapability =>
             fail(em"$tp extends SharedCapability, so it cannot capture `cap`")
           case _ =>
         tp

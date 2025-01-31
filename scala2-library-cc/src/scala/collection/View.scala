@@ -153,6 +153,9 @@ object View extends IterableFactory[View] {
       underlying match {
         case filter: Filter[A]^{underlying} if filter.isFlipped == isFlipped =>
           unsafeAssumeSeparate:
+            // See filter-iterable.scala for a test where a variant of Filter
+            // works without the unsafeAssumeSeparate. But it requires significant
+            // changes compared to the version here. See also Filter in colltest5.CollectionStrawManCC5_1.
             new Filter(filter.underlying, a => filter.p(a) && p(a), isFlipped)
         case _ => new Filter(underlying, p, isFlipped)
       }
