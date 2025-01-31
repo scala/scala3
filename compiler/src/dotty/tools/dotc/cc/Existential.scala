@@ -252,7 +252,7 @@ object Existential:
       tp1.derivedAnnotatedType(toCap(parent), ann)
     case _ => tp
 
-  /** Map existentials at the top-level and in all nested result types to `cap`
+  /** Map existentials at the top-level and in all nested result types to `Fresh.Cap`
    */
   def toCapDeeply(tp: Type)(using Context): Type = tp.dealiasKeepAnnots match
     case Existential(boundVar, unpacked) =>

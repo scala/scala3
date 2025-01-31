@@ -72,14 +72,21 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
    */
   final class use extends annotation.StaticAnnotation
 
+  /** An annotations on parameters and update methods.
+   *  On a parameter it states that any capabilties passed in the argument
+   *  are no longer available afterwards, unless they are of class `SharableCapabilitty`.
+   *  On an update method, it states that the `this` of the enclosing class is
+   *  consumed, which means that any capabilities of the method prefix are
+   *  no longer available afterwards.
+   */
+  final class consume extends annotation.StaticAnnotation
+
   /** An annotation placed on a refinement created by capture checking.
    *  Refinements with this annotation unconditionally override any
-   *  info vfrom the parent type, so no intersection needs to be formed.
+   *  info from the parent type, so no intersection needs to be formed.
    *  This could be useful for tracked parameters as well.
    */
   final class refineOverride extends annotation.StaticAnnotation
-
-  final class consume extends annotation.StaticAnnotation
 
   object unsafe:
 
