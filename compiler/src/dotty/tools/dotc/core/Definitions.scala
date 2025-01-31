@@ -1115,8 +1115,6 @@ class Definitions {
   @tu lazy val SilentAnnots: Set[Symbol] =
     Set(InlineParamAnnot, ErasedParamAnnot, RefineOverrideAnnot)
 
-  @tu lazy val ccParamOnlyAnnotations: Set[Symbol] = Set(UseAnnot, ConsumeAnnot)
-
   // A list of annotations that are commonly used to indicate that a field/method argument or return
   // type is not null. These annotations are used by the nullification logic in JavaNullInterop to
   // improve the precision of type nullification.

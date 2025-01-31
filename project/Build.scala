@@ -1225,7 +1225,7 @@ object Build {
     settings(scala2LibraryBootstrappedSettings).
     settings(
       moduleName := "scala2-library-cc",
-      scalacOptions += "-Ycheck:all"
+      scalacOptions += "-Ycheck:all",
     )
 
   lazy val scala2LibraryBootstrappedSettings = Seq(

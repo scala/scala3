@@ -6,7 +6,6 @@ import scala.reflect.ClassTag
 import annotation.unchecked.{uncheckedVariance, uncheckedCaptures}
 import annotation.tailrec
 import caps.cap
-import caps.untrackedCaptures
 import caps.unsafe.unsafeAssumeSeparate
 
 /** A strawman architecture for new collections. It contains some
@@ -69,10 +68,7 @@ object CollectionStrawMan5 {
   /** Base trait for strict collections */
   trait Buildable[+A] extends Iterable[A] {
     protected def newBuilder: Builder[A, Repr] @uncheckedVariance
-    override def partition(p: A => Boolean): (Repr, Repr) @untrackedCaptures =
-      // Without untrackedCaptures this fails SepChecks.checkType.
-      // But this is probably an error in the hiding logic.
-      // TODO remove @untrackedCaptures and investigate
+    override def partition(p: A => Boolean): (Repr, Repr) =
       val l, r = newBuilder
       iterator.foreach(x => (if (p(x)) l else r) += x)
       (l.result, r.result)
@@ -120,7 +116,7 @@ object CollectionStrawMan5 {
     this: SeqLike[A] =>
     type C[X] <: Seq[X]
     def fromIterable[B](coll: Iterable[B]^): C[B]
-    override protected def fromLikeIterable(coll: Iterable[A] @uncheckedVariance ^ ): Repr =
+    override protected def fromLikeIterable(coll: Iterable[A] @uncheckedVariance ^): Repr =
       fromIterable(coll)
 
   trait IterableOps[+A] extends Any {
