@@ -393,18 +393,14 @@ object desugar {
           rhs
       cpy.TypeDef(tparam)(rhs = dropInRhs(tparam.rhs))
 
-    def paramssNoRHS = mapParamss(meth.paramss)(identity) {
-      vparam =>
-        if vparam.rhs.isEmpty then vparam
-        else cpy.ValDef(vparam)(rhs = EmptyTree).withMods(vparam.mods | HasDefault)
-    }
+    def paramssNoRHS = mapParamss(meth.paramss)(identity): vparam =>
+      if vparam.rhs.isEmpty then vparam
+      else cpy.ValDef(vparam)(rhs = EmptyTree).withMods(vparam.mods | HasDefault)
 
     def getterParamss(n: Int): List[ParamClause] =
-      mapParamss(takeUpTo(paramssNoRHS, n)) {
-        tparam => dropContextBounds(toMethParam(tparam, KeepAnnotations.All))
-      } {
-        vparam => toMethParam(vparam, KeepAnnotations.All, keepDefault = false)
-      }
+      mapParamss(takeUpTo(paramssNoRHS, n))
+        (tparam => dropContextBounds(toMethParam(tparam, KeepAnnotations.All)))
+        (vparam => toMethParam(vparam, KeepAnnotations.All, keepDefault = false))
 
     def defaultGetters(paramss: List[ParamClause], n: Int): List[DefDef] = paramss match
       case ValDefs(vparam :: vparams) :: paramss1 =>
@@ -418,6 +414,7 @@ object desugar {
           .withMods(Modifiers(
             meth.mods.flags & (AccessFlags | Synthetic) | (vparam.mods.flags & Inline),
             meth.mods.privateWithin))
+          .withSpan(vparam.rhs.span)
         val rest = defaultGetters(vparams :: paramss1, n + 1)
         if vparam.rhs.isEmpty then rest else defaultGetter :: rest
       case _ :: paramss1 =>  // skip empty parameter lists and type parameters
