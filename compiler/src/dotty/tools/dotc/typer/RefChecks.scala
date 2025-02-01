@@ -1163,22 +1163,20 @@ object RefChecks {
    *  that are either both opaque types or both not.
    */
   def checkExtensionMethods(sym: Symbol)(using Context): Unit =
-    if sym.is(Extension) && !sym.nextOverriddenSymbol.exists then
+    if sym.is(Extension) then
       extension (tp: Type)
-        def strippedResultType = Applications.stripImplicit(tp.stripPoly, wildcardOnly = true).resultType
-        def firstExplicitParamTypes = Applications.stripImplicit(tp.stripPoly, wildcardOnly = true).firstParamTypes
+        def explicit = Applications.stripImplicit(tp.stripPoly, wildcardOnly = true)
         def hasImplicitParams = tp.stripPoly match { case mt: MethodType => mt.isImplicitMethod case _ => false }
-      val target = sym.info.firstExplicitParamTypes.head // required for extension method, the putative receiver
-      val methTp = sym.info.strippedResultType // skip leading implicits and the "receiver" parameter
+      val target = sym.info.explicit.firstParamTypes.head // required for extension method, the putative receiver
+      val methTp = sym.info.explicit.resultType // skip leading implicits and the "receiver" parameter
       def hidden =
         target.nonPrivateMember(sym.name)
-        .filterWithPredicate:
-          member =>
+        .filterWithPredicate: member =>
           member.symbol.isPublic && {
             val memberIsImplicit = member.info.hasImplicitParams
             val paramTps =
               if memberIsImplicit then methTp.stripPoly.firstParamTypes
-              else methTp.firstExplicitParamTypes
+              else methTp.explicit.firstParamTypes
 
             paramTps.isEmpty || memberIsImplicit && !methTp.hasImplicitParams || {
               val memberParamTps = member.info.stripPoly.firstParamTypes
@@ -1190,7 +1188,13 @@ object RefChecks {
             }
           }
         .exists
-      if !target.typeSymbol.isOpaqueAlias && hidden
+      val receiverName = sym.info.explicit.firstParamNames.head
+      val num = sym.info.paramNamess.flatten.indexWhere(_ == receiverName)
+      val getterName = DefaultGetterName(sym.name.toTermName, num = num)
+      val getterDenot = sym.owner.info.member(getterName)
+      if getterDenot.exists
+      then report.warning(ExtensionHasDefault(sym), getterDenot.symbol.srcPos)
+      if !target.typeSymbol.isOpaqueAlias && !sym.nextOverriddenSymbol.exists && hidden
       then report.warning(ExtensionNullifiedByMember(sym, target.typeSymbol), sym.srcPos)
   end checkExtensionMethods
 

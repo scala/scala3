@@ -2514,6 +2514,15 @@ class ExtensionNullifiedByMember(method: Symbol, target: Symbol)(using Context)
        |
        |The extension may be invoked as though selected from an arbitrary type if conversions are in play."""
 
+class ExtensionHasDefault(method: Symbol)(using Context)
+  extends Message(ExtensionHasDefaultID):
+  def kind = MessageKind.PotentialIssue
+  def msg(using Context) =
+    i"""Extension method ${hl(method.name.toString)} should not have a default argument for its receiver."""
+  def explain(using Context) =
+    i"""Although extensions are ordinary methods, they must be invoked as a selection.
+       |Therefore, the receiver cannot be omitted. A default argument for that parameter would never be used."""
+
 class TraitCompanionWithMutableStatic()(using Context)
   extends SyntaxMsg(TraitCompanionWithMutableStaticID) {
   def msg(using Context) = i"Companion of traits cannot define mutable @static fields"
