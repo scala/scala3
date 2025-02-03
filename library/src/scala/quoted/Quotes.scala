@@ -3812,6 +3812,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def classSymbol(fullName: String): Symbol
 
       /** Generates a new class symbol for a class with a public parameterless constructor.
+       *  For more settings, look to the other newClass methods.
        *
        *  Example usage:
        *  ```
@@ -3856,13 +3857,41 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       /** Generates a new class symbol for a class with a public single term clause constructor.
        *
-       * @param owner The owner of the class
-       * @param name The name of the class
-       * @param parents Function returning the parent classes of the class. The first parent must not be a trait.
-       * Takes the constructed class symbol as an argument. Calling `cls.typeRef.asType` as part of this function will lead to cyclic reference errors.
-       * @param clsFlags extra flags with which the class symbol should be constructed.
-       * @param clsPrivateWithin the symbol within which this new class symbol should be private. May be noSymbol.
-       * @param conParams constructor parameter pairs of names and types.
+       *  Example usage:
+       *  ```
+       *  val name = nameExpr.valueOrAbort
+       *  def decls(cls: Symbol): List[Symbol] =
+       *    List(Symbol.newMethod(cls, "foo", MethodType(Nil)(_ => Nil, _ => TypeRepr.of[Unit])))
+       *  val parents = List(TypeTree.of[Object])
+       *  val cls = Symbol.newClass(
+       *    Symbol.spliceOwner,
+       *    name,
+       *    parents = _ => parents.map(_.tpe),
+       *    decls,
+       *    selfType = None,
+       *    clsFlags = Flags.EmptyFlags,
+       *    Symbol.noSymbol,
+       *    List(("idx", TypeRepr.of[Int]), ("str", TypeRepr.of[String]))
+       *  )
+       *
+       *  val fooSym = cls.declaredMethod("foo").head
+       *  val idxSym = cls.fieldMember("idx")
+       *  val strSym = cls.fieldMember("str")
+       *  val fooDef = DefDef(fooSym, argss =>
+       *    Some('{println(s"Foo method call with (${${Ref(idxSym).asExpr}}, ${${Ref(strSym).asExpr}})")}.asTerm)
+       *  )
+       *  val clsDef = ClassDef(cls, parents, body = List(fooDef))
+       *  val newCls = Apply(Select(New(TypeIdent(cls)), cls.primaryConstructor), List(idxExpr.asTerm, strExpr.asTerm))
+       *
+       *  Block(List(clsDef), Apply(Select(newCls, cls.methodMember("foo")(0)), Nil)).asExprOf[Unit]
+       *  ```
+       *  @param owner The owner of the class
+       *  @param name The name of the class
+       *  @param parents Function returning the parent classes of the class. The first parent must not be a trait.
+       *  Takes the constructed class symbol as an argument. Calling `cls.typeRef.asType` as part of this function will lead to cyclic reference errors.
+       *  @param clsFlags extra flags with which the class symbol should be constructed.
+       *  @param clsPrivateWithin the symbol within which this new class symbol should be private. May be noSymbol.
+       *  @param conParams constructor parameter pairs of names and types.
        *
        *  Parameters assigned by the constructor can be obtained via `classSymbol.memberField`.
        *  This symbol starts without an accompanying definition.
@@ -3893,7 +3922,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  val conMethodType =
        *    (classType: TypeRepr) => PolyType(List("T"))(_ => List(TypeBounds.empty), polyType =>
        *      MethodType(List("param"))((_: MethodType) => List(polyType.param(0)), (_: MethodType) =>
-       *        classType
+       *        AppliedType(classType, List(polyType.param(0)))
        *      )
        *    )
        *  val cls = Symbol.newClass(
@@ -3955,7 +3984,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        * @param clsPrivateWithin the symbol within which this new class symbol should be private. May be noSymbol
        * @param clsAnnotations annotations of the class
        * @param conMethodType Function returning MethodOrPoly type representing the type of the constructor.
-       * Takes the result type as parameter which must be returned from the innermost MethodOrPoly.
+       * Takes the result type as parameter which must be returned from the innermost MethodOrPoly and have type parameters applied if those are used.
        * PolyType may only represent the first clause of the constructor.
        * @param conFlags extra flags with which the constructor symbol should be constructed. Can be `Synthetic` | `Method` | `Private` | `Protected` | `PrivateLocal` | `Local`
        * @param conPrivateWithin the symbol within which the constructor for this new class symbol should be private. May be noSymbol.
