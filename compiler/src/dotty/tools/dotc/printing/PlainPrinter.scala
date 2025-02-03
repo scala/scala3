@@ -28,7 +28,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def printDebug = ctx.settings.YprintDebug.value
 
   /** Print Fresh.Cap instances as <cap hiding ...> */
-  protected def printFreshDetailed = printDebug
+  protected def printFreshDetailed = ctx.settings.YccPrintFresh.value
 
   /** Print Fresh.Cap instances as "fresh" */
   protected def printFresh = printFreshDetailed || ctx.property(PrintFresh).isDefined
