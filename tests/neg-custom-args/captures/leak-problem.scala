@@ -25,7 +25,7 @@ def test(): Unit =
   def useBoxedAsync1(@use x: Box[Async^]): Unit = x.get.read()
 
   val xs: Box[Async^] = ???
-  val xsLambda = () => useBoxedAsync(xs) // error
+  val xsLambda = () => useBoxedAsync(xs) // was error now ok
   val _: () ->{xs*} Unit = xsLambda
   val _: () -> Unit = xsLambda // error
 

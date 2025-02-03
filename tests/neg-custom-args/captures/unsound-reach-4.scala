@@ -22,4 +22,4 @@ def bad(): Unit =
 
   var escaped: File^{backdoor*} = null
   withFile("hello.txt"): f =>
-    escaped = boom.use(f)  // error
+    escaped = boom.use(f)  // was error

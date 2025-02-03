@@ -486,9 +486,15 @@ class CheckCaptures extends Recheck, SymTransformer:
             // The path-use.scala neg test contains an example.
             val underlying = CaptureSet.ofTypeDeeply(c1.widen)
             capt.println(i"Widen reach $c to $underlying in ${env.owner}")
-            underlying.disallowRootCapability: () =>
-              report.error(em"Local reach capability $c leaks into capture scope of ${env.ownerString}", tree.srcPos)
-            recur(underlying, env, null)
+            if ccConfig.useSepChecks then
+              recur(underlying.filter(!_.isMaxCapability), env, null)
+                // we don't want to disallow underlying Fresh.Cap, since these are typically locally created
+                // fresh capabilities. We don't need to also follow the hidden set since separation
+                // checking makes ure that locally hidden references need to go to @consume parameters.
+            else
+              underlying.disallowRootCapability: () =>
+                report.error(em"Local reach capability $c leaks into capture scope of ${env.ownerString}", tree.srcPos)
+              recur(underlying, env, null)
         case c: TypeRef if c.isParamPath =>
           checkUseDeclared(c, env, null)
         case _ =>
