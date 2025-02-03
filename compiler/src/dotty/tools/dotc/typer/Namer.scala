@@ -1175,11 +1175,26 @@ class Namer { typer: Typer =>
       def canForward(mbr: SingleDenotation, alias: TermName): CanForward = {
         import CanForward.*
         val sym = mbr.symbol
+        /**
+         * The export selects a member of the current class (issue #22147).
+         * Assumes that cls.classInfo.selfType.derivesFrom(sym.owner) is true.
+         */
+        def isCurrentClassMember: Boolean = expr match
+          case id: (Ident | This) => // Access through self type or this
+            /* Given the usage context below, where cls's self type is a subtype of sym.owner,
+               it suffices to check if symbol is the same class. */
+            cls == id.symbol
+          case _ => false
         if !sym.isAccessibleFrom(pathType) then
           No("is not accessible")
         else if sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(ConstructorProxy) || sym.isAllOf(JavaModule) then
           Skip
-        else if cls.derivesFrom(sym.owner) && (sym.owner == cls || !sym.is(Deferred)) then
+        // if the cls is a subclass or mixes in the owner of the symbol
+        // and either
+        // * the symbols owner is the cls itself
+        // * the symbol is not a deferred symbol
+        // * the symbol is a member of the current class (#22147)
+        else if cls.classInfo.selfType.derivesFrom(sym.owner) && (sym.owner == cls || !sym.is(Deferred) || isCurrentClassMember) then
           No(i"is already a member of $cls")
         else if pathMethod.exists && mbr.isType then
           No("is a type, so it cannot be exported as extension method")
