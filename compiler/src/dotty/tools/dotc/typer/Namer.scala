@@ -1175,6 +1175,13 @@ class Namer { typer: Typer =>
       def canForward(mbr: SingleDenotation, alias: TermName): CanForward = {
         import CanForward.*
         val sym = mbr.symbol
+        /**
+         * Check the export selects an abstract member (issue #22147).
+         */
+        def isAbstractMember: Boolean = sym.is(Deferred) && (expr match
+          case ths: This if ths.qual.isEmpty => true
+          case _ => false
+        )
         if !sym.isAccessibleFrom(pathType) then
           No("is not accessible")
         else if sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(ConstructorProxy) || sym.isAllOf(JavaModule) then
@@ -1183,8 +1190,8 @@ class Namer { typer: Typer =>
         // and either
         // * the symbols owner is the cls itself
         // * the symbol is not a deferred symbol
-        // * the symbol is a deferred symbol and the selection is on a This
-        else if cls.derivesFrom(sym.owner) && (sym.owner == cls || !sym.is(Deferred) || (sym.is(Deferred) && expr.isInstanceOf[This])) then
+        // * the symbol is an abstract member #22147
+        else if cls.derivesFrom(sym.owner) && (sym.owner == cls || !sym.is(Deferred) || isAbstractMember) then
           No(i"is already a member of $cls")
         else if pathMethod.exists && mbr.isType then
           No("is a type, so it cannot be exported as extension method")
