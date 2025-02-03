@@ -1179,7 +1179,12 @@ class Namer { typer: Typer =>
           No("is not accessible")
         else if sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(ConstructorProxy) || sym.isAllOf(JavaModule) then
           Skip
-        else if cls.derivesFrom(sym.owner) && (sym.owner == cls || !sym.is(Deferred)) then
+        // if the cls is a subclass of the owner of the symbol
+        // and either
+        // * the symbols owner is the cls itself
+        // * the symbol is not a deferred symbol
+        // * the symbol is a deferred symbol and the selection is on a This
+        else if cls.derivesFrom(sym.owner) && (sym.owner == cls || !sym.is(Deferred) || (sym.is(Deferred) && expr.isInstanceOf[This])) then
           No(i"is already a member of $cls")
         else if pathMethod.exists && mbr.isType then
           No("is a type, so it cannot be exported as extension method")
