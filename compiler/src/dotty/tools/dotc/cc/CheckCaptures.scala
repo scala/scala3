@@ -698,8 +698,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       val freshenedFormal = Fresh.fromCap(formal)
       val argType = recheck(arg, freshenedFormal)
         .showing(i"recheck arg $arg vs $freshenedFormal", capt)
-      if formal.hasAnnotation(defn.UseAnnot) then
-        // The @use annotation is added to `formal` by `prepareFunction`
+      if formal.hasAnnotation(defn.UseAnnot) || formal.hasAnnotation(defn.ConsumeAnnot) then
+        // The @use and/or @consume annotation is added to `formal` by `prepareFunction`
         capt.println(i"charging deep capture set of $arg: ${argType} = ${argType.deepCaptureSet}")
         markFree(argType.deepCaptureSet, arg)
       if formal.containsCap then
