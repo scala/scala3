@@ -33,7 +33,9 @@ private def makeClassExpr(using Quotes)(
   val conMethodType =
     (classType: TypeRepr) => PolyType(List("A", "B"))(
       _ => List(TypeBounds.empty, TypeBounds.upper(TypeRepr.of[Int])),
-      polyType => MethodType(List("param1", "param2"))((_: MethodType) => List(polyType.param(0), polyType.param(1)), (_: MethodType) => classType)
+      polyType => MethodType(List("param1", "param2"))((_: MethodType) => List(polyType.param(0), polyType.param(1)), (_: MethodType) =>
+        AppliedType(classType, List(polyType.param(0), polyType.param(1)))
+      )
     )
 
   val traitSymbol = Symbol.newClass(
