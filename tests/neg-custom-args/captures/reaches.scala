@@ -53,7 +53,7 @@ class Id[-A,  +B >: A]():
 def test =
   val id: Id[Proc, Proc] = new Id[Proc, () -> Unit] // error
   usingFile: f =>
-    id(() => f.write()) // error
+    id(() => f.write()) // was error
 
 def attack2 =
   val id: File^ -> File^ = x => x

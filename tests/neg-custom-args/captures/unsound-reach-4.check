@@ -10,10 +10,6 @@
    |                             Required: Foo[box File^]
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/unsound-reach-4.scala:25:22 ---------------------------------------------------
-25 |    escaped = boom.use(f)  // error
-   |              ^^^^^^^^^^^
-   |              Local reach capability backdoor* leaks into capture scope of method bad
 -- [E164] Declaration Error: tests/neg-custom-args/captures/unsound-reach-4.scala:17:6 ---------------------------------
 17 |  def use(@consume x: F): File^ = x // error @consume override
    |      ^

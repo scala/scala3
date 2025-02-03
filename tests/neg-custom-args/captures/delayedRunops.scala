@@ -20,7 +20,7 @@ import caps.{use, consume}
   def delayedRunOps2(@consume ops: List[() => Unit]): () ->{} Unit =
     () =>
       val ops1: List[() => Unit] = ops // error
-      runOps(ops1)  // error
+      runOps(ops1)  // was error
 
   // unsound: impure operation pretended pure
   def delayedRunOps3(ops: List[() => Unit]): () ->{} Unit =

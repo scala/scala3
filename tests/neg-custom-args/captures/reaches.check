@@ -44,10 +44,6 @@
    |                                                   ^
    |                                Type variable A of constructor Id cannot be instantiated to box () => Unit since
    |                                that type captures the root capability `cap`.
--- Error: tests/neg-custom-args/captures/reaches.scala:56:6 ------------------------------------------------------------
-56 |    id(() => f.write()) // error
-   |    ^^^^^^^^^^^^^^^^^^^
-   |    Local reach capability id* leaks into capture scope of method test
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:63:27 --------------------------------------
 63 |    val f1: File^{id*} = id(f) // error, since now id(f): File^ // error
    |                         ^^^^^

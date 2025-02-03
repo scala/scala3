@@ -15,8 +15,3 @@
    |                               Required: Foo[box File^]
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/unsound-reach.scala:23:21 -----------------------------------------------------
-23 |        boom.use(f): (f1: File^{backdoor*}) => // error
-   |                     ^
-   |                     Local reach capability backdoor* leaks into capture scope of method bad
-24 |            escaped = f1
