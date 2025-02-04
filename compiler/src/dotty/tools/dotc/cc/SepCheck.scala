@@ -630,10 +630,11 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
               .dropWhile(_._3.isEmpty)
               .nextOption
               .getOrElse(("", current, globalOverlap))
+            val alsoStr = if next == prevRefs && nextRel == prevRel then "also " else ""
             report.error(
               em"""Separation failure in ${role.description} $tpe.
                   |One part,  $part , $nextRel  ${CaptureSet(next)}.
-                  |A previous part$prevStr $prevRel  ${CaptureSet(prevRefs)}.
+                  |A previous part$prevStr $alsoStr$prevRel  ${CaptureSet(prevRefs)}.
                   |The two sets overlap at  ${CaptureSet(overlap)}.""",
               pos)
 
@@ -642,7 +643,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         val partHidden = prune(partRefs.hidden.footprint, tpe, role).deduct(partFootprint)
 
         checkSep(footprint, partHidden, identity, "references", "hides")
-        checkSep(hiddenSet, partHidden, _.hidden, "also hides", "hides")
+        checkSep(hiddenSet, partHidden, _.hidden, "hides", "hides")
         checkSep(hiddenSet, partFootprint, _.hidden, "hides", "references")
 
         footprint ++= partFootprint
