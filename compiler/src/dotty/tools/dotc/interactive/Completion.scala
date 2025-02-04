@@ -145,11 +145,12 @@ object Completion:
         checkBacktickPrefix(ident.source.content(), ident.span.start, ident.span.end)
 
       case (tree: untpd.RefTree) :: _ if tree.name != nme.ERROR =>
-        tree.name.toString.take(pos.span.point - tree.span.point)
+        val nameStart = tree.span.point
+        val start = if pos.source.content().lift(nameStart).contains('`') then nameStart + 1 else nameStart
+        tree.name.toString.take(pos.span.point - start)
 
-      case _ => naiveCompletionPrefix(pos.source.content().mkString, pos.point)
-
-
+      case _ =>
+        naiveCompletionPrefix(pos.source.content().mkString, pos.point)
   end completionPrefix
 
   private object GenericImportSelector:
