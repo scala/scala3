@@ -643,7 +643,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       //   - on the LHS of assignments, or
       //   - if the qualifier or selection type is boxed, or
       //   - the selection is either a trackable capture ref or a pure type
-      if pt == LhsProto
+      if noWiden(selType, pt)
           || qualType.isBoxedCapturing
           || selWiden.isBoxedCapturing
           || selType.isTrackableRef
@@ -1496,11 +1496,14 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  Then
      *    foo: Foo { def a: C^{foo}; def b: C^{foo} }^{foo}
      */
-    private def improveCaptures(widened: Type, actual: Type)(using Context): Type = actual match
+    private def improveCaptures(widened: Type, prefix: Type)(using Context): Type = prefix match
       case ref: CaptureRef if ref.isTracked =>
         widened match
-          case CapturingType(p, refs) if ref.singletonCaptureSet.mightSubcapture(refs) =>
-            widened.derivedCapturingType(p, ref.singletonCaptureSet)
+          case widened @ CapturingType(p, refs) if ref.singletonCaptureSet.mightSubcapture(refs) =>
+            val improvedCs =
+              if widened.isBoxed then ref.reach.singletonCaptureSet
+              else ref.singletonCaptureSet
+            widened.derivedCapturingType(p, improvedCs)
               .showing(i"improve $widened to $result", capt)
           case _ => widened
       case _ => widened
@@ -1524,13 +1527,29 @@ class CheckCaptures extends Recheck, SymTransformer:
       case _ =>
         actual
 
+    /* Currently not needed since it forms part of `adapt`
+    private def improve(actual: Type, prefix: Type)(using Context): Type =
+      val widened = actual.widen.dealiasKeepAnnots
+      val improved = improveCaptures(widened, prefix).withReachCaptures(prefix)
+      if improved eq widened then actual else improved
+    */
+
+    /** An actual singleton type should not be widened if the expected type is a
+     *  LhsProto, or a singleton type, or a path selection with a stable value
+     */
+    private def noWiden(actual: Type, expected: Type)(using Context): Boolean =
+      actual.isSingleton
+      && expected.match
+          case expected: PathSelectionProto => !expected.sym.isOneOf(UnstableValueFlags)
+          case _ => expected.isSingleton || expected == LhsProto
+
     /** Adapt `actual` type to `expected` type. This involves:
      *   - narrow toplevel captures of `x`'s underlying type to `{x}` according to CC's VAR rule
      *   - narrow nested captures of `x`'s underlying type to `{x*}`
      *   - do box adaptation
      */
     def adapt(actual: Type, expected: Type, tree: Tree, boxErrors: BoxErrors)(using Context): Type =
-      if expected == LhsProto || expected.isSingleton && actual.isSingleton then
+      if noWiden(actual, expected) then
         actual
       else
         val improvedVAR = improveCaptures(actual.widen.dealiasKeepAnnots, actual)
