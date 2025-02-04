@@ -1176,7 +1176,7 @@ class Namer { typer: Typer =>
         import CanForward.*
         val sym = mbr.symbol
         /**
-         * Check the export selects an abstract member (issue #22147).
+         * Check the export selects an abstract member of the current class (issue #22147).
          */
         def isAbstractMember: Boolean = sym.is(Deferred) && (expr match
           case ths: This if ths.qual.isEmpty => true
