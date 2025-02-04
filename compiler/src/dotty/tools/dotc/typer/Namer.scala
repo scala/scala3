@@ -1179,7 +1179,10 @@ class Namer { typer: Typer =>
          * Check the export selects an abstract member of the current class (issue #22147).
          */
         def isAbstractMember: Boolean = sym.is(Deferred) && (expr match
-          case ths: This if ths.qual.isEmpty => true
+          case ths: This if ths.qual.isEmpty => true // access through 'this'
+          case id: Ident => id.denot.info match      // access through self type
+            case cls2: ClassInfo => cls2.cls == cls
+            case _ => false
           case _ => false
         )
         if !sym.isAccessibleFrom(pathType) then
