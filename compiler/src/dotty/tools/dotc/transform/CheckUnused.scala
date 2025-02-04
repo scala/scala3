@@ -8,7 +8,7 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.{Name, SimpleName, DerivedName, TermName, termName}
 import dotty.tools.dotc.core.NameOps.{isAnonymousFunctionName, isReplWrapperName, isContextFunction}
-import dotty.tools.dotc.core.NameKinds.{ContextBoundParamName, ContextFunctionParamName, WildcardParamName}
+import dotty.tools.dotc.core.NameKinds.{BodyRetainerName, ContextBoundParamName, ContextFunctionParamName, WildcardParamName}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.{ClassSymbol, NoSymbol, Symbol, defn, isDeprecated, requiredClass, requiredModule}
 import dotty.tools.dotc.core.Types.*
@@ -502,6 +502,7 @@ object CheckUnused:
       if ctx.settings.WunusedHas.privates
         && !sym.isPrimaryConstructor
         && sym.is(Private, butNot = SelfName | Synthetic | CaseAccessor)
+        && !sym.name.is(BodyRetainerName)
         && !sym.isSerializationSupport
         && !(sym.is(Mutable) && sym.isSetter && sym.owner.is(Trait)) // tracks sym.underlyingSymbol sibling getter
       then
