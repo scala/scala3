@@ -38,6 +38,7 @@ import Run.Progress
 import scala.compiletime.uninitialized
 import dotty.tools.dotc.transform.MegaPhase
 import dotty.tools.dotc.transform.Pickler.AsyncTastyHolder
+import java.util.{Timer, TimerTask}
 
 /** A compiler run. Exports various methods to compile source files */
 class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with ConstraintRunInfo {
@@ -382,7 +383,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
         initializeAsyncTasty()
       else () => {}
 
-    runPhases(allPhases = fusedPhases)(using runCtx)
+    showProgress(runPhases(allPhases = fusedPhases)(using runCtx))
     cancelAsyncTasty()
 
     ctx.reporter.finalizeReporting()
@@ -432,6 +433,26 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
       process()(using unitCtx)
     }
+
+  /** If set to true, prints every 10 seconds the files currently being compiled.
+   *  Turn this flag on if you want to find out which test among many takes more time
+   *  to compile than the others or causes an infinite loop in the compiler.
+   */
+  private inline val debugPrintProgress = false
+
+  /** Period between progress reports, in ms */
+  private inline val printProgressPeriod = 10000
+
+  /** Shows progress if debugPrintProgress is true */
+  private def showProgress(proc: => Unit)(using Context): Unit =
+    if !debugPrintProgress then proc
+    else
+      val watchdog = new TimerTask:
+        def run() = println(i"[compiling $units]")
+      try
+        new Timer().schedule(watchdog, printProgressPeriod, printProgressPeriod)
+        proc
+      finally watchdog.cancel()
 
   private sealed trait PrintedTree
   private /*final*/ case class SomePrintedTree(phase: String, tree: String) extends PrintedTree
