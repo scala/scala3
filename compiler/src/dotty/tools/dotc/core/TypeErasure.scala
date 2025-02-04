@@ -597,8 +597,8 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
    *   will be returned.
    *
    *  In all other situations, |T| will be computed as follow:
-   *   - For a refined type scala.Array+[T]:
-   *      - if T is Nothing or Null, []Object
+   *   - For a refined type scala.Array[T]:
+   *      - {Scala 2} if T is Nothing or Null, []Object
    *      - otherwise, if T <: Object, []|T|
    *      - otherwise, if T is a type parameter coming from Java, []Object
    *      - otherwise, Object
@@ -781,10 +781,12 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     val defn.ArrayOf(elemtp) = tp: @unchecked
     if (isGenericArrayElement(elemtp, isScala2 = sourceLanguage.isScala2)) defn.ObjectType
     else
-      try
-        val eElem = erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, isSymbol, inSigName)(elemtp)
-        if eElem.isInstanceOf[WildcardType] then WildcardType
-        else JavaArrayType(eElem)
+      try 
+        if sourceLanguage.isScala2 && (elemtp.isNullType || elemtp.isNothingType) then
+          JavaArrayType(defn.ObjectType)
+        else erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, isSymbol, inSigName)(elemtp) match
+          case _: WildcardType => WildcardType
+          case elem => JavaArrayType(elem)
       catch case ex: Throwable =>
         handleRecursive("erase array type", tp.show, ex)
   }
