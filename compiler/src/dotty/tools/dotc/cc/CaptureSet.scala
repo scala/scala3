@@ -227,11 +227,7 @@ sealed abstract class CaptureSet extends Showable:
     elems.forall(that.mightAccountFor)
     && !that.elems.forall(this.mightAccountFor)
 
-  /** The subcapturing test.
-   *  @param frozen   if true, no new variables or dependent sets are allowed to
-   *                  be added when making this test. An attempt to add either
-   *                  will result in failure.
-   */
+  /** The subcapturing test, taking an explicit VarState. */
   final def subCaptures(that: CaptureSet, vs: VarState)(using Context): CompareResult =
     subCaptures(that)(using ctx, vs)
 
@@ -392,7 +388,7 @@ sealed abstract class CaptureSet extends Showable:
   override def toText(printer: Printer): Text =
     printer.toTextCaptureSet(this) ~~ description
 
-  /** Apply function `f` to the elements. Typcially used for printing.
+  /** Apply function `f` to the elements. Typically used for printing.
    *  Overridden in HiddenSet so that we don't run into infinite recursions
    */
   def processElems[T](f: Refs => T): T = f(elems)
@@ -407,10 +403,10 @@ object CaptureSet:
   /** If set to `true`, capture stack traces that tell us where sets are created */
   private final val debugSets = false
 
-  val emptySet = SimpleIdentitySet.empty
+  val emptyRefs: Refs = SimpleIdentitySet.empty
 
   /** The empty capture set `{}` */
-  val empty: CaptureSet.Const = Const(emptySet)
+  val empty: CaptureSet.Const = Const(emptyRefs)
 
   /** The universal capture set `{cap}` */
   def universal(using Context): CaptureSet =
@@ -466,7 +462,7 @@ object CaptureSet:
    *  nulls, this provides more lenient checking against compilation units that
    *  were not yet compiled with capture checking on.
    */
-  object Fluid extends Const(emptySet):
+  object Fluid extends Const(emptyRefs):
     override def isAlwaysEmpty = false
     override def addThisElem(elem: CaptureRef)(using Context, VarState) = CompareResult.OK
     override def accountsFor(x: CaptureRef)(using Context, VarState): Boolean = true
@@ -475,7 +471,7 @@ object CaptureSet:
   end Fluid
 
   /** The subclass of captureset variables with given initial elements */
-  class Var(override val owner: Symbol = NoSymbol, initialElems: Refs = emptySet, val level: Level = undefinedLevel, underBox: Boolean = false)(using @constructorOnly ictx: Context) extends CaptureSet:
+  class Var(override val owner: Symbol = NoSymbol, initialElems: Refs = emptyRefs, val level: Level = undefinedLevel, underBox: Boolean = false)(using @constructorOnly ictx: Context) extends CaptureSet:
 
     /** A unique identification number for diagnostics */
     val id =
@@ -493,7 +489,7 @@ object CaptureSet:
     /** The sets currently known to be dependent sets (i.e. new additions to this set
      *  are propagated to these dependent sets.)
      */
-    var deps: Deps = emptySet
+    var deps: Deps = SimpleIdentitySet.empty
 
     def isConst = isSolved
     def isAlwaysEmpty = isSolved && elems.isEmpty
@@ -927,16 +923,16 @@ object CaptureSet:
     cs1.elems.filter(cs2.mightAccountFor) ++ cs2.elems.filter(cs1.mightAccountFor)
 
   /** A capture set variable used to record the references hidden by a Fresh.Cap instance */
-  class HiddenSet(initialHidden: Refs = emptySet)(using @constructorOnly ictx: Context)
+  class HiddenSet(initialHidden: Refs = emptyRefs)(using @constructorOnly ictx: Context)
   extends Var(initialElems = initialHidden):
 
     /** Apply function `f` to `elems` while setting `elems` to empty for the
-     *  duration. This is used to escape infinite recursions if two Frash.Caps
+     *  duration. This is used to escape infinite recursions if two Fresh.Caps
      *  refer to each other in their hidden sets.
      */
     override def processElems[T](f: Refs => T): T =
       val savedElems = elems
-      elems = emptySet
+      elems = emptyRefs
       try f(savedElems)
       finally elems = savedElems
   end HiddenSet
