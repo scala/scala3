@@ -327,7 +327,7 @@ object TypeErasure {
         val sym = t.symbol
         // Only a few classes have both primitives and references as subclasses.
         if (sym eq defn.AnyClass) || (sym eq defn.AnyValClass) || (sym eq defn.MatchableClass) || (sym eq defn.SingletonClass)
-           || isScala2 && !(t.derivesFrom(defn.ObjectClass) || t.isNullType) then
+           || isScala2 && !(t.derivesFrom(defn.ObjectClass) || t.isNullType | t.isNothingType) then
           NoSymbol
         // We only need to check for primitives because derived value classes in arrays are always boxed.
         else if sym.isPrimitiveValueClass then
@@ -779,14 +779,14 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
 
   private def eraseArray(tp: Type)(using Context) = {
     val defn.ArrayOf(elemtp) = tp: @unchecked
-    if (isGenericArrayElement(elemtp, isScala2 = sourceLanguage.isScala2)) defn.ObjectType
-    else
-      try 
-        if sourceLanguage.isScala2 && (elemtp.isNullType || elemtp.isNothingType) then
-          JavaArrayType(defn.ObjectType)
-        else erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, isSymbol, inSigName)(elemtp) match
-          case _: WildcardType => WildcardType
-          case elem => JavaArrayType(elem)
+    if isGenericArrayElement(elemtp, isScala2 = sourceLanguage.isScala2) then 
+      defn.ObjectType
+    else if sourceLanguage.isScala2 && (elemtp.hiBound.isNullType || elemtp.hiBound.isNothingType) then
+      JavaArrayType(defn.ObjectType)
+    else 
+      try erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, isSymbol, inSigName)(elemtp) match
+        case _: WildcardType => WildcardType
+        case elem => JavaArrayType(elem)
       catch case ex: Throwable =>
         handleRecursive("erase array type", tp.show, ex)
   }
