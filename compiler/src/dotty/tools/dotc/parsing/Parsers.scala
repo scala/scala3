@@ -1331,25 +1331,6 @@ object Parsers {
     */
     def qualId(): Tree = dotSelectors(termIdent())
 
-    /** Singleton    ::=  SimpleRef
-     *                 |  SimpleLiteral
-     *                 |  Singleton ‘.’ id
-     *                 |  Singleton ‘(’ Singletons ‘)’
-     *  -- not yet     |  Singleton ‘[’ Types ‘]’
-     */
-    def singleton(): Tree =
-      val res =
-        if isSimpleLiteral then simpleLiteral()
-        else dotSelectors(simpleRef())
-      singletonArgs(res)
-
-    def singletonArgs(t: Tree): Tree =
-      if in.token == LPAREN && in.featureEnabled(Feature.modularity) then
-        singletonArgs(AppliedTypeTree(t, inParensWithCommas(commaSeparated(singleton))))
-      // else if in.token == LBRACKET && in.featureEnabled(Feature.modularity) then
-      //   singletonArgs(AppliedTypeTree(t, inBrackets(commaSeparated(() => typ())))) // should this be marked in a different way, so that we know that it is a type application, and not a term application?
-      else t
-
     /** SimpleLiteral     ::=  [‘-’] integerLiteral
      *                      |  [‘-’] floatingPointLiteral
      *                      |  booleanLiteral
@@ -2092,7 +2073,11 @@ object Parsers {
         val start = in.skipToken()
         typeBounds().withSpan(Span(start, in.lastOffset, start))
       else
-        singletonArgs(simpleType1())
+        val tpt = simpleType1()
+        if in.featureEnabled(Feature.modularity)  && in.token == LPAREN then
+          parArgumentExprss(wrapNew(tpt))
+        else
+          tpt
 
     /** SimpleType1      ::=  id
      *                     |  Singleton `.' id

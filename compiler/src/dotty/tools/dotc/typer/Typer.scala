@@ -2556,54 +2556,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     assignType(cpy.RefinedTypeTree(tree)(tpt1, refinements1), tpt1, refinements1, refineCls)
   }
 
-  /** Type applied dependent class constructors in type positions */
-  private def typedTermAppliedTypeTree(tree: untpd.AppliedTypeTree, tpt1: Tree)(using Context): Tree = {
-    val AppliedTypeTree(originalTpt, args) = tree
-    if Feature.enabled(Feature.modularity) then
-      val constr =
-        if tpt1.tpe.typeSymbol.primaryConstructor.exists then
-          tpt1.tpe.typeSymbol.primaryConstructor
-        else
-          tpt1.tpe.typeSymbol.companionClass.primaryConstructor
-      // TODO(kπ)       vvvvvvv   Might want to take the first term list? or all term lists? depends on the rest of the logic.
-      // constr.paramSymss.flatten.foreach { p =>
-      //   if p.isTerm && !p.flags.is(Tracked) then
-      //     report.error(
-      //       em"""The constructor parameter `${p.name}` of `${tpt1.tpe}` is not tracked.
-      //           |Only tracked parameters are allowed in dependent constructor applications.""",
-      //       tree.srcPos
-      //     )
-      // }
-      def getArgs(t: Tree): List[List[Tree]] = t match
-        case AppliedTypeTree(base, args) => getArgs(base) :+ args
-        case _ => Nil
-
-      def instAll(t: Type, args: List[List[Tree]]): Type = (t.widenDealias, args) match
-        case (_, Nil) => t
-        case (t: MethodType, args :: rest) =>
-          val t1 = t.instantiate(args.map(_.tpe))
-          instAll(t1, rest)
-        case (_, args :: rest) =>
-          val t1 = t.appliedTo(args.map(_.tpe))
-          instAll(t1, rest)
-
-      constr.typeRef.underlying match
-        case mt: MethodOrPoly =>
-          val typedArgs = tree.args.map(a => (TypeTree(typedExpr(a).tpe)))
-          val preArgs = getArgs(tpt1)
-          TypeTree(instAll(mt, preArgs :+ typedArgs))
-    else
-      errorTree(tree, dependentMsg)
-  }
-
   def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(using Context): Tree = {
     val tpt1 = withoutMode(Mode.Pattern):
       typed(tree.tpt, AnyTypeConstructorProto)
-
-    tree.args match
-      case arg :: _ if arg.isTerm =>
-        return typedTermAppliedTypeTree(tree, tpt1)
-      case _ =>
 
     val tparams = tpt1.tpe.typeParams
      if tpt1.tpe.isError then
@@ -3556,7 +3511,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   /** Typecheck tree without adapting it, returning a typed tree.
    *  @param initTree    the untyped tree
-   *  @param pt          the expected result type
+   *  @param pt          the expected result typ
    *  @param locked      the set of type variables of the current typer state that cannot be interpolated
    *                     at the present time
    */
@@ -3596,7 +3551,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
         def typedUnnamed(tree: untpd.Tree): Tree = tree match {
           case tree: untpd.Apply =>
-            if (ctx.mode is Mode.Pattern) typedUnApply(tree, pt) else typedApply(tree, pt)
+            if (ctx.mode is Mode.Pattern) typedUnApply(tree, pt)
+            else if (ctx.mode is Mode.Type) typedAppliedConstructorType(tree)
+            else typedApply(tree, pt)
           case tree: untpd.This => typedThis(tree)
           case tree: untpd.Number => typedNumber(tree, pt)
           case tree: untpd.Literal => typedLiteral(tree)
