@@ -508,7 +508,7 @@ extension (tp: Type)
     case _ =>
       ReadOnlyCapability(tp)
 
-  /** If `x` is a capture ref, replacxe all no-flip covariant occurrences of `cap`
+  /** If `x` is a capture ref, replace all no-flip covariant occurrences of `cap`
    *  in type `tp` with `x*`.
    */
   def withReachCaptures(ref: Type)(using Context): Type =
@@ -758,7 +758,7 @@ object MaybeCapability extends AnnotatedCapability(defn.MaybeCapabilityAnnot):
   protected def unwrappable(using Context) = Set()
 
 /** An extractor for `ref @readOnlyCapability`, which is used to express
- *  the rad-only capability `ref.rd` as a type.
+ *  the read-only capability `ref.rd` as a type.
  */
 object ReadOnlyCapability extends AnnotatedCapability(defn.ReadOnlyCapabilityAnnot):
   protected def unwrappable(using Context) = Set(defn.MaybeCapabilityAnnot)
