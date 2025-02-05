@@ -196,9 +196,9 @@ class Z {
   def objectARRAY_89(x: Array[AnyRef]): Unit = {}
   def objectARRAY_90(x: Array[AnyVal]): Unit = {}
 
-  def objectARRAY_91(x: Array[Nothing]): Unit = {}
-  def objectARRAY_92(x: Array[Null]): Unit = {}
-  def objectARRAY_93(x: Array[_ <: Nothing]): Unit = {}
-  def objectARRAY_94(x: Array[_ <: Null]): Unit = {}
+  def nothing$ARRAY_91(x: Array[Nothing]): Unit = {}
+  def null$ARRAY_92(x: Array[Null]): Unit = {}
+  def nothing$ARRAY_93(x: Array[_ <: Nothing]): Unit = {}
+  def null$ARRAY_94(x: Array[_ <: Null]): Unit = {}
 
 }
