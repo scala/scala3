@@ -227,11 +227,19 @@ class Objects(using Context @constructorOnly):
   case class Fun(code: Tree, thisV: ThisValue, klass: ClassSymbol, env: Env.Data) extends ValueElement:
     def show(using Context) = "Fun(" + code.show + ", " + thisV.show + ", " + klass.show + ")"
 
-  /** Represents common base values like Int, String, etc.
+  /**
+   * Represents common base values like Int, String, etc.
+   * Assumption: all methods calls on such values should be pure (no side effects)
    */
-  case object SafeValue extends ValueElement:
-    val safeTypes = defn.ScalaNumericValueTypeList ++ List(defn.UnitType, defn.BooleanType, defn.StringType)
-    def show(using Context): String = "SafeValue"
+  case class SafeValue(tpe: Type) extends ValueElement:
+    // tpe could be a AppliedType(java.lang.Class, T)
+    val baseType = if tpe.isInstanceOf[AppliedType] then tpe.asInstanceOf[AppliedType].underlying else tpe
+    assert(baseType.isInstanceOf[TypeRef] && SafeValue.safeTypes.contains(baseType), "Invalid creation of SafeValue! Type = " + tpe)
+    val typeref = baseType.asInstanceOf[TypeRef]
+    def show(using Context): String = "SafeValue of type " + tpe
+
+  object SafeValue:
+    val safeTypes = defn.ScalaNumericValueTypeList ++ List(defn.UnitType, defn.BooleanType, defn.StringType, defn.NullType, defn.ClassClass.typeRef)
 
   /**
    * Represents a set of values
@@ -704,7 +712,7 @@ class Objects(using Context @constructorOnly):
           a match
             case UnknownValue => UnknownValue
             case Package(_) => a
-            case SafeValue => SafeValue
+            case SafeValue(_) => a
             case ref: Ref => if ref.klass.isSubClass(klass) then ref else Bottom
             case ValueSet(values) => values.map(v => v.filterClass(klass)).join
             case arr: OfArray => if defn.ArrayClass.isSubClass(klass) then arr else Bottom
@@ -733,7 +741,7 @@ class Objects(using Context @constructorOnly):
    * @param superType    The type of the super in a super call. NoType for non-super calls.
    * @param needResolve  Whether the target of the call needs resolution?
    */
-  def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.tree.show), printer, (_: Value).show) {
+  def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     value.filterClass(meth.owner) match
     case UnknownValue =>
       if reportUnknown then
@@ -743,11 +751,33 @@ class Objects(using Context @constructorOnly):
         UnknownValue
 
     case Package(packageSym) =>
-      report.warning("[Internal error] Unexpected call on package = " + value.show + ", meth = " + meth.show + Trace.show, Trace.position)
-      Bottom
+      // calls on packages are unexpected. However the typer might mistakenly
+      // set the receiver to be a package instead of package object.
+      // See packageObjectStringInterpolator.scala
+      if !meth.owner.denot.isPackageObject then
+        report.warning("[Internal error] Unexpected call on package = " + value.show + ", meth = " + meth.show + Trace.show, Trace.position)
+        Bottom
+      else
+        // Method call on package object instead
+        val packageObj = accessObject(meth.owner.moduleClass.asClass)
+        call(packageObj, meth, args, receiver, superType, needResolve)
 
-    case SafeValue =>
-      SafeValue // Check return type, if not safe, try to analyze body, 1.until(2).map(i => UninitializedObject)
+    case v @ SafeValue(tpe) =>
+      // Assume such method is pure. Check return type, only try to analyze body if return type is not safe
+      val target = resolve(v.typeref.symbol.asClass, meth)
+      if !target.hasSource then
+        UnknownValue
+      else
+        val ddef = target.defTree.asInstanceOf[DefDef]
+        val returnType = ddef.tpt.tpe
+        if SafeValue.safeTypes.contains(returnType) then
+          // since method is pure and return type is safe, no need to analyze method body
+          SafeValue(returnType)
+        else
+          val cls = target.owner.enclosingClass.asClass
+          // convert SafeType to an OfClass before analyzing method body
+          val ref = OfClass(cls, Bottom, NoSymbol, Nil, Env.NoEnv)
+          call(ref, meth, args, receiver, superType, needResolve)
 
     case Bottom =>
       Bottom
@@ -774,7 +804,7 @@ class Objects(using Context @constructorOnly):
         Bottom
       else
         // Array.length is OK
-        SafeValue
+        SafeValue(defn.IntType)
 
     case ref: Ref =>
       val isLocal = !meth.owner.isClass
@@ -795,10 +825,10 @@ class Objects(using Context @constructorOnly):
           arr
         else if target.equals(defn.Predef_classOf) then
           // Predef.classOf is a stub method in tasty and is replaced in backend
-          SafeValue
+          UnknownValue
         else if target.equals(defn.ClassTagModule_apply) then
-          // ClassTag and other reflection related values are considered safe
-          SafeValue
+          // ClassTag and other reflection related values are not analyzed
+          UnknownValue
         else if target.hasSource then
           val cls = target.owner.enclosingClass.asClass
           val ddef = target.defTree.asInstanceOf[DefDef]
@@ -886,6 +916,7 @@ class Objects(using Context @constructorOnly):
             Returns.installHandler(ctor)
             eval(ddef.rhs, ref, cls, cacheResult = true)
             Returns.popHandler(ctor)
+            value
           }
       else
         // no source code available
@@ -912,8 +943,9 @@ class Objects(using Context @constructorOnly):
       else
         UnknownValue
 
-    case SafeValue =>
-      SafeValue
+    case v @ SafeValue(_) =>
+      report.warning("[Internal error] Unexpected selection on safe value " + v.show + ", field = " + field.show + Trace.show, Trace.position)
+      Bottom
 
     case Package(packageSym) =>
       if field.isStaticObject then
@@ -997,7 +1029,7 @@ class Objects(using Context @constructorOnly):
     case arr: OfArray =>
       report.warning("[Internal error] unexpected tree in assignment, array = " + arr.show + " field = " + field + Trace.show, Trace.position)
 
-    case SafeValue | UnknownValue =>
+    case SafeValue(_) | UnknownValue =>
       report.warning("Assigning to base or unknown value is forbidden. " + Trace.show, Trace.position)
 
     case ValueSet(values) =>
@@ -1029,7 +1061,7 @@ class Objects(using Context @constructorOnly):
    */
   def instantiate(outer: Value, klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", outer = " + outer + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     outer.filterClass(klass.owner) match
-    case _ : Fun | _: OfArray | SafeValue  =>
+    case _ : Fun | _: OfArray | SafeValue(_)  =>
       report.warning("[Internal error] unexpected outer in instantiating a class, outer = " + outer.show + ", class = " + klass.show + ", " + Trace.show, Trace.position)
       Bottom
 
@@ -1126,7 +1158,7 @@ class Objects(using Context @constructorOnly):
             case UnknownValue =>
               report.warning("Calling on unknown value. " + Trace.show, Trace.position)
               Bottom
-            case _: ValueSet | _: Ref | _: OfArray | _: Package | SafeValue =>
+            case _: ValueSet | _: Ref | _: OfArray | _: Package | SafeValue(_) =>
               report.warning("[Internal error] Unexpected by-name value " + value.show  + ". " + Trace.show, Trace.position)
               Bottom
           else
@@ -1314,8 +1346,8 @@ class Objects(using Context @constructorOnly):
       case _: This =>
         evalType(expr.tpe, thisV, klass)
 
-      case Literal(_) =>
-        SafeValue
+      case Literal(const) =>
+        SafeValue(const.tpe)
 
       case Typed(expr, tpt) =>
         if tpt.tpe.hasAnnotation(defn.UncheckedAnnot) then
@@ -1390,7 +1422,12 @@ class Objects(using Context @constructorOnly):
         res
 
       case SeqLiteral(elems, elemtpt) =>
-        evalExprs(elems, thisV, klass).join
+        // Obtain the output Seq from SeqLiteral tree by calling respective wrapArrayMethod
+        val wrapArrayMethodName = ast.tpd.wrapArrayMethodName(elemtpt.tpe)
+        val meth = defn.getWrapVarargsArrayModule.requiredMethod(wrapArrayMethodName)
+        val module = defn.getWrapVarargsArrayModule.moduleClass.asClass
+        val args = evalArgs(elems.map(Arg.apply), thisV, klass)
+        call(ObjectRef(module), meth, args, module.typeRef, NoType)
 
       case Inlined(call, bindings, expansion) =>
         evalExprs(bindings, thisV, klass)
@@ -1601,7 +1638,7 @@ class Objects(using Context @constructorOnly):
 
       // call .apply
       val applyDenot = getMemberMethod(scrutineeType, nme.apply, applyType(elemType))
-      val applyRes = call(scrutinee, applyDenot.symbol, ArgInfo(SafeValue, summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
+      val applyRes = call(scrutinee, applyDenot.symbol, ArgInfo(SafeValue(defn.IntType), summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
 
       if isWildcardStarArgList(pats) then
         if pats.size == 1 then
@@ -1612,7 +1649,7 @@ class Objects(using Context @constructorOnly):
         else
           // call .drop
           val dropDenot = getMemberMethod(scrutineeType, nme.drop, dropType(elemType))
-          val dropRes = call(scrutinee, dropDenot.symbol, ArgInfo(SafeValue, summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
+          val dropRes = call(scrutinee, dropDenot.symbol, ArgInfo(SafeValue(defn.IntType), summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
           for pat <- pats.init do evalPattern(applyRes, pat)
           evalPattern(dropRes, pats.last)
         end if
@@ -1623,8 +1660,7 @@ class Objects(using Context @constructorOnly):
     end evalSeqPatterns
 
     def canSkipCase(remainingScrutinee: Value, catchValue: Value) =
-      (remainingScrutinee == Bottom && scrutinee != Bottom) ||
-      (catchValue == Bottom && remainingScrutinee != Bottom)
+      remainingScrutinee == Bottom || catchValue == Bottom
 
     var remainingScrutinee = scrutinee
     val caseResults: mutable.ArrayBuffer[Value] = mutable.ArrayBuffer()
@@ -1653,8 +1689,8 @@ class Objects(using Context @constructorOnly):
    */
   def evalType(tp: Type, thisV: ThisValue, klass: ClassSymbol, elideObjectAccess: Boolean = false): Contextual[Value] = log("evaluating " + tp.show, printer, (_: Value).show) {
     tp match
-      case _: ConstantType =>
-        SafeValue
+      case consttpe: ConstantType =>
+        SafeValue(consttpe.underlying)
 
       case tmref: TermRef if tmref.prefix == NoPrefix =>
         val sym = tmref.symbol
@@ -1904,7 +1940,7 @@ class Objects(using Context @constructorOnly):
             resolveThis(target, ref.outerValue(klass), outerCls)
         case ValueSet(values) =>
           values.map(ref => resolveThis(target, ref, klass)).join
-        case _: Fun | _ : OfArray | _: Package | SafeValue =>
+        case _: Fun | _ : OfArray | _: Package | SafeValue(_) =>
           report.warning("[Internal error] unexpected thisV = " + thisV + ", target = " + target.show + ", klass = " + klass.show + Trace.show, Trace.position)
           Bottom
   }
