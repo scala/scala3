@@ -346,7 +346,7 @@ object Build {
         )
         .withBuildCache(
           buildCache
-            .withLocal(buildCache.local.withEnabled(false))
+            .withLocal(buildCache.local.withEnabled(true).withStoreEnabled(true))
             .withRemote(buildCache.remote.withEnabled(false))
         )
         .withTestRetry(
