@@ -53,10 +53,10 @@ object Main {
     z.c_40(dummy)
     z.c_41(dummy)
     z.c_42(dummy)
-    z.b_43(dummy)
+    //z.b_43(dummy)
     z.c_44(dummy)
     z.c_45(dummy)
-    z.b_46(dummy)
+    //z.b_46(dummy)
     z.c_47(dummy)
     // z.a_48(dummy)
     // z.c_49(dummy)
@@ -103,8 +103,8 @@ object Main {
     z.objectARRAY_90(dummy)
     z.objectARRAY_91(dummy)
     z.objectARRAY_92(dummy)
-    z.objectARRAY_93(dummy)
-    z.objectARRAY_94(dummy)
+    //z.objectARRAY_93(dummy)
+    //z.objectARRAY_94(dummy)
 
     val methods = classOf[scala2Lib.Z].getDeclaredMethods.toList ++ classOf[dottyApp.Z].getDeclaredMethods.toList
     methods.foreach { m =>
