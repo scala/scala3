@@ -1,9 +1,23 @@
--- Error: tests/neg-custom-args/captures/unsound-reach-4.scala:13:18 ---------------------------------------------------
-13 |class Bar extends Foo[File^]: // error
+-- Error: tests/neg-custom-args/captures/unsound-reach-4.scala:16:18 ---------------------------------------------------
+16 |class Bar extends Foo[File^]: // error
    |                  ^^^^^^^^^^
    |                  Type variable X of trait Foo cannot be instantiated to File^ since
    |                  that type captures the root capability `cap`.
--- Error: tests/neg-custom-args/captures/unsound-reach-4.scala:22:22 ---------------------------------------------------
-22 |    escaped = boom.use(f)  // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/unsound-reach-4.scala:20:29 ------------------------------
+20 |  val backdoor: Foo[File^] = new Bar // error (follow-on, since the parent Foo[File^] of bar is illegal).
+   |                             ^^^^^^^
+   |                             Found:    Bar^?
+   |                             Required: Foo[box File^]
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/unsound-reach-4.scala:25:22 ---------------------------------------------------
+25 |    escaped = boom.use(f)  // error
    |              ^^^^^^^^^^^
    |              Local reach capability backdoor* leaks into capture scope of method bad
+-- [E164] Declaration Error: tests/neg-custom-args/captures/unsound-reach-4.scala:17:6 ---------------------------------
+17 |  def use(@consume x: F): File^ = x // error @consume override
+   |      ^
+   |error overriding method use in trait Foo of type (x: File^): box File^;
+   |  method use of type (x: File^): (ex$2: caps.Exists) -> File^{ex$2} has a parameter x with different @consume status than the corresponding parameter in the overridden definition
+   |
+   | longer explanation available when compiling with `-explain`
