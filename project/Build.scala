@@ -339,7 +339,7 @@ object Build {
           buildScan
             .withPublishing(Publishing.onlyIf(_.authenticated))
             .withBackgroundUpload(!isInsideCI)
-            .tag(if (isInsideCI) "CI" else "Local")
+            .withTag(if (isInsideCI) "CI" else "Local")
             .withLinks(buildScan.links ++ GithubEnv.develocityLinks)
             .withValues(buildScan.values ++ GithubEnv.develocityValues)
             .withObfuscation(buildScan.obfuscation.withIpAddresses(_.map(_ => "0.0.0.0")))
@@ -349,8 +349,8 @@ object Build {
             .withLocal(buildCache.local.withEnabled(false))
             .withRemote(buildCache.remote.withEnabled(false))
         )
-        .withTestRetryConfiguration(
-          config.testRetryConfiguration
+        .withTestRetry(
+          config.testRetry
             .withFlakyTestPolicy(FlakyTestPolicy.Fail)
             .withMaxRetries(if (isInsideCI) 1 else 0)
             .withMaxFailures(10)
