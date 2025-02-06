@@ -1,5 +1,5 @@
 val test =
-  (using x: Int) => x  // error // error
+  (using x: Int) => x  // error // error // error
 
 val f = () ?=> 23 // error
 val g: ContextFunction0[Int] = ??? // ok
