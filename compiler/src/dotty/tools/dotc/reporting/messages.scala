@@ -1214,7 +1214,10 @@ extends DeclarationMsg(OverrideErrorID), NoDisambiguation:
 
 class ForwardReferenceExtendsOverDefinition(value: Symbol, definition: Symbol)(using Context)
 extends ReferenceMsg(ForwardReferenceExtendsOverDefinitionID) {
-  def msg(using Context) = i"${definition.name} is a forward reference extending over the definition of ${value.name}"
+  extension (sym: Symbol) def srcLine = sym.line + 1
+  def msg(using Context) = i"${definition.name}${
+    if value != definition then s" (defined on L${definition.srcLine})" else ""
+  } is a forward reference extending over the definition of ${value.name} (on L${value.srcLine})"
 
   def explain(using Context) =
     i"""|${definition.name} is used before you define it, and the definition of ${value.name}

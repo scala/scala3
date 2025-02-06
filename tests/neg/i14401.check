@@ -1,0 +1,30 @@
+-- [E039] Reference Error: tests/neg/i14401.scala:6:17 -----------------------------------------------------------------
+6 |    def f: Int = x; // error
+  |                 ^
+  |                 x is a forward reference extending over the definition of x (on L7)
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E039] Reference Error: tests/neg/i14401.scala:10:17 ----------------------------------------------------------------
+10 |    def f: Int = g; // error
+   |                 ^
+   |                 g (defined on L12) is a forward reference extending over the definition of x (on L11)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E039] Reference Error: tests/neg/i14401.scala:15:17 ----------------------------------------------------------------
+15 |    def f: Int = g; // error
+   |                 ^
+   |                 g (defined on L17) is a forward reference extending over the definition of x (on L16)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E039] Reference Error: tests/neg/i14401.scala:31:20 ----------------------------------------------------------------
+31 |      } yield a + 27 // error
+   |                    ^
+   |                    ec (defined on L33) is a forward reference extending over the definition of z (on L29)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E039] Reference Error: tests/neg/i14401.scala:41:28 ----------------------------------------------------------------
+41 |    class NotUsed {val xs = args} // error
+   |                            ^^^^
+   |                    args (defined on L44) is a forward reference extending over the definition of dummy (on L42)
+   |
+   | longer explanation available when compiling with `-explain`
