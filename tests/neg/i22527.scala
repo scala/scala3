@@ -6,12 +6,6 @@ def test: Unit =
       true, "ok" // error end of statement expected but ',' found
   )
 
-def toss: Unit =
-  assert(
-    throw
-      null, "ok" // error same
-  )
-
 def callme[A](x: => A, msg: String) = try x.toString catch case t: RuntimeException => msg
 
 // not all indented regions require COMMA at EOL for OUTDENT
@@ -22,3 +16,10 @@ def orElse(x: Int): Unit =
       true // error ',' or ')' expected, but 'true' found
     else
       false, "fail")
+
+def g: Unit =
+  identity(
+    x =
+      class X extends AnyRef, Serializable // error
+      27 // error
+  )
