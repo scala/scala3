@@ -654,8 +654,13 @@ object Scanners {
                 if skipping then
                   if r.enclosing.isClosedByUndentAt(nextWidth) then
                     insert(OUTDENT, offset)
-                else if r.isInstanceOf[InBraces] && !closingRegionTokens.contains(token) then
-                  report.warning(IndentationWarning(isLeft = true, missing = RBRACE), sourcePos())
+                else
+                  val checkable = r match
+                    case _: InBraces => true
+                    case InParens(LPAREN, _) => true
+                    case _ => false
+                  if checkable && !closingRegionTokens.contains(token) then
+                    report.warning(IndentationWarning(isLeft = true, missing = RBRACE), sourcePos())
         else if lastWidth < nextWidth
              || lastWidth == nextWidth && (lastToken == MATCH || lastToken == CATCH) && token == CASE then
           if canStartIndentTokens.contains(lastToken) then
