@@ -126,4 +126,19 @@ trait Migrations:
         patch(Span(pt.args.head.span.start), "using ")
   end contextBoundParams
 
+  /** Report implicit parameter lists and rewrite implicit parameter list to contextual params */
+  def implicitParams(tree: Tree, tp: MethodOrPoly, pt: FunProto)(using Context): Unit =
+    val mversion = mv.ImplicitParamsWithoutUsing
+    if tp.companion == ImplicitMethodType && pt.applyKind != ApplyKind.Using && pt.args.nonEmpty then
+      val rewriteMsg = Message.rewriteNotice("This code", mversion.patchFrom)
+      report.errorOrMigrationWarning(
+        em"""Implicit parameters should be provided with a `using` clause.$rewriteMsg
+            |To disable the warning, please use the following option: 
+            |  "-Wconf:msg=Implicit parameters should be provided with a `using` clause:s"
+            |""", 
+        pt.args.head.srcPos, mversion)
+      if mversion.needsPatch then
+        patch(Span(pt.args.head.span.start), "using ")
+  end implicitParams
+
 end Migrations

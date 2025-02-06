@@ -4164,6 +4164,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         def methodStr = methPart(tree).symbol.showLocated
         if matchingApply(wtp, pt) then
           migrate(contextBoundParams(tree, wtp, pt))
+          migrate(implicitParams(tree, wtp, pt))
           if needsTupledDual(wtp, pt) then adapt(tree, pt.tupledDual, locked)
           else tree
         else if wtp.isContextualMethod then
