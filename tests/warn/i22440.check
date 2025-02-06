@@ -3,3 +3,5 @@
   |            ^
   |            Implicit parameters should be provided with a `using` clause.
   |            This code can be rewritten automatically under -rewrite -source 3.7-migration.
+  |            To disable the warning, please use the following option: 
+  |              "-Wconf:msg=Implicit parameters should be provided with a `using` clause:s"
