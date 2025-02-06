@@ -78,7 +78,13 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   private def existingDef(sym: Symbol, clazz: ClassSymbol)(using Context): Symbol =
     val existing = sym.matchingMember(clazz.thisType)
-    if existing != sym && !existing.is(Deferred) then existing else NoSymbol
+    if ctx.settings.YcompileScala2Library.value && clazz.isValueClass && (sym == defn.Any_equals || sym == defn.Any_hashCode) then
+      NoSymbol
+    else if existing != sym && !existing.is(Deferred) then 
+      existing 
+    else 
+      NoSymbol
+  end existingDef
 
   private def synthesizeDef(sym: TermSymbol, rhsFn: List[List[Tree]] => Context ?=> Tree)(using Context): Tree =
     DefDef(sym, rhsFn(_)(using ctx.withOwner(sym))).withSpan(ctx.owner.span.focus)

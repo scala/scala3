@@ -15,8 +15,21 @@ object Scala2LibraryBootstrappedMiMaFilters {
         ProblemFilters.exclude[FinalClassProblem]("scala.language$experimental$"),
         ProblemFilters.exclude[FinalClassProblem]("scala.languageFeature$*$"),
 
-        // Value class extension methods
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*$extension"),
+        // Issue: https://github.com/scala/scala3/issues/22495
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.ArrayOps.scala$collection$ArrayOps$$elemTag$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.ArrayOps.iterateUntilEmpty$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.isLineBreak$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.isLineBreak2$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.linesSeparated$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.escape$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.toBooleanImpl$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.unwrapArg$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.StringOps.iterateUntilEmpty$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple2Zipped.coll1$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple2Zipped.coll2$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple3Zipped.coll1$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple3Zipped.coll2$extension"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuple3Zipped.coll3$extension"),
 
         // Companion module class
         ProblemFilters.exclude[FinalClassProblem]("scala.*$"),
