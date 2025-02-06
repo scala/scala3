@@ -3433,3 +3433,17 @@ extends DeclarationMsg(IllegalUnrollPlacementID):
 
   def explain(using Context) = ""
 end IllegalUnrollPlacement
+
+final class PointlessAppliedConstructorType(tpt: untpd.Tree, args: List[untpd.Tree], tpe: Type)(using Context) extends TypeMsg(PointlessAppliedConstructorTypeID):
+  override protected def msg(using Context): String =
+    val act = i"$tpt(${args.map(_.show).mkString(", ")})"
+    i"""|Applied constructor type $act has no effect.
+        |The resulting type of $act is the same as its base type, namely: $tpe""".stripMargin
+
+  override protected def explain(using Context): String =
+    i"""|Applied constructor types are used to ascribe specialized types of constructor applications.
+        |To benefit from this feature, the constructor in question has to have a more specific type than the class itself.
+        |
+        |If you want to track a precise type of any of the class parameters, make sure to mark the parameter as `tracked`.
+        |Otherwise, you can safely remove the argument list from the type.
+        |"""
