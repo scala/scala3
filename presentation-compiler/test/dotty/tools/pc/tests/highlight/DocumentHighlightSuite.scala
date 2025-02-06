@@ -1464,90 +1464,13 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
 
   @Test def i3053 =
     check(
-      """import Aaaa.*
+      s"""import Aaaa.*
         |
         |def classDef2(cdef: List[Int]): Int = {
         |  def aaa(ddef: Thicket2): List[Int] = ddef match {
         |    case Thicket2(_) => ???
         |  }
-        |
-        |  /** Does `tree' look like a reference to AnyVal? Temporary test before we have
-        |    * inline classes
-        |    */
-        |  // The original type and value parameters in the constructor already have the flags
-        |  // needed to be type members (i.e. param, and possibly also private and local unless
-        |  // prefixed by type or val). `tparams` and `vparamss` are the type parameters that
-        |  // go in `constr`, the constructor after desugaring.
-        |
-        |  /** Does `tree' look like a reference to AnyVal? Temporary test before we have
-        |    * inline classes
-        |    */
-        |  // The original type and value parameters in the constructor already have the flags
-        |  // needed to be type members (i.e. param, and possibly also private and local unless
-        |  // prefixed by type or val). `tparams` and `vparamss` are the type parameters that
-        |  // go in `constr`, the constructor after desugaring.
-        |
-        |  /** Does `tree' look like a reference to AnyVal? Temporary test before we have
-        |    * inline classes
-        |    */
-        |  // Annotations on class _type_ parameters are set on the derived parameters
-        |  // but not on the constructor parameters. The reverse is true for
-        |  // annotations on class _value_ parameters.
-        |  // The original type and value parameters in the constructor already have the flags
-        |  // needed to be type members (i.e. param, and possibly also private and local unless
-        |  // prefixed by type or val). `tparams` and `vparamss` are the type parameters that
-        |  // go in `constr`, the constructor after desugaring.
-        |  // The original type and value parameters in the constructor already have the flags
-        |  // needed to be type members (i.e. param, and possibly also private and local unless
-        |  // prefixed by type or val). `tparams` and `vparamss` are the type parameters that
-        |  // go in `constr`, the constructor after desugaring.
-        |
-        |  /** Does `tree' look like a reference to AnyVal? Temporary test before we have
-        |    * inline classes
-        |    */
-        |  // The original type and value parameters in the constructor already have the flags
-        |  // needed to be type members (i.e. param, and possibly also private and local unless
-        |  // prefixed by type or val). `tparams` and `vparamss` are the type parameters that
-        |  // go in `constr`, the constructor after desugaring.
-        |
-        |  /** Does `tree' look like a reference to AnyVal? Temporary test before we have
-        |    * inline classes
-        |    */
-        |
-        |  // Annotations on class _type_ parameters are set on the derived parameters
-        |  // but not on the constructor parameters. The reverse is true for
-        |  // annotations on class _value_ parameters.
-        |  // The original type and value parameters in the constructor already have the flags
-        |  // needed to be type members (i.e. param, and possibly also private and local unless
-        |  // prefixed by type or val). `tparams` and `vparamss` are the type parameters that
-        |  // go in `constr`, the constructor after desugaring.
-        |  // The original type and value parameters in the constructor already have the flags
-        |  // needed to be type members (i.e. param, and possibly also private and local unless
-        |  // prefixed by type or val). `tparams` and `vparamss` are the type parameters that
-        |  // go in `constr`, the constructor after desugaring.
-        |
-        |  /** Does `tree' look like a reference to AnyVal? Temporary test before we have
-        |    * inline classes
-        |    */
-        |  // The original type and value parameters in the constructor already have the flags
-        |  // needed to be type members (i.e. param, and possibly also private and local unless
-        |  // prefixed by type or val). `tparams` and `vparamss` are the type parameters that
-        |  // go in `constr`, the constructor after desugaring.
-        |
-        |  /** Does `tree' look like a reference to AnyVal? Temporary test before we have
-        |    * inline classes
-        |    */
-        |  // Annotations on class _type_ parameters are set on the derived parameters
-        |  // but not on the constructor parameters. The reverse is true for
-        |  // annotations on class _value_ parameters.
-        |  // The original type and value parameters in the constructor already have the flags
-        |  // needed to be type members (i.e. param, and possibly also private and local unless
-        |  // prefixed by type or val). `tparams` and `vparamss` are the type parameters that
-        |  // go in `constr`, the constructor after desugaring.
-        |  // The original type and value parameters in the constructor already have the flags
-        |  // needed to be type members (i.e. param, and possibly also private and local unless
-        |  // prefixed by type or val). `tparams` and `vparamss` are the type parameters that
-        |  // go in `constr`, the constructor after desugaring.
+        |${("//" + "x" * 64 + "\n") * 64}
         |  1
         |}.<<showing2>>("aaa")
         |
