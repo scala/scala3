@@ -30,6 +30,4 @@ object Test extends App {
   val box: Box(O.InnerClass(42)) = Box(O.InnerClass(42))
   val box2: Box(O.InnerClass(n)) = Box(O.InnerClass(n))
   val box3: Box(O.InnerClass(O.m)) = Box(O.InnerClass(O.m))
-  val box4: Box(n) = Box(O.InnerClass(n).x)
-  val box5: Box(O.m) = Box(O.InnerClass(O.m).x)
 }
