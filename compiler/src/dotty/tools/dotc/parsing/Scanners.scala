@@ -765,7 +765,14 @@ object Scanners {
             case _ => false
           currentRegion match
             case r: Indented if isEnclosedInParens(r.outer) =>
-              insert(OUTDENT, offset)
+              // For some region prefixes (COLONeol, EQUALS) only OUTDENT if COMMA at EOL
+              if canStartIndentTokens.contains(r.prefix) && !statCtdTokens.contains(r.prefix) then
+                val lookahead = LookaheadScanner()
+                lookahead.nextToken()
+                if lookahead.isAfterLineEnd then
+                  insert(OUTDENT, offset)
+              else
+                insert(OUTDENT, offset)
             case _ =>
               peekAhead()
               if isAfterLineEnd
