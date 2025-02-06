@@ -861,7 +861,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       assert(isModifierTag(tag))
       writeByte(tag)
     }
-    assert(!flags.is(Scala2x))
+    if flags.is(Scala2x) then assert(attributes.scala2StandardLibrary)
     if (flags.is(Private)) writeModTag(PRIVATE)
     if (flags.is(Protected)) writeModTag(PROTECTED)
     if (flags.is(Final, butNot = Module)) writeModTag(FINAL)
