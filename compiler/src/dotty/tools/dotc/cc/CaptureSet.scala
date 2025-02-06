@@ -17,6 +17,7 @@ import typer.ErrorReporting.Addenda
 import util.common.alwaysTrue
 import scala.collection.{mutable, immutable}
 import CCState.*
+import TypeOps.AvoidMap
 
 /** A class for capture sets. Capture sets can be constants or variables.
  *  Capture sets support inclusion constraints <:< where <:< is subcapturing.
@@ -328,6 +329,8 @@ sealed abstract class CaptureSet extends Showable:
         else Const(mappedElems)
       else BiMapped(asVar, tm, mappedElems)
     case tm: IdentityCaptRefMap =>
+      this
+    case tm: AvoidMap if this.isInstanceOf[HiddenSet] =>
       this
     case _ =>
       val mapped = mapRefs(elems, tm, tm.variance)
