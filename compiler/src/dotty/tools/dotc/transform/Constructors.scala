@@ -155,7 +155,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
         case Ident(_) | Select(This(_), _) =>
           var sym = tree.symbol
           def isOverridableSelect = tree.isInstanceOf[Select] && !sym.isEffectivelyFinal
-          def switchOutsideSupercall = !sym.isMutableVarOrAccessor && !isOverridableSelect
+          def switchOutsideSupercall = !sym.is(Mutable) && !isOverridableSelect
             // If true, switch to constructor parameters also in the constructor body
             // that follows the super call.
             // Variables need to go through the getter since they might have been updated.

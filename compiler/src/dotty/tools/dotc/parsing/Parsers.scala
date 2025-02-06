@@ -1588,36 +1588,22 @@ object Parsers {
       case _ => None
     }
 
-    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`] [`.` rd]
+    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`]
      *                |  [ { SimpleRef `.` } SimpleRef `.` ] id `^`
      */
     def captureRef(): Tree =
-
-      def derived(ref: Tree, name: TermName) =
+      val ref = dotSelectors(simpleRef())
+      if isIdent(nme.raw.STAR) then
         in.nextToken()
-        atSpan(startOffset(ref)) { PostfixOp(ref, Ident(name)) }
-
-      def recur(ref: Tree): Tree =
-        if in.token == DOT then
-          in.nextToken()
-          if in.isIdent(nme.rd) then derived(ref, nme.CC_READONLY)
-          else recur(selector(ref))
-        else if in.isIdent(nme.raw.STAR) then
-          val reachRef = derived(ref, nme.CC_REACH)
-          if in.token == DOT && in.lookahead.isIdent(nme.rd) then
-            in.nextToken()
-            derived(reachRef, nme.CC_READONLY)
-          else reachRef
-        else if isIdent(nme.UPARROW) then
-          in.nextToken()
-          atSpan(startOffset(ref)):
-            convertToTypeId(ref) match
-              case ref: RefTree => makeCapsOf(ref)
-              case ref => ref
-        else ref
-
-      recur(simpleRef())
-    end captureRef
+        atSpan(startOffset(ref)):
+          PostfixOp(ref, Ident(nme.CC_REACH))
+      else if isIdent(nme.UPARROW) then
+        in.nextToken()
+        atSpan(startOffset(ref)):
+          convertToTypeId(ref) match
+            case ref: RefTree => makeCapsOf(ref)
+            case ref => ref
+      else ref
 
     /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking
      */
@@ -3306,14 +3292,13 @@ object Parsers {
       case SEALED      => Mod.Sealed()
       case IDENTIFIER =>
         name match {
+          case nme.erased if in.erasedEnabled => Mod.Erased()
           case nme.inline => Mod.Inline()
           case nme.opaque => Mod.Opaque()
           case nme.open => Mod.Open()
           case nme.transparent => Mod.Transparent()
           case nme.infix => Mod.Infix()
           case nme.tracked => Mod.Tracked()
-          case nme.erased if in.erasedEnabled => Mod.Erased()
-          case nme.mut if Feature.ccEnabled => Mod.Mut()
         }
     }
 
@@ -4694,8 +4679,7 @@ object Parsers {
           syntaxError(msg, tree.span)
           Nil
         tree match
-          case tree: MemberDef
-          if !(tree.mods.flags & ModifierFlags).isEmpty && !tree.mods.isMutableVar => // vars are OK, mut defs are not
+          case tree: MemberDef if !(tree.mods.flags & (ModifierFlags &~ Mutable)).isEmpty =>
             fail(em"refinement cannot be ${(tree.mods.flags & ModifierFlags).flagStrings().mkString("`", "`, `", "`")}")
           case tree: DefDef if tree.termParamss.nestedExists(!_.rhs.isEmpty) =>
             fail(em"refinement cannot have default arguments")

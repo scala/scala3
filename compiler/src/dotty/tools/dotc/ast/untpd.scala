@@ -206,8 +206,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Var()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Mutable)
 
-    case class Mut()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Mutable)
-
     case class Implicit()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Implicit)
 
     case class Given()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Given)
@@ -334,7 +332,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     def isEnumCase: Boolean = isEnum && is(Case)
     def isEnumClass: Boolean = isEnum && !is(Case)
-    def isMutableVar: Boolean = is(Mutable) && mods.exists(_.isInstanceOf[Mod.Var])
   }
 
   @sharable val EmptyModifiers: Modifiers = Modifiers()
