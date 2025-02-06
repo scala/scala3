@@ -15,9 +15,6 @@ object Scala2LibraryBootstrappedMiMaFilters {
         ProblemFilters.exclude[FinalClassProblem]("scala.language$experimental$"),
         ProblemFilters.exclude[FinalClassProblem]("scala.languageFeature$*$"),
 
-        // trait $init$
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*.$init$"),
-
         // Value class extension methods
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*$extension"),
 
