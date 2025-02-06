@@ -1,11 +1,10 @@
-
 trait Cap { def use(): Int }
 
 def test1(): Unit = {
   class Id[X](val value: [T] -> (op: X => T) -> T)
 
   val x: Id[Cap^] = ???
-  x.value(cap => cap.use())  // error, was OK
+  x.value(cap => cap.use())
 }
 
 def test2(io: Cap^): Unit = {

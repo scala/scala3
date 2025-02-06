@@ -16,10 +16,6 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
   @deprecated("Use `Capability` instead")
   type Cap = Capability
 
-  trait Mutable extends Capability
-
-  trait SharedCapability extends Capability
-
   /** Carrier trait for capture set type parameters */
   trait CapSet extends Any
 
@@ -45,12 +41,6 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
    */
   extension (x: Any) def reachCapability: Any = x
 
-  /** Read-only capabilities x.rd which appear as terms in @retains annotations are encoded
-   *  as `caps.readOnlyCapability(x)`. When converted to CaptureRef types in capture sets
-   *  they are  represented as `x.type @annotation.internal.readOnlyCapability`.
-   */
-  extension (x: Any) def readOnlyCapability: Any = x
-
   /** A trait to allow expressing existential types such as
    *
    *      (x: Exists) => A ->{x} B
@@ -62,31 +52,10 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
    */
   final class untrackedCaptures extends annotation.StaticAnnotation
 
-  /** An annotation on parameters `x` stating that the method's body makes
-   *  use of the reach capability `x*`. Consequently, when calling the method
-   *  we need to charge the deep capture set of the actual argiment to the
-   *  environment.
-   *
-   *  Note: This should go into annotations. For now it is here, so that we
+  /** This should go into annotations. For now it is here, so that we
    *  can experiment with it quickly between minor releases
    */
   final class use extends annotation.StaticAnnotation
-
-  /** An annotations on parameters and update methods.
-   *  On a parameter it states that any capabilties passed in the argument
-   *  are no longer available afterwards, unless they are of class `SharableCapabilitty`.
-   *  On an update method, it states that the `this` of the enclosing class is
-   *  consumed, which means that any capabilities of the method prefix are
-   *  no longer available afterwards.
-   */
-  final class consume extends annotation.StaticAnnotation
-
-  /** An annotation placed on a refinement created by capture checking.
-   *  Refinements with this annotation unconditionally override any
-   *  info from the parent type, so no intersection needs to be formed.
-   *  This could be useful for tracked parameters as well.
-   */
-  final class refineOverride extends annotation.StaticAnnotation
 
   object unsafe:
 
@@ -97,9 +66,4 @@ import annotation.{experimental, compileTimeOnly, retainsCap}
        */
       def unsafeAssumePure: T = x
 
-    /** A wrapper around code for which separation checks are suppressed.
-     */
-    def unsafeAssumeSeparate[T](op: T): T = op
-
   end unsafe
-end caps

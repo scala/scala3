@@ -167,11 +167,7 @@ abstract class Recheck extends Phase, SymTransformer:
        *  from the current type.
        */
       def setNuType(tpe: Type): Unit =
-        if nuTypes.lookup(tree) == null then updNuType(tpe)
-
-      /** Set new type of the tree unconditionally. */
-      def updNuType(tpe: Type): Unit =
-        if tpe ne tree.tpe then nuTypes(tree) = tpe
+        if nuTypes.lookup(tree) == null && (tpe ne tree.tpe) then nuTypes(tree) = tpe
 
       /** The new type of the tree, or if none was installed, the original type */
       def nuType(using Context): Type =

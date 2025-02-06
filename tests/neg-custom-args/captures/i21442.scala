@@ -1,5 +1,4 @@
 import language.experimental.captureChecking
-
 trait IO:
   def use(): Unit
 case class Boxed[+T](unbox: T)
@@ -14,6 +13,6 @@ def foo(x: Boxed[IO^]): Unit =
 // slightly different way.
 // But, no type error reported.
 def bar(x: Boxed[IO^]): Unit =
-  val x1: Boxed[IO^] = x // error
+  val x1: Boxed[IO^] = x
   val io = x1.unbox // error
   io.use()

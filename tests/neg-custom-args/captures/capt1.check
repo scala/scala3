@@ -1,68 +1,50 @@
--- Error: tests/neg-custom-args/captures/capt1.scala:5:11 --------------------------------------------------------------
-5 |  () => if x == null then y else y  // error
+-- Error: tests/neg-custom-args/captures/capt1.scala:6:11 --------------------------------------------------------------
+6 |  () => if x == null then y else y  // error
   |           ^
   |           reference (x : C^) is not included in the allowed capture set {}
   |           of an enclosing function literal with expected type () -> C
--- Error: tests/neg-custom-args/captures/capt1.scala:8:11 --------------------------------------------------------------
-8 |  () => if x == null then y else y  // error
+-- Error: tests/neg-custom-args/captures/capt1.scala:9:11 --------------------------------------------------------------
+9 |  () => if x == null then y else y  // error
   |           ^
   |           reference (x : C^) is not included in the allowed capture set {}
   |           of an enclosing function literal with expected type Matchable
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:15:2 -----------------------------------------
-15 |  def f(y: Int) = if x == null then y else y  // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:16:2 -----------------------------------------
+16 |  def f(y: Int) = if x == null then y else y  // error
    |  ^
    |  Found:    (y: Int) ->{x} Int
    |  Required: Matchable
-16 |  f
+17 |  f
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:22:2 -----------------------------------------
-22 |  class F(y: Int) extends A:   // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:23:2 -----------------------------------------
+23 |  class F(y: Int) extends A:   // error
    |  ^
    |  Found:    A^{x}
    |  Required: A
-23 |    def m() = if x == null then y else y
-24 |  F(22)
+24 |    def m() = if x == null then y else y
+25 |  F(22)
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:27:2 -----------------------------------------
-27 |  new A: // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:28:2 -----------------------------------------
+28 |  new A: // error
    |  ^
    |  Found:    A^{x}
    |  Required: A
-28 |    def m() = if x == null then y else y
+29 |    def m() = if x == null then y else y
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/capt1.scala:36:16 -------------------------------------------------------------
-36 |  val z2 = h[() -> Cap](() => x) // error // error
+-- Error: tests/neg-custom-args/captures/capt1.scala:34:16 -------------------------------------------------------------
+34 |  val z2 = h[() -> Cap](() => x) // error // error
    |             ^^^^^^^^^
-   |             Type variable X of method h cannot be instantiated to () -> (ex$18: caps.Exists) -> C^{ex$18} since
-   |             the part C^{ex$18} of that type captures the root capability `cap`.
--- Error: tests/neg-custom-args/captures/capt1.scala:36:30 -------------------------------------------------------------
-36 |  val z2 = h[() -> Cap](() => x) // error // error
+   |             Type variable X of method h cannot be instantiated to () -> (ex$15: caps.Exists) -> C^{ex$15} since
+   |             the part C^{ex$15} of that type captures the root capability `cap`.
+-- Error: tests/neg-custom-args/captures/capt1.scala:34:30 -------------------------------------------------------------
+34 |  val z2 = h[() -> Cap](() => x) // error // error
    |                              ^
    |                     reference (x : C^) is not included in the allowed capture set {}
-   |                     of an enclosing function literal with expected type () -> (ex$18: caps.Exists) -> C^{ex$18}
--- Error: tests/neg-custom-args/captures/capt1.scala:38:13 -------------------------------------------------------------
-38 |  val z3 = h[(() -> Cap) @retains(x)](() => x)(() => C())  // error
+   |                     of an enclosing function literal with expected type () -> (ex$15: caps.Exists) -> C^{ex$15}
+-- Error: tests/neg-custom-args/captures/capt1.scala:36:13 -------------------------------------------------------------
+36 |  val z3 = h[(() -> Cap) @retains(x)](() => x)(() => C())  // error
    |             ^^^^^^^^^^^^^^^^^^^^^^^
-   |      Type variable X of method h cannot be instantiated to box () ->{x} (ex$23: caps.Exists) -> C^{ex$23} since
-   |      the part C^{ex$23} of that type captures the root capability `cap`.
--- Error: tests/neg-custom-args/captures/capt1.scala:43:7 --------------------------------------------------------------
-43 |    if x == null then  // error: separation
-   |       ^
-   |       Separation failure: Illegal access to {x} which is hidden by the previous definition
-   |       of value z1 with type () => (ex$27: caps.Exists) -> C^{ex$27}.
-   |       This type hides capabilities  {x}
--- Error: tests/neg-custom-args/captures/capt1.scala:44:12 -------------------------------------------------------------
-44 |      () => x  // error: separation
-   |            ^
-   |            Separation failure: Illegal access to {x} which is hidden by the previous definition
-   |            of value z1 with type () => (ex$27: caps.Exists) -> C^{ex$27}.
-   |            This type hides capabilities  {x}
--- Error: tests/neg-custom-args/captures/capt1.scala:47:2 --------------------------------------------------------------
-47 |  x // error: separation
-   |  ^
-   |  Separation failure: Illegal access to {x} which is hidden by the previous definition
-   |  of value z1 with type () => (ex$27: caps.Exists) -> C^{ex$27}.
-   |  This type hides capabilities  {x}
+   |      Type variable X of method h cannot be instantiated to box () ->{x} (ex$20: caps.Exists) -> C^{ex$20} since
+   |      the part C^{ex$20} of that type captures the root capability `cap`.
