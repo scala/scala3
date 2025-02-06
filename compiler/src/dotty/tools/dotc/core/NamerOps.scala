@@ -39,14 +39,17 @@ object NamerOps:
    */
   extension (tp: Type)
     def separateRefinements(cls: ClassSymbol, refinements: mutable.LinkedHashMap[Name, Type] | Null)(using Context): Type =
+      val widenSkolemsMap = new TypeMap:
+        def apply(tp: Type) = mapOver(tp.widenSkolem)
       tp match
         case RefinedType(tp1, rname, rinfo) =>
           try tp1.separateRefinements(cls, refinements)
           finally
             if refinements != null then
+              val rinfo1 = widenSkolemsMap(rinfo)
               refinements(rname) = refinements.get(rname) match
-                case Some(tp) => tp & rinfo
-                case None => rinfo
+                case Some(tp) => tp & rinfo1
+                case None => rinfo1
         case tp @ AnnotatedType(tp1, ann) =>
           tp.derivedAnnotatedType(tp1.separateRefinements(cls, refinements), ann)
         case tp: RecType =>
