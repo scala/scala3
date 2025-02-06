@@ -163,7 +163,7 @@ trait TypeAssigner {
           else
             qualType.findMember(name, pre)
 
-        if reallyExists(mbr) then qualType.select(name, mbr)
+        if reallyExists(mbr) && NamedType.validPrefix(qualType) then qualType.select(name, mbr)
         else if qualType.isErroneous || name.toTermName == nme.ERROR then UnspecifiedErrorType
         else NoType
   end selectionType
