@@ -7,7 +7,7 @@ import collection.mutable
 import core.*
 import Symbols.*, Types.*, Flags.*
 import Contexts.*, Names.*, Flags.*, Symbols.*, Decorators.*
-import CaptureSet.{Refs, emptySet, HiddenSet}
+import CaptureSet.{Refs, emptyRefs, HiddenSet}
 import config.Printers.capt
 import StdNames.nme
 import util.{SimpleIdentitySet, EqHashMap, SrcPos}
@@ -149,7 +149,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   /** The set of capabilities that are hidden by a polymorphic result type
    *  of some previous definition.
    */
-  private var defsShadow: Refs = emptySet
+  private var defsShadow: Refs = emptyRefs
 
   /** A map from definitions to their internal result types.
    *  Populated during separation checking traversal.
@@ -243,10 +243,10 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       def hiddenByElem(elem: CaptureRef): Refs = elem match
         case Fresh.Cap(hcs) => hcs.elems.filter(!_.isRootCapability) ++ recur(hcs.elems)
         case ReadOnlyCapability(ref1) => hiddenByElem(ref1).map(_.readOnly)
-        case _ => emptySet
+        case _ => emptyRefs
 
       def recur(refs: Refs): Refs =
-        (emptySet /: refs): (elems, elem) =>
+        (emptyRefs /: refs): (elems, elem) =>
           if seen.add(elem) then elems ++ hiddenByElem(elem) else elems
 
       recur(refs)
@@ -335,7 +335,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     def hiddenCaptures = formalCaptures(arg).hidden
     def clashFootprint = clashCaptures.footprint
     def hiddenFootprint = hiddenCaptures.footprint
-    def declaredFootprint = deps(arg).map(captures(_)).foldLeft(emptySet)(_ ++ _).footprint
+    def declaredFootprint = deps(arg).map(captures(_)).foldLeft(emptyRefs)(_ ++ _).footprint
     def footprintOverlap = hiddenFootprint.overlapWith(clashFootprint).deduct(declaredFootprint)
     report.error(
       em"""Separation failure: argument of type  ${arg.nuType}
@@ -500,7 +500,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     case AnnotatedType(parent, _) => explicitRefs(parent)
     case AndType(tp1, tp2) => explicitRefs(tp1) ++ explicitRefs(tp2)
     case OrType(tp1, tp2) => explicitRefs(tp1) ** explicitRefs(tp2)
-    case _ => emptySet
+    case _ => emptyRefs
 
   /** Deduct some elements from `refs` according to the role of the checked type `tpe`:
    *   - If the the type apears as a (result-) type of a definition of `x`, deduct
@@ -593,8 +593,8 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
      *  be explicitly referenced or hidden in some other part.
      */
     def checkParts(parts: List[Type]): Unit =
-      var footprint: Refs = emptySet
-      var hiddenSet: Refs = emptySet
+      var footprint: Refs = emptyRefs
+      var hiddenSet: Refs = emptyRefs
       var checked = 0
       for part <- parts do
 
