@@ -1694,6 +1694,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end SimpleSelectorTypeTest
 
     object SimpleSelector extends SimpleSelectorModule:
+      def apply(name: String): SimpleSelector = 
+        withDefaultPos(untpd.ImportSelector(untpd.Ident(name.toTermName)))
       def unapply(x: SimpleSelector): Some[String] = Some(x.name.toString)
     end SimpleSelector
 
@@ -1713,6 +1715,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end RenameSelectorTypeTest
 
     object RenameSelector extends RenameSelectorModule:
+      def apply(fromName: String, toName: String): RenameSelector =
+        withDefaultPos(untpd.ImportSelector(untpd.Ident(fromName.toTermName), untpd.Ident(toName.toTermName)))
       def unapply(x: RenameSelector): (String, String) = (x.fromName, x.toName)
     end RenameSelector
 
@@ -1738,6 +1742,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end OmitSelectorTypeTest
 
     object OmitSelector extends OmitSelectorModule:
+      def apply(name: String): OmitSelector =
+        withDefaultPos(untpd.ImportSelector(untpd.Ident(name.toTermName), untpd.Ident(nme.WILDCARD)))
       def unapply(x: OmitSelector): Some[String] = Some(x.imported.name.toString)
     end OmitSelector
 
@@ -1758,6 +1764,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end GivenSelectorTypeTest
 
     object GivenSelector extends GivenSelectorModule:
+      def apply(bound: Option[TypeTree]): GivenSelector =
+        withDefaultPos(untpd.ImportSelector(
+          untpd.Ident(nme.EMPTY),
+          bound = bound.map(tpt => untpd.TypedSplice(tpt)).getOrElse(EmptyTree)
+        ))
       def unapply(x: GivenSelector): Some[Option[TypeTree]] =
         Some(GivenSelectorMethods.bound(x))
     end GivenSelector

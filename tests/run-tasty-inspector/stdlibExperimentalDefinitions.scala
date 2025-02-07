@@ -73,6 +73,10 @@ val experimentalDefinitionInLibrary = Set(
   "scala.quoted.Quotes.reflectModule.MethodTypeMethods.hasErasedParams",
   "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.erasedArgs",
   "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.hasErasedArgs",
+  "scala.quoted.Quotes.reflectModule.GivenSelectorModule.apply",
+  "scala.quoted.Quotes.reflectModule.OmitSelectorModule.apply",
+  "scala.quoted.Quotes.reflectModule.RenameSelectorModule.apply",
+  "scala.quoted.Quotes.reflectModule.SimpleSelectorModule.apply",
 
   // New feature: fromNullable for explicit nulls
   "scala.Predef$.fromNullable",
