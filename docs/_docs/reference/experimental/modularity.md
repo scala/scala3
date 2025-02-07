@@ -208,7 +208,7 @@ the comment is the resulting type of the applied constructor types.
 ```scala
 import scala.language.experimental.modularity
 
-class Box(tracked val v: Any)
+class C(tracked val v: Any)
 
 val c: C(42) /* C { val v: 42 } */ = C(42)
 ```
