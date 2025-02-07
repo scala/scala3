@@ -253,7 +253,8 @@ trait CaptureRef extends TypeProxy, ValueType:
    *                       fail a comparison.
    */
   def maxSubsumes(y: CaptureRef, canAddHidden: Boolean)(using ctx: Context, vs: VarState = VarState.Separate): Boolean =
-    this.match
+    (this eq y)
+    || this.match
       case Fresh.Cap(hidden) =>
         vs.ifNotSeen(this)(hidden.elems.exists(_.subsumes(y)))
         || !y.stripReadOnly.isCap && canAddHidden && vs.addHidden(hidden, y)
