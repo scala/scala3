@@ -623,7 +623,13 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       }
 
       if (emitLines && tree.span.exists && !tree.hasAttachment(SyntheticUnit)) {
-        val nr = ctx.source.offsetToLine(tree.span.point) + 1
+        val nr =
+          val sourcePos = tree.sourcePos
+          (
+            if sourcePos.exists then sourcePos.source.positionInUltimateSource(sourcePos).line
+            else ctx.source.offsetToLine(tree.span.point) // fallback
+          ) + 1
+
         if (nr != lastEmittedLineNr) {
           lastEmittedLineNr = nr
           getNonLabelNode(lastInsn) match {
