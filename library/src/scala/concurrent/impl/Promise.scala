@@ -215,7 +215,11 @@ private[concurrent] object Promise {
     override final def onComplete[U](func: Try[T] => U)(implicit executor: ExecutionContext): Unit =
       dispatchOrAddCallbacks(get(), new Transformation[T, Unit](Xform_onComplete, func, executor))
 
-    override private[concurrent] final def onCompleteWithUnregister[U](func: Try[T] => U)(implicit executor: ExecutionContext): () => Unit = {
+    /** The same as [[onComplete]], but additionally returns a function which can be
+     *  invoked to unregister the callback function. Removing a callback from a long-lived
+     *  future can enable garbage collection of objects referenced by the closure.
+     */
+    private[concurrent] final def onCompleteWithUnregister[U](func: Try[T] => U)(implicit executor: ExecutionContext): () => Unit = {
       val t = new Transformation[T, Unit](Xform_onComplete, func, executor)
       dispatchOrAddCallbacks(get(), t)
       () => unregisterCallback(t)
@@ -518,7 +522,7 @@ private[concurrent] object Promise {
               if (v.isInstanceOf[Failure[F]]) {
                 val f = fun.asInstanceOf[PartialFunction[Throwable, Future[T]]].applyOrElse(v.asInstanceOf[Failure[F]].exception, Future.recoverWithFailed)
                 if (f ne Future.recoverWithFailedMarker) {
-                  if (f.isInstanceOf[DefaultPromise[T]]) f.asInstanceOf[DefaultPromise[T]].linkRootOf(this, null) else completeWith(f.asInstanceOf[Future[T]])
+                  if (f.isInstanceOf[DefaultPromise[_]]) f.asInstanceOf[DefaultPromise[T]].linkRootOf(this, null) else completeWith(f.asInstanceOf[Future[T]])
                   null
                 } else v
               } else v

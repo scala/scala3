@@ -14,15 +14,14 @@ package scala.concurrent
 
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.LockSupport
-
-import scala.util.control.{NonFatal, NoStackTrace}
+import scala.util.control.{NoStackTrace, NonFatal}
 import scala.util.{Failure, Success, Try}
 import scala.concurrent.duration._
 import scala.collection.BuildFrom
-import scala.collection.mutable.{Builder, ArrayBuffer}
+import scala.collection.mutable.{ArrayBuffer, Builder}
 import scala.reflect.ClassTag
-
 import scala.concurrent.ExecutionContext.parasitic
+import scala.concurrent.impl.Promise.DefaultPromise
 
 /** A `Future` represents a value which may or may not be currently available,
  *  but will be available at some point, or an exception if that value could not be made available.
@@ -125,12 +124,6 @@ trait Future[+T] extends Awaitable[T] {
    * @group Callbacks
    */
   def onComplete[U](f: Try[T] => U)(implicit executor: ExecutionContext): Unit
-
-  /** The same as [[onComplete]], but additionally returns a function which can be
-   *  invoked to unregister the callback function. Removing a callback from a long-lived
-   *  future can enable garbage collection of objects referenced by the closure.
-   */
-  private[concurrent] def onCompleteWithUnregister[U](f: Try[T] => U)(implicit executor: ExecutionContext): () => Unit
 
   /* Miscellaneous */
 
@@ -621,7 +614,6 @@ object Future {
     }
 
     override final def onComplete[U](f: Try[Nothing] => U)(implicit executor: ExecutionContext): Unit = ()
-    override private[concurrent] final def onCompleteWithUnregister[U](f: Try[Nothing] => U)(implicit executor: ExecutionContext): () => Unit = () => ()
     override final def isCompleted: Boolean = false
     override final def value: Option[Try[Nothing]] = None
     override final def failed: Future[Throwable] = this
@@ -751,10 +743,13 @@ object Future {
       while (i.hasNext && !completed) {
         val deregs = firstCompleteHandler.get
         if (deregs == null) completed = true
-        else {
-          val d = i.next().onCompleteWithUnregister(firstCompleteHandler)
-          if (!firstCompleteHandler.compareAndSet(deregs, d :: deregs))
-            d.apply()
+        else i.next() match {
+          case dp: DefaultPromise[T @unchecked] =>
+            val d = dp.onCompleteWithUnregister(firstCompleteHandler)
+            if (!firstCompleteHandler.compareAndSet(deregs, d :: deregs))
+              d.apply()
+          case f =>
+            f.onComplete(firstCompleteHandler)
         }
       }
       p.future
