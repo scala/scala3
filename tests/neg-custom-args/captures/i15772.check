@@ -1,29 +1,29 @@
--- Error: tests/neg-custom-args/captures/i15772.scala:19:26 ------------------------------------------------------------
-19 |    val c : C^{x} = new C(x)  // error
+-- Error: tests/neg-custom-args/captures/i15772.scala:21:26 ------------------------------------------------------------
+21 |    val c : C^{x} = new C(x)  // error
    |                          ^
    |                          reference (x : C^) is not included in the allowed capture set {}
    |                          of an enclosing function literal with expected type () -> Int
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:20:46 ---------------------------------------
-20 |    val boxed1 : ((C^) => Unit) -> Unit = box1(c)  // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:22:46 ---------------------------------------
+22 |    val boxed1 : ((C^) => Unit) -> Unit = box1(c)  // error
    |                                          ^^^^^^^
    |                                          Found:    (C{val arg: C^}^{c} => Unit) ->{c} Unit
    |                                          Required: (C^ => Unit) -> Unit
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/i15772.scala:26:26 ------------------------------------------------------------
-26 |    val c : C^{x} = new C(x) // error
+-- Error: tests/neg-custom-args/captures/i15772.scala:28:26 ------------------------------------------------------------
+28 |    val c : C^{x} = new C(x) // error
    |                          ^
    |                          reference (x : C^) is not included in the allowed capture set {}
    |                          of an enclosing function literal with expected type () -> Int
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:27:35 ---------------------------------------
-27 |    val boxed2 : Observe[C^] = box2(c)  // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:29:35 ---------------------------------------
+29 |    val boxed2 : Observe[C^] = box2(c)  // error
    |                               ^^^^^^^
    |                               Found:    (C{val arg: C^}^{c} => Unit) ->{c} Unit
    |                               Required: (C^ => Unit) -> Unit
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:33:34 ---------------------------------------
-33 |  val boxed2 : Observe[C]^ = box2(c) // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:35:34 ---------------------------------------
+35 |  val boxed2 : Observe[C]^ = box2(c) // error
    |                                  ^
    |                                  Found:    box C^
    |                                  Required: box C{val arg: C^?}^?
@@ -32,10 +32,14 @@
    |                                  cannot be included in capture set ?
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:44:2 ----------------------------------------
-44 |  x: (() -> Unit) // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:46:2 ----------------------------------------
+46 |  x: (() -> Unit) // error
    |  ^
    |  Found:    (x : () ->{filesList, sayHello} Unit)
    |  Required: () -> Unit
    |
    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/i15772.scala:34:10 ------------------------------------------------------------
+34 |  def c : C^ = new C(x) // error separation
+   |          ^^
+   |          Separation failure: method c's result type C^ hides non-local parameter x
