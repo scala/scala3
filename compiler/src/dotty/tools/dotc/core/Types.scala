@@ -2473,7 +2473,7 @@ object Types extends TypeUtils {
           else lastd match {
             case lastd: SymDenotation =>
               if stillValid(lastd) && checkedPeriod.code != NowhereCode then finish(lastd.current)
-              else finish(memberDenot(lastd.initial.name, allowPrivate = false))
+              else finish(memberDenot(lastd.initial.name, allowPrivate = lastd.is(Private)))
             case _ =>
               fromDesignator
           }
