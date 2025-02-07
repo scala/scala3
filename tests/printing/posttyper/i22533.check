@@ -1,0 +1,25 @@
+[[syntax trees at end of                 posttyper]] // tests/printing/posttyper/i22533.scala
+package <empty> {
+  @SourceFile("tests/printing/posttyper/i22533.scala") trait A() extends Any {
+    override def equals(x: Any): Boolean = ???
+    override def hashCode(): Int = ???
+  }
+  @SourceFile("tests/printing/posttyper/i22533.scala") final class Foo(u: Int)
+     extends AnyVal(), A {
+    override def hashCode(): Int = Foo.this.u.hashCode()
+    override def equals(x$0: Any): Boolean =
+      x$0 match
+        {
+          case x$0 @ _:Foo @unchecked => this.u.==(x$0.u)
+          case _ => false
+        }
+    private[this] val u: Int
+  }
+  final lazy module val Foo: Foo = new Foo()
+  @SourceFile("tests/printing/posttyper/i22533.scala") final module class Foo()
+     extends AnyRef() { this: Foo.type =>
+    private def writeReplace(): AnyRef =
+      new scala.runtime.ModuleSerializationProxy(classOf[Foo.type])
+  }
+}
+
