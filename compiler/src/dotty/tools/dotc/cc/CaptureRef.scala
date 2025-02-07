@@ -116,13 +116,13 @@ trait CaptureRef extends TypeProxy, ValueType:
     case _ => false
 
   /** An exclusive capability is a capability that derives
-   *  indirectly from a maximal capability without goinh through
+   *  indirectly from a maximal capability without going through
    *  a read-only capability first.
    */
   final def isExclusive(using Context): Boolean =
     !isReadOnly && (isMaxCapability || captureSetOfInfo.isExclusive)
 
-  // With the support of pathes, we don't need to normalize the `TermRef`s anymore.
+  // With the support of paths, we don't need to normalize the `TermRef`s anymore.
   // /** Normalize reference so that it can be compared with `eq` for equality */
   // final def normalizedRef(using Context): CaptureRef = this match
   //   case tp @ AnnotatedType(parent: CaptureRef, annot) if tp.isTrackableRef =>
@@ -242,7 +242,7 @@ trait CaptureRef extends TypeProxy, ValueType:
         case _ => false
   end subsumes
 
-  /** This is a maximal capabaility that subsumes `y` in given context and VarState.
+  /** This is a maximal capability that subsumes `y` in given context and VarState.
    *  @param canAddHidden  If true we allow maximal capabilities to subsume all other capabilities.
    *                       We add those capabilities to the hidden set if this is Fresh.Cap
    *                       If false we only accept `y` elements that are already in the
