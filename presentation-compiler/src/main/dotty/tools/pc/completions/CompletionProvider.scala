@@ -99,9 +99,9 @@ class CompletionProvider(
              *  4|     $1$.sliding@@[Int](size, step)
              *
              */
-            if qual.symbol.is(Flags.Synthetic) && qual.symbol.name.isInstanceOf[DerivedName] =>
+            if qual.symbol.is(Flags.Synthetic) && qual.span.isZeroExtent && qual.symbol.name.isInstanceOf[DerivedName] =>
               qual.symbol.defTree match
-                case valdef: ValDef => Select(valdef.rhs, name) :: tail
+                case valdef: ValDef if !valdef.rhs.isEmpty => Select(valdef.rhs, name) :: tail
                 case _ => tpdPath0
           case _ => tpdPath0
 
