@@ -510,18 +510,36 @@ object Build {
   def findArtifactPath(classpath: Def.Classpath, name: String): String =
     findArtifact(classpath, name).getAbsolutePath
 
+  /** Replace package names in package definitions, for shading.
+   * It assumes the full package def is written on a single line.
+   * It does not adapt the imports accordingly.
+   */
+  def replacePackage(lines: List[String])(replace: PartialFunction[String, String]): List[String] = {
+    def recur(lines: List[String]): List[String] =
+      lines match {
+        case head :: tail =>
+          if (head.startsWith("package ")) {
+            val packageName = head.stripPrefix("package ").trim
+            val newPackageName = replace.applyOrElse(packageName, (_: String) => packageName)
+            s"package $newPackageName" :: tail
+          } else head :: recur(tail)
+        case _ => lines
+      }
+    recur(lines)
+  }
+
   /** Insert UnsafeNulls Import after package */
-  def insertUnsafeNullsImport(lines: Seq[String]): Seq[String] = {
-    def recur(ls: Seq[String], foundPackage: Boolean): Seq[String] = ls match {
-      case Seq(l, rest @ _*) =>
+  def insertUnsafeNullsImport(lines: List[String]): List[String] = {
+    def recur(ls: List[String], foundPackage: Boolean): List[String] = ls match {
+      case l :: rest =>
         val lt = l.trim()
         if (foundPackage) {
           if (!(lt.isEmpty || lt.startsWith("package ")))
-            "import scala.language.unsafeNulls" +: ls
-          else l +: recur(rest, foundPackage)
+            "import scala.language.unsafeNulls" :: ls
+          else l :: recur(rest, foundPackage)
         } else {
           if (lt.startsWith("package ")) l +: recur(rest, true)
-          else l +: recur(rest, foundPackage)
+          else l :: recur(rest, foundPackage)
         }
       case _ => ls
     }
@@ -781,7 +799,10 @@ object Build {
           val sjsSources = (trgDir ** "*.scala").get.toSet
           sjsSources.foreach(f => {
             val lines = IO.readLines(f)
-            IO.writeLines(f, insertUnsafeNullsImport(lines))
+            val linesWithPackage = replacePackage(lines) {
+              case "org.scalajs.ir" => "dotty.tools.sjs.ir"
+            }
+            IO.writeLines(f, insertUnsafeNullsImport(linesWithPackage))
           })
           sjsSources
         } (Set(scalaJSIRSourcesJar)).toSeq

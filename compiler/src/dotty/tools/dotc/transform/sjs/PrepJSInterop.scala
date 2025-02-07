@@ -23,7 +23,7 @@ import Types.*
 
 import JSSymUtils.*
 
-import org.scalajs.ir.Trees.JSGlobalRef
+import dotty.tools.sjs.ir.Trees.JSGlobalRef
 
 import dotty.tools.backend.sjs.JSDefinitions.jsdefn
 
