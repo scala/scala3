@@ -946,7 +946,7 @@ object Denotations {
     }
 
     def staleSymbolError(using Context): Nothing =
-      if symbol.isPackageObject && ctx.run != null && ctx.run.nn.isCompilingSuspended
+      if symbol.lastKnownDenotation.isPackageObject && ctx.run != null && ctx.run.nn.isCompilingSuspended
       then throw StaleSymbolTypeError(symbol)
       else throw StaleSymbolException(staleSymbolMsg)
 
