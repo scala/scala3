@@ -166,6 +166,9 @@ object Mode {
    */
   val ForceInline: Mode = newMode(29, "ForceInline")
 
+  /** Are we typing an annotation? */
+  val InAnnotation: Mode = newMode(30, "InAnnotation")
+
   /** Skip inlining of methods. */
   val NoInline: Mode = newMode(31, "NoInline")
 }

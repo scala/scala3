@@ -13,3 +13,6 @@ def test =
   @annot(44) val z3 = 45
   @annot2(y = Array("Hello", y)) val z4 = 45
 
+  // Arguments are still lifted if the annotation class is instantiated
+  // explicitly. See #22526.
+  val z5 = new annot2(y = Array("World"), x = 1)

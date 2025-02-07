@@ -41,6 +41,12 @@ package <empty> {
         @annot2(
           y = Array.apply[Any](["Hello",y : Any]*)(scala.reflect.ClassTag.Any))
           val z4: Int = 45
+        val z5: annot2 =
+          {
+            val y$1: Array[Any] =
+              Array.apply[Any](["World" : Any]*)(scala.reflect.ClassTag.Any)
+            new annot2(x = 1, y = y$1)
+          }
         ()
       }
   }
