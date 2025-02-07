@@ -62,7 +62,7 @@ object Fresh:
     def apply(owner: Symbol)(using Context): CaptureRef =
       apply(ownerToHidden(owner, reach = false))
 
-    def unapply(tp: AnnotatedType)(using Context): Option[CaptureSet.HiddenSet] = tp.annot match
+    def unapply(tp: AnnotatedType): Option[CaptureSet.HiddenSet] = tp.annot match
       case Annot(hidden) => Some(hidden)
       case _ => None
   end Cap
