@@ -168,7 +168,7 @@ sealed abstract class CaptureSet extends Showable:
    */
   protected def addThisElem(elem: CaptureRef)(using Context, VarState): CompareResult
 
-  protected def addHiddenElem(elem: CaptureRef)(using ctx: Context, vs: VarState): CompareResult =
+  protected def addIfHiddenOrFail(elem: CaptureRef)(using ctx: Context, vs: VarState): CompareResult =
     if elems.exists(_.maxSubsumes(elem, canAddHidden = true))
     then CompareResult.OK
     else CompareResult.Fail(this :: Nil)
@@ -438,7 +438,7 @@ object CaptureSet:
     def isAlwaysEmpty = elems.isEmpty
 
     def addThisElem(elem: CaptureRef)(using Context, VarState): CompareResult =
-      addHiddenElem(elem)
+      addIfHiddenOrFail(elem)
 
     def addDependent(cs: CaptureSet)(using Context, VarState) = CompareResult.OK
 
@@ -487,7 +487,10 @@ object CaptureSet:
     private var isSolved: Boolean = false
 
     /** The elements currently known to be in the set */
-    var elems: Refs = initialElems
+    protected var myElems: Refs = initialElems
+
+    def elems: Refs = myElems
+    def elems_=(refs: Refs): Unit = myElems = refs
 
     /** The sets currently known to be dependent sets (i.e. new additions to this set
      *  are propagated to these dependent sets.)
@@ -535,7 +538,7 @@ object CaptureSet:
 
     final def addThisElem(elem: CaptureRef)(using Context, VarState): CompareResult =
       if isConst || !recordElemsState() then // Fail if variable is solved or given VarState is frozen
-        addHiddenElem(elem)
+        addIfHiddenOrFail(elem)
       else if Existential.isBadExistential(elem) then // Fail if `elem` is an out-of-scope existential
         CompareResult.Fail(this :: Nil)
       else if !levelOK(elem) then
@@ -925,9 +928,75 @@ object CaptureSet:
   def elemIntersection(cs1: CaptureSet, cs2: CaptureSet)(using Context): Refs =
     cs1.elems.filter(cs2.mightAccountFor) ++ cs2.elems.filter(cs1.mightAccountFor)
 
-  /** A capture set variable used to record the references hidden by a Fresh.Cap instance */
+  /** A capture set variable used to record the references hidden by a Fresh.Cap instance,
+   *  The elems and deps members are repurposed as follows:
+   *    elems: Set of hidden references
+   *    deps : Set of hidden sets for which the Fresh.Cap instance owning this set
+   *           is a hidden element.
+   *  Hidden sets may become aliases of other hidden sets, which means that
+   *  reads and writes of elems go to the alias.
+   *  If H is an alias of R.hidden for some Fresh.Cap R then:
+   *    H.elems == {R}
+   *    H.deps = {R.hidden}
+   *  This encoding was chosen because it relies only on the elems and deps fields
+   *  which are already subject through snapshotting and rollbacks in VarState.
+   *  It's advantageous if we don't need to deal with other pieces of state there.
+   */
   class HiddenSet(initialHidden: Refs = emptyRefs)(using @constructorOnly ictx: Context)
   extends Var(initialElems = initialHidden):
+
+    private def aliasRef: AnnotatedType | Null =
+      if myElems.size == 1 then
+        myElems.nth(0) match
+          case al @ Fresh.Cap(hidden) if deps.contains(hidden) => al
+          case _ => null
+      else null
+
+    private def aliasSet: HiddenSet =
+      if myElems.size == 1 then
+        myElems.nth(0) match
+          case Fresh.Cap(hidden) if deps.contains(hidden) => hidden
+          case _ => this
+      else this
+
+    override def elems: Refs =
+      val al = aliasSet
+      if al eq this then super.elems else al.elems
+
+    override def elems_=(refs: Refs) =
+      val al = aliasSet
+      if al eq this then super.elems_=(refs) else al.elems_=(refs)
+
+    /** Add element to hidden set. Also add it to all supersets (as indicated by
+     *  deps of this set). Follow aliases on both hidden set and added element
+     *  before adding. If the added element is also a Fresh.Cap instance with
+     *  hidden set H which is a superset of this set, then make this set an
+     *  alias of H.
+     */
+    def add(elem: CaptureRef)(using ctx: Context, vs: VarState): Unit =
+      val alias = aliasSet
+      if alias ne this then alias.add(elem)
+      else
+        def addToElems() =
+          elems += elem
+          deps.foreach: dep =>
+            assert(dep != this)
+            vs.addHidden(dep.asInstanceOf[HiddenSet], elem)
+        elem match
+          case Fresh.Cap(hidden) =>
+            if this ne hidden then
+              val alias = hidden.aliasRef
+              if alias != null then
+                add(alias)
+              else if deps.contains(hidden) then // make this an alias of elem
+                capt.println(i"Alias $this to $hidden")
+                elems = SimpleIdentitySet(elem)
+                deps = SimpleIdentitySet(hidden)
+              else
+                addToElems()
+                hidden.deps += this
+          case _ =>
+            addToElems()
 
     /** Apply function `f` to `elems` while setting `elems` to empty for the
      *  duration. This is used to escape infinite recursions if two Fresh.Caps
@@ -1075,9 +1144,11 @@ object CaptureSet:
      */
     def addHidden(hidden: HiddenSet, elem: CaptureRef)(using Context): Boolean =
       elemsMap.get(hidden) match
-        case None => elemsMap(hidden) = hidden.elems
+        case None =>
+          elemsMap(hidden) = hidden.elems
+          depsMap(hidden) = hidden.deps
         case _ =>
-      hidden.elems += elem
+      hidden.add(elem)(using ctx, this)
       true
 
     /** Roll back global state to what was recorded in this VarState */
