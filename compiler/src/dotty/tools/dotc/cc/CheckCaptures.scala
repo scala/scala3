@@ -1839,7 +1839,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       end checker
 
       checker.traverse(unit)(using ctx.withOwner(defn.RootClass))
-      if ccConfig.useSepChecks then SepCheck(this).traverse(unit)
+      if ccConfig.useSepChecks then SepChecker(this).traverse(unit)
       if !ctx.reporter.errorsReported then
         // We dont report errors here if previous errors were reported, because other
         // errors often result in bad applied types, but flagging these bad types gives

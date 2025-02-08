@@ -67,7 +67,6 @@ object Fresh:
       case _ => None
   end Cap
 
-  /** Map each occurrence of cap to a different Sep.Cap instance */
   class FromCap(owner: Symbol)(using Context) extends BiTypeMap, FollowAliasesMap:
     thisMap =>
 
