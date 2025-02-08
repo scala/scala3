@@ -651,8 +651,14 @@ object Scanners {
                 if skipping then
                   if r.enclosing.isClosedByUndentAt(nextWidth) then
                     insert(OUTDENT, offset)
-                else if r.isInstanceOf[InBraces] && !closingRegionTokens.contains(token) then
-                  report.warning("Line is indented too far to the left, or a `}` is missing", sourcePos())
+                else
+                  val checkable = r match
+                    case _: InBraces => true
+                    case InParens(LPAREN, _) => true
+                    case _ => false
+                  if checkable && !closingRegionTokens.contains(token) then
+                    report.warning(s"Line is indented too far to the left, or a ${showToken(r.closedBy)} is missing",
+                      sourcePos())
         else if lastWidth < nextWidth
              || lastWidth == nextWidth && (lastToken == MATCH || lastToken == CATCH) && token == CASE then
           if canStartIndentTokens.contains(lastToken) then
