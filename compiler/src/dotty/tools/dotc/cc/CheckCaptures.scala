@@ -622,7 +622,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ => denot
 
       // Don't allow update methods to be called unless the qualifier captures
-      // an exclusive reference. TODO This should probably rolled into
+      // contain an exclusive referenece. TODO This should probabkly rolled into
       // qualifier logic once we have it.
       if tree.symbol.isUpdateMethod && !qualType.captureSet.isExclusive then
         report.error(

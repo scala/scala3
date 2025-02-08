@@ -13,7 +13,7 @@ import NameKinds.ExistentialBinderName
 import NameOps.isImpureFunction
 import reporting.Message
 import util.SimpleIdentitySet.empty
-import CaptureSet.{Refs, emptyRefs, NarrowingCapabilityMap}
+import CaptureSet.{Refs, emptySet, NarrowingCapabilityMap}
 import dotty.tools.dotc.util.SimpleIdentitySet
 
 /** A module for handling Fresh types. Fresh.Cap instances are top type that keep
@@ -43,14 +43,14 @@ object Fresh:
   private def ownerToHidden(owner: Symbol, reach: Boolean)(using Context): Refs =
     val ref = owner.termRef
     if reach then
-      if ref.isTrackableRef then SimpleIdentitySet(ref.reach) else emptyRefs
+      if ref.isTrackableRef then SimpleIdentitySet(ref.reach) else emptySet
     else
-      if ref.isTracked then SimpleIdentitySet(ref) else emptyRefs
+      if ref.isTracked then SimpleIdentitySet(ref) else emptySet
 
   /** An extractor for "fresh" capabilities */
   object Cap:
 
-    def apply(initialHidden: Refs = emptyRefs)(using Context): CaptureRef =
+    def apply(initialHidden: Refs = emptySet)(using Context): CaptureRef =
       if ccConfig.useSepChecks then
         AnnotatedType(defn.captureRoot.termRef, Annot(CaptureSet.HiddenSet(initialHidden)))
       else
