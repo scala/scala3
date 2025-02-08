@@ -1,8 +1,4 @@
 
-//> using options -Werror
-
-import annotation.*
-
 def f: Unit =
   identity(
     identity:
@@ -38,7 +34,6 @@ def orElse(x: Int): Unit =
     else
       false, "fail")
 
-@nowarn("msg=Unit")
 def onlyIf(x: Int): Unit =
   callme(
     if (x > 0)
@@ -62,16 +57,25 @@ def k(xs: List[Int], y: Int, z: Int) =
             x
           + y
             + z,
-            y,
-            z,
+          y, // warn
+          z, // warn
           )
     )
 
 object `arrow eol`:
   def f(g: Int => Int, i: Int): Int = g(i)
   def g(map: Int => Int): Int => Int = map
+  def k(i: => Int) = i
   def test =
     f(
-      g: x =>
-        x + 1, 42
+      g(_ + 1),
+  42 // warn
+    )
+  def test2 =
+    f(
+      g:
+        x =>
+          x + 1,
+k: // warn
+        42
     )
