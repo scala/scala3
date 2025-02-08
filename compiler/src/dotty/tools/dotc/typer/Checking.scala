@@ -606,7 +606,7 @@ object Checking {
     if sym.isWrappedToplevelDef && !sym.isType && sym.flags.is(Infix, butNot = Extension) then
       fail(ModifierNotAllowedForDefinition(Flags.Infix, s"A top-level ${sym.showKind} cannot be infix."))
     if sym.isUpdateMethod && !sym.owner.derivesFrom(defn.Caps_Mutable) then
-      fail(em"Update methods can only be used as members of classes extending the `Mutable` trait")
+      fail(em"Update methods can only be used as members of classes deriving from the `Mutable` trait")
     checkApplicable(Erased,
       !sym.is(Lazy, butNot = Given)
       && !sym.isMutableVarOrAccessor

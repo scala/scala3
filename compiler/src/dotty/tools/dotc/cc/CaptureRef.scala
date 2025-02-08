@@ -100,14 +100,12 @@ trait CaptureRef extends TypeProxy, ValueType:
   /** Is this reference the generic root capability `cap` or a Fresh.Cap instance? */
   final def isCapOrFresh(using Context): Boolean = isCap || isFresh
 
-  /** Is this reference one of the generic root capabilities `cap` or `cap.rd` ? */
+  /** Is this reference one the generic root capabilities `cap` or `cap.rd` ? */
   final def isRootCapability(using Context): Boolean = this match
     case ReadOnlyCapability(tp1) => tp1.isCapOrFresh
     case _ => isCapOrFresh
 
-  /** Is this reference a capability that does not derive from another capability?
-   *  Includes read-only versions of maximal capabilities.
-   */
+  /** Is this reference capability that does not derive from another capability ? */
   final def isMaxCapability(using Context): Boolean = this match
     case tp: TermRef => tp.isCap || tp.info.derivesFrom(defn.Caps_Exists)
     case tp: TermParamRef => tp.underlying.derivesFrom(defn.Caps_Exists)
@@ -115,10 +113,6 @@ trait CaptureRef extends TypeProxy, ValueType:
     case ReadOnlyCapability(tp1) => tp1.isMaxCapability
     case _ => false
 
-  /** An exclusive capability is a capability that derives
-   *  indirectly from a maximal capability without goinh through
-   *  a read-only capability first.
-   */
   final def isExclusive(using Context): Boolean =
     !isReadOnly && (isMaxCapability || captureSetOfInfo.isExclusive)
 
@@ -165,6 +159,8 @@ trait CaptureRef extends TypeProxy, ValueType:
    *   X: CapSet^c1...CapSet^c2, (CapSet^c1) subsumes y  ==>  X subsumes y
    *   Y: CapSet^c1...CapSet^c2, x subsumes (CapSet^c2)  ==>  x subsumes Y
    *   Contains[X, y]  ==>  X subsumes y
+   *
+   *   TODO: Move to CaptureSet
    */
   final def subsumes(y: CaptureRef)(using ctx: Context, vs: VarState = VarState.Separate): Boolean =
 
@@ -243,7 +239,7 @@ trait CaptureRef extends TypeProxy, ValueType:
   end subsumes
 
   /** This is a maximal capabaility that subsumes `y` in given context and VarState.
-   *  @param canAddHidden  If true we allow maximal capabilities to subsume all other capabilities.
+   *  @param canAddHidden  If true we allow maximal capabilties to subsume all other capabilities.
    *                       We add those capabilities to the hidden set if this is Fresh.Cap
    *                       If false we only accept `y` elements that are already in the
    *                       hidden set of this Fresh.Cap. The idea is that in a VarState that
