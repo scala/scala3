@@ -14,6 +14,7 @@ import util.{SimpleIdentitySet, EqHashMap, SrcPos}
 import tpd.*
 import reflect.ClassTag
 
+
 /** The separation checker is  a tree traverser that is run after capture checking.
  *  It checks tree nodes for various separation conditions, explained in the
  *  methods below. Rough summary:
