@@ -1,12 +1,69 @@
 -- [E172] Type Error: tests/neg/i13044.scala:61:40 ---------------------------------------------------------------------
 61 |   implicit def typeSchema: Schema[A] = Schema.gen // error
    |                                        ^^^^^^^^^^
-   |                                 No given instance of type Schema[B] was found.
-   |                                 I found:
+   |                        No given instance of type Schema[B] was found for a search with errors:
+   |                          No given instance of type Schema[C] was found for a search with errors:
+   |                          No given instance of type Schema[D] was found for a search with errors:
+   |                          No given instance of type Schema[E] was found for a search with errors:
+   |                          No given instance of type Schema[Option[F]] was found for a search with errors:
+   |                          No given instance of type Schema[Some[F]] was found for a search with errors:
+   |                          No given instance of type Schema[F] was found for a search with errors:
+   |                          No given instance of type Schema[G] was found for a search with errors:
+   |                          No given instance of type Schema[H] was found for a search with errors:
+   |                          No given instance of type Schema[X1] was found for a search with errors:
+   |                          Maximal number of successive inlines (32) exceeded,
+   |                        Maybe this is caused by a recursive inline method?
+   |                        You can use -Xmax-inlines to change the limit.
+   |                        I found:
    |
-   |                                     Schema.gen[B]
+   |                            Schema.gen[X1]
    |
-   |                                 But given instance gen in trait SchemaDerivation does not match type Schema[B].
+   |                        But given instance gen in trait SchemaDerivation does not match type Schema[X1]..
+   |                        I found:
+   |
+   |                            Schema.gen[H]
+   |
+   |                        But given instance gen in trait SchemaDerivation does not match type Schema[H]..
+   |                        I found:
+   |
+   |                            Schema.gen[G]
+   |
+   |                        But given instance gen in trait SchemaDerivation does not match type Schema[G]..
+   |                        I found:
+   |
+   |                            Schema.gen[F]
+   |
+   |                        But given instance gen in trait SchemaDerivation does not match type Schema[F]..
+   |                        I found:
+   |
+   |                            Schema.gen[Some[F]]
+   |
+   |                        But given instance gen in trait SchemaDerivation does not match type Schema[Some[F]]..
+   |                        I found:
+   |
+   |                            Schema.gen[Option[F]]
+   |
+   |                        But given instance gen in trait SchemaDerivation does not match type Schema[Option[F]]..
+   |                        I found:
+   |
+   |                            Schema.gen[E]
+   |
+   |                        But given instance gen in trait SchemaDerivation does not match type Schema[E]..
+   |                        I found:
+   |
+   |                            Schema.gen[D]
+   |
+   |                        But given instance gen in trait SchemaDerivation does not match type Schema[D]..
+   |                        I found:
+   |
+   |                            Schema.gen[C]
+   |
+   |                        But given instance gen in trait SchemaDerivation does not match type Schema[C]..
+   |                        I found:
+   |
+   |                            Schema.gen[B]
+   |
+   |                        But given instance gen in trait SchemaDerivation does not match type Schema[B].
    |--------------------------------------------------------------------------------------------------------------------
    |Inline stack trace
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
