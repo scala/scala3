@@ -149,9 +149,11 @@ object NamerOps:
    */
   def addConstructorApplies(scope: MutableScope, cls: ClassSymbol, modcls: ClassSymbol)(using Context): scope.type =
     def proxy(constr: Symbol): Symbol =
+      var flags = ApplyProxyFlags | (constr.flagsUNSAFE & AccessFlags)
+      if cls.is(Protected) && !modcls.is(Protected) then flags |= Protected
       newSymbol(
         modcls, nme.apply,
-        ApplyProxyFlags | (constr.flagsUNSAFE & AccessFlags),
+        flags,
         ApplyProxyCompleter(constr),
         cls.privateWithin,
         constr.coord)
@@ -175,9 +177,11 @@ object NamerOps:
 
   /** A new symbol that is the constructor companion for class `cls` */
   def classConstructorCompanion(cls: ClassSymbol)(using Context): TermSymbol =
+    var flags = ConstructorCompanionFlags
+    if cls.is(Protected) then flags |= Protected
     val companion = newModuleSymbol(
         cls.owner, cls.name.toTermName,
-        ConstructorCompanionFlags, ConstructorCompanionFlags,
+        flags, flags,
         constructorCompanionCompleter(cls),
         coord = cls.coord,
         compUnitInfo = cls.compUnitInfo)
