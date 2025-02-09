@@ -443,6 +443,23 @@ object Semantic:
 
   inline def reporter(using r: Reporter): Reporter = r
 
+// ----- Operations on trees -----------------------------
+  val valOrDefDefRhs = mutable.Map[ValOrDefDef, Tree]()
+
+  extension (tree: ValOrDefDef)
+    def getRhs(using Context): Tree =
+      def getTree: Tree =
+        val errorCount = ctx.reporter.errorCount
+        val rhs = tree.rhs
+
+        if (ctx.reporter.errorCount > errorCount)
+          report.warning("[Internal error] Ignoring analyses of " + tree.name + " due to error in reading TASTy. ")
+          EmptyTree
+        else
+          rhs
+
+      valOrDefDefRhs.getOrElseUpdate(tree, getTree)
+
 // ----- Operations on domains -----------------------------
   extension (a: Value)
     def join(b: Value): Value =
@@ -576,8 +593,9 @@ object Semantic:
         case ref: Ref =>
           val target = if needResolve then resolve(ref.klass, field) else field
           if target.is(Flags.Lazy) then
-            val rhs = target.defTree.asInstanceOf[ValDef].rhs
-            eval(rhs, ref, target.owner.asClass, cacheResult = true)
+            val rhs = target.defTree.asInstanceOf[ValDef].getRhs
+            if rhs.isEmpty then Hot
+            else eval(rhs, ref, target.owner.asClass, cacheResult = true)
           else if target.exists then
             val obj = ref.objekt
             if obj.hasField(target) then
@@ -591,8 +609,9 @@ object Semantic:
                 // return `Hot` here, errors are reported in checking `ThisRef`
                 Hot
               else if target.hasSource then
-                val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
-                eval(rhs, ref, target.owner.asClass, cacheResult = true)
+                val rhs = target.defTree.asInstanceOf[ValOrDefDef].getRhs
+                if rhs.isEmpty then Hot
+                else eval(rhs, ref, target.owner.asClass, cacheResult = true)
               else
                 val error = CallUnknown(field)(trace)
                 reporter.report(error)
@@ -715,7 +734,9 @@ object Semantic:
               else
                 reporter.reportAll(tryReporter.errors)
                 extendTrace(ddef) {
-                  eval(ddef.rhs, ref, cls, cacheResult = true)
+                  val rhs = ddef.getRhs
+                  if rhs.isEmpty then Hot
+                  else eval(rhs, ref, cls, cacheResult = true)
                 }
             else if ref.canIgnoreMethodCall(target) then
               Hot
@@ -777,10 +798,13 @@ object Semantic:
               val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
               extendTrace(cls.defTree) { init(tpl, ref, cls) }
             else
-              val initCall = ddef.rhs match
-                case Block(call :: _, _) => call
-                case call => call
-              extendTrace(ddef) { eval(initCall, ref, cls) }
+              val rhs = ddef.getRhs
+              if rhs.isEmpty then Hot
+              else
+                val initCall = rhs match
+                  case Block(call :: _, _) => call
+                  case call => call
+                extendTrace(ddef) { eval(initCall, ref, cls) }
             end if
           else
             Hot
@@ -796,7 +820,11 @@ object Semantic:
               extendTrace(cls.defTree) { eval(tpl, ref, cls, cacheResult = true) }
               ref
             else
-              extendTrace(ddef) { eval(ddef.rhs, ref, cls, cacheResult = true) }
+              extendTrace(ddef) {
+                val rhs = ddef.getRhs
+                if rhs.isEmpty then Hot
+                else eval(rhs, ref, cls, cacheResult = true)
+              }
           else if ref.canIgnoreMethodCall(ctor) then
             Hot
           else
@@ -906,8 +934,10 @@ object Semantic:
 
               case Cold => Cold
 
-              case ref: Ref => eval(vdef.rhs, ref, enclosingClass, cacheResult = sym.is(Flags.Lazy))
-
+              case ref: Ref =>
+                val rhs = vdef.getRhs
+                if rhs.isEmpty then Hot
+                else eval(rhs, ref, enclosingClass, cacheResult = sym.is(Flags.Lazy))
               case _ =>
                  report.warning("[Internal error] unexpected this value when accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show + Trace.show, Trace.position)
                  Hot
@@ -1320,10 +1350,14 @@ object Semantic:
           }
 
       case closureDef(ddef) =>
-        Fun(ddef.rhs, thisV, klass)
+        val rhs = ddef.getRhs
+        if rhs.isEmpty then Hot
+        else Fun(rhs, thisV, klass)
 
       case PolyFun(ddef) =>
-        Fun(ddef.rhs, thisV, klass)
+        val rhs = ddef.getRhs
+        if rhs.isEmpty then Hot
+        else Fun(rhs, thisV, klass)
 
       case Block(stats, expr) =>
         eval(stats, thisV, klass)
@@ -1375,7 +1409,10 @@ object Semantic:
 
       case vdef : ValDef =>
         // local val definition
-        eval(vdef.rhs, thisV, klass)
+        val rhs = vdef.getRhs
+        if rhs.isEmpty then Hot
+        else eval(rhs, thisV, klass)
+
 
       case ddef : DefDef =>
         // local method
@@ -1593,7 +1630,7 @@ object Semantic:
 
     // class body
     if thisV.isThisRef || !thisV.asInstanceOf[Warm].isPopulatingParams then tpl.body.foreach {
-      case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
+      case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.getRhs.isEmpty =>
         val res = eval(vdef.rhs, thisV, klass)
         // TODO: Improve promotion to avoid handling enum initialization specially
         //
