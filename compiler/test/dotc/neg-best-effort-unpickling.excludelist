@@ -18,3 +18,6 @@ i18750.scala
 
 # Crash on invalid prefix ([A] =>> Int)
 i22357a.scala
+
+# `110 (of class java.lang.Integer)`
+context-function-syntax.scala

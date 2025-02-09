@@ -12,6 +12,8 @@ class Person(val name: String, tracked val age: Int)
 class PersonPrime(val name: String)(tracked val age: Int)
 class PersonBis(tracked val name: String)(val age: Int)
 
+class Generic[A](val a: A)
+
 object O:
   val m: Int = 27
 
@@ -46,4 +48,8 @@ object Test extends App {
   val personBis: PersonBis("Kasia")(27) = PersonBis("Kasia")(27)
   val personBis1: PersonBis("Kasia")(n) = PersonBis("Kasia")(n)
   val personBis2: PersonBis("Kasia")(O.m) = PersonBis("Kasia")(O.m)
+
+  val generic1: Generic(compiletime.erasedValue[Int]) = Generic(42)
+  val generic2: Generic(??? : Int) = Generic(42)
+  val generic3: Generic(43) = Generic(42)
 }
