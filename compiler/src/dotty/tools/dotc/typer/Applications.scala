@@ -1111,9 +1111,8 @@ trait Applications extends Compatibility {
             //
             //    summonFrom {
             //      case given A[t] =>
-            //        summonFrom
+            //        summonFrom:
             //          case given `t` => ...
-            //        }
             //    }
             //
             // the second `summonFrom` should expand only once the first `summonFrom` is

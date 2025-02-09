@@ -3821,9 +3821,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           readapt(tree.appliedToNone) // insert () to primary constructors
         else
           errorTree(tree, em"Missing arguments for $methodStr")
-      case _ => tryInsertApplyOrImplicit(tree, pt, locked) {
-        errorTree(tree, MethodDoesNotTakeParameters(tree))
-      }
+      case _ =>
+        tryInsertApplyOrImplicit(tree, pt, locked):
+          errorTree(tree, MethodDoesNotTakeParameters(tree))
     }
 
     def adaptNoArgsImplicitMethod(wtp: MethodType): Tree = {
