@@ -410,9 +410,8 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     val badParams = mutable.ListBuffer[Symbol]()
     def currentOwner = role.dclSym.orElse(ctx.owner)
     for hiddenRef <- prune(refsToCheck, tpe, role) do
-      val proot = hiddenRef.pathRootOrShared
-      if !proot.widen.derivesFrom(defn.Caps_SharedCapability) then
-        proot match
+      if !hiddenRef.derivesFrom(defn.Caps_SharedCapability) then
+        hiddenRef.pathRoot match
           case ref: TermRef =>
             val refSym = ref.symbol
             if currentOwner.enclosingMethodOrClass.isProperlyContainedIn(refSym.maybeOwner.enclosingMethodOrClass) then
@@ -448,7 +447,7 @@ class SepChecker(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     role match
       case _: TypeRole.Argument | _: TypeRole.Qualifier =>
         for ref <- refsToCheck do
-          if !ref.pathRootOrShared.derivesFrom(defn.Caps_SharedCapability) then
+          if !ref.derivesFrom(defn.Caps_SharedCapability) then
             consumed.put(ref, pos)
       case _ =>
   end checkConsumedRefs
