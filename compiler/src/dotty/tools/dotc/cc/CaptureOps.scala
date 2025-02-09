@@ -232,9 +232,7 @@ extension (tp: Type)
       case tp @ ReachCapability(_) =>
         tp.singletonCaptureSet
       case ReadOnlyCapability(ref) =>
-        val refDcs = ref.deepCaptureSet(includeTypevars)
-        if refDcs.isConst then CaptureSet(refDcs.elems.map(_.readOnly))
-        else refDcs // this case should not happen for correct programs
+        ref.deepCaptureSet(includeTypevars).readOnly
       case tp: SingletonCaptureRef if tp.isTrackableRef =>
         tp.reach.singletonCaptureSet
       case _ =>
