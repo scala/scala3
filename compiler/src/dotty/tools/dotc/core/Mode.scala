@@ -166,7 +166,34 @@ object Mode {
    */
   val ForceInline: Mode = newMode(29, "ForceInline")
 
-  /** Are we typing an annotation? */
+  /** Are we typing the argument of an annotation?
+   *
+   *  This mode is used through [[Applications.isAnnotConstr]] to avoid lifting
+   *  arguments of annotation constructors. This mode is disabled in nested
+   *  applications (from [[ProtoTypes.typedArg]]) and in "explicit" annotation
+   *  constructors applications (annotation classes constructed with `new`).
+   *
+   *  In the following example:
+   *
+   *  ```scala
+   *  @annot(y = new annot(y = Array("World"), x = 1), x = 2)
+   *  ```
+   *
+   *  the mode will be set when typing `@annot(...)` but not when typing
+   *  `new annot(...)`, such that the arguments of the former are not lifted but
+   *  the arguments of the later can be:
+   *
+   *  ```scala
+   *  @annot(x = 2, y = {
+   *    val y$3: Array[String] =
+   *      Array.apply[String](["World" : String]*)(
+   *        scala.reflect.ClassTag.apply[String](classOf[String]))
+   *    new annot(x = 1, y = y$3)
+   *  })
+   *  ```
+   *
+   *  See #22035, #22526, #22553 and `dependent-annot-default-args.scala`.
+   */
   val InAnnotation: Mode = newMode(30, "InAnnotation")
 
   /** Skip inlining of methods. */

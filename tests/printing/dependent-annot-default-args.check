@@ -23,15 +23,16 @@ package <empty> {
     new dependent-annot-default-args$package()
   final module class dependent-annot-default-args$package() extends Object() {
     this: dependent-annot-default-args$package.type =>
-    def f(x: Int): Int @annot(x) = x
+    def f(x: Any): Any @annot(x) = x
     def f2(x: Int):
       Int @annot2(
         y = Array.apply[Any](["Hello",x : Any]*)(scala.reflect.ClassTag.Any))
      = x
+    def f3(x: Any, y: Any): Any @annot(x = x, y = y) = x
     def test: Unit =
       {
         val y: Int = ???
-        val z: Int @annot(y) = f(y)
+        val z: Any @annot(y) = f(y)
         val z2:
           Int @annot2(
             y = Array.apply[Any](["Hello",y : Any]*)(scala.reflect.ClassTag.Any)
@@ -41,11 +42,77 @@ package <empty> {
         @annot2(
           y = Array.apply[Any](["Hello",y : Any]*)(scala.reflect.ClassTag.Any))
           val z4: Int = 45
-        val z5: annot2 =
+        val z5: annot =
           {
-            val y$1: Array[Any] =
+            val y$1: Array[String] =
+              Array.apply[String](["World" : String]*)(
+                scala.reflect.ClassTag.apply[String](classOf[String]))
+            new annot(x = 1, y = y$1)
+          }
+        val z6: annot2 =
+          {
+            val y$2: Array[Any] =
               Array.apply[Any](["World" : Any]*)(scala.reflect.ClassTag.Any)
-            new annot2(x = 1, y = y$1)
+            new annot2(x = 1, y = y$2)
+          }
+        @annot(x = 2,
+          y =
+            {
+              val y$3: Array[String] =
+                Array.apply[String](["World" : String]*)(
+                  scala.reflect.ClassTag.apply[String](classOf[String]))
+              new annot(x = 1, y = y$3)
+            }
+        ) val z7: Int = 45
+        @annot(x = 4,
+          y =
+            3:
+              Int @annot(x = 1,
+                y =
+                  Array.apply[String](["World" : String]*)(
+                    scala.reflect.ClassTag.apply[String](classOf[String]))
+              )
+        ) val z8: Int = 45
+        val z9:
+          Int @annot(x = 2,
+            y =
+              {
+                val y$4: Array[String] =
+                  Array.apply[String](["World" : String]*)(
+                    scala.reflect.ClassTag.apply[String](classOf[String]))
+                new annot(x = 1, y = y$4)
+              }
+          )
+         = 46
+        @annot(x = 4,
+          y =
+            3:
+              Int @annot(x = 1,
+                y =
+                  Array.apply[String](["World" : String]*)(
+                    scala.reflect.ClassTag.apply[String](classOf[String]))
+              )
+        ) val z10: Int = 45
+        val z11: Any @annot(annot) =
+          f(
+            {
+              val y$5: Array[String] =
+                Array.apply[String](["World" : String]*)(
+                  scala.reflect.ClassTag.apply[String](classOf[String]))
+              new annot(x = 1, y = y$5)
+            }
+          )
+        val z12: Any @annot(x = x, y = y) =
+          f3(
+            Array.apply[String](["World" : String]*)(
+              scala.reflect.ClassTag.apply[String](classOf[String])),
+          1)
+        val z13: Any @annot(x = x, y = y) =
+          {
+            val y$6: Array[String] =
+              Array.apply[String](["World" : String]*)(
+                scala.reflect.ClassTag.apply[String](classOf[String]))
+            f3(x = 1, y = y$6)
           }
         ()
       }
