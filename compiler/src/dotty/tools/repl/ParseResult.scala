@@ -52,6 +52,13 @@ object Load {
   val command: String = ":load"
 }
 
+/** `:kind <type>` display the kind of a type. see also :help kind
+ */
+case class KindOf(expr: String) extends Command
+object KindOf {
+  val command: String = ":kind"
+}
+
 /** To find out the type of an expression you may simply do:
  *
  * ```
@@ -138,6 +145,7 @@ object ParseResult {
     Help.command -> (_  => Help),
     Reset.command -> (arg  => Reset(arg)),
     Imports.command -> (_  => Imports),
+    KindOf.command -> (arg => KindOf(arg)),
     Load.command -> (arg => Load(arg)),
     TypeOf.command -> (arg => TypeOf(arg)),
     DocOf.command -> (arg => DocOf(arg)),
