@@ -232,7 +232,9 @@ extension (tp: Type)
       case tp @ ReachCapability(_) =>
         tp.singletonCaptureSet
       case ReadOnlyCapability(ref) =>
-        ref.deepCaptureSet(includeTypevars).readOnly
+        val refDcs = ref.deepCaptureSet(includeTypevars)
+        if refDcs.isConst then CaptureSet(refDcs.elems.map(_.readOnly))
+        else refDcs // this case should not happen for correct programs
       case tp: SingletonCaptureRef if tp.isTrackableRef =>
         tp.reach.singletonCaptureSet
       case _ =>
@@ -283,9 +285,19 @@ extension (tp: Type)
    *  are of the form this.C but their pathroot is still this.C, not this.
    */
   final def pathRoot(using Context): Type = tp.dealias match
-    case tp1: NamedType if tp1.symbol.maybeOwner.isClass && !tp1.symbol.is(TypeParam) =>
-      tp1.prefix.pathRoot
+    case tp1: TermRef if tp1.symbol.maybeOwner.isClass => tp1.prefix.pathRoot
+    case tp1: TypeRef if !tp1.symbol.is(Param) => tp1.prefix.pathRoot
     case tp1 => tp1
+
+  /** The first element of a path type, but stop at references extending
+   *  SharedCapability.
+   */
+  final def pathRootOrShared(using Context): Type =
+    if tp.derivesFromSharedCapability then tp
+    else tp.dealias match
+      case tp1: TermRef if tp1.symbol.maybeOwner.isClass => tp1.prefix.pathRoot
+      case tp1: TypeRef if !tp1.symbol.is(Param) => tp1.prefix.pathRoot
+      case tp1 => tp1
 
   /** If this part starts with `C.this`, the class `C`.
    *  Otherwise, if it starts with a reference `r`, `r`'s owner.
