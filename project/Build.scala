@@ -339,24 +339,27 @@ object Build {
           buildScan
             .withPublishing(Publishing.onlyIf(_.authenticated))
             .withBackgroundUpload(!isInsideCI)
-            .tag(if (isInsideCI) "CI" else "Local")
+            .withTag(if (isInsideCI) "CI" else "Local")
             .withLinks(buildScan.links ++ GithubEnv.develocityLinks)
             .withValues(buildScan.values ++ GithubEnv.develocityValues)
             .withObfuscation(buildScan.obfuscation.withIpAddresses(_.map(_ => "0.0.0.0")))
         )
         .withBuildCache(
           buildCache
-            .withLocal(buildCache.local.withEnabled(false))
-            .withRemote(buildCache.remote.withEnabled(false))
+            .withLocal(buildCache.local.withEnabled(true).withStoreEnabled(true))
+            .withRemote(buildCache.remote.withEnabled(true).withStoreEnabled(isInsideCI))
         )
-        .withTestRetryConfiguration(
-          config.testRetryConfiguration
+        .withTestRetry(
+          config.testRetry
             .withFlakyTestPolicy(FlakyTestPolicy.Fail)
             .withMaxRetries(if (isInsideCI) 1 else 0)
             .withMaxFailures(10)
             .withClassesFilter((className, _) => !noRetryTestClasses.contains(className))
         )
-    }
+    },
+    // Deactivate Develocity's test caching because it caches all tests or nothing.
+    // Also at the moment, it does not take compilation files as inputs.
+    Test / develocityBuildCacheClient := None,
   )
 
   // Settings shared globally (scoped in Global). Used in build.sbt
@@ -1015,10 +1018,6 @@ object Build {
           sjsSources
         } (Set(scalaJSIRSourcesJar)).toSeq
       }.taskValue,
-
-      // Develocity's Build Cache does not work with our compilation tests
-      // at the moment: it does not take compilation files as inputs.
-      Test / develocityBuildCacheClient := None,
   )
 
   def insertClasspathInArgs(args: List[String], cp: String): List[String] = {
