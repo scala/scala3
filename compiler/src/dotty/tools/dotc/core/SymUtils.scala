@@ -287,7 +287,7 @@ class SymUtils:
      */
     def isConstExprFinalVal(using Context): Boolean =
       atPhaseNoLater(erasurePhase) {
-        self.is(Final, butNot = Mutable) && self.info.resultType.isInstanceOf[ConstantType]
+        self.is(Final) && !self.isMutableVarOrAccessor && self.info.resultType.isInstanceOf[ConstantType]
       } && !self.sjsNeedsField
 
     /** The `ConstantType` of a val known to be `isConstrExprFinalVal`.
