@@ -418,7 +418,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
       apiClass(sym.asClass)
     } else if (sym.isType) {
       apiTypeMember(sym.asType)
-    } else if (sym.isMutableVar) {
+    } else if (sym.is(Mutable, butNot = Accessor)) {
       api.Var.of(sym.name.toString, apiAccess(sym), apiModifiers(sym),
         apiAnnotations(sym, inlineOrigin).toArray, apiType(sym.info))
     } else if (sym.isStableMember && !sym.isRealMethod) {

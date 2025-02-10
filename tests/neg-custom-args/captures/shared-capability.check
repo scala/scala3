@@ -1,4 +1,0 @@
--- Error: tests/neg-custom-args/captures/shared-capability.scala:9:13 --------------------------------------------------
-9 |def test2(a: Async^): Object^ = a // error
-  |             ^^^^^^
-  |             Async^ extends SharedCapability, so it cannot capture `cap`

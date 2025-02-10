@@ -1,25 +1,10 @@
--- Error: tests/neg-custom-args/captures/reaches2.scala:10:10 ----------------------------------------------------------
-10 |  ps.map((x, y) => compose1(x, y)) // error // error // error
-   |          ^
-   |reference ps* is not included in the allowed capture set {}
-   |of an enclosing function literal with expected type ((box A ->{ps*} A, box A ->{ps*} A)) -> box (x$0: A^?) ->? A^?
--- Error: tests/neg-custom-args/captures/reaches2.scala:10:13 ----------------------------------------------------------
-10 |  ps.map((x, y) => compose1(x, y)) // error // error // error
-   |             ^
-   |reference ps* is not included in the allowed capture set {}
-   |of an enclosing function literal with expected type ((box A ->{ps*} A, box A ->{ps*} A)) -> box (x$0: A^?) ->? A^?
--- Error: tests/neg-custom-args/captures/reaches2.scala:10:31 ----------------------------------------------------------
-10 |  ps.map((x, y) => compose1(x, y)) // error // error // error
-   |                               ^
-   |                               Separation failure: argument of type  (x$0: A) ->{y} box A^?
-   |                               to method compose1: [A, B, C](f: A => B, g: B => C): A ->{f, g} C
-   |                               corresponds to capture-polymorphic formal parameter g of type  box A^? => box A^?
-   |                               and captures {ps*}, but this capability is also passed separately
-   |                               in the first argument with type  (x$0: A) ->{x} box A^?.
-   |
-   |                                 Capture set of first argument         : {x}
-   |                                 Hidden set of current argument        : {y}
-   |                                 Footprint of first argument           : {x, ps*}
-   |                                 Hidden footprint of current argument  : {y, ps*}
-   |                                 Declared footprint of current argument: {}
-   |                                 Undeclared overlap of footprints      : {ps*}
+-- Error: tests/neg-custom-args/captures/reaches2.scala:8:10 -----------------------------------------------------------
+8 |  ps.map((x, y) => compose1(x, y)) // error // error
+  |          ^
+  |reference ps* is not included in the allowed capture set {}
+  |of an enclosing function literal with expected type ((box A ->{ps*} A, box A ->{ps*} A)) -> box (x$0: A^?) ->? A^?
+-- Error: tests/neg-custom-args/captures/reaches2.scala:8:13 -----------------------------------------------------------
+8 |  ps.map((x, y) => compose1(x, y)) // error // error
+  |             ^
+  |reference ps* is not included in the allowed capture set {}
+  |of an enclosing function literal with expected type ((box A ->{ps*} A, box A ->{ps*} A)) -> box (x$0: A^?) ->? A^?

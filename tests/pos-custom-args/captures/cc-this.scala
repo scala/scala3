@@ -1,11 +1,8 @@
-import caps.consume
-
-
 class Cap extends caps.Capability
 
 def eff(using Cap): Unit = ()
 
-def test(using @consume cc: Cap) =
+def test(using Cap) =
 
   class C(val x: () => Int):
     val y: C^ = this

@@ -1,6 +1,3 @@
-
-import caps.unsafe.unsafeAssumeSeparate
-
 class C
 type Cap = C^
 def f1(c: Cap): () ->{c} c.type = () => c // ok
@@ -25,9 +22,6 @@ def foo(): C^ =
   val z1: () => Cap = f1(x)
   def h[X](a: X)(b: X) = a
 
-  val z2 = unsafeAssumeSeparate:
-    if x == null then
-      () => x
-    else
-      () => C()
-  unsafeAssumeSeparate(x)
+  val z2 =
+    if x == null then () => x else () => C()
+  x

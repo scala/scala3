@@ -31,7 +31,7 @@ object test2:
     op(new File)
 
   def test(io3: IO^) =
-    withFile(io3): f => // error: separation failure
+    withFile(io3): f =>
       val o = Service(io3)
       o.file = f  // this is a bit dubious. It's legal since we treat class refinements
                   // as capture set variables that can be made to include refs coming from outside.
