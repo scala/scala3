@@ -1209,10 +1209,7 @@ object Scanners {
 
     def isSoftModifier: Boolean =
       token == IDENTIFIER
-      && (softModifierNames.contains(name)
-        || name == nme.erased && erasedEnabled
-        || name == nme.tracked && trackedEnabled
-        || name == nme.mut && Feature.ccEnabled)
+      && (softModifierNames.contains(name) || name == nme.erased && erasedEnabled || name == nme.tracked && trackedEnabled)
 
     def isSoftModifierInModifierPosition: Boolean =
       isSoftModifier && inModifierPosition()

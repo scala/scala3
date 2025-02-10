@@ -597,6 +597,7 @@ object Flags {
   val JavaInterface: FlagSet                 = JavaDefined | NoInits | Trait
   val JavaProtected: FlagSet                 = JavaDefined | Protected
   val MethodOrLazy: FlagSet                  = Lazy | Method
+  val MutableOrLazy: FlagSet                 = Lazy | Mutable
   val MethodOrLazyOrMutable: FlagSet         = Lazy | Method | Mutable
   val LiftedMethod: FlagSet                  = Lifted | Method
   val LocalParam: FlagSet                    = Local | Param

@@ -24,8 +24,7 @@ import scala.language.implicitConversions
 import scala.runtime.Statics
 import language.experimental.captureChecking
 import annotation.unchecked.uncheckedCaptures
-import caps.{cap, untrackedCaptures}
-import caps.unsafe.unsafeAssumeSeparate
+import caps.untrackedCaptures
 
 /**  This class implements an immutable linked list. We call it "lazy"
   *  because it computes its elements only when they are needed.
@@ -683,8 +682,7 @@ final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => Laz
         remaining -= 1
         scout = scout.tail
       }
-      unsafeAssumeSeparate:
-        dropRightState(scout)
+      dropRightState(scout)
     }
   }
 
@@ -880,7 +878,7 @@ final class LazyListIterable[+A] private(@untrackedCaptures lazyState: () => Laz
         // if cursor (eq scout) has state defined, it is empty; else unknown state
         if (!cursor.stateDefined) b.append(sep).append("<not computed>")
       } else {
-        @inline def same(a: LazyListIterable[A]^, b: LazyListIterable[A]^{cap, a}): Boolean = (a eq b) || (a.state eq b.state)
+        @inline def same(a: LazyListIterable[A]^, b: LazyListIterable[A]^): Boolean = (a eq b) || (a.state eq b.state)
         // Cycle.
         // If we have a prefix of length P followed by a cycle of length C,
         // the scout will be at position (P%C) in the cycle when the cursor
@@ -1054,9 +1052,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
         val head = it.next()
         rest     = rest.tail
         restRef  = rest                       // restRef.elem = rest
-        sCons(head, newLL(
-          unsafeAssumeSeparate(
-            stateFromIteratorConcatSuffix(it)(flatMapImpl(rest, f).state))))
+        sCons(head, newLL(stateFromIteratorConcatSuffix(it)(flatMapImpl(rest, f).state)))
       } else State.Empty
     }
   }
@@ -1182,7 +1178,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     *  @param f     the function that's repeatedly applied
     *  @return      the LazyListIterable returning the infinite sequence of values `start, f(start), f(f(start)), ...`
     */
-  def iterate[A](start: => A)(f: A ->{cap, start} A): LazyListIterable[A]^{start, f} =
+  def iterate[A](start: => A)(f: A => A): LazyListIterable[A]^{start, f} =
     newLL {
       val head = start
       sCons(head, iterate(f(head))(f))

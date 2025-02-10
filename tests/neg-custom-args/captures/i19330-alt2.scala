@@ -10,6 +10,6 @@ trait Foo:
 
   def foo: this.T =
     val leaked = usingLogger[T]: l =>  // error
-      val t: () => Logger^ = () => l // error separation
+      val t: () => Logger^ = () => l
       t: T
     leaked
