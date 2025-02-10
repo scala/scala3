@@ -253,7 +253,7 @@ object Nullables:
       val mutables = infos.foldLeft(Set[TermRef]()):
         (ms, info) => ms.union(
                         if info.asserted == null then Set.empty
-                        else info.asserted.filter(_.symbol.isMutableVarOrAccessor))
+                        else info.asserted.filter(_.symbol.is(Mutable)))
       infos.extendWith(NotNullInfo(Set(), mutables))
 
   end extension
@@ -307,7 +307,7 @@ object Nullables:
             || s.isClass // not in a class
             || recur(s.owner))
 
-      refSym.isMutableVarOrAccessor // if it is immutable, we don't need to check the rest conditions
+      refSym.is(Mutable) // if it is immutable, we don't need to check the rest conditions
       && refOwner.isTerm
       && recur(ctx.owner)
   end extension
@@ -574,7 +574,7 @@ object Nullables:
             object dropNotNull extends TreeMap:
               var dropped: Boolean = false
               override def transform(t: Tree)(using Context) = t match
-                case AssertNotNull(t0) if t0.symbol.isMutableVarOrAccessor =>
+                case AssertNotNull(t0) if t0.symbol.is(Mutable) =>
                   nullables.println(i"dropping $t")
                   dropped = true
                   transform(t0)

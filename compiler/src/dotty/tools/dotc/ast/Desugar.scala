@@ -867,7 +867,7 @@ object desugar {
       val nu = vparamss.foldLeft(makeNew(classTypeRef)) { (nu, vparams) =>
         val app = Apply(nu, vparams.map(refOfDef))
         vparams match {
-          case vparam :: _ if vparam.mods.is(Given) || vparam.name.is(ContextBoundParamName) =>
+          case vparam :: _ if vparam.mods.isOneOf(GivenOrImplicit) || vparam.name.is(ContextBoundParamName) =>
             app.setApplyKind(ApplyKind.Using)
           case _ => app
         }
@@ -2243,8 +2243,6 @@ object desugar {
               New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil))
         else if op.name == nme.CC_REACH then
           Apply(ref(defn.Caps_reachCapability), t :: Nil)
-        else if op.name == nme.CC_READONLY then
-          Apply(ref(defn.Caps_readOnlyCapability), t :: Nil)
         else
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)
           Select(t, op.name)

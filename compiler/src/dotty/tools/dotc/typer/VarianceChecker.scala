@@ -157,7 +157,7 @@ class VarianceChecker(using Context) {
       def isLocal =
         base.isAllOf(PrivateLocal)
         || base.is(Private) && !base.hasAnnotation(defn.AssignedNonLocallyAnnot)
-      if base.isMutableVar && !isLocal then
+      if base.is(Mutable, butNot = Method) && !isLocal then
         base.removeAnnotation(defn.AssignedNonLocallyAnnot)
         variance = 0
       try checkInfo(base.info)

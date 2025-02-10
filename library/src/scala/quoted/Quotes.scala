@@ -2544,6 +2544,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val SimpleSelector` */
     trait SimpleSelectorModule { this: SimpleSelector.type =>
+      @experimental def apply(name: String): SimpleSelector
       def unapply(x: SimpleSelector): Some[String]
     }
 
@@ -2569,6 +2570,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val RenameSelector` */
     trait RenameSelectorModule { this: RenameSelector.type =>
+      @experimental def apply(fromName: String, toName: String): RenameSelector
       def unapply(x: RenameSelector): (String, String)
     }
 
@@ -2596,6 +2598,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val OmitSelector` */
     trait OmitSelectorModule { this: OmitSelector.type =>
+      @experimental def apply(name: String): OmitSelector
       def unapply(x: OmitSelector): Some[String]
     }
 
@@ -2620,6 +2623,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val GivenSelector` */
     trait GivenSelectorModule { this: GivenSelector.type =>
+      @experimental def apply(bound: Option[TypeTree]): GivenSelector
       def unapply(x: GivenSelector): Some[Option[TypeTree]]
     }
 

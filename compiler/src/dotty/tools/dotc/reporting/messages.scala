@@ -1694,7 +1694,7 @@ class OnlyClassesCanHaveDeclaredButUndefinedMembers(sym: Symbol)(
 
   def msg(using Context) = i"""Declaration of $sym not allowed here: only classes can have declared but undefined members"""
   def explain(using Context) =
-    if sym.isMutableVarOrAccessor then "Note that variables need to be initialized to be defined."
+    if sym.is(Mutable) then "Note that variables need to be initialized to be defined."
     else ""
 }
 

@@ -1351,7 +1351,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           cpy.Assign(tree)(lhsCore, typed(tree.rhs, lhs1.tpe.widen)).withType(defn.UnitType)
 
         def canAssign(sym: Symbol) =
-          sym.isMutableVar ||
+          sym.is(Mutable, butNot = Accessor) ||
           ctx.owner.isPrimaryConstructor && !sym.is(Method) && sym.maybeOwner == ctx.owner.owner ||
             // allow assignments from the primary constructor to class fields
           ctx.owner.name.is(TraitSetterName) || ctx.owner.isStaticConstructor
@@ -4164,6 +4164,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         def methodStr = methPart(tree).symbol.showLocated
         if matchingApply(wtp, pt) then
           migrate(contextBoundParams(tree, wtp, pt))
+          migrate(implicitParams(tree, wtp, pt))
           if needsTupledDual(wtp, pt) then adapt(tree, pt.tupledDual, locked)
           else tree
         else if wtp.isContextualMethod then

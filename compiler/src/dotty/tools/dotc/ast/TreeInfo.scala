@@ -466,6 +466,8 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
    */
   private def defKind(tree: Tree)(using Context): FlagSet = unsplice(tree) match {
     case EmptyTree | _: Import => NoInitsInterface
+    case tree: TypeDef if ctx.settings.YcompileScala2Library.value =>
+      if (tree.isClassDef) EmptyFlags else NoInitsInterface
     case tree: TypeDef => if (tree.isClassDef) NoInits else NoInitsInterface
     case tree: DefDef =>
       if tree.unforcedRhs == EmptyTree
@@ -477,6 +479,8 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
         NoInitsInterface
       else if tree.mods.is(Given) && tree.paramss.isEmpty then
         EmptyFlags // might become a lazy val: TODO: check whether we need to suppress NoInits once we have new lazy val impl
+      else if ctx.settings.YcompileScala2Library.value then
+        EmptyFlags
       else
         NoInits
     case tree: ValDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else EmptyFlags
@@ -755,7 +759,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    */
   def isVariableOrGetter(tree: Tree)(using Context): Boolean = {
     def sym = tree.symbol
-    def isVar = sym.isMutableVarOrAccessor
+    def isVar = sym.is(Mutable)
     def isGetter =
       mayBeVarGetter(sym) && sym.owner.info.member(sym.name.asTermName.setterName).exists
 

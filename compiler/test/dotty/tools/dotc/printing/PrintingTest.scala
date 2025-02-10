@@ -70,6 +70,9 @@ class PrintingTest {
   def printing: Unit = testIn("tests/printing", "typer")
 
   @Test
+  def posttyper: Unit = testIn("tests/printing/posttyper", "posttyper")
+
+  @Test
   def untypedPrinting: Unit = testIn("tests/printing/untyped", "parser")
 
   @Test

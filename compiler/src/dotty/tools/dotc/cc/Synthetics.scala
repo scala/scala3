@@ -116,7 +116,7 @@ object Synthetics:
     def transformUnapplyCaptures(info: Type)(using Context): Type = info match
       case info: MethodType =>
         val paramInfo :: Nil = info.paramInfos: @unchecked
-        val newParamInfo = CapturingType(paramInfo, CaptureSet.fresh())
+        val newParamInfo = CapturingType(paramInfo, CaptureSet.universal)
         val trackedParam = info.paramRefs.head
         def newResult(tp: Type): Type = tp match
           case tp: MethodOrPoly =>
@@ -132,9 +132,8 @@ object Synthetics:
       val (pt: PolyType) = info: @unchecked
       val (mt: MethodType) = pt.resType: @unchecked
       val (enclThis: ThisType) = owner.thisType: @unchecked
-      val paramCaptures = CaptureSet(enclThis, defn.captureRoot.termRef)
       pt.derivedLambdaType(resType = MethodType(mt.paramNames)(
-        mt1 => mt.paramInfos.map(_.capturing(paramCaptures)),
+        mt1 => mt.paramInfos.map(_.capturing(CaptureSet.universal)),
         mt1 => CapturingType(mt.resType, CaptureSet(enclThis, mt1.paramRefs.head))))
 
     def transformCurriedTupledCaptures(info: Type, owner: Symbol) =
@@ -149,10 +148,7 @@ object Synthetics:
       ExprType(mapFinalResult(et.resType, CapturingType(_, CaptureSet(enclThis))))
 
     def transformCompareCaptures =
-      val (enclThis: ThisType) = symd.owner.thisType: @unchecked
-      MethodType(
-        defn.ObjectType.capturing(CaptureSet(defn.captureRoot.termRef, enclThis)) :: Nil,
-        defn.BooleanType)
+      MethodType(defn.ObjectType.capturing(CaptureSet.universal) :: Nil, defn.BooleanType)
 
     symd.copySymDenotation(info = symd.name match
       case DefaultGetterName(nme.copy, n) =>

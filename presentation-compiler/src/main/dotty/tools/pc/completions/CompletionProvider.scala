@@ -248,10 +248,17 @@ class CompletionProvider(
         range: Option[LspRange] = None
     ): CompletionItem =
       val oldText = params.text().nn.substring(completionPos.queryStart, completionPos.identEnd)
-      val editRange = if newText.startsWith(oldText) then completionPos.stripSuffixEditRange
+      val trimmedNewText = {
+        var nt = newText
+        if (completionPos.hasLeadingBacktick) nt = nt.stripPrefix("`")
+        if (completionPos.hasTrailingBacktick) nt = nt.stripSuffix("`")
+        nt
+      }
+
+      val editRange = if trimmedNewText.startsWith(oldText) then completionPos.stripSuffixEditRange
         else completionPos.toEditRange
 
-      val textEdit = new TextEdit(range.getOrElse(editRange), wrapInBracketsIfRequired(newText))
+      val textEdit = new TextEdit(range.getOrElse(editRange), wrapInBracketsIfRequired(trimmedNewText))
 
       val item = new CompletionItem(label)
       item.setSortText(f"${idx}%05d")
