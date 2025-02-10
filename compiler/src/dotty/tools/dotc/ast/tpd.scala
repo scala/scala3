@@ -1020,6 +1020,60 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       else
         applyOverloaded(tree, nme.EQ, that :: Nil, Nil, defn.BooleanType)
 
+    def sameTree(that: Tree, thisParamSyms: List[Symbol] = Nil, thatParamRefs: List[TermRef] = Nil)(using Context): Boolean =
+      def recur(tree1: Tree, tree2: Tree) =
+        tree1.sameTree(tree2, thisParamSyms, thatParamRefs)
+
+      def sameTrees(trees1: List[Tree], trees2: List[Tree]) =
+        trees1.corresponds(trees2)(recur)
+
+      def sameType(tp1: Type, tp2: Type) =
+        (tp1 frozen_=:= tp2) || (tp1.subst(thisParamSyms, thatParamRefs) frozen_=:= tp2)
+
+      val res = tree match
+        case Literal(_) | Ident(_) =>
+          sameType(tree.tpe, that.tpe)
+        case Select(qual1, name1) =>
+          that match
+            case Select(qual2, name2) => name1 == name2 && recur(qual1, qual2)
+            case _ => false
+        case Apply(fun1, args1) =>
+          that match
+            case Apply(fun2, args2) => recur(fun1, fun2) && sameTrees(args1, args2)
+            case _ => false
+        case TypeApply(fun1, args1) =>
+          that match
+            case TypeApply(fun2, args2) =>
+              recur(fun1, fun2) && args1.corresponds(args2)((arg1, arg2) => sameType(arg1.tpe, arg2.tpe))
+            case _ => false
+        case tpt1: TypeTree =>
+          that match
+            case tpt2: TypeTree => sameType(tpt1.tpe, tpt2.tpe)
+            case _ => false
+        case Typed(expr1, tpt1) =>
+          that match
+            case Typed(expr2, tpt2) => recur(expr1, expr2) && sameType(tpt1.tpe, tpt2.tpe)
+            case _ => false
+        case New(tpt1) =>
+          that match
+            case New(tpt2) => sameType(tpt1.tpe, tpt2.tpe)
+            case _ => false
+        case closureDef(def1) =>
+          that match
+            case closureDef(def2) =>
+                val newThisParamSyms = def1.symbol.paramSymss.flatten ++ thisParamSyms
+                val newThatParamRefs = def2.symbol.paramSymss.flatten.map(_.termRef) ++ thatParamRefs
+                def1.rhs.sameTree(def2.rhs, newThisParamSyms, newThatParamRefs)
+            case _ => false
+        case Block(stats1, expr1) =>
+          that match
+            case Block(stats2, expr2) => sameTrees(stats1, stats2) && recur(expr1, expr2)
+            case _ => false
+        case _ => false
+
+      res
+
+
     /** `tree.isInstanceOf[tp]`, with special treatment of singleton types */
     def isInstance(tp: Type)(using Context): Tree = tp.dealias match {
       case ConstantType(c) if c.tag == StringTag =>

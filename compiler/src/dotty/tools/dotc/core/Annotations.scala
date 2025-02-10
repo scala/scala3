@@ -43,6 +43,9 @@ object Annotations {
     def argumentConstantString(i: Int)(using Context): Option[String] =
       for (case Constant(s: String) <- argumentConstant(i)) yield s
 
+    /** All type and term argument trees of this annotation in a single flat list */
+    private def allArguments(using Context): List[Tree] = tpd.allArguments(tree)
+
     /** The tree evaluation is in progress. */
     def isEvaluating: Boolean = false
 
@@ -88,7 +91,8 @@ object Annotations {
     def ensureCompleted(using Context): Unit = tree
 
     def sameAnnotation(that: Annotation)(using Context): Boolean =
-      symbol == that.symbol && tree.sameTree(that.tree)
+      def sameArg(arg1: Tree, arg2: Tree): Boolean = tpd.stripNamedArg(arg1).sameTree(tpd.stripNamedArg(arg2))
+      symbol == that.symbol && allArguments.corresponds(that.allArguments)(sameArg)
 
     def hasOneOfMetaAnnotation(metaSyms: Set[Symbol], orNoneOf: Set[Symbol] = Set.empty)(using Context): Boolean = atPhaseNoLater(erasurePhase) {
       def go(metaSyms: Set[Symbol]) =
