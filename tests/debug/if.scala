@@ -15,6 +15,6 @@ object Test {
     else
       a = 34 * 23    // [step: print]
 
-    print(a)
+    println(a)
   }
 }

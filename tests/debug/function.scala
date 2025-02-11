@@ -8,7 +8,7 @@ object Test {
       a + b                             // [next] [next]
     }
     val c = plus(a, b)   // [next: print]
-    print(c)             // [cont]
+    println(c)             // [cont]
   }
 
 }
