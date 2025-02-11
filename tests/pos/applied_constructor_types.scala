@@ -37,19 +37,19 @@ object Test extends App {
   val box2: Box(O.InnerClass(n)) = Box(O.InnerClass(n))
   val box3: Box(O.InnerClass(O.m)) = Box(O.InnerClass(O.m))
 
-  val person: Person("Kasia", 27) = Person("Kasia", 27)
-  val person1: Person("Kasia", n) = Person("Kasia", n)
-  val person2: Person("Kasia", O.m) = Person("Kasia", O.m)
+  val person: Person("Kasia", 27) = Person("Kasia", 27) // warn
+  val person1: Person("Kasia", n) = Person("Kasia", n) // warn
+  val person2: Person("Kasia", O.m) = Person("Kasia", O.m) // warn
 
-  val personPrime: PersonPrime("Kasia")(27) = PersonPrime("Kasia")(27)
-  val personPrime1: PersonPrime("Kasia")(n) = PersonPrime("Kasia")(n)
-  val personPrime2: PersonPrime("Kasia")(O.m) = PersonPrime("Kasia")(O.m)
+  val personPrime: PersonPrime("Kasia")(27) = PersonPrime("Kasia")(27) // warn
+  val personPrime1: PersonPrime("Kasia")(n) = PersonPrime("Kasia")(n) // warn
+  val personPrime2: PersonPrime("Kasia")(O.m) = PersonPrime("Kasia")(O.m) // warn
 
-  val personBis: PersonBis("Kasia")(27) = PersonBis("Kasia")(27)
-  val personBis1: PersonBis("Kasia")(n) = PersonBis("Kasia")(n)
-  val personBis2: PersonBis("Kasia")(O.m) = PersonBis("Kasia")(O.m)
+  val personBis: PersonBis("Kasia")(27) = PersonBis("Kasia")(27) // warn
+  val personBis1: PersonBis("Kasia")(n) = PersonBis("Kasia")(n) // warn
+  val personBis2: PersonBis("Kasia")(O.m) = PersonBis("Kasia")(O.m) // warn
 
-  val generic1: Generic(compiletime.erasedValue[Int]) = Generic(42)
-  val generic2: Generic(??? : Int) = Generic(42)
-  val generic3: Generic(43) = Generic(42)
+  val generic1: Generic(compiletime.erasedValue[Int]) = Generic(42) // warn
+  val generic2: Generic(??? : Int) = Generic(42) // warn
+  val generic3: Generic(43) = Generic(42) // warn
 }
