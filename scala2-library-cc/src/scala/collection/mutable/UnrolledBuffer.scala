@@ -18,6 +18,7 @@ import scala.collection.generic.DefaultSerializable
 import scala.reflect.ClassTag
 import scala.collection.immutable.Nil
 import language.experimental.captureChecking
+import caps.unsafe.unsafeAssumePure
 
 /** A buffer that stores elements in an unrolled linked list.
   *
@@ -259,13 +260,14 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
   /** Unrolled buffer node.
     */
   class Unrolled[T: ClassTag] private[collection] (var size: Int, var array: Array[T], var next: Unrolled[T], val buff: UnrolledBuffer[T] = null) {
+    //this: Unrolled[T]^ =>
     private[collection] def this() = this(0, new Array[T](unrolledlength), null, null)
     private[collection] def this(b: UnrolledBuffer[T]) = this(0, new Array[T](unrolledlength), null, b)
 
     private def nextlength = if (buff eq null) unrolledlength else buff.calcNextLength(array.length)
 
     // adds and returns itself or the new unrolled if full
-    @tailrec final def append(elem: T): Unrolled[T] = if (size < array.length) {
+    @tailrec final def append(elem: T): Unrolled[T]^{this} = if (size < array.length) {
       array(size) = elem
       size += 1
       this
@@ -307,21 +309,21 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
       if (idx < size) array(idx) else next.apply(idx - size)
     @tailrec final def update(idx: Int, newelem: T): Unit =
       if (idx < size) array(idx) = newelem else next.update(idx - size, newelem)
-    @tailrec final def locate(idx: Int): Unrolled[T] =
+    @tailrec final def locate(idx: Int): Unrolled[T]^{this} =
       if (idx < size) this else next.locate(idx - size)
-    def prepend(elem: T) = if (size < array.length) {
+    def prepend(elem: T): Unrolled[T] = if (size < array.length) {
       // shift the elements of the array right
       // then insert the element
       shiftright()
       array(0) = elem
       size += 1
-      this
+      this.unsafeAssumePure
     } else {
       // allocate a new node and store element
       // then make it point to this
       val newhead = new Unrolled[T](buff)
       newhead append elem
-      newhead.next = this
+      newhead.next = this.unsafeAssumePure
       newhead
     }
     // shifts right assuming enough space
@@ -340,7 +342,7 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
         val r = array(idx)
         shiftleft(idx)
         size -= 1
-        if (tryMergeWithNext()) buffer.lastPtr = this
+        if (tryMergeWithNext()) buffer.lastPtr = this.unsafeAssumePure
         r
       } else next.remove(idx - size, buffer)
 
@@ -397,7 +399,7 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
         curr.next = newnextnode
 
         // try to merge the last node of this with the newnextnode and fix tail pointer if needed
-        if (curr.tryMergeWithNext()) buffer.lastPtr = curr
+        if (curr.tryMergeWithNext()) buffer.lastPtr = curr.unsafeAssumePure
         else if (newnextnode.next eq null) buffer.lastPtr = newnextnode
         appended
       }
