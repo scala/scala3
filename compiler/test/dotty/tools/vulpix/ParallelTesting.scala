@@ -226,7 +226,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         rerun.exists(dir.getPath.contains)
     })
 
-  private trait CompilationLogic { this: Test =>
+  protected trait CompilationLogic { this: Test =>
     def suppressErrors = false
 
     /**
@@ -359,7 +359,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
   /** Each `Test` takes the `testSources` and performs the compilation and assertions
    *  according to the implementing class "neg", "run" or "pos".
    */
-  private class Test(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit val summaryReport: SummaryReporting) extends CompilationLogic { test =>
+  protected class Test(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit val summaryReport: SummaryReporting) extends CompilationLogic { test =>
 
     import summaryReport._
 
@@ -903,15 +903,15 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       verifyOutput(testSource, reporters, logger)
   }
 
-  private final class RunTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
+  protected class RunTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     private var didAddNoRunWarning = false
-    private def addNoRunWarning() = if (!didAddNoRunWarning) {
+    protected def addNoRunWarning() = if (!didAddNoRunWarning) {
       didAddNoRunWarning = true
       summaryReport.addStartingMessage {
         """|WARNING
            |-------
-           |Run tests were only compiled, not run - this is due to the `dotty.tests.norun`
+           |Run and debug tests were only compiled, not run - this is due to the `dotty.tests.norun`
            |property being set
            |""".stripMargin
       }
@@ -1162,12 +1162,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  `aggregateTests` in the companion, which will ensure that aggregation is allowed.
    */
   final class CompilationTest private (
-    private[ParallelTesting] val targets: List[TestSource],
-    private[ParallelTesting] val times: Int,
-    private[ParallelTesting] val shouldDelete: Boolean,
-    private[ParallelTesting] val threadLimit: Option[Int],
-    private[ParallelTesting] val shouldFail: Boolean,
-    private[ParallelTesting] val shouldSuppressOutput: Boolean
+    val targets: List[TestSource],
+    val times: Int,
+    val shouldDelete: Boolean,
+    val threadLimit: Option[Int],
+    val shouldFail: Boolean,
+    val shouldSuppressOutput: Boolean
   ) {
     import org.junit.Assert.fail
 
@@ -1270,7 +1270,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       checkFail(test, "Rewrite")
     }
 
-    private def checkPass(test: Test, desc: String): this.type =
+    def checkPass(test: Test, desc: String): this.type =
       test.executeTestSuite()
 
       cleanup()
