@@ -3503,3 +3503,10 @@ final class PointlessAppliedConstructorType(tpt: untpd.Tree, args: List[untpd.Tr
         |If you want to track a precise type of any of the class parameters, make sure to mark the parameter as `tracked`.
         |Otherwise, you can safely remove the argument list from the type.
         |"""
+
+final class OnlyFullyDependentAppliedConstructorType()(using Context)
+  extends TypeMsg(OnlyFullyDependentAppliedConstructorTypeID):
+  override protected def msg(using Context): String =
+    i"Applied constructor type can only be used with classes that only have tracked parameters"
+
+  override protected def explain(using Context): String = ""

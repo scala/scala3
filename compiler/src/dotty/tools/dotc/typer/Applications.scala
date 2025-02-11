@@ -1722,6 +1722,10 @@ trait Applications extends Compatibility {
           def apply(tp: Type) = mapOver(tp.widenSkolem)
         val preciseTp = widenSkolemsMap(tree1.tpe)
         val classTp = typedType(tpt).tpe
+        def classSymbolHasOnlyTrackedParameters =
+          classTp.classSymbol.primaryConstructor.paramSymss.flatten.filter(_.isTerm).forall(_.is(Tracked))
+        if !preciseTp.isError && !classSymbolHasOnlyTrackedParameters then
+          report.warning(OnlyFullyDependentAppliedConstructorType(), tree.srcPos)
         if !preciseTp.isError && (preciseTp frozen_=:= classTp) then
           report.warning(PointlessAppliedConstructorType(tpt, tree.args, classTp), tree.srcPos)
         TypeTree(preciseTp)
