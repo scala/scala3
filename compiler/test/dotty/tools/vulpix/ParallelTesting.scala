@@ -919,7 +919,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     private def verifyOutput(checkFile: Option[JFile], dir: JFile, testSource: TestSource, warnings: Int, reporters: Seq[TestReporter], logger: LoggedRunnable) = {
       if Properties.testsNoRun then addNoRunWarning()
-      else runMain(testSource.runClassPath, testSource.allToolArgs) match {
+      else runMain(testSource.runClassPath) match {
         case Success(output) => checkFile match {
           case Some(file) if file.exists => diffTest(testSource, file, output.linesIterator.toList, reporters, logger)
           case _ =>
