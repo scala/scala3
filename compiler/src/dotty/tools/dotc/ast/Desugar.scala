@@ -1577,6 +1577,8 @@ object desugar {
     case valdef @ ValDef(_, _, _) =>
       val sym = valdef.symbol
       !ctx.owner.exists || ctx.owner.isClass || ctx.owner.is(Case) || ctx.owner.isConstructor || valdef.mods.is(Param) || valdef.mods.is(ParamAccessor)
+    case typeDef: TypeDef if typeDef.isClassDef =>
+      true
   }
 
   def checkOpaqueAlias(tree: MemberDef)(using Context): MemberDef =
