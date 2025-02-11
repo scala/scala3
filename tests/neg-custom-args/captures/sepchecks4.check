@@ -8,18 +8,17 @@
   |                      ^^^^^^^^^^
   |                      Separation failure: method bad's result type () => Unit hides parameter io.
   |                      The parameter needs to be annotated with @consume to allow this.
--- Error: tests/neg-custom-args/captures/sepchecks4.scala:12:25 --------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/sepchecks4.scala:12:6 ---------------------------------------------------------
 12 |  par(() => println(io))(() => println(io)) // error // (1)
-   |                         ^^^^^^^^^^^^^^^^^
-   |                         Separation failure: argument of type  () ->{io} Unit
-   |                         to method par: (op1: () => Unit)(op2: () => Unit): Unit
-   |                         corresponds to capture-polymorphic formal parameter op2 of type  () => Unit
-   |                         and captures {io}, but this capability is also passed separately
-   |                         in the first argument with type  () ->{io} Unit.
+   |      ^^^^^^^^^^^^^^^^^
+   |      Separation failure: argument of type  () ->{io} Unit
+   |      to method par: (op1: () => Unit)(op2: () => Unit): Unit
+   |      corresponds to capture-polymorphic formal parameter op1 of type  () => Unit
+   |      and hides capabilities  {io}.
+   |      Some of these overlap with the captures of the second argument with type  () ->{io} Unit.
    |
-   |                           Capture set of first argument         : {io}
-   |                           Hidden set of current argument        : {io}
-   |                           Footprint of first argument           : {io}
-   |                           Hidden footprint of current argument  : {io}
-   |                           Declared footprint of current argument: {}
-   |                           Undeclared overlap of footprints      : {io}
+   |        Hidden set of current argument        : {io}
+   |        Hidden footprint of current argument  : {io}
+   |        Capture set of second argument        : {io}
+   |        Footprint set of second argument      : {io}
+   |        The two sets overlap at               : {io}
